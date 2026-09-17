@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from 'react';
+import { assetUrl } from './assetUrl';
 import { useGame, getToast } from './store';
 import { objectDef, cropDef } from '../data/index.ts';
 import { availableMenus, hasReachableSeat, type GameState } from '../sim/index.ts';
@@ -63,7 +64,7 @@ export function Guide() {
   if (!t || getToast()) return null;
   return (
     <div style={{ position: 'absolute', top, left: 12, right: 12, display: 'flex', alignItems: 'center', gap: 8, pointerEvents: 'none' }}>
-      <img className="px" src="/assets/icons/portrait_halmang.png" width={64} height={64} alt="할망" style={{ flex: 'none', imageRendering: 'pixelated' }} />
+      <img className="px" src={assetUrl('assets/icons/portrait_halmang.png')} width={64} height={64} alt="할망" style={{ flex: 'none', imageRendering: 'pixelated' }} />
       <div style={{ flex: 1, background: '#fff3', color: '#fff', padding: '6px 10px', borderRadius: 8, fontSize: 13 }}>{t}</div>
     </div>
   );

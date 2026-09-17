@@ -1,4 +1,5 @@
 import { Assets, Texture, TextureStyle, type Spritesheet } from 'pixi.js';
+import { assetUrl } from '../ui/assetUrl';
 
 let sheet: Spritesheet | null = null;
 const missing = new Set<string>();
@@ -7,7 +8,7 @@ const missing = new Set<string>();
 export async function loadAssets(): Promise<boolean> {
   TextureStyle.defaultOptions.scaleMode = 'nearest';
   try {
-    sheet = await Assets.load<Spritesheet>('/assets/sheet.json');
+    sheet = await Assets.load<Spritesheet>(assetUrl('assets/sheet.json'));
     return true;
   } catch (e) {
     console.warn('assets: sheet 로드 실패, 플레이스홀더 사용', e);

@@ -1,5 +1,6 @@
 /** 스프라이트 시트(public/assets/sheet.png + sheet.json)를 2D 캔버스에 그리는 도우미.
  *  Pixi 없이 그리는 타이틀 배경·장면 창이 쓴다. 시트 로드 실패 시 null → 호출자가 색 사각형으로 대신한다. */
+import { assetUrl } from './assetUrl';
 
 interface Frame { x: number; y: number; w: number; h: number }
 export interface Sheet { image: HTMLImageElement; frames: Record<string, Frame> }
@@ -10,10 +11,10 @@ export function loadSheet(): Promise<Sheet | null> {
   if (loading) return loading;
   loading = (async () => {
     try {
-      const res = await fetch('/assets/sheet.json');
+      const res = await fetch(assetUrl('assets/sheet.json'));
       const json = (await res.json()) as { frames: Record<string, { frame: Frame }>; meta: { image: string } };
       const image = new Image();
-      image.src = `/assets/${json.meta.image}`;
+      image.src = assetUrl(`assets/${json.meta.image}`);
       await image.decode();
       const frames: Record<string, Frame> = {};
       for (const [name, f] of Object.entries(json.frames)) frames[name] = f.frame;

@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { assetUrl } from './assetUrl';
 import { useGame, getToast } from './store';
 import { useGuideTop } from './Guide';
 import { PALETTE } from './frame';
@@ -26,7 +27,7 @@ export function TutorialOverlay() {
   return (
     <div data-testid="tutorial" data-step={step.id} style={{ position: 'absolute', top, left: 12, right: 12, display: 'flex', alignItems: 'flex-start', gap: 8, pointerEvents: 'none' }}>
       <style>{PULSE_CSS}{step.tab ? `[data-tab="${step.tab}"]${MORE_TAB_NAMES.has(step.tab) ? ', [data-tab="더보기"]:not([aria-expanded="true"])' : ''} { animation: tut-pulse 1s ease-in-out infinite; }` : ''}</style>
-      <img className="px" src="/assets/icons/portrait_halmang.png" width={48} height={48} alt="할망" style={{ flex: 'none', imageRendering: 'pixelated' }} />
+      <img className="px" src={assetUrl('assets/icons/portrait_halmang.png')} width={48} height={48} alt="할망" style={{ flex: 'none', imageRendering: 'pixelated' }} />
       <div style={{ flex: 1, background: PALETTE.paper, color: PALETTE.ink, border: `3px solid ${PALETTE.wood}`, boxShadow: `inset 0 0 0 2px ${PALETTE.woodLight}`, padding: '6px 8px', borderRadius: 8, fontSize: 13, pointerEvents: 'auto' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
           <b style={{ color: PALETTE.title }}>할망의 가르침 {step.id}/{TUTORIAL_STEPS.length}</b>

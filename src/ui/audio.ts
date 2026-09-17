@@ -1,3 +1,5 @@
+import { assetUrl } from './assetUrl';
+
 export type SfxName = 'tap' | 'place' | 'remove' | 'plant' | 'harvest' | 'coin' | 'happy' | 'meh' | 'unlock' | 'month' | 'fanfare' | 'error' | 'bus';
 export type BgmName = 'spring' | 'summer' | 'autumn' | 'winter' | 'title';
 
@@ -28,19 +30,19 @@ export function unlockAudio(): void {
   master = ctx.createGain(); master.gain.value = muted ? 0 : 1; master.connect(ctx.destination);
   bgmGain = ctx.createGain(); bgmGain.gain.value = 0.5; bgmGain.connect(master);
   void ctx.resume();
-  for (const n of ['tap', 'place', 'remove', 'plant', 'harvest', 'coin', 'happy', 'meh', 'unlock', 'month', 'fanfare', 'error', 'bus']) void load(`/assets/sfx/${n}.m4a`);
+  for (const n of ['tap', 'place', 'remove', 'plant', 'harvest', 'coin', 'happy', 'meh', 'unlock', 'month', 'fanfare', 'error', 'bus']) void load(assetUrl(`assets/sfx/${n}.m4a`));
 }
 
 export function sfx(name: SfxName): void {
   if (!ctx || !master) return;
-  const buf = buffers.get(`/assets/sfx/${name}.m4a`);
+  const buf = buffers.get(assetUrl(`assets/sfx/${name}.m4a`));
   if (!buf) return;
   const src = ctx.createBufferSource(); src.buffer = buf; src.connect(master); src.start();
 }
 
 export async function bgm(name: BgmName): Promise<void> {
   if (!ctx || !bgmGain || current?.name === name) return;
-  const buf = await load(`/assets/bgm/${name}.m4a`);
+  const buf = await load(assetUrl(`assets/bgm/${name}.m4a`));
   if (!buf || !ctx) return;
   const gain = ctx.createGain(); gain.gain.value = 0; gain.connect(bgmGain);
   const src = ctx.createBufferSource(); src.buffer = buf; src.loop = true; src.connect(gain); src.start();

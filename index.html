@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
     <title>제주 귀농 카페</title>
     <style>
-      @font-face { font-family: 'Galmuri11'; src: url('/fonts/Galmuri11.woff2') format('woff2'); font-weight: 400; font-display: swap; }
-      @font-face { font-family: 'Galmuri11'; src: url('/fonts/Galmuri11-Bold.woff2') format('woff2'); font-weight: 700; font-display: swap; }
+      @font-face { font-family: 'Galmuri11'; src: url('./fonts/Galmuri11.woff2') format('woff2'); font-weight: 400; font-display: swap; }
+      @font-face { font-family: 'Galmuri11'; src: url('./fonts/Galmuri11-Bold.woff2') format('woff2'); font-weight: 700; font-display: swap; }
       html, body, #root { margin: 0; height: 100%; overflow: hidden; background: #1e1e1e; font-family: 'Galmuri11', system-ui, sans-serif; }
       canvas, img.px { image-rendering: pixelated; image-rendering: crisp-edges; }
       /* 맵을 끌거나 길게 누를 때 UI 글자가 선택되거나 iOS 콜아웃이 뜨지 않게. 입력칸은 그대로. */
@@ -16,6 +16,6 @@
   </head>
   <body>
     <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
+    <script type="module" src="./src/main.tsx"></script>
   </body>
 </html>
