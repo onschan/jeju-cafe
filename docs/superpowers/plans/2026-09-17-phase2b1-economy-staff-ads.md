@@ -12,6 +12,17 @@
 
 ---
 
+## 진행 상황 (2026-09-17)
+
+- [x] Task 1~6 — sim(경제·직원·홍보·시간대)·봇·밸런스 테스트. 커밋 `feat(sim): …`, `feat: 봇 확장과 1년차 흑자 밸런스 테스트`, `fix(sim): 리뷰 반영`
+- [x] Task 7 — 파츠 시스템 `feat(assets): 캐릭터 파츠 시스템(몸·머리·액세서리)`, 시트 재생성. 새 손님 타입·삼춘 6명의 파츠 조합 데이터는 2B-2로 이월
+- [x] Task 8 — `src/render/character.ts`(`makeCharacterNode`/`updateCharacterNode`, tint 색표) + `GameView.syncStaff`(역할 배지·기력 반투명·8fps 걷기). 앉은 손님은 sim의 `seatSlotPos` 좌표를 그대로 쓴다. `feat(render): 직원 파츠 캐릭터 아이소 렌더`
+- [x] Task 9 — `feat(ui): 직원 패널·홍보 패널·확인 팝업·월말 정산·AM/PM·밤`
+- [x] Task 10 — 폰 뷰 확인(첫날 아메리카노 판매 → 공고 → 채용 → 직원 산책·배지 → 9월 밭 자동 심기 → 홍보 후 기력 저하·반투명 → 월말 카드 → 밤), README 갱신. `docs: 2B-1 마무리`
+- [ ] 이월: 새 손님 타입(가족·올레꾼·한달살기·유튜버·외국인)과 삼춘의 파츠 조합 렌더(`makeCharacterNode` 재사용), 텍스트 말풍선(`Guest.say`) 렌더
+
+---
+
 ## 파일 구조
 
 ```
@@ -95,7 +106,7 @@ waitMs: number;           // 주문 후 조리 대기 남은 시간
 
 **Files:** Modify `src/sim/types.ts`, `src/sim/state.ts`, `src/data/index.ts`; Create `src/data/ingredients.json`, `staff_roles.json`, `skills.json`, `names.json`, `ads.json`; Modify `src/data/menus.json`, `unlocks.json`; Test `src/sim/__tests__/data.test.ts`(추가), `clock.test.ts`(수정)
 
-- [ ] **Step 1: 실패하는 테스트**
+- [x] **Step 1: 실패하는 테스트**
 
 `data.test.ts`에 추가:
 ```ts
@@ -125,7 +136,7 @@ test('역할 7, 스킬 20, 광고 4, 이름 60', () => {
 ```
 `clock.test.ts` 첫 테스트: `month: 1` → `month: 3`, `money 5000` → `30000`; `s.slots`가 `{ barista: 1, cook: 1, hall: 2, field: 1, gather: 0, carry: 0, guide: 0 }`.
 
-- [ ] **Step 2: 데이터 작성**
+- [x] **Step 2: 데이터 작성**
 
 `ingredients.json` (bought 9, farm = crops 8):
 ```json
@@ -198,11 +209,11 @@ test('역할 7, 스킬 20, 광고 4, 이름 60', () => {
 ]
 ```
 
-- [ ] **Step 3: 타입·state·로더**
+- [x] **Step 3: 타입·state·로더**
 
 types.ts에 위 "핵심 타입" 블록 추가. `UnlockDef.kind`: `'object' | 'menu' | 'crop' | 'slot' | 'role'`. state.ts: `START_MONEY = 30000`, `START_MONTH = 3`, `SAVE_VERSION = 2`, 초기 `staff: [], candidates: [], slots: {...}, activeAds: [], youtuberBoostMonths: 0, monthCosts: { ingredients: 0, salary: 0, ads: 0 }`, `unlocked.roles: ['barista','cook','hall','field']`. data/index.ts: `INGREDIENTS, ROLES, SKILLS, NAMES, ADS`, `ingredientDef, roleDef, skillDef, adDef`.
 
-- [ ] **Step 4: 통과 확인·Commit** — `pnpm test`; 기존 테스트 중 시작 월·자금·메뉴 id에 의존하던 것(`menu.test`, `guests.test`, `actions.test`, `tick.test`, headless)은 이 Task에서 함께 고친다: `carrot_juice`는 여전히 존재하므로 대부분 그대로, `tangerine_juice`는 이제 해금 목록에 없으니 `canSetSlot(s, 1, 'tangerine_juice')` 기대값을 false로. `git commit -m "feat(sim): 재료 2종·시작 메뉴 12·직원/광고 데이터와 타입"`
+- [x] **Step 4: 통과 확인·Commit** — `pnpm test`; 기존 테스트 중 시작 월·자금·메뉴 id에 의존하던 것(`menu.test`, `guests.test`, `actions.test`, `tick.test`, headless)은 이 Task에서 함께 고친다: `carrot_juice`는 여전히 존재하므로 대부분 그대로, `tangerine_juice`는 이제 해금 목록에 없으니 `canSetSlot(s, 1, 'tangerine_juice')` 기대값을 false로. `git commit -m "feat(sim): 재료 2종·시작 메뉴 12·직원/광고 데이터와 타입"`
 
 ---
 
@@ -210,7 +221,7 @@ types.ts에 위 "핵심 타입" 블록 추가. `UnlockDef.kind`: `'object' | 'me
 
 **Files:** Create `src/sim/economy.ts`; Modify `src/sim/menu.ts`, `src/sim/guests.ts`, `src/sim/tick.ts`; Test `src/sim/__tests__/economy.test.ts`
 
-- [ ] **Step 1: 실패하는 테스트**
+- [x] **Step 1: 실패하는 테스트**
 ```ts
 import { createInitialState } from '../state.ts';
 import { apply } from '../actions.ts';
@@ -249,7 +260,7 @@ test('월말 카드에 수입·재료비·월급·광고·순이익이 있고 mo
 ```
 `lastMonthCard` 타입을 `{ income, guests, month, year, costs: {ingredients, salary, ads}, net }`으로 확장.
 
-- [ ] **Step 2: 구현**
+- [x] **Step 2: 구현**
 `economy.ts`:
 ```ts
 export function ingredientCost(state: GameState, menuId: string): number {
@@ -266,7 +277,7 @@ export function closeMonth(state: GameState, prevMonth: number, prevYear: number
 ```
 `menu.ts`: `isMenuAvailable`는 bought 무시, farm만 창고 확인. `consumeIngredients`는 farm 차감 + `const c = ingredientCost(state, menuId); state.money -= c; state.monthCosts.ingredients += c;`. `tick.ts`의 `onNewMonth` → `closeMonth` 호출로 교체(월급·광고는 Task 3·4에서 그 앞에 끼워 넣는다).
 
-- [ ] **Step 3: 통과·Commit** `feat(sim): 재료비와 월말 정산`
+- [x] **Step 3: 통과·Commit** `feat(sim): 재료비와 월말 정산`
 
 ---
 
@@ -274,7 +285,7 @@ export function closeMonth(state: GameState, prevMonth: number, prevYear: number
 
 **Files:** Create `src/sim/staff.ts`; Modify `src/sim/actions.ts`, `src/sim/tick.ts`, `src/sim/progress.ts`, `src/sim/economy.ts`; Test `src/sim/__tests__/staff.test.ts`
 
-- [ ] **Step 1: 실패하는 테스트**
+- [x] **Step 1: 실패하는 테스트**
 ```ts
 import { createInitialState } from '../state.ts';
 import { apply } from '../actions.ts';
@@ -350,7 +361,7 @@ test('roleEffect: 홀 서비스 합, 바리스타 감각, 운반 할인', () => 
 });
 ```
 
-- [ ] **Step 2: 구현 요점** (`staff.ts`)
+- [x] **Step 2: 구현 요점** (`staff.ts`)
 - `TIERS = { flyer: { cost: 10000, count: 3, min: 10, max: 40 }, site: { cost: 50000, count: 4, min: 30, max: 60 }, headhunter: { cost: 200000, count: 5, min: 50, max: 80 } }`
 - `generateCandidate(state, tier)`: `randInt`로 스탯 4개, 이름 `pickWeighted`(균등), 스킬 균등, 얼굴 파츠 `randInt`, `salary = salaryOf(stats, 1)`, `expiresMonthIndex = monthIndex(clock) + 1`, id `c${nextId++}`.
 - `salaryOf(stats, level) = (sum(stats)) * 30 + level * 5000`.
@@ -364,7 +375,7 @@ test('roleEffect: 홀 서비스 합, 바리스타 감각, 운반 할인', () => 
 - tick.ts `step`: 월 바뀜 처리 순서 = `payroll` → `expireAds`(Task 4) → `closeMonth` → `expireCandidates`. 매 스텝 `moveStaff`.
 - progress.ts `unlock`: kind `slot` → `state.slots[ref]++`; `role` → `state.unlocked.roles.push(ref)`.
 
-- [ ] **Step 3: 통과·Commit** `feat(sim): 직원 공고·채용·배치·월급·효과`
+- [x] **Step 3: 통과·Commit** `feat(sim): 직원 공고·채용·배치·월급·효과`
 
 ---
 
@@ -372,7 +383,7 @@ test('roleEffect: 홀 서비스 합, 바리스타 감각, 운반 할인', () => 
 
 **Files:** Modify `src/sim/guests.ts`, `src/sim/farm.ts`, `src/sim/tick.ts`; Test `src/sim/__tests__/staff.test.ts`(추가), `guests.test.ts`(수정)
 
-- [ ] **Step 1: 실패하는 테스트**
+- [x] **Step 1: 실패하는 테스트**
 ```ts
 test('조리 시간: 직원 없으면 5초, 바리스타(감각 50)면 3초 이하', () => {
   const s = cafe(); // americano 슬롯
@@ -412,13 +423,13 @@ test('채취꾼은 하루 한 번 확률로 farm 재료를 가져온다', () => 
 ```
 `staffWith(partialStats, role)` 헬퍼는 테스트 파일 상단에.
 
-- [ ] **Step 2: 구현 요점**
+- [x] **Step 2: 구현 요점**
 - guests.ts `order()`: 메뉴 결정·재료 소비·돈은 즉시, 하지만 `mood`는 `waitMs` 뒤에 결정. `waitMs = PREP_MS(5000) × (1 − min(0.6, roleEffect(barista|cook by category)/100))` (drink→barista, dessert/meal→cook) × (1 − speed 스킬). `updateGuests`의 seated 분기: `waitMs > 0`이면 감소, 0이 되는 순간 `resolveMood`. 만족 기준: `scenery + serviceBonus >= minScenery`, `serviceBonus = floor(roleEffect('hall') / 30)`. `SEAT_MS`는 mood 결정 후부터 센다. `monthGuests`는 도착 시 센다(이월 항목 해결).
 - farm.ts: `staffFarmWork(state)` 매일 — 밭 일꾼 있으면 `readyToHarvest` 전부 수확, 빈 밭에 제철 작물(해금된 것 중 첫 번째) 심기. 하루 작업량 = `1 + floor(stamina/20)` 칸. `gatherWork(state)`: 채취꾼마다 `nextRandom < 0.3 + stamina/200 + luck` 이면 farm 재료 중 랜덤 1~2개.
 - tick.ts `onNewDay`: `growOneDay` → `staffFarmWork` → `gatherWork` → spawn.
 - guests.test의 기존 타이밍 테스트는 `waitMs` 도입으로 6000ms 뒤 `mood`가 null이니 `updateGuests(s, 6000 + 5000)`로 갱신.
 
-- [ ] **Step 3: 통과·Commit** `feat(sim): 조리 시간·홀 서비스·밭 일꾼·채취꾼`
+- [x] **Step 3: 통과·Commit** `feat(sim): 조리 시간·홀 서비스·밭 일꾼·채취꾼`
 
 ---
 
@@ -426,7 +437,7 @@ test('채취꾼은 하루 한 번 확률로 farm 재료를 가져온다', () => 
 
 **Files:** Create `src/sim/ads.ts`; Modify `actions.ts`, `guests.ts`, `tick.ts`; Test `src/sim/__tests__/ads.test.ts`
 
-- [ ] **Step 1: 테스트**
+- [x] **Step 1: 테스트**
 ```ts
 test('광고 실행: 비용 차감, 최대 2개, 만료', () => {
   const s = createInitialState(1);
@@ -455,8 +466,8 @@ test('광고가 있으면 하루 손님이 는다', () => {
   expect(dailyGuestCount(s)).toBeGreaterThan(base);
 });
 ```
-- [ ] **Step 2: 구현 요점** `ads.ts`: `runAd`(돈·중복·최대 2·youtuber는 `nextRandom < 0.6`이면 `youtuberBoostMonths = 3`), `spawnMultiplier(state, type)` = 활성 광고 곱 × (youtuber && tourist ? 2 : 1) × (1 + popular 스킬 합), `expireAds(state)`(월말: remainingMonths−−, 0이면 제거; popularityPerMonth 적용; youtuberBoostMonths−−). guests.ts: `dailyGuestCount(state) = clamp(2 + floor(seats/2) + floor((avgMult−1)×4), 1, 12)`, 타입 선택 가중치 = `weight × spawnMultiplier`. tick.ts `onNewDay`: `spawnGuests(state, dailyGuestCount(state))`.
-- [ ] **Step 3: 통과·Commit** `feat(sim): 광고와 손님 유입 배수`
+- [x] **Step 2: 구현 요점** `ads.ts`: `runAd`(돈·중복·최대 2·youtuber는 `nextRandom < 0.6`이면 `youtuberBoostMonths = 3`), `spawnMultiplier(state, type)` = 활성 광고 곱 × (youtuber && tourist ? 2 : 1) × (1 + popular 스킬 합), `expireAds(state)`(월말: remainingMonths−−, 0이면 제거; popularityPerMonth 적용; youtuberBoostMonths−−). guests.ts: `dailyGuestCount(state) = clamp(2 + floor(seats/2) + floor((avgMult−1)×4), 1, 12)`, 타입 선택 가중치 = `weight × spawnMultiplier`. tick.ts `onNewDay`: `spawnGuests(state, dailyGuestCount(state))`.
+- [x] **Step 3: 통과·Commit** `feat(sim): 광고와 손님 유입 배수`
 
 ---
 
@@ -464,8 +475,8 @@ test('광고가 있으면 하루 손님이 는다', () => {
 
 **Files:** Modify `scripts/headless.ts`; Create `src/sim/__tests__/balance.test.ts`
 
-- [ ] **Step 1: 봇 확장** — 시작 시 테이블 3, 슬롯에 americano/latte/scone/toast; 2달째 `postJob flyer` → 후보 중 service 최고를 hall, sense 최고를 barista; 돈 5만 넘으면 전단지; 9월에 밭 3개 + field 일꾼; 연구 되면 unlock. CSV에 `net, staff, ads` 열 추가.
-- [ ] **Step 2: 밸런스 테스트**
+- [x] **Step 1: 봇 확장** — 시작 시 테이블 3, 슬롯에 americano/latte/scone/toast; 2달째 `postJob flyer` → 후보 중 service 최고를 hall, sense 최고를 barista; 돈 5만 넘으면 전단지; 9월에 밭 3개 + field 일꾼; 연구 되면 unlock. CSV에 `net, staff, ads` 열 추가.
+- [x] **Step 2: 밸런스 테스트**
 ```ts
 test('봇이 1년차 12달 모두 순이익 > 0', () => {
   const rows = runBot(12, 1); // headless의 루프를 함수로 추출해 재사용
@@ -474,7 +485,7 @@ test('봇이 1년차 12달 모두 순이익 > 0', () => {
 });
 ```
 `scripts/headless.ts`의 봇 로직을 `src/sim/bot.ts`(순수)로 옮기고 스크립트는 CSV 출력만 담당. 실패하면 **데이터(가격·원가·월급 계수·손님 수)를 조정**해서 통과시킨다 — 코드가 아니라 JSON을 만진다. 조정한 값을 보고한다.
-- [ ] **Step 3: Commit** `feat: 봇 확장과 1년차 흑자 밸런스 테스트`
+- [x] **Step 3: Commit** `feat: 봇 확장과 1년차 흑자 밸런스 테스트`
 
 ---
 
