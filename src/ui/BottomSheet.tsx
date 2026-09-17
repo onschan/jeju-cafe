@@ -137,7 +137,7 @@ export function BottomSheet({ mode, setMode, place, msg, onGuest, onDragBuild }:
   const badge = boardBadge(s);
   const moreOpen = more || MORE_KINDS.has(mode.kind);
   const tabBtn = (t: { kind: Mode['kind']; icon: string; label: string; to: Mode }) => (
-    <button key={t.kind} style={{ ...(mode.kind === t.kind ? brownBtnOn : brownBtn), padding: '0 8px', position: 'relative' }} onClick={() => setMode(mode.kind === t.kind ? { kind: 'idle' } : t.to)} aria-label={t.label}>
+    <button key={t.kind} data-tab={t.label} style={{ ...(mode.kind === t.kind ? brownBtnOn : brownBtn), padding: '0 8px', position: 'relative' }} onClick={() => setMode(mode.kind === t.kind ? { kind: 'idle' } : t.to)} aria-label={t.label}>
       <Icon name={t.icon} /> {t.label}
       {t.kind === 'guests' && badge > 0 && <span data-testid="board-badge" style={{ position: 'absolute', top: -6, right: -6, minWidth: 18, height: 18, borderRadius: 9, background: PALETTE.bad, color: '#fff', fontSize: 11, lineHeight: '18px', textAlign: 'center', padding: '0 4px' }}>{badge}</span>}
     </button>
@@ -147,7 +147,7 @@ export function BottomSheet({ mode, setMode, place, msg, onGuest, onDragBuild }:
       {place ? <PlaceBar {...place} /> : <MessageBar text={msg} />}
       <div style={{ marginBottom: 6, display: 'flex', flexWrap: 'wrap' }} data-testid="tabs">
         {MAIN_TABS.map(tabBtn)}
-        <button style={{ ...(moreOpen ? brownBtnOn : brownBtn), padding: '0 8px' }} onClick={() => setMore(!more)} aria-label="더보기" aria-expanded={moreOpen}>⋯ 더보기</button>
+        <button style={{ ...(moreOpen ? brownBtnOn : brownBtn), padding: '0 8px' }} onClick={() => setMore(!more)} aria-label="더보기" aria-expanded={moreOpen} data-tab="더보기">⋯ 더보기</button>
         {moreOpen && MORE_TABS.map(tabBtn)}
       </div>
 

@@ -10,6 +10,7 @@ import { ISO_W, ISO_H, cellToScreen, cellCenter, footAnchor, depth, screenToCell
 import { makeCharacterNode, updateCharacterNode, staffParts, guestParts, sameAccs, CHAR_H, type CharacterNode, type Dir, type Frame } from './character';
 import { guestFace } from '../sim/segments.ts';
 import { guestTypeDef } from '../data/index.ts';
+import { Background } from './Background';
 
 /** 전용 스프라이트가 있는 손님 타입 (guest_local·guest_tourist 시트) */
 const GUEST_SPRITE_KEY: Record<string, string> = { local_auntie: 'local', student: 'tourist' };
@@ -73,8 +74,8 @@ const NIGHT_COLOR = 0x0b1a3a;
 const NIGHT_MAX_ALPHA = 0.55;
 /** 밤에 빛나는 오브젝트 */
 const GLOW_TYPES = new Set(['lantern_path', 'stone_lantern', 'warehouse', 'busstop']);
-/** 맵 경계 위쪽 여유(키 큰 오브젝트가 보이도록) */
-const BOUNDS_TOP_PAD = 96;
+/** 맵 경계 위쪽 여유(키 큰 오브젝트와 지평선 배경 띠가 보이도록) */
+const BOUNDS_TOP_PAD = 180;
 
 interface ObjEntry {
   node: Container;
@@ -163,6 +164,8 @@ export function nightAlpha(hour: number): number {
 export class GameView {
   app = new Application();
   world = new Container();
+  /** 맵 밖 배경(하늘·지평선 띠·잔디). 타일 아래. */
+  private background = new Background();
   private tiles = new Container();
   /** 오브젝트·손님을 한 컨테이너에 두고 아이소 깊이(x+y)로 정렬한다 */
   private actors = new Container();
@@ -208,7 +211,7 @@ export class GameView {
     await Promise.all([loadAssets(), loadLabelFont()]);
     parent.appendChild(this.app.canvas);
     this.actors.sortableChildren = true;
-    this.world.addChild(this.tiles, this.actors, this.overlay);
+    this.world.addChild(this.background.node, this.tiles, this.actors, this.overlay);
     this.overlay.addChild(this.selection);
     this.night.eventMode = 'none';
     this.ui.eventMode = 'none';
@@ -260,6 +263,7 @@ export class GameView {
     this.lockedNodes.clear();
     this.tilesBuilt = false;
     this.lastSeason = null;
+    this.background.reset();
     this.selection.clear();
     this.setGhost(null);
   }
@@ -327,6 +331,7 @@ export class GameView {
       this.retintTiles(state, season);
     }
     this.syncTerrain(state, season);
+    this.background.sync(state);
     this.syncLocked(state);
     const now = performance.now();
     // 시계에 hour가 있는 브랜치(2B-1)와 없는 브랜치 모두에서 동작하도록 정오를 기본값으로
