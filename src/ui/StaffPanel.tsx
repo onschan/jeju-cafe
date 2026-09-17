@@ -5,7 +5,8 @@ import { ROLES, roleDef, skillDef } from '../data/index.ts';
 import { Icon } from './Icon';
 import { Confirm } from './Popup';
 import { card, brownBtn, brownBtnOn, brownBtnOff, dangerBtn, brownSelect, PALETTE, won } from './frame';
-import { partsOfFace, HAIR_RGB, SKIN_RGB, TOP_RGB } from '../render/character';
+import { partsOfFace, staffParts, HAIR_RGB, SKIN_RGB, TOP_RGB } from '../render/character';
+import { showScene } from './SceneWindow';
 
 const TIER_ORDER: JobTier[] = ['flyer', 'site', 'headhunter'];
 const TIER_NAME: Record<JobTier, string> = { flyer: '전단 공고', site: '구인 사이트', headhunter: '헤드헌터' };
@@ -77,7 +78,10 @@ function CandidateCard({ c }: { c: Candidate }) {
   const sk = skillDef(c.skill);
   const hire = () => {
     if (!chosen) return;
-    Confirm(`${c.name} 씨를 ${roleDef(chosen).name}(으)로 고용합니다. 월급 ${won(c.salary)}`, () => dispatch({ type: 'hire', candidateId: c.id, role: chosen }), { title: '채용' });
+    Confirm(`${c.name} 씨를 ${roleDef(chosen).name}(으)로 고용합니다. 월급 ${won(c.salary)}`, () => {
+      if (dispatch({ type: 'hire', candidateId: c.id, role: chosen }).ok)
+        showScene({ title: '채용', text: `새 직원: ${c.name}! — 잘 부탁드립니다!`, chars: [{ parts: staffParts(c.face, chosen) }], sfx: 'fanfare' });
+    }, { title: '채용' });
   };
   return (
     <div style={card}>

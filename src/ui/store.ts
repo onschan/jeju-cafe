@@ -2,6 +2,7 @@ import { useSyncExternalStore } from 'react';
 import { createInitialState, tick, apply, seasonOf, LocalSaveStore, type GameState, type Action, type ApplyResult, type Mood, type Season } from '../sim/index.ts';
 import { sfx, bgm, suspendAudio, resumeAudio, type SfxName } from './audio';
 import { recordMonthCard } from './best';
+import { resetTutorial } from './tutorial';
 
 const SLOT_PREFIX = 'jeju-cafe:slot:';
 const saveStore = new LocalSaveStore(SLOT_PREFIX);
@@ -132,6 +133,7 @@ export function autosaveNow(): void { save(); }
 export function newGame() {
   state = createInitialState(Date.now() % 1_000_000, getOrCreatePlayerId(), Date.now());
   viewReset?.();
+  resetTutorial();
   save();
   emit();
 }

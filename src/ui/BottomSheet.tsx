@@ -71,7 +71,7 @@ export function BottomSheet({ mode, setMode, place, msg }: { mode: Mode; setMode
       {place ? <PlaceBar {...place} /> : <MessageBar text={msg} />}
       <div style={{ marginBottom: 6, display: 'flex', flexWrap: 'wrap' }}>
         {TABS.map((t) => (
-          <button key={t.kind} style={{ ...(mode.kind === t.kind ? brownBtnOn : brownBtn), padding: '0 8px' }} onClick={() => setMode(t.to)}>
+          <button key={t.kind} data-tab={t.label} style={{ ...(mode.kind === t.kind ? brownBtnOn : brownBtn), padding: '0 8px' }} onClick={() => setMode(t.to)}>
             <Icon name={t.icon} /> {t.label}
           </button>
         ))}

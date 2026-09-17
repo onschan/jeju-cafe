@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { GameView, type GhostSpec } from '../render/GameView';
-import { startLoop, dispatch, getState, setViewReset, autosaveNow, hasAnySave, loadSlot } from './store';
+import { startLoop, dispatch, getState, setViewReset, autosaveNow, hasAnySave, loadSlot, setMonthCardHook } from './store';
 import { unlockAudio, bgm, isMuted, setMuted } from './audio';
 import { seasonOf, canPlace, objectAt, footprint, parcelAt, parcelPrice, canBuyParcel, PROTECTED_TYPES, ROTATABLE_TYPES, type GameState } from '../sim/index.ts';
 import { objectDef } from '../data/index.ts';
@@ -13,6 +13,10 @@ import { PopupHost, Popup, Confirm } from './Popup';
 import { won, brownBtn, dangerBtn } from './frame';
 import { TitleScreen } from './TitleScreen';
 import { SaveSlots } from './SaveSlots';
+import { TutorialOverlay } from './TutorialOverlay';
+import { useTutorial } from './tutorial';
+import { showScene, SceneHost, type SceneChar } from './SceneWindow';
+import { staffParts } from '../render/character';
 
 /** 길·돌담은 드래그로 연속해서 놓는다 (고스트 없이) */
 const PAINT_KINDS = new Set(['path', 'wall']);
@@ -22,6 +26,11 @@ const MSG_MS = 1500;
 interface BuildGhost { x: number; y: number; rot: number }
 /** 이동 모드: 고른 오브젝트와 옮길 자리 */
 interface Moving { objectId: string; x: number; y: number }
+
+/** 장면 창에 세울 직원(최대 3명). 없으면 SceneWindow가 기본 인물을 세운다. */
+function staffChars(s: GameState): SceneChar[] {
+  return s.staff.slice(0, 3).map((st) => ({ parts: staffParts(st.face, st.role) }));
+}
 
 function inFootprint(type: string, ox: number, oy: number, x: number, y: number): boolean {
   return footprint(type, ox, oy).some((p) => p.x === x && p.y === y);
@@ -41,6 +50,7 @@ export function App() {
         ? <TitleScreen onEnter={() => setScreen('game')} />
         : <Game onExit={() => { autosaveNow(); setScreen('title'); }} />}
       <PopupHost />
+      <SceneHost />
     </div>
   );
 }
@@ -64,6 +74,15 @@ function GameMenu({ onClose, onExit }: { onClose: () => void; onExit: () => void
 
 function Game({ onExit }: { onExit: () => void }) {
   const [menu, setMenu] = useState(false);
+  const tutorial = useTutorial();
+  // 월 매출 신기록 → 장면 창
+  useEffect(() => {
+    setMonthCardHook((st, rec) => {
+      const card = st.lastMonthCard;
+      if (rec.monthRecord && card) showScene({ title: '월 매출 신기록', text: `${card.month}월 매출 ${won(card.income)} — 신기록!`, chars: staffChars(st), sfx: 'fanfare' });
+    });
+    return () => setMonthCardHook(null);
+  }, []);
   const hostRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<GameView | null>(null);
   const modeRef = useRef<Mode>({ kind: 'idle' });
@@ -100,7 +119,9 @@ function Game({ onExit }: { onExit: () => void }) {
     if (!p || p.owned) return false;
     const can = canBuyParcel(s, p.id);
     if (!can.ok) { say(can.reason ?? '아직 살 수 없어요'); return true; }
-    Confirm(`${p.name} 필지를 ${won(parcelPrice(s, p))}에 살까요? 맵이 넓어져요.`, () => dispatch({ type: 'buyParcel', id: p.id }), { title: '필지 구매' });
+    Confirm(`${p.name} 필지를 ${won(parcelPrice(s, p))}에 살까요? 맵이 넓어져요.`, () => {
+      if (dispatch({ type: 'buyParcel', id: p.id }).ok) showScene({ title: '필지 구매', text: `${p.name} — 땅이 넓어졌다!`, chars: staffChars(getState()), sfx: 'unlock' });
+    }, { title: '필지 구매' });
     return true;
   };
 
@@ -216,7 +237,7 @@ function Game({ onExit }: { onExit: () => void }) {
       <div ref={hostRef} style={{ position: 'absolute', inset: 0, touchAction: 'none' }} />
       <NightOverlay />
       <HUD onMenu={() => setMenu(true)} />
-      <Guide />
+      {tutorial.done ? <Guide /> : <TutorialOverlay />}
       <BottomSheet mode={mode} setMode={setMode} place={place} msg={place ? null : msg} />
       <MonthCard />
       {menu && <GameMenu onClose={() => setMenu(false)} onExit={onExit} />}

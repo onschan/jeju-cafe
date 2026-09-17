@@ -196,6 +196,62 @@ def icon(name: str) -> Canvas:
     return c
 
 
+# ---------------------------------------------------------------- 장면 창 배경 160×90 (로비: 회벽 + 카운터 + 창문)
+def scene_lobby() -> Canvas:
+    c = Canvas(160, 90)
+    wdk, wmd, wlt = WOOD
+    bdk, bmd, blt = BASALT
+    plaster, plaster2 = hexc('f5f1e8'), hexc('ece5d4')
+    # 회벽 (아주 옅은 디더) + 걸레받이
+    c.dither(0, 0, 160, 66, plaster, plaster2)
+    c.hline(0, 159, 0, hexc('d8d0bd'))
+    c.rect(0, 62, 160, 4, wmd); c.hline(0, 159, 62, wlt); c.hline(0, 159, 65, wdk)
+    # 마루: 널빤지 (12px마다 이음선, 줄마다 어긋나게)
+    c.rect(0, 66, 160, 24, wmd)
+    for y in range(66, 90, 6):
+        c.hline(0, 159, y, wdk)
+        off = 6 if (y // 6) % 2 else 0
+        for x in range(off, 160, 12):
+            c.vline(x, y + 1, y + 5, wdk)
+        c.hline(0, 159, y + 1, wlt)
+    # 창문 (왼쪽): 나무 틀, 하늘 + 구름, 십자 살
+    wx, wy, ww, wh = 14, 10, 44, 34
+    c.rect(wx - 3, wy - 3, ww + 6, wh + 6, wdk)
+    c.rect(wx - 2, wy - 2, ww + 4, wh + 4, wmd)
+    c.rect(wx, wy, ww, wh, SKY[2])
+    c.rect(wx, wy + wh - 8, ww, 8, PAL['grass'][1]); c.hline(wx, wx + ww - 1, wy + wh - 8, PAL['grass'][2])
+    c.ellipse(wx + 14, wy + 10, 7, 3.5, WHITE[2]); c.ellipse(wx + 20, wy + 9, 5, 3, WHITE[2])
+    c.ellipse(wx + 33, wy + 16, 5, 2.5, WHITE[2])
+    c.rect(wx + ww // 2 - 1, wy, 2, wh, wmd); c.rect(wx, wy + wh // 2 - 1, ww, 2, wmd)
+    c.rect(wx - 3, wy + wh + 3, ww + 6, 2, wdk)  # 창턱
+    # 선반 + 병 3개
+    c.rect(66, 22, 30, 2, wmd); c.hline(66, 95, 22, wlt)
+    for i, col in enumerate((ORANGE[1], LEAF[1], YELLOW[1])):
+        jx = 69 + i * 10
+        c.rect(jx, 14, 6, 8, col); c.rect(jx + 1, 12, 4, 2, bdk); c.put(jx + 1, 15, WHITE[2])
+    # 메뉴 칠판 (오른쪽 위)
+    c.rect(104, 6, 48, 26, wmd); c.rect(106, 8, 44, 22, bdk)
+    for i, (x0, x1) in enumerate(((110, 128), (110, 136), (110, 124), (110, 132))):
+        y = 11 + i * 5
+        c.hline(x0, x1, y, WHITE[1]); c.hline(140, 146, y, YELLOW[1])
+    # 카운터 (오른쪽): 윗면 밝게, 앞면 세로 널빤지, 밑단 어둡게
+    cx, cy, cw, ch = 92, 46, 68, 30
+    c.rect(cx, cy, cw, ch, wmd)
+    c.rect(cx, cy, cw, 4, wlt); c.hline(cx, cx + cw - 1, cy + 4, wdk)
+    for x in range(cx + 8, cx + cw, 10):
+        c.vline(x, cy + 6, cy + ch - 3, wdk)
+    c.rect(cx, cy + ch - 2, cw, 2, wdk)
+    c.vline(cx, cy, cy + ch - 1, wdk)
+    # 카운터 위: 커피 머신(회색 상자) + 컵 2개 + 화분
+    c.rect(130, 32, 18, 14, bmd); c.rect(131, 33, 16, 3, blt); c.rect(134, 38, 6, 4, bdk); c.put(146, 34, RED[1])
+    for x in (100, 110):
+        c.rect(x, 40, 6, 5, WHITE[1]); c.hline(x, x + 5, 40, WHITE[2]); c.put(x + 6, 42, WHITE[1])
+    c.rect(118, 38, 8, 6, PAL['soil'][1]); c.ellipse(122, 36, 4, 3, LEAF[1]); c.put(120, 34, LEAF[2])
+    # 벽 액자
+    c.rect(66, 34, 20, 14, wdk); c.rect(68, 36, 16, 10, SKY[1]); c.ellipse(76, 44, 6, 3, LEAF[0]); c.rect(72, 38, 3, 3, ORANGE[1])
+    return c
+
+
 ICONS = ('money', 'research', 'local', 'tourist', 'speed_pause', 'speed_1', 'speed_2', 'speed_3', 'build',
          'menu', 'look', 'harvest', 'plant', 'remove', 'unlock', 'calendar', 'sound_on', 'sound_off')
 
@@ -210,4 +266,5 @@ def sprites() -> dict[str, Canvas]:
     s['fx_ready_ring'] = ready_ring()
     for n in ICONS:
         s[f'icon_{n}'] = icon(n)
+    s['scene_lobby'] = scene_lobby()
     return s
