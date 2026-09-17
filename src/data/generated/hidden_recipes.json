@@ -1,0 +1,95 @@
+[
+  {
+    "id": "jeju_matcha_latte",
+    "name": "제주 말차 라떼",
+    "ingredients": [
+      "tea_jeju",
+      "milk_jeju",
+      "honey"
+    ]
+  },
+  {
+    "id": "hallabong_ade",
+    "name": "한라봉 에이드",
+    "ingredients": [
+      "hallabong",
+      "ice",
+      "honey"
+    ]
+  },
+  {
+    "id": "tangerine_cheesecake",
+    "name": "감귤 치즈케이크",
+    "ingredients": [
+      "tangerine",
+      "cheese",
+      "flour",
+      "egg"
+    ]
+  },
+  {
+    "id": "udo_peanut_cream_latte",
+    "name": "우도 땅콩 크림 라떼",
+    "ingredients": [
+      "peanut",
+      "cream",
+      "beans"
+    ]
+  },
+  {
+    "id": "seaweed_croissant",
+    "name": "톳 크루아상",
+    "ingredients": [
+      "seaweed",
+      "flour",
+      "butter"
+    ]
+  },
+  {
+    "id": "black_pork_sandwich",
+    "name": "흑돼지 샌드위치",
+    "ingredients": [
+      "pork_black",
+      "flour",
+      "carrot"
+    ]
+  },
+  {
+    "id": "gosari_pasta",
+    "name": "고사리 파스타",
+    "ingredients": [
+      "gosari",
+      "flour",
+      "garlic",
+      "mushroom"
+    ]
+  },
+  {
+    "id": "spring_water_coldbrew",
+    "name": "용천수 콜드브루",
+    "ingredients": [
+      "water_spring",
+      "beans_roast",
+      "ice"
+    ]
+  },
+  {
+    "id": "canola_pancake",
+    "name": "유채꽃 팬케이크",
+    "ingredients": [
+      "canola_flower",
+      "flour",
+      "egg",
+      "honey"
+    ]
+  },
+  {
+    "id": "abalone_porridge",
+    "name": "전복 죽",
+    "ingredients": [
+      "abalone",
+      "rice",
+      "seaweed"
+    ]
+  }
+]

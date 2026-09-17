@@ -1,0 +1,442 @@
+[
+  {
+    "id": "inv01",
+    "no": 1,
+    "name": "창 교체",
+    "cost": 20000,
+    "conditionText": "1년차 6월",
+    "rewardText": "창가석"
+  },
+  {
+    "id": "inv02",
+    "no": 2,
+    "name": "마을 화단",
+    "cost": 15000,
+    "conditionText": "삼춘 ❤1",
+    "rewardText": "수국·꽃밭"
+  },
+  {
+    "id": "inv03",
+    "no": 3,
+    "name": "로스팅 배우기",
+    "cost": 30000,
+    "conditionText": "연구 20",
+    "rewardText": "로스터기·직접 로스팅"
+  },
+  {
+    "id": "inv04",
+    "no": 4,
+    "name": "캠핑 용품",
+    "cost": 25000,
+    "conditionText": "올레꾼 만족 30",
+    "rewardText": "해먹"
+  },
+  {
+    "id": "inv05",
+    "no": 5,
+    "name": "잔디 깔기",
+    "cost": 30000,
+    "conditionText": "가족 만족 20",
+    "rewardText": "잔디 피크닉"
+  },
+  {
+    "id": "inv06",
+    "no": 6,
+    "name": "단체 관광 제휴",
+    "cost": 50000,
+    "conditionText": "명소 1단계 2곳",
+    "rewardText": "주차장·투어 제휴"
+  },
+  {
+    "id": "inv07",
+    "no": 7,
+    "name": "목장 제휴",
+    "cost": 40000,
+    "conditionText": "라떼 100잔 판매",
+    "rewardText": "제주 목장 우유"
+  },
+  {
+    "id": "inv08",
+    "no": 8,
+    "name": "하우스 농업",
+    "cost": 80000,
+    "conditionText": "감귤 첫 수확",
+    "rewardText": "비닐하우스·한라봉"
+  },
+  {
+    "id": "inv09",
+    "no": 9,
+    "name": "옛 돌 복원",
+    "cost": 60000,
+    "conditionText": "돌챙이 ❤3",
+    "rewardText": "동자석·산담"
+  },
+  {
+    "id": "inv10",
+    "no": 10,
+    "name": "마을 예술가",
+    "cost": 45000,
+    "conditionText": "한 달 살기 만족 40",
+    "rewardText": "갤러리"
+  },
+  {
+    "id": "inv11",
+    "no": 11,
+    "name": "토지 권리증 Ⅰ",
+    "cost": 100000,
+    "conditionText": "★2",
+    "rewardText": "필지 2 구매 가능"
+  },
+  {
+    "id": "inv12",
+    "no": 12,
+    "name": "토지 권리증 Ⅱ",
+    "cost": 250000,
+    "conditionText": "★3 + 이장님 ❤2",
+    "rewardText": "필지 3·4"
+  },
+  {
+    "id": "inv13",
+    "no": 13,
+    "name": "토지 권리증 Ⅲ",
+    "cost": 500000,
+    "conditionText": "★4",
+    "rewardText": "필지 5·6"
+  },
+  {
+    "id": "inv14",
+    "no": 14,
+    "name": "버스 노선 개선",
+    "cost": 200000,
+    "conditionText": "정류장 손님 500명",
+    "rewardText": "정류장 손님 +20%"
+  },
+  {
+    "id": "inv15",
+    "no": 15,
+    "name": "마을 축제 후원",
+    "cost": 80000,
+    "conditionText": "정착 등급 3",
+    "rewardText": "삼춘 전원 ❤+1, 마을제 보너스"
+  },
+  {
+    "id": "inv16",
+    "no": 16,
+    "name": "흑돼지 농가",
+    "cost": 120000,
+    "conditionText": "식사 메뉴 5개",
+    "rewardText": "흑돼지 재료"
+  },
+  {
+    "id": "inv17",
+    "no": 17,
+    "name": "해녀 학교 후원",
+    "cost": 150000,
+    "conditionText": "해녀 삼춘 ❤2",
+    "rewardText": "해녀 불턱 해금"
+  },
+  {
+    "id": "inv18",
+    "no": 18,
+    "name": "다크스카이 신청",
+    "cost": 90000,
+    "conditionText": "석등 5 + 초롱길 10",
+    "rewardText": "밤 손님층 인기 +20"
+  },
+  {
+    "id": "inv19",
+    "no": 19,
+    "name": "감귤잼 공방",
+    "cost": 100000,
+    "conditionText": "감귤 200개 수확",
+    "rewardText": "공방"
+  },
+  {
+    "id": "inv20",
+    "no": 20,
+    "name": "유튜버 촬영 스튜디오",
+    "cost": 70000,
+    "conditionText": "유튜버 방문 3회",
+    "rewardText": "유튜버 인기 +15"
+  },
+  {
+    "id": "inv21",
+    "no": 21,
+    "name": "특별 손님 초청: 해녀 삼춘",
+    "cost": null,
+    "costRange": {
+      "min": 50000,
+      "max": 500000
+    },
+    "todo": true,
+    "groupText": "특별 손님 초청 10 (해녀 삼춘·돌챙이·바리스타 챔피언·마을 화가·향토 요리사·도지사·외국 셰프·다도가·건축가·설문대할망)",
+    "conditionText": "각 조건",
+    "rewardText": "시설·메뉴·직원 해금"
+  },
+  {
+    "id": "inv22",
+    "no": 22,
+    "name": "특별 손님 초청: 돌챙이",
+    "cost": null,
+    "costRange": {
+      "min": 50000,
+      "max": 500000
+    },
+    "todo": true,
+    "groupText": "특별 손님 초청 10 (해녀 삼춘·돌챙이·바리스타 챔피언·마을 화가·향토 요리사·도지사·외국 셰프·다도가·건축가·설문대할망)",
+    "conditionText": "각 조건",
+    "rewardText": "시설·메뉴·직원 해금"
+  },
+  {
+    "id": "inv23",
+    "no": 23,
+    "name": "특별 손님 초청: 바리스타 챔피언",
+    "cost": null,
+    "costRange": {
+      "min": 50000,
+      "max": 500000
+    },
+    "todo": true,
+    "groupText": "특별 손님 초청 10 (해녀 삼춘·돌챙이·바리스타 챔피언·마을 화가·향토 요리사·도지사·외국 셰프·다도가·건축가·설문대할망)",
+    "conditionText": "각 조건",
+    "rewardText": "시설·메뉴·직원 해금"
+  },
+  {
+    "id": "inv24",
+    "no": 24,
+    "name": "특별 손님 초청: 마을 화가",
+    "cost": null,
+    "costRange": {
+      "min": 50000,
+      "max": 500000
+    },
+    "todo": true,
+    "groupText": "특별 손님 초청 10 (해녀 삼춘·돌챙이·바리스타 챔피언·마을 화가·향토 요리사·도지사·외국 셰프·다도가·건축가·설문대할망)",
+    "conditionText": "각 조건",
+    "rewardText": "시설·메뉴·직원 해금"
+  },
+  {
+    "id": "inv25",
+    "no": 25,
+    "name": "특별 손님 초청: 향토 요리사",
+    "cost": null,
+    "costRange": {
+      "min": 50000,
+      "max": 500000
+    },
+    "todo": true,
+    "groupText": "특별 손님 초청 10 (해녀 삼춘·돌챙이·바리스타 챔피언·마을 화가·향토 요리사·도지사·외국 셰프·다도가·건축가·설문대할망)",
+    "conditionText": "각 조건",
+    "rewardText": "시설·메뉴·직원 해금"
+  },
+  {
+    "id": "inv26",
+    "no": 26,
+    "name": "특별 손님 초청: 도지사",
+    "cost": null,
+    "costRange": {
+      "min": 50000,
+      "max": 500000
+    },
+    "todo": true,
+    "groupText": "특별 손님 초청 10 (해녀 삼춘·돌챙이·바리스타 챔피언·마을 화가·향토 요리사·도지사·외국 셰프·다도가·건축가·설문대할망)",
+    "conditionText": "각 조건",
+    "rewardText": "시설·메뉴·직원 해금"
+  },
+  {
+    "id": "inv27",
+    "no": 27,
+    "name": "특별 손님 초청: 외국 셰프",
+    "cost": null,
+    "costRange": {
+      "min": 50000,
+      "max": 500000
+    },
+    "todo": true,
+    "groupText": "특별 손님 초청 10 (해녀 삼춘·돌챙이·바리스타 챔피언·마을 화가·향토 요리사·도지사·외국 셰프·다도가·건축가·설문대할망)",
+    "conditionText": "각 조건",
+    "rewardText": "시설·메뉴·직원 해금"
+  },
+  {
+    "id": "inv28",
+    "no": 28,
+    "name": "특별 손님 초청: 다도가",
+    "cost": null,
+    "costRange": {
+      "min": 50000,
+      "max": 500000
+    },
+    "todo": true,
+    "groupText": "특별 손님 초청 10 (해녀 삼춘·돌챙이·바리스타 챔피언·마을 화가·향토 요리사·도지사·외국 셰프·다도가·건축가·설문대할망)",
+    "conditionText": "각 조건",
+    "rewardText": "시설·메뉴·직원 해금"
+  },
+  {
+    "id": "inv29",
+    "no": 29,
+    "name": "특별 손님 초청: 건축가",
+    "cost": null,
+    "costRange": {
+      "min": 50000,
+      "max": 500000
+    },
+    "todo": true,
+    "groupText": "특별 손님 초청 10 (해녀 삼춘·돌챙이·바리스타 챔피언·마을 화가·향토 요리사·도지사·외국 셰프·다도가·건축가·설문대할망)",
+    "conditionText": "각 조건",
+    "rewardText": "시설·메뉴·직원 해금"
+  },
+  {
+    "id": "inv30",
+    "no": 30,
+    "name": "특별 손님 초청: 설문대할망",
+    "cost": null,
+    "costRange": {
+      "min": 50000,
+      "max": 500000
+    },
+    "todo": true,
+    "groupText": "특별 손님 초청 10 (해녀 삼춘·돌챙이·바리스타 챔피언·마을 화가·향토 요리사·도지사·외국 셰프·다도가·건축가·설문대할망)",
+    "conditionText": "각 조건",
+    "rewardText": "시설·메뉴·직원 해금"
+  },
+  {
+    "id": "inv31",
+    "no": 31,
+    "name": "명소 연결 2·3단계 10곳 #1",
+    "cost": null,
+    "costRange": {
+      "min": 30000,
+      "max": 150000
+    },
+    "todo": true,
+    "groupText": "명소 연결 2·3단계 10곳",
+    "conditionText": "★·손님층 조건",
+    "rewardText": "명소 손님·이벤트"
+  },
+  {
+    "id": "inv32",
+    "no": 32,
+    "name": "명소 연결 2·3단계 10곳 #2",
+    "cost": null,
+    "costRange": {
+      "min": 30000,
+      "max": 150000
+    },
+    "todo": true,
+    "groupText": "명소 연결 2·3단계 10곳",
+    "conditionText": "★·손님층 조건",
+    "rewardText": "명소 손님·이벤트"
+  },
+  {
+    "id": "inv33",
+    "no": 33,
+    "name": "명소 연결 2·3단계 10곳 #3",
+    "cost": null,
+    "costRange": {
+      "min": 30000,
+      "max": 150000
+    },
+    "todo": true,
+    "groupText": "명소 연결 2·3단계 10곳",
+    "conditionText": "★·손님층 조건",
+    "rewardText": "명소 손님·이벤트"
+  },
+  {
+    "id": "inv34",
+    "no": 34,
+    "name": "명소 연결 2·3단계 10곳 #4",
+    "cost": null,
+    "costRange": {
+      "min": 30000,
+      "max": 150000
+    },
+    "todo": true,
+    "groupText": "명소 연결 2·3단계 10곳",
+    "conditionText": "★·손님층 조건",
+    "rewardText": "명소 손님·이벤트"
+  },
+  {
+    "id": "inv35",
+    "no": 35,
+    "name": "명소 연결 2·3단계 10곳 #5",
+    "cost": null,
+    "costRange": {
+      "min": 30000,
+      "max": 150000
+    },
+    "todo": true,
+    "groupText": "명소 연결 2·3단계 10곳",
+    "conditionText": "★·손님층 조건",
+    "rewardText": "명소 손님·이벤트"
+  },
+  {
+    "id": "inv36",
+    "no": 36,
+    "name": "명소 연결 2·3단계 10곳 #6",
+    "cost": null,
+    "costRange": {
+      "min": 30000,
+      "max": 150000
+    },
+    "todo": true,
+    "groupText": "명소 연결 2·3단계 10곳",
+    "conditionText": "★·손님층 조건",
+    "rewardText": "명소 손님·이벤트"
+  },
+  {
+    "id": "inv37",
+    "no": 37,
+    "name": "명소 연결 2·3단계 10곳 #7",
+    "cost": null,
+    "costRange": {
+      "min": 30000,
+      "max": 150000
+    },
+    "todo": true,
+    "groupText": "명소 연결 2·3단계 10곳",
+    "conditionText": "★·손님층 조건",
+    "rewardText": "명소 손님·이벤트"
+  },
+  {
+    "id": "inv38",
+    "no": 38,
+    "name": "명소 연결 2·3단계 10곳 #8",
+    "cost": null,
+    "costRange": {
+      "min": 30000,
+      "max": 150000
+    },
+    "todo": true,
+    "groupText": "명소 연결 2·3단계 10곳",
+    "conditionText": "★·손님층 조건",
+    "rewardText": "명소 손님·이벤트"
+  },
+  {
+    "id": "inv39",
+    "no": 39,
+    "name": "명소 연결 2·3단계 10곳 #9",
+    "cost": null,
+    "costRange": {
+      "min": 30000,
+      "max": 150000
+    },
+    "todo": true,
+    "groupText": "명소 연결 2·3단계 10곳",
+    "conditionText": "★·손님층 조건",
+    "rewardText": "명소 손님·이벤트"
+  },
+  {
+    "id": "inv40",
+    "no": 40,
+    "name": "명소 연결 2·3단계 10곳 #10",
+    "cost": null,
+    "costRange": {
+      "min": 30000,
+      "max": 150000
+    },
+    "todo": true,
+    "groupText": "명소 연결 2·3단계 10곳",
+    "conditionText": "★·손님층 조건",
+    "rewardText": "명소 손님·이벤트"
+  }
+]

@@ -1,0 +1,244 @@
+[
+  {
+    "id": "emotional_cafe",
+    "name": "감성 카페",
+    "requires": [
+      {
+        "name": "감귤나무",
+        "objectId": "tangerine_tree",
+        "count": 2
+      },
+      {
+        "name": "야외 테이블",
+        "objectId": "table_out",
+        "count": 2
+      },
+      {
+        "name": "돌담",
+        "objectId": "stonewall",
+        "count": 1
+      }
+    ],
+    "targets": [
+      "관광객"
+    ],
+    "radius": 3,
+    "levelMult": [
+      1.1,
+      1.2,
+      1.35
+    ]
+  },
+  {
+    "id": "village_parlor",
+    "name": "동네 사랑방",
+    "requires": [
+      {
+        "name": "평상",
+        "objectId": "bench",
+        "count": 2
+      },
+      {
+        "name": "폭낭",
+        "objectId": "hackberry",
+        "count": 1
+      },
+      {
+        "name": "자판기",
+        "objectId": "vending",
+        "count": 1
+      }
+    ],
+    "targets": [
+      "삼춘"
+    ],
+    "radius": 3,
+    "levelMult": [
+      1.1,
+      1.2,
+      1.35
+    ]
+  },
+  {
+    "id": "photo_cafe",
+    "name": "인생샷 카페",
+    "requires": [
+      {
+        "name": "돌하르방",
+        "objectId": "dolhareubang",
+        "count": 2
+      },
+      {
+        "name": "유채",
+        "objectId": "canola",
+        "count": 2
+      },
+      {
+        "name": "포토존",
+        "objectId": "photo_spot",
+        "count": 1
+      }
+    ],
+    "targets": [
+      "유튜버",
+      "커플"
+    ],
+    "radius": 3,
+    "levelMult": [
+      1.1,
+      1.2,
+      1.35
+    ]
+  },
+  {
+    "id": "family_outing",
+    "name": "가족 나들이",
+    "requires": [
+      {
+        "name": "밭",
+        "objectId": "field",
+        "count": 2
+      },
+      {
+        "name": "닭장",
+        "objectId": "chicken_coop",
+        "count": 1
+      },
+      {
+        "name": "큰 테이블",
+        "objectId": "table_big",
+        "count": 1
+      }
+    ],
+    "targets": [
+      "가족"
+    ],
+    "radius": 3,
+    "levelMult": [
+      1.1,
+      1.2,
+      1.35
+    ]
+  },
+  {
+    "id": "quiet_study",
+    "name": "조용한 서재",
+    "requires": [
+      {
+        "name": "책장",
+        "objectId": "bookshelf",
+        "count": 2
+      },
+      {
+        "name": "동백",
+        "objectId": "camellia",
+        "count": 2
+      },
+      {
+        "name": "소파",
+        "objectId": "sofa",
+        "count": 1
+      }
+    ],
+    "targets": [
+      "한 달 살기"
+    ],
+    "radius": 3,
+    "levelMult": [
+      1.1,
+      1.2,
+      1.35
+    ]
+  },
+  {
+    "id": "sea_cafe",
+    "name": "바다 카페",
+    "requires": [
+      {
+        "name": "야자",
+        "objectId": "palm",
+        "count": 2
+      },
+      {
+        "name": "창가",
+        "objectId": "window_seat",
+        "count": 2
+      },
+      {
+        "name": "해녀 불턱",
+        "objectId": "haenyeo_hut",
+        "count": 1
+      }
+    ],
+    "targets": [
+      "외국 여행자"
+    ],
+    "radius": 3,
+    "levelMult": [
+      1.1,
+      1.2,
+      1.35
+    ]
+  },
+  {
+    "id": "night_garden",
+    "name": "밤의 정원",
+    "requires": [
+      {
+        "name": "석등",
+        "objectId": "stone_lantern",
+        "count": 3
+      },
+      {
+        "name": "초롱길",
+        "objectId": "lantern_path",
+        "count": 5
+      },
+      {
+        "name": "불멍",
+        "objectId": "fire_pit",
+        "count": 1
+      }
+    ],
+    "targets": [
+      "밤 손님"
+    ],
+    "radius": 3,
+    "levelMult": [
+      1.1,
+      1.2,
+      1.35
+    ]
+  },
+  {
+    "id": "health_station",
+    "name": "건강 스테이션",
+    "requires": [
+      {
+        "name": "자전거 거치대",
+        "objectId": "bike_rack",
+        "count": 2
+      },
+      {
+        "name": "꽃밭",
+        "objectId": "flower_bed",
+        "count": 1
+      },
+      {
+        "name": "용천수",
+        "objectId": null,
+        "count": 1
+      }
+    ],
+    "targets": [
+      "러닝크루",
+      "올레꾼"
+    ],
+    "radius": 3,
+    "levelMult": [
+      1.1,
+      1.2,
+      1.35
+    ]
+  }
+]

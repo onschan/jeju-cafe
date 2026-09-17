@@ -1,0 +1,102 @@
+[
+  {
+    "id": "coffee_master",
+    "name": "커피 장인",
+    "effectText": "음료 품질 +15%"
+  },
+  {
+    "id": "dessert_master",
+    "name": "디저트 장인",
+    "effectText": null
+  },
+  {
+    "id": "meal_master",
+    "name": "식사 장인",
+    "effectText": null
+  },
+  {
+    "id": "fast_hands",
+    "name": "손이 빠름",
+    "effectText": "속도 +20%"
+  },
+  {
+    "id": "jeju_native",
+    "name": "제주 토박이",
+    "effectText": "삼춘 호감 +30%"
+  },
+  {
+    "id": "insta_sense",
+    "name": "인스타 감성",
+    "effectText": "관광객 만족 +30%"
+  },
+  {
+    "id": "foreign_language",
+    "name": "외국어",
+    "effectText": "🗣"
+  },
+  {
+    "id": "interpreter",
+    "name": "통역사",
+    "effectText": "🗣, 외국인 만족 +20%"
+  },
+  {
+    "id": "thrift",
+    "name": "절약",
+    "effectText": "재료비 −10%"
+  },
+  {
+    "id": "research_nerd",
+    "name": "연구광",
+    "effectText": "연구P +50%"
+  },
+  {
+    "id": "popular",
+    "name": "인기인",
+    "effectText": "방문 확률 +10%"
+  },
+  {
+    "id": "lucky",
+    "name": "행운",
+    "effectText": "채집·룰렛 +20%"
+  },
+  {
+    "id": "sturdy",
+    "name": "튼튼함",
+    "effectText": "기력 소모 −30%"
+  },
+  {
+    "id": "ironman",
+    "name": "철인",
+    "effectText": "기력 소모 −50%"
+  },
+  {
+    "id": "diligent",
+    "name": "성실",
+    "effectText": "레벨업 비용 −20%"
+  },
+  {
+    "id": "refined",
+    "name": "세련",
+    "effectText": "세련미 스킬 +2"
+  },
+  {
+    "id": "roasting_master",
+    "name": "로스팅 마스터",
+    "effectText": "직접 로스팅 성공률 +20%"
+  },
+  {
+    "id": "service_god",
+    "name": "접객의 신",
+    "effectText": "홀 만족 +40%"
+  },
+  {
+    "id": "influencer",
+    "name": "인플루언서",
+    "effectText": "홍보 활동 효과 ×1.5"
+  },
+  {
+    "id": "local_cuisine",
+    "name": "향토 요리",
+    "effectText": "제주다움 +3"
+  }
+]

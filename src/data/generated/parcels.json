@@ -1,0 +1,74 @@
+[
+  {
+    "id": "parcel1",
+    "no": 1,
+    "name": "중산간 폐창고",
+    "price": 0,
+    "priceText": "시작",
+    "start": true,
+    "w": 10,
+    "h": 8,
+    "bonusText": null,
+    "backgroundText": "마을"
+  },
+  {
+    "id": "parcel2",
+    "no": 2,
+    "name": "오름 자락",
+    "price": 150000,
+    "priceText": "150,000",
+    "start": false,
+    "w": 10,
+    "h": 8,
+    "bonusText": "전체 Sc +2, 좌석 Fee +5%",
+    "backgroundText": "오름 실루엣"
+  },
+  {
+    "id": "parcel3",
+    "no": 3,
+    "name": "곶자왈 가장자리",
+    "price": 120000,
+    "priceText": "120,000",
+    "start": false,
+    "w": 10,
+    "h": 8,
+    "bonusText": "채집 ×2, 바람 −50%",
+    "backgroundText": "숲"
+  },
+  {
+    "id": "parcel4",
+    "no": 4,
+    "name": "밭담 골짜기",
+    "price": 100000,
+    "priceText": "100,000",
+    "start": false,
+    "w": 10,
+    "h": 8,
+    "bonusText": "돌담 기본 배치, 밭 품질 \"좋음\" 확률 +30%",
+    "backgroundText": "밭담 풍경"
+  },
+  {
+    "id": "parcel5",
+    "no": 5,
+    "name": "해안 도로변",
+    "price": 300000,
+    "priceText": "300,000",
+    "start": false,
+    "w": 10,
+    "h": 8,
+    "bonusText": "관광객·단체 유입 +30%, 좌석 Fee +10%, 소금 바람(작물 −20%)",
+    "backgroundText": "바다·수평선"
+  },
+  {
+    "id": "parcel6",
+    "no": 6,
+    "name": "용천수 샘터",
+    "price": 250000,
+    "priceText": "250,000",
+    "start": false,
+    "w": 10,
+    "h": 8,
+    "bonusText": "밭 품질 +, 용천수 재료, 음료 제주 +2",
+    "backgroundText": "샘·빨래터"
+  }
+]

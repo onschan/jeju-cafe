@@ -10,6 +10,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "headless": "tsx scripts/headless.ts",
+    "data": "python3 tools/data/from_tables.py",
     "assets": "python3 tools/assets/build.py",
     "assets:audio": "python3 tools/assets/sfx.py && python3 tools/assets/bgm.py",
     "assets:font": "bash tools/assets/fetch_font.sh"

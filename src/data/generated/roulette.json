@@ -1,0 +1,45 @@
+{
+  "slots": [
+    {
+      "id": "money",
+      "label": "돈 5,000×(년차)",
+      "pct": 25
+    },
+    {
+      "id": "research",
+      "label": "연구 +5",
+      "pct": 20
+    },
+    {
+      "id": "ingredient_box",
+      "label": "재료 상자(랜덤 8개)",
+      "pct": 15
+    },
+    {
+      "id": "medal",
+      "label": "메달 1",
+      "pct": 10
+    },
+    {
+      "id": "item",
+      "label": "아이템(§3 풀 랜덤)",
+      "pct": 10
+    },
+    {
+      "id": "samchun_visit",
+      "label": "삼춘 방문 확정",
+      "pct": 10
+    },
+    {
+      "id": "free_promo",
+      "label": "홍보 1개월 무료",
+      "pct": 5
+    },
+    {
+      "id": "miss",
+      "label": "꽝",
+      "pct": 5
+    }
+  ],
+  "extraSpinMedals": 1
+}

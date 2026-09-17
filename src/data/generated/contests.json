@@ -1,0 +1,198 @@
+[
+  {
+    "id": "contest01",
+    "name": "마을 카페 콩쿠르",
+    "level": 1,
+    "prize": 50000,
+    "judge": {
+      "taste": 3,
+      "look": 1,
+      "jeju": 1,
+      "price": 1
+    },
+    "conditionText": "★1",
+    "rewardText": "재료 슬롯 +1"
+  },
+  {
+    "id": "contest02",
+    "name": "읍면 합동",
+    "level": 1.5,
+    "prize": 80000,
+    "judge": {
+      "taste": 1,
+      "look": 3,
+      "jeju": 1,
+      "price": 1
+    },
+    "conditionText": "위 우승",
+    "rewardText": "토핑 슬롯 +1"
+  },
+  {
+    "id": "contest03",
+    "name": "감귤 디저트 대회",
+    "level": 2,
+    "prize": 100000,
+    "judge": {
+      "taste": 2,
+      "look": 2,
+      "jeju": 2,
+      "price": 0
+    },
+    "conditionText": "2년차 11월",
+    "rewardText": "감귤 잼 아이템"
+  },
+  {
+    "id": "contest04",
+    "name": "도 주최",
+    "level": 2,
+    "prize": 120000,
+    "judge": {
+      "taste": 1,
+      "look": 3,
+      "jeju": 2,
+      "price": 1
+    },
+    "conditionText": "읍면 우승",
+    "rewardText": "개발실(동시 개발 2)"
+  },
+  {
+    "id": "contest05",
+    "name": "관광객 선정 카페",
+    "level": 2.5,
+    "prize": 150000,
+    "judge": {
+      "taste": 1,
+      "look": 1,
+      "jeju": 1,
+      "price": 3
+    },
+    "conditionText": "관광객 만족 50",
+    "rewardText": "포토존 업그레이드"
+  },
+  {
+    "id": "contest06",
+    "name": "로스팅 챔피언십",
+    "level": 2.5,
+    "prize": 150000,
+    "judge": {
+      "taste": 3,
+      "look": 1,
+      "jeju": 2,
+      "price": 0
+    },
+    "conditionText": "로스터기",
+    "rewardText": "로스팅 마스터 후보"
+  },
+  {
+    "id": "contest07",
+    "name": "제주 향토 음식전",
+    "level": 3,
+    "prize": 200000,
+    "judge": {
+      "taste": 2,
+      "look": 1,
+      "jeju": 4,
+      "price": 0
+    },
+    "conditionText": "제주다움 특급 메뉴 1",
+    "rewardText": "향토 요리 스킬 후보"
+  },
+  {
+    "id": "contest08",
+    "name": "전국 카페 페스티벌 예선",
+    "level": 3,
+    "prize": 250000,
+    "judge": {
+      "taste": 2,
+      "look": 2,
+      "jeju": 2,
+      "price": 2
+    },
+    "conditionText": "★3",
+    "rewardText": "헤드헌팅 해금"
+  },
+  {
+    "id": "contest09",
+    "name": "인생샷 콘테스트",
+    "level": 3.5,
+    "prize": 200000,
+    "judge": {
+      "taste": 0,
+      "look": 4,
+      "jeju": 2,
+      "price": 0
+    },
+    "conditionText": "유튜버 방문 5",
+    "rewardText": "금박 토핑"
+  },
+  {
+    "id": "contest10",
+    "name": "실버 세대 선정",
+    "level": 3.5,
+    "prize": 180000,
+    "judge": {
+      "taste": 3,
+      "look": 0,
+      "jeju": 2,
+      "price": 2
+    },
+    "conditionText": "실버 만족 50",
+    "rewardText": "소파석 업그레이드"
+  },
+  {
+    "id": "contest11",
+    "name": "전국 카페 페스티벌 본선",
+    "level": 4,
+    "prize": 400000,
+    "judge": {
+      "taste": 3,
+      "look": 3,
+      "jeju": 2,
+      "price": 2
+    },
+    "conditionText": "예선 우승",
+    "rewardText": "재료 슬롯 +2"
+  },
+  {
+    "id": "contest12",
+    "name": "외국인 셰프 초청전",
+    "level": 4,
+    "prize": 350000,
+    "judge": {
+      "taste": 3,
+      "look": 2,
+      "jeju": 1,
+      "price": 1
+    },
+    "conditionText": "외국 여행자 만족 60",
+    "rewardText": "외국 셰프 특별 손님"
+  },
+  {
+    "id": "contest13",
+    "name": "국제 카페 어워드",
+    "level": 5,
+    "prize": 600000,
+    "judge": {
+      "taste": 3,
+      "look": 3,
+      "jeju": 3,
+      "price": 1
+    },
+    "conditionText": "본선 우승",
+    "rewardText": "시그니처 슬롯 +1"
+  },
+  {
+    "id": "contest14",
+    "name": "천하제일 돌하르방 콩쿠르",
+    "level": 6,
+    "prize": 1000000,
+    "judge": {
+      "taste": 3,
+      "look": 3,
+      "jeju": 5,
+      "price": 2
+    },
+    "conditionText": "★5",
+    "rewardText": "전설의 알바 \"돌하르방\" 고용 가능"
+  }
+]

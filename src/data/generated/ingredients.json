@@ -1,0 +1,514 @@
+[
+  {
+    "id": "beans",
+    "name": "원두",
+    "category": "coffee",
+    "categoryName": "커피",
+    "stats": {
+      "taste": 6,
+      "aroma": 8,
+      "look": 2,
+      "health": 1,
+      "volume": 2,
+      "jeju": 0
+    },
+    "cost": 700,
+    "sourceText": "구매"
+  },
+  {
+    "id": "beans_roast",
+    "name": "직접 로스팅 원두",
+    "category": "coffee",
+    "categoryName": "커피",
+    "stats": {
+      "taste": 9,
+      "aroma": 12,
+      "look": 2,
+      "health": 1,
+      "volume": 2,
+      "jeju": 2
+    },
+    "cost": 350,
+    "sourceText": "로스터기"
+  },
+  {
+    "id": "milk",
+    "name": "우유",
+    "category": "dairy",
+    "categoryName": "유제품",
+    "stats": {
+      "taste": 4,
+      "aroma": 1,
+      "look": 2,
+      "health": 3,
+      "volume": 4,
+      "jeju": 0
+    },
+    "cost": 400,
+    "sourceText": "구매"
+  },
+  {
+    "id": "milk_jeju",
+    "name": "제주 목장 우유",
+    "category": "dairy",
+    "categoryName": "유제품",
+    "stats": {
+      "taste": 6,
+      "aroma": 2,
+      "look": 3,
+      "health": 4,
+      "volume": 4,
+      "jeju": 4
+    },
+    "cost": 600,
+    "sourceText": "투자: 목장 제휴"
+  },
+  {
+    "id": "cream",
+    "name": "생크림",
+    "category": "dairy",
+    "categoryName": "유제품",
+    "stats": {
+      "taste": 6,
+      "aroma": 2,
+      "look": 5,
+      "health": 0,
+      "volume": 3,
+      "jeju": 0
+    },
+    "cost": 600,
+    "sourceText": "구매"
+  },
+  {
+    "id": "cheese",
+    "name": "치즈",
+    "category": "dairy",
+    "categoryName": "유제품",
+    "stats": {
+      "taste": 7,
+      "aroma": 3,
+      "look": 3,
+      "health": 2,
+      "volume": 4,
+      "jeju": 0
+    },
+    "cost": 800,
+    "sourceText": "구매"
+  },
+  {
+    "id": "sugar",
+    "name": "설탕",
+    "category": "sweet",
+    "categoryName": "감미",
+    "stats": {
+      "taste": 5,
+      "aroma": 0,
+      "look": 0,
+      "health": -1,
+      "volume": 1,
+      "jeju": 0
+    },
+    "cost": 100,
+    "sourceText": "구매"
+  },
+  {
+    "id": "honey",
+    "name": "꿀",
+    "category": "sweet",
+    "categoryName": "감미",
+    "stats": {
+      "taste": 6,
+      "aroma": 4,
+      "look": 2,
+      "health": 3,
+      "volume": 1,
+      "jeju": 2
+    },
+    "cost": 900,
+    "sourceText": "벌통/구매"
+  },
+  {
+    "id": "flour",
+    "name": "밀가루",
+    "category": "grain",
+    "categoryName": "곡물",
+    "stats": {
+      "taste": 2,
+      "aroma": 0,
+      "look": 1,
+      "health": 1,
+      "volume": 6,
+      "jeju": 0
+    },
+    "cost": 300,
+    "sourceText": "구매"
+  },
+  {
+    "id": "buckwheat",
+    "name": "메밀",
+    "category": "grain",
+    "categoryName": "곡물",
+    "stats": {
+      "taste": 4,
+      "aroma": 3,
+      "look": 1,
+      "health": 5,
+      "volume": 6,
+      "jeju": 6
+    },
+    "cost": 0,
+    "sourceText": "밭"
+  },
+  {
+    "id": "rice",
+    "name": "쌀",
+    "category": "grain",
+    "categoryName": "곡물",
+    "stats": {
+      "taste": 3,
+      "aroma": 0,
+      "look": 1,
+      "health": 2,
+      "volume": 7,
+      "jeju": 1
+    },
+    "cost": 400,
+    "sourceText": "구매"
+  },
+  {
+    "id": "egg",
+    "name": "달걀",
+    "category": "protein",
+    "categoryName": "단백",
+    "stats": {
+      "taste": 4,
+      "aroma": 1,
+      "look": 2,
+      "health": 4,
+      "volume": 4,
+      "jeju": 0
+    },
+    "cost": 300,
+    "sourceText": "닭장/구매"
+  },
+  {
+    "id": "butter",
+    "name": "버터",
+    "category": "dairy",
+    "categoryName": "유제품",
+    "stats": {
+      "taste": 7,
+      "aroma": 4,
+      "look": 2,
+      "health": -1,
+      "volume": 2,
+      "jeju": 0
+    },
+    "cost": 500,
+    "sourceText": "구매"
+  },
+  {
+    "id": "tea",
+    "name": "녹찻잎",
+    "category": "tea",
+    "categoryName": "차",
+    "stats": {
+      "taste": 3,
+      "aroma": 7,
+      "look": 1,
+      "health": 6,
+      "volume": 1,
+      "jeju": 2
+    },
+    "cost": 500,
+    "sourceText": "구매"
+  },
+  {
+    "id": "tea_jeju",
+    "name": "제주 녹차(자가)",
+    "category": "tea",
+    "categoryName": "차",
+    "stats": {
+      "taste": 5,
+      "aroma": 9,
+      "look": 2,
+      "health": 7,
+      "volume": 1,
+      "jeju": 7
+    },
+    "cost": 0,
+    "sourceText": "녹차 관목"
+  },
+  {
+    "id": "yuja",
+    "name": "유자청",
+    "category": "fruit",
+    "categoryName": "과일",
+    "stats": {
+      "taste": 5,
+      "aroma": 7,
+      "look": 3,
+      "health": 3,
+      "volume": 1,
+      "jeju": 1
+    },
+    "cost": 600,
+    "sourceText": "구매"
+  },
+  {
+    "id": "ice",
+    "name": "얼음",
+    "category": "water",
+    "categoryName": "물",
+    "stats": {
+      "taste": 0,
+      "aroma": 0,
+      "look": 1,
+      "health": 0,
+      "volume": 2,
+      "jeju": 0
+    },
+    "cost": 100,
+    "sourceText": "구매"
+  },
+  {
+    "id": "cocoa",
+    "name": "코코아",
+    "category": "spice",
+    "categoryName": "향신",
+    "stats": {
+      "taste": 6,
+      "aroma": 5,
+      "look": 2,
+      "health": 0,
+      "volume": 2,
+      "jeju": 0
+    },
+    "cost": 500,
+    "sourceText": "구매"
+  },
+  {
+    "id": "carrot",
+    "name": "당근",
+    "category": "vegetable",
+    "categoryName": "채소",
+    "stats": {
+      "taste": 4,
+      "aroma": 2,
+      "look": 4,
+      "health": 6,
+      "volume": 3,
+      "jeju": 5
+    },
+    "cost": 0,
+    "sourceText": "밭"
+  },
+  {
+    "id": "tangerine",
+    "name": "감귤",
+    "category": "fruit",
+    "categoryName": "과일",
+    "stats": {
+      "taste": 6,
+      "aroma": 6,
+      "look": 6,
+      "health": 5,
+      "volume": 2,
+      "jeju": 9
+    },
+    "cost": 0,
+    "sourceText": "감귤나무"
+  },
+  {
+    "id": "hallabong",
+    "name": "한라봉",
+    "category": "fruit",
+    "categoryName": "과일",
+    "stats": {
+      "taste": 8,
+      "aroma": 7,
+      "look": 7,
+      "health": 5,
+      "volume": 3,
+      "jeju": 9
+    },
+    "cost": 0,
+    "sourceText": "하우스"
+  },
+  {
+    "id": "canola_flower",
+    "name": "유채(식용꽃)",
+    "category": "vegetable",
+    "categoryName": "채소",
+    "stats": {
+      "taste": 1,
+      "aroma": 3,
+      "look": 8,
+      "health": 3,
+      "volume": 0,
+      "jeju": 6
+    },
+    "cost": 0,
+    "sourceText": "밭(봄)"
+  },
+  {
+    "id": "peanut",
+    "name": "우도 땅콩",
+    "category": "nut",
+    "categoryName": "견과",
+    "stats": {
+      "taste": 6,
+      "aroma": 5,
+      "look": 2,
+      "health": 4,
+      "volume": 3,
+      "jeju": 8
+    },
+    "cost": 0,
+    "sourceText": "우도 연결"
+  },
+  {
+    "id": "gosari",
+    "name": "고사리",
+    "category": "vegetable",
+    "categoryName": "채소",
+    "stats": {
+      "taste": 4,
+      "aroma": 3,
+      "look": 1,
+      "health": 6,
+      "volume": 3,
+      "jeju": 8
+    },
+    "cost": 0,
+    "sourceText": "곶자왈 채집"
+  },
+  {
+    "id": "mushroom",
+    "name": "표고버섯",
+    "category": "vegetable",
+    "categoryName": "채소",
+    "stats": {
+      "taste": 6,
+      "aroma": 6,
+      "look": 2,
+      "health": 6,
+      "volume": 3,
+      "jeju": 4
+    },
+    "cost": 0,
+    "sourceText": "채집/아이템"
+  },
+  {
+    "id": "seaweed",
+    "name": "톳·미역",
+    "category": "seafood",
+    "categoryName": "해산물",
+    "stats": {
+      "taste": 4,
+      "aroma": 5,
+      "look": 2,
+      "health": 8,
+      "volume": 2,
+      "jeju": 8
+    },
+    "cost": 0,
+    "sourceText": "해녀 불턱"
+  },
+  {
+    "id": "abalone",
+    "name": "전복",
+    "category": "seafood",
+    "categoryName": "해산물",
+    "stats": {
+      "taste": 9,
+      "aroma": 5,
+      "look": 6,
+      "health": 6,
+      "volume": 3,
+      "jeju": 9
+    },
+    "cost": 0,
+    "sourceText": "해녀 불턱(희귀)"
+  },
+  {
+    "id": "pork_black",
+    "name": "흑돼지",
+    "category": "protein",
+    "categoryName": "단백",
+    "stats": {
+      "taste": 9,
+      "aroma": 4,
+      "look": 4,
+      "health": 2,
+      "volume": 8,
+      "jeju": 8
+    },
+    "cost": 3000,
+    "sourceText": "투자: 흑돼지 농가"
+  },
+  {
+    "id": "garlic",
+    "name": "마늘",
+    "category": "vegetable",
+    "categoryName": "채소",
+    "stats": {
+      "taste": 5,
+      "aroma": 8,
+      "look": 0,
+      "health": 5,
+      "volume": 1,
+      "jeju": 4
+    },
+    "cost": 0,
+    "sourceText": "밭(밭담 사이)"
+  },
+  {
+    "id": "chili",
+    "name": "고춧가루",
+    "category": "spice",
+    "categoryName": "향신",
+    "stats": {
+      "taste": 3,
+      "aroma": 7,
+      "look": 3,
+      "health": 2,
+      "volume": 0,
+      "jeju": 2
+    },
+    "cost": 200,
+    "sourceText": "구매"
+  },
+  {
+    "id": "cinnamon",
+    "name": "시나몬",
+    "category": "spice",
+    "categoryName": "향신",
+    "stats": {
+      "taste": 4,
+      "aroma": 9,
+      "look": 1,
+      "health": 2,
+      "volume": 0,
+      "jeju": 0
+    },
+    "cost": 400,
+    "sourceText": "구매"
+  },
+  {
+    "id": "water_spring",
+    "name": "용천수",
+    "category": "water",
+    "categoryName": "물",
+    "stats": {
+      "taste": 2,
+      "aroma": 1,
+      "look": 1,
+      "health": 4,
+      "volume": 1,
+      "jeju": 6
+    },
+    "cost": 0,
+    "sourceText": "필지 6"
+  }
+]
