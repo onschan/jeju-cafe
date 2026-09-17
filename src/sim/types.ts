@@ -191,8 +191,15 @@ export interface GameState {
   nextId: number;
   monthIncome: number;
   monthGuests: number;
-  monthCosts: { ingredients: number; salary: number; ads: number };
-  lastMonthCard: { income: number; guests: number; month: number; year: number } | null;
+  monthCosts: { ingredients: number; salary: number; ads: number; upkeep: number };
+  lastMonthCard: {
+    income: number;
+    guests: number;
+    month: number;
+    year: number;
+    costs: { ingredients: number; salary: number; ads: number; upkeep: number };
+    net: number;
+  } | null;
   tick: number; // 고정 스텝 카운터
   actionLog: { tick: number; action: Action }[];
 }

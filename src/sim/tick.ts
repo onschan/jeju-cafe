@@ -2,6 +2,7 @@ import type { GameState } from './types.ts';
 import { advanceClock } from './clock.ts';
 import { growOneDay } from './farm.ts';
 import { spawnGuests, updateGuests } from './guests.ts';
+import { upkeep, closeMonth } from './economy.ts';
 
 export const STEP_MS = 100;        // 고정 스텝 (게임 ms)
 export const DAILY_SPAWN_CAP = 3;
@@ -13,9 +14,8 @@ function onNewDay(state: GameState): void {
 }
 
 function onNewMonth(state: GameState, prevMonth: number, prevYear: number): void {
-  state.lastMonthCard = { income: state.monthIncome, guests: state.monthGuests, month: prevMonth, year: prevYear };
-  state.monthIncome = 0;
-  state.monthGuests = 0;
+  upkeep(state);
+  closeMonth(state, prevMonth, prevYear);
 }
 
 /** 고정 스텝 하나. 결정적. 리플레이는 이 함수만 호출한다. */
