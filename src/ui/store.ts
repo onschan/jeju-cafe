@@ -1,5 +1,6 @@
 import { useSyncExternalStore } from 'react';
-import { createInitialState, tick, apply, LocalSaveStore, type GameState, type Action, type ApplyResult } from '../sim/index.ts';
+import { createInitialState, tick, apply, seasonOf, LocalSaveStore, type GameState, type Action, type ApplyResult, type Mood, type Season } from '../sim/index.ts';
+import { sfx, bgm, suspendAudio, resumeAudio, type SfxName } from './audio';
 
 const saveStore = new LocalSaveStore();
 const AUTO_SLOT = 0;
@@ -38,9 +39,16 @@ export function getState() { return state; }
 export function getVersion() { return version; }
 export function getToast() { return toast && toast.until > performance.now() ? toast.text : null; }
 
+/** 액션이 성공했을 때 내는 효과음 */
+const ACTION_SFX: Record<Action['type'], SfxName> = {
+  place: 'place', remove: 'remove', plant: 'plant', harvest: 'harvest',
+  setSlot: 'tap', setSpeed: 'tap', unlock: 'unlock', dismissMonthCard: 'tap',
+};
+
 export function dispatch(a: Action): ApplyResult {
   const r = apply(state, a);
   if (!r.ok && r.reason) toast = { text: r.reason, until: performance.now() + 1500 };
+  sfx(r.ok ? ACTION_SFX[a.type] : 'error');
   if (r.ok) save();
   emit();
   return r;
@@ -75,11 +83,33 @@ export function startLoop(render: (s: GameState) => void): () => void {
   let pausedSpeed: GameState['clock']['speed'] | null = null;
   let lastEmitTick = -1;
   let lastEmitAt = 0;
+  // 사운드 트리거용 이전 프레임 스냅샷
+  let prevMoods = new Map<string, Mood | null>();
+  let prevSeason: Season | null = null;
+  let prevMonthCard: GameState['lastMonthCard'] = state.lastMonthCard;
+
+  const detectSounds = () => {
+    const moods = new Map<string, Mood | null>();
+    for (const g of state.guests) {
+      moods.set(g.id, g.mood);
+      const before = prevMoods.get(g.id) ?? null;
+      if (g.mood !== before) {
+        if (g.mood === 'happy') { sfx('coin'); sfx('happy'); }
+        else if (g.mood === 'meh') sfx('meh');
+      }
+    }
+    prevMoods = moods;
+    if (!prevMonthCard && state.lastMonthCard) sfx('month');
+    prevMonthCard = state.lastMonthCard;
+    const season = seasonOf(state.clock.month);
+    if (season !== prevSeason) { prevSeason = season; void bgm(season); }
+  };
 
   const frame = (now: number) => {
     const dt = Math.min(100, now - last);
     last = now;
     tick(state, dt);
+    detectSounds();
     render(state);
     // React는 시뮬 틱이 바뀌었거나 일정 시간이 지났을 때만 깨운다 (매 프레임 리렌더 방지)
     if (state.tick !== lastEmitTick || now - lastEmitAt >= UI_EMIT_INTERVAL_MS) {
@@ -102,10 +132,14 @@ export function startLoop(render: (s: GameState) => void): () => void {
       pausedSpeed = state.clock.speed;
       apply(state, { type: 'setSpeed', speed: 0 });
       saveEffective();
-    } else if (pausedSpeed !== null) {
-      apply(state, { type: 'setSpeed', speed: pausedSpeed });
-      pausedSpeed = null;
-      last = performance.now();
+      suspendAudio();
+    } else {
+      resumeAudio();
+      if (pausedSpeed !== null) {
+        apply(state, { type: 'setSpeed', speed: pausedSpeed });
+        pausedSpeed = null;
+        last = performance.now();
+      }
     }
   };
   document.addEventListener('visibilitychange', onVis);

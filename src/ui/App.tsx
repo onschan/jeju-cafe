@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { GameView } from '../render/GameView';
 import { startLoop, dispatch, loadOrNew, getState, setViewReset } from './store';
+import { unlockAudio, bgm } from './audio';
+import { seasonOf } from '../sim/index.ts';
 // render/·ui/는 Vite 전용이라 확장자 없는 import 허용. sim/·data/만 .ts 확장자 규칙.
 import { HUD } from './HUD';
 import { BottomSheet, type Mode } from './BottomSheet';
@@ -12,6 +14,8 @@ export function App() {
   const viewRef = useRef<GameView | null>(null);
   const modeRef = useRef<Mode>({ kind: 'idle' });
   const [mode, setModeState] = useState<Mode>({ kind: 'idle' });
+  // 첫 터치에서 오디오를 열고 현재 계절 BGM을 시작한다 (이후 호출은 no-op)
+  const onPointerDown = () => { unlockAudio(); void bgm(seasonOf(getState().clock.month)); };
   const setMode = (m: Mode) => { modeRef.current = m; setModeState(m); viewRef.current?.setSelection(m.kind === 'cell' ? { x: m.x, y: m.y } : null); };
 
   useEffect(() => {
@@ -40,7 +44,7 @@ export function App() {
   }, []);
 
   return (
-    <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+    <div onPointerDownCapture={onPointerDown} style={{ position: 'relative', width: '100%', height: '100%' }}>
       <div ref={hostRef} style={{ position: 'absolute', inset: 0, touchAction: 'none' }} />
       <HUD />
       <Guide />
