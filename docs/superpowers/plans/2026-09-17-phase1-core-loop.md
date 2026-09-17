@@ -344,7 +344,8 @@ export interface Clock {
   day: number;   // 1~30
   month: number; // 1~12
   year: number;  // 1~
-  accMs: number;
+  accMs: number;   // 하루 누적 (게임 ms)
+  carryMs: number; // 고정 스텝 잔여 (실시간×speed)
   speed: 0 | 1 | 2 | 3;
 }
 
@@ -634,7 +635,7 @@ test('계절과 monthIndex', () => {
   expect(seasonOf(7)).toBe('summer');
   expect(seasonOf(10)).toBe('autumn');
   expect(seasonOf(12)).toBe('winter');
-  expect(monthIndex({ day: 1, month: 3, year: 2, accMs: 0, speed: 1 })).toBe(14);
+  expect(monthIndex({ day: 1, month: 3, year: 2, accMs: 0, carryMs: 0, speed: 1 })).toBe(14);
 });
 ```
 
@@ -683,7 +684,7 @@ export function createInitialState(seed: number, playerId = 'local'): GameState 
     playerId,
     seed,
     rng: seed,
-    clock: { day: 1, month: 1, year: 1, accMs: 0, speed: 1 },
+    clock: { day: 1, month: 1, year: 1, accMs: 0, carryMs: 0, speed: 1 },
     money: START_MONEY,
     research: 0,
     popularity: 0,
@@ -1791,10 +1792,8 @@ test('setSpeed·setSlot·unlock·dismissMonthCard', () => {
 ```ts
 import { createInitialState } from '../state';
 import { apply } from '../actions';
-import { tick, resetTickCarry } from '../tick';
+import { tick } from '../tick';
 import { DAY_MS } from '../clock';
-
-beforeEach(() => resetTickCarry());
 
 function cafe() {
   const s = createInitialState(1);
@@ -1822,9 +1821,7 @@ test('한 달 지나면 정산 카드가 생기고 월 누적이 리셋된다', 
 test('프레임 길이가 달라도 결과가 같다 (고정 스텝)', () => {
   const a = cafe();
   const b = cafe();
-  resetTickCarry();
   for (let i = 0; i < 100; i++) tick(a, 700);
-  resetTickCarry();
   for (let i = 0; i < 700; i++) tick(b, 100);
   expect(a.tick).toBe(b.tick);
   expect(JSON.stringify(a)).toBe(JSON.stringify(b));
@@ -1832,7 +1829,6 @@ test('프레임 길이가 달라도 결과가 같다 (고정 스텝)', () => {
 
 test('speed 3이면 같은 실시간에 3배 스텝', () => {
   const s = cafe();
-  resetTickCarry();
   apply(s, { type: 'setSpeed', speed: 3 });
   tick(s, 1000);
   expect(s.tick).toBe(30);
@@ -1972,22 +1968,19 @@ export function step(state: GameState): void {
   state.tick++;
 }
 
-/** 실시간 dtMs를 speed로 환산해 STEP_MS 단위로 step을 돌린다. 잔여는 clock.accMs가 아니라 별도 누적기에 보관. */
-let carryMs = 0;
+/** 실시간 dtMs를 speed로 환산해 STEP_MS 단위로 step을 돌린다. 잔여는 clock.carryMs에 보관. */
 export function tick(state: GameState, dtMs: number): GameState {
-  carryMs += dtMs * state.clock.speed;
+  const c = state.clock;
+  c.carryMs += dtMs * c.speed;
   let steps = 0;
-  while (carryMs >= STEP_MS && steps < MAX_STEPS_PER_TICK) {
-    carryMs -= STEP_MS;
+  while (c.carryMs >= STEP_MS && steps < MAX_STEPS_PER_TICK) {
+    c.carryMs -= STEP_MS;
     step(state);
     steps++;
   }
-  if (steps === MAX_STEPS_PER_TICK) carryMs = 0;
+  if (steps === MAX_STEPS_PER_TICK) c.carryMs = 0;
   return state;
 }
-
-/** 테스트·리플레이용: 누적기 초기화 */
-export function resetTickCarry(): void { carryMs = 0; }
 ```
 
 주의: `advanceClock(state, STEP_MS)`는 speed를 곱하지 않도록 `clock.ts`의 `advanceClock`에서 `c.accMs += dtMs * c.speed`를 `c.accMs += dtMs`로 바꾼다(speed 환산은 `tick`이 담당). `clock.test.ts`의 "speed 0이면 멈춤, speed 3이면 3배" 테스트는 삭제하고 tick 테스트로 대체한다.
@@ -1996,7 +1989,7 @@ export function resetTickCarry(): void { carryMs = 0; }
 ```ts
 export * from './types';
 export { createInitialState, GRID_W, GRID_H, MENU_SLOT_COUNT } from './state';
-export { tick, step, STEP_MS, resetTickCarry } from './tick';
+export { tick, step, STEP_MS } from './tick';
 export { apply } from './actions';
 export { DAY_MS, seasonOf, monthIndex } from './clock';
 export { cellAt, objectAt, canPlace, footprint, isSheltered, sceneryScore } from './grid';
