@@ -1,0 +1,275 @@
+[
+  {
+    "id": "whipped",
+    "name": "휘핑크림",
+    "cost": 200,
+    "stats": {
+      "look": 2,
+      "taste": 2
+    },
+    "skillText": "맛있음 +",
+    "skills": [
+      {
+        "name": "맛있음",
+        "level": 1
+      }
+    ]
+  },
+  {
+    "id": "tangerine_slice",
+    "name": "감귤 슬라이스",
+    "cost": 0,
+    "stats": {
+      "look": 3,
+      "jeju": 2
+    },
+    "skillText": "인생샷 ++",
+    "skills": [
+      {
+        "name": "인생샷",
+        "level": 2
+      }
+    ],
+    "costNote": "밭"
+  },
+  {
+    "id": "cinnamon_dust",
+    "name": "시나몬 가루",
+    "cost": 100,
+    "stats": {
+      "aroma": 3
+    },
+    "skillText": "향긋함 ++",
+    "skills": [
+      {
+        "name": "향긋함",
+        "level": 2
+      }
+    ]
+  },
+  {
+    "id": "honey_drizzle",
+    "name": "꿀 드리즐",
+    "cost": 300,
+    "stats": {
+      "taste": 2,
+      "health": 1
+    },
+    "skillText": "건강함 +",
+    "skills": [
+      {
+        "name": "건강함",
+        "level": 1
+      }
+    ]
+  },
+  {
+    "id": "peanut_crumble",
+    "name": "땅콩 크럼블",
+    "cost": 0,
+    "stats": {
+      "taste": 2,
+      "volume": 1
+    },
+    "skillText": "고소함 → 맛있음 ++",
+    "skills": [
+      {
+        "name": "맛있음",
+        "level": 2
+      }
+    ]
+  },
+  {
+    "id": "ice_cream",
+    "name": "아이스크림",
+    "cost": 500,
+    "stats": {
+      "look": 3,
+      "volume": 2
+    },
+    "skillText": "여름 인기 +",
+    "skills": [
+      {
+        "name": "인기",
+        "level": 1
+      }
+    ]
+  },
+  {
+    "id": "cheese_extra",
+    "name": "치즈 추가",
+    "cost": 400,
+    "stats": {
+      "taste": 3,
+      "volume": 2
+    },
+    "skillText": "든든함 ++",
+    "skills": [
+      {
+        "name": "든든함",
+        "level": 2
+      }
+    ]
+  },
+  {
+    "id": "egg_extra",
+    "name": "달걀 추가",
+    "cost": 200,
+    "stats": {
+      "volume": 3
+    },
+    "skillText": "든든함 +++",
+    "skills": [
+      {
+        "name": "든든함",
+        "level": 3
+      }
+    ]
+  },
+  {
+    "id": "gosari_side",
+    "name": "고사리 무침",
+    "cost": 0,
+    "stats": {
+      "health": 3,
+      "jeju": 3
+    },
+    "skillText": "제주다움 ++",
+    "skills": [
+      {
+        "name": "제주다움",
+        "level": 2
+      }
+    ]
+  },
+  {
+    "id": "seaweed_flake",
+    "name": "톳 후레이크",
+    "cost": 0,
+    "stats": {
+      "aroma": 2,
+      "health": 2,
+      "jeju": 2
+    },
+    "skillText": "제주다움 ++ 건강함 +",
+    "skills": [
+      {
+        "name": "제주다움",
+        "level": 2
+      },
+      {
+        "name": "건강함",
+        "level": 1
+      }
+    ]
+  },
+  {
+    "id": "canola_petal",
+    "name": "유채꽃 잎",
+    "cost": 0,
+    "stats": {
+      "look": 4
+    },
+    "skillText": "인생샷 +++ (봄)",
+    "skills": [
+      {
+        "name": "인생샷",
+        "level": 3
+      }
+    ]
+  },
+  {
+    "id": "mini_dolhareubang",
+    "name": "돌하르방 쿠키",
+    "cost": 300,
+    "stats": {
+      "look": 3,
+      "jeju": 2
+    },
+    "skillText": "인생샷 ++ 희귀함 +",
+    "skills": [
+      {
+        "name": "인생샷",
+        "level": 2
+      },
+      {
+        "name": "희귀함",
+        "level": 1
+      }
+    ]
+  },
+  {
+    "id": "black_pork_bit",
+    "name": "흑돼지 토핑",
+    "cost": 800,
+    "stats": {
+      "taste": 4,
+      "volume": 3
+    },
+    "skillText": "든든함 ++ 호화 +",
+    "skills": [
+      {
+        "name": "든든함",
+        "level": 2
+      },
+      {
+        "name": "호화",
+        "level": 1
+      }
+    ]
+  },
+  {
+    "id": "gold_leaf",
+    "name": "금박",
+    "cost": 2000,
+    "stats": {
+      "look": 5
+    },
+    "skillText": "희귀함 +++ 품격 ++",
+    "skills": [
+      {
+        "name": "희귀함",
+        "level": 3
+      },
+      {
+        "name": "품격",
+        "level": 2
+      }
+    ]
+  },
+  {
+    "id": "mint",
+    "name": "민트 잎",
+    "cost": 100,
+    "stats": {
+      "aroma": 2,
+      "look": 1
+    },
+    "skillText": "세련미 ++",
+    "skills": [
+      {
+        "name": "세련미",
+        "level": 2
+      }
+    ]
+  },
+  {
+    "id": "soy_cream",
+    "name": "두유 크림",
+    "cost": 300,
+    "stats": {
+      "health": 3
+    },
+    "skillText": "건강함 ++ 세련미 +",
+    "skills": [
+      {
+        "name": "건강함",
+        "level": 2
+      },
+      {
+        "name": "세련미",
+        "level": 1
+      }
+    ]
+  }
+]

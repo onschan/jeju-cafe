@@ -1,0 +1,1090 @@
+[
+  {
+    "id": "ng01",
+    "regionId": "dongmun",
+    "no": 1,
+    "name": "고순자",
+    "job": "생선 장수 삼춘",
+    "line": "새벽 장 끝나고 커피 한 잔",
+    "likesBase": [
+      "drink"
+    ],
+    "likesStats": [
+      "taste",
+      "volume"
+    ],
+    "budget": 5000,
+    "face": {
+      "seed": 1
+    },
+    "acc": []
+  },
+  {
+    "id": "ng02",
+    "regionId": "dongmun",
+    "no": 2,
+    "name": "김도윤",
+    "job": "초등학생",
+    "line": "용돈으로 쿠키",
+    "likesBase": [
+      "dessert"
+    ],
+    "likesStats": [
+      "look"
+    ],
+    "budget": 2000,
+    "face": {
+      "seed": 2
+    },
+    "acc": []
+  },
+  {
+    "id": "ng03",
+    "regionId": "dongmun",
+    "no": 3,
+    "name": "박하늘",
+    "job": "수학여행 교사",
+    "line": "40명 인솔 중",
+    "likesBase": [
+      "drink"
+    ],
+    "likesStats": [
+      "volume"
+    ],
+    "budget": 8000,
+    "face": {
+      "seed": 3
+    },
+    "acc": []
+  },
+  {
+    "id": "ng04",
+    "regionId": "dongmun",
+    "no": 4,
+    "name": "이재호",
+    "job": "오메기떡 장수",
+    "line": "라이벌 디저트 정찰",
+    "likesBase": [
+      "dessert"
+    ],
+    "likesStats": [
+      "taste",
+      "jeju"
+    ],
+    "budget": 6000,
+    "face": {
+      "seed": 4
+    },
+    "acc": []
+  },
+  {
+    "id": "ng05",
+    "regionId": "dongmun",
+    "no": 5,
+    "name": "정미영",
+    "job": "육지 관광객",
+    "line": "첫 제주",
+    "likesBase": [
+      "drink"
+    ],
+    "likesStats": [
+      "look",
+      "aroma"
+    ],
+    "budget": 9000,
+    "face": {
+      "seed": 5
+    },
+    "acc": []
+  },
+  {
+    "id": "ng06",
+    "regionId": "dongmun",
+    "no": 6,
+    "name": "강태식",
+    "job": "택시 기사",
+    "line": "손님 데려다주고 한 잔",
+    "likesBase": [
+      "drink"
+    ],
+    "likesStats": [
+      "taste"
+    ],
+    "budget": 4000,
+    "face": {
+      "seed": 6
+    },
+    "acc": []
+  },
+  {
+    "id": "ng07",
+    "regionId": "dongmun",
+    "no": 7,
+    "name": "오세진",
+    "job": "시장 상인회장",
+    "line": "시장 팝업 허가권",
+    "likesBase": [
+      "meal"
+    ],
+    "likesStats": [
+      "volume",
+      "taste"
+    ],
+    "budget": 12000,
+    "face": {
+      "seed": 7
+    },
+    "acc": []
+  },
+  {
+    "id": "ng08",
+    "regionId": "dongmun",
+    "no": 8,
+    "name": "한소이",
+    "job": "관광 유튜버(초보)",
+    "line": "구독자 300",
+    "likesBase": [
+      "signature"
+    ],
+    "likesStats": [
+      "look"
+    ],
+    "budget": 7000,
+    "face": {
+      "seed": 8
+    },
+    "acc": []
+  },
+  {
+    "id": "ng09",
+    "regionId": "hyeopjae",
+    "no": 9,
+    "name": "서지안",
+    "job": "서퍼",
+    "line": "파도 끝나고",
+    "likesBase": [
+      "drink"
+    ],
+    "likesStats": [
+      "health",
+      "volume"
+    ],
+    "budget": 6000,
+    "face": {
+      "seed": 9
+    },
+    "acc": []
+  },
+  {
+    "id": "ng10",
+    "regionId": "hyeopjae",
+    "no": 10,
+    "name": "최윤아",
+    "job": "인스타 커플",
+    "line": "사진 30장",
+    "likesBase": [
+      "dessert"
+    ],
+    "likesStats": [
+      "look"
+    ],
+    "budget": 11000,
+    "face": {
+      "seed": 10
+    },
+    "acc": []
+  },
+  {
+    "id": "ng11",
+    "regionId": "hyeopjae",
+    "no": 11,
+    "name": "최민혁",
+    "job": "인스타 커플",
+    "line": "그녀가 시키는 것",
+    "likesBase": [
+      "dessert"
+    ],
+    "likesStats": [
+      "look"
+    ],
+    "budget": 11000,
+    "face": {
+      "seed": 11
+    },
+    "acc": []
+  },
+  {
+    "id": "ng12",
+    "regionId": "hyeopjae",
+    "no": 12,
+    "name": "배우진",
+    "job": "해변 안전요원",
+    "line": "휴게 10분",
+    "likesBase": [
+      "drink"
+    ],
+    "likesStats": [
+      "volume"
+    ],
+    "budget": 5000,
+    "face": {
+      "seed": 12
+    },
+    "acc": []
+  },
+  {
+    "id": "ng13",
+    "regionId": "hyeopjae",
+    "no": 13,
+    "name": "문가을",
+    "job": "캠핑족",
+    "line": "텐트 옆 카페",
+    "likesBase": [
+      "meal"
+    ],
+    "likesStats": [
+      "volume",
+      "health"
+    ],
+    "budget": 8000,
+    "face": {
+      "seed": 13
+    },
+    "acc": []
+  },
+  {
+    "id": "ng14",
+    "regionId": "hyeopjae",
+    "no": 14,
+    "name": "양준호",
+    "job": "카페 투어 블로거",
+    "line": "별점 냉정",
+    "likesBase": [
+      "drink"
+    ],
+    "likesStats": [
+      "aroma",
+      "taste"
+    ],
+    "budget": 9000,
+    "face": {
+      "seed": 14
+    },
+    "acc": []
+  },
+  {
+    "id": "ng15",
+    "regionId": "hyeopjae",
+    "no": 15,
+    "name": "엄지호",
+    "job": "아이 둘 아빠",
+    "line": "아이스크림 두 개",
+    "likesBase": [
+      "dessert"
+    ],
+    "likesStats": [
+      "volume"
+    ],
+    "budget": 14000,
+    "face": {
+      "seed": 15
+    },
+    "acc": []
+  },
+  {
+    "id": "ng16",
+    "regionId": "hyeopjae",
+    "no": 16,
+    "name": "조은별",
+    "job": "아이 둘 엄마",
+    "line": "커피는 뜨겁게",
+    "likesBase": [
+      "drink"
+    ],
+    "likesStats": [
+      "aroma"
+    ],
+    "budget": 14000,
+    "face": {
+      "seed": 16
+    },
+    "acc": []
+  },
+  {
+    "id": "ng17",
+    "regionId": "seongsan",
+    "no": 17,
+    "name": "나현우",
+    "job": "일출 커플 A",
+    "line": "새벽 5시 등반",
+    "likesBase": [
+      "drink"
+    ],
+    "likesStats": [
+      "taste"
+    ],
+    "budget": 10000,
+    "face": {
+      "seed": 17
+    },
+    "acc": []
+  },
+  {
+    "id": "ng18",
+    "regionId": "seongsan",
+    "no": 18,
+    "name": "신예린",
+    "job": "일출 커플 B",
+    "line": "발 아파",
+    "likesBase": [
+      "dessert"
+    ],
+    "likesStats": [
+      "look"
+    ],
+    "budget": 10000,
+    "face": {
+      "seed": 18
+    },
+    "acc": []
+  },
+  {
+    "id": "ng19",
+    "regionId": "seongsan",
+    "no": 19,
+    "name": "허재민",
+    "job": "단체 관광 가이드",
+    "line": "깃발 든 사람",
+    "likesBase": [
+      "drink"
+    ],
+    "likesStats": [
+      "volume"
+    ],
+    "budget": 6000,
+    "face": {
+      "seed": 19
+    },
+    "acc": []
+  },
+  {
+    "id": "ng20",
+    "regionId": "seongsan",
+    "no": 20,
+    "name": "王芳 왕팡",
+    "job": "중국 관광객",
+    "line": "감귤 초콜릿 10상자",
+    "likesBase": [
+      "dessert"
+    ],
+    "likesStats": [
+      "look",
+      "volume"
+    ],
+    "budget": 15000,
+    "face": {
+      "seed": 20
+    },
+    "acc": []
+  },
+  {
+    "id": "ng21",
+    "regionId": "seongsan",
+    "no": 21,
+    "name": "田中 다나카",
+    "job": "일본 여행자",
+    "line": "조용한 자리",
+    "likesBase": [
+      "drink"
+    ],
+    "likesStats": [
+      "aroma"
+    ],
+    "budget": 12000,
+    "face": {
+      "seed": 21
+    },
+    "acc": []
+  },
+  {
+    "id": "ng22",
+    "regionId": "seongsan",
+    "no": 22,
+    "name": "홍경석",
+    "job": "사진작가",
+    "line": "골든아워 대기",
+    "likesBase": [
+      "drink"
+    ],
+    "likesStats": [
+      "aroma",
+      "jeju"
+    ],
+    "budget": 9000,
+    "face": {
+      "seed": 22
+    },
+    "acc": []
+  },
+  {
+    "id": "ng23",
+    "regionId": "seongsan",
+    "no": 23,
+    "name": "유민서",
+    "job": "지질공원 해설사",
+    "line": "화산 이야기",
+    "likesBase": [
+      "drink"
+    ],
+    "likesStats": [
+      "health"
+    ],
+    "budget": 7000,
+    "face": {
+      "seed": 23
+    },
+    "acc": []
+  },
+  {
+    "id": "ng24",
+    "regionId": "seongsan",
+    "no": 24,
+    "name": "노을",
+    "job": "길고양이",
+    "line": "참치",
+    "likesBase": [
+      "meal"
+    ],
+    "likesStats": [
+      "taste"
+    ],
+    "budget": 0,
+    "budgetNote": "무료, 호감도 채우면 고양이 집 해금",
+    "face": {
+      "seed": 24
+    },
+    "acc": []
+  },
+  {
+    "id": "ng25",
+    "regionId": "jungmun",
+    "no": 25,
+    "name": "임채원",
+    "job": "리조트 투숙객",
+    "line": "호캉스 중",
+    "likesBase": [
+      "dessert"
+    ],
+    "likesStats": [
+      "look",
+      "aroma"
+    ],
+    "budget": 18000,
+    "face": {
+      "seed": 25
+    },
+    "acc": []
+  },
+  {
+    "id": "ng26",
+    "regionId": "jungmun",
+    "no": 26,
+    "name": "장현서",
+    "job": "골퍼",
+    "line": "18홀 끝",
+    "likesBase": [
+      "drink"
+    ],
+    "likesStats": [
+      "taste"
+    ],
+    "budget": 16000,
+    "face": {
+      "seed": 26
+    },
+    "acc": []
+  },
+  {
+    "id": "ng27",
+    "regionId": "jungmun",
+    "no": 27,
+    "name": "윤가온",
+    "job": "신혼부부(신부)",
+    "line": "웨딩 촬영",
+    "likesBase": [
+      "dessert"
+    ],
+    "likesStats": [
+      "look"
+    ],
+    "budget": 20000,
+    "face": {
+      "seed": 27
+    },
+    "acc": []
+  },
+  {
+    "id": "ng28",
+    "regionId": "jungmun",
+    "no": 28,
+    "name": "곽은우",
+    "job": "신혼부부(신랑)",
+    "line": "뭐든 좋아",
+    "likesBase": [
+      "drink"
+    ],
+    "likesStats": [
+      "taste"
+    ],
+    "budget": 20000,
+    "face": {
+      "seed": 28
+    },
+    "acc": []
+  },
+  {
+    "id": "ng29",
+    "regionId": "jungmun",
+    "no": 29,
+    "name": "남지원",
+    "job": "컨벤션 참가자",
+    "line": "발표 30분 전",
+    "likesBase": [
+      "drink"
+    ],
+    "likesStats": [
+      "volume"
+    ],
+    "budget": 9000,
+    "face": {
+      "seed": 29
+    },
+    "acc": []
+  },
+  {
+    "id": "ng30",
+    "regionId": "jungmun",
+    "no": 30,
+    "name": "Smith 스미스",
+    "job": "미국 여행자",
+    "line": "아메리카노 큰 컵",
+    "likesBase": [
+      "drink"
+    ],
+    "likesStats": [
+      "volume",
+      "aroma"
+    ],
+    "budget": 14000,
+    "face": {
+      "seed": 30
+    },
+    "acc": []
+  },
+  {
+    "id": "ng31",
+    "regionId": "jungmun",
+    "no": 31,
+    "name": "성다은",
+    "job": "호텔 셰프",
+    "line": "원가 계산하는 눈",
+    "likesBase": [
+      "meal"
+    ],
+    "likesStats": [
+      "taste",
+      "jeju"
+    ],
+    "budget": 13000,
+    "face": {
+      "seed": 31
+    },
+    "acc": []
+  },
+  {
+    "id": "ng32",
+    "regionId": "jungmun",
+    "no": 32,
+    "name": "차준영",
+    "job": "해양 가이드",
+    "line": "돌고래 봤어요",
+    "likesBase": [
+      "drink"
+    ],
+    "likesStats": [
+      "health"
+    ],
+    "budget": 7000,
+    "face": {
+      "seed": 32
+    },
+    "acc": []
+  },
+  {
+    "id": "ng33",
+    "regionId": "udo",
+    "no": 33,
+    "name": "고영자",
+    "job": "땅콩 농부 삼춘",
+    "line": "땅콩 아이스크림 라이벌",
+    "likesBase": [
+      "dessert"
+    ],
+    "likesStats": [
+      "taste",
+      "jeju"
+    ],
+    "budget": 6000,
+    "face": {
+      "seed": 33
+    },
+    "acc": []
+  },
+  {
+    "id": "ng34",
+    "regionId": "udo",
+    "no": 34,
+    "name": "백소율",
+    "job": "자전거 일주",
+    "line": "한 바퀴 두 시간",
+    "likesBase": [
+      "drink"
+    ],
+    "likesStats": [
+      "health",
+      "volume"
+    ],
+    "budget": 5000,
+    "face": {
+      "seed": 34
+    },
+    "acc": []
+  },
+  {
+    "id": "ng35",
+    "regionId": "udo",
+    "no": 35,
+    "name": "심아린",
+    "job": "등대 지킴이",
+    "line": "밤에 오세요",
+    "likesBase": [
+      "drink"
+    ],
+    "likesStats": [
+      "aroma"
+    ],
+    "budget": 6000,
+    "face": {
+      "seed": 35
+    },
+    "acc": []
+  },
+  {
+    "id": "ng36",
+    "regionId": "udo",
+    "no": 36,
+    "name": "주소연",
+    "job": "해녀 삼춘(우도)",
+    "line": "물질 끝",
+    "likesBase": [
+      "meal"
+    ],
+    "likesStats": [
+      "taste",
+      "volume"
+    ],
+    "budget": 7000,
+    "face": {
+      "seed": 36
+    },
+    "acc": []
+  },
+  {
+    "id": "ng37",
+    "regionId": "udo",
+    "no": 37,
+    "name": "우지환",
+    "job": "배 시간 놓친 사람",
+    "line": "마지막 배 5시",
+    "likesBase": [
+      "any"
+    ],
+    "likesStats": [],
+    "budget": 8000,
+    "face": {
+      "seed": 37
+    },
+    "acc": []
+  },
+  {
+    "id": "ng38",
+    "regionId": "udo",
+    "no": 38,
+    "name": "구하율",
+    "job": "땅콩 막걸리 양조(견학)",
+    "line": "술은 안 팔지만",
+    "likesBase": [
+      "dessert"
+    ],
+    "likesStats": [
+      "aroma"
+    ],
+    "budget": 9000,
+    "face": {
+      "seed": 38
+    },
+    "acc": []
+  },
+  {
+    "id": "ng39",
+    "regionId": "udo",
+    "no": 39,
+    "name": "민서현",
+    "job": "미술 학생",
+    "line": "스케치북",
+    "likesBase": [
+      "drink"
+    ],
+    "likesStats": [
+      "look",
+      "aroma"
+    ],
+    "budget": 4000,
+    "face": {
+      "seed": 39
+    },
+    "acc": []
+  },
+  {
+    "id": "ng40",
+    "regionId": "udo",
+    "no": 40,
+    "name": "진태민",
+    "job": "낚시꾼",
+    "line": "새벽부터",
+    "likesBase": [
+      "meal"
+    ],
+    "likesStats": [
+      "volume"
+    ],
+    "budget": 6000,
+    "face": {
+      "seed": 40
+    },
+    "acc": []
+  },
+  {
+    "id": "ng41",
+    "regionId": "hallasan",
+    "no": 41,
+    "name": "지수빈",
+    "job": "등산객",
+    "line": "하산 후 라면 대신",
+    "likesBase": [
+      "meal"
+    ],
+    "likesStats": [
+      "volume",
+      "health"
+    ],
+    "budget": 8000,
+    "face": {
+      "seed": 41
+    },
+    "acc": []
+  },
+  {
+    "id": "ng42",
+    "regionId": "hallasan",
+    "no": 42,
+    "name": "채유진",
+    "job": "러닝크루 리더",
+    "line": "10km 끝",
+    "likesBase": [
+      "drink"
+    ],
+    "likesStats": [
+      "health"
+    ],
+    "budget": 7000,
+    "face": {
+      "seed": 42
+    },
+    "acc": []
+  },
+  {
+    "id": "ng43",
+    "regionId": "hallasan",
+    "no": 43,
+    "name": "원지안",
+    "job": "약초꾼",
+    "line": "곶자왈 사정 훤함",
+    "likesBase": [
+      "drink"
+    ],
+    "likesStats": [
+      "health",
+      "jeju"
+    ],
+    "budget": 6000,
+    "budgetNote": "호감 보상: 표고·고사리 재료",
+    "face": {
+      "seed": 43
+    },
+    "acc": []
+  },
+  {
+    "id": "ng44",
+    "regionId": "hallasan",
+    "no": 44,
+    "name": "천시온",
+    "job": "산림 공무원",
+    "line": "삼나무 방풍림 조언",
+    "likesBase": [
+      "drink"
+    ],
+    "likesStats": [
+      "taste"
+    ],
+    "budget": 8000,
+    "face": {
+      "seed": 44
+    },
+    "acc": []
+  },
+  {
+    "id": "ng45",
+    "regionId": "hallasan",
+    "no": 45,
+    "name": "방하준",
+    "job": "백록담 첫눈 인증러",
+    "line": "겨울만 옴",
+    "likesBase": [
+      "drink"
+    ],
+    "likesStats": [
+      "aroma"
+    ],
+    "budget": 9000,
+    "face": {
+      "seed": 45
+    },
+    "acc": []
+  },
+  {
+    "id": "ng46",
+    "regionId": "hallasan",
+    "no": 46,
+    "name": "공서윤",
+    "job": "트레일러너(외국인)",
+    "line": "에너지바",
+    "likesBase": [
+      "dessert"
+    ],
+    "likesStats": [
+      "health",
+      "volume"
+    ],
+    "budget": 12000,
+    "face": {
+      "seed": 46
+    },
+    "acc": []
+  },
+  {
+    "id": "ng47",
+    "regionId": "hallasan",
+    "no": 47,
+    "name": "강태오",
+    "job": "야생 노루 연구자",
+    "line": "노루 습격 예방책",
+    "likesBase": [
+      "meal"
+    ],
+    "likesStats": [
+      "taste"
+    ],
+    "budget": 7000,
+    "face": {
+      "seed": 47
+    },
+    "acc": []
+  },
+  {
+    "id": "ng48",
+    "regionId": "hallasan",
+    "no": 48,
+    "name": "이도경",
+    "job": "산악회 총무",
+    "line": "20명 예약",
+    "likesBase": [
+      "meal"
+    ],
+    "likesStats": [
+      "volume"
+    ],
+    "budget": 15000,
+    "face": {
+      "seed": 48
+    },
+    "acc": []
+  },
+  {
+    "id": "ng49",
+    "regionId": "dolhareubang",
+    "no": 49,
+    "name": "설문대할망",
+    "job": "제주를 만든 거인",
+    "line": "죽 한 솥",
+    "likesBase": [
+      "meal"
+    ],
+    "likesStats": [
+      "volume",
+      "jeju"
+    ],
+    "budget": 99999,
+    "face": {
+      "seed": 49
+    },
+    "acc": []
+  },
+  {
+    "id": "ng50",
+    "regionId": "dolhareubang",
+    "no": 50,
+    "name": "돌하르방",
+    "job": "마을 수호석",
+    "line": "3천 년 만의 커피",
+    "likesBase": [
+      "drink"
+    ],
+    "likesStats": [
+      "taste",
+      "jeju"
+    ],
+    "budget": 30000,
+    "face": {
+      "seed": 50
+    },
+    "acc": []
+  },
+  {
+    "id": "ng51",
+    "regionId": "dolhareubang",
+    "no": 51,
+    "name": "영등할망",
+    "job": "바람의 신",
+    "line": "2월에만",
+    "likesBase": [
+      "drink"
+    ],
+    "likesStats": [
+      "aroma"
+    ],
+    "budget": 40000,
+    "face": {
+      "seed": 51
+    },
+    "acc": []
+  },
+  {
+    "id": "ng52",
+    "regionId": "dolhareubang",
+    "no": 52,
+    "name": "백록",
+    "job": "흰 사슴",
+    "line": "풀만",
+    "likesBase": [
+      "dessert"
+    ],
+    "likesStats": [
+      "health"
+    ],
+    "budget": 25000,
+    "face": {
+      "seed": 52
+    },
+    "acc": []
+  },
+  {
+    "id": "ng53",
+    "regionId": "dolhareubang",
+    "no": 53,
+    "name": "자청비",
+    "job": "농사의 신",
+    "line": "씨앗 선물",
+    "likesBase": [
+      "meal"
+    ],
+    "likesStats": [
+      "jeju",
+      "taste"
+    ],
+    "budget": 35000,
+    "face": {
+      "seed": 53
+    },
+    "acc": []
+  },
+  {
+    "id": "ng54",
+    "regionId": "dolhareubang",
+    "no": 54,
+    "name": "이어도 사람",
+    "job": "전설의 섬에서",
+    "line": "해산물",
+    "likesBase": [
+      "meal"
+    ],
+    "likesStats": [
+      "taste",
+      "aroma"
+    ],
+    "budget": 50000,
+    "face": {
+      "seed": 54
+    },
+    "acc": []
+  },
+  {
+    "id": "ng55",
+    "regionId": "dolhareubang",
+    "no": 55,
+    "name": "도채비",
+    "job": "제주 도깨비",
+    "line": "장난 좋아",
+    "likesBase": [
+      "dessert"
+    ],
+    "likesStats": [
+      "look"
+    ],
+    "budget": 20000,
+    "face": {
+      "seed": 55
+    },
+    "acc": []
+  },
+  {
+    "id": "ng56",
+    "regionId": "dolhareubang",
+    "no": 56,
+    "name": "한라산 신령",
+    "job": "산의 주인",
+    "line": "눈 오는 날",
+    "likesBase": [
+      "drink"
+    ],
+    "likesStats": [
+      "aroma",
+      "health"
+    ],
+    "budget": 60000,
+    "face": {
+      "seed": 56
+    },
+    "acc": []
+  }
+]

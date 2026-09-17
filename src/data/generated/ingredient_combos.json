@@ -1,0 +1,321 @@
+[
+  {
+    "id": "creamy",
+    "name": "크리미",
+    "a": {
+      "category": "fruit"
+    },
+    "b": {
+      "category": "dairy"
+    },
+    "pairText": "과일 × 유제품",
+    "bonus": {
+      "taste": 4,
+      "look": 2
+    },
+    "bonusText": "맛 +4 보기 +2"
+  },
+  {
+    "id": "nutty",
+    "name": "고소함",
+    "a": {
+      "category": "grain"
+    },
+    "b": {
+      "category": "nut"
+    },
+    "pairText": "곡물 × 견과",
+    "bonus": {
+      "taste": 4,
+      "volume": 2
+    },
+    "bonusText": "맛 +4 양 +2"
+  },
+  {
+    "id": "smooth",
+    "name": "부드러움",
+    "a": {
+      "category": "tea"
+    },
+    "b": {
+      "category": "sweet"
+    },
+    "pairText": "차 × 감미",
+    "bonus": {
+      "aroma": 3,
+      "health": 2
+    },
+    "bonusText": "향 +3 건강 +2"
+  },
+  {
+    "id": "sea_aroma",
+    "name": "바다 향",
+    "a": {
+      "category": "seafood"
+    },
+    "b": {
+      "category": "seafood"
+    },
+    "pairText": "해산물 × 해산물",
+    "bonus": {
+      "aroma": 5,
+      "jeju": 3
+    },
+    "bonusText": "향 +5 제주 +3"
+  },
+  {
+    "id": "zesty",
+    "name": "톡 쏨",
+    "a": {
+      "category": "spice"
+    },
+    "b": {
+      "category": "fruit"
+    },
+    "pairText": "향신 × 과일",
+    "bonus": {
+      "aroma": 4,
+      "look": 1
+    },
+    "bonusText": "향 +4 보기 +1"
+  },
+  {
+    "id": "fresh",
+    "name": "신선함",
+    "a": {
+      "category": "vegetable"
+    },
+    "b": {
+      "category": "vegetable"
+    },
+    "pairText": "채소 × 채소",
+    "bonus": {
+      "health": 5
+    },
+    "bonusText": "건강 +5"
+  },
+  {
+    "id": "hearty",
+    "name": "든든함",
+    "a": {
+      "category": "grain"
+    },
+    "b": {
+      "category": "protein"
+    },
+    "pairText": "곡물 × 단백",
+    "bonus": {
+      "volume": 5
+    },
+    "bonusText": "양 +5"
+  },
+  {
+    "id": "light",
+    "name": "연하게",
+    "a": {
+      "category": "water"
+    },
+    "b": {
+      "category": "any"
+    },
+    "pairText": "물 × 아무거나",
+    "bonus": {
+      "taste": -2,
+      "costPct": -20
+    },
+    "bonusText": "재료비 −20%, 맛 −2"
+  },
+  {
+    "id": "jeju_taste",
+    "name": "제주의 맛",
+    "a": {
+      "category": "jeju",
+      "minJeju": 6
+    },
+    "b": {
+      "category": "jeju"
+    },
+    "pairText": "제주 재료(제주≥6) × 제주 재료",
+    "bonus": {
+      "jeju": 6
+    },
+    "bonusText": "제주 +6"
+  },
+  {
+    "id": "bittersweet",
+    "name": "달콤 씁쓸",
+    "a": {
+      "category": "coffee"
+    },
+    "b": {
+      "category": "sweet"
+    },
+    "pairText": "커피 × 감미",
+    "bonus": {
+      "taste": 3
+    },
+    "bonusText": "맛 +3"
+  },
+  {
+    "id": "latte",
+    "name": "라떼",
+    "a": {
+      "category": "coffee"
+    },
+    "b": {
+      "category": "dairy"
+    },
+    "pairText": "커피 × 유제품",
+    "bonus": {
+      "taste": 3,
+      "look": 2
+    },
+    "bonusText": "맛 +3 보기 +2"
+  },
+  {
+    "id": "tea_latte",
+    "name": "티 라떼",
+    "a": {
+      "category": "tea"
+    },
+    "b": {
+      "category": "dairy"
+    },
+    "pairText": "차 × 유제품",
+    "bonus": {
+      "aroma": 3,
+      "look": 2
+    },
+    "bonusText": "향 +3 보기 +2"
+  },
+  {
+    "id": "fruit_bomb",
+    "name": "과일 폭탄",
+    "a": {
+      "category": "fruit"
+    },
+    "b": {
+      "category": "fruit"
+    },
+    "pairText": "과일 × 과일",
+    "bonus": {
+      "look": 5,
+      "health": 2
+    },
+    "bonusText": "보기 +5 건강 +2"
+  },
+  {
+    "id": "baking",
+    "name": "베이킹",
+    "a": {
+      "category": "grain"
+    },
+    "b": {
+      "category": "dairy"
+    },
+    "pairText": "곡물 × 유제품",
+    "bonus": {
+      "taste": 2,
+      "volume": 3
+    },
+    "bonusText": "맛 +2 양 +3"
+  },
+  {
+    "id": "healthy_meal",
+    "name": "건강 한 끼",
+    "a": {
+      "category": "vegetable"
+    },
+    "b": {
+      "category": "grain"
+    },
+    "pairText": "채소 × 곡물",
+    "bonus": {
+      "health": 4,
+      "volume": 2
+    },
+    "bonusText": "건강 +4 양 +2"
+  },
+  {
+    "id": "fragrant_morning",
+    "name": "향긋한 아침",
+    "a": {
+      "category": "protein",
+      "ingredient": "egg"
+    },
+    "b": {
+      "category": "vegetable"
+    },
+    "pairText": "달걀(단백) × 채소",
+    "bonus": {
+      "taste": 3,
+      "health": 2
+    },
+    "bonusText": "맛 +3 건강 +2"
+  },
+  {
+    "id": "honey_combo",
+    "name": "꿀 조합",
+    "a": {
+      "category": "sweet",
+      "ingredient": "honey"
+    },
+    "b": {
+      "category": "nut"
+    },
+    "pairText": "감미(꿀) × 견과",
+    "bonus": {
+      "taste": 4,
+      "aroma": 2
+    },
+    "bonusText": "맛 +4 향 +2"
+  },
+  {
+    "id": "spicy",
+    "name": "매콤",
+    "a": {
+      "category": "spice",
+      "ingredient": "chili"
+    },
+    "b": {
+      "category": "protein"
+    },
+    "pairText": "향신(고추) × 단백",
+    "bonus": {
+      "taste": 5
+    },
+    "bonusText": "맛 +5"
+  },
+  {
+    "id": "cool",
+    "name": "시원함",
+    "a": {
+      "category": "water",
+      "ingredient": "ice"
+    },
+    "b": {
+      "category": "fruit"
+    },
+    "pairText": "물(얼음) × 과일",
+    "bonus": {
+      "summerPopularity": 5
+    },
+    "bonusText": "여름 인기 +5"
+  },
+  {
+    "id": "warm",
+    "name": "따뜻함",
+    "a": {
+      "category": "spice",
+      "ingredient": "cinnamon"
+    },
+    "b": {
+      "category": "dairy"
+    },
+    "pairText": "향신(시나몬) × 유제품",
+    "bonus": {
+      "winterPopularity": 5
+    },
+    "bonusText": "겨울 인기 +5"
+  }
+]
