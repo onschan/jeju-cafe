@@ -35,6 +35,7 @@ export interface ObjectDef {
   indoor?: true;       // 실내 전용 오브젝트: room 발자국 칸 위에만 놓는다
   fee?: number;        // 시설 이용료 (손님이 순회하며 낸다)
   unlock?: UnlockCond; // v2 시설 해금 조건 (없으면 해금 트리·시작 목록으로만 열린다)
+  unlockText?: string; // 해금 조건 표시 문구 (짓기 탭에서 잠긴 카드에 보여준다)
   category?: FacilityCategory; // v2 시설 분류 (가이드북 해금·심사용)
   buildDays?: number;  // 건설 기간(일). 없거나 0이면 즉시 완공. v2 시설: 소 1·중 3·대 7
 }

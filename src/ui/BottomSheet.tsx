@@ -1,7 +1,7 @@
 import { useState, useRef, type CSSProperties, type PointerEvent as ReactPointerEvent } from 'react';
 import { useGame, dispatch } from './store';
 import { objectAt, isMenuAvailable, hasMenuStaff, menuRequirementText, sceneryScore, boardBadge, clearCost, placeCost, menuOf, priceOf, MENU_SLOT_COUNT } from '../sim/index.ts';
-import { objectDef, cropDef, ingredientDef } from '../data/index.ts';
+import { objectDef, cropDef, ingredientDef, BUILD_GROUPS, buildGroupOf, FACILITIES, type BuildGroup } from '../data/index.ts';
 import { Icon } from './Icon';
 import { StaffPanel } from './StaffPanel';
 import { PromoPanel } from './PromoPanel';
@@ -140,6 +140,43 @@ function BuildCard({ type, on, onPick, onDrag }: { type: string; on: boolean; on
   );
 }
 
+/** 짓기 탭: 카테고리 하위 탭(쉼/편의/먹거리/즐길거리/농사/경관·장식/길·담)으로 묶고, 잠긴 시설은 해금 문구와 함께 흐리게 보여준다 */
+function BuildTabs({ mode, setMode, onDrag }: { mode: Extract<Mode, { kind: 'build' }>; setMode: (m: Mode) => void; onDrag: DragBuild | undefined }) {
+  const s = useGame();
+  const [group, setGroup] = useState<BuildGroup>(() => buildGroupOf(mode.objectType));
+  const unlockedByGroup: Partial<Record<BuildGroup, string[]>> = {};
+  for (const t of s.unlocked.objects) (unlockedByGroup[buildGroupOf(t)] ??= []).push(t);
+  const lockedByGroup: Partial<Record<BuildGroup, (typeof FACILITIES)[number][]>> = {};
+  for (const f of FACILITIES) {
+    if (!f.unlockText || s.unlocked.objects.includes(f.id)) continue;
+    (lockedByGroup[buildGroupOf(f.id)] ??= []).push(f);
+  }
+  const visible = BUILD_GROUPS.filter((g) => (unlockedByGroup[g.key]?.length ?? 0) + (lockedByGroup[g.key]?.length ?? 0) > 0);
+  const active = visible.some((g) => g.key === group) ? group : (visible[0]?.key ?? group);
+  const cards = unlockedByGroup[active] ?? [];
+  const locked = lockedByGroup[active] ?? [];
+  return (
+    <div>
+      <div style={{ marginBottom: 6, display: 'flex', flexWrap: 'wrap' }} data-testid="build-tabs">
+        {visible.map((g) => (
+          <button key={g.key} style={{ ...(active === g.key ? brownBtnOn : brownBtn), padding: '0 10px', fontSize: 14 }} onClick={() => setGroup(g.key)} data-testid={`build-tab-${g.key}`}>{g.label}</button>
+        ))}
+      </div>
+      {cards.map((t) => (
+        <BuildCard key={t} type={t} on={mode.objectType === t} onPick={() => setMode({ kind: 'build', objectType: t })} onDrag={onDrag} />
+      ))}
+      {locked.map((f) => (
+        <div key={f.id} data-testid={`build-locked-${f.id}`} style={{ ...brownBtnOff, cursor: 'default', pointerEvents: 'none', display: 'inline-block' }} aria-disabled="true">
+          🔒 {f.name} · 해금: {f.unlockText}
+        </div>
+      ))}
+      <div style={{ fontSize: 13, color: PALETTE.inkSoft }}>
+        {cards.length > 0 && PAINT_KINDS.has(objectDef(mode.objectType).kind) ? '칸을 누르거나 끌어서 이어 놓아요' : '칸을 누르거나 카드를 맵으로 끌면 고스트가 생겨요. 끌어서 옮기고 ✓로 확정해요. 🏠 = 실내(본관 안)에만'}
+      </div>
+    </div>
+  );
+}
+
 export function BottomSheet({ mode, setMode, place, msg, onGuest, onDragBuild }: {
   mode: Mode; setMode: (m: Mode) => void; place: PlaceBarProps | null; msg: string | null;
   onGuest: (guestId: string) => void; onDragBuild?: DragBuild;
@@ -164,16 +201,7 @@ export function BottomSheet({ mode, setMode, place, msg, onGuest, onDragBuild }:
         {moreOpen && MORE_TABS.map(tabBtn)}
       </div>
 
-      {mode.kind === 'build' && (
-        <div>
-          {s.unlocked.objects.map((t) => (
-            <BuildCard key={t} type={t} on={mode.objectType === t} onPick={() => setMode({ kind: 'build', objectType: t })} onDrag={onDragBuild} />
-          ))}
-          <div style={{ fontSize: 13, color: PALETTE.inkSoft }}>
-            {PAINT_KINDS.has(objectDef(mode.objectType).kind) ? '칸을 누르거나 끌어서 이어 놓아요' : '칸을 누르거나 카드를 맵으로 끌면 고스트가 생겨요. 끌어서 옮기고 ✓로 확정해요. 🏠 = 실내(본관 안)에만'}
-          </div>
-        </div>
-      )}
+      {mode.kind === 'build' && <BuildTabs mode={mode} setMode={setMode} onDrag={onDragBuild} />}
 
       {mode.kind === 'move' && !place && <div style={{ fontSize: 13, color: PALETTE.inkSoft }}>옮길 것을 누르고, 새 자리를 누른 뒤 ✓로 확정해요 (돈은 안 들어요). 보기 모드에서 길게 눌러도 들어 올려져요</div>}
       {mode.kind === 'idle' && !place && <div style={{ fontSize: 13, color: PALETTE.inkSoft }}>칸·손님·직원을 누르면 정보가 보여요. 오브젝트를 길게 누르면 옮길 수 있어요</div>}

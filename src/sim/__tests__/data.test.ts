@@ -1,8 +1,23 @@
 import {
   OBJECTS, CROPS, MENUS, GUEST_TYPES, UNLOCKS, ROLES, INGREDIENTS, SKILLS, NAMES, PROMOTIONS, DIALOGUE, guestDialogue,
-  objectDef, cropDef, menuDef, ingredientDef, roleDef,
+  objectDef, cropDef, menuDef, ingredientDef, roleDef, buildGroupOf,
 } from '../../data/index.ts';
 import { INITIAL_UNLOCKED } from '../../data/index.ts';
+
+test('짓기 탭 카테고리: v1·v2 id 모두 카테고리를 찾는다 (경관·랜드마크·장식은 경관·장식으로 묶는다)', () => {
+  expect(buildGroupOf('table_out')).toBe('rest'); // v1 id, v2 표에서 카테고리를 찾는다
+  expect(buildGroupOf('restroom')).toBe('convenience');
+  expect(buildGroupOf('noodle_shop')).toBe('food');
+  expect(buildGroupOf('souvenir')).toBe('fun');
+  expect(buildGroupOf('field')).toBe('farm');
+  expect(buildGroupOf('canola')).toBe('sceneryDeco'); // v1 경관
+  expect(buildGroupOf('observatory')).toBe('sceneryDeco'); // 랜드마크
+  expect(buildGroupOf('deco_planter')).toBe('sceneryDeco'); // 새 장식 20종
+  expect(buildGroupOf('counter_bar')).toBe('sceneryDeco');
+  expect(buildGroupOf('menu_board')).toBe('sceneryDeco');
+  expect(buildGroupOf('path')).toBe('pathWall');
+  expect(buildGroupOf('stonewall')).toBe('pathWall');
+});
 
 test('모든 메뉴 재료는 존재하는 작물이거나 재료다', () => {
   for (const m of MENUS) {

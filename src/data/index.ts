@@ -183,7 +183,10 @@ export const GUEST_CHAINS: GuestChainDef[] = (chainsJson as GuestChainDef[]).map
 /** 실내 바닥이 있는 건물(방): 발자국 위에 indoor 오브젝트를 놓고 손님이 문(정면 왼쪽)으로 드나든다 */
 export const ROOM_IDS = new Set(['warehouse', 'kitchen_ext', 'gallery', 'restroom', 'pottery_studio', 'vinyl_house_room', 'tangerine_hall']);
 /** 실내 전용 오브젝트 (방 바닥 위에만) */
-export const INDOOR_IDS = new Set(['table_in', 'counter', 'sofa', 'bookshelf', 'vending', 'roaster']);
+export const INDOOR_IDS = new Set([
+  'table_in', 'counter', 'sofa', 'bookshelf', 'vending', 'roaster',
+  'deco_chalkboard', 'deco_cake_case', 'deco_coffee_machine', 'deco_lp_shelf', 'deco_bookshelf_small', 'deco_umbrella_stand', 'counter_bar', 'menu_board',
+]);
 /** 좌석 수: 소형 2, 중형 4, 대형 6 */
 const SEATS_BY_TIER: Record<string, number> = { small: 2, medium: 4, large: 6 };
 /** 건설 기간: 소 1일·중 3일·대 7일 (표에 buildDays가 있으면 그것) */
@@ -192,7 +195,7 @@ const FACILITY_CATEGORIES = new Set<FacilityCategory>(['rest', 'convenience', 'f
 type RawFacility = {
   id: string; name: string; category: string; tier: string; w: number; h: number; cost: number; upkeep: number; buildDays?: number;
   popularity: number; feePct: number | null; fee: number | null; scenery: number; noise: number;
-  seasonBonus: Record<string, number>; unlock: Record<string, unknown>; description: string | null;
+  seasonBonus: Record<string, number>; unlock: Record<string, unknown>; unlockText?: string; description: string | null;
 };
 /** v2 시설 표 → ObjectDef. 쉼 → seat, 편의·먹거리·즐길거리·농사 → facility, 경관 → deco, 랜드마크 → landmark. 방은 building. */
 export function adaptFacility(r: RawFacility): ObjectDef {
@@ -212,6 +215,7 @@ export function adaptFacility(r: RawFacility): ObjectDef {
   if (Object.keys(season).length > 0) def.seasonScenery = season;
   if (room) def.room = true;
   if (INDOOR_IDS.has(r.id)) def.indoor = true;
+  if (typeof r.unlockText === 'string') def.unlockText = r.unlockText;
   return def;
 }
 const BASE_OBJECTS: ObjectDef[] = [...(objectsJson as ObjectDef[]), ...TERRAIN_OBJECTS, ...LANDMARKS].map((o) => (ROOM_IDS.has(o.id) ? { ...o, room: true as const } : o));
@@ -221,6 +225,27 @@ export const FACILITIES: ObjectDef[] = (facilitiesJson as unknown as RawFacility
 /** 시작부터 열려 있는 v2 시설 */
 export const FACILITY_START_IDS: string[] = FACILITIES.filter((f) => f.unlock?.type === 'start').map((f) => f.id);
 export const OBJECTS: ObjectDef[] = [...BASE_OBJECTS, ...FACILITIES];
+
+// ---------- 짓기 탭 카테고리 (v1·v2 오브젝트를 한 목록에서 묶어 보여준다) ----------
+/** id → v2 시설 카테고리. v1과 id가 겹치는 것(table_out 등)도 v2 표엔 카테고리가 있어서 여기서 찾을 수 있다. */
+const FACILITY_CATEGORY_BY_ID: Record<string, FacilityCategory> = {};
+for (const r of facilitiesJson as unknown as RawFacility[]) {
+  if (FACILITY_CATEGORIES.has(r.category as FacilityCategory)) FACILITY_CATEGORY_BY_ID[r.id] = r.category as FacilityCategory;
+}
+/** 짓기 탭 하위 탭 7종 */
+export type BuildGroup = 'rest' | 'convenience' | 'food' | 'fun' | 'farm' | 'sceneryDeco' | 'pathWall';
+export const BUILD_GROUPS: { key: BuildGroup; label: string }[] = [
+  { key: 'rest', label: '쉼' }, { key: 'convenience', label: '편의' }, { key: 'food', label: '먹거리' },
+  { key: 'fun', label: '즐길거리' }, { key: 'farm', label: '농사' }, { key: 'sceneryDeco', label: '경관·장식' }, { key: 'pathWall', label: '길·담' },
+];
+/** 오브젝트 하나가 짓기 탭 어느 하위 탭에 속하는지. 길·담 타일은 카테고리가 없어 kind로 가른다. 경관·랜드마크·미분류는 경관·장식으로 묶는다. */
+export function buildGroupOf(id: string): BuildGroup {
+  const def = objectDef(id);
+  if (def.kind === 'path' || def.kind === 'wall' || def.kind === 'gate') return 'pathWall';
+  const cat = FACILITY_CATEGORY_BY_ID[id] ?? def.category;
+  if (cat === 'rest' || cat === 'convenience' || cat === 'food' || cat === 'fun' || cat === 'farm') return cat;
+  return 'sceneryDeco';
+}
 
 // ---------- 부탁 103 ----------
 type RawQuest = { id: string; guestId: string; description: string; condition: { type: string; params?: Record<string, unknown> }; rewards: Record<string, unknown>[]; rewardText: string | null; unlockGuestId: string | null };

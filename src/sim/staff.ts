@@ -15,7 +15,7 @@ export const MAX_STAT = 99;
 export const ENERGY_PER_HOUR = 2;       // 배치된 직원 시간당 기력 소모 (하루 18h = −36, 밤 +40)
 export const LOW_ENERGY = 30;          // 미만이면 효과 절반
 export const NIGHT_ENERGY_RECOVERY = 40;
-export const NOTICE_CAP = 10;
+export const NOTICE_CAP = 30; // 한 번에 여러 시설이 같은 랭크·★에서 열릴 수 있어 여유 있게 (예: ★2 시설 11개)
 export { WAREHOUSE_FRONT };
 export const STAT_KEYS: StatKey[] = ['stamina', 'strength', 'skill', 'smile'];
 export const STAT_NAME: Record<StatKey, string> = { stamina: '체력', strength: '힘', skill: '기술', smile: '미소' };

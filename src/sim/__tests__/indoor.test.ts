@@ -73,6 +73,25 @@ test('실내 오브젝트는 방 바닥 위에만, 문 칸엔 못 놓고, 바깥
   expect(isRoomFloor(s, X(4), Y(1))).toBe(true);
 });
 
+test('장식 22종: 마당 장식(deco_planter)은 밖에, 실내 장식(deco_cake_case)은 폐창고 안에만 놓는다', () => {
+  const s = createInitialState(1);
+  const wh = warehouse(s);
+  s.unlocked.objects.push('deco_planter', 'deco_cake_case', 'counter_bar');
+  expect(objectDef('deco_planter').indoor).toBeUndefined();
+  expect(objectDef('deco_cake_case').indoor).toBe(true);
+  // 마당 장식: 빈 마당 칸엔 놓을 수 있고, 방 바닥엔 못 놓는다(이미 방이 그 칸을 차지)
+  expect(canPlace(s, 'deco_planter', X(0), Y(0)).ok).toBe(true);
+  expect(canPlace(s, 'deco_planter', X(4), Y(1)).reason).toBe('이미 뭔가 있어요');
+  // 실내 장식: 마당엔 못 놓고, 폐창고 방 바닥엔 놓을 수 있다
+  expect(canPlace(s, 'deco_cake_case', X(0), Y(0)).reason).toBe('실내에만 놓을 수 있어요');
+  expect(canPlace(s, 'deco_cake_case', X(4), Y(1)).ok).toBe(true);
+  placeObject(s, 'deco_cake_case', X(4), Y(1));
+  expect(objectsInRoom(s, wh.id).map((o) => o.type)).toEqual(['deco_cake_case']);
+  // 2×1 카운터 바도 실내 전용, 한 방 안에 다 들어가야 한다
+  expect(canPlace(s, 'counter_bar', X(4), Y(2)).ok).toBe(true);
+  expect(canPlace(s, 'counter_bar', X(5), Y(2)).ok).toBe(false);
+});
+
 test('가구가 든 방은 못 옮기고 못 치운다; 실내 오브젝트 move는 방 안에서만', () => {
   const s = createInitialState(1);
   s.money = 1e9;

@@ -370,7 +370,7 @@ class V2Integration(unittest.TestCase):
     def test_counts(self):
         d = self.data
         expected = {
-            'facilities': 87, 'guests': 103, 'quests': 103, 'combos': 45, 'sets': 14, 'spots': 24,
+            'facilities': 109, 'guests': 103, 'quests': 103, 'combos': 45, 'sets': 14, 'spots': 24,
             'staff_pool': 27, 'recruit_tiers': 5, 'uniforms': 5, 'items': 20, 'special_items': 12,
             'mileage_shop': 14, 'ticket_shop': 8, 'guidebooks': 11, 'events': 42, 'scenery_seasons': 12,
             'extra_menus': 15, 'guest_chains': 30,
@@ -396,11 +396,15 @@ class V2Integration(unittest.TestCase):
         self.assertEqual(f['fire_pit']['seasonBonus'], {'autumn': 4, 'winter': 4})
         self.assertEqual((f['rooftop']['w'], f['rooftop']['h'], f['rooftop']['tier']), (2, 2, 'large'))
         self.assertEqual(f['restroom']['scenery'], -1)
+        self.assertEqual((f['deco_planter']['category'], f['deco_planter']['unlock']), ('scenery', {'type': 'start'}))
+        self.assertEqual((f['counter_bar']['w'], f['counter_bar']['h']), (2, 1))
+        self.assertEqual(f['deco_cake_case']['unlock'], {'type': 'star', 'star': 2})
+        self.assertEqual(f['deco_string_lights']['unlock'], {'type': 'rank', 'rank': 2})
         self.assertEqual(f['warehouse']['cost'], 0)
         cats = {}
         for x in self.data['facilities']:
             cats[x['category']] = cats.get(x['category'], 0) + 1
-        self.assertEqual(cats, {'rest': 18, 'convenience': 14, 'fun': 14, 'scenery': 14, 'food': 11, 'landmark': 9, 'farm': 7})
+        self.assertEqual(cats, {'rest': 18, 'convenience': 14, 'fun': 14, 'scenery': 36, 'food': 11, 'landmark': 9, 'farm': 7})
 
     def test_guest_fields(self):
         g = {x['id']: x for x in self.data['guests']}
