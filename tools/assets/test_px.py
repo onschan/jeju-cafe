@@ -83,5 +83,40 @@ class TestSheet(unittest.TestCase):
         cs = contact_sheet(sprites, cols=2, scale=2)
         self.assertEqual(cs.w, (32 + 4) * 2 * 2)
 
+from synth import Synth, note_hz, write_wav, SR
+import wave
+
+class TestSynth(unittest.TestCase):
+    def test_note_hz(self):
+        self.assertAlmostEqual(note_hz('A4'), 440.0, places=3)
+        self.assertAlmostEqual(note_hz('C4'), 261.626, places=2)
+        self.assertAlmostEqual(note_hz('F#5'), 739.989, places=2)
+
+    def test_tone_length_and_range(self):
+        s = Synth()
+        buf = s.tone('A4', 0.25, wave='square', vol=0.5, env=(0.01, 0.05, 0.6, 0.1))
+        self.assertEqual(len(buf), int(SR * 0.25))
+        self.assertTrue(all(-1.0 <= v <= 1.0 for v in buf))
+        self.assertTrue(max(buf) > 0.2)
+
+    def test_mix_and_wav(self):
+        s = Synth()
+        a = s.tone('C4', 0.1); b = s.tone('E4', 0.1)
+        m = s.mix([(a, 0.0), (b, 0.05)])
+        self.assertEqual(len(m), int(SR * 0.15))
+        with tempfile.TemporaryDirectory() as d:
+            p = os.path.join(d, 't.wav'); write_wav(p, m)
+            with wave.open(p) as w:
+                self.assertEqual(w.getframerate(), SR)
+                self.assertEqual(w.getnchannels(), 1)
+                self.assertEqual(w.getnframes(), len(m))
+
+    def test_noise_and_slide(self):
+        s = Synth()
+        n = s.noise(0.1, vol=0.3)
+        self.assertEqual(len(n), int(SR * 0.1))
+        sl = s.slide('C4', 'C5', 0.2, wave='triangle')
+        self.assertEqual(len(sl), int(SR * 0.2))
+
 if __name__ == '__main__':
     unittest.main()
