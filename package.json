@@ -10,7 +10,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "headless": "tsx scripts/headless.ts",
-    "assets": "python3 tools/assets/build.py"
+    "assets": "python3 tools/assets/build.py",
+    "assets:audio": "python3 tools/assets/sfx.py && python3 tools/assets/bgm.py"
   },
   "dependencies": {
     "pixi.js": "^8.6.0",
