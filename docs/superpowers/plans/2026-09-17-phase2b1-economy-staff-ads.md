@@ -522,3 +522,39 @@ test('봇이 1년차 12달 모두 순이익 > 0', () => {
 - 공고→후보 3~5명(랜덤, seed 결정적)→채용→배치→월급 차감→효과(조리 시간·만족·자동 농사·채집·할인)가 전부 보임.
 - 광고 2개 동시, 만료, 유튜버 확률.
 - 직원이 파츠 조합 스프라이트로 격자 위를 걷는다.
+
+---
+
+## v2 추가 사항 (스펙 v2 반영 — 각 Task에 합쳐서 구현한다)
+
+### Task 1에 추가
+- `ObjectDef.upkeep`(월 유지비, 기본 0; table_out 200, field 100, tangerine_tree 300, stonewall 50, path 0). `objects.json` 갱신.
+- `Clock.hour`(6~24 정수) 추가. `HOUR_MS = 200`, 하루 = 18시간 → `DAY_MS = 3600`(clock.ts의 `DAY_MS`를 `18 * HOUR_MS`로 정의). `advanceClock`은 시간 단위로 진행하고 `hour`가 24를 넘으면 다음 날 6시. 반환값은 지난 **시간 수**가 아니라 지난 **일 수**를 유지(호출자 호환). 새로 `advanceClock` 테스트: 18시간에 하루, `hour` 6→24 순환.
+- `Staff.energy`(0~100), `GameState.segmentPopularity: Record<guestType, number>`(초기: local 30, tourist 20, 나머지 0), `GameState.notices: string[]`.
+- `Guest.moodReason: 'no_menu' | 'scenery' | 'wait' | 'price' | null`, `Guest.say: string | null`.
+- `src/data/dialogue.json`: `{ guest: { [type]: { happy: string[], meh: { no_menu: string[], scenery: string[], wait: string[] } } } }` — 손님층별 각 5개. 초등 어휘, 삼춘은 방언 한 마디.
+- `src/data/promotions.json`(ads.json 대신): `{ id, name, costResearch, costMoney, energy, months, segmentDelta: Record<type, number>, allDelta?, special?: 'youtuber' | 'parttime' }` — 전단 돌리기(연구5, 기력20, local+3 family+3), SNS 포스팅(연구10, 기력15, tourist+5, popularity+5), 전봇대 광고(연구20, 기력10, all+3, 1개월), 라디오 출연(돈50000, 기력30, all+5, 2개월), 유튜버 초대(돈100000, 기력40, special youtuber), 아르바이트(기력40, special parttime → 돈 +4000).
+
+### Task 2에 추가
+- `closeMonth` 앞에 `upkeep(state)`: 오브젝트 유지비 합을 차감하고 `monthCosts.upkeep`에 기록. 카드에 `costs.upkeep` 항목.
+
+### Task 3에 추가
+- `levelUp` 액션은 `{ type: 'levelUp'; staffId; stat: StatKey }` — 고른 스탯만 +5~+9, 비용 = `현재 스탯값 × 10` 연구P(HSS2식). 테스트 갱신.
+- 기력: 배치된 직원은 시간당 −1(밤 24시→6시 사이 +40 회복). 기력 < 30이면 효과 절반. `moveStaff`는 기력 0이면 창고 앞에 서 있음.
+- 고용은 sim에선 즉시, UI에서 "○○ 씨를 고용합니다 네/아니요" 확인 팝업(Task 9).
+
+### Task 4에 추가
+- `resolveMood`에서 이유를 `moodReason`에 기록하고, `nextRandom < 0.3`이면 `dialogue.json`에서 대사를 골라 `say`에 넣는다(happy도 30%). 렌더는 `say`가 있으면 표정 말풍선 대신 텍스트 말풍선(Galmuri 11px, 최대 12자, 2초 뒤 사라짐 — 렌더 전용 타이머).
+- 손님 스폰 시간대: `dailyGuestCount`를 하루에 걸쳐 분산 — 매 시간 `spawnGuests(state, 시간대 가중치 × count/18)`(소수 누적). 시간대 가중치: 6~9시 local 2×, 11~17시 tourist 2×, 18시 이후 절반. 정오 피크.
+
+### Task 5 = 홍보 활동 (광고 대체)
+- 액션 `{ type: 'promote'; staffId; promotionId }`: 직원 기력·연구P/돈 확인 → 차감 → `segmentPopularity` 즉시 반영(1회성) 또는 `activePromotions`(기간형) 등록. `parttime`은 돈 +4000. 유튜버 60%.
+- 손님 스폰 가중치 = `GUEST_TYPES.weight × (1 + segmentPopularity/50) × 활성 기간형 배수`. 인기는 매월 −2 자연 감소(0 하한).
+- 타깃 손님층 `state.targetSegment: string | null` — `setTarget` 액션. 타깃이면 홍보 효과 ×1.5.
+- 테스트는 ads.test → promotions.test로: 기력 부족 거부, 연구/돈 차감, 인기 상승, 기간 만료, 파트타임 돈, 유튜버 확률.
+
+### Task 9에 추가
+- 홍보 패널: 직원 선택(기력 바) → 활동 목록(비용·효과) → 실행. 손님층 8개의 인기 바 + 타깃 지정.
+- 확인 팝업 컴포넌트 `Confirm.tsx`("네/아니요", 갈색 프레임) — 고용·해고·홍보(돈 드는 것)에 사용.
+- HUD에 `AM/PM h:00` 표시, 밤(18시~)엔 캔버스 위 어두운 오버레이(간단한 반투명 레이어, 조명 스프라이트는 2B-3).
+- 오브젝트 정보 패널(CellPanel)에 유지비·경치·인접 콤보 표시.
