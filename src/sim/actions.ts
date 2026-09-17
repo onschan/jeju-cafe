@@ -4,6 +4,7 @@ import { canPlace, placeObject, removeObject, footprint } from './grid.ts';
 import { canPlant, plant, canHarvest, harvest } from './farm.ts';
 import { canSetSlot, setSlot } from './menu.ts';
 import { canUnlock, unlock } from './progress.ts';
+import { canPostJob, postJob, canHire, hire, canFire, fire, canAssign, assign, canLevelUp, levelUp } from './staff.ts';
 
 export const PROTECTED_TYPES = new Set(['busstop', 'warehouse', 'gate']);
 const ACTION_LOG_CAP = 1000;
@@ -76,7 +77,37 @@ function applyInner(state: GameState, a: Action): ApplyResult {
     case 'dismissMonthCard':
       state.lastMonthCard = null;
       return { ok: true };
-    // postJob·hire·fire·assign·levelUp·promote: staff.ts/ads.ts에서 구현 (Task 3·5)
+    case 'postJob': {
+      const c = canPostJob(state, a.tier);
+      if (!c.ok) return c;
+      postJob(state, a.tier);
+      return { ok: true };
+    }
+    case 'hire': {
+      const c = canHire(state, a.candidateId, a.role);
+      if (!c.ok) return c;
+      hire(state, a.candidateId, a.role);
+      return { ok: true };
+    }
+    case 'fire': {
+      const c = canFire(state, a.staffId);
+      if (!c.ok) return c;
+      fire(state, a.staffId);
+      return { ok: true };
+    }
+    case 'assign': {
+      const c = canAssign(state, a.staffId, a.role);
+      if (!c.ok) return c;
+      assign(state, a.staffId, a.role);
+      return { ok: true };
+    }
+    case 'levelUp': {
+      const c = canLevelUp(state, a.staffId, a.stat);
+      if (!c.ok) return c;
+      levelUp(state, a.staffId, a.stat);
+      return { ok: true };
+    }
+    // promote: promotions.ts에서 구현 (Task 5)
     default:
       return { ok: false, reason: '아직 구현 안 됨' };
   }

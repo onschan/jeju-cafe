@@ -1,31 +1,47 @@
 import type { GameState } from './types.ts';
-import { advanceClock } from './clock.ts';
+import { advanceClock, END_HOUR, START_HOUR } from './clock.ts';
 import { growOneDay } from './farm.ts';
 import { spawnGuests, updateGuests } from './guests.ts';
 import { upkeep, closeMonth } from './economy.ts';
+import { payroll, expireCandidates, hourlyEnergy, nightlyRecovery, moveStaff } from './staff.ts';
 
 export const STEP_MS = 100;        // 고정 스텝 (게임 ms)
 export const DAILY_SPAWN_CAP = 3;
 const MAX_STEPS_PER_TICK = 600;    // 백그라운드 복귀 등 폭주 방지 (60초 게임 시간)
+const HOURS_PER_DAY = END_HOUR - START_HOUR;
+
+/** 시간이 한 칸 지날 때마다 (새 시각 = state.clock.hour) */
+function onNewHour(state: GameState): void {
+  hourlyEnergy(state);
+}
 
 function onNewDay(state: GameState): void {
+  nightlyRecovery(state);
   growOneDay(state);
   spawnGuests(state, DAILY_SPAWN_CAP);
 }
 
+/** 월 바뀜: 월급 → 유지비 → 정산 → 후보 만료 */
 function onNewMonth(state: GameState, prevMonth: number, prevYear: number): void {
+  payroll(state);
   upkeep(state);
   closeMonth(state, prevMonth, prevYear);
+  expireCandidates(state);
 }
 
 /** 고정 스텝 하나. 결정적. 리플레이는 이 함수만 호출한다. */
 export function step(state: GameState): void {
   const prevMonth = state.clock.month;
   const prevYear = state.clock.year;
+  const prevHour = state.clock.hour;
   const days = advanceClock(state, STEP_MS);
+  const hours = days * HOURS_PER_DAY + (state.clock.hour - prevHour);
+  // 스텝(100ms) < 시간(200ms)이라 한 스텝에 시간은 최대 한 칸 지난다. 날이 바뀌는 시각이면 하루 처리 뒤 시간 처리.
+  for (let i = 0; i < hours; i++) onNewHour(state);
   for (let i = 0; i < days; i++) onNewDay(state);
   if (state.clock.month !== prevMonth) onNewMonth(state, prevMonth, prevYear);
   updateGuests(state, STEP_MS);
+  moveStaff(state, STEP_MS);
   state.tick++;
 }
 

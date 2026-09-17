@@ -94,8 +94,9 @@ export interface Staff {
   y: number;
   path: Pt[];
   anchor: Pt | null; // 렌더·이동용
+  waitMs: number;    // 다음 산책까지 대기
 }
-export interface Candidate extends Omit<Staff, 'role' | 'unpaidMonths' | 'energy' | 'x' | 'y' | 'path' | 'anchor'> {
+export interface Candidate extends Omit<Staff, 'role' | 'unpaidMonths' | 'energy' | 'x' | 'y' | 'path' | 'anchor' | 'waitMs'> {
   expiresMonthIndex: number;
 }
 
@@ -218,7 +219,7 @@ export type Action =
   | { type: 'hire'; candidateId: string; role: RoleId }
   | { type: 'fire'; staffId: string }
   | { type: 'assign'; staffId: string; role: RoleId | null }
-  | { type: 'levelUp'; staffId: string }
+  | { type: 'levelUp'; staffId: string; stat: StatKey }
   | { type: 'promote'; staffId: string; promotionId: string };
 
 export interface ApplyResult { ok: boolean; reason?: string }

@@ -63,7 +63,8 @@ export function spawnGuests(state: GameState, n: number): number {
   return spawned;
 }
 
-function moveAlong(g: Guest, dtMs: number): boolean {
+/** 경로를 따라 걷는다. 손님·직원 공용. 목적지에 닿으면 true. */
+export function moveAlong(g: { x: number; y: number; path: Pt[] }, dtMs: number): boolean {
   let budget = (dtMs / 1000) * GUEST_SPEED_CELLS_PER_S;
   while (budget > 0 && g.path.length) {
     const next = g.path[0]!;
