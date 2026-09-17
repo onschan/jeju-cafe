@@ -52,7 +52,7 @@ test('채용: 슬롯이 있어야 하고, 역할이 해금돼야 하고, 후보�
   const s = createInitialState(1);
   apply(s, { type: 'postJob', tier: 'flyer' });
   const c = s.candidates[0]!;
-  expect(canHire(s, c.id, 'gather').ok).toBe(false); // 미해금 역할
+  expect(canHire(s, c.id, 'carry').ok).toBe(false); // 미해금 역할
   expect(apply(s, { type: 'hire', candidateId: c.id, role: 'hall' }).ok).toBe(true);
   expect(s.staff.length).toBe(1); expect(s.staff[0]!.role).toBe('hall'); expect(s.candidates.length).toBe(2);
   expect(s.staff[0]!.energy).toBe(100);
@@ -91,7 +91,7 @@ test('assign·fire·levelUp(스탯 선택, 비용 = 스탯×10)', () => {
   const { s, st } = hired();
   expect(apply(s, { type: 'assign', staffId: st.id, role: 'barista' }).ok).toBe(true);
   expect(st.role).toBe('barista');
-  expect(apply(s, { type: 'assign', staffId: st.id, role: 'gather' }).ok).toBe(false); // 미해금
+  expect(apply(s, { type: 'assign', staffId: st.id, role: 'carry' }).ok).toBe(false); // 미해금
   expect(apply(s, { type: 'assign', staffId: st.id, role: null }).ok).toBe(true);
   const before = { ...st.stats };
   const cost = before.service * 10;
@@ -251,14 +251,3 @@ test('밭 일꾼은 철이 아니면 안 심는다', () => {
   expect(Object.values(s.objects).find((o) => o.type === 'field')!.crop).toBeNull();
 });
 
-test('채취꾼은 하루 한 번 확률로 farm 재료를 가져온다', () => {
-  const s = createInitialState(5); s.unlocked.roles.push('gather'); s.slots.gather = 1;
-  s.staff.push(staffWith({ stamina: 80 }, 'gather'));
-  for (let i = 0; i < 30; i++) tick(s, DAY_MS);
-  const got = (s.storage['carrot'] ?? 0) + (s.storage['tangerine'] ?? 0);
-  expect(got).toBeGreaterThan(0);
-  expect(got).toBeLessThanOrEqual(60);
-  const s2 = createInitialState(5);
-  for (let i = 0; i < 30; i++) tick(s2, DAY_MS);
-  expect((s2.storage['carrot'] ?? 0) + (s2.storage['tangerine'] ?? 0)).toBe(0);
-});

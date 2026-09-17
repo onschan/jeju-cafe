@@ -8,7 +8,7 @@ import { roleEffect, skillTotal } from './staff.ts';
 import { START_HOUR, END_HOUR } from './clock.ts';
 
 export const GUEST_SPEED_CELLS_PER_S = 3;
-export const SEAT_MS = 4000;
+export const SEAT_MS = 6000;       // 기분이 정해진 뒤 앉아 있는 시간 (≈3시간)
 export const PREP_MS = 5000;       // 직원 없을 때 조리 시간
 export const MAX_PREP_CUT = 0.6;   // 직원 효과로 줄일 수 있는 최대 비율
 export const MAX_SPEED_SKILL = 0.5;

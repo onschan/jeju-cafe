@@ -3,6 +3,7 @@ import { apply } from '../actions.ts';
 import { setSlot } from '../menu.ts';
 import { tick } from '../tick.ts';
 import { DAY_MS } from '../clock.ts';
+import { dailyGuestCount } from '../guests.ts';
 
 function cafe() {
   const s = createInitialState(1);
@@ -18,10 +19,18 @@ test('하루가 지나면 손님이 온다', () => {
   expect(s.guests.length).toBeGreaterThan(0);
 });
 
-test('테이블 1개(2석)면 하루에 2명까지만 온다', () => {
+test('테이블 1개(2석)면 동시에 2명까지, 하루 총원은 dailyGuestCount 이하', () => {
   const s = cafe();
-  tick(s, DAY_MS);
-  expect(s.guests.length).toBe(2);
+  const ids = new Set<string>();
+  let maxAtOnce = 0;
+  for (let i = 0; i < 18; i++) {
+    tick(s, DAY_MS / 18);
+    for (const g of s.guests) ids.add(g.id);
+    maxAtOnce = Math.max(maxAtOnce, s.guests.filter((g) => g.phase !== 'leaving').length);
+  }
+  expect(maxAtOnce).toBe(2);
+  expect(ids.size).toBeGreaterThanOrEqual(2);
+  expect(ids.size).toBeLessThanOrEqual(dailyGuestCount(s));
 });
 
 test('한 달 지나면 정산 카드가 생기고 월 누적이 리셋된다', () => {

@@ -7,7 +7,7 @@ import { DAY_MS } from '../clock.ts';
 
 test('bought 재료 메뉴는 창고 없이도 available, 팔면 재료비가 빠진다', () => {
   const s = createInitialState(1);
-  expect(isMenuAvailable(s, 'latte')).toBe(true);
+  expect(isMenuAvailable(s, 'americano')).toBe(true);
   expect(ingredientCost(s, 'latte')).toBe(1100);
   const m0 = s.money;
   consumeIngredients(s, 'latte');

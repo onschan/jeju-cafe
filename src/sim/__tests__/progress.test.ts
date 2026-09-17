@@ -22,7 +22,8 @@ test('slot·role 종류 해금은 slots·unlocked.roles에 반영된다', () => 
   expect(s.slots.barista).toBe(2);
   expect(s.slots.field).toBe(2);
   expect(s.slots.cook).toBe(2);
-  expect(s.unlocked.roles).toEqual(expect.arrayContaining(['gather', 'carry']));
+  expect(s.unlocked.roles).toEqual(expect.arrayContaining(['carry']));
+  expect(s.unlocked.roles).not.toContain('guide');
 });
 
 test('다 열면 null', () => {

@@ -1,5 +1,6 @@
 import { createInitialState } from '../state.ts';
-import { canSetSlot, setSlot, isMenuAvailable, availableMenus, consumeIngredients } from '../menu.ts';
+import { canSetSlot, setSlot, isMenuAvailable, availableMenus, consumeIngredients, menuRequirementText } from '../menu.ts';
+import { apply } from '../actions.ts';
 
 test('해금된 메뉴만 슬롯에 올릴 수 있다', () => {
   const s = createInitialState(1);
@@ -34,4 +35,21 @@ test('같은 메뉴를 두 칸에 올릴 수 없다', () => {
   setSlot(s, 0, 'americano');
   expect(canSetSlot(s, 1, 'americano').ok).toBe(false);
   expect(canSetSlot(s, 0, 'americano').ok).toBe(true); // 같은 칸 재설정은 허용
+});
+
+test('직원 조건: 라떼는 바리스타가 배치돼 있어야 available, 빼면 다시 안 됨', () => {
+  const s = createInitialState(1);
+  expect(isMenuAvailable(s, 'americano')).toBe(true);
+  expect(isMenuAvailable(s, 'latte')).toBe(false);
+  expect(menuRequirementText('latte')).toBe('바리스타 필요');
+  expect(menuRequirementText('americano')).toBeNull();
+  apply(s, { type: 'postJob', tier: 'flyer' });
+  apply(s, { type: 'hire', candidateId: s.candidates[0]!.id, role: 'barista' });
+  expect(isMenuAvailable(s, 'latte')).toBe(true);
+  expect(isMenuAvailable(s, 'scone')).toBe(false); // 요리사 필요
+  s.staff[0]!.energy = 0;
+  expect(isMenuAvailable(s, 'latte')).toBe(false); // 기력 0
+  s.staff[0]!.energy = 50;
+  apply(s, { type: 'assign', staffId: s.staff[0]!.id, role: null });
+  expect(isMenuAvailable(s, 'latte')).toBe(false);
 });

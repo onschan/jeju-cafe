@@ -1,9 +1,8 @@
 [
-  { "id": "barista", "name": "바리스타", "stat": "sense", "unlockedAtStart": true },
-  { "id": "cook", "name": "요리사", "stat": "cooking", "unlockedAtStart": true },
-  { "id": "hall", "name": "홀", "stat": "service", "unlockedAtStart": true },
-  { "id": "field", "name": "밭 일꾼", "stat": "stamina", "unlockedAtStart": true },
-  { "id": "gather", "name": "채취꾼", "stat": "stamina", "unlockedAtStart": false },
-  { "id": "carry", "name": "운반", "stat": "stamina", "unlockedAtStart": false },
-  { "id": "guide", "name": "안내", "stat": "service", "unlockedAtStart": false }
+  {"id": "barista", "name": "바리스타", "stat": "sense", "unlockedAtStart": true},
+  {"id": "cook", "name": "요리사", "stat": "cooking", "unlockedAtStart": true},
+  {"id": "hall", "name": "홀", "stat": "service", "unlockedAtStart": true},
+  {"id": "field", "name": "밭 일꾼", "stat": "stamina", "unlockedAtStart": true},
+  {"id": "carry", "name": "운반", "stat": "stamina", "unlockedAtStart": false},
+  {"id": "guide", "name": "안내", "stat": "service", "unlockedAtStart": false}
 ]

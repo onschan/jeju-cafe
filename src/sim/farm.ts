@@ -1,10 +1,7 @@
 import type { GameState, ApplyResult, CropDef } from './types.ts';
-import { objectDef, cropDef, INGREDIENTS } from '../data/index.ts';
+import { objectDef, cropDef } from '../data/index.ts';
 import { isSheltered } from './grid.ts';
-import { staffInRole, skillTotal, energyFactor } from './staff.ts';
-import { nextRandom, randInt, pickWeighted } from './rng.ts';
-
-export const GATHER_BASE = 0.3; // §19 채집 성공 = 30% + 체력/200 + 행운
+import { staffInRole, energyFactor } from './staff.ts';
 
 /** 수확 창이 해를 넘기면(11,12,1) 1월은 전년도 창에 속한다. */
 export function harvestSeasonYear(crop: CropDef, month: number, year: number): number {
@@ -99,14 +96,3 @@ export function staffFarmWork(state: GameState): void {
   }
 }
 
-/** 매일: 채취꾼마다 확률로 farm 재료 1~2개를 창고에 넣는다. */
-export function gatherWork(state: GameState): void {
-  const farmIngredients = INGREDIENTS.filter((i) => i.kind === 'farm');
-  for (const st of staffInRole(state, 'gather')) {
-    const p = (GATHER_BASE + st.stats.stamina / 200 + skillTotal({ ...state, staff: [st] }, 'luck')) * energyFactor(st);
-    if (nextRandom(state) >= p) continue;
-    const ing = pickWeighted(state, farmIngredients, () => 1);
-    if (!ing) continue;
-    state.storage[ing.id] = (state.storage[ing.id] ?? 0) + randInt(state, 1, 2);
-  }
-}

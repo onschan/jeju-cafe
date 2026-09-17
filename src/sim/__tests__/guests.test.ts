@@ -3,7 +3,7 @@ import { placeObject } from '../grid.ts';
 import { setSlot } from '../menu.ts';
 import { spawnGuests, updateGuests, freeSeats, hasReachableSeat, dailyGuestCount, hourShare, typeWeight, GUEST_SPEED_CELLS_PER_S, SEAT_MS, PREP_MS } from '../guests.ts';
 import { tick } from '../tick.ts';
-import { DAY_MS, START_HOUR, END_HOUR } from '../clock.ts';
+import { HOUR_MS, START_HOUR, END_HOUR } from '../clock.ts';
 import { DIALOGUE } from '../../data/index.ts';
 
 /** 정낭(4,6) 바로 위 (4,5)에 테이블 → 정낭이 테이블의 걷기 이웃 */
@@ -170,7 +170,7 @@ test('손님은 하루에 걸쳐 시간마다 나뉘어 오고, 하루 합은 da
   const ids = new Set<string>();
   const firstHourIds: string[] = [];
   for (let h = 0; h < 18; h++) {
-    tick(s, 200);
+    tick(s, HOUR_MS);
     for (const g of s.guests) ids.add(g.id);
     if (h === 0) firstHourIds.push(...s.guests.map((g) => g.id));
   }

@@ -54,7 +54,7 @@ export function createInitialState(seed: number, playerId = 'local', createdAt =
     },
     staff: [],
     candidates: [],
-    slots: { barista: 1, cook: 1, hall: 2, field: 1, gather: 0, carry: 0, guide: 0 },
+    slots: { barista: 1, cook: 1, hall: 2, field: 1, carry: 0, guide: 0 },
     activePromotions: [],
     youtuberBoostMonths: 0,
     segmentPopularity: { local: 30, tourist: 20 },

@@ -37,6 +37,7 @@ export interface MenuDef {
   category: MenuCategory;
   price: number;
   ingredients: Record<string, number>; // ingredientId → 개수
+  requires?: { role?: RoleId; skill?: string }; // 배치된 직원(기력>0)이 조건을 만족해야 만들 수 있다
 }
 
 export interface GuestTypeDef {
@@ -59,7 +60,7 @@ export interface UnlockDef {
 export type IngredientKind = 'bought' | 'farm';
 export interface IngredientDef { id: string; name: string; kind: IngredientKind; cost: number } // cost: bought만 의미
 
-export type RoleId = 'barista' | 'cook' | 'hall' | 'field' | 'gather' | 'carry' | 'guide';
+export type RoleId = 'barista' | 'cook' | 'hall' | 'field' | 'carry' | 'guide';
 export type StatKey = 'service' | 'cooking' | 'sense' | 'stamina';
 export interface RoleDef { id: RoleId; name: string; stat: StatKey; unlockedAtStart: boolean }
 

@@ -5,7 +5,7 @@ export { apply, PROTECTED_TYPES } from './actions.ts';
 export { DAY_MS, seasonOf, monthIndex, DAYS_PER_MONTH } from './clock.ts';
 export { cellAt, objectAt, canPlace, footprint, isSheltered, sceneryScore, windShelter, SHELTER_THRESHOLD } from './grid.ts';
 export { canPlant, canHarvest, readyToHarvest } from './farm.ts';
-export { isMenuAvailable, availableMenus, canSetSlot } from './menu.ts';
+export { isMenuAvailable, availableMenus, canSetSlot, hasMenuStaff, menuRequirementText } from './menu.ts';
 export { isWalkable, busStopPos } from './path.ts';
 export { nextUnlock, canUnlock } from './progress.ts';
 export { serialize, deserialize, MemorySaveStore, LocalSaveStore, type SaveStore } from './save.ts';

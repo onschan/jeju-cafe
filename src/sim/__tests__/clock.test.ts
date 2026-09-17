@@ -12,7 +12,7 @@ test('초기 상태: 1년 3월 1일 6시, 10×8 격자, 시작 오브젝트', ()
   const types = Object.values(s.objects).map((o) => o.type).sort();
   expect(types).toEqual(['busstop', 'gate', 'warehouse']);
   expect(s.money).toBe(30000);
-  expect(s.slots).toEqual({ barista: 1, cook: 1, hall: 2, field: 1, gather: 0, carry: 0, guide: 0 });
+  expect(s.slots).toEqual({ barista: 1, cook: 1, hall: 2, field: 1, carry: 0, guide: 0 });
   const gate = Object.values(s.objects).find((o) => o.type === 'gate')!;
   expect(s.grid.cells[gate.y * 10 + gate.x]!.objectId).toBe(gate.id);
   expect(s.grid.cells[gate.y * 10 + gate.x]!.terrain).toBe('rock');

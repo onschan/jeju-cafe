@@ -1,7 +1,7 @@
 import type { Clock, GameState, Season } from './types.ts';
 
-export const HOUR_MS = 200;      // 게임 시간 1시간
-export const DAY_MS = 18 * HOUR_MS; // 1일 = 18시간(6시~24시) = 3600ms
+export const HOUR_MS = 2000;     // 게임 시간 1시간 (하루 36초, 한 달 ≈ 18분)
+export const DAY_MS = 18 * HOUR_MS; // 1일 = 18시간(6시~24시) = 36000ms
 export const DAYS_PER_MONTH = 30;
 export const START_HOUR = 6;
 export const END_HOUR = 24;

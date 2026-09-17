@@ -1,6 +1,6 @@
 import type { GameState } from './types.ts';
 import { advanceClock, END_HOUR, START_HOUR } from './clock.ts';
-import { growOneDay, staffFarmWork, gatherWork } from './farm.ts';
+import { growOneDay, staffFarmWork } from './farm.ts';
 import { hourlySpawn, updateGuests } from './guests.ts';
 import { upkeep, closeMonth } from './economy.ts';
 import { payroll, expireCandidates, hourlyEnergy, nightlyRecovery, moveStaff } from './staff.ts';
@@ -15,12 +15,11 @@ function onNewHour(state: GameState): void {
   hourlySpawn(state);
 }
 
-/** 새 날: 밤 회복 → 생육 → 밭 일꾼 → 채취꾼 */
+/** 새 날: 밤 회복 → 생육 → 밭 일꾼 */
 function onNewDay(state: GameState): void {
   nightlyRecovery(state);
   growOneDay(state);
   staffFarmWork(state);
-  gatherWork(state);
 }
 
 /** 월 바뀜: 월급 → 유지비 → 정산 → 후보 만료 */
