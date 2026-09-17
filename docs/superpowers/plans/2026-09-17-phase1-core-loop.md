@@ -2190,11 +2190,8 @@ git commit -m "feat(sim): 직렬화와 SaveStore(Local/Memory)"
  * 단순 봇이 N년을 자동 플레이하고 월별 CSV를 stdout에 찍는다.
  * 사용: pnpm headless [years=3] [seed=1] > out.csv
  */
-import { createInitialState, tick, apply, DAY_MS, GRID_W, GRID_H } from '../src/sim';
-import { canPlace, objectAt } from '../src/sim/grid';
-import { readyToHarvest } from '../src/sim/farm';
-import { nextUnlock, canUnlock } from '../src/sim/progress';
-import { objectDef } from '../src/data';
+import { createInitialState, tick, apply, DAY_MS, GRID_W, GRID_H, canPlace, objectAt, readyToHarvest, nextUnlock, canUnlock } from '../src/sim/index.ts';
+import { objectDef } from '../src/data/index.ts';
 
 const years = Number(process.argv[2] ?? 3);
 const seed = Number(process.argv[3] ?? 1);
@@ -2525,7 +2522,9 @@ export class GameView {
     for (const g of state.guests) {
       let node = this.guestNodes.get(g.id);
       if (!node) { node = this.makeGuestNode(g); this.guests.addChild(node); this.guestNodes.set(g.id, node); }
-      node.position.set(g.x * TILE, g.y * TILE - 8);
+      // 같은 날 스폰된 손님이 겹쳐 걷지 않도록 id 기반 작은 오프셋
+      const jitter = (parseInt(g.id.slice(1), 10) % 3) * 4 - 4;
+      node.position.set(g.x * TILE + jitter, g.y * TILE - 8);
       const old = node.getChildByLabel('bubble');
       if (old) old.destroy({ children: true });
       if (g.phase === 'seated') {
@@ -2563,8 +2562,7 @@ git commit -m "feat(render): GameView 상태→화면 동기화"
 `src/ui/store.ts`:
 ```ts
 import { useSyncExternalStore } from 'react';
-import { createInitialState, tick, apply, type GameState, type Action, type ApplyResult } from '../sim';
-import { LocalSaveStore } from '../sim/save';
+import { createInitialState, tick, apply, LocalSaveStore, type GameState, type Action, type ApplyResult } from '../sim/index.ts';
 
 const saveStore = new LocalSaveStore();
 const AUTO_SLOT = 0;
@@ -2841,6 +2839,7 @@ export function Guide() {
 import { useEffect, useRef, useState } from 'react';
 import { GameView } from '../render/GameView';
 import { startLoop, dispatch, loadOrNew, getState } from './store';
+// render/·ui/는 Vite 전용이라 확장자 없는 import 허용. sim/·data/만 .ts 확장자 규칙.
 import { HUD } from './HUD';
 import { BottomSheet, type Mode } from './BottomSheet';
 import { MonthCard } from './MonthCard';
@@ -2952,6 +2951,11 @@ git commit -m "docs: README"
 ---
 
 ## 이 계획이 끝나면 (다음 계획의 입력)
+
+리뷰에서 나온 2단계 이월 항목:
+- 도로(맨 아랫줄)가 걷기 가능이라 정낭을 거치지 않고 도로변 좌석에 바로 앉을 수 있음. 정낭을 유일한 입구로 만들려면 `isWalkable`에서 도로를 정류장 인접 칸만 허용하거나, 도로 인접 좌석을 금지.
+- `monthGuests`는 주문한 손님만 셈. 방문자 수를 보이려면 도착 시점에 세기.
+- 같은 날 스폰된 손님이 같은 스텝에 출발 → 렌더에서 id 기반 오프셋으로 임시 회피. 2단계에서 `accMs` 기준으로 스폰 시각 분산.
 
 - 2단계 계획: 태풍·돌담 튜토리얼, 필지 구매(지형 6종), 직원 3역할, 콤보 도감, 에셋 로더(PNG 폴백), 계절 팔레트
 - 3단계 계획: 삼춘 6명·호감도, 명소 지도·연결, 랜드마크, 외국인 "?" 규칙·단체·기념품 매대, 정착 등급, 절기·랜덤 이벤트
