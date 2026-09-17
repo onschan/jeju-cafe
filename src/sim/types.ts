@@ -149,6 +149,8 @@ export interface Guest {
   y: number;
   path: Pt[];           // 남은 경로
   seatId: string | null;
+  seatSlot: number;             // 좌석 오브젝트 안의 자리 번호 (0..seats-1)
+  approachCell: Pt | null;      // 좌석 옆 걷기 칸 — 앉을 때 기록, 나갈 때 여기서 출발
   menuId: string | null;
   mood: Mood | null;
   moodReason: 'no_menu' | 'scenery' | 'wait' | 'price' | null;

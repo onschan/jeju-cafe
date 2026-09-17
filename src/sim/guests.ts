@@ -23,6 +23,27 @@ function seatObjects(state: GameState): PlacedObject[] {
   return Object.values(state.objects).filter((o) => objectDef(o.type).kind === 'seat');
 }
 
+/** 좌석 오브젝트 안에서 쓰고 있는 자리 번호들 (나가는 손님 제외) */
+function usedSlots(state: GameState, seatId: string): Set<number> {
+  const used = new Set<number>();
+  for (const g of state.guests) if (g.seatId === seatId && g.phase !== 'leaving') used.add(g.seatSlot);
+  return used;
+}
+
+function firstFreeSlot(state: GameState, seat: PlacedObject): number {
+  const used = usedSlots(state, seat.id);
+  const n = objectDef(seat.type).seats ?? 1;
+  for (let i = 0; i < n; i++) if (!used.has(i)) return i;
+  return n - 1;
+}
+
+/** 자리 번호 → 좌석 오브젝트 위 좌표. 가로로 n등분 (table_out 2석: x−0.25, x+0.25). */
+export function seatSlotPos(seat: PlacedObject, slot: number): Pt {
+  const def = objectDef(seat.type);
+  const n = def.seats ?? 1;
+  return { x: seat.x + ((slot + 0.5) / n) * def.w - def.w / 2 + (def.w - 1) / 2, y: seat.y + (def.h - 1) / 2 };
+}
+
 /** 아직 손님이 배정되지 않은 좌석 오브젝트 */
 export function freeSeats(state: GameState): PlacedObject[] {
   const taken = new Map<string, number>();
@@ -107,6 +128,8 @@ export function spawnGuests(state: GameState, n: number): number {
       y: start.y,
       path: path.slice(1),
       seatId: best.seat.id,
+      seatSlot: firstFreeSlot(state, best.seat),
+      approachCell: null,
       menuId: null,
       mood: null,
       moodReason: null,
@@ -135,9 +158,9 @@ export function moveAlong(g: { x: number; y: number; path: Pt[] }, dtMs: number)
       g.path.shift();
       budget -= dist;
     } else {
-      // 경로는 4방향 인접이라 dx·dy 중 하나만 0이 아님 (BFS 보장). 대각선 경로가 생기면 이 계산을 바꿔야 함.
-      g.x += Math.sign(dx) * budget;
-      g.y += Math.sign(dy) * budget;
+      // 경로는 4방향 인접이라 보통 dx·dy 중 하나만 0이 아니다 (BFS 보장). 좌석 칸→옆 칸처럼 살짝 비스듬한 첫걸음만 축별로 잘라 걷는다.
+      g.x += Math.sign(dx) * Math.min(Math.abs(dx), budget);
+      g.y += Math.sign(dy) * Math.min(Math.abs(dy), budget);
       budget = 0;
     }
   }
@@ -214,6 +237,10 @@ export function updateGuests(state: GameState, dtMs: number): void {
     if (g.phase === 'walking') {
       if (moveAlong(g, dtMs)) {
         g.phase = 'seated';
+        g.approachCell = { x: Math.round(g.x), y: Math.round(g.y) };
+        const pos = seatSlotPos(state.objects[g.seatId!]!, g.seatSlot);
+        g.x = pos.x;
+        g.y = pos.y;
         order(state, g);
       }
     } else if (g.phase === 'seated') {
@@ -228,10 +255,13 @@ export function updateGuests(state: GameState, dtMs: number): void {
       }
       g.timerMs -= dtMs;
       if (g.timerMs <= 0) {
+        // 좌석 칸은 걷기 칸이 아니라서 다가갔던 옆 칸으로 먼저 나간 뒤 정류장으로
         g.phase = 'leaving';
         g.seatId = null;
-        const back = findPath(state, { x: Math.round(g.x), y: Math.round(g.y) }, bus);
-        g.path = back ? back.slice(1) : [];
+        const from = g.approachCell ?? { x: Math.round(g.x), y: Math.round(g.y) };
+        const back = findPath(state, from, bus);
+        g.path = [from, ...(back ? back.slice(1) : [])];
+        g.approachCell = null;
       }
     } else if (g.phase === 'leaving') {
       moveAlong(g, dtMs);

@@ -42,7 +42,7 @@ function applyInner(state: GameState, a: Action): ApplyResult {
       if (PROTECTED_TYPES.has(obj.type)) return { ok: false, reason: '이건 못 없애요' };
       if (state.guests.some((g) => g.seatId === obj.id)) return { ok: false, reason: '손님이 앉아 있어요' };
       const cells = new Set(footprint(obj.type, obj.x, obj.y).map((p) => `${p.x},${p.y}`));
-      const guestCells = state.guests.flatMap((g) => [`${Math.round(g.x)},${Math.round(g.y)}`, ...g.path.map((p) => `${p.x},${p.y}`)]);
+      const guestCells = state.guests.flatMap((g) => [`${Math.round(g.x)},${Math.round(g.y)}`, ...(g.approachCell ? [`${g.approachCell.x},${g.approachCell.y}`] : []), ...g.path.map((p) => `${p.x},${p.y}`)]);
       if (guestCells.some((c) => cells.has(c))) return { ok: false, reason: '손님이 지나가는 중이에요' };
       state.money += objectDef(obj.type).cost;
       removeObject(state, a.objectId);

@@ -91,14 +91,40 @@ test('happy이면 연구 +1, 게이지가 타입 방향으로 움직인다', () 
 });
 
 test('100ms 스텝으로도 17스텝째에 정확히 자리에 도착한다', () => {
-  const { s } = cafe();
+  const { s, seat } = cafe();
   spawnGuests(s, 1);
   const g = s.guests[0]!;
   for (let i = 0; i < 16; i++) updateGuests(s, 100);
   expect(g.phase).toBe('walking');
   updateGuests(s, 100);
   expect(g.phase).toBe('seated');
-  expect([g.x, g.y]).toEqual([4, 6]);
+  expect(g.approachCell).toEqual({ x: 4, y: 6 });
+  expect([Math.round(g.x), Math.round(g.y)]).toEqual([seat.x, seat.y]);
+});
+
+test('앉으면 좌석 칸 위(자리별 오프셋), 나갈 땐 다가갔던 옆 칸에서 출발, 빈 자리 번호부터 다시 쓴다', () => {
+  const { s, seat } = cafe();
+  spawnGuests(s, 2);
+  updateGuests(s, 6000);
+  const [a, b] = s.guests as [typeof s.guests[0], typeof s.guests[0]];
+  expect(a.phase).toBe('seated'); expect(b.phase).toBe('seated');
+  expect([a.seatSlot, b.seatSlot]).toEqual([0, 1]);
+  expect([Math.round(a.x), Math.round(a.y)]).toEqual([seat.x, seat.y]);
+  expect([Math.round(b.x), Math.round(b.y)]).toEqual([seat.x, seat.y]);
+  expect(a.x).toBeCloseTo(seat.x - 0.25); expect(b.x).toBeCloseTo(seat.x + 0.25);
+  expect(freeSeats(s).length).toBe(0);
+  updateGuests(s, PREP_MS); updateGuests(s, SEAT_MS);
+  expect(a.phase).toBe('leaving');
+  expect(a.path[0]).toEqual({ x: 4, y: 6 });
+  expect(a.approachCell).toBeNull();
+  expect(freeSeats(s).length).toBe(1);
+  spawnGuests(s, 1);
+  const c = s.guests[2]!;
+  expect(c.seatSlot).toBe(0); // a가 비운 0번
+  updateGuests(s, 10_000);
+  expect(s.guests.map((g) => g.id)).toEqual([c.id]); // a·b는 정류장까지 걸어가 사라짐
+  expect(c.phase).toBe('seated');
+  expect(c.x).toBeCloseTo(seat.x - 0.25);
 });
 
 test('관광객은 경치가 모자라면 meh, 돌담을 두면 happy', () => {

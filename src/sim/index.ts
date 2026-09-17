@@ -9,6 +9,6 @@ export { isMenuAvailable, availableMenus, canSetSlot, hasMenuStaff, menuRequirem
 export { isWalkable, busStopPos } from './path.ts';
 export { nextUnlock, canUnlock } from './progress.ts';
 export { serialize, deserialize, MemorySaveStore, LocalSaveStore, type SaveStore } from './save.ts';
-export { freeSeats, hasReachableSeat, dailyGuestCount, spawnMultiplier, prepTimeMs, serviceBonus, GUEST_SPEED_CELLS_PER_S, SEAT_MS, PREP_MS } from './guests.ts';
+export { freeSeats, hasReachableSeat, seatSlotPos, dailyGuestCount, spawnMultiplier, prepTimeMs, serviceBonus, GUEST_SPEED_CELLS_PER_S, SEAT_MS, PREP_MS } from './guests.ts';
 export { canPromote, effectivePopularity, MAX_ACTIVE_PROMOTIONS, PARTTIME_MONEY } from './promotions.ts';
 export { TIERS, MAX_LEVEL, LOW_ENERGY, salaryOf, levelUpCost, roleEffect, ingredientDiscount, staffInRole, canHire, canLevelUp } from './staff.ts';
