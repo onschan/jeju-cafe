@@ -87,7 +87,7 @@ test('아르바이트: 기력 40으로 돈 +15만, 직원당 한 달에 한 번'
   expect(st.energy).toBe(60);
   expect(st.lastParttimeMonthIndex).toBe(monthIndex(s.clock));
   expect(apply(s, { type: 'promote', staffId: st.id, promotionId: 'parttime' }).ok).toBe(false); // 이달은 이미
-  const other = staffWith({ service: 11 }, 'hall'); s.staff.push(other);
+  const other = staffWith({ smile: 11 }, 'hall'); s.staff.push(other);
   expect(apply(s, { type: 'promote', staffId: other.id, promotionId: 'parttime' }).ok).toBe(true); // 다른 직원은 가능
   for (let i = 0; i < 30; i++) tick(s, DAY_MS);
   st.energy = 100;

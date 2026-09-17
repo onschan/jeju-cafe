@@ -7,7 +7,7 @@
  * - 메뉴 레벨업(재료 5 + 돈) → 판매가 +10%, 주문 가중치 +
  */
 import { checkCodexMileage } from './mileage.ts';
-import type { GameState, ApplyResult, MenuDef, MenuStats, MenuStatKey, MenuBase, MenuMod, MenuQuality, BrewParams, ParamAxis, IngredientDef, IngredientComboDef, IngredientComboSide, DevelopOutcome, DevelopResult, Staff, MenuCategory, RoleId } from './types.ts';
+import type { GameState, ApplyResult, MenuDef, MenuStats, MenuStatKey, MenuBase, MenuMod, MenuQuality, BrewParams, ParamAxis, IngredientDef, IngredientComboDef, IngredientComboSide, DevelopOutcome, DevelopResult, Staff, MenuCategory, RoleId, StatKey } from './types.ts';
 import { menuDef, ingredientDef, toppingDef, INGREDIENT_COMBOS, HIDDEN_RECIPES, MENU_STAT_KEYS, ZERO_STATS, addStats, statSum, ingredientStats, GUEST_TYPES, guestTypeDef } from '../data/index.ts';
 import { nextRandom, randInt } from './rng.ts';
 import { findStaff, ingredientDiscount, pushNotice } from './staff.ts';
@@ -25,9 +25,9 @@ export const P_FAIL = 20;
 export const PARAM_PENALTY = 12;
 export const PARAM_BONUS_WIDTH = 6;
 export const BASE_BONUS_WIDTH = 4;
-/** 직원 기술(요리 또는 감각) 1점당 성공률 +0.05% */
+/** 직원 기술 1점당 성공률 +0.05% */
 export const STAFF_SUCCESS_PER_STAT = 0.05;
-/** 직원 기술 25점당 스탯 +1 (바리스타 감각 → 향, 요리사 요리 → 맛) */
+/** 직원 기술 25점당 스탯 +1 (음료·시그니처 → 향, 디저트·식사 → 맛) */
 export const STAFF_STAT_PER = 25;
 export const MAX_SLOTS = 4;
 export const MAX_SLOTS_STAR = 8;
@@ -58,8 +58,9 @@ export const PARAM_LABEL: Record<ParamAxis, { name: string; levels: [string, str
   heat: { name: '불 세기', levels: ['약', '보통', '강'] },
 };
 export const PARAM_DEFAULT = 1;
-/** 개발 담당 직원의 기술 스탯: 음료·시그니처는 감각, 디저트·식사는 요리 */
-export const BASE_STAT: Record<MenuBase, 'sense' | 'cooking'> = { drink: 'sense', dessert: 'cooking', meal: 'cooking', signature: 'sense' };
+/** 개발 담당 직원의 스탯은 기술(skill) 하나. 보너스가 붙는 메뉴 스탯은 음료·시그니처 = 향, 디저트·식사 = 맛. */
+export const BASE_STAT: Record<MenuBase, StatKey> = { drink: 'skill', dessert: 'skill', meal: 'skill', signature: 'skill' };
+export const BASE_BONUS_STAT: Record<MenuBase, 'aroma' | 'taste'> = { drink: 'aroma', dessert: 'taste', meal: 'taste', signature: 'aroma' };
 const BASE_REQUIRES: Record<MenuBase, { role: RoleId } | undefined> = { drink: undefined, dessert: { role: 'cook' }, meal: { role: 'cook' }, signature: { role: 'cook' } };
 
 /** 재료 콤보 → 메뉴 스킬 (콤보마다 +1, 제주의 맛은 +2) */
@@ -364,7 +365,7 @@ export function resolveDevelop(state: GameState): DevelopResult | null {
   }
   stats = spreadBonus(state, stats, outcome === 'great' ? width + randInt(state, 0, width) : randInt(state, 0, width));
   const staffBonus = Math.floor(stat / STAFF_STAT_PER);
-  if (BASE_STAT[dev.base] === 'sense') stats.aroma += staffBonus; else stats.taste += staffBonus;
+  stats[BASE_BONUS_STAT[dev.base]] += staffBonus;
   for (const k of MENU_STAT_KEYS) stats[k] = Math.max(0, stats[k]);
   let quality = qualityOf(stats);
   if (outcome === 'great' && quality !== '최고') quality = quality === '좋음' ? '최고' : '좋음';

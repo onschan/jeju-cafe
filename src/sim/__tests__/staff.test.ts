@@ -9,7 +9,7 @@ import { DAY_MS, HOUR_MS } from '../clock.ts';
 import type { GameState, Staff, Stats, RoleId } from '../types.ts';
 
 export function staffWith(partial: Partial<Stats>, role: RoleId | null, skill = 'coffee_lover'): Staff {
-  const stats: Stats = { service: 10, cooking: 10, sense: 10, stamina: 10, ...partial };
+  const stats: Stats = { stamina: 10, strength: 10, skill: 10, smile: 10, ...partial };
   return {
     id: `s${Math.round(Object.values(stats).reduce((a, b) => a + b, 0))}${role}`,
     name: 'x', face: { hair: 0, skin: 0, top: 0 }, stats, skill, level: 1, salary: 0,
@@ -47,7 +47,7 @@ test('같은 seed면 같은 후보', () => {
 });
 
 test('월급 공식', () => {
-  expect(salaryOf({ service: 20, cooking: 20, sense: 20, stamina: 20 }, 1)).toBe(20 * 4 * 3000 + 200_000);
+  expect(salaryOf({ stamina: 20, strength: 20, skill: 20, smile: 20 }, 1)).toBe(20 * 4 * 3000 + 200_000);
 });
 
 test('채용: 슬롯이 있어야 하고, 역할이 해금돼야 하고, 후보가 사라진다', () => {
@@ -111,16 +111,16 @@ test('assign·fire·levelUp(스탯 선택, 비용 = 스탯×10)', () => {
   expect(apply(s, { type: 'assign', staffId: st.id, role: 'carry' }).ok).toBe(false); // 미해금
   expect(apply(s, { type: 'assign', staffId: st.id, role: null }).ok).toBe(true);
   const before = { ...st.stats };
-  const cost = before.service * 10;
+  const cost = before.smile * 10;
   s.research = cost - 1;
-  expect(apply(s, { type: 'levelUp', staffId: st.id, stat: 'service' }).ok).toBe(false);
+  expect(apply(s, { type: 'levelUp', staffId: st.id, stat: 'smile' }).ok).toBe(false);
   s.research = cost;
-  expect(apply(s, { type: 'levelUp', staffId: st.id, stat: 'service' }).ok).toBe(true);
+  expect(apply(s, { type: 'levelUp', staffId: st.id, stat: 'smile' }).ok).toBe(true);
   expect(s.research).toBe(0);
   expect(st.level).toBe(2);
-  expect(st.stats.service - before.service).toBeGreaterThanOrEqual(5);
-  expect(st.stats.service - before.service).toBeLessThanOrEqual(9);
-  expect(st.stats.cooking).toBe(before.cooking);
+  expect(st.stats.smile - before.smile).toBeGreaterThanOrEqual(5);
+  expect(st.stats.smile - before.smile).toBeLessThanOrEqual(9);
+  expect(st.stats.skill).toBe(before.skill);
   expect(st.salary).toBe(salaryOf(st.stats, 2));
   const m0 = s.money;
   const recruit0 = s.monthCosts.recruit;
@@ -133,30 +133,30 @@ test('assign·fire·levelUp(스탯 선택, 비용 = 스탯×10)', () => {
 test('levelUp은 10레벨까지', () => {
   const { s, st } = hired();
   st.level = 10; s.research = 1e6;
-  expect(apply(s, { type: 'levelUp', staffId: st.id, stat: 'sense' }).ok).toBe(false);
+  expect(apply(s, { type: 'levelUp', staffId: st.id, stat: 'skill' }).ok).toBe(false);
 });
 
 test('levelUp 스탯은 99를 넘지 않는다', () => {
   const { s, st } = hired();
-  st.stats.sense = 97; s.research = 1e6;
-  expect(apply(s, { type: 'levelUp', staffId: st.id, stat: 'sense' }).ok).toBe(true);
-  expect(st.stats.sense).toBe(MAX_STAT);
+  st.stats.skill = 97; s.research = 1e6;
+  expect(apply(s, { type: 'levelUp', staffId: st.id, stat: 'skill' }).ok).toBe(true);
+  expect(st.stats.skill).toBe(MAX_STAT);
   expect(st.salary).toBe(salaryOf(st.stats, 2));
 });
 
 test('roleEffect: 역할별 핵심 스탯 합, 운반·절약 할인, 기력 30 미만이면 절반', () => {
   const s = createInitialState(1);
-  s.staff.push(staffWith({ service: 50, cooking: 10, sense: 30, stamina: 10 }, 'carry', 'thrifty'));
+  s.staff.push(staffWith({ stamina: 10, strength: 10, skill: 10, smile: 50 }, 'carry', 'thrifty'));
   expect(roleEffect(s, 'carry')).toBe(10);
   expect(roleEffect(s, 'hall')).toBe(0);
   expect(ingredientDiscount(s)).toBeCloseTo(10 / 500 + 0.1);
   expect(ingredientCost(s, 'latte')).toBe(Math.round(1900 * (1 - 0.12)));
-  s.staff.push(staffWith({ service: 40 }, 'hall'));
-  s.staff.push(staffWith({ service: 20 }, 'hall'));
+  s.staff.push(staffWith({ smile: 40 }, 'hall'));
+  s.staff.push(staffWith({ smile: 20 }, 'hall'));
   expect(roleEffect(s, 'hall')).toBe(60);
   s.staff[2]!.energy = 20;
   expect(roleEffect(s, 'hall')).toBe(50);
-  s.staff.push(staffWith({ stamina: 100 }, 'carry'));
+  s.staff.push(staffWith({ strength: 100 }, 'carry'));
   expect(ingredientDiscount(s)).toBe(0.3);
 });
 
@@ -247,23 +247,23 @@ test('조리 시간: 직원 없으면 PREP_MS, 바리스타(감각 50)면 그 70
   expect(g.mood).toBeNull();
   updateGuests(s, 100);
   expect(g.mood).not.toBeNull();
-  const s2 = cafe(); s2.staff.push(staffWith({ sense: 50 }, 'barista'));
+  const s2 = cafe(); s2.staff.push(staffWith({ skill: 50 }, 'barista'));
   spawnGuests(s2, 1); updateGuests(s2, 6000);
   expect(s2.guests[0]!.waitMs).toBeLessThanOrEqual(3000);
   updateGuests(s2, 3000);
   expect(s2.guests[0]!.mood).not.toBeNull();
   // 디저트는 요리사, 빠른 손 스킬은 더 줄인다
-  const s3 = cafe(); setSlot(s3, 0, 'scone'); s3.staff.push(staffWith({ cooking: 50 }, 'cook', 'quick_hands'));
+  const s3 = cafe(); setSlot(s3, 0, 'scone'); s3.staff.push(staffWith({ skill: 50 }, 'cook', 'quick_hands'));
   spawnGuests(s3, 1); s3.guests[0]!.type = 'student'; updateGuests(s3, 6000);
   expect(s3.guests[0]!.waitMs).toBe(PREP_MS * 0.5 * 0.8);
 });
 
 test('홀 직원 서비스는 만족 기준을 낮춘다', () => {
-  // tourist minScenery 2, 자리 경치 1 → meh(scenery). 홀 service 60이면 happy
+  // tourist minScenery 2, 자리 경치 1 → meh(scenery). 홀 미소 60이면 happy
   const s = cafe(); spawnGuests(s, 1); s.guests[0]!.type = 'student'; updateGuests(s, 6000); updateGuests(s, PREP_MS);
   expect(s.guests[0]!.mood).toBe('meh');
   expect(s.guests[0]!.moodReason).toBe('scenery');
-  const s2 = cafe(); s2.staff.push(staffWith({ service: 60 }, 'hall'));
+  const s2 = cafe(); s2.staff.push(staffWith({ smile: 60 }, 'hall'));
   spawnGuests(s2, 1); s2.guests[0]!.type = 'student'; updateGuests(s2, 6000); updateGuests(s2, PREP_MS);
   expect(s2.guests[0]!.mood).toBe('happy');
   expect(s2.guests[0]!.moodReason).toBeNull();
@@ -274,7 +274,7 @@ test('밭 일꾼은 제철에 빈 밭에 심고 익으면 딴다', () => {
   apply(s, { type: 'place', objectType: 'field', x: X(6), y: Y(6) });
   apply(s, { type: 'place', objectType: 'field', x: X(7), y: Y(6) });
   apply(s, { type: 'place', objectType: 'field', x: X(8), y: Y(6) });
-  s.staff.push(staffWith({ stamina: 30 }, 'field')); // 하루 2칸
+  s.staff.push(staffWith({ strength: 30 }, 'field')); // 하루 2칸
   tick(s, DAY_MS);
   const fields = Object.values(s.objects).filter((o) => o.type === 'field');
   expect(fields.filter((f) => f.crop?.cropId === 'carrot').length).toBe(2);
@@ -288,7 +288,7 @@ test('밭 일꾼은 제철에 빈 밭에 심고 익으면 딴다', () => {
 test('밭 일꾼은 철이 아니면 안 심는다', () => {
   const s = createInitialState(1); // 3월
   apply(s, { type: 'place', objectType: 'field', x: X(6), y: Y(6) });
-  s.staff.push(staffWith({ stamina: 30 }, 'field'));
+  s.staff.push(staffWith({ strength: 30 }, 'field'));
   tick(s, DAY_MS);
   expect(Object.values(s.objects).find((o) => o.type === 'field')!.crop).toBeNull();
 });

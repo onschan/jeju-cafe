@@ -13,7 +13,7 @@ export { nextUnlock, canUnlock, addResearchProgress, HAPPY_PER_RESEARCH, TASTE_M
 export { serialize, deserialize, MemorySaveStore, LocalSaveStore, type SaveStore } from './save.ts';
 export { freeSeats, hasReachableSeat, seatSlotPos, dailyGuestCount, spawnMultiplier, prepTimeMs, serviceBonus, isVisitable, likesFacility, GUEST_SPEED_CELLS_PER_S, SEAT_MS, PREP_MS, VISIT_CHANCE } from './guests.ts';
 export { canPromote, effectivePopularity, MAX_ACTIVE_PROMOTIONS, PARTTIME_MONEY } from './promotions.ts';
-export { TIERS, MAX_LEVEL, LOW_ENERGY, salaryOf, SALARY_PER_STAT, SALARY_PER_LEVEL, levelUpCost, roleEffect, ingredientDiscount, staffInRole, canHire, canLevelUp, postJobCost } from './staff.ts';
+export { TIERS, MAX_LEVEL, LOW_ENERGY, STAT_KEYS, STAT_NAME, salaryOf, SALARY_PER_STAT, SALARY_PER_LEVEL, levelUpCost, roleEffect, ingredientDiscount, staffInRole, canHire, canLevelUp, postJobCost } from './staff.ts';
 export { objectStats, activeCombos, popularityFor, segmentBonus, setLevels, BASE_POPULARITY, POPULARITY_CAP } from './compat.ts';
 export { canUseItem, grantItem, itemEffect, ITEM_POP_CAP, ITEM_SCENERY_CAP } from './items.ts';
 export { buildDaysOf, isUnderConstruction, constructions, canStartBuild, buildDaysLeft, START_BUILDERS, MAX_BUILDERS, needsDoorPath, DOOR_PATH_HINT } from './build.ts';

@@ -88,7 +88,7 @@ test('달이 바뀌는 날: 월급(퇴사)이 그날 밭 일보다 먼저다', (
   const s = createInitialState(1);
   s.clock.month = 9; // 당근 철
   for (const x of [6, 7, 8]) apply(s, { type: 'place', objectType: 'field', x, y: 6 });
-  const st = staffWith({ stamina: 30 }, 'field');
+  const st = staffWith({ strength: 30 }, 'field');
   st.salary = 10000;
   st.unpaidMonths = 1; // 이번 월급도 못 주면 퇴사
   s.staff.push(st);

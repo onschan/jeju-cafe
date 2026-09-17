@@ -91,9 +91,9 @@ export function readyToHarvest(state: GameState): string[] {
   return Object.values(state.objects).filter((o) => o.crop?.ready).map((o) => o.id);
 }
 
-/** 밭 일꾼 하루 작업량 = 1 + floor(체력/20) 칸 (기력 30 미만이면 절반, 최소 1) */
+/** 밭 일꾼 하루 작업량 = 1 + floor(힘/20) 칸 (기력 30 미만이면 절반, 최소 1) */
 export function fieldCapacity(state: GameState): number {
-  return staffInRole(state, 'field').reduce((n, st) => n + Math.max(1, Math.floor((1 + Math.floor(st.stats.stamina / 20)) * energyFactor(st))), 0);
+  return staffInRole(state, 'field').reduce((n, st) => n + Math.max(1, Math.floor((1 + Math.floor(st.stats.strength / 20)) * energyFactor(st))), 0);
 }
 
 /** 매일: 밭 일꾼이 빈 밭에 제철(해금된 첫 번째) 작물을 심는다. (수확은 자동) */

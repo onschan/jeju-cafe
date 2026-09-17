@@ -95,7 +95,7 @@ function smileScore(state: GameState): number {
   const hall = staffInRole(state, 'hall');
   const pool = hall.length ? hall : state.staff.filter((s) => s.role !== null);
   if (pool.length === 0) return NO_STAFF_SMILE;
-  return clamp100(pool.reduce((n, s) => n + s.stats.service * energyFactor(s), 0) / pool.length);
+  return clamp100(pool.reduce((n, s) => n + s.stats.smile * energyFactor(s), 0) / pool.length);
 }
 /** 경관: 좌석 자리의 경치 평균 (상한 30 → 100) */
 function scenerySc(state: GameState): number {

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useGame, dispatch } from './store';
-import { TIERS, MAX_LEVEL, LOW_ENERGY, levelUpCost, canHire, canLevelUp, staffInRole, canPraise, PRAISE_ENERGY, type Staff, type Candidate, type RoleId, type StatKey, type JobTier, type Face as FaceParts, josa } from '../sim/index.ts';
+import { TIERS, MAX_LEVEL, LOW_ENERGY, STAT_KEYS, STAT_NAME, levelUpCost, canHire, canLevelUp, staffInRole, canPraise, PRAISE_ENERGY, type Staff, type Candidate, type RoleId, type StatKey, type JobTier, type Face as FaceParts, josa } from '../sim/index.ts';
 import { ROLES, roleDef, skillDef } from '../data/index.ts';
 import { Icon } from './Icon';
 import { Confirm } from './Popup';
@@ -10,12 +10,8 @@ import { showScene } from './SceneWindow';
 
 const TIER_ORDER: JobTier[] = ['flyer', 'site', 'headhunter'];
 const TIER_NAME: Record<JobTier, string> = { flyer: '전단 공고', site: '구인 사이트', headhunter: '헤드헌터' };
-const STATS: { key: StatKey; name: string }[] = [
-  { key: 'service', name: '친절' },
-  { key: 'cooking', name: '요리' },
-  { key: 'sense', name: '감각' },
-  { key: 'stamina', name: '체력' },
-];
+/** GDD v2 §5: 체력·힘·기술·미소 */
+const STATS: { key: StatKey; name: string }[] = STAT_KEYS.map((key) => ({ key, name: STAT_NAME[key] }));
 const css = (rgb: number) => `#${rgb.toString(16).padStart(6, '0')}`;
 
 /** 얼굴 = 색 사각형 3개 (머리·피부·상의). 색은 렌더의 파츠 tint 표(character.ts)와 같다. */

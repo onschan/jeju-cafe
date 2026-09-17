@@ -291,7 +291,8 @@ export type IngredientKind = 'bought' | 'farm';
 export interface IngredientDef { id: string; name: string; kind: IngredientKind; cost: number; category: IngredientCategory; stats: MenuStats; sourceText: string }
 
 export type RoleId = 'barista' | 'cook' | 'hall' | 'field' | 'carry' | 'guide';
-export type StatKey = 'service' | 'cooking' | 'sense' | 'stamina';
+/** 직원 스탯 4 (GDD v2 §5): 체력 stamina · 힘 strength(밭·운반) · 기술 skill(바리스타·요리) · 미소 smile(홀·안내) */
+export type StatKey = 'stamina' | 'strength' | 'skill' | 'smile';
 export interface RoleDef { id: RoleId; name: string; stat: StatKey; unlockedAtStart: boolean }
 
 export type SkillEffect =
@@ -307,7 +308,7 @@ export type SkillEffect =
   | { type: 'stamina'; value: number };
 export interface SkillDef { id: string; name: string; desc: string; effect: SkillEffect }
 
-export interface Stats { service: number; cooking: number; sense: number; stamina: number }
+export interface Stats { stamina: number; strength: number; skill: number; smile: number }
 export interface Face { hair: number; skin: number; top: number } // 파츠 인덱스
 
 export interface Staff {

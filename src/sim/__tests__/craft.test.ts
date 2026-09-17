@@ -20,7 +20,7 @@ import { X, Y } from './helpers.ts';
 import type { GameState } from '../types.ts';
 
 function withStaff(s: GameState) {
-  const st = staffWith({ sense: 50, cooking: 50 }, 'barista');
+  const st = staffWith({ skill: 50 }, 'barista');
   s.staff.push(st);
   s.research = 100;
   return st;

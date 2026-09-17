@@ -17,7 +17,8 @@ export const LOW_ENERGY = 30;          // 미만이면 효과 절반
 export const NIGHT_ENERGY_RECOVERY = 40;
 export const NOTICE_CAP = 10;
 export { WAREHOUSE_FRONT };
-export const STAT_KEYS: StatKey[] = ['service', 'cooking', 'sense', 'stamina'];
+export const STAT_KEYS: StatKey[] = ['stamina', 'strength', 'skill', 'smile'];
+export const STAT_NAME: Record<StatKey, string> = { stamina: '체력', strength: '힘', skill: '기술', smile: '미소' };
 
 // ---------- 공식 ----------
 
@@ -68,7 +69,7 @@ export function ingredientDiscount(state: GameState): number {
 
 export function generateCandidate(state: GameState, tier: JobTier): Candidate {
   const t = TIERS[tier];
-  const stats: Stats = { service: 0, cooking: 0, sense: 0, stamina: 0 };
+  const stats: Stats = { stamina: 0, strength: 0, skill: 0, smile: 0 };
   for (const k of STAT_KEYS) stats[k] = randInt(state, t.min, t.max);
   const name = pickWeighted(state, NAMES.names, () => 1)!;
   const skill = pickWeighted(state, SKILLS, () => 1)!.id;

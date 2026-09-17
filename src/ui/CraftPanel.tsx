@@ -2,7 +2,7 @@ import { useState, useMemo, type ReactNode } from 'react';
 import { useGame, dispatch } from './store';
 import {
   menuOf, menuMod, menuStatsOf, menuSkills, skillEffects, skillTier, priceOf, activeIngredientCombos, comboBonus, matchHiddenRecipe,
-  normalizeParams, successRate, bonusWidth, developStaffStat, developCost, canDevelop, developDaysLeft, autoMenuName, qualityOf, countIngredients,
+  normalizeParams, successRate, bonusWidth, developStaffStat, STAT_NAME, developCost, canDevelop, developDaysLeft, autoMenuName, qualityOf, countIngredients,
   canAddTopping, canRemoveTopping, canLevelUpMenu, levelUpMenuCost, maxSlots, isStaffBusy, isCustomMenu, hasMenuStaff, menuRequirementText, isMenuAvailable,
   DEVELOP_DAYS, DEVELOP_RESEARCH, BASE_NAME, BASE_MIN, PARAM_AXES, PARAM_LABEL, PARAM_DEFAULT, BASE_STAT, MENU_SKILLS, TIER_NAMES, MAX_TOPPINGS, MAX_MENU_LEVEL, SIGNATURE_STAR, P_GREAT,
   josa, type MenuBase, type BrewParams, type ParamAxis, type MenuStats, type MenuSkill,
@@ -16,7 +16,6 @@ import { card, brownBtn, brownBtnOn, brownBtnOff, dangerBtn, brownSelect, PALETT
 const BASES: MenuBase[] = ['drink', 'dessert', 'meal', 'signature'];
 const STAT_MAX = 40;
 const STAT_COLOR: Record<keyof MenuStats, string> = { taste: '#e0713a', aroma: '#9b59b6', look: '#e0a24c', health: '#4c9a2a', volume: '#5a7fbf', jeju: '#f28e2b' };
-const STAFF_STAT_NAME = { sense: '감각', cooking: '요리' } as const;
 
 /** 스탯 6줄 막대 */
 export function StatBars({ stats, max = STAT_MAX, compact }: { stats: MenuStats; max?: number; compact?: boolean }) {
@@ -150,7 +149,7 @@ export function CraftPanel() {
         <b>담당</b>
         <select aria-label="담당 직원" value={staffId} onChange={(e) => setStaffId(e.target.value)} style={{ ...brownSelect, marginBottom: 0, flex: 1 }}>
           <option value="">(직원을 고르세요)</option>
-          {s.staff.map((st) => <option key={st.id} value={st.id} disabled={isStaffBusy(s, st.id)}>{st.name} · {STAFF_STAT_NAME[BASE_STAT[base]]} {st.stats[BASE_STAT[base]]}</option>)}
+          {s.staff.map((st) => <option key={st.id} value={st.id} disabled={isStaffBusy(s, st.id)}>{st.name} · {STAT_NAME[BASE_STAT[base]]} {st.stats[BASE_STAT[base]]}</option>)}
         </select>
       </div>
       <div style={{ fontSize: 13, marginBottom: 6 }}>

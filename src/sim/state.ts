@@ -11,7 +11,7 @@ import { START_BUILDERS } from './build.ts';
 import { initGuidebooks } from './guidebook.ts';
 
 export { PARCEL_W, PARCEL_H, START_ORIGIN, GRID_W, GRID_H, VILLAGE_ROAD_Y };
-export const SAVE_VERSION = 11;
+export const SAVE_VERSION = 12; // 12: 직원 스탯 체력·힘·기술·미소 (service/cooking/sense → smile/skill/strength)
 /** 시작 자금 500만 + 정착지원금(잔고 < 40만이면 1회 300만) — 마스터 GDD §1 */
 export const START_MONEY = 5_000_000;
 export const SETTLE_GRANT = 3_000_000;
