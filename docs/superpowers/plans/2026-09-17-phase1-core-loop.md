@@ -1261,7 +1261,7 @@ git commit -m "feat(sim): 메뉴판 슬롯과 재료 소비"
 
 ---
 
-### Task 8: 경로 — 걷기 가능 판정과 A*
+### Task 8: 경로 — 걷기 가능 판정과 BFS 도달 지도
 
 **Files:**
 - Create: `src/sim/path.ts`
@@ -1273,7 +1273,7 @@ git commit -m "feat(sim): 메뉴판 슬롯과 재료 소비"
 ```ts
 import { createInitialState } from '../state';
 import { placeObject } from '../grid';
-import { isWalkable, findPath, walkableNeighborsOf, busStopPos } from '../path';
+import { isWalkable, findPath, walkableNeighborsOf, busStopPos, reachMap, pathFromReach, cellKey } from '../path.ts';
 
 test('도로·올렛길·정낭·정류장은 걷기 가능, 흙·밭·건물은 불가', () => {
   const s = createInitialState(1);
@@ -1305,6 +1305,20 @@ test('좌석 옆 걷기 가능 칸', () => {
   const seat = placeObject(s, 'table_out', 4, 5); // 정낭(4,6) 바로 위
   expect(walkableNeighborsOf(s, seat.x, seat.y)).toEqual([{ x: 4, y: 6 }]);
 });
+
+test('reachMap은 거리와 경로를 한 번에 준다', () => {
+  const s = createInitialState(1);
+  placeObject(s, 'path', 4, 5);
+  const r = reachMap(s, busStopPos(s));
+  expect(r.dist.get(cellKey(s, { x: 4, y: 6 }))).toBe(5);
+  expect(r.dist.get(cellKey(s, { x: 4, y: 5 }))).toBe(6);
+  expect(r.dist.has(cellKey(s, { x: 8, y: 2 }))).toBe(false);
+  const p = pathFromReach(s, r, { x: 4, y: 5 })!;
+  expect(p[0]).toEqual({ x: 0, y: 7 });
+  expect(p[p.length - 1]).toEqual({ x: 4, y: 5 });
+  expect(p.length).toBe(7);
+  expect(pathFromReach(s, r, { x: 8, y: 2 })).toBeNull();
+});
 ```
 
 - [ ] **Step 2: 실패 확인**
@@ -1316,9 +1330,9 @@ Expected: FAIL — `Cannot find module '../path'`
 
 `src/sim/path.ts`:
 ```ts
-import type { GameState, Pt } from './types';
-import { objectDef } from '../data';
-import { inBounds, cellAt, objectAt } from './grid';
+import type { GameState, Pt } from './types.ts';
+import { objectDef } from '../data/index.ts';
+import { inBounds, cellAt, objectAt } from './grid.ts';
 
 const WALKABLE_KINDS = new Set(['path', 'gate', 'busstop']);
 
@@ -1341,54 +1355,59 @@ export function walkableNeighborsOf(state: GameState, x: number, y: number): Pt[
   return DIRS.map((d) => ({ x: x + d.x, y: y + d.y })).filter((p) => isWalkable(state, p.x, p.y));
 }
 
-/** 4방향 A*. 시작점 포함, 끝점 포함. 없으면 null. */
-export function findPath(state: GameState, from: Pt, to: Pt): Pt[] | null {
-  const key = (p: Pt) => p.y * state.grid.w + p.x;
-  const h = (p: Pt) => Math.abs(p.x - to.x) + Math.abs(p.y - to.y);
-  const open: { p: Pt; f: number }[] = [{ p: from, f: h(from) }];
-  const g = new Map<number, number>([[key(from), 0]]);
-  const came = new Map<number, Pt>();
-  const closed = new Set<number>();
-  while (open.length) {
-    open.sort((a, b) => a.f - b.f);
-    const { p } = open.shift()!;
-    const k = key(p);
-    if (p.x === to.x && p.y === to.y) {
-      const out: Pt[] = [p];
-      let cur = k;
-      while (came.has(cur)) {
-        const prev = came.get(cur)!;
-        out.unshift(prev);
-        cur = key(prev);
-      }
-      return out;
-    }
-    if (closed.has(k)) continue;
-    closed.add(k);
+export const cellKey = (state: GameState, p: Pt) => p.y * state.grid.w + p.x;
+
+/** from에서 닿는 모든 걷기 칸까지의 거리와 직전 칸. 한 번 계산해 여러 목적지에 재사용. */
+export interface Reach { from: Pt; dist: Map<number, number>; prev: Map<number, number> }
+
+export function reachMap(state: GameState, from: Pt): Reach {
+  const dist = new Map<number, number>();
+  const prev = new Map<number, number>();
+  const queue: Pt[] = [from];
+  dist.set(cellKey(state, from), 0);
+  for (let i = 0; i < queue.length; i++) {
+    const p = queue[i]!;
+    const pk = cellKey(state, p);
     for (const n of walkableNeighborsOf(state, p.x, p.y)) {
-      const nk = key(n);
-      const ng = (g.get(k) ?? 0) + 1;
-      if (ng < (g.get(nk) ?? Infinity)) {
-        g.set(nk, ng);
-        came.set(nk, p);
-        open.push({ p: n, f: ng + h(n) });
-      }
+      const nk = cellKey(state, n);
+      if (dist.has(nk)) continue;
+      dist.set(nk, dist.get(pk)! + 1);
+      prev.set(nk, pk);
+      queue.push(n);
     }
   }
-  return null;
+  return { from, dist, prev };
+}
+
+/** reach.from → to 경로 (양 끝 포함). 닿지 않으면 null. */
+export function pathFromReach(state: GameState, reach: Reach, to: Pt): Pt[] | null {
+  const toKey = cellKey(state, to);
+  if (!reach.dist.has(toKey)) return null;
+  const out: Pt[] = [];
+  let k: number | undefined = toKey;
+  while (k !== undefined) {
+    out.unshift({ x: k % state.grid.w, y: Math.floor(k / state.grid.w) });
+    k = reach.prev.get(k);
+  }
+  return out;
+}
+
+/** 단발 경로. 스폰처럼 목적지가 여러 개면 reachMap + pathFromReach를 쓸 것. */
+export function findPath(state: GameState, from: Pt, to: Pt): Pt[] | null {
+  return pathFromReach(state, reachMap(state, from), to);
 }
 ```
 
 - [ ] **Step 4: 통과 확인**
 
 Run: `pnpm test src/sim/__tests__/path.test.ts`
-Expected: PASS (4 tests)
+Expected: PASS (5 tests)
 
 - [ ] **Step 5: Commit**
 
 ```bash
 git add src/sim/path.ts src/sim/__tests__/path.test.ts
-git commit -m "feat(sim): 걷기 판정과 A* 경로"
+git commit -m "feat(sim): 걷기 판정과 BFS 도달 지도"
 ```
 
 ---
@@ -1408,7 +1427,7 @@ import { placeObject } from '../grid';
 import { setSlot } from '../menu';
 import { spawnGuests, updateGuests, freeSeats, GUEST_SPEED_CELLS_PER_S, SEAT_MS } from '../guests';
 
-/** 정낭(4,6) 위 (4,5)에 테이블, 그 옆 (5,5)에 올렛길로 연결 */
+/** 정낭(4,6) 바로 위 (4,5)에 테이블 → 정낭이 테이블의 걷기 이웃 */
 function cafe() {
   const s = createInitialState(1);
   const seat = placeObject(s, 'table_out', 4, 5);
@@ -1425,6 +1444,16 @@ test('빈 좌석과 경로가 있어야 스폰', () => {
   expect(spawnGuests(s2, 3)).toBe(2); // 테이블 1개 = 2석 → 2명
   expect(s2.guests[0]!.phase).toBe('walking');
   expect(s2.guests[0]!.seatId).toBeDefined();
+});
+
+test('가까운 좌석부터 배정한다', () => {
+  const { s } = cafe();
+  // 멀리 있는 두 번째 테이블: 정낭 (4,6) → 올렛길 (5,6),(6,6) → 테이블 (7,6)
+  placeObject(s, 'path', 5, 6);
+  placeObject(s, 'path', 6, 6);
+  const far = placeObject(s, 'table_out', 7, 6);
+  spawnGuests(s, 3);
+  expect(s.guests.map((g) => g.seatId === far.id)).toEqual([false, false, true]);
 });
 
 test('걸어가서 앉고, 주문하고, 돈과 연구가 오른다', () => {
@@ -1486,12 +1515,12 @@ Expected: FAIL — `Cannot find module '../guests'`
 
 `src/sim/guests.ts`:
 ```ts
-import type { GameState, Guest, PlacedObject, Pt } from './types';
-import { objectDef, menuDef, guestTypeDef, GUEST_TYPES } from '../data';
-import { pickWeighted } from './rng';
-import { sceneryScore } from './grid';
-import { availableMenus, consumeIngredients } from './menu';
-import { busStopPos, findPath, walkableNeighborsOf } from './path';
+import type { GameState, Guest, PlacedObject, Pt } from './types.ts';
+import { objectDef, menuDef, guestTypeDef, GUEST_TYPES } from '../data/index.ts';
+import { pickWeighted } from './rng.ts';
+import { sceneryScore } from './grid.ts';
+import { availableMenus, consumeIngredients } from './menu.ts';
+import { busStopPos, findPath, walkableNeighborsOf, reachMap, pathFromReach, cellKey } from './path.ts';
 
 export const GUEST_SPEED_CELLS_PER_S = 3;
 export const SEAT_MS = 4000;
@@ -1508,21 +1537,22 @@ export function freeSeats(state: GameState): PlacedObject[] {
   return seatObjects(state).filter((o) => (taken.get(o.id) ?? 0) < (objectDef(o.type).seats ?? 1));
 }
 
-/** 최대 n명 스폰. 실제 스폰된 수를 돌려준다. */
+/** 최대 n명 스폰. 정류장에서 가장 가까운 빈 좌석부터. 실제 스폰된 수를 돌려준다. */
 export function spawnGuests(state: GameState, n: number): number {
   let spawned = 0;
   const start = busStopPos(state);
+  const reach = reachMap(state, start); // 걷기 지형은 스폰 중 안 바뀌므로 한 번만
   for (let i = 0; i < n && state.guests.length < MAX_GUESTS; i++) {
-    const seats = freeSeats(state);
-    let chosen: { seat: PlacedObject; path: Pt[] } | null = null;
-    for (const seat of seats) {
+    let best: { seat: PlacedObject; target: Pt; dist: number } | null = null;
+    for (const seat of freeSeats(state)) {
       for (const nb of walkableNeighborsOf(state, seat.x, seat.y)) {
-        const path = findPath(state, start, nb);
-        if (path) { chosen = { seat, path }; break; }
+        const d = reach.dist.get(cellKey(state, nb));
+        if (d === undefined) continue;
+        if (!best || d < best.dist) best = { seat, target: nb, dist: d };
       }
-      if (chosen) break;
     }
-    if (!chosen) break;
+    if (!best) break;
+    const path = pathFromReach(state, reach, best.target)!;
     const type = pickWeighted(state, GUEST_TYPES, (t) => t.weight)!;
     state.guests.push({
       id: `g${state.nextId++}`,
@@ -1530,8 +1560,8 @@ export function spawnGuests(state: GameState, n: number): number {
       phase: 'walking',
       x: start.x,
       y: start.y,
-      path: chosen.path.slice(1),
-      seatId: chosen.seat.id,
+      path: path.slice(1),
+      seatId: best.seat.id,
       menuId: null,
       mood: null,
       timerMs: 0,
