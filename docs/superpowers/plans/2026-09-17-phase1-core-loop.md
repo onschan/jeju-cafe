@@ -1749,8 +1749,9 @@ git commit -m "feat(sim): 연구 포인트와 일직선 해금"
 
 `src/sim/__tests__/actions.test.ts`:
 ```ts
-import { createInitialState } from '../state';
-import { apply } from '../actions';
+import { createInitialState } from '../state.ts';
+import { apply } from '../actions.ts';
+import { spawnGuests } from '../guests.ts';
 
 test('place: 돈이 있어야 하고, 깎이고, 로그에 남는다', () => {
   const s = createInitialState(1);
@@ -1788,6 +1789,16 @@ test('remove: 시작 오브젝트(정류장·창고)는 못 없앤다, 나머지
   const f = Object.values(s.objects).find((o) => o.type === 'field')!;
   expect(apply(s, { type: 'remove', objectId: f.id }).ok).toBe(true);
   expect(s.money).toBe(5000);
+});
+
+test('remove: 손님이 지나갈 올렛길은 못 없앤다', () => {
+  const s = createInitialState(1);
+  apply(s, { type: 'place', objectType: 'path', x: 4, y: 5 });
+  apply(s, { type: 'place', objectType: 'table_out', x: 4, y: 4 });
+  const path = Object.values(s.objects).find((o) => o.type === 'path')!;
+  spawnGuests(s, 1);
+  expect(s.guests[0]!.path.some((p) => p.x === 4 && p.y === 5)).toBe(true);
+  expect(apply(s, { type: 'remove', objectId: path.id }).ok).toBe(false);
 });
 
 test('plant → harvest 흐름', () => {
@@ -1883,12 +1894,12 @@ Expected: FAIL — 모듈 없음
 
 `src/sim/actions.ts`:
 ```ts
-import type { GameState, Action, ApplyResult } from './types';
-import { objectDef } from '../data';
-import { canPlace, placeObject, removeObject } from './grid';
-import { canPlant, plant, canHarvest, harvest } from './farm';
-import { canSetSlot, setSlot } from './menu';
-import { canUnlock, unlock } from './progress';
+import type { GameState, Action, ApplyResult } from './types.ts';
+import { objectDef } from '../data/index.ts';
+import { canPlace, placeObject, removeObject, footprint } from './grid.ts';
+import { canPlant, plant, canHarvest, harvest } from './farm.ts';
+import { canSetSlot, setSlot } from './menu.ts';
+import { canUnlock, unlock } from './progress.ts';
 
 const PROTECTED_TYPES = new Set(['busstop', 'warehouse', 'gate']);
 const ACTION_LOG_CAP = 1000;
@@ -1924,6 +1935,8 @@ function applyInner(state: GameState, a: Action): ApplyResult {
       if (!obj) return { ok: false, reason: '없는 오브젝트' };
       if (PROTECTED_TYPES.has(obj.type)) return { ok: false, reason: '이건 못 없애요' };
       if (state.guests.some((g) => g.seatId === obj.id)) return { ok: false, reason: '손님이 앉아 있어요' };
+      const cells = new Set(footprint(obj.type, obj.x, obj.y).map((p) => `${p.x},${p.y}`));
+      if (state.guests.some((g) => g.path.some((p) => cells.has(`${p.x},${p.y}`)))) return { ok: false, reason: '손님이 지나가는 중이에요' };
       state.money += objectDef(obj.type).cost;
       removeObject(state, a.objectId);
       return { ok: true };
