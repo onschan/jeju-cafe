@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { GameView, type GhostSpec } from '../render/GameView';
-import { startLoop, dispatch, loadOrNew, getState, setViewReset } from './store';
-import { unlockAudio, bgm } from './audio';
+import { startLoop, dispatch, getState, setViewReset, autosaveNow, hasAnySave, loadSlot } from './store';
+import { unlockAudio, bgm, isMuted, setMuted } from './audio';
 import { seasonOf, canPlace, objectAt, footprint, parcelAt, parcelPrice, canBuyParcel, PROTECTED_TYPES, ROTATABLE_TYPES, type GameState } from '../sim/index.ts';
 import { objectDef } from '../data/index.ts';
 // render/·ui/는 Vite 전용이라 확장자 없는 import 허용. sim/·data/만 .ts 확장자 규칙.
@@ -9,8 +9,10 @@ import { HUD, NightOverlay } from './HUD';
 import { BottomSheet, type Mode, type PlaceBarProps } from './BottomSheet';
 import { MonthCard } from './MonthCard';
 import { Guide } from './Guide';
-import { PopupHost, Confirm } from './Popup';
-import { won } from './frame';
+import { PopupHost, Popup, Confirm } from './Popup';
+import { won, brownBtn, dangerBtn } from './frame';
+import { TitleScreen } from './TitleScreen';
+import { SaveSlots } from './SaveSlots';
 
 /** 길·돌담은 드래그로 연속해서 놓는다 (고스트 없이) */
 const PAINT_KINDS = new Set(['path', 'wall']);
@@ -25,7 +27,43 @@ function inFootprint(type: string, ox: number, oy: number, x: number, y: number)
   return footprint(type, ox, oy).some((p) => p.x === x && p.y === y);
 }
 
+/** 타이틀 → 게임. 게임에서 메뉴로 나가면 자동 저장 뒤 타이틀로. */
 export function App() {
+  const [screen, setScreen] = useState<'title' | 'game'>('title');
+  // 개발 자동화용: ?game 이면 자동 저장(없으면 새 게임)으로 바로 들어간다
+  useEffect(() => {
+    if (!import.meta.env.DEV || !new URLSearchParams(location.search).has('game')) return;
+    void hasAnySave().then(async (has) => { if (has) await loadSlot(0); setScreen('game'); });
+  }, []);
+  return (
+    <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+      {screen === 'title'
+        ? <TitleScreen onEnter={() => setScreen('game')} />
+        : <Game onExit={() => { autosaveNow(); setScreen('title'); }} />}
+      <PopupHost />
+    </div>
+  );
+}
+
+/** 게임 안 메뉴: 슬롯 저장·타이틀로 */
+function GameMenu({ onClose, onExit }: { onClose: () => void; onExit: () => void }) {
+  const [slots, setSlots] = useState(false);
+  const [muted, setMutedState] = useState(isMuted());
+  const toggleMute = () => { const m = !muted; setMuted(m); setMutedState(m); };
+  if (slots) return <SaveSlots mode="save" onClose={() => setSlots(false)} />;
+  return (
+    <Popup title="메뉴" onBackdrop={onClose} buttons={<button style={{ ...brownBtn, marginRight: 0, marginBottom: 0 }} onClick={onClose}>닫기</button>}>
+      <div style={{ display: 'grid', gap: 6 }}>
+        <button style={{ ...brownBtn, marginRight: 0, marginBottom: 0 }} onClick={toggleMute}>{muted ? '소리 켜기' : '소리 끄기'}</button>
+        <button style={{ ...brownBtn, marginRight: 0, marginBottom: 0 }} onClick={() => setSlots(true)}>슬롯에 저장</button>
+        <button style={{ ...dangerBtn, marginRight: 0, marginBottom: 0 }} onClick={() => Confirm('자동 저장하고 타이틀로 나갈까요?', onExit, { title: '타이틀로' })}>타이틀로 나가기</button>
+      </div>
+    </Popup>
+  );
+}
+
+function Game({ onExit }: { onExit: () => void }) {
+  const [menu, setMenu] = useState(false);
   const hostRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<GameView | null>(null);
   const modeRef = useRef<Mode>({ kind: 'idle' });
@@ -73,8 +111,6 @@ export function App() {
     let stop: (() => void) | null = null;
     let disposed = false;
     (async () => {
-      await loadOrNew();
-      if (disposed) return; // 불러오는 사이 언마운트(Fast Refresh 등)되면 캔버스를 만들지 않는다
       await view.init(host, {
         onTap: (x, y) => {
           const m = modeRef.current;
@@ -120,7 +156,7 @@ export function App() {
           } else if (m.kind === 'move' && movingRef.current) setMoving({ ...movingRef.current, x: x - dx, y: y - dy });
         },
       });
-      if (disposed) { view.destroy(); return; }
+      if (disposed) { view.destroy(); return; } // init 중 언마운트(Fast Refresh 등)
       // 개발 중 브라우저 자동화가 셀 → 화면 좌표를 계산할 수 있도록 (프로덕션 빌드에는 포함되지 않음)
       if (import.meta.env.DEV) (window as unknown as { __view: unknown }).__view = view;
       setViewReset(() => view.reset());
@@ -179,11 +215,11 @@ export function App() {
     <div onPointerDownCapture={onPointerDown} style={{ position: 'relative', width: '100%', height: '100%' }}>
       <div ref={hostRef} style={{ position: 'absolute', inset: 0, touchAction: 'none' }} />
       <NightOverlay />
-      <HUD />
+      <HUD onMenu={() => setMenu(true)} />
       <Guide />
       <BottomSheet mode={mode} setMode={setMode} place={place} msg={place ? null : msg} />
       <MonthCard />
-      <PopupHost />
+      {menu && <GameMenu onClose={() => setMenu(false)} onExit={onExit} />}
     </div>
   );
 }

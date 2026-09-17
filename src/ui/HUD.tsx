@@ -46,7 +46,7 @@ function unlockName(u: NonNullable<ReturnType<typeof nextUnlock>>) {
   return roleDef(u.ref).name;
 }
 
-export function HUD() {
+export function HUD({ onMenu }: { onMenu?: () => void } = {}) {
   const s = useGame();
   const u = nextUnlock(s);
   const toast = getToast();
@@ -78,9 +78,12 @@ export function HUD() {
               <Icon name="unlock" size={16} /> {unlockName(u)} ({Math.min(s.research, u.cost)}/{u.cost})
             </button>
           ) : <span>다 열었어요!</span>}
-          <button onClick={toggleMute} aria-label={muted ? '소리 켜기' : '소리 끄기'} style={{ ...iconBtn, background: '#333' }}>
-            <Icon name={muted ? 'sound_off' : 'sound_on'} size={32} />
-          </button>
+          {/* 메뉴가 있으면(게임 화면) 음소거는 메뉴 팝업 안으로 들어간다 — 375px 한 줄에 44px 버튼을 더 못 넣는다 */}
+          {onMenu
+            ? <button onClick={onMenu} aria-label="메뉴" data-testid="menu-btn" style={{ ...iconBtn, background: '#333', color: '#fff', fontFamily: 'inherit', fontSize: 13, fontWeight: 700 }}>메뉴</button>
+            : <button onClick={toggleMute} aria-label={muted ? '소리 켜기' : '소리 끄기'} style={{ ...iconBtn, background: '#333' }}>
+                <Icon name={muted ? 'sound_off' : 'sound_on'} size={32} />
+              </button>}
         </span>
       </div>
       {/* 토스트는 할망 안내와 같은 자리를 불투명하게 덮는다 (HUD 높이를 늘려 안내와 겹치지 않도록) */}
