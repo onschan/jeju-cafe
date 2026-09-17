@@ -176,6 +176,7 @@ export function createInitialState(seed: number, playerId = 'local', createdAt =
     monthIncome: 0,
     monthGuests: 0,
     monthCosts: { ingredients: 0, salary: 0, ads: 0, upkeep: 0, recruit: 0 },
+    lastMonthIncome: 0,
     lastMonthCard: null,
     tick: 0,
     actionLog: [],

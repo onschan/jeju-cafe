@@ -13,6 +13,7 @@ import { monthIndex } from './clock.ts';
 import { MAX_BUILDERS } from './build.ts';
 import { isUnlocked } from './segments.ts';
 import { MAX_SEGMENT_POPULARITY } from './promotions.ts';
+import { josa } from './josa.ts';
 
 export const SEED_PACK = { tangerine_seed: 3, hallabong_seed: 2 } as const;
 /** 인형뽑기 상품 크기 */
@@ -47,7 +48,7 @@ export function buyMileage(state: GameState, id: string): void {
   const def = mileageShopDef(id);
   state.mileage -= def.price;
   if (WORKER_RE.test(id)) { state.builders += 1; pushNotice(state, `일꾼 삼춘 합류! 동시 건설 ${state.builders}`); return; }
-  if (def.itemId) { grantItem(state, def.itemId); pushNotice(state, `${def.name}을(를) 샀어요`); return; }
+  if (def.itemId) { grantItem(state, def.itemId); pushNotice(state, `${josa(def.name, '을/를')} 샀어요`); return; }
   switch (id) {
     case 'ms_ticket': state.tickets += 1; pushNotice(state, '응모권 1장을 샀어요'); return;
     case 'ms_seed_pack':
@@ -55,7 +56,7 @@ export function buyMileage(state: GameState, id: string): void {
       pushNotice(state, '씨앗 묶음팩! 감귤 씨앗 3 · 한라봉 씨앗 2');
       return;
     case 'ms_scout': state.freeRecruits += 1; pushNotice(state, '스카우트권! 다음 공고비가 무료예요'); return;
-    default: pushNotice(state, `${def.name}을(를) 샀어요`);
+    default: pushNotice(state, `${josa(def.name, '을/를')} 샀어요`);
   }
 }
 
@@ -88,7 +89,7 @@ export function buyTicket(state: GameState, id: string): void {
   const def = ticketShopDef(id);
   state.tickets -= def.price;
   if (def.uniformId) { grantUniform(state, def.uniformId); return; }
-  if (def.itemId) { grantItem(state, def.itemId); pushNotice(state, `${def.name}을(를) 샀어요`); }
+  if (def.itemId) { grantItem(state, def.itemId); pushNotice(state, `${josa(def.name, '을/를')} 샀어요`); }
 }
 
 export function canSetUniform(state: GameState, id: string | null): ApplyResult {
@@ -160,7 +161,7 @@ function applyPrize(state: GameState, prize: DrawPrizeDef): string {
       const pool = ITEMS.filter((i) => i.value > 0 && i.fitIds.length > 0);
       const item = pickWeighted(state, pool.length ? pool : ITEMS.filter((i) => i.value > 0), () => 1)!;
       grantItem(state, item.id);
-      return `${item.name}을(를) 뽑았어요!`;
+      return `${josa(item.name, '을/를')} 뽑았어요!`;
     }
     case 'seed': {
       const id = nextRandom(state) < 0.5 ? 'tangerine_seed' : 'hallabong_seed';

@@ -85,8 +85,8 @@ export function setSceneHook(fn: typeof sceneHook) { sceneHook = fn; }
 export interface SlotSummary { slot: number; year: number; month: number; day: number; money: number; stars: number; savedAt: number | null }
 
 function summarize(slot: number, s: GameState): SlotSummary {
-  // ★ 등급은 2B-2 sim이 붙이는 필드(rank). 아직 없으면 1.
-  const stars = Math.max(1, Math.min(5, Number((s as unknown as { rank?: number }).rank ?? 1)));
+  // ★ 등급(star, 1~5). 랭크(rank, 1~10)와 다르다 — 랭크를 쓰면 랭크 5부터 ★5로 보였다.
+  const stars = Math.max(1, Math.min(5, Number(s.star ?? 1)));
   let savedAt: number | null = null;
   try { savedAt = Number(localStorage.getItem(`${SLOT_PREFIX}at:${slot}`)) || null; } catch { /* noop */ }
   return { slot, year: s.clock.year, month: s.clock.month, day: s.clock.day, money: s.money, stars, savedAt };

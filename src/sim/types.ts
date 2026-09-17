@@ -538,6 +538,7 @@ export interface GameState {
   monthIncome: number;
   monthGuests: number;
   monthCosts: MonthCosts;
+  lastMonthIncome: number; // 지난달 매출 (★ 조건 "월 매출"용 — lastMonthCard는 닫으면 null이 된다)
   lastMonthCard: {
     income: number;
     guests: number;

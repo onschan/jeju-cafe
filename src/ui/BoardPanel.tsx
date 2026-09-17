@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useGame, dispatch } from './store';
 import {
-  questProgress, canAcceptQuest, visibleQuests, spotLevel, spotUnlocked, nextSpotLevel, spotAppeal, spotGuestBonus, canInvestSpot, guestFace, monthIndex,
+  questProgress, canAcceptQuest, visibleQuests, questRewardText, spotLevel, spotUnlocked, nextSpotLevel, spotAppeal, spotGuestBonus, canInvestSpot, guestFace, monthIndex,
   SPOT_MAX_LEVEL, SPOT_BUS_LEVEL, SPOT_GUEST_LEVEL, SPOT_QUEST_LEVEL, QUEST_MONTHS,
   type QuestState, type QuestCondition, type SpotCategory, type EventState, type UnlockCond,
 } from '../sim/index.ts';
@@ -56,7 +56,7 @@ function QuestCard({ q }: { q: QuestState }) {
         <span style={{ fontSize: 12, color: q.status === 'active' ? PALETTE.ok : q.status === 'failed' ? PALETTE.bad : PALETTE.inkSoft }}>{STATUS_TEXT[q.status]}{q.status === 'active' && left !== null ? ` · ${left}달 남음` : ''}</span>
       </div>
       <div style={{ fontSize: 13, fontStyle: 'italic', color: PALETTE.inkSoft, margin: '4px 0' }}>“{guest.line}”</div>
-      <div style={{ fontSize: 13 }}>{conditionText(def.condition)} → <b>{def.rewardText}</b>{def.unlockGuestId ? ` · ${safeName(() => guestTypeDef(def.unlockGuestId!).name, '')} 방문` : ''}</div>
+      <div style={{ fontSize: 13 }}>{conditionText(def.condition)} → <b>{questRewardText(def)}</b>{def.unlockGuestId ? ` · ${safeName(() => guestTypeDef(def.unlockGuestId!).name, '')} 방문` : ''}</div>
       {q.status === 'active' && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4, fontSize: 13 }}>
           <Bar value={p.now} max={p.goal} width={120} color={PALETTE.ok} /> {Math.min(p.now, p.goal)}/{p.goal}

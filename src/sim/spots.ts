@@ -2,6 +2,7 @@ import type { GameState, ApplyResult, SpotDef } from './types.ts';
 import { SPOTS, spotDef } from '../data/index.ts';
 import { unlockCondMet } from './segments.ts';
 import { pushNotice } from './staff.ts';
+import { josa } from './josa.ts';
 
 export const SPOT_MAX_LEVEL = 5;
 /** 매력도 40당 하루 손님 +1 */
@@ -52,7 +53,7 @@ export function canInvestSpot(state: GameState, id: string): ApplyResult {
   try { def = spotDef(id); } catch { return { ok: false, reason: '없는 관광지예요' }; }
   if (!spotUnlocked(state, id)) return { ok: false, reason: '아직 투자할 수 없어요' };
   const next = nextSpotLevel(state, id);
-  if (!next) return { ok: false, reason: `${def.name}은(는) 최고 레벨이에요` };
+  if (!next) return { ok: false, reason: `${josa(def.name, '은/는')} 최고 레벨이에요` };
   if (state.money < next.cost) return { ok: false, reason: '돈이 모자라요' };
   return { ok: true };
 }

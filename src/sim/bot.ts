@@ -149,6 +149,22 @@ function dailyPlan(s: GameState): void {
   if (custom && !s.menuSlots.includes(custom.id)) apply(s, { type: 'setSlot', slot: 3, menuId: custom.id });
 }
 
+/** 봇 진행 커서 (한 상태를 이어서 돌릴 때 — 세이브 왕복 테스트 등) */
+export interface BotCursor { lastMonth: number; monthsPlayed: number }
+export function newBotCursor(): BotCursor { return { lastMonth: 0, monthsPlayed: -1 }; }
+
+/** 봇이 하루를 플레이한다 (월초 계획 → 아침 계획 → 하루 tick → 월말 카드 닫기). 순수·결정적. */
+export function botDay(s: GameState, cur: BotCursor): void {
+  if (s.clock.month !== cur.lastMonth) {
+    cur.lastMonth = s.clock.month;
+    cur.monthsPlayed++;
+    monthlyPlan(s, cur.monthsPlayed);
+  }
+  dailyPlan(s);
+  tick(s, DAY_MS);
+  if (s.lastMonthCard) apply(s, { type: 'dismissMonthCard' });
+}
+
 export function runBot(years: number, seed: number): BotRow[] {
   const s = createInitialState(seed);
   const rows: BotRow[] = [];

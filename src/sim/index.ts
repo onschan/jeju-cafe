@@ -1,5 +1,5 @@
 export * from './types.ts';
-export { createInitialState, GRID_W, GRID_H, PARCEL_W, PARCEL_H, START_ORIGIN, VILLAGE_ROAD_Y, MENU_SLOT_COUNT, SAVE_VERSION, START_MONEY, SETTLE_GRANT, SETTLE_GRANT_THRESHOLD } from './state.ts';
+export { createInitialState, GRID_W, GRID_H, PARCEL_W, PARCEL_H, START_ORIGIN, VILLAGE_ROAD_Y, MENU_SLOT_COUNT, SAVE_VERSION, START_MONEY, START_MONTH, SETTLE_GRANT, SETTLE_GRANT_THRESHOLD } from './state.ts';
 export { parcelAt, parcelById, parcelPrice, canBuyParcel, ownedParcels, parcelBonusAt, parcelUnlockOwnedCount } from './parcels.ts';
 export { tick, step, STEP_MS } from './tick.ts';
 export { apply, PROTECTED_TYPES, ROTATABLE_TYPES } from './actions.ts';
@@ -22,7 +22,8 @@ export { addMileage, codexCount, checkCodexMileage, CODEX_PER_MILEAGE } from './
 export { rankScore, rankForScore, nextRankThreshold, facilityCount, unlockedGuestTypeCount, updateRank, RANK_THRESHOLDS, MAX_RANK } from './rank.ts';
 export { starConditionMet, nextStarConditions, checkStar, judgeScores, guidebookScore, guidebookState, evaluateGuidebooks, guidebooksToAnnounce, announce, rivalScores, rankAmong, monthlyTarget, targetPopularity, codexTotal, MAX_STAR, JUDGE_KEYS, JUDGE_LABEL, ANNOUNCE_MONTHS, RIVAL_COUNT, PRIZE_RATIO, RANK_MILEAGE, MONTHLY_TAGS } from './guidebook.ts';
 export { evaluateUnlocks, evaluateFacilityUnlocks, unlockCondMet, isUnlocked, unlockedTypeIds, guestFace, walletOf, regularTier, isTarget, MAX_TARGETS, SAT_QUEST, SAT_REGULAR, SAT_VIP } from './segments.ts';
-export { questProgress, canAcceptQuest, canRespondEvent, eventConditionMet, boardBadge, visibleQuests, QUEST_MONTHS } from './board.ts';
+export { questProgress, canAcceptQuest, canRespondEvent, eventConditionMet, boardBadge, visibleQuests, questRewardText, QUEST_MONTHS } from './board.ts';
 export { spotLevel, spotUnlocked, nextSpotLevel, spotAppeal, spotGuestBonus, canInvestSpot, SPOT_MAX_LEVEL, SPOT_BUS_LEVEL, SPOT_GUEST_LEVEL, SPOT_QUEST_LEVEL } from './spots.ts';
 export { effectMult, noGuestsToday, dayIndex } from './effects.ts';
 export { cafeLevel, nextCafeLevelIncome, hasExpansion, canRenameCafe, canExpand, placeCost, seatsOf, isSeat, canSetCosmetic, canPraise, EXPANSIONS, CAFE_LEVEL_INCOME, CAFE_NAME_MAX, WALL_COLORS, SIGN_MAX, PRAISE_ENERGY, DEFAULT_CAFE_NAME, type ExpansionId, type ExpansionDef } from './cafe.ts';
+export { josa, hasBatchim } from './josa.ts';

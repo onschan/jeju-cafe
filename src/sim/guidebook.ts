@@ -51,7 +51,7 @@ export function codexTotal(): number {
 export function starConditionMet(state: GameState, text: string): boolean {
   let m: RegExpExecArray | null;
   const num = (s: string) => Number(s.replace(/,/g, ''));
-  if ((m = /^월 매출 ([\d,]+)$/.exec(text))) return (state.lastMonthCard?.income ?? 0) >= num(m[1]!);
+  if ((m = /^월 매출 ([\d,]+)$/.exec(text))) return state.lastMonthIncome >= num(m[1]!);
   if ((m = /^메뉴 (\d+)$/.exec(text))) return state.unlocked.menus.length >= num(m[1]!);
   if ((m = /^직원 (\d+)$/.exec(text))) return state.staff.length >= num(m[1]!);
   if ((m = /^손님층 (\d+) 만족 (\d+)$/.exec(text))) {

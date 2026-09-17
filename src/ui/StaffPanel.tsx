@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useGame, dispatch } from './store';
-import { TIERS, MAX_LEVEL, LOW_ENERGY, levelUpCost, canHire, canLevelUp, staffInRole, canPraise, PRAISE_ENERGY, type Staff, type Candidate, type RoleId, type StatKey, type JobTier, type Face as FaceParts } from '../sim/index.ts';
+import { TIERS, MAX_LEVEL, LOW_ENERGY, levelUpCost, canHire, canLevelUp, staffInRole, canPraise, PRAISE_ENERGY, type Staff, type Candidate, type RoleId, type StatKey, type JobTier, type Face as FaceParts, josa } from '../sim/index.ts';
 import { ROLES, roleDef, skillDef } from '../data/index.ts';
 import { Icon } from './Icon';
 import { Confirm } from './Popup';
@@ -78,7 +78,7 @@ function CandidateCard({ c }: { c: Candidate }) {
   const sk = skillDef(c.skill);
   const hire = () => {
     if (!chosen) return;
-    Confirm(`${c.name} 씨를 ${roleDef(chosen).name}(으)로 고용합니다. 월급 ${won(c.salary)}`, () => {
+    Confirm(`${c.name} 씨를 ${josa(roleDef(chosen).name, '으로/로')} 고용합니다. 월급 ${won(c.salary)}`, () => {
       if (dispatch({ type: 'hire', candidateId: c.id, role: chosen }).ok)
         showScene({ title: '채용', text: `새 직원: ${c.name}! — 잘 부탁드립니다!`, chars: [{ parts: staffParts(c.face, chosen) }], sfx: 'fanfare' });
     }, { title: '채용' });

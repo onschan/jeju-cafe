@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useGame, dispatch } from './store';
-import { cafeLevel, nextCafeLevelIncome, canExpand, canRenameCafe, EXPANSIONS, CAFE_NAME_MAX, WALL_COLORS, SIGN_MAX, CAFE_LEVEL_INCOME } from '../sim/index.ts';
+import { cafeLevel, nextCafeLevelIncome, canExpand, canRenameCafe, EXPANSIONS, CAFE_NAME_MAX, WALL_COLORS, SIGN_MAX, CAFE_LEVEL_INCOME, josa } from '../sim/index.ts';
 import { Icon } from './Icon';
 import { Confirm } from './Popup';
 import { Bar } from './StaffPanel';
@@ -54,7 +54,7 @@ export function CafePanel({ onMenu }: { onMenu: () => void }) {
             </div>
             {!done && (
               <button style={can.ok ? brownBtnOn : brownBtnOff} disabled={!can.ok} aria-label={`${e.name} 증축`}
-                onClick={() => Confirm(`${e.name}을(를) ${won(e.cost)}에 할까요? ${e.desc}.`, () => dispatch({ type: 'expand', id: e.id }), { title: '증축' })}>
+                onClick={() => Confirm(`${josa(e.name, '을/를')} ${won(e.cost)}에 할까요? ${e.desc}.`, () => dispatch({ type: 'expand', id: e.id }), { title: '증축' })}>
                 <Icon name="build" /> 짓기
               </button>
             )}

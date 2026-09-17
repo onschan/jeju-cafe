@@ -1,5 +1,5 @@
 import { useGame, dispatch } from './store';
-import { objectStats, sceneryScore, canUseItem, itemEffect, PROTECTED_TYPES, canPlant, clearCost, canClearRock, hasPickaxe, cellAt, type ObjectKind, type ComboStrength, buildDaysLeft } from '../sim/index.ts';
+import { objectStats, sceneryScore, canUseItem, itemEffect, PROTECTED_TYPES, canPlant, clearCost, canClearRock, hasPickaxe, cellAt, type ObjectKind, type ComboStrength, buildDaysLeft, josa } from '../sim/index.ts';
 import { objectDef, cropDef, itemDef, CROPS, COMBOS, SETS } from '../data/index.ts';
 import { Icon } from './Icon';
 import { Confirm } from './Popup';
@@ -54,7 +54,7 @@ export function ObjectInfoPanel({ objectId }: { objectId: string }) {
   const useIt = (itemId: string) => {
     const it = itemDef(itemId);
     const eff = itemEffect(it, d);
-    Confirm(`${it.name}을(를) 써서 모든 ${d.name}의 ${it.stat === 'popularity' ? '인기' : it.stat === 'scenery' ? '경관' : '요금'}을 +${eff}${it.stat === 'feePct' ? '%' : ''} 올릴까요? (아이템 1개를 써요)`, () => dispatch({ type: 'useItem', itemId, objectType: o.type }), { title: '아이템 사용' });
+    Confirm(`${josa(it.name, '을/를')} 써서 모든 ${d.name}의 ${it.stat === 'popularity' ? '인기' : it.stat === 'scenery' ? '경관' : '요금'}을 +${eff}${it.stat === 'feePct' ? '%' : ''} 올릴까요? (아이템 1개를 써요)`, () => dispatch({ type: 'useItem', itemId, objectType: o.type }), { title: '아이템 사용' });
   };
   return (
     <div>
@@ -98,16 +98,6 @@ export function ObjectInfoPanel({ objectId }: { objectId: string }) {
           아이템 보너스: 인기 +{s.itemBonus[o.type]!.popularity}{s.itemBonus[o.type]!.feePct > 0 && ` · 요금 +${s.itemBonus[o.type]!.feePct}%`}
         </div>
       )}
-      {usable.length > 0 && (
-        <div style={{ marginBottom: 4 }}>
-          {usable.map(([id, n]) => (
-            <button key={id} style={brownBtnOn} onClick={() => useIt(id)}>
-              <Icon name="unlock" /> {itemDef(id).name} 쓰기 ({n}개)
-            </button>
-          ))}
-        </div>
-      )}
-
       {d.kind === 'field' && !o.crop && CROPS.filter((c) => s.unlocked.crops.includes(c.id) && c.plantMonths.length > 0).map((c) => {
         const can = canPlant(s, o.id, c.id);
         return (
@@ -119,6 +109,17 @@ export function ObjectInfoPanel({ objectId }: { objectId: string }) {
       {o.type === 'bush_wild' && <RockPanel x={o.x} y={o.y} />}
       {!PROTECTED_TYPES.has(o.type) && o.type !== 'bush_wild' && (
         <button style={dangerBtn} onClick={() => dispatch({ type: 'remove', objectId: o.id })}><Icon name="remove" /> 치우기 ({d.removeCost ? `${won(d.removeCost)} 들어요` : `${won(d.cost)} 돌려받음`})</button>
+      )}
+      {/* 아이템은 심기·치우기 아래에 — 아이템이 10개를 넘으면 기본 동작이 화면 밖으로 밀려난다 */}
+      {usable.length > 0 && (
+        <div style={{ marginTop: 6 }}>
+          <div style={{ fontSize: 13, color: PALETTE.inkSoft, marginBottom: 2 }}>강화 아이템 쓰기</div>
+          {usable.map(([id, n]) => (
+            <button key={id} style={brownBtnOn} onClick={() => useIt(id)}>
+              <Icon name="unlock" /> {itemDef(id).name} 쓰기 ({n}개)
+            </button>
+          ))}
+        </div>
       )}
     </div>
   );

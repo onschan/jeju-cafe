@@ -1,6 +1,6 @@
 import { useEffect, useState, type CSSProperties } from 'react';
 import { useGame, dispatch } from './store';
-import { canBuyMileage, canBuyTicket, canDrawTicket, canUseItem, canUseGuestItem, hasFreeDraw, hasUniform, itemEffect, constructions, unlockedTypeIds, MAX_BUILDERS } from '../sim/index.ts';
+import { canBuyMileage, canBuyTicket, canDrawTicket, canUseItem, canUseGuestItem, hasFreeDraw, hasUniform, itemEffect, constructions, unlockedTypeIds, MAX_BUILDERS, josa } from '../sim/index.ts';
 import { MILEAGE_SHOP, TICKET_SHOP, UNIFORMS, DRAW_PRIZES, itemDef, objectDef, uniformDef, guestTypeDef, POPULARITY_FRUIT } from '../data/index.ts';
 import { Popup, Confirm } from './Popup';
 import { Icon } from './Icon';
@@ -63,7 +63,7 @@ function MileageShop() {
             </div>
             <span style={price}>{m.price}M</span>
             <button style={{ ...(can.ok ? brownBtn : brownBtnOff), marginBottom: 0, marginRight: 0 }} data-testid={`buy-${m.id}`}
-              onClick={() => { if (!can.ok) { dispatch({ type: 'buyMileage', id: m.id }); return; } Confirm(`${m.name}을(를) 마일리지 ${m.price}로 살까요?`, () => dispatch({ type: 'buyMileage', id: m.id }), { title: '마일리지 상점' }); }}>
+              onClick={() => { if (!can.ok) { dispatch({ type: 'buyMileage', id: m.id }); return; } Confirm(`${josa(m.name, '을/를')} 마일리지 ${m.price}로 살까요?`, () => dispatch({ type: 'buyMileage', id: m.id }), { title: '마일리지 상점' }); }}>
               사기
             </button>
           </div>
@@ -100,7 +100,7 @@ function TicketShop() {
             </div>
             <span style={price}>🎫{t.price}</span>
             <button style={{ ...(can.ok ? brownBtn : brownBtnOff), marginBottom: 0, marginRight: 0 }} data-testid={`buy-${t.id}`}
-              onClick={() => { if (!can.ok) { dispatch({ type: 'buyTicket', id: t.id }); return; } Confirm(`${t.name}을(를) 응모권 ${t.price}장으로 살까요?`, () => dispatch({ type: 'buyTicket', id: t.id }), { title: '응모권 상점' }); }}>
+              onClick={() => { if (!can.ok) { dispatch({ type: 'buyTicket', id: t.id }); return; } Confirm(`${josa(t.name, '을/를')} 응모권 ${t.price}장으로 살까요?`, () => dispatch({ type: 'buyTicket', id: t.id }), { title: '응모권 상점' }); }}>
               {has ? '있음' : '사기'}
             </button>
           </div>
@@ -166,7 +166,7 @@ function TargetPicker({ itemId, onClose }: { itemId: string; onClose: () => void
     const d = objectDef(t);
     const eff = itemEffect(it, d);
     onClose();
-    Confirm(`${it.name}을(를) 모든 ${d.name}에 써서 ${statLabel(it.stat)} +${eff}${it.stat === 'feePct' ? '%' : ''}? (1개를 써요)`, () => dispatch({ type: 'useItem', itemId, objectType: t }), { title: '아이템 사용' });
+    Confirm(`${josa(it.name, '을/를')} 모든 ${d.name}에 써서 ${statLabel(it.stat)} +${eff}${it.stat === 'feePct' ? '%' : ''}? (1개를 써요)`, () => dispatch({ type: 'useItem', itemId, objectType: t }), { title: '아이템 사용' });
   };
   return (
     <Popup title={`${it.name} — 어디에 쓸까요?`} onBackdrop={onClose} buttons={<button style={brownBtn} onClick={onClose}>닫기</button>}>

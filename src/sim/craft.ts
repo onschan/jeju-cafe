@@ -12,6 +12,7 @@ import { menuDef, ingredientDef, toppingDef, INGREDIENT_COMBOS, HIDDEN_RECIPES, 
 import { nextRandom, randInt } from './rng.ts';
 import { findStaff, ingredientDiscount, pushNotice } from './staff.ts';
 import { dayIndex } from './effects.ts';
+import { josa } from './josa.ts';
 
 // ---------- 상수 ----------
 export const DEVELOP_DAYS = 3;
@@ -51,9 +52,9 @@ export const BASE_NAME: Record<MenuBase, string> = { drink: '음료', dessert: '
 export const BASE_MIN: Record<MenuBase, number> = { drink: 2, dessert: 3, meal: 3, signature: 4 };
 export const PARAM_AXES: Record<MenuBase, ParamAxis[]> = { drink: ['grind', 'temp', 'time'], dessert: ['temp', 'time'], meal: ['heat', 'time'], signature: ['grind', 'temp', 'time'] };
 export const PARAM_LABEL: Record<ParamAxis, { name: string; levels: [string, string, string] }> = {
-  grind: { name: '굵기', levels: ['가늘', '보통', '굵'] },
-  temp: { name: '온도', levels: ['낮', '보통', '높'] },
-  time: { name: '시간', levels: ['짧', '보통', '길'] },
+  grind: { name: '굵기', levels: ['가늘게', '보통', '굵게'] },
+  temp: { name: '온도', levels: ['낮게', '보통', '높게'] },
+  time: { name: '시간', levels: ['짧게', '보통', '길게'] },
   heat: { name: '불 세기', levels: ['약', '보통', '강'] },
 };
 export const PARAM_DEFAULT = 1;
@@ -303,7 +304,7 @@ export function canDevelop(state: GameState, base: MenuBase, ingredients: string
   if (isStaffBusy(state, staffId)) return { ok: false, reason: '그 직원은 바빠요' };
   if (state.research < DEVELOP_RESEARCH) return { ok: false, reason: '연구 포인트가 모자라요' };
   const need = countIngredients(ingredients);
-  for (const [id, n] of Object.entries(need)) if (ingredientDef(id).kind === 'farm' && (state.storage[id] ?? 0) < n) return { ok: false, reason: `${ingredientDef(id).name}이(가) 창고에 없어요` };
+  for (const [id, n] of Object.entries(need)) if (ingredientDef(id).kind === 'farm' && (state.storage[id] ?? 0) < n) return { ok: false, reason: `${josa(ingredientDef(id).name, '이/가')} 창고에 없어요` };
   if (state.money < developCost(ingredients)) return { ok: false, reason: '돈이 모자라요' };
   return { ok: true };
 }
@@ -387,7 +388,7 @@ export function resolveDevelop(state: GameState): DevelopResult | null {
   state.unlocked.menus.push(id);
   const result: DevelopResult = { outcome, menuId: id, name: def.name, base: dev.base, stats, quality, hidden: hidden !== null, combos };
   state.lastDevelop = result;
-  pushNotice(state, `${outcome === 'great' ? '대성공! ' : ''}${def.name}을(를) 개발했어요 (${quality})`);
+  pushNotice(state, `${outcome === 'great' ? '대성공! ' : ''}${josa(def.name, '을/를')} 개발했어요 (${quality})`);
   return result;
 }
 
@@ -428,7 +429,7 @@ export function canLevelUpMenu(state: GameState, menuId: string): ApplyResult {
   if (!state.unlocked.menus.includes(menuId)) return { ok: false, reason: '아직 모르는 메뉴' };
   if (menuMod(state, menuId).level >= MAX_MENU_LEVEL) return { ok: false, reason: '최고 레벨이에요' };
   const cost = levelUpMenuCost(state, menuId);
-  for (const [id, n] of Object.entries(cost.ingredients)) if ((state.storage[id] ?? 0) < n) return { ok: false, reason: `${ingredientDef(id).name}이(가) ${n}개 필요해요` };
+  for (const [id, n] of Object.entries(cost.ingredients)) if ((state.storage[id] ?? 0) < n) return { ok: false, reason: `${josa(ingredientDef(id).name, '이/가')} ${n}개 필요해요` };
   if (state.money < cost.money) return { ok: false, reason: '돈이 모자라요' };
   return { ok: true };
 }

@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { useGame, getToast } from './store';
 import { GUIDE_TOP } from './Guide';
 import { PALETTE } from './frame';
-import { useTutorial, currentStep, checkTutorial, advanceTutorial, skipTutorial, TUTORIAL_STEPS, MORE_TAB_NAMES } from './tutorial';
+import { useTutorial, currentStep, checkTutorial, advanceTutorial, skipTutorial, stepLines, TUTORIAL_STEPS, MORE_TAB_NAMES } from './tutorial';
 
 const PULSE_CSS = `
 @keyframes tut-pulse { 0%, 100% { box-shadow: 0 0 0 0 #ffd166; } 50% { box-shadow: 0 0 0 5px #ffd16600, 0 0 12px 4px #ffd166; } }
@@ -21,6 +21,7 @@ export function TutorialOverlay() {
   // 토스트가 같은 자리를 쓰므로 토스트가 떠 있는 동안은 숨긴다
   if (!step || getToast()) return null;
   const manual = !step.done;
+  const lines = stepLines(step, s);
   return (
     <div data-testid="tutorial" data-step={step.id} style={{ position: 'absolute', top: GUIDE_TOP, left: 12, right: 12, display: 'flex', alignItems: 'flex-start', gap: 8, pointerEvents: 'none' }}>
       <style>{PULSE_CSS}{step.tab ? `[data-tab="${step.tab}"]${MORE_TAB_NAMES.has(step.tab) ? ', [data-tab="더보기"]:not([aria-expanded="true"])' : ''} { animation: tut-pulse 1s ease-in-out infinite; }` : ''}</style>
@@ -33,8 +34,8 @@ export function TutorialOverlay() {
             <button aria-label="튜토리얼 건너뛰기" style={{ ...smallBtn, background: '#fffaf0', color: PALETTE.inkSoft }} onClick={skipTutorial}>건너뛰기</button>
           </span>
         </div>
-        <div>{step.lines[0]}</div>
-        <div>{step.lines[1]}</div>
+        <div>{lines[0]}</div>
+        <div>{lines[1]}</div>
       </div>
     </div>
   );

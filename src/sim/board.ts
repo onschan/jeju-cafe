@@ -1,5 +1,5 @@
 import type { GameState, ApplyResult, QuestDef, QuestState, EventDef, EventEffect, EventFilter } from './types.ts';
-import { QUESTS, EVENTS, questDef, eventDef, guestTypeDef, GUEST_TYPES, canonicalGuestId, spotDef } from '../data/index.ts';
+import { QUESTS, EVENTS, questDef, eventDef, guestTypeDef, GUEST_TYPES, canonicalGuestId, spotDef, itemDef } from '../data/index.ts';
 import { nextRandom } from './rng.ts';
 import { monthIndex } from './clock.ts';
 import { pushNotice } from './staff.ts';
@@ -79,6 +79,21 @@ export function acceptQuest(state: GameState, id: string): void {
   checkQuests(state);
 }
 
+/** 보상 문구를 구조화된 rewards에서 만든다 (표의 rewardText는 아이템 id가 그대로 들어 있다). rewards가 비면 rewardText. */
+export function questRewardText(q: QuestDef): string {
+  const parts = q.rewards.map((r) => {
+    switch (r.type) {
+      case 'money': return `자금 ${r.amount.toLocaleString()}`;
+      case 'research': return `연구 ${r.amount}`;
+      case 'ticket': return `응모권 ${r.amount}`;
+      case 'mileage': return `마일리지 ${r.amount}`;
+      case 'ad': return `${guestTypeDef(q.guestId).name} 인기 +${r.amount}`;
+      case 'item': { let name = r.itemId; try { name = itemDef(r.itemId).name; } catch { /* 표에만 있는 아이템 */ } return `아이템 ${name}`; }
+    }
+  });
+  return parts.length > 0 ? parts.join('·') : q.rewardText;
+}
+
 function applyReward(state: GameState, q: QuestDef): void {
   for (const r of q.rewards) {
     switch (r.type) {
@@ -99,7 +114,7 @@ export function completeQuest(state: GameState, id: string): void {
   st.status = 'done';
   applyReward(state, q);
   guestTypeState(state, q.guestId).questDone = true;
-  pushNotice(state, `부탁 완료! ${guestTypeDef(q.guestId).name} — ${q.rewardText}`);
+  pushNotice(state, `부탁 완료! ${guestTypeDef(q.guestId).name} — ${questRewardText(q)}`);
   if (q.unlockGuestId) unlockGuestType(state, q.unlockGuestId);
   evaluateUnlocks(state);
   refreshQuests(state);

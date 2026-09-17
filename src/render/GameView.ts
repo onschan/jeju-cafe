@@ -659,6 +659,7 @@ export class GameView {
         entry.node.destroy({ children: true });
         this.guestNodes.delete(id);
         this.bubbleKeys.delete(id);
+        this.greeted.delete(id); // 손님 id는 재사용되지 않으므로 안 지우면 세션 내내 쌓인다
       }
     }
     const walkFrame = (Math.floor(now / WALK_FRAME_MS) % 3) as Frame;

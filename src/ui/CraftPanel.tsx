@@ -5,7 +5,7 @@ import {
   normalizeParams, successRate, bonusWidth, developStaffStat, developCost, canDevelop, developDaysLeft, autoMenuName, qualityOf, countIngredients,
   canAddTopping, canRemoveTopping, canLevelUpMenu, levelUpMenuCost, maxSlots, isStaffBusy, isCustomMenu, hasMenuStaff, menuRequirementText, isMenuAvailable,
   DEVELOP_DAYS, DEVELOP_RESEARCH, BASE_NAME, BASE_MIN, PARAM_AXES, PARAM_LABEL, PARAM_DEFAULT, BASE_STAT, MENU_SKILLS, TIER_NAMES, MAX_TOPPINGS, MAX_MENU_LEVEL, SIGNATURE_STAR, P_GREAT,
-  type MenuBase, type BrewParams, type ParamAxis, type MenuStats, type MenuSkill,
+  josa, type MenuBase, type BrewParams, type ParamAxis, type MenuStats, type MenuSkill,
 } from '../sim/index.ts';
 import { INGREDIENTS, TOPPINGS, HIDDEN_RECIPES, INGREDIENT_COMBOS, ingredientDef, toppingDef, ingredientComboDef, ingredientStats, addStats, MENU_STAT_KEYS, MENU_STAT_LABEL, INGREDIENT_CATEGORY_NAME } from '../data/index.ts';
 import { Icon } from './Icon';
@@ -76,7 +76,7 @@ export function CraftPanel() {
   const removeAt = (i: number) => setPicked(ingredients.filter((_, j) => j !== i));
   const start = () => {
     const name = hidden ? '???' : autoMenuName(base, ingredients);
-    Confirm(`${name}을(를) ${DEVELOP_DAYS}일 동안 개발할까요? 연구 ${DEVELOP_RESEARCH} · 재료비 ${won(cost)} · 성공 ${Math.round(rate)}%`, () => {
+    Confirm(`${josa(name, '을/를')} ${DEVELOP_DAYS}일 동안 개발할까요? 연구 ${DEVELOP_RESEARCH} · 재료비 ${won(cost)} · 성공 ${Math.round(rate)}%`, () => {
       if (dispatch({ type: 'develop', base, ingredients, params: norm, staffId }).ok) setPicked([]);
     }, { title: '메뉴 개발' });
   };
@@ -242,7 +242,7 @@ export function MenuDetail({ menuId }: { menuId: string }) {
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4, flexWrap: 'wrap' }}>
         <button aria-label="메뉴 레벨업" style={canLv.ok ? brownBtnOn : brownBtnOff} disabled={!canLv.ok}
-          onClick={() => Confirm(`${def.name}을(를) Lv${mod.level + 1}로 올릴까요? 판매가 +10%, 더 잘 팔려요. 비용 ${won(lvCost.money)}${Object.keys(lvCost.ingredients).length > 0 ? ' + ' + Object.entries(lvCost.ingredients).map(([id, n]) => `${ingredientDef(id).name} ${n}`).join('·') : ''}`, () => dispatch({ type: 'levelUpMenu', menuId }), { title: '메뉴 레벨업' })}>
+          onClick={() => Confirm(`${josa(def.name, '을/를')} Lv${mod.level + 1}로 올릴까요? 판매가 +10%, 더 잘 팔려요. 비용 ${won(lvCost.money)}${Object.keys(lvCost.ingredients).length > 0 ? ' + ' + Object.entries(lvCost.ingredients).map(([id, n]) => `${ingredientDef(id).name} ${n}`).join('·') : ''}`, () => dispatch({ type: 'levelUpMenu', menuId }), { title: '메뉴 레벨업' })}>
           <Icon name="unlock" /> 레벨업 {mod.level >= MAX_MENU_LEVEL ? '(최고)' : won(lvCost.money)}
         </button>
         {!canLv.ok && mod.level < MAX_MENU_LEVEL && <span style={{ fontSize: 13, color: PALETTE.inkSoft }}>{canLv.reason}</span>}

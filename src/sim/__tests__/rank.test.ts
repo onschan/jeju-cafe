@@ -66,8 +66,16 @@ test('랭크 2에 오르면 랭크 해금 시설(실내 테이블·주차장)과
 function richState(): GameState {
   const s = createInitialState(1);
   s.lastMonthCard = { income: 400_000, guests: 100, month: 3, year: 1, costs: { ingredients: 0, salary: 0, ads: 0, upkeep: 0, recruit: 0 }, net: 400_000 };
+  s.lastMonthIncome = 400_000;
   return s;
 }
+
+test('★ 조건 "월 매출"은 결산 카드를 닫아도 지난달 매출로 판정한다', () => {
+  const s = richState();
+  expect(apply(s, { type: 'dismissMonthCard' }).ok).toBe(true);
+  expect(s.lastMonthCard).toBeNull();
+  expect(starConditionMet(s, '월 매출 100,000')).toBe(true);
+});
 
 test('★ 조건 문구 해석: 월 매출·메뉴·직원·손님층 만족·시그니처·랜드마크·랭킹 1위·도감%·정착 등급, 모르는 문구는 false', () => {
   const s = richState();

@@ -7,6 +7,7 @@ import { grantItem } from './items.ts';
 import { pushFx } from './farm.ts';
 import { parcelAt } from './parcels.ts';
 import { updateRank } from './rank.ts';
+import { josa } from './josa.ts';
 export { updateRank };
 
 /** 만족 게이지 0~100: 😊 +2 (타깃 +3), 😠 −1. 30 부탁·50 단골·80 VIP */
@@ -178,7 +179,7 @@ export function addSatisfaction(state: GameState, typeId: string, delta: number)
   const tier: RegularTier = st.satisfaction >= SAT_VIP ? 'vip' : st.satisfaction >= SAT_REGULAR ? 'regular' : 'none';
   if (tier !== st.regular && (tier === 'vip' || (tier === 'regular' && st.regular === 'none'))) {
     st.regular = tier;
-    pushNotice(state, tier === 'vip' ? `${guestTypeDef(id).name}이(가) VIP가 됐어요!` : `${guestTypeDef(id).name}이(가) 단골이 됐어요`);
+    pushNotice(state, tier === 'vip' ? `${josa(guestTypeDef(id).name, '이/가')} VIP가 됐어요!` : `${josa(guestTypeDef(id).name, '이/가')} 단골이 됐어요`);
   }
 }
 
@@ -198,7 +199,7 @@ export function onHappyVisit(state: GameState, g: Guest, satMult = 1): void {
     case 'item':
       if (nextRandom(state) < ITEM_DROP_CHANCE) {
         const item = pickWeighted(state, ITEMS.filter((i) => i.value > 0), () => 1);
-        if (item) { grantItem(state, item.id); pushNotice(state, `${def.name}이(가) ${item.name}을(를) 주고 갔어요`); }
+        if (item) { grantItem(state, item.id); pushNotice(state, `${josa(def.name, '이/가')} ${josa(item.name, '을/를')} 주고 갔어요`); }
       }
       break;
     case 'money': {
@@ -227,7 +228,7 @@ export function onHappyVisit(state: GameState, g: Guest, satMult = 1): void {
       break;
     }
     case 'ticket':
-      if (nextRandom(state) < TICKET_CHANCE) { state.tickets += 1; pushNotice(state, `${def.name}이(가) 응모권을 주고 갔어요`); }
+      if (nextRandom(state) < TICKET_CHANCE) { state.tickets += 1; pushNotice(state, `${josa(def.name, '이/가')} 응모권을 주고 갔어요`); }
       break;
   }
 }

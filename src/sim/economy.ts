@@ -33,6 +33,7 @@ export function closeMonth(state: GameState, prevMonth: number, prevYear: number
   const costs = { ...state.monthCosts };
   const net = state.monthIncome - costs.ingredients - costs.salary - costs.ads - costs.upkeep - costs.recruit;
   state.lastMonthCard = { income: state.monthIncome, guests: state.monthGuests, month: prevMonth, year: prevYear, costs, net };
+  state.lastMonthIncome = state.monthIncome;
   state.monthIncome = 0;
   state.monthGuests = 0;
   state.monthCosts = emptyMonthCosts();
