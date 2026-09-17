@@ -1,0 +1,5 @@
+[
+  { "id": "tangerine_juice", "name": "감귤주스", "category": "drink", "price": 3000, "ingredients": { "tangerine": 1 } },
+  { "id": "carrot_juice", "name": "당근주스", "category": "drink", "price": 2500, "ingredients": { "carrot": 1 } },
+  { "id": "carrot_cake", "name": "당근케이크", "category": "dessert", "price": 4500, "ingredients": { "carrot": 2 } }
+]

@@ -1,0 +1,4 @@
+[
+  { "id": "u1", "kind": "object", "ref": "stonewall", "cost": 5 },
+  { "id": "u2", "kind": "menu", "ref": "carrot_cake", "cost": 8 }
+]
