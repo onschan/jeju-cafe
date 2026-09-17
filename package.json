@@ -11,7 +11,8 @@
     "test:watch": "vitest",
     "headless": "tsx scripts/headless.ts",
     "assets": "python3 tools/assets/build.py",
-    "assets:audio": "python3 tools/assets/sfx.py && python3 tools/assets/bgm.py"
+    "assets:audio": "python3 tools/assets/sfx.py && python3 tools/assets/bgm.py",
+    "assets:font": "bash tools/assets/fetch_font.sh"
   },
   "dependencies": {
     "pixi.js": "^8.6.0",
