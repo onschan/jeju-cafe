@@ -47,7 +47,7 @@ test('걸어가서 앉고, 주문하고, 돈과 연구가 오른다', () => {
   expect(g.phase).toBe('seated');
   expect(g.menuId).toBe('carrot_juice');
   expect(g.mood).toBeNull(); // 조리 중
-  expect(s.money).toBe(money0 + 4000);
+  expect(s.money).toBe(money0 + 4000); // 당근주스 4000
   expect(s.storage['carrot']).toBe(9);
   expect(s.monthGuests).toBe(1); // 도착 시 센다
   updateGuests(s, PREP_MS);
@@ -197,18 +197,18 @@ test('대사: 30%쯤은 말풍선 텍스트, 손님층·기분·이유에 맞는
   expect(said).toBeLessThan(total * 0.45);
 });
 
-test('하루 손님 수: 좌석과 인기로 정해지고 1~12', () => {
+test('하루 손님 수: 좌석과 인기로 정해지고 1~8', () => {
   const s = createInitialState(1);
   s.segmentPopularity = { local: 0, tourist: 0 };
-  expect(dailyGuestCount(s)).toBe(2);
+  expect(dailyGuestCount(s)).toBe(1);
   placeObject(s, 'table_out', 4, 5); // 2석
-  placeObject(s, 'table_out', 5, 5);
-  expect(dailyGuestCount(s)).toBe(4);
-  s.segmentPopularity = { local: 30, tourist: 20 }; // 평균 배수 1.5 → +2
-  expect(dailyGuestCount(s)).toBe(6);
-  s.segmentPopularity = { local: 99, tourist: 99 };
-  for (let i = 0; i < 12; i++) placeObject(s, 'table_out', i % 10, 1 + Math.floor(i / 10) * 3);
-  expect(dailyGuestCount(s)).toBe(12);
+  placeObject(s, 'table_out', 5, 5); // 4석 → +1
+  expect(dailyGuestCount(s)).toBe(2);
+  s.segmentPopularity = { local: 30, tourist: 20 }; // 평균 배수 1.5 → +1
+  expect(dailyGuestCount(s)).toBe(3);
+  s.segmentPopularity = { local: 99, tourist: 99 }; // 평균 배수 2.98 → +3
+  for (let i = 0; i < 12; i++) placeObject(s, 'table_out', i % 10, 1 + Math.floor(i / 10) * 3); // 28석 → +7
+  expect(dailyGuestCount(s)).toBe(8);
 });
 
 test('시간대 분배: 시간 비중 합 1, 정오 피크, 저녁 절반, 아침 삼춘·낮 관광객 가중', () => {

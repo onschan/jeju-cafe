@@ -1,6 +1,6 @@
 [
-  {"id": "americano", "name": "아메리카노", "category": "drink", "price": 3500, "ingredients": {"beans": 1}},
-  {"id": "latte", "name": "카페라떼", "category": "drink", "price": 4500, "ingredients": {"beans": 1, "milk": 1}, "requires": {"role": "barista"}},
+  {"id": "americano", "name": "아메리카노", "category": "drink", "price": 3200, "ingredients": {"beans": 1}},
+  {"id": "latte", "name": "카페라떼", "category": "drink", "price": 4000, "ingredients": {"beans": 1, "milk": 1}, "requires": {"role": "barista"}},
   {"id": "green_tea", "name": "녹차", "category": "drink", "price": 3500, "ingredients": {"tea": 1}},
   {"id": "yuja_tea", "name": "유자차", "category": "drink", "price": 4000, "ingredients": {"yuja": 1}},
   {"id": "iced_tea", "name": "아이스티", "category": "drink", "price": 3500, "ingredients": {"tea": 1, "ice": 1}},

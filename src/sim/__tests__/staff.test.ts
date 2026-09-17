@@ -147,7 +147,7 @@ test('roleEffect: 역할별 핵심 스탯 합, 운반·절약 할인, 기력 30 
   expect(roleEffect(s, 'carry')).toBe(10);
   expect(roleEffect(s, 'hall')).toBe(0);
   expect(ingredientDiscount(s)).toBeCloseTo(10 / 500 + 0.1);
-  expect(ingredientCost(s, 'latte')).toBe(Math.round(1100 * (1 - 0.12)));
+  expect(ingredientCost(s, 'latte')).toBe(Math.round(1900 * (1 - 0.12)));
   s.staff.push(staffWith({ service: 40 }, 'hall'));
   s.staff.push(staffWith({ service: 20 }, 'hall'));
   expect(roleEffect(s, 'hall')).toBe(60);

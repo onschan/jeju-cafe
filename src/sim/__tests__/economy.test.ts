@@ -8,11 +8,11 @@ import { DAY_MS } from '../clock.ts';
 test('bought 재료 메뉴는 창고 없이도 available, 팔면 재료비가 빠진다', () => {
   const s = createInitialState(1);
   expect(isMenuAvailable(s, 'americano')).toBe(true);
-  expect(ingredientCost(s, 'latte')).toBe(1100);
+  expect(ingredientCost(s, 'latte')).toBe(1900);
   const m0 = s.money;
   consumeIngredients(s, 'latte');
-  expect(s.money).toBe(m0 - 1100);
-  expect(s.monthCosts.ingredients).toBe(1100);
+  expect(s.money).toBe(m0 - 1900);
+  expect(s.monthCosts.ingredients).toBe(1900);
 });
 
 test('farm 재료 메뉴는 창고가 있어야 하고 재료비 0', () => {
@@ -25,11 +25,11 @@ test('farm 재료 메뉴는 창고가 있어야 하고 재료비 0', () => {
 
 test('오브젝트 유지비가 이달 비용에서 빠진다', () => {
   const s = createInitialState(1);
-  apply(s, { type: 'place', objectType: 'table_out', x: 4, y: 5 }); // upkeep 200
+  apply(s, { type: 'place', objectType: 'table_out', x: 4, y: 5 }); // upkeep 2000
   const m0 = s.money;
   upkeep(s);
-  expect(s.money).toBe(m0 - 200);
-  expect(s.monthCosts.upkeep).toBe(200);
+  expect(s.money).toBe(m0 - 2000);
+  expect(s.monthCosts.upkeep).toBe(2000);
 });
 
 test('월말 카드에 수입·재료비·월급·광고·유지비·순이익이 있고 monthCosts가 리셋된다', () => {

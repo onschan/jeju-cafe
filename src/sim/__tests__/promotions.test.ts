@@ -140,16 +140,16 @@ test('손님층 인기는 매월 −2, 0 하한, 99 상한', () => {
 test('홍보가 있으면 하루 손님이 는다', () => {
   const { s, st } = withStaff();
   for (let i = 0; i < 3; i++) placeObject(s, 'table_out', 2 + i, 5);
-  s.segmentPopularity = { local: 0, tourist: 0 };
+  s.segmentPopularity = { local: 15, tourist: 15 }; // 평균 배수 1.3
   const base = dailyGuestCount(s);
   s.money = 1e6;
   expect(apply(s, { type: 'promote', staffId: st.id, promotionId: 'radio' }).ok).toBe(true); // 기력 30
-  expect(dailyGuestCount(s)).toBe(base); // 전 손님층 +5 → 평균 배수 1.1, 아직 +1은 안 됨
+  expect(dailyGuestCount(s)).toBe(base); // 전 손님층 +5 → 평균 배수 1.4, 아직 +1은 안 됨
   for (const id of ['sns', 'sns', 'flyer', 'flyer']) expect(apply(s, { type: 'promote', staffId: st.id, promotionId: id }).ok).toBe(true); // 기력 15+15+20+20
   expect(st.energy).toBe(0);
-  expect(effectivePopularity(s, 'local')).toBe(11);
-  expect(effectivePopularity(s, 'tourist')).toBe(15);
-  expect(dailyGuestCount(s)).toBe(base + 1);
+  expect(effectivePopularity(s, 'local')).toBe(26);
+  expect(effectivePopularity(s, 'tourist')).toBe(30);
+  expect(dailyGuestCount(s)).toBe(base + 1); // 평균 배수 1.56 → +1
 });
 
 test('setTarget: 아는 손님층만, null로 해제', () => {

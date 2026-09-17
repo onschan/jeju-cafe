@@ -17,7 +17,7 @@ export const SERVICE_PER_SCENERY = 30; // 홀 서비스 30당 경치 기준 −1
 export const SAY_CHANCE = 0.3;     // §19 손님 대사 확률
 export const MAX_GUESTS = 30;
 export const MIN_DAILY_GUESTS = 1;
-export const MAX_DAILY_GUESTS = 12;
+export const MAX_DAILY_GUESTS = 8;
 
 function seatObjects(state: GameState): PlacedObject[] {
   return Object.values(state.objects).filter((o) => objectDef(o.type).kind === 'seat');
@@ -88,10 +88,10 @@ export function hourShare(hour: number): number {
   return profile(hour) / total;
 }
 
-/** 하루 손님 수 = 2 + 좌석/2 + 평균 유입 배수 보너스, 1~12 */
+/** 하루 손님 수 = 1 + 좌석/4 + (평균 유입 배수 − 1) × 2, 1~8 */
 export function dailyGuestCount(state: GameState): number {
   const avgMult = GUEST_TYPES.reduce((s, t) => s + spawnMultiplier(state, t.id), 0) / GUEST_TYPES.length;
-  const n = 2 + Math.floor(totalSeats(state) / 2) + Math.floor((avgMult - 1) * 4);
+  const n = 1 + Math.floor(totalSeats(state) / 4) + Math.floor((avgMult - 1) * 2);
   return Math.max(MIN_DAILY_GUESTS, Math.min(MAX_DAILY_GUESTS, n));
 }
 

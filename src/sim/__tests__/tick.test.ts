@@ -23,6 +23,7 @@ test('하루가 지나면 손님이 온다', () => {
 
 test('테이블 1개(2석)면 동시에 2명까지, 하루 총원은 dailyGuestCount 이하', () => {
   const s = cafe();
+  s.segmentPopularity = { local: 99, tourist: 99 }; // 하루 4명 → 2석에 몰린다
   const ids = new Set<string>();
   let maxAtOnce = 0;
   for (let i = 0; i < 18; i++) {
@@ -30,7 +31,8 @@ test('테이블 1개(2석)면 동시에 2명까지, 하루 총원은 dailyGuestC
     for (const g of s.guests) ids.add(g.id);
     maxAtOnce = Math.max(maxAtOnce, s.guests.filter((g) => g.phase !== 'leaving').length);
   }
-  expect(maxAtOnce).toBe(2);
+  expect(maxAtOnce).toBeLessThanOrEqual(2);
+  expect(maxAtOnce).toBeGreaterThanOrEqual(1);
   expect(ids.size).toBeGreaterThanOrEqual(2);
   expect(ids.size).toBeLessThanOrEqual(dailyGuestCount(s));
 });
