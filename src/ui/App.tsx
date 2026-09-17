@@ -4,10 +4,11 @@ import { startLoop, dispatch, loadOrNew, getState, setViewReset } from './store'
 import { unlockAudio, bgm } from './audio';
 import { seasonOf } from '../sim/index.ts';
 // render/·ui/는 Vite 전용이라 확장자 없는 import 허용. sim/·data/만 .ts 확장자 규칙.
-import { HUD } from './HUD';
+import { HUD, NightOverlay } from './HUD';
 import { BottomSheet, type Mode } from './BottomSheet';
 import { MonthCard } from './MonthCard';
 import { Guide } from './Guide';
+import { PopupHost } from './Popup';
 
 export function App() {
   const hostRef = useRef<HTMLDivElement>(null);
@@ -46,10 +47,12 @@ export function App() {
   return (
     <div onPointerDownCapture={onPointerDown} style={{ position: 'relative', width: '100%', height: '100%' }}>
       <div ref={hostRef} style={{ position: 'absolute', inset: 0, touchAction: 'none' }} />
+      <NightOverlay />
       <HUD />
       <Guide />
       <BottomSheet mode={mode} setMode={setMode} />
       <MonthCard />
+      <PopupHost />
     </div>
   );
 }

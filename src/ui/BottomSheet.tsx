@@ -1,26 +1,44 @@
-import type { CSSProperties } from 'react';
 import { useGame, dispatch } from './store';
-import { objectAt, canPlant, isMenuAvailable, MENU_SLOT_COUNT, PROTECTED_TYPES } from '../sim/index.ts';
+import { objectAt, canPlant, isMenuAvailable, hasMenuStaff, menuRequirementText, sceneryScore, MENU_SLOT_COUNT, PROTECTED_TYPES } from '../sim/index.ts';
 import { objectDef, cropDef, menuDef, CROPS } from '../data/index.ts';
 import { Icon } from './Icon';
+import { StaffPanel } from './StaffPanel';
+import { PromoPanel } from './PromoPanel';
+import { frame, brownBtn, brownBtnOn, brownBtnOff, dangerBtn, brownSelect, PALETTE, won } from './frame';
 
-export type Mode = { kind: 'idle' } | { kind: 'build'; objectType: string } | { kind: 'cell'; x: number; y: number } | { kind: 'menu' };
+export type Mode = { kind: 'idle' } | { kind: 'build'; objectType: string } | { kind: 'cell'; x: number; y: number } | { kind: 'menu' } | { kind: 'staff' } | { kind: 'promo' };
 
-const btn: CSSProperties = { minHeight: 44, padding: '0 12px', marginRight: 6, marginBottom: 6, border: 0, borderRadius: 8, background: '#333', color: '#fff', fontSize: 16 };
-const disabledBtn: CSSProperties = { ...btn, opacity: 0.5 };
+const TABS: { kind: Mode['kind']; icon: string; label: string; to: Mode }[] = [
+  { kind: 'idle', icon: 'look', label: '보기', to: { kind: 'idle' } },
+  { kind: 'build', icon: 'build', label: '짓기', to: { kind: 'build', objectType: 'field' } },
+  { kind: 'menu', icon: 'menu', label: '메뉴판', to: { kind: 'menu' } },
+  { kind: 'staff', icon: 'local', label: '직원', to: { kind: 'staff' } },
+  { kind: 'promo', icon: 'tourist', label: '홍보', to: { kind: 'promo' } },
+];
+
 /** 재료 있음/없음 색점 (leaf / red) */
 function Dot({ ok }: { ok: boolean }) {
   return <span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: 5, background: ok ? '#6abe30' : '#e63946', marginRight: 4, verticalAlign: 'middle' }} />;
 }
 
+/** 메뉴 상태 문구: 재료 있음 / 재료 없음 / 바리스타 필요 */
+function menuStatus(s: ReturnType<typeof useGame>, id: string): { ok: boolean; text: string } {
+  if (!hasMenuStaff(s, id)) return { ok: false, text: menuRequirementText(id) ?? '직원 필요' };
+  const ok = isMenuAvailable(s, id);
+  return { ok, text: ok ? '재료 있음' : '재료 없음' };
+}
+
 export function BottomSheet({ mode, setMode }: { mode: Mode; setMode: (m: Mode) => void }) {
   const s = useGame();
+  const tall = mode.kind === 'staff' || mode.kind === 'promo';
   return (
-    <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, background: '#222', color: '#fff', padding: '10px 12px calc(10px + env(safe-area-inset-bottom))', borderTop: '1px solid #444', maxHeight: '40vh', overflowY: 'auto', fontSize: 16 }}>
-      <div style={{ marginBottom: 6 }}>
-        <button style={{ ...btn, background: mode.kind === 'idle' ? '#ffd166' : '#333', color: mode.kind === 'idle' ? '#000' : '#fff' }} onClick={() => setMode({ kind: 'idle' })}><Icon name="look" /> 보기</button>
-        <button style={{ ...btn, background: mode.kind === 'build' ? '#ffd166' : '#333', color: mode.kind === 'build' ? '#000' : '#fff' }} onClick={() => setMode({ kind: 'build', objectType: 'field' })}><Icon name="build" /> 짓기</button>
-        <button style={{ ...btn, background: mode.kind === 'menu' ? '#ffd166' : '#333', color: mode.kind === 'menu' ? '#000' : '#fff' }} onClick={() => setMode({ kind: 'menu' })}><Icon name="menu" /> 메뉴판</button>
+    <div style={{ ...frame, position: 'absolute', left: 0, right: 0, bottom: 0, borderRadius: '10px 10px 0 0', borderBottom: 0, padding: '8px 12px calc(8px + env(safe-area-inset-bottom))', maxHeight: tall ? '60vh' : '40vh', overflowY: 'auto', fontSize: 16 }}>
+      <div style={{ marginBottom: 6, display: 'flex', flexWrap: 'wrap' }}>
+        {TABS.map((t) => (
+          <button key={t.kind} style={{ ...(mode.kind === t.kind ? brownBtnOn : brownBtn), padding: '0 8px' }} onClick={() => setMode(t.to)}>
+            <Icon name={t.icon} /> {t.label}
+          </button>
+        ))}
       </div>
 
       {mode.kind === 'build' && (
@@ -29,12 +47,12 @@ export function BottomSheet({ mode, setMode }: { mode: Mode; setMode: (m: Mode) 
             const d = objectDef(t);
             const on = mode.objectType === t;
             return (
-              <button key={t} style={{ ...btn, background: on ? '#06d6a0' : '#333' }} onClick={() => setMode({ kind: 'build', objectType: t })}>
-                {d.name} {d.cost > 0 ? `₩${d.cost}` : ''}
+              <button key={t} style={on ? brownBtnOn : brownBtn} onClick={() => setMode({ kind: 'build', objectType: t })}>
+                {d.name} {d.cost > 0 ? won(d.cost) : ''}
               </button>
             );
           })}
-          <div style={{ fontSize: 13, opacity: 0.7 }}>칸을 눌러서 놓아요</div>
+          <div style={{ fontSize: 13, color: PALETTE.inkSoft }}>칸을 눌러서 놓아요</div>
         </div>
       )}
 
@@ -44,20 +62,27 @@ export function BottomSheet({ mode, setMode }: { mode: Mode; setMode: (m: Mode) 
         <div>
           {Array.from({ length: MENU_SLOT_COUNT }, (_, i) => {
             const cur = s.menuSlots[i] ?? null;
+            const st = cur ? menuStatus(s, cur) : null;
             return (
-              <div key={i} style={{ marginBottom: 6 }}>
-                <span style={{ display: 'inline-block', width: 40 }}>{i + 1}.</span>
-                <select value={cur ?? ''} onChange={(e) => dispatch({ type: 'setSlot', slot: i, menuId: e.target.value || null })} style={{ minHeight: 44, fontSize: 16 }}>
+              <div key={i} style={{ marginBottom: 2, display: 'flex', alignItems: 'center', flexWrap: 'wrap' }}>
+                <span style={{ display: 'inline-block', width: 28 }}>{i + 1}.</span>
+                <select value={cur ?? ''} onChange={(e) => dispatch({ type: 'setSlot', slot: i, menuId: e.target.value || null })} style={brownSelect}>
                   <option value="">(비움)</option>
-                  {s.unlocked.menus.map((m) => <option key={m} value={m}>{menuDef(m).name} ₩{menuDef(m).price}</option>)}
+                  {s.unlocked.menus.map((m) => {
+                    const req = hasMenuStaff(s, m) ? null : menuRequirementText(m);
+                    return <option key={m} value={m}>{menuDef(m).name} {won(menuDef(m).price)}{req ? ` · ${req}` : ''}</option>;
+                  })}
                 </select>
-                {cur && <span style={{ marginLeft: 8 }}><Dot ok={isMenuAvailable(s, cur)} />{isMenuAvailable(s, cur) ? '재료 있음' : '재료 없음'}</span>}
+                {st && <span style={{ fontSize: 13, marginBottom: 6 }}><Dot ok={st.ok} />{st.text}</span>}
               </div>
             );
           })}
-          <div style={{ fontSize: 13, opacity: 0.7 }}>창고: {Object.entries(s.storage).map(([c, n]) => `${cropDef(c).name} ${n}`).join(' · ') || '비어 있음'}</div>
+          <div style={{ fontSize: 13, color: PALETTE.inkSoft }}>창고: {Object.entries(s.storage).map(([c, n]) => `${cropDef(c).name} ${n}`).join(' · ') || '비어 있음'}</div>
         </div>
       )}
+
+      {mode.kind === 'staff' && <StaffPanel />}
+      {mode.kind === 'promo' && <PromoPanel />}
     </div>
   );
 }
@@ -65,22 +90,26 @@ export function BottomSheet({ mode, setMode }: { mode: Mode; setMode: (m: Mode) 
 function CellPanel({ x, y }: { x: number; y: number }) {
   const s = useGame();
   const o = objectAt(s, x, y);
-  if (!o) return <div style={{ opacity: 0.7 }}>빈 칸 ({x},{y})</div>;
+  const scenery = sceneryScore(s, x, y);
+  if (!o) return <div style={{ color: PALETTE.inkSoft }}>빈 칸 ({x},{y}) · 경치 {scenery}</div>;
   const d = objectDef(o.type);
   return (
     <div>
-      <div style={{ marginBottom: 6 }}><b>{d.name}</b>{o.crop && ` · ${cropDef(o.crop.cropId).name} ${o.crop.ready ? '수확할 수 있어요!' : `${o.crop.daysGrown}일째`}`}</div>
+      <div style={{ marginBottom: 2 }}><b>{d.name}</b>{o.crop && ` · ${cropDef(o.crop.cropId).name} ${o.crop.ready ? '수확할 수 있어요!' : `${o.crop.daysGrown}일째`}`}</div>
+      <div style={{ fontSize: 13, color: PALETTE.inkSoft, marginBottom: 6 }}>
+        유지비 {won(d.upkeep)}/달 · 경치 {d.scenery > 0 ? `+${d.scenery}` : d.scenery}{d.noise > 0 ? ` · 소음 ${d.noise}` : ''} · 주변 경치 {scenery}
+      </div>
       {d.kind === 'field' && !o.crop && CROPS.filter((c) => s.unlocked.crops.includes(c.id) && c.plantMonths.length > 0).map((c) => {
         const can = canPlant(s, o.id, c.id);
         return (
-          <button key={c.id} style={can.ok ? btn : disabledBtn} disabled={!can.ok} onClick={() => dispatch({ type: 'plant', objectId: o.id, cropId: c.id })}>
+          <button key={c.id} style={can.ok ? brownBtn : brownBtnOff} disabled={!can.ok} onClick={() => dispatch({ type: 'plant', objectId: o.id, cropId: c.id })}>
             <Icon name="plant" /> {c.name} 심기{!can.ok && can.reason && ` (${can.reason})`}
           </button>
         );
       })}
-      {o.crop?.ready && <button style={{ ...btn, background: '#ffd166', color: '#000' }} onClick={() => dispatch({ type: 'harvest', objectId: o.id })}><Icon name="harvest" /> 수확</button>}
+      {o.crop?.ready && <button style={brownBtnOn} onClick={() => dispatch({ type: 'harvest', objectId: o.id })}><Icon name="harvest" /> 수확</button>}
       {!PROTECTED_TYPES.has(o.type) && (
-        <button style={{ ...btn, background: '#8a2a2a' }} onClick={() => dispatch({ type: 'remove', objectId: o.id })}><Icon name="remove" /> 치우기 (₩{d.cost} 돌려받음)</button>
+        <button style={dangerBtn} onClick={() => dispatch({ type: 'remove', objectId: o.id })}><Icon name="remove" /> 치우기 ({won(d.cost)} 돌려받음)</button>
       )}
     </div>
   );

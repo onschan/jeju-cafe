@@ -20,14 +20,20 @@ export function guideText(s: GameState): string | null {
   if (!hasReachableSeat(s)) return '할망: 손님이 갈 수 있는 길이 없다. 정류장에서 테이블까지 올렛길을 이어 보라.';
   if (!kinds.includes('field')) return '할망: 밭을 하나 지어 보라.';
   if (readyToHarvest(s).length > 0) return '할망: 반짝이는 밭을 눌러 수확하라.';
+  if (s.menuSlots.every((m) => m === null)) return '할망: 메뉴판에 아메리카노와 토스트를 올려 보라.';
+  if (availableMenus(s).length === 0) return '할망: 재료가 없거나 만들 사람이 없으면 메뉴가 안 나간다.';
+  // 메뉴가 나가기 시작하면 직원 → 당근 순서로 알려 준다
+  if (s.staff.length === 0) {
+    return s.candidates.length > 0
+      ? '할망: 후보가 왔다. 직원 탭에서 마음에 드는 사람을 뽑아 보라.'
+      : '할망: 손님이 기다리면 직원 탭에서 공고를 내서 직원을 뽑아 보라.';
+  }
   if (objs.some((o) => objectDef(o.type).kind === 'field' && !o.crop)) {
     const carrot = cropDef('carrot');
     return carrot.plantMonths.includes(s.clock.month)
-      ? '할망: 지금 당근 심을 철이여.'
+      ? `할망: ${s.clock.month}월엔 당근. 지금 심어 보라.`
       : `할망: 당근은 ${formatMonths(carrot.plantMonths)}에 심는다. 그동안 감귤나무를 심어 두면 3년 뒤에 열린다.`;
   }
-  if (s.menuSlots.every((m) => m === null)) return '할망: 메뉴판에 당근주스를 올려 보라.';
-  if (availableMenus(s).length === 0) return '할망: 재료가 없으면 메뉴가 안 나간다.';
   return '할망: 잘하고 있다. 손님 얼굴을 보라.';
 }
 

@@ -11,6 +11,25 @@ const SPEED_ICON: Record<(typeof SPEEDS)[number], string> = { 0: 'speed_pause', 
 
 const iconBtn: CSSProperties = { width: 44, height: 44, padding: 0, border: 0, borderRadius: 6, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' };
 
+/** 6~23시 → 'AM 8:00' / 'PM 3:00' */
+export function clockText(hour: number): string {
+  const h12 = hour % 12 === 0 ? 12 : hour % 12;
+  return `${hour < 12 || hour >= 24 ? 'AM' : 'PM'} ${h12}:00`;
+}
+
+/** 밤 오버레이 알파: 18시 0 → 22시 0.55 */
+export function nightAlpha(hour: number): number {
+  return Math.max(0, Math.min(1, (hour - 18) / 4)) * 0.55;
+}
+
+/** 캔버스 위·HUD 아래에 깔리는 밤 어둠. 터치는 통과한다. */
+export function NightOverlay() {
+  const s = useGame();
+  const a = nightAlpha(s.clock.hour);
+  if (a <= 0) return null;
+  return <div data-testid="night" style={{ position: 'absolute', inset: 0, background: `rgba(11,26,58,${a.toFixed(3)})`, pointerEvents: 'none' }} />;
+}
+
 function unlockName(u: NonNullable<ReturnType<typeof nextUnlock>>) {
   if (u.kind === 'object') return objectDef(u.ref).name;
   if (u.kind === 'menu') return menuDef(u.ref).name;
@@ -29,7 +48,7 @@ export function HUD() {
     <div style={{ position: 'absolute', top: 0, left: 0, right: 0, padding: '8px 12px', color: '#fff', fontSize: 14, background: 'linear-gradient(#000a, #0000)', pointerEvents: 'none' }}>
       {/* 1행: 날짜·돈·연구·인기 (읽기 전용) */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, whiteSpace: 'nowrap' }}>
-        <span>{s.clock.year}년 {s.clock.month}월 {s.clock.day}일</span>
+        <span>{s.clock.year}년 {s.clock.month}월 {s.clock.day}일 <span style={{ opacity: 0.85 }}>{clockText(s.clock.hour)}</span></span>
         <span><Icon name="money" size={24} alt="돈" /> {s.money.toLocaleString()}</span>
         <span><Icon name="research" size={24} alt="연구" /> {s.research}</span>
         <span><Icon name="local" size={24} alt="동네 손님" /> <meter min={-100} max={100} value={s.popularity} style={{ width: 60, verticalAlign: 'middle' }} /> <Icon name="tourist" size={24} alt="관광객" /></span>
