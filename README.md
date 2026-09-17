@@ -20,5 +20,11 @@
 시뮬레이션은 100ms 고정 스텝(`step`)으로 돌고, `actionLog`에 `{tick, action}`이 남아 같은 seed로 리플레이할 수 있다.
 
 ## 에셋 규격
-스펙 §7.5 참고(32px 타일, 캐릭터 32×48, 카이로소프트 톤). 지금은 코드가 만든 색 사각형 플레이스홀더. 샘플은 `assets-sample/`.
-실제 PNG 로더는 2단계 계획에서 추가한다.
+스펙 §7.5 참고(32px 타일, 캐릭터 32×48, 카이로소프트 톤). 샘플은 `assets-sample/`. 시트가 없으면 코드가 만든 색 사각형 플레이스홀더로 폴백한다.
+
+## 에셋 파이프라인
+- `pnpm assets` — 스프라이트 시트·아이콘 생성 (`tools/assets/build.py`). 검토용 `tools/assets/out/contact.png`
+- `pnpm assets:audio` — 효과음·BGM 생성 (ffmpeg 필요)
+- `pnpm assets:font` — Galmuri11 다운로드 (OFL)
+- 직접 그린 PNG나 곡으로 바꾸려면: 같은 이름으로 `public/assets/`에 두고 `tools/assets/`에서 그 이름의 생성 코드를 지운다.
+- 폰트: Galmuri (OFL-1.1, https://github.com/quiple/galmuri). 라이선스 `public/fonts/LICENSE-Galmuri.txt`

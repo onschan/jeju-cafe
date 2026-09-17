@@ -3,3 +3,4 @@ dist
 *.csv
 tools/assets/out/
 *.wav
+tools/assets/__pycache__/
