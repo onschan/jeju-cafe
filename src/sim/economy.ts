@@ -1,19 +1,18 @@
 import type { GameState, MonthCosts } from './types.ts';
-import { menuDef, ingredientDef } from '../data/index.ts';
-import { ingredientDiscount } from './staff.ts';
+import { ingredientDef } from '../data/index.ts';
+import { menuOf, toppingCost, costMult } from './craft.ts';
 import { parcelAt } from './parcels.ts';
 import { objectStats } from './compat.ts';
 import { effectMult } from './effects.ts';
 
-/** bought 재료의 원가 합. farm 재료는 0으로 친다 (창고에서 직접 소비). 운반·절약 스킬만큼 할인. */
+/** bought 재료의 원가 합 + 토핑 원가. farm 재료는 0으로 친다 (창고에서 직접 소비). 운반·절약 스킬·콤보·세련미만큼 할인. */
 export function ingredientCost(state: GameState, menuId: string): number {
-  const disc = ingredientDiscount(state);
-  let sum = 0;
-  for (const [id, n] of Object.entries(menuDef(menuId).ingredients)) {
+  let sum = toppingCost(state, menuId);
+  for (const [id, n] of Object.entries(menuOf(state, menuId).ingredients)) {
     const ing = ingredientDef(id);
     if (ing.kind === 'bought') sum += ing.cost * n;
   }
-  return Math.round(sum * (1 - disc));
+  return Math.round(sum * costMult(state, menuId));
 }
 
 export function emptyMonthCosts(): MonthCosts {

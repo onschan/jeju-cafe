@@ -3,7 +3,8 @@ export type Terrain = 'soil' | 'rock' | 'rock_big' | 'road';
 export type ObjectKind = 'field' | 'tree' | 'seat' | 'wall' | 'path' | 'building' | 'deco' | 'busstop' | 'gate' | 'landmark' | 'facility';
 /** 필지 구역 보너스 종류 (§18) */
 export type ParcelBonus = 'none' | 'oreum' | 'gotjawal' | 'batdam' | 'coast' | 'spring' | 'village' | 'stonehill' | 'orchard';
-export type MenuCategory = 'drink' | 'dessert' | 'meal';
+/** signature = 시그니처 베이스로 개발한 메뉴 (누구나 주문한다) */
+export type MenuCategory = 'drink' | 'dessert' | 'meal' | 'signature';
 export type Mood = 'happy' | 'meh' | 'angry';
 /** visiting = 자리에서 일어나 시설(포토존·기념품·자판기…)로 가는 중/이용 중 */
 export type GuestPhase = 'walking' | 'seated' | 'visiting' | 'leaving';
@@ -45,6 +46,10 @@ export interface CropDef {
   yieldAmount: number;
 }
 
+/** 메뉴·재료 스탯 6종 (스펙 §15.1: 맛/향/보기/건강/양/제주다움) */
+export interface MenuStats { taste: number; aroma: number; look: number; health: number; volume: number; jeju: number }
+export type MenuStatKey = keyof MenuStats;
+export type MenuQuality = '보통' | '좋음' | '최고';
 export interface MenuDef {
   id: string;
   name: string;
@@ -52,7 +57,46 @@ export interface MenuDef {
   price: number;
   ingredients: Record<string, number>; // ingredientId → 개수
   requires?: { role?: RoleId; skill?: string }; // 배치된 직원(기력>0)이 조건을 만족해야 만들 수 있다
+  stats: MenuStats;                    // 재료 스탯 합 (+ 개발 보너스). 토핑·스킬 효과는 menuStatsOf가 얹는다
+  skills?: Record<string, number>;     // 콤보로 얻은 메뉴 스킬 (토핑 스킬은 menuSkills가 더한다)
+  costPct?: number;                    // 콤보 "연하게" 재료비 −20% 같은 원가 보정
+  quality?: MenuQuality;
+  hiddenId?: string;                   // 히든 레시피로 만들어졌으면 그 id
 }
+
+// ---------- 메뉴 크래프팅 (2B-2 Task 5) ----------
+export type MenuBase = 'drink' | 'dessert' | 'meal' | 'signature';
+/** 재료 분류 (§6.1) */
+export type IngredientCategory = 'coffee' | 'dairy' | 'sweet' | 'grain' | 'protein' | 'tea' | 'fruit' | 'water' | 'spice' | 'vegetable' | 'nut' | 'seafood';
+export interface IngredientComboSide { category: IngredientCategory | 'any' | 'jeju'; ingredient?: string; minJeju?: number }
+export interface IngredientComboDef {
+  id: string;
+  name: string;
+  a: IngredientComboSide;
+  b: IngredientComboSide;
+  pairText: string;
+  bonus: Partial<MenuStats> & { costPct?: number; summerPopularity?: number; winterPopularity?: number };
+  bonusText: string;
+}
+export interface ToppingDef { id: string; name: string; cost: number; stats: Partial<MenuStats>; skills: { name: string; level: number }[]; skillText: string }
+export interface HiddenRecipeDef { id: string; name: string; ingredients: string[] }
+/** 로스팅·추출 파라미터. 축마다 0/1/2 (기본 1). 음료: grind·temp·time, 디저트: temp·time, 식사: heat·time */
+export interface BrewParams { grind?: number; temp?: number; time?: number; heat?: number }
+export type ParamAxis = keyof BrewParams;
+export interface Developing { base: MenuBase; ingredients: string[]; params: BrewParams; staffId: string; startDay: number; doneDay: number }
+export type DevelopOutcome = 'success' | 'great' | 'fail';
+export interface DevelopResult {
+  outcome: DevelopOutcome;
+  menuId: string | null;   // 실패면 null
+  name: string;
+  base: MenuBase;
+  stats: MenuStats;
+  quality: MenuQuality | null;
+  hidden: boolean;
+  combos: string[];        // 발동한 재료 콤보 id
+}
+/** 메뉴판의 메뉴에 붙는 가변 상태: 토핑(최대 3)·레벨 */
+export interface MenuMod { toppings: string[]; level: number }
 
 /** 인구 태그 (마스터 GDD §1): 콤보·세트의 대상 손님층은 이 태그로 판정한다 */
 export type Gender = 'female' | 'male' | 'any';
@@ -79,6 +123,7 @@ export interface GuestTypeDef {
   id: string;
   name: string;
   likes: MenuCategory[];   // 주문할 수 있는 메뉴 분류 (v2 wants에서 유도)
+  likesStats: MenuStatKey[]; // 취향 스탯 (v2 likes에서 유도): 메뉴 스탯이 기준 이상이면 만족 보너스·호감도 ×2
   minScenery: number;
   popularityShift: number; // happy일 때 게이지 이동 (−: 동네, +: 인기)
   weight: number;          // 스폰 가중치
@@ -236,7 +281,8 @@ export interface UnlockDef {
 
 // ---------- 재료·직원·홍보 (2B-1) ----------
 export type IngredientKind = 'bought' | 'farm';
-export interface IngredientDef { id: string; name: string; kind: IngredientKind; cost: number } // cost: bought만 의미
+/** cost: bought만 의미. stats·category는 v1 표(§6.1)에서. */
+export interface IngredientDef { id: string; name: string; kind: IngredientKind; cost: number; category: IngredientCategory; stats: MenuStats; sourceText: string }
 
 export type RoleId = 'barista' | 'cook' | 'hall' | 'field' | 'carry' | 'guide';
 export type StatKey = 'service' | 'cooking' | 'sense' | 'stamina';
@@ -344,7 +390,8 @@ export interface Parcel {
 export type FxEvent =
   | { kind: 'harvest'; x: number; y: number; tick: number }
   | { kind: 'pop'; x: number; y: number; n: number; tick: number }
-  | { kind: 'greet'; staffId: string; tick: number };
+  | { kind: 'greet'; staffId: string; tick: number }
+  | { kind: 'photo'; x: number; y: number; tick: number }; // 인생샷 스킬: 손님이 사진을 찍었다
 
 export interface Guest {
   id: string;
@@ -412,7 +459,11 @@ export interface GameState {
   spots: Record<string, number>;              // spotId → 레벨 (0 = 미투자)
   effects: ActiveEffect[];                    // 이벤트 효과 (기간형)
   menuSold: Record<string, number>;           // menuId → 누적 판매 수 (부탁 진행: 수락 시점 값과의 차)
-  codex: { combos: string[]; sets: string[] }; // 발동한 적 있는 상성·세트 id (도감)
+  codex: { combos: string[]; sets: string[]; recipes: string[]; ingredientCombos: string[] }; // 발동한 적 있는 상성·세트·히든 레시피·재료 콤보 id (도감)
+  customMenus: MenuDef[];                     // 개발한 메뉴 (id m_custom_N). menuOf(state, id)가 기본 메뉴보다 먼저 찾는다
+  menuMods: Record<string, MenuMod>;          // menuId → 토핑·레벨 (없으면 토핑 없음·레벨 1)
+  developing: Developing | null;              // 진행 중인 메뉴 개발 (직원은 그동안 바쁘다)
+  lastDevelop: DevelopResult | null;          // 마지막 개발 결과 (UI 팝업, dismissDevelop으로 닫는다)
   inventory: Record<string, number>;          // itemId → 개수
   itemBonus: Record<string, ItemBonus>;       // objectType → 아이템 누적 보너스 (인기 상한 +30)
   notices: string[];
@@ -468,6 +519,11 @@ export type Action =
   | { type: 'useItem'; itemId: string; objectType: string }
   | { type: 'acceptQuest'; id: string }
   | { type: 'respondEvent'; id: string; accept: boolean }
-  | { type: 'investSpot'; id: string };
+  | { type: 'investSpot'; id: string }
+  | { type: 'develop'; base: MenuBase; ingredients: string[]; params?: BrewParams; staffId: string }
+  | { type: 'dismissDevelop' }
+  | { type: 'addTopping'; menuId: string; toppingId: string }
+  | { type: 'removeTopping'; menuId: string; toppingId: string }
+  | { type: 'levelUpMenu'; menuId: string };
 
 export interface ApplyResult { ok: boolean; reason?: string }

@@ -10,6 +10,7 @@ import { pushNotice } from './staff.ts';
 import { evaluateUnlocks } from './segments.ts';
 import { dailyBoard, monthlyBoard } from './board.ts';
 import { pruneEffects } from './effects.ts';
+import { resolveDevelop } from './craft.ts';
 
 export const STEP_MS = 100;        // 고정 스텝 (게임 ms)
 const MAX_STEPS_PER_TICK = 600;    // 백그라운드 복귀 등 폭주 방지 (60초 게임 시간)
@@ -21,13 +22,14 @@ function onNewHour(state: GameState): void {
   hourlySpawn(state);
 }
 
-/** 새 날 (6시의 시간 처리보다 먼저): 효과 만료 → 밤 회복 → 생육 → 밭 일꾼 → 게시판(부탁 진행·제안) */
+/** 새 날 (6시의 시간 처리보다 먼저): 효과 만료 → 밤 회복 → 생육 → 밭 일꾼 → 게시판(부탁 진행·제안) → 메뉴 개발 완료 */
 function onNewDay(state: GameState): void {
   pruneEffects(state);
   nightlyRecovery(state);
   growOneDay(state);
   staffFarmWork(state);
   dailyBoard(state);
+  resolveDevelop(state);
 }
 
 /** 월 바뀜 (1일의 날 처리보다 먼저): 월급 → 홍보 만료·인기 감소 → 유지비 → 정산 → 후보 만료 → 손님 해금 */

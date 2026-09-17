@@ -9,7 +9,7 @@ import { initGuestTypes, initSegmentPopularity } from './segments.ts';
 import { DEFAULT_CAFE_NAME } from './cafe.ts';
 
 export { PARCEL_W, PARCEL_H, START_ORIGIN, GRID_W, GRID_H, VILLAGE_ROAD_Y };
-export const SAVE_VERSION = 9;
+export const SAVE_VERSION = 10;
 /** 시작 자금 500만 + 정착지원금(잔고 < 40만이면 1회 300만) — 마스터 GDD §1 */
 export const START_MONEY = 5_000_000;
 export const SETTLE_GRANT = 3_000_000;
@@ -143,7 +143,11 @@ export function createInitialState(seed: number, playerId = 'local', createdAt =
     spots: {},
     effects: [],
     menuSold: {},
-    codex: { combos: [], sets: [] },
+    codex: { combos: [], sets: [], recipes: [], ingredientCombos: [] },
+    customMenus: [],
+    menuMods: {},
+    developing: null,
+    lastDevelop: null,
     inventory: {},
     itemBonus: {},
     notices: [],

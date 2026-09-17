@@ -60,6 +60,7 @@ export function canPromote(state: GameState, staffId: string, promotionId: strin
   const st = findStaff(state, staffId);
   if (!st) return { ok: false, reason: '없는 직원이에요' };
   if (st.role === null) return { ok: false, reason: '배치된 직원만 할 수 있어요' };
+  if (state.developing?.staffId === staffId) return { ok: false, reason: '메뉴 개발 중이에요' };
   const def = promotionDef(promotionId);
   if (st.energy < def.energy) return { ok: false, reason: '기력이 모자라요' };
   if (def.special === 'parttime' && st.lastParttimeMonthIndex === monthIndex(state.clock)) return { ok: false, reason: '이달은 이미 했어요' };

@@ -832,6 +832,7 @@ export class GameView {
       if (e.tick < since) continue;
       if (e.kind === 'harvest') this.spawnSparkle(e.x, e.y, now);
       else if (e.kind === 'pop') this.spawnPop(e.x, e.y, e.n, now);
+      else if (e.kind === 'photo') this.spawnSparkle(e.x, e.y, now);
     }
   }
 

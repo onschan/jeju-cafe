@@ -1,4 +1,4 @@
-import type { ObjectDef, CropDef, MenuDef, GuestTypeDef, UnlockDef, IngredientDef, RoleDef, SkillDef, PromotionDef, GuestTags, ComboDef, ComboTarget, ComboStrength, ComboSide, SetDef, ItemDef, ItemSlot, Season, MenuCategory, GuestEffect, GuestWant, UnlockCond, QuestDef, QuestCondition, QuestReward, SpotDef, SpotCategory, EventDef } from '../sim/types.ts';
+import type { ObjectDef, CropDef, MenuDef, GuestTypeDef, UnlockDef, IngredientDef, RoleDef, SkillDef, PromotionDef, GuestTags, ComboDef, ComboTarget, ComboStrength, ComboSide, SetDef, ItemDef, ItemSlot, Season, MenuCategory, GuestEffect, GuestWant, UnlockCond, QuestDef, QuestCondition, QuestReward, SpotDef, SpotCategory, EventDef, MenuStats, MenuStatKey, IngredientCategory, IngredientComboDef, ToppingDef, HiddenRecipeDef } from '../sim/types.ts';
 import objectsJson from './objects.json' with { type: 'json' };
 import cropsJson from './crops.json' with { type: 'json' };
 import menusJson from './menus.json' with { type: 'json' };
@@ -24,6 +24,10 @@ import itemsV2Json from './generated/v2/items.json' with { type: 'json' };
 import specialItemsJson from './generated/v2/special_items.json' with { type: 'json' };
 import compatMetaJson from './generated/compat_meta.json' with { type: 'json' };
 import facilitiesJson from './generated/v2/facilities.json' with { type: 'json' };
+import ingredientsV1Json from './generated/ingredients.json' with { type: 'json' };
+import ingredientCombosJson from './generated/ingredient_combos.json' with { type: 'json' };
+import toppingsJson from './generated/toppings.json' with { type: 'json' };
+import hiddenRecipesJson from './generated/hidden_recipes.json' with { type: 'json' };
 
 /** 시작부터 있는 특수 오브젝트 (필지 지형 생성용). 덤불은 곡괭이 대신 5만 원에 치운다. */
 const TERRAIN_OBJECTS: ObjectDef[] = [
@@ -39,7 +43,53 @@ export const LANDMARKS: ObjectDef[] = (landmarksJson as { id: string; name: stri
 export interface ParcelDef { id: string; no: number; name: string; price: number; start: boolean; w: number; h: number; bonusText: string | null }
 export const PARCELS = parcelsJson as ParcelDef[];
 export const CROPS = cropsJson as CropDef[];
-export const MENUS = menusJson as unknown as MenuDef[];
+
+// ---------- 재료 32 (v1 §6.1 스탯·분류) + 기존 13종의 kind·cost ----------
+export const MENU_STAT_KEYS: MenuStatKey[] = ['taste', 'aroma', 'look', 'health', 'volume', 'jeju'];
+export const MENU_STAT_LABEL: Record<MenuStatKey, string> = { taste: '맛', aroma: '향', look: '보기', health: '건강', volume: '양', jeju: '제주' };
+export const ZERO_STATS: MenuStats = { taste: 0, aroma: 0, look: 0, health: 0, volume: 0, jeju: 0 };
+export function addStats(a: MenuStats, b: Partial<MenuStats>, mult = 1): MenuStats {
+  const out = { ...a };
+  for (const k of MENU_STAT_KEYS) out[k] += (b[k] ?? 0) * mult;
+  return out;
+}
+export function statSum(s: MenuStats): number { return MENU_STAT_KEYS.reduce((n, k) => n + s[k], 0); }
+type RawIngredientV1 = { id: string; name: string; category: string; categoryName: string; stats: MenuStats; cost: number; sourceText: string };
+type RawIngredientV0 = { id: string; name: string; kind: 'bought' | 'farm'; cost: number };
+const INGREDIENT_CATEGORIES = new Set<IngredientCategory>(['coffee', 'dairy', 'sweet', 'grain', 'protein', 'tea', 'fruit', 'water', 'spice', 'vegetable', 'nut', 'seafood']);
+export const INGREDIENT_CATEGORY_NAME: Record<IngredientCategory, string> = { coffee: '커피', dairy: '유제품', sweet: '감미', grain: '곡물', protein: '단백', tea: '차', fruit: '과일', water: '물', spice: '향신', vegetable: '채소', nut: '견과', seafood: '해산물' };
+/** 기존 ingredients.json(13: kind·cost — 밸런스 유지)에 v1 표의 스탯·분류를 붙이고, 표에만 있는 19종은 원가 0이면 farm(창고), 아니면 bought. */
+export const INGREDIENTS: IngredientDef[] = (() => {
+  const legacy = new Map((ingredientsJson as RawIngredientV0[]).map((i) => [i.id, i]));
+  return (ingredientsV1Json as RawIngredientV1[]).map((r) => {
+    const old = legacy.get(r.id);
+    const category = INGREDIENT_CATEGORIES.has(r.category as IngredientCategory) ? (r.category as IngredientCategory) : 'vegetable';
+    return { id: r.id, name: old?.name ?? r.name, kind: old?.kind ?? (r.cost > 0 ? 'bought' : 'farm'), cost: old?.cost ?? r.cost, category, stats: { ...ZERO_STATS, ...r.stats }, sourceText: r.sourceText };
+  });
+})();
+const INGREDIENT = indexBy(INGREDIENTS);
+export const ingredientDef = (id: string) => must(INGREDIENT, id, 'ingredient');
+/** 재료 스탯 합 (ingredientId → 개수) */
+export function ingredientStats(ingredients: Record<string, number>): MenuStats {
+  let out = { ...ZERO_STATS };
+  for (const [id, n] of Object.entries(ingredients)) out = addStats(out, ingredientDef(id).stats, n);
+  return out;
+}
+type RawMenu = Omit<MenuDef, 'stats'> & { stats?: MenuStats };
+/** 기본 메뉴 18: 스탯은 재료 합으로 로드 시 계산 */
+export const MENUS: MenuDef[] = (menusJson as unknown as RawMenu[]).map((m) => ({ ...m, stats: m.stats ?? ingredientStats(m.ingredients) }));
+type RawIngredientCombo = { id: string; name: string; a: { category: string; ingredient?: string; minJeju?: number }; b: { category: string; ingredient?: string; minJeju?: number }; pairText: string; bonus: Record<string, number>; bonusText: string };
+export const INGREDIENT_COMBOS: IngredientComboDef[] = (ingredientCombosJson as unknown as RawIngredientCombo[]).map((r) => ({
+  id: r.id, name: r.name, a: r.a as IngredientComboDef['a'], b: r.b as IngredientComboDef['b'], pairText: r.pairText, bonus: r.bonus as IngredientComboDef['bonus'], bonusText: r.bonusText,
+}));
+export const TOPPINGS: ToppingDef[] = (toppingsJson as (ToppingDef & { costNote?: string })[]).map((t) => ({ id: t.id, name: t.name, cost: t.cost, stats: t.stats, skills: t.skills, skillText: t.skillText }));
+export const HIDDEN_RECIPES: HiddenRecipeDef[] = hiddenRecipesJson as HiddenRecipeDef[];
+const INGREDIENT_COMBO = indexBy(INGREDIENT_COMBOS);
+const TOPPING = indexBy(TOPPINGS);
+const HIDDEN_RECIPE = indexBy(HIDDEN_RECIPES);
+export const ingredientComboDef = (id: string) => must(INGREDIENT_COMBO, id, 'ingredientCombo');
+export const toppingDef = (id: string) => must(TOPPING, id, 'topping');
+export const hiddenRecipeDef = (id: string) => must(HIDDEN_RECIPE, id, 'hiddenRecipe');
 
 // ---------- 손님 100종 어댑터 (generated/v2/guests.json → GuestTypeDef) ----------
 /** 구 2종 id → v2 id. 삼춘은 이름이 같은 동네 삼춘, 관광객은 시작부터 오는 청년 타입(대학생)으로. */
@@ -83,6 +133,13 @@ function likesFromWants(wants: GuestWant[], tags: GuestTags): MenuCategory[] {
   if (wants.includes('food') || wants.includes('fun') || tags.age === 'youth') out.push('dessert');
   return out;
 }
+/** 취향 스탯 (스펙 §15.1 "선호 스탯 2~3개"): 쉼 → 향, 먹거리 → 맛·양, 즐길거리 → 보기, 경치 → 보기, 농사 → 건강·제주. 편의는 없음. */
+const WANT_STATS: Record<GuestWant, MenuStatKey[]> = { rest: ['aroma'], food: ['taste', 'volume'], fun: ['look'], scenery: ['look'], convenience: [], farm: ['health', 'jeju'] };
+export function likesStatsFromWants(wants: GuestWant[]): MenuStatKey[] {
+  const out: MenuStatKey[] = [];
+  for (const w of wants) for (const k of WANT_STATS[w]) if (!out.includes(k)) out.push(k);
+  return out;
+}
 /** 경치 기준: 경치를 바라면 3, 청년 2, 성인 1, 시니어·동물 0 */
 function minSceneryOf(wants: GuestWant[], tags: GuestTags): number {
   if (wants.includes('scenery')) return 3;
@@ -95,6 +152,7 @@ export function adaptGuest(r: RawGuest): GuestTypeDef {
     id: canonicalGuestId(r.id),
     name: r.name,
     likes: likesFromWants(wants, tags),
+    likesStats: likesStatsFromWants(wants),
     minScenery: minSceneryOf(wants, tags),
     popularityShift: tags.age === 'senior' ? -2 : tags.age === 'youth' ? 2 : 0,
     weight: GUEST_WEIGHT,
@@ -238,7 +296,6 @@ export const EVENTS: EventDef[] = (eventsJson as RawEvent[]).map((r) => {
 });
 
 export const UNLOCKS = unlocksJson as UnlockDef[];
-export const INGREDIENTS = ingredientsJson as IngredientDef[];
 export const ROLES = staffRolesJson as RoleDef[];
 export const SKILLS = skillsJson as unknown as SkillDef[];
 export const NAMES = namesJson as { names: string[]; hair: number; skin: number; top: number };
@@ -414,7 +471,6 @@ const GUEST = indexBy(GUEST_TYPES);
 const QUEST = indexBy(QUESTS);
 const SPOT = indexBy(SPOTS);
 const EVENT = indexBy(EVENTS);
-const INGREDIENT = indexBy(INGREDIENTS);
 const ROLE = indexBy(ROLES);
 const SKILL = indexBy(SKILLS);
 const PROMOTION = indexBy(PROMOTIONS);
@@ -437,7 +493,6 @@ export const guestTypeDef = (id: string) => must(GUEST, canonicalGuestId(id), 'g
 export const questDef = (id: string) => must(QUEST, id, 'quest');
 export const spotDef = (id: string) => must(SPOT, id, 'spot');
 export const eventDef = (id: string) => must(EVENT, id, 'event');
-export const ingredientDef = (id: string) => must(INGREDIENT, id, 'ingredient');
 export const roleDef = (id: string) => must(ROLE, id, 'role');
 export const skillDef = (id: string) => must(SKILL, id, 'skill');
 export const promotionDef = (id: string) => must(PROMOTION, id, 'promotion');

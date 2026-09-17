@@ -186,10 +186,10 @@ function sharesTags(a: GuestTags, b: GuestTags): boolean {
 }
 
 /** 만족 방문(happy)마다: 만족 +2/+3, 타입 효과 발동. 호출 전 g.mood === 'happy'. */
-export function onHappyVisit(state: GameState, g: Guest): void {
+export function onHappyVisit(state: GameState, g: Guest, satMult = 1): void {
   const id = canonicalGuestId(g.type);
   const def = guestTypeDef(id);
-  addSatisfaction(state, id, isTarget(state, id) ? SAT_TARGET : SAT_HAPPY);
+  addSatisfaction(state, id, (isTarget(state, id) ? SAT_TARGET : SAT_HAPPY) * satMult);
   switch (def.effect) {
     case 'item':
       if (nextRandom(state) < ITEM_DROP_CHANCE) {

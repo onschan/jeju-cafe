@@ -9,6 +9,7 @@ import { HUD, NightOverlay } from './HUD';
 import { BottomSheet, type Mode, type PlaceBarProps, type DragBuild } from './BottomSheet';
 import { GuestPopup } from './GuestPopup';
 import { MonthCard } from './MonthCard';
+import { DevelopResultPopup } from './CraftPanel';
 import { Guide } from './Guide';
 import { PopupHost, Popup, Confirm } from './Popup';
 import { won, brownBtn, dangerBtn } from './frame';
@@ -280,6 +281,7 @@ function Game({ onExit }: { onExit: () => void }) {
       {tutorial.done ? <Guide /> : <TutorialOverlay />}
       <BottomSheet mode={mode} setMode={setMode} place={place} msg={place ? null : msg} onGuest={setGuestPopup} onDragBuild={onDragBuild} />
       <MonthCard />
+      <DevelopResultPopup />
       {guestPopup && <GuestPopup guestId={guestPopup} onClose={() => setGuestPopup(null)} onQuest={(id) => { dispatch({ type: 'acceptQuest', id }); setMode({ kind: 'guests' }); }} />}
       {menu && <GameMenu onClose={() => setMenu(false)} onExit={onExit} />}
     </div>

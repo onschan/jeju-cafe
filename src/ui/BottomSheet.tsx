@@ -1,7 +1,7 @@
 import { useState, useRef, type PointerEvent as ReactPointerEvent } from 'react';
 import { useGame, dispatch } from './store';
-import { objectAt, isMenuAvailable, hasMenuStaff, menuRequirementText, sceneryScore, boardBadge, clearCost, placeCost, MENU_SLOT_COUNT } from '../sim/index.ts';
-import { objectDef, cropDef, menuDef } from '../data/index.ts';
+import { objectAt, isMenuAvailable, hasMenuStaff, menuRequirementText, sceneryScore, boardBadge, clearCost, placeCost, menuOf, priceOf, MENU_SLOT_COUNT } from '../sim/index.ts';
+import { objectDef, cropDef, ingredientDef } from '../data/index.ts';
 import { Icon } from './Icon';
 import { StaffPanel } from './StaffPanel';
 import { PromoPanel } from './PromoPanel';
@@ -9,6 +9,7 @@ import { ObjectInfoPanel, CodexPanel, RockPanel } from './ObjectInfoPanel';
 import { BoardPanel } from './BoardPanel';
 import { CafePanel } from './CafePanel';
 import { GuestsPanel } from './GuestsPanel';
+import { CraftPanel, MenuDetailPicker } from './CraftPanel';
 import { frame, brownBtn, brownBtnOn, brownBtnOff, dangerBtn, brownSelect, PALETTE, won } from './frame';
 
 export type Mode =
@@ -24,7 +25,8 @@ export type Mode =
   | { kind: 'invest' }
   | { kind: 'shop' }
   | { kind: 'rank' }
-  | { kind: 'cafe' };
+  | { kind: 'cafe' }
+  | { kind: 'craft' };
 
 /** 고스트 배치 확정 줄: 상태 문구 + ✓ / ↻ / ✗ */
 export interface PlaceBarProps {
@@ -57,12 +59,13 @@ const MAIN_TABS: { kind: Mode['kind']; icon: string; label: string; to: Mode }[]
 const MORE_TABS: { kind: Mode['kind']; icon: string; label: string; to: Mode }[] = [
   { kind: 'cafe', icon: 'look', label: '카페', to: { kind: 'cafe' } },
   { kind: 'menu', icon: 'menu', label: '메뉴판', to: { kind: 'menu' } },
+  { kind: 'craft', icon: 'research', label: '메뉴 개발', to: { kind: 'craft' } },
   { kind: 'promo', icon: 'speed_1', label: '홍보', to: { kind: 'promo' } },
   { kind: 'codex', icon: 'research', label: '도감', to: { kind: 'codex' } },
   { kind: 'move', icon: 'harvest', label: '이동', to: { kind: 'move' } },
 ];
 const MORE_KINDS = new Set(MORE_TABS.map((t) => t.kind));
-const TALL_KINDS = new Set<Mode['kind']>(['staff', 'promo', 'codex', 'cell', 'guests', 'invest', 'cafe', 'shop', 'rank']);
+const TALL_KINDS = new Set<Mode['kind']>(['staff', 'promo', 'codex', 'cell', 'guests', 'invest', 'cafe', 'shop', 'rank', 'menu', 'craft']);
 
 /** 재료 있음/없음 색점 (leaf / red) */
 function Dot({ ok }: { ok: boolean }) {
@@ -71,9 +74,14 @@ function Dot({ ok }: { ok: boolean }) {
 
 /** 메뉴 상태 문구: 재료 있음 / 재료 없음 / 바리스타 필요 */
 function menuStatus(s: ReturnType<typeof useGame>, id: string): { ok: boolean; text: string } {
-  if (!hasMenuStaff(s, id)) return { ok: false, text: menuRequirementText(id) ?? '직원 필요' };
+  if (!hasMenuStaff(s, id)) return { ok: false, text: menuRequirementText(id, s) ?? '직원 필요' };
   const ok = isMenuAvailable(s, id);
   return { ok, text: ok ? '재료 있음' : '재료 없음' };
+}
+
+/** 창고 항목 이름: 작물이면 작물 이름, 아니면(해녀·투자 재료) 재료 이름 */
+function storageName(id: string): string {
+  try { return cropDef(id).name; } catch { try { return ingredientDef(id).name; } catch { return id; } }
 }
 
 /** 하단 메시지 줄 ("여기엔 못 지어요" 등) */
@@ -178,17 +186,19 @@ export function BottomSheet({ mode, setMode, place, msg, onGuest, onDragBuild }:
                 <select value={cur ?? ''} onChange={(e) => dispatch({ type: 'setSlot', slot: i, menuId: e.target.value || null })} style={brownSelect}>
                   <option value="">(비움)</option>
                   {s.unlocked.menus.map((m) => {
-                    const req = hasMenuStaff(s, m) ? null : menuRequirementText(m);
-                    return <option key={m} value={m}>{menuDef(m).name} {won(menuDef(m).price)}{req ? ` · ${req}` : ''}</option>;
+                    const req = hasMenuStaff(s, m) ? null : menuRequirementText(m, s);
+                    return <option key={m} value={m}>{menuOf(s, m).name} {won(priceOf(s, m))}{req ? ` · ${req}` : ''}</option>;
                   })}
                 </select>
                 {st && <span style={{ fontSize: 13, marginBottom: 6 }}><Dot ok={st.ok} />{st.text}</span>}
               </div>
             );
           })}
-          <div style={{ fontSize: 13, color: PALETTE.inkSoft }}>창고: {Object.entries(s.storage).map(([c, n]) => `${cropDef(c).name} ${n}`).join(' · ') || '비어 있음'}</div>
+          <div style={{ fontSize: 13, color: PALETTE.inkSoft }}>창고: {Object.entries(s.storage).map(([c, n]) => `${storageName(c)} ${n}`).join(' · ') || '비어 있음'}</div>
+          <MenuDetailPicker><button style={{ ...brownBtn, marginBottom: 0 }} onClick={() => setMode({ kind: 'craft' })} aria-label="메뉴 개발로"><Icon name="research" /> 개발</button></MenuDetailPicker>
         </div>
       )}
+      {mode.kind === 'craft' && <CraftPanel />}
 
       {mode.kind === 'staff' && <StaffPanel focusId={mode.focusId ?? null} />}
       {mode.kind === 'promo' && <PromoPanel />}

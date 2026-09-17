@@ -8,6 +8,7 @@
  * - 9월: 밭 3개 + 밭 일꾼 채용(체력 최고)
  * - 연구가 되면 해금 (돌담은 2개까지 놓는다). 수확은 자동(익으면 창고로).
  * - 돈 200만 미만이면 아르바이트 (직원당 한 달 한 번은 sim이 막는다)
+ * - 2년차: 연구 20 이상이면 원두+우유 음료를 하나 나올 때까지 개발하고, 나오면 메뉴판 4번 칸에 올린다
  */
 import type { GameState } from './types.ts';
 import { createInitialState } from './state.ts';
@@ -18,6 +19,7 @@ import { canPlace, objectAt } from './grid.ts';
 import { canUnlock } from './progress.ts';
 import { START_ORIGIN } from './layout.ts';
 import { objectDef } from '../data/index.ts';
+import { DEVELOP_RESEARCH } from './craft.ts';
 import type { Candidate, RoleId, StatKey } from './types.ts';
 
 export interface BotRow {
@@ -31,6 +33,7 @@ export interface BotRow {
   staff: number;
   promos: number;     // 활성 기간형 홍보 수
   guests: number;     // 그달 손님 수
+  customMenus: number; // 개발한 메뉴 수 (2년차 개발 확인용)
 }
 
 /** 시작 필지 상대 좌표 → 격자 좌표 */
@@ -45,6 +48,8 @@ export const BOT_WALLS: { x: number; y: number }[] = [at(5, 5), at(6, 5)];
 export const FLYER_MIN_MONEY = 5_000_000;
 export const FLYER_MIN_ENERGY = 60;
 export const PARTTIME_MAX_MONEY = 2_000_000;
+export const BOT_DEVELOP_YEAR = 2;
+export const BOT_DEVELOP_INGREDIENTS = ['beans', 'milk'];
 
 function countKind(s: GameState, kind: string): number {
   return Object.values(s.objects).filter((o) => objectDef(o.type).kind === kind).length;
@@ -119,6 +124,14 @@ function dailyPlan(s: GameState): void {
   if (s.money < PARTTIME_MAX_MONEY) {
     for (const st of s.staff) if (apply(s, { type: 'promote', staffId: st.id, promotionId: 'parttime' }).ok) break;
   }
+
+  // 2년차: 메뉴가 하나 나올 때까지 개발 (감각 최고 직원). 나온 메뉴는 4번 칸에.
+  if (s.clock.year >= BOT_DEVELOP_YEAR && s.research >= DEVELOP_RESEARCH && !s.developing && s.customMenus.length === 0) {
+    const st = [...s.staff].sort((a, b) => b.stats.sense - a.stats.sense)[0];
+    if (st) apply(s, { type: 'develop', base: 'drink', ingredients: BOT_DEVELOP_INGREDIENTS, staffId: st.id });
+  }
+  const custom = s.customMenus[0];
+  if (custom && !s.menuSlots.includes(custom.id)) apply(s, { type: 'setSlot', slot: 3, menuId: custom.id });
 }
 
 export function runBot(years: number, seed: number): BotRow[] {
@@ -142,7 +155,7 @@ export function runBot(years: number, seed: number): BotRow[] {
     if (card) {
       rows.push({
         year: card.year, month: card.month, money: s.money, minMoney, research: s.research, popularity: s.popularity,
-        net: card.net, staff: s.staff.length, promos: s.activePromotions.length, guests: card.guests,
+        net: card.net, staff: s.staff.length, promos: s.activePromotions.length, guests: card.guests, customMenus: s.customMenus.length,
       });
       minMoney = s.money;
       apply(s, { type: 'dismissMonthCard' });

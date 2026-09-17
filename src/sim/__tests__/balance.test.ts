@@ -33,3 +33,10 @@ describe.each(SEEDS)('봇 1년차 밸런스 (seed %i)', (seed) => {
 test('같은 seed면 같은 결과 (결정적)', () => {
   expect(runBot(1, 1)).toEqual(runBot(1, 1));
 }, 20_000);
+
+// 2년차: 연구가 20 이상 모이면 메뉴가 하나 나올 때까지 개발한다
+test('봇은 2년차에 메뉴를 개발한다', () => {
+  const rows = runBot(2, 2);
+  expect(rows.filter((r) => r.year === 1).every((r) => r.customMenus === 0)).toBe(true);
+  expect(rows[rows.length - 1]!.customMenus).toBe(1);
+}, 30_000);

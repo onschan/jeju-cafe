@@ -1,5 +1,5 @@
 import type { GameState, Guest, PlacedObject, Pt, MenuCategory, RoleId, GuestWant } from './types.ts';
-import { objectDef, menuDef, guestTypeDef, guestTags, guestDialogue, canonicalGuestId } from '../data/index.ts';
+import { objectDef, guestTypeDef, guestTags, guestDialogue, canonicalGuestId } from '../data/index.ts';
 import { pickWeighted, nextRandom, randInt } from './rng.ts';
 import { sceneryScore } from './grid.ts';
 import { availableMenus, consumeIngredients } from './menu.ts';
@@ -15,6 +15,7 @@ import { spotGuestBonus, busSpots, isBusDay, BUS_HOUR, BUS_MIN, BUS_MAX } from '
 import type { ParcelBonus } from './types.ts';
 import { seatsOf, isSeat } from './cafe.ts';
 import { pushFx } from './farm.ts';
+import { menuOf, priceOf, likesStatsMatch, guestEvalBonus, guestLikesCategory, seatTimeMult, dignityPct, photoChance, menuOrderWeight, LIKE_BONUS_CAP } from './craft.ts';
 
 export { moveAlong, GUEST_SPEED_CELLS_PER_S }; // 하위 호환 재수출 (본체는 path.ts)
 export const SEAT_MS = 3000;       // 기분이 정해진 뒤 앉아 있는 시간 (≈1.5시간)
@@ -118,12 +119,12 @@ export function hourShare(hour: number): number {
   return profile(hour) / total;
 }
 
-/** 하루 손님 수 = (2 + 좌석 × 3 + (해금 타입 평균 유입 배수 − 1) × 10 + 관광지 매력도/40) × 이벤트 전체 배수, 2~120 */
+/** 하루 손님 수 = (2 + 좌석 × 3 + (해금 타입 평균 유입 배수 − 1) × 10 + 관광지 매력도/40) × 이벤트 전체 배수 × 메뉴 품격(+%), 2~120 */
 export function dailyGuestCount(state: GameState): number {
   const ids = unlockedTypeIds(state);
   const avgMult = ids.length > 0 ? ids.reduce((s, id) => s + spawnMultiplier(state, id), 0) / ids.length : 1;
   const n = MIN_DAILY_GUESTS + totalSeats(state) * GUESTS_PER_SEAT + Math.floor((avgMult - 1) * GUESTS_PER_MULT + 1e-9) + spotGuestBonus(state);
-  return Math.max(MIN_DAILY_GUESTS, Math.min(MAX_DAILY_GUESTS, Math.round(n * effectMult(state, 'spawnMult'))));
+  return Math.max(MIN_DAILY_GUESTS, Math.min(MAX_DAILY_GUESTS, Math.round(n * effectMult(state, 'spawnMult') * (1 + dignityPct(state) / 100))));
 }
 
 /** 매 시간: 하루 손님 수를 시간대 비중으로 나눠 소수 누적, 정수만큼 스폰. 손님 0 이벤트 날은 안 온다. 일요일 11시엔 투어 버스. */
@@ -196,6 +197,11 @@ function prepRole(category: MenuCategory): RoleId {
   return category === 'drink' ? 'barista' : 'cook';
 }
 
+/** 취향 보너스 = 취향 스탯 일치 수(최대 2) + 건강함·든든함 손님층 평가 */
+export function tasteBonus(state: GameState, typeId: string, menuId: string | null): number {
+  return Math.min(LIKE_BONUS_CAP, likesStatsMatch(state, typeId, menuId)) + guestEvalBonus(state, typeId, menuId);
+}
+
 /** 조리 시간 = 5초 × (1 − min(0.6, 담당 역할 효과/100)) × (1 − 속도 스킬) */
 export function prepTimeMs(state: GameState, category: MenuCategory): number {
   const role = prepRole(category);
@@ -221,16 +227,18 @@ export function popularityBonus(popularity: number): number {
   return Math.floor((popularity - BASE_POPULARITY) / POP_PER_SCENERY);
 }
 
-/** 조리가 끝났을 때 만족 판정. 경치 + 홀 서비스 + 좌석 인기 보정 ≥ 손님층 기준이면 happy → 만족 게이지·타입 효과. */
+/** 조리가 끝났을 때 만족 판정. 경치 + 홀 서비스 + 좌석 인기 보정 + 메뉴 취향 ≥ 손님층 기준이면 happy → 만족 게이지·타입 효과. 취향이 맞으면 호감도 ×2, 인생샷이면 사진. */
 function resolveMood(state: GameState, g: Guest): void {
   const type = guestTypeDef(g.type);
   const seat = state.objects[g.seatId!]!;
-  if (sceneryScore(state, seat.x, seat.y) + serviceBonus(state) + popularityBonus(popularityFor(state, seat.id, g.type)) >= type.minScenery) {
+  if (sceneryScore(state, seat.x, seat.y) + serviceBonus(state) + popularityBonus(popularityFor(state, seat.id, g.type)) + tasteBonus(state, g.type, g.menuId) >= type.minScenery) {
     g.mood = 'happy';
     g.moodReason = null;
     state.research += 1;
     state.popularity = Math.max(-100, Math.min(100, state.popularity + type.popularityShift));
-    onHappyVisit(state, g);
+    onHappyVisit(state, g, likesStatsMatch(state, g.type, g.menuId) > 0 ? 2 : 1);
+    const photo = photoChance(state, g.type, g.menuId);
+    if (photo > 0 && nextRandom(state) < photo) pushFx(state, { kind: 'photo', x: seat.x, y: seat.y, tick: state.tick });
   } else {
     g.mood = 'meh';
     g.moodReason = 'scenery';
@@ -242,7 +250,7 @@ function resolveMood(state: GameState, g: Guest): void {
 export function affordableMenus(state: GameState, typeId: string): string[] {
   const type = guestTypeDef(typeId);
   const wallet = walletOf(state, typeId);
-  return availableMenus(state).filter((id) => type.likes.includes(menuDef(id).category) && menuDef(id).price <= wallet);
+  return availableMenus(state).filter((id) => guestLikesCategory(type.likes, menuOf(state, id).category) && priceOf(state, id) <= wallet);
 }
 
 /** 자리에 앉는 순간: 메뉴 결정·재료·돈은 즉시, 기분은 조리(waitMs) 뒤에. 예산 초과면 주문 안 함(price). 지갑 0(동물·정령)은 주문 없이 바로 기분. */
@@ -250,7 +258,7 @@ function order(state: GameState, g: Guest): void {
   const type = guestTypeDef(g.type);
   state.monthGuests++;
   if (type.wallet <= 0) { g.waitMs = 0; return; }
-  const liked = availableMenus(state).filter((id) => type.likes.includes(menuDef(id).category));
+  const liked = availableMenus(state).filter((id) => guestLikesCategory(type.likes, menuOf(state, id).category));
   const candidates = affordableMenus(state, g.type);
   if (candidates.length === 0) {
     g.mood = 'meh';
@@ -259,11 +267,11 @@ function order(state: GameState, g: Guest): void {
     maybeSay(state, g);
     return;
   }
-  const menuId = pickWeighted(state, candidates, () => 1)!;
-  const menu = menuDef(menuId);
+  const menuId = pickWeighted(state, candidates, (id) => menuOrderWeight(state, id))!;
+  const menu = menuOf(state, menuId);
   consumeIngredients(state, menuId);
   const seat = state.objects[g.seatId!]!;
-  const price = Math.round(menu.price * parcelFeeMult(parcelBonusAt(state, seat.x, seat.y)) * (objectStats(state, seat.id).feePct / 100));
+  const price = Math.round(priceOf(state, menuId) * parcelFeeMult(parcelBonusAt(state, seat.x, seat.y)) * (objectStats(state, seat.id).feePct / 100));
   state.money += price;
   state.monthIncome += price;
   state.totalIncome += price;
@@ -357,7 +365,7 @@ export function updateGuests(state: GameState, dtMs: number): void {
         if (g.waitMs <= 0) {
           g.waitMs = 0;
           resolveMood(state, g);
-          g.timerMs = SEAT_MS;
+          g.timerMs = SEAT_MS * seatTimeMult(state, g.menuId);
         }
         continue;
       }

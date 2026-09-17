@@ -31,8 +31,9 @@ export function levelUpCost(staff: Staff, stat: StatKey): number {
   return staff.stats[stat] * 10;
 }
 
+/** 그 역할에 배치된 직원 (메뉴 개발 중인 직원은 바빠서 빠진다) */
 export function staffInRole(state: GameState, role: RoleId): Staff[] {
-  return state.staff.filter((s) => s.role === role);
+  return state.staff.filter((s) => s.role === role && state.developing?.staffId !== s.id);
 }
 
 /** 기력이 낮으면 효과 절반 */
@@ -124,6 +125,7 @@ export function findStaff(state: GameState, staffId: string): Staff | undefined 
 /** 해고: 퇴직금으로 한 달 월급을 준다. */
 export function canFire(state: GameState, staffId: string): ApplyResult {
   if (!findStaff(state, staffId)) return { ok: false, reason: '없는 직원이에요' };
+  if (state.developing?.staffId === staffId) return { ok: false, reason: '메뉴 개발 중이에요' };
   return { ok: true };
 }
 

@@ -13,13 +13,14 @@ import { evaluateUnlocks } from './segments.ts';
 import { canAcceptQuest, acceptQuest, canRespondEvent, respondEvent, afterInvest, checkQuests } from './board.ts';
 import { canInvestSpot, investSpot } from './spots.ts';
 import { canRenameCafe, renameCafe, canExpand, expand, canSetCosmetic, setCosmetic, canPraise, praise, placeCost, type ExpansionId } from './cafe.ts';
+import { canDevelop, develop, canAddTopping, addTopping, canRemoveTopping, removeTopping, canLevelUpMenu, levelUpMenu } from './craft.ts';
 
 export const PROTECTED_TYPES = new Set(['busstop', 'warehouse', 'gate', 'spring']);
 /** 회전할 수 있는 오브젝트 (rot 0..3, 스프라이트 변형 _r{n}이 있을 때만 보인다) */
 export const ROTATABLE_TYPES = new Set(['gate', 'bench', 'counter']);
 const ACTION_LOG_CAP = 1000;
 
-const CLIENT_ONLY = new Set<Action['type']>(['setSpeed', 'dismissMonthCard']);
+const CLIENT_ONLY = new Set<Action['type']>(['setSpeed', 'dismissMonthCard', 'dismissDevelop']);
 
 function log(state: GameState, a: Action) {
   if (CLIENT_ONLY.has(a.type)) return;
@@ -225,6 +226,33 @@ function applyInner(state: GameState, a: Action): ApplyResult {
       if (!c.ok) return c;
       const level = investSpot(state, a.id);
       afterInvest(state, a.id, level);
+      return { ok: true };
+    }
+    case 'develop': {
+      const c = canDevelop(state, a.base, a.ingredients, a.staffId);
+      if (!c.ok) return c;
+      develop(state, a.base, a.ingredients, a.params, a.staffId);
+      return { ok: true };
+    }
+    case 'dismissDevelop':
+      state.lastDevelop = null;
+      return { ok: true };
+    case 'addTopping': {
+      const c = canAddTopping(state, a.menuId, a.toppingId);
+      if (!c.ok) return c;
+      addTopping(state, a.menuId, a.toppingId);
+      return { ok: true };
+    }
+    case 'removeTopping': {
+      const c = canRemoveTopping(state, a.menuId, a.toppingId);
+      if (!c.ok) return c;
+      removeTopping(state, a.menuId, a.toppingId);
+      return { ok: true };
+    }
+    case 'levelUpMenu': {
+      const c = canLevelUpMenu(state, a.menuId);
+      if (!c.ok) return c;
+      levelUpMenu(state, a.menuId);
       return { ok: true };
     }
     default:

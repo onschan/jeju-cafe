@@ -3,6 +3,7 @@ import { objectStats, sceneryScore, canUseItem, itemEffect, PROTECTED_TYPES, can
 import { objectDef, cropDef, itemDef, CROPS, COMBOS, SETS } from '../data/index.ts';
 import { Icon } from './Icon';
 import { Confirm } from './Popup';
+import { RecipeCodex } from './CraftPanel';
 import { brownBtn, brownBtnOn, brownBtnOff, dangerBtn, card, PALETTE, won } from './frame';
 
 /** 계열 이름 (아이 눈높이) */
@@ -160,6 +161,7 @@ export function CodexPanel() {
           <span style={{ fontSize: 12, color: PALETTE.inkSoft }}>{x.requires.map((r) => `${nameOf(r.objectId)} ${r.count}`).join(' · ')} → {TARGET_LABEL[x.target]}</span>
         </div>
       ))}
+      <RecipeCodex />
     </div>
   );
 }
