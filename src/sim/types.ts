@@ -113,6 +113,7 @@ export interface PromotionDef {
   months: number; // 0 = 즉시 1회성, N>0 = 기간형
   segmentDelta: Record<string, number>; // guestType id → 인기 가산
   allDelta?: number;
+  popularityShift?: number; // 동네↔인기 게이지 이동 (SNS)
   special?: 'youtuber' | 'parttime';
 }
 export interface ActivePromotion { promotionId: string; remainingMonths: number }
@@ -187,7 +188,8 @@ export interface GameState {
   slots: Record<RoleId, number>;
   activePromotions: ActivePromotion[];
   youtuberBoostMonths: number;
-  segmentPopularity: Record<string, number>;
+  segmentPopularity: Record<string, number>; // 손님층 인기 0~99
+  targetSegment: string | null;               // 타깃 손님층: 홍보 효과 ×1.5
   notices: string[];
   guests: Guest[];
   spawnAcc: number; // 시간대별 스폰 소수 누적
@@ -222,6 +224,7 @@ export type Action =
   | { type: 'fire'; staffId: string }
   | { type: 'assign'; staffId: string; role: RoleId | null }
   | { type: 'levelUp'; staffId: string; stat: StatKey }
-  | { type: 'promote'; staffId: string; promotionId: string };
+  | { type: 'promote'; staffId: string; promotionId: string }
+  | { type: 'setTarget'; segment: string | null };
 
 export interface ApplyResult { ok: boolean; reason?: string }

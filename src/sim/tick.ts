@@ -4,6 +4,7 @@ import { growOneDay, staffFarmWork } from './farm.ts';
 import { hourlySpawn, updateGuests } from './guests.ts';
 import { upkeep, closeMonth } from './economy.ts';
 import { payroll, expireCandidates, hourlyEnergy, nightlyRecovery, moveStaff } from './staff.ts';
+import { expirePromotions } from './promotions.ts';
 
 export const STEP_MS = 100;        // 고정 스텝 (게임 ms)
 const MAX_STEPS_PER_TICK = 600;    // 백그라운드 복귀 등 폭주 방지 (60초 게임 시간)
@@ -22,9 +23,10 @@ function onNewDay(state: GameState): void {
   staffFarmWork(state);
 }
 
-/** 월 바뀜: 월급 → 유지비 → 정산 → 후보 만료 */
+/** 월 바뀜: 월급 → 홍보 만료·인기 감소 → 유지비 → 정산 → 후보 만료 */
 function onNewMonth(state: GameState, prevMonth: number, prevYear: number): void {
   payroll(state);
+  expirePromotions(state);
   upkeep(state);
   closeMonth(state, prevMonth, prevYear);
   expireCandidates(state);

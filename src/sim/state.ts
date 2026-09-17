@@ -58,6 +58,7 @@ export function createInitialState(seed: number, playerId = 'local', createdAt =
     activePromotions: [],
     youtuberBoostMonths: 0,
     segmentPopularity: { local: 30, tourist: 20 },
+    targetSegment: null,
     notices: [],
     guests: [],
     spawnAcc: 0,

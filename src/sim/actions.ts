@@ -5,6 +5,7 @@ import { canPlant, plant, canHarvest, harvest } from './farm.ts';
 import { canSetSlot, setSlot } from './menu.ts';
 import { canUnlock, unlock } from './progress.ts';
 import { canPostJob, postJob, canHire, hire, canFire, fire, canAssign, assign, canLevelUp, levelUp } from './staff.ts';
+import { canPromote, promote, canSetTarget, setTarget } from './promotions.ts';
 
 export const PROTECTED_TYPES = new Set(['busstop', 'warehouse', 'gate']);
 const ACTION_LOG_CAP = 1000;
@@ -107,7 +108,18 @@ function applyInner(state: GameState, a: Action): ApplyResult {
       levelUp(state, a.staffId, a.stat);
       return { ok: true };
     }
-    // promote: promotions.ts에서 구현 (Task 5)
+    case 'promote': {
+      const c = canPromote(state, a.staffId, a.promotionId);
+      if (!c.ok) return c;
+      promote(state, a.staffId, a.promotionId);
+      return { ok: true };
+    }
+    case 'setTarget': {
+      const c = canSetTarget(state, a.segment);
+      if (!c.ok) return c;
+      setTarget(state, a.segment);
+      return { ok: true };
+    }
     default:
       return { ok: false, reason: '아직 구현 안 됨' };
   }

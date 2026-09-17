@@ -5,6 +5,7 @@ import { sceneryScore } from './grid.ts';
 import { availableMenus, consumeIngredients } from './menu.ts';
 import { busStopPos, findPath, walkableNeighborsOf, reachMap, pathFromReach, cellKey } from './path.ts';
 import { roleEffect, skillTotal } from './staff.ts';
+import { effectivePopularity, youtuberMultiplier } from './promotions.ts';
 import { START_HOUR, END_HOUR } from './clock.ts';
 
 export const GUEST_SPEED_CELLS_PER_S = 3;
@@ -41,10 +42,9 @@ export function totalSeats(state: GameState): number {
   return seatObjects(state).reduce((n, o) => n + (objectDef(o.type).seats ?? 1), 0);
 }
 
-/** 손님층 유입 배수: 인기 × 인기쟁이 스킬. (기간형 홍보·유튜버는 promotions.ts에서 더한다 — Task 5) */
+/** 손님층 유입 배수 = (1 + 유효 인기/50) × 유튜버 부스트 × (1 + 인기쟁이 스킬). 유효 인기 = 기본 + 활성 기간형 홍보. */
 export function spawnMultiplier(state: GameState, typeId: string): number {
-  const pop = state.segmentPopularity[typeId] ?? 0;
-  return (1 + pop / 50) * (1 + skillTotal(state, 'spawnBonus'));
+  return (1 + effectivePopularity(state, typeId) / 50) * youtuberMultiplier(state, typeId) * (1 + skillTotal(state, 'spawnBonus'));
 }
 
 /** 시간대별 손님층 가중: 아침(6~9) 삼춘 2배, 낮(11~17) 관광객 2배 */
