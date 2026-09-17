@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** 2B-1(경제·직원·홍보) 위에 카이로 루프의 나머지 시스템을 얹어, 손님층별 만족→단골→의뢰, 상성·아이템·분위기, 메뉴 크래프팅(재료 콤보·파라미터·토핑·스킬), 월말 룰렛·메달 상점, ★ 등급·연말 랭킹 채점, 할망 튜토리얼 팝업이 동작한다. 모든 수치는 `docs/superpowers/specs/2026-09-17-game-data-tables.md`(이하 **데이터 설계서**)에서 옮긴다.
+**Goal:** 2B-1(경제·직원·홍보) 위에 카이로 루프의 나머지 시스템을 얹어, 손님층별 만족→단골→의뢰, 상성·아이템·분위기, 메뉴 크래프팅(재료 콤보·파라미터·토핑·스킬), 월말 룰렛·메달 상점, ★ 등급·연말 랭킹 채점, 할망 튜토리얼 팝업이 동작한다. 모든 수치는 **GDD v2 표** `docs/superpowers/specs/2026-09-17-gdd-v2-tables.md`(시설 87·손님 103·부탁 103·콤보 45·세트 14·관광지 24·직원 27·채용 5·유니폼 5·아이템 20+12·상점·가이드북 11·이벤트 42·경관 계절) + 손님 체인 `guest-chain.mmd`에서 옮긴다. v1 데이터 설계서(`game-data-tables.md`)는 재료·메뉴·토핑·룰렛·필지 등 v2 표에 없는 항목에만 쓴다. 마스터 GDD `2026-09-17-gdd-v2-master.md` §1의 변경(인구 태그·효과 6종·부탁 체인·관광지 24 Lv5·가이드북 11·마일리지/응모권 상점)을 각 Task에 적용한다.
 
 **Architecture:** sim 모듈 추가 — `segments`(손님층 인기·만족·타깃), `compat`(상성·분위기), `items`, `board`(의뢰·이벤트·투자), `craft`(메뉴 개발·토핑·스킬 티어), `roulette`, `rank`(★·랭킹 채점), `tutorial`(단계 상태). 전부 순수·결정적. UI는 패널 6개 + 팝업 프레임 공용 컴포넌트. 렌더 변경은 최소(포토존 이펙트, 룰렛 화면은 React/CSS).
 
@@ -29,13 +29,13 @@ tools/data/from_tables.py   # 데이터 설계서 마크다운 표 → JSON 변�
 
 ---
 
-### Task 1: 표 → JSON 변환 도구
+### Task 1: 표 → JSON 변환 도구 v2 (gdd-v2-tables.md 파싱, 기존 v1 파서 유지)
 **Files:** Create `tools/data/from_tables.py`, `tools/data/test_from_tables.py`; Modify `package.json`(`"data": "python3 tools/data/from_tables.py"`)
 - 마크다운 표 파서: `## N.` 절 제목으로 표를 찾고 헤더 행을 키로, 셀을 값으로. 숫자(콤마 제거)·퍼센트·`—`(null)·`a·b`(배열) 변환 규칙. 절별 후처리 함수(예: §1.1 좌석 → `objects.json`의 kind 'seat', `seats` 필드).
 - 출력 JSON 목록과 스키마는 각 Task에 정의. 테스트: 샘플 표 문자열 → 기대 객체.
 - Commit `feat(data): 마크다운 표 → JSON 변환 도구`
 
-### Task 2: 손님층·타깃·단골
+### Task 2: 손님 타입 100·인구 태그·효과 6종·부탁 체인·타깃·단골
 **Files:** Create `src/sim/segments.ts`, `src/data/segments.json`; Modify `guests.ts`, `types.ts`, `actions.ts`, `tick.ts`; Test `segments.test.ts`
 - `GuestTypeDef` → 데이터 설계서 §4 스키마: `{ id, name, initialPopularity, budget, likesBase[], likesStats[], likesObjects[], dislikes[], unlock: {segment?, satisfaction?}|'start'|... }`. 손님층 12.
 - `state.segments: Record<id, { popularity, satisfaction, unlocked, regular: 'none'|'regular'|'vip' }>`, `state.targets: string[]`(최대 3).
@@ -53,7 +53,7 @@ tools/data/from_tables.py   # 데이터 설계서 마크다운 표 → JSON 변�
 - 테스트: 상성 적용값, 히든 발견, 아이템 상한, 분위기 레벨.
 - Commit `feat(sim): 상성·분위기·아이템과 오브젝트 정보`
 
-### Task 4: 게시판 — 의뢰·이벤트·투자
+### Task 4: 게시판 — 부탁(체인)·이벤트 42·관광지 24 투자(Lv1~5)
 **Files:** Create `src/sim/board.ts`, `src/data/requests.json`, `events.json`(§15), `investments.json`(§11); Modify `tick.ts`, `actions.ts`; UI `BoardPanel.tsx`, `Popup.tsx`
 - 의뢰 생성: 매월 1일 VIP 손님층·삼춘·명소에서 최대 2개(확률 60%). 조건 타입 `menuSold{menuId,n}` / `objectPlaced{type,n}` / `ingredient{id,n}` / `segmentHappy{seg,n}` / `contest`. 기한 1~2개월, 보상 `{money, research, medals, item?, recipe?}`. 대사 팝업(초상 + 텍스트) → "도전하기".
 - 이벤트: §15 표 30개, `trigger: {monthProb, months?, condition}`, `choice?: {accept: {...}, decline}`. 매월 1일 롤. 적용은 `effects` DSL(`spawnMult`, `harvestMult`, `money`, `unlock`, `notice`) — 12종.
@@ -70,7 +70,7 @@ tools/data/from_tables.py   # 데이터 설계서 마크다운 표 → JSON 변�
 - 테스트: 콤보 발동(같은 재료 제외), 파라미터 성공률, 스킬 티어 경계, 히든 레시피 발견, 재료비 계산에 토핑 포함.
 - Commit `feat(sim): 메뉴 크래프팅 — 콤보·파라미터·토핑·스킬`
 
-### Task 6: 룰렛·메달·상점·발굴
+### Task 6: 응모권 추첨(인형뽑기 톤)·마일리지 상점·응모권 상점·강화 아이템 20·유니폼
 **Files:** Create `src/sim/roulette.ts`, `src/data/roulette.json`, `medal_shop.json`; Modify `tick.ts`(월말 `rouletteAvailable=true`), `actions.ts`; UI `RoulettePanel.tsx`(원판 CSS 회전 애니 2초 → 결과 팡파르), `MedalShopPanel.tsx`
 - `spinRoulette`: 무료 1회/월 또는 메달 1 → 가중치 8칸(§14) → 보상 적용. 결과는 sim이 즉시 결정하고 UI는 연출만(결정성).
 - 메달 획득 규칙(§14)을 각 모듈 훅에 심는다. `buyMedal` 액션 12항목.
@@ -78,7 +78,7 @@ tools/data/from_tables.py   # 데이터 설계서 마크다운 표 → JSON 변�
 - 테스트: 확률 분포(seed 1000회 → 오차 ±3%p), 무료 회전 리셋, 메달 차감.
 - Commit `feat(sim): 룰렛·메달 상점·발굴`
 
-### Task 7: ★ 등급·연말 랭킹 채점·콩쿠르
+### Task 7: 카페 랭크·★ 등급·가이드북 11종 채점
 **Files:** Create `src/sim/rank.ts`, `src/data/ranks.json`(§17), `settle_ranks.json`, `contests.json`(§13); Modify `tick.ts`(3월·9월 랭킹, 12월 마을제); UI `RankPanel.tsx`(항목별 게이지 애니 → 종합 → ★)
 - ★ 조건 3개 검사(월말). 승급 시 해금 목록 적용 + 팡파르 팝업.
 - 랭킹 채점: 메뉴(평균 스탯·수)·경치(좌석 평균 경치)·접객(홀 서비스·대기 시간)·제주다움(제주 재료 비율·랜드마크) 각 0~100 → 종합. 가상 경쟁 카페 9곳 점수(seed·년차 스케일) → 순위·보상(메달·연구).
