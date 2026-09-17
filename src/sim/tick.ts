@@ -17,6 +17,7 @@ import { monthlyRank } from './guidebook.ts';
 import { monthlyMileage } from './mileage.ts';
 import { fmtNum } from './format.ts';
 import { hourlyPopup, dailyPopup } from './popup.ts';
+import { monthlyRivals } from './rivals.ts';
 
 export const STEP_MS = 100;        // 고정 스텝 (게임 ms)
 const MAX_STEPS_PER_TICK = 600;    // 백그라운드 복귀 등 폭주 방지 (60초 게임 시간)
@@ -42,7 +43,7 @@ function onNewDay(state: GameState): void {
   advanceConstruction(state);
 }
 
-/** 월 바뀜 (1일의 날 처리보다 먼저): 월급 → 홍보 만료·인기 감소 → 유지비 → 손님 수 마일리지 → 정산 → 후보 만료 → 손님 해금 → 게시판 → 응모권·무료 추첨 → ★·가이드북 발표 */
+/** 월 바뀜 (1일의 날 처리보다 먼저): 월급 → 홍보 만료·인기 감소 → 유지비 → 손님 수 마일리지 → 정산 → 후보 만료 → 손님 해금 → 게시판 → 응모권·무료 추첨 → ★·가이드북 발표 → 라이벌 */
 function onNewMonth(state: GameState, prevMonth: number, prevYear: number): void {
   payroll(state);
   expirePromotions(state);
@@ -54,6 +55,7 @@ function onNewMonth(state: GameState, prevMonth: number, prevYear: number): void
   monthlyBoard(state);
   monthlyShop(state);
   monthlyRank(state);
+  monthlyRivals(state);
 }
 
 /** 정착지원금: 잔고가 40만 아래로 떨어지면 딱 한 번 300만 (GDD §1 비상금) */

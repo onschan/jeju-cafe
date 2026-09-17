@@ -373,7 +373,7 @@ class V2Integration(unittest.TestCase):
             'facilities': 109, 'guests': 103, 'quests': 103, 'combos': 45, 'sets': 14, 'spots': 24,
             'staff_pool': 27, 'recruit_tiers': 5, 'uniforms': 5, 'items': 20, 'special_items': 12,
             'mileage_shop': 14, 'ticket_shop': 8, 'guidebooks': 11, 'events': 42, 'scenery_seasons': 12,
-            'extra_menus': 15, 'guest_chains': 30,
+            'extra_menus': 15, 'rivals': 6, 'guest_chains': 30,
         }
         self.assertEqual({k: len(v) for k, v in d.items()}, expected)
 
@@ -466,6 +466,18 @@ class V2Integration(unittest.TestCase):
         self.assertEqual(st['st_kim_minjun']['stats'], {'stamina': 30, 'strength': 25, 'skill': 10, 'smile': 15})
         self.assertEqual(sum(1 for x in st.values() if x['special']), 2)
 
+    def test_rivals(self):
+        rv = {x['id']: x for x in self.data['rivals']}
+        self.assertEqual(rv['rv_local_cafe']['judge'], {'taste': 0.5, 'aroma': 0.3, 'jeju': 0.2})
+        self.assertEqual(rv['rv_franchise'], {
+            'id': 'rv_franchise', 'name': '프랜차이즈', 'size': 'large', 'sizeText': '대', 'upkeep': 1500000, 'stealPerMonth': 1,
+            'statPenalty': 5, 'judge': {'taste': 0.3, 'volume': 0.4, 'look': 0.3}, 'bankruptMonthly': 15, 'line': '전국 어디서나 같은 맛',
+        })
+        self.assertEqual(sum(1 for x in rv.values() if x['size'] == 'large'), 2)
+        self.assertTrue(all(x['bankruptMonthly'] == (15 if x['size'] == 'large' else 0) for x in rv.values()))
+        with self.assertRaises(ValueError):
+            ft.parse_judge_weights('맛 0.5·향 0.3')
+
     def test_scenery_bonus_matches_facility_table(self):
         f = {x['id']: x for x in self.data['facilities']}
         for sc in self.data['scenery_seasons']:
@@ -479,7 +491,7 @@ class V2Integration(unittest.TestCase):
             ft.run_v2(out_dir=tmp)
             second = {n: open(os.path.join(tmp, n), encoding='utf-8').read() for n in os.listdir(tmp)}
             self.assertEqual(first, second)
-            self.assertEqual(len(first), 18)
+            self.assertEqual(len(first), 19)
             for content in first.values():
                 json.loads(content)
 

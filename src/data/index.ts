@@ -1,4 +1,4 @@
-import type { ObjectDef, CropDef, MenuDef, GuestTypeDef, UnlockDef, IngredientDef, RoleDef, SkillDef, PromotionDef, GuestTags, ComboDef, ComboTarget, ComboStrength, ComboSide, SetDef, ItemDef, ItemSlot, Season, MenuCategory, GuestEffect, GuestWant, UnlockCond, QuestDef, QuestCondition, QuestReward, SpotDef, SpotCategory, EventDef, MenuStats, MenuStatKey, IngredientCategory, IngredientComboDef, ToppingDef, HiddenRecipeDef, FacilityCategory, MileageShopDef, TicketShopDef, UniformDef, GuidebookDef, DrawPrizeDef, DrawPrizeKind, JudgeKey, RegionDef, NamedGuestDef } from '../sim/types.ts';
+import type { ObjectDef, CropDef, MenuDef, GuestTypeDef, UnlockDef, IngredientDef, RoleDef, SkillDef, PromotionDef, GuestTags, ComboDef, ComboTarget, ComboStrength, ComboSide, SetDef, ItemDef, ItemSlot, Season, MenuCategory, GuestEffect, GuestWant, UnlockCond, QuestDef, QuestCondition, QuestReward, SpotDef, SpotCategory, EventDef, MenuStats, MenuStatKey, IngredientCategory, IngredientComboDef, ToppingDef, HiddenRecipeDef, FacilityCategory, MileageShopDef, TicketShopDef, UniformDef, GuidebookDef, DrawPrizeDef, DrawPrizeKind, JudgeKey, RegionDef, NamedGuestDef, RivalDef } from '../sim/types.ts';
 import objectsJson from './objects.json' with { type: 'json' };
 import cropsJson from './crops.json' with { type: 'json' };
 import menusJson from './menus.json' with { type: 'json' };
@@ -36,6 +36,7 @@ import toppingsJson from './generated/toppings.json' with { type: 'json' };
 import hiddenRecipesJson from './generated/hidden_recipes.json' with { type: 'json' };
 import regionsJson from './generated/regions.json' with { type: 'json' };
 import namedGuestsJson from './generated/named_guests.json' with { type: 'json' };
+import rivalsJson from './generated/v2/rivals.json' with { type: 'json' };
 
 /** 시작부터 있는 특수 오브젝트 (필지 지형 생성용). 덤불은 곡괭이 대신 5만 원에 치운다. */
 const TERRAIN_OBJECTS: ObjectDef[] = [
@@ -180,6 +181,8 @@ export const GUEST_TYPES: GuestTypeDef[] = (guestsJson as RawGuest[]).map(adaptG
 export const REGIONS: RegionDef[] = regionsJson as RegionDef[];
 export const NAMED_GUESTS: NamedGuestDef[] = namedGuestsJson as NamedGuestDef[];
 export const namedGuestsOf = (regionId: string): NamedGuestDef[] => NAMED_GUESTS.filter((g) => g.regionId === regionId);
+/** 라이벌 카페 타입 6 (v2 표 §15.3) */
+export const RIVALS: RivalDef[] = rivalsJson as RivalDef[];
 /** 단골★이 본점에 올 때 쓰는 손님 타입 id. GUEST_TYPES에는 없고(스폰·도감·해금 대상 아님) guestTypeDef로만 찾는다 — 취향·예산은 NamedGuestDef가 대신한다. */
 export const NAMED_TYPE = 'named';
 const NAMED_TYPE_DEF: GuestTypeDef = {
@@ -622,6 +625,8 @@ export const ticketShopDef = (id: string) => must(TICKET_ITEM, id, 'ticketShop')
 export const uniformDef = (id: string) => must(UNIFORM, id, 'uniform');
 export const guidebookDef = (id: string) => must(GUIDEBOOK, id, 'guidebook');
 const REGION = indexBy(REGIONS);
+const RIVAL = indexBy(RIVALS);
+export const rivalDef = (id: string) => must(RIVAL, id, 'rival');
 const NAMED_GUEST = indexBy(NAMED_GUESTS);
 export const regionDef = (id: string) => must(REGION, id, 'region');
 export const namedGuestDef = (id: string) => must(NAMED_GUEST, id, 'namedGuest');

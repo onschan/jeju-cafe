@@ -1359,6 +1359,42 @@ def emit_v2_extra_menus(doc: Doc) -> list[dict]:
     return out
 
 
+# §15 라이벌 -------------------------------------------------------------------
+RIVAL_SIZE_KO = {'소': 'small', '중': 'medium', '대': 'large'}
+RE_PCT_PLAIN = re.compile(r'(\d+(?:\.\d+)?)%')
+
+
+def parse_judge_weights(cell: str) -> dict[str, float]:
+    """'맛 0.5·향 0.3·제주 0.2' → {'taste': 0.5, 'aroma': 0.3, 'jeju': 0.2}. 합은 1이어야 한다."""
+    out: dict[str, float] = {}
+    for tok in _list(cell):
+        m = re.fullmatch(r'(맛|향|보기|건강|양|제주다움|제주)\s*(\d+(?:\.\d+)?)', tok)
+        if not m:
+            raise ValueError(f'심사 가중치 형식: {tok!r}')
+        out[STAT_KO[m.group(1)]] = float(m.group(2))
+    if abs(sum(out.values()) - 1) > 1e-6:
+        raise ValueError(f'심사 가중치 합 != 1: {cell!r}')
+    return out
+
+
+def _pct(cell: str) -> float:
+    m = RE_PCT_PLAIN.fullmatch(cell.strip())
+    if not m:
+        raise ValueError(f'퍼센트 형식: {cell!r}')
+    return _num(m.group(1))
+
+
+def emit_v2_rivals(doc: Doc) -> list[dict]:
+    out = []
+    for r in doc.section('15.3 ').table():
+        out.append({
+            'id': r['id'], 'name': _cell(r, '이름'), 'size': RIVAL_SIZE_KO[_cell(r, '규모')], 'sizeText': _cell(r, '규모'),
+            'upkeep': _int(r['유지비']), 'stealPerMonth': _int(r['뺏는 단골/월']), 'statPenalty': _pct(r['스탯 감소']),
+            'judge': parse_judge_weights(r['심사 가중치']), 'bankruptMonthly': _pct(r['월 파산']), 'line': _cell(r, '대사'),
+        })
+    return out
+
+
 # guest-chain.mmd -------------------------------------------------------------
 RE_MMD_SUBGRAPH = re.compile(r'^\s*subgraph\s+(\S+)\s*$')
 RE_MMD_NODE = re.compile(rf'^\s*({ID_RE})\["(.*)"\]\s*$')
@@ -1521,6 +1557,7 @@ def build_v2(doc: Doc, mmd_text: str) -> dict[str, Any]:
         'ticket_shop': emit_v2_shop(doc, '10.4 ', item_ids, uniforms),
         'guidebooks': emit_v2_guidebooks(doc), 'events': emit_v2_events(doc),
         'scenery_seasons': emit_v2_scenery_seasons(doc), 'extra_menus': emit_v2_extra_menus(doc),
+        'rivals': emit_v2_rivals(doc),
         'guest_chains': chains,
     }
     for key, rows in data.items():

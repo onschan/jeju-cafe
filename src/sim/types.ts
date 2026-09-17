@@ -478,6 +478,35 @@ export interface PopupVisit {
 /** regionId = 열려 있는 팝업 지역(null이면 없음). openedDay = 연 날(절대 일 인덱스). lastRegionId = 이번 주 팝업을 연 지역(주말 회복에서 제외). queue = 오늘 아직 안 온 손님 id(매 시간 한 명). */
 export interface PopupState { regionId: string | null; openedDay: number; lastRegionId: string | null; queue: string[]; visits: PopupVisit[] }
 
+// ---------- 라이벌 카페 (2B-4 Task 3, 스펙 §15.3) ----------
+export type RivalSize = 'small' | 'medium' | 'large';
+export interface RivalDef {
+  id: string;
+  name: string;
+  size: RivalSize;
+  sizeText: string;
+  upkeep: number;
+  stealPerMonth: number;
+  statPenalty: number;            // 매월 우리 메뉴 양·보기 −%
+  judge: Partial<MenuStats>;      // 심사 가중치 (합 1)
+  bankruptMonthly: number;        // 매월 자체 파산 % (대형)
+  line: string;
+}
+/** 생긴 라이벌 하나. id = 'r{n}', rivalId = RivalDef.id. stolen = 빼앗긴 단골★ id (철수하면 돌아온다) */
+export interface RivalState { id: string; rivalId: string; openedMonthIndex: number; penaltyPct: number; stolen: string[]; lastChallengeMonth: number }
+/** 카페 대결 결과 (UI 심사 게이지, dismissChallenge로 닫는다) */
+export interface ChallengeResult {
+  rivalStateId: string;
+  rivalId: string;
+  menuId: string;
+  menuName: string;
+  breakdown: Partial<MenuStats>; // 가중치 × 스탯 항목별 점수
+  score: number;                 // 항목 합 + 운
+  luck: number;
+  power: number;                 // 라이벌 점수
+  win: boolean;
+}
+
 export interface Guest {
   id: string;
   type: string; // GuestTypeDef.id
@@ -573,6 +602,8 @@ export interface GameState {
   regions: Record<string, RegionState>;       // 지역 활기·식욕 (2B-4)
   namedGuests: Record<string, NamedGuestState>; // 이름 있는 손님 56 호감도·단골★
   popup: PopupState;                          // 원정 팝업 스토어
+  rivals: RivalState[];                       // 라이벌 카페 (동시 최대 2)
+  lastChallenge: ChallengeResult | null;      // 마지막 카페 대결 (UI 팝업)
   guests: Guest[];
   spawnAcc: number; // 시간대별 스폰 소수 누적
   researchAcc: number; // 만족 손님 누적 (5마다 연구 +1)
@@ -635,6 +666,8 @@ export type Action =
   | { type: 'useGuestItem'; itemId: string; guestId: string }
   | { type: 'dismissAnnouncement' }
   | { type: 'openPopup'; regionId: string }
-  | { type: 'closePopup' };
+  | { type: 'closePopup' }
+  | { type: 'challenge'; rivalId: string; menuId: string } // rivalId = RivalState.id
+  | { type: 'dismissChallenge' };
 
 export interface ApplyResult { ok: boolean; reason?: string }

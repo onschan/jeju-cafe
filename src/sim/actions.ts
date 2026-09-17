@@ -17,13 +17,14 @@ import { canDevelop, develop, canAddTopping, addTopping, canRemoveTopping, remov
 import { canStartBuild, startBuild } from './build.ts';
 import { canBuyMileage, buyMileage, canBuyTicket, buyTicket, canDrawTicket, drawTicket, canSetUniform, setUniform, canUseGuestItem, useGuestItem } from './shop.ts';
 import { canOpenPopup, openPopup, canClosePopup, closePopup } from './popup.ts';
+import { canChallenge, challenge } from './rivals.ts';
 
 export const PROTECTED_TYPES = new Set(['busstop', 'warehouse', 'gate', 'spring']);
 /** 회전할 수 있는 오브젝트 (rot 0..3, 스프라이트 변형 _r{n}이 있을 때만 보인다) */
 export const ROTATABLE_TYPES = new Set(['gate', 'bench', 'counter']);
 const ACTION_LOG_CAP = 1000;
 
-const CLIENT_ONLY = new Set<Action['type']>(['setSpeed', 'dismissMonthCard', 'dismissDevelop', 'dismissDraw', 'dismissAnnouncement']);
+const CLIENT_ONLY = new Set<Action['type']>(['setSpeed', 'dismissMonthCard', 'dismissDevelop', 'dismissDraw', 'dismissAnnouncement', 'dismissChallenge']);
 
 function log(state: GameState, a: Action) {
   if (CLIENT_ONLY.has(a.type)) return;
@@ -309,6 +310,15 @@ function applyInner(state: GameState, a: Action): ApplyResult {
       closePopup(state);
       return { ok: true };
     }
+    case 'challenge': {
+      const c = canChallenge(state, a.rivalId, a.menuId);
+      if (!c.ok) return c;
+      challenge(state, a.rivalId, a.menuId);
+      return { ok: true };
+    }
+    case 'dismissChallenge':
+      state.lastChallenge = null;
+      return { ok: true };
     default:
       return { ok: false, reason: '아직 구현 안 됨' };
   }
