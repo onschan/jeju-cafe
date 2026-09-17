@@ -5,9 +5,9 @@ import { monthIndex } from './clock.ts';
 import { isWalkable, findPath, walkableNeighborsOf, moveAlong } from './path.ts';
 
 export const TIERS: Record<JobTier, { cost: number; count: number; min: number; max: number }> = {
-  flyer: { cost: 10000, count: 3, min: 10, max: 40 },
-  site: { cost: 50000, count: 4, min: 30, max: 60 },
-  headhunter: { cost: 200000, count: 5, min: 50, max: 80 },
+  flyer: { cost: 1_000_000, count: 3, min: 10, max: 40 },
+  site: { cost: 5_000_000, count: 4, min: 30, max: 60 },
+  headhunter: { cost: 20_000_000, count: 5, min: 50, max: 80 },
 };
 export const MAX_LEVEL = 10;
 export const MAX_STAT = 99;
@@ -20,9 +20,9 @@ export const STAT_KEYS: StatKey[] = ['service', 'cooking', 'sense', 'stamina'];
 
 // ---------- 공식 ----------
 
-/** 월급 = 스탯 합 × 30 + 레벨 × 5,000 (§9.4) */
+/** 월급 = 스탯 합 × 3,000 + 레벨 × 500,000 (§9.4 ×100 리스케일, GDD 40만~220만) */
 export function salaryOf(stats: Stats, level: number): number {
-  return STAT_KEYS.reduce((s, k) => s + stats[k], 0) * 30 + level * 5000;
+  return STAT_KEYS.reduce((s, k) => s + stats[k], 0) * 3000 + level * 500_000;
 }
 
 /** 레벨업 비용 = 현재 스탯값 × 10 연구P (HSS2식) */

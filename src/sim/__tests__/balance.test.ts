@@ -1,8 +1,8 @@
 import { runBot } from '../bot.ts';
 
 const SEEDS = [1, 2, 3];
-const YEAR1_TOTAL_MIN = 300_000;
-const YEAR1_TOTAL_MAX = 1_500_000;
+const YEAR1_TOTAL_MIN = 30_000_000;
+const YEAR1_TOTAL_MAX = 150_000_000;
 
 describe.each(SEEDS)('봇 1년차 밸런스 (seed %i)', (seed) => {
   const rows = runBot(1, seed);
@@ -13,7 +13,7 @@ describe.each(SEEDS)('봇 1년차 밸런스 (seed %i)', (seed) => {
     for (const r of year1) expect(r.net, `${r.year}년 ${r.month}월 net`).toBeGreaterThan(0);
   });
 
-  test('1년차 순이익 합계는 30만~150만', () => {
+  test('1년차 순이익 합계는 3,000만~1억 5,000만', () => {
     const total = year1.reduce((s, r) => s + r.net, 0);
     expect(total).toBeGreaterThanOrEqual(YEAR1_TOTAL_MIN);
     expect(total).toBeLessThanOrEqual(YEAR1_TOTAL_MAX);

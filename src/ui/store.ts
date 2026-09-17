@@ -44,6 +44,7 @@ const ACTION_SFX: Record<Action['type'], SfxName> = {
   place: 'place', remove: 'remove', plant: 'plant', harvest: 'harvest',
   setSlot: 'tap', setSpeed: 'tap', unlock: 'unlock', dismissMonthCard: 'tap',
   postJob: 'tap', hire: 'tap', fire: 'tap', assign: 'tap', levelUp: 'tap', promote: 'tap', setTarget: 'tap',
+  move: 'place', rotate: 'tap', buyParcel: 'unlock',
 };
 
 export function dispatch(a: Action): ApplyResult {

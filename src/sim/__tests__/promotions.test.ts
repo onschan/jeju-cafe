@@ -27,8 +27,8 @@ test('홍보: 없는 직원·미배치·기력 부족·연구 부족·돈 부족
   expect(apply(s, { type: 'promote', staffId: st.id, promotionId: 'flyer' }).ok).toBe(false); // 기력 20 필요
   st.energy = 100; s.research = 4;
   expect(apply(s, { type: 'promote', staffId: st.id, promotionId: 'flyer' }).ok).toBe(false); // 연구 5 필요
-  s.research = 100; s.money = 49999;
-  expect(apply(s, { type: 'promote', staffId: st.id, promotionId: 'radio' }).ok).toBe(false); // 돈 50000 필요
+  s.research = 100; s.money = 4_999_999;
+  expect(apply(s, { type: 'promote', staffId: st.id, promotionId: 'radio' }).ok).toBe(false); // 돈 500만 필요
 });
 
 test('전단 돌리기: 연구·기력 차감, 삼춘 인기 +3, 타깃이면 ×1.5', () => {
@@ -54,33 +54,33 @@ test('SNS 포스팅: 관광객 +5, 게이지 +5', () => {
 
 test('기간형: 라디오는 돈이 들고 광고비에 잡히며, 활성 동안 인기가 오른 셈, 최대 2개, 중복 거부, 월말 만료', () => {
   const { s, st } = withStaff();
-  s.money = 100000;
+  s.money = 10_000_000;
   expect(apply(s, { type: 'promote', staffId: st.id, promotionId: 'radio' }).ok).toBe(true);
-  expect(s.money).toBe(50000);
-  expect(s.monthCosts.ads).toBe(50000);
+  expect(s.money).toBe(5_000_000);
+  expect(s.monthCosts.ads).toBe(5_000_000);
   expect(s.activePromotions).toEqual([{ promotionId: 'radio', remainingMonths: 2, delta: { local: 5, tourist: 5 } }]);
   expect(effectivePopularity(s, 'local')).toBe(35);
   expect(effectivePopularity(s, 'tourist')).toBe(25);
   expect(s.segmentPopularity['local']).toBe(30); // 기본값은 그대로
-  st.energy = 100; s.money = 100000;
+  st.energy = 100; s.money = 10_000_000;
   expect(apply(s, { type: 'promote', staffId: st.id, promotionId: 'radio' }).ok).toBe(false); // 중복
   expect(apply(s, { type: 'promote', staffId: st.id, promotionId: 'billboard' }).ok).toBe(true);
   expect(effectivePopularity(s, 'local')).toBe(38);
   const s2 = createInitialState(2);
   s2.activePromotions = [{ promotionId: 'radio', remainingMonths: 1, delta: {} }, { promotionId: 'billboard', remainingMonths: 1, delta: {} }];
-  s2.staff.push(staffWith({}, 'hall')); s2.research = 100; s2.money = 1e6;
+  s2.staff.push(staffWith({}, 'hall')); s2.research = 100; s2.money = 1e8;
   expect(apply(s2, { type: 'promote', staffId: s2.staff[0]!.id, promotionId: 'flyer' }).ok).toBe(true); // 1회성은 개수 제한 없음
   for (let i = 0; i < 30; i++) tick(s, DAY_MS);
   expect(s.activePromotions).toEqual([{ promotionId: 'radio', remainingMonths: 1, delta: { local: 5, tourist: 5 } }]);
-  expect(s.lastMonthCard!.costs.ads).toBe(50000);
+  expect(s.lastMonthCard!.costs.ads).toBe(5_000_000);
   for (let i = 0; i < 30; i++) tick(s, DAY_MS);
   expect(s.activePromotions).toEqual([]);
 });
 
-test('아르바이트: 기력 40으로 돈 +1500, 직원당 한 달에 한 번', () => {
+test('아르바이트: 기력 40으로 돈 +15만, 직원당 한 달에 한 번', () => {
   const { s, st } = withStaff();
   const m0 = s.money;
-  expect(PARTTIME_MONEY).toBe(1500);
+  expect(PARTTIME_MONEY).toBe(150_000);
   expect(apply(s, { type: 'promote', staffId: st.id, promotionId: 'parttime' }).ok).toBe(true);
   expect(s.money).toBe(m0 + PARTTIME_MONEY);
   expect(s.monthIncome).toBe(PARTTIME_MONEY);
@@ -111,9 +111,9 @@ test('유튜버: 성공하면 3개월 관광객 2배, 실패하면 아무 것도
   let ok = 0, fail = 0;
   for (let seed = 1; seed <= 30; seed++) {
     const { s, st } = withStaff(seed);
-    s.money = 1e6;
+    s.money = 1e8;
     expect(apply(s, { type: 'promote', staffId: st.id, promotionId: 'youtuber' }).ok).toBe(true);
-    expect(s.money).toBe(1e6 - 100000);
+    expect(s.money).toBe(1e8 - 10_000_000);
     if (s.youtuberBoostMonths === YOUTUBER_MONTHS) {
       ok++;
       expect(spawnMultiplier(s, 'tourist')).toBeCloseTo(2 * (1 + 20 / 50));
@@ -142,14 +142,14 @@ test('홍보가 있으면 하루 손님이 는다', () => {
   for (let i = 0; i < 3; i++) placeObject(s, 'table_out', 2 + i, 5);
   s.segmentPopularity = { local: 15, tourist: 15 }; // 평균 배수 1.3
   const base = dailyGuestCount(s);
-  s.money = 1e6;
+  s.money = 1e8;
   expect(apply(s, { type: 'promote', staffId: st.id, promotionId: 'radio' }).ok).toBe(true); // 기력 30
-  expect(dailyGuestCount(s)).toBe(base); // 전 손님층 +5 → 평균 배수 1.4, 아직 +1은 안 됨
+  expect(dailyGuestCount(s)).toBe(base + 1); // 전 손님층 +5 → 평균 배수 1.4 → (0.4×10)=4, 전엔 3
   for (const id of ['sns', 'sns', 'flyer', 'flyer']) expect(apply(s, { type: 'promote', staffId: st.id, promotionId: id }).ok).toBe(true); // 기력 15+15+20+20
   expect(st.energy).toBe(0);
   expect(effectivePopularity(s, 'local')).toBe(26);
   expect(effectivePopularity(s, 'tourist')).toBe(30);
-  expect(dailyGuestCount(s)).toBe(base + 1); // 평균 배수 1.56 → +1
+  expect(dailyGuestCount(s)).toBe(base + 2); // 평균 배수 1.56 → 5
 });
 
 test('setTarget: 아는 손님층만, null로 해제', () => {

@@ -930,6 +930,7 @@ def build(doc: Doc) -> dict[str, Any]:
         'investments': emit_investments(doc), 'auras': emit_auras(doc, objects), 'contests': emit_contests(doc),
         'roulette': roulette, 'medal_sources': medal_sources, 'medal_shop': medal_shop, 'events': emit_events(doc),
         'calendar': emit_calendar(doc), 'ranks': ranks, 'settle_ranks': settle_ranks, 'parcels': emit_parcels(doc),
+        'landmarks': [o for o in objects if o['kind'] == 'landmark'],
         'constants': emit_constants(doc),
     }
 

@@ -5,6 +5,8 @@ import { hourlySpawn, updateGuests } from './guests.ts';
 import { upkeep, closeMonth } from './economy.ts';
 import { payroll, expireCandidates, hourlyEnergy, nightlyRecovery, moveStaff } from './staff.ts';
 import { expirePromotions } from './promotions.ts';
+import { SETTLE_GRANT, SETTLE_GRANT_THRESHOLD } from './state.ts';
+import { pushNotice } from './staff.ts';
 
 export const STEP_MS = 100;        // 고정 스텝 (게임 ms)
 const MAX_STEPS_PER_TICK = 600;    // 백그라운드 복귀 등 폭주 방지 (60초 게임 시간)
@@ -32,6 +34,15 @@ function onNewMonth(state: GameState, prevMonth: number, prevYear: number): void
   expireCandidates(state);
 }
 
+/** 정착지원금: 잔고가 40만 아래로 떨어지면 딱 한 번 300만 (GDD §1 비상금) */
+export function settleGrant(state: GameState): boolean {
+  if (state.settleGrantUsed || state.money >= SETTLE_GRANT_THRESHOLD) return false;
+  state.settleGrantUsed = true;
+  state.money += SETTLE_GRANT;
+  pushNotice(state, `정착지원금 ₩${SETTLE_GRANT.toLocaleString()}을 받았어요`);
+  return true;
+}
+
 /** 고정 스텝 하나. 결정적. 리플레이는 이 함수만 호출한다. */
 export function step(state: GameState): void {
   const prevMonth = state.clock.month;
@@ -46,6 +57,7 @@ export function step(state: GameState): void {
   for (let i = 0; i < hours; i++) onNewHour(state);
   updateGuests(state, STEP_MS);
   moveStaff(state, STEP_MS);
+  settleGrant(state);
   state.tick++;
 }
 

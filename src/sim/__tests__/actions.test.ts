@@ -5,7 +5,7 @@ import { spawnGuests, updateGuests } from '../guests.ts';
 test('place: 돈이 있어야 하고, 깎이고, 로그에 남는다', () => {
   const s = createInitialState(1);
   expect(apply(s, { type: 'place', objectType: 'field', x: 0, y: 0 }).ok).toBe(true);
-  expect(s.money).toBe(29700);
+  expect(s.money).toBe(5_000_000 - 30_000);
   expect(Object.values(s.objects).some((o) => o.type === 'field')).toBe(true);
   expect(s.actionLog).toEqual([{ tick: 0, action: { type: 'place', objectType: 'field', x: 0, y: 0 } }]);
 });
@@ -37,7 +37,7 @@ test('remove: 시작 오브젝트(정류장·창고)는 못 없앤다, 나머지
   apply(s, { type: 'place', objectType: 'field', x: 0, y: 0 });
   const f = Object.values(s.objects).find((o) => o.type === 'field')!;
   expect(apply(s, { type: 'remove', objectId: f.id }).ok).toBe(true);
-  expect(s.money).toBe(30000);
+  expect(s.money).toBe(5_000_000);
 });
 
 test('remove: 손님이 지나갈 올렛길은 못 없앤다', () => {

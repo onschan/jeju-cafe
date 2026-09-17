@@ -96,10 +96,11 @@ test('나가는 손님이 정류장까지 길이 없으면 옆 칸까지만 가�
 
 test('동시 손님은 MAX_GUESTS까지', () => {
   const s = createInitialState(1);
-  for (let x = 0; x < 10; x++) { placeObject(s, 'table_out', x, 4); if (x !== 4) placeObject(s, 'table_out', x, 6); } // 정낭(4,6)은 남긴다
-  for (let x = 0; x < 10; x++) placeObject(s, 'path', x, 5); // 정낭 위 올렛길 줄 → 4줄 테이블도 닿는다
-  expect(freeSeats(s).length).toBe(19); // 38석
-  expect(spawnGuests(s, 40)).toBe(MAX_GUESTS);
+  // 필지 1·2에 걸쳐 4줄·6줄 테이블, 5줄 올렛길 (placeObject는 소유 검사를 안 한다). 정낭(4,6)은 남긴다.
+  for (let x = 0; x < 20; x++) { placeObject(s, 'table_out', x, 4); if (x !== 4) placeObject(s, 'table_out', x, 6); }
+  for (let x = 0; x < 20; x++) placeObject(s, 'path', x, 5);
+  expect(freeSeats(s).length).toBe(39); // 78석
+  expect(spawnGuests(s, MAX_GUESTS + 10)).toBe(MAX_GUESTS);
   expect(s.guests.length).toBe(MAX_GUESTS);
   expect(spawnGuests(s, 1)).toBe(0);
 });
@@ -197,18 +198,20 @@ test('대사: 30%쯤은 말풍선 텍스트, 손님층·기분·이유에 맞는
   expect(said).toBeLessThan(total * 0.45);
 });
 
-test('하루 손님 수: 좌석과 인기로 정해지고 1~8', () => {
+test('하루 손님 수 = 2 + 좌석×3 + (평균 배수−1)×10, 2~120', () => {
   const s = createInitialState(1);
   s.segmentPopularity = { local: 0, tourist: 0 };
-  expect(dailyGuestCount(s)).toBe(1);
-  placeObject(s, 'table_out', 4, 5); // 2석
-  placeObject(s, 'table_out', 5, 5); // 4석 → +1
   expect(dailyGuestCount(s)).toBe(2);
-  s.segmentPopularity = { local: 30, tourist: 20 }; // 평균 배수 1.5 → +1
-  expect(dailyGuestCount(s)).toBe(3);
-  s.segmentPopularity = { local: 99, tourist: 99 }; // 평균 배수 2.98 → +3
-  for (let i = 0; i < 12; i++) placeObject(s, 'table_out', i % 10, 1 + Math.floor(i / 10) * 3); // 28석 → +7
-  expect(dailyGuestCount(s)).toBe(8);
+  placeObject(s, 'table_out', 4, 5); // 2석
+  placeObject(s, 'table_out', 5, 5); // 4석 → +12
+  expect(dailyGuestCount(s)).toBe(14);
+  s.segmentPopularity = { local: 30, tourist: 20 }; // 평균 배수 1.5 → +5
+  expect(dailyGuestCount(s)).toBe(19);
+  s.segmentPopularity = { local: 99, tourist: 99 }; // 평균 배수 2.98 → +19
+  for (let i = 0; i < 12; i++) placeObject(s, 'table_out', i % 10, 1 + Math.floor(i / 10) * 3); // 28석 → 2+84+19
+  expect(dailyGuestCount(s)).toBe(105);
+  for (let x = 10; x < 20; x++) placeObject(s, 'table_out', x, 1); // 48석 → 165 → 상한 120
+  expect(dailyGuestCount(s)).toBe(120);
 });
 
 test('시간대 분배: 시간 비중 합 1, 정오 피크, 저녁 절반, 아침 삼춘·낮 관광객 가중', () => {
@@ -225,9 +228,11 @@ test('시간대 분배: 시간 비중 합 1, 정오 피크, 저녁 절반, 아�
 
 test('손님은 하루에 걸쳐 시간마다 나뉘어 오고, 하루 합은 dailyGuestCount와 같다', () => {
   const s = createInitialState(1);
-  for (let i = 0; i < 6; i++) placeObject(s, 'table_out', 2 + i, 5); // 12석 → 안 막힘
+  for (let i = 0; i < 6; i++) placeObject(s, 'table_out', 2 + i, 5); // 12석
   for (const x of [2, 3, 5, 6, 7]) placeObject(s, 'path', x, 6); // (4,6)은 정낭
+  s.segmentPopularity = { local: -50, tourist: 0 }; // 평균 배수 0.5 → −5: 하루 33명이면 점심 피크에도 좌석이 안 막힌다
   const n = dailyGuestCount(s);
+  expect(n).toBe(33);
   const ids = new Set<string>();
   const firstHourIds: string[] = [];
   for (let h = 0; h < 18; h++) {

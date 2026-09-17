@@ -7,17 +7,22 @@ import { busStopPos, findPath, walkableNeighborsOf, reachMap, pathFromReach, cel
 import { roleEffect, skillTotal } from './staff.ts';
 import { effectivePopularity, youtuberMultiplier } from './promotions.ts';
 import { START_HOUR, END_HOUR } from './clock.ts';
+import { parcelBonusAt, parcelSpawnMult, parcelFeeMult } from './parcels.ts';
+import type { ParcelBonus } from './types.ts';
 
 export { moveAlong, GUEST_SPEED_CELLS_PER_S }; // 하위 호환 재수출 (본체는 path.ts)
-export const SEAT_MS = 6000;       // 기분이 정해진 뒤 앉아 있는 시간 (≈3시간)
-export const PREP_MS = 5000;       // 직원 없을 때 조리 시간
+export const SEAT_MS = 3000;       // 기분이 정해진 뒤 앉아 있는 시간 (≈1.5시간)
+export const PREP_MS = 3000;       // 직원 없을 때 조리 시간 (≈1.5시간)
 export const MAX_PREP_CUT = 0.6;   // 직원 효과로 줄일 수 있는 최대 비율
 export const MAX_SPEED_SKILL = 0.5;
 export const SERVICE_PER_SCENERY = 30; // 홀 서비스 30당 경치 기준 −1
 export const SAY_CHANCE = 0.3;     // §19 손님 대사 확률
-export const MAX_GUESTS = 30;
-export const MIN_DAILY_GUESTS = 1;
-export const MAX_DAILY_GUESTS = 8;
+export const MAX_GUESTS = 60;
+export const MIN_DAILY_GUESTS = 2;
+export const MAX_DAILY_GUESTS = 120;
+/** 하루 손님 수 = 2 + 좌석 × 3 + (평균 유입 배수 − 1) × 10. 화폐 ×100 뒤 메뉴 가격은 그대로라 손님 수로 매출을 맞춘다 (GDD §1). */
+export const GUESTS_PER_SEAT = 3;
+export const GUESTS_PER_MULT = 10;
 
 function seatObjects(state: GameState): PlacedObject[] {
   return Object.values(state.objects).filter((o) => objectDef(o.type).kind === 'seat');
@@ -75,9 +80,9 @@ function hourTypeMult(hour: number, typeId: string): number {
   return 1;
 }
 
-/** 스폰 시 손님층 선택 가중치 */
-export function typeWeight(state: GameState, typeId: string, hour = state.clock.hour): number {
-  return guestTypeDef(typeId).weight * spawnMultiplier(state, typeId) * hourTypeMult(hour, typeId);
+/** 스폰 시 손님층 선택 가중치. bonus = 갈 좌석이 있는 필지의 구역 보너스 (해안: 관광객 ×1.3) */
+export function typeWeight(state: GameState, typeId: string, hour = state.clock.hour, bonus: ParcelBonus = 'none'): number {
+  return guestTypeDef(typeId).weight * spawnMultiplier(state, typeId) * hourTypeMult(hour, typeId) * parcelSpawnMult(bonus, typeId);
 }
 
 /** 시간대별 손님 수 비중 (하루 합 1). 정오 피크 2배, 18시 이후 절반. */
@@ -88,10 +93,10 @@ export function hourShare(hour: number): number {
   return profile(hour) / total;
 }
 
-/** 하루 손님 수 = 1 + 좌석/4 + (평균 유입 배수 − 1) × 2, 1~8 */
+/** 하루 손님 수 = 2 + 좌석 × 3 + (평균 유입 배수 − 1) × 10, 2~120 */
 export function dailyGuestCount(state: GameState): number {
   const avgMult = GUEST_TYPES.reduce((s, t) => s + spawnMultiplier(state, t.id), 0) / GUEST_TYPES.length;
-  const n = 1 + Math.floor(totalSeats(state) / 4) + Math.floor((avgMult - 1) * 2);
+  const n = MIN_DAILY_GUESTS + totalSeats(state) * GUESTS_PER_SEAT + Math.floor((avgMult - 1) * GUESTS_PER_MULT + 1e-9);
   return Math.max(MIN_DAILY_GUESTS, Math.min(MAX_DAILY_GUESTS, n));
 }
 
@@ -119,7 +124,8 @@ export function spawnGuests(state: GameState, n: number): number {
     }
     if (!best) break;
     const path = pathFromReach(state, reach, best.target)!;
-    const type = pickWeighted(state, GUEST_TYPES, (t) => typeWeight(state, t.id))!;
+    const bonus = parcelBonusAt(state, best.seat.x, best.seat.y);
+    const type = pickWeighted(state, GUEST_TYPES, (t) => typeWeight(state, t.id, state.clock.hour, bonus))!;
     state.guests.push({
       id: `g${state.nextId++}`,
       type: type.id,
@@ -200,8 +206,10 @@ function order(state: GameState, g: Guest): void {
   const menuId = pickWeighted(state, candidates, () => 1)!;
   const menu = menuDef(menuId);
   consumeIngredients(state, menuId);
-  state.money += menu.price;
-  state.monthIncome += menu.price;
+  const seat = state.objects[g.seatId!]!;
+  const price = Math.round(menu.price * parcelFeeMult(parcelBonusAt(state, seat.x, seat.y)));
+  state.money += price;
+  state.monthIncome += price;
   g.menuId = menuId;
   g.waitMs = prepTimeMs(state, menu.category);
 }

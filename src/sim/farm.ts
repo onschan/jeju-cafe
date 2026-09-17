@@ -2,6 +2,7 @@ import type { GameState, ApplyResult, CropDef } from './types.ts';
 import { objectDef, cropDef } from '../data/index.ts';
 import { isSheltered } from './grid.ts';
 import { staffInRole, energyFactor } from './staff.ts';
+import { parcelBonusAt, parcelHarvestMult } from './parcels.ts';
 
 /** 수확 창이 해를 넘기면(11,12,1) 1월은 전년도 창에 속한다. */
 export function harvestSeasonYear(crop: CropDef, month: number, year: number): number {
@@ -52,11 +53,12 @@ export function canHarvest(state: GameState, objectId: string): ApplyResult {
   return { ok: true };
 }
 
-/** 수확량을 창고에 넣는다. 방풍 안 되면 절반. 나무는 남고 밭은 빈다. */
+/** 수확량을 창고에 넣는다. 방풍 안 되면 절반, 필지 보너스(밭담 ×1.2 등)는 그 뒤에 곱해 내림. 나무는 남고 밭은 빈다. */
 export function harvest(state: GameState, objectId: string): number {
   const obj = state.objects[objectId]!;
   const crop = cropDef(obj.crop!.cropId);
-  const amount = isSheltered(state, obj.x, obj.y) ? crop.yieldAmount : Math.floor(crop.yieldAmount / 2);
+  const base = isSheltered(state, obj.x, obj.y) ? crop.yieldAmount : Math.floor(crop.yieldAmount / 2);
+  const amount = Math.floor(base * parcelHarvestMult(parcelBonusAt(state, obj.x, obj.y), crop.id));
   state.storage[crop.id] = (state.storage[crop.id] ?? 0) + amount;
   if (objectDef(obj.type).kind === 'tree') {
     obj.crop!.ready = false;

@@ -27,8 +27,8 @@ test('공고 등급별 후보 수와 스탯 범위, 공고비는 채용비로 �
   const s = createInitialState(7);
   expect(apply(s, { type: 'postJob', tier: 'flyer' }).ok).toBe(true);
   expect(s.candidates.length).toBe(3);
-  expect(s.money).toBe(30000 - 10000);
-  expect(s.monthCosts.recruit).toBe(10000);
+  expect(s.money).toBe(5_000_000 - 1_000_000);
+  expect(s.monthCosts.recruit).toBe(1_000_000);
   for (const c of s.candidates) for (const v of Object.values(c.stats)) { expect(v).toBeGreaterThanOrEqual(10); expect(v).toBeLessThanOrEqual(40); }
   expect(new Set(s.candidates.map((c) => c.id)).size).toBe(3);
   expect(apply(s, { type: 'postJob', tier: 'site' }).ok).toBe(false); // 돈 부족
@@ -36,7 +36,7 @@ test('공고 등급별 후보 수와 스탯 범위, 공고비는 채용비로 �
 
 test('같은 seed면 같은 후보', () => {
   const a = createInitialState(3), b = createInitialState(3);
-  a.money = b.money = 1e6;
+  a.money = b.money = 1e7;
   apply(a, { type: 'postJob', tier: 'site' }); apply(b, { type: 'postJob', tier: 'site' });
   expect(a.candidates.length).toBe(4);
   expect(JSON.stringify(a.candidates)).toBe(JSON.stringify(b.candidates));
@@ -46,7 +46,7 @@ test('같은 seed면 같은 후보', () => {
 });
 
 test('월급 공식', () => {
-  expect(salaryOf({ service: 20, cooking: 20, sense: 20, stamina: 20 }, 1)).toBe(20 * 4 * 30 + 5000);
+  expect(salaryOf({ service: 20, cooking: 20, sense: 20, stamina: 20 }, 1)).toBe(20 * 4 * 3000 + 500_000);
 });
 
 test('채용: 슬롯이 있어야 하고, 역할이 해금돼야 하고, 후보가 사라진다', () => {
@@ -88,6 +88,7 @@ test('월말 월급 차감, 못 주면 unpaidMonths, 2달이면 퇴사', () => {
   const { s, st } = hired();
   const sal = st.salary;
   s.money = sal + 100;
+  s.settleGrantUsed = true; // 잔고가 40만 아래로 떨어져도 지원금이 안 들어오게
   for (let i = 0; i < 30; i++) tick(s, DAY_MS);
   expect(s.lastMonthCard!.costs.salary).toBe(sal);
   expect(s.money).toBe(100);
@@ -233,7 +234,7 @@ function cafe() {
   return s;
 }
 
-test('조리 시간: 직원 없으면 5초, 바리스타(감각 50)면 3초 이하', () => {
+test('조리 시간: 직원 없으면 PREP_MS, 바리스타(감각 50)면 그 70% 이하', () => {
   const s = cafe();
   spawnGuests(s, 1); updateGuests(s, 6000);
   const g = s.guests[0]!;

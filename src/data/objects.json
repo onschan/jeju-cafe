@@ -1,10 +1,10 @@
 [
-  { "id": "busstop", "name": "정류장", "kind": "busstop", "w": 1, "h": 1, "cost": 0, "scenery": 0, "noise": 1, "wind": 0, "upkeep": 0, "terrain": ["road"] },
-  { "id": "warehouse", "name": "폐창고(카페)", "kind": "building", "w": 3, "h": 2, "cost": 0, "scenery": 0, "noise": 0, "wind": 1, "upkeep": 0, "terrain": ["soil", "rock"] },
-  { "id": "gate", "name": "정낭", "kind": "gate", "w": 1, "h": 1, "cost": 0, "scenery": 1, "noise": 0, "wind": 0, "upkeep": 0, "terrain": ["soil", "rock", "road"] },
-  { "id": "path", "name": "올렛길", "kind": "path", "w": 1, "h": 1, "cost": 100, "scenery": 0, "noise": 0, "wind": 0, "upkeep": 0, "terrain": ["soil", "rock"] },
-  { "id": "field", "name": "밭", "kind": "field", "w": 1, "h": 1, "cost": 300, "scenery": 0, "noise": 0, "wind": 0, "upkeep": 1000, "terrain": ["soil"] },
-  { "id": "tangerine_tree", "name": "감귤나무", "kind": "tree", "w": 1, "h": 1, "cost": 800, "scenery": 1, "noise": 0, "wind": 1, "upkeep": 3000, "cropId": "tangerine", "terrain": ["soil"] },
-  { "id": "table_out", "name": "야외 테이블", "kind": "seat", "w": 1, "h": 1, "cost": 500, "scenery": 0, "noise": 0, "wind": 0, "upkeep": 2000, "seats": 2, "terrain": ["soil", "rock"] },
-  { "id": "stonewall", "name": "돌담", "kind": "wall", "w": 1, "h": 1, "cost": 200, "scenery": 1, "noise": 0, "wind": 2, "upkeep": 500, "terrain": ["soil", "rock"] }
+  {"id": "busstop", "name": "정류장", "kind": "busstop", "w": 1, "h": 1, "cost": 0, "scenery": 0, "noise": 1, "wind": 0, "upkeep": 0, "terrain": ["road"]},
+  {"id": "warehouse", "name": "폐창고(카페)", "kind": "building", "w": 3, "h": 2, "cost": 0, "scenery": 0, "noise": 0, "wind": 1, "upkeep": 0, "terrain": ["soil", "rock"]},
+  {"id": "gate", "name": "정낭", "kind": "gate", "w": 1, "h": 1, "cost": 0, "scenery": 1, "noise": 0, "wind": 0, "upkeep": 0, "terrain": ["soil", "rock", "road"]},
+  {"id": "path", "name": "올렛길", "kind": "path", "w": 1, "h": 1, "cost": 10000, "scenery": 0, "noise": 0, "wind": 0, "upkeep": 150, "terrain": ["soil", "rock"]},
+  {"id": "field", "name": "밭", "kind": "field", "w": 1, "h": 1, "cost": 30000, "scenery": 0, "noise": 0, "wind": 0, "upkeep": 450, "terrain": ["soil"]},
+  {"id": "tangerine_tree", "name": "감귤나무", "kind": "tree", "w": 1, "h": 1, "cost": 80000, "scenery": 1, "noise": 0, "wind": 1, "upkeep": 1200, "cropId": "tangerine", "terrain": ["soil"]},
+  {"id": "table_out", "name": "야외 테이블", "kind": "seat", "w": 1, "h": 1, "cost": 50000, "scenery": 0, "noise": 0, "wind": 0, "upkeep": 750, "seats": 2, "terrain": ["soil", "rock"]},
+  {"id": "stonewall", "name": "돌담", "kind": "wall", "w": 1, "h": 1, "cost": 20000, "scenery": 1, "noise": 0, "wind": 2, "upkeep": 300, "terrain": ["soil", "rock"]}
 ]

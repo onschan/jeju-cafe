@@ -92,6 +92,7 @@ test('달이 바뀌는 날: 월급(퇴사)이 그날 밭 일보다 먼저다', (
   st.unpaidMonths = 1; // 이번 월급도 못 주면 퇴사
   s.staff.push(st);
   s.money = 0;
+  s.settleGrantUsed = true; // 정착지원금으로 월급이 나가지 않도록
   for (let i = 0; i < 29; i++) tick(s, DAY_MS);
   for (const o of Object.values(s.objects)) if (o.type === 'field') o.crop = null; // 30일 밤의 밭 일만 본다
   tick(s, DAY_MS);

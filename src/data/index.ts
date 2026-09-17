@@ -10,8 +10,22 @@ import skillsJson from './skills.json' with { type: 'json' };
 import namesJson from './names.json' with { type: 'json' };
 import promotionsJson from './promotions.json' with { type: 'json' };
 import dialogueJson from './dialogue.json' with { type: 'json' };
+import parcelsJson from './generated/parcels.json' with { type: 'json' };
+import landmarksJson from './generated/landmarks.json' with { type: 'json' };
 
-export const OBJECTS = objectsJson as ObjectDef[];
+/** 시작부터 있는 특수 오브젝트 (필지 지형 생성용). 덤불은 곡괭이 대신 5만 원에 치운다. */
+const TERRAIN_OBJECTS: ObjectDef[] = [
+  { id: 'bush_wild', name: '곶자왈 덤불', kind: 'deco', w: 1, h: 1, cost: 0, scenery: 1, noise: 0, wind: 1, upkeep: 0, terrain: ['soil', 'rock'], removeCost: 50000 },
+  { id: 'spring', name: '용천수', kind: 'deco', w: 2, h: 1, cost: 0, scenery: 2, noise: 0, wind: 0, upkeep: 0, terrain: ['soil', 'rock'] },
+];
+/** 랜드마크 (§1.6). 데이터만 — 효과는 경치·요금 외 TODO. 비용은 화폐 리스케일 ×100. */
+export const LANDMARK_COST_SCALE = 100;
+export const LANDMARKS: ObjectDef[] = (landmarksJson as { id: string; name: string; w: number; h: number; cost: number; effectText: string }[]).map((l) => ({
+  id: l.id, name: l.name, kind: 'landmark', w: l.w, h: l.h, cost: l.cost * LANDMARK_COST_SCALE, scenery: 3, noise: 0, wind: 1, upkeep: 0, terrain: ['soil', 'rock'], effectText: l.effectText,
+}));
+export const OBJECTS: ObjectDef[] = [...(objectsJson as ObjectDef[]), ...TERRAIN_OBJECTS, ...LANDMARKS];
+export interface ParcelDef { id: string; no: number; name: string; price: number; start: boolean; w: number; h: number; bonusText: string | null }
+export const PARCELS = parcelsJson as ParcelDef[];
 export const CROPS = cropsJson as CropDef[];
 export const MENUS = menusJson as unknown as MenuDef[];
 export const GUEST_TYPES = guestsJson as GuestTypeDef[];

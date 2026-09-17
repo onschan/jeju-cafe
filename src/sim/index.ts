@@ -1,9 +1,10 @@
 export * from './types.ts';
-export { createInitialState, GRID_W, GRID_H, MENU_SLOT_COUNT, SAVE_VERSION, START_MONEY } from './state.ts';
+export { createInitialState, GRID_W, GRID_H, PARCEL_W, PARCEL_H, MENU_SLOT_COUNT, SAVE_VERSION, START_MONEY, SETTLE_GRANT, SETTLE_GRANT_THRESHOLD } from './state.ts';
+export { parcelAt, parcelById, parcelPrice, canBuyParcel, ownedParcels, parcelBonusAt, parcelUnlockOwnedCount } from './parcels.ts';
 export { tick, step, STEP_MS } from './tick.ts';
-export { apply, PROTECTED_TYPES } from './actions.ts';
+export { apply, PROTECTED_TYPES, ROTATABLE_TYPES } from './actions.ts';
 export { DAY_MS, seasonOf, monthIndex, DAYS_PER_MONTH } from './clock.ts';
-export { cellAt, objectAt, canPlace, footprint, isSheltered, sceneryScore, windShelter, SHELTER_THRESHOLD } from './grid.ts';
+export { cellAt, objectAt, canPlace, footprint, parcelHasLandmark, isSheltered, sceneryScore, windShelter, SHELTER_THRESHOLD } from './grid.ts';
 export { canPlant, canHarvest, readyToHarvest } from './farm.ts';
 export { isMenuAvailable, availableMenus, canSetSlot, hasMenuStaff, menuRequirementText } from './menu.ts';
 export { isWalkable, busStopPos } from './path.ts';

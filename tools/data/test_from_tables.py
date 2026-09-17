@@ -194,6 +194,7 @@ class Integration(unittest.TestCase):
         self.assertEqual(len(d['ranks']), 5)
         self.assertEqual(len(d['settle_ranks']), 6)
         self.assertEqual(len(d['parcels']), 6)
+        self.assertEqual(len(d['landmarks']), 8)
         self.assertEqual(len(d['constants']), 18)
 
     def test_object_kinds(self):
@@ -271,7 +272,7 @@ class Integration(unittest.TestCase):
             ft.main(['x', ft.DOC, tmp])
             second = {n: open(os.path.join(tmp, n), encoding='utf-8').read() for n in os.listdir(tmp)}
             self.assertEqual(first, second)
-            self.assertEqual(len(first), 26)
+            self.assertEqual(len(first), 27)
             for content in first.values():
                 json.loads(content)
 

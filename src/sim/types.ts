@@ -1,5 +1,7 @@
 export type Terrain = 'soil' | 'rock' | 'road';
-export type ObjectKind = 'field' | 'tree' | 'seat' | 'wall' | 'path' | 'building' | 'deco' | 'busstop' | 'gate';
+export type ObjectKind = 'field' | 'tree' | 'seat' | 'wall' | 'path' | 'building' | 'deco' | 'busstop' | 'gate' | 'landmark';
+/** 필지 구역 보너스 종류 (§18) */
+export type ParcelBonus = 'none' | 'oreum' | 'gotjawal' | 'batdam' | 'coast' | 'spring';
 export type MenuCategory = 'drink' | 'dessert' | 'meal';
 export type Mood = 'happy' | 'meh' | 'angry';
 export type GuestPhase = 'walking' | 'seated' | 'leaving';
@@ -20,6 +22,8 @@ export interface ObjectDef {
   seats?: number;      // kind === 'seat'
   cropId?: string;     // kind === 'tree' 고정 작물
   terrain: Terrain[];  // 놓을 수 있는 지형
+  removeCost?: number; // 치울 때 환불 대신 드는 돈 (곶자왈 덤불처럼 처음부터 있던 것)
+  effectText?: string; // 랜드마크 효과 설명 (데이터만, 효과는 TODO)
 }
 
 export interface CropDef {
@@ -144,6 +148,21 @@ export interface PlacedObject {
   x: number;
   y: number;
   crop: CropState | null;
+  rot?: number; // 0..3, 방향 있는 오브젝트만 (스프라이트 변형 _r{n})
+}
+
+/** 필지. 격자는 처음부터 전체 크기이고, 소유한 필지에만 지을 수 있다. */
+export interface Parcel {
+  id: string;
+  no: number;
+  name: string;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  owned: boolean;
+  price: number;
+  bonus: ParcelBonus;
 }
 
 export interface Guest {
@@ -185,6 +204,8 @@ export interface GameState {
   research: number;
   popularity: number; // −100(동네) ~ +100(인기)
   grid: { w: number; h: number; cells: Cell[] };
+  parcels: Parcel[];
+  settleGrantUsed: boolean; // 정착지원금(잔고 < 40만이면 1회 300만)을 받았나
   objects: Record<string, PlacedObject>; // 키는 'o123' 형태(비정수 문자열)라 삽입 순서가 보존됨 → 결정적 순회
   storage: Record<string, number>; // cropId → 개수
   menuSlots: (string | null)[];
@@ -218,8 +239,11 @@ export interface GameState {
 
 // ---------- 액션 ----------
 export type Action =
-  | { type: 'place'; objectType: string; x: number; y: number }
+  | { type: 'place'; objectType: string; x: number; y: number; rot?: number }
   | { type: 'remove'; objectId: string }
+  | { type: 'move'; objectId: string; x: number; y: number }
+  | { type: 'rotate'; objectId: string; rot: number }
+  | { type: 'buyParcel'; id: string }
   | { type: 'plant'; objectId: string; cropId: string }
   | { type: 'harvest'; objectId: string }
   | { type: 'setSlot'; slot: number; menuId: string | null }
