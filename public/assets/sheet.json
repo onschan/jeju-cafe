@@ -1,0 +1,593 @@
+{
+"frames": {
+"obj_warehouse": {
+"frame": {
+"x": 0,
+"y": 0,
+"w": 96,
+"h": 80
+},
+"rotated": false,
+"trimmed": false,
+"spriteSourceSize": {
+"x": 0,
+"y": 0,
+"w": 96,
+"h": 80
+},
+"sourceSize": {
+"w": 96,
+"h": 80
+}
+},
+"obj_busstop": {
+"frame": {
+"x": 97,
+"y": 0,
+"w": 32,
+"h": 48
+},
+"rotated": false,
+"trimmed": false,
+"spriteSourceSize": {
+"x": 0,
+"y": 0,
+"w": 32,
+"h": 48
+},
+"sourceSize": {
+"w": 32,
+"h": 48
+}
+},
+"obj_tangerine_tree": {
+"frame": {
+"x": 130,
+"y": 0,
+"w": 32,
+"h": 48
+},
+"rotated": false,
+"trimmed": false,
+"spriteSourceSize": {
+"x": 0,
+"y": 0,
+"w": 32,
+"h": 48
+},
+"sourceSize": {
+"w": 32,
+"h": 48
+}
+},
+"obj_tangerine_tree_ready": {
+"frame": {
+"x": 163,
+"y": 0,
+"w": 32,
+"h": 48
+},
+"rotated": false,
+"trimmed": false,
+"spriteSourceSize": {
+"x": 0,
+"y": 0,
+"w": 32,
+"h": 48
+},
+"sourceSize": {
+"w": 32,
+"h": 48
+}
+},
+"obj_tangerine_tree_young": {
+"frame": {
+"x": 196,
+"y": 0,
+"w": 32,
+"h": 48
+},
+"rotated": false,
+"trimmed": false,
+"spriteSourceSize": {
+"x": 0,
+"y": 0,
+"w": 32,
+"h": 48
+},
+"sourceSize": {
+"w": 32,
+"h": 48
+}
+},
+"obj_field_empty": {
+"frame": {
+"x": 229,
+"y": 0,
+"w": 32,
+"h": 40
+},
+"rotated": false,
+"trimmed": false,
+"spriteSourceSize": {
+"x": 0,
+"y": 0,
+"w": 32,
+"h": 40
+},
+"sourceSize": {
+"w": 32,
+"h": 40
+}
+},
+"obj_field_planted": {
+"frame": {
+"x": 262,
+"y": 0,
+"w": 32,
+"h": 40
+},
+"rotated": false,
+"trimmed": false,
+"spriteSourceSize": {
+"x": 0,
+"y": 0,
+"w": 32,
+"h": 40
+},
+"sourceSize": {
+"w": 32,
+"h": 40
+}
+},
+"obj_field_ready": {
+"frame": {
+"x": 295,
+"y": 0,
+"w": 32,
+"h": 40
+},
+"rotated": false,
+"trimmed": false,
+"spriteSourceSize": {
+"x": 0,
+"y": 0,
+"w": 32,
+"h": 40
+},
+"sourceSize": {
+"w": 32,
+"h": 40
+}
+},
+"obj_gate": {
+"frame": {
+"x": 328,
+"y": 0,
+"w": 32,
+"h": 40
+},
+"rotated": false,
+"trimmed": false,
+"spriteSourceSize": {
+"x": 0,
+"y": 0,
+"w": 32,
+"h": 40
+},
+"sourceSize": {
+"w": 32,
+"h": 40
+}
+},
+"obj_gate_0": {
+"frame": {
+"x": 361,
+"y": 0,
+"w": 32,
+"h": 40
+},
+"rotated": false,
+"trimmed": false,
+"spriteSourceSize": {
+"x": 0,
+"y": 0,
+"w": 32,
+"h": 40
+},
+"sourceSize": {
+"w": 32,
+"h": 40
+}
+},
+"obj_gate_1": {
+"frame": {
+"x": 394,
+"y": 0,
+"w": 32,
+"h": 40
+},
+"rotated": false,
+"trimmed": false,
+"spriteSourceSize": {
+"x": 0,
+"y": 0,
+"w": 32,
+"h": 40
+},
+"sourceSize": {
+"w": 32,
+"h": 40
+}
+},
+"obj_gate_2": {
+"frame": {
+"x": 427,
+"y": 0,
+"w": 32,
+"h": 40
+},
+"rotated": false,
+"trimmed": false,
+"spriteSourceSize": {
+"x": 0,
+"y": 0,
+"w": 32,
+"h": 40
+},
+"sourceSize": {
+"w": 32,
+"h": 40
+}
+},
+"obj_gate_3": {
+"frame": {
+"x": 460,
+"y": 0,
+"w": 32,
+"h": 40
+},
+"rotated": false,
+"trimmed": false,
+"spriteSourceSize": {
+"x": 0,
+"y": 0,
+"w": 32,
+"h": 40
+},
+"sourceSize": {
+"w": 32,
+"h": 40
+}
+},
+"obj_stonewall": {
+"frame": {
+"x": 493,
+"y": 0,
+"w": 32,
+"h": 40
+},
+"rotated": false,
+"trimmed": false,
+"spriteSourceSize": {
+"x": 0,
+"y": 0,
+"w": 32,
+"h": 40
+},
+"sourceSize": {
+"w": 32,
+"h": 40
+}
+},
+"obj_table_out": {
+"frame": {
+"x": 526,
+"y": 0,
+"w": 32,
+"h": 40
+},
+"rotated": false,
+"trimmed": false,
+"spriteSourceSize": {
+"x": 0,
+"y": 0,
+"w": 32,
+"h": 40
+},
+"sourceSize": {
+"w": 32,
+"h": 40
+}
+},
+"obj_path": {
+"frame": {
+"x": 559,
+"y": 0,
+"w": 32,
+"h": 32
+},
+"rotated": false,
+"trimmed": false,
+"spriteSourceSize": {
+"x": 0,
+"y": 0,
+"w": 32,
+"h": 32
+},
+"sourceSize": {
+"w": 32,
+"h": 32
+}
+},
+"tile_locked": {
+"frame": {
+"x": 592,
+"y": 0,
+"w": 32,
+"h": 32
+},
+"rotated": false,
+"trimmed": false,
+"spriteSourceSize": {
+"x": 0,
+"y": 0,
+"w": 32,
+"h": 32
+},
+"sourceSize": {
+"w": 32,
+"h": 32
+}
+},
+"tile_road_autumn": {
+"frame": {
+"x": 625,
+"y": 0,
+"w": 32,
+"h": 32
+},
+"rotated": false,
+"trimmed": false,
+"spriteSourceSize": {
+"x": 0,
+"y": 0,
+"w": 32,
+"h": 32
+},
+"sourceSize": {
+"w": 32,
+"h": 32
+}
+},
+"tile_road_spring": {
+"frame": {
+"x": 658,
+"y": 0,
+"w": 32,
+"h": 32
+},
+"rotated": false,
+"trimmed": false,
+"spriteSourceSize": {
+"x": 0,
+"y": 0,
+"w": 32,
+"h": 32
+},
+"sourceSize": {
+"w": 32,
+"h": 32
+}
+},
+"tile_road_summer": {
+"frame": {
+"x": 691,
+"y": 0,
+"w": 32,
+"h": 32
+},
+"rotated": false,
+"trimmed": false,
+"spriteSourceSize": {
+"x": 0,
+"y": 0,
+"w": 32,
+"h": 32
+},
+"sourceSize": {
+"w": 32,
+"h": 32
+}
+},
+"tile_road_winter": {
+"frame": {
+"x": 724,
+"y": 0,
+"w": 32,
+"h": 32
+},
+"rotated": false,
+"trimmed": false,
+"spriteSourceSize": {
+"x": 0,
+"y": 0,
+"w": 32,
+"h": 32
+},
+"sourceSize": {
+"w": 32,
+"h": 32
+}
+},
+"tile_rock_autumn": {
+"frame": {
+"x": 757,
+"y": 0,
+"w": 32,
+"h": 32
+},
+"rotated": false,
+"trimmed": false,
+"spriteSourceSize": {
+"x": 0,
+"y": 0,
+"w": 32,
+"h": 32
+},
+"sourceSize": {
+"w": 32,
+"h": 32
+}
+},
+"tile_rock_spring": {
+"frame": {
+"x": 790,
+"y": 0,
+"w": 32,
+"h": 32
+},
+"rotated": false,
+"trimmed": false,
+"spriteSourceSize": {
+"x": 0,
+"y": 0,
+"w": 32,
+"h": 32
+},
+"sourceSize": {
+"w": 32,
+"h": 32
+}
+},
+"tile_rock_summer": {
+"frame": {
+"x": 823,
+"y": 0,
+"w": 32,
+"h": 32
+},
+"rotated": false,
+"trimmed": false,
+"spriteSourceSize": {
+"x": 0,
+"y": 0,
+"w": 32,
+"h": 32
+},
+"sourceSize": {
+"w": 32,
+"h": 32
+}
+},
+"tile_rock_winter": {
+"frame": {
+"x": 856,
+"y": 0,
+"w": 32,
+"h": 32
+},
+"rotated": false,
+"trimmed": false,
+"spriteSourceSize": {
+"x": 0,
+"y": 0,
+"w": 32,
+"h": 32
+},
+"sourceSize": {
+"w": 32,
+"h": 32
+}
+},
+"tile_soil_autumn": {
+"frame": {
+"x": 889,
+"y": 0,
+"w": 32,
+"h": 32
+},
+"rotated": false,
+"trimmed": false,
+"spriteSourceSize": {
+"x": 0,
+"y": 0,
+"w": 32,
+"h": 32
+},
+"sourceSize": {
+"w": 32,
+"h": 32
+}
+},
+"tile_soil_spring": {
+"frame": {
+"x": 922,
+"y": 0,
+"w": 32,
+"h": 32
+},
+"rotated": false,
+"trimmed": false,
+"spriteSourceSize": {
+"x": 0,
+"y": 0,
+"w": 32,
+"h": 32
+},
+"sourceSize": {
+"w": 32,
+"h": 32
+}
+},
+"tile_soil_summer": {
+"frame": {
+"x": 955,
+"y": 0,
+"w": 32,
+"h": 32
+},
+"rotated": false,
+"trimmed": false,
+"spriteSourceSize": {
+"x": 0,
+"y": 0,
+"w": 32,
+"h": 32
+},
+"sourceSize": {
+"w": 32,
+"h": 32
+}
+},
+"tile_soil_winter": {
+"frame": {
+"x": 988,
+"y": 0,
+"w": 32,
+"h": 32
+},
+"rotated": false,
+"trimmed": false,
+"spriteSourceSize": {
+"x": 0,
+"y": 0,
+"w": 32,
+"h": 32
+},
+"sourceSize": {
+"w": 32,
+"h": 32
+}
+}
+},
+"meta": {
+"image": "sheet.png",
+"format": "RGBA8888",
+"size": {
+"w": 1024,
+"h": 80
+},
+"scale": "1"
+}
+}

@@ -1,3 +1,4 @@
 node_modules
 dist
 *.csv
+tools/assets/out/

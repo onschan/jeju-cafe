@@ -9,7 +9,8 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "headless": "tsx scripts/headless.ts"
+    "headless": "tsx scripts/headless.ts",
+    "assets": "python3 tools/assets/build.py"
   },
   "dependencies": {
     "pixi.js": "^8.6.0",
