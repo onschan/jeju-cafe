@@ -102,6 +102,7 @@ export interface Clock {
 export interface GameState {
   version: number;
   playerId: string;
+  createdAt: number; // epoch ms, 호출자가 지정 (sim은 Date를 쓰지 않는다)
   seed: number;
   rng: number;
   clock: Clock;

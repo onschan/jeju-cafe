@@ -3,17 +3,36 @@ import { createInitialState, tick, apply, LocalSaveStore, type GameState, type A
 
 const saveStore = new LocalSaveStore();
 const AUTO_SLOT = 0;
+const PLAYER_ID_KEY = 'jeju-cafe:playerId';
 /** 틱이 안 바뀌어도(일시정지 등) 이 간격으로는 React를 깨운다 — 토스트 만료 같은 시간 기반 UI용 */
 const UI_EMIT_INTERVAL_MS = 250;
 
-let state: GameState = createInitialState(Date.now() % 1_000_000);
+/** localStorage에 저장된 플레이어 id를 읽거나, 없으면 새로 만들어 저장한다. */
+function getOrCreatePlayerId(): string {
+  try {
+    const existing = localStorage.getItem(PLAYER_ID_KEY);
+    if (existing) return existing;
+    const id = crypto.randomUUID();
+    localStorage.setItem(PLAYER_ID_KEY, id);
+    return id;
+  } catch {
+    return 'local';
+  }
+}
+
+let state: GameState = createInitialState(Date.now() % 1_000_000, getOrCreatePlayerId(), Date.now());
 let version = 0;
 const listeners = new Set<() => void>();
 let toast: { text: string; until: number } | null = null;
 let viewReset: (() => void) | null = null;
 
 function emit() { version++; for (const l of listeners) l(); }
-function save() { void saveStore.save(AUTO_SLOT, state); }
+function save() {
+  saveStore.save(AUTO_SLOT, state).catch(() => {
+    toast = { text: '저장에 실패했어요', until: performance.now() + 2000 };
+    emit();
+  });
+}
 
 export function getState() { return state; }
 export function getVersion() { return version; }
@@ -43,7 +62,7 @@ export async function loadOrNew() {
 }
 
 export function resetGame() {
-  state = createInitialState(Date.now() % 1_000_000);
+  state = createInitialState(Date.now() % 1_000_000, getOrCreatePlayerId(), Date.now());
   viewReset?.();
   save();
   emit();
@@ -74,17 +93,17 @@ export function startLoop(render: (s: GameState) => void): () => void {
 
   // 탭이 숨겨져 speed=0으로 멈춘 상태에서도 저장본에는 원래 속도를 남긴다 (다시 열면 멈춰 있지 않게)
   const saveEffective = () => {
-    if (pausedSpeed !== null) state.clock.speed = pausedSpeed;
+    if (pausedSpeed !== null) apply(state, { type: 'setSpeed', speed: pausedSpeed });
     save();
-    if (pausedSpeed !== null) state.clock.speed = 0;
+    if (pausedSpeed !== null) apply(state, { type: 'setSpeed', speed: 0 });
   };
   const onVis = () => {
     if (document.hidden) {
       pausedSpeed = state.clock.speed;
-      state.clock.speed = 0;
+      apply(state, { type: 'setSpeed', speed: 0 });
       saveEffective();
     } else if (pausedSpeed !== null) {
-      state.clock.speed = pausedSpeed;
+      apply(state, { type: 'setSpeed', speed: pausedSpeed });
       pausedSpeed = null;
       last = performance.now();
     }

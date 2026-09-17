@@ -28,10 +28,11 @@ function stamp(state: GameState, type: string, x: number, y: number, w: number, 
   return obj;
 }
 
-export function createInitialState(seed: number, playerId = 'local'): GameState {
+export function createInitialState(seed: number, playerId = 'local', createdAt = 0): GameState {
   const state: GameState = {
     version: SAVE_VERSION,
     playerId,
+    createdAt,
     seed,
     rng: seed,
     clock: { day: 1, month: 1, year: 1, accMs: 0, carryMs: 0, speed: 1 },

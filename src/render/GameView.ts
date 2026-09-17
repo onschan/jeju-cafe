@@ -28,6 +28,7 @@ export class GameView {
   private tilesBuilt = false;
   private detachCamera: (() => void) | null = null;
   private selection = new Graphics();
+  private hostWidth = 0;
 
   async init(parent: HTMLElement, opts: GameViewOptions) {
     await this.app.init({ resizeTo: parent, background: 0x1e1e1e, antialias: false, resolution: window.devicePixelRatio, autoDensity: true });
@@ -36,7 +37,7 @@ export class GameView {
     this.overlay.addChild(this.selection);
     this.app.stage.addChild(this.world);
     this.detachCamera = attachCamera(this.app.stage, { world: this.world, canvas: this.app.canvas, onTap: opts.onTap });
-    this.world.scale.set(Math.min(2, Math.max(1, Math.floor(parent.clientWidth / (10 * TILE)))));
+    this.hostWidth = parent.clientWidth;
     this.world.position.set(WORLD_OFFSET.x, WORLD_OFFSET.y);
   }
 
@@ -70,7 +71,10 @@ export class GameView {
   }
 
   render(state: GameState) {
-    if (!this.tilesBuilt) this.buildTiles(state);
+    if (!this.tilesBuilt) {
+      this.buildTiles(state);
+      this.world.scale.set(Math.min(2, Math.max(1, Math.floor(this.hostWidth / (state.grid.w * TILE)))));
+    }
     this.syncObjects(state);
     this.syncGuests(state);
   }

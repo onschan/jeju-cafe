@@ -45,7 +45,13 @@ export class LocalSaveStore implements SaveStore {
   async load(slot: number) {
     const j = localStorage.getItem(this.key(slot));
     if (!j) return null;
-    try { return deserialize(j); } catch { return null; }
+    try {
+      return deserialize(j);
+    } catch {
+      // SAVE_VERSION이 올라가는 등으로 역직렬화가 실패해도 원본 세이브를 지우지 않고 백업해 둔다.
+      localStorage.setItem(`${this.prefix}backup:${slot}`, j);
+      return null;
+    }
   }
   async list() {
     const out: number[] = [];

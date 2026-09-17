@@ -4,6 +4,8 @@ import { advanceClock, seasonOf, DAY_MS, monthIndex } from '../clock.ts';
 test('초기 상태: 1년 1월 1일, 10×8 격자, 시작 오브젝트', () => {
   const s = createInitialState(1);
   expect(s.clock).toMatchObject({ day: 1, month: 1, year: 1, speed: 1 });
+  expect(s.createdAt).toBe(0);
+  expect(createInitialState(1, 'p1', 123).createdAt).toBe(123);
   expect(s.grid.w).toBe(10);
   expect(s.grid.h).toBe(8);
   expect(s.grid.cells.length).toBe(80);
