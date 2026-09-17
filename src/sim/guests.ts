@@ -1,5 +1,5 @@
-import type { GameState, Guest, PlacedObject, Pt, MenuCategory, RoleId, GuestWant } from './types.ts';
-import { objectDef, guestTypeDef, guestTags, guestDialogue, canonicalGuestId } from '../data/index.ts';
+import type { GameState, Guest, PlacedObject, Pt, MenuCategory, MenuStatKey, RoleId, GuestWant } from './types.ts';
+import { objectDef, guestTypeDef, guestTags, guestDialogue, canonicalGuestId, namedGuestDef, NAMED_TYPE } from '../data/index.ts';
 import { pickWeighted, nextRandom, randInt } from './rng.ts';
 import { sceneryScore } from './grid.ts';
 import { availableMenus, consumeIngredients } from './menu.ts';
@@ -16,7 +16,8 @@ import { spotGuestBonus, busSpots, isBusDay, BUS_HOUR, BUS_MIN, BUS_MAX } from '
 import type { ParcelBonus } from './types.ts';
 import { seatsOf, isSeat } from './cafe.ts';
 import { pushFx } from './farm.ts';
-import { menuOf, priceOf, likesStatsMatch, guestEvalBonus, guestLikesCategory, seatTimeMult, dignityPct, photoChance, menuOrderWeight, LIKE_BONUS_CAP } from './craft.ts';
+import { menuOf, priceOf, likesStatsMatch, statsMatchCount, guestEvalBonus, guestLikesCategory, seatTimeMult, dignityPct, photoChance, menuOrderWeight, LIKE_BONUS_CAP } from './craft.ts';
+import { addAffinity, affinityGain, namedLikes, regularsDueNow, NAMED_MIN_SCENERY } from './popup.ts';
 
 export { moveAlong, GUEST_SPEED_CELLS_PER_S }; // 하위 호환 재수출 (본체는 path.ts)
 export const SEAT_MS = 3000;       // 기분이 정해진 뒤 앉아 있는 시간 (≈1.5시간)
@@ -139,6 +140,22 @@ export function hourlySpawn(state: GameState): number {
   return spawned;
 }
 
+/** 단골★(이름 있는 손님) 한 명을 본점에 스폰한다. 좌석·경로가 없으면 false. */
+export function spawnNamedGuest(state: GameState, namedId: string): boolean {
+  namedGuestDef(namedId);
+  if (spawnGuests(state, 1, NAMED_TYPE) === 0) return false;
+  state.guests[state.guests.length - 1]!.namedId = namedId;
+  return true;
+}
+
+/** 매 시간: 오늘 이 시각에 오기로 한 단골★을 스폰한다 (popup.ts regularVisitSlot). 실제 스폰 수. */
+export function hourlyRegulars(state: GameState): number {
+  if (noGuestsToday(state)) return 0;
+  let n = 0;
+  for (const def of regularsDueNow(state)) if (spawnNamedGuest(state, def.id)) n++;
+  return n;
+}
+
 /** 투어 버스: Lv3 이상 관광지마다 그곳의 Lv2 손님 타입 4~6명이 한꺼번에. 실제 스폰 수. */
 export function tourBus(state: GameState): number {
   let n = 0;
@@ -166,7 +183,7 @@ export function spawnGuests(state: GameState, n: number, forceType?: string): nu
     if (!best) break;
     const path = pathFromReach(state, reach, best.target)!;
     const bonus = parcelBonusAt(state, best.seat.x, best.seat.y);
-    const typeId = forceType ? canonicalGuestId(forceType) : pickWeighted(state, unlockedTypeIds(state), (id) => typeWeight(state, id, state.clock.hour, bonus));
+    const typeId = forceType ? (forceType === NAMED_TYPE ? NAMED_TYPE : canonicalGuestId(forceType)) : pickWeighted(state, unlockedTypeIds(state), (id) => typeWeight(state, id, state.clock.hour, bonus));
     if (!typeId) break;
     state.guests.push({
       id: `g${state.nextId++}`,
@@ -203,6 +220,17 @@ export function tasteBonus(state: GameState, typeId: string, menuId: string | nu
   return Math.min(LIKE_BONUS_CAP, likesStatsMatch(state, typeId, menuId)) + guestEvalBonus(state, typeId, menuId);
 }
 
+/** 주문·만족 판정에 쓰는 손님 프로필. 단골★(namedId)은 NamedGuestDef의 취향·예산, 나머지는 손님층 정의. */
+interface GuestProfile { likes: MenuCategory[]; likesStats: MenuStatKey[]; wallet: number; minScenery: number }
+function profileOf(state: GameState, g: Guest): GuestProfile {
+  if (g.namedId) {
+    const d = namedGuestDef(g.namedId);
+    return { likes: namedLikes(d), likesStats: d.likesStats, wallet: d.budget, minScenery: NAMED_MIN_SCENERY };
+  }
+  const t = guestTypeDef(g.type);
+  return { likes: t.likes, likesStats: t.likesStats, wallet: walletOf(state, g.type), minScenery: t.minScenery };
+}
+
 /** 조리 시간 = 5초 × (1 − min(0.6, 담당 역할 효과/100)) × (1 − 속도 스킬) */
 export function prepTimeMs(state: GameState, category: MenuCategory): number {
   const role = prepRole(category);
@@ -232,11 +260,20 @@ export function popularityBonus(popularity: number): number {
 function resolveMood(state: GameState, g: Guest): void {
   const type = guestTypeDef(g.type);
   const seat = state.objects[g.seatId!]!;
-  if (sceneryScore(state, seat.x, seat.y) + serviceBonus(state) + popularityBonus(popularityFor(state, seat.id, g.type)) + tasteBonus(state, g.type, g.menuId) >= type.minScenery) {
+  const p = profileOf(state, g);
+  const match = g.namedId ? statsMatchCount(state, p.likesStats, g.menuId) : likesStatsMatch(state, g.type, g.menuId);
+  const taste = g.namedId ? Math.min(LIKE_BONUS_CAP, match) : tasteBonus(state, g.type, g.menuId);
+  if (sceneryScore(state, seat.x, seat.y) + serviceBonus(state) + popularityBonus(popularityFor(state, seat.id, g.type)) + taste >= p.minScenery) {
     g.mood = 'happy';
     g.moodReason = null;
-    const tasteMatch = likesStatsMatch(state, g.type, g.menuId) > 0;
+    const tasteMatch = match > 0;
     addResearchProgress(state, tasteMatch ? TASTE_MATCH_WEIGHT : 1);
+    if (g.namedId) {
+      // 단골★: 본점에서도 호감도가 오른다 (손님층 만족·효과 대신). 만족하면 자기 대사를 한다.
+      addAffinity(state, g.namedId, affinityGain(tasteMatch));
+      g.say = namedGuestDef(g.namedId).line;
+      return;
+    }
     state.popularity = Math.max(-100, Math.min(100, state.popularity + type.popularityShift));
     onHappyVisit(state, g, tasteMatch ? 2 : 1);
     const photo = photoChance(state, g.type, g.menuId);
@@ -245,7 +282,7 @@ function resolveMood(state: GameState, g: Guest): void {
     g.mood = 'meh';
     g.moodReason = 'scenery';
   }
-  maybeSay(state, g);
+  if (!g.namedId) maybeSay(state, g);
 }
 
 /** 예산(지갑) 안에서 주문할 수 있는 메뉴 */
@@ -257,12 +294,12 @@ export function affordableMenus(state: GameState, typeId: string): string[] {
 
 /** 자리에 앉는 순간: 메뉴 결정·재료·돈은 즉시, 기분은 조리(waitMs) 뒤에. 예산 초과면 주문 안 함(price). 지갑 0(동물·정령)은 주문 없이 바로 기분. */
 function order(state: GameState, g: Guest): void {
-  const type = guestTypeDef(g.type);
+  const p = profileOf(state, g);
   state.monthGuests++;
   state.totalGuests++;
-  if (type.wallet <= 0) { g.waitMs = 0; return; }
-  const liked = availableMenus(state).filter((id) => guestLikesCategory(type.likes, menuOf(state, id).category));
-  const candidates = affordableMenus(state, g.type);
+  if (p.wallet <= 0) { g.waitMs = 0; return; }
+  const liked = availableMenus(state).filter((id) => guestLikesCategory(p.likes, menuOf(state, id).category));
+  const candidates = liked.filter((id) => priceOf(state, id) <= p.wallet);
   if (candidates.length === 0) {
     g.mood = 'meh';
     g.moodReason = liked.length > 0 ? 'price' : 'no_menu';

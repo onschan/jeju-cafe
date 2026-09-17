@@ -57,6 +57,7 @@ const ACTION_SFX: Record<Action['type'], SfxName> = {
   acceptQuest: 'tap', respondEvent: 'tap', investSpot: 'unlock',
   develop: 'unlock', dismissDevelop: 'tap', addTopping: 'tap', removeTopping: 'tap', levelUpMenu: 'unlock',
   buyMileage: 'coin', buyTicket: 'coin', drawTicket: 'tap', dismissDraw: 'tap', setUniform: 'tap', useGuestItem: 'unlock', dismissAnnouncement: 'tap',
+  openPopup: 'unlock', closePopup: 'tap',
 };
 
 export function dispatch(a: Action): ApplyResult {

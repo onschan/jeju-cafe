@@ -1,4 +1,4 @@
-import type { ObjectDef, CropDef, MenuDef, GuestTypeDef, UnlockDef, IngredientDef, RoleDef, SkillDef, PromotionDef, GuestTags, ComboDef, ComboTarget, ComboStrength, ComboSide, SetDef, ItemDef, ItemSlot, Season, MenuCategory, GuestEffect, GuestWant, UnlockCond, QuestDef, QuestCondition, QuestReward, SpotDef, SpotCategory, EventDef, MenuStats, MenuStatKey, IngredientCategory, IngredientComboDef, ToppingDef, HiddenRecipeDef, FacilityCategory, MileageShopDef, TicketShopDef, UniformDef, GuidebookDef, DrawPrizeDef, DrawPrizeKind, JudgeKey } from '../sim/types.ts';
+import type { ObjectDef, CropDef, MenuDef, GuestTypeDef, UnlockDef, IngredientDef, RoleDef, SkillDef, PromotionDef, GuestTags, ComboDef, ComboTarget, ComboStrength, ComboSide, SetDef, ItemDef, ItemSlot, Season, MenuCategory, GuestEffect, GuestWant, UnlockCond, QuestDef, QuestCondition, QuestReward, SpotDef, SpotCategory, EventDef, MenuStats, MenuStatKey, IngredientCategory, IngredientComboDef, ToppingDef, HiddenRecipeDef, FacilityCategory, MileageShopDef, TicketShopDef, UniformDef, GuidebookDef, DrawPrizeDef, DrawPrizeKind, JudgeKey, RegionDef, NamedGuestDef } from '../sim/types.ts';
 import objectsJson from './objects.json' with { type: 'json' };
 import cropsJson from './crops.json' with { type: 'json' };
 import menusJson from './menus.json' with { type: 'json' };
@@ -34,6 +34,8 @@ import ingredientsV1Json from './generated/ingredients.json' with { type: 'json'
 import ingredientCombosJson from './generated/ingredient_combos.json' with { type: 'json' };
 import toppingsJson from './generated/toppings.json' with { type: 'json' };
 import hiddenRecipesJson from './generated/hidden_recipes.json' with { type: 'json' };
+import regionsJson from './generated/regions.json' with { type: 'json' };
+import namedGuestsJson from './generated/named_guests.json' with { type: 'json' };
 
 /** 시작부터 있는 특수 오브젝트 (필지 지형 생성용). 덤불은 곡괭이 대신 5만 원에 치운다. */
 const TERRAIN_OBJECTS: ObjectDef[] = [
@@ -174,6 +176,17 @@ export function adaptGuest(r: RawGuest): GuestTypeDef {
   };
 }
 export const GUEST_TYPES: GuestTypeDef[] = (guestsJson as RawGuest[]).map(adaptGuest);
+// ---------- 지역 7 · 이름 있는 손님 56 (2B-4, generated/regions.json·named_guests.json) ----------
+export const REGIONS: RegionDef[] = regionsJson as RegionDef[];
+export const NAMED_GUESTS: NamedGuestDef[] = namedGuestsJson as NamedGuestDef[];
+export const namedGuestsOf = (regionId: string): NamedGuestDef[] => NAMED_GUESTS.filter((g) => g.regionId === regionId);
+/** 단골★이 본점에 올 때 쓰는 손님 타입 id. GUEST_TYPES에는 없고(스폰·도감·해금 대상 아님) guestTypeDef로만 찾는다 — 취향·예산은 NamedGuestDef가 대신한다. */
+export const NAMED_TYPE = 'named';
+const NAMED_TYPE_DEF: GuestTypeDef = {
+  id: NAMED_TYPE, name: '단골', likes: ['drink', 'dessert', 'meal'], likesStats: [], minScenery: 1, popularityShift: 0, weight: 0,
+  tags: { gender: 'any', age: 'adult', group: false }, effect: 'research', wallet: 0, wants: [], unlock: { type: 'all', conditions: [{ type: 'rank', rank: 99 }] },
+  questId: null, nextGuest: null, chain: null, line: '',
+};
 export interface GuestChainDef { chain: string; guests: string[]; edges: { from: string; to: string; quest: string }[] }
 export const GUEST_CHAINS: GuestChainDef[] = (chainsJson as GuestChainDef[]).map((c) => ({
   chain: c.chain, guests: c.guests.map(canonicalGuestId), edges: c.edges.map((e) => ({ from: canonicalGuestId(e.from), to: canonicalGuestId(e.to), quest: e.quest })),
@@ -571,7 +584,7 @@ function indexBy<T extends { id: string }>(xs: T[]): Record<string, T> {
 const OBJ = indexBy(OBJECTS);
 const CROP = indexBy(CROPS);
 const MENU = indexBy(MENUS);
-const GUEST = indexBy(GUEST_TYPES);
+const GUEST = indexBy([...GUEST_TYPES, NAMED_TYPE_DEF]);
 const QUEST = indexBy(QUESTS);
 const SPOT = indexBy(SPOTS);
 const EVENT = indexBy(EVENTS);
@@ -608,6 +621,10 @@ export const mileageShopDef = (id: string) => must(MILEAGE_ITEM, id, 'mileageSho
 export const ticketShopDef = (id: string) => must(TICKET_ITEM, id, 'ticketShop');
 export const uniformDef = (id: string) => must(UNIFORM, id, 'uniform');
 export const guidebookDef = (id: string) => must(GUIDEBOOK, id, 'guidebook');
+const REGION = indexBy(REGIONS);
+const NAMED_GUEST = indexBy(NAMED_GUESTS);
+export const regionDef = (id: string) => must(REGION, id, 'region');
+export const namedGuestDef = (id: string) => must(NAMED_GUEST, id, 'namedGuest');
 
 /** 게임 시작 시 이미 열려 있는 것 */
 export const INITIAL_UNLOCKED = {

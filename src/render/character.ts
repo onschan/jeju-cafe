@@ -83,6 +83,15 @@ export function guestParts(face: Face, tags: GuestTags, wants: GuestWant[]): Cha
   return { ...base, hairStyle, accs };
 }
 
+/** 이름 있는 손님(지역 손님 56) 파츠: face.seed로 정한 얼굴 + 고정 액세서리(시드로 결정, 없음도 있다). 돌하르방 마을은 액세서리 없이 회색 머리. */
+const NAMED_ACCS: (AccKind | null)[] = [null, 'glasses', 'cap', 'camera', 'strawhat', 'backpack', null];
+export function namedGuestParts(face: Face, seed: number, regionId: string): CharacterParts {
+  const base = partsOfFace(face);
+  if (regionId === 'dolhareubang') return { ...base, hairColor: 4, hairStyle: 4 + (seed % 4), accs: [] };
+  const acc = NAMED_ACCS[seed % NAMED_ACCS.length] ?? null;
+  return { ...base, hairStyle: seed % HAIR_STYLE_COUNT, accs: acc ? [acc] : [] };
+}
+
 const LAYER = { body: 'body', top: 'top', hair: 'hair' } as const;
 const ACC_LABEL = 'acc';
 

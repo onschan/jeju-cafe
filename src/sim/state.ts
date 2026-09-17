@@ -9,9 +9,10 @@ import { initGuestTypes, initSegmentPopularity } from './segments.ts';
 import { DEFAULT_CAFE_NAME } from './cafe.ts';
 import { START_BUILDERS } from './build.ts';
 import { initGuidebooks } from './guidebook.ts';
+import { initRegions, initNamedGuests, initPopup } from './popup.ts';
 
 export { PARCEL_W, PARCEL_H, START_ORIGIN, GRID_W, GRID_H, VILLAGE_ROAD_Y };
-export const SAVE_VERSION = 12; // 12: 직원 스탯 체력·힘·기술·미소 (service/cooking/sense → smile/skill/strength)
+export const SAVE_VERSION = 13; // 13: 원정 팝업·지역·이름 있는 손님 (regions/namedGuests/popup). 12: 직원 스탯 체력·힘·기술·미소
 /** 시작 자금 500만 + 정착지원금(잔고 < 40만이면 1회 300만) — 마스터 GDD §1 */
 export const START_MONEY = 5_000_000;
 export const SETTLE_GRANT = 3_000_000;
@@ -170,6 +171,9 @@ export function createInitialState(seed: number, playerId = 'local', createdAt =
     expansions: [],
     cosmetics: { wallColor: 0, sign: '' },
     praised: {},
+    regions: initRegions(),
+    namedGuests: initNamedGuests(),
+    popup: initPopup(),
     guests: [],
     spawnAcc: 0,
     researchAcc: 0,

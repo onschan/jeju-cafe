@@ -1,7 +1,7 @@
 import type { GameState } from './types.ts';
 import { advanceClock, END_HOUR, START_HOUR } from './clock.ts';
 import { growOneDay, staffFarmWork } from './farm.ts';
-import { hourlySpawn, updateGuests } from './guests.ts';
+import { hourlySpawn, hourlyRegulars, updateGuests } from './guests.ts';
 import { upkeep, closeMonth } from './economy.ts';
 import { payroll, expireCandidates, hourlyEnergy, nightlyRecovery, moveStaff } from './staff.ts';
 import { expirePromotions } from './promotions.ts';
@@ -16,6 +16,7 @@ import { monthlyShop } from './shop.ts';
 import { monthlyRank } from './guidebook.ts';
 import { monthlyMileage } from './mileage.ts';
 import { fmtNum } from './format.ts';
+import { hourlyPopup, dailyPopup } from './popup.ts';
 
 export const STEP_MS = 100;        // 고정 스텝 (게임 ms)
 const MAX_STEPS_PER_TICK = 600;    // 백그라운드 복귀 등 폭주 방지 (60초 게임 시간)
@@ -25,11 +26,14 @@ const HOURS_PER_DAY = END_HOUR - START_HOUR;
 function onNewHour(state: GameState): void {
   hourlyEnergy(state);
   hourlySpawn(state);
+  hourlyRegulars(state);
+  hourlyPopup(state);
 }
 
-/** 새 날 (6시의 시간 처리보다 먼저): 효과 만료 → 밤 회복 → 생육 → 밭 일꾼 → 게시판(부탁 진행·제안) → 메뉴 개발 완료 */
+/** 새 날 (6시의 시간 처리보다 먼저): 효과 만료 → 팝업 정리·지역 회복 → 밤 회복 → 생육 → 밭 일꾼 → 게시판(부탁 진행·제안) → 메뉴 개발 완료 */
 function onNewDay(state: GameState): void {
   pruneEffects(state);
+  dailyPopup(state);
   nightlyRecovery(state);
   growOneDay(state);
   staffFarmWork(state);

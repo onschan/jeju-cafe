@@ -11,6 +11,7 @@
  * - 돈 200만 미만이면 아르바이트 (직원당 한 달 한 번은 sim이 막는다)
  * - 2년차: 연구 20 이상이면 원두+우유 음료를 하나 나올 때까지 개발하고, 나오면 메뉴판 4번 칸에 올린다
  * - 마일리지 30 이상이면 일꾼 삼춘 고용, 무료 인형뽑기는 매달 돌리고, 강화 아이템·씨앗은 야외 테이블에 쓴다
+ * - 주말(6·13·20·27일)마다 돈이 500만 넘으면 활기가 가장 높은 지역에 팝업을 연다 (2B-4)
  */
 import type { GameState } from './types.ts';
 import { createInitialState } from './state.ts';
@@ -25,6 +26,7 @@ import { DEVELOP_RESEARCH } from './craft.ts';
 import { canDrawTicket, hasFreeDraw } from './shop.ts';
 import { MAX_BUILDERS } from './build.ts';
 import { canUseItem } from './items.ts';
+import { isWeekend, canOpenPopup, bestRegion } from './popup.ts';
 import type { Candidate, RoleId, StatKey } from './types.ts';
 
 export interface BotRow {
@@ -61,6 +63,7 @@ export const BOT_DEVELOP_YEAR = 2;
 export const BOT_COOK_YEAR = 2;
 export const BOT_DEVELOP_INGREDIENTS = ['beans', 'milk'];
 export const BOT_WORKER_MILEAGE = 3;
+export const BOT_POPUP_MIN_MONEY = 5_000_000;
 const WORKER_IDS = ['ms_worker_3', 'ms_worker_4', 'ms_worker_5'];
 
 function countKind(s: GameState, kind: string): number {
@@ -152,6 +155,12 @@ function dailyPlan(s: GameState): void {
   }
   const custom = s.customMenus[0];
   if (custom && !s.menuSlots.includes(custom.id)) apply(s, { type: 'setSlot', slot: 3, menuId: custom.id });
+
+  // 주말: 활기가 가장 높은 지역에 팝업
+  if (isWeekend(s.clock.day) && s.money > BOT_POPUP_MIN_MONEY && !s.popup.regionId) {
+    const regionId = bestRegion(s);
+    if (canOpenPopup(s, regionId).ok) apply(s, { type: 'openPopup', regionId });
+  }
 }
 
 /** 봇 진행 커서 (한 상태를 이어서 돌릴 때 — 세이브 왕복 테스트 등) */

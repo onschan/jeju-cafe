@@ -16,6 +16,7 @@ import { canRenameCafe, renameCafe, canExpand, expand, canSetCosmetic, setCosmet
 import { canDevelop, develop, canAddTopping, addTopping, canRemoveTopping, removeTopping, canLevelUpMenu, levelUpMenu } from './craft.ts';
 import { canStartBuild, startBuild } from './build.ts';
 import { canBuyMileage, buyMileage, canBuyTicket, buyTicket, canDrawTicket, drawTicket, canSetUniform, setUniform, canUseGuestItem, useGuestItem } from './shop.ts';
+import { canOpenPopup, openPopup, canClosePopup, closePopup } from './popup.ts';
 
 export const PROTECTED_TYPES = new Set(['busstop', 'warehouse', 'gate', 'spring']);
 /** 회전할 수 있는 오브젝트 (rot 0..3, 스프라이트 변형 _r{n}이 있을 때만 보인다) */
@@ -296,6 +297,18 @@ function applyInner(state: GameState, a: Action): ApplyResult {
     case 'dismissAnnouncement':
       state.lastAnnouncement = null;
       return { ok: true };
+    case 'openPopup': {
+      const c = canOpenPopup(state, a.regionId);
+      if (!c.ok) return c;
+      openPopup(state, a.regionId);
+      return { ok: true };
+    }
+    case 'closePopup': {
+      const c = canClosePopup(state);
+      if (!c.ok) return c;
+      closePopup(state);
+      return { ok: true };
+    }
     default:
       return { ok: false, reason: '아직 구현 안 됨' };
   }

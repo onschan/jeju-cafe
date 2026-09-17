@@ -443,9 +443,45 @@ export interface AnnouncementEntry {
 }
 export interface Announcement { monthIndex: number; month: number; year: number; entries: AnnouncementEntry[]; starBefore: number; starAfter: number }
 
+// ---------- 원정 팝업·지역·이름 있는 손님 (2B-4) ----------
+export interface RegionDef { id: string; name: string; popupCost: number; vitality: number; appetite: number; decayPerWeek: number; recoverPerWeek: number; note?: string }
+/** likesBase의 'any'는 모든 분류 */
+export interface NamedGuestDef {
+  id: string;
+  regionId: string;
+  no: number;
+  name: string;
+  job: string;
+  line: string;
+  likesBase: (MenuCategory | 'any')[];
+  likesStats: MenuStatKey[];
+  budget: number;
+  face: { seed: number };
+  acc: string[];
+}
+export interface RegionState { vitality: number; appetite: number }
+/** affinity 0~300, rewardsTaken 0~3(100·200·300에서 보상), regular = 첫 보상 때 ★ → 본점 방문. met = 한 번이라도 만났다(도감 공개) */
+export interface NamedGuestState { affinity: number; rewardsTaken: number; regular: boolean; met: boolean }
+/** 팝업 손님 한 명의 방문 결과 (PopupScreen 연출용, 최근 POPUP_VISIT_CAP개) */
+export interface PopupVisit {
+  namedId: string;
+  menuId: string | null;
+  mood: Mood;
+  reason: 'no_menu' | 'price' | null;
+  taste: boolean;        // 취향 일치(×2)
+  gain: number;          // 호감도 증가
+  affinity: number;      // 방문 뒤 호감도
+  reward: string | null; // 이 방문에서 받은 보상 문구
+  regularNow: boolean;   // 이 방문에서 단골★이 됐다
+  tick: number;
+}
+/** regionId = 열려 있는 팝업 지역(null이면 없음). openedDay = 연 날(절대 일 인덱스). lastRegionId = 이번 주 팝업을 연 지역(주말 회복에서 제외). queue = 오늘 아직 안 온 손님 id(매 시간 한 명). */
+export interface PopupState { regionId: string | null; openedDay: number; lastRegionId: string | null; queue: string[]; visits: PopupVisit[] }
+
 export interface Guest {
   id: string;
   type: string; // GuestTypeDef.id
+  namedId?: string; // 이름 있는 손님(단골★)이면 NamedGuestDef.id — type은 NAMED_TYPE
   phase: GuestPhase;
   x: number;            // 셀 좌표(소수 허용, 보간용)
   y: number;
@@ -534,6 +570,9 @@ export interface GameState {
   expansions: string[];                       // 증축 id (kitchen·floor2·terrace)
   cosmetics: { wallColor: number; sign: string }; // 인테리어 (외벽 색 인덱스·간판 문구) — 연출만
   praised: Record<string, number>;            // staffId → 마지막으로 칭찬한 일 인덱스
+  regions: Record<string, RegionState>;       // 지역 활기·식욕 (2B-4)
+  namedGuests: Record<string, NamedGuestState>; // 이름 있는 손님 56 호감도·단골★
+  popup: PopupState;                          // 원정 팝업 스토어
   guests: Guest[];
   spawnAcc: number; // 시간대별 스폰 소수 누적
   researchAcc: number; // 만족 손님 누적 (5마다 연구 +1)
@@ -594,6 +633,8 @@ export type Action =
   | { type: 'dismissDraw' }
   | { type: 'setUniform'; id: string | null }
   | { type: 'useGuestItem'; itemId: string; guestId: string }
-  | { type: 'dismissAnnouncement' };
+  | { type: 'dismissAnnouncement' }
+  | { type: 'openPopup'; regionId: string }
+  | { type: 'closePopup' };
 
 export interface ApplyResult { ok: boolean; reason?: string }

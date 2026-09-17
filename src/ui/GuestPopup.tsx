@@ -1,8 +1,8 @@
 import { useEffect, useRef } from 'react';
 import { useGame } from './store';
-import { guestFace, walletOf, canAcceptQuest, type Guest, type GuestTypeState } from '../sim/index.ts';
-import { guestTypeDef, questDef, NAMES } from '../data/index.ts';
-import { guestParts, staffParts, type CharacterParts } from '../render/character';
+import { guestFace, walletOf, canAcceptQuest, namedGuestFace, AFFINITY_MAX, type Guest, type GuestTypeState } from '../sim/index.ts';
+import { guestTypeDef, questDef, namedGuestDef, regionDef, NAMES } from '../data/index.ts';
+import { guestParts, staffParts, namedGuestParts, type CharacterParts } from '../render/character';
 import { drawPortrait, PORTRAIT_SIZE } from '../render/portrait';
 import { Popup } from './Popup';
 import { Bar, Face } from './StaffPanel';
@@ -32,12 +32,18 @@ export function guestPortraitParts(typeId: string): CharacterParts {
   const def = guestTypeDef(typeId);
   return guestParts(guestFace(typeId), def.tags, def.wants);
 }
+/** 이름 있는 손님(지역 손님 56) 초상 파츠 */
+export function namedPortraitParts(namedId: string): CharacterParts {
+  const def = namedGuestDef(namedId);
+  return namedGuestParts(namedGuestFace(def), def.face.seed, def.regionId);
+}
 export function staffPortraitParts(face: FaceParts, role: RoleId | null): CharacterParts {
   return staffParts(face, role);
 }
 
 /** 손님 이름: 이름 풀(names.json)에서 id 번호로 고른 이름 + 타입명 — "동네 삼춘 2153호" 대신 "김민준 (동네 삼춘)". 결정적(id는 세이브에 있다). */
 export function guestName(g: Guest): string {
+  if (g.namedId) { const d = namedGuestDef(g.namedId); return `${d.name} (${d.job})`; }
   const n = Number(g.id.replace(/^g/, '')) || 0;
   const name = NAMES.names[n % NAMES.names.length] ?? '손님';
   return `${name} (${guestTypeDef(g.type).name})`;
@@ -61,6 +67,25 @@ export function GuestPopup({ guestId, onClose, onQuest }: { guestId: string; onC
   const quest = offeredQuestFor(s.board.quests, def.id);
   const line = g.say ?? def.line ?? '';
   const mood = g.mood ? MOOD_TEXT[g.mood] : g.phase === 'walking' ? '자리로 가는 중' : g.phase === 'visiting' ? '구경 중' : g.phase === 'leaving' ? '집에 가는 중' : '주문 기다리는 중';
+  if (g.namedId) {
+    // 단골★(이름 있는 손님): 이름·직업·한 줄 소개·호감도
+    const nd = namedGuestDef(g.namedId);
+    const ns = s.namedGuests[nd.id];
+    return (
+      <Popup title={guestName(g)} onBackdrop={onClose} buttons={<button style={brownBtn} onClick={onClose}>닫기</button>}>
+        <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }} data-testid="named-guest-popup">
+          <Portrait parts={namedPortraitParts(nd.id)} face={namedGuestFace(nd)} />
+          <div style={{ flex: 1, fontSize: 14, lineHeight: 1.6 }}>
+            <div><b>{nd.name}</b> <span style={{ fontSize: 12, color: PALETTE.inkSoft }}>{nd.job} · {regionDef(nd.regionId).name}</span>{ns?.regular && <span style={{ color: PALETTE.btnOn }}> ★ 단골</span>}</div>
+            <div>기분: {mood}{g.moodReason && g.mood !== 'happy' ? ` (${REASON_TEXT[g.moodReason]})` : ''}</div>
+            <div>지갑: {won(nd.budget)}</div>
+            <div style={{ whiteSpace: 'nowrap' }}>호감 <Bar value={ns?.affinity ?? 0} max={AFFINITY_MAX} width={90} /> {ns?.affinity ?? 0}/{AFFINITY_MAX}</div>
+          </div>
+        </div>
+        <div style={{ marginTop: 8, fontStyle: 'italic', color: PALETTE.inkSoft, fontSize: 14 }}>“{g.say ?? nd.line}”</div>
+      </Popup>
+    );
+  }
   return (
     <Popup title={guestName(g)} onBackdrop={onClose}
       buttons={<>

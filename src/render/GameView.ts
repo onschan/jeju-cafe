@@ -7,9 +7,10 @@ import { isoTerrainTexture, isoObjectTexture, glowTexture, label, bubble, clearT
 import { loadAssets, tex, peekTex, hasAssets, spriteName } from './assets';
 import { attachCamera, type CameraBounds, type CameraOptions } from './camera';
 import { ISO_W, ISO_H, cellToScreen, cellCenter, footAnchor, depth, screenToCell } from './iso';
-import { makeCharacterNode, updateCharacterNode, staffParts, guestParts, sameAccs, CHAR_H, type CharacterNode, type Dir, type Frame } from './character';
+import { makeCharacterNode, updateCharacterNode, staffParts, guestParts, namedGuestParts, sameAccs, CHAR_H, type CharacterNode, type Dir, type Frame } from './character';
 import { guestFace } from '../sim/segments.ts';
-import { guestTypeDef } from '../data/index.ts';
+import { namedGuestFace } from '../sim/popup.ts';
+import { guestTypeDef, namedGuestDef } from '../data/index.ts';
 import { Background } from './Background';
 
 /** 전용 스프라이트가 있는 손님 타입 (guest_local·guest_tourist 시트) */
@@ -668,7 +669,9 @@ export class GameView {
       return { node: c, sprite: sp, char: null, hadMenu: g.menuId !== null, accKey: '', alert: null };
     }
     const def = guestTypeDef(g.type);
-    const ch = makeCharacterNode(guestParts(guestFace(g.type), def.tags, def.wants), guestDir(g), 1);
+    const named = g.namedId ? namedGuestDef(g.namedId) : null;
+    const parts = named ? namedGuestParts(namedGuestFace(named), named.face.seed, named.regionId) : guestParts(guestFace(g.type), def.tags, def.wants);
+    const ch = makeCharacterNode(parts, guestDir(g), 1);
     c.addChild(ch);
     return { node: c, sprite: null, char: ch, hadMenu: g.menuId !== null, accKey: '', alert: null };
   }

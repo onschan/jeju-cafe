@@ -195,11 +195,15 @@ export function guestEvalBonus(state: GameState, typeId: string, menuId: string 
   if (HEARTY_GUESTS.has(typeId)) v += e.heartyEval;
   return Math.floor(v / 3);
 }
-/** 손님 취향 스탯 중 메뉴 스탯이 기준(8) 이상인 개수 */
-export function likesStatsMatch(state: GameState, typeId: string, menuId: string | null): number {
+/** 취향 스탯 목록 중 메뉴 스탯이 기준 이상인 개수 (손님층·이름 있는 손님 공용) */
+export function statsMatchCount(state: GameState, likesStats: MenuStatKey[], menuId: string | null): number {
   if (!menuId) return 0;
   const stats = menuStatsOf(state, menuId);
-  return guestTypeDef(typeId).likesStats.filter((k) => stats[k] >= LIKE_STAT_MIN).length;
+  return likesStats.filter((k) => stats[k] >= LIKE_STAT_MIN).length;
+}
+/** 손님 취향 스탯 중 메뉴 스탯이 기준(8) 이상인 개수 */
+export function likesStatsMatch(state: GameState, typeId: string, menuId: string | null): number {
+  return statsMatchCount(state, guestTypeDef(typeId).likesStats, menuId);
 }
 /** 손님이 이 분류를 주문하나 (시그니처는 누구나) */
 export function guestLikesCategory(likes: MenuCategory[], category: MenuCategory): boolean {
