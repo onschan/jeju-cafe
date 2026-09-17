@@ -15,11 +15,11 @@ def all_sprites():
     s = {}
     for mod in (sprites_tiles, sprites_objects):
         s.update(mod.sprites())
-    try:
-        import sprites_chars, sprites_ui  # Task 4·5에서 추가
-        s.update(sprites_chars.sprites()); s.update(sprites_ui.sprites())
-    except ImportError:
-        pass
+    for name in ('sprites_chars', 'sprites_ui'):  # Task 4·5에서 추가
+        try:
+            s.update(__import__(name).sprites())
+        except ImportError:
+            pass
     return s
 
 def main():
