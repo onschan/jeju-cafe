@@ -1,7 +1,7 @@
 export * from './types.ts';
 export { createInitialState, GRID_W, GRID_H, MENU_SLOT_COUNT, SAVE_VERSION, START_MONEY } from './state.ts';
 export { tick, step, STEP_MS } from './tick.ts';
-export { apply } from './actions.ts';
+export { apply, PROTECTED_TYPES } from './actions.ts';
 export { DAY_MS, seasonOf, monthIndex, DAYS_PER_MONTH } from './clock.ts';
 export { cellAt, objectAt, canPlace, footprint, isSheltered, sceneryScore, windShelter, SHELTER_THRESHOLD } from './grid.ts';
 export { canPlant, canHarvest, readyToHarvest } from './farm.ts';
@@ -9,4 +9,4 @@ export { isMenuAvailable, availableMenus, canSetSlot } from './menu.ts';
 export { isWalkable, busStopPos } from './path.ts';
 export { nextUnlock, canUnlock } from './progress.ts';
 export { serialize, deserialize, MemorySaveStore, LocalSaveStore, type SaveStore } from './save.ts';
-export { freeSeats, GUEST_SPEED_CELLS_PER_S, SEAT_MS } from './guests.ts';
+export { freeSeats, hasReachableSeat, GUEST_SPEED_CELLS_PER_S, SEAT_MS } from './guests.ts';

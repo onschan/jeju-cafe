@@ -20,6 +20,12 @@ export function freeSeats(state: GameState): PlacedObject[] {
   return seatObjects(state).filter((o) => (taken.get(o.id) ?? 0) < (objectDef(o.type).seats ?? 1));
 }
 
+/** 정류장에서 걸어서 닿는 좌석이 하나라도 있나. 점유 여부는 보지 않는다 (길이 이어졌는지 판정하는 안내용). */
+export function hasReachableSeat(state: GameState): boolean {
+  const reach = reachMap(state, busStopPos(state));
+  return seatObjects(state).some((s) => walkableNeighborsOf(state, s.x, s.y).some((nb) => reach.dist.has(cellKey(state, nb))));
+}
+
 /** 최대 n명 스폰. 정류장에서 가장 가까운 빈 좌석부터. 실제 스폰된 수를 돌려준다. */
 export function spawnGuests(state: GameState, n: number): number {
   let spawned = 0;

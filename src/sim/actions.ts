@@ -5,7 +5,7 @@ import { canPlant, plant, canHarvest, harvest } from './farm.ts';
 import { canSetSlot, setSlot } from './menu.ts';
 import { canUnlock, unlock } from './progress.ts';
 
-const PROTECTED_TYPES = new Set(['busstop', 'warehouse', 'gate']);
+export const PROTECTED_TYPES = new Set(['busstop', 'warehouse', 'gate']);
 const ACTION_LOG_CAP = 1000;
 
 const CLIENT_ONLY = new Set<Action['type']>(['setSpeed', 'dismissMonthCard']);

@@ -1,7 +1,7 @@
 import { createInitialState } from '../state.ts';
 import { placeObject } from '../grid.ts';
 import { setSlot } from '../menu.ts';
-import { spawnGuests, updateGuests, freeSeats, GUEST_SPEED_CELLS_PER_S, SEAT_MS } from '../guests.ts';
+import { spawnGuests, updateGuests, freeSeats, hasReachableSeat, GUEST_SPEED_CELLS_PER_S, SEAT_MS } from '../guests.ts';
 
 /** 정낭(4,6) 바로 위 (4,5)에 테이블 → 정낭이 테이블의 걷기 이웃 */
 function cafe() {
@@ -103,4 +103,16 @@ test('관광객은 경치가 모자라면 😐, 돌담을 두면 😊', () => {
   s2.guests[0]!.type = 'tourist';
   updateGuests(s2, 6000);
   expect(s2.guests[0]!.mood).toBe('happy');
+});
+
+test('hasReachableSeat: 좌석 없음 → false, 정낭 옆 좌석 → true, 길 없는 좌석 → false', () => {
+  const s = createInitialState(1);
+  expect(hasReachableSeat(s)).toBe(false);
+  placeObject(s, 'table_out', 4, 5);
+  expect(hasReachableSeat(s)).toBe(true);
+  spawnGuests(s, 2); // 좌석이 다 차도 길은 이어져 있으므로 true
+  expect(hasReachableSeat(s)).toBe(true);
+  const s2 = createInitialState(1);
+  placeObject(s2, 'table_out', 8, 2); // 사방이 흙이라 정류장에서 못 닿음
+  expect(hasReachableSeat(s2)).toBe(false);
 });
