@@ -11,6 +11,7 @@ import { CafePanel } from './CafePanel';
 import { GuestsPanel } from './GuestsPanel';
 import { CraftPanel, MenuDetailPicker } from './CraftPanel';
 import { ShopPanel } from './ShopPanel';
+import { RankPanel } from './RankPanel';
 import { frame, brownBtn, brownBtnOn, brownBtnOff, dangerBtn, brownSelect, PALETTE, won } from './frame';
 
 export type Mode =
@@ -208,7 +209,7 @@ export function BottomSheet({ mode, setMode, place, msg, onGuest, onDragBuild }:
       {mode.kind === 'invest' && <BoardPanel tabs={['spots', 'events']} />}
       {mode.kind === 'cafe' && <CafePanel onMenu={() => setMode({ kind: 'menu' })} />}
       {mode.kind === 'shop' && <ShopPanel />}
-      {mode.kind === 'rank' && <div style={{ fontSize: 13, color: PALETTE.inkSoft }}>가이드북 랭킹은 1년차 7월에 첫 발표! 지금 카페 랭크 {s.rank} · ★{s.star}</div>}
+      {mode.kind === 'rank' && <RankPanel />}
     </div>
   );
 }

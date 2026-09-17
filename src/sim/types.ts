@@ -121,6 +121,8 @@ export type UnlockCond =
   | { type: 'spot'; spotId: string; level: number }
   | { type: 'date'; year: number; month: number }
   | { type: 'count'; objectId: string; count: number }
+  | { type: 'category'; category: FacilityCategory; count: number }   // 분류별 시설 개수 (가이드북)
+  | { type: 'segmentPop'; guestId: string; popularity: number }        // 손님층 인기 (가이드북)
   | { type: 'all'; conditions: UnlockCond[] };
 
 export interface GuestTypeDef {
@@ -398,7 +400,7 @@ export type FxEvent =
   | { kind: 'greet'; staffId: string; tick: number }
   | { kind: 'photo'; x: number; y: number; tick: number } // 인생샷 스킬: 손님이 사진을 찍었다
   | { kind: 'complete'; x: number; y: number; tick: number } // 시설 완공 반짝임
-  | { kind: 'scene'; title: string; text: string; tick: number }; // UI 장면 창(완공 등). 렌더는 무시한다
+  | { kind: 'scene'; title: string; text: string; tick: number }; // UI 장면 창(완공·★ 승급·랭크 업). 렌더는 무시한다
 
 // ---------- 상점·추첨·유니폼·가이드북 (2B-2 Task 6·7) ----------
 export interface MileageShopDef { id: string; name: string; price: number; description: string; itemId?: string }
@@ -408,6 +410,36 @@ export interface UniformDef { id: string; name: string; ticketTier: number; effe
 export type DrawPrizeKind = 'money' | 'research' | 'ingredient_box' | 'mileage' | 'item' | 'seed' | 'uniform_piece' | 'miss';
 export interface DrawPrizeDef { kind: DrawPrizeKind; label: string; pct: number }
 export interface DrawResult { kind: DrawPrizeKind; label: string; text: string; free: boolean }
+/** 가이드북 심사 항목 6종 (0~100) */
+export type JudgeKey = 'smile' | 'scenery' | 'menu' | 'fun' | 'group' | 'overall';
+export type JudgeScores = Record<JudgeKey, number>;
+export interface GuidebookDef {
+  id: string;
+  name: string;
+  unlock: UnlockCond;
+  unlockText: string;
+  criteriaText: string;
+  weights: Partial<Record<JudgeKey, number>>; // 합 1
+  prize: number;
+  research: number;
+  seeds: { itemId: string; count: number }[];
+  monthly: boolean; // 매월 발표 (이번 달 농협 추천)
+}
+export interface GuidebookState { unlocked: boolean; lastRank: number | null; best: number | null }
+export interface AnnouncementEntry {
+  id: string;
+  name: string;
+  scores: JudgeScores;
+  total: number;      // 가중 합 0~100
+  rivals: number[];   // 경쟁 카페 9곳 점수 (내림차순)
+  rank: number;       // 1..10
+  prize: number;      // 받은 돈
+  research: number;
+  mileage: number;
+  seedText: string | null;
+  targetText: string | null; // 월간 추천: 이번 달 타깃 손님층
+}
+export interface Announcement { monthIndex: number; month: number; year: number; entries: AnnouncementEntry[]; starBefore: number; starAfter: number }
 
 export interface Guest {
   id: string;
@@ -469,8 +501,9 @@ export interface GameState {
   visitBonus: Record<string, number>;         // objectType → 시설 인기 효과 누적 (+10 상한)
   tickets: number;                            // 응모권
   mileage: number;
-  rank: number;                               // 카페 랭크 (임시: 해금 손님 수로 오른다. Task 7이 대체)
-  star: number;                               // ★ 등급 (Task 7 전까지 1)
+  rank: number;                               // 카페 랭크 1~ (랭크 점수 = 누적 손님 + 시설 + 해금 손님층, 문턱표)
+  star: number;                               // ★ 등급 1~5 (ranks.json 조건, 월초 검사)
+  totalGuests: number;                        // 누적 손님 수 (랭크 점수)
   builders: number;                           // 일꾼 삼춘 수 = 동시 건설 수 (기본 2)
   uniform: string | null;                     // 입고 있는 유니폼 id (연출)
   uniforms: string[];                         // 가진 유니폼
@@ -479,6 +512,8 @@ export interface GameState {
   lastDraw: DrawResult | null;                // 마지막 인형뽑기 결과 (UI 연출, dismissDraw로 닫는다)
   freeRecruits: number;                       // 직원 스카우트권: 다음 공고비 무료 횟수
   codexMileage: number;                       // 도감 10개마다 준 마일리지 단계
+  guidebooks: Record<string, GuidebookState>; // 가이드북 11종 진행
+  lastAnnouncement: Announcement | null;      // 마지막 랭킹 발표 (UI 팝업, dismissAnnouncement로 닫는다)
   board: BoardState;
   spots: Record<string, number>;              // spotId → 레벨 (0 = 미투자)
   effects: ActiveEffect[];                    // 이벤트 효과 (기간형)
@@ -554,6 +589,7 @@ export type Action =
   | { type: 'drawTicket' }
   | { type: 'dismissDraw' }
   | { type: 'setUniform'; id: string | null }
-  | { type: 'useGuestItem'; itemId: string; guestId: string };
+  | { type: 'useGuestItem'; itemId: string; guestId: string }
+  | { type: 'dismissAnnouncement' };
 
 export interface ApplyResult { ok: boolean; reason?: string }

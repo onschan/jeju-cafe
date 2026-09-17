@@ -38,6 +38,8 @@ export interface BotRow {
   promos: number;     // 활성 기간형 홍보 수
   guests: number;     // 그달 손님 수
   customMenus: number; // 개발한 메뉴 수 (2년차 개발 확인용)
+  rank: number;
+  star: number;
   mileage: number;
 }
 
@@ -120,6 +122,7 @@ function monthlyPlan(s: GameState, monthsPlayed: number): void {
   if (s.mileage >= BOT_WORKER_MILEAGE && s.builders < MAX_BUILDERS) for (const id of WORKER_IDS) if (apply(s, { type: 'buyMileage', id }).ok) break;
   if (hasFreeDraw(s) && canDrawTicket(s).ok && apply(s, { type: 'drawTicket' }).ok) apply(s, { type: 'dismissDraw' });
   for (const [itemId, n] of Object.entries(s.inventory)) if (n > 0 && canUseItem(s, itemId, 'table_out').ok) apply(s, { type: 'useItem', itemId, objectType: 'table_out' });
+  if (s.lastAnnouncement) apply(s, { type: 'dismissAnnouncement' });
 
   // 해금
   while (canUnlock(s).ok) apply(s, { type: 'unlock' });
@@ -168,7 +171,7 @@ export function runBot(years: number, seed: number): BotRow[] {
       rows.push({
         year: card.year, month: card.month, money: s.money, minMoney, research: s.research, popularity: s.popularity,
         net: card.net, staff: s.staff.length, promos: s.activePromotions.length, guests: card.guests, customMenus: s.customMenus.length,
-        mileage: s.mileage,
+        rank: s.rank, star: s.star, mileage: s.mileage,
       });
       minMoney = s.money;
       apply(s, { type: 'dismissMonthCard' });

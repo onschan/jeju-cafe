@@ -1,4 +1,5 @@
 import { X, Y } from './helpers.ts';
+import { MAX_RANK } from '../rank.ts';
 import { createInitialState } from '../state.ts';
 import { placeObject } from '../grid.ts';
 import { setSlot } from '../menu.ts';
@@ -6,7 +7,7 @@ import { apply } from '../actions.ts';
 import { spawnGuests, updateGuests, typeWeight, affordableMenus, PREP_MS } from '../guests.ts';
 import {
   evaluateUnlocks, unlockCondMet, unlockGuestType, isUnlocked, unlockedTypeIds, addSatisfaction, onHappyVisit, onAngryVisit, walletOf, regularFreqMult, guestFace, updateRank,
-  SAT_HAPPY, SAT_TARGET, SAT_REGULAR, SAT_VIP, REGULAR_FREQ, REGULAR_WALLET, VIP_FREQ, VIP_WALLET, MAX_TARGETS, UNLOCK_POPULARITY, TIP_RATE, VISIT_BONUS_CAP, RANK_PER_UNLOCKED,
+  SAT_HAPPY, SAT_TARGET, SAT_REGULAR, SAT_VIP, REGULAR_FREQ, REGULAR_WALLET, VIP_FREQ, VIP_WALLET, MAX_TARGETS, UNLOCK_POPULARITY, TIP_RATE, VISIT_BONUS_CAP,
 } from '../segments.ts';
 import { objectStats, BASE_POPULARITY } from '../compat.ts';
 import { GUEST_TYPES, GUEST_CHAINS, guestTypeDef, guestTags, canonicalGuestId, QUESTS } from '../../data/index.ts';
@@ -92,17 +93,20 @@ test('evaluateUnlocks: 조건이 맞는 타입을 열고 알림·시작 인기, 
   expect(evaluateUnlocks(s)).toEqual(['working_holiday']);
 });
 
-test('임시 랭크: 해금 타입 6개마다 +1, 최대 5, 내려가지 않는다', () => {
+test('랭크: 점수(누적 손님/50 + 시설×2 + 해금 손님층×5)가 문턱을 넘으면 오르고 내려가지 않는다', () => {
   const s = createInitialState(1);
   updateRank(s);
   expect(s.rank).toBe(1);
   const ids = GUEST_TYPES.map((t) => t.id);
-  for (const id of ids.slice(0, RANK_PER_UNLOCKED * 2)) unlockGuestType(s, id);
+  for (const id of ids.slice(0, 10)) unlockGuestType(s, id); // 시작 타입 포함 10 → 50점 = 랭크 2
   updateRank(s);
-  expect(s.rank).toBe(3);
-  for (const id of ids) unlockGuestType(s, id);
+  expect(s.rank).toBe(2);
+  s.totalGuests = 100_000; // 2000점 → 최고 랭크
   updateRank(s);
-  expect(s.rank).toBe(5);
+  expect(s.rank).toBe(MAX_RANK);
+  s.totalGuests = 0;
+  updateRank(s);
+  expect(s.rank).toBe(MAX_RANK);
 });
 
 test('타깃: 최대 3, 토글, null로 전부 해제, 잠긴 타입 거부, targetSegment는 첫 타깃', () => {

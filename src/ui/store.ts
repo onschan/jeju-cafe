@@ -33,7 +33,7 @@ let toast: { text: string; until: number } | null = null;
 let viewReset: (() => void) | null = null;
 /** 월말 카드가 새로 떴을 때 UI가 반응하도록 (신기록 장면 창 등) */
 let monthCardHook: ((s: GameState, rec: { monthRecord: boolean; yearRecord: boolean }) => void) | null = null;
-/** sim이 fx 큐에 남긴 장면(완공 등)을 UI 장면 창으로 */
+/** sim이 fx 큐에 남긴 장면(완공·★ 승급·랭크 업·가이드북 1위)을 UI 장면 창으로 */
 let sceneHook: ((s: GameState, title: string, text: string) => void) | null = null;
 
 function emit() { version++; for (const l of listeners) l(); }
@@ -56,7 +56,7 @@ const ACTION_SFX: Record<Action['type'], SfxName> = {
   move: 'place', rotate: 'tap', buyParcel: 'unlock', useItem: 'unlock', clearRock: 'remove', renameCafe: 'tap', expand: 'unlock', setCosmetic: 'tap', praise: 'happy',
   acceptQuest: 'tap', respondEvent: 'tap', investSpot: 'unlock',
   develop: 'unlock', dismissDevelop: 'tap', addTopping: 'tap', removeTopping: 'tap', levelUpMenu: 'unlock',
-  buyMileage: 'coin', buyTicket: 'coin', drawTicket: 'tap', dismissDraw: 'tap', setUniform: 'tap', useGuestItem: 'unlock',
+  buyMileage: 'coin', buyTicket: 'coin', drawTicket: 'tap', dismissDraw: 'tap', setUniform: 'tap', useGuestItem: 'unlock', dismissAnnouncement: 'tap',
 };
 
 export function dispatch(a: Action): ApplyResult {

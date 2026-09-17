@@ -1,11 +1,13 @@
 import type { GameState, Guest, GuestTypeState, UnlockCond, ApplyResult, Face, RegularTier, GuestTags } from './types.ts';
-import { GUEST_TYPES, FACILITIES, guestTypeDef, guestTags, canonicalGuestId, ITEMS } from '../data/index.ts';
+import { GUEST_TYPES, FACILITIES, guestTypeDef, guestTags, canonicalGuestId, ITEMS, objectDef } from '../data/index.ts';
 import { nextRandom, pickWeighted } from './rng.ts';
 import { monthIndex } from './clock.ts';
 import { pushNotice } from './staff.ts';
 import { grantItem } from './items.ts';
 import { pushFx } from './farm.ts';
 import { parcelAt } from './parcels.ts';
+import { updateRank } from './rank.ts';
+export { updateRank };
 
 /** 만족 게이지 0~100: 😊 +2 (타깃 +3), 😠 −1. 30 부탁·50 단골·80 VIP */
 export const SAT_HAPPY = 2;
@@ -30,9 +32,6 @@ export const AD_DELTA = 1;
 export const RESEARCH_BONUS = 1; // 기본 +1에 더해 +1 → +2
 export const VISIT_BONUS_CAP = 10;
 export const TICKET_CHANCE = 0.01;
-/** 임시 카페 랭크: 해금 손님 타입 수 / 6 (Task 7 ★·랭킹이 대체) */
-export const RANK_PER_UNLOCKED = 6;
-export const MAX_RANK = 5;
 
 export function initGuestTypes(): Record<string, GuestTypeState> {
   const out: Record<string, GuestTypeState> = {};
@@ -66,7 +65,14 @@ export function countObjects(state: GameState, objectId: string): number {
   return n;
 }
 
-/** 해금 조건 8형 판정 */
+/** 소유 필지에 놓인 v2 분류별 시설 개수 (건설 중 포함) */
+export function countCategory(state: GameState, category: string): number {
+  let n = 0;
+  for (const o of Object.values(state.objects)) if (objectDef(o.type).category === category && parcelAt(state, o.x, o.y)?.owned) n++;
+  return n;
+}
+
+/** 해금 조건 판정 (손님·시설·가이드북) */
 export function unlockCondMet(state: GameState, c: UnlockCond): boolean {
   switch (c.type) {
     case 'start': return true;
@@ -77,6 +83,8 @@ export function unlockCondMet(state: GameState, c: UnlockCond): boolean {
     case 'spot': return (state.spots[c.spotId] ?? 0) >= c.level;
     case 'date': return monthIndex(state.clock) >= (c.year - 1) * 12 + (c.month - 1);
     case 'count': return countObjects(state, c.objectId) >= c.count;
+    case 'category': return countCategory(state, c.category) >= c.count;
+    case 'segmentPop': return (state.segmentPopularity[canonicalGuestId(c.guestId)] ?? 0) >= c.popularity;
     case 'all': return c.conditions.every((x) => unlockCondMet(state, x));
   }
 }
@@ -108,19 +116,14 @@ export function evaluateFacilityUnlocks(state: GameState): string[] {
 /** 잠긴 타입의 해금 조건을 모두 검사한다. 새로 열린 id 목록을 돌려준다 (연쇄 해금은 다음 호출에서). 시설 해금도 같이 돈다. */
 export function evaluateUnlocks(state: GameState): string[] {
   const opened: string[] = [];
+  updateRank(state); // 랭크 해금 타입이 이번 호출에서 열리도록 먼저
   for (const t of GUEST_TYPES) {
     if (state.guestTypes[t.id]?.unlocked) continue;
     if (unlockCondMet(state, t.unlock) && unlockGuestType(state, t.id)) opened.push(t.id);
   }
-  updateRank(state);
+  updateRank(state); // 새로 열린 손님층만큼 점수가 올랐을 수 있다
   evaluateFacilityUnlocks(state);
   return opened;
-}
-
-/** 임시 랭크 규칙: 1 + floor(해금 타입 수 / 6), 최대 5. 내려가지 않는다. */
-export function updateRank(state: GameState): void {
-  const n = unlockedTypeIds(state).length;
-  state.rank = Math.max(state.rank, Math.min(MAX_RANK, 1 + Math.floor(n / RANK_PER_UNLOCKED)));
 }
 
 

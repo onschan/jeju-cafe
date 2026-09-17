@@ -8,6 +8,7 @@ import { nextRandom } from './rng.ts';
 import { initGuestTypes, initSegmentPopularity } from './segments.ts';
 import { DEFAULT_CAFE_NAME } from './cafe.ts';
 import { START_BUILDERS } from './build.ts';
+import { initGuidebooks } from './guidebook.ts';
 
 export { PARCEL_W, PARCEL_H, START_ORIGIN, GRID_W, GRID_H, VILLAGE_ROAD_Y };
 export const SAVE_VERSION = 11;
@@ -140,6 +141,7 @@ export function createInitialState(seed: number, playerId = 'local', createdAt =
     mileage: 0,
     rank: 1,
     star: 1,
+    totalGuests: 0,
     builders: START_BUILDERS,
     uniform: null,
     uniforms: [],
@@ -148,6 +150,8 @@ export function createInitialState(seed: number, playerId = 'local', createdAt =
     lastDraw: null,
     freeRecruits: 0,
     codexMileage: 0,
+    guidebooks: initGuidebooks(),
+    lastAnnouncement: null,
     board: { quests: {}, events: [] },
     spots: {},
     effects: [],

@@ -1,4 +1,4 @@
-import type { ObjectDef, CropDef, MenuDef, GuestTypeDef, UnlockDef, IngredientDef, RoleDef, SkillDef, PromotionDef, GuestTags, ComboDef, ComboTarget, ComboStrength, ComboSide, SetDef, ItemDef, ItemSlot, Season, MenuCategory, GuestEffect, GuestWant, UnlockCond, QuestDef, QuestCondition, QuestReward, SpotDef, SpotCategory, EventDef, MenuStats, MenuStatKey, IngredientCategory, IngredientComboDef, ToppingDef, HiddenRecipeDef, FacilityCategory, MileageShopDef, TicketShopDef, UniformDef, DrawPrizeDef, DrawPrizeKind } from '../sim/types.ts';
+import type { ObjectDef, CropDef, MenuDef, GuestTypeDef, UnlockDef, IngredientDef, RoleDef, SkillDef, PromotionDef, GuestTags, ComboDef, ComboTarget, ComboStrength, ComboSide, SetDef, ItemDef, ItemSlot, Season, MenuCategory, GuestEffect, GuestWant, UnlockCond, QuestDef, QuestCondition, QuestReward, SpotDef, SpotCategory, EventDef, MenuStats, MenuStatKey, IngredientCategory, IngredientComboDef, ToppingDef, HiddenRecipeDef, FacilityCategory, MileageShopDef, TicketShopDef, UniformDef, GuidebookDef, DrawPrizeDef, DrawPrizeKind, JudgeKey } from '../sim/types.ts';
 import objectsJson from './objects.json' with { type: 'json' };
 import cropsJson from './crops.json' with { type: 'json' };
 import menusJson from './menus.json' with { type: 'json' };
@@ -25,7 +25,9 @@ import specialItemsJson from './generated/v2/special_items.json' with { type: 'j
 import mileageShopJson from './generated/v2/mileage_shop.json' with { type: 'json' };
 import ticketShopJson from './generated/v2/ticket_shop.json' with { type: 'json' };
 import uniformsJson from './generated/v2/uniforms.json' with { type: 'json' };
+import guidebooksJson from './generated/v2/guidebooks.json' with { type: 'json' };
 import rouletteJson from './generated/roulette.json' with { type: 'json' };
+import ranksJson from './generated/ranks.json' with { type: 'json' };
 import compatMetaJson from './generated/compat_meta.json' with { type: 'json' };
 import facilitiesJson from './generated/v2/facilities.json' with { type: 'json' };
 import ingredientsV1Json from './generated/ingredients.json' with { type: 'json' };
@@ -478,7 +480,7 @@ const SPECIAL_ITEMS: ItemDef[] = (specialItemsJson as RawItem[]).map((r) => {
 });
 export const ITEMS: ItemDef[] = [...ITEMS_V2, ...ITEMS_V1_ONLY, ...SPECIAL_ITEMS];
 
-// ---------- 마일리지 상점·응모권 상점·유니폼·인형뽑기 (2B-2 Task 6) ----------
+// ---------- 마일리지 상점·응모권 상점·유니폼·인형뽑기·가이드북·★ (2B-2 Task 6·7) ----------
 export const MILEAGE_SHOP: MileageShopDef[] = mileageShopJson as MileageShopDef[];
 /** 응모권 상점 (추첨 항목은 drawTicket 액션이 따로 맡는다) */
 export const TICKET_SHOP: TicketShopDef[] = (ticketShopJson as TicketShopDef[]).filter((t) => t.id !== 'ts_draw');
@@ -490,6 +492,43 @@ export const DRAW_PRIZES: DrawPrizeDef[] = (rouletteJson as { slots: { id: strin
   const kind = DRAW_KIND_OF[sl.id] ?? 'miss';
   return { kind, label: DRAW_LABEL[kind], pct: sl.pct };
 });
+/** 가이드북 심사 가중치: 심사 문구 → 항목별 비중 (합 1) */
+const GUIDEBOOK_WEIGHTS: Record<string, Partial<Record<JudgeKey, number>>> = {
+  gb_kind_cafe: { smile: 0.8, overall: 0.2 },
+  gb_local_map: { overall: 1 },
+  gb_jeju_map: { overall: 1 },
+  gb_insta_100: { scenery: 0.6, fun: 0.4 },
+  gb_dessert: { menu: 0.8, overall: 0.2 },
+  gb_healing: { scenery: 0.7, smile: 0.3 },
+  gb_activity: { fun: 0.8, overall: 0.2 },
+  gb_together: { group: 0.7, overall: 0.3 },
+  gb_coop_monthly: { overall: 0.5 }, // 나머지 0.5는 이번 달 타깃 손님층 인기 (rank.ts)
+  gb_national_tour: { overall: 1 },
+  gb_ribbon_survey: { overall: 1 },
+};
+type RawGuidebook = { id: string; name: string; unlock: Record<string, unknown>; unlockText: string; criteriaText: string; prize: number; research: number; seeds: { itemId: string; count: number }[] };
+/** 가이드북 해금: count는 분류 개수, segment는 손님층 인기 */
+function toGuidebookUnlock(u: Record<string, unknown>): UnlockCond {
+  if (u.type === 'count' && typeof u.category === 'string') return { type: 'category', category: u.category as FacilityCategory, count: Number(u.count) || 1 };
+  if (u.type === 'segment' && typeof u.popularity === 'number') return { type: 'segmentPop', guestId: canonicalGuestId(String(u.guestId)), popularity: u.popularity };
+  return toUnlockCond(u);
+}
+/** 해금 문구의 손님 id를 이름으로 ("손님 insta_traveler 인기 30" → "인스타 여행자 인기 30") */
+function guidebookUnlockText(u: UnlockCond, text: string): string {
+  if (u.type !== 'segmentPop') return text;
+  const name = GUEST_TYPES.find((t) => t.id === u.guestId)?.name ?? u.guestId;
+  return `${name} 손님 인기 ${u.popularity}`;
+}
+export const GUIDEBOOKS: GuidebookDef[] = (guidebooksJson as RawGuidebook[]).map((g) => {
+  const unlock = toGuidebookUnlock(g.unlock);
+  return {
+  id: g.id, name: g.name, unlock, unlockText: guidebookUnlockText(unlock, g.unlockText), criteriaText: g.criteriaText,
+  weights: GUIDEBOOK_WEIGHTS[g.id] ?? { overall: 1 }, prize: g.prize, research: g.research, seeds: g.seeds ?? [], monthly: g.id === 'gb_coop_monthly',
+  };
+});
+export interface StarDef { star: number; conditions: string[]; unlockText: string }
+/** ★ 등급 조건 (ranks.json): 월초에 조건 문구를 해석해 검사한다 */
+export const STARS: StarDef[] = (ranksJson as { star: number; conditions: string[]; unlockText: string }[]).map((r) => ({ star: r.star, conditions: r.conditions, unlockText: r.unlockText }));
 /** 경관 계절 보너스 (v2 표 §13.1). ObjectDef.seasonScenery가 없을 때 id로 찾는다. */
 export const SEASON_SCENERY: Record<string, Partial<Record<Season, number>>> = {
   canola: { spring: 12 }, hydrangea: { summer: 9 }, pampas: { autumn: 9 }, camellia: { winter: 11 },
@@ -539,9 +578,11 @@ export const promotionDef = (id: string) => must(PROMOTION, id, 'promotion');
 const MILEAGE_ITEM = indexBy(MILEAGE_SHOP);
 const TICKET_ITEM = indexBy(TICKET_SHOP);
 const UNIFORM = indexBy(UNIFORMS);
+const GUIDEBOOK = indexBy(GUIDEBOOKS);
 export const mileageShopDef = (id: string) => must(MILEAGE_ITEM, id, 'mileageShop');
 export const ticketShopDef = (id: string) => must(TICKET_ITEM, id, 'ticketShop');
 export const uniformDef = (id: string) => must(UNIFORM, id, 'uniform');
+export const guidebookDef = (id: string) => must(GUIDEBOOK, id, 'guidebook');
 
 /** 게임 시작 시 이미 열려 있는 것 */
 export const INITIAL_UNLOCKED = {

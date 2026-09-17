@@ -9,6 +9,7 @@ import { HUD, NightOverlay } from './HUD';
 import { BottomSheet, type Mode, type PlaceBarProps, type DragBuild } from './BottomSheet';
 import { GuestPopup } from './GuestPopup';
 import { DrawPopup } from './ShopPanel';
+import { AnnouncementPopup } from './RankPanel';
 import { MonthCard } from './MonthCard';
 import { DevelopResultPopup } from './CraftPanel';
 import { Guide } from './Guide';
@@ -285,6 +286,7 @@ function Game({ onExit }: { onExit: () => void }) {
       <MonthCard />
       <DevelopResultPopup />
       <DrawPopup />
+      <AnnouncementPopup />
       {guestPopup && <GuestPopup guestId={guestPopup} onClose={() => setGuestPopup(null)} onQuest={(id) => { dispatch({ type: 'acceptQuest', id }); setMode({ kind: 'guests' }); }} />}
       {menu && <GameMenu onClose={() => setMenu(false)} onExit={onExit} />}
     </div>

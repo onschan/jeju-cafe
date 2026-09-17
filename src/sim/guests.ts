@@ -257,6 +257,7 @@ export function affordableMenus(state: GameState, typeId: string): string[] {
 function order(state: GameState, g: Guest): void {
   const type = guestTypeDef(g.type);
   state.monthGuests++;
+  state.totalGuests++;
   if (type.wallet <= 0) { g.waitMs = 0; return; }
   const liked = availableMenus(state).filter((id) => guestLikesCategory(type.likes, menuOf(state, id).category));
   const candidates = affordableMenus(state, g.type);
