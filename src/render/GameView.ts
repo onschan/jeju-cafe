@@ -52,6 +52,12 @@ const GREET_RADIUS = 2;
 const GREET_CHANCE = 0.2;
 const GREET_MS = 1200;
 const GREET_TEXT = '어서옵서예!';
+/** 앉은 손님 손의 컵(8×8): 몸 오른쪽, 허리 높이 */
+const CUP_OFFSET = { x: 7, y: -14 };
+/** 부탁을 들고 온 손님 머리 위 "!" — 살짝 위아래로 흔들린다 */
+const ALERT_Y = -(CHAR_H - 6);
+const ALERT_BOB_PX = 2;
+const ALERT_BOB_MS = 600;
 /** 캐릭터 스프라이트 높이(발끝 기준 머리 위까지) */
 const GUEST_H = CHAR_H;
 /** 앉은 손님을 좌석 칸 중심보다 살짝 위로(의자에 앉은 느낌, 화면 px) */
@@ -87,6 +93,9 @@ interface GuestEntry {
   char: CharacterNode | null;
   /** 이미 주문한 손님(불러오기 포함)은 코인 팝을 띄우지 않는다 */
   hadMenu: boolean;
+  /** 마지막으로 그린 손 컵·"!" 상태 키 */
+  accKey: string;
+  alert: Sprite | null;
 }
 
 interface StaffEntry {
@@ -587,12 +596,12 @@ export class GameView {
       const sp = new Sprite(t);
       sp.anchor.set(0.5, 1);
       c.addChild(sp);
-      return { node: c, sprite: sp, char: null, hadMenu: g.menuId !== null };
+      return { node: c, sprite: sp, char: null, hadMenu: g.menuId !== null, accKey: '', alert: null };
     }
     const def = guestTypeDef(g.type);
     const ch = makeCharacterNode(guestParts(guestFace(g.type), def.tags, def.wants), guestDir(g), 1);
     c.addChild(ch);
-    return { node: c, sprite: null, char: ch, hadMenu: g.menuId !== null };
+    return { node: c, sprite: null, char: ch, hadMenu: g.menuId !== null, accKey: '', alert: null };
   }
 
   private syncGuests(state: GameState, now: number) {
@@ -637,6 +646,7 @@ export class GameView {
         entry.hadMenu = true;
         this.spawnCoin(node.x, node.y - GUEST_H - 4, now);
       }
+      this.syncGuestAccessories(state, g, entry, now);
       // 말풍선은 앉아 있는 동안 기분이 바뀔 때만 다시 만든다
       const key = g.phase === 'seated' ? String(g.mood) : '';
       if (this.bubbleKeys.get(g.id) === key) continue;
@@ -699,6 +709,37 @@ export class GameView {
         icon.position.set(0, ROLE_ICON_Y);
         node.addChild(icon);
       }
+    }
+  }
+
+  /** 앉아서 주문한 손님은 손에 컵, 부탁(offered)을 들고 온 타입은 머리 위 "!" */
+  private syncGuestAccessories(state: GameState, g: Guest, entry: GuestEntry, now: number) {
+    const cup = g.phase === 'seated' && g.menuId !== null;
+    const questId = guestTypeDef(g.type).questId;
+    const alert = questId !== null && state.board.quests[questId]?.status === 'offered';
+    if (entry.alert) entry.alert.y = ALERT_Y - ALERT_BOB_PX * (0.5 + 0.5 * Math.sin(now / ALERT_BOB_MS * Math.PI * 2));
+    const key = `${cup}:${alert}`;
+    if (entry.accKey === key) return;
+    entry.accKey = key;
+    entry.node.getChildByLabel('cup')?.destroy();
+    entry.alert?.destroy();
+    entry.alert = null;
+    const cupTex = cup ? tex('fx_cup') : null;
+    if (cupTex) {
+      const sp = new Sprite(cupTex);
+      sp.label = 'cup';
+      sp.anchor.set(0.5, 1);
+      sp.position.set(CUP_OFFSET.x, CUP_OFFSET.y);
+      entry.node.addChild(sp);
+    }
+    const alertTex = alert ? tex('fx_alert') : null;
+    if (alertTex) {
+      const sp = new Sprite(alertTex);
+      sp.label = 'alert';
+      sp.anchor.set(0.5, 1);
+      sp.position.set(0, ALERT_Y);
+      entry.node.addChild(sp);
+      entry.alert = sp;
     }
   }
 

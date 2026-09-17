@@ -1,4 +1,5 @@
 import type { GameState, ApplyResult, ItemDef, ObjectDef, ItemSlot, ObjectKind } from './types.ts';
+import { pushFx } from './farm.ts';
 import { ITEMS, itemDef, objectDef } from '../data/index.ts';
 
 /** 같은 종류 시설에 누적되는 아이템 인기 보너스 상한 */
@@ -47,6 +48,11 @@ export function useItem(state: GameState, itemId: string, objectType: string, it
   const eff = itemEffect(item, objectDef(objectType));
   state.inventory[itemId] = (state.inventory[itemId] ?? 0) - 1;
   const b = (state.itemBonus[objectType] ??= { popularity: 0, feePct: 0 });
-  if (item.stat === 'popularity') b.popularity = Math.min(ITEM_POP_CAP, b.popularity + eff);
-  else b.feePct = Math.min(ITEM_FEE_CAP, b.feePct + eff);
+  if (item.stat === 'popularity') {
+    const before = b.popularity;
+    b.popularity = Math.min(ITEM_POP_CAP, b.popularity + eff);
+    const gained = b.popularity - before;
+    // 그 종류의 모든 오브젝트 위에 +N 팝업
+    if (gained > 0) for (const o of Object.values(state.objects)) if (o.type === objectType) pushFx(state, { kind: 'pop', x: o.x, y: o.y, n: gained, tick: state.tick });
+  } else b.feePct = Math.min(ITEM_FEE_CAP, b.feePct + eff);
 }

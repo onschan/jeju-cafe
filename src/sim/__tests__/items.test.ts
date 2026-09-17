@@ -32,6 +32,8 @@ test('grantItem은 인벤토리에 쌓고, useItem은 하나를 소모해 같은
   const stat = CUSHION.stat;
   expect(objectStats(s, a.id)[stat]).toBe((stat === 'popularity' ? BASE_POPULARITY : 100) + eff);
   expect(objectStats(s, b.id)[stat]).toBe(objectStats(s, a.id)[stat]);
+  // 인기 아이템이면 그 종류의 모든 오브젝트 위에 +N 팝업 연출
+  if (stat === 'popularity') expect(s.fx).toEqual([{ kind: 'pop', x: a.x, y: a.y, n: eff, tick: 0 }, { kind: 'pop', x: b.x, y: b.y, n: eff, tick: 0 }]);
 });
 
 test('없는 아이템·안 맞는 시설은 거부', () => {

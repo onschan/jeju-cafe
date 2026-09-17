@@ -5059,6 +5059,46 @@
 "w": 16,
 "h": 16
 }
+},
+"fx_alert": {
+"frame": {
+"x": 442,
+"y": 592,
+"w": 8,
+"h": 10
+},
+"rotated": false,
+"trimmed": false,
+"spriteSourceSize": {
+"x": 0,
+"y": 0,
+"w": 8,
+"h": 10
+},
+"sourceSize": {
+"w": 8,
+"h": 10
+}
+},
+"fx_cup": {
+"frame": {
+"x": 451,
+"y": 592,
+"w": 8,
+"h": 8
+},
+"rotated": false,
+"trimmed": false,
+"spriteSourceSize": {
+"x": 0,
+"y": 0,
+"w": 8,
+"h": 8
+},
+"sourceSize": {
+"w": 8,
+"h": 8
+}
 }
 },
 "meta": {

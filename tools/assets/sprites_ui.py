@@ -1,4 +1,4 @@
-"""UI 스프라이트: 말풍선 24×20, 이펙트(코인·반짝 16×16, 링 32×32), 16×16 아이콘 18개.
+"""UI 스프라이트: 말풍선 24×20, 이펙트(코인·반짝 16×16, 링 32×32, 컵 8×8, 부탁 ! 8×10), 16×16 아이콘 18개.
 얇은 1px 디테일(파동·X·글리프)은 outline() 뒤에 얹어 외곽선에 먹히지 않게 한다."""
 from __future__ import annotations
 from px import Canvas, PAL, OUT, hexc, Color
@@ -89,6 +89,36 @@ def ready_ring() -> Canvas:
             d = ((x - cx) ** 2 + (y - cy) ** 2) ** 0.5
             if 11 <= d < 15.5:
                 c.put(x, y, OUT if d >= 14.5 or d < 12 else YELLOW[1] if d >= 13.2 else YELLOW[2])
+    return c
+
+
+def cup() -> Canvas:
+    """앉은 손님 손에 드는 커피 컵 8×8: 흰 컵 + 갈색 커피 + 손잡이 + 김 1px."""
+    c = Canvas(8, 8)
+    wdk, wmd, wlt = WHITE
+    c.rect(0, 2, 6, 6, wmd)             # 몸통 (외곽선이 가장자리를 먹으므로 한 칸 크게)
+    c.outline()
+    c.hline(1, 4, 3, WOOD[1])           # 커피 표면
+    c.put(1, 6, wdk); c.put(4, 6, wdk)  # 바닥 그늘
+    c.put(6, 3, OUT); c.put(7, 4, OUT); c.put(7, 5, OUT); c.put(6, 6, OUT)  # 손잡이
+    c.put(2, 0, wlt); c.put(3, 1, wlt)  # 김
+    return c
+
+
+def alert() -> Canvas:
+    """부탁을 들고 온 손님 머리 위 "!" 8×10 (빨강, 흰 테두리)."""
+    c = Canvas(8, 10)
+    rdk, rmd, rlt = RED
+    c.rect(3, 1, 2, 5, rmd)
+    c.rect(3, 7, 2, 2, rmd)
+    c.put(3, 1, rlt); c.put(3, 7, rlt)
+    c.put(4, 5, rdk); c.put(4, 8, rdk)
+    # 흰 테두리: 빨간 픽셀의 빈 4방향 이웃을 흰색으로 (outline()은 안쪽을 깎으므로 바깥에 두른다)
+    solid = [(x, y) for y in range(c.h) for x in range(c.w) if c.px[y][x][3] == 255]
+    for x, y in solid:
+        for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+            if 0 <= x + dx < c.w and 0 <= y + dy < c.h and c.px[y + dy][x + dx][3] < 255:
+                c.put(x + dx, y + dy, WHITE[2])
     return c
 
 
@@ -208,6 +238,8 @@ def sprites() -> dict[str, Canvas]:
         s[f'fx_coin_{i}'] = coin(i)
         s[f'fx_sparkle_{i}'] = sparkle(i)
     s['fx_ready_ring'] = ready_ring()
+    s['fx_cup'] = cup()
+    s['fx_alert'] = alert()
     for n in ICONS:
         s[f'icon_{n}'] = icon(n)
     return s

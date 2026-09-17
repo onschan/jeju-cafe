@@ -4,6 +4,7 @@ import { nextRandom, pickWeighted } from './rng.ts';
 import { monthIndex } from './clock.ts';
 import { pushNotice } from './staff.ts';
 import { grantItem } from './items.ts';
+import { pushFx } from './farm.ts';
 import { parcelAt } from './parcels.ts';
 
 /** 만족 게이지 0~100: 😊 +2 (타깃 +3), 😠 −1. 30 부탁·50 단골·80 VIP */
@@ -214,7 +215,11 @@ export function onHappyVisit(state: GameState, g: Guest): void {
       break;
     case 'popularity': {
       const seat = g.seatId ? state.objects[g.seatId] : undefined;
-      if (seat) state.visitBonus[seat.type] = Math.min(VISIT_BONUS_CAP, (state.visitBonus[seat.type] ?? 0) + 1);
+      if (seat) {
+        const before = state.visitBonus[seat.type] ?? 0;
+        state.visitBonus[seat.type] = Math.min(VISIT_BONUS_CAP, before + 1);
+        if (state.visitBonus[seat.type]! > before) pushFx(state, { kind: 'pop', x: seat.x, y: seat.y, n: 1, tick: state.tick });
+      }
       break;
     }
     case 'ticket':
