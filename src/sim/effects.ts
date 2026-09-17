@@ -39,12 +39,13 @@ function active(state: GameState): ActiveEffect[] {
   return state.effects.filter((e) => e.untilDay > today);
 }
 
-/** 활성 효과 배수의 곱. typeId를 주면 필터가 맞는 것만, 안 주면 필터 없는(전체) 것만. */
+/** 활성 효과 배수의 곱. typeId를 주면 손님 필터가 있는 것 중 맞는 것만(타입 가중치용), 안 주면 필터 없는(전체) 것만(하루 손님 수용). */
 export function effectMult(state: GameState, kind: ActiveEffect['kind'], typeId?: string): number {
   let m = 1;
   for (const e of active(state)) {
     if (e.kind !== kind) continue;
-    if (typeId === undefined ? (e.filter && e.filter !== 'all') : !filterMatches(e.filter, typeId)) continue;
+    const global = !e.filter || e.filter === 'all';
+    if (typeId === undefined ? !global : global || !filterMatches(e.filter, typeId)) continue;
     m *= e.mult;
   }
   return m;

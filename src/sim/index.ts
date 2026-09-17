@@ -16,3 +16,6 @@ export { TIERS, MAX_LEVEL, LOW_ENERGY, salaryOf, levelUpCost, roleEffect, ingred
 export { objectStats, activeCombos, popularityFor, segmentBonus, setLevels, BASE_POPULARITY, POPULARITY_CAP } from './compat.ts';
 export { canUseItem, grantItem, itemEffect, ITEM_POP_CAP } from './items.ts';
 export { evaluateUnlocks, unlockCondMet, isUnlocked, unlockedTypeIds, guestFace, walletOf, regularTier, isTarget, MAX_TARGETS, SAT_QUEST, SAT_REGULAR, SAT_VIP } from './segments.ts';
+export { questProgress, canAcceptQuest, canRespondEvent, eventConditionMet, boardBadge, visibleQuests, QUEST_MONTHS } from './board.ts';
+export { spotLevel, spotUnlocked, nextSpotLevel, spotAppeal, spotGuestBonus, canInvestSpot, SPOT_MAX_LEVEL, SPOT_BUS_LEVEL, SPOT_GUEST_LEVEL, SPOT_QUEST_LEVEL } from './spots.ts';
+export { effectMult, noGuestsToday, dayIndex } from './effects.ts';

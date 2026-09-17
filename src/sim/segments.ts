@@ -4,6 +4,7 @@ import { nextRandom, pickWeighted } from './rng.ts';
 import { monthIndex } from './clock.ts';
 import { pushNotice } from './staff.ts';
 import { grantItem } from './items.ts';
+import { parcelAt } from './parcels.ts';
 
 /** 만족 게이지 0~100: 😊 +2 (타깃 +3), 😠 −1. 30 부탁·50 단골·80 VIP */
 export const SAT_HAPPY = 2;
@@ -57,9 +58,10 @@ export function unlockedTypeIds(state: GameState): string[] {
 
 // ---------- 해금 ----------
 
+/** 소유 필지에 놓인 종류별 개수 (아직 안 산 필지의 밭담·덤불은 안 센다) */
 export function countObjects(state: GameState, objectId: string): number {
   let n = 0;
-  for (const o of Object.values(state.objects)) if (o.type === objectId) n++;
+  for (const o of Object.values(state.objects)) if (o.type === objectId && parcelAt(state, o.x, o.y)?.owned) n++;
   return n;
 }
 

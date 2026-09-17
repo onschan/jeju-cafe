@@ -10,6 +10,8 @@ import { canPromote, promote, canSetTarget, setTarget } from './promotions.ts';
 import { discoverCombos } from './compat.ts';
 import { canUseItem, useItem } from './items.ts';
 import { evaluateUnlocks } from './segments.ts';
+import { canAcceptQuest, acceptQuest, canRespondEvent, respondEvent, afterInvest, checkQuests } from './board.ts';
+import { canInvestSpot, investSpot } from './spots.ts';
 
 export const PROTECTED_TYPES = new Set(['busstop', 'warehouse', 'gate', 'spring']);
 /** 회전할 수 있는 오브젝트 (rot 0..3, 스프라이트 변형 _r{n}이 있을 때만 보인다) */
@@ -52,6 +54,7 @@ function applyInner(state: GameState, a: Action): ApplyResult {
       state.money -= def.cost;
       discoverCombos(state);
       evaluateUnlocks(state); // count 해금 (감귤나무 3그루 → 까치)
+      checkQuests(state);     // objectPlaced 부탁
       return { ok: true };
     }
     case 'remove': {
@@ -173,6 +176,25 @@ function applyInner(state: GameState, a: Action): ApplyResult {
       const c = canUseItem(state, a.itemId, a.objectType);
       if (!c.ok) return c;
       useItem(state, a.itemId, a.objectType);
+      return { ok: true };
+    }
+    case 'acceptQuest': {
+      const c = canAcceptQuest(state, a.id);
+      if (!c.ok) return c;
+      acceptQuest(state, a.id);
+      return { ok: true };
+    }
+    case 'respondEvent': {
+      const c = canRespondEvent(state, a.id);
+      if (!c.ok) return c;
+      respondEvent(state, a.id, a.accept);
+      return { ok: true };
+    }
+    case 'investSpot': {
+      const c = canInvestSpot(state, a.id);
+      if (!c.ok) return c;
+      const level = investSpot(state, a.id);
+      afterInvest(state, a.id, level);
       return { ok: true };
     }
     default:

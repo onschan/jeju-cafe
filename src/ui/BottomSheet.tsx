@@ -1,13 +1,14 @@
 import { useGame, dispatch } from './store';
-import { objectAt, isMenuAvailable, hasMenuStaff, menuRequirementText, sceneryScore, MENU_SLOT_COUNT } from '../sim/index.ts';
+import { objectAt, isMenuAvailable, hasMenuStaff, menuRequirementText, sceneryScore, boardBadge, MENU_SLOT_COUNT } from '../sim/index.ts';
 import { objectDef, cropDef, menuDef } from '../data/index.ts';
 import { Icon } from './Icon';
 import { StaffPanel } from './StaffPanel';
 import { PromoPanel } from './PromoPanel';
 import { ObjectInfoPanel, CodexPanel } from './ObjectInfoPanel';
+import { BoardPanel } from './BoardPanel';
 import { frame, brownBtn, brownBtnOn, brownBtnOff, dangerBtn, brownSelect, PALETTE, won } from './frame';
 
-export type Mode = { kind: 'idle' } | { kind: 'build'; objectType: string } | { kind: 'move' } | { kind: 'cell'; x: number; y: number } | { kind: 'menu' } | { kind: 'staff' } | { kind: 'promo' } | { kind: 'codex' };
+export type Mode = { kind: 'idle' } | { kind: 'build'; objectType: string } | { kind: 'move' } | { kind: 'cell'; x: number; y: number } | { kind: 'menu' } | { kind: 'staff' } | { kind: 'promo' } | { kind: 'codex' } | { kind: 'board' };
 
 /** 고스트 배치 확정 줄: 상태 문구 + ✓ / ↻ / ✗ */
 export interface PlaceBarProps {
@@ -31,6 +32,7 @@ const TABS: { kind: Mode['kind']; icon: string; label: string; to: Mode }[] = [
   { kind: 'staff', icon: 'local', label: '직원', to: { kind: 'staff' } },
   { kind: 'promo', icon: 'tourist', label: '홍보', to: { kind: 'promo' } },
   { kind: 'codex', icon: 'research', label: '도감', to: { kind: 'codex' } },
+  { kind: 'board', icon: 'calendar', label: '게시판', to: { kind: 'board' } },
 ];
 
 /** 재료 있음/없음 색점 (leaf / red) */
@@ -67,14 +69,16 @@ function PlaceBar({ text, ok, canRotate, msg, onConfirm, onRotate, onCancel }: P
 
 export function BottomSheet({ mode, setMode, place, msg }: { mode: Mode; setMode: (m: Mode) => void; place: PlaceBarProps | null; msg: string | null }) {
   const s = useGame();
-  const tall = mode.kind === 'staff' || mode.kind === 'promo' || mode.kind === 'codex' || mode.kind === 'cell';
+  const tall = mode.kind === 'staff' || mode.kind === 'promo' || mode.kind === 'codex' || mode.kind === 'cell' || mode.kind === 'board';
+  const badge = boardBadge(s);
   return (
     <div style={{ ...frame, position: 'absolute', left: 0, right: 0, bottom: 0, borderRadius: '10px 10px 0 0', borderBottom: 0, padding: '8px 12px calc(8px + env(safe-area-inset-bottom))', maxHeight: tall ? '60vh' : '40vh', overflowY: 'auto', fontSize: 16 }}>
       {place ? <PlaceBar {...place} /> : <MessageBar text={msg} />}
       <div style={{ marginBottom: 6, display: 'flex', flexWrap: 'wrap' }}>
         {TABS.map((t) => (
-          <button key={t.kind} style={{ ...(mode.kind === t.kind ? brownBtnOn : brownBtn), padding: '0 8px' }} onClick={() => setMode(t.to)}>
+          <button key={t.kind} style={{ ...(mode.kind === t.kind ? brownBtnOn : brownBtn), padding: '0 8px', position: 'relative' }} onClick={() => setMode(t.to)}>
             <Icon name={t.icon} /> {t.label}
+            {t.kind === 'board' && badge > 0 && <span data-testid="board-badge" style={{ position: 'absolute', top: -6, right: -6, minWidth: 18, height: 18, borderRadius: 9, background: PALETTE.bad, color: '#fff', fontSize: 11, lineHeight: '18px', textAlign: 'center', padding: '0 4px' }}>{badge}</span>}
           </button>
         ))}
       </div>
@@ -126,6 +130,7 @@ export function BottomSheet({ mode, setMode, place, msg }: { mode: Mode; setMode
       {mode.kind === 'staff' && <StaffPanel />}
       {mode.kind === 'promo' && <PromoPanel />}
       {mode.kind === 'codex' && <CodexPanel />}
+      {mode.kind === 'board' && <BoardPanel />}
     </div>
   );
 }
