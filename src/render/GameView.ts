@@ -1,11 +1,12 @@
 import { Application, Container, Sprite, Graphics, Texture } from 'pixi.js';
-import type { GameState, PlacedObject, Guest, Season } from '../sim/index.ts';
-import { seasonOf } from '../sim/index.ts';
+import type { GameState, PlacedObject, Guest, Staff, Season, RoleId, Pt } from '../sim/index.ts';
+import { seasonOf, LOW_ENERGY } from '../sim/index.ts';
 import { objectDef, cropDef } from '../data/index.ts';
 import { isoTerrainTexture, isoObjectTexture, glowTexture, label, bubble, clearTextureCache, loadLabelFont } from './textures';
 import { loadAssets, tex, peekTex, hasAssets, spriteName } from './assets';
 import { attachCamera, type CameraBounds } from './camera';
 import { ISO_W, ISO_H, cellToScreen, cellCenter, footAnchor, depth } from './iso';
+import { makeCharacterNode, updateCharacterNode, staffParts, sameAccs, CHAR_H, type CharacterNode, type Dir, type Frame } from './character';
 
 export interface GameViewOptions {
   onTap: (cellX: number, cellY: number) => void;
@@ -13,9 +14,6 @@ export interface GameViewOptions {
 
 /** HUD 두 줄(~87px) + 할망 안내(두 줄이면 ~136px) 아래에 맵 위 꼭짓점이 오도록 하는 기본 세로 오프셋 */
 const WORLD_OFFSET_Y = 140;
-
-type Dir = 'down' | 'up' | 'left' | 'right';
-type Frame = 0 | 1 | 2;
 
 /** 걷기 애니 8fps (125ms/프레임) */
 const WALK_FRAME_MS = 125;
@@ -26,9 +24,15 @@ const COIN_FRAME_MS = 80;
 const COIN_FRAMES = 4;
 const COIN_RISE_PX = 12;
 /** 캐릭터 스프라이트 높이(발끝 기준 머리 위까지) */
-const GUEST_H = 48;
-/** 좌석 슬롯별 오프셋(테이블 중심 기준, 화면 px) */
-const SEAT_SLOT_OFFSET: ReadonlyArray<readonly [number, number]> = [[-14, -2], [14, 4], [0, -10], [0, 8]];
+const GUEST_H = CHAR_H;
+/** 앉은 손님을 좌석 칸 중심보다 살짝 위로(의자에 앉은 느낌, 화면 px) */
+const SEAT_LIFT_PX = 4;
+/** 직원 역할 배지(머리 위 16px 아이콘) */
+const ROLE_ICON: Record<RoleId, string> = { hall: 'look', barista: 'menu', cook: 'harvest', field: 'plant', carry: 'money', guide: 'research' };
+/** 배지 아래 끝 y(발끝 기준). 캐릭터 프레임 48px 중 위 13px은 비어 있고(머리 y=16, 모자 챙 y=13) 그 위 3px 띄운다 */
+const ROLE_ICON_Y = -(CHAR_H - 10);
+/** 기력이 낮은 직원은 흐리게 */
+const TIRED_ALPHA = 0.6;
 /** 밤 오버레이 색·최대 알파 */
 const NIGHT_COLOR = 0x0b1a3a;
 const NIGHT_MAX_ALPHA = 0.55;
@@ -51,6 +55,13 @@ interface GuestEntry {
   sprite: Sprite | null;
   /** 이미 주문한 손님(불러오기 포함)은 코인 팝을 띄우지 않는다 */
   hadMenu: boolean;
+}
+
+interface StaffEntry {
+  node: Container;
+  body: CharacterNode;
+  /** 마지막으로 그린 역할 배지 키 */
+  roleKey: string;
 }
 
 interface Fx {
@@ -81,14 +92,18 @@ function objectTex(o: PlacedObject): { texture: Texture; iso: boolean } | null {
   return flat ? { texture: flat, iso: false } : null;
 }
 
-function guestDir(g: Guest): Dir {
-  const next = g.path[0];
-  if (!next || g.phase === 'seated') return 'down';
-  const dx = next.x - g.x;
-  const dy = next.y - g.y;
+/** 현재 위치에서 다음 경로 칸으로 향하는 방향. 경로가 없으면 정면. */
+function walkDir(x: number, y: number, next: Pt | undefined): Dir {
+  if (!next) return 'down';
+  const dx = next.x - x;
+  const dy = next.y - y;
   if (Math.abs(dx) > Math.abs(dy)) return dx > 0 ? 'right' : 'left';
   if (dy < 0) return 'up';
   return 'down';
+}
+
+function guestDir(g: Guest): Dir {
+  return g.phase === 'seated' ? 'down' : walkDir(g.x, g.y, g.path[0]);
 }
 
 /** 시각(6~24, 없으면 정오)에 따른 밤 오버레이 알파: 17시까지 0, 22시에 최대, 24시까지 유지, 새벽 6시에 0. */
@@ -114,6 +129,7 @@ export class GameView {
   private lights = new Container();
   private objNodes = new Map<string, ObjEntry>();
   private guestNodes = new Map<string, GuestEntry>();
+  private staffNodes = new Map<string, StaffEntry>();
   /** 오브젝트 id → 마지막으로 그린 배지 키. 키가 같으면 다시 그리지 않는다. */
   private badgeKeys = new Map<string, string>();
   /** 손님 id → 마지막으로 만든 말풍선 키. 키가 같으면 다시 만들지 않는다. */
@@ -166,9 +182,11 @@ export class GameView {
   reset() {
     for (const { node, glow } of this.objNodes.values()) { node.destroy({ children: true }); glow?.destroy(); }
     for (const { node } of this.guestNodes.values()) node.destroy({ children: true });
+    for (const { node } of this.staffNodes.values()) node.destroy({ children: true });
     for (const fx of this.fxQueue) fx.sprite.destroy();
     this.objNodes.clear();
     this.guestNodes.clear();
+    this.staffNodes.clear();
     this.badgeKeys.clear();
     this.bubbleKeys.clear();
     this.bubblePops = [];
@@ -202,6 +220,7 @@ export class GameView {
     this.nightAlpha = nightAlpha((state.clock as { hour?: number }).hour ?? 12);
     this.syncObjects(state, now);
     this.syncGuests(state, now);
+    this.syncStaff(state, now);
     this.tickFx(now);
     this.drawNight();
   }
@@ -385,21 +404,16 @@ export class GameView {
       }
     }
     const walkFrame = (Math.floor(now / WALK_FRAME_MS) % 3) as Frame;
-    /** 좌석 id → 이 프레임에서 앉은 손님 수(슬롯 번호 배정용) */
-    const seatSlots = new Map<string, number>();
     for (const g of state.guests) {
       let entry = this.guestNodes.get(g.id);
       if (!entry) { entry = this.makeGuestNode(g); this.actors.addChild(entry.node); this.guestNodes.set(g.id, entry); }
       const { node } = entry;
       const seat = g.phase === 'seated' && g.seatId ? state.objects[g.seatId] : undefined;
       if (seat) {
-        // 앉은 손님은 (sim이 이웃 칸에 두더라도) 좌석 칸 위에, 슬롯별로 조금 흩어서 그린다
-        const slot = seatSlots.get(seat.id) ?? 0;
-        seatSlots.set(seat.id, slot + 1);
+        // sim이 좌석 칸 안의 자리 위치(seatSlotPos)를 x·y에 넣어 두므로 그대로 쓰고, 살짝 올려 의자에 앉은 느낌만 준다
         const def = objectDef(seat.type);
-        const gc = this.footCenter(seat, def.w, def.h);
-        const [ox, oy] = SEAT_SLOT_OFFSET[slot % SEAT_SLOT_OFFSET.length]!;
-        node.position.set(gc.sx + ox, gc.sy + oy);
+        const { sx, sy } = cellCenter(g.x, g.y);
+        node.position.set(sx, sy - SEAT_LIFT_PX);
         node.zIndex = depth(seat.x, seat.y, def.w, def.h) + 0.1;
       } else {
         // 같은 날 스폰된 손님이 겹쳐 걷지 않도록 id 기반 작은 오프셋
@@ -430,6 +444,56 @@ export class GameView {
         node.addChild(b);
         b.scale.set(0.6);
         this.bubblePops.push({ node: b, born: now });
+      }
+    }
+  }
+
+  /** 직원 노드. 원점은 발끝. 파츠 캐릭터 + 머리 위 역할 배지. */
+  private makeStaffNode(st: Staff): StaffEntry {
+    const node = new Container();
+    const body = makeCharacterNode(staffParts(st.face, st.role), walkDir(st.x, st.y, st.path[0]), 1);
+    node.addChild(body);
+    return { node, body, roleKey: '' };
+  }
+
+  private syncStaff(state: GameState, now: number) {
+    const alive = new Set(state.staff.map((s) => s.id));
+    for (const [id, entry] of this.staffNodes) {
+      if (!alive.has(id)) {
+        entry.node.destroy({ children: true });
+        this.staffNodes.delete(id);
+      }
+    }
+    const walkFrame = (Math.floor(now / WALK_FRAME_MS) % 3) as Frame;
+    for (const st of state.staff) {
+      let entry = this.staffNodes.get(st.id);
+      if (!entry) { entry = this.makeStaffNode(st); this.actors.addChild(entry.node); this.staffNodes.set(st.id, entry); }
+      // 역할이 바뀌면 액세서리가 달라지므로 캐릭터를 다시 만든다
+      const parts = staffParts(st.face, st.role);
+      if (!sameAccs(entry.body, parts.accs)) {
+        entry.body.destroy({ children: true });
+        entry.body = makeCharacterNode(parts);
+        entry.node.addChildAt(entry.body, 0);
+      }
+      const { node } = entry;
+      const { sx, sy } = cellCenter(st.x, st.y);
+      node.position.set(sx, sy);
+      node.zIndex = st.x + st.y + 0.5;
+      const walking = st.path.length > 0;
+      updateCharacterNode(entry.body, walkDir(st.x, st.y, st.path[0]), walking ? walkFrame : 1);
+      node.alpha = st.energy < LOW_ENERGY ? TIRED_ALPHA : 1;
+      // 역할 배지: 역할이 바뀔 때만 다시 만든다
+      const roleKey = st.role ?? '';
+      if (entry.roleKey === roleKey) continue;
+      entry.roleKey = roleKey;
+      node.getChildByLabel('role')?.destroy({ children: true });
+      const iconTex = st.role && hasAssets() ? tex(spriteName.icon(ROLE_ICON[st.role])) : null;
+      if (iconTex) {
+        const icon = new Sprite(iconTex);
+        icon.label = 'role';
+        icon.anchor.set(0.5, 1);
+        icon.position.set(0, ROLE_ICON_Y);
+        node.addChild(icon);
       }
     }
   }

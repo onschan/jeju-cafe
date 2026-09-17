@@ -37,4 +37,10 @@ export const spriteName = {
   isoObject: (type: string, variant?: string) => (variant ? `iso_obj_${type}_${variant}` : `iso_obj_${type}`),
   guest: (type: string, dir: 'down' | 'up' | 'left' | 'right', frame: 0 | 1 | 2) => `guest_${type}_${dir}_${frame}`,
   bubble: (mood: string) => `bubble_${mood}`,
+  /** 파츠 캐릭터(tools/assets/sprites_chars.py) */
+  body: (skin: number, dir: string, frame: number) => `body_${skin}_${dir}_${frame}`,
+  top: (dir: string, frame: number) => `top_${dir}_${frame}`,
+  hair: (style: number, dir: string) => `hair_${style}_${dir}`,
+  acc: (kind: string, dir: string) => `acc_${kind}_${dir}`,
+  icon: (id: string) => `icon_${id}`,
 };

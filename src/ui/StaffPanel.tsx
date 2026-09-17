@@ -5,6 +5,7 @@ import { ROLES, roleDef, skillDef } from '../data/index.ts';
 import { Icon } from './Icon';
 import { Confirm } from './Popup';
 import { card, brownBtn, brownBtnOn, brownBtnOff, dangerBtn, brownSelect, PALETTE, won } from './frame';
+import { partsOfFace, HAIR_RGB, SKIN_RGB, TOP_RGB } from '../render/character';
 
 const TIER_ORDER: JobTier[] = ['flyer', 'site', 'headhunter'];
 const TIER_NAME: Record<JobTier, string> = { flyer: '전단 공고', site: '구인 사이트', headhunter: '헤드헌터' };
@@ -14,19 +15,17 @@ const STATS: { key: StatKey; name: string }[] = [
   { key: 'sense', name: '감각' },
   { key: 'stamina', name: '체력' },
 ];
-// 얼굴 파츠 미리보기용 색 (스프라이트는 렌더가 맡는다) — names.json의 hair 4 · skin 3 · top 8
-const HAIR_COLORS = ['#2b1b12', '#6b3d1e', '#c47a2c', '#e8d36a'];
-const SKIN_COLORS = ['#ffe0bd', '#e8b98a', '#b87a4b'];
-const TOP_COLORS = ['#e63946', '#f4a261', '#ffd166', '#6abe30', '#2a9d8f', '#457b9d', '#8e5ea2', '#f1faee'];
+const css = (rgb: number) => `#${rgb.toString(16).padStart(6, '0')}`;
 
-/** 얼굴 = 색 사각형 3개 (머리·피부·상의) */
+/** 얼굴 = 색 사각형 3개 (머리·피부·상의). 색은 렌더의 파츠 tint 표(character.ts)와 같다. */
 export function Face({ face }: { face: FaceParts }) {
+  const p = partsOfFace(face);
   const sq = (c: string) => <span style={{ display: 'inline-block', width: 14, height: 14, background: c, border: `1px solid ${PALETTE.wood}`, marginRight: 2 }} />;
   return (
     <span style={{ display: 'inline-flex', alignItems: 'center', marginRight: 6 }} aria-label="얼굴">
-      {sq(HAIR_COLORS[face.hair % HAIR_COLORS.length]!)}
-      {sq(SKIN_COLORS[face.skin % SKIN_COLORS.length]!)}
-      {sq(TOP_COLORS[face.top % TOP_COLORS.length]!)}
+      {sq(css(HAIR_RGB[p.hairColor]!))}
+      {sq(css(SKIN_RGB[p.skin]!))}
+      {sq(css(TOP_RGB[p.top]!))}
     </span>
   );
 }
