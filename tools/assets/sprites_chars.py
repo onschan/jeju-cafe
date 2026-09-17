@@ -449,49 +449,6 @@ def guest(kind: str, direction: str, frame: int) -> Canvas:
     return compose_character(direction=direction, frame=frame, **GUESTS[kind])
 
 
-# ---------------------------------------------------------------- 할망 초상
-def portrait_halmang() -> Canvas:
-    c = Canvas(48, 48)
-    hdk, hmd, hlt = (hexc('8a8a90'), hexc('b3b3b8'), hexc('e0e0e4'))
-    sdk, smd, slt = PAL['skin']
-    pdk, pmd, plt = PAL['pink']
-    wdk, wmd, wlt = PAL['white']
-    # 저고리 (깃 V자)
-    c.rect(3, 41, 42, 7, pmd)
-    c.put(3, 41, CLEAR); c.put(44, 41, CLEAR)
-    for i in range(7):
-        c.rect(23 - i, 47 - i, 2, 1, wlt); c.rect(23 + i, 47 - i, 2, 1, wmd)
-    c.hline(4, 43, 41, plt)
-    # 목
-    c.rect(18, 37, 12, 6, smd); c.hline(18, 29, 40, sdk)
-    # 머리(뒤) + 쪽
-    c.ellipse(24, 20, 19, 12.5, hmd)
-    c.circle(24, 6, 5, hmd); c.ellipse(24, 7.5, 5, 3.2, hdk); c.rect(21, 3, 3, 1, hlt); c.rect(21, 4, 2, 1, hlt)
-    # 얼굴: 크고 둥글게
-    c.ellipse(24, 28, 16, 13.5, smd)
-    c.rect(6, 26, 3, 5, smd); c.rect(39, 26, 3, 5, smd); c.put(7, 28, sdk); c.put(40, 28, sdk)   # 귀
-    c.rect(11, 12, 6, 1, hlt); c.rect(11, 13, 3, 1, hlt)                       # 머리결 하이라이트 2px
-    for x in range(8, 41):                                                      # 이마 머리 그늘
-        if ((x - 24) / 16) ** 2 + ((17 - 28) / 13.5) ** 2 <= 1:
-            c.put(x, 17, hdk)
-    # 웃는 눈 ^ ^ (2px 호)
-    for ex in (16, 28):
-        c.put(ex, 26, OUT); c.hline(ex + 1, ex + 2, 25, OUT); c.put(ex + 3, 26, OUT)
-    # 볼 3×2 + 코 + 입
-    c.rect(11, 30, 3, 2, plt); c.rect(34, 30, 3, 2, plt)
-    c.put(24, 30, sdk); c.put(23, 31, sdk)
-    c.put(20, 34, OUT); c.hline(21, 27, 35, OUT); c.put(28, 34, OUT)
-    c.hline(22, 26, 36, pdk)
-    # 감귤꽃 (테두리를 둘러 회색 머리 위에서도 읽히게)
-    fx, fy = 35, 12
-    for dx, dy in ((-2, 0), (2, 0), (0, -2), (0, 2), (-1, -1), (1, -1), (-1, 1), (1, 1)):
-        c.put(fx + dx, fy + dy, OUT)
-    c.rect(fx - 1, fy, 3, 1, wlt); c.rect(fx, fy - 1, 1, 3, wlt); c.put(fx, fy, PAL['yellow'][1])
-    c.put(fx + 2, fy + 2, PAL['leaf'][1]); c.put(fx + 3, fy + 2, PAL['leaf'][0])
-    c.outline()
-    return c
-
-
 # ---------------------------------------------------------------- 시트 + 검토 시트
 def sprites() -> dict[str, Canvas]:
     s: dict[str, Canvas] = {}
@@ -499,7 +456,6 @@ def sprites() -> dict[str, Canvas]:
         for d in DIRS:
             for f in range(3):
                 s[f'guest_{kind}_{d}_{f}'] = guest(kind, d, f)
-    s['portrait_halmang'] = portrait_halmang()
     for skin in range(len(SKINS)):
         for d in DIRS:
             for f in range(3):
