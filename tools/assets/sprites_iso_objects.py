@@ -1,5 +1,6 @@
 """아이소 오브젝트 스프라이트 `iso_obj_<id>`. 1×1칸 캔버스 64×(32+높이), 바닥 앞 꼭짓점 = 하단 중앙.
-상자형(건물·가구)은 iso.IsoCanvas.box, 나무·사람 같은 것은 빌보드(정면 2D 스프라이트를 셀 중심 그림자 위에)."""
+상자형(건물·가구)은 iso.IsoCanvas.box, 나무·사람 같은 것은 빌보드(정면 2D 스프라이트를 셀 중심 그림자 위에).
+본관·증축·화장실·창고(지붕 없는 방)는 sprites_iso_rooms, GDD v2 시설은 sprites_iso_facilities, 장식은 sprites_iso_decor."""
 from __future__ import annotations
 from px import Canvas, PAL, OUT, hexc, Color
 from iso import IsoCanvas, iso_tile, tile_mask, texture_where, paste_face, fill_mask
@@ -191,45 +192,6 @@ def window_seat() -> IsoCanvas:
 
 
 # ================================================================ 시설
-def warehouse() -> IsoCanvas:
-    c = cv(36, 3, 2, pad=18, shadow=1.5)
-    wall = 36
-    c.box(14, BASALT)
-    c.box(wall - 14, PLASTER, z0=14, edge=False)
-    stone_rows(c, {BASALT[1], BASALT[0]},
-               [(c.h - 8, [(28, 4.5, 3), (40, 4, 2.8), (52, 4.5, 3), (64, 4, 2.8), (76, 4.5, 3), (88, 4, 2.8), (100, 4.5, 3),
-                           (112, 4, 2.8), (124, 4.5, 3), (136, 4, 2.8), (148, 4.5, 3), (160, 4, 2.8)]),
-                (c.h - 14, [(34, 4, 2.8), (46, 4.5, 3), (58, 4, 2.8), (70, 4.5, 3), (82, 4, 2.8), (94, 4.5, 3), (106, 4, 2.8),
-                            (118, 4.5, 3), (130, 4, 2.8), (142, 4.5, 3), (154, 4, 2.8)]),
-                (c.h - 20, [(30, 4.5, 3), (42, 4, 2.8), (54, 4.5, 3), (66, 4, 2.8), (78, 4.5, 3), (90, 4, 2.8), (102, 4.5, 3),
-                            (114, 4, 2.8), (126, 4.5, 3), (138, 4, 2.8), (150, 4.5, 3), (162, 4, 2.8)]),
-                (c.h - 26, [(36, 4, 2.6), (60, 4.5, 2.8), (84, 4, 2.6), (108, 4.5, 2.8), (132, 4, 2.6), (156, 4.5, 2.8)])])
-    # 왼쪽(긴) 면: 창 2 + 간판 + 미닫이 문 / 오른쪽 면: 창 1
-    c.last_box['height'] = wall; c.last_box['z0'] = 0      # 두 단을 한 벽으로 취급해 면에 붙인다
-    paste_face(c, 'left', window_sprite(12, 10), 10, 9)
-    paste_face(c, 'left', window_sprite(12, 10), 72, 9)
-    paste_face(c, 'left', sign_sprite(), 33, 5)
-    paste_face(c, 'left', door_sprite(20, 21), 38, 14)
-    paste_face(c, 'right', window_sprite(12, 10), 24, 9)
-    c.gable_roof((-0.15, -0.15, 3.15, 2.15), wall - 1, 16, SLATE, axis='x', slates=3)
-    c.outline()
-    return c
-
-
-def kitchen_ext() -> IsoCanvas:
-    c = cv(30, 2, 1, pad=10, shadow=0.9)
-    c.box(10, BASALT)
-    c.box(16, PLASTER, z0=10, edge=False)
-    c.last_box['height'] = 26; c.last_box['z0'] = 0
-    paste_face(c, 'left', window_sprite(14, 10), 8, 6)
-    paste_face(c, 'left', door_sprite(10, 16), 40, 6)
-    c.box(3, SLATE, (-0.1, -0.1, 2.1, 1.1), z0=26)
-    c.pillar(1.6, 0.35, 4, 10, STEEL, z0=29)          # 환풍 굴뚝
-    sx, sy = c.spx(1.6, 0.35, 39); c.rect(sx - 3, sy - 2, 6, 2, STEEL[0])
-    c.outline()
-    return c
-
-
 def roaster() -> IsoCanvas:
     c = cv(40, shadow=0.4)
     c.box(14, BASALT, (0.25, 0.25, 0.75, 0.75))
@@ -279,39 +241,6 @@ def vending() -> IsoCanvas:
     paste_face(c, 'left', g, 2, 3)
     coin = Canvas(4, 6); coin.rect(0, 0, 4, 6, BASALT[0]); coin.rect(1, 1, 2, 2, YELLOW[1])
     paste_face(c, 'right', coin, 3, 4)
-    c.outline()
-    return c
-
-
-def restroom() -> IsoCanvas:
-    c = cv(30, pad=6, shadow=0.45)
-    c.box(8, BASALT, (0.05, 0.05, 0.95, 0.95))
-    c.box(18, PLASTER, (0.05, 0.05, 0.95, 0.95), z0=8, edge=False)
-    c.last_box['height'] = 26; c.last_box['z0'] = 0
-    paste_face(c, 'left', door_sprite(8, 13), 4, 5)
-    tag = Canvas(9, 6); tag.rect(0, 0, 4, 6, SKY[1]); tag.rect(5, 0, 4, 6, PINK[1])
-    tag.put(1, 1, WHITE[2]); tag.put(2, 1, WHITE[2]); tag.put(6, 1, WHITE[2]); tag.put(7, 1, WHITE[2])
-    paste_face(c, 'left', tag, 15, 4)
-    paste_face(c, 'right', window_sprite(8, 6), 6, 4)
-    c.box(3, SLATE, (-0.05, -0.05, 1.05, 1.05), z0=26)
-    c.outline()
-    return c
-
-
-def storage() -> IsoCanvas:
-    c = cv(22, pad=10, shadow=0.45)
-    c.box(22, WOOD, (0.05, 0.05, 0.95, 0.95))
-    for u in range(3, 30, 4):
-        d = Canvas(1, 18); d.rect(0, 0, 1, 18, WOOD[0]); paste_face(c, 'left', d, u, 3)
-    paste_face(c, 'left', door_sprite(10, 14), 10, 7)
-    for u in range(3, 30, 4):
-        d = Canvas(1, 18); d.rect(0, 0, 1, 18, hexc('4a2e16')); paste_face(c, 'right', d, u, 3)
-    # 귤 상자
-    c.box(6, WOOD, (0.62, 0.66, 0.9, 0.94))
-    sx, sy = c.spx(0.76, 0.8, 6)
-    for dx, dy in ((-3, -2), (0, -3), (3, -2), (-1, -1), (2, 0)):
-        tangerine(c, sx + dx, sy + dy)
-    c.gable_roof((-0.1, -0.1, 1.1, 1.1), 21, 8, SLATE, axis='x', slates=2)
     c.outline()
     return c
 
@@ -558,9 +487,9 @@ def sprites() -> dict[str, Canvas]:
     s: dict[str, Canvas] = {
         'iso_obj_table_out': table_out(), 'iso_obj_bench': bench(), 'iso_obj_table_in': table_in(),
         'iso_obj_counter': counter(), 'iso_obj_table_big': table_big(), 'iso_obj_window_seat': window_seat(),
-        'iso_obj_warehouse': warehouse(), 'iso_obj_kitchen_ext': kitchen_ext(), 'iso_obj_roaster': roaster(),
+        'iso_obj_roaster': roaster(),
         'iso_obj_souvenir': souvenir(), 'iso_obj_photo_spot': photo_spot(), 'iso_obj_vending': vending(),
-        'iso_obj_restroom': restroom(), 'iso_obj_storage': storage(), 'iso_obj_greenhouse': greenhouse(),
+        'iso_obj_greenhouse': greenhouse(),
         'iso_obj_field_empty': field('empty'), 'iso_obj_field_planted': field('planted'), 'iso_obj_field_ready': field('ready'),
         'iso_obj_tangerine_tree_young': tree_bb('young'), 'iso_obj_tangerine_tree': tree_bb('normal'),
         'iso_obj_tangerine_tree_ready': tree_bb('ready'), 'iso_obj_hallabong_tree': tree_bb('hallabong'),
