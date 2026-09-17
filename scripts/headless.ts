@@ -27,7 +27,8 @@ function monthlyPlan() {
   const fields = Object.values(s.objects).filter((o) => objectDef(o.type).kind === 'field').length;
   if (seats < 2) { apply(s, { type: 'place', objectType: 'table_out', x: 3, y: 5 }); apply(s, { type: 'place', objectType: 'table_out', x: 5, y: 5 }); }
   if (fields < 6 && s.money >= 300) tryPlaceAnywhere('field');
-  if (s.menuSlots[0] === null) apply(s, { type: 'setSlot', slot: 0, menuId: 'carrot_juice' });
+  if (s.menuSlots[0] === null) apply(s, { type: 'setSlot', slot: 0, menuId: 'americano' });
+  if (s.menuSlots[2] === null && s.unlocked.menus.includes('carrot_juice')) apply(s, { type: 'setSlot', slot: 2, menuId: 'carrot_juice' });
   if (s.unlocked.menus.includes('carrot_cake') && s.menuSlots[1] === null) apply(s, { type: 'setSlot', slot: 1, menuId: 'carrot_cake' });
   for (const o of Object.values(s.objects))
     if (objectDef(o.type).kind === 'field' && !o.crop) apply(s, { type: 'plant', objectId: o.id, cropId: 'carrot' });

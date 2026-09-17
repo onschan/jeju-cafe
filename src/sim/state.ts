@@ -1,5 +1,5 @@
 import type { GameState, Cell, PlacedObject } from './types.ts';
-import { INITIAL_UNLOCKED } from '../data/index.ts';
+import { INITIAL_UNLOCKED, ROLES } from '../data/index.ts';
 import { START_HOUR } from './clock.ts';
 
 export const GRID_W = 10;
@@ -50,7 +50,7 @@ export function createInitialState(seed: number, playerId = 'local', createdAt =
       objects: [...INITIAL_UNLOCKED.objects],
       menus: [...INITIAL_UNLOCKED.menus],
       crops: [...INITIAL_UNLOCKED.crops],
-      roles: ['barista', 'cook', 'hall', 'field'],
+      roles: ROLES.filter((r) => r.unlockedAtStart).map((r) => r.id),
     },
     staff: [],
     candidates: [],
