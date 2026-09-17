@@ -56,5 +56,32 @@ class TestCanvas(unittest.TestCase):
         for k in ('leaf', 'orange', 'wood', 'basalt', 'soil', 'road'):
             self.assertEqual(len(PAL[k]), 3)
 
+from sheet import pack, write_spritesheet, contact_sheet
+import json
+
+class TestSheet(unittest.TestCase):
+    def test_pack_no_overlap_and_json(self):
+        sprites = {'a': Canvas(32, 40), 'b': Canvas(96, 80), 'c': Canvas(16, 16)}
+        for c in sprites.values(): c.rect(0, 0, c.w, c.h, hexc('ff00ff'))
+        sheet, frames = pack(sprites, padding=1)
+        self.assertTrue(sheet.w % 2 == 0 and sheet.h > 0)
+        boxes = list(frames.values())
+        for i in range(len(boxes)):
+            for j in range(i + 1, len(boxes)):
+                a, b = boxes[i], boxes[j]
+                self.assertTrue(a['x'] + a['w'] <= b['x'] or b['x'] + b['w'] <= a['x'] or a['y'] + a['h'] <= b['y'] or b['y'] + b['h'] <= a['y'])
+        with tempfile.TemporaryDirectory() as d:
+            png = os.path.join(d, 's.png'); js = os.path.join(d, 's.json')
+            write_spritesheet(sheet, frames, png, js)
+            meta = json.load(open(js))
+        self.assertEqual(meta['meta']['image'], 's.png')
+        self.assertEqual(meta['frames']['b']['frame']['w'], 96)
+        self.assertEqual(meta['frames']['c']['sourceSize'], {'w': 16, 'h': 16})
+
+    def test_contact_sheet_size(self):
+        sprites = {'a': Canvas(32, 40), 'b': Canvas(32, 40)}
+        cs = contact_sheet(sprites, cols=2, scale=2)
+        self.assertEqual(cs.w, (32 + 4) * 2 * 2)
+
 if __name__ == '__main__':
     unittest.main()
