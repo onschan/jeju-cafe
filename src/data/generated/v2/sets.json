@@ -1,0 +1,394 @@
+[
+  {
+    "id": "set_emotional_cafe",
+    "name": "감성 카페",
+    "requires": [
+      {
+        "objectId": "tangerine_tree",
+        "count": 2
+      },
+      {
+        "objectId": "table_out",
+        "count": 2
+      },
+      {
+        "objectId": "stonewall",
+        "count": 1
+      }
+    ],
+    "requiresText": "tangerine_tree 2·table_out 2·stonewall 1",
+    "target": "female",
+    "targetName": "여성",
+    "levelMult": [
+      1.1,
+      1.2,
+      1.35
+    ],
+    "extraEffectText": "홍보 효과 +10%",
+    "effectText": "인기 ×1.1/1.2/1.35, 홍보 효과 +10%"
+  },
+  {
+    "id": "set_village_parlor",
+    "name": "동네 사랑방",
+    "requires": [
+      {
+        "objectId": "bench_stonewall",
+        "count": 2
+      },
+      {
+        "objectId": "hackberry_shade",
+        "count": 1
+      },
+      {
+        "objectId": "vending",
+        "count": 1
+      }
+    ],
+    "requiresText": "bench_stonewall 2·hackberry_shade 1·vending 1",
+    "target": "senior",
+    "targetName": "시니어",
+    "levelMult": [
+      1.1,
+      1.2,
+      1.35
+    ],
+    "extraEffectText": "시니어 소지금 +20%",
+    "effectText": "인기 ×1.1/1.2/1.35, 시니어 소지금 +20%"
+  },
+  {
+    "id": "set_photo_cafe",
+    "name": "인생샷 카페",
+    "requires": [
+      {
+        "objectId": "dolhareubang",
+        "count": 2
+      },
+      {
+        "objectId": "canola",
+        "count": 2
+      },
+      {
+        "objectId": "photo_spot",
+        "count": 1
+      }
+    ],
+    "requiresText": "dolhareubang 2·canola 2·photo_spot 1",
+    "target": "youth",
+    "targetName": "청년",
+    "levelMult": [
+      1.1,
+      1.2,
+      1.35
+    ],
+    "extraEffectText": "사진 이벤트 확률 ×2",
+    "effectText": "인기 ×1.1/1.2/1.35, 사진 이벤트 확률 ×2"
+  },
+  {
+    "id": "set_family_outing",
+    "name": "가족 나들이",
+    "requires": [
+      {
+        "objectId": "field",
+        "count": 2
+      },
+      {
+        "objectId": "chicken_coop",
+        "count": 1
+      },
+      {
+        "objectId": "table_big",
+        "count": 1
+      }
+    ],
+    "requiresText": "field 2·chicken_coop 1·table_big 1",
+    "target": "group",
+    "targetName": "단체",
+    "levelMult": [
+      1.1,
+      1.2,
+      1.35
+    ],
+    "extraEffectText": "단체 체류 시간 +30%",
+    "effectText": "인기 ×1.1/1.2/1.35, 단체 체류 시간 +30%"
+  },
+  {
+    "id": "set_quiet_study",
+    "name": "조용한 서재",
+    "requires": [
+      {
+        "objectId": "bookshelf",
+        "count": 2
+      },
+      {
+        "objectId": "camellia",
+        "count": 2
+      },
+      {
+        "objectId": "sofa",
+        "count": 1
+      }
+    ],
+    "requiresText": "bookshelf 2·camellia 2·sofa 1",
+    "target": "adult",
+    "targetName": "성인",
+    "levelMult": [
+      1.1,
+      1.2,
+      1.35
+    ],
+    "extraEffectText": "소음 −2",
+    "effectText": "인기 ×1.1/1.2/1.35, 소음 −2"
+  },
+  {
+    "id": "set_sea_cafe",
+    "name": "바다 카페",
+    "requires": [
+      {
+        "objectId": "palm",
+        "count": 2
+      },
+      {
+        "objectId": "window_seat",
+        "count": 2
+      },
+      {
+        "objectId": "haenyeo_hut",
+        "count": 1
+      }
+    ],
+    "requiresText": "palm 2·window_seat 2·haenyeo_hut 1",
+    "target": "adult",
+    "targetName": "성인",
+    "levelMult": [
+      1.1,
+      1.2,
+      1.35
+    ],
+    "extraEffectText": "외국 손님 소지금 +20%",
+    "effectText": "인기 ×1.1/1.2/1.35, 외국 손님 소지금 +20%"
+  },
+  {
+    "id": "set_night_garden",
+    "name": "밤의 정원",
+    "requires": [
+      {
+        "objectId": "stone_lantern",
+        "count": 3
+      },
+      {
+        "objectId": "lantern_path",
+        "count": 5
+      },
+      {
+        "objectId": "fire_pit",
+        "count": 1
+      }
+    ],
+    "requiresText": "stone_lantern 3·lantern_path 5·fire_pit 1",
+    "target": "adult",
+    "targetName": "성인",
+    "levelMult": [
+      1.1,
+      1.2,
+      1.35
+    ],
+    "extraEffectText": "야간 좌석 요금 +15%",
+    "effectText": "인기 ×1.1/1.2/1.35, 야간 좌석 요금 +15%"
+  },
+  {
+    "id": "set_health_station",
+    "name": "건강 스테이션",
+    "requires": [
+      {
+        "objectId": "bike_rack",
+        "count": 2
+      },
+      {
+        "objectId": "pond",
+        "count": 1
+      },
+      {
+        "objectId": "hammock",
+        "count": 1
+      }
+    ],
+    "requiresText": "bike_rack 2·pond 1·hammock 1",
+    "target": "youth",
+    "targetName": "청년",
+    "levelMult": [
+      1.1,
+      1.2,
+      1.35
+    ],
+    "extraEffectText": "러닝 손님 방문 +20%",
+    "effectText": "인기 ×1.1/1.2/1.35, 러닝 손님 방문 +20%"
+  },
+  {
+    "id": "set_hidden_oreum_view",
+    "name": "숨은 오름 뷰 포인트",
+    "requires": [
+      {
+        "objectId": "oreum_bench",
+        "count": 1
+      },
+      {
+        "objectId": "observatory",
+        "count": 1
+      },
+      {
+        "objectId": "pampas",
+        "count": 3
+      }
+    ],
+    "requiresText": "oreum_bench 1·observatory 1·pampas 3",
+    "target": "all",
+    "targetName": "전체",
+    "levelMult": [
+      1.2,
+      1.35,
+      1.5
+    ],
+    "extraEffectText": "발견 이벤트 장면 창",
+    "effectText": "인기 ×1.2/1.35/1.5, 발견 이벤트 장면 창"
+  },
+  {
+    "id": "set_tangerine_farm",
+    "name": "감귤 농장 카페",
+    "requires": [
+      {
+        "objectId": "tangerine_tree",
+        "count": 5
+      },
+      {
+        "objectId": "picking_experience",
+        "count": 1
+      },
+      {
+        "objectId": "sorting_house",
+        "count": 1
+      }
+    ],
+    "requiresText": "tangerine_tree 5·picking_experience 1·sorting_house 1",
+    "target": "group",
+    "targetName": "단체",
+    "levelMult": [
+      1.1,
+      1.2,
+      1.35
+    ],
+    "extraEffectText": "감귤 택배 수입 +20%",
+    "effectText": "인기 ×1.1/1.2/1.35, 감귤 택배 수입 +20%"
+  },
+  {
+    "id": "set_makers_alley",
+    "name": "공방 골목",
+    "requires": [
+      {
+        "objectId": "pottery_studio",
+        "count": 1
+      },
+      {
+        "objectId": "gallery",
+        "count": 1
+      },
+      {
+        "objectId": "goods_shop",
+        "count": 1
+      }
+    ],
+    "requiresText": "pottery_studio 1·gallery 1·goods_shop 1",
+    "target": "female",
+    "targetName": "여성",
+    "levelMult": [
+      1.1,
+      1.2,
+      1.35
+    ],
+    "extraEffectText": "즐길거리 이용료 +15%",
+    "effectText": "인기 ×1.1/1.2/1.35, 즐길거리 이용료 +15%"
+  },
+  {
+    "id": "set_dog_friendly",
+    "name": "강아지 환영",
+    "requires": [
+      {
+        "objectId": "dog_park",
+        "count": 1
+      },
+      {
+        "objectId": "picnic",
+        "count": 1
+      },
+      {
+        "objectId": "water_jar",
+        "count": 2
+      }
+    ],
+    "requiresText": "dog_park 1·picnic 1·water_jar 2",
+    "target": "adult",
+    "targetName": "성인",
+    "levelMult": [
+      1.1,
+      1.2,
+      1.35
+    ],
+    "extraEffectText": "반려견 손님 만족 +20%",
+    "effectText": "인기 ×1.1/1.2/1.35, 반려견 손님 만족 +20%"
+  },
+  {
+    "id": "set_workation",
+    "name": "워케이션",
+    "requires": [
+      {
+        "objectId": "wifi_zone",
+        "count": 1
+      },
+      {
+        "objectId": "sofa",
+        "count": 2
+      },
+      {
+        "objectId": "handdrip_bar",
+        "count": 1
+      }
+    ],
+    "requiresText": "wifi_zone 1·sofa 2·handdrip_bar 1",
+    "target": "youth",
+    "targetName": "청년",
+    "levelMult": [
+      1.1,
+      1.2,
+      1.35
+    ],
+    "extraEffectText": "청년 체류 시간 +40%",
+    "effectText": "인기 ×1.1/1.2/1.35, 청년 체류 시간 +40%"
+  },
+  {
+    "id": "set_legend_village",
+    "name": "전설의 마을",
+    "requires": [
+      {
+        "objectId": "dolhareubang_pair",
+        "count": 1
+      },
+      {
+        "objectId": "bangsatap",
+        "count": 1
+      },
+      {
+        "objectId": "stone_guardians",
+        "count": 1
+      }
+    ],
+    "requiresText": "dolhareubang_pair 1·bangsatap 1·stone_guardians 1",
+    "target": "all",
+    "targetName": "전체",
+    "levelMult": [
+      1.2,
+      1.35,
+      1.5
+    ],
+    "extraEffectText": "전설 손님 출현 ×2",
+    "effectText": "인기 ×1.2/1.35/1.5, 전설 손님 출현 ×2"
+  }
+]

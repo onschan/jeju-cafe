@@ -1,0 +1,677 @@
+[
+  {
+    "chain": "c01_youth",
+    "guests": [
+      "student",
+      "working_holiday",
+      "digital_nomad",
+      "startup_ceo",
+      "investor"
+    ],
+    "edges": [
+      {
+        "from": "student",
+        "to": "working_holiday",
+        "quest": "q_student"
+      },
+      {
+        "from": "working_holiday",
+        "to": "digital_nomad",
+        "quest": "q_working_holiday"
+      },
+      {
+        "from": "digital_nomad",
+        "to": "startup_ceo",
+        "quest": "q_digital_nomad"
+      },
+      {
+        "from": "startup_ceo",
+        "to": "investor",
+        "quest": "q_startup_ceo"
+      }
+    ]
+  },
+  {
+    "chain": "c02_couple",
+    "guests": [
+      "couple",
+      "newlyweds",
+      "wedding_snap",
+      "wedding_planner"
+    ],
+    "edges": [
+      {
+        "from": "couple",
+        "to": "newlyweds",
+        "quest": "q_couple"
+      },
+      {
+        "from": "newlyweds",
+        "to": "wedding_snap",
+        "quest": "q_newlyweds"
+      },
+      {
+        "from": "wedding_snap",
+        "to": "wedding_planner",
+        "quest": "q_wedding_snap"
+      }
+    ]
+  },
+  {
+    "chain": "c03_media",
+    "guests": [
+      "insta_traveler",
+      "influencer",
+      "youtuber",
+      "tv_pd",
+      "actor"
+    ],
+    "edges": [
+      {
+        "from": "insta_traveler",
+        "to": "influencer",
+        "quest": "q_insta_traveler"
+      },
+      {
+        "from": "influencer",
+        "to": "youtuber",
+        "quest": "q_influencer"
+      },
+      {
+        "from": "youtuber",
+        "to": "tv_pd",
+        "quest": "q_youtuber"
+      },
+      {
+        "from": "tv_pd",
+        "to": "actor",
+        "quest": "q_tv_pd"
+      }
+    ]
+  },
+  {
+    "chain": "c04_village",
+    "guests": [
+      "village_head",
+      "haenyeo",
+      "returnee_senior",
+      "coop_staff",
+      "governor"
+    ],
+    "edges": [
+      {
+        "from": "village_head",
+        "to": "haenyeo",
+        "quest": "q_village_head"
+      },
+      {
+        "from": "haenyeo",
+        "to": "returnee_senior",
+        "quest": "q_haenyeo"
+      },
+      {
+        "from": "returnee_senior",
+        "to": "coop_staff",
+        "quest": "q_returnee_senior"
+      },
+      {
+        "from": "coop_staff",
+        "to": "governor",
+        "quest": "q_coop_staff"
+      }
+    ]
+  },
+  {
+    "chain": "c05_family",
+    "guests": [
+      "rentcar_family",
+      "stroller_family",
+      "three_gen_family"
+    ],
+    "edges": [
+      {
+        "from": "rentcar_family",
+        "to": "stroller_family",
+        "quest": "q_rentcar_family"
+      },
+      {
+        "from": "stroller_family",
+        "to": "three_gen_family",
+        "quest": "q_stroller_family"
+      }
+    ]
+  },
+  {
+    "chain": "c06_hike",
+    "guests": [
+      "olle_walker",
+      "oreum_hiker",
+      "hallasan_club"
+    ],
+    "edges": [
+      {
+        "from": "olle_walker",
+        "to": "oreum_hiker",
+        "quest": "q_olle_walker"
+      },
+      {
+        "from": "oreum_hiker",
+        "to": "hallasan_club",
+        "quest": "q_oreum_hiker"
+      }
+    ]
+  },
+  {
+    "chain": "c07_sea",
+    "guests": [
+      "surfer",
+      "diver",
+      "yacht_owner"
+    ],
+    "edges": [
+      {
+        "from": "surfer",
+        "to": "diver",
+        "quest": "q_surfer"
+      },
+      {
+        "from": "diver",
+        "to": "yacht_owner",
+        "quest": "q_diver"
+      }
+    ]
+  },
+  {
+    "chain": "c08_gourmet",
+    "guests": [
+      "cafe_tourer",
+      "ribbon_judge",
+      "star_guide_inspector"
+    ],
+    "edges": [
+      {
+        "from": "cafe_tourer",
+        "to": "ribbon_judge",
+        "quest": "q_cafe_tourer"
+      },
+      {
+        "from": "ribbon_judge",
+        "to": "star_guide_inspector",
+        "quest": "q_ribbon_judge"
+      }
+    ]
+  },
+  {
+    "chain": "c09_local",
+    "guests": [
+      "local_auntie",
+      "local_uncle",
+      "market_auntie",
+      "village_elder",
+      "seolmundae"
+    ],
+    "edges": [
+      {
+        "from": "local_auntie",
+        "to": "local_uncle",
+        "quest": "q_local_auntie"
+      },
+      {
+        "from": "local_uncle",
+        "to": "market_auntie",
+        "quest": "q_local_uncle"
+      },
+      {
+        "from": "market_auntie",
+        "to": "village_elder",
+        "quest": "q_market_auntie"
+      },
+      {
+        "from": "village_elder",
+        "to": "seolmundae",
+        "quest": "q_village_elder"
+      }
+    ]
+  },
+  {
+    "chain": "c10_mainland",
+    "guests": [
+      "mainlander_auntie",
+      "mainlander_newbie",
+      "monthly_stayer",
+      "jeju_immigrant"
+    ],
+    "edges": [
+      {
+        "from": "mainlander_auntie",
+        "to": "mainlander_newbie",
+        "quest": "q_mainlander_auntie"
+      },
+      {
+        "from": "mainlander_newbie",
+        "to": "monthly_stayer",
+        "quest": "q_mainlander_newbie"
+      },
+      {
+        "from": "monthly_stayer",
+        "to": "jeju_immigrant",
+        "quest": "q_monthly_stayer"
+      }
+    ]
+  },
+  {
+    "chain": "c11_animal",
+    "guests": [
+      "dog_mongi",
+      "street_cat_noeul",
+      "jeju_pony"
+    ],
+    "edges": [
+      {
+        "from": "dog_mongi",
+        "to": "street_cat_noeul",
+        "quest": "q_dog_mongi"
+      },
+      {
+        "from": "street_cat_noeul",
+        "to": "jeju_pony",
+        "quest": "q_street_cat_noeul"
+      }
+    ]
+  },
+  {
+    "chain": "c12_pest",
+    "guests": [
+      "magpie_thief",
+      "crow_flock",
+      "roe_deer"
+    ],
+    "edges": [
+      {
+        "from": "magpie_thief",
+        "to": "crow_flock",
+        "quest": "q_magpie_thief"
+      },
+      {
+        "from": "crow_flock",
+        "to": "roe_deer",
+        "quest": "q_crow_flock"
+      }
+    ]
+  },
+  {
+    "chain": "c13_school",
+    "guests": [
+      "school_trip",
+      "school_teacher",
+      "school_club",
+      "alumni_reunion"
+    ],
+    "edges": [
+      {
+        "from": "school_trip",
+        "to": "school_teacher",
+        "quest": "q_school_trip"
+      },
+      {
+        "from": "school_teacher",
+        "to": "school_club",
+        "quest": "q_school_teacher"
+      },
+      {
+        "from": "school_club",
+        "to": "alumni_reunion",
+        "quest": "q_school_club"
+      }
+    ]
+  },
+  {
+    "chain": "c14_company",
+    "guests": [
+      "company_workshop",
+      "team_leader",
+      "remote_team",
+      "ceo_retreat"
+    ],
+    "edges": [
+      {
+        "from": "company_workshop",
+        "to": "team_leader",
+        "quest": "q_company_workshop"
+      },
+      {
+        "from": "team_leader",
+        "to": "remote_team",
+        "quest": "q_team_leader"
+      },
+      {
+        "from": "remote_team",
+        "to": "ceo_retreat",
+        "quest": "q_remote_team"
+      }
+    ]
+  },
+  {
+    "chain": "c15_silver",
+    "guests": [
+      "silver_tour",
+      "grandma_gyecheo",
+      "retired_teacher",
+      "hallabong_grandpa"
+    ],
+    "edges": [
+      {
+        "from": "silver_tour",
+        "to": "grandma_gyecheo",
+        "quest": "q_silver_tour"
+      },
+      {
+        "from": "grandma_gyecheo",
+        "to": "retired_teacher",
+        "quest": "q_grandma_gyecheo"
+      },
+      {
+        "from": "retired_teacher",
+        "to": "hallabong_grandpa",
+        "quest": "q_retired_teacher"
+      }
+    ]
+  },
+  {
+    "chain": "c16_run",
+    "guests": [
+      "running_crew",
+      "trail_runner",
+      "cyclist",
+      "triathlete"
+    ],
+    "edges": [
+      {
+        "from": "running_crew",
+        "to": "trail_runner",
+        "quest": "q_running_crew"
+      },
+      {
+        "from": "trail_runner",
+        "to": "cyclist",
+        "quest": "q_trail_runner"
+      },
+      {
+        "from": "cyclist",
+        "to": "triathlete",
+        "quest": "q_cyclist"
+      }
+    ]
+  },
+  {
+    "chain": "c17_night",
+    "guests": [
+      "night_guest",
+      "stargazer",
+      "night_photographer",
+      "lighthouse_keeper"
+    ],
+    "edges": [
+      {
+        "from": "night_guest",
+        "to": "stargazer",
+        "quest": "q_night_guest"
+      },
+      {
+        "from": "stargazer",
+        "to": "night_photographer",
+        "quest": "q_stargazer"
+      },
+      {
+        "from": "night_photographer",
+        "to": "lighthouse_keeper",
+        "quest": "q_night_photographer"
+      }
+    ]
+  },
+  {
+    "chain": "c18_group_foreign",
+    "guests": [
+      "group_cn",
+      "group_jp",
+      "group_sea"
+    ],
+    "edges": [
+      {
+        "from": "group_cn",
+        "to": "group_jp",
+        "quest": "q_group_cn"
+      },
+      {
+        "from": "group_jp",
+        "to": "group_sea",
+        "quest": "q_group_jp"
+      }
+    ]
+  },
+  {
+    "chain": "c19_solo_foreign",
+    "guests": [
+      "solo_foreign",
+      "foreign_chef",
+      "foreign_vlogger",
+      "world_traveler"
+    ],
+    "edges": [
+      {
+        "from": "solo_foreign",
+        "to": "foreign_chef",
+        "quest": "q_solo_foreign"
+      },
+      {
+        "from": "foreign_chef",
+        "to": "foreign_vlogger",
+        "quest": "q_foreign_chef"
+      },
+      {
+        "from": "foreign_vlogger",
+        "to": "world_traveler",
+        "quest": "q_foreign_vlogger"
+      }
+    ]
+  },
+  {
+    "chain": "c20_art",
+    "guests": [
+      "art_student",
+      "village_painter",
+      "potter",
+      "architect"
+    ],
+    "edges": [
+      {
+        "from": "art_student",
+        "to": "village_painter",
+        "quest": "q_art_student"
+      },
+      {
+        "from": "village_painter",
+        "to": "potter",
+        "quest": "q_village_painter"
+      },
+      {
+        "from": "potter",
+        "to": "architect",
+        "quest": "q_potter"
+      }
+    ]
+  },
+  {
+    "chain": "c21_coffee",
+    "guests": [
+      "dessert_hunter",
+      "coffee_geek",
+      "home_barista",
+      "barista_champion"
+    ],
+    "edges": [
+      {
+        "from": "dessert_hunter",
+        "to": "coffee_geek",
+        "quest": "q_dessert_hunter"
+      },
+      {
+        "from": "coffee_geek",
+        "to": "home_barista",
+        "quest": "q_coffee_geek"
+      },
+      {
+        "from": "home_barista",
+        "to": "barista_champion",
+        "quest": "q_home_barista"
+      }
+    ]
+  },
+  {
+    "chain": "c22_dog",
+    "guests": [
+      "dog_walker",
+      "dog_camper",
+      "dog_trainer"
+    ],
+    "edges": [
+      {
+        "from": "dog_walker",
+        "to": "dog_camper",
+        "quest": "q_dog_walker"
+      },
+      {
+        "from": "dog_camper",
+        "to": "dog_trainer",
+        "quest": "q_dog_camper"
+      }
+    ]
+  },
+  {
+    "chain": "c23_fish",
+    "guests": [
+      "angler",
+      "fishing_boat_captain",
+      "dolphin_guide"
+    ],
+    "edges": [
+      {
+        "from": "angler",
+        "to": "fishing_boat_captain",
+        "quest": "q_angler"
+      },
+      {
+        "from": "fishing_boat_captain",
+        "to": "dolphin_guide",
+        "quest": "q_fishing_boat_captain"
+      }
+    ]
+  },
+  {
+    "chain": "c24_camp",
+    "guests": [
+      "camper",
+      "van_lifer",
+      "glamper"
+    ],
+    "edges": [
+      {
+        "from": "camper",
+        "to": "van_lifer",
+        "quest": "q_camper"
+      },
+      {
+        "from": "van_lifer",
+        "to": "glamper",
+        "quest": "q_van_lifer"
+      }
+    ]
+  },
+  {
+    "chain": "c25_legend",
+    "guests": [
+      "dolhareubang_spirit",
+      "yeongdeung",
+      "baekrok",
+      "jacheongbi"
+    ],
+    "edges": [
+      {
+        "from": "dolhareubang_spirit",
+        "to": "yeongdeung",
+        "quest": "q_dolhareubang_spirit"
+      },
+      {
+        "from": "yeongdeung",
+        "to": "baekrok",
+        "quest": "q_yeongdeung"
+      },
+      {
+        "from": "baekrok",
+        "to": "jacheongbi",
+        "quest": "q_baekrok"
+      }
+    ]
+  },
+  {
+    "chain": "c26_kids",
+    "guests": [
+      "kid_pocketmoney",
+      "teen_idol_fan",
+      "college_club"
+    ],
+    "edges": [
+      {
+        "from": "kid_pocketmoney",
+        "to": "teen_idol_fan",
+        "quest": "q_kid_pocketmoney"
+      },
+      {
+        "from": "teen_idol_fan",
+        "to": "college_club",
+        "quest": "q_teen_idol_fan"
+      }
+    ]
+  },
+  {
+    "chain": "c27_driver",
+    "guests": [
+      "taxi_driver",
+      "bus_driver",
+      "rentcar_staff"
+    ],
+    "edges": [
+      {
+        "from": "taxi_driver",
+        "to": "bus_driver",
+        "quest": "q_taxi_driver"
+      },
+      {
+        "from": "bus_driver",
+        "to": "rentcar_staff",
+        "quest": "q_bus_driver"
+      }
+    ]
+  },
+  {
+    "chain": "c28_single_golfer",
+    "guests": [
+      "golfer"
+    ],
+    "edges": []
+  },
+  {
+    "chain": "c29_single_resort",
+    "guests": [
+      "resort_guest"
+    ],
+    "edges": []
+  },
+  {
+    "chain": "c30_single_spirit",
+    "guests": [
+      "hallasan_spirit"
+    ],
+    "edges": []
+  }
+]

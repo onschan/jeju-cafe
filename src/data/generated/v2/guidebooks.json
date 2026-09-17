@@ -1,0 +1,215 @@
+[
+  {
+    "id": "gb_kind_cafe",
+    "name": "친절 카페",
+    "unlock": {
+      "type": "start"
+    },
+    "unlockText": "시작",
+    "criteriaText": "미소·서비스",
+    "prize": 100000,
+    "research": 100,
+    "seeds": [],
+    "seedText": null
+  },
+  {
+    "id": "gb_local_map",
+    "name": "동네 맛집 지도",
+    "unlock": {
+      "type": "date",
+      "year": 1,
+      "month": 7
+    },
+    "unlockText": "1년 7월",
+    "criteriaText": "종합",
+    "prize": 300000,
+    "research": 300,
+    "seeds": [
+      {
+        "itemId": "tangerine_seed",
+        "count": 1
+      }
+    ],
+    "seedText": "tangerine_seed 1"
+  },
+  {
+    "id": "gb_jeju_map",
+    "name": "제주도 카페 지도",
+    "unlock": {
+      "type": "rank",
+      "rank": 5
+    },
+    "unlockText": "랭크 5",
+    "criteriaText": "종합",
+    "prize": 1000000,
+    "research": 800,
+    "seeds": [
+      {
+        "itemId": "tangerine_seed",
+        "count": 2
+      }
+    ],
+    "seedText": "tangerine_seed 2"
+  },
+  {
+    "id": "gb_insta_100",
+    "name": "인스타 핫플 100",
+    "unlock": {
+      "type": "segment",
+      "guestId": "insta_traveler",
+      "popularity": 30
+    },
+    "unlockText": "손님 insta_traveler 인기 30",
+    "criteriaText": "경관·포토존",
+    "prize": 1500000,
+    "research": 1000,
+    "seeds": [
+      {
+        "itemId": "scenery_seed",
+        "count": 2
+      }
+    ],
+    "seedText": "scenery_seed 2"
+  },
+  {
+    "id": "gb_dessert",
+    "name": "미식 카페(디저트)",
+    "unlock": {
+      "type": "count",
+      "category": "food",
+      "count": 5
+    },
+    "unlockText": "먹거리 5개",
+    "criteriaText": "메뉴 품질",
+    "prize": 2000000,
+    "research": 1500,
+    "seeds": [
+      {
+        "itemId": "hallabong_seed",
+        "count": 2
+      }
+    ],
+    "seedText": "hallabong_seed 2"
+  },
+  {
+    "id": "gb_healing",
+    "name": "힐링 카페",
+    "unlock": {
+      "type": "count",
+      "category": "rest",
+      "count": 8
+    },
+    "unlockText": "쉼 8개",
+    "criteriaText": "경관·조용함",
+    "prize": 2000000,
+    "research": 1500,
+    "seeds": [
+      {
+        "itemId": "scenery_seed",
+        "count": 3
+      }
+    ],
+    "seedText": "scenery_seed 3"
+  },
+  {
+    "id": "gb_activity",
+    "name": "액티비티 카페",
+    "unlock": {
+      "type": "count",
+      "category": "fun",
+      "count": 5
+    },
+    "unlockText": "즐길거리 5개",
+    "criteriaText": "체험 인기",
+    "prize": 2500000,
+    "research": 2000,
+    "seeds": [
+      {
+        "itemId": "tangerine_seed",
+        "count": 3
+      }
+    ],
+    "seedText": "tangerine_seed 3"
+  },
+  {
+    "id": "gb_together",
+    "name": "함께 가기 좋은 카페",
+    "unlock": {
+      "type": "segment",
+      "guestId": "rentcar_family",
+      "popularity": 40
+    },
+    "unlockText": "손님 rentcar_family 인기 40",
+    "criteriaText": "큰 좌석·주차",
+    "prize": 3000000,
+    "research": 2500,
+    "seeds": [
+      {
+        "itemId": "tangerine_seed",
+        "count": 3
+      }
+    ],
+    "seedText": "tangerine_seed 3"
+  },
+  {
+    "id": "gb_coop_monthly",
+    "name": "이번 달 농협 추천 카페",
+    "unlock": {
+      "type": "rank",
+      "rank": 8
+    },
+    "unlockText": "랭크 8",
+    "criteriaText": "매회 타깃 손님층 변동",
+    "prize": 500000,
+    "research": 500,
+    "seeds": [
+      {
+        "itemId": "popularity_fruit",
+        "count": 1
+      }
+    ],
+    "seedText": "popularity_fruit 1"
+  },
+  {
+    "id": "gb_national_tour",
+    "name": "전국 카페 투어",
+    "unlock": {
+      "type": "star",
+      "star": 3
+    },
+    "unlockText": "★3",
+    "criteriaText": "종합",
+    "prize": 5000000,
+    "research": 5000,
+    "seeds": [
+      {
+        "itemId": "hallabong_seed",
+        "count": 5
+      }
+    ],
+    "seedText": "hallabong_seed 5"
+  },
+  {
+    "id": "gb_ribbon_survey",
+    "name": "리본 서베이",
+    "unlock": {
+      "type": "star",
+      "star": 4
+    },
+    "unlockText": "★4",
+    "criteriaText": "종합 최상",
+    "prize": 10000000,
+    "research": 10000,
+    "seeds": [
+      {
+        "itemId": "scenery_seed",
+        "count": 5
+      },
+      {
+        "itemId": "popularity_fruit",
+        "count": 3
+      }
+    ],
+    "seedText": "scenery_seed 5·popularity_fruit 3"
+  }
+]

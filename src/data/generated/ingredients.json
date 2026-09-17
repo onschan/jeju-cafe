@@ -381,7 +381,7 @@
       "jeju": 8
     },
     "cost": 0,
-    "sourceText": "곶자왈 채집"
+    "sourceText": "밭(곶자왈 필지, 봄)"
   },
   {
     "id": "mushroom",
@@ -397,7 +397,7 @@
       "jeju": 4
     },
     "cost": 0,
-    "sourceText": "채집/아이템"
+    "sourceText": "밭(곶자왈 필지)/아이템"
   },
   {
     "id": "seaweed",

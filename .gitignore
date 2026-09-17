@@ -4,3 +4,4 @@ dist
 tools/assets/out/
 *.wav
 tools/assets/__pycache__/
+tools/data/__pycache__/

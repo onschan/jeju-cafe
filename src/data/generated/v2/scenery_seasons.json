@@ -1,0 +1,134 @@
+[
+  {
+    "id": "canola",
+    "name": "유채",
+    "scenery": 2,
+    "seasons": {
+      "spring": 12,
+      "summer": 0,
+      "autumn": 0,
+      "winter": 0
+    }
+  },
+  {
+    "id": "hydrangea",
+    "name": "수국",
+    "scenery": 3,
+    "seasons": {
+      "spring": 0,
+      "summer": 9,
+      "autumn": 0,
+      "winter": 0
+    }
+  },
+  {
+    "id": "pampas",
+    "name": "억새",
+    "scenery": 2,
+    "seasons": {
+      "spring": 0,
+      "summer": 0,
+      "autumn": 9,
+      "winter": 0
+    }
+  },
+  {
+    "id": "camellia",
+    "name": "동백",
+    "scenery": 3,
+    "seasons": {
+      "spring": 0,
+      "summer": 0,
+      "autumn": 0,
+      "winter": 11
+    }
+  },
+  {
+    "id": "palm",
+    "name": "야자수",
+    "scenery": 5,
+    "seasons": {
+      "spring": 0,
+      "summer": 3,
+      "autumn": 0,
+      "winter": 0
+    }
+  },
+  {
+    "id": "cedar",
+    "name": "삼나무",
+    "scenery": 8,
+    "seasons": {
+      "spring": 0,
+      "summer": 0,
+      "autumn": 0,
+      "winter": 2
+    }
+  },
+  {
+    "id": "stonewall",
+    "name": "현무암 돌담",
+    "scenery": 4,
+    "seasons": {
+      "spring": 0,
+      "summer": 0,
+      "autumn": 0,
+      "winter": 0
+    }
+  },
+  {
+    "id": "dolhareubang",
+    "name": "돌하르방",
+    "scenery": 3,
+    "seasons": {
+      "spring": 0,
+      "summer": 0,
+      "autumn": 0,
+      "winter": 0
+    }
+  },
+  {
+    "id": "water_jar",
+    "name": "물허벅",
+    "scenery": 3,
+    "seasons": {
+      "spring": 0,
+      "summer": 0,
+      "autumn": 0,
+      "winter": 0
+    }
+  },
+  {
+    "id": "stone_lantern",
+    "name": "석등",
+    "scenery": 3,
+    "seasons": {
+      "spring": 0,
+      "summer": 0,
+      "autumn": 0,
+      "winter": 0
+    }
+  },
+  {
+    "id": "pond",
+    "name": "연못",
+    "scenery": 12,
+    "seasons": {
+      "spring": 0,
+      "summer": 18,
+      "autumn": 0,
+      "winter": 0
+    }
+  },
+  {
+    "id": "hackberry_millennium",
+    "name": "천년 팽나무",
+    "scenery": 30,
+    "seasons": {
+      "spring": 0,
+      "summer": 10,
+      "autumn": 0,
+      "winter": 0
+    }
+  }
+]

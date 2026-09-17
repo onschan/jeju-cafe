@@ -1,0 +1,152 @@
+[
+  {
+    "id": "pony_doll",
+    "name": "제주 조랑말 인형",
+    "sources": [
+      {
+        "type": "quest",
+        "questId": "q_jeju_pony"
+      }
+    ],
+    "sourceText": "부탁 q_jeju_pony",
+    "effectText": "특수 직원 st_pony_special 해금"
+  },
+  {
+    "id": "millennium_seed",
+    "name": "천년 팽나무 씨앗",
+    "sources": [
+      {
+        "type": "quest",
+        "questId": "q_seolmundae"
+      },
+      {
+        "type": "other",
+        "text": "100주년 감귤축제"
+      }
+    ],
+    "sourceText": "부탁 q_seolmundae·100주년 감귤축제",
+    "effectText": "hackberry_millennium 건설 가능"
+  },
+  {
+    "id": "deer_bell",
+    "name": "노루 방울",
+    "sources": [
+      {
+        "type": "quest",
+        "questId": "q_roe_deer"
+      }
+    ],
+    "sourceText": "부탁 q_roe_deer",
+    "effectText": "노루 습격 확률 −50%"
+  },
+  {
+    "id": "tangerine_seed",
+    "name": "감귤 씨앗(인기 씨앗)",
+    "sources": [
+      {
+        "type": "mileage_shop"
+      },
+      {
+        "type": "quest",
+        "questId": "q_jacheongbi"
+      }
+    ],
+    "sourceText": "마일리지 상점·부탁 q_jacheongbi",
+    "effectText": "시설 1개 인기 +5(상한 40)"
+  },
+  {
+    "id": "hallabong_seed",
+    "name": "한라봉 씨앗(가격 씨앗)",
+    "sources": [
+      {
+        "type": "mileage_shop"
+      },
+      {
+        "type": "quest",
+        "questId": "q_hallabong_grandpa"
+      }
+    ],
+    "sourceText": "마일리지 상점·부탁 q_hallabong_grandpa",
+    "effectText": "시설 1개 요금 +5%(상한 +30%)"
+  },
+  {
+    "id": "scenery_seed",
+    "name": "경관 씨앗",
+    "sources": [
+      {
+        "type": "ticket_shop"
+      }
+    ],
+    "sourceText": "응모권 상점",
+    "effectText": "경관물 1개 경관 +3(상한 30)"
+  },
+  {
+    "id": "popularity_fruit",
+    "name": "인기 열매",
+    "sources": [
+      {
+        "type": "ticket_shop"
+      }
+    ],
+    "sourceText": "응모권 상점",
+    "effectText": "손님 1종 인기 +10"
+  },
+  {
+    "id": "wind_charm",
+    "name": "영등 바람 부적",
+    "sources": [
+      {
+        "type": "quest",
+        "questId": "q_yeongdeung"
+      }
+    ],
+    "sourceText": "부탁 q_yeongdeung",
+    "effectText": "태풍 피해 −50%"
+  },
+  {
+    "id": "white_deer_bell",
+    "name": "백록 방울",
+    "sources": [
+      {
+        "type": "quest",
+        "questId": "q_baekrok"
+      }
+    ],
+    "sourceText": "부탁 q_baekrok",
+    "effectText": "전설 손님 출현 ×2"
+  },
+  {
+    "id": "snow_charm",
+    "name": "한라산 눈 부적",
+    "sources": [
+      {
+        "type": "quest",
+        "questId": "q_hallasan_spirit"
+      }
+    ],
+    "sourceText": "부탁 q_hallasan_spirit",
+    "effectText": "겨울 손님 ×1.2"
+  },
+  {
+    "id": "pickaxe",
+    "name": "돌담 철거 곡괭이",
+    "sources": [
+      {
+        "type": "mileage_shop"
+      }
+    ],
+    "sourceText": "마일리지 상점",
+    "effectText": "기본 돌담 1칸 철거"
+  },
+  {
+    "id": "worker_hire",
+    "name": "일꾼 삼춘 고용권",
+    "sources": [
+      {
+        "type": "mileage_shop"
+      }
+    ],
+    "sourceText": "마일리지 상점",
+    "effectText": "동시 건설 수 +1"
+  }
+]

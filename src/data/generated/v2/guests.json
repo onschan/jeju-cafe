@@ -1,0 +1,2701 @@
+[
+  {
+    "id": "student",
+    "name": "대학생",
+    "tags": {
+      "gender": null,
+      "age": "youth",
+      "group": false
+    },
+    "effect": "ad",
+    "effectName": "홍보",
+    "money": 6000,
+    "likes": [
+      "rest",
+      "fun"
+    ],
+    "likesText": "쉼·즐길거리",
+    "unlock": {
+      "type": "start"
+    },
+    "unlockText": "시작",
+    "questId": "q_student",
+    "nextGuestId": "working_holiday",
+    "chain": "c01_youth",
+    "line": "과제는 내일의 나에게 맡길게요."
+  },
+  {
+    "id": "working_holiday",
+    "name": "워홀 청년",
+    "tags": {
+      "gender": null,
+      "age": "youth",
+      "group": false
+    },
+    "effect": "research",
+    "effectName": "연구",
+    "money": 8000,
+    "likes": [
+      "rest",
+      "food"
+    ],
+    "likesText": "쉼·먹거리",
+    "unlock": {
+      "type": "quest",
+      "questId": "q_student"
+    },
+    "unlockText": "부탁 q_student",
+    "questId": "q_working_holiday",
+    "nextGuestId": "digital_nomad",
+    "chain": "c01_youth",
+    "line": "감귤 따고 돈 벌고, 이게 워홀이죠."
+  },
+  {
+    "id": "digital_nomad",
+    "name": "디지털 노마드",
+    "tags": {
+      "gender": null,
+      "age": "youth",
+      "group": false
+    },
+    "effect": "popularity",
+    "effectName": "시설 인기",
+    "money": 12000,
+    "likes": [
+      "rest",
+      "convenience"
+    ],
+    "likesText": "쉼·편의",
+    "unlock": {
+      "type": "quest",
+      "questId": "q_working_holiday"
+    },
+    "unlockText": "부탁 q_working_holiday",
+    "questId": "q_digital_nomad",
+    "nextGuestId": "startup_ceo",
+    "chain": "c01_youth",
+    "line": "와이파이만 되면 여기가 사무실이우다."
+  },
+  {
+    "id": "startup_ceo",
+    "name": "스타트업 대표",
+    "tags": {
+      "gender": null,
+      "age": "adult",
+      "group": false
+    },
+    "effect": "money",
+    "effectName": "자금",
+    "money": 20000,
+    "likes": [
+      "food",
+      "convenience"
+    ],
+    "likesText": "먹거리·편의",
+    "unlock": {
+      "type": "quest",
+      "questId": "q_digital_nomad"
+    },
+    "unlockText": "부탁 q_digital_nomad",
+    "questId": "q_startup_ceo",
+    "nextGuestId": "investor",
+    "chain": "c01_youth",
+    "line": "피칭은 카페에서 해야 제맛이죠."
+  },
+  {
+    "id": "investor",
+    "name": "투자자",
+    "tags": {
+      "gender": null,
+      "age": "adult",
+      "group": false
+    },
+    "effect": "money",
+    "effectName": "자금",
+    "money": 40000,
+    "likes": [
+      "rest",
+      "food"
+    ],
+    "likesText": "쉼·먹거리",
+    "unlock": {
+      "type": "quest",
+      "questId": "q_startup_ceo"
+    },
+    "unlockText": "부탁 q_startup_ceo",
+    "questId": "q_investor",
+    "nextGuestId": null,
+    "chain": "c01_youth",
+    "line": "이 카페, 투자 가치 있네요."
+  },
+  {
+    "id": "couple",
+    "name": "커플",
+    "tags": {
+      "gender": null,
+      "age": "youth",
+      "group": false
+    },
+    "effect": "popularity",
+    "effectName": "시설 인기",
+    "money": 11000,
+    "likes": [
+      "rest",
+      "scenery"
+    ],
+    "likesText": "쉼·경관",
+    "unlock": {
+      "type": "spot",
+      "spotId": "camellia_hill",
+      "level": 2
+    },
+    "unlockText": "관광지 camellia_hill Lv2",
+    "questId": "q_couple",
+    "nextGuestId": "newlyweds",
+    "chain": "c02_couple",
+    "line": "여기 사진 잘 나온다며? 우리 먼저 찍자."
+  },
+  {
+    "id": "newlyweds",
+    "name": "신혼부부",
+    "tags": {
+      "gender": null,
+      "age": "adult",
+      "group": false
+    },
+    "effect": "money",
+    "effectName": "자금",
+    "money": 20000,
+    "likes": [
+      "rest",
+      "scenery"
+    ],
+    "likesText": "쉼·경관",
+    "unlock": {
+      "type": "quest",
+      "questId": "q_couple"
+    },
+    "unlockText": "부탁 q_couple",
+    "questId": "q_newlyweds",
+    "nextGuestId": "wedding_snap",
+    "chain": "c02_couple",
+    "line": "신혼여행은 역시 제주 아니겠어요?"
+  },
+  {
+    "id": "wedding_snap",
+    "name": "웨딩스냅 작가",
+    "tags": {
+      "gender": null,
+      "age": "adult",
+      "group": false
+    },
+    "effect": "ad",
+    "effectName": "홍보",
+    "money": 15000,
+    "likes": [
+      "scenery",
+      "convenience"
+    ],
+    "likesText": "경관·편의",
+    "unlock": {
+      "type": "quest",
+      "questId": "q_newlyweds"
+    },
+    "unlockText": "부탁 q_newlyweds",
+    "questId": "q_wedding_snap",
+    "nextGuestId": "wedding_planner",
+    "chain": "c02_couple",
+    "line": "빛이 좋네요. 여기서 찍겠습니다."
+  },
+  {
+    "id": "wedding_planner",
+    "name": "웨딩플래너",
+    "tags": {
+      "gender": "f",
+      "age": "adult",
+      "group": false
+    },
+    "effect": "money",
+    "effectName": "자금",
+    "money": 30000,
+    "likes": [
+      "rest",
+      "scenery"
+    ],
+    "likesText": "쉼·경관",
+    "unlock": {
+      "type": "quest",
+      "questId": "q_wedding_snap"
+    },
+    "unlockText": "부탁 q_wedding_snap",
+    "questId": "q_wedding_planner",
+    "nextGuestId": null,
+    "chain": "c02_couple",
+    "line": "스몰웨딩 장소로 딱이에요. 계약하죠."
+  },
+  {
+    "id": "insta_traveler",
+    "name": "인스타 여행러",
+    "tags": {
+      "gender": "f",
+      "age": "youth",
+      "group": false
+    },
+    "effect": "ad",
+    "effectName": "홍보",
+    "money": 9000,
+    "likes": [
+      "scenery",
+      "convenience"
+    ],
+    "likesText": "경관·편의",
+    "unlock": {
+      "type": "spot",
+      "spotId": "canola_field",
+      "level": 2
+    },
+    "unlockText": "관광지 canola_field Lv2",
+    "questId": "q_insta_traveler",
+    "nextGuestId": "influencer",
+    "chain": "c03_media",
+    "line": "해시태그 제주카페, 저장 누르고 왔어요."
+  },
+  {
+    "id": "influencer",
+    "name": "인플루언서",
+    "tags": {
+      "gender": "f",
+      "age": "youth",
+      "group": false
+    },
+    "effect": "ad",
+    "effectName": "홍보",
+    "money": 15000,
+    "likes": [
+      "scenery",
+      "food"
+    ],
+    "likesText": "경관·먹거리",
+    "unlock": {
+      "type": "quest",
+      "questId": "q_insta_traveler"
+    },
+    "unlockText": "부탁 q_insta_traveler",
+    "questId": "q_influencer",
+    "nextGuestId": "youtuber",
+    "chain": "c03_media",
+    "line": "팔로워들이 여기 어디냐고 난리예요."
+  },
+  {
+    "id": "youtuber",
+    "name": "유튜버",
+    "tags": {
+      "gender": null,
+      "age": "youth",
+      "group": false
+    },
+    "effect": "ad",
+    "effectName": "홍보",
+    "money": 20000,
+    "likes": [
+      "fun",
+      "scenery"
+    ],
+    "likesText": "즐길거리·경관",
+    "unlock": {
+      "type": "quest",
+      "questId": "q_influencer"
+    },
+    "unlockText": "부탁 q_influencer",
+    "questId": "q_youtuber",
+    "nextGuestId": "tv_pd",
+    "chain": "c03_media",
+    "line": "구독 좋아요 알림 설정, 아시죠?"
+  },
+  {
+    "id": "tv_pd",
+    "name": "방송 PD",
+    "tags": {
+      "gender": null,
+      "age": "adult",
+      "group": false
+    },
+    "effect": "ad",
+    "effectName": "홍보",
+    "money": 25000,
+    "likes": [
+      "rest",
+      "food"
+    ],
+    "likesText": "쉼·먹거리",
+    "unlock": {
+      "type": "quest",
+      "questId": "q_youtuber"
+    },
+    "unlockText": "부탁 q_youtuber",
+    "questId": "q_tv_pd",
+    "nextGuestId": "actor",
+    "chain": "c03_media",
+    "line": "촬영 허가 좀 부탁드립니다. 조용히 할게요."
+  },
+  {
+    "id": "actor",
+    "name": "배우",
+    "tags": {
+      "gender": null,
+      "age": "adult",
+      "group": false
+    },
+    "effect": "ad",
+    "effectName": "홍보",
+    "money": 50000,
+    "likes": [
+      "rest",
+      "scenery"
+    ],
+    "likesText": "쉼·경관",
+    "unlock": {
+      "type": "quest",
+      "questId": "q_tv_pd"
+    },
+    "unlockText": "부탁 q_tv_pd",
+    "questId": "q_actor",
+    "nextGuestId": null,
+    "chain": "c03_media",
+    "line": "알아보셔도 모른 척해 주세요."
+  },
+  {
+    "id": "village_head",
+    "name": "이장님",
+    "tags": {
+      "gender": "m",
+      "age": "senior",
+      "group": false
+    },
+    "effect": "item",
+    "effectName": "아이템",
+    "money": 7000,
+    "likes": [
+      "rest",
+      "food"
+    ],
+    "likesText": "쉼·먹거리",
+    "unlock": {
+      "type": "start"
+    },
+    "unlockText": "시작",
+    "questId": "q_village_head",
+    "nextGuestId": "haenyeo",
+    "chain": "c04_village",
+    "line": "육지서 왔댄? 마을 일은 나한테 물어봅서."
+  },
+  {
+    "id": "haenyeo",
+    "name": "해녀 삼춘",
+    "tags": {
+      "gender": "f",
+      "age": "senior",
+      "group": false
+    },
+    "effect": "item",
+    "effectName": "아이템",
+    "money": 8000,
+    "likes": [
+      "food",
+      "rest"
+    ],
+    "likesText": "먹거리·쉼",
+    "unlock": {
+      "type": "quest",
+      "questId": "q_village_head"
+    },
+    "unlockText": "부탁 q_village_head",
+    "questId": "q_haenyeo",
+    "nextGuestId": "returnee_senior",
+    "chain": "c04_village",
+    "line": "물질 끝나민 여기서 몸 녹이젠."
+  },
+  {
+    "id": "returnee_senior",
+    "name": "귀농 선배",
+    "tags": {
+      "gender": "m",
+      "age": "adult",
+      "group": false
+    },
+    "effect": "research",
+    "effectName": "연구",
+    "money": 9000,
+    "likes": [
+      "farm",
+      "rest"
+    ],
+    "likesText": "농사·쉼",
+    "unlock": {
+      "type": "quest",
+      "questId": "q_haenyeo"
+    },
+    "unlockText": "부탁 q_haenyeo",
+    "questId": "q_returnee_senior",
+    "nextGuestId": "coop_staff",
+    "chain": "c04_village",
+    "line": "나도 5년 전엔 육지 것이었주."
+  },
+  {
+    "id": "coop_staff",
+    "name": "농협 직원",
+    "tags": {
+      "gender": null,
+      "age": "adult",
+      "group": false
+    },
+    "effect": "money",
+    "effectName": "자금",
+    "money": 10000,
+    "likes": [
+      "farm",
+      "convenience"
+    ],
+    "likesText": "농사·편의",
+    "unlock": {
+      "type": "quest",
+      "questId": "q_returnee_senior"
+    },
+    "unlockText": "부탁 q_returnee_senior",
+    "questId": "q_coop_staff",
+    "nextGuestId": "governor",
+    "chain": "c04_village",
+    "line": "감귤 택배, 조합 통하면 수수료 싸요."
+  },
+  {
+    "id": "governor",
+    "name": "도지사",
+    "tags": {
+      "gender": null,
+      "age": "senior",
+      "group": false
+    },
+    "effect": "money",
+    "effectName": "자금",
+    "money": 40000,
+    "likes": [
+      "rest",
+      "scenery"
+    ],
+    "likesText": "쉼·경관",
+    "unlock": {
+      "type": "quest",
+      "questId": "q_coop_staff"
+    },
+    "unlockText": "부탁 q_coop_staff",
+    "questId": "q_governor",
+    "nextGuestId": null,
+    "chain": "c04_village",
+    "line": "귀농 성공 사례로 소개하고 싶습니다."
+  },
+  {
+    "id": "rentcar_family",
+    "name": "렌터카 가족",
+    "tags": {
+      "gender": null,
+      "age": "adult",
+      "group": true
+    },
+    "effect": "money",
+    "effectName": "자금",
+    "money": 15000,
+    "likes": [
+      "convenience",
+      "food"
+    ],
+    "likesText": "편의·먹거리",
+    "unlock": {
+      "type": "rank",
+      "rank": 2
+    },
+    "unlockText": "랭크 2",
+    "questId": "q_rentcar_family",
+    "nextGuestId": "stroller_family",
+    "chain": "c05_family",
+    "line": "주차 되나요? 애들이 배고프대요."
+  },
+  {
+    "id": "stroller_family",
+    "name": "유모차 가족",
+    "tags": {
+      "gender": null,
+      "age": "adult",
+      "group": true
+    },
+    "effect": "popularity",
+    "effectName": "시설 인기",
+    "money": 16000,
+    "likes": [
+      "convenience",
+      "rest"
+    ],
+    "likesText": "편의·쉼",
+    "unlock": {
+      "type": "quest",
+      "questId": "q_rentcar_family"
+    },
+    "unlockText": "부탁 q_rentcar_family",
+    "questId": "q_stroller_family",
+    "nextGuestId": "three_gen_family",
+    "chain": "c05_family",
+    "line": "유모차 둘 데만 있으면 천국이에요."
+  },
+  {
+    "id": "three_gen_family",
+    "name": "삼대 가족",
+    "tags": {
+      "gender": null,
+      "age": "adult",
+      "group": true
+    },
+    "effect": "money",
+    "effectName": "자금",
+    "money": 30000,
+    "likes": [
+      "rest",
+      "food"
+    ],
+    "likesText": "쉼·먹거리",
+    "unlock": {
+      "type": "quest",
+      "questId": "q_stroller_family"
+    },
+    "unlockText": "부탁 q_stroller_family",
+    "questId": "q_three_gen_family",
+    "nextGuestId": null,
+    "chain": "c05_family",
+    "line": "할머니부터 손주까지 여덟 명이에요."
+  },
+  {
+    "id": "olle_walker",
+    "name": "올레길 도보객",
+    "tags": {
+      "gender": null,
+      "age": "adult",
+      "group": false
+    },
+    "effect": "research",
+    "effectName": "연구",
+    "money": 7000,
+    "likes": [
+      "rest",
+      "farm"
+    ],
+    "likesText": "쉼·농사",
+    "unlock": {
+      "type": "spot",
+      "spotId": "olle_trail",
+      "level": 2
+    },
+    "unlockText": "관광지 olle_trail Lv2",
+    "questId": "q_olle_walker",
+    "nextGuestId": "oreum_hiker",
+    "chain": "c06_hike",
+    "line": "7코스 걷다 다리가 풀렸수다."
+  },
+  {
+    "id": "oreum_hiker",
+    "name": "오름 등반가",
+    "tags": {
+      "gender": null,
+      "age": "adult",
+      "group": false
+    },
+    "effect": "popularity",
+    "effectName": "시설 인기",
+    "money": 8000,
+    "likes": [
+      "rest",
+      "scenery"
+    ],
+    "likesText": "쉼·경관",
+    "unlock": {
+      "type": "quest",
+      "questId": "q_olle_walker"
+    },
+    "unlockText": "부탁 q_olle_walker",
+    "questId": "q_oreum_hiker",
+    "nextGuestId": "hallasan_club",
+    "chain": "c06_hike",
+    "line": "오름 368개 중 120개 올랐어요."
+  },
+  {
+    "id": "hallasan_club",
+    "name": "한라산 산악회",
+    "tags": {
+      "gender": null,
+      "age": "senior",
+      "group": true
+    },
+    "effect": "money",
+    "effectName": "자금",
+    "money": 12000,
+    "likes": [
+      "food",
+      "rest"
+    ],
+    "likesText": "먹거리·쉼",
+    "unlock": {
+      "type": "quest",
+      "questId": "q_oreum_hiker"
+    },
+    "unlockText": "부탁 q_oreum_hiker",
+    "questId": "q_hallasan_club",
+    "nextGuestId": null,
+    "chain": "c06_hike",
+    "line": "스무 명 예약이오. 국수 되지예?"
+  },
+  {
+    "id": "surfer",
+    "name": "서핑족(중문)",
+    "tags": {
+      "gender": null,
+      "age": "youth",
+      "group": false
+    },
+    "effect": "ad",
+    "effectName": "홍보",
+    "money": 9000,
+    "likes": [
+      "rest",
+      "scenery"
+    ],
+    "likesText": "쉼·경관",
+    "unlock": {
+      "type": "spot",
+      "spotId": "jungmun_surf",
+      "level": 2
+    },
+    "unlockText": "관광지 jungmun_surf Lv2",
+    "questId": "q_surfer",
+    "nextGuestId": "diver",
+    "chain": "c07_sea",
+    "line": "파도 끝나면 여기서 몸 말려요."
+  },
+  {
+    "id": "diver",
+    "name": "다이버(우도)",
+    "tags": {
+      "gender": null,
+      "age": "adult",
+      "group": false
+    },
+    "effect": "item",
+    "effectName": "아이템",
+    "money": 14000,
+    "likes": [
+      "food",
+      "rest"
+    ],
+    "likesText": "먹거리·쉼",
+    "unlock": {
+      "type": "quest",
+      "questId": "q_surfer"
+    },
+    "unlockText": "부탁 q_surfer",
+    "questId": "q_diver",
+    "nextGuestId": "yacht_owner",
+    "chain": "c07_sea",
+    "line": "오늘 시야 20미터. 물속이 하늘 같았어요."
+  },
+  {
+    "id": "yacht_owner",
+    "name": "요트 오너",
+    "tags": {
+      "gender": null,
+      "age": "adult",
+      "group": false
+    },
+    "effect": "money",
+    "effectName": "자금",
+    "money": 60000,
+    "likes": [
+      "rest",
+      "food"
+    ],
+    "likesText": "쉼·먹거리",
+    "unlock": {
+      "type": "quest",
+      "questId": "q_diver"
+    },
+    "unlockText": "부탁 q_diver",
+    "questId": "q_yacht_owner",
+    "nextGuestId": null,
+    "chain": "c07_sea",
+    "line": "요트 세워 둘 데는 없어도 커피는 있군요."
+  },
+  {
+    "id": "cafe_tourer",
+    "name": "카페 투어러",
+    "tags": {
+      "gender": null,
+      "age": "adult",
+      "group": false
+    },
+    "effect": "research",
+    "effectName": "연구",
+    "money": 10000,
+    "likes": [
+      "food",
+      "rest"
+    ],
+    "likesText": "먹거리·쉼",
+    "unlock": {
+      "type": "spot",
+      "spotId": "jeongbang_falls",
+      "level": 2
+    },
+    "unlockText": "관광지 jeongbang_falls Lv2",
+    "questId": "q_cafe_tourer",
+    "nextGuestId": "ribbon_judge",
+    "chain": "c08_gourmet",
+    "line": "오늘 네 번째 카페. 여긴 평점 몇 점일까."
+  },
+  {
+    "id": "ribbon_judge",
+    "name": "리본 가이드 심사위원",
+    "tags": {
+      "gender": null,
+      "age": "adult",
+      "group": false
+    },
+    "effect": "research",
+    "effectName": "연구",
+    "money": 20000,
+    "likes": [
+      "food",
+      "rest"
+    ],
+    "likesText": "먹거리·쉼",
+    "unlock": {
+      "type": "quest",
+      "questId": "q_cafe_tourer"
+    },
+    "unlockText": "부탁 q_cafe_tourer",
+    "questId": "q_ribbon_judge",
+    "nextGuestId": "star_guide_inspector",
+    "chain": "c08_gourmet",
+    "line": "메모하는 거 신경 쓰지 마세요."
+  },
+  {
+    "id": "star_guide_inspector",
+    "name": "별점 가이드 조사원",
+    "tags": {
+      "gender": null,
+      "age": "adult",
+      "group": false
+    },
+    "effect": "research",
+    "effectName": "연구",
+    "money": 30000,
+    "likes": [
+      "food",
+      "rest"
+    ],
+    "likesText": "먹거리·쉼",
+    "unlock": {
+      "type": "quest",
+      "questId": "q_ribbon_judge"
+    },
+    "unlockText": "부탁 q_ribbon_judge",
+    "questId": "q_star_guide_inspector",
+    "nextGuestId": null,
+    "chain": "c08_gourmet",
+    "line": "신분은 밝힐 수 없습니다. 식사 잘했습니다."
+  },
+  {
+    "id": "local_auntie",
+    "name": "동네 삼춘",
+    "tags": {
+      "gender": "f",
+      "age": "senior",
+      "group": false
+    },
+    "effect": "item",
+    "effectName": "아이템",
+    "money": 6000,
+    "likes": [
+      "rest",
+      "food"
+    ],
+    "likesText": "쉼·먹거리",
+    "unlock": {
+      "type": "start"
+    },
+    "unlockText": "시작",
+    "questId": "q_local_auntie",
+    "nextGuestId": "local_uncle",
+    "chain": "c09_local",
+    "line": "새로 왔댄? 귤 하나 먹어 봅서."
+  },
+  {
+    "id": "local_uncle",
+    "name": "밭 삼춘",
+    "tags": {
+      "gender": "m",
+      "age": "senior",
+      "group": false
+    },
+    "effect": "item",
+    "effectName": "아이템",
+    "money": 6000,
+    "likes": [
+      "farm",
+      "rest"
+    ],
+    "likesText": "농사·쉼",
+    "unlock": {
+      "type": "quest",
+      "questId": "q_local_auntie"
+    },
+    "unlockText": "부탁 q_local_auntie",
+    "questId": "q_local_uncle",
+    "nextGuestId": "market_auntie",
+    "chain": "c09_local",
+    "line": "밭담 없이 밭 하민 바람에 다 날아가."
+  },
+  {
+    "id": "market_auntie",
+    "name": "오일장 삼춘",
+    "tags": {
+      "gender": "f",
+      "age": "senior",
+      "group": false
+    },
+    "effect": "money",
+    "effectName": "자금",
+    "money": 7000,
+    "likes": [
+      "food",
+      "fun"
+    ],
+    "likesText": "먹거리·즐길거리",
+    "unlock": {
+      "type": "quest",
+      "questId": "q_local_uncle"
+    },
+    "unlockText": "부탁 q_local_uncle",
+    "questId": "q_market_auntie",
+    "nextGuestId": "village_elder",
+    "chain": "c09_local",
+    "line": "오일장 끝나민 여기 들르켜."
+  },
+  {
+    "id": "village_elder",
+    "name": "마을 어른",
+    "tags": {
+      "gender": "m",
+      "age": "senior",
+      "group": false
+    },
+    "effect": "popularity",
+    "effectName": "시설 인기",
+    "money": 8000,
+    "likes": [
+      "rest",
+      "scenery"
+    ],
+    "likesText": "쉼·경관",
+    "unlock": {
+      "type": "quest",
+      "questId": "q_market_auntie"
+    },
+    "unlockText": "부탁 q_market_auntie",
+    "questId": "q_village_elder",
+    "nextGuestId": "seolmundae",
+    "chain": "c09_local",
+    "line": "이 동네 폭낭은 내가 어릴 때부터 있었주."
+  },
+  {
+    "id": "seolmundae",
+    "name": "설문대할망",
+    "tags": {
+      "gender": "f",
+      "age": null,
+      "group": false
+    },
+    "effect": "item",
+    "effectName": "아이템",
+    "money": 99999,
+    "likes": [
+      "scenery",
+      "rest"
+    ],
+    "likesText": "경관·쉼",
+    "unlock": {
+      "type": "quest",
+      "questId": "q_village_elder"
+    },
+    "unlockText": "부탁 q_village_elder",
+    "questId": "q_seolmundae",
+    "nextGuestId": null,
+    "chain": "c09_local",
+    "line": "제주를 만든 건 나였주. 죽 한 솥 내와라."
+  },
+  {
+    "id": "mainlander_auntie",
+    "name": "육지 삼춘",
+    "tags": {
+      "gender": "f",
+      "age": "senior",
+      "group": false
+    },
+    "effect": "money",
+    "effectName": "자금",
+    "money": 9000,
+    "likes": [
+      "food",
+      "rest"
+    ],
+    "likesText": "먹거리·쉼",
+    "unlock": {
+      "type": "date",
+      "year": 1,
+      "month": 4
+    },
+    "unlockText": "1년 4월",
+    "questId": "q_mainlander_auntie",
+    "nextGuestId": "mainlander_newbie",
+    "chain": "c10_mainland",
+    "line": "제주는 처음이라 다 신기하네."
+  },
+  {
+    "id": "mainlander_newbie",
+    "name": "육지 것",
+    "tags": {
+      "gender": null,
+      "age": "youth",
+      "group": false
+    },
+    "effect": "ad",
+    "effectName": "홍보",
+    "money": 9000,
+    "likes": [
+      "rest",
+      "fun"
+    ],
+    "likesText": "쉼·즐길거리",
+    "unlock": {
+      "type": "quest",
+      "questId": "q_mainlander_auntie"
+    },
+    "unlockText": "부탁 q_mainlander_auntie",
+    "questId": "q_mainlander_newbie",
+    "nextGuestId": "monthly_stayer",
+    "chain": "c10_mainland",
+    "line": "육지 것이라고 놀리지 마세요. 정착할 거예요."
+  },
+  {
+    "id": "monthly_stayer",
+    "name": "한 달 살기",
+    "tags": {
+      "gender": null,
+      "age": "adult",
+      "group": false
+    },
+    "effect": "research",
+    "effectName": "연구",
+    "money": 8000,
+    "likes": [
+      "rest",
+      "fun"
+    ],
+    "likesText": "쉼·즐길거리",
+    "unlock": {
+      "type": "quest",
+      "questId": "q_mainlander_newbie"
+    },
+    "unlockText": "부탁 q_mainlander_newbie",
+    "questId": "q_monthly_stayer",
+    "nextGuestId": "jeju_immigrant",
+    "chain": "c10_mainland",
+    "line": "한 달만 살아 보려 했는데 벌써 세 달째."
+  },
+  {
+    "id": "jeju_immigrant",
+    "name": "제주 이주민",
+    "tags": {
+      "gender": null,
+      "age": "adult",
+      "group": false
+    },
+    "effect": "popularity",
+    "effectName": "시설 인기",
+    "money": 10000,
+    "likes": [
+      "rest",
+      "farm"
+    ],
+    "likesText": "쉼·농사",
+    "unlock": {
+      "type": "quest",
+      "questId": "q_monthly_stayer"
+    },
+    "unlockText": "부탁 q_monthly_stayer",
+    "questId": "q_jeju_immigrant",
+    "nextGuestId": null,
+    "chain": "c10_mainland",
+    "line": "이제 저도 삼춘 소리 들어요."
+  },
+  {
+    "id": "dog_mongi",
+    "name": "동네 강아지 몽이",
+    "tags": {
+      "gender": null,
+      "age": null,
+      "group": false
+    },
+    "effect": "item",
+    "effectName": "아이템",
+    "money": 0,
+    "likes": [
+      "scenery",
+      "farm"
+    ],
+    "likesText": "경관·농사",
+    "unlock": {
+      "type": "spot",
+      "spotId": "gotjawal",
+      "level": 2
+    },
+    "unlockText": "관광지 gotjawal Lv2",
+    "questId": "q_dog_mongi",
+    "nextGuestId": "street_cat_noeul",
+    "chain": "c11_animal",
+    "line": "멍! (꼬리를 흔든다)"
+  },
+  {
+    "id": "street_cat_noeul",
+    "name": "길고양이 노을",
+    "tags": {
+      "gender": null,
+      "age": null,
+      "group": false
+    },
+    "effect": "item",
+    "effectName": "아이템",
+    "money": 0,
+    "likes": [
+      "rest",
+      "scenery"
+    ],
+    "likesText": "쉼·경관",
+    "unlock": {
+      "type": "quest",
+      "questId": "q_dog_mongi"
+    },
+    "unlockText": "부탁 q_dog_mongi",
+    "questId": "q_street_cat_noeul",
+    "nextGuestId": "jeju_pony",
+    "chain": "c11_animal",
+    "line": "냐옹. (창가 자리를 차지한다)"
+  },
+  {
+    "id": "jeju_pony",
+    "name": "제주 조랑말",
+    "tags": {
+      "gender": null,
+      "age": null,
+      "group": false
+    },
+    "effect": "item",
+    "effectName": "아이템",
+    "money": 0,
+    "likes": [
+      "farm",
+      "scenery"
+    ],
+    "likesText": "농사·경관",
+    "unlock": {
+      "type": "quest",
+      "questId": "q_street_cat_noeul"
+    },
+    "unlockText": "부탁 q_street_cat_noeul",
+    "questId": "q_jeju_pony",
+    "nextGuestId": null,
+    "chain": "c11_animal",
+    "line": "히힝. (당근을 노린다)"
+  },
+  {
+    "id": "magpie_thief",
+    "name": "감귤 도둑 까치",
+    "tags": {
+      "gender": null,
+      "age": null,
+      "group": false
+    },
+    "effect": "item",
+    "effectName": "아이템",
+    "money": 0,
+    "likes": [
+      "farm"
+    ],
+    "likesText": "농사",
+    "unlock": {
+      "type": "count",
+      "objectId": "tangerine_tree",
+      "count": 3
+    },
+    "unlockText": "tangerine_tree 3개",
+    "questId": "q_magpie_thief",
+    "nextGuestId": "crow_flock",
+    "chain": "c12_pest",
+    "line": "깍깍! (귤을 물고 날아간다)"
+  },
+  {
+    "id": "crow_flock",
+    "name": "까마귀 떼",
+    "tags": {
+      "gender": null,
+      "age": null,
+      "group": true
+    },
+    "effect": "item",
+    "effectName": "아이템",
+    "money": 0,
+    "likes": [
+      "farm"
+    ],
+    "likesText": "농사",
+    "unlock": {
+      "type": "quest",
+      "questId": "q_magpie_thief"
+    },
+    "unlockText": "부탁 q_magpie_thief",
+    "questId": "q_crow_flock",
+    "nextGuestId": "roe_deer",
+    "chain": "c12_pest",
+    "line": "까악까악. (밭을 노린다)"
+  },
+  {
+    "id": "roe_deer",
+    "name": "노루",
+    "tags": {
+      "gender": null,
+      "age": null,
+      "group": false
+    },
+    "effect": "item",
+    "effectName": "아이템",
+    "money": 0,
+    "likes": [
+      "farm",
+      "scenery"
+    ],
+    "likesText": "농사·경관",
+    "unlock": {
+      "type": "quest",
+      "questId": "q_crow_flock"
+    },
+    "unlockText": "부탁 q_crow_flock",
+    "questId": "q_roe_deer",
+    "nextGuestId": null,
+    "chain": "c12_pest",
+    "line": "… (귤밭을 빤히 본다)"
+  },
+  {
+    "id": "school_trip",
+    "name": "수학여행단",
+    "tags": {
+      "gender": null,
+      "age": "youth",
+      "group": true
+    },
+    "effect": "money",
+    "effectName": "자금",
+    "money": 5000,
+    "likes": [
+      "fun",
+      "food"
+    ],
+    "likesText": "즐길거리·먹거리",
+    "unlock": {
+      "type": "spot",
+      "spotId": "manjanggul",
+      "level": 2
+    },
+    "unlockText": "관광지 manjanggul Lv2",
+    "questId": "q_school_trip",
+    "nextGuestId": "school_teacher",
+    "chain": "c13_school",
+    "line": "선생님, 여기서 사진 찍어도 돼요?"
+  },
+  {
+    "id": "school_teacher",
+    "name": "인솔 교사",
+    "tags": {
+      "gender": null,
+      "age": "adult",
+      "group": false
+    },
+    "effect": "research",
+    "effectName": "연구",
+    "money": 8000,
+    "likes": [
+      "rest",
+      "convenience"
+    ],
+    "likesText": "쉼·편의",
+    "unlock": {
+      "type": "quest",
+      "questId": "q_school_trip"
+    },
+    "unlockText": "부탁 q_school_trip",
+    "questId": "q_school_teacher",
+    "nextGuestId": "school_club",
+    "chain": "c13_school",
+    "line": "40명 인솔 중입니다. 화장실 어디죠?"
+  },
+  {
+    "id": "school_club",
+    "name": "학교 동아리",
+    "tags": {
+      "gender": null,
+      "age": "youth",
+      "group": true
+    },
+    "effect": "ticket",
+    "effectName": "응모권",
+    "money": 6000,
+    "likes": [
+      "fun",
+      "rest"
+    ],
+    "likesText": "즐길거리·쉼",
+    "unlock": {
+      "type": "quest",
+      "questId": "q_school_teacher"
+    },
+    "unlockText": "부탁 q_school_teacher",
+    "questId": "q_school_club",
+    "nextGuestId": "alumni_reunion",
+    "chain": "c13_school",
+    "line": "동아리 MT는 카페에서! 보드게임 있어요?"
+  },
+  {
+    "id": "alumni_reunion",
+    "name": "동창회",
+    "tags": {
+      "gender": null,
+      "age": "adult",
+      "group": true
+    },
+    "effect": "money",
+    "effectName": "자금",
+    "money": 20000,
+    "likes": [
+      "food",
+      "rest"
+    ],
+    "likesText": "먹거리·쉼",
+    "unlock": {
+      "type": "quest",
+      "questId": "q_school_club"
+    },
+    "unlockText": "부탁 q_school_club",
+    "questId": "q_alumni_reunion",
+    "nextGuestId": null,
+    "chain": "c13_school",
+    "line": "30년 만이야. 여기 국수 맛있다며?"
+  },
+  {
+    "id": "company_workshop",
+    "name": "회사 워크숍",
+    "tags": {
+      "gender": null,
+      "age": "adult",
+      "group": true
+    },
+    "effect": "money",
+    "effectName": "자금",
+    "money": 15000,
+    "likes": [
+      "rest",
+      "food"
+    ],
+    "likesText": "쉼·먹거리",
+    "unlock": {
+      "type": "spot",
+      "spotId": "black_pork_street",
+      "level": 2
+    },
+    "unlockText": "관광지 black_pork_street Lv2",
+    "questId": "q_company_workshop",
+    "nextGuestId": "team_leader",
+    "chain": "c14_company",
+    "line": "워크숍 끝나고 자유 시간이에요!"
+  },
+  {
+    "id": "team_leader",
+    "name": "팀장님",
+    "tags": {
+      "gender": null,
+      "age": "adult",
+      "group": false
+    },
+    "effect": "money",
+    "effectName": "자금",
+    "money": 18000,
+    "likes": [
+      "rest",
+      "convenience"
+    ],
+    "likesText": "쉼·편의",
+    "unlock": {
+      "type": "quest",
+      "questId": "q_company_workshop"
+    },
+    "unlockText": "부탁 q_company_workshop",
+    "questId": "q_team_leader",
+    "nextGuestId": "remote_team",
+    "chain": "c14_company",
+    "line": "법인카드니까 다들 마음껏 시켜."
+  },
+  {
+    "id": "remote_team",
+    "name": "원격 근무팀",
+    "tags": {
+      "gender": null,
+      "age": "adult",
+      "group": true
+    },
+    "effect": "research",
+    "effectName": "연구",
+    "money": 14000,
+    "likes": [
+      "convenience",
+      "rest"
+    ],
+    "likesText": "편의·쉼",
+    "unlock": {
+      "type": "quest",
+      "questId": "q_team_leader"
+    },
+    "unlockText": "부탁 q_team_leader",
+    "questId": "q_remote_team",
+    "nextGuestId": "ceo_retreat",
+    "chain": "c14_company",
+    "line": "줌 회의 중이니 조용히 부탁드려요."
+  },
+  {
+    "id": "ceo_retreat",
+    "name": "임원 워크숍",
+    "tags": {
+      "gender": null,
+      "age": "senior",
+      "group": true
+    },
+    "effect": "money",
+    "effectName": "자금",
+    "money": 35000,
+    "likes": [
+      "food",
+      "rest"
+    ],
+    "likesText": "먹거리·쉼",
+    "unlock": {
+      "type": "quest",
+      "questId": "q_remote_team"
+    },
+    "unlockText": "부탁 q_remote_team",
+    "questId": "q_ceo_retreat",
+    "nextGuestId": null,
+    "chain": "c14_company",
+    "line": "임원진 열 분 모십니다. 흑돼지 되나요?"
+  },
+  {
+    "id": "silver_tour",
+    "name": "실버 관광",
+    "tags": {
+      "gender": null,
+      "age": "senior",
+      "group": true
+    },
+    "effect": "money",
+    "effectName": "자금",
+    "money": 8000,
+    "likes": [
+      "rest",
+      "food"
+    ],
+    "likesText": "쉼·먹거리",
+    "unlock": {
+      "type": "spot",
+      "spotId": "bijarim",
+      "level": 2
+    },
+    "unlockText": "관광지 bijarim Lv2",
+    "questId": "q_silver_tour",
+    "nextGuestId": "grandma_gyecheo",
+    "chain": "c15_silver",
+    "line": "천천히 걸읍시다. 급할 거 없어요."
+  },
+  {
+    "id": "grandma_gyecheo",
+    "name": "계모임 할머니들",
+    "tags": {
+      "gender": "f",
+      "age": "senior",
+      "group": true
+    },
+    "effect": "money",
+    "effectName": "자금",
+    "money": 10000,
+    "likes": [
+      "food",
+      "rest"
+    ],
+    "likesText": "먹거리·쉼",
+    "unlock": {
+      "type": "quest",
+      "questId": "q_silver_tour"
+    },
+    "unlockText": "부탁 q_silver_tour",
+    "questId": "q_grandma_gyecheo",
+    "nextGuestId": "retired_teacher",
+    "chain": "c15_silver",
+    "line": "우리 계모임 30년째. 오메기떡 열 개!"
+  },
+  {
+    "id": "retired_teacher",
+    "name": "은퇴 선생님",
+    "tags": {
+      "gender": "m",
+      "age": "senior",
+      "group": false
+    },
+    "effect": "research",
+    "effectName": "연구",
+    "money": 9000,
+    "likes": [
+      "fun",
+      "rest"
+    ],
+    "likesText": "즐길거리·쉼",
+    "unlock": {
+      "type": "quest",
+      "questId": "q_grandma_gyecheo"
+    },
+    "unlockText": "부탁 q_grandma_gyecheo",
+    "questId": "q_retired_teacher",
+    "nextGuestId": "hallabong_grandpa",
+    "chain": "c15_silver",
+    "line": "책 읽을 자리 하나면 충분해요."
+  },
+  {
+    "id": "hallabong_grandpa",
+    "name": "한라봉 할아버지",
+    "tags": {
+      "gender": "m",
+      "age": "senior",
+      "group": false
+    },
+    "effect": "item",
+    "effectName": "아이템",
+    "money": 7000,
+    "likes": [
+      "farm",
+      "rest"
+    ],
+    "likesText": "농사·쉼",
+    "unlock": {
+      "type": "quest",
+      "questId": "q_retired_teacher"
+    },
+    "unlockText": "부탁 q_retired_teacher",
+    "questId": "q_hallabong_grandpa",
+    "nextGuestId": null,
+    "chain": "c15_silver",
+    "line": "한라봉은 내가 제주서 제일 잘 키우주."
+  },
+  {
+    "id": "running_crew",
+    "name": "러닝크루",
+    "tags": {
+      "gender": null,
+      "age": "youth",
+      "group": true
+    },
+    "effect": "ad",
+    "effectName": "홍보",
+    "money": 6000,
+    "likes": [
+      "convenience",
+      "rest"
+    ],
+    "likesText": "편의·쉼",
+    "unlock": {
+      "type": "spot",
+      "spotId": "udo_bike",
+      "level": 2
+    },
+    "unlockText": "관광지 udo_bike Lv2",
+    "questId": "q_running_crew",
+    "nextGuestId": "trail_runner",
+    "chain": "c16_run",
+    "line": "10km 끝! 아이스 아메리카노 다섯 잔요."
+  },
+  {
+    "id": "trail_runner",
+    "name": "트레일 러너",
+    "tags": {
+      "gender": null,
+      "age": "youth",
+      "group": false
+    },
+    "effect": "research",
+    "effectName": "연구",
+    "money": 8000,
+    "likes": [
+      "rest",
+      "food"
+    ],
+    "likesText": "쉼·먹거리",
+    "unlock": {
+      "type": "quest",
+      "questId": "q_running_crew"
+    },
+    "unlockText": "부탁 q_running_crew",
+    "questId": "q_trail_runner",
+    "nextGuestId": "cyclist",
+    "chain": "c16_run",
+    "line": "오름 세 개 넘고 왔어요. 물 좀요."
+  },
+  {
+    "id": "cyclist",
+    "name": "자전거 일주",
+    "tags": {
+      "gender": null,
+      "age": "adult",
+      "group": false
+    },
+    "effect": "ticket",
+    "effectName": "응모권",
+    "money": 9000,
+    "likes": [
+      "convenience",
+      "rest"
+    ],
+    "likesText": "편의·쉼",
+    "unlock": {
+      "type": "quest",
+      "questId": "q_trail_runner"
+    },
+    "unlockText": "부탁 q_trail_runner",
+    "questId": "q_cyclist",
+    "nextGuestId": "triathlete",
+    "chain": "c16_run",
+    "line": "섬 한 바퀴 234km, 오늘 반 돌았어요."
+  },
+  {
+    "id": "triathlete",
+    "name": "철인 3종",
+    "tags": {
+      "gender": null,
+      "age": "adult",
+      "group": false
+    },
+    "effect": "money",
+    "effectName": "자금",
+    "money": 15000,
+    "likes": [
+      "food",
+      "rest"
+    ],
+    "likesText": "먹거리·쉼",
+    "unlock": {
+      "type": "quest",
+      "questId": "q_cyclist"
+    },
+    "unlockText": "부탁 q_cyclist",
+    "questId": "q_triathlete",
+    "nextGuestId": null,
+    "chain": "c16_run",
+    "line": "수영 끝, 자전거 끝, 이제 달리기 전에 한 잔."
+  },
+  {
+    "id": "night_guest",
+    "name": "밤 손님",
+    "tags": {
+      "gender": null,
+      "age": "adult",
+      "group": false
+    },
+    "effect": "popularity",
+    "effectName": "시설 인기",
+    "money": 13000,
+    "likes": [
+      "rest",
+      "scenery"
+    ],
+    "likesText": "쉼·경관",
+    "unlock": {
+      "type": "spot",
+      "spotId": "oreum",
+      "level": 2
+    },
+    "unlockText": "관광지 oreum Lv2",
+    "questId": "q_night_guest",
+    "nextGuestId": "stargazer",
+    "chain": "c17_night",
+    "line": "해 지고 나서가 진짜 제주죠."
+  },
+  {
+    "id": "stargazer",
+    "name": "별 보는 사람",
+    "tags": {
+      "gender": null,
+      "age": "adult",
+      "group": false
+    },
+    "effect": "research",
+    "effectName": "연구",
+    "money": 12000,
+    "likes": [
+      "scenery",
+      "rest"
+    ],
+    "likesText": "경관·쉼",
+    "unlock": {
+      "type": "quest",
+      "questId": "q_night_guest"
+    },
+    "unlockText": "부탁 q_night_guest",
+    "questId": "q_stargazer",
+    "nextGuestId": "night_photographer",
+    "chain": "c17_night",
+    "line": "여긴 은하수가 맨눈으로 보여요."
+  },
+  {
+    "id": "night_photographer",
+    "name": "야경 사진가",
+    "tags": {
+      "gender": null,
+      "age": "adult",
+      "group": false
+    },
+    "effect": "ticket",
+    "effectName": "응모권",
+    "money": 15000,
+    "likes": [
+      "scenery",
+      "rest"
+    ],
+    "likesText": "경관·쉼",
+    "unlock": {
+      "type": "quest",
+      "questId": "q_stargazer"
+    },
+    "unlockText": "부탁 q_stargazer",
+    "questId": "q_night_photographer",
+    "nextGuestId": "lighthouse_keeper",
+    "chain": "c17_night",
+    "line": "장노출 30초. 움직이지 마세요."
+  },
+  {
+    "id": "lighthouse_keeper",
+    "name": "등대 지킴이",
+    "tags": {
+      "gender": "m",
+      "age": "senior",
+      "group": false
+    },
+    "effect": "item",
+    "effectName": "아이템",
+    "money": 9000,
+    "likes": [
+      "scenery",
+      "rest"
+    ],
+    "likesText": "경관·쉼",
+    "unlock": {
+      "type": "quest",
+      "questId": "q_night_photographer"
+    },
+    "unlockText": "부탁 q_night_photographer",
+    "questId": "q_lighthouse_keeper",
+    "nextGuestId": null,
+    "chain": "c17_night",
+    "line": "도대불 불 켜던 시절 이야기 들어 볼래?"
+  },
+  {
+    "id": "group_cn",
+    "name": "중국 단체",
+    "tags": {
+      "gender": null,
+      "age": "adult",
+      "group": true
+    },
+    "effect": "money",
+    "effectName": "자금",
+    "money": 12000,
+    "likes": [
+      "fun",
+      "convenience"
+    ],
+    "likesText": "즐길거리·편의",
+    "unlock": {
+      "type": "spot",
+      "spotId": "seongsan",
+      "level": 2
+    },
+    "unlockText": "관광지 seongsan Lv2",
+    "questId": "q_group_cn",
+    "nextGuestId": "group_jp",
+    "chain": "c18_group_foreign",
+    "line": "감귤 초콜릿 열 상자 주세요!"
+  },
+  {
+    "id": "group_jp",
+    "name": "일본 단체",
+    "tags": {
+      "gender": null,
+      "age": "senior",
+      "group": true
+    },
+    "effect": "money",
+    "effectName": "자금",
+    "money": 14000,
+    "likes": [
+      "rest",
+      "food"
+    ],
+    "likesText": "쉼·먹거리",
+    "unlock": {
+      "type": "quest",
+      "questId": "q_group_cn"
+    },
+    "unlockText": "부탁 q_group_cn",
+    "questId": "q_group_jp",
+    "nextGuestId": "group_sea",
+    "chain": "c18_group_foreign",
+    "line": "조용한 자리로 부탁합니다."
+  },
+  {
+    "id": "group_sea",
+    "name": "동남아 단체",
+    "tags": {
+      "gender": null,
+      "age": "adult",
+      "group": true
+    },
+    "effect": "money",
+    "effectName": "자금",
+    "money": 13000,
+    "likes": [
+      "fun",
+      "scenery"
+    ],
+    "likesText": "즐길거리·경관",
+    "unlock": {
+      "type": "quest",
+      "questId": "q_group_jp"
+    },
+    "unlockText": "부탁 q_group_jp",
+    "questId": "q_group_sea",
+    "nextGuestId": null,
+    "chain": "c18_group_foreign",
+    "line": "눈 오는 한라산 보러 왔어요!"
+  },
+  {
+    "id": "solo_foreign",
+    "name": "개별 외국 여행자",
+    "tags": {
+      "gender": null,
+      "age": "adult",
+      "group": false
+    },
+    "effect": "research",
+    "effectName": "연구",
+    "money": 10000,
+    "likes": [
+      "rest",
+      "scenery"
+    ],
+    "likesText": "쉼·경관",
+    "unlock": {
+      "type": "spot",
+      "spotId": "hallasan",
+      "level": 2
+    },
+    "unlockText": "관광지 hallasan Lv2",
+    "questId": "q_solo_foreign",
+    "nextGuestId": "foreign_chef",
+    "chain": "c19_solo_foreign",
+    "line": "Jeju is beautiful! 아메리카노 큰 컵요."
+  },
+  {
+    "id": "foreign_chef",
+    "name": "외국 셰프",
+    "tags": {
+      "gender": null,
+      "age": "adult",
+      "group": false
+    },
+    "effect": "research",
+    "effectName": "연구",
+    "money": 20000,
+    "likes": [
+      "food",
+      "farm"
+    ],
+    "likesText": "먹거리·농사",
+    "unlock": {
+      "type": "quest",
+      "questId": "q_solo_foreign"
+    },
+    "unlockText": "부탁 q_solo_foreign",
+    "questId": "q_foreign_chef",
+    "nextGuestId": "foreign_vlogger",
+    "chain": "c19_solo_foreign",
+    "line": "이 흑돼지, 우리 가게에 쓰고 싶군요."
+  },
+  {
+    "id": "foreign_vlogger",
+    "name": "외국 브이로거",
+    "tags": {
+      "gender": null,
+      "age": "youth",
+      "group": false
+    },
+    "effect": "ad",
+    "effectName": "홍보",
+    "money": 15000,
+    "likes": [
+      "fun",
+      "scenery"
+    ],
+    "likesText": "즐길거리·경관",
+    "unlock": {
+      "type": "quest",
+      "questId": "q_foreign_chef"
+    },
+    "unlockText": "부탁 q_foreign_chef",
+    "questId": "q_foreign_vlogger",
+    "nextGuestId": "world_traveler",
+    "chain": "c19_solo_foreign",
+    "line": "Hello everyone, 오늘은 제주 카페!"
+  },
+  {
+    "id": "world_traveler",
+    "name": "세계 일주 여행자",
+    "tags": {
+      "gender": null,
+      "age": "adult",
+      "group": false
+    },
+    "effect": "item",
+    "effectName": "아이템",
+    "money": 18000,
+    "likes": [
+      "rest",
+      "scenery"
+    ],
+    "likesText": "쉼·경관",
+    "unlock": {
+      "type": "quest",
+      "questId": "q_foreign_vlogger"
+    },
+    "unlockText": "부탁 q_foreign_vlogger",
+    "questId": "q_world_traveler",
+    "nextGuestId": null,
+    "chain": "c19_solo_foreign",
+    "line": "120개 나라 중 제주가 제일 조용해요."
+  },
+  {
+    "id": "art_student",
+    "name": "미술 학생",
+    "tags": {
+      "gender": null,
+      "age": "youth",
+      "group": false
+    },
+    "effect": "research",
+    "effectName": "연구",
+    "money": 4000,
+    "likes": [
+      "scenery",
+      "rest"
+    ],
+    "likesText": "경관·쉼",
+    "unlock": {
+      "type": "spot",
+      "spotId": "sangumburi",
+      "level": 2
+    },
+    "unlockText": "관광지 sangumburi Lv2",
+    "questId": "q_art_student",
+    "nextGuestId": "village_painter",
+    "chain": "c20_art",
+    "line": "스케치북에 오름 그리는 중이에요."
+  },
+  {
+    "id": "village_painter",
+    "name": "마을 화가",
+    "tags": {
+      "gender": null,
+      "age": "adult",
+      "group": false
+    },
+    "effect": "item",
+    "effectName": "아이템",
+    "money": 8000,
+    "likes": [
+      "scenery",
+      "fun"
+    ],
+    "likesText": "경관·즐길거리",
+    "unlock": {
+      "type": "quest",
+      "questId": "q_art_student"
+    },
+    "unlockText": "부탁 q_art_student",
+    "questId": "q_village_painter",
+    "nextGuestId": "potter",
+    "chain": "c20_art",
+    "line": "이 마을 풍경만 30년 그렸주."
+  },
+  {
+    "id": "potter",
+    "name": "도예가",
+    "tags": {
+      "gender": null,
+      "age": "adult",
+      "group": false
+    },
+    "effect": "item",
+    "effectName": "아이템",
+    "money": 10000,
+    "likes": [
+      "fun",
+      "rest"
+    ],
+    "likesText": "즐길거리·쉼",
+    "unlock": {
+      "type": "quest",
+      "questId": "q_village_painter"
+    },
+    "unlockText": "부탁 q_village_painter",
+    "questId": "q_potter",
+    "nextGuestId": "architect",
+    "chain": "c20_art",
+    "line": "흙은 거짓말을 안 해요."
+  },
+  {
+    "id": "architect",
+    "name": "건축가",
+    "tags": {
+      "gender": null,
+      "age": "adult",
+      "group": false
+    },
+    "effect": "popularity",
+    "effectName": "시설 인기",
+    "money": 25000,
+    "likes": [
+      "rest",
+      "scenery"
+    ],
+    "likesText": "쉼·경관",
+    "unlock": {
+      "type": "quest",
+      "questId": "q_potter"
+    },
+    "unlockText": "부탁 q_potter",
+    "questId": "q_architect",
+    "nextGuestId": null,
+    "chain": "c20_art",
+    "line": "돌담과 창고, 이 비율이 좋네요."
+  },
+  {
+    "id": "dessert_hunter",
+    "name": "디저트 헌터",
+    "tags": {
+      "gender": "f",
+      "age": "youth",
+      "group": false
+    },
+    "effect": "research",
+    "effectName": "연구",
+    "money": 9000,
+    "likes": [
+      "food",
+      "rest"
+    ],
+    "likesText": "먹거리·쉼",
+    "unlock": {
+      "type": "spot",
+      "spotId": "dongmun_market",
+      "level": 2
+    },
+    "unlockText": "관광지 dongmun_market Lv2",
+    "questId": "q_dessert_hunter",
+    "nextGuestId": "coffee_geek",
+    "chain": "c21_coffee",
+    "line": "디저트는 배가 아니라 마음으로 먹는 거죠."
+  },
+  {
+    "id": "coffee_geek",
+    "name": "커피 덕후",
+    "tags": {
+      "gender": null,
+      "age": "adult",
+      "group": false
+    },
+    "effect": "research",
+    "effectName": "연구",
+    "money": 11000,
+    "likes": [
+      "food",
+      "rest"
+    ],
+    "likesText": "먹거리·쉼",
+    "unlock": {
+      "type": "quest",
+      "questId": "q_dessert_hunter"
+    },
+    "unlockText": "부탁 q_dessert_hunter",
+    "questId": "q_coffee_geek",
+    "nextGuestId": "home_barista",
+    "chain": "c21_coffee",
+    "line": "원두 원산지 여쭤봐도 될까요?"
+  },
+  {
+    "id": "home_barista",
+    "name": "홈 바리스타",
+    "tags": {
+      "gender": null,
+      "age": "adult",
+      "group": false
+    },
+    "effect": "popularity",
+    "effectName": "시설 인기",
+    "money": 12000,
+    "likes": [
+      "food",
+      "fun"
+    ],
+    "likesText": "먹거리·즐길거리",
+    "unlock": {
+      "type": "quest",
+      "questId": "q_coffee_geek"
+    },
+    "unlockText": "부탁 q_coffee_geek",
+    "questId": "q_home_barista",
+    "nextGuestId": "barista_champion",
+    "chain": "c21_coffee",
+    "line": "집에서 내리는 것보다 맛있어야 나오죠."
+  },
+  {
+    "id": "barista_champion",
+    "name": "바리스타 챔피언",
+    "tags": {
+      "gender": null,
+      "age": "adult",
+      "group": false
+    },
+    "effect": "research",
+    "effectName": "연구",
+    "money": 15000,
+    "likes": [
+      "food",
+      "rest"
+    ],
+    "likesText": "먹거리·쉼",
+    "unlock": {
+      "type": "quest",
+      "questId": "q_home_barista"
+    },
+    "unlockText": "부탁 q_home_barista",
+    "questId": "q_barista_champion",
+    "nextGuestId": null,
+    "chain": "c21_coffee",
+    "line": "라떼 아트, 한 수 가르쳐 드릴까요?"
+  },
+  {
+    "id": "dog_walker",
+    "name": "강아지 산책러",
+    "tags": {
+      "gender": null,
+      "age": "adult",
+      "group": false
+    },
+    "effect": "popularity",
+    "effectName": "시설 인기",
+    "money": 8000,
+    "likes": [
+      "convenience",
+      "scenery"
+    ],
+    "likesText": "편의·경관",
+    "unlock": {
+      "type": "spot",
+      "spotId": "horse_ranch",
+      "level": 2
+    },
+    "unlockText": "관광지 horse_ranch Lv2",
+    "questId": "q_dog_walker",
+    "nextGuestId": "dog_camper",
+    "chain": "c22_dog",
+    "line": "저희 강아지 물 한 그릇만 주실 수 있나요?"
+  },
+  {
+    "id": "dog_camper",
+    "name": "반려견 캠핑족",
+    "tags": {
+      "gender": null,
+      "age": "adult",
+      "group": true
+    },
+    "effect": "money",
+    "effectName": "자금",
+    "money": 14000,
+    "likes": [
+      "rest",
+      "convenience"
+    ],
+    "likesText": "쉼·편의",
+    "unlock": {
+      "type": "quest",
+      "questId": "q_dog_walker"
+    },
+    "unlockText": "부탁 q_dog_walker",
+    "questId": "q_dog_camper",
+    "nextGuestId": "dog_trainer",
+    "chain": "c22_dog",
+    "line": "강아지 세 마리랑 차박 중이에요."
+  },
+  {
+    "id": "dog_trainer",
+    "name": "도그 트레이너",
+    "tags": {
+      "gender": null,
+      "age": "adult",
+      "group": false
+    },
+    "effect": "ad",
+    "effectName": "홍보",
+    "money": 12000,
+    "likes": [
+      "convenience",
+      "fun"
+    ],
+    "likesText": "편의·즐길거리",
+    "unlock": {
+      "type": "quest",
+      "questId": "q_dog_camper"
+    },
+    "unlockText": "부탁 q_dog_camper",
+    "questId": "q_dog_trainer",
+    "nextGuestId": null,
+    "chain": "c22_dog",
+    "line": "몽이 훈련은 제가 맡을게요."
+  },
+  {
+    "id": "angler",
+    "name": "낚시꾼",
+    "tags": {
+      "gender": "m",
+      "age": "adult",
+      "group": false
+    },
+    "effect": "item",
+    "effectName": "아이템",
+    "money": 6000,
+    "likes": [
+      "food",
+      "rest"
+    ],
+    "likesText": "먹거리·쉼",
+    "unlock": {
+      "type": "spot",
+      "spotId": "haenyeo_house",
+      "level": 2
+    },
+    "unlockText": "관광지 haenyeo_house Lv2",
+    "questId": "q_angler",
+    "nextGuestId": "fishing_boat_captain",
+    "chain": "c23_fish",
+    "line": "새벽 네 시부터 앉았수다. 커피 진하게."
+  },
+  {
+    "id": "fishing_boat_captain",
+    "name": "어선 선장",
+    "tags": {
+      "gender": "m",
+      "age": "senior",
+      "group": false
+    },
+    "effect": "item",
+    "effectName": "아이템",
+    "money": 10000,
+    "likes": [
+      "food",
+      "rest"
+    ],
+    "likesText": "먹거리·쉼",
+    "unlock": {
+      "type": "quest",
+      "questId": "q_angler"
+    },
+    "unlockText": "부탁 q_angler",
+    "questId": "q_fishing_boat_captain",
+    "nextGuestId": "dolphin_guide",
+    "chain": "c23_fish",
+    "line": "오늘 갈치 풍년이라. 한 마리 줄까?"
+  },
+  {
+    "id": "dolphin_guide",
+    "name": "돌고래 가이드",
+    "tags": {
+      "gender": null,
+      "age": "adult",
+      "group": false
+    },
+    "effect": "ticket",
+    "effectName": "응모권",
+    "money": 11000,
+    "likes": [
+      "scenery",
+      "rest"
+    ],
+    "likesText": "경관·쉼",
+    "unlock": {
+      "type": "quest",
+      "questId": "q_fishing_boat_captain"
+    },
+    "unlockText": "부탁 q_fishing_boat_captain",
+    "questId": "q_dolphin_guide",
+    "nextGuestId": null,
+    "chain": "c23_fish",
+    "line": "오늘 남방큰돌고래 일곱 마리 봤어요!"
+  },
+  {
+    "id": "camper",
+    "name": "캠핑족",
+    "tags": {
+      "gender": null,
+      "age": "adult",
+      "group": true
+    },
+    "effect": "money",
+    "effectName": "자금",
+    "money": 8000,
+    "likes": [
+      "rest",
+      "convenience"
+    ],
+    "likesText": "쉼·편의",
+    "unlock": {
+      "type": "spot",
+      "spotId": "theme_park",
+      "level": 2
+    },
+    "unlockText": "관광지 theme_park Lv2",
+    "questId": "q_camper",
+    "nextGuestId": "van_lifer",
+    "chain": "c24_camp",
+    "line": "텐트 옆에 카페라니, 최고예요."
+  },
+  {
+    "id": "van_lifer",
+    "name": "차박러",
+    "tags": {
+      "gender": null,
+      "age": "youth",
+      "group": false
+    },
+    "effect": "ticket",
+    "effectName": "응모권",
+    "money": 9000,
+    "likes": [
+      "convenience",
+      "rest"
+    ],
+    "likesText": "편의·쉼",
+    "unlock": {
+      "type": "quest",
+      "questId": "q_camper"
+    },
+    "unlockText": "부탁 q_camper",
+    "questId": "q_van_lifer",
+    "nextGuestId": "glamper",
+    "chain": "c24_camp",
+    "line": "차에서 자고 카페에서 씻어요. 농담이에요."
+  },
+  {
+    "id": "glamper",
+    "name": "글램핑족",
+    "tags": {
+      "gender": null,
+      "age": "adult",
+      "group": true
+    },
+    "effect": "money",
+    "effectName": "자금",
+    "money": 20000,
+    "likes": [
+      "rest",
+      "food"
+    ],
+    "likesText": "쉼·먹거리",
+    "unlock": {
+      "type": "quest",
+      "questId": "q_van_lifer"
+    },
+    "unlockText": "부탁 q_van_lifer",
+    "questId": "q_glamper",
+    "nextGuestId": null,
+    "chain": "c24_camp",
+    "line": "불멍 되나요? 마시멜로 가져왔어요."
+  },
+  {
+    "id": "dolhareubang_spirit",
+    "name": "돌하르방 정령",
+    "tags": {
+      "gender": null,
+      "age": null,
+      "group": false
+    },
+    "effect": "item",
+    "effectName": "아이템",
+    "money": 30000,
+    "likes": [
+      "scenery",
+      "rest"
+    ],
+    "likesText": "경관·쉼",
+    "unlock": {
+      "type": "spot",
+      "spotId": "yongmeori_coast",
+      "level": 2
+    },
+    "unlockText": "관광지 yongmeori_coast Lv2",
+    "questId": "q_dolhareubang_spirit",
+    "nextGuestId": "yeongdeung",
+    "chain": "c25_legend",
+    "line": "3천 년 만의 커피로구나."
+  },
+  {
+    "id": "yeongdeung",
+    "name": "영등할망",
+    "tags": {
+      "gender": "f",
+      "age": null,
+      "group": false
+    },
+    "effect": "item",
+    "effectName": "아이템",
+    "money": 40000,
+    "likes": [
+      "scenery",
+      "farm"
+    ],
+    "likesText": "경관·농사",
+    "unlock": {
+      "type": "quest",
+      "questId": "q_dolhareubang_spirit"
+    },
+    "unlockText": "부탁 q_dolhareubang_spirit",
+    "questId": "q_yeongdeung",
+    "nextGuestId": "baekrok",
+    "chain": "c25_legend",
+    "line": "2월 바람은 내가 데려온 거주."
+  },
+  {
+    "id": "baekrok",
+    "name": "백록",
+    "tags": {
+      "gender": null,
+      "age": null,
+      "group": false
+    },
+    "effect": "item",
+    "effectName": "아이템",
+    "money": 25000,
+    "likes": [
+      "scenery",
+      "farm"
+    ],
+    "likesText": "경관·농사",
+    "unlock": {
+      "type": "quest",
+      "questId": "q_yeongdeung"
+    },
+    "unlockText": "부탁 q_yeongdeung",
+    "questId": "q_baekrok",
+    "nextGuestId": "jacheongbi",
+    "chain": "c25_legend",
+    "line": "… (하얀 사슴이 풀을 뜯는다)"
+  },
+  {
+    "id": "jacheongbi",
+    "name": "자청비",
+    "tags": {
+      "gender": "f",
+      "age": null,
+      "group": false
+    },
+    "effect": "item",
+    "effectName": "아이템",
+    "money": 35000,
+    "likes": [
+      "farm",
+      "scenery"
+    ],
+    "likesText": "농사·경관",
+    "unlock": {
+      "type": "quest",
+      "questId": "q_baekrok"
+    },
+    "unlockText": "부탁 q_baekrok",
+    "questId": "q_jacheongbi",
+    "nextGuestId": null,
+    "chain": "c25_legend",
+    "line": "농사의 신이 씨앗 하나 주마."
+  },
+  {
+    "id": "kid_pocketmoney",
+    "name": "용돈 초등학생",
+    "tags": {
+      "gender": null,
+      "age": "youth",
+      "group": false
+    },
+    "effect": "ticket",
+    "effectName": "응모권",
+    "money": 2000,
+    "likes": [
+      "food",
+      "fun"
+    ],
+    "likesText": "먹거리·즐길거리",
+    "unlock": {
+      "type": "spot",
+      "spotId": "udo_peanut_village",
+      "level": 2
+    },
+    "unlockText": "관광지 udo_peanut_village Lv2",
+    "questId": "q_kid_pocketmoney",
+    "nextGuestId": "teen_idol_fan",
+    "chain": "c26_kids",
+    "line": "용돈 삼천 원으로 뭐 먹을 수 있어요?"
+  },
+  {
+    "id": "teen_idol_fan",
+    "name": "아이돌 팬 청소년",
+    "tags": {
+      "gender": "f",
+      "age": "youth",
+      "group": true
+    },
+    "effect": "ticket",
+    "effectName": "응모권",
+    "money": 5000,
+    "likes": [
+      "fun",
+      "scenery"
+    ],
+    "likesText": "즐길거리·경관",
+    "unlock": {
+      "type": "quest",
+      "questId": "q_kid_pocketmoney"
+    },
+    "unlockText": "부탁 q_kid_pocketmoney",
+    "questId": "q_teen_idol_fan",
+    "nextGuestId": "college_club",
+    "chain": "c26_kids",
+    "line": "오빠가 여기서 찍은 사진 있어요!"
+  },
+  {
+    "id": "college_club",
+    "name": "대학 동아리",
+    "tags": {
+      "gender": null,
+      "age": "youth",
+      "group": true
+    },
+    "effect": "ticket",
+    "effectName": "응모권",
+    "money": 6000,
+    "likes": [
+      "fun",
+      "food"
+    ],
+    "likesText": "즐길거리·먹거리",
+    "unlock": {
+      "type": "quest",
+      "questId": "q_teen_idol_fan"
+    },
+    "unlockText": "부탁 q_teen_idol_fan",
+    "questId": "q_college_club",
+    "nextGuestId": null,
+    "chain": "c26_kids",
+    "line": "동아리 사진 촬영 왔어요. 스무 명이요."
+  },
+  {
+    "id": "taxi_driver",
+    "name": "택시 기사",
+    "tags": {
+      "gender": "m",
+      "age": "adult",
+      "group": false
+    },
+    "effect": "ad",
+    "effectName": "홍보",
+    "money": 4000,
+    "likes": [
+      "convenience",
+      "food"
+    ],
+    "likesText": "편의·먹거리",
+    "unlock": {
+      "type": "spot",
+      "spotId": "noodle_street",
+      "level": 2
+    },
+    "unlockText": "관광지 noodle_street Lv2",
+    "questId": "q_taxi_driver",
+    "nextGuestId": "bus_driver",
+    "chain": "c27_driver",
+    "line": "손님 내려 주고 한 잔 하고 가쿠다."
+  },
+  {
+    "id": "bus_driver",
+    "name": "관광버스 기사",
+    "tags": {
+      "gender": "m",
+      "age": "adult",
+      "group": false
+    },
+    "effect": "ad",
+    "effectName": "홍보",
+    "money": 5000,
+    "likes": [
+      "convenience",
+      "food"
+    ],
+    "likesText": "편의·먹거리",
+    "unlock": {
+      "type": "quest",
+      "questId": "q_taxi_driver"
+    },
+    "unlockText": "부탁 q_taxi_driver",
+    "questId": "q_bus_driver",
+    "nextGuestId": "rentcar_staff",
+    "chain": "c27_driver",
+    "line": "버스 세울 데만 있으면 단체 데려오지."
+  },
+  {
+    "id": "rentcar_staff",
+    "name": "렌터카 직원",
+    "tags": {
+      "gender": null,
+      "age": "youth",
+      "group": false
+    },
+    "effect": "ad",
+    "effectName": "홍보",
+    "money": 6000,
+    "likes": [
+      "convenience",
+      "rest"
+    ],
+    "likesText": "편의·쉼",
+    "unlock": {
+      "type": "quest",
+      "questId": "q_bus_driver"
+    },
+    "unlockText": "부탁 q_bus_driver",
+    "questId": "q_rentcar_staff",
+    "nextGuestId": null,
+    "chain": "c27_driver",
+    "line": "손님들한테 여기 카페 추천해 드릴게요."
+  },
+  {
+    "id": "golfer",
+    "name": "골퍼",
+    "tags": {
+      "gender": null,
+      "age": "adult",
+      "group": false
+    },
+    "effect": "money",
+    "effectName": "자금",
+    "money": 16000,
+    "likes": [
+      "rest",
+      "food"
+    ],
+    "likesText": "쉼·먹거리",
+    "unlock": {
+      "type": "spot",
+      "spotId": "barley_brewery",
+      "level": 2
+    },
+    "unlockText": "관광지 barley_brewery Lv2",
+    "questId": "q_golfer",
+    "nextGuestId": null,
+    "chain": "c28_single_golfer",
+    "line": "18홀 끝나고 제주 보리 음료 한 잔."
+  },
+  {
+    "id": "resort_guest",
+    "name": "리조트 투숙객",
+    "tags": {
+      "gender": null,
+      "age": "adult",
+      "group": false
+    },
+    "effect": "money",
+    "effectName": "자금",
+    "money": 18000,
+    "likes": [
+      "rest",
+      "scenery"
+    ],
+    "likesText": "쉼·경관",
+    "unlock": {
+      "type": "spot",
+      "spotId": "yacht_tour",
+      "level": 2
+    },
+    "unlockText": "관광지 yacht_tour Lv2",
+    "questId": "q_resort_guest",
+    "nextGuestId": null,
+    "chain": "c29_single_resort",
+    "line": "호캉스 중인데 리조트 커피가 별로라서요."
+  },
+  {
+    "id": "hallasan_spirit",
+    "name": "한라산 신령",
+    "tags": {
+      "gender": null,
+      "age": null,
+      "group": false
+    },
+    "effect": "item",
+    "effectName": "아이템",
+    "money": 60000,
+    "likes": [
+      "scenery",
+      "rest"
+    ],
+    "likesText": "경관·쉼",
+    "unlock": {
+      "type": "spot",
+      "spotId": "baengnokdam",
+      "level": 2
+    },
+    "unlockText": "관광지 baengnokdam Lv2",
+    "questId": "q_hallasan_spirit",
+    "nextGuestId": null,
+    "chain": "c30_single_spirit",
+    "line": "눈 오는 날에만 내려오주."
+  }
+]

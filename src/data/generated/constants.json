@@ -49,11 +49,6 @@
     "value": null,
     "text": "월 10% (3년차+), 동시 최대 2"
   },
-  "gather": {
-    "name": "채집 성공",
-    "value": null,
-    "text": "30% + 체력/200 + 행운"
-  },
   "roulette": {
     "name": "룰렛",
     "value": null,

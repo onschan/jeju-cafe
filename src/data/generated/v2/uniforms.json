@@ -1,0 +1,49 @@
+[
+  {
+    "id": "uf_hawaiian",
+    "name": "하와이안 셔츠",
+    "ticketTier": 1,
+    "effectText": "여름 손님 만족 +5%",
+    "parts": {
+      "top": "hawaiian"
+    }
+  },
+  {
+    "id": "uf_galot",
+    "name": "갈옷",
+    "ticketTier": 2,
+    "effectText": "시니어 손님 만족 +8%, 기력 소모 −10%",
+    "parts": {
+      "top": "galot"
+    }
+  },
+  {
+    "id": "uf_haenyeo",
+    "name": "해녀복",
+    "ticketTier": 3,
+    "effectText": "먹거리 시설 요금 +5%, 힘 +5",
+    "parts": {
+      "top": "haenyeo",
+      "acc": "goggles"
+    }
+  },
+  {
+    "id": "uf_dialect_tee",
+    "name": "제주 방언 티셔츠",
+    "ticketTier": 4,
+    "effectText": "전체 손님 대사 확률 +10%, 미소 +5",
+    "parts": {
+      "top": "dialect_tee"
+    }
+  },
+  {
+    "id": "uf_santa",
+    "name": "산타복",
+    "ticketTier": 5,
+    "effectText": "12월 손님 소지금 +20%, 응모권 드롭 +5%",
+    "parts": {
+      "top": "santa",
+      "acc": "santa_hat"
+    }
+  }
+]

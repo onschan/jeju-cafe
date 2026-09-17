@@ -531,7 +531,7 @@
 | jeju_salt | 제주 소금 | 부탁 q_village_head·마일리지 상점 | noodle_shop·bomal_kalguksu·haenyeo_mulhoe | 인기 +5 |
 | bean_sample | 원두 샘플 | 부탁 q_coffee_geek·응모권 추첨 | handdrip_bar·counter·roaster | 가격 +5 |
 | tangerine_syrup | 감귤 청 | syrup_class 체험 보상 | hallabong_stand·tart_bakery·syrup_class | 인기 +5 |
-| conch_shell | 소라 장식 | 부탁 q_diver·q_angler | terrace_seat·window_seat·haenyeo_mulhoe | 인기 +3 |
+| conch_shell | 소라 장식 | 부탁 q_diver·부탁 q_angler | terrace_seat·window_seat·haenyeo_mulhoe | 인기 +3 |
 | galot_cushion | 갈옷 방석 | 부탁 q_local_auntie | bench_stonewall·toenmaru·table_in | 인기 +5 |
 | oreum_poster | 오름 사진 포스터 | 부탁 q_village_painter | oreum_bench·gallery·wifi_zone | 인기 +5 |
 | comic_book | 만화책 | 마일리지 상점 | bookshelf·boardgame_room·sofa | 인기 +10 |

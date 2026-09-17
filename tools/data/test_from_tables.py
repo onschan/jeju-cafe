@@ -195,7 +195,7 @@ class Integration(unittest.TestCase):
         self.assertEqual(len(d['settle_ranks']), 6)
         self.assertEqual(len(d['parcels']), 6)
         self.assertEqual(len(d['landmarks']), 8)
-        self.assertEqual(len(d['constants']), 18)
+        self.assertEqual(len(d['constants']), 17)  # 38bc0c9에서 '채집 성공' 행 삭제
 
     def test_object_kinds(self):
         kinds = {}
@@ -273,6 +273,209 @@ class Integration(unittest.TestCase):
             second = {n: open(os.path.join(tmp, n), encoding='utf-8').read() for n in os.listdir(tmp)}
             self.assertEqual(first, second)
             self.assertEqual(len(first), 27)
+            for content in first.values():
+                json.loads(content)
+
+
+# ---------------------------------------------------------------------------
+# v2
+# ---------------------------------------------------------------------------
+class V2Cells(unittest.TestCase):
+    def test_unlock_forms(self):
+        self.assertEqual(ft.parse_unlock('시작'), {'type': 'start'})
+        self.assertEqual(ft.parse_unlock('랭크 3'), {'type': 'rank', 'rank': 3})
+        self.assertEqual(ft.parse_unlock('손님 olle_walker 인기 30'),
+                         {'type': 'segment', 'guestId': 'olle_walker', 'popularity': 30})
+        self.assertEqual(ft.parse_unlock('★4'), {'type': 'star', 'star': 4})
+        self.assertEqual(ft.parse_unlock('부탁 q_night_guest'), {'type': 'quest', 'questId': 'q_night_guest'})
+        self.assertEqual(ft.parse_unlock('관광지 oreum Lv2'), {'type': 'spot', 'spotId': 'oreum', 'level': 2})
+        self.assertEqual(ft.parse_unlock('1년 6월'), {'type': 'date', 'year': 1, 'month': 6})
+        self.assertEqual(ft.parse_unlock('tangerine_tree 5개'), {'type': 'count', 'objectId': 'tangerine_tree', 'count': 5})
+        self.assertEqual(ft.parse_unlock('먹거리 5개'), {'type': 'count', 'category': 'food', 'count': 5})
+
+    def test_unlock_and(self):
+        self.assertEqual(ft.parse_unlock('부탁 q_crow_flock·★4'), {
+            'type': 'all', 'conditions': [{'type': 'quest', 'questId': 'q_crow_flock'}, {'type': 'star', 'star': 4}],
+        })
+
+    def test_unlock_invalid(self):
+        with self.assertRaises(ValueError):
+            ft.parse_unlock('연구 8')
+        with self.assertRaises(ValueError):
+            ft.parse_unlock('—')
+
+    def test_season_map(self):
+        self.assertEqual(ft.parse_season_map('봄 +12·겨울 +3'), {'spring': 12, 'winter': 3})
+        self.assertEqual(ft.parse_season_map('—'), {})
+
+    def test_quest_condition(self):
+        self.assertEqual(ft.parse_quest_condition('menuSold', 'americano 20'),
+                         {'type': 'menuSold', 'params': {'menuId': 'americano', 'count': 20}})
+        self.assertEqual(ft.parse_quest_condition('spotLevel', 'hallasan 3'),
+                         {'type': 'spotLevel', 'params': {'spotId': 'hallasan', 'level': 3}})
+        self.assertEqual(ft.parse_quest_condition('segmentPopularity', 'haenyeo 40'),
+                         {'type': 'segmentPopularity', 'params': {'guestId': 'haenyeo', 'popularity': 40}})
+        self.assertEqual(ft.parse_quest_condition('none', '—'), {'type': 'none', 'params': {}})
+        with self.assertRaises(ValueError):
+            ft.parse_quest_condition('menuSold', '—')
+        with self.assertRaises(ValueError):
+            ft.parse_quest_condition('unknown', 'x 1')
+
+    def test_rewards(self):
+        self.assertEqual(ft.parse_rewards('자금 300,000·홍보 +5·아이템 conch_shell·마일리지 2'), [
+            {'type': 'money', 'amount': 300000}, {'type': 'ad', 'amount': 5},
+            {'type': 'item', 'itemId': 'conch_shell'}, {'type': 'mileage', 'amount': 2},
+        ])
+
+    def test_sources(self):
+        self.assertEqual(ft.parse_sources('부탁 q_x·마일리지 상점·응모권 추첨·syrup_class 체험 보상'), [
+            {'type': 'quest', 'questId': 'q_x'}, {'type': 'mileage_shop'}, {'type': 'ticket_draw'},
+            {'type': 'facility', 'objectId': 'syrup_class'},
+        ])
+
+    def test_combo_grade(self):
+        self.assertEqual(ft.combo_grade('시끄러운 로스터'), 'down')
+        self.assertEqual(ft.combo_grade('주차장 소음'), 'down')
+        self.assertEqual(ft.combo_grade('정상 전망'), 'upup')
+        self.assertEqual(ft.combo_grade('귤밭 뷰'), 'up')
+
+    def test_guest_chains(self):
+        mmd = """%% 주석
+graph LR
+  subgraph c01_a
+    x["엑스"]
+    y["와이"]
+    x -->|q_x| y
+  end
+  subgraph c02_b
+    z["제트"]
+  end
+"""
+        self.assertEqual(ft.parse_guest_chains(mmd), [
+            {'chain': 'c01_a', 'guests': ['x', 'y'], 'edges': [{'from': 'x', 'to': 'y', 'quest': 'q_x'}]},
+            {'chain': 'c02_b', 'guests': ['z'], 'edges': []},
+        ])
+        with self.assertRaises(ValueError):
+            ft.parse_guest_chains('graph LR\n  x --> y\n')
+
+
+class V2Integration(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        with open(ft.DOC_V2, encoding='utf-8') as f:
+            doc = ft.Doc(f.read())
+        with open(ft.MMD_V2, encoding='utf-8') as f:
+            cls.data = ft.build_v2(doc, f.read())
+
+    def test_counts(self):
+        d = self.data
+        expected = {
+            'facilities': 87, 'guests': 103, 'quests': 103, 'combos': 45, 'sets': 14, 'spots': 24,
+            'staff_pool': 27, 'recruit_tiers': 5, 'uniforms': 5, 'items': 20, 'special_items': 12,
+            'mileage_shop': 14, 'ticket_shop': 8, 'guidebooks': 11, 'events': 42, 'scenery_seasons': 12,
+            'extra_menus': 15, 'guest_chains': 30,
+        }
+        self.assertEqual({k: len(v) for k, v in d.items()}, expected)
+
+    def test_all_ids_resolve(self):
+        self.assertEqual(ft.check_v2_refs(self.data, ft.load_menu_ids_v1()), [])
+
+    def test_check_detects_dangling(self):
+        import copy
+        d = copy.deepcopy(self.data)
+        d['quests'][0]['condition']['params']['menuId'] = 'nope'
+        d['combos'][0]['a'] = 'ghost'
+        bad = ft.check_v2_refs(d, ft.load_menu_ids_v1())
+        self.assertEqual(bad, [f'quests/{d["quests"][0]["id"]}: menu nope', f'combos/{d["combos"][0]["id"]}: facility ghost'])
+
+    def test_facility_fields(self):
+        f = {x['id']: x for x in self.data['facilities']}
+        self.assertEqual(f['table_out']['unlock'], {'type': 'start'})
+        self.assertEqual((f['table_out']['feePct'], f['table_out']['fee']), (100, None))
+        self.assertEqual((f['photo_spot']['feePct'], f['photo_spot']['fee']), (None, 1000))
+        self.assertEqual(f['fire_pit']['seasonBonus'], {'autumn': 4, 'winter': 4})
+        self.assertEqual((f['rooftop']['w'], f['rooftop']['h'], f['rooftop']['tier']), (2, 2, 'large'))
+        self.assertEqual(f['restroom']['scenery'], -1)
+        self.assertEqual(f['warehouse']['cost'], 0)
+        cats = {}
+        for x in self.data['facilities']:
+            cats[x['category']] = cats.get(x['category'], 0) + 1
+        self.assertEqual(cats, {'rest': 18, 'convenience': 14, 'fun': 14, 'scenery': 14, 'food': 11, 'landmark': 9, 'farm': 7})
+
+    def test_guest_fields(self):
+        g = {x['id']: x for x in self.data['guests']}
+        self.assertEqual(g['student']['tags'], {'gender': None, 'age': 'youth', 'group': False})
+        self.assertEqual(g['angler']['tags']['gender'], 'm')
+        self.assertEqual(g['student']['effect'], 'ad')
+        self.assertEqual(g['student']['likes'], ['rest', 'fun'])
+        self.assertEqual(g['student']['chain'], 'c01_youth')
+        self.assertEqual({x['effect'] for x in g.values()}, {'item', 'money', 'ad', 'research', 'popularity', 'ticket'})
+        self.assertEqual(sum(1 for x in g.values() if x['nextGuestId'] is None), 30)
+        self.assertTrue(all(x['chain'] for x in g.values()))
+
+    def test_quest_and_spot_links(self):
+        q = {x['id']: x for x in self.data['quests']}
+        g = {x['id']: x for x in self.data['guests']}
+        for x in g.values():
+            self.assertEqual(q[x['questId']]['guestId'], x['id'])
+            self.assertEqual(q[x['questId']]['unlockGuestId'], x['nextGuestId'])
+        types = {}
+        for x in q.values():
+            types[x['condition']['type']] = types.get(x['condition']['type'], 0) + 1
+        self.assertEqual(types, {'objectPlaced': 62, 'menuSold': 21, 'segmentPopularity': 13, 'spotLevel': 4, 'item': 2, 'none': 1})
+        s = {x['id']: x for x in self.data['spots']}
+        self.assertEqual([lv['cost'] for lv in s['canola_field']['levels']], [500000, 1000000, 2000000, 3500000, 5000000])
+        self.assertEqual((s['canola_field']['levels'][0]['appeal'], s['canola_field']['levels'][4]['appeal']), (9, 55))
+        self.assertEqual(sum(1 for x in s.values() if x['nextSpotId'] is None), 4)
+
+    def test_combos_sets_items(self):
+        c = {x['id']: x for x in self.data['combos']}
+        self.assertEqual(c['cb_sarangbang']['target'], 'senior')
+        self.assertEqual(c['cb_summit_terrace']['bonus'], {'pop': 6, 'feePct': 10})
+        self.assertEqual(c['cb_karaoke_shelf']['bonus'], {'pop': -3, 'feePct': -5})
+        self.assertEqual(sum(1 for x in c.values() if x['hidden']), 25)
+        s = {x['id']: x for x in self.data['sets']}
+        self.assertEqual(s['set_emotional_cafe']['levelMult'], [1.1, 1.2, 1.35])
+        self.assertEqual(s['set_emotional_cafe']['requires'][0], {'objectId': 'tangerine_tree', 'count': 2})
+        it = {x['id']: x for x in self.data['items']}
+        self.assertEqual(it['jeju_salt']['bestFacilities'], ['noodle_shop', 'bomal_kalguksu', 'haenyeo_mulhoe'])
+        self.assertEqual(it['jeju_salt']['effect'], {'stat': 'popularity', 'value': 5})
+        self.assertEqual(it['conch_shell']['sources'], [{'type': 'quest', 'questId': 'q_diver'}, {'type': 'quest', 'questId': 'q_angler'}])
+
+    def test_shops_guidebooks_events(self):
+        ms = {x['id']: x for x in self.data['mileage_shop']}
+        self.assertEqual(ms['ms_jeju_salt']['itemId'], 'jeju_salt')
+        ts = {x['id']: x for x in self.data['ticket_shop']}
+        self.assertEqual(ts['ts_uniform_3']['uniformId'], 'uf_haenyeo')
+        u = {x['id']: x for x in self.data['uniforms']}
+        self.assertEqual(u['uf_haenyeo']['parts'], {'top': 'haenyeo', 'acc': 'goggles'})
+        gb = {x['id']: x for x in self.data['guidebooks']}
+        self.assertEqual(gb['gb_dessert']['unlock'], {'type': 'count', 'category': 'food', 'count': 5})
+        self.assertEqual(gb['gb_ribbon_survey']['seeds'], [{'itemId': 'scenery_seed', 'count': 5}, {'itemId': 'popularity_fruit', 'count': 3}])
+        ev = {x['id']: x for x in self.data['events']}
+        self.assertEqual(ev['ev_typhoon_alert']['prob'], 30)
+        self.assertIsNone(ev['ev_typhoon_alert']['conditionText'])
+        self.assertIn('→', ev['ev_typhoon_alert']['effectText'])
+        sc = {x['id']: x for x in self.data['scenery_seasons']}
+        self.assertEqual(sc['canola']['seasons'], {'spring': 12, 'summer': 0, 'autumn': 0, 'winter': 0})
+        st = {x['id']: x for x in self.data['staff_pool']}
+        self.assertEqual(st['st_kim_minjun']['stats'], {'stamina': 30, 'strength': 25, 'skill': 10, 'smile': 15})
+        self.assertEqual(sum(1 for x in st.values() if x['special']), 2)
+
+    def test_scenery_bonus_matches_facility_table(self):
+        f = {x['id']: x for x in self.data['facilities']}
+        for sc in self.data['scenery_seasons']:
+            self.assertEqual(f[sc['id']]['scenery'], sc['scenery'], sc['id'])
+            self.assertEqual(f[sc['id']]['seasonBonus'], {k: v for k, v in sc['seasons'].items() if v}, sc['id'])
+
+    def test_idempotent(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            ft.run_v2(out_dir=tmp)
+            first = {n: open(os.path.join(tmp, n), encoding='utf-8').read() for n in os.listdir(tmp)}
+            ft.run_v2(out_dir=tmp)
+            second = {n: open(os.path.join(tmp, n), encoding='utf-8').read() for n in os.listdir(tmp)}
+            self.assertEqual(first, second)
+            self.assertEqual(len(first), 18)
             for content in first.values():
                 json.loads(content)
 

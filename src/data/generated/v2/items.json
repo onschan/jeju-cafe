@@ -1,0 +1,441 @@
+[
+  {
+    "id": "jeju_salt",
+    "name": "제주 소금",
+    "sources": [
+      {
+        "type": "quest",
+        "questId": "q_village_head"
+      },
+      {
+        "type": "mileage_shop"
+      }
+    ],
+    "sourceText": "부탁 q_village_head·마일리지 상점",
+    "bestFacilities": [
+      "noodle_shop",
+      "bomal_kalguksu",
+      "haenyeo_mulhoe"
+    ],
+    "effect": {
+      "stat": "popularity",
+      "value": 5
+    },
+    "effectText": "인기 +5"
+  },
+  {
+    "id": "bean_sample",
+    "name": "원두 샘플",
+    "sources": [
+      {
+        "type": "quest",
+        "questId": "q_coffee_geek"
+      },
+      {
+        "type": "ticket_draw"
+      }
+    ],
+    "sourceText": "부탁 q_coffee_geek·응모권 추첨",
+    "bestFacilities": [
+      "handdrip_bar",
+      "counter",
+      "roaster"
+    ],
+    "effect": {
+      "stat": "price",
+      "value": 5
+    },
+    "effectText": "가격 +5"
+  },
+  {
+    "id": "tangerine_syrup",
+    "name": "감귤 청",
+    "sources": [
+      {
+        "type": "facility",
+        "objectId": "syrup_class"
+      }
+    ],
+    "sourceText": "syrup_class 체험 보상",
+    "bestFacilities": [
+      "hallabong_stand",
+      "tart_bakery",
+      "syrup_class"
+    ],
+    "effect": {
+      "stat": "popularity",
+      "value": 5
+    },
+    "effectText": "인기 +5"
+  },
+  {
+    "id": "conch_shell",
+    "name": "소라 장식",
+    "sources": [
+      {
+        "type": "quest",
+        "questId": "q_diver"
+      },
+      {
+        "type": "quest",
+        "questId": "q_angler"
+      }
+    ],
+    "sourceText": "부탁 q_diver·부탁 q_angler",
+    "bestFacilities": [
+      "terrace_seat",
+      "window_seat",
+      "haenyeo_mulhoe"
+    ],
+    "effect": {
+      "stat": "popularity",
+      "value": 3
+    },
+    "effectText": "인기 +3"
+  },
+  {
+    "id": "galot_cushion",
+    "name": "갈옷 방석",
+    "sources": [
+      {
+        "type": "quest",
+        "questId": "q_local_auntie"
+      }
+    ],
+    "sourceText": "부탁 q_local_auntie",
+    "bestFacilities": [
+      "bench_stonewall",
+      "toenmaru",
+      "table_in"
+    ],
+    "effect": {
+      "stat": "popularity",
+      "value": 5
+    },
+    "effectText": "인기 +5"
+  },
+  {
+    "id": "oreum_poster",
+    "name": "오름 사진 포스터",
+    "sources": [
+      {
+        "type": "quest",
+        "questId": "q_village_painter"
+      }
+    ],
+    "sourceText": "부탁 q_village_painter",
+    "bestFacilities": [
+      "oreum_bench",
+      "gallery",
+      "wifi_zone"
+    ],
+    "effect": {
+      "stat": "popularity",
+      "value": 5
+    },
+    "effectText": "인기 +5"
+  },
+  {
+    "id": "comic_book",
+    "name": "만화책",
+    "sources": [
+      {
+        "type": "mileage_shop"
+      }
+    ],
+    "sourceText": "마일리지 상점",
+    "bestFacilities": [
+      "bookshelf",
+      "boardgame_room",
+      "sofa"
+    ],
+    "effect": {
+      "stat": "popularity",
+      "value": 10
+    },
+    "effectText": "인기 +10"
+  },
+  {
+    "id": "lp_record",
+    "name": "LP판",
+    "sources": [
+      {
+        "type": "ticket_draw"
+      }
+    ],
+    "sourceText": "응모권 추첨",
+    "bestFacilities": [
+      "sofa",
+      "handdrip_bar",
+      "barley_pub"
+    ],
+    "effect": {
+      "stat": "price",
+      "value": 5
+    },
+    "effectText": "가격 +5"
+  },
+  {
+    "id": "dolhareubang_mini",
+    "name": "돌하르방 미니어처",
+    "sources": [
+      {
+        "type": "quest",
+        "questId": "q_dolhareubang_spirit"
+      },
+      {
+        "type": "ticket_draw"
+      }
+    ],
+    "sourceText": "부탁 q_dolhareubang_spirit·응모권 추첨",
+    "bestFacilities": [
+      "souvenir",
+      "photo_spot",
+      "goods_shop"
+    ],
+    "effect": {
+      "stat": "popularity",
+      "value": 5
+    },
+    "effectText": "인기 +5"
+  },
+  {
+    "id": "sneakers",
+    "name": "운동화",
+    "sources": [
+      {
+        "type": "ticket_draw"
+      }
+    ],
+    "sourceText": "응모권 추첨",
+    "bestFacilities": [
+      "bike_rack",
+      "scooter_rental",
+      "picnic"
+    ],
+    "effect": {
+      "stat": "popularity",
+      "value": 3
+    },
+    "effectText": "인기 +3"
+  },
+  {
+    "id": "glasses",
+    "name": "안경",
+    "sources": [
+      {
+        "type": "mileage_shop"
+      }
+    ],
+    "sourceText": "마일리지 상점",
+    "bestFacilities": [
+      "bookshelf",
+      "wifi_zone",
+      "gallery"
+    ],
+    "effect": {
+      "stat": "price",
+      "value": 3
+    },
+    "effectText": "가격 +3"
+  },
+  {
+    "id": "folk_scroll",
+    "name": "족자(제주 민화)",
+    "sources": [
+      {
+        "type": "ticket_draw"
+      }
+    ],
+    "sourceText": "응모권 추첨",
+    "bestFacilities": [
+      "gallery",
+      "toenmaru",
+      "pottery_studio"
+    ],
+    "effect": {
+      "stat": "popularity",
+      "value": 5
+    },
+    "effectText": "인기 +5"
+  },
+  {
+    "id": "tv",
+    "name": "TV",
+    "sources": [
+      {
+        "type": "mileage_shop"
+      }
+    ],
+    "sourceText": "마일리지 상점",
+    "bestFacilities": [
+      "staff_room",
+      "karaoke",
+      "table_big"
+    ],
+    "effect": {
+      "stat": "popularity",
+      "value": 5
+    },
+    "effectText": "인기 +5"
+  },
+  {
+    "id": "pottery_jar",
+    "name": "도자기 항아리",
+    "sources": [
+      {
+        "type": "quest",
+        "questId": "q_potter"
+      }
+    ],
+    "sourceText": "부탁 q_potter",
+    "bestFacilities": [
+      "pottery_studio",
+      "handdrip_bar",
+      "tea_field"
+    ],
+    "effect": {
+      "stat": "price",
+      "value": 10
+    },
+    "effectText": "가격 +10"
+  },
+  {
+    "id": "gold_leaf",
+    "name": "금박",
+    "sources": [
+      {
+        "type": "quest",
+        "questId": "q_world_traveler"
+      },
+      {
+        "type": "ticket_draw"
+      }
+    ],
+    "sourceText": "부탁 q_world_traveler·응모권 추첨",
+    "bestFacilities": [
+      "tart_bakery",
+      "tangerine_hall",
+      "rooftop"
+    ],
+    "effect": {
+      "stat": "price",
+      "value": 10
+    },
+    "effectText": "가격 +10"
+  },
+  {
+    "id": "jeju_tea_set",
+    "name": "제주 차 세트",
+    "sources": [
+      {
+        "type": "mileage_shop"
+      }
+    ],
+    "sourceText": "마일리지 상점",
+    "bestFacilities": [
+      "tea_field",
+      "sofa",
+      "greenhouse_seat"
+    ],
+    "effect": {
+      "stat": "popularity",
+      "value": 5
+    },
+    "effectText": "인기 +5"
+  },
+  {
+    "id": "honey",
+    "name": "꿀",
+    "sources": [
+      {
+        "type": "facility",
+        "objectId": "beehive"
+      },
+      {
+        "type": "quest",
+        "questId": "q_dog_mongi"
+      }
+    ],
+    "sourceText": "beehive·부탁 q_dog_mongi",
+    "bestFacilities": [
+      "vending",
+      "jam_workshop",
+      "hallabong_stand"
+    ],
+    "effect": {
+      "stat": "popularity",
+      "value": 5
+    },
+    "effectText": "인기 +5"
+  },
+  {
+    "id": "flower_poster",
+    "name": "꽃밭 포스터",
+    "sources": [
+      {
+        "type": "ticket_draw"
+      }
+    ],
+    "sourceText": "응모권 추첨",
+    "bestFacilities": [
+      "window_seat",
+      "photo_spot",
+      "snap_studio"
+    ],
+    "effect": {
+      "stat": "popularity",
+      "value": 5
+    },
+    "effectText": "인기 +5"
+  },
+  {
+    "id": "lantern",
+    "name": "초롱",
+    "sources": [
+      {
+        "type": "quest",
+        "questId": "q_lighthouse_keeper"
+      },
+      {
+        "type": "ticket_draw"
+      }
+    ],
+    "sourceText": "부탁 q_lighthouse_keeper·응모권 추첨",
+    "bestFacilities": [
+      "stone_lantern",
+      "lantern_path",
+      "fire_pit"
+    ],
+    "effect": {
+      "stat": "popularity",
+      "value": 10
+    },
+    "effectText": "인기 +10"
+  },
+  {
+    "id": "seaweed_fertilizer",
+    "name": "해초 비료",
+    "sources": [
+      {
+        "type": "quest",
+        "questId": "q_haenyeo"
+      },
+      {
+        "type": "facility",
+        "objectId": "haenyeo_hut"
+      }
+    ],
+    "sourceText": "부탁 q_haenyeo·haenyeo_hut",
+    "bestFacilities": [
+      "field",
+      "tangerine_tree",
+      "tea_field"
+    ],
+    "effect": {
+      "stat": "popularity",
+      "value": 10
+    },
+    "effectText": "인기 +10"
+  }
+]

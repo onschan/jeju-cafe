@@ -1,0 +1,380 @@
+[
+  {
+    "id": "ev_typhoon_alert",
+    "name": "태풍 경보",
+    "seasonText": "7~9월",
+    "prob": 30,
+    "conditionText": null,
+    "effectText": "다음 달 태풍 → 방풍 안 된 작물 소실, 시설 2개 일시 파손(유지비 ×2 한 달), bangsatap 있으면 피해 −30%",
+    "line": "바람이 심상치 않우다. 돌담 잘 살펴봅서."
+  },
+  {
+    "id": "ev_flight_cancel",
+    "name": "비행기 결항",
+    "seasonText": "7~9월·12~1월",
+    "prob": 12,
+    "conditionText": null,
+    "effectText": "태풍·폭설 → 3일간 육지 손님 0",
+    "line": "오늘 비행기 다 결항이래요."
+  },
+  {
+    "id": "ev_rentcar_rush",
+    "name": "렌터카 대란",
+    "seasonText": "5월·7~8월",
+    "prob": 25,
+    "conditionText": null,
+    "effectText": "연휴 → 주차장 없으면 가족·단체 이탈 50%, 있으면 방문 ×1.5",
+    "line": "주차 자리 있어요? 없으면 그냥 갈게요."
+  },
+  {
+    "id": "ev_roe_deer_raid",
+    "name": "노루 감귤밭 습격",
+    "seasonText": "10~12월",
+    "prob": 8,
+    "conditionText": "tangerine_tree 3개",
+    "effectText": "방풍 안 된 감귤나무 1그루 수확 0, deer_bell 있으면 −50%",
+    "line": "노루가 귤을 다 따 먹었수다!"
+  },
+  {
+    "id": "ev_magpie_thief",
+    "name": "까치 감귤 도둑",
+    "seasonText": "11~1월",
+    "prob": 10,
+    "conditionText": "tangerine_tree 5개",
+    "effectText": "수확 −20%, 삼나무 4개 이상이면 무효",
+    "line": "까치가 제일 맛있는 귤만 골라 먹어요."
+  },
+  {
+    "id": "ev_crow_flock",
+    "name": "까마귀 떼",
+    "seasonText": "봄·가을",
+    "prob": 8,
+    "conditionText": "field 3개",
+    "effectText": "밭 1곳 수확 −50%, 돌하르방 3개면 무효",
+    "line": "까마귀가 밭을 뒤집어 놨수다."
+  },
+  {
+    "id": "ev_haenyeo_gift",
+    "name": "해녀 삼춘 물질 선물",
+    "seasonText": "여름·가을",
+    "prob": 10,
+    "conditionText": "손님 haenyeo 인기 30",
+    "effectText": "해산물 재료 상자 → 소라·전복·톳",
+    "line": "오늘 물질 잘 됐주. 이거 먹어 봅서."
+  },
+  {
+    "id": "ev_village_meeting",
+    "name": "마을 반상회 요청",
+    "seasonText": "매월",
+    "prob": 6,
+    "conditionText": "손님 village_head 인기 30",
+    "effectText": "수락 → 하루 영업 −50%, 삼춘 손님 전원 인기 +5",
+    "line": "반상회 장소로 카페 좀 빌립주."
+  },
+  {
+    "id": "ev_farm_grant_review",
+    "name": "귀농 지원금 심사",
+    "seasonText": "3월·9월",
+    "prob": 100,
+    "conditionText": "잔고 < 400,000",
+    "effectText": "정착지원금 3,000,000 지급(게임당 1회)",
+    "line": "정착지원금 심사 통과했습니다!"
+  },
+  {
+    "id": "ev_insta_viral",
+    "name": "인스타 바이럴",
+    "seasonText": "매월",
+    "prob": 4,
+    "conditionText": "손님 insta_traveler 인기 40",
+    "effectText": "3일간 손님 ×2, 웨이팅 줄 발생, 좌석 부족 시 만족 −10%",
+    "line": "여기 지금 난리 났대요!"
+  },
+  {
+    "id": "ev_tv_shoot",
+    "name": "방송 촬영 요청",
+    "seasonText": "매월",
+    "prob": 3,
+    "conditionText": "★2",
+    "effectText": "수락 → 자금 −2,000,000, 다음 달 전 손님 인기 +10",
+    "line": "촬영 협조 부탁드립니다."
+  },
+  {
+    "id": "ev_centennial_festival",
+    "name": "100주년 감귤축제",
+    "seasonText": "11월",
+    "prob": 100,
+    "conditionText": "16년차 이상·★5",
+    "effectText": "연장 플레이 엔드게임 → millennium_seed, 마을 전체 손님 ×3 한 달",
+    "line": "감귤 백 년, 카페 백 년!"
+  },
+  {
+    "id": "ev_first_snow",
+    "name": "첫눈",
+    "seasonText": "12월",
+    "prob": 60,
+    "conditionText": null,
+    "effectText": "등산객·한라산 손님 ×2 3일, 도로 결빙 1일 손님 0",
+    "line": "한라산에 첫눈 왔댄!"
+  },
+  {
+    "id": "ev_canola_bloom",
+    "name": "유채꽃 개화",
+    "seasonText": "3월",
+    "prob": 100,
+    "conditionText": "canola 5개",
+    "effectText": "관광객 ×3 한 달, 소음 +2",
+    "line": "온 밭이 노랗수다."
+  },
+  {
+    "id": "ev_hydrangea_bloom",
+    "name": "수국 만개",
+    "seasonText": "6월",
+    "prob": 100,
+    "conditionText": "hydrangea 5개",
+    "effectText": "여성 손님 ×2 한 달",
+    "line": "수국이 파랗게 폈어요."
+  },
+  {
+    "id": "ev_pampas_wave",
+    "name": "억새 물결",
+    "seasonText": "10월",
+    "prob": 100,
+    "conditionText": "pampas 5개",
+    "effectText": "사진 이벤트 ×2 한 달",
+    "line": "억새가 은빛으로 흔들려요."
+  },
+  {
+    "id": "ev_camellia_fall",
+    "name": "동백 낙화",
+    "seasonText": "1월",
+    "prob": 100,
+    "conditionText": "camellia 5개",
+    "effectText": "시니어·커플 손님 ×1.5 한 달",
+    "line": "동백이 툭툭 떨어지는 계절이우다."
+  },
+  {
+    "id": "ev_tangerine_delivery",
+    "name": "감귤 택배 시즌",
+    "seasonText": "11~1월",
+    "prob": 100,
+    "conditionText": "tangerine_tree 수확",
+    "effectText": "감귤 1개당 1,500 부수입, sorting_house 있으면 ×1.5",
+    "line": "택배 상자 접는 손이 바빠요."
+  },
+  {
+    "id": "ev_tangerine_bumper",
+    "name": "감귤 풍년",
+    "seasonText": "11월",
+    "prob": 20,
+    "conditionText": "tangerine_tree 5개",
+    "effectText": "수확 ×1.5",
+    "line": "올해 귤은 유난히 달아."
+  },
+  {
+    "id": "ev_tangerine_poor",
+    "name": "감귤 흉년",
+    "seasonText": "11월",
+    "prob": 10,
+    "conditionText": null,
+    "effectText": "수확 ×0.6",
+    "line": "올해는 귤이 영 시원찮아."
+  },
+  {
+    "id": "ev_stray_cat",
+    "name": "길고양이",
+    "seasonText": "매월",
+    "prob": 5,
+    "conditionText": null,
+    "effectText": "길고양이 노을 등장 → cat_house 해금 힌트",
+    "line": "냐옹."
+  },
+  {
+    "id": "ev_warehouse_dig",
+    "name": "폐창고 발굴",
+    "seasonText": "매월",
+    "prob": 30,
+    "conditionText": "버튼 1회",
+    "effectText": "경관물 랜덤 1개",
+    "line": "창고 구석에서 뭔가 나왔어요!"
+  },
+  {
+    "id": "ev_field_coin",
+    "name": "밭 갈다 동전",
+    "seasonText": "밭 조성 시",
+    "prob": 5,
+    "conditionText": null,
+    "effectText": "자금 300,000 또는 도자기 조각(경관 +2)",
+    "line": "밭에서 옛날 동전이 나왔수다."
+  },
+  {
+    "id": "ev_olle_group",
+    "name": "올레꾼 단체",
+    "seasonText": "봄·가을",
+    "prob": 4,
+    "conditionText": "관광지 olle_trail Lv2",
+    "effectText": "20명 순차 방문",
+    "line": "올레 7코스 팀입니다!"
+  },
+  {
+    "id": "ev_bus_breakdown",
+    "name": "관광버스 고장",
+    "seasonText": "매월",
+    "prob": 3,
+    "conditionText": "parking_large 1개",
+    "effectText": "단체 6명 3시간 체류(매출 ↑, 좌석 압박)",
+    "line": "버스 고칠 동안 여기서 기다려도 될까요?"
+  },
+  {
+    "id": "ev_foreign_vlogger",
+    "name": "외국 브이로거 촬영",
+    "seasonText": "매월",
+    "prob": 2,
+    "conditionText": "★3",
+    "effectText": "시그니처 촬영 → 외국 손님 인기 +15",
+    "line": "Hello Jeju!"
+  },
+  {
+    "id": "ev_secret_chef",
+    "name": "유명 셰프 암행",
+    "seasonText": "매월",
+    "prob": 2,
+    "conditionText": "메뉴 20개",
+    "effectText": "식사 메뉴 품질 평가 → 성공 시 마일리지 3",
+    "line": "… 잘 먹었습니다."
+  },
+  {
+    "id": "ev_kimchi_gift",
+    "name": "삼춘 김치 선물",
+    "seasonText": "11~12월",
+    "prob": 10,
+    "conditionText": "손님 local_auntie 인기 40",
+    "effectText": "재료 상자",
+    "line": "김장했주. 한 통 가져가."
+  },
+  {
+    "id": "ev_blackout",
+    "name": "정전",
+    "seasonText": "매월",
+    "prob": 2,
+    "conditionText": null,
+    "effectText": "하루 조리 불가",
+    "line": "아이고, 전기가 나갔수다."
+  },
+  {
+    "id": "ev_water_cut",
+    "name": "단수",
+    "seasonText": "여름",
+    "prob": 2,
+    "conditionText": "pond 없음",
+    "effectText": "음료 하루 불가",
+    "line": "물이 안 나와요!"
+  },
+  {
+    "id": "ev_bee_swarm",
+    "name": "벌 떼",
+    "seasonText": "5~6월",
+    "prob": 4,
+    "conditionText": "beehive 1개",
+    "effectText": "꿀 ×3 또는 손님 만족 −10(50/50)",
+    "line": "벌들이 신났수다."
+  },
+  {
+    "id": "ev_lunar_group",
+    "name": "춘절 단체",
+    "seasonText": "1~2월",
+    "prob": 100,
+    "conditionText": "손님 group_cn 해금",
+    "effectText": "단체 ×2",
+    "line": "新年快乐!"
+  },
+  {
+    "id": "ev_golden_week",
+    "name": "황금연휴",
+    "seasonText": "5월",
+    "prob": 100,
+    "conditionText": null,
+    "effectText": "전체 손님 ×1.5",
+    "line": "연휴라 사람이 바글바글해요."
+  },
+  {
+    "id": "ev_summer_vacation",
+    "name": "여름 휴가",
+    "seasonText": "7~8월",
+    "prob": 100,
+    "conditionText": null,
+    "effectText": "가족·러닝 손님 ×1.5",
+    "line": "방학이다!"
+  },
+  {
+    "id": "ev_monsoon",
+    "name": "장마",
+    "seasonText": "6월",
+    "prob": 100,
+    "conditionText": null,
+    "effectText": "손님 −20%, 실내 좌석 인기 +5",
+    "line": "비가 열흘째 오고 있어요."
+  },
+  {
+    "id": "ev_hidden_oreum_view",
+    "name": "숨은 오름 뷰 포인트 발견",
+    "seasonText": "매월",
+    "prob": 100,
+    "conditionText": "세트 set_hidden_oreum_view 완성",
+    "effectText": "장면 창 → 범위 좌석 요금 +20% 영구",
+    "line": "여기서 오름이 이렇게 보였구나!"
+  },
+  {
+    "id": "ev_rival_open",
+    "name": "라이벌 카페 개점",
+    "seasonText": "매월",
+    "prob": 10,
+    "conditionText": "3년차 이상",
+    "effectText": "근처 라이벌 → 관광객 −20% 3개월, 가이드북 1위로 철수",
+    "line": "옆 동네에 카페가 또 생겼대."
+  },
+  {
+    "id": "ev_staff_wedding",
+    "name": "직원 결혼",
+    "seasonText": "매월",
+    "prob": 1,
+    "conditionText": "직원 Lv5 이상",
+    "effectText": "한 달 휴가, 복귀 시 스탯 +5",
+    "line": "저 결혼해요!"
+  },
+  {
+    "id": "ev_staff_scout",
+    "name": "직원 스카우트 제안",
+    "seasonText": "매월",
+    "prob": 2,
+    "conditionText": "직원 Lv7 이상",
+    "effectText": "급여 +30% 제안하면 잔류",
+    "line": "다른 데서 오라는데요…"
+  },
+  {
+    "id": "ev_governor_visit",
+    "name": "도지사 방문",
+    "seasonText": "매월",
+    "prob": 1,
+    "conditionText": "★4",
+    "effectText": "성공 시 부지 확장 50% 할인",
+    "line": "귀농 성공 사례로 소개하겠습니다."
+  },
+  {
+    "id": "ev_yeongdeung_wind",
+    "name": "영등굿 바람",
+    "seasonText": "2월",
+    "prob": 100,
+    "conditionText": null,
+    "effectText": "바람 2배, 방풍 없는 작물 −20%, 해녀 손님 ×2",
+    "line": "영등할망 오시는 달이우다."
+  },
+  {
+    "id": "ev_weekend_popup",
+    "name": "주말 팝업",
+    "seasonText": "매주 토",
+    "prob": 100,
+    "conditionText": "랭크 2",
+    "effectText": "주말 팝업 장소 선택 → 지역 손님 방문",
+    "line": "이번 주말은 어디로 갈까?"
+  }
+]

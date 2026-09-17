@@ -1,0 +1,434 @@
+[
+  {
+    "id": "st_kim_minjun",
+    "name": "김민준",
+    "line": "농고 졸업, 밭일이 취미",
+    "stats": {
+      "stamina": 30,
+      "strength": 25,
+      "skill": 10,
+      "smile": 15
+    },
+    "statCap": 60,
+    "maxLevel": 5,
+    "salary": 400000,
+    "recruitTier": 1,
+    "special": false
+  },
+  {
+    "id": "st_lee_seoyeon",
+    "name": "이서연",
+    "line": "사진 찍는 걸 좋아하는 동네 청년",
+    "stats": {
+      "stamina": 15,
+      "strength": 10,
+      "skill": 20,
+      "smile": 30
+    },
+    "statCap": 60,
+    "maxLevel": 5,
+    "salary": 450000,
+    "recruitTier": 1,
+    "special": false
+  },
+  {
+    "id": "st_park_doyun",
+    "name": "박도윤",
+    "line": "집밥 장인 어머니 밑에서 배움",
+    "stats": {
+      "stamina": 20,
+      "strength": 15,
+      "skill": 30,
+      "smile": 12
+    },
+    "statCap": 60,
+    "maxLevel": 5,
+    "salary": 450000,
+    "recruitTier": 1,
+    "special": false
+  },
+  {
+    "id": "st_kang_siwoo",
+    "name": "강시우",
+    "line": "힘 하나는 마을 최고",
+    "stats": {
+      "stamina": 35,
+      "strength": 40,
+      "skill": 5,
+      "smile": 10
+    },
+    "statCap": 65,
+    "maxLevel": 5,
+    "salary": 500000,
+    "recruitTier": 1,
+    "special": false
+  },
+  {
+    "id": "st_jang_yejun",
+    "name": "장예준",
+    "line": "제주 토박이, 삼춘들과 친함",
+    "stats": {
+      "stamina": 25,
+      "strength": 20,
+      "skill": 12,
+      "smile": 28
+    },
+    "statCap": 65,
+    "maxLevel": 6,
+    "salary": 500000,
+    "recruitTier": 1,
+    "special": false
+  },
+  {
+    "id": "st_jeong_haeun",
+    "name": "정하은",
+    "line": "뭐든 성실하게 하는 타입",
+    "stats": {
+      "stamina": 22,
+      "strength": 22,
+      "skill": 22,
+      "smile": 22
+    },
+    "statCap": 70,
+    "maxLevel": 6,
+    "salary": 550000,
+    "recruitTier": 2,
+    "special": false
+  },
+  {
+    "id": "st_yoon_jia",
+    "name": "윤지아",
+    "line": "디저트 애호가, 케이크 연구 중",
+    "stats": {
+      "stamina": 18,
+      "strength": 12,
+      "skill": 35,
+      "smile": 25
+    },
+    "statCap": 70,
+    "maxLevel": 6,
+    "salary": 650000,
+    "recruitTier": 2,
+    "special": false
+  },
+  {
+    "id": "st_han_jiho",
+    "name": "한지호",
+    "line": "손이 빠른 육지 출신 알바왕",
+    "stats": {
+      "stamina": 35,
+      "strength": 30,
+      "skill": 30,
+      "smile": 30
+    },
+    "statCap": 75,
+    "maxLevel": 7,
+    "salary": 800000,
+    "recruitTier": 2,
+    "special": false
+  },
+  {
+    "id": "st_oh_sua",
+    "name": "오수아",
+    "line": "육지에서 온 파티시에",
+    "stats": {
+      "stamina": 25,
+      "strength": 20,
+      "skill": 50,
+      "smile": 30
+    },
+    "statCap": 80,
+    "maxLevel": 7,
+    "salary": 950000,
+    "recruitTier": 2,
+    "special": false
+  },
+  {
+    "id": "st_seo_junseo",
+    "name": "서준서",
+    "line": "커피 장인, 원산지까지 외움",
+    "stats": {
+      "stamina": 28,
+      "strength": 22,
+      "skill": 55,
+      "smile": 28
+    },
+    "statCap": 80,
+    "maxLevel": 7,
+    "salary": 950000,
+    "recruitTier": 2,
+    "special": false
+  },
+  {
+    "id": "st_shin_yuna",
+    "name": "신유나",
+    "line": "웃는 얼굴이 동네 인기인",
+    "stats": {
+      "stamina": 30,
+      "strength": 20,
+      "skill": 25,
+      "smile": 55
+    },
+    "statCap": 80,
+    "maxLevel": 7,
+    "salary": 900000,
+    "recruitTier": 3,
+    "special": false
+  },
+  {
+    "id": "st_kwon_dohyun",
+    "name": "권도현",
+    "line": "곶자왈 채집꾼 기질, 운이 좋음",
+    "stats": {
+      "stamina": 45,
+      "strength": 40,
+      "skill": 25,
+      "smile": 25
+    },
+    "statCap": 80,
+    "maxLevel": 7,
+    "salary": 850000,
+    "recruitTier": 3,
+    "special": false
+  },
+  {
+    "id": "st_hwang_harin",
+    "name": "황하린",
+    "line": "연구광, 메뉴 개발이 취미",
+    "stats": {
+      "stamina": 30,
+      "strength": 25,
+      "skill": 45,
+      "smile": 35
+    },
+    "statCap": 85,
+    "maxLevel": 8,
+    "salary": 1000000,
+    "recruitTier": 3,
+    "special": false
+  },
+  {
+    "id": "st_song_jimin",
+    "name": "송지민",
+    "line": "외국어 세 개, 외국 손님 담당",
+    "stats": {
+      "stamina": 30,
+      "strength": 25,
+      "skill": 35,
+      "smile": 50
+    },
+    "statCap": 85,
+    "maxLevel": 8,
+    "salary": 1000000,
+    "recruitTier": 3,
+    "special": false
+  },
+  {
+    "id": "st_ryu_siyun",
+    "name": "류시윤",
+    "line": "식사 장인, 국수 한 그릇에 진심",
+    "stats": {
+      "stamina": 35,
+      "strength": 35,
+      "skill": 55,
+      "smile": 25
+    },
+    "statCap": 85,
+    "maxLevel": 8,
+    "salary": 1050000,
+    "recruitTier": 3,
+    "special": false
+  },
+  {
+    "id": "st_go_hyunwoo",
+    "name": "고현우",
+    "line": "전직 통역사",
+    "stats": {
+      "stamina": 45,
+      "strength": 40,
+      "skill": 55,
+      "smile": 70
+    },
+    "statCap": 90,
+    "maxLevel": 9,
+    "salary": 1400000,
+    "recruitTier": 4,
+    "special": false
+  },
+  {
+    "id": "st_moon_naeun",
+    "name": "문나은",
+    "line": "큰 식당 출신 요리사",
+    "stats": {
+      "stamina": 50,
+      "strength": 45,
+      "skill": 80,
+      "smile": 55
+    },
+    "statCap": 95,
+    "maxLevel": 9,
+    "salary": 1700000,
+    "recruitTier": 4,
+    "special": false
+  },
+  {
+    "id": "st_yang_junhyuk",
+    "name": "양준혁",
+    "line": "바리스타 대회 우승자",
+    "stats": {
+      "stamina": 50,
+      "strength": 45,
+      "skill": 85,
+      "smile": 55
+    },
+    "statCap": 95,
+    "maxLevel": 9,
+    "salary": 1700000,
+    "recruitTier": 4,
+    "special": false
+  },
+  {
+    "id": "st_son_yerin",
+    "name": "손예린",
+    "line": "접객의 신, 손님이 먼저 알아봄",
+    "stats": {
+      "stamina": 55,
+      "strength": 40,
+      "skill": 55,
+      "smile": 85
+    },
+    "statCap": 95,
+    "maxLevel": 9,
+    "salary": 1650000,
+    "recruitTier": 4,
+    "special": false
+  },
+  {
+    "id": "st_bae_jihun",
+    "name": "배지훈",
+    "line": "철인 3종 출신, 지치지 않음",
+    "stats": {
+      "stamina": 90,
+      "strength": 80,
+      "skill": 40,
+      "smile": 45
+    },
+    "statCap": 95,
+    "maxLevel": 9,
+    "salary": 1500000,
+    "recruitTier": 4,
+    "special": false
+  },
+  {
+    "id": "st_baek_soyul",
+    "name": "백소율",
+    "line": "뭐든 잘하는 만능",
+    "stats": {
+      "stamina": 65,
+      "strength": 60,
+      "skill": 65,
+      "smile": 65
+    },
+    "statCap": 100,
+    "maxLevel": 10,
+    "salary": 1900000,
+    "recruitTier": 5,
+    "special": false
+  },
+  {
+    "id": "st_heo_taeyang",
+    "name": "허태양",
+    "line": "로스팅 마스터",
+    "stats": {
+      "stamina": 55,
+      "strength": 50,
+      "skill": 85,
+      "smile": 50
+    },
+    "statCap": 100,
+    "maxLevel": 10,
+    "salary": 1900000,
+    "recruitTier": 5,
+    "special": false
+  },
+  {
+    "id": "st_sim_arin",
+    "name": "심아린",
+    "line": "제주 향토 요리 연구가",
+    "stats": {
+      "stamina": 55,
+      "strength": 50,
+      "skill": 80,
+      "smile": 60
+    },
+    "statCap": 100,
+    "maxLevel": 10,
+    "salary": 2000000,
+    "recruitTier": 5,
+    "special": false
+  },
+  {
+    "id": "st_retired_haenyeo",
+    "name": "고순덕",
+    "line": "은퇴한 해녀, 바다 재료에 밝음",
+    "stats": {
+      "stamina": 80,
+      "strength": 70,
+      "skill": 50,
+      "smile": 60
+    },
+    "statCap": 100,
+    "maxLevel": 10,
+    "salary": 1600000,
+    "recruitTier": 5,
+    "special": false
+  },
+  {
+    "id": "st_nam_jiwon",
+    "name": "남지원",
+    "line": "팔로워 많은 홍보 담당",
+    "stats": {
+      "stamina": 50,
+      "strength": 40,
+      "skill": 55,
+      "smile": 80
+    },
+    "statCap": 100,
+    "maxLevel": 10,
+    "salary": 2200000,
+    "recruitTier": 5,
+    "special": false
+  },
+  {
+    "id": "st_pony_special",
+    "name": "조랑말 알바",
+    "line": "조랑말 인형을 얻으면 나타나는 수수께끼 알바",
+    "stats": {
+      "stamina": 99,
+      "strength": 99,
+      "skill": 60,
+      "smile": 99
+    },
+    "statCap": 120,
+    "maxLevel": 12,
+    "salary": 1000000,
+    "recruitTier": 5,
+    "special": true
+  },
+  {
+    "id": "st_dolhareubang",
+    "name": "돌하르방",
+    "line": "전설의 알바, 3천 년 경력",
+    "stats": {
+      "stamina": 99,
+      "strength": 99,
+      "skill": 99,
+      "smile": 99
+    },
+    "statCap": 120,
+    "maxLevel": 12,
+    "salary": 2200000,
+    "recruitTier": 5,
+    "special": true
+  }
+]

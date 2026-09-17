@@ -1,7 +1,10 @@
 """게임 데이터 설계서(마크다운 표) → src/data/generated/*.json
 
-사용: python3 tools/data/from_tables.py
-원본: docs/superpowers/specs/2026-09-17-game-data-tables.md (이 문서가 source of truth)
+사용: python3 tools/data/from_tables.py            # v1 + v2 모두 생성
+      python3 tools/data/from_tables.py DOC OUT    # v1만(테스트용)
+원본:
+  v1  docs/superpowers/specs/2026-09-17-game-data-tables.md → src/data/generated/*.json
+  v2  docs/superpowers/specs/2026-09-17-gdd-v2-tables.md + guest-chain.mmd → src/data/generated/v2/*.json
 표준 라이브러리만 사용. 실행은 멱등이며 파일별 항목 수를 출력한다.
 """
 from __future__ import annotations
@@ -14,8 +17,13 @@ from typing import Any
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.abspath(os.path.join(HERE, '..', '..'))
-DOC = os.path.join(ROOT, 'docs', 'superpowers', 'specs', '2026-09-17-game-data-tables.md')
+SPECS = os.path.join(ROOT, 'docs', 'superpowers', 'specs')
+DOC = os.path.join(SPECS, '2026-09-17-game-data-tables.md')
 OUT_DIR = os.path.join(ROOT, 'src', 'data', 'generated')
+DOC_V2 = os.path.join(SPECS, '2026-09-17-gdd-v2-tables.md')
+MMD_V2 = os.path.join(SPECS, 'guest-chain.mmd')
+MENUS_V1 = os.path.join(ROOT, 'src', 'data', 'menus.json')
+OUT_DIR_V2 = os.path.join(OUT_DIR, 'v2')
 
 MINUS = '−'  # U+2212, 문서에서 음수 표기에 사용
 
@@ -896,7 +904,7 @@ CONSTANT_KEYS = {
     '메뉴 개발 성공/대성공/실패': 'menuDevelop', '로스팅 파라미터 기본 성공률': 'roastParam', '손님 대사 확률': 'guestLine',
     '손님 사진 이벤트(포토존)': 'photoEvent', '유튜버 초대 성공': 'youtuberInvite', '폐창고 발굴': 'warehouseDig',
     '밭 조성 발굴': 'fieldDig', '히든 콤보 발견 시 팡파르': 'hiddenComboFanfare', '희귀 손님 출현': 'rareGuest',
-    '라이벌 개점': 'rivalOpen', '채집 성공': 'gather', '룰렛': 'roulette', '손님층 인기 자연 감소': 'popularityDecay',
+    '라이벌 개점': 'rivalOpen', '룰렛': 'roulette', '손님층 인기 자연 감소': 'popularityDecay',
     '단골 게이지': 'regularGauge', '태풍 발생': 'typhoon', '손님 예산 초과 메뉴': 'overBudget',
     '기력 30 미만 효과': 'lowStamina', '미지급 월급 퇴사': 'unpaidQuit',
 }
@@ -943,19 +951,618 @@ def count(v: Any) -> int:
     return 1
 
 
-def main(argv: list[str]) -> int:
-    doc_path = argv[1] if len(argv) > 1 else DOC
-    out_dir = argv[2] if len(argv) > 2 else OUT_DIR
-    with open(doc_path, encoding='utf-8') as f:
-        doc = Doc(f.read())
-    data = build(doc)
+# ===========================================================================
+# v2: GDD v2 데이터 표 (2026-09-17-gdd-v2-tables.md) → src/data/generated/v2/*.json
+# ===========================================================================
+ID_RE = r'[a-z][a-z0-9_]*'
+
+FACILITY_CATEGORY_KO = {
+    '쉼': 'rest', '편의': 'convenience', '먹거리': 'food', '즐길거리': 'fun',
+    '농사': 'farm', '경관': 'scenery', '랜드마크': 'landmark',
+}
+TIER_KO = {'소': 'small', '중': 'medium', '대': 'large'}
+SPOT_CATEGORY_KO = {'볼거리': 'sight', '먹거리': 'food', '놀거리': 'play', '자연': 'nature'}
+GENDER_KO = {'남': 'm', '여': 'f'}
+AGE_KO = {'청년': 'youth', '성인': 'adult', '시니어': 'senior'}
+GUEST_EFFECT_KO = {
+    '아이템': 'item', '자금': 'money', '홍보': 'ad', '연구': 'research', '시설 인기': 'popularity', '응모권': 'ticket',
+}
+TARGET_KO = {
+    '전체': 'all', '여성': 'female', '남성': 'male', '청년': 'youth', '성인': 'adult', '시니어': 'senior', '단체': 'group',
+}
+YES_KO = {'예': True, '아니오': False}
+REWARD_KO = {'자금': 'money', '연구': 'research', '응모권': 'ticket', '마일리지': 'mileage', '홍보': 'ad'}
+ITEM_EFFECT_KO = {'인기': 'popularity', '가격': 'price'}
+COMBO_APPLY_KO = {'A': 'a', 'B': 'b', '둘 다': 'both'}
+COMBO_BONUS = {'up': {'pop': 3, 'feePct': 5}, 'upup': {'pop': 6, 'feePct': 10}, 'down': {'pop': -3, 'feePct': -5}}
+COMBO_UPUP_NAMES = {'정상 전망', '천년의 그늘', '저녁 한 상', '인생샷 기념품', '바리스타 쇼'}
+COMBO_DOWN_WORDS = ('소음', '시끄러운')
+
+
+def _cell(r: dict[str, str], key: str) -> str:
+    return r[key].strip()
+
+
+def _int(cell: str) -> int:
+    return signed(cell)
+
+
+def _opt_int(cell: str) -> int | None:
+    return None if raw(cell) is None else signed(cell)
+
+
+def _list(cell: str) -> list[str]:
+    if raw(cell) is None:
+        return []
+    return [x.strip() for x in cell.split('·') if x.strip()]
+
+
+def parse_unlock_one(s: str) -> dict:
+    """해금 조건 텍스트 1개 → 스키마 8종(+카테고리 count 확장)."""
+    s = s.strip()
+    if s == '시작':
+        return {'type': 'start'}
+    m = re.fullmatch(r'랭크\s*(\d+)', s)
+    if m:
+        return {'type': 'rank', 'rank': int(m.group(1))}
+    m = re.fullmatch(rf'손님\s+({ID_RE})\s+인기\s*(\d+)', s)
+    if m:
+        return {'type': 'segment', 'guestId': m.group(1), 'popularity': int(m.group(2))}
+    m = re.fullmatch(r'★(\d+)', s)
+    if m:
+        return {'type': 'star', 'star': int(m.group(1))}
+    m = re.fullmatch(rf'부탁\s+({ID_RE})', s)
+    if m:
+        return {'type': 'quest', 'questId': m.group(1)}
+    m = re.fullmatch(rf'관광지\s+({ID_RE})\s+Lv(\d+)', s)
+    if m:
+        return {'type': 'spot', 'spotId': m.group(1), 'level': int(m.group(2))}
+    m = re.fullmatch(r'(\d+)년\s*(\d+)월', s)
+    if m:
+        return {'type': 'date', 'year': int(m.group(1)), 'month': int(m.group(2))}
+    m = re.fullmatch(rf'({ID_RE})\s+(\d+)개', s)
+    if m:
+        return {'type': 'count', 'objectId': m.group(1), 'count': int(m.group(2))}
+    m = re.fullmatch(r'(\S+)\s+(\d+)개', s)
+    if m and m.group(1) in FACILITY_CATEGORY_KO:
+        return {'type': 'count', 'category': FACILITY_CATEGORY_KO[m.group(1)], 'count': int(m.group(2))}
+    raise ValueError(f'해금 조건 형식: {s!r}')
+
+
+def parse_unlock(cell: str) -> dict:
+    """'부탁 q_x·★4' → {'type':'all','conditions':[…]}; 단일 조건은 그대로."""
+    parts = _list(cell)
+    if not parts:
+        raise ValueError(f'해금 조건 없음: {cell!r}')
+    conds = [parse_unlock_one(p) for p in parts]
+    return conds[0] if len(conds) == 1 else {'type': 'all', 'conditions': conds}
+
+
+def parse_season_map(cell: str) -> dict[str, int]:
+    """'봄 +12·겨울 +3' → {'spring': 12, 'winter': 3}. '—' → {}."""
+    out: dict[str, int] = {}
+    for season, val in re.findall(r'(봄|여름|가을|겨울)\s*([+\-−]?\d+)', cell):
+        out[SEASON_KO[season]] = signed(val)
+    return out
+
+
+def parse_id_count_list(cell: str) -> list[dict]:
+    """'tangerine_tree 2·table_out 2' → [{'objectId':…, 'count':…}]."""
+    out = []
+    for tok in _list(cell):
+        m = re.fullmatch(rf'({ID_RE})\s+(\d+)', tok)
+        if not m:
+            raise ValueError(f'id 수량 형식: {tok!r}')
+        out.append({'objectId': m.group(1), 'count': int(m.group(2))})
+    return out
+
+
+def parse_sources(cell: str) -> list[dict]:
+    """아이템 획득처: '부탁 q_x·마일리지 상점·응모권 추첨·syrup_class 체험 보상'."""
+    out = []
+    for tok in _list(cell):
+        m = re.fullmatch(rf'부탁\s+({ID_RE})', tok)
+        if m:
+            out.append({'type': 'quest', 'questId': m.group(1)})
+        elif tok == '마일리지 상점':
+            out.append({'type': 'mileage_shop'})
+        elif tok == '응모권 상점':
+            out.append({'type': 'ticket_shop'})
+        elif tok == '응모권 추첨':
+            out.append({'type': 'ticket_draw'})
+        elif (m := re.fullmatch(rf'({ID_RE})(?:\s+체험 보상)?', tok)):
+            out.append({'type': 'facility', 'objectId': m.group(1)})
+        else:
+            out.append({'type': 'other', 'text': tok})
+    return out
+
+
+# §1 시설 --------------------------------------------------------------------
+def emit_v2_facilities(doc: Doc) -> list[dict]:
+    out = []
+    for r in doc.section('1.1 ').table():
+        size = conv(r['크기'])
+        fee_cell = _cell(r, '요금')
+        fee_pct = fee = None
+        if raw(fee_cell) is not None:
+            m = re.fullmatch(r'([\d,]+)%', fee_cell)
+            if m:
+                fee_pct = signed(m.group(1))
+            else:
+                fee = signed(fee_cell)
+        cat = _cell(r, '카테고리')
+        out.append({
+            'id': r['id'], 'name': _cell(r, '이름'), 'category': FACILITY_CATEGORY_KO[cat], 'categoryName': cat,
+            'tier': TIER_KO[_cell(r, '티어')], 'w': size['w'], 'h': size['h'],
+            'cost': _int(r['건설비']), 'buildDays': _int(r['건설 시간']), 'upkeep': _int(r['유지비']),
+            'popularity': _int(r['인기']), 'feePct': fee_pct, 'fee': fee, 'feeText': raw(fee_cell),
+            'scenery': _int(r['경관']), 'noise': _int(r['소음']), 'seasonBonus': parse_season_map(r['계절 보너스']),
+            'unlock': parse_unlock(r['해금']), 'unlockText': _cell(r, '해금'), 'description': _cell(r, '설명'),
+        })
+    return out
+
+
+# §2 손님 --------------------------------------------------------------------
+def emit_v2_guests(doc: Doc, chains: list[dict]) -> list[dict]:
+    chain_of = {g: c['chain'] for c in chains for g in c['guests']}
+    out = []
+    for r in doc.section('2.1 ').table():
+        effect = _cell(r, '효과')
+        age = _cell(r, '연령')
+        gender = _cell(r, '성별')
+        out.append({
+            'id': r['id'], 'name': _cell(r, '이름'),
+            'tags': {'gender': GENDER_KO.get(gender), 'age': AGE_KO.get(age), 'group': YES_KO[_cell(r, '단체')]},
+            'effect': GUEST_EFFECT_KO[effect], 'effectName': effect, 'money': _int(r['소지금']),
+            'likes': [FACILITY_CATEGORY_KO[x] for x in _list(r['선호 카테고리'])], 'likesText': _cell(r, '선호 카테고리'),
+            'unlock': parse_unlock(r['해금 조건']), 'unlockText': _cell(r, '해금 조건'),
+            'questId': _cell(r, '부탁 ID'), 'nextGuestId': raw(r['다음 손님']),
+            'chain': chain_of.get(r['id']), 'line': _cell(r, '대사'),
+        })
+    return out
+
+
+# §3 부탁 --------------------------------------------------------------------
+def parse_quest_condition(kind: str, params: str) -> dict:
+    kind = kind.strip()
+    p = raw(params)
+    if kind == 'none':
+        return {'type': 'none', 'params': {}}
+    m = re.fullmatch(rf'({ID_RE})\s+(\d+)', p or '')
+    if not m:
+        raise ValueError(f'부탁 파라미터 형식: {params!r}')
+    ident, n = m.group(1), int(m.group(2))
+    keys = {
+        'menuSold': ('menuId', 'count'), 'objectPlaced': ('objectId', 'count'), 'spotLevel': ('spotId', 'level'),
+        'segmentPopularity': ('guestId', 'popularity'), 'item': ('itemId', 'count'),
+    }
+    if kind not in keys:
+        raise ValueError(f'부탁 조건 타입: {kind!r}')
+    a, b = keys[kind]
+    return {'type': kind, 'params': {a: ident, b: n}}
+
+
+def parse_rewards(cell: str) -> list[dict]:
+    out = []
+    for tok in _list(cell):
+        m = re.fullmatch(rf'아이템\s+({ID_RE})', tok)
+        if m:
+            out.append({'type': 'item', 'itemId': m.group(1)})
+            continue
+        m = re.fullmatch(r'(자금|연구|응모권|마일리지|홍보)\s*([+\-−]?[\d,]+)', tok)
+        if not m:
+            raise ValueError(f'보상 형식: {tok!r}')
+        out.append({'type': REWARD_KO[m.group(1)], 'amount': signed(m.group(2))})
+    return out
+
+
+def emit_v2_quests(doc: Doc) -> list[dict]:
+    out = []
+    for r in doc.section('3.1 ').table():
+        out.append({
+            'id': r['id'], 'guestId': _cell(r, '의뢰 손님'), 'description': _cell(r, '내용'),
+            'condition': parse_quest_condition(r['조건 타입'], r['파라미터']), 'paramsText': raw(r['파라미터']),
+            'rewards': parse_rewards(r['보상']), 'rewardText': _cell(r, '보상'), 'unlockGuestId': raw(r['해금 손님']),
+        })
+    return out
+
+
+# §4 콤보 --------------------------------------------------------------------
+def combo_grade(name: str) -> str:
+    if any(w in name for w in COMBO_DOWN_WORDS):
+        return 'down'
+    if name in COMBO_UPUP_NAMES:
+        return 'upup'
+    return 'up'
+
+
+def emit_v2_combos(doc: Doc) -> list[dict]:
+    out = []
+    for r in doc.section('4.1 ').table():
+        name = _cell(r, '이름')
+        grade = combo_grade(name)
+        target = _cell(r, '대상 손님층')
+        out.append({
+            'id': r['id'], 'name': name, 'a': _cell(r, '시설 A'), 'b': _cell(r, '시설 B'),
+            'target': TARGET_KO[target], 'targetName': target, 'applyTo': COMBO_APPLY_KO[_cell(r, '효과')],
+            'grade': grade, 'bonus': dict(COMBO_BONUS[grade]), 'hidden': YES_KO[_cell(r, '히든')],
+        })
+    return out
+
+
+# §5 세트 --------------------------------------------------------------------
+def emit_v2_sets(doc: Doc) -> list[dict]:
+    out = []
+    for r in doc.section('5.1 ').table():
+        effect = _cell(r, '효과')
+        m = re.match(r'^인기\s*×([\d./]+)\s*,\s*(.*)$', effect)
+        mults = [float(x) for x in m.group(1).split('/')] if m else []
+        target = _cell(r, '대상 손님층')
+        out.append({
+            'id': r['id'], 'name': _cell(r, '이름'), 'requires': parse_id_count_list(r['필요 시설']),
+            'requiresText': _cell(r, '필요 시설'), 'target': TARGET_KO[target], 'targetName': target,
+            'levelMult': mults, 'extraEffectText': m.group(2).strip() if m else None, 'effectText': effect,
+        })
+    return out
+
+
+# §6 관광지 ------------------------------------------------------------------
+def emit_v2_spots(doc: Doc) -> list[dict]:
+    out = []
+    for r in doc.section('6.1 ').table():
+        a1, a5 = _int(r['Lv1 매력도']), _int(r['Lv5 매력도'])
+        levels = []
+        for lv in range(1, 6):
+            appeal = a1 if lv == 1 else a5 if lv == 5 else round(a1 + (a5 - a1) * (lv - 1) / 4)
+            levels.append({'level': lv, 'cost': _int(r[f'Lv{lv} 비용']), 'appeal': appeal})
+        cat = _cell(r, '카테고리')
+        out.append({
+            'id': r['id'], 'name': _cell(r, '이름'), 'category': SPOT_CATEGORY_KO[cat], 'categoryName': cat,
+            'order': _int(r['순서']), 'levels': levels, 'appealLv1': a1, 'appealLv5': a5,
+            'lv2GuestId': _cell(r, 'Lv2 해금 손님'), 'lv4QuestId': _cell(r, 'Lv4 해금 부탁'),
+            'nextSpotId': raw(r['다음 관광지']), 'unlock': parse_unlock(r['해금']), 'unlockText': _cell(r, '해금'),
+        })
+    return out
+
+
+# §7~9 직원·채용·유니폼 -------------------------------------------------------
+def emit_v2_staff_pool(doc: Doc) -> list[dict]:
+    out = []
+    for r in doc.section('7.1 ').table():
+        out.append({
+            'id': r['id'], 'name': _cell(r, '이름'), 'line': _cell(r, '배경 한 줄'),
+            'stats': {'stamina': _int(r['체력']), 'strength': _int(r['힘']), 'skill': _int(r['기술']), 'smile': _int(r['미소'])},
+            'statCap': _int(r['상한']), 'maxLevel': _int(r['최대 레벨']), 'salary': _int(r['급여']),
+            'recruitTier': _int(r['채용 단계']), 'special': YES_KO[_cell(r, '특수 여부')],
+        })
+    return out
+
+
+def emit_v2_recruit_tiers(doc: Doc) -> list[dict]:
+    out = []
+    for i, r in enumerate(doc.section('8.1 ').table(), 1):
+        out.append({
+            'id': r['id'], 'tier': i, 'name': _cell(r, '이름'), 'cost': _int(r['비용']), 'candidates': _int(r['후보 수']),
+            'statRange': conv(r['스탯 범위']), 'unlock': parse_unlock(r['해금 이벤트']), 'unlockText': _cell(r, '해금 이벤트'),
+        })
+    return out
+
+
+def emit_v2_uniforms(doc: Doc) -> list[dict]:
+    out = []
+    for r in doc.section('9.1 ').table():
+        parts: dict[str, str] = {}
+        for tok in _list(r['파츠']):
+            k, _, v = tok.partition(':')
+            parts[k.strip()] = v.strip()
+        out.append({
+            'id': r['id'], 'name': _cell(r, '이름'), 'ticketTier': _int(r['응모권 단계']),
+            'effectText': _cell(r, '효과'), 'parts': parts,
+        })
+    return out
+
+
+# §10 아이템·상점 -------------------------------------------------------------
+def emit_v2_items(doc: Doc) -> list[dict]:
+    out = []
+    for r in doc.section('10.1 ').table():
+        effect = _cell(r, '효과')
+        m = re.fullmatch(r'(인기|가격)\s*([+\-−]\d+)', effect)
+        if not m:
+            raise ValueError(f'강화 아이템 효과 형식: {effect!r}')
+        out.append({
+            'id': r['id'], 'name': _cell(r, '이름'), 'sources': parse_sources(r['획득처']), 'sourceText': _cell(r, '획득처'),
+            'bestFacilities': _list(r['잘 맞는 시설']),
+            'effect': {'stat': ITEM_EFFECT_KO[m.group(1)], 'value': signed(m.group(2))}, 'effectText': effect,
+        })
+    return out
+
+
+def emit_v2_special_items(doc: Doc) -> list[dict]:
+    out = []
+    for r in doc.section('10.2 ').table():
+        out.append({
+            'id': r['id'], 'name': _cell(r, '이름'), 'sources': parse_sources(r['획득처']), 'sourceText': _cell(r, '획득처'),
+            'effectText': _cell(r, '효과'),
+        })
+    return out
+
+
+def emit_v2_shop(doc: Doc, prefix: str, item_ids: set[str], uniforms: list[dict]) -> list[dict]:
+    uniform_by_tier = {u['ticketTier']: u['id'] for u in uniforms}
+    out = []
+    for r in doc.section(prefix).table():
+        entry = {'id': r['id'], 'name': _cell(r, '품목'), 'price': _int(r['가격']), 'description': _cell(r, '설명')}
+        m = re.fullmatch(r'(?:ms|ts)_(.+)', r['id'])
+        if m and m.group(1) in item_ids:
+            entry['itemId'] = m.group(1)
+        m = re.fullmatch(r'ts_uniform_(\d+)', r['id'])
+        if m:
+            entry['uniformId'] = uniform_by_tier[int(m.group(1))]
+        out.append(entry)
+    return out
+
+
+# §11 가이드북 ----------------------------------------------------------------
+def emit_v2_guidebooks(doc: Doc) -> list[dict]:
+    out = []
+    for r in doc.section('11.1 ').table():
+        seeds = [{'itemId': x['objectId'], 'count': x['count']} for x in parse_id_count_list(r['씨앗'])]
+        out.append({
+            'id': r['id'], 'name': _cell(r, '이름'), 'unlock': parse_unlock(r['해금']), 'unlockText': _cell(r, '해금'),
+            'criteriaText': _cell(r, '심사 기준'), 'prize': _int(r['1위 상금']), 'research': _int(r['연구']),
+            'seeds': seeds, 'seedText': raw(r['씨앗']),
+        })
+    return out
+
+
+# §12 이벤트 ------------------------------------------------------------------
+def emit_v2_events(doc: Doc) -> list[dict]:
+    out = []
+    for r in doc.section('12.1 ').table():
+        prob = _cell(r, '확률')
+        m = re.fullmatch(r'(\d+(?:\.\d+)?)%', prob)
+        if not m:
+            raise ValueError(f'이벤트 확률 형식: {prob!r}')
+        out.append({
+            'id': r['id'], 'name': _cell(r, '이름'), 'seasonText': _cell(r, '계절/월'), 'prob': _num(m.group(1)),
+            'conditionText': raw(r['조건']), 'effectText': _cell(r, '효과'), 'line': _cell(r, '대사'),
+        })
+    return out
+
+
+# §13 경관 계절 ---------------------------------------------------------------
+def emit_v2_scenery_seasons(doc: Doc) -> list[dict]:
+    out = []
+    for r in doc.section('13.1 ').table():
+        out.append({
+            'id': r['id'], 'name': _cell(r, '이름'), 'scenery': _int(r['기본 경관']),
+            'seasons': {'spring': _int(r['봄']), 'summer': _int(r['여름']), 'autumn': _int(r['가을']), 'winter': _int(r['겨울'])},
+        })
+    return out
+
+
+# §14 추가 메뉴 ---------------------------------------------------------------
+def emit_v2_extra_menus(doc: Doc) -> list[dict]:
+    out = []
+    for r in doc.section('14.1 ').table():
+        facility = raw(r['필요 시설'])
+        out.append({
+            'id': r['id'], 'name': _cell(r, '이름'), 'base': BASE_KO[_cell(r, '베이스')], 'price': _int(r['가격']),
+            'facilityId': facility, 'hidden': facility is None, 'ingredients': _list(r['재료']),
+        })
+    return out
+
+
+# guest-chain.mmd -------------------------------------------------------------
+RE_MMD_SUBGRAPH = re.compile(r'^\s*subgraph\s+(\S+)\s*$')
+RE_MMD_NODE = re.compile(rf'^\s*({ID_RE})\["(.*)"\]\s*$')
+RE_MMD_EDGE = re.compile(rf'^\s*({ID_RE})\s*-->\|({ID_RE})\|\s*({ID_RE})\s*$')
+
+
+def parse_guest_chains(text: str) -> list[dict]:
+    """mermaid `graph LR` + subgraph 블록 → [{chain, guests[], edges[{from,to,quest}]}]."""
+    chains: list[dict] = []
+    cur: dict | None = None
+    for line in text.splitlines():
+        s = line.strip()
+        if not s or s.startswith('%%') or s.startswith('graph') or s.startswith('flowchart'):
+            continue
+        m = RE_MMD_SUBGRAPH.match(line)
+        if m:
+            cur = {'chain': m.group(1), 'guests': [], 'edges': []}
+            chains.append(cur)
+            continue
+        if s == 'end':
+            cur = None
+            continue
+        if cur is None:
+            raise ValueError(f'subgraph 밖의 줄: {line!r}')
+        m = RE_MMD_NODE.match(line)
+        if m:
+            cur['guests'].append(m.group(1))
+            continue
+        m = RE_MMD_EDGE.match(line)
+        if m:
+            cur['edges'].append({'from': m.group(1), 'to': m.group(3), 'quest': m.group(2)})
+            continue
+        raise ValueError(f'mermaid 줄 형식: {line!r}')
+    return chains
+
+
+# 교차 검증 -------------------------------------------------------------------
+def load_menu_ids_v1(path: str = MENUS_V1) -> set[str]:
+    with open(path, encoding='utf-8') as f:
+        return {m['id'] for m in json.load(f)}
+
+
+def check_v2_refs(d: dict[str, Any], menu_ids_v1: set[str], v1_object_ids: set[str] = frozenset()) -> list[str]:
+    """표 사이의 id 참조를 전부 확인해 끊긴 참조 목록을 돌려준다(비어 있으면 정상)."""
+    fac = {x['id'] for x in d['facilities']} | set(v1_object_ids)
+    guests = {x['id'] for x in d['guests']}
+    quests = {x['id'] for x in d['quests']}
+    spots = {x['id'] for x in d['spots']}
+    items = {x['id'] for x in d['items']} | {x['id'] for x in d['special_items']}
+    staff = {x['id'] for x in d['staff_pool']}
+    sets = {x['id'] for x in d['sets']}
+    menus = menu_ids_v1 | {x['id'] for x in d['extra_menus']}
+    bad: list[str] = []
+
+    def chk(where: str, kind: str, ident: str | None, pool: set[str]) -> None:
+        if ident is not None and ident not in pool:
+            bad.append(f'{where}: {kind} {ident}')
+
+    def chk_unlock(where: str, u: dict) -> None:
+        if u['type'] == 'all':
+            for c in u['conditions']:
+                chk_unlock(where, c)
+        elif u['type'] == 'segment':
+            chk(where, 'guest', u['guestId'], guests)
+        elif u['type'] == 'quest':
+            chk(where, 'quest', u['questId'], quests)
+        elif u['type'] == 'spot':
+            chk(where, 'spot', u['spotId'], spots)
+        elif u['type'] == 'count' and 'objectId' in u:
+            chk(where, 'facility', u['objectId'], fac)
+
+    for key in ('facilities', 'guests', 'spots', 'recruit_tiers', 'guidebooks'):
+        for x in d[key]:
+            chk_unlock(f'{key}/{x["id"]}', x['unlock'])
+    for g in d['guests']:
+        chk(f'guests/{g["id"]}', 'quest', g['questId'], quests)
+        chk(f'guests/{g["id"]}', 'guest', g['nextGuestId'], guests)
+    for q in d['quests']:
+        w = f'quests/{q["id"]}'
+        chk(w, 'guest', q['guestId'], guests)
+        chk(w, 'guest', q['unlockGuestId'], guests)
+        p = q['condition']['params']
+        chk(w, 'menu', p.get('menuId'), menus)
+        chk(w, 'facility', p.get('objectId'), fac)
+        chk(w, 'spot', p.get('spotId'), spots)
+        chk(w, 'guest', p.get('guestId'), guests)
+        chk(w, 'item', p.get('itemId'), items)
+        for rw in q['rewards']:
+            chk(w, 'item', rw.get('itemId'), items)
+    for c in d['combos']:
+        chk(f'combos/{c["id"]}', 'facility', c['a'], fac)
+        chk(f'combos/{c["id"]}', 'facility', c['b'], fac)
+    for s in d['sets']:
+        for req in s['requires']:
+            chk(f'sets/{s["id"]}', 'facility', req['objectId'], fac)
+    for s in d['spots']:
+        chk(f'spots/{s["id"]}', 'guest', s['lv2GuestId'], guests)
+        chk(f'spots/{s["id"]}', 'quest', s['lv4QuestId'], quests)
+        chk(f'spots/{s["id"]}', 'spot', s['nextSpotId'], spots)
+    for it in d['items'] + d['special_items']:
+        for src in it['sources']:
+            chk(f'items/{it["id"]}', 'quest', src.get('questId'), quests)
+            chk(f'items/{it["id"]}', 'facility', src.get('objectId'), fac)
+        for fid in it.get('bestFacilities', []):
+            chk(f'items/{it["id"]}', 'facility', fid, fac)
+        for sid in re.findall(r'\b(st_[a-z_]+)\b', it['effectText']):
+            chk(f'items/{it["id"]}', 'staff', sid, staff)
+    for sh in d['mileage_shop'] + d['ticket_shop']:
+        chk(f'shop/{sh["id"]}', 'item', sh.get('itemId'), items)
+    for gb in d['guidebooks']:
+        for sd in gb['seeds']:
+            chk(f'guidebooks/{gb["id"]}', 'item', sd['itemId'], items)
+    for ev in d['events']:
+        for part in _list(ev['conditionText'] or ''):
+            m = re.match(rf'^({ID_RE})\s+(\d+개|없음|수확)$', part)
+            if m:
+                chk(f'events/{ev["id"]}', 'facility', m.group(1), fac)
+            m = re.match(rf'^손님\s+({ID_RE})', part)
+            if m:
+                chk(f'events/{ev["id"]}', 'guest', m.group(1), guests)
+            m = re.match(rf'^관광지\s+({ID_RE})', part)
+            if m:
+                chk(f'events/{ev["id"]}', 'spot', m.group(1), spots)
+            m = re.match(rf'^세트\s+({ID_RE})', part)
+            if m:
+                chk(f'events/{ev["id"]}', 'set', m.group(1), sets)
+    for sc in d['scenery_seasons']:
+        chk(f'scenery_seasons/{sc["id"]}', 'facility', sc['id'], fac)
+    for mn in d['extra_menus']:
+        chk(f'extra_menus/{mn["id"]}', 'facility', mn['facilityId'], fac)
+    for ch in d['guest_chains']:
+        for gid in ch['guests']:
+            chk(f'guest_chains/{ch["chain"]}', 'guest', gid, guests)
+        for e in ch['edges']:
+            chk(f'guest_chains/{ch["chain"]}', 'guest', e['from'], guests)
+            chk(f'guest_chains/{ch["chain"]}', 'guest', e['to'], guests)
+            chk(f'guest_chains/{ch["chain"]}', 'quest', e['quest'], quests)
+    # 체인 그림 ↔ 손님 표(부탁 ID·다음 손님)가 같은 간선 집합인지
+    table_edges = {(g['id'], g['questId'], g['nextGuestId']) for g in d['guests'] if g['nextGuestId']}
+    mmd_edges = {(e['from'], e['quest'], e['to']) for ch in d['guest_chains'] for e in ch['edges']}
+    for e in sorted(table_edges - mmd_edges):
+        bad.append(f'guest_chains: 표에만 있는 간선 {e}')
+    for e in sorted(mmd_edges - table_edges):
+        bad.append(f'guest_chains: 그림에만 있는 간선 {e}')
+    return bad
+
+
+def build_v2(doc: Doc, mmd_text: str) -> dict[str, Any]:
+    chains = parse_guest_chains(mmd_text)
+    uniforms = emit_v2_uniforms(doc)
+    items = emit_v2_items(doc)
+    special = emit_v2_special_items(doc)
+    item_ids = {x['id'] for x in items} | {x['id'] for x in special}
+    data = {
+        'facilities': emit_v2_facilities(doc), 'guests': emit_v2_guests(doc, chains), 'quests': emit_v2_quests(doc),
+        'combos': emit_v2_combos(doc), 'sets': emit_v2_sets(doc), 'spots': emit_v2_spots(doc),
+        'staff_pool': emit_v2_staff_pool(doc), 'recruit_tiers': emit_v2_recruit_tiers(doc), 'uniforms': uniforms,
+        'items': items, 'special_items': special,
+        'mileage_shop': emit_v2_shop(doc, '10.3 ', item_ids, uniforms),
+        'ticket_shop': emit_v2_shop(doc, '10.4 ', item_ids, uniforms),
+        'guidebooks': emit_v2_guidebooks(doc), 'events': emit_v2_events(doc),
+        'scenery_seasons': emit_v2_scenery_seasons(doc), 'extra_menus': emit_v2_extra_menus(doc),
+        'guest_chains': chains,
+    }
+    for key, rows in data.items():
+        ids = [r.get('id') or r.get('chain') for r in rows]
+        dup = sorted({i for i in ids if ids.count(i) > 1})
+        if dup:
+            raise ValueError(f'{key} id 중복: {dup}')
+    return data
+
+
+# main ------------------------------------------------------------------------
+def write_json_dir(data: dict[str, Any], out_dir: str, label: str = '') -> None:
     os.makedirs(out_dir, exist_ok=True)
     for name, value in data.items():
         path = os.path.join(out_dir, f'{name}.json')
         with open(path, 'w', encoding='utf-8') as f:
             json.dump(value, f, ensure_ascii=False, indent=2)
             f.write('\n')
-        print(f'{name}.json: {count(value)}')
+        print(f'{label}{name}.json: {count(value)}')
+
+
+def run_v1(doc_path: str = DOC, out_dir: str = OUT_DIR) -> dict[str, Any]:
+    with open(doc_path, encoding='utf-8') as f:
+        data = build(Doc(f.read()))
+    write_json_dir(data, out_dir)
+    return data
+
+
+def run_v2(doc_path: str = DOC_V2, mmd_path: str = MMD_V2, out_dir: str = OUT_DIR_V2,
+           menus_path: str = MENUS_V1) -> dict[str, Any]:
+    with open(doc_path, encoding='utf-8') as f:
+        doc = Doc(f.read())
+    with open(mmd_path, encoding='utf-8') as f:
+        data = build_v2(doc, f.read())
+    bad = check_v2_refs(data, load_menu_ids_v1(menus_path))
+    if bad:
+        raise ValueError('v2 끊긴 id 참조:\n  ' + '\n  '.join(bad))
+    write_json_dir(data, out_dir, 'v2/')
+    return data
+
+
+def main(argv: list[str]) -> int:
+    if len(argv) > 1:  # 위치 인자: v1만(DOC OUT)
+        run_v1(argv[1], argv[2] if len(argv) > 2 else OUT_DIR)
+        return 0
+    run_v1()
+    run_v2()
     return 0
 
 
