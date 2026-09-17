@@ -47,7 +47,7 @@ test('걸어가서 앉고, 주문하고, 돈과 연구가 오른다', () => {
   expect(s.storage['carrot']).toBe(9);
 });
 
-test('좋아하는 메뉴가 없으면 😐, 돈 없음', () => {
+test('좋아하는 메뉴가 없으면 meh, 돈 없음', () => {
   const { s } = cafe();
   s.storage['carrot'] = 0;
   spawnGuests(s, 1);
@@ -69,7 +69,7 @@ test('앉은 시간이 지나면 나가고, 정류장에 닿으면 사라진다'
   expect(s.guests.length).toBe(0);
 });
 
-test('😊이면 연구 +1, 게이지가 타입 방향으로 움직인다', () => {
+test('happy이면 연구 +1, 게이지가 타입 방향으로 움직인다', () => {
   const { s } = cafe();
   spawnGuests(s, 1);
   const g = s.guests[0]!;
@@ -91,7 +91,7 @@ test('100ms 스텝으로도 17스텝째에 정확히 자리에 도착한다', ()
   expect([g.x, g.y]).toEqual([4, 6]);
 });
 
-test('관광객은 경치가 모자라면 😐, 돌담을 두면 😊', () => {
+test('관광객은 경치가 모자라면 meh, 돌담을 두면 happy', () => {
   const { s } = cafe();
   spawnGuests(s, 1);
   s.guests[0]!.type = 'tourist'; // minScenery 2, 자리 (4,5) 경치 1(정낭)

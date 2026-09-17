@@ -43,7 +43,7 @@ export interface GuestTypeDef {
   name: string;
   likes: MenuCategory[];
   minScenery: number;
-  popularityShift: number; // 😊일 때 게이지 이동 (−: 동네, +: 인기)
+  popularityShift: number; // happy일 때 게이지 이동 (−: 동네, +: 인기)
   weight: number;          // 스폰 가중치
 }
 

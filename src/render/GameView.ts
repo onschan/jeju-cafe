@@ -2,7 +2,7 @@ import { Application, Container, Sprite, Graphics, Texture } from 'pixi.js';
 import type { GameState, PlacedObject, Guest, Season } from '../sim/index.ts';
 import { seasonOf } from '../sim/index.ts';
 import { objectDef, cropDef } from '../data/index.ts';
-import { TILE, terrainTexture, objectTexture, label, bubble, clearTextureCache } from './textures';
+import { TILE, terrainTexture, objectTexture, label, bubble, clearTextureCache, loadLabelFont } from './textures';
 import { loadAssets, tex, hasAssets, spriteName } from './assets';
 import { attachCamera } from './camera';
 
@@ -102,7 +102,7 @@ export class GameView {
 
   async init(parent: HTMLElement, opts: GameViewOptions) {
     await this.app.init({ resizeTo: parent, background: 0x1e1e1e, antialias: false, resolution: window.devicePixelRatio, autoDensity: true });
-    await loadAssets();
+    await Promise.all([loadAssets(), loadLabelFont()]);
     parent.appendChild(this.app.canvas);
     this.actors.sortableChildren = true;
     this.world.addChild(this.tiles, this.actors, this.overlay);

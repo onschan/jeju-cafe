@@ -2,20 +2,25 @@ import type { CSSProperties } from 'react';
 import { useGame, dispatch } from './store';
 import { objectAt, canPlant, isMenuAvailable, MENU_SLOT_COUNT, PROTECTED_TYPES } from '../sim/index.ts';
 import { objectDef, cropDef, menuDef, CROPS } from '../data/index.ts';
+import { Icon } from './Icon';
 
 export type Mode = { kind: 'idle' } | { kind: 'build'; objectType: string } | { kind: 'cell'; x: number; y: number } | { kind: 'menu' };
 
 const btn: CSSProperties = { minHeight: 44, padding: '0 12px', marginRight: 6, marginBottom: 6, border: 0, borderRadius: 8, background: '#333', color: '#fff', fontSize: 16 };
 const disabledBtn: CSSProperties = { ...btn, opacity: 0.5 };
+/** 재료 있음/없음 색점 (leaf / red) */
+function Dot({ ok }: { ok: boolean }) {
+  return <span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: 5, background: ok ? '#6abe30' : '#e63946', marginRight: 4, verticalAlign: 'middle' }} />;
+}
 
 export function BottomSheet({ mode, setMode }: { mode: Mode; setMode: (m: Mode) => void }) {
   const s = useGame();
   return (
     <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, background: '#222', color: '#fff', padding: '10px 12px calc(10px + env(safe-area-inset-bottom))', borderTop: '1px solid #444', maxHeight: '40vh', overflowY: 'auto', fontSize: 16 }}>
       <div style={{ marginBottom: 6 }}>
-        <button style={{ ...btn, background: mode.kind === 'idle' ? '#ffd166' : '#333', color: mode.kind === 'idle' ? '#000' : '#fff' }} onClick={() => setMode({ kind: 'idle' })}>👆 보기</button>
-        <button style={{ ...btn, background: mode.kind === 'build' ? '#ffd166' : '#333', color: mode.kind === 'build' ? '#000' : '#fff' }} onClick={() => setMode({ kind: 'build', objectType: 'field' })}>🔨 짓기</button>
-        <button style={{ ...btn, background: mode.kind === 'menu' ? '#ffd166' : '#333', color: mode.kind === 'menu' ? '#000' : '#fff' }} onClick={() => setMode({ kind: 'menu' })}>📋 메뉴판</button>
+        <button style={{ ...btn, background: mode.kind === 'idle' ? '#ffd166' : '#333', color: mode.kind === 'idle' ? '#000' : '#fff' }} onClick={() => setMode({ kind: 'idle' })}><Icon name="look" /> 보기</button>
+        <button style={{ ...btn, background: mode.kind === 'build' ? '#ffd166' : '#333', color: mode.kind === 'build' ? '#000' : '#fff' }} onClick={() => setMode({ kind: 'build', objectType: 'field' })}><Icon name="build" /> 짓기</button>
+        <button style={{ ...btn, background: mode.kind === 'menu' ? '#ffd166' : '#333', color: mode.kind === 'menu' ? '#000' : '#fff' }} onClick={() => setMode({ kind: 'menu' })}><Icon name="menu" /> 메뉴판</button>
       </div>
 
       {mode.kind === 'build' && (
@@ -46,7 +51,7 @@ export function BottomSheet({ mode, setMode }: { mode: Mode; setMode: (m: Mode) 
                   <option value="">(비움)</option>
                   {s.unlocked.menus.map((m) => <option key={m} value={m}>{menuDef(m).name} ₩{menuDef(m).price}</option>)}
                 </select>
-                {cur && <span style={{ marginLeft: 8 }}>{isMenuAvailable(s, cur) ? '✅ 재료 있음' : '❌ 재료 없음'}</span>}
+                {cur && <span style={{ marginLeft: 8 }}><Dot ok={isMenuAvailable(s, cur)} />{isMenuAvailable(s, cur) ? '재료 있음' : '재료 없음'}</span>}
               </div>
             );
           })}
@@ -69,13 +74,13 @@ function CellPanel({ x, y }: { x: number; y: number }) {
         const can = canPlant(s, o.id, c.id);
         return (
           <button key={c.id} style={can.ok ? btn : disabledBtn} disabled={!can.ok} onClick={() => dispatch({ type: 'plant', objectId: o.id, cropId: c.id })}>
-            🌱 {c.name} 심기{!can.ok && can.reason && ` (${can.reason})`}
+            <Icon name="plant" /> {c.name} 심기{!can.ok && can.reason && ` (${can.reason})`}
           </button>
         );
       })}
-      {o.crop?.ready && <button style={{ ...btn, background: '#ffd166', color: '#000' }} onClick={() => dispatch({ type: 'harvest', objectId: o.id })}>✨ 수확</button>}
+      {o.crop?.ready && <button style={{ ...btn, background: '#ffd166', color: '#000' }} onClick={() => dispatch({ type: 'harvest', objectId: o.id })}><Icon name="harvest" /> 수확</button>}
       {!PROTECTED_TYPES.has(o.type) && (
-        <button style={{ ...btn, background: '#8a2a2a' }} onClick={() => dispatch({ type: 'remove', objectId: o.id })}>🗑 치우기 (₩{d.cost} 돌려받음)</button>
+        <button style={{ ...btn, background: '#8a2a2a' }} onClick={() => dispatch({ type: 'remove', objectId: o.id })}><Icon name="remove" /> 치우기 (₩{d.cost} 돌려받음)</button>
       )}
     </div>
   );

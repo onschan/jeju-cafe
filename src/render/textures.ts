@@ -45,15 +45,21 @@ export function objectTexture(renderer: Renderer, kind: ObjectKind, w: number, h
   return rectTexture(renderer, `o:${kind}:${w}x${h}`, w * TILE - 2, h * TILE - 2, KIND_COLOR[kind], 0xffffff);
 }
 
+/** 픽셀 폰트가 로드되면 이후 만드는 라벨은 Galmuri11을 쓴다 (폴백: system-ui) */
+let labelFont = 'system-ui';
+export async function loadLabelFont(): Promise<void> {
+  try { await document.fonts.load('12px Galmuri11'); labelFont = 'Galmuri11'; } catch { /* 폴백 유지 */ }
+}
+
 /** 오브젝트 위에 이름을 얹는 라벨 (플레이스홀더 전용) */
 export function label(text: string, size = 9): Text {
-  return new Text({ text, style: { fontSize: size, fill: 0xffffff, fontFamily: 'system-ui' } });
+  return new Text({ text, style: { fontSize: size, fill: 0xffffff, fontFamily: labelFont } });
 }
 
 export function bubble(mood: 'happy' | 'meh' | 'angry' | null): Container {
   const c = new Container();
   const g = new Graphics().roundRect(0, 0, 18, 14, 4).fill(0xffffff);
-  const t = label(mood === 'happy' ? '😊' : mood === 'meh' ? '😐' : mood === 'angry' ? '😠' : '…', 10);
+  const t = label(mood === 'happy' ? ':)' : mood === 'meh' ? ':|' : mood === 'angry' ? '>:(' : '…', 10);
   t.position.set(2, 1);
   c.addChild(g, t);
   return c;
