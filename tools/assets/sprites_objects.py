@@ -105,25 +105,55 @@ def warehouse() -> Canvas:
     c = canvas(96, 80, shadow_rx=47, shadow_ry=3)
     wdk, wmd, wlt = WHITE
     bdk, bmd, blt = BASALT
-    # 벽
+    # 벽: 위 회벽, 아래 40%는 현무암 돌담
     c.rect(6, 30, 84, 47, wmd)
-    c.vline(6, 30, 76, wlt)
-    c.vline(89, 30, 76, wdk)
-    c.rect(6, 75, 84, 2, wdk)
+    c.vline(6, 30, 57, wlt)
+    c.vline(89, 30, 57, wdk)
     c.hline(6, 89, 30, wdk); c.hline(6, 89, 31, wdk)          # 처마 그림자
-    # 슬레이트 지붕(사다리꼴, 좌우 4px 넘침)
+    c.rect(6, 58, 84, 19, bdk)                                # 모르타르
+    c.hline(6, 89, 57, wdk)
+    rows = [(61, [(9, 5, 3.2), (20, 4.5, 3), (30, 5, 3.2), (40, 4.2, 2.8), (50, 5, 3), (60, 4.5, 3.2),
+                  (70, 5, 3), (80, 4.5, 3.2), (88, 3, 2.8)]),
+            (68, [(7, 3.5, 3), (15, 5, 3.2), (25, 4.5, 3), (35, 5, 3.2), (45, 4.2, 3), (55, 5, 3.2),
+                  (65, 4.5, 3), (75, 5, 3.2), (85, 4.5, 3)]),
+            (74, [(10, 5, 2.8), (20, 4.5, 2.6), (30, 5, 2.8), (40, 4.2, 2.6), (50, 5, 2.8), (60, 4.5, 2.6),
+                  (70, 5, 2.8), (80, 4.5, 2.6), (88, 3, 2.6)])]
+    tmp = Canvas(96, 80)                                      # 벽 범위로 클리핑해서 옮김
+    for cy, stones in rows:
+        for cx, rx, ry in stones:
+            stone(tmp, cx, cy, rx, ry)
+    for y in range(58, 77):
+        for x in range(6, 90):
+            if tmp.px[y][x][3]:
+                c.put(x, y, tmp.px[y][x])
+    c.hline(6, 89, 76, bdk)
+    # 슬레이트 지붕(사다리꼴, 좌우 4px 넘침, 가장자리 1px 들쭉날쭉)
+    jag = {16: 1, 20: -1, 23: 1, 27: 1}
     for y in range(14, 30):
         t = (y - 14) / 15
-        x0 = round(14 - 12 * t); x1 = round(81 + 12 * t)
+        j = jag.get(y, 0)
+        x0 = round(14 - 12 * t) - j; x1 = round(81 + 12 * t) + j
         col = blt if y < 18 else bmd if y < 27 else bdk
         c.hline(x0, x1, y, col)
     for x in range(14, 82, 8):
-        c.vline(x, 15, 28, bdk)
-    c.hline(14, 81, 14, blt)
-    # 문 14×20
-    c.shade_rect(41, 56, 14, 20, WOOD)
-    c.vline(48, 57, 74, WOOD[0])
-    c.put(46, 66, YELLOW[1]); c.put(50, 66, YELLOW[1])       # 손잡이
+        c.vline(x, 16, 28, bdk)
+    c.rect(13, 14, 70, 2, blt); c.hline(14, 81, 14, hexc('8a8a94'))     # 용마루 하이라이트 2px
+    for x in (5, 21, 45, 63, 88):                                     # 처마 끝 낡은 슬레이트 1px 단
+        c.put(x, 30, bdk)
+    c.put(2, 29, (0, 0, 0, 0)); c.put(93, 29, (0, 0, 0, 0))
+    # 미닫이 문 20×22: 낡은 어두운 나무, 세로 판자
+    c.rect(36, 52, 24, 2, WOOD[1]); c.hline(36, 59, 52, WOOD[2])      # 위 레일
+    c.rect(38, 54, 20, 22, WOOD[0])
+    for i, x in enumerate(range(38, 58, 4)):
+        c.vline(x, 54, 75, OUT if i else WOOD[0])
+        if i % 2 == 0:
+            c.vline(x + 1, 56, 61 + i, WOOD[1])
+        else:
+            c.vline(x + 2, 65, 72, WOOD[1])
+        c.put(x + 2, 58 + (i * 5) % 11, hexc('3f2712'))   # 옹이·비바람 자국
+    c.vline(57, 54, 75, OUT)
+    c.rect(52, 63, 2, 3, BASALT[2])                                   # 손잡이 홈
+    c.hline(39, 56, 54, WOOD[1])
     # 창 2개 10×8 + 창틀
     for wx in (16, 70):
         c.rect(wx - 1, 43, 12, 10, WOOD[0])
@@ -159,19 +189,33 @@ def gate(bars: int) -> Canvas:
 
 # ---------------------------------------------------------------- 올렛길
 def path() -> Canvas:
+    """현무암 판석 포장. 판석 사이 1px 모르타르, 오른쪽·아래 끝 열/행이 모르타르라 4방향 이어 붙여도 이음새가 같다.
+    외곽선 없음."""
     c = Canvas(32, 32)
-    dk, md, lt = BASALT[1], BASALT[2], hexc('9a9aa3')
-    pebbles = [(3, 3, 4, 3), (10, 2, 3, 2), (16, 4, 4, 3), (23, 2, 3, 2), (28, 5, 3, 3),
-               (1, 10, 3, 3), (7, 9, 4, 3), (13, 11, 3, 2), (19, 10, 4, 3), (25, 12, 3, 2),
-               (4, 17, 3, 2), (10, 16, 4, 3), (17, 17, 3, 3), (22, 19, 4, 2), (28, 18, 3, 3),
-               (2, 24, 4, 3), (9, 23, 3, 2), (14, 26, 4, 3), (20, 25, 3, 2), (26, 26, 4, 3)]
-    for x, y, w, h in pebbles:
-        c.rect(x, y, w, h, md)
-        c.hline(x, x + w - 2, y, lt); c.put(x, y + 1, lt)
-        c.hline(x + 1, x + w - 1, y + h - 1, dk); c.put(x + w - 1, y + h - 2, dk)
-        c.hline(x, x + w - 1, y + h, BASALT[0])   # 아래 그늘 1px
-    for x, y in [(1, 1), (30, 3), (0, 17), (31, 22), (14, 0), (17, 31)]:
-        c.put(x, y, GRASS[1]); c.put(x, y - 1, GRASS[2])
+    base = hexc('5b5b63')
+    mortar, body, shade, hi = BASALT[0], BASALT[2], BASALT[1], hexc('9a9aa3')
+    c.rect(0, 0, 32, 32, base)
+    c.hline(0, 31, 31, mortar); c.vline(31, 0, 31, mortar)
+    # (y0, y1, [(x0, x1), ...]) — 띠마다 판석 경계를 어긋나게
+    bands = [(0, 9, [(0, 11), (13, 21), (23, 30)]),
+             (11, 20, [(0, 6), (8, 18), (20, 30)]),
+             (22, 30, [(0, 14), (16, 24), (26, 30)])]
+    for y0, y1, cols in bands:
+        c.hline(0, 30, y1 + 1, mortar) if y1 + 1 < 31 else None
+        for x0, x1 in cols:
+            if x1 + 1 < 31:
+                c.vline(x1 + 1, y0, y1, mortar)
+            c.rect(x0, y0, x1 - x0 + 1, y1 - y0 + 1, body)
+            c.hline(x0, x1 - 1, y0, hi); c.vline(x0, y0, y1 - 1, hi)
+            c.hline(x0 + 1, x1, y1, shade); c.vline(x1, y0 + 1, y1, shade)
+            for cx, cy in ((x0, y0), (x1, y0), (x0, y1), (x1, y1)):   # 둥근 모서리에 바탕이 비침
+                c.put(cx, cy, base)
+    # 자잘한 흠집
+    for x, y in ((5, 4), (17, 6), (27, 3), (3, 16), (14, 14), (25, 17), (8, 26), (20, 27)):
+        c.put(x, y, shade)
+    # 가장자리 풀(바깥 테두리 픽셀에만)
+    for x, y in ((0, 5), (0, 19), (31, 12), (31, 26), (9, 0), (23, 0), (4, 31), (18, 31)):
+        c.put(x, y, GRASS[1])
     return c
 
 
