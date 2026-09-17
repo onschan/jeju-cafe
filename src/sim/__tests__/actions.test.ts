@@ -1,0 +1,76 @@
+import { createInitialState } from '../state.ts';
+import { apply } from '../actions.ts';
+import { spawnGuests } from '../guests.ts';
+
+test('place: 돈이 있어야 하고, 깎이고, 로그에 남는다', () => {
+  const s = createInitialState(1);
+  expect(apply(s, { type: 'place', objectType: 'field', x: 0, y: 0 }).ok).toBe(true);
+  expect(s.money).toBe(4700);
+  expect(Object.values(s.objects).some((o) => o.type === 'field')).toBe(true);
+  expect(s.actionLog).toEqual([{ tick: 0, action: { type: 'place', objectType: 'field', x: 0, y: 0 } }]);
+});
+
+test('setSpeed·dismissMonthCard는 로그에 남지 않는다', () => {
+  const s = createInitialState(1);
+  apply(s, { type: 'setSpeed', speed: 2 });
+  apply(s, { type: 'dismissMonthCard' });
+  expect(s.actionLog.length).toBe(0);
+});
+
+test('place: 해금 안 된 오브젝트는 거부', () => {
+  const s = createInitialState(1);
+  const r = apply(s, { type: 'place', objectType: 'stonewall', x: 0, y: 0 });
+  expect(r.ok).toBe(false);
+  expect(r.reason).toBe('아직 못 짓는 것');
+});
+
+test('place: 돈 부족', () => {
+  const s = createInitialState(1);
+  s.money = 100;
+  expect(apply(s, { type: 'place', objectType: 'field', x: 0, y: 0 }).ok).toBe(false);
+});
+
+test('remove: 시작 오브젝트(정류장·창고)는 못 없앤다, 나머지는 전액 환불', () => {
+  const s = createInitialState(1);
+  const bus = Object.values(s.objects).find((o) => o.type === 'busstop')!;
+  expect(apply(s, { type: 'remove', objectId: bus.id }).ok).toBe(false);
+  apply(s, { type: 'place', objectType: 'field', x: 0, y: 0 });
+  const f = Object.values(s.objects).find((o) => o.type === 'field')!;
+  expect(apply(s, { type: 'remove', objectId: f.id }).ok).toBe(true);
+  expect(s.money).toBe(5000);
+});
+
+test('remove: 손님이 지나갈 올렛길은 못 없앤다', () => {
+  const s = createInitialState(1);
+  apply(s, { type: 'place', objectType: 'path', x: 4, y: 5 });
+  apply(s, { type: 'place', objectType: 'table_out', x: 4, y: 4 });
+  const path = Object.values(s.objects).find((o) => o.type === 'path')!;
+  spawnGuests(s, 1);
+  expect(s.guests[0]!.path.some((p) => p.x === 4 && p.y === 5)).toBe(true);
+  expect(apply(s, { type: 'remove', objectId: path.id }).ok).toBe(false);
+});
+
+test('plant → harvest 흐름', () => {
+  const s = createInitialState(1);
+  s.clock.month = 10;
+  apply(s, { type: 'place', objectType: 'field', x: 0, y: 0 });
+  const f = Object.values(s.objects).find((o) => o.type === 'field')!;
+  expect(apply(s, { type: 'plant', objectId: f.id, cropId: 'carrot' }).ok).toBe(true);
+  expect(apply(s, { type: 'harvest', objectId: f.id }).ok).toBe(false);
+  f.crop!.ready = true;
+  expect(apply(s, { type: 'harvest', objectId: f.id }).ok).toBe(true);
+  expect(s.storage['carrot']).toBe(2);
+});
+
+test('setSpeed·setSlot·unlock·dismissMonthCard', () => {
+  const s = createInitialState(1);
+  expect(apply(s, { type: 'setSpeed', speed: 3 }).ok).toBe(true);
+  expect(s.clock.speed).toBe(3);
+  expect(apply(s, { type: 'setSlot', slot: 0, menuId: 'carrot_juice' }).ok).toBe(true);
+  expect(apply(s, { type: 'unlock' }).ok).toBe(false);
+  s.research = 5;
+  expect(apply(s, { type: 'unlock' }).ok).toBe(true);
+  s.lastMonthCard = { income: 1, guests: 1, month: 1, year: 1 };
+  apply(s, { type: 'dismissMonthCard' });
+  expect(s.lastMonthCard).toBeNull();
+});
