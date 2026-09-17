@@ -1,7 +1,7 @@
 """8비트 효과음 13개 → public/assets/sfx/{name}.m4a"""
 import os, sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from synth import Synth, write_wav, to_m4a
+from synth import Synth, write_wav, to_m4a, soften
 
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'public', 'assets', 'sfx')
 PEAK = 0.55  # 정규화 목표 피크. AAC 인코딩 시 square 파형은 링잉으로 ~+3dB 튀므로 여유를 둔다
@@ -98,7 +98,7 @@ def build():
         ]),
     }
     for name, buf in recipes.items():
-        buf = normalize(buf, PEAK_OVERRIDE.get(name, PEAK))
+        buf = normalize(soften(buf, 0.3, 2), PEAK_OVERRIDE.get(name, PEAK))
         wav = os.path.join(OUT, f'{name}.wav')
         write_wav(wav, buf)
         to_m4a(wav, os.path.join(OUT, f'{name}.m4a'))

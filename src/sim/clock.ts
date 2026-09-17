@@ -1,6 +1,6 @@
 import type { Clock, GameState, Season } from './types.ts';
 
-export const DAY_MS = 2000;
+export const DAY_MS = 1000; // 1일 = 1초(×1). 카이로처럼 한 달이 30초
 export const DAYS_PER_MONTH = 30;
 
 export function seasonOf(month: number): Season {

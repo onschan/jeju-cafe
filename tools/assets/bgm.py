@@ -6,7 +6,7 @@
 """
 import os, sys, time
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from synth import Synth, write_wav, to_m4a, SR
+from synth import soften, Synth, write_wav, to_m4a, SR
 
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'public', 'assets', 'bgm')
 PEAK = 0.6  # AAC 링잉 여유 (인코딩 후 피크 약 -2dB)
@@ -208,6 +208,8 @@ def render(name, song):
     n = int(round(SR * total_beats * beat))
     buf = (buf + [0.0] * n)[:n]
     peak = max(abs(v) for v in buf)
+    buf = soften(buf, 0.35, 2)
+    peak = max(abs(v) for v in buf) or 1.0
     buf = [v * PEAK / peak for v in buf]
     return buf, n / SR
 

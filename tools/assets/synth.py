@@ -89,6 +89,17 @@ class Synth:
             t += beats * beat
         return self.mix(parts)
 
+def soften(samples: list[float], alpha: float = 0.3, passes: int = 2) -> list[float]:
+    """1차 로우패스를 여러 번 걸어 사각파의 날카로움을 깎는다. alpha 0.3 ≈ 1.2kHz 컷오프."""
+    out = samples
+    for _ in range(passes):
+        y, res = 0.0, []
+        for v in out:
+            y += alpha * (v - y)
+            res.append(y)
+        out = res
+    return out
+
 def write_wav(path: str, samples: list[float]) -> None:
     with open(path, 'wb') as f:
         data = b''.join(struct.pack('<h', int(max(-1.0, min(1.0, s)) * 32767)) for s in samples)
