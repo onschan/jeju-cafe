@@ -200,6 +200,7 @@ export function onHappyVisit(state: GameState, g: Guest): void {
       const tip = Math.round(g.paid * TIP_RATE);
       state.money += tip;
       state.monthIncome += tip;
+      state.totalIncome += tip;
       break;
     }
     case 'ad':

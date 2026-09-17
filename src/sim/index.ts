@@ -10,7 +10,7 @@ export { isMenuAvailable, availableMenus, canSetSlot, hasMenuStaff, menuRequirem
 export { isWalkable, busStopPos } from './path.ts';
 export { nextUnlock, canUnlock } from './progress.ts';
 export { serialize, deserialize, MemorySaveStore, LocalSaveStore, type SaveStore } from './save.ts';
-export { freeSeats, hasReachableSeat, seatSlotPos, dailyGuestCount, spawnMultiplier, prepTimeMs, serviceBonus, GUEST_SPEED_CELLS_PER_S, SEAT_MS, PREP_MS } from './guests.ts';
+export { freeSeats, hasReachableSeat, seatSlotPos, dailyGuestCount, spawnMultiplier, prepTimeMs, serviceBonus, isVisitable, likesFacility, GUEST_SPEED_CELLS_PER_S, SEAT_MS, PREP_MS, VISIT_CHANCE } from './guests.ts';
 export { canPromote, effectivePopularity, MAX_ACTIVE_PROMOTIONS, PARTTIME_MONEY } from './promotions.ts';
 export { TIERS, MAX_LEVEL, LOW_ENERGY, salaryOf, levelUpCost, roleEffect, ingredientDiscount, staffInRole, canHire, canLevelUp } from './staff.ts';
 export { objectStats, activeCombos, popularityFor, segmentBonus, setLevels, BASE_POPULARITY, POPULARITY_CAP } from './compat.ts';
@@ -19,3 +19,4 @@ export { evaluateUnlocks, evaluateFacilityUnlocks, unlockCondMet, isUnlocked, un
 export { questProgress, canAcceptQuest, canRespondEvent, eventConditionMet, boardBadge, visibleQuests, QUEST_MONTHS } from './board.ts';
 export { spotLevel, spotUnlocked, nextSpotLevel, spotAppeal, spotGuestBonus, canInvestSpot, SPOT_MAX_LEVEL, SPOT_BUS_LEVEL, SPOT_GUEST_LEVEL, SPOT_QUEST_LEVEL } from './spots.ts';
 export { effectMult, noGuestsToday, dayIndex } from './effects.ts';
+export { cafeLevel, nextCafeLevelIncome, hasExpansion, canRenameCafe, canExpand, placeCost, seatsOf, isSeat, canSetCosmetic, canPraise, EXPANSIONS, CAFE_LEVEL_INCOME, CAFE_NAME_MAX, WALL_COLORS, SIGN_MAX, PRAISE_ENERGY, DEFAULT_CAFE_NAME, type ExpansionId, type ExpansionDef } from './cafe.ts';

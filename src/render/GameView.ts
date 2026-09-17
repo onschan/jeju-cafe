@@ -1,12 +1,12 @@
 import { Application, Container, Sprite, Graphics, Texture } from 'pixi.js';
 import type { GameState, PlacedObject, Guest, Staff, Season, RoleId, Pt } from '../sim/index.ts';
-import { seasonOf, LOW_ENERGY, parcelPrice, footprint, roomAt } from '../sim/index.ts';
+import { seasonOf, LOW_ENERGY, parcelPrice, footprint, roomAt, WALL_COLORS } from '../sim/index.ts';
 import type { Parcel } from '../sim/index.ts';
 import { objectDef, cropDef } from '../data/index.ts';
 import { isoTerrainTexture, isoObjectTexture, glowTexture, label, bubble, clearTextureCache, loadLabelFont } from './textures';
 import { loadAssets, tex, peekTex, hasAssets, spriteName } from './assets';
 import { attachCamera, type CameraBounds, type CameraOptions } from './camera';
-import { ISO_W, ISO_H, cellToScreen, cellCenter, footAnchor, depth } from './iso';
+import { ISO_W, ISO_H, cellToScreen, cellCenter, footAnchor, depth, screenToCell } from './iso';
 import { makeCharacterNode, updateCharacterNode, staffParts, guestParts, sameAccs, CHAR_H, type CharacterNode, type Dir, type Frame } from './character';
 import { guestFace } from '../sim/segments.ts';
 import { guestTypeDef } from '../data/index.ts';
@@ -14,7 +14,7 @@ import { guestTypeDef } from '../data/index.ts';
 /** 전용 스프라이트가 있는 손님 타입 (guest_local·guest_tourist 시트) */
 const GUEST_SPRITE_KEY: Record<string, string> = { local_auntie: 'local', student: 'tourist' };
 
-export type GameViewOptions = Pick<CameraOptions, 'onTap' | 'dragCapture' | 'onDragCell' | 'onDragEnd'>;
+export type GameViewOptions = Pick<CameraOptions, 'onTap' | 'dragCapture' | 'onDragCell' | 'onDragEnd' | 'onLongPress'>;
 
 /** 배치 모드 고스트: 손가락 아래 반투명 오브젝트. ok면 초록, 아니면 빨강. text는 비용 라벨. */
 export interface GhostSpec { type: string; x: number; y: number; rot?: number; ok: boolean; text: string }
@@ -44,6 +44,14 @@ const SPARKLE_FRAME_MS = 120;
 const SPARKLE_FRAMES = 4;
 /** 큰 바위(rock_big) 타일은 바위 타일을 어둡게 */
 const BIG_ROCK_TINT = 0x8a8a9a;
+/** 숫자 팝업(+N): 700ms 동안 16px 떠오르며 사라진다 */
+const POP_MS = 700;
+const POP_RISE_PX = 16;
+/** 직원 인사 말풍선: 손님이 2칸 안에 오면 20%로 1.2초 */
+const GREET_RADIUS = 2;
+const GREET_CHANCE = 0.2;
+const GREET_MS = 1200;
+const GREET_TEXT = '어서옵서예!';
 /** 캐릭터 스프라이트 높이(발끝 기준 머리 위까지) */
 const GUEST_H = CHAR_H;
 /** 앉은 손님을 좌석 칸 중심보다 살짝 위로(의자에 앉은 느낌, 화면 px) */
@@ -95,8 +103,9 @@ interface Fx {
   kind: 'coin' | 'sparkle';
 }
 
-/** 오브젝트 상태별 스프라이트 변형 이름 */
-function objectVariant(o: Pick<PlacedObject, 'type' | 'crop'>): string | undefined {
+/** 오브젝트 상태별 스프라이트 변형 이름. 본관은 증축 수에 따라 lv2·lv3. */
+function objectVariant(o: Pick<PlacedObject, 'type' | 'crop'>, expansions = 0): string | undefined {
+  if (o.type === 'warehouse') return expansions >= 2 ? 'lv3' : expansions >= 1 ? 'lv2' : undefined;
   if (o.type === 'field') return o.crop ? (o.crop.ready ? 'ready' : 'planted') : 'empty';
   if (o.type === 'tangerine_tree') {
     if (!o.crop) return undefined;
@@ -108,10 +117,10 @@ function objectVariant(o: Pick<PlacedObject, 'type' | 'crop'>): string | undefin
 }
 
 /** 아이소 스프라이트(회전 _r{n} → 변형 → 기본) → 탑다운 스프라이트(변형 → 기본) 순으로 찾는다. 다 없으면 null. */
-function objectTex(o: Pick<PlacedObject, 'type' | 'crop' | 'rot'>): { texture: Texture; iso: boolean } | null {
+function objectTex(o: Pick<PlacedObject, 'type' | 'crop' | 'rot'>, expansions = 0): { texture: Texture; iso: boolean } | null {
   if (!hasAssets()) return null;
   const name = SPRITE_ALIAS[o.type] ?? o.type;
-  const variant = objectVariant(o);
+  const variant = objectVariant(o, expansions);
   const rotated = o.rot !== undefined ? peekTex(spriteName.isoObject(name, `r${o.rot}`)) : null;
   const iso = rotated ?? peekTex(spriteName.isoObject(name, variant)) ?? (variant ? peekTex(spriteName.isoObject(name)) : null);
   if (iso) return { texture: iso, iso: true };
@@ -178,6 +187,12 @@ export class GameView {
   private fxQueue: Fx[] = [];
   /** 마지막 렌더 때의 state.tick. 그 뒤 스텝에서 생긴 fx(tick ≥ 이 값)만 연출한다. −1 = 아직 첫 렌더 전 */
   private fxSeenTick = -1;
+  /** 숫자 팝업(+N) 큐 */
+  private pops: { node: Container; born: number; y0: number }[] = [];
+  /** 말풍선(텍스트) 큐: 직원 인사 */
+  private speech: { node: Container; until: number }[] = [];
+  /** 인사 판정을 끝낸 손님 id (손님당 한 번) */
+  private greeted = new Set<string>();
 
   async init(parent: HTMLElement, opts: GameViewOptions) {
     await this.app.init({ resizeTo: parent, background: 0x1e1e1e, antialias: false, resolution: window.devicePixelRatio, autoDensity: true });
@@ -225,6 +240,11 @@ export class GameView {
     this.bubblePops = [];
     this.fxQueue = [];
     this.fxSeenTick = -1;
+    for (const p of this.pops) p.node.destroy({ children: true });
+    this.pops = [];
+    for (const sp of this.speech) sp.node.destroy({ children: true });
+    this.speech = [];
+    this.greeted.clear();
     this.tiles.removeChildren().forEach((c) => c.destroy());
     this.tileSprites = [];
     this.terrainKeys = [];
@@ -270,6 +290,14 @@ export class GameView {
     c.zIndex = 1e6;
     this.overlay.addChild(c);
     this.ghost = c;
+  }
+
+  /** 브라우저 클라이언트 좌표 → 셀 (하단 시트의 카드에서 맵으로 끌어 놓을 때) */
+  cellAtClient(clientX: number, clientY: number): { x: number; y: number } {
+    const rect = this.app.canvas.getBoundingClientRect();
+    const gx = clientX - rect.left;
+    const gy = clientY - rect.top;
+    return screenToCell((gx - this.world.x) / this.world.scale.x, (gy - this.world.y) / this.world.scale.y);
   }
 
   setSelection(cell: { x: number; y: number } | null) {
@@ -467,6 +495,23 @@ export class GameView {
     return { node: c, type: o.type, sprite: null, glow, posKey: `${o.x},${o.y}` };
   }
 
+  /** 본관 인테리어: 외벽 색 tint + 간판 문구 라벨 */
+  private decorateCafe(entry: ObjEntry, state: GameState) {
+    if (entry.sprite) entry.sprite.tint = WALL_COLORS[state.cosmetics?.wallColor ?? 0] ?? 0xffffff;
+    entry.node.getChildByLabel('sign')?.destroy({ children: true });
+    const text = state.cosmetics?.sign;
+    if (!text) return;
+    const c = new Container();
+    c.label = 'sign';
+    const l = label(text, 10);
+    l.anchor.set(0.5, 1);
+    const h = entry.sprite?.height ?? 40;
+    l.position.set(0, -h - 2);
+    const bg = new Graphics().roundRect(l.x - l.width / 2 - 4, l.y - l.height - 1, l.width + 8, l.height + 2, 3).fill({ color: 0x6b3d1e, alpha: 0.85 });
+    c.addChild(bg, l);
+    entry.node.addChild(c);
+  }
+
   /** w×h 발자국 다이아몬드의 중심(월드 좌표). 노드 원점(앞 꼭짓점)과는 다르다. */
   private footCenter(o: PlacedObject, w: number, h: number): { sx: number; sy: number } {
     return cellCenter(o.x + (w - 1) / 2, o.y + (h - 1) / 2);
@@ -504,12 +549,14 @@ export class GameView {
         if (entry.glow) { const gc = this.footCenter(o, def.w, def.h); entry.glow.position.set(gc.sx, gc.sy - 10); }
       }
       if (entry.sprite) {
-        // 시트 모드: 변형(심음·어린 나무)이 바뀔 때만 텍스처를 갱신. 수확은 자동이라 링 대신 반짝임(syncFx).
-        const key = `${objectVariant(o) ?? ''}:${o.rot ?? ''}`;
+        // 시트 모드: 변형(심음·어린 나무·증축)이 바뀔 때만 텍스처를 갱신. 수확은 자동이라 링 대신 반짝임(syncFx).
+        const isCafe = o.type === 'warehouse';
+        const key = `${objectVariant(o, state.expansions?.length ?? 0) ?? ''}:${o.rot ?? ''}${isCafe ? `:${state.cosmetics?.wallColor ?? 0}:${state.cosmetics?.sign ?? ''}` : ''}`;
         if (this.badgeKeys.get(o.id) === key) continue;
         this.badgeKeys.set(o.id, key);
-        const t = objectTex(o);
+        const t = objectTex(o, state.expansions?.length ?? 0);
         if (t) entry.sprite.texture = t.texture;
+        if (isCafe) this.decorateCafe(entry, state);
         continue;
       }
       // 플레이스홀더: 심음=초록 점. 키가 바뀔 때만 다시 그린다.
@@ -578,6 +625,7 @@ export class GameView {
         node.zIndex = roomAt(state, Math.round(g.x), Math.round(g.y)) ? this.depthOf(state, g.x, g.y) + 0.5 : g.x + g.y + 0.5;
       }
       const walking = g.phase !== 'seated' && g.path.length > 0;
+      if (g.phase === 'walking' && !this.greeted.has(g.id)) this.maybeGreet(state, g, now);
       if (entry.sprite) {
         const t = tex(spriteName.guest(GUEST_SPRITE_KEY[g.type] ?? g.type, guestDir(g), walking ? walkFrame : 1));
         if (t && entry.sprite.texture !== t) entry.sprite.texture = t;
@@ -654,6 +702,43 @@ export class GameView {
     }
   }
 
+  /** 홀 직원이 2칸 안에 있으면(손님당 한 번 판정) 20%로 "어서옵서예!" — 렌더 전용, sim 상태는 안 건드린다 */
+  private maybeGreet(state: GameState, g: Guest, now: number) {
+    const near = state.staff.filter((st) => st.role === 'hall' && Math.max(Math.abs(st.x - g.x), Math.abs(st.y - g.y)) <= GREET_RADIUS);
+    if (near.length === 0) return;
+    this.greeted.add(g.id);
+    if (Math.random() >= GREET_CHANCE) return;
+    const st = near[0]!;
+    const entry = this.staffNodes.get(st.id);
+    if (!entry) return;
+    entry.node.getChildByLabel('speech')?.destroy({ children: true });
+    const c = new Container();
+    c.label = 'speech';
+    const l = label(GREET_TEXT, 9);
+    l.anchor.set(0.5, 1);
+    l.position.set(0, -GUEST_H - 4);
+    const bg = new Graphics().roundRect(l.x - l.width / 2 - 4, l.y - l.height - 2, l.width + 8, l.height + 4, 4).fill(0xffffff);
+    l.style.fill = 0x3b1f0e;
+    c.addChild(bg, l);
+    entry.node.addChild(c);
+    this.speech.push({ node: c, until: now + GREET_MS });
+  }
+
+  /** +N 숫자 팝업 (시설 인기 상승) */
+  private spawnPop(cellX: number, cellY: number, n: number, now: number) {
+    const c = new Container();
+    const l = label(`+${n}`, 11);
+    l.anchor.set(0.5, 1);
+    l.style.fill = 0xffe066;
+    const bg = new Graphics().roundRect(-l.width / 2 - 3, -l.height - 1, l.width + 6, l.height + 2, 3).fill({ color: 0x000000, alpha: 0.5 });
+    c.addChild(bg, l);
+    const { sx, sy } = cellCenter(cellX, cellY);
+    c.position.set(sx, sy - 24);
+    c.zIndex = 1e6;
+    this.overlay.addChild(c);
+    this.pops.push({ node: c, born: now, y0: sy - 24 });
+  }
+
   private makeBubble(mood: Guest['mood']): Container {
     const t = hasAssets() ? tex(spriteName.bubble(mood ?? 'wait')) : null;
     if (t) {
@@ -700,6 +785,7 @@ export class GameView {
     for (const e of fx) {
       if (e.tick < since) continue;
       if (e.kind === 'harvest') this.spawnSparkle(e.x, e.y, now);
+      else if (e.kind === 'pop') this.spawnPop(e.x, e.y, e.n, now);
     }
   }
 
@@ -713,8 +799,24 @@ export class GameView {
     this.lights.scale.copyFrom(this.world.scale);
   }
 
-  /** 렌더 전용 애니 진행: 말풍선 팝 스케일, 코인 프레임·상승 */
+  /** 렌더 전용 애니 진행: 말풍선 팝 스케일, 코인 프레임·상승, 숫자 팝업, 인사 말풍선 */
   private tickFx(now: number) {
+    if (this.pops.length) {
+      this.pops = this.pops.filter((p) => {
+        const k = (now - p.born) / POP_MS;
+        if (k >= 1) { p.node.destroy({ children: true }); return false; }
+        p.node.y = p.y0 - POP_RISE_PX * k;
+        p.node.alpha = 1 - k * k;
+        return true;
+      });
+    }
+    if (this.speech.length) {
+      this.speech = this.speech.filter((sp) => {
+        if (sp.node.destroyed) return false;
+        if (now >= sp.until) { sp.node.destroy({ children: true }); return false; }
+        return true;
+      });
+    }
     if (this.bubblePops.length) {
       this.bubblePops = this.bubblePops.filter(({ node, born }) => {
         if (node.destroyed) return false;

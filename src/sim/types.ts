@@ -5,7 +5,8 @@ export type ObjectKind = 'field' | 'tree' | 'seat' | 'wall' | 'path' | 'building
 export type ParcelBonus = 'none' | 'oreum' | 'gotjawal' | 'batdam' | 'coast' | 'spring' | 'village' | 'stonehill' | 'orchard';
 export type MenuCategory = 'drink' | 'dessert' | 'meal';
 export type Mood = 'happy' | 'meh' | 'angry';
-export type GuestPhase = 'walking' | 'seated' | 'leaving';
+/** visiting = 자리에서 일어나 시설(포토존·기념품·자판기…)로 가는 중/이용 중 */
+export type GuestPhase = 'walking' | 'seated' | 'visiting' | 'leaving';
 export type Season = 'spring' | 'summer' | 'autumn' | 'winter';
 
 // ---------- 데이터 정의 (JSON) ----------
@@ -359,7 +360,8 @@ export interface Guest {
   mood: Mood | null;
   moodReason: 'no_menu' | 'scenery' | 'wait' | 'price' | null;
   say: string | null;   // 렌더용 말풍선 대사
-  timerMs: number;      // seated 남은 시간
+  visitId: string | null;       // 순회 중인 시설 오브젝트 id (visiting)
+  timerMs: number;      // seated·visiting 남은 시간
   waitMs: number;       // 주문 후 조리 대기 남은 시간
   paid: number;         // 주문 시 낸 돈 (자금 효과의 팁 계산용)
 }
@@ -415,6 +417,11 @@ export interface GameState {
   itemBonus: Record<string, ItemBonus>;       // objectType → 아이템 누적 보너스 (인기 상한 +30)
   notices: string[];
   fx: FxEvent[];                              // 연출 큐 (자동 수확 반짝임·숫자 팝업)
+  cafeName: string;                           // 카페 이름 (renameCafe)
+  totalIncome: number;                        // 누적 매출 (카페 레벨)
+  expansions: string[];                       // 증축 id (kitchen·floor2·terrace)
+  cosmetics: { wallColor: number; sign: string }; // 인테리어 (외벽 색 인덱스·간판 문구) — 연출만
+  praised: Record<string, number>;            // staffId → 마지막으로 칭찬한 일 인덱스
   guests: Guest[];
   spawnAcc: number; // 시간대별 스폰 소수 누적
   nextId: number;
@@ -443,6 +450,10 @@ export type Action =
   | { type: 'plant'; objectId: string; cropId: string }
   | { type: 'harvest'; objectId: string }   // 호환용 — 익으면 자동으로 창고에 들어간다
   | { type: 'clearRock'; x: number; y: number }
+  | { type: 'renameCafe'; name: string }
+  | { type: 'expand'; id: string }
+  | { type: 'setCosmetic'; wallColor?: number; sign?: string }
+  | { type: 'praise'; staffId: string }
   | { type: 'setSlot'; slot: number; menuId: string | null }
   | { type: 'setSpeed'; speed: 0 | 1 | 2 | 3 }
   | { type: 'unlock' }

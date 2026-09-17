@@ -2,11 +2,12 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { GameView, type GhostSpec } from '../render/GameView';
 import { startLoop, dispatch, loadOrNew, getState, setViewReset } from './store';
 import { unlockAudio, bgm } from './audio';
-import { seasonOf, canPlace, objectAt, footprint, parcelAt, parcelPrice, canBuyParcel, PROTECTED_TYPES, ROTATABLE_TYPES, type GameState } from '../sim/index.ts';
+import { seasonOf, canPlace, objectAt, footprint, parcelAt, parcelPrice, canBuyParcel, placeCost, PROTECTED_TYPES, ROTATABLE_TYPES, type GameState } from '../sim/index.ts';
 import { objectDef } from '../data/index.ts';
 // render/·ui/는 Vite 전용이라 확장자 없는 import 허용. sim/·data/만 .ts 확장자 규칙.
 import { HUD, NightOverlay } from './HUD';
-import { BottomSheet, type Mode, type PlaceBarProps } from './BottomSheet';
+import { BottomSheet, type Mode, type PlaceBarProps, type DragBuild } from './BottomSheet';
+import { GuestPopup } from './GuestPopup';
 import { MonthCard } from './MonthCard';
 import { Guide } from './Guide';
 import { PopupHost, Confirm } from './Popup';
@@ -38,6 +39,10 @@ export function App() {
   const dragOffset = useRef({ dx: 0, dy: 0 });
   const [msg, setMsg] = useState<string | null>(null);
   const msgTimer = useRef(0);
+  /** 손님 프로필 팝업 */
+  const [guestPopup, setGuestPopup] = useState<string | null>(null);
+  /** 길게 눌러 들어 올린 이동이면 확정·취소 뒤 보기로 돌아간다 */
+  const liftedRef = useRef(false);
 
   // 첫 터치에서 오디오를 열고 현재 계절 BGM을 시작한다 (이후 호출은 no-op)
   const onPointerDown = () => { unlockAudio(); void bgm(seasonOf(getState().clock.month)); };
@@ -49,6 +54,39 @@ export function App() {
     viewRef.current?.setSelection(m.kind === 'cell' ? { x: m.x, y: m.y } : null);
     if (m.kind !== 'build') setGhost(null);
     if (m.kind !== 'move') setMoving(null);
+  };
+  /** 보기 모드에서 칸을 누르면: 손님 → 프로필, 직원 → 직원 카드, 본관 → 카페 패널, 나머지 → 칸 정보 */
+  const inspect = (s: GameState, x: number, y: number) => {
+    const guest = s.guests.find((g) => Math.round(g.x) === x && Math.round(g.y) === y);
+    if (guest) { setGuestPopup(guest.id); return; }
+    const staff = s.staff.find((st) => Math.round(st.x) === x && Math.round(st.y) === y);
+    if (staff) { setMode({ kind: 'staff', focusId: staff.id }); return; }
+    const o = objectAt(s, x, y);
+    if (o?.type === 'warehouse') { setMode({ kind: 'cafe' }); return; }
+    setMode({ kind: 'cell', x, y });
+  };
+  /** 길게 누르면 오브젝트를 들어 올린다 (보기·칸 모드). 이동 모드로 바뀌고 손가락을 따라 고스트가 움직인다. */
+  const liftObject = (x: number, y: number): boolean => {
+    const m = modeRef.current;
+    if (m.kind !== 'idle' && m.kind !== 'cell') return false;
+    const s = getState();
+    const o = objectAt(s, x, y);
+    if (!o || PROTECTED_TYPES.has(o.type)) return false;
+    setMode({ kind: 'move' });
+    liftedRef.current = true;
+    setMoving({ objectId: o.id, x: o.x, y: o.y });
+    dragOffset.current = { dx: x - o.x, dy: y - o.y };
+    return true;
+  };
+  /** 짓기 카드를 맵 위로 끌면 그 칸에 고스트 */
+  const onDragBuild: DragBuild = (objectType, clientX, clientY) => {
+    const v = viewRef.current;
+    if (!v) return;
+    const { x, y } = v.cellAtClient(clientX, clientY);
+    const s = getState();
+    if (x < 0 || y < 0 || x >= s.grid.w || y >= s.grid.h) return;
+    if (modeRef.current.kind !== 'build' || modeRef.current.objectType !== objectType) setMode({ kind: 'build', objectType });
+    setGhost({ x, y, rot: ghostRef.current?.rot ?? 0 });
   };
   const say = useCallback((text: string) => {
     setMsg(text);
@@ -93,8 +131,9 @@ export function App() {
               else if (PROTECTED_TYPES.has(o.type)) say('이건 못 옮겨요');
               else setMoving({ objectId: o.id, x: o.x, y: o.y });
             }
-          } else setMode({ kind: 'cell', x, y });
+          } else inspect(s, x, y);
         },
+        onLongPress: liftObject,
         dragCapture: (x, y) => {
           const m = modeRef.current;
           if (m.kind === 'build') {
@@ -136,11 +175,12 @@ export function App() {
   let place: PlaceBarProps | null = null;
   if (mode.kind === 'build' && ghost) {
     const def = objectDef(mode.objectType);
+    const cost = placeCost(s, mode.objectType);
     const can = canPlace(s, mode.objectType, ghost.x, ghost.y);
-    const ok = can.ok && s.money >= def.cost;
-    ghostSpec = { type: mode.objectType, x: ghost.x, y: ghost.y, rot: ROTATABLE_TYPES.has(mode.objectType) ? ghost.rot : undefined, ok, text: `${def.name} ${won(def.cost)}` };
+    const ok = can.ok && s.money >= cost;
+    ghostSpec = { type: mode.objectType, x: ghost.x, y: ghost.y, rot: ROTATABLE_TYPES.has(mode.objectType) ? ghost.rot : undefined, ok, text: `${def.name} ${won(cost)}` };
     place = {
-      text: `${def.name} · ${won(def.cost)} · ${ok ? '여기에 지을 수 있어요' : (can.reason ?? '돈이 모자라요')}`,
+      text: `${def.name} · ${won(cost)} · ${ok ? '여기에 지을 수 있어요' : (can.reason ?? '돈이 모자라요')}`,
       ok,
       canRotate: ROTATABLE_TYPES.has(mode.objectType),
       msg,
@@ -165,11 +205,11 @@ export function App() {
         msg,
         onConfirm: () => {
           const r = dispatch({ type: 'move', objectId: o.id, x: moving.x, y: moving.y });
-          if (r.ok) setMoving(null);
-          else say(r.reason ?? '여기엔 못 지어요');
+          if (!r.ok) { say(r.reason ?? '여기엔 못 지어요'); return; }
+          if (liftedRef.current) { liftedRef.current = false; setMode({ kind: 'idle' }); } else setMoving(null);
         },
         onRotate: () => dispatch({ type: 'rotate', objectId: o.id, rot: ((o.rot ?? 0) + 1) % 4 }),
-        onCancel: () => setMoving(null),
+        onCancel: () => { if (liftedRef.current) { liftedRef.current = false; setMode({ kind: 'idle' }); } else setMoving(null); },
       };
     }
   }
@@ -181,8 +221,9 @@ export function App() {
       <NightOverlay />
       <HUD />
       <Guide />
-      <BottomSheet mode={mode} setMode={setMode} place={place} msg={place ? null : msg} />
+      <BottomSheet mode={mode} setMode={setMode} place={place} msg={place ? null : msg} onGuest={setGuestPopup} onDragBuild={onDragBuild} />
       <MonthCard />
+      {guestPopup && <GuestPopup guestId={guestPopup} onClose={() => setGuestPopup(null)} onQuest={(id) => { dispatch({ type: 'acceptQuest', id }); setMode({ kind: 'guests' }); }} />}
       <PopupHost />
     </div>
   );

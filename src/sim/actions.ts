@@ -12,6 +12,7 @@ import { canUseItem, useItem } from './items.ts';
 import { evaluateUnlocks } from './segments.ts';
 import { canAcceptQuest, acceptQuest, canRespondEvent, respondEvent, afterInvest, checkQuests } from './board.ts';
 import { canInvestSpot, investSpot } from './spots.ts';
+import { canRenameCafe, renameCafe, canExpand, expand, canSetCosmetic, setCosmetic, canPraise, praise, placeCost, type ExpansionId } from './cafe.ts';
 
 export const PROTECTED_TYPES = new Set(['busstop', 'warehouse', 'gate', 'spring']);
 /** 회전할 수 있는 오브젝트 (rot 0..3, 스프라이트 변형 _r{n}이 있을 때만 보인다) */
@@ -46,12 +47,12 @@ function applyInner(state: GameState, a: Action): ApplyResult {
   switch (a.type) {
     case 'place': {
       if (!state.unlocked.objects.includes(a.objectType)) return { ok: false, reason: '아직 못 짓는 것' };
-      const def = objectDef(a.objectType);
-      if (state.money < def.cost) return { ok: false, reason: '돈이 모자라요' };
+      const cost = placeCost(state, a.objectType);
+      if (state.money < cost) return { ok: false, reason: '돈이 모자라요' };
       const c = canPlace(state, a.objectType, a.x, a.y);
       if (!c.ok) return c;
       placeObject(state, a.objectType, a.x, a.y, ROTATABLE_TYPES.has(a.objectType) && a.rot !== undefined ? ((a.rot % 4) + 4) % 4 : undefined);
-      state.money -= def.cost;
+      state.money -= cost;
       discoverCombos(state);
       evaluateUnlocks(state); // count 해금 (감귤나무 3그루 → 까치)
       checkQuests(state);     // objectPlaced 부탁
@@ -115,6 +116,30 @@ function applyInner(state: GameState, a: Action): ApplyResult {
       const c = canClearRock(state, a.x, a.y);
       if (!c.ok) return c;
       clearRock(state, a.x, a.y);
+      return { ok: true };
+    }
+    case 'renameCafe': {
+      const c = canRenameCafe(state, a.name);
+      if (!c.ok) return c;
+      renameCafe(state, a.name);
+      return { ok: true };
+    }
+    case 'expand': {
+      const c = canExpand(state, a.id);
+      if (!c.ok) return c;
+      expand(state, a.id as ExpansionId);
+      return { ok: true };
+    }
+    case 'setCosmetic': {
+      const c = canSetCosmetic(state, a);
+      if (!c.ok) return c;
+      setCosmetic(state, a);
+      return { ok: true };
+    }
+    case 'praise': {
+      const c = canPraise(state, a.staffId);
+      if (!c.ok) return c;
+      praise(state, a.staffId);
       return { ok: true };
     }
     case 'setSlot': {

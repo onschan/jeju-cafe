@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useGame, dispatch } from './store';
-import { TIERS, MAX_LEVEL, LOW_ENERGY, levelUpCost, canHire, canLevelUp, staffInRole, type Staff, type Candidate, type RoleId, type StatKey, type JobTier, type Face as FaceParts } from '../sim/index.ts';
+import { TIERS, MAX_LEVEL, LOW_ENERGY, levelUpCost, canHire, canLevelUp, staffInRole, canPraise, PRAISE_ENERGY, type Staff, type Candidate, type RoleId, type StatKey, type JobTier, type Face as FaceParts } from '../sim/index.ts';
 import { ROLES, roleDef, skillDef } from '../data/index.ts';
 import { Icon } from './Icon';
 import { Confirm } from './Popup';
@@ -98,14 +98,17 @@ function CandidateCard({ c }: { c: Candidate }) {
   );
 }
 
-function StaffCard({ st }: { st: Staff }) {
+function StaffCard({ st, focused = false }: { st: Staff; focused?: boolean }) {
   const s = useGame();
   const [picking, setPicking] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => { if (focused) ref.current?.scrollIntoView({ block: 'nearest' }); }, [focused]);
   const roles = openRoles(s, st.role);
   const sk = skillDef(st.skill);
   const fire = () => Confirm(`${st.name} 씨를 내보냅니다. 퇴직금 ${won(st.salary)}을 줘요`, () => dispatch({ type: 'fire', staffId: st.id }), { title: '해고' });
+  const praiseOk = canPraise(s, st.id).ok;
   return (
-    <div style={card}>
+    <div ref={ref} style={{ ...card, ...(focused ? { boxShadow: `0 0 0 3px ${PALETTE.btnOn}` } : {}) }} data-testid={focused ? 'staff-focused' : undefined}>
       <div style={{ display: 'flex', alignItems: 'center', marginBottom: 4 }}>
         <Face face={st.face} /><b style={{ flex: 1 }}>{st.name}</b>
         <span style={{ fontSize: 13 }}>Lv.{st.level} · 월급 {won(st.salary)}</span>
@@ -120,6 +123,9 @@ function StaffCard({ st }: { st: Staff }) {
         </select>
         <button style={st.level >= MAX_LEVEL ? brownBtnOff : picking ? brownBtnOn : brownBtn} disabled={st.level >= MAX_LEVEL} onClick={() => setPicking(!picking)}>
           <Icon name="research" /> 레벨업
+        </button>
+        <button style={praiseOk ? brownBtn : brownBtnOff} disabled={!praiseOk} onClick={() => dispatch({ type: 'praise', staffId: st.id })} aria-label="칭찬하기" title={praiseOk ? `기력 +${PRAISE_ENERGY}` : '오늘은 이미 칭찬했어요'}>
+          👏 칭찬{praiseOk ? '' : ' ✓'}
         </button>
         <button style={dangerBtn} onClick={fire}>해고</button>
       </div>
@@ -142,7 +148,7 @@ function StaffCard({ st }: { st: Staff }) {
   );
 }
 
-export function StaffPanel() {
+export function StaffPanel({ focusId = null }: { focusId?: string | null }) {
   const s = useGame();
   return (
     <div>
@@ -171,7 +177,7 @@ export function StaffPanel() {
       <div style={{ marginTop: 6 }}>
         <div style={{ marginBottom: 4 }}><b>직원 {s.staff.length}명</b></div>
         {s.staff.length === 0 && <div style={{ fontSize: 13, color: PALETTE.inkSoft }}>아직 직원이 없어요. 공고를 내 보세요.</div>}
-        {s.staff.map((st) => <StaffCard key={st.id} st={st} />)}
+        {s.staff.map((st) => <StaffCard key={st.id} st={st} focused={st.id === focusId} />)}
       </div>
     </div>
   );

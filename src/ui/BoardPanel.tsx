@@ -11,8 +11,8 @@ import { Confirm } from './Popup';
 import { Face, Bar } from './StaffPanel';
 import { card, brownBtn, brownBtnOn, brownBtnOff, dangerBtn, PALETTE, won } from './frame';
 
-type Tab = 'quests' | 'events' | 'spots';
-const TABS: { id: Tab; label: string }[] = [{ id: 'quests', label: '부탁' }, { id: 'events', label: '이벤트' }, { id: 'spots', label: '투자' }];
+export type BoardTab = 'quests' | 'events' | 'spots';
+const TABS: { id: BoardTab; label: string }[] = [{ id: 'quests', label: '부탁' }, { id: 'events', label: '이벤트' }, { id: 'spots', label: '투자' }];
 const SPOT_TABS: { id: SpotCategory; label: string }[] = [{ id: 'sight', label: '볼거리' }, { id: 'food', label: '먹거리' }, { id: 'play', label: '놀거리' }, { id: 'nature', label: '자연' }];
 const STATUS_TEXT: Record<QuestState['status'], string> = { offered: '새 부탁', active: '도전 중', done: '완료', failed: '기한 지남' };
 
@@ -126,9 +126,10 @@ function SpotCard({ id }: { id: string }) {
   );
 }
 
-export function BoardPanel() {
+/** tabs로 보여 줄 소탭을 고른다 (손님 탭 = 부탁, 투자 탭 = 투자·이벤트). 하나뿐이면 소탭 줄을 숨긴다. */
+export function BoardPanel({ tabs = ['quests', 'events', 'spots'] }: { tabs?: BoardTab[] }) {
   const s = useGame();
-  const [tab, setTab] = useState<Tab>('quests');
+  const [tab, setTab] = useState<BoardTab>(tabs[0] ?? 'quests');
   const [cat, setCat] = useState<SpotCategory>('sight');
   const quests = visibleQuests(s);
   const events = [...s.board.events].reverse();
@@ -136,8 +137,8 @@ export function BoardPanel() {
   const pending = events.filter((e) => e.status === 'pending').length;
   return (
     <div>
-      <div style={{ display: 'flex', flexWrap: 'wrap', marginBottom: 4 }}>
-        {TABS.map((t) => {
+      {tabs.length > 1 && <div style={{ display: 'flex', flexWrap: 'wrap', marginBottom: 4 }}>
+        {TABS.filter((t) => tabs.includes(t.id)).map((t) => {
           const n = t.id === 'quests' ? offered : t.id === 'events' ? pending : 0;
           return (
             <button key={t.id} style={{ ...(tab === t.id ? brownBtnOn : brownBtn), padding: '0 10px' }} onClick={() => setTab(t.id)}>
@@ -145,7 +146,7 @@ export function BoardPanel() {
             </button>
           );
         })}
-      </div>
+      </div>}
 
       {tab === 'quests' && (
         <div>

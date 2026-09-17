@@ -6,9 +6,10 @@ import { PARCEL_W, PARCEL_H, START_ORIGIN, GRID_W, GRID_H, VILLAGE_ROAD_Y } from
 import { occupy } from './grid.ts';
 import { nextRandom } from './rng.ts';
 import { initGuestTypes, initSegmentPopularity } from './segments.ts';
+import { DEFAULT_CAFE_NAME } from './cafe.ts';
 
 export { PARCEL_W, PARCEL_H, START_ORIGIN, GRID_W, GRID_H, VILLAGE_ROAD_Y };
-export const SAVE_VERSION = 8;
+export const SAVE_VERSION = 9;
 /** 시작 자금 500만 + 정착지원금(잔고 < 40만이면 1회 300만) — 마스터 GDD §1 */
 export const START_MONEY = 5_000_000;
 export const SETTLE_GRANT = 3_000_000;
@@ -147,6 +148,11 @@ export function createInitialState(seed: number, playerId = 'local', createdAt =
     itemBonus: {},
     notices: [],
     fx: [],
+    cafeName: DEFAULT_CAFE_NAME,
+    totalIncome: 0,
+    expansions: [],
+    cosmetics: { wallColor: 0, sign: '' },
+    praised: {},
     guests: [],
     spawnAcc: 0,
     nextId: 1,

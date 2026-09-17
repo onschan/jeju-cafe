@@ -20,11 +20,15 @@ export interface CameraOptions {
   onDragCell?: (cellX: number, cellY: number) => void;
   /** 가져간 드래그가 끝날 때 */
   onDragEnd?: () => void;
+  /** 손가락을 움직이지 않고 400ms 누르고 있으면 (보기 모드에서 오브젝트 들어 올리기). true를 돌려주면 그 뒤 드래그를 가져간다. */
+  onLongPress?: (cellX: number, cellY: number) => boolean;
   minScale?: number;
   maxScale?: number;
 }
 
 const TAP_THRESHOLD_PX = 10;
+/** 길게 누르기 판정 시간 */
+export const LONG_PRESS_MS = 400;
 /** 관성 감쇠(프레임당) · 정지 임계(px/프레임) */
 const MOMENTUM_DECAY = 0.92;
 const MOMENTUM_STOP = 0.1;
@@ -38,7 +42,9 @@ const VELOCITY_WINDOW_MS = 100;
 /** 드래그 이동(관성)·핀치 줌·탭(셀 좌표)·경계 고무줄. 이동 거리가 짧으면 탭으로 본다. */
 export function attachCamera(stage: Container, opts: CameraOptions): () => void {
   // 30×24 맵 전체(1,728px)를 폰에서 한눈에 보려면 ×0.4까지 줄일 수 있어야 한다
-  const { world, canvas, ticker, viewport, bounds, onTap, dragCapture, onDragCell, onDragEnd, minScale = 0.4, maxScale = 3 } = opts;
+  const { world, canvas, ticker, viewport, bounds, onTap, dragCapture, onDragCell, onDragEnd, onLongPress, minScale = 0.4, maxScale = 3 } = opts;
+  let pressTimer = 0;
+  const clearPress = () => { if (pressTimer) { window.clearTimeout(pressTimer); pressTimer = 0; } };
   const pointers = new Map<number, { x: number; y: number }>();
   let dragStart: { x: number; y: number; wx: number; wy: number } | null = null;
   let moved = false;
@@ -94,8 +100,20 @@ export function attachCamera(stage: Container, opts: CameraOptions): () => void 
       if (dragCapture?.(c.x, c.y)) {
         captured = c;
         onDragCell?.(c.x, c.y);
+      } else if (onLongPress) {
+        clearPress();
+        pressTimer = window.setTimeout(() => {
+          pressTimer = 0;
+          if (pointers.size !== 1 || moved || captured || !dragStart) return;
+          if (onLongPress(c.x, c.y)) {
+            captured = c;
+            world.position.set(dragStart.wx, dragStart.wy); // 누르는 동안 살짝 밀린 화면은 되돌린다
+            onDragCell?.(c.x, c.y);
+          }
+        }, LONG_PRESS_MS);
       }
     } else if (pointers.size === 2) {
+      clearPress();
       if (captured) { captured = null; onDragEnd?.(); }
       const [a, b] = [...pointers.values()];
       pinchDist = Math.hypot(a!.x - b!.x, a!.y - b!.y);
@@ -111,7 +129,7 @@ export function attachCamera(stage: Container, opts: CameraOptions): () => void 
     } else if (pointers.size === 1 && dragStart) {
       const dx = e.globalX - dragStart.x;
       const dy = e.globalY - dragStart.y;
-      if (Math.hypot(dx, dy) > TAP_THRESHOLD_PX) moved = true;
+      if (Math.hypot(dx, dy) > TAP_THRESHOLD_PX) { moved = true; clearPress(); }
       world.x = dragStart.wx + dx;
       world.y = dragStart.wy + dy;
       pushSample(e.globalX, e.globalY);
@@ -126,6 +144,7 @@ export function attachCamera(stage: Container, opts: CameraOptions): () => void 
     }
   };
   const up = (e: FederatedPointerEvent) => {
+    clearPress();
     pointers.delete(e.pointerId);
     if (pointers.size === 1) {
       // 핀치에서 손가락 하나가 떨어지면 남은 손가락 기준으로 드래그를 다시 시작한다 (점프 방지)
@@ -196,6 +215,7 @@ export function attachCamera(stage: Container, opts: CameraOptions): () => void 
   canvas.addEventListener('wheel', wheel, { passive: false });
   ticker.add(tick);
   return () => {
+    clearPress();
     ticker.remove(tick);
     stage.off('pointerdown', down).off('pointermove', move).off('pointerup', up).off('pointerupoutside', up);
     canvas.removeEventListener('wheel', wheel);
