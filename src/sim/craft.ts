@@ -16,7 +16,7 @@ import { josa } from './josa.ts';
 
 // ---------- 상수 ----------
 export const DEVELOP_DAYS = 3;
-export const DEVELOP_RESEARCH = 20;
+export const DEVELOP_RESEARCH = 50;
 /** 기본 파라미터 성공/대성공/실패 (%) */
 export const P_SUCCESS = 70;
 export const P_GREAT = 10;

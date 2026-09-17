@@ -116,14 +116,15 @@ test('moveAlong은 path.ts에 살고 guests.ts는 재수출한다', async () => 
   expect(g.path).toEqual([]);
 });
 
-test('happy이면 연구 +1, 게이지가 타입 방향으로 움직인다', () => {
+test('happy이면 연구 진행 +1(5명마다 연구 1), 게이지가 타입 방향으로 움직인다', () => {
   const { s } = cafe();
   spawnGuests(s, 1);
   const g = s.guests[0]!;
   g.type = 'local_auntie';
   updateGuests(s, 6000); updateGuests(s, PREP_MS);
   expect(g.mood).toBe('happy'); // local minScenery 0
-  expect(s.research).toBe(1);
+  expect(s.research).toBe(0);
+  expect(s.researchAcc).toBe(1);
   expect(s.popularity).toBe(-2);
 });
 

@@ -25,8 +25,8 @@ test('홍보: 없는 직원·미배치·기력 부족·연구 부족·돈 부족
   st.role = 'hall';
   st.energy = 19;
   expect(apply(s, { type: 'promote', staffId: st.id, promotionId: 'flyer' }).ok).toBe(false); // 기력 20 필요
-  st.energy = 100; s.research = 4;
-  expect(apply(s, { type: 'promote', staffId: st.id, promotionId: 'flyer' }).ok).toBe(false); // 연구 5 필요
+  st.energy = 100; s.research = 9;
+  expect(apply(s, { type: 'promote', staffId: st.id, promotionId: 'flyer' }).ok).toBe(false); // 연구 10 필요
   s.research = 100; s.money = 4_999_999;
   expect(apply(s, { type: 'promote', staffId: st.id, promotionId: 'radio' }).ok).toBe(false); // 돈 500만 필요
 });
@@ -34,7 +34,7 @@ test('홍보: 없는 직원·미배치·기력 부족·연구 부족·돈 부족
 test('전단 돌리기: 연구·기력 차감, 삼춘 인기 +3, 타깃이면 ×1.5', () => {
   const { s, st } = withStaff();
   expect(apply(s, { type: 'promote', staffId: st.id, promotionId: 'flyer' }).ok).toBe(true);
-  expect(s.research).toBe(95);
+  expect(s.research).toBe(90);
   expect(st.energy).toBe(80);
   expect(s.segmentPopularity['local_auntie']).toBe(33);
   expect(s.segmentPopularity['rentcar_family']).toBeUndefined(); // 아직 없는 손님층은 건드리지 않는다
@@ -47,7 +47,7 @@ test('전단 돌리기: 연구·기력 차감, 삼춘 인기 +3, 타깃이면 ×
 test('SNS 포스팅: 관광객 +5, 게이지 +5', () => {
   const { s, st } = withStaff();
   apply(s, { type: 'promote', staffId: st.id, promotionId: 'sns' });
-  expect(s.research).toBe(90);
+  expect(s.research).toBe(80);
   expect(s.segmentPopularity['student']).toBe(25);
   expect(s.popularity).toBe(5);
 });

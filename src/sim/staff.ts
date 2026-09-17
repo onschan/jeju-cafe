@@ -21,9 +21,11 @@ export const STAT_KEYS: StatKey[] = ['service', 'cooking', 'sense', 'stamina'];
 
 // ---------- 공식 ----------
 
-/** 월급 = 스탯 합 × 3,000 + 레벨 × 500,000 (§9.4 ×100 리스케일, GDD 40만~220만) */
+/** 월급 = 스탯 합 × 3,000 + 레벨 × 200,000 (GDD 40만~220만). 연차 인상은 없다 — 레벨업(스탯·레벨)으로만 오른다 (QA 1차 #13: 레벨당 50만은 4명이면 16테이블로도 적자). */
+export const SALARY_PER_STAT = 3000;
+export const SALARY_PER_LEVEL = 200_000;
 export function salaryOf(stats: Stats, level: number): number {
-  return STAT_KEYS.reduce((s, k) => s + stats[k], 0) * 3000 + level * 500_000;
+  return STAT_KEYS.reduce((s, k) => s + stats[k], 0) * SALARY_PER_STAT + level * SALARY_PER_LEVEL;
 }
 
 /** 레벨업 비용 = 현재 스탯값 × 10 연구P (HSS2식) */

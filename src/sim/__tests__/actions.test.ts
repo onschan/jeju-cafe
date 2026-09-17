@@ -80,7 +80,7 @@ test('setSpeed·setSlot·unlock·dismissMonthCard', () => {
   expect(s.clock.speed).toBe(3);
   expect(apply(s, { type: 'setSlot', slot: 0, menuId: 'americano' }).ok).toBe(true);
   expect(apply(s, { type: 'unlock' }).ok).toBe(false);
-  s.research = 5;
+  s.research = 10;
   expect(apply(s, { type: 'unlock' }).ok).toBe(true);
   s.lastMonthCard = { income: 1, guests: 1, month: 1, year: 1, costs: { ingredients: 0, salary: 0, ads: 0, upkeep: 0, recruit: 0 }, net: 1 };
   apply(s, { type: 'dismissMonthCard' });

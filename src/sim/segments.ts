@@ -8,6 +8,7 @@ import { pushFx } from './farm.ts';
 import { parcelAt } from './parcels.ts';
 import { updateRank } from './rank.ts';
 import { josa } from './josa.ts';
+import { addResearchProgress } from './progress.ts';
 export { updateRank };
 
 /** 만족 게이지 0~100: 😊 +2 (타깃 +3), 😠 −1. 30 부탁·50 단골·80 VIP */
@@ -30,7 +31,7 @@ export const UNLOCK_POPULARITY = 20;
 export const ITEM_DROP_CHANCE = 0.05;
 export const TIP_RATE = 0.2;
 export const AD_DELTA = 1;
-export const RESEARCH_BONUS = 1; // 기본 +1에 더해 +1 → +2
+export const RESEARCH_BONUS = 1; // 연구 진행 1명 몫을 더 쌓는다 (기본 1 + 1 = 취향 일치와 같은 2명 몫)
 export const VISIT_BONUS_CAP = 10;
 export const TICKET_CHANCE = 0.01;
 
@@ -216,7 +217,7 @@ export function onHappyVisit(state: GameState, g: Guest, satMult = 1): void {
       }
       break;
     case 'research':
-      state.research += RESEARCH_BONUS;
+      addResearchProgress(state, RESEARCH_BONUS);
       break;
     case 'popularity': {
       const seat = g.seatId ? state.objects[g.seatId] : undefined;

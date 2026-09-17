@@ -34,9 +34,13 @@ test('같은 seed면 같은 결과 (결정적)', () => {
   expect(runBot(1, 1)).toEqual(runBot(1, 1));
 }, 20_000);
 
-// 2년차: 연구가 20 이상 모이면 메뉴가 하나 나올 때까지 개발한다
-test('봇은 2년차에 메뉴를 개발한다', () => {
+// 2년차: 연구가 50 이상 모이면 메뉴가 하나 나올 때까지 개발하고, 요리사까지 4명을 두고도 매달 흑자다 (QA 1차 #13)
+test('봇은 2년차에 메뉴를 개발하고, 16테이블 + 직원 4명으로 매달 흑자', () => {
   const rows = runBot(2, 2);
   expect(rows.filter((r) => r.year === 1).every((r) => r.customMenus === 0)).toBe(true);
   expect(rows[rows.length - 1]!.customMenus).toBe(1);
-}, 30_000);
+  const year2 = rows.filter((r) => r.year === 2);
+  expect(year2.length).toBe(12);
+  for (const r of year2) { expect(r.staff, `2년 ${r.month}월 staff`).toBe(4); expect(r.net, `2년 ${r.month}월 net`).toBeGreaterThan(0); }
+  expect(rows[rows.length - 1]!.mileage).toBeGreaterThan(0); // 월 손님 300명당 1
+}, 40_000);

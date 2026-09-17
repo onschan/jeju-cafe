@@ -9,7 +9,7 @@ import { sceneryScore } from '../grid.ts';
 import { grantItem, itemEffect, ITEM_SCENERY_CAP } from '../items.ts';
 import { rollPrize, hasFreeDraw, canDrawTicket, SEED_PACK, DRAW_MONEY_PER_YEAR, UNIFORM_PIECES_PER_SET, MONTHLY_FREE_TICKETS } from '../shop.ts';
 import { START_BUILDERS, MAX_BUILDERS } from '../build.ts';
-import { addMileage, checkCodexMileage, CODEX_PER_MILEAGE } from '../mileage.ts';
+import { addMileage, checkCodexMileage, monthlyMileage, CODEX_PER_MILEAGE } from '../mileage.ts';
 import { discoverCombos } from '../compat.ts';
 import { MILEAGE_SHOP, TICKET_SHOP, UNIFORMS, DRAW_PRIZES, ITEMS, itemDef, objectDef, COMBOS, POPULARITY_FRUIT, POPULARITY_FRUIT_DELTA } from '../../data/index.ts';
 import type { ComboDef } from '../types.ts';
@@ -45,7 +45,7 @@ test('마일리지 상점: 일꾼 삼춘은 순서대로(3→4→5) 동시 건�
   expect(apply(s, { type: 'buyMileage', id: 'ms_worker_4' }).ok).toBe(false); // 3번째 먼저
   expect(apply(s, { type: 'buyMileage', id: 'ms_worker_3' }).ok).toBe(true);
   expect(s.builders).toBe(3);
-  expect(s.mileage).toBe(270);
+  expect(s.mileage).toBe(297);
   expect(apply(s, { type: 'buyMileage', id: 'ms_worker_3' }).ok).toBe(false); // 이미
   expect(apply(s, { type: 'buyMileage', id: 'ms_worker_4' }).ok).toBe(true);
   expect(apply(s, { type: 'buyMileage', id: 'ms_worker_5' }).ok).toBe(true);
@@ -68,7 +68,7 @@ test('마일리지 상점: 곡괭이·응모권·씨앗·묶음팩·강화 아�
   expect(s.inventory['jeju_salt']).toBe(1);
   expect(apply(s, { type: 'buyMileage', id: 'ms_scout' }).ok).toBe(true);
   expect(s.freeRecruits).toBe(1);
-  expect(s.mileage).toBe(100 - 5 - 3 - 8 - 35 - 5 - 12);
+  expect(s.mileage).toBe(100 - 2 - 1 - 1 - 4 - 1 - 2);
   // 스카우트권: 다음 공고비 무료
   const money = s.money;
   expect(apply(s, { type: 'postJob', tier: 'flyer' }).ok).toBe(true);
@@ -174,6 +174,16 @@ test('매월 1일: 응모권 +1과 무료 추첨 리셋', () => {
   expect(s.clock.month).toBe(4);
   expect(s.tickets).toBe(tickets + MONTHLY_FREE_TICKETS);
   expect(s.freeDrawMonth).toBe(monthIndex(s.clock));
+});
+
+test('마일리지: 월말 손님 300명마다 +1 (closeMonth 전에 준다)', () => {
+  const s = createInitialState(1);
+  s.monthGuests = 299;
+  expect(monthlyMileage(s)).toBe(0);
+  s.monthGuests = 650;
+  expect(monthlyMileage(s)).toBe(2);
+  expect(s.mileage).toBe(2);
+  expect(s.notices.at(-1)).toBe('이달 손님 650명 — 마일리지 +2');
 });
 
 test('마일리지: 첫 상성 발견 +1, 도감 10개마다 +1 (한 단계는 한 번만)', () => {

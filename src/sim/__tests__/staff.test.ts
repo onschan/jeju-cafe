@@ -47,7 +47,7 @@ test('같은 seed면 같은 후보', () => {
 });
 
 test('월급 공식', () => {
-  expect(salaryOf({ service: 20, cooking: 20, sense: 20, stamina: 20 }, 1)).toBe(20 * 4 * 3000 + 500_000);
+  expect(salaryOf({ service: 20, cooking: 20, sense: 20, stamina: 20 }, 1)).toBe(20 * 4 * 3000 + 200_000);
 });
 
 test('채용: 슬롯이 있어야 하고, 역할이 해금돼야 하고, 후보가 사라진다', () => {

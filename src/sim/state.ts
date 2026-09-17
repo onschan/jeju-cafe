@@ -172,6 +172,7 @@ export function createInitialState(seed: number, playerId = 'local', createdAt =
     praised: {},
     guests: [],
     spawnAcc: 0,
+    researchAcc: 0,
     nextId: 1,
     monthIncome: 0,
     monthGuests: 0,

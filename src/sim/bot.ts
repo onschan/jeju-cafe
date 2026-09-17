@@ -6,6 +6,7 @@
  * - 2달째: 전단 공고 → service 최고를 홀, sense 최고를 바리스타(→ latte 추가)
  * - 돈 500만 넘고 기력 60 넘는 직원이 있으면 전단 돌리기 (한 달에 한 번)
  * - 9월: 밭 3개 + 밭 일꾼 채용(체력 최고)
+ * - 2년차: 요리사(요리 최고)까지 뽑아 직원 4명 (QA 1차 #13: 16테이블 + 4명이 흑자여야 한다)
  * - 연구가 되면 해금 (돌담은 2개까지 놓는다). 수확은 자동(익으면 창고로).
  * - 돈 200만 미만이면 아르바이트 (직원당 한 달 한 번은 sim이 막는다)
  * - 2년차: 연구 20 이상이면 원두+우유 음료를 하나 나올 때까지 개발하고, 나오면 메뉴판 4번 칸에 올린다
@@ -57,8 +58,9 @@ export const FLYER_MIN_MONEY = 5_000_000;
 export const FLYER_MIN_ENERGY = 60;
 export const PARTTIME_MAX_MONEY = 2_000_000;
 export const BOT_DEVELOP_YEAR = 2;
+export const BOT_COOK_YEAR = 2;
 export const BOT_DEVELOP_INGREDIENTS = ['beans', 'milk'];
-export const BOT_WORKER_MILEAGE = 30;
+export const BOT_WORKER_MILEAGE = 3;
 const WORKER_IDS = ['ms_worker_3', 'ms_worker_4', 'ms_worker_5'];
 
 function countKind(s: GameState, kind: string): number {
@@ -112,6 +114,8 @@ function monthlyPlan(s: GameState, monthsPlayed: number): void {
     if (countKind(s, 'field') < BOT_FIELDS.length) for (const p of BOT_FIELDS) place(s, 'field', p.x, p.y);
     if (!hasRole(s, 'field') && apply(s, { type: 'postJob', tier: 'flyer' }).ok) hireBest(s, 'stamina', 'field');
   }
+  // 2년차: 요리사까지 4명
+  if (s.clock.year >= BOT_COOK_YEAR && !hasRole(s, 'cook') && s.staff.length === 3 && apply(s, { type: 'postJob', tier: 'flyer' }).ok) hireBest(s, 'cooking', 'cook');
 
   // 돈이 넉넉하면 전단 돌리기 (한 달에 한 번)
   if (s.money > FLYER_MIN_MONEY) {

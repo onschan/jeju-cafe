@@ -10,6 +10,7 @@ import { START_HOUR, END_HOUR } from './clock.ts';
 import { parcelBonusAt, parcelSpawnMult, parcelFeeMult } from './parcels.ts';
 import { objectStats, popularityFor, BASE_POPULARITY } from './compat.ts';
 import { isUnlocked, unlockedTypeIds, regularFreqMult, walletOf, onHappyVisit, VISIT_BONUS_CAP } from './segments.ts';
+import { addResearchProgress, TASTE_MATCH_WEIGHT } from './progress.ts';
 import { effectMult, noGuestsToday } from './effects.ts';
 import { spotGuestBonus, busSpots, isBusDay, BUS_HOUR, BUS_MIN, BUS_MAX } from './spots.ts';
 import type { ParcelBonus } from './types.ts';
@@ -227,16 +228,17 @@ export function popularityBonus(popularity: number): number {
   return Math.floor((popularity - BASE_POPULARITY) / POP_PER_SCENERY);
 }
 
-/** 조리가 끝났을 때 만족 판정. 경치 + 홀 서비스 + 좌석 인기 보정 + 메뉴 취향 ≥ 손님층 기준이면 happy → 만족 게이지·타입 효과. 취향이 맞으면 호감도 ×2, 인생샷이면 사진. */
+/** 조리가 끝났을 때 만족 판정. 경치 + 홀 서비스 + 좌석 인기 보정 + 메뉴 취향 ≥ 손님층 기준이면 happy → 연구 진행(5명당 1, 취향 일치는 2명 몫)·만족 게이지·타입 효과. 취향이 맞으면 호감도 ×2, 인생샷이면 사진. */
 function resolveMood(state: GameState, g: Guest): void {
   const type = guestTypeDef(g.type);
   const seat = state.objects[g.seatId!]!;
   if (sceneryScore(state, seat.x, seat.y) + serviceBonus(state) + popularityBonus(popularityFor(state, seat.id, g.type)) + tasteBonus(state, g.type, g.menuId) >= type.minScenery) {
     g.mood = 'happy';
     g.moodReason = null;
-    state.research += 1;
+    const tasteMatch = likesStatsMatch(state, g.type, g.menuId) > 0;
+    addResearchProgress(state, tasteMatch ? TASTE_MATCH_WEIGHT : 1);
     state.popularity = Math.max(-100, Math.min(100, state.popularity + type.popularityShift));
-    onHappyVisit(state, g, likesStatsMatch(state, g.type, g.menuId) > 0 ? 2 : 1);
+    onHappyVisit(state, g, tasteMatch ? 2 : 1);
     const photo = photoChance(state, g.type, g.menuId);
     if (photo > 0 && nextRandom(state) < photo) pushFx(state, { kind: 'photo', x: seat.x, y: seat.y, tick: state.tick });
   } else {

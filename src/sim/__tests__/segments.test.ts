@@ -186,7 +186,7 @@ test('만족 게이지: happy +2, 타깃 +3, angry −1, 50 단골(빈도 ×1.5�
   expect(s.guestTypes['local_auntie']!.satisfaction).toBe(100);
 });
 
-test('효과 6종: 자금(팁 20%)·연구(+2)·홍보(같은 태그 +1)·시설 인기(+1, 상한 10)·아이템(5%)·응모권(1%)', () => {
+test('효과 6종: 자금(팁 20%)·연구 진행(+2)·홍보(같은 태그 +1)·시설 인기(+1, 상한 10)·아이템(5%)·응모권(1%)', () => {
   const { s, seat } = cafe();
   // money: 팀장님 wallet 18000
   unlockGuestType(s, 'team_leader');
@@ -196,13 +196,13 @@ test('효과 6종: 자금(팁 20%)·연구(+2)·홍보(같은 태그 +1)·시설
   updateGuests(s, PREP_MS);
   expect(g.mood).toBe('happy'); // adult minScenery 1, 정낭 경치 1
   expect(s.money - money0).toBe(4000 + Math.round(4000 * TIP_RATE));
-  // research: 은퇴 선생님(시니어, 경치 0) → 기본 +1 + 효과 +1
+  // research: 은퇴 선생님(시니어, 경치 0) → 연구 진행 기본 1 + 효과 1 = 2명 몫
   unlockGuestType(s, 'retired_teacher');
-  const r0 = s.research;
+  s.researchAcc = 0;
   const w = seated(s, 'retired_teacher');
   updateGuests(s, PREP_MS);
   expect(w.mood).toBe('happy');
-  expect(s.research - r0).toBe(2);
+  expect(s.researchAcc).toBe(2);
   // ad: 대학생(청년) happy → 해금된 청년 타입 인기 +1
   unlockGuestType(s, 'working_holiday');
   s.segmentPopularity['working_holiday'] = 10;

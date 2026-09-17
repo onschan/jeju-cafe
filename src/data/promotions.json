@@ -2,7 +2,7 @@
   {
     "id": "flyer",
     "name": "전단 돌리기",
-    "costResearch": 5,
+    "costResearch": 10,
     "costMoney": 0,
     "energy": 20,
     "months": 0,
@@ -14,7 +14,7 @@
   {
     "id": "sns",
     "name": "SNS 포스팅",
-    "costResearch": 10,
+    "costResearch": 20,
     "costMoney": 0,
     "energy": 15,
     "months": 0,
@@ -26,7 +26,7 @@
   {
     "id": "billboard",
     "name": "전봇대 광고",
-    "costResearch": 20,
+    "costResearch": 40,
     "costMoney": 0,
     "energy": 10,
     "months": 1,

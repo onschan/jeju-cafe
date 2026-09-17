@@ -534,6 +534,7 @@ export interface GameState {
   praised: Record<string, number>;            // staffId → 마지막으로 칭찬한 일 인덱스
   guests: Guest[];
   spawnAcc: number; // 시간대별 스폰 소수 누적
+  researchAcc: number; // 만족 손님 누적 (5마다 연구 +1)
   nextId: number;
   monthIncome: number;
   monthGuests: number;
