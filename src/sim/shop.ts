@@ -14,6 +14,7 @@ import { MAX_BUILDERS } from './build.ts';
 import { isUnlocked } from './segments.ts';
 import { MAX_SEGMENT_POPULARITY } from './promotions.ts';
 import { josa } from './josa.ts';
+import { fmtNum } from './format.ts';
 
 export const SEED_PACK = { tangerine_seed: 3, hallabong_seed: 2 } as const;
 /** 인형뽑기 상품 크기 */
@@ -143,7 +144,7 @@ function applyPrize(state: GameState, prize: DrawPrizeDef): string {
       const n = DRAW_MONEY_PER_YEAR * state.clock.year;
       state.money += n;
       state.monthIncome += n;
-      return `₩${n.toLocaleString()}을 받았어요`;
+      return `₩${fmtNum(n)}을 받았어요`;
     }
     case 'research': state.research += DRAW_RESEARCH; return `연구 +${DRAW_RESEARCH}`;
     case 'ingredient_box': {

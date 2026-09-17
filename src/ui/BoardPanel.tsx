@@ -47,13 +47,14 @@ function QuestCard({ q }: { q: QuestState }) {
   const guest = guestTypeDef(def.guestId);
   const p = questProgress(s, q.id);
   const ok = canAcceptQuest(s, q.id).ok;
-  const left = q.deadlineMonthIndex !== null ? q.deadlineMonthIndex - monthIndex(s.clock) + 1 : null;
+  // 기한 달까지 남은 달 수 (수락 직후 2 = 카드의 '기한 2달', 기한 달엔 '이달까지')
+  const left = q.deadlineMonthIndex !== null ? q.deadlineMonthIndex - monthIndex(s.clock) : null;
   return (
     <div style={{ ...card, opacity: q.status === 'done' ? 0.6 : 1 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
         <Face face={guestFace(def.guestId)} />
         <b style={{ flex: 1 }}>{guest.name}</b>
-        <span style={{ fontSize: 12, color: q.status === 'active' ? PALETTE.ok : q.status === 'failed' ? PALETTE.bad : PALETTE.inkSoft }}>{STATUS_TEXT[q.status]}{q.status === 'active' && left !== null ? ` · ${left}달 남음` : ''}</span>
+        <span style={{ fontSize: 12, color: q.status === 'active' ? PALETTE.ok : q.status === 'failed' ? PALETTE.bad : PALETTE.inkSoft }}>{STATUS_TEXT[q.status]}{q.status === 'active' && left !== null ? (left > 0 ? ` · ${left}달 남음` : ' · 이달까지') : ''}</span>
       </div>
       <div style={{ fontSize: 13, fontStyle: 'italic', color: PALETTE.inkSoft, margin: '4px 0' }}>“{guest.line}”</div>
       <div style={{ fontSize: 13 }}>{conditionText(def.condition)} → <b>{questRewardText(def)}</b>{def.unlockGuestId ? ` · ${safeName(() => guestTypeDef(def.unlockGuestId!).name, '')} 방문` : ''}</div>

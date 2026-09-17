@@ -8,6 +8,7 @@ import { guestTypeState, isUnlocked, unlockGuestType, evaluateUnlocks, countObje
 import { effectivePopularity } from './promotions.ts';
 import { addEffect, filterMatches } from './effects.ts';
 import { spotLevel, SPOT_QUEST_LEVEL } from './spots.ts';
+import { fmtNum } from './format.ts';
 
 /** 부탁 기한: 수락한 달 + 2 */
 export const QUEST_MONTHS = 2;
@@ -83,7 +84,7 @@ export function acceptQuest(state: GameState, id: string): void {
 export function questRewardText(q: QuestDef): string {
   const parts = q.rewards.map((r) => {
     switch (r.type) {
-      case 'money': return `자금 ${r.amount.toLocaleString()}`;
+      case 'money': return `자금 ${fmtNum(r.amount)}`;
       case 'research': return `연구 ${r.amount}`;
       case 'ticket': return `응모권 ${r.amount}`;
       case 'mileage': return `마일리지 ${r.amount}`;

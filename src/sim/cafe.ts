@@ -2,6 +2,7 @@ import type { GameState, ApplyResult, PlacedObject } from './types.ts';
 import { objectDef } from '../data/index.ts';
 import { pushNotice } from './staff.ts';
 import { dayIndex } from './effects.ts';
+import { fmtNum } from './format.ts';
 
 /** 카페 이름 기본값·길이 */
 export const DEFAULT_CAFE_NAME = '제주 카페';
@@ -63,7 +64,7 @@ export function expand(state: GameState, id: ExpansionId): void {
   state.money -= def.cost;
   state.expansions.push(id);
   if (id === 'kitchen') state.slots.cook += 1;
-  pushNotice(state, `${def.name} 완공! (₩${def.cost.toLocaleString()})`);
+  pushNotice(state, `${def.name} 완공! (₩${fmtNum(def.cost)})`);
 }
 
 /** 짓는 값: 테라스가 있으면 야외 좌석(실내 아닌 seat) −20% */

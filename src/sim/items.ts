@@ -16,7 +16,9 @@ const SLOT_OF: Record<ObjectKind, ItemSlot> = {
 const SCENERY_KINDS = new Set<ObjectKind>(['deco', 'tree', 'landmark']);
 export const ITEM_SCENERY_CAP = 30;
 
-/** 이 시설에 쓸 때의 효과. 잘 맞는 시설(id 일치 또는 v1 분류 3)은 ×2, v1 분류 0이면 0(못 씀). 경관 씨앗은 경관물에만. */
+/** 이 시설에 쓸 때의 효과. 잘 맞는 시설(id 일치 또는 v1 분류 3)은 ×2, v1 분류 0이면 0(못 씀). 경관 씨앗은 경관물에만.
+ *  v1 분류가 없는 v2 아이템(안경·LP판·금박…)은 잘 맞는 시설(fitIds)에만 쓸 수 있다 — 밭에 "안경 쓰기"가 뜨지 않게 (QA 1차 P2 #24).
+ *  잘 맞는 시설 목록도 분류도 없는 것(씨앗)은 어디에나 기본 효과. */
 export function itemEffect(item: ItemDef, def: ObjectDef): number {
   if (item.stat === 'scenery') return SCENERY_KINDS.has(def.kind) || def.scenery > 0 ? item.value : 0;
   if (item.fitIds.includes(def.id)) return item.value * 2;
@@ -24,7 +26,7 @@ export function itemEffect(item: ItemDef, def: ObjectDef): number {
     const k = item.fitSlots[SLOT_OF[def.kind]] ?? 0;
     return k <= 0 ? 0 : k >= 3 ? item.value * 2 : item.value;
   }
-  return item.value;
+  return item.fitIds.length > 0 ? 0 : item.value;
 }
 
 function findItem(itemId: string, items?: ItemDef[]): ItemDef | undefined {

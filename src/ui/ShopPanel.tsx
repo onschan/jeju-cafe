@@ -49,7 +49,7 @@ function MileageShop() {
   const busy = constructions(s).length;
   return (
     <div>
-      <div style={small}>농협 마일리지로 사요. 마일리지는 부탁 완료·가이드북 순위·도감 10개마다 받아요.</div>
+      <div style={small}>농협 마일리지로 사요. 마일리지는 월 손님 300명마다·부탁 완료·가이드북 순위·도감 10개마다 받아요.</div>
       <div style={{ ...small, marginBottom: 6 }}>일꾼 삼춘 {s.builders}명 (동시에 {s.builders}개까지 지을 수 있어요, 지금 {busy}개 짓는 중)</div>
       {MILEAGE_SHOP.map((m) => {
         const can = canBuyMileage(s, m.id);
@@ -61,7 +61,7 @@ function MileageShop() {
               <div><b>{m.name}</b></div>
               <div style={small}>{m.description}</div>
             </div>
-            <span style={price}>{m.price}M</span>
+            <span style={price}>{m.price} 마일리지</span>
             <button style={{ ...(can.ok ? brownBtn : brownBtnOff), marginBottom: 0, marginRight: 0 }} data-testid={`buy-${m.id}`}
               onClick={() => { if (!can.ok) { dispatch({ type: 'buyMileage', id: m.id }); return; } Confirm(`${josa(m.name, '을/를')} 마일리지 ${m.price}로 살까요?`, () => dispatch({ type: 'buyMileage', id: m.id }), { title: '마일리지 상점' }); }}>
               사기

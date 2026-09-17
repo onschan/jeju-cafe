@@ -4,6 +4,7 @@ import { brownBtn, PALETTE } from './frame';
 import { loadSheet, drawFrame, type Sheet } from './sheetCanvas';
 import { HAIR_RGB, TOP_RGB, type CharacterParts, type Dir } from '../render/character';
 import { sfx } from './audio';
+import { useGame } from './store';
 
 /** 장면 창: 160×90 로비 배경(scene_lobby) 위에 파츠 캐릭터 1~3명 + 대사 한 줄.
  *  고용 성공·필지 구매·월 매출 신기록 같은 순간에 showScene()으로 띄운다. */
@@ -75,7 +76,9 @@ function SceneCanvas({ chars }: { chars: SceneChar[] }) {
 /** App에 한 번 둔다. showScene()이 요청한 장면을 그린다. */
 export function SceneHost() {
   useSyncExternalStore((l) => { listeners.add(l); return () => listeners.delete(l); }, () => version, () => version);
-  if (!current) return null;
+  const s = useGame();
+  // 결산 카드·가이드북 발표가 떠 있는 동안은 장면 창을 미룬다 (결산 → 발표 → 장면 창, QA 1차 P2 #25)
+  if (!current || s.lastMonthCard || s.lastAnnouncement) return null;
   return (
     <Popup title={current.title} onBackdrop={closeScene}
       buttons={<button style={{ ...brownBtn, marginRight: 0, marginBottom: 0 }} onClick={closeScene}>확인</button>}>

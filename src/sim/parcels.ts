@@ -2,6 +2,7 @@ import type { GameState, Parcel, ParcelBonus, ApplyResult } from './types.ts';
 import { PARCELS, guestTags } from '../data/index.ts';
 import { pushNotice } from './staff.ts';
 import { PARCEL_COLS, PARCEL_ROWS, PARCEL_W, PARCEL_H, START_ORIGIN, PARCEL_LAYOUT as LAYOUT } from './layout.ts';
+import { fmtNum } from './format.ts';
 
 export { PARCEL_COLS, PARCEL_ROWS, PARCEL_W, PARCEL_H, START_ORIGIN };
 /** parcels.json 가격(15만~30만)은 구 화폐 단위라 ×10 → 100만~300만 (시작 자금 500만 기준) */
@@ -99,7 +100,7 @@ export function buyParcel(state: GameState, id: string): void {
   const price = parcelPrice(state, p);
   state.money -= price;
   p.owned = true;
-  pushNotice(state, `${p.name} 필지를 샀어요 (₩${price.toLocaleString()})`);
+  pushNotice(state, `${p.name} 필지를 샀어요 (₩${fmtNum(price)})`);
 }
 
 // ---------- 구역 보너스 ----------

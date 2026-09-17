@@ -31,10 +31,10 @@ test('데이터: 마일리지 상점 14 · 응모권 상점 7(추첨 제외) · 
   expect(itemDef('scenery_seed')).toMatchObject({ stat: 'scenery', value: 3 });
 });
 
-test('강화 아이템: 잘 맞는 시설이면 ×2, 아니면 ×1', () => {
+test('강화 아이템: 잘 맞는 시설이면 ×2, 아니면 못 쓴다 (v1 분류가 없는 v2 아이템)', () => {
   const salt = itemDef('jeju_salt'); // bestFacilities: noodle_shop·bomal_kalguksu·haenyeo_mulhoe
   expect(itemEffect(salt, objectDef('noodle_shop'))).toBe(salt.value * 2);
-  expect(itemEffect(salt, objectDef('table_out'))).toBe(salt.value);
+  expect(itemEffect(salt, objectDef('table_out'))).toBe(0);
 });
 
 test('마일리지 상점: 일꾼 삼춘은 순서대로(3→4→5) 동시 건설 +1, 마일리지 부족·순서 위반 거부', () => {

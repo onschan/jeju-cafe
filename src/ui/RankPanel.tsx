@@ -91,17 +91,19 @@ export function AnnouncementPopup() {
   const [idx, setIdx] = useState(0);
   const [stage, setStage] = useState(0);
   const entry: AnnouncementEntry | undefined = a?.entries[idx];
+  // 결산 카드가 떠 있는 동안은 기다린다 (결산 → 발표 → 장면 창 순서, QA 1차 P2 #25)
+  const blocked = s.lastMonthCard !== null;
   useEffect(() => { setIdx(0); }, [a]);
   useEffect(() => {
-    if (!entry) return;
+    if (!entry || blocked) return;
     setStage(0);
     const keys = judgedKeys(entry.id);
     const total = keys.length + 3; // 항목들 → 종합 → 순위 → ★
     const timers: ReturnType<typeof setTimeout>[] = [];
     for (let i = 1; i <= total; i++) timers.push(setTimeout(() => { setStage(i); if (i === keys.length + 2) sfx(entry.rank === 1 ? 'fanfare' : 'unlock'); }, 500 * i));
     return () => timers.forEach(clearTimeout);
-  }, [entry]);
-  if (!a || !entry) return null;
+  }, [entry, blocked]);
+  if (!a || !entry || blocked) return null;
   const keys = judgedKeys(entry.id);
   const last = idx >= a.entries.length - 1;
   const close = () => { if (last) dispatch({ type: 'dismissAnnouncement' }); else setIdx(idx + 1); };

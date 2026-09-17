@@ -36,7 +36,7 @@ export function GuestsPanel({ onGuest }: { onGuest: (guestId: string) => void })
               <button key={g.id} style={{ ...card, display: 'flex', alignItems: 'center', gap: 8, width: '100%', textAlign: 'left', fontFamily: 'inherit', fontSize: 14, color: PALETTE.ink }} onClick={() => onGuest(g.id)} aria-label={guestName(g)}>
                 <Portrait parts={guestPortraitParts(g.type)} face={guestFace(g.type)} size={32} />
                 <span style={{ flex: 1 }}><b>{guestName(g)}</b>{q && <b style={{ color: PALETTE.bad }}> !</b>}<br /><span style={{ fontSize: 12, color: PALETTE.inkSoft }}>{g.phase === 'seated' ? '자리에서' : g.phase === 'visiting' ? '구경 중' : g.phase === 'leaving' ? '집에 가는 중' : '오는 중'}{g.mood ? ` ${MOOD_ICON[g.mood]}` : ''}</span></span>
-                <span style={{ fontSize: 12, color: PALETTE.inkSoft }}>{won(walletOf(s, g.type))}</span>
+                <span style={{ fontSize: 12, color: PALETTE.inkSoft }}>지갑 {won(walletOf(s, g.type))}</span>
               </button>
             );
           })}

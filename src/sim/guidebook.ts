@@ -18,6 +18,7 @@ import { effectivePopularity } from './promotions.ts';
 import { monthIndex } from './clock.ts';
 import { parcelAt } from './parcels.ts';
 import { pushFx } from './farm.ts';
+import { fmtNum } from './format.ts';
 
 export const MAX_STAR = 5;
 export const JUDGE_KEYS: JudgeKey[] = ['smile', 'scenery', 'menu', 'fun', 'group', 'overall'];
@@ -236,7 +237,7 @@ export function announce(state: GameState, defs: GuidebookDef[] = guidebooksToAn
     const r = applyPrize(state, def, rank);
     const targetText = def.monthly ? monthlyTarget(state).label : null;
     entries.push({ id: def.id, name: def.name, scores, total, rivals, rank, ...r, targetText });
-    pushNotice(state, `${def.name} ${rank}위!${r.prize > 0 ? ` 상금 ₩${r.prize.toLocaleString()}` : ''}`);
+    pushNotice(state, `${def.name} ${rank}위!${r.prize > 0 ? ` 상금 ₩${fmtNum(r.prize)}` : ''}`);
   }
   const winner = entries.find((e) => e.rank === 1);
   if (winner) pushFx(state, { kind: 'scene', title: '가이드북 1위', text: `${winner.name} 1위! 카페가 유명해졌어요`, tick: state.tick });

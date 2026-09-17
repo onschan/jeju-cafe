@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { useGame } from './store';
 import { guestFace, walletOf, canAcceptQuest, type Guest, type GuestTypeState } from '../sim/index.ts';
-import { guestTypeDef, questDef } from '../data/index.ts';
+import { guestTypeDef, questDef, NAMES } from '../data/index.ts';
 import { guestParts, staffParts, type CharacterParts } from '../render/character';
 import { drawPortrait, PORTRAIT_SIZE } from '../render/portrait';
 import { Popup } from './Popup';
@@ -36,9 +36,11 @@ export function staffPortraitParts(face: FaceParts, role: RoleId | null): Charac
   return staffParts(face, role);
 }
 
-/** 손님 이름: 타입명 + 번호 (id g123 → 123호) */
+/** 손님 이름: 이름 풀(names.json)에서 id 번호로 고른 이름 + 타입명 — "동네 삼춘 2153호" 대신 "김민준 (동네 삼춘)". 결정적(id는 세이브에 있다). */
 export function guestName(g: Guest): string {
-  return `${guestTypeDef(g.type).name} ${g.id.replace(/^g/, '')}호`;
+  const n = Number(g.id.replace(/^g/, '')) || 0;
+  const name = NAMES.names[n % NAMES.names.length] ?? '손님';
+  return `${name} (${guestTypeDef(g.type).name})`;
 }
 
 /** 이 손님 타입이 지금 제안 중인 부탁 */

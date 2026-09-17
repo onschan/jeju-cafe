@@ -3,7 +3,7 @@
 본관·증축·화장실·창고(지붕 없는 방)는 sprites_iso_rooms, GDD v2 시설은 sprites_iso_facilities, 장식은 sprites_iso_decor."""
 from __future__ import annotations
 from px import Canvas, PAL, OUT, hexc, Color
-from iso import IsoCanvas, iso_tile, tile_mask, texture_where, paste_face, fill_mask
+from iso import IsoCanvas, iso_tile, tile_mask, texture_where, paste_face, fill_mask, diamond_mask
 from sprites_objects import trunk, canopy, tangerine, stone as stone2d, STONE
 from sprites_iso_tiles import clip
 
@@ -382,17 +382,22 @@ def beehive() -> IsoCanvas:
 
 # ================================================================ 길·담·문
 def path() -> Canvas:
-    """현무암 판석 다이아몬드. 외곽선 없음, 가장자리 모르타르로 이어짐."""
-    base = hexc('5b5b63')
+    """현무암 판석 다이아몬드. 흙 타일과 구분되게 바탕을 밝은 모르타르 톤으로, 위 두 변은 밝은 테두리·아래 두 변은 어두운 테두리 (QA 1차 P2 #27)."""
+    base = hexc('76767f')
     c = iso_tile(base, BASALT[0])
     tmp = Canvas(64, 32)
-    mortar, body, shade, hi = BASALT[0], BASALT[2], BASALT[1], hexc('9a9aa3')
+    mortar, body, shade, hi = BASALT[0], BASALT[2], BASALT[1], hexc('a4a4ad')
     for cx, cy, rx, ry in ((22, 11, 7, 3.6), (38, 9, 6, 3), (30, 19, 8, 3.8), (46, 17, 6, 3.2), (16, 18, 5, 2.8), (36, 26, 6, 2.8)):
         tmp.ellipse(cx, cy, rx + 1, ry + 1, mortar)
         tmp.shade_ellipse(cx, cy, rx, ry, (shade, body, hi))
     for x, y in ((10, 15), (52, 14), (30, 5), (32, 28)):
         tmp.put(x, y, GRASS[1])
     clip(c, tmp)
+    # 위 두 변 1px 밝은 테두리 (흙과의 경계가 또렷하게)
+    light = hexc('b9b9c2')
+    for px, (lo, hi_y) in diamond_mask((0, 0, 1, 1), 32, 0).items():
+        if lo < 16:
+            c.put(px, lo, light)
     return c
 
 

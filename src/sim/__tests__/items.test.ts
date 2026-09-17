@@ -16,6 +16,14 @@ test('데이터: 아이템 12+ 종, 방석은 좌석에 잘 맞고 밭엔 못 �
     expect(itemEffect(CUSHION, objectDef('table_out'))).toBe(CUSHION.value * 2); // seat 3 → ×2
     expect(itemEffect(CUSHION, objectDef('field'))).toBe(0);                    // farm 0
   }
+  // v1 분류가 없는 v2 아이템(안경)은 잘 맞는 시설(서가·갤러리)에만 ×2, 밭·야외 테이블엔 0 (QA 1차 P2 #24)
+  const glasses = itemDef('glasses');
+  expect(glasses.fitSlots).toBeUndefined();
+  expect(itemEffect(glasses, objectDef('bookshelf'))).toBe(glasses.value * 2);
+  expect(itemEffect(glasses, objectDef('field'))).toBe(0);
+  expect(itemEffect(glasses, objectDef('table_out'))).toBe(0);
+  // 씨앗(잘 맞는 시설 목록 없음)은 어디에나
+  expect(itemEffect(itemDef('tangerine_seed'), objectDef('field'))).toBe(5);
 });
 
 test('grantItem은 인벤토리에 쌓고, useItem은 하나를 소모해 같은 종류 전체에 보너스', () => {

@@ -15,6 +15,7 @@ import { advanceConstruction } from './build.ts';
 import { monthlyShop } from './shop.ts';
 import { monthlyRank } from './guidebook.ts';
 import { monthlyMileage } from './mileage.ts';
+import { fmtNum } from './format.ts';
 
 export const STEP_MS = 100;        // 고정 스텝 (게임 ms)
 const MAX_STEPS_PER_TICK = 600;    // 백그라운드 복귀 등 폭주 방지 (60초 게임 시간)
@@ -56,7 +57,7 @@ export function settleGrant(state: GameState): boolean {
   if (state.settleGrantUsed || state.money >= SETTLE_GRANT_THRESHOLD) return false;
   state.settleGrantUsed = true;
   state.money += SETTLE_GRANT;
-  pushNotice(state, `정착지원금 ₩${SETTLE_GRANT.toLocaleString()}을 받았어요`);
+  pushNotice(state, `정착지원금 ₩${fmtNum(SETTLE_GRANT)}을 받았어요`);
   return true;
 }
 

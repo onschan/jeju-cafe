@@ -1,3 +1,4 @@
+import { fmtNum } from '../format.ts';
 import { josa, hasBatchim } from '../josa.ts';
 
 test('받침 판정', () => {
@@ -20,4 +21,13 @@ test('조사 선택', () => {
   expect(josa('홀', '으로/로')).toBe('홀로');
   expect(josa('밭 일꾼', '으로/로')).toBe('밭 일꾼으로');
   expect(josa('유채꽃밭', '은/는')).toBe('유채꽃밭은');
+});
+
+test('fmtNum: 로케일과 무관하게 천 단위 쉼표', () => {
+  expect(fmtNum(0)).toBe('0');
+  expect(fmtNum(999)).toBe('999');
+  expect(fmtNum(1000)).toBe('1,000');
+  expect(fmtNum(1234567)).toBe('1,234,567');
+  expect(fmtNum(-3000000)).toBe('-3,000,000');
+  expect(fmtNum(12.5)).toBe('12.5');
 });
