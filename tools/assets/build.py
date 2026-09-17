@@ -15,7 +15,7 @@ def all_sprites():
     s = {}
     for mod in (sprites_tiles, sprites_objects):
         s.update(mod.sprites())
-    for name in ('sprites_chars', 'sprites_ui'):  # Task 4·5에서 추가
+    for name in ('sprites_chars', 'sprites_ui', 'sprites_iso_tiles', 'sprites_iso_objects', 'sprites_iso_env'):
         try:
             s.update(__import__(name).sprites())
         except ImportError:
@@ -31,7 +31,10 @@ def main():
         if name.startswith('icon_') or name.startswith('portrait_'):
             c.save(os.path.join(ICON_DIR, f'{name}.png'))
     contact_sheet(sprites, cols=10, scale=3).save(os.path.join(REVIEW_DIR, 'contact.png'))
-    print(f'{len(sprites)} sprites → sheet {sheet.w}x{sheet.h}')
+    iso = {n: c for n, c in sprites.items() if n.startswith('iso_')}
+    if iso:
+        contact_sheet(iso, cols=8, scale=2).save(os.path.join(REVIEW_DIR, 'contact_iso.png'))
+    print(f'{len(sprites)} sprites ({len(iso)} iso) → sheet {sheet.w}x{sheet.h}')
 
 if __name__ == '__main__':
     main()
