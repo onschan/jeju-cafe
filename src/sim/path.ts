@@ -23,39 +23,44 @@ export function walkableNeighborsOf(state: GameState, x: number, y: number): Pt[
   return DIRS.map((d) => ({ x: x + d.x, y: y + d.y })).filter((p) => isWalkable(state, p.x, p.y));
 }
 
-/** 4방향 A*. 시작점 포함, 끝점 포함. 없으면 null. */
-export function findPath(state: GameState, from: Pt, to: Pt): Pt[] | null {
-  const key = (p: Pt) => p.y * state.grid.w + p.x;
-  const h = (p: Pt) => Math.abs(p.x - to.x) + Math.abs(p.y - to.y);
-  const open: { p: Pt; f: number }[] = [{ p: from, f: h(from) }];
-  const g = new Map<number, number>([[key(from), 0]]);
-  const came = new Map<number, Pt>();
-  const closed = new Set<number>();
-  while (open.length) {
-    open.sort((a, b) => a.f - b.f);
-    const { p } = open.shift()!;
-    const k = key(p);
-    if (p.x === to.x && p.y === to.y) {
-      const out: Pt[] = [p];
-      let cur = k;
-      while (came.has(cur)) {
-        const prev = came.get(cur)!;
-        out.unshift(prev);
-        cur = key(prev);
-      }
-      return out;
-    }
-    if (closed.has(k)) continue;
-    closed.add(k);
+export const cellKey = (state: GameState, p: Pt) => p.y * state.grid.w + p.x;
+
+/** from에서 닿는 모든 걷기 칸까지의 거리와 직전 칸. 한 번 계산해 여러 목적지에 재사용. */
+export interface Reach { from: Pt; dist: Map<number, number>; prev: Map<number, number> }
+
+export function reachMap(state: GameState, from: Pt): Reach {
+  const dist = new Map<number, number>();
+  const prev = new Map<number, number>();
+  const queue: Pt[] = [from];
+  dist.set(cellKey(state, from), 0);
+  for (let i = 0; i < queue.length; i++) {
+    const p = queue[i]!;
+    const pk = cellKey(state, p);
     for (const n of walkableNeighborsOf(state, p.x, p.y)) {
-      const nk = key(n);
-      const ng = (g.get(k) ?? 0) + 1;
-      if (ng < (g.get(nk) ?? Infinity)) {
-        g.set(nk, ng);
-        came.set(nk, p);
-        open.push({ p: n, f: ng + h(n) });
-      }
+      const nk = cellKey(state, n);
+      if (dist.has(nk)) continue;
+      dist.set(nk, dist.get(pk)! + 1);
+      prev.set(nk, pk);
+      queue.push(n);
     }
   }
-  return null;
+  return { from, dist, prev };
+}
+
+/** reach.from → to 경로 (양 끝 포함). 닿지 않으면 null. */
+export function pathFromReach(state: GameState, reach: Reach, to: Pt): Pt[] | null {
+  const toKey = cellKey(state, to);
+  if (!reach.dist.has(toKey)) return null;
+  const out: Pt[] = [];
+  let k: number | undefined = toKey;
+  while (k !== undefined) {
+    out.unshift({ x: k % state.grid.w, y: Math.floor(k / state.grid.w) });
+    k = reach.prev.get(k);
+  }
+  return out;
+}
+
+/** 단발 경로. 스폰처럼 목적지가 여러 개면 reachMap + pathFromReach를 쓸 것. */
+export function findPath(state: GameState, from: Pt, to: Pt): Pt[] | null {
+  return pathFromReach(state, reachMap(state, from), to);
 }
