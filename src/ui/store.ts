@@ -2,7 +2,8 @@ import { useSyncExternalStore } from 'react';
 import { createInitialState, tick, apply, seasonOf, LocalSaveStore, type GameState, type Action, type ApplyResult, type Mood, type Season } from '../sim/index.ts';
 import { sfx, bgm, suspendAudio, resumeAudio, type SfxName } from './audio';
 import { recordMonthCard } from './best';
-import { resetTutorial } from './tutorial';
+import { resetTutorial } from './tutorialDialogue';
+import { clearDialogues } from './dialogue.ts';
 
 const SLOT_PREFIX = 'jeju-cafe:slot:';
 const saveStore = new LocalSaveStore(SLOT_PREFIX);
@@ -38,6 +39,14 @@ let sceneHook: ((s: GameState, title: string, text: string) => void) | null = nu
 
 function emit() { version++; for (const l of listeners) l(); }
 function save() {
+  // 창·대화로 멈춘 동안 저장하면 사용자가 고른 속도로 남긴다 (다시 열었을 때 멈춰 있지 않게)
+  if (pauseDepth > 0 && state.clock.speed === 0) {
+    state.clock.speed = speedBeforePause;
+    const p = saveStore.save(AUTO_SLOT, state);
+    state.clock.speed = 0;
+    p.catch(() => { toast = { text: '저장에 실패했어요', until: performance.now() + 2000 }; emit(); });
+    return;
+  }
   saveStore.save(AUTO_SLOT, state).catch(() => {
     toast = { text: '저장에 실패했어요', until: performance.now() + 2000 };
     emit();
@@ -47,6 +56,8 @@ function save() {
 export function getState() { return state; }
 export function getVersion() { return version; }
 export function getToast() { return toast && toast.until > performance.now() ? toast.text : null; }
+/** UI 안내 문구를 잠깐 띄운다 ("옮길 것을 골라 주세요" 등) */
+export function showToast(text: string, ms = 1500) { toast = { text, until: performance.now() + ms }; emit(); }
 
 /** 액션이 성공했을 때 내는 효과음 */
 const ACTION_SFX: Record<Action['type'], SfxName> = {
@@ -70,6 +81,39 @@ export function dispatch(a: Action): ApplyResult {
 }
 
 export function subscribe(l: () => void) { listeners.add(l); return () => listeners.delete(l); }
+
+// ---------- 일시정지 (창·대화창·배치 중) ----------
+/** 열려 있는 창/대화/배치의 수. 0→1이 될 때 속도를 기억하고 멈추고, 1→0이 될 때 되돌린다. */
+let pauseDepth = 0;
+let speedBeforePause: GameState['clock']['speed'] = 1;
+
+/** 창이 열릴 때. 되돌릴 함수를 돌려주므로 useEffect 정리에 그대로 쓴다. */
+export function pauseGame(): () => void {
+  if (pauseDepth++ === 0) {
+    speedBeforePause = state.clock.speed;
+    if (state.clock.speed !== 0) { apply(state, { type: 'setSpeed', speed: 0 }); emit(); }
+  }
+  let released = false;
+  return () => { if (!released) { released = true; resumeGame(); } };
+}
+
+function resumeGame() {
+  if (pauseDepth === 0) return;
+  if (--pauseDepth === 0 && state.clock.speed === 0 && speedBeforePause !== 0) {
+    apply(state, { type: 'setSpeed', speed: speedBeforePause });
+    emit();
+  }
+}
+
+export function isPausedByUi(): boolean { return pauseDepth > 0; }
+
+/** 사용자가 속도 버튼을 눌렀을 때. 창에 가려 멈춘 동안이면 되돌릴 속도만 바꾼다. */
+export function setUserSpeed(speed: GameState['clock']['speed']): void {
+  if (pauseDepth > 0) { speedBeforePause = speed; emit(); return; }
+  dispatch({ type: 'setSpeed', speed });
+}
+/** 속도 버튼 표시용: 창으로 멈춘 동안에도 사용자가 고른 속도를 보여 준다 */
+export function userSpeed(): GameState['clock']['speed'] { return pauseDepth > 0 ? speedBeforePause : state.clock.speed; }
 
 export function useGame(): GameState {
   useSyncExternalStore(subscribe, getVersion, getVersion);
@@ -141,6 +185,7 @@ export function newGame() {
   state = createInitialState(Date.now() % 1_000_000, getOrCreatePlayerId(), Date.now());
   viewReset?.();
   resetTutorial();
+  clearDialogues();
   save();
   emit();
 }
