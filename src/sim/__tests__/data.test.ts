@@ -1,4 +1,4 @@
-import { OBJECTS, CROPS, MENUS, GUEST_TYPES, UNLOCKS, objectDef, cropDef, menuDef } from '../../data';
+import { OBJECTS, CROPS, MENUS, GUEST_TYPES, UNLOCKS, objectDef, cropDef, menuDef } from '../../data/index.ts';
 
 test('모든 메뉴 재료는 존재하는 작물', () => {
   for (const m of MENUS) {
@@ -26,4 +26,14 @@ test('lookup 헬퍼', () => {
   expect(objectDef('field').kind).toBe('field');
   expect(menuDef('tangerine_juice').category).toBe('drink');
   expect(GUEST_TYPES.length).toBeGreaterThanOrEqual(2);
+});
+
+test('표마다 id가 유일하다', () => {
+  for (const table of [OBJECTS, CROPS, MENUS, GUEST_TYPES, UNLOCKS]) {
+    expect(new Set(table.map((d) => d.id)).size).toBe(table.length);
+  }
+});
+test('가중치와 달 범위가 유효하다', () => {
+  for (const g of GUEST_TYPES) expect(g.weight).toBeGreaterThanOrEqual(0);
+  for (const c of CROPS) for (const m of [...c.plantMonths, ...(c.harvestMonths ?? [])]) { expect(m).toBeGreaterThanOrEqual(1); expect(m).toBeLessThanOrEqual(12); }
 });

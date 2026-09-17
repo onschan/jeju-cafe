@@ -11,11 +11,12 @@ export function randInt(state: { rng: number }, min: number, max: number): numbe
 }
 
 export function pickWeighted<T>(state: { rng: number }, items: T[], weightOf: (t: T) => number): T | null {
-  const total = items.reduce((s, it) => s + weightOf(it), 0);
+  const w = (t: T) => Math.max(0, weightOf(t));
+  const total = items.reduce((s, it) => s + w(it), 0);
   if (total <= 0) return null;
   let r = nextRandom(state) * total;
   for (const it of items) {
-    r -= weightOf(it);
+    r -= w(it);
     if (r < 0) return it;
   }
   return items[items.length - 1] ?? null;

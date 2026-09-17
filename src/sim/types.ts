@@ -94,7 +94,8 @@ export interface Clock {
   day: number;   // 1~30
   month: number; // 1~12
   year: number;  // 1~
-  accMs: number;
+  accMs: number; // 하루 누적 (게임 ms)
+  carryMs: number; // 고정 스텝 잔여 (실시간×speed)
   speed: 0 | 1 | 2 | 3;
 }
 
@@ -108,7 +109,7 @@ export interface GameState {
   research: number;
   popularity: number; // −100(동네) ~ +100(인기)
   grid: { w: number; h: number; cells: Cell[] };
-  objects: Record<string, PlacedObject>;
+  objects: Record<string, PlacedObject>; // 키는 'o123' 형태(비정수 문자열)라 삽입 순서가 보존됨 → 결정적 순회
   storage: Record<string, number>; // cropId → 개수
   menuSlots: (string | null)[];
   unlockedIndex: number;
@@ -118,7 +119,8 @@ export interface GameState {
   monthIncome: number;
   monthGuests: number;
   lastMonthCard: { income: number; guests: number; month: number; year: number } | null;
-  actionLog: Action[];
+  tick: number; // 고정 스텝 카운터
+  actionLog: { tick: number; action: Action }[];
 }
 
 // ---------- 액션 ----------

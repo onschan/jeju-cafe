@@ -1,9 +1,9 @@
-import type { ObjectDef, CropDef, MenuDef, GuestTypeDef, UnlockDef } from '../sim/types';
-import objectsJson from './objects.json';
-import cropsJson from './crops.json';
-import menusJson from './menus.json';
-import guestsJson from './guests.json';
-import unlocksJson from './unlocks.json';
+import type { ObjectDef, CropDef, MenuDef, GuestTypeDef, UnlockDef } from '../sim/types.ts';
+import objectsJson from './objects.json' with { type: 'json' };
+import cropsJson from './crops.json' with { type: 'json' };
+import menusJson from './menus.json' with { type: 'json' };
+import guestsJson from './guests.json' with { type: 'json' };
+import unlocksJson from './unlocks.json' with { type: 'json' };
 
 export const OBJECTS = objectsJson as ObjectDef[];
 export const CROPS = cropsJson as CropDef[];
@@ -12,7 +12,12 @@ export const GUEST_TYPES = guestsJson as GuestTypeDef[];
 export const UNLOCKS = unlocksJson as UnlockDef[];
 
 function indexBy<T extends { id: string }>(xs: T[]): Record<string, T> {
-  return Object.fromEntries(xs.map((x) => [x.id, x]));
+  const out: Record<string, T> = {};
+  for (const x of xs) {
+    if (Object.prototype.hasOwnProperty.call(out, x.id)) throw new Error(`duplicate id: ${x.id}`);
+    out[x.id] = x;
+  }
+  return out;
 }
 const OBJ = indexBy(OBJECTS);
 const CROP = indexBy(CROPS);

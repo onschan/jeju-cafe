@@ -1,4 +1,4 @@
-import { nextRandom, randInt, pickWeighted } from '../rng';
+import { nextRandom, randInt, pickWeighted } from '../rng.ts';
 
 test('같은 seed면 같은 수열', () => {
   const a = { rng: 42 };
@@ -24,4 +24,8 @@ test('pickWeighted는 가중치 0인 항목을 고르지 않는다', () => {
   for (let i = 0; i < 50; i++) {
     expect(pickWeighted(s, [{ v: 'a', w: 0 }, { v: 'b', w: 1 }], (x) => x.w)?.v).toBe('b');
   }
+});
+
+test('mulberry32 기준값 (런타임 간 리플레이 보장)', () => {
+  expect(nextRandom({ rng: 42 })).toBeCloseTo(0.6011037519201636, 15);
 });

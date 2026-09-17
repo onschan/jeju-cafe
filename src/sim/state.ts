@@ -1,5 +1,5 @@
-import type { GameState, Cell, PlacedObject } from './types';
-import { INITIAL_UNLOCKED } from '../data';
+import type { GameState, Cell, PlacedObject } from './types.ts';
+import { INITIAL_UNLOCKED } from '../data/index.ts';
 
 export const GRID_W = 10;
 export const GRID_H = 8;
@@ -34,7 +34,7 @@ export function createInitialState(seed: number, playerId = 'local'): GameState 
     playerId,
     seed,
     rng: seed,
-    clock: { day: 1, month: 1, year: 1, accMs: 0, speed: 1 },
+    clock: { day: 1, month: 1, year: 1, accMs: 0, carryMs: 0, speed: 1 },
     money: START_MONEY,
     research: 0,
     popularity: 0,
@@ -53,6 +53,7 @@ export function createInitialState(seed: number, playerId = 'local'): GameState 
     monthIncome: 0,
     monthGuests: 0,
     lastMonthCard: null,
+    tick: 0,
     actionLog: [],
   };
   stamp(state, 'busstop', 0, GRID_H - 1, 1, 1);
