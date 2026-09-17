@@ -1,23 +1,70 @@
-import { useEffect, useRef, useState } from 'react';
-import { GameView } from '../render/GameView';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { GameView, type GhostSpec } from '../render/GameView';
 import { startLoop, dispatch, loadOrNew, getState, setViewReset } from './store';
 import { unlockAudio, bgm } from './audio';
-import { seasonOf } from '../sim/index.ts';
+import { seasonOf, canPlace, objectAt, footprint, parcelAt, parcelPrice, canBuyParcel, PROTECTED_TYPES, ROTATABLE_TYPES, type GameState } from '../sim/index.ts';
+import { objectDef } from '../data/index.ts';
 // render/·ui/는 Vite 전용이라 확장자 없는 import 허용. sim/·data/만 .ts 확장자 규칙.
 import { HUD, NightOverlay } from './HUD';
-import { BottomSheet, type Mode } from './BottomSheet';
+import { BottomSheet, type Mode, type PlaceBarProps } from './BottomSheet';
 import { MonthCard } from './MonthCard';
 import { Guide } from './Guide';
-import { PopupHost } from './Popup';
+import { PopupHost, Confirm } from './Popup';
+import { won } from './frame';
+
+/** 길·돌담은 드래그로 연속해서 놓는다 (고스트 없이) */
+const PAINT_KINDS = new Set(['path', 'wall']);
+const MSG_MS = 1500;
+
+/** 짓기 모드 고스트(놓을 자리·방향) */
+interface BuildGhost { x: number; y: number; rot: number }
+/** 이동 모드: 고른 오브젝트와 옮길 자리 */
+interface Moving { objectId: string; x: number; y: number }
+
+function inFootprint(type: string, ox: number, oy: number, x: number, y: number): boolean {
+  return footprint(type, ox, oy).some((p) => p.x === x && p.y === y);
+}
 
 export function App() {
   const hostRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<GameView | null>(null);
   const modeRef = useRef<Mode>({ kind: 'idle' });
   const [mode, setModeState] = useState<Mode>({ kind: 'idle' });
+  const ghostRef = useRef<BuildGhost | null>(null);
+  const [ghost, setGhostState] = useState<BuildGhost | null>(null);
+  const movingRef = useRef<Moving | null>(null);
+  const [moving, setMovingState] = useState<Moving | null>(null);
+  /** 드래그 시작 칸과 고스트 원점의 차이 (여러 칸 오브젝트를 잡은 칸 기준으로 끌기) */
+  const dragOffset = useRef({ dx: 0, dy: 0 });
+  const [msg, setMsg] = useState<string | null>(null);
+  const msgTimer = useRef(0);
+
   // 첫 터치에서 오디오를 열고 현재 계절 BGM을 시작한다 (이후 호출은 no-op)
   const onPointerDown = () => { unlockAudio(); void bgm(seasonOf(getState().clock.month)); };
-  const setMode = (m: Mode) => { modeRef.current = m; setModeState(m); viewRef.current?.setSelection(m.kind === 'cell' ? { x: m.x, y: m.y } : null); };
+  const setGhost = (g: BuildGhost | null) => { ghostRef.current = g; setGhostState(g); };
+  const setMoving = (m: Moving | null) => { movingRef.current = m; setMovingState(m); };
+  const setMode = (m: Mode) => {
+    modeRef.current = m;
+    setModeState(m);
+    viewRef.current?.setSelection(m.kind === 'cell' ? { x: m.x, y: m.y } : null);
+    if (m.kind !== 'build') setGhost(null);
+    if (m.kind !== 'move') setMoving(null);
+  };
+  const say = useCallback((text: string) => {
+    setMsg(text);
+    window.clearTimeout(msgTimer.current);
+    msgTimer.current = window.setTimeout(() => setMsg(null), MSG_MS);
+  }, []);
+
+  /** 미소유 필지를 누르면 구매 확인 */
+  const askBuyParcel = (s: GameState, x: number, y: number): boolean => {
+    const p = parcelAt(s, x, y);
+    if (!p || p.owned) return false;
+    const can = canBuyParcel(s, p.id);
+    if (!can.ok) { say(can.reason ?? '아직 살 수 없어요'); return true; }
+    Confirm(`${p.name} 필지를 ${won(parcelPrice(s, p))}에 살까요? 맵이 넓어져요.`, () => dispatch({ type: 'buyParcel', id: p.id }), { title: '필지 구매' });
+    return true;
+  };
 
   useEffect(() => {
     const host = hostRef.current!;
@@ -33,16 +80,100 @@ export function App() {
           const m = modeRef.current;
           const s = getState();
           if (x < 0 || y < 0 || x >= s.grid.w || y >= s.grid.h) return;
-          if (m.kind === 'build') dispatch({ type: 'place', objectType: m.objectType, x, y });
-          else setMode({ kind: 'cell', x, y });
+          if (askBuyParcel(s, x, y)) return;
+          if (m.kind === 'build') {
+            if (PAINT_KINDS.has(objectDef(m.objectType).kind)) dispatch({ type: 'place', objectType: m.objectType, x, y });
+            else setGhost({ x, y, rot: ghostRef.current?.rot ?? 0 });
+          } else if (m.kind === 'move') {
+            const mv = movingRef.current;
+            if (mv) setMoving({ ...mv, x, y });
+            else {
+              const o = objectAt(s, x, y);
+              if (!o) say('옮길 것을 골라 주세요');
+              else if (PROTECTED_TYPES.has(o.type)) say('이건 못 옮겨요');
+              else setMoving({ objectId: o.id, x: o.x, y: o.y });
+            }
+          } else setMode({ kind: 'cell', x, y });
+        },
+        dragCapture: (x, y) => {
+          const m = modeRef.current;
+          if (m.kind === 'build') {
+            if (PAINT_KINDS.has(objectDef(m.objectType).kind)) return true;
+            const g = ghostRef.current;
+            if (g && inFootprint(m.objectType, g.x, g.y, x, y)) { dragOffset.current = { dx: x - g.x, dy: y - g.y }; return true; }
+          } else if (m.kind === 'move') {
+            const mv = movingRef.current;
+            const o = mv ? getState().objects[mv.objectId] : null;
+            if (mv && o && inFootprint(o.type, mv.x, mv.y, x, y)) { dragOffset.current = { dx: x - mv.x, dy: y - mv.y }; return true; }
+          }
+          return false;
+        },
+        onDragCell: (x, y) => {
+          const m = modeRef.current;
+          const s = getState();
+          if (x < 0 || y < 0 || x >= s.grid.w || y >= s.grid.h) return;
+          const { dx, dy } = dragOffset.current;
+          if (m.kind === 'build') {
+            if (PAINT_KINDS.has(objectDef(m.objectType).kind)) {
+              if (canPlace(s, m.objectType, x, y).ok) dispatch({ type: 'place', objectType: m.objectType, x, y });
+            } else if (ghostRef.current) setGhost({ ...ghostRef.current, x: x - dx, y: y - dy });
+          } else if (m.kind === 'move' && movingRef.current) setMoving({ ...movingRef.current, x: x - dx, y: y - dy });
         },
       });
       if (disposed) { view.destroy(); return; }
+      // 개발 중 브라우저 자동화가 셀 → 화면 좌표를 계산할 수 있도록 (프로덕션 빌드에는 포함되지 않음)
+      if (import.meta.env.DEV) (window as unknown as { __view: unknown }).__view = view;
       setViewReset(() => view.reset());
       stop = startLoop((s) => view.render(s));
     })();
     return () => { disposed = true; stop?.(); setViewReset(null); view.destroy(); viewRef.current = null; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // 고스트를 뷰에 반영한다
+  const s = getState();
+  let ghostSpec: GhostSpec | null = null;
+  let place: PlaceBarProps | null = null;
+  if (mode.kind === 'build' && ghost) {
+    const def = objectDef(mode.objectType);
+    const can = canPlace(s, mode.objectType, ghost.x, ghost.y);
+    const ok = can.ok && s.money >= def.cost;
+    ghostSpec = { type: mode.objectType, x: ghost.x, y: ghost.y, rot: ROTATABLE_TYPES.has(mode.objectType) ? ghost.rot : undefined, ok, text: `${def.name} ${won(def.cost)}` };
+    place = {
+      text: `${def.name} · ${won(def.cost)} · ${ok ? '여기에 지을 수 있어요' : (can.reason ?? '돈이 모자라요')}`,
+      ok,
+      canRotate: ROTATABLE_TYPES.has(mode.objectType),
+      msg,
+      onConfirm: () => {
+        const r = dispatch({ type: 'place', objectType: mode.objectType, x: ghost.x, y: ghost.y, rot: ghost.rot });
+        if (r.ok) setGhost(null);
+        else say(r.reason ?? '여기엔 못 지어요');
+      },
+      onRotate: () => setGhost({ ...ghost, rot: (ghost.rot + 1) % 4 }),
+      onCancel: () => setGhost(null),
+    };
+  } else if (mode.kind === 'move' && moving) {
+    const o = s.objects[moving.objectId];
+    if (o) {
+      const def = objectDef(o.type);
+      const can = canPlace(s, o.type, moving.x, moving.y, o.id);
+      ghostSpec = { type: o.type, x: moving.x, y: moving.y, rot: o.rot, ok: can.ok, text: `${def.name} 옮기기` };
+      place = {
+        text: `${def.name} · ${can.ok ? '여기로 옮길 수 있어요' : (can.reason ?? '여기엔 못 옮겨요')}`,
+        ok: can.ok,
+        canRotate: ROTATABLE_TYPES.has(o.type),
+        msg,
+        onConfirm: () => {
+          const r = dispatch({ type: 'move', objectId: o.id, x: moving.x, y: moving.y });
+          if (r.ok) setMoving(null);
+          else say(r.reason ?? '여기엔 못 지어요');
+        },
+        onRotate: () => dispatch({ type: 'rotate', objectId: o.id, rot: ((o.rot ?? 0) + 1) % 4 }),
+        onCancel: () => setMoving(null),
+      };
+    }
+  }
+  useEffect(() => { viewRef.current?.setGhost(ghostSpec); });
 
   return (
     <div onPointerDownCapture={onPointerDown} style={{ position: 'relative', width: '100%', height: '100%' }}>
@@ -50,7 +181,7 @@ export function App() {
       <NightOverlay />
       <HUD />
       <Guide />
-      <BottomSheet mode={mode} setMode={setMode} />
+      <BottomSheet mode={mode} setMode={setMode} place={place} msg={place ? null : msg} />
       <MonthCard />
       <PopupHost />
     </div>

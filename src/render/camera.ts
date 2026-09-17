@@ -14,6 +14,12 @@ export interface CameraOptions {
   /** 월드 좌표 경계(맵 바운딩 박스). null이면 경계 없음. */
   bounds: () => CameraBounds | null;
   onTap: (cellX: number, cellY: number) => void;
+  /** 손가락을 댄 칸에서 드래그를 카메라 대신 가져갈지 (고스트 옮기기·길 칠하기). true면 이 드래그는 화면을 안 움직인다. */
+  dragCapture?: (cellX: number, cellY: number) => boolean;
+  /** 가져간 드래그가 새 칸에 들어갈 때마다 (누른 칸 포함) */
+  onDragCell?: (cellX: number, cellY: number) => void;
+  /** 가져간 드래그가 끝날 때 */
+  onDragEnd?: () => void;
   minScale?: number;
   maxScale?: number;
 }
@@ -31,10 +37,14 @@ const VELOCITY_WINDOW_MS = 100;
 
 /** 드래그 이동(관성)·핀치 줌·탭(셀 좌표)·경계 고무줄. 이동 거리가 짧으면 탭으로 본다. */
 export function attachCamera(stage: Container, opts: CameraOptions): () => void {
-  const { world, canvas, ticker, viewport, bounds, onTap, minScale = 1, maxScale = 3 } = opts;
+  // 30×16 맵 전체(1,472px)를 폰에서 한눈에 보려면 ×0.5까지 줄일 수 있어야 한다
+  const { world, canvas, ticker, viewport, bounds, onTap, dragCapture, onDragCell, onDragEnd, minScale = 0.5, maxScale = 3 } = opts;
   const pointers = new Map<number, { x: number; y: number }>();
   let dragStart: { x: number; y: number; wx: number; wy: number } | null = null;
   let moved = false;
+  /** 카메라 대신 앱이 가져간 드래그: 마지막으로 알린 칸 */
+  let captured: { x: number; y: number } | null = null;
+  const cellOf = (gx: number, gy: number) => screenToCell((gx - world.x) / world.scale.x, (gy - world.y) / world.scale.y);
   let pinchDist = 0;
   /** 최근 포인터 이동 샘플(속도 추정) */
   let samples: { t: number; x: number; y: number }[] = [];
@@ -80,7 +90,13 @@ export function attachCamera(stage: Container, opts: CameraOptions): () => void 
       moved = false;
       samples = [];
       pushSample(e.globalX, e.globalY);
+      const c = cellOf(e.globalX, e.globalY);
+      if (dragCapture?.(c.x, c.y)) {
+        captured = c;
+        onDragCell?.(c.x, c.y);
+      }
     } else if (pointers.size === 2) {
+      if (captured) { captured = null; onDragEnd?.(); }
       const [a, b] = [...pointers.values()];
       pinchDist = Math.hypot(a!.x - b!.x, a!.y - b!.y);
     }
@@ -88,7 +104,11 @@ export function attachCamera(stage: Container, opts: CameraOptions): () => void 
   const move = (e: FederatedPointerEvent) => {
     if (!pointers.has(e.pointerId)) return;
     pointers.set(e.pointerId, { x: e.globalX, y: e.globalY });
-    if (pointers.size === 1 && dragStart) {
+    if (pointers.size === 1 && captured) {
+      const c = cellOf(e.globalX, e.globalY);
+      if (c.x !== captured.x || c.y !== captured.y) { captured = c; onDragCell?.(c.x, c.y); }
+      moved = true;
+    } else if (pointers.size === 1 && dragStart) {
       const dx = e.globalX - dragStart.x;
       const dy = e.globalY - dragStart.y;
       if (Math.hypot(dx, dy) > TAP_THRESHOLD_PX) moved = true;
@@ -114,7 +134,10 @@ export function attachCamera(stage: Container, opts: CameraOptions): () => void 
       pinchDist = 0;
       samples = [];
     } else if (pointers.size === 0) {
-      if (!moved && dragStart) {
+      if (captured) {
+        captured = null;
+        onDragEnd?.();
+      } else if (!moved && dragStart) {
         const lx = (e.globalX - world.x) / world.scale.x;
         const ly = (e.globalY - world.y) / world.scale.y;
         const c = screenToCell(lx, ly);

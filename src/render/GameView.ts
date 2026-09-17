@@ -1,16 +1,27 @@
 import { Application, Container, Sprite, Graphics, Texture } from 'pixi.js';
 import type { GameState, PlacedObject, Guest, Staff, Season, RoleId, Pt } from '../sim/index.ts';
-import { seasonOf, LOW_ENERGY } from '../sim/index.ts';
+import { seasonOf, LOW_ENERGY, parcelPrice, footprint } from '../sim/index.ts';
+import type { Parcel } from '../sim/index.ts';
 import { objectDef, cropDef } from '../data/index.ts';
 import { isoTerrainTexture, isoObjectTexture, glowTexture, label, bubble, clearTextureCache, loadLabelFont } from './textures';
 import { loadAssets, tex, peekTex, hasAssets, spriteName } from './assets';
-import { attachCamera, type CameraBounds } from './camera';
+import { attachCamera, type CameraBounds, type CameraOptions } from './camera';
 import { ISO_W, ISO_H, cellToScreen, cellCenter, footAnchor, depth } from './iso';
 import { makeCharacterNode, updateCharacterNode, staffParts, sameAccs, CHAR_H, type CharacterNode, type Dir, type Frame } from './character';
 
-export interface GameViewOptions {
-  onTap: (cellX: number, cellY: number) => void;
-}
+export type GameViewOptions = Pick<CameraOptions, 'onTap' | 'dragCapture' | 'onDragCell' | 'onDragEnd'>;
+
+/** 배치 모드 고스트: 손가락 아래 반투명 오브젝트. ok면 초록, 아니면 빨강. text는 비용 라벨. */
+export interface GhostSpec { type: string; x: number; y: number; rot?: number; ok: boolean; text: string }
+
+/** 아직 시트에 없는 오브젝트가 빌려 쓰는 스프라이트 */
+const SPRITE_ALIAS: Record<string, string> = { bush_wild: 'tea_bush', spring: 'pond', dolhareubang_pair: 'dolhareubang' };
+const GHOST_OK = 0x88ff88;
+const GHOST_BAD = 0xff7777;
+const GHOST_ALPHA = 0.65;
+/** 미소유 필지 덮개 색(시트가 없을 때) */
+const LOCKED_COLOR = 0x000000;
+const LOCKED_ALPHA = 0.45;
 
 /** HUD 두 줄(~87px) + 할망 안내(두 줄이면 ~136px) 아래에 맵 위 꼭짓점이 오도록 하는 기본 세로 오프셋 */
 const WORLD_OFFSET_Y = 140;
@@ -71,7 +82,7 @@ interface Fx {
 }
 
 /** 오브젝트 상태별 스프라이트 변형 이름 */
-function objectVariant(o: PlacedObject): string | undefined {
+function objectVariant(o: Pick<PlacedObject, 'type' | 'crop'>): string | undefined {
   if (o.type === 'field') return o.crop ? (o.crop.ready ? 'ready' : 'planted') : 'empty';
   if (o.type === 'tangerine_tree') {
     if (!o.crop) return undefined;
@@ -82,13 +93,15 @@ function objectVariant(o: PlacedObject): string | undefined {
   return undefined;
 }
 
-/** 아이소 스프라이트(변형 → 기본) → 탑다운 스프라이트(변형 → 기본) 순으로 찾는다. 다 없으면 null. */
-function objectTex(o: PlacedObject): { texture: Texture; iso: boolean } | null {
+/** 아이소 스프라이트(회전 _r{n} → 변형 → 기본) → 탑다운 스프라이트(변형 → 기본) 순으로 찾는다. 다 없으면 null. */
+function objectTex(o: Pick<PlacedObject, 'type' | 'crop' | 'rot'>): { texture: Texture; iso: boolean } | null {
   if (!hasAssets()) return null;
+  const name = SPRITE_ALIAS[o.type] ?? o.type;
   const variant = objectVariant(o);
-  const iso = peekTex(spriteName.isoObject(o.type, variant)) ?? (variant ? peekTex(spriteName.isoObject(o.type)) : null);
+  const rotated = o.rot !== undefined ? peekTex(spriteName.isoObject(name, `r${o.rot}`)) : null;
+  const iso = rotated ?? peekTex(spriteName.isoObject(name, variant)) ?? (variant ? peekTex(spriteName.isoObject(name)) : null);
   if (iso) return { texture: iso, iso: true };
-  const flat = tex(spriteName.object(o.type, variant)) ?? (variant ? tex(spriteName.object(o.type)) : null);
+  const flat = tex(spriteName.object(name, variant)) ?? (variant ? tex(spriteName.object(name)) : null);
   return flat ? { texture: flat, iso: false } : null;
 }
 
@@ -136,6 +149,10 @@ export class GameView {
   private bubbleKeys = new Map<string, string>();
   private tileSprites: Sprite[] = [];
   private tilesBuilt = false;
+  /** 미소유 필지 덮개 + 가격 라벨. 키는 필지 id, 라벨 문구가 바뀌면(신구간 할인) 다시 만든다. */
+  private lockedNodes = new Map<string, { node: Container; text: string }>();
+  private ghost: Container | null = null;
+  private ghostKey = '';
   private lastSeason: Season | null = null;
   private detachCamera: (() => void) | null = null;
   private selection = new Graphics();
@@ -163,7 +180,7 @@ export class GameView {
       ticker: this.app.ticker,
       viewport: () => ({ width: this.app.screen.width, height: this.app.screen.height }),
       bounds: () => this.bounds,
-      onTap: opts.onTap,
+      ...opts,
     });
     this.hostWidth = parent.clientWidth;
   }
@@ -193,9 +210,48 @@ export class GameView {
     this.fxQueue = [];
     this.tiles.removeChildren().forEach((c) => c.destroy());
     this.tileSprites = [];
+    this.lockedNodes.clear();
     this.tilesBuilt = false;
     this.lastSeason = null;
     this.selection.clear();
+    this.setGhost(null);
+  }
+
+  /** 배치 고스트를 놓거나(null이면) 치운다. 같은 내용이면 다시 만들지 않는다. */
+  setGhost(g: GhostSpec | null) {
+    const key = g ? `${g.type}:${g.x},${g.y}:${g.rot ?? ''}:${g.ok}:${g.text}` : '';
+    if (key === this.ghostKey) return;
+    this.ghostKey = key;
+    this.ghost?.destroy({ children: true });
+    this.ghost = null;
+    if (!g) return;
+    const def = objectDef(g.type);
+    const c = new Container();
+    const { sx, sy } = footAnchor(g.x, g.y, def.w, def.h);
+    c.position.set(sx, sy);
+    c.alpha = GHOST_ALPHA;
+    // 발자국 다이아몬드(초록/빨강)
+    const fp = new Graphics();
+    for (const p of footprint(g.type, g.x, g.y)) {
+      const t = cellToScreen(p.x, p.y);
+      fp.poly([t.sx - sx, t.sy - sy, t.sx - sx + ISO_W / 2, t.sy - sy + ISO_H / 2, t.sx - sx, t.sy - sy + ISO_H, t.sx - sx - ISO_W / 2, t.sy - sy + ISO_H / 2])
+        .fill({ color: g.ok ? GHOST_OK : GHOST_BAD, alpha: 0.5 });
+    }
+    c.addChild(fp);
+    const t = objectTex({ type: g.type, crop: null, rot: g.rot });
+    const sp = new Sprite(t?.texture ?? isoObjectTexture(this.app.renderer, def.kind, def.w, def.h));
+    sp.anchor.set(0.5, 1);
+    if (t && !t.iso) sp.position.y = -def.h * (ISO_H / 2);
+    sp.tint = g.ok ? GHOST_OK : GHOST_BAD;
+    c.addChild(sp);
+    const l = label(g.text, 10);
+    l.anchor.set(0.5, 1);
+    l.position.set(0, -sp.height - 4);
+    const bg = new Graphics().roundRect(l.x - l.width / 2 - 3, l.y - l.height - 1, l.width + 6, l.height + 2, 3).fill({ color: 0x000000, alpha: 0.6 });
+    c.addChild(bg, l);
+    c.zIndex = 1e6;
+    this.overlay.addChild(c);
+    this.ghost = c;
   }
 
   setSelection(cell: { x: number; y: number } | null) {
@@ -215,6 +271,7 @@ export class GameView {
     } else if (season !== this.lastSeason) {
       this.retintTiles(state, season);
     }
+    this.syncLocked(state);
     const now = performance.now();
     // 시계에 hour가 있는 브랜치(2B-1)와 없는 브랜치 모두에서 동작하도록 정오를 기본값으로
     this.nightAlpha = nightAlpha((state.clock as { hour?: number }).hour ?? 12);
@@ -225,13 +282,67 @@ export class GameView {
     this.drawNight();
   }
 
-  /** 첫 렌더: 폰에서 ×2 근처 줌, 맵을 가로 가운데·HUD 아래에 놓는다. */
+  /** 첫 렌더: 폰에서 ×2 근처 줌, 시작 필지(1번)를 가로 가운데·HUD 아래에 놓는다. */
   private fitCamera(state: GameState) {
     const width = this.app.screen.width || this.hostWidth;
     const s = Math.min(3, Math.max(1.5, width / 480));
     this.world.scale.set(s);
-    const centerX = ((state.grid.w - state.grid.h) * ISO_W) / 4; // 맵 바운딩 박스 가로 중심(월드)
-    this.world.position.set(width / 2 - centerX * s, WORLD_OFFSET_Y);
+    const home = state.parcels.find((p) => p.no === 1) ?? { x: 0, y: 0, w: state.grid.w, h: state.grid.h };
+    const centerX = ((home.x + home.w / 2) - (home.y + home.h / 2)) * (ISO_W / 2); // 필지 바운딩 박스 가로 중심(월드)
+    const top = cellToScreen(home.x, home.y).sy;
+    this.world.position.set(width / 2 - centerX * s, WORLD_OFFSET_Y - top * s);
+  }
+
+  /** 미소유 필지: 어두운 덮개 타일 + 가운데 가격 라벨. 사면 걷힌다. */
+  private syncLocked(state: GameState) {
+    const alive = new Set<string>();
+    for (const p of state.parcels) {
+      if (p.owned) continue;
+      alive.add(p.id);
+      const text = `₩${parcelPrice(state, p).toLocaleString()} · 탭해서 구매`;
+      const cur = this.lockedNodes.get(p.id);
+      if (cur?.text === text) continue;
+      cur?.node.destroy({ children: true });
+      this.lockedNodes.set(p.id, { node: this.makeLockedNode(p, text), text });
+    }
+    for (const [id, entry] of this.lockedNodes) {
+      if (alive.has(id)) continue;
+      entry.node.destroy({ children: true });
+      this.lockedNodes.delete(id);
+    }
+  }
+
+  private makeLockedNode(p: Parcel, text: string): Container {
+    const c = new Container();
+    const lockedTex = hasAssets() ? peekTex('iso_tile_locked') : null;
+    const g = lockedTex ? null : new Graphics();
+    for (let y = p.y; y < p.y + p.h; y++) {
+      for (let x = p.x; x < p.x + p.w; x++) {
+        const { sx, sy } = cellToScreen(x, y);
+        if (lockedTex) {
+          const sp = new Sprite(lockedTex);
+          sp.anchor.set(0.5, 0);
+          sp.position.set(sx, sy);
+          c.addChild(sp);
+        } else {
+          g!.poly([sx, sy, sx + ISO_W / 2, sy + ISO_H / 2, sx, sy + ISO_H, sx - ISO_W / 2, sy + ISO_H / 2]).fill({ color: LOCKED_COLOR, alpha: LOCKED_ALPHA });
+        }
+      }
+    }
+    if (g) c.addChild(g);
+    const center = cellCenter(p.x + (p.w - 1) / 2, p.y + (p.h - 1) / 2);
+    const name = label(p.name, 11);
+    const price = label(text, 10);
+    name.anchor.set(0.5, 1);
+    price.anchor.set(0.5, 0);
+    name.position.set(center.sx, center.sy - 1);
+    price.position.set(center.sx, center.sy + 1);
+    const w = Math.max(name.width, price.width) + 12;
+    const bg = new Graphics().roundRect(center.sx - w / 2, center.sy - name.height - 4, w, name.height + price.height + 8, 4).fill({ color: 0x000000, alpha: 0.6 });
+    c.addChild(bg, name, price);
+    // 타일 컨테이너 위·오브젝트 아래: tiles 컨테이너 안에서 일반 타일 뒤에 추가된다
+    this.tiles.addChild(c);
+    return c;
   }
 
   private tileTexture(state: GameState, i: number, season: Season): Texture {
@@ -337,7 +448,7 @@ export class GameView {
       if (entry.sprite) {
         // 시트 모드: 변형·수확 가능 여부가 바뀔 때만 텍스처와 링을 갱신
         const ready = o.crop?.ready === true;
-        const key = `${objectVariant(o) ?? ''}:${ready}`;
+        const key = `${objectVariant(o) ?? ''}:${o.rot ?? ''}:${ready}`;
         if (this.badgeKeys.get(o.id) === key) continue;
         this.badgeKeys.set(o.id, key);
         const t = objectTex(o);

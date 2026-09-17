@@ -6,11 +6,26 @@ import { StaffPanel } from './StaffPanel';
 import { PromoPanel } from './PromoPanel';
 import { frame, brownBtn, brownBtnOn, brownBtnOff, dangerBtn, brownSelect, PALETTE, won } from './frame';
 
-export type Mode = { kind: 'idle' } | { kind: 'build'; objectType: string } | { kind: 'cell'; x: number; y: number } | { kind: 'menu' } | { kind: 'staff' } | { kind: 'promo' };
+export type Mode = { kind: 'idle' } | { kind: 'build'; objectType: string } | { kind: 'move' } | { kind: 'cell'; x: number; y: number } | { kind: 'menu' } | { kind: 'staff' } | { kind: 'promo' };
+
+/** 고스트 배치 확정 줄: 상태 문구 + ✓ / ↻ / ✗ */
+export interface PlaceBarProps {
+  text: string;
+  ok: boolean;
+  canRotate: boolean;
+  msg: string | null;
+  onConfirm: () => void;
+  onRotate: () => void;
+  onCancel: () => void;
+}
+
+/** 길·돌담은 드래그로 칠한다 (App과 같은 규칙) */
+const PAINT_KINDS = new Set(['path', 'wall']);
 
 const TABS: { kind: Mode['kind']; icon: string; label: string; to: Mode }[] = [
   { kind: 'idle', icon: 'look', label: '보기', to: { kind: 'idle' } },
   { kind: 'build', icon: 'build', label: '짓기', to: { kind: 'build', objectType: 'field' } },
+  { kind: 'move', icon: 'harvest', label: '이동', to: { kind: 'move' } },
   { kind: 'menu', icon: 'menu', label: '메뉴판', to: { kind: 'menu' } },
   { kind: 'staff', icon: 'local', label: '직원', to: { kind: 'staff' } },
   { kind: 'promo', icon: 'tourist', label: '홍보', to: { kind: 'promo' } },
@@ -28,11 +43,32 @@ function menuStatus(s: ReturnType<typeof useGame>, id: string): { ok: boolean; t
   return { ok, text: ok ? '재료 있음' : '재료 없음' };
 }
 
-export function BottomSheet({ mode, setMode }: { mode: Mode; setMode: (m: Mode) => void }) {
+/** 하단 메시지 줄 ("여기엔 못 지어요" 등) */
+function MessageBar({ text }: { text: string | null }) {
+  if (!text) return null;
+  return <div data-testid="place-msg" style={{ background: PALETTE.bad, color: '#fff', fontWeight: 700, padding: '6px 10px', borderRadius: 6, marginBottom: 6 }}>{text}</div>;
+}
+
+function PlaceBar({ text, ok, canRotate, msg, onConfirm, onRotate, onCancel }: PlaceBarProps) {
+  return (
+    <div style={{ marginBottom: 6 }}>
+      <MessageBar text={msg} />
+      <div style={{ fontSize: 13, color: ok ? PALETTE.ok : PALETTE.bad, marginBottom: 4 }}>{text}</div>
+      <div style={{ display: 'flex', gap: 6 }}>
+        <button aria-label="확정" style={{ ...(ok ? brownBtnOn : brownBtnOff), flex: 1, fontSize: 20 }} onClick={onConfirm}>✓ 확정</button>
+        {canRotate && <button aria-label="회전" style={{ ...brownBtn, fontSize: 20 }} onClick={onRotate}>↻</button>}
+        <button aria-label="취소" style={{ ...dangerBtn, fontSize: 20 }} onClick={onCancel}>✗</button>
+      </div>
+    </div>
+  );
+}
+
+export function BottomSheet({ mode, setMode, place, msg }: { mode: Mode; setMode: (m: Mode) => void; place: PlaceBarProps | null; msg: string | null }) {
   const s = useGame();
   const tall = mode.kind === 'staff' || mode.kind === 'promo';
   return (
     <div style={{ ...frame, position: 'absolute', left: 0, right: 0, bottom: 0, borderRadius: '10px 10px 0 0', borderBottom: 0, padding: '8px 12px calc(8px + env(safe-area-inset-bottom))', maxHeight: tall ? '60vh' : '40vh', overflowY: 'auto', fontSize: 16 }}>
+      {place ? <PlaceBar {...place} /> : <MessageBar text={msg} />}
       <div style={{ marginBottom: 6, display: 'flex', flexWrap: 'wrap' }}>
         {TABS.map((t) => (
           <button key={t.kind} style={{ ...(mode.kind === t.kind ? brownBtnOn : brownBtn), padding: '0 8px' }} onClick={() => setMode(t.to)}>
@@ -52,9 +88,13 @@ export function BottomSheet({ mode, setMode }: { mode: Mode; setMode: (m: Mode) 
               </button>
             );
           })}
-          <div style={{ fontSize: 13, color: PALETTE.inkSoft }}>칸을 눌러서 놓아요</div>
+          <div style={{ fontSize: 13, color: PALETTE.inkSoft }}>
+            {PAINT_KINDS.has(objectDef(mode.objectType).kind) ? '칸을 누르거나 끌어서 이어 놓아요' : '칸을 누르면 고스트가 생겨요. 끌어서 옮기고 ✓로 확정해요'}
+          </div>
         </div>
       )}
+
+      {mode.kind === 'move' && !place && <div style={{ fontSize: 13, color: PALETTE.inkSoft }}>옮길 것을 누르고, 새 자리를 누른 뒤 ✓로 확정해요 (돈은 안 들어요)</div>}
 
       {mode.kind === 'cell' && <CellPanel x={mode.x} y={mode.y} />}
 

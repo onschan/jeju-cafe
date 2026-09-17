@@ -11,6 +11,14 @@ const SPEED_ICON: Record<(typeof SPEEDS)[number], string> = { 0: 'speed_pause', 
 
 const iconBtn: CSSProperties = { width: 44, height: 44, padding: 0, border: 0, borderRadius: 6, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' };
 
+/** 돈을 짧게: 1만 이상은 '497만'처럼 만 단위(내림), 그 아래는 그대로. 375px 폰에서 HUD 한 줄에 들어가도록. */
+export function compactMoney(n: number): string {
+  const neg = n < 0 ? '-' : '';
+  const a = Math.abs(n);
+  if (a >= 10_000) return `${neg}${Math.floor(a / 10_000).toLocaleString()}만`;
+  return `${neg}${a.toLocaleString()}`;
+}
+
 /** 6~23시 → 'AM 8:00' / 'PM 3:00' */
 export function clockText(hour: number): string {
   const h12 = hour % 12 === 0 ? 12 : hour % 12;
@@ -46,12 +54,12 @@ export function HUD() {
   const toggleMute = () => { const m = !muted; setMuted(m); setMutedState(m); };
   return (
     <div style={{ position: 'absolute', top: 0, left: 0, right: 0, padding: '8px 12px', color: '#fff', fontSize: 14, background: 'linear-gradient(#000a, #0000)', pointerEvents: 'none' }}>
-      {/* 1행: 날짜·돈·연구·인기 (읽기 전용) */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, whiteSpace: 'nowrap' }}>
+      {/* 1행: 날짜·돈·연구·인기 (읽기 전용). 375px에서 넘치면 인기 미터가 다음 줄로 내려간다. */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', columnGap: 6, rowGap: 2, whiteSpace: 'nowrap', flexWrap: 'wrap', fontSize: 13 }}>
         <span>{s.clock.year}년 {s.clock.month}월 {s.clock.day}일 <span style={{ opacity: 0.85 }}>{clockText(s.clock.hour)}</span></span>
-        <span><Icon name="money" size={24} alt="돈" /> {s.money.toLocaleString()}</span>
-        <span><Icon name="research" size={24} alt="연구" /> {s.research}</span>
-        <span><Icon name="local" size={24} alt="동네 손님" /> <meter min={-100} max={100} value={s.popularity} style={{ width: 60, verticalAlign: 'middle' }} /> <Icon name="tourist" size={24} alt="관광객" /></span>
+        <span title={s.money.toLocaleString()}><Icon name="money" size={20} alt="돈" /> {compactMoney(s.money)}</span>
+        <span><Icon name="research" size={20} alt="연구" /> {s.research.toLocaleString()}</span>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 2 }}><Icon name="local" size={20} alt="동네 손님" /><meter min={-100} max={100} value={s.popularity} style={{ width: 44, verticalAlign: 'middle' }} /><Icon name="tourist" size={20} alt="관광객" /></span>
       </div>
       {/* 2행: 속도 버튼(44×44)과 해금·음소거 버튼 — 손가락으로 누르는 것만 모아 둔다 */}
       <div style={{ marginTop: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
