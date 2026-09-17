@@ -123,6 +123,7 @@ export function updateRank(state: GameState): void {
   state.rank = Math.max(state.rank, Math.min(MAX_RANK, 1 + Math.floor(n / RANK_PER_UNLOCKED)));
 }
 
+
 // ---------- 타깃 ----------
 
 export function isTarget(state: GameState, typeId: string): boolean {

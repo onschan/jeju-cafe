@@ -1,5 +1,5 @@
 import { useGame, dispatch } from './store';
-import { objectStats, sceneryScore, canUseItem, itemEffect, PROTECTED_TYPES, canPlant, clearCost, canClearRock, hasPickaxe, cellAt, type ObjectKind, type ComboStrength } from '../sim/index.ts';
+import { objectStats, sceneryScore, canUseItem, itemEffect, PROTECTED_TYPES, canPlant, clearCost, canClearRock, hasPickaxe, cellAt, type ObjectKind, type ComboStrength, buildDaysLeft } from '../sim/index.ts';
 import { objectDef, cropDef, itemDef, CROPS, COMBOS, SETS } from '../data/index.ts';
 import { Icon } from './Icon';
 import { Confirm } from './Popup';
@@ -54,7 +54,7 @@ export function ObjectInfoPanel({ objectId }: { objectId: string }) {
   const useIt = (itemId: string) => {
     const it = itemDef(itemId);
     const eff = itemEffect(it, d);
-    Confirm(`${it.name}을(를) 써서 모든 ${d.name}의 ${it.stat === 'popularity' ? '인기' : '요금'}을 +${eff}${it.stat === 'feePct' ? '%' : ''} 올릴까요? (아이템 1개를 써요)`, () => dispatch({ type: 'useItem', itemId, objectType: o.type }), { title: '아이템 사용' });
+    Confirm(`${it.name}을(를) 써서 모든 ${d.name}의 ${it.stat === 'popularity' ? '인기' : it.stat === 'scenery' ? '경관' : '요금'}을 +${eff}${it.stat === 'feePct' ? '%' : ''} 올릴까요? (아이템 1개를 써요)`, () => dispatch({ type: 'useItem', itemId, objectType: o.type }), { title: '아이템 사용' });
   };
   return (
     <div>
@@ -63,6 +63,7 @@ export function ObjectInfoPanel({ objectId }: { objectId: string }) {
         {o.crop && ` · ${cropDef(o.crop.cropId).name} ${o.crop.daysGrown}일째 (익으면 창고로)`}
       </div>
       <div style={{ fontSize: 13, color: PALETTE.inkSoft, marginBottom: 4 }}>{d.desc ?? d.effectText ?? `${d.name}이에요`}</div>
+      {o.build && <div style={{ fontSize: 14, color: PALETTE.title, marginBottom: 4 }} data-testid="building">🔨 짓는 중 — 완공까지 {buildDaysLeft(s, o)}일 (일꾼 삼춘이 일하고 있어요)</div>}
       <div style={{ fontSize: 14, marginBottom: 4, lineHeight: 1.7 }}>
         <Stat icon="tourist" label="인기" value={`${st.popularity}`} good={st.popularity > 10 ? true : st.popularity < 10 ? false : undefined} />
         <Stat label="경치" value={`${st.scenery > 0 ? '+' : ''}${st.scenery}`} />

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { GameView, type GhostSpec } from '../render/GameView';
-import { startLoop, dispatch, getState, setViewReset, autosaveNow, hasAnySave, loadSlot, setMonthCardHook } from './store';
+import { startLoop, dispatch, getState, setViewReset, autosaveNow, hasAnySave, loadSlot, setMonthCardHook, setSceneHook } from './store';
 import { unlockAudio, bgm, isMuted, setMuted } from './audio';
 import { seasonOf, canPlace, objectAt, footprint, parcelAt, parcelPrice, canBuyParcel, placeCost, PROTECTED_TYPES, ROTATABLE_TYPES, type GameState } from '../sim/index.ts';
 import { objectDef } from '../data/index.ts';
@@ -8,6 +8,7 @@ import { objectDef } from '../data/index.ts';
 import { HUD, NightOverlay } from './HUD';
 import { BottomSheet, type Mode, type PlaceBarProps, type DragBuild } from './BottomSheet';
 import { GuestPopup } from './GuestPopup';
+import { DrawPopup } from './ShopPanel';
 import { MonthCard } from './MonthCard';
 import { DevelopResultPopup } from './CraftPanel';
 import { Guide } from './Guide';
@@ -31,7 +32,7 @@ interface Moving { objectId: string; x: number; y: number }
 
 /** 장면 창에 세울 직원(최대 3명). 없으면 SceneWindow가 기본 인물을 세운다. */
 function staffChars(s: GameState): SceneChar[] {
-  return s.staff.slice(0, 3).map((st) => ({ parts: staffParts(st.face, st.role) }));
+  return s.staff.slice(0, 3).map((st) => ({ parts: staffParts(st.face, st.role, s.uniform ?? null) }));
 }
 
 function inFootprint(type: string, ox: number, oy: number, x: number, y: number): boolean {
@@ -83,7 +84,8 @@ function Game({ onExit }: { onExit: () => void }) {
       const card = st.lastMonthCard;
       if (rec.monthRecord && card) showScene({ title: '월 매출 신기록', text: `${card.month}월 매출 ${won(card.income)} — 신기록!`, chars: staffChars(st), sfx: 'fanfare' });
     });
-    return () => setMonthCardHook(null);
+    setSceneHook((st, title, text) => showScene({ title, text, chars: staffChars(st), sfx: 'fanfare' }));
+    return () => { setMonthCardHook(null); setSceneHook(null); };
   }, []);
   const hostRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<GameView | null>(null);
@@ -282,6 +284,7 @@ function Game({ onExit }: { onExit: () => void }) {
       <BottomSheet mode={mode} setMode={setMode} place={place} msg={place ? null : msg} onGuest={setGuestPopup} onDragBuild={onDragBuild} />
       <MonthCard />
       <DevelopResultPopup />
+      <DrawPopup />
       {guestPopup && <GuestPopup guestId={guestPopup} onClose={() => setGuestPopup(null)} onQuest={(id) => { dispatch({ type: 'acceptQuest', id }); setMode({ kind: 'guests' }); }} />}
       {menu && <GameMenu onClose={() => setMenu(false)} onExit={onExit} />}
     </div>

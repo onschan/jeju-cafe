@@ -50,8 +50,24 @@ export const ROLE_ACC: Record<RoleId, AccKind> = {
   guide: 'glasses',
 };
 
-export function staffParts(face: Face, role: RoleId | null): CharacterParts {
-  return partsOfFace(face, role ? [ROLE_ACC[role]] : []);
+/** 유니폼 → 상의 색(TOP_RGB 인덱스)·액세서리. 하와이안 = 주황, 갈옷 = 노랑(갈색 근사), 해녀복 = 파랑 + 물안경(안경), 방언 티 = 흰색, 산타복 = 빨강 + 모자(캡). */
+export const UNIFORM_STYLE: Record<string, { top: number; acc?: AccKind }> = {
+  uf_hawaiian: { top: 7 },
+  uf_galot: { top: 3 },
+  uf_haenyeo: { top: 1, acc: 'glasses' },
+  uf_dialect_tee: { top: 5 },
+  uf_santa: { top: 4, acc: 'cap' },
+};
+
+/** 직원 파츠: 얼굴 + 역할 액세서리. 유니폼을 입었으면 상의 색(과 액세서리)을 유니폼으로. */
+export function staffParts(face: Face, role: RoleId | null, uniform: string | null = null): CharacterParts {
+  const style = uniform ? UNIFORM_STYLE[uniform] : undefined;
+  const accs: AccKind[] = [];
+  if (style?.acc) accs.push(style.acc);
+  if (role && !accs.includes(ROLE_ACC[role])) accs.push(ROLE_ACC[role]);
+  const parts = partsOfFace(face, accs);
+  if (style) parts.top = style.top;
+  return parts;
 }
 
 /** 손님 파츠: 얼굴(id 해시)에 태그로 머리 모양·액세서리를 얹는다. 여성 0~3, 남성 4~6, 시니어 남성은 대머리(7)도. 단체 → 배낭, 경치 → 카메라, 농사 → 밀짚모자, 편의 → 안경. */

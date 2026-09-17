@@ -75,6 +75,7 @@ export function placeCost(state: GameState, type: string): number {
 
 /** 2층을 올리면 본관이 실내 좌석 4석짜리 자리가 된다 (손님이 본관 위에 앉는다 = 2층) */
 export function seatsOf(state: GameState, o: PlacedObject): number {
+  if (o.build) return 0; // 건설 중엔 앉을 수 없다
   if (o.type === 'warehouse') return hasExpansion(state, 'floor2') ? FLOOR2_SEATS : 0;
   return objectDef(o.type).seats ?? (objectDef(o.type).kind === 'seat' ? 1 : 0);
 }

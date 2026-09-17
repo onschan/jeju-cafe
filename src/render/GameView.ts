@@ -1,6 +1,6 @@
 import { Application, Container, Sprite, Graphics, Texture } from 'pixi.js';
 import type { GameState, PlacedObject, Guest, Staff, Season, RoleId, Pt } from '../sim/index.ts';
-import { seasonOf, LOW_ENERGY, parcelPrice, footprint, roomAt, WALL_COLORS } from '../sim/index.ts';
+import { seasonOf, LOW_ENERGY, parcelPrice, footprint, roomAt, WALL_COLORS, dayIndex } from '../sim/index.ts';
 import type { Parcel } from '../sim/index.ts';
 import { objectDef, cropDef } from '../data/index.ts';
 import { isoTerrainTexture, isoObjectTexture, glowTexture, label, bubble, clearTextureCache, loadLabelFont } from './textures';
@@ -69,6 +69,8 @@ const ROLE_ICON: Record<RoleId, string> = { hall: 'look', barista: 'menu', cook:
 const ROLE_ICON_Y = -(CHAR_H - 10);
 /** 기력이 낮은 직원은 흐리게 */
 const TIRED_ALPHA = 0.6;
+/** 건설 중인 시설: 반투명 + 망치 라벨 */
+const BUILDING_ALPHA = 0.5;
 /** 밤 오버레이 색·최대 알파 */
 const NIGHT_COLOR = 0x0b1a3a;
 const NIGHT_MAX_ALPHA = 0.55;
@@ -85,6 +87,10 @@ interface ObjEntry {
   glow: Sprite | null;
   /** 마지막으로 그린 자리 "x,y" (이동 감지) */
   posKey: string;
+  /** 마지막으로 그린 건설 상태 ("" = 완공) */
+  buildKey?: string;
+  /** 건설 배지 (오버레이 레이어) */
+  badge?: Container | null;
 }
 
 interface GuestEntry {
@@ -240,7 +246,7 @@ export class GameView {
 
   /** 저장 불러오기·새 게임처럼 상태가 통째로 바뀔 때 노드 캐시를 비운다. */
   reset() {
-    for (const { node, glow } of this.objNodes.values()) { node.destroy({ children: true }); glow?.destroy(); }
+    for (const { node, glow, badge } of this.objNodes.values()) { node.destroy({ children: true }); glow?.destroy(); badge?.destroy({ children: true }); }
     for (const { node } of this.guestNodes.values()) node.destroy({ children: true });
     for (const { node } of this.staffNodes.values()) node.destroy({ children: true });
     for (const fx of this.fxQueue) fx.sprite.destroy();
@@ -509,6 +515,41 @@ export class GameView {
     return { node: c, type: o.type, sprite: null, glow, posKey: `${o.x},${o.y}` };
   }
 
+  /** 건설 중: 반투명 + 머리 위 망치 아이콘과 "N일" 배지 (오버레이 레이어 — 본관 같은 큰 이웃 뒤에 숨지 않게). 남은 날이 바뀔 때만 다시 그린다. */
+  private syncBuilding(entry: ObjEntry, o: PlacedObject, state: GameState) {
+    const left = o.build ? Math.max(0, o.build.doneDay - dayIndex(state.clock)) : 0;
+    const key = o.build ? `b${left}:${o.x},${o.y}` : '';
+    if (entry.buildKey === key) return;
+    entry.buildKey = key;
+    entry.badge?.destroy({ children: true });
+    entry.badge = null;
+    entry.node.alpha = o.build ? BUILDING_ALPHA : 1;
+    if (!o.build) return;
+    const def = objectDef(o.type);
+    const gc = this.footCenter(o, def.w, def.h);
+    const top = gc.sy - (entry.sprite?.height ?? 40) * 0.6 - 4; // 스프라이트 위쪽 언저리
+    const c = new Container();
+    const l = label(`${left}일`, 10);
+    l.anchor.set(0, 0.5);
+    const iconTex = hasAssets() ? tex(spriteName.icon('build')) : null;
+    const iconW = iconTex ? 16 : 0;
+    const w = iconW + l.width + 12;
+    c.addChild(new Graphics().roundRect(-w / 2, -18, w, 18, 4).fill({ color: 0x6b3d1e, alpha: 0.9 }));
+    if (iconTex) {
+      const icon = new Sprite(iconTex);
+      icon.anchor.set(0, 0.5);
+      icon.width = 14; icon.height = 14;
+      icon.position.set(-w / 2 + 4, -9);
+      c.addChild(icon);
+    }
+    l.position.set(-w / 2 + 4 + iconW + 2, -9);
+    c.addChild(l);
+    c.position.set(gc.sx, top);
+    c.zIndex = 1e5;
+    this.overlay.addChild(c);
+    entry.badge = c;
+  }
+
   /** 본관 인테리어: 외벽 색 tint + 간판 문구 라벨 */
   private decorateCafe(entry: ObjEntry, state: GameState) {
     if (entry.sprite) entry.sprite.tint = WALL_COLORS[state.cosmetics?.wallColor ?? 0] ?? 0xffffff;
@@ -538,6 +579,7 @@ export class GameView {
       if (!o || o.type !== entry.type) {
         entry.node.destroy({ children: true });
         entry.glow?.destroy();
+        entry.badge?.destroy({ children: true });
         this.objNodes.delete(id);
         this.badgeKeys.delete(id);
       }
@@ -552,6 +594,7 @@ export class GameView {
         this.objNodes.set(o.id, entry);
       }
       if (entry.glow) { entry.glow.alpha = glowAlpha; entry.glow.visible = glowAlpha > 0; }
+      this.syncBuilding(entry, o, state);
       // 자리가 바뀌었으면(이동) 노드 위치·깊이 갱신
       const def = objectDef(o.type);
       const posKey = `${o.x},${o.y}`;
@@ -668,9 +711,9 @@ export class GameView {
   }
 
   /** 직원 노드. 원점은 발끝. 파츠 캐릭터 + 머리 위 역할 배지. */
-  private makeStaffNode(st: Staff): StaffEntry {
+  private makeStaffNode(st: Staff, uniform: string | null): StaffEntry {
     const node = new Container();
-    const body = makeCharacterNode(staffParts(st.face, st.role), walkDir(st.x, st.y, st.path[0]), 1);
+    const body = makeCharacterNode(staffParts(st.face, st.role, uniform), walkDir(st.x, st.y, st.path[0]), 1);
     node.addChild(body);
     return { node, body, roleKey: '' };
   }
@@ -686,10 +729,10 @@ export class GameView {
     const walkFrame = (Math.floor(now / WALK_FRAME_MS) % 3) as Frame;
     for (const st of state.staff) {
       let entry = this.staffNodes.get(st.id);
-      if (!entry) { entry = this.makeStaffNode(st); this.actors.addChild(entry.node); this.staffNodes.set(st.id, entry); }
-      // 역할이 바뀌면 액세서리가 달라지므로 캐릭터를 다시 만든다
-      const parts = staffParts(st.face, st.role);
-      if (!sameAccs(entry.body, parts.accs)) {
+      if (!entry) { entry = this.makeStaffNode(st, state.uniform ?? null); this.actors.addChild(entry.node); this.staffNodes.set(st.id, entry); }
+      // 역할·유니폼이 바뀌면 액세서리·상의 색이 달라지므로 캐릭터를 다시 만든다
+      const parts = staffParts(st.face, st.role, state.uniform ?? null);
+      if (!sameAccs(entry.body, parts.accs) || entry.body.__parts?.top !== parts.top) {
         entry.body.destroy({ children: true });
         entry.body = makeCharacterNode(parts);
         entry.node.addChildAt(entry.body, 0);
@@ -830,7 +873,7 @@ export class GameView {
     if (since < 0) return;
     for (const e of fx) {
       if (e.tick < since) continue;
-      if (e.kind === 'harvest') this.spawnSparkle(e.x, e.y, now);
+      if (e.kind === 'harvest' || e.kind === 'complete') this.spawnSparkle(e.x, e.y, now);
       else if (e.kind === 'pop') this.spawnPop(e.x, e.y, e.n, now);
       else if (e.kind === 'photo') this.spawnSparkle(e.x, e.y, now);
     }

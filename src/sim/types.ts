@@ -35,7 +35,11 @@ export interface ObjectDef {
   indoor?: true;       // 실내 전용 오브젝트: room 발자국 칸 위에만 놓는다
   fee?: number;        // 시설 이용료 (손님이 순회하며 낸다)
   unlock?: UnlockCond; // v2 시설 해금 조건 (없으면 해금 트리·시작 목록으로만 열린다)
+  category?: FacilityCategory; // v2 시설 분류 (가이드북 해금·심사용)
+  buildDays?: number;  // 건설 기간(일). 없거나 0이면 즉시 완공. v2 시설: 소 1·중 3·대 7
 }
+/** v2 시설 분류 */
+export type FacilityCategory = 'rest' | 'convenience' | 'food' | 'fun' | 'farm' | 'scenery' | 'landmark';
 
 export interface CropDef {
   id: string;
@@ -244,7 +248,7 @@ export type ItemSlot = 'seat' | 'facility' | 'farm' | 'env';
 export interface ItemDef {
   id: string;
   name: string;
-  stat: 'popularity' | 'feePct';
+  stat: 'popularity' | 'feePct' | 'scenery';
   value: number;                            // 기본 효과. 잘 맞는 시설이면 ×2
   fitIds: string[];                         // 잘 맞는 시설 id (v2)
   fitSlots?: Partial<Record<ItemSlot, number>>; // 시설 분류별 0~3 (v1). 0이면 못 씀, 3이면 ×2
@@ -270,7 +274,7 @@ export interface ObjectStats {
   sets: ActiveSet[];
   segmentBonus: Record<string, number>; // 손님층 id → 콤보 대상 가산 인기
 }
-export interface ItemBonus { popularity: number; feePct: number }
+export interface ItemBonus { popularity: number; feePct: number; scenery?: number }
 
 export interface UnlockDef {
   id: string;
@@ -370,6 +374,7 @@ export interface PlacedObject {
   y: number;
   crop: CropState | null;
   rot?: number; // 0..3, 방향 있는 오브젝트만 (스프라이트 변형 _r{n})
+  build?: { doneDay: number; days: number }; // 건설 중 (doneDay = 완공 절대 일 인덱스). 없으면 완공
 }
 
 /** 필지. 격자는 처음부터 전체 크기이고, 소유한 필지에만 지을 수 있다. */
@@ -391,7 +396,18 @@ export type FxEvent =
   | { kind: 'harvest'; x: number; y: number; tick: number }
   | { kind: 'pop'; x: number; y: number; n: number; tick: number }
   | { kind: 'greet'; staffId: string; tick: number }
-  | { kind: 'photo'; x: number; y: number; tick: number }; // 인생샷 스킬: 손님이 사진을 찍었다
+  | { kind: 'photo'; x: number; y: number; tick: number } // 인생샷 스킬: 손님이 사진을 찍었다
+  | { kind: 'complete'; x: number; y: number; tick: number } // 시설 완공 반짝임
+  | { kind: 'scene'; title: string; text: string; tick: number }; // UI 장면 창(완공 등). 렌더는 무시한다
+
+// ---------- 상점·추첨·유니폼·가이드북 (2B-2 Task 6·7) ----------
+export interface MileageShopDef { id: string; name: string; price: number; description: string; itemId?: string }
+export interface TicketShopDef { id: string; name: string; price: number; description: string; itemId?: string; uniformId?: string }
+export interface UniformDef { id: string; name: string; ticketTier: number; effectText: string; parts: { top: string; acc?: string } }
+/** 인형뽑기 상품 종류 (v1 roulette.json 가중치를 다시 라벨링) */
+export type DrawPrizeKind = 'money' | 'research' | 'ingredient_box' | 'mileage' | 'item' | 'seed' | 'uniform_piece' | 'miss';
+export interface DrawPrizeDef { kind: DrawPrizeKind; label: string; pct: number }
+export interface DrawResult { kind: DrawPrizeKind; label: string; text: string; free: boolean }
 
 export interface Guest {
   id: string;
@@ -455,6 +471,14 @@ export interface GameState {
   mileage: number;
   rank: number;                               // 카페 랭크 (임시: 해금 손님 수로 오른다. Task 7이 대체)
   star: number;                               // ★ 등급 (Task 7 전까지 1)
+  builders: number;                           // 일꾼 삼춘 수 = 동시 건설 수 (기본 2)
+  uniform: string | null;                     // 입고 있는 유니폼 id (연출)
+  uniforms: string[];                         // 가진 유니폼
+  uniformPieces: number;                      // 유니폼 조각 (5개 → 유니폼 1벌)
+  freeDrawMonth: number;                      // 이 monthIndex에 무료 추첨 1회가 남아 있다 (−1 = 없음)
+  lastDraw: DrawResult | null;                // 마지막 인형뽑기 결과 (UI 연출, dismissDraw로 닫는다)
+  freeRecruits: number;                       // 직원 스카우트권: 다음 공고비 무료 횟수
+  codexMileage: number;                       // 도감 10개마다 준 마일리지 단계
   board: BoardState;
   spots: Record<string, number>;              // spotId → 레벨 (0 = 미투자)
   effects: ActiveEffect[];                    // 이벤트 효과 (기간형)
@@ -524,6 +548,12 @@ export type Action =
   | { type: 'dismissDevelop' }
   | { type: 'addTopping'; menuId: string; toppingId: string }
   | { type: 'removeTopping'; menuId: string; toppingId: string }
-  | { type: 'levelUpMenu'; menuId: string };
+  | { type: 'levelUpMenu'; menuId: string }
+  | { type: 'buyMileage'; id: string }
+  | { type: 'buyTicket'; id: string }
+  | { type: 'drawTicket' }
+  | { type: 'dismissDraw' }
+  | { type: 'setUniform'; id: string | null }
+  | { type: 'useGuestItem'; itemId: string; guestId: string };
 
 export interface ApplyResult { ok: boolean; reason?: string }

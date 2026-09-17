@@ -12,8 +12,13 @@ const SLOT_OF: Record<ObjectKind, ItemSlot> = {
   building: 'facility', busstop: 'facility', gate: 'facility', facility: 'facility',
 };
 
-/** 이 시설에 쓸 때의 효과. 잘 맞는 시설(id 일치 또는 v1 분류 3)은 ×2, v1 분류 0이면 0(못 씀). */
+/** 경관 씨앗을 쓸 수 있는 종류: 경관이 있는 것(경관물·나무·랜드마크) */
+const SCENERY_KINDS = new Set<ObjectKind>(['deco', 'tree', 'landmark']);
+export const ITEM_SCENERY_CAP = 30;
+
+/** 이 시설에 쓸 때의 효과. 잘 맞는 시설(id 일치 또는 v1 분류 3)은 ×2, v1 분류 0이면 0(못 씀). 경관 씨앗은 경관물에만. */
 export function itemEffect(item: ItemDef, def: ObjectDef): number {
+  if (item.stat === 'scenery') return SCENERY_KINDS.has(def.kind) || def.scenery > 0 ? item.value : 0;
   if (item.fitIds.includes(def.id)) return item.value * 2;
   if (item.fitSlots) {
     const k = item.fitSlots[SLOT_OF[def.kind]] ?? 0;
@@ -54,5 +59,6 @@ export function useItem(state: GameState, itemId: string, objectType: string, it
     const gained = b.popularity - before;
     // 그 종류의 모든 오브젝트 위에 +N 팝업
     if (gained > 0) for (const o of Object.values(state.objects)) if (o.type === objectType) pushFx(state, { kind: 'pop', x: o.x, y: o.y, n: gained, tick: state.tick });
-  } else b.feePct = Math.min(ITEM_FEE_CAP, b.feePct + eff);
+  } else if (item.stat === 'scenery') b.scenery = Math.min(ITEM_SCENERY_CAP, (b.scenery ?? 0) + eff);
+  else b.feePct = Math.min(ITEM_FEE_CAP, b.feePct + eff);
 }

@@ -33,6 +33,8 @@ let toast: { text: string; until: number } | null = null;
 let viewReset: (() => void) | null = null;
 /** 월말 카드가 새로 떴을 때 UI가 반응하도록 (신기록 장면 창 등) */
 let monthCardHook: ((s: GameState, rec: { monthRecord: boolean; yearRecord: boolean }) => void) | null = null;
+/** sim이 fx 큐에 남긴 장면(완공 등)을 UI 장면 창으로 */
+let sceneHook: ((s: GameState, title: string, text: string) => void) | null = null;
 
 function emit() { version++; for (const l of listeners) l(); }
 function save() {
@@ -54,6 +56,7 @@ const ACTION_SFX: Record<Action['type'], SfxName> = {
   move: 'place', rotate: 'tap', buyParcel: 'unlock', useItem: 'unlock', clearRock: 'remove', renameCafe: 'tap', expand: 'unlock', setCosmetic: 'tap', praise: 'happy',
   acceptQuest: 'tap', respondEvent: 'tap', investSpot: 'unlock',
   develop: 'unlock', dismissDevelop: 'tap', addTopping: 'tap', removeTopping: 'tap', levelUpMenu: 'unlock',
+  buyMileage: 'coin', buyTicket: 'coin', drawTicket: 'tap', dismissDraw: 'tap', setUniform: 'tap', useGuestItem: 'unlock',
 };
 
 export function dispatch(a: Action): ApplyResult {
@@ -76,6 +79,7 @@ export function useGame(): GameState {
 export function setViewReset(fn: (() => void) | null) { viewReset = fn; }
 
 export function setMonthCardHook(fn: typeof monthCardHook) { monthCardHook = fn; }
+export function setSceneHook(fn: typeof sceneHook) { sceneHook = fn; }
 
 /** 슬롯 목록에 보여 줄 요약. 비어 있거나 읽을 수 없으면 null. */
 export interface SlotSummary { slot: number; year: number; month: number; day: number; money: number; stars: number; savedAt: number | null }
@@ -151,6 +155,8 @@ export function startLoop(render: (s: GameState) => void): () => void {
   let prevMoods = new Map<string, Mood | null>();
   let prevSeason: Season | null = null;
   let prevMonthCard: GameState['lastMonthCard'] = state.lastMonthCard;
+  // 장면 fx: 지난 프레임의 state.tick 이상인 항목이 새것 (GameView.syncFx와 같은 규칙). 불러오기 직후 밀린 것은 건너뛴다.
+  let sceneSeenTick = state.tick;
 
   const detectSounds = () => {
     const moods = new Map<string, Mood | null>();
@@ -169,6 +175,9 @@ export function startLoop(render: (s: GameState) => void): () => void {
       monthCardHook?.(state, rec);
     }
     prevMonthCard = state.lastMonthCard;
+    const since = sceneSeenTick;
+    sceneSeenTick = state.tick;
+    if (since <= state.tick) for (const e of state.fx ?? []) if (e.kind === 'scene' && e.tick >= since) sceneHook?.(state, e.title, e.text);
     const season = seasonOf(state.clock.month);
     if (season !== prevSeason) { prevSeason = season; void bgm(season); }
   };

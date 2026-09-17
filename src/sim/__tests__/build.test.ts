@@ -1,0 +1,62 @@
+import { X, Y } from './helpers.ts';
+import { createInitialState } from '../state.ts';
+import { apply } from '../actions.ts';
+import { tick } from '../tick.ts';
+import { DAY_MS } from '../clock.ts';
+import { dayIndex } from '../effects.ts';
+import { objectAt } from '../grid.ts';
+import { buildDaysOf, constructions, buildDaysLeft, canStartBuild, START_BUILDERS } from '../build.ts';
+import { seatsOf } from '../cafe.ts';
+import { freeSeats } from '../guests.ts';
+import { FACILITIES, objectDef, BUILD_DAYS_BY_TIER } from '../../data/index.ts';
+
+/** 시작부터 열려 있는 v2 시설 중 건설 기간이 있는 것 (테라스 좌석 등) */
+const BUILT = FACILITIES.find((f) => f.unlock?.type === 'start' && (f.buildDays ?? 0) > 0 && f.kind === 'seat' && !f.indoor)!;
+
+test('데이터: v2 시설은 소/중/대 → 1/3/7일, 기본 오브젝트(밭·길·야외 테이블)는 즉시', () => {
+  expect(BUILD_DAYS_BY_TIER).toEqual({ small: 1, medium: 3, large: 7 });
+  expect(FACILITIES.every((f) => (f.buildDays ?? 0) >= 1)).toBe(true);
+  expect(new Set(FACILITIES.map((f) => f.buildDays))).toEqual(new Set([1, 3, 7]));
+  for (const t of ['field', 'path', 'table_out', 'tangerine_tree', 'stonewall']) expect(buildDaysOf(t)).toBe(0);
+  expect(FACILITIES.every((f) => f.category !== undefined)).toBe(true);
+});
+
+test('건설: 놓으면 build 표식(남은 날), 좌석은 앉을 수 없고, 날이 지나면 완공 알림·반짝임·장면', () => {
+  const s = createInitialState(1);
+  s.money = 100_000_000;
+  const days = buildDaysOf(BUILT.id);
+  expect(days).toBeGreaterThan(0);
+  expect(apply(s, { type: 'place', objectType: BUILT.id, x: X(6), y: Y(4) }).ok).toBe(true);
+  const o = objectAt(s, X(6), Y(4))!;
+  expect(o.build).toEqual({ doneDay: dayIndex(s.clock) + days, days });
+  expect(buildDaysLeft(s, o)).toBe(days);
+  expect(seatsOf(s, o)).toBe(0);
+  expect(freeSeats(s).map((x) => x.id)).not.toContain(o.id);
+  expect(constructions(s)).toHaveLength(1);
+  for (let d = 0; d < days - 1; d++) tick(s, DAY_MS);
+  tick(s, DAY_MS / 2);
+  expect(o.build).toBeDefined();
+  tick(s, DAY_MS);
+  expect(o.build).toBeUndefined();
+  expect(seatsOf(s, o)).toBe(objectDef(BUILT.id).seats);
+  expect(s.notices).toContain(`${BUILT.name} 완공!`);
+  expect(s.fx.some((f) => f.kind === 'complete' && f.x === o.x && f.y === o.y)).toBe(true);
+  expect(s.fx.some((f) => f.kind === 'scene' && f.text.includes(`${BUILT.name} 완공!`))).toBe(true);
+});
+
+test('동시 건설은 일꾼 수(기본 2)까지, 일꾼을 사면 늘어난다. 즉시 완공 종류는 일꾼이 필요 없다.', () => {
+  const s = createInitialState(1);
+  s.money = 100_000_000;
+  expect(s.builders).toBe(START_BUILDERS);
+  expect(apply(s, { type: 'place', objectType: BUILT.id, x: X(6), y: Y(4) }).ok).toBe(true);
+  expect(apply(s, { type: 'place', objectType: BUILT.id, x: X(7), y: Y(4) }).ok).toBe(true);
+  const r = apply(s, { type: 'place', objectType: BUILT.id, x: X(8), y: Y(4) });
+  expect(r.ok).toBe(false);
+  expect(r.reason).toContain('일꾼');
+  expect(canStartBuild(s, 'table_out').ok).toBe(true);
+  expect(apply(s, { type: 'place', objectType: 'table_out', x: X(8), y: Y(4) }).ok).toBe(true);
+  s.mileage = 30;
+  expect(apply(s, { type: 'buyMileage', id: 'ms_worker_3' }).ok).toBe(true);
+  expect(apply(s, { type: 'place', objectType: BUILT.id, x: X(9), y: Y(4) }).ok).toBe(true);
+  expect(constructions(s)).toHaveLength(3);
+});

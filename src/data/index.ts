@@ -1,4 +1,4 @@
-import type { ObjectDef, CropDef, MenuDef, GuestTypeDef, UnlockDef, IngredientDef, RoleDef, SkillDef, PromotionDef, GuestTags, ComboDef, ComboTarget, ComboStrength, ComboSide, SetDef, ItemDef, ItemSlot, Season, MenuCategory, GuestEffect, GuestWant, UnlockCond, QuestDef, QuestCondition, QuestReward, SpotDef, SpotCategory, EventDef, MenuStats, MenuStatKey, IngredientCategory, IngredientComboDef, ToppingDef, HiddenRecipeDef } from '../sim/types.ts';
+import type { ObjectDef, CropDef, MenuDef, GuestTypeDef, UnlockDef, IngredientDef, RoleDef, SkillDef, PromotionDef, GuestTags, ComboDef, ComboTarget, ComboStrength, ComboSide, SetDef, ItemDef, ItemSlot, Season, MenuCategory, GuestEffect, GuestWant, UnlockCond, QuestDef, QuestCondition, QuestReward, SpotDef, SpotCategory, EventDef, MenuStats, MenuStatKey, IngredientCategory, IngredientComboDef, ToppingDef, HiddenRecipeDef, FacilityCategory, MileageShopDef, TicketShopDef, UniformDef, DrawPrizeDef, DrawPrizeKind } from '../sim/types.ts';
 import objectsJson from './objects.json' with { type: 'json' };
 import cropsJson from './crops.json' with { type: 'json' };
 import menusJson from './menus.json' with { type: 'json' };
@@ -22,6 +22,10 @@ import aurasJson from './generated/auras.json' with { type: 'json' };
 import itemsJson from './generated/items.json' with { type: 'json' };
 import itemsV2Json from './generated/v2/items.json' with { type: 'json' };
 import specialItemsJson from './generated/v2/special_items.json' with { type: 'json' };
+import mileageShopJson from './generated/v2/mileage_shop.json' with { type: 'json' };
+import ticketShopJson from './generated/v2/ticket_shop.json' with { type: 'json' };
+import uniformsJson from './generated/v2/uniforms.json' with { type: 'json' };
+import rouletteJson from './generated/roulette.json' with { type: 'json' };
 import compatMetaJson from './generated/compat_meta.json' with { type: 'json' };
 import facilitiesJson from './generated/v2/facilities.json' with { type: 'json' };
 import ingredientsV1Json from './generated/ingredients.json' with { type: 'json' };
@@ -180,8 +184,11 @@ export const ROOM_IDS = new Set(['warehouse', 'kitchen_ext', 'gallery', 'restroo
 export const INDOOR_IDS = new Set(['table_in', 'counter', 'sofa', 'bookshelf', 'vending', 'roaster']);
 /** 좌석 수: 소형 2, 중형 4, 대형 6 */
 const SEATS_BY_TIER: Record<string, number> = { small: 2, medium: 4, large: 6 };
+/** 건설 기간: 소 1일·중 3일·대 7일 (표에 buildDays가 있으면 그것) */
+export const BUILD_DAYS_BY_TIER: Record<string, number> = { small: 1, medium: 3, large: 7 };
+const FACILITY_CATEGORIES = new Set<FacilityCategory>(['rest', 'convenience', 'food', 'fun', 'farm', 'scenery', 'landmark']);
 type RawFacility = {
-  id: string; name: string; category: string; tier: string; w: number; h: number; cost: number; upkeep: number;
+  id: string; name: string; category: string; tier: string; w: number; h: number; cost: number; upkeep: number; buildDays?: number;
   popularity: number; feePct: number | null; fee: number | null; scenery: number; noise: number;
   seasonBonus: Record<string, number>; unlock: Record<string, unknown>; description: string | null;
 };
@@ -195,7 +202,9 @@ export function adaptFacility(r: RawFacility): ObjectDef {
     id: r.id, name: r.name, kind, w: r.w, h: r.h, cost: r.cost, scenery: r.scenery, noise: Math.max(0, r.noise), wind: r.category === 'scenery' && r.h >= 1 && ['palm', 'cedar'].includes(r.id) ? 1 : 0,
     upkeep: r.upkeep, terrain: r.category === 'farm' ? ['soil'] : ['soil', 'rock'], popularity: r.popularity, feePct: r.feePct ?? 100,
     desc: r.description ?? undefined, unlock: toUnlockCond(r.unlock),
+    buildDays: typeof r.buildDays === 'number' ? r.buildDays : BUILD_DAYS_BY_TIER[r.tier] ?? 1,
   };
+  if (FACILITY_CATEGORIES.has(r.category as FacilityCategory)) def.category = r.category as FacilityCategory;
   if (kind === 'seat') def.seats = SEATS_BY_TIER[r.tier] ?? 2;
   if (typeof r.fee === 'number') def.fee = r.fee;
   if (Object.keys(season).length > 0) def.seasonScenery = season;
@@ -444,12 +453,43 @@ export const COMBO_META = {
 };
 export const COMBOS: ComboDef[] = (compatJson as RawCombo[]).map(adaptCombo);
 export const SETS: SetDef[] = (aurasJson as RawSet[]).map(adaptSet);
-/** v1 12 + v2 20(중복 제외) + 특수 아이템 12(효과 0 — 시설엔 못 쓰고 부탁 보상·해금 열쇠로만) */
+/** 강화 아이템 20(v2: 잘 맞는 시설 ×2) — v1 표에도 있는 것은 v1 분류(0~3)를 같이 갖는다 + v1에만 있는 것 + 특수 아이템 12(씨앗 3종만 효과) */
 const ITEMS_V1: ItemDef[] = (itemsJson as RawItem[]).map(adaptItem);
-const V1_IDS = new Set(ITEMS_V1.map((i) => i.id));
-const ITEMS_V2: ItemDef[] = (itemsV2Json as RawItem[]).filter((r) => !V1_IDS.has(String(r.id))).map(adaptItem);
-const SPECIAL_ITEMS: ItemDef[] = (specialItemsJson as RawItem[]).map((r) => ({ id: String(r.id), name: String(r.name ?? r.id), stat: 'popularity', value: 0, fitIds: [], sourceText: String(r.sourceText ?? '') }));
-export const ITEMS: ItemDef[] = [...ITEMS_V1, ...ITEMS_V2, ...SPECIAL_ITEMS];
+const V1_BY_ID = new Map(ITEMS_V1.map((i) => [i.id, i] as const));
+const ITEMS_V2: ItemDef[] = (itemsV2Json as RawItem[]).map((r) => {
+  const def = adaptItem(r);
+  const v1 = V1_BY_ID.get(def.id);
+  return v1?.fitSlots ? { ...def, fitSlots: v1.fitSlots } : def;
+});
+const V2_IDS = new Set(ITEMS_V2.map((i) => i.id));
+const ITEMS_V1_ONLY = ITEMS_V1.filter((i) => !V2_IDS.has(i.id));
+/** 씨앗·열매는 시설(또는 손님층)에 쓸 수 있는 특수 아이템: 감귤 씨앗 인기 +5, 한라봉 씨앗 요금 +5%, 경관 씨앗 경관 +3. 나머지 특수 아이템은 효과 0(열쇠·부탁 보상). */
+const SEED_EFFECT: Record<string, { stat: ItemDef['stat']; value: number }> = {
+  tangerine_seed: { stat: 'popularity', value: 5 },
+  hallabong_seed: { stat: 'feePct', value: 5 },
+  scenery_seed: { stat: 'scenery', value: 3 },
+};
+export const POPULARITY_FRUIT = 'popularity_fruit';
+export const POPULARITY_FRUIT_DELTA = 10;
+const SPECIAL_ITEMS: ItemDef[] = (specialItemsJson as RawItem[]).map((r) => {
+  const id = String(r.id);
+  const eff = SEED_EFFECT[id] ?? { stat: 'popularity' as const, value: 0 };
+  return { id, name: String(r.name ?? r.id), stat: eff.stat, value: eff.value, fitIds: [], sourceText: String(r.sourceText ?? '') };
+});
+export const ITEMS: ItemDef[] = [...ITEMS_V2, ...ITEMS_V1_ONLY, ...SPECIAL_ITEMS];
+
+// ---------- 마일리지 상점·응모권 상점·유니폼·인형뽑기 (2B-2 Task 6) ----------
+export const MILEAGE_SHOP: MileageShopDef[] = mileageShopJson as MileageShopDef[];
+/** 응모권 상점 (추첨 항목은 drawTicket 액션이 따로 맡는다) */
+export const TICKET_SHOP: TicketShopDef[] = (ticketShopJson as TicketShopDef[]).filter((t) => t.id !== 'ts_draw');
+export const UNIFORMS: UniformDef[] = uniformsJson as UniformDef[];
+/** 인형뽑기 상품: v1 roulette.json 8칸 가중치를 그대로 쓰고 라벨만 바꾼다 */
+const DRAW_KIND_OF: Record<string, DrawPrizeKind> = { money: 'money', research: 'research', ingredient_box: 'ingredient_box', medal: 'mileage', item: 'item', samchun_visit: 'seed', free_promo: 'uniform_piece', miss: 'miss' };
+const DRAW_LABEL: Record<DrawPrizeKind, string> = { money: '돈', research: '연구', ingredient_box: '재료 상자', mileage: '마일리지', item: '강화 아이템', seed: '씨앗', uniform_piece: '유니폼 조각', miss: '꽝' };
+export const DRAW_PRIZES: DrawPrizeDef[] = (rouletteJson as { slots: { id: string; pct: number }[] }).slots.map((sl) => {
+  const kind = DRAW_KIND_OF[sl.id] ?? 'miss';
+  return { kind, label: DRAW_LABEL[kind], pct: sl.pct };
+});
 /** 경관 계절 보너스 (v2 표 §13.1). ObjectDef.seasonScenery가 없을 때 id로 찾는다. */
 export const SEASON_SCENERY: Record<string, Partial<Record<Season, number>>> = {
   canola: { spring: 12 }, hydrangea: { summer: 9 }, pampas: { autumn: 9 }, camellia: { winter: 11 },
@@ -496,6 +536,12 @@ export const eventDef = (id: string) => must(EVENT, id, 'event');
 export const roleDef = (id: string) => must(ROLE, id, 'role');
 export const skillDef = (id: string) => must(SKILL, id, 'skill');
 export const promotionDef = (id: string) => must(PROMOTION, id, 'promotion');
+const MILEAGE_ITEM = indexBy(MILEAGE_SHOP);
+const TICKET_ITEM = indexBy(TICKET_SHOP);
+const UNIFORM = indexBy(UNIFORMS);
+export const mileageShopDef = (id: string) => must(MILEAGE_ITEM, id, 'mileageShop');
+export const ticketShopDef = (id: string) => must(TICKET_ITEM, id, 'ticketShop');
+export const uniformDef = (id: string) => must(UNIFORM, id, 'uniform');
 
 /** 게임 시작 시 이미 열려 있는 것 */
 export const INITIAL_UNLOCKED = {

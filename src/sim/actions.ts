@@ -14,13 +14,15 @@ import { canAcceptQuest, acceptQuest, canRespondEvent, respondEvent, afterInvest
 import { canInvestSpot, investSpot } from './spots.ts';
 import { canRenameCafe, renameCafe, canExpand, expand, canSetCosmetic, setCosmetic, canPraise, praise, placeCost, type ExpansionId } from './cafe.ts';
 import { canDevelop, develop, canAddTopping, addTopping, canRemoveTopping, removeTopping, canLevelUpMenu, levelUpMenu } from './craft.ts';
+import { canStartBuild, startBuild } from './build.ts';
+import { canBuyMileage, buyMileage, canBuyTicket, buyTicket, canDrawTicket, drawTicket, canSetUniform, setUniform, canUseGuestItem, useGuestItem } from './shop.ts';
 
 export const PROTECTED_TYPES = new Set(['busstop', 'warehouse', 'gate', 'spring']);
 /** 회전할 수 있는 오브젝트 (rot 0..3, 스프라이트 변형 _r{n}이 있을 때만 보인다) */
 export const ROTATABLE_TYPES = new Set(['gate', 'bench', 'counter']);
 const ACTION_LOG_CAP = 1000;
 
-const CLIENT_ONLY = new Set<Action['type']>(['setSpeed', 'dismissMonthCard', 'dismissDevelop']);
+const CLIENT_ONLY = new Set<Action['type']>(['setSpeed', 'dismissMonthCard', 'dismissDevelop', 'dismissDraw']);
 
 function log(state: GameState, a: Action) {
   if (CLIENT_ONLY.has(a.type)) return;
@@ -52,7 +54,10 @@ function applyInner(state: GameState, a: Action): ApplyResult {
       if (state.money < cost) return { ok: false, reason: '돈이 모자라요' };
       const c = canPlace(state, a.objectType, a.x, a.y);
       if (!c.ok) return c;
-      placeObject(state, a.objectType, a.x, a.y, ROTATABLE_TYPES.has(a.objectType) && a.rot !== undefined ? ((a.rot % 4) + 4) % 4 : undefined);
+      const b = canStartBuild(state, a.objectType);
+      if (!b.ok) return b;
+      const obj = placeObject(state, a.objectType, a.x, a.y, ROTATABLE_TYPES.has(a.objectType) && a.rot !== undefined ? ((a.rot % 4) + 4) % 4 : undefined);
+      startBuild(state, obj);
       state.money -= cost;
       discoverCombos(state);
       evaluateUnlocks(state); // count 해금 (감귤나무 3그루 → 까치)
@@ -253,6 +258,39 @@ function applyInner(state: GameState, a: Action): ApplyResult {
       const c = canLevelUpMenu(state, a.menuId);
       if (!c.ok) return c;
       levelUpMenu(state, a.menuId);
+      return { ok: true };
+    }
+    case 'buyMileage': {
+      const c = canBuyMileage(state, a.id);
+      if (!c.ok) return c;
+      buyMileage(state, a.id);
+      return { ok: true };
+    }
+    case 'buyTicket': {
+      const c = canBuyTicket(state, a.id);
+      if (!c.ok) return c;
+      buyTicket(state, a.id);
+      return { ok: true };
+    }
+    case 'drawTicket': {
+      const c = canDrawTicket(state);
+      if (!c.ok) return c;
+      drawTicket(state);
+      return { ok: true };
+    }
+    case 'dismissDraw':
+      state.lastDraw = null;
+      return { ok: true };
+    case 'setUniform': {
+      const c = canSetUniform(state, a.id);
+      if (!c.ok) return c;
+      setUniform(state, a.id);
+      return { ok: true };
+    }
+    case 'useGuestItem': {
+      const c = canUseGuestItem(state, a.itemId, a.guestId);
+      if (!c.ok) return c;
+      useGuestItem(state, a.itemId, a.guestId);
       return { ok: true };
     }
     default:

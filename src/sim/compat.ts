@@ -1,6 +1,7 @@
 import type { GameState, PlacedObject, ComboDef, SetDef, ActiveCombo, ActiveSet, ObjectStats, ComboTarget } from './types.ts';
 import { objectDef, COMBOS, SETS, COMBO_META, GUEST_TYPES, guestTags, targetMatches } from '../data/index.ts';
-import { objectScenery } from './grid.ts';
+import { objectScenery, itemScenery } from './grid.ts';
+import { addMileage, checkCodexMileage } from './mileage.ts';
 import { seasonOf } from './clock.ts';
 import { pushNotice } from './staff.ts';
 
@@ -170,7 +171,7 @@ export function objectStats(state: GameState, objId: string, combos: ComboDef[] 
   return {
     popularity: clampPop(raw.pop * setMult(activeSets, (t) => t === 'all')),
     feePct: raw.feePct,
-    scenery: objectScenery(def, seasonOf(state.clock.month)),
+    scenery: objectScenery(def, seasonOf(state.clock.month), itemScenery(state, obj.type)),
     noise: def.noise,
     upkeep: def.upkeep,
     combos: active,
@@ -193,17 +194,21 @@ export function popularityFor(state: GameState, objId: string, typeId: string, c
 
 /** 배치·이동 뒤: 처음 발동한 상성·세트를 도감에 올린다. 히든 상성·세트 완성은 알림. */
 export function discoverCombos(state: GameState, combos: ComboDef[] = COMBOS, sets: SetDef[] = SETS): void {
+  const before = state.codex.combos.length + state.codex.sets.length;
   const by = indexByType(state);
   for (const arr of by.values()) for (const obj of arr) {
     for (const c of activeCombosOf(obj, combos, by)) {
       if (state.codex.combos.includes(c.id)) continue;
       state.codex.combos.push(c.id);
       if (c.hidden) pushNotice(state, `숨은 상성 발견! ${c.name}`);
+      if (state.codex.combos.length === 1) addMileage(state, 1);
     }
     for (const st of setLevelsOf(obj, sets, by)) {
       if (state.codex.sets.includes(st.id)) continue;
       state.codex.sets.push(st.id);
       pushNotice(state, `세트 완성! ${st.name}`);
+      if (state.codex.sets.length === 1) addMileage(state, 1);
     }
   }
+  if (state.codex.combos.length + state.codex.sets.length !== before) checkCodexMileage(state);
 }

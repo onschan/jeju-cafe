@@ -9,6 +9,7 @@
  * - 연구가 되면 해금 (돌담은 2개까지 놓는다). 수확은 자동(익으면 창고로).
  * - 돈 200만 미만이면 아르바이트 (직원당 한 달 한 번은 sim이 막는다)
  * - 2년차: 연구 20 이상이면 원두+우유 음료를 하나 나올 때까지 개발하고, 나오면 메뉴판 4번 칸에 올린다
+ * - 마일리지 30 이상이면 일꾼 삼춘 고용, 무료 인형뽑기는 매달 돌리고, 강화 아이템·씨앗은 야외 테이블에 쓴다
  */
 import type { GameState } from './types.ts';
 import { createInitialState } from './state.ts';
@@ -20,6 +21,9 @@ import { canUnlock } from './progress.ts';
 import { START_ORIGIN } from './layout.ts';
 import { objectDef } from '../data/index.ts';
 import { DEVELOP_RESEARCH } from './craft.ts';
+import { canDrawTicket, hasFreeDraw } from './shop.ts';
+import { MAX_BUILDERS } from './build.ts';
+import { canUseItem } from './items.ts';
 import type { Candidate, RoleId, StatKey } from './types.ts';
 
 export interface BotRow {
@@ -34,6 +38,7 @@ export interface BotRow {
   promos: number;     // 활성 기간형 홍보 수
   guests: number;     // 그달 손님 수
   customMenus: number; // 개발한 메뉴 수 (2년차 개발 확인용)
+  mileage: number;
 }
 
 /** 시작 필지 상대 좌표 → 격자 좌표 */
@@ -50,6 +55,8 @@ export const FLYER_MIN_ENERGY = 60;
 export const PARTTIME_MAX_MONEY = 2_000_000;
 export const BOT_DEVELOP_YEAR = 2;
 export const BOT_DEVELOP_INGREDIENTS = ['beans', 'milk'];
+export const BOT_WORKER_MILEAGE = 30;
+const WORKER_IDS = ['ms_worker_3', 'ms_worker_4', 'ms_worker_5'];
 
 function countKind(s: GameState, kind: string): number {
   return Object.values(s.objects).filter((o) => objectDef(o.type).kind === kind).length;
@@ -109,6 +116,11 @@ function monthlyPlan(s: GameState, monthsPlayed: number): void {
     if (st) apply(s, { type: 'promote', staffId: st.id, promotionId: 'flyer' });
   }
 
+  // 상점: 마일리지 30 이상이면 일꾼 삼춘, 무료 인형뽑기, 아이템은 야외 테이블에
+  if (s.mileage >= BOT_WORKER_MILEAGE && s.builders < MAX_BUILDERS) for (const id of WORKER_IDS) if (apply(s, { type: 'buyMileage', id }).ok) break;
+  if (hasFreeDraw(s) && canDrawTicket(s).ok && apply(s, { type: 'drawTicket' }).ok) apply(s, { type: 'dismissDraw' });
+  for (const [itemId, n] of Object.entries(s.inventory)) if (n > 0 && canUseItem(s, itemId, 'table_out').ok) apply(s, { type: 'useItem', itemId, objectType: 'table_out' });
+
   // 해금
   while (canUnlock(s).ok) apply(s, { type: 'unlock' });
   if (s.unlocked.objects.includes('stonewall') && countKind(s, 'wall') < BOT_WALLS.length)
@@ -156,6 +168,7 @@ export function runBot(years: number, seed: number): BotRow[] {
       rows.push({
         year: card.year, month: card.month, money: s.money, minMoney, research: s.research, popularity: s.popularity,
         net: card.net, staff: s.staff.length, promos: s.activePromotions.length, guests: card.guests, customMenus: s.customMenus.length,
+        mileage: s.mileage,
       });
       minMoney = s.money;
       apply(s, { type: 'dismissMonthCard' });

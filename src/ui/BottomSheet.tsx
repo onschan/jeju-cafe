@@ -10,6 +10,7 @@ import { BoardPanel } from './BoardPanel';
 import { CafePanel } from './CafePanel';
 import { GuestsPanel } from './GuestsPanel';
 import { CraftPanel, MenuDetailPicker } from './CraftPanel';
+import { ShopPanel } from './ShopPanel';
 import { frame, brownBtn, brownBtnOn, brownBtnOff, dangerBtn, brownSelect, PALETTE, won } from './frame';
 
 export type Mode =
@@ -206,7 +207,7 @@ export function BottomSheet({ mode, setMode, place, msg, onGuest, onDragBuild }:
       {mode.kind === 'guests' && <GuestsPanel onGuest={onGuest} />}
       {mode.kind === 'invest' && <BoardPanel tabs={['spots', 'events']} />}
       {mode.kind === 'cafe' && <CafePanel onMenu={() => setMode({ kind: 'menu' })} />}
-      {mode.kind === 'shop' && <div style={{ fontSize: 13, color: PALETTE.inkSoft }}>상점(마일리지·응모권)은 곧 열려요. 지금 마일리지 {s.mileage} · 응모권 {s.tickets}</div>}
+      {mode.kind === 'shop' && <ShopPanel />}
       {mode.kind === 'rank' && <div style={{ fontSize: 13, color: PALETTE.inkSoft }}>가이드북 랭킹은 1년차 7월에 첫 발표! 지금 카페 랭크 {s.rank} · ★{s.star}</div>}
     </div>
   );

@@ -7,9 +7,10 @@ import { occupy } from './grid.ts';
 import { nextRandom } from './rng.ts';
 import { initGuestTypes, initSegmentPopularity } from './segments.ts';
 import { DEFAULT_CAFE_NAME } from './cafe.ts';
+import { START_BUILDERS } from './build.ts';
 
 export { PARCEL_W, PARCEL_H, START_ORIGIN, GRID_W, GRID_H, VILLAGE_ROAD_Y };
-export const SAVE_VERSION = 10;
+export const SAVE_VERSION = 11;
 /** 시작 자금 500만 + 정착지원금(잔고 < 40만이면 1회 300만) — 마스터 GDD §1 */
 export const START_MONEY = 5_000_000;
 export const SETTLE_GRANT = 3_000_000;
@@ -139,6 +140,14 @@ export function createInitialState(seed: number, playerId = 'local', createdAt =
     mileage: 0,
     rank: 1,
     star: 1,
+    builders: START_BUILDERS,
+    uniform: null,
+    uniforms: [],
+    uniformPieces: 0,
+    freeDrawMonth: START_MONTH - 1, // 첫 달(monthIndex) 무료 추첨 1회
+    lastDraw: null,
+    freeRecruits: 0,
+    codexMileage: 0,
     board: { quests: {}, events: [] },
     spots: {},
     effects: [],

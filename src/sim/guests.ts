@@ -283,7 +283,7 @@ function order(state: GameState, g: Guest): void {
 
 /** 자리에서 일어난 손님이 들를 시설을 고른다: 좋아하는 종류이고 걸어서 닿는 것 중 하나 (40%). 없으면 null. */
 export function pickVisit(state: GameState, g: Guest, from: Pt): { obj: PlacedObject; path: Pt[] } | null {
-  const candidates = Object.values(state.objects).filter((o) => isVisitable(o.type) && likesFacility(g.type, o.type));
+  const candidates = Object.values(state.objects).filter((o) => !o.build && isVisitable(o.type) && likesFacility(g.type, o.type));
   if (candidates.length === 0 || nextRandom(state) >= VISIT_CHANCE) return null;
   const reach = reachMap(state, from);
   const reachable: { obj: PlacedObject; target: Pt }[] = [];

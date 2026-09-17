@@ -6,6 +6,7 @@
  * - 토핑(최대 3) → 스탯·스킬 누적 → 스킬 티어(§15.1 표) 효과
  * - 메뉴 레벨업(재료 5 + 돈) → 판매가 +10%, 주문 가중치 +
  */
+import { checkCodexMileage } from './mileage.ts';
 import type { GameState, ApplyResult, MenuDef, MenuStats, MenuStatKey, MenuBase, MenuMod, MenuQuality, BrewParams, ParamAxis, IngredientDef, IngredientComboDef, IngredientComboSide, DevelopOutcome, DevelopResult, Staff, MenuCategory, RoleId } from './types.ts';
 import { menuDef, ingredientDef, toppingDef, INGREDIENT_COMBOS, HIDDEN_RECIPES, MENU_STAT_KEYS, ZERO_STATS, addStats, statSum, ingredientStats, GUEST_TYPES, guestTypeDef } from '../data/index.ts';
 import { nextRandom, randInt } from './rng.ts';
@@ -350,6 +351,7 @@ export function resolveDevelop(state: GameState): DevelopResult | null {
   if (hiddenId && outcome === 'fail') outcome = 'success';
   const combos = activeIngredientCombos(dev.ingredients);
   for (const c of combos) if (!state.codex.ingredientCombos.includes(c)) state.codex.ingredientCombos.push(c);
+  checkCodexMileage(state);
   const bonus = comboBonus(combos);
   let stats = addStats(ingredientStats(countIngredients(dev.ingredients)), bonus.stats);
   const width = bonusWidth(dev.base, dev.params);
@@ -366,7 +368,7 @@ export function resolveDevelop(state: GameState): DevelopResult | null {
   let quality = qualityOf(stats);
   if (outcome === 'great' && quality !== '최고') quality = quality === '좋음' ? '최고' : '좋음';
   const hidden = hiddenId ? HIDDEN_RECIPES.find((r) => r.id === hiddenId)! : null;
-  if (hidden) { quality = '최고'; if (!state.codex.recipes.includes(hidden.id)) state.codex.recipes.push(hidden.id); }
+  if (hidden) { quality = '최고'; if (!state.codex.recipes.includes(hidden.id)) { state.codex.recipes.push(hidden.id); checkCodexMileage(state); } }
   const id = `m_custom_${state.customMenus.length + 1}`;
   const def: MenuDef = {
     id,

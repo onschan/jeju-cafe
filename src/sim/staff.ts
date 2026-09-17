@@ -74,15 +74,21 @@ export function generateCandidate(state: GameState, tier: JobTier): Candidate {
   return { id: `c${state.nextId++}`, name, face, stats, skill, level: 1, salary: salaryOf(stats, 1), expiresMonthIndex: monthIndex(state.clock) + 1 };
 }
 
+/** 공고비 (스카우트권이 있으면 무료) */
+export function postJobCost(state: GameState, tier: JobTier): number {
+  return state.freeRecruits > 0 ? 0 : TIERS[tier].cost;
+}
 export function canPostJob(state: GameState, tier: JobTier): ApplyResult {
-  if (state.money < TIERS[tier].cost) return { ok: false, reason: '돈이 모자라요' };
+  if (state.money < postJobCost(state, tier)) return { ok: false, reason: '돈이 모자라요' };
   return { ok: true };
 }
 
 export function postJob(state: GameState, tier: JobTier): void {
   const t = TIERS[tier];
-  state.money -= t.cost;
-  state.monthCosts.recruit += t.cost;
+  const cost = postJobCost(state, tier);
+  if (cost === 0 && state.freeRecruits > 0) state.freeRecruits -= 1;
+  state.money -= cost;
+  state.monthCosts.recruit += cost;
   for (let i = 0; i < t.count; i++) state.candidates.push(generateCandidate(state, tier));
 }
 

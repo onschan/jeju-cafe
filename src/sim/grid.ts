@@ -14,10 +14,14 @@ export const SCENERY_RADIUS = 2;
 /** 경관 상한 (마스터 GDD §2.2) */
 export const SCENERY_CAP = 30;
 
-/** 오브젝트 자기 경치 + 계절 보너스 (정의의 seasonScenery, 없으면 SEASON_SCENERY 표), 상한 30 */
-export function objectScenery(def: ObjectDef, season: Season): number {
+/** 오브젝트 자기 경치 + 계절 보너스 (정의의 seasonScenery, 없으면 SEASON_SCENERY 표) + 경관 씨앗 보너스, 상한 30 */
+export function objectScenery(def: ObjectDef, season: Season, itemScenery = 0): number {
   const bonus = def.seasonScenery ? def.seasonScenery[season] ?? 0 : SEASON_SCENERY[def.id]?.[season] ?? 0;
-  return Math.min(SCENERY_CAP, def.scenery + bonus);
+  return Math.min(SCENERY_CAP, def.scenery + bonus + itemScenery);
+}
+/** 이 종류에 쓴 경관 씨앗 보너스 */
+export function itemScenery(state: GameState, type: string): number {
+  return state.itemBonus[type]?.scenery ?? 0;
 }
 
 export function inBounds(state: GameState, x: number, y: number): boolean {
@@ -222,7 +226,7 @@ export function sceneryScore(state: GameState, x: number, y: number): number {
       if (!o || o.id === self || seen.has(o.id)) continue;
       seen.add(o.id);
       const d = objectDef(o.type);
-      score += objectScenery(d, season) - d.noise;
+      score += objectScenery(d, season, itemScenery(state, o.type)) - d.noise;
     }
   }
   return score;
