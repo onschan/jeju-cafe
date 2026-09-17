@@ -1,6 +1,6 @@
 import { createInitialState } from '../state.ts';
 import { apply } from '../actions.ts';
-import { spawnGuests } from '../guests.ts';
+import { spawnGuests, updateGuests } from '../guests.ts';
 
 test('place: 돈이 있어야 하고, 깎이고, 로그에 남는다', () => {
   const s = createInitialState(1);
@@ -47,6 +47,17 @@ test('remove: 손님이 지나갈 올렛길은 못 없앤다', () => {
   const path = Object.values(s.objects).find((o) => o.type === 'path')!;
   spawnGuests(s, 1);
   expect(s.guests[0]!.path.some((p) => p.x === 4 && p.y === 5)).toBe(true);
+  expect(apply(s, { type: 'remove', objectId: path.id }).ok).toBe(false);
+});
+
+test('remove: 손님이 서 있는 칸(정낭 옆 올렛길)은 앉아 있는 동안에도 못 없앤다', () => {
+  const s = createInitialState(1);
+  apply(s, { type: 'place', objectType: 'path', x: 4, y: 5 });
+  apply(s, { type: 'place', objectType: 'table_out', x: 4, y: 4 });
+  const path = Object.values(s.objects).find((o) => o.type === 'path')!;
+  spawnGuests(s, 1);
+  updateGuests(s, 10_000); // 앉음, 발밑은 (4,5)
+  expect(s.guests[0]!.phase).toBe('seated');
   expect(apply(s, { type: 'remove', objectId: path.id }).ok).toBe(false);
 });
 

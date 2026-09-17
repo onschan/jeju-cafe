@@ -17,6 +17,12 @@ test('하루가 지나면 손님이 온다', () => {
   expect(s.guests.length).toBeGreaterThan(0);
 });
 
+test('테이블 1개(2석)면 하루에 2명 온다', () => {
+  const s = cafe();
+  tick(s, DAY_MS);
+  expect(s.guests.length).toBe(2);
+});
+
 test('한 달 지나면 정산 카드가 생기고 월 누적이 리셋된다', () => {
   const s = cafe();
   for (let i = 0; i < 30; i++) tick(s, DAY_MS);
@@ -49,4 +55,11 @@ test('speed 0이면 손님도 안 움직인다', () => {
   apply(s, { type: 'setSpeed', speed: 0 });
   tick(s, 1000);
   expect(s.tick).toBe(t0);
+});
+
+test('한 번에 너무 긴 dt는 MAX_STEPS_PER_TICK에서 끊고 잔여를 버린다', () => {
+  const s = cafe();
+  tick(s, 1_000_000);
+  expect(s.tick).toBe(600);
+  expect(s.clock.carryMs).toBe(0);
 });

@@ -67,6 +67,7 @@ function moveAlong(g: Guest, dtMs: number): boolean {
       g.path.shift();
       budget -= dist;
     } else {
+      // 경로는 4방향 인접이라 dx·dy 중 하나만 0이 아님 (BFS 보장). 대각선 경로가 생기면 이 계산을 바꿔야 함.
       g.x += Math.sign(dx) * budget;
       g.y += Math.sign(dy) * budget;
       budget = 0;

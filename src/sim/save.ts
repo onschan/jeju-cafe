@@ -8,6 +8,7 @@ export function serialize(state: GameState): string {
 
 export function deserialize(json: string): GameState {
   const obj = JSON.parse(json) as GameState;
+  if (!obj || typeof obj !== 'object') throw new Error('save: not an object');
   if (obj.version !== SAVE_VERSION) throw new Error(`save version mismatch: ${obj.version} (expected ${SAVE_VERSION})`);
   rebuildCellOwnership(obj);
   return obj;
@@ -34,7 +35,7 @@ export class MemorySaveStore implements SaveStore {
   private map = new Map<number, string>();
   async save(slot: number, state: GameState) { this.map.set(slot, serialize(state)); }
   async load(slot: number) { const j = this.map.get(slot); return j ? deserialize(j) : null; }
-  async list() { return [...this.map.keys()].sort(); }
+  async list() { return [...this.map.keys()].sort((a, b) => a - b); }
 }
 
 export class LocalSaveStore implements SaveStore {
@@ -50,8 +51,11 @@ export class LocalSaveStore implements SaveStore {
     const out: number[] = [];
     for (let i = 0; i < localStorage.length; i++) {
       const k = localStorage.key(i);
-      if (k?.startsWith(this.prefix)) out.push(Number(k.slice(this.prefix.length)));
+      if (k?.startsWith(this.prefix)) {
+        const n = Number(k.slice(this.prefix.length));
+        if (Number.isInteger(n)) out.push(n);
+      }
     }
-    return out.sort();
+    return out.sort((a, b) => a - b);
   }
 }

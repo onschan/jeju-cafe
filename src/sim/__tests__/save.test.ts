@@ -25,3 +25,15 @@ test('SaveStore: save/load/list', async () => {
   expect(await store.load(1)).toEqual(s);
   expect(await store.load(2)).toBeNull();
 });
+
+test('list는 숫자 순', async () => {
+  const store = new MemorySaveStore();
+  const s = createInitialState(1);
+  await store.save(10, s); await store.save(2, s); await store.save(1, s);
+  expect(await store.list()).toEqual([1, 2, 10]);
+});
+
+test('null/문자열 세이브는 거부', () => {
+  expect(() => deserialize('null')).toThrow();
+  expect(() => deserialize('"x"')).toThrow();
+});

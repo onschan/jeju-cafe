@@ -1,7 +1,7 @@
 import type { GameState } from './types.ts';
 import { advanceClock } from './clock.ts';
 import { growOneDay } from './farm.ts';
-import { spawnGuests, updateGuests, freeSeats } from './guests.ts';
+import { spawnGuests, updateGuests } from './guests.ts';
 
 export const STEP_MS = 100;        // 고정 스텝 (게임 ms)
 export const DAILY_SPAWN_CAP = 3;
@@ -9,8 +9,7 @@ const MAX_STEPS_PER_TICK = 600;    // 백그라운드 복귀 등 폭주 방지 (
 
 function onNewDay(state: GameState): void {
   growOneDay(state);
-  const n = Math.min(DAILY_SPAWN_CAP, freeSeats(state).length);
-  spawnGuests(state, n);
+  spawnGuests(state, DAILY_SPAWN_CAP);
 }
 
 function onNewMonth(state: GameState, prevMonth: number, prevYear: number): void {
