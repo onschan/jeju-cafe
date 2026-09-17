@@ -1,0 +1,238 @@
+%% 손님 해금 체인 — 노드 = 손님 id(한글 이름), 간선 = 해금하는 부탁 id. 원본: 2026-09-17-gdd-v2-tables.md §2
+graph LR
+  subgraph c01_youth
+    student["대학생"]
+    working_holiday["워홀 청년"]
+    digital_nomad["디지털 노마드"]
+    startup_ceo["스타트업 대표"]
+    investor["투자자"]
+    student -->|q_student| working_holiday
+    working_holiday -->|q_working_holiday| digital_nomad
+    digital_nomad -->|q_digital_nomad| startup_ceo
+    startup_ceo -->|q_startup_ceo| investor
+  end
+  subgraph c02_couple
+    couple["커플"]
+    newlyweds["신혼부부"]
+    wedding_snap["웨딩스냅 작가"]
+    wedding_planner["웨딩플래너"]
+    couple -->|q_couple| newlyweds
+    newlyweds -->|q_newlyweds| wedding_snap
+    wedding_snap -->|q_wedding_snap| wedding_planner
+  end
+  subgraph c03_media
+    insta_traveler["인스타 여행러"]
+    influencer["인플루언서"]
+    youtuber["유튜버"]
+    tv_pd["방송 PD"]
+    actor["배우"]
+    insta_traveler -->|q_insta_traveler| influencer
+    influencer -->|q_influencer| youtuber
+    youtuber -->|q_youtuber| tv_pd
+    tv_pd -->|q_tv_pd| actor
+  end
+  subgraph c04_village
+    village_head["이장님"]
+    haenyeo["해녀 삼춘"]
+    returnee_senior["귀농 선배"]
+    coop_staff["농협 직원"]
+    governor["도지사"]
+    village_head -->|q_village_head| haenyeo
+    haenyeo -->|q_haenyeo| returnee_senior
+    returnee_senior -->|q_returnee_senior| coop_staff
+    coop_staff -->|q_coop_staff| governor
+  end
+  subgraph c05_family
+    rentcar_family["렌터카 가족"]
+    stroller_family["유모차 가족"]
+    three_gen_family["삼대 가족"]
+    rentcar_family -->|q_rentcar_family| stroller_family
+    stroller_family -->|q_stroller_family| three_gen_family
+  end
+  subgraph c06_hike
+    olle_walker["올레길 도보객"]
+    oreum_hiker["오름 등반가"]
+    hallasan_club["한라산 산악회"]
+    olle_walker -->|q_olle_walker| oreum_hiker
+    oreum_hiker -->|q_oreum_hiker| hallasan_club
+  end
+  subgraph c07_sea
+    surfer["서핑족(중문)"]
+    diver["다이버(우도)"]
+    yacht_owner["요트 오너"]
+    surfer -->|q_surfer| diver
+    diver -->|q_diver| yacht_owner
+  end
+  subgraph c08_gourmet
+    cafe_tourer["카페 투어러"]
+    ribbon_judge["리본 가이드 심사위원"]
+    star_guide_inspector["별점 가이드 조사원"]
+    cafe_tourer -->|q_cafe_tourer| ribbon_judge
+    ribbon_judge -->|q_ribbon_judge| star_guide_inspector
+  end
+  subgraph c09_local
+    local_auntie["동네 삼춘"]
+    local_uncle["밭 삼춘"]
+    market_auntie["오일장 삼춘"]
+    village_elder["마을 어른"]
+    seolmundae["설문대할망"]
+    local_auntie -->|q_local_auntie| local_uncle
+    local_uncle -->|q_local_uncle| market_auntie
+    market_auntie -->|q_market_auntie| village_elder
+    village_elder -->|q_village_elder| seolmundae
+  end
+  subgraph c10_mainland
+    mainlander_auntie["육지 삼춘"]
+    mainlander_newbie["육지 것"]
+    monthly_stayer["한 달 살기"]
+    jeju_immigrant["제주 이주민"]
+    mainlander_auntie -->|q_mainlander_auntie| mainlander_newbie
+    mainlander_newbie -->|q_mainlander_newbie| monthly_stayer
+    monthly_stayer -->|q_monthly_stayer| jeju_immigrant
+  end
+  subgraph c11_animal
+    dog_mongi["동네 강아지 몽이"]
+    street_cat_noeul["길고양이 노을"]
+    jeju_pony["제주 조랑말"]
+    dog_mongi -->|q_dog_mongi| street_cat_noeul
+    street_cat_noeul -->|q_street_cat_noeul| jeju_pony
+  end
+  subgraph c12_pest
+    magpie_thief["감귤 도둑 까치"]
+    crow_flock["까마귀 떼"]
+    roe_deer["노루"]
+    magpie_thief -->|q_magpie_thief| crow_flock
+    crow_flock -->|q_crow_flock| roe_deer
+  end
+  subgraph c13_school
+    school_trip["수학여행단"]
+    school_teacher["인솔 교사"]
+    school_club["학교 동아리"]
+    alumni_reunion["동창회"]
+    school_trip -->|q_school_trip| school_teacher
+    school_teacher -->|q_school_teacher| school_club
+    school_club -->|q_school_club| alumni_reunion
+  end
+  subgraph c14_company
+    company_workshop["회사 워크숍"]
+    team_leader["팀장님"]
+    remote_team["원격 근무팀"]
+    ceo_retreat["임원 워크숍"]
+    company_workshop -->|q_company_workshop| team_leader
+    team_leader -->|q_team_leader| remote_team
+    remote_team -->|q_remote_team| ceo_retreat
+  end
+  subgraph c15_silver
+    silver_tour["실버 관광"]
+    grandma_gyecheo["계모임 할머니들"]
+    retired_teacher["은퇴 선생님"]
+    hallabong_grandpa["한라봉 할아버지"]
+    silver_tour -->|q_silver_tour| grandma_gyecheo
+    grandma_gyecheo -->|q_grandma_gyecheo| retired_teacher
+    retired_teacher -->|q_retired_teacher| hallabong_grandpa
+  end
+  subgraph c16_run
+    running_crew["러닝크루"]
+    trail_runner["트레일 러너"]
+    cyclist["자전거 일주"]
+    triathlete["철인 3종"]
+    running_crew -->|q_running_crew| trail_runner
+    trail_runner -->|q_trail_runner| cyclist
+    cyclist -->|q_cyclist| triathlete
+  end
+  subgraph c17_night
+    night_guest["밤 손님"]
+    stargazer["별 보는 사람"]
+    night_photographer["야경 사진가"]
+    lighthouse_keeper["등대 지킴이"]
+    night_guest -->|q_night_guest| stargazer
+    stargazer -->|q_stargazer| night_photographer
+    night_photographer -->|q_night_photographer| lighthouse_keeper
+  end
+  subgraph c18_group_foreign
+    group_cn["중국 단체"]
+    group_jp["일본 단체"]
+    group_sea["동남아 단체"]
+    group_cn -->|q_group_cn| group_jp
+    group_jp -->|q_group_jp| group_sea
+  end
+  subgraph c19_solo_foreign
+    solo_foreign["개별 외국 여행자"]
+    foreign_chef["외국 셰프"]
+    foreign_vlogger["외국 브이로거"]
+    world_traveler["세계 일주 여행자"]
+    solo_foreign -->|q_solo_foreign| foreign_chef
+    foreign_chef -->|q_foreign_chef| foreign_vlogger
+    foreign_vlogger -->|q_foreign_vlogger| world_traveler
+  end
+  subgraph c20_art
+    art_student["미술 학생"]
+    village_painter["마을 화가"]
+    potter["도예가"]
+    architect["건축가"]
+    art_student -->|q_art_student| village_painter
+    village_painter -->|q_village_painter| potter
+    potter -->|q_potter| architect
+  end
+  subgraph c21_coffee
+    dessert_hunter["디저트 헌터"]
+    coffee_geek["커피 덕후"]
+    home_barista["홈 바리스타"]
+    barista_champion["바리스타 챔피언"]
+    dessert_hunter -->|q_dessert_hunter| coffee_geek
+    coffee_geek -->|q_coffee_geek| home_barista
+    home_barista -->|q_home_barista| barista_champion
+  end
+  subgraph c22_dog
+    dog_walker["강아지 산책러"]
+    dog_camper["반려견 캠핑족"]
+    dog_trainer["도그 트레이너"]
+    dog_walker -->|q_dog_walker| dog_camper
+    dog_camper -->|q_dog_camper| dog_trainer
+  end
+  subgraph c23_fish
+    angler["낚시꾼"]
+    fishing_boat_captain["어선 선장"]
+    dolphin_guide["돌고래 가이드"]
+    angler -->|q_angler| fishing_boat_captain
+    fishing_boat_captain -->|q_fishing_boat_captain| dolphin_guide
+  end
+  subgraph c24_camp
+    camper["캠핑족"]
+    van_lifer["차박러"]
+    glamper["글램핑족"]
+    camper -->|q_camper| van_lifer
+    van_lifer -->|q_van_lifer| glamper
+  end
+  subgraph c25_legend
+    dolhareubang_spirit["돌하르방 정령"]
+    yeongdeung["영등할망"]
+    baekrok["백록"]
+    jacheongbi["자청비"]
+    dolhareubang_spirit -->|q_dolhareubang_spirit| yeongdeung
+    yeongdeung -->|q_yeongdeung| baekrok
+    baekrok -->|q_baekrok| jacheongbi
+  end
+  subgraph c26_kids
+    kid_pocketmoney["용돈 초등학생"]
+    teen_idol_fan["아이돌 팬 청소년"]
+    college_club["대학 동아리"]
+    kid_pocketmoney -->|q_kid_pocketmoney| teen_idol_fan
+    teen_idol_fan -->|q_teen_idol_fan| college_club
+  end
+  subgraph c27_driver
+    taxi_driver["택시 기사"]
+    bus_driver["관광버스 기사"]
+    rentcar_staff["렌터카 직원"]
+    taxi_driver -->|q_taxi_driver| bus_driver
+    bus_driver -->|q_bus_driver| rentcar_staff
+  end
+  subgraph c28_single_golfer
+    golfer["골퍼"]
+  end
+  subgraph c29_single_resort
+    resort_guest["리조트 투숙객"]
+  end
+  subgraph c30_single_spirit
+    hallasan_spirit["한라산 신령"]
+  end
