@@ -1,10 +1,12 @@
 import type { GameState, Cell, PlacedObject } from './types.ts';
 import { INITIAL_UNLOCKED } from '../data/index.ts';
+import { START_HOUR } from './clock.ts';
 
 export const GRID_W = 10;
 export const GRID_H = 8;
-export const SAVE_VERSION = 1;
-export const START_MONEY = 5000;
+export const SAVE_VERSION = 2;
+export const START_MONEY = 30000;
+export const START_MONTH = 3;
 export const MENU_SLOT_COUNT = 4;
 
 function makeCells(): Cell[] {
@@ -35,7 +37,7 @@ export function createInitialState(seed: number, playerId = 'local', createdAt =
     createdAt,
     seed,
     rng: seed,
-    clock: { day: 1, month: 1, year: 1, accMs: 0, carryMs: 0, speed: 1 },
+    clock: { day: 1, month: START_MONTH, year: 1, hour: START_HOUR, accMs: 0, carryMs: 0, speed: 1 },
     money: START_MONEY,
     research: 0,
     popularity: 0,
@@ -48,11 +50,20 @@ export function createInitialState(seed: number, playerId = 'local', createdAt =
       objects: [...INITIAL_UNLOCKED.objects],
       menus: [...INITIAL_UNLOCKED.menus],
       crops: [...INITIAL_UNLOCKED.crops],
+      roles: ['barista', 'cook', 'hall', 'field'],
     },
+    staff: [],
+    candidates: [],
+    slots: { barista: 1, cook: 1, hall: 2, field: 1, gather: 0, carry: 0, guide: 0 },
+    activePromotions: [],
+    youtuberBoostMonths: 0,
+    segmentPopularity: { local: 30, tourist: 20 },
+    notices: [],
     guests: [],
     nextId: 1,
     monthIncome: 0,
     monthGuests: 0,
+    monthCosts: { ingredients: 0, salary: 0, ads: 0 },
     lastMonthCard: null,
     tick: 0,
     actionLog: [],

@@ -1,0 +1,15 @@
+[
+  { "id": "beans", "name": "원두", "kind": "bought", "cost": 700 },
+  { "id": "milk", "name": "우유", "kind": "bought", "cost": 400 },
+  { "id": "sugar", "name": "설탕", "kind": "bought", "cost": 100 },
+  { "id": "flour", "name": "밀가루", "kind": "bought", "cost": 300 },
+  { "id": "egg", "name": "달걀", "kind": "bought", "cost": 300 },
+  { "id": "butter", "name": "버터", "kind": "bought", "cost": 500 },
+  { "id": "tea", "name": "녹찻잎", "kind": "bought", "cost": 500 },
+  { "id": "yuja", "name": "유자청", "kind": "bought", "cost": 600 },
+  { "id": "ice", "name": "얼음", "kind": "bought", "cost": 100 },
+  { "id": "cheese", "name": "치즈", "kind": "bought", "cost": 800 },
+  { "id": "cocoa", "name": "코코아", "kind": "bought", "cost": 500 },
+  { "id": "carrot", "name": "당근", "kind": "farm", "cost": 0 },
+  { "id": "tangerine", "name": "감귤", "kind": "farm", "cost": 0 }
+]

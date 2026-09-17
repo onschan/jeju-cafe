@@ -16,6 +16,7 @@ export interface ObjectDef {
   scenery: number;
   noise: number;
   wind: number;
+  upkeep: number;      // 월 유지비
   seats?: number;      // kind === 'seat'
   cropId?: string;     // kind === 'tree' 고정 작물
   terrain: Terrain[];  // 놓을 수 있는 지형
@@ -35,7 +36,7 @@ export interface MenuDef {
   name: string;
   category: MenuCategory;
   price: number;
-  ingredients: Record<string, number>; // cropId → 개수
+  ingredients: Record<string, number>; // ingredientId → 개수
 }
 
 export interface GuestTypeDef {
@@ -49,10 +50,70 @@ export interface GuestTypeDef {
 
 export interface UnlockDef {
   id: string;
-  kind: 'object' | 'menu' | 'crop';
-  ref: string;
+  kind: 'object' | 'menu' | 'crop' | 'slot' | 'role';
+  ref: string; // slot·role일 때는 RoleId
   cost: number;
 }
+
+// ---------- 재료·직원·홍보 (2B-1) ----------
+export type IngredientKind = 'bought' | 'farm';
+export interface IngredientDef { id: string; name: string; kind: IngredientKind; cost: number } // cost: bought만 의미
+
+export type RoleId = 'barista' | 'cook' | 'hall' | 'field' | 'gather' | 'carry' | 'guide';
+export type StatKey = 'service' | 'cooking' | 'sense' | 'stamina';
+export interface RoleDef { id: RoleId; name: string; stat: StatKey; unlockedAtStart: boolean }
+
+export type SkillEffect =
+  | { type: 'menuQuality'; category: MenuCategory; value: number }
+  | { type: 'speed'; value: number }
+  | { type: 'localAffinity'; value: number }
+  | { type: 'touristSatisfaction'; value: number }
+  | { type: 'language' }
+  | { type: 'ingredientDiscount'; value: number }
+  | { type: 'researchBonus'; value: number }
+  | { type: 'spawnBonus'; value: number }
+  | { type: 'luck'; value: number }
+  | { type: 'stamina'; value: number };
+export interface SkillDef { id: string; name: string; desc: string; effect: SkillEffect }
+
+export interface Stats { service: number; cooking: number; sense: number; stamina: number }
+export interface Face { hair: number; skin: number; top: number } // 파츠 인덱스
+
+export interface Staff {
+  id: string;
+  name: string;
+  face: Face;
+  stats: Stats;
+  skill: string;
+  level: number;
+  salary: number;
+  role: RoleId | null;
+  unpaidMonths: number;
+  energy: number; // 0~100
+  x: number;
+  y: number;
+  path: Pt[];
+  anchor: Pt | null; // 렌더·이동용
+}
+export interface Candidate extends Omit<Staff, 'role' | 'unpaidMonths' | 'energy' | 'x' | 'y' | 'path' | 'anchor'> {
+  expiresMonthIndex: number;
+}
+
+export type JobTier = 'flyer' | 'site' | 'headhunter';
+
+/** 홍보 활동 정의 (ads.json 대신 — 2B-1 v2) */
+export interface PromotionDef {
+  id: string;
+  name: string;
+  costResearch: number;
+  costMoney: number;
+  energy: number;
+  months: number; // 0 = 즉시 1회성, N>0 = 기간형
+  segmentDelta: Record<string, number>; // guestType id → 인기 가산
+  allDelta?: number;
+  special?: 'youtuber' | 'parttime';
+}
+export interface ActivePromotion { promotionId: string; remainingMonths: number }
 
 // ---------- 게임 상태 ----------
 export interface Pt { x: number; y: number }
@@ -87,13 +148,17 @@ export interface Guest {
   seatId: string | null;
   menuId: string | null;
   mood: Mood | null;
+  moodReason: 'no_menu' | 'scenery' | 'wait' | 'price' | null;
+  say: string | null;   // 렌더용 말풍선 대사
   timerMs: number;      // seated 남은 시간
+  waitMs: number;       // 주문 후 조리 대기 남은 시간
 }
 
 export interface Clock {
   day: number;   // 1~30
   month: number; // 1~12
   year: number;  // 1~
+  hour: number;  // 6~24
   accMs: number; // 하루 누적 (게임 ms)
   carryMs: number; // 고정 스텝 잔여 (실시간×speed)
   speed: 0 | 1 | 2 | 3;
@@ -114,11 +179,19 @@ export interface GameState {
   storage: Record<string, number>; // cropId → 개수
   menuSlots: (string | null)[];
   unlockedIndex: number;
-  unlocked: { objects: string[]; menus: string[]; crops: string[] };
+  unlocked: { objects: string[]; menus: string[]; crops: string[]; roles: RoleId[] };
+  staff: Staff[];
+  candidates: Candidate[];
+  slots: Record<RoleId, number>;
+  activePromotions: ActivePromotion[];
+  youtuberBoostMonths: number;
+  segmentPopularity: Record<string, number>;
+  notices: string[];
   guests: Guest[];
   nextId: number;
   monthIncome: number;
   monthGuests: number;
+  monthCosts: { ingredients: number; salary: number; ads: number };
   lastMonthCard: { income: number; guests: number; month: number; year: number } | null;
   tick: number; // 고정 스텝 카운터
   actionLog: { tick: number; action: Action }[];
@@ -133,6 +206,12 @@ export type Action =
   | { type: 'setSlot'; slot: number; menuId: string | null }
   | { type: 'setSpeed'; speed: 0 | 1 | 2 | 3 }
   | { type: 'unlock' }
-  | { type: 'dismissMonthCard' };
+  | { type: 'dismissMonthCard' }
+  | { type: 'postJob'; tier: JobTier }
+  | { type: 'hire'; candidateId: string; role: RoleId }
+  | { type: 'fire'; staffId: string }
+  | { type: 'assign'; staffId: string; role: RoleId | null }
+  | { type: 'levelUp'; staffId: string }
+  | { type: 'promote'; staffId: string; promotionId: string };
 
 export interface ApplyResult { ok: boolean; reason?: string }

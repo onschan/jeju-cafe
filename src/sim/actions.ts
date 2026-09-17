@@ -76,5 +76,8 @@ function applyInner(state: GameState, a: Action): ApplyResult {
     case 'dismissMonthCard':
       state.lastMonthCard = null;
       return { ok: true };
+    // postJob·hire·fire·assign·levelUp·promote: staff.ts/ads.ts에서 구현 (Task 3·5)
+    default:
+      return { ok: false, reason: '아직 구현 안 됨' };
   }
 }

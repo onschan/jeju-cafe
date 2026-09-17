@@ -1,4 +1,4 @@
-import type { GameState, ApplyResult, UnlockDef } from './types.ts';
+import type { GameState, ApplyResult, UnlockDef, RoleId } from './types.ts';
 import { UNLOCKS } from '../data/index.ts';
 
 export function nextUnlock(state: GameState): UnlockDef | null {
@@ -17,7 +17,22 @@ export function unlock(state: GameState): UnlockDef | null {
   const u = nextUnlock(state)!;
   state.research -= u.cost;
   state.unlockedIndex++;
-  const bucket = u.kind === 'object' ? state.unlocked.objects : u.kind === 'menu' ? state.unlocked.menus : state.unlocked.crops;
-  if (!bucket.includes(u.ref)) bucket.push(u.ref);
+  switch (u.kind) {
+    case 'object':
+      if (!state.unlocked.objects.includes(u.ref)) state.unlocked.objects.push(u.ref);
+      break;
+    case 'menu':
+      if (!state.unlocked.menus.includes(u.ref)) state.unlocked.menus.push(u.ref);
+      break;
+    case 'crop':
+      if (!state.unlocked.crops.includes(u.ref)) state.unlocked.crops.push(u.ref);
+      break;
+    case 'slot':
+      state.slots[u.ref as RoleId]++;
+      break;
+    case 'role':
+      if (!state.unlocked.roles.includes(u.ref as RoleId)) state.unlocked.roles.push(u.ref as RoleId);
+      break;
+  }
   return u;
 }

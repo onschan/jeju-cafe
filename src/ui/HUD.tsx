@@ -1,7 +1,7 @@
 import { useState, type CSSProperties } from 'react';
 import { useGame, dispatch, getToast } from './store';
 import { nextUnlock, canUnlock } from '../sim/index.ts';
-import { objectDef, menuDef, cropDef } from '../data/index.ts';
+import { objectDef, menuDef, cropDef, roleDef } from '../data/index.ts';
 import { GUIDE_TOP } from './Guide';
 import { Icon } from './Icon';
 import { isMuted, setMuted } from './audio';
@@ -12,7 +12,11 @@ const SPEED_ICON: Record<(typeof SPEEDS)[number], string> = { 0: 'speed_pause', 
 const iconBtn: CSSProperties = { width: 44, height: 44, padding: 0, border: 0, borderRadius: 6, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' };
 
 function unlockName(u: NonNullable<ReturnType<typeof nextUnlock>>) {
-  return u.kind === 'object' ? objectDef(u.ref).name : u.kind === 'menu' ? menuDef(u.ref).name : cropDef(u.ref).name;
+  if (u.kind === 'object') return objectDef(u.ref).name;
+  if (u.kind === 'menu') return menuDef(u.ref).name;
+  if (u.kind === 'crop') return cropDef(u.ref).name;
+  if (u.kind === 'slot') return `${roleDef(u.ref).name} 자리`;
+  return roleDef(u.ref).name;
 }
 
 export function HUD() {

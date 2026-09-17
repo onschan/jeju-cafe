@@ -53,7 +53,10 @@ export function spawnGuests(state: GameState, n: number): number {
       seatId: best.seat.id,
       menuId: null,
       mood: null,
+      moodReason: null,
+      say: null,
       timerMs: 0,
+      waitMs: 0,
     });
     spawned++;
   }

@@ -1,12 +1,13 @@
 import { createInitialState } from '../state.ts';
 import { apply } from '../actions.ts';
+import { setSlot } from '../menu.ts';
 import { tick } from '../tick.ts';
 import { DAY_MS } from '../clock.ts';
 
 function cafe() {
   const s = createInitialState(1);
   apply(s, { type: 'place', objectType: 'table_out', x: 4, y: 5 });
-  apply(s, { type: 'setSlot', slot: 0, menuId: 'carrot_juice' });
+  setSlot(s, 0, 'carrot_juice'); // 아직 해금 전이라도 setSlot은 직접 호출로 검증 없이 올릴 수 있다
   s.storage['carrot'] = 50;
   return s;
 }
@@ -26,8 +27,8 @@ test('테이블 1개(2석)면 하루에 2명 온다', () => {
 test('한 달 지나면 정산 카드가 생기고 월 누적이 리셋된다', () => {
   const s = cafe();
   for (let i = 0; i < 30; i++) tick(s, DAY_MS);
-  expect(s.clock.month).toBe(2);
-  expect(s.lastMonthCard?.month).toBe(1);
+  expect(s.clock.month).toBe(4);
+  expect(s.lastMonthCard?.month).toBe(3);
   expect(s.lastMonthCard!.income).toBeGreaterThan(0);
   expect(s.monthIncome).toBe(0);
 });

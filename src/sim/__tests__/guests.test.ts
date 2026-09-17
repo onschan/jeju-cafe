@@ -43,7 +43,7 @@ test('걸어가서 앉고, 주문하고, 돈과 연구가 오른다', () => {
   expect(g.phase).toBe('seated');
   expect(g.menuId).toBe('carrot_juice');
   expect(g.mood).not.toBeNull();
-  expect(s.money).toBe(money0 + 2500);
+  expect(s.money).toBe(money0 + 4000);
   expect(s.storage['carrot']).toBe(9);
 });
 
