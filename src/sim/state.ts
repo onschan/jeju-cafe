@@ -4,7 +4,7 @@ import { START_HOUR } from './clock.ts';
 
 export const GRID_W = 10;
 export const GRID_H = 8;
-export const SAVE_VERSION = 2;
+export const SAVE_VERSION = 3;
 export const START_MONEY = 30000;
 export const START_MONTH = 3;
 export const MENU_SLOT_COUNT = 4;

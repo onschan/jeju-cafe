@@ -13,7 +13,7 @@ test('직렬화 왕복이 같은 상태를 만든다', () => {
 
 test('버전이 다르면 거부', () => {
   const s = createInitialState(9);
-  const json = serialize(s).replace('"version":2', '"version":999');
+  const json = serialize(s).replace('"version":3', '"version":999');
   expect(() => deserialize(json)).toThrow(/version/);
 });
 
