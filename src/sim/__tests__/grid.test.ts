@@ -60,9 +60,9 @@ test('북서쪽 돌담이 방풍을 만든다', () => {
 
 test('남동쪽 돌담은 방풍이 아니다', () => {
   const s = createInitialState(1);
-  mustPlace(s, 'field', X(2), Y(2));
-  mustPlace(s, 'stonewall', X(3), Y(3));
-  expect(windShelter(s, X(2), Y(2))).toBe(0);
+  mustPlace(s, 'field', X(1), Y(1));
+  mustPlace(s, 'stonewall', X(2), Y(2)); // (3,3)은 본관 문 앞 칸이라 못 놓는다
+  expect(windShelter(s, X(1), Y(1))).toBe(0);
 });
 
 test('경치 점수 = 반경 2칸 풍경 합 − 소음 합', () => {

@@ -1,8 +1,10 @@
 import { X, Y } from './helpers.ts';
 import { createInitialState } from '../state.ts';
 import { apply } from '../actions.ts';
-import { canPlace, placeObject, cellAt, objectAt, doorOf, roomAt, isRoomFloor, objectsInRoom, clearCost, canClearRock, clearRock, ROCK_CLEAR_COST, BIG_ROCK_CLEAR_COST, BUSH_CLEAR_COST } from '../grid.ts';
-import { isWalkable, walkableNeighborsOf, findPath, busStopPos } from '../path.ts';
+import { canPlace, placeObject, cellAt, objectAt, doorOf, doorFrontOf, roomAt, isRoomFloor, objectsInRoom, clearCost, canClearRock, clearRock, ROCK_CLEAR_COST, BIG_ROCK_CLEAR_COST, BUSH_CLEAR_COST } from '../grid.ts';
+import { isWalkable, walkableNeighborsOf, findPath, busStopPos, isDoorReachable } from '../path.ts';
+import { advanceConstruction, needsDoorPath, DOOR_PATH_HINT } from '../build.ts';
+import { dayIndex } from '../effects.ts';
 import { spawnGuests, updateGuests } from '../guests.ts';
 import { setSlot } from '../menu.ts';
 import { evaluateFacilityUnlocks } from '../segments.ts';
@@ -117,6 +119,49 @@ test('방은 문으로만 드나든다: 문 앞에 길을 놓으면 안까지 �
   updateGuests(s, 20_000);
   expect(s.guests[0]!.phase).toBe('seated');
   expect(cellAt(s, s.guests[0]!.approachCell!.x, s.guests[0]!.approachCell!.y).roomId).toBe(wh.id);
+});
+
+test('문 앞 칸엔 길·정낭만 놓는다; 방을 놓을 때도 문 앞이 막혀 있으면 안 된다', () => {
+  const s = createInitialState(1);
+  s.money = 1e9;
+  const wh = warehouse(s);
+  const f = doorFrontOf(wh);
+  expect(f).toEqual({ x: X(3), y: Y(3) });
+  expect(canPlace(s, 'table_out', f.x, f.y).reason).toBe('문 앞은 비워 둬요');
+  expect(canPlace(s, 'field', f.x, f.y).reason).toBe('문 앞은 비워 둬요');
+  expect(canPlace(s, 'stonewall', f.x, f.y).reason).toBe('문 앞은 비워 둬요');
+  expect(canPlace(s, 'path', f.x, f.y).ok).toBe(true);
+  expect(canPlace(s, 'table_out', X(2), Y(3)).ok).toBe(true);
+  // 새 방(주방 증축 2×1)의 문 앞에 테이블이 있으면 못 놓는다
+  s.unlocked.objects.push('kitchen_ext');
+  placeObject(s, 'table_out', X(0), Y(1));
+  expect(canPlace(s, 'kitchen_ext', X(0), Y(0)).reason).toBe('문 앞이 막혀 있어요');
+  expect(canPlace(s, 'kitchen_ext', X(1), Y(0)).ok).toBe(true); // 문 앞 (1,1)은 비어 있다
+  // 격자 맨 아래 줄은 문 앞이 격자 밖
+  for (const p of s.parcels) p.owned = true;
+  expect(canPlace(s, 'kitchen_ext', 0, s.grid.h - 1).reason).toBe('문 앞이 격자 밖이에요');
+});
+
+test('실내 테이블이 완공됐는데 문 앞까지 길이 없으면 알림에 안내가 붙는다', () => {
+  const s = createInitialState(1);
+  s.money = 1e9;
+  s.unlocked.objects.push('table_in');
+  const wh = warehouse(s);
+  expect(isDoorReachable(s, wh)).toBe(false);
+  expect(apply(s, { type: 'place', objectType: 'table_in', x: X(5), y: Y(1) }).ok).toBe(true);
+  const t = objectAt(s, X(5), Y(1))!;
+  expect(needsDoorPath(s, t)).toBe(true);
+  s.clock.day += 1;
+  expect(advanceConstruction(s)).toEqual([t.id]);
+  expect(s.notices.at(-1)).toBe(`실내 테이블 완공! — ${DOOR_PATH_HINT}`);
+  const scene = s.fx.find((f) => f.kind === 'scene');
+  expect(scene && 'text' in scene ? scene.text : '').toContain(DOOR_PATH_HINT);
+  // 정낭에서 문 앞까지 길을 이으면 닿는다
+  for (const y of [5, 4, 3]) placeObject(s, 'path', X(4), Y(y));
+  placeObject(s, 'path', X(3), Y(3));
+  expect(isDoorReachable(s, wh)).toBe(true);
+  expect(needsDoorPath(s, t)).toBe(false);
+  expect(dayIndex(s.clock)).toBeGreaterThan(0);
 });
 
 test('clearRock: 작은 바위 30만·큰 바위 100만·덤불 5만, 곡괭이가 있으면 무료(1개 소모), 내 땅만', () => {

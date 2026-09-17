@@ -1,3 +1,4 @@
+import { useSyncExternalStore } from 'react';
 import { useGame, getToast } from './store';
 import { objectDef, cropDef } from '../data/index.ts';
 import { availableMenus, hasReachableSeat, type GameState } from '../sim/index.ts';
@@ -9,8 +10,26 @@ function formatMonths(months: number[]): string {
   return consecutive && months.length > 1 ? `${months[0]}~${months[months.length - 1]}월` : `${months.join(', ')}월`;
 }
 
-/** HUD 두 줄 바로 아래. HUD 토스트도 같은 자리를 쓴다. */
+/** HUD 두 줄 바로 아래 (HUD가 아직 재지 않았을 때의 기본값). HUD 토스트도 같은 자리를 쓴다. */
 export const GUIDE_TOP = 90;
+/** 안내 상자와 HUD 사이 여백 */
+const GUIDE_GAP = 4;
+
+// HUD가 실제 높이를 재서 알려 준다 — 375px에서 1행이 접히거나 글자 크기가 달라도 안내가 HUD 아래에 놓이게.
+let hudHeight = 0;
+const hudListeners = new Set<() => void>();
+export function setHudHeight(h: number): void {
+  const v = Math.round(h);
+  if (v === hudHeight) return;
+  hudHeight = v;
+  for (const l of hudListeners) l();
+}
+function subscribeHud(l: () => void): () => void { hudListeners.add(l); return () => { hudListeners.delete(l); }; }
+function readGuideTop(): number { return hudHeight > 0 ? hudHeight + GUIDE_GAP : GUIDE_TOP; }
+/** 안내·튜토리얼·토스트의 top (HUD 높이 + 여백) */
+export function useGuideTop(): number {
+  return useSyncExternalStore(subscribeHud, readGuideTop, readGuideTop);
+}
 
 export function guideText(s: GameState): string | null {
   if (s.clock.year > 1) return null;
@@ -38,11 +57,12 @@ export function guideText(s: GameState): string | null {
 
 export function Guide() {
   const s = useGame();
+  const top = useGuideTop();
   const t = guideText(s);
   // 토스트가 같은 자리를 쓰므로 토스트가 떠 있는 동안은 안내를 숨긴다
   if (!t || getToast()) return null;
   return (
-    <div style={{ position: 'absolute', top: GUIDE_TOP, left: 12, right: 12, display: 'flex', alignItems: 'center', gap: 8, pointerEvents: 'none' }}>
+    <div style={{ position: 'absolute', top, left: 12, right: 12, display: 'flex', alignItems: 'center', gap: 8, pointerEvents: 'none' }}>
       <img className="px" src="/assets/icons/portrait_halmang.png" width={64} height={64} alt="할망" style={{ flex: 'none', imageRendering: 'pixelated' }} />
       <div style={{ flex: 1, background: '#fff3', color: '#fff', padding: '6px 10px', borderRadius: 8, fontSize: 13 }}>{t}</div>
     </div>

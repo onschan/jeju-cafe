@@ -1,8 +1,8 @@
-import { useState, type CSSProperties } from 'react';
+import { useState, useLayoutEffect, useRef, type CSSProperties } from 'react';
 import { useGame, dispatch, getToast } from './store';
 import { nextUnlock, canUnlock } from '../sim/index.ts';
 import { objectDef, menuDef, cropDef, roleDef } from '../data/index.ts';
-import { GUIDE_TOP } from './Guide';
+import { useGuideTop, setHudHeight } from './Guide';
 import { Icon } from './Icon';
 import { isMuted, setMuted } from './audio';
 
@@ -17,6 +17,14 @@ export function compactMoney(n: number): string {
   const a = Math.abs(n);
   if (a >= 10_000) return `${neg}${Math.floor(a / 10_000).toLocaleString()}만`;
   return `${neg}${a.toLocaleString()}`;
+}
+
+/** 연구 포인트를 짧게: 1만 이상은 '1.2만'(소수 1자리), 그 아래는 구분 기호 없이 그대로. */
+export function compactNumber(n: number): string {
+  const a = Math.abs(n);
+  const sign = n < 0 ? '-' : '';
+  if (a >= 10_000) return `${sign}${(Math.floor(a / 1000) / 10).toFixed(a % 10_000 >= 1000 ? 1 : 0)}만`;
+  return `${sign}${a}`;
 }
 
 /** 6~23시 → 'AM 8:00' / 'PM 3:00' */
@@ -52,14 +60,26 @@ export function HUD({ onMenu }: { onMenu?: () => void } = {}) {
   const toast = getToast();
   const [muted, setMutedState] = useState(isMuted());
   const toggleMute = () => { const m = !muted; setMuted(m); setMutedState(m); };
+  const guideTop = useGuideTop();
+  // 실제 높이를 재서 할망 안내·튜토리얼·토스트가 HUD 아래에 놓이게 한다 (토스트는 absolute라 높이에 안 잡힌다)
+  const rootRef = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const el = rootRef.current;
+    if (!el) return;
+    setHudHeight(el.offsetHeight);
+    if (typeof ResizeObserver === 'undefined') return;
+    const ro = new ResizeObserver(() => setHudHeight(el.offsetHeight));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
   return (
-    <div style={{ position: 'absolute', top: 0, left: 0, right: 0, padding: '8px 12px', color: '#fff', fontSize: 14, background: 'linear-gradient(#000a, #0000)', pointerEvents: 'none' }}>
-      {/* 1행: 날짜·돈·연구·인기 (읽기 전용). 375px에서 넘치면 인기 미터가 다음 줄로 내려간다. */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', columnGap: 6, rowGap: 2, whiteSpace: 'nowrap', flexWrap: 'wrap', fontSize: 13 }}>
-        <span>{s.clock.year}년 {s.clock.month}월 {s.clock.day}일 <span style={{ opacity: 0.85 }}>{clockText(s.clock.hour)}</span></span>
-        <span title={s.money.toLocaleString()}><Icon name="money" size={20} alt="돈" /> {compactMoney(s.money)}</span>
-        <span><Icon name="research" size={20} alt="연구" /> {s.research.toLocaleString()}</span>
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 2 }}><Icon name="local" size={20} alt="동네 손님" /><meter min={-100} max={100} value={s.popularity} style={{ width: 44, verticalAlign: 'middle' }} /><Icon name="tourist" size={20} alt="관광객" /></span>
+    <div ref={rootRef} data-testid="hud" style={{ position: 'absolute', top: 0, left: 0, right: 0, padding: '8px 12px', color: '#fff', fontSize: 14, background: 'linear-gradient(#000a, #0000)', pointerEvents: 'none' }}>
+      {/* 1행: 날짜·돈·연구·인기 (읽기 전용). 375px 한 줄에 맞게 압축 — 접히지 않고, 넘치면 오른쪽이 잘린다. */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', columnGap: 5, whiteSpace: 'nowrap', flexWrap: 'nowrap', overflow: 'hidden', fontSize: 12, lineHeight: '20px' }}>
+        <span style={{ flex: 'none' }}>{s.clock.year}년 {s.clock.month}월 {s.clock.day}일 <span style={{ opacity: 0.85 }}>{clockText(s.clock.hour)}</span></span>
+        <span style={{ flex: 'none' }} title={s.money.toLocaleString()}><Icon name="money" size={18} alt="돈" /> {compactMoney(s.money)}</span>
+        <span style={{ flex: 'none' }} title={s.research.toLocaleString()}><Icon name="research" size={18} alt="연구" /> {compactNumber(s.research)}</span>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 1, flex: 'none' }}><Icon name="local" size={18} alt="동네 손님" /><meter min={-100} max={100} value={s.popularity} style={{ width: 36, verticalAlign: 'middle' }} /><Icon name="tourist" size={18} alt="관광객" /></span>
       </div>
       {/* 2행: 속도 버튼(44×44)과 해금·음소거 버튼 — 손가락으로 누르는 것만 모아 둔다 */}
       <div style={{ marginTop: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
@@ -87,7 +107,7 @@ export function HUD({ onMenu }: { onMenu?: () => void } = {}) {
         </span>
       </div>
       {/* 토스트는 할망 안내와 같은 자리를 불투명하게 덮는다 (HUD 높이를 늘려 안내와 겹치지 않도록) */}
-      {toast && <div style={{ position: 'absolute', top: GUIDE_TOP, left: 12, right: 12, background: '#c9184a', padding: '8px 10px', borderRadius: 8, fontSize: 16, fontWeight: 700 }}>{toast}</div>}
+      {toast && <div style={{ position: 'absolute', top: guideTop, left: 12, right: 12, background: '#c9184a', padding: '8px 10px', borderRadius: 8, fontSize: 16, fontWeight: 700 }}>{toast}</div>}
     </div>
   );
 }

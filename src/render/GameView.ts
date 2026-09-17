@@ -1,6 +1,6 @@
 import { Application, Container, Sprite, Graphics, Texture } from 'pixi.js';
 import type { GameState, PlacedObject, Guest, Staff, Season, RoleId, Pt } from '../sim/index.ts';
-import { seasonOf, LOW_ENERGY, parcelPrice, footprint, roomAt, WALL_COLORS, dayIndex } from '../sim/index.ts';
+import { seasonOf, LOW_ENERGY, parcelPrice, footprint, roomAt, doorFrontOf, WALL_COLORS, dayIndex } from '../sim/index.ts';
 import type { Parcel } from '../sim/index.ts';
 import { objectDef, cropDef } from '../data/index.ts';
 import { isoTerrainTexture, isoObjectTexture, glowTexture, label, bubble, clearTextureCache, loadLabelFont } from './textures';
@@ -71,6 +71,8 @@ const ROLE_ICON_Y = -(CHAR_H - 10);
 const TIRED_ALPHA = 0.6;
 /** 건설 중인 시설: 반투명 + 망치 라벨 */
 const BUILDING_ALPHA = 0.5;
+/** 방(본관 등) 문 앞 칸 표식: 손님 출입구라 올렛길을 이어야 한다 */
+const DOOR_MARK_COLOR = 0xffd166;
 /** 밤 오버레이 색·최대 알파 */
 const NIGHT_COLOR = 0x0b1a3a;
 const NIGHT_MAX_ALPHA = 0.55;
@@ -474,12 +476,31 @@ export class GameView {
     return depth(x, y, w, h);
   }
 
+  /** 문 앞 칸 다이아몬드 + '문' 라벨 (방 노드의 자식 — 노드 원점 기준). 문 앞에 뭔가 놓이면 그 오브젝트가 위에 그려져 가려진다. */
+  private doorMarker(o: PlacedObject, origin: { sx: number; sy: number }): Container {
+    const c = new Container();
+    c.label = 'door';
+    const f = doorFrontOf(o);
+    const t = cellToScreen(f.x, f.y);
+    const x = t.sx - origin.sx, y = t.sy - origin.sy;
+    c.addChild(new Graphics()
+      .poly([x, y + 2, x + ISO_W / 2 - 3, y + ISO_H / 2, x, y + ISO_H - 2, x - ISO_W / 2 + 3, y + ISO_H / 2])
+      .fill({ color: DOOR_MARK_COLOR, alpha: 0.22 })
+      .stroke({ color: DOOR_MARK_COLOR, width: 1.5, alpha: 0.9 }));
+    const l = label('문', 9);
+    l.anchor.set(0.5, 0.5);
+    l.position.set(x, y + ISO_H / 2);
+    c.addChild(l);
+    return c;
+  }
+
   private makeObjectNode(state: GameState, o: PlacedObject): ObjEntry {
     const def = objectDef(o.type);
     const c = new Container();
     const { sx, sy } = footAnchor(o.x, o.y, def.w, def.h);
     c.position.set(sx, sy);
     c.zIndex = this.depthOf(state, o.x, o.y, def.w, def.h);
+    if (def.room) c.addChild(this.doorMarker(o, { sx, sy }));
     let glow: Sprite | null = null;
     if (GLOW_TYPES.has(o.type)) {
       glow = new Sprite(glowTexture(this.app.renderer));

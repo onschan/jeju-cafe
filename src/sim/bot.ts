@@ -47,7 +47,8 @@ export interface BotRow {
 const at = (x: number, y: number) => ({ x: START_ORIGIN.x + x, y: START_ORIGIN.y + y });
 /** 가로 올렛길 y=4 양옆(y=3, y=5)에 테이블 (시작 필지 상대). 시작 자금 500만이면 16개(80만)는 무리가 없다. */
 export const BOT_TABLES: { x: number; y: number }[] = [
-  ...[0, 1, 2, 3, 5, 6, 7, 8, 9].map((x) => at(x, 3)),
+  ...[0, 1, 2, 5, 6, 7, 8, 9].map((x) => at(x, 3)),
+  at(5, 6), // (3,3)은 본관 문 앞 칸이라 못 놓는다 → 정낭 옆으로
   ...[0, 1, 2, 3, 7, 8, 9].map((x) => at(x, 5)),
 ];
 export const BOT_FIELDS: { x: number; y: number }[] = [at(6, 6), at(7, 6), at(8, 6)];

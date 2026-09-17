@@ -55,6 +55,28 @@ export function doorOf(room: PlacedObject): Pt {
   return { x: room.x, y: room.y + objectDef(room.type).h - 1 };
 }
 
+/** 문 앞 칸 = 문 바로 아래(바깥). 손님이 들어오려면 이 칸이 걷기 칸(올렛길)이어야 한다. */
+export function doorFrontOf(room: PlacedObject): Pt {
+  const d = doorOf(room);
+  return { x: d.x, y: d.y + 1 };
+}
+
+/** 문 앞에 놓으면 출입을 막는 종류 (길·정낭·정류장은 걷기 칸이라 괜찮다; 실내 오브젝트는 방 안에만 놓인다) */
+const DOOR_FRONT_FREE_KINDS = new Set(['path', 'gate', 'busstop']);
+export function blocksDoorFront(def: ObjectDef): boolean {
+  return !def.indoor && !DOOR_FRONT_FREE_KINDS.has(def.kind);
+}
+
+/** 이 칸이 어떤 방의 문 앞 칸이면 그 방 */
+export function roomWithDoorFrontAt(state: GameState, x: number, y: number, ignoreId?: string): PlacedObject | null {
+  for (const o of Object.values(state.objects)) {
+    if (o.id === ignoreId || !objectDef(o.type).room) continue;
+    const f = doorFrontOf(o);
+    if (f.x === x && f.y === y) return o;
+  }
+  return null;
+}
+
 /** 이 칸을 바닥으로 삼는 방 */
 export function roomAt(state: GameState, x: number, y: number): PlacedObject | null {
   if (!inBounds(state, x, y)) return null;
@@ -122,8 +144,17 @@ export function canPlace(state: GameState, type: string, x: number, y: number, i
     }
     if (cell.objectId && cell.objectId !== ignoreId) return { ok: false, reason: '이미 뭔가 있어요' };
     if (!def.terrain.includes(cell.terrain)) return { ok: false, reason: cell.terrain === 'rock' || cell.terrain === 'rock_big' ? '바위를 먼저 치워요' : '여기엔 못 놓아요' };
+    // 방의 문 앞 칸은 손님 출입구라 길·정낭만 놓는다
+    if (blocksDoorFront(def) && roomWithDoorFrontAt(state, p.x, p.y, ignoreId)) return { ok: false, reason: '문 앞은 비워 둬요' };
   }
   if (def.indoor && roomIds.size > 1) return { ok: false, reason: '한 방 안에 놓아요' };
+  if (def.room) {
+    // 새 방의 문 앞 칸이 막혀 있으면(다른 오브젝트·격자 밖) 손님이 못 들어온다
+    const f = doorFrontOf({ id: '', type, x, y, crop: null });
+    if (!inBounds(state, f.x, f.y)) return { ok: false, reason: '문 앞이 격자 밖이에요' };
+    const front = objectAt(state, f.x, f.y);
+    if (front && front.id !== ignoreId && blocksDoorFront(objectDef(front.type))) return { ok: false, reason: '문 앞이 막혀 있어요' };
+  }
   if (def.kind === 'landmark') {
     if (parcelIds.size > 1) return { ok: false, reason: '랜드마크는 한 필지 안에 놓아요' };
     for (const id of parcelIds) if (parcelHasLandmark(state, id, ignoreId)) return { ok: false, reason: '이 필지엔 이미 랜드마크가 있어요' };

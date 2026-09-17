@@ -1,4 +1,4 @@
-import { useState, useRef, type PointerEvent as ReactPointerEvent } from 'react';
+import { useState, useRef, type CSSProperties, type PointerEvent as ReactPointerEvent } from 'react';
 import { useGame, dispatch } from './store';
 import { objectAt, isMenuAvailable, hasMenuStaff, menuRequirementText, sceneryScore, boardBadge, clearCost, placeCost, menuOf, priceOf, MENU_SLOT_COUNT } from '../sim/index.ts';
 import { objectDef, cropDef, ingredientDef } from '../data/index.ts';
@@ -92,9 +92,12 @@ function MessageBar({ text }: { text: string | null }) {
   return <div data-testid="place-msg" style={{ background: PALETTE.bad, color: '#fff', fontWeight: 700, padding: '6px 10px', borderRadius: 6, marginBottom: 6 }}>{text}</div>;
 }
 
+/** 시트를 스크롤해도 확정 줄은 위에 붙어 있다 (짓기 카드 17개+를 내려 고른 뒤 맵을 눌러도 ✓가 보이게). 가로 패딩만큼 밖으로 빼서 가로 전체를 덮고, 위 패딩은 시트가 0으로 둔다(sticky는 부모 내용 상자 안에 갇힌다). */
+const stickyBar: CSSProperties = { position: 'sticky', top: 0, zIndex: 2, background: PALETTE.paper, margin: '0 -12px 6px', padding: '8px 12px 6px', borderBottom: `2px solid ${PALETTE.woodLight}` };
+
 function PlaceBar({ text, ok, canRotate, msg, onConfirm, onRotate, onCancel }: PlaceBarProps) {
   return (
-    <div style={{ marginBottom: 6 }}>
+    <div data-testid="place-bar" style={stickyBar}>
       <MessageBar text={msg} />
       <div style={{ fontSize: 13, color: ok ? PALETTE.ok : PALETTE.bad, marginBottom: 4 }}>{text}</div>
       <div style={{ display: 'flex', gap: 6 }}>
@@ -153,7 +156,7 @@ export function BottomSheet({ mode, setMode, place, msg, onGuest, onDragBuild }:
     </button>
   );
   return (
-    <div style={{ ...frame, position: 'absolute', left: 0, right: 0, bottom: 0, borderRadius: '10px 10px 0 0', borderBottom: 0, padding: '8px 12px calc(8px + env(safe-area-inset-bottom))', maxHeight: tall ? '60vh' : '40vh', overflowY: 'auto', fontSize: 16 }}>
+    <div style={{ ...frame, position: 'absolute', left: 0, right: 0, bottom: 0, borderRadius: '10px 10px 0 0', borderBottom: 0, padding: `${place ? 0 : 8}px 12px calc(8px + env(safe-area-inset-bottom))`, maxHeight: tall ? '60vh' : '40vh', overflowY: 'auto', fontSize: 16 }}>
       {place ? <PlaceBar {...place} /> : <MessageBar text={msg} />}
       <div style={{ marginBottom: 6, display: 'flex', flexWrap: 'wrap' }} data-testid="tabs">
         {MAIN_TABS.map(tabBtn)}

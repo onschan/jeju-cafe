@@ -1,6 +1,6 @@
-import type { GameState, Pt } from './types.ts';
+import type { GameState, Pt, PlacedObject } from './types.ts';
 import { objectDef } from '../data/index.ts';
-import { inBounds, cellAt, objectAt, isRoomFloor, doorOf } from './grid.ts';
+import { inBounds, cellAt, objectAt, isRoomFloor, doorOf, doorFrontOf } from './grid.ts';
 
 const WALKABLE_KINDS = new Set(['path', 'gate', 'busstop']);
 
@@ -72,6 +72,13 @@ export function pathFromReach(state: GameState, reach: Reach, to: Pt): Pt[] | nu
     k = reach.prev.get(k);
   }
   return out;
+}
+
+/** 정류장에서 걸어서 방 문 앞까지 닿나 (문 앞 칸이 올렛길로 이어졌는지). 실내 좌석 안내용. */
+export function isDoorReachable(state: GameState, room: PlacedObject): boolean {
+  const f = doorFrontOf(room);
+  if (!isWalkable(state, f.x, f.y)) return false;
+  return reachMap(state, busStopPos(state)).dist.has(cellKey(state, f));
 }
 
 /** 단발 경로. 스폰처럼 목적지가 여러 개면 reachMap + pathFromReach를 쓸 것. */

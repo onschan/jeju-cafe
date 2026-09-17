@@ -1,7 +1,7 @@
 import { X, Y } from './helpers.ts';
 import { createInitialState, SETTLE_GRANT, SETTLE_GRANT_THRESHOLD } from '../state.ts';
 import { apply } from '../actions.ts';
-import { canPlace, placeObject, sceneryScore, cellAt, objectAt, isSheltered } from '../grid.ts';
+import { canPlace, placeObject, sceneryScore, cellAt, objectAt, isSheltered, removeObject } from '../grid.ts';
 import { parcelAt, parcelById, parcelPrice, canBuyParcel, parcelUnlockOwnedCount, parcelsAdjacent, COAST_FEE_MULT, COAST_SPAWN_MULT, OREUM_SCENERY, STONEHILL_SCENERY, VILLAGE_SENIOR_MULT, BATDAM_HARVEST_MULT } from '../parcels.ts';
 import { typeWeight, spawnGuests, updateGuests } from '../guests.ts';
 import { harvest } from '../farm.ts';
@@ -62,6 +62,8 @@ test('소유하지 않은 필지엔 못 짓는다', () => {
   expect(canPlace(s, 'field', 12, 3).ok).toBe(true);
   // 경계에 걸치는 오브젝트는 두 필지 모두 소유해야 한다
   s.unlocked.objects.push('warehouse');
+  const bush = objectAt(s, 17, 5); // 문 앞 칸(17,5)의 곶자왈 덤불은 치우고 본다
+  if (bush) removeObject(s, bush.id);
   expect(canPlace(s, 'warehouse', 17, 3).ok).toBe(true);
   expect(canPlace(s, 'warehouse', 18, 3).ok).toBe(false); // (20,3)은 8번 필지
 });

@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { useGame, getToast } from './store';
-import { GUIDE_TOP } from './Guide';
+import { useGuideTop } from './Guide';
 import { PALETTE } from './frame';
 import { useTutorial, currentStep, checkTutorial, advanceTutorial, skipTutorial, stepLines, TUTORIAL_STEPS, MORE_TAB_NAMES } from './tutorial';
 
@@ -15,6 +15,7 @@ const smallBtn = {
 /** 할망 튜토리얼: Guide와 같은 자리(HUD 아래)에 초상 + 2줄 대사 + 건너뛰기. 강조 탭은 노란 펄스. */
 export function TutorialOverlay() {
   const s = useGame();
+  const top = useGuideTop();
   useTutorial();
   useEffect(() => { checkTutorial(s); });
   const step = currentStep();
@@ -23,7 +24,7 @@ export function TutorialOverlay() {
   const manual = !step.done;
   const lines = stepLines(step, s);
   return (
-    <div data-testid="tutorial" data-step={step.id} style={{ position: 'absolute', top: GUIDE_TOP, left: 12, right: 12, display: 'flex', alignItems: 'flex-start', gap: 8, pointerEvents: 'none' }}>
+    <div data-testid="tutorial" data-step={step.id} style={{ position: 'absolute', top, left: 12, right: 12, display: 'flex', alignItems: 'flex-start', gap: 8, pointerEvents: 'none' }}>
       <style>{PULSE_CSS}{step.tab ? `[data-tab="${step.tab}"]${MORE_TAB_NAMES.has(step.tab) ? ', [data-tab="더보기"]:not([aria-expanded="true"])' : ''} { animation: tut-pulse 1s ease-in-out infinite; }` : ''}</style>
       <img className="px" src="/assets/icons/portrait_halmang.png" width={48} height={48} alt="할망" style={{ flex: 'none', imageRendering: 'pixelated' }} />
       <div style={{ flex: 1, background: PALETTE.paper, color: PALETTE.ink, border: `3px solid ${PALETTE.wood}`, boxShadow: `inset 0 0 0 2px ${PALETTE.woodLight}`, padding: '6px 8px', borderRadius: 8, fontSize: 13, pointerEvents: 'auto' }}>

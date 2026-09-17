@@ -3,6 +3,17 @@ import { objectDef } from '../data/index.ts';
 import { dayIndex } from './effects.ts';
 import { pushNotice } from './staff.ts';
 import { pushFx } from './farm.ts';
+import { roomAt } from './grid.ts';
+import { isDoorReachable } from './path.ts';
+
+export const DOOR_PATH_HINT = '문 앞까지 올렛길을 이어 주세요';
+
+/** 완공된 것이 방이거나 실내 오브젝트인데 그 방 문 앞이 정류장과 안 이어졌으면 true (손님이 못 들어온다) */
+export function needsDoorPath(state: GameState, obj: PlacedObject): boolean {
+  const def = objectDef(obj.type);
+  const room = def.room ? obj : def.indoor ? roomAt(state, obj.x, obj.y) : null;
+  return !!room && !isDoorReachable(state, room);
+}
 
 /** 시작 일꾼 삼춘 수 = 동시에 지을 수 있는 시설 수 (마일리지 상점에서 3·4·5번째를 고용한다) */
 export const START_BUILDERS = 2;
@@ -50,9 +61,10 @@ export function advanceConstruction(state: GameState): string[] {
     delete o.build;
     const name = objectDef(o.type).name;
     done.push(o.id);
-    pushNotice(state, `${name} 완공!`);
+    const hint = needsDoorPath(state, o) ? ` — ${DOOR_PATH_HINT}` : '';
+    pushNotice(state, `${name} 완공!${hint}`);
     pushFx(state, { kind: 'complete', x: o.x, y: o.y, tick: state.tick });
-    pushFx(state, { kind: 'scene', title: '완공', text: `${name} 완공! 손님을 맞을 준비가 됐어요`, tick: state.tick });
+    pushFx(state, { kind: 'scene', title: '완공', text: hint ? `${name} 완공! ${DOOR_PATH_HINT}` : `${name} 완공! 손님을 맞을 준비가 됐어요`, tick: state.tick });
   }
   return done;
 }
