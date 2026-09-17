@@ -9,13 +9,30 @@ const KIND_COLOR: Record<ObjectKind, number> = {
   building: 0x7a4a2a, deco: 0xaa66aa, busstop: 0x2a5aaa, gate: 0x6a4a2a,
 };
 
-const cache = new Map<string, Texture>();
+// 텍스처는 만든 렌더러 소유라 렌더러별로 캐시한다. (Fast Refresh로 뷰가 겹칠 때 서로의 캐시를 지우지 않도록)
+const caches = new WeakMap<Renderer, Map<string, Texture>>();
+
+function cacheFor(renderer: Renderer): Map<string, Texture> {
+  let c = caches.get(renderer);
+  if (!c) { c = new Map(); caches.set(renderer, c); }
+  return c;
+}
+
+/** 렌더러가 파괴될 때 호출해 그 렌더러가 만든 텍스처를 해제한다. */
+export function clearTextureCache(renderer: Renderer) {
+  const c = caches.get(renderer);
+  if (!c) return;
+  for (const tex of c.values()) tex.destroy(true);
+  caches.delete(renderer);
+}
 
 function rectTexture(renderer: Renderer, key: string, w: number, h: number, color: number, border = 0x000000): Texture {
+  const cache = cacheFor(renderer);
   const hit = cache.get(key);
   if (hit) return hit;
   const g = new Graphics().rect(0, 0, w, h).fill(color).stroke({ color: border, width: 1, alpha: 0.35 });
   const tex = renderer.generateTexture(g);
+  g.destroy();
   cache.set(key, tex);
   return tex;
 }
