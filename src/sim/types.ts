@@ -26,7 +26,7 @@ export interface CropDef {
   name: string;
   growDays: number;          // 심은 뒤 첫 수확까지
   plantMonths: number[];     // field 작물: 심을 수 있는 달 (1~12)
-  harvestMonths?: number[];  // tree 작물: 매년 수확 가능한 달
+  harvestMonths?: number[];  // tree 작물: 매년 수확 가능한 달. 창의 시작 달부터 연속(해 넘김 가능, 예 [11,12,1])
   yieldAmount: number;
 }
 
@@ -66,7 +66,7 @@ export interface CropState {
   cropId: string;
   daysGrown: number;
   ready: boolean;
-  harvestedYear: number; // tree: 올해 이미 땄으면 clock.year
+  harvestedYear: number; // tree: 올해 이미 땄으면 clock.year, -1 = 아직 안 땀
 }
 
 export interface PlacedObject {

@@ -9,6 +9,7 @@ export function inBounds(state: GameState, x: number, y: number): boolean {
 }
 
 export function cellAt(state: GameState, x: number, y: number): Cell {
+  if (!inBounds(state, x, y)) throw new Error(`cell out of bounds ${x},${y}`);
   const c = state.grid.cells[y * state.grid.w + x];
   if (!c) throw new Error(`cell out of bounds ${x},${y}`);
   return c;
@@ -44,7 +45,7 @@ export function placeObject(state: GameState, type: string, x: number, y: number
   const obj: PlacedObject = { id, type, x, y, crop: null };
   const def = objectDef(type);
   if (def.kind === 'tree' && def.cropId) {
-    obj.crop = { cropId: def.cropId, daysGrown: 0, ready: false, harvestedYear: 0 };
+    obj.crop = { cropId: def.cropId, daysGrown: 0, ready: false, harvestedYear: -1 };
   }
   state.objects[id] = obj;
   for (const p of footprint(type, x, y)) cellAt(state, p.x, p.y).objectId = id;

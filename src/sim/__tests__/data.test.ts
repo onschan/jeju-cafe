@@ -37,3 +37,13 @@ test('가중치와 달 범위가 유효하다', () => {
   for (const g of GUEST_TYPES) expect(g.weight).toBeGreaterThanOrEqual(0);
   for (const c of CROPS) for (const m of [...c.plantMonths, ...(c.harvestMonths ?? [])]) { expect(m).toBeGreaterThanOrEqual(1); expect(m).toBeLessThanOrEqual(12); }
 });
+
+test('harvestMonths는 창의 시작 달부터 순서대로 (해 넘김 허용)', () => {
+  for (const c of CROPS) {
+    const hm = c.harvestMonths ?? [];
+    for (let i = 1; i < hm.length; i++) {
+      const prev = hm[i - 1]!, cur = hm[i]!;
+      expect(cur === prev + 1 || (prev === 12 && cur === 1)).toBe(true);
+    }
+  }
+});

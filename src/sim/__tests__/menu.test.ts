@@ -28,3 +28,10 @@ test('판매하면 재료가 줄어든다', () => {
   consumeIngredients(s, 'carrot_cake');
   expect(s.storage['carrot']).toBe(1);
 });
+
+test('같은 메뉴를 두 칸에 올릴 수 없다', () => {
+  const s = createInitialState(1);
+  setSlot(s, 0, 'carrot_juice');
+  expect(canSetSlot(s, 1, 'carrot_juice').ok).toBe(false);
+  expect(canSetSlot(s, 0, 'carrot_juice').ok).toBe(true); // 같은 칸 재설정은 허용
+});

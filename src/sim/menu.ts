@@ -4,6 +4,7 @@ import { menuDef } from '../data/index.ts';
 export function canSetSlot(state: GameState, slot: number, menuId: string | null): ApplyResult {
   if (slot < 0 || slot >= state.menuSlots.length) return { ok: false, reason: '없는 칸' };
   if (menuId !== null && !state.unlocked.menus.includes(menuId)) return { ok: false, reason: '아직 모르는 메뉴' };
+  if (menuId !== null && state.menuSlots.some((m, i) => m === menuId && i !== slot)) return { ok: false, reason: '이미 메뉴판에 있어요' };
   return { ok: true };
 }
 

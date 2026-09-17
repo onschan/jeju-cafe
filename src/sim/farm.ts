@@ -16,13 +16,14 @@ export function canPlant(state: GameState, objectId: string, cropId: string): Ap
   if (obj.crop) return { ok: false, reason: '이미 심었어요' };
   if (!state.unlocked.crops.includes(cropId)) return { ok: false, reason: '아직 모르는 작물' };
   const crop = cropDef(cropId);
+  if (crop.plantMonths.length === 0) return { ok: false, reason: '밭에 심는 작물이 아니에요' };
   if (!crop.plantMonths.includes(state.clock.month)) return { ok: false, reason: '지금은 심는 철이 아니에요' };
   return { ok: true };
 }
 
 export function plant(state: GameState, objectId: string, cropId: string): void {
   const obj = state.objects[objectId]!;
-  obj.crop = { cropId, daysGrown: 0, ready: false, harvestedYear: 0 };
+  obj.crop = { cropId, daysGrown: 0, ready: false, harvestedYear: -1 };
 }
 
 /** 하루치 생육. 매일 한 번 호출. */
