@@ -9,7 +9,7 @@ export const PARCEL_W = 10;
 export const PARCEL_H = 8;
 export const GRID_W = PARCEL_W * PARCEL_COLS;
 export const GRID_H = PARCEL_H * 2;
-export const SAVE_VERSION = 5;
+export const SAVE_VERSION = 6;
 /** 시작 자금 500만 + 정착지원금(잔고 < 40만이면 1회 300만) — 마스터 GDD §1 */
 export const START_MONEY = 5_000_000;
 export const SETTLE_GRANT = 3_000_000;
@@ -118,6 +118,9 @@ export function createInitialState(seed: number, playerId = 'local', createdAt =
     youtuberBoostMonths: 0,
     segmentPopularity: { local: 30, tourist: 20 },
     targetSegment: null,
+    codex: { combos: [], sets: [] },
+    inventory: {},
+    itemBonus: {},
     notices: [],
     guests: [],
     spawnAcc: 0,

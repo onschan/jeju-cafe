@@ -24,6 +24,10 @@ export interface ObjectDef {
   terrain: Terrain[];  // 놓을 수 있는 지형
   removeCost?: number; // 치울 때 환불 대신 드는 돈 (곶자왈 덤불처럼 처음부터 있던 것)
   effectText?: string; // 랜드마크 효과 설명 (데이터만, 효과는 TODO)
+  popularity?: number; // 기본 인기 (없으면 BASE_POPULARITY 10)
+  feePct?: number;     // 기본 요금 % (없으면 100)
+  desc?: string;       // 정보 패널 설명 (없으면 이름)
+  seasonScenery?: Partial<Record<Season, number>>; // 계절 경치 보너스 (없으면 SEASON_SCENERY 표)
 }
 
 export interface CropDef {
@@ -44,6 +48,11 @@ export interface MenuDef {
   requires?: { role?: RoleId; skill?: string }; // 배치된 직원(기력>0)이 조건을 만족해야 만들 수 있다
 }
 
+/** 인구 태그 (마스터 GDD §1): 콤보·세트의 대상 손님층은 이 태그로 판정한다 */
+export type Gender = 'female' | 'male' | 'any';
+export type AgeTag = 'youth' | 'adult' | 'senior';
+export interface GuestTags { gender: Gender; age: AgeTag; group: boolean }
+
 export interface GuestTypeDef {
   id: string;
   name: string;
@@ -51,7 +60,69 @@ export interface GuestTypeDef {
   minScenery: number;
   popularityShift: number; // happy일 때 게이지 이동 (−: 동네, +: 인기)
   weight: number;          // 스폰 가중치
+  tags?: GuestTags;        // 없으면 data/index.ts의 기본값 (local=시니어, tourist=청년)
 }
+
+// ---------- 상성·세트·아이템 (2B-2) ----------
+/** 콤보·세트의 대상 손님층 (v2 표의 target) */
+export type ComboTarget = 'all' | 'female' | 'male' | 'youth' | 'adult' | 'senior' | 'group';
+/** ↑ = 인기 +3 요금 +5%, ↑↑ = +6/+10%, ↓ = −3/−5%, none = 특수 효과만(수확 +20% 등, 표시만) */
+export type ComboStrength = 'up' | 'upup' | 'down' | 'none';
+export type ComboSide = 'a' | 'b' | 'both';
+export interface ComboDef {
+  id: string;
+  name: string;
+  a: string;          // 시설 A 오브젝트 id
+  bIds: string[];     // 시설 B 후보 (하나라도 있으면). 'table_*'처럼 끝이 *면 접두 일치
+  bCount: number;     // 반경 안에 있어야 하는 B 개수
+  target: ComboTarget;
+  strength: ComboStrength;
+  applyTo: ComboSide; // 보너스를 받는 쪽
+  hidden: boolean;
+  radius: number;     // 체비쇼프 (기본 2)
+  effectText: string;
+}
+export interface SetDef {
+  id: string;
+  name: string;
+  requires: { objectId: string; count: number }[];
+  target: ComboTarget;
+  radius: number;         // 기본 3
+  levelMult: number[];    // 레벨 1..n 인기 배수
+  effectText?: string;
+}
+/** 아이템이 잘 맞는 시설 분류 (v1 표의 열) */
+export type ItemSlot = 'seat' | 'facility' | 'farm' | 'env';
+export interface ItemDef {
+  id: string;
+  name: string;
+  stat: 'popularity' | 'feePct';
+  value: number;                            // 기본 효과. 잘 맞는 시설이면 ×2
+  fitIds: string[];                         // 잘 맞는 시설 id (v2)
+  fitSlots?: Partial<Record<ItemSlot, number>>; // 시설 분류별 0~3 (v1). 0이면 못 씀, 3이면 ×2
+  sourceText: string;
+}
+export interface ActiveCombo {
+  id: string;
+  name: string;
+  strength: ComboStrength;
+  side: 'a' | 'b';
+  hidden: boolean;
+  target: ComboTarget;
+  effectText: string;
+}
+export interface ActiveSet { id: string; name: string; level: number; target: ComboTarget; mult: number }
+export interface ObjectStats {
+  popularity: number;
+  feePct: number;
+  scenery: number; // 자기 경치 + 계절 보너스 (상한 30)
+  noise: number;
+  upkeep: number;
+  combos: ActiveCombo[];
+  sets: ActiveSet[];
+  segmentBonus: Record<string, number>; // 손님층 id → 콤보 대상 가산 인기
+}
+export interface ItemBonus { popularity: number; feePct: number }
 
 export interface UnlockDef {
   id: string;
@@ -218,6 +289,9 @@ export interface GameState {
   youtuberBoostMonths: number;
   segmentPopularity: Record<string, number>; // 손님층 인기 0~99
   targetSegment: string | null;               // 타깃 손님층: 홍보 효과 ×1.5
+  codex: { combos: string[]; sets: string[] }; // 발동한 적 있는 상성·세트 id (도감)
+  inventory: Record<string, number>;          // itemId → 개수
+  itemBonus: Record<string, ItemBonus>;       // objectType → 아이템 누적 보너스 (인기 상한 +30)
   notices: string[];
   guests: Guest[];
   spawnAcc: number; // 시간대별 스폰 소수 누적
@@ -256,6 +330,7 @@ export type Action =
   | { type: 'assign'; staffId: string; role: RoleId | null }
   | { type: 'levelUp'; staffId: string; stat: StatKey }
   | { type: 'promote'; staffId: string; promotionId: string }
-  | { type: 'setTarget'; segment: string | null };
+  | { type: 'setTarget'; segment: string | null }
+  | { type: 'useItem'; itemId: string; objectType: string };
 
 export interface ApplyResult { ok: boolean; reason?: string }

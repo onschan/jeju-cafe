@@ -1,4 +1,4 @@
 [
-  { "id": "local", "name": "동네 삼춘", "likes": ["drink", "meal"], "minScenery": 0, "popularityShift": -2, "weight": 5 },
-  { "id": "tourist", "name": "관광객", "likes": ["drink", "dessert"], "minScenery": 2, "popularityShift": 2, "weight": 5 }
+  { "id": "local", "name": "동네 삼춘", "likes": ["drink", "meal"], "minScenery": 0, "popularityShift": -2, "weight": 5, "tags": { "gender": "any", "age": "senior", "group": false } },
+  { "id": "tourist", "name": "관광객", "likes": ["drink", "dessert"], "minScenery": 2, "popularityShift": 2, "weight": 5, "tags": { "gender": "any", "age": "youth", "group": false } }
 ]

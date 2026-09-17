@@ -1,12 +1,13 @@
 import { useGame, dispatch } from './store';
-import { objectAt, canPlant, isMenuAvailable, hasMenuStaff, menuRequirementText, sceneryScore, MENU_SLOT_COUNT, PROTECTED_TYPES } from '../sim/index.ts';
-import { objectDef, cropDef, menuDef, CROPS } from '../data/index.ts';
+import { objectAt, isMenuAvailable, hasMenuStaff, menuRequirementText, sceneryScore, MENU_SLOT_COUNT } from '../sim/index.ts';
+import { objectDef, cropDef, menuDef } from '../data/index.ts';
 import { Icon } from './Icon';
 import { StaffPanel } from './StaffPanel';
 import { PromoPanel } from './PromoPanel';
+import { ObjectInfoPanel, CodexPanel } from './ObjectInfoPanel';
 import { frame, brownBtn, brownBtnOn, brownBtnOff, dangerBtn, brownSelect, PALETTE, won } from './frame';
 
-export type Mode = { kind: 'idle' } | { kind: 'build'; objectType: string } | { kind: 'move' } | { kind: 'cell'; x: number; y: number } | { kind: 'menu' } | { kind: 'staff' } | { kind: 'promo' };
+export type Mode = { kind: 'idle' } | { kind: 'build'; objectType: string } | { kind: 'move' } | { kind: 'cell'; x: number; y: number } | { kind: 'menu' } | { kind: 'staff' } | { kind: 'promo' } | { kind: 'codex' };
 
 /** 고스트 배치 확정 줄: 상태 문구 + ✓ / ↻ / ✗ */
 export interface PlaceBarProps {
@@ -29,6 +30,7 @@ const TABS: { kind: Mode['kind']; icon: string; label: string; to: Mode }[] = [
   { kind: 'menu', icon: 'menu', label: '메뉴판', to: { kind: 'menu' } },
   { kind: 'staff', icon: 'local', label: '직원', to: { kind: 'staff' } },
   { kind: 'promo', icon: 'tourist', label: '홍보', to: { kind: 'promo' } },
+  { kind: 'codex', icon: 'research', label: '도감', to: { kind: 'codex' } },
 ];
 
 /** 재료 있음/없음 색점 (leaf / red) */
@@ -65,7 +67,7 @@ function PlaceBar({ text, ok, canRotate, msg, onConfirm, onRotate, onCancel }: P
 
 export function BottomSheet({ mode, setMode, place, msg }: { mode: Mode; setMode: (m: Mode) => void; place: PlaceBarProps | null; msg: string | null }) {
   const s = useGame();
-  const tall = mode.kind === 'staff' || mode.kind === 'promo';
+  const tall = mode.kind === 'staff' || mode.kind === 'promo' || mode.kind === 'codex' || mode.kind === 'cell';
   return (
     <div style={{ ...frame, position: 'absolute', left: 0, right: 0, bottom: 0, borderRadius: '10px 10px 0 0', borderBottom: 0, padding: '8px 12px calc(8px + env(safe-area-inset-bottom))', maxHeight: tall ? '60vh' : '40vh', overflowY: 'auto', fontSize: 16 }}>
       {place ? <PlaceBar {...place} /> : <MessageBar text={msg} />}
@@ -123,6 +125,7 @@ export function BottomSheet({ mode, setMode, place, msg }: { mode: Mode; setMode
 
       {mode.kind === 'staff' && <StaffPanel />}
       {mode.kind === 'promo' && <PromoPanel />}
+      {mode.kind === 'codex' && <CodexPanel />}
     </div>
   );
 }
@@ -130,27 +133,6 @@ export function BottomSheet({ mode, setMode, place, msg }: { mode: Mode; setMode
 function CellPanel({ x, y }: { x: number; y: number }) {
   const s = useGame();
   const o = objectAt(s, x, y);
-  const scenery = sceneryScore(s, x, y);
-  if (!o) return <div style={{ color: PALETTE.inkSoft }}>빈 칸 ({x},{y}) · 경치 {scenery}</div>;
-  const d = objectDef(o.type);
-  return (
-    <div>
-      <div style={{ marginBottom: 2 }}><b>{d.name}</b>{o.crop && ` · ${cropDef(o.crop.cropId).name} ${o.crop.ready ? '수확할 수 있어요!' : `${o.crop.daysGrown}일째`}`}</div>
-      <div style={{ fontSize: 13, color: PALETTE.inkSoft, marginBottom: 6 }}>
-        유지비 {won(d.upkeep)}/달 · 경치 {d.scenery > 0 ? `+${d.scenery}` : d.scenery}{d.noise > 0 ? ` · 소음 ${d.noise}` : ''} · 주변 경치 {scenery}
-      </div>
-      {d.kind === 'field' && !o.crop && CROPS.filter((c) => s.unlocked.crops.includes(c.id) && c.plantMonths.length > 0).map((c) => {
-        const can = canPlant(s, o.id, c.id);
-        return (
-          <button key={c.id} style={can.ok ? brownBtn : brownBtnOff} disabled={!can.ok} onClick={() => dispatch({ type: 'plant', objectId: o.id, cropId: c.id })}>
-            <Icon name="plant" /> {c.name} 심기{!can.ok && can.reason && ` (${can.reason})`}
-          </button>
-        );
-      })}
-      {o.crop?.ready && <button style={brownBtnOn} onClick={() => dispatch({ type: 'harvest', objectId: o.id })}><Icon name="harvest" /> 수확</button>}
-      {!PROTECTED_TYPES.has(o.type) && (
-        <button style={dangerBtn} onClick={() => dispatch({ type: 'remove', objectId: o.id })}><Icon name="remove" /> 치우기 ({won(d.cost)} 돌려받음)</button>
-      )}
-    </div>
-  );
+  if (!o) return <div style={{ color: PALETTE.inkSoft }}>빈 칸 ({x},{y}) · 경치 {sceneryScore(s, x, y)}</div>;
+  return <ObjectInfoPanel objectId={o.id} />;
 }

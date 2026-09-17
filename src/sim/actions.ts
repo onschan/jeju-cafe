@@ -7,6 +7,8 @@ import { canSetSlot, setSlot } from './menu.ts';
 import { canUnlock, unlock } from './progress.ts';
 import { canPostJob, postJob, canHire, hire, canFire, fire, canAssign, assign, canLevelUp, levelUp } from './staff.ts';
 import { canPromote, promote, canSetTarget, setTarget } from './promotions.ts';
+import { discoverCombos } from './compat.ts';
+import { canUseItem, useItem } from './items.ts';
 
 export const PROTECTED_TYPES = new Set(['busstop', 'warehouse', 'gate', 'spring']);
 /** 회전할 수 있는 오브젝트 (rot 0..3, 스프라이트 변형 _r{n}이 있을 때만 보인다) */
@@ -47,6 +49,7 @@ function applyInner(state: GameState, a: Action): ApplyResult {
       if (!c.ok) return c;
       placeObject(state, a.objectType, a.x, a.y, ROTATABLE_TYPES.has(a.objectType) && a.rot !== undefined ? ((a.rot % 4) + 4) % 4 : undefined);
       state.money -= def.cost;
+      discoverCombos(state);
       return { ok: true };
     }
     case 'remove': {
@@ -76,6 +79,7 @@ function applyInner(state: GameState, a: Action): ApplyResult {
       obj.x = a.x;
       obj.y = a.y;
       for (const cell of footprint(obj.type, obj.x, obj.y)) state.grid.cells[cell.y * state.grid.w + cell.x]!.objectId = obj.id;
+      discoverCombos(state);
       return { ok: true };
     }
     case 'rotate': {
@@ -161,6 +165,12 @@ function applyInner(state: GameState, a: Action): ApplyResult {
       const c = canSetTarget(state, a.segment);
       if (!c.ok) return c;
       setTarget(state, a.segment);
+      return { ok: true };
+    }
+    case 'useItem': {
+      const c = canUseItem(state, a.itemId, a.objectType);
+      if (!c.ok) return c;
+      useItem(state, a.itemId, a.objectType);
       return { ok: true };
     }
     default:

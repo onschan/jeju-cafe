@@ -4,7 +4,7 @@ export { parcelAt, parcelById, parcelPrice, canBuyParcel, ownedParcels, parcelBo
 export { tick, step, STEP_MS } from './tick.ts';
 export { apply, PROTECTED_TYPES, ROTATABLE_TYPES } from './actions.ts';
 export { DAY_MS, seasonOf, monthIndex, DAYS_PER_MONTH } from './clock.ts';
-export { cellAt, objectAt, canPlace, footprint, parcelHasLandmark, isSheltered, sceneryScore, windShelter, SHELTER_THRESHOLD } from './grid.ts';
+export { cellAt, objectAt, canPlace, footprint, parcelHasLandmark, isSheltered, sceneryScore, objectScenery, windShelter, SHELTER_THRESHOLD, SCENERY_CAP } from './grid.ts';
 export { canPlant, canHarvest, readyToHarvest } from './farm.ts';
 export { isMenuAvailable, availableMenus, canSetSlot, hasMenuStaff, menuRequirementText } from './menu.ts';
 export { isWalkable, busStopPos } from './path.ts';
@@ -13,3 +13,5 @@ export { serialize, deserialize, MemorySaveStore, LocalSaveStore, type SaveStore
 export { freeSeats, hasReachableSeat, seatSlotPos, dailyGuestCount, spawnMultiplier, prepTimeMs, serviceBonus, GUEST_SPEED_CELLS_PER_S, SEAT_MS, PREP_MS } from './guests.ts';
 export { canPromote, effectivePopularity, MAX_ACTIVE_PROMOTIONS, PARTTIME_MONEY } from './promotions.ts';
 export { TIERS, MAX_LEVEL, LOW_ENERGY, salaryOf, levelUpCost, roleEffect, ingredientDiscount, staffInRole, canHire, canLevelUp } from './staff.ts';
+export { objectStats, activeCombos, popularityFor, segmentBonus, setLevels, BASE_POPULARITY, POPULARITY_CAP } from './compat.ts';
+export { canUseItem, grantItem, itemEffect, ITEM_POP_CAP } from './items.ts';

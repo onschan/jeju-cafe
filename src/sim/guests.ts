@@ -8,6 +8,7 @@ import { roleEffect, skillTotal } from './staff.ts';
 import { effectivePopularity, youtuberMultiplier } from './promotions.ts';
 import { START_HOUR, END_HOUR } from './clock.ts';
 import { parcelBonusAt, parcelSpawnMult, parcelFeeMult } from './parcels.ts';
+import { objectStats, popularityFor, BASE_POPULARITY } from './compat.ts';
 import type { ParcelBonus } from './types.ts';
 
 export { moveAlong, GUEST_SPEED_CELLS_PER_S }; // 하위 호환 재수출 (본체는 path.ts)
@@ -16,6 +17,7 @@ export const PREP_MS = 3000;       // 직원 없을 때 조리 시간 (≈1.5시
 export const MAX_PREP_CUT = 0.6;   // 직원 효과로 줄일 수 있는 최대 비율
 export const MAX_SPEED_SKILL = 0.5;
 export const SERVICE_PER_SCENERY = 30; // 홀 서비스 30당 경치 기준 −1
+export const POP_PER_SCENERY = 3;      // 좌석 인기가 기본(10)에서 3 벗어날 때마다 경치 ±1
 export const SAY_CHANCE = 0.3;     // §19 손님 대사 확률
 export const MAX_GUESTS = 60;
 export const MIN_DAILY_GUESTS = 2;
@@ -175,11 +177,16 @@ function maybeSay(state: GameState, g: Guest): void {
   g.say = pickWeighted(state, pool, () => 1);
 }
 
-/** 조리가 끝났을 때 만족 판정. 경치 + 홀 서비스 ≥ 손님층 기준이면 happy. */
+/** 좌석 인기(상성·아이템·세트 반영)가 경치 점수에 주는 보정 */
+export function popularityBonus(popularity: number): number {
+  return Math.floor((popularity - BASE_POPULARITY) / POP_PER_SCENERY);
+}
+
+/** 조리가 끝났을 때 만족 판정. 경치 + 홀 서비스 + 좌석 인기 보정 ≥ 손님층 기준이면 happy. */
 function resolveMood(state: GameState, g: Guest): void {
   const type = guestTypeDef(g.type);
   const seat = state.objects[g.seatId!]!;
-  if (sceneryScore(state, seat.x, seat.y) + serviceBonus(state) >= type.minScenery) {
+  if (sceneryScore(state, seat.x, seat.y) + serviceBonus(state) + popularityBonus(popularityFor(state, seat.id, g.type)) >= type.minScenery) {
     g.mood = 'happy';
     g.moodReason = null;
     state.research += 1;
@@ -207,7 +214,7 @@ function order(state: GameState, g: Guest): void {
   const menu = menuDef(menuId);
   consumeIngredients(state, menuId);
   const seat = state.objects[g.seatId!]!;
-  const price = Math.round(menu.price * parcelFeeMult(parcelBonusAt(state, seat.x, seat.y)));
+  const price = Math.round(menu.price * parcelFeeMult(parcelBonusAt(state, seat.x, seat.y)) * (objectStats(state, seat.id).feePct / 100));
   state.money += price;
   state.monthIncome += price;
   g.menuId = menuId;

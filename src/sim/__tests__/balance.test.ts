@@ -29,6 +29,7 @@ describe.each(SEEDS)('봇 1년차 밸런스 (seed %i)', (seed) => {
   });
 });
 
+// 봇 1년 두 번(각 2~3초, 좌석마다 상성·세트 계산 포함) — 기본 5초로는 빠듯하다
 test('같은 seed면 같은 결과 (결정적)', () => {
   expect(runBot(1, 1)).toEqual(runBot(1, 1));
-});
+}, 20_000);

@@ -1,9 +1,18 @@
-import type { GameState, Cell, PlacedObject, ApplyResult } from './types.ts';
-import { objectDef } from '../data/index.ts';
+import type { GameState, Cell, PlacedObject, ApplyResult, ObjectDef, Season } from './types.ts';
+import { objectDef, SEASON_SCENERY } from '../data/index.ts';
 import { parcelAt, parcelSceneryBonus } from './parcels.ts';
+import { seasonOf } from './clock.ts';
 
 export const SHELTER_THRESHOLD = 3;
 export const SCENERY_RADIUS = 2;
+/** 경관 상한 (마스터 GDD §2.2) */
+export const SCENERY_CAP = 30;
+
+/** 오브젝트 자기 경치 + 계절 보너스 (정의의 seasonScenery, 없으면 SEASON_SCENERY 표), 상한 30 */
+export function objectScenery(def: ObjectDef, season: Season): number {
+  const bonus = def.seasonScenery ? def.seasonScenery[season] ?? 0 : SEASON_SCENERY[def.id]?.[season] ?? 0;
+  return Math.min(SCENERY_CAP, def.scenery + bonus);
+}
 
 export function inBounds(state: GameState, x: number, y: number): boolean {
   return x >= 0 && y >= 0 && x < state.grid.w && y < state.grid.h;
@@ -95,10 +104,11 @@ export function isSheltered(state: GameState, x: number, y: number): boolean {
   return windShelter(state, x, y) >= SHELTER_THRESHOLD;
 }
 
-/** 반경 2칸(체비쇼프)의 scenery 합 − noise 합 + 필지 구역 보너스(오름 +2). 자기 자신은 제외. */
+/** 반경 2칸(체비쇼프)의 scenery(계절 보너스 포함) 합 − noise 합 + 필지 구역 보너스(오름 +2). 자기 자신은 제외. */
 export function sceneryScore(state: GameState, x: number, y: number): number {
   const self = objectAt(state, x, y)?.id;
   const seen = new Set<string>();
+  const season = seasonOf(state.clock.month);
   let score = parcelSceneryBonus(parcelAt(state, x, y)?.bonus ?? 'none');
   for (let dy = -SCENERY_RADIUS; dy <= SCENERY_RADIUS; dy++) {
     for (let dx = -SCENERY_RADIUS; dx <= SCENERY_RADIUS; dx++) {
@@ -106,7 +116,7 @@ export function sceneryScore(state: GameState, x: number, y: number): number {
       if (!o || o.id === self || seen.has(o.id)) continue;
       seen.add(o.id);
       const d = objectDef(o.type);
-      score += d.scenery - d.noise;
+      score += objectScenery(d, season) - d.noise;
     }
   }
   return score;
