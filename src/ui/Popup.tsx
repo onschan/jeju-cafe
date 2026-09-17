@@ -14,7 +14,7 @@ export function Popup({ title, portrait, children, buttons, onBackdrop }: {
       <div style={{ ...frame, minWidth: 240, maxWidth: 340, width: '100%', maxHeight: '80vh', overflowY: 'auto', fontSize: 16 }} onClick={(e) => e.stopPropagation()}>
         {title && <div style={frameTitle}>{title}</div>}
         <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-          {portrait && <img className="px" src={portrait} width={48} height={48} alt="" style={{ flex: 'none', imageRendering: 'pixelated' }} />}
+          {portrait && <img className="px" src={portrait} width={64} height={64} alt="" style={{ flex: 'none', imageRendering: 'pixelated' }} />}
           <div style={{ flex: 1, lineHeight: 1.5 }}>{children}</div>
         </div>
         {buttons && <div style={{ marginTop: 12, display: 'flex', justifyContent: 'flex-end', gap: 6 }}>{buttons}</div>}

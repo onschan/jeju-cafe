@@ -15,7 +15,7 @@ def all_sprites():
     s = {}
     for mod in (sprites_tiles, sprites_objects):
         s.update(mod.sprites())
-    for name in ('sprites_chars', 'sprites_ui', 'sprites_iso_tiles', 'sprites_iso_objects', 'sprites_iso_env'):
+    for name in ('sprites_chars', 'sprites_portraits', 'sprites_ui', 'sprites_iso_tiles', 'sprites_iso_objects', 'sprites_iso_env'):
         try:
             s.update(__import__(name).sprites())
         except ImportError:
