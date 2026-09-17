@@ -1,14 +1,27 @@
 import type { GameState, Pt } from './types.ts';
 import { objectDef } from '../data/index.ts';
-import { inBounds, cellAt, objectAt } from './grid.ts';
+import { inBounds, cellAt, objectAt, isRoomFloor, doorOf } from './grid.ts';
 
 const WALKABLE_KINDS = new Set(['path', 'gate', 'busstop']);
 
+/** 길·정낭·정류장·도로, 그리고 가구가 없는 방 바닥(실내)은 걸을 수 있다 */
 export function isWalkable(state: GameState, x: number, y: number): boolean {
   if (!inBounds(state, x, y)) return false;
+  if (isRoomFloor(state, x, y)) return true;
   const obj = objectAt(state, x, y);
   if (obj) return WALKABLE_KINDS.has(objectDef(obj.type).kind);
   return cellAt(state, x, y).terrain === 'road';
+}
+
+/** 방 경계를 넘는 걸음은 방 쪽 칸이 문일 때만. 같은 방 안·둘 다 바깥이면 자유. */
+export function canStep(state: GameState, from: Pt, to: Pt): boolean {
+  const a = cellAt(state, from.x, from.y).roomId;
+  const b = cellAt(state, to.x, to.y).roomId;
+  if (a === b) return true;
+  const isDoor = (roomId: string, p: Pt) => { const d = doorOf(state.objects[roomId]!); return d.x === p.x && d.y === p.y; };
+  if (a !== null && !isDoor(a, from)) return false;
+  if (b !== null && !isDoor(b, to)) return false;
+  return true;
 }
 
 export function busStopPos(state: GameState): Pt {
@@ -20,7 +33,8 @@ export function busStopPos(state: GameState): Pt {
 const DIRS: Pt[] = [{ x: 1, y: 0 }, { x: -1, y: 0 }, { x: 0, y: 1 }, { x: 0, y: -1 }];
 
 export function walkableNeighborsOf(state: GameState, x: number, y: number): Pt[] {
-  return DIRS.map((d) => ({ x: x + d.x, y: y + d.y })).filter((p) => isWalkable(state, p.x, p.y));
+  if (!inBounds(state, x, y)) return [];
+  return DIRS.map((d) => ({ x: x + d.x, y: y + d.y })).filter((p) => isWalkable(state, p.x, p.y) && canStep(state, { x, y }, p));
 }
 
 export const cellKey = (state: GameState, p: Pt) => p.y * state.grid.w + p.x;

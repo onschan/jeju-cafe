@@ -1,3 +1,4 @@
+import { X, Y } from './helpers.ts';
 import { createInitialState } from '../state.ts';
 import { placeObject } from '../grid.ts';
 import { setSlot } from '../menu.ts';
@@ -13,7 +14,7 @@ import type { Guest } from '../types.ts';
 
 function cafe(seed = 1) {
   const s = createInitialState(seed);
-  const seat = placeObject(s, 'table_out', 4, 5);
+  const seat = placeObject(s, 'table_out', X(4), Y(5));
   setSlot(s, 0, 'carrot_juice');
   s.storage['carrot'] = 50;
   return { s, seat };
@@ -69,7 +70,7 @@ test('해금 조건 8형', () => {
   s.clock.month = 4;
   expect(unlockCondMet(s, { type: 'date', year: 1, month: 4 })).toBe(true);
   expect(unlockCondMet(s, { type: 'count', objectId: 'tangerine_tree', count: 3 })).toBe(false);
-  for (let i = 0; i < 3; i++) placeObject(s, 'tangerine_tree', 6 + i, 2);
+  for (let i = 0; i < 3; i++) placeObject(s, 'tangerine_tree', X(6 + i), Y(2));
   expect(unlockCondMet(s, { type: 'count', objectId: 'tangerine_tree', count: 3 })).toBe(true);
   expect(unlockCondMet(s, { type: 'all', conditions: [{ type: 'rank', rank: 2 }, { type: 'star', star: 9 }] })).toBe(false);
   expect(unlockCondMet(s, { type: 'all', conditions: [{ type: 'rank', rank: 2 }, { type: 'star', star: 3 }] })).toBe(true);
@@ -78,7 +79,7 @@ test('해금 조건 8형', () => {
 test('evaluateUnlocks: 조건이 맞는 타입을 열고 알림·시작 인기, 이미 열린 것은 다시 열지 않는다', () => {
   const s = createInitialState(1);
   expect(evaluateUnlocks(s)).toEqual([]);
-  for (let i = 0; i < 3; i++) placeObject(s, 'tangerine_tree', 6 + i, 2); // 까치: 감귤나무 3
+  for (let i = 0; i < 3; i++) placeObject(s, 'tangerine_tree', X(6 + i), Y(2)); // 까치: 감귤나무 3
   s.clock.month = 4; // 육지 삼춘: 1년 4월
   expect(evaluateUnlocks(s).sort()).toEqual(['magpie_thief', 'mainlander_auntie']);
   expect(isUnlocked(s, 'magpie_thief')).toBe(true);

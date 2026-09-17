@@ -8,7 +8,7 @@ const ITEM_BY_ID = new Map(ITEMS.map((i) => [i.id, i] as const));
 
 const SLOT_OF: Record<ObjectKind, ItemSlot> = {
   seat: 'seat', field: 'farm', tree: 'farm', wall: 'env', path: 'env', deco: 'env', landmark: 'env',
-  building: 'facility', busstop: 'facility', gate: 'facility',
+  building: 'facility', busstop: 'facility', gate: 'facility', facility: 'facility',
 };
 
 /** 이 시설에 쓸 때의 효과. 잘 맞는 시설(id 일치 또는 v1 분류 3)은 ×2, v1 분류 0이면 0(못 씀). */

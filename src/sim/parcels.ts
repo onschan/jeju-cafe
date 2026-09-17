@@ -1,9 +1,9 @@
 import type { GameState, Parcel, ParcelBonus, ApplyResult } from './types.ts';
 import { PARCELS, guestTags } from '../data/index.ts';
 import { pushNotice } from './staff.ts';
+import { PARCEL_COLS, PARCEL_ROWS, PARCEL_W, PARCEL_H, START_ORIGIN, PARCEL_LAYOUT as LAYOUT } from './layout.ts';
 
-/** 필지는 3열 × 2행, 각 10×8 (§18). 1번(시작)이 왼쪽 위. */
-export const PARCEL_COLS = 3;
+export { PARCEL_COLS, PARCEL_ROWS, PARCEL_W, PARCEL_H, START_ORIGIN };
 /** parcels.json 가격(15만~30만)은 구 화폐 단위라 ×10 → 100만~300만 (시작 자금 500만 기준) */
 export const PARCEL_PRICE_SCALE = 10;
 /** 신구간(1월)엔 30% 할인 */
@@ -19,34 +19,42 @@ export function coastBoosted(typeId: string): boolean {
 }
 /** 오름: 그 필지 좌석의 경치 +2 */
 export const OREUM_SCENERY = 2;
+/** 돌담 언덕: 경치 +1 */
+export const STONEHILL_SCENERY = 1;
+/** 마을 어귀: 삼춘(시니어) 유입 ×1.2 */
+export const VILLAGE_SENIOR_MULT = 1.2;
 /** 밭담: 밭 품질 "좋음" → 수확 ×1.2. 곶자왈: 차·고사리 ×1.1. 용천수: 모든 작물 ×1.1 */
 export const BATDAM_HARVEST_MULT = 1.2;
 export const GOTJAWAL_HARVEST_MULT = 1.1;
 export const GOTJAWAL_CROPS = new Set(['tea', 'gosari']);
 export const SPRING_HARVEST_MULT = 1.1;
 
-const BONUS_BY_NO: Record<number, ParcelBonus> = { 1: 'none', 2: 'oreum', 3: 'gotjawal', 4: 'batdam', 5: 'coast', 6: 'spring' };
+const BONUS_BY_NO: Record<number, ParcelBonus> = { 1: 'none', 2: 'oreum', 3: 'gotjawal', 4: 'batdam', 5: 'coast', 6: 'spring', 7: 'village', 8: 'stonehill', 9: 'orchard' };
 
-/** 소유 필지 수에 따른 해금: 2·3번은 처음부터, 4·5번은 3개 소유 뒤, 6번은 5개 소유 뒤 (토지 권리증 투자는 TODO) */
+/** 소유 필지 수에 따른 해금: 2·3·7(마을 어귀)번은 처음부터, 4·5·8번은 3개 소유 뒤, 6·9번은 5개 소유 뒤 (토지 권리증 투자는 TODO) */
 export function parcelUnlockOwnedCount(no: number): number {
-  if (no <= 3) return 1;
-  if (no <= 5) return 3;
+  if (no <= 3 || no === 7) return 1;
+  if (no <= 5 || no === 8) return 3;
   return 5;
 }
 
 export function makeParcels(): Parcel[] {
-  return PARCELS.map((p) => ({
+  return PARCELS.map((p) => {
+    const at = LAYOUT[p.id];
+    if (!at) throw new Error(`parcel layout missing: ${p.id}`);
+    return {
     id: p.id,
     no: p.no,
     name: p.name,
-    x: ((p.no - 1) % PARCEL_COLS) * p.w,
-    y: Math.floor((p.no - 1) / PARCEL_COLS) * p.h,
+    x: at.col * p.w,
+    y: at.row * p.h,
     w: p.w,
     h: p.h,
     owned: p.start,
     price: p.price * PARCEL_PRICE_SCALE,
     bonus: BONUS_BY_NO[p.no] ?? 'none',
-  }));
+    };
+  });
 }
 
 export function parcelAt(state: GameState, x: number, y: number): Parcel | null {
@@ -61,7 +69,7 @@ export function ownedParcels(state: GameState): Parcel[] {
   return state.parcels.filter((p) => p.owned);
 }
 
-/** 변을 맞댄 필지인가 */
+/** 변을 맞댄(4방향 이웃) 필지인가 — 대각선은 아니다 */
 export function parcelsAdjacent(a: Parcel, b: Parcel): boolean {
   const sameRow = a.y === b.y && (a.x + a.w === b.x || b.x + b.w === a.x);
   const sameCol = a.x === b.x && (a.y + a.h === b.y || b.y + b.h === a.y);
@@ -100,9 +108,11 @@ export function parcelBonusAt(state: GameState, x: number, y: number): ParcelBon
   return parcelAt(state, x, y)?.bonus ?? 'none';
 }
 
-/** 좌석이 있는 필지의 스폰 가중치 배수 (해안: 관광객·단체 ×1.3) */
+/** 좌석이 있는 필지의 스폰 가중치 배수 (해안: 관광객·단체 ×1.3, 마을 어귀: 삼춘 ×1.2) */
 export function parcelSpawnMult(bonus: ParcelBonus, typeId: string): number {
-  return bonus === 'coast' && coastBoosted(typeId) ? COAST_SPAWN_MULT : 1;
+  if (bonus === 'coast' && coastBoosted(typeId)) return COAST_SPAWN_MULT;
+  if (bonus === 'village' && guestTags(typeId).age === 'senior') return VILLAGE_SENIOR_MULT;
+  return 1;
 }
 
 /** 좌석이 있는 필지의 요금 배수 (해안 ×1.10) */
@@ -110,9 +120,9 @@ export function parcelFeeMult(bonus: ParcelBonus): number {
   return bonus === 'coast' ? COAST_FEE_MULT : 1;
 }
 
-/** 필지 경치 가산 (오름 +2) */
+/** 필지 경치 가산 (오름 +2, 돌담 언덕 +1) */
 export function parcelSceneryBonus(bonus: ParcelBonus): number {
-  return bonus === 'oreum' ? OREUM_SCENERY : 0;
+  return bonus === 'oreum' ? OREUM_SCENERY : bonus === 'stonehill' ? STONEHILL_SCENERY : 0;
 }
 
 /** 수확량 배수 (밭담 ×1.2, 용천수 ×1.1, 곶자왈은 차·고사리만 ×1.1) */

@@ -193,7 +193,7 @@ class Integration(unittest.TestCase):
         self.assertEqual(len(d['calendar']), 11)
         self.assertEqual(len(d['ranks']), 5)
         self.assertEqual(len(d['settle_ranks']), 6)
-        self.assertEqual(len(d['parcels']), 6)
+        self.assertEqual(len(d['parcels']), 9)
         self.assertEqual(len(d['landmarks']), 8)
         self.assertEqual(len(d['constants']), 17)  # 38bc0c9에서 '채집 성공' 행 삭제
 

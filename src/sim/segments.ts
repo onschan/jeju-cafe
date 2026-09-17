@@ -1,5 +1,5 @@
 import type { GameState, Guest, GuestTypeState, UnlockCond, ApplyResult, Face, RegularTier, GuestTags } from './types.ts';
-import { GUEST_TYPES, guestTypeDef, guestTags, canonicalGuestId, ITEMS } from '../data/index.ts';
+import { GUEST_TYPES, FACILITIES, guestTypeDef, guestTags, canonicalGuestId, ITEMS } from '../data/index.ts';
 import { nextRandom, pickWeighted } from './rng.ts';
 import { monthIndex } from './clock.ts';
 import { pushNotice } from './staff.ts';
@@ -91,7 +91,20 @@ export function unlockGuestType(state: GameState, typeId: string): boolean {
   return true;
 }
 
-/** 잠긴 타입의 해금 조건을 모두 검사한다. 새로 열린 id 목록을 돌려준다 (연쇄 해금은 다음 호출에서). */
+/** v2 시설의 해금 조건(랭크·★·손님 인기·부탁·관광지·날짜·개수)을 검사해 새로 열린 시설 id를 돌려준다. */
+export function evaluateFacilityUnlocks(state: GameState): string[] {
+  const opened: string[] = [];
+  for (const f of FACILITIES) {
+    if (!f.unlock || state.unlocked.objects.includes(f.id)) continue;
+    if (!unlockCondMet(state, f.unlock)) continue;
+    state.unlocked.objects.push(f.id);
+    pushNotice(state, `새 시설: ${f.name}`);
+    opened.push(f.id);
+  }
+  return opened;
+}
+
+/** 잠긴 타입의 해금 조건을 모두 검사한다. 새로 열린 id 목록을 돌려준다 (연쇄 해금은 다음 호출에서). 시설 해금도 같이 돈다. */
 export function evaluateUnlocks(state: GameState): string[] {
   const opened: string[] = [];
   for (const t of GUEST_TYPES) {
@@ -99,6 +112,7 @@ export function evaluateUnlocks(state: GameState): string[] {
     if (unlockCondMet(state, t.unlock) && unlockGuestType(state, t.id)) opened.push(t.id);
   }
   updateRank(state);
+  evaluateFacilityUnlocks(state);
   return opened;
 }
 

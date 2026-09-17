@@ -1,3 +1,4 @@
+import { X, Y } from './helpers.ts';
 import { createInitialState } from '../state.ts';
 import { apply } from '../actions.ts';
 import { setSlot } from '../menu.ts';
@@ -9,7 +10,7 @@ import { staffWith } from './staff.test.ts';
 
 function cafe() {
   const s = createInitialState(1);
-  apply(s, { type: 'place', objectType: 'table_out', x: 4, y: 5 });
+  apply(s, { type: 'place', objectType: 'table_out', x: X(4), y: Y(5) });
   setSlot(s, 0, 'carrot_juice'); // 아직 해금 전이라도 setSlot은 직접 호출로 검증 없이 올릴 수 있다
   s.storage['carrot'] = 50;
   return s;

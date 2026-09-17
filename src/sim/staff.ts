@@ -3,6 +3,7 @@ import { NAMES, SKILLS, roleDef, skillDef, objectDef } from '../data/index.ts';
 import { nextRandom, randInt, pickWeighted } from './rng.ts';
 import { monthIndex } from './clock.ts';
 import { isWalkable, findPath, walkableNeighborsOf, moveAlong } from './path.ts';
+import { WAREHOUSE_FRONT } from './layout.ts';
 
 export const TIERS: Record<JobTier, { cost: number; count: number; min: number; max: number }> = {
   flyer: { cost: 1_000_000, count: 3, min: 10, max: 40 },
@@ -15,7 +16,7 @@ export const ENERGY_PER_HOUR = 2;       // 배치된 직원 시간당 기력 소
 export const LOW_ENERGY = 30;          // 미만이면 효과 절반
 export const NIGHT_ENERGY_RECOVERY = 40;
 export const NOTICE_CAP = 10;
-export const WAREHOUSE_FRONT: Pt = { x: 4, y: 3 };
+export { WAREHOUSE_FRONT };
 export const STAT_KEYS: StatKey[] = ['service', 'cooking', 'sense', 'stamina'];
 
 // ---------- 공식 ----------
@@ -222,7 +223,7 @@ function nearestWalkable(state: GameState, to: Pt): Pt {
   return best ?? to; // 도로 줄이 항상 있어 null이 될 일은 없다
 }
 
-/** 창고 문 앞 (4,3). 걷기 칸이 아니면 가장 가까운 걷기 칸. */
+/** 창고 문 앞 (문 바로 아래 칸). 걷기 칸이 아니면 가장 가까운 걷기 칸. */
 export function warehouseFront(state: GameState): Pt {
   return isWalkable(state, WAREHOUSE_FRONT.x, WAREHOUSE_FRONT.y) ? { ...WAREHOUSE_FRONT } : nearestWalkable(state, WAREHOUSE_FRONT);
 }

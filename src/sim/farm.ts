@@ -1,8 +1,8 @@
-import type { GameState, ApplyResult, CropDef } from './types.ts';
+import type { GameState, ApplyResult, CropDef, FxEvent } from './types.ts';
 import { objectDef, cropDef } from '../data/index.ts';
 import { isSheltered } from './grid.ts';
 import { staffInRole, energyFactor } from './staff.ts';
-import { parcelBonusAt, parcelHarvestMult } from './parcels.ts';
+import { parcelAt, parcelBonusAt, parcelHarvestMult } from './parcels.ts';
 import { effectMult } from './effects.ts';
 
 /** 수확 창이 해를 넘기면(11,12,1) 1월은 전년도 창에 속한다. */
@@ -29,11 +29,21 @@ export function plant(state: GameState, objectId: string, cropId: string): void 
   obj.crop = { cropId, daysGrown: 0, ready: false, harvestedYear: -1 };
 }
 
-/** 하루치 생육. 매일 한 번 호출. */
-export function growOneDay(state: GameState): void {
+/** 연출 큐 상한 */
+export const FX_CAP = 50;
+
+export function pushFx(state: GameState, e: FxEvent): void {
+  state.fx.push(e);
+  if (state.fx.length > FX_CAP) state.fx.splice(0, state.fx.length - FX_CAP);
+}
+
+/** 하루치 생육(소유 필지만). 매일 한 번 호출. 익으면 그날 바로 창고로 들어간다(자동 수확, 피드백 2차) — 렌더용 반짝임을 fx에 남긴다. */
+export function growOneDay(state: GameState): string[] {
   const { month, year } = state.clock;
+  const harvested: string[] = [];
   for (const obj of Object.values(state.objects)) {
     if (!obj.crop) continue;
+    if (!parcelAt(state, obj.x, obj.y)?.owned) continue; // 아직 안 산 필지의 나무(옛 감귤밭)는 내 것이 아니다
     const crop = cropDef(obj.crop.cropId);
     obj.crop.daysGrown++;
     const kind = objectDef(obj.type).kind;
@@ -44,7 +54,13 @@ export function growOneDay(state: GameState): void {
     } else {
       obj.crop.ready = obj.crop.daysGrown >= crop.growDays;
     }
+    if (obj.crop.ready) {
+      harvest(state, obj.id);
+      pushFx(state, { kind: 'harvest', x: obj.x, y: obj.y, tick: state.tick });
+      harvested.push(obj.id);
+    }
   }
+  return harvested;
 }
 
 export function canHarvest(state: GameState, objectId: string): ApplyResult {
@@ -70,7 +86,7 @@ export function harvest(state: GameState, objectId: string): number {
   return amount;
 }
 
-/** 수확 가능한 오브젝트 id 목록 (UI 반짝임·봇용) */
+/** 수확 가능한 오브젝트 id 목록. 자동 수확 뒤엔 보통 비어 있다 (호환용). */
 export function readyToHarvest(state: GameState): string[] {
   return Object.values(state.objects).filter((o) => o.crop?.ready).map((o) => o.id);
 }
@@ -80,15 +96,10 @@ export function fieldCapacity(state: GameState): number {
   return staffInRole(state, 'field').reduce((n, st) => n + Math.max(1, Math.floor((1 + Math.floor(st.stats.stamina / 20)) * energyFactor(st))), 0);
 }
 
-/** 매일: 밭 일꾼이 익은 것을 먼저 따고, 빈 밭에 제철(해금된 첫 번째) 작물을 심는다. */
+/** 매일: 밭 일꾼이 빈 밭에 제철(해금된 첫 번째) 작물을 심는다. (수확은 자동) */
 export function staffFarmWork(state: GameState): void {
   let capacity = fieldCapacity(state);
   if (capacity <= 0) return;
-  for (const id of readyToHarvest(state)) {
-    if (capacity <= 0) return;
-    harvest(state, id);
-    capacity--;
-  }
   const cropId = state.unlocked.crops.find((c) => cropDef(c).plantMonths.includes(state.clock.month));
   if (!cropId) return;
   for (const obj of Object.values(state.objects)) {

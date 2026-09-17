@@ -1,3 +1,4 @@
+import { X, Y } from './helpers.ts';
 import { createInitialState } from '../state.ts';
 import { apply } from '../actions.ts';
 import { isMenuAvailable, consumeIngredients } from '../menu.ts';
@@ -25,7 +26,7 @@ test('farm 재료 메뉴는 창고가 있어야 하고 재료비 0', () => {
 
 test('오브젝트 유지비가 이달 비용에서 빠진다', () => {
   const s = createInitialState(1);
-  apply(s, { type: 'place', objectType: 'table_out', x: 4, y: 5 }); // upkeep 750 (건설비 1.5%)
+  apply(s, { type: 'place', objectType: 'table_out', x: X(4), y: Y(5) }); // upkeep 750 (건설비 1.5%)
   const m0 = s.money;
   upkeep(s);
   expect(s.money).toBe(m0 - 750);
@@ -34,7 +35,7 @@ test('오브젝트 유지비가 이달 비용에서 빠진다', () => {
 
 test('월말 카드에 수입·재료비·월급·광고·유지비·순이익이 있고 monthCosts가 리셋된다', () => {
   const s = createInitialState(1);
-  apply(s, { type: 'place', objectType: 'table_out', x: 4, y: 5 });
+  apply(s, { type: 'place', objectType: 'table_out', x: X(4), y: Y(5) });
   apply(s, { type: 'setSlot', slot: 0, menuId: 'americano' });
   for (let i = 0; i < 30; i++) tick(s, DAY_MS);
   const c = s.lastMonthCard!;

@@ -1,3 +1,4 @@
+import { X, Y } from './helpers.ts';
 import { createInitialState } from '../state.ts';
 import { placeObject } from '../grid.ts';
 import { setSlot } from '../menu.ts';
@@ -18,7 +19,7 @@ import type { EventDef } from '../types.ts';
 
 function cafe(seed = 1) {
   const s = createInitialState(seed);
-  const seat = placeObject(s, 'table_out', 4, 5);
+  const seat = placeObject(s, 'table_out', X(4), Y(5));
   setSlot(s, 0, 'americano');
   return { s, seat };
 }
@@ -86,13 +87,13 @@ test('부탁 생애주기: 도전 → 진행(menuSold는 수락 뒤부터) → �
 test('부탁 조건 6종의 진행도와 즉시 완료(none·이미 충족)', () => {
   const s = createInitialState(1);
   // objectPlaced: 이장님 — 돌담 6 → 배치 액션이 바로 완료시킨다 (이미 놓인 것도 세되, 안 산 필지의 밭담은 안 센다)
-  for (let x = 0; x < 5; x++) placeObject(s, 'stonewall', x, 2);
+  for (let x = 0; x < 5; x++) placeObject(s, 'stonewall', X(x), Y(2));
   offerQuest(s, 'q_village_head');
   apply(s, { type: 'acceptQuest', id: 'q_village_head' });
   s.unlocked.objects.push('stonewall'); s.money = 1e9;
   expect(questDef('q_village_head').condition).toEqual({ type: 'objectPlaced', params: { objectId: 'stonewall', count: 6 } });
   expect(questProgress(s, 'q_village_head')).toEqual({ now: 5, goal: 6 });
-  expect(apply(s, { type: 'place', objectType: 'stonewall', x: 6, y: 2 }).ok).toBe(true);
+  expect(apply(s, { type: 'place', objectType: 'stonewall', x: X(6), y: Y(2) }).ok).toBe(true);
   expect(s.board.quests['q_village_head']!.status).toBe('done');
   expect(s.inventory['jeju_salt']).toBe(1); // 보상 아이템 (v2 표)
   // none: 수락 즉시 완료
@@ -146,7 +147,7 @@ test('이벤트 조건 문자열 파서', () => {
   const s = createInitialState(1);
   expect(eventConditionMet(s, null)).toBe(true);
   expect(eventConditionMet(s, 'tangerine_tree 3개')).toBe(false);
-  for (let i = 0; i < 3; i++) placeObject(s, 'tangerine_tree', 6 + i, 2);
+  for (let i = 0; i < 3; i++) placeObject(s, 'tangerine_tree', X(6 + i), Y(2));
   expect(eventConditionMet(s, 'tangerine_tree 3개')).toBe(true);
   expect(eventConditionMet(s, 'tangerine_tree 5개')).toBe(false);
   expect(eventConditionMet(s, '손님 local_auntie 인기 30')).toBe(true);
@@ -222,16 +223,16 @@ test('효과 DSL: 손님 배수(전체·필터)·손님 0·수확·유지비·�
   expect(noGuestsToday(s)).toBe(true);
   expect(hourlySpawn(s)).toBe(0);
   // 수확 ×1.5: 감귤나무 yield
-  const tree = placeObject(s, 'tangerine_tree', 6, 2);
+  const tree = placeObject(s, 'tangerine_tree', X(6), Y(2));
   tree.crop = { cropId: 'tangerine', daysGrown: 999, ready: true, harvestedYear: -1 };
   const s0 = createInitialState(1);
-  const t0 = placeObject(s0, 'tangerine_tree', 6, 2);
+  const t0 = placeObject(s0, 'tangerine_tree', X(6), Y(2));
   t0.crop = { cropId: 'tangerine', daysGrown: 999, ready: true, harvestedYear: -1 };
   const plain = harvest(s0, t0.id);
   applyEventEffect(s, { kind: 'harvestMult', mult: 1.5, days: 30 }, 't');
   expect(harvest(s, tree.id)).toBe(Math.floor(plain * 1.5));
   // 유지비 ×2
-  const u = createInitialState(1); placeObject(u, 'table_out', 4, 5);
+  const u = createInitialState(1); placeObject(u, 'table_out', X(4), Y(5));
   const m0 = u.money; upkeep(u); const base0 = m0 - u.money;
   expect(base0).toBeGreaterThan(0);
   applyEventEffect(u, { kind: 'upkeepMult', mult: 2, days: 30 }, 't');
@@ -292,8 +293,8 @@ test('관광지: 시작·랭크·앞 관광지 Lv4 해금, 레벨별 비용, 매
 
 test('투어 버스: Lv3 이상 관광지의 Lv2 손님이 일요일 11시에 4~6명 한꺼번에', () => {
   const { s } = cafe();
-  for (let x = 0; x < 4; x++) placeObject(s, 'table_out', x, 5); // 좌석 10
-  for (const x of [0, 1, 2, 3, 5]) placeObject(s, 'path', x, 6);
+  for (let x = 0; x < 4; x++) placeObject(s, 'table_out', X(x), Y(5)); // 좌석 10
+  for (const x of [0, 1, 2, 3, 5]) placeObject(s, 'path', X(x), Y(6));
   s.money = 1e9;
   expect(busSpots(s)).toEqual([]);
   expect(tourBus(s)).toBe(0);
@@ -303,7 +304,7 @@ test('투어 버스: Lv3 이상 관광지의 Lv2 손님이 일요일 11시에 4~
   expect(n).toBeGreaterThanOrEqual(4); expect(n).toBeLessThanOrEqual(6);
   expect(s.guests.every((g) => g.type === 'insta_traveler')).toBe(true);
   // 스케줄: 7일 11시에만
-  const s2 = createInitialState(1); placeObject(s2, 'table_out', 4, 5); s2.money = 1e9;
+  const s2 = createInitialState(1); placeObject(s2, 'table_out', X(4), Y(5)); s2.money = 1e9;
   for (let i = 0; i < 3; i++) apply(s2, { type: 'investSpot', id: 'canola_field' });
   s2.segmentPopularity = {};
   for (const id of Object.keys(s2.guestTypes)) if (id !== 'insta_traveler') s2.guestTypes[id]!.unlocked = false;
@@ -321,7 +322,7 @@ test('투어 버스: Lv3 이상 관광지의 Lv2 손님이 일요일 11시에 4~
 
 test('월초 훅: 해금 → 기한·이벤트·부탁이 순서대로 돌고 저장/복원이 같다', () => {
   const s = createInitialState(3);
-  placeObject(s, 'table_out', 4, 5);
+  placeObject(s, 'table_out', X(4), Y(5));
   setSlot(s, 0, 'americano');
   s.money = 1e9;
   for (let i = 0; i < 3; i++) apply(s, { type: 'investSpot', id: 'canola_field' });

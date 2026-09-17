@@ -1,3 +1,4 @@
+import { X, Y } from './helpers.ts';
 import { createInitialState } from '../state.ts';
 import { apply } from '../actions.ts';
 import { tick } from '../tick.ts';
@@ -6,7 +7,7 @@ import { SAVE_VERSION } from '../state.ts';
 
 test('직렬화 왕복이 같은 상태를 만든다', () => {
   const s = createInitialState(9);
-  apply(s, { type: 'place', objectType: 'field', x: 0, y: 0 });
+  apply(s, { type: 'place', objectType: 'field', x: X(0), y: Y(0) });
   tick(s, 5000);
   const back = deserialize(serialize(s));
   expect(back).toEqual(s);

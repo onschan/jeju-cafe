@@ -1,6 +1,6 @@
 import type { GameState, Action, ApplyResult, PlacedObject } from './types.ts';
 import { objectDef } from '../data/index.ts';
-import { canPlace, placeObject, removeObject, footprint } from './grid.ts';
+import { canPlace, placeObject, removeObject, footprint, relocateObject, objectsInRoom, canClearRock, clearRock } from './grid.ts';
 import { canBuyParcel, buyParcel } from './parcels.ts';
 import { canPlant, plant, canHarvest, harvest } from './farm.ts';
 import { canSetSlot, setSlot } from './menu.ts';
@@ -63,6 +63,7 @@ function applyInner(state: GameState, a: Action): ApplyResult {
       const c = canDisturb(state, obj);
       if (!c.ok) return c;
       const def = objectDef(obj.type);
+      if (def.room && objectsInRoom(state, obj.id).length > 0) return { ok: false, reason: '안에 가구가 있어요' };
       if (def.removeCost) {
         if (state.money < def.removeCost) return { ok: false, reason: '돈이 모자라요' };
         state.money -= def.removeCost;
@@ -77,13 +78,11 @@ function applyInner(state: GameState, a: Action): ApplyResult {
       if (!obj) return { ok: false, reason: '없는 오브젝트' };
       const c = canDisturb(state, obj);
       if (!c.ok) return c;
+      if (objectDef(obj.type).room && objectsInRoom(state, obj.id).length > 0) return { ok: false, reason: '안에 가구가 있어요' };
       const p = canPlace(state, obj.type, a.x, a.y, obj.id);
       if (!p.ok) return p;
       // 돈은 그대로: 치우기 환불 + 다시 짓기 비용이 상쇄된다. 작물·방향은 유지.
-      for (const cell of footprint(obj.type, obj.x, obj.y)) state.grid.cells[cell.y * state.grid.w + cell.x]!.objectId = null;
-      obj.x = a.x;
-      obj.y = a.y;
-      for (const cell of footprint(obj.type, obj.x, obj.y)) state.grid.cells[cell.y * state.grid.w + cell.x]!.objectId = obj.id;
+      relocateObject(state, obj, a.x, a.y);
       discoverCombos(state);
       return { ok: true };
     }
@@ -110,6 +109,12 @@ function applyInner(state: GameState, a: Action): ApplyResult {
       const c = canHarvest(state, a.objectId);
       if (!c.ok) return c;
       harvest(state, a.objectId);
+      return { ok: true };
+    }
+    case 'clearRock': {
+      const c = canClearRock(state, a.x, a.y);
+      if (!c.ok) return c;
+      clearRock(state, a.x, a.y);
       return { ok: true };
     }
     case 'setSlot': {

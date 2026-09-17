@@ -70,5 +70,41 @@
     "h": 8,
     "bonusText": "밭 품질 +, 용천수 재료, 음료 제주 +2",
     "backgroundText": "샘·빨래터"
+  },
+  {
+    "id": "village_edge",
+    "no": 7,
+    "name": "마을 어귀",
+    "price": 80000,
+    "priceText": "80,000",
+    "start": false,
+    "w": 10,
+    "h": 8,
+    "bonusText": "삼춘 유입 +20%, 마을 길",
+    "backgroundText": "정류장·마을 길"
+  },
+  {
+    "id": "stone_hill",
+    "no": 8,
+    "name": "돌담 언덕",
+    "price": 100000,
+    "priceText": "100,000",
+    "start": false,
+    "w": 10,
+    "h": 8,
+    "bonusText": "돌담 기본 배치, 경치 +1",
+    "backgroundText": "돌담 언덕"
+  },
+  {
+    "id": "orchard",
+    "no": 9,
+    "name": "옛 감귤밭",
+    "price": 200000,
+    "priceText": "200,000",
+    "start": false,
+    "w": 10,
+    "h": 8,
+    "bonusText": "감귤나무 4그루 기본",
+    "backgroundText": "감귤밭"
   }
 ]

@@ -1,5 +1,5 @@
 import { useGame, dispatch } from './store';
-import { objectStats, sceneryScore, canUseItem, itemEffect, PROTECTED_TYPES, canPlant, type ObjectKind, type ComboStrength } from '../sim/index.ts';
+import { objectStats, sceneryScore, canUseItem, itemEffect, PROTECTED_TYPES, canPlant, clearCost, canClearRock, hasPickaxe, cellAt, type ObjectKind, type ComboStrength } from '../sim/index.ts';
 import { objectDef, cropDef, itemDef, CROPS, COMBOS, SETS } from '../data/index.ts';
 import { Icon } from './Icon';
 import { Confirm } from './Popup';
@@ -7,7 +7,7 @@ import { brownBtn, brownBtnOn, brownBtnOff, dangerBtn, card, PALETTE, won } from
 
 /** 계열 이름 (아이 눈높이) */
 const KIND_LABEL: Record<ObjectKind, string> = {
-  seat: '자리', field: '농사', tree: '농사', wall: '담', path: '길', building: '건물', deco: '꾸미기', busstop: '정류장', gate: '대문', landmark: '랜드마크',
+  seat: '자리', field: '농사', tree: '농사', wall: '담', path: '길', building: '건물', deco: '꾸미기', busstop: '정류장', gate: '대문', landmark: '랜드마크', facility: '시설',
 };
 const ARROW: Record<ComboStrength, string> = { up: '↑', upup: '↑↑', down: '↓', none: '✦' };
 const TARGET_LABEL: Record<string, string> = { all: '모두', female: '여성 손님', male: '남성 손님', youth: '젊은 손님', adult: '어른 손님', senior: '삼춘', group: '단체 손님' };
@@ -20,7 +20,28 @@ function Stat({ icon, label, value, good }: { icon?: string; label: string; valu
   );
 }
 
-/** 칸을 눌렀을 때 보이는 오브젝트 정보: 인기·경치·요금·유지비·계열·설명·상성·세트·아이템 사용·심기/수확/치우기 */
+/** 바위·큰 바위·곶자왈 덤불 칸: 치우기 + 비용 (곡괭이가 있으면 무료) */
+export function RockPanel({ x, y }: { x: number; y: number }) {
+  const s = useGame();
+  const cost = clearCost(s, x, y);
+  if (cost === null) return null;
+  const terrain = cellAt(s, x, y).terrain;
+  const name = terrain === 'rock_big' ? '큰 바위' : terrain === 'rock' ? '바위' : '곶자왈 덤불';
+  const can = canClearRock(s, x, y);
+  const free = hasPickaxe(s);
+  const desc = terrain === 'rock_big' ? '오름 능선의 큰 바위예요. 치우려면 힘이 많이 들어요.' : terrain === 'rock' ? '길을 막는 돌멩이. 치우면 흙 칸이 돼요.' : '가시덤불이에요. 치우면 흙 칸이 돼요.';
+  return (
+    <div data-testid="rock-panel">
+      <div style={{ marginBottom: 2 }}><b>{name}</b> <span style={{ fontSize: 13, color: PALETTE.inkSoft }}>· 지형 ({x},{y})</span></div>
+      <div style={{ fontSize: 13, color: PALETTE.inkSoft, marginBottom: 6 }}>{desc}</div>
+      <button style={can.ok ? brownBtnOn : brownBtnOff} disabled={!can.ok} onClick={() => dispatch({ type: 'clearRock', x, y })}>
+        <Icon name="remove" /> 치우기 ({free ? '곡괭이 1개' : won(cost)}){!can.ok && can.reason && ` · ${can.reason}`}
+      </button>
+    </div>
+  );
+}
+
+/** 칸을 눌렀을 때 보이는 오브젝트 정보: 인기·경치·요금·유지비·계열·설명·상성·세트·아이템 사용·심기/치우기 (수확은 자동) */
 export function ObjectInfoPanel({ objectId }: { objectId: string }) {
   const s = useGame();
   const o = s.objects[objectId];
@@ -38,7 +59,7 @@ export function ObjectInfoPanel({ objectId }: { objectId: string }) {
     <div>
       <div style={{ marginBottom: 2 }}>
         <b>{d.name}</b> <span style={{ fontSize: 13, color: PALETTE.inkSoft }}>· {KIND_LABEL[d.kind]}</span>
-        {o.crop && ` · ${cropDef(o.crop.cropId).name} ${o.crop.ready ? '수확할 수 있어요!' : `${o.crop.daysGrown}일째`}`}
+        {o.crop && ` · ${cropDef(o.crop.cropId).name} ${o.crop.daysGrown}일째 (익으면 창고로)`}
       </div>
       <div style={{ fontSize: 13, color: PALETTE.inkSoft, marginBottom: 4 }}>{d.desc ?? d.effectText ?? `${d.name}이에요`}</div>
       <div style={{ fontSize: 14, marginBottom: 4, lineHeight: 1.7 }}>
@@ -93,8 +114,8 @@ export function ObjectInfoPanel({ objectId }: { objectId: string }) {
           </button>
         );
       })}
-      {o.crop?.ready && <button style={brownBtnOn} onClick={() => dispatch({ type: 'harvest', objectId: o.id })}><Icon name="harvest" /> 수확</button>}
-      {!PROTECTED_TYPES.has(o.type) && (
+      {o.type === 'bush_wild' && <RockPanel x={o.x} y={o.y} />}
+      {!PROTECTED_TYPES.has(o.type) && o.type !== 'bush_wild' && (
         <button style={dangerBtn} onClick={() => dispatch({ type: 'remove', objectId: o.id })}><Icon name="remove" /> 치우기 ({d.removeCost ? `${won(d.removeCost)} 들어요` : `${won(d.cost)} 돌려받음`})</button>
       )}
     </div>

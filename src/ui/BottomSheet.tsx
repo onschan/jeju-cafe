@@ -1,10 +1,10 @@
 import { useGame, dispatch } from './store';
-import { objectAt, isMenuAvailable, hasMenuStaff, menuRequirementText, sceneryScore, boardBadge, MENU_SLOT_COUNT } from '../sim/index.ts';
+import { objectAt, isMenuAvailable, hasMenuStaff, menuRequirementText, sceneryScore, boardBadge, clearCost, MENU_SLOT_COUNT } from '../sim/index.ts';
 import { objectDef, cropDef, menuDef } from '../data/index.ts';
 import { Icon } from './Icon';
 import { StaffPanel } from './StaffPanel';
 import { PromoPanel } from './PromoPanel';
-import { ObjectInfoPanel, CodexPanel } from './ObjectInfoPanel';
+import { ObjectInfoPanel, CodexPanel, RockPanel } from './ObjectInfoPanel';
 import { BoardPanel } from './BoardPanel';
 import { frame, brownBtn, brownBtnOn, brownBtnOff, dangerBtn, brownSelect, PALETTE, won } from './frame';
 
@@ -138,6 +138,9 @@ export function BottomSheet({ mode, setMode, place, msg }: { mode: Mode; setMode
 function CellPanel({ x, y }: { x: number; y: number }) {
   const s = useGame();
   const o = objectAt(s, x, y);
-  if (!o) return <div style={{ color: PALETTE.inkSoft }}>빈 칸 ({x},{y}) · 경치 {sceneryScore(s, x, y)}</div>;
+  if (!o) {
+    if (clearCost(s, x, y) !== null) return <RockPanel x={x} y={y} />;
+    return <div style={{ color: PALETTE.inkSoft }}>빈 칸 ({x},{y}) · 경치 {sceneryScore(s, x, y)}</div>;
+  }
   return <ObjectInfoPanel objectId={o.id} />;
 }

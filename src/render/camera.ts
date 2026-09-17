@@ -37,8 +37,8 @@ const VELOCITY_WINDOW_MS = 100;
 
 /** 드래그 이동(관성)·핀치 줌·탭(셀 좌표)·경계 고무줄. 이동 거리가 짧으면 탭으로 본다. */
 export function attachCamera(stage: Container, opts: CameraOptions): () => void {
-  // 30×16 맵 전체(1,472px)를 폰에서 한눈에 보려면 ×0.5까지 줄일 수 있어야 한다
-  const { world, canvas, ticker, viewport, bounds, onTap, dragCapture, onDragCell, onDragEnd, minScale = 0.5, maxScale = 3 } = opts;
+  // 30×24 맵 전체(1,728px)를 폰에서 한눈에 보려면 ×0.4까지 줄일 수 있어야 한다
+  const { world, canvas, ticker, viewport, bounds, onTap, dragCapture, onDragCell, onDragEnd, minScale = 0.4, maxScale = 3 } = opts;
   const pointers = new Map<number, { x: number; y: number }>();
   let dragStart: { x: number; y: number; wx: number; wy: number } | null = null;
   let moved = false;

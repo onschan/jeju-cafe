@@ -883,13 +883,18 @@ def emit_ranks(doc: Doc) -> tuple[list[dict], list[dict]]:
 # ---------------------------------------------------------------------------
 # §18 필지
 # ---------------------------------------------------------------------------
+# 2차 피드백으로 추가한 필지의 id (1~6은 parcel{#})
+PARCEL_IDS = {7: 'village_edge', 8: 'stone_hill', 9: 'orchard'}
+
+
 def emit_parcels(doc: Doc) -> list[dict]:
     out = []
     for r in doc.section('18. ').table():
         price = conv(r['가격'])
         size = conv(r['크기'])
+        no = conv(r['#'])
         out.append({
-            'id': f'parcel{conv(r["#"])}', 'no': conv(r['#']), 'name': r['필지'].strip(),
+            'id': PARCEL_IDS.get(no, f'parcel{no}'), 'no': no, 'name': r['필지'].strip(),
             'price': price if isinstance(price, int) else 0, 'priceText': r['가격'].strip(),
             'start': not isinstance(price, int), 'w': size['w'], 'h': size['h'],
             'bonusText': raw(r['구역 보너스']), 'backgroundText': r['배경 해금'].strip(),

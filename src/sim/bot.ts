@@ -6,7 +6,7 @@
  * - 2달째: 전단 공고 → service 최고를 홀, sense 최고를 바리스타(→ latte 추가)
  * - 돈 500만 넘고 기력 60 넘는 직원이 있으면 전단 돌리기 (한 달에 한 번)
  * - 9월: 밭 3개 + 밭 일꾼 채용(체력 최고)
- * - 연구가 되면 해금 (돌담은 2개까지 놓는다)
+ * - 연구가 되면 해금 (돌담은 2개까지 놓는다). 수확은 자동(익으면 창고로).
  * - 돈 200만 미만이면 아르바이트 (직원당 한 달 한 번은 sim이 막는다)
  */
 import type { GameState } from './types.ts';
@@ -15,8 +15,8 @@ import { tick } from './tick.ts';
 import { apply } from './actions.ts';
 import { DAY_MS } from './clock.ts';
 import { canPlace, objectAt } from './grid.ts';
-import { readyToHarvest } from './farm.ts';
 import { canUnlock } from './progress.ts';
+import { START_ORIGIN } from './layout.ts';
 import { objectDef } from '../data/index.ts';
 import type { Candidate, RoleId, StatKey } from './types.ts';
 
@@ -33,13 +33,15 @@ export interface BotRow {
   guests: number;     // 그달 손님 수
 }
 
-/** 가로 올렛길 y=4 양옆(y=3, y=5)에 테이블. 시작 자금 500만이면 16개(80만)는 무리가 없다. */
+/** 시작 필지 상대 좌표 → 격자 좌표 */
+const at = (x: number, y: number) => ({ x: START_ORIGIN.x + x, y: START_ORIGIN.y + y });
+/** 가로 올렛길 y=4 양옆(y=3, y=5)에 테이블 (시작 필지 상대). 시작 자금 500만이면 16개(80만)는 무리가 없다. */
 export const BOT_TABLES: { x: number; y: number }[] = [
-  ...[0, 1, 2, 3, 5, 6, 7, 8, 9].map((x) => ({ x, y: 3 })),
-  ...[0, 1, 2, 3, 7, 8, 9].map((x) => ({ x, y: 5 })),
+  ...[0, 1, 2, 3, 5, 6, 7, 8, 9].map((x) => at(x, 3)),
+  ...[0, 1, 2, 3, 7, 8, 9].map((x) => at(x, 5)),
 ];
-export const BOT_FIELDS: { x: number; y: number }[] = [{ x: 6, y: 6 }, { x: 7, y: 6 }, { x: 8, y: 6 }];
-export const BOT_WALLS: { x: number; y: number }[] = [{ x: 5, y: 5 }, { x: 6, y: 5 }];
+export const BOT_FIELDS: { x: number; y: number }[] = [at(6, 6), at(7, 6), at(8, 6)];
+export const BOT_WALLS: { x: number; y: number }[] = [at(5, 5), at(6, 5)];
 export const FLYER_MIN_MONEY = 5_000_000;
 export const FLYER_MIN_ENERGY = 60;
 export const PARTTIME_MAX_MONEY = 2_000_000;
@@ -52,10 +54,10 @@ function place(s: GameState, type: string, x: number, y: number): boolean {
   return canPlace(s, type, x, y).ok && apply(s, { type: 'place', objectType: type, x, y }).ok;
 }
 
-/** 정낭(4,6)에서 위로 올렛길을 깔아 창고 앞(4,3)까지 연결하고, y=4에 가로 올렛길 */
+/** 정낭(4,6)에서 위로 올렛길을 깔아 창고 옆(4,3)까지 연결하고, y=4에 가로 올렛길 (시작 필지 상대) */
 function ensurePath(s: GameState): void {
-  for (let y = 5; y >= 3; y--) if (!objectAt(s, 4, y)) apply(s, { type: 'place', objectType: 'path', x: 4, y });
-  for (let x = 0; x < 10; x++) if (!objectAt(s, x, 4)) apply(s, { type: 'place', objectType: 'path', x, y: 4 });
+  for (let y = 5; y >= 3; y--) { const p = at(4, y); if (!objectAt(s, p.x, p.y)) apply(s, { type: 'place', objectType: 'path', ...p }); }
+  for (let x = 0; x < 10; x++) { const p = at(x, 4); if (!objectAt(s, p.x, p.y)) apply(s, { type: 'place', objectType: 'path', ...p }); }
 }
 
 function bestBy(cands: Candidate[], stat: StatKey): Candidate | undefined {
@@ -113,7 +115,6 @@ function dailyPlan(s: GameState): void {
   // 당근이 있으면 쿠키 자리에 당근주스 (원가 0)
   if (s.unlocked.menus.includes('carrot_juice') && (s.storage['carrot'] ?? 0) > 0 && !s.menuSlots.includes('carrot_juice'))
     apply(s, { type: 'setSlot', slot: 2, menuId: 'carrot_juice' });
-  for (const id of readyToHarvest(s)) apply(s, { type: 'harvest', objectId: id });
 
   if (s.money < PARTTIME_MAX_MONEY) {
     for (const st of s.staff) if (apply(s, { type: 'promote', staffId: st.id, promotionId: 'parttime' }).ok) break;

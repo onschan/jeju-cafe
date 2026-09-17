@@ -1,7 +1,8 @@
-export type Terrain = 'soil' | 'rock' | 'road';
-export type ObjectKind = 'field' | 'tree' | 'seat' | 'wall' | 'path' | 'building' | 'deco' | 'busstop' | 'gate' | 'landmark';
+/** rock_big = 오름 능선의 큰 바위 (치우는 데 100만) */
+export type Terrain = 'soil' | 'rock' | 'rock_big' | 'road';
+export type ObjectKind = 'field' | 'tree' | 'seat' | 'wall' | 'path' | 'building' | 'deco' | 'busstop' | 'gate' | 'landmark' | 'facility';
 /** 필지 구역 보너스 종류 (§18) */
-export type ParcelBonus = 'none' | 'oreum' | 'gotjawal' | 'batdam' | 'coast' | 'spring';
+export type ParcelBonus = 'none' | 'oreum' | 'gotjawal' | 'batdam' | 'coast' | 'spring' | 'village' | 'stonehill' | 'orchard';
 export type MenuCategory = 'drink' | 'dessert' | 'meal';
 export type Mood = 'happy' | 'meh' | 'angry';
 export type GuestPhase = 'walking' | 'seated' | 'leaving';
@@ -28,6 +29,10 @@ export interface ObjectDef {
   feePct?: number;     // 기본 요금 % (없으면 100)
   desc?: string;       // 정보 패널 설명 (없으면 이름)
   seasonScenery?: Partial<Record<Season, number>>; // 계절 경치 보너스 (없으면 SEASON_SCENERY 표)
+  room?: true;         // 실내 바닥이 있는 건물: 발자국 칸 위에 indoor 오브젝트를 놓고 손님이 걸어 들어간다 (문 = 정면 왼쪽 칸)
+  indoor?: true;       // 실내 전용 오브젝트: room 발자국 칸 위에만 놓는다
+  fee?: number;        // 시설 이용료 (손님이 순회하며 낸다)
+  unlock?: UnlockCond; // v2 시설 해금 조건 (없으면 해금 트리·시작 목록으로만 열린다)
 }
 
 export interface CropDef {
@@ -300,7 +305,8 @@ export interface MonthCosts { ingredients: number; salary: number; ads: number; 
 
 export interface Cell {
   terrain: Terrain;
-  objectId: string | null; // 이 칸을 덮는 PlacedObject.id
+  objectId: string | null; // 이 칸을 덮는 PlacedObject.id (실내 오브젝트가 있으면 그것, 없으면 방)
+  roomId: string | null;   // 이 칸을 바닥으로 삼는 room 오브젝트 id
 }
 
 export interface CropState {
@@ -332,6 +338,12 @@ export interface Parcel {
   price: number;
   bonus: ParcelBonus;
 }
+
+/** 렌더 전용 연출 큐 (sim이 남기고 렌더가 tick으로 새 항목만 읽는다). 최근 FX_CAP개만 보관. */
+export type FxEvent =
+  | { kind: 'harvest'; x: number; y: number; tick: number }
+  | { kind: 'pop'; x: number; y: number; n: number; tick: number }
+  | { kind: 'greet'; staffId: string; tick: number };
 
 export interface Guest {
   id: string;
@@ -402,6 +414,7 @@ export interface GameState {
   inventory: Record<string, number>;          // itemId → 개수
   itemBonus: Record<string, ItemBonus>;       // objectType → 아이템 누적 보너스 (인기 상한 +30)
   notices: string[];
+  fx: FxEvent[];                              // 연출 큐 (자동 수확 반짝임·숫자 팝업)
   guests: Guest[];
   spawnAcc: number; // 시간대별 스폰 소수 누적
   nextId: number;
@@ -428,7 +441,8 @@ export type Action =
   | { type: 'rotate'; objectId: string; rot: number }
   | { type: 'buyParcel'; id: string }
   | { type: 'plant'; objectId: string; cropId: string }
-  | { type: 'harvest'; objectId: string }
+  | { type: 'harvest'; objectId: string }   // 호환용 — 익으면 자동으로 창고에 들어간다
+  | { type: 'clearRock'; x: number; y: number }
   | { type: 'setSlot'; slot: number; menuId: string | null }
   | { type: 'setSpeed'; speed: 0 | 1 | 2 | 3 }
   | { type: 'unlock' }

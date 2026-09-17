@@ -1,6 +1,6 @@
 import { Application, Container, Sprite, Graphics, Texture } from 'pixi.js';
 import type { GameState, PlacedObject, Guest, Staff, Season, RoleId, Pt } from '../sim/index.ts';
-import { seasonOf, LOW_ENERGY, parcelPrice, footprint } from '../sim/index.ts';
+import { seasonOf, LOW_ENERGY, parcelPrice, footprint, roomAt } from '../sim/index.ts';
 import type { Parcel } from '../sim/index.ts';
 import { objectDef, cropDef } from '../data/index.ts';
 import { isoTerrainTexture, isoObjectTexture, glowTexture, label, bubble, clearTextureCache, loadLabelFont } from './textures';
@@ -39,6 +39,11 @@ const BUBBLE_POP_MS = 200;
 const COIN_FRAME_MS = 80;
 const COIN_FRAMES = 4;
 const COIN_RISE_PX = 12;
+/** 자동 수확 반짝임: 4프레임 × 120ms */
+const SPARKLE_FRAME_MS = 120;
+const SPARKLE_FRAMES = 4;
+/** 큰 바위(rock_big) 타일은 바위 타일을 어둡게 */
+const BIG_ROCK_TINT = 0x8a8a9a;
 /** 캐릭터 스프라이트 높이(발끝 기준 머리 위까지) */
 const GUEST_H = CHAR_H;
 /** 앉은 손님을 좌석 칸 중심보다 살짝 위로(의자에 앉은 느낌, 화면 px) */
@@ -62,8 +67,9 @@ interface ObjEntry {
   type: string;
   /** 시트 스프라이트. 플레이스홀더 노드면 null */
   sprite: Sprite | null;
-  ring: Sprite | null;
   glow: Sprite | null;
+  /** 마지막으로 그린 자리 "x,y" (이동 감지) */
+  posKey: string;
 }
 
 interface GuestEntry {
@@ -86,6 +92,7 @@ interface Fx {
   sprite: Sprite;
   born: number;
   y0: number;
+  kind: 'coin' | 'sparkle';
 }
 
 /** 오브젝트 상태별 스프라이트 변형 이름 */
@@ -166,9 +173,11 @@ export class GameView {
   private hostWidth = 0;
   private bounds: CameraBounds | null = null;
   private nightAlpha = 0;
-  /** 렌더 전용 애니 큐: 말풍선 팝, 코인 팝 */
+  /** 렌더 전용 애니 큐: 말풍선 팝, 코인 팝, 반짝임 */
   private bubblePops: { node: Container; born: number }[] = [];
   private fxQueue: Fx[] = [];
+  /** 마지막 렌더 때의 state.tick. 그 뒤 스텝에서 생긴 fx(tick ≥ 이 값)만 연출한다. −1 = 아직 첫 렌더 전 */
+  private fxSeenTick = -1;
 
   async init(parent: HTMLElement, opts: GameViewOptions) {
     await this.app.init({ resizeTo: parent, background: 0x1e1e1e, antialias: false, resolution: window.devicePixelRatio, autoDensity: true });
@@ -215,8 +224,10 @@ export class GameView {
     this.bubbleKeys.clear();
     this.bubblePops = [];
     this.fxQueue = [];
+    this.fxSeenTick = -1;
     this.tiles.removeChildren().forEach((c) => c.destroy());
     this.tileSprites = [];
+    this.terrainKeys = [];
     this.lockedNodes.clear();
     this.tilesBuilt = false;
     this.lastSeason = null;
@@ -278,6 +289,7 @@ export class GameView {
     } else if (season !== this.lastSeason) {
       this.retintTiles(state, season);
     }
+    this.syncTerrain(state, season);
     this.syncLocked(state);
     const now = performance.now();
     // 시계에 hour가 있는 브랜치(2B-1)와 없는 브랜치 모두에서 동작하도록 정오를 기본값으로
@@ -285,11 +297,12 @@ export class GameView {
     this.syncObjects(state, now);
     this.syncGuests(state, now);
     this.syncStaff(state, now);
+    this.syncFx(state, now);
     this.tickFx(now);
     this.drawNight();
   }
 
-  /** 첫 렌더: 폰에서 ×2 근처 줌, 시작 필지(1번)를 가로 가운데·HUD 아래에 놓는다. */
+  /** 첫 렌더: 폰에서 ×2 근처 줌, 시작 필지(1번, 정중앙)를 가로 가운데·HUD 아래에 놓는다. */
   private fitCamera(state: GameState) {
     const width = this.app.screen.width || this.hostWidth;
     const s = Math.min(3, Math.max(1.5, width / 480));
@@ -354,7 +367,17 @@ export class GameView {
 
   private tileTexture(state: GameState, i: number, season: Season): Texture {
     const cell = state.grid.cells[i]!;
-    return (hasAssets() ? tex(spriteName.isoTile(cell.terrain, season)) : null) ?? isoTerrainTexture(this.app.renderer, cell.terrain);
+    // 큰 바위는 전용 타일이 없으면 바위 타일을 빌려 어둡게(tint) 그린다
+    const name = cell.terrain === 'rock_big' && hasAssets() && !peekTex(spriteName.isoTile('rock_big', season)) ? 'rock' : cell.terrain;
+    return (hasAssets() ? tex(spriteName.isoTile(name, season)) : null) ?? isoTerrainTexture(this.app.renderer, cell.terrain);
+  }
+
+  /** 지형이 바뀌면(바위 치우기) 타일 텍스처를 갱신한다 */
+  private syncTile(state: GameState, i: number, season: Season) {
+    const sp = this.tileSprites[i];
+    if (!sp) return;
+    sp.texture = this.tileTexture(state, i, season);
+    sp.tint = state.grid.cells[i]!.terrain === 'rock_big' ? BIG_ROCK_TINT : 0xffffff;
   }
 
   private buildTiles(state: GameState, season: Season) {
@@ -366,6 +389,7 @@ export class GameView {
         sp.anchor.set(0.5, 0); // 위 꼭짓점 기준
         const { sx, sy } = cellToScreen(x, y);
         sp.position.set(sx, sy);
+        if (state.grid.cells[y * state.grid.w + x]!.terrain === 'rock_big') sp.tint = BIG_ROCK_TINT;
         this.tiles.addChild(sp);
         this.tileSprites.push(sp);
       }
@@ -378,17 +402,36 @@ export class GameView {
 
   /** 계절이 바뀌면 타일 텍스처만 교체한다 */
   private retintTiles(state: GameState, season: Season) {
-    for (let i = 0; i < this.tileSprites.length; i++) this.tileSprites[i]!.texture = this.tileTexture(state, i, season);
+    for (let i = 0; i < this.tileSprites.length; i++) this.syncTile(state, i, season);
     this.lastSeason = season;
   }
 
+  /** 바위 치우기로 지형이 바뀐 칸만 갱신 (마지막으로 그린 지형을 기억) */
+  private terrainKeys: string[] = [];
+  private syncTerrain(state: GameState, season: Season) {
+    const cells = state.grid.cells;
+    if (this.terrainKeys.length !== cells.length) this.terrainKeys = cells.map((c) => c.terrain);
+    for (let i = 0; i < cells.length; i++) {
+      if (this.terrainKeys[i] === cells[i]!.terrain) continue;
+      this.terrainKeys[i] = cells[i]!.terrain;
+      this.syncTile(state, i, season);
+    }
+  }
+
   /** 오브젝트 노드. 원점은 발자국 앞(아래) 꼭짓점이고, 스프라이트 하단 중앙을 여기에 맞춘다. */
-  private makeObjectNode(o: PlacedObject): ObjEntry {
+  /** 정렬 깊이. 방 안(실내 가구·손님)은 방보다 앞에 그려 지붕 없는 상자 안이 보이게 한다. */
+  private depthOf(state: GameState, x: number, y: number, w = 1, h = 1): number {
+    const room = roomAt(state, Math.round(x), Math.round(y));
+    if (room) { const rd = objectDef(room.type); return depth(room.x, room.y, rd.w, rd.h) + 0.2 + (x + y) * 1e-3; }
+    return depth(x, y, w, h);
+  }
+
+  private makeObjectNode(state: GameState, o: PlacedObject): ObjEntry {
     const def = objectDef(o.type);
     const c = new Container();
     const { sx, sy } = footAnchor(o.x, o.y, def.w, def.h);
     c.position.set(sx, sy);
-    c.zIndex = depth(o.x, o.y, def.w, def.h);
+    c.zIndex = this.depthOf(state, o.x, o.y, def.w, def.h);
     let glow: Sprite | null = null;
     if (GLOW_TYPES.has(o.type)) {
       glow = new Sprite(glowTexture(this.app.renderer));
@@ -407,7 +450,7 @@ export class GameView {
       sp.anchor.set(0.5, 1);
       if (!t.iso) sp.position.y = -def.h * (ISO_H / 2);
       c.addChild(sp);
-      return { node: c, type: o.type, sprite: sp, ring: null, glow };
+      return { node: c, type: o.type, sprite: sp, glow, posKey: `${o.x},${o.y}` };
     }
     const sp = new Sprite(isoObjectTexture(this.app.renderer, def.kind, def.w, def.h));
     sp.anchor.set(0.5, 1);
@@ -421,7 +464,7 @@ export class GameView {
     const badge = new Graphics();
     badge.label = 'badge';
     c.addChild(badge);
-    return { node: c, type: o.type, sprite: null, ring: null, glow };
+    return { node: c, type: o.type, sprite: null, glow, posKey: `${o.x},${o.y}` };
   }
 
   /** w×h 발자국 다이아몬드의 중심(월드 좌표). 노드 원점(앞 꼭짓점)과는 다르다. */
@@ -441,44 +484,35 @@ export class GameView {
       }
     }
     const blinkOn = Math.floor(now / 300) % 2 === 0;
-    const ringAlpha = 0.5 + 0.5 * Math.sin(now / 200);
     const glowAlpha = Math.min(1, this.nightAlpha * 1.2);
     for (const o of Object.values(state.objects)) {
       let entry = this.objNodes.get(o.id);
       if (!entry) {
-        entry = this.makeObjectNode(o);
+        entry = this.makeObjectNode(state, o);
         this.actors.addChild(entry.node);
         this.objNodes.set(o.id, entry);
       }
-      if (entry.ring) entry.ring.alpha = ringAlpha;
       if (entry.glow) { entry.glow.alpha = glowAlpha; entry.glow.visible = glowAlpha > 0; }
+      // 자리가 바뀌었으면(이동) 노드 위치·깊이 갱신
+      const def = objectDef(o.type);
+      const posKey = `${o.x},${o.y}`;
+      if (entry.posKey !== posKey) {
+        entry.posKey = posKey;
+        const { sx, sy } = footAnchor(o.x, o.y, def.w, def.h);
+        entry.node.position.set(sx, sy);
+        entry.node.zIndex = this.depthOf(state, o.x, o.y, def.w, def.h);
+        if (entry.glow) { const gc = this.footCenter(o, def.w, def.h); entry.glow.position.set(gc.sx, gc.sy - 10); }
+      }
       if (entry.sprite) {
-        // 시트 모드: 변형·수확 가능 여부가 바뀔 때만 텍스처와 링을 갱신
-        const ready = o.crop?.ready === true;
-        const key = `${objectVariant(o) ?? ''}:${o.rot ?? ''}:${ready}`;
+        // 시트 모드: 변형(심음·어린 나무)이 바뀔 때만 텍스처를 갱신. 수확은 자동이라 링 대신 반짝임(syncFx).
+        const key = `${objectVariant(o) ?? ''}:${o.rot ?? ''}`;
         if (this.badgeKeys.get(o.id) === key) continue;
         this.badgeKeys.set(o.id, key);
         const t = objectTex(o);
         if (t) entry.sprite.texture = t.texture;
-        const ringTex = ready ? tex('fx_ready_ring') : null;
-        if (ringTex && !entry.ring) {
-          const def = objectDef(o.type);
-          const ring = new Sprite(ringTex);
-          // 32×32 링을 발자국 다이아몬드 중심에 2:1로 눕힌다
-          ring.anchor.set(0.5, 0.5);
-          ring.scale.set(2 * def.w, 1 * def.h);
-          const gc = this.footCenter(o, def.w, def.h);
-          ring.position.set(gc.sx - entry.node.x, gc.sy - entry.node.y);
-          ring.alpha = ringAlpha;
-          entry.node.addChild(ring);
-          entry.ring = ring;
-        } else if (!ringTex && entry.ring) {
-          entry.ring.destroy();
-          entry.ring = null;
-        }
         continue;
       }
-      // 플레이스홀더: 심음=초록 점, 수확 가능=노란 테두리 깜빡임. 키가 바뀔 때만 다시 그린다.
+      // 플레이스홀더: 심음=초록 점. 키가 바뀔 때만 다시 그린다.
       const key = o.crop ? `${o.crop.cropId}:${o.crop.ready}:${o.crop.ready ? blinkOn : ''}` : '';
       if (this.badgeKeys.get(o.id) === key) continue;
       this.badgeKeys.set(o.id, key);
@@ -534,14 +568,14 @@ export class GameView {
         const def = objectDef(seat.type);
         const { sx, sy } = cellCenter(g.x, g.y);
         node.position.set(sx, sy - SEAT_LIFT_PX);
-        node.zIndex = depth(seat.x, seat.y, def.w, def.h) + 0.1;
+        node.zIndex = this.depthOf(state, seat.x, seat.y, def.w, def.h) + 0.1;
       } else {
         // 같은 날 스폰된 손님이 겹쳐 걷지 않도록 id 기반 작은 오프셋
         const jitter = (parseInt(g.id.slice(1), 10) % 3) * 4 - 4;
         const { sx, sy } = cellCenter(g.x, g.y);
         node.position.set(sx + jitter, sy);
-        // 같은 칸의 바닥 오브젝트(올렛길·정류장)보다 앞에 그린다
-        node.zIndex = g.x + g.y + 0.5;
+        // 같은 칸의 바닥 오브젝트(올렛길·정류장)보다 앞에, 방 안이면 방보다 앞에 그린다
+        node.zIndex = roomAt(state, Math.round(g.x), Math.round(g.y)) ? this.depthOf(state, g.x, g.y) + 0.5 : g.x + g.y + 0.5;
       }
       const walking = g.phase !== 'seated' && g.path.length > 0;
       if (entry.sprite) {
@@ -600,7 +634,7 @@ export class GameView {
       const { node } = entry;
       const { sx, sy } = cellCenter(st.x, st.y);
       node.position.set(sx, sy);
-      node.zIndex = st.x + st.y + 0.5;
+      node.zIndex = roomAt(state, Math.round(st.x), Math.round(st.y)) ? this.depthOf(state, st.x, st.y) + 0.5 : st.x + st.y + 0.5;
       const walking = st.path.length > 0;
       updateCharacterNode(entry.body, walkDir(st.x, st.y, st.path[0]), walking ? walkFrame : 1);
       node.alpha = st.energy < LOW_ENERGY ? TIRED_ALPHA : 1;
@@ -641,7 +675,32 @@ export class GameView {
     sp.anchor.set(0.5, 1);
     sp.position.set(x, y0);
     this.overlay.addChild(sp);
-    this.fxQueue.push({ sprite: sp, born: now, y0 });
+    this.fxQueue.push({ sprite: sp, born: now, y0, kind: 'coin' });
+  }
+
+  /** 자동 수확 반짝임: 칸 중심에 fx_sparkle 4프레임 */
+  private spawnSparkle(cellX: number, cellY: number, now: number) {
+    const t = tex('fx_sparkle_0');
+    if (!t) return;
+    const sp = new Sprite(t);
+    sp.anchor.set(0.5, 0.5);
+    const { sx, sy } = cellCenter(cellX, cellY);
+    sp.position.set(sx, sy - 12);
+    this.overlay.addChild(sp);
+    this.fxQueue.push({ sprite: sp, born: now, y0: sy - 12, kind: 'sparkle' });
+  }
+
+  /** sim이 남긴 연출 큐(state.fx)에서 새 항목만 골라 연출을 띄운다. 불러오기 직후엔 밀린 것을 건너뛴다.
+   *  스텝 k에서 생긴 fx는 tick=k이고 스텝 뒤 state.tick=k+1이므로, 지난 렌더의 state.tick 이상인 항목이 새것이다. */
+  private syncFx(state: GameState, now: number) {
+    const fx = state.fx ?? [];
+    const since = this.fxSeenTick;
+    this.fxSeenTick = state.tick;
+    if (since < 0) return;
+    for (const e of fx) {
+      if (e.tick < since) continue;
+      if (e.kind === 'harvest') this.spawnSparkle(e.x, e.y, now);
+    }
   }
 
   /** 밤 오버레이(화면 전체)와 글로우 레이어 변환 갱신 */
@@ -665,9 +724,16 @@ export class GameView {
       });
     }
     if (this.fxQueue.length) {
-      const total = COIN_FRAME_MS * COIN_FRAMES;
       this.fxQueue = this.fxQueue.filter((fx) => {
         const age = now - fx.born;
+        if (fx.kind === 'sparkle') {
+          const total = SPARKLE_FRAME_MS * SPARKLE_FRAMES;
+          if (age >= total) { fx.sprite.destroy(); return false; }
+          const t = tex(`fx_sparkle_${Math.floor(age / SPARKLE_FRAME_MS)}`);
+          if (t) fx.sprite.texture = t;
+          return true;
+        }
+        const total = COIN_FRAME_MS * COIN_FRAMES;
         if (age >= total) { fx.sprite.destroy(); return false; }
         const t = tex(`fx_coin_${Math.floor(age / COIN_FRAME_MS)}`);
         if (t) fx.sprite.texture = t;

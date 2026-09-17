@@ -1,3 +1,4 @@
+import { X, Y } from './helpers.ts';
 import { createInitialState } from '../state.ts';
 import { placeObject } from '../grid.ts';
 import { apply } from '../actions.ts';
@@ -21,8 +22,8 @@ test('grantItem은 인벤토리에 쌓고, useItem은 하나를 소모해 같은
   const s = createInitialState(1);
   grantItem(s, CUSHION.id, 2);
   expect(s.inventory[CUSHION.id]).toBe(2);
-  const a = placeObject(s, 'table_out', 6, 4);
-  const b = placeObject(s, 'table_out', 8, 4);
+  const a = placeObject(s, 'table_out', X(6), Y(4));
+  const b = placeObject(s, 'table_out', X(8), Y(4));
   const eff = itemEffect(CUSHION, objectDef('table_out'));
   expect(canUseItem(s, CUSHION.id, 'table_out').ok).toBe(true);
   useItem(s, CUSHION.id, 'table_out');
@@ -54,7 +55,7 @@ test('아이템 인기 보너스는 +30에서 멈춘다', () => {
 test('useItem 액션은 로그에 남고 인벤토리를 줄인다', () => {
   const s = createInitialState(1);
   grantItem(s, CUSHION.id);
-  placeObject(s, 'table_out', 6, 4);
+  placeObject(s, 'table_out', X(6), Y(4));
   expect(apply(s, { type: 'useItem', itemId: CUSHION.id, objectType: 'table_out' }).ok).toBe(true);
   expect(s.inventory[CUSHION.id]).toBe(0);
   expect(s.actionLog.at(-1)?.action.type).toBe('useItem');

@@ -1,3 +1,4 @@
+import { X, Y } from './helpers.ts';
 import { createInitialState } from '../state.ts';
 import { apply } from '../actions.ts';
 import { placeObject } from '../grid.ts';
@@ -12,7 +13,7 @@ export function staffWith(partial: Partial<Stats>, role: RoleId | null, skill = 
   return {
     id: `s${Math.round(Object.values(stats).reduce((a, b) => a + b, 0))}${role}`,
     name: 'x', face: { hair: 0, skin: 0, top: 0 }, stats, skill, level: 1, salary: 0,
-    role, unpaidMonths: 0, energy: 100, lastParttimeMonthIndex: -1, x: 4, y: 3, path: [], anchor: null, waitMs: 0,
+    role, unpaidMonths: 0, energy: 100, lastParttimeMonthIndex: -1, x: X(4), y: Y(3), path: [], anchor: null, waitMs: 0,
   };
 }
 
@@ -198,27 +199,28 @@ test('기력: 하루 종일 일만 하면 거의 만땅 유지, 홍보까지 하
 
 test('직원 이동: 앵커 근처를 산책하고, 기력 0이면 창고 앞에 선다', () => {
   const s = createInitialState(1);
-  for (let y = 3; y <= 5; y++) placeObject(s, 'path', 4, y);
-  placeObject(s, 'table_out', 5, 5);
+  for (let y = 3; y <= 5; y++) placeObject(s, 'path', X(4), Y(y));
+  placeObject(s, 'path', X(3), Y(3)); // 창고 문 앞
+  placeObject(s, 'table_out', X(5), Y(5));
   const hall = staffWith({}, 'hall');
   const barista = staffWith({}, 'barista');
   s.staff.push(hall, barista);
-  expect(staffAnchor(s, barista)).toEqual({ x: 4, y: 3 });
+  expect(staffAnchor(s, barista)).toEqual({ x: X(3), y: Y(3) });
   const a = staffAnchor(s, hall);
-  expect(Math.abs(a.x - 5) + Math.abs(a.y - 5)).toBe(1);
+  expect(Math.abs(a.x - X(5)) + Math.abs(a.y - Y(5))).toBe(1);
   const visited = new Set<string>();
   for (let i = 0; i < 300; i++) { moveStaff(s, 100); visited.add(`${hall.x},${hall.y}`); }
   expect(visited.size).toBeGreaterThan(1);
   for (const st of s.staff) { expect(Number.isFinite(st.x)).toBe(true); expect(Math.abs(st.x - staffAnchor(s, st).x)).toBeLessThanOrEqual(2); }
   hall.energy = 0;
   for (let i = 0; i < 100; i++) moveStaff(s, 100);
-  expect([hall.x, hall.y]).toEqual([4, 3]);
+  expect([hall.x, hall.y]).toEqual([X(3), Y(3)]);
   expect(hall.path.length).toBe(0);
 });
 
 test('직원 이동은 tick 안에서 돌고 결정적이다', () => {
   const a = hired(2), b = hired(2);
-  for (let y = 3; y <= 5; y++) { placeObject(a.s, 'path', 4, y); placeObject(b.s, 'path', 4, y); }
+  for (let y = 3; y <= 5; y++) { placeObject(a.s, 'path', X(4), Y(y)); placeObject(b.s, 'path', X(4), Y(y)); }
   for (let i = 0; i < 50; i++) tick(a.s, 100);
   for (let i = 0; i < 5; i++) tick(b.s, 1000);
   expect(JSON.stringify(a.s.staff)).toBe(JSON.stringify(b.s.staff));
@@ -230,7 +232,7 @@ import { setSlot } from '../menu.ts';
 
 function cafe() {
   const s = createInitialState(1);
-  placeObject(s, 'table_out', 4, 5);
+  placeObject(s, 'table_out', X(4), Y(5));
   setSlot(s, 0, 'americano');
   return s;
 }
@@ -269,9 +271,9 @@ test('홀 직원 서비스는 만족 기준을 낮춘다', () => {
 
 test('밭 일꾼은 제철에 빈 밭에 심고 익으면 딴다', () => {
   const s = createInitialState(1); s.clock.month = 10;
-  apply(s, { type: 'place', objectType: 'field', x: 6, y: 6 });
-  apply(s, { type: 'place', objectType: 'field', x: 7, y: 6 });
-  apply(s, { type: 'place', objectType: 'field', x: 8, y: 6 });
+  apply(s, { type: 'place', objectType: 'field', x: X(6), y: Y(6) });
+  apply(s, { type: 'place', objectType: 'field', x: X(7), y: Y(6) });
+  apply(s, { type: 'place', objectType: 'field', x: X(8), y: Y(6) });
   s.staff.push(staffWith({ stamina: 30 }, 'field')); // 하루 2칸
   tick(s, DAY_MS);
   const fields = Object.values(s.objects).filter((o) => o.type === 'field');
@@ -285,7 +287,7 @@ test('밭 일꾼은 제철에 빈 밭에 심고 익으면 딴다', () => {
 
 test('밭 일꾼은 철이 아니면 안 심는다', () => {
   const s = createInitialState(1); // 3월
-  apply(s, { type: 'place', objectType: 'field', x: 6, y: 6 });
+  apply(s, { type: 'place', objectType: 'field', x: X(6), y: Y(6) });
   s.staff.push(staffWith({ stamina: 30 }, 'field'));
   tick(s, DAY_MS);
   expect(Object.values(s.objects).find((o) => o.type === 'field')!.crop).toBeNull();

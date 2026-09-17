@@ -23,6 +23,7 @@ import itemsJson from './generated/items.json' with { type: 'json' };
 import itemsV2Json from './generated/v2/items.json' with { type: 'json' };
 import specialItemsJson from './generated/v2/special_items.json' with { type: 'json' };
 import compatMetaJson from './generated/compat_meta.json' with { type: 'json' };
+import facilitiesJson from './generated/v2/facilities.json' with { type: 'json' };
 
 /** 시작부터 있는 특수 오브젝트 (필지 지형 생성용). 덤불은 곡괭이 대신 5만 원에 치운다. */
 const TERRAIN_OBJECTS: ObjectDef[] = [
@@ -34,7 +35,7 @@ export const LANDMARK_COST_SCALE = 100;
 export const LANDMARKS: ObjectDef[] = (landmarksJson as { id: string; name: string; w: number; h: number; cost: number; effectText: string }[]).map((l) => ({
   id: l.id, name: l.name, kind: 'landmark', w: l.w, h: l.h, cost: l.cost * LANDMARK_COST_SCALE, scenery: 3, noise: 0, wind: 1, upkeep: 0, terrain: ['soil', 'rock'], effectText: l.effectText,
 }));
-export const OBJECTS: ObjectDef[] = [...(objectsJson as ObjectDef[]), ...TERRAIN_OBJECTS, ...LANDMARKS];
+
 export interface ParcelDef { id: string; no: number; name: string; price: number; start: boolean; w: number; h: number; bonusText: string | null }
 export const PARCELS = parcelsJson as ParcelDef[];
 export const CROPS = cropsJson as CropDef[];
@@ -113,6 +114,44 @@ export interface GuestChainDef { chain: string; guests: string[]; edges: { from:
 export const GUEST_CHAINS: GuestChainDef[] = (chainsJson as GuestChainDef[]).map((c) => ({
   chain: c.chain, guests: c.guests.map(canonicalGuestId), edges: c.edges.map((e) => ({ from: canonicalGuestId(e.from), to: canonicalGuestId(e.to), quest: e.quest })),
 }));
+
+// ---------- v2 시설 87 → ObjectDef (objects.json에 없는 것만) ----------
+/** 실내 바닥이 있는 건물(방): 발자국 위에 indoor 오브젝트를 놓고 손님이 문(정면 왼쪽)으로 드나든다 */
+export const ROOM_IDS = new Set(['warehouse', 'kitchen_ext', 'gallery', 'restroom', 'pottery_studio', 'vinyl_house_room', 'tangerine_hall']);
+/** 실내 전용 오브젝트 (방 바닥 위에만) */
+export const INDOOR_IDS = new Set(['table_in', 'counter', 'sofa', 'bookshelf', 'vending', 'roaster']);
+/** 좌석 수: 소형 2, 중형 4, 대형 6 */
+const SEATS_BY_TIER: Record<string, number> = { small: 2, medium: 4, large: 6 };
+type RawFacility = {
+  id: string; name: string; category: string; tier: string; w: number; h: number; cost: number; upkeep: number;
+  popularity: number; feePct: number | null; fee: number | null; scenery: number; noise: number;
+  seasonBonus: Record<string, number>; unlock: Record<string, unknown>; description: string | null;
+};
+/** v2 시설 표 → ObjectDef. 쉼 → seat, 편의·먹거리·즐길거리·농사 → facility, 경관 → deco, 랜드마크 → landmark. 방은 building. */
+export function adaptFacility(r: RawFacility): ObjectDef {
+  const room = ROOM_IDS.has(r.id);
+  const kind: ObjectDef['kind'] = room ? 'building' : r.category === 'rest' ? 'seat' : r.category === 'scenery' ? 'deco' : r.category === 'landmark' ? 'landmark' : 'facility';
+  const season: Partial<Record<Season, number>> = {};
+  for (const k of ['spring', 'summer', 'autumn', 'winter'] as Season[]) if (typeof r.seasonBonus?.[k] === 'number') season[k] = r.seasonBonus[k];
+  const def: ObjectDef = {
+    id: r.id, name: r.name, kind, w: r.w, h: r.h, cost: r.cost, scenery: r.scenery, noise: Math.max(0, r.noise), wind: r.category === 'scenery' && r.h >= 1 && ['palm', 'cedar'].includes(r.id) ? 1 : 0,
+    upkeep: r.upkeep, terrain: r.category === 'farm' ? ['soil'] : ['soil', 'rock'], popularity: r.popularity, feePct: r.feePct ?? 100,
+    desc: r.description ?? undefined, unlock: toUnlockCond(r.unlock),
+  };
+  if (kind === 'seat') def.seats = SEATS_BY_TIER[r.tier] ?? 2;
+  if (typeof r.fee === 'number') def.fee = r.fee;
+  if (Object.keys(season).length > 0) def.seasonScenery = season;
+  if (room) def.room = true;
+  if (INDOOR_IDS.has(r.id)) def.indoor = true;
+  return def;
+}
+const BASE_OBJECTS: ObjectDef[] = [...(objectsJson as ObjectDef[]), ...TERRAIN_OBJECTS, ...LANDMARKS].map((o) => (ROOM_IDS.has(o.id) ? { ...o, room: true as const } : o));
+const BASE_IDS = new Set(BASE_OBJECTS.map((o) => o.id));
+/** v2 시설 중 objects.json·랜드마크에 아직 없는 것 (시설 순회·실내 가구·증축용) */
+export const FACILITIES: ObjectDef[] = (facilitiesJson as unknown as RawFacility[]).filter((r) => !BASE_IDS.has(r.id)).map(adaptFacility);
+/** 시작부터 열려 있는 v2 시설 */
+export const FACILITY_START_IDS: string[] = FACILITIES.filter((f) => f.unlock?.type === 'start').map((f) => f.id);
+export const OBJECTS: ObjectDef[] = [...BASE_OBJECTS, ...FACILITIES];
 
 // ---------- 부탁 103 ----------
 type RawQuest = { id: string; guestId: string; description: string; condition: { type: string; params?: Record<string, unknown> }; rewards: Record<string, unknown>[]; rewardText: string | null; unlockGuestId: string | null };

@@ -1,11 +1,11 @@
 export * from './types.ts';
-export { createInitialState, GRID_W, GRID_H, PARCEL_W, PARCEL_H, MENU_SLOT_COUNT, SAVE_VERSION, START_MONEY, SETTLE_GRANT, SETTLE_GRANT_THRESHOLD } from './state.ts';
+export { createInitialState, GRID_W, GRID_H, PARCEL_W, PARCEL_H, START_ORIGIN, VILLAGE_ROAD_Y, MENU_SLOT_COUNT, SAVE_VERSION, START_MONEY, SETTLE_GRANT, SETTLE_GRANT_THRESHOLD } from './state.ts';
 export { parcelAt, parcelById, parcelPrice, canBuyParcel, ownedParcels, parcelBonusAt, parcelUnlockOwnedCount } from './parcels.ts';
 export { tick, step, STEP_MS } from './tick.ts';
 export { apply, PROTECTED_TYPES, ROTATABLE_TYPES } from './actions.ts';
 export { DAY_MS, seasonOf, monthIndex, DAYS_PER_MONTH } from './clock.ts';
-export { cellAt, objectAt, canPlace, footprint, parcelHasLandmark, isSheltered, sceneryScore, objectScenery, windShelter, SHELTER_THRESHOLD, SCENERY_CAP } from './grid.ts';
-export { canPlant, canHarvest, readyToHarvest } from './farm.ts';
+export { cellAt, objectAt, canPlace, footprint, parcelHasLandmark, isSheltered, sceneryScore, objectScenery, windShelter, SHELTER_THRESHOLD, SCENERY_CAP, doorOf, roomAt, isRoomFloor, objectsInRoom, clearCost, canClearRock, hasPickaxe, ROCK_CLEAR_COST, BIG_ROCK_CLEAR_COST, BUSH_CLEAR_COST } from './grid.ts';
+export { canPlant, canHarvest, readyToHarvest, FX_CAP } from './farm.ts';
 export { isMenuAvailable, availableMenus, canSetSlot, hasMenuStaff, menuRequirementText } from './menu.ts';
 export { isWalkable, busStopPos } from './path.ts';
 export { nextUnlock, canUnlock } from './progress.ts';
@@ -15,7 +15,7 @@ export { canPromote, effectivePopularity, MAX_ACTIVE_PROMOTIONS, PARTTIME_MONEY 
 export { TIERS, MAX_LEVEL, LOW_ENERGY, salaryOf, levelUpCost, roleEffect, ingredientDiscount, staffInRole, canHire, canLevelUp } from './staff.ts';
 export { objectStats, activeCombos, popularityFor, segmentBonus, setLevels, BASE_POPULARITY, POPULARITY_CAP } from './compat.ts';
 export { canUseItem, grantItem, itemEffect, ITEM_POP_CAP } from './items.ts';
-export { evaluateUnlocks, unlockCondMet, isUnlocked, unlockedTypeIds, guestFace, walletOf, regularTier, isTarget, MAX_TARGETS, SAT_QUEST, SAT_REGULAR, SAT_VIP } from './segments.ts';
+export { evaluateUnlocks, evaluateFacilityUnlocks, unlockCondMet, isUnlocked, unlockedTypeIds, guestFace, walletOf, regularTier, isTarget, MAX_TARGETS, SAT_QUEST, SAT_REGULAR, SAT_VIP } from './segments.ts';
 export { questProgress, canAcceptQuest, canRespondEvent, eventConditionMet, boardBadge, visibleQuests, QUEST_MONTHS } from './board.ts';
 export { spotLevel, spotUnlocked, nextSpotLevel, spotAppeal, spotGuestBonus, canInvestSpot, SPOT_MAX_LEVEL, SPOT_BUS_LEVEL, SPOT_GUEST_LEVEL, SPOT_QUEST_LEVEL } from './spots.ts';
 export { effectMult, noGuestsToday, dayIndex } from './effects.ts';
