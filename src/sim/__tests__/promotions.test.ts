@@ -5,6 +5,7 @@ import { tick } from '../tick.ts';
 import { DAY_MS } from '../clock.ts';
 import { dailyGuestCount, spawnMultiplier } from '../guests.ts';
 import { effectivePopularity, expirePromotions, YOUTUBER_MONTHS, PARTTIME_MONEY } from '../promotions.ts';
+import { monthIndex } from '../clock.ts';
 import { staffWith } from './staff.test.ts';
 import type { GameState, Staff } from '../types.ts';
 
@@ -16,9 +17,12 @@ function withStaff(seed = 1): { s: GameState; st: Staff } {
   return { s, st };
 }
 
-test('홍보: 없는 직원·기력 부족·연구 부족·돈 부족은 거부', () => {
+test('홍보: 없는 직원·미배치·기력 부족·연구 부족·돈 부족은 거부', () => {
   const { s, st } = withStaff();
   expect(apply(s, { type: 'promote', staffId: 'nope', promotionId: 'flyer' }).ok).toBe(false);
+  st.role = null;
+  expect(apply(s, { type: 'promote', staffId: st.id, promotionId: 'flyer' }).ok).toBe(false); // 배치된 직원만
+  st.role = 'hall';
   st.energy = 19;
   expect(apply(s, { type: 'promote', staffId: st.id, promotionId: 'flyer' }).ok).toBe(false); // 기력 20 필요
   st.energy = 100; s.research = 4;
@@ -54,7 +58,7 @@ test('기간형: 라디오는 돈이 들고 광고비에 잡히며, 활성 동�
   expect(apply(s, { type: 'promote', staffId: st.id, promotionId: 'radio' }).ok).toBe(true);
   expect(s.money).toBe(50000);
   expect(s.monthCosts.ads).toBe(50000);
-  expect(s.activePromotions).toEqual([{ promotionId: 'radio', remainingMonths: 2 }]);
+  expect(s.activePromotions).toEqual([{ promotionId: 'radio', remainingMonths: 2, delta: { local: 5, tourist: 5 } }]);
   expect(effectivePopularity(s, 'local')).toBe(35);
   expect(effectivePopularity(s, 'tourist')).toBe(25);
   expect(s.segmentPopularity['local']).toBe(30); // 기본값은 그대로
@@ -63,23 +67,44 @@ test('기간형: 라디오는 돈이 들고 광고비에 잡히며, 활성 동�
   expect(apply(s, { type: 'promote', staffId: st.id, promotionId: 'billboard' }).ok).toBe(true);
   expect(effectivePopularity(s, 'local')).toBe(38);
   const s2 = createInitialState(2);
-  s2.activePromotions = [{ promotionId: 'radio', remainingMonths: 1 }, { promotionId: 'billboard', remainingMonths: 1 }];
+  s2.activePromotions = [{ promotionId: 'radio', remainingMonths: 1, delta: {} }, { promotionId: 'billboard', remainingMonths: 1, delta: {} }];
   s2.staff.push(staffWith({}, 'hall')); s2.research = 100; s2.money = 1e6;
   expect(apply(s2, { type: 'promote', staffId: s2.staff[0]!.id, promotionId: 'flyer' }).ok).toBe(true); // 1회성은 개수 제한 없음
   for (let i = 0; i < 30; i++) tick(s, DAY_MS);
-  expect(s.activePromotions).toEqual([{ promotionId: 'radio', remainingMonths: 1 }]);
+  expect(s.activePromotions).toEqual([{ promotionId: 'radio', remainingMonths: 1, delta: { local: 5, tourist: 5 } }]);
   expect(s.lastMonthCard!.costs.ads).toBe(50000);
   for (let i = 0; i < 30; i++) tick(s, DAY_MS);
   expect(s.activePromotions).toEqual([]);
 });
 
-test('아르바이트: 기력 40으로 돈 +4000', () => {
+test('아르바이트: 기력 40으로 돈 +1500, 직원당 한 달에 한 번', () => {
   const { s, st } = withStaff();
   const m0 = s.money;
+  expect(PARTTIME_MONEY).toBe(1500);
   expect(apply(s, { type: 'promote', staffId: st.id, promotionId: 'parttime' }).ok).toBe(true);
   expect(s.money).toBe(m0 + PARTTIME_MONEY);
   expect(s.monthIncome).toBe(PARTTIME_MONEY);
   expect(st.energy).toBe(60);
+  expect(st.lastParttimeMonthIndex).toBe(monthIndex(s.clock));
+  expect(apply(s, { type: 'promote', staffId: st.id, promotionId: 'parttime' }).ok).toBe(false); // 이달은 이미
+  const other = staffWith({ service: 11 }, 'hall'); s.staff.push(other);
+  expect(apply(s, { type: 'promote', staffId: other.id, promotionId: 'parttime' }).ok).toBe(true); // 다른 직원은 가능
+  for (let i = 0; i < 30; i++) tick(s, DAY_MS);
+  st.energy = 100;
+  expect(apply(s, { type: 'promote', staffId: st.id, promotionId: 'parttime' }).ok).toBe(true); // 다음 달은 다시
+});
+
+test('기간형 홍보의 타깃 ×1.5는 시작 시점에 굳고, 나중에 타깃을 바꿔도 안 변한다', () => {
+  const { s, st } = withStaff();
+  apply(s, { type: 'setTarget', segment: 'tourist' });
+  expect(apply(s, { type: 'promote', staffId: st.id, promotionId: 'billboard' }).ok).toBe(true);
+  expect(s.activePromotions[0]!.delta).toEqual({ local: 3, tourist: 4.5 });
+  expect(effectivePopularity(s, 'tourist')).toBe(20 + 4.5);
+  apply(s, { type: 'setTarget', segment: 'local' });
+  expect(effectivePopularity(s, 'tourist')).toBe(20 + 4.5);
+  expect(effectivePopularity(s, 'local')).toBe(30 + 3);
+  apply(s, { type: 'setTarget', segment: null });
+  expect(effectivePopularity(s, 'tourist')).toBe(20 + 4.5);
 });
 
 test('유튜버: 성공하면 3개월 관광객 2배, 실패하면 아무 것도, 돈은 어쨌든 든다', () => {

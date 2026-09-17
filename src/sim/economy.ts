@@ -1,4 +1,4 @@
-import type { GameState } from './types.ts';
+import type { GameState, MonthCosts } from './types.ts';
 import { menuDef, ingredientDef, objectDef } from '../data/index.ts';
 import { ingredientDiscount } from './staff.ts';
 
@@ -13,6 +13,10 @@ export function ingredientCost(state: GameState, menuId: string): number {
   return Math.round(sum * (1 - disc));
 }
 
+export function emptyMonthCosts(): MonthCosts {
+  return { ingredients: 0, salary: 0, ads: 0, upkeep: 0, recruit: 0 };
+}
+
 /** 놓인 오브젝트의 월 유지비 합을 차감한다. 월말에 closeMonth보다 먼저 호출한다. */
 export function upkeep(state: GameState): void {
   let sum = 0;
@@ -24,9 +28,9 @@ export function upkeep(state: GameState): void {
 /** 월말 정산 카드를 만들고 월 누적치를 리셋한다. */
 export function closeMonth(state: GameState, prevMonth: number, prevYear: number): void {
   const costs = { ...state.monthCosts };
-  const net = state.monthIncome - costs.ingredients - costs.salary - costs.ads - costs.upkeep;
+  const net = state.monthIncome - costs.ingredients - costs.salary - costs.ads - costs.upkeep - costs.recruit;
   state.lastMonthCard = { income: state.monthIncome, guests: state.monthGuests, month: prevMonth, year: prevYear, costs, net };
   state.monthIncome = 0;
   state.monthGuests = 0;
-  state.monthCosts = { ingredients: 0, salary: 0, ads: 0, upkeep: 0 };
+  state.monthCosts = emptyMonthCosts();
 }

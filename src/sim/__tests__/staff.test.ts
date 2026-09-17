@@ -1,7 +1,7 @@
 import { createInitialState } from '../state.ts';
 import { apply } from '../actions.ts';
 import { placeObject } from '../grid.ts';
-import { generateCandidate, salaryOf, roleEffect, ingredientDiscount, canHire, moveStaff, staffAnchor } from '../staff.ts';
+import { generateCandidate, salaryOf, roleEffect, ingredientDiscount, canHire, moveStaff, staffAnchor, MAX_STAT } from '../staff.ts';
 import { ingredientCost } from '../economy.ts';
 import { tick } from '../tick.ts';
 import { DAY_MS, HOUR_MS } from '../clock.ts';
@@ -12,7 +12,7 @@ export function staffWith(partial: Partial<Stats>, role: RoleId | null, skill = 
   return {
     id: `s${Math.round(Object.values(stats).reduce((a, b) => a + b, 0))}${role}`,
     name: 'x', face: { hair: 0, skin: 0, top: 0 }, stats, skill, level: 1, salary: 0,
-    role, unpaidMonths: 0, energy: 100, x: 4, y: 3, path: [], anchor: null, waitMs: 0,
+    role, unpaidMonths: 0, energy: 100, lastParttimeMonthIndex: -1, x: 4, y: 3, path: [], anchor: null, waitMs: 0,
   };
 }
 
@@ -23,11 +23,12 @@ function hired(seed = 1, role: RoleId = 'hall'): { s: GameState; st: Staff } {
   return { s, st: s.staff[0]! };
 }
 
-test('공고 등급별 후보 수와 스탯 범위', () => {
+test('공고 등급별 후보 수와 스탯 범위, 공고비는 채용비로 잡힌다', () => {
   const s = createInitialState(7);
   expect(apply(s, { type: 'postJob', tier: 'flyer' }).ok).toBe(true);
   expect(s.candidates.length).toBe(3);
   expect(s.money).toBe(30000 - 10000);
+  expect(s.monthCosts.recruit).toBe(10000);
   for (const c of s.candidates) for (const v of Object.values(c.stats)) { expect(v).toBeGreaterThanOrEqual(10); expect(v).toBeLessThanOrEqual(40); }
   expect(new Set(s.candidates.map((c) => c.id)).size).toBe(3);
   expect(apply(s, { type: 'postJob', tier: 'site' }).ok).toBe(false); // 돈 부족
@@ -70,6 +71,19 @@ test('후보는 다음 달 초에 사라진다', () => {
   expect(s.candidates.length).toBe(0);
 });
 
+test('달 말에 낸 공고도 다음 달 1일에 사라진다 (같은 달 안에서는 남는다)', () => {
+  const s = createInitialState(1);
+  for (let i = 0; i < 28; i++) tick(s, DAY_MS);
+  expect(s.clock.day).toBe(29);
+  apply(s, { type: 'postJob', tier: 'flyer' });
+  tick(s, DAY_MS);
+  expect(s.clock.day).toBe(30);
+  expect(s.candidates.length).toBe(3);
+  tick(s, DAY_MS);
+  expect(s.clock).toMatchObject({ month: 4, day: 1 });
+  expect(s.candidates.length).toBe(0);
+});
+
 test('월말 월급 차감, 못 주면 unpaidMonths, 2달이면 퇴사', () => {
   const { s, st } = hired();
   const sal = st.salary;
@@ -106,8 +120,10 @@ test('assign·fire·levelUp(스탯 선택, 비용 = 스탯×10)', () => {
   expect(st.stats.cooking).toBe(before.cooking);
   expect(st.salary).toBe(salaryOf(st.stats, 2));
   const m0 = s.money;
+  const recruit0 = s.monthCosts.recruit;
   expect(apply(s, { type: 'fire', staffId: st.id }).ok).toBe(true);
   expect(s.money).toBe(m0 - st.salary); expect(s.staff.length).toBe(0);
+  expect(s.monthCosts.recruit).toBe(recruit0 + st.salary); // 퇴직금은 채용비
   expect(apply(s, { type: 'fire', staffId: st.id }).ok).toBe(false);
 });
 
@@ -115,6 +131,14 @@ test('levelUp은 10레벨까지', () => {
   const { s, st } = hired();
   st.level = 10; s.research = 1e6;
   expect(apply(s, { type: 'levelUp', staffId: st.id, stat: 'sense' }).ok).toBe(false);
+});
+
+test('levelUp 스탯은 99를 넘지 않는다', () => {
+  const { s, st } = hired();
+  st.stats.sense = 97; s.research = 1e6;
+  expect(apply(s, { type: 'levelUp', staffId: st.id, stat: 'sense' }).ok).toBe(true);
+  expect(st.stats.sense).toBe(MAX_STAT);
+  expect(st.salary).toBe(salaryOf(st.stats, 2));
 });
 
 test('roleEffect: 역할별 핵심 스탯 합, 운반·절약 할인, 기력 30 미만이면 절반', () => {
@@ -133,17 +157,17 @@ test('roleEffect: 역할별 핵심 스탯 합, 운반·절약 할인, 기력 30 
   expect(ingredientDiscount(s)).toBe(0.3);
 });
 
-test('기력: 배치된 직원은 시간당 −1, 밤에 +40, 튼튼함이면 덜 닳는다', () => {
+test('기력: 배치된 직원은 시간당 −2, 밤에 +40, 튼튼함이면 덜 닳는다', () => {
   const { s, st } = hired();
   st.energy = 50;
   tick(s, 5 * HOUR_MS);
-  expect(st.energy).toBe(45);
+  expect(st.energy).toBe(40);
   tick(s, DAY_MS);
-  expect(st.energy).toBe(45 - 18 + 40);
+  expect(st.energy).toBe(40 - 36 + 40);
   st.energy = 100;
   expect(s.clock.hour).toBe(11);
-  tick(s, 13 * HOUR_MS); // 24시 → 다음 날 6시: −13 +40 → 상한 100
-  expect(st.energy).toBe(100);
+  tick(s, 13 * HOUR_MS); // 12시간 −24 → 76, 24시→6시 경계: 밤 +40(상한 100)이 먼저, 그 다음 6시 −2
+  expect(st.energy).toBe(98);
   apply(s, { type: 'assign', staffId: st.id, role: null });
   st.energy = 50;
   tick(s, 5 * HOUR_MS);
@@ -153,7 +177,21 @@ test('기력: 배치된 직원은 시간당 −1, 밤에 +40, 튼튼함이면 �
   tough.energy = 50;
   s2.staff.push(tough);
   tick(s2, 10 * HOUR_MS);
-  expect(tough.energy).toBeCloseTo(50 - 10 * 0.7);
+  expect(tough.energy).toBeCloseTo(50 - 10 * 2 * 0.7);
+});
+
+test('기력: 하루 종일 일만 하면 거의 만땅 유지, 홍보까지 하면 며칠 안에 30 밑으로 떨어진다', () => {
+  const { s, st } = hired();
+  s.research = 1000;
+  for (let d = 0; d < 5; d++) tick(s, DAY_MS);
+  expect(st.energy).toBeGreaterThanOrEqual(90); // 하루 −36, 밤 +40
+  let lowest = 100;
+  for (let d = 0; d < 2; d++) {
+    expect(apply(s, { type: 'promote', staffId: st.id, promotionId: 'flyer' }).ok).toBe(true); // 기력 −20
+    expect(apply(s, { type: 'promote', staffId: st.id, promotionId: 'sns' }).ok).toBe(true);   // 기력 −15
+    for (let h = 0; h < 18; h++) { tick(s, HOUR_MS); lowest = Math.min(lowest, st.energy); }
+  }
+  expect(lowest).toBeLessThan(30); // 오후엔 효과 절반(LOW_ENERGY)이 실제로 걸린다
 });
 
 test('직원 이동: 앵커 근처를 산책하고, 기력 0이면 창고 앞에 선다', () => {

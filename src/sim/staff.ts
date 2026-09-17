@@ -2,8 +2,7 @@ import type { GameState, ApplyResult, Candidate, Staff, Stats, StatKey, RoleId, 
 import { NAMES, SKILLS, roleDef, skillDef, objectDef } from '../data/index.ts';
 import { nextRandom, randInt, pickWeighted } from './rng.ts';
 import { monthIndex } from './clock.ts';
-import { isWalkable, findPath, walkableNeighborsOf } from './path.ts';
-import { moveAlong } from './guests.ts';
+import { isWalkable, findPath, walkableNeighborsOf, moveAlong } from './path.ts';
 
 export const TIERS: Record<JobTier, { cost: number; count: number; min: number; max: number }> = {
   flyer: { cost: 10000, count: 3, min: 10, max: 40 },
@@ -11,6 +10,8 @@ export const TIERS: Record<JobTier, { cost: number; count: number; min: number; 
   headhunter: { cost: 200000, count: 5, min: 50, max: 80 },
 };
 export const MAX_LEVEL = 10;
+export const MAX_STAT = 99;
+export const ENERGY_PER_HOUR = 2;       // 배치된 직원 시간당 기력 소모 (하루 18h = −36, 밤 +40)
 export const LOW_ENERGY = 30;          // 미만이면 효과 절반
 export const NIGHT_ENERGY_RECOVERY = 40;
 export const NOTICE_CAP = 10;
@@ -79,6 +80,7 @@ export function canPostJob(state: GameState, tier: JobTier): ApplyResult {
 export function postJob(state: GameState, tier: JobTier): void {
   const t = TIERS[tier];
   state.money -= t.cost;
+  state.monthCosts.recruit += t.cost;
   for (let i = 0; i < t.count; i++) state.candidates.push(generateCandidate(state, tier));
 }
 
@@ -107,7 +109,7 @@ export function hire(state: GameState, candidateId: string, role: RoleId): Staff
   const front = warehouseFront(state);
   const staff: Staff = {
     id: c.id, name: c.name, face: c.face, stats: c.stats, skill: c.skill, level: c.level, salary: c.salary,
-    role, unpaidMonths: 0, energy: 100, x: front.x, y: front.y, path: [], anchor: null, waitMs: 0,
+    role, unpaidMonths: 0, energy: 100, lastParttimeMonthIndex: -1, x: front.x, y: front.y, path: [], anchor: null, waitMs: 0,
   };
   staff.anchor = staffAnchor(state, staff);
   state.staff.push(staff);
@@ -127,6 +129,7 @@ export function canFire(state: GameState, staffId: string): ApplyResult {
 export function fire(state: GameState, staffId: string): void {
   const st = findStaff(state, staffId)!;
   state.money -= st.salary;
+  state.monthCosts.recruit += st.salary;
   state.staff = state.staff.filter((s) => s.id !== staffId);
 }
 
@@ -154,11 +157,11 @@ export function canLevelUp(state: GameState, staffId: string, stat: StatKey): Ap
   return { ok: true };
 }
 
-/** 고른 스탯만 +5~9, 레벨 +1, 월급 재계산. */
+/** 고른 스탯만 +5~9 (상한 99), 레벨 +1, 월급 재계산. */
 export function levelUp(state: GameState, staffId: string, stat: StatKey): void {
   const st = findStaff(state, staffId)!;
   state.research -= levelUpCost(st, stat);
-  st.stats[stat] += randInt(state, 5, 9);
+  st.stats[stat] = Math.min(MAX_STAT, st.stats[stat] + randInt(state, 5, 9));
   st.level++;
   st.salary = salaryOf(st.stats, st.level);
 }
@@ -188,11 +191,11 @@ export function payroll(state: GameState): void {
   state.staff = keep;
 }
 
-/** 근무 1시간: 배치된 직원은 기력 −1 (튼튼함 스킬만큼 덜). */
+/** 근무 1시간: 배치된 직원은 기력 −2 (튼튼함 스킬만큼 덜). */
 export function hourlyEnergy(state: GameState): void {
   for (const st of state.staff) {
     if (st.role === null) continue;
-    st.energy = Math.max(0, st.energy - (1 - skillValue(st, 'stamina')));
+    st.energy = Math.max(0, st.energy - ENERGY_PER_HOUR * (1 - skillValue(st, 'stamina')));
   }
 }
 

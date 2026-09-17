@@ -91,13 +91,14 @@ export interface Staff {
   role: RoleId | null;
   unpaidMonths: number;
   energy: number; // 0~100
+  lastParttimeMonthIndex: number; // 아르바이트는 직원당 한 달에 한 번 (−1 = 아직)
   x: number;
   y: number;
   path: Pt[];
   anchor: Pt | null; // 렌더·이동용
   waitMs: number;    // 다음 산책까지 대기
 }
-export interface Candidate extends Omit<Staff, 'role' | 'unpaidMonths' | 'energy' | 'x' | 'y' | 'path' | 'anchor' | 'waitMs'> {
+export interface Candidate extends Omit<Staff, 'role' | 'unpaidMonths' | 'energy' | 'lastParttimeMonthIndex' | 'x' | 'y' | 'path' | 'anchor' | 'waitMs'> {
   expiresMonthIndex: number;
 }
 
@@ -116,10 +117,14 @@ export interface PromotionDef {
   popularityShift?: number; // 동네↔인기 게이지 이동 (SNS)
   special?: 'youtuber' | 'parttime';
 }
-export interface ActivePromotion { promotionId: string; remainingMonths: number }
+/** delta는 시작 시점의 타깃 배수를 구워 둔 값 (guestType id → 인기 가산). 나중에 타깃을 바꿔도 변하지 않는다. */
+export interface ActivePromotion { promotionId: string; remainingMonths: number; delta: Record<string, number> }
 
 // ---------- 게임 상태 ----------
 export interface Pt { x: number; y: number }
+
+/** 월 비용 항목. recruit = 공고비 + 퇴직금 */
+export interface MonthCosts { ingredients: number; salary: number; ads: number; upkeep: number; recruit: number }
 
 export interface Cell {
   terrain: Terrain;
@@ -198,13 +203,13 @@ export interface GameState {
   nextId: number;
   monthIncome: number;
   monthGuests: number;
-  monthCosts: { ingredients: number; salary: number; ads: number; upkeep: number };
+  monthCosts: MonthCosts;
   lastMonthCard: {
     income: number;
     guests: number;
     month: number;
     year: number;
-    costs: { ingredients: number; salary: number; ads: number; upkeep: number };
+    costs: MonthCosts;
     net: number;
   } | null;
   tick: number; // 고정 스텝 카운터

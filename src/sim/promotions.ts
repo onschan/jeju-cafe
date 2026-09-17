@@ -2,12 +2,13 @@ import type { GameState, ApplyResult, PromotionDef } from './types.ts';
 import { promotionDef, GUEST_TYPES } from '../data/index.ts';
 import { nextRandom } from './rng.ts';
 import { findStaff } from './staff.ts';
+import { monthIndex } from './clock.ts';
 
 export const MAX_ACTIVE_PROMOTIONS = 2; // 동시에 진행하는 기간형 홍보
 export const YOUTUBER_CHANCE = 0.6;     // §19
 export const YOUTUBER_MONTHS = 3;
 export const YOUTUBER_TOURIST_MULT = 2;
-export const PARTTIME_MONEY = 4000;
+export const PARTTIME_MONEY = 1500;
 export const TARGET_MULT = 1.5;         // 타깃 손님층 홍보 효과
 export const POPULARITY_DECAY = 2;      // 매월 자연 감소
 export const MAX_SEGMENT_POPULARITY = 99;
@@ -26,9 +27,19 @@ function deltaFor(state: GameState, def: PromotionDef, typeId: string): number {
   return ((def.segmentDelta[typeId] ?? 0) + (def.allDelta ?? 0)) * targetMult(state, typeId);
 }
 
-/** 활성 기간형 홍보가 지금 더해 주는 인기 */
+/** 활성 기간형 홍보가 지금 더해 주는 인기 (시작 시점에 구워 둔 delta) */
 export function activeBonus(state: GameState, typeId: string): number {
-  return state.activePromotions.reduce((s, a) => s + deltaFor(state, promotionDef(a.promotionId), typeId), 0);
+  return state.activePromotions.reduce((s, a) => s + (a.delta[typeId] ?? 0), 0);
+}
+
+/** 손님층별 가산을 지금의 타깃 배수로 계산해 굳힌다. */
+function bakeDelta(state: GameState, def: PromotionDef): Record<string, number> {
+  const out: Record<string, number> = {};
+  for (const t of GUEST_TYPES) {
+    const d = deltaFor(state, def, t.id);
+    if (d !== 0) out[t.id] = d;
+  }
+  return out;
 }
 
 /** 유효 인기 = 기본 인기 + 활성 홍보 */
@@ -43,8 +54,10 @@ export function youtuberMultiplier(state: GameState, typeId: string): number {
 export function canPromote(state: GameState, staffId: string, promotionId: string): ApplyResult {
   const st = findStaff(state, staffId);
   if (!st) return { ok: false, reason: '없는 직원이에요' };
+  if (st.role === null) return { ok: false, reason: '배치된 직원만 할 수 있어요' };
   const def = promotionDef(promotionId);
   if (st.energy < def.energy) return { ok: false, reason: '기력이 모자라요' };
+  if (def.special === 'parttime' && st.lastParttimeMonthIndex === monthIndex(state.clock)) return { ok: false, reason: '이달은 이미 했어요' };
   if (state.research < def.costResearch) return { ok: false, reason: '연구 포인트가 모자라요' };
   if (state.money < def.costMoney) return { ok: false, reason: '돈이 모자라요' };
   if (def.months > 0) {
@@ -67,19 +80,17 @@ export function promote(state: GameState, staffId: string, promotionId: string):
     return;
   }
   if (def.special === 'parttime') {
+    st.lastParttimeMonthIndex = monthIndex(state.clock);
     state.money += PARTTIME_MONEY;
     state.monthIncome += PARTTIME_MONEY;
     return;
   }
   if (def.popularityShift) state.popularity = Math.max(-100, Math.min(100, state.popularity + def.popularityShift));
   if (def.months > 0) {
-    state.activePromotions.push({ promotionId, remainingMonths: def.months });
+    state.activePromotions.push({ promotionId, remainingMonths: def.months, delta: bakeDelta(state, def) });
     return;
   }
-  for (const t of GUEST_TYPES) {
-    const d = deltaFor(state, def, t.id);
-    if (d !== 0) state.segmentPopularity[t.id] = clampPop((state.segmentPopularity[t.id] ?? 0) + d);
-  }
+  for (const [t, d] of Object.entries(bakeDelta(state, def))) state.segmentPopularity[t] = clampPop((state.segmentPopularity[t] ?? 0) + d);
 }
 
 export function canSetTarget(state: GameState, segment: string | null): ApplyResult {

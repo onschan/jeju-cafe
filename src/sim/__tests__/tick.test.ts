@@ -4,6 +4,8 @@ import { setSlot } from '../menu.ts';
 import { tick } from '../tick.ts';
 import { DAY_MS } from '../clock.ts';
 import { dailyGuestCount } from '../guests.ts';
+import { HOUR_MS } from '../clock.ts';
+import { staffWith } from './staff.test.ts';
 
 function cafe() {
   const s = createInitialState(1);
@@ -65,6 +67,35 @@ test('speed 0이면 손님도 안 움직인다', () => {
   apply(s, { type: 'setSpeed', speed: 0 });
   tick(s, 1000);
   expect(s.tick).toBe(t0);
+});
+
+test('24시→6시 경계: 밤 회복이 6시 기력 소모보다 먼저다', () => {
+  const s = cafe();
+  const st = staffWith({}, 'hall');
+  s.staff.push(st);
+  tick(s, 17 * HOUR_MS); // 23시
+  expect(s.clock.hour).toBe(23);
+  st.energy = 100;
+  tick(s, HOUR_MS); // 24시 → 다음 날 6시
+  expect(s.clock.hour).toBe(6);
+  expect(st.energy).toBe(98); // +40(상한 100) 뒤 −2. 반대 순서면 100
+});
+
+test('달이 바뀌는 날: 월급(퇴사)이 그날 밭 일보다 먼저다', () => {
+  const s = createInitialState(1);
+  s.clock.month = 9; // 당근 철
+  for (const x of [6, 7, 8]) apply(s, { type: 'place', objectType: 'field', x, y: 6 });
+  const st = staffWith({ stamina: 30 }, 'field');
+  st.salary = 10000;
+  st.unpaidMonths = 1; // 이번 월급도 못 주면 퇴사
+  s.staff.push(st);
+  s.money = 0;
+  for (let i = 0; i < 29; i++) tick(s, DAY_MS);
+  for (const o of Object.values(s.objects)) if (o.type === 'field') o.crop = null; // 30일 밤의 밭 일만 본다
+  tick(s, DAY_MS);
+  expect(s.clock).toMatchObject({ month: 10, day: 1 });
+  expect(s.staff.length).toBe(0);
+  expect(Object.values(s.objects).filter((o) => o.type === 'field' && o.crop).length).toBe(0); // 퇴사 뒤라 안 심었다
 });
 
 test('한 번에 너무 긴 dt는 MAX_STEPS_PER_TICK에서 끊고 잔여를 버린다', () => {

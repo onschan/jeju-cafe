@@ -3,12 +3,12 @@ import { objectDef, menuDef, guestTypeDef, GUEST_TYPES, DIALOGUE } from '../data
 import { pickWeighted, nextRandom } from './rng.ts';
 import { sceneryScore } from './grid.ts';
 import { availableMenus, consumeIngredients } from './menu.ts';
-import { busStopPos, findPath, walkableNeighborsOf, reachMap, pathFromReach, cellKey } from './path.ts';
+import { busStopPos, findPath, walkableNeighborsOf, reachMap, pathFromReach, cellKey, moveAlong, GUEST_SPEED_CELLS_PER_S } from './path.ts';
 import { roleEffect, skillTotal } from './staff.ts';
 import { effectivePopularity, youtuberMultiplier } from './promotions.ts';
 import { START_HOUR, END_HOUR } from './clock.ts';
 
-export const GUEST_SPEED_CELLS_PER_S = 3;
+export { moveAlong, GUEST_SPEED_CELLS_PER_S }; // 하위 호환 재수출 (본체는 path.ts)
 export const SEAT_MS = 6000;       // 기분이 정해진 뒤 앉아 있는 시간 (≈3시간)
 export const PREP_MS = 5000;       // 직원 없을 때 조리 시간
 export const MAX_PREP_CUT = 0.6;   // 직원 효과로 줄일 수 있는 최대 비율
@@ -140,31 +140,6 @@ export function spawnGuests(state: GameState, n: number): number {
     spawned++;
   }
   return spawned;
-}
-
-// ---------- 이동 ----------
-
-/** 경로를 따라 걷는다. 손님·직원 공용. 목적지에 닿으면 true. */
-export function moveAlong(g: { x: number; y: number; path: Pt[] }, dtMs: number): boolean {
-  let budget = (dtMs / 1000) * GUEST_SPEED_CELLS_PER_S;
-  while (budget > 0 && g.path.length) {
-    const next = g.path[0]!;
-    const dx = next.x - g.x;
-    const dy = next.y - g.y;
-    const dist = Math.abs(dx) + Math.abs(dy);
-    if (dist <= budget) {
-      g.x = next.x;
-      g.y = next.y;
-      g.path.shift();
-      budget -= dist;
-    } else {
-      // 경로는 4방향 인접이라 보통 dx·dy 중 하나만 0이 아니다 (BFS 보장). 좌석 칸→옆 칸처럼 살짝 비스듬한 첫걸음만 축별로 잘라 걷는다.
-      g.x += Math.sign(dx) * Math.min(Math.abs(dx), budget);
-      g.y += Math.sign(dy) * Math.min(Math.abs(dy), budget);
-      budget = 0;
-    }
-  }
-  return g.path.length === 0;
 }
 
 // ---------- 주문·기분 ----------

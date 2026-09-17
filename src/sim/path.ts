@@ -64,3 +64,28 @@ export function pathFromReach(state: GameState, reach: Reach, to: Pt): Pt[] | nu
 export function findPath(state: GameState, from: Pt, to: Pt): Pt[] | null {
   return pathFromReach(state, reachMap(state, from), to);
 }
+
+export const GUEST_SPEED_CELLS_PER_S = 3;
+
+/** 경로를 따라 걷는다. 손님·직원 공용. 목적지에 닿으면 true. */
+export function moveAlong(g: { x: number; y: number; path: Pt[] }, dtMs: number): boolean {
+  let budget = (dtMs / 1000) * GUEST_SPEED_CELLS_PER_S;
+  while (budget > 0 && g.path.length) {
+    const next = g.path[0]!;
+    const dx = next.x - g.x;
+    const dy = next.y - g.y;
+    const dist = Math.abs(dx) + Math.abs(dy);
+    if (dist <= budget) {
+      g.x = next.x;
+      g.y = next.y;
+      g.path.shift();
+      budget -= dist;
+    } else {
+      // 경로는 4방향 인접이라 보통 dx·dy 중 하나만 0이 아니다 (BFS 보장). 좌석 칸→옆 칸처럼 살짝 비스듬한 첫걸음만 축별로 잘라 걷는다.
+      g.x += Math.sign(dx) * Math.min(Math.abs(dx), budget);
+      g.y += Math.sign(dy) * Math.min(Math.abs(dy), budget);
+      budget = 0;
+    }
+  }
+  return g.path.length === 0;
+}

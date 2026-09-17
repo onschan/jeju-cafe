@@ -16,14 +16,14 @@ function onNewHour(state: GameState): void {
   hourlySpawn(state);
 }
 
-/** 새 날: 밤 회복 → 생육 → 밭 일꾼 */
+/** 새 날 (6시의 시간 처리보다 먼저): 밤 회복 → 생육 → 밭 일꾼 */
 function onNewDay(state: GameState): void {
   nightlyRecovery(state);
   growOneDay(state);
   staffFarmWork(state);
 }
 
-/** 월 바뀜: 월급 → 홍보 만료·인기 감소 → 유지비 → 정산 → 후보 만료 */
+/** 월 바뀜 (1일의 날 처리보다 먼저): 월급 → 홍보 만료·인기 감소 → 유지비 → 정산 → 후보 만료 */
 function onNewMonth(state: GameState, prevMonth: number, prevYear: number): void {
   payroll(state);
   expirePromotions(state);
@@ -39,10 +39,11 @@ export function step(state: GameState): void {
   const prevHour = state.clock.hour;
   const days = advanceClock(state, STEP_MS);
   const hours = days * HOURS_PER_DAY + (state.clock.hour - prevHour);
-  // 스텝(100ms) < 시간(200ms)이라 한 스텝에 시간은 최대 한 칸 지난다. 날이 바뀌는 시각이면 하루 처리 뒤 시간 처리.
-  for (let i = 0; i < hours; i++) onNewHour(state);
-  for (let i = 0; i < days; i++) onNewDay(state);
+  // 스텝(100ms) < 시간(2000ms)이라 한 스텝에 시간은 최대 한 칸 지난다.
+  // 24시→6시 경계에서는 큰 단위부터: 월(월급·정산) → 날(밤 회복·생육·밭 일) → 시간(6시 기력 소모·스폰).
   if (state.clock.month !== prevMonth) onNewMonth(state, prevMonth, prevYear);
+  for (let i = 0; i < days; i++) onNewDay(state);
+  for (let i = 0; i < hours; i++) onNewHour(state);
   updateGuests(state, STEP_MS);
   moveStaff(state, STEP_MS);
   state.tick++;

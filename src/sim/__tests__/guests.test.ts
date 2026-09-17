@@ -1,7 +1,8 @@
 import { createInitialState } from '../state.ts';
 import { placeObject } from '../grid.ts';
 import { setSlot } from '../menu.ts';
-import { spawnGuests, updateGuests, freeSeats, hasReachableSeat, dailyGuestCount, hourShare, typeWeight, GUEST_SPEED_CELLS_PER_S, SEAT_MS, PREP_MS } from '../guests.ts';
+import { spawnGuests, updateGuests, freeSeats, hasReachableSeat, dailyGuestCount, hourShare, typeWeight, GUEST_SPEED_CELLS_PER_S, SEAT_MS, PREP_MS, MAX_GUESTS } from '../guests.ts';
+import { moveAlong } from '../path.ts';
 import { tick } from '../tick.ts';
 import { HOUR_MS, START_HOUR, END_HOUR } from '../clock.ts';
 import { DIALOGUE } from '../../data/index.ts';
@@ -77,6 +78,40 @@ test('앉은 시간이 지나면 나가고, 정류장에 닿으면 사라진다'
   expect(s.guests[0]!.phase).toBe('leaving');
   updateGuests(s, 10_000);
   expect(s.guests.length).toBe(0);
+});
+
+test('나가는 손님이 정류장까지 길이 없으면 옆 칸까지만 가고 사라진다', () => {
+  const { s } = cafe();
+  spawnGuests(s, 1);
+  updateGuests(s, 6000); updateGuests(s, PREP_MS);
+  const g = s.guests[0]!;
+  expect(g.phase).toBe('seated');
+  g.approachCell = { x: 9, y: 0 }; // 걷기 칸이 아니라 정류장으로 가는 길이 없다
+  updateGuests(s, SEAT_MS);
+  expect(g.phase).toBe('leaving');
+  expect(g.path).toEqual([{ x: 9, y: 0 }]);
+  updateGuests(s, 10_000);
+  expect(s.guests.length).toBe(0);
+});
+
+test('동시 손님은 MAX_GUESTS까지', () => {
+  const s = createInitialState(1);
+  for (let x = 0; x < 10; x++) { placeObject(s, 'table_out', x, 4); if (x !== 4) placeObject(s, 'table_out', x, 6); } // 정낭(4,6)은 남긴다
+  for (let x = 0; x < 10; x++) placeObject(s, 'path', x, 5); // 정낭 위 올렛길 줄 → 4줄 테이블도 닿는다
+  expect(freeSeats(s).length).toBe(19); // 38석
+  expect(spawnGuests(s, 40)).toBe(MAX_GUESTS);
+  expect(s.guests.length).toBe(MAX_GUESTS);
+  expect(spawnGuests(s, 1)).toBe(0);
+});
+
+test('moveAlong은 path.ts에 살고 guests.ts는 재수출한다', async () => {
+  const guests = await import('../guests.ts');
+  expect(guests.moveAlong).toBe(moveAlong);
+  const g = { x: 0, y: 0, path: [{ x: 1, y: 0 }, { x: 1, y: 1 }] };
+  expect(moveAlong(g, 500)).toBe(false); // 1.5칸
+  expect(g).toMatchObject({ x: 1, y: 0.5 });
+  expect(moveAlong(g, 500)).toBe(true);
+  expect(g.path).toEqual([]);
 });
 
 test('happy이면 연구 +1, 게이지가 타입 방향으로 움직인다', () => {
