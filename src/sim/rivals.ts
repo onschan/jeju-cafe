@@ -69,7 +69,7 @@ export function rivalLeave(state: GameState, r: RivalState, reason: string): voi
   state.rivals = state.rivals.filter((x) => x.id !== r.id);
   for (const id of r.stolen) namedGuestState(state, id).regular = true;
   const back = r.stolen.length > 0 ? ` (단골 ${r.stolen.length}명이 돌아왔어요)` : '';
-  pushNotice(state, `${rivalDef(r.rivalId).name}${josa(reason, '이/가')}${back}`);
+  pushNotice(state, `${josa(rivalDef(r.rivalId).name, '이/가')} ${reason}${back}`);
 }
 
 /** 매월: 라이벌마다 12개월 철수 → 대형 파산 → 단골 뺏기·스탯 페널티. 그 뒤 3년차부터 10%로 새 라이벌(동시 최대 2). */
@@ -113,11 +113,11 @@ export function challenge(state: GameState, rivalStateId: string, menuId: string
   const win = score > power;
   const result: ChallengeResult = { rivalStateId, rivalId: r.rivalId, menuId, menuName: menuOf(state, menuId).name, breakdown, score, luck, power, win };
   if (win) {
-    addMileage(state, CHALLENGE_WIN_MILEAGE, `${def.name}과의 대결 승리`);
+    addMileage(state, CHALLENGE_WIN_MILEAGE, `${josa(def.name, '과/와')}의 대결 승리`);
     rivalLeave(state, r, '대결에 져서 철수했어요');
   } else {
     state.popularity = Math.max(-100, Math.min(100, state.popularity - CHALLENGE_LOSE_POPULARITY));
-    pushNotice(state, `${def.name}과의 대결에서 졌어요 — 인기 −${CHALLENGE_LOSE_POPULARITY}`);
+    pushNotice(state, `${josa(def.name, '과/와')}의 대결에서 졌어요 — 인기 −${CHALLENGE_LOSE_POPULARITY}`);
   }
   state.lastChallenge = result;
   return result;

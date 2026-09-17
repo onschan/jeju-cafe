@@ -4,6 +4,7 @@ import { objectDef, cropDef, itemDef, CROPS, COMBOS, SETS } from '../data/index.
 import { Icon } from './Icon';
 import { Confirm } from './Popup';
 import { RecipeCodex } from './CraftPanel';
+import { NamedGuestCodex } from './NamedGuestCodex';
 import { brownBtn, brownBtnOn, brownBtnOff, dangerBtn, card, PALETTE, won } from './frame';
 
 /** 계열 이름 (아이 눈높이) */
@@ -164,6 +165,7 @@ export function CodexPanel() {
         </div>
       ))}
       <RecipeCodex />
+      <NamedGuestCodex />
     </div>
   );
 }

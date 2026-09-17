@@ -41,6 +41,15 @@ export function staffPortraitParts(face: FaceParts, role: RoleId | null): Charac
   return staffParts(face, role);
 }
 
+/** 손님 초상 파츠·얼굴·지갑 — 단골★(namedId)은 NamedGuestDef에서 */
+export function guestPortraitOf(g: Guest): { parts: CharacterParts; face: FaceParts } {
+  if (g.namedId) return { parts: namedPortraitParts(g.namedId), face: namedGuestFace(namedGuestDef(g.namedId)) };
+  return { parts: guestPortraitParts(g.type), face: guestFace(g.type) };
+}
+export function guestWallet(s: Parameters<typeof walletOf>[0], g: Guest): number {
+  return g.namedId ? namedGuestDef(g.namedId).budget : walletOf(s, g.type);
+}
+
 /** 손님 이름: 이름 풀(names.json)에서 id 번호로 고른 이름 + 타입명 — "동네 삼춘 2153호" 대신 "김민준 (동네 삼춘)". 결정적(id는 세이브에 있다). */
 export function guestName(g: Guest): string {
   if (g.namedId) { const d = namedGuestDef(g.namedId); return `${d.name} (${d.job})`; }
@@ -76,7 +85,7 @@ export function GuestPopup({ guestId, onClose, onQuest }: { guestId: string; onC
         <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }} data-testid="named-guest-popup">
           <Portrait parts={namedPortraitParts(nd.id)} face={namedGuestFace(nd)} />
           <div style={{ flex: 1, fontSize: 14, lineHeight: 1.6 }}>
-            <div><b>{nd.name}</b> <span style={{ fontSize: 12, color: PALETTE.inkSoft }}>{nd.job} · {regionDef(nd.regionId).name}</span>{ns?.regular && <span style={{ color: PALETTE.btnOn }}> ★ 단골</span>}</div>
+            <div><b>{nd.name}</b> <span style={{ fontSize: 12, color: PALETTE.inkSoft }}>{nd.job} · {regionDef(nd.regionId).name}</span>{ns?.regular && <span style={{ color: PALETTE.btn, fontWeight: 700 }}> ★ 단골</span>}</div>
             <div>기분: {mood}{g.moodReason && g.mood !== 'happy' ? ` (${REASON_TEXT[g.moodReason]})` : ''}</div>
             <div>지갑: {won(nd.budget)}</div>
             <div style={{ whiteSpace: 'nowrap' }}>호감 <Bar value={ns?.affinity ?? 0} max={AFFINITY_MAX} width={90} /> {ns?.affinity ?? 0}/{AFFINITY_MAX}</div>

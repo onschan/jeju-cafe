@@ -21,6 +21,8 @@ import { TutorialOverlay } from './TutorialOverlay';
 import { useTutorial } from './tutorial';
 import { showScene, SceneHost, type SceneChar } from './SceneWindow';
 import { staffParts } from '../render/character';
+import { PopupScreenHost } from './PopupScreen';
+import { ChallengePopup } from './RivalPanel';
 
 /** 길·돌담은 드래그로 연속해서 놓는다 (고스트 없이) */
 const PAINT_KINDS = new Set(['path', 'wall']);
@@ -287,6 +289,8 @@ function Game({ onExit }: { onExit: () => void }) {
       <DevelopResultPopup />
       <DrawPopup />
       <AnnouncementPopup />
+      <ChallengePopup />
+      <PopupScreenHost />
       {guestPopup && <GuestPopup guestId={guestPopup} onClose={() => setGuestPopup(null)} onQuest={(id) => { dispatch({ type: 'acceptQuest', id }); setMode({ kind: 'guests' }); }} />}
       {menu && <GameMenu onClose={() => setMenu(false)} onExit={onExit} />}
     </div>

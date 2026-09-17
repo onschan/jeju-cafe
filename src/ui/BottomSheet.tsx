@@ -237,7 +237,7 @@ export function BottomSheet({ mode, setMode, place, msg, onGuest, onDragBuild }:
       {mode.kind === 'promo' && <PromoPanel />}
       {mode.kind === 'codex' && <CodexPanel />}
       {mode.kind === 'guests' && <GuestsPanel onGuest={onGuest} />}
-      {mode.kind === 'invest' && <BoardPanel tabs={['spots', 'events']} />}
+      {mode.kind === 'invest' && <BoardPanel tabs={['spots', 'regions', 'events']} />}
       {mode.kind === 'cafe' && <CafePanel onMenu={() => setMode({ kind: 'menu' })} />}
       {mode.kind === 'shop' && <ShopPanel />}
       {mode.kind === 'rank' && <RankPanel />}
