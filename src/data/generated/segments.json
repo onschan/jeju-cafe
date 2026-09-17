@@ -1,0 +1,274 @@
+[
+  {
+    "id": "local",
+    "name": "동네 삼춘",
+    "initialPopularity": 30,
+    "budget": 6000,
+    "likesBase": [
+      "meal",
+      "drink"
+    ],
+    "likesBaseText": "식사·음료",
+    "likesStats": [
+      "taste",
+      "volume"
+    ],
+    "likesObjects": [
+      "평상",
+      "폭낭"
+    ],
+    "dislikes": [
+      "소음"
+    ],
+    "unlockText": "시작"
+  },
+  {
+    "id": "tourist",
+    "name": "관광객",
+    "initialPopularity": 20,
+    "budget": 9000,
+    "likesBase": [
+      "drink",
+      "dessert"
+    ],
+    "likesBaseText": "음료·디저트",
+    "likesStats": [
+      "look",
+      "aroma"
+    ],
+    "likesObjects": [
+      "창가",
+      "포토존"
+    ],
+    "dislikes": [
+      "대기"
+    ],
+    "unlockText": "시작"
+  },
+  {
+    "id": "family",
+    "name": "가족",
+    "initialPopularity": 10,
+    "budget": 15000,
+    "likesBase": [
+      "dessert",
+      "meal"
+    ],
+    "likesBaseText": "디저트·식사",
+    "likesStats": [
+      "volume",
+      "health"
+    ],
+    "likesObjects": [
+      "큰 테이블",
+      "어린이",
+      "닭장"
+    ],
+    "dislikes": [
+      "소음(어린이석 제외)"
+    ],
+    "unlockText": "삼춘 만족 30"
+  },
+  {
+    "id": "olle",
+    "name": "올레꾼",
+    "initialPopularity": 0,
+    "budget": 7000,
+    "likesBase": [
+      "meal"
+    ],
+    "likesBaseText": "식사",
+    "likesStats": [
+      "volume",
+      "health"
+    ],
+    "likesObjects": [
+      "평상",
+      "자전거"
+    ],
+    "dislikes": [
+      "느린 서빙"
+    ],
+    "unlockText": "명소 연결 1"
+  },
+  {
+    "id": "monthly",
+    "name": "한 달 살기",
+    "initialPopularity": 0,
+    "budget": 8000,
+    "likesBase": [
+      "drink"
+    ],
+    "likesBaseText": "음료",
+    "likesStats": [
+      "aroma",
+      "jeju"
+    ],
+    "likesObjects": [
+      "책장",
+      "소파",
+      "해먹"
+    ],
+    "dislikes": [
+      "소음",
+      "단체"
+    ],
+    "unlockText": "관광객 만족 30"
+  },
+  {
+    "id": "group_cn",
+    "name": "중국 단체",
+    "initialPopularity": 0,
+    "budget": 12000,
+    "likesBase": [
+      "dessert"
+    ],
+    "likesBaseText": "디저트",
+    "likesStats": [
+      "look",
+      "volume"
+    ],
+    "likesObjects": [
+      "큰 테이블",
+      "기념품",
+      "주차장"
+    ],
+    "dislikes": [
+      "좁음"
+    ],
+    "unlockText": "명소(용두암/성산) 2단계"
+  },
+  {
+    "id": "solo_foreign",
+    "name": "개별 외국 여행자",
+    "initialPopularity": 0,
+    "budget": 10000,
+    "likesBase": [
+      "drink",
+      "signature"
+    ],
+    "likesBaseText": "음료·시그니처",
+    "likesStats": [
+      "aroma",
+      "jeju"
+    ],
+    "likesObjects": [
+      "창가",
+      "갤러리"
+    ],
+    "dislikes": [
+      "소음"
+    ],
+    "unlockText": "★3"
+  },
+  {
+    "id": "youtuber",
+    "name": "유튜버",
+    "initialPopularity": 0,
+    "budget": 20000,
+    "likesBase": [
+      "signature"
+    ],
+    "likesBaseText": "시그니처",
+    "likesStats": [
+      "look"
+    ],
+    "likesObjects": [
+      "포토존",
+      "불멍"
+    ],
+    "dislikes": [
+      "평범함"
+    ],
+    "unlockText": "랜드마크 1"
+  },
+  {
+    "id": "couple",
+    "name": "커플",
+    "initialPopularity": 0,
+    "budget": 11000,
+    "likesBase": [
+      "dessert"
+    ],
+    "likesBaseText": "디저트",
+    "likesStats": [
+      "look",
+      "aroma"
+    ],
+    "likesObjects": [
+      "테라스",
+      "창가"
+    ],
+    "dislikes": [
+      "어린이석"
+    ],
+    "unlockText": "가족 만족 30"
+  },
+  {
+    "id": "senior",
+    "name": "실버 관광",
+    "initialPopularity": 0,
+    "budget": 8000,
+    "likesBase": [
+      "drink"
+    ],
+    "likesBaseText": "음료(차)",
+    "likesStats": [
+      "health",
+      "taste"
+    ],
+    "likesObjects": [
+      "소파",
+      "평상"
+    ],
+    "dislikes": [
+      "계단(?)→긴 동선"
+    ],
+    "unlockText": "삼춘 만족 60"
+  },
+  {
+    "id": "runner",
+    "name": "러닝크루",
+    "initialPopularity": 0,
+    "budget": 6000,
+    "likesBase": [
+      "drink"
+    ],
+    "likesBaseText": "음료",
+    "likesStats": [
+      "health",
+      "volume"
+    ],
+    "likesObjects": [
+      "야외",
+      "자전거"
+    ],
+    "dislikes": [
+      "느림"
+    ],
+    "unlockText": "한라산 명소 연결"
+  },
+  {
+    "id": "night",
+    "name": "밤 손님",
+    "initialPopularity": 0,
+    "budget": 13000,
+    "likesBase": [
+      "drink",
+      "dessert"
+    ],
+    "likesBaseText": "음료·디저트",
+    "likesStats": [
+      "aroma",
+      "look"
+    ],
+    "likesObjects": [
+      "불멍",
+      "초롱길"
+    ],
+    "dislikes": [
+      "밝음"
+    ],
+    "unlockText": "도대불"
+  }
+]

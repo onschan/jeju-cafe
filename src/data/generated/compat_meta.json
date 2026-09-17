@@ -1,0 +1,17 @@
+{
+  "radius": 2,
+  "up": {
+    "pop": 3,
+    "feePct": 5
+  },
+  "upup": {
+    "pop": 6,
+    "feePct": 10
+  },
+  "down": {
+    "pop": -3,
+    "feePct": -5
+  },
+  "segmentPopularity": 3,
+  "legendText": "효과 크기: ↑ = Pop +3 Fee +5%, ↑↑ = +6 / +10%, ↓ = −3 / −5%. 손님층 지정 시 그 층 인기에도 ±3."
+}

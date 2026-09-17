@@ -1,0 +1,60 @@
+[
+  {
+    "id": "flyer",
+    "name": "동네 전단",
+    "cost": 10000,
+    "costText": "10,000",
+    "candidates": 3,
+    "statRange": {
+      "min": 10,
+      "max": 40
+    },
+    "pools": [
+      "A"
+    ]
+  },
+  {
+    "id": "job_site",
+    "name": "구인 사이트",
+    "cost": 50000,
+    "costText": "50,000",
+    "candidates": 4,
+    "statRange": {
+      "min": 30,
+      "max": 60
+    },
+    "pools": [
+      "A",
+      "B"
+    ]
+  },
+  {
+    "id": "headhunter",
+    "name": "헤드헌터",
+    "cost": 200000,
+    "costText": "200,000",
+    "candidates": 5,
+    "statRange": {
+      "min": 50,
+      "max": 80
+    },
+    "pools": [
+      "B",
+      "C"
+    ]
+  },
+  {
+    "id": "tv_ad",
+    "name": "TV 광고(홍보 활동 연동)",
+    "cost": null,
+    "costText": "라디오 실행 후 1회",
+    "candidates": 3,
+    "statRange": {
+      "min": 60,
+      "max": 90
+    },
+    "pools": [
+      "C"
+    ]
+  }
+]

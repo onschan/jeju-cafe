@@ -1,0 +1,66 @@
+[
+  {
+    "id": "shop01",
+    "name": "제주 차 세트",
+    "price": 3,
+    "itemId": "jeju_tea_set"
+  },
+  {
+    "id": "shop02",
+    "name": "만화책",
+    "price": 2,
+    "itemId": "comic_book"
+  },
+  {
+    "id": "shop03",
+    "name": "파라솔",
+    "price": 2,
+    "itemId": "parasol"
+  },
+  {
+    "id": "shop04",
+    "name": "방석",
+    "price": 2,
+    "itemId": "cushion"
+  },
+  {
+    "id": "shop05",
+    "name": "직원 스카우트권(헤드헌터 무료)",
+    "price": 5
+  },
+  {
+    "id": "shop06",
+    "name": "재료 슬롯 +1",
+    "price": 8
+  },
+  {
+    "id": "shop07",
+    "name": "룰렛 추가 회전",
+    "price": 1
+  },
+  {
+    "id": "shop08",
+    "name": "아이템 랜덤 상자",
+    "price": 3
+  },
+  {
+    "id": "shop09",
+    "name": "정착 등급 심사 재도전권",
+    "price": 4
+  },
+  {
+    "id": "shop10",
+    "name": "라이벌 즉시 철수",
+    "price": 6
+  },
+  {
+    "id": "shop11",
+    "name": "지역 활기 회복",
+    "price": 3
+  },
+  {
+    "id": "shop12",
+    "name": "희귀 장식(연못 등)",
+    "price": 10
+  }
+]
