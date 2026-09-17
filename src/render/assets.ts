@@ -22,12 +22,19 @@ export function tex(name: string): Texture | null {
   return t;
 }
 
+/** 이름으로 텍스처. 없으면 경고 없이 null (폴백 체인의 앞 단계용). */
+export function peekTex(name: string): Texture | null {
+  return sheet?.textures[name] ?? null;
+}
+
 export function hasAssets(): boolean { return sheet !== null; }
 
 /** 계절·상태별 이름 규칙을 한곳에 */
 export const spriteName = {
   tile: (terrain: string, season: string) => `tile_${terrain}_${season}`,
   object: (type: string, variant?: string) => (variant ? `obj_${type}_${variant}` : `obj_${type}`),
+  isoTile: (terrain: string, season: string) => `iso_tile_${terrain}_${season}`,
+  isoObject: (type: string, variant?: string) => (variant ? `iso_obj_${type}_${variant}` : `iso_obj_${type}`),
   guest: (type: string, dir: 'down' | 'up' | 'left' | 'right', frame: 0 | 1 | 2) => `guest_${type}_${dir}_${frame}`,
   bubble: (mood: string) => `bubble_${mood}`,
 };
