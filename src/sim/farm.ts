@@ -1,6 +1,10 @@
 import type { GameState, ApplyResult, CropDef } from './types.ts';
-import { objectDef, cropDef } from '../data/index.ts';
+import { objectDef, cropDef, INGREDIENTS } from '../data/index.ts';
 import { isSheltered } from './grid.ts';
+import { staffInRole, skillTotal, energyFactor } from './staff.ts';
+import { nextRandom, randInt, pickWeighted } from './rng.ts';
+
+export const GATHER_BASE = 0.3; // §19 채집 성공 = 30% + 체력/200 + 행운
 
 /** 수확 창이 해를 넘기면(11,12,1) 1월은 전년도 창에 속한다. */
 export function harvestSeasonYear(crop: CropDef, month: number, year: number): number {
@@ -69,4 +73,40 @@ export function harvest(state: GameState, objectId: string): number {
 /** 수확 가능한 오브젝트 id 목록 (UI 반짝임·봇용) */
 export function readyToHarvest(state: GameState): string[] {
   return Object.values(state.objects).filter((o) => o.crop?.ready).map((o) => o.id);
+}
+
+/** 밭 일꾼 하루 작업량 = 1 + floor(체력/20) 칸 (기력 30 미만이면 절반, 최소 1) */
+export function fieldCapacity(state: GameState): number {
+  return staffInRole(state, 'field').reduce((n, st) => n + Math.max(1, Math.floor((1 + Math.floor(st.stats.stamina / 20)) * energyFactor(st))), 0);
+}
+
+/** 매일: 밭 일꾼이 익은 것을 먼저 따고, 빈 밭에 제철(해금된 첫 번째) 작물을 심는다. */
+export function staffFarmWork(state: GameState): void {
+  let capacity = fieldCapacity(state);
+  if (capacity <= 0) return;
+  for (const id of readyToHarvest(state)) {
+    if (capacity <= 0) return;
+    harvest(state, id);
+    capacity--;
+  }
+  const cropId = state.unlocked.crops.find((c) => cropDef(c).plantMonths.includes(state.clock.month));
+  if (!cropId) return;
+  for (const obj of Object.values(state.objects)) {
+    if (capacity <= 0) return;
+    if (objectDef(obj.type).kind !== 'field' || obj.crop) continue;
+    plant(state, obj.id, cropId);
+    capacity--;
+  }
+}
+
+/** 매일: 채취꾼마다 확률로 farm 재료 1~2개를 창고에 넣는다. */
+export function gatherWork(state: GameState): void {
+  const farmIngredients = INGREDIENTS.filter((i) => i.kind === 'farm');
+  for (const st of staffInRole(state, 'gather')) {
+    const p = (GATHER_BASE + st.stats.stamina / 200 + skillTotal({ ...state, staff: [st] }, 'luck')) * energyFactor(st);
+    if (nextRandom(state) >= p) continue;
+    const ing = pickWeighted(state, farmIngredients, () => 1);
+    if (!ing) continue;
+    state.storage[ing.id] = (state.storage[ing.id] ?? 0) + randInt(state, 1, 2);
+  }
 }

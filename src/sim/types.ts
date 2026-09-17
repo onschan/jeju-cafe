@@ -189,6 +189,7 @@ export interface GameState {
   segmentPopularity: Record<string, number>;
   notices: string[];
   guests: Guest[];
+  spawnAcc: number; // 시간대별 스폰 소수 누적
   nextId: number;
   monthIncome: number;
   monthGuests: number;

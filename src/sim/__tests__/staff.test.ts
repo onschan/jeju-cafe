@@ -183,3 +183,82 @@ test('직원 이동은 tick 안에서 돌고 결정적이다', () => {
   for (let i = 0; i < 5; i++) tick(b.s, 1000);
   expect(JSON.stringify(a.s.staff)).toBe(JSON.stringify(b.s.staff));
 });
+
+// ---------- Task 4: 직원이 게임에 영향 ----------
+import { spawnGuests, updateGuests, PREP_MS } from '../guests.ts';
+import { setSlot } from '../menu.ts';
+
+function cafe() {
+  const s = createInitialState(1);
+  placeObject(s, 'table_out', 4, 5);
+  setSlot(s, 0, 'americano');
+  return s;
+}
+
+test('조리 시간: 직원 없으면 5초, 바리스타(감각 50)면 3초 이하', () => {
+  const s = cafe();
+  spawnGuests(s, 1); updateGuests(s, 6000);
+  const g = s.guests[0]!;
+  expect(g.phase).toBe('seated'); expect(g.mood).toBeNull(); expect(g.waitMs).toBe(PREP_MS);
+  expect(g.menuId).toBe('americano');
+  updateGuests(s, PREP_MS - 100);
+  expect(g.mood).toBeNull();
+  updateGuests(s, 100);
+  expect(g.mood).not.toBeNull();
+  const s2 = cafe(); s2.staff.push(staffWith({ sense: 50 }, 'barista'));
+  spawnGuests(s2, 1); updateGuests(s2, 6000);
+  expect(s2.guests[0]!.waitMs).toBeLessThanOrEqual(3000);
+  updateGuests(s2, 3000);
+  expect(s2.guests[0]!.mood).not.toBeNull();
+  // 디저트는 요리사, 빠른 손 스킬은 더 줄인다
+  const s3 = cafe(); setSlot(s3, 0, 'scone'); s3.staff.push(staffWith({ cooking: 50 }, 'cook', 'quick_hands'));
+  spawnGuests(s3, 1); s3.guests[0]!.type = 'tourist'; updateGuests(s3, 6000);
+  expect(s3.guests[0]!.waitMs).toBe(PREP_MS * 0.5 * 0.8);
+});
+
+test('홀 직원 서비스는 만족 기준을 낮춘다', () => {
+  // tourist minScenery 2, 자리 경치 1 → meh(scenery). 홀 service 60이면 happy
+  const s = cafe(); spawnGuests(s, 1); s.guests[0]!.type = 'tourist'; updateGuests(s, 6000); updateGuests(s, PREP_MS);
+  expect(s.guests[0]!.mood).toBe('meh');
+  expect(s.guests[0]!.moodReason).toBe('scenery');
+  const s2 = cafe(); s2.staff.push(staffWith({ service: 60 }, 'hall'));
+  spawnGuests(s2, 1); s2.guests[0]!.type = 'tourist'; updateGuests(s2, 6000); updateGuests(s2, PREP_MS);
+  expect(s2.guests[0]!.mood).toBe('happy');
+  expect(s2.guests[0]!.moodReason).toBeNull();
+});
+
+test('밭 일꾼은 제철에 빈 밭에 심고 익으면 딴다', () => {
+  const s = createInitialState(1); s.clock.month = 10;
+  apply(s, { type: 'place', objectType: 'field', x: 6, y: 6 });
+  apply(s, { type: 'place', objectType: 'field', x: 7, y: 6 });
+  apply(s, { type: 'place', objectType: 'field', x: 8, y: 6 });
+  s.staff.push(staffWith({ stamina: 30 }, 'field')); // 하루 2칸
+  tick(s, DAY_MS);
+  const fields = Object.values(s.objects).filter((o) => o.type === 'field');
+  expect(fields.filter((f) => f.crop?.cropId === 'carrot').length).toBe(2);
+  tick(s, DAY_MS);
+  expect(fields.filter((f) => f.crop?.cropId === 'carrot').length).toBe(3);
+  fields[0]!.crop!.daysGrown = 59; tick(s, DAY_MS); // 하루 자라 익음 → 따고 → 같은 날 다시 심는다
+  expect(s.storage['carrot']).toBeGreaterThan(0);
+  expect(fields[0]!.crop?.daysGrown).toBe(0);
+});
+
+test('밭 일꾼은 철이 아니면 안 심는다', () => {
+  const s = createInitialState(1); // 3월
+  apply(s, { type: 'place', objectType: 'field', x: 6, y: 6 });
+  s.staff.push(staffWith({ stamina: 30 }, 'field'));
+  tick(s, DAY_MS);
+  expect(Object.values(s.objects).find((o) => o.type === 'field')!.crop).toBeNull();
+});
+
+test('채취꾼은 하루 한 번 확률로 farm 재료를 가져온다', () => {
+  const s = createInitialState(5); s.unlocked.roles.push('gather'); s.slots.gather = 1;
+  s.staff.push(staffWith({ stamina: 80 }, 'gather'));
+  for (let i = 0; i < 30; i++) tick(s, DAY_MS);
+  const got = (s.storage['carrot'] ?? 0) + (s.storage['tangerine'] ?? 0);
+  expect(got).toBeGreaterThan(0);
+  expect(got).toBeLessThanOrEqual(60);
+  const s2 = createInitialState(5);
+  for (let i = 0; i < 30; i++) tick(s2, DAY_MS);
+  expect((s2.storage['carrot'] ?? 0) + (s2.storage['tangerine'] ?? 0)).toBe(0);
+});

@@ -18,7 +18,7 @@ test('하루가 지나면 손님이 온다', () => {
   expect(s.guests.length).toBeGreaterThan(0);
 });
 
-test('테이블 1개(2석)면 하루에 2명 온다', () => {
+test('테이블 1개(2석)면 하루에 2명까지만 온다', () => {
   const s = cafe();
   tick(s, DAY_MS);
   expect(s.guests.length).toBe(2);

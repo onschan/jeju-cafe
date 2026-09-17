@@ -1,24 +1,26 @@
 import type { GameState } from './types.ts';
 import { advanceClock, END_HOUR, START_HOUR } from './clock.ts';
-import { growOneDay } from './farm.ts';
-import { spawnGuests, updateGuests } from './guests.ts';
+import { growOneDay, staffFarmWork, gatherWork } from './farm.ts';
+import { hourlySpawn, updateGuests } from './guests.ts';
 import { upkeep, closeMonth } from './economy.ts';
 import { payroll, expireCandidates, hourlyEnergy, nightlyRecovery, moveStaff } from './staff.ts';
 
 export const STEP_MS = 100;        // 고정 스텝 (게임 ms)
-export const DAILY_SPAWN_CAP = 3;
 const MAX_STEPS_PER_TICK = 600;    // 백그라운드 복귀 등 폭주 방지 (60초 게임 시간)
 const HOURS_PER_DAY = END_HOUR - START_HOUR;
 
 /** 시간이 한 칸 지날 때마다 (새 시각 = state.clock.hour) */
 function onNewHour(state: GameState): void {
   hourlyEnergy(state);
+  hourlySpawn(state);
 }
 
+/** 새 날: 밤 회복 → 생육 → 밭 일꾼 → 채취꾼 */
 function onNewDay(state: GameState): void {
   nightlyRecovery(state);
   growOneDay(state);
-  spawnGuests(state, DAILY_SPAWN_CAP);
+  staffFarmWork(state);
+  gatherWork(state);
 }
 
 /** 월 바뀜: 월급 → 유지비 → 정산 → 후보 만료 */

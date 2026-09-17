@@ -1,7 +1,10 @@
 import { createInitialState } from '../state.ts';
 import { placeObject } from '../grid.ts';
 import { setSlot } from '../menu.ts';
-import { spawnGuests, updateGuests, freeSeats, hasReachableSeat, GUEST_SPEED_CELLS_PER_S, SEAT_MS } from '../guests.ts';
+import { spawnGuests, updateGuests, freeSeats, hasReachableSeat, dailyGuestCount, hourShare, typeWeight, GUEST_SPEED_CELLS_PER_S, SEAT_MS, PREP_MS } from '../guests.ts';
+import { tick } from '../tick.ts';
+import { DAY_MS, START_HOUR, END_HOUR } from '../clock.ts';
+import { DIALOGUE } from '../../data/index.ts';
 
 /** 정낭(4,6) 바로 위 (4,5)에 테이블 → 정낭이 테이블의 걷기 이웃 */
 function cafe() {
@@ -42,9 +45,12 @@ test('걸어가서 앉고, 주문하고, 돈과 연구가 오른다', () => {
   updateGuests(s, (6 / GUEST_SPEED_CELLS_PER_S) * 1000);
   expect(g.phase).toBe('seated');
   expect(g.menuId).toBe('carrot_juice');
-  expect(g.mood).not.toBeNull();
+  expect(g.mood).toBeNull(); // 조리 중
   expect(s.money).toBe(money0 + 4000);
   expect(s.storage['carrot']).toBe(9);
+  expect(s.monthGuests).toBe(1); // 도착 시 센다
+  updateGuests(s, PREP_MS);
+  expect(g.mood).not.toBeNull();
 });
 
 test('좋아하는 메뉴가 없으면 meh, 돈 없음', () => {
@@ -52,10 +58,12 @@ test('좋아하는 메뉴가 없으면 meh, 돈 없음', () => {
   s.storage['carrot'] = 0;
   spawnGuests(s, 1);
   const money0 = s.money;
-  updateGuests(s, 10_000);
+  updateGuests(s, 2000);
   const g = s.guests[0]!;
-  expect(g.mood).toBe('meh');
+  expect(g.mood).toBe('meh'); // 메뉴가 없으면 기다리지 않고 바로
+  expect(g.moodReason).toBe('no_menu');
   expect(s.money).toBe(money0);
+  expect(s.monthGuests).toBe(1);
 });
 
 test('앉은 시간이 지나면 나가고, 정류장에 닿으면 사라진다', () => {
@@ -63,6 +71,8 @@ test('앉은 시간이 지나면 나가고, 정류장에 닿으면 사라진다'
   spawnGuests(s, 1);
   updateGuests(s, 6000);
   expect(s.guests[0]!.phase).toBe('seated');
+  updateGuests(s, PREP_MS);
+  expect(s.guests[0]!.phase).toBe('seated'); // 앉은 시간은 조리가 끝난 뒤부터
   updateGuests(s, SEAT_MS);
   expect(s.guests[0]!.phase).toBe('leaving');
   updateGuests(s, 10_000);
@@ -74,7 +84,7 @@ test('happy이면 연구 +1, 게이지가 타입 방향으로 움직인다', () 
   spawnGuests(s, 1);
   const g = s.guests[0]!;
   g.type = 'local';
-  updateGuests(s, 6000);
+  updateGuests(s, 6000); updateGuests(s, PREP_MS);
   expect(g.mood).toBe('happy'); // local minScenery 0
   expect(s.research).toBe(1);
   expect(s.popularity).toBe(-2);
@@ -95,14 +105,77 @@ test('관광객은 경치가 모자라면 meh, 돌담을 두면 happy', () => {
   const { s } = cafe();
   spawnGuests(s, 1);
   s.guests[0]!.type = 'tourist'; // minScenery 2, 자리 (4,5) 경치 1(정낭)
-  updateGuests(s, 6000);
+  updateGuests(s, 6000); updateGuests(s, PREP_MS);
   expect(s.guests[0]!.mood).toBe('meh');
+  expect(s.guests[0]!.moodReason).toBe('scenery');
   const { s: s2 } = cafe();
   placeObject(s2, 'stonewall', 5, 4); // scenery +1 → 2
   spawnGuests(s2, 1);
   s2.guests[0]!.type = 'tourist';
-  updateGuests(s2, 6000);
+  updateGuests(s2, 6000); updateGuests(s2, PREP_MS);
   expect(s2.guests[0]!.mood).toBe('happy');
+});
+
+test('대사: 30%쯤은 말풍선 텍스트, 손님층·기분·이유에 맞는 문장', () => {
+  let said = 0, total = 0;
+  for (let seed = 1; seed <= 60; seed++) {
+    const s = createInitialState(seed);
+    placeObject(s, 'table_out', 4, 5);
+    if (seed % 2 === 0) { setSlot(s, 0, 'carrot_juice'); s.storage['carrot'] = 10; }
+    spawnGuests(s, 1);
+    const g = s.guests[0]!;
+    updateGuests(s, 6000); updateGuests(s, PREP_MS);
+    total++;
+    if (g.say === null) continue;
+    said++;
+    const d = DIALOGUE.guest[g.type]!;
+    const pool = g.mood === 'happy' ? d.happy : d.meh[g.moodReason as 'no_menu' | 'scenery' | 'wait'];
+    expect(pool).toContain(g.say);
+  }
+  expect(said).toBeGreaterThan(total * 0.15);
+  expect(said).toBeLessThan(total * 0.45);
+});
+
+test('하루 손님 수: 좌석과 인기로 정해지고 1~12', () => {
+  const s = createInitialState(1);
+  s.segmentPopularity = { local: 0, tourist: 0 };
+  expect(dailyGuestCount(s)).toBe(2);
+  placeObject(s, 'table_out', 4, 5); // 2석
+  placeObject(s, 'table_out', 5, 5);
+  expect(dailyGuestCount(s)).toBe(4);
+  s.segmentPopularity = { local: 30, tourist: 20 }; // 평균 배수 1.5 → +2
+  expect(dailyGuestCount(s)).toBe(6);
+  s.segmentPopularity = { local: 99, tourist: 99 };
+  for (let i = 0; i < 12; i++) placeObject(s, 'table_out', i % 10, 1 + Math.floor(i / 10) * 3);
+  expect(dailyGuestCount(s)).toBe(12);
+});
+
+test('시간대 분배: 시간 비중 합 1, 정오 피크, 저녁 절반, 아침 삼춘·낮 관광객 가중', () => {
+  let sum = 0;
+  for (let h = START_HOUR; h < END_HOUR; h++) sum += hourShare(h);
+  expect(sum).toBeCloseTo(1);
+  expect(hourShare(12)).toBeGreaterThan(hourShare(10));
+  expect(hourShare(20)).toBeCloseTo(hourShare(10) / 2);
+  const s = createInitialState(1);
+  expect(typeWeight(s, 'local', 7)).toBeCloseTo(typeWeight(s, 'local', 12) * 2);
+  expect(typeWeight(s, 'tourist', 13)).toBeCloseTo(typeWeight(s, 'tourist', 7) * 2);
+  expect(typeWeight(s, 'local', 12)).toBeCloseTo(5 * (1 + 30 / 50));
+});
+
+test('손님은 하루에 걸쳐 시간마다 나뉘어 오고, 하루 합은 dailyGuestCount와 같다', () => {
+  const s = createInitialState(1);
+  for (let i = 0; i < 6; i++) placeObject(s, 'table_out', 2 + i, 5); // 12석 → 안 막힘
+  for (const x of [2, 3, 5, 6, 7]) placeObject(s, 'path', x, 6); // (4,6)은 정낭
+  const n = dailyGuestCount(s);
+  const ids = new Set<string>();
+  const firstHourIds: string[] = [];
+  for (let h = 0; h < 18; h++) {
+    tick(s, 200);
+    for (const g of s.guests) ids.add(g.id);
+    if (h === 0) firstHourIds.push(...s.guests.map((g) => g.id));
+  }
+  expect(ids.size).toBe(n);
+  expect(firstHourIds.length).toBeLessThan(n);
 });
 
 test('hasReachableSeat: 좌석 없음 → false, 정낭 옆 좌석 → true, 길 없는 좌석 → false', () => {

@@ -1,13 +1,22 @@
-import type { GameState, Guest, PlacedObject, Pt } from './types.ts';
-import { objectDef, menuDef, guestTypeDef, GUEST_TYPES } from '../data/index.ts';
-import { pickWeighted } from './rng.ts';
+import type { GameState, Guest, PlacedObject, Pt, MenuCategory, RoleId } from './types.ts';
+import { objectDef, menuDef, guestTypeDef, GUEST_TYPES, DIALOGUE } from '../data/index.ts';
+import { pickWeighted, nextRandom } from './rng.ts';
 import { sceneryScore } from './grid.ts';
 import { availableMenus, consumeIngredients } from './menu.ts';
 import { busStopPos, findPath, walkableNeighborsOf, reachMap, pathFromReach, cellKey } from './path.ts';
+import { roleEffect, skillTotal } from './staff.ts';
+import { START_HOUR, END_HOUR } from './clock.ts';
 
 export const GUEST_SPEED_CELLS_PER_S = 3;
 export const SEAT_MS = 4000;
+export const PREP_MS = 5000;       // 직원 없을 때 조리 시간
+export const MAX_PREP_CUT = 0.6;   // 직원 효과로 줄일 수 있는 최대 비율
+export const MAX_SPEED_SKILL = 0.5;
+export const SERVICE_PER_SCENERY = 30; // 홀 서비스 30당 경치 기준 −1
+export const SAY_CHANCE = 0.3;     // §19 손님 대사 확률
 export const MAX_GUESTS = 30;
+export const MIN_DAILY_GUESTS = 1;
+export const MAX_DAILY_GUESTS = 12;
 
 function seatObjects(state: GameState): PlacedObject[] {
   return Object.values(state.objects).filter((o) => objectDef(o.type).kind === 'seat');
@@ -26,6 +35,53 @@ export function hasReachableSeat(state: GameState): boolean {
   return seatObjects(state).some((s) => walkableNeighborsOf(state, s.x, s.y).some((nb) => reach.dist.has(cellKey(state, nb))));
 }
 
+// ---------- 스폰 수·가중치 ----------
+
+export function totalSeats(state: GameState): number {
+  return seatObjects(state).reduce((n, o) => n + (objectDef(o.type).seats ?? 1), 0);
+}
+
+/** 손님층 유입 배수: 인기 × 인기쟁이 스킬. (기간형 홍보·유튜버는 promotions.ts에서 더한다 — Task 5) */
+export function spawnMultiplier(state: GameState, typeId: string): number {
+  const pop = state.segmentPopularity[typeId] ?? 0;
+  return (1 + pop / 50) * (1 + skillTotal(state, 'spawnBonus'));
+}
+
+/** 시간대별 손님층 가중: 아침(6~9) 삼춘 2배, 낮(11~17) 관광객 2배 */
+function hourTypeMult(hour: number, typeId: string): number {
+  if (typeId === 'local' && hour >= 6 && hour <= 9) return 2;
+  if (typeId === 'tourist' && hour >= 11 && hour <= 17) return 2;
+  return 1;
+}
+
+/** 스폰 시 손님층 선택 가중치 */
+export function typeWeight(state: GameState, typeId: string, hour = state.clock.hour): number {
+  return guestTypeDef(typeId).weight * spawnMultiplier(state, typeId) * hourTypeMult(hour, typeId);
+}
+
+/** 시간대별 손님 수 비중 (하루 합 1). 정오 피크 2배, 18시 이후 절반. */
+export function hourShare(hour: number): number {
+  const profile = (h: number) => (h >= 18 ? 0.5 : h === 12 || h === 13 ? 2 : 1);
+  let total = 0;
+  for (let h = START_HOUR; h < END_HOUR; h++) total += profile(h);
+  return profile(hour) / total;
+}
+
+/** 하루 손님 수 = 2 + 좌석/2 + 평균 유입 배수 보너스, 1~12 */
+export function dailyGuestCount(state: GameState): number {
+  const avgMult = GUEST_TYPES.reduce((s, t) => s + spawnMultiplier(state, t.id), 0) / GUEST_TYPES.length;
+  const n = 2 + Math.floor(totalSeats(state) / 2) + Math.floor((avgMult - 1) * 4);
+  return Math.max(MIN_DAILY_GUESTS, Math.min(MAX_DAILY_GUESTS, n));
+}
+
+/** 매 시간: 하루 손님 수를 시간대 비중으로 나눠 소수 누적, 정수만큼 스폰. */
+export function hourlySpawn(state: GameState): number {
+  state.spawnAcc += dailyGuestCount(state) * hourShare(state.clock.hour);
+  const n = Math.floor(state.spawnAcc + 1e-9);
+  state.spawnAcc -= n;
+  return n > 0 ? spawnGuests(state, n) : 0;
+}
+
 /** 최대 n명 스폰. 정류장에서 가장 가까운 빈 좌석부터. 실제 스폰된 수를 돌려준다. */
 export function spawnGuests(state: GameState, n: number): number {
   let spawned = 0;
@@ -42,7 +98,7 @@ export function spawnGuests(state: GameState, n: number): number {
     }
     if (!best) break;
     const path = pathFromReach(state, reach, best.target)!;
-    const type = pickWeighted(state, GUEST_TYPES, (t) => t.weight)!;
+    const type = pickWeighted(state, GUEST_TYPES, (t) => typeWeight(state, t.id))!;
     state.guests.push({
       id: `g${state.nextId++}`,
       type: type.id,
@@ -62,6 +118,8 @@ export function spawnGuests(state: GameState, n: number): number {
   }
   return spawned;
 }
+
+// ---------- 이동 ----------
 
 /** 경로를 따라 걷는다. 손님·직원 공용. 목적지에 닿으면 true. */
 export function moveAlong(g: { x: number; y: number; path: Pt[] }, dtMs: number): boolean {
@@ -86,12 +144,59 @@ export function moveAlong(g: { x: number; y: number; path: Pt[] }, dtMs: number)
   return g.path.length === 0;
 }
 
-function order(state: GameState, g: Guest): void {
+// ---------- 주문·기분 ----------
+
+function prepRole(category: MenuCategory): RoleId {
+  return category === 'drink' ? 'barista' : 'cook';
+}
+
+/** 조리 시간 = 5초 × (1 − min(0.6, 담당 역할 효과/100)) × (1 − 속도 스킬) */
+export function prepTimeMs(state: GameState, category: MenuCategory): number {
+  const role = prepRole(category);
+  const cut = Math.min(MAX_PREP_CUT, roleEffect(state, role) / 100);
+  const speed = Math.min(MAX_SPEED_SKILL, skillTotal(state, 'speed', role));
+  return PREP_MS * (1 - cut) * (1 - speed);
+}
+
+/** 홀 서비스가 경치 기준을 낮춘다 */
+export function serviceBonus(state: GameState): number {
+  return Math.floor(roleEffect(state, 'hall') / SERVICE_PER_SCENERY);
+}
+
+function maybeSay(state: GameState, g: Guest): void {
+  if (nextRandom(state) >= SAY_CHANCE) return;
+  const d = DIALOGUE.guest[g.type];
+  if (!d) return;
+  const pool = g.mood === 'happy' ? d.happy : g.moodReason && g.moodReason !== 'price' ? d.meh[g.moodReason] : [];
+  g.say = pickWeighted(state, pool, () => 1);
+}
+
+/** 조리가 끝났을 때 만족 판정. 경치 + 홀 서비스 ≥ 손님층 기준이면 happy. */
+function resolveMood(state: GameState, g: Guest): void {
   const type = guestTypeDef(g.type);
   const seat = state.objects[g.seatId!]!;
+  if (sceneryScore(state, seat.x, seat.y) + serviceBonus(state) >= type.minScenery) {
+    g.mood = 'happy';
+    g.moodReason = null;
+    state.research += 1;
+    state.popularity = Math.max(-100, Math.min(100, state.popularity + type.popularityShift));
+  } else {
+    g.mood = 'meh';
+    g.moodReason = 'scenery';
+  }
+  maybeSay(state, g);
+}
+
+/** 자리에 앉는 순간: 메뉴 결정·재료·돈은 즉시, 기분은 조리(waitMs) 뒤에. */
+function order(state: GameState, g: Guest): void {
+  const type = guestTypeDef(g.type);
+  state.monthGuests++;
   const candidates = availableMenus(state).filter((id) => type.likes.includes(menuDef(id).category));
   if (candidates.length === 0) {
     g.mood = 'meh';
+    g.moodReason = 'no_menu';
+    g.timerMs = SEAT_MS;
+    maybeSay(state, g);
     return;
   }
   const menuId = pickWeighted(state, candidates, () => 1)!;
@@ -99,16 +204,8 @@ function order(state: GameState, g: Guest): void {
   consumeIngredients(state, menuId);
   state.money += menu.price;
   state.monthIncome += menu.price;
-  state.monthGuests++;
   g.menuId = menuId;
-  const scenery = sceneryScore(state, seat.x, seat.y);
-  if (scenery >= type.minScenery) {
-    g.mood = 'happy';
-    state.research += 1;
-    state.popularity = Math.max(-100, Math.min(100, state.popularity + type.popularityShift));
-  } else {
-    g.mood = 'meh';
-  }
+  g.waitMs = prepTimeMs(state, menu.category);
 }
 
 export function updateGuests(state: GameState, dtMs: number): void {
@@ -117,10 +214,18 @@ export function updateGuests(state: GameState, dtMs: number): void {
     if (g.phase === 'walking') {
       if (moveAlong(g, dtMs)) {
         g.phase = 'seated';
-        g.timerMs = SEAT_MS;
         order(state, g);
       }
     } else if (g.phase === 'seated') {
+      if (g.mood === null) {
+        g.waitMs -= dtMs;
+        if (g.waitMs <= 0) {
+          g.waitMs = 0;
+          resolveMood(state, g);
+          g.timerMs = SEAT_MS;
+        }
+        continue;
+      }
       g.timerMs -= dtMs;
       if (g.timerMs <= 0) {
         g.phase = 'leaving';

@@ -60,6 +60,7 @@ export function createInitialState(seed: number, playerId = 'local', createdAt =
     segmentPopularity: { local: 30, tourist: 20 },
     notices: [],
     guests: [],
+    spawnAcc: 0,
     nextId: 1,
     monthIncome: 0,
     monthGuests: 0,
