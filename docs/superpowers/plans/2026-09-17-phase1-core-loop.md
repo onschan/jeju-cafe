@@ -8,6 +8,13 @@
 
 **Tech Stack:** Vite 6, TypeScript 5, React 19, PixiJS 8, Vitest 3, tsx(스크립트 실행). 패키지 매니저 pnpm.
 
+**Task 2–4 리뷰 후 확정된 규칙 (이후 모든 Task에 적용):**
+- `src/sim`·`src/data` 안의 상대 import는 확장자를 붙인다(`'./types.ts'`, `'../data/index.ts'`). JSON은 `import x from './x.json' with { type: 'json' }`. tsconfig에 `allowImportingTsExtensions: true`. 이유: Deno에서 같은 코드로 점수 재계산(스펙 §9.4).
+- **고정 스텝 시뮬레이션**: `GameState.tick`(정수)이 `STEP_MS = 100` 게임 ms마다 1 증가. `tick(state, dtMs)`는 `dtMs × speed`를 누적해 `STEP_MS` 단위로 `step(state)`를 반복한다. 손님 이동·시계는 `step` 안에서만 진행. 이유: 프레임 길이와 무관하게 결정적이어야 리플레이가 성립.
+- `actionLog`는 `{ tick: number; action: Action }[]`. `setSpeed`·`dismissMonthCard`는 클라이언트 전용이라 로그하지 않는다.
+- 감귤처럼 11→1월로 해가 넘어가는 수확 창은 `harvestedYear`에 **창이 시작한 해**를 기록한다(1월 수확이면 `year − 1`).
+- `data/index.ts`의 `indexBy`는 중복 id를 만나면 throw.
+
 **Spec:** `docs/superpowers/specs/2026-09-17-jeju-cafe-design.md` §3.1–3.4, §4.1–4.3(당근·감귤·메뉴 3개만), §5.1(삼춘·관광객 2타입), §6.3(일직선 해금), §7, §8. 나머지 섹션은 2~5단계 계획에서 다룬다.
 
 ---
@@ -361,7 +368,8 @@ export interface GameState {
   monthIncome: number;
   monthGuests: number;
   lastMonthCard: { income: number; guests: number; month: number; year: number } | null;
-  actionLog: Action[];
+  tick: number;                 // 고정 스텝 카운터 (STEP_MS마다 +1)
+  actionLog: { tick: number; action: Action }[];
 }
 
 // ---------- 액션 ----------
@@ -694,6 +702,7 @@ export function createInitialState(seed: number, playerId = 'local'): GameState 
     monthIncome: 0,
     monthGuests: 0,
     lastMonthCard: null,
+    tick: 0,
     actionLog: [],
   };
   stamp(state, 'busstop', 0, GRID_H - 1, 1, 1);
@@ -1044,6 +1053,20 @@ test('감귤나무: 3년 자란 뒤 수확 달에만, 1년에 한 번', () => {
   growOneDay(s);
   expect(t.crop?.ready).toBe(false); // 수확 달이 아님
 });
+
+test('12월에 땄으면 이듬해 1월엔 같은 창이라 못 딴다', () => {
+  const s = createInitialState(1);
+  const t = placeObject(s, 'tangerine_tree', 5, 5);
+  s.clock.month = 12;
+  for (let i = 0; i < 1080; i++) growOneDay(s);
+  harvest(s, t.id);
+  s.clock.month = 1; s.clock.year = 2;
+  growOneDay(s);
+  expect(t.crop?.ready).toBe(false);
+  s.clock.month = 11;
+  growOneDay(s);
+  expect(t.crop?.ready).toBe(true); // 새 창
+});
 ```
 
 - [ ] **Step 2: 실패 확인**
@@ -1055,9 +1078,16 @@ Expected: FAIL — `Cannot find module '../farm'`
 
 `src/sim/farm.ts`:
 ```ts
-import type { GameState, ApplyResult } from './types';
-import { objectDef, cropDef } from '../data';
-import { isSheltered } from './grid';
+import type { GameState, ApplyResult, CropDef } from './types.ts';
+import { objectDef, cropDef } from '../data/index.ts';
+import { isSheltered } from './grid.ts';
+
+/** 수확 창이 해를 넘기면(11,12,1) 1월은 전년도 창에 속한다. */
+export function harvestSeasonYear(crop: CropDef, month: number, year: number): number {
+  const first = crop.harvestMonths?.[0];
+  if (first === undefined) return year;
+  return month < first ? year - 1 : year;
+}
 
 export function canPlant(state: GameState, objectId: string, cropId: string): ApplyResult {
   const obj = state.objects[objectId];
@@ -1086,7 +1116,7 @@ export function growOneDay(state: GameState): void {
     if (kind === 'tree') {
       const mature = obj.crop.daysGrown >= crop.growDays;
       const inSeason = crop.harvestMonths?.includes(month) ?? false;
-      obj.crop.ready = mature && inSeason && obj.crop.harvestedYear !== year;
+      obj.crop.ready = mature && inSeason && obj.crop.harvestedYear !== harvestSeasonYear(crop, month, year);
     } else {
       obj.crop.ready = obj.crop.daysGrown >= crop.growDays;
     }
@@ -1108,7 +1138,7 @@ export function harvest(state: GameState, objectId: string): number {
   state.storage[crop.id] = (state.storage[crop.id] ?? 0) + amount;
   if (objectDef(obj.type).kind === 'tree') {
     obj.crop!.ready = false;
-    obj.crop!.harvestedYear = state.clock.year;
+    obj.crop!.harvestedYear = harvestSeasonYear(crop, state.clock.month, state.clock.year);
   } else {
     obj.crop = null;
   }
@@ -1696,7 +1726,14 @@ test('place: 돈이 있어야 하고, 깎이고, 로그에 남는다', () => {
   expect(apply(s, { type: 'place', objectType: 'field', x: 0, y: 0 }).ok).toBe(true);
   expect(s.money).toBe(4700);
   expect(Object.values(s.objects).some((o) => o.type === 'field')).toBe(true);
-  expect(s.actionLog.length).toBe(1);
+  expect(s.actionLog).toEqual([{ tick: 0, action: { type: 'place', objectType: 'field', x: 0, y: 0 } }]);
+});
+
+test('setSpeed·dismissMonthCard는 로그에 남지 않는다', () => {
+  const s = createInitialState(1);
+  apply(s, { type: 'setSpeed', speed: 2 });
+  apply(s, { type: 'dismissMonthCard' });
+  expect(s.actionLog.length).toBe(0);
 });
 
 test('place: 해금 안 된 오브젝트는 거부', () => {
@@ -1754,8 +1791,10 @@ test('setSpeed·setSlot·unlock·dismissMonthCard', () => {
 ```ts
 import { createInitialState } from '../state';
 import { apply } from '../actions';
-import { tick } from '../tick';
+import { tick, resetTickCarry } from '../tick';
 import { DAY_MS } from '../clock';
+
+beforeEach(() => resetTickCarry());
 
 function cafe() {
   const s = createInitialState(1);
@@ -1780,20 +1819,32 @@ test('한 달 지나면 정산 카드가 생기고 월 누적이 리셋된다', 
   expect(s.monthIncome).toBe(0);
 });
 
-test('같은 seed·같은 입력이면 결과가 같다', () => {
+test('프레임 길이가 달라도 결과가 같다 (고정 스텝)', () => {
   const a = cafe();
   const b = cafe();
-  for (let i = 0; i < 100; i++) { tick(a, 700); tick(b, 700); }
+  resetTickCarry();
+  for (let i = 0; i < 100; i++) tick(a, 700);
+  resetTickCarry();
+  for (let i = 0; i < 700; i++) tick(b, 100);
+  expect(a.tick).toBe(b.tick);
   expect(JSON.stringify(a)).toBe(JSON.stringify(b));
+});
+
+test('speed 3이면 같은 실시간에 3배 스텝', () => {
+  const s = cafe();
+  resetTickCarry();
+  apply(s, { type: 'setSpeed', speed: 3 });
+  tick(s, 1000);
+  expect(s.tick).toBe(30);
 });
 
 test('speed 0이면 손님도 안 움직인다', () => {
   const s = cafe();
   tick(s, DAY_MS);
-  const x0 = s.guests[0]!.x;
+  const t0 = s.tick;
   apply(s, { type: 'setSpeed', speed: 0 });
   tick(s, 1000);
-  expect(s.guests[0]!.x).toBe(x0);
+  expect(s.tick).toBe(t0);
 });
 ```
 
@@ -1816,8 +1867,11 @@ import { canUnlock, unlock } from './progress';
 const PROTECTED_TYPES = new Set(['busstop', 'warehouse', 'gate']);
 const ACTION_LOG_CAP = 1000;
 
+const CLIENT_ONLY = new Set<Action['type']>(['setSpeed', 'dismissMonthCard']);
+
 function log(state: GameState, a: Action) {
-  state.actionLog.push(a);
+  if (CLIENT_ONLY.has(a.type)) return;
+  state.actionLog.push({ tick: state.tick, action: a });
   if (state.actionLog.length > ACTION_LOG_CAP) state.actionLog.shift();
 }
 
@@ -1886,12 +1940,14 @@ function applyInner(state: GameState, a: Action): ApplyResult {
 
 `src/sim/tick.ts`:
 ```ts
-import type { GameState } from './types';
-import { advanceClock } from './clock';
-import { growOneDay } from './farm';
-import { spawnGuests, updateGuests, freeSeats } from './guests';
+import type { GameState } from './types.ts';
+import { advanceClock } from './clock.ts';
+import { growOneDay } from './farm.ts';
+import { spawnGuests, updateGuests, freeSeats } from './guests.ts';
 
+export const STEP_MS = 100;        // 고정 스텝 (게임 ms)
 export const DAILY_SPAWN_CAP = 3;
+const MAX_STEPS_PER_TICK = 600;    // 백그라운드 복귀 등 폭주 방지 (60초 게임 시간)
 
 function onNewDay(state: GameState): void {
   growOneDay(state);
@@ -1905,24 +1961,42 @@ function onNewMonth(state: GameState, prevMonth: number, prevYear: number): void
   state.monthGuests = 0;
 }
 
-/** 실시간 dtMs만큼 진행. 손님 이동은 배속을 곱한 게임 시간으로 움직인다. */
-export function tick(state: GameState, dtMs: number): GameState {
+/** 고정 스텝 하나. 결정적. 리플레이는 이 함수만 호출한다. */
+export function step(state: GameState): void {
   const prevMonth = state.clock.month;
   const prevYear = state.clock.year;
-  const gameMs = dtMs * state.clock.speed;
-  const days = advanceClock(state, dtMs);
+  const days = advanceClock(state, STEP_MS);
   for (let i = 0; i < days; i++) onNewDay(state);
   if (state.clock.month !== prevMonth) onNewMonth(state, prevMonth, prevYear);
-  if (gameMs > 0) updateGuests(state, gameMs);
+  updateGuests(state, STEP_MS);
+  state.tick++;
+}
+
+/** 실시간 dtMs를 speed로 환산해 STEP_MS 단위로 step을 돌린다. 잔여는 clock.accMs가 아니라 별도 누적기에 보관. */
+let carryMs = 0;
+export function tick(state: GameState, dtMs: number): GameState {
+  carryMs += dtMs * state.clock.speed;
+  let steps = 0;
+  while (carryMs >= STEP_MS && steps < MAX_STEPS_PER_TICK) {
+    carryMs -= STEP_MS;
+    step(state);
+    steps++;
+  }
+  if (steps === MAX_STEPS_PER_TICK) carryMs = 0;
   return state;
 }
+
+/** 테스트·리플레이용: 누적기 초기화 */
+export function resetTickCarry(): void { carryMs = 0; }
 ```
+
+주의: `advanceClock(state, STEP_MS)`는 speed를 곱하지 않도록 `clock.ts`의 `advanceClock`에서 `c.accMs += dtMs * c.speed`를 `c.accMs += dtMs`로 바꾼다(speed 환산은 `tick`이 담당). `clock.test.ts`의 "speed 0이면 멈춤, speed 3이면 3배" 테스트는 삭제하고 tick 테스트로 대체한다.
 
 `src/sim/index.ts`:
 ```ts
 export * from './types';
 export { createInitialState, GRID_W, GRID_H, MENU_SLOT_COUNT } from './state';
-export { tick } from './tick';
+export { tick, step, STEP_MS, resetTickCarry } from './tick';
 export { apply } from './actions';
 export { DAY_MS, seasonOf, monthIndex } from './clock';
 export { cellAt, objectAt, canPlace, footprint, isSheltered, sceneryScore } from './grid';
@@ -1994,8 +2068,9 @@ Expected: FAIL — `Cannot find module '../save'`
 
 `src/sim/save.ts`:
 ```ts
-import type { GameState } from './types';
-import { SAVE_VERSION } from './state';
+import type { GameState } from './types.ts';
+import { SAVE_VERSION } from './state.ts';
+import { footprint } from './grid.ts';
 
 export function serialize(state: GameState): string {
   return JSON.stringify(state);
@@ -2004,7 +2079,18 @@ export function serialize(state: GameState): string {
 export function deserialize(json: string): GameState {
   const obj = JSON.parse(json) as GameState;
   if (obj.version !== SAVE_VERSION) throw new Error(`save version mismatch: ${obj.version} (expected ${SAVE_VERSION})`);
+  rebuildCellOwnership(obj);
   return obj;
+}
+
+/** objects.json의 w/h가 바뀌어도 세이브가 깨지지 않도록 cells[].objectId를 objects에서 다시 만든다. */
+function rebuildCellOwnership(state: GameState): void {
+  for (const c of state.grid.cells) c.objectId = null;
+  for (const o of Object.values(state.objects))
+    for (const p of footprint(o.type, o.x, o.y)) {
+      const cell = state.grid.cells[p.y * state.grid.w + p.x];
+      if (cell) cell.objectId = o.id;
+    }
 }
 
 /** 저장 계층 추상화. 2차에서 Supabase 구현으로 교체 가능. */
