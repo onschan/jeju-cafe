@@ -1,6 +1,6 @@
 {
   "guest": {
-    "local": {
+    "local_auntie": {
       "happy": [
         "맛좋다게!",
         "또 오켜.",
@@ -32,7 +32,7 @@
         ]
       }
     },
-    "tourist": {
+    "student": {
       "happy": [
         "여기 뷰 미쳤어요!",
         "인생샷 건졌다!",

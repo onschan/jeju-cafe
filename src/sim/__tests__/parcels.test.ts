@@ -99,8 +99,8 @@ test('신구간(1월)엔 30% 할인', () => {
 
 test('구역 보너스: 해안은 관광객 가중 ×1.3, 요금 ×1.1', () => {
   const s = createInitialState(1);
-  expect(typeWeight(s, 'tourist', 12, 'coast')).toBeCloseTo(typeWeight(s, 'tourist', 12, 'none') * COAST_SPAWN_MULT);
-  expect(typeWeight(s, 'local', 12, 'coast')).toBe(typeWeight(s, 'local', 12, 'none'));
+  expect(typeWeight(s, 'student', 12, 'coast')).toBeCloseTo(typeWeight(s, 'student', 12, 'none') * COAST_SPAWN_MULT);
+  expect(typeWeight(s, 'local_auntie', 12, 'coast')).toBe(typeWeight(s, 'local_auntie', 12, 'none'));
   // 해안(5번, y 8..15)의 좌석: 도로(y=14)에 붙은 (12,13)에 테이블
   own(s, 5);
   placeObject(s, 'table_out', 12, 13);

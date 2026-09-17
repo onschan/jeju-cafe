@@ -90,12 +90,14 @@ test('대상 손님층 콤보는 그 태그의 손님층 인기에 ±3', () => {
   const t = placeObject(s, 'table_out', 7, 4);
   const senior: ComboDef = { ...BIG, id: 'cb_senior', target: 'senior', strength: 'up' };
   const bonus = segmentBonus(s, t.id, [senior]);
-  expect(bonus['local']).toBe(COMBO_META.segmentPopularity); // 삼춘 = 시니어
-  expect(bonus['tourist'] ?? 0).toBe(0);
-  expect(popularityFor(s, t.id, 'local', [senior], [])).toBe(BASE_POPULARITY + COMBO_META.up.pop + COMBO_META.segmentPopularity);
-  expect(popularityFor(s, t.id, 'tourist', [senior], [])).toBe(BASE_POPULARITY + COMBO_META.up.pop);
+  expect(bonus['local_auntie']).toBe(COMBO_META.segmentPopularity); // 삼춘 = 시니어
+  expect(bonus['student'] ?? 0).toBe(0);
+  expect(popularityFor(s, t.id, 'local_auntie', [senior], [])).toBe(BASE_POPULARITY + COMBO_META.up.pop + COMBO_META.segmentPopularity);
+  expect(popularityFor(s, t.id, 'student', [senior], [])).toBe(BASE_POPULARITY + COMBO_META.up.pop);
   const downGroup: ComboDef = { ...senior, id: 'cb_dg', target: 'group', strength: 'down' };
-  expect(segmentBonus(s, t.id, [downGroup])).toEqual({}); // 단체 손님층이 아직 없다
+  const dg = segmentBonus(s, t.id, [downGroup]);
+  expect(dg['rentcar_family']).toBe(-COMBO_META.segmentPopularity); // 단체 타입만
+  expect(dg['local_auntie']).toBeUndefined();
 });
 
 test('히든 상성은 처음 발동할 때 한 번만 도감에 오르고 알림이 난다', () => {
@@ -165,8 +167,8 @@ test('세트 배수는 대상 태그 손님에게만 인기를 곱한다', () =>
   const st = objectStats(s, t.id, [], [youthSet]);
   expect(st.sets).toEqual([{ id: EMO.id, name: EMO.name, level: 1, target: 'youth', mult: 1.1 }]);
   expect(st.popularity).toBe(BASE_POPULARITY); // 전체 대상이 아니라 기본 인기는 그대로
-  expect(popularityFor(s, t.id, 'tourist', [], [youthSet])).toBe(Math.round(BASE_POPULARITY * 1.1));
-  expect(popularityFor(s, t.id, 'local', [], [youthSet])).toBe(BASE_POPULARITY);
+  expect(popularityFor(s, t.id, 'student', [], [youthSet])).toBe(Math.round(BASE_POPULARITY * 1.1));
+  expect(popularityFor(s, t.id, 'local_auntie', [], [youthSet])).toBe(BASE_POPULARITY);
   const allSet: SetDef = { ...EMO, target: 'all' };
   expect(objectStats(s, t.id, [], [allSet]).popularity).toBe(Math.round(BASE_POPULARITY * 1.1));
   // 세트 완성은 도감에 오르고 알림
@@ -221,7 +223,7 @@ test('만족: 인기 보너스는 기본 10에서 3마다 경치 1점', () => {
   s.storage['carrot'] = 5;
   s.segmentPopularity = { local: 0, tourist: 99 };
   spawnGuests(s, 1);
-  s.guests[0]!.type = 'tourist';
+  s.guests[0]!.type = 'student';
   updateGuests(s, 30_000);
   updateGuests(s, PREP_MS);
   expect(s.guests[0]!.mood).toBe('happy');

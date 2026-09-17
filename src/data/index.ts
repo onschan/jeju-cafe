@@ -1,8 +1,13 @@
-import type { ObjectDef, CropDef, MenuDef, GuestTypeDef, UnlockDef, IngredientDef, RoleDef, SkillDef, PromotionDef, GuestTags, ComboDef, ComboTarget, ComboStrength, ComboSide, SetDef, ItemDef, ItemSlot, Season } from '../sim/types.ts';
+import type { ObjectDef, CropDef, MenuDef, GuestTypeDef, UnlockDef, IngredientDef, RoleDef, SkillDef, PromotionDef, GuestTags, ComboDef, ComboTarget, ComboStrength, ComboSide, SetDef, ItemDef, ItemSlot, Season, MenuCategory, GuestEffect, GuestWant, UnlockCond, QuestDef, QuestCondition, QuestReward, SpotDef, SpotCategory, EventDef } from '../sim/types.ts';
 import objectsJson from './objects.json' with { type: 'json' };
 import cropsJson from './crops.json' with { type: 'json' };
 import menusJson from './menus.json' with { type: 'json' };
-import guestsJson from './guests.json' with { type: 'json' };
+import guestsJson from './generated/v2/guests.json' with { type: 'json' };
+import questsJson from './generated/v2/quests.json' with { type: 'json' };
+import chainsJson from './generated/v2/guest_chains.json' with { type: 'json' };
+import spotsJson from './generated/v2/spots.json' with { type: 'json' };
+import eventsJson from './generated/v2/events.json' with { type: 'json' };
+import { EVENT_EFFECTS } from './event_effects.ts';
 import unlocksJson from './unlocks.json' with { type: 'json' };
 import ingredientsJson from './ingredients.json' with { type: 'json' };
 import staffRolesJson from './staff_roles.json' with { type: 'json' };
@@ -15,6 +20,8 @@ import landmarksJson from './generated/landmarks.json' with { type: 'json' };
 import compatJson from './generated/compat.json' with { type: 'json' };
 import aurasJson from './generated/auras.json' with { type: 'json' };
 import itemsJson from './generated/items.json' with { type: 'json' };
+import itemsV2Json from './generated/v2/items.json' with { type: 'json' };
+import specialItemsJson from './generated/v2/special_items.json' with { type: 'json' };
 import compatMetaJson from './generated/compat_meta.json' with { type: 'json' };
 
 /** 시작부터 있는 특수 오브젝트 (필지 지형 생성용). 덤불은 곡괭이 대신 5만 원에 치운다. */
@@ -32,7 +39,165 @@ export interface ParcelDef { id: string; no: number; name: string; price: number
 export const PARCELS = parcelsJson as ParcelDef[];
 export const CROPS = cropsJson as CropDef[];
 export const MENUS = menusJson as unknown as MenuDef[];
-export const GUEST_TYPES = guestsJson as GuestTypeDef[];
+
+// ---------- 손님 100종 어댑터 (generated/v2/guests.json → GuestTypeDef) ----------
+/** 구 2종 id → v2 id. 삼춘은 이름이 같은 동네 삼춘, 관광객은 시작부터 오는 청년 타입(대학생)으로. */
+export const GUEST_ALIAS: Record<string, string> = { local: 'local_auntie', tourist: 'student' };
+export const canonicalGuestId = (id: string): string => GUEST_ALIAS[id] ?? id;
+export const GUEST_WEIGHT = 5;
+type RawGuest = {
+  id: string; name: string; tags: { gender: string | null; age: string | null; group: boolean };
+  effect: string; money: number; likes: string[] | null; unlock: Record<string, unknown>;
+  questId: string | null; nextGuestId: string | null; chain: string | null; line: string | null;
+};
+function toTags(t: RawGuest['tags']): GuestTags {
+  const gender = t.gender === 'f' || t.gender === 'female' ? 'female' : t.gender === 'm' || t.gender === 'male' ? 'male' : 'any';
+  const age = t.age === 'youth' || t.age === 'adult' || t.age === 'senior' ? t.age : 'none';
+  return { gender, age, group: !!t.group };
+}
+/** v2 unlock 객체 → UnlockCond. 모르는 형은 start로 취급하지 않고 never(빈 all) — 데이터 오류가 조용히 해금되지 않게. */
+export function toUnlockCond(u: Record<string, unknown> | string | null | undefined): UnlockCond {
+  if (u === 'start' || u == null) return { type: 'start' };
+  if (typeof u === 'string') return { type: 'all', conditions: [{ type: 'rank', rank: 99 }] };
+  const n = (k: string) => Number(u[k] ?? 0);
+  switch (u.type) {
+    case 'start': return { type: 'start' };
+    case 'rank': return { type: 'rank', rank: n('rank') };
+    case 'star': return { type: 'star', star: n('star') };
+    case 'segment': return { type: 'segment', guestId: canonicalGuestId(String(u.guestId)), satisfaction: n('satisfaction') || 30 };
+    case 'quest': return { type: 'quest', questId: String(u.questId) };
+    case 'spot': return { type: 'spot', spotId: String(u.spotId), level: n('level') || 1 };
+    case 'date': return { type: 'date', year: n('year') || 1, month: n('month') || 1 };
+    case 'count': return { type: 'count', objectId: String(u.objectId), count: n('count') || 1 };
+    case 'all': return { type: 'all', conditions: (Array.isArray(u.conditions) ? u.conditions : []).map((c) => toUnlockCond(c as Record<string, unknown>)) };
+    default: return { type: 'all', conditions: [{ type: 'rank', rank: 99 }] };
+  }
+}
+const WANTS = new Set<GuestWant>(['rest', 'food', 'fun', 'scenery', 'convenience', 'farm']);
+const EFFECTS = new Set<GuestEffect>(['item', 'money', 'ad', 'research', 'popularity', 'ticket']);
+/** 메뉴 분류: 음료는 누구나. 먹거리 → 식사·디저트, 즐길거리·청년 → 디저트, 시니어 → 식사. */
+function likesFromWants(wants: GuestWant[], tags: GuestTags): MenuCategory[] {
+  const out: MenuCategory[] = ['drink'];
+  if (wants.includes('food') || tags.age === 'senior') out.push('meal');
+  if (wants.includes('food') || wants.includes('fun') || tags.age === 'youth') out.push('dessert');
+  return out;
+}
+/** 경치 기준: 경치를 바라면 3, 청년 2, 성인 1, 시니어·동물 0 */
+function minSceneryOf(wants: GuestWant[], tags: GuestTags): number {
+  if (wants.includes('scenery')) return 3;
+  return tags.age === 'youth' ? 2 : tags.age === 'adult' ? 1 : 0;
+}
+export function adaptGuest(r: RawGuest): GuestTypeDef {
+  const tags = toTags(r.tags ?? { gender: null, age: null, group: false });
+  const wants = (r.likes ?? []).filter((w): w is GuestWant => WANTS.has(w as GuestWant));
+  return {
+    id: canonicalGuestId(r.id),
+    name: r.name,
+    likes: likesFromWants(wants, tags),
+    minScenery: minSceneryOf(wants, tags),
+    popularityShift: tags.age === 'senior' ? -2 : tags.age === 'youth' ? 2 : 0,
+    weight: GUEST_WEIGHT,
+    tags,
+    effect: EFFECTS.has(r.effect as GuestEffect) ? (r.effect as GuestEffect) : 'research',
+    wallet: Math.max(0, Number(r.money) || 0),
+    wants,
+    unlock: toUnlockCond(r.unlock),
+    questId: r.questId ?? null,
+    nextGuest: r.nextGuestId ? canonicalGuestId(r.nextGuestId) : null,
+    chain: r.chain ?? null,
+    line: r.line ?? '',
+  };
+}
+export const GUEST_TYPES: GuestTypeDef[] = (guestsJson as RawGuest[]).map(adaptGuest);
+export interface GuestChainDef { chain: string; guests: string[]; edges: { from: string; to: string; quest: string }[] }
+export const GUEST_CHAINS: GuestChainDef[] = (chainsJson as GuestChainDef[]).map((c) => ({
+  chain: c.chain, guests: c.guests.map(canonicalGuestId), edges: c.edges.map((e) => ({ from: canonicalGuestId(e.from), to: canonicalGuestId(e.to), quest: e.quest })),
+}));
+
+// ---------- 부탁 103 ----------
+type RawQuest = { id: string; guestId: string; description: string; condition: { type: string; params?: Record<string, unknown> }; rewards: Record<string, unknown>[]; rewardText: string | null; unlockGuestId: string | null };
+function toQuestCondition(c: RawQuest['condition']): QuestCondition {
+  const p = c.params ?? {};
+  const n = (k: string, d = 1) => Number(p[k] ?? d);
+  switch (c.type) {
+    case 'menuSold': return { type: 'menuSold', params: { menuId: String(p.menuId), count: n('count') } };
+    case 'objectPlaced': return { type: 'objectPlaced', params: { objectId: String(p.objectId), count: n('count') } };
+    case 'spotLevel': return { type: 'spotLevel', params: { spotId: String(p.spotId), level: n('level') } };
+    case 'segmentPopularity': return { type: 'segmentPopularity', params: { guestId: canonicalGuestId(String(p.guestId)), popularity: n('popularity', 30) } };
+    case 'item': return { type: 'item', params: { itemId: String(p.itemId), count: n('count') } };
+    default: return { type: 'none', params: {} };
+  }
+}
+function toQuestReward(r: Record<string, unknown>): QuestReward | null {
+  const t = r.type;
+  if (t === 'item') return typeof r.itemId === 'string' ? { type: 'item', itemId: r.itemId } : null;
+  if (t === 'money' || t === 'research' || t === 'ticket' || t === 'mileage' || t === 'ad') return { type: t, amount: Number(r.amount ?? 0) };
+  return null;
+}
+export const QUESTS: QuestDef[] = (questsJson as RawQuest[]).map((q) => ({
+  id: q.id,
+  guestId: canonicalGuestId(q.guestId),
+  description: q.description,
+  condition: toQuestCondition(q.condition),
+  rewards: (q.rewards ?? []).map(toQuestReward).filter((r): r is QuestReward => r !== null),
+  rewardText: q.rewardText ?? '',
+  unlockGuestId: q.unlockGuestId ? canonicalGuestId(q.unlockGuestId) : null,
+}));
+
+// ---------- 관광지 24 ----------
+type RawSpot = { id: string; name: string; category: string; categoryName: string; order: number; levels: { level: number; cost: number; appeal: number }[]; lv2GuestId: string | null; lv4QuestId: string | null; nextSpotId: string | null; unlock: Record<string, unknown> };
+const SPOT_CATEGORIES = new Set<SpotCategory>(['sight', 'food', 'play', 'nature']);
+export const SPOTS: SpotDef[] = (spotsJson as RawSpot[]).map((r) => ({
+  id: r.id,
+  name: r.name,
+  category: SPOT_CATEGORIES.has(r.category as SpotCategory) ? (r.category as SpotCategory) : 'sight',
+  categoryName: r.categoryName,
+  order: r.order,
+  levels: r.levels.map((l) => ({ level: l.level, cost: l.cost, appeal: l.appeal })),
+  lv2GuestId: r.lv2GuestId ? canonicalGuestId(r.lv2GuestId) : null,
+  lv4QuestId: r.lv4QuestId ?? null,
+  nextSpotId: r.nextSpotId ?? null,
+  unlock: toUnlockCond(r.unlock),
+}));
+
+// ---------- 이벤트 42 ----------
+type RawEvent = { id: string; name: string; seasonText: string | null; prob: number; conditionText: string | null; effectText: string | null; line: string | null };
+const SEASON_MONTHS: Record<string, number[]> = { '봄': [3, 4, 5], '여름': [6, 7, 8], '가을': [9, 10, 11], '겨울': [12, 1, 2] };
+/** "7~9월·12~1월" / "봄·가을" / "매월" → 달 목록. "매주 토"·"밭 조성 시"처럼 달 단위가 아니면 빈 배열. */
+export function parseSeasonMonths(text: string | null): number[] {
+  if (!text) return [];
+  if (text.includes('매월')) return [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+  const out = new Set<number>();
+  for (const part of text.split('·')) {
+    const p = part.trim();
+    if (SEASON_MONTHS[p]) { for (const m of SEASON_MONTHS[p]!) out.add(m); continue; }
+    const range = /^(\d+)\s*~\s*(\d+)월$/.exec(p);
+    if (range) {
+      const a = Number(range[1]), b = Number(range[2]);
+      for (let m = a; ; m = (m % 12) + 1) { out.add(m); if (m === b) break; }
+      continue;
+    }
+    const single = /^(\d+)월$/.exec(p);
+    if (single) out.add(Number(single[1]));
+  }
+  return [...out].sort((a, b) => a - b);
+}
+export const EVENTS: EventDef[] = (eventsJson as RawEvent[]).map((r) => {
+  const spec = EVENT_EFFECTS[r.id];
+  return {
+    id: r.id,
+    name: r.name,
+    months: parseSeasonMonths(r.seasonText),
+    prob: Math.max(0, Math.min(100, Number(r.prob) || 0)),
+    conditionText: r.conditionText,
+    effectText: r.effectText ?? '',
+    line: r.line ?? '',
+    choice: spec?.choice ?? false,
+    effects: spec?.effects ?? [],
+    declineEffects: spec?.decline ?? [],
+  };
+});
+
 export const UNLOCKS = unlocksJson as UnlockDef[];
 export const INGREDIENTS = ingredientsJson as IngredientDef[];
 export const ROLES = staffRolesJson as RoleDef[];
@@ -44,13 +209,13 @@ export const DIALOGUE = dialogueJson as {
 };
 
 // ---------- 인구 태그 (마스터 GDD §1) ----------
-/** guests.json에 tags가 없을 때의 기본값. 삼춘은 성인·시니어 섞임 → 시니어, 관광객 → 청년. */
-const DEFAULT_TAGS: Record<string, GuestTags> = {
-  local: { gender: 'any', age: 'senior', group: false },
-  tourist: { gender: 'any', age: 'youth', group: false },
-};
 export function guestTags(typeId: string): GuestTags {
-  return guestTypeDef(typeId).tags ?? DEFAULT_TAGS[typeId] ?? { gender: 'any', age: 'adult', group: false };
+  return guestTypeDef(typeId).tags;
+}
+/** 손님 대사. 타입별 대사가 없으면 시니어는 삼춘, 나머지는 관광객(대학생) 말투를 빌린다. */
+export function guestDialogue(typeId: string): { happy: string[]; meh: { no_menu: string[]; scenery: string[]; wait: string[] } } {
+  const id = canonicalGuestId(typeId);
+  return DIALOGUE.guest[id] ?? DIALOGUE.guest[guestTags(id).age === 'senior' ? 'local_auntie' : 'student']!;
 }
 /** 콤보·세트 대상이 이 태그의 손님에게 해당하나 */
 export function targetMatches(target: ComboTarget, tags: GuestTags): boolean {
@@ -169,7 +334,7 @@ export function adaptItem(r: RawItem): ItemDef {
     name: String(r.name ?? r.id),
     stat: eff.stat,
     value: eff.value,
-    fitIds: toIds(r.fitIds ?? r.fit ?? r.fitText ?? []),
+    fitIds: toIds(r.fitIds ?? r.fit ?? r.bestFacilities ?? r.fitText ?? []),
     fitSlots: Object.keys(slots).length > 0 ? slots : undefined,
     sourceText: String(r.sourceText ?? r.source ?? ''),
   };
@@ -183,7 +348,12 @@ export const COMBO_META = {
 };
 export const COMBOS: ComboDef[] = (compatJson as RawCombo[]).map(adaptCombo);
 export const SETS: SetDef[] = (aurasJson as RawSet[]).map(adaptSet);
-export const ITEMS: ItemDef[] = (itemsJson as RawItem[]).map(adaptItem);
+/** v1 12 + v2 20(중복 제외) + 특수 아이템 12(효과 0 — 시설엔 못 쓰고 부탁 보상·해금 열쇠로만) */
+const ITEMS_V1: ItemDef[] = (itemsJson as RawItem[]).map(adaptItem);
+const V1_IDS = new Set(ITEMS_V1.map((i) => i.id));
+const ITEMS_V2: ItemDef[] = (itemsV2Json as RawItem[]).filter((r) => !V1_IDS.has(String(r.id))).map(adaptItem);
+const SPECIAL_ITEMS: ItemDef[] = (specialItemsJson as RawItem[]).map((r) => ({ id: String(r.id), name: String(r.name ?? r.id), stat: 'popularity', value: 0, fitIds: [], sourceText: String(r.sourceText ?? '') }));
+export const ITEMS: ItemDef[] = [...ITEMS_V1, ...ITEMS_V2, ...SPECIAL_ITEMS];
 /** 경관 계절 보너스 (v2 표 §13.1). ObjectDef.seasonScenery가 없을 때 id로 찾는다. */
 export const SEASON_SCENERY: Record<string, Partial<Record<Season, number>>> = {
   canola: { spring: 12 }, hydrangea: { summer: 9 }, pampas: { autumn: 9 }, camellia: { winter: 11 },
@@ -202,6 +372,9 @@ const OBJ = indexBy(OBJECTS);
 const CROP = indexBy(CROPS);
 const MENU = indexBy(MENUS);
 const GUEST = indexBy(GUEST_TYPES);
+const QUEST = indexBy(QUESTS);
+const SPOT = indexBy(SPOTS);
+const EVENT = indexBy(EVENTS);
 const INGREDIENT = indexBy(INGREDIENTS);
 const ROLE = indexBy(ROLES);
 const SKILL = indexBy(SKILLS);
@@ -221,7 +394,10 @@ export const setDef = (id: string) => must(SET, id, 'set');
 export const itemDef = (id: string) => must(ITEM, id, 'item');
 export const cropDef = (id: string) => must(CROP, id, 'crop');
 export const menuDef = (id: string) => must(MENU, id, 'menu');
-export const guestTypeDef = (id: string) => must(GUEST, id, 'guestType');
+export const guestTypeDef = (id: string) => must(GUEST, canonicalGuestId(id), 'guestType');
+export const questDef = (id: string) => must(QUEST, id, 'quest');
+export const spotDef = (id: string) => must(SPOT, id, 'spot');
+export const eventDef = (id: string) => must(EVENT, id, 'event');
 export const ingredientDef = (id: string) => must(INGREDIENT, id, 'ingredient');
 export const roleDef = (id: string) => must(ROLE, id, 'role');
 export const skillDef = (id: string) => must(SKILL, id, 'skill');

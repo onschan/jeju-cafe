@@ -3,13 +3,14 @@ import { INITIAL_UNLOCKED, ROLES } from '../data/index.ts';
 import { START_HOUR } from './clock.ts';
 import { makeParcels, PARCEL_COLS } from './parcels.ts';
 import { nextRandom } from './rng.ts';
+import { initGuestTypes, initSegmentPopularity } from './segments.ts';
 
 /** 필지 한 장의 크기. 격자는 처음부터 3×2 필지 전체(30×16)다. */
 export const PARCEL_W = 10;
 export const PARCEL_H = 8;
 export const GRID_W = PARCEL_W * PARCEL_COLS;
 export const GRID_H = PARCEL_H * 2;
-export const SAVE_VERSION = 6;
+export const SAVE_VERSION = 7;
 /** 시작 자금 500만 + 정착지원금(잔고 < 40만이면 1회 300만) — 마스터 GDD §1 */
 export const START_MONEY = 5_000_000;
 export const SETTLE_GRANT = 3_000_000;
@@ -116,8 +117,19 @@ export function createInitialState(seed: number, playerId = 'local', createdAt =
     slots: { barista: 1, cook: 1, hall: 2, field: 1, carry: 0, guide: 0 },
     activePromotions: [],
     youtuberBoostMonths: 0,
-    segmentPopularity: { local: 30, tourist: 20 },
+    segmentPopularity: initSegmentPopularity(),
     targetSegment: null,
+    targets: [],
+    guestTypes: initGuestTypes(),
+    visitBonus: {},
+    tickets: 0,
+    mileage: 0,
+    rank: 1,
+    star: 1,
+    board: { quests: {}, events: [] },
+    spots: {},
+    effects: [],
+    menuSold: {},
     codex: { combos: [], sets: [] },
     inventory: {},
     itemBonus: {},

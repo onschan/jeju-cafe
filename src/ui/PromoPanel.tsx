@@ -47,18 +47,19 @@ export function PromoPanel() {
   return (
     <div>
       {/* 손님층 인기 */}
-      <div style={{ marginBottom: 4 }}><b>손님층 인기</b> <span style={{ fontSize: 13, color: PALETTE.inkSoft }}>타깃을 정하면 홍보 효과 1.5배</span></div>
+      <div style={{ marginBottom: 4 }}><b>손님층 인기</b> <span style={{ fontSize: 13, color: PALETTE.inkSoft }}>타깃(최대 3)을 정하면 홍보 효과 1.5배·만족 +3</span></div>
       <div style={card}>
-        {GUEST_TYPES.map((t) => {
+        {GUEST_TYPES.filter((t) => s.guestTypes[t.id]?.unlocked).map((t) => {
           const v = effectivePopularity(s, t.id);
-          const on = s.targetSegment === t.id;
+          const on = s.targets.includes(t.id);
           return (
             <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4, fontSize: 13 }}>
-              <Icon name={t.id === 'tourist' ? 'tourist' : 'local'} size={20} />
+              <Icon name={t.tags.age === 'senior' ? 'local' : 'tourist'} size={20} />
               <span style={{ width: 64 }}>{t.name}</span>
+              <span style={{ fontSize: 11, color: PALETTE.inkSoft, width: 34 }}>{s.guestTypes[t.id]?.regular === 'vip' ? 'VIP' : s.guestTypes[t.id]?.regular === 'regular' ? '단골' : `😊${s.guestTypes[t.id]?.satisfaction ?? 0}`}</span>
               <Bar value={v} max={99} width={90} />
               <span style={{ width: 24 }}>{Math.round(v)}</span>
-              <button style={{ ...(on ? brownBtnOn : brownBtn), marginBottom: 0, padding: '0 8px', fontSize: 13 }} onClick={() => dispatch({ type: 'setTarget', segment: on ? null : t.id })}>
+              <button style={{ ...(on ? brownBtnOn : brownBtn), marginBottom: 0, padding: '0 8px', fontSize: 13 }} onClick={() => dispatch({ type: 'setTarget', segment: t.id })}>
                 {on ? '타깃 ★' : '타깃'}
               </button>
             </div>

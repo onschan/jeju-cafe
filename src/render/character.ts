@@ -1,5 +1,5 @@
 import { Container, Sprite, Graphics } from 'pixi.js';
-import type { Face, RoleId } from '../sim/index.ts';
+import type { Face, RoleId, GuestTags, GuestWant } from '../sim/index.ts';
 import { tex, hasAssets, spriteName } from './assets';
 
 /** 파츠 캐릭터: 몸(피부) → 상의(tint) → 머리(tint) → 액세서리 순으로 쌓는다. tools/assets/sprites_chars.py의 compose_character와 같은 순서. */
@@ -52,6 +52,19 @@ export const ROLE_ACC: Record<RoleId, AccKind> = {
 
 export function staffParts(face: Face, role: RoleId | null): CharacterParts {
   return partsOfFace(face, role ? [ROLE_ACC[role]] : []);
+}
+
+/** 손님 파츠: 얼굴(id 해시)에 태그로 머리 모양·액세서리를 얹는다. 여성 0~3, 남성 4~6, 시니어 남성은 대머리(7)도. 단체 → 배낭, 경치 → 카메라, 농사 → 밀짚모자, 편의 → 안경. */
+export function guestParts(face: Face, tags: GuestTags, wants: GuestWant[]): CharacterParts {
+  const base = partsOfFace(face);
+  const h = face.hair + face.top * 7;
+  const hairStyle = tags.gender === 'female' ? h % 4 : tags.gender === 'male' ? (tags.age === 'senior' ? 4 + (h % 4) : 4 + (h % 3)) : h % 7;
+  const accs: AccKind[] = [];
+  if (tags.group) accs.push('backpack');
+  else if (wants.includes('scenery')) accs.push('camera');
+  else if (wants.includes('farm')) accs.push('strawhat');
+  else if (wants.includes('convenience')) accs.push('glasses');
+  return { ...base, hairStyle, accs };
 }
 
 const LAYER = { body: 'body', top: 'top', hair: 'hair' } as const;

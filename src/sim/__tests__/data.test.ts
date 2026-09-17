@@ -1,5 +1,5 @@
 import {
-  OBJECTS, CROPS, MENUS, GUEST_TYPES, UNLOCKS, ROLES, INGREDIENTS, SKILLS, NAMES, PROMOTIONS, DIALOGUE,
+  OBJECTS, CROPS, MENUS, GUEST_TYPES, UNLOCKS, ROLES, INGREDIENTS, SKILLS, NAMES, PROMOTIONS, DIALOGUE, guestDialogue,
   objectDef, cropDef, menuDef, ingredientDef, roleDef,
 } from '../../data/index.ts';
 import { INITIAL_UNLOCKED } from '../../data/index.ts';
@@ -89,9 +89,11 @@ test('역할 정의: id·stat이 유효하다', () => {
   expect(ROLES.filter((r) => r.unlockedAtStart).map((r) => r.id).sort()).toEqual(['barista', 'cook', 'field', 'hall']);
 });
 
-test('대사 데이터: 손님 타입마다 happy·meh(no_menu/scenery/wait) 5개씩', () => {
+test('대사 데이터: 손님 타입마다(없으면 삼춘·관광객 말투로 대체) happy·meh(no_menu/scenery/wait) 5개씩', () => {
+  expect(DIALOGUE.guest['local_auntie']).toBeDefined();
+  expect(DIALOGUE.guest['student']).toBeDefined();
   for (const g of GUEST_TYPES) {
-    const d = DIALOGUE.guest[g.id];
+    const d = guestDialogue(g.id);
     expect(d).toBeDefined();
     expect(d!.happy.length).toBe(5);
     expect(d!.meh.no_menu.length).toBe(5);

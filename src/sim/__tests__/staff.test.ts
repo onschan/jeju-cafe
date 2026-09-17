@@ -98,8 +98,9 @@ test('월말 월급 차감, 못 주면 unpaidMonths, 2달이면 퇴사', () => {
   expect(s.lastMonthCard!.costs.salary).toBe(0);
   for (let i = 0; i < 30; i++) tick(s, DAY_MS);
   expect(s.staff.length).toBe(0);
-  expect(s.notices.length).toBe(1);
-  expect(s.notices[0]).toContain(st.name);
+  const quit = s.notices.filter((n) => n.includes('그만뒀어요'));
+  expect(quit.length).toBe(1);
+  expect(quit[0]).toContain(st.name);
 });
 
 test('assign·fire·levelUp(스탯 선택, 비용 = 스탯×10)', () => {
@@ -251,17 +252,17 @@ test('조리 시간: 직원 없으면 PREP_MS, 바리스타(감각 50)면 그 70
   expect(s2.guests[0]!.mood).not.toBeNull();
   // 디저트는 요리사, 빠른 손 스킬은 더 줄인다
   const s3 = cafe(); setSlot(s3, 0, 'scone'); s3.staff.push(staffWith({ cooking: 50 }, 'cook', 'quick_hands'));
-  spawnGuests(s3, 1); s3.guests[0]!.type = 'tourist'; updateGuests(s3, 6000);
+  spawnGuests(s3, 1); s3.guests[0]!.type = 'student'; updateGuests(s3, 6000);
   expect(s3.guests[0]!.waitMs).toBe(PREP_MS * 0.5 * 0.8);
 });
 
 test('홀 직원 서비스는 만족 기준을 낮춘다', () => {
   // tourist minScenery 2, 자리 경치 1 → meh(scenery). 홀 service 60이면 happy
-  const s = cafe(); spawnGuests(s, 1); s.guests[0]!.type = 'tourist'; updateGuests(s, 6000); updateGuests(s, PREP_MS);
+  const s = cafe(); spawnGuests(s, 1); s.guests[0]!.type = 'student'; updateGuests(s, 6000); updateGuests(s, PREP_MS);
   expect(s.guests[0]!.mood).toBe('meh');
   expect(s.guests[0]!.moodReason).toBe('scenery');
   const s2 = cafe(); s2.staff.push(staffWith({ service: 60 }, 'hall'));
-  spawnGuests(s2, 1); s2.guests[0]!.type = 'tourist'; updateGuests(s2, 6000); updateGuests(s2, PREP_MS);
+  spawnGuests(s2, 1); s2.guests[0]!.type = 'student'; updateGuests(s2, 6000); updateGuests(s2, PREP_MS);
   expect(s2.guests[0]!.mood).toBe('happy');
   expect(s2.guests[0]!.moodReason).toBeNull();
 });

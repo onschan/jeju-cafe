@@ -9,6 +9,7 @@ import { canPostJob, postJob, canHire, hire, canFire, fire, canAssign, assign, c
 import { canPromote, promote, canSetTarget, setTarget } from './promotions.ts';
 import { discoverCombos } from './compat.ts';
 import { canUseItem, useItem } from './items.ts';
+import { evaluateUnlocks } from './segments.ts';
 
 export const PROTECTED_TYPES = new Set(['busstop', 'warehouse', 'gate', 'spring']);
 /** 회전할 수 있는 오브젝트 (rot 0..3, 스프라이트 변형 _r{n}이 있을 때만 보인다) */
@@ -50,6 +51,7 @@ function applyInner(state: GameState, a: Action): ApplyResult {
       placeObject(state, a.objectType, a.x, a.y, ROTATABLE_TYPES.has(a.objectType) && a.rot !== undefined ? ((a.rot % 4) + 4) % 4 : undefined);
       state.money -= def.cost;
       discoverCombos(state);
+      evaluateUnlocks(state); // count 해금 (감귤나무 3그루 → 까치)
       return { ok: true };
     }
     case 'remove': {

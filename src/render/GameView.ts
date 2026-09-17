@@ -7,7 +7,12 @@ import { isoTerrainTexture, isoObjectTexture, glowTexture, label, bubble, clearT
 import { loadAssets, tex, peekTex, hasAssets, spriteName } from './assets';
 import { attachCamera, type CameraBounds, type CameraOptions } from './camera';
 import { ISO_W, ISO_H, cellToScreen, cellCenter, footAnchor, depth } from './iso';
-import { makeCharacterNode, updateCharacterNode, staffParts, sameAccs, CHAR_H, type CharacterNode, type Dir, type Frame } from './character';
+import { makeCharacterNode, updateCharacterNode, staffParts, guestParts, sameAccs, CHAR_H, type CharacterNode, type Dir, type Frame } from './character';
+import { guestFace } from '../sim/segments.ts';
+import { guestTypeDef } from '../data/index.ts';
+
+/** 전용 스프라이트가 있는 손님 타입 (guest_local·guest_tourist 시트) */
+const GUEST_SPRITE_KEY: Record<string, string> = { local_auntie: 'local', student: 'tourist' };
 
 export type GameViewOptions = Pick<CameraOptions, 'onTap' | 'dragCapture' | 'onDragCell' | 'onDragEnd'>;
 
@@ -64,6 +69,8 @@ interface ObjEntry {
 interface GuestEntry {
   node: Container;
   sprite: Sprite | null;
+  /** 전용 시트가 없는 타입은 파츠 캐릭터로 */
+  char: CharacterNode | null;
   /** 이미 주문한 손님(불러오기 포함)은 코인 팝을 띄우지 않는다 */
   hadMenu: boolean;
 }
@@ -490,19 +497,21 @@ export class GameView {
     }
   }
 
-  /** 손님 노드. 원점은 발끝(셀 다이아몬드 중심). */
+  /** 손님 노드. 원점은 발끝(셀 다이아몬드 중심). 전용 시트가 있는 타입은 그것을, 나머지는 태그로 조합한 파츠 캐릭터. */
   private makeGuestNode(g: Guest): GuestEntry {
     const c = new Container();
-    const t = hasAssets() ? tex(spriteName.guest(g.type, 'down', 1)) : null;
+    const key = GUEST_SPRITE_KEY[g.type];
+    const t = key && hasAssets() ? tex(spriteName.guest(key, 'down', 1)) : null;
     if (t) {
       const sp = new Sprite(t);
       sp.anchor.set(0.5, 1);
       c.addChild(sp);
-      return { node: c, sprite: sp, hadMenu: g.menuId !== null };
+      return { node: c, sprite: sp, char: null, hadMenu: g.menuId !== null };
     }
-    const body = new Graphics().roundRect(-8, -36, 16, 24, 4).fill(g.type === 'local' ? 0x4a90d9 : 0xe07a5f);
-    c.addChild(body);
-    return { node: c, sprite: null, hadMenu: g.menuId !== null };
+    const def = guestTypeDef(g.type);
+    const ch = makeCharacterNode(guestParts(guestFace(g.type), def.tags, def.wants), guestDir(g), 1);
+    c.addChild(ch);
+    return { node: c, sprite: null, char: ch, hadMenu: g.menuId !== null };
   }
 
   private syncGuests(state: GameState, now: number) {
@@ -534,10 +543,12 @@ export class GameView {
         // 같은 칸의 바닥 오브젝트(올렛길·정류장)보다 앞에 그린다
         node.zIndex = g.x + g.y + 0.5;
       }
+      const walking = g.phase !== 'seated' && g.path.length > 0;
       if (entry.sprite) {
-        const walking = g.phase !== 'seated' && g.path.length > 0;
-        const t = tex(spriteName.guest(g.type, guestDir(g), walking ? walkFrame : 1));
+        const t = tex(spriteName.guest(GUEST_SPRITE_KEY[g.type] ?? g.type, guestDir(g), walking ? walkFrame : 1));
         if (t && entry.sprite.texture !== t) entry.sprite.texture = t;
+      } else if (entry.char) {
+        updateCharacterNode(entry.char, guestDir(g), walking ? walkFrame : 1);
       }
       // 첫 주문(판매) 순간에 코인 팝
       if (!entry.hadMenu && g.menuId !== null) {

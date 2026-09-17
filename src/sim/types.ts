@@ -50,18 +50,115 @@ export interface MenuDef {
 
 /** 인구 태그 (마스터 GDD §1): 콤보·세트의 대상 손님층은 이 태그로 판정한다 */
 export type Gender = 'female' | 'male' | 'any';
-export type AgeTag = 'youth' | 'adult' | 'senior';
+export type AgeTag = 'youth' | 'adult' | 'senior' | 'none'; // none = 동물·정령 (연령 대상 콤보에 안 걸린다)
 export interface GuestTags { gender: Gender; age: AgeTag; group: boolean }
+
+/** 손님 효과 6종 (마스터 GDD §3): 만족 방문마다 발동 */
+export type GuestEffect = 'item' | 'money' | 'ad' | 'research' | 'popularity' | 'ticket';
+/** 손님이 바라는 것 (v2 표의 likes 코드) — 만족 판정·UI 표시용 */
+export type GuestWant = 'rest' | 'food' | 'fun' | 'scenery' | 'convenience' | 'farm';
+/** 손님·관광지 해금 조건 (8형) */
+export type UnlockCond =
+  | { type: 'start' }
+  | { type: 'rank'; rank: number }
+  | { type: 'star'; star: number }
+  | { type: 'segment'; guestId: string; satisfaction: number }
+  | { type: 'quest'; questId: string }
+  | { type: 'spot'; spotId: string; level: number }
+  | { type: 'date'; year: number; month: number }
+  | { type: 'count'; objectId: string; count: number }
+  | { type: 'all'; conditions: UnlockCond[] };
 
 export interface GuestTypeDef {
   id: string;
   name: string;
-  likes: MenuCategory[];
+  likes: MenuCategory[];   // 주문할 수 있는 메뉴 분류 (v2 wants에서 유도)
   minScenery: number;
   popularityShift: number; // happy일 때 게이지 이동 (−: 동네, +: 인기)
   weight: number;          // 스폰 가중치
-  tags?: GuestTags;        // 없으면 data/index.ts의 기본값 (local=시니어, tourist=청년)
+  tags: GuestTags;
+  effect: GuestEffect;
+  wallet: number;          // 예산 상한 (이보다 비싼 메뉴는 주문 안 함). 0 = 주문 안 함(동물·정령)
+  wants: GuestWant[];      // v2 likes 코드
+  unlock: UnlockCond;
+  questId: string | null;
+  nextGuest: string | null;
+  chain: string | null;
+  line: string;            // 대표 대사 (부탁 카드)
 }
+/** 손님 타입별 진행 상태. 인기는 state.segmentPopularity(홍보와 공유)에 있다. */
+export type RegularTier = 'none' | 'regular' | 'vip';
+export interface GuestTypeState { unlocked: boolean; satisfaction: number; regular: RegularTier; questDone: boolean }
+
+// ---------- 게시판: 부탁·이벤트·관광지 (2B-2 Task 4) ----------
+export type QuestCondition =
+  | { type: 'menuSold'; params: { menuId: string; count: number } }
+  | { type: 'objectPlaced'; params: { objectId: string; count: number } }
+  | { type: 'spotLevel'; params: { spotId: string; level: number } }
+  | { type: 'segmentPopularity'; params: { guestId: string; popularity: number } }
+  | { type: 'item'; params: { itemId: string; count: number } }
+  | { type: 'none'; params: Record<string, never> };
+export type QuestReward =
+  | { type: 'money' | 'research' | 'ticket' | 'mileage' | 'ad'; amount: number }
+  | { type: 'item'; itemId: string };
+export interface QuestDef {
+  id: string;
+  guestId: string;
+  description: string;
+  condition: QuestCondition;
+  rewards: QuestReward[];
+  rewardText: string;
+  unlockGuestId: string | null;
+}
+export type QuestStatus = 'offered' | 'active' | 'done' | 'failed';
+export interface QuestState { id: string; status: QuestStatus; offeredMonthIndex: number; deadlineMonthIndex: number | null; progress: number }
+
+export type EventFilter = 'all' | 'group' | 'female' | 'male' | 'youth' | 'adult' | 'senior' | 'local' | 'tourist' | 'family' | { guestId: string };
+/** 이벤트 효과 DSL (data/event_effects.ts가 effectText를 이걸로 옮긴다) */
+export type EventEffect =
+  | { kind: 'money'; amount: number }
+  | { kind: 'research'; amount: number }
+  | { kind: 'mileage'; amount: number }
+  | { kind: 'tickets'; amount: number }
+  | { kind: 'spawnMult'; mult: number; days: number; filter?: EventFilter }
+  | { kind: 'harvestMult'; mult: number; days: number }
+  | { kind: 'upkeepMult'; mult: number; days: number }
+  | { kind: 'noGuests'; days: number }
+  | { kind: 'popularity'; delta: number; filter?: EventFilter }
+  | { kind: 'grantItem'; itemId: string; n: number }
+  | { kind: 'unlockObject'; objectId: string }
+  | { kind: 'notice'; text: string };
+export interface EventDef {
+  id: string;
+  name: string;
+  months: number[];        // 굴릴 수 있는 달 (빈 배열 = 월 롤 대상 아님: 버튼·매주 등)
+  prob: number;            // 0~100 (%)
+  conditionText: string | null;
+  effectText: string;
+  line: string;
+  choice: boolean;         // 수락/거절 있는 이벤트
+  effects: EventEffect[];  // choice면 수락 시
+  declineEffects: EventEffect[];
+}
+export type EventStatus = 'pending' | 'accepted' | 'declined' | 'applied';
+export interface EventState { id: string; monthIndex: number; status: EventStatus }
+/** 진행 중인 이벤트 효과. untilDay = 절대 일 인덱스(포함 안 함). */
+export interface ActiveEffect { kind: 'spawnMult' | 'harvestMult' | 'upkeepMult' | 'noGuests'; mult: number; filter?: EventFilter; untilDay: number; source: string }
+
+export type SpotCategory = 'sight' | 'food' | 'play' | 'nature';
+export interface SpotDef {
+  id: string;
+  name: string;
+  category: SpotCategory;
+  categoryName: string;
+  order: number;
+  levels: { level: number; cost: number; appeal: number }[];
+  lv2GuestId: string | null;
+  lv4QuestId: string | null;
+  nextSpotId: string | null;
+  unlock: UnlockCond;
+}
+export interface BoardState { quests: Record<string, QuestState>; events: EventState[] }
 
 // ---------- 상성·세트·아이템 (2B-2) ----------
 /** 콤보·세트의 대상 손님층 (v2 표의 target) */
@@ -252,6 +349,7 @@ export interface Guest {
   say: string | null;   // 렌더용 말풍선 대사
   timerMs: number;      // seated 남은 시간
   waitMs: number;       // 주문 후 조리 대기 남은 시간
+  paid: number;         // 주문 시 낸 돈 (자금 효과의 팁 계산용)
 }
 
 export interface Clock {
@@ -288,7 +386,18 @@ export interface GameState {
   activePromotions: ActivePromotion[];
   youtuberBoostMonths: number;
   segmentPopularity: Record<string, number>; // 손님층 인기 0~99
-  targetSegment: string | null;               // 타깃 손님층: 홍보 효과 ×1.5
+  targetSegment: string | null;               // 타깃 손님층 (targets[0]의 별칭 — HUD·구 코드용): 홍보 효과 ×1.5
+  targets: string[];                          // 타깃 손님 타입 최대 3
+  guestTypes: Record<string, GuestTypeState>; // 손님 타입별 해금·만족·단골
+  visitBonus: Record<string, number>;         // objectType → 시설 인기 효과 누적 (+10 상한)
+  tickets: number;                            // 응모권
+  mileage: number;
+  rank: number;                               // 카페 랭크 (임시: 해금 손님 수로 오른다. Task 7이 대체)
+  star: number;                               // ★ 등급 (Task 7 전까지 1)
+  board: BoardState;
+  spots: Record<string, number>;              // spotId → 레벨 (0 = 미투자)
+  effects: ActiveEffect[];                    // 이벤트 효과 (기간형)
+  menuSold: Record<string, number>;           // menuId → 누적 판매 수 (부탁 진행: 수락 시점 값과의 차)
   codex: { combos: string[]; sets: string[] }; // 발동한 적 있는 상성·세트 id (도감)
   inventory: Record<string, number>;          // itemId → 개수
   itemBonus: Record<string, ItemBonus>;       // objectType → 아이템 누적 보너스 (인기 상한 +30)
@@ -331,6 +440,9 @@ export type Action =
   | { type: 'levelUp'; staffId: string; stat: StatKey }
   | { type: 'promote'; staffId: string; promotionId: string }
   | { type: 'setTarget'; segment: string | null }
-  | { type: 'useItem'; itemId: string; objectType: string };
+  | { type: 'useItem'; itemId: string; objectType: string }
+  | { type: 'acceptQuest'; id: string }
+  | { type: 'respondEvent'; id: string; accept: boolean }
+  | { type: 'investSpot'; id: string };
 
 export interface ApplyResult { ok: boolean; reason?: string }

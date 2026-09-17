@@ -1,5 +1,5 @@
 import type { GameState, Parcel, ParcelBonus, ApplyResult } from './types.ts';
-import { PARCELS } from '../data/index.ts';
+import { PARCELS, guestTags } from '../data/index.ts';
 import { pushNotice } from './staff.ts';
 
 /** 필지는 3열 × 2행, 각 10×8 (§18). 1번(시작)이 왼쪽 위. */
@@ -12,7 +12,11 @@ export const SINGUGAN_DISCOUNT = 0.3;
 /** 해안: 관광객·단체 유입 ×1.3, 좌석 Fee ×1.10 */
 export const COAST_SPAWN_MULT = 1.3;
 export const COAST_FEE_MULT = 1.1;
-export const COAST_TYPES = new Set(['tourist', 'group']);
+/** 해안 유입 보너스를 받는 손님: 청년(관광객층)·단체 */
+export function coastBoosted(typeId: string): boolean {
+  const t = guestTags(typeId);
+  return t.group || t.age === 'youth';
+}
 /** 오름: 그 필지 좌석의 경치 +2 */
 export const OREUM_SCENERY = 2;
 /** 밭담: 밭 품질 "좋음" → 수확 ×1.2. 곶자왈: 차·고사리 ×1.1. 용천수: 모든 작물 ×1.1 */
@@ -98,7 +102,7 @@ export function parcelBonusAt(state: GameState, x: number, y: number): ParcelBon
 
 /** 좌석이 있는 필지의 스폰 가중치 배수 (해안: 관광객·단체 ×1.3) */
 export function parcelSpawnMult(bonus: ParcelBonus, typeId: string): number {
-  return bonus === 'coast' && COAST_TYPES.has(typeId) ? COAST_SPAWN_MULT : 1;
+  return bonus === 'coast' && coastBoosted(typeId) ? COAST_SPAWN_MULT : 1;
 }
 
 /** 좌석이 있는 필지의 요금 배수 (해안 ×1.10) */

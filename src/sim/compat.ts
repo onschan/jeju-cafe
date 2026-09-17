@@ -143,11 +143,11 @@ function clampPop(n: number): number {
   return Math.max(0, Math.min(POPULARITY_CAP, Math.round(n)));
 }
 
-/** 상성·아이템을 더한 인기(세트 배수 전)와 요금 % */
+/** 상성·아이템·손님 효과(시설 인기, +10 상한)를 더한 인기(세트 배수 전)와 요금 % */
 function rawStats(state: GameState, obj: PlacedObject, active: ActiveCombo[]): { pop: number; feePct: number } {
   const def = objectDef(obj.type);
   const item = state.itemBonus[obj.type] ?? { popularity: 0, feePct: 0 };
-  let pop = (def.popularity ?? BASE_POPULARITY) + item.popularity;
+  let pop = (def.popularity ?? BASE_POPULARITY) + item.popularity + (state.visitBonus[obj.type] ?? 0);
   let feePct = (def.feePct ?? BASE_FEE_PCT) + item.feePct;
   for (const c of active) {
     const d = comboDelta(c.strength);
