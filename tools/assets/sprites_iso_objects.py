@@ -129,6 +129,53 @@ def table_out() -> IsoCanvas:
     return c
 
 
+def table_parasol() -> IsoCanvas:
+    """파라솔 테이블 (v3 §5 시작 시설): 야외 테이블보다 큰 빨강/흰 파라솔 + 흰 원탁 + 의자 2. 1×1."""
+    c = cv(58, shadow=0.48)
+    chair(c, 0.28, 0.74, 'left'); chair(c, 0.74, 0.28, 'right')
+    c.pillar(0.5, 0.5, 2, 11, STEEL)
+    c.disc(0.5, 0.5, 0.3, 3, WHITE, z0=11)
+    cup(c, 0.4, 0.42, 14, ORANGE[1]); cup(c, 0.6, 0.58, 14, WHITE[1])
+    c.pillar(0.5, 0.5, 2, 32, STEEL, z0=14)
+    sx, sy = c.spx(0.5, 0.5, 47)
+    rx, ry = 26, 10
+    for y in range(sy - ry, sy + 1):
+        for x in range(sx - rx, sx + rx):
+            if ((x - sx + 0.5) / rx) ** 2 + ((y - sy) / (ry + 0.5)) ** 2 <= 1:
+                stripe = ((x - sx + 40) // 8) % 2 == 0
+                tones = RED if stripe else WHITE
+                shade = 2 if (y <= sy - 7 or x <= sx - 14) and y < sy - 1 else 0 if y >= sy - 1 else 1
+                c.put(x, y, tones[shade])
+    c.hline(sx - rx + 1, sx + rx - 2, sy, BASALT[0])
+    for x in range(sx - rx + 3, sx + rx - 2, 8):
+        c.put(x, sy + 1, RED[0])
+    c.rect(sx - 1, sy - ry - 3, 2, 4, STEEL[0]); c.put(sx - 1, sy - ry - 3, STEEL[2])
+    c.outline()
+    return c
+
+
+def carrot_field() -> IsoCanvas:
+    """당근밭 (v3 §3 농원 시설): 갈색 이랑 3줄 + 초록 잎 다발, 이랑 사이로 주황 당근 어깨. 1×1."""
+    c = cv(6, pad=10)
+    dk, md, lt = SOIL
+    c.box(3, SOIL, (0.05, 0.05, 0.95, 0.95))
+    for y in (0.22, 0.5, 0.78):
+        c.line((0.08, y - 0.08, 3), (0.92, y - 0.08, 3), lt)
+        c.line((0.08, y + 0.08, 3), (0.92, y + 0.08, 3), dk)
+    for y in (0.22, 0.5, 0.78):
+        for x in (0.2, 0.45, 0.7):
+            sx, sy = c.spx(x, y, 3)
+            # 당근 어깨(주황) — 흙 위로 살짝
+            c.rect(sx - 2, sy - 2, 5, 2, ORANGE[1]); c.put(sx - 2, sy - 2, ORANGE[2]); c.put(sx + 2, sy - 1, ORANGE[0])
+            # 잎 다발: 가운데 줄기 + 양옆 깃털잎
+            c.vline(sx, sy - 10, sy - 3, LEAF[1])
+            c.vline(sx - 2, sy - 8, sy - 4, LEAF[0]); c.vline(sx + 2, sy - 9, sy - 4, LEAF[2])
+            c.put(sx - 1, sy - 9, LEAF[2]); c.put(sx + 1, sy - 7, LEAF[1]); c.put(sx - 3, sy - 6, LEAF[1]); c.put(sx + 3, sy - 7, LEAF[0])
+            c.put(sx - 1, sy - 5, LEAF[2]); c.put(sx + 1, sy - 5, LEAF[0]); c.put(sx, sy - 11, LEAF[2])
+    c.outline()
+    return c
+
+
 def bench() -> IsoCanvas:
     c = cv(14, 2, 1, shadow=0.7)
     c.box(4, WOOD, (0.12, 0.15, 1.88, 0.85))                                 # 다리 단
@@ -490,7 +537,8 @@ def busstop() -> IsoCanvas:
 
 def sprites() -> dict[str, Canvas]:
     s: dict[str, Canvas] = {
-        'iso_obj_table_out': table_out(), 'iso_obj_bench': bench(), 'iso_obj_table_in': table_in(),
+        'iso_obj_table_out': table_out(), 'iso_obj_table_parasol': table_parasol(), 'iso_obj_bench': bench(), 'iso_obj_table_in': table_in(),
+        'iso_obj_carrot_field': carrot_field(),
         'iso_obj_counter': counter(), 'iso_obj_table_big': table_big(), 'iso_obj_window_seat': window_seat(),
         'iso_obj_roaster': roaster(),
         'iso_obj_souvenir': souvenir(), 'iso_obj_photo_spot': photo_spot(), 'iso_obj_vending': vending(),

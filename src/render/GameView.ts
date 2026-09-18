@@ -31,7 +31,8 @@ export interface BubbleContent { text?: string; icon?: string; mood?: Guest['moo
 export const BUBBLE_MS = 1500;
 
 /** 아직 시트에 없는 오브젝트가 빌려 쓰는 스프라이트 */
-const SPRITE_ALIAS: Record<string, string> = { bush_wild: 'tea_bush', spring: 'pond', dolhareubang_pair: 'dolhareubang' };
+/** 시트 이름이 다른 오브젝트. 감귤나무는 v3에서 성장 단계가 없어 늘 열매 달린 모습으로 */
+const SPRITE_ALIAS: Record<string, string> = { bush_wild: 'tea_bush', spring: 'pond', dolhareubang_pair: 'dolhareubang', tangerine_tree: 'tangerine_tree_ready' };
 const GHOST_OK = 0x88ff88;
 const GHOST_BAD = 0xff7777;
 const GHOST_ALPHA = 0.65;
