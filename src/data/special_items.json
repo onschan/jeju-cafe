@@ -8,8 +8,8 @@
         "questId": "q_jeju_pony"
       }
     ],
-    "sourceText": "부탁 q_jeju_pony",
-    "effectText": "특수 직원 st_pony_special 해금"
+    "sourceText": "조랑말 목장 삼춘의 부탁",
+    "effectText": "특수 직원 「조랑말 삼춘」 채용 가능"
   },
   {
     "id": "millennium_seed",
@@ -24,8 +24,8 @@
         "text": "100주년 감귤축제"
       }
     ],
-    "sourceText": "부탁 q_seolmundae·100주년 감귤축제",
-    "effectText": "hackberry_millennium 건설 가능"
+    "sourceText": "설문대 할망의 부탁·100주년 감귤축제",
+    "effectText": "「천년 팽나무」를 지을 수 있어요"
   },
   {
     "id": "deer_bell",
@@ -36,7 +36,7 @@
         "questId": "q_roe_deer"
       }
     ],
-    "sourceText": "부탁 q_roe_deer",
+    "sourceText": "노루의 부탁",
     "effectText": "노루 습격 확률 −50%"
   },
   {
@@ -51,7 +51,7 @@
         "questId": "q_jacheongbi"
       }
     ],
-    "sourceText": "마일리지 상점·부탁 q_jacheongbi",
+    "sourceText": "마일리지 상점·자청비의 부탁",
     "effectText": "시설 1개 인기 +5(상한 40)"
   },
   {
@@ -66,7 +66,7 @@
         "questId": "q_hallabong_grandpa"
       }
     ],
-    "sourceText": "마일리지 상점·부탁 q_hallabong_grandpa",
+    "sourceText": "마일리지 상점·한라봉 할아버지의 부탁",
     "effectText": "시설 1개 요금 +5%(상한 +30%)"
   },
   {
@@ -100,7 +100,7 @@
         "questId": "q_yeongdeung"
       }
     ],
-    "sourceText": "부탁 q_yeongdeung",
+    "sourceText": "영등할망의 부탁",
     "effectText": "태풍 피해 −50%"
   },
   {
@@ -112,7 +112,7 @@
         "questId": "q_baekrok"
       }
     ],
-    "sourceText": "부탁 q_baekrok",
+    "sourceText": "백록의 부탁",
     "effectText": "전설 손님 출현 ×2"
   },
   {
@@ -124,7 +124,7 @@
         "questId": "q_hallasan_spirit"
       }
     ],
-    "sourceText": "부탁 q_hallasan_spirit",
+    "sourceText": "한라산 정령의 부탁",
     "effectText": "겨울 손님 ×1.2"
   },
   {

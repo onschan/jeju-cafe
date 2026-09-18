@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { createInitialState, goalConditionText, goalRewardText, checkFeature, FEATURE_OF_ACTION, type Action } from '../../sim/index.ts';
-import { GOALS, OBJECTS, MENUS, BIG_EVENTS, ROLES } from '../../data/index.ts';
+import { GOALS, OBJECTS, MENUS, BIG_EVENTS, ROLES, SPOTS, MILEAGE_SHOP, TICKET_SHOP, GIFTS, SPECIAL_ITEM_IDS, SPECIAL_ITEM_EFFECT, itemDef } from '../../data/index.ts';
+import { spotRequirements, VISITOR_PRIZES } from '../../sim/index.ts';
 import { hasIdToken, unlockText } from '../../data/labels.ts';
 import { lockedText } from '../windows/BuildWindow.tsx';
 import { toGoal, currentGoal, pastGoals } from '../simBridge';
@@ -26,6 +27,14 @@ describe('영문 id 노출 없음 (창·카드·대화)', () => {
 
   it('짓기 창: 모든 시설의 이름·설명·잠김 문구', () => {
     expectClean(OBJECTS.flatMap((o) => [o.name, o.desc ?? '', o.effectText ?? '', lockedText(o), unlockText(o)]), '짓기');
+  });
+
+  it('투자 창·상점·도감: 명소 이름·조건·Lv5 특수·상품, 상점 상품명·설명, 특수 아이템·선물 (트랙 C)', () => {
+    expectClean(SPOTS.flatMap((d) => [d.name, d.categoryName, d.lv5Special?.text ?? '', ...spotRequirements(s, d.id).map((r) => r.text)]), '명소');
+    expectClean(VISITOR_PRIZES.map((p) => p.text), '방문객 상품');
+    expectClean([...MILEAGE_SHOP, ...TICKET_SHOP].flatMap((m) => [m.name, m.description]), '상점');
+    expectClean(GIFTS.flatMap((g) => [g.name, g.sourceText]), '선물');
+    expectClean(SPECIAL_ITEM_IDS.flatMap((id) => [itemDef(id).name, itemDef(id).sourceText, SPECIAL_ITEM_EFFECT[id] ?? '']), '특수 아이템');
   });
 
   it('메뉴판: 이름·재료·직종', () => {
