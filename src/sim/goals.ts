@@ -23,6 +23,7 @@ import { pushNotice } from './staff.ts';
 import { addMileage } from './mileage.ts';
 import { MAX_BUILDERS } from './build.ts';
 import { fmtNum } from './format.ts';
+import { josa } from './josa.ts';
 
 export const FEATURE_IDS: FeatureId[] = ['clearRock', 'promote', 'craft', 'popup', 'challenge', 'parcel'];
 export const FEATURE_NAME: Record<FeatureId, string> = { clearRock: '바위 치우기', promote: '홍보', craft: '연구 개발', popup: '팝업 스토어', challenge: '카페 대결', parcel: '필지 구매' };
@@ -51,7 +52,7 @@ export function checkFeature(state: GameState, actionType: Action['type']): Appl
   const f = FEATURE_OF_ACTION[actionType];
   if (!f || featureOpen(state, f)) return { ok: true };
   const g = goalForFeature(f);
-  return { ok: false, reason: g ? `${FEATURE_NAME[f]}은(는) 목표 "${g.title}"를 이루면 열려요` : `${FEATURE_NAME[f]}은(는) 아직 잠겨 있어요` };
+  return { ok: false, reason: g ? `${josa(FEATURE_NAME[f], '은/는')} 목표 「${g.title}」${josa(g.title, '을/를').slice(g.title.length)} 이루면 열려요` : `${josa(FEATURE_NAME[f], '은/는')} 아직 잠겨 있어요` };
 }
 
 export function currentGoal(state: GameState): GoalDef | null {
@@ -164,7 +165,7 @@ export function grantReward(state: GameState, r: GoalReward): void {
     case 'staffSlot': state.slots[r.role] += r.n; break;
     case 'research': state.research += r.n; break;
     case 'builder': state.builders = Math.min(MAX_BUILDERS, state.builders + r.n); break;
-    case 'unlockFeature': state.features[r.id] = true; pushNotice(state, `${FEATURE_NAME[r.id]}이(가) 열렸어요`); break;
+    case 'unlockFeature': state.features[r.id] = true; pushNotice(state, `${josa(FEATURE_NAME[r.id], '이/가')} 열렸어요`); break;
   }
 }
 

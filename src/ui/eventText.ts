@@ -1,6 +1,7 @@
 /** sim 빅 이벤트(events_v3.json, 트랙 A) ↔ 대화 데이터(dialogue/events.json, 트랙 B) 연결.
  *  두 파일의 id가 다르게 붙어 있어 여기서 표로 잇는다. 표에 없거나 B에 대사가 없으면 A의 dialogue 필드를 쓴다. */
 import { bigEventDef } from '../data/index.ts';
+import { josa } from '../sim/index.ts';
 import { eventDialogue, SPEAKER_NAME, type Speaker } from '../data/dialogue/index.ts';
 import type { DialogueReq } from './dialogue.ts';
 
@@ -52,6 +53,6 @@ export function eventStartDialogue(eventId: string): Omit<DialogueReq, 'onClose'
 export function eventEndDialogue(eventId: string): Omit<DialogueReq, 'onClose'> {
   const def = bigEventDef(eventId);
   const b = eventDialogue(EVENT_TEXT_ID[eventId] ?? eventId);
-  const line = b?.endLine || def.endDialogue || `${def.title}이(가) 끝났어요.`;
+  const line = b?.endLine || def.endDialogue || `${josa(def.title, '이/가')} 끝났어요.`;
   return { speaker: speakerOf(b?.speaker ?? def.dialogue.speaker), lines: [line] };
 }

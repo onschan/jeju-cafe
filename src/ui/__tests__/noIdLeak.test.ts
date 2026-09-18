@@ -37,7 +37,7 @@ describe('영문 id 노출 없음 (창·카드·대화)', () => {
     for (const type of Object.keys(FEATURE_OF_ACTION) as Action['type'][]) {
       const r = checkFeature(s, type);
       expect(r.ok).toBe(false);
-      expect(r.reason).toMatch(/목표 "[^"]+"를 이루면 열려요/);
+      expect(r.reason).toMatch(/목표 「[^」]+」[을를] 이루면 열려요/);
       expectClean([r.reason ?? ''], type);
     }
   });

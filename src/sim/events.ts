@@ -15,6 +15,7 @@ import { facilityCount } from './rank.ts';
 import { spawnNamedGuest } from './guests.ts';
 import { namedGuestState } from './popup.ts';
 import { fmtNum } from './format.ts';
+import { josa } from './josa.ts';
 
 /** 동시에 진행되는 빅 이벤트 상한 */
 export const MAX_ACTIVE_EVENTS = 2;
@@ -127,7 +128,7 @@ export function dailyBigEvents(state: GameState): string[] {
   for (const e of ended) {
     const def = bigEventDef(e.id);
     state.alerts.push({ type: 'eventEnd', id: e.id });
-    pushNotice(state, def.endDialogue ?? `${def.title}이(가) 끝났어요`);
+    pushNotice(state, def.endDialogue ?? `${josa(def.title, '이/가')} 끝났어요`);
   }
   return ended.map((e) => e.id);
 }
@@ -144,7 +145,7 @@ export function hourlyBigEvents(state: GameState): string[] {
     if (!spawnNamedGuest(state, id)) continue;
     e.specialVisited = true;
     namedGuestState(state, id).met = true;
-    pushNotice(state, `특별 손님 ${def.effects.specialGuest.name}이(가) 왔어요!`);
+    pushNotice(state, `특별 손님 ${josa(def.effects.specialGuest.name, '이/가')} 왔어요!`);
     out.push(id);
   }
   return out;

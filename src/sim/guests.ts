@@ -20,6 +20,7 @@ import { menuOf, priceOf, likesStatsMatch, statsMatchCount, guestEvalBonus, gues
 import { addAffinity, affinityGain, namedLikes, regularsDueNow, NAMED_MIN_SCENERY } from './popup.ts';
 import { eventGuestMult, eventTagMult, eventFeeMult, isSpecialGuest, specialGuestTip } from './events.ts';
 import { fmtNum } from './format.ts';
+import { josa } from './josa.ts';
 
 export { moveAlong, GUEST_SPEED_CELLS_PER_S }; // 하위 호환 재수출 (본체는 path.ts)
 export const SEAT_MS = 3000;       // 기분이 정해진 뒤 앉아 있는 시간 (≈1.5시간)
@@ -280,7 +281,7 @@ function resolveMood(state: GameState, g: Guest): void {
           state.money += tip;
           state.monthIncome += tip;
           state.totalIncome += tip;
-          pushNotice(state, `${namedGuestDef(g.namedId).name}이(가) 팁 ₩${fmtNum(tip)}을 남겼어요!`);
+          pushNotice(state, `${josa(namedGuestDef(g.namedId).name, '이/가')} 팁 ₩${fmtNum(tip)}을 남겼어요!`);
           pushFx(state, { kind: 'pop', x: seat.x, y: seat.y, n: tip, tick: state.tick });
         }
         return;

@@ -14,9 +14,12 @@ export function alertToDialogue(a: Alert): Omit<DialogueReq, 'onClose'> {
   switch (a.type) {
     case 'goal': {
       const g = goalDef(a.goalId);
-      const l = goalLine(a.goalId);
+      // 축하 대사는 goals.json(line·speaker, 목표와 1:1)이 우선. 없으면 dialogue/goals_lines.json.
+      const b = goalLine(a.goalId);
+      const speaker = g.speaker ?? b.speaker;
+      const line = g.line ?? b.line;
       const reward = g.reward.length > 0 ? g.reward.map(goalRewardText).join(' · ') : '없음';
-      return { speaker: { name: SPEAKER_NAME[l.speaker], portrait: l.speaker }, lines: [`목표 달성! 「${g.title}」 ${l.line}`, `보상: ${reward}`] };
+      return { speaker: { name: SPEAKER_NAME[speaker], portrait: speaker }, lines: [`목표 달성! 「${g.title}」 ${line}`, `보상: ${reward}`] };
     }
     case 'event': return eventStartDialogue(a.id);
     case 'eventEnd': return eventEndDialogue(a.id);
