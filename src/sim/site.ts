@@ -263,9 +263,13 @@ export function siteTone(state: GameState, type: string, x: number, y: number): 
   return sc === null ? null : sc >= SITE_GOOD ? 'good' : 'bad';
 }
 
-/** `👁3 🌬1 ☂0 🚶2 🍳1` 한 줄 (고스트 배지) */
+/** `👁3 🌬1 ☂0 🚶2 🍳1` 한 줄 (DOM용) */
 export function siteBadgeText(site: Site): string {
   return SITE_KEYS.map((k) => `${SITE_ICON[k]}${site[k]}`).join(' ');
+}
+/** `전망3 바람1 그늘0 길가2 주방1` — 캔버스 픽셀 폰트(Galmuri)에는 이모지가 없어 고스트 배지는 이걸 쓴다 */
+export function siteBadgeTextPlain(site: Site): string {
+  return SITE_KEYS.map((k) => `${SITE_LABEL[k]}${site[k]}`).join(' ');
 }
 /** `전망 3 · 바람 1 · 그늘 0 · 길가 2 · 주방 1` (미니 카드) */
 export function siteLineText(site: Site): string {

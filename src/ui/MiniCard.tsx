@@ -8,6 +8,7 @@ import { Portrait, guestPortraitParts, namedPortraitParts, guestName } from './G
 import { Bar, EnergyBar } from './StaffPanel';
 import { Confirm } from './Popup';
 import { Icon } from './Icon';
+import { SiteLine } from './SiteLine';
 import { BOTTOM_BAR_H } from './Shell';
 import { frame, brownBtn, brownBtnOn, brownBtnOff, dangerBtn, PALETTE, won } from './frame';
 
@@ -126,6 +127,7 @@ function ObjectCard({ s, id, a, onClose }: { s: GameState; id: string; a: CardAc
         <div><Icon name={KIND_ICON[d.kind] ?? 'build'} size={18} /> <b>{d.name}</b>{o.build && <span style={{ color: PALETTE.title }}> · 짓는 중</span>}</div>
         <div style={small}>인기 <b style={{ color: PALETTE.ink }}>{st.popularity}</b> · 경관 <b style={{ color: PALETTE.ink }}>{st.scenery > 0 ? '+' : ''}{st.scenery}</b> · 요금 <b style={{ color: PALETTE.ink }}>{st.feePct}%</b>{st.upkeep > 0 && ` · 유지비 ${won(st.upkeep)}/달`}</div>
         <div style={small}>주변 시너지: {st.combos.length > 0 ? st.combos.map((c) => `${c.strength === 'down' ? '↓' : '↑'}${c.name}`).join(' · ') : '없음'}{st.sets.length > 0 && ` · 세트 ${st.sets.map((x) => x.name).join(', ')}`}</div>
+        <SiteLine s={s} o={o} />
       </div>
       <Row>
         {!protectedType && <button style={btn} onClick={() => a.onMove(o.id)}>이동</button>}

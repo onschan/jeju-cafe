@@ -1,4 +1,4 @@
-import { Application, Container, Sprite, Graphics, Texture } from 'pixi.js';
+import { Application, Container, Sprite, Graphics, Texture, Text } from 'pixi.js';
 import type { GameState, PlacedObject, Guest, Staff, Season, RoleId, Pt } from '../sim/index.ts';
 import { seasonOf, LOW_ENERGY, parcelPrice, footprint, roomAt, doorFrontOf, WALL_COLORS, dayIndex, menuOf } from '../sim/index.ts';
 import type { Parcel } from '../sim/index.ts';
@@ -13,6 +13,8 @@ import { guestFace } from '../sim/segments.ts';
 import { namedGuestFace } from '../sim/popup.ts';
 import { guestTypeDef, namedGuestDef } from '../data/index.ts';
 import { Background } from './Background';
+import { siteOf, siteBadgeTextPlain, siteTone, layoutKey } from '../sim/site.ts';
+import { isSiteOverlayOn, setSiteOverlayOn, siteOverlayKey, drawSiteOverlay, GHOST_GOOD, GHOST_WARN } from './siteOverlay';
 
 /** 전용 스프라이트가 있는 손님 타입 (guest_local·guest_tourist 시트) */
 const GUEST_SPRITE_KEY: Record<string, string> = { local_auntie: 'local', student: 'tourist' };
@@ -229,6 +231,13 @@ export class GameView {
   private lockedNodes = new Map<string, { node: Container; text: string }>();
   private ghost: Container | null = null;
   private ghostKey = '';
+  /** 입지(트랙 F): 고스트 배지·색 갱신용 스펙과 마지막 키 */
+  private ghostSpec: GhostSpec | null = null;
+  private ghostSiteKey = '';
+  /** 「입지 보기」 오버레이 레이어 (타일 위·오브젝트 아래) */
+  private siteLayer = new Container();
+  private siteGfx = new Graphics();
+  private siteKey = '';
   private lastSeason: Season | null = null;
   private detachCamera: (() => void) | null = null;
   private selection = new Graphics();
@@ -254,7 +263,8 @@ export class GameView {
     await Promise.all([loadAssets(), loadLabelFont()]);
     parent.appendChild(this.app.canvas);
     this.actors.sortableChildren = true;
-    this.world.addChild(this.background.node, this.tiles, this.actors, this.overlay);
+    this.world.addChild(this.background.node, this.tiles, this.siteLayer, this.actors, this.overlay);
+    this.siteLayer.addChild(this.siteGfx);
     this.overlay.addChild(this.selection);
     this.night.eventMode = 'none';
     this.ui.eventMode = 'none';
@@ -308,6 +318,8 @@ export class GameView {
     this.lastSeason = null;
     this.background.reset();
     this.selection.clear();
+    this.siteGfx.clear();
+    this.siteKey = '';
     this.setGhost(null);
   }
 
@@ -318,6 +330,8 @@ export class GameView {
     this.ghostKey = key;
     this.ghost?.destroy({ children: true });
     this.ghost = null;
+    this.ghostSpec = g;
+    this.ghostSiteKey = '';
     if (!g) return;
     const def = objectDef(g.type);
     const c = new Container();
@@ -337,8 +351,10 @@ export class GameView {
     sp.anchor.set(0.5, 1);
     if (t && !t.iso) sp.position.y = -def.h * (ISO_H / 2);
     sp.tint = g.ok ? GHOST_OK : GHOST_BAD;
+    sp.label = 'ghostSprite';
     c.addChild(sp);
     const l = label(g.text, 10);
+    l.label = 'ghostCost';
     l.anchor.set(0.5, 1);
     l.position.set(0, -sp.height - 4);
     const bg = new Graphics().roundRect(l.x - l.width / 2 - 3, l.y - l.height - 1, l.width + 6, l.height + 2, 3).fill({ color: 0x000000, alpha: 0.6 });
@@ -405,6 +421,56 @@ export class GameView {
     this.syncFx(state, now);
     this.tickFx(now);
     this.drawNight();
+    this.syncSiteOverlay(state);
+    this.syncGhostSite(state);
+  }
+
+  // ---------- 입지 (트랙 F, 스펙 §6.2) ----------
+
+  /** 「입지 보기」 오버레이 켜기/끄기. 모드는 모듈 전역이라 창을 닫아도 유지된다. */
+  setSiteOverlay(on: boolean) {
+    setSiteOverlayOn(on);
+  }
+  isSiteOverlay(): boolean {
+    return isSiteOverlayOn();
+  }
+
+  /** 오버레이가 켜져 있으면 배치·필지가 바뀔 때만 다시 그린다 */
+  private syncSiteOverlay(state: GameState) {
+    if (!isSiteOverlayOn()) {
+      if (this.siteKey) { this.siteGfx.clear(); this.siteKey = ''; }
+      return;
+    }
+    const key = siteOverlayKey(state);
+    if (key === this.siteKey) return;
+    this.siteKey = key;
+    drawSiteOverlay(this.siteGfx, state);
+  }
+
+  /** 고스트 위 입지 배지(`👁3 🌬1 ☂0 🚶2 🍳1`)와 고스트 색(좋은 자리 초록·나쁜 자리 주황). 놓을 수 없는 자리(빨강)는 색을 바꾸지 않는다. */
+  private syncGhostSite(state: GameState) {
+    const g = this.ghostSpec;
+    const c = this.ghost;
+    if (!g || !c) return;
+    const key = `${g.type}:${g.x},${g.y}:${g.ok}:${layoutKey(state)}`;
+    if (key === this.ghostSiteKey) return;
+    this.ghostSiteKey = key;
+    c.getChildByLabel('siteBadge')?.destroy({ children: true });
+    if (g.x < 0 || g.y < 0 || g.x >= state.grid.w || g.y >= state.grid.h) return;
+    const tone = siteTone(state, g.type, g.x, g.y);
+    const color = !g.ok ? GHOST_BAD : tone === 'bad' ? GHOST_WARN : GHOST_GOOD;
+    const sp = c.getChildByLabel('ghostSprite') as Sprite | null;
+    if (sp) sp.tint = color;
+    const cost = c.getChildByLabel('ghostCost') as Text | null;
+    const badge = new Container();
+    badge.label = 'siteBadge';
+    const l = label(siteBadgeTextPlain(siteOf(state, g.x, g.y)), 10);
+    l.anchor.set(0.5, 1);
+    const top = cost ? cost.y - cost.height - 3 : -(sp?.height ?? 24) - 4;
+    l.position.set(0, top);
+    const bg = new Graphics().roundRect(-l.width / 2 - 3, top - l.height - 1, l.width + 6, l.height + 2, 3).fill({ color: 0x000000, alpha: 0.6 });
+    badge.addChild(bg, l);
+    c.addChild(badge);
   }
 
   /** 첫 렌더: 폰에서 ×2 근처 줌, 시작 필지(1번, 정중앙)를 가로 가운데·HUD 아래에 놓는다. */

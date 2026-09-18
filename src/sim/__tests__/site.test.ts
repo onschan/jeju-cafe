@@ -5,7 +5,7 @@ import { setSlot } from '../menu.ts';
 import { spawnGuests, updateGuests, PREP_MS } from '../guests.ts';
 import type { GameState, PlacedObject, Staff } from '../types.ts';
 import {
-  siteOf, seatScore, siteScore, siteTone, kindWeights, siteBonus, siteSay, siteBadgeText, siteLineText, layoutKey,
+  siteOf, seatScore, siteScore, siteTone, kindWeights, siteBonus, siteSay, siteBadgeText, siteBadgeTextPlain, siteLineText, layoutKey,
   SEAT_WEIGHTS, STALL_WEIGHTS, SITE_SAY, FEE_PER_VIEW, SERVE_PER_KITCHEN, STALL_PER_TRAFFIC, SITE_MAX,
 } from '../site.ts';
 
@@ -177,5 +177,6 @@ test('대사: 겨울 바람 자리 "춥다…", 여름 그늘 "시원하다", �
   // 배지·카드 문구
   const st = siteOf(s, 12, 1);
   expect(siteBadgeText(st)).toBe(`👁${st.view} 🌬${st.wind} ☂${st.shade} 🚶${st.traffic} 🍳${st.kitchen}`);
+  expect(siteBadgeTextPlain(st)).toBe(`전망${st.view} 바람${st.wind} 그늘${st.shade} 길가${st.traffic} 주방${st.kitchen}`);
   expect(siteLineText(st)).toBe(`전망 ${st.view} · 바람 ${st.wind} · 그늘 ${st.shade} · 길가 ${st.traffic} · 주방 ${st.kitchen}`);
 });
