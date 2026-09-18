@@ -5,7 +5,7 @@ import { setSlot } from '../menu.ts';
 import { apply } from '../actions.ts';
 import { tick, step } from '../tick.ts';
 import { DAY_MS, HOUR_MS, monthIndex } from '../clock.ts';
-import { spawnGuests, updateGuests, dailyGuestCount, hourlySpawn, tourBus, typeWeight } from '../guests.ts';
+import { spawnGuests, updateGuests, dailyGuestCount, popularityGuestBase, spotDailyGuests, totalSeats, hourlySpawn, tourBus, typeWeight, GUESTS_PER_SEAT, SPOT_APPEAL_PER_GUEST } from '../guests.ts';
 import { monthlyYieldOf } from '../orchard.ts';
 import { upkeep } from '../economy.ts';
 import {
@@ -210,9 +210,10 @@ test('이벤트 롤: seed 결정적, 확률·달·조건 존중, 선택 이벤�
 test('효과 DSL: 손님 배수(전체·필터)·손님 0·수확·유지비·인기·아이템, 기간이 지나면 사라진다', () => {
   const { s, seat } = cafe();
   s.storage['tangerine'] = 99;
+  s.clock.month = 4; // 계절 배수 1
   const base = dailyGuestCount(s);
   applyEventEffect(s, { kind: 'spawnMult', mult: 2, days: 3 }, 't');
-  expect(dailyGuestCount(s)).toBe(base * 2);
+  expect(dailyGuestCount(s)).toBe(Math.min(totalSeats(s) * GUESTS_PER_SEAT, base * 2)); // 좌석 × 6 상한
   applyEventEffect(s, { kind: 'spawnMult', mult: 3, days: 3, filter: 'senior' }, 't');
   expect(typeWeight(s, 'local_auntie', 12)).toBeCloseTo(5 * 1.6 * 3);
   expect(typeWeight(s, 'student', 10)).toBeCloseTo(5 * 1.4); // 청년엔 안 걸림
@@ -270,11 +271,12 @@ test('관광지: 시작·랭크·앞 관광지 Lv4 해금, 레벨별 비용, 매
   apply(s, { type: 'investSpot', id: 'canola_field' }); // Lv2
   expect(isUnlocked(s, 'insta_traveler')).toBe(true);
   expect(spotAppeal(s)).toBe(20);
-  const g0 = dailyGuestCount(s);
+  const g0 = popularityGuestBase(s);
   apply(s, { type: 'investSpot', id: 'canola_field' }); // Lv3 (32)
   apply(s, { type: 'investSpot', id: 'canola_field' }); // Lv4 (44)
   expect(spotGuestBonus(s)).toBe(Math.floor(44 / APPEAL_PER_GUEST));
-  expect(dailyGuestCount(s)).toBe(g0 + 1);
+  expect(spotDailyGuests(s)).toBe(Math.floor(44 / SPOT_APPEAL_PER_GUEST)); // 매력도 8당 하루 +1
+  expect(popularityGuestBase(s)).toBeGreaterThan(g0);
   expect(s.board.quests['q_influencer']!.status).toBe('offered'); // Lv4 부탁
   expect(isUnlocked(s, 'influencer')).toBe(true);
   expect(spotUnlocked(s, 'sangumburi')).toBe(true); // 다음 관광지

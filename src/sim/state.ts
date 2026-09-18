@@ -13,13 +13,13 @@ import { initRegions, initNamedGuests, initPopup } from './popup.ts';
 import { initFeatures } from './goals.ts';
 import { generateCandidate } from './staff.ts';
 import { monthIndex } from './clock.ts';
+import { emptyMonthCosts } from './economy.ts';
+import { REPUTATION_START } from './reputation.ts';
 
 export { PARCEL_W, PARCEL_H, START_ORIGIN, GRID_W, GRID_H, VILLAGE_ROAD_Y };
-export const SAVE_VERSION = 15; // 15: v3 대격변 — 밭 폐지·농원 월 수확·목표 체인·기능 잠금·빅 이벤트·시작 상태 (마이그레이션 없음: 백업 후 새 게임). 14: 라이벌 카페
-/** 시작 자금 500만 + 정착지원금(잔고 < 40만이면 1회 300만) — 마스터 GDD §1 */
+export const SAVE_VERSION = 16; // 16: 경제 확장 — 삼춘 대출·세금·대기열·★ 유지 심사 (마이그레이션 없음). 15: v3 대격변. 14: 라이벌 카페
+/** 시작 자금 500만. 정착지원금은 삼춘 대출(failure.ts: 잔고 < 40만 → 300만, 최대 3회)로 바뀌었다 — 확장 스펙 §4.2 #8 */
 export const START_MONEY = 5_000_000;
-export const SETTLE_GRANT = 3_000_000;
-export const SETTLE_GRANT_THRESHOLD = 400_000;
 export const START_MONTH = 3;
 export const MENU_SLOT_COUNT = 4;
 /** 시작 메뉴판 (§5: 아메리카노·카페라떼·감귤주스가 이미 올라가 있다) */
@@ -127,7 +127,25 @@ export function createInitialState(seed: number, playerId = 'local', createdAt =
     popularity: 0,
     grid: { w: GRID_W, h: GRID_H, cells: makeCells(parcels, seed) },
     parcels,
-    settleGrantUsed: false,
+    loan: { count: 0, balance: 0, lastMonthIndex: -1 },
+    deficitMonths: 0,
+    crisisMonths: 0,
+    yearNet: 0,
+    lastYearNet: 0,
+    salaryRaisePct: 0,
+    tourBus: false,
+    waiting: [],
+    monthGuestsLeft: 0,
+    monthLoan: 0,
+    starReview: { promotedYear: 1, lastReviewYear: 0, warned: false },
+    reputation: REPUTATION_START,
+    complaints: [],
+    reviews: [],
+    monthComplaints: {},
+    monthReputationDelta: 0,
+    dayStats: { satisfied: 0, complained: 0, total: 0 },
+    reputationWarned: false,
+    lastApologyMonthIndex: -1,
     objects: {},
     storage: {},
     menuSlots: [...START_MENUS, ...Array(Math.max(0, MENU_SLOT_COUNT - START_MENUS.length)).fill(null)],
@@ -198,7 +216,7 @@ export function createInitialState(seed: number, playerId = 'local', createdAt =
     nextId: 1,
     monthIncome: 0,
     monthGuests: 0,
-    monthCosts: { ingredients: 0, salary: 0, ads: 0, upkeep: 0, recruit: 0 },
+    monthCosts: emptyMonthCosts(),
     lastMonthIncome: 0,
     lastMonthCard: null,
     tick: 0,

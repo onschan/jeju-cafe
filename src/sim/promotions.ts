@@ -1,6 +1,7 @@
 import type { GameState, ApplyResult, PromotionDef } from './types.ts';
 import { promotionDef, GUEST_TYPES, guestTags, canonicalGuestId } from '../data/index.ts';
 import { nextRandom } from './rng.ts';
+import { applyApology } from './reputation.ts';
 import { findStaff } from './staff.ts';
 import { monthIndex } from './clock.ts';
 import { isTarget, isUnlocked } from './segments.ts';
@@ -64,6 +65,7 @@ export function canPromote(state: GameState, staffId: string, promotionId: strin
   const def = promotionDef(promotionId);
   if (st.energy < def.energy) return { ok: false, reason: '기력이 모자라요' };
   if (def.special === 'parttime' && st.lastParttimeMonthIndex === monthIndex(state.clock)) return { ok: false, reason: '이달은 이미 했어요' };
+  if (def.special === 'apology' && state.lastApologyMonthIndex === monthIndex(state.clock)) return { ok: false, reason: '사과 이벤트는 한 달에 한 번이에요' }; // 트랙 E reputation
   if (state.research < def.costResearch) return { ok: false, reason: '연구 포인트가 모자라요' };
   if (state.money < def.costMoney) return { ok: false, reason: '돈이 모자라요' };
   if (def.months > 0) {
@@ -85,6 +87,7 @@ export function promote(state: GameState, staffId: string, promotionId: string):
     if (nextRandom(state) < YOUTUBER_CHANCE) state.youtuberBoostMonths = YOUTUBER_MONTHS;
     return;
   }
+  if (def.special === 'apology') { state.lastApologyMonthIndex = monthIndex(state.clock); applyApology(state); return; } // 트랙 E reputation
   if (def.special === 'parttime') {
     st.lastParttimeMonthIndex = monthIndex(state.clock);
     state.money += PARTTIME_MONEY;

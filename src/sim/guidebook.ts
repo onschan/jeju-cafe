@@ -1,17 +1,19 @@
 /**
- * ★ 등급·가이드북 11종 (2B-2 Task 7, 마스터 GDD §7)
+ * ★ 등급·가이드북 11종 (2B-2 Task 7, 마스터 GDD §7, 확장 스펙 §3.7)
  * - ★1~5: ranks.json 조건 문구를 해석해 월초에 검사. 승급 → 알림·장면·시설 해금.
- * - 가이드북: 해금 조건(unlockCondMet) → 3월·9월 발표(월간 추천은 매월). 심사 항목 6종(미소·경관·메뉴·체험·단체·종합)을
- *   상태에서 계산해 가중 합 → 경쟁 카페 9곳(seed·년차·가이드북별 결정적)과 비교해 순위 → 1위 상금·연구·씨앗·마일리지.
+ *   유지 심사(§3.7.4): ★3 이상은 승급 2년 뒤부터 2년마다 3월에 조건을 다시 본다. 미달이면 경고 → 9월에도 미달이면 ★ −1 (rank_shield 1회 면제).
+ * - 가이드북: 해금 조건(unlockCondMet) → 3월·9월 발표(월간 추천은 매월). 심사 항목 9종(미소·경관·메뉴·체험·단체·쉼·청결·가성비·종합)을
+ *   상태에서 계산해 가중 합(guidebooks.json weights) → 경쟁 카페 9곳(§3.7.3 성장 곡선 top_b(y) − 6(i−1) ± 4, seed 결정적)과 비교해 순위 → 1위 상금·연구·씨앗·마일리지.
+ *   플레이어가 1위 하면 그 가이드북 라이벌은 다음 해 +3(boost), 라이벌 카페 등장 중이면 +5.
  */
 import type { GameState, GuidebookDef, GuidebookState, JudgeKey, JudgeScores, Announcement, AnnouncementEntry, GuestTags } from './types.ts';
 import { GUIDEBOOKS, STARS, GUEST_TYPES, COMBOS, SETS, HIDDEN_RECIPES, INGREDIENT_COMBOS, objectDef, guestTags, statSum } from '../data/index.ts';
 import { staffInRole, energyFactor, pushNotice } from './staff.ts';
 import { sceneryScore } from './grid.ts';
 import { isSeat, seatsOf, cafeLevel } from './cafe.ts';
-import { menuStatsOf } from './craft.ts';
+import { menuStatsOf, priceOf } from './craft.ts';
 import { objectStats } from './compat.ts';
-import { unlockCondMet, evaluateUnlocks } from './segments.ts';
+import { unlockCondMet, evaluateUnlocks, unlockedTypeIds, walletOf } from './segments.ts';
 import { grantItem } from './items.ts';
 import { addMileage, codexCount } from './mileage.ts';
 import { effectivePopularity } from './promotions.ts';
@@ -19,10 +21,26 @@ import { monthIndex } from './clock.ts';
 import { parcelAt } from './parcels.ts';
 import { pushFx } from './fx.ts';
 import { fmtNum } from './format.ts';
+import { reputationScore } from './reputation.ts';
 
 export const MAX_STAR = 5;
-export const JUDGE_KEYS: JudgeKey[] = ['smile', 'scenery', 'menu', 'fun', 'group', 'overall'];
-export const JUDGE_LABEL: Record<JudgeKey, string> = { smile: '미소', scenery: '경관', menu: '메뉴', fun: '체험', group: '단체', overall: '종합' };
+export const JUDGE_KEYS: JudgeKey[] = ['smile', 'scenery', 'menu', 'fun', 'group', 'rest', 'clean', 'price', 'reputation', 'overall'];
+export const JUDGE_LABEL: Record<JudgeKey, string> = { smile: '미소', scenery: '경관', menu: '메뉴', fun: '체험', group: '단체', rest: '쉼', clean: '청결', price: '가성비', reputation: '평판', overall: '종합' };
+/** 종합 = 8항목(평판 제외) 평균 + 카페 랭크 × 3 + 콤보 수 × 1 */
+export const OVERALL_PER_RANK = 3;
+export const OVERALL_PER_COMBO = 1;
+/** 라이벌 곡선: i번째(0~8) 라이벌 = top − 6i ± 4 */
+export const RIVAL_STEP = 6;
+export const RIVAL_NOISE = 4;
+/** 플레이어 1위 → 다음 해 라이벌 +3, 라이벌 카페 등장 중 +5 */
+export const RIVAL_WIN_BOOST = 3;
+export const RIVAL_CAFE_BOOST = 5;
+/** ★ 유지 심사: ★3 이상, 승급 2년 뒤부터 2년마다 3월, 9월 재심사 */
+export const REVIEW_MIN_STAR = 3;
+export const REVIEW_EVERY_YEARS = 2;
+export const REVIEW_MONTH = 3;
+export const REVIEW_RETRY_MONTH = 9;
+export const RANK_SHIELD_ITEM = 'rank_shield';
 /** 발표 달 (연 2회) */
 export const ANNOUNCE_MONTHS = [3, 9];
 export const RIVAL_COUNT = 9;
@@ -80,11 +98,50 @@ export function checkStar(state: GameState): number | null {
   const next = nextStarConditions(state);
   if (!next || !next.conditions.every((c) => c.met)) return null;
   state.star = next.star;
+  state.starReview.promotedYear = state.clock.year;
+  state.starReview.warned = false;
   pushNotice(state, `★${next.star} 승급! ${next.unlockText}`);
   pushFx(state, { kind: 'scene', title: `★${next.star} 승급`, text: `우리 카페가 ★${next.star}이 됐어요! ${next.unlockText}`, tick: state.tick });
   evaluateUnlocks(state);
   evaluateGuidebooks(state);
   return next.star;
+}
+
+/** 현재 ★의 조건(ranks.json)을 지금도 채우고 있나 (★1은 항상 true) */
+export function starConditionsHeld(state: GameState, star = state.star): boolean {
+  const def = STARS.find((s) => s.star === star);
+  return !def || def.conditions.every((c) => starConditionMet(state, c));
+}
+/** 유지 심사가 도는 달인가: ★3 이상, 승급 +2년부터, 마지막 심사 +2년, 3월 */
+export function isReviewDue(state: GameState): boolean {
+  const r = state.starReview;
+  const y = state.clock.year;
+  return state.star >= REVIEW_MIN_STAR && state.clock.month === REVIEW_MONTH && y >= r.promotedYear + REVIEW_EVERY_YEARS && y >= r.lastReviewYear + REVIEW_EVERY_YEARS;
+}
+/** ★ 유지 심사 (§3.7.4). 3월: 미달이면 경고(6개월 유예). 9월: 여전히 미달이면 ★ −1 (rank_shield 있으면 1회 면제). 강등했으면 새 ★, 아니면 null. */
+export function starReview(state: GameState): number | null {
+  const r = state.starReview;
+  if (isReviewDue(state)) {
+    r.lastReviewYear = state.clock.year;
+    if (!starConditionsHeld(state)) {
+      r.warned = true;
+      pushNotice(state, `★${state.star} 유지 심사 경고 — 9월까지 조건을 다시 채우지 못하면 ★이 내려가요`);
+      pushFx(state, { kind: 'scene', title: '★ 유지 심사', text: `★${state.star} 조건에 미달이에요. 9월 재심사까지 6개월 유예예요.`, tick: state.tick });
+    }
+    return null;
+  }
+  if (!r.warned || state.clock.month !== REVIEW_RETRY_MONTH) return null;
+  r.warned = false;
+  if (starConditionsHeld(state)) { pushNotice(state, `★${state.star} 유지 심사 통과!`); return null; }
+  if ((state.inventory[RANK_SHIELD_ITEM] ?? 0) > 0) {
+    state.inventory[RANK_SHIELD_ITEM]!--;
+    pushNotice(state, `등급 보호 아이템으로 ★${state.star} 강등을 한 번 막았어요`);
+    return null;
+  }
+  state.star--;
+  pushNotice(state, `★ 강등: ★${state.star + 1} → ★${state.star} (열린 시설은 유지, 새로 짓기만 잠겨요)`);
+  pushFx(state, { kind: 'scene', title: '★ 강등', text: `유지 심사에서 떨어져 ★${state.star}이 됐어요. 조건을 다시 채우면 올라갈 수 있어요.`, tick: state.tick });
+  return state.star;
 }
 
 // ---------- 심사 ----------
@@ -128,10 +185,35 @@ function groupScore(state: GameState): number {
   return clamp100(big * 10 + parking * 20 + sat * 0.3);
 }
 
+/** 쉼: 쉼(좌석) 시설 수 ×8 + 인기 평균 + 족욕 시설 ×5 */
+function restScore(state: GameState): number {
+  const objs = Object.values(state.objects).filter((o) => !o.build && parcelAt(state, o.x, o.y)?.owned);
+  const rest = objs.filter((o) => objectDef(o.type).category === 'rest' || isSeat(state, o));
+  if (rest.length === 0) return 0;
+  const avgPop = rest.reduce((n, o) => n + objectStats(state, o.id).popularity, 0) / rest.length;
+  const footbath = objs.filter((o) => o.type.startsWith('footbath')).length;
+  return clamp100(rest.length * 8 + avgPop + footbath * 5);
+}
+/** 청결: 트랙 A의 state.cleanliness 그대로 (아직 없으면 100) */
+function cleanScore(state: GameState): number {
+  return clamp100((state as { cleanliness?: number }).cleanliness ?? 100);
+}
+/** 가성비: 100 − (메뉴판 평균 가격 ÷ 해금 손님층 평균 소지금 × 100) */
+function priceScore(state: GameState): number {
+  const ids = state.menuSlots.filter((m): m is string => m !== null);
+  const types = unlockedTypeIds(state);
+  if (ids.length === 0 || types.length === 0) return 0;
+  const avgPrice = ids.reduce((n, id) => n + priceOf(state, id), 0) / ids.length;
+  const avgWallet = types.reduce((n, id) => n + walletOf(state, id), 0) / types.length;
+  if (avgWallet <= 0) return 0;
+  return clamp100(100 - (avgPrice / avgWallet) * 100);
+}
+
 export function judgeScores(state: GameState): JudgeScores {
   const smile = smileScore(state), scenery = scenerySc(state), menu = menuScore(state), fun = funScore(state), group = groupScore(state);
-  const overall = clamp100((smile + scenery + menu + fun + group) / 5);
-  return { smile, scenery, menu, fun, group, overall };
+  const rest = restScore(state), clean = cleanScore(state), price = priceScore(state), reputation = reputationScore(state);
+  const overall = clamp100((smile + scenery + menu + fun + group + rest + clean + price) / 8 + state.rank * OVERALL_PER_RANK + state.codex.combos.length * OVERALL_PER_COMBO);
+  return { smile, scenery, menu, fun, group, rest, clean, price, reputation, overall };
 }
 
 /** 이번 달 농협 추천의 타깃 태그 (monthIndex로 돌아간다) */
@@ -145,11 +227,13 @@ export function targetPopularity(state: GameState, match: (t: GuestTags) => bool
   return ids.reduce((n, id) => n + effectivePopularity(state, id), 0) / ids.length;
 }
 
-/** 가이드북 가중 합 0~100. 월간 추천은 종합 0.5 + 타깃 손님층 인기 0.5. */
+/** 월간 추천(농협)의 타깃 손님층 인기 비중 (나머지 0.4는 종합) */
+export const MONTHLY_TARGET_WEIGHT = 0.6;
+/** 가이드북 가중 합 0~100. 월간 추천은 종합 0.4 + 타깃 손님층 인기 0.6. */
 export function guidebookScore(state: GameState, def: GuidebookDef, scores: JudgeScores = judgeScores(state)): number {
   let total = 0;
   for (const [k, w] of Object.entries(def.weights) as [JudgeKey, number][]) total += scores[k] * w;
-  if (def.monthly) total += targetPopularity(state, monthlyTarget(state).match) * 0.5;
+  if (def.monthly) total += targetPopularity(state, monthlyTarget(state).match) * MONTHLY_TARGET_WEIGHT;
   return clamp100(total);
 }
 
@@ -160,15 +244,25 @@ function hash32(...xs: number[]): number {
   for (const x of xs) { h = Math.imul(h ^ (x | 0), 16777619); h ^= h >>> 13; }
   return h >>> 0;
 }
-/** 경쟁 카페 9곳 점수 (내림차순). seed·가이드북·년차·회차로 결정적. 년차마다 +4, 가이드북 급(표 순서)마다 +5. */
-export function rivalScores(seed: number, gbId: string, year: number, month: number): number[] {
+/** 1위 라이벌 점수 top_b(y) = 1년차 값 + 증가 × (y − 1), 상한 100 (§3.7.3 표) */
+export function rivalTop(def: GuidebookDef, year: number): number {
+  return Math.min(100, def.rivalTop + def.rivalGrowth * (year - 1));
+}
+/** 경쟁 카페 9곳 점수 (내림차순). i번째 = top_b(y) + boost − 6 × i ± 4 (seed·가이드북·년차·회차 해시 노이즈). boost = 플레이어 1위 누적 +3 + 라이벌 카페 +5. */
+export function rivalScores(seed: number, gbId: string, year: number, month: number, boost = 0): number[] {
   const tier = Math.max(0, GUIDEBOOKS.findIndex((g) => g.id === gbId));
+  const def = GUIDEBOOKS[tier]!;
+  const top = rivalTop(def, year) + boost;
   const out: number[] = [];
   for (let i = 0; i < RIVAL_COUNT; i++) {
     const h = hash32(seed, tier + 1, year, month, i + 1);
-    out.push(clamp100(12 + tier * 5 + year * 4 + i * 6 + (h % 12)));
+    out.push(clamp100(top - i * RIVAL_STEP + ((h % (RIVAL_NOISE * 2 + 1)) - RIVAL_NOISE)));
   }
   return out.sort((a, b) => b - a);
+}
+/** 이 가이드북의 라이벌 가산 (state.guidebooks boost + 라이벌 카페 등장 중 +5) */
+export function rivalBoost(state: GameState, gbId: string): number {
+  return guidebookState(state, gbId).boost + (state.rivals.length > 0 ? RIVAL_CAFE_BOOST : 0);
 }
 export function rankAmong(score: number, rivals: number[]): number {
   return 1 + rivals.filter((r) => r > score).length;
@@ -177,12 +271,16 @@ export function rankAmong(score: number, rivals: number[]): number {
 // ---------- 해금·발표 ----------
 
 export function guidebookState(state: GameState, id: string): GuidebookState {
-  return (state.guidebooks[id] ??= { unlocked: false, lastRank: null, best: null });
+  return (state.guidebooks[id] ??= { unlocked: false, lastRank: null, best: null, boost: 0, pending: 0 });
 }
 export function initGuidebooks(): Record<string, GuidebookState> {
   const out: Record<string, GuidebookState> = {};
-  for (const g of GUIDEBOOKS) out[g.id] = { unlocked: g.unlock.type === 'start', lastRank: null, best: null };
+  for (const g of GUIDEBOOKS) out[g.id] = { unlocked: g.unlock.type === 'start', lastRank: null, best: null, boost: 0, pending: 0 };
   return out;
+}
+/** 새해 1월: 지난해 1위로 번 라이벌 가산(pending)을 boost에 더한다 */
+export function rollRivalBoost(state: GameState): void {
+  for (const st of Object.values(state.guidebooks)) { st.boost += st.pending; st.pending = 0; }
 }
 /** 잠긴 가이드북의 해금 조건을 검사. 새로 열린 id 목록. */
 export function evaluateGuidebooks(state: GameState): string[] {
@@ -207,7 +305,7 @@ function applyPrize(state: GameState, def: GuidebookDef, rank: number): { prize:
   const ratio = PRIZE_RATIO[rank - 1] ?? 0;
   const prize = Math.round(def.prize * ratio);
   const research = Math.round(def.research * ratio);
-  const mileage = RANK_MILEAGE[rank - 1] ?? 0;
+  const mileage = (RANK_MILEAGE[rank - 1] ?? 0) + (rank === 1 ? def.mileage : 0);
   state.money += prize;
   state.monthIncome += prize;
   state.research += research;
@@ -229,11 +327,12 @@ export function announce(state: GameState, defs: GuidebookDef[] = guidebooksToAn
   const entries: AnnouncementEntry[] = [];
   for (const def of defs) {
     const total = guidebookScore(state, def, scores);
-    const rivals = rivalScores(state.seed, def.id, state.clock.year, state.clock.month);
+    const rivals = rivalScores(state.seed, def.id, state.clock.year, state.clock.month, rivalBoost(state, def.id));
     const rank = rankAmong(total, rivals);
     const st = guidebookState(state, def.id);
     st.lastRank = rank;
     st.best = st.best === null ? rank : Math.min(st.best, rank);
+    if (rank === 1) st.pending += RIVAL_WIN_BOOST;
     const r = applyPrize(state, def, rank);
     const targetText = def.monthly ? monthlyTarget(state).label : null;
     entries.push({ id: def.id, name: def.name, scores, total, rivals, rank, ...r, targetText });
@@ -247,8 +346,10 @@ export function announce(state: GameState, defs: GuidebookDef[] = guidebooksToAn
   return a;
 }
 
-/** 월초 (정산·해금 뒤): ★ 검사 → 가이드북 해금 → 발표 */
+/** 월초 (정산·해금 뒤): (1월) 라이벌 가산 반영 → ★ 유지 심사 → ★ 승급 검사 → 가이드북 해금 → 발표 */
 export function monthlyRank(state: GameState): void {
+  if (state.clock.month === 1) rollRivalBoost(state);
+  starReview(state);
   checkStar(state);
   evaluateGuidebooks(state);
   announce(state);

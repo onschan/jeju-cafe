@@ -42,7 +42,7 @@ function Preview() {
     return r;
   };
   const day = () => { s.clock.speed = 1; tick(s, DAY_MS); bump(); };
-  const card = s.lastMonthCard ?? { income: 1_830_000, guests: 96, month: s.clock.month, year: s.clock.year, costs: { ingredients: 310_000, salary: 600_000, upkeep: 82_500, ads: 0, recruit: 0 }, net: 837_500 };
+  const card = s.lastMonthCard ?? { income: 1_830_000, guests: 96, month: s.clock.month, year: s.clock.year, costs: { ingredients: 310_000, salary: 600_000, upkeep: 82_500, ads: 0, recruit: 0, tax: 0, loanRepay: 0, tourBus: 0 }, net: 837_500 };
   const win = (state: GameState) => {
     switch (w) {
       case 'menu': return <MenuWindow state={state} dispatch={dispatch} onClose={() => {}} />;

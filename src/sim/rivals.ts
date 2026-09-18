@@ -9,12 +9,12 @@ import { regularIds, namedGuestState } from './popup.ts';
 import { josa } from './josa.ts';
 
 /**
- * 라이벌 카페 (스펙 §15.3, 계획 2B-4 Task 3)
- * - 3년차부터 매월 10%로 하나 생긴다(동시 최대 2). 매월 단골★ 1명을 빼앗고 우리 메뉴 양·보기를 5%씩 누적으로 깎는다(합 −50% 상한, craft.rivalStatPenaltyPct).
+ * 라이벌 카페 (스펙 §15.3, 계획 2B-4 Task 3, 확장 §4.2 #7)
+ * - 2년차부터 매월 10%로 하나 생긴다(동시 최대 2). 등장 중이면 하루 손님 −5%/라이벌(guests.dailyGuestCount). 매월 단골★ 1명을 빼앗고 우리 메뉴 양·보기를 5%씩 누적으로 깎는다(합 −50% 상한, craft.rivalStatPenaltyPct).
  * - 카페 대결: 메뉴 하나로 심사(라이벌 가중치 × 메뉴 스탯 + 운 0~4) vs 라이벌 점수(규모 × 년차). 이기면 철수·마일리지 2·단골 회수, 지면 인기 −5. 라이벌당 한 달 한 번.
  * - 대형은 매월 15% 자체 파산. 12개월 뒤 자진 철수. 철수하면 빼앗긴 단골은 돌아온다.
  */
-export const RIVAL_START_YEAR = 3;
+export const RIVAL_START_YEAR = 2;
 export const RIVAL_MONTHLY_CHANCE = 0.1;
 export const RIVAL_MAX = 2;
 export const RIVAL_LEAVE_MONTHS = 12;
@@ -23,6 +23,16 @@ export const CHALLENGE_LOSE_POPULARITY = 5;
 export const JUDGE_LUCK = 4;
 export const SIZE_POWER: Record<RivalSize, number> = { small: 6, medium: 8, large: 10 };
 export const POWER_PER_YEAR = 0.1;
+/** 등장 중인 라이벌 한 곳당 하루 손님 −5% (최대 2곳) */
+export const RIVAL_GUEST_PENALTY_PCT = 5;
+
+/** 라이벌 때문에 줄어드는 손님 % (0·5·10) */
+export function rivalGuestLossPct(state: GameState): number {
+  return Math.min(RIVAL_MAX, state.rivals.length) * RIVAL_GUEST_PENALTY_PCT;
+}
+export function rivalGuestMult(state: GameState): number {
+  return 1 - rivalGuestLossPct(state) / 100;
+}
 
 export function rivalState(state: GameState, id: string): RivalState | undefined {
   return state.rivals.find((r) => r.id === id);
@@ -56,7 +66,8 @@ export function challengeOdds(state: GameState, rivalStateId: string, menuId: st
   return Math.max(0, Math.min(1, 1 - need / JUDGE_LUCK));
 }
 
-function spawnRival(state: GameState, rivalId: string): RivalState {
+/** 라이벌 하나 등장 (월간 판정·정착 실패 위기 failure.ts) */
+export function spawnRival(state: GameState, rivalId: string): RivalState {
   const def = rivalDef(rivalId);
   const r: RivalState = { id: `r${state.nextId++}`, rivalId, openedMonthIndex: monthIndex(state.clock), penaltyPct: 0, stolen: [], lastChallengeMonth: -1 };
   state.rivals.push(r);
@@ -72,7 +83,7 @@ export function rivalLeave(state: GameState, r: RivalState, reason: string): voi
   pushNotice(state, `${josa(rivalDef(r.rivalId).name, '이/가')} ${reason}${back}`);
 }
 
-/** 매월: 라이벌마다 12개월 철수 → 대형 파산 → 단골 뺏기·스탯 페널티. 그 뒤 3년차부터 10%로 새 라이벌(동시 최대 2). */
+/** 매월: 라이벌마다 12개월 철수 → 대형 파산 → 단골 뺏기·스탯 페널티. 그 뒤 2년차부터 10%로 새 라이벌(동시 최대 2). */
 export function monthlyRivals(state: GameState): void {
   for (const r of [...state.rivals]) {
     const def = rivalDef(r.rivalId);

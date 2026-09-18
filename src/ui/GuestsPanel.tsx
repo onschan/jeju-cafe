@@ -6,6 +6,7 @@ import { BoardPanel } from './BoardPanel';
 import { RivalPanel } from './RivalPanel';
 import { Portrait, guestPortraitParts, guestPortraitOf, guestWallet, guestName } from './GuestPopup';
 import { Bar } from './StaffPanel';
+import { ComplaintsCard } from './ComplaintsCard';
 import { card, brownBtn, brownBtnOn, PALETTE, won } from './frame';
 
 type Sub = 'now' | 'quests' | 'codex' | 'rivals';
@@ -29,6 +30,7 @@ export function GuestsPanel({ onGuest }: { onGuest: (guestId: string) => void })
       </div>
       {sub === 'now' && (
         <div>
+          <ComplaintsCard />
           {s.guests.length === 0 && <div style={{ fontSize: 13, color: PALETTE.inkSoft }}>지금은 손님이 없어요. 맵에서 손님을 눌러도 프로필이 열려요.</div>}
           {s.guests.map((g) => {
             const def = guestTypeDef(g.type);

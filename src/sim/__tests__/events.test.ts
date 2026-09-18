@@ -5,7 +5,7 @@ import { tick } from '../tick.ts';
 import { DAY_MS, HOUR_MS } from '../clock.ts';
 import { BIG_EVENTS, bigEventDef, specialGuestId, namedGuestDef, SPECIAL_GUESTS } from '../../data/index.ts';
 import { monthlyBigEvents, dailyBigEvents, hourlyBigEvents, startEvent, eventEligible, activeEvents, eventGuestMult, eventTagMult, eventFeeMult, guestHasTag, isSpecialGuest, specialGuestTip, specialGuestsMet, MAX_ACTIVE_EVENTS } from '../events.ts';
-import { dailyGuestCount, typeWeight } from '../guests.ts';
+import { dailyGuestCount, popularityGuestBase, totalSeats, typeWeight, GUESTS_PER_SEAT } from '../guests.ts';
 import { dayIndex } from '../effects.ts';
 import { serialize } from '../save.ts';
 import { bareState } from './helpers.ts';
@@ -84,11 +84,12 @@ describe('빅 이벤트 판정·효과', () => {
     const s = bareState(1);
     s.goals.index = 999;
     apply(s, { type: 'place', objectType: 'table_out', x: 12, y: 11 });
-    const base = dailyGuestCount(s);
+    s.clock.month = 4; // 계절 배수 1
+    const base = popularityGuestBase(s);
     const w = typeWeight(s, 'student');
     startEvent(s, 'ev_cheap_flights'); // ×1.3
     expect(eventGuestMult(s)).toBe(1.3);
-    expect(dailyGuestCount(s)).toBe(Math.round(base * 1.3));
+    expect(dailyGuestCount(s)).toBe(Math.min(totalSeats(s) * GUESTS_PER_SEAT, Math.round(base * 1.3)));
     startEvent(s, 'ev_school_trip_season'); // student ×2
     expect(guestHasTag('student', 'student')).toBe(true);
     expect(guestHasTag('local_auntie', 'student')).toBe(false);

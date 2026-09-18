@@ -23,6 +23,7 @@ export function alertToDialogue(a: Alert): Omit<DialogueReq, 'onClose'> {
     }
     case 'event': return eventStartDialogue(a.id);
     case 'eventEnd': return eventEndDialogue(a.id);
+    case 'reputation': return { speaker: { name: SPEAKER_NAME.samchun, portrait: 'samchun' }, lines: ['【평판 경고】', a.text] }; // 트랙 E reputation.ts
   }
 }
 

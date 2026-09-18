@@ -33,6 +33,7 @@ export function TopBar({ onOpen }: { onOpen: () => void }) {
       <span>{s.clock.year}년 {s.clock.month}월 {s.clock.day}일</span>
       <span aria-label={season}>{SEASON_ICON[season]}</span>
       <span title={s.money.toLocaleString()}><Icon name="money" size={16} alt="돈" /> {compactMoney(s.money)}</span>
+      <span aria-label={`평판 ${Math.round(s.reputation)}`} title="평판">♥{Math.round(s.reputation)}</span>
       <span aria-label={`별 ${s.star}`}>{'★'.repeat(Math.max(1, Math.min(5, s.star)))}<span style={{ color: PALETTE.inkSoft }}>{'☆'.repeat(5 - Math.max(1, Math.min(5, s.star)))}</span></span>
     </button>
   );
