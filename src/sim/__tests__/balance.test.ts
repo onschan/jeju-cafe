@@ -1,5 +1,5 @@
 /**
- * 봇 KPI 밴드 (확장 스펙 §4.6). 봇 3년 × seed 3개. 밴드 밖이면 guests.ts 레버 #1(POP_SUM_PER_GUEST·FACILITY_POP_PER_GUEST·SPOT_APPEAL_PER_GUEST)·
+ * 봇 KPI 밴드 (확장 스펙 §4.6). 봇 3년 × seed 3개. 밴드 밖이면 guests.ts 레버 #1(POP_SUM_PER_GUEST·FACILITY_POP_PER_GUEST·spots VISITOR_GUEST_RATE)·
  * ingredients.json 레버 #4(원가)부터 조정한다. 5년차 ★4·10년차 목표 105는 트랙 B의 목표 108개가 들어온 뒤에 켜진다.
  */
 import { runBot } from '../bot.ts';

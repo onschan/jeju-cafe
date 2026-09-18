@@ -9,6 +9,7 @@ import { parcelAt } from './parcels.ts';
 import { updateRank } from './rank.ts';
 import { josa } from './josa.ts';
 import { addResearchProgress } from './progress.ts';
+import { spotWalletMult } from './spots.ts';
 export { updateRank };
 
 /** 만족 게이지 0~100: 😊 +2 (타깃 +3), 😠 −1. 30 부탁·50 단골·80 VIP */
@@ -170,7 +171,7 @@ export function regularWalletMult(state: GameState, typeId: string): number {
 }
 /** 지금 이 타입의 예산 (단골 배수 포함) */
 export function walletOf(state: GameState, typeId: string): number {
-  return Math.round(guestTypeDef(typeId).wallet * regularWalletMult(state, typeId));
+  return Math.round(guestTypeDef(typeId).wallet * regularWalletMult(state, typeId) * spotWalletMult(state, typeId)); // 트랙 C: 명소 Lv5 특수(요트 오너 ×1.5)
 }
 
 /** 만족 게이지 변경. 50·80 문턱을 넘으면 단골·VIP 승격 + 알림. */

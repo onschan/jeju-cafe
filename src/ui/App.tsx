@@ -38,6 +38,7 @@ import { showScene, SceneHost, type SceneChar } from './SceneWindow';
 import { staffParts } from '../render/character';
 import { PopupScreenHost } from './PopupScreen';
 import { ChallengePopup } from './RivalPanel';
+import { TourPopup } from './BoardPanel';
 
 /** 길·돌담은 드래그로 연속해서 놓는다 (고스트 없이) */
 const PAINT_KINDS = new Set(['path', 'wall']);
@@ -503,6 +504,7 @@ function Game({ onExit }: { onExit: () => void }) {
       <DrawPopup />
       <AnnouncementPopup />
       <ChallengePopup />
+      <TourPopup />
       <PopupScreenHost />
       {guestPopup && <GuestPopup guestId={guestPopup} onClose={() => setGuestPopup(null)} onQuest={(id) => { dispatch({ type: 'acceptQuest', id }); setWin({ kind: 'people', tab: 'quests' }); }} />}
       {renderWindow()}

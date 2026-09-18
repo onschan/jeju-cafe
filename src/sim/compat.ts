@@ -7,6 +7,7 @@ import { pushNotice } from './staff.ts';
 import { pushFx } from './fx.ts';
 import { levelOf, LEVEL_POPULARITY, LEVEL_SCENERY, LEVEL_FEE_PCT, LEVEL_MENU_PCT, LEVEL_COMBO_MULT } from './upgrade.ts';
 import { wearOf, upkeepMultOf } from './cleanliness.ts';
+import { spotFeePct } from './spots.ts';
 
 /** ObjectDef에 popularity·feePct가 없을 때 (v1 objects.json) */
 export const BASE_POPULARITY = 10;
@@ -218,14 +219,15 @@ export function comboTotal(active: ActiveCombo[], level = 1): { pop: number; fee
   return { pop: up.pop + down.pop, feePct: up.feePct + down.feePct };
 }
 
-/** 상성(누적 상한·Lv 계수)·아이템·손님 효과(시설 인기, +10 상한)·명당(+5)을 더한 인기(세트 배수 전)와 요금 %(Lv +10%/+20%, 좌석형은 +5%/+10%) */
+/** 상성(누적 상한·Lv 계수)·아이템·손님 효과(시설 인기, +10 상한)·명당(+5)을 더한 인기(세트 배수 전)와 요금 %(Lv +10%/+20%, 좌석형은 +5%/+10%, 명소 Lv +2%/+5%) */
 function rawStats(state: GameState, obj: PlacedObject, active: ActiveCombo[], spot: ActiveSpotEffect | null): { pop: number; feePct: number } {
   const def = objectDef(obj.type);
   const item = state.itemBonus[obj.type] ?? { popularity: 0, feePct: 0 };
   const level = levelOf(obj);
   const total = comboTotal(active, level);
   const pop = (def.popularity ?? BASE_POPULARITY) + item.popularity + (state.visitBonus[obj.type] ?? 0) + total.pop + (spot?.popularity ?? 0);
-  const feePct = (def.feePct ?? BASE_FEE_PCT) + item.feePct + total.feePct + ((def.fee !== undefined ? LEVEL_FEE_PCT[level] : LEVEL_MENU_PCT[level]) ?? 0);
+  const feePct = (def.feePct ?? BASE_FEE_PCT) + item.feePct + total.feePct + ((def.fee !== undefined ? LEVEL_FEE_PCT[level] : LEVEL_MENU_PCT[level]) ?? 0)
+    + spotFeePct(state, def.category); // 트랙 C: 명소 Lv3 +2%·Lv5 +5%
   return { pop, feePct };
 }
 /** 상한(40) 뒤에 더하는 인기: 증축 Lv(+4/+8) − 노후(−1~−6). 0 아래로는 안 간다. */

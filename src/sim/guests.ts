@@ -16,7 +16,7 @@ import { isAged } from './economy.ts';
 import { recordUse, facilityFee } from './upgrade.ts'; // 트랙 A 훅: 이용 횟수·Lv 요금
 import { addResearchProgress, TASTE_MATCH_WEIGHT } from './progress.ts';
 import { effectMult, noGuestsToday } from './effects.ts';
-import { spotAppeal, busSpots, isBusDay, BUS_HOUR, BUS_MIN, BUS_MAX } from './spots.ts';
+import { spotGuestBonus, busSpots, isBusDay, BUS_HOUR, BUS_MIN, BUS_MAX, spotSpawnMult } from './spots.ts';
 import type { ParcelBonus } from './types.ts';
 import { seatsOf, isSeat } from './cafe.ts';
 import { pushFx } from './fx.ts';
@@ -38,20 +38,17 @@ export const MAX_GUESTS = 60;
 export const MIN_DAILY_GUESTS = 2;
 export const MAX_DAILY_GUESTS = 300;
 /** 하루 손님 수 = min(좌석 × 6, 인기·명소 기반값) (확장 §4.2 #1).
- *  기반값 = 4 + 해금 손님층 유효 인기 합 ÷ 17 + 시설(좌석 제외) 인기 합 ÷ 12 + 관광지 매력도 ÷ 12, × 평판 배수(0.5~1.5). 시작(6석, 인기 합 75, 평판 50)에 8명. */
+ *  기반값 = 4 + 해금 손님층 유효 인기 합 ÷ 17 + 시설(좌석 제외) 인기 합 ÷ 12 + 명소 방문객 × 3%, × 평판 배수(0.5~1.5). 시작(6석, 인기 합 75, 평판 50)에 8명. */
 export const GUESTS_PER_SEAT = 6;
 export const BASE_DAILY_GUESTS = 4;
 export const POP_SUM_PER_GUEST = 17;
 export const FACILITY_POP_PER_GUEST = 12;
-/** 관광지 매력도(spots.spotAppeal) 12당 하루 손님 +1 — 명소 투자가 손님 수의 큰 축 (§4.2 #1 "인기·명소 기반값") */
-export const SPOT_APPEAL_PER_GUEST = 12;
+/** 명소 하루 방문객(spots.dailyVisitors = 매력 × 2, 투어 버스 ×1.3) × VISITOR_GUEST_RATE(3%)가 하루 손님으로 유입 — 명소 투자가 손님 수의 큰 축 (§4.2 #1 "인기·명소 기반값") */
 /** 대기열: 빈 자리가 없으면 3명까지 기다리고, 넘치면 돌아간다(그 손님층 만족 −10) — §4.3 웨이팅 */
 export const WAIT_MAX = 3;
 export const WAIT_LEAVE_SATISFACTION = 10;
 /** 계절 배수: 1·2월 비수기 0.8, 12월 0.9, 3·11월 0.95, 7·8월 성수기 1.15, 5·10월 1.1 */
 export const SEASON_GUEST_MULT: Record<number, number> = { 1: 0.8, 2: 0.8, 3: 0.95, 5: 1.1, 7: 1.15, 8: 1.15, 10: 1.1, 11: 0.95, 12: 0.9 };
-/** 투어 버스 계약 중 단체 손님 ×1.3 (§3.4.5) */
-export const TOUR_BUS_GROUP_MULT = 1.3;
 /** 청결 훅(트랙 A §3.2.3): state.cleanliness가 있으면 50 미만 ×0.8, 30 미만 ×0.6 */
 export const CLEAN_LOW = 50;
 export const CLEAN_VERY_LOW = 30;
@@ -119,7 +116,7 @@ export function totalSeats(state: GameState): number {
 
 /** 손님층 유입 배수 = (1 + 유효 인기/50) × 유튜버 부스트 × (1 + 인기쟁이 스킬). 유효 인기 = 기본 + 활성 기간형 홍보. */
 export function spawnMultiplier(state: GameState, typeId: string): number {
-  return (1 + effectivePopularity(state, typeId) / 50) * youtuberMultiplier(state, typeId) * (1 + skillTotal(state, 'spawnBonus'));
+  return (1 + effectivePopularity(state, typeId) / 50) * youtuberMultiplier(state, typeId) * (1 + skillTotal(state, 'spawnBonus')) * spotSpawnMult(state, typeId); // 트랙 C: 명소 태그 배수·투어 버스
 }
 
 /** 시간대별 손님층 가중: 아침(6~9) 시니어(삼춘) 2배, 낮(11~17) 청년(관광객) 2배 */
@@ -133,9 +130,9 @@ function hourTypeMult(hour: number, typeId: string): number {
 /** 스폰 시 손님층 선택 가중치 = 기본 × 유입 배수 × 시간대 × 필지(해안 ×1.3) × 단골 빈도 × 이벤트 효과. 잠긴 타입은 0. */
 export function typeWeight(state: GameState, typeId: string, hour = state.clock.hour, bonus: ParcelBonus = 'none'): number {
   if (!isUnlocked(state, typeId)) return 0;
-  const bus = state.tourBus && guestTags(typeId).group ? TOUR_BUS_GROUP_MULT : 1;
+  // 투어 버스 단체 ×1.3은 spawnMultiplier 안의 spotSpawnMult(트랙 C)가 맡는다
   return guestTypeDef(typeId).weight * spawnMultiplier(state, typeId) * hourTypeMult(hour, typeId) * parcelSpawnMult(bonus, typeId)
-    * regularFreqMult(state, typeId) * effectMult(state, 'spawnMult', typeId) * eventTagMult(state, typeId) * bus * reputationTypeMult(state, typeId);
+    * regularFreqMult(state, typeId) * effectMult(state, 'spawnMult', typeId) * eventTagMult(state, typeId) * reputationTypeMult(state, typeId);
 }
 
 /** 시간대별 손님 수 비중 (하루 합 1). 정오 피크 2배, 18시 이후 절반. */
@@ -171,11 +168,11 @@ export function facilityPopularitySum(state: GameState): number {
   }
   return sum;
 }
-/** 관광지 매력도 합 → 하루 손님 (spots.spotGuestBonus보다 센 배율) */
+/** 명소 방문객 → 하루 손님 (트랙 C spots.spotGuestBonus: 방문객/일 × 3%) */
 export function spotDailyGuests(state: GameState): number {
-  return Math.floor(spotAppeal(state) / SPOT_APPEAL_PER_GUEST);
+  return spotGuestBonus(state);
 }
-/** 인기·명소 기반 하루 손님 (좌석 상한 전): 4 + 인기 합/17 + 시설 인기 합/12 + 관광지 매력도/12 */
+/** 인기·명소 기반 하루 손님 (좌석 상한 전): 4 + 인기 합/17 + 시설 인기 합/12 + 명소 방문객 × 3% */
 export function popularityGuestBase(state: GameState): number {
   return BASE_DAILY_GUESTS + Math.floor(popularitySum(state) / POP_SUM_PER_GUEST) + Math.floor(facilityPopularitySum(state) / FACILITY_POP_PER_GUEST) + spotDailyGuests(state);
 }

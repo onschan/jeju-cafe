@@ -2,9 +2,10 @@ import { bareState } from './helpers.ts';
 import { X, Y } from './helpers.ts';
 import { apply } from '../actions.ts';
 import { isMenuAvailable, consumeIngredients, purchaseCost } from '../menu.ts';
-import { ingredientCost, upkeep, upkeepOf, closeMonth, incomeTaxOf, salaryOf, annualRaise, ANNUAL_RAISE_PCT, TOUR_BUS_FEE } from '../economy.ts';
+import { ingredientCost, upkeep, upkeepOf, closeMonth, incomeTaxOf, salaryOf, annualRaise, ANNUAL_RAISE_PCT } from '../economy.ts';
+import { TOUR_BUS_FEE, TOUR_BUS_GROUP_MULT, TOUR_BUS_KEY } from '../spots.ts';
 import { LOAN_MAX } from '../failure.ts';
-import { typeWeight, TOUR_BUS_GROUP_MULT } from '../guests.ts';
+import { typeWeight } from '../guests.ts';
 import { unlockGuestType } from '../segments.ts';
 import { GUEST_TYPES } from '../../data/index.ts';
 import { monthlyHarvest } from '../orchard.ts';
@@ -182,9 +183,9 @@ test('투어 버스: setTourBus로 계약하면 월초 50만 고정비(카드 to
   const s = bareState(1);
   s.loan.count = LOAN_MAX;
   expect(apply(s, { type: 'setTourBus', on: false }).ok).toBe(false);
-  s.money = 100_000;
-  expect(apply(s, { type: 'setTourBus', on: true }).ok).toBe(false); // 첫 달 요금
   s.money = 10_000_000;
+  expect(apply(s, { type: 'setTourBus', on: true }).ok).toBe(false); // 투어 버스 열쇠(트랙 C)가 필요
+  s.inventory[TOUR_BUS_KEY] = 1;
   const w0 = typeWeight(s, 'local_auntie', 12);
   expect(apply(s, { type: 'setTourBus', on: true }).ok).toBe(true);
   expect(apply(s, { type: 'setTourBus', on: true }).ok).toBe(false);
@@ -197,7 +198,7 @@ test('투어 버스: setTourBus로 계약하면 월초 50만 고정비(카드 to
   s.tourBus = true;
   s.clock.day = 30; s.clock.hour = 23;
   tick(s, DAY_MS);
-  expect(s.lastMonthCard!.costs.tourBus).toBe(TOUR_BUS_FEE);
+  expect(s.lastMonthCard!.costs.tourBus).toBe(2 * TOUR_BUS_FEE); // 계약 시 첫 달 요금 + 월초 요금
   expect(apply(s, { type: 'setTourBus', on: false }).ok).toBe(true);
   s.clock.day = 30; s.clock.hour = 23;
   tick(s, DAY_MS);

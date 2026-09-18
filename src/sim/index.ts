@@ -2,7 +2,7 @@ export * from './types.ts';
 export { createInitialState, GRID_W, GRID_H, PARCEL_W, PARCEL_H, START_ORIGIN, VILLAGE_ROAD_Y, MENU_SLOT_COUNT, SAVE_VERSION, START_MONEY, START_MONTH, START_MENUS, START_CANDIDATES, START_PATH, START_SEATS } from './state.ts';
 export { parcelAt, parcelById, parcelPrice, canBuyParcel, ownedParcels, parcelBonusAt, parcelUnlockOwnedCount } from './parcels.ts';
 export { tick, step, STEP_MS } from './tick.ts';
-export { upkeepOf, isAged, salaryOf as economySalaryOf, incomeTaxOf, totalCosts, emptyMonthCosts, UPKEEP_RATE, AGED_UPKEEP_MULT, BASE_SALARY_DEFAULT, SALARY_LEVEL_STEP, SALARY_PER_STAT_POINT, ANNUAL_RAISE_PCT, TAX_RATE, TAX_MONTH, TOUR_BUS_FEE } from './economy.ts';
+export { upkeepOf, isAged, salaryOf as economySalaryOf, incomeTaxOf, totalCosts, emptyMonthCosts, UPKEEP_RATE, AGED_UPKEEP_MULT, BASE_SALARY_DEFAULT, SALARY_LEVEL_STEP, SALARY_PER_STAT_POINT, ANNUAL_RAISE_PCT, TAX_RATE, TAX_MONTH } from './economy.ts';
 export { addComplaint, addReputation, complaintCounts, topComplaints, reputationGuestMult, reputationTypeMult, reputationTipMult, reputationNamedMult, reputationScore, nightlyReputation, monthlyReputation, makeReviews, reviewScore, applyApology, cleanValue, wornCount, COMPLAINT_REASONS, COMPLAINT_LABEL, COMPLAINT_REVIEW, REPUTATION_START, REP_LOW, REP_HIGH, REP_ALERT, APOLOGY_REPUTATION, MAX_REVIEWS, TOP_COMPLAINTS } from './reputation.ts';
 export { hasLoan, loanRewardMult, canTakeLoan, takeLoan, checkLoan, repayLoan, LOAN_AMOUNT, LOAN_MAX, LOAN_THRESHOLD, LOAN_REPAY_RATIO, LOAN_REWARD_MULT, WARN_DEFICIT_MONTHS, LOAN_DEFICIT_MONTHS, CRISIS_MONEY, CRISIS_MONTHS } from './failure.ts';
 export { apply, PROTECTED_TYPES, ROTATABLE_TYPES } from './actions.ts';
@@ -19,13 +19,13 @@ export { menuMod, menuStatsOf, rivalStatPenaltyPct, RIVAL_PENALTY_CAP, menuSkill
 export { isWalkable, busStopPos, isDoorReachable } from './path.ts';
 export { addResearchProgress, HAPPY_PER_RESEARCH, TASTE_MATCH_WEIGHT } from './progress.ts';
 export { serialize, deserialize, MemorySaveStore, LocalSaveStore, type SaveStore } from './save.ts';
-export { freeSeats, hasReachableSeat, seatSlotPos, dailyGuestCount, popularityGuestBase, popularitySum, facilityPopularitySum, spotDailyGuests, seasonGuestMult, cleanlinessGuestMult, spawnMultiplier, prepTimeMs, serviceBonus, isVisitable, likesFacility, spawnNamedGuest, hourlyRegulars, totalSeats, GUEST_SPEED_CELLS_PER_S, SEAT_MS, PREP_MS, VISIT_CHANCE, GUESTS_PER_SEAT, BASE_DAILY_GUESTS, POP_SUM_PER_GUEST, FACILITY_POP_PER_GUEST, SPOT_APPEAL_PER_GUEST, WAIT_MAX, SEASON_GUEST_MULT } from './guests.ts';
+export { freeSeats, hasReachableSeat, seatSlotPos, dailyGuestCount, popularityGuestBase, popularitySum, facilityPopularitySum, spotDailyGuests, seasonGuestMult, cleanlinessGuestMult, spawnMultiplier, prepTimeMs, serviceBonus, isVisitable, likesFacility, spawnNamedGuest, hourlyRegulars, totalSeats, GUEST_SPEED_CELLS_PER_S, SEAT_MS, PREP_MS, VISIT_CHANCE, GUESTS_PER_SEAT, BASE_DAILY_GUESTS, POP_SUM_PER_GUEST, FACILITY_POP_PER_GUEST, WAIT_MAX, SEASON_GUEST_MULT } from './guests.ts';
 export { canPromote, effectivePopularity, MAX_ACTIVE_PROMOTIONS, PARTTIME_MONEY } from './promotions.ts';
 export { TIERS, MAX_LEVEL, LOW_ENERGY, STAT_KEYS, STAT_NAME, salaryOf, SALARY_PER_STAT, SALARY_PER_LEVEL, levelUpCost, roleEffect, ingredientDiscount, staffInRole, canHire, canLevelUp, postJobCost } from './staff.ts';
 export { objectStats, activeCombos, popularityFor, segmentBonus, setLevels, comboTotal, comboPickMult, comboSatisfaction, spotEffectAt, BASE_POPULARITY, POPULARITY_CAP, COMBO_UP_CAP, COMBO_DOWN_CAP, COMBO_PICK_MULT, COMBO_PICK_CAP, COMBO_SATISFACTION, COMBO_SATISFACTION_ALL, HIDDEN_COMBO_TICKETS } from './compat.ts';
 export { levelOf, tierOf, isUpgradable, upgradeCost, usesOf, recordUse, upgradeConditionText, canUpgrade, seatBonusOf, facilityFee, yieldMultOf, MAX_OBJECT_LEVEL, LEVEL_COST_MULT, LEVEL_POPULARITY, LEVEL_SCENERY, LEVEL_FEE_PCT, LEVEL_MENU_PCT, LEVEL_UPKEEP_MULT, LEVEL_COMBO_MULT, LEVEL_SEATS, LEVEL_YIELD_MULT, UPGRADE_USES, UPGRADE_POP_ALT, STAR_BY_TIER, type Tier } from './upgrade.ts';
 export { dailyCleanliness, dailyCleanRecovery, cleanReduceMult, cleanGuestMult, cleanSatisfaction, cleanJudgePenalty, wearOf, isWorn, repairCost, canRepair, upkeepMultOf, CLEAN_MAX, CLEAN_HIGH, CLEAN_LOW, CLEAN_CRIT, CLEAN_ROLE, WEAR_START_MONTHS, WEAR_STEP_MONTHS, WEAR_MAX, REPAIR_COST_PCT, WORN_UPKEEP_MULT } from './cleanliness.ts';
-export { canUseItem, grantItem, itemEffect, ITEM_POP_CAP, ITEM_SCENERY_CAP } from './items.ts';
+export { canUseItem, grantItem, itemEffect, ITEM_POP_CAP, ITEM_SCENERY_CAP, canGiveGift, giftFits, giftedToday, giftCount, hasSpecial, canCraftGift, GIFT_POPULARITY, GIFT_SATISFACTION, GIFT_FIT_MULT } from './items.ts';
 export { buildDaysOf, isUnderConstruction, constructions, canStartBuild, buildDaysLeft, START_BUILDERS, MAX_BUILDERS, needsDoorPath, DOOR_PATH_HINT } from './build.ts';
 export { canBuyMileage, canBuyTicket, canDrawTicket, canSetUniform, canUseGuestItem, hasFreeDraw, hasUniform, rollPrize, SEED_PACK, DRAW_MONEY_PER_YEAR, UNIFORM_PIECES_PER_SET, MONTHLY_FREE_TICKETS } from './shop.ts';
 export { addMileage, codexCount, checkCodexMileage, monthlyMileage, CODEX_PER_MILEAGE, GUESTS_PER_MILEAGE } from './mileage.ts';
@@ -33,7 +33,13 @@ export { rankScore, rankForScore, nextRankThreshold, facilityCount, unlockedGues
 export { starConditionMet, starConditionsHeld, isReviewDue, starReview, nextStarConditions, checkStar, judgeScores, guidebookScore, guidebookState, evaluateGuidebooks, guidebooksToAnnounce, announce, rivalScores, rivalTop, rivalBoost, rankAmong, monthlyTarget, targetPopularity, codexTotal, MAX_STAR, JUDGE_KEYS, JUDGE_LABEL, ANNOUNCE_MONTHS, RIVAL_COUNT, PRIZE_RATIO, RANK_MILEAGE, MONTHLY_TAGS, RIVAL_WIN_BOOST, RIVAL_CAFE_BOOST, REVIEW_MIN_STAR, REVIEW_EVERY_YEARS, RANK_SHIELD_ITEM } from './guidebook.ts';
 export { evaluateUnlocks, evaluateFacilityUnlocks, unlockCondMet, isUnlocked, unlockedTypeIds, guestFace, walletOf, regularTier, isTarget, MAX_TARGETS, SAT_QUEST, SAT_REGULAR, SAT_VIP } from './segments.ts';
 export { questProgress, canAcceptQuest, canRespondEvent, eventConditionMet, boardBadge, visibleQuests, questRewardText, QUEST_MONTHS } from './board.ts';
-export { spotLevel, spotUnlocked, nextSpotLevel, spotAppeal, spotGuestBonus, canInvestSpot, SPOT_MAX_LEVEL, SPOT_BUS_LEVEL, SPOT_GUEST_LEVEL, SPOT_QUEST_LEVEL } from './spots.ts';
+export {
+  spotLevel, spotUnlocked, nextSpotLevel, spotAppeal, spotAppealOf, spotGuestBonus, canInvestSpot, spotRequirements, spotVisitors, totalSpotVisitors, dailyVisitors, totalDailyVisitors,
+  spotSpawnMult, spotWalletMult, spotFeePct, spotSceneryBonus, tagPopularity, tourScore, tourAvailable, canHostTour, hasTourBusKey, canSetTourBus, spotStarReq, spotCost,
+  SPOT_MAX_LEVEL, SPOT_BUS_LEVEL, SPOT_GUEST_LEVEL, SPOT_ITEM_LEVEL, SPOT_QUEST_LEVEL, SPOT_TAG_MULT, SPOT_FEE_PCT, SPOT_SCENERY, SPOT_LV5_MILEAGE, SPOT_VISITOR_REQ, SPOT_YEAR_REQ_LV3, SPOT_POP_REQ_LV4,
+  VISITOR_PRIZES, GOLDEN_TANGERINE_VISITORS, TOUR_BUS_KEY, TOUR_BUS_FEE, TOUR_YEAR, TOUR_SUCCESS_SCORE, TOUR_MONEY_PER_SCORE, TOUR_SUCCESS_VISITORS, TOUR_FAIL_MONEY, TOUR_FAIL_VISITORS, VISITOR_GUEST_RATE,
+  type SpotRequirement,
+} from './spots.ts';
 export { effectMult, noGuestsToday, dayIndex } from './effects.ts';
 export { cafeLevel, nextCafeLevelIncome, hasExpansion, canRenameCafe, canExpand, placeCost, seatsOf, isSeat, canSetCosmetic, canPraise, EXPANSIONS, CAFE_LEVEL_INCOME, CAFE_NAME_MAX, WALL_COLORS, SIGN_MAX, PRAISE_ENERGY, DEFAULT_CAFE_NAME, type ExpansionId, type ExpansionDef } from './cafe.ts';
 export { josa, hasBatchim } from './josa.ts';

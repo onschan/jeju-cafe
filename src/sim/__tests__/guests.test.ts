@@ -215,7 +215,7 @@ test('하루 손님 수 = min(좌석×6, (4 + 인기 합/17 + 시설 인기 합/
   expect(dailyGuestCount(s)).toBe(2 * GUESTS_PER_SEAT);
   placeObject(s, 'table_out', X(5), Y(5)); // 4석 → 상한 24
   expect(dailyGuestCount(s)).toBe(18);
-  placeObject(s, 'tangerine_tree', X(6), Y(5)); placeObject(s, 'tangerine_tree', X(6), Y(6)); // 시설 인기 10×2 → 합 20 → +1
+  placeObject(s, 'tangerine_tree', X(8), Y(1)); placeObject(s, 'tangerine_tree', X(9), Y(1)); // 시설 인기 10×2 → 합 20 → +1 (테이블과 3칸 이상 떨어뜨려 '귤밭 뷰' 콤보 제외)
   expect(facilityPopularitySum(s)).toBe(20);
   expect(popularityGuestBase(s)).toBe(19);
   s.clock.month = 1; // 비수기 0.8

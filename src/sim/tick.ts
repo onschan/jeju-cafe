@@ -4,7 +4,7 @@ import { monthlyHarvest } from './orchard.ts';
 import { checkGoals } from './goals.ts';
 import { monthlyBigEvents, dailyBigEvents, hourlyBigEvents } from './events.ts';
 import { hourlySpawn, hourlyRegulars, updateGuests } from './guests.ts';
-import { upkeep, closeMonth, annualRaise, incomeTax, tourBusFee, TAX_MONTH } from './economy.ts';
+import { upkeep, closeMonth, annualRaise, incomeTax, TAX_MONTH } from './economy.ts';
 import { checkLoan, monthlyFailure } from './failure.ts';
 import { resetWaiting } from './guests.ts';
 import { nightlyReputation, monthlyReputation } from './reputation.ts';
@@ -18,6 +18,9 @@ import { advanceConstruction } from './build.ts';
 import { monthlyShop } from './shop.ts';
 import { monthlyRank } from './guidebook.ts';
 import { monthlyMileage } from './mileage.ts';
+import { dailySpots, monthlySpots } from './spots.ts';
+import { monthlyGifts } from './items.ts';
+import { fmtNum } from './format.ts';
 import { hourlyPopup, dailyPopup } from './popup.ts';
 import { monthlyRivals } from './rivals.ts';
 import { dailyCleanliness } from './cleanliness.ts';
@@ -46,20 +49,22 @@ function onNewDay(state: GameState): void {
   dailyPopup(state);
   nightlyRecovery(state);
   dailyBoard(state);
+  dailySpots(state);
   resolveDevelop(state);
   advanceConstruction(state);
   checkGoals(state);
 }
 
-/** 월 바뀜 (1일의 날 처리보다 먼저): (3월) 급여 인상 → 월급 → 홍보 만료·인기 감소 → 유지비 → 투어 버스 → (3월) 소득세 → 손님 수 마일리지 → 정산 → 실패 상태(경고·대출·상환·위기) → 평판 후기 → 농원 수확 → 후보 만료 → 손님 해금 → 게시판 → 응모권·무료 추첨 → ★·가이드북 발표 → 라이벌 → 빅 이벤트 판정 */
+/** 월 바뀜 (1일의 날 처리보다 먼저): (3월) 급여 인상 → 월급 → 홍보 만료·인기 감소 → 유지비 → 투어 버스 → (3월) 소득세 → 명소 월 정산·선물 → 손님 수 마일리지 → 정산 → 실패 상태(경고·대출·상환·위기) → 평판 후기 → 농원 수확 → 후보 만료 → 손님 해금 → 게시판 → 응모권·무료 추첨 → ★·가이드북 발표 → 라이벌 → 빅 이벤트 판정 */
 function onNewMonth(state: GameState, prevMonth: number, prevYear: number): void {
   const newYear = state.clock.month === TAX_MONTH && state.clock.year >= 2;
   if (newYear) annualRaise(state);
   payroll(state);
   expirePromotions(state);
   upkeep(state);
-  tourBusFee(state);
   if (newYear) incomeTax(state);
+  monthlySpots(state); // 투어 버스 월 계약비(트랙 C chargeTourBus → monthCosts.tourBus)
+  monthlyGifts(state);
   monthlyMileage(state);
   closeMonth(state, prevMonth, prevYear);
   monthlyFailure(state);

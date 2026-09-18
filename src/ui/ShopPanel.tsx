@@ -1,17 +1,19 @@
 import { useEffect, useState, type CSSProperties } from 'react';
 import { useGame, dispatch } from './store';
-import { canBuyMileage, canBuyTicket, canDrawTicket, canUseItem, canUseGuestItem, hasFreeDraw, hasUniform, itemEffect, constructions, unlockedTypeIds, MAX_BUILDERS, josa } from '../sim/index.ts';
-import { MILEAGE_SHOP, TICKET_SHOP, UNIFORMS, DRAW_PRIZES, itemDef, objectDef, uniformDef, guestTypeDef, POPULARITY_FRUIT } from '../data/index.ts';
+import { canBuyMileage, canBuyTicket, canDrawTicket, canUseItem, canUseGuestItem, canCraftGift, hasFreeDraw, hasUniform, itemEffect, constructions, unlockedTypeIds, MAX_BUILDERS, josa } from '../sim/index.ts';
+import { MILEAGE_SHOP, TICKET_SHOP, UNIFORMS, DRAW_PRIZES, ITEMS, GIFTS, SPECIAL_ITEM_IDS, SPECIAL_ITEM_EFFECT, itemDef, objectDef, uniformDef, guestTypeDef, giftDef, isGiftId, ingredientDef, POPULARITY_FRUIT } from '../data/index.ts';
+import { label } from '../data/labels.ts';
 import { Popup, Confirm } from './Popup';
 import { Icon } from './Icon';
 import { sfx } from './audio';
 import { card, brownBtn, brownBtnOn, brownBtnOff, brownSelect, PALETTE } from './frame';
 
-type Tab = 'mileage' | 'draw' | 'ticket';
+type Tab = 'mileage' | 'draw' | 'ticket' | 'codex';
 const TABS: { id: Tab; label: string }[] = [
   { id: 'mileage', label: '마일리지' },
   { id: 'draw', label: '인형뽑기' },
   { id: 'ticket', label: '응모권 상점' },
+  { id: 'codex', label: '아이템 도감' },
 ];
 /** 인형뽑기 연출 길이 (ms) */
 export const DRAW_ANIM_MS = 2000;
@@ -22,6 +24,57 @@ const small: CSSProperties = { fontSize: 13, color: PALETTE.inkSoft };
 
 function statLabel(stat: 'popularity' | 'feePct' | 'scenery'): string {
   return stat === 'popularity' ? '인기' : stat === 'feePct' ? '요금' : '경관';
+}
+const TAG_LABEL: Record<string, string> = { female: '여성', male: '남성', youth: '청년', adult: '어른', senior: '시니어', group: '단체' };
+
+/** 아이템 도감: 강화 아이템(잘 맞는 시설)·특수 아이템(효과·입수처)·손님 선물(잘 맞는 손님층·입수처). 가진 개수 표시, 제작형 선물은 여기서 만든다. */
+function ItemCodex() {
+  const s = useGame();
+  const have = (id: string) => s.inventory[id] ?? 0;
+  const enhance = ITEMS.filter((i) => i.value > 0 && i.fitIds.length > 0);
+  const special = SPECIAL_ITEM_IDS.map((id) => itemDef(id));
+  const owned = [...enhance, ...special, ...GIFTS].filter((i) => have(i.id) > 0).length;
+  const section = (title: string, hint: string) => <div style={{ fontWeight: 700, margin: '8px 0 4px' }}>{title} <span style={{ ...small, fontWeight: 400 }}>{hint}</span></div>;
+  return (
+    <div data-testid="item-codex">
+      <div style={small}>가진 종류 {owned}/{enhance.length + special.length + GIFTS.length}</div>
+      {section(`강화 아이템 ${enhance.length}`, '시설 1종에 써요. 잘 맞는 시설이면 ×2')}
+      {enhance.map((it) => (
+        <div key={it.id} style={{ ...row, opacity: have(it.id) > 0 ? 1 : 0.6 }}>
+          <div style={{ flex: 1 }}>
+            <div><b>{it.name}</b>{have(it.id) > 0 ? ` ×${have(it.id)}` : ''}</div>
+            <div style={small}>{statLabel(it.stat)} +{it.value}{it.stat === 'feePct' ? '%' : ''} · 잘 맞는 시설: {it.fitIds.map((f) => label('facility', f)).join('·')}{it.sourceText ? ` · ${it.sourceText}` : ''}</div>
+          </div>
+        </div>
+      ))}
+      {section(`특수 아이템 ${special.length}`, '가지고 있으면 효과가 나요')}
+      {special.map((it) => (
+        <div key={it.id} style={{ ...row, opacity: have(it.id) > 0 ? 1 : 0.6 }}>
+          <div style={{ flex: 1 }}>
+            <div><b>{it.name}</b>{have(it.id) > 0 ? ` ×${have(it.id)}` : ''}</div>
+            <div style={small}>{SPECIAL_ITEM_EFFECT[it.id] || ''}{it.sourceText ? ` · ${it.sourceText}` : ''}</div>
+          </div>
+        </div>
+      ))}
+      {section(`손님 선물 ${GIFTS.length}`, '손님 카드 「선물하기」 — 인기 +3 · 만족 +20, 잘 맞으면 ×2, 하루 1회')}
+      {GIFTS.map((g) => {
+        const craft = g.source.type === 'craft' ? g.source : null;
+        const can = craft ? canCraftGift(s, g.id) : null;
+        return (
+          <div key={g.id} style={{ ...row, opacity: have(g.id) > 0 ? 1 : 0.6 }}>
+            <div style={{ flex: 1 }}>
+              <div><b>{g.name}</b>{have(g.id) > 0 ? ` ×${have(g.id)}` : ''}</div>
+              <div style={small}>{TAG_LABEL[g.fitTag] ?? g.fitTag} 손님에게 잘 맞아요 · {g.sourceText}{craft ? ` (창고 ${ingredientDef(craft.ingredientId).name} ${s.storage[craft.ingredientId] ?? 0}/${craft.count})` : ''}</div>
+            </div>
+            {craft && can && (
+              <button style={{ ...(can.ok ? brownBtn : brownBtnOff), marginBottom: 0, marginRight: 0 }} disabled={!can.ok} data-testid={`craft-${g.id}`}
+                onClick={() => dispatch({ type: 'craftGift', itemId: g.id })}>만들기</button>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
 }
 
 /** 상점 탭: 마일리지 상점 / 인형뽑기 / 응모권 상점 + 아래 인벤토리 */
@@ -39,7 +92,8 @@ export function ShopPanel() {
       {tab === 'mileage' && <MileageShop />}
       {tab === 'draw' && <DrawMachine />}
       {tab === 'ticket' && <TicketShop />}
-      <Inventory />
+      {tab === 'codex' && <ItemCodex />}
+      {tab !== 'codex' && <Inventory />}
     </div>
   );
 }
@@ -142,11 +196,12 @@ function Inventory() {
         let it;
         try { it = itemDef(id); } catch { return null; }
         const usable = it.value > 0 || id === POPULARITY_FRUIT;
+        const gift = isGiftId(id);
         return (
           <div key={id} style={row}>
             <div style={{ flex: 1 }}>
               <div><b>{it.name}</b> ×{n}</div>
-              <div style={small}>{usable ? id === POPULARITY_FRUIT ? '손님 1종 인기 +10' : `${statLabel(it.stat)} +${it.value}${it.stat === 'feePct' ? '%' : ''} (잘 맞는 시설 ×2)` : it.sourceText || '특별한 아이템'}</div>
+              <div style={small}>{gift ? `손님 선물 — 손님 카드에서 「선물하기」 (${TAG_LABEL[giftDef(id).fitTag] ?? ''} 손님이면 ×2)` : usable ? id === POPULARITY_FRUIT ? '손님 1종 인기 +10' : `${statLabel(it.stat)} +${it.value}${it.stat === 'feePct' ? '%' : ''} (잘 맞는 시설 ×2)` : SPECIAL_ITEM_EFFECT[id] || it.sourceText || '특별한 아이템'}</div>
             </div>
             {usable && <button style={{ ...brownBtn, marginBottom: 0, marginRight: 0 }} data-testid={`use-${id}`} onClick={() => setPicking(id)}>사용</button>}
           </div>

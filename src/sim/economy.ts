@@ -30,7 +30,6 @@ export const ANNUAL_RAISE_PCT = 5;
 export const TAX_RATE = 0.1;
 export const TAX_MONTH = 3;
 /** 투어 버스 월 고정비 */
-export const TOUR_BUS_FEE = 500_000;
 
 /** 재료 원가 합 + 토핑 원가 (창고 재고는 보지 않는 정가 — UI 표시·개발 비용용). 운반·절약 스킬·콤보·세련미만큼 할인. */
 export function ingredientCost(state: GameState, menuId: string): number {
@@ -98,13 +97,6 @@ export function incomeTax(state: GameState): number {
   pushNotice(state, `소득세 ₩${fmtNum(tax)} (전년 순이익의 ${Math.round(TAX_RATE * 100)}%)`);
   return tax;
 }
-/** 투어 버스 계약 중이면 월초 50만 */
-export function tourBusFee(state: GameState): void {
-  if (!state.tourBus) return;
-  state.money -= TOUR_BUS_FEE;
-  state.monthCosts.tourBus += TOUR_BUS_FEE;
-}
-
 // ---------- 월말 정산 ----------
 
 /** 월말 정산 카드를 만들고 월 누적치를 리셋한다. 농원 수확·절감(monthHarvest)과 최다 판매 메뉴도 카드로 옮긴다.

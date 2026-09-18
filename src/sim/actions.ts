@@ -7,17 +7,16 @@ import { checkFeature, checkGoals } from './goals.ts';
 import { canPostJob, postJob, canHire, hire, canFire, fire, canAssign, assign, canLevelUp, levelUp } from './staff.ts';
 import { canPromote, promote, canSetTarget, setTarget } from './promotions.ts';
 import { discoverCombos } from './compat.ts';
-import { canUseItem, useItem } from './items.ts';
+import { canUseItem, useItem, canGiveGift, giveGift, canCraftGift, craftGift } from './items.ts';
 import { evaluateUnlocks } from './segments.ts';
 import { canAcceptQuest, acceptQuest, canRespondEvent, respondEvent, afterInvest, checkQuests } from './board.ts';
-import { canInvestSpot, investSpot } from './spots.ts';
+import { canInvestSpot, investSpot, canHostTour, hostTour, canSetTourBus, setTourBus } from './spots.ts';
 import { canRenameCafe, renameCafe, canExpand, expand, canSetCosmetic, setCosmetic, canPraise, praise, placeCost, type ExpansionId } from './cafe.ts';
 import { canDevelop, develop, canAddTopping, addTopping, canRemoveTopping, removeTopping, canLevelUpMenu, levelUpMenu } from './craft.ts';
 import { canStartBuild, startBuild } from './build.ts';
 import { canBuyMileage, buyMileage, canBuyTicket, buyTicket, canDrawTicket, drawTicket, canSetUniform, setUniform, canUseGuestItem, useGuestItem } from './shop.ts';
 import { canOpenPopup, openPopup, canClosePopup, closePopup } from './popup.ts';
 import { canChallenge, challenge } from './rivals.ts';
-import { TOUR_BUS_FEE } from './economy.ts';
 import { canUpgrade, upgrade } from './upgrade.ts';
 import { canRepair, repair } from './cleanliness.ts';
 import { objectStats } from './compat.ts';
@@ -27,7 +26,7 @@ export const PROTECTED_TYPES = new Set(['busstop', 'warehouse', 'gate', 'spring'
 export const ROTATABLE_TYPES = new Set(['gate', 'bench', 'counter']);
 const ACTION_LOG_CAP = 1000;
 
-const CLIENT_ONLY = new Set<Action['type']>(['setSpeed', 'dismissMonthCard', 'dismissDevelop', 'dismissDraw', 'dismissAnnouncement', 'dismissChallenge', 'dismissAlert']);
+const CLIENT_ONLY = new Set<Action['type']>(['setSpeed', 'dismissMonthCard', 'dismissDevelop', 'dismissDraw', 'dismissAnnouncement', 'dismissChallenge', 'dismissAlert', 'dismissTour']);
 
 function log(state: GameState, a: Action) {
   if (CLIENT_ONLY.has(a.type)) return;
@@ -248,6 +247,33 @@ function applyInner(state: GameState, a: Action): ApplyResult {
       afterInvest(state, a.id, level);
       return { ok: true };
     }
+    case 'hostTour': {
+      const c = canHostTour(state, a.spotId);
+      if (!c.ok) return c;
+      hostTour(state, a.spotId);
+      return { ok: true };
+    }
+    case 'dismissTour':
+      state.lastTour = null;
+      return { ok: true };
+    case 'setTourBus': {
+      const c = canSetTourBus(state, a.on);
+      if (!c.ok) return c;
+      setTourBus(state, a.on);
+      return { ok: true };
+    }
+    case 'giveGift': {
+      const c = canGiveGift(state, a.guestId, a.itemId);
+      if (!c.ok) return c;
+      giveGift(state, a.guestId, a.itemId);
+      return { ok: true };
+    }
+    case 'craftGift': {
+      const c = canCraftGift(state, a.itemId);
+      if (!c.ok) return c;
+      craftGift(state, a.itemId);
+      return { ok: true };
+    }
     case 'develop': {
       const c = canDevelop(state, a.base, a.ingredients, a.staffId);
       if (!c.ok) return c;
@@ -332,12 +358,6 @@ function applyInner(state: GameState, a: Action): ApplyResult {
     case 'dismissChallenge':
       state.lastChallenge = null;
       return { ok: true };
-    case 'setTourBus': {
-      if (state.tourBus === a.on) return { ok: false, reason: a.on ? '이미 계약 중이에요' : '계약 중이 아니에요' };
-      if (a.on && state.money < TOUR_BUS_FEE) return { ok: false, reason: '첫 달 요금 ₩500,000이 없어요' };
-      state.tourBus = a.on;
-      return { ok: true };
-    }
     default:
       return { ok: false, reason: '아직 구현 안 됨' };
   }

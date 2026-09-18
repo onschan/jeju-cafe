@@ -17,7 +17,7 @@ import { emptyMonthCosts } from './economy.ts';
 import { REPUTATION_START } from './reputation.ts';
 
 export { PARCEL_W, PARCEL_H, START_ORIGIN, GRID_W, GRID_H, VILLAGE_ROAD_Y };
-export const SAVE_VERSION = 16; // 16: 경제 확장 — 삼춘 대출·세금·대기열·★ 유지 심사 (마이그레이션 없음). 15: v3 대격변. 14: 라이벌 카페
+export const SAVE_VERSION = 17; // 17: 컨텐츠 확장 통합 — 경제(삼춘 대출·세금·대기열·★ 유지 심사)·시설 44·증축·청결·명소 방문객·투어·선물·직원 8직종·입지·목표 108 (마이그레이션 없음). 15: v3 대격변. 14: 라이벌 카페
 /** 시작 자금 500만. 정착지원금은 삼춘 대출(failure.ts: 잔고 < 40만 → 300만, 최대 3회)로 바뀌었다 — 확장 스펙 §4.2 #8 */
 export const START_MONEY = 5_000_000;
 export const START_MONTH = 3;
@@ -133,7 +133,6 @@ export function createInitialState(seed: number, playerId = 'local', createdAt =
     yearNet: 0,
     lastYearNet: 0,
     salaryRaisePct: 0,
-    tourBus: false,
     waiting: [],
     monthGuestsLeft: 0,
     monthLoan: 0,
@@ -188,6 +187,14 @@ export function createInitialState(seed: number, playerId = 'local', createdAt =
     lastAnnouncement: null,
     board: { quests: {}, events: [] },
     spots: {},
+    spotVisitors: {},
+    spotPrizes: {},
+    goldenTangerineGiven: false,
+    tourBus: false,
+    tourBusFreeMonths: 0,
+    tourMonth: -1,
+    lastTour: null,
+    giftDay: -1,
     effects: [],
     menuSold: {},
     monthMenuSold: {},

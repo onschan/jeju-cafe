@@ -61,11 +61,11 @@ export function showToast(text: string, ms = 1500) { toast = { text, until: perf
 
 /** 액션이 성공했을 때 내는 효과음 */
 const ACTION_SFX: Record<Action['type'], SfxName> = {
-  place: 'place', remove: 'remove', setTourBus: 'tap',
+  place: 'place', remove: 'remove',
   setSlot: 'tap', setSpeed: 'tap', dismissAlert: 'tap', dismissMonthCard: 'tap',
   postJob: 'tap', hire: 'tap', fire: 'tap', assign: 'tap', levelUp: 'tap', promote: 'tap', setTarget: 'tap',
   move: 'place', rotate: 'tap', upgradeObject: 'unlock', repairObject: 'place', buyParcel: 'unlock', useItem: 'unlock', clearRock: 'remove', renameCafe: 'tap', expand: 'unlock', setCosmetic: 'tap', praise: 'happy',
-  acceptQuest: 'tap', respondEvent: 'tap', investSpot: 'unlock',
+  acceptQuest: 'tap', respondEvent: 'tap', investSpot: 'unlock', hostTour: 'fanfare', dismissTour: 'tap', setTourBus: 'tap', giveGift: 'happy', craftGift: 'unlock',
   develop: 'unlock', dismissDevelop: 'tap', addTopping: 'tap', removeTopping: 'tap', levelUpMenu: 'unlock',
   buyMileage: 'coin', buyTicket: 'coin', drawTicket: 'tap', dismissDraw: 'tap', setUniform: 'tap', useGuestItem: 'unlock', dismissAnnouncement: 'tap',
   openPopup: 'unlock', closePopup: 'tap', challenge: 'fanfare', dismissChallenge: 'tap',
