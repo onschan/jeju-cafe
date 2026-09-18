@@ -3,7 +3,7 @@ import { X, Y } from './helpers.ts';
 import { SETTLE_GRANT, SETTLE_GRANT_THRESHOLD } from '../state.ts';
 import { apply } from '../actions.ts';
 import { canPlace, placeObject, sceneryScore, cellAt, objectAt, isSheltered, removeObject } from '../grid.ts';
-import { parcelAt, parcelById, parcelPrice, canBuyParcel, parcelUnlockOwnedCount, parcelsAdjacent, COAST_FEE_MULT, COAST_SPAWN_MULT, OREUM_SCENERY, STONEHILL_SCENERY, VILLAGE_SENIOR_MULT } from '../parcels.ts';
+import { parcelAt, parcelById, parcelPrice, canBuyParcel, parcelUnlockOwnedCount, parcelsAdjacent, COAST_FEE_MULT, COAST_SPAWN_MULT, OREUM_SCENERY, STONEHILL_SCENERY, VILLAGE_SENIOR_MULT, BATDAM_HARVEST_MULT } from '../parcels.ts';
 import { typeWeight, spawnGuests, updateGuests } from '../guests.ts';
 import { monthlyYieldOf } from '../orchard.ts';
 import { monthIndex } from '../clock.ts';
@@ -151,10 +151,10 @@ test('구역 보너스: 오름은 경치 +2, 돌담 언덕 +1, 밭담 골짜기�
   if (objectAt(s, cell.x, cell.y)) throw new Error('테스트 칸이 비어 있어야 해요');
   const f = placeObject(s, 'carrot_field', cell.x, cell.y);
   expect(isSheltered(s, cell.x, cell.y)).toBe(true); // 밭담 골짜기의 기본 돌담이 북서쪽을 막아 준다
-  // 농원 월 수확: 놓은 달엔 0, 다음 달부터 perMonth. (필지 수확 배수 parcelHarvestMult는 v3 농원 수확에 아직 곱해지지 않는다)
+  // 농원 월 수확: 놓은 달엔 0, 다음 달부터 perMonth × 밭담 ×1.2 내림 (8 → 9)
   expect(monthlyYieldOf(s, f)).toBe(0);
   f.placedMonth -= 1;
-  expect(monthlyYieldOf(s, f)).toBe(objectDef('carrot_field').yield!.perMonth);
+  expect(monthlyYieldOf(s, f)).toBe(Math.floor(objectDef('carrot_field').yield!.perMonth * BATDAM_HARVEST_MULT));
 });
 
 test('랜드마크는 필지당 하나, 데이터는 landmarks.json에서 온다', () => {

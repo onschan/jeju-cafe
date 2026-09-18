@@ -1,11 +1,11 @@
 /**
  * 농원 (v3 §3): 밭·심기·계절은 없다. 감귤나무·당근밭·녹차밭 같은 농원 시설(ObjectDef.yield)은
  * 매월 1일 창고(state.storage)에 재료를 넣는다. 놓은 달은 제외(다음 달 1일부터), 건설 중·안 산 필지는 제외.
- * 이벤트 수확 배수(풍년·흉년 harvestMult)는 그대로 곱한다.
+ * 필지 보너스(밭담 ×1.2·용천수 ×1.1·곶자왈 차 ×1.1)와 이벤트 수확 배수(풍년·흉년 harvestMult)를 곱해 내림.
  */
 import type { GameState, PlacedObject, MonthHarvest } from './types.ts';
 import { objectDef, ingredientDef } from '../data/index.ts';
-import { parcelAt } from './parcels.ts';
+import { parcelAt, parcelBonusAt, parcelHarvestMult } from './parcels.ts';
 import { effectMult } from './effects.ts';
 import { monthIndex } from './clock.ts';
 import { pushFx } from './fx.ts';
@@ -26,7 +26,11 @@ export function monthlyYieldOf(state: GameState, obj: PlacedObject): number {
   if (!y || obj.build) return 0;
   if (!parcelAt(state, obj.x, obj.y)?.owned) return 0;
   if (obj.placedMonth >= monthIndex(state.clock)) return 0;
-  return Math.floor(y.perMonth * effectMult(state, 'harvestMult'));
+  return yieldAmount(state, obj, y.ingredientId, y.perMonth);
+}
+
+function yieldAmount(state: GameState, obj: PlacedObject, ingredientId: string, perMonth: number): number {
+  return Math.floor(perMonth * parcelHarvestMult(parcelBonusAt(state, obj.x, obj.y), ingredientId) * effectMult(state, 'harvestMult'));
 }
 
 /** 다음 달 1일 수확 예정 (UI "이달 수확 예정: 감귤 6"): ingredientId → 개수 */
@@ -35,7 +39,7 @@ export function expectedHarvest(state: GameState): Record<string, number> {
   for (const o of Object.values(state.objects)) {
     const y = objectDef(o.type).yield;
     if (!y || o.build || !parcelAt(state, o.x, o.y)?.owned) continue;
-    out[y.ingredientId] = (out[y.ingredientId] ?? 0) + Math.floor(y.perMonth * effectMult(state, 'harvestMult'));
+    out[y.ingredientId] = (out[y.ingredientId] ?? 0) + yieldAmount(state, o, y.ingredientId, y.perMonth);
   }
   return out;
 }

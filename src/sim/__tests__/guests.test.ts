@@ -3,7 +3,7 @@ import { X, Y } from './helpers.ts';
 import { createInitialState } from '../state.ts';
 import { placeObject } from '../grid.ts';
 import { setSlot } from '../menu.ts';
-import { spawnGuests, updateGuests, freeSeats, hasReachableSeat, dailyGuestCount, totalSeats, hourShare, typeWeight, GUEST_SPEED_CELLS_PER_S, SEAT_MS, PREP_MS, MAX_GUESTS, MIN_DAILY_GUESTS, MAX_DAILY_GUESTS, GUESTS_PER_SEAT } from '../guests.ts';
+import { spawnGuests, updateGuests, freeSeats, hasReachableSeat, dailyGuestCount, totalSeats, hourShare, typeWeight, GUEST_SPEED_CELLS_PER_S, SEAT_MS, PREP_MS, MAX_GUESTS, MIN_DAILY_GUESTS, MAX_DAILY_GUESTS, GUESTS_PER_SEAT, GUESTS_PER_MULT } from '../guests.ts';
 import { moveAlong } from '../path.ts';
 import { tick } from '../tick.ts';
 import { HOUR_MS, START_HOUR, END_HOUR } from '../clock.ts';
@@ -201,19 +201,20 @@ test('대사: 30%쯤은 말풍선 텍스트, 손님층·기분·이유에 맞는
   expect(said).toBeLessThan(total * 0.45);
 });
 
-test('하루 손님 수 = 2 + 좌석×GUESTS_PER_SEAT + (평균 배수−1)×10, 2~120', () => {
+test('하루 손님 수 = 2 + 좌석×GUESTS_PER_SEAT + (평균 배수−1)×GUESTS_PER_MULT, 2~120', () => {
   const s = bareState(1);
   s.segmentPopularity = { local_auntie: 0, student: 0, village_head: 0 }; // 시작 해금 3타입
   expect(dailyGuestCount(s)).toBe(MIN_DAILY_GUESTS);
   placeObject(s, 'table_out', X(4), Y(5)); // 2석
   placeObject(s, 'table_out', X(5), Y(5)); // 4석
   const perSeat = (seats: number) => Math.floor(seats * GUESTS_PER_SEAT);
+  const perMult = (avg: number) => Math.floor((avg - 1) * GUESTS_PER_MULT + 1e-9);
   expect(dailyGuestCount(s)).toBe(MIN_DAILY_GUESTS + perSeat(4));
-  s.segmentPopularity = { local_auntie: 30, student: 20, village_head: 25 }; // 평균 배수 1.5 → +5
-  expect(dailyGuestCount(s)).toBe(MIN_DAILY_GUESTS + perSeat(4) + 5);
-  s.segmentPopularity = { local_auntie: 99, student: 99, village_head: 99 }; // 평균 배수 2.98 → +19
+  s.segmentPopularity = { local_auntie: 30, student: 20, village_head: 25 }; // 평균 배수 1.5
+  expect(dailyGuestCount(s)).toBe(MIN_DAILY_GUESTS + perSeat(4) + perMult(1.5));
+  s.segmentPopularity = { local_auntie: 99, student: 99, village_head: 99 }; // 평균 배수 2.98
   for (let i = 0; i < 12; i++) placeObject(s, 'table_out', i % 10, 1 + Math.floor(i / 10) * 3); // 28석
-  expect(dailyGuestCount(s)).toBe(MIN_DAILY_GUESTS + perSeat(28) + 19);
+  expect(dailyGuestCount(s)).toBe(MIN_DAILY_GUESTS + perSeat(28) + perMult(2.98));
   for (let x = 10; x < 30; x++) for (const y of [1, 2, 3]) placeObject(s, 'table_out', x, y); // 148석 → 상한 120
   expect(totalSeats(s)).toBe(148);
   expect(dailyGuestCount(s)).toBe(MAX_DAILY_GUESTS);
@@ -235,9 +236,9 @@ test('손님은 하루에 걸쳐 시간마다 나뉘어 오고, 하루 합은 da
   const s = bareState(1);
   for (let i = 0; i < 6; i++) placeObject(s, 'table_out', X(2 + i), Y(5)); // 12석
   for (const x of [2, 3, 5, 6, 7]) placeObject(s, 'path', X(x), Y(6)); // (4,6)은 정낭
-  s.segmentPopularity = { local_auntie: -50, student: -25, village_head: 0 }; // 평균 배수 0.5 → −5: 하루 9명이면 점심 피크에도 좌석이 안 막힌다
+  s.segmentPopularity = { local_auntie: -50, student: -25, village_head: 0 }; // 평균 배수 0.5 → −(0.5×GUESTS_PER_MULT): 하루 10명이면 점심 피크에도 좌석이 안 막힌다
   const n = dailyGuestCount(s);
-  expect(n).toBe(MIN_DAILY_GUESTS + Math.floor(12 * GUESTS_PER_SEAT) - 5);
+  expect(n).toBe(MIN_DAILY_GUESTS + Math.floor(12 * GUESTS_PER_SEAT) + Math.floor(-0.5 * GUESTS_PER_MULT + 1e-9));
   const ids = new Set<string>();
   const firstHourIds: string[] = [];
   for (let h = 0; h < 18; h++) {

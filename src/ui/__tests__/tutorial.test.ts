@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { createInitialState, apply } from '../../sim/index.ts';
 import { TUTORIAL_STEPS, checkTutorial, getTutorial, resetTutorial, skipTutorial, currentStep, stepLines } from '../tutorial';
 import { tick, DAY_MS } from '../../sim/index.ts';
-import { X, Y } from '../../sim/__tests__/helpers';
+import { X, Y, bareState } from '../../sim/__tests__/helpers';
 
 describe('tutorial steps', () => {
   it('12단계이고 id가 1..12 순서', () => {
@@ -12,7 +12,7 @@ describe('tutorial steps', () => {
 
   it('메뉴판 아메리카노 → 테이블 순으로 넘어간다', () => {
     resetTutorial();
-    const s = createInitialState(1, 'p', 0);
+    const s = bareState(1, 'p', 0); // v3 시작 상태(메뉴·테이블 있음) 대신 빈 마당 — 구 튜토리얼은 셸 트랙이 대화창 6단계로 바꾼다
     checkTutorial(s);
     expect(getTutorial().step).toBe(1);
     expect(apply(s, { type: 'setSlot', slot: 0, menuId: 'americano' }).ok).toBe(true);
@@ -38,7 +38,7 @@ describe('tutorial steps', () => {
   });
 
   it('3단계: 길이 안 이어졌으면 올렛길 안내로 바뀐다', () => {
-    const s = createInitialState(1, 'p', 0);
+    const s = bareState(1, 'p', 0);
     const step3 = TUTORIAL_STEPS[2]!;
     apply(s, { type: 'place', objectType: 'table_out', x: X(6), y: Y(2) }); // 길과 떨어진 자리
     expect(stepLines(step3, s)[1]).toContain('올렛길');
