@@ -196,9 +196,9 @@
   },
   {
     "id": "cb_field_picnic",
-    "name": "밭 체험",
+    "name": "귤밭 체험",
     "a": "picnic",
-    "b": "field",
+    "b": "tangerine_tree",
     "target": "group",
     "targetName": "단체",
     "applyTo": "a",
@@ -226,9 +226,9 @@
   },
   {
     "id": "cb_wall_harvest",
-    "name": "밭담 수확",
+    "name": "밭담 귤 수확",
     "a": "stonewall",
-    "b": "field",
+    "b": "tangerine_tree",
     "target": "all",
     "targetName": "전체",
     "applyTo": "b",

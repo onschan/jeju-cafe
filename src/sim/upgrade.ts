@@ -45,7 +45,7 @@ export function tierOf(def: ObjectDef): Tier {
 /** 증축할 수 있는 종류: 좌석·시설·방·랜드마크·농원(수확 있는 장식). 경관 장식·길·담·정낭·본관은 없다. */
 export function isUpgradable(def: ObjectDef): boolean {
   if (NO_UPGRADE_TYPES.has(def.id)) return false;
-  if (def.kind === 'seat' || def.kind === 'facility' || def.kind === 'building' || def.kind === 'landmark') return true;
+  if (def.kind === 'seat' || def.kind === 'facility' || def.kind === 'building' || def.kind === 'landmark' || def.kind === 'tree') return true;
   return def.kind === 'deco' && (def.yield !== undefined || def.category === 'farm');
 }
 
