@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useGame, dispatch } from './store';
 import { isMenuAvailable, hasMenuStaff, menuRequirementText, placeCost, menuOf, priceOf, MENU_SLOT_COUNT } from '../sim/index.ts';
-import { objectDef, cropDef, ingredientDef, BUILD_GROUPS, buildGroupOf, FACILITIES, type BuildGroup } from '../data/index.ts';
+import { objectDef, ingredientDef, BUILD_GROUPS, buildGroupOf, FACILITIES, type BuildGroup } from '../data/index.ts';
 import { brownBtn, brownBtnOn, brownBtnOff, brownSelect, PALETTE, won } from './frame';
 
 /** 옛 하단 시트(BottomSheet)에서 떼어 온 내용 컴포넌트. 전체 화면 창 안에 임시로 끼워 둔다.
@@ -19,9 +19,9 @@ function menuStatus(s: ReturnType<typeof useGame>, id: string): { ok: boolean; t
   return { ok, text: ok ? '재료 있음' : '재료 없음' };
 }
 
-/** 창고 항목 이름: 작물이면 작물 이름, 아니면(해녀·투자 재료) 재료 이름 */
+/** 창고 항목 이름 */
 function storageName(id: string): string {
-  try { return cropDef(id).name; } catch { try { return ingredientDef(id).name; } catch { return id; } }
+  try { return ingredientDef(id).name; } catch { return id; }
 }
 
 /** 메뉴판: 슬롯별 select + 재료 상태 + 창고 요약 */

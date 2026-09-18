@@ -3,7 +3,7 @@
  *  sim 런타임에는 의존하지 않는다(타입만) — 트랙 A가 sim을 바꾸는 중이라 데이터만 본다. */
 import type { MenuDef, ObjectDef, UnlockCond, QuestReward, QuestCondition } from '../sim/types.ts';
 import {
-  MENUS, OBJECTS, INGREDIENTS, CROPS, GUEST_TYPES, NAMED_GUESTS, ROLES, ITEMS, QUESTS, SPOTS, REGIONS, SKILLS, PROMOTIONS,
+  MENUS, OBJECTS, INGREDIENTS, GUEST_TYPES, NAMED_GUESTS, ROLES, ITEMS, QUESTS, SPOTS, REGIONS, SKILLS, PROMOTIONS,
   INGREDIENT_CATEGORY_NAME, MENU_STAT_LABEL, canonicalGuestId,
 } from './index.ts';
 import extraMenusJson from './generated/v2/extra_menus.json' with { type: 'json' };
@@ -32,7 +32,6 @@ function table(kind: LabelKind): Map<string, string> {
     const menu = byId(MENUS);
     for (const m of extraMenusJson as { id: string; name: string }[]) if (!menu.has(m.id)) menu.set(m.id, m.name);
     const ingredient = byId(INGREDIENTS);
-    for (const c of CROPS) if (!ingredient.has(c.id)) ingredient.set(c.id, c.name);
     const guest = byId(GUEST_TYPES);
     for (const g of NAMED_GUESTS) guest.set(g.id, g.name);
     // 부탁은 이름이 없어 "OO의 부탁"으로 부른다
@@ -117,6 +116,7 @@ export function unlockCondText(c: UnlockCond): string {
     case 'count': return `${label('facility', c.objectId)} ${c.count}개`;
     case 'category': return `${label('category', c.category)} 시설 ${c.count}개`;
     case 'segmentPop': return `${label('guest', c.guestId)} 손님 인기 ${c.popularity}`;
+    case 'goal': return '목표 보상';
     case 'all': return c.conditions.length > 0 ? c.conditions.map(unlockCondText).join(' + ') : '아직 열 수 없음';
   }
 }
@@ -125,6 +125,7 @@ export function unlockCondText(c: UnlockCond): string {
 export function unlockText(def: Pick<ObjectDef, 'unlock' | 'unlockText'> | { unlock?: UnlockCond; unlockText?: string }): string {
   const c = def.unlock;
   if (c && c.type !== 'start') {
+    if (c.type === 'goal') return '목표를 이루면 열려요';
     if (c.type === 'all' && c.conditions.length === 0) return '아직 열 수 없어요';
     return `${ifClause(unlockCondText(c))} 열려요`;
   }

@@ -21,7 +21,7 @@ const HIDDEN_IDS = new Set(['busstop', 'warehouse', 'gate', 'bush_wild', 'spring
 export function buildTabOf(def: ObjectDef): BuildTab {
   if (def.kind === 'path') return 'path';
   if (def.kind === 'wall' || def.kind === 'gate') return 'wall';
-  if (def.kind === 'tree' || def.kind === 'field' || def.category === 'farm') return 'farm';
+  if (def.kind === 'tree' || def.yield || def.category === 'farm') return 'farm';
   if (def.category === 'rest' || def.category === 'convenience' || def.category === 'food' || def.category === 'fun') return def.category;
   if (def.kind === 'seat') return 'rest';
   return 'scenery';
@@ -43,7 +43,7 @@ function SpriteBox({ sheet, id, kind, w = 64, h = 48 }: { sheet: Sheet | null; i
     const scale = Math.min(w / f.w, h / f.h, 2);
     setDrawn(drawFrame(ctx, sheet, sheet.frames[name] ? name : `${name}_0`, w / 2, h, { anchorX: 0.5, anchorY: 1, scale }));
   }, [sheet, id, w, h]);
-  const tint: Record<ObjectDef['kind'], string> = { seat: '#c99a5b', facility: '#8fb3d9', deco: '#8fcf8f', tree: '#6aa84f', field: '#b5834f', wall: '#9a9a9a', path: '#d9c2a0', building: '#b07a4a', busstop: '#999', gate: '#8a6a4a', landmark: '#d4a13c' };
+  const tint: Record<ObjectDef['kind'], string> = { seat: '#c99a5b', facility: '#8fb3d9', deco: '#8fcf8f', tree: '#6aa84f', wall: '#9a9a9a', path: '#d9c2a0', building: '#b07a4a', busstop: '#999', gate: '#8a6a4a', landmark: '#d4a13c' };
   return (
     <div style={{ position: 'relative', width: w, height: h, margin: '0 auto 4px' }}>
       {!drawn && <div aria-hidden style={{ position: 'absolute', inset: 8, background: tint[kind], border: `2px solid ${PALETTE.wood}`, borderRadius: 4 }} />}
@@ -64,11 +64,11 @@ export function BuildWindow(props: BuildWindowProps) {
   useEffect(() => { let on = true; loadSheet().then((sh) => { if (on) setSheet(sh); }); return () => { on = false; }; }, []);
 
   const unlocked = new Set(s.unlocked.objects);
-  const items = OBJECTS.filter((d) => !HIDDEN_IDS.has(d.id) && d.kind !== 'field' && buildTabOf(d) === tab)
+  const items = OBJECTS.filter((d) => !HIDDEN_IDS.has(d.id) && buildTabOf(d) === tab)
     .map((def) => ({ def, locked: !unlocked.has(def.id) }))
     .sort((a, b) => Number(a.locked) - Number(b.locked) || a.def.cost - b.def.cost);
   const counts: Partial<Record<BuildTab, number>> = {};
-  for (const d of OBJECTS) if (!HIDDEN_IDS.has(d.id) && d.kind !== 'field' && unlocked.has(d.id)) counts[buildTabOf(d)] = (counts[buildTabOf(d)] ?? 0) + 1;
+  for (const d of OBJECTS) if (!HIDDEN_IDS.has(d.id) && unlocked.has(d.id)) counts[buildTabOf(d)] = (counts[buildTabOf(d)] ?? 0) + 1;
   const busy = constructions(s).length;
   const sel = picked ? items.find((i) => i.def.id === picked) : undefined;
 
