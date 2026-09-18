@@ -11,7 +11,6 @@ import { nextRandom } from './rng.ts';
 import { dayIndex } from './effects.ts';
 import { goalMet } from './goals.ts';
 import { pushNotice } from './staff.ts';
-import { pushFx } from './fx.ts';
 import { facilityCount } from './rank.ts';
 import { spawnNamedGuest } from './guests.ts';
 import { namedGuestState } from './popup.ts';
@@ -103,7 +102,6 @@ export function startEvent(state: GameState, id: string): ActiveBigEvent {
   }
   state.alerts.push({ type: 'event', id });
   pushNotice(state, `빅 이벤트: ${def.title}`);
-  pushFx(state, { kind: 'scene', title: def.title, text: def.dialogue.lines[0] ?? def.title, tick: state.tick });
   return e;
 }
 

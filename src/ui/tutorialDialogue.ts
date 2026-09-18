@@ -26,7 +26,7 @@ const WHEN: Record<string, (s: GameState) => boolean> = {
   welcome_menu: () => true,
   table_path: () => seen.menuOpened,
   first_guest: (s) => seatCount(s) > START_SEATS.length,
-  hire: (s) => s.totalGuests > 0,
+  hire: (s) => s.totalIncome > 0 || s.monthIncome > 0, // 첫 손님이 계산했다
   goal_bar: (s) => s.staff.length >= 1,
   farewell: (s) => goalsAchieved(s) >= 3,
 };

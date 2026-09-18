@@ -22,7 +22,6 @@ import { metCount, regularCount } from './popup.ts';
 import { pushNotice } from './staff.ts';
 import { addMileage } from './mileage.ts';
 import { MAX_BUILDERS } from './build.ts';
-import { pushFx } from './fx.ts';
 import { fmtNum } from './format.ts';
 
 export const FEATURE_IDS: FeatureId[] = ['clearRock', 'promote', 'craft', 'popup', 'challenge', 'parcel'];
@@ -180,7 +179,6 @@ export function checkGoals(state: GameState): string[] {
     state.goals.claimed.push(g.id);
     state.alerts.push({ type: 'goal', goalId: g.id });
     pushNotice(state, `목표 달성: ${g.title} — ${g.reward.map(goalRewardText).join(' · ')}`);
-    pushFx(state, { kind: 'scene', title: '목표 달성', text: `${g.title}! ${g.line ?? ''}`.trim(), tick: state.tick });
     done.push(g.id);
   }
   return done;

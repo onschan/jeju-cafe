@@ -63,7 +63,7 @@ type Win =
   | { kind: 'goal' }
   | { kind: 'object'; id: string };
 
-const BUILD_TABS: WindowTab<BuildTab>[] = [{ key: 'build', label: '짓기' }, { key: 'remove', label: '철거' }, { key: 'move', label: '이동' }];
+const BUILD_TABS: WindowTab<BuildTab>[] = [{ key: 'build', label: '시설' }, { key: 'remove', label: '철거' }, { key: 'move', label: '이동' }];
 const CAFE_TABS: WindowTab<CafeTab>[] = [{ key: 'menu', label: '메뉴판' }, { key: 'ingredients', label: '재료' }, { key: 'craft', label: '연구' }, { key: 'promo', label: '홍보' }];
 const PEOPLE_TABS: WindowTab<PeopleTab>[] = [{ key: 'staff', label: '직원' }, { key: 'guests', label: '손님' }, { key: 'codex', label: '도감' }, { key: 'quests', label: '부탁' }];
 const LEDGER_TABS: WindowTab<LedgerTab>[] = [{ key: 'invest', label: '투자' }, { key: 'shop', label: '상점' }, { key: 'rank', label: '랭킹' }, { key: 'region', label: '지역' }, { key: 'settings', label: '설정' }];
