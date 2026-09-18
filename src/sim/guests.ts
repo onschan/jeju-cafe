@@ -1,7 +1,7 @@
 import type { GameState, Guest, PlacedObject, Pt, MenuCategory, MenuStatKey, RoleId, GuestWant, ComplaintReason } from './types.ts';
 import { objectDef, guestTypeDef, guestTags, guestDialogue, canonicalGuestId, namedGuestDef, NAMED_TYPE } from '../data/index.ts';
 import { pickWeighted, nextRandom, randInt } from './rng.ts';
-import { sceneryScore, objectAt, roomAt } from './grid.ts';
+import { sceneryScore, objectAt } from './grid.ts';
 import { availableMenus, consumeIngredients, isMenuAvailable } from './menu.ts';
 import { busStopPos, findPath, walkableNeighborsOf, reachMap, pathFromReach, cellKey, moveAlong, GUEST_SPEED_CELLS_PER_S } from './path.ts';
 import { roleEffect, skillTotal, pushNotice, staffInRole, addRoleExp, LOW_ENERGY } from './staff.ts';
@@ -26,6 +26,7 @@ import { addAffinity, affinityGain, namedLikes, regularsDueNow, NAMED_MIN_SCENER
 import { eventGuestMult, eventTagMult, eventFeeMult, isSpecialGuest, specialGuestTip } from './events.ts';
 import { fmtNum } from './format.ts';
 import { josa } from './josa.ts';
+import { siteBonus } from './site.ts';
 
 export { moveAlong, GUEST_SPEED_CELLS_PER_S }; // 하위 호환 재수출 (본체는 path.ts)
 export const SEAT_MS = 3000;       // 기분이 정해진 뒤 앉아 있는 시간 (≈1.5시간)
@@ -358,7 +359,7 @@ function resolveMood(state: GameState, g: Guest): void {
   const p = profileOf(state, g);
   const match = g.namedId ? statsMatchCount(state, p.likesStats, g.menuId) : likesStatsMatch(state, g.type, g.menuId);
   const taste = g.namedId ? Math.min(LIKE_BONUS_CAP, match) : tasteBonus(state, g.type, g.menuId);
-  if (sceneryScore(state, seat.x, seat.y) + serviceBonus(state) + popularityBonus(popularityFor(state, seat.id, g.type)) + taste + extraSatisfaction(state, g, seat) >= p.minScenery) {
+  if (sceneryScore(state, seat.x, seat.y) + serviceBonus(state) + popularityBonus(popularityFor(state, seat.id, g.type)) + taste + extraSatisfaction(state, g, seat) + siteBonus(state, seat).satisfaction >= p.minScenery) { // 트랙 A 콤보·청결 + 트랙 F 입지
     g.mood = 'happy';
     g.moodReason = null;
     state.stats.satisfiedTotal++;
@@ -396,14 +397,14 @@ function resolveMood(state: GameState, g: Guest): void {
   if (!g.namedId) maybeSay(state, g);
 }
 
-/** 불만 원인 추정 (경치 미달로 meh일 때): 지친 홀 직원 → rude, 낡은 자리 → worn, 청결 < 50 → dirty, 야외 자리 한겨울·한여름 → cold_hot, 주변 소음 ≥ 5 → noise. 없으면 null(불만 아님). */
+/** 불만 원인 추정 (경치 미달로 meh일 때): 지친 홀 직원 → rude, 낡은 자리 → worn, 청결 < 50 → dirty, 입지 만족이 음수인 야외 자리(겨울 바람·여름 그늘 없음, 트랙 F) → cold_hot, 주변 소음 ≥ 5 → noise. 없으면 null(불만 아님). */
 export function mehCause(state: GameState, seat: PlacedObject): { reason: ComplaintReason; detail?: string } | null {
   const hall = staffInRole(state, 'hall');
   if (hall.length > 0 && hall.every((st) => st.energy < LOW_ENERGY)) return { reason: 'rude' };
   if (isAged(state, seat)) return { reason: 'worn', detail: objectDef(seat.type).name };
   if (state.clean.value < CLEAN_LOW) return { reason: 'dirty' };
   const season = seasonOf(state.clock.month);
-  if (!roomAt(state, seat.x, seat.y) && (season === 'winter' || season === 'summer')) return { reason: 'cold_hot', detail: season };
+  if ((season === 'winter' || season === 'summer') && siteBonus(state, seat).satisfaction < 0) return { reason: 'cold_hot', detail: season };
   let noise = 0;
   for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) { const o = objectAt(state, seat.x + dx, seat.y + dy); if (o && o.id !== seat.id) noise += objectDef(o.type).noise; }
   if (noise >= NOISE_COMPLAINT) return { reason: 'noise' };
@@ -445,13 +446,13 @@ function order(state: GameState, g: Guest): void {
   consumeIngredients(state, menuId);
   const seat = state.objects[g.seatId!]!;
   recordUse(seat); // 트랙 A: 증축 조건(누적 이용)
-  const price = Math.round(priceOf(state, menuId) * parcelFeeMult(parcelBonusAt(state, seat.x, seat.y)) * (objectStats(state, seat.id).feePct / 100) * eventFeeMult(state));
+  const price = Math.round(priceOf(state, menuId) * parcelFeeMult(parcelBonusAt(state, seat.x, seat.y)) * (objectStats(state, seat.id).feePct / 100) * eventFeeMult(state) * siteBonus(state, seat).feeMult); // 트랙 F 입지 요금
   state.money += price;
   state.monthIncome += price;
   state.totalIncome += price;
   g.menuId = menuId;
   g.paid = price;
-  g.waitMs = prepTimeMs(state, menu.category);
+  g.waitMs = prepTimeMs(state, menu.category) * siteBonus(state, seat).serveMult; // 트랙 F: 주방 거리 서빙 시간
   addRoleExp(state, prepRole(menu.category)); addRoleExp(state, 'hall'); // 트랙 D: 조리·서빙 1건 경험치 +0.2
   state.menuSold[menuId] = (state.menuSold[menuId] ?? 0) + 1;
   state.monthMenuSold[menuId] = (state.monthMenuSold[menuId] ?? 0) + 1;
@@ -478,7 +479,7 @@ export function pickVisit(state: GameState, g: Guest, from: Pt): { obj: PlacedOb
 
 /** 시설 도착: 이용료를 내고 시설 인기 +1(상한), 숫자 팝업 연출 */
 function useFacility(state: GameState, g: Guest, obj: PlacedObject): void {
-  const fee = Math.round(facilityFee(state, obj) * (1 + skillTotal(state, 'feeBonus'))); // 트랙 A: Lv 요금 +10%/+20% · 트랙 D 특기 haggler +5%
+  const fee = Math.round(facilityFee(state, obj) * (1 + skillTotal(state, 'feeBonus')) * siteBonus(state, obj).feeMult); // 트랙 A: Lv 요금 +10%/+20% · 트랙 D 특기 haggler +5% · 트랙 F 입지
   recordUse(obj);
   state.money += fee;
   state.monthIncome += fee;

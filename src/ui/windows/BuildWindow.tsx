@@ -8,6 +8,7 @@ import { unlockText } from '../../data/labels.ts';
 import { loadSheet, drawFrame, type Sheet } from '../sheetCanvas';
 import { PALETTE, brownBtn, brownBtnOff } from '../frame';
 import { useWindowState, body, TabBar, soft, Empty, win, type WindowProps } from './shared.tsx';
+import { SiteToggle } from '../SiteToggle.tsx';
 
 export type BuildTab = 'rest' | 'convenience' | 'food' | 'fun' | 'farm' | 'scenery' | 'path' | 'wall';
 export const BUILD_TABS: { key: BuildTab; label: string }[] = [
@@ -78,6 +79,7 @@ export function BuildWindow(props: BuildWindowProps) {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0 8px', marginBottom: 6 }}>
         <span style={soft}>열린 것 {counts[tab] ?? 0} · 자금 {win(s.money)}</span>
         <span style={{ ...soft, color: busy >= s.builders ? PALETTE.bad : PALETTE.inkSoft }} data-testid="builders">건축가 {busy}/{s.builders} 작업 중</span>
+        <SiteToggle />
       </div>
       {items.length === 0 && <Empty>아직 여기엔 지을 게 없어요</Empty>}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>

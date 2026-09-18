@@ -6,6 +6,7 @@ import type { GameState, Guest, Staff } from './types.ts';
 import { guestDialogue, guestTags, namedGuestDef, roleDef } from '../data/index.ts';
 import { menuOf, isStaffBusy } from './craft.ts';
 import { LOW_ENERGY } from './staff.ts';
+import { siteSay } from './site.ts';
 
 /** 문자열 → 0 이상 정수 해시 (결정적 선택용) */
 export function hashOf(s: string): number {
@@ -49,7 +50,7 @@ export function guestSay(state: GameState, guest: Guest): string | null {
         const lines = g.waitMs > 1500 ? (senior ? ORDER_LINES_SENIOR : ORDER_LINES) : WAIT_LINES;
         return fill(pick(lines, g.id));
       }
-      if (g.mood === 'happy') return pick(d.happy, g.id);
+      if (g.mood === 'happy') return siteSay(state, g) ?? pick(d.happy, g.id);
       if (g.moodReason === 'price') return pick(senior ? PRICE_LINES_SENIOR : PRICE_LINES, g.id);
       if (g.moodReason) return pick(d.meh[g.moodReason], g.id);
       return null;

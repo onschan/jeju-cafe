@@ -9,6 +9,7 @@ import { hire, postJob } from '../staff.ts';
 import { DAY_MS } from '../clock.ts';
 import { tick } from '../tick.ts';
 import { objectDef } from '../../data/index.ts';
+import { siteBonus } from '../site.ts';
 import type { GameState } from '../types.ts';
 
 function cafe() {
@@ -146,7 +147,7 @@ test('시설 순회: 앉았다 일어난 손님이 40%로 닿는 시설에 들�
       expect(v.seatId).toBeNull();
       const m0 = snap.money;
       updateGuests(snap, 20_000); // 걸어가서 이용
-      expect(snap.money).toBe(m0 + objectDef('vending').fee!);
+      expect(snap.money).toBe(m0 + Math.round(objectDef('vending').fee! * siteBonus(snap, Object.values(snap.objects).find((o) => o.type === 'vending')!).feeMult)); // 입지(길가) 배수 (트랙 F)
       expect(snap.visitBonus['vending']).toBe(1);
       expect(snap.fx.at(-1)).toMatchObject({ kind: 'pop', x: X(5), y: Y(1), n: 1 });
       updateGuests(snap, VISIT_MS + 1);

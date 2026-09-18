@@ -26,6 +26,7 @@ import { MAX_BUILDERS } from './build.ts';
 import { canUseItem } from './items.ts';
 import { isWeekend, canOpenPopup, bestRegion } from './popup.ts';
 import { featureOpen, currentGoal } from './goals.ts';
+import { seatScore } from './site.ts';
 import { canBuyParcel, ownedParcels } from './parcels.ts';
 import { canInvestSpot } from './spots.ts';
 import { SPOTS } from '../data/index.ts';
@@ -208,7 +209,7 @@ function monthlyPlan(s: GameState, monthsPlayed: number): void {
   ensurePath(s);
   // 테이블은 한 달에 4개씩 늘린다 (사람처럼): 시작 3석 + 16
   let added = 0;
-  for (const p of BOT_TABLES) { if (added >= BOT_TABLES_PER_MONTH) break; if (!objectAt(s, p.x, p.y) && place(s, 'table_out', p.x, p.y)) added++; }
+  for (const p of [...BOT_TABLES].sort((a, b) => seatScore(s, b.x, b.y) - seatScore(s, a.x, a.y))) { if (added >= BOT_TABLES_PER_MONTH) break; if (!objectAt(s, p.x, p.y) && place(s, 'table_out', p.x, p.y)) added++; }
   setMenuIfEmpty(s, 3, 'green_tea');
   pickDessert(s);
 
