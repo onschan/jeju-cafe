@@ -18,5 +18,15 @@
   { "id": "jeju_friendly", "name": "제주 친화", "desc": "동네 손님이 조금 좋아한다", "effect": { "type": "localAffinity", "value": 0.15 } },
   { "id": "photogenic", "name": "사진발", "desc": "관광객 만족이 조금 오른다", "effect": { "type": "touristSatisfaction", "value": 0.15 } },
   { "id": "frugal", "name": "알뜰함", "desc": "재료비가 아주 조금 할인된다", "effect": { "type": "ingredientDiscount", "value": 0.05 } },
-  { "id": "hardy", "name": "건강 체질", "desc": "기력이 조금 덜 닳는다", "effect": { "type": "stamina", "value": 0.15 } }
+  { "id": "hardy", "name": "건강 체질", "desc": "기력이 조금 덜 닳는다", "effect": { "type": "stamina", "value": 0.15 } },
+  { "id": "clean_master", "name": "청소 달인", "desc": "청결 회복이 1.5배", "effect": { "type": "cleanBonus", "value": 0.5 } },
+  { "id": "orchard_keeper", "name": "농원지기", "desc": "농원 수확 +30%", "effect": { "type": "harvestBonus", "value": 0.3 } },
+  { "id": "group_host", "name": "단체 안내 명인", "desc": "단체 손님 만족 +10%", "effect": { "type": "groupSatisfaction", "value": 0.1 } },
+  { "id": "haggler", "name": "흥정꾼", "desc": "담당 시설 요금 +5%", "effect": { "type": "feeBonus", "value": 0.05 } },
+  { "id": "star_student", "name": "연수 우등생", "desc": "연수 효과 1.5배", "effect": { "type": "trainingBonus", "value": 0.5 } },
+  { "id": "face_memory", "name": "손님 기억", "desc": "단골 전환 +10%p", "effect": { "type": "regularBonus", "value": 0.1 } },
+  { "id": "night_owl", "name": "밤 체질", "desc": "저녁 손님(18시 이후) 만족 +15%", "effect": { "type": "nightSatisfaction", "value": 0.15 } },
+  { "id": "storm_ready", "name": "태풍 대비", "desc": "태풍 수리비 −30%", "effect": { "type": "stormRepairDiscount", "value": 0.3 } },
+  { "id": "tour_guide", "name": "명소 안내", "desc": "투어 개최 점수 +10", "effect": { "type": "tourScore", "value": 10 } },
+  { "id": "gift_hands", "name": "선물 손", "desc": "손님 선물 효과 1.5배", "effect": { "type": "giftBonus", "value": 0.5 } }
 ]
