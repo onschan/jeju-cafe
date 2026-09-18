@@ -5,7 +5,7 @@ import { hasIdToken, unlockText } from '../../data/labels.ts';
 import { lockedText } from '../windows/BuildWindow.tsx';
 import { toGoal, currentGoal, pastGoals } from '../simBridge';
 import { alertToDialogue } from '../alertDialogue.ts';
-import { TUTORIAL_STEPS } from '../tutorialDialogue';
+import { TUTORIAL_DIALOGUES as TUTORIAL_STEPS } from '../tutorialDialogue';
 
 /** 스펙 §7-4: 어떤 화면에도 영문 id가 보이지 않는다. 창·카드·대화가 그리는 문자열을 sim·데이터에서 뽑아 훑는다. */
 function expectClean(texts: string[], where: string) {

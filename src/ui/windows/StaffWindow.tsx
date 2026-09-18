@@ -132,7 +132,7 @@ function CandidateCard({ c, s, dispatch }: { c: Candidate; s: GameState; dispatc
           {roles.length === 0 && <option value="">자리 없음</option>}
           {roles.map((r) => <option key={r} value={r}>{label('role', r)}</option>)}
         </select>
-        <button style={ok ? rowBtnOn : rowBtnOff} disabled={!ok} onClick={() => { if (chosen) dispatch({ type: 'hire', candidateId: c.id, role: chosen }); }} aria-label={`${c.name} 채용`}>
+        <button data-tut="hire" style={ok ? rowBtnOn : rowBtnOff} disabled={!ok} onClick={() => { if (chosen) dispatch({ type: 'hire', candidateId: c.id, role: chosen }); }} aria-label={`${c.name} 채용`}>
           채용 · 월급 {win(c.salary)}
         </button>
       </div>

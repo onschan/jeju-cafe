@@ -361,7 +361,8 @@ export interface MonthCard {
   topMenu: string | null;            // 그달 최다 판매 메뉴 id
 }
 
-// ---------- 목표 체인 (v3 §2) ----------
+// ---------- 목표 체인 (v3 §2 → 확장 §3.5·§7) ----------
+/** 목표·도전 조건. 판정은 goals.ts의 conditionCheckers 레지스트리 (타입 → { cur, max }). 아직 없는 시스템은 스텁. */
 export type GoalCondition =
   | { type: 'guests'; n: number }                 // 누적 손님
   | { type: 'menuSold'; menuId: string; n: number }
@@ -381,8 +382,43 @@ export type GoalCondition =
   | { type: 'recipes'; n: number }                // 개발한 레시피
   | { type: 'promotions'; n: number }             // 홍보 실행 횟수
   | { type: 'rivalWins'; n: number }              // 카페 대결 승리
-  | { type: 'year'; n: number };                  // n년차
-export type FeatureId = 'clearRock' | 'promote' | 'craft' | 'popup' | 'challenge' | 'parcel';
+  | { type: 'year'; n: number }                   // n년차
+  // ---- §3.5 신설 14 ----
+  | { type: 'monthIncome'; n: number }            // 지난달 매출
+  | { type: 'staffLevel'; lv: number; n: number } // Lv 이상 직원 n명
+  | { type: 'trainings'; n: number }              // 연수 완료 횟수 (x-staff)
+  | { type: 'facilityLv'; lv: number; n: number } // Lv 이상 시설 n개 (x-facility)
+  | { type: 'comboCount'; n: number }             // 활성 콤보 수
+  | { type: 'setCount'; n: number }               // 활성 세트 수
+  | { type: 'spotEffect'; n: number }             // 명당 수 (x-facility)
+  | { type: 'spotLevel'; spotId: string; lv: number } // 특정 명소 Lv
+  | { type: 'spotAny'; lv: number; n: number }    // Lv 이상 명소 n곳
+  | { type: 'visitorsTotal'; n: number }          // 전 명소 누적 방문객 (x-spots)
+  | { type: 'guestType'; guestId: string; n: number } // 손님 타입 인기 ≥ n
+  | { type: 'guidebookRank'; bookId: string; n: number } // 특정 가이드북 n위 안
+  | { type: 'guidebookWins'; n: number }          // 가이드북 1위 횟수
+  | { type: 'cleanliness'; n: number }            // 청결 n 이상 한 달 (x-facility)
+  | { type: 'profitMonths'; n: number }           // 연속 흑자 달
+  | { type: 'tourGroup'; n: number }              // 투어 개최 (x-spots)
+  | { type: 'itemsUsed'; n: number }              // 강화 아이템 사용
+  | { type: 'uniforms'; n: number }               // 유니폼 단계
+  | { type: 'custom'; id: string; n?: number }    // 코드 판정 (centennial 등)
+  // ---- §7.5 전략 조건 ----
+  | { type: 'siteSeats'; view: number; n: number } // 전망 view 이상 좌석 n개 (x-site)
+  | { type: 'windlessSeats'; n: number }          // 바람 0 좌석 n개 (x-site)
+  | { type: 'combos'; n: number }                 // 도감에 발견한 콤보 수
+  | { type: 'spotEffects'; n: number }            // 명당 효과 수 (x-facility)
+  | { type: 'upgraded'; lv: number; n: number }   // 증축 Lv 이상 시설 n개 (x-facility)
+  | { type: 'clean'; avg: number; days: number }  // 청결 avg 이상 days일 (x-facility)
+  | { type: 'skills'; n: number }                 // 특기 보유 직원 n명
+  | { type: 'selfSupply'; pct: number }           // 재료 자급률 % (x-spots/farm)
+  | { type: 'training'; n: number }               // 연수 완료 (x-staff, trainings 별칭)
+  // ---- 도전·월간 과제 전용 ----
+  | { type: 'seats'; n: number }                  // 좌석 시설 수
+  | { type: 'noLossMonth'; n: number }            // 적자 없이 n달 (연속 흑자, 수락 시점 대비)
+  | { type: 'monthGuests'; n: number }            // 이달 손님 수
+  | { type: 'monthSales'; n: number };            // 이달 매출
+export type FeatureId = 'clearRock' | 'promote' | 'craft' | 'popup' | 'challenge' | 'parcel' | 'siteView' | 'comboCodex' | 'spotMap';
 export type GoalReward =
   | { type: 'money'; amount: number }
   | { type: 'unlockFacility'; id: string }
@@ -393,7 +429,14 @@ export type GoalReward =
   | { type: 'staffSlot'; role: RoleId; n: number }
   | { type: 'research'; n: number }
   | { type: 'builder'; n: number }
-  | { type: 'unlockFeature'; id: FeatureId };
+  | { type: 'unlockFeature'; id: FeatureId }
+  | { type: 'item'; id: string; n: number }          // 아이템 n개 (inventory)
+  | { type: 'unlockGuest'; id: string }              // 손님 타입 해금
+  | { type: 'unlockRecruit'; id: string }            // 채용 등급 해금 (x-staff)
+  | { type: 'unlockGuidebook'; id: string }          // 가이드북 해금
+  | { type: 'seed'; kind: string; n: number }        // 씨앗 아이템 n개 (kind = 아이템 id)
+  | { type: 'title'; id: string; name: string }      // 칭호 (state.titles)
+  | { type: 'feeBonus'; pct: number };               // 요금 +pct% (state.feeBonusPct)
 export type GoalSpeaker = 'halmang' | 'samchun' | 'hero';
 export interface GoalDef {
   id: string;
@@ -404,7 +447,7 @@ export interface GoalDef {
   speaker?: GoalSpeaker;
   line?: string;      // 축하 대사 1줄
 }
-/** index = 현재 목표 순번 (goals.json), claimed = 달성한 목표 id */
+/** index = 아직 안 이룬 첫 목표 순번 (goals.json), claimed = 달성한 목표 id (메인 2개 동시 진행이라 순서가 어긋날 수 있다) */
 export interface GoalsState { index: number; claimed: string[] }
 export interface GameStats {
   satisfiedTotal: number;  // 누적 만족(happy) 손님
@@ -412,12 +455,56 @@ export interface GameStats {
   promotionsDone: number;  // 홍보 실행 횟수
   recipesMade: number;     // 개발 성공한 레시피
   rivalWins: number;       // 카페 대결 승리
+  profitMonths: number;    // 연속 흑자 달 (월말 갱신)
+  lossMonths: number;      // 연속 적자 달
+  guidebookWins: number;   // 가이드북 1위 횟수
+  itemsUsed: number;       // 강화 아이템 사용 횟수
+  trainings: number;       // 연수 완료 횟수 (x-staff가 올린다)
+  toursHeld: number;       // 투어 개최 성공 (x-spots가 올린다)
+  seenMonth: number;       // 월말 관찰용 monthIndex (goals.ts observeMonth)
+  seenAnnouncement: number; // 마지막으로 센 가이드북 발표 monthIndex
 }
-/** UI 대화창 큐 항목 */
+/** 보상 상자에 담기는 보상 알림의 출처 */
+export type RewardSource = 'goal' | 'challenge' | 'monthly' | 'tutorial';
+/** UI 대화창·팝업 큐 항목 */
 export type Alert =
   | { type: 'goal'; goalId: string }
   | { type: 'event'; id: string }
-  | { type: 'eventEnd'; id: string };
+  | { type: 'eventEnd'; id: string }
+  | { type: 'reward'; source: RewardSource; refId: string; title: string; items: GoalReward[]; line?: string; speaker?: GoalSpeaker }
+  | { type: 'challengeFailed'; id: string }
+  | { type: 'failure'; stage: 'warn' | 'loan' | 'crisis' | 'demote' };
+
+// ---------- 도전 과제 3레인 (§7.3) ----------
+export interface ChallengeDef {
+  id: string;
+  title: string;      // 14자 이내
+  desc: string;
+  condition: GoalCondition;
+  days: number;       // 기한 (수락일부터)
+  reward: GoalReward[];
+  tier: 1 | 2 | 3 | 4 | 5;
+  requires?: number;  // 메인 목표 index 이상일 때 목록에 나온다
+  delta?: boolean;    // true면 수락 시점 값 대비 증가분으로 판정 (자금 +300만 등)
+}
+export interface ActiveChallenge { id: string; startDay: number; endDay: number; base: number; progress: number }
+export interface ChallengesState {
+  active: ActiveChallenge[];
+  done: string[];
+  failed: { id: string; until: number }[]; // until = 다시 고를 수 있는 dayIndex
+}
+/** 월간 과제 (매월 1일 자동 1개, 그달 안). 난이도는 현재 수치 기준 자동. */
+export interface MonthlyState {
+  id: string;         // m_<monthIndex>_<kind>
+  monthIndex: number;
+  title: string;
+  condition: GoalCondition;
+  base: number;       // 생성 시점 값 (delta 조건)
+  reward: GoalReward[];
+  status: 'active' | 'done' | 'failed';
+}
+/** 손으로 하는 튜토리얼 (§7.2): step = 끝낸 단계 수 (0~9). 9면 끝. skipped면 완성 시작 상태로 채웠다. */
+export interface TutorialState { step: number; skipped: boolean }
 
 // ---------- 제주 빅 이벤트 (v3 A5) ----------
 /** 손님 태그 배수의 키: 인구 태그 + 외국인·학생·1인·가족 */
@@ -641,6 +728,11 @@ export interface GameState {
   goals: GoalsState;                          // 목표 체인 (v3 §2)
   features: Record<FeatureId, boolean>;       // 목표 보상으로 열리는 기능 (goals.ts 표)
   stats: GameStats;                           // 목표 판정용 누적 카운터
+  challenges: ChallengesState;                // 도전 과제 2슬롯 (§7.3)
+  monthly: MonthlyState | null;               // 월간 과제 (§7.3)
+  tutorial: TutorialState;                    // 손으로 하는 튜토리얼 진행 (§7.2)
+  titles: string[];                           // 얻은 칭호 id (도전 보상)
+  feeBonusPct: number;                        // 칭호 등으로 얻은 요금 보너스 % (합)
   alerts: Alert[];                            // UI 대화창 큐 (목표 달성·빅 이벤트). dismissAlert로 앞에서 뺀다
   events: ActiveBigEvent[];                   // 진행 중인 제주 빅 이벤트 (동시 최대 2)
   eventsFired: Record<string, number>;        // 빅 이벤트 id → 발동 횟수 (once 판정)
@@ -722,6 +814,8 @@ export type Action =
   | { type: 'setSlot'; slot: number; menuId: string | null }
   | { type: 'setSpeed'; speed: 0 | 1 | 2 | 3 }
   | { type: 'dismissAlert' }
+  | { type: 'acceptChallenge'; id: string }
+  | { type: 'skipTutorial' }
   | { type: 'dismissMonthCard' }
   | { type: 'postJob'; tier: JobTier }
   | { type: 'hire'; candidateId: string; role: RoleId }

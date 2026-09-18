@@ -3,6 +3,7 @@ import tutorialJson from './tutorial.json' with { type: 'json' };
 import goalsLinesJson from './goals_lines.json' with { type: 'json' };
 import eventsJson from './events.json' with { type: 'json' };
 import samchunJson from './samchun.json' with { type: 'json' };
+import failureJson from './failure.json' with { type: 'json' };
 
 /** 화자 키 = public/assets/icons/portrait_<key>.png */
 export type Speaker = 'halmang' | 'samchun' | 'hero' | 'haenyeo' | 'jangnim';
@@ -12,12 +13,16 @@ export interface TutorialStep { id: number; key: string; title: string; speaker:
 export interface GoalLine { id: string; speaker: Speaker; line: string }
 export interface EventDialogue { id: string; title: string; speaker: Speaker; season: 'spring' | 'summer' | 'autumn' | 'winter' | 'any'; lines: string[]; endLine: string }
 export interface SamchunStep { step: number; ask: string; lines: string[]; doneLine: string }
+export interface FailureDialogue { stage: 'warn' | 'loan' | 'crisis' | 'demote'; title: string; speaker: Speaker; lines: string[]; tip: string }
 export interface SamchunDef { id: string; name: string; job: string; portrait: Speaker; intro: string; chain: SamchunStep[]; rewardText: string }
 
 export const TUTORIAL_STEPS: TutorialStep[] = (tutorialJson as { steps: TutorialStep[] }).steps;
 export const GOAL_LINES: GoalLine[] = (goalsLinesJson as { lines: GoalLine[] }).lines;
 export const EVENT_DIALOGUES: EventDialogue[] = (eventsJson as { events: EventDialogue[] }).events;
 export const SAMCHUN: SamchunDef[] = (samchunJson as { samchun: SamchunDef[] }).samchun;
+/** 실패 상태 대화 4단계 (§4.4) */
+export const FAILURE_DIALOGUES: FailureDialogue[] = (failureJson as { stages: FailureDialogue[] }).stages;
+export const failureDialogue = (stage: FailureDialogue['stage']): FailureDialogue => FAILURE_DIALOGUES.find((f) => f.stage === stage)!;
 
 const GOAL_LINE = new Map(GOAL_LINES.map((g) => [g.id, g]));
 const EVENT_DIALOGUE = new Map(EVENT_DIALOGUES.map((e) => [e.id, e]));

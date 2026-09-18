@@ -1,5 +1,5 @@
 export * from './types.ts';
-export { createInitialState, GRID_W, GRID_H, PARCEL_W, PARCEL_H, START_ORIGIN, VILLAGE_ROAD_Y, MENU_SLOT_COUNT, SAVE_VERSION, START_MONEY, START_MONTH, START_MENUS, START_CANDIDATES, START_PATH, START_SEATS, SETTLE_GRANT, SETTLE_GRANT_THRESHOLD } from './state.ts';
+export { createInitialState, GRID_W, GRID_H, PARCEL_W, PARCEL_H, START_ORIGIN, VILLAGE_ROAD_Y, MENU_SLOT_COUNT, SAVE_VERSION, START_MONEY, START_MONTH, START_MENUS, START_CANDIDATES, START_PATH, START_SEATS, SETTLE_GRANT, SETTLE_GRANT_THRESHOLD, fillStarterLayout, type StartLayout } from './state.ts';
 export { parcelAt, parcelById, parcelPrice, canBuyParcel, ownedParcels, parcelBonusAt, parcelUnlockOwnedCount } from './parcels.ts';
 export { tick, step, STEP_MS } from './tick.ts';
 export { apply, PROTECTED_TYPES, ROTATABLE_TYPES } from './actions.ts';
@@ -8,7 +8,9 @@ export { cellAt, objectAt, canPlace, footprint, parcelHasLandmark, isSheltered, 
 export { FX_CAP } from './fx.ts';
 export { isFarmObject, monthlyYieldOf, expectedHarvest, emptyMonthHarvest } from './orchard.ts';
 export { stockOf } from './warehouse.ts';
-export { currentGoal, goalProgress, goalValue, goalMet, goalConditionText, goalRewardText, goalForFacility, goalForMenu, goalForFeature, featureOpen, checkFeature, FEATURE_IDS, FEATURE_NAME, FEATURE_OF_ACTION, goalDef } from './goals.ts';
+export { currentGoal, activeGoals, goalClaimed, goalProgress, goalValue, goalMet, conditionProgress, conditionCheckers, goalConditionText, goalRewardText, goalForFacility, goalForMenu, goalForFeature, featureOpen, checkFeature, canOpen, applyRewards, grantReward, scaleReward, underLoan, FEATURE_IDS, ACTION_FEATURE_IDS, FEATURE_NAME, FEATURE_OF_ACTION, CONCURRENT_GOALS, LOAN_REWARD_MULT, goalDef, type Progress } from './goals.ts';
+export { offeredChallenges, canAcceptChallenge, challengeProgress, challengeDaysLeft, isChallengeLocked, challengeLockDaysLeft, monthlyProgress, CHALLENGE_SLOTS, CHALLENGE_OFFERS, CHALLENGE_LOCK_TIER, CHALLENGE_LOCK_DAYS } from './challenges.ts';
+export { STEPS as TUTORIAL_STEP_DEFS, TUTORIAL_STEPS, currentTutorialStep, tutorialDone, pathConnected, seatWithView, wallShelteringSeat, firstMonthClosed } from './tutorial.ts';
 export { activeEvents, isEventActive, eventDaysLeft, eventGuestMult, eventTagMult, eventFeeMult, eventEligible, guestHasTag, isSpecialGuest, specialGuestTip, specialGuestsMet, MAX_ACTIVE_EVENTS, SPECIAL_GUEST_HOUR } from './events.ts';
 export { guestSay, staffSay } from './say.ts';
 export { isMenuAvailable, availableMenus, canSetSlot, hasMenuStaff, menuRequirementText, menuOf, purchaseCost, ingredientCost } from './menu.ts';

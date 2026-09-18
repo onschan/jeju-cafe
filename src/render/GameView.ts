@@ -232,6 +232,7 @@ export class GameView {
   private lastSeason: Season | null = null;
   private detachCamera: (() => void) | null = null;
   private selection = new Graphics();
+  private highlight = new Graphics(); // 튜토리얼 칸 글로우 (x-goals)
   private hostWidth = 0;
   private bounds: CameraBounds | null = null;
   private nightAlpha = 0;
@@ -256,6 +257,7 @@ export class GameView {
     this.actors.sortableChildren = true;
     this.world.addChild(this.background.node, this.tiles, this.actors, this.overlay);
     this.overlay.addChild(this.selection);
+    this.overlay.addChild(this.highlight);
     this.night.eventMode = 'none';
     this.ui.eventMode = 'none';
     this.ui.addChild(this.night, this.lights);
@@ -374,6 +376,18 @@ export class GameView {
     this.overlay.addChild(node);
     this.speech.set(entityId, { node, until: performance.now() + ms, target });
     this.bubblePops.push({ node, born: performance.now() });
+  }
+
+  /** 튜토리얼 하이라이트 칸 (노란 반투명 마름모, x-goals tutorialHighlight.ts) */
+  setHighlightCells(cells: { x: number; y: number }[]) {
+    this.highlight.clear();
+    for (const cell of cells) {
+      const { sx, sy } = cellToScreen(cell.x, cell.y);
+      this.highlight
+        .poly([sx, sy, sx + ISO_W / 2, sy + ISO_H / 2, sx, sy + ISO_H, sx - ISO_W / 2, sy + ISO_H / 2])
+        .fill({ color: 0xffd54a, alpha: 0.45 })
+        .stroke({ color: 0xffb300, width: 3 });
+    }
   }
 
   setSelection(cell: { x: number; y: number } | null) {

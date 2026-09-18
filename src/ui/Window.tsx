@@ -27,7 +27,7 @@ export function Window<K extends string>({ title, tabs, tab, onTab, onClose, chi
       {tabs && tabs.length > 0 && (
         <div data-testid="window-tabs" style={{ flex: 'none', display: 'flex', gap: 4, padding: '6px 8px 0', borderBottom: `2px solid ${PALETTE.woodLight}`, background: PALETTE.paperDark, overflowX: 'auto' }}>
           {tabs.map((t) => (
-            <button key={t.key} data-tab={t.label} aria-label={t.label} aria-selected={t.key === tab} onClick={() => onTab?.(t.key)}
+            <button key={t.key} data-tab={t.label} data-tut={`tab:${t.key}`} aria-label={t.label} aria-selected={t.key === tab} onClick={() => onTab?.(t.key)}
               style={{ ...(t.key === tab ? brownBtnOn : brownBtn), margin: 0, marginBottom: -2, padding: '0 10px', fontSize: 15, flex: '1 0 auto', minWidth: 0, borderRadius: '8px 8px 0 0', borderBottom: t.key === tab ? `3px solid ${PALETTE.btnOn}` : undefined, position: 'relative', whiteSpace: 'nowrap' }}>
               {t.label}
               {t.badge ? <span style={{ position: 'absolute', top: -6, right: -4, minWidth: 18, height: 18, borderRadius: 9, background: PALETTE.bad, color: '#fff', fontSize: 11, lineHeight: '18px', textAlign: 'center', padding: '0 4px' }}>{t.badge}</span> : null}

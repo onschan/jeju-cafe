@@ -116,15 +116,15 @@ describe('대화 데이터 (src/data/dialogue)', () => {
     ...SAMCHUN.flatMap((s) => [s.name, s.job, s.intro, s.rewardText, ...s.chain.flatMap((c) => [c.ask, ...c.lines, c.doneLine])]),
   ];
 
-  it('튜토리얼 6단계, 단계당 2~4줄, 화자는 할망', () => {
-    expect(TUTORIAL_STEPS.map((t) => t.id)).toEqual([1, 2, 3, 4, 5, 6]);
+  it('튜토리얼 9단계(§7.2), 단계당 2~3줄, 화자는 할망·삼춘, 단계마다 done 조건 문구', () => {
+    expect(TUTORIAL_STEPS.map((t) => t.id)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9]);
     for (const t of TUTORIAL_STEPS) {
       expect(t.lines.length).toBeGreaterThanOrEqual(2);
-      expect(t.lines.length).toBeLessThanOrEqual(4);
-      expect(t.speaker).toBe('halmang');
+      expect(t.lines.length).toBeLessThanOrEqual(3);
+      expect(['halmang', 'samchun']).toContain(t.speaker);
       expect(t.button.length).toBeGreaterThan(0);
+      expect(t.done).not.toBeNull();
     }
-    expect(TUTORIAL_STEPS[5]!.done).toBeNull();
   });
   it('목표 축하 대사 60개 g01~g60, 화자 로테이션, 순서·id 둘 다로 찾는다', () => {
     expect(GOAL_LINES).toHaveLength(60);

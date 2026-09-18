@@ -1,4 +1,4 @@
-import type { ObjectDef, MenuDef, GuestTypeDef, IngredientDef, FarmYield, GoalDef, BigEventDef, RoleDef, SkillDef, PromotionDef, GuestTags, ComboDef, ComboTarget, ComboStrength, ComboSide, SetDef, ItemDef, ItemSlot, Season, MenuCategory, GuestEffect, GuestWant, UnlockCond, QuestDef, QuestCondition, QuestReward, SpotDef, SpotCategory, EventDef, MenuStats, MenuStatKey, IngredientCategory, IngredientComboDef, ToppingDef, HiddenRecipeDef, FacilityCategory, MileageShopDef, TicketShopDef, UniformDef, GuidebookDef, DrawPrizeDef, DrawPrizeKind, JudgeKey, RegionDef, NamedGuestDef, RivalDef } from '../sim/types.ts';
+import type { ObjectDef, MenuDef, GuestTypeDef, IngredientDef, FarmYield, GoalDef, ChallengeDef, BigEventDef, RoleDef, SkillDef, PromotionDef, GuestTags, ComboDef, ComboTarget, ComboStrength, ComboSide, SetDef, ItemDef, ItemSlot, Season, MenuCategory, GuestEffect, GuestWant, UnlockCond, QuestDef, QuestCondition, QuestReward, SpotDef, SpotCategory, EventDef, MenuStats, MenuStatKey, IngredientCategory, IngredientComboDef, ToppingDef, HiddenRecipeDef, FacilityCategory, MileageShopDef, TicketShopDef, UniformDef, GuidebookDef, DrawPrizeDef, DrawPrizeKind, JudgeKey, RegionDef, NamedGuestDef, RivalDef } from '../sim/types.ts';
 import objectsJson from './objects.json' with { type: 'json' };
 import menusJson from './menus.json' with { type: 'json' };
 import guestsJson from './generated/v2/guests.json' with { type: 'json' };
@@ -8,6 +8,7 @@ import spotsJson from './generated/v2/spots.json' with { type: 'json' };
 import eventsJson from './generated/v2/events.json' with { type: 'json' };
 import { EVENT_EFFECTS } from './event_effects.ts';
 import goalsJson from './goals.json' with { type: 'json' };
+import challengesJson from './challenges.json' with { type: 'json' };
 import eventsV3Json from './events_v3.json' with { type: 'json' };
 import ingredientsJson from './ingredients.json' with { type: 'json' };
 import staffRolesJson from './staff_roles.json' with { type: 'json' };
@@ -369,6 +370,8 @@ export const EVENTS: EventDef[] = (eventsJson as RawEvent[]).map((r) => {
 
 /** 목표 체인 60 (v3 §2, 순차) */
 export const GOALS: GoalDef[] = goalsJson as unknown as GoalDef[];
+/** 도전 과제 풀 40 (§7.3) */
+export const CHALLENGES: ChallengeDef[] = challengesJson as unknown as ChallengeDef[];
 /** 제주 빅 이벤트 (v3 A5) */
 export const BIG_EVENTS: BigEventDef[] = eventsV3Json as unknown as BigEventDef[];
 /** 빅 이벤트 특별 손님의 지역 id (REGIONS에는 없다 — 팝업 대상이 아니다). namedId = 'special:<eventId>' */
@@ -654,8 +657,10 @@ export const ticketShopDef = (id: string) => must(TICKET_ITEM, id, 'ticketShop')
 export const uniformDef = (id: string) => must(UNIFORM, id, 'uniform');
 export const guidebookDef = (id: string) => must(GUIDEBOOK, id, 'guidebook');
 const GOAL = indexBy(GOALS);
+const CHALLENGE = indexBy(CHALLENGES);
 const BIG_EVENT = indexBy(BIG_EVENTS);
 export const goalDef = (id: string) => must(GOAL, id, 'goal');
+export const challengeDef = (id: string) => must(CHALLENGE, id, 'challenge');
 export const bigEventDef = (id: string) => must(BIG_EVENT, id, 'bigEvent');
 const REGION = indexBy(REGIONS);
 const RIVAL = indexBy(RIVALS);

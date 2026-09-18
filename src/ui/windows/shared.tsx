@@ -31,7 +31,7 @@ export function TabBar<K extends string>({ tabs, active, onPick, testId }: { tab
   return (
     <div data-testid={testId} style={{ display: 'flex', gap: 4, overflowX: 'auto', paddingBottom: 6, marginBottom: 6, borderBottom: `2px solid ${PALETTE.woodLight}`, scrollbarWidth: 'none' }}>
       {tabs.map((t) => (
-        <button key={t.key} onClick={() => onPick(t.key)} aria-pressed={t.key === active} data-testid={testId ? `${testId}-${t.key}` : undefined}
+        <button key={t.key} onClick={() => onPick(t.key)} aria-pressed={t.key === active} data-testid={testId ? `${testId}-${t.key}` : undefined} data-tut={`tab:${t.key}`}
           style={{ ...(t.key === active ? brownBtnOn : brownBtn), margin: 0, padding: '0 10px', fontSize: 14, whiteSpace: 'nowrap', flex: '0 0 auto', position: 'relative' }}>
           {t.label}
           {t.badge !== undefined && t.badge > 0 && <span style={{ marginLeft: 4, background: PALETTE.bad, color: '#fff', borderRadius: 9, fontSize: 12, padding: '0 5px' }}>{t.badge}</span>}
