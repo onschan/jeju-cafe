@@ -17,6 +17,8 @@ import { advanceConstruction } from './build.ts';
 import { monthlyShop } from './shop.ts';
 import { monthlyRank } from './guidebook.ts';
 import { monthlyMileage } from './mileage.ts';
+import { dailySpots, monthlySpots } from './spots.ts';
+import { monthlyGifts } from './items.ts';
 import { fmtNum } from './format.ts';
 import { hourlyPopup, dailyPopup } from './popup.ts';
 import { monthlyRivals } from './rivals.ts';
@@ -42,6 +44,7 @@ function onNewDay(state: GameState): void {
   dailyPopup(state);
   nightlyRecovery(state);
   dailyBoard(state);
+  dailySpots(state);
   resolveDevelop(state);
   advanceConstruction(state);
   checkGoals(state);
@@ -52,6 +55,8 @@ function onNewMonth(state: GameState, prevMonth: number, prevYear: number): void
   payroll(state);
   expirePromotions(state);
   upkeep(state);
+  monthlySpots(state);
+  monthlyGifts(state);
   monthlyMileage(state);
   closeMonth(state, prevMonth, prevYear);
   monthlyHarvest(state);

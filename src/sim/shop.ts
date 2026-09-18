@@ -5,8 +5,8 @@
  * - 응모권 상점: 유니폼 5(연출)·경관 씨앗·인기 열매
  */
 import type { GameState, ApplyResult, DrawResult, DrawPrizeDef } from './types.ts';
-import { MILEAGE_SHOP, TICKET_SHOP, UNIFORMS, DRAW_PRIZES, ITEMS, FARM_INGREDIENT_IDS, ingredientDef, GUEST_TYPES, POPULARITY_FRUIT, POPULARITY_FRUIT_DELTA, mileageShopDef, ticketShopDef, uniformDef, canonicalGuestId, guestTypeDef } from '../data/index.ts';
-import { grantItem } from './items.ts';
+import { MILEAGE_SHOP, TICKET_SHOP, UNIFORMS, DRAW_PRIZES, ITEMS, FARM_INGREDIENT_IDS, ingredientDef, GUEST_TYPES, POPULARITY_FRUIT, POPULARITY_FRUIT_DELTA, mileageShopDef, ticketShopDef, uniformDef, canonicalGuestId, guestTypeDef, OBJECTS, objectDef, giftDef, itemDef } from '../data/index.ts';
+import { grantItem, openGiftBox } from './items.ts';
 import { pushNotice } from './staff.ts';
 import { nextRandom, pickWeighted, randInt } from './rng.ts';
 import { monthIndex } from './clock.ts';
@@ -27,7 +27,22 @@ export const UNIFORM_PIECES_PER_SET = 5;
 export const UNIFORM_PIECES_TICKETS = 3;
 /** 매월 1일 응모권 1장 + 무료 추첨 1회 */
 export const MONTHLY_FREE_TICKETS = 1;
+/** 인형뽑기 1등: 이 확률로 강화 아이템 대신 꼬마 돌하르방(특수) */
+export const DRAW_GUARDIAN_CHANCE = 0.1;
+export const DRAW_GUARDIAN = 'little_guardian';
+/** 곰 삼춘의 망치 최대 보유 (§3.3.4) */
+export const HAMMER_MAX = 10;
 const WORKER_RE = /^ms_worker_(\d)$/;
+
+/** 설계도류(objectId): 시설을 짓기 목록에 연다. 아직 objects.json에 없는 시설이면 false. */
+export function unlockObjectByShop(state: GameState, objectId: string): boolean {
+  if (!OBJECTS.some((o) => o.id === objectId)) return false;
+  if (!state.unlocked.objects.includes(objectId)) state.unlocked.objects.push(objectId);
+  return true;
+}
+export function objectAlreadyUnlocked(state: GameState, objectId: string): boolean {
+  return state.unlocked.objects.includes(objectId);
+}
 
 // ---------- 마일리지 상점 ----------
 
@@ -40,6 +55,8 @@ export function canBuyMileage(state: GameState, id: string): ApplyResult {
     if (state.builders >= MAX_BUILDERS) return { ok: false, reason: '일꾼 삼춘은 이제 다 모였어요' };
     if (state.builders !== n - 1) return { ok: false, reason: state.builders >= n ? '이미 고용했어요' : '먼저 앞 번호 삼춘을 고용해요' };
   }
+  if (def.objectId && objectAlreadyUnlocked(state, def.objectId)) return { ok: false, reason: '이미 열린 시설이에요' };
+  if (def.itemId === 'hammer_bearing' && (state.inventory[def.itemId] ?? 0) >= HAMMER_MAX) return { ok: false, reason: `망치는 ${HAMMER_MAX}개까지만 둘 수 있어요` };
   if (state.mileage < def.price) return { ok: false, reason: '마일리지가 모자라요' };
   return { ok: true };
 }
@@ -49,9 +66,19 @@ export function buyMileage(state: GameState, id: string): void {
   const def = mileageShopDef(id);
   state.mileage -= def.price;
   if (WORKER_RE.test(id)) { state.builders += 1; pushNotice(state, `일꾼 삼춘 합류! 동시 건설 ${state.builders}`); return; }
+  if (def.objectId) {
+    pushNotice(state, unlockObjectByShop(state, def.objectId) ? `${josa(objectDef(def.objectId).name, '을/를')} 지을 수 있어요` : `${josa(def.name, '을/를')} 샀어요 (시설은 곧 열려요)`);
+    return;
+  }
   if (def.itemId) { grantItem(state, def.itemId); pushNotice(state, `${josa(def.name, '을/를')} 샀어요`); return; }
   switch (id) {
     case 'ms_ticket': state.tickets += 1; pushNotice(state, '응모권 1장을 샀어요'); return;
+    case 'ms_bus_contract': state.tourBusFreeMonths += 1; pushNotice(state, '투어 버스 계약권! 다음 계약비가 무료예요'); return;
+    case 'ms_gift_box': {
+      const got = openGiftBox(state);
+      pushNotice(state, `제주 선물 상자! ${got.map((g) => giftDef(g).name).join(' · ')}`);
+      return;
+    }
     case 'ms_seed_pack':
       for (const [item, n] of Object.entries(SEED_PACK)) grantItem(state, item, n);
       pushNotice(state, '씨앗 묶음팩! 감귤 씨앗 3 · 한라봉 씨앗 2');
@@ -71,6 +98,7 @@ export function canBuyTicket(state: GameState, id: string): ApplyResult {
   const def = TICKET_SHOP.find((t) => t.id === id);
   if (!def) return { ok: false, reason: '없는 상품이에요' };
   if (def.uniformId && hasUniform(state, def.uniformId)) return { ok: false, reason: '이미 가진 유니폼이에요' };
+  if (def.objectId && objectAlreadyUnlocked(state, def.objectId)) return { ok: false, reason: '이미 열린 시설이에요' };
   if (state.tickets < def.price) return { ok: false, reason: '응모권이 모자라요' };
   return { ok: true };
 }
@@ -90,6 +118,10 @@ export function buyTicket(state: GameState, id: string): void {
   const def = ticketShopDef(id);
   state.tickets -= def.price;
   if (def.uniformId) { grantUniform(state, def.uniformId); return; }
+  if (def.objectId) {
+    pushNotice(state, unlockObjectByShop(state, def.objectId) ? `${josa(objectDef(def.objectId).name, '을/를')} 지을 수 있어요` : `${josa(def.name, '을/를')} 샀어요 (시설은 곧 열려요)`);
+    return;
+  }
   if (def.itemId) { grantItem(state, def.itemId); pushNotice(state, `${josa(def.name, '을/를')} 샀어요`); }
 }
 
@@ -159,6 +191,7 @@ function applyPrize(state: GameState, prize: DrawPrizeDef): string {
     }
     case 'mileage': state.mileage += DRAW_MILEAGE; return `마일리지 +${DRAW_MILEAGE}`;
     case 'item': {
+      if (nextRandom(state) < DRAW_GUARDIAN_CHANCE) { grantItem(state, DRAW_GUARDIAN); return `${josa(itemDef(DRAW_GUARDIAN).name, '을/를')} 뽑았어요!`; }
       const pool = ITEMS.filter((i) => i.value > 0 && i.fitIds.length > 0);
       const item = pickWeighted(state, pool.length ? pool : ITEMS.filter((i) => i.value > 0), () => 1)!;
       grantItem(state, item.id);

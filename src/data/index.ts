@@ -1,10 +1,10 @@
-import type { ObjectDef, MenuDef, GuestTypeDef, IngredientDef, FarmYield, GoalDef, BigEventDef, RoleDef, SkillDef, PromotionDef, GuestTags, ComboDef, ComboTarget, ComboStrength, ComboSide, SetDef, ItemDef, ItemSlot, Season, MenuCategory, GuestEffect, GuestWant, UnlockCond, QuestDef, QuestCondition, QuestReward, SpotDef, SpotCategory, EventDef, MenuStats, MenuStatKey, IngredientCategory, IngredientComboDef, ToppingDef, HiddenRecipeDef, FacilityCategory, MileageShopDef, TicketShopDef, UniformDef, GuidebookDef, DrawPrizeDef, DrawPrizeKind, JudgeKey, RegionDef, NamedGuestDef, RivalDef } from '../sim/types.ts';
+import type { ObjectDef, MenuDef, GuestTypeDef, IngredientDef, FarmYield, GoalDef, BigEventDef, RoleDef, SkillDef, PromotionDef, GuestTags, ComboDef, ComboTarget, ComboStrength, ComboSide, SetDef, ItemDef, ItemSlot, Season, MenuCategory, GuestEffect, GuestWant, UnlockCond, QuestDef, QuestCondition, QuestReward, SpotDef, SpotCategory, SpotSpecial, SpotTag, GiftDef, EventDef, MenuStats, MenuStatKey, IngredientCategory, IngredientComboDef, ToppingDef, HiddenRecipeDef, FacilityCategory, MileageShopDef, TicketShopDef, UniformDef, GuidebookDef, DrawPrizeDef, DrawPrizeKind, JudgeKey, RegionDef, NamedGuestDef, RivalDef } from '../sim/types.ts';
 import objectsJson from './objects.json' with { type: 'json' };
 import menusJson from './menus.json' with { type: 'json' };
 import guestsJson from './generated/v2/guests.json' with { type: 'json' };
 import questsJson from './generated/v2/quests.json' with { type: 'json' };
 import chainsJson from './generated/v2/guest_chains.json' with { type: 'json' };
-import spotsJson from './generated/v2/spots.json' with { type: 'json' };
+import spotsJson from './spots.json' with { type: 'json' };
 import eventsJson from './generated/v2/events.json' with { type: 'json' };
 import { EVENT_EFFECTS } from './event_effects.ts';
 import goalsJson from './goals.json' with { type: 'json' };
@@ -21,9 +21,10 @@ import compatJson from './generated/compat.json' with { type: 'json' };
 import aurasJson from './generated/auras.json' with { type: 'json' };
 import itemsJson from './generated/items.json' with { type: 'json' };
 import itemsV2Json from './generated/v2/items.json' with { type: 'json' };
-import specialItemsJson from './generated/v2/special_items.json' with { type: 'json' };
-import mileageShopJson from './generated/v2/mileage_shop.json' with { type: 'json' };
-import ticketShopJson from './generated/v2/ticket_shop.json' with { type: 'json' };
+import specialItemsJson from './special_items.json' with { type: 'json' };
+import mileageShopJson from './mileage_shop.json' with { type: 'json' };
+import ticketShopJson from './ticket_shop.json' with { type: 'json' };
+import giftsJson from './gifts.json' with { type: 'json' };
 import uniformsJson from './generated/v2/uniforms.json' with { type: 'json' };
 import guidebooksJson from './generated/v2/guidebooks.json' with { type: 'json' };
 import rouletteJson from './generated/roulette.json' with { type: 'json' };
@@ -314,20 +315,30 @@ export const QUESTS: QuestDef[] = (questsJson as RawQuest[]).map((q) => ({
 }));
 
 // ---------- 관광지 24 ----------
-type RawSpot = { id: string; name: string; category: string; categoryName: string; order: number; levels: { level: number; cost: number; appeal: number }[]; lv2GuestId: string | null; lv4QuestId: string | null; nextSpotId: string | null; unlock: Record<string, unknown> };
+type RawSpot = { id: string; name: string; category: string; categoryName: string; order: number; levels: { level: number; cost: number; appeal: number }[]; lv2GuestId: string | null; lv4QuestId: string | null; nextSpotId: string | null; unlock: Record<string, unknown>; tag?: string; facilityCategory?: string; lv3ItemId?: string | null; lv5Special?: SpotSpecial | null };
 const SPOT_CATEGORIES = new Set<SpotCategory>(['sight', 'food', 'play', 'nature']);
-export const SPOTS: SpotDef[] = (spotsJson as RawSpot[]).map((r) => ({
-  id: r.id,
-  name: r.name,
-  category: SPOT_CATEGORIES.has(r.category as SpotCategory) ? (r.category as SpotCategory) : 'sight',
-  categoryName: r.categoryName,
-  order: r.order,
-  levels: r.levels.map((l) => ({ level: l.level, cost: l.cost, appeal: l.appeal })),
-  lv2GuestId: r.lv2GuestId ? canonicalGuestId(r.lv2GuestId) : null,
-  lv4QuestId: r.lv4QuestId ?? null,
-  nextSpotId: r.nextSpotId ?? null,
-  unlock: toUnlockCond(r.unlock),
-}));
+/** 분류 → 태그·시설 분류 (§3.4.2): 볼거리 female·쉼 / 먹거리 group·먹거리 / 놀거리 youth·즐길거리 / 자연 senior·쉼 */
+export const SPOT_TAG_OF: Record<SpotCategory, SpotTag> = { sight: 'female', food: 'group', play: 'youth', nature: 'senior' };
+export const SPOT_FACILITY_OF: Record<SpotCategory, FacilityCategory> = { sight: 'rest', food: 'food', play: 'fun', nature: 'rest' };
+export const SPOTS: SpotDef[] = (spotsJson as RawSpot[]).map((r) => {
+  const category = SPOT_CATEGORIES.has(r.category as SpotCategory) ? (r.category as SpotCategory) : 'sight';
+  return {
+    id: r.id,
+    name: r.name,
+    category,
+    categoryName: r.categoryName,
+    order: r.order,
+    levels: r.levels.map((l) => ({ level: l.level, cost: l.cost, appeal: l.appeal })),
+    lv2GuestId: r.lv2GuestId ? canonicalGuestId(r.lv2GuestId) : null,
+    lv4QuestId: r.lv4QuestId ?? null,
+    nextSpotId: r.nextSpotId ?? null,
+    unlock: toUnlockCond(r.unlock),
+    tag: (r.tag as SpotTag | undefined) ?? SPOT_TAG_OF[category],
+    facilityCategory: (r.facilityCategory as FacilityCategory | undefined) ?? SPOT_FACILITY_OF[category],
+    lv3ItemId: r.lv3ItemId ?? null,
+    lv5Special: r.lv5Special ?? null,
+  };
+});
 
 // ---------- 이벤트 42 ----------
 type RawEvent = { id: string; name: string; seasonText: string | null; prob: number; conditionText: string | null; effectText: string | null; line: string | null };
@@ -550,7 +561,13 @@ const SPECIAL_ITEMS: ItemDef[] = (specialItemsJson as RawItem[]).map((r) => {
   const eff = SEED_EFFECT[id] ?? { stat: 'popularity' as const, value: 0 };
   return { id, name: String(r.name ?? r.id), stat: eff.stat, value: eff.value, fitIds: [], sourceText: String(r.sourceText ?? '') };
 });
-export const ITEMS: ItemDef[] = [...ITEMS_V2, ...ITEMS_V1_ONLY, ...SPECIAL_ITEMS];
+/** 손님 선물 8 (§3.3.5): 시설·손님층에 쓰는 대신 손님 카드 「선물하기」로 쓴다. ITEMS에도 들어가 인벤토리·도감·라벨이 같은 표를 쓴다. */
+export const GIFTS: GiftDef[] = giftsJson as GiftDef[];
+const GIFT_ITEMS: ItemDef[] = GIFTS.map((g) => ({ id: g.id, name: g.name, stat: 'popularity' as const, value: 0, fitIds: [], sourceText: g.sourceText }));
+export const SPECIAL_ITEM_IDS: string[] = SPECIAL_ITEMS.map((i) => i.id);
+/** 특수 아이템 효과 문구 (도감 표시용) */
+export const SPECIAL_ITEM_EFFECT: Record<string, string> = Object.fromEntries((specialItemsJson as RawItem[]).map((r) => [String(r.id), String(r.effectText ?? '')]));
+export const ITEMS: ItemDef[] = [...ITEMS_V2, ...ITEMS_V1_ONLY, ...SPECIAL_ITEMS, ...GIFT_ITEMS];
 
 // ---------- 마일리지 상점·응모권 상점·유니폼·인형뽑기·가이드북·★ (2B-2 Task 6·7) ----------
 export const MILEAGE_SHOP: MileageShopDef[] = mileageShopJson as MileageShopDef[];
@@ -652,6 +669,9 @@ const GUIDEBOOK = indexBy(GUIDEBOOKS);
 export const mileageShopDef = (id: string) => must(MILEAGE_ITEM, id, 'mileageShop');
 export const ticketShopDef = (id: string) => must(TICKET_ITEM, id, 'ticketShop');
 export const uniformDef = (id: string) => must(UNIFORM, id, 'uniform');
+const GIFT = indexBy(GIFTS);
+export const giftDef = (id: string) => must(GIFT, id, 'gift');
+export const isGiftId = (id: string): boolean => id in GIFT;
 export const guidebookDef = (id: string) => must(GUIDEBOOK, id, 'guidebook');
 const GOAL = indexBy(GOALS);
 const BIG_EVENT = indexBy(BIG_EVENTS);

@@ -2,6 +2,7 @@ import type { GameState, Cell, PlacedObject, ApplyResult, ObjectDef, Season, Pt 
 import { objectDef, SEASON_SCENERY } from '../data/index.ts';
 import { parcelAt, parcelSceneryBonus } from './parcels.ts';
 import { seasonOf, monthIndex } from './clock.ts';
+import { spotSceneryBonus } from './spots.ts';
 
 /** 바위 치우기 비용: 작은 바위 30만, 큰 바위(오름 능선) 100만, 곶자왈 덤불 5만. 곡괭이가 있으면 무료(1개 소모). */
 export const ROCK_CLEAR_COST = 300_000;
@@ -246,7 +247,7 @@ export function sceneryScore(state: GameState, x: number, y: number): number {
   const self = objectAt(state, x, y)?.id;
   const seen = new Set<string>();
   const season = seasonOf(state.clock.month);
-  let score = parcelSceneryBonus(parcelAt(state, x, y)?.bonus ?? 'none');
+  let score = parcelSceneryBonus(parcelAt(state, x, y)?.bonus ?? 'none') + spotSceneryBonus(state); // 트랙 C: 명소 Lv4 +1·Lv5 +2
   for (let dy = -SCENERY_RADIUS; dy <= SCENERY_RADIUS; dy++) {
     for (let dx = -SCENERY_RADIUS; dx <= SCENERY_RADIUS; dx++) {
       const o = objectAt(state, x + dx, y + dy);

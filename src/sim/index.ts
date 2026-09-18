@@ -20,7 +20,7 @@ export { freeSeats, hasReachableSeat, seatSlotPos, dailyGuestCount, spawnMultipl
 export { canPromote, effectivePopularity, MAX_ACTIVE_PROMOTIONS, PARTTIME_MONEY } from './promotions.ts';
 export { TIERS, MAX_LEVEL, LOW_ENERGY, STAT_KEYS, STAT_NAME, salaryOf, SALARY_PER_STAT, SALARY_PER_LEVEL, levelUpCost, roleEffect, ingredientDiscount, staffInRole, canHire, canLevelUp, postJobCost } from './staff.ts';
 export { objectStats, activeCombos, popularityFor, segmentBonus, setLevels, BASE_POPULARITY, POPULARITY_CAP } from './compat.ts';
-export { canUseItem, grantItem, itemEffect, ITEM_POP_CAP, ITEM_SCENERY_CAP } from './items.ts';
+export { canUseItem, grantItem, itemEffect, ITEM_POP_CAP, ITEM_SCENERY_CAP, canGiveGift, giftFits, giftedToday, giftCount, hasSpecial, canCraftGift, GIFT_POPULARITY, GIFT_SATISFACTION, GIFT_FIT_MULT } from './items.ts';
 export { buildDaysOf, isUnderConstruction, constructions, canStartBuild, buildDaysLeft, START_BUILDERS, MAX_BUILDERS, needsDoorPath, DOOR_PATH_HINT } from './build.ts';
 export { canBuyMileage, canBuyTicket, canDrawTicket, canSetUniform, canUseGuestItem, hasFreeDraw, hasUniform, rollPrize, SEED_PACK, DRAW_MONEY_PER_YEAR, UNIFORM_PIECES_PER_SET, MONTHLY_FREE_TICKETS } from './shop.ts';
 export { addMileage, codexCount, checkCodexMileage, monthlyMileage, CODEX_PER_MILEAGE, GUESTS_PER_MILEAGE } from './mileage.ts';
@@ -28,7 +28,13 @@ export { rankScore, rankForScore, nextRankThreshold, facilityCount, unlockedGues
 export { starConditionMet, nextStarConditions, checkStar, judgeScores, guidebookScore, guidebookState, evaluateGuidebooks, guidebooksToAnnounce, announce, rivalScores, rankAmong, monthlyTarget, targetPopularity, codexTotal, MAX_STAR, JUDGE_KEYS, JUDGE_LABEL, ANNOUNCE_MONTHS, RIVAL_COUNT, PRIZE_RATIO, RANK_MILEAGE, MONTHLY_TAGS } from './guidebook.ts';
 export { evaluateUnlocks, evaluateFacilityUnlocks, unlockCondMet, isUnlocked, unlockedTypeIds, guestFace, walletOf, regularTier, isTarget, MAX_TARGETS, SAT_QUEST, SAT_REGULAR, SAT_VIP } from './segments.ts';
 export { questProgress, canAcceptQuest, canRespondEvent, eventConditionMet, boardBadge, visibleQuests, questRewardText, QUEST_MONTHS } from './board.ts';
-export { spotLevel, spotUnlocked, nextSpotLevel, spotAppeal, spotGuestBonus, canInvestSpot, SPOT_MAX_LEVEL, SPOT_BUS_LEVEL, SPOT_GUEST_LEVEL, SPOT_QUEST_LEVEL } from './spots.ts';
+export {
+  spotLevel, spotUnlocked, nextSpotLevel, spotAppeal, spotAppealOf, spotGuestBonus, canInvestSpot, spotRequirements, spotVisitors, totalSpotVisitors, dailyVisitors, totalDailyVisitors,
+  spotSpawnMult, spotWalletMult, spotFeePct, spotSceneryBonus, tagPopularity, tourScore, tourAvailable, canHostTour, hasTourBusKey, canSetTourBus, spotStarReq, spotCost,
+  SPOT_MAX_LEVEL, SPOT_BUS_LEVEL, SPOT_GUEST_LEVEL, SPOT_ITEM_LEVEL, SPOT_QUEST_LEVEL, SPOT_TAG_MULT, SPOT_FEE_PCT, SPOT_SCENERY, SPOT_LV5_MILEAGE, SPOT_VISITOR_REQ, SPOT_YEAR_REQ_LV3, SPOT_POP_REQ_LV4,
+  VISITOR_PRIZES, GOLDEN_TANGERINE_VISITORS, TOUR_BUS_KEY, TOUR_BUS_FEE, TOUR_YEAR, TOUR_SUCCESS_SCORE, TOUR_MONEY_PER_SCORE, TOUR_SUCCESS_VISITORS, TOUR_FAIL_MONEY, TOUR_FAIL_VISITORS, VISITOR_GUEST_RATE,
+  type SpotRequirement,
+} from './spots.ts';
 export { effectMult, noGuestsToday, dayIndex } from './effects.ts';
 export { cafeLevel, nextCafeLevelIncome, hasExpansion, canRenameCafe, canExpand, placeCost, seatsOf, isSeat, canSetCosmetic, canPraise, EXPANSIONS, CAFE_LEVEL_INCOME, CAFE_NAME_MAX, WALL_COLORS, SIGN_MAX, PRAISE_ENERGY, DEFAULT_CAFE_NAME, type ExpansionId, type ExpansionDef } from './cafe.ts';
 export { josa, hasBatchim } from './josa.ts';

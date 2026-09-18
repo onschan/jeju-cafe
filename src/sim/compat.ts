@@ -4,6 +4,7 @@ import { objectScenery, itemScenery } from './grid.ts';
 import { addMileage, checkCodexMileage } from './mileage.ts';
 import { seasonOf } from './clock.ts';
 import { pushNotice } from './staff.ts';
+import { spotFeePct } from './spots.ts';
 
 /** ObjectDef에 popularity·feePct가 없을 때 (v1 objects.json) */
 export const BASE_POPULARITY = 10;
@@ -149,7 +150,7 @@ function rawStats(state: GameState, obj: PlacedObject, active: ActiveCombo[]): {
   const def = objectDef(obj.type);
   const item = state.itemBonus[obj.type] ?? { popularity: 0, feePct: 0 };
   let pop = (def.popularity ?? BASE_POPULARITY) + item.popularity + (state.visitBonus[obj.type] ?? 0);
-  let feePct = (def.feePct ?? BASE_FEE_PCT) + item.feePct;
+  let feePct = (def.feePct ?? BASE_FEE_PCT) + item.feePct + spotFeePct(state, def.category); // 트랙 C: 명소 Lv3 +2%·Lv5 +5%
   for (const c of active) {
     const d = comboDelta(c.strength);
     pop += d.pop;

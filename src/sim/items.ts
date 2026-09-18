@@ -1,6 +1,14 @@
-import type { GameState, ApplyResult, ItemDef, ObjectDef, ItemSlot, ObjectKind } from './types.ts';
+import type { GameState, ApplyResult, ItemDef, ObjectDef, ItemSlot, ObjectKind, GiftDef } from './types.ts';
 import { pushFx } from './fx.ts';
-import { ITEMS, itemDef, objectDef } from '../data/index.ts';
+import { ITEMS, GIFTS, itemDef, objectDef, giftDef, isGiftId, guestTypeDef, ingredientDef, NAMED_TYPE } from '../data/index.ts';
+import { pushNotice } from './staff.ts';
+import { addSatisfaction } from './segments.ts';
+import { addAffinity } from './popup.ts';
+import { MAX_SEGMENT_POPULARITY } from './promotions.ts';
+import { tagMatches } from './spots.ts';
+import { dayIndex } from './effects.ts';
+import { randInt } from './rng.ts';
+import { josa } from './josa.ts';
 
 /** 같은 종류 시설에 누적되는 아이템 인기 보너스 상한 */
 export const ITEM_POP_CAP = 30;
@@ -63,4 +71,109 @@ export function useItem(state: GameState, itemId: string, objectType: string, it
     if (gained > 0) for (const o of Object.values(state.objects)) if (o.type === objectType) pushFx(state, { kind: 'pop', x: o.x, y: o.y, n: gained, tick: state.tick });
   } else if (item.stat === 'scenery') b.scenery = Math.min(ITEM_SCENERY_CAP, (b.scenery ?? 0) + eff);
   else b.feePct = Math.min(ITEM_FEE_CAP, b.feePct + eff);
+}
+
+// ---------- 손님 선물 (§3.3.5) ----------
+
+/** 선물: 그 손님 타입 인기 +3, 만족 +20, (단골★이면 호감도 +10). 잘 맞는 손님층이면 ×2. 하루 1회. */
+export const GIFT_POPULARITY = 3;
+export const GIFT_SATISFACTION = 20;
+export const GIFT_AFFINITY = 10;
+export const GIFT_FIT_MULT = 2;
+/** 제주 선물 상자(마일리지 상점): 랜덤 선물 2개 */
+export const GIFT_BOX_COUNT = 2;
+
+export function hasSpecial(state: GameState, itemId: string): boolean {
+  return (state.inventory[itemId] ?? 0) > 0;
+}
+
+export function giftCount(state: GameState): number {
+  let n = 0;
+  for (const g of GIFTS) n += state.inventory[g.id] ?? 0;
+  return n;
+}
+
+/** 오늘 이미 선물했나 */
+export function giftedToday(state: GameState): boolean {
+  return state.giftDay === dayIndex(state.clock);
+}
+
+/** 이 손님(개체)에게 이 선물이 잘 맞나 (단골★은 늘 기본 효과) */
+export function giftFits(gift: GiftDef, typeId: string): boolean {
+  if (typeId === NAMED_TYPE) return false;
+  try { return tagMatches(guestTypeDef(typeId).tags, gift.fitTag); } catch { return false; }
+}
+
+export function canGiveGift(state: GameState, guestId: string, itemId: string): ApplyResult {
+  if (!isGiftId(itemId)) return { ok: false, reason: '선물이 아니에요' };
+  if ((state.inventory[itemId] ?? 0) <= 0) return { ok: false, reason: '선물이 없어요' };
+  const g = state.guests.find((x) => x.id === guestId);
+  if (!g) return { ok: false, reason: '손님이 떠났어요' };
+  if (g.phase === 'leaving') return { ok: false, reason: '이미 가는 중이에요' };
+  if (giftedToday(state)) return { ok: false, reason: '선물은 하루 한 번이에요' };
+  return { ok: true };
+}
+
+/** 호출 전 canGiveGift. 효과 배수(1 또는 2)를 돌려준다. */
+export function giveGift(state: GameState, guestId: string, itemId: string): number {
+  const gift = giftDef(itemId);
+  const g = state.guests.find((x) => x.id === guestId)!;
+  const fit = giftFits(gift, g.type);
+  const k = fit ? GIFT_FIT_MULT : 1;
+  state.inventory[itemId] = (state.inventory[itemId] ?? 0) - 1;
+  state.giftDay = dayIndex(state.clock);
+  if (g.namedId) {
+    addAffinity(state, g.namedId, GIFT_AFFINITY * k);
+    pushNotice(state, `${josa(gift.name, '을/를')} 선물했어요 — 호감도 +${GIFT_AFFINITY * k}`);
+  } else {
+    state.segmentPopularity[g.type] = Math.min(MAX_SEGMENT_POPULARITY, (state.segmentPopularity[g.type] ?? 0) + GIFT_POPULARITY * k);
+    addSatisfaction(state, g.type, GIFT_SATISFACTION * k);
+    pushNotice(state, `${guestTypeDef(g.type).name}에게 ${josa(gift.name, '을/를')} 선물했어요${fit ? ' (잘 맞아요 ×2)' : ''} — 인기 +${GIFT_POPULARITY * k} · 만족 +${GIFT_SATISFACTION * k}`);
+  }
+  g.mood = 'happy';
+  g.say = fit ? '이런 걸 다… 고마워요!' : '고마워요!';
+  pushFx(state, { kind: 'pop', x: Math.round(g.x), y: Math.round(g.y), n: GIFT_POPULARITY * k, tick: state.tick });
+  return k;
+}
+
+/** 제작형 선물(감귤 한 상자): 재료 n개 소모 */
+export function canCraftGift(state: GameState, itemId: string): ApplyResult {
+  if (!isGiftId(itemId)) return { ok: false, reason: '선물이 아니에요' };
+  const src = giftDef(itemId).source;
+  if (src.type !== 'craft') return { ok: false, reason: '만들 수 있는 선물이 아니에요' };
+  if ((state.storage[src.ingredientId] ?? 0) < src.count) return { ok: false, reason: `${ingredientDef(src.ingredientId).name} ${src.count}개가 필요해요` };
+  return { ok: true };
+}
+
+/** 호출 전 canCraftGift */
+export function craftGift(state: GameState, itemId: string): void {
+  const gift = giftDef(itemId);
+  const src = gift.source as { type: 'craft'; ingredientId: string; count: number };
+  state.storage[src.ingredientId] = (state.storage[src.ingredientId] ?? 0) - src.count;
+  grantItem(state, itemId);
+  pushNotice(state, `${josa(gift.name, '을/를')} 만들었어요`);
+}
+
+/** 월초: 시설 보유형 선물(잼 공방·기념품 가게·녹차밭·포토 스팟·양봉장)이 매달 들어온다. 준 개수. */
+export function monthlyGifts(state: GameState): number {
+  let n = 0;
+  const types = new Set(Object.values(state.objects).map((o) => o.type));
+  for (const g of GIFTS) {
+    if (g.source.type !== 'facility' || !types.has(g.source.objectId)) continue;
+    grantItem(state, g.id, g.source.perMonth);
+    n += g.source.perMonth;
+    pushNotice(state, `${g.name} ${g.source.perMonth}개가 들어왔어요`);
+  }
+  return n;
+}
+
+/** 제주 선물 상자: 랜덤 선물 2개 (결정적) */
+export function openGiftBox(state: GameState): string[] {
+  const out: string[] = [];
+  for (let i = 0; i < GIFT_BOX_COUNT; i++) {
+    const g = GIFTS[randInt(state, 0, GIFTS.length - 1)]!;
+    grantItem(state, g.id);
+    out.push(g.id);
+  }
+  return out;
 }

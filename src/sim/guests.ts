@@ -12,7 +12,7 @@ import { objectStats, popularityFor, BASE_POPULARITY } from './compat.ts';
 import { isUnlocked, unlockedTypeIds, regularFreqMult, walletOf, onHappyVisit, VISIT_BONUS_CAP } from './segments.ts';
 import { addResearchProgress, TASTE_MATCH_WEIGHT } from './progress.ts';
 import { effectMult, noGuestsToday } from './effects.ts';
-import { spotGuestBonus, busSpots, isBusDay, BUS_HOUR, BUS_MIN, BUS_MAX } from './spots.ts';
+import { spotGuestBonus, busSpots, isBusDay, BUS_HOUR, BUS_MIN, BUS_MAX, spotSpawnMult } from './spots.ts';
 import type { ParcelBonus } from './types.ts';
 import { seatsOf, isSeat } from './cafe.ts';
 import { pushFx } from './fx.ts';
@@ -98,7 +98,7 @@ export function totalSeats(state: GameState): number {
 
 /** 손님층 유입 배수 = (1 + 유효 인기/50) × 유튜버 부스트 × (1 + 인기쟁이 스킬). 유효 인기 = 기본 + 활성 기간형 홍보. */
 export function spawnMultiplier(state: GameState, typeId: string): number {
-  return (1 + effectivePopularity(state, typeId) / 50) * youtuberMultiplier(state, typeId) * (1 + skillTotal(state, 'spawnBonus'));
+  return (1 + effectivePopularity(state, typeId) / 50) * youtuberMultiplier(state, typeId) * (1 + skillTotal(state, 'spawnBonus')) * spotSpawnMult(state, typeId); // 트랙 C: 명소 태그 배수·투어 버스
 }
 
 /** 시간대별 손님층 가중: 아침(6~9) 시니어(삼춘) 2배, 낮(11~17) 청년(관광객) 2배 */

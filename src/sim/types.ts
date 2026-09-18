@@ -199,17 +199,39 @@ export interface EventState { id: string; monthIndex: number; status: EventStatu
 export interface ActiveEffect { kind: 'spawnMult' | 'harvestMult' | 'upkeepMult' | 'noGuests'; mult: number; filter?: EventFilter; untilDay: number; source: string }
 
 export type SpotCategory = 'sight' | 'food' | 'play' | 'nature';
+/** 명소 Lv5 특수 효과 (k=6 명소만, §3.4.3) */
+export type SpotSpecial =
+  | { type: 'unlockGuest'; guestId: string; text: string }
+  | { type: 'popularity'; guestId: string; n: number; text: string }
+  | { type: 'walletMult'; guestId: string; mult: number; text: string }
+  | { type: 'spawnMult'; guestId: string; mult: number; text: string };
+/** 명소 분류 → 손님 태그 (볼거리 female · 먹거리 group · 놀거리 youth · 자연 senior) */
+export type SpotTag = 'female' | 'group' | 'youth' | 'senior';
 export interface SpotDef {
   id: string;
   name: string;
   category: SpotCategory;
   categoryName: string;
-  order: number;
+  order: number;                 // 분류 안 순서 k (1~6) — 투자금 기준 B_k·Lv5 ★ 조건
   levels: { level: number; cost: number; appeal: number }[];
   lv2GuestId: string | null;
   lv4QuestId: string | null;
   nextSpotId: string | null;
   unlock: UnlockCond;
+  tag: SpotTag;                  // Lv별 유입 배수를 받는 손님 태그
+  facilityCategory: FacilityCategory; // Lv3·Lv5 요금 보너스를 받는 시설 분류
+  lv3ItemId: string | null;      // Lv3 도달 시 주는 강화 아이템
+  lv5Special: SpotSpecial | null;
+}
+/** 투어 개최 결과 (UI 팝업, dismissTour로 닫는다) */
+export interface TourResult { spotId: string; score: number; success: boolean; money: number; visitors: number }
+/** 손님 선물 (gifts.json §3.3.5): 손님 카드 「선물하기」 */
+export interface GiftDef {
+  id: string;
+  name: string;
+  fitTag: 'female' | 'male' | 'youth' | 'adult' | 'senior' | 'group'; // 잘 맞는 손님층이면 효과 ×2
+  source: { type: 'craft'; ingredientId: string; count: number } | { type: 'facility'; objectId: string; perMonth: number } | { type: 'quest'; questId: string };
+  sourceText: string;
 }
 export interface BoardState { quests: Record<string, QuestState>; events: EventState[] }
 
@@ -488,8 +510,8 @@ export type FxEvent =
   | { kind: 'scene'; title: string; text: string; tick: number }; // UI 장면 창(완공·★ 승급·랭크 업). 렌더는 무시한다
 
 // ---------- 상점·추첨·유니폼·가이드북 (2B-2 Task 6·7) ----------
-export interface MileageShopDef { id: string; name: string; price: number; description: string; itemId?: string }
-export interface TicketShopDef { id: string; name: string; price: number; description: string; itemId?: string; uniformId?: string }
+export interface MileageShopDef { id: string; name: string; price: number; description: string; itemId?: string; objectId?: string }
+export interface TicketShopDef { id: string; name: string; price: number; description: string; itemId?: string; uniformId?: string; objectId?: string }
 export interface UniformDef { id: string; name: string; ticketTier: number; effectText: string; parts: { top: string; acc?: string } }
 /** 인형뽑기 상품 종류 (v1 roulette.json 가중치를 다시 라벨링) */
 export type DrawPrizeKind = 'money' | 'research' | 'ingredient_box' | 'mileage' | 'item' | 'seed' | 'uniform_piece' | 'miss';
@@ -672,6 +694,14 @@ export interface GameState {
   lastAnnouncement: Announcement | null;      // 마지막 랭킹 발표 (UI 팝업, dismissAnnouncement로 닫는다)
   board: BoardState;
   spots: Record<string, number>;              // spotId → 레벨 (0 = 미투자)
+  spotVisitors: Record<string, number>;       // spotId → 누적 방문객 (매일 매력 × 2, 투어 버스 ×1.3)
+  spotPrizes: Record<string, number>;         // spotId → 받은 방문객 상품 단계 수 (1,000/5,000/20,000/50,000)
+  goldenTangerineGiven: boolean;              // 전체 방문객 10만 상품(황금 감귤) 1회
+  tourBus: boolean;                           // 투어 버스 계약 중 (월초 50만 원, 방문객 ×1.3, 단체 손님 ×1.3)
+  tourBusFreeMonths: number;                  // 계약권으로 무료인 달 수
+  tourMonth: number;                          // 마지막으로 투어를 개최한 monthIndex (−1 = 없음), 월 1회
+  lastTour: TourResult | null;                // 마지막 투어 개최 결과 (UI 팝업)
+  giftDay: number;                            // 마지막으로 선물한 절대 일 인덱스 (하루 1회)
   effects: ActiveEffect[];                    // 이벤트 효과 (기간형)
   menuSold: Record<string, number>;           // menuId → 누적 판매 수 (부탁 진행: 수락 시점 값과의 차, 목표 menuSold)
   monthMenuSold: Record<string, number>;      // 이달 판매 수 (월말 카드 최다 판매 메뉴)
@@ -734,6 +764,11 @@ export type Action =
   | { type: 'acceptQuest'; id: string }
   | { type: 'respondEvent'; id: string; accept: boolean }
   | { type: 'investSpot'; id: string }
+  | { type: 'hostTour'; spotId: string }
+  | { type: 'dismissTour' }
+  | { type: 'setTourBus'; on: boolean }
+  | { type: 'giveGift'; guestId: string; itemId: string }
+  | { type: 'craftGift'; itemId: string }
   | { type: 'develop'; base: MenuBase; ingredients: string[]; params?: BrewParams; staffId: string }
   | { type: 'dismissDevelop' }
   | { type: 'addTopping'; menuId: string; toppingId: string }
