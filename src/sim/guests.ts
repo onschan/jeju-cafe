@@ -21,6 +21,7 @@ import { addAffinity, affinityGain, namedLikes, regularsDueNow, NAMED_MIN_SCENER
 import { eventGuestMult, eventTagMult, eventFeeMult, isSpecialGuest, specialGuestTip } from './events.ts';
 import { fmtNum } from './format.ts';
 import { josa } from './josa.ts';
+import { siteBonus } from './site.ts';
 
 export { moveAlong, GUEST_SPEED_CELLS_PER_S }; // 하위 호환 재수출 (본체는 path.ts)
 export const SEAT_MS = 3000;       // 기분이 정해진 뒤 앉아 있는 시간 (≈1.5시간)
@@ -266,7 +267,7 @@ function resolveMood(state: GameState, g: Guest): void {
   const p = profileOf(state, g);
   const match = g.namedId ? statsMatchCount(state, p.likesStats, g.menuId) : likesStatsMatch(state, g.type, g.menuId);
   const taste = g.namedId ? Math.min(LIKE_BONUS_CAP, match) : tasteBonus(state, g.type, g.menuId);
-  if (sceneryScore(state, seat.x, seat.y) + serviceBonus(state) + popularityBonus(popularityFor(state, seat.id, g.type)) + taste >= p.minScenery) {
+  if (sceneryScore(state, seat.x, seat.y) + serviceBonus(state) + popularityBonus(popularityFor(state, seat.id, g.type)) + taste + siteBonus(state, seat).satisfaction >= p.minScenery) {
     g.mood = 'happy';
     g.moodReason = null;
     state.stats.satisfiedTotal++;
@@ -327,13 +328,13 @@ function order(state: GameState, g: Guest): void {
   const menu = menuOf(state, menuId);
   consumeIngredients(state, menuId);
   const seat = state.objects[g.seatId!]!;
-  const price = Math.round(priceOf(state, menuId) * parcelFeeMult(parcelBonusAt(state, seat.x, seat.y)) * (objectStats(state, seat.id).feePct / 100) * eventFeeMult(state));
+  const price = Math.round(priceOf(state, menuId) * parcelFeeMult(parcelBonusAt(state, seat.x, seat.y)) * (objectStats(state, seat.id).feePct / 100) * eventFeeMult(state) * siteBonus(state, seat).feeMult);
   state.money += price;
   state.monthIncome += price;
   state.totalIncome += price;
   g.menuId = menuId;
   g.paid = price;
-  g.waitMs = prepTimeMs(state, menu.category);
+  g.waitMs = prepTimeMs(state, menu.category) * siteBonus(state, seat).serveMult;
   state.menuSold[menuId] = (state.menuSold[menuId] ?? 0) + 1;
   state.monthMenuSold[menuId] = (state.monthMenuSold[menuId] ?? 0) + 1;
 }
@@ -360,7 +361,7 @@ export function pickVisit(state: GameState, g: Guest, from: Pt): { obj: PlacedOb
 /** 시설 도착: 이용료를 내고 시설 인기 +1(상한), 숫자 팝업 연출 */
 function useFacility(state: GameState, g: Guest, obj: PlacedObject): void {
   const def = objectDef(obj.type);
-  const fee = def.fee ?? 0;
+  const fee = Math.round((def.fee ?? 0) * siteBonus(state, obj).feeMult);
   state.money += fee;
   state.monthIncome += fee;
   state.totalIncome += fee;
