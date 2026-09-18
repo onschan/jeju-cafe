@@ -10,7 +10,8 @@ export function Popup({ title, portrait, children, buttons, onBackdrop }: {
   onBackdrop?: () => void;
 }) {
   return (
-    <div style={{ position: 'absolute', inset: 0, background: '#0008', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 20, padding: 16 }} onClick={onBackdrop}>
+    // 전체 화면 창(30)·대화창(40) 안에서 띄운 확인 팝업이 그 위에 오도록 50
+    <div style={{ position: 'absolute', inset: 0, background: '#0008', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: 16 }} onClick={onBackdrop}>
       <div style={{ ...frame, minWidth: 240, maxWidth: 340, width: '100%', maxHeight: '80vh', overflowY: 'auto', fontSize: 16 }} onClick={(e) => e.stopPropagation()}>
         {title && <div style={frameTitle}>{title}</div>}
         <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
