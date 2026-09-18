@@ -1,15 +1,28 @@
-import type { GameState, PlacedObject, ComboDef, SetDef, ActiveCombo, ActiveSet, ObjectStats, ComboTarget } from './types.ts';
-import { objectDef, COMBOS, SETS, COMBO_META, GUEST_TYPES, guestTags, targetMatches } from '../data/index.ts';
+import type { GameState, PlacedObject, ComboDef, SetDef, SpotEffectDef, ActiveCombo, ActiveSet, ActiveSpotEffect, ObjectStats, ComboTarget } from './types.ts';
+import { objectDef, COMBOS, SETS, SPOT_EFFECTS, COMBO_META, GUEST_TYPES, guestTags, targetMatches } from '../data/index.ts';
 import { objectScenery, itemScenery } from './grid.ts';
 import { addMileage, checkCodexMileage } from './mileage.ts';
 import { seasonOf } from './clock.ts';
 import { pushNotice } from './staff.ts';
+import { pushFx } from './fx.ts';
+import { levelOf, LEVEL_POPULARITY, LEVEL_SCENERY, LEVEL_FEE_PCT, LEVEL_MENU_PCT, LEVEL_COMBO_MULT } from './upgrade.ts';
+import { wearOf, upkeepMultOf } from './cleanliness.ts';
 
 /** ObjectDef에 popularity·feePct가 없을 때 (v1 objects.json) */
 export const BASE_POPULARITY = 10;
 export const BASE_FEE_PCT = 100;
-/** 인기 상한 (마스터 GDD §2.2) */
+/** 인기 상한 (마스터 GDD §2.2). 증축 Lv 가산(+4/+8)은 이 상한과 별도로 더해져 최대 48. */
 export const POPULARITY_CAP = 40;
+/** 콤보 누적 상한 (스펙 §3.1-3): 상승 합계 인기 +12 / 요금 +20%, 하락 합계 −9 / −15%. 상승·하락은 따로 합산한 뒤 더한다. */
+export const COMBO_UP_CAP = { pop: 12, feePct: 20 };
+export const COMBO_DOWN_CAP = { pop: -9, feePct: -15 };
+/** 손님층 콤보: 그 태그 손님이 이 시설을 고를 확률 ×1.3(콤보 1개당, 최대 ×2.0) + 만족 +5. 전체 대상은 만족 +3. */
+export const COMBO_PICK_MULT = 1.3;
+export const COMBO_PICK_CAP = 2.0;
+export const COMBO_SATISFACTION = 5;
+export const COMBO_SATISFACTION_ALL = 3;
+/** 히든 콤보 첫 발견 응모권 */
+export const HIDDEN_COMBO_TICKETS = 1;
 
 /** 'table_*'처럼 끝이 *면 접두 일치 */
 function typeMatches(type: string, pattern: string): boolean {
@@ -64,31 +77,77 @@ function relevantCombos(type: string, combos: ComboDef[]): ComboDef[] {
   return list;
 }
 
-/** A 오브젝트 주변(반경) B가 bCount 이상인가 */
-function comboActiveAt(a: Entry, combo: ComboDef, by: ByType): boolean {
+/** A 오브젝트 주변(반경) B 개체 수 → 발동 횟수 (bCount마다 1회). 같은 콤보는 상대가 다른 개체일 때마다 다시 센다 (스펙 §3.1-2). */
+function comboCountAt(a: Entry, combo: ComboDef, by: ByType): number {
   let n = 0;
   const seen = combo.bIds.length > 1 ? new Set<string>() : null;
   for (const p of combo.bIds) for (const e of ofPattern(by, p)) {
     if (e.o.id === a.o.id || seen?.has(e.o.id)) continue;
     seen?.add(e.o.id);
-    if (dist(a, e) <= combo.radius && ++n >= combo.bCount) return true;
+    if (dist(a, e) <= combo.radius) n++;
   }
-  return false;
+  return Math.floor(n / Math.max(1, combo.bCount));
+}
+function comboActiveAt(a: Entry, combo: ComboDef, by: ByType): boolean {
+  return comboCountAt(a, combo, by) > 0;
 }
 
 function activeCombosOf(obj: Entry, combos: ComboDef[], by: ByType): ActiveCombo[] {
   const out: ActiveCombo[] = [];
   for (const c of relevantCombos(obj.o.type, combos)) {
-    if (obj.o.type === c.a && c.applyTo !== 'b' && comboActiveAt(obj, c, by)) {
-      out.push({ id: c.id, name: c.name, strength: c.strength, side: 'a', hidden: c.hidden, target: c.target, effectText: c.effectText });
-      continue;
+    if (obj.o.type === c.a && c.applyTo !== 'b') {
+      const count = comboCountAt(obj, c, by);
+      if (count > 0) { out.push({ id: c.id, name: c.name, strength: c.strength, side: 'a', hidden: c.hidden, target: c.target, effectText: c.effectText, count }); continue; }
     }
     if (c.applyTo !== 'a' && isB(obj.o.type, c)) {
-      const anchored = (by.get(c.a) ?? []).some((a) => a.o.id !== obj.o.id && dist(a, obj) <= c.radius && comboActiveAt(a, c, by));
-      if (anchored) out.push({ id: c.id, name: c.name, strength: c.strength, side: 'b', hidden: c.hidden, target: c.target, effectText: c.effectText });
+      const anchors = (by.get(c.a) ?? []).filter((a) => a.o.id !== obj.o.id && dist(a, obj) <= c.radius && comboActiveAt(a, c, by)).length;
+      if (anchors > 0) out.push({ id: c.id, name: c.name, strength: c.strength, side: 'b', hidden: c.hidden, target: c.target, effectText: c.effectText, count: anchors });
     }
   }
   return out;
+}
+
+/** 손님층이 이 시설을 고를 확률 배수: 그 태그 대상 콤보 1개(발동 횟수 포함)당 ×1.3, 최대 ×2.0. 명당이면 ×1.5 추가. — guests.ts(E) pickVisit 훅용 */
+export function comboPickMult(state: GameState, objId: string, typeId: string, combos: ComboDef[] = COMBOS): number {
+  const obj = state.objects[objId];
+  if (!obj) return 1;
+  const tags = guestTags(typeId);
+  let n = 0;
+  for (const c of activeCombos(state, objId, combos)) if (c.target !== 'all' && c.strength !== 'down' && c.strength !== 'none' && targetMatches(c.target, tags)) n += c.count;
+  const spot = spotEffectOf(entryOf(obj), SPOT_EFFECTS, indexByType(state));
+  return Math.min(COMBO_PICK_CAP, Math.pow(COMBO_PICK_MULT, n)) * (spot && targetMatches(spot.target, tags) ? spot.guestMult : 1);
+}
+/** 콤보 만족 가산: 손님층 대상 콤보가 맞으면 +5, 전체 대상 콤보는 +3 (가장 큰 것 하나). — guests.ts(E) 만족 판정 훅용 */
+export function comboSatisfaction(state: GameState, objId: string, typeId: string, combos: ComboDef[] = COMBOS): number {
+  const tags = guestTags(typeId);
+  let best = 0;
+  for (const c of activeCombos(state, objId, combos)) {
+    if (c.strength === 'down' || c.strength === 'none') continue;
+    if (c.target === 'all') best = Math.max(best, COMBO_SATISFACTION_ALL);
+    else if (targetMatches(c.target, tags)) best = Math.max(best, COMBO_SATISFACTION);
+  }
+  return best;
+}
+
+/** 명당 (스펙 §3.1): 중심 시설 종류가 맞고 반경 안에 필요 시설이 다 있으면. 시설 1개당 1종 — 표 순서대로 처음 만족한 것. */
+function spotEffectOf(obj: Entry, spots: SpotEffectDef[], by: ByType): ActiveSpotEffect | null {
+  if (obj.o.build) return null;
+  for (const sp of spots) {
+    if (sp.center !== obj.o.type) continue;
+    let ok = true;
+    for (const req of sp.requires) {
+      let n = 0;
+      for (const e of by.get(req.objectId) ?? []) if (e.o.id !== obj.o.id && !e.o.build && dist(obj, e) <= sp.radius) n++;
+      if (n < req.count) { ok = false; break; }
+    }
+    if (ok) return { id: sp.id, name: sp.name, target: sp.target, guestMult: sp.guestMult, popularity: sp.popularity };
+  }
+  return null;
+}
+/** 이 시설에 걸린 명당 (없으면 null) */
+export function spotEffectAt(state: GameState, objId: string, spots: SpotEffectDef[] = SPOT_EFFECTS): ActiveSpotEffect | null {
+  const obj = state.objects[objId];
+  return obj ? spotEffectOf(entryOf(obj), spots, indexByType(state)) : null;
 }
 
 /** 이 오브젝트가 지금 받고 있는 상성 목록. A쪽이면 B가 충분히 가까울 때, B쪽이면 발동 중인 A가 반경 안에 있을 때. */
@@ -144,18 +203,34 @@ function clampPop(n: number): number {
   return Math.max(0, Math.min(POPULARITY_CAP, Math.round(n)));
 }
 
-/** 상성·아이템·손님 효과(시설 인기, +10 상한)를 더한 인기(세트 배수 전)와 요금 % */
-function rawStats(state: GameState, obj: PlacedObject, active: ActiveCombo[]): { pop: number; feePct: number } {
-  const def = objectDef(obj.type);
-  const item = state.itemBonus[obj.type] ?? { popularity: 0, feePct: 0 };
-  let pop = (def.popularity ?? BASE_POPULARITY) + item.popularity + (state.visitBonus[obj.type] ?? 0);
-  let feePct = (def.feePct ?? BASE_FEE_PCT) + item.feePct;
+/** 콤보 합계: 상승·하락을 따로 합산(발동 횟수 × 등급 × Lv 계수) → 각각 상한 → 더한다 */
+export function comboTotal(active: ActiveCombo[], level = 1): { pop: number; feePct: number } {
+  const mult = LEVEL_COMBO_MULT[level] ?? 1;
+  let up = { pop: 0, feePct: 0 };
+  let down = { pop: 0, feePct: 0 };
   for (const c of active) {
     const d = comboDelta(c.strength);
-    pop += d.pop;
-    feePct += d.feePct;
+    const n = c.count ?? 1;
+    if (c.strength === 'down') { down.pop += d.pop * n; down.feePct += d.feePct * n; } else { up.pop += d.pop * n; up.feePct += d.feePct * n; }
   }
+  up = { pop: Math.min(COMBO_UP_CAP.pop, Math.round(up.pop * mult)), feePct: Math.min(COMBO_UP_CAP.feePct, Math.round(up.feePct * mult)) };
+  down = { pop: Math.max(COMBO_DOWN_CAP.pop, Math.round(down.pop * mult)), feePct: Math.max(COMBO_DOWN_CAP.feePct, Math.round(down.feePct * mult)) };
+  return { pop: up.pop + down.pop, feePct: up.feePct + down.feePct };
+}
+
+/** 상성(누적 상한·Lv 계수)·아이템·손님 효과(시설 인기, +10 상한)·명당(+5)을 더한 인기(세트 배수 전)와 요금 %(Lv +10%/+20%, 좌석형은 +5%/+10%) */
+function rawStats(state: GameState, obj: PlacedObject, active: ActiveCombo[], spot: ActiveSpotEffect | null): { pop: number; feePct: number } {
+  const def = objectDef(obj.type);
+  const item = state.itemBonus[obj.type] ?? { popularity: 0, feePct: 0 };
+  const level = levelOf(obj);
+  const total = comboTotal(active, level);
+  const pop = (def.popularity ?? BASE_POPULARITY) + item.popularity + (state.visitBonus[obj.type] ?? 0) + total.pop + (spot?.popularity ?? 0);
+  const feePct = (def.feePct ?? BASE_FEE_PCT) + item.feePct + total.feePct + ((def.fee !== undefined ? LEVEL_FEE_PCT[level] : LEVEL_MENU_PCT[level]) ?? 0);
   return { pop, feePct };
+}
+/** 상한(40) 뒤에 더하는 인기: 증축 Lv(+4/+8) − 노후(−1~−6). 0 아래로는 안 간다. */
+function finalPop(state: GameState, obj: PlacedObject, capped: number): number {
+  return Math.max(0, capped + (LEVEL_POPULARITY[levelOf(obj)] ?? 0) - wearOf(state, obj));
 }
 
 /** 기본(ObjectDef) + 상성 + 아이템 + 전체 대상 세트 배수 + 계절 경치. 손님층별 값은 popularityFor. */
@@ -167,15 +242,20 @@ export function objectStats(state: GameState, objId: string, combos: ComboDef[] 
   const e = entryOf(obj);
   const active = activeCombosOf(e, combos, by);
   const activeSets = setLevelsOf(e, sets, by);
-  const raw = rawStats(state, obj, active);
+  const spot = spotEffectOf(e, SPOT_EFFECTS, by);
+  const raw = rawStats(state, obj, active, spot);
+  const level = levelOf(obj);
   return {
-    popularity: clampPop(raw.pop * setMult(activeSets, (t) => t === 'all')),
+    popularity: finalPop(state, obj, clampPop(raw.pop * setMult(activeSets, (t) => t === 'all'))),
     feePct: raw.feePct,
-    scenery: objectScenery(def, seasonOf(state.clock.month), itemScenery(state, obj.type)),
+    scenery: objectScenery(def, seasonOf(state.clock.month), itemScenery(state, obj.type)) + (LEVEL_SCENERY[level] ?? 0),
     noise: def.noise,
-    upkeep: def.upkeep,
+    upkeep: Math.round(def.upkeep * upkeepMultOf(state, obj)),
     combos: active,
     sets: activeSets,
+    spot,
+    level,
+    wear: wearOf(state, obj),
     segmentBonus: segmentBonusOf(active),
   };
 }
@@ -187,21 +267,31 @@ export function popularityFor(state: GameState, objId: string, typeId: string, c
   const by = indexByType(state);
   const e = entryOf(obj);
   const active = activeCombosOf(e, combos, by);
-  const pop = rawStats(state, obj, active).pop + (segmentBonusOf(active)[typeId] ?? 0);
+  const spot = spotEffectOf(e, SPOT_EFFECTS, by);
+  const pop = rawStats(state, obj, active, spot).pop + (segmentBonusOf(active)[typeId] ?? 0);
   const tags = guestTags(typeId);
-  return clampPop(pop * setMult(setLevelsOf(e, sets, by), (t) => targetMatches(t, tags)));
+  const spotMult = spot && targetMatches(spot.target, tags) ? spot.guestMult : 1;
+  return finalPop(state, obj, clampPop(pop * setMult(setLevelsOf(e, sets, by), (t) => targetMatches(t, tags)) * spotMult));
 }
 
-/** 배치·이동 뒤: 처음 발동한 상성·세트를 도감에 올린다. 히든 상성·세트 완성은 알림. */
-export function discoverCombos(state: GameState, combos: ComboDef[] = COMBOS, sets: SetDef[] = SETS): void {
-  const before = state.codex.combos.length + state.codex.sets.length;
+/** 배치·이동·완공 뒤: 처음 발동한 상성·세트·명당을 도감에 올린다. 히든 상성은 알림 + 응모권 1, 명당은 장면 대사 + 응모권 2. */
+export function discoverCombos(state: GameState, combos: ComboDef[] = COMBOS, sets: SetDef[] = SETS, spots: SpotEffectDef[] = SPOT_EFFECTS): void {
+  const before = state.codex.combos.length + state.codex.sets.length + state.codex.spots.length;
   const by = indexByType(state);
   for (const arr of by.values()) for (const obj of arr) {
     for (const c of activeCombosOf(obj, combos, by)) {
       if (state.codex.combos.includes(c.id)) continue;
       state.codex.combos.push(c.id);
-      if (c.hidden) pushNotice(state, `숨은 상성 발견! ${c.name}`);
+      if (c.hidden) { pushNotice(state, `숨은 상성 발견! ${c.name}`); state.tickets += HIDDEN_COMBO_TICKETS; }
       if (state.codex.combos.length === 1) addMileage(state, 1);
+    }
+    const sp = spotEffectOf(obj, spots, by);
+    if (sp && !state.codex.spots.includes(sp.id)) {
+      state.codex.spots.push(sp.id);
+      const def = spots.find((x) => x.id === sp.id)!;
+      state.tickets += def.tickets;
+      pushNotice(state, `명당 발견! ${sp.name} — 응모권 +${def.tickets}`);
+      pushFx(state, { kind: 'scene', title: '명당', text: `${def.line} ${sp.name}: ${objectDef(obj.o.type).name}`, tick: state.tick });
     }
     for (const st of setLevelsOf(obj, sets, by)) {
       if (state.codex.sets.includes(st.id)) continue;
@@ -210,5 +300,5 @@ export function discoverCombos(state: GameState, combos: ComboDef[] = COMBOS, se
       if (state.codex.sets.length === 1) addMileage(state, 1);
     }
   }
-  if (state.codex.combos.length + state.codex.sets.length !== before) checkCodexMileage(state);
+  if (state.codex.combos.length + state.codex.sets.length + state.codex.spots.length !== before) checkCodexMileage(state);
 }

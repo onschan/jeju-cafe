@@ -20,6 +20,7 @@ import { monthlyRank } from './guidebook.ts';
 import { monthlyMileage } from './mileage.ts';
 import { hourlyPopup, dailyPopup } from './popup.ts';
 import { monthlyRivals } from './rivals.ts';
+import { dailyCleanliness } from './cleanliness.ts';
 
 export const STEP_MS = 100;        // 고정 스텝 (게임 ms)
 const MAX_STEPS_PER_TICK = 600;    // 백그라운드 복귀 등 폭주 방지 (60초 게임 시간)
@@ -40,6 +41,7 @@ function onNewDay(state: GameState): void {
   nightlyReputation(state); // 어제 만족·불만으로 평판 갱신
   resetWaiting(state);
   pruneEffects(state);
+  dailyCleanliness(state); // 트랙 A: 청결 일일 변화 (spawnMult 효과 갱신)
   dailyBigEvents(state);
   dailyPopup(state);
   nightlyRecovery(state);

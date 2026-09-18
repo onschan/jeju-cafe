@@ -1,4 +1,4 @@
-import type { ObjectDef, MenuDef, GuestTypeDef, IngredientDef, FarmYield, GoalDef, BigEventDef, RoleDef, SkillDef, PromotionDef, GuestTags, ComboDef, ComboTarget, ComboStrength, ComboSide, SetDef, ItemDef, ItemSlot, Season, MenuCategory, GuestEffect, GuestWant, UnlockCond, QuestDef, QuestCondition, QuestReward, SpotDef, SpotCategory, EventDef, MenuStats, MenuStatKey, IngredientCategory, IngredientComboDef, ToppingDef, HiddenRecipeDef, FacilityCategory, MileageShopDef, TicketShopDef, UniformDef, GuidebookDef, DrawPrizeDef, DrawPrizeKind, JudgeKey, RegionDef, NamedGuestDef, RivalDef } from '../sim/types.ts';
+import type { SpotEffectDef, ObjectDef, MenuDef, GuestTypeDef, IngredientDef, FarmYield, GoalDef, BigEventDef, RoleDef, SkillDef, PromotionDef, GuestTags, ComboDef, ComboTarget, ComboStrength, ComboSide, SetDef, ItemDef, ItemSlot, Season, MenuCategory, GuestEffect, GuestWant, UnlockCond, QuestDef, QuestCondition, QuestReward, SpotDef, SpotCategory, EventDef, MenuStats, MenuStatKey, IngredientCategory, IngredientComboDef, ToppingDef, HiddenRecipeDef, FacilityCategory, MileageShopDef, TicketShopDef, UniformDef, GuidebookDef, DrawPrizeDef, DrawPrizeKind, JudgeKey, RegionDef, NamedGuestDef, RivalDef } from '../sim/types.ts';
 import objectsJson from './objects.json' with { type: 'json' };
 import menusJson from './menus.json' with { type: 'json' };
 import guestsJson from './generated/v2/guests.json' with { type: 'json' };
@@ -17,7 +17,6 @@ import promotionsJson from './promotions.json' with { type: 'json' };
 import dialogueJson from './dialogue.json' with { type: 'json' };
 import parcelsJson from './generated/parcels.json' with { type: 'json' };
 import landmarksJson from './generated/landmarks.json' with { type: 'json' };
-import compatJson from './generated/compat.json' with { type: 'json' };
 import aurasJson from './generated/auras.json' with { type: 'json' };
 import itemsJson from './generated/items.json' with { type: 'json' };
 import itemsV2Json from './generated/v2/items.json' with { type: 'json' };
@@ -30,6 +29,9 @@ import rouletteJson from './generated/roulette.json' with { type: 'json' };
 import ranksJson from './generated/ranks.json' with { type: 'json' };
 import compatMetaJson from './generated/compat_meta.json' with { type: 'json' };
 import facilitiesJson from './generated/v2/facilities.json' with { type: 'json' };
+import facilitiesXJson from './facilities_x.json' with { type: 'json' };
+import combosJson from './combos.json' with { type: 'json' };
+import spotEffectsJson from './spot_effects.json' with { type: 'json' };
 import ingredientsV1Json from './generated/ingredients.json' with { type: 'json' };
 import ingredientCombosJson from './generated/ingredient_combos.json' with { type: 'json' };
 import toppingsJson from './generated/toppings.json' with { type: 'json' };
@@ -139,6 +141,7 @@ export function toUnlockCond(u: Record<string, unknown> | string | null | undefi
     case 'count': return { type: 'count', objectId: String(u.objectId), count: n('count') || 1 };
     case 'all': return { type: 'all', conditions: (Array.isArray(u.conditions) ? u.conditions : []).map((c) => toUnlockCond(c as Record<string, unknown>)) };
     case 'goal': return { type: 'goal' };
+    case 'shop': return { type: 'goal' }; // 마일리지 상점 구매로 열린다 (trackC shop.ts) — 짓기 창엔 '목표 보상'처럼 잠김 표시
     default: return { type: 'all', conditions: [{ type: 'rank', rank: 99 }] };
   }
 }
@@ -235,7 +238,7 @@ export const START_OBJECT_IDS = ['table_out', 'table_in', 'table_parasol', 'deco
 /** v2 시설 표 → ObjectDef. 쉼 → seat, 편의·먹거리·즐길거리·농사 → facility, 경관 → deco, 랜드마크 → landmark. 방은 building. 농원은 경관(deco)+yield. */
 export function adaptFacility(r: RawFacility): ObjectDef {
   const room = ROOM_IDS.has(r.id);
-  const kind: ObjectDef['kind'] = room ? 'building' : r.category === 'rest' ? 'seat' : r.category === 'scenery' || r.category === 'farm' ? 'deco' : r.category === 'landmark' ? 'landmark' : 'facility';
+  const kind: ObjectDef['kind'] = room ? 'building' : r.category === 'rest' ? (typeof r.fee === 'number' ? 'facility' : 'seat') : r.category === 'scenery' || r.category === 'farm' ? 'deco' : r.category === 'landmark' ? 'landmark' : 'facility';
   const season: Partial<Record<Season, number>> = {};
   for (const k of ['spring', 'summer', 'autumn', 'winter'] as Season[]) if (typeof r.seasonBonus?.[k] === 'number') season[k] = r.seasonBonus[k];
   const def: ObjectDef = {
@@ -257,7 +260,12 @@ export function adaptFacility(r: RawFacility): ObjectDef {
 const BASE_OBJECTS: ObjectDef[] = [...(objectsJson as ObjectDef[]), ...TERRAIN_OBJECTS, ...LANDMARKS].map((o) => (ROOM_IDS.has(o.id) ? { ...o, room: true as const } : o));
 const BASE_IDS = new Set(BASE_OBJECTS.map((o) => o.id));
 /** v2 시설 중 objects.json·랜드마크에 아직 없는 것 (시설 순회·실내 가구·증축용) */
-export const FACILITIES: ObjectDef[] = (facilitiesJson as unknown as RawFacility[]).filter((r) => !BASE_IDS.has(r.id) && !REMOVED_FACILITY_IDS.has(r.id)).map(adaptFacility);
+/** v2 표 109 + HSS2 확장 44 (facilities_x.json, 스펙 §3.2.1). 쉼 분류라도 요금이 있으면(족욕탕 등) 순회 시설. */
+const FACILITY_ROWS: RawFacility[] = [...(facilitiesJson as unknown as RawFacility[]), ...(facilitiesXJson as unknown as RawFacility[])];
+/** 확장 44종 id (스펙 §3.2.1). 목표 해금(goal:gNN)은 트랙 B의 108 목표가 연다 — unlockRef에 목표 번호가 남아 있다. */
+export const FACILITY_X_IDS = new Set((facilitiesXJson as { id: string }[]).map((f) => f.id));
+export const FACILITY_X_GOAL_REFS: Record<string, string> = Object.fromEntries((facilitiesXJson as { id: string; unlockRef: string }[]).filter((f) => f.unlockRef.startsWith('goal:')).map((f) => [f.id, f.unlockRef.slice(5)]));
+export const FACILITIES: ObjectDef[] = FACILITY_ROWS.filter((r) => !BASE_IDS.has(r.id) && !REMOVED_FACILITY_IDS.has(r.id)).map(adaptFacility);
 /** 시작부터 열려 있는 v2 시설 (v3: START_OBJECT_IDS 중 v2 표에만 있는 것) */
 export const FACILITY_START_IDS: string[] = FACILITIES.filter((f) => f.unlock?.type === 'start').map((f) => f.id);
 export const OBJECTS: ObjectDef[] = [...BASE_OBJECTS, ...FACILITIES];
@@ -265,7 +273,7 @@ export const OBJECTS: ObjectDef[] = [...BASE_OBJECTS, ...FACILITIES];
 // ---------- 짓기 탭 카테고리 (v1·v2 오브젝트를 한 목록에서 묶어 보여준다) ----------
 /** id → v2 시설 카테고리. v1과 id가 겹치는 것(table_out 등)도 v2 표엔 카테고리가 있어서 여기서 찾을 수 있다. */
 const FACILITY_CATEGORY_BY_ID: Record<string, FacilityCategory> = {};
-for (const r of facilitiesJson as unknown as RawFacility[]) {
+for (const r of FACILITY_ROWS) {
   if (FACILITY_CATEGORIES.has(r.category as FacilityCategory)) FACILITY_CATEGORY_BY_ID[r.id] = r.category as FacilityCategory;
 }
 /** 짓기 탭 하위 탭 7종 */
@@ -471,7 +479,7 @@ export function adaptCombo(r: RawCombo): ComboDef {
     bIds,
     bCount: typeof r.bCount === 'number' ? r.bCount : 1,
     target: r.target !== undefined ? toTarget(r.target) : targetFromText(text),
-    strength: toStrength(r.strength, name, text),
+    strength: toStrength(r.strength ?? r.grade, name, text),
     applyTo: toSide(applyToRaw),
     hidden: toBool(r.hidden),
     radius: typeof r.radius === 'number' ? r.radius : COMBO_META.radius,
@@ -525,15 +533,29 @@ export const COMBO_META = {
   down: (compatMetaJson as { down?: { pop: number; feePct: number } }).down ?? { pop: -3, feePct: -5 },
   segmentPopularity: (compatMetaJson as { segmentPopularity?: number }).segmentPopularity ?? 3,
 };
-export const COMBOS: ComboDef[] = (compatJson as RawCombo[]).map(adaptCombo);
+/** 상성 60 (combos.json, 스펙 §3.1). v1 compat.json 25종은 v2 표로 흡수됐다. */
+export const COMBOS: ComboDef[] = (combosJson as RawCombo[]).map(adaptCombo);
+/** 명당 12 (spot_effects.json, 스펙 §3.1): 중심 시설 1개 + 반경 2칸 안의 시설 조합 */
+export const SPOT_EFFECTS: SpotEffectDef[] = (spotEffectsJson as { id: string; name: string; center: string; requires: { objectId: string; count: number }[]; target: string; radius: number; guestMult: number; popularity: number; tickets: number; line: string }[]).map((r) => ({
+  id: r.id, name: r.name, center: r.center, requires: r.requires, target: toTarget(r.target), radius: r.radius, guestMult: r.guestMult, popularity: r.popularity, tickets: r.tickets, line: r.line,
+}));
 export const SETS: SetDef[] = (aurasJson as RawSet[]).map(adaptSet);
 /** 강화 아이템 20(v2: 잘 맞는 시설 ×2) — v1 표에도 있는 것은 v1 분류(0~3)를 같이 갖는다 + v1에만 있는 것 + 특수 아이템 12(씨앗 3종만 효과) */
 const ITEMS_V1: ItemDef[] = (itemsJson as RawItem[]).map(adaptItem);
 const V1_BY_ID = new Map(ITEMS_V1.map((i) => [i.id, i] as const));
+/** 강화 아이템 "잘 맞는 시설" 확장 매핑 (스펙 §3.2.1 끝): 새 시설 44종을 기존 20종에 편입. 해초 비료의 field는 밭 폐지로 뺀다. */
+export const ITEM_FIT_EXTRA: Record<string, string[]> = {
+  jeju_salt: ['sauna_hut', 'cauldron_footbath'], bean_sample: ['tea_house'], conch_shell: ['footbath', 'open_air_footbath'], galot_cushion: ['rest_pavilion', 'lie_footbath'],
+  comic_book: ['pc_zone', 'lounge'], lp_record: ['yoga_class', 'vintage_shop'], sneakers: ['fitness_corner', 'pingpong', 'archery_range'], glasses: ['pc_zone', 'shooting_booth', 'archery_range'],
+  folk_scroll: ['tea_house', 'flower_workshop', 'vintage_shop', 'fine_dining'], tv: ['lounge', 'retro_arcade', 'brunch_house'], pottery_jar: ['lounge'], gold_leaf: ['fine_dining', 'clothing_shop'],
+  jeju_tea_set: ['tea_house', 'lounge'], honey: ['sweet_potato_cart', 'candy_shop'], flower_poster: ['flower_shop', 'hair_salon'], lantern: ['waterfall_shower'],
+};
 const ITEMS_V2: ItemDef[] = (itemsV2Json as RawItem[]).map((r) => {
   const def = adaptItem(r);
   const v1 = V1_BY_ID.get(def.id);
-  return v1?.fitSlots ? { ...def, fitSlots: v1.fitSlots } : def;
+  const fitIds = [...def.fitIds.filter((id) => !REMOVED_FACILITY_IDS.has(id)), ...(ITEM_FIT_EXTRA[def.id] ?? [])];
+  const out = { ...def, fitIds };
+  return v1?.fitSlots ? { ...out, fitSlots: v1.fitSlots } : out;
 });
 const V2_IDS = new Set(ITEMS_V2.map((i) => i.id));
 const ITEMS_V1_ONLY = ITEMS_V1.filter((i) => !V2_IDS.has(i.id));
@@ -613,6 +635,7 @@ const SKILL = indexBy(SKILLS);
 const PROMOTION = indexBy(PROMOTIONS);
 const COMBO = indexBy(COMBOS);
 const SET = indexBy(SETS);
+const SPOT_EFFECT = indexBy(SPOT_EFFECTS);
 const ITEM = indexBy(ITEMS);
 
 function must<T>(map: Record<string, T>, id: string, what: string): T {
@@ -623,6 +646,7 @@ function must<T>(map: Record<string, T>, id: string, what: string): T {
 export const objectDef = (id: string) => must(OBJ, id, 'object');
 export const comboDef = (id: string) => must(COMBO, id, 'combo');
 export const setDef = (id: string) => must(SET, id, 'set');
+export const spotEffectDef = (id: string) => must(SPOT_EFFECT, id, 'spotEffect');
 export const itemDef = (id: string) => must(ITEM, id, 'item');
 export const menuDef = (id: string) => must(MENU, id, 'menu');
 export const guestTypeDef = (id: string) => must(GUEST, canonicalGuestId(id), 'guestType');

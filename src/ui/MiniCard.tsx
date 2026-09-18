@@ -1,6 +1,6 @@
 import type { CSSProperties, ReactNode } from 'react';
 import { useGame, dispatch } from './store';
-import { objectStats, sceneryScore, clearCost, canClearRock, hasPickaxe, cellAt, walletOf, guestFace, namedGuestFace, canAcceptQuest, parcelPrice, canBuyParcel, PROTECTED_TYPES, ROTATABLE_TYPES, LOW_ENERGY, STAT_KEYS, STAT_NAME, staffInRole, canLevelUp, MAX_LEVEL, type GameState, type Guest, type RoleId, type StatKey } from '../sim/index.ts';
+import { objectStats, sceneryScore, clearCost, canClearRock, hasPickaxe, cellAt, walletOf, guestFace, namedGuestFace, canAcceptQuest, parcelPrice, canBuyParcel, PROTECTED_TYPES, ROTATABLE_TYPES, LOW_ENERGY, STAT_KEYS, STAT_NAME, staffInRole, canLevelUp, MAX_LEVEL, isUpgradable, canUpgrade, upgradeCost, upgradeConditionText, MAX_OBJECT_LEVEL, canRepair, repairCost, CLEAN_LOW, type GameState, type Guest, type RoleId, type StatKey } from '../sim/index.ts';
 import { BUS_HOUR, isBusDay } from '../sim/spots.ts';
 import { objectDef, guestTypeDef, namedGuestDef, questDef, roleDef, ROLES } from '../data/index.ts';
 import { staffParts } from '../render/character';
@@ -120,19 +120,30 @@ function ObjectCard({ s, id, a, onClose }: { s: GameState; id: string; a: CardAc
   const st = objectStats(s, o.id);
   const protectedType = PROTECTED_TYPES.has(o.type);
   const remove = () => Confirm(`${d.name}${d.removeCost ? `을(를) ${won(d.removeCost)} 들여 치울까요?` : `을(를) 치우고 ${won(d.cost)}을 돌려받을까요?`}`, () => { dispatch({ type: 'remove', objectId: o.id }); onClose(); }, { title: '철거' });
+  // 트랙 A: 증축 Lv·수리·청결
+  const upgradable = isUpgradable(d) && st.level < MAX_OBJECT_LEVEL;
+  const up = upgradable ? canUpgrade(s, o.id, st.popularity) : { ok: false, reason: '' };
+  const upCost = upgradable ? upgradeCost(s, o) : 0;
+  const doUpgrade = () => Confirm(`${d.name}을(를) Lv${st.level + 1}로 증축할까요? ${won(upCost)}${(d.buildDays ?? 0) > 0 ? ` · 공사 ${d.buildDays}일(이용 불가)` : ''}`, () => { dispatch({ type: 'upgradeObject', objectId: o.id }); }, { title: '증축' });
+  const rep = canRepair(s, o.id);
+  const clean = Math.round(s.clean.value);
   return (
     <div data-testid="card-object">
       <div style={{ fontSize: 14, lineHeight: 1.5 }}>
-        <div><Icon name={KIND_ICON[d.kind] ?? 'build'} size={18} /> <b>{d.name}</b>{o.build && <span style={{ color: PALETTE.title }}> · 짓는 중</span>}</div>
-        <div style={small}>인기 <b style={{ color: PALETTE.ink }}>{st.popularity}</b> · 경관 <b style={{ color: PALETTE.ink }}>{st.scenery > 0 ? '+' : ''}{st.scenery}</b> · 요금 <b style={{ color: PALETTE.ink }}>{st.feePct}%</b>{st.upkeep > 0 && ` · 유지비 ${won(st.upkeep)}/달`}</div>
-        <div style={small}>주변 시너지: {st.combos.length > 0 ? st.combos.map((c) => `${c.strength === 'down' ? '↓' : '↑'}${c.name}`).join(' · ') : '없음'}{st.sets.length > 0 && ` · 세트 ${st.sets.map((x) => x.name).join(', ')}`}</div>
+        <div><Icon name={KIND_ICON[d.kind] ?? 'build'} size={18} /> <b>{d.name}</b>{st.level >= 2 && <b style={{ color: PALETTE.title }}> Lv{st.level}</b>}{o.build && <span style={{ color: PALETTE.title }}> · 짓는 중</span>}{st.wear > 0 && <span style={{ color: PALETTE.bad }}> · 낡았어요 (인기 −{st.wear})</span>}</div>
+        <div style={small}>인기 <b style={{ color: PALETTE.ink }}>{st.popularity}</b> · 경관 <b style={{ color: PALETTE.ink }}>{st.scenery > 0 ? '+' : ''}{st.scenery}</b> · 요금 <b style={{ color: PALETTE.ink }}>{st.feePct}%</b>{st.upkeep > 0 && ` · 유지비 ${won(st.upkeep)}/달`}{(o.uses ?? 0) > 0 && ` · 이용 ${o.uses}회`}</div>
+        <div style={small}>주변 시너지: {st.combos.length > 0 ? st.combos.map((c) => `${c.strength === 'down' ? '↓' : '↑'}${c.name}${c.count > 1 ? ` ×${c.count}` : ''}`).join(' · ') : '없음'}{st.sets.length > 0 && ` · 세트 ${st.sets.map((x) => x.name).join(', ')}`}{st.spot && ` · 명당 ${st.spot.name}`}</div>
+        <div style={{ ...small, whiteSpace: 'nowrap' }} data-testid="clean-bar">카페 청결 <Bar value={clean} max={100} width={80} /> {clean}{clean < CLEAN_LOW && <span style={{ color: PALETTE.bad }}> 지저분해요</span>}</div>
       </div>
       <Row>
+        {upgradable && <button style={up.ok ? btnOn : btnOff} disabled={!up.ok} title={up.ok ? undefined : up.reason} onClick={doUpgrade} data-testid="upgrade-btn">증축 Lv{st.level + 1} ({won(upCost)})</button>}
+        {st.wear > 0 && <button style={rep.ok ? btnOn : btnOff} disabled={!rep.ok} onClick={() => dispatch({ type: 'repairObject', objectId: o.id })} data-testid="repair-btn">수리 ({won(repairCost(s, o))})</button>}
         {!protectedType && <button style={btn} onClick={() => a.onMove(o.id)}>이동</button>}
         {ROTATABLE_TYPES.has(o.type) && <button style={btn} onClick={() => dispatch({ type: 'rotate', objectId: o.id, rot: ((o.rot ?? 0) + 1) % 4 })}>회전</button>}
         {!protectedType && o.type !== 'bush_wild' && <button style={btnDanger} onClick={remove}>철거</button>}
         <button style={btn} onClick={() => a.onObjectDetail(o.id)}>자세히</button>
       </Row>
+      {upgradable && !up.ok && up.reason && <div style={{ ...small, marginTop: 4 }}>증축 조건: {upgradeConditionText(o, d)}</div>}
     </div>
   );
 }

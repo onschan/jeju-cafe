@@ -10,6 +10,7 @@ import { effectMult } from './effects.ts';
 import { monthIndex } from './clock.ts';
 import { pushFx } from './fx.ts';
 import { pushNotice } from './staff.ts';
+import { yieldMultOf } from './upgrade.ts';
 
 export function emptyMonthHarvest(): MonthHarvest {
   return { harvested: {}, ingredientSaved: 0 };
@@ -30,7 +31,7 @@ export function monthlyYieldOf(state: GameState, obj: PlacedObject): number {
 }
 
 function yieldAmount(state: GameState, obj: PlacedObject, ingredientId: string, perMonth: number): number {
-  return Math.floor(perMonth * parcelHarvestMult(parcelBonusAt(state, obj.x, obj.y), ingredientId) * effectMult(state, 'harvestMult'));
+  return Math.floor(perMonth * yieldMultOf(obj) * parcelHarvestMult(parcelBonusAt(state, obj.x, obj.y), ingredientId) * effectMult(state, 'harvestMult')); // 증축 Lv ×1.5/×2 (upgrade.ts)
 }
 
 /** 다음 달 1일 수확 예정 (UI "이달 수확 예정: 감귤 6"): ingredientId → 개수 */

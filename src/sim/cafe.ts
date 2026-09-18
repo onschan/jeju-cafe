@@ -3,6 +3,7 @@ import { objectDef } from '../data/index.ts';
 import { pushNotice } from './staff.ts';
 import { dayIndex } from './effects.ts';
 import { fmtNum } from './format.ts';
+import { seatBonusOf } from './upgrade.ts';
 
 /** 카페 이름 기본값·길이 */
 export const DEFAULT_CAFE_NAME = '제주 카페';
@@ -78,7 +79,8 @@ export function placeCost(state: GameState, type: string): number {
 export function seatsOf(state: GameState, o: PlacedObject): number {
   if (o.build) return 0; // 건설 중엔 앉을 수 없다
   if (o.type === 'warehouse') return hasExpansion(state, 'floor2') ? FLOOR2_SEATS : 0;
-  return objectDef(o.type).seats ?? (objectDef(o.type).kind === 'seat' ? 1 : 0);
+  const base = objectDef(o.type).seats ?? (objectDef(o.type).kind === 'seat' ? 1 : 0);
+  return base > 0 ? base + seatBonusOf(o) : 0; // 증축 Lv2 +1석·Lv3 +2석 (upgrade.ts)
 }
 export function isSeat(state: GameState, o: PlacedObject): boolean {
   return seatsOf(state, o) > 0;
