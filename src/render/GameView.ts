@@ -630,6 +630,26 @@ export class GameView {
     entry.badge = c;
   }
 
+  /** 증축 Lv 배지 (트랙 A): Lv2·3이면 스프라이트 오른쪽 위에 작은 "Lv2" 라벨. Lv가 바뀔 때만 다시 그린다. */
+  private syncLevelBadge(entry: ObjEntry, o: PlacedObject) {
+    const lv = o.level ?? 1;
+    const key = lv >= 2 ? `lv${lv}` : '';
+    const prev = entry.node.getChildByLabel('lv');
+    if ((prev?.label ?? '') === 'lv' && (prev as Container & { lvKey?: string }).lvKey === key) return;
+    prev?.destroy({ children: true });
+    if (!key) return;
+    const c = new Container() as Container & { lvKey?: string };
+    c.label = 'lv';
+    c.lvKey = key;
+    const l = label(`Lv${lv}`, 9);
+    l.anchor.set(0.5, 0.5);
+    const w = l.width + 6;
+    c.addChild(new Graphics().roundRect(-w / 2, -7, w, 14, 3).fill({ color: lv >= 3 ? 0xb8862a : 0x6b3d1e, alpha: 0.9 }), l);
+    const h = entry.sprite?.height ?? 40;
+    c.position.set(14, -h + 6);
+    entry.node.addChild(c);
+  }
+
   /** 본관 인테리어: 외벽 색 tint + 간판 문구 라벨 */
   private decorateCafe(entry: ObjEntry, state: GameState) {
     if (entry.sprite) entry.sprite.tint = WALL_COLORS[state.cosmetics?.wallColor ?? 0] ?? 0xffffff;
@@ -675,6 +695,7 @@ export class GameView {
       }
       if (entry.glow) { entry.glow.alpha = glowAlpha; entry.glow.visible = glowAlpha > 0; }
       this.syncBuilding(entry, o, state);
+      this.syncLevelBadge(entry, o);
       // 자리가 바뀌었으면(이동) 노드 위치·깊이 갱신
       const def = objectDef(o.type);
       const posKey = `${o.x},${o.y}`;
