@@ -63,7 +63,7 @@ export function showToast(text: string, ms = 1500) { toast = { text, until: perf
 const ACTION_SFX: Record<Action['type'], SfxName> = {
   place: 'place', remove: 'remove',
   setSlot: 'tap', setSpeed: 'tap', dismissAlert: 'tap', dismissMonthCard: 'tap',
-  postJob: 'tap', hire: 'tap', fire: 'tap', assign: 'tap', levelUp: 'tap', promote: 'tap', setTarget: 'tap',
+  postJob: 'tap', hire: 'tap', fire: 'tap', assign: 'tap', levelUp: 'tap', train: 'unlock', promote: 'tap', setTarget: 'tap',
   move: 'place', rotate: 'tap', buyParcel: 'unlock', useItem: 'unlock', clearRock: 'remove', renameCafe: 'tap', expand: 'unlock', setCosmetic: 'tap', praise: 'happy',
   acceptQuest: 'tap', respondEvent: 'tap', investSpot: 'unlock',
   develop: 'unlock', dismissDevelop: 'tap', addTopping: 'tap', removeTopping: 'tap', levelUpMenu: 'unlock',
