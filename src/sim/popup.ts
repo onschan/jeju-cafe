@@ -1,5 +1,5 @@
 import type { GameState, ApplyResult, RegionState, NamedGuestState, NamedGuestDef, PopupVisit, MenuCategory, Face } from './types.ts';
-import { REGIONS, NAMED_GUESTS, regionDef, namedGuestDef, namedGuestsOf, CROPS, ITEMS, MENUS, UNLOCKS, menuDef } from '../data/index.ts';
+import { REGIONS, NAMED_GUESTS, regionDef, namedGuestDef, namedGuestsOf, FARM_INGREDIENT_IDS, ingredientDef, ITEMS, MENUS, GOALS, menuDef } from '../data/index.ts';
 import { randInt, pickWeighted } from './rng.ts';
 import { availableMenus, consumeIngredients } from './menu.ts';
 import { menuOf, priceOf, statsMatchCount, menuOrderWeight, guestLikesCategory } from './craft.ts';
@@ -210,11 +210,11 @@ export function grantAffinityReward(state: GameState, index: number): string {
     case 0: {
       const got: Record<string, number> = {};
       for (let i = 0; i < REWARD_INGREDIENTS; i++) {
-        const id = CROPS[randInt(state, 0, CROPS.length - 1)]!.id;
+        const id = FARM_INGREDIENT_IDS[randInt(state, 0, FARM_INGREDIENT_IDS.length - 1)]!;
         got[id] = (got[id] ?? 0) + 1;
         state.storage[id] = (state.storage[id] ?? 0) + 1;
       }
-      return `재료 상자 (${Object.entries(got).map(([id, n]) => `${CROPS.find((c) => c.id === id)?.name ?? id} ${n}`).join('·')})`;
+      return `재료 상자 (${Object.entries(got).map(([id, n]) => `${ingredientDef(id).name} ${n}`).join('·')})`;
     }
     case 1: {
       const pool = ITEMS.filter((i) => i.value > 0 && i.fitIds.length > 0);
@@ -223,7 +223,8 @@ export function grantAffinityReward(state: GameState, index: number): string {
       return `아이템 ${item.name}`;
     }
     default: {
-      const inTree = new Set(UNLOCKS.filter((u) => u.kind === 'menu').map((u) => u.ref));
+      // 목표 보상으로 열리는 메뉴는 목표에 맡기고, 나머지 잠긴 메뉴를 먼저 준다
+      const inTree = new Set(GOALS.flatMap((g) => g.reward.filter((r) => r.type === 'unlockMenu').map((r) => (r as { id: string }).id)));
       const locked = MENUS.filter((m) => !state.unlocked.menus.includes(m.id));
       const pool = locked.filter((m) => !inTree.has(m.id));
       const pick = pickWeighted(state, pool.length ? pool : locked, () => 1);

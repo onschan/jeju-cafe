@@ -1,5 +1,5 @@
+import { bareState } from './helpers.ts';
 import { X, Y } from './helpers.ts';
-import { createInitialState } from '../state.ts';
 import { apply } from '../actions.ts';
 import { canPlace, placeObject, cellAt, objectAt, doorOf, doorFrontOf, roomAt, isRoomFloor, objectsInRoom, clearCost, canClearRock, clearRock, ROCK_CLEAR_COST, BIG_ROCK_CLEAR_COST, BUSH_CLEAR_COST } from '../grid.ts';
 import { isWalkable, walkableNeighborsOf, findPath, busStopPos, isDoorReachable } from '../path.ts';
@@ -23,19 +23,22 @@ test('데이터: 폐창고·주방 증축·갤러리·화장실은 방(room), �
   expect(objectDef('vending')).toMatchObject({ kind: 'facility', fee: 1500 });
   expect(objectDef('kitchen_ext')).toMatchObject({ kind: 'building', room: true, w: 2, h: 1 });
   expect(FACILITIES.some((f) => f.id === 'table_out')).toBe(false); // objects.json 것과 겹치지 않는다
-  const s = createInitialState(1);
-  expect(s.unlocked.objects).toContain('vending'); // 시작 해금 시설
-  expect(s.unlocked.objects).not.toContain('table_in'); // 랭크 2
+  const s = bareState(1);
+  expect(s.unlocked.objects).toContain('table_in'); // v3 시작 해금 시설 8종에 실내 테이블 포함
+  expect(s.unlocked.objects).not.toContain('vending'); // 목표 보상으로만 열린다
+  expect(objectDef('vending').unlock).toEqual({ type: 'goal' });
+  expect(s.unlocked.objects).not.toContain('parking'); // 랭크 2
   s.rank = 2;
-  expect(evaluateFacilityUnlocks(s)).toEqual(expect.arrayContaining(['table_in', 'parking', 'prop_shop']));
-  expect(s.unlocked.objects).toContain('table_in');
+  expect(evaluateFacilityUnlocks(s)).toEqual(expect.arrayContaining(['parking', 'prop_shop']));
+  expect(s.unlocked.objects).toContain('parking');
+  expect(s.unlocked.objects).not.toContain('vending'); // goal 해금은 랭크로 안 열린다
   expect(s.notices.at(-1)).toMatch(/^새 시설: /);
   expect(evaluateFacilityUnlocks(s)).toEqual([]); // 두 번 열지 않는다
   expect(s.unlocked.objects).not.toContain('sofa'); // ★3
 });
 
 test('방 발자국 칸은 roomId를 갖고, 문은 정면 왼쪽, 빈 바닥은 걸을 수 있다', () => {
-  const s = createInitialState(1);
+  const s = bareState(1);
   const wh = warehouse(s);
   expect(wh).toMatchObject({ x: X(3), y: Y(1) });
   for (let dx = 0; dx < 3; dx++) for (let dy = 0; dy < 2; dy++) {
@@ -52,12 +55,12 @@ test('방 발자국 칸은 roomId를 갖고, 문은 정면 왼쪽, 빈 바닥은
 });
 
 test('실내 오브젝트는 방 바닥 위에만, 문 칸엔 못 놓고, 바깥 오브젝트는 방 바닥에 못 놓는다', () => {
-  const s = createInitialState(1);
+  const s = bareState(1);
   const wh = warehouse(s);
   expect(canPlace(s, 'table_in', X(0), Y(0)).reason).toBe('실내에만 놓을 수 있어요');
   expect(canPlace(s, 'table_in', X(3), Y(2)).reason).toBe('문 앞은 비워 둬요');
   expect(canPlace(s, 'table_in', X(4), Y(1)).ok).toBe(true);
-  expect(canPlace(s, 'field', X(4), Y(1)).reason).toBe('이미 뭔가 있어요');
+  expect(canPlace(s, 'carrot_field', X(4), Y(1)).reason).toBe('이미 뭔가 있어요');
   const t = placeObject(s, 'table_in', X(4), Y(1));
   expect(cellAt(s, X(4), Y(1))).toEqual({ terrain: expect.any(String), objectId: t.id, roomId: wh.id });
   expect(objectAt(s, X(4), Y(1))?.id).toBe(t.id);
@@ -74,7 +77,7 @@ test('실내 오브젝트는 방 바닥 위에만, 문 칸엔 못 놓고, 바깥
 });
 
 test('장식 22종: 마당 장식(deco_planter)은 밖에, 실내 장식(deco_cake_case)은 폐창고 안에만 놓는다', () => {
-  const s = createInitialState(1);
+  const s = bareState(1);
   const wh = warehouse(s);
   s.unlocked.objects.push('deco_planter', 'deco_cake_case', 'counter_bar');
   expect(objectDef('deco_planter').indoor).toBeUndefined();
@@ -93,7 +96,7 @@ test('장식 22종: 마당 장식(deco_planter)은 밖에, 실내 장식(deco_ca
 });
 
 test('가구가 든 방은 못 옮기고 못 치운다; 실내 오브젝트 move는 방 안에서만', () => {
-  const s = createInitialState(1);
+  const s = bareState(1);
   s.money = 1e9;
   s.unlocked.objects.push('kitchen_ext', 'table_in');
   expect(apply(s, { type: 'place', objectType: 'kitchen_ext', x: X(0), y: Y(0) }).ok).toBe(true); // (0,0),(1,0), 문 (0,0)
@@ -117,7 +120,7 @@ test('가구가 든 방은 못 옮기고 못 치운다; 실내 오브젝트 move
 });
 
 test('방은 문으로만 드나든다: 문 앞에 길을 놓으면 안까지 경로가 생기고, 다른 변에선 못 들어간다', () => {
-  const s = createInitialState(1);
+  const s = bareState(1);
   const wh = warehouse(s);
   // 문 (3,2) 아래 (3,3)에 길이 없으면 방 안(4,1)까지 못 간다. (4,3)·(5,3)에 길이 있어도 (4,2)는 문이 아니라 못 들어간다.
   placeObject(s, 'path', X(4), Y(3));
@@ -141,13 +144,13 @@ test('방은 문으로만 드나든다: 문 앞에 길을 놓으면 안까지 �
 });
 
 test('문 앞 칸엔 길·정낭만 놓는다; 방을 놓을 때도 문 앞이 막혀 있으면 안 된다', () => {
-  const s = createInitialState(1);
+  const s = bareState(1);
   s.money = 1e9;
   const wh = warehouse(s);
   const f = doorFrontOf(wh);
   expect(f).toEqual({ x: X(3), y: Y(3) });
   expect(canPlace(s, 'table_out', f.x, f.y).reason).toBe('문 앞은 비워 둬요');
-  expect(canPlace(s, 'field', f.x, f.y).reason).toBe('문 앞은 비워 둬요');
+  expect(canPlace(s, 'carrot_field', f.x, f.y).reason).toBe('문 앞은 비워 둬요');
   expect(canPlace(s, 'stonewall', f.x, f.y).reason).toBe('문 앞은 비워 둬요');
   expect(canPlace(s, 'path', f.x, f.y).ok).toBe(true);
   expect(canPlace(s, 'table_out', X(2), Y(3)).ok).toBe(true);
@@ -162,7 +165,7 @@ test('문 앞 칸엔 길·정낭만 놓는다; 방을 놓을 때도 문 앞이 �
 });
 
 test('실내 테이블이 완공됐는데 문 앞까지 길이 없으면 알림에 안내가 붙는다', () => {
-  const s = createInitialState(1);
+  const s = bareState(1);
   s.money = 1e9;
   s.unlocked.objects.push('table_in');
   const wh = warehouse(s);
@@ -184,20 +187,20 @@ test('실내 테이블이 완공됐는데 문 앞까지 길이 없으면 알림�
 });
 
 test('clearRock: 작은 바위 30만·큰 바위 100만·덤불 5만, 곡괭이가 있으면 무료(1개 소모), 내 땅만', () => {
-  const s = createInitialState(1);
+  const s = bareState(1);
   // 시작 필지 (3,0)은 바위 ((lx+ly)%7===3)
   expect(cellAt(s, X(3), Y(0)).terrain).toBe('rock');
   expect(clearCost(s, X(3), Y(0))).toBe(ROCK_CLEAR_COST);
   expect(clearCost(s, X(0), Y(0))).toBeNull();
   expect(canClearRock(s, X(0), Y(0)).reason).toBe('치울 바위가 없어요');
-  expect(canPlace(s, 'field', X(3), Y(0)).reason).toBe('바위를 먼저 치워요');
+  expect(canPlace(s, 'carrot_field', X(3), Y(0)).reason).toBe('바위를 먼저 치워요');
   s.money = 100_000;
   expect(canClearRock(s, X(3), Y(0)).reason).toBe('돈이 모자라요');
   s.money = 300_000;
   expect(apply(s, { type: 'clearRock', x: X(3), y: Y(0) }).ok).toBe(true);
   expect(s.money).toBe(0);
   expect(cellAt(s, X(3), Y(0)).terrain).toBe('soil');
-  expect(canPlace(s, 'field', X(3), Y(0)).ok).toBe(true);
+  expect(canPlace(s, 'carrot_field', X(3), Y(0)).ok).toBe(true);
   expect(s.actionLog.at(-1)!.action).toEqual({ type: 'clearRock', x: X(3), y: Y(0) });
   // 오름 능선 큰 바위 (2..7, 2): 안 산 땅이면 못 치운다
   expect(cellAt(s, 4, 2).terrain).toBe('rock_big');

@@ -1,9 +1,10 @@
 import { Application, Container, Sprite, Graphics, Texture } from 'pixi.js';
 import type { GameState, PlacedObject, Guest, Staff, Season, RoleId, Pt } from '../sim/index.ts';
-import { seasonOf, LOW_ENERGY, parcelPrice, footprint, roomAt, doorFrontOf, WALL_COLORS, dayIndex } from '../sim/index.ts';
+import { seasonOf, LOW_ENERGY, parcelPrice, footprint, roomAt, doorFrontOf, WALL_COLORS, dayIndex, menuOf } from '../sim/index.ts';
 import type { Parcel } from '../sim/index.ts';
-import { objectDef, cropDef } from '../data/index.ts';
-import { isoTerrainTexture, isoObjectTexture, glowTexture, label, bubble, clearTextureCache, loadLabelFont } from './textures';
+import { objectDef } from '../data/index.ts';
+import { isoTerrainTexture, isoObjectTexture, glowTexture, label, clearTextureCache, loadLabelFont } from './textures';
+import { makeSpeechBubble } from './bubble';
 import { loadAssets, tex, peekTex, hasAssets, spriteName } from './assets';
 import { attachCamera, type CameraBounds, type CameraOptions } from './camera';
 import { ISO_W, ISO_H, cellToScreen, cellCenter, footAnchor, depth, screenToCell } from './iso';
@@ -16,13 +17,32 @@ import { Background } from './Background';
 /** 전용 스프라이트가 있는 손님 타입 (guest_local·guest_tourist 시트) */
 const GUEST_SPRITE_KEY: Record<string, string> = { local_auntie: 'local', student: 'tourist' };
 
-export type GameViewOptions = Pick<CameraOptions, 'onTap' | 'dragCapture' | 'onDragCell' | 'onDragEnd' | 'onLongPress'>;
+export interface GameViewOptions extends Pick<CameraOptions, 'onTap' | 'dragCapture' | 'onDragCell' | 'onDragEnd' | 'onLongPress'> {
+  /** 손님이 나갈 때 20%로 띄우는 대사 (없으면 기분 아이콘만) */
+  guestSay?: (state: GameState, g: Guest) => string | null;
+}
 
 /** 배치 모드 고스트: 손가락 아래 반투명 오브젝트. ok면 초록, 아니면 빨강. text는 비용 라벨. */
 export interface GhostSpec { type: string; x: number; y: number; rot?: number; ok: boolean; text: string }
 
+/** 말풍선 내용: 글자, 시트 아이콘(icon_*·bubble_* 프레임 이름), 기분 아이콘 중 하나 이상 */
+export interface BubbleContent { text?: string; icon?: string; mood?: Guest['mood'] }
+/** 기본 말풍선 시간 */
+export const BUBBLE_MS = 1500;
+
 /** 아직 시트에 없는 오브젝트가 빌려 쓰는 스프라이트 */
-const SPRITE_ALIAS: Record<string, string> = { bush_wild: 'tea_bush', spring: 'pond', dolhareubang_pair: 'dolhareubang' };
+/** 시트 이름이 다른 오브젝트. 감귤나무는 v3에서 성장 단계가 없어 늘 열매 달린 모습으로 */
+const SPRITE_ALIAS: Record<string, string> = { bush_wild: 'tea_bush', spring: 'pond', dolhareubang_pair: 'dolhareubang', hackberry: 'hackberry_shade', tangerine_tree: 'tangerine_tree_ready' };
+/** 캐릭터(손님·직원)는 모든 시설·건물보다 앞에 그린다 — 건물 뒤·안에 있어도 사람이 보여야 한다(카이로식). 캐릭터끼리는 x+y 순. */
+const CHAR_Z = 1e4;
+
+/** 미소유 필지 노드: 덮개 타일(tiles)과 가격 라벨(overlay)을 같이 지운다 */
+function destroyLocked(node?: Container) {
+  if (!node) return;
+  (node as Container & { parcelLabel?: Container }).parcelLabel?.destroy({ children: true });
+  node.destroy({ children: true });
+}
+
 const GHOST_OK = 0x88ff88;
 const GHOST_BAD = 0xff7777;
 const GHOST_ALPHA = 0.65;
@@ -30,13 +50,20 @@ const GHOST_ALPHA = 0.65;
 const LOCKED_COLOR = 0x000000;
 const LOCKED_ALPHA = 0.45;
 
-/** HUD 두 줄(~87px) + 할망 안내(두 줄이면 ~136px) 아래에 맵 위 꼭짓점이 오도록 하는 기본 세로 오프셋 */
-const WORLD_OFFSET_Y = 140;
+/** 상단 바(28px) + 목표 줄(24px) 아래에 맵 위 꼭짓점이 오도록 하는 기본 세로 오프셋 */
+const WORLD_OFFSET_Y = 76;
 
 /** 걷기 애니 8fps (125ms/프레임) */
 const WALK_FRAME_MS = 125;
 /** 말풍선 팝 시간 */
 const BUBBLE_POP_MS = 200;
+/** 손님이 나갈 때 기분 아이콘 대신 대사를 띄울 확률 (렌더 측 난수) */
+const LEAVE_SAY_CHANCE = 0.2;
+/** 직원 "!"(일 시작) 최소 간격 · "zzz"(기력 낮음) 간격 */
+const STAFF_BANG_COOLDOWN_MS = 8000;
+const STAFF_ZZZ_INTERVAL_MS = 6000;
+/** 말풍선 꼬리 끝 위치(발끝 기준): 머리 위 */
+const BUBBLE_Y = -(CHAR_H - 2);
 /** 코인 팝: 4프레임 × 80ms, 12px 떠오름 */
 const COIN_FRAME_MS = 80;
 const COIN_FRAMES = 4;
@@ -65,7 +92,7 @@ const GUEST_H = CHAR_H;
 /** 앉은 손님을 좌석 칸 중심보다 살짝 위로(의자에 앉은 느낌, 화면 px) */
 const SEAT_LIFT_PX = 4;
 /** 직원 역할 배지(머리 위 16px 아이콘) */
-const ROLE_ICON: Record<RoleId, string> = { hall: 'look', barista: 'menu', cook: 'harvest', field: 'plant', carry: 'money', guide: 'research' };
+const ROLE_ICON: Record<RoleId, string> = { hall: 'look', barista: 'menu', cook: 'harvest', carry: 'money', guide: 'research' };
 /** 배지 아래 끝 y(발끝 기준). 캐릭터 프레임 48px 중 위 13px은 비어 있고(머리 y=16, 모자 챙 y=13) 그 위 3px 띄운다 */
 const ROLE_ICON_Y = -(CHAR_H - 10);
 /** 기력이 낮은 직원은 흐리게 */
@@ -106,6 +133,8 @@ interface GuestEntry {
   /** 마지막으로 그린 손 컵·"!" 상태 키 */
   accKey: string;
   alert: Sprite | null;
+  /** 지난 프레임의 phase (나갈 때 기분 말풍선 감지) */
+  phase: Guest['phase'];
 }
 
 interface StaffEntry {
@@ -113,6 +142,17 @@ interface StaffEntry {
   body: CharacterNode;
   /** 마지막으로 그린 역할 배지 키 */
   roleKey: string;
+  /** 지난 프레임에 걷고 있었나 ("!" 감지) */
+  walking: boolean;
+  lastBang: number;
+  lastZzz: number;
+}
+
+interface SpeechEntry {
+  node: Container;
+  until: number;
+  /** 따라다닐 캐릭터 노드 */
+  target: Container;
 }
 
 interface Fx {
@@ -123,20 +163,14 @@ interface Fx {
 }
 
 /** 오브젝트 상태별 스프라이트 변형 이름. 본관은 증축 수에 따라 lv2·lv3. */
-function objectVariant(o: Pick<PlacedObject, 'type' | 'crop'>, expansions = 0): string | undefined {
+function objectVariant(o: Pick<PlacedObject, 'type'>, expansions = 0): string | undefined {
   if (o.type === 'warehouse') return expansions >= 2 ? 'lv3' : expansions >= 1 ? 'lv2' : undefined;
-  if (o.type === 'field') return o.crop ? (o.crop.ready ? 'ready' : 'planted') : 'empty';
-  if (o.type === 'tangerine_tree') {
-    if (!o.crop) return undefined;
-    if (o.crop.ready) return 'ready';
-    return o.crop.daysGrown < cropDef('tangerine').growDays / 3 ? 'young' : undefined;
-  }
   if (o.type === 'gate') return '0'; // 2B에서 영업 토글 연동
   return undefined;
 }
 
 /** 아이소 스프라이트(회전 _r{n} → 변형 → 기본) → 탑다운 스프라이트(변형 → 기본) 순으로 찾는다. 다 없으면 null. */
-function objectTex(o: Pick<PlacedObject, 'type' | 'crop' | 'rot'>, expansions = 0): { texture: Texture; iso: boolean } | null {
+function objectTex(o: Pick<PlacedObject, 'type' | 'rot'>, expansions = 0): { texture: Texture; iso: boolean } | null {
   if (!hasAssets()) return null;
   const name = SPRITE_ALIAS[o.type] ?? o.type;
   const variant = objectVariant(o, expansions);
@@ -189,8 +223,6 @@ export class GameView {
   private staffNodes = new Map<string, StaffEntry>();
   /** 오브젝트 id → 마지막으로 그린 배지 키. 키가 같으면 다시 그리지 않는다. */
   private badgeKeys = new Map<string, string>();
-  /** 손님 id → 마지막으로 만든 말풍선 키. 키가 같으면 다시 만들지 않는다. */
-  private bubbleKeys = new Map<string, string>();
   private tileSprites: Sprite[] = [];
   private tilesBuilt = false;
   /** 미소유 필지 덮개 + 가격 라벨. 키는 필지 id, 라벨 문구가 바뀌면(신구간 할인) 다시 만든다. */
@@ -210,12 +242,14 @@ export class GameView {
   private fxSeenTick = -1;
   /** 숫자 팝업(+N) 큐 */
   private pops: { node: Container; born: number; y0: number }[] = [];
-  /** 말풍선(텍스트) 큐: 직원 인사 */
-  private speech: { node: Container; until: number }[] = [];
+  /** 말풍선: 캐릭터(손님·직원) id → 오버레이 레이어의 말풍선. 캐릭터 노드를 따라다니고 캐릭터보다 위에 그려진다. */
+  private speech = new Map<string, SpeechEntry>();
   /** 인사 판정을 끝낸 손님 id (손님당 한 번) */
   private greeted = new Set<string>();
+  private guestSay: GameViewOptions['guestSay'];
 
   async init(parent: HTMLElement, opts: GameViewOptions) {
+    this.guestSay = opts.guestSay;
     await this.app.init({ resizeTo: parent, background: 0x1e1e1e, antialias: false, resolution: window.devicePixelRatio, autoDensity: true });
     await Promise.all([loadAssets(), loadLabelFont()]);
     parent.appendChild(this.app.canvas);
@@ -257,19 +291,19 @@ export class GameView {
     this.guestNodes.clear();
     this.staffNodes.clear();
     this.badgeKeys.clear();
-    this.bubbleKeys.clear();
     this.bubblePops = [];
     this.fxQueue = [];
     this.fxSeenTick = -1;
     for (const p of this.pops) p.node.destroy({ children: true });
     this.pops = [];
-    for (const sp of this.speech) sp.node.destroy({ children: true });
-    this.speech = [];
+    for (const sp of this.speech.values()) sp.node.destroy({ children: true });
+    this.speech.clear();
     this.greeted.clear();
+    for (const e of this.lockedNodes.values()) destroyLocked(e.node); // overlay에 있는 가격 라벨까지 같이 지운다
+    this.lockedNodes.clear();
     this.tiles.removeChildren().forEach((c) => c.destroy());
     this.tileSprites = [];
     this.terrainKeys = [];
-    this.lockedNodes.clear();
     this.tilesBuilt = false;
     this.lastSeason = null;
     this.background.reset();
@@ -298,7 +332,7 @@ export class GameView {
         .fill({ color: g.ok ? GHOST_OK : GHOST_BAD, alpha: 0.5 });
     }
     c.addChild(fp);
-    const t = objectTex({ type: g.type, crop: null, rot: g.rot });
+    const t = objectTex({ type: g.type, rot: g.rot });
     const sp = new Sprite(t?.texture ?? isoObjectTexture(this.app.renderer, def.kind, def.w, def.h));
     sp.anchor.set(0.5, 1);
     if (t && !t.iso) sp.position.y = -def.h * (ISO_H / 2);
@@ -320,6 +354,26 @@ export class GameView {
     const gx = clientX - rect.left;
     const gy = clientY - rect.top;
     return screenToCell((gx - this.world.x) / this.world.scale.x, (gy - this.world.y) / this.world.scale.y);
+  }
+
+  /** 손님·직원 머리 위에 말풍선을 ms 동안 띄운다. 같은 캐릭터의 이전 말풍선은 바꿔 끼운다. 모르는 id면 무시. */
+  showBubble(entityId: string, content: BubbleContent, ms = BUBBLE_MS): void {
+    const target = this.guestNodes.get(entityId)?.node ?? this.staffNodes.get(entityId)?.node;
+    if (!target) return;
+    const icon = content.icon ? (hasAssets() ? tex(content.icon) : null)
+      : content.mood !== undefined ? (hasAssets() ? tex(spriteName.bubble(content.mood ?? 'wait')) : null)
+      : null;
+    const MOOD_TEXT: Record<string, string> = { happy: ':)', meh: ':|', angry: '>:(' };
+    const text = content.text ?? (!icon && content.mood !== undefined ? (MOOD_TEXT[content.mood ?? ''] ?? '…') : undefined);
+    if (!icon && !text) return;
+    this.speech.get(entityId)?.node.destroy({ children: true });
+    const node = makeSpeechBubble({ text, icon, iconSize: content.icon ? 16 : 20 });
+    node.position.set(target.x, target.y + BUBBLE_Y);
+    node.zIndex = 1e6;
+    node.scale.set(0.6);
+    this.overlay.addChild(node);
+    this.speech.set(entityId, { node, until: performance.now() + ms, target });
+    this.bubblePops.push({ node, born: performance.now() });
   }
 
   setSelection(cell: { x: number; y: number } | null) {
@@ -373,12 +427,12 @@ export class GameView {
       const text = `₩${parcelPrice(state, p).toLocaleString()} · 탭해서 구매`;
       const cur = this.lockedNodes.get(p.id);
       if (cur?.text === text) continue;
-      cur?.node.destroy({ children: true });
+      destroyLocked(cur?.node);
       this.lockedNodes.set(p.id, { node: this.makeLockedNode(p, text), text });
     }
     for (const [id, entry] of this.lockedNodes) {
       if (alive.has(id)) continue;
-      entry.node.destroy({ children: true });
+      destroyLocked(entry.node);
       this.lockedNodes.delete(id);
     }
   }
@@ -410,9 +464,13 @@ export class GameView {
     price.position.set(center.sx, center.sy + 1);
     const w = Math.max(name.width, price.width) + 12;
     const bg = new Graphics().roundRect(center.sx - w / 2, center.sy - name.height - 4, w, name.height + price.height + 8, 4).fill({ color: 0x000000, alpha: 0.6 });
-    c.addChild(bg, name, price);
-    // 타일 컨테이너 위·오브젝트 아래: tiles 컨테이너 안에서 일반 타일 뒤에 추가된다
+    // 어두운 덮개 타일은 tiles 안(오브젝트 아래), 가격 라벨은 overlay(오브젝트·캐릭터 위) — 바위·시설에 가려지지 않게
     this.tiles.addChild(c);
+    const lbl = new Container();
+    lbl.label = 'parcel-label';
+    lbl.addChild(bg, name, price);
+    this.overlay.addChild(lbl);
+    (c as Container & { parcelLabel?: Container }).parcelLabel = lbl;
     return c;
   }
 
@@ -638,22 +696,11 @@ export class GameView {
         if (isCafe) this.decorateCafe(entry, state);
         continue;
       }
-      // 플레이스홀더: 심음=초록 점. 키가 바뀔 때만 다시 그린다.
-      const key = o.crop ? `${o.crop.cropId}:${o.crop.ready}:${o.crop.ready ? blinkOn : ''}` : '';
+      // 플레이스홀더: v3에서 작물 표식은 없다 (농원은 월 수확 반짝임 syncFx). 키가 바뀔 때만 다시 그린다.
+      const key = '';
       if (this.badgeKeys.get(o.id) === key) continue;
       this.badgeKeys.set(o.id, key);
-      const badge = entry.node.getChildByLabel('badge') as Graphics;
-      badge.clear();
-      if (o.crop) {
-        const def = objectDef(o.type);
-        const gc = this.footCenter(o, def.w, def.h);
-        const cx = gc.sx - entry.node.x, cy = gc.sy - entry.node.y;
-        if (o.crop.ready) {
-          if (blinkOn) badge.poly([cx, cy - ISO_H / 2, cx + ISO_W / 2, cy, cx, cy + ISO_H / 2, cx - ISO_W / 2, cy]).stroke({ color: 0xffe066, width: 2 });
-        } else {
-          badge.circle(cx + 12, cy, 3).fill(0x66ff66);
-        }
-      }
+      (entry.node.getChildByLabel('badge') as Graphics).clear();
     }
   }
 
@@ -666,14 +713,14 @@ export class GameView {
       const sp = new Sprite(t);
       sp.anchor.set(0.5, 1);
       c.addChild(sp);
-      return { node: c, sprite: sp, char: null, hadMenu: g.menuId !== null, accKey: '', alert: null };
+      return { node: c, sprite: sp, char: null, hadMenu: g.menuId !== null, accKey: '', alert: null, phase: g.phase };
     }
     const def = guestTypeDef(g.type);
     const named = g.namedId ? namedGuestDef(g.namedId) : null;
     const parts = named ? namedGuestParts(namedGuestFace(named), named.face.seed, named.regionId) : guestParts(guestFace(g.type), def.tags, def.wants);
     const ch = makeCharacterNode(parts, guestDir(g), 1);
     c.addChild(ch);
-    return { node: c, sprite: null, char: ch, hadMenu: g.menuId !== null, accKey: '', alert: null };
+    return { node: c, sprite: null, char: ch, hadMenu: g.menuId !== null, accKey: '', alert: null, phase: g.phase };
   }
 
   private syncGuests(state: GameState, now: number) {
@@ -682,7 +729,7 @@ export class GameView {
       if (!alive.has(id)) {
         entry.node.destroy({ children: true });
         this.guestNodes.delete(id);
-        this.bubbleKeys.delete(id);
+        this.dropSpeech(id);
         this.greeted.delete(id); // 손님 id는 재사용되지 않으므로 안 지우면 세션 내내 쌓인다
       }
     }
@@ -697,14 +744,14 @@ export class GameView {
         const def = objectDef(seat.type);
         const { sx, sy } = cellCenter(g.x, g.y);
         node.position.set(sx, sy - SEAT_LIFT_PX);
-        node.zIndex = this.depthOf(state, seat.x, seat.y, def.w, def.h) + 0.1;
+        node.zIndex = CHAR_Z + g.x + g.y;
       } else {
         // 같은 날 스폰된 손님이 겹쳐 걷지 않도록 id 기반 작은 오프셋
         const jitter = (parseInt(g.id.slice(1), 10) % 3) * 4 - 4;
         const { sx, sy } = cellCenter(g.x, g.y);
         node.position.set(sx + jitter, sy);
         // 같은 칸의 바닥 오브젝트(올렛길·정류장)보다 앞에, 방 안이면 방보다 앞에 그린다
-        node.zIndex = roomAt(state, Math.round(g.x), Math.round(g.y)) ? this.depthOf(state, g.x, g.y) + 0.5 : g.x + g.y + 0.5;
+        node.zIndex = CHAR_Z + g.x + g.y;
       }
       const walking = g.phase !== 'seated' && g.path.length > 0;
       if (g.phase === 'walking' && !this.greeted.has(g.id)) this.maybeGreet(state, g, now);
@@ -714,25 +761,32 @@ export class GameView {
       } else if (entry.char) {
         updateCharacterNode(entry.char, guestDir(g), walking ? walkFrame : 1);
       }
-      // 첫 주문(판매) 순간에 코인 팝
+      // 첫 주문(판매) 순간에 코인 팝 + 주문 메뉴 말풍선
       if (!entry.hadMenu && g.menuId !== null) {
         entry.hadMenu = true;
         this.spawnCoin(node.x, node.y - GUEST_H - 4, now);
+        let name = '';
+        try { name = menuOf(state, g.menuId).name; } catch { /* 모르는 메뉴 id */ }
+        this.showBubble(g.id, { icon: spriteName.icon('menu'), text: name || undefined });
+      }
+      // 나갈 때 기분 아이콘, 가끔(20%) 대사
+      if (entry.phase !== g.phase) {
+        entry.phase = g.phase;
+        if (g.phase === 'leaving') {
+          const line = Math.random() < LEAVE_SAY_CHANCE ? this.guestSay?.(state, g) ?? null : null;
+          if (line) this.showBubble(g.id, { text: line });
+          else this.showBubble(g.id, { mood: g.mood });
+        }
       }
       this.syncGuestAccessories(state, g, entry, now);
-      // 말풍선은 앉아 있는 동안 기분이 바뀔 때만 다시 만든다
-      const key = g.phase === 'seated' ? String(g.mood) : '';
-      if (this.bubbleKeys.get(g.id) === key) continue;
-      this.bubbleKeys.set(g.id, key);
-      node.getChildByLabel('bubble')?.destroy({ children: true });
-      if (key) {
-        const b = this.makeBubble(g.mood);
-        b.label = 'bubble';
-        node.addChild(b);
-        b.scale.set(0.6);
-        this.bubblePops.push({ node: b, born: now });
-      }
     }
+  }
+
+  private dropSpeech(id: string) {
+    const sp = this.speech.get(id);
+    if (!sp) return;
+    if (!sp.node.destroyed) sp.node.destroy({ children: true });
+    this.speech.delete(id);
   }
 
   /** 직원 노드. 원점은 발끝. 파츠 캐릭터 + 머리 위 역할 배지. */
@@ -740,7 +794,7 @@ export class GameView {
     const node = new Container();
     const body = makeCharacterNode(staffParts(st.face, st.role, uniform), walkDir(st.x, st.y, st.path[0]), 1);
     node.addChild(body);
-    return { node, body, roleKey: '' };
+    return { node, body, roleKey: '', walking: st.path.length > 0, lastBang: 0, lastZzz: 0 };
   }
 
   private syncStaff(state: GameState, now: number) {
@@ -749,6 +803,7 @@ export class GameView {
       if (!alive.has(id)) {
         entry.node.destroy({ children: true });
         this.staffNodes.delete(id);
+        this.dropSpeech(id);
       }
     }
     const walkFrame = (Math.floor(now / WALK_FRAME_MS) % 3) as Frame;
@@ -765,10 +820,21 @@ export class GameView {
       const { node } = entry;
       const { sx, sy } = cellCenter(st.x, st.y);
       node.position.set(sx, sy);
-      node.zIndex = roomAt(state, Math.round(st.x), Math.round(st.y)) ? this.depthOf(state, st.x, st.y) + 0.5 : st.x + st.y + 0.5;
+      node.zIndex = CHAR_Z + st.x + st.y;
       const walking = st.path.length > 0;
       updateCharacterNode(entry.body, walkDir(st.x, st.y, st.path[0]), walking ? walkFrame : 1);
-      node.alpha = st.energy < LOW_ENERGY ? TIRED_ALPHA : 1;
+      const tired = st.energy < LOW_ENERGY;
+      node.alpha = tired ? TIRED_ALPHA : 1;
+      // 일하러 나설 때 "!" (8초에 한 번), 기력이 낮으면 "zzz" (6초마다)
+      if (walking && !entry.walking && st.role && !tired && now - entry.lastBang >= STAFF_BANG_COOLDOWN_MS) {
+        entry.lastBang = now;
+        this.showBubble(st.id, { icon: 'fx_alert' }, 900);
+      }
+      entry.walking = walking;
+      if (tired && now - entry.lastZzz >= STAFF_ZZZ_INTERVAL_MS) {
+        entry.lastZzz = now;
+        this.showBubble(st.id, { text: 'zzz' }, 1200);
+      }
       // 역할 배지: 역할이 바뀔 때만 다시 만든다
       const roleKey = st.role ?? '';
       if (entry.roleKey === roleKey) continue;
@@ -822,20 +888,8 @@ export class GameView {
     if (near.length === 0) return;
     this.greeted.add(g.id);
     if (Math.random() >= GREET_CHANCE) return;
-    const st = near[0]!;
-    const entry = this.staffNodes.get(st.id);
-    if (!entry) return;
-    entry.node.getChildByLabel('speech')?.destroy({ children: true });
-    const c = new Container();
-    c.label = 'speech';
-    const l = label(GREET_TEXT, 9);
-    l.anchor.set(0.5, 1);
-    l.position.set(0, -GUEST_H - 4);
-    const bg = new Graphics().roundRect(l.x - l.width / 2 - 4, l.y - l.height - 2, l.width + 8, l.height + 4, 4).fill(0xffffff);
-    l.style.fill = 0x3b1f0e;
-    c.addChild(bg, l);
-    entry.node.addChild(c);
-    this.speech.push({ node: c, until: now + GREET_MS });
+    void now;
+    this.showBubble(near[0]!.id, { text: GREET_TEXT }, GREET_MS);
   }
 
   /** +N 숫자 팝업 (시설 인기 상승) */
@@ -851,20 +905,6 @@ export class GameView {
     c.zIndex = 1e6;
     this.overlay.addChild(c);
     this.pops.push({ node: c, born: now, y0: sy - 24 });
-  }
-
-  private makeBubble(mood: Guest['mood']): Container {
-    const t = hasAssets() ? tex(spriteName.bubble(mood ?? 'wait')) : null;
-    if (t) {
-      const sp = new Sprite(t);
-      // 꼬리(왼쪽 아래)가 머리 오른쪽 위에 닿도록
-      sp.anchor.set(0.2, 1);
-      sp.position.set(6, -GUEST_H + 2);
-      return sp;
-    }
-    const b = bubble(mood);
-    b.position.set(-2, -GUEST_H - 12);
-    return b;
   }
 
   private spawnCoin(x: number, y0: number, now: number) {
@@ -925,12 +965,10 @@ export class GameView {
         return true;
       });
     }
-    if (this.speech.length) {
-      this.speech = this.speech.filter((sp) => {
-        if (sp.node.destroyed) return false;
-        if (now >= sp.until) { sp.node.destroy({ children: true }); return false; }
-        return true;
-      });
+    for (const [id, sp] of this.speech) {
+      if (sp.node.destroyed || sp.target.destroyed) { this.speech.delete(id); continue; }
+      if (now >= sp.until) { sp.node.destroy({ children: true }); this.speech.delete(id); continue; }
+      sp.node.position.set(sp.target.x, sp.target.y + BUBBLE_Y);
     }
     if (this.bubblePops.length) {
       this.bubblePops = this.bubblePops.filter(({ node, born }) => {

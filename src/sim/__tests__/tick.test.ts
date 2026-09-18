@@ -1,3 +1,4 @@
+import { bareState } from './helpers.ts';
 import { X, Y } from './helpers.ts';
 import { createInitialState } from '../state.ts';
 import { apply } from '../actions.ts';
@@ -9,7 +10,7 @@ import { HOUR_MS } from '../clock.ts';
 import { staffWith } from './staff.test.ts';
 
 function cafe() {
-  const s = createInitialState(1);
+  const s = bareState(1);
   apply(s, { type: 'place', objectType: 'table_out', x: X(4), y: Y(5) });
   setSlot(s, 0, 'carrot_juice'); // 아직 해금 전이라도 setSlot은 직접 호출로 검증 없이 올릴 수 있다
   s.storage['carrot'] = 50;
@@ -84,22 +85,23 @@ test('24시→6시 경계: 밤 회복이 6시 기력 소모보다 먼저다', ()
   expect(st.energy).toBe(98); // +40(상한 100) 뒤 −2. 반대 순서면 100
 });
 
-test('달이 바뀌는 날: 월급(퇴사)이 그날 밭 일보다 먼저다', () => {
-  const s = createInitialState(1);
-  s.clock.month = 9; // 당근 철
-  for (const x of [6, 7, 8]) apply(s, { type: 'place', objectType: 'field', x, y: 6 });
-  const st = staffWith({ strength: 30 }, 'field');
+test('달이 바뀌는 날: 월급 정산(퇴사)이 먼저고, 그 다음 농원 수확이 창고에 들어온다 (놓은 달은 제외)', () => {
+  const s = bareState(1);
+  expect(apply(s, { type: 'place', objectType: 'tangerine_tree', x: X(6), y: Y(6) }).ok).toBe(true); // 감귤 6/월
+  const st = staffWith({ strength: 30 }, 'hall');
   st.salary = 10000;
   st.unpaidMonths = 1; // 이번 월급도 못 주면 퇴사
   s.staff.push(st);
   s.money = 0;
   s.settleGrantUsed = true; // 정착지원금으로 월급이 나가지 않도록
   for (let i = 0; i < 29; i++) tick(s, DAY_MS);
-  for (const o of Object.values(s.objects)) if (o.type === 'field') o.crop = null; // 30일 밤의 밭 일만 본다
+  expect(s.storage['tangerine'] ?? 0).toBe(0); // 놓은 달엔 안 나온다
   tick(s, DAY_MS);
-  expect(s.clock).toMatchObject({ month: 10, day: 1 });
+  expect(s.clock).toMatchObject({ month: 4, day: 1 });
   expect(s.staff.length).toBe(0);
-  expect(Object.values(s.objects).filter((o) => o.type === 'field' && o.crop).length).toBe(0); // 퇴사 뒤라 안 심었다
+  expect(s.lastMonthCard!.harvested).toEqual({}); // 3월 카드: 3월 1일 수확은 없었다
+  expect(s.storage['tangerine']).toBe(6); // 4월 1일 수확
+  expect(s.monthHarvest.harvested).toEqual({ tangerine: 6 });
 });
 
 test('한 번에 너무 긴 dt는 MAX_STEPS_PER_TICK에서 끊고 잔여를 버린다', () => {

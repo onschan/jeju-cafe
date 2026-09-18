@@ -5,13 +5,10 @@ import { parcelAt } from './parcels.ts';
 import { objectStats } from './compat.ts';
 import { effectMult } from './effects.ts';
 
-/** bought 재료의 원가 합 + 토핑 원가. farm 재료는 0으로 친다 (창고에서 직접 소비). 운반·절약 스킬·콤보·세련미만큼 할인. */
+/** 재료 원가 합 + 토핑 원가 (창고 재고는 보지 않는 정가 — UI 표시·개발 비용용). 운반·절약 스킬·콤보·세련미만큼 할인. */
 export function ingredientCost(state: GameState, menuId: string): number {
   let sum = toppingCost(state, menuId);
-  for (const [id, n] of Object.entries(menuOf(state, menuId).ingredients)) {
-    const ing = ingredientDef(id);
-    if (ing.kind === 'bought') sum += ing.cost * n;
-  }
+  for (const [id, n] of Object.entries(menuOf(state, menuId).ingredients)) sum += ingredientDef(id).cost * n;
   return Math.round(sum * costMult(state, menuId));
 }
 
@@ -28,13 +25,20 @@ export function upkeep(state: GameState): void {
   state.monthCosts.upkeep += sum;
 }
 
-/** 월말 정산 카드를 만들고 월 누적치를 리셋한다. */
+/** 월말 정산 카드를 만들고 월 누적치를 리셋한다. 농원 수확·절감(monthHarvest)과 최다 판매 메뉴도 카드로 옮긴다. */
 export function closeMonth(state: GameState, prevMonth: number, prevYear: number): void {
   const costs = { ...state.monthCosts };
   const net = state.monthIncome - costs.ingredients - costs.salary - costs.ads - costs.upkeep - costs.recruit;
-  state.lastMonthCard = { income: state.monthIncome, guests: state.monthGuests, month: prevMonth, year: prevYear, costs, net };
+  let topMenu: string | null = null;
+  for (const [id, n] of Object.entries(state.monthMenuSold)) if (topMenu === null || n > state.monthMenuSold[topMenu]!) topMenu = id;
+  state.lastMonthCard = {
+    income: state.monthIncome, guests: state.monthGuests, month: prevMonth, year: prevYear, costs, net,
+    harvested: { ...state.monthHarvest.harvested }, ingredientSaved: state.monthHarvest.ingredientSaved, topMenu,
+  };
   state.lastMonthIncome = state.monthIncome;
   state.monthIncome = 0;
   state.monthGuests = 0;
   state.monthCosts = emptyMonthCosts();
+  state.monthHarvest = { harvested: {}, ingredientSaved: 0 };
+  state.monthMenuSold = {};
 }

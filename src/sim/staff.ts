@@ -248,11 +248,10 @@ function adjacentWalkableTo(state: GameState, kind: string): Pt | null {
   return null;
 }
 
-/** 역할별 근무 위치. hall → 좌석 옆, field → 밭 옆, 나머지 → 창고 앞. */
+/** 역할별 근무 위치. hall → 좌석 옆, 나머지 → 창고 앞. */
 export function staffAnchor(state: GameState, staff: Staff): Pt {
   const front = warehouseFront(state);
   if (staff.role === 'hall') return adjacentWalkableTo(state, 'seat') ?? front;
-  if (staff.role === 'field') return adjacentWalkableTo(state, 'field') ?? front;
   return front;
 }
 

@@ -1,12 +1,12 @@
+import { bareState } from './helpers.ts';
 import { X, Y } from './helpers.ts';
-import { createInitialState } from '../state.ts';
 import { placeObject } from '../grid.ts';
 import { setSlot } from '../menu.ts';
 import { apply } from '../actions.ts';
 import { tick, step } from '../tick.ts';
 import { DAY_MS, HOUR_MS, monthIndex } from '../clock.ts';
 import { spawnGuests, updateGuests, dailyGuestCount, hourlySpawn, tourBus, typeWeight } from '../guests.ts';
-import { harvest } from '../farm.ts';
+import { monthlyYieldOf } from '../orchard.ts';
 import { upkeep } from '../economy.ts';
 import {
   offerQuest, refreshQuests, questProgress, checkQuests, expireQuests, rollEvents, eventConditionMet, eventEligible, applyEventEffect, expireEvents, boardBadge, afterInvest, QUEST_MONTHS,
@@ -18,7 +18,7 @@ import { QUESTS, EVENTS, SPOTS, questDef, eventDef, parseSeasonMonths, spotDef }
 import type { EventDef } from '../types.ts';
 
 function cafe(seed = 1) {
-  const s = createInitialState(seed);
+  const s = bareState(seed);
   const seat = placeObject(s, 'table_out', X(4), Y(5));
   setSlot(s, 0, 'americano');
   return { s, seat };
@@ -42,7 +42,7 @@ test('데이터: 부탁 103·이벤트 42·관광지 24, 참조가 유효하고 
 });
 
 test('부탁 제안: 만족 30에 닿으면 게시판에, 체인 후속 타입은 열리는 즉시, 완료한 타입은 다시 안 올라온다', () => {
-  const s = createInitialState(1);
+  const s = bareState(1);
   expect(refreshQuests(s)).toEqual([]);
   addSatisfaction(s, 'student', SAT_QUEST);
   expect(refreshQuests(s)).toEqual(['q_student']);
@@ -85,7 +85,7 @@ test('부탁 생애주기: 도전 → 진행(menuSold는 수락 뒤부터) → �
 });
 
 test('부탁 조건 6종의 진행도와 즉시 완료(none·이미 충족)', () => {
-  const s = createInitialState(1);
+  const s = bareState(1);
   // objectPlaced: 이장님 — 돌담 6 → 배치 액션이 바로 완료시킨다 (이미 놓인 것도 세되, 안 산 필지의 밭담은 안 센다)
   for (let x = 0; x < 5; x++) placeObject(s, 'stonewall', X(x), Y(2));
   offerQuest(s, 'q_village_head');
@@ -125,7 +125,7 @@ test('부탁 조건 6종의 진행도와 즉시 완료(none·이미 충족)', ()
 });
 
 test('부탁 기한: 2달이 지나면 실패, 다음 달 다시 올라온다', () => {
-  const s = createInitialState(1);
+  const s = bareState(1);
   addSatisfaction(s, 'student', SAT_QUEST);
   refreshQuests(s);
   apply(s, { type: 'acceptQuest', id: 'q_student' });
@@ -135,7 +135,7 @@ test('부탁 기한: 2달이 지나면 실패, 다음 달 다시 올라온다', 
   for (let i = 0; i < 30; i++) tick(s, DAY_MS); // 6월 1일
   expect(s.board.quests['q_student']!.status).toBe('offered'); // 실패 → 만족이 아직 30이라 바로 재제안
   expect(s.notices.some((n) => n.includes('기한이 지났어요'))).toBe(true);
-  const s2 = createInitialState(1);
+  const s2 = bareState(1);
   offerQuest(s2, 'q_student');
   apply(s2, { type: 'acceptQuest', id: 'q_student' });
   s2.clock.month = 6;
@@ -144,7 +144,7 @@ test('부탁 기한: 2달이 지나면 실패, 다음 달 다시 올라온다', 
 });
 
 test('이벤트 조건 문자열 파서', () => {
-  const s = createInitialState(1);
+  const s = bareState(1);
   expect(eventConditionMet(s, null)).toBe(true);
   expect(eventConditionMet(s, 'tangerine_tree 3개')).toBe(false);
   for (let i = 0; i < 3; i++) placeObject(s, 'tangerine_tree', X(6 + i), Y(2));
@@ -170,19 +170,19 @@ test('이벤트 조건 문자열 파서', () => {
 });
 
 test('이벤트 롤: seed 결정적, 확률·달·조건 존중, 선택 이벤트는 pending, 나머지는 즉시 적용 + 대사 알림', () => {
-  const s = createInitialState(1);
+  const s = bareState(1);
   s.clock.month = 5; // 황금연휴(5월 100%) 확정, 렌터카 대란 25%
   const fired = rollEvents(s);
   expect(fired).toContain('ev_golden_week');
   expect(fired).not.toContain('ev_typhoon_alert'); // 7~9월
   expect(s.notices.some((n) => n.startsWith('황금연휴:'))).toBe(true);
   expect(effectMult(s, 'spawnMult')).toBe(1.5);
-  const s2 = createInitialState(1); s2.clock.month = 5;
+  const s2 = bareState(1); s2.clock.month = 5;
   expect(rollEvents(s2)).toEqual(fired); // 같은 seed → 같은 결과
-  expect(rollEvents(s2)).toEqual([]);    // 같은 달엔 다시 안 굴린다
+  expect(rollEvents(s2, [eventDef('ev_golden_week')])).toEqual([]); // 같은 달엔 이미 일어난 이벤트를 다시 안 굴린다
   // 선택 이벤트
   const tv: EventDef = { ...eventDef('ev_tv_shoot'), months: [5], prob: 100, conditionText: null };
-  const s3 = createInitialState(1); s3.clock.month = 5;
+  const s3 = bareState(1); s3.clock.month = 5;
   expect(rollEvents(s3, [tv])).toEqual(['ev_tv_shoot']);
   expect(s3.board.events).toEqual([{ id: 'ev_tv_shoot', monthIndex: monthIndex(s3.clock), status: 'pending' }]);
   expect(boardBadge(s3)).toBe(1);
@@ -192,13 +192,13 @@ test('이벤트 롤: seed 결정적, 확률·달·조건 존중, 선택 이벤�
   expect(s3.segmentPopularity['student']).toBe(30); // 전 손님 +10
   expect(apply(s3, { type: 'respondEvent', id: 'ev_tv_shoot', accept: true }).ok).toBe(false);
   // 거절
-  const s4 = createInitialState(1); s4.clock.month = 5;
+  const s4 = bareState(1); s4.clock.month = 5;
   rollEvents(s4, [tv]);
   const m4 = s4.money;
   apply(s4, { type: 'respondEvent', id: 'ev_tv_shoot', accept: false });
   expect(s4.money).toBe(m4);
   // 답 안 하면 다음 달 자동 거절
-  const s5 = createInitialState(1); s5.clock.month = 5;
+  const s5 = bareState(1); s5.clock.month = 5;
   rollEvents(s5, [tv]);
   s5.clock.month = 6;
   expireEvents(s5);
@@ -222,17 +222,15 @@ test('효과 DSL: 손님 배수(전체·필터)·손님 0·수확·유지비·�
   applyEventEffect(s, { kind: 'noGuests', days: 1 }, 't');
   expect(noGuestsToday(s)).toBe(true);
   expect(hourlySpawn(s)).toBe(0);
-  // 수확 ×1.5: 감귤나무 yield
+  // 수확 ×1.5: 감귤나무 월 수확(지난달에 놓은 것)
   const tree = placeObject(s, 'tangerine_tree', X(6), Y(2));
-  tree.crop = { cropId: 'tangerine', daysGrown: 999, ready: true, harvestedYear: -1 };
-  const s0 = createInitialState(1);
-  const t0 = placeObject(s0, 'tangerine_tree', X(6), Y(2));
-  t0.crop = { cropId: 'tangerine', daysGrown: 999, ready: true, harvestedYear: -1 };
-  const plain = harvest(s0, t0.id);
+  tree.placedMonth -= 1;
+  const plain = monthlyYieldOf(s, tree);
+  expect(plain).toBe(6);
   applyEventEffect(s, { kind: 'harvestMult', mult: 1.5, days: 30 }, 't');
-  expect(harvest(s, tree.id)).toBe(Math.floor(plain * 1.5));
+  expect(monthlyYieldOf(s, tree)).toBe(Math.floor(plain * 1.5));
   // 유지비 ×2
-  const u = createInitialState(1); placeObject(u, 'table_out', X(4), Y(5));
+  const u = bareState(1); placeObject(u, 'table_out', X(4), Y(5));
   const m0 = u.money; upkeep(u); const base0 = m0 - u.money;
   expect(base0).toBeGreaterThan(0);
   applyEventEffect(u, { kind: 'upkeepMult', mult: 2, days: 30 }, 't');
@@ -256,7 +254,7 @@ test('효과 DSL: 손님 배수(전체·필터)·손님 0·수확·유지비·�
 });
 
 test('관광지: 시작·랭크·앞 관광지 Lv4 해금, 레벨별 비용, 매력도 합 → 하루 손님, Lv2 손님·Lv4 부탁', () => {
-  const s = createInitialState(1);
+  const s = bareState(1);
   s.money = 1e9;
   expect(spotUnlocked(s, 'canola_field')).toBe(true);
   expect(spotUnlocked(s, 'sangumburi')).toBe(false);
@@ -304,7 +302,7 @@ test('투어 버스: Lv3 이상 관광지의 Lv2 손님이 일요일 11시에 4~
   expect(n).toBeGreaterThanOrEqual(4); expect(n).toBeLessThanOrEqual(6);
   expect(s.guests.every((g) => g.type === 'insta_traveler')).toBe(true);
   // 스케줄: 7일 11시에만
-  const s2 = createInitialState(1); placeObject(s2, 'table_out', X(4), Y(5)); s2.money = 1e9;
+  const s2 = bareState(1); placeObject(s2, 'table_out', X(4), Y(5)); s2.money = 1e9;
   for (let i = 0; i < 3; i++) apply(s2, { type: 'investSpot', id: 'canola_field' });
   s2.segmentPopularity = {};
   for (const id of Object.keys(s2.guestTypes)) if (id !== 'insta_traveler') s2.guestTypes[id]!.unlocked = false;
@@ -321,7 +319,7 @@ test('투어 버스: Lv3 이상 관광지의 Lv2 손님이 일요일 11시에 4~
 });
 
 test('월초 훅: 해금 → 기한·이벤트·부탁이 순서대로 돌고 저장/복원이 같다', () => {
-  const s = createInitialState(3);
+  const s = bareState(3);
   placeObject(s, 'table_out', X(4), Y(5));
   setSlot(s, 0, 'americano');
   s.money = 1e9;

@@ -1,5 +1,5 @@
+import { bareState } from './helpers.ts';
 import { X, Y } from './helpers.ts';
-import { createInitialState } from '../state.ts';
 import { apply } from '../actions.ts';
 import { tick } from '../tick.ts';
 import { DAY_MS, monthIndex } from '../clock.ts';
@@ -38,7 +38,7 @@ test('강화 아이템: 잘 맞는 시설이면 ×2, 아니면 못 쓴다 (v1 �
 });
 
 test('마일리지 상점: 일꾼 삼춘은 순서대로(3→4→5) 동시 건설 +1, 마일리지 부족·순서 위반 거부', () => {
-  const s = createInitialState(1);
+  const s = bareState(1);
   expect(s.builders).toBe(START_BUILDERS);
   expect(apply(s, { type: 'buyMileage', id: 'ms_worker_3' }).ok).toBe(false); // 마일리지 0
   s.mileage = 300;
@@ -54,7 +54,7 @@ test('마일리지 상점: 일꾼 삼춘은 순서대로(3→4→5) 동시 건�
 });
 
 test('마일리지 상점: 곡괭이·응모권·씨앗·묶음팩·강화 아이템·스카우트권', () => {
-  const s = createInitialState(1);
+  const s = bareState(1);
   s.mileage = 100;
   expect(apply(s, { type: 'buyMileage', id: 'ms_pickaxe' }).ok).toBe(true);
   expect(s.inventory['pickaxe']).toBe(1);
@@ -77,7 +77,7 @@ test('마일리지 상점: 곡괭이·응모권·씨앗·묶음팩·강화 아�
 });
 
 test('씨앗: 감귤 씨앗 인기 +5, 한라봉 씨앗 요금 +5%, 경관 씨앗은 경관물 경관 +3(상한 30)이 경치 점수에 반영', () => {
-  const s = createInitialState(1);
+  const s = bareState(1);
   const t = placeObject(s, 'table_out', X(6), Y(4));
   const tree = placeObject(s, 'tangerine_tree', X(6), Y(2));
   grantItem(s, 'tangerine_seed', 1);
@@ -99,7 +99,7 @@ test('씨앗: 감귤 씨앗 인기 +5, 한라봉 씨앗 요금 +5%, 경관 씨�
 });
 
 test('응모권 상점: 유니폼은 사면 바로 입고 중복 구매 거부, 경관 씨앗·인기 열매, setUniform', () => {
-  const s = createInitialState(1);
+  const s = bareState(1);
   s.tickets = 20;
   expect(apply(s, { type: 'buyTicket', id: 'ts_uniform_1' }).ok).toBe(true);
   expect(s.uniforms).toEqual(['uf_hawaiian']);
@@ -124,7 +124,7 @@ test('응모권 상점: 유니폼은 사면 바로 입고 중복 구매 거부, 
 });
 
 test('인형뽑기: 첫 달 무료 1회, 그 뒤 응모권 1장, 결과는 lastDraw에 (dismissDraw로 닫는다)', () => {
-  const s = createInitialState(3);
+  const s = bareState(3);
   expect(hasFreeDraw(s)).toBe(true);
   expect(apply(s, { type: 'drawTicket' }).ok).toBe(true);
   expect(s.tickets).toBe(0);
@@ -141,16 +141,16 @@ test('인형뽑기: 첫 달 무료 1회, 그 뒤 응모권 1장, 결과는 lastD
   expect(s.actionLog.some((l) => l.action.type === 'dismissDraw')).toBe(false); // 클라이언트 전용
 });
 
-test('인형뽑기 분포: 1000회 뽑으면 칸별 비율이 표와 ±3%p 안', () => {
-  const s = createInitialState(7);
-  const n = 1000;
+test('인형뽑기 분포: 3000회 뽑으면 칸별 비율이 표와 ±3%p 안', () => {
+  const s = bareState(7);
+  const n = 3000;
   const count: Record<string, number> = {};
   for (let i = 0; i < n; i++) { const p = rollPrize(s); count[p.kind] = (count[p.kind] ?? 0) + 1; }
   for (const p of DRAW_PRIZES) expect(Math.abs((count[p.kind] ?? 0) / n * 100 - p.pct), p.kind).toBeLessThanOrEqual(3);
 });
 
 test('인형뽑기 상품 적용: 돈은 5만×년차, 마일리지 +1, 유니폼 조각 5개 → 유니폼', () => {
-  const s = createInitialState(1);
+  const s = bareState(1);
   s.tickets = 500;
   const seen = new Set<string>();
   for (let i = 0; i < 300 && seen.size < 8; i++) {
@@ -167,7 +167,7 @@ test('인형뽑기 상품 적용: 돈은 5만×년차, 마일리지 +1, 유니�
 });
 
 test('매월 1일: 응모권 +1과 무료 추첨 리셋', () => {
-  const s = createInitialState(1);
+  const s = bareState(1);
   s.freeDrawMonth = -1;
   const tickets = s.tickets;
   for (let d = 0; d < 31; d++) tick(s, DAY_MS);
@@ -177,7 +177,7 @@ test('매월 1일: 응모권 +1과 무료 추첨 리셋', () => {
 });
 
 test('마일리지: 월말 손님 300명마다 +1 (closeMonth 전에 준다)', () => {
-  const s = createInitialState(1);
+  const s = bareState(1);
   s.monthGuests = 299;
   expect(monthlyMileage(s)).toBe(0);
   s.monthGuests = 650;
@@ -187,7 +187,7 @@ test('마일리지: 월말 손님 300명마다 +1 (closeMonth 전에 준다)', (
 });
 
 test('마일리지: 첫 상성 발견 +1, 도감 10개마다 +1 (한 단계는 한 번만)', () => {
-  const s = createInitialState(1);
+  const s = bareState(1);
   const combo = COMBOS.find((c) => c.a === 'table_out' && !c.hidden) ?? ({ id: 'cb_t', name: 't', a: 'table_out', bIds: ['tangerine_tree'], bCount: 1, target: 'all', strength: 'up', applyTo: 'a', hidden: false, radius: 2, effectText: '' } satisfies ComboDef);
   placeObject(s, 'table_out', X(6), Y(4));
   placeObject(s, combo.bIds[0]!.replace('*', ''), X(7), Y(4));

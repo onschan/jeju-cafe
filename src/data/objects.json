@@ -3,8 +3,9 @@
   {"id": "warehouse", "name": "폐창고(카페)", "kind": "building", "w": 3, "h": 2, "cost": 0, "scenery": 0, "noise": 0, "wind": 1, "upkeep": 0, "terrain": ["soil", "rock"]},
   {"id": "gate", "name": "정낭", "kind": "gate", "w": 1, "h": 1, "cost": 0, "scenery": 1, "noise": 0, "wind": 0, "upkeep": 0, "terrain": ["soil", "rock", "road"]},
   {"id": "path", "name": "올렛길", "kind": "path", "w": 1, "h": 1, "cost": 10000, "scenery": 0, "noise": 0, "wind": 0, "upkeep": 150, "terrain": ["soil", "rock"]},
-  {"id": "field", "name": "밭", "kind": "field", "w": 1, "h": 1, "cost": 30000, "scenery": 0, "noise": 0, "wind": 0, "upkeep": 450, "terrain": ["soil"]},
-  {"id": "tangerine_tree", "name": "감귤나무", "kind": "tree", "w": 1, "h": 1, "cost": 80000, "scenery": 1, "noise": 0, "wind": 1, "upkeep": 1200, "cropId": "tangerine", "terrain": ["soil"]},
-  {"id": "table_out", "name": "야외 테이블", "kind": "seat", "w": 1, "h": 1, "cost": 50000, "scenery": 0, "noise": 0, "wind": 0, "upkeep": 750, "seats": 2, "terrain": ["soil", "rock"]},
-  {"id": "stonewall", "name": "돌담", "kind": "wall", "w": 1, "h": 1, "cost": 20000, "scenery": 1, "noise": 0, "wind": 2, "upkeep": 300, "terrain": ["soil", "rock"]}
+  {"id": "tangerine_tree", "name": "감귤나무", "kind": "tree", "category": "farm", "w": 1, "h": 1, "cost": 80000, "scenery": 2, "noise": 0, "wind": 1, "upkeep": 1200, "terrain": ["soil"], "yield": {"ingredientId": "tangerine", "perMonth": 6}, "desc": "매월 1일 감귤 6개가 창고에 들어와요. 경관 +2."},
+  {"id": "carrot_field", "name": "당근밭", "kind": "deco", "category": "farm", "w": 1, "h": 1, "cost": 60000, "scenery": 1, "noise": 0, "wind": 0, "upkeep": 900, "terrain": ["soil"], "yield": {"ingredientId": "carrot", "perMonth": 8}, "desc": "구좌 당근밭. 매월 1일 당근 8개가 창고에 들어와요."},
+  {"id": "table_out", "name": "야외 테이블", "kind": "seat", "category": "rest", "w": 1, "h": 1, "cost": 50000, "scenery": 0, "noise": 0, "wind": 0, "upkeep": 750, "seats": 2, "terrain": ["soil", "rock"]},
+  {"id": "table_parasol", "name": "파라솔 테이블", "kind": "seat", "category": "rest", "w": 1, "h": 1, "cost": 70000, "scenery": 1, "noise": 0, "wind": 1, "upkeep": 900, "seats": 2, "terrain": ["soil", "rock"], "desc": "파라솔 그늘 아래 테이블. 볕이 뜨거워도 괜찮아요."},
+  {"id": "stonewall", "name": "돌담", "kind": "wall", "category": "scenery", "w": 1, "h": 1, "cost": 20000, "scenery": 1, "noise": 0, "wind": 2, "upkeep": 300, "terrain": ["soil", "rock"]}
 ]

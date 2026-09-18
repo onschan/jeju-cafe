@@ -1,0 +1,1139 @@
+[
+  {
+    "id": "g01",
+    "title": "아메리카노 한 잔 팔기",
+    "desc": "첫 손님에게 아메리카노를 팔아 보자",
+    "condition": {
+      "type": "menuSold",
+      "menuId": "americano",
+      "n": 1
+    },
+    "reward": [
+      {
+        "type": "money",
+        "amount": 300000
+      }
+    ],
+    "speaker": "halmang",
+    "line": "첫 손님이 왔구나. 이제 시작이여."
+  },
+  {
+    "id": "g02",
+    "title": "손님 5명 맞이",
+    "desc": "손님이 다녀간 수 5명",
+    "condition": {
+      "type": "guests",
+      "n": 5
+    },
+    "reward": [
+      {
+        "type": "money",
+        "amount": 500000
+      }
+    ],
+    "speaker": "samchun",
+    "line": "벌써 다섯이나 왔어? 동네에 소문났져."
+  },
+  {
+    "id": "g03",
+    "title": "자리 4개 만들기",
+    "desc": "쉼 시설을 4개 놓아 손님 자리를 늘리자",
+    "condition": {
+      "type": "facilities",
+      "category": "rest",
+      "n": 4
+    },
+    "reward": [
+      {
+        "type": "unlockFacility",
+        "id": "terrace_seat"
+      }
+    ],
+    "speaker": "halmang",
+    "line": "자리가 늘었네. 처마 밑 테라스도 놓아 보라."
+  },
+  {
+    "id": "g04",
+    "title": "직원 1명 채용",
+    "desc": "사람 창에서 후보를 채용하자",
+    "condition": {
+      "type": "staff",
+      "n": 1
+    },
+    "reward": [
+      {
+        "type": "tickets",
+        "n": 1
+      }
+    ],
+    "speaker": "halmang",
+    "line": "혼자선 힘들주. 같이 할 사람이 생겼구나."
+  },
+  {
+    "id": "g05",
+    "title": "손님 20명 맞이",
+    "desc": "손님이 다녀간 수 20명",
+    "condition": {
+      "type": "guests",
+      "n": 20
+    },
+    "reward": [
+      {
+        "type": "unlockMenu",
+        "id": "green_tea"
+      }
+    ],
+    "speaker": "samchun",
+    "line": "녹차도 내놓아 보라. 삼춘들이 좋아해."
+  },
+  {
+    "id": "g06",
+    "title": "감귤주스 10잔",
+    "desc": "감귤주스를 10잔 팔자",
+    "condition": {
+      "type": "menuSold",
+      "menuId": "tangerine_juice",
+      "n": 10
+    },
+    "reward": [
+      {
+        "type": "unlockFacility",
+        "id": "deco_flower_pots"
+      }
+    ],
+    "speaker": "halmang",
+    "line": "감귤주스가 잘 나가네. 꽃 화분으로 마당을 꾸며 보라."
+  },
+  {
+    "id": "g07",
+    "title": "만족 손님 10명",
+    "desc": "만족하고 간 손님 10명",
+    "condition": {
+      "type": "satisfied",
+      "n": 10
+    },
+    "reward": [
+      {
+        "type": "research",
+        "n": 10
+      },
+      {
+        "type": "unlockFeature",
+        "id": "promote"
+      }
+    ],
+    "speaker": "hero",
+    "line": "손님들이 웃고 갔어요. 이제 홍보도 할 수 있어요."
+  },
+  {
+    "id": "g08",
+    "title": "홍보 1회 하기",
+    "desc": "카페 창 → 홍보에서 전단을 돌리자",
+    "condition": {
+      "type": "promotions",
+      "n": 1
+    },
+    "reward": [
+      {
+        "type": "money",
+        "amount": 300000
+      }
+    ],
+    "speaker": "samchun",
+    "line": "전단 봤져. 우리 동네 카페 멋지다."
+  },
+  {
+    "id": "g09",
+    "title": "손님 50명 맞이",
+    "desc": "손님이 다녀간 수 50명",
+    "condition": {
+      "type": "guests",
+      "n": 50
+    },
+    "reward": [
+      {
+        "type": "unlockFacility",
+        "id": "bench_stonewall"
+      }
+    ],
+    "speaker": "halmang",
+    "line": "돌담 아래 평상이 열렸다. 삼춘들 사랑방이여."
+  },
+  {
+    "id": "g10",
+    "title": "시설 5개 짓기",
+    "desc": "길·담 말고 시설을 5개 놓자",
+    "condition": {
+      "type": "facilities",
+      "n": 5
+    },
+    "reward": [
+      {
+        "type": "builder",
+        "n": 1
+      }
+    ],
+    "speaker": "samchun",
+    "line": "일꾼 삼춘 하나 더 붙여 줄게. 같이 짓자."
+  },
+  {
+    "id": "g11",
+    "title": "자금 700만 모으기",
+    "desc": "잔고를 700만 원까지 모으자",
+    "condition": {
+      "type": "money",
+      "n": 7000000
+    },
+    "reward": [
+      {
+        "type": "unlockFeature",
+        "id": "parcel"
+      },
+      {
+        "type": "money",
+        "amount": 300000
+      }
+    ],
+    "speaker": "halmang",
+    "line": "돈이 모였구나. 옆 땅도 살 수 있게 됐다."
+  },
+  {
+    "id": "g12",
+    "title": "필지 1개 사기",
+    "desc": "장부 창에서 옆 필지를 사자",
+    "condition": {
+      "type": "parcels",
+      "n": 2
+    },
+    "reward": [
+      {
+        "type": "unlockFeature",
+        "id": "clearRock"
+      }
+    ],
+    "speaker": "samchun",
+    "line": "땅이 넓어졌네. 바위는 치워야 쓸 수 있어."
+  },
+  {
+    "id": "g13",
+    "title": "바위 3개 치우기",
+    "desc": "바위나 덤불을 3개 치우자",
+    "condition": {
+      "type": "rocks",
+      "n": 3
+    },
+    "reward": [
+      {
+        "type": "unlockFacility",
+        "id": "canola"
+      }
+    ],
+    "speaker": "halmang",
+    "line": "빈 땅에 유채를 심어 보라. 봄이면 온 밭이 노랗다."
+  },
+  {
+    "id": "g14",
+    "title": "손님 100명 맞이",
+    "desc": "손님이 다녀간 수 100명",
+    "condition": {
+      "type": "guests",
+      "n": 100
+    },
+    "reward": [
+      {
+        "type": "unlockFacility",
+        "id": "restroom"
+      },
+      {
+        "type": "research",
+        "n": 5
+      }
+    ],
+    "speaker": "hero",
+    "line": "100명! 화장실도 지어야겠어요."
+  },
+  {
+    "id": "g15",
+    "title": "직원 2명 채용",
+    "desc": "직원을 2명까지 늘리자",
+    "condition": {
+      "type": "staff",
+      "n": 2
+    },
+    "reward": [
+      {
+        "type": "staffSlot",
+        "role": "barista",
+        "n": 1
+      },
+      {
+        "type": "unlockMenu",
+        "id": "toast"
+      }
+    ],
+    "speaker": "samchun",
+    "line": "사람이 둘이면 토스트도 구울 수 있주."
+  },
+  {
+    "id": "g16",
+    "title": "메뉴 4개 올리기",
+    "desc": "메뉴판 4칸을 다 채우자",
+    "condition": {
+      "type": "menus",
+      "n": 4
+    },
+    "reward": [
+      {
+        "type": "unlockFeature",
+        "id": "craft"
+      },
+      {
+        "type": "research",
+        "n": 10
+      }
+    ],
+    "speaker": "halmang",
+    "line": "메뉴판이 꽉 찼네. 이제 새 레시피를 연구해 보라."
+  },
+  {
+    "id": "g17",
+    "title": "레시피 1개 개발",
+    "desc": "카페 창 → 연구 개발에서 메뉴를 만들자",
+    "condition": {
+      "type": "recipes",
+      "n": 1
+    },
+    "reward": [
+      {
+        "type": "money",
+        "amount": 1000000
+      }
+    ],
+    "speaker": "hero",
+    "line": "우리 카페만의 메뉴가 생겼어요!"
+  },
+  {
+    "id": "g18",
+    "title": "카페 랭크 2 달성",
+    "desc": "손님·시설·손님층을 늘려 랭크 2",
+    "condition": {
+      "type": "cafeRank",
+      "n": 2
+    },
+    "reward": [
+      {
+        "type": "unlockFeature",
+        "id": "popup"
+      },
+      {
+        "type": "tickets",
+        "n": 2
+      }
+    ],
+    "speaker": "samchun",
+    "line": "이름이 났으니 육지 원정 팝업도 열어 보라."
+  },
+  {
+    "id": "g19",
+    "title": "단골 1명 만들기",
+    "desc": "단골 손님을 1명 만들자",
+    "condition": {
+      "type": "regular",
+      "n": 1
+    },
+    "reward": [
+      {
+        "type": "tickets",
+        "n": 3
+      }
+    ],
+    "speaker": "halmang",
+    "line": "단골이 생겼구나. 카페는 단골로 크는 거여."
+  },
+  {
+    "id": "g20",
+    "title": "손님 300명 맞이",
+    "desc": "손님이 다녀간 수 300명",
+    "condition": {
+      "type": "guests",
+      "n": 300
+    },
+    "reward": [
+      {
+        "type": "unlockFacility",
+        "id": "handdrip_bar"
+      },
+      {
+        "type": "mileage",
+        "n": 5
+      }
+    ],
+    "speaker": "hero",
+    "line": "300명! 핸드드립 바를 열 때가 됐어요."
+  },
+  {
+    "id": "g21",
+    "title": "만족 손님 100명",
+    "desc": "만족하고 간 손님 100명",
+    "condition": {
+      "type": "satisfied",
+      "n": 100
+    },
+    "reward": [
+      {
+        "type": "unlockMenu",
+        "id": "cookie"
+      }
+    ],
+    "speaker": "samchun",
+    "line": "쿠키도 구워 팔아. 아이들이 좋아해."
+  },
+  {
+    "id": "g22",
+    "title": "시설 10개 짓기",
+    "desc": "시설을 10개까지 늘리자",
+    "condition": {
+      "type": "facilities",
+      "n": 10
+    },
+    "reward": [
+      {
+        "type": "unlockFacility",
+        "id": "vending"
+      }
+    ],
+    "speaker": "halmang",
+    "line": "자판기 하나 놓으면 급한 손님도 잡는다."
+  },
+  {
+    "id": "g23",
+    "title": "홍보 3회 하기",
+    "desc": "홍보를 3번 하자",
+    "condition": {
+      "type": "promotions",
+      "n": 3
+    },
+    "reward": [
+      {
+        "type": "unlockMenu",
+        "id": "iced_tea"
+      }
+    ],
+    "speaker": "hero",
+    "line": "여름엔 아이스티죠!"
+  },
+  {
+    "id": "g24",
+    "title": "자금 1,000만",
+    "desc": "잔고를 1,000만 원까지 모으자",
+    "condition": {
+      "type": "money",
+      "n": 10000000
+    },
+    "reward": [
+      {
+        "type": "unlockFacility",
+        "id": "souvenir"
+      }
+    ],
+    "speaker": "samchun",
+    "line": "기념품 매대도 열었어. 귤 열쇠고리 잘 팔려."
+  },
+  {
+    "id": "g25",
+    "title": "직원 3명 채용",
+    "desc": "직원을 3명까지 늘리자",
+    "condition": {
+      "type": "staff",
+      "n": 3
+    },
+    "reward": [
+      {
+        "type": "staffSlot",
+        "role": "cook",
+        "n": 1
+      },
+      {
+        "type": "unlockMenu",
+        "id": "scone"
+      }
+    ],
+    "speaker": "halmang",
+    "line": "요리사 자리가 늘었다. 스콘도 구워 보라."
+  },
+  {
+    "id": "g26",
+    "title": "손님 500명 맞이",
+    "desc": "손님이 다녀간 수 500명",
+    "condition": {
+      "type": "guests",
+      "n": 500
+    },
+    "reward": [
+      {
+        "type": "unlockFacility",
+        "id": "dolhareubang"
+      },
+      {
+        "type": "money",
+        "amount": 500000
+      }
+    ],
+    "speaker": "samchun",
+    "line": "돌하르방 코 만지면 소원이 이뤄진댔주."
+  },
+  {
+    "id": "g27",
+    "title": "필지 2개 사기",
+    "desc": "필지를 3개까지 가지자",
+    "condition": {
+      "type": "parcels",
+      "n": 3
+    },
+    "reward": [
+      {
+        "type": "unlockFacility",
+        "id": "carrot_field"
+      }
+    ],
+    "speaker": "halmang",
+    "line": "땅이 넓으니 당근밭을 하나 두라. 매달 당근이 들어온다."
+  },
+  {
+    "id": "g28",
+    "title": "감귤주스 100잔",
+    "desc": "감귤주스를 100잔 팔자",
+    "condition": {
+      "type": "menuSold",
+      "menuId": "tangerine_juice",
+      "n": 100
+    },
+    "reward": [
+      {
+        "type": "unlockMenu",
+        "id": "tangerine_ade"
+      }
+    ],
+    "speaker": "hero",
+    "line": "감귤 에이드! 톡 쏘는 여름 맛이에요."
+  },
+  {
+    "id": "g29",
+    "title": "레시피 2개 개발",
+    "desc": "레시피를 2개까지 개발하자",
+    "condition": {
+      "type": "recipes",
+      "n": 2
+    },
+    "reward": [
+      {
+        "type": "unlockMenu",
+        "id": "carrot_juice"
+      },
+      {
+        "type": "research",
+        "n": 10
+      }
+    ],
+    "speaker": "samchun",
+    "line": "구좌 당근으로 주스 짜면 달아."
+  },
+  {
+    "id": "g30",
+    "title": "★2 카페 되기",
+    "desc": "★ 등급 2를 받자",
+    "condition": {
+      "type": "stars",
+      "n": 2
+    },
+    "reward": [
+      {
+        "type": "unlockFacility",
+        "id": "tea_field"
+      },
+      {
+        "type": "unlockMenu",
+        "id": "cheesecake"
+      }
+    ],
+    "speaker": "halmang",
+    "line": "별 둘이여. 녹차밭도 가꿔 보라."
+  },
+  {
+    "id": "g31",
+    "title": "이름 있는 손님 3명",
+    "desc": "팝업 스토어에서 손님 3명을 만나자",
+    "condition": {
+      "type": "namedGuest",
+      "n": 3
+    },
+    "reward": [
+      {
+        "type": "tickets",
+        "n": 3
+      }
+    ],
+    "speaker": "hero",
+    "line": "육지에서 만난 얼굴들, 도감에 남겼어요."
+  },
+  {
+    "id": "g32",
+    "title": "단골 3명 만들기",
+    "desc": "단골 손님 3명",
+    "condition": {
+      "type": "regular",
+      "n": 3
+    },
+    "reward": [
+      {
+        "type": "unlockFacility",
+        "id": "toenmaru"
+      }
+    ],
+    "speaker": "samchun",
+    "line": "툇마루에 걸터앉아 귤 까먹는 자리, 단골들이 좋아해."
+  },
+  {
+    "id": "g34",
+    "title": "2년차 맞이하기",
+    "desc": "2년차가 되자",
+    "condition": {
+      "type": "year",
+      "n": 2
+    },
+    "reward": [
+      {
+        "type": "unlockRole",
+        "id": "carry"
+      },
+      {
+        "type": "money",
+        "amount": 1000000
+      }
+    ],
+    "speaker": "samchun",
+    "line": "벌써 한 해가 갔네. 운반 직원도 뽑을 수 있어."
+  },
+  {
+    "id": "g35",
+    "title": "손님 1,000명",
+    "desc": "손님이 다녀간 수 1,000명",
+    "condition": {
+      "type": "guests",
+      "n": 1000
+    },
+    "reward": [
+      {
+        "type": "unlockFacility",
+        "id": "bike_rack"
+      },
+      {
+        "type": "mileage",
+        "n": 10
+      }
+    ],
+    "speaker": "hero",
+    "line": "천 명! 자전거 손님도 오게 거치대를 놓아요."
+  },
+  {
+    "id": "g36",
+    "title": "시설 20개 짓기",
+    "desc": "시설을 20개까지 늘리자",
+    "condition": {
+      "type": "facilities",
+      "n": 20
+    },
+    "reward": [
+      {
+        "type": "builder",
+        "n": 1
+      }
+    ],
+    "speaker": "samchun",
+    "line": "일꾼 삼춘 하나 더. 지을 게 많주."
+  },
+  {
+    "id": "g37",
+    "title": "만족 손님 500명",
+    "desc": "만족하고 간 손님 500명",
+    "condition": {
+      "type": "satisfied",
+      "n": 500
+    },
+    "reward": [
+      {
+        "type": "unlockMenu",
+        "id": "egg_sandwich"
+      }
+    ],
+    "speaker": "halmang",
+    "line": "든든한 계란 샌드위치도 팔아 보라."
+  },
+  {
+    "id": "g38",
+    "title": "자금 2,000만",
+    "desc": "잔고를 2,000만 원까지 모으자",
+    "condition": {
+      "type": "money",
+      "n": 20000000
+    },
+    "reward": [
+      {
+        "type": "unlockFacility",
+        "id": "deco_lamp_post"
+      },
+      {
+        "type": "unlockFeature",
+        "id": "challenge"
+      }
+    ],
+    "speaker": "samchun",
+    "line": "옆 동네 카페가 견제하네. 대결도 받아 주라."
+  },
+  {
+    "id": "g39",
+    "title": "필지 4개 가지기",
+    "desc": "필지를 4개까지 가지자",
+    "condition": {
+      "type": "parcels",
+      "n": 4
+    },
+    "reward": [
+      {
+        "type": "unlockFacility",
+        "id": "cedar"
+      }
+    ],
+    "speaker": "halmang",
+    "line": "삼나무로 바람을 막아라. 제주 바람은 매섭다."
+  },
+  {
+    "id": "g40",
+    "title": "바위 10개 치우기",
+    "desc": "바위·덤불을 10개 치우자",
+    "condition": {
+      "type": "rocks",
+      "n": 10
+    },
+    "reward": [
+      {
+        "type": "unlockFacility",
+        "id": "basalt_rock"
+      },
+      {
+        "type": "money",
+        "amount": 1000000
+      }
+    ],
+    "speaker": "samchun",
+    "line": "치운 현무암은 마당에 두면 멋있어."
+  },
+  {
+    "id": "g33",
+    "title": "가이드북 5위 안에",
+    "desc": "가이드북 발표에서 5위 안에 들자",
+    "condition": {
+      "type": "rank",
+      "n": 5
+    },
+    "reward": [
+      {
+        "type": "unlockFacility",
+        "id": "pampas"
+      },
+      {
+        "type": "research",
+        "n": 10
+      }
+    ],
+    "speaker": "halmang",
+    "line": "책에 실렸구나. 가을 억새도 심어 보라."
+  },
+  {
+    "id": "g41",
+    "title": "홍보 10회 하기",
+    "desc": "홍보를 10번 하자",
+    "condition": {
+      "type": "promotions",
+      "n": 10
+    },
+    "reward": [
+      {
+        "type": "unlockMenu",
+        "id": "hot_choco"
+      }
+    ],
+    "speaker": "hero",
+    "line": "겨울 손님을 위한 핫초코!"
+  },
+  {
+    "id": "g42",
+    "title": "레시피 5개 개발",
+    "desc": "레시피를 5개까지 개발하자",
+    "condition": {
+      "type": "recipes",
+      "n": 5
+    },
+    "reward": [
+      {
+        "type": "unlockMenu",
+        "id": "carrot_cake"
+      },
+      {
+        "type": "research",
+        "n": 20
+      }
+    ],
+    "speaker": "halmang",
+    "line": "당근케이크는 우리 카페 자랑이 될 거다."
+  },
+  {
+    "id": "g43",
+    "title": "★3 카페 되기",
+    "desc": "★ 등급 3을 받자",
+    "condition": {
+      "type": "stars",
+      "n": 3
+    },
+    "reward": [
+      {
+        "type": "unlockFacility",
+        "id": "deco_dolhareubang_set"
+      },
+      {
+        "type": "staffSlot",
+        "role": "hall",
+        "n": 1
+      }
+    ],
+    "speaker": "samchun",
+    "line": "별 셋! 홀 직원 자리도 늘려 줬어."
+  },
+  {
+    "id": "g44",
+    "title": "손님 2,000명",
+    "desc": "손님이 다녀간 수 2,000명",
+    "condition": {
+      "type": "guests",
+      "n": 2000
+    },
+    "reward": [
+      {
+        "type": "unlockFacility",
+        "id": "deco_water_jar_set"
+      },
+      {
+        "type": "mileage",
+        "n": 10
+      }
+    ],
+    "speaker": "hero",
+    "line": "물허벅 세트로 마당에 제주 느낌을 더해요."
+  },
+  {
+    "id": "g45",
+    "title": "이름 있는 손님 10명",
+    "desc": "이름 있는 손님 10명을 만나자",
+    "condition": {
+      "type": "namedGuest",
+      "n": 10
+    },
+    "reward": [
+      {
+        "type": "unlockMenu",
+        "id": "tangerine_scone"
+      }
+    ],
+    "speaker": "halmang",
+    "line": "감귤 스콘 레시피는 서울 손님이 알려 준 거여."
+  },
+  {
+    "id": "g46",
+    "title": "단골 10명 만들기",
+    "desc": "단골 손님 10명",
+    "condition": {
+      "type": "regular",
+      "n": 10
+    },
+    "reward": [
+      {
+        "type": "unlockRole",
+        "id": "guide"
+      },
+      {
+        "type": "money",
+        "amount": 2000000
+      }
+    ],
+    "speaker": "samchun",
+    "line": "안내 직원도 뽑아. 단골이 많으면 안내가 필요해."
+  },
+  {
+    "id": "g47",
+    "title": "3년차 맞이하기",
+    "desc": "3년차가 되자",
+    "condition": {
+      "type": "year",
+      "n": 3
+    },
+    "reward": [
+      {
+        "type": "unlockFacility",
+        "id": "deco_mailbox"
+      },
+      {
+        "type": "tickets",
+        "n": 5
+      }
+    ],
+    "speaker": "halmang",
+    "line": "삼 년이면 감귤나무도 자란다. 우체통에 편지가 온다."
+  },
+  {
+    "id": "g48",
+    "title": "가이드북 3위 안에",
+    "desc": "가이드북 발표에서 3위 안에 들자",
+    "condition": {
+      "type": "rank",
+      "n": 3
+    },
+    "reward": [
+      {
+        "type": "unlockFacility",
+        "id": "deco_tangerine_crates"
+      },
+      {
+        "type": "research",
+        "n": 20
+      }
+    ],
+    "speaker": "hero",
+    "line": "3위! 감귤 상자를 쌓아 두면 사진이 예뻐요."
+  },
+  {
+    "id": "g49",
+    "title": "라이벌 대결 1승",
+    "desc": "라이벌 카페와 대결해 이기자",
+    "condition": {
+      "type": "rivalWins",
+      "n": 1
+    },
+    "reward": [
+      {
+        "type": "unlockMenu",
+        "id": "croissant"
+      },
+      {
+        "type": "tickets",
+        "n": 3
+      }
+    ],
+    "speaker": "samchun",
+    "line": "이겼주! 크루아상 레시피는 전리품이여."
+  },
+  {
+    "id": "g50",
+    "title": "필지 6개 가지기",
+    "desc": "필지를 6개까지 가지자",
+    "condition": {
+      "type": "parcels",
+      "n": 6
+    },
+    "reward": [
+      {
+        "type": "builder",
+        "n": 1
+      },
+      {
+        "type": "money",
+        "amount": 2000000
+      }
+    ],
+    "speaker": "halmang",
+    "line": "마을 절반이 카페 마당이구나."
+  },
+  {
+    "id": "g51",
+    "title": "시설 40개 짓기",
+    "desc": "시설을 40개까지 늘리자",
+    "condition": {
+      "type": "facilities",
+      "n": 40
+    },
+    "reward": [
+      {
+        "type": "unlockMenu",
+        "id": "carrot_soup"
+      }
+    ],
+    "speaker": "samchun",
+    "line": "당근 수프로 겨울 손님 몸을 녹여 줘."
+  },
+  {
+    "id": "g52",
+    "title": "자금 5,000만",
+    "desc": "잔고를 5,000만 원까지 모으자",
+    "condition": {
+      "type": "money",
+      "n": 50000000
+    },
+    "reward": [
+      {
+        "type": "mileage",
+        "n": 20
+      }
+    ],
+    "speaker": "hero",
+    "line": "5,000만! 마일리지 상점을 털 때예요."
+  },
+  {
+    "id": "g53",
+    "title": "라이벌 대결 3승",
+    "desc": "라이벌 카페 대결에서 3번 이기자",
+    "condition": {
+      "type": "rivalWins",
+      "n": 3
+    },
+    "reward": [
+      {
+        "type": "unlockMenu",
+        "id": "yuja_tea"
+      },
+      {
+        "type": "tickets",
+        "n": 5
+      }
+    ],
+    "speaker": "halmang",
+    "line": "세 번 이겼으면 동네 최고여. 유자차 한 잔 하라."
+  },
+  {
+    "id": "g54",
+    "title": "★4 카페 되기",
+    "desc": "★ 등급 4를 받자",
+    "condition": {
+      "type": "stars",
+      "n": 4
+    },
+    "reward": [
+      {
+        "type": "staffSlot",
+        "role": "barista",
+        "n": 1
+      },
+      {
+        "type": "staffSlot",
+        "role": "cook",
+        "n": 1
+      }
+    ],
+    "speaker": "samchun",
+    "line": "별 넷! 바리스타·요리사 자리 하나씩 더."
+  },
+  {
+    "id": "g55",
+    "title": "손님 5,000명",
+    "desc": "손님이 다녀간 수 5,000명",
+    "condition": {
+      "type": "guests",
+      "n": 5000
+    },
+    "reward": [
+      {
+        "type": "money",
+        "amount": 5000000
+      }
+    ],
+    "speaker": "hero",
+    "line": "5,000명이 우리 마당을 다녀갔어요."
+  },
+  {
+    "id": "g56",
+    "title": "단골 20명 만들기",
+    "desc": "단골 손님 20명",
+    "condition": {
+      "type": "regular",
+      "n": 20
+    },
+    "reward": [
+      {
+        "type": "mileage",
+        "n": 30
+      }
+    ],
+    "speaker": "halmang",
+    "line": "단골 스물이면 잔치를 해야지."
+  },
+  {
+    "id": "g57",
+    "title": "필지 9개 다 사기",
+    "desc": "필지 9개를 모두 가지자",
+    "condition": {
+      "type": "parcels",
+      "n": 9
+    },
+    "reward": [
+      {
+        "type": "money",
+        "amount": 10000000
+      }
+    ],
+    "speaker": "samchun",
+    "line": "온 마을이 카페여. 마을 잔치 열자!"
+  },
+  {
+    "id": "g58",
+    "title": "가이드북 1위",
+    "desc": "가이드북 발표에서 1위를 하자",
+    "condition": {
+      "type": "rank",
+      "n": 1
+    },
+    "reward": [
+      {
+        "type": "tickets",
+        "n": 10
+      },
+      {
+        "type": "research",
+        "n": 30
+      }
+    ],
+    "speaker": "hero",
+    "line": "1위! 제주 최고의 카페예요!"
+  },
+  {
+    "id": "g59",
+    "title": "단골 30명 만들기",
+    "desc": "단골 손님 30명",
+    "condition": {
+      "type": "regular",
+      "n": 30
+    },
+    "reward": [
+      {
+        "type": "mileage",
+        "n": 50
+      }
+    ],
+    "speaker": "halmang",
+    "line": "서른 명 단골. 할망도 자랑스럽다."
+  },
+  {
+    "id": "g60",
+    "title": "★5 전설의 카페",
+    "desc": "★ 등급 5를 받자",
+    "condition": {
+      "type": "stars",
+      "n": 5
+    },
+    "reward": [
+      {
+        "type": "money",
+        "amount": 50000000
+      }
+    ],
+    "speaker": "halmang",
+    "line": "별 다섯. 이 카페는 백 년 갈 거여."
+  }
+]

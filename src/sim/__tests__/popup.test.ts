@@ -1,3 +1,4 @@
+import { bareState } from './helpers.ts';
 import { X, Y } from './helpers.ts';
 import { createInitialState } from '../state.ts';
 import { apply } from '../actions.ts';
@@ -20,7 +21,7 @@ function run(s: ReturnType<typeof createInitialState>, ms: number) {
   for (let left = ms; left > 0; left -= DAY_MS) tick(s, Math.min(DAY_MS, left));
 }
 /** 6일(주말) 아침으로 */
-function toWeekend(s = createInitialState(1)) {
+function toWeekend(s = bareState(1)) {
   run(s, DAY_MS * 5);
   expect(s.clock.day).toBe(6);
   return s;
@@ -32,7 +33,7 @@ function addStrongLatte(s: ReturnType<typeof createInitialState>) {
   s.unlocked.menus.push(STRONG_LATTE);
 }
 /** 정낭 위 테이블 + 아메리카노·진한 라떼 */
-function cafe(s = createInitialState(1)) {
+function cafe(s = bareState(1)) {
   placeObject(s, 'table_out', X(4), Y(5));
   addStrongLatte(s);
   setSlot(s, 0, 'americano');
@@ -66,7 +67,7 @@ test('주말 판정: 6·13·20·27일만, 다음 주말까지 남은 날', () =>
 });
 
 test('팝업 열기: 주말에만, 비용·이미 열림·돈 부족 거부, 열면 지역 활기·식욕 −8 · 오늘 손님 줄', () => {
-  const s = createInitialState(1);
+  const s = bareState(1);
   expect(apply(s, { type: 'openPopup', regionId: 'dongmun' })).toMatchObject({ ok: false, reason: expect.stringContaining('주말') });
   toWeekend(s);
   expect(apply(s, { type: 'openPopup', regionId: 'nope' }).ok).toBe(false);
@@ -140,7 +141,7 @@ test('팝업 당일에 닫으면 남은 줄은 안 온다 · 열린 채 날이 �
 });
 
 test('메뉴 선택: 취향 분류·예산 안에서 고른다. 없으면 no_menu, 비싸면 price(호감도 0). 취향 스탯이 맞으면 ×2', () => {
-  const s = createInitialState(1);
+  const s = bareState(1);
   setSlot(s, 0, 'cookie'); // 디저트 2500
   const a = resolvePopupVisit(s, 'ng01'); // 음료만 좋아함
   expect(a).toMatchObject({ menuId: null, mood: 'meh', reason: 'no_menu', gain: 0 });
@@ -159,7 +160,7 @@ test('메뉴 선택: 취향 분류·예산 안에서 고른다. 없으면 no_men
 });
 
 test('호감도 100/200/300 → 보상 재료 상자 → 아이템 → 레시피(없으면 마일리지 5), 첫 보상 때 단골★', () => {
-  const s = createInitialState(1);
+  const s = bareState(1);
   const st = namedGuestState(s, 'ng05');
   addAffinity(s, 'ng05', 90);
   expect(st).toMatchObject({ affinity: 90, rewardsTaken: 0, regular: false });
@@ -183,13 +184,13 @@ test('호감도 100/200/300 → 보상 재료 상자 → 아이템 → 레시피
   expect(s.unlocked.menus.length).toBe(menus0 + 1);
   expect(addAffinity(s, 'ng05', 10).reward).toBeNull(); // 더는 없다
   // 아는 메뉴가 다면 마일리지
-  const s2 = createInitialState(2);
+  const s2 = bareState(2);
   namedGuestState(s2, 'ng09').rewardsTaken = 2;
   s2.unlocked.menus = MENUS.map((m) => m.id);
   addAffinity(s2, 'ng09', 300);
   expect(s2.mileage).toBe(5);
   // 한 번에 두 문턱을 넘으면 보상 둘 다
-  const s3 = createInitialState(3);
+  const s3 = bareState(3);
   addAffinity(s3, 'ng10', 250);
   expect(namedGuestState(s3, 'ng10').rewardsTaken).toBe(2);
 });
@@ -237,12 +238,12 @@ test('단골★ 본점 방문: 번호로 정한 요일·시각에 이름 있는 
   // 손님층 만족 게이지에는 안 섞인다
   expect(s.guestTypes[NAMED_TYPE]).toBeUndefined();
   // 좌석이 없으면 못 온다
-  const s2 = createInitialState(1);
+  const s2 = bareState(1);
   expect(spawnNamedGuest(s2, 'ng01')).toBe(false);
 });
 
 test('봇: 주말에 돈이 500만 넘으면 활기 최고 지역에 팝업', () => {
-  const s = createInitialState(7);
+  const s = bareState(7);
   const cur = newBotCursor();
   for (let i = 0; i < 5; i++) botDay(s, cur);
   expect(s.clock.day).toBe(6);

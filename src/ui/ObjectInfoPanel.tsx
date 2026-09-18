@@ -1,6 +1,6 @@
 import { useGame, dispatch } from './store';
-import { objectStats, sceneryScore, canUseItem, itemEffect, PROTECTED_TYPES, canPlant, clearCost, canClearRock, hasPickaxe, cellAt, type ObjectKind, type ComboStrength, buildDaysLeft, josa } from '../sim/index.ts';
-import { objectDef, cropDef, itemDef, CROPS, COMBOS, SETS } from '../data/index.ts';
+import { objectStats, sceneryScore, canUseItem, itemEffect, PROTECTED_TYPES, clearCost, canClearRock, hasPickaxe, cellAt, type ObjectKind, type ComboStrength, buildDaysLeft, josa } from '../sim/index.ts';
+import { objectDef, itemDef, COMBOS, SETS } from '../data/index.ts';
 import { Icon } from './Icon';
 import { Confirm } from './Popup';
 import { RecipeCodex } from './CraftPanel';
@@ -9,7 +9,7 @@ import { brownBtn, brownBtnOn, brownBtnOff, dangerBtn, card, PALETTE, won } from
 
 /** 계열 이름 (아이 눈높이) */
 const KIND_LABEL: Record<ObjectKind, string> = {
-  seat: '자리', field: '농사', tree: '농사', wall: '담', path: '길', building: '건물', deco: '꾸미기', busstop: '정류장', gate: '대문', landmark: '랜드마크', facility: '시설',
+  seat: '자리', tree: '농원', wall: '담', path: '길', building: '건물', deco: '꾸미기', busstop: '정류장', gate: '대문', landmark: '랜드마크', facility: '시설',
 };
 const ARROW: Record<ComboStrength, string> = { up: '↑', upup: '↑↑', down: '↓', none: '✦' };
 const TARGET_LABEL: Record<string, string> = { all: '모두', female: '여성 손님', male: '남성 손님', youth: '젊은 손님', adult: '어른 손님', senior: '삼춘', group: '단체 손님' };
@@ -61,7 +61,6 @@ export function ObjectInfoPanel({ objectId }: { objectId: string }) {
     <div>
       <div style={{ marginBottom: 2 }}>
         <b>{d.name}</b> <span style={{ fontSize: 13, color: PALETTE.inkSoft }}>· {KIND_LABEL[d.kind]}</span>
-        {o.crop && ` · ${cropDef(o.crop.cropId).name} ${o.crop.daysGrown}일째 (익으면 창고로)`}
       </div>
       <div style={{ fontSize: 13, color: PALETTE.inkSoft, marginBottom: 4 }}>{d.desc ?? d.effectText ?? `${d.name}이에요`}</div>
       {o.build && <div style={{ fontSize: 14, color: PALETTE.title, marginBottom: 4 }} data-testid="building">🔨 짓는 중 — 완공까지 {buildDaysLeft(s, o)}일 (일꾼 삼춘이 일하고 있어요)</div>}
@@ -99,14 +98,6 @@ export function ObjectInfoPanel({ objectId }: { objectId: string }) {
           아이템 보너스: 인기 +{s.itemBonus[o.type]!.popularity}{s.itemBonus[o.type]!.feePct > 0 && ` · 요금 +${s.itemBonus[o.type]!.feePct}%`}
         </div>
       )}
-      {d.kind === 'field' && !o.crop && CROPS.filter((c) => s.unlocked.crops.includes(c.id) && c.plantMonths.length > 0).map((c) => {
-        const can = canPlant(s, o.id, c.id);
-        return (
-          <button key={c.id} style={can.ok ? brownBtn : brownBtnOff} disabled={!can.ok} onClick={() => dispatch({ type: 'plant', objectId: o.id, cropId: c.id })}>
-            <Icon name="plant" /> {c.name} 심기{!can.ok && can.reason && ` (${can.reason})`}
-          </button>
-        );
-      })}
       {o.type === 'bush_wild' && <RockPanel x={o.x} y={o.y} />}
       {!PROTECTED_TYPES.has(o.type) && o.type !== 'bush_wild' && (
         <button style={dangerBtn} onClick={() => dispatch({ type: 'remove', objectId: o.id })}><Icon name="remove" /> 치우기 ({d.removeCost ? `${won(d.removeCost)} 들어요` : `${won(d.cost)} 돌려받음`})</button>

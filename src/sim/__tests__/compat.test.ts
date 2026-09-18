@@ -1,3 +1,4 @@
+import { bareState } from './helpers.ts';
 import { X, Y } from './helpers.ts';
 import { createInitialState } from '../state.ts';
 import { placeObject, objectScenery, sceneryScore } from '../grid.ts';
@@ -22,14 +23,14 @@ test('데이터: 귤밭 뷰 콤보는 표에서 ↑·비히든·전체 또는 �
 });
 
 test('상성 거리: 체비쇼프 2칸이면 발동, 3칸이면 아니다', () => {
-  const s = createInitialState(1);
+  const s = bareState(1);
   const t = placeObject(s, 'table_out', X(6), Y(4));
   expect(activeCombos(s, t.id)).toEqual([]);
   const tree = placeObject(s, 'tangerine_tree', X(8), Y(2)); // dx 2, dy 2
   expect(activeCombos(s, t.id).map((c) => c.id)).toEqual([VIEW.id]);
   expect(activeCombos(s, t.id)[0]!.side).toBe('a');
   // 3칸 떨어진 나무는 안 센다
-  const s2 = createInitialState(1);
+  const s2 = bareState(1);
   const t2 = placeObject(s2, 'table_out', X(6), Y(4));
   placeObject(s2, 'tangerine_tree', X(9), Y(4));
   expect(activeCombos(s2, t2.id)).toEqual([]);
@@ -40,7 +41,7 @@ test('상성 거리: 체비쇼프 2칸이면 발동, 3칸이면 아니다', () =
 const BIG: ComboDef = { id: 'cb_test_big', name: '창고 옆', a: 'table_out', bIds: ['warehouse'], bCount: 1, target: 'all', strength: 'upup', applyTo: 'both', hidden: false, radius: 2, effectText: '테스트' };
 
 test('상성 거리: 여러 칸 오브젝트는 가장 가까운 발자국 칸으로 잰다', () => {
-  const s = createInitialState(1); // 폐창고 (3,1) 3×2 → x 3..5, y 1..2
+  const s = bareState(1); // 폐창고 (3,1) 3×2 → x 3..5, y 1..2
   const near = placeObject(s, 'table_out', X(7), Y(4)); // (5,2)에서 dx 2, dy 2
   const far = placeObject(s, 'table_out', X(8), Y(4));  // dx 3
   expect(activeCombos(s, near.id, [BIG]).map((c) => c.id)).toEqual(['cb_test_big']);
@@ -52,7 +53,7 @@ test('상성 거리: 여러 칸 오브젝트는 가장 가까운 발자국 칸�
 
 test('bCount: 필요 개수만큼 B가 있어야 발동', () => {
   const two: ComboDef = { ...BIG, id: 'cb_two', bIds: ['tangerine_tree'], bCount: 2, applyTo: 'a' };
-  const s = createInitialState(1);
+  const s = bareState(1);
   const t = placeObject(s, 'table_out', X(6), Y(4));
   placeObject(s, 'tangerine_tree', X(7), Y(4));
   expect(activeCombos(s, t.id, [two])).toEqual([]);
@@ -61,7 +62,7 @@ test('bCount: 필요 개수만큼 B가 있어야 발동', () => {
 });
 
 test('objectStats: 기본 인기 10·요금 100%에 ↑ 콤보가 +3/+5%를 더한다', () => {
-  const s = createInitialState(1);
+  const s = bareState(1);
   const t = placeObject(s, 'table_out', X(6), Y(4));
   const base = objectStats(s, t.id);
   expect(base.popularity).toBe(BASE_POPULARITY);
@@ -75,7 +76,7 @@ test('objectStats: 기본 인기 10·요금 100%에 ↑ 콤보가 +3/+5%를 더�
 });
 
 test('↑↑·↓ 콤보 값과 인기 상한 40', () => {
-  const s = createInitialState(1);
+  const s = bareState(1);
   const t = placeObject(s, 'table_out', X(7), Y(4));
   expect(objectStats(s, t.id, [BIG]).popularity).toBe(BASE_POPULARITY + COMBO_META.upup.pop);
   expect(objectStats(s, t.id, [BIG]).feePct).toBe(100 + COMBO_META.upup.feePct);
@@ -87,7 +88,7 @@ test('↑↑·↓ 콤보 값과 인기 상한 40', () => {
 });
 
 test('대상 손님층 콤보는 그 태그의 손님층 인기에 ±3', () => {
-  const s = createInitialState(1);
+  const s = bareState(1);
   const t = placeObject(s, 'table_out', X(7), Y(4));
   const senior: ComboDef = { ...BIG, id: 'cb_senior', target: 'senior', strength: 'up' };
   const bonus = segmentBonus(s, t.id, [senior]);
@@ -102,7 +103,7 @@ test('대상 손님층 콤보는 그 태그의 손님층 인기에 ±3', () => {
 });
 
 test('히든 상성은 처음 발동할 때 한 번만 도감에 오르고 알림이 난다', () => {
-  const s = createInitialState(1);
+  const s = bareState(1);
   const hidden: ComboDef = { ...BIG, id: 'cb_hidden', name: '비밀 창고', hidden: true };
   placeObject(s, 'table_out', X(7), Y(4));
   const n0 = s.notices.length;
@@ -115,7 +116,7 @@ test('히든 상성은 처음 발동할 때 한 번만 도감에 오르고 알�
   expect(s.codex.combos).toEqual(['cb_hidden']);
   expect(s.notices.length).toBe(n0 + 1);
   // 보통 상성은 조용히 도감에만
-  const s2 = createInitialState(1);
+  const s2 = bareState(1);
   placeObject(s2, 'table_out', X(7), Y(4));
   discoverCombos(s2, [BIG], []);
   expect(s2.codex.combos).toEqual(['cb_test_big']);
@@ -123,7 +124,7 @@ test('히든 상성은 처음 발동할 때 한 번만 도감에 오르고 알�
 });
 
 test('place 액션이 상성 발견을 돌린다', () => {
-  const s = createInitialState(1);
+  const s = bareState(1);
   apply(s, { type: 'place', objectType: 'table_out', x: X(6), y: Y(4) });
   expect(s.codex.combos).toEqual([]);
   apply(s, { type: 'place', objectType: 'tangerine_tree', x: X(7), y: Y(4) });
@@ -134,7 +135,7 @@ const EMO = SETS.find((x) => x.id.includes('emotional'))!;
 
 test('세트: 반경 3 안에 필요 시설이 1배·2배·3배면 레벨 1·2·3', () => {
   expect(EMO.requires).toEqual(expect.arrayContaining([{ objectId: 'tangerine_tree', count: 2 }, { objectId: 'table_out', count: 2 }, { objectId: 'stonewall', count: 1 }]));
-  const s = createInitialState(1);
+  const s = bareState(1);
   const t = placeObject(s, 'table_out', X(6), Y(4));
   placeObject(s, 'tangerine_tree', X(7), Y(4));
   placeObject(s, 'stonewall', X(8), Y(4));
@@ -152,14 +153,14 @@ test('세트: 반경 3 안에 필요 시설이 1배·2배·3배면 레벨 1·2·
   placeObject(s, 'stonewall', X(4), Y(3));
   expect(setLevels(s, t.id, [EMO])[0]).toMatchObject({ level: 3, mult: 1.35 });
   // 반경 밖(4칸)의 것은 안 센다
-  const s2 = createInitialState(1);
+  const s2 = bareState(1);
   const t2 = placeObject(s2, 'table_out', X(2), Y(4));
   placeObject(s2, 'table_out', X(6), Y(4)); placeObject(s2, 'tangerine_tree', X(6), Y(5)); placeObject(s2, 'tangerine_tree', X(6), Y(3)); placeObject(s2, 'stonewall', X(6), Y(6));
   expect(setLevels(s2, t2.id, [EMO])).toEqual([]);
 });
 
 test('세트 배수는 대상 태그 손님에게만 인기를 곱한다', () => {
-  const s = createInitialState(1);
+  const s = bareState(1);
   const t = placeObject(s, 'table_out', X(6), Y(4));
   placeObject(s, 'table_out', X(6), Y(5));
   placeObject(s, 'tangerine_tree', X(7), Y(4)); placeObject(s, 'tangerine_tree', X(7), Y(5));
@@ -186,7 +187,7 @@ test('계절 경치: 유채는 봄에 +12, 상한 30', () => {
   expect(objectScenery(own, 'summer')).toBe(30);
   expect(objectScenery(own, 'spring')).toBe(2); // 정의에 seasonScenery가 있으면 표는 안 본다
   // objectStats.scenery는 자기 경치 + 계절 (돌담은 계절 없음)
-  const s = createInitialState(1);
+  const s = bareState(1);
   const w = placeObject(s, 'stonewall', X(6), Y(4));
   expect(objectStats(s, w.id).scenery).toBe(objectDef('stonewall').scenery);
   // 주변 경치 점수도 같은 헬퍼를 쓴다 (돌담 +1)
@@ -200,7 +201,7 @@ import { upkeep } from '../economy.ts';
 import { PREP_MS } from '../guests.ts';
 
 test('좌석 요금 배수: 귤밭 뷰(+5%)가 메뉴 가격에 곱해진다', () => {
-  const s = createInitialState(1);
+  const s = bareState(1);
   placeObject(s, 'table_out', X(4), Y(5)); // 정낭 (4,6) 위
   placeObject(s, 'tangerine_tree', X(5), Y(5));
   setSlot(s, 0, 'carrot_juice');
@@ -217,7 +218,7 @@ test('만족: 인기 보너스는 기본 10에서 3마다 경치 1점', () => {
   expect(popularityBonus(BASE_POPULARITY + POP_PER_SCENERY)).toBe(1);
   expect(popularityBonus(BASE_POPULARITY - POP_PER_SCENERY)).toBe(-1);
   // 경치 2가 필요한 관광객: 나무(경치 1) 하나론 meh, 인기 보너스(+3 → +1)로 happy
-  const s = createInitialState(1);
+  const s = bareState(1);
   placeObject(s, 'table_out', X(4), Y(5));
   placeObject(s, 'tangerine_tree', X(5), Y(5));
   setSlot(s, 0, 'carrot_juice');
@@ -231,7 +232,7 @@ test('만족: 인기 보너스는 기본 10에서 3마다 경치 1점', () => {
 });
 
 test('유지비는 objectStats.upkeep을 쓴다', () => {
-  const s = createInitialState(1);
+  const s = bareState(1);
   placeObject(s, 'table_out', X(4), Y(5));
   const m0 = s.money;
   upkeep(s);

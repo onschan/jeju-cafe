@@ -1,5 +1,7 @@
+import { bareState } from './helpers.ts';
 import { X, Y } from './helpers.ts';
 import { createInitialState } from '../state.ts';
+import { emptyMonthHarvest } from '../orchard.ts';
 import { apply } from '../actions.ts';
 import { tick } from '../tick.ts';
 import { DAY_MS } from '../clock.ts';
@@ -31,7 +33,7 @@ test('데이터: 가이드북 11 (해금·가중치 합 1·상금), ★ 5단계 
 });
 
 test('랭크 점수·문턱: 누적 손님/50 + 시설×2 + 해금 손님층×5, 길·돌담·본관은 시설로 안 센다', () => {
-  const s = createInitialState(1);
+  const s = bareState(1);
   expect(facilityCount(s)).toBe(0);
   expect(rankScore(s)).toBe(3 * 5); // 시작 손님층 3
   placeObject(s, 'path', X(4), Y(5));
@@ -52,7 +54,7 @@ test('랭크 점수·문턱: 누적 손님/50 + 시설×2 + 해금 손님층×5,
 });
 
 test('랭크 2에 오르면 랭크 해금 시설(실내 테이블·주차장)과 손님(렌터카 가족)이 열린다', () => {
-  const s = createInitialState(1);
+  const s = bareState(1);
   s.totalGuests = RANK_THRESHOLDS[1]! * GUESTS_PER_POINT;
   tick(s, DAY_MS); // 월초 evaluateUnlocks는 다음 달이지만 place 뒤에도 돈다
   placeObject(s, 'table_out', X(6), Y(4));
@@ -64,8 +66,8 @@ test('랭크 2에 오르면 랭크 해금 시설(실내 테이블·주차장)과
 });
 
 function richState(): GameState {
-  const s = createInitialState(1);
-  s.lastMonthCard = { income: 400_000, guests: 100, month: 3, year: 1, costs: { ingredients: 0, salary: 0, ads: 0, upkeep: 0, recruit: 0 }, net: 400_000 };
+  const s = bareState(1);
+  s.lastMonthCard = { income: 400_000, guests: 100, month: 3, year: 1, costs: { ingredients: 0, salary: 0, ads: 0, upkeep: 0, recruit: 0 }, net: 400_000, ...emptyMonthHarvest(), topMenu: null };
   s.lastMonthIncome = 400_000;
   return s;
 }
@@ -81,8 +83,8 @@ test('★ 조건 문구 해석: 월 매출·메뉴·직원·손님층 만족·�
   const s = richState();
   expect(starConditionMet(s, '월 매출 100,000')).toBe(true);
   expect(starConditionMet(s, '월 매출 800,000')).toBe(false);
-  expect(starConditionMet(s, '메뉴 8')).toBe(true); // 시작 메뉴 12
-  expect(starConditionMet(s, '메뉴 15')).toBe(false);
+  expect(starConditionMet(s, '메뉴 3')).toBe(true); // v3 시작 메뉴 3 (아메리카노·라떼·감귤주스)
+  expect(starConditionMet(s, '메뉴 4')).toBe(false);
   expect(starConditionMet(s, '직원 1')).toBe(false);
   s.staff.push({ id: 's1', name: 'a', face: { hair: 0, skin: 0, top: 0 }, stats: { stamina: 10, strength: 10, skill: 10, smile: 50 }, skill: 'none', level: 1, salary: 0, role: 'hall', unpaidMonths: 0, energy: 100, lastParttimeMonthIndex: -1, x: 0, y: 0, path: [], anchor: null, waitMs: 0 });
   expect(starConditionMet(s, '직원 1')).toBe(true);
@@ -105,8 +107,8 @@ test('★ 승급: 다음 ★ 조건을 다 채우면 월초 검사에서 한 단
   const s = richState();
   expect(nextStarConditions(s)!.star).toBe(2);
   expect(nextStarConditions(s)!.conditions.map((c) => c.text)).toEqual(['월 매출 300,000', '메뉴 15', '손님층 4 만족 30']);
-  expect(checkStar(s)).toBeNull(); // 메뉴 12·손님층 만족 0
-  for (let i = 0; i < 3; i++) s.unlocked.menus.push(`m${i}`);
+  expect(checkStar(s)).toBeNull(); // 메뉴 3·손님층 만족 0
+  for (let i = 0; i < 12; i++) s.unlocked.menus.push(`m${i}`); // 3 + 12 = 15
   for (const id of GUEST_TYPES.slice(0, 4).map((t) => t.id)) { unlockGuestType(s, id); s.guestTypes[id]!.satisfaction = 30; }
   expect(nextStarConditions(s)!.conditions.every((c) => c.met)).toBe(true);
   expect(checkStar(s)).toBe(2);
@@ -122,7 +124,7 @@ test('★ 승급: 다음 ★ 조건을 다 채우면 월초 검사에서 한 단
 });
 
 test('심사 점수는 모두 0~100이고 같은 상태면 같은 값(결정적), 직원·좌석이 생기면 미소·경관이 오른다', () => {
-  const s = createInitialState(1);
+  const s = bareState(1);
   const a = judgeScores(s);
   for (const k of JUDGE_KEYS) { expect(a[k]).toBeGreaterThanOrEqual(0); expect(a[k]).toBeLessThanOrEqual(100); }
   expect(a.scenery).toBe(0);
@@ -158,7 +160,7 @@ test('경쟁 카페 9곳: seed·가이드북·년차로 결정적, 년차가 오
 });
 
 test('가이드북 해금: 시작은 친절 카페만, 1년 7월에 동네 맛집 지도, 먹거리 5개면 미식 카페', () => {
-  const s = createInitialState(1);
+  const s = bareState(1);
   expect(s.guidebooks['gb_kind_cafe']!.unlocked).toBe(true);
   expect(s.guidebooks['gb_local_map']!.unlocked).toBe(false);
   expect(evaluateGuidebooks(s)).toEqual([]);
@@ -171,7 +173,7 @@ test('가이드북 해금: 시작은 친절 카페만, 1년 7월에 동네 맛�
 });
 
 test('발표: 3·9월에 해금된 가이드북을 채점해 순위·상금·연구·마일리지·씨앗(1위), best 갱신, lastAnnouncement', () => {
-  const s = createInitialState(1);
+  const s = bareState(1);
   s.clock.month = 9;
   expect(guidebooksToAnnounce(s).map((g) => g.id)).toEqual(['gb_kind_cafe']);
   s.clock.month = 4;
@@ -201,7 +203,7 @@ test('발표: 3·9월에 해금된 가이드북을 채점해 순위·상금·연
 });
 
 test('발표 시점: 9월 1일 월초에 lastAnnouncement가 생기고, 다른 달엔 생기지 않는다 (월간 추천은 매월)', () => {
-  const s = createInitialState(2);
+  const s = bareState(2);
   s.clock.month = 8;
   s.clock.day = 30;
   s.clock.hour = 23;

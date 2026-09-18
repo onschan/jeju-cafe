@@ -1,4 +1,0 @@
-[
-  { "id": "carrot", "name": "당근", "growDays": 60, "plantMonths": [9, 10, 11], "yieldAmount": 4 },
-  { "id": "tangerine", "name": "감귤", "growDays": 1080, "plantMonths": [], "harvestMonths": [11, 12, 1], "yieldAmount": 12 }
-]

@@ -1,5 +1,5 @@
+import { bareState } from './helpers.ts';
 import { X, Y } from './helpers.ts';
-import { createInitialState } from '../state.ts';
 import { apply } from '../actions.ts';
 import { placeObject } from '../grid.ts';
 import { setSlot } from '../menu.ts';
@@ -12,7 +12,7 @@ import { objectDef } from '../../data/index.ts';
 import type { GameState } from '../types.ts';
 
 function cafe() {
-  const s = createInitialState(1);
+  const s = bareState(1);
   const seat = placeObject(s, 'table_out', X(4), Y(5)); // 정낭(4,6) 바로 위
   setSlot(s, 0, 'carrot_juice');
   s.storage['carrot'] = 10;
@@ -21,7 +21,7 @@ function cafe() {
 }
 
 test('카페 이름: 기본 "제주 카페", 1~12자, 로그에 남는다', () => {
-  const s = createInitialState(1);
+  const s = bareState(1);
   expect(s.cafeName).toBe(DEFAULT_CAFE_NAME);
   expect(apply(s, { type: 'renameCafe', name: '   ' }).reason).toBe('이름을 적어 주세요');
   expect(apply(s, { type: 'renameCafe', name: '가'.repeat(13) }).ok).toBe(false);
@@ -31,7 +31,7 @@ test('카페 이름: 기본 "제주 카페", 1~12자, 로그에 남는다', () =
 });
 
 test('카페 레벨: 누적 매출 구간 1~5, 손님 주문·시설 이용료가 쌓인다', () => {
-  const s = createInitialState(1);
+  const s = bareState(1);
   expect(cafeLevel(s)).toBe(1);
   expect(nextCafeLevelIncome(s)).toBe(CAFE_LEVEL_INCOME[1]);
   s.totalIncome = 10_000_000; expect(cafeLevel(s)).toBe(2);
@@ -45,7 +45,7 @@ test('카페 레벨: 누적 매출 구간 1~5, 손님 주문·시설 이용료�
 });
 
 test('증축: 주방(요리 슬롯 +1)·2층(본관 4석)·테라스(야외 좌석 −20%), 한 번씩, 돈이 있어야', () => {
-  const s = createInitialState(1);
+  const s = bareState(1);
   expect(EXPANSIONS.map((e) => e.id)).toEqual(['kitchen', 'floor2', 'terrace']);
   expect(apply(s, { type: 'expand', id: 'nope' }).ok).toBe(false);
   s.money = 1_000_000;
@@ -61,7 +61,7 @@ test('증축: 주방(요리 슬롯 +1)·2층(본관 4석)·테라스(야외 좌�
   expect(apply(s, { type: 'expand', id: 'terrace' }).ok).toBe(true);
   expect(placeCost(s, 'table_out')).toBe(40_000);
   expect(placeCost(s, 'table_in')).toBe(800_000);
-  expect(placeCost(s, 'field')).toBe(30_000);
+  expect(placeCost(s, 'carrot_field')).toBe(60_000); // 야외 좌석이 아닌 것은 그대로
   const m0 = s.money;
   expect(apply(s, { type: 'place', objectType: 'table_out', x: X(0), y: Y(0) }).ok).toBe(true);
   expect(s.money).toBe(m0 - 40_000);
@@ -77,7 +77,7 @@ test('증축: 주방(요리 슬롯 +1)·2층(본관 4석)·테라스(야외 좌�
 });
 
 test('2층 손님: 문 앞에 길이 있으면 본관으로 걸어가 앉는다', () => {
-  const s = createInitialState(1);
+  const s = bareState(1);
   s.money = 1e9;
   apply(s, { type: 'expand', id: 'floor2' });
   for (let y = 3; y <= 5; y++) placeObject(s, 'path', X(4), Y(y));
@@ -93,7 +93,7 @@ test('2층 손님: 문 앞에 길이 있으면 본관으로 걸어가 앉는다'
 });
 
 test('인테리어: 외벽 색 0~2, 간판 10자', () => {
-  const s = createInitialState(1);
+  const s = bareState(1);
   expect(s.cosmetics).toEqual({ wallColor: 0, sign: '' });
   expect(apply(s, { type: 'setCosmetic', wallColor: 3 }).ok).toBe(false);
   expect(apply(s, { type: 'setCosmetic', wallColor: 2, sign: ' 귤향 ' }).ok).toBe(true);
@@ -102,7 +102,7 @@ test('인테리어: 외벽 색 0~2, 간판 10자', () => {
 });
 
 test('칭찬하기: 기력 +10, 직원당 하루 한 번', () => {
-  const s = createInitialState(1);
+  const s = bareState(1);
   s.money = 1e9;
   postJob(s, 'flyer');
   const st = hire(s, s.candidates[0]!.id, 'hall');
@@ -157,7 +157,7 @@ test('시설 순회: 앉았다 일어난 손님이 40%로 닿는 시설에 들�
   }
   expect(visited).toBe(true);
   // pickVisit: 닿지 않는 시설은 안 고른다
-  const s2 = createInitialState(1);
+  const s2 = bareState(1);
   placeObject(s2, 'vending', X(5), Y(1));
   let picked = 0;
   for (let i = 0; i < 20; i++) { const r = pickVisit(s2, { type: 'student' } as never, { x: X(4), y: Y(6) }); if (r) picked++; }

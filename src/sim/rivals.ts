@@ -113,6 +113,7 @@ export function challenge(state: GameState, rivalStateId: string, menuId: string
   const win = score > power;
   const result: ChallengeResult = { rivalStateId, rivalId: r.rivalId, menuId, menuName: menuOf(state, menuId).name, breakdown, score, luck, power, win };
   if (win) {
+    state.stats.rivalWins++;
     addMileage(state, CHALLENGE_WIN_MILEAGE, `${josa(def.name, '과/와')}의 대결 승리`);
     rivalLeave(state, r, '대결에 져서 철수했어요');
   } else {

@@ -1,7 +1,7 @@
 import type { GameState, Cell, PlacedObject, ApplyResult, ObjectDef, Season, Pt } from './types.ts';
 import { objectDef, SEASON_SCENERY } from '../data/index.ts';
 import { parcelAt, parcelSceneryBonus } from './parcels.ts';
-import { seasonOf } from './clock.ts';
+import { seasonOf, monthIndex } from './clock.ts';
 
 /** 바위 치우기 비용: 작은 바위 30만, 큰 바위(오름 능선) 100만, 곶자왈 덤불 5만. 곡괭이가 있으면 무료(1개 소모). */
 export const ROCK_CLEAR_COST = 300_000;
@@ -150,7 +150,7 @@ export function canPlace(state: GameState, type: string, x: number, y: number, i
   if (def.indoor && roomIds.size > 1) return { ok: false, reason: '한 방 안에 놓아요' };
   if (def.room) {
     // 새 방의 문 앞 칸이 막혀 있으면(다른 오브젝트·격자 밖) 손님이 못 들어온다
-    const f = doorFrontOf({ id: '', type, x, y, crop: null });
+    const f = doorFrontOf({ id: '', type, x, y, placedMonth: 0 });
     if (!inBounds(state, f.x, f.y)) return { ok: false, reason: '문 앞이 격자 밖이에요' };
     const front = objectAt(state, f.x, f.y);
     if (front && front.id !== ignoreId && blocksDoorFront(objectDef(front.type))) return { ok: false, reason: '문 앞이 막혀 있어요' };
@@ -165,12 +165,8 @@ export function canPlace(state: GameState, type: string, x: number, y: number, i
 /** 검사 없이 놓는다. 호출 전 canPlace로 확인할 것. */
 export function placeObject(state: GameState, type: string, x: number, y: number, rot?: number): PlacedObject {
   const id = `o${state.nextId++}`;
-  const obj: PlacedObject = { id, type, x, y, crop: null };
+  const obj: PlacedObject = { id, type, x, y, placedMonth: monthIndex(state.clock) };
   if (rot !== undefined) obj.rot = rot;
-  const def = objectDef(type);
-  if (def.kind === 'tree' && def.cropId) {
-    obj.crop = { cropId: def.cropId, daysGrown: 0, ready: false, harvestedYear: -1 };
-  }
   state.objects[id] = obj;
   occupy(state, obj);
   return obj;
@@ -183,7 +179,7 @@ export function removeObject(state: GameState, objectId: string): void {
   delete state.objects[objectId];
 }
 
-/** 자리를 옮긴다 (검사 없이). 작물·방향은 유지. */
+/** 자리를 옮긴다 (검사 없이). 방향·놓은 달은 유지. */
 export function relocateObject(state: GameState, obj: PlacedObject, x: number, y: number): void {
   vacate(state, obj);
   obj.x = x;

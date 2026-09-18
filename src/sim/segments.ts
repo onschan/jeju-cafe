@@ -4,7 +4,7 @@ import { nextRandom, pickWeighted } from './rng.ts';
 import { monthIndex } from './clock.ts';
 import { pushNotice } from './staff.ts';
 import { grantItem } from './items.ts';
-import { pushFx } from './farm.ts';
+import { pushFx } from './fx.ts';
 import { parcelAt } from './parcels.ts';
 import { updateRank } from './rank.ts';
 import { josa } from './josa.ts';
@@ -87,6 +87,7 @@ export function unlockCondMet(state: GameState, c: UnlockCond): boolean {
     case 'count': return countObjects(state, c.objectId) >= c.count;
     case 'category': return countCategory(state, c.category) >= c.count;
     case 'segmentPop': return (state.segmentPopularity[canonicalGuestId(c.guestId)] ?? 0) >= c.popularity;
+    case 'goal': return false; // 목표 보상(goals.ts)이 직접 unlocked.objects에 넣는다
     case 'all': return c.conditions.every((x) => unlockCondMet(state, x));
   }
 }

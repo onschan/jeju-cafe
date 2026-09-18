@@ -1,5 +1,5 @@
+import { bareState } from './helpers.ts';
 import { X, Y } from './helpers.ts';
-import { createInitialState } from '../state.ts';
 import { apply } from '../actions.ts';
 import { tick } from '../tick.ts';
 import { DAY_MS } from '../clock.ts';
@@ -10,20 +10,21 @@ import { seatsOf } from '../cafe.ts';
 import { freeSeats } from '../guests.ts';
 import { FACILITIES, objectDef, BUILD_DAYS_BY_TIER } from '../../data/index.ts';
 
-/** 시작부터 열려 있는 v2 시설 중 건설 기간이 있는 것 (테라스 좌석 등) */
-const BUILT = FACILITIES.find((f) => f.unlock?.type === 'start' && (f.buildDays ?? 0) > 0 && f.kind === 'seat' && !f.indoor)!;
+/** 건설 기간이 있는 야외 좌석 v2 시설 (테라스 좌석 등). v3에선 목표 보상으로 열리므로 테스트에서 직접 해금한다 */
+const BUILT = FACILITIES.find((f) => (f.buildDays ?? 0) > 0 && f.kind === 'seat' && !f.indoor)!;
 
-test('데이터: v2 시설은 소/중/대 → 1/3/7일, 기본 오브젝트(밭·길·야외 테이블)는 즉시', () => {
+test('데이터: v2 시설은 소/중/대 → 1/3/7일, 기본 오브젝트(당근밭·길·야외 테이블)는 즉시', () => {
   expect(BUILD_DAYS_BY_TIER).toEqual({ small: 1, medium: 3, large: 7 });
   expect(FACILITIES.every((f) => (f.buildDays ?? 0) >= 1)).toBe(true);
   expect(new Set(FACILITIES.map((f) => f.buildDays))).toEqual(new Set([1, 3, 7]));
-  for (const t of ['field', 'path', 'table_out', 'tangerine_tree', 'stonewall']) expect(buildDaysOf(t)).toBe(0);
+  for (const t of ['carrot_field', 'path', 'table_out', 'tangerine_tree', 'stonewall']) expect(buildDaysOf(t)).toBe(0);
   expect(FACILITIES.every((f) => f.category !== undefined)).toBe(true);
 });
 
 test('건설: 놓으면 build 표식(남은 날), 좌석은 앉을 수 없고, 날이 지나면 완공 알림·반짝임·장면', () => {
-  const s = createInitialState(1);
+  const s = bareState(1);
   s.money = 100_000_000;
+  s.unlocked.objects.push(BUILT.id);
   const days = buildDaysOf(BUILT.id);
   expect(days).toBeGreaterThan(0);
   expect(apply(s, { type: 'place', objectType: BUILT.id, x: X(6), y: Y(4) }).ok).toBe(true);
@@ -45,8 +46,9 @@ test('건설: 놓으면 build 표식(남은 날), 좌석은 앉을 수 없고, �
 });
 
 test('동시 건설은 일꾼 수(기본 2)까지, 일꾼을 사면 늘어난다. 즉시 완공 종류는 일꾼이 필요 없다.', () => {
-  const s = createInitialState(1);
+  const s = bareState(1);
   s.money = 100_000_000;
+  s.unlocked.objects.push(BUILT.id);
   expect(s.builders).toBe(START_BUILDERS);
   expect(apply(s, { type: 'place', objectType: BUILT.id, x: X(6), y: Y(4) }).ok).toBe(true);
   expect(apply(s, { type: 'place', objectType: BUILT.id, x: X(7), y: Y(4) }).ok).toBe(true);

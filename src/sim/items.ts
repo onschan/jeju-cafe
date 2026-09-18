@@ -1,5 +1,5 @@
 import type { GameState, ApplyResult, ItemDef, ObjectDef, ItemSlot, ObjectKind } from './types.ts';
-import { pushFx } from './farm.ts';
+import { pushFx } from './fx.ts';
 import { ITEMS, itemDef, objectDef } from '../data/index.ts';
 
 /** 같은 종류 시설에 누적되는 아이템 인기 보너스 상한 */
@@ -8,7 +8,7 @@ export const ITEM_FEE_CAP = 30;
 const ITEM_BY_ID = new Map(ITEMS.map((i) => [i.id, i] as const));
 
 const SLOT_OF: Record<ObjectKind, ItemSlot> = {
-  seat: 'seat', field: 'farm', tree: 'farm', wall: 'env', path: 'env', deco: 'env', landmark: 'env',
+  seat: 'seat', tree: 'farm', wall: 'env', path: 'env', deco: 'env', landmark: 'env',
   building: 'facility', busstop: 'facility', gate: 'facility', facility: 'facility',
 };
 
@@ -23,7 +23,7 @@ export function itemEffect(item: ItemDef, def: ObjectDef): number {
   if (item.stat === 'scenery') return SCENERY_KINDS.has(def.kind) || def.scenery > 0 ? item.value : 0;
   if (item.fitIds.includes(def.id)) return item.value * 2;
   if (item.fitSlots) {
-    const k = item.fitSlots[SLOT_OF[def.kind]] ?? 0;
+    const k = item.fitSlots[def.yield ? 'farm' : SLOT_OF[def.kind]] ?? 0; // 농원 시설(당근밭 등)은 farm 칸
     return k <= 0 ? 0 : k >= 3 ? item.value * 2 : item.value;
   }
   return item.fitIds.length > 0 ? 0 : item.value;

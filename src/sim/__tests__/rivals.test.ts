@@ -1,3 +1,4 @@
+import { bareState } from './helpers.ts';
 import { createInitialState } from '../state.ts';
 import { apply } from '../actions.ts';
 import { tick } from '../tick.ts';
@@ -27,7 +28,7 @@ function addRival(s: ReturnType<typeof createInitialState>, rivalId: string, ope
 function spawnRate(y: number, n = 400): number {
   let hits = 0;
   for (let seed = 1; seed <= n; seed++) {
-    const s = year(createInitialState(seed), y);
+    const s = year(bareState(seed), y);
     monthlyRivals(s);
     if (s.rivals.length > 0) hits++;
   }
@@ -52,7 +53,7 @@ test('생성: 3년차부터 월 10%(seed 통계), 2년차엔 안 생기고 동�
   const p = spawnRate(3);
   expect(p).toBeGreaterThan(RIVAL_MONTHLY_CHANCE - 0.05);
   expect(p).toBeLessThan(RIVAL_MONTHLY_CHANCE + 0.05);
-  const s = year(createInitialState(1), 3);
+  const s = year(bareState(1), 3);
   addRival(s, 'rv_local_cafe');
   addRival(s, 'rv_truck_cafe');
   for (let i = 0; i < 50; i++) { s.rng = i * 7919; monthlyRivals(s); }
@@ -60,7 +61,7 @@ test('생성: 3년차부터 월 10%(seed 통계), 2년차엔 안 생기고 동�
   // tick으로도 생긴다: 3년차 첫 달들을 seed 몇 개로 돌려 하나라도
   let any = false;
   for (let seed = 1; seed <= 12 && !any; seed++) {
-    const t = createInitialState(seed);
+    const t = bareState(seed);
     t.clock.year = 3; t.clock.month = 1; t.clock.day = 30; t.clock.hour = 23;
     for (let m = 0; m < 6; m++) for (let d = 0; d < 30; d++) tick(t, DAY_MS);
     any = t.actionLog.length >= 0 && t.notices.some((n) => n.includes('라이벌 카페'));
@@ -69,7 +70,7 @@ test('생성: 3년차부터 월 10%(seed 통계), 2년차엔 안 생기고 동�
 });
 
 test('효과: 매월 단골★ 1명 이탈(랜덤), 양·보기 −5% 누적, 합 −50% 상한', () => {
-  const s = year(createInitialState(1), 2); // 2년차: 새 라이벌이 끼어들지 않는다
+  const s = year(bareState(1), 2); // 2년차: 새 라이벌이 끼어들지 않는다
   for (const id of ['ng01', 'ng02', 'ng03']) { namedGuestState(s, id).regular = true; namedGuestState(s, id).rewardsTaken = 1; }
   const r = addRival(s, 'rv_local_cafe');
   const cheesecakeLook = menuDef('cheesecake').stats.look; // 6, volume 14
@@ -93,7 +94,7 @@ test('효과: 매월 단골★ 1명 이탈(랜덤), 양·보기 −5% 누적, �
 });
 
 test('대결 심사: 가중치 × 스탯 + 운(0~4) vs 규모 × 년차. 승리: 철수·마일리지 2·단골 회수 / 패배: 인기 −5. 한 달 한 번', () => {
-  const s = year(createInitialState(1), 3);
+  const s = year(bareState(1), 3);
   namedGuestState(s, 'ng01').regular = true;
   const r = addRival(s, 'rv_local_cafe'); // 맛 0.5·향 0.3·제주 0.2, 소 → 6 × 1.2 = 7.2
   expect(rivalPower(rivalDef('rv_local_cafe'), 3)).toBe(7.2);
@@ -121,6 +122,7 @@ test('대결 심사: 가중치 × 스탯 + 운(0~4) vs 규모 × 년차. 승리:
   expect(s.lastChallenge).toBeNull();
   // 패배: 대형(10 × 1.2 = 12)에 쿠키(맛 7·양 7·보기 1 → 2.1 + 2.8 + 0.3 = 5.2)로는 운 4를 더해도 못 이긴다
   const big = addRival(s, 'rv_franchise');
+  s.unlocked.menus.push('cookie'); // v3 시작 메뉴는 3종뿐
   const pop0 = s.popularity;
   expect(apply(s, { type: 'challenge', rivalId: big.id, menuId: 'cookie' }).ok).toBe(true);
   expect(s.lastChallenge).toMatchObject({ win: false, power: 12 });
@@ -135,7 +137,7 @@ test('파산·자진 철수: 대형은 월 15%(seed 통계)로 파산, 12개월 
   let bankrupt = 0;
   const N = 400;
   for (let seed = 1; seed <= N; seed++) {
-    const s = year(createInitialState(seed), 2);
+    const s = year(bareState(seed), 2);
     addRival(s, 'rv_big_brand');
     monthlyRivals(s);
     if (s.rivals.length === 0) bankrupt++;
@@ -144,12 +146,12 @@ test('파산·자진 철수: 대형은 월 15%(seed 통계)로 파산, 12개월 
   expect(bankrupt / N).toBeLessThan(0.20);
   // 소형은 파산하지 않는다
   for (let seed = 1; seed <= 50; seed++) {
-    const s = year(createInitialState(seed), 2);
+    const s = year(bareState(seed), 2);
     addRival(s, 'rv_truck_cafe');
     monthlyRivals(s);
     expect(s.rivals).toHaveLength(1);
   }
-  const s = year(createInitialState(1), 2);
+  const s = year(bareState(1), 2);
   const r = addRival(s, 'rv_truck_cafe', monthIndex(s.clock) - RIVAL_LEAVE_MONTHS + 1);
   namedGuestState(s, 'ng07').regular = false;
   r.stolen.push('ng07');
@@ -160,14 +162,14 @@ test('파산·자진 철수: 대형은 월 15%(seed 통계)로 파산, 12개월 
   expect(s.rivals).toHaveLength(0);
   expect(namedGuestState(s, 'ng07').regular).toBe(true);
   expect(s.notices.some((n) => n.includes('자진 철수'))).toBe(true);
-  const s2 = year(createInitialState(2), 3);
+  const s2 = year(bareState(2), 3);
   const r2 = addRival(s2, 'rv_sns_cafe');
   rivalLeave(s2, r2, '떠났어요');
   expect(rivalState(s2, r2.id)).toBeUndefined();
 });
 
 test('세이브: 라이벌·대결 결과가 저장·복원된다', () => {
-  const s = year(createInitialState(1), 3);
+  const s = year(bareState(1), 3);
   addRival(s, 'rv_sns_cafe');
   apply(s, { type: 'challenge', rivalId: s.rivals[0]!.id, menuId: 'americano' });
   const c = deserialize(serialize(s));

@@ -10,6 +10,6 @@
   { "id": "ice", "name": "얼음", "kind": "bought", "cost": 100 },
   { "id": "cheese", "name": "치즈", "kind": "bought", "cost": 1400 },
   { "id": "cocoa", "name": "코코아", "kind": "bought", "cost": 900 },
-  { "id": "carrot", "name": "당근", "kind": "farm", "cost": 0 },
-  { "id": "tangerine", "name": "감귤", "kind": "farm", "cost": 0 }
+  { "id": "carrot", "name": "당근", "kind": "farm", "cost": 400 },
+  { "id": "tangerine", "name": "감귤", "kind": "farm", "cost": 700 }
 ]

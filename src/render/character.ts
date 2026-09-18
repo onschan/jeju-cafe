@@ -45,7 +45,6 @@ export const ROLE_ACC: Record<RoleId, AccKind> = {
   hall: 'apron',
   barista: 'cap',
   cook: 'apron',
-  field: 'strawhat',
   carry: 'backpack',
   guide: 'glasses',
 };
@@ -85,8 +84,17 @@ export function guestParts(face: Face, tags: GuestTags, wants: GuestWant[]): Cha
 
 /** 이름 있는 손님(지역 손님 56) 파츠: face.seed로 정한 얼굴 + 고정 액세서리(시드로 결정, 없음도 있다). 돌하르방 마을은 액세서리 없이 회색 머리. */
 const NAMED_ACCS: (AccKind | null)[] = [null, 'glasses', 'cap', 'camera', 'strawhat', 'backpack', null];
+/** 특별 손님(빅 이벤트, face.seed 101~103)의 고정 생김새: 백중원=짧은 머리·모자, 이요리·이장순=단발·안경, 유아이=긴 머리 */
+const SPECIAL_LOOKS: Record<number, Pick<CharacterParts, 'hairStyle' | 'hairColor' | 'accs'>> = {
+  101: { hairStyle: 1, hairColor: 0, accs: ['cap'] },
+  102: { hairStyle: 0, hairColor: 1, accs: ['glasses'] },
+  103: { hairStyle: 6, hairColor: 0, accs: [] },
+};
+
 export function namedGuestParts(face: Face, seed: number, regionId: string): CharacterParts {
   const base = partsOfFace(face);
+  const special = SPECIAL_LOOKS[seed];
+  if (special) return { ...base, ...special };
   if (regionId === 'dolhareubang') return { ...base, hairColor: 4, hairStyle: 4 + (seed % 4), accs: [] };
   const acc = NAMED_ACCS[seed % NAMED_ACCS.length] ?? null;
   return { ...base, hairStyle: seed % HAIR_STYLE_COUNT, accs: acc ? [acc] : [] };

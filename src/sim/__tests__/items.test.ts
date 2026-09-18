@@ -1,5 +1,5 @@
+import { bareState } from './helpers.ts';
 import { X, Y } from './helpers.ts';
-import { createInitialState } from '../state.ts';
 import { placeObject } from '../grid.ts';
 import { apply } from '../actions.ts';
 import { grantItem, itemEffect, canUseItem, useItem, ITEM_POP_CAP } from '../items.ts';
@@ -9,25 +9,25 @@ import type { ItemDef } from '../types.ts';
 
 const CUSHION = ITEMS.find((i) => i.id === 'cushion') ?? ITEMS[0]!;
 
-test('데이터: 아이템 12+ 종, 방석은 좌석에 잘 맞고 밭엔 못 쓴다', () => {
+test('데이터: 아이템 12+ 종, 방석은 좌석에 잘 맞고 농원(당근밭)엔 못 쓴다', () => {
   expect(ITEMS.length).toBeGreaterThanOrEqual(12);
   expect(itemDef(CUSHION.id)).toBe(CUSHION);
   if (CUSHION.id === 'cushion') {
     expect(itemEffect(CUSHION, objectDef('table_out'))).toBe(CUSHION.value * 2); // seat 3 → ×2
-    expect(itemEffect(CUSHION, objectDef('field'))).toBe(0);                    // farm 0
+    expect(itemEffect(CUSHION, objectDef('carrot_field'))).toBe(0);             // farm 0
   }
-  // v1 분류가 없는 v2 아이템(안경)은 잘 맞는 시설(서가·갤러리)에만 ×2, 밭·야외 테이블엔 0 (QA 1차 P2 #24)
+  // v1 분류가 없는 v2 아이템(안경)은 잘 맞는 시설(서가·갤러리)에만 ×2, 당근밭·야외 테이블엔 0 (QA 1차 P2 #24)
   const glasses = itemDef('glasses');
   expect(glasses.fitSlots).toBeUndefined();
   expect(itemEffect(glasses, objectDef('bookshelf'))).toBe(glasses.value * 2);
-  expect(itemEffect(glasses, objectDef('field'))).toBe(0);
+  expect(itemEffect(glasses, objectDef('carrot_field'))).toBe(0);
   expect(itemEffect(glasses, objectDef('table_out'))).toBe(0);
   // 씨앗(잘 맞는 시설 목록 없음)은 어디에나
-  expect(itemEffect(itemDef('tangerine_seed'), objectDef('field'))).toBe(5);
+  expect(itemEffect(itemDef('tangerine_seed'), objectDef('carrot_field'))).toBe(5);
 });
 
 test('grantItem은 인벤토리에 쌓고, useItem은 하나를 소모해 같은 종류 전체에 보너스', () => {
-  const s = createInitialState(1);
+  const s = bareState(1);
   grantItem(s, CUSHION.id, 2);
   expect(s.inventory[CUSHION.id]).toBe(2);
   const a = placeObject(s, 'table_out', X(6), Y(4));
@@ -45,16 +45,16 @@ test('grantItem은 인벤토리에 쌓고, useItem은 하나를 소모해 같은
 });
 
 test('없는 아이템·안 맞는 시설은 거부', () => {
-  const s = createInitialState(1);
+  const s = bareState(1);
   expect(canUseItem(s, CUSHION.id, 'table_out').ok).toBe(false); // 인벤토리 0
   grantItem(s, CUSHION.id);
   expect(canUseItem(s, CUSHION.id, 'nope').ok).toBe(false);
-  if (CUSHION.id === 'cushion') expect(canUseItem(s, CUSHION.id, 'field').ok).toBe(false);
+  if (CUSHION.id === 'cushion') expect(canUseItem(s, CUSHION.id, 'carrot_field').ok).toBe(false);
   expect(apply(s, { type: 'useItem', itemId: 'ghost_item', objectType: 'table_out' }).ok).toBe(false);
 });
 
 test('아이템 인기 보너스는 +30에서 멈춘다', () => {
-  const s = createInitialState(1);
+  const s = bareState(1);
   const big: ItemDef = { id: 'big', name: '큰 방석', stat: 'popularity', value: 12, fitIds: ['table_out'], sourceText: '' };
   s.inventory['big'] = 5;
   for (let i = 0; i < 5; i++) useItem(s, 'big', 'table_out', [big]);
@@ -63,7 +63,7 @@ test('아이템 인기 보너스는 +30에서 멈춘다', () => {
 });
 
 test('useItem 액션은 로그에 남고 인벤토리를 줄인다', () => {
-  const s = createInitialState(1);
+  const s = bareState(1);
   grantItem(s, CUSHION.id);
   placeObject(s, 'table_out', X(6), Y(4));
   expect(apply(s, { type: 'useItem', itemId: CUSHION.id, objectType: 'table_out' }).ok).toBe(true);

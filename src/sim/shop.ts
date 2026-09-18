@@ -5,7 +5,7 @@
  * - 응모권 상점: 유니폼 5(연출)·경관 씨앗·인기 열매
  */
 import type { GameState, ApplyResult, DrawResult, DrawPrizeDef } from './types.ts';
-import { MILEAGE_SHOP, TICKET_SHOP, UNIFORMS, DRAW_PRIZES, ITEMS, CROPS, GUEST_TYPES, POPULARITY_FRUIT, POPULARITY_FRUIT_DELTA, mileageShopDef, ticketShopDef, uniformDef, canonicalGuestId, guestTypeDef } from '../data/index.ts';
+import { MILEAGE_SHOP, TICKET_SHOP, UNIFORMS, DRAW_PRIZES, ITEMS, FARM_INGREDIENT_IDS, ingredientDef, GUEST_TYPES, POPULARITY_FRUIT, POPULARITY_FRUIT_DELTA, mileageShopDef, ticketShopDef, uniformDef, canonicalGuestId, guestTypeDef } from '../data/index.ts';
 import { grantItem } from './items.ts';
 import { pushNotice } from './staff.ts';
 import { nextRandom, pickWeighted, randInt } from './rng.ts';
@@ -148,14 +148,14 @@ function applyPrize(state: GameState, prize: DrawPrizeDef): string {
     }
     case 'research': state.research += DRAW_RESEARCH; return `연구 +${DRAW_RESEARCH}`;
     case 'ingredient_box': {
-      const crops = CROPS.map((c) => c.id);
+      const crops = FARM_INGREDIENT_IDS;
       const got: Record<string, number> = {};
       for (let i = 0; i < DRAW_INGREDIENTS; i++) {
         const id = crops[randInt(state, 0, crops.length - 1)]!;
         got[id] = (got[id] ?? 0) + 1;
         state.storage[id] = (state.storage[id] ?? 0) + 1;
       }
-      return `재료 상자! ${Object.entries(got).map(([id, n]) => `${CROPS.find((c) => c.id === id)?.name ?? id} ${n}`).join(' · ')}`;
+      return `재료 상자! ${Object.entries(got).map(([id, n]) => `${ingredientDef(id).name} ${n}`).join(' · ')}`;
     }
     case 'mileage': state.mileage += DRAW_MILEAGE; return `마일리지 +${DRAW_MILEAGE}`;
     case 'item': {

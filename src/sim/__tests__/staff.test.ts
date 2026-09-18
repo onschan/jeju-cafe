@@ -1,3 +1,4 @@
+import { bareState } from './helpers.ts';
 import { X, Y } from './helpers.ts';
 import { createInitialState } from '../state.ts';
 import { apply } from '../actions.ts';
@@ -18,14 +19,14 @@ export function staffWith(partial: Partial<Stats>, role: RoleId | null, skill = 
 }
 
 function hired(seed = 1, role: RoleId = 'hall'): { s: GameState; st: Staff } {
-  const s = createInitialState(seed);
+  const s = bareState(seed);
   apply(s, { type: 'postJob', tier: 'flyer' });
   apply(s, { type: 'hire', candidateId: s.candidates[0]!.id, role });
   return { s, st: s.staff[0]! };
 }
 
 test('공고 등급별 후보 수와 스탯 범위, 공고비는 채용비로 잡힌다', () => {
-  const s = createInitialState(7);
+  const s = bareState(7);
   expect(apply(s, { type: 'postJob', tier: 'flyer' }).ok).toBe(true);
   expect(s.candidates.length).toBe(3);
   expect(s.money).toBe(5_000_000 - 1_000_000);
@@ -36,7 +37,7 @@ test('공고 등급별 후보 수와 스탯 범위, 공고비는 채용비로 �
 });
 
 test('같은 seed면 같은 후보', () => {
-  const a = createInitialState(3), b = createInitialState(3);
+  const a = bareState(3), b = bareState(3);
   a.money = b.money = 1e7;
   apply(a, { type: 'postJob', tier: 'site' }); apply(b, { type: 'postJob', tier: 'site' });
   expect(a.candidates.length).toBe(4);
@@ -51,7 +52,7 @@ test('월급 공식', () => {
 });
 
 test('채용: 슬롯이 있어야 하고, 역할이 해금돼야 하고, 후보가 사라진다', () => {
-  const s = createInitialState(1);
+  const s = bareState(1);
   apply(s, { type: 'postJob', tier: 'flyer' });
   const c = s.candidates[0]!;
   expect(canHire(s, c.id, 'carry').ok).toBe(false); // 미해금 역할
@@ -64,7 +65,7 @@ test('채용: 슬롯이 있어야 하고, 역할이 해금돼야 하고, 후보�
 });
 
 test('후보는 다음 달 초에 사라진다', () => {
-  const s = createInitialState(1);
+  const s = bareState(1);
   apply(s, { type: 'postJob', tier: 'flyer' });
   for (let i = 0; i < 29; i++) tick(s, DAY_MS);
   expect(s.candidates.length).toBe(3);
@@ -73,7 +74,7 @@ test('후보는 다음 달 초에 사라진다', () => {
 });
 
 test('달 말에 낸 공고도 다음 달 1일에 사라진다 (같은 달 안에서는 남는다)', () => {
-  const s = createInitialState(1);
+  const s = bareState(1);
   for (let i = 0; i < 28; i++) tick(s, DAY_MS);
   expect(s.clock.day).toBe(29);
   apply(s, { type: 'postJob', tier: 'flyer' });
@@ -145,7 +146,7 @@ test('levelUp 스탯은 99를 넘지 않는다', () => {
 });
 
 test('roleEffect: 역할별 핵심 스탯 합, 운반·절약 할인, 기력 30 미만이면 절반', () => {
-  const s = createInitialState(1);
+  const s = bareState(1);
   s.staff.push(staffWith({ stamina: 10, strength: 10, skill: 10, smile: 50 }, 'carry', 'thrifty'));
   expect(roleEffect(s, 'carry')).toBe(10);
   expect(roleEffect(s, 'hall')).toBe(0);
@@ -175,7 +176,7 @@ test('기력: 배치된 직원은 시간당 −2, 밤에 +40, 튼튼함이면 �
   st.energy = 50;
   tick(s, 5 * HOUR_MS);
   expect(st.energy).toBe(50); // 미배치는 안 닳음
-  const s2 = createInitialState(1);
+  const s2 = bareState(1);
   const tough = staffWith({}, 'hall', 'tough');
   tough.energy = 50;
   s2.staff.push(tough);
@@ -198,7 +199,7 @@ test('기력: 하루 종일 일만 하면 거의 만땅 유지, 홍보까지 하
 });
 
 test('직원 이동: 앵커 근처를 산책하고, 기력 0이면 창고 앞에 선다', () => {
-  const s = createInitialState(1);
+  const s = bareState(1);
   for (let y = 3; y <= 5; y++) placeObject(s, 'path', X(4), Y(y));
   placeObject(s, 'path', X(3), Y(3)); // 창고 문 앞
   placeObject(s, 'table_out', X(5), Y(5));
@@ -231,7 +232,7 @@ import { spawnGuests, updateGuests, PREP_MS } from '../guests.ts';
 import { setSlot } from '../menu.ts';
 
 function cafe() {
-  const s = createInitialState(1);
+  const s = bareState(1);
   placeObject(s, 'table_out', X(4), Y(5));
   setSlot(s, 0, 'americano');
   return s;
@@ -268,28 +269,3 @@ test('홀 직원 서비스는 만족 기준을 낮춘다', () => {
   expect(s2.guests[0]!.mood).toBe('happy');
   expect(s2.guests[0]!.moodReason).toBeNull();
 });
-
-test('밭 일꾼은 제철에 빈 밭에 심고 익으면 딴다', () => {
-  const s = createInitialState(1); s.clock.month = 10;
-  apply(s, { type: 'place', objectType: 'field', x: X(6), y: Y(6) });
-  apply(s, { type: 'place', objectType: 'field', x: X(7), y: Y(6) });
-  apply(s, { type: 'place', objectType: 'field', x: X(8), y: Y(6) });
-  s.staff.push(staffWith({ strength: 30 }, 'field')); // 하루 2칸
-  tick(s, DAY_MS);
-  const fields = Object.values(s.objects).filter((o) => o.type === 'field');
-  expect(fields.filter((f) => f.crop?.cropId === 'carrot').length).toBe(2);
-  tick(s, DAY_MS);
-  expect(fields.filter((f) => f.crop?.cropId === 'carrot').length).toBe(3);
-  fields[0]!.crop!.daysGrown = 59; tick(s, DAY_MS); // 하루 자라 익음 → 따고 → 같은 날 다시 심는다
-  expect(s.storage['carrot']).toBeGreaterThan(0);
-  expect(fields[0]!.crop?.daysGrown).toBe(0);
-});
-
-test('밭 일꾼은 철이 아니면 안 심는다', () => {
-  const s = createInitialState(1); // 3월
-  apply(s, { type: 'place', objectType: 'field', x: X(6), y: Y(6) });
-  s.staff.push(staffWith({ strength: 30 }, 'field'));
-  tick(s, DAY_MS);
-  expect(Object.values(s.objects).find((o) => o.type === 'field')!.crop).toBeNull();
-});
-
