@@ -2,8 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { GameView, type GhostSpec } from '../render/GameView';
 import { startLoop, dispatch, getState, useGame, setViewReset, autosaveNow, hasAnySave, loadSlot, setMonthCardHook, setSceneHook, showToast, pauseGame } from './store';
 import { unlockAudio, bgm, isMuted, setMuted } from './audio';
-import { seasonOf, canPlace, objectAt, footprint, parcelAt, clearCost, placeCost, PROTECTED_TYPES, ROTATABLE_TYPES, type GameState } from '../sim/index.ts';
-import { objectDef } from '../data/index.ts';
+import { seasonOf, canPlace, objectAt, footprint, parcelAt, clearCost, placeCost, PROTECTED_TYPES, ROTATABLE_TYPES, goalForMenu, type GameState } from '../sim/index.ts';
+import { objectDef, GOALS } from '../data/index.ts';
 // render/·ui/는 Vite 전용이라 확장자 없는 import 허용. sim/·data/만 .ts 확장자 규칙.
 import { NightOverlay, Toast } from './HUD';
 import { TopShell, BottomBar, PlaceBar, SHELL_TOP, type WindowKind, type PlaceBarProps } from './Shell';
@@ -12,14 +12,16 @@ import { MiniCard, type CardTarget, type CardActions } from './MiniCard';
 import { DialogueHost } from './Dialogue.tsx';
 import { checkTutorial, markTutorialEvent } from './tutorialDialogue';
 import { checkAlerts } from './alertDialogue.ts';
-import { currentGoal, pastGoals, guestSay, staffSay } from './simBridge';
-import { BuildTabs, MenuSlotsPanel } from './legacyPanels';
+import { currentGoal, pastGoals, toGoal, guestSay, staffSay } from './simBridge';
+import { BuildWindow } from './windows/BuildWindow.tsx';
+import { MenuWindow } from './windows/MenuWindow.tsx';
+import { StaffWindow } from './windows/StaffWindow.tsx';
+import { GoalWindow } from './windows/GoalWindow.tsx';
 import { GuestPopup } from './GuestPopup';
 import { DrawPopup, ShopPanel } from './ShopPanel';
 import { AnnouncementPopup, RankPanel } from './RankPanel';
 import { MonthCard } from './MonthCard';
 import { DevelopResultPopup, CraftPanel } from './CraftPanel';
-import { StaffPanel } from './StaffPanel';
 import { CafePanel } from './CafePanel';
 import { PromoPanel } from './PromoPanel';
 import { GuestsPanel } from './GuestsPanel';
@@ -48,7 +50,7 @@ type Mode =
   | { kind: 'remove' };
 
 /** 전체 화면 창과 그 하위 탭 */
-type BuildTab = 'facility' | 'deco' | 'path' | 'remove' | 'move';
+type BuildTab = 'build' | 'remove' | 'move';
 type CafeTab = 'menu' | 'ingredients' | 'craft' | 'promo';
 type PeopleTab = 'staff' | 'guests' | 'codex' | 'quests';
 type LedgerTab = 'invest' | 'shop' | 'rank' | 'region' | 'settings';
@@ -61,11 +63,11 @@ type Win =
   | { kind: 'goal' }
   | { kind: 'object'; id: string };
 
-const BUILD_TABS: WindowTab<BuildTab>[] = [{ key: 'facility', label: '시설' }, { key: 'deco', label: '장식' }, { key: 'path', label: '길·담' }, { key: 'remove', label: '철거' }, { key: 'move', label: '이동' }];
+const BUILD_TABS: WindowTab<BuildTab>[] = [{ key: 'build', label: '짓기' }, { key: 'remove', label: '철거' }, { key: 'move', label: '이동' }];
 const CAFE_TABS: WindowTab<CafeTab>[] = [{ key: 'menu', label: '메뉴판' }, { key: 'ingredients', label: '재료' }, { key: 'craft', label: '연구' }, { key: 'promo', label: '홍보' }];
 const PEOPLE_TABS: WindowTab<PeopleTab>[] = [{ key: 'staff', label: '직원' }, { key: 'guests', label: '손님' }, { key: 'codex', label: '도감' }, { key: 'quests', label: '부탁' }];
 const LEDGER_TABS: WindowTab<LedgerTab>[] = [{ key: 'invest', label: '투자' }, { key: 'shop', label: '상점' }, { key: 'rank', label: '랭킹' }, { key: 'region', label: '지역' }, { key: 'settings', label: '설정' }];
-const DEFAULT_TAB: Record<WindowKind, Win> = { build: { kind: 'build', tab: 'facility' }, cafe: { kind: 'cafe', tab: 'menu' }, people: { kind: 'people', tab: 'staff' }, ledger: { kind: 'ledger', tab: 'invest' } };
+const DEFAULT_TAB: Record<WindowKind, Win> = { build: { kind: 'build', tab: 'build' }, cafe: { kind: 'cafe', tab: 'menu' }, people: { kind: 'people', tab: 'staff' }, ledger: { kind: 'ledger', tab: 'invest' } };
 
 /** 짓기 모드 고스트(놓을 자리·방향) */
 interface BuildGhost { x: number; y: number; rot: number }
@@ -165,25 +167,23 @@ function StatusPanel() {
   );
 }
 
-/** 목표 줄을 누르면: 현재 목표 설명·보상·지난 목표 */
-function GoalPanel() {
+/** 목표 줄을 누르면: 이룬 목표 + 지금 목표 + 다음 목표 (GoalWindow, 트랙 B). 미리보기용 다음 목표 1개는 진행도 0으로. */
+function GoalPanel({ onClose }: { onClose: () => void }) {
   const s = useGame();
-  const g = currentGoal(s);
-  const past = pastGoals(s);
-  return (
-    <div data-testid="goal-window">
-      {g ? (
-        <div style={card}>
-          <div style={{ fontSize: 17, fontWeight: 700 }}>▶ {g.title} <span style={{ color: PALETTE.inkSoft, fontWeight: 400 }}>{g.cur}/{g.max}</span></div>
-          <div style={{ fontSize: 14, margin: '6px 0' }}>{g.desc}</div>
-          <div style={{ fontSize: 14 }}>보상: <b>{g.rewardText}</b></div>
-        </div>
-      ) : <div style={card}>목표를 모두 달성했어요!</div>}
-      <div style={{ fontSize: 14, color: PALETTE.inkSoft, marginBottom: 4 }}>지난 목표</div>
-      {past.length === 0 ? <div style={{ fontSize: 14, color: PALETTE.inkSoft }}>아직 없어요</div>
-        : past.map((p) => <div key={p.id} style={{ fontSize: 14 }}>✓ {p.title} <span style={{ color: PALETTE.inkSoft }}>· {p.rewardText}</span></div>)}
-    </div>
-  );
+  const cur = currentGoal(s);
+  const next = GOALS[s.goals.index + 1];
+  const goals = [
+    ...pastGoals(s).map((g) => ({ ...g, done: true })),
+    ...(cur ? [{ ...cur, done: false }] : []),
+    ...(next ? [{ ...toGoal(s, next, false), cur: 0, max: next.condition.n, done: false }] : []),
+  ];
+  return <GoalWindow goals={goals} onClose={onClose} />;
+}
+
+/** 잠긴 메뉴 카드 문구: 여는 목표가 있으면 그 제목으로 */
+function menuUnlockText(menuId: string): string | null {
+  const g = goalForMenu(menuId);
+  return g ? `「${g.title}」 목표를 이루면 열려요` : null;
 }
 
 function Game({ onExit }: { onExit: () => void }) {
@@ -408,7 +408,7 @@ function Game({ onExit }: { onExit: () => void }) {
     onStaffDetail: (id) => { openCard(null); setWin({ kind: 'people', tab: 'staff', focusId: id }); },
     onObjectDetail: (id) => { openCard(null); setWin({ kind: 'object', id }); },
     onMove: (id) => { openCard(null); startMove(id); },
-    onBuild: (x, y) => { openCard(null); setWin({ kind: 'build', tab: 'facility', origin: { x, y } }); },
+    onBuild: (x, y) => { openCard(null); setWin({ kind: 'build', tab: 'build', origin: { x, y } }); },
     onCafe: () => { openCard(null); setWin({ kind: 'cafe', tab: 'menu' }); },
   };
   const closeWin = () => setWin(null);
@@ -425,9 +425,7 @@ function Game({ onExit }: { onExit: () => void }) {
         const tab = win.tab;
         return (
           <Window title="짓기" tabs={BUILD_TABS} tab={tab} onTab={(t) => setWin({ ...win, tab: t })} onClose={closeWin} testId="window-build">
-            {tab === 'facility' && <BuildTabs selected={null} groups={['rest', 'convenience', 'food', 'fun', 'farm']} onPick={(t) => pickBuild(t, win.origin)} />}
-            {tab === 'deco' && <BuildTabs selected={null} groups={['sceneryDeco']} onPick={(t) => pickBuild(t, win.origin)} />}
-            {tab === 'path' && <BuildTabs selected={null} groups={['pathWall']} onPick={(t) => pickBuild(t, win.origin)} />}
+            {tab === 'build' && <BuildWindow onClose={closeWin} onPickBuild={(t) => pickBuild(t, win.origin)} />}
             {tab === 'remove' && (
               <div>
                 <div style={{ fontSize: 14, marginBottom: 8 }}>맵에서 치울 시설을 누르면 돈을 돌려받아요. 본관·정낭·정류장은 못 치워요.</div>
@@ -446,7 +444,7 @@ function Game({ onExit }: { onExit: () => void }) {
       case 'cafe':
         return (
           <Window title="카페" tabs={CAFE_TABS} tab={win.tab} onTab={(t) => setWin({ kind: 'cafe', tab: t })} onClose={closeWin} testId="window-cafe">
-            {win.tab === 'menu' && <MenuSlotsPanel onCraft={() => setWin({ kind: 'cafe', tab: 'craft' })} />}
+            {win.tab === 'menu' && <MenuWindow onClose={closeWin} menuUnlockText={menuUnlockText} />}
             {win.tab === 'ingredients' && <CafePanel onMenu={() => setWin({ kind: 'cafe', tab: 'menu' })} />}
             {win.tab === 'craft' && <CraftPanel />}
             {win.tab === 'promo' && <PromoPanel />}
@@ -455,7 +453,7 @@ function Game({ onExit }: { onExit: () => void }) {
       case 'people':
         return (
           <Window title="사람" tabs={PEOPLE_TABS} tab={win.tab} onTab={(t) => setWin({ kind: 'people', tab: t })} onClose={closeWin} testId="window-people">
-            {win.tab === 'staff' && <StaffPanel focusId={win.focusId ?? null} />}
+            {win.tab === 'staff' && <StaffWindow onClose={closeWin} focusId={win.focusId ?? null} />}
             {win.tab === 'guests' && <GuestsPanel onGuest={setGuestPopup} />}
             {win.tab === 'codex' && <CodexPanel />}
             {win.tab === 'quests' && <BoardPanel tabs={['quests']} />}
@@ -474,7 +472,7 @@ function Game({ onExit }: { onExit: () => void }) {
       case 'status':
         return <Window title="경영 현황" onClose={closeWin} testId="window-status"><StatusPanel /></Window>;
       case 'goal':
-        return <Window title="목표" onClose={closeWin} testId="window-goal"><GoalPanel /></Window>;
+        return <Window title="목표" onClose={closeWin} testId="window-goal"><GoalPanel onClose={closeWin} /></Window>;
       case 'object': {
         const o = s.objects[win.id];
         return <Window title={o ? objectDef(o.type).name : '시설'} onClose={closeWin} testId="window-object">{o ? <ObjectInfoPanel objectId={o.id} /> : <div>없어진 시설이에요</div>}</Window>;

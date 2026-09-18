@@ -2,7 +2,7 @@
  *  카드 탭 → 아래 설명 2줄 + `짓기`(onPickBuild). 잠긴 것은 반투명 + 조건 한글. 철거·이동은 미니카드(트랙 C) 몫. */
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import type { GameState, ObjectDef } from '../../sim/index.ts';
-import { placeCost, constructions, canStartBuild } from '../../sim/index.ts';
+import { placeCost, constructions, canStartBuild, goalForFacility } from '../../sim/index.ts';
 import { OBJECTS } from '../../data/index.ts';
 import { unlockText } from '../../data/labels.ts';
 import { loadSheet, drawFrame, type Sheet } from '../sheetCanvas';
@@ -103,9 +103,15 @@ export function BuildWindow(props: BuildWindowProps) {
   );
 }
 
+/** 잠긴 카드 문구: 여는 목표가 있으면 "「제목」 목표를 이루면 열려요", 아니면 해금 조건(labels.unlockText) */
+export function lockedText(def: ObjectDef): string {
+  const g = goalForFacility(def.id);
+  return g ? `「${g.title}」 목표를 이루면 열려요` : unlockText(def);
+}
+
 function PickedDetail({ s: def, locked, state, onPick }: { s: ObjectDef; locked: boolean; state: GameState; onPick?: (id: string) => void }) {
   const cost = locked ? def.cost : placeCost(state, def.id);
-  const start = locked ? { ok: false, reason: unlockText(def) } : canStartBuild(state, def.id);
+  const start = locked ? { ok: false, reason: lockedText(def) } : canStartBuild(state, def.id);
   const poor = !locked && state.money < cost;
   const ok = !locked && start.ok && !poor && !!onPick;
   const days = def.buildDays ?? 0;
@@ -125,7 +131,7 @@ function PickedDetail({ s: def, locked, state, onPick }: { s: ObjectDef; locked:
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
         <button style={{ ...(ok ? brownBtn : brownBtnOff), margin: 0, flex: '0 0 auto' }} disabled={!ok} onClick={() => onPick?.(def.id)} data-testid="build-go">🔨 짓기</button>
         <span style={{ ...soft, color: ok ? PALETTE.inkSoft : PALETTE.bad }}>
-          {locked ? unlockText(def) : poor ? '돈이 모자라요' : !start.ok ? start.reason : '누르면 맵에 놓을 자리를 골라요'}
+          {locked ? lockedText(def) : poor ? '돈이 모자라요' : !start.ok ? start.reason : '누르면 맵에 놓을 자리를 골라요'}
         </span>
       </div>
     </div>

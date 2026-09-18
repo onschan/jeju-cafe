@@ -276,7 +276,7 @@ export function startLoop(render: (s: GameState) => void): () => void {
 }
 
 // 개발 중 콘솔/자동화에서 상태를 들여다보고 액션을 보내기 위한 훅 (프로덕션 빌드에는 포함되지 않음)
-if (import.meta.env.DEV) {
+if (import.meta.env.DEV && typeof window !== 'undefined') {
   // advance(ms): 브라우저 자동화가 rAF 스로틀과 무관하게 게임 시간을 감는다 (speed 배수 무시)
   const advance = (ms: number) => { const sp = state.clock.speed; state.clock.speed = 1; tick(state, ms); state.clock.speed = sp; emit(); };
   (window as unknown as { __game: unknown }).__game = { getState, dispatch, newGame, resetGame: newGame, loadSlot, saveSlot, advance };

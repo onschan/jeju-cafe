@@ -1,41 +1,45 @@
+import { useRef } from 'react';
 import { useGame, dispatch } from './store';
-import { Icon } from './Icon';
-import { Popup } from './Popup';
-import { brownBtn, PALETTE, won } from './frame';
+import { goalDef, goalRewardText, currentGoal, goalConditionText, type MonthCard as MonthCardData } from '../sim/index.ts';
+import { label } from '../data/labels.ts';
+import { Window } from './Window';
+import { ReportWindow } from './windows/ReportWindow.tsx';
 
-function Row({ label, value, color, bold }: { label: string; value: string; color?: string; bold?: boolean }) {
-  return (
-    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, fontWeight: bold ? 700 : 400, color }}>
-      <span>{label}</span><span>{value}</span>
-    </div>
-  );
-}
-
+/** 월말 결산 (스펙 §2.1): sim의 lastMonthCard를 ReportWindow(트랙 B)로. 하이라이트 3줄 = 최다 판매 · 최고 만족 손님층 · 이달 새로 열린 것, 팁 = 현재 목표. */
 export function MonthCard() {
   const s = useGame();
   const c = s.lastMonthCard;
+  /** 지난 결산을 닫은 시점의 이룬 목표 수 → 그 뒤에 이룬 목표의 보상이 "새로 열린 것" */
+  const claimedMark = useRef<number | null>(null);
+  const shownCard = useRef<MonthCardData | null>(null);
+  const opened = useRef<string[]>([]);
+  if (claimedMark.current === null || s.goals.claimed.length < claimedMark.current) claimedMark.current = claimedMark.current === null ? s.goals.claimed.length : 0; // 새 게임이면 처음부터
   if (!c) return null;
-  const close = () => dispatch({ type: 'dismissMonthCard' });
-  const cost = c.costs;
-  const net = c.net;
-  // 알림(퇴사 등)은 sim이 지우는 액션이 없어 최근 3개만 보여 준다
-  const notices = s.notices.slice(-3);
+  if (shownCard.current !== c) {
+    shownCard.current = c;
+    opened.current = s.goals.claimed.slice(Math.min(claimedMark.current, s.goals.claimed.length))
+      .flatMap((id) => goalDef(id).reward.filter((r) => r.type === 'unlockFacility' || r.type === 'unlockMenu' || r.type === 'unlockRole' || r.type === 'unlockFeature').map(goalRewardText));
+  }
+  const close = () => { claimedMark.current = s.goals.claimed.length; dispatch({ type: 'dismissMonthCard' }); };
+
+  const highlights: string[] = [];
+  if (c.topMenu) highlights.push(`최다 판매: ${label('menu', c.topMenu)}`);
+  let bestType: string | null = null;
+  let best = 0;
+  for (const [id, gt] of Object.entries(s.guestTypes)) if (gt.unlocked && gt.satisfaction > best) { best = gt.satisfaction; bestType = id; }
+  if (bestType) highlights.push(`가장 만족한 손님층: ${label('guest', bestType)} (${best})`);
+  if (opened.current.length > 0) highlights.push(`새로 열림: ${opened.current.join(' · ')}`);
+
+  const g = currentGoal(s);
+  const tip = g ? `다음 목표는 「${g.title}」 — ${g.desc || goalConditionText(g.condition)}` : '목표를 다 이뤘어요. 마음껏 카페를 키워 보세요.';
+  const harvested = Object.values(c.harvested ?? {}).reduce((a, b) => a + b, 0);
   return (
-    <Popup title={`${c.year}년 ${c.month}월 결산`} onBackdrop={close}
-      buttons={<button style={{ ...brownBtn, marginRight: 0, marginBottom: 0 }} onClick={close}>닫기</button>}>
-      <div style={{ marginBottom: 6 }}><Icon name="calendar" size={20} /> 손님 {c.guests}명</div>
-      <Row label="수입" value={`+${won(c.income)}`} color={PALETTE.ok} />
-      <Row label="재료비" value={`-${won(cost.ingredients)}`} />
-      <Row label="월급" value={`-${won(cost.salary)}`} />
-      <Row label="유지비" value={`-${won(cost.upkeep)}`} />
-      <Row label="홍보" value={`-${won(cost.ads)}`} />
-      <div style={{ borderTop: `2px solid ${PALETTE.woodLight}`, margin: '6px 0' }} />
-      <Row label="순이익" value={`${net >= 0 ? '+' : '-'}${won(Math.abs(net))}`} color={net >= 0 ? PALETTE.ok : PALETTE.bad} bold />
-      {notices.length > 0 && (
-        <div style={{ marginTop: 10, fontSize: 13, color: PALETTE.bad }}>
-          {notices.map((n, i) => <div key={i}>• {n}</div>)}
-        </div>
-      )}
-    </Popup>
+    <Window title={`${c.year}년 ${c.month}월 결산`} onClose={close} testId="window-report">
+      <ReportWindow
+        card={{ ...c, harvested, ingredientSaved: c.ingredientSaved, highlights, tip }}
+        star={s.star}
+        onClose={close}
+      />
+    </Window>
   );
 }
