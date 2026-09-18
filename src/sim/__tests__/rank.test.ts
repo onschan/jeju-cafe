@@ -89,7 +89,7 @@ test('★ 조건 문구 해석: 월 매출·메뉴·직원·손님층 만족·�
   expect(starConditionMet(s, '메뉴 3')).toBe(true); // v3 시작 메뉴 3 (아메리카노·라떼·감귤주스)
   expect(starConditionMet(s, '메뉴 4')).toBe(false);
   expect(starConditionMet(s, '직원 1')).toBe(false);
-  s.staff.push({ id: 's1', name: 'a', face: { hair: 0, skin: 0, top: 0 }, stats: { stamina: 10, strength: 10, skill: 10, smile: 50 }, skill: 'none', level: 1, salary: 0, role: 'hall', unpaidMonths: 0, energy: 100, lastParttimeMonthIndex: -1, x: 0, y: 0, path: [], anchor: null, waitMs: 0 });
+  s.staff.push({ id: 's1', name: 'a', face: { hair: 0, skin: 0, top: 0 }, stats: { stamina: 10, strength: 10, skill: 10, smile: 50 }, skill: 'none', level: 1, salary: 0, poolId: '', statCaps: { stamina: 100, strength: 100, skill: 100, smile: 100 }, extraSkills: [], maxLevel: 10, baseSalary: 0, exp: 0, trainingCount: 0, training: null, role: 'hall', unpaidMonths: 0, energy: 100, lastParttimeMonthIndex: -1, x: 0, y: 0, path: [], anchor: null, waitMs: 0 });
   expect(starConditionMet(s, '직원 1')).toBe(true);
   expect(starConditionMet(s, '손님층 4 만족 30')).toBe(false);
   for (const id of GUEST_TYPES.slice(0, 4).map((t) => t.id)) { unlockGuestType(s, id); s.guestTypes[id]!.satisfaction = 30; }
@@ -132,7 +132,7 @@ test('심사 점수는 모두 0~100이고 같은 상태면 같은 값(결정적)
   for (const k of JUDGE_KEYS) { expect(a[k]).toBeGreaterThanOrEqual(0); expect(a[k]).toBeLessThanOrEqual(100); }
   expect(a.scenery).toBe(0);
   expect(judgeScores(s)).toEqual(a);
-  s.staff.push({ id: 's1', name: 'a', face: { hair: 0, skin: 0, top: 0 }, stats: { stamina: 10, strength: 10, skill: 10, smile: 80 }, skill: 'none', level: 1, salary: 0, role: 'hall', unpaidMonths: 0, energy: 100, lastParttimeMonthIndex: -1, x: 0, y: 0, path: [], anchor: null, waitMs: 0 });
+  s.staff.push({ id: 's1', name: 'a', face: { hair: 0, skin: 0, top: 0 }, stats: { stamina: 10, strength: 10, skill: 10, smile: 80 }, skill: 'none', level: 1, salary: 0, poolId: '', statCaps: { stamina: 100, strength: 100, skill: 100, smile: 100 }, extraSkills: [], maxLevel: 10, baseSalary: 0, exp: 0, trainingCount: 0, training: null, role: 'hall', unpaidMonths: 0, energy: 100, lastParttimeMonthIndex: -1, x: 0, y: 0, path: [], anchor: null, waitMs: 0 });
   placeObject(s, 'table_out', X(6), Y(4));
   placeObject(s, 'tangerine_tree', X(7), Y(4));
   setSlot(s, 0, 'americano');
@@ -205,7 +205,7 @@ test('발표: 3·9월에 해금된 가이드북을 채점해 순위·상금·연
   expect(guidebooksToAnnounce(s).map((g) => g.id)).toEqual(['gb_coop_monthly']);
   s.clock.month = 9;
   // 1위를 만들어 보상 확인: 심사 점수를 넘어서도록 강한 직원
-  s.staff.push({ id: 's1', name: 'a', face: { hair: 0, skin: 0, top: 0 }, stats: { stamina: 99, strength: 99, skill: 99, smile: 99 }, skill: 'none', level: 1, salary: 0, role: 'hall', unpaidMonths: 0, energy: 100, lastParttimeMonthIndex: -1, x: 0, y: 0, path: [], anchor: null, waitMs: 0 });
+  s.staff.push({ id: 's1', name: 'a', face: { hair: 0, skin: 0, top: 0 }, stats: { stamina: 99, strength: 99, skill: 99, smile: 99 }, skill: 'none', level: 1, salary: 0, poolId: '', statCaps: { stamina: 100, strength: 100, skill: 100, smile: 100 }, extraSkills: [], maxLevel: 10, baseSalary: 0, exp: 0, trainingCount: 0, training: null, role: 'hall', unpaidMonths: 0, energy: 100, lastParttimeMonthIndex: -1, x: 0, y: 0, path: [], anchor: null, waitMs: 0 });
   const money = s.money, research = s.research, mileage = s.mileage;
   const a = announce(s, [guidebookDef('gb_kind_cafe')])!;
   expect(a.entries).toHaveLength(1);

@@ -11,7 +11,7 @@ import { START_BUILDERS } from './build.ts';
 import { initGuidebooks } from './guidebook.ts';
 import { initRegions, initNamedGuests, initPopup } from './popup.ts';
 import { initFeatures } from './goals.ts';
-import { generateCandidate } from './staff.ts';
+import { drawCandidates } from './staff.ts';
 import { monthIndex } from './clock.ts';
 import { emptyMonthCosts } from './economy.ts';
 import { REPUTATION_START } from './reputation.ts';
@@ -162,7 +162,7 @@ export function createInitialState(seed: number, playerId = 'local', createdAt =
     monthHarvest: { harvested: {}, ingredientSaved: 0 },
     staff: [],
     candidates: [],
-    slots: { barista: 1, cook: 1, hall: 2, carry: 0, guide: 0 },
+    slots: { barista: 1, cook: 1, hall: 2, carry: 0, guide: 0, clean: 2, garden: 2, promo: 1 },
     activePromotions: [],
     youtuberBoostMonths: 0,
     segmentPopularity: initSegmentPopularity(),
@@ -241,6 +241,6 @@ export function createInitialState(seed: number, playerId = 'local', createdAt =
   const rng = { rng: seed ^ 0x5eed };
   for (const p of parcels) stampParcelObjects(state, p, rng);
   // §5 직원 후보 2명 대기 (전단 등급)
-  for (let i = 0; i < START_CANDIDATES; i++) state.candidates.push(generateCandidate(state, 'flyer'));
+  drawCandidates(state, 'flyer', START_CANDIDATES);
   return state;
 }

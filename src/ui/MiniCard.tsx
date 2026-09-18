@@ -1,8 +1,8 @@
 import { useState, type CSSProperties, type ReactNode } from 'react';
 import { useGame, dispatch } from './store';
-import { objectStats, sceneryScore, clearCost, canClearRock, hasPickaxe, cellAt, walletOf, guestFace, namedGuestFace, canAcceptQuest, parcelPrice, canBuyParcel, canGiveGift, giftFits, giftCount, giftedToday, PROTECTED_TYPES, ROTATABLE_TYPES, LOW_ENERGY, STAT_KEYS, STAT_NAME, staffInRole, canLevelUp, MAX_LEVEL, isUpgradable, canUpgrade, upgradeCost, upgradeConditionText, MAX_OBJECT_LEVEL, canRepair, repairCost, CLEAN_LOW, type GameState, type Guest, type RoleId, type StatKey } from '../sim/index.ts';
+import { objectStats, sceneryScore, clearCost, canClearRock, hasPickaxe, cellAt, walletOf, guestFace, namedGuestFace, canAcceptQuest, parcelPrice, canBuyParcel, canGiveGift, giftFits, giftCount, giftedToday, PROTECTED_TYPES, ROTATABLE_TYPES, LOW_ENERGY, STAT_KEYS, STAT_NAME, staffInRole, canLevelUp, capOf, skillsOf, expNeeded, isUpgradable, canUpgrade, upgradeCost, upgradeConditionText, MAX_OBJECT_LEVEL, canRepair, repairCost, CLEAN_LOW, type GameState, type Guest, type RoleId, type StatKey } from '../sim/index.ts';
 import { BUS_HOUR, isBusDay } from '../sim/spots.ts';
-import { objectDef, guestTypeDef, namedGuestDef, questDef, roleDef, ROLES, GIFTS } from '../data/index.ts';
+import { objectDef, guestTypeDef, namedGuestDef, questDef, roleDef, skillDef, trainingDef, ROLES, GIFTS } from '../data/index.ts';
 import { staffParts } from '../render/character';
 import { Portrait, guestPortraitParts, namedPortraitParts, guestName } from './GuestPopup';
 import { Bar, EnergyBar } from './StaffPanel';
@@ -101,7 +101,8 @@ function StaffCard({ s, id, a }: { s: GameState; id: string; a: CardActions }) {
   const st = s.staff.find((x) => x.id === id);
   if (!st) return <div style={small}>직원이 없어요</div>;
   const resting = st.role === null;
-  const canPromote = st.level < MAX_LEVEL && STAT_KEYS.some((k) => canLevelUp(s, st.id, k as StatKey).ok);
+  const canPromote = canLevelUp(s, st.id).ok;
+  const away = st.training ? trainingDef(st.training.id) : null;
   const toggleRest = () => {
     if (!resting) { restingRole.set(st.id, st.role!); dispatch({ type: 'assign', staffId: st.id, role: null }); return; }
     const remembered = restingRole.get(st.id) ?? null;
@@ -115,16 +116,17 @@ function StaffCard({ s, id, a }: { s: GameState; id: string; a: CardActions }) {
       <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
         <Portrait parts={staffParts(st.face, st.role, s.uniform ?? null)} face={st.face} size={56} />
         <div style={{ flex: 1, minWidth: 0, fontSize: 14, lineHeight: 1.5 }}>
-          <div><b>{st.name}</b> <span style={small}>{st.role ? roleDef(st.role).name : '쉬는 중'} · Lv.{st.level}</span></div>
+          <div><b>{st.name}</b> <span style={small}>{away ? `연수 중 (${away.name} ${st.training!.daysLeft}일)` : st.role ? roleDef(st.role).name : '쉬는 중'} · Lv.{st.level}/{st.maxLevel}</span></div>
+          <div style={{ fontSize: 12, color: PALETTE.inkSoft, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>특기 {skillsOf(st).map((id) => skillDef(id).name).join(' · ')}{st.level < st.maxLevel ? ` · 경험치 ${Math.floor(st.exp)}/${expNeeded(st.level)}` : ''}</div>
           <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr auto 1fr', columnGap: 6, fontSize: 12, alignItems: 'center' }}>
-            {STAT_KEYS.map((k) => <span key={k} style={{ display: 'contents' }}><span>{STAT_NAME[k as StatKey]}</span><Bar value={st.stats[k as StatKey]} max={100} width={56} /></span>)}
+            {STAT_KEYS.map((k) => <span key={k} style={{ display: 'contents' }}><span>{STAT_NAME[k as StatKey]}</span><Bar value={st.stats[k as StatKey]} max={Math.max(100, capOf(s, st, k as StatKey))} width={56} /></span>)}
           </div>
           <div style={{ fontSize: 13 }}><EnergyBar energy={st.energy} />{st.energy < LOW_ENERGY && <span style={{ color: PALETTE.bad }}> 지침</span>} · 월급 {won(st.salary)}</div>
         </div>
       </div>
       <Row>
         <button style={canPromote ? btnOn : btnOff} disabled={!canPromote} onClick={() => a.onStaffDetail(st.id)}>승급</button>
-        <button style={btn} onClick={toggleRest}>{resting ? '일 시키기' : '쉬게 하기'}</button>
+        <button style={away ? btnOff : btn} disabled={!!away} onClick={toggleRest}>{resting ? '일 시키기' : '쉬게 하기'}</button>
         <button style={btn} onClick={() => a.onStaffDetail(st.id)}>자세히</button>
       </Row>
     </div>

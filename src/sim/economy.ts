@@ -1,6 +1,6 @@
 /**
  * 경제 (트랙 E, 스펙 §4.2 자금 곡선 레버)
- * - 유지비 2.5%/월 (데이터의 upkeep은 건설비 1.5% 기준이라 배율로 환산), 노후 시설 +50% (트랙 A가 PlacedObject.aged를 채우면 곱한다).
+ * - 유지비 2.5%/월 (데이터의 upkeep은 건설비 1.5% 기준이라 배율로 환산). 노후 ×1.5·증축 Lv 배수는 objectStats().upkeep(트랙 A upkeepMultOf)에 이미 들어 있다.
  * - 급여 공식 salaryOf(§3.6.3): 기본급 × (1 + 0.15 × (Lv − 1)) × (1 + 인상%) + 스탯 합 × 1,000. 매년 3월 1일 +5% 누적 인상.
  * - 소득세: 매년 3월 1일 전년 순이익 × 10% (적자면 0). 투어 버스 월 50만 고정비(선택).
  * - 월말 카드에 세금·대출·라이벌 손실·대기 이탈 줄.
@@ -10,6 +10,7 @@ import { ingredientDef } from '../data/index.ts';
 import { menuOf, toppingCost, costMult } from './craft.ts';
 import { parcelAt } from './parcels.ts';
 import { objectStats } from './compat.ts';
+import { isWorn } from './cleanliness.ts';
 import { effectMult } from './effects.ts';
 import { pushNotice, STAT_KEYS } from './staff.ts';
 import { fmtNum } from './format.ts';
@@ -18,8 +19,6 @@ import { rivalGuestLossPct } from './rivals.ts';
 /** 유지비: 건설비의 2.5%/월. 데이터(objects/facilities)의 upkeep 값은 1.5% 기준이라 배율로 환산한다. */
 export const UPKEEP_RATE = 0.025;
 export const DATA_UPKEEP_RATE = 0.015;
-/** 노후 시설(24개월 경과, 트랙 A) 유지비 +50% */
-export const AGED_UPKEEP_MULT = 1.5;
 /** 급여: 기본급(채용 등급별, 없으면 40만) × Lv 계수 + 스탯 합 × 1,000 */
 export const BASE_SALARY_DEFAULT = 400_000;
 export const SALARY_LEVEL_STEP = 0.15;
@@ -47,14 +46,13 @@ export function totalCosts(c: MonthCosts): number {
 
 // ---------- 유지비 ----------
 
-/** 노후 훅: 트랙 A(§3.2.3)가 완공 24개월 뒤 PlacedObject.aged = true를 채우면 유지비 +50%. 아직 없으면 항상 false. */
-export function isAged(obj: PlacedObject): boolean {
-  return (obj as { aged?: boolean }).aged === true;
+/** 노후 시설인가 (트랙 A: 완공·증축·수리 뒤 24개월) */
+export function isAged(state: GameState, obj: PlacedObject): boolean {
+  return isWorn(state, obj);
 }
-/** 오브젝트 하나의 월 유지비 (2.5%/월, 노후 ×1.5) */
+/** 오브젝트 하나의 월 유지비 (2.5%/월 · objectStats().upkeep에 Lv·노후 ×1.5 배수 포함) */
 export function upkeepOf(state: GameState, obj: PlacedObject): number {
-  const base = objectStats(state, obj.id).upkeep * (UPKEEP_RATE / DATA_UPKEEP_RATE);
-  return Math.round(base * (isAged(obj) ? AGED_UPKEEP_MULT : 1));
+  return Math.round(objectStats(state, obj.id).upkeep * (UPKEEP_RATE / DATA_UPKEEP_RATE));
 }
 
 /** 소유 필지에 놓인 오브젝트의 월 유지비 합(× 이벤트 유지비 배수)을 차감한다 (아직 안 산 필지의 돌담 등은 제외). 월말에 closeMonth보다 먼저 호출한다. */

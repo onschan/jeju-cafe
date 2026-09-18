@@ -128,12 +128,11 @@ export function reputationScore(state: GameState): number {
 
 /** 노후 시설 수 (트랙 A가 PlacedObject.aged를 채우면) */
 export function wornCount(state: GameState): number {
-  return Object.values(state.objects).filter(isAged).length;
+  return Object.values(state.objects).filter((o) => isAged(state, o)).length;
 }
 /** 청결값 훅: 트랙 A의 state.clean.value (없으면 100) */
 export function cleanValue(state: GameState): number {
-  const c = (state as { clean?: { value?: number }; cleanliness?: number });
-  return c.clean?.value ?? c.cleanliness ?? 100;
+  return state.clean.value;
 }
 
 /** 매일 밤: 평판 변화 → 오래된 불만 정리 → 일일 카운터 리셋. 변화량을 돌려준다. */

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useGame, dispatch } from './store';
-import { TIERS, MAX_LEVEL, LOW_ENERGY, STAT_KEYS, STAT_NAME, levelUpCost, canHire, canLevelUp, staffInRole, canPraise, PRAISE_ENERGY, type Staff, type Candidate, type RoleId, type StatKey, type JobTier, type Face as FaceParts, josa } from '../sim/index.ts';
+import { TIERS, LOW_ENERGY, STAT_KEYS, STAT_NAME, levelUpCost, expNeeded, canHire, canLevelUp, staffInRole, canPraise, PRAISE_ENERGY, type Staff, type Candidate, type RoleId, type StatKey, type JobTier, type Face as FaceParts, josa } from '../sim/index.ts';
 import { ROLES, roleDef, skillDef } from '../data/index.ts';
 import { Icon } from './Icon';
 import { Confirm } from './Popup';
@@ -8,8 +8,8 @@ import { card, brownBtn, brownBtnOn, brownBtnOff, dangerBtn, brownSelect, PALETT
 import { partsOfFace, staffParts, HAIR_RGB, SKIN_RGB, TOP_RGB } from '../render/character';
 import { showScene } from './SceneWindow';
 
-const TIER_ORDER: JobTier[] = ['flyer', 'site', 'headhunter'];
-const TIER_NAME: Record<JobTier, string> = { flyer: '전단 공고', site: '구인 사이트', headhunter: '헤드헌터' };
+const TIER_ORDER: JobTier[] = ['flyer', 'site', 'magazine', 'intern', 'college'];
+const TIER_NAME: Record<JobTier, string> = Object.fromEntries(TIER_ORDER.map((t) => [t, TIERS[t].name])) as Record<JobTier, string>;
 /** GDD v2 §5: 체력·힘·기술·미소 */
 const STATS: { key: StatKey; name: string }[] = STAT_KEYS.map((key) => ({ key, name: STAT_NAME[key] }));
 const css = (rgb: number) => `#${rgb.toString(16).padStart(6, '0')}`;
@@ -121,8 +121,8 @@ function StaffCard({ st, focused = false }: { st: Staff; focused?: boolean }) {
           <option value="">미배치</option>
           {roles.map((r) => <option key={r} value={r}>{roleDef(r).name}</option>)}
         </select>
-        <button style={st.level >= MAX_LEVEL ? brownBtnOff : picking ? brownBtnOn : brownBtn} disabled={st.level >= MAX_LEVEL} onClick={() => setPicking(!picking)}>
-          <Icon name="research" /> 레벨업
+        <button style={st.level >= st.maxLevel ? brownBtnOff : picking ? brownBtnOn : brownBtn} disabled={st.level >= st.maxLevel} onClick={() => setPicking(!picking)}>
+          <Icon name="research" /> 승급
         </button>
         <button style={praiseOk ? brownBtn : brownBtnOff} disabled={!praiseOk} onClick={() => dispatch({ type: 'praise', staffId: st.id })} aria-label="칭찬하기" title={praiseOk ? `기력 +${PRAISE_ENERGY}` : '오늘은 이미 칭찬했어요'}>
           👏 칭찬{praiseOk ? '' : ' ✓'}
@@ -131,17 +131,16 @@ function StaffCard({ st, focused = false }: { st: Staff; focused?: boolean }) {
       </div>
       {picking && (
         <div style={{ fontSize: 13, marginTop: 4 }}>
-          <div style={{ marginBottom: 4 }}>어떤 힘을 키울까? (연구 포인트)</div>
-          {STATS.map((x) => {
-            const cost = levelUpCost(st, x.key);
-            const ok = canLevelUp(s, st.id, x.key).ok;
+          <div style={{ marginBottom: 4 }}>경험치 {Math.floor(st.exp)}/{expNeeded(st.level)} · 연구 포인트 {levelUpCost(st.level)}</div>
+          {(() => {
+            const ok = canLevelUp(s, st.id).ok;
             return (
-              <button key={x.key} style={ok ? brownBtn : brownBtnOff} disabled={!ok}
-                onClick={() => { if (dispatch({ type: 'levelUp', staffId: st.id, stat: x.key }).ok) setPicking(false); }}>
-                {x.name} <Icon name="research" /> {cost}
+              <button style={ok ? brownBtn : brownBtnOff} disabled={!ok}
+                onClick={() => { if (dispatch({ type: 'levelUp', staffId: st.id }).ok) setPicking(false); }}>
+                승급 <Icon name="research" /> {levelUpCost(st.level)}
               </button>
             );
-          })}
+          })()}
         </div>
       )}
     </div>

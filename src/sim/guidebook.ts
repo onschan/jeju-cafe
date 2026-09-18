@@ -7,6 +7,7 @@
  *   플레이어가 1위 하면 그 가이드북 라이벌은 다음 해 +3(boost), 라이벌 카페 등장 중이면 +5.
  */
 import type { GameState, GuidebookDef, GuidebookState, JudgeKey, JudgeScores, Announcement, AnnouncementEntry, GuestTags } from './types.ts';
+import { cleanJudgePenalty } from './cleanliness.ts';
 import { GUIDEBOOKS, STARS, GUEST_TYPES, COMBOS, SETS, HIDDEN_RECIPES, INGREDIENT_COMBOS, objectDef, guestTags, statSum } from '../data/index.ts';
 import { staffInRole, energyFactor, pushNotice } from './staff.ts';
 import { sceneryScore } from './grid.ts';
@@ -194,9 +195,9 @@ function restScore(state: GameState): number {
   const footbath = objs.filter((o) => o.type.startsWith('footbath')).length;
   return clamp100(rest.length * 8 + avgPop + footbath * 5);
 }
-/** 청결: 트랙 A의 state.cleanliness 그대로 (아직 없으면 100) */
+/** 청결: 트랙 A의 state.clean.value (30 미만이면 −10 감점) */
 function cleanScore(state: GameState): number {
-  return clamp100((state as { cleanliness?: number }).cleanliness ?? 100);
+  return clamp100(state.clean.value + cleanJudgePenalty(state));
 }
 /** 가성비: 100 − (메뉴판 평균 가격 ÷ 해금 손님층 평균 소지금 × 100) */
 function priceScore(state: GameState): number {

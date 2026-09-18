@@ -1,4 +1,5 @@
 import { bareState, X, Y } from './helpers.ts';
+import { WEAR_START_MONTHS } from '../cleanliness.ts';
 import { createInitialState } from '../state.ts';
 import { apply } from '../actions.ts';
 import { tick } from '../tick.ts';
@@ -57,7 +58,7 @@ test('일일 평판 식: (만족 − 불만×2)/총손님 × 3, ±2 상한, 청�
   (s as unknown as { clean: { value: number } }).clean = { value: 30 };
   expect(nightlyReputation(s)).toBeCloseTo(-0.5);
   placeObject(s, 'table_out', X(4), Y(5)); placeObject(s, 'table_out', X(5), Y(5)); placeObject(s, 'table_out', X(6), Y(5));
-  for (const o of Object.values(s.objects)) if (o.type === 'table_out') (o as { aged?: boolean }).aged = true;
+  for (const o of Object.values(s.objects)) if (o.type === 'table_out') o.wearMonth = o.placedMonth - WEAR_START_MONTHS; // 노후(트랙 A)
   expect(nightlyReputation(s)).toBeCloseTo(-0.8);
   s.reputation = 0.3;
   nightlyReputation(s);
@@ -131,12 +132,12 @@ test('meh 원인 추정: 지친 홀 직원 → rude, 낡은 자리 → worn, 청
   s.clock.month = 5;
   const seat = placeObject(s, 'table_out', X(4), Y(5))!;
   expect(mehCause(s, seat)).toBeNull();
-  s.staff.push({ id: 's1', name: 'a', face: { hair: 0, skin: 0, top: 0 }, stats: { stamina: 10, strength: 10, skill: 10, smile: 10 }, skill: 'coffee_master', level: 1, salary: 0, role: 'hall', unpaidMonths: 0, energy: 5, lastParttimeMonthIndex: -1, x: 0, y: 0, path: [], anchor: null, waitMs: 0 });
+  s.staff.push({ id: 's1', name: 'a', face: { hair: 0, skin: 0, top: 0 }, stats: { stamina: 10, strength: 10, skill: 10, smile: 10 }, skill: 'coffee_master', level: 1, salary: 0, poolId: '', statCaps: { stamina: 100, strength: 100, skill: 100, smile: 100 }, extraSkills: [], maxLevel: 10, baseSalary: 0, exp: 0, trainingCount: 0, training: null, role: 'hall', unpaidMonths: 0, energy: 5, lastParttimeMonthIndex: -1, x: 0, y: 0, path: [], anchor: null, waitMs: 0 });
   expect(mehCause(s, seat)).toEqual({ reason: 'rude' });
   s.staff[0]!.energy = 100;
-  (seat as { aged?: boolean }).aged = true;
+  seat.wearMonth = seat.placedMonth - WEAR_START_MONTHS;
   expect(mehCause(s, seat)).toEqual({ reason: 'worn', detail: '야외 테이블' });
-  (seat as { aged?: boolean }).aged = false;
+  seat.wearMonth = seat.placedMonth;
   (s as unknown as { clean: { value: number } }).clean = { value: 40 };
   expect(mehCause(s, seat)).toEqual({ reason: 'dirty' });
   (s as unknown as { clean: { value: number } }).clean = { value: 100 };
@@ -184,7 +185,7 @@ test('월말: 불만 TOP3로 후기(결정적), 카드 reputationDelta·topCompl
 test('사과 이벤트: promotions.json apology_event, 50만·평판 +8·월 1회', () => {
   const s = bareState(1);
   expect(PROMOTIONS.find((p) => p.id === 'apology_event')).toMatchObject({ costMoney: 500_000, special: 'apology' });
-  s.staff.push({ id: 's1', name: 'a', face: { hair: 0, skin: 0, top: 0 }, stats: { stamina: 10, strength: 10, skill: 10, smile: 10 }, skill: 'coffee_master', level: 1, salary: 0, role: 'hall', unpaidMonths: 0, energy: 100, lastParttimeMonthIndex: -1, x: 0, y: 0, path: [], anchor: null, waitMs: 0 });
+  s.staff.push({ id: 's1', name: 'a', face: { hair: 0, skin: 0, top: 0 }, stats: { stamina: 10, strength: 10, skill: 10, smile: 10 }, skill: 'coffee_master', level: 1, salary: 0, poolId: '', statCaps: { stamina: 100, strength: 100, skill: 100, smile: 100 }, extraSkills: [], maxLevel: 10, baseSalary: 0, exp: 0, trainingCount: 0, training: null, role: 'hall', unpaidMonths: 0, energy: 100, lastParttimeMonthIndex: -1, x: 0, y: 0, path: [], anchor: null, waitMs: 0 });
   const m0 = s.money;
   expect(apply(s, { type: 'promote', staffId: 's1', promotionId: 'apology_event' }).ok).toBe(true);
   expect(s.reputation).toBe(REPUTATION_START + APOLOGY_REPUTATION);

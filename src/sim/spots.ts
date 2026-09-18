@@ -8,7 +8,7 @@
 import type { GameState, ApplyResult, SpotDef, SpotTag, GuestTags, FacilityCategory, TourResult } from './types.ts';
 import { SPOTS, spotDef, GUEST_TYPES, guestTypeDef, canonicalGuestId, itemDef } from '../data/index.ts';
 import { unlockCondMet, isUnlocked, unlockGuestType, unlockedTypeIds } from './segments.ts';
-import { pushNotice } from './staff.ts';
+import { pushNotice, skillTotal } from './staff.ts';
 import { grantItem } from './items.ts';
 import { addMileage } from './mileage.ts';
 import { monthIndex } from './clock.ts';
@@ -355,7 +355,7 @@ export function isBusDay(day: number): boolean {
 export function tourScore(state: GameState, spotId: string): number {
   const def = spotDef(spotId);
   const appeal = spotAppealOf(def, spotLevel(state, spotId));
-  return Math.round(appeal + 30 * (tagPopularity(state, def.tag) / 100) + state.codex.combos.length);
+  return Math.round(appeal + 30 * (tagPopularity(state, def.tag) / 100) + state.codex.combos.length + skillTotal(state, 'tourScore')); // 트랙 D 특기 tour_guide +10
 }
 
 export function tourAvailable(state: GameState): boolean {

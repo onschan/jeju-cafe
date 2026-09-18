@@ -320,10 +320,12 @@ export type IngredientKind = 'bought' | 'farm';
 /** cost: 창고에 없을 때 자동 구매 원가. stats·category는 v1 표(§6.1)에서. */
 export interface IngredientDef { id: string; name: string; kind: IngredientKind; cost: number; category: IngredientCategory; stats: MenuStats; sourceText: string }
 
-export type RoleId = 'barista' | 'cook' | 'hall' | 'carry' | 'guide';
+export type RoleId = 'barista' | 'cook' | 'hall' | 'carry' | 'guide' | 'clean' | 'garden' | 'promo';
+/** 직종 해금 조건 (unlockedAtStart가 아닐 때): goal = 목표 보상 unlockRole(B), farms = 농원(수확 있는) 시설 수, rank = 카페 랭크 */
+export interface RoleUnlock { goal?: string; farms?: number; rank?: number }
 /** 직원 스탯 4 (GDD v2 §5): 체력 stamina · 힘 strength(운반) · 기술 skill(바리스타·요리) · 미소 smile(홀·안내) */
 export type StatKey = 'stamina' | 'strength' | 'skill' | 'smile';
-export interface RoleDef { id: RoleId; name: string; stat: StatKey; unlockedAtStart: boolean }
+export interface RoleDef { id: RoleId; name: string; stat: StatKey; unlockedAtStart: boolean; desc?: string; unlock?: RoleUnlock }
 
 export type SkillEffect =
   | { type: 'menuQuality'; category: MenuCategory; value: number }
@@ -335,20 +337,57 @@ export type SkillEffect =
   | { type: 'researchBonus'; value: number }
   | { type: 'spawnBonus'; value: number }
   | { type: 'luck'; value: number }
-  | { type: 'stamina'; value: number };
+  | { type: 'stamina'; value: number }
+  | { type: 'cleanBonus'; value: number }          // 청소 달인: 청결 회복 ×(1+v)
+  | { type: 'harvestBonus'; value: number }        // 농원지기: 농원 수확 +v
+  | { type: 'groupSatisfaction'; value: number }   // 단체 손님 만족 +v
+  | { type: 'feeBonus'; value: number }            // 담당 시설 요금 +v
+  | { type: 'trainingBonus'; value: number }       // 연수 효과 ×(1+v)
+  | { type: 'regularBonus'; value: number }        // 단골 전환 +v
+  | { type: 'nightSatisfaction'; value: number }   // 18시 이후 손님 만족 +v
+  | { type: 'stormRepairDiscount'; value: number } // 태풍 수리비 −v
+  | { type: 'tourScore'; value: number }           // 투어 개최 점수 +v
+  | { type: 'giftBonus'; value: number };          // 손님 선물 효과 ×(1+v)
 export interface SkillDef { id: string; name: string; desc: string; effect: SkillEffect }
 
 export interface Stats { stamina: number; strength: number; skill: number; smile: number }
 export interface Face { hair: number; skin: number; top: number } // 파츠 인덱스
 
+/** 직원 풀(staff_pool.json, §3.6.2): 고정 27명. tier 1~5 = 채용 단계, 0 = 특수(아이템으로만 온다). */
+export interface StaffPoolDef {
+  id: string;
+  name: string;
+  tier: number;
+  stats: Stats;      // 초기치
+  statCaps: Stats;   // 스탯별 상한 (유니폼 보너스 전)
+  maxLevel: number;
+  baseSalary: number;
+  skill: string;     // 타고난 특기
+  face: Face;
+  bio?: string;
+}
+/** 채용 방법(recruit_tiers.json, §3.6.6): 비용을 내면 그 단계 풀에서 아직 없는 사람이 후보로 온다. */
+export interface RecruitTierDef { id: JobTier; name: string; tier: number; cost: number; count: number; unlock?: { star?: number; rank?: number }; desc?: string }
+/** 연수(trainings.json, §3.6.4) */
+export interface TrainingDef { id: string; name: string; cost: number; days: number; stats: Partial<Stats>; grantSkill?: boolean; requires?: { star?: number; level?: number }; desc?: string }
+export interface StaffTraining { id: string; daysLeft: number }
+
 export interface Staff {
   id: string;
   name: string;
   face: Face;
+  poolId: string;         // staff_pool.json id
   stats: Stats;
-  skill: string;
+  statCaps: Stats;        // 스탯별 상한 (유니폼 보너스는 capOf가 더한다)
+  skill: string;          // 타고난 특기
+  extraSkills: string[];  // 종합 연수로 얻은 특기 (skillsOf = [skill, ...extraSkills])
   level: number;
+  maxLevel: number;
+  baseSalary: number;     // 기본급 (월급 = salaryOf)
   salary: number;
+  exp: number;            // 승급 경험치 (근무일 1 + 서빙·조리 0.2)
+  trainingCount: number;  // 다녀온 연수 횟수 (비용 증가)
+  training: StaffTraining | null; // 연수 중이면 자리를 비운다
   role: RoleId | null;
   unpaidMonths: number;
   energy: number; // 0~100
@@ -359,11 +398,11 @@ export interface Staff {
   anchor: Pt | null; // 렌더·이동용
   waitMs: number;    // 다음 산책까지 대기
 }
-export interface Candidate extends Omit<Staff, 'role' | 'unpaidMonths' | 'energy' | 'lastParttimeMonthIndex' | 'x' | 'y' | 'path' | 'anchor' | 'waitMs'> {
+export interface Candidate extends Omit<Staff, 'role' | 'unpaidMonths' | 'energy' | 'lastParttimeMonthIndex' | 'x' | 'y' | 'path' | 'anchor' | 'waitMs' | 'exp' | 'trainingCount' | 'training' | 'extraSkills'> {
   expiresMonthIndex: number;
 }
 
-export type JobTier = 'flyer' | 'site' | 'headhunter';
+export type JobTier = 'flyer' | 'site' | 'magazine' | 'intern' | 'college';
 
 /** 홍보 활동 정의 (ads.json 대신 — 2B-1 v2) */
 export interface PromotionDef {
@@ -822,7 +861,8 @@ export type Action =
   | { type: 'hire'; candidateId: string; role: RoleId }
   | { type: 'fire'; staffId: string }
   | { type: 'assign'; staffId: string; role: RoleId | null }
-  | { type: 'levelUp'; staffId: string; stat: StatKey }
+  | { type: 'levelUp'; staffId: string }
+  | { type: 'train'; staffId: string; trainingId: string }
   | { type: 'promote'; staffId: string; promotionId: string }
   | { type: 'setTarget'; segment: string | null }
   | { type: 'useItem'; itemId: string; objectType: string }

@@ -5,6 +5,7 @@ import { canBuyParcel, buyParcel } from './parcels.ts';
 import { canSetSlot, setSlot } from './menu.ts';
 import { checkFeature, checkGoals } from './goals.ts';
 import { canPostJob, postJob, canHire, hire, canFire, fire, canAssign, assign, canLevelUp, levelUp } from './staff.ts';
+import { canTrain, train } from './training.ts';
 import { canPromote, promote, canSetTarget, setTarget } from './promotions.ts';
 import { discoverCombos } from './compat.ts';
 import { canUseItem, useItem, canGiveGift, giveGift, canCraftGift, craftGift } from './items.ts';
@@ -204,9 +205,15 @@ function applyInner(state: GameState, a: Action): ApplyResult {
       return { ok: true };
     }
     case 'levelUp': {
-      const c = canLevelUp(state, a.staffId, a.stat);
+      const c = canLevelUp(state, a.staffId);
       if (!c.ok) return c;
-      levelUp(state, a.staffId, a.stat);
+      levelUp(state, a.staffId);
+      return { ok: true };
+    }
+    case 'train': {
+      const c = canTrain(state, a.staffId, a.trainingId);
+      if (!c.ok) return c;
+      train(state, a.staffId, a.trainingId);
       return { ok: true };
     }
     case 'promote': {

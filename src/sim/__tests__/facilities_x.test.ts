@@ -320,7 +320,7 @@ describe('청결 (§3.2.3)', () => {
     dailyCleanliness(s);
     expect(s.clean.value).toBe(85);
     // 홀 직원(기술 40) → 청소 직종이 없으면 절반 = 40/5 × 0.5 = 4
-    s.staff.push({ id: 'st1', name: '청소', face: { hair: 0, skin: 0, top: 0 }, stats: { stamina: 50, strength: 50, skill: 40, smile: 50 }, skill: 'none', level: 1, salary: 0, role: 'hall', unpaidMonths: 0, energy: 100, lastParttimeMonthIndex: -1, x: 0, y: 0, path: [], anchor: null, waitMs: 0 });
+    s.staff.push({ id: 'st1', name: '청소', face: { hair: 0, skin: 0, top: 0 }, stats: { stamina: 50, strength: 50, skill: 40, smile: 50 }, skill: 'none', level: 1, salary: 0, poolId: '', statCaps: { stamina: 100, strength: 100, skill: 100, smile: 100 }, extraSkills: [], maxLevel: 10, baseSalary: 0, exp: 0, trainingCount: 0, training: null, role: 'hall', unpaidMonths: 0, energy: 100, lastParttimeMonthIndex: -1, x: 0, y: 0, path: [], anchor: null, waitMs: 0 });
     dailyCleanliness(s);
     expect(s.clean.value).toBe(89);
     // 화장실이 있으면 감소 ×0.8

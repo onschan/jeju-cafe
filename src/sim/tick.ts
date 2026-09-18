@@ -8,7 +8,8 @@ import { upkeep, closeMonth, annualRaise, incomeTax, TAX_MONTH } from './economy
 import { checkLoan, monthlyFailure } from './failure.ts';
 import { resetWaiting } from './guests.ts';
 import { nightlyReputation, monthlyReputation } from './reputation.ts';
-import { payroll, expireCandidates, hourlyEnergy, nightlyRecovery, moveStaff } from './staff.ts';
+import { payroll, expireCandidates, hourlyEnergy, nightlyRecovery, moveStaff, dailyWorkExp, checkRoleUnlocks } from './staff.ts';
+import { dailyTraining } from './training.ts';
 import { expirePromotions } from './promotions.ts';
 import { evaluateUnlocks } from './segments.ts';
 import { dailyBoard, monthlyBoard } from './board.ts';
@@ -39,7 +40,7 @@ function onNewHour(state: GameState): void {
   checkGoals(state); // 목표 줄이 1/1로 하루 종일 멈춰 있지 않게 매시간 판정 (달성 즉시 보상·대화창)
 }
 
-/** 새 날 (6시의 시간 처리보다 먼저): 효과 만료 → 빅 이벤트 종료 → 팝업 정리·지역 회복 → 밤 회복 → 게시판(부탁 진행·제안) → 메뉴 개발 완료 → 건설 → 목표 판정 */
+/** 새 날 (6시의 시간 처리보다 먼저): 효과 만료 → 빅 이벤트 종료 → 팝업 정리·지역 회복 → 밤 회복 → 근무 경험치·연수 복귀·직종 해금 → 게시판(부탁 진행·제안) → 메뉴 개발 완료 → 건설 → 목표 판정 */
 function onNewDay(state: GameState): void {
   nightlyReputation(state); // 어제 만족·불만으로 평판 갱신
   resetWaiting(state);
@@ -48,6 +49,9 @@ function onNewDay(state: GameState): void {
   dailyBigEvents(state);
   dailyPopup(state);
   nightlyRecovery(state);
+  dailyWorkExp(state);
+  dailyTraining(state);
+  checkRoleUnlocks(state);
   dailyBoard(state);
   dailySpots(state);
   resolveDevelop(state);

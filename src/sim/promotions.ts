@@ -2,7 +2,7 @@ import type { GameState, ApplyResult, PromotionDef } from './types.ts';
 import { promotionDef, GUEST_TYPES, guestTags, canonicalGuestId } from '../data/index.ts';
 import { nextRandom } from './rng.ts';
 import { applyApology } from './reputation.ts';
-import { findStaff } from './staff.ts';
+import { findStaff, promoBonusOf, promoEnergyFactorOf } from './staff.ts';
 import { monthIndex } from './clock.ts';
 import { isTarget, isUnlocked } from './segments.ts';
 export { canSetTarget, setTarget } from './segments.ts';
@@ -27,7 +27,7 @@ export function targetMult(state: GameState, typeId: string): number {
 
 /** 홍보 하나가 손님층에 주는 인기 가산 (타깃 배수 포함) */
 function deltaFor(state: GameState, def: PromotionDef, typeId: string): number {
-  return ((def.segmentDelta[typeId] ?? 0) + (def.allDelta ?? 0)) * targetMult(state, typeId);
+  return ((def.segmentDelta[typeId] ?? 0) + (def.allDelta ?? 0)) * targetMult(state, typeId) * promoBonusOf(state); // 홍보 담당(x-staff) ×1.2
 }
 
 /** 활성 기간형 홍보가 지금 더해 주는 인기 (시작 시점에 구워 둔 delta) */
@@ -61,9 +61,10 @@ export function canPromote(state: GameState, staffId: string, promotionId: strin
   const st = findStaff(state, staffId);
   if (!st) return { ok: false, reason: '없는 직원이에요' };
   if (st.role === null) return { ok: false, reason: '배치된 직원만 할 수 있어요' };
+  if (st.training) return { ok: false, reason: '연수 중이에요' };
   if (state.developing?.staffId === staffId) return { ok: false, reason: '메뉴 개발 중이에요' };
   const def = promotionDef(promotionId);
-  if (st.energy < def.energy) return { ok: false, reason: '기력이 모자라요' };
+  if (st.energy < def.energy * promoEnergyFactorOf(state)) return { ok: false, reason: '기력이 모자라요' };
   if (def.special === 'parttime' && st.lastParttimeMonthIndex === monthIndex(state.clock)) return { ok: false, reason: '이달은 이미 했어요' };
   if (def.special === 'apology' && state.lastApologyMonthIndex === monthIndex(state.clock)) return { ok: false, reason: '사과 이벤트는 한 달에 한 번이에요' }; // 트랙 E reputation
   if (state.research < def.costResearch) return { ok: false, reason: '연구 포인트가 모자라요' };
@@ -79,7 +80,7 @@ export function canPromote(state: GameState, staffId: string, promotionId: strin
 export function promote(state: GameState, staffId: string, promotionId: string): void {
   const st = findStaff(state, staffId)!;
   const def = promotionDef(promotionId);
-  st.energy -= def.energy;
+  st.energy -= def.energy * promoEnergyFactorOf(state); // 홍보 담당(x-staff) ×0.5
   state.research -= def.costResearch;
   state.money -= def.costMoney;
   state.monthCosts.ads += def.costMoney;

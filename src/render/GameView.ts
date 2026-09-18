@@ -92,7 +92,7 @@ const GUEST_H = CHAR_H;
 /** 앉은 손님을 좌석 칸 중심보다 살짝 위로(의자에 앉은 느낌, 화면 px) */
 const SEAT_LIFT_PX = 4;
 /** 직원 역할 배지(머리 위 16px 아이콘) */
-const ROLE_ICON: Record<RoleId, string> = { hall: 'look', barista: 'menu', cook: 'harvest', carry: 'money', guide: 'research' };
+const ROLE_ICON: Record<RoleId, string> = { hall: 'look', barista: 'menu', cook: 'harvest', carry: 'money', guide: 'research', clean: 'remove', garden: 'plant', promo: 'tourist' }; // clean·garden·promo: x-staff
 /** 배지 아래 끝 y(발끝 기준). 캐릭터 프레임 48px 중 위 13px은 비어 있고(머리 y=16, 모자 챙 y=13) 그 위 3px 띄운다 */
 const ROLE_ICON_Y = -(CHAR_H - 10);
 /** 기력이 낮은 직원은 흐리게 */

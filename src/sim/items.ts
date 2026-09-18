@@ -1,7 +1,7 @@
 import type { GameState, ApplyResult, ItemDef, ObjectDef, ItemSlot, ObjectKind, GiftDef } from './types.ts';
 import { pushFx } from './fx.ts';
 import { ITEMS, GIFTS, itemDef, objectDef, giftDef, isGiftId, guestTypeDef, ingredientDef, NAMED_TYPE } from '../data/index.ts';
-import { pushNotice } from './staff.ts';
+import { pushNotice, skillTotal } from './staff.ts';
 import { addSatisfaction } from './segments.ts';
 import { addAffinity } from './popup.ts';
 import { MAX_SEGMENT_POPULARITY } from './promotions.ts';
@@ -119,7 +119,7 @@ export function giveGift(state: GameState, guestId: string, itemId: string): num
   const gift = giftDef(itemId);
   const g = state.guests.find((x) => x.id === guestId)!;
   const fit = giftFits(gift, g.type);
-  const k = fit ? GIFT_FIT_MULT : 1;
+  const k = (fit ? GIFT_FIT_MULT : 1) * (1 + skillTotal(state, 'giftBonus')); // 트랙 D 특기 gift_hands ×1.5
   state.inventory[itemId] = (state.inventory[itemId] ?? 0) - 1;
   state.giftDay = dayIndex(state.clock);
   if (g.namedId) {

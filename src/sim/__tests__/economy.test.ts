@@ -4,6 +4,7 @@ import { apply } from '../actions.ts';
 import { isMenuAvailable, consumeIngredients, purchaseCost } from '../menu.ts';
 import { ingredientCost, upkeep, upkeepOf, closeMonth, incomeTaxOf, salaryOf, annualRaise, ANNUAL_RAISE_PCT } from '../economy.ts';
 import { TOUR_BUS_FEE, TOUR_BUS_GROUP_MULT, TOUR_BUS_KEY } from '../spots.ts';
+import { WEAR_START_MONTHS } from '../cleanliness.ts';
 import { LOAN_MAX } from '../failure.ts';
 import { typeWeight } from '../guests.ts';
 import { unlockGuestType } from '../segments.ts';
@@ -106,14 +107,14 @@ test('월말 카드에 수입·재료비·월급·광고·유지비·순이익�
 
 test('공고비·퇴직금은 카드의 recruit에 잡히고 순이익에서 빠진다', () => {
   const s = bareState(1);
-  apply(s, { type: 'postJob', tier: 'flyer' }); // 100만
+  apply(s, { type: 'postJob', tier: 'flyer' }); // 50만 (§3.6.6)
   apply(s, { type: 'hire', candidateId: s.candidates[0]!.id, role: 'hall' });
   const severance = s.staff[0]!.salary;
   apply(s, { type: 'fire', staffId: s.staff[0]!.id });
   for (let i = 0; i < 30; i++) tick(s, DAY_MS);
   const c = s.lastMonthCard!;
-  expect(c.costs.recruit).toBe(1_000_000 + severance);
-  expect(c.net).toBe(c.income - c.costs.ingredients - c.costs.salary - c.costs.ads - c.costs.upkeep - 1_000_000 - severance);
+  expect(c.costs.recruit).toBe(500_000 + severance);
+  expect(c.net).toBe(c.income - c.costs.ingredients - c.costs.salary - c.costs.ads - c.costs.upkeep - 500_000 - severance);
   expect(s.monthCosts.recruit).toBe(0);
 });
 
@@ -168,7 +169,7 @@ test('급여 인상: 2년차부터 매년 3월 1일 전 직원 월급 +5% 누적
   const s = bareState(1);
   s.loan.count = LOAN_MAX;
   s.money = 50_000_000;
-  s.staff.push({ id: 's1', name: 'a', face: { hair: 0, skin: 0, top: 0 }, stats: { stamina: 10, strength: 10, skill: 10, smile: 10 }, skill: 'coffee_master', level: 1, salary: 500_000, role: 'hall', unpaidMonths: 0, energy: 100, lastParttimeMonthIndex: -1, x: 0, y: 0, path: [], anchor: null, waitMs: 0 });
+  s.staff.push({ id: 's1', name: 'a', face: { hair: 0, skin: 0, top: 0 }, stats: { stamina: 10, strength: 10, skill: 10, smile: 10 }, skill: 'coffee_master', level: 1, salary: 500_000, poolId: '', statCaps: { stamina: 100, strength: 100, skill: 100, smile: 100 }, extraSkills: [], maxLevel: 10, baseSalary: 0, exp: 0, trainingCount: 0, training: null, role: 'hall', unpaidMonths: 0, energy: 100, lastParttimeMonthIndex: -1, x: 0, y: 0, path: [], anchor: null, waitMs: 0 });
   s.clock.year = 2; s.clock.month = 2; s.clock.day = 30; s.clock.hour = 23;
   tick(s, DAY_MS);
   expect(s.salaryRaisePct).toBe(ANNUAL_RAISE_PCT);
@@ -205,12 +206,12 @@ test('투어 버스: setTourBus로 계약하면 월초 50만 고정비(카드 to
   expect(s.lastMonthCard!.costs.tourBus).toBe(0);
 });
 
-test('유지비: 노후 훅 — PlacedObject.aged면 +50%', () => {
+test('유지비: 노후(트랙 A wearOf, 24개월 경과)면 +50%', () => {
   const s = bareState(1);
   apply(s, { type: 'place', objectType: 'table_out', x: X(4), y: Y(5) });
   const o = objectAt(s, X(4), Y(5))!;
   expect(upkeepOf(s, o)).toBe(1250);
-  (o as { aged?: boolean }).aged = true;
+  o.wearMonth = o.placedMonth - WEAR_START_MONTHS;
   expect(upkeepOf(s, o)).toBe(1875);
 });
 

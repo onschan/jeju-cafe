@@ -2,13 +2,13 @@
  *  - 카페 청결 0~100: 매일 −(어제 손님 수 ÷ 20), 청소 직원 1명당 +(기술 ÷ 5) 회복(청소 도구실 있으면 ×1.5). 화장실·청소 도구실·창고는 감소 −20%씩(최대 −60%).
  *    50 미만이면 손님 수 ×0.8, 30 미만이면 ×0.6 — effects(spawnMult, source 'clean')로 하루짜리 효과를 매일 갱신해 guests.ts를 건드리지 않는다.
  *  - 시설 노후: 완공(증축·수리) 후 24개월부터 6개월마다 인기 −1(최대 −6). 수리 = 건설비 × 10%. 노후 시설은 유지비 ×1.5. */
-import type { GameState, PlacedObject, ApplyResult, RoleId } from './types.ts';
-import { objectDef, ROLES } from '../data/index.ts';
+import type { GameState, PlacedObject, ApplyResult } from './types.ts';
+import { objectDef } from '../data/index.ts';
 import { monthIndex } from './clock.ts';
 import { addEffect } from './effects.ts';
 import { parcelAt } from './parcels.ts';
 import { placeCost } from './cafe.ts';
-import { pushNotice } from './staff.ts';
+import { pushNotice, cleanPowerOf } from './staff.ts';
 import { levelOf, LEVEL_UPKEEP_MULT } from './upgrade.ts';
 
 export const CLEAN_MAX = 100;
@@ -37,18 +37,22 @@ function hasBuilt(state: GameState, type: string): boolean {
   return Object.values(state.objects).some((o) => o.type === type && !o.build && parcelAt(state, o.x, o.y)?.owned);
 }
 
-/** 청결 감소 배수: 청결 시설 하나당 −20%, 최대 −60% */
+/** 삼다수 부적(트랙 C 아이템, 목표 g53): 청결 감소 −30% */
+export const CLEAN_CHARM_ITEM = 'clean_charm';
+export const CLEAN_CHARM_REDUCE = 0.3;
+/** 청결 감소 배수: 청결 시설 하나당 −20%, 최대 −60% (× 삼다수 부적 0.7) */
 export function cleanReduceMult(state: GameState): number {
   const n = CLEAN_FACILITY_IDS.filter((id) => hasBuilt(state, id)).length;
-  return 1 - Math.min(CLEAN_REDUCE_CAP, n * CLEAN_REDUCE_PER_FACILITY);
+  const charm = (state.inventory[CLEAN_CHARM_ITEM] ?? 0) > 0 ? 1 - CLEAN_CHARM_REDUCE : 1;
+  return (1 - Math.min(CLEAN_REDUCE_CAP, n * CLEAN_REDUCE_PER_FACILITY)) * charm;
 }
 
-/** 하루 회복량: 청소 직원(기술 ÷ 5) 합 × (청소 도구실 1.5). 직종 clean이 없으면 홀 직원 절반. */
+/** 하루 회복량: 청소 직원 힘(트랙 D cleanPowerOf: 기술 ÷ 5 + 힘 ÷ 10, 기력·특기 반영) × (청소 도구실 1.5). 청소 직원이 없으면 홀 직원(기술 ÷ 5)의 절반이 대신 치운다. */
 export function dailyCleanRecovery(state: GameState): number {
-  const hasCleanRole = ROLES.some((r) => (r.id as string) === CLEAN_ROLE);
-  const role = (hasCleanRole ? CLEAN_ROLE : 'hall') as RoleId;
-  const factor = hasCleanRole ? 1 : HALL_CLEAN_FACTOR;
-  const sum = state.staff.filter((s) => s.role === role).reduce((n, s) => n + s.stats.skill / CLEAN_STAFF_DIV, 0) * factor;
+  const cleaners = state.staff.filter((s) => s.role === CLEAN_ROLE);
+  const sum = cleaners.length > 0
+    ? cleanPowerOf(state)
+    : state.staff.filter((s) => s.role === 'hall').reduce((n, s) => n + s.stats.skill / CLEAN_STAFF_DIV, 0) * HALL_CLEAN_FACTOR;
   return sum * (hasBuilt(state, 'cleaning_room') ? CLEAN_ROOM_MULT : 1);
 }
 
@@ -91,9 +95,14 @@ export function wearOf(state: GameState, obj: PlacedObject): number {
 export function isWorn(state: GameState, obj: PlacedObject): boolean {
   return wearOf(state, obj) > 0;
 }
-/** 수리비 = 현재 건설비 × 10% */
+/** 수리 도구 세트(트랙 C 상점 아이템)가 있으면 수리비 0 — repair가 하나 쓴다 */
+export const REPAIR_KIT_ITEM = 'repair_kit';
+export function hasRepairKit(state: GameState): boolean {
+  return (state.inventory[REPAIR_KIT_ITEM] ?? 0) > 0;
+}
+/** 수리비 = 현재 건설비 × 10% (수리 도구 세트가 있으면 0) */
 export function repairCost(state: GameState, obj: PlacedObject): number {
-  return Math.round(placeCost(state, obj.type) * REPAIR_COST_PCT);
+  return hasRepairKit(state) ? 0 : Math.round(placeCost(state, obj.type) * REPAIR_COST_PCT);
 }
 export function canRepair(state: GameState, objId: string): ApplyResult {
   const obj = state.objects[objId];
@@ -105,9 +114,11 @@ export function canRepair(state: GameState, objId: string): ApplyResult {
 /** 수리: 돈 차감, 노후 0(기준 달 = 지금). 호출 전 canRepair. */
 export function repair(state: GameState, objId: string): void {
   const obj = state.objects[objId]!;
-  state.money -= repairCost(state, obj);
+  const kit = hasRepairKit(state);
+  if (kit) state.inventory[REPAIR_KIT_ITEM] = (state.inventory[REPAIR_KIT_ITEM] ?? 0) - 1;
+  else state.money -= repairCost(state, obj);
   obj.wearMonth = monthIndex(state.clock);
-  pushNotice(state, `${objectDef(obj.type).name} 수리 완료`);
+  pushNotice(state, `${objectDef(obj.type).name} 수리 완료${kit ? ' (수리 도구 세트 사용)' : ''}`);
 }
 
 /** 유지비 배수 = 증축 Lv(×1.25/×1.5) × 노후(×1.5). objectStats().upkeep에 이미 곱해져 있다 — economy.ts(E)가 objectStats를 쓰면 다시 곱하지 말 것. */

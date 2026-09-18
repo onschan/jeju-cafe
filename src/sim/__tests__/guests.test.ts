@@ -248,9 +248,9 @@ test('대기열: 빈 자리가 없으면 3명까지 줄을 서고 자리가 나�
   expect(walked.some((t) => t.satisfaction === 10)).toBe(true); // 돌아간 손님층 만족 −10
   // 자리가 비면 대기열이 먼저
   s.guests = [];
-  const t = s.waiting[0]!;
+  const first = s.waiting.slice(0, 2);
   expect(spawnGuests(s, 0)).toBe(2);
-  expect(s.guests.every((g) => g.type === t)).toBe(true);
+  expect(s.guests.map((g) => g.type)).toEqual(first); // 줄 선 순서대로 앉는다
   expect(s.waiting).toHaveLength(1);
   resetWaiting(s);
   expect(s.waiting).toHaveLength(0);

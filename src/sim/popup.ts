@@ -6,6 +6,7 @@ import { menuOf, priceOf, statsMatchCount, menuOrderWeight, guestLikesCategory }
 import { grantItem } from './items.ts';
 import { addMileage } from './mileage.ts';
 import { pushNotice } from './staff.ts';
+import { reputationNamedMult } from './reputation.ts';
 import { dayIndex } from './effects.ts';
 import { josa } from './josa.ts';
 import { fmtNum } from './format.ts';
@@ -243,12 +244,15 @@ export function regularIds(state: GameState): string[] {
 export function regularVisitSlot(def: NamedGuestDef): { weekday: number; hour: number } {
   return { weekday: def.no % 7, hour: REGULAR_HOUR_MIN + (def.no % REGULAR_HOUR_SPAN) };
 }
-/** 지금 시각에 본점에 와야 하는 단골★ (아직 안 와 있는) */
+/** 지금 시각에 본점에 와야 하는 단골★ (아직 안 와 있는). 평판이 높으면(트랙 E reputationNamedMult > 1) 3일 뒤 요일에 한 번 더 온다. */
 export function regularsDueNow(state: GameState): NamedGuestDef[] {
   const present = new Set(state.guests.map((g) => g.namedId).filter((x): x is string => !!x));
+  const extra = reputationNamedMult(state) > 1;
   return regularIds(state).map(namedGuestDef).filter((d) => {
     const slot = regularVisitSlot(d);
-    return state.clock.day % 7 === slot.weekday && state.clock.hour === slot.hour && !present.has(d.id);
+    const wd = state.clock.day % 7;
+    const due = wd === slot.weekday || (extra && wd === (slot.weekday + 3) % 7);
+    return due && state.clock.hour === slot.hour && !present.has(d.id);
   });
 }
 
