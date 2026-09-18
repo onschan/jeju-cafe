@@ -260,8 +260,23 @@ export interface ActiveCombo {
   hidden: boolean;
   target: ComboTarget;
   effectText: string;
+  count: number;      // 발동 횟수 (다른 개체 상대마다 +1, 스펙 §3.1-2)
 }
 export interface ActiveSet { id: string; name: string; level: number; target: ComboTarget; mult: number }
+/** 명당 12 (스펙 §3.1): 중심 시설 1개를 두고 반경 안 시설 조합이 갖춰지면 그 시설에 손님층 배수·인기 +5 */
+export interface SpotEffectDef {
+  id: string;
+  name: string;
+  center: string;                                  // 중심 시설 오브젝트 id
+  requires: { objectId: string; count: number }[]; // 반경 안 필요 시설
+  target: ComboTarget;
+  radius: number;                                  // 기본 2
+  guestMult: number;                               // 대상 손님층 선택 확률 배수 (×1.5)
+  popularity: number;                              // 인기 가산 (+5)
+  tickets: number;                                 // 처음 발견 시 응모권
+  line: string;                                    // 발견 대사
+}
+export interface ActiveSpotEffect { id: string; name: string; target: ComboTarget; guestMult: number; popularity: number }
 export interface ObjectStats {
   popularity: number;
   feePct: number;
@@ -270,6 +285,9 @@ export interface ObjectStats {
   upkeep: number;
   combos: ActiveCombo[];
   sets: ActiveSet[];
+  spot: ActiveSpotEffect | null;        // 명당 (시설 1개당 1종, 가장 먼저 만족한 것)
+  level: number;                        // 증축 Lv 1~3 (upgrade.ts)
+  wear: number;                         // 노후 단계 0~6 (cleanliness.ts, 인기 −wear)
   segmentBonus: Record<string, number>; // 손님층 id → 콤보 대상 가산 인기
 }
 export interface ItemBonus { popularity: number; feePct: number; scenery?: number }
@@ -462,6 +480,9 @@ export interface PlacedObject {
   placedMonth: number; // 놓은 달(monthIndex). 농원 수확은 다음 달 1일부터
   rot?: number; // 0..3, 방향 있는 오브젝트만 (스프라이트 변형 _r{n})
   build?: { doneDay: number; days: number }; // 건설 중 (doneDay = 완공 절대 일 인덱스). 없으면 완공
+  level?: 1 | 2 | 3;   // 증축 Lv (없으면 1). 스펙 §3.2.2
+  uses?: number;       // 누적 이용 횟수 (좌석 주문·시설 방문) — 증축 조건
+  wearMonth?: number;  // 노후 기준 달(monthIndex): 완공·증축·수리 시점. 없으면 placedMonth
 }
 
 /** 필지. 격자는 처음부터 전체 크기이고, 소유한 필지에만 지을 수 있다. */
@@ -675,7 +696,8 @@ export interface GameState {
   effects: ActiveEffect[];                    // 이벤트 효과 (기간형)
   menuSold: Record<string, number>;           // menuId → 누적 판매 수 (부탁 진행: 수락 시점 값과의 차, 목표 menuSold)
   monthMenuSold: Record<string, number>;      // 이달 판매 수 (월말 카드 최다 판매 메뉴)
-  codex: { combos: string[]; sets: string[]; recipes: string[]; ingredientCombos: string[] }; // 발동한 적 있는 상성·세트·히든 레시피·재료 콤보 id (도감)
+  codex: { combos: string[]; sets: string[]; recipes: string[]; ingredientCombos: string[]; spots: string[] }; // 발동한 적 있는 상성·세트·히든 레시피·재료 콤보·명당 id (도감)
+  clean: { value: number; lastGuests: number }; // 카페 청결 0~100 (cleanliness.ts) + 어제까지의 누적 손님 수
   customMenus: MenuDef[];                     // 개발한 메뉴 (id m_custom_N). menuOf(state, id)가 기본 메뉴보다 먼저 찾는다
   menuMods: Record<string, MenuMod>;          // menuId → 토핑·레벨 (없으면 토핑 없음·레벨 1)
   developing: Developing | null;              // 진행 중인 메뉴 개발 (직원은 그동안 바쁘다)
@@ -713,6 +735,8 @@ export type Action =
   | { type: 'remove'; objectId: string }
   | { type: 'move'; objectId: string; x: number; y: number }
   | { type: 'rotate'; objectId: string; rot: number }
+  | { type: 'upgradeObject'; objectId: string }   // 증축 Lv+1 (upgrade.ts)
+  | { type: 'repairObject'; objectId: string }    // 노후 수리 (cleanliness.ts)
   | { type: 'buyParcel'; id: string }
   | { type: 'clearRock'; x: number; y: number }
   | { type: 'renameCafe'; name: string }

@@ -9,6 +9,7 @@ import { effectivePopularity, youtuberMultiplier } from './promotions.ts';
 import { START_HOUR, END_HOUR } from './clock.ts';
 import { parcelBonusAt, parcelSpawnMult, parcelFeeMult } from './parcels.ts';
 import { objectStats, popularityFor, BASE_POPULARITY } from './compat.ts';
+import { recordUse, facilityFee } from './upgrade.ts'; // 트랙 A 훅: 이용 횟수·Lv 요금
 import { isUnlocked, unlockedTypeIds, regularFreqMult, walletOf, onHappyVisit, VISIT_BONUS_CAP } from './segments.ts';
 import { addResearchProgress, TASTE_MATCH_WEIGHT } from './progress.ts';
 import { effectMult, noGuestsToday } from './effects.ts';
@@ -327,6 +328,7 @@ function order(state: GameState, g: Guest): void {
   const menu = menuOf(state, menuId);
   consumeIngredients(state, menuId);
   const seat = state.objects[g.seatId!]!;
+  recordUse(seat); // 트랙 A: 증축 조건(누적 이용)
   const price = Math.round(priceOf(state, menuId) * parcelFeeMult(parcelBonusAt(state, seat.x, seat.y)) * (objectStats(state, seat.id).feePct / 100) * eventFeeMult(state));
   state.money += price;
   state.monthIncome += price;
@@ -359,8 +361,8 @@ export function pickVisit(state: GameState, g: Guest, from: Pt): { obj: PlacedOb
 
 /** 시설 도착: 이용료를 내고 시설 인기 +1(상한), 숫자 팝업 연출 */
 function useFacility(state: GameState, g: Guest, obj: PlacedObject): void {
-  const def = objectDef(obj.type);
-  const fee = def.fee ?? 0;
+  const fee = facilityFee(state, obj); // 트랙 A: Lv 요금 +10%/+20%
+  recordUse(obj);
   state.money += fee;
   state.monthIncome += fee;
   state.totalIncome += fee;

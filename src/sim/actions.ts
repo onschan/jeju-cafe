@@ -17,6 +17,9 @@ import { canStartBuild, startBuild } from './build.ts';
 import { canBuyMileage, buyMileage, canBuyTicket, buyTicket, canDrawTicket, drawTicket, canSetUniform, setUniform, canUseGuestItem, useGuestItem } from './shop.ts';
 import { canOpenPopup, openPopup, canClosePopup, closePopup } from './popup.ts';
 import { canChallenge, challenge } from './rivals.ts';
+import { canUpgrade, upgrade } from './upgrade.ts';
+import { canRepair, repair } from './cleanliness.ts';
+import { objectStats } from './compat.ts';
 
 export const PROTECTED_TYPES = new Set(['busstop', 'warehouse', 'gate', 'spring']);
 /** 회전할 수 있는 오브젝트 (rot 0..3, 스프라이트 변형 _r{n}이 있을 때만 보인다) */
@@ -105,6 +108,23 @@ function applyInner(state: GameState, a: Action): ApplyResult {
       if (!obj) return { ok: false, reason: '없는 오브젝트' };
       if (!ROTATABLE_TYPES.has(obj.type)) return { ok: false, reason: '돌릴 수 없는 거예요' };
       obj.rot = ((a.rot % 4) + 4) % 4;
+      return { ok: true };
+    }
+    case 'upgradeObject': {
+      const obj = state.objects[a.objectId];
+      if (!obj) return { ok: false, reason: '없는 오브젝트' };
+      const c = canUpgrade(state, a.objectId, objectStats(state, a.objectId).popularity);
+      if (!c.ok) return c;
+      const d = canDisturb(state, obj);
+      if (!d.ok) return d;
+      upgrade(state, a.objectId);
+      discoverCombos(state);
+      return { ok: true };
+    }
+    case 'repairObject': {
+      const c = canRepair(state, a.objectId);
+      if (!c.ok) return c;
+      repair(state, a.objectId);
       return { ok: true };
     }
     case 'buyParcel': {

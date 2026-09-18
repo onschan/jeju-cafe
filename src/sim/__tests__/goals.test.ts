@@ -3,7 +3,7 @@ import { createInitialState } from '../state.ts';
 import { apply } from '../actions.ts';
 import { tick } from '../tick.ts';
 import { DAY_MS } from '../clock.ts';
-import { GOALS, goalDef, objectDef, menuDef, roleDef, FACILITIES } from '../../data/index.ts';
+import { GOALS, goalDef, objectDef, menuDef, roleDef, FACILITIES, FACILITY_X_IDS } from '../../data/index.ts';
 import { currentGoal, goalProgress, checkGoals, goalMet, goalForFacility, goalForFeature, checkFeature, grantReward, FEATURE_IDS, goalConditionText, goalRewardText } from '../goals.ts';
 import { bareState, at } from './helpers.ts';
 
@@ -44,7 +44,8 @@ describe('goals.json 데이터', () => {
   });
 
   it('v2 표에서 시작(start)이었다가 목표 보상으로 바뀐 시설은 전부 어떤 목표가 연다', () => {
-    const goalGated = FACILITIES.filter((f) => f.unlock?.type === 'goal');
+    // 확장 44종(FACILITY_X_IDS)의 goal:gNN 해금은 트랙 B의 108 목표가 연다 — B 머지 후 이 필터를 지운다
+    const goalGated = FACILITIES.filter((f) => f.unlock?.type === 'goal' && !FACILITY_X_IDS.has(f.id));
     expect(goalGated.length).toBeGreaterThan(10);
     for (const f of goalGated) expect(goalForFacility(f.id), f.id).not.toBeNull();
   });

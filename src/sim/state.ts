@@ -15,7 +15,7 @@ import { generateCandidate } from './staff.ts';
 import { monthIndex } from './clock.ts';
 
 export { PARCEL_W, PARCEL_H, START_ORIGIN, GRID_W, GRID_H, VILLAGE_ROAD_Y };
-export const SAVE_VERSION = 15; // 15: v3 대격변 — 밭 폐지·농원 월 수확·목표 체인·기능 잠금·빅 이벤트·시작 상태 (마이그레이션 없음: 백업 후 새 게임). 14: 라이벌 카페
+export const SAVE_VERSION = 16; // 16: 증축 Lv·노후·청결·명당 도감 (트랙 A). // 15: v3 대격변 — 밭 폐지·농원 월 수확·목표 체인·기능 잠금·빅 이벤트·시작 상태 (마이그레이션 없음: 백업 후 새 게임). 14: 라이벌 카페
 /** 시작 자금 500만 + 정착지원금(잔고 < 40만이면 1회 300만) — 마스터 GDD §1 */
 export const START_MONEY = 5_000_000;
 export const SETTLE_GRANT = 3_000_000;
@@ -173,7 +173,8 @@ export function createInitialState(seed: number, playerId = 'local', createdAt =
     effects: [],
     menuSold: {},
     monthMenuSold: {},
-    codex: { combos: [], sets: [], recipes: [], ingredientCombos: [] },
+    codex: { combos: [], sets: [], recipes: [], ingredientCombos: [], spots: [] },
+    clean: { value: 100, lastGuests: 0 },
     customMenus: [],
     menuMods: {},
     developing: null,
