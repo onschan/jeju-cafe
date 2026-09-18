@@ -564,21 +564,8 @@ export const DRAW_PRIZES: DrawPrizeDef[] = (rouletteJson as { slots: { id: strin
   const kind = DRAW_KIND_OF[sl.id] ?? 'miss';
   return { kind, label: DRAW_LABEL[kind], pct: sl.pct };
 });
-/** 가이드북 심사 가중치: 심사 문구 → 항목별 비중 (합 1) */
-const GUIDEBOOK_WEIGHTS: Record<string, Partial<Record<JudgeKey, number>>> = {
-  gb_kind_cafe: { smile: 0.8, overall: 0.2 },
-  gb_local_map: { overall: 1 },
-  gb_jeju_map: { overall: 1 },
-  gb_insta_100: { scenery: 0.6, fun: 0.4 },
-  gb_dessert: { menu: 0.8, overall: 0.2 },
-  gb_healing: { scenery: 0.7, smile: 0.3 },
-  gb_activity: { fun: 0.8, overall: 0.2 },
-  gb_together: { group: 0.7, overall: 0.3 },
-  gb_coop_monthly: { overall: 0.5 }, // 나머지 0.5는 이번 달 타깃 손님층 인기 (rank.ts)
-  gb_national_tour: { overall: 1 },
-  gb_ribbon_survey: { overall: 1 },
-};
-type RawGuidebook = { id: string; name: string; unlock: Record<string, unknown>; unlockText: string; criteriaText: string; prize: number; research: number; seeds: { itemId: string; count: number }[] };
+/** 가이드북 심사 가중치(합 1)·라이벌 곡선은 guidebooks.json에 (트랙 E §3.7) */
+type RawGuidebook = { id: string; name: string; unlock: Record<string, unknown>; unlockText: string; criteriaText: string; prize: number; research: number; seeds: { itemId: string; count: number }[]; weights: Partial<Record<JudgeKey, number>>; rivalTop: number; rivalGrowth: number; mileage?: number };
 /** 가이드북 해금: count는 분류 개수, segment는 손님층 인기 */
 function toGuidebookUnlock(u: Record<string, unknown>): UnlockCond {
   if (u.type === 'count' && typeof u.category === 'string') return { type: 'category', category: u.category as FacilityCategory, count: Number(u.count) || 1 };
@@ -595,7 +582,7 @@ export const GUIDEBOOKS: GuidebookDef[] = (guidebooksJson as RawGuidebook[]).map
   const unlock = toGuidebookUnlock(g.unlock);
   return {
   id: g.id, name: g.name, unlock, unlockText: guidebookUnlockText(unlock, g.unlockText), criteriaText: g.criteriaText,
-  weights: GUIDEBOOK_WEIGHTS[g.id] ?? { overall: 1 }, prize: g.prize, research: g.research, seeds: g.seeds ?? [], monthly: g.id === 'gb_coop_monthly',
+  weights: g.weights, rivalTop: g.rivalTop, rivalGrowth: g.rivalGrowth, prize: g.prize, research: g.research, seeds: g.seeds ?? [], mileage: g.mileage ?? 0, monthly: g.id === 'gb_coop_monthly',
   };
 });
 export interface StarDef { star: number; conditions: string[]; unlockText: string }

@@ -10,7 +10,17 @@
     "prize": 100000,
     "research": 100,
     "seeds": [],
-    "seedText": null
+    "seedText": null,
+    "weights": {
+      "smile": 0.5,
+      "menu": 0.1,
+      "rest": 0.1,
+      "clean": 0.2,
+      "price": 0.1
+    },
+    "rivalTop": 40,
+    "rivalGrowth": 4,
+    "mileage": 0
   },
   {
     "id": "gb_local_map",
@@ -30,7 +40,20 @@
         "count": 1
       }
     ],
-    "seedText": "tangerine_seed 1"
+    "seedText": "tangerine_seed 1",
+    "weights": {
+      "smile": 0.1,
+      "scenery": 0.1,
+      "menu": 0.2,
+      "fun": 0.1,
+      "rest": 0.1,
+      "clean": 0.1,
+      "price": 0.1,
+      "overall": 0.2
+    },
+    "rivalTop": 45,
+    "rivalGrowth": 5,
+    "mileage": 0
   },
   {
     "id": "gb_jeju_map",
@@ -49,7 +72,21 @@
         "count": 2
       }
     ],
-    "seedText": "tangerine_seed 2"
+    "seedText": "tangerine_seed 2",
+    "weights": {
+      "smile": 0.1,
+      "scenery": 0.1,
+      "menu": 0.15,
+      "fun": 0.1,
+      "group": 0.05,
+      "rest": 0.1,
+      "clean": 0.1,
+      "price": 0.05,
+      "overall": 0.25
+    },
+    "rivalTop": 55,
+    "rivalGrowth": 6,
+    "mileage": 0
   },
   {
     "id": "gb_insta_100",
@@ -69,7 +106,17 @@
         "count": 2
       }
     ],
-    "seedText": "scenery_seed 2"
+    "seedText": "scenery_seed 2",
+    "weights": {
+      "scenery": 0.5,
+      "menu": 0.1,
+      "fun": 0.2,
+      "rest": 0.1,
+      "clean": 0.1
+    },
+    "rivalTop": 50,
+    "rivalGrowth": 4,
+    "mileage": 0
   },
   {
     "id": "gb_dessert",
@@ -89,7 +136,16 @@
         "count": 2
       }
     ],
-    "seedText": "hallabong_seed 2"
+    "seedText": "hallabong_seed 2",
+    "weights": {
+      "scenery": 0.1,
+      "menu": 0.6,
+      "clean": 0.2,
+      "price": 0.1
+    },
+    "rivalTop": 50,
+    "rivalGrowth": 4,
+    "mileage": 0
   },
   {
     "id": "gb_healing",
@@ -109,7 +165,16 @@
         "count": 3
       }
     ],
-    "seedText": "scenery_seed 3"
+    "seedText": "scenery_seed 3",
+    "weights": {
+      "smile": 0.1,
+      "scenery": 0.3,
+      "rest": 0.4,
+      "clean": 0.2
+    },
+    "rivalTop": 48,
+    "rivalGrowth": 4,
+    "mileage": 0
   },
   {
     "id": "gb_activity",
@@ -129,7 +194,16 @@
         "count": 3
       }
     ],
-    "seedText": "tangerine_seed 3"
+    "seedText": "tangerine_seed 3",
+    "weights": {
+      "scenery": 0.1,
+      "fun": 0.6,
+      "group": 0.2,
+      "clean": 0.1
+    },
+    "rivalTop": 52,
+    "rivalGrowth": 4,
+    "mileage": 0
   },
   {
     "id": "gb_together",
@@ -149,7 +223,17 @@
         "count": 3
       }
     ],
-    "seedText": "tangerine_seed 3"
+    "seedText": "tangerine_seed 3",
+    "weights": {
+      "smile": 0.2,
+      "menu": 0.1,
+      "fun": 0.1,
+      "group": 0.5,
+      "clean": 0.1
+    },
+    "rivalTop": 52,
+    "rivalGrowth": 4,
+    "mileage": 0
   },
   {
     "id": "gb_coop_monthly",
@@ -168,7 +252,13 @@
         "count": 1
       }
     ],
-    "seedText": "popularity_fruit 1"
+    "seedText": "popularity_fruit 1",
+    "weights": {
+      "overall": 0.4
+    },
+    "rivalTop": 40,
+    "rivalGrowth": 5,
+    "mileage": 10
   },
   {
     "id": "gb_national_tour",
@@ -187,7 +277,21 @@
         "count": 5
       }
     ],
-    "seedText": "hallabong_seed 5"
+    "seedText": "hallabong_seed 5",
+    "weights": {
+      "smile": 0.1,
+      "scenery": 0.1,
+      "menu": 0.1,
+      "fun": 0.1,
+      "group": 0.1,
+      "rest": 0.1,
+      "clean": 0.1,
+      "price": 0.05,
+      "overall": 0.25
+    },
+    "rivalTop": 65,
+    "rivalGrowth": 6,
+    "mileage": 0
   },
   {
     "id": "gb_ribbon_survey",
@@ -210,6 +314,19 @@
         "count": 3
       }
     ],
-    "seedText": "scenery_seed 5·popularity_fruit 3"
+    "seedText": "scenery_seed 5·popularity_fruit 3",
+    "weights": {
+      "smile": 0.1,
+      "scenery": 0.1,
+      "menu": 0.15,
+      "fun": 0.1,
+      "group": 0.05,
+      "rest": 0.1,
+      "clean": 0.1,
+      "overall": 0.3
+    },
+    "rivalTop": 75,
+    "rivalGrowth": 5,
+    "mileage": 0
   }
 ]
