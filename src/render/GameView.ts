@@ -380,6 +380,7 @@ export class GameView {
 
   /** 튜토리얼 하이라이트 칸 (노란 반투명 마름모, x-goals tutorialHighlight.ts) */
   setHighlightCells(cells: { x: number; y: number }[]) {
+    if (!this.highlight || this.highlight.destroyed) return; // 뷰가 파괴된 뒤(HMR·화면 전환) 늦게 온 호출
     this.highlight.clear();
     for (const cell of cells) {
       const { sx, sy } = cellToScreen(cell.x, cell.y);

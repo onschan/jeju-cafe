@@ -32,9 +32,12 @@ export function applyGlow(targets: string[], root: ParentNode = document): numbe
   const want = new Set(targets);
   let n = 0;
   for (const el of Array.from(root.querySelectorAll<HTMLElement>('[data-tut]'))) {
-    const on = want.has(el.dataset.tut ?? '');
+    const on = want.has(el.dataset.tut ?? '') && !(el as HTMLButtonElement).disabled; // 눌러도 안 되는 버튼(연구 부족 등)은 빛내지 않는다
+    const was = el.classList.contains(TUT_GLOW_CLASS);
     el.classList.toggle(TUT_GLOW_CLASS, on);
     if (on) n++;
+    // 가로 스크롤 탭 줄(길·담)처럼 화면 밖에 있으면 보이게 끌어온다 (처음 빛날 때 한 번)
+    if (on && !was && typeof el.scrollIntoView === 'function') el.scrollIntoView({ block: 'nearest', inline: 'nearest' });
   }
   return n;
 }
@@ -52,7 +55,7 @@ export function useTutorialHighlight(view: HighlightView | null): void {
     view?.setHighlightCells(cells);
     const mo = new MutationObserver(() => applyGlow(targets));
     mo.observe(document.body, { childList: true, subtree: true });
-    return () => { mo.disconnect(); applyGlow([]); view?.setHighlightCells([]); };
+    return () => { mo.disconnect(); applyGlow([]); try { view?.setHighlightCells([]); } catch { /* 뷰가 이미 파괴됨 */ } };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key, view]);
 }

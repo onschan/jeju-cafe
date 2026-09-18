@@ -104,7 +104,7 @@ export function RewardPopup() {
         <div style={frameTitle}>{SOURCE_TITLE[alert.source]}</div>
         <div style={{ fontWeight: 700, fontSize: 17, marginBottom: 8 }}>{alert.title}</div>
         {/* 상자 */}
-        <div aria-hidden style={{ position: 'relative', width: 96, height: 72, margin: '0 auto 10px', animation: phase === 'shake' ? `reward-shake 0.3s ease-in-out infinite` : undefined }}>
+        <div aria-hidden style={{ position: 'relative', width: 96, height: 72, margin: '22px auto 10px', animation: phase === 'shake' ? `reward-shake 0.3s ease-in-out infinite` : undefined }}>
           <div style={{ position: 'absolute', left: 8, top: 24, width: 80, height: 44, background: PALETTE.wood, border: `3px solid ${PALETTE.ink}`, borderRadius: 4 }} />
           <div style={{ position: 'absolute', left: 0, top: 12, width: 96, height: 20, background: PALETTE.woodLight, border: `3px solid ${PALETTE.ink}`, borderRadius: 4, transformOrigin: 'left bottom', animation: phase === 'open' ? 'reward-lid 0.25s ease-out forwards' : undefined }} />
           <div style={{ position: 'absolute', left: 40, top: 8, width: 16, height: 56, background: '#ffd54a', opacity: 0.9 }} />

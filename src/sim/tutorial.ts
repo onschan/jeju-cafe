@@ -11,7 +11,7 @@
  * | 3 | 메뉴판에 아메리카노·감귤주스                 | nav:cafe → tab:menu → menu-put              | ₩20만                |
  * | 4 | 첫 결제 (totalIncome > 0)                    | 정류장 칸                                   | 응모권 1             |
  * | 5 | 직원 1명 채용                                | nav:people → tab:candidates → hire          | ₩30만                |
- * | 6 | 돌담을 테이블 북서쪽에 (windShelter 벽)      | nav:build → tab:wall → 테이블 북서 칸       | ₩30만 + 콤보 도감    |
+ * | 6 | 돌담을 테이블 북서쪽에 (windShelter 벽)      | nav:build → tab:wall → 테이블 북서 칸       | ₩30만 + 콤보 도감 + 홍보 열림 + 연구 10 |
  * | 7 | 홍보 1회                                     | nav:cafe → tab:promo → promote              | 마일리지 30          |
  * | 8 | 도전 과제 1개 수락                           | goal-bar → tab:challenge → challenge-accept      | ₩50만                |
  * | 9 | 첫 월말 결산 닫기                            | —                                           | 명소 지도            |
@@ -94,7 +94,8 @@ export const STEPS: TutorialStepDef[] = [
   { id: 3, key: 'menu', done: (s) => s.menuSlots.includes('americano') && s.menuSlots.includes('tangerine_juice'), reward: [{ type: 'money', amount: 200_000 }], targets: ['nav:cafe', 'tab:menu', 'menu-put'], cells: () => [] },
   { id: 4, key: 'first_pay', done: (s) => s.totalIncome > 0, reward: [{ type: 'tickets', n: 1 }], targets: [], cells: (s) => [busStopPos(s)] },
   { id: 5, key: 'hire', done: (s) => s.staff.length >= 1, reward: [{ type: 'money', amount: 300_000 }], targets: ['nav:people', 'tab:candidates', 'hire'], cells: () => [] },
-  { id: 6, key: 'wall', done: wallShelteringSeat, reward: [{ type: 'money', amount: 300_000 }, { type: 'unlockFeature', id: 'comboCodex' }], targets: ['nav:build', 'tab:wall'],
+  // 7단계(홍보)를 바로 할 수 있게 홍보 기능과 전단 연구비(10)를 여기서 준다 — g07(만족 손님 10명)보다 튜토리얼이 먼저 온다
+  { id: 6, key: 'wall', done: wallShelteringSeat, reward: [{ type: 'money', amount: 300_000 }, { type: 'unlockFeature', id: 'comboCodex' }, { type: 'unlockFeature', id: 'promote' }, { type: 'research', n: 10 }], targets: ['nav:build', 'tab:wall'],
     cells: (s) => seats(s).map((o) => ({ x: o.x - 1, y: o.y - 1 })).filter((p) => p.x >= 0 && p.y >= 0 && !cellAt(s, p.x, p.y).objectId) },
   { id: 7, key: 'promote', done: (s) => s.stats.promotionsDone >= 1, reward: [{ type: 'mileage', n: 30 }], targets: ['nav:cafe', 'tab:promo', 'promote'], cells: () => [] },
   { id: 8, key: 'challenge', done: (s) => s.challenges.active.length + s.challenges.done.length >= 1, reward: [{ type: 'money', amount: 500_000 }], targets: ['goal-bar', 'tab:challenge', 'challenge-accept'], cells: () => [] },
