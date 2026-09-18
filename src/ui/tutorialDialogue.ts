@@ -1,30 +1,37 @@
-import { hasReachableSeat, type GameState } from '../sim/index.ts';
+import { type GameState, START_SEATS } from '../sim/index.ts';
+import { objectDef } from '../data/index.ts';
+import { TUTORIAL_STEPS as STEP_DATA, SPEAKER_NAME, type TutorialStep as StepData } from '../data/dialogue/index.ts';
 import { showDialogue, getDialogue } from './dialogue.ts';
 import { goalsAchieved } from './simBridge';
 
-/** 튜토리얼 6단계 대화 (스펙 §1.3). 진행은 localStorage `tut_v3_step`(= 지금까지 보여 준 단계 수).
+/** 튜토리얼 6단계 대화 (스펙 §1.3). 대사는 data/dialogue/tutorial.json, 진행은 localStorage `tut_v3_step`(= 지금까지 보여 준 단계 수).
  *  각 단계는 조건이 차면 한 번만 뜬다. 현재 할 일은 배너가 아니라 목표 줄이 보여 준다. */
 
-export interface TutorialStep {
-  id: number;
-  lines: string[];
+/** 창을 연 것처럼 sim 상태에 없는 UI 사건 */
+export type TutorialEvent = 'menuOpened' | 'goalOpened';
+const seen: Record<TutorialEvent, boolean> = { menuOpened: false, goalOpened: false };
+export function markTutorialEvent(e: TutorialEvent): void { seen[e] = true; }
+
+export interface TutorialStep extends StepData {
   /** 이 조건이 차면 뜬다. 없으면(1단계) 바로 */
   when?: (s: GameState) => boolean;
 }
 
-export const TUTORIAL_STEPS: TutorialStep[] = [
-  { id: 1, lines: ['어서 오라. 이 카페는 이제 네 것이다.', '먼저 아래 카페 → 메뉴판을 열어 보라. 팔 게 있어야 손님이 온다.'] },
-  { id: 2, lines: ['메뉴는 됐다. 손님이 앉을 자리가 있어야지.', '짓기에서 테이블을 놓고, 정낭에서 테이블 옆까지 올렛길을 이어라.'],
-    when: (s) => s.menuSlots.some((m) => m !== null) },
-  { id: 3, lines: ['길이 이어졌다. 정류장에서 버스가 오면 손님이 걸어온다.', '첫 손님을 기다려 보라. 손님을 누르면 무슨 생각인지 보인다.'],
-    when: (s) => hasReachableSeat(s) },
-  { id: 4, lines: ['첫 손님이 앉았다. 혼자서는 오래 못 버틴다.', '사람 → 직원에서 공고를 내고 후보를 뽑아 보라.'],
-    when: (s) => s.guests.some((g) => g.phase === 'seated') || s.totalGuests > 0 || s.monthGuests > 0 },
-  { id: 5, lines: ['식구가 생겼다. 위쪽 목표 줄을 보라.', '지금 할 일이 늘 거기 있다. 채우면 보상을 주고 다음 목표가 온다.'],
-    when: (s) => s.staff.length >= 1 },
-  { id: 6, lines: ['목표를 세 개나 채웠다. 이제 할 말은 다 했다.', '손님 얼굴을 보며 카페를 키워 보라. 궁금하면 뭐든 눌러 보라.'],
-    when: (s) => goalsAchieved(s) >= 3 },
-];
+function seatCount(s: GameState): number {
+  return Object.values(s.objects).filter((o) => objectDef(o.type).kind === 'seat').length;
+}
+
+/** tutorial.json의 done 조건을 판정하는 함수 (단계 key 기준) */
+const WHEN: Record<string, (s: GameState) => boolean> = {
+  welcome_menu: () => true,
+  table_path: () => seen.menuOpened,
+  first_guest: (s) => seatCount(s) > START_SEATS.length,
+  hire: (s) => s.totalGuests > 0,
+  goal_bar: (s) => s.staff.length >= 1,
+  farewell: (s) => goalsAchieved(s) >= 3,
+};
+
+export const TUTORIAL_STEPS: TutorialStep[] = STEP_DATA.map((d) => ({ ...d, when: d.id === 1 ? undefined : WHEN[d.key] }));
 
 export const TUTORIAL_KEY = 'tut_v3_step';
 
@@ -38,7 +45,7 @@ export function tutorialShown(): number { return shown; }
 export function tutorialDone(): boolean { return shown >= TUTORIAL_STEPS.length; }
 
 /** 새 게임을 시작할 때 처음부터 */
-export function resetTutorial(): void { shown = 0; write(); }
+export function resetTutorial(): void { shown = 0; seen.menuOpened = false; seen.goalOpened = false; write(); }
 export function skipTutorial(): void { shown = TUTORIAL_STEPS.length; write(); }
 
 /** 상태를 보고 다음 단계 조건이 찼으면 대화를 띄운다. 대화가 이미 떠 있으면 기다린다 (한 번에 한 단계). */
@@ -49,8 +56,9 @@ export function checkTutorial(s: GameState): boolean {
   shown++;
   write();
   showDialogue({
-    speaker: { name: '할망', portrait: 'halmang' },
+    speaker: { name: SPEAKER_NAME[step.speaker], portrait: step.speaker },
     lines: step.lines,
+    choices: [{ label: step.button, onPick: () => {} }],
     onSkip: step.id === 1 ? skipTutorial : undefined,
   });
   return true;

@@ -10,9 +10,9 @@ import { TopShell, BottomBar, PlaceBar, SHELL_TOP, type WindowKind, type PlaceBa
 import { Window, type WindowTab } from './Window';
 import { MiniCard, type CardTarget, type CardActions } from './MiniCard';
 import { DialogueHost } from './Dialogue.tsx';
-import { showDialogue } from './dialogue.ts';
-import { checkTutorial } from './tutorialDialogue';
-import { currentGoal, pastGoals, pendingNotices, dismissNotice, guestSay, staffSay } from './simBridge';
+import { checkTutorial, markTutorialEvent } from './tutorialDialogue';
+import { checkAlerts } from './alertDialogue.ts';
+import { currentGoal, pastGoals, guestSay, staffSay } from './simBridge';
 import { BuildTabs, MenuSlotsPanel } from './legacyPanels';
 import { GuestPopup } from './GuestPopup';
 import { DrawPopup, ShopPanel } from './ShopPanel';
@@ -197,12 +197,9 @@ function Game({ onExit }: { onExit: () => void }) {
     setSceneHook((st, title, text) => showScene({ title, text, chars: staffChars(st), sfx: 'fanfare' }));
     return () => { setMonthCardHook(null); setSceneHook(null); };
   }, []);
-  // 튜토리얼 6단계 + sim 알림(목표 달성·사건·부탁·랭크업) → 대화창
+  // sim 알림(목표 달성·빅 이벤트) → 대화창, 그 다음 튜토리얼 6단계. 알림은 한 번에 하나씩 순서대로.
   useEffect(() => {
-    for (const n of pendingNotices(s)) {
-      dismissNotice(n.id);
-      showDialogue({ speaker: { name: n.speaker === 'samchun' ? '삼춘' : n.speaker === 'hero' ? '나' : '할망', portrait: n.speaker ?? 'halmang' }, lines: n.title ? [n.title, ...n.lines] : n.lines });
-    }
+    checkAlerts(s, () => dispatch({ type: 'dismissAlert' }));
     checkTutorial(s);
   });
   const hostRef = useRef<HTMLDivElement>(null);
@@ -415,6 +412,11 @@ function Game({ onExit }: { onExit: () => void }) {
     onCafe: () => { openCard(null); setWin({ kind: 'cafe', tab: 'menu' }); },
   };
   const closeWin = () => setWin(null);
+  // 튜토리얼 ①·⑤의 "창을 열었다" 조건
+  useEffect(() => {
+    if (win?.kind === 'cafe' && win.tab === 'menu') markTutorialEvent('menuOpened');
+    if (win?.kind === 'goal') markTutorialEvent('goalOpened');
+  }, [win]);
 
   const renderWindow = () => {
     if (!win) return null;

@@ -156,6 +156,7 @@ export async function loadSlot(n: number): Promise<boolean> {
   if (!saved) return false;
   state = saved;
   viewReset?.();
+  clearDialogues(); // 이전 게임의 대화(알림)가 남아 있으면 새 상태의 알림과 어긋난다
   if (n !== AUTO_SLOT) save(); // 자동 저장본도 이 게임으로 맞춘다
   emit();
   return true;
