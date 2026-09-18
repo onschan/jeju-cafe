@@ -28,9 +28,9 @@ function withStaff(s: GameState) {
 }
 
 // ---------- 데이터 ----------
-test('재료 32종에 스탯·분류가 있고, 기존 13종의 원가·kind는 그대로다', () => {
+test('재료 32종에 스탯·분류가 있고, 기존 13종의 원가(§4.2 #4)·kind가 맞다', () => {
   expect(INGREDIENTS.length).toBe(32);
-  expect(ingredientDef('beans')).toMatchObject({ kind: 'bought', cost: 1400, category: 'coffee', stats: { taste: 6, aroma: 8 } });
+  expect(ingredientDef('beans')).toMatchObject({ kind: 'bought', cost: 1500, category: 'coffee', stats: { taste: 6, aroma: 8 } });
   expect(ingredientDef('carrot').kind).toBe('farm');
   expect(ingredientDef('pork_black')).toMatchObject({ kind: 'bought', cost: 3000, category: 'protein' });
   expect(ingredientDef('tea_jeju').kind).toBe('farm');
@@ -135,10 +135,10 @@ test('토핑 2개로 같은 스킬을 쌓으면 중급: 땅콩 크럼블 + 휘�
 test('토핑은 3개까지, 중복 불가, 제거 가능. 재료비에 토핑 원가가 들어간다', () => {
   const s = bareState(1);
   const base = ingredientCost(s, 'americano');
-  expect(base).toBe(1400);
+  expect(base).toBe(1500);
   apply(s, { type: 'addTopping', menuId: 'americano', toppingId: 'whipped' });      // 200
   apply(s, { type: 'addTopping', menuId: 'americano', toppingId: 'cinnamon_dust' }); // 100
-  expect(ingredientCost(s, 'americano')).toBe(1700);
+  expect(ingredientCost(s, 'americano')).toBe(1800);
   expect(apply(s, { type: 'addTopping', menuId: 'americano', toppingId: 'whipped' }).ok).toBe(false);
   apply(s, { type: 'addTopping', menuId: 'americano', toppingId: 'ice_cream' });     // 500
   expect(s.menuMods['americano']!.toppings.length).toBe(MAX_TOPPINGS);
@@ -146,7 +146,7 @@ test('토핑은 3개까지, 중복 불가, 제거 가능. 재료비에 토핑 �
   expect(canAddTopping(s, 'carrot_juice', 'mint').ok).toBe(false); // 해금 안 된 메뉴
   expect(apply(s, { type: 'removeTopping', menuId: 'americano', toppingId: 'ice_cream' }).ok).toBe(true);
   expect(apply(s, { type: 'removeTopping', menuId: 'americano', toppingId: 'ice_cream' }).ok).toBe(false);
-  expect(ingredientCost(s, 'americano')).toBe(1700);
+  expect(ingredientCost(s, 'americano')).toBe(1800);
   // 판매 시 토핑 원가가 돈에서 나간다
   const money = s.money;
   setSlot(s, 0, 'americano');
@@ -154,8 +154,8 @@ test('토핑은 3개까지, 중복 불가, 제거 가능. 재료비에 토핑 �
   expect(isMenuAvailable(s, 'americano')).toBe(true);
   s.money = money;
   consumeIngredients(s, 'americano');
-  expect(money - s.money).toBe(1700);
-  expect(s.monthCosts.ingredients).toBe(1700);
+  expect(money - s.money).toBe(1800);
+  expect(s.monthCosts.ingredients).toBe(1800);
 });
 
 // ---------- 히든 레시피 ----------
@@ -207,9 +207,9 @@ test('개발 조건: 재료 수·베이스·직원·연구·돈, farm 재료는 
   s.star = 1;
   // v3: farm 재료도 창고에 없으면 원가로 산다 — "창고에 없어요" 거부는 없다
   expect(canDevelop(s, 'drink', ['beans', 'carrot'], st.id).ok).toBe(true);
-  expect(developCost(['beans', 'carrot'], s)).toBe(1400 + 400);
+  expect(developCost(['beans', 'carrot'], s)).toBe(1500 + 500);
   s.storage['carrot'] = 1;
-  expect(developCost(['beans', 'carrot'], s)).toBe(1400); // 창고에 있으면 그만큼 안 산다
+  expect(developCost(['beans', 'carrot'], s)).toBe(1500); // 창고에 있으면 그만큼 안 산다
   s.research = DEVELOP_RESEARCH - 1;
   expect(canDevelop(s, 'drink', ['beans', 'milk'], st.id).ok).toBe(false);
   s.research = DEVELOP_RESEARCH;
@@ -218,7 +218,7 @@ test('개발 조건: 재료 수·베이스·직원·연구·돈, farm 재료는 
   s.money = 1_000_000;
   expect(canDevelop(s, 'drink', ['beans', 'nope'], st.id).reason).toBe('없는 재료');
   expect(apply(s, { type: 'develop', base: 'drink', ingredients: ['beans', 'milk'], staffId: st.id }).ok).toBe(true);
-  expect(s.money).toBe(1_000_000 - 1400 - 500);
+  expect(s.money).toBe(1_000_000 - 1500 - 600);
   expect(s.research).toBe(0);
   expect(s.developing).toMatchObject({ base: 'drink', staffId: st.id, params: { grind: 1, temp: 1, time: 1 } });
   expect(developDaysLeft(s)).toBe(DEVELOP_DAYS);
@@ -265,7 +265,7 @@ test('개발 완료: 3일 뒤 결과가 나오고 새 메뉴가 해금·이름 �
     expect(apply(s, { type: 'setSlot', slot: 0, menuId: 'm_custom_1' }).ok).toBe(true);
     expect(isMenuAvailable(s, 'm_custom_1')).toBe(true);
     expect(priceOf(s, 'm_custom_1')).toBe(m.price);
-    expect(ingredientCost(s, 'm_custom_1')).toBe(1900);
+    expect(ingredientCost(s, 'm_custom_1')).toBe(2100);
   }
   expect(apply(s, { type: 'dismissDevelop' }).ok).toBe(true);
   expect(s.lastDevelop).toBeNull();
@@ -323,15 +323,15 @@ test('메뉴 레벨업: 재료 5인분 + 돈 → 판매가 +10%/레벨, 5레벨�
   const s = bareState(1);
   s.money = 10_000_000;
   const cost = levelUpMenuCost(s, 'americano');
-  expect(cost).toEqual({ money: 20_000 + 1400 * 5, ingredients: {} });
+  expect(cost).toEqual({ money: 20_000 + 1500 * 5, ingredients: {} });
   expect(apply(s, { type: 'levelUpMenu', menuId: 'americano' }).ok).toBe(true);
   expect(s.money).toBe(10_000_000 - cost.money);
   expect(s.menuMods['americano']!.level).toBe(2);
   expect(priceOf(s, 'americano')).toBe(Math.round(3200 * 1.1));
-  expect(levelUpMenuCost(s, 'americano').money).toBe(40_000 + 1400 * 5);
-  // farm 재료 5개: 창고에 있으면 창고에서 빠지고, 없으면 원가(당근 400)를 돈으로 낸다
+  expect(levelUpMenuCost(s, 'americano').money).toBe(40_000 + 1500 * 5);
+  // farm 재료 5개: 창고에 있으면 창고에서 빠지고, 없으면 원가(당근 500)를 돈으로 낸다
   s.unlocked.menus.push('carrot_juice');
-  expect(levelUpMenuCost(s, 'carrot_juice')).toEqual({ money: 20_000 + 400 * 5, ingredients: {} });
+  expect(levelUpMenuCost(s, 'carrot_juice')).toEqual({ money: 20_000 + 500 * 5, ingredients: {} });
   expect(canLevelUpMenu(s, 'carrot_juice').ok).toBe(true);
   s.storage['carrot'] = 7;
   expect(levelUpMenuCost(s, 'carrot_juice')).toEqual({ money: 20_000, ingredients: { carrot: 5 } });
@@ -372,7 +372,8 @@ test('손님 취향 스탯: 메뉴 스탯이 기준 이상이면 만족 보너�
 
 test('품격이 있는 메뉴가 메뉴판에 있으면 하루 손님 수가 늘고, 목넘김이면 앉는 시간이 준다', () => {
   const s = bareState(1);
-  placeObject(s, 'table_out', X(4), Y(5));
+  s.clock.month = 4; // 계절 배수 1
+  for (const x of [2, 4, 6]) placeObject(s, 'table_out', X(x), Y(5)); // 6석 → 상한 36
   setSlot(s, 0, 'americano');
   const before = dailyGuestCount(s);
   apply(s, { type: 'addTopping', menuId: 'americano', toppingId: 'gold_leaf' }); // 품격 2 → +4%

@@ -126,7 +126,7 @@ describe('목표 체인 진행', () => {
     s.goals.index = GOALS.findIndex((g) => g.condition.type === 'rank');
     expect(goalMet(s, { type: 'rank', n: 5 })).toBe(false);
     expect(goalProgress(s)).toEqual({ cur: 0, max: 1 });
-    s.guidebooks['gb_local_map'] = { unlocked: true, lastRank: 4, best: 4 };
+    s.guidebooks['gb_local_map'] = { unlocked: true, lastRank: 4, best: 4, boost: 0, pending: 0 };
     expect(goalMet(s, { type: 'rank', n: 5 })).toBe(true);
     expect(goalMet(s, { type: 'rank', n: 3 })).toBe(false);
   });

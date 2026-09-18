@@ -4,6 +4,7 @@ import { createInitialState } from '../state.ts';
 import { apply } from '../actions.ts';
 import { setSlot } from '../menu.ts';
 import { tick } from '../tick.ts';
+import { LOAN_MAX } from '../failure.ts';
 import { DAY_MS } from '../clock.ts';
 import { dailyGuestCount } from '../guests.ts';
 import { HOUR_MS } from '../clock.ts';
@@ -93,7 +94,7 @@ test('달이 바뀌는 날: 월급 정산(퇴사)이 먼저고, 그 다음 농�
   st.unpaidMonths = 1; // 이번 월급도 못 주면 퇴사
   s.staff.push(st);
   s.money = 0;
-  s.settleGrantUsed = true; // 정착지원금으로 월급이 나가지 않도록
+  s.loan.count = LOAN_MAX; // 삼춘 대출로 월급이 나가지 않도록
   for (let i = 0; i < 29; i++) tick(s, DAY_MS);
   expect(s.storage['tangerine'] ?? 0).toBe(0); // 놓은 달엔 안 나온다
   tick(s, DAY_MS);

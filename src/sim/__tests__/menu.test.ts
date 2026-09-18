@@ -27,9 +27,9 @@ test('판매하면 창고 재료가 줄고, 창고에 없는 재료는 원가로
   const s = bareState(1);
   s.storage['carrot'] = 3;
   const m0 = s.money;
-  consumeIngredients(s, 'carrot_cake'); // 당근 2 창고에서, 밀가루 600 + 달걀 600 구매
+  consumeIngredients(s, 'carrot_cake'); // 당근 2 창고에서, 밀가루 800 + 달걀 700 구매
   expect(s.storage['carrot']).toBe(1);
-  expect(s.money).toBe(m0 - 1200);
+  expect(s.money).toBe(m0 - 1500);
 });
 
 test('같은 메뉴를 두 칸에 올릴 수 없다', () => {

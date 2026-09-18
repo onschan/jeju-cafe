@@ -17,6 +17,7 @@ import { canStartBuild, startBuild } from './build.ts';
 import { canBuyMileage, buyMileage, canBuyTicket, buyTicket, canDrawTicket, drawTicket, canSetUniform, setUniform, canUseGuestItem, useGuestItem } from './shop.ts';
 import { canOpenPopup, openPopup, canClosePopup, closePopup } from './popup.ts';
 import { canChallenge, challenge } from './rivals.ts';
+import { TOUR_BUS_FEE } from './economy.ts';
 
 export const PROTECTED_TYPES = new Set(['busstop', 'warehouse', 'gate', 'spring']);
 /** 회전할 수 있는 오브젝트 (rot 0..3, 스프라이트 변형 _r{n}이 있을 때만 보인다) */
@@ -311,6 +312,12 @@ function applyInner(state: GameState, a: Action): ApplyResult {
     case 'dismissChallenge':
       state.lastChallenge = null;
       return { ok: true };
+    case 'setTourBus': {
+      if (state.tourBus === a.on) return { ok: false, reason: a.on ? '이미 계약 중이에요' : '계약 중이 아니에요' };
+      if (a.on && state.money < TOUR_BUS_FEE) return { ok: false, reason: '첫 달 요금 ₩500,000이 없어요' };
+      state.tourBus = a.on;
+      return { ok: true };
+    }
     default:
       return { ok: false, reason: '아직 구현 안 됨' };
   }

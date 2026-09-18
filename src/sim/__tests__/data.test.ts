@@ -73,9 +73,9 @@ test('가중치가 유효하다', () => {
 
 test('모든 재료는 원가가 있다 (창고에 없으면 자동 구매)', () => {
   for (const ing of INGREDIENTS) expect(ing.cost).toBeGreaterThan(0);
-  expect(ingredientDef('carrot').cost).toBe(400);
-  expect(ingredientDef('tangerine').cost).toBe(700);
-  expect(ingredientDef('tea').cost).toBe(1400);
+  expect(ingredientDef('carrot').cost).toBe(500);
+  expect(ingredientDef('tangerine').cost).toBe(900);
+  expect(ingredientDef('tea').cost).toBe(1700);
 });
 
 test('시작 메뉴 3개(아메리카노·라떼·감귤주스)는 재료가 전부 존재한다', () => {
@@ -84,10 +84,10 @@ test('시작 메뉴 3개(아메리카노·라떼·감귤주스)는 재료가 전
   for (const m of start) for (const id of Object.keys(m.ingredients)) expect(ingredientDef(id).cost).toBeGreaterThan(0);
 });
 
-test('메뉴 원가는 가격의 50% 미만', () => {
+test('메뉴 원가는 가격의 60% 미만 (§4.2 #4 원가 인상 후 크루아상 58%)', () => {
   for (const m of MENUS) {
     const cost = Object.entries(m.ingredients).reduce((s, [id, n]) => s + ingredientDef(id).cost * n, 0);
-    expect(cost).toBeLessThan(m.price * 0.5);
+    expect(cost, m.id).toBeLessThan(m.price * 0.6);
   }
 });
 

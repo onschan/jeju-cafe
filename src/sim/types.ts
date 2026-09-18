@@ -345,7 +345,8 @@ export interface ActivePromotion { promotionId: string; remainingMonths: number;
 export interface Pt { x: number; y: number }
 
 /** 월 비용 항목. recruit = 공고비 + 퇴직금 */
-export interface MonthCosts { ingredients: number; salary: number; ads: number; upkeep: number; recruit: number }
+/** 월 비용 항목. tax = 소득세(매년 3월 1일, 전년 순이익 ×10%), loanRepay = 삼춘 대출 자동 상환(흑자 달 순이익 30%), tourBus = 투어 버스 월 고정비 */
+export interface MonthCosts { ingredients: number; salary: number; ads: number; upkeep: number; recruit: number; tax: number; loanRepay: number; tourBus: number }
 /** 농원: harvested = 이달 1일 창고에 들어온 재료, ingredientSaved = 창고 재료를 써서 안 산 재료비 */
 export interface MonthHarvest { harvested: Record<string, number>; ingredientSaved: number }
 /** 월말 정산 카드 */
@@ -359,6 +360,11 @@ export interface MonthCard {
   harvested: Record<string, number>; // 그달 1일 농원에서 들어온 재료 (ingredientId → 개수)
   ingredientSaved: number;           // 그달 창고 재료 덕에 안 산 재료비
   topMenu: string | null;            // 그달 최다 판매 메뉴 id
+  deficitStreak: number;             // 연속 적자 달 수 (3 이상이면 카드에 "적자 N개월" 배지)
+  loanTaken: number;                 // 그달 받은 삼춘 대출 금액
+  loanBalance: number;               // 월말 대출 잔액
+  rivalLossPct: number;              // 라이벌 카페 때문에 줄어든 손님 % (라이벌당 5)
+  guestsLeft: number;                // 대기열이 차서 돌아간 손님 수
 }
 
 // ---------- 목표 체인 (v3 §2) ----------
@@ -496,7 +502,7 @@ export type DrawPrizeKind = 'money' | 'research' | 'ingredient_box' | 'mileage' 
 export interface DrawPrizeDef { kind: DrawPrizeKind; label: string; pct: number }
 export interface DrawResult { kind: DrawPrizeKind; label: string; text: string; free: boolean }
 /** 가이드북 심사 항목 6종 (0~100) */
-export type JudgeKey = 'smile' | 'scenery' | 'menu' | 'fun' | 'group' | 'overall';
+export type JudgeKey = 'smile' | 'scenery' | 'menu' | 'fun' | 'group' | 'rest' | 'clean' | 'price' | 'overall';
 export type JudgeScores = Record<JudgeKey, number>;
 export interface GuidebookDef {
   id: string;
@@ -504,13 +510,17 @@ export interface GuidebookDef {
   unlock: UnlockCond;
   unlockText: string;
   criteriaText: string;
-  weights: Partial<Record<JudgeKey, number>>; // 합 1
+  weights: Partial<Record<JudgeKey, number>>; // 합 1 (농협 추천은 0.4 + 타깃 손님층 인기 0.6)
+  rivalTop: number;    // 1위 라이벌 1년차 점수 (§3.7.3 top_b)
+  rivalGrowth: number; // 1위 라이벌 점수 연 증가
   prize: number;
   research: number;
   seeds: { itemId: string; count: number }[];
+  mileage: number;  // 1위 추가 마일리지 (농협 추천 10)
   monthly: boolean; // 매월 발표 (이번 달 농협 추천)
 }
-export interface GuidebookState { unlocked: boolean; lastRank: number | null; best: number | null }
+/** boost = 라이벌 1위 점수 가산(플레이어가 1위 한 다음 해부터 +3씩 누적), pending = 올해 번 가산(다음 해 1월에 boost로) */
+export interface GuidebookState { unlocked: boolean; lastRank: number | null; best: number | null; boost: number; pending: number }
 export interface AnnouncementEntry {
   id: string;
   name: string;
@@ -621,6 +631,10 @@ export interface Clock {
   speed: 0 | 1 | 2 | 3;
 }
 
+/** 삼춘 대출: count = 받은 횟수(최대 3), balance = 남은 원금, lastMonthIndex = 마지막 대출 달(한 달 1회) */
+export interface LoanState { count: number; balance: number; lastMonthIndex: number }
+/** ★ 유지 심사: promotedYear = 마지막 승급 년차, lastReviewYear = 마지막 심사 년차(2년마다 3월), warned = 3월 경고 뒤 9월 재심사 대기 */
+export interface StarReview { promotedYear: number; lastReviewYear: number; warned: boolean }
 export interface GameState {
   version: number;
   playerId: string;
@@ -633,7 +647,17 @@ export interface GameState {
   popularity: number; // −100(동네) ~ +100(인기)
   grid: { w: number; h: number; cells: Cell[] };
   parcels: Parcel[];
-  settleGrantUsed: boolean; // 정착지원금(잔고 < 40만이면 1회 300만)을 받았나
+  loan: LoanState;                            // 삼춘 대출 (§4.4: 잔고 < 40만 또는 6개월 연속 적자 → 300만, 최대 3회)
+  deficitMonths: number;                      // 연속 적자 달 수 (3: 경고, 6: 대출)
+  crisisMonths: number;                       // 잔고 < −500만 연속 달 수 (3: 정착 실패 위기)
+  yearNet: number;                            // 올해 순이익 누적 (1~12월)
+  lastYearNet: number;                        // 전년 순이익 (3월 1일 소득세 = ×10%)
+  salaryRaisePct: number;                     // 급여 인상 누적 % (매년 3월 +5)
+  tourBus: boolean;                           // 투어 버스 계약 (월 50만, setTourBus)
+  waiting: string[];                          // 대기열 (손님 타입 id, 최대 3 — 넘치면 돌아간다)
+  monthGuestsLeft: number;                    // 이달 대기열이 차서 돌아간 손님 수
+  monthLoan: number;                          // 이달 받은 대출 금액
+  starReview: StarReview;                     // ★ 유지 심사 (§3.7.4 강등)
   objects: Record<string, PlacedObject>; // 키는 'o123' 형태(비정수 문자열)라 삽입 순서가 보존됨 → 결정적 순회
   storage: Record<string, number>; // 창고: ingredientId → 개수 (농원 수확·재료 상자). 메뉴를 만들 때 먼저 쓰고, 없으면 자동 구매
   menuSlots: (string | null)[];
@@ -749,6 +773,7 @@ export type Action =
   | { type: 'openPopup'; regionId: string }
   | { type: 'closePopup' }
   | { type: 'challenge'; rivalId: string; menuId: string } // rivalId = RivalState.id
-  | { type: 'dismissChallenge' };
+  | { type: 'dismissChallenge' }
+  | { type: 'setTourBus'; on: boolean }; // 투어 버스 계약 켜기/끄기 (월 50만 고정비)
 
 export interface ApplyResult { ok: boolean; reason?: string }

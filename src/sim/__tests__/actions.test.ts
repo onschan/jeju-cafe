@@ -4,6 +4,7 @@ import { createInitialState } from '../state.ts';
 import { apply } from '../actions.ts';
 import { spawnGuests, updateGuests } from '../guests.ts';
 import { emptyMonthHarvest } from '../orchard.ts';
+import { emptyMonthCosts } from '../economy.ts';
 
 test('place: 돈이 있어야 하고, 깎이고, 로그에 남는다', () => {
   const s = bareState(1);
@@ -92,7 +93,7 @@ test('setSpeed·setSlot·dismissMonthCard', () => {
   expect(apply(s, { type: 'setSpeed', speed: 3 }).ok).toBe(true);
   expect(s.clock.speed).toBe(3);
   expect(apply(s, { type: 'setSlot', slot: 0, menuId: 'americano' }).ok).toBe(true);
-  s.lastMonthCard = { income: 1, guests: 1, month: 1, year: 1, costs: { ingredients: 0, salary: 0, ads: 0, upkeep: 0, recruit: 0 }, net: 1, ...emptyMonthHarvest(), topMenu: null };
+  s.lastMonthCard = { income: 1, guests: 1, month: 1, year: 1, costs: emptyMonthCosts(), net: 1, ...emptyMonthHarvest(), topMenu: null, deficitStreak: 0, loanTaken: 0, loanBalance: 0, rivalLossPct: 0, guestsLeft: 0 };
   apply(s, { type: 'dismissMonthCard' });
   expect(s.lastMonthCard).toBeNull();
 });

@@ -1,15 +1,15 @@
 [
-  { "id": "beans", "name": "원두", "kind": "bought", "cost": 1400 },
-  { "id": "milk", "name": "우유", "kind": "bought", "cost": 500 },
-  { "id": "sugar", "name": "설탕", "kind": "bought", "cost": 200 },
-  { "id": "flour", "name": "밀가루", "kind": "bought", "cost": 600 },
-  { "id": "egg", "name": "달걀", "kind": "bought", "cost": 600 },
-  { "id": "butter", "name": "버터", "kind": "bought", "cost": 700 },
-  { "id": "tea", "name": "녹찻잎", "kind": "bought", "cost": 1400 },
-  { "id": "yuja", "name": "유자청", "kind": "bought", "cost": 1600 },
-  { "id": "ice", "name": "얼음", "kind": "bought", "cost": 100 },
-  { "id": "cheese", "name": "치즈", "kind": "bought", "cost": 1400 },
-  { "id": "cocoa", "name": "코코아", "kind": "bought", "cost": 900 },
-  { "id": "carrot", "name": "당근", "kind": "farm", "cost": 400 },
-  { "id": "tangerine", "name": "감귤", "kind": "farm", "cost": 700 }
+  { "id": "beans", "name": "원두", "kind": "bought", "cost": 1500 },
+  { "id": "milk", "name": "우유", "kind": "bought", "cost": 600 },
+  { "id": "sugar", "name": "설탕", "kind": "bought", "cost": 250 },
+  { "id": "flour", "name": "밀가루", "kind": "bought", "cost": 800 },
+  { "id": "egg", "name": "달걀", "kind": "bought", "cost": 700 },
+  { "id": "butter", "name": "버터", "kind": "bought", "cost": 900 },
+  { "id": "tea", "name": "녹찻잎", "kind": "bought", "cost": 1700 },
+  { "id": "yuja", "name": "유자청", "kind": "bought", "cost": 2000 },
+  { "id": "ice", "name": "얼음", "kind": "bought", "cost": 120 },
+  { "id": "cheese", "name": "치즈", "kind": "bought", "cost": 1600 },
+  { "id": "cocoa", "name": "코코아", "kind": "bought", "cost": 1100 },
+  { "id": "carrot", "name": "당근", "kind": "farm", "cost": 500 },
+  { "id": "tangerine", "name": "감귤", "kind": "farm", "cost": 900 }
 ]

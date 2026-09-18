@@ -6,6 +6,7 @@ import { placeObject } from '../grid.ts';
 import { generateCandidate, salaryOf, roleEffect, ingredientDiscount, canHire, moveStaff, staffAnchor, MAX_STAT } from '../staff.ts';
 import { ingredientCost } from '../economy.ts';
 import { tick } from '../tick.ts';
+import { LOAN_MAX } from '../failure.ts';
 import { DAY_MS, HOUR_MS } from '../clock.ts';
 import type { GameState, Staff, Stats, RoleId } from '../types.ts';
 
@@ -90,7 +91,7 @@ test('월말 월급 차감, 못 주면 unpaidMonths, 2달이면 퇴사', () => {
   const { s, st } = hired();
   const sal = st.salary;
   s.money = sal + 100;
-  s.settleGrantUsed = true; // 잔고가 40만 아래로 떨어져도 지원금이 안 들어오게
+  s.loan.count = LOAN_MAX; // 잔고가 40만 아래로 떨어져도 삼춘 대출이 안 들어오게
   for (let i = 0; i < 30; i++) tick(s, DAY_MS);
   expect(s.lastMonthCard!.costs.salary).toBe(sal);
   expect(s.money).toBe(100);
@@ -151,7 +152,7 @@ test('roleEffect: 역할별 핵심 스탯 합, 운반·절약 할인, 기력 30 
   expect(roleEffect(s, 'carry')).toBe(10);
   expect(roleEffect(s, 'hall')).toBe(0);
   expect(ingredientDiscount(s)).toBeCloseTo(10 / 500 + 0.1);
-  expect(ingredientCost(s, 'latte')).toBe(Math.round(1900 * (1 - 0.12)));
+  expect(ingredientCost(s, 'latte')).toBe(Math.round(2100 * (1 - 0.12)));
   s.staff.push(staffWith({ smile: 40 }, 'hall'));
   s.staff.push(staffWith({ smile: 20 }, 'hall'));
   expect(roleEffect(s, 'hall')).toBe(60);
