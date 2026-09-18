@@ -11,7 +11,7 @@ import { dailyCleanliness, cleanGuestMult, cleanSatisfaction, wearOf, repairCost
 import { seatsOf } from '../cafe.ts';
 import { monthlyYieldOf } from '../orchard.ts';
 import { effectMult } from '../effects.ts';
-import { OBJECTS, FACILITIES, FACILITY_X_IDS, FACILITY_X_GOAL_REFS, COMBOS, SPOT_EFFECTS, objectDef, spotEffectDef, buildGroupOf } from '../../data/index.ts';
+import { OBJECTS, FACILITIES, FACILITY_X_IDS, FACILITY_X_GOAL_REFS, COMBOS, SPOT_EFFECTS, ITEMS, ITEM_FIT_EXTRA, objectDef, spotEffectDef, buildGroupOf } from '../../data/index.ts';
 import type { ComboDef, GameState } from '../types.ts';
 import facilitiesJson from '../../data/generated/v2/facilities.json' with { type: 'json' };
 import facilitiesXJson from '../../data/facilities_x.json' with { type: 'json' };
@@ -58,6 +58,15 @@ describe('데이터', () => {
     expect(COMBOS[59]).toMatchObject({ id: 'cb_marble_atm', a: 'marble_game', bIds: ['atm'], applyTo: 'a' });
     for (const c of COMBOS) { expect(objectDef(c.a)).toBeDefined(); for (const b of c.bIds) expect(objectDef(b)).toBeDefined(); expect(c.radius).toBe(2); }
     expect(COMBOS.filter((c) => c.hidden).length).toBe(25);
+  });
+  it('강화 아이템 잘 맞는 시설: 새 시설 편입, 밭 제거', () => {
+    const salt = ITEMS.find((i) => i.id === 'jeju_salt')!;
+    expect(salt.fitIds).toEqual(['noodle_shop', 'bomal_kalguksu', 'haenyeo_mulhoe', 'sauna_hut', 'cauldron_footbath']);
+    expect(ITEMS.find((i) => i.id === 'seaweed_fertilizer')!.fitIds).not.toContain('field');
+    for (const [id, fits] of Object.entries(ITEM_FIT_EXTRA)) {
+      const item = ITEMS.find((i) => i.id === id)!;
+      for (const f of fits) { expect(objectDef(f)).toBeDefined(); expect(item.fitIds).toContain(f); }
+    }
   });
   it('명당 12: 중심·필요 시설이 전부 존재한다', () => {
     expect(SPOT_EFFECTS.length).toBe(12);

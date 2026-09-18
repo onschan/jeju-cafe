@@ -543,10 +543,19 @@ export const SETS: SetDef[] = (aurasJson as RawSet[]).map(adaptSet);
 /** 강화 아이템 20(v2: 잘 맞는 시설 ×2) — v1 표에도 있는 것은 v1 분류(0~3)를 같이 갖는다 + v1에만 있는 것 + 특수 아이템 12(씨앗 3종만 효과) */
 const ITEMS_V1: ItemDef[] = (itemsJson as RawItem[]).map(adaptItem);
 const V1_BY_ID = new Map(ITEMS_V1.map((i) => [i.id, i] as const));
+/** 강화 아이템 "잘 맞는 시설" 확장 매핑 (스펙 §3.2.1 끝): 새 시설 44종을 기존 20종에 편입. 해초 비료의 field는 밭 폐지로 뺀다. */
+export const ITEM_FIT_EXTRA: Record<string, string[]> = {
+  jeju_salt: ['sauna_hut', 'cauldron_footbath'], bean_sample: ['tea_house'], conch_shell: ['footbath', 'open_air_footbath'], galot_cushion: ['rest_pavilion', 'lie_footbath'],
+  comic_book: ['pc_zone', 'lounge'], lp_record: ['yoga_class', 'vintage_shop'], sneakers: ['fitness_corner', 'pingpong', 'archery_range'], glasses: ['pc_zone', 'shooting_booth', 'archery_range'],
+  folk_scroll: ['tea_house', 'flower_workshop', 'vintage_shop', 'fine_dining'], tv: ['lounge', 'retro_arcade', 'brunch_house'], pottery_jar: ['lounge'], gold_leaf: ['fine_dining', 'clothing_shop'],
+  jeju_tea_set: ['tea_house', 'lounge'], honey: ['sweet_potato_cart', 'candy_shop'], flower_poster: ['flower_shop', 'hair_salon'], lantern: ['waterfall_shower'],
+};
 const ITEMS_V2: ItemDef[] = (itemsV2Json as RawItem[]).map((r) => {
   const def = adaptItem(r);
   const v1 = V1_BY_ID.get(def.id);
-  return v1?.fitSlots ? { ...def, fitSlots: v1.fitSlots } : def;
+  const fitIds = [...def.fitIds.filter((id) => !REMOVED_FACILITY_IDS.has(id)), ...(ITEM_FIT_EXTRA[def.id] ?? [])];
+  const out = { ...def, fitIds };
+  return v1?.fitSlots ? { ...out, fitSlots: v1.fitSlots } : out;
 });
 const V2_IDS = new Set(ITEMS_V2.map((i) => i.id));
 const ITEMS_V1_ONLY = ITEMS_V1.filter((i) => !V2_IDS.has(i.id));
