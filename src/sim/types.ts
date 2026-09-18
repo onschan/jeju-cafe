@@ -336,7 +336,7 @@ export interface PromotionDef {
   segmentDelta: Record<string, number>; // guestType id → 인기 가산
   allDelta?: number;
   popularityShift?: number; // 동네↔인기 게이지 이동 (SNS)
-  special?: 'youtuber' | 'parttime';
+  special?: 'youtuber' | 'parttime' | 'apology'; // apology = 사과 이벤트(평판 +8, 월 1회)
 }
 /** delta는 시작 시점의 타깃 배수를 구워 둔 값 (guestType id → 인기 가산). 나중에 타깃을 바꿔도 변하지 않는다. */
 export interface ActivePromotion { promotionId: string; remainingMonths: number; delta: Record<string, number> }
@@ -365,6 +365,9 @@ export interface MonthCard {
   loanBalance: number;               // 월말 대출 잔액
   rivalLossPct: number;              // 라이벌 카페 때문에 줄어든 손님 % (라이벌당 5)
   guestsLeft: number;                // 대기열이 차서 돌아간 손님 수
+  reputation: number;                // 월말 평판
+  reputationDelta: number;           // 그달 평판 변화
+  topComplaints: { reason: ComplaintReason; count: number }[]; // 그달 불만 TOP3
 }
 
 // ---------- 목표 체인 (v3 §2) ----------
@@ -423,7 +426,8 @@ export interface GameStats {
 export type Alert =
   | { type: 'goal'; goalId: string }
   | { type: 'event'; id: string }
-  | { type: 'eventEnd'; id: string };
+  | { type: 'eventEnd'; id: string }
+  | { type: 'reputation'; text: string }; // 평판 20 미만 삼춘 경고 (reputation.ts)
 
 // ---------- 제주 빅 이벤트 (v3 A5) ----------
 /** 손님 태그 배수의 키: 인구 태그 + 외국인·학생·1인·가족 */
@@ -502,7 +506,7 @@ export type DrawPrizeKind = 'money' | 'research' | 'ingredient_box' | 'mileage' 
 export interface DrawPrizeDef { kind: DrawPrizeKind; label: string; pct: number }
 export interface DrawResult { kind: DrawPrizeKind; label: string; text: string; free: boolean }
 /** 가이드북 심사 항목 6종 (0~100) */
-export type JudgeKey = 'smile' | 'scenery' | 'menu' | 'fun' | 'group' | 'rest' | 'clean' | 'price' | 'overall';
+export type JudgeKey = 'smile' | 'scenery' | 'menu' | 'fun' | 'group' | 'rest' | 'clean' | 'price' | 'reputation' | 'overall';
 export type JudgeScores = Record<JudgeKey, number>;
 export interface GuidebookDef {
   id: string;
@@ -631,6 +635,12 @@ export interface Clock {
   speed: 0 | 1 | 2 | 3;
 }
 
+/** 불만 사유 (reputation.ts COMPLAINT_LABEL로 표시) */
+export type ComplaintReason = 'no_menu' | 'wait_long' | 'no_seat' | 'dirty' | 'worn' | 'noise' | 'expensive' | 'cold_hot' | 'rude';
+/** 불만 한 건 (최근 30일 롤링). detail = 메뉴·시설 이름 등 후기 문장용 */
+export interface Complaint { day: number; reason: ComplaintReason; guestType: string; detail?: string }
+/** 월말 후기 (최대 8개, 최신이 앞) */
+export interface Review { month: number; score: number; text: string; reason?: ComplaintReason }
 /** 삼춘 대출: count = 받은 횟수(최대 3), balance = 남은 원금, lastMonthIndex = 마지막 대출 달(한 달 1회) */
 export interface LoanState { count: number; balance: number; lastMonthIndex: number }
 /** ★ 유지 심사: promotedYear = 마지막 승급 년차, lastReviewYear = 마지막 심사 년차(2년마다 3월), warned = 3월 경고 뒤 9월 재심사 대기 */
@@ -658,6 +668,14 @@ export interface GameState {
   monthGuestsLeft: number;                    // 이달 대기열이 차서 돌아간 손님 수
   monthLoan: number;                          // 이달 받은 대출 금액
   starReview: StarReview;                     // ★ 유지 심사 (§3.7.4 강등)
+  reputation: number;                         // 평판 0~100 (시작 50) — reputation.ts
+  complaints: Complaint[];                    // 최근 30일 불만
+  reviews: Review[];                          // 월말 후기 (최대 8)
+  monthComplaints: Partial<Record<ComplaintReason, number>>; // 이달 사유별 불만 수 (카드 TOP3)
+  monthReputationDelta: number;               // 이달 평판 변화 누적 (카드)
+  dayStats: { satisfied: number; complained: number; total: number }; // 오늘 만족·불만·총손님 (밤에 평판 계산 후 리셋)
+  reputationWarned: boolean;                  // 평판 20 미만 경고를 띄웠나 (30 이상 회복하면 리셋)
+  lastApologyMonthIndex: number;              // 사과 이벤트는 월 1회 (−1 = 아직)
   objects: Record<string, PlacedObject>; // 키는 'o123' 형태(비정수 문자열)라 삽입 순서가 보존됨 → 결정적 순회
   storage: Record<string, number>; // 창고: ingredientId → 개수 (농원 수확·재료 상자). 메뉴를 만들 때 먼저 쓰고, 없으면 자동 구매
   menuSlots: (string | null)[];

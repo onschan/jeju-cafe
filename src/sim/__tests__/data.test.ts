@@ -91,10 +91,10 @@ test('메뉴 원가는 가격의 60% 미만 (§4.2 #4 원가 인상 후 크루�
   }
 });
 
-test('역할 5, 스킬 20, 홍보 6, 이름 60', () => {
+test('역할 5, 스킬 20, 홍보 7(사과 이벤트 포함), 이름 60', () => {
   expect(ROLES.length).toBe(5);
   expect(SKILLS.length).toBe(20);
-  expect(PROMOTIONS.length).toBe(6);
+  expect(PROMOTIONS.length).toBe(7);
   expect(NAMES.names.length).toBeGreaterThanOrEqual(60);
 });
 

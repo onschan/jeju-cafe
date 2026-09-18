@@ -7,6 +7,7 @@ import { hourlySpawn, hourlyRegulars, updateGuests } from './guests.ts';
 import { upkeep, closeMonth, annualRaise, incomeTax, tourBusFee, TAX_MONTH } from './economy.ts';
 import { checkLoan, monthlyFailure } from './failure.ts';
 import { resetWaiting } from './guests.ts';
+import { nightlyReputation, monthlyReputation } from './reputation.ts';
 import { payroll, expireCandidates, hourlyEnergy, nightlyRecovery, moveStaff } from './staff.ts';
 import { expirePromotions } from './promotions.ts';
 import { evaluateUnlocks } from './segments.ts';
@@ -36,6 +37,7 @@ function onNewHour(state: GameState): void {
 
 /** 새 날 (6시의 시간 처리보다 먼저): 효과 만료 → 빅 이벤트 종료 → 팝업 정리·지역 회복 → 밤 회복 → 게시판(부탁 진행·제안) → 메뉴 개발 완료 → 건설 → 목표 판정 */
 function onNewDay(state: GameState): void {
+  nightlyReputation(state); // 어제 만족·불만으로 평판 갱신
   resetWaiting(state);
   pruneEffects(state);
   dailyBigEvents(state);
@@ -47,7 +49,7 @@ function onNewDay(state: GameState): void {
   checkGoals(state);
 }
 
-/** 월 바뀜 (1일의 날 처리보다 먼저): (3월) 급여 인상 → 월급 → 홍보 만료·인기 감소 → 유지비 → 투어 버스 → (3월) 소득세 → 손님 수 마일리지 → 정산 → 실패 상태(경고·대출·상환·위기) → 농원 수확 → 후보 만료 → 손님 해금 → 게시판 → 응모권·무료 추첨 → ★·가이드북 발표 → 라이벌 → 빅 이벤트 판정 */
+/** 월 바뀜 (1일의 날 처리보다 먼저): (3월) 급여 인상 → 월급 → 홍보 만료·인기 감소 → 유지비 → 투어 버스 → (3월) 소득세 → 손님 수 마일리지 → 정산 → 실패 상태(경고·대출·상환·위기) → 평판 후기 → 농원 수확 → 후보 만료 → 손님 해금 → 게시판 → 응모권·무료 추첨 → ★·가이드북 발표 → 라이벌 → 빅 이벤트 판정 */
 function onNewMonth(state: GameState, prevMonth: number, prevYear: number): void {
   const newYear = state.clock.month === TAX_MONTH && state.clock.year >= 2;
   if (newYear) annualRaise(state);
@@ -59,6 +61,7 @@ function onNewMonth(state: GameState, prevMonth: number, prevYear: number): void
   monthlyMileage(state);
   closeMonth(state, prevMonth, prevYear);
   monthlyFailure(state);
+  monthlyReputation(state);
   monthlyHarvest(state);
   expireCandidates(state);
   evaluateUnlocks(state);

@@ -21,11 +21,12 @@ import { monthIndex } from './clock.ts';
 import { parcelAt } from './parcels.ts';
 import { pushFx } from './fx.ts';
 import { fmtNum } from './format.ts';
+import { reputationScore } from './reputation.ts';
 
 export const MAX_STAR = 5;
-export const JUDGE_KEYS: JudgeKey[] = ['smile', 'scenery', 'menu', 'fun', 'group', 'rest', 'clean', 'price', 'overall'];
-export const JUDGE_LABEL: Record<JudgeKey, string> = { smile: '미소', scenery: '경관', menu: '메뉴', fun: '체험', group: '단체', rest: '쉼', clean: '청결', price: '가성비', overall: '종합' };
-/** 종합 = 8항목 평균 + 카페 랭크 × 3 + 콤보 수 × 1 */
+export const JUDGE_KEYS: JudgeKey[] = ['smile', 'scenery', 'menu', 'fun', 'group', 'rest', 'clean', 'price', 'reputation', 'overall'];
+export const JUDGE_LABEL: Record<JudgeKey, string> = { smile: '미소', scenery: '경관', menu: '메뉴', fun: '체험', group: '단체', rest: '쉼', clean: '청결', price: '가성비', reputation: '평판', overall: '종합' };
+/** 종합 = 8항목(평판 제외) 평균 + 카페 랭크 × 3 + 콤보 수 × 1 */
 export const OVERALL_PER_RANK = 3;
 export const OVERALL_PER_COMBO = 1;
 /** 라이벌 곡선: i번째(0~8) 라이벌 = top − 6i ± 4 */
@@ -210,9 +211,9 @@ function priceScore(state: GameState): number {
 
 export function judgeScores(state: GameState): JudgeScores {
   const smile = smileScore(state), scenery = scenerySc(state), menu = menuScore(state), fun = funScore(state), group = groupScore(state);
-  const rest = restScore(state), clean = cleanScore(state), price = priceScore(state);
+  const rest = restScore(state), clean = cleanScore(state), price = priceScore(state), reputation = reputationScore(state);
   const overall = clamp100((smile + scenery + menu + fun + group + rest + clean + price) / 8 + state.rank * OVERALL_PER_RANK + state.codex.combos.length * OVERALL_PER_COMBO);
-  return { smile, scenery, menu, fun, group, rest, clean, price, overall };
+  return { smile, scenery, menu, fun, group, rest, clean, price, reputation, overall };
 }
 
 /** 이번 달 농협 추천의 타깃 태그 (monthIndex로 돌아간다) */

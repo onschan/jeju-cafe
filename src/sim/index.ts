@@ -3,6 +3,7 @@ export { createInitialState, GRID_W, GRID_H, PARCEL_W, PARCEL_H, START_ORIGIN, V
 export { parcelAt, parcelById, parcelPrice, canBuyParcel, ownedParcels, parcelBonusAt, parcelUnlockOwnedCount } from './parcels.ts';
 export { tick, step, STEP_MS } from './tick.ts';
 export { upkeepOf, isAged, salaryOf as economySalaryOf, incomeTaxOf, totalCosts, emptyMonthCosts, UPKEEP_RATE, AGED_UPKEEP_MULT, BASE_SALARY_DEFAULT, SALARY_LEVEL_STEP, SALARY_PER_STAT_POINT, ANNUAL_RAISE_PCT, TAX_RATE, TAX_MONTH, TOUR_BUS_FEE } from './economy.ts';
+export { addComplaint, addReputation, complaintCounts, topComplaints, reputationGuestMult, reputationTypeMult, reputationTipMult, reputationNamedMult, reputationScore, nightlyReputation, monthlyReputation, makeReviews, reviewScore, applyApology, cleanValue, wornCount, COMPLAINT_REASONS, COMPLAINT_LABEL, COMPLAINT_REVIEW, REPUTATION_START, REP_LOW, REP_HIGH, REP_ALERT, APOLOGY_REPUTATION, MAX_REVIEWS, TOP_COMPLAINTS } from './reputation.ts';
 export { hasLoan, loanRewardMult, canTakeLoan, takeLoan, checkLoan, repayLoan, LOAN_AMOUNT, LOAN_MAX, LOAN_THRESHOLD, LOAN_REPAY_RATIO, LOAN_REWARD_MULT, WARN_DEFICIT_MONTHS, LOAN_DEFICIT_MONTHS, CRISIS_MONEY, CRISIS_MONTHS } from './failure.ts';
 export { apply, PROTECTED_TYPES, ROTATABLE_TYPES } from './actions.ts';
 export { DAY_MS, seasonOf, monthIndex, DAYS_PER_MONTH } from './clock.ts';

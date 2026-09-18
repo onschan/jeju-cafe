@@ -122,6 +122,7 @@ export function closeMonth(state: GameState, prevMonth: number, prevYear: number
     harvested: { ...state.monthHarvest.harvested }, ingredientSaved: state.monthHarvest.ingredientSaved, topMenu,
     deficitStreak: state.deficitMonths, loanTaken: state.monthLoan, loanBalance: state.loan.balance,
     rivalLossPct: rivalGuestLossPct(state), guestsLeft: state.monthGuestsLeft,
+    reputation: state.reputation, reputationDelta: 0, topComplaints: [],
   };
   state.lastMonthIncome = state.monthIncome;
   state.monthIncome = 0;

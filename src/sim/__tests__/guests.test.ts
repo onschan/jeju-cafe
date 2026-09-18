@@ -201,30 +201,34 @@ test('대사: 30%쯤은 말풍선 텍스트, 손님층·기분·이유에 맞는
   expect(said).toBeLessThan(total * 0.45);
 });
 
-test('하루 손님 수 = min(좌석×6, 6 + 인기 합/12 + 시설 인기 합/8 + 명소 매력도/8) × 계절·라이벌 배수, 2~300 (§4.2 #1)', () => {
+test('하루 손님 수 = min(좌석×6, (4 + 인기 합/17 + 시설 인기 합/12 + 명소 매력도/12) × 계절·라이벌·평판 배수), 2~300 (§4.2 #1)', () => {
   const s = bareState(1);
   s.clock.month = 4; // 계절 배수 1
   s.segmentPopularity = { local_auntie: 0, student: 0, village_head: 0 }; // 시작 해금 3타입
   expect(dailyGuestCount(s)).toBe(MIN_DAILY_GUESTS); // 좌석 0 → 상한 0 → 최소 2
   placeObject(s, 'table_out', X(4), Y(5)); // 2석 → 상한 12
   expect(popularityGuestBase(s)).toBe(BASE_DAILY_GUESTS);
-  expect(dailyGuestCount(s)).toBe(BASE_DAILY_GUESTS);
-  s.segmentPopularity = { local_auntie: 40, student: 40, village_head: 40 }; // 인기 합 120 → +10 → 16 > 상한 12
-  expect(popularitySum(s)).toBe(120);
-  expect(popularityGuestBase(s)).toBe(BASE_DAILY_GUESTS + Math.floor(120 / POP_SUM_PER_GUEST));
+  expect(dailyGuestCount(s)).toBe(BASE_DAILY_GUESTS); // 평판 50 → ×1
+  s.segmentPopularity = { local_auntie: 80, student: 80, village_head: 80 }; // 인기 합 240 → +14 → 18 > 상한 12
+  expect(popularitySum(s)).toBe(240);
+  expect(popularityGuestBase(s)).toBe(BASE_DAILY_GUESTS + Math.floor(240 / POP_SUM_PER_GUEST));
   expect(dailyGuestCount(s)).toBe(2 * GUESTS_PER_SEAT);
   placeObject(s, 'table_out', X(5), Y(5)); // 4석 → 상한 24
-  expect(dailyGuestCount(s)).toBe(16);
-  placeObject(s, 'tangerine_tree', X(6), Y(5)); // 시설 인기 10 → 합 10 → +1
-  expect(facilityPopularitySum(s)).toBe(10);
-  expect(popularityGuestBase(s)).toBe(17);
+  expect(dailyGuestCount(s)).toBe(18);
+  placeObject(s, 'tangerine_tree', X(6), Y(5)); placeObject(s, 'tangerine_tree', X(6), Y(6)); // 시설 인기 10×2 → 합 20 → +1
+  expect(facilityPopularitySum(s)).toBe(20);
+  expect(popularityGuestBase(s)).toBe(19);
   s.clock.month = 1; // 비수기 0.8
-  expect(dailyGuestCount(s)).toBe(Math.round(17 * SEASON_GUEST_MULT[1]!));
+  expect(dailyGuestCount(s)).toBe(Math.round(19 * SEASON_GUEST_MULT[1]!));
   s.clock.month = 4;
   s.rivals.push({ id: 'r1', rivalId: 'rv_local_cafe', openedMonthIndex: 0, penaltyPct: 0, stolen: [], lastChallengeMonth: -1 }); // 라이벌 1곳 −5%
-  expect(dailyGuestCount(s)).toBe(Math.round(17 * 0.95));
+  expect(dailyGuestCount(s)).toBe(Math.round(19 * 0.95));
   s.rivals = [];
-  s.effects.push({ kind: 'spawnMult', mult: 30, untilDay: 9999, source: 't' });
+  s.reputation = 100; // 평판 ×1.5
+  expect(dailyGuestCount(s)).toBe(Math.min(24, Math.round(19 * 1.5)));
+  s.reputation = 50;
+  s.rivals = [];
+  s.effects.push({ kind: 'spawnMult', mult: 40, untilDay: 9999, source: 't' });
   for (let x = 10; x < 30; x++) for (const y of [1, 2, 3]) placeObject(s, 'table_out', x, y); // 124석 → 상한 744 → 전체 상한 300
   expect(totalSeats(s)).toBe(124);
   expect(dailyGuestCount(s)).toBe(MAX_DAILY_GUESTS);

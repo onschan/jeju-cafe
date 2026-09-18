@@ -14,6 +14,7 @@ import { initFeatures } from './goals.ts';
 import { generateCandidate } from './staff.ts';
 import { monthIndex } from './clock.ts';
 import { emptyMonthCosts } from './economy.ts';
+import { REPUTATION_START } from './reputation.ts';
 
 export { PARCEL_W, PARCEL_H, START_ORIGIN, GRID_W, GRID_H, VILLAGE_ROAD_Y };
 export const SAVE_VERSION = 16; // 16: 경제 확장 — 삼춘 대출·세금·대기열·★ 유지 심사 (마이그레이션 없음). 15: v3 대격변. 14: 라이벌 카페
@@ -137,6 +138,14 @@ export function createInitialState(seed: number, playerId = 'local', createdAt =
     monthGuestsLeft: 0,
     monthLoan: 0,
     starReview: { promotedYear: 1, lastReviewYear: 0, warned: false },
+    reputation: REPUTATION_START,
+    complaints: [],
+    reviews: [],
+    monthComplaints: {},
+    monthReputationDelta: 0,
+    dayStats: { satisfied: 0, complained: 0, total: 0 },
+    reputationWarned: false,
+    lastApologyMonthIndex: -1,
     objects: {},
     storage: {},
     menuSlots: [...START_MENUS, ...Array(Math.max(0, MENU_SLOT_COUNT - START_MENUS.length)).fill(null)],

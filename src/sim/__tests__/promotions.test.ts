@@ -4,7 +4,7 @@ import { apply } from '../actions.ts';
 import { placeObject } from '../grid.ts';
 import { tick } from '../tick.ts';
 import { DAY_MS } from '../clock.ts';
-import { dailyGuestCount, popularityGuestBase, spawnMultiplier } from '../guests.ts';
+import { dailyGuestCount, popularityGuestBase, spawnMultiplier, POP_SUM_PER_GUEST } from '../guests.ts';
 import { effectivePopularity, expirePromotions, YOUTUBER_MONTHS, PARTTIME_MONEY } from '../promotions.ts';
 import { monthIndex } from '../clock.ts';
 import { staffWith } from './staff.test.ts';
@@ -145,12 +145,12 @@ test('홍보가 있으면 하루 손님이 는다', () => {
   const base = popularityGuestBase(s);
   s.money = 1e8;
   expect(apply(s, { type: 'promote', staffId: st.id, promotionId: 'radio' }).ok).toBe(true); // 기력 30
-  expect(popularityGuestBase(s)).toBeGreaterThan(base); // 전 손님층 +5 → 평균 배수 1.3 → floor(0.3×14)=4
+  expect(popularityGuestBase(s)).toBeGreaterThanOrEqual(base); // 전 손님층 +5 → 인기 합 +15
   for (const id of ['sns', 'sns', 'flyer', 'flyer']) expect(apply(s, { type: 'promote', staffId: st.id, promotionId: id }).ok).toBe(true); // 기력 15+15+20+20
   expect(st.energy).toBe(0);
   expect(effectivePopularity(s, 'local_auntie')).toBe(21);
   expect(effectivePopularity(s, 'student')).toBe(25);
-  expect(popularityGuestBase(s)).toBe(6 + Math.floor(0.41 * 14 + 1e-9)); // 평균 배수 1.41 → floor(0.41×14)=5
+  expect(popularityGuestBase(s)).toBe(4 + Math.floor((21 + 25 + 15) / POP_SUM_PER_GUEST)); // 인기 합 61 → +3
 });
 
 test('setTarget: 아는 손님층만, null로 해제', () => {

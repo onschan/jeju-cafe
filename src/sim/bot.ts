@@ -83,6 +83,9 @@ export const BOT_HIRE_YEAR = 2;
 export const BOT_HIRE_ORDER: RoleId[] = ['hall', 'barista', 'cook', 'carry', 'guide'];
 /** 관광지 투자: 돈이 다음 레벨 비용 + 여유분을 넘으면 (§4.6 투자 규칙) */
 export const BOT_SPOT_RESERVE = 3_000_000;
+/** 평판이 이 아래면 사과 이벤트 */
+export const BOT_APOLOGY_REPUTATION = 40;
+export const BOT_APOLOGY_MIN_MONEY = 1_000_000;
 /** 3년차부터는 2,000만을 남기고 투자한다 (3년차 말 자금 3,000만~4,500만 밴드 §4.6) */
 export const BOT_RESERVE_YEAR3 = 20_000_000;
 /** 4년차 전엔 관광지 Lv3까지만 (Lv4·5는 350만~1,000만/회) */
@@ -222,6 +225,12 @@ function monthlyPlan(s: GameState, monthsPlayed: number): void {
     if (st) apply(s, { type: 'promote', staffId: st.id, promotionId: 'flyer' });
     const st2 = s.staff.find((x) => x.role !== null && x.energy > FLYER_MIN_ENERGY);
     if (st2 && s.money > SNS_MIN_MONEY) apply(s, { type: 'promote', staffId: st2.id, promotionId: 'sns' });
+  }
+
+  // 평판이 40 아래면 사과 이벤트 (월 1회, 50만) — 청소·수리(트랙 A repairObject)가 들어오면 그쪽을 먼저
+  if (s.reputation < BOT_APOLOGY_REPUTATION && s.money > BOT_APOLOGY_MIN_MONEY && featureOpen(s, 'promote')) {
+    const st = s.staff.find((x) => x.role !== null && x.energy > 10);
+    if (st) apply(s, { type: 'promote', staffId: st.id, promotionId: 'apology_event' });
   }
 
   // 상점: 마일리지 3 이상이면 일꾼 삼춘, 무료 인형뽑기, 아이템은 야외 테이블에
