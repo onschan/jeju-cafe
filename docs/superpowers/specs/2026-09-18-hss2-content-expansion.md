@@ -1424,3 +1424,41 @@ HSS2는 직종이 없고 4스탯이 모든 업무 효율을 정한다(§1.6). �
 
 ### 7.6 파일 소유 (트랙 B)
 `goals.json`(108)·`goals.ts`·★`challenges.json`·★`challenges.ts`·`events_v3.json`·`events.ts`·`failure.ts`(E가 골격을 만들면 대화 텍스트만)·`dialogue/tutorial.json`·`tutorialDialogue.ts`·★`RewardPopup.tsx`·`GoalBar.tsx`(도전 줄)·`GoalWindow.tsx`(탭 3개)·`state.ts` 시작 상태(§7.1, `newGame` 부분만)·`alertDialogue.ts`·하이라이트용 ★`tutorialHighlight.ts`(+ `data-tut` 속성은 각 창에 한 줄씩).
+
+---
+
+## 8. 실내 카페 증축 (트랙 G) — "확장이 야외 테이블 위주"
+
+사용자 피드백: 실내 카페도 증설하고 싶다. 지금은 확장이 야외 위주.
+
+### 8.1 본관 증축 (footprint 확장)
+- 본관(`warehouse`)에 **증축 단계 4**: Lv1 3×2(현재) → Lv2 4×3 → Lv3 5×3 → Lv4 6×4. 액션 `expandMain()`: 비용 Lv2 300만 / Lv3 800만 / Lv4 2,000만, 건축가 1명 7일, 조건: 확장되는 칸(남동·동 방향으로 자람, 원점 고정)이 전부 내 필지의 흙/길이고 바위·시설 없음(길은 자동 철거). 확장 뒤 내부 바닥 칸이 늘고 기존 실내 가구는 그대로.
+- 실내 칸은 입지 `wind 0 · shade 2`, 계절 보정 없음, 겨울·비·태풍·폭설 이벤트 때 손님이 실내 좌석을 **우선** 고른다(야외 좌석은 그런 날 이용률 ×0.3).
+- 스프라이트: `sprites_iso_rooms.py`의 `room()`으로 4×3·5×3·6×4 본관 3장 생성(`iso_obj_warehouse_lv2..4`), 지붕 없음·카운터/주방은 왼쪽 위 벽에 붙어 있음. `SPRITE_ALIAS`가 아니라 `level`로 텍스처 선택.
+
+### 8.2 별관·2층
+- **별관 건물**(kind `building`, room): `annex_cafe` 카페 별관 4×3(실내 좌석 자리 8칸, ₩600만, ★2), `greenhouse_cafe` 온실 카페 3×3(전망 +2 고정·겨울 그늘 없음, ₩450만, 목표 해금), `gallery`·`tangerine_hall`(기존)은 별관으로 분류. 별관은 본관과 **올렛길로 이어져야** 손님이 간다(문 앞 칸 규칙 동일).
+- **2층**: 본관 Lv3 이상이면 `buildSecondFloor()`(₩1,500만): footprint는 그대로, 실내 좌석 정원 +6(가상 층 — 렌더는 본관 벽 위에 2층 창문 띠 스프라이트 오버레이 `iso_obj_warehouse_floor2`). 2층 좌석은 전망 +1(높이).
+
+### 8.3 실내 가구·시설 (짓기 창 「실내」 탭 신설)
+| id | 이름 | 크기 | 비용 | 정원/효과 | 해금 |
+|---|---|---|---|---|---|
+| table_in | 실내 테이블 | 1×1 | 40만 | 2석 | 시작 |
+| sofa_seat | 소파석 | 2×1 | 90만 | 3석·만족 +2·체류 +20% | 목표 |
+| window_seat | 창가석 | 1×1 | 70만 | 2석·벽에 붙으면 전망 +2 | 시작 |
+| bar_counter | 바 카운터 | 2×1 | 120만 | 3석(1인 손님 선호)·바리스타 서빙 ×0.8 | ★2 |
+| fireplace | 난로 | 1×1 | 80만 | 반경 2 실내 좌석 겨울 만족 +3 | 목표 |
+| bookshelf | 책장 | 1×1 | 50만 | 체류 +15%·1인·청년 태그 +10% | 목표 |
+| piano | 피아노 | 2×1 | 250만 | 인기 +8·저녁 손님 +10% | ★3 |
+| aquarium | 수족관 | 1×1 | 150만 | 경관 +2(실내)·가족 +10% | 목표 |
+| kids_corner | 키즈 코너 | 2×2 | 200만 | 가족 태그 +25%·소음 +1 | 목표 |
+| counter_ext | 카운터 확장 | 1×1 | 100만 | 주방 거리 계산 원점 +1(서빙 −10%) | Lv2 |
+실내 가구는 **방 안 칸에만** 놓인다(`roomAt` 필수). 콤보 8개 추가(난로+소파, 책장+창가석, 피아노+바, 수족관+키즈 코너…).
+
+### 8.4 UI
+- 본관 미니 카드: 「증축 Lv2 (₩300만·7일)」 버튼 + 확장될 칸 미리보기(고스트 다이아몬드), 「2층 올리기」.
+- 짓기 창 탭 순서: 실내 · 쉼 · 편의 · 먹거리 · 즐길거리 · 농원 · 경관 · 길 · 담. 실내 탭은 방 밖 칸을 고르면 "실내 가구는 건물 안에만 놓아요" 토스트.
+- 목표에 "실내 좌석 6석", "본관 Lv2", "별관 짓기" 편입(B 108 안 교체 3개).
+
+### 8.5 파일 소유 (트랙 G)
+★`src/sim/rooms.ts`(expandMain·buildSecondFloor·isIndoorCell·indoorSeats·preferIndoor), `grid.ts` roomAt(가변 footprint), `objects.json`(본관 level 크기표·별관·실내 가구), `combos.json`(+8), `sprites_iso_rooms.py`(본관 Lv2~4·2층 띠·별관·실내 가구 10), `guests.ts` 좌석 선택 한 곳(`preferIndoor`), `site.ts` 실내 규칙 한 곳, `BuildWindow.tsx` 실내 탭, `MiniCard.tsx` 본관 카드, `GameView.ts` 본관 텍스처 선택·2층 오버레이. 테스트: 증축 조건·비용·내부 칸·가구 배치 제한·겨울 실내 우선.
