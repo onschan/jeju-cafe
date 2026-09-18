@@ -91,6 +91,8 @@ function DialogueBox({ req, page }: { req: DialogueReq; page: number }) {
 /** App에 한 번 둔다. showDialogue() 큐의 맨 앞 대화를 그린다. 열려 있는 동안 게임이 멈춘다. */
 export function DialogueHost() {
   const { req, page } = useDialogue();
-  if (!req) return null;
+  const s = useGame();
+  // 결산 카드·랭킹 발표가 떠 있는 동안은 대화창을 미룬다 (겹치지 않게; SceneHost와 같은 규칙)
+  if (!req || s.lastMonthCard || s.lastAnnouncement) return null;
   return <DialogueBox key={req.lines.join('|')} req={req} page={page} />;
 }

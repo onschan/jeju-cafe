@@ -61,8 +61,8 @@ export function BottomBar({ onOpen }: { onOpen: (kind: WindowKind) => void }) {
     <div data-testid="bottom-bar" style={barStyle}>
       {MAIN_TABS.map((t) => (
         <button key={t.kind} data-tab={t.label} aria-label={t.label} onClick={() => onOpen(t.kind)}
-          style={{ ...brownBtn, flex: 1, minWidth: 0, margin: 0, padding: '0 2px', fontSize: 14, height: 44, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 3, position: 'relative' }}>
-          <Icon name={t.icon} size={16} /> {t.label}
+          style={{ ...brownBtn, flex: 1, minWidth: 0, margin: 0, padding: 0, fontSize: 14, lineHeight: 1, height: 44, display: 'inline-flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2, whiteSpace: 'nowrap', position: 'relative' }}>
+          <Icon name={t.icon} size={16} /><span>{t.label}</span>
           {t.kind === 'people' && badge > 0 && <span data-testid="board-badge" style={{ position: 'absolute', top: -6, right: -4, minWidth: 18, height: 18, borderRadius: 9, background: PALETTE.bad, color: '#fff', fontSize: 11, lineHeight: '18px', textAlign: 'center', padding: '0 4px' }}>{badge}</span>}
         </button>
       ))}
