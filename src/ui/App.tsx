@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { GameView, type GhostSpec } from '../render/GameView';
 import { startLoop, dispatch, getState, useGame, setViewReset, autosaveNow, hasAnySave, loadSlot, setMonthCardHook, setSceneHook, showToast, pauseGame } from './store';
-import { unlockAudio, bgm, isMuted, setMuted } from './audio';
+import { unlockAudio, bgm, isMuted, setMuted, getBgmVolume, getSfxVolume, setBgmVolume, setSfxVolume, sfx } from './audio';
 import { seasonOf, canPlace, objectAt, footprint, parcelAt, clearCost, placeCost, PROTECTED_TYPES, ROTATABLE_TYPES, goalForMenu, type GameState } from '../sim/index.ts';
 import { objectDef, GOALS } from '../data/index.ts';
 // render/·ui/는 Vite 전용이라 확장자 없는 import 허용. sim/·data/만 .ts 확장자 규칙.
@@ -127,9 +127,20 @@ function SettingsPanel({ onExit }: { onExit: () => void }) {
   const [slots, setSlots] = useState(false);
   const [muted, setMutedState] = useState(isMuted());
   const toggleMute = () => { const m = !muted; setMuted(m); setMutedState(m); };
+  const [bgmVol, setBgmVol] = useState(getBgmVolume());
+  const [sfxVol, setSfxVol] = useState(getSfxVolume());
+  const slider = (label: string, v: number, set: (n: number) => void) => (
+    <label style={{ display: 'grid', gridTemplateColumns: '64px 1fr 40px', alignItems: 'center', gap: 8, fontSize: 14, minHeight: 44 }}>
+      <span>{label}</span>
+      <input type="range" min={0} max={100} step={5} value={v} onChange={(e) => set(Number(e.target.value))} style={{ width: '100%', accentColor: PALETTE.paperDark }} />
+      <span style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{v}</span>
+    </label>
+  );
   return (
     <div style={{ display: 'grid', gap: 6 }} data-testid="settings">
-      <button style={{ ...brownBtn, marginRight: 0, marginBottom: 0 }} onClick={toggleMute}>{muted ? '소리 켜기' : '소리 끄기'}</button>
+      {slider('배경음', bgmVol, (n) => { setBgmVolume(n); setBgmVol(n); })}
+      {slider('효과음', sfxVol, (n) => { setSfxVolume(n); setSfxVol(n); sfx('tap'); })}
+      <button style={{ ...brownBtn, marginRight: 0, marginBottom: 0 }} onClick={toggleMute}>{muted ? '소리 켜기' : '소리 전부 끄기'}</button>
       <button style={{ ...brownBtn, marginRight: 0, marginBottom: 0 }} onClick={() => setSlots(true)}>슬롯에 저장</button>
       <button style={{ ...dangerBtn, marginRight: 0, marginBottom: 0 }} onClick={() => Confirm('자동 저장하고 타이틀로 나갈까요?', onExit, { title: '타이틀로' })}>타이틀로 나가기</button>
       {slots && <SaveSlots mode="save" onClose={() => setSlots(false)} />}

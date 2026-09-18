@@ -33,6 +33,16 @@ export const BUBBLE_MS = 1500;
 /** 아직 시트에 없는 오브젝트가 빌려 쓰는 스프라이트 */
 /** 시트 이름이 다른 오브젝트. 감귤나무는 v3에서 성장 단계가 없어 늘 열매 달린 모습으로 */
 const SPRITE_ALIAS: Record<string, string> = { bush_wild: 'tea_bush', spring: 'pond', dolhareubang_pair: 'dolhareubang', hackberry: 'hackberry_shade', tangerine_tree: 'tangerine_tree_ready' };
+/** 캐릭터(손님·직원)는 모든 시설·건물보다 앞에 그린다 — 건물 뒤·안에 있어도 사람이 보여야 한다(카이로식). 캐릭터끼리는 x+y 순. */
+const CHAR_Z = 1e4;
+
+/** 미소유 필지 노드: 덮개 타일(tiles)과 가격 라벨(overlay)을 같이 지운다 */
+function destroyLocked(node?: Container) {
+  if (!node) return;
+  (node as Container & { parcelLabel?: Container }).parcelLabel?.destroy({ children: true });
+  node.destroy({ children: true });
+}
+
 const GHOST_OK = 0x88ff88;
 const GHOST_BAD = 0xff7777;
 const GHOST_ALPHA = 0.65;
@@ -289,10 +299,11 @@ export class GameView {
     for (const sp of this.speech.values()) sp.node.destroy({ children: true });
     this.speech.clear();
     this.greeted.clear();
+    for (const e of this.lockedNodes.values()) destroyLocked(e.node); // overlay에 있는 가격 라벨까지 같이 지운다
+    this.lockedNodes.clear();
     this.tiles.removeChildren().forEach((c) => c.destroy());
     this.tileSprites = [];
     this.terrainKeys = [];
-    this.lockedNodes.clear();
     this.tilesBuilt = false;
     this.lastSeason = null;
     this.background.reset();
@@ -416,12 +427,12 @@ export class GameView {
       const text = `₩${parcelPrice(state, p).toLocaleString()} · 탭해서 구매`;
       const cur = this.lockedNodes.get(p.id);
       if (cur?.text === text) continue;
-      cur?.node.destroy({ children: true });
+      destroyLocked(cur?.node);
       this.lockedNodes.set(p.id, { node: this.makeLockedNode(p, text), text });
     }
     for (const [id, entry] of this.lockedNodes) {
       if (alive.has(id)) continue;
-      entry.node.destroy({ children: true });
+      destroyLocked(entry.node);
       this.lockedNodes.delete(id);
     }
   }
@@ -453,9 +464,13 @@ export class GameView {
     price.position.set(center.sx, center.sy + 1);
     const w = Math.max(name.width, price.width) + 12;
     const bg = new Graphics().roundRect(center.sx - w / 2, center.sy - name.height - 4, w, name.height + price.height + 8, 4).fill({ color: 0x000000, alpha: 0.6 });
-    c.addChild(bg, name, price);
-    // 타일 컨테이너 위·오브젝트 아래: tiles 컨테이너 안에서 일반 타일 뒤에 추가된다
+    // 어두운 덮개 타일은 tiles 안(오브젝트 아래), 가격 라벨은 overlay(오브젝트·캐릭터 위) — 바위·시설에 가려지지 않게
     this.tiles.addChild(c);
+    const lbl = new Container();
+    lbl.label = 'parcel-label';
+    lbl.addChild(bg, name, price);
+    this.overlay.addChild(lbl);
+    (c as Container & { parcelLabel?: Container }).parcelLabel = lbl;
     return c;
   }
 
@@ -729,14 +744,14 @@ export class GameView {
         const def = objectDef(seat.type);
         const { sx, sy } = cellCenter(g.x, g.y);
         node.position.set(sx, sy - SEAT_LIFT_PX);
-        node.zIndex = this.depthOf(state, seat.x, seat.y, def.w, def.h) + 0.1;
+        node.zIndex = CHAR_Z + g.x + g.y;
       } else {
         // 같은 날 스폰된 손님이 겹쳐 걷지 않도록 id 기반 작은 오프셋
         const jitter = (parseInt(g.id.slice(1), 10) % 3) * 4 - 4;
         const { sx, sy } = cellCenter(g.x, g.y);
         node.position.set(sx + jitter, sy);
         // 같은 칸의 바닥 오브젝트(올렛길·정류장)보다 앞에, 방 안이면 방보다 앞에 그린다
-        node.zIndex = roomAt(state, Math.round(g.x), Math.round(g.y)) ? this.depthOf(state, g.x, g.y) + 0.5 : g.x + g.y + 0.5;
+        node.zIndex = CHAR_Z + g.x + g.y;
       }
       const walking = g.phase !== 'seated' && g.path.length > 0;
       if (g.phase === 'walking' && !this.greeted.has(g.id)) this.maybeGreet(state, g, now);
@@ -805,7 +820,7 @@ export class GameView {
       const { node } = entry;
       const { sx, sy } = cellCenter(st.x, st.y);
       node.position.set(sx, sy);
-      node.zIndex = roomAt(state, Math.round(st.x), Math.round(st.y)) ? this.depthOf(state, st.x, st.y) + 0.5 : st.x + st.y + 0.5;
+      node.zIndex = CHAR_Z + st.x + st.y;
       const walking = st.path.length > 0;
       updateCharacterNode(entry.body, walkDir(st.x, st.y, st.path[0]), walking ? walkFrame : 1);
       const tired = st.energy < LOW_ENERGY;
