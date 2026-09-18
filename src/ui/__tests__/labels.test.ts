@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { MENUS, OBJECTS, INGREDIENTS, GUEST_TYPES, QUESTS, ITEMS, SPOTS, ROLES, SKILLS, PROMOTIONS, REGIONS, FACILITIES } from '../../data/index.ts';
 import { label, hasIdToken, requireText, ingredientsText, unlockText, unlockCondText, conditionText, rewardText, humanize, ifClause } from '../../data/labels.ts';
+import { TUTORIAL_STEPS, GOAL_LINES, EVENT_DIALOGUES, SAMCHUN, goalLine, eventDialogue, samchunDef } from '../../data/dialogue/index.ts';
 
 const ID_ONLY = /^[a-z0-9_]+$/;
 
@@ -102,6 +103,66 @@ describe('부탁·목표 조건/보상', () => {
     expect(rewardText([{ type: 'unlockMenu', id: 'tangerine_juice' }])).toBe('감귤주스 해금');
     expect(rewardText([{ type: 'tickets', amount: 1 }, { type: 'builder', amount: 1 }, { type: 'staffSlot', amount: 1 }])).toBe('응모권 1장 · 건축가 +1 · 직원 자리 +1');
     expect(hasIdToken(conditionText({ type: 'whatever_new', n: 1 }))).toBe(false);
+  });
+});
+
+describe('대화 데이터 (src/data/dialogue)', () => {
+  const SPEAKERS = new Set(['halmang', 'samchun', 'hero', 'haenyeo', 'jangnim']);
+  const BANNED = /술|맥주|소주|막걸리|와인|칵테일|\{[a-z]+\}|이\(가\)|을\(를\)|은\(는\)/;
+  const allTexts = (): string[] => [
+    ...TUTORIAL_STEPS.flatMap((t) => [t.title, ...t.lines, t.button, t.done ?? '']),
+    ...GOAL_LINES.map((g) => g.line),
+    ...EVENT_DIALOGUES.flatMap((e) => [e.title, ...e.lines, e.endLine]),
+    ...SAMCHUN.flatMap((s) => [s.name, s.job, s.intro, s.rewardText, ...s.chain.flatMap((c) => [c.ask, ...c.lines, c.doneLine])]),
+  ];
+
+  it('튜토리얼 6단계, 단계당 2~4줄, 화자는 할망', () => {
+    expect(TUTORIAL_STEPS.map((t) => t.id)).toEqual([1, 2, 3, 4, 5, 6]);
+    for (const t of TUTORIAL_STEPS) {
+      expect(t.lines.length).toBeGreaterThanOrEqual(2);
+      expect(t.lines.length).toBeLessThanOrEqual(4);
+      expect(t.speaker).toBe('halmang');
+      expect(t.button.length).toBeGreaterThan(0);
+    }
+    expect(TUTORIAL_STEPS[5]!.done).toBeNull();
+  });
+  it('목표 축하 대사 60개 g01~g60, 화자 로테이션, 순서·id 둘 다로 찾는다', () => {
+    expect(GOAL_LINES).toHaveLength(60);
+    expect(GOAL_LINES.map((g) => g.id)).toEqual(Array.from({ length: 60 }, (_, i) => `g${String(i + 1).padStart(2, '0')}`));
+    expect(new Set(GOAL_LINES.map((g) => g.speaker)).size).toBeGreaterThanOrEqual(3);
+    expect(goalLine('g07').line).toBe(GOAL_LINES[6]!.line);
+    expect(goalLine(6).line).toBe(GOAL_LINES[6]!.line);
+    expect(goalLine('goal_12').line).toBe(GOAL_LINES[11]!.line);
+    expect(goalLine(60).line).toBe(GOAL_LINES[0]!.line);
+  });
+  it('사건 대화: 요청된 26가지 소재가 다 있고 3~5줄', () => {
+    const ids = EVENT_DIALOGUES.map((e) => e.id);
+    for (const id of ['ev_baekjungwon_shoot', 'ev_yori_minbak', 'ev_yuai_guest', 'ev_visa_free', 'ev_dondon_waiting', 'ev_tangerine_fest', 'ev_canola', 'ev_typhoon', 'ev_snow', 'ev_cherry', 'ev_olle_walk_fest', 'ev_haenyeo_fest', 'ev_cruise', 'ev_flight_sale', 'ev_school_trip', 'ev_drama_rumor', 'ev_influencer', 'ev_workation', 'ev_golf', 'ev_marathon', 'ev_ev_fest', 'ev_peanut_icecream', 'ev_black_pork_fest', 'ev_sea_fog']) {
+      expect(ids, id).toContain(id);
+    }
+    expect(new Set(ids).size).toBe(ids.length);
+    for (const e of EVENT_DIALOGUES) {
+      expect(e.lines.length, e.id).toBeGreaterThanOrEqual(3);
+      expect(e.lines.length, e.id).toBeLessThanOrEqual(5);
+      expect(e.endLine.length).toBeGreaterThan(0);
+      expect(eventDialogue(e.id)).toBe(e);
+    }
+  });
+  it('삼춘 6명, 각 6단계 체인 + 보상 문구', () => {
+    expect(SAMCHUN).toHaveLength(6);
+    for (const s of SAMCHUN) {
+      expect(s.chain.map((c) => c.step)).toEqual([1, 2, 3, 4, 5, 6]);
+      expect(s.rewardText.length).toBeGreaterThan(0);
+      expect(samchunDef(s.id)).toBe(s);
+    }
+  });
+  it('모든 대사: 화자 키가 초상과 맞고, 영문 id·조사 병기·{name} 템플릿·술 언급이 없다', () => {
+    for (const sp of [...TUTORIAL_STEPS, ...GOAL_LINES, ...EVENT_DIALOGUES].map((x) => x.speaker)) expect(SPEAKERS.has(sp), sp).toBe(true);
+    for (const s of SAMCHUN) expect(SPEAKERS.has(s.portrait), s.portrait).toBe(true);
+    for (const t of allTexts()) {
+      expect(hasIdToken(t), t).toBe(false);
+      expect(t, t).not.toMatch(BANNED);
+    }
   });
 });
 
