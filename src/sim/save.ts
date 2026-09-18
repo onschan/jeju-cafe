@@ -19,6 +19,8 @@ export function deserialize(json: string): GameState {
 function backfill(state: GameState): void {
   state.lastMonthIncome ??= state.lastMonthCard?.income ?? 0;
   state.researchAcc ??= 0;
+  state.eventsFired ??= {};
+  state.monthMenuSold ??= {};
 }
 
 /** objects.json의 w/h가 바뀌어도 세이브가 깨지지 않도록 cells[].objectId를 objects에서 다시 만든다. */

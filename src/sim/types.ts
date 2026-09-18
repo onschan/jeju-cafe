@@ -1,6 +1,6 @@
 /** rock_big = 오름 능선의 큰 바위 (치우는 데 100만) */
 export type Terrain = 'soil' | 'rock' | 'rock_big' | 'road';
-export type ObjectKind = 'field' | 'tree' | 'seat' | 'wall' | 'path' | 'building' | 'deco' | 'busstop' | 'gate' | 'landmark' | 'facility';
+export type ObjectKind = 'tree' | 'seat' | 'wall' | 'path' | 'building' | 'deco' | 'busstop' | 'gate' | 'landmark' | 'facility';
 /** 필지 구역 보너스 종류 (§18) */
 export type ParcelBonus = 'none' | 'oreum' | 'gotjawal' | 'batdam' | 'coast' | 'spring' | 'village' | 'stonehill' | 'orchard';
 /** signature = 시그니처 베이스로 개발한 메뉴 (누구나 주문한다) */
@@ -23,7 +23,7 @@ export interface ObjectDef {
   wind: number;
   upkeep: number;      // 월 유지비
   seats?: number;      // kind === 'seat'
-  cropId?: string;     // kind === 'tree' 고정 작물
+  yield?: FarmYield;   // 농원 시설: 매월 1일 창고에 들어오는 재료 (설치한 달 제외)
   terrain: Terrain[];  // 놓을 수 있는 지형
   removeCost?: number; // 치울 때 환불 대신 드는 돈 (곶자왈 덤불처럼 처음부터 있던 것)
   effectText?: string; // 랜드마크 효과 설명 (데이터만, 효과는 TODO)
@@ -42,14 +42,8 @@ export interface ObjectDef {
 /** v2 시설 분류 */
 export type FacilityCategory = 'rest' | 'convenience' | 'food' | 'fun' | 'farm' | 'scenery' | 'landmark';
 
-export interface CropDef {
-  id: string;
-  name: string;
-  growDays: number;          // 심은 뒤 첫 수확까지
-  plantMonths: number[];     // field 작물: 심을 수 있는 달 (1~12)
-  harvestMonths?: number[];  // tree 작물: 매년 수확 가능한 달. 창의 시작 달부터 연속(해 넘김 가능, 예 [11,12,1])
-  yieldAmount: number;
-}
+/** 농원 시설의 월 수확 (v3 §3: 감귤나무 감귤 6/월, 당근밭 당근 8/월, 녹차밭 녹차 4/월) */
+export interface FarmYield { ingredientId: string; perMonth: number }
 
 /** 메뉴·재료 스탯 6종 (스펙 §15.1: 맛/향/보기/건강/양/제주다움) */
 export interface MenuStats { taste: number; aroma: number; look: number; health: number; volume: number; jeju: number }
@@ -124,6 +118,7 @@ export type UnlockCond =
   | { type: 'count'; objectId: string; count: number }
   | { type: 'category'; category: FacilityCategory; count: number }   // 분류별 시설 개수 (가이드북)
   | { type: 'segmentPop'; guestId: string; popularity: number }        // 손님층 인기 (가이드북)
+  | { type: 'goal' }                                                   // 목표 보상으로만 열린다 (v3, goals.ts goalForFacility)
   | { type: 'all'; conditions: UnlockCond[] };
 
 export interface GuestTypeDef {
@@ -279,20 +274,14 @@ export interface ObjectStats {
 }
 export interface ItemBonus { popularity: number; feePct: number; scenery?: number }
 
-export interface UnlockDef {
-  id: string;
-  kind: 'object' | 'menu' | 'crop' | 'slot' | 'role';
-  ref: string; // slot·role일 때는 RoleId
-  cost: number;
-}
-
 // ---------- 재료·직원·홍보 (2B-1) ----------
+/** farm = 농원 시설에서 매월 들어오는 재료 (창고에 없으면 bought처럼 자동 구매한다) */
 export type IngredientKind = 'bought' | 'farm';
-/** cost: bought만 의미. stats·category는 v1 표(§6.1)에서. */
+/** cost: 창고에 없을 때 자동 구매 원가. stats·category는 v1 표(§6.1)에서. */
 export interface IngredientDef { id: string; name: string; kind: IngredientKind; cost: number; category: IngredientCategory; stats: MenuStats; sourceText: string }
 
-export type RoleId = 'barista' | 'cook' | 'hall' | 'field' | 'carry' | 'guide';
-/** 직원 스탯 4 (GDD v2 §5): 체력 stamina · 힘 strength(밭·운반) · 기술 skill(바리스타·요리) · 미소 smile(홀·안내) */
+export type RoleId = 'barista' | 'cook' | 'hall' | 'carry' | 'guide';
+/** 직원 스탯 4 (GDD v2 §5): 체력 stamina · 힘 strength(운반) · 기술 skill(바리스타·요리) · 미소 smile(홀·안내) */
 export type StatKey = 'stamina' | 'strength' | 'skill' | 'smile';
 export interface RoleDef { id: RoleId; name: string; stat: StatKey; unlockedAtStart: boolean }
 
@@ -357,6 +346,107 @@ export interface Pt { x: number; y: number }
 
 /** 월 비용 항목. recruit = 공고비 + 퇴직금 */
 export interface MonthCosts { ingredients: number; salary: number; ads: number; upkeep: number; recruit: number }
+/** 농원: harvested = 이달 1일 창고에 들어온 재료, ingredientSaved = 창고 재료를 써서 안 산 재료비 */
+export interface MonthHarvest { harvested: Record<string, number>; ingredientSaved: number }
+/** 월말 정산 카드 */
+export interface MonthCard {
+  income: number;
+  guests: number;
+  month: number;
+  year: number;
+  costs: MonthCosts;
+  net: number;
+  harvested: Record<string, number>; // 그달 1일 농원에서 들어온 재료 (ingredientId → 개수)
+  ingredientSaved: number;           // 그달 창고 재료 덕에 안 산 재료비
+  topMenu: string | null;            // 그달 최다 판매 메뉴 id
+}
+
+// ---------- 목표 체인 (v3 §2) ----------
+export type GoalCondition =
+  | { type: 'guests'; n: number }                 // 누적 손님
+  | { type: 'menuSold'; menuId: string; n: number }
+  | { type: 'money'; n: number }
+  | { type: 'staff'; n: number }
+  | { type: 'facilities'; n: number; category?: FacilityCategory }
+  | { type: 'satisfied'; n: number }              // 누적 만족 손님
+  | { type: 'parcels'; n: number }                // 소유 필지 수 (시작 필지 포함)
+  | { type: 'rank'; n: number }                   // 가이드북 순위 ≤ n (best)
+  | { type: 'cafeRank'; n: number }               // 카페 랭크 ≥ n
+  | { type: 'stars'; n: number }
+  | { type: 'regular'; n: number }                // 단골★ 수
+  | { type: 'research'; n: number }               // 보유 연구 포인트
+  | { type: 'namedGuest'; n: number }             // 만난 이름 있는 손님 수
+  | { type: 'rocks'; n: number }                  // 치운 바위·덤불
+  | { type: 'menus'; n: number }                  // 메뉴판에 올린 메뉴 수
+  | { type: 'recipes'; n: number }                // 개발한 레시피
+  | { type: 'promotions'; n: number }             // 홍보 실행 횟수
+  | { type: 'rivalWins'; n: number }              // 카페 대결 승리
+  | { type: 'year'; n: number };                  // n년차
+export type FeatureId = 'clearRock' | 'promote' | 'craft' | 'popup' | 'challenge' | 'parcel';
+export type GoalReward =
+  | { type: 'money'; amount: number }
+  | { type: 'unlockFacility'; id: string }
+  | { type: 'unlockMenu'; id: string }
+  | { type: 'unlockRole'; id: RoleId }
+  | { type: 'tickets'; n: number }
+  | { type: 'mileage'; n: number }
+  | { type: 'staffSlot'; role: RoleId; n: number }
+  | { type: 'research'; n: number }
+  | { type: 'builder'; n: number }
+  | { type: 'unlockFeature'; id: FeatureId };
+export type GoalSpeaker = 'halmang' | 'samchun' | 'hero';
+export interface GoalDef {
+  id: string;
+  title: string;      // 한글 14자 이내
+  desc: string;       // 한 줄
+  condition: GoalCondition;
+  reward: GoalReward[];
+  speaker?: GoalSpeaker;
+  line?: string;      // 축하 대사 1줄
+}
+/** index = 현재 목표 순번 (goals.json), claimed = 달성한 목표 id */
+export interface GoalsState { index: number; claimed: string[] }
+export interface GameStats {
+  satisfiedTotal: number;  // 누적 만족(happy) 손님
+  rocksCleared: number;    // 치운 바위·덤불
+  promotionsDone: number;  // 홍보 실행 횟수
+  recipesMade: number;     // 개발 성공한 레시피
+  rivalWins: number;       // 카페 대결 승리
+}
+/** UI 대화창 큐 항목 */
+export type Alert =
+  | { type: 'goal'; goalId: string }
+  | { type: 'event'; id: string }
+  | { type: 'eventEnd'; id: string };
+
+// ---------- 제주 빅 이벤트 (v3 A5) ----------
+/** 손님 태그 배수의 키: 인구 태그 + 외국인·학생·1인·가족 */
+export type BigEventTag = 'youth' | 'adult' | 'senior' | 'female' | 'male' | 'group' | 'foreign' | 'student' | 'solo' | 'family';
+export interface BigEventSpecialGuest { name: string; portraitSeed: number; line: string; budget: number; tip: number }
+export interface BigEventEffects {
+  guestMult?: number;                          // 하루 손님 수 배수
+  tagMult?: Partial<Record<BigEventTag, number>>; // 손님층 가중치 배수
+  moneyBonus?: number;                         // 발동 즉시 자금
+  feeMult?: number;                            // 메뉴 값 배수
+  popularity?: number;                         // 발동 즉시 동네↔인기 게이지
+  repairCost?: number;                         // 발동 즉시 시설 수리비 (시설당)
+  specialGuest?: BigEventSpecialGuest;         // 특별 손님 1회 방문
+}
+export interface BigEventDef {
+  id: string;
+  title: string;
+  month?: number;             // 이 달에만 (1~12)
+  year?: number;              // n년차 이후
+  once?: boolean;             // 한 번만
+  chance: number;             // 0~1, 매월 1일 판정
+  condition?: GoalCondition;  // 추가 조건
+  durationDays: number;
+  effects: BigEventEffects;
+  dialogue: { speaker: GoalSpeaker; lines: string[] };
+  endDialogue?: string;
+}
+/** endsDay = 끝나는 절대 일 인덱스(포함 안 함, effects.dayIndex 기준) */
+export interface ActiveBigEvent { id: string; startDay: number; endsDay: number; specialVisited: boolean }
 
 export interface Cell {
   terrain: Terrain;
@@ -364,19 +454,12 @@ export interface Cell {
   roomId: string | null;   // 이 칸을 바닥으로 삼는 room 오브젝트 id
 }
 
-export interface CropState {
-  cropId: string;
-  daysGrown: number;
-  ready: boolean;
-  harvestedYear: number; // tree: 올해 이미 땄으면 clock.year, -1 = 아직 안 땀
-}
-
 export interface PlacedObject {
   id: string;
   type: string; // ObjectDef.id
   x: number;
   y: number;
-  crop: CropState | null;
+  placedMonth: number; // 놓은 달(monthIndex). 농원 수확은 다음 달 1일부터
   rot?: number; // 0..3, 방향 있는 오브젝트만 (스프라이트 변형 _r{n})
   build?: { doneDay: number; days: number }; // 건설 중 (doneDay = 완공 절대 일 인덱스). 없으면 완공
 }
@@ -397,7 +480,7 @@ export interface Parcel {
 
 /** 렌더 전용 연출 큐 (sim이 남기고 렌더가 tick으로 새 항목만 읽는다). 최근 FX_CAP개만 보관. */
 export type FxEvent =
-  | { kind: 'harvest'; x: number; y: number; tick: number }
+  | { kind: 'harvest'; x: number; y: number; tick: number } // 농원 월 수확 반짝임
   | { kind: 'pop'; x: number; y: number; n: number; tick: number }
   | { kind: 'greet'; staffId: string; tick: number }
   | { kind: 'photo'; x: number; y: number; tick: number } // 인생샷 스킬: 손님이 사진을 찍었다
@@ -552,10 +635,16 @@ export interface GameState {
   parcels: Parcel[];
   settleGrantUsed: boolean; // 정착지원금(잔고 < 40만이면 1회 300만)을 받았나
   objects: Record<string, PlacedObject>; // 키는 'o123' 형태(비정수 문자열)라 삽입 순서가 보존됨 → 결정적 순회
-  storage: Record<string, number>; // cropId → 개수
+  storage: Record<string, number>; // 창고: ingredientId → 개수 (농원 수확·재료 상자). 메뉴를 만들 때 먼저 쓰고, 없으면 자동 구매
   menuSlots: (string | null)[];
-  unlockedIndex: number;
-  unlocked: { objects: string[]; menus: string[]; crops: string[]; roles: RoleId[] };
+  unlocked: { objects: string[]; menus: string[]; roles: RoleId[] };
+  goals: GoalsState;                          // 목표 체인 (v3 §2)
+  features: Record<FeatureId, boolean>;       // 목표 보상으로 열리는 기능 (goals.ts 표)
+  stats: GameStats;                           // 목표 판정용 누적 카운터
+  alerts: Alert[];                            // UI 대화창 큐 (목표 달성·빅 이벤트). dismissAlert로 앞에서 뺀다
+  events: ActiveBigEvent[];                   // 진행 중인 제주 빅 이벤트 (동시 최대 2)
+  eventsFired: Record<string, number>;        // 빅 이벤트 id → 발동 횟수 (once 판정)
+  monthHarvest: MonthHarvest;                 // 이달 농원 수확·절감 (월말 카드로 옮긴다)
   staff: Staff[];
   candidates: Candidate[];
   slots: Record<RoleId, number>;
@@ -584,7 +673,8 @@ export interface GameState {
   board: BoardState;
   spots: Record<string, number>;              // spotId → 레벨 (0 = 미투자)
   effects: ActiveEffect[];                    // 이벤트 효과 (기간형)
-  menuSold: Record<string, number>;           // menuId → 누적 판매 수 (부탁 진행: 수락 시점 값과의 차)
+  menuSold: Record<string, number>;           // menuId → 누적 판매 수 (부탁 진행: 수락 시점 값과의 차, 목표 menuSold)
+  monthMenuSold: Record<string, number>;      // 이달 판매 수 (월말 카드 최다 판매 메뉴)
   codex: { combos: string[]; sets: string[]; recipes: string[]; ingredientCombos: string[] }; // 발동한 적 있는 상성·세트·히든 레시피·재료 콤보 id (도감)
   customMenus: MenuDef[];                     // 개발한 메뉴 (id m_custom_N). menuOf(state, id)가 기본 메뉴보다 먼저 찾는다
   menuMods: Record<string, MenuMod>;          // menuId → 토핑·레벨 (없으면 토핑 없음·레벨 1)
@@ -612,14 +702,7 @@ export interface GameState {
   monthGuests: number;
   monthCosts: MonthCosts;
   lastMonthIncome: number; // 지난달 매출 (★ 조건 "월 매출"용 — lastMonthCard는 닫으면 null이 된다)
-  lastMonthCard: {
-    income: number;
-    guests: number;
-    month: number;
-    year: number;
-    costs: MonthCosts;
-    net: number;
-  } | null;
+  lastMonthCard: MonthCard | null;
   tick: number; // 고정 스텝 카운터
   actionLog: { tick: number; action: Action }[];
 }
@@ -631,8 +714,6 @@ export type Action =
   | { type: 'move'; objectId: string; x: number; y: number }
   | { type: 'rotate'; objectId: string; rot: number }
   | { type: 'buyParcel'; id: string }
-  | { type: 'plant'; objectId: string; cropId: string }
-  | { type: 'harvest'; objectId: string }   // 호환용 — 익으면 자동으로 창고에 들어간다
   | { type: 'clearRock'; x: number; y: number }
   | { type: 'renameCafe'; name: string }
   | { type: 'expand'; id: string }
@@ -640,7 +721,7 @@ export type Action =
   | { type: 'praise'; staffId: string }
   | { type: 'setSlot'; slot: number; menuId: string | null }
   | { type: 'setSpeed'; speed: 0 | 1 | 2 | 3 }
-  | { type: 'unlock' }
+  | { type: 'dismissAlert' }
   | { type: 'dismissMonthCard' }
   | { type: 'postJob'; tier: JobTier }
   | { type: 'hire'; candidateId: string; role: RoleId }

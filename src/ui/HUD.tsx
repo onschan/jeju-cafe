@@ -1,7 +1,6 @@
 import { useState, useLayoutEffect, useRef, type CSSProperties } from 'react';
 import { useGame, dispatch, getToast } from './store';
-import { nextUnlock, canUnlock } from '../sim/index.ts';
-import { objectDef, menuDef, cropDef, roleDef } from '../data/index.ts';
+
 import { useGuideTop, setHudHeight } from './Guide';
 import { Icon } from './Icon';
 import { isMuted, setMuted } from './audio';
@@ -46,17 +45,8 @@ export function NightOverlay() {
   return <div data-testid="night" style={{ position: 'absolute', inset: 0, background: `rgba(11,26,58,${a.toFixed(3)})`, pointerEvents: 'none' }} />;
 }
 
-function unlockName(u: NonNullable<ReturnType<typeof nextUnlock>>) {
-  if (u.kind === 'object') return objectDef(u.ref).name;
-  if (u.kind === 'menu') return menuDef(u.ref).name;
-  if (u.kind === 'crop') return cropDef(u.ref).name;
-  if (u.kind === 'slot') return `${roleDef(u.ref).name} 자리`;
-  return roleDef(u.ref).name;
-}
-
 export function HUD({ onMenu }: { onMenu?: () => void } = {}) {
   const s = useGame();
-  const u = nextUnlock(s);
   const toast = getToast();
   const [muted, setMutedState] = useState(isMuted());
   const toggleMute = () => { const m = !muted; setMuted(m); setMutedState(m); };
@@ -92,12 +82,7 @@ export function HUD({ onMenu }: { onMenu?: () => void } = {}) {
           ))}
         </span>
         <span style={{ pointerEvents: 'auto', display: 'flex', gap: 4, alignItems: 'center' }}>
-          {u ? (
-            <button disabled={!canUnlock(s).ok} onClick={() => dispatch({ type: 'unlock' })}
-              style={{ minHeight: 44, background: canUnlock(s).ok ? '#06d6a0' : '#444', color: '#fff', border: 0, borderRadius: 6, padding: '0 10px', whiteSpace: 'nowrap' }}>
-              <Icon name="unlock" size={16} /> {unlockName(u)} ({Math.min(s.research, u.cost)}/{u.cost})
-            </button>
-          ) : <span>다 열었어요!</span>}
+          <span>연구 {s.research}</span>
           {/* 메뉴가 있으면(게임 화면) 음소거는 메뉴 팝업 안으로 들어간다 — 375px 한 줄에 44px 버튼을 더 못 넣는다 */}
           {onMenu
             ? <button onClick={onMenu} aria-label="메뉴" data-testid="menu-btn" style={{ ...iconBtn, background: '#333', color: '#fff', fontFamily: 'inherit', fontSize: 13, fontWeight: 700 }}>메뉴</button>

@@ -1,3 +1,4 @@
+import { bareState } from './helpers.ts';
 import { createInitialState } from '../state.ts';
 import { apply } from '../actions.ts';
 import { tick } from '../tick.ts';
@@ -11,7 +12,7 @@ import { placeObject } from '../grid.ts';
 import {
   activeIngredientCombos, comboBonus, matchHiddenRecipe, successRate, bonusWidth, paramDeviation, normalizeParams,
   skillTier, skillTierValue, skillEffects, menuStatsOf, menuSkills, priceOf, priceFromStats, canDevelop, resolveDevelop, developDaysLeft,
-  canAddTopping, canLevelUpMenu, levelUpMenuCost, costMult, autoMenuName, qualityOf, likesStatsMatch, seatTimeMult, dignityPct,
+  canAddTopping, canLevelUpMenu, levelUpMenuCost, developCost, costMult, autoMenuName, qualityOf, likesStatsMatch, seatTimeMult, dignityPct,
   DEVELOP_DAYS, DEVELOP_RESEARCH, P_SUCCESS, P_GREAT, PARAM_PENALTY, MAX_TOPPINGS, LIKE_STAT_MIN,
 } from '../craft.ts';
 import { menuDef, ingredientDef, toppingDef, MENUS, INGREDIENTS, HIDDEN_RECIPES, ingredientStats } from '../../data/index.ts';
@@ -104,7 +105,7 @@ test('스킬 티어 경계: 0 없음 / 1~4 초급 / 5~9 중급 / 10~14 상급 / 
 });
 
 test('토핑 스킬이 티어 효과로: 금박(희귀함 3·품격 2) → 판매가 +8%, 방문 +4%', () => {
-  const s = createInitialState(1);
+  const s = bareState(1);
   expect(apply(s, { type: 'addTopping', menuId: 'americano', toppingId: 'gold_leaf' }).ok).toBe(true);
   expect(menuSkills(s, 'americano')).toEqual({ '희귀함': 3, '품격': 2 });
   const e = skillEffects(s, 'americano');
@@ -120,7 +121,8 @@ test('토핑 스킬이 티어 효과로: 금박(희귀함 3·품격 2) → 판�
 });
 
 test('토핑 2개로 같은 스킬을 쌓으면 중급: 땅콩 크럼블 + 휘핑 + 꿀 → 맛있음 3 (초급)… 치즈·달걀 → 든든함 5 (중급) 맛 +0, 시간 그대로', () => {
-  const s = createInitialState(1);
+  const s = bareState(1);
+  s.unlocked.menus.push('toast'); // v3 시작 메뉴는 3종뿐
   apply(s, { type: 'addTopping', menuId: 'toast', toppingId: 'cheese_extra' });
   apply(s, { type: 'addTopping', menuId: 'toast', toppingId: 'egg_extra' });
   expect(menuSkills(s, 'toast')['든든함']).toBe(5);
@@ -131,7 +133,7 @@ test('토핑 2개로 같은 스킬을 쌓으면 중급: 땅콩 크럼블 + 휘�
 });
 
 test('토핑은 3개까지, 중복 불가, 제거 가능. 재료비에 토핑 원가가 들어간다', () => {
-  const s = createInitialState(1);
+  const s = bareState(1);
   const base = ingredientCost(s, 'americano');
   expect(base).toBe(1400);
   apply(s, { type: 'addTopping', menuId: 'americano', toppingId: 'whipped' });      // 200
@@ -166,13 +168,16 @@ test('히든 레시피: 재료 집합이 정확히 일치해야 (순서·중복 
 });
 
 test('히든 레시피 발견: 실패하지 않고 이름·품질(최고) 고정, 도감에 기록', () => {
-  const s = createInitialState(7);
+  const s = bareState(7);
   withStaff(s);
-  s.storage['tea_jeju'] = 1; s.storage['milk_jeju'] = 0;
-  // milk_jeju는 bought(600), tea_jeju는 farm, honey는 bought
+  s.storage['tea_jeju'] = 1;
+  const money0 = s.money;
+  // tea_jeju는 창고에서 쓰고(절감액 기록), milk_jeju·honey는 원가로 산다
   const r = apply(s, { type: 'develop', base: 'drink', ingredients: ['tea_jeju', 'milk_jeju', 'honey'], params: { grind: 0, temp: 2, time: 2 }, staffId: s.staff[0]!.id });
   expect(r.ok).toBe(true);
-  expect(s.storage['tea_jeju']).toBe(0);
+  expect(s.storage['tea_jeju']).toBeUndefined(); // 0이 되면 키가 지워진다
+  expect(s.monthHarvest.ingredientSaved).toBe(ingredientDef('tea_jeju').cost);
+  expect(money0 - s.money).toBe(ingredientDef('milk_jeju').cost + ingredientDef('honey').cost);
   for (let i = 0; i < DEVELOP_DAYS; i++) tick(s, DAY_MS);
   expect(s.developing).toBeNull();
   expect(s.lastDevelop?.outcome).not.toBe('fail');
@@ -187,8 +192,8 @@ test('히든 레시피 발견: 실패하지 않고 이름·품질(최고) 고정
 });
 
 // ---------- 개발 생명주기 ----------
-test('개발 조건: 재료 수·베이스·직원·연구·돈·창고, 시그니처는 ★3부터, 진행 중엔 하나만', () => {
-  const s = createInitialState(1);
+test('개발 조건: 재료 수·베이스·직원·연구·돈, farm 재료는 창고 없으면 산다, 시그니처는 ★3부터, 진행 중엔 하나만', () => {
+  const s = bareState(1);
   const id = 'nobody';
   expect(canDevelop(s, 'drink', ['beans', 'milk'], id).reason).toBe('없는 직원이에요');
   const st = withStaff(s);
@@ -200,9 +205,11 @@ test('개발 조건: 재료 수·베이스·직원·연구·돈·창고, 시그�
   expect(canDevelop(s, 'signature', ['beans', 'milk', 'ice', 'sugar'], st.id).ok).toBe(true);
   expect(canDevelop(s, 'drink', ['beans', 'milk', 'ice', 'sugar', 'honey', 'tea', 'flour', 'egg'], st.id).ok).toBe(true); // ★3이면 8개
   s.star = 1;
-  expect(canDevelop(s, 'drink', ['beans', 'carrot'], st.id).reason).toContain('창고');
-  s.storage['carrot'] = 1;
+  // v3: farm 재료도 창고에 없으면 원가로 산다 — "창고에 없어요" 거부는 없다
   expect(canDevelop(s, 'drink', ['beans', 'carrot'], st.id).ok).toBe(true);
+  expect(developCost(['beans', 'carrot'], s)).toBe(1400 + 400);
+  s.storage['carrot'] = 1;
+  expect(developCost(['beans', 'carrot'], s)).toBe(1400); // 창고에 있으면 그만큼 안 산다
   s.research = DEVELOP_RESEARCH - 1;
   expect(canDevelop(s, 'drink', ['beans', 'milk'], st.id).ok).toBe(false);
   s.research = DEVELOP_RESEARCH;
@@ -225,7 +232,7 @@ test('개발 조건: 재료 수·베이스·직원·연구·돈·창고, 시그�
 });
 
 test('개발 완료: 3일 뒤 결과가 나오고 새 메뉴가 해금·이름 자동, 스탯 = 재료 합 + 콤보 + 보너스', () => {
-  const s = createInitialState(3);
+  const s = bareState(3);
   const st = withStaff(s);
   apply(s, { type: 'develop', base: 'drink', ingredients: ['beans', 'milk'], staffId: st.id });
   tick(s, DAY_MS); tick(s, DAY_MS);
@@ -266,7 +273,7 @@ test('개발 완료: 3일 뒤 결과가 나오고 새 메뉴가 해금·이름 �
 
 test('개발은 결정적이고 저장/복원이 같다; 여러 seed 중 성공·실패가 둘 다 나온다', () => {
   const run = (seed: number) => {
-    const s = createInitialState(seed);
+    const s = bareState(seed);
     const st = withStaff(s);
     apply(s, { type: 'develop', base: 'dessert', ingredients: ['tangerine', 'cheese', 'flour', 'egg'], params: { temp: 2, time: 0 }, staffId: st.id });
     return s;
@@ -281,7 +288,7 @@ test('개발은 결정적이고 저장/복원이 같다; 여러 seed 중 성공�
   }
   const outcomes = new Set<string>();
   for (let seed = 1; seed <= 40; seed++) {
-    const s = createInitialState(seed);
+    const s = bareState(seed);
     const st = withStaff(s);
     s.storage['tangerine'] = 1;
     // 감귤 치즈케이크 = 히든 → 실패 없음
@@ -293,7 +300,7 @@ test('개발은 결정적이고 저장/복원이 같다; 여러 seed 중 성공�
   expect(outcomes.has('fail')).toBe(false);
   const plain = new Set<string>();
   for (let seed = 1; seed <= 40; seed++) {
-    const s = createInitialState(seed);
+    const s = bareState(seed);
     const st = withStaff(s);
     apply(s, { type: 'develop', base: 'drink', ingredients: ['beans', 'milk'], params: { grind: 0, temp: 2, time: 0 }, staffId: st.id }); // 성공률 34%
     for (let i = 0; i < DEVELOP_DAYS; i++) tick(s, DAY_MS);
@@ -304,7 +311,7 @@ test('개발은 결정적이고 저장/복원이 같다; 여러 seed 중 성공�
 });
 
 test('resolveDevelop은 완료일 전엔 아무것도 안 한다', () => {
-  const s = createInitialState(1);
+  const s = bareState(1);
   const st = withStaff(s);
   apply(s, { type: 'develop', base: 'drink', ingredients: ['beans', 'milk'], staffId: st.id });
   expect(resolveDevelop(s)).toBeNull();
@@ -313,7 +320,7 @@ test('resolveDevelop은 완료일 전엔 아무것도 안 한다', () => {
 
 // ---------- 레벨업 ----------
 test('메뉴 레벨업: 재료 5인분 + 돈 → 판매가 +10%/레벨, 5레벨까지', () => {
-  const s = createInitialState(1);
+  const s = bareState(1);
   s.money = 10_000_000;
   const cost = levelUpMenuCost(s, 'americano');
   expect(cost).toEqual({ money: 20_000 + 1400 * 5, ingredients: {} });
@@ -322,13 +329,16 @@ test('메뉴 레벨업: 재료 5인분 + 돈 → 판매가 +10%/레벨, 5레벨�
   expect(s.menuMods['americano']!.level).toBe(2);
   expect(priceOf(s, 'americano')).toBe(Math.round(3200 * 1.1));
   expect(levelUpMenuCost(s, 'americano').money).toBe(40_000 + 1400 * 5);
-  // farm 재료는 창고 5개
+  // farm 재료 5개: 창고에 있으면 창고에서 빠지고, 없으면 원가(당근 400)를 돈으로 낸다
   s.unlocked.menus.push('carrot_juice');
-  expect(levelUpMenuCost(s, 'carrot_juice').ingredients).toEqual({ carrot: 5 });
-  expect(canLevelUpMenu(s, 'carrot_juice').reason).toContain('당근');
-  s.storage['carrot'] = 5;
+  expect(levelUpMenuCost(s, 'carrot_juice')).toEqual({ money: 20_000 + 400 * 5, ingredients: {} });
+  expect(canLevelUpMenu(s, 'carrot_juice').ok).toBe(true);
+  s.storage['carrot'] = 7;
+  expect(levelUpMenuCost(s, 'carrot_juice')).toEqual({ money: 20_000, ingredients: { carrot: 5 } });
+  const m1 = s.money;
   expect(apply(s, { type: 'levelUpMenu', menuId: 'carrot_juice' }).ok).toBe(true);
-  expect(s.storage['carrot']).toBe(0);
+  expect(s.storage['carrot']).toBe(2);
+  expect(m1 - s.money).toBe(20_000);
   for (let i = 0; i < 3; i++) apply(s, { type: 'levelUpMenu', menuId: 'americano' });
   expect(s.menuMods['americano']!.level).toBe(5);
   expect(canLevelUpMenu(s, 'americano').reason).toBe('최고 레벨이에요');
@@ -337,7 +347,7 @@ test('메뉴 레벨업: 재료 5인분 + 돈 → 판매가 +10%/레벨, 5레벨�
 
 // ---------- 손님 취향 ----------
 test('손님 취향 스탯: 메뉴 스탯이 기준 이상이면 만족 보너스, 지갑 판정은 토핑·레벨 반영 가격', () => {
-  const s = createInitialState(1);
+  const s = bareState(1);
   // student: rest·fun → aroma·look. 아메리카노 향 8 < 10 → 0, 라떼 맛 10 (taste는 취향 아님) → 0
   expect(likesStatsMatch(s, 'student', 'americano')).toBe(0);
   expect(tasteBonus(s, 'student', null)).toBe(0);
@@ -361,7 +371,7 @@ test('손님 취향 스탯: 메뉴 스탯이 기준 이상이면 만족 보너�
 });
 
 test('품격이 있는 메뉴가 메뉴판에 있으면 하루 손님 수가 늘고, 목넘김이면 앉는 시간이 준다', () => {
-  const s = createInitialState(1);
+  const s = bareState(1);
   placeObject(s, 'table_out', X(4), Y(5));
   setSlot(s, 0, 'americano');
   const before = dailyGuestCount(s);

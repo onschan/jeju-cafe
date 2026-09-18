@@ -45,7 +45,6 @@ export const ROLE_ACC: Record<RoleId, AccKind> = {
   hall: 'apron',
   barista: 'cap',
   cook: 'apron',
-  field: 'strawhat',
   carry: 'backpack',
   guide: 'glasses',
 };

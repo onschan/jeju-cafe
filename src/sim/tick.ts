@@ -1,6 +1,8 @@
 import type { GameState } from './types.ts';
 import { advanceClock, END_HOUR, START_HOUR } from './clock.ts';
-import { growOneDay, staffFarmWork } from './farm.ts';
+import { monthlyHarvest } from './orchard.ts';
+import { checkGoals } from './goals.ts';
+import { monthlyBigEvents, dailyBigEvents, hourlyBigEvents } from './events.ts';
 import { hourlySpawn, hourlyRegulars, updateGuests } from './guests.ts';
 import { upkeep, closeMonth } from './economy.ts';
 import { payroll, expireCandidates, hourlyEnergy, nightlyRecovery, moveStaff } from './staff.ts';
@@ -28,34 +30,37 @@ function onNewHour(state: GameState): void {
   hourlyEnergy(state);
   hourlySpawn(state);
   hourlyRegulars(state);
+  hourlyBigEvents(state);
   hourlyPopup(state);
 }
 
-/** 새 날 (6시의 시간 처리보다 먼저): 효과 만료 → 팝업 정리·지역 회복 → 밤 회복 → 생육 → 밭 일꾼 → 게시판(부탁 진행·제안) → 메뉴 개발 완료 */
+/** 새 날 (6시의 시간 처리보다 먼저): 효과 만료 → 빅 이벤트 종료 → 팝업 정리·지역 회복 → 밤 회복 → 게시판(부탁 진행·제안) → 메뉴 개발 완료 → 건설 → 목표 판정 */
 function onNewDay(state: GameState): void {
   pruneEffects(state);
+  dailyBigEvents(state);
   dailyPopup(state);
   nightlyRecovery(state);
-  growOneDay(state);
-  staffFarmWork(state);
   dailyBoard(state);
   resolveDevelop(state);
   advanceConstruction(state);
+  checkGoals(state);
 }
 
-/** 월 바뀜 (1일의 날 처리보다 먼저): 월급 → 홍보 만료·인기 감소 → 유지비 → 손님 수 마일리지 → 정산 → 후보 만료 → 손님 해금 → 게시판 → 응모권·무료 추첨 → ★·가이드북 발표 → 라이벌 */
+/** 월 바뀜 (1일의 날 처리보다 먼저): 월급 → 홍보 만료·인기 감소 → 유지비 → 손님 수 마일리지 → 정산 → 농원 수확 → 후보 만료 → 손님 해금 → 게시판 → 응모권·무료 추첨 → ★·가이드북 발표 → 라이벌 → 빅 이벤트 판정 */
 function onNewMonth(state: GameState, prevMonth: number, prevYear: number): void {
   payroll(state);
   expirePromotions(state);
   upkeep(state);
   monthlyMileage(state);
   closeMonth(state, prevMonth, prevYear);
+  monthlyHarvest(state);
   expireCandidates(state);
   evaluateUnlocks(state);
   monthlyBoard(state);
   monthlyShop(state);
   monthlyRank(state);
   monthlyRivals(state);
+  monthlyBigEvents(state);
 }
 
 /** 정착지원금: 잔고가 40만 아래로 떨어지면 딱 한 번 300만 (GDD §1 비상금) */
@@ -75,7 +80,7 @@ export function step(state: GameState): void {
   const days = advanceClock(state, STEP_MS);
   const hours = days * HOURS_PER_DAY + (state.clock.hour - prevHour);
   // 스텝(100ms) < 시간(2000ms)이라 한 스텝에 시간은 최대 한 칸 지난다.
-  // 24시→6시 경계에서는 큰 단위부터: 월(월급·정산) → 날(밤 회복·생육·밭 일) → 시간(6시 기력 소모·스폰).
+  // 24시→6시 경계에서는 큰 단위부터: 월(월급·정산·농원 수확) → 날(밤 회복·게시판·목표) → 시간(6시 기력 소모·스폰).
   if (state.clock.month !== prevMonth) onNewMonth(state, prevMonth, prevYear);
   for (let i = 0; i < days; i++) onNewDay(state);
   for (let i = 0; i < hours; i++) onNewHour(state);

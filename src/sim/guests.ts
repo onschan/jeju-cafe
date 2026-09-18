@@ -4,7 +4,7 @@ import { pickWeighted, nextRandom, randInt } from './rng.ts';
 import { sceneryScore } from './grid.ts';
 import { availableMenus, consumeIngredients } from './menu.ts';
 import { busStopPos, findPath, walkableNeighborsOf, reachMap, pathFromReach, cellKey, moveAlong, GUEST_SPEED_CELLS_PER_S } from './path.ts';
-import { roleEffect, skillTotal } from './staff.ts';
+import { roleEffect, skillTotal, pushNotice } from './staff.ts';
 import { effectivePopularity, youtuberMultiplier } from './promotions.ts';
 import { START_HOUR, END_HOUR } from './clock.ts';
 import { parcelBonusAt, parcelSpawnMult, parcelFeeMult } from './parcels.ts';
@@ -15,9 +15,11 @@ import { effectMult, noGuestsToday } from './effects.ts';
 import { spotGuestBonus, busSpots, isBusDay, BUS_HOUR, BUS_MIN, BUS_MAX } from './spots.ts';
 import type { ParcelBonus } from './types.ts';
 import { seatsOf, isSeat } from './cafe.ts';
-import { pushFx } from './farm.ts';
+import { pushFx } from './fx.ts';
 import { menuOf, priceOf, likesStatsMatch, statsMatchCount, guestEvalBonus, guestLikesCategory, seatTimeMult, dignityPct, photoChance, menuOrderWeight, LIKE_BONUS_CAP } from './craft.ts';
 import { addAffinity, affinityGain, namedLikes, regularsDueNow, NAMED_MIN_SCENERY } from './popup.ts';
+import { eventGuestMult, eventTagMult, eventFeeMult, isSpecialGuest, specialGuestTip } from './events.ts';
+import { fmtNum } from './format.ts';
 
 export { moveAlong, GUEST_SPEED_CELLS_PER_S }; // 하위 호환 재수출 (본체는 path.ts)
 export const SEAT_MS = 3000;       // 기분이 정해진 뒤 앉아 있는 시간 (≈1.5시간)
@@ -30,9 +32,9 @@ export const SAY_CHANCE = 0.3;     // §19 손님 대사 확률
 export const MAX_GUESTS = 60;
 export const MIN_DAILY_GUESTS = 2;
 export const MAX_DAILY_GUESTS = 120;
-/** 하루 손님 수 = 2 + 좌석 × 3 + (평균 유입 배수 − 1) × 10. 화폐 ×100 뒤 메뉴 가격은 그대로라 손님 수로 매출을 맞춘다 (GDD §1). */
-export const GUESTS_PER_SEAT = 3;
-export const GUESTS_PER_MULT = 10;
+/** 하루 손님 수 = 2 + 좌석 × 1 + (평균 유입 배수 − 1) × 7. v3 §5: 시작(테이블 2 + 파라솔 1 = 6석)에 8~12명. */
+export const GUESTS_PER_SEAT = 1;
+export const GUESTS_PER_MULT = 7;
 /** 시설 순회: 앉았다 일어난 손님 40%가 시설 하나(포토존·기념품·자판기·서가·갤러리·공방…)에 들러 이용료를 내고 간다 */
 export const VISIT_CHANCE = 0.4;
 export const VISIT_MS = 1500;
@@ -110,7 +112,7 @@ function hourTypeMult(hour: number, typeId: string): number {
 export function typeWeight(state: GameState, typeId: string, hour = state.clock.hour, bonus: ParcelBonus = 'none'): number {
   if (!isUnlocked(state, typeId)) return 0;
   return guestTypeDef(typeId).weight * spawnMultiplier(state, typeId) * hourTypeMult(hour, typeId) * parcelSpawnMult(bonus, typeId)
-    * regularFreqMult(state, typeId) * effectMult(state, 'spawnMult', typeId);
+    * regularFreqMult(state, typeId) * effectMult(state, 'spawnMult', typeId) * eventTagMult(state, typeId);
 }
 
 /** 시간대별 손님 수 비중 (하루 합 1). 정오 피크 2배, 18시 이후 절반. */
@@ -121,12 +123,12 @@ export function hourShare(hour: number): number {
   return profile(hour) / total;
 }
 
-/** 하루 손님 수 = (2 + 좌석 × 3 + (해금 타입 평균 유입 배수 − 1) × 10 + 관광지 매력도/40) × 이벤트 전체 배수 × 메뉴 품격(+%), 2~120 */
+/** 하루 손님 수 = (2 + 좌석 × 1 + (해금 타입 평균 유입 배수 − 1) × 7 + 관광지 매력도/40) × 이벤트 전체 배수 × 빅 이벤트 배수 × 메뉴 품격(+%), 2~120 */
 export function dailyGuestCount(state: GameState): number {
   const ids = unlockedTypeIds(state);
   const avgMult = ids.length > 0 ? ids.reduce((s, id) => s + spawnMultiplier(state, id), 0) / ids.length : 1;
-  const n = MIN_DAILY_GUESTS + totalSeats(state) * GUESTS_PER_SEAT + Math.floor((avgMult - 1) * GUESTS_PER_MULT + 1e-9) + spotGuestBonus(state);
-  return Math.max(MIN_DAILY_GUESTS, Math.min(MAX_DAILY_GUESTS, Math.round(n * effectMult(state, 'spawnMult') * (1 + dignityPct(state) / 100))));
+  const n = MIN_DAILY_GUESTS + Math.floor(totalSeats(state) * GUESTS_PER_SEAT) + Math.floor((avgMult - 1) * GUESTS_PER_MULT + 1e-9) + spotGuestBonus(state);
+  return Math.max(MIN_DAILY_GUESTS, Math.min(MAX_DAILY_GUESTS, Math.round(n * effectMult(state, 'spawnMult') * eventGuestMult(state) * (1 + dignityPct(state) / 100))));
 }
 
 /** 매 시간: 하루 손님 수를 시간대 비중으로 나눠 소수 누적, 정수만큼 스폰. 손님 0 이벤트 날은 안 온다. 일요일 11시엔 투어 버스. */
@@ -266,12 +268,25 @@ function resolveMood(state: GameState, g: Guest): void {
   if (sceneryScore(state, seat.x, seat.y) + serviceBonus(state) + popularityBonus(popularityFor(state, seat.id, g.type)) + taste >= p.minScenery) {
     g.mood = 'happy';
     g.moodReason = null;
+    state.stats.satisfiedTotal++;
     const tasteMatch = match > 0;
     addResearchProgress(state, tasteMatch ? TASTE_MATCH_WEIGHT : 1);
     if (g.namedId) {
+      g.say = namedGuestDef(g.namedId).line;
+      if (isSpecialGuest(g.namedId)) {
+        // 빅 이벤트 특별 손님: 만족하면 팁을 남긴다
+        const tip = specialGuestTip(g.namedId);
+        if (tip > 0) {
+          state.money += tip;
+          state.monthIncome += tip;
+          state.totalIncome += tip;
+          pushNotice(state, `${namedGuestDef(g.namedId).name}이(가) 팁 ₩${fmtNum(tip)}을 남겼어요!`);
+          pushFx(state, { kind: 'pop', x: seat.x, y: seat.y, n: tip, tick: state.tick });
+        }
+        return;
+      }
       // 단골★: 본점에서도 호감도가 오른다 (손님층 만족·효과 대신). 만족하면 자기 대사를 한다.
       addAffinity(state, g.namedId, affinityGain(tasteMatch));
-      g.say = namedGuestDef(g.namedId).line;
       return;
     }
     state.popularity = Math.max(-100, Math.min(100, state.popularity + type.popularityShift));
@@ -311,7 +326,7 @@ function order(state: GameState, g: Guest): void {
   const menu = menuOf(state, menuId);
   consumeIngredients(state, menuId);
   const seat = state.objects[g.seatId!]!;
-  const price = Math.round(priceOf(state, menuId) * parcelFeeMult(parcelBonusAt(state, seat.x, seat.y)) * (objectStats(state, seat.id).feePct / 100));
+  const price = Math.round(priceOf(state, menuId) * parcelFeeMult(parcelBonusAt(state, seat.x, seat.y)) * (objectStats(state, seat.id).feePct / 100) * eventFeeMult(state));
   state.money += price;
   state.monthIncome += price;
   state.totalIncome += price;
@@ -319,6 +334,7 @@ function order(state: GameState, g: Guest): void {
   g.paid = price;
   g.waitMs = prepTimeMs(state, menu.category);
   state.menuSold[menuId] = (state.menuSold[menuId] ?? 0) + 1;
+  state.monthMenuSold[menuId] = (state.monthMenuSold[menuId] ?? 0) + 1;
 }
 
 /** 자리에서 일어난 손님이 들를 시설을 고른다: 좋아하는 종류이고 걸어서 닿는 것 중 하나 (40%). 없으면 null. */

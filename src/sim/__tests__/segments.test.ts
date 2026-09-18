@@ -1,3 +1,4 @@
+import { bareState } from './helpers.ts';
 import { X, Y } from './helpers.ts';
 import { MAX_RANK } from '../rank.ts';
 import { createInitialState } from '../state.ts';
@@ -14,7 +15,7 @@ import { GUEST_TYPES, GUEST_CHAINS, guestTypeDef, guestTags, canonicalGuestId, Q
 import type { Guest } from '../types.ts';
 
 function cafe(seed = 1) {
-  const s = createInitialState(seed);
+  const s = bareState(seed);
   const seat = placeObject(s, 'table_out', X(4), Y(5));
   setSlot(s, 0, 'carrot_juice');
   s.storage['carrot'] = 50;
@@ -31,7 +32,7 @@ function seated(s: ReturnType<typeof createInitialState>, type: string): Guest {
 
 test('손님 100종: v2 103타입, 시작 해금 3, 구 id 별칭(local·tourist), 체인·부탁 참조가 모두 유효', () => {
   expect(GUEST_TYPES.length).toBe(103);
-  const s = createInitialState(1);
+  const s = bareState(1);
   expect(unlockedTypeIds(s).sort()).toEqual(['local_auntie', 'student', 'village_head']);
   expect(guestTypeDef('local').id).toBe('local_auntie');
   expect(guestTypeDef('tourist').id).toBe('student');
@@ -50,7 +51,7 @@ test('손님 100종: v2 103타입, 시작 해금 3, 구 id 별칭(local·tourist
 });
 
 test('해금 조건 8형', () => {
-  const s = createInitialState(1);
+  const s = bareState(1);
   expect(unlockCondMet(s, { type: 'start' })).toBe(true);
   expect(unlockCondMet(s, { type: 'rank', rank: 2 })).toBe(false);
   s.rank = 2;
@@ -78,7 +79,7 @@ test('해금 조건 8형', () => {
 });
 
 test('evaluateUnlocks: 조건이 맞는 타입을 열고 알림·시작 인기, 이미 열린 것은 다시 열지 않는다', () => {
-  const s = createInitialState(1);
+  const s = bareState(1);
   expect(evaluateUnlocks(s)).toEqual([]);
   for (let i = 0; i < 3; i++) placeObject(s, 'tangerine_tree', X(6 + i), Y(2)); // 까치: 감귤나무 3
   s.clock.month = 4; // 육지 삼춘: 1년 4월
@@ -94,7 +95,7 @@ test('evaluateUnlocks: 조건이 맞는 타입을 열고 알림·시작 인기, 
 });
 
 test('랭크: 점수(누적 손님/50 + 시설×2 + 해금 손님층×5)가 문턱을 넘으면 오르고 내려가지 않는다', () => {
-  const s = createInitialState(1);
+  const s = bareState(1);
   updateRank(s);
   expect(s.rank).toBe(1);
   const ids = GUEST_TYPES.map((t) => t.id);
@@ -110,7 +111,7 @@ test('랭크: 점수(누적 손님/50 + 시설×2 + 해금 손님층×5)가 문�
 });
 
 test('타깃: 최대 3, 토글, null로 전부 해제, 잠긴 타입 거부, targetSegment는 첫 타깃', () => {
-  const s = createInitialState(1);
+  const s = bareState(1);
   expect(apply(s, { type: 'setTarget', segment: 'couple' }).ok).toBe(false); // 잠김
   expect(apply(s, { type: 'setTarget', segment: 'local' }).ok).toBe(true);
   expect(s.targets).toEqual(['local_auntie']);
@@ -128,7 +129,7 @@ test('타깃: 최대 3, 토글, null로 전부 해제, 잠긴 타입 거부, tar
 });
 
 test('스폰: 잠긴 타입은 가중치 0, 해금되면 온다', () => {
-  const s = createInitialState(1);
+  const s = bareState(1);
   expect(typeWeight(s, 'couple', 10)).toBe(0);
   unlockGuestType(s, 'couple');
   expect(typeWeight(s, 'couple', 10)).toBeCloseTo(5 * (1 + UNLOCK_POPULARITY / 50));
@@ -220,7 +221,7 @@ test('효과 6종: 자금(팁 20%)·연구 진행(+2)·홍보(같은 태그 +1)�
   // item 5% / ticket 1%: seed 반복으로 확률 근사
   let items = 0, tickets = 0;
   for (let seed = 1; seed <= 400; seed++) {
-    const s2 = createInitialState(seed);
+    const s2 = bareState(seed);
     s2.tickets = 0;
     onHappyVisit(s2, { ...g, type: 'village_head', seatId: null });
     if (Object.keys(s2.inventory).length > 0) items++;

@@ -2,7 +2,7 @@ import type { GameState, PlacedObject, ApplyResult } from './types.ts';
 import { objectDef } from '../data/index.ts';
 import { dayIndex } from './effects.ts';
 import { pushNotice } from './staff.ts';
-import { pushFx } from './farm.ts';
+import { pushFx } from './fx.ts';
 import { roomAt } from './grid.ts';
 import { isDoorReachable } from './path.ts';
 

@@ -43,10 +43,9 @@ export const TUTORIAL_STEPS: TutorialStep[] = [
     done: (s) => s.candidates.length > 0 || s.staff.length > 0 || acted(s, 'postJob') },
   { id: 5, tab: '직원', lines: ['후보 중에 마음에 드는 사람을 골라라.', '채용을 누르면 우리 식구가 된다.'],
     done: (s) => s.staff.length > 0 },
-  { id: 6, tab: '짓기', lines: ['재료는 밭에서 나온다.', '짓기 탭에서 밭을 하나 지어 보라.'],
-    done: (s) => kinds(s).includes('field') },
-  // 당근은 9~11월에만 심고 60일 뒤 저절로 창고에 들어간다 — 3월 시작이라 조건을 걸면 가을까지 막힌다. 안내만 하고 "다음"으로 넘긴다.
-  { id: 7, lines: ['당근은 9~11월에 심는다. 탭을 닫고 밭을 누르면 심기가 나온다.', '익으면 저절로 창고에 들어가니 수확은 안 해도 된다.'] },
+  { id: 6, tab: '짓기', lines: ['감귤나무를 놓으면 다음 달 1일부터 감귤이 창고에 들어온다.', '짓기 탭에서 감귤나무를 하나 심어 보라.'],
+    done: (s) => kinds(s).includes('tree') },
+  { id: 7, lines: ['창고에 재료가 있으면 먼저 쓰고, 없으면 거래처에서 자동으로 산다.', '농원이 많을수록 재료비가 준다.'] },
   { id: 8, tab: '홍보', lines: ['손님이 적으면 알려야지.', '더보기 → 홍보 탭에서 전단이라도 돌려 보라.'],
     done: (s) => s.activePromotions.length > 0 || acted(s, 'promote') },
   { id: 9, lines: ['돈이 모이면 옆 땅을 사라.', '어두운 필지를 누르면 살 수 있다.'],

@@ -17,7 +17,7 @@ import { addMileage, codexCount } from './mileage.ts';
 import { effectivePopularity } from './promotions.ts';
 import { monthIndex } from './clock.ts';
 import { parcelAt } from './parcels.ts';
-import { pushFx } from './farm.ts';
+import { pushFx } from './fx.ts';
 import { fmtNum } from './format.ts';
 
 export const MAX_STAR = 5;

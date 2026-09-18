@@ -6,7 +6,7 @@ import type { GameState } from './types.ts';
 import { objectDef } from '../data/index.ts';
 import { parcelAt } from './parcels.ts';
 import { pushNotice } from './staff.ts';
-import { pushFx } from './farm.ts';
+import { pushFx } from './fx.ts';
 
 export const GUESTS_PER_POINT = 50;
 export const POINTS_PER_FACILITY = 2;

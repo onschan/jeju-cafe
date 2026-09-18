@@ -1,7 +1,7 @@
 import { useState, useRef, type CSSProperties, type PointerEvent as ReactPointerEvent } from 'react';
 import { useGame, dispatch } from './store';
 import { objectAt, isMenuAvailable, hasMenuStaff, menuRequirementText, sceneryScore, boardBadge, clearCost, placeCost, menuOf, priceOf, MENU_SLOT_COUNT } from '../sim/index.ts';
-import { objectDef, cropDef, ingredientDef, BUILD_GROUPS, buildGroupOf, FACILITIES, type BuildGroup } from '../data/index.ts';
+import { objectDef, ingredientDef, BUILD_GROUPS, buildGroupOf, FACILITIES, type BuildGroup } from '../data/index.ts';
 import { Icon } from './Icon';
 import { StaffPanel } from './StaffPanel';
 import { PromoPanel } from './PromoPanel';
@@ -51,7 +51,7 @@ const CARD_DRAG_PX = 8;
 
 /** GDD의 하단 6버튼 + 더보기(카페·메뉴판·홍보·도감·이동). 같은 탭을 다시 누르면 보기로 돌아간다. */
 const MAIN_TABS: { kind: Mode['kind']; icon: string; label: string; to: Mode }[] = [
-  { kind: 'build', icon: 'build', label: '짓기', to: { kind: 'build', objectType: 'field' } },
+  { kind: 'build', icon: 'build', label: '짓기', to: { kind: 'build', objectType: 'table_out' } },
   { kind: 'guests', icon: 'tourist', label: '손님', to: { kind: 'guests' } },
   { kind: 'staff', icon: 'local', label: '직원', to: { kind: 'staff' } },
   { kind: 'invest', icon: 'calendar', label: '투자', to: { kind: 'invest' } },
@@ -81,9 +81,9 @@ function menuStatus(s: ReturnType<typeof useGame>, id: string): { ok: boolean; t
   return { ok, text: ok ? '재료 있음' : '재료 없음' };
 }
 
-/** 창고 항목 이름: 작물이면 작물 이름, 아니면(해녀·투자 재료) 재료 이름 */
+/** 창고 항목 이름 */
 function storageName(id: string): string {
-  try { return cropDef(id).name; } catch { try { return ingredientDef(id).name; } catch { return id; } }
+  try { return ingredientDef(id).name; } catch { return id; }
 }
 
 /** 하단 메시지 줄 ("여기엔 못 지어요" 등) */

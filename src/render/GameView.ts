@@ -2,7 +2,7 @@ import { Application, Container, Sprite, Graphics, Texture } from 'pixi.js';
 import type { GameState, PlacedObject, Guest, Staff, Season, RoleId, Pt } from '../sim/index.ts';
 import { seasonOf, LOW_ENERGY, parcelPrice, footprint, roomAt, doorFrontOf, WALL_COLORS, dayIndex } from '../sim/index.ts';
 import type { Parcel } from '../sim/index.ts';
-import { objectDef, cropDef } from '../data/index.ts';
+import { objectDef } from '../data/index.ts';
 import { isoTerrainTexture, isoObjectTexture, glowTexture, label, bubble, clearTextureCache, loadLabelFont } from './textures';
 import { loadAssets, tex, peekTex, hasAssets, spriteName } from './assets';
 import { attachCamera, type CameraBounds, type CameraOptions } from './camera';
@@ -65,7 +65,7 @@ const GUEST_H = CHAR_H;
 /** 앉은 손님을 좌석 칸 중심보다 살짝 위로(의자에 앉은 느낌, 화면 px) */
 const SEAT_LIFT_PX = 4;
 /** 직원 역할 배지(머리 위 16px 아이콘) */
-const ROLE_ICON: Record<RoleId, string> = { hall: 'look', barista: 'menu', cook: 'harvest', field: 'plant', carry: 'money', guide: 'research' };
+const ROLE_ICON: Record<RoleId, string> = { hall: 'look', barista: 'menu', cook: 'harvest', carry: 'money', guide: 'research' };
 /** 배지 아래 끝 y(발끝 기준). 캐릭터 프레임 48px 중 위 13px은 비어 있고(머리 y=16, 모자 챙 y=13) 그 위 3px 띄운다 */
 const ROLE_ICON_Y = -(CHAR_H - 10);
 /** 기력이 낮은 직원은 흐리게 */
@@ -123,20 +123,14 @@ interface Fx {
 }
 
 /** 오브젝트 상태별 스프라이트 변형 이름. 본관은 증축 수에 따라 lv2·lv3. */
-function objectVariant(o: Pick<PlacedObject, 'type' | 'crop'>, expansions = 0): string | undefined {
+function objectVariant(o: Pick<PlacedObject, 'type'>, expansions = 0): string | undefined {
   if (o.type === 'warehouse') return expansions >= 2 ? 'lv3' : expansions >= 1 ? 'lv2' : undefined;
-  if (o.type === 'field') return o.crop ? (o.crop.ready ? 'ready' : 'planted') : 'empty';
-  if (o.type === 'tangerine_tree') {
-    if (!o.crop) return undefined;
-    if (o.crop.ready) return 'ready';
-    return o.crop.daysGrown < cropDef('tangerine').growDays / 3 ? 'young' : undefined;
-  }
   if (o.type === 'gate') return '0'; // 2B에서 영업 토글 연동
   return undefined;
 }
 
 /** 아이소 스프라이트(회전 _r{n} → 변형 → 기본) → 탑다운 스프라이트(변형 → 기본) 순으로 찾는다. 다 없으면 null. */
-function objectTex(o: Pick<PlacedObject, 'type' | 'crop' | 'rot'>, expansions = 0): { texture: Texture; iso: boolean } | null {
+function objectTex(o: Pick<PlacedObject, 'type' | 'rot'>, expansions = 0): { texture: Texture; iso: boolean } | null {
   if (!hasAssets()) return null;
   const name = SPRITE_ALIAS[o.type] ?? o.type;
   const variant = objectVariant(o, expansions);
@@ -298,7 +292,7 @@ export class GameView {
         .fill({ color: g.ok ? GHOST_OK : GHOST_BAD, alpha: 0.5 });
     }
     c.addChild(fp);
-    const t = objectTex({ type: g.type, crop: null, rot: g.rot });
+    const t = objectTex({ type: g.type, rot: g.rot });
     const sp = new Sprite(t?.texture ?? isoObjectTexture(this.app.renderer, def.kind, def.w, def.h));
     sp.anchor.set(0.5, 1);
     if (t && !t.iso) sp.position.y = -def.h * (ISO_H / 2);
@@ -638,22 +632,11 @@ export class GameView {
         if (isCafe) this.decorateCafe(entry, state);
         continue;
       }
-      // 플레이스홀더: 심음=초록 점. 키가 바뀔 때만 다시 그린다.
-      const key = o.crop ? `${o.crop.cropId}:${o.crop.ready}:${o.crop.ready ? blinkOn : ''}` : '';
+      // 플레이스홀더: v3에서 작물 표식은 없다 (농원은 월 수확 반짝임 syncFx). 키가 바뀔 때만 다시 그린다.
+      const key = '';
       if (this.badgeKeys.get(o.id) === key) continue;
       this.badgeKeys.set(o.id, key);
-      const badge = entry.node.getChildByLabel('badge') as Graphics;
-      badge.clear();
-      if (o.crop) {
-        const def = objectDef(o.type);
-        const gc = this.footCenter(o, def.w, def.h);
-        const cx = gc.sx - entry.node.x, cy = gc.sy - entry.node.y;
-        if (o.crop.ready) {
-          if (blinkOn) badge.poly([cx, cy - ISO_H / 2, cx + ISO_W / 2, cy, cx, cy + ISO_H / 2, cx - ISO_W / 2, cy]).stroke({ color: 0xffe066, width: 2 });
-        } else {
-          badge.circle(cx + 12, cy, 3).fill(0x66ff66);
-        }
-      }
+      (entry.node.getChildByLabel('badge') as Graphics).clear();
     }
   }
 

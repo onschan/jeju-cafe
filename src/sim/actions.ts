@@ -2,9 +2,8 @@ import type { GameState, Action, ApplyResult, PlacedObject } from './types.ts';
 import { objectDef } from '../data/index.ts';
 import { canPlace, placeObject, removeObject, footprint, relocateObject, objectsInRoom, canClearRock, clearRock } from './grid.ts';
 import { canBuyParcel, buyParcel } from './parcels.ts';
-import { canPlant, plant, canHarvest, harvest } from './farm.ts';
 import { canSetSlot, setSlot } from './menu.ts';
-import { canUnlock, unlock } from './progress.ts';
+import { checkFeature, checkGoals } from './goals.ts';
 import { canPostJob, postJob, canHire, hire, canFire, fire, canAssign, assign, canLevelUp, levelUp } from './staff.ts';
 import { canPromote, promote, canSetTarget, setTarget } from './promotions.ts';
 import { discoverCombos } from './compat.ts';
@@ -24,7 +23,7 @@ export const PROTECTED_TYPES = new Set(['busstop', 'warehouse', 'gate', 'spring'
 export const ROTATABLE_TYPES = new Set(['gate', 'bench', 'counter']);
 const ACTION_LOG_CAP = 1000;
 
-const CLIENT_ONLY = new Set<Action['type']>(['setSpeed', 'dismissMonthCard', 'dismissDevelop', 'dismissDraw', 'dismissAnnouncement', 'dismissChallenge']);
+const CLIENT_ONLY = new Set<Action['type']>(['setSpeed', 'dismissMonthCard', 'dismissDevelop', 'dismissDraw', 'dismissAnnouncement', 'dismissChallenge', 'dismissAlert']);
 
 function log(state: GameState, a: Action) {
   if (CLIENT_ONLY.has(a.type)) return;
@@ -32,9 +31,15 @@ function log(state: GameState, a: Action) {
   if (state.actionLog.length > ACTION_LOG_CAP) state.actionLog.shift();
 }
 
+/** 액션 하나를 적용한다. 기능 잠금(goals.ts 표)에 걸리면 ok:false. 성공하면 로그에 남기고 목표를 바로 판정한다. */
 export function apply(state: GameState, a: Action): ApplyResult {
+  const f = checkFeature(state, a.type);
+  if (!f.ok) return f;
   const r = applyInner(state, a);
-  if (r.ok) log(state, a);
+  if (r.ok) {
+    log(state, a);
+    if (!CLIENT_ONLY.has(a.type)) checkGoals(state);
+  }
   return r;
 }
 
@@ -90,7 +95,7 @@ function applyInner(state: GameState, a: Action): ApplyResult {
       if (objectDef(obj.type).room && objectsInRoom(state, obj.id).length > 0) return { ok: false, reason: '안에 가구가 있어요' };
       const p = canPlace(state, obj.type, a.x, a.y, obj.id);
       if (!p.ok) return p;
-      // 돈은 그대로: 치우기 환불 + 다시 짓기 비용이 상쇄된다. 작물·방향은 유지.
+      // 돈은 그대로: 치우기 환불 + 다시 짓기 비용이 상쇄된다. 방향·놓은 달은 유지.
       relocateObject(state, obj, a.x, a.y);
       discoverCombos(state);
       return { ok: true };
@@ -108,22 +113,11 @@ function applyInner(state: GameState, a: Action): ApplyResult {
       buyParcel(state, a.id);
       return { ok: true };
     }
-    case 'plant': {
-      const c = canPlant(state, a.objectId, a.cropId);
-      if (!c.ok) return c;
-      plant(state, a.objectId, a.cropId);
-      return { ok: true };
-    }
-    case 'harvest': {
-      const c = canHarvest(state, a.objectId);
-      if (!c.ok) return c;
-      harvest(state, a.objectId);
-      return { ok: true };
-    }
     case 'clearRock': {
       const c = canClearRock(state, a.x, a.y);
       if (!c.ok) return c;
       clearRock(state, a.x, a.y);
+      state.stats.rocksCleared++;
       return { ok: true };
     }
     case 'renameCafe': {
@@ -159,12 +153,9 @@ function applyInner(state: GameState, a: Action): ApplyResult {
     case 'setSpeed':
       state.clock.speed = a.speed;
       return { ok: true };
-    case 'unlock': {
-      const c = canUnlock(state);
-      if (!c.ok) return c;
-      unlock(state);
+    case 'dismissAlert':
+      state.alerts.shift();
       return { ok: true };
-    }
     case 'dismissMonthCard':
       state.lastMonthCard = null;
       return { ok: true };
@@ -202,6 +193,7 @@ function applyInner(state: GameState, a: Action): ApplyResult {
       const c = canPromote(state, a.staffId, a.promotionId);
       if (!c.ok) return c;
       promote(state, a.staffId, a.promotionId);
+      state.stats.promotionsDone++;
       return { ok: true };
     }
     case 'setTarget': {

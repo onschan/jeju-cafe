@@ -13,6 +13,7 @@ import { nextRandom, randInt } from './rng.ts';
 import { findStaff, ingredientDiscount, pushNotice } from './staff.ts';
 import { dayIndex } from './effects.ts';
 import { josa } from './josa.ts';
+import { takeIngredient } from './warehouse.ts';
 
 // ---------- 상수 ----------
 export const DEVELOP_DAYS = 3;
@@ -303,9 +304,10 @@ export function countIngredients(ingredients: string[]): Record<string, number> 
   for (const id of ingredients) out[id] = (out[id] ?? 0) + 1;
   return out;
 }
-/** 개발에 드는 구매 재료비 (bought 재료 원가 합) */
-export function developCost(ingredients: string[]): number {
-  return ingredients.reduce((s, id) => { const d = ingredientDef(id); return s + (d.kind === 'bought' ? d.cost : 0); }, 0);
+/** 개발에 드는 구매 재료비 (창고에 없는 재료 원가 합 — state를 주면 창고 재고를 뺀다) */
+export function developCost(ingredients: string[], state?: GameState): number {
+  const need = countIngredients(ingredients);
+  return Object.entries(need).reduce((s, [id, n]) => s + ingredientDef(id).cost * Math.max(0, n - (state?.storage[id] ?? 0)), 0);
 }
 export function canDevelop(state: GameState, base: MenuBase, ingredients: string[], staffId: string): ApplyResult {
   if (state.developing) return { ok: false, reason: '이미 개발 중이에요' };
@@ -318,18 +320,16 @@ export function canDevelop(state: GameState, base: MenuBase, ingredients: string
   if (!st) return { ok: false, reason: '없는 직원이에요' };
   if (isStaffBusy(state, staffId)) return { ok: false, reason: '그 직원은 바빠요' };
   if (state.research < DEVELOP_RESEARCH) return { ok: false, reason: '연구 포인트가 모자라요' };
-  const need = countIngredients(ingredients);
-  for (const [id, n] of Object.entries(need)) if (ingredientDef(id).kind === 'farm' && (state.storage[id] ?? 0) < n) return { ok: false, reason: `${josa(ingredientDef(id).name, '이/가')} 창고에 없어요` };
-  if (state.money < developCost(ingredients)) return { ok: false, reason: '돈이 모자라요' };
+  if (state.money < developCost(ingredients, state)) return { ok: false, reason: '돈이 모자라요' };
   return { ok: true };
 }
 /** 재료·연구를 쓰고 3일짜리 개발을 시작한다. 담당 직원은 그동안 바쁘다(역할 효과에서 빠진다). */
 export function develop(state: GameState, base: MenuBase, ingredients: string[], params: BrewParams | undefined, staffId: string): void {
-  const cost = developCost(ingredients);
+  let cost = 0;
+  for (const [id, n] of Object.entries(countIngredients(ingredients))) cost += takeIngredient(state, id, n);
   state.money -= cost;
   state.monthCosts.ingredients += cost;
   state.research -= DEVELOP_RESEARCH;
-  for (const [id, n] of Object.entries(countIngredients(ingredients))) if (ingredientDef(id).kind === 'farm') state.storage[id] = (state.storage[id] ?? 0) - n;
   const today = dayIndex(state.clock);
   state.developing = { base, ingredients: [...ingredients], params: normalizeParams(base, params), staffId, startDay: today, doneDay: today + DEVELOP_DAYS };
 }
@@ -386,6 +386,7 @@ export function resolveDevelop(state: GameState): DevelopResult | null {
   const hidden = hiddenId ? HIDDEN_RECIPES.find((r) => r.id === hiddenId)! : null;
   if (hidden) { quality = '최고'; if (!state.codex.recipes.includes(hidden.id)) { state.codex.recipes.push(hidden.id); checkCodexMileage(state); } }
   const id = `m_custom_${state.customMenus.length + 1}`;
+  state.stats.recipesMade++;
   const def: MenuDef = {
     id,
     name: hidden ? hidden.name : autoMenuName(dev.base, dev.ingredients),
@@ -429,14 +430,16 @@ export function removeTopping(state: GameState, menuId: string, toppingId: strin
 }
 
 // ---------- 레벨업 ----------
+/** 레벨업 비용: 돈 + 재료(창고에 있으면 창고에서, 없으면 원가로 산다 — ingredients는 창고에서 빠질 양) */
 export function levelUpMenuCost(state: GameState, menuId: string): { money: number; ingredients: Record<string, number> } {
   const def = menuOf(state, menuId);
   const ingredients: Record<string, number> = {};
   let money = LEVEL_UP_MONEY * menuMod(state, menuId).level;
   for (const [id, n] of Object.entries(def.ingredients)) {
-    const d = ingredientDef(id);
-    if (d.kind === 'farm') ingredients[id] = n * LEVEL_UP_INGREDIENTS;
-    else money += d.cost * n * LEVEL_UP_INGREDIENTS;
+    const need = n * LEVEL_UP_INGREDIENTS;
+    const fromStock = Math.min(need, state.storage[id] ?? 0);
+    if (fromStock > 0) ingredients[id] = fromStock;
+    money += ingredientDef(id).cost * (need - fromStock);
   }
   return { money, ingredients };
 }
@@ -444,7 +447,6 @@ export function canLevelUpMenu(state: GameState, menuId: string): ApplyResult {
   if (!state.unlocked.menus.includes(menuId)) return { ok: false, reason: '아직 모르는 메뉴' };
   if (menuMod(state, menuId).level >= MAX_MENU_LEVEL) return { ok: false, reason: '최고 레벨이에요' };
   const cost = levelUpMenuCost(state, menuId);
-  for (const [id, n] of Object.entries(cost.ingredients)) if ((state.storage[id] ?? 0) < n) return { ok: false, reason: `${josa(ingredientDef(id).name, '이/가')} ${n}개 필요해요` };
   if (state.money < cost.money) return { ok: false, reason: '돈이 모자라요' };
   return { ok: true };
 }
@@ -452,7 +454,7 @@ export function levelUpMenu(state: GameState, menuId: string): void {
   const cost = levelUpMenuCost(state, menuId);
   state.money -= cost.money;
   state.monthCosts.ingredients += cost.money;
-  for (const [id, n] of Object.entries(cost.ingredients)) state.storage[id] = (state.storage[id] ?? 0) - n;
+  for (const [id, n] of Object.entries(cost.ingredients)) takeIngredient(state, id, n);
   ensureMod(state, menuId).level++;
 }
 /** 주문 가중치: 레벨이 높을수록 잘 팔린다 */

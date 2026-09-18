@@ -1,25 +1,23 @@
 /**
  * 헤드리스 봇 — 밸런스 검증용 단순 전략. 순수·결정적 (state와 apply만 쓴다).
  *
- * 전략 (plan Task 6):
- * - 시작: 정낭 위로 올렛길 + 가로 올렛길(y=4), 테이블 16(위아래 줄), 메뉴 americano/toast/cookie
- * - 2달째: 전단 공고 → 미소 최고를 홀, 기술 최고를 바리스타(→ latte 추가)
- * - 돈 500만 넘고 기력 60 넘는 직원이 있으면 전단 돌리기 (한 달에 한 번)
- * - 9월: 밭 3개 + 밭 일꾼 채용(힘 최고)
- * - 2년차: 요리사(기술 최고)까지 뽑아 직원 4명 (QA 1차 #13: 16테이블 + 4명이 흑자여야 한다)
- * - 연구가 되면 해금 (돌담은 2개까지 놓는다). 수확은 자동(익으면 창고로).
- * - 돈 200만 미만이면 아르바이트 (직원당 한 달 한 번은 sim이 막는다)
- * - 2년차: 연구 20 이상이면 원두+우유 음료를 하나 나올 때까지 개발하고, 나오면 메뉴판 4번 칸에 올린다
- * - 마일리지 30 이상이면 일꾼 삼춘 고용, 무료 인형뽑기는 매달 돌리고, 강화 아이템·씨앗은 야외 테이블에 쓴다
- * - 주말(6·13·20·27일)마다 돈이 500만 넘으면 활기가 가장 높은 지역에 팝업을 연다 (2B-4)
+ * v3 전략 (목표 체인을 따라간다):
+ * - 시작 상태(테이블 2 + 파라솔 1 + 올렛길 + 메뉴 3종 + 후보 2명)에서 출발. 가로 올렛길(y=4)을 깔고 테이블을 한 달에 4개씩 16개까지 늘린다.
+ * - 첫날 후보 중 미소 최고를 홀로 채용. 2달째 전단 공고 → 기술 최고를 바리스타. 2년차에 요리사.
+ * - 열린 시설(감귤나무·화분·벤치·돌담·당근밭…)을 정해진 칸에 하나씩 놓는다. 시설 수 목표를 밀어 준다.
+ * - 홍보가 열리면 돈 500만 넘고 기력 60 넘는 직원이 있을 때 전단 (한 달에 한 번).
+ * - 필지 구매가 열리면 돈 800만 넘을 때 살 수 있는 필지를 산다. 바위 치우기가 열리면 소유 필지의 작은 바위를 한 달에 하나.
+ * - 연구 개발이 열리고 연구 20 이상이면 원두+우유 음료를 레시피 3개까지 개발하고 첫 메뉴를 메뉴판 4번 칸에 올린다.
+ * - 돈 200만 미만이면 아르바이트. 마일리지 3 이상이면 일꾼 삼춘, 무료 인형뽑기, 아이템은 야외 테이블에.
+ * - 팝업이 열리면 주말마다 돈이 500만 넘을 때 활기가 가장 높은 지역에 팝업.
+ * - 목표 달성·이벤트 대화창(alerts)은 바로 닫는다.
  */
 import type { GameState } from './types.ts';
 import { createInitialState } from './state.ts';
 import { tick } from './tick.ts';
 import { apply } from './actions.ts';
 import { DAY_MS } from './clock.ts';
-import { canPlace, objectAt } from './grid.ts';
-import { canUnlock } from './progress.ts';
+import { canPlace, objectAt, cellAt } from './grid.ts';
 import { START_ORIGIN } from './layout.ts';
 import { objectDef } from '../data/index.ts';
 import { DEVELOP_RESEARCH } from './craft.ts';
@@ -27,6 +25,8 @@ import { canDrawTicket, hasFreeDraw } from './shop.ts';
 import { MAX_BUILDERS } from './build.ts';
 import { canUseItem } from './items.ts';
 import { isWeekend, canOpenPopup, bestRegion } from './popup.ts';
+import { featureOpen } from './goals.ts';
+import { canBuyParcel, ownedParcels } from './parcels.ts';
 import type { Candidate, RoleId, StatKey } from './types.ts';
 
 export interface BotRow {
@@ -40,30 +40,37 @@ export interface BotRow {
   staff: number;
   promos: number;     // 활성 기간형 홍보 수
   guests: number;     // 그달 손님 수
-  customMenus: number; // 개발한 메뉴 수 (2년차 개발 확인용)
+  customMenus: number; // 개발한 메뉴 수
   rank: number;
   star: number;
   mileage: number;
+  goals: number;      // 달성한 목표 수
+  events: number;     // 그달 말 활성 빅 이벤트 수
 }
 
 /** 시작 필지 상대 좌표 → 격자 좌표 */
 const at = (x: number, y: number) => ({ x: START_ORIGIN.x + x, y: START_ORIGIN.y + y });
-/** 가로 올렛길 y=4 양옆(y=3, y=5)에 테이블 (시작 필지 상대). 시작 자금 500만이면 16개(80만)는 무리가 없다. */
+/** 가로 올렛길 y=4 양옆(y=3, y=5)에 테이블 (시작 필지 상대). 시작 테이블(3,4)(5,4)(5,5)은 이미 있다. */
 export const BOT_TABLES: { x: number; y: number }[] = [
   ...[0, 1, 2, 5, 6, 7, 8, 9].map((x) => at(x, 3)),
   at(5, 6), // (3,3)은 본관 문 앞 칸이라 못 놓는다 → 정낭 옆으로
   ...[0, 1, 2, 3, 7, 8, 9].map((x) => at(x, 5)),
 ];
-export const BOT_FIELDS: { x: number; y: number }[] = [at(6, 6), at(7, 6), at(8, 6)];
+/** 열린 시설을 놓는 칸 (시작 필지 아래쪽 줄) */
+export const BOT_DECO_CELLS: { x: number; y: number }[] = [at(6, 6), at(7, 6), at(8, 6), at(9, 6), at(0, 6), at(1, 6), at(2, 6), at(3, 6), at(0, 7), at(1, 7), at(2, 7), at(3, 7), at(6, 7), at(7, 7), at(8, 7), at(9, 7), at(0, 0), at(1, 0), at(2, 0), at(6, 0), at(7, 0), at(8, 0), at(9, 0)];
+/** 시설 수 목표를 위해 놓는 시설 종류 (열린 것만, 이 순서로 하나씩) */
+export const BOT_DECO_TYPES = ['tangerine_tree', 'deco_planter', 'deco_wood_bench', 'terrace_seat', 'deco_flower_pots', 'bench_stonewall', 'canola', 'restroom', 'tangerine_tree', 'carrot_field', 'vending', 'handdrip_bar', 'souvenir', 'dolhareubang', 'pampas', 'bike_rack', 'deco_lamp_post', 'cedar', 'basalt_rock', 'tangerine_tree', 'carrot_field', 'deco_mailbox', 'deco_water_jar_set'];
 export const BOT_WALLS: { x: number; y: number }[] = [at(5, 5), at(6, 5)];
 export const FLYER_MIN_MONEY = 5_000_000;
 export const FLYER_MIN_ENERGY = 60;
 export const PARTTIME_MAX_MONEY = 2_000_000;
-export const BOT_DEVELOP_YEAR = 2;
-export const BOT_COOK_YEAR = 2;
+export const BOT_PARCEL_MIN_MONEY = 8_000_000;
 export const BOT_DEVELOP_INGREDIENTS = ['beans', 'milk'];
 export const BOT_WORKER_MILEAGE = 3;
 export const BOT_POPUP_MIN_MONEY = 5_000_000;
+export const BOT_COOK_YEAR = 2;
+export const BOT_TABLES_PER_MONTH = 4;
+export const BOT_RECIPES = 3;
 const WORKER_IDS = ['ms_worker_3', 'ms_worker_4', 'ms_worker_5'];
 
 function countKind(s: GameState, kind: string): number {
@@ -71,7 +78,7 @@ function countKind(s: GameState, kind: string): number {
 }
 
 function place(s: GameState, type: string, x: number, y: number): boolean {
-  return canPlace(s, type, x, y).ok && apply(s, { type: 'place', objectType: type, x, y }).ok;
+  return s.unlocked.objects.includes(type) && canPlace(s, type, x, y).ok && apply(s, { type: 'place', objectType: type, x, y }).ok;
 }
 
 /** 정낭(4,6)에서 위로 올렛길을 깔아 창고 옆(4,3)까지 연결하고, y=4에 가로 올렛길 (시작 필지 상대) */
@@ -97,67 +104,92 @@ function setMenuIfEmpty(s: GameState, slot: number, menuId: string): void {
   if (s.menuSlots[slot] === null && !s.menuSlots.includes(menuId)) apply(s, { type: 'setSlot', slot, menuId });
 }
 
+/** 열린 시설을 정해진 칸에 하나씩 (이미 놓은 종류 수만큼 건너뛴다) */
+function placeDecos(s: GameState): void {
+  const placed = new Set(Object.values(s.objects).filter((o) => BOT_DECO_CELLS.some((c) => c.x === o.x && c.y === o.y)).map((o) => `${o.x},${o.y}`));
+  let i = placed.size;
+  for (const type of BOT_DECO_TYPES.slice(i)) {
+    const cell = BOT_DECO_CELLS[i];
+    if (!cell) return;
+    if (!s.unlocked.objects.includes(type)) return; // 아직 안 열린 것부터는 다음 달에
+    if (s.money < objectDef(type).cost + 1_000_000) return;
+    if (place(s, type, cell.x, cell.y)) i++;
+    else return;
+  }
+}
+
+/** 열린 필지 중 살 수 있는 것을 하나 산다 */
+function buyParcelIfAny(s: GameState): void {
+  if (!featureOpen(s, 'parcel') || s.money < BOT_PARCEL_MIN_MONEY) return;
+  for (const p of s.parcels) if (!p.owned && canBuyParcel(s, p.id).ok && apply(s, { type: 'buyParcel', id: p.id }).ok) return;
+}
+
+/** 소유 필지의 작은 바위를 하나 치운다 (덤불도) */
+function clearOneRock(s: GameState): void {
+  if (!featureOpen(s, 'clearRock') || s.money < 2_000_000) return;
+  for (const p of ownedParcels(s))
+    for (let ly = 0; ly < p.h; ly++)
+      for (let lx = 0; lx < p.w; lx++) {
+        const x = p.x + lx, y = p.y + ly;
+        const c = cellAt(s, x, y);
+        const o = objectAt(s, x, y);
+        if ((c?.terrain === 'rock' && !o) || o?.type === 'bush_wild') if (apply(s, { type: 'clearRock', x, y }).ok) return;
+      }
+}
+
 /** 매달 1일 */
 function monthlyPlan(s: GameState, monthsPlayed: number): void {
   ensurePath(s);
-  if (countKind(s, 'seat') < BOT_TABLES.length) for (const p of BOT_TABLES) place(s, 'table_out', p.x, p.y);
-  setMenuIfEmpty(s, 0, 'americano');
-  setMenuIfEmpty(s, 1, 'toast');
-  setMenuIfEmpty(s, 2, 'cookie');
+  // 테이블은 한 달에 4개씩 늘린다 (사람처럼): 시작 3석 + 16
+  let added = 0;
+  for (const p of BOT_TABLES) { if (added >= BOT_TABLES_PER_MONTH) break; if (!objectAt(s, p.x, p.y) && place(s, 'table_out', p.x, p.y)) added++; }
+  setMenuIfEmpty(s, 3, 'green_tea');
 
-  // 2달째: 전단 공고 → 홀·바리스타
-  if (monthsPlayed === 1 && s.staff.length === 0 && apply(s, { type: 'postJob', tier: 'flyer' }).ok) {
-    hireBest(s, 'smile', 'hall');
-    hireBest(s, 'skill', 'barista');
-  }
-  if (hasRole(s, 'barista')) setMenuIfEmpty(s, 3, 'latte');
-
-  // 9월: 밭 3개 + 밭 일꾼
-  if (s.clock.month === 9) {
-    if (countKind(s, 'field') < BOT_FIELDS.length) for (const p of BOT_FIELDS) place(s, 'field', p.x, p.y);
-    if (!hasRole(s, 'field') && apply(s, { type: 'postJob', tier: 'flyer' }).ok) hireBest(s, 'strength', 'field');
-  }
-  // 2년차: 요리사까지 4명
-  if (s.clock.year >= BOT_COOK_YEAR && !hasRole(s, 'cook') && s.staff.length === 3 && apply(s, { type: 'postJob', tier: 'flyer' }).ok) hireBest(s, 'skill', 'cook');
+  // 첫 달: 후보 중 미소 최고를 홀로. 2달째: 전단 공고 → 기술 최고를 바리스타
+  if (monthsPlayed === 0 && s.staff.length === 0) hireBest(s, 'smile', 'hall');
+  if (monthsPlayed === 1 && !hasRole(s, 'barista') && apply(s, { type: 'postJob', tier: 'flyer' }).ok) hireBest(s, 'skill', 'barista');
+  // 2년차: 요리사까지 3명
+  if (s.clock.year >= BOT_COOK_YEAR && !hasRole(s, 'cook') && s.staff.length === 2 && apply(s, { type: 'postJob', tier: 'flyer' }).ok) hireBest(s, 'skill', 'cook');
 
   // 돈이 넉넉하면 전단 돌리기 (한 달에 한 번)
-  if (s.money > FLYER_MIN_MONEY) {
+  if (featureOpen(s, 'promote') && s.money > FLYER_MIN_MONEY) {
     const st = s.staff.find((x) => x.role !== null && x.energy > FLYER_MIN_ENERGY);
     if (st) apply(s, { type: 'promote', staffId: st.id, promotionId: 'flyer' });
   }
 
-  // 상점: 마일리지 30 이상이면 일꾼 삼춘, 무료 인형뽑기, 아이템은 야외 테이블에
+  // 상점: 마일리지 3 이상이면 일꾼 삼춘, 무료 인형뽑기, 아이템은 야외 테이블에
   if (s.mileage >= BOT_WORKER_MILEAGE && s.builders < MAX_BUILDERS) for (const id of WORKER_IDS) if (apply(s, { type: 'buyMileage', id }).ok) break;
   if (hasFreeDraw(s) && canDrawTicket(s).ok && apply(s, { type: 'drawTicket' }).ok) apply(s, { type: 'dismissDraw' });
   for (const [itemId, n] of Object.entries(s.inventory)) if (n > 0 && canUseItem(s, itemId, 'table_out').ok) apply(s, { type: 'useItem', itemId, objectType: 'table_out' });
   if (s.lastAnnouncement) apply(s, { type: 'dismissAnnouncement' });
 
-  // 해금
-  while (canUnlock(s).ok) apply(s, { type: 'unlock' });
-  if (s.unlocked.objects.includes('stonewall') && countKind(s, 'wall') < BOT_WALLS.length)
-    for (const p of BOT_WALLS) place(s, 'stonewall', p.x, p.y);
+  // 시설·돌담·필지·바위
+  placeDecos(s);
+  if (countKind(s, 'wall') < BOT_WALLS.length) for (const p of BOT_WALLS) place(s, 'stonewall', p.x, p.y);
+  buyParcelIfAny(s);
+  clearOneRock(s);
 }
 
 /** 매일 아침 */
 function dailyPlan(s: GameState): void {
-  // 당근이 있으면 쿠키 자리에 당근주스 (원가 0)
-  if (s.unlocked.menus.includes('carrot_juice') && (s.storage['carrot'] ?? 0) > 0 && !s.menuSlots.includes('carrot_juice'))
-    apply(s, { type: 'setSlot', slot: 2, menuId: 'carrot_juice' });
+  while (s.alerts.length > 0) apply(s, { type: 'dismissAlert' });
+  if (s.lastChallenge) apply(s, { type: 'dismissChallenge' });
 
-  if (s.money < PARTTIME_MAX_MONEY) {
+  if (s.money < PARTTIME_MAX_MONEY && featureOpen(s, 'promote')) {
     for (const st of s.staff) if (apply(s, { type: 'promote', staffId: st.id, promotionId: 'parttime' }).ok) break;
   }
 
-  // 2년차: 메뉴가 하나 나올 때까지 개발 (기술 최고 직원). 나온 메뉴는 4번 칸에.
-  if (s.clock.year >= BOT_DEVELOP_YEAR && s.research >= DEVELOP_RESEARCH && !s.developing && s.customMenus.length === 0) {
+  // 연구 개발이 열리면 레시피 3개까지 개발 (기술 최고 직원). 첫 메뉴는 4번 칸에.
+  if (featureOpen(s, 'craft') && s.research >= DEVELOP_RESEARCH && !s.developing && s.customMenus.length < BOT_RECIPES) {
     const st = [...s.staff].sort((a, b) => b.stats.skill - a.stats.skill)[0];
     if (st) apply(s, { type: 'develop', base: 'drink', ingredients: BOT_DEVELOP_INGREDIENTS, staffId: st.id });
   }
   const custom = s.customMenus[0];
   if (custom && !s.menuSlots.includes(custom.id)) apply(s, { type: 'setSlot', slot: 3, menuId: custom.id });
+  if (s.lastDevelop) apply(s, { type: 'dismissDevelop' });
 
   // 주말: 활기가 가장 높은 지역에 팝업
-  if (isWeekend(s.clock.day) && s.money > BOT_POPUP_MIN_MONEY && !s.popup.regionId) {
+  if (featureOpen(s, 'popup') && isWeekend(s.clock.day) && s.money > BOT_POPUP_MIN_MONEY && !s.popup.regionId) {
     const regionId = bestRegion(s);
     if (canOpenPopup(s, regionId).ok) apply(s, { type: 'openPopup', regionId });
   }
@@ -182,15 +214,14 @@ export function botDay(s: GameState, cur: BotCursor): void {
 export function runBot(years: number, seed: number): BotRow[] {
   const s = createInitialState(seed);
   const rows: BotRow[] = [];
-  let lastMonth = 0;
-  let monthsPlayed = -1;
+  const cur = newBotCursor();
   let minMoney = s.money;
   const totalDays = years * 12 * 30;
   for (let d = 0; d < totalDays; d++) {
-    if (s.clock.month !== lastMonth) {
-      lastMonth = s.clock.month;
-      monthsPlayed++;
-      monthlyPlan(s, monthsPlayed);
+    if (s.clock.month !== cur.lastMonth) {
+      cur.lastMonth = s.clock.month;
+      cur.monthsPlayed++;
+      monthlyPlan(s, cur.monthsPlayed);
     }
     dailyPlan(s);
     minMoney = Math.min(minMoney, s.money);
@@ -201,7 +232,7 @@ export function runBot(years: number, seed: number): BotRow[] {
       rows.push({
         year: card.year, month: card.month, money: s.money, minMoney, research: s.research, popularity: s.popularity,
         net: card.net, staff: s.staff.length, promos: s.activePromotions.length, guests: card.guests, customMenus: s.customMenus.length,
-        rank: s.rank, star: s.star, mileage: s.mileage,
+        rank: s.rank, star: s.star, mileage: s.mileage, goals: s.goals.index, events: s.events.length,
       });
       minMoney = s.money;
       apply(s, { type: 'dismissMonthCard' });

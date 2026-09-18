@@ -1,5 +1,5 @@
 import type { GameState, Cell, PlacedObject, Parcel, Terrain } from './types.ts';
-import { INITIAL_UNLOCKED, ROLES, FACILITY_START_IDS, objectDef, cropDef } from '../data/index.ts';
+import { INITIAL_UNLOCKED, ROLES, FACILITY_START_IDS, objectDef } from '../data/index.ts';
 import { START_HOUR } from './clock.ts';
 import { makeParcels } from './parcels.ts';
 import { PARCEL_W, PARCEL_H, START_ORIGIN, GRID_W, GRID_H, VILLAGE_ROAD_Y } from './layout.ts';
@@ -10,19 +10,33 @@ import { DEFAULT_CAFE_NAME } from './cafe.ts';
 import { START_BUILDERS } from './build.ts';
 import { initGuidebooks } from './guidebook.ts';
 import { initRegions, initNamedGuests, initPopup } from './popup.ts';
+import { initFeatures } from './goals.ts';
+import { generateCandidate } from './staff.ts';
+import { monthIndex } from './clock.ts';
 
 export { PARCEL_W, PARCEL_H, START_ORIGIN, GRID_W, GRID_H, VILLAGE_ROAD_Y };
-export const SAVE_VERSION = 14; // 14: 라이벌 카페 (rivals/lastChallenge). 13: 원정 팝업·지역·이름 있는 손님. 12: 직원 스탯 체력·힘·기술·미소
+export const SAVE_VERSION = 15; // 15: v3 대격변 — 밭 폐지·농원 월 수확·목표 체인·기능 잠금·빅 이벤트·시작 상태 (마이그레이션 없음: 백업 후 새 게임). 14: 라이벌 카페
 /** 시작 자금 500만 + 정착지원금(잔고 < 40만이면 1회 300만) — 마스터 GDD §1 */
 export const START_MONEY = 5_000_000;
 export const SETTLE_GRANT = 3_000_000;
 export const SETTLE_GRANT_THRESHOLD = 400_000;
 export const START_MONTH = 3;
 export const MENU_SLOT_COUNT = 4;
+/** 시작 메뉴판 (§5: 아메리카노·카페라떼·감귤주스가 이미 올라가 있다) */
+export const START_MENUS = ['americano', 'latte', 'tangerine_juice'];
+/** 시작 직원 후보 수 (§5: 후보 2명 대기) */
+export const START_CANDIDATES = 2;
+/** 첫 손님이 게임 1시간 안에 오도록 스폰 누적을 미리 채워 둔다 (7시 첫 스폰) */
+export const START_SPAWN_ACC = 0.6;
 /** 곶자왈 덤불 개수 */
 const GOTJAWAL_BUSHES = 10;
 /** 옛 감귤밭의 감귤나무 위치 (필지 상대) */
 const ORCHARD_TREES = [{ lx: 2, ly: 2 }, { lx: 6, ly: 2 }, { lx: 2, ly: 5 }, { lx: 6, ly: 5 }];
+/** 시작 필지 안 시작 시설 (필지 상대): 본관 문 앞(3,3)에서 정낭(4,6)까지 올렛길, 그 양옆에 테이블 2 + 파라솔 1 */
+export const START_PATH: { lx: number; ly: number }[] = [{ lx: 3, ly: 3 }, { lx: 4, ly: 3 }, { lx: 4, ly: 4 }, { lx: 4, ly: 5 }];
+export const START_SEATS: { type: string; lx: number; ly: number }[] = [
+  { type: 'table_out', lx: 3, ly: 4 }, { type: 'table_out', lx: 5, ly: 4 }, { type: 'table_parasol', lx: 5, ly: 5 },
+];
 
 /** 필지 안 상대 좌표 (lx, ly)의 지형. 결정적(seed rng). */
 function terrainFor(p: Parcel, lx: number, ly: number, rng: { rng: number }): Terrain {
@@ -63,8 +77,7 @@ function stamp(state: GameState, type: string, x: number, y: number): PlacedObje
   for (let dy = 0; dy < def.h; dy++)
     for (let dx = 0; dx < def.w; dx++) if (state.grid.cells[(y + dy) * state.grid.w + (x + dx)]!.objectId) return null;
   const id = `o${state.nextId++}`;
-  const obj: PlacedObject = { id, type, x, y, crop: null };
-  if (def.kind === 'tree' && def.cropId) obj.crop = { cropId: def.cropId, daysGrown: 0, ready: false, harvestedYear: -1 };
+  const obj: PlacedObject = { id, type, x, y, placedMonth: monthIndex(state.clock) };
   state.objects[id] = obj;
   occupy(state, obj);
   return obj;
@@ -91,11 +104,8 @@ function stampParcelObjects(state: GameState, p: Parcel, rng: { rng: number }): 
       for (let lx = 1; lx <= 8; lx++) if (lx !== 4 && lx !== 5) stamp(state, 'stonewall', p.x + lx, p.y + 3); // 돌담은 바위 위에도 선다
       break;
     case 'orchard':
-      // 옛 감귤밭: 다 자란 나무 4그루 (사면 그해 수확 철부터 열린다)
-      for (const t of ORCHARD_TREES) {
-        const tree = soil(t.lx, t.ly) ? stamp(state, 'tangerine_tree', p.x + t.lx, p.y + t.ly) : null;
-        if (tree?.crop) tree.crop.daysGrown = cropDef(tree.crop.cropId).growDays;
-      }
+      // 옛 감귤밭: 감귤나무 4그루 (사면 다음 달 1일부터 감귤이 들어온다)
+      for (const t of ORCHARD_TREES) if (soil(t.lx, t.ly)) stamp(state, 'tangerine_tree', p.x + t.lx, p.y + t.ly);
       break;
     case 'spring':
       stamp(state, 'spring', p.x + 4, p.y + 3);
@@ -120,17 +130,22 @@ export function createInitialState(seed: number, playerId = 'local', createdAt =
     settleGrantUsed: false,
     objects: {},
     storage: {},
-    menuSlots: Array(MENU_SLOT_COUNT).fill(null),
-    unlockedIndex: 0,
+    menuSlots: [...START_MENUS, ...Array(Math.max(0, MENU_SLOT_COUNT - START_MENUS.length)).fill(null)],
     unlocked: {
-      objects: [...INITIAL_UNLOCKED.objects, ...FACILITY_START_IDS],
+      objects: [...new Set([...INITIAL_UNLOCKED.objects, ...FACILITY_START_IDS])],
       menus: [...INITIAL_UNLOCKED.menus],
-      crops: [...INITIAL_UNLOCKED.crops],
       roles: ROLES.filter((r) => r.unlockedAtStart).map((r) => r.id),
     },
+    goals: { index: 0, claimed: [] },
+    features: initFeatures(),
+    stats: { satisfiedTotal: 0, rocksCleared: 0, promotionsDone: 0, recipesMade: 0, rivalWins: 0 },
+    alerts: [],
+    events: [],
+    eventsFired: {},
+    monthHarvest: { harvested: {}, ingredientSaved: 0 },
     staff: [],
     candidates: [],
-    slots: { barista: 1, cook: 1, hall: 2, field: 1, carry: 0, guide: 0 },
+    slots: { barista: 1, cook: 1, hall: 2, carry: 0, guide: 0 },
     activePromotions: [],
     youtuberBoostMonths: 0,
     segmentPopularity: initSegmentPopularity(),
@@ -157,6 +172,7 @@ export function createInitialState(seed: number, playerId = 'local', createdAt =
     spots: {},
     effects: [],
     menuSold: {},
+    monthMenuSold: {},
     codex: { combos: [], sets: [], recipes: [], ingredientCombos: [] },
     customMenus: [],
     menuMods: {},
@@ -177,7 +193,7 @@ export function createInitialState(seed: number, playerId = 'local', createdAt =
     rivals: [],
     lastChallenge: null,
     guests: [],
-    spawnAcc: 0,
+    spawnAcc: START_SPAWN_ACC,
     researchAcc: 0,
     nextId: 1,
     monthIncome: 0,
@@ -193,7 +209,12 @@ export function createInitialState(seed: number, playerId = 'local', createdAt =
   stamp(state, 'busstop', ox, oy + PARCEL_H - 1);
   stamp(state, 'warehouse', ox + 3, oy + 1); // 문 = 정면 왼쪽 (ox+3, oy+2), 그 앞 (ox+3, oy+3)이 창고 앞
   stamp(state, 'gate', ox + 4, oy + PARCEL_H - 2); // 정낭 칸은 gate kind라 걷기 가능(path.ts)
+  // §5 시작 상태: 본관 문 앞에서 정낭까지 올렛길 + 테이블 2 + 파라솔 1 (정류장에서 바로 닿는 자리가 있다)
+  for (const c of START_PATH) stamp(state, 'path', ox + c.lx, oy + c.ly);
+  for (const st of START_SEATS) stamp(state, st.type, ox + st.lx, oy + st.ly);
   const rng = { rng: seed ^ 0x5eed };
   for (const p of parcels) stampParcelObjects(state, p, rng);
+  // §5 직원 후보 2명 대기 (전단 등급)
+  for (let i = 0; i < START_CANDIDATES; i++) state.candidates.push(generateCandidate(state, 'flyer'));
   return state;
 }

@@ -167,7 +167,7 @@ function singleCondition(state: GameState, t: string): boolean {
   if ((m = /^잔고 < ([\d,]+)$/.exec(t))) return state.money < Number(m[1]!.replace(/,/g, ''));
   if ((m = /^(\w+) 없음$/.exec(t))) return countObjects(state, m[1]!) === 0;
   if ((m = /^(\w+) (\d+)개$/.exec(t))) return countObjects(state, m[1]!) >= Number(m[2]);
-  if ((m = /^(\w+) 수확$/.exec(t))) return Object.values(state.objects).some((o) => o.type === m![1] && o.crop !== null);
+  if ((m = /^(\w+) 수확$/.exec(t))) return Object.values(state.objects).some((o) => o.type === m![1] && !o.build); // v3: 농원 시설이 완공돼 있으면 매월 수확한다
   return true;
 }
 

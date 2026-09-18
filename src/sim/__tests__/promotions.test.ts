@@ -1,3 +1,4 @@
+import { bareState } from './helpers.ts';
 import { createInitialState } from '../state.ts';
 import { apply } from '../actions.ts';
 import { placeObject } from '../grid.ts';
@@ -10,7 +11,7 @@ import { staffWith } from './staff.test.ts';
 import type { GameState, Staff } from '../types.ts';
 
 function withStaff(seed = 1): { s: GameState; st: Staff } {
-  const s = createInitialState(seed);
+  const s = bareState(seed);
   const st = staffWith({}, 'hall');
   s.staff.push(st);
   s.research = 100;
@@ -66,7 +67,7 @@ test('기간형: 라디오는 돈이 들고 광고비에 잡히며, 활성 동�
   expect(apply(s, { type: 'promote', staffId: st.id, promotionId: 'radio' }).ok).toBe(false); // 중복
   expect(apply(s, { type: 'promote', staffId: st.id, promotionId: 'billboard' }).ok).toBe(true);
   expect(effectivePopularity(s, 'local_auntie')).toBe(38);
-  const s2 = createInitialState(2);
+  const s2 = bareState(2);
   s2.activePromotions = [{ promotionId: 'radio', remainingMonths: 1, delta: {} }, { promotionId: 'billboard', remainingMonths: 1, delta: {} }];
   s2.staff.push(staffWith({}, 'hall')); s2.research = 100; s2.money = 1e8;
   expect(apply(s2, { type: 'promote', staffId: s2.staff[0]!.id, promotionId: 'flyer' }).ok).toBe(true); // 1회성은 개수 제한 없음
@@ -121,13 +122,13 @@ test('유튜버: 성공하면 3개월 관광객 2배, 실패하면 아무 것도
     } else { fail++; expect(s.youtuberBoostMonths).toBe(0); }
   }
   expect(ok).toBeGreaterThan(10); expect(fail).toBeGreaterThan(3);
-  const s = createInitialState(1); s.youtuberBoostMonths = 1;
+  const s = bareState(1); s.youtuberBoostMonths = 1;
   expirePromotions(s);
   expect(s.youtuberBoostMonths).toBe(0);
 });
 
 test('손님층 인기는 매월 −2, 0 하한, 99 상한', () => {
-  const s = createInitialState(1);
+  const s = bareState(1);
   s.segmentPopularity = { local_auntie: 1, student: 20 };
   for (let i = 0; i < 30; i++) tick(s, DAY_MS);
   expect(s.segmentPopularity).toMatchObject({ local_auntie: 0, student: 18 }); // (4월에 육지 삼춘이 새로 열려 키가 하나 늘 수 있다)
@@ -153,7 +154,7 @@ test('홍보가 있으면 하루 손님이 는다', () => {
 });
 
 test('setTarget: 아는 손님층만, null로 해제', () => {
-  const s = createInitialState(1);
+  const s = bareState(1);
   expect(apply(s, { type: 'setTarget', segment: 'martian' }).ok).toBe(false);
   expect(apply(s, { type: 'setTarget', segment: 'student' }).ok).toBe(true);
   expect(s.targetSegment).toBe('student');
