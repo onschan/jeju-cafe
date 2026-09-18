@@ -1,12 +1,12 @@
-import type { CSSProperties, ReactNode } from 'react';
+import { useState, type CSSProperties, type ReactNode } from 'react';
 import { useGame, dispatch } from './store';
-import { objectStats, sceneryScore, clearCost, canClearRock, hasPickaxe, cellAt, walletOf, guestFace, namedGuestFace, canAcceptQuest, parcelPrice, canBuyParcel, PROTECTED_TYPES, ROTATABLE_TYPES, LOW_ENERGY, STAT_KEYS, STAT_NAME, staffInRole, canLevelUp, MAX_LEVEL, type GameState, type Guest, type RoleId, type StatKey } from '../sim/index.ts';
+import { objectStats, sceneryScore, clearCost, canClearRock, hasPickaxe, cellAt, walletOf, guestFace, namedGuestFace, canAcceptQuest, parcelPrice, canBuyParcel, canGiveGift, giftFits, giftCount, giftedToday, PROTECTED_TYPES, ROTATABLE_TYPES, LOW_ENERGY, STAT_KEYS, STAT_NAME, staffInRole, canLevelUp, MAX_LEVEL, type GameState, type Guest, type RoleId, type StatKey } from '../sim/index.ts';
 import { BUS_HOUR, isBusDay } from '../sim/spots.ts';
-import { objectDef, guestTypeDef, namedGuestDef, questDef, roleDef, ROLES } from '../data/index.ts';
+import { objectDef, guestTypeDef, namedGuestDef, questDef, roleDef, ROLES, GIFTS } from '../data/index.ts';
 import { staffParts } from '../render/character';
 import { Portrait, guestPortraitParts, namedPortraitParts, guestName } from './GuestPopup';
 import { Bar, EnergyBar } from './StaffPanel';
-import { Confirm } from './Popup';
+import { Confirm, Popup } from './Popup';
 import { Icon } from './Icon';
 import { BOTTOM_BAR_H } from './Shell';
 import { frame, brownBtn, brownBtnOn, brownBtnOff, dangerBtn, PALETTE, won } from './frame';
@@ -51,6 +51,7 @@ function Row({ children }: { children: ReactNode }) {
 }
 
 function GuestCard({ s, id, a }: { s: GameState; id: string; a: CardActions }) {
+  const [picking, setPicking] = useState(false);
   const g = s.guests.find((x) => x.id === id);
   if (!g) return <div style={small}>손님이 떠났어요</div>;
   const def = guestTypeDef(g.type);
@@ -59,6 +60,8 @@ function GuestCard({ s, id, a }: { s: GameState; id: string; a: CardActions }) {
   const quest = def.questId && s.board.quests[def.questId]?.status === 'offered' ? def.questId : null;
   const state = g.mood ? `${MOOD_TEXT[g.mood] ?? ''}` : PHASE_TEXT[g.phase];
   const wants = def.wants.slice(0, 2).map((w) => WANT_LABEL[w] ?? w);
+  const gifts = GIFTS.filter((x) => (s.inventory[x.id] ?? 0) > 0);
+  const giftOk = gifts.length > 0 && !giftedToday(s) && g.phase !== 'leaving';
   return (
     <div data-testid="card-guest">
       <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
@@ -73,7 +76,22 @@ function GuestCard({ s, id, a }: { s: GameState; id: string; a: CardActions }) {
       <Row>
         <button style={btn} onClick={() => a.onGuestDetail(g.id)}>자세히</button>
         {quest && <button style={canAcceptQuest(s, quest).ok ? btnOn : btnOff} disabled={!canAcceptQuest(s, quest).ok} onClick={() => a.onQuest(quest)}>! 부탁 듣기</button>}
+        {giftCount(s) > 0 && <button style={giftOk ? btn : btnOff} disabled={!giftOk} onClick={() => setPicking(true)} aria-label="선물하기">🎁 선물하기{giftedToday(s) ? ' (내일)' : ''}</button>}
       </Row>
+      {picking && (
+        <Popup title={`${guestName(g)}에게 선물`} onBackdrop={() => setPicking(false)} buttons={<button style={brownBtn} onClick={() => setPicking(false)}>닫기</button>}>
+          {gifts.map((x) => {
+            const can = canGiveGift(s, g.id, x.id);
+            const fit = giftFits(x, g.type);
+            return (
+              <button key={x.id} style={{ ...(can.ok ? brownBtn : brownBtnOff), width: '100%', marginRight: 0, textAlign: 'left' }} disabled={!can.ok} data-testid={`gift-${x.id}`}
+                onClick={() => { setPicking(false); dispatch({ type: 'giveGift', guestId: g.id, itemId: x.id }); }}>
+                {x.name} ×{s.inventory[x.id]}{fit ? ' ★ 잘 맞아요 (×2)' : ''}
+              </button>
+            );
+          })}
+        </Popup>
+      )}
       {quest && <div style={{ ...small, marginTop: 6 }}>부탁: {questDef(quest).description}</div>}
     </div>
   );
@@ -188,6 +206,7 @@ function BusStopCard({ s, id }: { s: GameState; id: string }) {
   const o = s.objects[id];
   const name = o ? objectDef(o.type).name : '정류장';
   const nextBus = (() => {
+    if (!s.tourBus) return '계약 없음 (투자 창)';
     const { day, hour } = s.clock;
     if (isBusDay(day) && hour < BUS_HOUR) return `오늘 ${BUS_HOUR}시`;
     for (let d = 1; d <= 7; d++) if (isBusDay(((day - 1 + d) % 30) + 1)) return d === 1 ? `내일 ${BUS_HOUR}시` : `${d}일 뒤 ${BUS_HOUR}시`;
