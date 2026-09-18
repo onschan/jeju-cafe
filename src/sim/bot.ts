@@ -3,7 +3,7 @@
  *
  * v3 전략 (목표 체인을 따라간다):
  * - 시작 상태(테이블 2 + 파라솔 1 + 올렛길 + 메뉴 3종 + 후보 2명)에서 출발. 가로 올렛길(y=4)을 깔고 테이블을 한 달에 4개씩 16개까지 늘린다.
- * - 첫날 후보 중 미소 최고를 홀로 채용. 2달째 전단 공고 → 기술 최고를 바리스타. 2년차에 요리사.
+ * - 첫날 후보 중 미소 최고를 홀로 채용. 2달째 전단 공고 → 기술 최고를 바리스타. 1년차 7월에 요리사, 2년차부터 빈 슬롯(2 + 년차 명까지).
  * - 열린 시설(감귤나무·화분·벤치·돌담·당근밭…)을 정해진 칸에 하나씩 놓는다. 시설 수 목표를 밀어 준다.
  * - 홍보가 열리면 돈 500만 넘고 기력 60 넘는 직원이 있을 때 전단 (한 달에 한 번).
  * - 필지 구매가 열리면 돈 800만 넘을 때 살 수 있는 필지를 산다. 바위 치우기가 열리면 소유 필지의 작은 바위를 한 달에 하나.
@@ -20,13 +20,16 @@ import { DAY_MS } from './clock.ts';
 import { canPlace, objectAt, cellAt } from './grid.ts';
 import { START_ORIGIN } from './layout.ts';
 import { objectDef } from '../data/index.ts';
-import { DEVELOP_RESEARCH } from './craft.ts';
+import { DEVELOP_RESEARCH, menuOf } from './craft.ts';
 import { canDrawTicket, hasFreeDraw } from './shop.ts';
 import { MAX_BUILDERS } from './build.ts';
 import { canUseItem } from './items.ts';
 import { isWeekend, canOpenPopup, bestRegion } from './popup.ts';
-import { featureOpen } from './goals.ts';
+import { featureOpen, currentGoal } from './goals.ts';
 import { canBuyParcel, ownedParcels } from './parcels.ts';
+import { canInvestSpot } from './spots.ts';
+import { SPOTS } from '../data/index.ts';
+import { canHire } from './staff.ts';
 import type { Candidate, RoleId, StatKey } from './types.ts';
 
 export interface BotRow {
@@ -61,16 +64,33 @@ export const BOT_DECO_CELLS: { x: number; y: number }[] = [at(6, 6), at(7, 6), a
 /** 시설 수 목표를 위해 놓는 시설 종류 (열린 것만, 이 순서로 하나씩) */
 export const BOT_DECO_TYPES = ['tangerine_tree', 'deco_planter', 'deco_wood_bench', 'terrace_seat', 'deco_flower_pots', 'bench_stonewall', 'canola', 'restroom', 'tangerine_tree', 'carrot_field', 'vending', 'handdrip_bar', 'souvenir', 'dolhareubang', 'pampas', 'bike_rack', 'deco_lamp_post', 'cedar', 'basalt_rock', 'tangerine_tree', 'carrot_field', 'deco_mailbox', 'deco_water_jar_set'];
 export const BOT_WALLS: { x: number; y: number }[] = [at(5, 5), at(6, 5)];
-export const FLYER_MIN_MONEY = 5_000_000;
+export const FLYER_MIN_MONEY = 1_000_000;
+/** 돈이 이만큼 넘으면 SNS 홍보도 (연구 20) */
+export const SNS_MIN_MONEY = 4_000_000;
 export const FLYER_MIN_ENERGY = 60;
 export const PARTTIME_MAX_MONEY = 2_000_000;
 export const BOT_PARCEL_MIN_MONEY = 8_000_000;
 export const BOT_DEVELOP_INGREDIENTS = ['beans', 'milk'];
 export const BOT_WORKER_MILEAGE = 3;
 export const BOT_POPUP_MIN_MONEY = 5_000_000;
-export const BOT_COOK_YEAR = 2;
+/** 요리사는 1년차 7월(5달째)부터 — §4.6 1년차 말 직원 3 */
+export const BOT_COOK_MONTHS = 4;
 export const BOT_TABLES_PER_MONTH = 4;
-export const BOT_RECIPES = 3;
+export const BOT_RECIPES = 5;
+/** 2년차부터 빈 직원 슬롯을 채운다 (돈 이만큼 넘을 때) — §4.6 직원 3 → 5 → 8 */
+export const BOT_HIRE_MIN_MONEY = 5_000_000;
+export const BOT_HIRE_YEAR = 2;
+export const BOT_HIRE_ORDER: RoleId[] = ['hall', 'barista', 'cook', 'carry', 'guide'];
+/** 관광지 투자: 돈이 다음 레벨 비용 + 여유분을 넘으면 (§4.6 투자 규칙) */
+export const BOT_SPOT_RESERVE = 3_000_000;
+/** 3년차부터는 2,000만을 남기고 투자한다 (3년차 말 자금 3,000만~4,500만 밴드 §4.6) */
+export const BOT_RESERVE_YEAR3 = 20_000_000;
+/** 4년차 전엔 관광지 Lv3까지만 (Lv4·5는 350만~1,000만/회) */
+export const BOT_SPOT_MAX_LEVEL_EARLY = 3;
+/** 직원 수 상한 = 2 + 년차 (2년차 4 · 3년차 5 · 6년차 8) */
+export const BOT_STAFF_PER_YEAR = 1;
+export const BOT_STAFF_BASE = 2;
+export const BOT_SPOT_YEAR = 2;
 const WORKER_IDS = ['ms_worker_3', 'ms_worker_4', 'ms_worker_5'];
 
 function countKind(s: GameState, kind: string): number {
@@ -104,6 +124,15 @@ function setMenuIfEmpty(s: GameState, slot: number, menuId: string): void {
   if (s.menuSlots[slot] === null && !s.menuSlots.includes(menuId)) apply(s, { type: 'setSlot', slot, menuId });
 }
 
+/** 요리사가 있으면 3번 칸(감귤주스 자리)에 열린 디저트·식사 중 가장 비싼 것 — 요리사 월급값을 하게 (한 번 올리면 유지) */
+export const BOT_DESSERT_SLOT = 2;
+function pickDessert(s: GameState): void {
+  if (!hasRole(s, 'cook')) return;
+  const food = s.unlocked.menus.filter((id) => { const m = menuOf(s, id); return m.category !== 'drink'; }).sort((a, b) => menuOf(s, b).price - menuOf(s, a).price)[0];
+  if (!food || s.menuSlots.includes(food)) return;
+  apply(s, { type: 'setSlot', slot: BOT_DESSERT_SLOT, menuId: food });
+}
+
 /** 열린 시설을 정해진 칸에 하나씩 (이미 놓은 종류 수만큼 건너뛴다) */
 function placeDecos(s: GameState): void {
   const placed = new Set(Object.values(s.objects).filter((o) => BOT_DECO_CELLS.some((c) => c.x === o.x && c.y === o.y)).map((o) => `${o.x},${o.y}`));
@@ -112,16 +141,50 @@ function placeDecos(s: GameState): void {
     const cell = BOT_DECO_CELLS[i];
     if (!cell) return;
     if (!s.unlocked.objects.includes(type)) return; // 아직 안 열린 것부터는 다음 달에
-    if (s.money < objectDef(type).cost + 1_000_000) return;
+    if (!canSpend(s, objectDef(type).cost)) return;
     if (place(s, type, cell.x, cell.y)) i++;
     else return;
+  }
+}
+
+/** §4.6 투자 규칙의 여유분: 다음 목표가 "자금 N"이고 N의 80%를 모았으면 N + 300만(목표까지 저축), 아니면 300만(성장 투자). 이만큼은 남기고 쓴다. */
+export const BOT_SAVE_RATIO = 0.8;
+export function botReserve(s: GameState): number {
+  const g = currentGoal(s);
+  const goalMoney = g?.condition.type === 'money' && s.money >= g.condition.n * BOT_SAVE_RATIO ? g.condition.n : 0;
+  return Math.max(goalMoney + BOT_SPOT_RESERVE, s.clock.year >= 3 ? BOT_RESERVE_YEAR3 : 0);
+}
+/** 여유분을 남기고 cost를 쓸 수 있나 */
+function canSpend(s: GameState, cost: number): boolean {
+  return s.money - cost >= botReserve(s);
+}
+
+/** 2년차부터: 빈 슬롯(홀 → 바리스타 → 요리사 → 운반 → 안내)이 있고 돈이 넉넉하면 전단 공고 → 핵심 스탯 최고를 채용 (한 달 한 명) */
+function hireForFreeSlot(s: GameState): void {
+  if (s.clock.year < BOT_HIRE_YEAR || !canSpend(s, BOT_HIRE_MIN_MONEY) || s.staff.length >= BOT_STAFF_BASE + BOT_STAFF_PER_YEAR * s.clock.year) return;
+  for (const role of BOT_HIRE_ORDER) {
+    if (!s.unlocked.roles.includes(role) || s.staff.filter((st) => st.role === role).length >= (s.slots[role] ?? 0)) continue;
+    if (s.candidates.length === 0 && !apply(s, { type: 'postJob', tier: 'flyer' }).ok) return;
+    const c = s.candidates.find((x) => canHire(s, x.id, role).ok);
+    if (c && apply(s, { type: 'hire', candidateId: c.id, role }).ok) return;
+  }
+}
+
+/** 2년차부터: 투자할 수 있는 관광지 중 다음 레벨 비용 + 여유 300만이 있으면 하나 (한 달 하나) */
+function investSpotIfAny(s: GameState): void {
+  if (s.clock.year < BOT_SPOT_YEAR) return;
+  for (const def of SPOTS) {
+    const next = canInvestSpot(s, def.id);
+    if (!next.ok || (s.clock.year < 4 && (s.spots[def.id] ?? 0) >= BOT_SPOT_MAX_LEVEL_EARLY)) continue;
+    const cost = def.levels.find((l) => l.level === (s.spots[def.id] ?? 0) + 1)?.cost ?? Infinity;
+    if (canSpend(s, cost) && apply(s, { type: 'investSpot', id: def.id }).ok) return;
   }
 }
 
 /** 열린 필지 중 살 수 있는 것을 하나 산다 */
 function buyParcelIfAny(s: GameState): void {
   if (!featureOpen(s, 'parcel') || s.money < BOT_PARCEL_MIN_MONEY) return;
-  for (const p of s.parcels) if (!p.owned && canBuyParcel(s, p.id).ok && apply(s, { type: 'buyParcel', id: p.id }).ok) return;
+  for (const p of s.parcels) if (!p.owned && canBuyParcel(s, p.id).ok && canSpend(s, p.price) && apply(s, { type: 'buyParcel', id: p.id }).ok) return;
 }
 
 /** 소유 필지의 작은 바위를 하나 치운다 (덤불도) */
@@ -144,17 +207,21 @@ function monthlyPlan(s: GameState, monthsPlayed: number): void {
   let added = 0;
   for (const p of BOT_TABLES) { if (added >= BOT_TABLES_PER_MONTH) break; if (!objectAt(s, p.x, p.y) && place(s, 'table_out', p.x, p.y)) added++; }
   setMenuIfEmpty(s, 3, 'green_tea');
+  pickDessert(s);
 
   // 첫 달: 후보 중 미소 최고를 홀로. 2달째: 전단 공고 → 기술 최고를 바리스타
   if (monthsPlayed === 0 && s.staff.length === 0) hireBest(s, 'smile', 'hall');
   if (monthsPlayed === 1 && !hasRole(s, 'barista') && apply(s, { type: 'postJob', tier: 'flyer' }).ok) hireBest(s, 'skill', 'barista');
-  // 2년차: 요리사까지 3명
-  if (s.clock.year >= BOT_COOK_YEAR && !hasRole(s, 'cook') && s.staff.length === 2 && apply(s, { type: 'postJob', tier: 'flyer' }).ok) hireBest(s, 'skill', 'cook');
+  // 1년차 7월: 요리사까지 3명, 2년차부터 빈 슬롯을 채운다 (§4.6: 3년차 5명)
+  if (monthsPlayed >= BOT_COOK_MONTHS && !hasRole(s, 'cook') && s.staff.length === 2 && s.money >= BOT_HIRE_MIN_MONEY && apply(s, { type: 'postJob', tier: 'flyer' }).ok) hireBest(s, 'skill', 'cook');
+  else hireForFreeSlot(s);
 
-  // 돈이 넉넉하면 전단 돌리기 (한 달에 한 번)
+  // 홍보: 매달 전단 (돈 100만 넘고 기력 60 넘는 직원), 돈 400만 넘으면 SNS도 — 인기가 손님 수를 정하므로 (§4.2 #1) 꾸준히
   if (featureOpen(s, 'promote') && s.money > FLYER_MIN_MONEY) {
     const st = s.staff.find((x) => x.role !== null && x.energy > FLYER_MIN_ENERGY);
     if (st) apply(s, { type: 'promote', staffId: st.id, promotionId: 'flyer' });
+    const st2 = s.staff.find((x) => x.role !== null && x.energy > FLYER_MIN_ENERGY);
+    if (st2 && s.money > SNS_MIN_MONEY) apply(s, { type: 'promote', staffId: st2.id, promotionId: 'sns' });
   }
 
   // 상점: 마일리지 3 이상이면 일꾼 삼춘, 무료 인형뽑기, 아이템은 야외 테이블에
@@ -167,6 +234,7 @@ function monthlyPlan(s: GameState, monthsPlayed: number): void {
   placeDecos(s);
   if (countKind(s, 'wall') < BOT_WALLS.length) for (const p of BOT_WALLS) place(s, 'stonewall', p.x, p.y);
   buyParcelIfAny(s);
+  investSpotIfAny(s);
   clearOneRock(s);
 }
 
