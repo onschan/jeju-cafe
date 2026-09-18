@@ -91,9 +91,9 @@ test('메뉴 원가는 가격의 50% 미만', () => {
   }
 });
 
-test('역할 5, 스킬 20, 홍보 6, 이름 60', () => {
-  expect(ROLES.length).toBe(5);
-  expect(SKILLS.length).toBe(20);
+test('역할 8, 스킬 30, 홍보 6, 이름 60', () => {
+  expect(ROLES.length).toBe(8);
+  expect(SKILLS.length).toBe(30);
   expect(PROMOTIONS.length).toBe(6);
   expect(NAMES.names.length).toBeGreaterThanOrEqual(60);
 });

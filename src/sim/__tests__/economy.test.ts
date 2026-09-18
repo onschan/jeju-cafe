@@ -101,13 +101,13 @@ test('월말 카드에 수입·재료비·월급·광고·유지비·순이익�
 
 test('공고비·퇴직금은 카드의 recruit에 잡히고 순이익에서 빠진다', () => {
   const s = bareState(1);
-  apply(s, { type: 'postJob', tier: 'flyer' }); // 100만
+  apply(s, { type: 'postJob', tier: 'flyer' }); // 50만 (§3.6.6)
   apply(s, { type: 'hire', candidateId: s.candidates[0]!.id, role: 'hall' });
   const severance = s.staff[0]!.salary;
   apply(s, { type: 'fire', staffId: s.staff[0]!.id });
   for (let i = 0; i < 30; i++) tick(s, DAY_MS);
   const c = s.lastMonthCard!;
-  expect(c.costs.recruit).toBe(1_000_000 + severance);
-  expect(c.net).toBe(c.income - c.costs.ingredients - c.costs.salary - c.costs.ads - c.costs.upkeep - 1_000_000 - severance);
+  expect(c.costs.recruit).toBe(500_000 + severance);
+  expect(c.net).toBe(c.income - c.costs.ingredients - c.costs.salary - c.costs.ads - c.costs.upkeep - 500_000 - severance);
   expect(s.monthCosts.recruit).toBe(0);
 });

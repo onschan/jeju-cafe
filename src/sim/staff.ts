@@ -1,17 +1,14 @@
-import type { GameState, ApplyResult, Candidate, Staff, Stats, StatKey, RoleId, JobTier, SkillEffect, Pt } from './types.ts';
-import { NAMES, SKILLS, roleDef, skillDef, objectDef } from '../data/index.ts';
-import { nextRandom, randInt, pickWeighted } from './rng.ts';
+import type { GameState, ApplyResult, Candidate, Staff, Stats, StatKey, RoleId, JobTier, SkillEffect, Pt, StaffPoolDef, RecruitTierDef } from './types.ts';
+import { RECRUIT_TIERS, STAFF_POOL, roleDef, skillDef, objectDef, staffPoolDef, recruitTierDef, ROLES } from '../data/index.ts';
+import { randInt, pickWeighted } from './rng.ts';
 import { monthIndex } from './clock.ts';
 import { isWalkable, findPath, walkableNeighborsOf, moveAlong } from './path.ts';
 import { WAREHOUSE_FRONT } from './layout.ts';
 
-export const TIERS: Record<JobTier, { cost: number; count: number; min: number; max: number }> = {
-  flyer: { cost: 1_000_000, count: 3, min: 10, max: 40 },
-  site: { cost: 5_000_000, count: 4, min: 30, max: 60 },
-  headhunter: { cost: 20_000_000, count: 5, min: 50, max: 80 },
-};
-export const MAX_LEVEL = 10;
-export const MAX_STAT = 99;
+/** 채용 방법 5단계 (recruit_tiers.json, §3.6.6). id → 정의 */
+export const TIERS: Record<JobTier, RecruitTierDef> = Object.fromEntries(RECRUIT_TIERS.map((t) => [t.id, t])) as Record<JobTier, RecruitTierDef>;
+export const MAX_LEVEL = 12;            // 절대 상한 (특수 직원). 실제 상한은 staff.maxLevel (5~12)
+export const MAX_STAT = 145;            // 절대 상한 (특수 120 + 유니폼 +25). 실제 상한은 capOf
 export const ENERGY_PER_HOUR = 2;       // 배치된 직원 시간당 기력 소모 (하루 18h = −36, 밤 +40)
 export const LOW_ENERGY = 30;          // 미만이면 효과 절반
 export const NIGHT_ENERGY_RECOVERY = 40;
@@ -20,23 +17,93 @@ export { WAREHOUSE_FRONT };
 export const STAT_KEYS: StatKey[] = ['stamina', 'strength', 'skill', 'smile'];
 export const STAT_NAME: Record<StatKey, string> = { stamina: '체력', strength: '힘', skill: '기술', smile: '미소' };
 
+// ---------- 슬롯 (§3.6.1: 기본 3 + 휴게실 1개당 +3, 휴게실 최대 3) ----------
+export const BASE_STAFF_SLOTS = 3;
+export const SLOTS_PER_STAFF_ROOM = 3;
+export const MAX_STAFF_ROOMS = 3;
+export const STAFF_ROOM_TYPE = 'staff_room'; // A가 만드는 시설 id. 없으면 0개.
+
+/** 다 지어진 휴게실 수 (최대 3) */
+export function staffRoomCount(state: GameState): number {
+  let n = 0;
+  for (const o of Object.values(state.objects)) if (o.type === STAFF_ROOM_TYPE && !o.build) n++;
+  return Math.min(MAX_STAFF_ROOMS, n);
+}
+/** 전체 직원 정원 = 3 + 휴게실 × 3 (직종별 자리 state.slots는 그 안에서 따로 센다) */
+export function staffCapacity(state: GameState): number {
+  return BASE_STAFF_SLOTS + SLOTS_PER_STAFF_ROOM * staffRoomCount(state);
+}
+
 // ---------- 공식 ----------
 
-/** 월급 = 스탯 합 × 3,000 + 레벨 × 200,000 (GDD 40만~220만). 연차 인상은 없다 — 레벨업(스탯·레벨)으로만 오른다 (QA 1차 #13: 레벨당 50만은 4명이면 16테이블로도 적자). */
-export const SALARY_PER_STAT = 3000;
-export const SALARY_PER_LEVEL = 200_000;
-export function salaryOf(stats: Stats, level: number): number {
-  return STAT_KEYS.reduce((s, k) => s + stats[k], 0) * SALARY_PER_STAT + level * SALARY_PER_LEVEL;
+/** 월급 = 기본급 × (1 + 0.15 × (Lv − 1)) + 스탯 합 × 1,000원 (§3.6.3). 배치 안 된 직원은 payroll에서 50%.
+ *  TODO(x-econ): economy.ts의 salaryOf로 교체 (E가 급여 인상 누적을 얹는다) */
+export const SALARY_LEVEL_STEP = 0.15;
+export const SALARY_PER_STAT = 1000;
+export const UNASSIGNED_SALARY_RATIO = 0.5;
+export function salaryOf(staff: { baseSalary: number; level: number; stats: Stats }): number {
+  const statSum = STAT_KEYS.reduce((s, k) => s + staff.stats[k], 0);
+  return Math.round(staff.baseSalary * (1 + SALARY_LEVEL_STEP * (staff.level - 1)) + statSum * SALARY_PER_STAT);
+}
+/** 이달 실제로 나가는 월급 (쉬는 직원 50%, 연수 중은 그대로) */
+export function salaryDue(staff: Staff): number {
+  return staff.role === null && !staff.training ? Math.round(staff.salary * UNASSIGNED_SALARY_RATIO) : staff.salary;
 }
 
-/** 레벨업 비용 = 현재 스탯값 × 10 연구P (HSS2식) */
-export function levelUpCost(staff: Staff, stat: StatKey): number {
-  return staff.stats[stat] * 10;
+// ---------- 스탯 상한 (§3.6.2: 스탯별 상한 + 유니폼 1벌당 전 직원 +5, 최대 +25) ----------
+export const CAP_PER_UNIFORM = 5;
+export const CAP_BONUS_MAX = 25;
+export function capBonus(state: GameState): number {
+  return Math.min(CAP_BONUS_MAX, CAP_PER_UNIFORM * state.uniforms.length);
+}
+export function capOf(state: GameState, staff: { statCaps: Stats }, stat: StatKey): number {
+  return Math.min(MAX_STAT, staff.statCaps[stat] + capBonus(state));
+}
+/** 스탯을 상한 안에서 더한다. 실제로 오른 양. */
+export function addStat(state: GameState, staff: Staff, stat: StatKey, delta: number): number {
+  const before = staff.stats[stat];
+  staff.stats[stat] = Math.max(0, Math.min(capOf(state, staff, stat), before + delta));
+  return staff.stats[stat] - before;
 }
 
-/** 그 역할에 배치된 직원 (메뉴 개발 중인 직원은 바빠서 빠진다) */
+// ---------- 승급 (§3.6.3: 경험치 ≥ 120×Lv 그리고 연구 20×Lv) ----------
+export const EXP_PER_LEVEL = 120;
+export const RESEARCH_PER_LEVEL = 20;
+export const EXP_PER_WORKDAY = 1;
+export const EXP_PER_SERVE = 0.2;
+export const LEVEL_MAIN_STAT = 3;
+export const LEVEL_SUB_STAT = 1;
+export const expNeeded = (level: number) => EXP_PER_LEVEL * level;
+export const levelUpCost = (level: number) => RESEARCH_PER_LEVEL * level;
+
+/** 승급 때 +3 받는 주 스탯: 맡은 직종의 스탯, 쉬는 중이면 상한이 가장 높은 스탯 */
+export function mainStatOf(staff: Staff): StatKey {
+  if (staff.role) return roleDef(staff.role).stat;
+  return [...STAT_KEYS].sort((a, b) => staff.statCaps[b] - staff.statCaps[a])[0]!;
+}
+
+/** 서빙·조리 1건마다 그 직종 직원에게 경험치 +0.2 (E: guests.ts에서 손님이 메뉴를 받을 때 호출) */
+export function addRoleExp(state: GameState, role: RoleId, amount = EXP_PER_SERVE): void {
+  for (const st of staffInRole(state, role)) st.exp += amount;
+}
+
+/** 새 날: 배치된(연수 중 아닌) 직원은 근무일 경험치 +1 */
+export function dailyWorkExp(state: GameState): void {
+  for (const st of state.staff) if (st.role !== null && !st.training) st.exp += EXP_PER_WORKDAY;
+}
+
+// ---------- 특기 ----------
+
+export function skillsOf(staff: { skill: string; extraSkills?: string[] }): string[] {
+  return [staff.skill, ...(staff.extraSkills ?? [])];
+}
+export function hasSkill(staff: { skill: string; extraSkills?: string[] }, skillId: string): boolean {
+  return skillsOf(staff).includes(skillId);
+}
+
+/** 그 역할에 배치된 직원 (메뉴 개발 중·연수 중인 직원은 빠진다) */
 export function staffInRole(state: GameState, role: RoleId): Staff[] {
-  return state.staff.filter((s) => s.role === role && state.developing?.staffId !== s.id);
+  return state.staff.filter((s) => s.role === role && !s.training && state.developing?.staffId !== s.id);
 }
 
 /** 기력이 낮으면 효과 절반 */
@@ -44,12 +111,16 @@ export function energyFactor(staff: Staff): number {
   return staff.energy < LOW_ENERGY ? 0.5 : 1;
 }
 
-function skillValue(staff: Staff, type: SkillEffect['type']): number {
-  const e = skillDef(staff.skill).effect;
-  return e.type === type && 'value' in e ? e.value : 0;
+function skillValue(staff: { skill: string; extraSkills?: string[] }, type: SkillEffect['type']): number {
+  let v = 0;
+  for (const id of skillsOf(staff)) {
+    const e = skillDef(id).effect;
+    if (e.type === type && 'value' in e) v += e.value;
+  }
+  return v;
 }
 
-/** 특정 스킬 효과 값의 합. role을 주면 그 역할 직원만. */
+/** 특정 스킬 효과 값의 합 (타고난 특기 + 연수로 얻은 특기). role을 주면 그 역할 직원만. */
 export function skillTotal(state: GameState, type: SkillEffect['type'], role?: RoleId): number {
   return state.staff.reduce((s, st) => s + (role === undefined || st.role === role ? skillValue(st, type) : 0), 0);
 }
@@ -65,23 +136,123 @@ export function ingredientDiscount(state: GameState): number {
   return Math.min(0.3, roleEffect(state, 'carry') / 500 + skillTotal(state, 'ingredientDiscount'));
 }
 
-// ---------- 공고·후보 ----------
+// ---------- 신설 직종 효과 훅 (§3.6.1) — A(청결)·농원 수확·홍보가 곱한다 ----------
 
-export function generateCandidate(state: GameState, tier: JobTier): Candidate {
-  const t = TIERS[tier];
-  const stats: Stats = { stamina: 0, strength: 0, skill: 0, smile: 0 };
-  for (const k of STAT_KEYS) stats[k] = randInt(state, t.min, t.max);
-  const name = pickWeighted(state, NAMES.names, () => 1)!;
-  const skill = pickWeighted(state, SKILLS, () => 1)!.id;
-  const face = { hair: randInt(state, 0, NAMES.hair - 1), skin: randInt(state, 0, NAMES.skin - 1), top: randInt(state, 0, NAMES.top - 1) };
-  return { id: `c${state.nextId++}`, name, face, stats, skill, level: 1, salary: salaryOf(stats, 1), expiresMonthIndex: monthIndex(state.clock) + 1 };
+/** 청소 직원의 하루 청결 회복량 = Σ(기술÷5 + 힘÷10) × 기력 계수 × (1 + 청소 달인). 청소 직원이 없으면 0. */
+export function cleanPowerOf(state: GameState): number {
+  const base = staffInRole(state, 'clean').reduce((s, st) => s + (st.stats.skill / 5 + st.stats.strength / 10) * energyFactor(st), 0);
+  return base * (1 + skillTotal(state, 'cleanBonus', 'clean'));
+}
+export const GARDEN_BONUS_PER_STAFF = 0.5;
+export const GARDEN_STAFF_MAX = 2;
+export const GARDEN_DECAY_FACTOR = 0.5;
+/** 농원 수확 배수 = 1 + 0.5 × 농원지기 수(최대 2) + 농원지기 특기 합. 없으면 1. */
+export function gardenBonusOf(state: GameState): number {
+  const n = Math.min(GARDEN_STAFF_MAX, staffInRole(state, 'garden').length);
+  return 1 + GARDEN_BONUS_PER_STAFF * n + skillTotal(state, 'harvestBonus');
+}
+/** 농원 시설 노후 배수: 농원지기가 있으면 0.5 (A의 upgrade/노후가 곱한다) */
+export function gardenDecayOf(state: GameState): number {
+  return staffInRole(state, 'garden').length > 0 ? GARDEN_DECAY_FACTOR : 1;
+}
+export const PROMO_EFFECT_BONUS = 1.2;
+export const PROMO_ENERGY_FACTOR = 0.5;
+/** 홍보 효과 배수: 홍보 담당이 있으면 1.2 */
+export function promoBonusOf(state: GameState): number {
+  return staffInRole(state, 'promo').length > 0 ? PROMO_EFFECT_BONUS : 1;
+}
+/** 홍보 활동 기력 소모 배수: 홍보 담당이 있으면 0.5 */
+export function promoEnergyFactorOf(state: GameState): number {
+  return staffInRole(state, 'promo').length > 0 ? PROMO_ENERGY_FACTOR : 1;
+}
+
+/** 내 필지에 다 지어진, 수확 있는 농원 시설 수 — 농원지기 해금 조건 */
+export function farmCount(state: GameState): number {
+  let n = 0;
+  for (const o of Object.values(state.objects)) {
+    if (objectDef(o.type).yield === undefined || o.build) continue;
+    if (state.parcels.some((p) => p.owned && o.x >= p.x && o.y >= p.y && o.x < p.x + p.w && o.y < p.y + p.h)) n++;
+  }
+  return n;
+}
+/** 직종 해금 조건 (staff_roles.json unlock). goal 조건은 B의 목표 보상 unlockRole이 연다. */
+export function roleUnlockMet(state: GameState, role: RoleId): boolean {
+  const def = roleDef(role);
+  if (def.unlockedAtStart) return true;
+  const u = def.unlock;
+  if (!u || u.goal !== undefined) return false;
+  if (u.farms !== undefined && farmCount(state) < u.farms) return false;
+  if (u.rank !== undefined && state.rank < u.rank) return false;
+  return true;
+}
+/** 새 날: 조건형 직종(농원지기 = 농원 3개, 홍보 담당 = 랭크 4)을 연다 */
+export function checkRoleUnlocks(state: GameState): void {
+  for (const r of ROLES) {
+    if (state.unlocked.roles.includes(r.id) || !r.unlock || r.unlock.goal !== undefined) continue;
+    if (roleUnlockMet(state, r.id)) {
+      state.unlocked.roles.push(r.id);
+      pushNotice(state, `새 직종: ${r.name}`);
+    }
+  }
+}
+
+// ---------- 공고·후보 (§3.6.2 직원 풀 27 · §3.6.6 채용 5단계) ----------
+
+function candidateOf(state: GameState, def: StaffPoolDef): Candidate {
+  const stats: Stats = { ...def.stats };
+  return {
+    id: `c${state.nextId++}`, poolId: def.id, name: def.name, face: { ...def.face }, stats, statCaps: { ...def.statCaps }, skill: def.skill,
+    level: 1, maxLevel: def.maxLevel, baseSalary: def.baseSalary, salary: salaryOf({ baseSalary: def.baseSalary, level: 1, stats }),
+    expiresMonthIndex: monthIndex(state.clock) + 1,
+  };
+}
+
+/** 지금 우리 직원이거나 후보로 와 있는 풀 id */
+function takenPoolIds(state: GameState): Set<string> {
+  return new Set([...state.staff.map((s) => s.poolId), ...state.candidates.map((c) => c.poolId)]);
+}
+
+/** 그 단계 풀에서 아직 없는 사람 */
+export function availablePool(state: GameState, tier: number): StaffPoolDef[] {
+  const taken = takenPoolIds(state);
+  return STAFF_POOL.filter((p) => p.tier === tier && !taken.has(p.id));
+}
+
+/** 그 단계 풀에서 n명을 무작위로 뽑아 후보로 (state.rng, 결정적). 뽑힌 수. */
+export function drawCandidates(state: GameState, tier: JobTier, n: number): number {
+  const pool = availablePool(state, TIERS[tier].tier);
+  let got = 0;
+  for (let i = 0; i < n && pool.length > 0; i++) {
+    const def = pickWeighted(state, pool, () => 1)!;
+    pool.splice(pool.indexOf(def), 1);
+    state.candidates.push(candidateOf(state, def));
+    got++;
+  }
+  return got;
+}
+
+/** 특수 직원(tier 0)을 후보로 부른다 (C: 소라 등 아이템). 이미 있으면 false. */
+export function addPoolCandidate(state: GameState, poolId: string): boolean {
+  if (takenPoolIds(state).has(poolId)) return false;
+  state.candidates.push(candidateOf(state, staffPoolDef(poolId)));
+  return true;
 }
 
 /** 공고비 (스카우트권이 있으면 무료) */
 export function postJobCost(state: GameState, tier: JobTier): number {
   return state.freeRecruits > 0 ? 0 : TIERS[tier].cost;
 }
+export function tierUnlocked(state: GameState, tier: JobTier): boolean {
+  const u = TIERS[tier].unlock;
+  if (!u) return true;
+  if (u.star !== undefined && state.star < u.star) return false;
+  if (u.rank !== undefined && state.rank < u.rank) return false;
+  return true;
+}
 export function canPostJob(state: GameState, tier: JobTier): ApplyResult {
+  if (!TIERS[tier]) return { ok: false, reason: '없는 채용 방법이에요' };
+  if (!tierUnlocked(state, tier)) return { ok: false, reason: `★${TIERS[tier].unlock?.star ?? ''}부터 할 수 있어요` };
+  if (availablePool(state, TIERS[tier].tier).length === 0) return { ok: false, reason: '이 방법으로 올 사람은 다 왔어요' };
   if (state.money < postJobCost(state, tier)) return { ok: false, reason: '돈이 모자라요' };
   return { ok: true };
 }
@@ -92,7 +263,7 @@ export function postJob(state: GameState, tier: JobTier): void {
   if (cost === 0 && state.freeRecruits > 0) state.freeRecruits -= 1;
   state.money -= cost;
   state.monthCosts.recruit += cost;
-  for (let i = 0; i < t.count; i++) state.candidates.push(generateCandidate(state, tier));
+  drawCandidates(state, tier, t.count);
 }
 
 /** 월초: 지난달 후보를 지운다. */
@@ -101,16 +272,17 @@ export function expireCandidates(state: GameState): void {
   state.candidates = state.candidates.filter((c) => c.expiresMonthIndex > now);
 }
 
-// ---------- 채용·해고·배치·레벨업 ----------
+// ---------- 채용·해고·배치·승급 ----------
 
 function roleOpen(state: GameState, role: RoleId): ApplyResult {
-  if (!state.unlocked.roles.includes(role)) return { ok: false, reason: '아직 없는 역할이에요' };
-  if (staffInRole(state, role).length >= state.slots[role]) return { ok: false, reason: '자리가 다 찼어요' };
+  if (!state.unlocked.roles.includes(role)) return { ok: false, reason: '아직 없는 직종이에요' };
+  if (staffInRole(state, role).length >= (state.slots[role] ?? 0)) return { ok: false, reason: '자리가 다 찼어요' };
   return { ok: true };
 }
 
 export function canHire(state: GameState, candidateId: string, role: RoleId): ApplyResult {
   if (!state.candidates.some((c) => c.id === candidateId)) return { ok: false, reason: '없는 후보예요' };
+  if (state.staff.length >= staffCapacity(state)) return { ok: false, reason: `직원은 ${staffCapacity(state)}명까지 (휴게실을 지으면 +3)` };
   return roleOpen(state, role);
 }
 
@@ -119,7 +291,8 @@ export function hire(state: GameState, candidateId: string, role: RoleId): Staff
   state.candidates = state.candidates.filter((x) => x.id !== candidateId);
   const front = warehouseFront(state);
   const staff: Staff = {
-    id: c.id, name: c.name, face: c.face, stats: c.stats, skill: c.skill, level: c.level, salary: c.salary,
+    id: c.id, poolId: c.poolId, name: c.name, face: c.face, stats: c.stats, statCaps: c.statCaps, skill: c.skill, extraSkills: [],
+    level: c.level, maxLevel: c.maxLevel, baseSalary: c.baseSalary, salary: c.salary, exp: 0, trainingCount: 0, training: null,
     role, unpaidMonths: 0, energy: 100, lastParttimeMonthIndex: -1, x: front.x, y: front.y, path: [], anchor: null, waitMs: 0,
   };
   staff.anchor = staffAnchor(state, staff);
@@ -133,8 +306,10 @@ export function findStaff(state: GameState, staffId: string): Staff | undefined 
 
 /** 해고: 퇴직금으로 한 달 월급을 준다. */
 export function canFire(state: GameState, staffId: string): ApplyResult {
-  if (!findStaff(state, staffId)) return { ok: false, reason: '없는 직원이에요' };
+  const st = findStaff(state, staffId);
+  if (!st) return { ok: false, reason: '없는 직원이에요' };
   if (state.developing?.staffId === staffId) return { ok: false, reason: '메뉴 개발 중이에요' };
+  if (st.training) return { ok: false, reason: '연수 중이에요' };
   return { ok: true };
 }
 
@@ -148,6 +323,7 @@ export function fire(state: GameState, staffId: string): void {
 export function canAssign(state: GameState, staffId: string, role: RoleId | null): ApplyResult {
   const st = findStaff(state, staffId);
   if (!st) return { ok: false, reason: '없는 직원이에요' };
+  if (st.training) return { ok: false, reason: '연수 중이에요' };
   if (role === null || role === st.role) return { ok: true };
   return roleOpen(state, role);
 }
@@ -160,22 +336,24 @@ export function assign(state: GameState, staffId: string, role: RoleId | null): 
   st.anchor = staffAnchor(state, st);
 }
 
-export function canLevelUp(state: GameState, staffId: string, stat: StatKey): ApplyResult {
+export function canLevelUp(state: GameState, staffId: string): ApplyResult {
   const st = findStaff(state, staffId);
   if (!st) return { ok: false, reason: '없는 직원이에요' };
-  if (!STAT_KEYS.includes(stat)) return { ok: false, reason: '없는 스탯이에요' };
-  if (st.level >= MAX_LEVEL) return { ok: false, reason: '이미 최고 레벨이에요' };
-  if (state.research < levelUpCost(st, stat)) return { ok: false, reason: '연구 포인트가 모자라요' };
+  if (st.level >= st.maxLevel) return { ok: false, reason: '이미 최고 레벨이에요' };
+  if (st.exp < expNeeded(st.level)) return { ok: false, reason: `경험치가 모자라요 (${Math.floor(st.exp)}/${expNeeded(st.level)})` };
+  if (state.research < levelUpCost(st.level)) return { ok: false, reason: '연구 포인트가 모자라요' };
   return { ok: true };
 }
 
-/** 고른 스탯만 +5~9 (상한 99), 레벨 +1, 월급 재계산. */
-export function levelUp(state: GameState, staffId: string, stat: StatKey): void {
+/** 승급: 경험치·연구 소모, 레벨 +1, 주 스탯 +3·나머지 +1 (상한 내), 월급 재계산. */
+export function levelUp(state: GameState, staffId: string): void {
   const st = findStaff(state, staffId)!;
-  state.research -= levelUpCost(st, stat);
-  st.stats[stat] = Math.min(MAX_STAT, st.stats[stat] + randInt(state, 5, 9));
+  state.research -= levelUpCost(st.level);
+  st.exp -= expNeeded(st.level);
+  const main = mainStatOf(st);
+  for (const k of STAT_KEYS) addStat(state, st, k, k === main ? LEVEL_MAIN_STAT : LEVEL_SUB_STAT);
   st.level++;
-  st.salary = salaryOf(st.stats, st.level);
+  st.salary = salaryOf(st);
 }
 
 // ---------- 월급·기력 ----------
@@ -185,13 +363,14 @@ export function pushNotice(state: GameState, text: string): void {
   if (state.notices.length > NOTICE_CAP) state.notices.shift();
 }
 
-/** 월말: 월급 지급. 못 주면 unpaidMonths++, 2달이면 퇴사. */
+/** 월말: 월급 지급 (쉬는 직원 50%). 못 주면 unpaidMonths++, 2달이면 퇴사. */
 export function payroll(state: GameState): void {
   const keep: Staff[] = [];
   for (const st of state.staff) {
-    if (state.money >= st.salary) {
-      state.money -= st.salary;
-      state.monthCosts.salary += st.salary;
+    const due = salaryDue(st);
+    if (state.money >= due) {
+      state.money -= due;
+      state.monthCosts.salary += due;
       st.unpaidMonths = 0;
       keep.push(st);
     } else {
@@ -203,10 +382,10 @@ export function payroll(state: GameState): void {
   state.staff = keep;
 }
 
-/** 근무 1시간: 배치된 직원은 기력 −2 (튼튼함 스킬만큼 덜). */
+/** 근무 1시간: 배치된 직원은 기력 −2 (튼튼함 스킬만큼 덜). 연수 중은 안 닳는다. */
 export function hourlyEnergy(state: GameState): void {
   for (const st of state.staff) {
-    if (st.role === null) continue;
+    if (st.role === null || st.training) continue;
     st.energy = Math.max(0, st.energy - ENERGY_PER_HOUR * (1 - skillValue(st, 'stamina')));
   }
 }
@@ -278,11 +457,11 @@ function goTo(state: GameState, st: Staff, to: Pt): void {
   st.path = path ? path.slice(1) : [];
 }
 
-/** 직원 걷기. 배치된 직원은 앵커 반경 2의 걷기 칸을 1~3초마다 골라 산책. 미배치·기력 0이면 창고 앞에 선다. */
+/** 직원 걷기. 배치된 직원은 앵커 반경 2의 걷기 칸을 1~3초마다 골라 산책. 미배치·기력 0·연수 중이면 창고 앞에 선다. */
 export function moveStaff(state: GameState, dtMs: number): void {
   for (const st of state.staff) {
     if (st.path.length) { moveAlong(st, dtMs); continue; }
-    if (st.role === null || st.energy <= 0) {
+    if (st.role === null || st.energy <= 0 || st.training) {
       st.anchor = warehouseFront(state);
       goTo(state, st, st.anchor);
       continue;

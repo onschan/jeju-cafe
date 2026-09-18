@@ -10,7 +10,7 @@ test('연구 진행: 만족 손님 5명 = 연구 1, 연구원 스킬(+50%)이면
   expect(s.researchAcc).toBe(0);
   expect(addResearchProgress(s, 12)).toBe(2); // 나머지 2는 남는다
   expect(s.researchAcc).toBe(2);
-  s.staff.push({ id: 's1', name: 'a', face: { hair: 0, skin: 0, top: 0 }, stats: { stamina: 1, strength: 1, skill: 1, smile: 1 }, skill: 'researcher', level: 1, salary: 0, role: 'hall', unpaidMonths: 0, energy: 100, lastParttimeMonthIndex: -1, x: 0, y: 0, path: [], anchor: null, waitMs: 0 });
+  s.staff.push({ id: 's1', name: 'a', face: { hair: 0, skin: 0, top: 0 }, stats: { stamina: 1, strength: 1, skill: 1, smile: 1 }, skill: 'researcher', level: 1, salary: 0, poolId: '', statCaps: { stamina: 100, strength: 100, skill: 100, smile: 100 }, extraSkills: [], maxLevel: 10, baseSalary: 0, exp: 0, trainingCount: 0, training: null, role: 'hall', unpaidMonths: 0, energy: 100, lastParttimeMonthIndex: -1, x: 0, y: 0, path: [], anchor: null, waitMs: 0 });
   expect(addResearchProgress(s, 2)).toBe(1); // 2 + 2×1.5 = 5
   expect(s.researchAcc).toBe(0);
 });

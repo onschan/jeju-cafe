@@ -11,7 +11,7 @@ import { serialize, deserialize } from '../save.ts';
 describe('v3 시작 상태 (§5)', () => {
   it('본관 + 테이블 2 + 파라솔 1 + 올렛길로 정류장에서 자리에 닿고, 메뉴 3종이 올라가 있고, 후보 2명이 기다린다', () => {
     const s = createInitialState(1);
-    expect(SAVE_VERSION).toBe(15);
+    expect(SAVE_VERSION).toBe(16);
     expect(s.money).toBe(5_000_000);
     expect(hasReachableSeat(s)).toBe(true);
     const seats = Object.values(s.objects).filter((o) => objectDef(o.type).kind === 'seat');
@@ -23,7 +23,7 @@ describe('v3 시작 상태 (§5)', () => {
     expect(s.unlocked.menus).toEqual(INITIAL_UNLOCKED.menus);
     expect(s.unlocked.objects).toHaveLength(8);
     expect(s.unlocked.menus).toHaveLength(3);
-    expect(s.slots).toEqual({ barista: 1, cook: 1, hall: 2, carry: 0, guide: 0 });
+    expect(s.slots).toEqual({ barista: 1, cook: 1, hall: 2, carry: 0, guide: 0, clean: 2, garden: 2, promo: 1 });
     expect(s.storage).toEqual({});
   });
 

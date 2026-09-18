@@ -18,7 +18,8 @@ export { addResearchProgress, HAPPY_PER_RESEARCH, TASTE_MATCH_WEIGHT } from './p
 export { serialize, deserialize, MemorySaveStore, LocalSaveStore, type SaveStore } from './save.ts';
 export { freeSeats, hasReachableSeat, seatSlotPos, dailyGuestCount, spawnMultiplier, prepTimeMs, serviceBonus, isVisitable, likesFacility, spawnNamedGuest, hourlyRegulars, totalSeats, GUEST_SPEED_CELLS_PER_S, SEAT_MS, PREP_MS, VISIT_CHANCE, GUESTS_PER_SEAT } from './guests.ts';
 export { canPromote, effectivePopularity, MAX_ACTIVE_PROMOTIONS, PARTTIME_MONEY } from './promotions.ts';
-export { TIERS, MAX_LEVEL, LOW_ENERGY, STAT_KEYS, STAT_NAME, salaryOf, SALARY_PER_STAT, SALARY_PER_LEVEL, levelUpCost, roleEffect, ingredientDiscount, staffInRole, canHire, canLevelUp, postJobCost } from './staff.ts';
+export { TIERS, MAX_LEVEL, MAX_STAT, LOW_ENERGY, STAT_KEYS, STAT_NAME, salaryOf, salaryDue, SALARY_PER_STAT, SALARY_LEVEL_STEP, UNASSIGNED_SALARY_RATIO, levelUpCost, expNeeded, mainStatOf, addRoleExp, EXP_PER_SERVE, EXP_PER_WORKDAY, roleEffect, ingredientDiscount, staffInRole, canHire, canLevelUp, canPostJob, postJobCost, tierUnlocked, availablePool, addPoolCandidate, staffCapacity, staffRoomCount, capOf, capBonus, skillsOf, hasSkill, skillTotal, cleanPowerOf, gardenBonusOf, gardenDecayOf, promoBonusOf, promoEnergyFactorOf, farmCount, roleUnlockMet, BASE_STAFF_SLOTS, SLOTS_PER_STAFF_ROOM, STAFF_ROOM_TYPE } from './staff.ts';
+export { canTrain, trainingCost, trainingOptions, trainingUnlocked, trainingMultOf, TRAINING_RANK, TRAINING_COST_STEP } from './training.ts';
 export { objectStats, activeCombos, popularityFor, segmentBonus, setLevels, BASE_POPULARITY, POPULARITY_CAP } from './compat.ts';
 export { canUseItem, grantItem, itemEffect, ITEM_POP_CAP, ITEM_SCENERY_CAP } from './items.ts';
 export { buildDaysOf, isUnderConstruction, constructions, canStartBuild, buildDaysLeft, START_BUILDERS, MAX_BUILDERS, needsDoorPath, DOOR_PATH_HINT } from './build.ts';

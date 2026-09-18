@@ -11,11 +11,11 @@ import { START_BUILDERS } from './build.ts';
 import { initGuidebooks } from './guidebook.ts';
 import { initRegions, initNamedGuests, initPopup } from './popup.ts';
 import { initFeatures } from './goals.ts';
-import { generateCandidate } from './staff.ts';
+import { drawCandidates } from './staff.ts';
 import { monthIndex } from './clock.ts';
 
 export { PARCEL_W, PARCEL_H, START_ORIGIN, GRID_W, GRID_H, VILLAGE_ROAD_Y };
-export const SAVE_VERSION = 15; // 15: v3 대격변 — 밭 폐지·농원 월 수확·목표 체인·기능 잠금·빅 이벤트·시작 상태 (마이그레이션 없음: 백업 후 새 게임). 14: 라이벌 카페
+export const SAVE_VERSION = 16; // 16: 직원 풀·스탯 상한·경험치·연수·직종 8 (x-staff). 15: 15: v3 대격변 — 밭 폐지·농원 월 수확·목표 체인·기능 잠금·빅 이벤트·시작 상태 (마이그레이션 없음: 백업 후 새 게임). 14: 라이벌 카페
 /** 시작 자금 500만 + 정착지원금(잔고 < 40만이면 1회 300만) — 마스터 GDD §1 */
 export const START_MONEY = 5_000_000;
 export const SETTLE_GRANT = 3_000_000;
@@ -145,7 +145,7 @@ export function createInitialState(seed: number, playerId = 'local', createdAt =
     monthHarvest: { harvested: {}, ingredientSaved: 0 },
     staff: [],
     candidates: [],
-    slots: { barista: 1, cook: 1, hall: 2, carry: 0, guide: 0 },
+    slots: { barista: 1, cook: 1, hall: 2, carry: 0, guide: 0, clean: 2, garden: 2, promo: 1 },
     activePromotions: [],
     youtuberBoostMonths: 0,
     segmentPopularity: initSegmentPopularity(),
@@ -215,6 +215,6 @@ export function createInitialState(seed: number, playerId = 'local', createdAt =
   const rng = { rng: seed ^ 0x5eed };
   for (const p of parcels) stampParcelObjects(state, p, rng);
   // §5 직원 후보 2명 대기 (전단 등급)
-  for (let i = 0; i < START_CANDIDATES; i++) state.candidates.push(generateCandidate(state, 'flyer'));
+  drawCandidates(state, 'flyer', START_CANDIDATES);
   return state;
 }
