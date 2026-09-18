@@ -171,11 +171,10 @@ function StatusPanel() {
 function GoalPanel({ onClose }: { onClose: () => void }) {
   const s = useGame();
   const cur = currentGoal(s);
-  const next = GOALS[s.goals.index + 1];
   const goals = [
     ...pastGoals(s).map((g) => ({ ...g, done: true })),
     ...(cur ? [{ ...cur, done: false }] : []),
-    ...(next ? [{ ...toGoal(s, next, false), cur: 0, max: next.condition.n, done: false }] : []),
+    ...GOALS.slice(s.goals.index + 1).map((g) => ({ ...toGoal(s, g, false), cur: 0, max: g.condition.n, done: false })),
   ];
   return <GoalWindow goals={goals} onClose={onClose} />;
 }
