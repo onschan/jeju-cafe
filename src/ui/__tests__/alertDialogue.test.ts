@@ -57,3 +57,30 @@ describe('alertDialogue: state.alerts → 대화창', () => {
     expect(getDialogue()).toBeNull();
   });
 });
+
+describe('alertDialogue: 보상 상자·도전 실패·실패 상태 알림', () => {
+  beforeEach(() => clearDialogues());
+  it('맨 앞이 { type: "reward" }면 대화창은 기다리고(RewardPopup 몫) false, 뒤의 goal 알림은 보상 상자가 닫힌 뒤 이어진다', () => {
+    const s = createInitialState(1, 'p', 0);
+    const dismiss = () => apply(s, { type: 'dismissAlert' });
+    s.alerts.push({ type: 'reward', source: 'goal', refId: 'g01', title: GOALS[0]!.title, items: [{ type: 'money', amount: 300_000 }] }, { type: 'goal', goalId: 'g01' });
+    expect(checkAlerts(s, dismiss)).toBe(false);
+    expect(getDialogue()).toBeNull();
+    dismiss(); // RewardPopup이 닫히면
+    expect(checkAlerts(s, dismiss)).toBe(true);
+    expect(getDialogue()?.lines[0]).toContain(GOALS[0]!.title);
+  });
+  it('도전·월간 보상 알림의 축하 대사(line)는 alertToDialogue로 뽑히고, 도전 실패·실패 상태 4단계 대사는 영문 id가 없다', () => {
+    const d = alertToDialogue({ type: 'reward', source: 'challenge', refId: 'c01', title: '자리 4개', items: [], line: '도전 성공!', speaker: 'samchun' });
+    expect(d.lines).toEqual(['도전 성공!']);
+    expect(d.speaker.name).toBe('삼춘');
+    expect(alertToDialogue({ type: 'reward', source: 'tutorial', refId: '1', title: '1', items: [] }).lines).toEqual([]);
+    const f = alertToDialogue({ type: 'challengeFailed', id: 'c01' });
+    expect(f.lines[0]).toContain('기한');
+    for (const stage of ['warn', 'loan', 'crisis', 'demote'] as const) {
+      const x = alertToDialogue({ type: 'failure', stage });
+      expect(x.lines.length).toBeGreaterThanOrEqual(3);
+      for (const l of x.lines) expect(hasIdToken(l), l).toBe(false);
+    }
+  });
+});

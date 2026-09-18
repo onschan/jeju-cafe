@@ -23,7 +23,7 @@ describe('goals.json 데이터', () => {
         // 시설 44종·직종 clean은 x-facility·x-staff가 만든다 — 통합 때 scripts/validate-goals.ts(strict)로 잡는다
         if (r.type === 'unlockFacility' && i < 20) objectDef(r.id);
         if (r.type === 'unlockMenu') menuDef(r.id);
-        if (r.type === 'staffSlot' && r.role !== 'clean') roleDef(r.role);
+        if (r.type === 'staffSlot' && (r.role as string) !== 'clean') roleDef(r.role);
         if (r.type === 'unlockFeature') expect(FEATURE_IDS).toContain(r.id);
       }
       expect(goalConditionText(g.condition).length).toBeGreaterThan(0);

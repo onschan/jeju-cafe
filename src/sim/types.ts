@@ -516,8 +516,21 @@ export interface BigEventEffects {
   moneyBonus?: number;                         // 발동 즉시 자금
   feeMult?: number;                            // 메뉴 값 배수
   popularity?: number;                         // 발동 즉시 동네↔인기 게이지
-  repairCost?: number;                         // 발동 즉시 시설 수리비 (시설당)
+  repairCost?: number;                         // 발동 즉시 시설 수리비 (시설당) — §4.5 이전 방식 (남겨 둠)
   specialGuest?: BigEventSpecialGuest;         // 특별 손님 1회 방문
+  // ---- §4.5 보정 ----
+  repairPct?: number;                          // 야외 시설(경관·농원·야외 좌석·카트) 건설비 합 × pct% 수리비 (repairMin~repairMax)
+  repairMin?: number;
+  repairMax?: number;
+  damagePct?: number;                          // 야외 시설 pct%가 파손 (TODO(x-facility): PlacedObject.damaged·수리 액션이 생기면 연결)
+  heatingCost?: number;                        // 즉시 난방비
+  harvestMult?: number;                        // 농원 수확 배수 (harvestDays 동안, 기본 30일)
+  harvestDays?: number;
+  carryStrength?: number;                      // 운반 직원 힘이 이 이상이면 harvestMult 대신 harvestMultCarry
+  harvestMultCarry?: number;
+  spawnFilter?: { filter: EventFilter; mult: number; days: number }; // 손님층 필터 스폰 배수 (렌터카 대란: 단체·가족 ×0.5)
+  deterItem?: { itemId: string; chanceMult: number }; // 이 아이템이 있으면 발동 확률 배수 (노루 방울 −50%)
+  itemDiscount?: { itemId: string; mult: number }[];  // 이 아이템이 있으면 수리비 배수 (wind_charm 0.5, storm_ready 0.7)
 }
 export interface BigEventDef {
   id: string;

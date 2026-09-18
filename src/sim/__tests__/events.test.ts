@@ -71,7 +71,7 @@ describe('빅 이벤트 판정·효과', () => {
     for (let d = 0; d < 3; d++) tick(s, DAY_MS);
     expect(activeEvents(s).map((e) => e.id)).toEqual(['ev_drama_location']);
     expect(s.alerts).toContainEqual({ type: 'eventEnd', id: 'ev_lunar_new_year' });
-    // 태풍: 시설 수리비 (시설당 2만) — 시설이 0이면 0
+    // 태풍: 야외 시설 건설비 합 × 3% (§4.5) — 야외 시설이 0이면 0
     const t = bareState(2);
     t.goals.index = 999;
     const m = t.money;
