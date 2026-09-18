@@ -1,4 +1,5 @@
 import { useEffect, useState, type CSSProperties } from 'react';
+import { ButtonGroup } from './ButtonGroup';
 import { useGame, dispatch } from './store';
 import { canBuyMileage, canBuyTicket, canDrawTicket, canUseItem, canUseGuestItem, canCraftGift, hasFreeDraw, hasUniform, itemEffect, constructions, unlockedTypeIds, MAX_BUILDERS, josa } from '../sim/index.ts';
 import { MILEAGE_SHOP, TICKET_SHOP, UNIFORMS, DRAW_PRIZES, ITEMS, GIFTS, SPECIAL_ITEM_IDS, SPECIAL_ITEM_EFFECT, itemDef, objectDef, uniformDef, guestTypeDef, giftDef, isGiftId, ingredientDef, POPULARITY_FRUIT } from '../data/index.ts';
@@ -6,7 +7,7 @@ import { label } from '../data/labels.ts';
 import { Popup, Confirm } from './Popup';
 import { Icon } from './Icon';
 import { sfx } from './audio';
-import { card, brownBtn, brownBtnOn, brownBtnOff, brownSelect, PALETTE } from './frame';
+import { card, brownBtn, brownBtnOn, brownBtnOff, PALETTE } from './frame';
 
 type Tab = 'mileage' | 'draw' | 'ticket' | 'codex';
 const TABS: { id: Tab; label: string }[] = [
@@ -136,10 +137,8 @@ function TicketShop() {
       {owned.length > 0 && (
         <div style={{ ...row }}>
           <span>입은 유니폼</span>
-          <select value={s.uniform ?? ''} style={{ ...brownSelect, marginBottom: 0 }} data-testid="uniform-select" onChange={(e) => dispatch({ type: 'setUniform', id: e.target.value || null })}>
-            <option value="">(평상복)</option>
-            {owned.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
-          </select>
+          <ButtonGroup label="입은 유니폼" testId="uniform-select" value={s.uniform ?? ''} onPick={(v) => dispatch({ type: 'setUniform', id: v || null })}
+            options={[{ value: '', label: '평상복' }, ...owned.map((u) => ({ value: u.id, label: u.name }))]} />
         </div>
       )}
       {TICKET_SHOP.map((t) => {

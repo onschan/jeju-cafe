@@ -98,6 +98,7 @@ export function dailyTraining(state: GameState): void {
     if (st.training.daysLeft > 0) continue;
     const name = trainingDef(st.training.id).name;
     const summary = finishTraining(state, st);
+    state.stats.trainings++; // 목표 trainings (트랙 B)
     pushNotice(state, `${st.name} 씨가 ${name}에서 돌아왔어요: ${summary}`);
   }
 }

@@ -1,4 +1,5 @@
 import type { GameState, Guest, PlacedObject, Pt, MenuCategory, MenuStatKey, RoleId, GuestWant, ComplaintReason } from './types.ts';
+import { canOpen } from './goals.ts';
 import { objectDef, guestTypeDef, guestTags, guestDialogue, canonicalGuestId, namedGuestDef, NAMED_TYPE } from '../data/index.ts';
 import { pickWeighted, nextRandom, randInt } from './rng.ts';
 import { sceneryScore, objectAt } from './grid.ts';
@@ -228,6 +229,7 @@ export function tourBus(state: GameState): number {
 /** 최대 n명 스폰. 정류장에서 가장 가까운 빈 좌석부터 — 대기열(waiting)에 있던 손님이 먼저 앉는다. forceType을 주면 그 타입만(투어 버스).
  *  빈 자리가 없으면 대기열에 3명까지 서고, 넘치면 돌아간다(walkAway). 실제 앉힌(스폰된) 수를 돌려준다. */
 export function spawnGuests(state: GameState, n: number, forceType?: string): number {
+  if (!canOpen(state)) return 0; // §7.1 좌석·길·메뉴가 갖춰질 때까지 손님 0 (x-goals 훅)
   let spawned = 0;
   const start = busStopPos(state);
   const reach = reachMap(state, start); // 걷기 지형은 스폰 중 안 바뀌므로 한 번만

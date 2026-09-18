@@ -22,6 +22,26 @@ export const CLEAN_HIGH = 80;           // 이상: 만족 +3
 export const CLEAN_LOW = 50;            // 미만: 손님 ×0.8, 만족 −5
 export const CLEAN_CRIT = 30;           // 미만: 손님 ×0.6, 가이드북 심사 −10
 export const CLEAN_SOURCE = 'clean';
+/** 목표 판정용 최근 청결 기록 길이 (일) */
+export const CLEAN_HISTORY_DAYS = 30;
+/** 최근 연속으로 청결 ≥ n을 유지한 날 수 (최대 30) — 목표 cleanliness */
+export function cleanStreakDays(state: GameState, n: number): number {
+  let d = 0;
+  for (let i = state.clean.history.length - 1; i >= 0; i--) { if (state.clean.history[i]! >= n) d++; else break; }
+  return d;
+}
+/** 최근 days일 평균 청결 (기록이 days일 미만이면 0) — 도전 clean */
+export function cleanAvgDays(state: GameState, days: number): number {
+  const h = state.clean.history;
+  if (h.length < days) return 0;
+  const tail = h.slice(-days);
+  return tail.reduce((a, b) => a + b, 0) / tail.length;
+}
+/** 최근 days일 내내 청결 < n (악플 이벤트 dirty30) */
+export function dirtyForDays(state: GameState, n: number, days: number): boolean {
+  const h = state.clean.history;
+  return h.length >= days && h.slice(-days).every((v) => v < n);
+}
 /** 청소 직종 id (트랙 D의 staff_roles.json에 있으면 그 직원, 없으면 홀 직원이 절반 효과) */
 export const CLEAN_ROLE = 'clean';
 export const HALL_CLEAN_FACTOR = 0.5;
@@ -64,6 +84,8 @@ export function dailyCleanliness(state: GameState): void {
   const decay = (guests / CLEAN_GUEST_DIV) * cleanReduceMult(state);
   const before = c.value;
   c.value = Math.max(0, Math.min(CLEAN_MAX, c.value - decay + dailyCleanRecovery(state)));
+  c.history.push(Math.round(c.value));
+  if (c.history.length > CLEAN_HISTORY_DAYS) c.history.splice(0, c.history.length - CLEAN_HISTORY_DAYS);
   state.effects = state.effects.filter((e) => e.source !== CLEAN_SOURCE);
   const mult = cleanGuestMult(state);
   if (mult < 1) addEffect(state, { kind: 'spawnMult', mult, days: 1, source: CLEAN_SOURCE });

@@ -20,11 +20,11 @@ test('경고: 3개월 연속 적자면 삼춘 경고 알림·장면, 카드 defi
   const s = bareState(1);
   for (let i = 0; i < WARN_DEFICIT_MONTHS - 1; i++) closeWith(s, 100_000, 200_000);
   expect(s.deficitMonths).toBe(2);
-  expect(s.fx.some((f) => f.kind === 'scene' && f.title === '삼춘의 경고')).toBe(false);
+  expect(s.alerts.some((a) => a.type === 'failure' && a.stage === 'warn')).toBe(false);
   closeWith(s, 100_000, 200_000);
   expect(s.deficitMonths).toBe(3);
   expect(s.lastMonthCard!.deficitStreak).toBe(3);
-  expect(s.fx.some((f) => f.kind === 'scene' && f.title === '삼춘의 경고')).toBe(true);
+  expect(s.alerts.some((a) => a.type === 'failure' && a.stage === 'warn')).toBe(true); // 트랙 B 실패 대화
   expect(s.notices.some((n) => n.includes('적자 3개월'))).toBe(true);
   closeWith(s, 300_000, 200_000); // 흑자면 리셋
   expect(s.deficitMonths).toBe(0);
@@ -93,7 +93,7 @@ test('위기: 잔고 < −500만이 3개월이면 마지막에 산 필지를 강
   expect(s.money).toBe(CRISIS_MONEY - 1 + Math.round(p.price * 0.5) + objRefund);
   for (const o of objs) expect(s.objects[o.id]).toBeUndefined();
   expect(s.rivals).toHaveLength(1);
-  expect(s.fx.some((f) => f.kind === 'scene' && f.title === '정착 실패 위기')).toBe(true);
+  expect(s.alerts.some((a) => a.type === 'failure' && a.stage === 'crisis')).toBe(true); // 트랙 B 실패 대화
   // 팔 필지가 없으면 라이벌만
   const t = bareState(3);
   crisis(t);

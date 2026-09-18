@@ -1,65 +1,41 @@
-import { type GameState, START_SEATS } from '../sim/index.ts';
-import { objectDef } from '../data/index.ts';
-import { TUTORIAL_STEPS as STEP_DATA, SPEAKER_NAME, type TutorialStep as StepData } from '../data/dialogue/index.ts';
+import { type GameState, tutorialDone, TUTORIAL_STEPS } from '../sim/index.ts';
+import { TUTORIAL_STEPS as STEP_DATA, SPEAKER_NAME, type TutorialStep } from '../data/dialogue/index.ts';
 import { showDialogue, getDialogue } from './dialogue.ts';
-import { goalsAchieved } from './simBridge';
 
-/** 튜토리얼 6단계 대화 (스펙 §1.3). 대사는 data/dialogue/tutorial.json, 진행은 localStorage `tut_v3_step`(= 지금까지 보여 준 단계 수).
- *  각 단계는 조건이 차면 한 번만 뜬다. 현재 할 일은 배너가 아니라 목표 줄이 보여 준다. */
+/** 손으로 하는 튜토리얼 9단계 대화 (스펙 §7.2). 대사는 data/dialogue/tutorial.json, 진행(끝낸 단계 수)은 sim 상태 state.tutorial.step —
+ *  조건 판정·보상은 sim/tutorial.ts가 한다. 여기서는 "현재 단계의 대사를 한 번 띄우는" 일만 한다.
+ *  보상 상자(alerts)가 떠 있는 동안은 기다렸다가, 닫히면 다음 단계 대사를 띄운다. 건너뛰기는 첫 단계에서만 (skipTutorial 액션). */
 
-/** 창을 연 것처럼 sim 상태에 없는 UI 사건 */
-export type TutorialEvent = 'menuOpened' | 'goalOpened';
-const seen: Record<TutorialEvent, boolean> = { menuOpened: false, goalOpened: false };
-export function markTutorialEvent(e: TutorialEvent): void { seen[e] = true; }
+export type { TutorialStep };
+export const TUTORIAL_DIALOGUES: TutorialStep[] = STEP_DATA;
 
-export interface TutorialStep extends StepData {
-  /** 이 조건이 차면 뜬다. 없으면(1단계) 바로 */
-  when?: (s: GameState) => boolean;
-}
+/** 마지막으로 대사를 띄운 단계 번호 (state.tutorial.step 기준, −1 = 아직). 새 게임이면 resetTutorial. */
+let shownFor = -1;
+/** 건너뛰기 콜백 (App이 dispatch({ type: 'skipTutorial' })를 넣는다) */
+let skipFn: (() => void) | null = null;
+export function setTutorialSkip(fn: (() => void) | null): void { skipFn = fn; }
 
-function seatCount(s: GameState): number {
-  return Object.values(s.objects).filter((o) => objectDef(o.type).kind === 'seat').length;
-}
-
-/** tutorial.json의 done 조건을 판정하는 함수 (단계 key 기준) */
-const WHEN: Record<string, (s: GameState) => boolean> = {
-  welcome_menu: () => true,
-  table_path: () => seen.menuOpened,
-  first_guest: (s) => seatCount(s) > START_SEATS.length,
-  hire: (s) => s.totalIncome > 0 || s.monthIncome > 0, // 첫 손님이 계산했다
-  goal_bar: (s) => s.staff.length >= 1,
-  farewell: (s) => goalsAchieved(s) >= 3,
-};
-
-export const TUTORIAL_STEPS: TutorialStep[] = STEP_DATA.map((d) => ({ ...d, when: d.id === 1 ? undefined : WHEN[d.key] }));
-
-export const TUTORIAL_KEY = 'tut_v3_step';
-
-function read(): number {
-  try { const n = Number(localStorage.getItem(TUTORIAL_KEY)); return Number.isFinite(n) ? n : 0; } catch { return 0; }
-}
-let shown = typeof localStorage === 'undefined' ? 0 : read();
-function write() { try { localStorage.setItem(TUTORIAL_KEY, String(shown)); } catch { /* noop */ } }
-
-export function tutorialShown(): number { return shown; }
-export function tutorialDone(): boolean { return shown >= TUTORIAL_STEPS.length; }
-
+export function tutorialShown(): number { return shownFor + 1; }
 /** 새 게임을 시작할 때 처음부터 */
-export function resetTutorial(): void { shown = 0; seen.menuOpened = false; seen.goalOpened = false; write(); }
-export function skipTutorial(): void { shown = TUTORIAL_STEPS.length; write(); }
+export function resetTutorial(): void { shownFor = -1; }
 
-/** 상태를 보고 다음 단계 조건이 찼으면 대화를 띄운다. 대화가 이미 떠 있으면 기다린다 (한 번에 한 단계). */
+/** 현재 단계(state.tutorial.step)의 대사. 끝났으면 null. */
+export function currentTutorialDialogue(s: GameState): TutorialStep | null {
+  if (tutorialDone(s)) return null;
+  return TUTORIAL_DIALOGUES[s.tutorial.step] ?? null;
+}
+
+/** 상태를 보고 현재 단계 대사를 아직 안 띄웠으면 띄운다. 알림(보상 상자·대화)이 남아 있거나 대화가 떠 있으면 기다린다. 띄웠으면 true. */
 export function checkTutorial(s: GameState): boolean {
-  if (tutorialDone() || getDialogue()) return false;
-  const step = TUTORIAL_STEPS[shown];
-  if (!step || (step.when && !step.when(s))) return false;
-  shown++;
-  write();
+  if (tutorialDone(s) || s.alerts.length > 0 || getDialogue()) return false;
+  const step = currentTutorialDialogue(s);
+  if (!step || shownFor === s.tutorial.step) return false;
+  shownFor = s.tutorial.step;
   showDialogue({
     speaker: { name: SPEAKER_NAME[step.speaker], portrait: step.speaker },
     lines: step.lines,
     choices: [{ label: step.button, onPick: () => {} }],
-    onSkip: step.id === 1 ? skipTutorial : undefined,
+    onSkip: step.id === 1 && s.tutorial.step === 0 ? () => { skipFn?.(); shownFor = TUTORIAL_STEPS; } : undefined,
   });
   return true;
 }

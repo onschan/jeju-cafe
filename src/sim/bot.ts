@@ -310,7 +310,7 @@ export function runBot(years: number, seed: number): BotRow[] {
       rows.push({
         year: card.year, month: card.month, money: s.money, minMoney, research: s.research, popularity: s.popularity,
         net: card.net, staff: s.staff.length, promos: s.activePromotions.length, guests: card.guests, customMenus: s.customMenus.length,
-        rank: s.rank, star: s.star, mileage: s.mileage, goals: s.goals.index, events: s.events.length,
+        rank: s.rank, star: s.star, mileage: s.mileage, goals: s.goals.claimed.length, events: s.events.length,
       });
       minMoney = s.money;
       apply(s, { type: 'dismissMonthCard' });

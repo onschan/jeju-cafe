@@ -98,7 +98,7 @@ export function PromoPanel() {
               <div style={{ fontSize: 13, color: PALETTE.inkSoft }}>{effectText(d)}</div>
               {costText(d)}
             </div>
-            <button style={{ ...(ok ? brownBtn : brownBtnOff), marginBottom: 0, marginRight: 0 }} disabled={!ok} onClick={() => run(d)}>실행</button>
+            <button data-tut="promote" style={{ ...(ok ? brownBtn : brownBtnOff), marginBottom: 0, marginRight: 0 }} disabled={!ok} onClick={() => run(d)}>실행</button>
           </div>
         );
       })}

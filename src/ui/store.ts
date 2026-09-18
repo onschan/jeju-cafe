@@ -68,7 +68,7 @@ const ACTION_SFX: Record<Action['type'], SfxName> = {
   acceptQuest: 'tap', respondEvent: 'tap', investSpot: 'unlock', hostTour: 'fanfare', dismissTour: 'tap', setTourBus: 'tap', giveGift: 'happy', craftGift: 'unlock',
   develop: 'unlock', dismissDevelop: 'tap', addTopping: 'tap', removeTopping: 'tap', levelUpMenu: 'unlock',
   buyMileage: 'coin', buyTicket: 'coin', drawTicket: 'tap', dismissDraw: 'tap', setUniform: 'tap', useGuestItem: 'unlock', dismissAnnouncement: 'tap',
-  openPopup: 'unlock', closePopup: 'tap', challenge: 'fanfare', dismissChallenge: 'tap',
+  openPopup: 'unlock', closePopup: 'tap', challenge: 'fanfare', dismissChallenge: 'tap', acceptChallenge: 'unlock', skipTutorial: 'tap',
 };
 
 export function dispatch(a: Action): ApplyResult {
@@ -183,7 +183,7 @@ export function deleteSlot(n: number): void {
 export function autosaveNow(): void { save(); }
 
 export function newGame() {
-  state = createInitialState(Date.now() % 1_000_000, getOrCreatePlayerId(), Date.now());
+  state = createInitialState(Date.now() % 1_000_000, getOrCreatePlayerId(), Date.now(), 'tutorial'); // §7.1 빈 마당 + 손으로 하는 튜토리얼
   viewReset?.();
   resetTutorial();
   clearDialogues();

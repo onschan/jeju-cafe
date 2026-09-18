@@ -141,7 +141,7 @@ export function starReview(state: GameState): number | null {
   }
   state.star--;
   pushNotice(state, `★ 강등: ★${state.star + 1} → ★${state.star} (열린 시설은 유지, 새로 짓기만 잠겨요)`);
-  pushFx(state, { kind: 'scene', title: '★ 강등', text: `유지 심사에서 떨어져 ★${state.star}이 됐어요. 조건을 다시 채우면 올라갈 수 있어요.`, tick: state.tick });
+  state.alerts.push({ type: 'failure', stage: 'demote' }); // 트랙 B 대화(data/dialogue/failure.json)
   return state.star;
 }
 

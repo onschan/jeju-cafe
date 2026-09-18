@@ -2,7 +2,7 @@
  *  카드 탭 → 아래 설명 2줄 + `짓기`(onPickBuild). 잠긴 것은 반투명 + 조건 한글. 철거·이동은 미니카드(트랙 C) 몫. */
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import type { GameState, ObjectDef } from '../../sim/index.ts';
-import { placeCost, constructions, canStartBuild, goalForFacility, isUpgradable, tierOf } from '../../sim/index.ts';
+import { placeCost, constructions, canStartBuild, goalForFacility, isUpgradable, tierOf, featureOpen } from '../../sim/index.ts';
 import { OBJECTS } from '../../data/index.ts';
 import { unlockText } from '../../data/labels.ts';
 import { loadSheet, drawFrame, type Sheet } from '../sheetCanvas';
@@ -79,7 +79,7 @@ export function BuildWindow(props: BuildWindowProps) {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0 8px', marginBottom: 6 }}>
         <span style={soft}>열린 것 {counts[tab] ?? 0} · 자금 {win(s.money)}</span>
         <span style={{ ...soft, color: busy >= s.builders ? PALETTE.bad : PALETTE.inkSoft }} data-testid="builders">건축가 {busy}/{s.builders} 작업 중</span>
-        <SiteToggle />
+        {featureOpen(s, 'siteView') && <SiteToggle />}{/* 트랙 B: 튜토리얼 2단계 보상으로 열린다 */}
       </div>
       {items.length === 0 && <Empty>아직 여기엔 지을 게 없어요</Empty>}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>

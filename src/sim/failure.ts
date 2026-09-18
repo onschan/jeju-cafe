@@ -9,7 +9,6 @@
 import type { GameState, MonthCard, Parcel } from './types.ts';
 import { RIVALS, objectDef } from '../data/index.ts';
 import { pushNotice } from './staff.ts';
-import { pushFx } from './fx.ts';
 import { fmtNum } from './format.ts';
 import { monthIndex } from './clock.ts';
 import { removeObject } from './grid.ts';
@@ -52,7 +51,7 @@ export function takeLoan(state: GameState, reason: string): boolean {
   state.money += LOAN_AMOUNT;
   state.monthLoan += LOAN_AMOUNT;
   pushNotice(state, `삼춘이 ₩${fmtNum(LOAN_AMOUNT)}을 빌려줬어요 (${reason}, ${state.loan.count}/${LOAN_MAX}회) — 흑자 달마다 순이익 30%로 갚아요`);
-  pushFx(state, { kind: 'scene', title: '삼춘 대출', text: `"${reason}이면 어쩔 수 없주. 이거 갖고 버텨보라." 무이자 ₩${fmtNum(LOAN_AMOUNT)}. 갚는 동안 목표 보상은 절반이에요.`, tick: state.tick });
+  state.alerts.push({ type: 'failure', stage: 'loan' }); // 트랙 B 대화(data/dialogue/failure.json)
   return true;
 }
 
@@ -101,7 +100,7 @@ export function crisis(state: GameState): void {
     const def = pickWeighted(state, RIVALS, () => 1);
     if (def) spawnRival(state, def.id);
   }
-  pushFx(state, { kind: 'scene', title: '정착 실패 위기', text: p ? `빚이 석 달째예요. ${p.name} 필지를 내놓고 라이벌 카페까지 들어왔어요.` : '빚이 석 달째예요. 라이벌 카페까지 들어왔어요.', tick: state.tick });
+  state.alerts.push({ type: 'failure', stage: 'crisis' }); // 트랙 B 대화(data/dialogue/failure.json)
 }
 
 /** 월말(closeMonth 뒤): 경고 → 6개월 적자 대출 → 상환 → 위기 판정 */
@@ -110,7 +109,7 @@ export function monthlyFailure(state: GameState): void {
   if (!card) return;
   if (state.deficitMonths === WARN_DEFICIT_MONTHS) {
     pushNotice(state, `적자 ${WARN_DEFICIT_MONTHS}개월째 — 삼춘: "비용부터 줄여보라"`);
-    pushFx(state, { kind: 'scene', title: '삼춘의 경고', text: `석 달째 적자예요. 월급·유지비·재료비 중 뭘 줄일지 살펴보세요.`, tick: state.tick });
+    state.alerts.push({ type: 'failure', stage: 'warn' }); // 트랙 B 대화
   }
   if (state.deficitMonths >= LOAN_DEFICIT_MONTHS) takeLoan(state, `적자 ${state.deficitMonths}개월`);
   repayLoan(state, card);

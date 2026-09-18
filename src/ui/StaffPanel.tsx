@@ -1,10 +1,11 @@
 import { useState, useEffect, useRef } from 'react';
+import { ButtonGroup } from './ButtonGroup';
 import { useGame, dispatch } from './store';
 import { TIERS, LOW_ENERGY, STAT_KEYS, STAT_NAME, levelUpCost, expNeeded, canHire, canLevelUp, staffInRole, canPraise, PRAISE_ENERGY, type Staff, type Candidate, type RoleId, type StatKey, type JobTier, type Face as FaceParts, josa } from '../sim/index.ts';
 import { ROLES, roleDef, skillDef } from '../data/index.ts';
 import { Icon } from './Icon';
 import { Confirm } from './Popup';
-import { card, brownBtn, brownBtnOn, brownBtnOff, dangerBtn, brownSelect, PALETTE, won } from './frame';
+import { card, brownBtn, brownBtnOn, brownBtnOff, dangerBtn, PALETTE, won } from './frame';
 import { partsOfFace, staffParts, HAIR_RGB, SKIN_RGB, TOP_RGB } from '../render/character';
 import { showScene } from './SceneWindow';
 
@@ -88,10 +89,8 @@ function CandidateCard({ c }: { c: Candidate }) {
       <StatRows stats={c.stats} />
       <div style={{ fontSize: 13, margin: '4px 0' }}><b>{sk.name}</b> <span style={{ color: PALETTE.inkSoft }}>{sk.desc}</span></div>
       <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap' }}>
-        <select value={chosen} onChange={(e) => setRole(e.target.value as RoleId)} style={brownSelect} aria-label="역할">
-          {roles.length === 0 && <option value="">자리 없음</option>}
-          {roles.map((r) => <option key={r} value={r}>{roleDef(r).name}</option>)}
-        </select>
+        <ButtonGroup label="역할" value={chosen} onPick={(r) => setRole(r)} style={{ marginBottom: 6, marginRight: 6 }}
+          options={roles.length === 0 ? [{ value: '' as RoleId, label: '자리 없음', disabled: true }] : roles.map((r) => ({ value: r, label: roleDef(r).name }))} />
         <button style={ok ? brownBtn : brownBtnOff} disabled={!ok} onClick={hire}>채용</button>
       </div>
     </div>
@@ -117,10 +116,8 @@ function StaffCard({ st, focused = false }: { st: Staff; focused?: boolean }) {
       <StatRows stats={st.stats} />
       <div style={{ fontSize: 13, margin: '4px 0' }}><b>{sk.name}</b> <span style={{ color: PALETTE.inkSoft }}>{sk.desc}</span></div>
       <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap' }}>
-        <select value={st.role ?? ''} onChange={(e) => dispatch({ type: 'assign', staffId: st.id, role: (e.target.value || null) as RoleId | null })} style={brownSelect} aria-label="역할">
-          <option value="">미배치</option>
-          {roles.map((r) => <option key={r} value={r}>{roleDef(r).name}</option>)}
-        </select>
+        <ButtonGroup label="역할" value={st.role ?? ''} onPick={(v) => dispatch({ type: 'assign', staffId: st.id, role: (v || null) as RoleId | null })} style={{ marginBottom: 6, marginRight: 6 }}
+          options={[{ value: '', label: '미배치' }, ...roles.map((r) => ({ value: r, label: roleDef(r).name }))]} />
         <button style={st.level >= st.maxLevel ? brownBtnOff : picking ? brownBtnOn : brownBtn} disabled={st.level >= st.maxLevel} onClick={() => setPicking(!picking)}>
           <Icon name="research" /> 승급
         </button>

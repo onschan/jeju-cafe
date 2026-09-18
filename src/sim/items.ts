@@ -59,6 +59,7 @@ export function canUseItem(state: GameState, itemId: string, objectType: string,
 
 /** 하나를 소모해 같은 종류 시설 전체의 보너스에 더한다 (인기 +30, 요금 +30% 상한). 호출 전 canUseItem. */
 export function useItem(state: GameState, itemId: string, objectType: string, items?: ItemDef[]): void {
+  state.stats.itemsUsed++; // 목표 itemsUsed (x-goals 훅)
   const item = findItem(itemId, items)!;
   const eff = itemEffect(item, objectDef(objectType));
   state.inventory[itemId] = (state.inventory[itemId] ?? 0) - 1;

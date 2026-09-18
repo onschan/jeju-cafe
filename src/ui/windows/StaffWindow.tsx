@@ -1,11 +1,12 @@
 /** 직원 창 (스펙 §4.3 + HSS2 확장 §3.6). 하위 탭: 우리 직원 / 채용 후보. 카드 1열: 파츠 초상·이름·직종·특기 배지·경험치 바·4스탯 바(상한 눈금)·급여·에너지·레벨.
  *  버튼: 승급(경험치+연구)·연수(5종, 랭크 3)·해고(확인)·후보는 채용·공고 내기(채용 5단계, 풀에서 온다). sim 액션: postJob·hire·fire·assign·levelUp·train. */
 import { useEffect, useRef, useState } from 'react';
+import { ButtonGroup } from '../ButtonGroup';
 import type { GameState, Staff, Candidate, RoleId, StatKey, JobTier, Face } from '../../sim/index.ts';
 import { TIERS, LOW_ENERGY, STAT_KEYS, levelUpCost, expNeeded, mainStatOf, canHire, canLevelUp, canPostJob, staffInRole, postJobCost, tierUnlocked, availablePool, staffCapacity, staffRoomCount, capOf, capBonus, skillsOf, salaryDue, trainingOptions, trainingUnlocked, TRAINING_RANK } from '../../sim/index.ts';
 import { ROLES, RECRUIT_TIERS, skillDef, trainingDef, staffPoolDef } from '../../data/index.ts';
 import { label } from '../../data/labels.ts';
-import { PALETTE, brownBtn, brownBtnOff, brownSelect } from '../frame';
+import { PALETTE, brownBtn, brownBtnOff } from '../frame';
 import { drawPortrait, PORTRAIT_SIZE } from '../../render/portrait';
 import { partsOfFace, staffParts, HAIR_RGB, SKIN_RGB, TOP_RGB } from '../../render/character';
 import { useWindowState, body, TabBar, Bar, rowCard, rowCardOn, rowBtn, rowBtnOn, rowBtnOff, rowBtnDanger, soft, Empty, ConfirmRow, win, type Dispatch, type WindowProps } from './shared.tsx';
@@ -138,10 +139,8 @@ function StaffCard({ st, s, dispatch }: { st: Staff; s: GameState; dispatch: Dis
       </div>
       <StatRows s={s} who={st} main={mainStatOf(st)} />
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-        <select value={st.role ?? ''} disabled={!!away} onChange={(e) => dispatch({ type: 'assign', staffId: st.id, role: (e.target.value || null) as RoleId | null })} style={{ ...brownSelect, margin: 0, flex: '1 1 100px' }} aria-label="직종">
-          <option value="">쉬기</option>
-          {roles.map((r) => <option key={r} value={r}>{label('role', r)}</option>)}
-        </select>
+        <ButtonGroup label="직종" disabled={!!away} value={st.role ?? ''} onPick={(v) => dispatch({ type: 'assign', staffId: st.id, role: (v || null) as RoleId | null })} style={{ flex: '1 1 100%' }}
+          options={[{ value: '', label: '쉬기' }, ...roles.map((r) => ({ value: r, label: label('role', r) }))]} />
         <button style={maxed ? rowBtnOff : promo.ok ? rowBtnOn : rowBtnOff} disabled={!promo.ok} title={promo.reason} onClick={() => dispatch({ type: 'levelUp', staffId: st.id })} aria-label={`${st.name} 승급`}>
           {maxed ? '최고 레벨' : `승급 🔬${levelUpCost(st.level)}`}
         </button>
@@ -175,11 +174,9 @@ function CandidateCard({ c, s, dispatch }: { c: Candidate; s: GameState; dispatc
       </div>
       <StatRows s={s} who={c} />
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-        <select value={chosen} onChange={(e) => setRole(e.target.value as RoleId)} style={{ ...brownSelect, margin: 0, flex: '1 1 100px' }} aria-label="직종">
-          {roles.length === 0 && <option value="">자리 없음</option>}
-          {roles.map((r) => <option key={r} value={r}>{label('role', r)}</option>)}
-        </select>
-        <button style={check.ok ? rowBtnOn : rowBtnOff} disabled={!check.ok} title={check.reason} onClick={() => { if (chosen) dispatch({ type: 'hire', candidateId: c.id, role: chosen }); }} aria-label={`${c.name} 채용`}>
+        <ButtonGroup label="직종" value={chosen} onPick={(r) => setRole(r)} style={{ flex: '1 1 100%' }}
+          options={roles.length === 0 ? [{ value: '' as RoleId, label: '자리 없음', disabled: true }] : roles.map((r) => ({ value: r, label: label('role', r) }))} />
+        <button data-tut="hire" style={check.ok ? rowBtnOn : rowBtnOff} disabled={!check.ok} title={check.reason} onClick={() => { if (chosen) dispatch({ type: 'hire', candidateId: c.id, role: chosen }); }} aria-label={`${c.name} 채용`}>
           채용 · 월급 {win(c.salary)}
         </button>
       </div>

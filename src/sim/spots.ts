@@ -380,6 +380,7 @@ export function hostTour(state: GameState, spotId: string): TourResult {
   state.money += money;
   state.monthIncome += money;
   state.tourMonth = monthIndex(state.clock);
+  if (success) state.stats.toursHeld++; // 목표 tourGroup (트랙 B)
   addVisitors(state, spotId, visitors);
   const result: TourResult = { spotId, score, success, money, visitors };
   state.lastTour = result;

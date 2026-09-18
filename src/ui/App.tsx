@@ -3,16 +3,18 @@ import { GameView, type GhostSpec } from '../render/GameView';
 import { startLoop, dispatch, getState, useGame, setViewReset, autosaveNow, hasAnySave, loadSlot, setMonthCardHook, setSceneHook, showToast, pauseGame } from './store';
 import { unlockAudio, bgm, isMuted, setMuted, getBgmVolume, getSfxVolume, setBgmVolume, setSfxVolume, sfx } from './audio';
 import { seasonOf, canPlace, objectAt, footprint, parcelAt, clearCost, placeCost, PROTECTED_TYPES, ROTATABLE_TYPES, goalForMenu, type GameState } from '../sim/index.ts';
-import { objectDef, GOALS } from '../data/index.ts';
+import { objectDef } from '../data/index.ts';
 // render/·ui/는 Vite 전용이라 확장자 없는 import 허용. sim/·data/만 .ts 확장자 규칙.
 import { NightOverlay, Toast } from './HUD';
 import { TopShell, BottomBar, PlaceBar, SHELL_TOP, type WindowKind, type PlaceBarProps } from './Shell';
 import { Window, type WindowTab } from './Window';
 import { MiniCard, type CardTarget, type CardActions } from './MiniCard';
 import { DialogueHost } from './Dialogue.tsx';
-import { checkTutorial, markTutorialEvent } from './tutorialDialogue';
+import { checkTutorial, setTutorialSkip } from './tutorialDialogue';
+import { useTutorialHighlight } from './tutorialHighlight';
+import { RewardPopup } from './RewardPopup';
 import { checkAlerts } from './alertDialogue.ts';
-import { currentGoal, pastGoals, toGoal, guestSay, staffSay } from './simBridge';
+import { guestSay, staffSay } from './simBridge';
 import { BuildWindow } from './windows/BuildWindow.tsx';
 import { MenuWindow } from './windows/MenuWindow.tsx';
 import { StaffWindow } from './windows/StaffWindow.tsx';
@@ -179,18 +181,6 @@ function StatusPanel() {
   );
 }
 
-/** 목표 줄을 누르면: 이룬 목표 + 지금 목표 + 다음 목표 (GoalWindow, 트랙 B). 미리보기용 다음 목표 1개는 진행도 0으로. */
-function GoalPanel({ onClose }: { onClose: () => void }) {
-  const s = useGame();
-  const cur = currentGoal(s);
-  const goals = [
-    ...pastGoals(s).map((g) => ({ ...g, done: true })),
-    ...(cur ? [{ ...cur, done: false }] : []),
-    ...GOALS.slice(s.goals.index + 1).map((g) => ({ ...toGoal(s, g, false), cur: 0, max: g.condition.n, done: false })),
-  ];
-  return <GoalWindow goals={goals} onClose={onClose} />;
-}
-
 /** 잠긴 메뉴 카드 문구: 여는 목표가 있으면 그 제목으로 */
 function menuUnlockText(menuId: string): string | null {
   const g = goalForMenu(menuId);
@@ -208,11 +198,12 @@ function Game({ onExit }: { onExit: () => void }) {
     setSceneHook((st, title, text) => showScene({ title, text, chars: staffChars(st), sfx: 'fanfare' }));
     return () => { setMonthCardHook(null); setSceneHook(null); };
   }, []);
-  // sim 알림(목표 달성·빅 이벤트) → 대화창, 그 다음 튜토리얼 6단계. 알림은 한 번에 하나씩 순서대로.
+  // sim 알림(목표 달성·빅 이벤트) → 대화창(보상 상자는 RewardPopup), 그 다음 손으로 하는 튜토리얼 9단계. 알림은 한 번에 하나씩 순서대로.
   useEffect(() => {
     checkAlerts(s, () => dispatch({ type: 'dismissAlert' }));
     checkTutorial(s);
   });
+  useEffect(() => { setTutorialSkip(() => dispatch({ type: 'skipTutorial' })); return () => setTutorialSkip(null); }, []);
   const hostRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<GameView | null>(null);
   const modeRef = useRef<Mode>({ kind: 'idle' });
@@ -423,11 +414,8 @@ function Game({ onExit }: { onExit: () => void }) {
     onCafe: () => { openCard(null); setWin({ kind: 'cafe', tab: 'menu' }); },
   };
   const closeWin = () => setWin(null);
-  // 튜토리얼 ①·⑤의 "창을 열었다" 조건
-  useEffect(() => {
-    if (win?.kind === 'cafe' && win.tab === 'menu') markTutorialEvent('menuOpened');
-    if (win?.kind === 'goal') markTutorialEvent('goalOpened');
-  }, [win]);
+  // 튜토리얼 하이라이트 (data-tut 글로우 + 맵 칸)
+  useTutorialHighlight(viewRef.current);
 
   const renderWindow = () => {
     if (!win) return null;
@@ -483,7 +471,7 @@ function Game({ onExit }: { onExit: () => void }) {
       case 'status':
         return <Window title="경영 현황" onClose={closeWin} testId="window-status"><StatusPanel /></Window>;
       case 'goal':
-        return <Window title="목표" onClose={closeWin} testId="window-goal"><GoalPanel onClose={closeWin} /></Window>;
+        return <Window title="목표" onClose={closeWin} testId="window-goal"><GoalWindow onClose={closeWin} /></Window>;
       case 'object': {
         const o = s.objects[win.id];
         return <Window title={o ? objectDef(o.type).name : '시설'} onClose={closeWin} testId="window-object">{o ? <ObjectInfoPanel objectId={o.id} /> : <div>없어진 시설이에요</div>}</Window>;
@@ -508,6 +496,7 @@ function Game({ onExit }: { onExit: () => void }) {
       <PopupScreenHost />
       {guestPopup && <GuestPopup guestId={guestPopup} onClose={() => setGuestPopup(null)} onQuest={(id) => { dispatch({ type: 'acceptQuest', id }); setWin({ kind: 'people', tab: 'quests' }); }} />}
       {renderWindow()}
+      <RewardPopup />
       <DialogueHost />
     </div>
   );

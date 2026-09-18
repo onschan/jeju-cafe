@@ -4,6 +4,9 @@ import { canPlace, placeObject, removeObject, footprint, relocateObject, objects
 import { canBuyParcel, buyParcel } from './parcels.ts';
 import { canSetSlot, setSlot } from './menu.ts';
 import { checkFeature, checkGoals } from './goals.ts';
+import { canAcceptChallenge, acceptChallenge } from './challenges.ts';
+import { fillStarterLayout } from './state.ts';
+import { TUTORIAL_STEPS } from './tutorial.ts';
 import { canPostJob, postJob, canHire, hire, canFire, fire, canAssign, assign, canLevelUp, levelUp } from './staff.ts';
 import { canTrain, train } from './training.ts';
 import { canPromote, promote, canSetTarget, setTarget } from './promotions.ts';
@@ -177,6 +180,19 @@ function applyInner(state: GameState, a: Action): ApplyResult {
     case 'dismissAlert':
       state.alerts.shift();
       return { ok: true };
+    case 'acceptChallenge': {
+      const c = canAcceptChallenge(state, a.id);
+      if (!c.ok) return c;
+      acceptChallenge(state, a.id);
+      return { ok: true };
+    }
+    case 'skipTutorial': {
+      // §7.2 건너뛰기(첫 단계에서만): 빈 마당을 완성 시작 상태로 채우고 튜토리얼을 끝낸다
+      if (state.tutorial.step > 0) return { ok: false, reason: '이미 튜토리얼을 시작했어요' };
+      fillStarterLayout(state);
+      state.tutorial = { step: TUTORIAL_STEPS, skipped: true };
+      return { ok: true };
+    }
     case 'dismissMonthCard':
       state.lastMonthCard = null;
       return { ok: true };
