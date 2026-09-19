@@ -223,7 +223,7 @@ export function BoardPanel({ tabs = ['quests', 'events', 'spots'] }: { tabs?: Bo
 
       {tab === 'events' && (
         <div>
-          {events.length === 0 && <div style={{ fontSize: 13, color: PALETTE.inkSoft }}>이번 달 이벤트가 없어요. 매월 1일에 소식이 와요.</div>}
+          {events.length === 0 && <div style={{ fontSize: 13, color: PALETTE.inkSoft }}>이번 달 소식이 없어요. 매월 1일에 투자·행사 제안이 와요.</div>}
           {events.map((ev, i) => <EventCard key={`${ev.id}-${ev.monthIndex}-${i}`} ev={ev} />)}
         </div>
       )}
