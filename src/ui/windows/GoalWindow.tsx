@@ -2,6 +2,7 @@
  *  메인: 동시 진행 2개 크게 + 다음 목표 미리보기 + 지난 목표 체크 목록. 도전: 진행 중 2슬롯 + 고를 수 있는 6개(수락 버튼, 잠긴 것은 남은 날). 월간: 이달의 과제 1개.
  *  상태는 store(useGame)에서 읽고 수락은 dispatch({ type: 'acceptChallenge' }). */
 import { useState } from 'react';
+import { Icon } from '../Icon';
 import { PALETTE } from '../frame';
 import { fmtNum } from '../../sim/format.ts';
 import { body, Bar, rowCard, rowCardLocked, rowBtn, rowBtnOff, soft, Empty, TabBar, useWindowState, type WindowProps } from './shared.tsx';
@@ -46,7 +47,7 @@ export function GoalWindow(props: GoalWindowProps) {
               <Bar value={g.cur} max={g.max} height={14} color={g.cur >= g.max ? PALETTE.ok : PALETTE.bar} />
               <b style={{ fontSize: 16 }}>{Math.min(g.cur, g.max)}/{g.max}</b>
             </div>
-            <div style={{ fontSize: 15 }}>🎁 보상: <b>{g.rewardText}</b></div>
+            <div style={{ fontSize: 15 }}><Icon name="gift" /> 보상: <b>{g.rewardText}</b></div>
           </div>
         ))}
         {next && (
@@ -61,7 +62,7 @@ export function GoalWindow(props: GoalWindowProps) {
             <div style={{ fontWeight: 700, marginBottom: 4 }}>지난 목표</div>
             {shown.map((g) => (
               <div key={g.id} style={{ display: 'flex', alignItems: 'baseline', gap: 6, padding: '4px 0', borderBottom: `1px solid ${PALETTE.paperDark}`, fontSize: 14 }}>
-                <span style={{ color: PALETTE.ok, flex: '0 0 auto' }}>✔</span>
+                <span style={{ color: PALETTE.ok, flex: '0 0 auto' }}><Icon name="check" size={14} /></span>
                 <span style={{ flex: 1, textDecoration: 'line-through', color: PALETTE.inkSoft }}>{g.title}</span>
                 <span style={{ ...soft, fontSize: 13, flex: '0 0 auto' }}>{g.rewardText}</span>
               </div>
@@ -93,7 +94,7 @@ export function GoalWindow(props: GoalWindowProps) {
                 <Bar value={p.cur} max={p.max} height={12} />
                 <b>{fmtNum(p.cur)}/{fmtNum(p.max)}</b>
               </div>
-              <div style={{ fontSize: 14 }}>🎁 {rewardsText(def.reward)}</div>
+              <div style={{ fontSize: 14 }}><Icon name="gift" size={14} /> {rewardsText(def.reward)}</div>
             </div>
           );
         })}
@@ -108,7 +109,7 @@ export function GoalWindow(props: GoalWindowProps) {
                 <div style={{ flex: 1 }}>
                   <div><b>{def.title}</b> <span style={{ ...soft, fontSize: 13 }}>{TIER_STARS(def.tier)} · {def.days}일</span></div>
                   <div style={{ ...soft, fontSize: 13 }}>{def.desc || goalConditionText(def.condition)}</div>
-                  <div style={{ fontSize: 13 }}>🎁 {rewardsText(def.reward)}</div>
+                  <div style={{ fontSize: 13 }}><Icon name="gift" size={13} /> {rewardsText(def.reward)}</div>
                   {locked && <div style={{ fontSize: 13, color: PALETTE.bad }}>실패로 잠김 · {challengeLockDaysLeft(s, def.id)}일 뒤</div>}
                 </div>
                 <button data-tut={i === 0 ? 'challenge-accept' : undefined} data-testid="challenge-accept" style={can.ok ? rowBtn : rowBtnOff} disabled={!can.ok} aria-label={`${def.title} 수락`}
@@ -137,7 +138,7 @@ export function GoalWindow(props: GoalWindowProps) {
           <Bar value={p.cur} max={p.max} height={14} color={m.status === 'done' ? PALETTE.ok : PALETTE.bar} />
           <b style={{ fontSize: 16 }}>{fmtNum(p.cur)}/{fmtNum(p.max)}</b>
         </div>
-        <div style={{ fontSize: 15 }}>🎁 보상: <b>{rewardsText(m.reward)}</b></div>
+        <div style={{ fontSize: 15 }}><Icon name="gift" /> 보상: <b>{rewardsText(m.reward)}</b></div>
       </div>
     );
   };

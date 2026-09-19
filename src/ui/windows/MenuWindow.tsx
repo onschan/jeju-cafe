@@ -1,6 +1,7 @@
 /** 메뉴판 창 (스펙 §4.1). 한 줄 = [아이콘] 이름 ₩가격 ★인기 [올리기/내리기], 아래 재료·직원 조건 한글.
- *  잠긴 메뉴는 🔒 + 해금 문구. 상단 "메뉴 슬롯 n/m", 카테고리 칩. 가격 조정 액션은 sim에 없어 가격은 보기만. */
+ *  잠긴 메뉴는 자물쇠 아이콘 + 해금 문구. 상단 "메뉴 슬롯 n/m", 카테고리 칩. 가격 조정 액션은 sim에 없어 가격은 보기만. */
 import { useState } from 'react';
+import { Icon } from '../Icon';
 import type { GameState, MenuDef, MenuCategory } from '../../sim/index.ts';
 import { menuOf, priceOf, hasMenuStaff, isMenuAvailable, menuStatsOf } from '../../sim/index.ts';
 import { MENUS, statSum } from '../../data/index.ts';
@@ -8,7 +9,8 @@ import { label, requireText, ingredientsText, unlockText, wonText } from '../../
 import { PALETTE } from '../frame';
 import { useWindowState, body, Chips, Stars, rowCard, rowCardOn, rowCardLocked, rowBtn, rowBtnOn, rowBtnOff, soft, Empty, type WindowProps } from './shared.tsx';
 
-const CAT_ICON: Record<MenuCategory, string> = { drink: '☕', dessert: '🍰', meal: '🍽️', signature: '✨' };
+/** 분류별 픽셀 아이콘 이름 (말풍선·메뉴판 공통) */
+export const CAT_ICON: Record<MenuCategory, string> = { drink: 'coffee', dessert: 'cake', meal: 'meal', signature: 'sparkle' };
 type Filter = 'all' | MenuCategory;
 const CHIPS: { key: Filter; label: string }[] = [
   { key: 'all', label: '전체' }, { key: 'drink', label: '음료' }, { key: 'dessert', label: '디저트' }, { key: 'meal', label: '식사' }, { key: 'signature', label: '시그니처' },
@@ -70,7 +72,7 @@ export function MenuWindow(props: MenuWindowProps) {
         return (
           <div key={id} style={locked ? rowCardLocked : on ? rowCardOn : rowCard} data-testid={`menu-row-${id}`} aria-disabled={locked || undefined}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ fontSize: 22, width: 28, textAlign: 'center', flex: '0 0 auto' }} aria-hidden>{locked ? '🔒' : CAT_ICON[def.category]}</span>
+              <span style={{ width: 28, display: 'flex', justifyContent: 'center', flex: '0 0 auto' }} aria-hidden><Icon name={locked ? 'lock' : CAT_ICON[def.category]} size={24} /></span>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
                   <b style={{ fontSize: 16 }}>{def.name}</b>

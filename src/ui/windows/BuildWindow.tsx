@@ -1,6 +1,7 @@
 /** 짓기 창 (스펙 §4.2). 카테고리 탭(쉼·편의·먹거리·즐길거리·농원·경관·길·담) → 2열 카드(아이소 스프라이트·이름·가격·인기/경관).
  *  카드 탭 → 아래 설명 2줄 + `짓기`(onPickBuild). 잠긴 것은 반투명 + 조건 한글. 철거·이동은 미니카드(트랙 C) 몫. */
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
+import { Icon } from '../Icon';
 import type { GameState, ObjectDef } from '../../sim/index.ts';
 import { placeCost, constructions, canStartBuild, goalForFacility, isUpgradable, tierOf, featureOpen } from '../../sim/index.ts';
 import { OBJECTS } from '../../data/index.ts';
@@ -87,7 +88,7 @@ export function BuildWindow(props: BuildWindowProps) {
         <span style={{ ...soft, color: busy >= s.builders ? PALETTE.bad : PALETTE.inkSoft }} data-testid="builders">건축가 {busy}/{s.builders} 작업 중</span>
         {featureOpen(s, 'siteView') && <SiteToggle />}{/* 트랙 B: 튜토리얼 2단계 보상으로 열린다 */}
       </div>
-      {tab === 'indoor' && <div style={{ ...soft, marginBottom: 6 }}>🏠 실내 가구는 건물(본관·별관) 안 바닥에만 놓아요 — 문 칸은 비워 둬요</div>}
+      {tab === 'indoor' && <div style={{ ...soft, marginBottom: 6 }}><Icon name="home" size={14} /> 실내 가구는 건물(본관·별관) 안 바닥에만 놓아요 — 문 칸은 비워 둬요</div>}
       {items.length === 0 && <Empty>아직 여기엔 지을 게 없어요</Empty>}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
         {items.map(({ def, locked }) => {
@@ -98,10 +99,10 @@ export function BuildWindow(props: BuildWindowProps) {
               onClick={() => setPicked(on ? null : def.id)}
               style={{ ...cardBase, opacity: locked ? 0.5 : 1, boxShadow: on ? `0 0 0 3px ${PALETTE.btnOn}` : undefined }}>
               <SpriteBox sheet={sheet} id={def.id} kind={def.kind} />
-              <div style={{ fontSize: 15, fontWeight: 700, lineHeight: 1.2 }}>{locked ? '🔒 ' : ''}{def.name}{def.indoor ? ' 🏠' : ''}</div>
+              <div style={{ fontSize: 15, fontWeight: 700, lineHeight: 1.2 }}>{locked ? <><Icon name="lock" size={14} /> </> : ''}{def.name}{def.indoor ? <> <Icon name="home" size={14} /></> : ''}</div>
               <div style={{ fontSize: 14 }}>{cost > 0 ? wonText(cost) : '무료'}{def.fee !== undefined && def.fee > 0 ? ` · 요금 ${wonText(def.fee)}` : ''}</div>
               <div style={{ ...soft, fontSize: 13 }}>
-                {def.kind === 'seat' ? `🪑 ${def.seats ?? 2}` : `👍 ${def.popularity ?? 10}`} · 🌿 {def.scenery}
+                {def.kind === 'seat' ? <><Icon name="chair" size={13} /> {def.seats ?? 2}</> : <><Icon name="thumb" size={13} /> {def.popularity ?? 10}</>} · <Icon name="plant" size={13} /> {def.scenery}
               </div>
             </button>
           );
@@ -141,7 +142,7 @@ function PickedDetail({ s: def, locked, state, onPick }: { s: ObjectDef; locked:
       <div style={{ fontSize: 14, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{def.desc ?? def.name}</div>
       <div style={{ ...soft, marginBottom: 6 }}>{facts}</div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <button style={{ ...(ok ? brownBtn : brownBtnOff), margin: 0, flex: '0 0 auto' }} disabled={!ok} onClick={() => onPick?.(def.id)} data-testid="build-go">🔨 짓기</button>
+        <button style={{ ...(ok ? brownBtn : brownBtnOff), margin: 0, flex: '0 0 auto' }} disabled={!ok} onClick={() => onPick?.(def.id)} data-testid="build-go"><Icon name="build" /> 짓기</button>
         <span style={{ ...soft, color: ok ? PALETTE.inkSoft : PALETTE.bad }}>
           {locked ? lockedText(def) : poor ? '돈이 모자라요' : !start.ok ? start.reason : '누르면 맵에 놓을 자리를 골라요'}
         </span>

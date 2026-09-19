@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Icon } from './Icon';
 import { wonText } from '../data/labels.ts';
 import { useGame, dispatch } from './store';
 import { guestFace, unlockedTypeIds, MAX_TARGETS, type GameState, type Guest } from '../sim/index.ts';
@@ -12,11 +13,11 @@ import { card, brownBtn, brownBtnOn, PALETTE } from './frame';
 
 type Sub = 'now' | 'quests' | 'codex' | 'rivals';
 const SUBS: { id: Sub; label: string }[] = [{ id: 'now', label: '지금 온 손님' }, { id: 'quests', label: '부탁' }, { id: 'codex', label: '손님 도감' }, { id: 'rivals', label: '라이벌' }];
-const MOOD_ICON: Record<string, string> = { happy: '😊', meh: '😐', angry: '😠' };
+const MOOD_ICON: Record<string, string> = { happy: 'mood_happy', meh: 'mood_meh', angry: 'mood_angry' };
 
 /** 정렬 칩 (§5.4): 손님 [최근] [만족↓] [지갑↓]. 선택 1개, 세션 기억 */
 export type GuestSort = 'recent' | 'satisfaction' | 'wallet';
-const SORTS: { key: GuestSort; label: string }[] = [{ key: 'recent', label: '🕒 최근' }, { key: 'satisfaction', label: '😊 만족↓' }, { key: 'wallet', label: '💰 지갑↓' }];
+const SORTS: { key: GuestSort; label: string; icon: string }[] = [{ key: 'recent', label: '최근', icon: 'clock' }, { key: 'satisfaction', label: '만족↓', icon: 'mood_happy' }, { key: 'wallet', label: '지갑↓', icon: 'money' }];
 let rememberedSort: GuestSort = 'recent';
 
 export function sortGuests(s: GameState, guests: Guest[], sort: GuestSort): Guest[] {
@@ -28,12 +29,12 @@ export function sortGuests(s: GameState, guests: Guest[], sort: GuestSort): Gues
 }
 
 /** 정렬 칩 줄 — 직원 목록도 같은 모양으로 쓴다 */
-export function SortChips<K extends string>({ chips, active, onPick, testId }: { chips: { key: K; label: string }[]; active: K; onPick: (k: K) => void; testId?: string }) {
+export function SortChips<K extends string>({ chips, active, onPick, testId }: { chips: { key: K; label: string; icon?: string }[]; active: K; onPick: (k: K) => void; testId?: string }) {
   return (
     <div role="radiogroup" aria-label="정렬" data-testid={testId} style={{ display: 'flex', gap: 4, marginBottom: 6, overflowX: 'auto', scrollbarWidth: 'none' }}>
       {chips.map((c) => (
         <button key={c.key} aria-pressed={c.key === active} onClick={() => onPick(c.key)}
-          style={{ ...(c.key === active ? brownBtnOn : brownBtn), margin: 0, minHeight: 44, padding: '0 10px', fontSize: 14, whiteSpace: 'nowrap', flex: '0 0 auto' }}>{c.label}</button>
+          style={{ ...(c.key === active ? brownBtnOn : brownBtn), margin: 0, minHeight: 44, padding: '0 10px', fontSize: 14, whiteSpace: 'nowrap', flex: '0 0 auto' }}>{c.icon && <Icon name={c.icon} />}{c.icon ? ' ' : ''}{c.label}</button>
       ))}
     </div>
   );
@@ -50,7 +51,7 @@ function TargetSlots({ s }: { s: GameState }) {
   return (
     <div data-testid="target-slots" style={{ ...card, padding: 6 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 14 }}>
-        <b>🎯 타깃 손님층</b><span style={{ fontSize: 12, color: PALETTE.inkSoft }}>스폰 ×1.3 · 만족 +</span>
+        <b><Icon name="target" /> 타깃 손님층</b><span style={{ fontSize: 12, color: PALETTE.inkSoft }}>스폰 ×1.3 · 만족 +</span>
         <span style={{ flex: 1 }} />
         <button style={{ ...(picking ? brownBtnOn : brownBtn), margin: 0, minHeight: 36, padding: '0 10px', fontSize: 13 }} aria-expanded={picking} onClick={() => setPicking((v) => !v)}>{picking ? '닫기' : '고르기'}</button>
       </div>
@@ -117,7 +118,7 @@ export function GuestsPanel({ onGuest, sub: fixed }: { onGuest: (guestId: string
             return (
               <button key={g.id} style={{ ...card, display: 'flex', alignItems: 'center', gap: 8, width: '100%', textAlign: 'left', fontFamily: 'inherit', fontSize: 14, color: PALETTE.ink }} onClick={() => onGuest(g.id)} aria-label={guestName(g)}>
                 <Portrait {...guestPortraitOf(g)} size={32} />
-                <span style={{ flex: 1 }}><b>{guestName(g)}</b>{target && <span title="타깃"> 🎯</span>}{g.namedId && <b style={{ color: PALETTE.btn }}> ★</b>}{q && <b style={{ color: PALETTE.bad }}> !</b>}<br /><span style={{ fontSize: 12, color: PALETTE.inkSoft }}>{g.phase === 'seated' ? '자리에서' : g.phase === 'visiting' ? '구경 중' : g.phase === 'leaving' ? '집에 가는 중' : '오는 중'}{g.mood ? ` ${MOOD_ICON[g.mood]}` : ''} · 만족 {s.guestTypes[g.type]?.satisfaction ?? 0}</span></span>
+                <span style={{ flex: 1 }}><b>{guestName(g)}</b>{target && <span title="타깃"> <Icon name="target" size={14} /></span>}{g.namedId && <b style={{ color: PALETTE.btn }}> ★</b>}{q && <b style={{ color: PALETTE.bad }}> !</b>}<br /><span style={{ fontSize: 12, color: PALETTE.inkSoft }}>{g.phase === 'seated' ? '자리에서' : g.phase === 'visiting' ? '구경 중' : g.phase === 'leaving' ? '집에 가는 중' : '오는 중'}{g.mood ? <> <Icon name={MOOD_ICON[g.mood] ?? 'mood_meh'} size={14} /></> : ''} · 만족 {s.guestTypes[g.type]?.satisfaction ?? 0}</span></span>
                 <span style={{ fontSize: 12, color: PALETTE.inkSoft }}>지갑 {wonText(guestWallet(s, g))}</span>
               </button>
             );

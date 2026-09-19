@@ -148,10 +148,10 @@ function TicketShop() {
         return (
           <div key={t.id} style={row}>
             <div style={{ flex: 1 }}>
-              <div><b>{t.name}</b>{has ? ' ✓' : ''}</div>
+              <div><b>{t.name}</b>{has ? <> <Icon name="check" size={12} /></> : ''}</div>
               <div style={small}>{eff}</div>
             </div>
-            <span style={price}>🎫{t.price}</span>
+            <span style={price}><Icon name="ticket" size={14} />{t.price}</span>
             <button style={{ ...(can.ok ? brownBtn : brownBtnOff), marginBottom: 0, marginRight: 0 }} data-testid={`buy-${t.id}`}
               onClick={() => { if (!can.ok) { dispatch({ type: 'buyTicket', id: t.id }); return; } Confirm(`${josa(t.name, '을/를')} 응모권 ${t.price}장으로 살까요?`, () => dispatch({ type: 'buyTicket', id: t.id }), { title: '응모권 상점' }); }}>
               {has ? '있음' : '사기'}
@@ -176,7 +176,7 @@ function DrawMachine() {
       </div>
       <button style={{ ...(can.ok ? brownBtnOn : brownBtnOff), fontSize: 18, width: '100%', marginRight: 0 }} data-testid="draw-btn"
         onClick={() => dispatch({ type: 'drawTicket' })} disabled={s.lastDraw !== null}>
-        🕹️ 뽑기 {free ? '(무료!)' : '(응모권 1장)'}
+        <Icon name="draw" size={20} /> 뽑기 {free ? '(무료!)' : '(응모권 1장)'}
       </button>
     </div>
   );
@@ -273,9 +273,9 @@ export function DrawPopup() {
       <div data-testid="draw-anim" data-phase={phase} style={{ position: 'relative', height: 120, background: `linear-gradient(#bfe3ff, ${PALETTE.paperDark})`, border: `3px solid ${PALETTE.wood}`, borderRadius: 8, overflow: 'hidden', marginBottom: 8 }}>
         <div style={{ position: 'absolute', left: 0, right: 0, top: 0, height: 10, background: PALETTE.wood }} />
         <div style={{ position: 'absolute', left: '50%', top: 10, width: 2, height: 24, marginLeft: -1, background: '#444', animation: phase === 'anim' ? `claw-drop ${DRAW_ANIM_MS}ms ease-in-out forwards` : undefined }} />
-        <div style={{ position: 'absolute', left: '50%', top: 30, marginLeft: -14, fontSize: 24, lineHeight: 1, animation: phase === 'anim' ? `claw-drop ${DRAW_ANIM_MS}ms ease-in-out forwards` : undefined }}>🤏</div>
-        <div style={{ position: 'absolute', left: 0, right: 0, bottom: 6, textAlign: 'center', fontSize: 22, letterSpacing: 6, opacity: 0.55 }}>🧸🎁🍬🎁🧸</div>
-        <div style={{ position: 'absolute', left: '50%', bottom: 8, marginLeft: -14, fontSize: 26, lineHeight: 1, animation: phase === 'anim' ? `prize-rise ${DRAW_ANIM_MS}ms ease-in-out forwards` : `prize-pop 400ms ease-out` }}>{prizeEmoji(r.kind)}</div>
+        <div style={{ position: 'absolute', left: '50%', top: 30, marginLeft: -14, fontSize: 24, lineHeight: 1, animation: phase === 'anim' ? `claw-drop ${DRAW_ANIM_MS}ms ease-in-out forwards` : undefined }}><Icon name="hand" size={28} /></div>
+        <div style={{ position: 'absolute', left: 0, right: 0, bottom: 6, textAlign: 'center', fontSize: 22, letterSpacing: 6, opacity: 0.55, display: 'flex', justifyContent: 'center', gap: 6 }}><Icon name="toy" size={24} /><Icon name="gift" size={24} /><Icon name="ticket" size={24} /><Icon name="gift" size={24} /><Icon name="toy" size={24} /></div>
+        <div style={{ position: 'absolute', left: '50%', bottom: 8, marginLeft: -14, fontSize: 26, lineHeight: 1, animation: phase === 'anim' ? `prize-rise ${DRAW_ANIM_MS}ms ease-in-out forwards` : `prize-pop 400ms ease-out` }}><Icon name={prizeIcon(r.kind)} size={28} /></div>
       </div>
       {phase === 'result' ? (
         <div data-testid="draw-result">
@@ -288,16 +288,16 @@ export function DrawPopup() {
   );
 }
 
-function prizeEmoji(kind: string): string {
+function prizeIcon(kind: string): string {
   switch (kind) {
-    case 'money': return '💰';
-    case 'research': return '📘';
-    case 'ingredient_box': return '📦';
-    case 'mileage': return '🏅';
-    case 'item': return '🎁';
-    case 'seed': return '🌱';
-    case 'uniform_piece': return '🧵';
-    default: return '🫧';
+    case 'money': return 'money';
+    case 'research': return 'research';
+    case 'ingredient_box': return 'box';
+    case 'mileage': return 'medal';
+    case 'item': return 'gift';
+    case 'seed': return 'plant';
+    case 'uniform_piece': return 'thread';
+    default: return 'sparkle';
   }
 }
 
