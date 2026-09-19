@@ -63,8 +63,8 @@ export function demolishRefund(objs: PlacedObject[]): number {
   return d;
 }
 
-/** 치우거나 옮길 수 있나: 보호 오브젝트·앉은 손님·지나가는 손님 */
-function canDisturb(state: GameState, obj: PlacedObject): ApplyResult {
+/** 치우거나 옮길 수 있나: 보호 오브젝트·앉은 손님·지나가는 손님 (UI가 고르기 전·배치 바에서 미리 보여 준다) */
+export function canDisturb(state: GameState, obj: PlacedObject): ApplyResult {
   if (PROTECTED_TYPES.has(obj.type)) return { ok: false, reason: '이건 못 없애요' };
   if (state.guests.some((g) => g.seatId === obj.id)) return { ok: false, reason: '손님이 앉아 있어요' };
   const cells = new Set(footprintOf(obj).map((p) => `${p.x},${p.y}`));

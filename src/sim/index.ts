@@ -5,7 +5,7 @@ export { tick, step, STEP_MS } from './tick.ts';
 export { upkeepOf, isAged, salaryOf as economySalaryOf, incomeTaxOf, totalCosts, emptyMonthCosts, UPKEEP_RATE, BASE_SALARY_DEFAULT, SALARY_LEVEL_STEP, SALARY_PER_STAT_POINT, ANNUAL_RAISE_PCT, TAX_RATE, TAX_MONTH } from './economy.ts';
 export { addComplaint, addReputation, complaintCounts, topComplaints, reputationGuestMult, reputationTypeMult, reputationTipMult, reputationNamedMult, reputationScore, nightlyReputation, monthlyReputation, makeReviews, reviewScore, applyApology, cleanValue, wornCount, COMPLAINT_REASONS, COMPLAINT_LABEL, COMPLAINT_REVIEW, REPUTATION_START, REP_LOW, REP_HIGH, REP_ALERT, APOLOGY_REPUTATION, MAX_REVIEWS, TOP_COMPLAINTS } from './reputation.ts';
 export { hasLoan, loanRewardMult, canTakeLoan, takeLoan, checkLoan, repayLoan, LOAN_AMOUNT, LOAN_MAX, LOAN_THRESHOLD, LOAN_REPAY_RATIO, LOAN_REWARD_MULT, WARN_DEFICIT_MONTHS, LOAN_DEFICIT_MONTHS, CRISIS_MONEY, CRISIS_MONTHS } from './failure.ts';
-export { apply, PROTECTED_TYPES, ROTATABLE_TYPES, demolishRefund } from './actions.ts';
+export { apply, PROTECTED_TYPES, ROTATABLE_TYPES, demolishRefund, canDisturb } from './actions.ts';
 export { canUndo } from './undo.ts';
 export { DAY_MS, seasonOf, monthIndex, DAYS_PER_MONTH } from './clock.ts';
 export { cellAt, objectAt, canPlace, footprint, parcelHasLandmark, isSheltered, sceneryScore, objectScenery, windShelter, SHELTER_THRESHOLD, SCENERY_CAP, doorOf, doorFrontOf, roomAt, isRoomFloor, objectsInRoom, clearCost, canClearRock, hasPickaxe, ROCK_CLEAR_COST, BIG_ROCK_CLEAR_COST, BUSH_CLEAR_COST } from './grid.ts';

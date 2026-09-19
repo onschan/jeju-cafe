@@ -3,7 +3,7 @@ import { wonText, label } from '../data/labels.ts';
 import { GameView, type GhostSpec, type RangeHint } from '../render/GameView';
 import { startLoop, dispatch, getState, useGame, setViewReset, autosaveNow, hasAnySave, loadSlot, setMonthCardHook, setSceneHook, showMessage, pauseGame, isSpeedLocked, setSpeedLocked } from './store';
 import { unlockAudio, bgm, isMuted, setMuted, getBgmVolume, getSfxVolume, setBgmVolume, setSfxVolume, sfx } from './audio';
-import { seasonOf, canPlace, objectAt, footprint, sizeOf, mainBuilding, parcelAt, clearCost, placeCost, PROTECTED_TYPES, ROTATABLE_TYPES, goalForMenu, featureOpen, canUndo, demolishRefund, routeAtCell, type GameState } from '../sim/index.ts';
+import { seasonOf, canPlace, objectAt, footprint, sizeOf, mainBuilding, parcelAt, clearCost, placeCost, PROTECTED_TYPES, ROTATABLE_TYPES, goalForMenu, featureOpen, canUndo, demolishRefund, canDisturb, routeAtCell, type GameState } from '../sim/index.ts';
 import { RoutesSection } from './RouteCard'; // 트랙 H
 import { objectDef } from '../data/index.ts';
 // render/·ui/는 Vite 전용이라 확장자 없는 import 허용. sim/·data/만 .ts 확장자 규칙.
@@ -327,6 +327,8 @@ function Game({ onExit }: { onExit: () => void }) {
     const st = getState();
     const o = objectAt(st, x, y);
     if (!o || PROTECTED_TYPES.has(o.type)) return false;
+    const c = canDisturb(st, o);
+    if (!c.ok) { showMessage(c.reason ?? '지금은 못 옮겨요'); return false; }
     setMode({ kind: 'move' });
     liftedRef.current = true;
     setMoving({ objectId: o.id, x: o.x, y: o.y });
@@ -335,8 +337,10 @@ function Game({ onExit }: { onExit: () => void }) {
   };
   /** 카드의 `이동` 버튼: 들어 올린 것과 같은 흐름 */
   const startMove = (objectId: string) => {
-    const o = getState().objects[objectId];
+    const st = getState();
+    const o = st.objects[objectId];
     if (!o) return;
+    if (o.type !== 'warehouse') { const c = canDisturb(st, o); if (!c.ok) { showMessage(c.reason ?? '지금은 못 옮겨요'); return; } }
     setMode({ kind: 'move' });
     liftedRef.current = true;
     setMoving({ objectId: o.id, x: o.x, y: o.y });
@@ -385,7 +389,7 @@ function Game({ onExit }: { onExit: () => void }) {
               const o = objectAt(st, x, y);
               if (!o) showMessage('옮길 것을 골라 주세요');
               else if (PROTECTED_TYPES.has(o.type)) showMessage('이건 못 옮겨요');
-              else setMoving({ objectId: o.id, x: o.x, y: o.y });
+              else { const c = canDisturb(st, o); if (!c.ok) showMessage(c.reason ?? '지금은 못 옮겨요'); else setMoving({ objectId: o.id, x: o.x, y: o.y }); }
             }
           } else if (m.kind === 'remove') {
             // 탭 = 한 칸 사각형. 이미 고른 게 있으면 새로 고른다
@@ -462,7 +466,7 @@ function Game({ onExit }: { onExit: () => void }) {
       ghostCell = { x: ghost.x, y: ghost.y, w: def.w, h: def.h };
       const confirm = () => {
         const r = dispatch({ type: 'place', objectType: mode.objectType, x: ghost.x, y: ghost.y, rot: ghost.rot });
-        if (!r.ok) return;
+        if (!r.ok) { showMessage(r.reason ?? '여기엔 못 놓아요'); return; }
         // 연속 배치(§5.3): 고스트를 옆 칸으로 옮겨 남긴다. 돈이 모자라면 자동 종료
         const nx = nextGhostAfterPlace(getState(), mode.objectType, ghost);
         if (nx.done) { setMode({ kind: 'idle' }); showMessage(nx.reason); return; }
@@ -485,7 +489,8 @@ function Game({ onExit }: { onExit: () => void }) {
     if (moving && o) {
       const def = objectDef(o.type);
       const size = sizeOf(o); // 본관 증축 Lv2+는 정의 크기와 다르다 (y-indoor)
-      const can = canPlace(s, o.type, moving.x, moving.y, o.id);
+      const can0 = canPlace(s, o.type, moving.x, moving.y, o.id);
+      const can = can0.ok && o.type !== 'warehouse' ? canDisturb(s, o) : can0; // 고른 뒤 손님이 앉거나 지나가면 확정이 조용히 실패하지 않게 이유를 보여 준다
       ghostSpec = { type: o.type, x: moving.x, y: moving.y, rot: o.rot, ok: can.ok, text: `${def.name} 옮기기`, w: size.w, h: size.h };
       rangeHint = rangeHintFor(s, o.type, moving.x, moving.y, o.id);
       ghostCell = { x: moving.x, y: moving.y, w: size.w, h: size.h };
@@ -496,7 +501,7 @@ function Game({ onExit }: { onExit: () => void }) {
         onUndo: undoOk ? undo : null,
         onConfirm: () => {
           const r = dispatch({ type: 'move', objectId: o.id, x: moving.x, y: moving.y });
-          if (!r.ok) return;
+          if (!r.ok) { showMessage(r.reason ?? '여기엔 못 옮겨요'); return; }
           if (liftedRef.current) { liftedRef.current = false; setMode({ kind: 'idle' }); } else setMoving(null);
         },
         onRotate: () => dispatch({ type: 'rotate', objectId: o.id, rot: ((o.rot ?? 0) + 1) % 4 }),
@@ -516,6 +521,7 @@ function Game({ onExit }: { onExit: () => void }) {
         onConfirm: () => {
           const r = dispatch({ type: 'demolishMany', objectIds: ids });
           if (r.ok) { setRect(null); showMessage(`${ids.length}개 치웠어요 (↶ 되돌리기 가능)`); }
+          else showMessage(r.reason ?? '지금은 못 치워요');
         },
         onRotate: () => {},
         onCancel: () => setRect(null),
