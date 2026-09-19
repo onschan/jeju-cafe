@@ -28,6 +28,11 @@ import { isWeekend, canOpenPopup, bestRegion } from './popup.ts';
 import { featureOpen, currentGoal } from './goals.ts';
 import { seatScore } from './site.ts';
 import { canBuyParcel, ownedParcels } from './parcels.ts';
+import { isWorn, canRepair } from './cleanliness.ts';
+import { canTrain } from './training.ts';
+import { staffCapacity } from './staff.ts';
+import { canUpgrade, upgradeCost, isUpgradable } from './upgrade.ts';
+import { objectStats } from './compat.ts';
 import { canInvestSpot } from './spots.ts';
 import { SPOTS } from '../data/index.ts';
 import { canHire } from './staff.ts';
@@ -61,9 +66,9 @@ export const BOT_TABLES: { x: number; y: number }[] = [
   ...[0, 1, 2, 3, 7, 8, 9].map((x) => at(x, 5)),
 ];
 /** 열린 시설을 놓는 칸 (시작 필지 아래쪽 줄) */
-export const BOT_DECO_CELLS: { x: number; y: number }[] = [at(6, 6), at(7, 6), at(8, 6), at(9, 6), at(0, 6), at(1, 6), at(2, 6), at(3, 6), at(0, 7), at(1, 7), at(2, 7), at(3, 7), at(6, 7), at(7, 7), at(8, 7), at(9, 7), at(0, 0), at(1, 0), at(2, 0), at(6, 0), at(7, 0), at(8, 0), at(9, 0)];
+export const BOT_DECO_CELLS: { x: number; y: number }[] = [at(6, 6), at(7, 6), at(8, 6), at(9, 6), at(0, 6), at(1, 6), at(2, 6), at(3, 6), at(1, 7), at(2, 7), at(3, 7), at(6, 7), at(7, 7), at(8, 7), at(9, 7), at(0, 0), at(1, 0), at(2, 0), at(6, 0), at(7, 0), at(8, 0), at(9, 0)];
 /** 시설 수 목표를 위해 놓는 시설 종류 (열린 것만, 이 순서로 하나씩) */
-export const BOT_DECO_TYPES = ['tangerine_tree', 'deco_planter', 'deco_wood_bench', 'terrace_seat', 'deco_flower_pots', 'bench_stonewall', 'canola', 'restroom', 'tangerine_tree', 'carrot_field', 'vending', 'handdrip_bar', 'souvenir', 'dolhareubang', 'pampas', 'bike_rack', 'deco_lamp_post', 'cedar', 'basalt_rock', 'tangerine_tree', 'carrot_field', 'deco_mailbox', 'deco_water_jar_set'];
+export const BOT_DECO_TYPES = ['tangerine_tree', 'deco_planter', 'deco_wood_bench', 'terrace_seat', 'deco_flower_pots', 'bench_stonewall', 'canola', 'restroom', 'tangerine_tree', 'staff_room', 'carrot_field', 'vending', 'handdrip_bar', 'souvenir', 'dolhareubang', 'pampas', 'bike_rack', 'deco_lamp_post', 'cedar', 'basalt_rock', 'tangerine_tree', 'carrot_field', 'deco_mailbox', 'deco_water_jar_set'];
 export const BOT_WALLS: { x: number; y: number }[] = [at(5, 5), at(6, 5)];
 export const FLYER_MIN_MONEY = 1_000_000;
 /** 돈이 이만큼 넘으면 SNS 홍보도 (연구 20) */
@@ -81,7 +86,16 @@ export const BOT_RECIPES = 5;
 /** 2년차부터 빈 직원 슬롯을 채운다 (돈 이만큼 넘을 때) — §4.6 직원 3 → 5 → 8 */
 export const BOT_HIRE_MIN_MONEY = 5_000_000;
 export const BOT_HIRE_YEAR = 2;
-export const BOT_HIRE_ORDER: RoleId[] = ['hall', 'barista', 'cook', 'carry', 'guide'];
+export const BOT_HIRE_ORDER: RoleId[] = ['clean', 'hall', 'barista', 'cook', 'carry', 'guide', 'garden', 'promo'];
+/** 한 달에 수리하는 낡은 시설 수 (트랙 A 노후·태풍 파손) */
+export const BOT_REPAIRS_PER_MONTH = 6;
+/** 연수: 랭크 3부터 돈 300만 넘으면 한 달에 한 명 (목표 g33·도전) */
+export const BOT_TRAIN_MIN_MONEY = 3_000_000;
+export const BOT_TRAINING_ID = 'tr_service';
+/** 연수는 이만큼만 (비용이 회당 +20%씩 오른다) */
+export const BOT_TRAIN_MAX = 4;
+/** 증축: 돈 여유가 있으면 한 달에 하나 (목표 g41·g63·g95) */
+export const BOT_UPGRADE_MIN_MONEY = 4_000_000;
 /** 관광지 투자: 돈이 다음 레벨 비용 + 여유분을 넘으면 (§4.6 투자 규칙) */
 export const BOT_SPOT_RESERVE = 3_000_000;
 /** 평판이 이 아래면 사과 이벤트 */
@@ -139,15 +153,14 @@ function pickDessert(s: GameState): void {
 
 /** 열린 시설을 정해진 칸에 하나씩 (이미 놓은 종류 수만큼 건너뛴다) */
 function placeDecos(s: GameState): void {
-  const placed = new Set(Object.values(s.objects).filter((o) => BOT_DECO_CELLS.some((c) => c.x === o.x && c.y === o.y)).map((o) => `${o.x},${o.y}`));
-  let i = placed.size;
+  // 놓은 개수 = 시설 칸 위에 원점을 둔 봇 시설 수 (정류장 같은 시작 오브젝트는 세지 않는다). 2칸짜리(휴게실)도 1개.
+  let i = Object.values(s.objects).filter((o) => objectDef(o.type).cost > 0 && BOT_DECO_CELLS.some((c) => c.x === o.x && c.y === o.y)).length;
   for (const type of BOT_DECO_TYPES.slice(i)) {
-    const cell = BOT_DECO_CELLS[i];
-    if (!cell) return;
     if (!s.unlocked.objects.includes(type)) return; // 아직 안 열린 것부터는 다음 달에
     if (!canSpend(s, objectDef(type).cost)) return;
-    if (place(s, type, cell.x, cell.y)) i++;
-    else return;
+    const cell = BOT_DECO_CELLS.find((c) => !objectAt(s, c.x, c.y) && canPlace(s, type, c.x, c.y).ok); // 발자국이 맞는 첫 빈 칸
+    if (!cell || !place(s, type, cell.x, cell.y)) return;
+    i++;
   }
 }
 
@@ -165,7 +178,7 @@ function canSpend(s: GameState, cost: number): boolean {
 
 /** 2년차부터: 빈 슬롯(홀 → 바리스타 → 요리사 → 운반 → 안내)이 있고 돈이 넉넉하면 전단 공고 → 핵심 스탯 최고를 채용 (한 달 한 명) */
 function hireForFreeSlot(s: GameState): void {
-  if (s.clock.year < BOT_HIRE_YEAR || !canSpend(s, BOT_HIRE_MIN_MONEY) || s.staff.length >= BOT_STAFF_BASE + BOT_STAFF_PER_YEAR * s.clock.year) return;
+  if (s.clock.year < BOT_HIRE_YEAR || !canSpend(s, BOT_HIRE_MIN_MONEY) || s.staff.length >= BOT_STAFF_BASE + BOT_STAFF_PER_YEAR * s.clock.year || s.staff.length >= staffCapacity(s)) return; // 정원(휴게실 +3)이 차면 공고를 내지 않는다
   for (const role of BOT_HIRE_ORDER) {
     if (!s.unlocked.roles.includes(role) || s.staff.filter((st) => st.role === role).length >= (s.slots[role] ?? 0)) continue;
     if (s.candidates.length === 0 && !apply(s, { type: 'postJob', tier: 'flyer' }).ok) return;
@@ -182,6 +195,29 @@ function investSpotIfAny(s: GameState): void {
     if (!next.ok || (s.clock.year < 4 && (s.spots[def.id] ?? 0) >= BOT_SPOT_MAX_LEVEL_EARLY)) continue;
     const cost = def.levels.find((l) => l.level === (s.spots[def.id] ?? 0) + 1)?.cost ?? Infinity;
     if (canSpend(s, cost) && apply(s, { type: 'investSpot', id: def.id }).ok) return;
+  }
+}
+
+/** 낡은 시설(노후·태풍 파손)을 수리비가 있으면 한 달에 몇 개 고친다 — 불만 'worn'이 평판을 깎는다 */
+function repairWorn(s: GameState): void {
+  let n = 0;
+  for (const o of Object.values(s.objects)) {
+    if (n >= BOT_REPAIRS_PER_MONTH) return;
+    if (!isWorn(s, o) || !canRepair(s, o.id).ok) continue;
+    if (apply(s, { type: 'repairObject', objectId: o.id }).ok) n++;
+  }
+}
+/** 랭크 3부터: 연수 중이 아닌 직원 하나를 서비스 연수에 보낸다 (한 달 한 명) */
+function trainOne(s: GameState): void {
+  if (s.stats.trainings >= BOT_TRAIN_MAX || !canSpend(s, BOT_TRAIN_MIN_MONEY)) return;
+  for (const st of s.staff) if (st.role !== null && canTrain(s, st.id, BOT_TRAINING_ID).ok && apply(s, { type: 'train', staffId: st.id, trainingId: BOT_TRAINING_ID }).ok) return;
+}
+/** 증축: 조건(이용 횟수·인기)이 찬 시설 하나를 한 달에 하나 증축 */
+function upgradeOne(s: GameState): void {
+  if (!canSpend(s, BOT_UPGRADE_MIN_MONEY)) return;
+  for (const o of Object.values(s.objects)) {
+    if (!isUpgradable(objectDef(o.type)) || !canUpgrade(s, o.id, objectStats(s, o.id).popularity).ok) continue;
+    if (canSpend(s, upgradeCost(s, o)) && apply(s, { type: 'upgradeObject', objectId: o.id }).ok) return;
   }
 }
 
@@ -243,6 +279,9 @@ function monthlyPlan(s: GameState, monthsPlayed: number): void {
   // 시설·돌담·필지·바위
   placeDecos(s);
   if (countKind(s, 'wall') < BOT_WALLS.length) for (const p of BOT_WALLS) place(s, 'stonewall', p.x, p.y);
+  repairWorn(s);
+  trainOne(s);
+  upgradeOne(s);
   buyParcelIfAny(s);
   investSpotIfAny(s);
   clearOneRock(s);

@@ -309,9 +309,9 @@ describe('노후 (§3.2.3)', () => {
 });
 
 describe('청결 (§3.2.3)', () => {
-  it('시작 100. 매일 −(어제 손님 ÷ 20), 청소 직원(직종 없으면 홀 절반) +(기술 ÷ 5), 청결 시설은 감소 −20%씩', () => {
+  it('시작 100. 매일 −(어제 손님 ÷ 20), 청소 직원 +(기술 ÷ 5 + 힘 ÷ 10) (청소 직원이 없으면 일하는 직원 전원의 ¼), 청결 시설은 감소 −20%씩', () => {
     const s = bareState(1);
-    expect(s.clean).toEqual({ value: CLEAN_MAX, lastGuests: 0 });
+    expect(s.clean).toEqual({ value: CLEAN_MAX, lastGuests: 0, history: [] });
     s.totalGuests = 100;
     dailyCleanliness(s);
     expect(s.clean.value).toBe(95);
@@ -319,17 +319,17 @@ describe('청결 (§3.2.3)', () => {
     s.totalGuests = 300;
     dailyCleanliness(s);
     expect(s.clean.value).toBe(85);
-    // 홀 직원(기술 40) → 청소 직종이 없으면 절반 = 40/5 × 0.5 = 4
+    // 홀 직원(기술 40·힘 50) → 청소 직원이 없으면 (40/5 + 50/10) × 0.25 = 3.25
     s.staff.push({ id: 'st1', name: '청소', face: { hair: 0, skin: 0, top: 0 }, stats: { stamina: 50, strength: 50, skill: 40, smile: 50 }, skill: 'none', level: 1, salary: 0, poolId: '', statCaps: { stamina: 100, strength: 100, skill: 100, smile: 100 }, extraSkills: [], maxLevel: 10, baseSalary: 0, exp: 0, trainingCount: 0, training: null, role: 'hall', unpaidMonths: 0, energy: 100, lastParttimeMonthIndex: -1, x: 0, y: 0, path: [], anchor: null, waitMs: 0 });
     dailyCleanliness(s);
-    expect(s.clean.value).toBe(89);
+    expect(s.clean.value).toBeCloseTo(88.25);
     // 화장실이 있으면 감소 ×0.8
     expect(cleanReduceMult(s)).toBe(1);
     placeObject(s, 'restroom', X(6), Y(4));
     expect(cleanReduceMult(s)).toBeCloseTo(0.8);
     s.totalGuests = 500;
     dailyCleanliness(s);
-    expect(s.clean.value).toBeCloseTo(89 - 8 + 4);
+    expect(s.clean.value).toBeCloseTo(88.25 - 8 + 3.25);
     // 상한 100
     s.staff[0]!.stats.skill = 100;
     for (let i = 0; i < 5; i++) dailyCleanliness(s);

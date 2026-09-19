@@ -44,7 +44,8 @@ export function dirtyForDays(state: GameState, n: number, days: number): boolean
 }
 /** 청소 직종 id (트랙 D의 staff_roles.json에 있으면 그 직원, 없으면 홀 직원이 절반 효과) */
 export const CLEAN_ROLE = 'clean';
-export const HALL_CLEAN_FACTOR = 0.5;
+/** 청소 직원이 없을 때: 일하는 직원 전원이 틈틈이 치운다 — 청소 직원 힘(기술 ÷ 5 + 힘 ÷ 10)의 ¼ */
+export const GENERAL_CLEAN_FACTOR = 0.25;
 
 export const WEAR_START_MONTHS = 24;
 export const WEAR_STEP_MONTHS = 6;
@@ -67,12 +68,12 @@ export function cleanReduceMult(state: GameState): number {
   return (1 - Math.min(CLEAN_REDUCE_CAP, n * CLEAN_REDUCE_PER_FACILITY)) * charm;
 }
 
-/** 하루 회복량: 청소 직원 힘(트랙 D cleanPowerOf: 기술 ÷ 5 + 힘 ÷ 10, 기력·특기 반영) × (청소 도구실 1.5). 청소 직원이 없으면 홀 직원(기술 ÷ 5)의 절반이 대신 치운다. */
+/** 하루 회복량: 청소 직원 힘(트랙 D cleanPowerOf: 기술 ÷ 5 + 힘 ÷ 10, 기력·특기 반영) × (청소 도구실 1.5). 청소 직원이 없으면 일하는 직원 전원(연수 중 제외)이 같은 공식의 ¼만큼 틈틈이 치운다. */
 export function dailyCleanRecovery(state: GameState): number {
   const cleaners = state.staff.filter((s) => s.role === CLEAN_ROLE);
   const sum = cleaners.length > 0
     ? cleanPowerOf(state)
-    : state.staff.filter((s) => s.role === 'hall').reduce((n, s) => n + s.stats.skill / CLEAN_STAFF_DIV, 0) * HALL_CLEAN_FACTOR;
+    : state.staff.filter((s) => s.role !== null && !s.training).reduce((n, s) => n + s.stats.skill / CLEAN_STAFF_DIV + s.stats.strength / 10, 0) * GENERAL_CLEAN_FACTOR;
   return sum * (hasBuilt(state, 'cleaning_room') ? CLEAN_ROOM_MULT : 1);
 }
 
