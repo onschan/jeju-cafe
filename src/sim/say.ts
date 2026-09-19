@@ -7,6 +7,7 @@ import { guestDialogue, guestTags, namedGuestDef, roleDef } from '../data/index.
 import { menuOf, isStaffBusy } from './craft.ts';
 import { LOW_ENERGY } from './staff.ts';
 import { siteSay } from './site.ts';
+import { isForeign } from './entry.ts';
 
 /** 문자열 → 0 이상 정수 해시 (결정적 선택용) */
 export function hashOf(s: string): number {
@@ -28,6 +29,23 @@ const NO_SEAT_LINES_SENIOR = ['자리가 어수다.', '앉을 디가 없저.', '
 const LEAVE_HAPPY = ['또 올게요!', '잘 먹었어요!', '맛있었다!'];
 const LEAVE_MEH = ['다음에…', '음, 글쎄…', '아쉽네…'];
 const VISIT_LINES = ['구경 좀 하고 갈게요.', '여기 뭐가 있지?', '사진 한 장!'];
+/** 외국인 손님(트랙 H foreign 태그)은 한국어 대신 이모지 말풍선 */
+const FOREIGN_LINES: Record<Guest['phase'] | 'happy' | 'meh' | 'price' | 'wait' | 'order', string[]> = {
+  walking: ['😕💺', '🙁🔍'], seated: ['🤔'], visiting: ['📸✨', '👀🍊', '🗺️'], leaving: ['👋'],
+  happy: ['😋👍', '🍊💕', '📸😄'], meh: ['😐', '🤷'], price: ['💸😳', '🙄💰'], wait: ['⏳', '🕐❓'], order: ['☕🙏', '🍊👉', '🥐❓'],
+};
+function foreignSay(g: Guest): string | null {
+  const k = g.id;
+  switch (g.phase) {
+    case 'walking': return g.seatId ? null : pick(FOREIGN_LINES.walking, k);
+    case 'seated':
+      if (g.mood === null) return g.menuId ? pick(g.waitMs > 1500 ? FOREIGN_LINES.order : FOREIGN_LINES.wait, k) : null;
+      if (g.mood === 'happy') return pick(FOREIGN_LINES.happy, k);
+      return pick(g.moodReason === 'price' ? FOREIGN_LINES.price : FOREIGN_LINES.meh, k);
+    case 'visiting': return pick(FOREIGN_LINES.visiting, k);
+    case 'leaving': return g.mood === null ? null : pick(g.mood === 'happy' ? FOREIGN_LINES.happy : FOREIGN_LINES.leaving, k);
+  }
+}
 
 /** 손님의 현재 기분·단계에 맞는 대사. 대사가 없는 순간(걷는 중 등)은 null. */
 export function guestSay(state: GameState, guest: Guest): string | null {
@@ -36,6 +54,7 @@ export function guestSay(state: GameState, guest: Guest): string | null {
     // 이름 있는 손님·특별 손님: 자기 대사 (앉아서 만족했을 때만)
     return g.phase === 'seated' && g.mood === 'happy' ? namedGuestDef(g.namedId).line : null;
   }
+  if (isForeign(g.type)) return foreignSay(g); // 트랙 H: 외국인은 이모지
   const senior = guestTags(g.type).age === 'senior';
   const d = guestDialogue(g.type);
   const menuName = g.menuId ? menuOf(state, g.menuId).name : null;

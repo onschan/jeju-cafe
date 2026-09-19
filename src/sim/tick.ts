@@ -25,6 +25,7 @@ import { fmtNum } from './format.ts';
 import { hourlyPopup, dailyPopup } from './popup.ts';
 import { monthlyRivals } from './rivals.ts';
 import { dailyCleanliness } from './cleanliness.ts';
+import { dailyRoutes, monthlyRoutes } from './entry.ts';
 
 export const STEP_MS = 100;        // 고정 스텝 (게임 ms)
 const MAX_STEPS_PER_TICK = 600;    // 백그라운드 복귀 등 폭주 방지 (60초 게임 시간)
@@ -56,6 +57,7 @@ function onNewDay(state: GameState): void {
   dailySpots(state);
   resolveDevelop(state);
   advanceConstruction(state);
+  dailyRoutes(state); // 트랙 H: 경로 해금·길 끊김·오늘 손님 리셋
   checkGoals(state);
 }
 
@@ -68,6 +70,7 @@ function onNewMonth(state: GameState, prevMonth: number, prevYear: number): void
   upkeep(state);
   if (newYear) incomeTax(state);
   monthlySpots(state); // 투어 버스 월 계약비(트랙 C chargeTourBus → monthCosts.tourBus)
+  monthlyRoutes(state); // 트랙 H: 경로 월 리셋·셔틀 계약비
   monthlyGifts(state);
   monthlyMileage(state);
   closeMonth(state, prevMonth, prevYear);

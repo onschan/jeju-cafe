@@ -3,6 +3,7 @@ import { objectDef, SEASON_SCENERY } from '../data/index.ts';
 import { parcelAt, parcelSceneryBonus } from './parcels.ts';
 import { seasonOf, monthIndex } from './clock.ts';
 import { spotSceneryBonus } from './spots.ts';
+import { routePlaceCheck } from './entry.ts';
 
 /** 바위 치우기 비용: 작은 바위 30만, 큰 바위(오름 능선) 100만, 곶자왈 덤불 5만. 곡괭이가 있으면 무료(1개 소모). */
 export const ROCK_CLEAR_COST = 300_000;
@@ -156,6 +157,7 @@ export function canPlace(state: GameState, type: string, x: number, y: number, i
     const front = objectAt(state, f.x, f.y);
     if (front && front.id !== ignoreId && blocksDoorFront(objectDef(front.type))) return { ok: false, reason: '문 앞이 막혀 있어요' };
   }
+  { const rp = routePlaceCheck(state, type, x, y); if (!rp.ok) return rp; } // 트랙 H: 주차장은 마을 길에 붙여, 선착장은 북쪽 끝에
   if (def.kind === 'landmark') {
     if (parcelIds.size > 1) return { ok: false, reason: '랜드마크는 한 필지 안에 놓아요' };
     for (const id of parcelIds) if (parcelHasLandmark(state, id, ignoreId)) return { ok: false, reason: '이 필지엔 이미 랜드마크가 있어요' };

@@ -3,6 +3,7 @@ import { INITIAL_UNLOCKED, ROLES, FACILITY_START_IDS, objectDef } from '../data/
 import { START_HOUR } from './clock.ts';
 import { makeParcels } from './parcels.ts';
 import { PARCEL_W, PARCEL_H, START_ORIGIN, GRID_W, GRID_H, VILLAGE_ROAD_Y } from './layout.ts';
+import { initRoutes } from './entry.ts';
 import { occupy } from './grid.ts';
 import { nextRandom } from './rng.ts';
 import { initGuestTypes, initSegmentPopularity } from './segments.ts';
@@ -242,6 +243,7 @@ export function createInitialState(seed: number, playerId = 'local', createdAt =
     rivals: [],
     lastChallenge: null,
     guests: [],
+    routes: initRoutes(), // 트랙 H 손님 유입 경로 5종
     spawnAcc: START_SPAWN_ACC,
     researchAcc: 0,
     nextId: 1,

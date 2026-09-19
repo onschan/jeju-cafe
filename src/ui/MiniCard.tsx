@@ -3,6 +3,8 @@ import { wonText } from '../data/labels.ts';
 import { useGame, dispatch } from './store';
 import { objectStats, siteOf, siteLineText, clearCost, canClearRock, hasPickaxe, cellAt, walletOf, guestFace, namedGuestFace, canAcceptQuest, parcelPrice, canBuyParcel, canGiveGift, giftFits, giftCount, giftedToday, PROTECTED_TYPES, ROTATABLE_TYPES, LOW_ENERGY, STAT_KEYS, STAT_NAME, staffInRole, canLevelUp, capOf, skillsOf, expNeeded, isUpgradable, canUpgrade, upgradeCost, upgradeConditionText, MAX_OBJECT_LEVEL, canRepair, repairCost, CLEAN_LOW, type GameState, type Guest, type RoleId, type StatKey } from '../sim/index.ts';
 import { BUS_HOUR, isBusDay } from '../sim/spots.ts';
+import { RouteCard } from './RouteCard';
+import type { RouteId } from '../sim/index.ts';
 import { objectDef, guestTypeDef, namedGuestDef, questDef, roleDef, skillDef, trainingDef, ROLES, GIFTS } from '../data/index.ts';
 import { staffParts } from '../render/character';
 import { Portrait, guestPortraitParts, namedPortraitParts, guestName } from './GuestPopup';
@@ -22,7 +24,8 @@ export type CardTarget =
   | { kind: 'empty'; x: number; y: number }
   | { kind: 'parcel'; id: string }
   | { kind: 'busstop'; id: string }
-  | { kind: 'counter'; id: string };
+  | { kind: 'counter'; id: string }
+  | { kind: 'route'; route: RouteId; id?: string }; // 트랙 H: 진입점·경로 시설 → RouteCard
 
 export interface CardActions {
   onGuestDetail: (guestId: string) => void;
@@ -317,6 +320,7 @@ export function MiniCard({ target, actions, onClose }: { target: CardTarget; act
     case 'parcel': body = <ParcelCard s={s} id={target.id} onClose={onClose} />; break;
     case 'busstop': body = <BusStopCard s={s} id={target.id} />; break;
     case 'counter': body = <CounterCard s={s} a={actions} />; break;
+    case 'route': body = <RouteCard s={s} route={target.route} objectId={target.id} />; break; // 트랙 H
   }
   return (
     <div data-testid="mini-card" data-kind={target.kind}

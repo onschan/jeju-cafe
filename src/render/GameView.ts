@@ -1,5 +1,5 @@
 import { Application, Container, Sprite, Graphics, Texture, Text } from 'pixi.js';
-import type { GameState, PlacedObject, Guest, Staff, Season, RoleId, Pt } from '../sim/index.ts';
+import type { GameState, PlacedObject, Guest, Staff, Season, RoleId, Pt, RouteId } from '../sim/index.ts';
 import { seasonOf, LOW_ENERGY, parcelPrice, footprint, roomAt, doorFrontOf, WALL_COLORS, dayIndex, menuOf } from '../sim/index.ts';
 import type { Parcel } from '../sim/index.ts';
 import { objectDef } from '../data/index.ts';
@@ -15,6 +15,7 @@ import { guestTypeDef, namedGuestDef } from '../data/index.ts';
 import { Background } from './Background';
 import { siteOf, siteBadgeTextPlain, siteTone, layoutKey } from '../sim/site.ts';
 import { objectStats, activeCombos } from '../sim/compat.ts';
+import { entryPoints, ROUTE_IDS } from '../sim/entry.ts'; // 트랙 H 진입점 표지
 import { isSiteOverlayOn, setSiteOverlayOn, siteOverlayKey, drawSiteOverlay, GHOST_GOOD, GHOST_WARN } from './siteOverlay';
 
 /** 전용 스프라이트가 있는 손님 타입 (guest_local·guest_tourist 시트) */
@@ -44,6 +45,9 @@ export const BUBBLE_MS = 1500;
 const SPRITE_ALIAS: Record<string, string> = { bush_wild: 'tea_bush', spring: 'pond', dolhareubang_pair: 'dolhareubang', hackberry: 'hackberry_shade', tangerine_tree: 'tangerine_tree_ready' };
 /** 캐릭터(손님·직원)는 모든 시설·건물보다 앞에 그린다 — 건물 뒤·안에 있어도 사람이 보여야 한다(카이로식). 캐릭터끼리는 x+y 순. */
 const CHAR_Z = 1e4;
+/** 트랙 H: 경로별 진입점 표지 스프라이트 (버스·자동차·비행기·배·리본) */
+const ROUTE_MARKER_SPRITE: Record<RouteId, string> = { bus: 'route_bus', parking: 'route_car', shuttle: 'route_plane', cruise: 'route_ship', olle: 'route_ribbon' };
+const ROUTE_LOCKED_TINT = 0x8a8a8a;
 
 /** 미소유 필지 노드: 덮개 타일(tiles)과 가격 라벨(overlay)을 같이 지운다 */
 function destroyLocked(node?: Container) {
@@ -236,6 +240,9 @@ export class GameView {
   private tilesBuilt = false;
   /** 미소유 필지 덮개 + 가격 라벨. 키는 필지 id, 라벨 문구가 바뀌면(신구간 할인) 다시 만든다. */
   private lockedNodes = new Map<string, { node: Container; text: string }>();
+  /** 트랙 H: 진입점 표지 (경로 id → 노드·상태 키). 배치·해금이 바뀔 때만 다시 만든다. */
+  private entryMarkers = new Map<RouteId, { node: Container; key: string }>();
+  private entryKey = '';
   private ghost: Container | null = null;
   private ghostKey = '';
   /** 입지(트랙 F): 고스트 배지·색 갱신용 스펙과 마지막 키 */
@@ -335,6 +342,9 @@ export class GameView {
     this.greeted.clear();
     for (const e of this.lockedNodes.values()) destroyLocked(e.node); // overlay에 있는 가격 라벨까지 같이 지운다
     this.lockedNodes.clear();
+    for (const e of this.entryMarkers.values()) e.node.destroy({ children: true });
+    this.entryMarkers.clear();
+    this.entryKey = '';
     this.tiles.removeChildren().forEach((c) => c.destroy());
     this.tileSprites = [];
     this.terrainKeys = [];
@@ -534,6 +544,7 @@ export class GameView {
     // 시계에 hour가 있는 브랜치(2B-1)와 없는 브랜치 모두에서 동작하도록 정오를 기본값으로
     this.nightAlpha = nightAlpha((state.clock as { hour?: number }).hour ?? 12);
     this.syncObjects(state, now);
+    this.syncEntryMarkers(state);
     this.syncGuests(state, now);
     this.syncStaff(state, now);
     this.syncFx(state, now);
@@ -855,6 +866,35 @@ export class GameView {
   /** w×h 발자국 다이아몬드의 중심(월드 좌표). 노드 원점(앞 꼭짓점)과는 다르다. */
   private footCenter(o: PlacedObject, w: number, h: number): { sx: number; sy: number } {
     return cellCenter(o.x + (w - 1) / 2, o.y + (h - 1) / 2);
+  }
+
+  /** 트랙 H: 맵 가장자리 진입점 표지 5종. 잠긴 경로는 회색, 열렸지만 길이 안 이어졌으면 반투명. 배치·해금·계약이 바뀔 때만 다시 계산한다(길 연결 BFS). */
+  private syncEntryMarkers(state: GameState) {
+    const key = `${layoutKey(state)}|${ROUTE_IDS.map((r) => { const st = state.routes?.[r]; return st ? `${st.unlocked ? 1 : 0}${st.contract ? 1 : 0}` : '00'; }).join('')}`;
+    if (key === this.entryKey) return;
+    this.entryKey = key;
+    for (const e of entryPoints(state)) {
+      const k = `${e.unlocked}:${e.active}`;
+      const cur = this.entryMarkers.get(e.route);
+      if (cur?.key === k) continue;
+      cur?.node.destroy({ children: true });
+      const c = new Container();
+      c.label = `entry-${e.route}`;
+      const { sx, sy } = footAnchor(e.pos.x, e.pos.y, 1, 1);
+      c.position.set(sx, sy);
+      c.zIndex = this.depthOf(state, e.pos.x, e.pos.y);
+      const t = hasAssets() ? peekTex(spriteName.isoObject(ROUTE_MARKER_SPRITE[e.route])) : null;
+      if (t) {
+        const sp = new Sprite(t);
+        sp.anchor.set(0.5, 1);
+        if (!e.unlocked) { sp.tint = ROUTE_LOCKED_TINT; sp.alpha = 0.75; } else if (!e.active) sp.alpha = 0.7;
+        c.addChild(sp);
+      } else {
+        c.addChild(new Graphics().roundRect(-6, -ISO_H, 12, 12, 2).fill({ color: e.unlocked ? 0xf5f1e8 : ROUTE_LOCKED_TINT, alpha: e.active ? 1 : 0.7 }));
+      }
+      this.actors.addChild(c);
+      this.entryMarkers.set(e.route, { node: c, key: k });
+    }
   }
 
   private syncObjects(state: GameState, now: number) {

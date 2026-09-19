@@ -17,7 +17,7 @@ import { createInitialState } from './state.ts';
 import { tick } from './tick.ts';
 import { apply } from './actions.ts';
 import { DAY_MS } from './clock.ts';
-import { canPlace, objectAt, cellAt } from './grid.ts';
+import { canPlace, objectAt, cellAt, footprint } from './grid.ts';
 import { START_ORIGIN } from './layout.ts';
 import { objectDef, COMBOS, SETS, questDef } from '../data/index.ts';
 import { DEVELOP_RESEARCH, menuOf } from './craft.ts';
@@ -40,6 +40,7 @@ import { objectStats, activeCombos, setLevels } from './compat.ts';
 import { canInvestSpot, canHostTour, tourScore, TOUR_SUCCESS_SCORE } from './spots.ts';
 import { SPOTS } from '../data/index.ts';
 import { canHire } from './staff.ts';
+import { parkingSites, routePathCells, routeFacility, canSetRouteContract, ENTRY_ROUTES, PARKING_EXPAND_FROM } from './entry.ts'; // 트랙 H
 import type { Candidate, RoleId, StatKey } from './types.ts';
 
 export interface BotRow {
@@ -351,6 +352,50 @@ function clearOneRock(s: GameState): void {
       }
 }
 
+/** 트랙 H 유입 경로: 주차장(마을 길 옆 첫 자리) → 올레 표식·셔틀 정류장·선착장 + 진입점까지 올렛길(덤불·바위는 치운다) → 셔틀 계약 */
+export const BOT_ROUTE_SITES: Record<'olle' | 'shuttle' | 'cruise', { x: number; y: number }> = { olle: { x: 3, y: 11 }, shuttle: { x: 15, y: 20 }, cruise: { x: 14, y: 0 } }; // 셔틀은 샘(15,19) 아래, 옆 열(x=16)로 마을 길까지
+/** 경로 시설에서 시작 필지 올렛길(가로 y=12 · 세로 x=14)까지 잇는 칸. 크루즈는 parcel2·parcel4를 지나므로 그 필지를 산 뒤에 이어진다. */
+const BOT_ROUTE_LINKS: Record<'olle' | 'shuttle' | 'cruise', { x: number; y: number }[]> = {
+  olle: [{ x: 3, y: 12 }, ...[4, 5, 6, 7, 8, 9].map((x) => ({ x, y: 12 }))],
+  shuttle: [16, 17, 18, 19, 20].map((y) => ({ x: 16, y })),
+  cruise: [...[1, 2, 3, 4, 5, 6, 7].map((y) => ({ x: 14, y })), ...[13, 12, 11, 10, 9].map((x) => ({ x, y: 7 })), ...[8, 9, 10, 11, 12].map((y) => ({ x: 9, y }))], // 본관(13~15, 9~10)·북쪽 테이블 줄을 피해 오름 자락(9,7)→밭담 골짜기 x=9로 내려와 가로 올렛길(10,12)에 닿는다
+};
+function laySteps(s: GameState, cells: { x: number; y: number }[]): void {
+  for (const c of cells) {
+    const o = objectAt(s, c.x, c.y);
+    if (o?.type === 'path' || objectDef(o?.type ?? 'path').kind === 'busstop') continue;
+    if ((o?.type === 'bush_wild' || (!o && cellAt(s, c.x, c.y).terrain === 'rock')) && featureOpen(s, 'clearRock')) apply(s, { type: 'clearRock', x: c.x, y: c.y });
+    if (!objectAt(s, c.x, c.y)) apply(s, { type: 'place', objectType: 'path', ...c });
+  }
+}
+/** 경로 시설은 2년차부터 — 1년차에 주차장을 지으면 가족·커플 손님 매출로 §4.6 밴드(1년차 순이익 300~800만)를 넘는다. 목표도 g36(2년차)부터 */
+export const BOT_ROUTE_YEAR = 2;
+/** 시작 필지 오른쪽 아래(마을 길 옆) 2×2 — 2년차에 그 자리의 테이블·시설을 치우고(환불) 주차장을 놓는다. 1년차 배치는 §4.6 밴드 그대로. */
+export const BOT_PARKING_SITE = at(8, 5);
+function clearParkingSite(s: GameState): boolean {
+  for (const c of footprint(PARKING_EXPAND_FROM, BOT_PARKING_SITE.x, BOT_PARKING_SITE.y)) {
+    const o = objectAt(s, c.x, c.y);
+    if (o && !apply(s, { type: 'remove', objectId: o.id }).ok) return false; // 손님이 앉아 있으면 다음 달
+  }
+  return true;
+}
+function planRoutes(s: GameState): void {
+  if (s.clock.year < BOT_ROUTE_YEAR) return;
+  if (!routeFacility(s, 'parking') && !Object.values(s.objects).some((o) => o.type === PARKING_EXPAND_FROM) && s.unlocked.objects.includes(PARKING_EXPAND_FROM) && canSpend(s, objectDef(PARKING_EXPAND_FROM).cost)) {
+    const sites = parkingSites(s);
+    const site = sites.find((p) => p.x === BOT_PARKING_SITE.x && p.y === BOT_PARKING_SITE.y) ?? (clearParkingSite(s) ? BOT_PARKING_SITE : sites[0]);
+    if (site) place(s, PARKING_EXPAND_FROM, site.x, site.y);
+  }
+  for (const route of ['olle', 'shuttle', 'cruise'] as const) {
+    const type = ENTRY_ROUTES[route].facilities[0]!;
+    const site = BOT_ROUTE_SITES[route];
+    if (!routeFacility(s, route) && !objectAt(s, site.x, site.y) && canSpend(s, objectDef(type).cost)) place(s, type, site.x, site.y);
+    if (!Object.values(s.objects).some((o) => o.type === type)) continue;
+    laySteps(s, [...routePathCells(route, site), ...BOT_ROUTE_LINKS[route]]);
+  }
+  if (canSetRouteContract(s, 'shuttle', true).ok && canSpend(s, 2_000_000)) apply(s, { type: 'setRouteContract', route: 'shuttle', on: true });
+}
+
 /** 매달 1일 */
 function monthlyPlan(s: GameState, monthsPlayed: number): void {
   ensurePath(s);
@@ -415,6 +460,7 @@ function monthlyPlan(s: GameState, monthsPlayed: number): void {
   buyParcelIfAny(s);
   investSpotIfAny(s);
   clearOneRock(s);
+  planRoutes(s); // 트랙 H
 }
 
 /** 매일 아침 */

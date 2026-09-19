@@ -1,4 +1,4 @@
-import type { GameState, Guest, PlacedObject, Pt, MenuCategory, MenuStatKey, RoleId, GuestWant, ComplaintReason } from './types.ts';
+import type { GameState, Guest, PlacedObject, Pt, MenuCategory, MenuStatKey, RoleId, GuestWant, ComplaintReason, RouteId } from './types.ts';
 import { canOpen } from './goals.ts';
 import { objectDef, guestTypeDef, guestTags, guestDialogue, canonicalGuestId, namedGuestDef, NAMED_TYPE } from '../data/index.ts';
 import { pickWeighted, nextRandom, randInt } from './rng.ts';
@@ -28,6 +28,7 @@ import { eventGuestMult, eventTagMult, eventFeeMult, isSpecialGuest, specialGues
 import { fmtNum } from './format.ts';
 import { josa } from './josa.ts';
 import { siteBonus } from './site.ts';
+import { spawnRouteWeights, routeArrivals, routeSpawnPos, routeTagMult, routeWalletMult, routeStayMult, routeGuestMult, routeHome, noteRouteGuest, noteRouteIncome, foreignPhotoChance, foreignMenuMult, chargePortFee } from './entry.ts'; // 트랙 H 유입 경로
 
 export { moveAlong, GUEST_SPEED_CELLS_PER_S }; // 하위 호환 재수출 (본체는 path.ts)
 export const SEAT_MS = 3000;       // 기분이 정해진 뒤 앉아 있는 시간 (≈1.5시간)
@@ -173,7 +174,7 @@ export function popularityGuestBase(state: GameState): number {
 /** 하루 손님 수 = min(좌석 × 6, 기반값 × 이벤트 전체 배수 × 빅 이벤트 배수 × 메뉴 품격(+%) × 계절 × 라이벌(−5%/곳) × 청결 × 평판(0.5 + 평판/100)), 2~300 */
 export function dailyGuestCount(state: GameState): number {
   const n = popularityGuestBase(state) * effectMult(state, 'spawnMult') * eventGuestMult(state) * (1 + dignityPct(state) / 100)
-    * seasonGuestMult(state.clock.month) * rivalGuestMult(state) * reputationGuestMult(state); // 청결 배수(트랙 A)는 dailyCleanliness가 거는 하루짜리 spawnMult 효과로 effectMult에 들어 있다
+    * seasonGuestMult(state.clock.month) * rivalGuestMult(state) * reputationGuestMult(state) * routeGuestMult(state); // 트랙 H 올레길 +15% · 청결 배수(트랙 A)는 dailyCleanliness가 거는 하루짜리 spawnMult 효과로 effectMult에 들어 있다
   const cap = totalSeats(state) * GUESTS_PER_SEAT;
   return Math.max(MIN_DAILY_GUESTS, Math.min(MAX_DAILY_GUESTS, cap, Math.round(n)));
 }
@@ -195,8 +196,32 @@ export function hourlySpawn(state: GameState): number {
   state.spawnAcc += dailyGuestCount(state) * hourShare(state.clock.hour);
   const n = Math.floor(state.spawnAcc + 1e-9);
   state.spawnAcc -= n;
-  let spawned = n > 0 ? spawnGuests(state, n) : 0;
+  let spawned = n > 0 ? spawnByRoutes(state, n) : 0;
   if (state.clock.hour === BUS_HOUR && isBusDay(state.clock.day)) spawned += tourBus(state);
+  // 트랙 H: 시각 고정 경로 — 공항 셔틀(11·15시)·크루즈(입항 날 13시)
+  for (const a of routeArrivals(state)) {
+    const pos = routeSpawnPos(state, a.route);
+    if (!pos) continue;
+    if (a.route === 'cruise') chargePortFee(state);
+    spawned += spawnGuests(state, a.n, undefined, { route: a.route, pos });
+  }
+  return spawned;
+}
+
+/** 트랙 H: 기본 스폰 n명을 활성 경로 가중치(정류장 1.0 / 주차장 칸당 0.15 / 올레 0.15)로 나눠 진입점별로 스폰. 정류장만 열려 있으면 rng를 쓰지 않는다(결정성 유지). */
+export function spawnByRoutes(state: GameState, n: number): number {
+  const routes = spawnRouteWeights(state);
+  if (routes.length <= 1 && (routes.length === 0 || routes[0]!.route === 'bus')) return spawnGuests(state, n);
+  const counts = new Map<RouteId, number>();
+  for (let i = 0; i < n; i++) {
+    const r = pickWeighted(state, routes, (x) => x.weight)!.route;
+    counts.set(r, (counts.get(r) ?? 0) + 1);
+  }
+  let spawned = 0;
+  for (const [route, k] of counts) {
+    const pos = route === 'bus' ? undefined : routeSpawnPos(state, route);
+    spawned += spawnGuests(state, k, undefined, route === 'bus' || !pos ? undefined : { route, pos });
+  }
   return spawned;
 }
 
@@ -226,14 +251,15 @@ export function tourBus(state: GameState): number {
   return n;
 }
 
-/** 최대 n명 스폰. 정류장에서 가장 가까운 빈 좌석부터 — 대기열(waiting)에 있던 손님이 먼저 앉는다. forceType을 주면 그 타입만(투어 버스).
- *  빈 자리가 없으면 대기열에 3명까지 서고, 넘치면 돌아간다(walkAway). 실제 앉힌(스폰된) 수를 돌려준다. */
-export function spawnGuests(state: GameState, n: number, forceType?: string): number {
+/** 최대 n명 스폰. 진입점(기본 정류장, entry를 주면 그 경로 시작 칸)에서 가장 가까운 빈 좌석부터 — 대기열(waiting)에 있던 손님이 먼저 앉는다. forceType을 주면 그 타입만(투어 버스).
+ *  entry(트랙 H)를 주면 그 경로의 태그 가중치로 손님층을 뽑고 Guest.route에 기록한다. 빈 자리가 없으면 대기열에 3명까지 서고, 넘치면 돌아간다(walkAway). 실제 앉힌(스폰된) 수를 돌려준다. */
+export function spawnGuests(state: GameState, n: number, forceType?: string, entry?: { route: RouteId; pos: Pt }): number {
   if (!canOpen(state)) return 0; // §7.1 좌석·길·메뉴가 갖춰질 때까지 손님 0 (x-goals 훅)
   let spawned = 0;
-  const start = busStopPos(state);
+  const route: RouteId = entry?.route ?? 'bus';
+  const start = entry?.pos ?? busStopPos(state);
   const reach = reachMap(state, start); // 걷기 지형은 스폰 중 안 바뀌므로 한 번만
-  const pickType = (bonus: ParcelBonus, force?: string) => force ? (force === NAMED_TYPE ? NAMED_TYPE : canonicalGuestId(force)) : pickWeighted(state, unlockedTypeIds(state), (id) => typeWeight(state, id, state.clock.hour, bonus));
+  const pickType = (bonus: ParcelBonus, force?: string) => force ? (force === NAMED_TYPE ? NAMED_TYPE : canonicalGuestId(force)) : pickWeighted(state, unlockedTypeIds(state), (id) => typeWeight(state, id, state.clock.hour, bonus) * (entry ? routeTagMult(route, id) : 1));
   const findSeat = (): { seat: PlacedObject; target: Pt; dist: number } | null => {
     let best: { seat: PlacedObject; target: Pt; dist: number } | null = null;
     for (const seat of freeSeats(state)) {
@@ -264,7 +290,9 @@ export function spawnGuests(state: GameState, n: number, forceType?: string): nu
       timerMs: 0,
       waitMs: 0,
       paid: 0,
+      ...(entry ? { route } : {}),
     });
+    if (entry) noteRouteGuest(state, route); else noteRouteGuest(state, 'bus');
     spawned++;
   };
   // 대기열부터 (n과 별도로 앉힌다). 단골★·투어 버스(forceType)는 줄과 상관없이 바로 자리를 찾는다.
@@ -312,7 +340,7 @@ function profileOf(state: GameState, g: Guest): GuestProfile {
     return { likes: namedLikes(d), likesStats: d.likesStats, wallet: d.budget, minScenery: NAMED_MIN_SCENERY };
   }
   const t = guestTypeDef(g.type);
-  return { likes: t.likes, likesStats: t.likesStats, wallet: walletOf(state, g.type), minScenery: t.minScenery };
+  return { likes: t.likes, likesStats: t.likesStats, wallet: Math.round(walletOf(state, g.type) * routeWalletMult(g)), minScenery: t.minScenery }; // 트랙 H: 경로·외국인 지갑 배수
 }
 
 /** 조리 시간 = 5초 × (1 − min(0.6, 담당 역할 효과/100)) × (1 − 속도 스킬) */
@@ -388,7 +416,7 @@ function resolveMood(state: GameState, g: Guest): void {
     }
     state.popularity = Math.max(-100, Math.min(100, state.popularity + type.popularityShift));
     onHappyVisit(state, g, (tasteMatch ? 2 : 1) * skillSatMult(state, g));
-    const photo = photoChance(state, g.type, g.menuId);
+    const photo = foreignPhotoChance(g.type, photoChance(state, g.type, g.menuId)); // 트랙 H: 외국인 ×2
     if (photo > 0 && nextRandom(state) < photo) pushFx(state, { kind: 'photo', x: seat.x, y: seat.y, tick: state.tick });
   } else {
     g.mood = 'meh';
@@ -443,7 +471,7 @@ function order(state: GameState, g: Guest): void {
     maybeSay(state, g);
     return;
   }
-  const menuId = pickWeighted(state, candidates, (id) => menuOrderWeight(state, id))!;
+  const menuId = pickWeighted(state, candidates, (id) => menuOrderWeight(state, id) * foreignMenuMult(state, g.type, id))!; // 트랙 H: 외국인 감귤 메뉴 선호
   const menu = menuOf(state, menuId);
   consumeIngredients(state, menuId);
   const seat = state.objects[g.seatId!]!;
@@ -452,6 +480,7 @@ function order(state: GameState, g: Guest): void {
   state.money += price;
   state.monthIncome += price;
   state.totalIncome += price;
+  noteRouteIncome(state, g, price); // 트랙 H 경로 매출
   g.menuId = menuId;
   g.paid = price;
   g.waitMs = prepTimeMs(state, menu.category) * siteBonus(state, seat).serveMult; // 트랙 F: 주방 거리 서빙 시간
@@ -486,6 +515,7 @@ function useFacility(state: GameState, g: Guest, obj: PlacedObject): void {
   state.money += fee;
   state.monthIncome += fee;
   state.totalIncome += fee;
+  noteRouteIncome(state, g, fee); // 트랙 H 경로 매출
   state.visitBonus[obj.type] = Math.min(VISIT_BONUS_CAP, (state.visitBonus[obj.type] ?? 0) + 1);
   pushFx(state, { kind: 'pop', x: obj.x, y: obj.y, n: 1, tick: state.tick });
 }
@@ -505,7 +535,7 @@ function leaveSeat(state: GameState, g: Guest, bus: Pt): void {
     return;
   }
   g.phase = 'leaving';
-  const back = findPath(state, from, bus);
+  const back = findPath(state, from, g.route ? routeHome(state, g) : bus); // 트랙 H: 온 경로로 돌아간다
   g.path = [from, ...(back ? back.slice(1) : [])];
 }
 
@@ -536,7 +566,7 @@ export function updateGuests(state: GameState, dtMs: number): void {
         g.phase = 'leaving';
         const from = g.approachCell ?? { x: Math.round(g.x), y: Math.round(g.y) };
         g.approachCell = null;
-        const back = findPath(state, from, bus);
+        const back = findPath(state, from, g.route ? routeHome(state, g) : bus); // 트랙 H
         g.path = back ? back.slice(1) : [];
       }
     } else if (g.phase === 'seated') {
@@ -545,7 +575,7 @@ export function updateGuests(state: GameState, dtMs: number): void {
         if (g.waitMs <= 0) {
           g.waitMs = 0;
           resolveMood(state, g);
-          g.timerMs = SEAT_MS * seatTimeMult(state, g.menuId);
+          g.timerMs = SEAT_MS * seatTimeMult(state, g.menuId) * routeStayMult(g); // 트랙 H: 주차장 ×1.2·크루즈 ×0.7
         }
         continue;
       }
