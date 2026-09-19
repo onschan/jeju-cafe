@@ -1,13 +1,14 @@
-import type { CSSProperties, ReactNode } from 'react';
+import { useState, type CSSProperties, type ReactNode } from 'react';
 import { useGame, dispatch } from './store';
-import { objectStats, sceneryScore, clearCost, canClearRock, hasPickaxe, cellAt, walletOf, guestFace, namedGuestFace, canAcceptQuest, parcelPrice, canBuyParcel, PROTECTED_TYPES, ROTATABLE_TYPES, LOW_ENERGY, STAT_KEYS, STAT_NAME, staffInRole, canLevelUp, MAX_LEVEL, type GameState, type Guest, type RoleId, type StatKey } from '../sim/index.ts';
+import { objectStats, siteOf, siteLineText, clearCost, canClearRock, hasPickaxe, cellAt, walletOf, guestFace, namedGuestFace, canAcceptQuest, parcelPrice, canBuyParcel, canGiveGift, giftFits, giftCount, giftedToday, PROTECTED_TYPES, ROTATABLE_TYPES, LOW_ENERGY, STAT_KEYS, STAT_NAME, staffInRole, canLevelUp, capOf, skillsOf, expNeeded, isUpgradable, canUpgrade, upgradeCost, upgradeConditionText, MAX_OBJECT_LEVEL, canRepair, repairCost, CLEAN_LOW, type GameState, type Guest, type RoleId, type StatKey } from '../sim/index.ts';
 import { BUS_HOUR, isBusDay } from '../sim/spots.ts';
-import { objectDef, guestTypeDef, namedGuestDef, questDef, roleDef, ROLES } from '../data/index.ts';
+import { objectDef, guestTypeDef, namedGuestDef, questDef, roleDef, skillDef, trainingDef, ROLES, GIFTS } from '../data/index.ts';
 import { staffParts } from '../render/character';
 import { Portrait, guestPortraitParts, namedPortraitParts, guestName } from './GuestPopup';
 import { Bar, EnergyBar } from './StaffPanel';
-import { Confirm } from './Popup';
+import { Confirm, Popup } from './Popup';
 import { Icon } from './Icon';
+import { SiteLine } from './SiteLine';
 import { BOTTOM_BAR_H } from './Shell';
 import { frame, brownBtn, brownBtnOn, brownBtnOff, dangerBtn, PALETTE, won } from './frame';
 
@@ -51,6 +52,7 @@ function Row({ children }: { children: ReactNode }) {
 }
 
 function GuestCard({ s, id, a }: { s: GameState; id: string; a: CardActions }) {
+  const [picking, setPicking] = useState(false);
   const g = s.guests.find((x) => x.id === id);
   if (!g) return <div style={small}>손님이 떠났어요</div>;
   const def = guestTypeDef(g.type);
@@ -59,6 +61,8 @@ function GuestCard({ s, id, a }: { s: GameState; id: string; a: CardActions }) {
   const quest = def.questId && s.board.quests[def.questId]?.status === 'offered' ? def.questId : null;
   const state = g.mood ? `${MOOD_TEXT[g.mood] ?? ''}` : PHASE_TEXT[g.phase];
   const wants = def.wants.slice(0, 2).map((w) => WANT_LABEL[w] ?? w);
+  const gifts = GIFTS.filter((x) => (s.inventory[x.id] ?? 0) > 0);
+  const giftOk = gifts.length > 0 && !giftedToday(s) && g.phase !== 'leaving';
   return (
     <div data-testid="card-guest">
       <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
@@ -73,7 +77,22 @@ function GuestCard({ s, id, a }: { s: GameState; id: string; a: CardActions }) {
       <Row>
         <button style={btn} onClick={() => a.onGuestDetail(g.id)}>자세히</button>
         {quest && <button style={canAcceptQuest(s, quest).ok ? btnOn : btnOff} disabled={!canAcceptQuest(s, quest).ok} onClick={() => a.onQuest(quest)}>! 부탁 듣기</button>}
+        {giftCount(s) > 0 && <button style={giftOk ? btn : btnOff} disabled={!giftOk} onClick={() => setPicking(true)} aria-label="선물하기">🎁 선물하기{giftedToday(s) ? ' (내일)' : ''}</button>}
       </Row>
+      {picking && (
+        <Popup title={`${guestName(g)}에게 선물`} onBackdrop={() => setPicking(false)} buttons={<button style={brownBtn} onClick={() => setPicking(false)}>닫기</button>}>
+          {gifts.map((x) => {
+            const can = canGiveGift(s, g.id, x.id);
+            const fit = giftFits(x, g.type);
+            return (
+              <button key={x.id} style={{ ...(can.ok ? brownBtn : brownBtnOff), width: '100%', marginRight: 0, textAlign: 'left' }} disabled={!can.ok} data-testid={`gift-${x.id}`}
+                onClick={() => { setPicking(false); dispatch({ type: 'giveGift', guestId: g.id, itemId: x.id }); }}>
+                {x.name} ×{s.inventory[x.id]}{fit ? ' ★ 잘 맞아요 (×2)' : ''}
+              </button>
+            );
+          })}
+        </Popup>
+      )}
       {quest && <div style={{ ...small, marginTop: 6 }}>부탁: {questDef(quest).description}</div>}
     </div>
   );
@@ -83,7 +102,8 @@ function StaffCard({ s, id, a }: { s: GameState; id: string; a: CardActions }) {
   const st = s.staff.find((x) => x.id === id);
   if (!st) return <div style={small}>직원이 없어요</div>;
   const resting = st.role === null;
-  const canPromote = st.level < MAX_LEVEL && STAT_KEYS.some((k) => canLevelUp(s, st.id, k as StatKey).ok);
+  const canPromote = canLevelUp(s, st.id).ok;
+  const away = st.training ? trainingDef(st.training.id) : null;
   const toggleRest = () => {
     if (!resting) { restingRole.set(st.id, st.role!); dispatch({ type: 'assign', staffId: st.id, role: null }); return; }
     const remembered = restingRole.get(st.id) ?? null;
@@ -97,16 +117,17 @@ function StaffCard({ s, id, a }: { s: GameState; id: string; a: CardActions }) {
       <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
         <Portrait parts={staffParts(st.face, st.role, s.uniform ?? null)} face={st.face} size={56} />
         <div style={{ flex: 1, minWidth: 0, fontSize: 14, lineHeight: 1.5 }}>
-          <div><b>{st.name}</b> <span style={small}>{st.role ? roleDef(st.role).name : '쉬는 중'} · Lv.{st.level}</span></div>
+          <div><b>{st.name}</b> <span style={small}>{away ? `연수 중 (${away.name} ${st.training!.daysLeft}일)` : st.role ? roleDef(st.role).name : '쉬는 중'} · Lv.{st.level}/{st.maxLevel}</span></div>
+          <div style={{ fontSize: 12, color: PALETTE.inkSoft, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>특기 {skillsOf(st).map((id) => skillDef(id).name).join(' · ')}{st.level < st.maxLevel ? ` · 경험치 ${Math.floor(st.exp)}/${expNeeded(st.level)}` : ''}</div>
           <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr auto 1fr', columnGap: 6, fontSize: 12, alignItems: 'center' }}>
-            {STAT_KEYS.map((k) => <span key={k} style={{ display: 'contents' }}><span>{STAT_NAME[k as StatKey]}</span><Bar value={st.stats[k as StatKey]} max={100} width={56} /></span>)}
+            {STAT_KEYS.map((k) => <span key={k} style={{ display: 'contents' }}><span>{STAT_NAME[k as StatKey]}</span><Bar value={st.stats[k as StatKey]} max={Math.max(100, capOf(s, st, k as StatKey))} width={56} /></span>)}
           </div>
           <div style={{ fontSize: 13 }}><EnergyBar energy={st.energy} />{st.energy < LOW_ENERGY && <span style={{ color: PALETTE.bad }}> 지침</span>} · 월급 {won(st.salary)}</div>
         </div>
       </div>
       <Row>
         <button style={canPromote ? btnOn : btnOff} disabled={!canPromote} onClick={() => a.onStaffDetail(st.id)}>승급</button>
-        <button style={btn} onClick={toggleRest}>{resting ? '일 시키기' : '쉬게 하기'}</button>
+        <button style={away ? btnOff : btn} disabled={!!away} onClick={toggleRest}>{resting ? '일 시키기' : '쉬게 하기'}</button>
         <button style={btn} onClick={() => a.onStaffDetail(st.id)}>자세히</button>
       </Row>
     </div>
@@ -120,19 +141,31 @@ function ObjectCard({ s, id, a, onClose }: { s: GameState; id: string; a: CardAc
   const st = objectStats(s, o.id);
   const protectedType = PROTECTED_TYPES.has(o.type);
   const remove = () => Confirm(`${d.name}${d.removeCost ? `을(를) ${won(d.removeCost)} 들여 치울까요?` : `을(를) 치우고 ${won(d.cost)}을 돌려받을까요?`}`, () => { dispatch({ type: 'remove', objectId: o.id }); onClose(); }, { title: '철거' });
+  // 트랙 A: 증축 Lv·수리·청결
+  const upgradable = isUpgradable(d) && st.level < MAX_OBJECT_LEVEL;
+  const up = upgradable ? canUpgrade(s, o.id, st.popularity) : { ok: false, reason: '' };
+  const upCost = upgradable ? upgradeCost(s, o) : 0;
+  const doUpgrade = () => Confirm(`${d.name}을(를) Lv${st.level + 1}로 증축할까요? ${won(upCost)}${(d.buildDays ?? 0) > 0 ? ` · 공사 ${d.buildDays}일(이용 불가)` : ''}`, () => { dispatch({ type: 'upgradeObject', objectId: o.id }); }, { title: '증축' });
+  const rep = canRepair(s, o.id);
+  const clean = Math.round(s.clean.value);
   return (
     <div data-testid="card-object">
       <div style={{ fontSize: 14, lineHeight: 1.5 }}>
-        <div><Icon name={KIND_ICON[d.kind] ?? 'build'} size={18} /> <b>{d.name}</b>{o.build && <span style={{ color: PALETTE.title }}> · 짓는 중</span>}</div>
-        <div style={small}>인기 <b style={{ color: PALETTE.ink }}>{st.popularity}</b> · 경관 <b style={{ color: PALETTE.ink }}>{st.scenery > 0 ? '+' : ''}{st.scenery}</b> · 요금 <b style={{ color: PALETTE.ink }}>{st.feePct}%</b>{st.upkeep > 0 && ` · 유지비 ${won(st.upkeep)}/달`}</div>
-        <div style={small}>주변 시너지: {st.combos.length > 0 ? st.combos.map((c) => `${c.strength === 'down' ? '↓' : '↑'}${c.name}`).join(' · ') : '없음'}{st.sets.length > 0 && ` · 세트 ${st.sets.map((x) => x.name).join(', ')}`}</div>
+        <div><Icon name={KIND_ICON[d.kind] ?? 'build'} size={18} /> <b>{d.name}</b>{st.level >= 2 && <b style={{ color: PALETTE.title }}> Lv{st.level}</b>}{o.build && <span style={{ color: PALETTE.title }}> · 짓는 중</span>}{st.wear > 0 && <span style={{ color: PALETTE.bad }}> · 낡았어요 (인기 −{st.wear})</span>}</div>
+        <div style={small}>인기 <b style={{ color: PALETTE.ink }}>{st.popularity}</b> · 경관 <b style={{ color: PALETTE.ink }}>{st.scenery > 0 ? '+' : ''}{st.scenery}</b> · 요금 <b style={{ color: PALETTE.ink }}>{st.feePct}%</b>{st.upkeep > 0 && ` · 유지비 ${won(st.upkeep)}/달`}{(o.uses ?? 0) > 0 && ` · 이용 ${o.uses}회`}</div>
+        <div style={small}>주변 시너지: {st.combos.length > 0 ? st.combos.map((c) => `${c.strength === 'down' ? '↓' : '↑'}${c.name}${c.count > 1 ? ` ×${c.count}` : ''}`).join(' · ') : '없음'}{st.sets.length > 0 && ` · 세트 ${st.sets.map((x) => x.name).join(', ')}`}{st.spot && ` · 명당 ${st.spot.name}`}</div>
+        <SiteLine s={s} o={o} />
+        <div style={{ ...small, whiteSpace: 'nowrap' }} data-testid="clean-bar">카페 청결 <Bar value={clean} max={100} width={80} /> {clean}{clean < CLEAN_LOW && <span style={{ color: PALETTE.bad }}> 지저분해요</span>}</div>
       </div>
       <Row>
+        {upgradable && <button style={up.ok ? btnOn : btnOff} disabled={!up.ok} title={up.ok ? undefined : up.reason} onClick={doUpgrade} data-testid="upgrade-btn">증축 Lv{st.level + 1} ({won(upCost)})</button>}
+        {st.wear > 0 && <button style={rep.ok ? btnOn : btnOff} disabled={!rep.ok} onClick={() => dispatch({ type: 'repairObject', objectId: o.id })} data-testid="repair-btn">수리 ({won(repairCost(s, o))})</button>}
         {!protectedType && <button style={btn} onClick={() => a.onMove(o.id)}>이동</button>}
         {ROTATABLE_TYPES.has(o.type) && <button style={btn} onClick={() => dispatch({ type: 'rotate', objectId: o.id, rot: ((o.rot ?? 0) + 1) % 4 })}>회전</button>}
         {!protectedType && o.type !== 'bush_wild' && <button style={btnDanger} onClick={remove}>철거</button>}
         <button style={btn} onClick={() => a.onObjectDetail(o.id)}>자세히</button>
       </Row>
+      {upgradable && !up.ok && up.reason && <div style={{ ...small, marginTop: 4 }}>증축 조건: {upgradeConditionText(o, d)}</div>}
     </div>
   );
 }
@@ -159,7 +192,8 @@ function EmptyCard({ s, x, y, a }: { s: GameState; x: number; y: number; a: Card
   return (
     <div data-testid="card-empty">
       <div style={{ fontSize: 14, lineHeight: 1.5 }}>
-        <div><b>빈 땅</b> <span style={small}>({x},{y}) · 경치 {sceneryScore(s, x, y)}</span></div>
+        <div><b>빈 땅</b> <span style={small}>({x},{y})</span></div>
+        <div style={small}>{siteLineText(siteOf(s, x, y))}</div>
         <div style={small}>여기에 무엇을 지을까?</div>
       </div>
       <Row><button style={btnOn} onClick={() => a.onBuild(x, y)}><Icon name="build" /> 짓기</button></Row>
@@ -188,6 +222,7 @@ function BusStopCard({ s, id }: { s: GameState; id: string }) {
   const o = s.objects[id];
   const name = o ? objectDef(o.type).name : '정류장';
   const nextBus = (() => {
+    if (!s.tourBus) return '계약 없음 (투자 창)';
     const { day, hour } = s.clock;
     if (isBusDay(day) && hour < BUS_HOUR) return `오늘 ${BUS_HOUR}시`;
     for (let d = 1; d <= 7; d++) if (isBusDay(((day - 1 + d) % 30) + 1)) return d === 1 ? `내일 ${BUS_HOUR}시` : `${d}일 뒤 ${BUS_HOUR}시`;

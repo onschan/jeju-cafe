@@ -3,7 +3,7 @@ import { X, Y } from './helpers.ts';
 import { createInitialState } from '../state.ts';
 import { placeObject } from '../grid.ts';
 import { setSlot } from '../menu.ts';
-import { spawnGuests, updateGuests, freeSeats, hasReachableSeat, dailyGuestCount, totalSeats, hourShare, typeWeight, GUEST_SPEED_CELLS_PER_S, SEAT_MS, PREP_MS, MAX_GUESTS, MIN_DAILY_GUESTS, MAX_DAILY_GUESTS, GUESTS_PER_SEAT, GUESTS_PER_MULT } from '../guests.ts';
+import { spawnGuests, updateGuests, freeSeats, hasReachableSeat, dailyGuestCount, popularityGuestBase, popularitySum, facilityPopularitySum, resetWaiting, totalSeats, hourShare, typeWeight, GUEST_SPEED_CELLS_PER_S, SEAT_MS, PREP_MS, MAX_GUESTS, MIN_DAILY_GUESTS, MAX_DAILY_GUESTS, GUESTS_PER_SEAT, BASE_DAILY_GUESTS, POP_SUM_PER_GUEST, FACILITY_POP_PER_GUEST, WAIT_MAX, SEASON_GUEST_MULT } from '../guests.ts';
 import { moveAlong } from '../path.ts';
 import { tick } from '../tick.ts';
 import { HOUR_MS, START_HOUR, END_HOUR } from '../clock.ts';
@@ -201,23 +201,61 @@ test('대사: 30%쯤은 말풍선 텍스트, 손님층·기분·이유에 맞는
   expect(said).toBeLessThan(total * 0.45);
 });
 
-test('하루 손님 수 = 2 + 좌석×GUESTS_PER_SEAT + (평균 배수−1)×GUESTS_PER_MULT, 2~120', () => {
+test('하루 손님 수 = min(좌석×6, (4 + 인기 합/21 + 시설 인기 합/16 + 명소 방문객×3%) × 계절·라이벌·평판 배수), 2~300 (§4.2 #1)', () => {
   const s = bareState(1);
+  s.clock.month = 4; // 계절 배수 1
   s.segmentPopularity = { local_auntie: 0, student: 0, village_head: 0 }; // 시작 해금 3타입
-  expect(dailyGuestCount(s)).toBe(MIN_DAILY_GUESTS);
-  placeObject(s, 'table_out', X(4), Y(5)); // 2석
-  placeObject(s, 'table_out', X(5), Y(5)); // 4석
-  const perSeat = (seats: number) => Math.floor(seats * GUESTS_PER_SEAT);
-  const perMult = (avg: number) => Math.floor((avg - 1) * GUESTS_PER_MULT + 1e-9);
-  expect(dailyGuestCount(s)).toBe(MIN_DAILY_GUESTS + perSeat(4));
-  s.segmentPopularity = { local_auntie: 30, student: 20, village_head: 25 }; // 평균 배수 1.5
-  expect(dailyGuestCount(s)).toBe(MIN_DAILY_GUESTS + perSeat(4) + perMult(1.5));
-  s.segmentPopularity = { local_auntie: 99, student: 99, village_head: 99 }; // 평균 배수 2.98
-  for (let i = 0; i < 12; i++) placeObject(s, 'table_out', i % 10, 1 + Math.floor(i / 10) * 3); // 28석
-  expect(dailyGuestCount(s)).toBe(MIN_DAILY_GUESTS + perSeat(28) + perMult(2.98));
-  for (let x = 10; x < 30; x++) for (const y of [1, 2, 3]) placeObject(s, 'table_out', x, y); // 148석 → 상한 120
-  expect(totalSeats(s)).toBe(148);
+  expect(dailyGuestCount(s)).toBe(MIN_DAILY_GUESTS); // 좌석 0 → 상한 0 → 최소 2
+  placeObject(s, 'table_out', X(4), Y(5)); // 2석 → 상한 12
+  expect(popularityGuestBase(s)).toBe(BASE_DAILY_GUESTS);
+  expect(dailyGuestCount(s)).toBe(BASE_DAILY_GUESTS); // 평판 50 → ×1
+  s.segmentPopularity = { local_auntie: 80, student: 80, village_head: 80 }; // 인기 합 240 → +14 → 18 > 상한 12
+  expect(popularitySum(s)).toBe(240);
+  expect(popularityGuestBase(s)).toBe(BASE_DAILY_GUESTS + Math.floor(240 / POP_SUM_PER_GUEST));
+  expect(dailyGuestCount(s)).toBe(2 * GUESTS_PER_SEAT);
+  placeObject(s, 'table_out', X(5), Y(5)); // 4석 → 상한 24
+  const base240 = BASE_DAILY_GUESTS + Math.floor(240 / POP_SUM_PER_GUEST);
+  expect(dailyGuestCount(s)).toBe(base240);
+  placeObject(s, 'tangerine_tree', X(8), Y(1)); placeObject(s, 'tangerine_tree', X(9), Y(1)); // 시설 인기 10×2 → 합 20 → +1 (테이블과 3칸 이상 떨어뜨려 '귤밭 뷰' 콤보 제외)
+  expect(facilityPopularitySum(s)).toBe(20);
+  const b2 = base240 + Math.floor(20 / FACILITY_POP_PER_GUEST);
+  expect(popularityGuestBase(s)).toBe(b2);
+  s.clock.month = 1; // 비수기 0.8
+  expect(dailyGuestCount(s)).toBe(Math.round(b2 * SEASON_GUEST_MULT[1]!));
+  s.clock.month = 4;
+  s.rivals.push({ id: 'r1', rivalId: 'rv_local_cafe', openedMonthIndex: 0, penaltyPct: 0, stolen: [], lastChallengeMonth: -1 }); // 라이벌 1곳 −5%
+  expect(dailyGuestCount(s)).toBe(Math.round(b2 * 0.95));
+  s.rivals = [];
+  s.reputation = 100; // 평판 ×1.5
+  expect(dailyGuestCount(s)).toBe(Math.min(24, Math.round(b2 * 1.5)));
+  s.reputation = 50;
+  s.rivals = [];
+  s.effects.push({ kind: 'spawnMult', mult: 40, untilDay: 9999, source: 't' });
+  for (let x = 10; x < 30; x++) for (const y of [1, 2, 3]) placeObject(s, 'table_out', x, y); // 124석 → 상한 744 → 전체 상한 300
+  expect(totalSeats(s)).toBe(124);
   expect(dailyGuestCount(s)).toBe(MAX_DAILY_GUESTS);
+});
+
+test('대기열: 빈 자리가 없으면 3명까지 줄을 서고 자리가 나면 먼저 앉는다, 넘치면 돌아간다(이탈 수·만족 −10)', () => {
+  const s = bareState(1);
+  placeObject(s, 'table_out', X(4), Y(5)); // 2석
+  expect(spawnGuests(s, 2)).toBe(2);
+  expect(spawnGuests(s, 5)).toBe(0);
+  expect(s.waiting).toHaveLength(WAIT_MAX);
+  expect(s.monthGuestsLeft).toBe(2);
+  const walked = Object.values(s.guestTypes).filter((t) => t.unlocked);
+  for (const t of walked) t.satisfaction = 20;
+  expect(spawnGuests(s, 1)).toBe(0);
+  expect(s.monthGuestsLeft).toBe(3);
+  expect(walked.some((t) => t.satisfaction === 10)).toBe(true); // 돌아간 손님층 만족 −10
+  // 자리가 비면 대기열이 먼저
+  s.guests = [];
+  const first = s.waiting.slice(0, 2);
+  expect(spawnGuests(s, 0)).toBe(2);
+  expect(s.guests.map((g) => g.type)).toEqual(first); // 줄 선 순서대로 앉는다
+  expect(s.waiting).toHaveLength(1);
+  resetWaiting(s);
+  expect(s.waiting).toHaveLength(0);
 });
 
 test('시간대 분배: 시간 비중 합 1, 정오 피크, 저녁 절반, 아침 삼춘·낮 관광객 가중', () => {
@@ -236,9 +274,10 @@ test('손님은 하루에 걸쳐 시간마다 나뉘어 오고, 하루 합은 da
   const s = bareState(1);
   for (let i = 0; i < 6; i++) placeObject(s, 'table_out', X(2 + i), Y(5)); // 12석
   for (const x of [2, 3, 5, 6, 7]) placeObject(s, 'path', X(x), Y(6)); // (4,6)은 정낭
-  s.segmentPopularity = { local_auntie: -50, student: -25, village_head: 0 }; // 평균 배수 0.5 → −(0.5×GUESTS_PER_MULT): 하루 10명이면 점심 피크에도 좌석이 안 막힌다
+  s.clock.month = 4;
+  s.segmentPopularity = { local_auntie: 0, student: 0, village_head: 0 }; // 평균 배수 1 → 하루 6명: 점심 피크에도 좌석(12)이 안 막힌다
   const n = dailyGuestCount(s);
-  expect(n).toBe(MIN_DAILY_GUESTS + Math.floor(12 * GUESTS_PER_SEAT) + Math.floor(-0.5 * GUESTS_PER_MULT + 1e-9));
+  expect(n).toBe(BASE_DAILY_GUESTS);
   const ids = new Set<string>();
   const firstHourIds: string[] = [];
   for (let h = 0; h < 18; h++) {

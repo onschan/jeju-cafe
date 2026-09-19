@@ -11,7 +11,7 @@ import { serialize, deserialize } from '../save.ts';
 describe('v3 시작 상태 (§5)', () => {
   it('본관 + 테이블 2 + 파라솔 1 + 올렛길로 정류장에서 자리에 닿고, 메뉴 3종이 올라가 있고, 후보 2명이 기다린다', () => {
     const s = createInitialState(1);
-    expect(SAVE_VERSION).toBe(15);
+    expect(SAVE_VERSION).toBe(17);
     expect(s.money).toBe(5_000_000);
     expect(hasReachableSeat(s)).toBe(true);
     const seats = Object.values(s.objects).filter((o) => objectDef(o.type).kind === 'seat');
@@ -23,19 +23,19 @@ describe('v3 시작 상태 (§5)', () => {
     expect(s.unlocked.menus).toEqual(INITIAL_UNLOCKED.menus);
     expect(s.unlocked.objects).toHaveLength(8);
     expect(s.unlocked.menus).toHaveLength(3);
-    expect(s.slots).toEqual({ barista: 1, cook: 1, hall: 2, carry: 0, guide: 0 });
+    expect(s.slots).toEqual({ barista: 1, cook: 1, hall: 2, carry: 0, guide: 0, clean: 2, garden: 2, promo: 1 });
     expect(s.storage).toEqual({});
   });
 
-  it('하루 손님 수는 8~12명이고 첫 손님이 게임 1시간 안에 온다', () => {
+  it('하루 손님 수는 7~12명이고 첫 손님이 게임 1시간 안에 온다 (통합 튜닝 21/16 뒤 시작 7명 — §5의 8명에서 1명 줄었다)', () => {
     const s = createInitialState(1);
     const n = dailyGuestCount(s);
-    expect(n).toBeGreaterThanOrEqual(8);
+    expect(n).toBeGreaterThanOrEqual(7);
     expect(n).toBeLessThanOrEqual(12);
     tick(s, HOUR_MS);
     expect(s.guests.length).toBeGreaterThan(0);
     tick(s, DAY_MS);
-    expect(s.totalGuests).toBeGreaterThanOrEqual(8);
+    expect(s.totalGuests).toBeGreaterThanOrEqual(7);
     expect(s.totalGuests).toBeLessThanOrEqual(14);
   });
 

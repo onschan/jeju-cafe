@@ -1,4 +1,4 @@
-import { Application, Container, Sprite, Graphics, Texture } from 'pixi.js';
+import { Application, Container, Sprite, Graphics, Texture, Text } from 'pixi.js';
 import type { GameState, PlacedObject, Guest, Staff, Season, RoleId, Pt } from '../sim/index.ts';
 import { seasonOf, LOW_ENERGY, parcelPrice, footprint, roomAt, doorFrontOf, WALL_COLORS, dayIndex, menuOf } from '../sim/index.ts';
 import type { Parcel } from '../sim/index.ts';
@@ -13,6 +13,8 @@ import { guestFace } from '../sim/segments.ts';
 import { namedGuestFace } from '../sim/popup.ts';
 import { guestTypeDef, namedGuestDef } from '../data/index.ts';
 import { Background } from './Background';
+import { siteOf, siteBadgeTextPlain, siteTone, layoutKey } from '../sim/site.ts';
+import { isSiteOverlayOn, setSiteOverlayOn, siteOverlayKey, drawSiteOverlay, GHOST_GOOD, GHOST_WARN } from './siteOverlay';
 
 /** 전용 스프라이트가 있는 손님 타입 (guest_local·guest_tourist 시트) */
 const GUEST_SPRITE_KEY: Record<string, string> = { local_auntie: 'local', student: 'tourist' };
@@ -92,7 +94,7 @@ const GUEST_H = CHAR_H;
 /** 앉은 손님을 좌석 칸 중심보다 살짝 위로(의자에 앉은 느낌, 화면 px) */
 const SEAT_LIFT_PX = 4;
 /** 직원 역할 배지(머리 위 16px 아이콘) */
-const ROLE_ICON: Record<RoleId, string> = { hall: 'look', barista: 'menu', cook: 'harvest', carry: 'money', guide: 'research' };
+const ROLE_ICON: Record<RoleId, string> = { hall: 'look', barista: 'menu', cook: 'harvest', carry: 'money', guide: 'research', clean: 'remove', garden: 'plant', promo: 'tourist' }; // clean·garden·promo: x-staff
 /** 배지 아래 끝 y(발끝 기준). 캐릭터 프레임 48px 중 위 13px은 비어 있고(머리 y=16, 모자 챙 y=13) 그 위 3px 띄운다 */
 const ROLE_ICON_Y = -(CHAR_H - 10);
 /** 기력이 낮은 직원은 흐리게 */
@@ -229,9 +231,17 @@ export class GameView {
   private lockedNodes = new Map<string, { node: Container; text: string }>();
   private ghost: Container | null = null;
   private ghostKey = '';
+  /** 입지(트랙 F): 고스트 배지·색 갱신용 스펙과 마지막 키 */
+  private ghostSpec: GhostSpec | null = null;
+  private ghostSiteKey = '';
+  /** 「입지 보기」 오버레이 레이어 (타일 위·오브젝트 아래) */
+  private siteLayer = new Container();
+  private siteGfx = new Graphics();
+  private siteKey = '';
   private lastSeason: Season | null = null;
   private detachCamera: (() => void) | null = null;
   private selection = new Graphics();
+  private highlight = new Graphics(); // 튜토리얼 칸 글로우 (x-goals)
   private hostWidth = 0;
   private bounds: CameraBounds | null = null;
   private nightAlpha = 0;
@@ -254,8 +264,10 @@ export class GameView {
     await Promise.all([loadAssets(), loadLabelFont()]);
     parent.appendChild(this.app.canvas);
     this.actors.sortableChildren = true;
-    this.world.addChild(this.background.node, this.tiles, this.actors, this.overlay);
+    this.world.addChild(this.background.node, this.tiles, this.siteLayer, this.actors, this.overlay);
+    this.siteLayer.addChild(this.siteGfx);
     this.overlay.addChild(this.selection);
+    this.overlay.addChild(this.highlight);
     this.night.eventMode = 'none';
     this.ui.eventMode = 'none';
     this.ui.addChild(this.night, this.lights);
@@ -308,6 +320,8 @@ export class GameView {
     this.lastSeason = null;
     this.background.reset();
     this.selection.clear();
+    this.siteGfx.clear();
+    this.siteKey = '';
     this.setGhost(null);
   }
 
@@ -318,6 +332,8 @@ export class GameView {
     this.ghostKey = key;
     this.ghost?.destroy({ children: true });
     this.ghost = null;
+    this.ghostSpec = g;
+    this.ghostSiteKey = '';
     if (!g) return;
     const def = objectDef(g.type);
     const c = new Container();
@@ -337,8 +353,10 @@ export class GameView {
     sp.anchor.set(0.5, 1);
     if (t && !t.iso) sp.position.y = -def.h * (ISO_H / 2);
     sp.tint = g.ok ? GHOST_OK : GHOST_BAD;
+    sp.label = 'ghostSprite';
     c.addChild(sp);
     const l = label(g.text, 10);
+    l.label = 'ghostCost';
     l.anchor.set(0.5, 1);
     l.position.set(0, -sp.height - 4);
     const bg = new Graphics().roundRect(l.x - l.width / 2 - 3, l.y - l.height - 1, l.width + 6, l.height + 2, 3).fill({ color: 0x000000, alpha: 0.6 });
@@ -376,6 +394,19 @@ export class GameView {
     this.bubblePops.push({ node, born: performance.now() });
   }
 
+  /** 튜토리얼 하이라이트 칸 (노란 반투명 마름모, x-goals tutorialHighlight.ts) */
+  setHighlightCells(cells: { x: number; y: number }[]) {
+    if (!this.highlight || this.highlight.destroyed) return; // 뷰가 파괴된 뒤(HMR·화면 전환) 늦게 온 호출
+    this.highlight.clear();
+    for (const cell of cells) {
+      const { sx, sy } = cellToScreen(cell.x, cell.y);
+      this.highlight
+        .poly([sx, sy, sx + ISO_W / 2, sy + ISO_H / 2, sx, sy + ISO_H, sx - ISO_W / 2, sy + ISO_H / 2])
+        .fill({ color: 0xffd54a, alpha: 0.45 })
+        .stroke({ color: 0xffb300, width: 3 });
+    }
+  }
+
   setSelection(cell: { x: number; y: number } | null) {
     this.selection.clear();
     if (!cell) return;
@@ -405,6 +436,56 @@ export class GameView {
     this.syncFx(state, now);
     this.tickFx(now);
     this.drawNight();
+    this.syncSiteOverlay(state);
+    this.syncGhostSite(state);
+  }
+
+  // ---------- 입지 (트랙 F, 스펙 §6.2) ----------
+
+  /** 「입지 보기」 오버레이 켜기/끄기. 모드는 모듈 전역이라 창을 닫아도 유지된다. */
+  setSiteOverlay(on: boolean) {
+    setSiteOverlayOn(on);
+  }
+  isSiteOverlay(): boolean {
+    return isSiteOverlayOn();
+  }
+
+  /** 오버레이가 켜져 있으면 배치·필지가 바뀔 때만 다시 그린다 */
+  private syncSiteOverlay(state: GameState) {
+    if (!isSiteOverlayOn()) {
+      if (this.siteKey) { this.siteGfx.clear(); this.siteKey = ''; }
+      return;
+    }
+    const key = siteOverlayKey(state);
+    if (key === this.siteKey) return;
+    this.siteKey = key;
+    drawSiteOverlay(this.siteGfx, state);
+  }
+
+  /** 고스트 위 입지 배지(`👁3 🌬1 ☂0 🚶2 🍳1`)와 고스트 색(좋은 자리 초록·나쁜 자리 주황). 놓을 수 없는 자리(빨강)는 색을 바꾸지 않는다. */
+  private syncGhostSite(state: GameState) {
+    const g = this.ghostSpec;
+    const c = this.ghost;
+    if (!g || !c) return;
+    const key = `${g.type}:${g.x},${g.y}:${g.ok}:${layoutKey(state)}`;
+    if (key === this.ghostSiteKey) return;
+    this.ghostSiteKey = key;
+    c.getChildByLabel('siteBadge')?.destroy({ children: true });
+    if (g.x < 0 || g.y < 0 || g.x >= state.grid.w || g.y >= state.grid.h) return;
+    const tone = siteTone(state, g.type, g.x, g.y);
+    const color = !g.ok ? GHOST_BAD : tone === 'bad' ? GHOST_WARN : GHOST_GOOD;
+    const sp = c.getChildByLabel('ghostSprite') as Sprite | null;
+    if (sp) sp.tint = color;
+    const cost = c.getChildByLabel('ghostCost') as Text | null;
+    const badge = new Container();
+    badge.label = 'siteBadge';
+    const l = label(siteBadgeTextPlain(siteOf(state, g.x, g.y)), 10);
+    l.anchor.set(0.5, 1);
+    const top = cost ? cost.y - cost.height - 3 : -(sp?.height ?? 24) - 4;
+    l.position.set(0, top);
+    const bg = new Graphics().roundRect(-l.width / 2 - 3, top - l.height - 1, l.width + 6, l.height + 2, 3).fill({ color: 0x000000, alpha: 0.6 });
+    badge.addChild(bg, l);
+    c.addChild(badge);
   }
 
   /** 첫 렌더: 폰에서 ×2 근처 줌, 시작 필지(1번, 정중앙)를 가로 가운데·HUD 아래에 놓는다. */
@@ -630,6 +711,26 @@ export class GameView {
     entry.badge = c;
   }
 
+  /** 증축 Lv 배지 (트랙 A): Lv2·3이면 스프라이트 오른쪽 위에 작은 "Lv2" 라벨. Lv가 바뀔 때만 다시 그린다. */
+  private syncLevelBadge(entry: ObjEntry, o: PlacedObject) {
+    const lv = o.level ?? 1;
+    const key = lv >= 2 ? `lv${lv}` : '';
+    const prev = entry.node.getChildByLabel('lv');
+    if ((prev?.label ?? '') === 'lv' && (prev as Container & { lvKey?: string }).lvKey === key) return;
+    prev?.destroy({ children: true });
+    if (!key) return;
+    const c = new Container() as Container & { lvKey?: string };
+    c.label = 'lv';
+    c.lvKey = key;
+    const l = label(`Lv${lv}`, 9);
+    l.anchor.set(0.5, 0.5);
+    const w = l.width + 6;
+    c.addChild(new Graphics().roundRect(-w / 2, -7, w, 14, 3).fill({ color: lv >= 3 ? 0xb8862a : 0x6b3d1e, alpha: 0.9 }), l);
+    const h = entry.sprite?.height ?? 40;
+    c.position.set(14, -h + 6);
+    entry.node.addChild(c);
+  }
+
   /** 본관 인테리어: 외벽 색 tint + 간판 문구 라벨 */
   private decorateCafe(entry: ObjEntry, state: GameState) {
     if (entry.sprite) entry.sprite.tint = WALL_COLORS[state.cosmetics?.wallColor ?? 0] ?? 0xffffff;
@@ -675,6 +776,7 @@ export class GameView {
       }
       if (entry.glow) { entry.glow.alpha = glowAlpha; entry.glow.visible = glowAlpha > 0; }
       this.syncBuilding(entry, o, state);
+      this.syncLevelBadge(entry, o);
       // 자리가 바뀌었으면(이동) 노드 위치·깊이 갱신
       const def = objectDef(o.type);
       const posKey = `${o.x},${o.y}`;

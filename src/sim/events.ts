@@ -10,8 +10,13 @@ import { BIG_EVENTS, bigEventDef, guestTypeDef, canonicalGuestId, SPECIAL_REGION
 import { nextRandom } from './rng.ts';
 import { dayIndex } from './effects.ts';
 import { goalMet } from './goals.ts';
-import { pushNotice } from './staff.ts';
+import { pushNotice, staffInRole, skillTotal } from './staff.ts';
+import { isWorn, WEAR_START_MONTHS } from './cleanliness.ts';
+import { monthIndex } from './clock.ts';
 import { facilityCount } from './rank.ts';
+import { addEffect } from './effects.ts';
+import { objectDef } from '../data/index.ts';
+import { parcelAt } from './parcels.ts';
 import { spawnNamedGuest } from './guests.ts';
 import { namedGuestState } from './popup.ts';
 import { fmtNum } from './format.ts';
@@ -85,6 +90,35 @@ export function eventEligible(state: GameState, def: BigEventDef): boolean {
   return true;
 }
 
+/** 야외 시설 (§4.5 태풍 수리비 대상): 경관·농원·야외 좌석·카트 — 실내 오브젝트·건물·길·정낭·정류장·돌담은 제외 */
+export function isOutdoorFacility(type: string): boolean {
+  const d = objectDef(type);
+  if (d.indoor || d.room) return false;
+  return d.kind === 'seat' || d.kind === 'deco' || d.kind === 'tree' || d.kind === 'facility' || d.kind === 'landmark';
+}
+/** 소유 필지 안 야외 시설 건설비 합 */
+export function outdoorBuildCost(state: GameState): number {
+  let sum = 0;
+  for (const o of Object.values(state.objects)) if (isOutdoorFacility(o.type) && parcelAt(state, o.x, o.y)?.owned) sum += objectDef(o.type).cost;
+  return sum;
+}
+/** §4.5 태풍 수리비: 야외 시설 건설비 합 × pct% (min~max), 아이템 할인(wind_charm ×0.5·storm_ready ×0.7) */
+export function typhoonRepairCost(state: GameState, def: BigEventDef): number {
+  const fx = def.effects;
+  if (!fx.repairPct) return 0;
+  const base = outdoorBuildCost(state);
+  if (base <= 0) return 0; // 야외 시설이 없으면 수리할 게 없다
+  let cost = Math.max(fx.repairMin ?? 0, Math.min(fx.repairMax ?? Infinity, base * fx.repairPct / 100));
+  for (const d of fx.itemDiscount ?? []) if ((state.inventory[d.itemId] ?? 0) > 0) cost *= d.mult;
+  cost *= Math.max(0, 1 - skillTotal(state, 'stormRepairDiscount')); // 트랙 D 특기 storm_ready −30%
+  return Math.round(cost);
+}
+/** 이 이벤트의 이번 달 발동 확률 (deterItem이 있으면 배수) */
+export function eventChance(state: GameState, def: BigEventDef): number {
+  const d = def.effects.deterItem;
+  return d && (state.inventory[d.itemId] ?? 0) > 0 ? def.chance * d.chanceMult : def.chance;
+}
+
 /** 이벤트를 발동한다 (판정 없이): 활성 목록 + 즉시 효과 + 알림·대화창. */
 export function startEvent(state: GameState, id: string): ActiveBigEvent {
   const def = bigEventDef(id);
@@ -95,12 +129,33 @@ export function startEvent(state: GameState, id: string): ActiveBigEvent {
   const fx = def.effects;
   if (fx.moneyBonus) state.money += fx.moneyBonus;
   if (fx.popularity) state.popularity = Math.max(-100, Math.min(100, state.popularity + fx.popularity));
-  if (fx.repairCost) {
-    const cost = fx.repairCost * facilityCount(state);
+  if (fx.repairCost || fx.repairPct) {
+    const cost = fx.repairPct ? typhoonRepairCost(state, def) : (fx.repairCost ?? 0) * facilityCount(state);
     state.money -= cost;
     state.monthCosts.upkeep += cost;
     if (cost > 0) pushNotice(state, `${def.title}: 시설 수리비 ₩${fmtNum(cost)}`);
+    // fx.damagePct: 야외 시설이 그 확률로 파손 → 트랙 A 노후 1단계(인기 −1·유지비 ×1.5)로 표시, 시설 카드 「수리」로 고친다
+    if (fx.damagePct) {
+      let hit = 0;
+      for (const o of Object.values(state.objects)) {
+        if (o.build || !isOutdoorFacility(o.type) || !parcelAt(state, o.x, o.y)?.owned || isWorn(state, o)) continue;
+        if (nextRandom(state) * 100 < fx.damagePct) { o.wearMonth = monthIndex(state.clock) - WEAR_START_MONTHS; hit++; }
+      }
+      if (hit > 0) pushNotice(state, `${def.title}: 야외 시설 ${hit}개가 낡았어요 — 시설 카드에서 수리하세요`);
+    }
   }
+  if (fx.heatingCost) {
+    state.money -= fx.heatingCost;
+    state.monthCosts.upkeep += fx.heatingCost;
+    pushNotice(state, `${def.title}: 난방비 ₩${fmtNum(fx.heatingCost)}`);
+  }
+  if (fx.harvestMult !== undefined) {
+    // 노루·까치: 운반 직원 힘 ≥ carryStrength면 완화
+    const strong = fx.carryStrength !== undefined && staffInRole(state, 'carry').some((st) => st.stats.strength >= fx.carryStrength!);
+    const mult = strong && fx.harvestMultCarry !== undefined ? fx.harvestMultCarry : fx.harvestMult;
+    addEffect(state, { kind: 'harvestMult', mult, days: fx.harvestDays ?? 30, source: id });
+  }
+  if (fx.spawnFilter) addEffect(state, { kind: 'spawnMult', mult: fx.spawnFilter.mult, filter: fx.spawnFilter.filter, days: fx.spawnFilter.days, source: id });
   state.alerts.push({ type: 'event', id });
   pushNotice(state, `빅 이벤트: ${def.title}`);
   return e;
@@ -112,7 +167,7 @@ export function monthlyBigEvents(state: GameState): string[] {
   for (const def of BIG_EVENTS) {
     if (activeEvents(state).length >= MAX_ACTIVE_EVENTS) break;
     if (!eventEligible(state, def)) continue;
-    if (nextRandom(state) >= def.chance) continue;
+    if (nextRandom(state) >= eventChance(state, def)) continue;
     startEvent(state, def.id);
     started.push(def.id);
   }

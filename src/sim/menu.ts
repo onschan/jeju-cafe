@@ -4,6 +4,7 @@ import { ingredientCost } from './economy.ts';
 import { takeIngredient } from './warehouse.ts';
 import { toppingCost, costMult } from './craft.ts';
 import { menuOf, isStaffBusy } from './craft.ts';
+import { hasSkill } from './staff.ts';
 
 export { menuOf };
 
@@ -22,7 +23,7 @@ export function setSlot(state: GameState, slot: number, menuId: string | null): 
 export function hasMenuStaff(state: GameState, menuId: string): boolean {
   const req = menuOf(state, menuId).requires;
   if (!req) return true;
-  return state.staff.some((st) => st.role !== null && st.energy > 0 && !isStaffBusy(state, st.id) && (req.role === undefined || st.role === req.role) && (req.skill === undefined || st.skill === req.skill));
+  return state.staff.some((st) => st.role !== null && st.energy > 0 && !isStaffBusy(state, st.id) && (req.role === undefined || st.role === req.role) && (req.skill === undefined || hasSkill(st, req.skill)));
 }
 
 /** UI용: "바리스타 필요" 같은 조건 문구. 조건 없으면 null. 개발 메뉴는 state를 넘겨야 찾는다. */

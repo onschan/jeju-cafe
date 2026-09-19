@@ -197,7 +197,7 @@ test('계절 경치: 유채는 봄에 +12, 상한 30', () => {
 // ---------- 손님·경제 연결 ----------
 import { spawnGuests, updateGuests, popularityBonus, POP_PER_SCENERY } from '../guests.ts';
 import { setSlot } from '../menu.ts';
-import { upkeep } from '../economy.ts';
+import { upkeep, UPKEEP_RATE, DATA_UPKEEP_RATE } from '../economy.ts';
 import { PREP_MS } from '../guests.ts';
 
 test('좌석 요금 배수: 귤밭 뷰(+5%)가 메뉴 가격에 곱해진다', () => {
@@ -231,10 +231,10 @@ test('만족: 인기 보너스는 기본 10에서 3마다 경치 1점', () => {
   expect(s.guests[0]!.mood).toBe('happy');
 });
 
-test('유지비는 objectStats.upkeep을 쓴다', () => {
+test('유지비는 objectStats.upkeep을 쓴다 (economy.upkeepOf: 1.5% 데이터 → 2.5%/월)', () => {
   const s = bareState(1);
   placeObject(s, 'table_out', X(4), Y(5));
   const m0 = s.money;
   upkeep(s);
-  expect(m0 - s.money).toBe(objectStats(s, Object.values(s.objects).find((o) => o.type === 'table_out')!.id).upkeep);
+  expect(m0 - s.money).toBe(Math.round(objectStats(s, Object.values(s.objects).find((o) => o.type === 'table_out')!.id).upkeep * (UPKEEP_RATE / DATA_UPKEEP_RATE)));
 });

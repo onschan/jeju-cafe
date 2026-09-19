@@ -32,7 +32,8 @@ export const STAFF_SUCCESS_PER_STAT = 0.05;
 export const STAFF_STAT_PER = 25;
 export const MAX_SLOTS = 4;
 export const MAX_SLOTS_STAR = 8;
-export const SIGNATURE_STAR = 3;
+/** 시그니처 베이스·재료 8칸은 ★2부터 (★3 승급 조건이 「시그니처 1」이라 ★3에서 열면 막힌다) */
+export const SIGNATURE_STAR = 2;
 export const MAX_TOPPINGS = 3;
 export const MAX_MENU_LEVEL = 5;
 export const LEVEL_UP_INGREDIENTS = 5;

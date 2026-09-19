@@ -1,6 +1,7 @@
 /** 월말 결산 창 (스펙 §2.1). 순수 컴포넌트 — 수입/비용 표(항목 한글), 이달의 하이라이트 3줄, 다음 달 팁 1줄, ★ 게이지.
  *  card는 기존 state.lastMonthCard 형태 + 선택 필드. 하이라이트·팁은 호출자(통합)가 sim 상태로 만들어 넘긴다 — 없으면 카드만. */
-import type { MonthCosts } from '../../sim/index.ts';
+import type { MonthCosts, ComplaintReason } from '../../sim/index.ts';
+import { COMPLAINT_LABEL } from '../../sim/index.ts';
 import { PALETTE, brownBtn } from '../frame';
 import { body, Stars, rowCard, soft, win } from './shared.tsx';
 
@@ -19,6 +20,15 @@ export interface ReportCard {
   highlights?: string[];
   /** 다음 달 팁 1줄 (현재 목표 기반) */
   tip?: string;
+  // ---- 트랙 E (경제·평판) — 있으면 줄이 붙는다 ----
+  deficitStreak?: number;            // 연속 적자 달 (3 이상이면 배지)
+  loanTaken?: number;                // 그달 받은 삼춘 대출
+  loanBalance?: number;              // 월말 대출 잔액
+  rivalLossPct?: number;             // 라이벌 때문에 줄어든 손님 %
+  guestsLeft?: number;               // 대기열이 차서 돌아간 손님
+  reputation?: number;               // 월말 평판
+  reputationDelta?: number;          // 그달 평판 변화
+  topComplaints?: { reason: ComplaintReason; count: number }[];
 }
 
 export interface ReportWindowProps {
@@ -44,7 +54,8 @@ function Row({ label, value, color, bold, indent }: { label: string; value: stri
 
 export function ReportWindow({ card: c, star, prevStar, starProgress, monthRecord, onClose }: ReportWindowProps) {
   const cost = c.costs;
-  const totalCost = cost.ingredients + cost.salary + cost.upkeep + cost.ads + (cost.recruit ?? 0);
+  const totalCost = cost.ingredients + cost.salary + cost.upkeep + cost.ads + (cost.recruit ?? 0) + (cost.tax ?? 0) + (cost.loanRepay ?? 0) + (cost.tourBus ?? 0);
+  const complaints = (c.topComplaints ?? []).slice(0, 3);
   const up = star !== undefined && prevStar !== undefined && star > prevStar;
   const highlights = (c.highlights ?? []).filter(Boolean).slice(0, 3);
   return (
@@ -66,10 +77,30 @@ export function ReportWindow({ card: c, star, prevStar, starProgress, monthRecor
         <Row label="월급" value={`-${win(cost.salary)}`} indent />
         <Row label="유지비" value={`-${win(cost.upkeep)}`} indent />
         <Row label="홍보" value={`-${win(cost.ads)}`} indent />
-        {(cost.recruit ?? 0) > 0 && <Row label="채용 공고" value={`-${win(cost.recruit)}`} indent />}
+        {(cost.recruit ?? 0) > 0 && <Row label="채용 공고·연수" value={`-${win(cost.recruit)}`} indent />}
+        {(cost.tax ?? 0) > 0 && <Row label="소득세" value={`-${win(cost.tax)}`} indent />}
+        {(cost.tourBus ?? 0) > 0 && <Row label="투어 버스" value={`-${win(cost.tourBus)}`} indent />}
+        {(cost.loanRepay ?? 0) > 0 && <Row label="삼춘 대출 상환" value={`-${win(cost.loanRepay)}`} indent />}
         <div style={{ borderTop: `2px solid ${PALETTE.wood}`, margin: '6px 0' }} />
         <Row label="순이익" value={`${c.net >= 0 ? '+' : '-'}${win(Math.abs(c.net))}`} color={c.net >= 0 ? PALETTE.ok : PALETTE.bad} bold />
+        {(c.deficitStreak ?? 0) >= 3 && <div style={{ color: PALETTE.bad, fontSize: 14, marginTop: 4 }}>적자 {c.deficitStreak}개월째 — 비용부터 줄여 보세요</div>}
+        {(c.loanTaken ?? 0) > 0 && <Row label="삼춘 대출 받음" value={`+${win(c.loanTaken ?? 0)}`} color={PALETTE.bad} />}
+        {(c.loanBalance ?? 0) > 0 && <Row label="대출 잔액" value={win(c.loanBalance ?? 0)} color={PALETTE.inkSoft} />}
       </div>
+
+      {c.reputation !== undefined && (
+        <div style={rowCard} data-testid="report-reputation">
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 700 }}>
+            <span>평판 ♥{Math.round(c.reputation)}</span>
+            <span style={{ color: (c.reputationDelta ?? 0) >= 0 ? PALETTE.ok : PALETTE.bad }}>{(c.reputationDelta ?? 0) >= 0 ? '+' : ''}{Math.round(c.reputationDelta ?? 0)}</span>
+          </div>
+          {complaints.length > 0
+            ? complaints.map((t) => <div key={t.reason} style={{ fontSize: 14, lineHeight: 1.5 }}>· 불만 {COMPLAINT_LABEL[t.reason]} <span style={{ color: PALETTE.inkSoft }}>{t.count}건</span></div>)
+            : <div style={{ fontSize: 14, color: PALETTE.inkSoft }}>불만이 없었어요</div>}
+          {(c.guestsLeft ?? 0) > 0 && <div style={{ fontSize: 14, lineHeight: 1.5 }}>· 자리가 없어 돌아간 손님 <span style={{ color: PALETTE.inkSoft }}>{c.guestsLeft}명</span></div>}
+          {(c.rivalLossPct ?? 0) > 0 && <div style={{ fontSize: 14, lineHeight: 1.5 }}>· 라이벌 카페 때문에 손님 <span style={{ color: PALETTE.bad }}>−{c.rivalLossPct}%</span></div>}
+        </div>
+      )}
 
       {highlights.length > 0 && (
         <div style={rowCard} data-testid="report-highlights">

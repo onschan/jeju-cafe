@@ -1,0 +1,286 @@
+[
+  {
+    "id": "spot_bubble",
+    "name": "거품 족욕 명당",
+    "center": "footbath",
+    "requires": [
+      {
+        "objectId": "rest_pavilion",
+        "count": 1
+      },
+      {
+        "objectId": "basalt_rock",
+        "count": 1
+      }
+    ],
+    "target": "senior",
+    "targetName": "시니어",
+    "radius": 2,
+    "guestMult": 1.5,
+    "popularity": 5,
+    "tickets": 2,
+    "line": "여기가 명당이여!"
+  },
+  {
+    "id": "spot_silky",
+    "name": "매끈 피부 명당",
+    "center": "footbath",
+    "requires": [
+      {
+        "objectId": "hair_salon",
+        "count": 1
+      },
+      {
+        "objectId": "candy_shop",
+        "count": 1
+      },
+      {
+        "objectId": "hydrangea",
+        "count": 2
+      }
+    ],
+    "target": "female",
+    "targetName": "여성",
+    "radius": 2,
+    "guestMult": 1.5,
+    "popularity": 5,
+    "tickets": 2,
+    "line": "여기가 명당이여!"
+  },
+  {
+    "id": "spot_flower",
+    "name": "꽃 족욕 명당",
+    "center": "drum_footbath",
+    "requires": [
+      {
+        "objectId": "flower_workshop",
+        "count": 1
+      },
+      {
+        "objectId": "flower_shop",
+        "count": 2
+      },
+      {
+        "objectId": "camellia",
+        "count": 1
+      }
+    ],
+    "target": "female",
+    "targetName": "여성",
+    "radius": 2,
+    "guestMult": 1.5,
+    "popularity": 5,
+    "tickets": 2,
+    "line": "여기가 명당이여!"
+  },
+  {
+    "id": "spot_salt",
+    "name": "소금 족욕 명당",
+    "center": "cauldron_footbath",
+    "requires": [
+      {
+        "objectId": "fitness_corner",
+        "count": 1
+      },
+      {
+        "objectId": "yoga_class",
+        "count": 1
+      },
+      {
+        "objectId": "sauna_hut",
+        "count": 1
+      }
+    ],
+    "target": "female",
+    "targetName": "여성",
+    "radius": 2,
+    "guestMult": 1.5,
+    "popularity": 5,
+    "tickets": 2,
+    "line": "여기가 명당이여!"
+  },
+  {
+    "id": "spot_luck",
+    "name": "행운 명당",
+    "center": "capsule_machine",
+    "requires": [
+      {
+        "objectId": "restroom",
+        "count": 1
+      },
+      {
+        "objectId": "marble_game",
+        "count": 1
+      },
+      {
+        "objectId": "pinball",
+        "count": 1
+      }
+    ],
+    "target": "male",
+    "targetName": "남성",
+    "radius": 2,
+    "guestMult": 1.5,
+    "popularity": 5,
+    "tickets": 2,
+    "line": "여기가 명당이여!"
+  },
+  {
+    "id": "spot_hum",
+    "name": "콧노래 명당",
+    "center": "karaoke",
+    "requires": [
+      {
+        "objectId": "home_theater",
+        "count": 1
+      },
+      {
+        "objectId": "concert_hall",
+        "count": 1
+      }
+    ],
+    "target": "male",
+    "targetName": "남성",
+    "radius": 2,
+    "guestMult": 1.5,
+    "popularity": 5,
+    "tickets": 2,
+    "line": "여기가 명당이여!"
+  },
+  {
+    "id": "spot_eureka",
+    "name": "번뜩임 명당",
+    "center": "bookshelf",
+    "requires": [
+      {
+        "objectId": "gallery",
+        "count": 1
+      },
+      {
+        "objectId": "pc_zone",
+        "count": 1
+      },
+      {
+        "objectId": "wifi_zone",
+        "count": 1
+      }
+    ],
+    "target": "youth",
+    "targetName": "청년",
+    "radius": 2,
+    "guestMult": 1.5,
+    "popularity": 5,
+    "tickets": 2,
+    "line": "여기가 명당이여!"
+  },
+  {
+    "id": "spot_massage",
+    "name": "안마 명당",
+    "center": "massage_chair",
+    "requires": [
+      {
+        "objectId": "massage_booth",
+        "count": 1
+      },
+      {
+        "objectId": "cedar",
+        "count": 1
+      }
+    ],
+    "target": "adult",
+    "targetName": "성인",
+    "radius": 2,
+    "guestMult": 1.5,
+    "popularity": 5,
+    "tickets": 2,
+    "line": "여기가 명당이여!"
+  },
+  {
+    "id": "spot_waterfall",
+    "name": "물맞이 명당",
+    "center": "waterfall_shower",
+    "requires": [
+      {
+        "objectId": "drum_footbath",
+        "count": 1
+      },
+      {
+        "objectId": "dolhareubang",
+        "count": 1
+      }
+    ],
+    "target": "senior",
+    "targetName": "시니어",
+    "radius": 2,
+    "guestMult": 1.5,
+    "popularity": 5,
+    "tickets": 2,
+    "line": "여기가 명당이여!"
+  },
+  {
+    "id": "spot_friends",
+    "name": "단짝 명당",
+    "center": "pingpong",
+    "requires": [
+      {
+        "objectId": "karaoke",
+        "count": 1
+      },
+      {
+        "objectId": "retro_arcade",
+        "count": 1
+      }
+    ],
+    "target": "group",
+    "targetName": "단체",
+    "radius": 2,
+    "guestMult": 1.5,
+    "popularity": 5,
+    "tickets": 2,
+    "line": "여기가 명당이여!"
+  },
+  {
+    "id": "spot_oreum",
+    "name": "오름 바람 명당",
+    "center": "oreum_bench",
+    "requires": [
+      {
+        "objectId": "pampas",
+        "count": 3
+      },
+      {
+        "objectId": "observatory",
+        "count": 1
+      }
+    ],
+    "target": "all",
+    "targetName": "전체",
+    "radius": 2,
+    "guestMult": 1.5,
+    "popularity": 5,
+    "tickets": 2,
+    "line": "여기가 명당이여!"
+  },
+  {
+    "id": "spot_orchard",
+    "name": "귤밭 그늘 명당",
+    "center": "table_out",
+    "requires": [
+      {
+        "objectId": "tangerine_tree",
+        "count": 4
+      },
+      {
+        "objectId": "stonewall",
+        "count": 2
+      }
+    ],
+    "target": "group",
+    "targetName": "단체",
+    "radius": 2,
+    "guestMult": 1.5,
+    "popularity": 5,
+    "tickets": 2,
+    "line": "여기가 명당이여!"
+  }
+]

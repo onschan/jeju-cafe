@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
+import { ButtonGroup } from './ButtonGroup';
 import { useGame, dispatch } from './store';
 import { rivalMonths, rivalPower, judgeBreakdown, challengeOdds, canChallenge, menuStatsOf, menuOf, rivalStatPenaltyPct, josa, RIVAL_LEAVE_MONTHS, JUDGE_LUCK, type RivalState, type MenuStatKey } from '../sim/index.ts';
 import { rivalDef, namedGuestDef, MENU_STAT_LABEL } from '../data/index.ts';
 import { Popup } from './Popup';
 import { Bar } from './StaffPanel';
-import { card, brownBtn, brownBtnOn, brownBtnOff, brownSelect, PALETTE } from './frame';
+import { card, brownBtn, brownBtnOn, brownBtnOff, PALETTE } from './frame';
 
 const SIZE_LABEL: Record<string, string> = { small: '소형', medium: '중형', large: '대형' };
 
@@ -21,9 +22,8 @@ function ChallengePicker({ r, onClose }: { r: RivalState; onClose: () => void })
   return (
     <div style={{ marginTop: 8, borderTop: `2px solid ${PALETTE.woodLight}`, paddingTop: 6 }} data-testid="challenge-picker">
       <div style={{ fontSize: 13, marginBottom: 6 }}>심사 기준: {Object.entries(def.judge).map(([k, w]) => `${MENU_STAT_LABEL[k as MenuStatKey]} ${Math.round((w ?? 0) * 100)}%`).join(' · ')} · 라이벌 점수 <b>{power}</b> (+ 우리 운 0~{JUDGE_LUCK})</div>
-      <select value={menuId} onChange={(e) => setMenuId(e.target.value)} style={brownSelect} aria-label="대결 메뉴">
-        {menus.map((m) => <option key={m} value={m}>{menuOf(s, m).name} — 예상 {judgeBreakdown(def, menuStatsOf(s, m)).total}</option>)}
-      </select>
+      <ButtonGroup label="대결 메뉴" value={menuId} onPick={setMenuId}
+        options={menus.map((m) => ({ value: m, label: `${menuOf(s, m).name} ${judgeBreakdown(def, menuStatsOf(s, m)).total}` }))} />
       {bd && (
         <div style={{ fontSize: 13, marginTop: 4 }}>
           {Object.entries(bd.breakdown).map(([k, v]) => `${MENU_STAT_LABEL[k as MenuStatKey]} ${v}`).join(' · ')}

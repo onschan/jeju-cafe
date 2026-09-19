@@ -4,26 +4,33 @@ import { canPlace, placeObject, removeObject, footprint, relocateObject, objects
 import { canBuyParcel, buyParcel } from './parcels.ts';
 import { canSetSlot, setSlot } from './menu.ts';
 import { checkFeature, checkGoals } from './goals.ts';
+import { canAcceptChallenge, acceptChallenge } from './challenges.ts';
+import { fillStarterLayout } from './state.ts';
+import { TUTORIAL_STEPS, unlockTutorialFeatures } from './tutorial.ts';
 import { canPostJob, postJob, canHire, hire, canFire, fire, canAssign, assign, canLevelUp, levelUp } from './staff.ts';
+import { canTrain, train } from './training.ts';
 import { canPromote, promote, canSetTarget, setTarget } from './promotions.ts';
 import { discoverCombos } from './compat.ts';
-import { canUseItem, useItem } from './items.ts';
+import { canUseItem, useItem, canGiveGift, giveGift, canCraftGift, craftGift } from './items.ts';
 import { evaluateUnlocks } from './segments.ts';
 import { canAcceptQuest, acceptQuest, canRespondEvent, respondEvent, afterInvest, checkQuests } from './board.ts';
-import { canInvestSpot, investSpot } from './spots.ts';
+import { canInvestSpot, investSpot, canHostTour, hostTour, canSetTourBus, setTourBus } from './spots.ts';
 import { canRenameCafe, renameCafe, canExpand, expand, canSetCosmetic, setCosmetic, canPraise, praise, placeCost, type ExpansionId } from './cafe.ts';
 import { canDevelop, develop, canAddTopping, addTopping, canRemoveTopping, removeTopping, canLevelUpMenu, levelUpMenu } from './craft.ts';
 import { canStartBuild, startBuild } from './build.ts';
 import { canBuyMileage, buyMileage, canBuyTicket, buyTicket, canDrawTicket, drawTicket, canSetUniform, setUniform, canUseGuestItem, useGuestItem } from './shop.ts';
 import { canOpenPopup, openPopup, canClosePopup, closePopup } from './popup.ts';
 import { canChallenge, challenge } from './rivals.ts';
+import { canUpgrade, upgrade } from './upgrade.ts';
+import { canRepair, repair } from './cleanliness.ts';
+import { objectStats } from './compat.ts';
 
 export const PROTECTED_TYPES = new Set(['busstop', 'warehouse', 'gate', 'spring']);
 /** 회전할 수 있는 오브젝트 (rot 0..3, 스프라이트 변형 _r{n}이 있을 때만 보인다) */
 export const ROTATABLE_TYPES = new Set(['gate', 'bench', 'counter']);
 const ACTION_LOG_CAP = 1000;
 
-const CLIENT_ONLY = new Set<Action['type']>(['setSpeed', 'dismissMonthCard', 'dismissDevelop', 'dismissDraw', 'dismissAnnouncement', 'dismissChallenge', 'dismissAlert']);
+const CLIENT_ONLY = new Set<Action['type']>(['setSpeed', 'dismissMonthCard', 'dismissDevelop', 'dismissDraw', 'dismissAnnouncement', 'dismissChallenge', 'dismissAlert', 'dismissTour']);
 
 function log(state: GameState, a: Action) {
   if (CLIENT_ONLY.has(a.type)) return;
@@ -107,6 +114,23 @@ function applyInner(state: GameState, a: Action): ApplyResult {
       obj.rot = ((a.rot % 4) + 4) % 4;
       return { ok: true };
     }
+    case 'upgradeObject': {
+      const obj = state.objects[a.objectId];
+      if (!obj) return { ok: false, reason: '없는 오브젝트' };
+      const c = canUpgrade(state, a.objectId, objectStats(state, a.objectId).popularity);
+      if (!c.ok) return c;
+      const d = canDisturb(state, obj);
+      if (!d.ok) return d;
+      upgrade(state, a.objectId);
+      discoverCombos(state);
+      return { ok: true };
+    }
+    case 'repairObject': {
+      const c = canRepair(state, a.objectId);
+      if (!c.ok) return c;
+      repair(state, a.objectId);
+      return { ok: true };
+    }
     case 'buyParcel': {
       const c = canBuyParcel(state, a.id);
       if (!c.ok) return c;
@@ -156,6 +180,20 @@ function applyInner(state: GameState, a: Action): ApplyResult {
     case 'dismissAlert':
       state.alerts.shift();
       return { ok: true };
+    case 'acceptChallenge': {
+      const c = canAcceptChallenge(state, a.id);
+      if (!c.ok) return c;
+      acceptChallenge(state, a.id);
+      return { ok: true };
+    }
+    case 'skipTutorial': {
+      // §7.2 건너뛰기(첫 단계에서만): 빈 마당을 완성 시작 상태로 채우고 튜토리얼을 끝낸다
+      if (state.tutorial.step > 0) return { ok: false, reason: '이미 튜토리얼을 시작했어요' };
+      fillStarterLayout(state);
+      unlockTutorialFeatures(state); // 튜토리얼 보상으로만 열리는 입지 보기·콤보 도감·명소 지도
+      state.tutorial = { step: TUTORIAL_STEPS, skipped: true };
+      return { ok: true };
+    }
     case 'dismissMonthCard':
       state.lastMonthCard = null;
       return { ok: true };
@@ -184,9 +222,15 @@ function applyInner(state: GameState, a: Action): ApplyResult {
       return { ok: true };
     }
     case 'levelUp': {
-      const c = canLevelUp(state, a.staffId, a.stat);
+      const c = canLevelUp(state, a.staffId);
       if (!c.ok) return c;
-      levelUp(state, a.staffId, a.stat);
+      levelUp(state, a.staffId);
+      return { ok: true };
+    }
+    case 'train': {
+      const c = canTrain(state, a.staffId, a.trainingId);
+      if (!c.ok) return c;
+      train(state, a.staffId, a.trainingId);
       return { ok: true };
     }
     case 'promote': {
@@ -225,6 +269,33 @@ function applyInner(state: GameState, a: Action): ApplyResult {
       if (!c.ok) return c;
       const level = investSpot(state, a.id);
       afterInvest(state, a.id, level);
+      return { ok: true };
+    }
+    case 'hostTour': {
+      const c = canHostTour(state, a.spotId);
+      if (!c.ok) return c;
+      hostTour(state, a.spotId);
+      return { ok: true };
+    }
+    case 'dismissTour':
+      state.lastTour = null;
+      return { ok: true };
+    case 'setTourBus': {
+      const c = canSetTourBus(state, a.on);
+      if (!c.ok) return c;
+      setTourBus(state, a.on);
+      return { ok: true };
+    }
+    case 'giveGift': {
+      const c = canGiveGift(state, a.guestId, a.itemId);
+      if (!c.ok) return c;
+      giveGift(state, a.guestId, a.itemId);
+      return { ok: true };
+    }
+    case 'craftGift': {
+      const c = canCraftGift(state, a.itemId);
+      if (!c.ok) return c;
+      craftGift(state, a.itemId);
       return { ok: true };
     }
     case 'develop': {

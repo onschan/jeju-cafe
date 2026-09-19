@@ -5,13 +5,13 @@ import { setSlot } from '../menu.ts';
 import { apply } from '../actions.ts';
 import { tick, step } from '../tick.ts';
 import { DAY_MS, HOUR_MS, monthIndex } from '../clock.ts';
-import { spawnGuests, updateGuests, dailyGuestCount, hourlySpawn, tourBus, typeWeight } from '../guests.ts';
+import { spawnGuests, updateGuests, dailyGuestCount, popularityGuestBase, spotDailyGuests, totalSeats, hourlySpawn, tourBus, typeWeight, GUESTS_PER_SEAT } from '../guests.ts';
 import { monthlyYieldOf } from '../orchard.ts';
 import { upkeep } from '../economy.ts';
 import {
   offerQuest, refreshQuests, questProgress, checkQuests, expireQuests, rollEvents, eventConditionMet, eventEligible, applyEventEffect, expireEvents, boardBadge, afterInvest, QUEST_MONTHS,
 } from '../board.ts';
-import { spotAppeal, spotGuestBonus, spotUnlocked, canInvestSpot, nextSpotLevel, busSpots, APPEAL_PER_GUEST, SPOT_MAX_LEVEL } from '../spots.ts';
+import { spotAppeal, spotGuestBonus, spotUnlocked, canInvestSpot, nextSpotLevel, busSpots, totalDailyVisitors, VISITOR_GUEST_RATE, SPOT_MAX_LEVEL } from '../spots.ts';
 import { effectMult, noGuestsToday, pruneEffects, dayIndex, filterMatches } from '../effects.ts';
 import { unlockGuestType, isUnlocked, addSatisfaction, SAT_QUEST } from '../segments.ts';
 import { QUESTS, EVENTS, SPOTS, questDef, eventDef, parseSeasonMonths, spotDef } from '../../data/index.ts';
@@ -210,9 +210,10 @@ test('이벤트 롤: seed 결정적, 확률·달·조건 존중, 선택 이벤�
 test('효과 DSL: 손님 배수(전체·필터)·손님 0·수확·유지비·인기·아이템, 기간이 지나면 사라진다', () => {
   const { s, seat } = cafe();
   s.storage['tangerine'] = 99;
+  s.clock.month = 4; // 계절 배수 1
   const base = dailyGuestCount(s);
   applyEventEffect(s, { kind: 'spawnMult', mult: 2, days: 3 }, 't');
-  expect(dailyGuestCount(s)).toBe(base * 2);
+  expect(dailyGuestCount(s)).toBe(Math.min(totalSeats(s) * GUESTS_PER_SEAT, base * 2)); // 좌석 × 6 상한
   applyEventEffect(s, { kind: 'spawnMult', mult: 3, days: 3, filter: 'senior' }, 't');
   expect(typeWeight(s, 'local_auntie', 12)).toBeCloseTo(5 * 1.6 * 3);
   expect(typeWeight(s, 'student', 10)).toBeCloseTo(5 * 1.4); // 청년엔 안 걸림
@@ -253,9 +254,16 @@ test('효과 DSL: 손님 배수(전체·필터)·손님 0·수확·유지비·�
   void seat;
 });
 
+/** 트랙 C(§3.4.2): Lv2~5 추가 조건(방문객·년차·인기·★)을 채워 준다 — 관광지 흐름 자체를 보는 테스트용 */
+function meetSpotReqs(s: ReturnType<typeof bareState>, id: string) {
+  s.spotVisitors[id] = 1e6; s.spotPrizes[id] = 4; s.clock.year = Math.max(s.clock.year, 2); s.star = 5;
+  const g = spotDef(id).lv2GuestId; if (g) s.segmentPopularity[g] = 99;
+}
+
 test('관광지: 시작·랭크·앞 관광지 Lv4 해금, 레벨별 비용, 매력도 합 → 하루 손님, Lv2 손님·Lv4 부탁', () => {
   const s = bareState(1);
   s.money = 1e9;
+  meetSpotReqs(s, 'canola_field');
   expect(spotUnlocked(s, 'canola_field')).toBe(true);
   expect(spotUnlocked(s, 'sangumburi')).toBe(false);
   expect(spotUnlocked(s, 'olle_trail')).toBe(false); // 랭크 2
@@ -270,11 +278,12 @@ test('관광지: 시작·랭크·앞 관광지 Lv4 해금, 레벨별 비용, 매
   apply(s, { type: 'investSpot', id: 'canola_field' }); // Lv2
   expect(isUnlocked(s, 'insta_traveler')).toBe(true);
   expect(spotAppeal(s)).toBe(20);
-  const g0 = dailyGuestCount(s);
+  const g0 = popularityGuestBase(s);
   apply(s, { type: 'investSpot', id: 'canola_field' }); // Lv3 (32)
   apply(s, { type: 'investSpot', id: 'canola_field' }); // Lv4 (44)
-  expect(spotGuestBonus(s)).toBe(Math.floor(44 / APPEAL_PER_GUEST));
-  expect(dailyGuestCount(s)).toBe(g0 + 1);
+  expect(spotGuestBonus(s)).toBe(Math.floor(totalDailyVisitors(s) * VISITOR_GUEST_RATE + 1e-9));
+  expect(spotDailyGuests(s)).toBe(spotGuestBonus(s)); // 방문객/일 × 3%가 하루 손님으로
+  expect(popularityGuestBase(s)).toBeGreaterThan(g0);
   expect(s.board.quests['q_influencer']!.status).toBe('offered'); // Lv4 부탁
   expect(isUnlocked(s, 'influencer')).toBe(true);
   expect(spotUnlocked(s, 'sangumburi')).toBe(true); // 다음 관광지
@@ -296,13 +305,17 @@ test('투어 버스: Lv3 이상 관광지의 Lv2 손님이 일요일 11시에 4~
   s.money = 1e9;
   expect(busSpots(s)).toEqual([]);
   expect(tourBus(s)).toBe(0);
+  meetSpotReqs(s, 'canola_field');
   for (let i = 0; i < 3; i++) apply(s, { type: 'investSpot', id: 'canola_field' });
+  expect(busSpots(s)).toEqual([]); // 계약 전엔 안 온다 (트랙 C)
+  s.tourBus = true;
   expect(busSpots(s).map((d) => d.id)).toEqual(['canola_field']);
   const n = tourBus(s);
   expect(n).toBeGreaterThanOrEqual(4); expect(n).toBeLessThanOrEqual(6);
   expect(s.guests.every((g) => g.type === 'insta_traveler')).toBe(true);
   // 스케줄: 7일 11시에만
-  const s2 = bareState(1); placeObject(s2, 'table_out', X(4), Y(5)); s2.money = 1e9;
+  const s2 = bareState(1); placeObject(s2, 'table_out', X(4), Y(5)); s2.money = 1e9; s2.tourBus = true;
+  meetSpotReqs(s2, 'canola_field');
   for (let i = 0; i < 3; i++) apply(s2, { type: 'investSpot', id: 'canola_field' });
   s2.segmentPopularity = {};
   for (const id of Object.keys(s2.guestTypes)) if (id !== 'insta_traveler') s2.guestTypes[id]!.unlocked = false;
@@ -323,6 +336,7 @@ test('월초 훅: 해금 → 기한·이벤트·부탁이 순서대로 돌고 �
   placeObject(s, 'table_out', X(4), Y(5));
   setSlot(s, 0, 'americano');
   s.money = 1e9;
+  meetSpotReqs(s, 'canola_field');
   for (let i = 0; i < 3; i++) apply(s, { type: 'investSpot', id: 'canola_field' });
   for (let i = 0; i < 95; i++) tick(s, DAY_MS);
   expect(s.board.events.length).toBeGreaterThan(0);

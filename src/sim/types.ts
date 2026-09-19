@@ -27,6 +27,7 @@ export interface ObjectDef {
   terrain: Terrain[];  // 놓을 수 있는 지형
   removeCost?: number; // 치울 때 환불 대신 드는 돈 (곶자왈 덤불처럼 처음부터 있던 것)
   effectText?: string; // 랜드마크 효과 설명 (데이터만, 효과는 TODO)
+  walkSpeedPct?: number; // 활력 화분: 놓여 있으면 손님·직원 이동 속도 +% (합산 상한 30, path.ts walkSpeedMult)
   popularity?: number; // 기본 인기 (없으면 BASE_POPULARITY 10)
   feePct?: number;     // 기본 요금 % (없으면 100)
   desc?: string;       // 정보 패널 설명 (없으면 이름)
@@ -199,17 +200,39 @@ export interface EventState { id: string; monthIndex: number; status: EventStatu
 export interface ActiveEffect { kind: 'spawnMult' | 'harvestMult' | 'upkeepMult' | 'noGuests'; mult: number; filter?: EventFilter; untilDay: number; source: string }
 
 export type SpotCategory = 'sight' | 'food' | 'play' | 'nature';
+/** 명소 Lv5 특수 효과 (k=6 명소만, §3.4.3) */
+export type SpotSpecial =
+  | { type: 'unlockGuest'; guestId: string; text: string }
+  | { type: 'popularity'; guestId: string; n: number; text: string }
+  | { type: 'walletMult'; guestId: string; mult: number; text: string }
+  | { type: 'spawnMult'; guestId: string; mult: number; text: string };
+/** 명소 분류 → 손님 태그 (볼거리 female · 먹거리 group · 놀거리 youth · 자연 senior) */
+export type SpotTag = 'female' | 'group' | 'youth' | 'senior';
 export interface SpotDef {
   id: string;
   name: string;
   category: SpotCategory;
   categoryName: string;
-  order: number;
+  order: number;                 // 분류 안 순서 k (1~6) — 투자금 기준 B_k·Lv5 ★ 조건
   levels: { level: number; cost: number; appeal: number }[];
   lv2GuestId: string | null;
   lv4QuestId: string | null;
   nextSpotId: string | null;
   unlock: UnlockCond;
+  tag: SpotTag;                  // Lv별 유입 배수를 받는 손님 태그
+  facilityCategory: FacilityCategory; // Lv3·Lv5 요금 보너스를 받는 시설 분류
+  lv3ItemId: string | null;      // Lv3 도달 시 주는 강화 아이템
+  lv5Special: SpotSpecial | null;
+}
+/** 투어 개최 결과 (UI 팝업, dismissTour로 닫는다) */
+export interface TourResult { spotId: string; score: number; success: boolean; money: number; visitors: number }
+/** 손님 선물 (gifts.json §3.3.5): 손님 카드 「선물하기」 */
+export interface GiftDef {
+  id: string;
+  name: string;
+  fitTag: 'female' | 'male' | 'youth' | 'adult' | 'senior' | 'group'; // 잘 맞는 손님층이면 효과 ×2
+  source: { type: 'craft'; ingredientId: string; count: number } | { type: 'facility'; objectId: string; perMonth: number } | { type: 'quest'; questId: string };
+  sourceText: string;
 }
 export interface BoardState { quests: Record<string, QuestState>; events: EventState[] }
 
@@ -260,8 +283,23 @@ export interface ActiveCombo {
   hidden: boolean;
   target: ComboTarget;
   effectText: string;
+  count: number;      // 발동 횟수 (다른 개체 상대마다 +1, 스펙 §3.1-2)
 }
 export interface ActiveSet { id: string; name: string; level: number; target: ComboTarget; mult: number }
+/** 명당 12 (스펙 §3.1): 중심 시설 1개를 두고 반경 안 시설 조합이 갖춰지면 그 시설에 손님층 배수·인기 +5 */
+export interface SpotEffectDef {
+  id: string;
+  name: string;
+  center: string;                                  // 중심 시설 오브젝트 id
+  requires: { objectId: string; count: number }[]; // 반경 안 필요 시설
+  target: ComboTarget;
+  radius: number;                                  // 기본 2
+  guestMult: number;                               // 대상 손님층 선택 확률 배수 (×1.5)
+  popularity: number;                              // 인기 가산 (+5)
+  tickets: number;                                 // 처음 발견 시 응모권
+  line: string;                                    // 발견 대사
+}
+export interface ActiveSpotEffect { id: string; name: string; target: ComboTarget; guestMult: number; popularity: number }
 export interface ObjectStats {
   popularity: number;
   feePct: number;
@@ -270,6 +308,9 @@ export interface ObjectStats {
   upkeep: number;
   combos: ActiveCombo[];
   sets: ActiveSet[];
+  spot: ActiveSpotEffect | null;        // 명당 (시설 1개당 1종, 가장 먼저 만족한 것)
+  level: number;                        // 증축 Lv 1~3 (upgrade.ts)
+  wear: number;                         // 노후 단계 0~6 (cleanliness.ts, 인기 −wear)
   segmentBonus: Record<string, number>; // 손님층 id → 콤보 대상 가산 인기
 }
 export interface ItemBonus { popularity: number; feePct: number; scenery?: number }
@@ -280,10 +321,12 @@ export type IngredientKind = 'bought' | 'farm';
 /** cost: 창고에 없을 때 자동 구매 원가. stats·category는 v1 표(§6.1)에서. */
 export interface IngredientDef { id: string; name: string; kind: IngredientKind; cost: number; category: IngredientCategory; stats: MenuStats; sourceText: string }
 
-export type RoleId = 'barista' | 'cook' | 'hall' | 'carry' | 'guide';
+export type RoleId = 'barista' | 'cook' | 'hall' | 'carry' | 'guide' | 'clean' | 'garden' | 'promo';
+/** 직종 해금 조건 (unlockedAtStart가 아닐 때): goal = 목표 보상 unlockRole(B), farms = 농원(수확 있는) 시설 수, rank = 카페 랭크 */
+export interface RoleUnlock { goal?: string; farms?: number; rank?: number }
 /** 직원 스탯 4 (GDD v2 §5): 체력 stamina · 힘 strength(운반) · 기술 skill(바리스타·요리) · 미소 smile(홀·안내) */
 export type StatKey = 'stamina' | 'strength' | 'skill' | 'smile';
-export interface RoleDef { id: RoleId; name: string; stat: StatKey; unlockedAtStart: boolean }
+export interface RoleDef { id: RoleId; name: string; stat: StatKey; unlockedAtStart: boolean; desc?: string; unlock?: RoleUnlock }
 
 export type SkillEffect =
   | { type: 'menuQuality'; category: MenuCategory; value: number }
@@ -295,20 +338,57 @@ export type SkillEffect =
   | { type: 'researchBonus'; value: number }
   | { type: 'spawnBonus'; value: number }
   | { type: 'luck'; value: number }
-  | { type: 'stamina'; value: number };
+  | { type: 'stamina'; value: number }
+  | { type: 'cleanBonus'; value: number }          // 청소 달인: 청결 회복 ×(1+v)
+  | { type: 'harvestBonus'; value: number }        // 농원지기: 농원 수확 +v
+  | { type: 'groupSatisfaction'; value: number }   // 단체 손님 만족 +v
+  | { type: 'feeBonus'; value: number }            // 담당 시설 요금 +v
+  | { type: 'trainingBonus'; value: number }       // 연수 효과 ×(1+v)
+  | { type: 'regularBonus'; value: number }        // 단골 전환 +v
+  | { type: 'nightSatisfaction'; value: number }   // 18시 이후 손님 만족 +v
+  | { type: 'stormRepairDiscount'; value: number } // 태풍 수리비 −v
+  | { type: 'tourScore'; value: number }           // 투어 개최 점수 +v
+  | { type: 'giftBonus'; value: number };          // 손님 선물 효과 ×(1+v)
 export interface SkillDef { id: string; name: string; desc: string; effect: SkillEffect }
 
 export interface Stats { stamina: number; strength: number; skill: number; smile: number }
 export interface Face { hair: number; skin: number; top: number } // 파츠 인덱스
 
+/** 직원 풀(staff_pool.json, §3.6.2): 고정 27명. tier 1~5 = 채용 단계, 0 = 특수(아이템으로만 온다). */
+export interface StaffPoolDef {
+  id: string;
+  name: string;
+  tier: number;
+  stats: Stats;      // 초기치
+  statCaps: Stats;   // 스탯별 상한 (유니폼 보너스 전)
+  maxLevel: number;
+  baseSalary: number;
+  skill: string;     // 타고난 특기
+  face: Face;
+  bio?: string;
+}
+/** 채용 방법(recruit_tiers.json, §3.6.6): 비용을 내면 그 단계 풀에서 아직 없는 사람이 후보로 온다. */
+export interface RecruitTierDef { id: JobTier; name: string; tier: number; cost: number; count: number; unlock?: { star?: number; rank?: number }; desc?: string }
+/** 연수(trainings.json, §3.6.4) */
+export interface TrainingDef { id: string; name: string; cost: number; days: number; stats: Partial<Stats>; grantSkill?: boolean; requires?: { star?: number; level?: number }; desc?: string }
+export interface StaffTraining { id: string; daysLeft: number }
+
 export interface Staff {
   id: string;
   name: string;
   face: Face;
+  poolId: string;         // staff_pool.json id
   stats: Stats;
-  skill: string;
+  statCaps: Stats;        // 스탯별 상한 (유니폼 보너스는 capOf가 더한다)
+  skill: string;          // 타고난 특기
+  extraSkills: string[];  // 종합 연수로 얻은 특기 (skillsOf = [skill, ...extraSkills])
   level: number;
+  maxLevel: number;
+  baseSalary: number;     // 기본급 (월급 = salaryOf)
   salary: number;
+  exp: number;            // 승급 경험치 (근무일 1 + 서빙·조리 0.2)
+  trainingCount: number;  // 다녀온 연수 횟수 (비용 증가)
+  training: StaffTraining | null; // 연수 중이면 자리를 비운다
   role: RoleId | null;
   unpaidMonths: number;
   energy: number; // 0~100
@@ -319,11 +399,11 @@ export interface Staff {
   anchor: Pt | null; // 렌더·이동용
   waitMs: number;    // 다음 산책까지 대기
 }
-export interface Candidate extends Omit<Staff, 'role' | 'unpaidMonths' | 'energy' | 'lastParttimeMonthIndex' | 'x' | 'y' | 'path' | 'anchor' | 'waitMs'> {
+export interface Candidate extends Omit<Staff, 'role' | 'unpaidMonths' | 'energy' | 'lastParttimeMonthIndex' | 'x' | 'y' | 'path' | 'anchor' | 'waitMs' | 'exp' | 'trainingCount' | 'training' | 'extraSkills'> {
   expiresMonthIndex: number;
 }
 
-export type JobTier = 'flyer' | 'site' | 'headhunter';
+export type JobTier = 'flyer' | 'site' | 'magazine' | 'intern' | 'college';
 
 /** 홍보 활동 정의 (ads.json 대신 — 2B-1 v2) */
 export interface PromotionDef {
@@ -336,7 +416,7 @@ export interface PromotionDef {
   segmentDelta: Record<string, number>; // guestType id → 인기 가산
   allDelta?: number;
   popularityShift?: number; // 동네↔인기 게이지 이동 (SNS)
-  special?: 'youtuber' | 'parttime';
+  special?: 'youtuber' | 'parttime' | 'apology'; // apology = 사과 이벤트(평판 +8, 월 1회)
 }
 /** delta는 시작 시점의 타깃 배수를 구워 둔 값 (guestType id → 인기 가산). 나중에 타깃을 바꿔도 변하지 않는다. */
 export interface ActivePromotion { promotionId: string; remainingMonths: number; delta: Record<string, number> }
@@ -345,7 +425,8 @@ export interface ActivePromotion { promotionId: string; remainingMonths: number;
 export interface Pt { x: number; y: number }
 
 /** 월 비용 항목. recruit = 공고비 + 퇴직금 */
-export interface MonthCosts { ingredients: number; salary: number; ads: number; upkeep: number; recruit: number }
+/** 월 비용 항목. tax = 소득세(매년 3월 1일, 전년 순이익 ×10%), loanRepay = 삼춘 대출 자동 상환(흑자 달 순이익 30%), tourBus = 투어 버스 월 고정비 */
+export interface MonthCosts { ingredients: number; salary: number; ads: number; upkeep: number; recruit: number; tax: number; loanRepay: number; tourBus: number }
 /** 농원: harvested = 이달 1일 창고에 들어온 재료, ingredientSaved = 창고 재료를 써서 안 산 재료비 */
 export interface MonthHarvest { harvested: Record<string, number>; ingredientSaved: number }
 /** 월말 정산 카드 */
@@ -359,9 +440,18 @@ export interface MonthCard {
   harvested: Record<string, number>; // 그달 1일 농원에서 들어온 재료 (ingredientId → 개수)
   ingredientSaved: number;           // 그달 창고 재료 덕에 안 산 재료비
   topMenu: string | null;            // 그달 최다 판매 메뉴 id
+  deficitStreak: number;             // 연속 적자 달 수 (3 이상이면 카드에 "적자 N개월" 배지)
+  loanTaken: number;                 // 그달 받은 삼춘 대출 금액
+  loanBalance: number;               // 월말 대출 잔액
+  rivalLossPct: number;              // 라이벌 카페 때문에 줄어든 손님 % (라이벌당 5)
+  guestsLeft: number;                // 대기열이 차서 돌아간 손님 수
+  reputation: number;                // 월말 평판
+  reputationDelta: number;           // 그달 평판 변화
+  topComplaints: { reason: ComplaintReason; count: number }[]; // 그달 불만 TOP3
 }
 
-// ---------- 목표 체인 (v3 §2) ----------
+// ---------- 목표 체인 (v3 §2 → 확장 §3.5·§7) ----------
+/** 목표·도전 조건. 판정은 goals.ts의 conditionCheckers 레지스트리 (타입 → { cur, max }). 아직 없는 시스템은 스텁. */
 export type GoalCondition =
   | { type: 'guests'; n: number }                 // 누적 손님
   | { type: 'menuSold'; menuId: string; n: number }
@@ -381,8 +471,43 @@ export type GoalCondition =
   | { type: 'recipes'; n: number }                // 개발한 레시피
   | { type: 'promotions'; n: number }             // 홍보 실행 횟수
   | { type: 'rivalWins'; n: number }              // 카페 대결 승리
-  | { type: 'year'; n: number };                  // n년차
-export type FeatureId = 'clearRock' | 'promote' | 'craft' | 'popup' | 'challenge' | 'parcel';
+  | { type: 'year'; n: number }                   // n년차
+  // ---- §3.5 신설 14 ----
+  | { type: 'monthIncome'; n: number }            // 지난달 매출
+  | { type: 'staffLevel'; lv: number; n: number } // Lv 이상 직원 n명
+  | { type: 'trainings'; n: number }              // 연수 완료 횟수 (x-staff)
+  | { type: 'facilityLv'; lv: number; n: number } // Lv 이상 시설 n개 (x-facility)
+  | { type: 'comboCount'; n: number }             // 활성 콤보 수
+  | { type: 'setCount'; n: number }               // 활성 세트 수
+  | { type: 'spotEffect'; n: number }             // 명당 수 (x-facility)
+  | { type: 'spotLevel'; spotId: string; lv: number } // 특정 명소 Lv
+  | { type: 'spotAny'; lv: number; n: number }    // Lv 이상 명소 n곳
+  | { type: 'visitorsTotal'; n: number }          // 전 명소 누적 방문객 (x-spots)
+  | { type: 'guestType'; guestId: string; n: number } // 손님 타입 인기 ≥ n
+  | { type: 'guidebookRank'; bookId: string; n: number } // 특정 가이드북 n위 안
+  | { type: 'guidebookWins'; n: number }          // 가이드북 1위 횟수
+  | { type: 'cleanliness'; n: number }            // 청결 n 이상 한 달 (x-facility)
+  | { type: 'profitMonths'; n: number }           // 연속 흑자 달
+  | { type: 'tourGroup'; n: number }              // 투어 개최 (x-spots)
+  | { type: 'itemsUsed'; n: number }              // 강화 아이템 사용
+  | { type: 'uniforms'; n: number }               // 유니폼 단계
+  | { type: 'custom'; id: string; n?: number }    // 코드 판정 (centennial 등)
+  // ---- §7.5 전략 조건 ----
+  | { type: 'siteSeats'; view: number; n: number } // 전망 view 이상 좌석 n개 (x-site)
+  | { type: 'windlessSeats'; n: number }          // 바람 0 좌석 n개 (x-site)
+  | { type: 'combos'; n: number }                 // 도감에 발견한 콤보 수
+  | { type: 'spotEffects'; n: number }            // 명당 효과 수 (x-facility)
+  | { type: 'upgraded'; lv: number; n: number }   // 증축 Lv 이상 시설 n개 (x-facility)
+  | { type: 'clean'; avg: number; days: number }  // 청결 avg 이상 days일 (x-facility)
+  | { type: 'skills'; n: number }                 // 특기 보유 직원 n명
+  | { type: 'selfSupply'; pct: number }           // 재료 자급률 % (x-spots/farm)
+  | { type: 'training'; n: number }               // 연수 완료 (x-staff, trainings 별칭)
+  // ---- 도전·월간 과제 전용 ----
+  | { type: 'seats'; n: number }                  // 좌석 시설 수
+  | { type: 'noLossMonth'; n: number }            // 적자 없이 n달 (연속 흑자, 수락 시점 대비)
+  | { type: 'monthGuests'; n: number }            // 이달 손님 수
+  | { type: 'monthSales'; n: number };            // 이달 매출
+export type FeatureId = 'clearRock' | 'promote' | 'craft' | 'popup' | 'challenge' | 'parcel' | 'siteView' | 'comboCodex' | 'spotMap';
 export type GoalReward =
   | { type: 'money'; amount: number }
   | { type: 'unlockFacility'; id: string }
@@ -393,7 +518,14 @@ export type GoalReward =
   | { type: 'staffSlot'; role: RoleId; n: number }
   | { type: 'research'; n: number }
   | { type: 'builder'; n: number }
-  | { type: 'unlockFeature'; id: FeatureId };
+  | { type: 'unlockFeature'; id: FeatureId }
+  | { type: 'item'; id: string; n: number }          // 아이템 n개 (inventory)
+  | { type: 'unlockGuest'; id: string }              // 손님 타입 해금
+  | { type: 'unlockRecruit'; id: string }            // 채용 등급 해금 (x-staff)
+  | { type: 'unlockGuidebook'; id: string }          // 가이드북 해금
+  | { type: 'seed'; kind: string; n: number }        // 씨앗 아이템 n개 (kind = 아이템 id)
+  | { type: 'title'; id: string; name: string }      // 칭호 (state.titles)
+  | { type: 'feeBonus'; pct: number };               // 요금 +pct% (state.feeBonusPct)
 export type GoalSpeaker = 'halmang' | 'samchun' | 'hero';
 export interface GoalDef {
   id: string;
@@ -404,7 +536,7 @@ export interface GoalDef {
   speaker?: GoalSpeaker;
   line?: string;      // 축하 대사 1줄
 }
-/** index = 현재 목표 순번 (goals.json), claimed = 달성한 목표 id */
+/** index = 아직 안 이룬 첫 목표 순번 (goals.json), claimed = 달성한 목표 id (메인 2개 동시 진행이라 순서가 어긋날 수 있다) */
 export interface GoalsState { index: number; claimed: string[] }
 export interface GameStats {
   satisfiedTotal: number;  // 누적 만족(happy) 손님
@@ -412,12 +544,57 @@ export interface GameStats {
   promotionsDone: number;  // 홍보 실행 횟수
   recipesMade: number;     // 개발 성공한 레시피
   rivalWins: number;       // 카페 대결 승리
+  profitMonths: number;    // 연속 흑자 달 (월말 갱신)
+  lossMonths: number;      // 연속 적자 달
+  guidebookWins: number;   // 가이드북 1위 횟수
+  itemsUsed: number;       // 강화 아이템 사용 횟수
+  trainings: number;       // 연수 완료 횟수 (x-staff가 올린다)
+  toursHeld: number;       // 투어 개최 성공 (x-spots가 올린다)
+  seenMonth: number;       // 월말 관찰용 monthIndex (goals.ts observeMonth)
+  seenAnnouncement: number; // 마지막으로 센 가이드북 발표 monthIndex
 }
-/** UI 대화창 큐 항목 */
+/** 보상 상자에 담기는 보상 알림의 출처 */
+export type RewardSource = 'goal' | 'challenge' | 'monthly' | 'tutorial';
+/** UI 대화창·팝업 큐 항목 */
 export type Alert =
   | { type: 'goal'; goalId: string }
   | { type: 'event'; id: string }
-  | { type: 'eventEnd'; id: string };
+  | { type: 'eventEnd'; id: string }
+  | { type: 'reward'; source: RewardSource; refId: string; title: string; items: GoalReward[]; line?: string; speaker?: GoalSpeaker }
+  | { type: 'challengeFailed'; id: string }
+  | { type: 'failure'; stage: 'warn' | 'loan' | 'crisis' | 'demote' }
+  | { type: 'reputation'; text: string }; // 평판 20 미만 삼춘 경고 (reputation.ts)
+
+// ---------- 도전 과제 3레인 (§7.3) ----------
+export interface ChallengeDef {
+  id: string;
+  title: string;      // 14자 이내
+  desc: string;
+  condition: GoalCondition;
+  days: number;       // 기한 (수락일부터)
+  reward: GoalReward[];
+  tier: 1 | 2 | 3 | 4 | 5;
+  requires?: number;  // 메인 목표 index 이상일 때 목록에 나온다
+  delta?: boolean;    // true면 수락 시점 값 대비 증가분으로 판정 (자금 +300만 등)
+}
+export interface ActiveChallenge { id: string; startDay: number; endDay: number; base: number; progress: number }
+export interface ChallengesState {
+  active: ActiveChallenge[];
+  done: string[];
+  failed: { id: string; until: number }[]; // until = 다시 고를 수 있는 dayIndex
+}
+/** 월간 과제 (매월 1일 자동 1개, 그달 안). 난이도는 현재 수치 기준 자동. */
+export interface MonthlyState {
+  id: string;         // m_<monthIndex>_<kind>
+  monthIndex: number;
+  title: string;
+  condition: GoalCondition;
+  base: number;       // 생성 시점 값 (delta 조건)
+  reward: GoalReward[];
+  status: 'active' | 'done' | 'failed';
+}
+/** 손으로 하는 튜토리얼 (§7.2): step = 끝낸 단계 수 (0~9). 9면 끝. skipped면 완성 시작 상태로 채웠다. */
+export interface TutorialState { step: number; skipped: boolean }
 
 // ---------- 제주 빅 이벤트 (v3 A5) ----------
 /** 손님 태그 배수의 키: 인구 태그 + 외국인·학생·1인·가족 */
@@ -429,8 +606,21 @@ export interface BigEventEffects {
   moneyBonus?: number;                         // 발동 즉시 자금
   feeMult?: number;                            // 메뉴 값 배수
   popularity?: number;                         // 발동 즉시 동네↔인기 게이지
-  repairCost?: number;                         // 발동 즉시 시설 수리비 (시설당)
+  repairCost?: number;                         // 발동 즉시 시설 수리비 (시설당) — §4.5 이전 방식 (남겨 둠)
   specialGuest?: BigEventSpecialGuest;         // 특별 손님 1회 방문
+  // ---- §4.5 보정 ----
+  repairPct?: number;                          // 야외 시설(경관·농원·야외 좌석·카트) 건설비 합 × pct% 수리비 (repairMin~repairMax)
+  repairMin?: number;
+  repairMax?: number;
+  damagePct?: number;                          // 야외 시설 pct%가 파손 → 노후 1단계(cleanliness.ts wear), 시설 카드 「수리」
+  heatingCost?: number;                        // 즉시 난방비
+  harvestMult?: number;                        // 농원 수확 배수 (harvestDays 동안, 기본 30일)
+  harvestDays?: number;
+  carryStrength?: number;                      // 운반 직원 힘이 이 이상이면 harvestMult 대신 harvestMultCarry
+  harvestMultCarry?: number;
+  spawnFilter?: { filter: EventFilter; mult: number; days: number }; // 손님층 필터 스폰 배수 (렌터카 대란: 단체·가족 ×0.5)
+  deterItem?: { itemId: string; chanceMult: number }; // 이 아이템이 있으면 발동 확률 배수 (노루 방울 −50%)
+  itemDiscount?: { itemId: string; mult: number }[];  // 이 아이템이 있으면 수리비 배수 (wind_charm 0.5, storm_ready 0.7)
 }
 export interface BigEventDef {
   id: string;
@@ -462,6 +652,9 @@ export interface PlacedObject {
   placedMonth: number; // 놓은 달(monthIndex). 농원 수확은 다음 달 1일부터
   rot?: number; // 0..3, 방향 있는 오브젝트만 (스프라이트 변형 _r{n})
   build?: { doneDay: number; days: number }; // 건설 중 (doneDay = 완공 절대 일 인덱스). 없으면 완공
+  level?: 1 | 2 | 3;   // 증축 Lv (없으면 1). 스펙 §3.2.2
+  uses?: number;       // 누적 이용 횟수 (좌석 주문·시설 방문) — 증축 조건
+  wearMonth?: number;  // 노후 기준 달(monthIndex): 완공·증축·수리 시점. 없으면 placedMonth
 }
 
 /** 필지. 격자는 처음부터 전체 크기이고, 소유한 필지에만 지을 수 있다. */
@@ -488,15 +681,15 @@ export type FxEvent =
   | { kind: 'scene'; title: string; text: string; tick: number }; // UI 장면 창(완공·★ 승급·랭크 업). 렌더는 무시한다
 
 // ---------- 상점·추첨·유니폼·가이드북 (2B-2 Task 6·7) ----------
-export interface MileageShopDef { id: string; name: string; price: number; description: string; itemId?: string }
-export interface TicketShopDef { id: string; name: string; price: number; description: string; itemId?: string; uniformId?: string }
+export interface MileageShopDef { id: string; name: string; price: number; description: string; itemId?: string; objectId?: string }
+export interface TicketShopDef { id: string; name: string; price: number; description: string; itemId?: string; uniformId?: string; objectId?: string }
 export interface UniformDef { id: string; name: string; ticketTier: number; effectText: string; parts: { top: string; acc?: string } }
 /** 인형뽑기 상품 종류 (v1 roulette.json 가중치를 다시 라벨링) */
 export type DrawPrizeKind = 'money' | 'research' | 'ingredient_box' | 'mileage' | 'item' | 'seed' | 'uniform_piece' | 'miss';
 export interface DrawPrizeDef { kind: DrawPrizeKind; label: string; pct: number }
 export interface DrawResult { kind: DrawPrizeKind; label: string; text: string; free: boolean }
 /** 가이드북 심사 항목 6종 (0~100) */
-export type JudgeKey = 'smile' | 'scenery' | 'menu' | 'fun' | 'group' | 'overall';
+export type JudgeKey = 'smile' | 'scenery' | 'menu' | 'fun' | 'group' | 'rest' | 'clean' | 'price' | 'reputation' | 'overall';
 export type JudgeScores = Record<JudgeKey, number>;
 export interface GuidebookDef {
   id: string;
@@ -504,13 +697,17 @@ export interface GuidebookDef {
   unlock: UnlockCond;
   unlockText: string;
   criteriaText: string;
-  weights: Partial<Record<JudgeKey, number>>; // 합 1
+  weights: Partial<Record<JudgeKey, number>>; // 합 1 (농협 추천은 0.4 + 타깃 손님층 인기 0.6)
+  rivalTop: number;    // 1위 라이벌 1년차 점수 (§3.7.3 top_b)
+  rivalGrowth: number; // 1위 라이벌 점수 연 증가
   prize: number;
   research: number;
   seeds: { itemId: string; count: number }[];
+  mileage: number;  // 1위 추가 마일리지 (농협 추천 10)
   monthly: boolean; // 매월 발표 (이번 달 농협 추천)
 }
-export interface GuidebookState { unlocked: boolean; lastRank: number | null; best: number | null }
+/** boost = 라이벌 1위 점수 가산(플레이어가 1위 한 다음 해부터 +3씩 누적), pending = 올해 번 가산(다음 해 1월에 boost로) */
+export interface GuidebookState { unlocked: boolean; lastRank: number | null; best: number | null; boost: number; pending: number }
 export interface AnnouncementEntry {
   id: string;
   name: string;
@@ -621,6 +818,16 @@ export interface Clock {
   speed: 0 | 1 | 2 | 3;
 }
 
+/** 불만 사유 (reputation.ts COMPLAINT_LABEL로 표시) */
+export type ComplaintReason = 'no_menu' | 'wait_long' | 'no_seat' | 'dirty' | 'worn' | 'noise' | 'expensive' | 'cold_hot' | 'rude';
+/** 불만 한 건 (최근 30일 롤링). detail = 메뉴·시설 이름 등 후기 문장용 */
+export interface Complaint { day: number; reason: ComplaintReason; guestType: string; detail?: string }
+/** 월말 후기 (최대 8개, 최신이 앞) */
+export interface Review { month: number; score: number; text: string; reason?: ComplaintReason }
+/** 삼춘 대출: count = 받은 횟수(최대 3), balance = 남은 원금, lastMonthIndex = 마지막 대출 달(한 달 1회) */
+export interface LoanState { count: number; balance: number; lastMonthIndex: number }
+/** ★ 유지 심사: promotedYear = 마지막 승급 년차, lastReviewYear = 마지막 심사 년차(2년마다 3월), warned = 3월 경고 뒤 9월 재심사 대기 */
+export interface StarReview { promotedYear: number; lastReviewYear: number; warned: boolean }
 export interface GameState {
   version: number;
   playerId: string;
@@ -633,7 +840,24 @@ export interface GameState {
   popularity: number; // −100(동네) ~ +100(인기)
   grid: { w: number; h: number; cells: Cell[] };
   parcels: Parcel[];
-  settleGrantUsed: boolean; // 정착지원금(잔고 < 40만이면 1회 300만)을 받았나
+  loan: LoanState;                            // 삼춘 대출 (§4.4: 잔고 < 40만 또는 6개월 연속 적자 → 300만, 최대 3회)
+  deficitMonths: number;                      // 연속 적자 달 수 (3: 경고, 6: 대출)
+  crisisMonths: number;                       // 잔고 < −500만 연속 달 수 (3: 정착 실패 위기)
+  yearNet: number;                            // 올해 순이익 누적 (1~12월)
+  lastYearNet: number;                        // 전년 순이익 (3월 1일 소득세 = ×10%)
+  salaryRaisePct: number;                     // 급여 인상 누적 % (매년 3월 +5)
+  waiting: string[];                          // 대기열 (손님 타입 id, 최대 3 — 넘치면 돌아간다)
+  monthGuestsLeft: number;                    // 이달 대기열이 차서 돌아간 손님 수
+  monthLoan: number;                          // 이달 받은 대출 금액
+  starReview: StarReview;                     // ★ 유지 심사 (§3.7.4 강등)
+  reputation: number;                         // 평판 0~100 (시작 50) — reputation.ts
+  complaints: Complaint[];                    // 최근 30일 불만
+  reviews: Review[];                          // 월말 후기 (최대 8)
+  monthComplaints: Partial<Record<ComplaintReason, number>>; // 이달 사유별 불만 수 (카드 TOP3)
+  monthReputationDelta: number;               // 이달 평판 변화 누적 (카드)
+  dayStats: { satisfied: number; complained: number; total: number }; // 오늘 만족·불만·총손님 (밤에 평판 계산 후 리셋)
+  reputationWarned: boolean;                  // 평판 20 미만 경고를 띄웠나 (30 이상 회복하면 리셋)
+  lastApologyMonthIndex: number;              // 사과 이벤트는 월 1회 (−1 = 아직)
   objects: Record<string, PlacedObject>; // 키는 'o123' 형태(비정수 문자열)라 삽입 순서가 보존됨 → 결정적 순회
   storage: Record<string, number>; // 창고: ingredientId → 개수 (농원 수확·재료 상자). 메뉴를 만들 때 먼저 쓰고, 없으면 자동 구매
   menuSlots: (string | null)[];
@@ -641,6 +865,11 @@ export interface GameState {
   goals: GoalsState;                          // 목표 체인 (v3 §2)
   features: Record<FeatureId, boolean>;       // 목표 보상으로 열리는 기능 (goals.ts 표)
   stats: GameStats;                           // 목표 판정용 누적 카운터
+  challenges: ChallengesState;                // 도전 과제 2슬롯 (§7.3)
+  monthly: MonthlyState | null;               // 월간 과제 (§7.3)
+  tutorial: TutorialState;                    // 손으로 하는 튜토리얼 진행 (§7.2)
+  titles: string[];                           // 얻은 칭호 id (도전 보상)
+  feeBonusPct: number;                        // 칭호 등으로 얻은 요금 보너스 % (합)
   alerts: Alert[];                            // UI 대화창 큐 (목표 달성·빅 이벤트). dismissAlert로 앞에서 뺀다
   events: ActiveBigEvent[];                   // 진행 중인 제주 빅 이벤트 (동시 최대 2)
   eventsFired: Record<string, number>;        // 빅 이벤트 id → 발동 횟수 (once 판정)
@@ -672,10 +901,19 @@ export interface GameState {
   lastAnnouncement: Announcement | null;      // 마지막 랭킹 발표 (UI 팝업, dismissAnnouncement로 닫는다)
   board: BoardState;
   spots: Record<string, number>;              // spotId → 레벨 (0 = 미투자)
+  spotVisitors: Record<string, number>;       // spotId → 누적 방문객 (매일 매력 × 2, 투어 버스 ×1.3)
+  spotPrizes: Record<string, number>;         // spotId → 받은 방문객 상품 단계 수 (1,000/5,000/20,000/50,000)
+  goldenTangerineGiven: boolean;              // 전체 방문객 10만 상품(황금 감귤) 1회
+  tourBus: boolean;                           // 투어 버스 계약 중 (월초 50만 원, 방문객 ×1.3, 단체 손님 ×1.3)
+  tourBusFreeMonths: number;                  // 계약권으로 무료인 달 수
+  tourMonth: number;                          // 마지막으로 투어를 개최한 monthIndex (−1 = 없음), 월 1회
+  lastTour: TourResult | null;                // 마지막 투어 개최 결과 (UI 팝업)
+  giftDay: number;                            // 마지막으로 선물한 절대 일 인덱스 (하루 1회)
   effects: ActiveEffect[];                    // 이벤트 효과 (기간형)
   menuSold: Record<string, number>;           // menuId → 누적 판매 수 (부탁 진행: 수락 시점 값과의 차, 목표 menuSold)
   monthMenuSold: Record<string, number>;      // 이달 판매 수 (월말 카드 최다 판매 메뉴)
-  codex: { combos: string[]; sets: string[]; recipes: string[]; ingredientCombos: string[] }; // 발동한 적 있는 상성·세트·히든 레시피·재료 콤보 id (도감)
+  codex: { combos: string[]; sets: string[]; recipes: string[]; ingredientCombos: string[]; spots: string[] }; // 발동한 적 있는 상성·세트·히든 레시피·재료 콤보·명당 id (도감)
+  clean: { value: number; lastGuests: number; history: number[] }; // 카페 청결 0~100 (cleanliness.ts) + 어제까지의 누적 손님 수 + 최근 30일 값(목표 판정용, 새 날마다 push)
   customMenus: MenuDef[];                     // 개발한 메뉴 (id m_custom_N). menuOf(state, id)가 기본 메뉴보다 먼저 찾는다
   menuMods: Record<string, MenuMod>;          // menuId → 토핑·레벨 (없으면 토핑 없음·레벨 1)
   developing: Developing | null;              // 진행 중인 메뉴 개발 (직원은 그동안 바쁘다)
@@ -713,6 +951,8 @@ export type Action =
   | { type: 'remove'; objectId: string }
   | { type: 'move'; objectId: string; x: number; y: number }
   | { type: 'rotate'; objectId: string; rot: number }
+  | { type: 'upgradeObject'; objectId: string }   // 증축 Lv+1 (upgrade.ts)
+  | { type: 'repairObject'; objectId: string }    // 노후 수리 (cleanliness.ts)
   | { type: 'buyParcel'; id: string }
   | { type: 'clearRock'; x: number; y: number }
   | { type: 'renameCafe'; name: string }
@@ -722,18 +962,26 @@ export type Action =
   | { type: 'setSlot'; slot: number; menuId: string | null }
   | { type: 'setSpeed'; speed: 0 | 1 | 2 | 3 }
   | { type: 'dismissAlert' }
+  | { type: 'acceptChallenge'; id: string }
+  | { type: 'skipTutorial' }
   | { type: 'dismissMonthCard' }
   | { type: 'postJob'; tier: JobTier }
   | { type: 'hire'; candidateId: string; role: RoleId }
   | { type: 'fire'; staffId: string }
   | { type: 'assign'; staffId: string; role: RoleId | null }
-  | { type: 'levelUp'; staffId: string; stat: StatKey }
+  | { type: 'levelUp'; staffId: string }
+  | { type: 'train'; staffId: string; trainingId: string }
   | { type: 'promote'; staffId: string; promotionId: string }
   | { type: 'setTarget'; segment: string | null }
   | { type: 'useItem'; itemId: string; objectType: string }
   | { type: 'acceptQuest'; id: string }
   | { type: 'respondEvent'; id: string; accept: boolean }
   | { type: 'investSpot'; id: string }
+  | { type: 'hostTour'; spotId: string }
+  | { type: 'dismissTour' }
+  | { type: 'setTourBus'; on: boolean }
+  | { type: 'giveGift'; guestId: string; itemId: string }
+  | { type: 'craftGift'; itemId: string }
   | { type: 'develop'; base: MenuBase; ingredients: string[]; params?: BrewParams; staffId: string }
   | { type: 'dismissDevelop' }
   | { type: 'addTopping'; menuId: string; toppingId: string }

@@ -47,6 +47,9 @@ export const ROLE_ACC: Record<RoleId, AccKind> = {
   cook: 'apron',
   carry: 'backpack',
   guide: 'glasses',
+  clean: 'apron',     // 청소: 앞치마
+  garden: 'strawhat', // 농원지기: 밀짚모자
+  promo: 'camera',    // 홍보 담당: 카메라
 };
 
 /** 유니폼 → 상의 색(TOP_RGB 인덱스)·액세서리. 하와이안 = 주황, 갈옷 = 노랑(갈색 근사), 해녀복 = 파랑 + 물안경(안경), 방언 티 = 흰색, 산타복 = 빨강 + 모자(캡). */

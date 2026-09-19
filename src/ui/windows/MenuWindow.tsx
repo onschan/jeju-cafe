@@ -90,7 +90,7 @@ export function MenuWindow(props: MenuWindowProps) {
               {!locked && (
                 on
                   ? <button style={rowBtnOn} onClick={() => pull(id)} aria-label={`${def.name} 내리기`}>내리기</button>
-                  : <button style={used >= total ? rowBtnOff : rowBtn} disabled={used >= total} onClick={() => put(id)} aria-label={`${def.name} 올리기`}>올리기</button>
+                  : <button data-tut="menu-put" style={used >= total ? rowBtnOff : rowBtn} disabled={used >= total} onClick={() => put(id)} aria-label={`${def.name} 올리기`}>올리기</button>
               )}
             </div>
           </div>

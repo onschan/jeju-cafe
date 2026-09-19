@@ -11,15 +11,17 @@ import { START_BUILDERS } from './build.ts';
 import { initGuidebooks } from './guidebook.ts';
 import { initRegions, initNamedGuests, initPopup } from './popup.ts';
 import { initFeatures } from './goals.ts';
-import { generateCandidate } from './staff.ts';
+import { drawCandidates } from './staff.ts';
+import { initChallenges, makeMonthly } from './challenges.ts';
+import { initTutorial, unlockTutorialFeatures } from './tutorial.ts';
 import { monthIndex } from './clock.ts';
+import { emptyMonthCosts } from './economy.ts';
+import { REPUTATION_START } from './reputation.ts';
 
 export { PARCEL_W, PARCEL_H, START_ORIGIN, GRID_W, GRID_H, VILLAGE_ROAD_Y };
-export const SAVE_VERSION = 15; // 15: v3 대격변 — 밭 폐지·농원 월 수확·목표 체인·기능 잠금·빅 이벤트·시작 상태 (마이그레이션 없음: 백업 후 새 게임). 14: 라이벌 카페
-/** 시작 자금 500만 + 정착지원금(잔고 < 40만이면 1회 300만) — 마스터 GDD §1 */
+export const SAVE_VERSION = 17; // 17: 컨텐츠 확장 통합 — 경제(삼춘 대출·세금·대기열·★ 유지 심사)·시설 44·증축·청결·명소 방문객·투어·선물·직원 8직종·입지·목표 108·도전·튜토리얼 (마이그레이션 없음). 15: v3 대격변. 14: 라이벌 카페
+/** 시작 자금 500만. 정착지원금은 삼춘 대출(failure.ts: 잔고 < 40만 → 300만, 최대 3회)로 바뀌었다 — 확장 스펙 §4.2 #8 */
 export const START_MONEY = 5_000_000;
-export const SETTLE_GRANT = 3_000_000;
-export const SETTLE_GRANT_THRESHOLD = 400_000;
 export const START_MONTH = 3;
 export const MENU_SLOT_COUNT = 4;
 /** 시작 메뉴판 (§5: 아메리카노·카페라떼·감귤주스가 이미 올라가 있다) */
@@ -113,7 +115,22 @@ function stampParcelObjects(state: GameState, p: Parcel, rng: { rng: number }): 
   }
 }
 
-export function createInitialState(seed: number, playerId = 'local', createdAt = 0): GameState {
+/** 시작 배치: 'starter' = v3 완성 시작 상태(올렛길·테이블 2·파라솔·메뉴 3종, 튜토리얼 끝남 — 봇·테스트 기본), 'tutorial' = §7.1 빈 마당(길·좌석·메뉴 없음, 손으로 하는 튜토리얼) */
+export type StartLayout = 'starter' | 'tutorial';
+
+/** §7.2 건너뛰기: 빈 마당에 기존 완성 시작 상태(올렛길·테이블 2·파라솔·메뉴 3종)를 채운다. 이미 있는 칸은 건너뛴다. */
+export function fillStarterLayout(state: GameState): void {
+  const { x: ox, y: oy } = START_ORIGIN;
+  for (const c of START_PATH) stamp(state, 'path', ox + c.lx, oy + c.ly);
+  for (const st of START_SEATS) stamp(state, st.type, ox + st.lx, oy + st.ly);
+  for (const m of START_MENUS) {
+    if (state.menuSlots.includes(m)) continue;
+    const slot = state.menuSlots.indexOf(null);
+    if (slot >= 0) state.menuSlots[slot] = m;
+  }
+}
+
+export function createInitialState(seed: number, playerId = 'local', createdAt = 0, layout: StartLayout = 'starter'): GameState {
   const parcels = makeParcels();
   const state: GameState = {
     version: SAVE_VERSION,
@@ -127,10 +144,27 @@ export function createInitialState(seed: number, playerId = 'local', createdAt =
     popularity: 0,
     grid: { w: GRID_W, h: GRID_H, cells: makeCells(parcels, seed) },
     parcels,
-    settleGrantUsed: false,
+    loan: { count: 0, balance: 0, lastMonthIndex: -1 },
+    deficitMonths: 0,
+    crisisMonths: 0,
+    yearNet: 0,
+    lastYearNet: 0,
+    salaryRaisePct: 0,
+    waiting: [],
+    monthGuestsLeft: 0,
+    monthLoan: 0,
+    starReview: { promotedYear: 1, lastReviewYear: 0, warned: false },
+    reputation: REPUTATION_START,
+    complaints: [],
+    reviews: [],
+    monthComplaints: {},
+    monthReputationDelta: 0,
+    dayStats: { satisfied: 0, complained: 0, total: 0 },
+    reputationWarned: false,
+    lastApologyMonthIndex: -1,
     objects: {},
     storage: {},
-    menuSlots: [...START_MENUS, ...Array(Math.max(0, MENU_SLOT_COUNT - START_MENUS.length)).fill(null)],
+    menuSlots: Array(MENU_SLOT_COUNT).fill(null),
     unlocked: {
       objects: [...new Set([...INITIAL_UNLOCKED.objects, ...FACILITY_START_IDS])],
       menus: [...INITIAL_UNLOCKED.menus],
@@ -138,14 +172,19 @@ export function createInitialState(seed: number, playerId = 'local', createdAt =
     },
     goals: { index: 0, claimed: [] },
     features: initFeatures(),
-    stats: { satisfiedTotal: 0, rocksCleared: 0, promotionsDone: 0, recipesMade: 0, rivalWins: 0 },
+    stats: { satisfiedTotal: 0, rocksCleared: 0, promotionsDone: 0, recipesMade: 0, rivalWins: 0, profitMonths: 0, lossMonths: 0, guidebookWins: 0, itemsUsed: 0, trainings: 0, toursHeld: 0, seenMonth: -1, seenAnnouncement: -1 },
+    challenges: initChallenges(),
+    monthly: null,
+    tutorial: initTutorial(layout === 'starter'),
+    titles: [],
+    feeBonusPct: 0,
     alerts: [],
     events: [],
     eventsFired: {},
     monthHarvest: { harvested: {}, ingredientSaved: 0 },
     staff: [],
     candidates: [],
-    slots: { barista: 1, cook: 1, hall: 2, carry: 0, guide: 0 },
+    slots: { barista: 1, cook: 1, hall: 2, carry: 0, guide: 0, clean: 2, garden: 2, promo: 1 },
     activePromotions: [],
     youtuberBoostMonths: 0,
     segmentPopularity: initSegmentPopularity(),
@@ -170,10 +209,19 @@ export function createInitialState(seed: number, playerId = 'local', createdAt =
     lastAnnouncement: null,
     board: { quests: {}, events: [] },
     spots: {},
+    spotVisitors: {},
+    spotPrizes: {},
+    goldenTangerineGiven: false,
+    tourBus: false,
+    tourBusFreeMonths: 0,
+    tourMonth: -1,
+    lastTour: null,
+    giftDay: -1,
     effects: [],
     menuSold: {},
     monthMenuSold: {},
-    codex: { combos: [], sets: [], recipes: [], ingredientCombos: [] },
+    codex: { combos: [], sets: [], recipes: [], ingredientCombos: [], spots: [] },
+    clean: { value: 100, lastGuests: 0, history: [] },
     customMenus: [],
     menuMods: {},
     developing: null,
@@ -198,7 +246,7 @@ export function createInitialState(seed: number, playerId = 'local', createdAt =
     nextId: 1,
     monthIncome: 0,
     monthGuests: 0,
-    monthCosts: { ingredients: 0, salary: 0, ads: 0, upkeep: 0, recruit: 0 },
+    monthCosts: emptyMonthCosts(),
     lastMonthIncome: 0,
     lastMonthCard: null,
     tick: 0,
@@ -209,12 +257,12 @@ export function createInitialState(seed: number, playerId = 'local', createdAt =
   stamp(state, 'busstop', ox, oy + PARCEL_H - 1);
   stamp(state, 'warehouse', ox + 3, oy + 1); // 문 = 정면 왼쪽 (ox+3, oy+2), 그 앞 (ox+3, oy+3)이 창고 앞
   stamp(state, 'gate', ox + 4, oy + PARCEL_H - 2); // 정낭 칸은 gate kind라 걷기 가능(path.ts)
-  // §5 시작 상태: 본관 문 앞에서 정낭까지 올렛길 + 테이블 2 + 파라솔 1 (정류장에서 바로 닿는 자리가 있다)
-  for (const c of START_PATH) stamp(state, 'path', ox + c.lx, oy + c.ly);
-  for (const st of START_SEATS) stamp(state, st.type, ox + st.lx, oy + st.ly);
+  // §5 완성 시작 상태(올렛길 + 테이블 2 + 파라솔 1 + 메뉴 3종)는 'starter'일 때만. 'tutorial'(§7.1)은 빈 마당 — 손님은 좌석·길·메뉴가 갖춰질 때까지 안 온다(canOpen).
+  if (layout === 'starter') { fillStarterLayout(state); unlockTutorialFeatures(state); }
   const rng = { rng: seed ^ 0x5eed };
   for (const p of parcels) stampParcelObjects(state, p, rng);
   // §5 직원 후보 2명 대기 (전단 등급)
-  for (let i = 0; i < START_CANDIDATES; i++) state.candidates.push(generateCandidate(state, 'flyer'));
+  drawCandidates(state, 'flyer', START_CANDIDATES);
+  state.monthly = makeMonthly(state); // 이달의 과제 (§7.3) — 시작 달 것은 알림 없이
   return state;
 }

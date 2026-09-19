@@ -3,14 +3,12 @@
 import { useEffect, useMemo, useReducer, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { createInitialState, apply, tick, DAY_MS, type GameState, type Action } from '../../sim/index.ts';
-import { QUESTS } from '../../data/index.ts';
-import { conditionText, rewardText } from '../../data/labels.ts';
 import { loadAssets } from '../../render/assets';
 import { PALETTE, frame, frameTitle, brownBtn, brownBtnOn } from '../frame';
 import { MenuWindow } from './MenuWindow.tsx';
 import { BuildWindow } from './BuildWindow.tsx';
 import { StaffWindow } from './StaffWindow.tsx';
-import { GoalWindow, type GoalItem } from './GoalWindow.tsx';
+import { GoalWindow } from './GoalWindow.tsx';
 import { ReportWindow } from './ReportWindow.tsx';
 
 type Win = 'menu' | 'build' | 'staff' | 'goal' | 'report';
@@ -18,15 +16,6 @@ const WINS: { key: Win; title: string }[] = [
   { key: 'menu', title: '메뉴판' }, { key: 'build', title: '짓기' }, { key: 'staff', title: '사람' }, { key: 'goal', title: '목표' }, { key: 'report', title: '결산' },
 ];
 
-/** 목표 샘플: 스펙 §2 초반 예시를 quests 스키마로 흉내 낸다 (트랙 A goals.json 전 임시) */
-const SAMPLE_GOALS: GoalItem[] = [
-  { title: '아메리카노 올리기', desc: conditionText({ type: 'menuOn', menuId: 'americano' }), cur: 1, max: 1, rewardText: rewardText([{ type: 'money', amount: 300000 }]), done: true },
-  { title: '테이블 2개', desc: conditionText({ type: 'objectPlaced', params: { objectId: 'table_out', count: 2 } }), cur: 2, max: 2, rewardText: rewardText([{ type: 'unlockFacility', id: 'terrace_seat' }]), done: true },
-  { title: '첫 손님 다섯', desc: conditionText({ type: 'guests', n: 5 }), cur: 3, max: 5, rewardText: rewardText([{ type: 'money', amount: 500000 }]), done: false },
-  { title: '첫 직원', desc: conditionText({ type: 'staff', n: 1 }), cur: 0, max: 1, rewardText: rewardText([{ type: 'tickets', amount: 1 }]), done: false },
-  { title: '손님 스무 명', desc: conditionText({ type: 'guests', n: 20 }), cur: 0, max: 20, rewardText: rewardText([{ type: 'unlockMenu', id: 'tangerine_juice' }]), done: false },
-  { title: '감귤주스 열 잔', desc: conditionText(QUESTS[0]!.condition), cur: 0, max: 10, rewardText: rewardText(QUESTS[0]!.rewards), done: false },
-];
 
 function Preview() {
   const [, bump] = useReducer((n: number) => n + 1, 0);
@@ -42,13 +31,13 @@ function Preview() {
     return r;
   };
   const day = () => { s.clock.speed = 1; tick(s, DAY_MS); bump(); };
-  const card = s.lastMonthCard ?? { income: 1_830_000, guests: 96, month: s.clock.month, year: s.clock.year, costs: { ingredients: 310_000, salary: 600_000, upkeep: 82_500, ads: 0, recruit: 0 }, net: 837_500 };
+  const card = s.lastMonthCard ?? { income: 1_830_000, guests: 96, month: s.clock.month, year: s.clock.year, costs: { ingredients: 310_000, salary: 600_000, upkeep: 82_500, ads: 0, recruit: 0, tax: 0, loanRepay: 0, tourBus: 0 }, net: 837_500 };
   const win = (state: GameState) => {
     switch (w) {
       case 'menu': return <MenuWindow state={state} dispatch={dispatch} onClose={() => {}} />;
       case 'build': return <BuildWindow state={state} dispatch={dispatch} onClose={() => {}} onPickBuild={(id) => setLog((l) => [`짓기 → ${id}`, ...l].slice(0, 4))} />;
       case 'staff': return <StaffWindow state={state} dispatch={dispatch} onClose={() => {}} />;
-      case 'goal': return <GoalWindow goals={SAMPLE_GOALS} onClose={() => {}} />;
+      case 'goal': return <GoalWindow state={state} dispatch={dispatch} onClose={() => {}} />;
       case 'report': return <ReportWindow card={{ ...card, harvested: 12, ingredientSaved: 42_000, highlights: ['최다 판매: 아메리카노 41잔', '가장 만족한 손님: 대학생', '새로 열림: 감귤주스'], tip: '손님 20명을 맞이하면 감귤주스가 열려요' }} star={state.star} prevStar={state.star} starProgress={0.4} monthRecord onClose={() => setW('menu')} />;
     }
   };

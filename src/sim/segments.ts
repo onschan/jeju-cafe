@@ -1,5 +1,5 @@
 import type { GameState, Guest, GuestTypeState, UnlockCond, ApplyResult, Face, RegularTier, GuestTags } from './types.ts';
-import { GUEST_TYPES, FACILITIES, guestTypeDef, guestTags, canonicalGuestId, ITEMS, objectDef } from '../data/index.ts';
+import { GUEST_TYPES, FACILITIES, LANDMARKS, guestTypeDef, guestTags, canonicalGuestId, ITEMS, objectDef } from '../data/index.ts';
 import { nextRandom, pickWeighted } from './rng.ts';
 import { monthIndex } from './clock.ts';
 import { pushNotice } from './staff.ts';
@@ -9,6 +9,7 @@ import { parcelAt } from './parcels.ts';
 import { updateRank } from './rank.ts';
 import { josa } from './josa.ts';
 import { addResearchProgress } from './progress.ts';
+import { spotWalletMult } from './spots.ts';
 export { updateRank };
 
 /** 만족 게이지 0~100: 😊 +2 (타깃 +3), 😠 −1. 30 부탁·50 단골·80 VIP */
@@ -106,7 +107,7 @@ export function unlockGuestType(state: GameState, typeId: string): boolean {
 /** v2 시설의 해금 조건(랭크·★·손님 인기·부탁·관광지·날짜·개수)을 검사해 새로 열린 시설 id를 돌려준다. */
 export function evaluateFacilityUnlocks(state: GameState): string[] {
   const opened: string[] = [];
-  for (const f of FACILITIES) {
+  for (const f of [...FACILITIES, ...LANDMARKS]) { // 랜드마크(landmarks.json)도 부탁·명소 Lv 조건으로 연다
     if (!f.unlock || state.unlocked.objects.includes(f.id)) continue;
     if (!unlockCondMet(state, f.unlock)) continue;
     state.unlocked.objects.push(f.id);
@@ -170,7 +171,7 @@ export function regularWalletMult(state: GameState, typeId: string): number {
 }
 /** 지금 이 타입의 예산 (단골 배수 포함) */
 export function walletOf(state: GameState, typeId: string): number {
-  return Math.round(guestTypeDef(typeId).wallet * regularWalletMult(state, typeId));
+  return Math.round(guestTypeDef(typeId).wallet * regularWalletMult(state, typeId) * spotWalletMult(state, typeId)); // 트랙 C: 명소 Lv5 특수(요트 오너 ×1.5)
 }
 
 /** 만족 게이지 변경. 50·80 문턱을 넘으면 단골·VIP 승격 + 알림. */

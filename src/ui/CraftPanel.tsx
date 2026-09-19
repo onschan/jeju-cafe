@@ -1,4 +1,5 @@
 import { useState, useMemo, type ReactNode } from 'react';
+import { ButtonGroup } from './ButtonGroup';
 import { useGame, dispatch } from './store';
 import {
   menuOf, menuMod, menuStatsOf, menuSkills, skillEffects, skillTier, priceOf, activeIngredientCombos, comboBonus, matchHiddenRecipe,
@@ -11,7 +12,7 @@ import { INGREDIENTS, TOPPINGS, HIDDEN_RECIPES, INGREDIENT_COMBOS, ingredientDef
 import { Icon } from './Icon';
 import { Confirm, Popup } from './Popup';
 import { Bar } from './StaffPanel';
-import { card, brownBtn, brownBtnOn, brownBtnOff, dangerBtn, brownSelect, PALETTE, won } from './frame';
+import { card, brownBtn, brownBtnOn, brownBtnOff, dangerBtn, PALETTE, won } from './frame';
 
 const BASES: MenuBase[] = ['drink', 'dessert', 'meal', 'signature'];
 const STAT_MAX = 40;
@@ -147,10 +148,8 @@ export function CraftPanel() {
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, margin: '6px 0' }}>
         <b>담당</b>
-        <select aria-label="담당 직원" value={staffId} onChange={(e) => setStaffId(e.target.value)} style={{ ...brownSelect, marginBottom: 0, flex: 1 }}>
-          <option value="">(직원을 고르세요)</option>
-          {s.staff.map((st) => <option key={st.id} value={st.id} disabled={isStaffBusy(s, st.id)}>{st.name} · {STAT_NAME[BASE_STAT[base]]} {st.stats[BASE_STAT[base]]}</option>)}
-        </select>
+        <ButtonGroup label="담당 직원" value={staffId} onPick={setStaffId} style={{ flex: 1 }}
+          options={s.staff.length === 0 ? [{ value: '', label: '직원이 없어요', disabled: true }] : s.staff.map((st) => ({ value: st.id, label: `${st.name} · ${STAT_NAME[BASE_STAT[base]]} ${st.stats[BASE_STAT[base]]}`, disabled: isStaffBusy(s, st.id) }))} />
       </div>
       <div style={{ fontSize: 13, marginBottom: 6 }}>
         성공 <b style={{ color: PALETTE.ok }}>{Math.round(rate)}%</b> · 대성공 <b>{P_GREAT}%</b> · 실패 <b style={{ color: PALETTE.bad }}>{Math.round(100 - P_GREAT - rate)}%</b> · 보너스 폭 +{width}
@@ -291,9 +290,8 @@ export function MenuDetailPicker({ children }: { children?: ReactNode }) {
     <div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 6 }}>
         <b>메뉴 상세</b>
-        <select aria-label="상세 메뉴" value={cur} onChange={(e) => setSel(e.target.value)} style={{ ...brownSelect, marginBottom: 0, flex: 1 }}>
-          {menus.map((m) => <option key={m} value={m}>{menuOf(s, m).name} {isMenuAvailable(s, m) ? '' : '·'}</option>)}
-        </select>
+        <ButtonGroup label="상세 메뉴" value={cur} onPick={setSel} style={{ flex: 1 }}
+          options={menus.map((m) => ({ value: m, label: `${menuOf(s, m).name}${isMenuAvailable(s, m) ? '' : ' ·'}` }))} />
         {children}
       </div>
       {cur && <MenuDetail menuId={cur} />}

@@ -373,6 +373,23 @@
   },
   {
     "id": "g21",
+    "title": "첫 콤보 만들기",
+    "desc": "활성 콤보 1개",
+    "condition": {
+      "type": "comboCount",
+      "n": 1
+    },
+    "reward": [
+      {
+        "type": "unlockFacility",
+        "id": "footbath"
+      }
+    ],
+    "speaker": "hero",
+    "line": "콤보 1개! 배치 궁리한 보람이 있어요."
+  },
+  {
+    "id": "g22",
     "title": "만족 손님 100명",
     "desc": "만족하고 간 손님 100명",
     "condition": {
@@ -385,11 +402,11 @@
         "id": "cookie"
       }
     ],
-    "speaker": "samchun",
-    "line": "쿠키도 구워 팔아. 아이들이 좋아해."
+    "speaker": "halmang",
+    "line": "웃으며 나간 손님이 100명. 그게 진짜 장사여."
   },
   {
-    "id": "g22",
+    "id": "g23",
     "title": "시설 10개 짓기",
     "desc": "시설을 10개까지 늘리자",
     "condition": {
@@ -402,11 +419,11 @@
         "id": "vending"
       }
     ],
-    "speaker": "halmang",
-    "line": "자판기 하나 놓으면 급한 손님도 잡는다."
+    "speaker": "samchun",
+    "line": "10개나 지었어? 손님이 둘러볼 데가 많아졌져."
   },
   {
-    "id": "g23",
+    "id": "g24",
     "title": "홍보 3회 하기",
     "desc": "홍보를 3번 하자",
     "condition": {
@@ -420,15 +437,62 @@
       }
     ],
     "speaker": "hero",
-    "line": "여름엔 아이스티죠!"
+    "line": "홍보 3회. 손님 반응이 조금씩 달라져요."
   },
   {
-    "id": "g24",
-    "title": "자금 1,000만",
-    "desc": "잔고를 1,000만 원까지 모으자",
+    "id": "g25",
+    "title": "친절 카페 5위 안",
+    "desc": "친절 카페 가이드북 5위 안",
+    "condition": {
+      "type": "guidebookRank",
+      "bookId": "gb_kind_cafe",
+      "n": 5
+    },
+    "reward": [
+      {
+        "type": "unlockFacility",
+        "id": "rest_pavilion"
+      },
+      {
+        "type": "tickets",
+        "n": 2
+      },
+      {
+        "type": "unlockFacility",
+        "id": "pampas"
+      }
+    ],
+    "speaker": "halmang",
+    "line": "친절 카페 5위 안. 책에 이름이 실렸다."
+  },
+  {
+    "id": "g26",
+    "title": "청결 80 한 달 유지",
+    "desc": "청결 80 이상 한 달 유지",
+    "condition": {
+      "type": "cleanliness",
+      "n": 80
+    },
+    "reward": [
+      {
+        "type": "unlockFacility",
+        "id": "cleaning_room"
+      },
+      {
+        "type": "unlockRole",
+        "id": "clean"
+      }
+    ],
+    "speaker": "samchun",
+    "line": "한 달 내내 반짝반짝! 손님 눈이 제일 무섭다."
+  },
+  {
+    "id": "g27",
+    "title": "자금 1,200만",
+    "desc": "자금 ₩12,000,000 이상",
     "condition": {
       "type": "money",
-      "n": 10000000
+      "n": 12000000
     },
     "reward": [
       {
@@ -436,11 +500,11 @@
         "id": "souvenir"
       }
     ],
-    "speaker": "samchun",
-    "line": "기념품 매대도 열었어. 귤 열쇠고리 잘 팔려."
+    "speaker": "hero",
+    "line": "자금 ₩12,000,000. 이 돈으로 뭘 할지 벌써 설레요."
   },
   {
-    "id": "g25",
+    "id": "g28",
     "title": "직원 3명 채용",
     "desc": "직원을 3명까지 늘리자",
     "condition": {
@@ -459,10 +523,32 @@
       }
     ],
     "speaker": "halmang",
-    "line": "요리사 자리가 늘었다. 스콘도 구워 보라."
+    "line": "직원이 3명. 사람이 곧 카페여."
   },
   {
-    "id": "g26",
+    "id": "g29",
+    "title": "유채꽃밭 Lv2",
+    "desc": "유채꽃밭 Lv2 달성",
+    "condition": {
+      "type": "spotLevel",
+      "spotId": "canola_field",
+      "lv": 2
+    },
+    "reward": [
+      {
+        "type": "unlockFacility",
+        "id": "photo_spot"
+      },
+      {
+        "type": "money",
+        "amount": 500000
+      }
+    ],
+    "speaker": "samchun",
+    "line": "유채꽃밭 Lv2! 관광객이 그쪽으로 몰려."
+  },
+  {
+    "id": "g30",
     "title": "손님 500명 맞이",
     "desc": "손님이 다녀간 수 500명",
     "condition": {
@@ -479,11 +565,11 @@
         "amount": 500000
       }
     ],
-    "speaker": "samchun",
-    "line": "돌하르방 코 만지면 소원이 이뤄진댔주."
+    "speaker": "hero",
+    "line": "누적 500명이에요. 처음 정낭 앞에 서 있던 게 엊그제 같은데."
   },
   {
-    "id": "g27",
+    "id": "g31",
     "title": "필지 2개 사기",
     "desc": "필지를 3개까지 가지자",
     "condition": {
@@ -497,10 +583,10 @@
       }
     ],
     "speaker": "halmang",
-    "line": "땅이 넓으니 당근밭을 하나 두라. 매달 당근이 들어온다."
+    "line": "필지가 3개. 땅이 넓어지면 꿈도 넓어진다."
   },
   {
-    "id": "g28",
+    "id": "g32",
     "title": "감귤주스 100잔",
     "desc": "감귤주스를 100잔 팔자",
     "condition": {
@@ -514,11 +600,28 @@
         "id": "tangerine_ade"
       }
     ],
-    "speaker": "hero",
-    "line": "감귤 에이드! 톡 쏘는 여름 맛이에요."
+    "speaker": "samchun",
+    "line": "감귤주스 100잔 팔았어? 이 동네 대표 메뉴 됐져."
   },
   {
-    "id": "g29",
+    "id": "g33",
+    "title": "직원 연수 1회 보내기",
+    "desc": "직원 연수 1회 완료",
+    "condition": {
+      "type": "trainings",
+      "n": 1
+    },
+    "reward": [
+      {
+        "type": "unlockFacility",
+        "id": "massage_chair"
+      }
+    ],
+    "speaker": "hero",
+    "line": "연수 1회 완료. 배워 온 걸 손님에게 쓸 차례예요."
+  },
+  {
+    "id": "g34",
     "title": "레시피 2개 개발",
     "desc": "레시피를 2개까지 개발하자",
     "condition": {
@@ -535,11 +638,49 @@
         "n": 10
       }
     ],
-    "speaker": "samchun",
-    "line": "구좌 당근으로 주스 짜면 달아."
+    "speaker": "halmang",
+    "line": "레시피 2개를 만들었구나. 손맛이 생겼다."
   },
   {
-    "id": "g30",
+    "id": "g35",
+    "title": "콤보 3개 만들기",
+    "desc": "활성 콤보 3개",
+    "condition": {
+      "type": "comboCount",
+      "n": 3
+    },
+    "reward": [
+      {
+        "type": "unlockFacility",
+        "id": "capsule_machine"
+      }
+    ],
+    "speaker": "samchun",
+    "line": "콤보 3개면 마당이 알아서 손님을 불러."
+  },
+  {
+    "id": "g36",
+    "title": "2년차 맞이하기",
+    "desc": "2년차가 되자",
+    "condition": {
+      "type": "year",
+      "n": 2
+    },
+    "reward": [
+      {
+        "type": "unlockRole",
+        "id": "carry"
+      },
+      {
+        "type": "money",
+        "amount": 1000000
+      }
+    ],
+    "speaker": "hero",
+    "line": "2년차 시작이에요. 올해도 잘 부탁해요."
+  },
+  {
+    "id": "g37",
     "title": "★2 카페 되기",
     "desc": "★ 등급 2를 받자",
     "condition": {
@@ -557,10 +698,10 @@
       }
     ],
     "speaker": "halmang",
-    "line": "별 둘이여. 녹차밭도 가꿔 보라."
+    "line": "별 2개. 하늘의 별을 따듯 어렵게 딴 거여."
   },
   {
-    "id": "g31",
+    "id": "g38",
     "title": "이름 있는 손님 3명",
     "desc": "팝업 스토어에서 손님 3명을 만나자",
     "condition": {
@@ -573,11 +714,11 @@
         "n": 3
       }
     ],
-    "speaker": "hero",
-    "line": "육지에서 만난 얼굴들, 도감에 남겼어요."
+    "speaker": "samchun",
+    "line": "3명이나 만났어? 각자 사연이 있는 사람들이여."
   },
   {
-    "id": "g32",
+    "id": "g39",
     "title": "단골 3명 만들기",
     "desc": "단골 손님 3명",
     "condition": {
@@ -590,32 +731,47 @@
         "id": "toenmaru"
       }
     ],
-    "speaker": "samchun",
-    "line": "툇마루에 걸터앉아 귤 까먹는 자리, 단골들이 좋아해."
+    "speaker": "hero",
+    "line": "단골 3명! 늘 앉는 자리를 비워 둘게요."
   },
   {
-    "id": "g34",
-    "title": "2년차 맞이하기",
-    "desc": "2년차가 되자",
+    "id": "g40",
+    "title": "명소 2곳 Lv2",
+    "desc": "Lv2 이상 명소 2곳",
     "condition": {
-      "type": "year",
+      "type": "spotAny",
+      "lv": 2,
       "n": 2
     },
     "reward": [
       {
-        "type": "unlockRole",
-        "id": "carry"
-      },
+        "type": "unlockFacility",
+        "id": "lemonade_cart"
+      }
+    ],
+    "speaker": "halmang",
+    "line": "Lv2 명소가 2곳. 제주가 우리 편이여."
+  },
+  {
+    "id": "g41",
+    "title": "시설 증축 1개(Lv2)",
+    "desc": "Lv2 이상으로 증축한 시설 1개",
+    "condition": {
+      "type": "facilityLv",
+      "lv": 2,
+      "n": 1
+    },
+    "reward": [
       {
-        "type": "money",
-        "amount": 1000000
+        "type": "unlockFacility",
+        "id": "drum_footbath"
       }
     ],
     "speaker": "samchun",
-    "line": "벌써 한 해가 갔네. 운반 직원도 뽑을 수 있어."
+    "line": "증축 Lv2 1개! 마당이 위풍당당하다."
   },
   {
-    "id": "g35",
+    "id": "g42",
     "title": "손님 1,000명",
     "desc": "손님이 다녀간 수 1,000명",
     "condition": {
@@ -633,10 +789,50 @@
       }
     ],
     "speaker": "hero",
-    "line": "천 명! 자전거 손님도 오게 거치대를 놓아요."
+    "line": "누적 1,000명이에요. 처음 정낭 앞에 서 있던 게 엊그제 같은데."
   },
   {
-    "id": "g36",
+    "id": "g43",
+    "title": "동네 맛집 지도 3위",
+    "desc": "동네 맛집 지도 가이드북 3위 안",
+    "condition": {
+      "type": "guidebookRank",
+      "bookId": "gb_local_map",
+      "n": 3
+    },
+    "reward": [
+      {
+        "type": "unlockFacility",
+        "id": "tea_house"
+      },
+      {
+        "type": "research",
+        "n": 20
+      }
+    ],
+    "speaker": "halmang",
+    "line": "동네 맛집 지도 3위 안. 책에 이름이 실렸다."
+  },
+  {
+    "id": "g44",
+    "title": "커플 손님 인기 30",
+    "desc": "커플 손님 인기 30 이상",
+    "condition": {
+      "type": "guestType",
+      "guestId": "couple",
+      "n": 30
+    },
+    "reward": [
+      {
+        "type": "unlockFacility",
+        "id": "flower_shop"
+      }
+    ],
+    "speaker": "samchun",
+    "line": "커플 인기 30! 그 손님층은 이제 우리 편이여."
+  },
+  {
+    "id": "g45",
     "title": "시설 20개 짓기",
     "desc": "시설을 20개까지 늘리자",
     "condition": {
@@ -649,11 +845,11 @@
         "n": 1
       }
     ],
-    "speaker": "samchun",
-    "line": "일꾼 삼춘 하나 더. 지을 게 많주."
+    "speaker": "hero",
+    "line": "시설 20개. 하나하나 자리를 고민한 보람이 있어요."
   },
   {
-    "id": "g37",
+    "id": "g46",
     "title": "만족 손님 500명",
     "desc": "만족하고 간 손님 500명",
     "condition": {
@@ -667,15 +863,15 @@
       }
     ],
     "speaker": "halmang",
-    "line": "든든한 계란 샌드위치도 팔아 보라."
+    "line": "웃으며 나간 손님이 500명. 그게 진짜 장사여."
   },
   {
-    "id": "g38",
-    "title": "자금 2,000만",
-    "desc": "잔고를 2,000만 원까지 모으자",
+    "id": "g47",
+    "title": "자금 2,500만",
+    "desc": "자금 ₩25,000,000 이상",
     "condition": {
       "type": "money",
-      "n": 20000000
+      "n": 25000000
     },
     "reward": [
       {
@@ -688,10 +884,27 @@
       }
     ],
     "speaker": "samchun",
-    "line": "옆 동네 카페가 견제하네. 대결도 받아 주라."
+    "line": "₩25,000,000 모았어? 이제 큰 그림을 그릴 때여."
   },
   {
-    "id": "g39",
+    "id": "g48",
+    "title": "세트 효과 1개",
+    "desc": "세트 효과 1개",
+    "condition": {
+      "type": "setCount",
+      "n": 1
+    },
+    "reward": [
+      {
+        "type": "unlockFacility",
+        "id": "cauldron_footbath"
+      }
+    ],
+    "speaker": "hero",
+    "line": "세트 효과 1개예요. 도감이 채워져 가요."
+  },
+  {
+    "id": "g49",
     "title": "필지 4개 가지기",
     "desc": "필지를 4개까지 가지자",
     "condition": {
@@ -705,10 +918,10 @@
       }
     ],
     "speaker": "halmang",
-    "line": "삼나무로 바람을 막아라. 제주 바람은 매섭다."
+    "line": "필지가 4개. 땅이 넓어지면 꿈도 넓어진다."
   },
   {
-    "id": "g40",
+    "id": "g50",
     "title": "바위 10개 치우기",
     "desc": "바위·덤불을 10개 치우자",
     "condition": {
@@ -726,32 +939,11 @@
       }
     ],
     "speaker": "samchun",
-    "line": "치운 현무암은 마당에 두면 멋있어."
+    "line": "10개 치웠어? 허리 안 아파? 삼춘이 파스 주마."
   },
   {
-    "id": "g33",
-    "title": "가이드북 5위 안에",
-    "desc": "가이드북 발표에서 5위 안에 들자",
-    "condition": {
-      "type": "rank",
-      "n": 5
-    },
-    "reward": [
-      {
-        "type": "unlockFacility",
-        "id": "pampas"
-      },
-      {
-        "type": "research",
-        "n": 10
-      }
-    ],
-    "speaker": "halmang",
-    "line": "책에 실렸구나. 가을 억새도 심어 보라."
-  },
-  {
-    "id": "g41",
-    "title": "홍보 10회 하기",
+    "id": "g51",
+    "title": "홍보 10회",
     "desc": "홍보를 10번 하자",
     "condition": {
       "type": "promotions",
@@ -764,10 +956,54 @@
       }
     ],
     "speaker": "hero",
-    "line": "겨울 손님을 위한 핫초코!"
+    "line": "홍보 10회. 손님 반응이 조금씩 달라져요."
   },
   {
-    "id": "g42",
+    "id": "g52",
+    "title": "직원 4명 채용",
+    "desc": "직원 4명 고용",
+    "condition": {
+      "type": "staff",
+      "n": 4
+    },
+    "reward": [
+      {
+        "type": "staffSlot",
+        "role": "hall",
+        "n": 1
+      }
+    ],
+    "speaker": "halmang",
+    "line": "직원이 4명. 사람이 곧 카페여."
+  },
+  {
+    "id": "g53",
+    "title": "6개월 연속 흑자",
+    "desc": "6개월 연속 흑자",
+    "condition": {
+      "type": "profitMonths",
+      "n": 6
+    },
+    "reward": [
+      {
+        "type": "unlockFacility",
+        "id": "atm"
+      },
+      {
+        "type": "item",
+        "id": "clean_charm",
+        "n": 1
+      },
+      {
+        "type": "mileage",
+        "n": 10
+      }
+    ],
+    "speaker": "samchun",
+    "line": "6달 흑자! 농협 대출은 안 받아도 되겠져."
+  },
+  {
+    "id": "g54",
     "title": "레시피 5개 개발",
     "desc": "레시피를 5개까지 개발하자",
     "condition": {
@@ -784,11 +1020,54 @@
         "n": 20
       }
     ],
-    "speaker": "halmang",
-    "line": "당근케이크는 우리 카페 자랑이 될 거다."
+    "speaker": "hero",
+    "line": "레시피 5개 완성. 밤새 궁리한 보람이 있어요."
   },
   {
-    "id": "g43",
+    "id": "g55",
+    "title": "명소 방문객 5,000명",
+    "desc": "전 명소 누적 방문객 5,000명",
+    "condition": {
+      "type": "visitorsTotal",
+      "n": 5000
+    },
+    "reward": [
+      {
+        "type": "item",
+        "id": "tour_bus_key",
+        "n": 1
+      },
+      {
+        "type": "unlockFacility",
+        "id": "parking"
+      }
+    ],
+    "speaker": "halmang",
+    "line": "명소 방문객 5,000명. 그 발길이 카페로 온다."
+  },
+  {
+    "id": "g56",
+    "title": "3년차 맞이하기",
+    "desc": "3년차가 되자",
+    "condition": {
+      "type": "year",
+      "n": 3
+    },
+    "reward": [
+      {
+        "type": "unlockFacility",
+        "id": "deco_mailbox"
+      },
+      {
+        "type": "tickets",
+        "n": 5
+      }
+    ],
+    "speaker": "samchun",
+    "line": "벌써 3년째여. 처음 온 날이 어제 같은데."
+  },
+  {
+    "id": "g57",
     "title": "★3 카페 되기",
     "desc": "★ 등급 3을 받자",
     "condition": {
@@ -806,11 +1085,11 @@
         "n": 1
       }
     ],
-    "speaker": "samchun",
-    "line": "별 셋! 홀 직원 자리도 늘려 줬어."
+    "speaker": "hero",
+    "line": "★3 카페예요. 뿌듯해서 잠이 안 와요."
   },
   {
-    "id": "g44",
+    "id": "g58",
     "title": "손님 2,000명",
     "desc": "손님이 다녀간 수 2,000명",
     "condition": {
@@ -827,11 +1106,46 @@
         "n": 10
       }
     ],
-    "speaker": "hero",
-    "line": "물허벅 세트로 마당에 제주 느낌을 더해요."
+    "speaker": "halmang",
+    "line": "손님이 2,000명이나 다녀갔구나. 마당이 북적북적하다."
   },
   {
-    "id": "g45",
+    "id": "g59",
+    "title": "콤보 8개",
+    "desc": "활성 콤보 8개",
+    "condition": {
+      "type": "comboCount",
+      "n": 8
+    },
+    "reward": [
+      {
+        "type": "unlockFacility",
+        "id": "pingpong"
+      }
+    ],
+    "speaker": "samchun",
+    "line": "콤보 8개면 마당이 알아서 손님을 불러."
+  },
+  {
+    "id": "g60",
+    "title": "명소 1곳 Lv3",
+    "desc": "Lv3 이상 명소 1곳",
+    "condition": {
+      "type": "spotAny",
+      "lv": 3,
+      "n": 1
+    },
+    "reward": [
+      {
+        "type": "unlockFacility",
+        "id": "brunch_house"
+      }
+    ],
+    "speaker": "hero",
+    "line": "Lv3 명소 1곳. 지도에 우리 카페가 커졌어요."
+  },
+  {
+    "id": "g61",
     "title": "이름 있는 손님 10명",
     "desc": "이름 있는 손님 10명을 만나자",
     "condition": {
@@ -845,11 +1159,11 @@
       }
     ],
     "speaker": "halmang",
-    "line": "감귤 스콘 레시피는 서울 손님이 알려 준 거여."
+    "line": "이름 있는 손님을 10명 만났구나. 인연이 재산이여."
   },
   {
-    "id": "g46",
-    "title": "단골 10명 만들기",
+    "id": "g62",
+    "title": "단골 10명",
     "desc": "단골 손님 10명",
     "condition": {
       "type": "regular",
@@ -866,35 +1180,33 @@
       }
     ],
     "speaker": "samchun",
-    "line": "안내 직원도 뽑아. 단골이 많으면 안내가 필요해."
+    "line": "단골 10명이면 든든하져. 비 오는 날도 온다."
   },
   {
-    "id": "g47",
-    "title": "3년차 맞이하기",
-    "desc": "3년차가 되자",
+    "id": "g63",
+    "title": "시설 증축 Lv3 1개",
+    "desc": "Lv3 이상으로 증축한 시설 1개",
     "condition": {
-      "type": "year",
-      "n": 3
+      "type": "facilityLv",
+      "lv": 3,
+      "n": 1
     },
     "reward": [
       {
         "type": "unlockFacility",
-        "id": "deco_mailbox"
-      },
-      {
-        "type": "tickets",
-        "n": 5
+        "id": "open_air_footbath"
       }
     ],
-    "speaker": "halmang",
-    "line": "삼 년이면 감귤나무도 자란다. 우체통에 편지가 온다."
+    "speaker": "hero",
+    "line": "Lv3 시설 1개. 넓어진 만큼 손님도 편해요."
   },
   {
-    "id": "g48",
-    "title": "가이드북 3위 안에",
-    "desc": "가이드북 발표에서 3위 안에 들자",
+    "id": "g64",
+    "title": "제주 카페 지도 3위",
+    "desc": "제주도 카페 지도 가이드북 3위 안",
     "condition": {
-      "type": "rank",
+      "type": "guidebookRank",
+      "bookId": "gb_jeju_map",
       "n": 3
     },
     "reward": [
@@ -907,11 +1219,11 @@
         "n": 20
       }
     ],
-    "speaker": "hero",
-    "line": "3위! 감귤 상자를 쌓아 두면 사진이 예뻐요."
+    "speaker": "halmang",
+    "line": "제주도 카페 지도 3위 안. 책에 이름이 실렸다."
   },
   {
-    "id": "g49",
+    "id": "g65",
     "title": "라이벌 대결 1승",
     "desc": "라이벌 카페와 대결해 이기자",
     "condition": {
@@ -929,11 +1241,29 @@
       }
     ],
     "speaker": "samchun",
-    "line": "이겼주! 크루아상 레시피는 전리품이여."
+    "line": "1승! 라이벌이 짐 싸는 소리 들리져?"
   },
   {
-    "id": "g50",
-    "title": "필지 6개 가지기",
+    "id": "g66",
+    "title": "직원 Lv5 1명",
+    "desc": "Lv5 이상 직원 1명",
+    "condition": {
+      "type": "staffLevel",
+      "lv": 5,
+      "n": 1
+    },
+    "reward": [
+      {
+        "type": "unlockFacility",
+        "id": "yoga_class"
+      }
+    ],
+    "speaker": "hero",
+    "line": "Lv5 직원 1명. 같이 성장하는 기분이에요."
+  },
+  {
+    "id": "g67",
+    "title": "필지 6개",
     "desc": "필지를 6개까지 가지자",
     "condition": {
       "type": "parcels",
@@ -950,11 +1280,11 @@
       }
     ],
     "speaker": "halmang",
-    "line": "마을 절반이 카페 마당이구나."
+    "line": "필지가 6개. 땅이 넓어지면 꿈도 넓어진다."
   },
   {
-    "id": "g51",
-    "title": "시설 40개 짓기",
+    "id": "g68",
+    "title": "시설 40개",
     "desc": "시설을 40개까지 늘리자",
     "condition": {
       "type": "facilities",
@@ -967,10 +1297,10 @@
       }
     ],
     "speaker": "samchun",
-    "line": "당근 수프로 겨울 손님 몸을 녹여 줘."
+    "line": "40개나 지었어? 손님이 둘러볼 데가 많아졌져."
   },
   {
-    "id": "g52",
+    "id": "g69",
     "title": "자금 5,000만",
     "desc": "잔고를 5,000만 원까지 모으자",
     "condition": {
@@ -984,11 +1314,66 @@
       }
     ],
     "speaker": "hero",
-    "line": "5,000만! 마일리지 상점을 털 때예요."
+    "line": "자금 ₩50,000,000. 이 돈으로 뭘 할지 벌써 설레요."
   },
   {
-    "id": "g53",
-    "title": "라이벌 대결 3승",
+    "id": "g70",
+    "title": "명소 방문객 1만",
+    "desc": "전 명소 누적 방문객 10,000명",
+    "condition": {
+      "type": "visitorsTotal",
+      "n": 10000
+    },
+    "reward": [
+      {
+        "type": "unlockFacility",
+        "id": "mini_bowling"
+      }
+    ],
+    "speaker": "halmang",
+    "line": "명소 방문객 10,000명. 그 발길이 카페로 온다."
+  },
+  {
+    "id": "g71",
+    "title": "투어 개최 1회 성공",
+    "desc": "투어 개최 1회 성공",
+    "condition": {
+      "type": "tourGroup",
+      "n": 1
+    },
+    "reward": [
+      {
+        "type": "unlockFacility",
+        "id": "concert_hall"
+      }
+    ],
+    "speaker": "samchun",
+    "line": "투어 1회 성공! 버스가 줄줄이 온다."
+  },
+  {
+    "id": "g72",
+    "title": "4년차 맞이하기",
+    "desc": "4년차 맞이하기",
+    "condition": {
+      "type": "year",
+      "n": 4
+    },
+    "reward": [
+      {
+        "type": "tickets",
+        "n": 5
+      },
+      {
+        "type": "unlockFacility",
+        "id": "retro_arcade"
+      }
+    ],
+    "speaker": "hero",
+    "line": "4년차 시작이에요. 올해도 잘 부탁해요."
+  },
+  {
+    "id": "g73",
+    "title": "라이벌 3승",
     "desc": "라이벌 카페 대결에서 3번 이기자",
     "condition": {
       "type": "rivalWins",
@@ -1005,10 +1390,10 @@
       }
     ],
     "speaker": "halmang",
-    "line": "세 번 이겼으면 동네 최고여. 유자차 한 잔 하라."
+    "line": "대결 3승. 이기고도 겸손하라."
   },
   {
-    "id": "g54",
+    "id": "g74",
     "title": "★4 카페 되기",
     "desc": "★ 등급 4를 받자",
     "condition": {
@@ -1025,13 +1410,17 @@
         "type": "staffSlot",
         "role": "cook",
         "n": 1
+      },
+      {
+        "type": "unlockFacility",
+        "id": "waterfall_shower"
       }
     ],
     "speaker": "samchun",
-    "line": "별 넷! 바리스타·요리사 자리 하나씩 더."
+    "line": "★4! 이제 제주 카페 이야기가 제법 나온다."
   },
   {
-    "id": "g55",
+    "id": "g75",
     "title": "손님 5,000명",
     "desc": "손님이 다녀간 수 5,000명",
     "condition": {
@@ -1045,11 +1434,119 @@
       }
     ],
     "speaker": "hero",
-    "line": "5,000명이 우리 마당을 다녀갔어요."
+    "line": "누적 5,000명이에요. 처음 정낭 앞에 서 있던 게 엊그제 같은데."
   },
   {
-    "id": "g56",
-    "title": "단골 20명 만들기",
+    "id": "g76",
+    "title": "세트 효과 3개",
+    "desc": "세트 효과 3개",
+    "condition": {
+      "type": "setCount",
+      "n": 3
+    },
+    "reward": [
+      {
+        "type": "unlockFacility",
+        "id": "lounge"
+      }
+    ],
+    "speaker": "halmang",
+    "line": "세트 효과 3개. 시설끼리 손을 잡았다."
+  },
+  {
+    "id": "g77",
+    "title": "콤보 15개",
+    "desc": "활성 콤보 15개",
+    "condition": {
+      "type": "comboCount",
+      "n": 15
+    },
+    "reward": [
+      {
+        "type": "unlockFacility",
+        "id": "fine_dining"
+      }
+    ],
+    "speaker": "samchun",
+    "line": "콤보 15개면 마당이 알아서 손님을 불러."
+  },
+  {
+    "id": "g78",
+    "title": "명소 4곳 Lv4",
+    "desc": "Lv4 이상 명소 4곳",
+    "condition": {
+      "type": "spotAny",
+      "lv": 4,
+      "n": 4
+    },
+    "reward": [
+      {
+        "type": "unlockFacility",
+        "id": "archery_range"
+      }
+    ],
+    "speaker": "hero",
+    "line": "Lv4 명소 4곳. 지도에 우리 카페가 커졌어요."
+  },
+  {
+    "id": "g79",
+    "title": "유니폼 3단계",
+    "desc": "유니폼 3단계",
+    "condition": {
+      "type": "uniforms",
+      "n": 3
+    },
+    "reward": [
+      {
+        "type": "unlockFacility",
+        "id": "hair_salon"
+      }
+    ],
+    "speaker": "halmang",
+    "line": "유니폼 3단계. 옷이 사람을 만든다."
+  },
+  {
+    "id": "g80",
+    "title": "직원 6명",
+    "desc": "직원 6명 고용",
+    "condition": {
+      "type": "staff",
+      "n": 6
+    },
+    "reward": [
+      {
+        "type": "staffSlot",
+        "role": "carry",
+        "n": 1
+      },
+      {
+        "type": "unlockRecruit",
+        "id": "rc_intern"
+      }
+    ],
+    "speaker": "samchun",
+    "line": "6명이면 홀도 주방도 돌아가겠져."
+  },
+  {
+    "id": "g81",
+    "title": "월 매출 2,000만",
+    "desc": "지난달 매출 ₩20,000,000 이상",
+    "condition": {
+      "type": "monthIncome",
+      "n": 20000000
+    },
+    "reward": [
+      {
+        "type": "unlockFacility",
+        "id": "sauna_hut"
+      }
+    ],
+    "speaker": "hero",
+    "line": "월 매출 ₩20,000,000 돌파. 밤새 장부를 다시 봤어요."
+  },
+  {
+    "id": "g82",
+    "title": "단골 20명",
     "desc": "단골 손님 20명",
     "condition": {
       "type": "regular",
@@ -1062,10 +1559,65 @@
       }
     ],
     "speaker": "halmang",
-    "line": "단골 스물이면 잔치를 해야지."
+    "line": "단골이 20명. 이름 외우고 얼굴 기억하라."
   },
   {
-    "id": "g57",
+    "id": "g83",
+    "title": "자금 1억",
+    "desc": "자금 ₩100,000,000 이상",
+    "condition": {
+      "type": "money",
+      "n": 100000000
+    },
+    "reward": [
+      {
+        "type": "unlockFacility",
+        "id": "magic_stage"
+      },
+      {
+        "type": "builder",
+        "n": 1
+      }
+    ],
+    "speaker": "samchun",
+    "line": "₩100,000,000 모았어? 이제 큰 그림을 그릴 때여."
+  },
+  {
+    "id": "g84",
+    "title": "강화 아이템 20개 사용",
+    "desc": "강화 아이템 20개 사용",
+    "condition": {
+      "type": "itemsUsed",
+      "n": 20
+    },
+    "reward": [
+      {
+        "type": "unlockFacility",
+        "id": "vintage_shop"
+      }
+    ],
+    "speaker": "hero",
+    "line": "강화 아이템 20개 사용. 시설 인기가 눈에 띄어요."
+  },
+  {
+    "id": "g85",
+    "title": "가이드북 1위 3회",
+    "desc": "가이드북 1위 3회",
+    "condition": {
+      "type": "guidebookWins",
+      "n": 3
+    },
+    "reward": [
+      {
+        "type": "unlockFacility",
+        "id": "clothing_shop"
+      }
+    ],
+    "speaker": "halmang",
+    "line": "1위를 3번. 실력은 우연이 아니여."
+  },
+  {
+    "id": "g86",
     "title": "필지 9개 다 사기",
     "desc": "필지 9개를 모두 가지자",
     "condition": {
@@ -1079,48 +1631,79 @@
       }
     ],
     "speaker": "samchun",
-    "line": "온 마을이 카페여. 마을 잔치 열자!"
+    "line": "땅 9필지. 이 동네에서 제일 큰 카페 되겠져."
   },
   {
-    "id": "g58",
-    "title": "가이드북 1위",
-    "desc": "가이드북 발표에서 1위를 하자",
+    "id": "g87",
+    "title": "명소 방문객 5만",
+    "desc": "전 명소 누적 방문객 50,000명",
     "condition": {
-      "type": "rank",
-      "n": 1
+      "type": "visitorsTotal",
+      "n": 50000
+    },
+    "reward": [
+      {
+        "type": "unlockFacility",
+        "id": "home_theater"
+      }
+    ],
+    "speaker": "hero",
+    "line": "방문객 50,000명! 명소 투자한 보람이 있어요."
+  },
+  {
+    "id": "g88",
+    "title": "직원 Lv8 2명",
+    "desc": "Lv8 이상 직원 2명",
+    "condition": {
+      "type": "staffLevel",
+      "lv": 8,
+      "n": 2
+    },
+    "reward": [
+      {
+        "type": "unlockFacility",
+        "id": "flower_workshop"
+      }
+    ],
+    "speaker": "halmang",
+    "line": "Lv8 직원이 2명. 사람을 키운 보람이여."
+  },
+  {
+    "id": "g89",
+    "title": "손님 1만 명",
+    "desc": "손님이 다녀간 수 10,000명",
+    "condition": {
+      "type": "guests",
+      "n": 10000
+    },
+    "reward": [
+      {
+        "type": "unlockFacility",
+        "id": "candy_shop"
+      }
+    ],
+    "speaker": "samchun",
+    "line": "10,000명이라니! 동네 어귀까지 소문났져."
+  },
+  {
+    "id": "g90",
+    "title": "6년차 맞이하기",
+    "desc": "6년차 맞이하기",
+    "condition": {
+      "type": "year",
+      "n": 6
     },
     "reward": [
       {
         "type": "tickets",
         "n": 10
-      },
-      {
-        "type": "research",
-        "n": 30
       }
     ],
     "speaker": "hero",
-    "line": "1위! 제주 최고의 카페예요!"
+    "line": "6년차 시작이에요. 올해도 잘 부탁해요."
   },
   {
-    "id": "g59",
-    "title": "단골 30명 만들기",
-    "desc": "단골 손님 30명",
-    "condition": {
-      "type": "regular",
-      "n": 30
-    },
-    "reward": [
-      {
-        "type": "mileage",
-        "n": 50
-      }
-    ],
-    "speaker": "halmang",
-    "line": "서른 명 단골. 할망도 자랑스럽다."
-  },
-  {
-    "id": "g60",
+    "id": "g91",
     "title": "★5 전설의 카페",
     "desc": "★ 등급 5를 받자",
     "condition": {
@@ -1134,6 +1717,319 @@
       }
     ],
     "speaker": "halmang",
-    "line": "별 다섯. 이 카페는 백 년 갈 거여."
+    "line": "별 5개. 하늘의 별을 따듯 어렵게 딴 거여."
+  },
+  {
+    "id": "g92",
+    "title": "전국 카페 투어 1위",
+    "desc": "전국 카페 투어 가이드북 1위 안",
+    "condition": {
+      "type": "guidebookRank",
+      "bookId": "gb_national_tour",
+      "n": 1
+    },
+    "reward": [
+      {
+        "type": "tickets",
+        "n": 10
+      },
+      {
+        "type": "research",
+        "n": 30
+      }
+    ],
+    "speaker": "samchun",
+    "line": "전국 카페 투어 1위! 삼춘이 서점에서 봤져."
+  },
+  {
+    "id": "g93",
+    "title": "콤보 30개",
+    "desc": "활성 콤보 30개",
+    "condition": {
+      "type": "comboCount",
+      "n": 30
+    },
+    "reward": [
+      {
+        "type": "unlockFacility",
+        "id": "marble_game"
+      }
+    ],
+    "speaker": "hero",
+    "line": "콤보 30개! 배치 궁리한 보람이 있어요."
+  },
+  {
+    "id": "g94",
+    "title": "세트 효과 6개",
+    "desc": "세트 효과 6개",
+    "condition": {
+      "type": "setCount",
+      "n": 6
+    },
+    "reward": [
+      {
+        "type": "unlockFacility",
+        "id": "shooting_booth"
+      }
+    ],
+    "speaker": "halmang",
+    "line": "세트 효과 6개. 시설끼리 손을 잡았다."
+  },
+  {
+    "id": "g95",
+    "title": "시설 Lv3 10개",
+    "desc": "Lv3 이상으로 증축한 시설 10개",
+    "condition": {
+      "type": "facilityLv",
+      "lv": 3,
+      "n": 10
+    },
+    "reward": [
+      {
+        "type": "unlockFacility",
+        "id": "tarot_booth"
+      }
+    ],
+    "speaker": "samchun",
+    "line": "증축 Lv3 10개! 마당이 위풍당당하다."
+  },
+  {
+    "id": "g96",
+    "title": "명소 12곳 Lv5",
+    "desc": "Lv5 이상 명소 12곳",
+    "condition": {
+      "type": "spotAny",
+      "lv": 5,
+      "n": 12
+    },
+    "reward": [
+      {
+        "type": "unlockFacility",
+        "id": "observatory"
+      }
+    ],
+    "speaker": "hero",
+    "line": "Lv5 명소 12곳. 지도에 우리 카페가 커졌어요."
+  },
+  {
+    "id": "g97",
+    "title": "단골 30명",
+    "desc": "단골 손님 30명",
+    "condition": {
+      "type": "regular",
+      "n": 30
+    },
+    "reward": [
+      {
+        "type": "mileage",
+        "n": 50
+      }
+    ],
+    "speaker": "halmang",
+    "line": "단골이 30명. 이름 외우고 얼굴 기억하라."
+  },
+  {
+    "id": "g98",
+    "title": "라이벌 10승",
+    "desc": "카페 대결 10승",
+    "condition": {
+      "type": "rivalWins",
+      "n": 10
+    },
+    "reward": [
+      {
+        "type": "unlockFacility",
+        "id": "massage_booth"
+      }
+    ],
+    "speaker": "samchun",
+    "line": "10승! 라이벌이 짐 싸는 소리 들리져?"
+  },
+  {
+    "id": "g99",
+    "title": "자금 3억",
+    "desc": "자금 ₩300,000,000 이상",
+    "condition": {
+      "type": "money",
+      "n": 300000000
+    },
+    "reward": [
+      {
+        "type": "builder",
+        "n": 1
+      },
+      {
+        "type": "mileage",
+        "n": 30
+      }
+    ],
+    "speaker": "hero",
+    "line": "자금 ₩300,000,000. 이 돈으로 뭘 할지 벌써 설레요."
+  },
+  {
+    "id": "g100",
+    "title": "손님 3만 명",
+    "desc": "손님이 다녀간 수 30,000명",
+    "condition": {
+      "type": "guests",
+      "n": 30000
+    },
+    "reward": [
+      {
+        "type": "money",
+        "amount": 30000000
+      }
+    ],
+    "speaker": "halmang",
+    "line": "손님이 30,000명이나 다녀갔구나. 마당이 북적북적하다."
+  },
+  {
+    "id": "g101",
+    "title": "직원 Lv10 1명",
+    "desc": "Lv10 이상 직원 1명",
+    "condition": {
+      "type": "staffLevel",
+      "lv": 10,
+      "n": 1
+    },
+    "reward": [
+      {
+        "type": "staffSlot",
+        "role": "guide",
+        "n": 1
+      }
+    ],
+    "speaker": "samchun",
+    "line": "Lv10 1명이면 웬만한 손님은 다 받아."
+  },
+  {
+    "id": "g102",
+    "title": "24개월 연속 흑자",
+    "desc": "24개월 연속 흑자",
+    "condition": {
+      "type": "profitMonths",
+      "n": 24
+    },
+    "reward": [
+      {
+        "type": "mileage",
+        "n": 50
+      }
+    ],
+    "speaker": "hero",
+    "line": "24개월 연속 흑자예요. 장부 볼 때 마음이 편해요."
+  },
+  {
+    "id": "g103",
+    "title": "명소 24곳 전부 Lv5",
+    "desc": "Lv5 이상 명소 24곳",
+    "condition": {
+      "type": "spotAny",
+      "lv": 5,
+      "n": 24
+    },
+    "reward": [
+      {
+        "type": "money",
+        "amount": 50000000
+      },
+      {
+        "type": "tickets",
+        "n": 20
+      }
+    ],
+    "speaker": "halmang",
+    "line": "Lv5 명소가 24곳. 제주가 우리 편이여."
+  },
+  {
+    "id": "g104",
+    "title": "리본 서베이 1위",
+    "desc": "리본 서베이 가이드북 1위 안",
+    "condition": {
+      "type": "guidebookRank",
+      "bookId": "gb_ribbon_survey",
+      "n": 1
+    },
+    "reward": [
+      {
+        "type": "research",
+        "n": 100
+      },
+      {
+        "type": "mileage",
+        "n": 50
+      }
+    ],
+    "speaker": "samchun",
+    "line": "리본 서베이 1위! 삼춘이 서점에서 봤져."
+  },
+  {
+    "id": "g105",
+    "title": "자금 5억",
+    "desc": "자금 ₩500,000,000 이상",
+    "condition": {
+      "type": "money",
+      "n": 500000000
+    },
+    "reward": [
+      {
+        "type": "unlockGuest",
+        "id": "seolmundae"
+      }
+    ],
+    "speaker": "hero",
+    "line": "자금 ₩500,000,000. 이 돈으로 뭘 할지 벌써 설레요."
+  },
+  {
+    "id": "g106",
+    "title": "월 매출 1억",
+    "desc": "지난달 매출 ₩100,000,000 이상",
+    "condition": {
+      "type": "monthIncome",
+      "n": 100000000
+    },
+    "reward": [
+      {
+        "type": "tickets",
+        "n": 20
+      }
+    ],
+    "speaker": "halmang",
+    "line": "한 달 매출 ₩100,000,000. 장부가 웃는다."
+  },
+  {
+    "id": "g107",
+    "title": "10년차 결산",
+    "desc": "10년차 맞이하기",
+    "condition": {
+      "type": "year",
+      "n": 10
+    },
+    "reward": [
+      {
+        "type": "money",
+        "amount": 100000000
+      }
+    ],
+    "speaker": "samchun",
+    "line": "벌써 10년째여. 처음 온 날이 어제 같은데."
+  },
+  {
+    "id": "g108",
+    "title": "100주년 감귤축제",
+    "desc": "10년차 이후 100주년 감귤축제",
+    "condition": {
+      "type": "custom",
+      "id": "centennial"
+    },
+    "reward": [
+      {
+        "type": "item",
+        "id": "millennium_seed",
+        "n": 1
+      }
+    ],
+    "speaker": "hero",
+    "line": "100주년 감귤축제예요. 이 마당에서 열리다니."
   }
 ]

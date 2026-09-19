@@ -48,9 +48,9 @@ test('데이터: 라이벌 6종 — 규모·유지비·심사 가중치(합 1)·
   expect(() => rivalDef('nope')).toThrow();
 });
 
-test('생성: 3년차부터 월 10%(seed 통계), 2년차엔 안 생기고 동시 2까지', () => {
-  expect(spawnRate(2)).toBe(0);
-  const p = spawnRate(3);
+test('생성: 2년차부터 월 10%(seed 통계), 1년차엔 안 생기고 동시 2까지', () => {
+  expect(spawnRate(1)).toBe(0);
+  const p = spawnRate(2);
   expect(p).toBeGreaterThan(RIVAL_MONTHLY_CHANCE - 0.05);
   expect(p).toBeLessThan(RIVAL_MONTHLY_CHANCE + 0.05);
   const s = year(bareState(1), 3);
@@ -146,7 +146,7 @@ test('파산·자진 철수: 대형은 월 15%(seed 통계)로 파산, 12개월 
   expect(bankrupt / N).toBeLessThan(0.20);
   // 소형은 파산하지 않는다
   for (let seed = 1; seed <= 50; seed++) {
-    const s = year(bareState(seed), 2);
+    const s = year(bareState(seed), 1); // 1년차: 새 라이벌은 안 생긴다
     addRival(s, 'rv_truck_cafe');
     monthlyRivals(s);
     expect(s.rivals).toHaveLength(1);

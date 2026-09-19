@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useGame, dispatch } from './store';
-import { canPromote, effectivePopularity, MAX_ACTIVE_PROMOTIONS, PARTTIME_MONEY, type PromotionDef } from '../sim/index.ts';
+import { canPromote, effectivePopularity, MAX_ACTIVE_PROMOTIONS, PARTTIME_MONEY, APOLOGY_REPUTATION, type PromotionDef } from '../sim/index.ts';
 import { PROMOTIONS, GUEST_TYPES, promotionDef } from '../data/index.ts';
 import { Icon } from './Icon';
 import { Confirm } from './Popup';
@@ -11,6 +11,7 @@ import { card, brownBtn, brownBtnOn, brownBtnOff, PALETTE, won } from './frame';
 function effectText(d: PromotionDef): string {
   if (d.special === 'youtuber') return '60% 확률로 3달 동안 관광객이 2배 와요';
   if (d.special === 'parttime') return `돈 ${won(PARTTIME_MONEY)}을 바로 벌어요`;
+  if (d.special === 'apology') return `평판 +${APOLOGY_REPUTATION} (한 달에 한 번)`;
   const parts: string[] = [];
   for (const [k, v] of Object.entries(d.segmentDelta)) {
     const t = GUEST_TYPES.find((x) => x.id === k);
@@ -97,7 +98,7 @@ export function PromoPanel() {
               <div style={{ fontSize: 13, color: PALETTE.inkSoft }}>{effectText(d)}</div>
               {costText(d)}
             </div>
-            <button style={{ ...(ok ? brownBtn : brownBtnOff), marginBottom: 0, marginRight: 0 }} disabled={!ok} onClick={() => run(d)}>실행</button>
+            <button data-tut="promote" style={{ ...(ok ? brownBtn : brownBtnOff), marginBottom: 0, marginRight: 0 }} disabled={!ok} onClick={() => run(d)}>실행</button>
           </div>
         );
       })}

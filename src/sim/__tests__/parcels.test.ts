@@ -1,13 +1,13 @@
 import { bareState } from './helpers.ts';
 import { X, Y } from './helpers.ts';
-import { SETTLE_GRANT, SETTLE_GRANT_THRESHOLD } from '../state.ts';
+import { LOAN_AMOUNT, LOAN_THRESHOLD, LOAN_MAX } from '../failure.ts';
 import { apply } from '../actions.ts';
 import { canPlace, placeObject, sceneryScore, cellAt, objectAt, isSheltered, removeObject } from '../grid.ts';
 import { parcelAt, parcelById, parcelPrice, canBuyParcel, parcelUnlockOwnedCount, parcelsAdjacent, COAST_FEE_MULT, COAST_SPAWN_MULT, OREUM_SCENERY, STONEHILL_SCENERY, VILLAGE_SENIOR_MULT, BATDAM_HARVEST_MULT } from '../parcels.ts';
 import { typeWeight, spawnGuests, updateGuests } from '../guests.ts';
 import { monthlyYieldOf } from '../orchard.ts';
 import { monthIndex } from '../clock.ts';
-import { settleGrant } from '../tick.ts';
+import { checkLoan } from '../failure.ts';
 import { setSlot } from '../menu.ts';
 import { objectDef } from '../../data/index.ts';
 import type { GameState } from '../types.ts';
@@ -211,14 +211,24 @@ test('rotate·place rot: 정낭만 돌아가고 0..3으로 감긴다', () => {
   expect(apply(s, { type: 'rotate', objectId: f.id, rot: 1 }).ok).toBe(false);
 });
 
-test('정착지원금: 잔고가 40만 아래면 딱 한 번 300만', () => {
+test('삼춘 대출(옛 정착지원금): 잔고가 40만 아래면 300만, 한 달 1회·최대 3회', () => {
   const s = bareState(1);
-  s.money = SETTLE_GRANT_THRESHOLD;
-  expect(settleGrant(s)).toBe(false);
-  s.money = SETTLE_GRANT_THRESHOLD - 1;
-  expect(settleGrant(s)).toBe(true);
-  expect(s.money).toBe(SETTLE_GRANT_THRESHOLD - 1 + SETTLE_GRANT);
-  expect(s.notices.at(-1)).toContain('정착지원금');
+  s.money = LOAN_THRESHOLD;
+  expect(checkLoan(s)).toBe(false);
+  s.money = LOAN_THRESHOLD - 1;
+  expect(checkLoan(s)).toBe(true);
+  expect(s.money).toBe(LOAN_THRESHOLD - 1 + LOAN_AMOUNT);
+  expect(s.loan).toEqual({ count: 1, balance: LOAN_AMOUNT, lastMonthIndex: expect.any(Number) });
+  expect(s.notices.at(-1)).toContain('삼춘');
   s.money = 0;
-  expect(settleGrant(s)).toBe(false);
+  expect(checkLoan(s)).toBe(false); // 같은 달엔 한 번만
+  s.clock.month++;
+  expect(checkLoan(s)).toBe(true);
+  s.money = 0;
+  s.clock.month++;
+  expect(checkLoan(s)).toBe(true);
+  expect(s.loan.count).toBe(LOAN_MAX);
+  s.money = 0;
+  s.clock.month++;
+  expect(checkLoan(s)).toBe(false); // 최대 3회
 });

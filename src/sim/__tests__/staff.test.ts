@@ -3,17 +3,22 @@ import { X, Y } from './helpers.ts';
 import { createInitialState } from '../state.ts';
 import { apply } from '../actions.ts';
 import { placeObject } from '../grid.ts';
-import { generateCandidate, salaryOf, roleEffect, ingredientDiscount, canHire, moveStaff, staffAnchor, MAX_STAT } from '../staff.ts';
+import { salaryOf, salaryDue, roleEffect, ingredientDiscount, canHire, moveStaff, staffAnchor, drawCandidates, availablePool, addPoolCandidate, staffCapacity, capOf, expNeeded, levelUpCost, addRoleExp, dailyWorkExp, cleanPowerOf, gardenBonusOf, gardenDecayOf, promoBonusOf, promoEnergyFactorOf, checkRoleUnlocks, farmCount, skillTotal, TIERS } from '../staff.ts';
+import { trainingCost, canTrain, trainingMultOf, TRAINING_RANK } from '../training.ts';
 import { ingredientCost } from '../economy.ts';
+import { expectedHarvest } from '../orchard.ts';
 import { tick } from '../tick.ts';
+import { LOAN_MAX } from '../failure.ts';
 import { DAY_MS, HOUR_MS } from '../clock.ts';
+import { STAFF_POOL, RECRUIT_TIERS, TRAININGS, SKILLS, ROLES } from '../../data/index.ts';
 import type { GameState, Staff, Stats, RoleId } from '../types.ts';
 
 export function staffWith(partial: Partial<Stats>, role: RoleId | null, skill = 'coffee_lover'): Staff {
   const stats: Stats = { stamina: 10, strength: 10, skill: 10, smile: 10, ...partial };
   return {
     id: `s${Math.round(Object.values(stats).reduce((a, b) => a + b, 0))}${role}`,
-    name: 'x', face: { hair: 0, skin: 0, top: 0 }, stats, skill, level: 1, salary: 0,
+    name: 'x', face: { hair: 0, skin: 0, top: 0 }, poolId: '', stats, statCaps: { stamina: 100, strength: 100, skill: 100, smile: 100 }, skill, extraSkills: [],
+    level: 1, maxLevel: 10, baseSalary: 400_000, salary: 0, exp: 0, trainingCount: 0, training: null,
     role, unpaidMonths: 0, energy: 100, lastParttimeMonthIndex: -1, x: X(4), y: Y(3), path: [], anchor: null, waitMs: 0,
   };
 }
@@ -25,31 +30,100 @@ function hired(seed = 1, role: RoleId = 'hall'): { s: GameState; st: Staff } {
   return { s, st: s.staff[0]! };
 }
 
-test('공고 등급별 후보 수와 스탯 범위, 공고비는 채용비로 잡힌다', () => {
+// ---------- 데이터 (§3.6) ----------
+
+test('직원 풀 27명: 단계 1~5 각 5명 + 특수 2명, 상한 ≥ 초기치, 채용 5단계·연수 5종·특기 30·직종 8', () => {
+  expect(STAFF_POOL.length).toBe(27);
+  for (let t = 1; t <= 5; t++) expect(STAFF_POOL.filter((p) => p.tier === t).length).toBe(5);
+  expect(STAFF_POOL.filter((p) => p.tier === 0).length).toBe(2);
+  for (const p of STAFF_POOL) {
+    for (const k of ['stamina', 'strength', 'skill', 'smile'] as const) expect(p.statCaps[k]).toBeGreaterThanOrEqual(p.stats[k]);
+    expect(SKILLS.some((s) => s.id === p.skill)).toBe(true);
+  }
+  expect(RECRUIT_TIERS.map((t) => t.cost)).toEqual([500_000, 5_000_000, 8_000_000, 20_000_000, 50_000_000]);
+  expect(TRAININGS.length).toBe(5);
+  expect(SKILLS.length).toBe(30);
+  expect(ROLES.map((r) => r.id)).toEqual(['barista', 'cook', 'hall', 'carry', 'guide', 'clean', 'garden', 'promo']);
+});
+
+// ---------- 공고·후보 ----------
+
+test('공고: 그 단계 풀에서 3명이 오고, 공고비는 채용비로 잡힌다. 잠긴 단계·돈 부족은 안 된다', () => {
   const s = bareState(7);
   expect(apply(s, { type: 'postJob', tier: 'flyer' }).ok).toBe(true);
   expect(s.candidates.length).toBe(3);
-  expect(s.money).toBe(5_000_000 - 1_000_000);
-  expect(s.monthCosts.recruit).toBe(1_000_000);
-  for (const c of s.candidates) for (const v of Object.values(c.stats)) { expect(v).toBeGreaterThanOrEqual(10); expect(v).toBeLessThanOrEqual(40); }
-  expect(new Set(s.candidates.map((c) => c.id)).size).toBe(3);
+  expect(s.money).toBe(5_000_000 - 500_000);
+  expect(s.monthCosts.recruit).toBe(500_000);
+  for (const c of s.candidates) { expect(STAFF_POOL.find((p) => p.id === c.poolId)!.tier).toBe(1); expect(c.stats).toEqual(STAFF_POOL.find((p) => p.id === c.poolId)!.stats); }
+  expect(new Set(s.candidates.map((c) => c.poolId)).size).toBe(3);
   expect(apply(s, { type: 'postJob', tier: 'site' }).ok).toBe(false); // 돈 부족
+  s.money = 1e9;
+  expect(apply(s, { type: 'postJob', tier: 'intern' }).ok).toBe(false); // ★3 잠김
+  s.star = 3;
+  expect(apply(s, { type: 'postJob', tier: 'intern' }).ok).toBe(true);
+  expect(s.candidates.length).toBe(6);
 });
 
-test('같은 seed면 같은 후보', () => {
+test('같은 단계를 다시 내면 남은 사람만 오고, 다 오면 더 못 낸다. 같은 seed면 같은 후보', () => {
   const a = bareState(3), b = bareState(3);
-  a.money = b.money = 1e7;
+  a.money = b.money = 1e8;
   apply(a, { type: 'postJob', tier: 'site' }); apply(b, { type: 'postJob', tier: 'site' });
-  expect(a.candidates.length).toBe(4);
+  expect(a.candidates.length).toBe(3);
   expect(JSON.stringify(a.candidates)).toBe(JSON.stringify(b.candidates));
-  const c = generateCandidate(a, 'headhunter');
-  for (const v of Object.values(c.stats)) { expect(v).toBeGreaterThanOrEqual(50); expect(v).toBeLessThanOrEqual(80); }
-  expect(c.salary).toBe(salaryOf(c.stats, 1));
+  expect(availablePool(a, 2).length).toBe(2);
+  expect(apply(a, { type: 'postJob', tier: 'site' }).ok).toBe(true);
+  expect(a.candidates.length).toBe(5);
+  expect(apply(a, { type: 'postJob', tier: 'site' }).ok).toBe(false); // 다 왔다
+  const c = a.candidates[0]!;
+  expect(c.salary).toBe(salaryOf({ baseSalary: c.baseSalary, level: 1, stats: c.stats }));
+  expect(drawCandidates(a, 'college', 1)).toBe(1);
 });
 
-test('월급 공식', () => {
-  expect(salaryOf({ stamina: 20, strength: 20, skill: 20, smile: 20 }, 1)).toBe(20 * 4 * 3000 + 200_000);
+test('특수 직원(조랑말·돌하르방)은 공고로 안 오고 addPoolCandidate로만 온다', () => {
+  const s = bareState(1);
+  s.money = 1e9; s.star = 5;
+  for (const t of RECRUIT_TIERS) { apply(s, { type: 'postJob', tier: t.id }); apply(s, { type: 'postJob', tier: t.id }); }
+  expect(s.candidates.length).toBe(25);
+  expect(s.candidates.some((c) => c.poolId === 'st_pony_special')).toBe(false);
+  expect(addPoolCandidate(s, 'st_pony_special')).toBe(true);
+  expect(addPoolCandidate(s, 'st_pony_special')).toBe(false);
+  expect(s.candidates.length).toBe(26);
 });
+
+test('시작 후보 2명은 전단 단계 풀에서 온다', () => {
+  const s = createInitialState(1, 'p', 0);
+  expect(s.candidates.length).toBe(2);
+  for (const c of s.candidates) expect(STAFF_POOL.find((p) => p.id === c.poolId)!.tier).toBe(1);
+});
+
+// ---------- 급여 (§3.6.3 표 3행) ----------
+
+test('월급 공식: 기본급 × (1 + 0.15 × (Lv−1)) + 스탯 합 × 1,000 — 표 3행 일치', () => {
+  const zero: Stats = { stamina: 0, strength: 0, skill: 0, smile: 0 };
+  const rows: [number, number[]][] = [
+    [400_000, [400_000, 520_000, 640_000, 760_000, 940_000]],
+    [1_000_000, [1_000_000, 1_300_000, 1_600_000, 1_900_000, 2_350_000]],
+    [2_200_000, [2_200_000, 2_860_000, 3_520_000, 4_180_000, 5_170_000]],
+  ];
+  for (const [base, expected] of rows)
+    expect([1, 3, 5, 7, 10].map((level) => salaryOf({ baseSalary: base, level, stats: zero }))).toEqual(expected);
+  // 스탯 합 × 1,000: 김민준 초기 80 → Lv5 720,000
+  const kim = STAFF_POOL.find((p) => p.id === 'st_kim_minjun')!;
+  expect(salaryOf({ baseSalary: kim.baseSalary, level: 5, stats: kim.stats })).toBe(720_000);
+  expect(salaryOf({ baseSalary: 400_000, level: 1, stats: { stamina: 20, strength: 20, skill: 20, smile: 20 } })).toBe(480_000);
+});
+
+test('쉬는 직원은 월급 50%, 연수 중은 그대로', () => {
+  const st = staffWith({}, null);
+  st.salary = 1_000_000;
+  expect(salaryDue(st)).toBe(500_000);
+  st.role = 'hall';
+  expect(salaryDue(st)).toBe(1_000_000);
+  st.role = null; st.training = { id: 'tr_barista', daysLeft: 2 };
+  expect(salaryDue(st)).toBe(1_000_000);
+});
+
+// ---------- 채용·슬롯 ----------
 
 test('채용: 슬롯이 있어야 하고, 역할이 해금돼야 하고, 후보가 사라진다', () => {
   const s = bareState(1);
@@ -59,9 +133,28 @@ test('채용: 슬롯이 있어야 하고, 역할이 해금돼야 하고, 후보�
   expect(apply(s, { type: 'hire', candidateId: c.id, role: 'hall' }).ok).toBe(true);
   expect(s.staff.length).toBe(1); expect(s.staff[0]!.role).toBe('hall'); expect(s.candidates.length).toBe(2);
   expect(s.staff[0]!.energy).toBe(100);
+  expect(s.staff[0]!.exp).toBe(0);
   apply(s, { type: 'hire', candidateId: s.candidates[0]!.id, role: 'hall' });
   expect(apply(s, { type: 'hire', candidateId: s.candidates[0]!.id, role: 'hall' }).ok).toBe(false); // 슬롯 2 초과
   expect(apply(s, { type: 'hire', candidateId: 'nope', role: 'hall' }).ok).toBe(false);
+});
+
+test('직원 정원 = 3 + 휴게실(staff_room) × 3 (휴게실 최대 3)', () => {
+  const s = bareState(1);
+  s.money = 1e9;
+  expect(staffCapacity(s)).toBe(3);
+  apply(s, { type: 'postJob', tier: 'flyer' }); apply(s, { type: 'postJob', tier: 'flyer' });
+  expect(apply(s, { type: 'hire', candidateId: s.candidates[0]!.id, role: 'hall' }).ok).toBe(true);
+  expect(apply(s, { type: 'hire', candidateId: s.candidates[0]!.id, role: 'barista' }).ok).toBe(true);
+  expect(apply(s, { type: 'hire', candidateId: s.candidates[0]!.id, role: 'cook' }).ok).toBe(true);
+  const r = apply(s, { type: 'hire', candidateId: s.candidates[0]!.id, role: 'hall' });
+  expect(r.ok).toBe(false); expect(r.reason).toContain('3명');
+  // 휴게실은 A가 만든다 — 여기서는 objects에 직접 흉내 낸다
+  s.objects['room1'] = { id: 'room1', type: 'staff_room', x: 0, y: 0, rot: 0, placedMonth: 0, build: null } as never;
+  expect(staffCapacity(s)).toBe(6);
+  expect(apply(s, { type: 'hire', candidateId: s.candidates[0]!.id, role: 'hall' }).ok).toBe(true);
+  for (let i = 2; i <= 5; i++) s.objects[`room${i}`] = { id: `room${i}`, type: 'staff_room', x: 0, y: i, rot: 0, placedMonth: 0, build: null } as never;
+  expect(staffCapacity(s)).toBe(12);
 });
 
 test('후보는 다음 달 초에 사라진다', () => {
@@ -90,7 +183,7 @@ test('월말 월급 차감, 못 주면 unpaidMonths, 2달이면 퇴사', () => {
   const { s, st } = hired();
   const sal = st.salary;
   s.money = sal + 100;
-  s.settleGrantUsed = true; // 잔고가 40만 아래로 떨어져도 지원금이 안 들어오게
+  s.loan.count = LOAN_MAX; // 잔고가 40만 아래로 떨어져도 삼춘 대출이 안 들어오게
   for (let i = 0; i < 30; i++) tick(s, DAY_MS);
   expect(s.lastMonthCard!.costs.salary).toBe(sal);
   expect(s.money).toBe(100);
@@ -105,24 +198,31 @@ test('월말 월급 차감, 못 주면 unpaidMonths, 2달이면 퇴사', () => {
   expect(quit[0]).toContain(st.name);
 });
 
-test('assign·fire·levelUp(스탯 선택, 비용 = 스탯×10)', () => {
+// ---------- 승급 (§3.6.3 경험치) ----------
+
+test('assign·fire·승급: 경험치 ≥ 120×Lv 그리고 연구 20×Lv, 주 스탯 +3·나머지 +1', () => {
   const { s, st } = hired();
   expect(apply(s, { type: 'assign', staffId: st.id, role: 'barista' }).ok).toBe(true);
   expect(st.role).toBe('barista');
   expect(apply(s, { type: 'assign', staffId: st.id, role: 'carry' }).ok).toBe(false); // 미해금
-  expect(apply(s, { type: 'assign', staffId: st.id, role: null }).ok).toBe(true);
+  expect(apply(s, { type: 'assign', staffId: st.id, role: 'hall' }).ok).toBe(true);
   const before = { ...st.stats };
-  const cost = before.smile * 10;
-  s.research = cost - 1;
-  expect(apply(s, { type: 'levelUp', staffId: st.id, stat: 'smile' }).ok).toBe(false);
-  s.research = cost;
-  expect(apply(s, { type: 'levelUp', staffId: st.id, stat: 'smile' }).ok).toBe(true);
+  s.research = 1000;
+  st.exp = expNeeded(1) - 1;
+  expect(apply(s, { type: 'levelUp', staffId: st.id }).ok).toBe(false); // 경험치 부족
+  st.exp = expNeeded(1);
+  s.research = levelUpCost(1) - 1;
+  expect(apply(s, { type: 'levelUp', staffId: st.id }).ok).toBe(false); // 연구 부족
+  s.research = levelUpCost(1);
+  expect(apply(s, { type: 'levelUp', staffId: st.id }).ok).toBe(true);
   expect(s.research).toBe(0);
+  expect(st.exp).toBe(0);
   expect(st.level).toBe(2);
-  expect(st.stats.smile - before.smile).toBeGreaterThanOrEqual(5);
-  expect(st.stats.smile - before.smile).toBeLessThanOrEqual(9);
-  expect(st.stats.skill).toBe(before.skill);
-  expect(st.salary).toBe(salaryOf(st.stats, 2));
+  expect(st.stats.smile - before.smile).toBe(3); // 홀 = 미소
+  expect(st.stats.skill - before.skill).toBe(1);
+  expect(st.stats.stamina - before.stamina).toBe(1);
+  expect(st.stats.strength - before.strength).toBe(1);
+  expect(st.salary).toBe(salaryOf(st));
   const m0 = s.money;
   const recruit0 = s.monthCosts.recruit;
   expect(apply(s, { type: 'fire', staffId: st.id }).ok).toBe(true);
@@ -131,18 +231,205 @@ test('assign·fire·levelUp(스탯 선택, 비용 = 스탯×10)', () => {
   expect(apply(s, { type: 'fire', staffId: st.id }).ok).toBe(false);
 });
 
-test('levelUp은 10레벨까지', () => {
+test('경험치: 근무일마다 +1 (쉬는 직원·연수 중은 안 오름), 서빙 1건 +0.2', () => {
   const { s, st } = hired();
-  st.level = 10; s.research = 1e6;
-  expect(apply(s, { type: 'levelUp', staffId: st.id, stat: 'skill' }).ok).toBe(false);
+  for (let d = 0; d < 3; d++) tick(s, DAY_MS);
+  expect(st.exp).toBe(3);
+  addRoleExp(s, 'hall');
+  expect(st.exp).toBeCloseTo(3.2);
+  addRoleExp(s, 'barista');
+  expect(st.exp).toBeCloseTo(3.2);
+  apply(s, { type: 'assign', staffId: st.id, role: null });
+  dailyWorkExp(s);
+  expect(st.exp).toBeCloseTo(3.2);
 });
 
-test('levelUp 스탯은 99를 넘지 않는다', () => {
+test('승급은 최대 레벨까지, 스탯은 상한(스탯별 + 유니폼 +5/벌, 최대 +25)을 넘지 않는다', () => {
   const { s, st } = hired();
-  st.stats.skill = 97; s.research = 1e6;
-  expect(apply(s, { type: 'levelUp', staffId: st.id, stat: 'skill' }).ok).toBe(true);
-  expect(st.stats.skill).toBe(MAX_STAT);
-  expect(st.salary).toBe(salaryOf(st.stats, 2));
+  st.level = st.maxLevel; s.research = 1e6; st.exp = 1e6;
+  expect(apply(s, { type: 'levelUp', staffId: st.id }).ok).toBe(false);
+  st.level = 1;
+  st.stats.smile = st.statCaps.smile - 1;
+  expect(apply(s, { type: 'levelUp', staffId: st.id }).ok).toBe(true);
+  expect(st.stats.smile).toBe(st.statCaps.smile);
+  expect(capOf(s, st, 'smile')).toBe(st.statCaps.smile);
+  s.uniforms = ['uf_hawaiian', 'uf_galot'];
+  expect(capOf(s, st, 'smile')).toBe(st.statCaps.smile + 10);
+  s.uniforms = ['a', 'b', 'c', 'd', 'e', 'f', 'g'];
+  expect(capOf(s, st, 'smile')).toBe(st.statCaps.smile + 25);
+});
+
+// ---------- 연수 (§3.6.4) ----------
+
+function trainee(): { s: GameState; st: Staff } {
+  const { s, st } = hired();
+  s.rank = TRAINING_RANK; s.money = 1e8;
+  return { s, st };
+}
+
+test('연수 5종: 랭크 3부터, 비용을 내고 n일 자리를 비운 뒤 스탯이 오른다 (상한 내)', () => {
+  const { s, st } = hired();
+  s.money = 1e8;
+  expect(apply(s, { type: 'train', staffId: st.id, trainingId: 'tr_barista' }).ok).toBe(false); // 랭크
+  s.rank = TRAINING_RANK;
+  const skill0 = st.stats.skill;
+  expect(apply(s, { type: 'train', staffId: st.id, trainingId: 'nope' }).ok).toBe(false);
+  expect(apply(s, { type: 'train', staffId: st.id, trainingId: 'tr_barista' }).ok).toBe(true);
+  expect(s.money).toBe(1e8 - 1_000_000);
+  expect(st.training).toEqual({ id: 'tr_barista', daysLeft: 3 });
+  expect(roleEffect(s, 'hall')).toBe(0); // 자리 비움
+  expect(apply(s, { type: 'train', staffId: st.id, trainingId: 'tr_service' }).ok).toBe(false); // 이미 연수 중
+  expect(apply(s, { type: 'assign', staffId: st.id, role: null }).ok).toBe(false);
+  expect(apply(s, { type: 'fire', staffId: st.id }).ok).toBe(false);
+  st.energy = 5;
+  tick(s, DAY_MS); tick(s, DAY_MS);
+  expect(st.training!.daysLeft).toBe(1);
+  expect(st.stats.skill).toBe(skill0);
+  expect(st.energy).toBe(85); // 연수 중엔 안 닳고 밤에 +40씩 회복
+  tick(s, DAY_MS);
+  expect(st.training).toBeNull();
+  expect(st.stats.skill).toBe(skill0 + 6);
+  expect(st.role).toBe('hall');
+  expect(s.notices.some((n) => n.includes('돌아왔어요') && n.includes('기술 +6'))).toBe(true);
+  expect(st.salary).toBe(salaryOf(st));
+});
+
+test('연수 5종 효과: 기술·미소·체력·힘 +6, 종합은 전 스탯 +3 + 새 특기 (★3·Lv5)', () => {
+  const expected: Record<string, Partial<Stats>> = {
+    tr_barista: { skill: 6 }, tr_service: { smile: 6 }, tr_stamina: { stamina: 6 }, tr_strength: { strength: 6 },
+    tr_master: { stamina: 3, strength: 3, skill: 3, smile: 3 },
+  };
+  for (const def of TRAININGS) {
+    const { s, st } = trainee();
+    st.stats = { stamina: 10, strength: 10, skill: 10, smile: 10 };
+    if (def.id === 'tr_master') {
+      expect(canTrain(s, st.id, def.id).ok).toBe(false);
+      s.star = 3;
+      expect(canTrain(s, st.id, def.id).ok).toBe(false);
+      st.level = 5;
+    }
+    expect(apply(s, { type: 'train', staffId: st.id, trainingId: def.id }).ok).toBe(true);
+    for (let d = 0; d < def.days; d++) tick(s, DAY_MS);
+    expect(st.training).toBeNull();
+    for (const k of ['stamina', 'strength', 'skill', 'smile'] as const) expect(st.stats[k]).toBe(10 + (expected[def.id]![k] ?? 0));
+    if (def.grantSkill) {
+      expect(st.extraSkills.length).toBe(1);
+      expect(st.extraSkills[0]).not.toBe(st.skill);
+      expect(SKILLS.some((x) => x.id === st.extraSkills[0])).toBe(true);
+    } else expect(st.extraSkills).toEqual([]);
+  }
+});
+
+test('연수 비용은 같은 직원의 n번째마다 +20% (기본 × (1 + 0.2 × (n−1))), 상한에 닿으면 덜 오른다', () => {
+  const { s, st } = trainee();
+  expect(trainingCost(st, 'tr_stamina')).toBe(600_000);
+  apply(s, { type: 'train', staffId: st.id, trainingId: 'tr_stamina' });
+  for (let d = 0; d < 3; d++) tick(s, DAY_MS);
+  expect(trainingCost(st, 'tr_stamina')).toBe(720_000);
+  expect(trainingCost(st, 'tr_barista')).toBe(1_200_000);
+  const m = s.money;
+  apply(s, { type: 'train', staffId: st.id, trainingId: 'tr_barista' });
+  expect(s.money).toBe(m - 1_200_000);
+  for (let d = 0; d < 3; d++) tick(s, DAY_MS);
+  expect(trainingCost(st, 'tr_stamina')).toBe(840_000);
+  st.stats.stamina = st.statCaps.stamina - 2;
+  apply(s, { type: 'train', staffId: st.id, trainingId: 'tr_stamina' });
+  for (let d = 0; d < 3; d++) tick(s, DAY_MS);
+  expect(st.stats.stamina).toBe(st.statCaps.stamina);
+});
+
+test('연수 우등생 특기는 연수 효과 ×1.5', () => {
+  const { s, st } = trainee();
+  st.skill = 'star_student';
+  expect(trainingMultOf(st)).toBe(1.5);
+  const before = st.stats.smile;
+  apply(s, { type: 'train', staffId: st.id, trainingId: 'tr_service' });
+  for (let d = 0; d < 3; d++) tick(s, DAY_MS);
+  expect(st.stats.smile).toBe(before + 9);
+});
+
+// ---------- 신설 직종 효과 훅 ----------
+
+test('청소 직종: cleanPowerOf = Σ(기술÷5 + 힘÷10) × 기력, 청소 달인 ×1.5', () => {
+  const s = bareState(1);
+  expect(cleanPowerOf(s)).toBe(0);
+  s.staff.push(staffWith({ skill: 50, strength: 40 }, 'clean'));
+  expect(cleanPowerOf(s)).toBe(14);
+  s.staff[0]!.energy = 10;
+  expect(cleanPowerOf(s)).toBe(7);
+  s.staff[0]!.energy = 100;
+  s.staff.push(staffWith({ skill: 20, strength: 20 }, 'clean', 'clean_master'));
+  expect(cleanPowerOf(s)).toBeCloseTo((14 + 6) * 1.5);
+  s.staff[1]!.role = 'hall';
+  expect(cleanPowerOf(s)).toBe(14); // 청소 직원의 특기만
+});
+
+test('농원지기: 수확 ×(1 + 0.5/명, 최대 2명) + 농원지기 특기 0.3, 노후 ×0.5', () => {
+  const s = bareState(1);
+  expect(gardenBonusOf(s)).toBe(1);
+  expect(gardenDecayOf(s)).toBe(1);
+  s.staff.push(staffWith({}, 'garden'));
+  expect(gardenBonusOf(s)).toBe(1.5);
+  expect(gardenDecayOf(s)).toBe(0.5);
+  s.staff.push(staffWith({ strength: 20 }, 'garden'));
+  s.staff.push(staffWith({ strength: 30 }, 'garden'));
+  expect(gardenBonusOf(s)).toBe(2);
+  s.staff.push(staffWith({ smile: 50 }, 'hall', 'orchard_keeper'));
+  expect(gardenBonusOf(s)).toBeCloseTo(2.3);
+  s.staff[0]!.training = { id: 'tr_stamina', daysLeft: 1 };
+  expect(gardenBonusOf(s)).toBeCloseTo(2.3); // 2명 상한이라 그대로
+  s.staff[1]!.training = { id: 'tr_stamina', daysLeft: 1 };
+  expect(gardenBonusOf(s)).toBeCloseTo(1.8);
+});
+
+test('농원지기 효과는 실제 월 수확에 곱해진다', () => {
+  const s = bareState(1);
+  placeObject(s, 'tangerine_tree', X(2), Y(2));
+  for (const o of Object.values(s.objects)) o.placedMonth = -1;
+  const base = expectedHarvest(s)['tangerine'] ?? 0;
+  expect(base).toBeGreaterThan(0);
+  s.staff.push(staffWith({}, 'garden'));
+  expect(expectedHarvest(s)['tangerine']).toBe(Math.floor(base * 1.5));
+});
+
+test('홍보 담당: 홍보 효과 ×1.2, 기력 소모 ×0.5', () => {
+  const s = bareState(1);
+  expect(promoBonusOf(s)).toBe(1);
+  expect(promoEnergyFactorOf(s)).toBe(1);
+  s.staff.push(staffWith({ smile: 30 }, 'promo'));
+  expect(promoBonusOf(s)).toBe(1.2);
+  expect(promoEnergyFactorOf(s)).toBe(0.5);
+  const st = s.staff[0]!;
+  st.energy = 100; s.research = 1000; s.money = 1e8;
+  expect(apply(s, { type: 'promote', staffId: st.id, promotionId: 'flyer' }).ok).toBe(true);
+  expect(st.energy).toBe(90); // 기본 −20의 절반
+});
+
+test('직종 해금: 농원지기 = 농원 시설 3개, 홍보 담당 = 랭크 4 (새 날 판정)', () => {
+  const s = bareState(1);
+  expect(s.unlocked.roles).not.toContain('garden');
+  placeObject(s, 'tangerine_tree', X(2), Y(2)); placeObject(s, 'tangerine_tree', X(3), Y(2));
+  checkRoleUnlocks(s);
+  expect(farmCount(s)).toBe(2);
+  expect(s.unlocked.roles).not.toContain('garden');
+  placeObject(s, 'carrot_field', X(4), Y(2));
+  tick(s, DAY_MS);
+  expect(s.unlocked.roles).toContain('garden');
+  expect(s.unlocked.roles).not.toContain('promo');
+  s.rank = 4;
+  tick(s, DAY_MS);
+  expect(s.unlocked.roles).toContain('promo');
+  expect(s.unlocked.roles).not.toContain('clean'); // 목표 보상(B)
+  expect(s.notices.filter((n) => n.startsWith('새 직종')).length).toBe(2);
+});
+
+test('특기 합은 타고난 특기 + 연수로 얻은 특기', () => {
+  const s = bareState(1);
+  const st = staffWith({}, 'hall', 'thrifty');
+  st.extraSkills = ['frugal'];
+  s.staff.push(st);
+  expect(skillTotal(s, 'ingredientDiscount')).toBeCloseTo(0.15);
+  expect(TIERS.flyer.count).toBe(3);
 });
 
 test('roleEffect: 역할별 핵심 스탯 합, 운반·절약 할인, 기력 30 미만이면 절반', () => {
@@ -151,7 +438,7 @@ test('roleEffect: 역할별 핵심 스탯 합, 운반·절약 할인, 기력 30 
   expect(roleEffect(s, 'carry')).toBe(10);
   expect(roleEffect(s, 'hall')).toBe(0);
   expect(ingredientDiscount(s)).toBeCloseTo(10 / 500 + 0.1);
-  expect(ingredientCost(s, 'latte')).toBe(Math.round(1900 * (1 - 0.12)));
+  expect(ingredientCost(s, 'latte')).toBe(Math.round(2100 * (1 - 0.12)));
   s.staff.push(staffWith({ smile: 40 }, 'hall'));
   s.staff.push(staffWith({ smile: 20 }, 'hall'));
   expect(roleEffect(s, 'hall')).toBe(60);

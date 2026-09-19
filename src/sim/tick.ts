@@ -4,11 +4,13 @@ import { monthlyHarvest } from './orchard.ts';
 import { checkGoals } from './goals.ts';
 import { monthlyBigEvents, dailyBigEvents, hourlyBigEvents } from './events.ts';
 import { hourlySpawn, hourlyRegulars, updateGuests } from './guests.ts';
-import { upkeep, closeMonth } from './economy.ts';
-import { payroll, expireCandidates, hourlyEnergy, nightlyRecovery, moveStaff } from './staff.ts';
+import { upkeep, closeMonth, annualRaise, incomeTax, TAX_MONTH } from './economy.ts';
+import { checkLoan, monthlyFailure } from './failure.ts';
+import { resetWaiting } from './guests.ts';
+import { nightlyReputation, monthlyReputation } from './reputation.ts';
+import { payroll, expireCandidates, hourlyEnergy, nightlyRecovery, moveStaff, dailyWorkExp, checkRoleUnlocks } from './staff.ts';
+import { dailyTraining } from './training.ts';
 import { expirePromotions } from './promotions.ts';
-import { SETTLE_GRANT, SETTLE_GRANT_THRESHOLD } from './state.ts';
-import { pushNotice } from './staff.ts';
 import { evaluateUnlocks } from './segments.ts';
 import { dailyBoard, monthlyBoard } from './board.ts';
 import { pruneEffects } from './effects.ts';
@@ -17,9 +19,12 @@ import { advanceConstruction } from './build.ts';
 import { monthlyShop } from './shop.ts';
 import { monthlyRank } from './guidebook.ts';
 import { monthlyMileage } from './mileage.ts';
+import { dailySpots, monthlySpots } from './spots.ts';
+import { monthlyGifts } from './items.ts';
 import { fmtNum } from './format.ts';
 import { hourlyPopup, dailyPopup } from './popup.ts';
 import { monthlyRivals } from './rivals.ts';
+import { dailyCleanliness } from './cleanliness.ts';
 
 export const STEP_MS = 100;        // 고정 스텝 (게임 ms)
 const MAX_STEPS_PER_TICK = 600;    // 백그라운드 복귀 등 폭주 방지 (60초 게임 시간)
@@ -28,32 +33,46 @@ const HOURS_PER_DAY = END_HOUR - START_HOUR;
 /** 시간이 한 칸 지날 때마다 (새 시각 = state.clock.hour) */
 function onNewHour(state: GameState): void {
   hourlyEnergy(state);
-  hourlySpawn(state);
-  hourlyRegulars(state);
+  hourlyRegulars(state); // 단골★·특별 손님이 일반 손님(대기열)보다 먼저 자리를 잡는다
   hourlyBigEvents(state);
+  hourlySpawn(state);
   hourlyPopup(state);
   checkGoals(state); // 목표 줄이 1/1로 하루 종일 멈춰 있지 않게 매시간 판정 (달성 즉시 보상·대화창)
 }
 
-/** 새 날 (6시의 시간 처리보다 먼저): 효과 만료 → 빅 이벤트 종료 → 팝업 정리·지역 회복 → 밤 회복 → 게시판(부탁 진행·제안) → 메뉴 개발 완료 → 건설 → 목표 판정 */
+/** 새 날 (6시의 시간 처리보다 먼저): 효과 만료 → 빅 이벤트 종료 → 팝업 정리·지역 회복 → 밤 회복 → 근무 경험치·연수 복귀·직종 해금 → 게시판(부탁 진행·제안) → 메뉴 개발 완료 → 건설 → 목표 판정 */
 function onNewDay(state: GameState): void {
+  nightlyReputation(state); // 어제 만족·불만으로 평판 갱신
+  resetWaiting(state);
   pruneEffects(state);
+  dailyCleanliness(state); // 트랙 A: 청결 일일 변화 (spawnMult 효과 갱신)
   dailyBigEvents(state);
   dailyPopup(state);
   nightlyRecovery(state);
+  dailyWorkExp(state);
+  dailyTraining(state);
+  checkRoleUnlocks(state);
   dailyBoard(state);
+  dailySpots(state);
   resolveDevelop(state);
   advanceConstruction(state);
   checkGoals(state);
 }
 
-/** 월 바뀜 (1일의 날 처리보다 먼저): 월급 → 홍보 만료·인기 감소 → 유지비 → 손님 수 마일리지 → 정산 → 농원 수확 → 후보 만료 → 손님 해금 → 게시판 → 응모권·무료 추첨 → ★·가이드북 발표 → 라이벌 → 빅 이벤트 판정 */
+/** 월 바뀜 (1일의 날 처리보다 먼저): (3월) 급여 인상 → 월급 → 홍보 만료·인기 감소 → 유지비 → 투어 버스 → (3월) 소득세 → 명소 월 정산·선물 → 손님 수 마일리지 → 정산 → 실패 상태(경고·대출·상환·위기) → 평판 후기 → 농원 수확 → 후보 만료 → 손님 해금 → 게시판 → 응모권·무료 추첨 → ★·가이드북 발표 → 라이벌 → 빅 이벤트 판정 */
 function onNewMonth(state: GameState, prevMonth: number, prevYear: number): void {
+  const newYear = state.clock.month === TAX_MONTH && state.clock.year >= 2;
+  if (newYear) annualRaise(state);
   payroll(state);
   expirePromotions(state);
   upkeep(state);
+  if (newYear) incomeTax(state);
+  monthlySpots(state); // 투어 버스 월 계약비(트랙 C chargeTourBus → monthCosts.tourBus)
+  monthlyGifts(state);
   monthlyMileage(state);
   closeMonth(state, prevMonth, prevYear);
+  monthlyFailure(state);
+  monthlyReputation(state);
   monthlyHarvest(state);
   expireCandidates(state);
   evaluateUnlocks(state);
@@ -62,15 +81,6 @@ function onNewMonth(state: GameState, prevMonth: number, prevYear: number): void
   monthlyRank(state);
   monthlyRivals(state);
   monthlyBigEvents(state);
-}
-
-/** 정착지원금: 잔고가 40만 아래로 떨어지면 딱 한 번 300만 (GDD §1 비상금) */
-export function settleGrant(state: GameState): boolean {
-  if (state.settleGrantUsed || state.money >= SETTLE_GRANT_THRESHOLD) return false;
-  state.settleGrantUsed = true;
-  state.money += SETTLE_GRANT;
-  pushNotice(state, `정착지원금 ₩${fmtNum(SETTLE_GRANT)}을 받았어요`);
-  return true;
 }
 
 /** 고정 스텝 하나. 결정적. 리플레이는 이 함수만 호출한다. */
@@ -87,7 +97,7 @@ export function step(state: GameState): void {
   for (let i = 0; i < hours; i++) onNewHour(state);
   updateGuests(state, STEP_MS);
   moveStaff(state, STEP_MS);
-  settleGrant(state);
+  checkLoan(state);
   state.tick++;
 }
 

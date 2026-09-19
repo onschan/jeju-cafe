@@ -2,12 +2,13 @@
  *  카드 탭 → 아래 설명 2줄 + `짓기`(onPickBuild). 잠긴 것은 반투명 + 조건 한글. 철거·이동은 미니카드(트랙 C) 몫. */
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import type { GameState, ObjectDef } from '../../sim/index.ts';
-import { placeCost, constructions, canStartBuild, goalForFacility } from '../../sim/index.ts';
+import { placeCost, constructions, canStartBuild, goalForFacility, isUpgradable, tierOf, featureOpen } from '../../sim/index.ts';
 import { OBJECTS } from '../../data/index.ts';
 import { unlockText } from '../../data/labels.ts';
 import { loadSheet, drawFrame, type Sheet } from '../sheetCanvas';
 import { PALETTE, brownBtn, brownBtnOff } from '../frame';
 import { useWindowState, body, TabBar, soft, Empty, win, type WindowProps } from './shared.tsx';
+import { SiteToggle } from '../SiteToggle.tsx';
 
 export type BuildTab = 'rest' | 'convenience' | 'food' | 'fun' | 'farm' | 'scenery' | 'path' | 'wall';
 export const BUILD_TABS: { key: BuildTab; label: string }[] = [
@@ -78,6 +79,7 @@ export function BuildWindow(props: BuildWindowProps) {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0 8px', marginBottom: 6 }}>
         <span style={soft}>열린 것 {counts[tab] ?? 0} · 자금 {win(s.money)}</span>
         <span style={{ ...soft, color: busy >= s.builders ? PALETTE.bad : PALETTE.inkSoft }} data-testid="builders">건축가 {busy}/{s.builders} 작업 중</span>
+        {featureOpen(s, 'siteView') && <SiteToggle />}{/* 트랙 B: 튜토리얼 2단계 보상으로 열린다 */}
       </div>
       {items.length === 0 && <Empty>아직 여기엔 지을 게 없어요</Empty>}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
@@ -90,7 +92,7 @@ export function BuildWindow(props: BuildWindowProps) {
               style={{ ...cardBase, opacity: locked ? 0.5 : 1, boxShadow: on ? `0 0 0 3px ${PALETTE.btnOn}` : undefined }}>
               <SpriteBox sheet={sheet} id={def.id} kind={def.kind} />
               <div style={{ fontSize: 15, fontWeight: 700, lineHeight: 1.2 }}>{locked ? '🔒 ' : ''}{def.name}{def.indoor ? ' 🏠' : ''}</div>
-              <div style={{ fontSize: 14 }}>{cost > 0 ? win(cost) : '무료'}</div>
+              <div style={{ fontSize: 14 }}>{cost > 0 ? win(cost) : '무료'}{def.fee !== undefined && def.fee > 0 ? ` · 요금 ${win(def.fee)}` : ''}</div>
               <div style={{ ...soft, fontSize: 13 }}>
                 {def.kind === 'seat' ? `🪑 ${def.seats ?? 2}` : `👍 ${def.popularity ?? 10}`} · 🌿 {def.scenery}
               </div>
@@ -122,6 +124,7 @@ function PickedDetail({ s: def, locked, state, onPick }: { s: ObjectDef; locked:
     days > 0 ? `공사 ${days}일` : '바로 완성',
     `${def.w}×${def.h}칸`,
     def.indoor ? '실내(본관 안)' : null,
+    isUpgradable(def) ? `증축 Lv1~3 (${{ small: '소', medium: '중', large: '대' }[tierOf(def)]}형)` : null,
   ].filter(Boolean).join(' · ');
   return (
     <div data-testid="build-detail" style={{ position: 'sticky', bottom: 0, marginTop: 8, background: PALETTE.paper, borderTop: `3px solid ${PALETTE.wood}`, padding: '8px 0 4px' }}>

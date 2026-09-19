@@ -14,9 +14,9 @@ import { discoverCombos } from '../compat.ts';
 import { MILEAGE_SHOP, TICKET_SHOP, UNIFORMS, DRAW_PRIZES, ITEMS, itemDef, objectDef, COMBOS, POPULARITY_FRUIT, POPULARITY_FRUIT_DELTA } from '../../data/index.ts';
 import type { ComboDef } from '../types.ts';
 
-test('데이터: 마일리지 상점 14 · 응모권 상점 7(추첨 제외) · 유니폼 5 · 인형뽑기 8칸 합 100% · 강화 아이템 20 + 특수 12', () => {
-  expect(MILEAGE_SHOP).toHaveLength(14);
-  expect(TICKET_SHOP).toHaveLength(7);
+test('데이터: 마일리지 상점 20+1(망치) · 응모권 상점 9(추첨 제외) · 유니폼 5 · 인형뽑기 8칸 합 100% · 강화 아이템 20 + 특수 18+2(도구) + 선물 8', () => {
+  expect(MILEAGE_SHOP).toHaveLength(21);
+  expect(TICKET_SHOP).toHaveLength(9);
   expect(UNIFORMS).toHaveLength(5);
   expect(DRAW_PRIZES).toHaveLength(8);
   expect(DRAW_PRIZES.reduce((n, p) => n + p.pct, 0)).toBe(100);

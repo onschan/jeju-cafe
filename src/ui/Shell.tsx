@@ -7,7 +7,7 @@ import { GoalBar, GOAL_BAR_H } from './GoalBar';
 import { SpeedBar } from './SpeedBar';
 import { brownBtn, brownBtnOn, brownBtnOff, dangerBtn, PALETTE } from './frame';
 
-/** 상단 바 28px + 목표 줄 24px. 기본 상태에서 맵을 가리는 건 이것과 하단 바 48px뿐. */
+/** 상단 바 28px + 목표 줄 44px(목표 24 + 도전 20, §7.3). 기본 상태에서 맵을 가리는 건 이것과 하단 바 48px뿐. */
 export const TOP_BAR_H = 28;
 export const SHELL_TOP = TOP_BAR_H + GOAL_BAR_H;
 export const BOTTOM_BAR_H = 48;
@@ -33,6 +33,7 @@ export function TopBar({ onOpen }: { onOpen: () => void }) {
       <span>{s.clock.year}년 {s.clock.month}월 {s.clock.day}일</span>
       <span aria-label={season}>{SEASON_ICON[season]}</span>
       <span title={s.money.toLocaleString()}><Icon name="money" size={16} alt="돈" /> {compactMoney(s.money)}</span>
+      <span aria-label={`평판 ${Math.round(s.reputation)}`} title="평판">♥{Math.round(s.reputation)}</span>
       <span aria-label={`별 ${s.star}`}>{'★'.repeat(Math.max(1, Math.min(5, s.star)))}<span style={{ color: PALETTE.inkSoft }}>{'☆'.repeat(5 - Math.max(1, Math.min(5, s.star)))}</span></span>
     </button>
   );
@@ -60,7 +61,7 @@ export function BottomBar({ onOpen }: { onOpen: (kind: WindowKind) => void }) {
   return (
     <div data-testid="bottom-bar" style={barStyle}>
       {MAIN_TABS.map((t) => (
-        <button key={t.kind} data-tab={t.label} aria-label={t.label} onClick={() => onOpen(t.kind)}
+        <button key={t.kind} data-tab={t.label} data-tut={`nav:${t.kind}`} aria-label={t.label} onClick={() => onOpen(t.kind)}
           style={{ ...brownBtn, flex: 1, minWidth: 0, margin: 0, padding: 0, fontSize: 14, lineHeight: 1, height: 44, display: 'inline-flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2, whiteSpace: 'nowrap', position: 'relative' }}>
           <Icon name={t.icon} size={16} /><span>{t.label}</span>
           {t.kind === 'people' && badge > 0 && <span data-testid="board-badge" style={{ position: 'absolute', top: -6, right: -4, minWidth: 18, height: 18, borderRadius: 9, background: PALETTE.bad, color: '#fff', fontSize: 11, lineHeight: '18px', textAlign: 'center', padding: '0 4px' }}>{badge}</span>}
