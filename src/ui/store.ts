@@ -33,7 +33,10 @@ function getOrCreatePlayerId(): string {
   }
 }
 
-let state: GameState = createInitialState(Date.now() % 1_000_000, getOrCreatePlayerId(), Date.now());
+// 개발 중 sim 파일을 고쳐 이 모듈이 다시 실행돼도(HMR) 플레이 중인 상태를 잇는다 — 안 그러면 시작 마당(튜토리얼 건너뜀)으로 조용히 바뀐다
+const hotData = (import.meta.hot?.data ?? null) as { state?: GameState } | null;
+let state: GameState = hotData?.state ?? createInitialState(Date.now() % 1_000_000, getOrCreatePlayerId(), Date.now());
+if (import.meta.hot) import.meta.hot.dispose((d) => { d.state = state; });
 let version = 0;
 const listeners = new Set<() => void>();
 let messages: UiMessage[] = [];
