@@ -129,17 +129,25 @@ export function GuestsPanel({ onGuest, sub: fixed }: { onGuest: (guestId: string
       {sub === 'codex' && (
         <div>
           <div style={{ fontSize: 13, color: PALETTE.inkSoft, marginBottom: 4 }}>손님 도감 {unlocked.size}/{GUEST_TYPES.length} · 만족 30이면 부탁을 들고 와요</div>
-          {GUEST_TYPES.map((t) => {
-            const open = unlocked.has(t.id);
+          {GUEST_TYPES.filter((t) => unlocked.has(t.id)).map((t) => {
             const st = s.guestTypes[t.id];
             return (
-              <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 6, opacity: open ? 1 : 0.5, marginBottom: 2, fontSize: 14 }}>
-                {open ? <Portrait parts={guestPortraitParts(t.id)} face={guestFace(t.id)} size={24} /> : <span style={{ width: 24, textAlign: 'center' }}>?</span>}
-                <span style={{ flex: 1 }}>{open ? t.name : '???'}</span>
-                {open && <span style={{ fontSize: 12, whiteSpace: 'nowrap' }}><Bar value={st?.satisfaction ?? 0} max={100} width={60} /> {st?.satisfaction ?? 0}{st?.regular === 'vip' ? ' VIP' : st?.regular === 'regular' ? ' 단골' : ''}</span>}
+              <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2, fontSize: 14 }}>
+                <Portrait parts={guestPortraitParts(t.id)} face={guestFace(t.id)} size={24} />
+                <span style={{ flex: 1 }}>{t.name}</span>
+                <span style={{ fontSize: 12, whiteSpace: 'nowrap' }}><Bar value={st?.satisfaction ?? 0} max={100} width={60} /> {st?.satisfaction ?? 0}{st?.regular === 'vip' ? ' VIP' : st?.regular === 'regular' ? ' 단골' : ''}</span>
               </div>
             );
           })}
+          {/* 아직 안 온 손님은 한 줄에 하나씩 100개를 늘어놓지 않고 ? 칸으로 모아 보여 준다 */}
+          {GUEST_TYPES.length > unlocked.size && (
+            <div style={{ marginTop: 6 }}>
+              <div style={{ fontSize: 13, color: PALETTE.inkSoft, marginBottom: 4 }}>아직 안 온 손님 {GUEST_TYPES.length - unlocked.size}종</div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }} data-testid="codex-locked">
+                {GUEST_TYPES.filter((t) => !unlocked.has(t.id)).map((t) => <span key={t.id} style={{ width: 24, height: 24, lineHeight: '24px', textAlign: 'center', border: `1px solid ${PALETTE.woodLight}`, borderRadius: 4, color: PALETTE.inkSoft, fontSize: 13 }}>?</span>)}
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
