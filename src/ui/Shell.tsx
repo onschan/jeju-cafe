@@ -15,7 +15,8 @@ export const BOTTOM_BAR_H = 48;
 /** 하단 바 48 + 메시지 줄 24 (§5.5). 미니카드·고스트 버튼은 이 위에 놓는다 */
 export const SHELL_BOTTOM = BOTTOM_BAR_H + MESSAGE_LINE_H;
 
-const SEASON_ICON: Record<Season, string> = { spring: '🌸', summer: '☀️', autumn: '🍂', winter: '❄️' };
+const SEASON_ICON: Record<Season, string> = { spring: 'spring', summer: 'summer', autumn: 'autumn', winter: 'winter' };
+const SEASON_LABEL: Record<Season, string> = { spring: '봄', summer: '여름', autumn: '가을', winter: '겨울' };
 
 export type WindowKind = 'build' | 'cafe' | 'people' | 'ledger';
 
@@ -34,9 +35,9 @@ export function TopBar({ onOpen }: { onOpen: () => void }) {
     <button data-testid="top-bar" onClick={onOpen} aria-label="경영 현황"
       style={{ position: 'absolute', top: 0, left: 0, right: 0, height: TOP_BAR_H, padding: '0 10px', border: 0, borderBottom: `2px solid ${PALETTE.wood}`, background: PALETTE.paper, color: PALETTE.ink, fontFamily: 'inherit', fontSize: 14, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, whiteSpace: 'nowrap', overflow: 'hidden', zIndex: 10 }}>
       <span>{s.clock.year}년 {s.clock.month}월 {s.clock.day}일</span>
-      <span aria-label={season}>{SEASON_ICON[season]}</span>
+      <span aria-label={SEASON_LABEL[season]} title={SEASON_LABEL[season]}><Icon name={SEASON_ICON[season]} size={16} /></span>
       <span title={wonText(s.money)}><Icon name="money" size={16} alt="돈" /> {wonText(s.money, true)}</span>
-      <span aria-label={`평판 ${Math.round(s.reputation)}`} title="평판">♥{Math.round(s.reputation)}</span>
+      <span aria-label={`평판 ${Math.round(s.reputation)}`} title="평판"><Icon name="heart" size={14} />{Math.round(s.reputation)}</span>
       <span aria-label={`별 ${s.star}`}>{'★'.repeat(Math.max(1, Math.min(5, s.star)))}<span style={{ color: PALETTE.inkSoft }}>{'☆'.repeat(5 - Math.max(1, Math.min(5, s.star)))}</span></span>
     </button>
   );
@@ -82,7 +83,7 @@ export interface PlaceBarProps {
   canRotate: boolean;
   /** 확정 버튼 없이 완료만 (길·담 칠하기·철거·이동 대기) */
   paint?: boolean;
-  /** 연속 배치 모드(§5.3): 취소 대신 `✓ 완료`로 나간다 */
+  /** 연속 배치 모드(§5.3): 취소 대신 `완료`로 나간다 */
   continuous?: boolean;
   /** 되돌리기 가능하면 ↶ 버튼 (§5.3) */
   onUndo?: (() => void) | null;
@@ -95,14 +96,14 @@ export function PlaceBar({ text, ok, canRotate, paint, continuous, onUndo, onCon
   return (
     <div data-testid="place-bar" style={barStyle}>
       <div data-testid="place-text" style={{ position: 'absolute', left: 8, right: 8, bottom: `calc(100% + ${MESSAGE_LINE_H + 4}px)`, background: PALETTE.paper, color: ok ? PALETTE.ok : PALETTE.bad, border: `2px solid ${PALETTE.wood}`, borderRadius: 6, padding: '4px 8px', fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', pointerEvents: 'none' }}>{text}</div>
-      {onUndo !== undefined && <button aria-label="되돌리기" disabled={!onUndo} style={{ ...(onUndo ? brownBtn : brownBtnOff), margin: 0, flex: 1, minWidth: 0, fontSize: 15, padding: 0 }} onClick={() => onUndo?.()}>↶ 되돌리기</button>}
+      {onUndo !== undefined && <button aria-label="되돌리기" disabled={!onUndo} style={{ ...(onUndo ? brownBtn : brownBtnOff), margin: 0, flex: 1, minWidth: 0, fontSize: 15, padding: 0 }} onClick={() => onUndo?.()}><Icon name="undo" /> 되돌리기</button>}
       {canRotate && <button aria-label="회전" style={{ ...brownBtn, margin: 0, flex: 1, minWidth: 0, fontSize: 16, padding: 0 }} onClick={onRotate}>↻ 회전</button>}
       {paint
-        ? <button aria-label="완료" style={{ ...brownBtnOn, margin: 0, flex: 2, minWidth: 0, fontSize: 16 }} onClick={onCancel}>✓ 완료</button>
-        : <button aria-label="확정" style={{ ...(ok ? brownBtnOn : brownBtnOff), margin: 0, flex: 2, minWidth: 0, fontSize: 16 }} onClick={onConfirm}>✓ 확정</button>}
+        ? <button aria-label="완료" style={{ ...brownBtnOn, margin: 0, flex: 2, minWidth: 0, fontSize: 16 }} onClick={onCancel}><Icon name="check" /> 완료</button>
+        : <button aria-label="확정" style={{ ...(ok ? brownBtnOn : brownBtnOff), margin: 0, flex: 2, minWidth: 0, fontSize: 16 }} onClick={onConfirm}><Icon name="check" /> 확정</button>}
       {!paint && (continuous
-        ? <button aria-label="완료" style={{ ...brownBtn, margin: 0, flex: 1, minWidth: 0, fontSize: 15, padding: 0 }} onClick={onCancel}>✓ 완료</button>
-        : <button aria-label="취소" style={{ ...dangerBtn, margin: 0, flex: 1, minWidth: 0, fontSize: 16, padding: 0 }} onClick={onCancel}>✗ 취소</button>)}
+        ? <button aria-label="완료" style={{ ...brownBtn, margin: 0, flex: 1, minWidth: 0, fontSize: 15, padding: 0 }} onClick={onCancel}><Icon name="check" /> 완료</button>
+        : <button aria-label="취소" style={{ ...dangerBtn, margin: 0, flex: 1, minWidth: 0, fontSize: 16, padding: 0 }} onClick={onCancel}><Icon name="close" /> 취소</button>)}
     </div>
   );
 }

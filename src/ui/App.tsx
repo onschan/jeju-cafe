@@ -3,7 +3,7 @@ import { wonText, label } from '../data/labels.ts';
 import { GameView, type GhostSpec, type RangeHint } from '../render/GameView';
 import { startLoop, dispatch, getState, useGame, setViewReset, autosaveNow, hasAnySave, loadSlot, setMonthCardHook, setSceneHook, showMessage, pauseGame, isSpeedLocked, setSpeedLocked } from './store';
 import { unlockAudio, bgm, isMuted, setMuted, getBgmVolume, getSfxVolume, setBgmVolume, setSfxVolume, sfx } from './audio';
-import { seasonOf, canPlace, objectAt, footprint, sizeOf, mainBuilding, parcelAt, clearCost, placeCost, PROTECTED_TYPES, ROTATABLE_TYPES, goalForMenu, featureOpen, canUndo, demolishRefund, routeAtCell, type GameState } from '../sim/index.ts';
+import { seasonOf, canPlace, objectAt, footprint, sizeOf, mainBuilding, parcelAt, clearCost, placeCost, PROTECTED_TYPES, ROTATABLE_TYPES, goalForMenu, featureOpen, canUndo, demolishRefund, canDisturb, routeAtCell, tutorialDone, type GameState } from '../sim/index.ts';
 import { RoutesSection } from './RouteCard'; // 트랙 H
 import { objectDef } from '../data/index.ts';
 // render/·ui/는 Vite 전용이라 확장자 없는 import 허용. sim/·data/만 .ts 확장자 규칙.
@@ -13,7 +13,7 @@ import { Window, type IconGridItem } from './Window';
 import { MessageLine } from './MessageLine';
 import { MiniCard, MainCard, type CardTarget, type CardActions } from './MiniCard';
 import { DialogueHost } from './Dialogue.tsx';
-import { checkTutorial, setTutorialSkip } from './tutorialDialogue';
+import { checkTutorial, setTutorialDispatch, useTutorialNote } from './tutorialDialogue';
 import { useTutorialHighlight } from './tutorialHighlight';
 import { RewardPopup } from './RewardPopup';
 import { checkAlerts } from './alertDialogue.ts';
@@ -38,6 +38,7 @@ import { brownBtn, brownBtnOn, brownBtnOff, dangerBtn, card, PALETTE } from './f
 import { compactNumber } from './HUD';
 import { Icon } from './Icon';
 import { TitleScreen } from './TitleScreen';
+import { EndingScreen } from './EndingScreen'; // z-ending
 import { SaveSlots } from './SaveSlots';
 import { showScene, SceneHost, type SceneChar } from './SceneWindow';
 import { staffParts } from '../render/character';
@@ -157,11 +158,11 @@ function SettingsPanel({ onExit, gauges, onGauges }: { onExit: () => void; gauge
     <div style={{ display: 'grid', gap: 6 }} data-testid="settings">
       {slider('배경음', bgmVol, (n) => { setBgmVolume(n); setBgmVol(n); })}
       {slider('효과음', sfxVol, (n) => { setSfxVolume(n); setSfxVol(n); sfx('tap'); })}
-      <button style={{ ...brownBtn, marginRight: 0, marginBottom: 0 }} onClick={toggleMute}>{muted ? '🔊 소리 켜기' : '🔇 소리 끄기'}</button>
-      <OnOff label="🔒 속도 잠금 (창을 열어도 안 멈춤)" on={isSpeedLocked()} onChange={setSpeedLocked} testId="setting-speed-lock" />
-      <OnOff label="📊 시설 위 인기 바·◎ 콤보 표시" on={gauges} onChange={onGauges} testId="setting-gauges" />
-      <button style={{ ...brownBtn, marginRight: 0, marginBottom: 0 }} onClick={() => setSlots(true)}>💾 슬롯에 저장</button>
-      <button style={{ ...dangerBtn, marginRight: 0, marginBottom: 0 }} onClick={() => Confirm('자동 저장하고 타이틀로 나갈까요?', onExit, { title: '타이틀로' })}>🚪 타이틀로</button>
+      <button style={{ ...brownBtn, marginRight: 0, marginBottom: 0 }} onClick={toggleMute}>{muted ? <><Icon name="sound_on" /> 소리 켜기</> : <><Icon name="sound_off" /> 소리 끄기</>}</button>
+      <OnOff label="속도 잠금 (창을 열어도 안 멈춤)" on={isSpeedLocked()} onChange={setSpeedLocked} testId="setting-speed-lock" />
+      <OnOff label="시설 위 인기 바·◎ 콤보 표시" on={gauges} onChange={onGauges} testId="setting-gauges" />
+      <button style={{ ...brownBtn, marginRight: 0, marginBottom: 0 }} onClick={() => setSlots(true)}><Icon name="save" /> 슬롯에 저장</button>
+      <button style={{ ...dangerBtn, marginRight: 0, marginBottom: 0 }} onClick={() => Confirm('자동 저장하고 타이틀로 나갈까요?', onExit, { title: '타이틀로' })}><Icon name="door" /> 타이틀로</button>
       {slots && <SaveSlots mode="save" onClose={() => setSlots(false)} />}
     </div>
   );
@@ -177,8 +178,8 @@ function StatusPanel() {
     ['자금', wonText(s.money)],
     ['연구 포인트', compactNumber(s.research)],
     ['★ 등급', `${s.star} · 랭크 ${s.rank}위`],
-    ['이번 달 손님', `${s.monthGuests}명 · 매출 ${wonText(s.monthIncome)}`],
-    ['누적 손님', `${s.totalGuests}명 · 누적 매출 ${wonText(s.totalIncome)}`],
+    ['이번 달 손님', `${s.monthGuests}명 · 수입 ${wonText(s.monthIncome)}`],
+    ['누적 손님', `${s.totalGuests}명 · 누적 판매 ${wonText(s.totalIncome)}`],
     ['직원', `${s.staff.length}명 · 후보 ${s.candidates.length}명`],
     ['메뉴', `${s.menuSlots.filter((m) => m !== null).length}개`],
     ['필지', `${s.parcels.filter((p) => p.owned).length}/${s.parcels.length}`],
@@ -186,7 +187,7 @@ function StatusPanel() {
   ];
   return (
     <div data-testid="status">
-      <button data-testid="status-save" style={{ ...brownBtnOn, width: '100%', marginRight: 0, minHeight: 48 }} onClick={() => { autosaveNow(); setSaved(true); showMessage('저장했어요'); }}>💾 {saved ? '저장했어요' : '저장'}</button>
+      <button data-testid="status-save" style={{ ...brownBtnOn, width: '100%', marginRight: 0, minHeight: 48 }} onClick={() => { autosaveNow(); setSaved(true); showMessage('저장했어요'); }}><Icon name="save" /> {saved ? '저장했어요' : '저장'}</button>
       <div style={{ ...card, display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '4px 12px', fontSize: 15 }}>
         {rows.map(([k, v]) => <span key={k} style={{ display: 'contents' }}><span style={{ color: PALETTE.inkSoft }}>{k}</span><b>{v}</b></span>)}
       </div>
@@ -203,6 +204,7 @@ function StatusPanel() {
 /** 카페 › 재료: 창고에 있는 재료 (농원 수확·상자) */
 function StoragePanel() {
   const s = useGame();
+  useTutorialNote('storage'); // 튜토리얼 18단계 「재료 창고 보기」
   const rows = Object.entries(s.storage).filter(([, n]) => n > 0).sort((a, b) => b[1] - a[1]);
   return (
     <div data-testid="storage-panel">
@@ -221,7 +223,7 @@ function menuUnlockText(menuId: string): string | null {
   return g ? `「${g.title}」 목표를 이루면 열려요` : null;
 }
 
-/** 고스트 밑 ✓↻ 원형 버튼 48px (§5.3): DOM 오버레이가 고스트의 화면 좌표를 따라간다. 고스트가 화면 위 40%에 있으면 숨긴다(§5.6 하단 바 버튼만). */
+/** 고스트 밑 확정·회전 원형 버튼 48px (§5.3): DOM 오버레이가 고스트의 화면 좌표를 따라간다. 고스트가 화면 위 40%에 있으면 숨긴다(§5.6 하단 바 버튼만). */
 function GhostButtons({ view, cell, ok, canRotate, onConfirm, onRotate }: { view: GameView | null; cell: { x: number; y: number; w: number; h: number }; ok: boolean; canRotate: boolean; onConfirm: () => void; onRotate: () => void }) {
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -244,8 +246,8 @@ function GhostButtons({ view, cell, ok, canRotate, onConfirm, onRotate }: { view
   const round = (bg: string): React.CSSProperties => ({ width: 48, height: 48, borderRadius: 24, border: `3px solid ${PALETTE.wood}`, background: bg, color: '#fff', fontSize: 22, fontWeight: 700, fontFamily: 'inherit', boxShadow: '0 2px 0 #0006', padding: 0 });
   return (
     <div ref={ref} data-testid="ghost-buttons" style={{ position: 'absolute', left: -52, top: 0, display: 'none', gap: 8, zIndex: 13, pointerEvents: 'auto', willChange: 'transform' }}>
-      <button aria-label="확정" disabled={!ok} onClick={onConfirm} style={{ ...round(ok ? '#e8892b' : '#9a8a74'), opacity: ok ? 1 : 0.6 }}>✓</button>
-      {canRotate && <button aria-label="회전" onClick={onRotate} style={round('#4c9a2a')}>↻</button>}
+      <button aria-label="확정" disabled={!ok} onClick={onConfirm} style={{ ...round(ok ? '#e8892b' : '#9a8a74'), opacity: ok ? 1 : 0.6, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Icon name="check" size={24} /></button>
+      {canRotate && <button aria-label="회전" onClick={onRotate} style={{ ...round('#4c9a2a'), display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Icon name="undo" size={24} /></button>}
     </div>
   );
 }
@@ -266,7 +268,7 @@ function Game({ onExit }: { onExit: () => void }) {
     checkAlerts(s, () => dispatch({ type: 'dismissAlert' }));
     checkTutorial(s);
   });
-  useEffect(() => { setTutorialSkip(() => dispatch({ type: 'skipTutorial' })); return () => setTutorialSkip(null); }, []);
+  useEffect(() => { setTutorialDispatch(dispatch, getState); return () => setTutorialDispatch(null); }, []);
   const hostRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<GameView | null>(null);
   const [view, setView] = useState<GameView | null>(null);
@@ -305,6 +307,12 @@ function Game({ onExit }: { onExit: () => void }) {
     if (m.kind !== 'move') setMoving(null);
     if (m.kind !== 'remove') setRect(null);
   };
+  // sim 알림(목표 달성·빅 이벤트) → 대화창(보상 상자는 RewardPopup), 그 다음 손으로 하는 튜토리얼 9단계. 알림은 한 번에 하나씩 순서대로.
+  // 다음 단계 대사가 뜨면 연속 배치·이동·철거 모드를 끝낸다 — 배치 바가 하단 바를 덮어 「아래 카페를 눌러」를 못 따라가는 걸 막는다.
+  useEffect(() => {
+    checkAlerts(s, () => dispatch({ type: 'dismissAlert' }));
+    if (checkTutorial(s) && modeRef.current.kind !== 'idle') setMode({ kind: 'idle' });
+  });
   const openCard = (t: CardTarget | null) => {
     setCardTarget(t);
     const cell = t && (t.kind === 'rock' || t.kind === 'empty') ? { x: t.x, y: t.y } : null;
@@ -326,6 +334,8 @@ function Game({ onExit }: { onExit: () => void }) {
     const st = getState();
     const o = objectAt(st, x, y);
     if (!o || PROTECTED_TYPES.has(o.type)) return false;
+    const c = canDisturb(st, o);
+    if (!c.ok) { showMessage(c.reason ?? '지금은 못 옮겨요'); return false; }
     setMode({ kind: 'move' });
     liftedRef.current = true;
     setMoving({ objectId: o.id, x: o.x, y: o.y });
@@ -334,8 +344,10 @@ function Game({ onExit }: { onExit: () => void }) {
   };
   /** 카드의 `이동` 버튼: 들어 올린 것과 같은 흐름 */
   const startMove = (objectId: string) => {
-    const o = getState().objects[objectId];
+    const st = getState();
+    const o = st.objects[objectId];
     if (!o) return;
+    if (o.type !== 'warehouse') { const c = canDisturb(st, o); if (!c.ok) { showMessage(c.reason ?? '지금은 못 옮겨요'); return; } }
     setMode({ kind: 'move' });
     liftedRef.current = true;
     setMoving({ objectId: o.id, x: o.x, y: o.y });
@@ -351,7 +363,7 @@ function Game({ onExit }: { onExit: () => void }) {
     const at = origin ?? (home ? { x: home.x + Math.floor(home.w / 2), y: home.y + Math.floor(home.h / 2) } : { x: Math.floor(st.grid.w / 2), y: Math.floor(st.grid.h / 2) });
     setGhost({ x: at.x, y: at.y, rot: 0 });
   };
-  /** 카메라를 본관에 (§5.6 🏠) */
+  /** 카메라를 본관에 (§5.6 홈 버튼) */
   const goHome = () => {
     const st = getState();
     const home = Object.values(st.objects).find((o) => o.type === 'warehouse');
@@ -384,13 +396,13 @@ function Game({ onExit }: { onExit: () => void }) {
               const o = objectAt(st, x, y);
               if (!o) showMessage('옮길 것을 골라 주세요');
               else if (PROTECTED_TYPES.has(o.type)) showMessage('이건 못 옮겨요');
-              else setMoving({ objectId: o.id, x: o.x, y: o.y });
+              else { const c = canDisturb(st, o); if (!c.ok) showMessage(c.reason ?? '지금은 못 옮겨요'); else setMoving({ objectId: o.id, x: o.x, y: o.y }); }
             }
           } else if (m.kind === 'remove') {
             // 탭 = 한 칸 사각형. 이미 고른 게 있으면 새로 고른다
             const o = objectAt(st, x, y);
             if (!o) { setRect(null); showMessage('치울 것을 골라 주세요'); }
-            else if (demolishTargets(st, { x0: x, y0: y, x1: x, y1: y }).length === 0) { setRect(null); showMessage('이건 못 치워요'); }
+            else if (demolishTargets(st, { x0: x, y0: y, x1: x, y1: y }).length === 0) { setRect(null); const c = canDisturb(st, o); showMessage(!c.ok && !PROTECTED_TYPES.has(o.type) ? (c.reason ?? '지금은 못 치워요') : '이건 못 치워요'); }
             else setRect({ x0: x, y0: y, x1: x, y1: y });
           } else inspect(st, x, y);
         },
@@ -461,7 +473,9 @@ function Game({ onExit }: { onExit: () => void }) {
       ghostCell = { x: ghost.x, y: ghost.y, w: def.w, h: def.h };
       const confirm = () => {
         const r = dispatch({ type: 'place', objectType: mode.objectType, x: ghost.x, y: ghost.y, rot: ghost.rot });
-        if (!r.ok) return;
+        if (!r.ok) { showMessage(r.reason ?? '여기엔 못 놓아요'); return; }
+        // 튜토리얼 중엔 연속 배치를 끈다 — 배치 바가 하단 바를 덮어 다음 단계 버튼을 못 누른다 (y 통합 미해결 a)
+        if (!tutorialDone(getState())) { setMode({ kind: 'idle' }); return; }
         // 연속 배치(§5.3): 고스트를 옆 칸으로 옮겨 남긴다. 돈이 모자라면 자동 종료
         const nx = nextGhostAfterPlace(getState(), mode.objectType, ghost);
         if (nx.done) { setMode({ kind: 'idle' }); showMessage(nx.reason); return; }
@@ -484,7 +498,8 @@ function Game({ onExit }: { onExit: () => void }) {
     if (moving && o) {
       const def = objectDef(o.type);
       const size = sizeOf(o); // 본관 증축 Lv2+는 정의 크기와 다르다 (y-indoor)
-      const can = canPlace(s, o.type, moving.x, moving.y, o.id);
+      const can0 = canPlace(s, o.type, moving.x, moving.y, o.id);
+      const can = can0.ok && o.type !== 'warehouse' ? canDisturb(s, o) : can0; // 고른 뒤 손님이 앉거나 지나가면 확정이 조용히 실패하지 않게 이유를 보여 준다
       ghostSpec = { type: o.type, x: moving.x, y: moving.y, rot: o.rot, ok: can.ok, text: `${def.name} 옮기기`, w: size.w, h: size.h };
       rangeHint = rangeHintFor(s, o.type, moving.x, moving.y, o.id);
       ghostCell = { x: moving.x, y: moving.y, w: size.w, h: size.h };
@@ -495,7 +510,7 @@ function Game({ onExit }: { onExit: () => void }) {
         onUndo: undoOk ? undo : null,
         onConfirm: () => {
           const r = dispatch({ type: 'move', objectId: o.id, x: moving.x, y: moving.y });
-          if (!r.ok) return;
+          if (!r.ok) { showMessage(r.reason ?? '여기엔 못 옮겨요'); return; }
           if (liftedRef.current) { liftedRef.current = false; setMode({ kind: 'idle' }); } else setMoving(null);
         },
         onRotate: () => dispatch({ type: 'rotate', objectId: o.id, rot: ((o.rot ?? 0) + 1) % 4 }),
@@ -515,6 +530,7 @@ function Game({ onExit }: { onExit: () => void }) {
         onConfirm: () => {
           const r = dispatch({ type: 'demolishMany', objectIds: ids });
           if (r.ok) { setRect(null); showMessage(`${ids.length}개 치웠어요 (↶ 되돌리기 가능)`); }
+          else showMessage(r.reason ?? '지금은 못 치워요');
         },
         onRotate: () => {},
         onCancel: () => setRect(null),
@@ -545,31 +561,31 @@ function Game({ onExit }: { onExit: () => void }) {
   useTutorialHighlight(view);
 
   const CAFE_MENU: IconGridItem<CafeTab>[] = [
-    { key: 'menu', label: '메뉴판', icon: '☕' },
-    { key: 'ingredients', label: '재료', icon: '🍊' },
-    { key: 'craft', label: '연구', icon: '🔬', locked: !featureOpen(s, 'craft'), lockedText: '연구 개발은 목표를 이루면 열려요' },
-    { key: 'promo', label: '홍보', icon: '📣', locked: !featureOpen(s, 'promote'), lockedText: '홍보는 튜토리얼 7단계에서 열려요' },
-    { key: 'building', label: '본관', icon: '🏠' },
-    { key: 'indoor', label: '실내', icon: '🪑' },
+    { key: 'menu', label: '메뉴판', icon: 'coffee' },
+    { key: 'ingredients', label: '재료', icon: 'harvest' },
+    { key: 'craft', label: '연구', icon: 'research', locked: !featureOpen(s, 'craft'), lockedText: '연구 개발은 목표를 이루면 열려요' },
+    { key: 'promo', label: '홍보', icon: 'promo', locked: !featureOpen(s, 'promote'), lockedText: '홍보는 튜토리얼 7단계에서 열려요' },
+    { key: 'building', label: '본관', icon: 'home' },
+    { key: 'indoor', label: '실내', icon: 'chair' },
   ];
   const offered = Object.values(s.board.quests).filter((q) => q.status === 'offered').length;
   const PEOPLE_MENU: IconGridItem<PeopleTab>[] = [
-    { key: 'staff', label: '직원', icon: '👩‍🍳', badge: s.staff.filter((st) => st.energy < 20).length },
-    { key: 'candidates', label: '채용', icon: '📋', badge: s.candidates.length },
-    { key: 'guests', label: '손님', icon: '🙂', badge: s.guests.length },
-    { key: 'codex', label: '도감', icon: '📖', locked: !featureOpen(s, 'comboCodex'), lockedText: '콤보 도감은 튜토리얼 6단계에서 열려요' },
-    { key: 'quests', label: '부탁', icon: '❗', badge: offered },
-    { key: 'rivals', label: '라이벌', icon: '⚔️', locked: !featureOpen(s, 'challenge'), lockedText: '카페 대결은 목표를 이루면 열려요', isNew: s.rivals.length > 0 },
+    { key: 'staff', label: '직원', icon: 'staff', badge: s.staff.filter((st) => st.energy < 20).length },
+    { key: 'candidates', label: '채용', icon: 'hire', badge: s.candidates.length },
+    { key: 'guests', label: '손님', icon: 'guest', badge: s.guests.length },
+    { key: 'codex', label: '도감', icon: 'book', locked: !featureOpen(s, 'comboCodex'), lockedText: '콤보 도감은 튜토리얼 6단계에서 열려요' },
+    { key: 'quests', label: '부탁', icon: 'quest', badge: offered },
+    { key: 'rivals', label: '라이벌', icon: 'rival', locked: !featureOpen(s, 'challenge'), lockedText: '카페 대결은 목표를 이루면 열려요', isNew: s.rivals.length > 0 },
   ];
   const LEDGER_MENU: IconGridItem<LedgerTab>[] = [
-    { key: 'report', label: '경영', icon: '📊' },
-    { key: 'invest', label: '투자', icon: '💰', badge: s.board.events.filter((e) => e.status === 'pending').length },
-    { key: 'spots', label: '명소', icon: '🗺️', locked: !featureOpen(s, 'spotMap'), lockedText: '명소 지도는 첫 달을 마치면 열려요' },
-    { key: 'shop', label: '상점', icon: '🛒' },
-    { key: 'tickets', label: '응모권', icon: '🎟️', badge: s.tickets },
-    { key: 'rank', label: '랭킹', icon: '🏆' },
-    { key: 'region', label: '지역', icon: '🌊', locked: !featureOpen(s, 'popup'), lockedText: '팝업 스토어는 목표를 이루면 열려요' },
-    { key: 'settings', label: '설정', icon: '⚙️' },
+    { key: 'report', label: '경영', icon: 'report' },
+    { key: 'invest', label: '투자', icon: 'money', badge: s.board.events.filter((e) => e.status === 'pending').length },
+    { key: 'spots', label: '명소', icon: 'map', locked: !featureOpen(s, 'spotMap'), lockedText: '명소 지도는 첫 달을 마치면 열려요' },
+    { key: 'shop', label: '상점', icon: 'shop' },
+    { key: 'tickets', label: '응모권', icon: 'ticket', badge: s.tickets },
+    { key: 'rank', label: '랭킹', icon: 'trophy' },
+    { key: 'region', label: '지역', icon: 'wave', locked: !featureOpen(s, 'popup'), lockedText: '팝업 스토어는 목표를 이루면 열려요' },
+    { key: 'settings', label: '설정', icon: 'settings' },
   ];
 
   const renderWindow = () => {
@@ -579,9 +595,9 @@ function Game({ onExit }: { onExit: () => void }) {
         return (
           <Window title="짓기" onClose={closeWin} testId="window-build">
             <div data-testid="build-tools" role="toolbar" aria-label="도구" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 6, marginBottom: 8 }}>
-              <button data-tut="tool:move" style={{ ...brownBtn, margin: 0, padding: '0 6px', fontSize: 15 }} onClick={() => { closeWin(); setMode({ kind: 'move' }); }}>🪑 이동</button>
-              <button data-tut="tool:remove" style={{ ...dangerBtn, margin: 0, padding: '0 6px', fontSize: 15 }} onClick={() => { closeWin(); setMode({ kind: 'remove' }); }}>🔨 철거</button>
-              <button data-testid="tool-undo" disabled={!undoOk} title={undoOk ? undefined : canUndo(s).reason} style={{ ...(undoOk ? brownBtn : brownBtnOff), margin: 0, padding: '0 6px', fontSize: 15 }} onClick={undo}>↶ 되돌리기</button>
+              <button data-tut="tool:move" style={{ ...brownBtn, margin: 0, padding: '0 6px', fontSize: 15 }} onClick={() => { closeWin(); setMode({ kind: 'move' }); }}><Icon name="move" /> 이동</button>
+              <button data-tut="tool:remove" style={{ ...dangerBtn, margin: 0, padding: '0 6px', fontSize: 15 }} onClick={() => { closeWin(); setMode({ kind: 'remove' }); }}><Icon name="remove" /> 철거</button>
+              <button data-testid="tool-undo" data-tut="tool:undo" disabled={!undoOk} title={undoOk ? undefined : canUndo(s).reason} style={{ ...(undoOk ? brownBtn : brownBtnOff), margin: 0, padding: '0 6px', fontSize: 15 }} onClick={undo}><Icon name="undo" /> 되돌리기</button>
             </div>
             <BuildWindow onClose={closeWin} onPickBuild={(t) => pickBuild(t, win.origin)} />
           </Window>
@@ -642,7 +658,7 @@ function Game({ onExit }: { onExit: () => void }) {
       <TopShell onStatus={() => setWin({ kind: 'status' })} onGoal={() => setWin({ kind: 'goal' })} />
       {!place && !cardTarget && (
         <button data-testid="home-btn" aria-label="본관으로" onClick={goHome}
-          style={{ position: 'absolute', left: 8, bottom: `calc(${SHELL_BOTTOM + 8}px + env(safe-area-inset-bottom))`, width: 44, height: 44, borderRadius: 22, border: `3px solid ${PALETTE.wood}`, background: PALETTE.paper, fontSize: 20, zIndex: 11, padding: 0, boxShadow: '0 2px 0 #0004' }}>🏠</button>
+          style={{ position: 'absolute', left: 8, bottom: `calc(${SHELL_BOTTOM + 8}px + env(safe-area-inset-bottom))`, width: 44, height: 44, borderRadius: 22, border: `3px solid ${PALETTE.wood}`, background: PALETTE.paper, fontSize: 20, zIndex: 11, padding: 0, boxShadow: '0 2px 0 #0004', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Icon name="home" size={24} /></button>
       )}
       {place && ghostCell && <GhostButtons view={view} cell={ghostCell} ok={place.ok} canRotate={place.canRotate} onConfirm={place.onConfirm} onRotate={place.onRotate} />}
       <MessageLine bottom={BOTTOM_BAR_H} />
@@ -658,6 +674,7 @@ function Game({ onExit }: { onExit: () => void }) {
       {guestPopup && <GuestPopup guestId={guestPopup} onClose={() => setGuestPopup(null)} onQuest={(id) => { dispatch({ type: 'acceptQuest', id }); setWin({ kind: 'people', tab: 'quests' }); }} />}
       {renderWindow()}
       <RewardPopup />
+      <EndingScreen onExit={onExit} />
       <DialogueHost />
     </div>
   );

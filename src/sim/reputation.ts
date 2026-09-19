@@ -11,6 +11,7 @@ import type { GameState, Guest, ComplaintReason, Complaint, Review, MonthCard } 
 import { canonicalGuestId, NAMED_TYPE } from '../data/index.ts';
 import { dayIndex, filterMatches } from './effects.ts';
 import { isAged } from './economy.ts';
+import { josa } from './josa.ts';
 import { pushNotice } from './staff.ts';
 import { pushFx } from './fx.ts';
 import { nextRandom, pickWeighted } from './rng.ts';
@@ -49,13 +50,13 @@ export const COMPLAINT_LABEL: Record<ComplaintReason, string> = {
 };
 /** 후기 문장 (detail = 메뉴·시설 이름 등) */
 export const COMPLAINT_REVIEW: Record<ComplaintReason, (detail?: string) => string> = {
-  no_menu: (d) => d ? `${d}가 자주 품절이래요` : '먹고 싶은 메뉴가 없대요',
+  no_menu: (d) => d ? `${josa(d, '이/가')} 자주 품절이래요` : '먹고 싶은 메뉴가 없대요',
   wait_long: () => '너무 오래 기다렸대요',
   no_seat: () => '자리가 없어서 그냥 갔대요',
   dirty: () => '카페가 지저분하대요',
-  worn: (d) => d ? `${d}가 낡았대요` : '시설이 낡았대요',
+  worn: (d) => d ? `${josa(d, '이/가')} 낡았대요` : '시설이 낡았대요',
   noise: () => '자리가 너무 시끄럽대요',
-  expensive: (d) => d ? `${d}가 너무 비싸대요` : '값이 너무 비싸대요',
+  expensive: (d) => d ? `${josa(d, '이/가')} 너무 비싸대요` : '값이 너무 비싸대요',
   cold_hot: (d) => d === 'winter' ? '겨울 야외 자리가 너무 춥대요' : '여름 야외 자리가 너무 덥대요',
   rude: () => '직원이 지쳐서 불친절하대요',
 };

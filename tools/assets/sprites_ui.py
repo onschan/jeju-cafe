@@ -1,7 +1,8 @@
-"""UI 스프라이트: 말풍선 24×20, 이펙트(코인·반짝 16×16, 링 32×32, 컵 8×8, 부탁 ! 8×10), 16×16 아이콘 18개.
+"""UI 스프라이트: 말풍선 24×20, 이펙트(코인·반짝 16×16, 링 32×32, 컵 8×8, 부탁 ! 8×10), 16×16 아이콘 18개 + sprites_ui_icons.ART(이모지 대체 픽셀 아이콘).
 얇은 1px 디테일(파동·X·글리프)은 outline() 뒤에 얹어 외곽선에 먹히지 않게 한다."""
 from __future__ import annotations
 from px import Canvas, PAL, OUT, hexc, Color
+import sprites_ui_icons as ART_ICONS
 
 CLEAR = (0, 0, 0, 0)
 WHITE, SKY, BASALT, WOOD, YELLOW = PAL['white'], PAL['sky'], PAL['basalt'], PAL['wood'], PAL['yellow']
@@ -217,11 +218,34 @@ def icon(name: str) -> Canvas:
                     (14, 8, SKY[1]), (14, 9, SKY[1]), (14, 10, SKY[1]), (14, 11, SKY[1]), (13, 12, SKY[1])]
         else:
             post = [(10 + i, 5 + i, RED[1]) for i in range(5)] + [(14 - i, 5 + i, RED[1]) for i in range(5)]
+    elif name in ART_ICONS.ART:
+        return icon_art(name)
     else:
         raise KeyError(name)
 
     c.outline()
     for x, y, col in post:
+        c.put(x, y, col)
+    return c
+
+
+def icon_art(name: str) -> Canvas:
+    """sprites_ui_icons.ART의 16×16 문자 그림을 캔버스로. 기본 outline(), POST_ALL은 테두리 없이, POST 글자는 테두리 뒤에 다시 얹는다."""
+    rows = ART_ICONS.ART[name]
+    c = Canvas(16, 16)
+    post_chars = ART_ICONS.POST.get(name, '')
+    later: list[tuple[int, int, Color]] = []
+    for y, row in enumerate(rows):
+        for x, ch in enumerate(row):
+            if ch == '.':
+                continue
+            col = ART_ICONS.LEGEND[ch]
+            c.put(x, y, col)
+            if ch in post_chars:
+                later.append((x, y, col))
+    if name not in ART_ICONS.POST_ALL:
+        c.outline()
+    for x, y, col in later:
         c.put(x, y, col)
     return c
 
@@ -283,7 +307,8 @@ def scene_lobby() -> Canvas:
 
 
 ICONS = ('money', 'research', 'local', 'tourist', 'speed_pause', 'speed_1', 'speed_2', 'speed_3', 'build',
-         'menu', 'look', 'harvest', 'plant', 'remove', 'unlock', 'calendar', 'sound_on', 'sound_off')
+         'menu', 'look', 'harvest', 'plant', 'remove', 'unlock', 'calendar', 'sound_on', 'sound_off',
+         *sorted(ART_ICONS.ART))
 
 
 def sprites() -> dict[str, Canvas]:

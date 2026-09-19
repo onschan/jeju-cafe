@@ -176,7 +176,7 @@ function applyPrize(state: GameState, prize: DrawPrizeDef): string {
       const n = DRAW_MONEY_PER_YEAR * state.clock.year;
       state.money += n;
       state.monthIncome += n;
-      return `₩${fmtNum(n)}을 받았어요`;
+      return `${josa(`₩${fmtNum(n)}`, '을/를')} 받았어요`;
     }
     case 'research': state.research += DRAW_RESEARCH; return `연구 +${DRAW_RESEARCH}`;
     case 'ingredient_box': {

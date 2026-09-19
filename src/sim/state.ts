@@ -1,4 +1,4 @@
-import type { GameState, Cell, PlacedObject, Parcel, Terrain } from './types.ts';
+import type { GameState, Cell, PlacedObject, Parcel, Terrain, CarryOver } from './types.ts';
 import { INITIAL_UNLOCKED, ROLES, FACILITY_START_IDS, objectDef } from '../data/index.ts';
 import { START_HOUR } from './clock.ts';
 import { makeParcels } from './parcels.ts';
@@ -19,9 +19,11 @@ import { monthIndex } from './clock.ts';
 import { emptyMonthCosts } from './economy.ts';
 import { REPUTATION_START } from './reputation.ts';
 import { initMain } from './rooms.ts';
+import { initEnding, applyCarry } from './ending.ts'; // z-ending
+import { initVillage } from './village.ts'; // z-ending
 
 export { PARCEL_W, PARCEL_H, START_ORIGIN, GRID_W, GRID_H, VILLAGE_ROAD_Y };
-export const SAVE_VERSION = 18; // 18: y 통합 — 되돌리기(undo)·개체 이름(name)·유입 경로(routes·손님 route/foreign)·본관(main·객체 w/h/mode/careDay) (마이그레이션 없음, 17 세이브는 백업 후 새 게임). 17: 컨텐츠 확장 통합 — 경제(삼춘 대출·세금·대기열·★ 유지 심사)·시설 44·증축·청결·명소 방문객·투어·선물·직원 8직종·입지·목표 108·도전·튜토리얼 (마이그레이션 없음). 15: v3 대격변. 14: 라이벌 카페
+export const SAVE_VERSION = 19; // 19: z 통합 — 엔딩·마을·이월·튜토리얼 30단계 seen (마이그레이션 없음). 18: y 통합 — 되돌리기(undo)·개체 이름(name)·유입 경로(routes·손님 route/foreign)·본관(main·객체 w/h/mode/careDay) (마이그레이션 없음, 17 세이브는 백업 후 새 게임). 17: 컨텐츠 확장 통합 — 경제(삼춘 대출·세금·대기열·★ 유지 심사)·시설 44·증축·청결·명소 방문객·투어·선물·직원 8직종·입지·목표 108·도전·튜토리얼 (마이그레이션 없음). 15: v3 대격변. 14: 라이벌 카페
 /** 시작 자금 500만. 정착지원금은 삼춘 대출(failure.ts: 잔고 < 40만 → 300만, 최대 3회)로 바뀌었다 — 확장 스펙 §4.2 #8 */
 export const START_MONEY = 5_000_000;
 export const START_MONTH = 3;
@@ -132,7 +134,8 @@ export function fillStarterLayout(state: GameState): void {
   }
 }
 
-export function createInitialState(seed: number, playerId = 'local', createdAt = 0, layout: StartLayout = 'starter'): GameState {
+/** carry: 엔딩 뒤 「이월해서 새로 시작」 묶음 (ending.ts makeCarry). 시작 상태를 다 만든 뒤 applyCarry로 얹는다. */
+export function createInitialState(seed: number, playerId = 'local', createdAt = 0, layout: StartLayout = 'starter', carry: CarryOver | null = null): GameState {
   const parcels = makeParcels();
   const state: GameState = {
     version: SAVE_VERSION,
@@ -246,6 +249,9 @@ export function createInitialState(seed: number, playerId = 'local', createdAt =
     main: initMain(),
     guests: [],
     routes: initRoutes(), // 트랙 H 손님 유입 경로 5종
+    ending: initEnding(), // z-ending
+    village: initVillage(), // z-ending
+    carry: null,
     spawnAcc: START_SPAWN_ACC,
     researchAcc: 0,
     nextId: 1,
@@ -269,5 +275,6 @@ export function createInitialState(seed: number, playerId = 'local', createdAt =
   // §5 직원 후보 2명 대기 (전단 등급)
   drawCandidates(state, 'flyer', START_CANDIDATES);
   state.monthly = makeMonthly(state); // 이달의 과제 (§7.3) — 시작 달 것은 알림 없이
+  if (carry) applyCarry(state, carry); // z-ending 이월 6종
   return state;
 }

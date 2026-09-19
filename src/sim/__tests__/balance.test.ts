@@ -2,7 +2,7 @@
  * 봇 KPI 밴드 (확장 스펙 §4.6). 봇 3년 × seed 3개. 밴드 밖이면 guests.ts 레버 #1(POP_SUM_PER_GUEST·FACILITY_POP_PER_GUEST·spots VISITOR_GUEST_RATE)·
  * ingredients.json 레버 #4(원가)부터 조정한다. 5년차 ★4·10년차 목표 105는 트랙 B의 목표 108개가 들어온 뒤에 켜진다.
  */
-import { runBot } from '../bot.ts';
+import { runBot, runBotAsync } from '../bot.ts';
 import { GOALS } from '../../data/index.ts';
 
 const SEEDS = [1, 2, 3];
@@ -74,12 +74,12 @@ test('같은 seed면 같은 결과 (결정적)', () => {
 
 // 트랙 B의 목표 108개가 들어오면 켜진다 (§4.6 5년차 ★4 · 10년차 목표 105)
 describe.skipIf(GOALS.length < 108)('봇 장기 KPI (목표 108 체인)', () => {
-  test('5년차 말 ★4 이상', () => {
-    const last = runBot(5, 1).filter((r) => r.year <= 5).at(-1)!;
+  test('5년차 말 ★4 이상', async () => {
+    const last = (await runBotAsync(5, 1)).filter((r) => r.year <= 5).at(-1)!;
     expect(last.star).toBeGreaterThanOrEqual(YEAR5_STAR_MIN);
   }, 120_000);
-  test('10년차 말 목표 70개 이상 (스펙 105 — 봇이 세트 3·콤보 15에서 멈춰 아직 미달, 회귀 방지선만)', () => {
-    const last = runBot(10, 1).filter((r) => r.year <= 10).at(-1)!;
+  test('10년차 말 목표 70개 이상 (스펙 105 — 봇이 세트 3·콤보 15에서 멈춰 아직 미달, 회귀 방지선만)', async () => {
+    const last = (await runBotAsync(10, 1)).filter((r) => r.year <= 10).at(-1)!;
     expect(last.goals).toBeGreaterThanOrEqual(YEAR10_GOALS_NOW);
     expect(YEAR10_GOALS_MIN).toBe(105); // 스펙 값은 남겨 둔다
   }, 300_000);

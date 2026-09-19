@@ -21,7 +21,10 @@ import { canPlace, objectAt, cellAt, footprint, doorFrontOf } from './grid.ts';
 import { START_ORIGIN } from './layout.ts';
 import { objectDef, COMBOS, SETS, questDef } from '../data/index.ts';
 import { DEVELOP_RESEARCH, menuOf } from './craft.ts';
-import { canDrawTicket, hasFreeDraw } from './shop.ts';
+import { canDrawTicket, hasFreeDraw, canBuyTicket, canUseGuestItem } from './shop.ts';
+import { effectivePopularity } from './promotions.ts';
+import { isUnlocked } from './segments.ts';
+import { POPULARITY_FRUIT } from '../data/index.ts';
 import { MAX_BUILDERS } from './build.ts';
 import { canUseItem } from './items.ts';
 import { isWeekend, canOpenPopup, bestRegion } from './popup.ts';
@@ -43,6 +46,7 @@ import { canHire } from './staff.ts';
 import { parkingSites, routePathCells, routeFacility, canSetRouteContract, ENTRY_ROUTES, PARKING_EXPAND_FROM } from './entry.ts'; // 트랙 H
 import { mainBuilding, freeFloorCells, nextMainLevel, expandCost, expandCells, canExpandMain, isAnnex, indoorSeats } from './rooms.ts'; // y-indoor
 import type { Candidate, RoleId, StatKey } from './types.ts';
+import { canDonate, canHoldFestival } from './village.ts'; // z-ending
 
 export interface BotRow {
   year: number;
@@ -61,6 +65,7 @@ export interface BotRow {
   mileage: number;
   goals: number;      // 달성한 목표 수
   events: number;     // 그달 말 활성 빅 이벤트 수
+  ending: { total: number; title: string } | null; // z-ending: 엔딩 뒤 최종 점수 (10년차 3월부터)
 }
 
 /** 시작 필지 상대 좌표 → 격자 좌표 */
@@ -141,6 +146,9 @@ export const BOT_REPAIRS_PER_MONTH = 6;
 /** 연수: 랭크 3부터 돈 300만 넘으면 한 달에 한 명 (목표 g33·도전) */
 export const BOT_TRAIN_MIN_MONEY = 3_000_000;
 export const BOT_TRAINING_ID = 'tr_service';
+/** z-ending: 마을 기부는 잔고 ₩2,000만 이상일 때 한 달 ₩50만, 누적 ₩1,000만(기부 항목 20점)까지 */
+export const BOT_DONATE_MIN_MONEY = 20_000_000;
+export const BOT_DONATE_CAP = 10_000_000;
 /** 연수는 이만큼만 (비용이 회당 +20%씩 오른다) */
 export const BOT_TRAIN_MAX = 4;
 /** 증축: 돈 여유가 있으면 한 달에 하나 (목표 g41·g63·g95) */
@@ -150,6 +158,14 @@ export const BOT_SPOT_RESERVE = 3_000_000;
 /** 평판이 이 아래면 사과 이벤트 */
 export const BOT_APOLOGY_REPUTATION = 40;
 export const BOT_APOLOGY_MIN_MONEY = 1_000_000;
+/** 커플 인기 열매 규칙 (g44): 이 값 아래면 응모권으로 인기 열매를 사서 쓴다 */
+export const BOT_COUPLE_ID = 'couple';
+export const BOT_COUPLE_POPULARITY = 30;
+export const BOT_COUPLE_GOAL = 'g44';
+/** 커플 해금 체인: 유채밭 Lv4 → 산굼부리 Lv4 → 동백 동산 Lv2 */
+export const BOT_COUPLE_SPOT_CHAIN = ['canola_field', 'sangumburi', 'camellia_hill'];
+/** 체인이 초반 캡(Lv3)을 넘겨 투자할 때는 이만큼 더 남긴다 (3년차 말 자금 밴드 3,000만 유지) */
+export const BOT_COUPLE_CHAIN_RESERVE = 10_000_000;
 /** 3년차부터는 2,000만을 남기고 투자한다 (3년차 말 자금 3,000만~4,500만 밴드 §4.6) */
 export const BOT_RESERVE_YEAR3 = 20_000_000;
 /** 4년차 전엔 관광지 Lv3까지만 (Lv4·5는 350만~1,300만/회). 4년차부터는 2,000만 여유분을 남기고 Lv5까지 올린다 */
@@ -251,12 +267,20 @@ function hireForFreeSlot(s: GameState): void {
 /** 2년차부터: 투자할 수 있는 관광지 중 다음 레벨 비용 + 여유 300만이 있으면 하나 (한 달 하나) */
 function investSpotIfAny(s: GameState): void {
   if (s.clock.year < BOT_SPOT_YEAR) return;
-  for (const def of SPOTS) {
-    const next = canInvestSpot(s, def.id);
-    if (!next.ok || (s.clock.year < BOT_SPOT_FULL_YEAR && (s.spots[def.id] ?? 0) >= BOT_SPOT_MAX_LEVEL_EARLY)) continue;
-    const cost = def.levels.find((l) => l.level === (s.spots[def.id] ?? 0) + 1)?.cost ?? Infinity;
-    if (canSpend(s, cost) && apply(s, { type: 'investSpot', id: def.id }).ok) return;
-  }
+  // g44 「커플 손님 인기 30」이 열렸는데 커플이 안 오면(camellia_hill Lv2 해금) 유채밭→산굼부리→동백 체인은 초반 Lv3 캡을 안 본다
+  const wantCouple = !isUnlocked(s, BOT_COUPLE_ID) && activeGoals(s).some((g) => g.id === BOT_COUPLE_GOAL);
+  const once = (): boolean => {
+    for (const def of SPOTS) {
+      const next = canInvestSpot(s, def.id);
+      const chain = wantCouple && BOT_COUPLE_SPOT_CHAIN.includes(def.id) && (def.id !== 'camellia_hill' || (s.spots[def.id] ?? 0) < 2);
+      if (!next.ok || (!chain && s.clock.year < BOT_SPOT_FULL_YEAR && (s.spots[def.id] ?? 0) >= BOT_SPOT_MAX_LEVEL_EARLY)) continue;
+      const cost = def.levels.find((l) => l.level === (s.spots[def.id] ?? 0) + 1)?.cost ?? Infinity;
+      const capBreak = chain && (s.spots[def.id] ?? 0) >= BOT_SPOT_MAX_LEVEL_EARLY && s.clock.year < BOT_SPOT_FULL_YEAR;
+      if (canSpend(s, cost + (capBreak ? BOT_COUPLE_CHAIN_RESERVE : 0)) && apply(s, { type: 'investSpot', id: def.id }).ok) return true;
+    }
+    return false;
+  };
+  once();
 }
 
 /** 낡은 시설(노후·태풍 파손)을 수리비가 있으면 한 달에 몇 개 고친다 — 불만 'worn'이 평판을 깎는다 */
@@ -498,6 +522,9 @@ function monthlyPlan(s: GameState, monthsPlayed: number): void {
   if (s.mileage >= BOT_WORKER_MILEAGE && s.builders < MAX_BUILDERS) for (const id of WORKER_IDS) if (apply(s, { type: 'buyMileage', id }).ok) break;
   if (hasFreeDraw(s) && canDrawTicket(s).ok && apply(s, { type: 'drawTicket' }).ok) apply(s, { type: 'dismissDraw' });
   for (const [itemId, n] of Object.entries(s.inventory)) if (n > 0 && canUseItem(s, itemId, 'table_out').ok) apply(s, { type: 'useItem', itemId, objectType: 'table_out' });
+  // 커플 인기(g44 「커플 손님 인기 30」): 응모권 5장이면 인기 열매를 사서 커플에게 (홍보는 커플을 안 올린다)
+  if (effectivePopularity(s, BOT_COUPLE_ID) < BOT_COUPLE_POPULARITY && isUnlocked(s, BOT_COUPLE_ID) && (s.inventory[POPULARITY_FRUIT] ?? 0) <= 0 && canBuyTicket(s, 'ts_popularity_fruit').ok) apply(s, { type: 'buyTicket', id: 'ts_popularity_fruit' });
+  if (effectivePopularity(s, BOT_COUPLE_ID) < BOT_COUPLE_POPULARITY && canUseGuestItem(s, POPULARITY_FRUIT, BOT_COUPLE_ID).ok) apply(s, { type: 'useGuestItem', itemId: POPULARITY_FRUIT, guestId: BOT_COUPLE_ID });
   if (s.lastAnnouncement) apply(s, { type: 'dismissAnnouncement' });
 
   // 시설·돌담·필지·바위
@@ -527,11 +554,14 @@ function monthlyPlan(s: GameState, monthsPlayed: number): void {
   investSpotIfAny(s);
   clearOneRock(s);
   planRoutes(s); // 트랙 H
+  // z-ending: 돈이 넉넉하면 마을 기부(정착 등급 「기부」 항목, 누적 상한까지), 10월엔 마을제 (g82·g90)
+  if (s.money >= BOT_DONATE_MIN_MONEY && s.village.donated < BOT_DONATE_CAP && canDonate(s).ok) apply(s, { type: 'donateVillage' });
+  if (canHoldFestival(s).ok) apply(s, { type: 'holdFestival' });
 }
 
 /** 매일 아침 */
 function dailyPlan(s: GameState): void {
-  while (s.alerts.length > 0) apply(s, { type: 'dismissAlert' });
+  while (s.alerts.length > 0) apply(s, s.alerts[0]!.type === 'ending' ? { type: 'continueEnding' } : { type: 'dismissAlert' }); // z-ending: 엔딩은 「계속하기」
   // 게시판 부탁은 오는 대로 받는다 (랜드마크·손님 해금이 부탁 보상)
   if (s.clock.year >= BOT_QUEST_YEAR) for (const q of Object.values(s.board.quests)) if (q.status === 'offered' && canAcceptQuest(s, q.id).ok) apply(s, { type: 'acceptQuest', id: q.id });
   if (s.lastChallenge) apply(s, { type: 'dismissChallenge' });
@@ -578,6 +608,24 @@ export function botDay(s: GameState, cur: BotCursor, onCard?: (card: MonthCard) 
 }
 
 export function runBot(years: number, seed: number): BotRow[] {
+  let rows: BotRow[] = [];
+  for (const r of botDays(years, seed)) rows = r;
+  return rows;
+}
+
+/** 긴 실행(5·10년)용: 며칠마다 이벤트 루프에 양보해 vitest 워커 RPC(onTaskUpdate)가 굶지 않게 한다 */
+export async function runBotAsync(years: number, seed: number, yieldEveryDays = 30): Promise<BotRow[]> {
+  let rows: BotRow[] = [];
+  let d = 0;
+  for (const r of botDays(years, seed)) {
+    rows = r;
+    if (++d % yieldEveryDays === 0) await new Promise<void>((resolve) => setTimeout(resolve, 0));
+  }
+  return rows;
+}
+
+/** 하루씩 진행하며 지금까지의 월별 행을 낸다 (runBot·runBotAsync 공용) */
+function* botDays(years: number, seed: number): Generator<BotRow[]> {
   const s = createInitialState(seed);
   const rows: BotRow[] = [];
   const cur = newBotCursor();
@@ -599,10 +647,11 @@ export function runBot(years: number, seed: number): BotRow[] {
         year: card.year, month: card.month, money: s.money, minMoney, research: s.research, popularity: s.popularity,
         net: card.net, staff: s.staff.length, promos: s.activePromotions.length, guests: card.guests, customMenus: s.customMenus.length,
         rank: s.rank, star: s.star, mileage: s.mileage, goals: s.goals.claimed.length, events: s.events.length,
+        ending: s.ending.score ? { total: s.ending.score.total, title: s.ending.score.title } : null,
       });
       minMoney = s.money;
       apply(s, { type: 'dismissMonthCard' });
     }
+    yield rows;
   }
-  return rows;
 }

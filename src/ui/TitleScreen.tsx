@@ -6,9 +6,34 @@ import { HAIR_RGB, TOP_RGB } from '../render/character';
 import { frame, brownBtn, brownBtnOff, PALETTE } from './frame';
 import { Popup, Confirm } from './Popup';
 import { SaveSlots } from './SaveSlots';
-import { newGame, hasAnySave } from './store';
+import { newGame, hasAnySave, getBestEnding } from './store';
+import { ScoreCard } from './EndingScreen'; // z-ending: 엔딩 최종 점수 카드
 import { getBest } from './best';
-import { unlockAudio, bgm } from './audio';
+import { unlockAudio, bgm, sfx, isMuted, setMuted, setBgmVolume, setSfxVolume, getBgmVolume, getSfxVolume } from './audio';
+import { Icon } from './Icon';
+import { SAVE_VERSION } from '../sim/index.ts';
+
+/** 버전 표기: package.json version + 빌드 날짜 (vite define). 테스트 환경엔 define이 없으니 안전하게 */
+const APP_VERSION: string = typeof __APP_VERSION__ === 'string' ? __APP_VERSION__ : 'dev';
+const BUILD_DATE: string = typeof __BUILD_DATE__ === 'string' ? __BUILD_DATE__ : '';
+export const VERSION_TEXT = `v${APP_VERSION}${BUILD_DATE ? ` · ${BUILD_DATE}` : ''}`;
+
+/** 세이브 슬롯 키 (store.ts SLOT_PREFIX와 같음). 백업 키는 `${prefix}backup:<slot>` */
+const SLOT_PREFIX = 'jeju-cafe:slot:';
+/** 지금 버전보다 옛 세이브(역직렬화 실패로 백업된 것 포함)가 localStorage에 남아 있나 — 타이틀에 「옛 세이브는 백업됐어요」 한 줄 */
+export function hasOldSave(storage: Pick<Storage, 'length' | 'key' | 'getItem'> | null = typeof localStorage === 'undefined' ? null : localStorage): boolean {
+  if (!storage) return false;
+  for (let i = 0; i < storage.length; i++) {
+    const k = storage.key(i);
+    if (!k?.startsWith(SLOT_PREFIX)) continue;
+    if (k.startsWith(`${SLOT_PREFIX}backup:`)) return true;
+    try {
+      const v = (JSON.parse(storage.getItem(k) ?? 'null') as { version?: unknown } | null)?.version;
+      if (typeof v === 'number' && v < SAVE_VERSION) return true;
+    } catch { /* 깨진 값은 무시 */ }
+  }
+  return false;
+}
 
 /** README 링크. 배포 환경에 맞춰 VITE_SITE_URL로 바꿀 수 있다. */
 const SITE_URL: string = (import.meta.env.VITE_SITE_URL as string | undefined) ?? 'https://github.com/cks3066/jeju-cafe#readme';
@@ -138,7 +163,9 @@ export function TitleScreen({ onEnter }: { onEnter: () => void }) {
   const [canContinue, setCanContinue] = useState(false);
   const [slots, setSlots] = useState(false);
   const [best, setBest] = useState(false);
-  useEffect(() => { void hasAnySave().then(setCanContinue); }, []);
+  const [oldSave, setOldSave] = useState(false);
+  const [sound, setSound] = useState(false);
+  useEffect(() => { void hasAnySave().then(setCanContinue); setOldSave(hasOldSave()); }, []);
   const onPointerDown = () => { unlockAudio(); void bgm('title'); };
   const start = () => {
     const go = () => { newGame(); onEnter(); };
@@ -146,6 +173,7 @@ export function TitleScreen({ onEnter }: { onEnter: () => void }) {
     else go();
   };
   const b = getBest();
+  const be = getBestEnding(); // z-ending: 엔딩 최고 점수
   return (
     <div data-testid="title" onPointerDownCapture={onPointerDown} style={{ position: 'absolute', inset: 0, overflow: 'hidden', fontFamily: "'Galmuri11', system-ui, sans-serif" }}>
       <DemoBackdrop />
@@ -155,16 +183,21 @@ export function TitleScreen({ onEnter }: { onEnter: () => void }) {
           <div style={{ textAlign: 'center', fontSize: 12, color: '#fff5dc', marginTop: 6, textShadow: `1px 1px 0 ${PALETTE.wood}` }}>귀농 카페 경영 시뮬레이션</div>
         </div>
         <div style={{ ...frame, width: '100%', maxWidth: 300, display: 'grid', gap: 6, padding: 10 }}>
-          <button style={titleBtn} onClick={start}>시작</button>
-          <button style={canContinue ? titleBtn : { ...brownBtnOff, ...titleBtn, opacity: 0.45 }} disabled={!canContinue} onClick={() => setSlots(true)}>이어하기</button>
-          <button style={titleBtn} onClick={() => setBest(true)}>최고 점수</button>
-          <a href={SITE_URL} target="_blank" rel="noreferrer" style={{ ...titleBtn, display: 'flex', alignItems: 'center', justifyContent: 'center', textDecoration: 'none', boxSizing: 'border-box' }}>사이트</a>
+          <button style={titleBtn} onClick={start}><Icon name="sparkle" size={20} /> 새 게임</button>
+          <button style={canContinue ? titleBtn : { ...brownBtnOff, ...titleBtn, opacity: 0.45 }} disabled={!canContinue} onClick={() => setSlots(true)}><Icon name="play" size={20} /> 이어하기</button>
+          <button style={titleBtn} onClick={() => setBest(true)}><Icon name="trophy" size={20} /> 최고 점수</button>
+          <button style={titleBtn} onClick={() => setSound(true)} data-testid="title-settings"><Icon name="settings" size={20} /> 설정</button>
+          <a href={SITE_URL} target="_blank" rel="noreferrer" style={{ ...titleBtn, display: 'flex', alignItems: 'center', justifyContent: 'center', textDecoration: 'none', boxSizing: 'border-box' }}><Icon name="book" size={20} />&nbsp;사이트</a>
+          {oldSave && <div data-testid="old-save-note" style={{ fontSize: 13, color: PALETTE.inkSoft, textAlign: 'center' }}>옛 세이브는 백업됐어요 (v{SAVE_VERSION} 이전 세이브는 새 게임으로)</div>}
+          <div data-testid="title-version" style={{ fontSize: 12, color: PALETTE.inkSoft, textAlign: 'center' }}>{VERSION_TEXT}</div>
         </div>
       </div>
       {slots && <SaveSlots mode="load" onClose={() => setSlots(false)} onLoaded={onEnter} />}
+      {sound && <SoundPopup onClose={() => setSound(false)} />}
       {best && (
         <Popup title="최고 점수" onBackdrop={() => setBest(false)} buttons={<button style={{ ...brownBtn, marginRight: 0, marginBottom: 0 }} onClick={() => setBest(false)}>닫기</button>}>
-          <div style={frameTitleRow}><span>연 매출 최고</span><b>{b.yearScore > 0 ? wonText(b.yearScore) : '아직 없음'}</b></div>
+          {be ? <ScoreCard score={be.score} cafeName={be.cafeName} /> : <div style={{ fontSize: 13, color: PALETTE.inkSoft, marginBottom: 8 }}>10년차 결산 점수는 아직 없어요.</div>}
+          <div style={{ ...frameTitleRow, marginTop: 10, borderTop: `1px dashed ${PALETTE.woodLight}`, paddingTop: 8 }}><span>연 매출 최고</span><b>{b.yearScore > 0 ? wonText(b.yearScore) : '아직 없음'}</b></div>
           {b.at && <div style={{ fontSize: 13, color: PALETTE.inkSoft }}>{b.at.year}년차 기록</div>}
           <div style={{ ...frameTitleRow, marginTop: 8 }}><span>월 매출 최고</span><b>{b.monthIncome > 0 ? wonText(b.monthIncome) : '아직 없음'}</b></div>
           <div style={{ fontSize: 13, color: PALETTE.inkSoft, marginTop: 8 }}>연 매출은 12월 결산 때 갱신돼요.</div>
@@ -175,3 +208,27 @@ export function TitleScreen({ onEnter }: { onEnter: () => void }) {
 }
 
 const frameTitleRow: CSSProperties = { display: 'flex', justifyContent: 'space-between', gap: 12 };
+
+/** 타이틀 설정(소리): 배경음·효과음 슬라이더 + 음소거 (게임 안 설정 탭과 같은 값) */
+function SoundPopup({ onClose }: { onClose: () => void }) {
+  const [bgmVol, setBgmVol] = useState(getBgmVolume());
+  const [sfxVol, setSfxVol] = useState(getSfxVolume());
+  const [muted, setMutedState] = useState(isMuted());
+  const slider = (text: string, v: number, set: (n: number) => void) => (
+    <label style={{ display: 'grid', gridTemplateColumns: '64px 1fr 40px', alignItems: 'center', gap: 8, fontSize: 14, minHeight: 44 }}>
+      <span>{text}</span>
+      <input type="range" min={0} max={100} step={5} value={v} onChange={(e) => set(Number(e.target.value))} style={{ width: '100%', accentColor: PALETTE.paperDark }} />
+      <span style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{v}</span>
+    </label>
+  );
+  return (
+    <Popup title="설정" onBackdrop={onClose} buttons={<button style={{ ...brownBtn, marginRight: 0, marginBottom: 0 }} onClick={onClose}>닫기</button>}>
+      <div style={{ display: 'grid', gap: 6 }} data-testid="title-sound">
+        {slider('배경음', bgmVol, (n) => { setBgmVolume(n); setBgmVol(n); })}
+        {slider('효과음', sfxVol, (n) => { setSfxVolume(n); setSfxVol(n); sfx('tap'); })}
+        <button style={{ ...brownBtn, marginRight: 0, marginBottom: 0 }} onClick={() => { setMuted(!isMuted()); setMutedState(isMuted()); }}>{muted ? <><Icon name="sound_on" /> 소리 켜기</> : <><Icon name="sound_off" /> 소리 끄기</>}</button>
+        <div style={{ fontSize: 12, color: PALETTE.inkSoft }}>{VERSION_TEXT}</div>
+      </div>
+    </Popup>
+  );
+}

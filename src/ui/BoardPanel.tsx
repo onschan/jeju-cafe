@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useGame, dispatch } from './store';
+import { josa } from '../sim/josa.ts';
 import {
   questProgress, canAcceptQuest, visibleQuests, questRewardText, spotLevel, spotUnlocked, nextSpotLevel, spotAppeal, spotGuestBonus, canInvestSpot, guestFace, monthIndex,
   spotRequirements, spotVisitors, totalSpotVisitors, dailyVisitors, totalDailyVisitors, tourScore, tourAvailable, canHostTour, hasTourBusKey, canSetTourBus,
@@ -90,7 +91,7 @@ function EventCard({ ev }: { ev: EventState }) {
       <div style={{ fontSize: 13 }}>{def.effectText}</div>
       {pending && (
         <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
-          <button style={{ ...brownBtn, marginBottom: 0 }} onClick={() => dispatch({ type: 'respondEvent', id: ev.id, accept: true })}>수락</button>
+          <button data-tut="event-respond" style={{ ...brownBtn, marginBottom: 0 }} onClick={() => dispatch({ type: 'respondEvent', id: ev.id, accept: true })}>수락</button>
           <button style={{ ...dangerBtn, marginBottom: 0 }} onClick={() => dispatch({ type: 'respondEvent', id: ev.id, accept: false })}>거절</button>
         </div>
       )}
@@ -127,10 +128,10 @@ function SpotCard({ id }: { id: string }) {
   const score = tourScore(s, id);
   const invest = () => {
     if (!next) return;
-    Confirm(`${def.name} Lv${next.level}에 ${wonText(next.cost)}을 투자합니다. 매력도 ${appeal} → ${next.appeal}`, () => dispatch({ type: 'investSpot', id }), { title: '관광지 투자' });
+    Confirm(`${def.name} Lv${next.level}에 ${josa(wonText(next.cost), '을/를')} 투자합니다. 매력도 ${appeal} → ${next.appeal}`, () => dispatch({ type: 'investSpot', id }), { title: '관광지 투자' });
   };
   const host = () => {
-    Confirm(`${def.name}에서 투어를 열까요? 예상 점수 ${score} (${TOUR_SUCCESS_SCORE} 이상 성공: ₩${fmtNum(score * TOUR_MONEY_PER_SCORE)} · 방문객 +${fmtNum(TOUR_SUCCESS_VISITORS)}, 아니면 ₩${fmtNum(TOUR_FAIL_MONEY)} · 방문객 +${fmtNum(TOUR_FAIL_VISITORS)})`, () => dispatch({ type: 'hostTour', spotId: id }), { title: '투어 개최' });
+    Confirm(`${def.name}에서 투어를 열까요? 예상 점수 ${score} (${TOUR_SUCCESS_SCORE} 이상이면 성공: 점수×₩${fmtNum(TOUR_MONEY_PER_SCORE)} = ₩${fmtNum(Math.max(score, TOUR_SUCCESS_SCORE) * TOUR_MONEY_PER_SCORE)}${score < TOUR_SUCCESS_SCORE ? ' 이상' : ''} · 방문객 +${fmtNum(TOUR_SUCCESS_VISITORS)}, 아니면 ₩${fmtNum(TOUR_FAIL_MONEY)} · 방문객 +${fmtNum(TOUR_FAIL_VISITORS)})`, () => dispatch({ type: 'hostTour', spotId: id }), { title: '투어 개최' });
   };
   return (
     <div style={{ ...card, opacity: unlocked ? 1 : 0.55 }} data-testid={`spot-${id}`}>
@@ -149,20 +150,20 @@ function SpotCard({ id }: { id: string }) {
           <div>Lv{next.level} 효과: {levelEffectText(def, next.level)}</div>
           {reqs.length > 0 && (
             <div style={{ color: PALETTE.inkSoft }}>
-              조건: {reqs.map((r, i) => <span key={i} style={{ color: r.met ? PALETTE.ok : PALETTE.bad, marginRight: 6 }}>{r.met ? '✓' : '✗'} {r.text}</span>)}
+              조건: {reqs.map((r, i) => <span key={i} style={{ color: r.met ? PALETTE.ok : PALETTE.bad, marginRight: 6 }}><Icon name={r.met ? 'check' : 'close'} size={12} /> {r.text}</span>)}
             </div>
           )}
         </div>
       )}
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
         {next && (
-          <button style={{ ...(can.ok ? brownBtn : brownBtnOff), marginTop: 6, marginBottom: 0 }} disabled={!can.ok} onClick={invest} aria-label={`${def.name} 투자`}>
+          <button data-tut="spot-invest" style={{ ...(can.ok ? brownBtn : brownBtnOff), marginTop: 6, marginBottom: 0 }} disabled={!can.ok} onClick={invest} aria-label={`${def.name} 투자`}>
             투자 Lv{next.level} <Icon name="money" /> {wonText(next.cost)}
           </button>
         )}
         {lv > 0 && s.clock.year >= TOUR_YEAR && (
           <button style={{ ...(tourOk.ok ? brownBtnOn : brownBtnOff), marginTop: 6, marginBottom: 0 }} disabled={!tourOk.ok} onClick={host} aria-label={`${def.name} 투어 개최`}>
-            🚌 투어 개최 (점수 {score})
+            <Icon name="bus" /> 투어 개최 (점수 {score})
           </button>
         )}
       </div>
@@ -179,12 +180,12 @@ function TourBusCard() {
   return (
     <div style={card} data-testid="tour-bus-card">
       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-        <b style={{ flex: 1 }}>🚌 투어 버스 계약</b>
+        <b style={{ flex: 1 }}><Icon name="bus" /> 투어 버스 계약</b>
         <span style={{ fontSize: 12, color: on ? PALETTE.ok : PALETTE.inkSoft }}>{on ? '계약 중' : '계약 없음'}{s.tourBusFreeMonths > 0 ? ` · 무료 ${s.tourBusFreeMonths}달` : ''}</span>
       </div>
       <div style={{ fontSize: 13, color: PALETTE.inkSoft }}>월 {wonText(TOUR_BUS_FEE)} · 전 명소 방문객 ×1.3 · 단체 손님 ×1.3 · Lv3 이상 명소의 손님이 일요일 11시 버스로 와요</div>
       <button style={{ ...(can.ok ? (on ? dangerBtn : brownBtn) : brownBtnOff), marginTop: 6, marginBottom: 0 }} disabled={!can.ok}
-        onClick={() => Confirm(on ? '투어 버스 계약을 끝낼까요?' : `투어 버스를 계약할까요? 월 ${wonText(TOUR_BUS_FEE)}이 들어요.`, () => dispatch({ type: 'setTourBus', on: !on }), { title: '투어 버스' })}>
+        onClick={() => Confirm(on ? '투어 버스 계약을 끝낼까요?' : `투어 버스를 계약할까요? 월 ${josa(wonText(TOUR_BUS_FEE), '이/가')} 들어요.`, () => dispatch({ type: 'setTourBus', on: !on }), { title: '투어 버스' })}>
         {on ? '계약 끝내기' : '계약하기'}
       </button>
     </div>
@@ -222,7 +223,7 @@ export function BoardPanel({ tabs = ['quests', 'events', 'spots'] }: { tabs?: Bo
 
       {tab === 'events' && (
         <div>
-          {events.length === 0 && <div style={{ fontSize: 13, color: PALETTE.inkSoft }}>이번 달 이벤트가 없어요. 매월 1일에 소식이 와요.</div>}
+          {events.length === 0 && <div style={{ fontSize: 13, color: PALETTE.inkSoft }}>이번 달 소식이 없어요. 매월 1일에 투자·행사 제안이 와요.</div>}
           {events.map((ev, i) => <EventCard key={`${ev.id}-${ev.monthIndex}-${i}`} ev={ev} />)}
         </div>
       )}

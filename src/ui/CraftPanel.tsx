@@ -113,7 +113,7 @@ export function CraftPanel() {
           const disabled = ingredients.length >= slots;
           const stock = i.kind === 'farm' ? ` 창고 ${s.storage[i.id] ?? 0}` : ` ${wonText(i.cost)}`;
           return (
-            <button key={i.id} aria-label={`재료 ${i.name}`} disabled={disabled} title={statText(i.stats)}
+            <button key={i.id} data-tut="craft-ingredient" aria-label={`재료 ${i.name}`} disabled={disabled} title={statText(i.stats)}
               style={{ ...(disabled ? brownBtnOff : brownBtn), fontSize: 13, padding: '0 8px', minHeight: 36, marginRight: 4, marginBottom: 4 }} onClick={() => addIngredient(i.id)}>
               {i.name} <span style={{ fontSize: 11, opacity: 0.85 }}>{INGREDIENT_CATEGORY_NAME[i.category]}{stock}</span>
             </button>
@@ -155,7 +155,7 @@ export function CraftPanel() {
       <div style={{ fontSize: 13, marginBottom: 6 }}>
         성공 <b style={{ color: PALETTE.ok }}>{Math.round(rate)}%</b> · 대성공 <b>{P_GREAT}%</b> · 실패 <b style={{ color: PALETTE.bad }}>{Math.round(100 - P_GREAT - rate)}%</b> · 보너스 폭 +{width}
       </div>
-      <button data-testid="craft-start" style={can.ok ? brownBtnOn : brownBtnOff} disabled={!can.ok} onClick={start}><Icon name="research" /> 개발 시작</button>
+      <button data-testid="craft-start" data-tut="develop" style={can.ok ? brownBtnOn : brownBtnOff} disabled={!can.ok} onClick={start}><Icon name="research" /> 개발 시작</button>
       {!can.ok && <span style={{ fontSize: 13, color: PALETTE.bad }}>{can.reason}</span>}
     </div>
   );
@@ -223,7 +223,7 @@ export function MenuDetail({ menuId }: { menuId: string }) {
       <div style={{ display: 'flex', flexWrap: 'wrap' }}>
         {mod.toppings.map((t) => (
           <button key={t} aria-label={`토핑 빼기 ${toppingDef(t).name}`} style={{ ...dangerBtn, minHeight: 36, fontSize: 13, padding: '0 8px' }} disabled={!canRemoveTopping(s, menuId, t).ok}
-            onClick={() => dispatch({ type: 'removeTopping', menuId, toppingId: t })}>✗ {toppingDef(t).name}</button>
+            onClick={() => dispatch({ type: 'removeTopping', menuId, toppingId: t })}><Icon name="close" size={12} /> {toppingDef(t).name}</button>
         ))}
       </div>
       <div style={{ display: 'flex', flexWrap: 'wrap' }}>
@@ -272,7 +272,7 @@ export function RecipeCodex() {
       </div>
       {INGREDIENT_COMBOS.map((c) => (
         <div key={c.id} style={{ display: 'flex', gap: 6, alignItems: 'baseline' }}>
-          <span style={{ width: 18, textAlign: 'center' }}>{combos.has(c.id) ? '✓' : ' '}</span>
+          <span style={{ width: 18, textAlign: 'center' }}>{combos.has(c.id) ? <Icon name="check" size={12} /> : ' '}</span>
           <span>{c.name}</span>
           <span style={{ fontSize: 12, color: PALETTE.inkSoft }}>{c.pairText} → {c.bonusText}</span>
         </div>

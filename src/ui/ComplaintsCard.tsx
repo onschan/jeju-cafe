@@ -1,8 +1,9 @@
 import { useGame } from './store';
+import { Icon } from './Icon';
 import { topComplaints, COMPLAINT_LABEL, REP_LOW, REP_HIGH } from '../sim/index.ts';
 import { card, PALETTE } from './frame';
 
-/** 사람 창 → 손님 탭 상단: ♥ 평판 · 이번 달 불만 TOP3 · 최근 후기 (트랙 E reputation.ts) */
+/** 사람 창 → 손님 탭 상단: 하트 평판 · 이번 달 불만 TOP3 · 최근 후기 (트랙 E reputation.ts) */
 export function ComplaintsCard() {
   const s = useGame();
   const top = topComplaints(s);
@@ -12,7 +13,7 @@ export function ComplaintsCard() {
     <div style={card} data-testid="complaints-card">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>
         <b>이번 달 불만 TOP3</b>
-        <span style={{ color, fontWeight: 700 }} title="평판 0~100">♥ 평판 {rep}</span>
+        <span style={{ color, fontWeight: 700 }} title="평판 0~100"><Icon name="heart" size={14} /> 평판 {rep}</span>
       </div>
       {top.length === 0
         ? <div style={{ fontSize: 13, color: PALETTE.inkSoft }}>아직 불만이 없어요</div>

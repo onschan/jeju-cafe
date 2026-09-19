@@ -1,5 +1,5 @@
 /** 전체 화면 창(트랙 C의 Window 셸) 안에 들어가는 내용 컴포넌트가 함께 쓰는 것들.
- *  창 내용은 본문만 그린다 — 제목 바·✕는 셸이 붙인다. 상태는 props로 받거나(우선) store의 useGame()으로. */
+ *  창 내용은 본문만 그린다 — 제목 바·닫기는 셸이 붙인다. 상태는 props로 받거나(우선) store의 useGame()으로. */
 import { useSyncExternalStore, type CSSProperties, type ReactNode } from 'react';
 import type { GameState, Action, ApplyResult } from '../../sim/index.ts';
 import { getState, getVersion, subscribe, dispatch as storeDispatch } from '../store';
@@ -25,13 +25,13 @@ export function useWindowState(props: { state?: GameState; dispatch?: Dispatch }
 /** 창 본문 바탕: 종이색, 세로 스크롤은 셸이 맡는다 */
 export const body: CSSProperties = { color: PALETTE.ink, fontSize: 14, lineHeight: 1.35 };
 
-/** 하위 탭의 기본 아이콘 (키별). 없으면 ▪ */
-const TAB_ICON: Record<string, string> = { main: '🎯', challenge: '🏁', monthly: '📅', ours: '👩‍🍳', candidates: '📋', now: '🙂', quests: '❗', codex: '📖', rivals: '⚔️', spots: '🗺️', events: '📨', regions: '🌊', mileage: '🎁', draw: '🎰', ticket: '🎟️' };
+/** 하위 탭의 기본 픽셀 아이콘 이름 (키별). 없으면 menu */
+const TAB_ICON: Record<string, string> = { main: 'target', challenge: 'flag', monthly: 'calendar', ours: 'staff', candidates: 'hire', now: 'guest', quests: 'quest', codex: 'book', rivals: 'rival', spots: 'map', events: 'mail', regions: 'wave', mileage: 'gift', draw: 'draw', ticket: 'ticket' };
 
 /** 하위 탭 바 (UX §5.1): 5개 이하면 아이콘 셀(64px, 아이콘+한글) 한 줄, 그보다 많으면(짓기 카테고리) 가로 텍스트 탭. data-tut="tab:<key>" 유지. */
 export function TabBar<K extends string>({ tabs, active, onPick, testId }: { tabs: { key: K; label: string; badge?: number; icon?: string; locked?: boolean }[]; active: K; onPick: (k: K) => void; testId?: string }) {
   if (tabs.length <= 5) {
-    return <IconGrid items={tabs.map((t) => ({ key: t.key, label: t.label, icon: t.icon ?? TAB_ICON[t.key] ?? '▪', badge: t.badge, locked: t.locked }))} active={active} onPick={onPick} cols={tabs.length} testId={testId} />;
+    return <IconGrid items={tabs.map((t) => ({ key: t.key, label: t.label, icon: t.icon ?? TAB_ICON[t.key] ?? 'menu', badge: t.badge, locked: t.locked }))} active={active} onPick={onPick} cols={tabs.length} testId={testId} />;
   }
   return (
     <div data-testid={testId} style={{ display: 'flex', gap: 4, overflowX: 'auto', paddingBottom: 6, marginBottom: 6, borderBottom: `2px solid ${PALETTE.woodLight}`, scrollbarWidth: 'none' }}>

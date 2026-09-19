@@ -4,7 +4,7 @@ import { seasonOf, LOW_ENERGY, parcelPrice, footprint, roomAt, doorFrontOf, WALL
 import type { Parcel } from '../sim/index.ts';
 import { objectDef } from '../data/index.ts';
 import { isoTerrainTexture, isoObjectTexture, glowTexture, label, clearTextureCache, loadLabelFont } from './textures';
-import { makeSpeechBubble } from './bubble';
+import { makeSpeechBubble, shortMenuName } from './bubble';
 import { loadAssets, tex, peekTex, hasAssets, spriteName } from './assets';
 import { attachCamera, type CameraBounds, type CameraOptions } from './camera';
 import { ISO_W, ISO_H, cellToScreen, cellCenter, footAnchor, depth, screenToCell } from './iso';
@@ -17,6 +17,9 @@ import { siteOf, siteBadgeTextPlain, siteTone, layoutKey } from '../sim/site.ts'
 import { objectStats, activeCombos } from '../sim/compat.ts';
 import { entryPoints, ROUTE_IDS } from '../sim/entry.ts'; // 트랙 H 진입점 표지
 import { isSiteOverlayOn, setSiteOverlayOn, siteOverlayKey, drawSiteOverlay, GHOST_GOOD, GHOST_WARN } from './siteOverlay';
+
+/** 주문 말풍선: 메뉴 분류별 픽셀 아이콘(icon_*) — MenuWindow의 CAT_ICON과 같은 이름 */
+const MENU_BUBBLE_ICON: Record<string, string> = { drink: 'coffee', dessert: 'cake', meal: 'meal', signature: 'sparkle' };
 
 /** 전용 스프라이트가 있는 손님 타입 (guest_local·guest_tourist 시트) */
 const GUEST_SPRITE_KEY: Record<string, string> = { local_auntie: 'local', student: 'tourist' };
@@ -1030,9 +1033,9 @@ export class GameView {
       if (!entry.hadMenu && g.menuId !== null) {
         entry.hadMenu = true;
         this.spawnCoin(node.x, node.y - GUEST_H - 4, now);
-        let name = '';
-        try { name = menuOf(state, g.menuId).name; } catch { /* 모르는 메뉴 id */ }
-        this.showBubble(g.id, { icon: spriteName.icon('menu'), text: name || undefined });
+        let name = '', icon = 'coffee';
+        try { const def = menuOf(state, g.menuId); name = shortMenuName(def.name); icon = MENU_BUBBLE_ICON[def.category] ?? 'coffee'; } catch { /* 모르는 메뉴 id */ }
+        this.showBubble(g.id, { icon: spriteName.icon(icon), text: name || undefined });
       }
       // 나갈 때 기분 아이콘, 가끔(20%) 대사
       if (entry.phase !== g.phase) {

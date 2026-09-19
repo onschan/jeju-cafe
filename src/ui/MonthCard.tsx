@@ -1,6 +1,6 @@
 import { useRef } from 'react';
 import { useGame, dispatch } from './store';
-import { goalDef, goalRewardText, currentGoal, goalConditionText, type MonthCard as MonthCardData } from '../sim/index.ts';
+import { goalDef, goalRewardText, currentGoal, goalConditionText, menuOf, type MonthCard as MonthCardData } from '../sim/index.ts';
 import { label } from '../data/labels.ts';
 import { Window } from './Window';
 import { ReportWindow } from './windows/ReportWindow.tsx';
@@ -23,7 +23,7 @@ export function MonthCard() {
   const close = () => { claimedMark.current = s.goals.claimed.length; dispatch({ type: 'dismissMonthCard' }); };
 
   const highlights: string[] = [];
-  if (c.topMenu) highlights.push(`최다 판매: ${label('menu', c.topMenu)}`);
+  if (c.topMenu) { let name = label('menu', c.topMenu); try { name = menuOf(s, c.topMenu).name; } catch { /* 표에 없는 메뉴면 label */ } highlights.push(`최다 판매: ${name}`); } // 개발한 메뉴(m_custom_N)는 이름이 state에 있다
   let bestType: string | null = null;
   let best = 0;
   for (const [id, gt] of Object.entries(s.guestTypes)) if (gt.unlocked && gt.satisfaction > best) { best = gt.satisfaction; bestType = id; }

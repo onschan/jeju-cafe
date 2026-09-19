@@ -3,6 +3,10 @@ import { initRoutes } from './entry.ts';
 import { SAVE_VERSION } from './state.ts';
 import { footprintOf } from './grid.ts';
 import { initMain } from './rooms.ts';
+import { initEnding } from './ending.ts'; // z-ending
+import { initVillage } from './village.ts'; // z-ending
+import type { FinalScore } from './types.ts';
+import { TUTORIAL_STEPS } from './tutorial.ts';
 
 export function serialize(state: GameState): string {
   return JSON.stringify(state);
@@ -26,6 +30,13 @@ function backfill(state: GameState): void {
   state.monthMenuSold ??= {};
   state.routes ??= initRoutes(); // 트랙 H 유입 경로 (routes 없는 옛 저장)
   state.main ??= initMain(); // y-indoor: 본관 증축·이동·분위기 (SAVE_VERSION 18)
+  state.ending ??= initEnding(); // z-ending: 엔딩·빠른 모드·100주년 (v18 세이브엔 없다)
+  state.village ??= initVillage(); // z-ending: 정착 등급·마을제
+  state.carry ??= null; // z-ending: 이월 묶음
+  if (state.tutorial.seen === undefined) { // z-tutorial: 30단계 판정 표식이 없는 옛 9단계 저장 — 건너뛴 것은 계속 끝난 상태(30), 손으로 한 것은 10단계부터 이어 간다
+    state.tutorial.seen = [];
+    if (state.tutorial.skipped && state.tutorial.step < TUTORIAL_STEPS) state.tutorial.step = TUTORIAL_STEPS;
+  }
 }
 
 /** objects.json의 w/h가 바뀌어도 세이브가 깨지지 않도록 cells[].objectId를 objects에서 다시 만든다. */
@@ -52,9 +63,29 @@ export class MemorySaveStore implements SaveStore {
   async list() { return [...this.map.keys()].sort((a, b) => a - b); }
 }
 
+/** 최고 점수 기록 (z-ending): 엔딩 최종 점수 카드 + 언제·어느 카페였나 */
+export interface BestRecord { score: FinalScore; cafeName: string; at: number }
+
 export class LocalSaveStore implements SaveStore {
   constructor(private prefix = 'jeju-cafe:slot:') {}
   private key(slot: number) { return `${this.prefix}${slot}`; }
+  /** 엔딩 최고 점수 슬롯 (`<prefix>best`). 저장은 총점이 더 높을 때만. */
+  private bestKey() { return `${this.prefix}best`; }
+  loadBest(): BestRecord | null {
+    try {
+      const j = localStorage.getItem(this.bestKey());
+      if (!j) return null;
+      const b = JSON.parse(j) as BestRecord;
+      return b && typeof b === 'object' && b.score && typeof b.score.total === 'number' ? b : null;
+    } catch { return null; }
+  }
+  /** 갱신했으면 true */
+  saveBest(rec: BestRecord): boolean {
+    const cur = this.loadBest();
+    if (cur && cur.score.total >= rec.score.total) return false;
+    try { localStorage.setItem(this.bestKey(), JSON.stringify(rec)); } catch { return false; }
+    return true;
+  }
   async save(slot: number, state: GameState) { localStorage.setItem(this.key(slot), serialize(state)); }
   async load(slot: number) {
     const j = localStorage.getItem(this.key(slot));

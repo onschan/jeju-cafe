@@ -16,7 +16,7 @@ import { objectDef, goalDef, COMBOS, INDOOR_IDS, ROOM_IDS, ANNEX_IDS, buildGroup
 import {
   mainBuilding, mainLevel, indoorSeats, roomSeats, freeFloorCells, expandCells, canExpandMain, expandMain, canBuildSecondFloor, canStartMoveMain, canMoveMain, canUndoMoveMain,
   isRoomCut, annexCount, preferIndoor, filterSeatsForWeather, stayMs, browseChance, indoorSatisfaction, indoorSpawnMult, indoorFeeMult, isFireplaceOn, isPianoPlaying, hasNewBooks, isKidsStocked,
-  seatsShort, seatUsePct, dailyRooms, accumulateSeatUse, isMainClosed, mainSummary,
+  seatsShort, seatUsePct, dailyRooms, accumulateSeatUse, isMainClosed, mainSummary, autoConnectDoor, autoPathCellCost,
   MAIN_SIZE, MAIN_EXPAND_COST, MAIN_EXPAND_DAYS, FLOOR2_COST, FLOOR2_SEATS, MOVE_COST, MOVE_DAYS, FIREPLACE_FUEL, STAY_PER_FACILITY_MS, SEAT_FULL_TEXT, KIDS_RESTOCK_COST, NEW_BOOKS_MILEAGE,
 } from '../rooms.ts';
 import type { GameState } from '../types.ts';
@@ -73,7 +73,9 @@ describe('본관 증축 (§8.1)', () => {
     expect(mainLevel(s)).toBe(2);
     expect(sizeOf(m)).toEqual(MAIN_SIZE[2]);
     expect(m).toMatchObject({ x: X(3), y: Y(1), w: 4, h: 3 });
-    expect(s.money).toBe(money - MAIN_EXPAND_COST[2]! + 2 * objectDef('path').cost); // (3,3)·(4,3) 길 환불
+    expect(s.money).toBe(money - MAIN_EXPAND_COST[2]! + 2 * objectDef('path').cost - objectDef('path').cost); // (3,3)·(4,3) 길 환불, 새 문 앞 (3,4) 자동 연결 1칸
+    expect(objectAt(s, X(3), Y(4))?.type).toBe('path'); // 자동 연결된 올렛길
+    expect(isDoorReachable(s, m)).toBe(true);
     expect(objectAt(s, X(3), Y(3))?.id).toBe(m.id);
     expect(cellAt(s, X(6), Y(3)).roomId).toBe(m.id);
     expect(footprintOf(m).length).toBe(12);
@@ -161,7 +163,9 @@ describe('본관 옮기기 (§4.1)', () => {
     expect(objectAt(s, X(1), Y(4))?.type).toBe('table_in'); // 상대 위치 유지
     expect(cellAt(s, X(1), Y(4)).roomId).toBe(m.id);
     expect(cellAt(s, X(4), Y(1)).roomId).toBeNull();
-    expect(s.money).toBe(money - MOVE_COST + objectDef('path').cost);
+    expect(s.money).toBe(money - MOVE_COST + objectDef('path').cost - objectDef('path').cost); // (1,5) 환불, 새 문 앞 (0,6) 자동 연결 1칸
+    expect(objectAt(s, X(0), Y(6))?.type).toBe('path');
+    expect(isDoorReachable(s, m)).toBe(true);
     expect(s.main.work).toMatchObject({ kind: 'move', days: MOVE_DAYS });
     expect(s.main.movedMonth).toBe(monthIndex(s.clock));
     expect(canStartMoveMain(s).reason).toBe('공사 중이에요');
@@ -172,12 +176,17 @@ describe('본관 옮기기 (§4.1)', () => {
     expect(apply(s, { type: 'undoMoveMain' }).ok).toBe(true);
     expect(m).toMatchObject({ x: X(3), y: Y(1) });
     expect(objectAt(s, X(4), Y(1))?.type).toBe('table_in');
-    expect(s.money).toBe(money + objectDef('path').cost); // 비용 환불 (길 환불은 그대로)
+    expect(s.money).toBe(money); // 비용 환불 (길 환불·자동 연결 길은 그대로 남는다)
     expect(s.main.work).toBeNull();
     expect(canStartMoveMain(s).ok).toBe(true); // 횟수 복구
-    // 다시 옮기면 이달은 끝. 문 앞이 길이 아니면 경고 + 길 끊김
+    // 다시 옮기면 이달은 끝. 문 앞이 길이 아니고 돈이 모자라 자동 연결을 못 하면 경고(필요 금액) + 길 끊김
+    apply(s, { type: 'remove', objectId: objectAt(s, X(0), Y(6))!.id });
+    s.money = MOVE_COST + objectDef('path').cost - 1;
     expect(apply(s, { type: 'moveMain', x: X(0), y: Y(4) }).ok).toBe(true);
     expect(s.notices.at(-1)).toContain('문 앞에 올렛길을 이어 주세요');
+    expect(s.notices.at(-1)).toContain('필요');
+    expect(objectAt(s, X(0), Y(6))).toBeNull();
+    s.money = 100_000_000;
     tick(s, DAY_MS);
     expect(canUndoMoveMain(s).reason).toBe('되돌릴 이동이 없어요');
     for (let d = 0; d < MOVE_DAYS; d++) tick(s, DAY_MS);
@@ -196,6 +205,19 @@ describe('본관 옮기기 (§4.1)', () => {
     s.events = [];
     apply(s, { type: 'expandMain' });
     expect(canStartMoveMain(s).reason).toBe('공사 중이에요');
+  });
+  test('손님: 마당 자리 손님은 상관없고, 본관 자리에 앉았거나 본관 발자국(옮길 자리 포함)을 지나는 손님이 있으면 금지', () => {
+    const s = cafe();
+    s.tutorial.step = 99;
+    placeObject(s, 'table_out', X(6), Y(6));
+    const base = { id: 'g1', type: 'student', phase: 'seated', x: X(6), y: Y(6), path: [], seatId: objectAt(s, X(6), Y(6))!.id, seatSlot: 0, approachCell: null, menuId: null, mood: null, moodReason: null, say: null, visitId: null, timerMs: 0, waitMs: 0, paid: 0 } as never;
+    s.guests.push(base);
+    expect(canStartMoveMain(s).ok).toBe(true); // 마당 손님만
+    s.guests[0] = { ...(base as object), seatId: main(s).id } as never; // 본관 카운터에 앉음
+    expect(canStartMoveMain(s).reason).toBe('본관에 손님이 있을 땐 못 옮겨요');
+    s.guests[0] = { ...(base as object), path: [{ x: X(7), y: Y(7) }] } as never; // 옮길 자리를 지나감
+    expect(canStartMoveMain(s).ok).toBe(true);
+    expect(canMoveMain(s, X(7), Y(7)).reason).toBe('손님이 지나가는 자리예요');
   });
   test('직원 대기 칸·주방 거리는 옮긴 본관 문 앞 기준, 저장 왕복에 w/h·main이 남는다', () => {
     const s = cafe();
@@ -383,4 +405,59 @@ describe('별관·목표 (§8.2·P1-13)', () => {
     expect(roomAt(s, X(8), Y(1))?.id).toBe(g.id);
     expect(isWalkable(s, X(8), Y(1))).toBe(true);
   });
+});
+
+describe('z-polish: 올렛길 자동 연결·시설 플래그 캐시', () => {
+  test('autoConnectDoor: 새 문 앞에서 정류장과 이어진 가장 가까운 길까지 빈 흙에만 올렛길을 놓고 칸당 길 가격을 낸다', () => {
+    const s = cafe();
+    const m = main(s);
+    // 본관을 (0,4)로 옮긴 상태 흉내: 문 앞 (0,6)이 도로가 아니면 경로가 여러 칸이 된다 → 대신 별도 방(별관)으로 검증
+    expect(autoConnectDoor(s, m)).toEqual({ laid: 0, cost: 0, need: 0, route: [] }); // 이미 이어져 있음
+    apply(s, { type: 'remove', objectId: objectAt(s, X(3), Y(3))!.id }); // 문 앞 길 철거 → 끊김
+    apply(s, { type: 'remove', objectId: objectAt(s, X(4), Y(3))!.id });
+    expect(isDoorReachable(s, m)).toBe(false);
+    const money = s.money;
+    const r = autoConnectDoor(s, m);
+    expect(r.laid).toBe(2); // (3,3)·(4,3) — (4,4)까지 최단
+    expect(r.cost).toBe(2 * autoPathCellCost());
+    expect(s.money).toBe(money - r.cost);
+    expect(isDoorReachable(s, m)).toBe(true);
+    expect(objectAt(s, X(3), Y(3))?.type).toBe('path');
+  });
+  test('autoConnectDoor: 돈이 모자라면 놓지 않고 필요 금액만, 이을 길이 없으면 route null', () => {
+    const s = cafe();
+    const m = main(s);
+    apply(s, { type: 'remove', objectId: objectAt(s, X(3), Y(3))!.id });
+    s.money = autoPathCellCost() - 1;
+    const r = autoConnectDoor(s, m);
+    expect(r.laid).toBe(0);
+    expect(r.need).toBe(autoPathCellCost());
+    expect(objectAt(s, X(3), Y(3))).toBeNull();
+    // 문 앞이 큰 바위(길을 못 놓는 지형)면 이을 수 없다
+    s.money = 100_000_000;
+    cellAt(s, X(3), Y(3)).terrain = 'rock_big';
+    expect(autoConnectDoor(s, m).route).toBeNull();
+  });
+  test('indoorFlags 캐시 키는 배치 서명: actionLog가 캡(1,000)에 닿아도 철거를 바로 본다', () => {
+    const s = cafe();
+    placeObject(s, 'piano', X(4), Y(1));
+    apply(s, { type: 'setPianoTime', time: 'lunch' });
+    s.clock.hour = 13;
+    for (let i = 0; i < 1001; i++) s.actionLog.push({ tick: s.tick, action: { type: 'setBgm', bgm: null } });
+    expect(indoorSpawnMult(s, 'student')).toBeCloseTo(1.1);
+    const len = s.actionLog.length;
+    expect(apply(s, { type: 'remove', objectId: objectAt(s, X(4), Y(1))!.id }).ok).toBe(true);
+    expect(s.actionLog.length).toBe(len); // 캡에 닿아 길이가 안 바뀐다
+    expect(indoorSpawnMult(s, 'student')).toBe(1);
+  });
+});
+
+test('autoConnectDoor: 문 앞에 시설이 있으면 잇지 않고 blocked에 이름을 돌려준다', () => {
+  const s = cafe();
+  const m = main(s);
+  apply(s, { type: 'remove', objectId: objectAt(s, X(3), Y(3))!.id });
+  placeObject(s, 'table_out', X(3), Y(3));
+  const r = autoConnectDoor(s, m);
+  expect(r.route).toBeNull();
+  expect(r.blocked).toBe(objectDef('table_out').name);
 });

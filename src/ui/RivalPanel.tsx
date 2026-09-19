@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { ButtonGroup } from './ButtonGroup';
 import { useGame, dispatch } from './store';
-import { rivalMonths, rivalPower, judgeBreakdown, challengeOdds, canChallenge, menuStatsOf, menuOf, rivalStatPenaltyPct, josa, RIVAL_LEAVE_MONTHS, JUDGE_LUCK, type RivalState, type MenuStatKey } from '../sim/index.ts';
+import { rivalMonths, rivalPower, judgeBreakdown, challengeOdds, canChallenge, menuStatsOf, menuOf, rivalStatPenaltyPct, josa, RIVAL_LEAVE_MONTHS, JUDGE_LUCK, type RivalState, RIVAL_START_YEAR, type MenuStatKey } from '../sim/index.ts';
 import { rivalDef, namedGuestDef, MENU_STAT_LABEL } from '../data/index.ts';
 import { Popup } from './Popup';
 import { Bar } from './Bars';
@@ -32,7 +32,7 @@ function ChallengePicker({ r, onClose }: { r: RivalState; onClose: () => void })
       )}
       <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
         <button style={{ ...brownBtn, marginBottom: 0 }} onClick={onClose}>취소</button>
-        <button style={{ ...(can.ok ? brownBtnOn : brownBtnOff), marginBottom: 0 }} disabled={!can.ok} onClick={() => { if (dispatch({ type: 'challenge', rivalId: r.id, menuId }).ok) onClose(); }} aria-label="대결 시작">대결!</button>
+        <button data-tut="rival-challenge" style={{ ...(can.ok ? brownBtnOn : brownBtnOff), marginBottom: 0 }} disabled={!can.ok} onClick={() => { if (dispatch({ type: 'challenge', rivalId: r.id, menuId }).ok) onClose(); }} aria-label="대결 시작">대결!</button>
       </div>
     </div>
   );
@@ -67,7 +67,7 @@ export function RivalPanel() {
   return (
     <div data-testid="rival-panel">
       <div style={{ fontSize: 13, color: PALETTE.inkSoft, marginBottom: 4 }}>
-        {s.rivals.length === 0 ? '지금은 라이벌 카페가 없어요. 3년차부터 근처에 생길 수 있어요.' : `라이벌 ${s.rivals.length}곳 · 우리 메뉴 양·보기 −${pen}% · 대결에서 이기면 철수하고 마일리지 +2, 지면 인기 −5`}
+        {s.rivals.length === 0 ? `지금은 라이벌 카페가 없어요. ${RIVAL_START_YEAR}년차부터 근처에 생길 수 있어요.` : `라이벌 ${s.rivals.length}곳 · 우리 메뉴 양·보기 −${pen}% · 대결에서 이기면 철수하고 마일리지 +2, 지면 인기 −5`}
       </div>
       {s.rivals.map((r) => <RivalCard key={r.id} r={r} />)}
     </div>

@@ -1,4 +1,6 @@
 import { useEffect, useRef } from 'react';
+import { Icon } from './Icon';
+import { useTutorialNote } from './tutorialDialogue';
 import { wonText } from '../data/labels.ts';
 import { useGame } from './store';
 import { guestFace, walletOf, canAcceptQuest, namedGuestFace, AFFINITY_MAX, type Guest, type GuestTypeState } from '../sim/index.ts';
@@ -10,7 +12,8 @@ import { Bar, Face } from './Bars';
 import { brownBtn, brownBtnOn, PALETTE } from './frame';
 import type { Face as FaceParts, RoleId } from '../sim/index.ts';
 
-const MOOD_TEXT: Record<string, string> = { happy: '기분 좋음 😊', meh: '그저 그럼 😐', angry: '화남 😠' };
+const MOOD_TEXT: Record<string, string> = { happy: '기분 좋음', meh: '그저 그럼', angry: '화남' };
+const MOOD_ICON: Record<string, string> = { happy: 'mood_happy', meh: 'mood_meh', angry: 'mood_angry' };
 const REASON_TEXT: Record<string, string> = { no_menu: '먹을 게 없어요', scenery: '경치가 아쉬워요', wait: '오래 기다렸어요', price: '너무 비싸요' };
 
 /** 파츠 초상(캔버스). 시트가 없으면 색 사각형 얼굴로. */
@@ -70,6 +73,7 @@ function offeredQuestFor(quests: Record<string, { id: string; status: string }>,
 /** 손님을 누르면: 초상·이름·기분·대사·지갑·만족 게이지·부탁(도전하기) */
 export function GuestPopup({ guestId, onClose, onQuest }: { guestId: string; onClose: () => void; onQuest: (questId: string) => void }) {
   const s = useGame();
+  useTutorialNote('guestCard'); // 튜토리얼 10단계 「손님 카드 보기」
   const g = s.guests.find((x) => x.id === guestId);
   if (!g) return null;
   const def = guestTypeDef(g.type);
@@ -87,7 +91,7 @@ export function GuestPopup({ guestId, onClose, onQuest }: { guestId: string; onC
           <Portrait parts={namedPortraitParts(nd.id)} face={namedGuestFace(nd)} />
           <div style={{ flex: 1, fontSize: 14, lineHeight: 1.6 }}>
             <div><b>{nd.name}</b> <span style={{ fontSize: 12, color: PALETTE.inkSoft }}>{nd.job} · {regionDef(nd.regionId).name}</span>{ns?.regular && <span style={{ color: PALETTE.btn, fontWeight: 700 }}> ★ 단골</span>}</div>
-            <div>기분: {mood}{g.moodReason && g.mood !== 'happy' ? ` (${REASON_TEXT[g.moodReason]})` : ''}</div>
+            <div>기분: {g.mood && <><Icon name={MOOD_ICON[g.mood] ?? 'mood_meh'} size={14} /> </>}{mood}{g.moodReason && g.mood !== 'happy' ? ` (${REASON_TEXT[g.moodReason]})` : ''}</div>
             <div>지갑: {wonText(nd.budget)}</div>
             <div style={{ whiteSpace: 'nowrap' }}>호감 <Bar value={ns?.affinity ?? 0} max={AFFINITY_MAX} width={90} /> {ns?.affinity ?? 0}/{AFFINITY_MAX}</div>
           </div>
@@ -110,7 +114,7 @@ export function GuestPopup({ guestId, onClose, onQuest }: { guestId: string; onC
         <Portrait parts={guestPortraitParts(g.type)} face={guestFace(g.type)} />
         <div style={{ flex: 1, fontSize: 14, lineHeight: 1.6 }}>
           <div><b>{def.name}</b>{quest && <span style={{ color: PALETTE.bad, fontWeight: 700 }}> !</span>} <span style={{ fontSize: 12, color: PALETTE.inkSoft }}>{def.tags.age === 'senior' ? '삼춘' : def.tags.age === 'youth' ? '청년' : def.tags.age === 'adult' ? '어른' : ''}{def.tags.group ? ' · 단체' : ''}</span></div>
-          <div>기분: {mood}{g.moodReason && g.mood !== 'happy' ? ` (${REASON_TEXT[g.moodReason]})` : ''}</div>
+          <div>기분: {g.mood && <><Icon name={MOOD_ICON[g.mood] ?? 'mood_meh'} size={14} /> </>}{mood}{g.moodReason && g.mood !== 'happy' ? ` (${REASON_TEXT[g.moodReason]})` : ''}</div>
           <div>지갑: {def.wallet > 0 ? wonText(walletOf(s, g.type)) : '없음'}</div>
           <div style={{ whiteSpace: 'nowrap' }}>만족 <Bar value={st?.satisfaction ?? 0} max={100} width={90} /> {st?.satisfaction ?? 0}{st?.regular === 'vip' ? ' · VIP' : st?.regular === 'regular' ? ' · 단골' : ''}</div>
         </div>

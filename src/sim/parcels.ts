@@ -3,6 +3,7 @@ import { PARCELS, guestTags } from '../data/index.ts';
 import { pushNotice } from './staff.ts';
 import { PARCEL_COLS, PARCEL_ROWS, PARCEL_W, PARCEL_H, START_ORIGIN, PARCEL_LAYOUT as LAYOUT } from './layout.ts';
 import { fmtNum } from './format.ts';
+import { villageParcelDiscount } from './village.ts'; // z-ending
 
 export { PARCEL_COLS, PARCEL_ROWS, PARCEL_W, PARCEL_H, START_ORIGIN };
 /** parcels.json 가격(15만~30만)은 구 화폐 단위라 ×10 → 100만~300만 (시작 자금 500만 기준) */
@@ -79,7 +80,7 @@ export function parcelsAdjacent(a: Parcel, b: Parcel): boolean {
 
 /** 지금 사면 드는 값 (신구간 할인 반영) */
 export function parcelPrice(state: GameState, p: Parcel): number {
-  const disc = state.clock.month === SINGUGAN_MONTH ? SINGUGAN_DISCOUNT : 0;
+  const disc = (state.clock.month === SINGUGAN_MONTH ? SINGUGAN_DISCOUNT : 0) + villageParcelDiscount(state); // z-ending: 정착 등급 4 −10%
   return Math.round(p.price * (1 - disc));
 }
 

@@ -82,9 +82,15 @@ describe('goals.json 데이터', () => {
       expect(conditionProgress(s, c).cur, c.type).toBe(0);
       expect(goalMet(s, c), c.type).toBe(false);
     }
+    // z-ending: 100주년 감귤축제는 20년차 11월 ending.ts centennialMonthly가 판정해 ending.centennial = 'done'으로 남긴다
     expect(goalMet(s, { type: 'custom', id: 'centennial' })).toBe(false);
-    s.clock.year = 10; s.clock.month = 11; s.star = 5;
+    s.ending.centennial = 'done';
     expect(goalMet(s, { type: 'custom', id: 'centennial' })).toBe(true);
+    // z-ending: 정착 등급·마을제
+    expect(goalMet(s, { type: 'villageGrade', n: 3 })).toBe(false);
+    s.village.grade = 3;
+    expect(goalMet(s, { type: 'villageGrade', n: 3 })).toBe(true);
+    expect(conditionProgress(s, { type: 'festivals', n: 1 })).toEqual({ cur: 0, max: 1 });
   });
 
   it('액션 잠금 기능 6종은 각각 정확히 한 목표에서 열리고, 그 기능이 필요한 목표는 그 뒤에 온다', () => {

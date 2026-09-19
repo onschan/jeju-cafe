@@ -6,6 +6,7 @@ import type { GameState, Guest, Staff } from './types.ts';
 import { guestDialogue, guestTags, namedGuestDef, roleDef } from '../data/index.ts';
 import { menuOf, isStaffBusy } from './craft.ts';
 import { LOW_ENERGY } from './staff.ts';
+import { josa } from './josa.ts';
 import { siteSay } from './site.ts';
 import { isForeign } from './entry.ts';
 
@@ -58,7 +59,7 @@ export function guestSay(state: GameState, guest: Guest): string | null {
   const senior = guestTags(g.type).age === 'senior';
   const d = guestDialogue(g.type);
   const menuName = g.menuId ? menuOf(state, g.menuId).name : null;
-  const fill = (s: string | null) => (s ? s.replace('{menu}', menuName ?? '뭐라도') : null);
+  const fill = (s: string | null) => (s ? s.replace('{menu}로', josa(menuName ?? '뭐라도', '으로/로')).replace('{menu}', menuName ?? '뭐라도') : null);
   switch (g.phase) {
     case 'walking':
       return g.seatId ? null : pick(senior ? NO_SEAT_LINES_SENIOR : NO_SEAT_LINES, g.id);

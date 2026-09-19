@@ -41,6 +41,13 @@ export function wrapBubbleText(text: string, max = WRAP_CHARS): string {
   return out.join('\n');
 }
 
+/** 주문 말풍선용 짧은 메뉴 이름: 괄호·부제를 떼고 6자까지 (아이콘 옆에 한 줄) */
+export const BUBBLE_NAME_MAX = 6;
+export function shortMenuName(name: string): string {
+  const base = name.replace(/\s*[(（].*$/, '').replace(/\s+/g, ' ').trim();
+  return base.length > BUBBLE_NAME_MAX ? `${base.slice(0, BUBBLE_NAME_MAX)}…` : base;
+}
+
 export function makeSpeechBubble(spec: BubbleSpec): Container {
   const c = new Container();
   const parts: Container[] = [];

@@ -166,7 +166,7 @@ export function canPlace(state: GameState, type: string, x: number, y: number, i
       continue;
     }
     if (cell.objectId && cell.objectId !== ignoreId) return { ok: false, reason: '이미 뭔가 있어요' };
-    if (!def.terrain.includes(cell.terrain)) return { ok: false, reason: cell.terrain === 'rock' || cell.terrain === 'rock_big' ? '바위를 먼저 치워요' : '여기엔 못 놓아요' };
+    if (!def.terrain.includes(cell.terrain)) return { ok: false, reason: cell.terrain === 'rock' || cell.terrain === 'rock_big' ? '바위를 먼저 치워요' : cell.terrain === 'road' ? '마을 길 위엔 못 놓아요' : '여기엔 못 놓아요' };
     // 방의 문 앞 칸은 손님 출입구라 길·정낭만 놓는다
     if (blocksDoorFront(def) && roomWithDoorFrontAt(state, p.x, p.y, ignoreId)) return { ok: false, reason: '문 앞은 비워 둬요' };
   }

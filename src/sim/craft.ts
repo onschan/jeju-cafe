@@ -344,6 +344,12 @@ export function autoMenuName(base: MenuBase, ingredients: string[]): string {
   for (const id of ingredients) { const d = ingredientDef(id); if (!best || statSum(d.stats) > statSum(best.stats)) best = d; }
   return `${best?.name ?? ''} ${BASE_NAME[base]}`.trim();
 }
+/** 같은 이름의 개발 메뉴가 이미 있으면 「원두 음료 2」처럼 번호를 붙인다 (메뉴판·대결 목록에서 구분되게) */
+export function uniqueMenuName(state: GameState, base: string): string {
+  const taken = new Set(state.customMenus.map((m) => m.name));
+  if (!taken.has(base)) return base;
+  for (let n = 2; ; n++) { const name = `${base} ${n}`; if (!taken.has(name)) return name; }
+}
 function rollOutcome(state: GameState, rate: number): DevelopOutcome {
   const r = nextRandom(state) * 100;
   if (r < P_GREAT) return 'great';
@@ -390,7 +396,7 @@ export function resolveDevelop(state: GameState): DevelopResult | null {
   state.stats.recipesMade++;
   const def: MenuDef = {
     id,
-    name: hidden ? hidden.name : autoMenuName(dev.base, dev.ingredients),
+    name: hidden ? hidden.name : uniqueMenuName(state, autoMenuName(dev.base, dev.ingredients)),
     category: dev.base,
     price: priceFromStats(stats),
     ingredients: countIngredients(dev.ingredients),

@@ -52,7 +52,7 @@ export function RankPanel() {
         {star ? (
           <div style={{ marginTop: 6 }}>
             <div style={{ fontWeight: 700 }}>★{star.star} 조건 <span style={small}>(월초에 검사해요)</span></div>
-            {star.conditions.map((c) => <div key={c.text} style={{ fontSize: 14, color: c.met ? PALETTE.ok : PALETTE.ink }} data-testid="star-cond">{c.met ? '✓' : '○'} {c.text}</div>)}
+            {star.conditions.map((c) => <div key={c.text} style={{ fontSize: 14, color: c.met ? PALETTE.ok : PALETTE.ink }} data-testid="star-cond">{c.met ? <Icon name="check" size={12} /> : '○'} {c.text}</div>)}
             <div style={small}>열리는 것: {star.unlockText}</div>
           </div>
         ) : <div style={{ ...small, marginTop: 6 }}>최고 등급이에요!</div>}
@@ -71,7 +71,7 @@ export function RankPanel() {
         return (
           <div key={g.id} style={{ ...card, opacity: unlocked ? 1 : 0.7, marginBottom: 6 }} data-testid={`gb-${g.id}`}>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <b>{unlocked ? '📖' : '🔒'} {g.name}</b>
+              <b><Icon name={unlocked ? 'book' : 'lock'} /> {g.name}</b>
               {unlocked && <span style={{ fontSize: 13 }}>{st?.lastRank ? `최근 ${st.lastRank}위` : '아직 발표 전'}{st?.best ? ` · 최고 ${st.best}위` : ''}</span>}
             </div>
             <div style={small}>
@@ -114,14 +114,14 @@ export function AnnouncementPopup() {
     <Popup title={`${a.year}년차 ${a.month}월 가이드북 발표`} onBackdrop={done ? close : undefined}
       buttons={<button style={brownBtn} onClick={() => (done ? close() : setStage(keys.length + 3))} data-testid="announce-next">{done ? (last ? '닫기' : '다음') : '건너뛰기'}</button>}>
       <div data-testid="announce-entry" data-stage={stage}>
-        <div style={{ fontSize: 18, fontWeight: 700 }}>📖 {entry.name}</div>
+        <div style={{ fontSize: 18, fontWeight: 700 }}><Icon name="book" size={18} /> {entry.name}</div>
         {entry.targetText && <div style={small}>이번 달 타깃: {entry.targetText} 손님</div>}
         <div style={{ margin: '6px 0' }}>
           {keys.map((k, i) => <Gauge key={k} label={JUDGE_LABEL[k]} value={entry.scores[k]} on={stage > i} />)}
           <Gauge label="종합 점수" value={entry.total} on={stage > keys.length} color="#c9743a" />
         </div>
         <div style={{ minHeight: 28, fontSize: 20, fontWeight: 700, textAlign: 'center', transform: stage >= rankStage ? 'scale(1)' : 'scale(0.6)', opacity: stage >= rankStage ? 1 : 0, transition: 'all 300ms ease-out' }} data-testid="announce-rank">
-          {entry.rank === 1 ? '🏆 1위!' : `${entry.rank}위`} <span style={small}>/ {entry.rivals.length + 1}곳</span>
+          {entry.rank === 1 ? <><Icon name="trophy" size={20} /> 1위!</> : `${entry.rank}위`} <span style={small}>/ {entry.rivals.length + 1}곳</span>
         </div>
         {stage >= rankStage && (
           <div style={{ fontSize: 14, marginTop: 4 }}>

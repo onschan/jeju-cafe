@@ -10,6 +10,7 @@ import type { GameState, MonthCard, Parcel } from './types.ts';
 import { RIVALS, objectDef } from '../data/index.ts';
 import { pushNotice } from './staff.ts';
 import { fmtNum } from './format.ts';
+import { josa } from './josa.ts';
 import { monthIndex } from './clock.ts';
 import { removeObject } from './grid.ts';
 import { ownedParcels, parcelAt } from './parcels.ts';
@@ -50,7 +51,7 @@ export function takeLoan(state: GameState, reason: string): boolean {
   state.loan.lastMonthIndex = monthIndex(state.clock);
   state.money += LOAN_AMOUNT;
   state.monthLoan += LOAN_AMOUNT;
-  pushNotice(state, `삼춘이 ₩${fmtNum(LOAN_AMOUNT)}을 빌려줬어요 (${reason}, ${state.loan.count}/${LOAN_MAX}회) — 흑자 달마다 순이익 30%로 갚아요`);
+  pushNotice(state, `삼춘이 ${josa(`₩${fmtNum(LOAN_AMOUNT)}`, '을/를')} 빌려줬어요 (${reason}, ${state.loan.count}/${LOAN_MAX}회) — 흑자 달마다 순이익 30%로 갚아요`);
   state.alerts.push({ type: 'failure', stage: 'loan' }); // 트랙 B 대화(data/dialogue/failure.json)
   return true;
 }

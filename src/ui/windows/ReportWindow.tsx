@@ -1,6 +1,7 @@
 /** 월말 결산 창 (스펙 §2.1). 순수 컴포넌트 — 수입/비용 표(항목 한글), 이달의 하이라이트 3줄, 다음 달 팁 1줄, ★ 게이지.
  *  card는 기존 state.lastMonthCard 형태 + 선택 필드. 하이라이트·팁은 호출자(통합)가 sim 상태로 만들어 넘긴다 — 없으면 카드만. */
 import type { MonthCosts, ComplaintReason } from '../../sim/index.ts';
+import { Icon } from '../Icon';
 import { wonText } from '../../data/labels.ts';
 import { COMPLAINT_LABEL } from '../../sim/index.ts';
 import { PALETTE, brownBtn } from '../frame';
@@ -64,7 +65,7 @@ export function ReportWindow({ card: c, star, prevStar, starProgress, monthRecor
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
         <b style={{ fontSize: 20 }}>{c.year}년 {c.month}월</b>
         <span style={{ fontSize: 15 }}>손님 {c.guests}명</span>
-        {monthRecord && <span style={{ color: PALETTE.bad, fontWeight: 700 }}>🎉 월 매출 신기록</span>}
+        {monthRecord && <span style={{ color: PALETTE.bad, fontWeight: 700 }}><Icon name="party" /> 월 매출 신기록</span>}
       </div>
 
       <div style={rowCard}>
@@ -78,7 +79,7 @@ export function ReportWindow({ card: c, star, prevStar, starProgress, monthRecor
         <Row label="월급" value={`-${wonText(cost.salary)}`} indent />
         <Row label="유지비" value={`-${wonText(cost.upkeep)}`} indent />
         <Row label="홍보" value={`-${wonText(cost.ads)}`} indent />
-        {(cost.recruit ?? 0) > 0 && <Row label="채용 공고·연수" value={`-${wonText(cost.recruit)}`} indent />}
+        {(cost.recruit ?? 0) > 0 && <Row label="채용·퇴직금·연수" value={`-${wonText(cost.recruit)}`} indent />}
         {(cost.tax ?? 0) > 0 && <Row label="소득세" value={`-${wonText(cost.tax)}`} indent />}
         {(cost.tourBus ?? 0) > 0 && <Row label="투어 버스" value={`-${wonText(cost.tourBus)}`} indent />}
         {(cost.loanRepay ?? 0) > 0 && <Row label="삼춘 대출 상환" value={`-${wonText(cost.loanRepay)}`} indent />}
@@ -92,7 +93,7 @@ export function ReportWindow({ card: c, star, prevStar, starProgress, monthRecor
       {c.reputation !== undefined && (
         <div style={rowCard} data-testid="report-reputation">
           <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 700 }}>
-            <span>평판 ♥{Math.round(c.reputation)}</span>
+            <span>평판 <Icon name="heart" size={14} />{Math.round(c.reputation)}</span>
             <span style={{ color: (c.reputationDelta ?? 0) >= 0 ? PALETTE.ok : PALETTE.bad }}>{(c.reputationDelta ?? 0) >= 0 ? '+' : ''}{Math.round(c.reputationDelta ?? 0)}</span>
           </div>
           {complaints.length > 0
@@ -106,7 +107,7 @@ export function ReportWindow({ card: c, star, prevStar, starProgress, monthRecor
       {highlights.length > 0 && (
         <div style={rowCard} data-testid="report-highlights">
           <div style={{ fontWeight: 700, marginBottom: 4 }}>이달의 하이라이트</div>
-          {highlights.map((h, i) => <div key={i} style={{ fontSize: 14, lineHeight: 1.5 }}>{['🥇', '😊', '🔓'][i] ?? '•'} {h}</div>)}
+          {highlights.map((h, i) => <div key={i} style={{ fontSize: 14, lineHeight: 1.5 }}>{i < 3 ? <Icon name={['medal', 'mood_happy', 'unlock'][i]!} size={14} /> : '•'} {h}</div>)}
         </div>
       )}
 
@@ -125,7 +126,7 @@ export function ReportWindow({ card: c, star, prevStar, starProgress, monthRecor
         </div>
       )}
 
-      {c.tip && <div style={{ ...rowCard, background: PALETTE.paperDark }} data-testid="report-tip">💡 <b>다음 달 팁</b> — {c.tip}</div>}
+      {c.tip && <div style={{ ...rowCard, background: PALETTE.paperDark }} data-testid="report-tip"><Icon name="bulb" /> <b>다음 달 팁</b> — {c.tip}</div>}
 
       <button style={{ ...brownBtn, width: '100%', margin: '4px 0 0' }} onClick={onClose} data-testid="report-close">닫기</button>
     </div>

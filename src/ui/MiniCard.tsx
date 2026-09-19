@@ -1,5 +1,6 @@
 import { useState, type CSSProperties, type ReactNode } from 'react';
 import { wonText } from '../data/labels.ts';
+import { josa } from '../sim/josa.ts';
 import { useGame, dispatch } from './store';
 import { objectStats, siteOf, siteLineText, clearCost, canClearRock, hasPickaxe, cellAt, walletOf, guestFace, namedGuestFace, canAcceptQuest, parcelPrice, canBuyParcel, canGiveGift, giftFits, giftCount, giftedToday, PROTECTED_TYPES, ROTATABLE_TYPES, LOW_ENERGY, STAT_KEYS, STAT_NAME, staffInRole, canLevelUp, capOf, skillsOf, expNeeded, isUpgradable, canUpgrade, upgradeCost, upgradeConditionText, MAX_OBJECT_LEVEL, canRepair, repairCost, CLEAN_LOW, type GameState, type Guest, type RoleId, type StatKey } from '../sim/index.ts';
 import { BUS_HOUR, isBusDay } from '../sim/spots.ts';
@@ -18,6 +19,7 @@ import { Icon } from './Icon';
 import { SiteLine } from './SiteLine';
 import { SHELL_BOTTOM } from './Shell';
 import { frame, brownBtn, brownBtnOn, brownBtnOff, dangerBtn, brownInput, PALETTE } from './frame';
+import { useTutorialNote } from './tutorialDialogue';
 
 /** 맵에서 탭한 대상. 스펙 §1.2 표. */
 export type CardTarget =
@@ -65,7 +67,7 @@ function RenamePopup({ objectId, current, onClose }: { objectId: string; current
   const [name, setName] = useState(current);
   const save = () => { dispatch({ type: 'renameObject', objectId, name }); onClose(); };
   return (
-    <Popup title="이름 바꾸기" onBackdrop={onClose} buttons={<><button style={brownBtnOn} onClick={save}>✓ 저장</button><button style={brownBtn} onClick={onClose}>닫기</button></>}>
+    <Popup title="이름 바꾸기" onBackdrop={onClose} buttons={<><button style={brownBtnOn} onClick={save}><Icon name="check" /> 저장</button><button style={brownBtn} onClick={onClose}>닫기</button></>}>
       <input value={name} maxLength={12} onChange={(e) => setName(e.target.value)} aria-label="시설 이름" placeholder="12자까지" autoFocus
         style={{ ...brownInput, width: '100%', boxSizing: 'border-box', marginRight: 0, marginBottom: 0 }} />
       <div style={{ ...small, marginTop: 4 }}>비우면 원래 이름으로 돌아가요</div>
@@ -93,6 +95,7 @@ function Row({ children }: { children: ReactNode }) {
 
 function GuestCard({ s, id, a }: { s: GameState; id: string; a: CardActions }) {
   const [picking, setPicking] = useState(false);
+  useTutorialNote('guestCard'); // 튜토리얼 10단계 「손님 카드 보기」
   const g = s.guests.find((x) => x.id === id);
   if (!g) return <div style={small}>손님이 떠났어요</div>;
   const def = guestTypeDef(g.type);
@@ -117,7 +120,7 @@ function GuestCard({ s, id, a }: { s: GameState; id: string; a: CardActions }) {
       <Row>
         <button style={btn} onClick={() => a.onGuestDetail(g.id)}>자세히</button>
         {quest && <button style={canAcceptQuest(s, quest).ok ? btnOn : btnOff} disabled={!canAcceptQuest(s, quest).ok} onClick={() => a.onQuest(quest)}>! 부탁 듣기</button>}
-        {giftCount(s) > 0 && <button style={giftOk ? btn : btnOff} disabled={!giftOk} onClick={() => setPicking(true)} aria-label="선물하기">🎁 선물하기{giftedToday(s) ? ' (내일)' : ''}</button>}
+        {giftCount(s) > 0 && <button data-tut="gift" style={giftOk ? btn : btnOff} disabled={!giftOk} onClick={() => setPicking(true)} aria-label="선물하기"><Icon name="gift" /> 선물하기{giftedToday(s) ? ' (내일)' : ''}</button>}
       </Row>
       {picking && (
         <Popup title={`${guestName(g)}에게 선물`} onBackdrop={() => setPicking(false)} buttons={<button style={brownBtn} onClick={() => setPicking(false)}>닫기</button>}>
@@ -186,12 +189,12 @@ function ObjectCard({ s, id, a, onClose }: { s: GameState; id: string; a: CardAc
   const canBuildSame = s.unlocked.objects.includes(o.type) && !PROTECTED_TYPES.has(o.type) && o.type !== 'bush_wild';
   const st = objectStats(s, o.id);
   const protectedType = PROTECTED_TYPES.has(o.type);
-  const remove = () => Confirm(`${d.name}${d.removeCost ? `을(를) ${wonText(d.removeCost)} 들여 치울까요?` : `을(를) 치우고 ${wonText(d.cost)}을 돌려받을까요?`}`, () => { dispatch({ type: 'remove', objectId: o.id }); onClose(); }, { title: '철거' });
+  const remove = () => Confirm(`${josa(d.name, '을/를')}${d.removeCost ? ` ${wonText(d.removeCost)} 들여 치울까요?` : ` 치우고 ${josa(wonText(d.cost), '을/를')} 돌려받을까요?`}`, () => { dispatch({ type: 'remove', objectId: o.id }); onClose(); }, { title: '철거' });
   // 트랙 A: 증축 Lv·수리·청결
   const upgradable = isUpgradable(d) && st.level < MAX_OBJECT_LEVEL;
   const up = upgradable ? canUpgrade(s, o.id, st.popularity) : { ok: false, reason: '' };
   const upCost = upgradable ? upgradeCost(s, o) : 0;
-  const doUpgrade = () => Confirm(`${d.name}을(를) Lv${st.level + 1}로 증축할까요? ${wonText(upCost)}${(d.buildDays ?? 0) > 0 ? ` · 공사 ${d.buildDays}일(이용 불가)` : ''}`, () => { dispatch({ type: 'upgradeObject', objectId: o.id }); }, { title: '증축' });
+  const doUpgrade = () => Confirm(`${josa(d.name, '을/를')} Lv${st.level + 1}로 증축할까요? ${wonText(upCost)}${(d.buildDays ?? 0) > 0 ? ` · 공사 ${d.buildDays}일(이용 불가)` : ''}`, () => { dispatch({ type: 'upgradeObject', objectId: o.id }); }, { title: '증축' });
   const rep = canRepair(s, o.id);
   const clean = Math.round(s.clean.value);
   return (
@@ -222,8 +225,8 @@ function ObjectCard({ s, id, a, onClose }: { s: GameState; id: string; a: CardAc
         {!protectedType && <button style={btn} onClick={() => a.onMove(o.id)}>이동</button>}
         {ROTATABLE_TYPES.has(o.type) && <button style={btn} onClick={() => dispatch({ type: 'rotate', objectId: o.id, rot: ((o.rot ?? 0) + 1) % 4 })}>회전</button>}
         {!protectedType && o.type !== 'bush_wild' && <button style={btnDanger} onClick={remove}>철거</button>}
-        {canBuildSame && <button style={btn} data-testid="build-same" onClick={() => a.onBuildSame(o.type, o.x + d.w, o.y)}>➕ 같은 것 더</button>}
-        <button style={btn} data-testid="rename-object" onClick={() => setRenaming(true)}>✏️ 이름</button>
+        {canBuildSame && <button style={btn} data-testid="build-same" onClick={() => a.onBuildSame(o.type, o.x + d.w, o.y)}><Icon name="plus" /> 같은 것 더</button>}
+        <button style={btn} data-testid="rename-object" onClick={() => setRenaming(true)}><Icon name="pencil" /> 이름</button>
         <button style={btn} onClick={() => a.onObjectDetail(o.id)}>자세히</button>
       </Row>
       {upgradable && !up.ok && up.reason && <div style={{ ...small, marginTop: 4 }}>증축 조건: {upgradeConditionText(o, d)}</div>}
@@ -294,7 +297,7 @@ function BusStopCard({ s, id }: { s: GameState; id: string }) {
     <div data-testid="card-busstop">
       <div style={{ fontSize: 14, lineHeight: 1.5 }}>
         <div><Icon name="calendar" size={18} /> <b>{name}</b></div>
-        <div style={small}>이번 달 손님 {s.monthGuests}명 · 지금 {s.guests.length}명 · 다음 버스 {nextBus}</div>
+        <div style={small}>이번 달 손님 {s.monthGuests}명 · 지금 {s.guests.length}명{o?.type === 'gate' ? ' · 손님은 여기서 올렛길로 들어와요' : ` · 다음 버스 ${nextBus}`}</div>
       </div>
     </div>
   );
@@ -331,36 +334,36 @@ export function MainCard({ s, id, a }: { s: GameState; id: string; a: CardAction
   return (
     <div data-testid="card-main">
       <div style={{ fontSize: 14, lineHeight: 1.5 }}>
-        <div>🏠 <b>{s.cafeName || '우리 카페'} Lv{m.level}</b>{s.main.floor2 && ' · 2층'} · 실내 {m.seatsUsed}/{m.seats}석{workText && <span style={{ color: PALETTE.title }}> · {workText}</span>}</div>
-        <div style={small}>🍳 주문 대기 {waiting} · 조리 중 {cooking} · 메뉴 {menus}개{low.length > 0 && <span style={{ color: PALETTE.bad }}> · ⚠ {low.map(([k, n]) => `${labelOf('ingredient', k)} ${n}개 남음`).join(' · ')}</span>}</div>
+        <div><Icon name="home" /> <b>{s.cafeName || '우리 카페'} Lv{m.level}</b>{s.main.floor2 && ' · 2층'} · 실내 {m.seatsUsed}/{m.seats}석{workText && <span style={{ color: PALETTE.title }}> · {workText}</span>}</div>
+        <div style={small}><Icon name="kitchen" size={14} /> 주문 대기 {waiting} · 조리 중 {cooking} · 메뉴 {menus}개{low.length > 0 && <span style={{ color: PALETTE.bad }}> · <Icon name="warn" size={14} /> {low.map(([k, n]) => `${labelOf('ingredient', k)} ${n}개 남음`).join(' · ')}</span>}</div>
         <div style={small}>{wonText(s.monthIncome)} · 직원 {working} · 이용률 {m.usePct === null ? '—' : `${m.usePct}%`}{m.short && <span style={{ color: PALETTE.bad }}> · 자리가 모자라요</span>}</div>
         {m.cut && <div style={{ color: PALETTE.bad, fontWeight: 700 }} data-testid="main-cut">{ANNEX_CUT_TEXT} — {DOOR_PATH_WARN}</div>}
       </div>
       <Row>
-        <button style={mbtn} onClick={a.onCafe}>📋 메뉴판</button>
-        <button style={mbtn} onClick={() => { if (o) { requestBuildTab('indoor'); a.onBuild(o.x, o.y); } }} data-testid="main-indoor-btn">🪑 실내 꾸미기</button>
+        <button style={mbtn} onClick={a.onCafe}><Icon name="coffee" /> 메뉴판</button>
+        <button style={mbtn} onClick={() => { if (o) { requestBuildTab('indoor'); a.onBuild(o.x, o.y); } }} data-testid="main-indoor-btn"><Icon name="chair" /> 실내 꾸미기</button>
         <button style={mbtn} onClick={() => setMore(!more)} aria-expanded={more}>{more ? '▾ 접기' : '▸ 자세히'}</button>
       </Row>
       <Row>
-        {next && <button style={exp.ok ? mbtnOn : mbtnOff} disabled={!exp.ok} title={exp.ok ? undefined : exp.reason} onClick={doExpand} data-testid="main-expand-btn">🔨 증축 Lv{next} ({manWon(expandCost(s))}·{MAIN_EXPAND_DAYS}일)</button>}
-        {!s.main.floor2 && <button style={f2.ok ? mbtnOn : mbtnOff} disabled={!f2.ok} title={f2.ok ? undefined : f2.reason} onClick={doFloor2} data-testid="main-floor2-btn">🏗 2층</button>}
+        {next && <button style={exp.ok ? mbtnOn : mbtnOff} disabled={!exp.ok} title={exp.ok ? undefined : exp.reason} onClick={doExpand} data-testid="main-expand-btn" data-tut="main-expand"><Icon name="build" /> 증축 Lv{next} ({manWon(expandCost(s))}·{MAIN_EXPAND_DAYS}일)</button>}
+        {!s.main.floor2 && <button style={f2.ok ? mbtnOn : mbtnOff} disabled={!f2.ok} title={f2.ok ? undefined : f2.reason} onClick={doFloor2} data-testid="main-floor2-btn"><Icon name="floor2" /> 2층</button>}
         {undo.ok
           ? <button style={mbtn} onClick={() => dispatch({ type: 'undoMoveMain' })} data-testid="main-undo-btn">↩ 되돌리기</button>
-          : <button style={mv.ok ? mbtn : mbtnOff} disabled={!mv.ok} title={mv.ok ? undefined : mv.reason} onClick={() => o && a.onMove(o.id)} data-testid="main-move-btn">🚚 옮기기 ({manWon(MOVE_COST)}·{moveDays(s)}일)</button>}
+          : <button style={mv.ok ? mbtn : mbtnOff} disabled={!mv.ok} title={mv.ok ? undefined : mv.reason} onClick={() => o && a.onMove(o.id)} data-testid="main-move-btn"><Icon name="truck" /> 옮기기 ({manWon(MOVE_COST)}·{moveDays(s)}일)</button>}
       </Row>
-      <div style={{ ...small, marginTop: 4 }}>이달 이동 {canMoveThisMonth(s) ? '가능 ○' : '끝 ✕'}{reason && ` · ${reason}`}{!mv.ok && canMoveThisMonth(s) && !m.work && ` · 옮기기: ${mv.reason}`}</div>
+      <div style={{ ...small, marginTop: 4 }}>이달 이동 {canMoveThisMonth(s) ? '가능 ○' : '끝 ×'}{reason && ` · ${reason}`}{!mv.ok && canMoveThisMonth(s) && !m.work && ` · 옮기기: ${mv.reason}`}</div>
       {more && (
         <div style={{ ...small, marginTop: 6, borderTop: `1px solid ${PALETTE.woodLight}`, paddingTop: 6 }} data-testid="main-detail">
           <div>재고: {stock.length > 0 ? stock.map(([k, n]) => `${labelOf('ingredient', k)} ${n}`).join(' · ') : '없음'}</div>
           <div>콤보: {combos.length > 0 ? combos.map((c) => `${c.strength === 'down' ? '↓' : '↑'}${c.name}`).join(' · ') : '없음'}</div>
           <div style={{ whiteSpace: 'nowrap' }}>청결 <Bar value={Math.round(s.clean.value)} max={100} width={80} /> {Math.round(s.clean.value)}</div>
-          <div style={{ marginTop: 4 }}>🎵 BGM</div>
+          <div style={{ marginTop: 4 }}><Icon name="note" /> BGM</div>
           <ButtonGroup label="BGM" value={s.main.bgm ?? 'none'} onPick={(v) => dispatch({ type: 'setBgm', bgm: v === 'none' ? null : v })} testId="main-bgm"
             options={[{ value: 'none', label: '끔' }, { value: 'calm', label: BGM_LABEL.calm }, { value: 'jazz', label: BGM_LABEL.jazz }, { value: 'folk', label: BGM_LABEL.folk }]} />
-          <div style={{ marginTop: 4 }}>💡 저녁 조명</div>
+          <div style={{ marginTop: 4 }}><Icon name="bulb" /> 저녁 조명</div>
           <ButtonGroup label="저녁 조명" value={s.main.lighting} onPick={(v) => dispatch({ type: 'setLighting', lighting: v })} testId="main-light"
             options={[{ value: 'warm', label: LIGHT_LABEL.warm }, { value: 'bright', label: LIGHT_LABEL.bright }]} />
-          <div style={{ marginTop: 4 }}>🎹 피아노 연주 시간{!pianoOk && ' (피아노 없음)'}</div>
+          <div style={{ marginTop: 4 }}><Icon name="piano" /> 피아노 연주 시간{!pianoOk && ' (피아노 없음)'}</div>
           <ButtonGroup label="피아노 연주 시간" value={s.main.pianoTime} disabled={!pianoOk} onPick={(v) => dispatch({ type: 'setPianoTime', time: v })} testId="main-piano"
             options={[{ value: 'lunch', label: PIANO_LABEL.lunch }, { value: 'evening', label: PIANO_LABEL.evening }, { value: 'none', label: PIANO_LABEL.none }]} />
         </div>
@@ -376,30 +379,30 @@ function IndoorButtons({ s, o }: { s: GameState; o: { id: string; type: string }
     case 'fireplace': {
       const on = isFireplaceOn(s, obj);
       const can = canToggleFireplace(s, o.id);
-      return <button style={can.ok ? (on ? btnOn : btn) : btnOff} disabled={!can.ok} onClick={() => dispatch({ type: 'toggleFireplace', objectId: o.id })} data-testid="fireplace-btn">🔥 {on ? '난로 끄기' : '난로 켜기'}</button>;
+      return <button style={can.ok ? (on ? btnOn : btn) : btnOff} disabled={!can.ok} onClick={() => dispatch({ type: 'toggleFireplace', objectId: o.id })} data-testid="fireplace-btn"><Icon name="fire" /> {on ? '난로 끄기' : '난로 켜기'}</button>;
     }
     case 'bookshelf': {
       const can = canAddBooks(s, o.id);
-      return <button style={can.ok ? btnOn : btnOff} disabled={!can.ok} title={can.ok ? undefined : can.reason} onClick={() => dispatch({ type: 'addBooks', objectId: o.id })} data-testid="books-btn">📚 신간 넣기 (마일리지 {NEW_BOOKS_MILEAGE}){hasNewBooks(s, obj) && ' · 신간 있음'}</button>;
+      return <button style={can.ok ? btnOn : btnOff} disabled={!can.ok} title={can.ok ? undefined : can.reason} onClick={() => dispatch({ type: 'addBooks', objectId: o.id })} data-testid="books-btn"><Icon name="book" /> 신간 넣기 (마일리지 {NEW_BOOKS_MILEAGE}){hasNewBooks(s, obj) && ' · 신간 있음'}</button>;
     }
     case 'aquarium': {
       const can = canFeedAquarium(s, o.id);
-      return <button style={can.ok ? btnOn : btnOff} disabled={!can.ok} title={can.ok ? undefined : can.reason} onClick={() => dispatch({ type: 'feedAquarium', objectId: o.id })} data-testid="feed-btn">🐟 먹이 주기{isAquariumHungry(s, obj) && ' · 배고파요'}</button>;
+      return <button style={can.ok ? btnOn : btnOff} disabled={!can.ok} title={can.ok ? undefined : can.reason} onClick={() => dispatch({ type: 'feedAquarium', objectId: o.id })} data-testid="feed-btn"><Icon name="fish" /> 먹이 주기{isAquariumHungry(s, obj) && ' · 배고파요'}</button>;
     }
     case 'kids_corner': {
       const can = canRestockKids(s, o.id);
-      return <button style={can.ok ? btnOn : btnOff} disabled={!can.ok} title={can.ok ? undefined : can.reason} onClick={() => dispatch({ type: 'restockKids', objectId: o.id })} data-testid="kids-btn">🧸 장난감 보충 ({wonText(KIDS_RESTOCK_COST)}){isKidsStocked(s, obj) ? ' · 넉넉' : ' · 필요'}</button>;
+      return <button style={can.ok ? btnOn : btnOff} disabled={!can.ok} title={can.ok ? undefined : can.reason} onClick={() => dispatch({ type: 'restockKids', objectId: o.id })} data-testid="kids-btn"><Icon name="toy" /> 장난감 보충 ({wonText(KIDS_RESTOCK_COST)}){isKidsStocked(s, obj) ? ' · 넉넉' : ' · 필요'}</button>;
     }
     case 'bar_counter': {
       const can = canSetBarEvening(s, o.id);
       const on = isBarEvening(obj);
-      return <button style={can.ok ? (on ? btnOn : btn) : btnOff} disabled={!can.ok} onClick={() => dispatch({ type: 'setBarEvening', objectId: o.id, on: !on })} aria-pressed={on} data-testid="bar-btn">🍸 저녁 세트 {on ? 'ON' : 'OFF'}</button>;
+      return <button style={can.ok ? (on ? btnOn : btn) : btnOff} disabled={!can.ok} onClick={() => dispatch({ type: 'setBarEvening', objectId: o.id, on: !on })} aria-pressed={on} data-testid="bar-btn"><Icon name="cocktail" /> 저녁 세트 {on ? 'ON' : 'OFF'}</button>;
     }
     default: return null;
   }
 }
 
-/** 화면 하단(하단 바 위)에 붙는 미니 카드. 높이 ≤ 30vh, 맵은 그대로 보인다. ✕ 또는 맵의 다른 곳을 탭하면 닫힌다. */
+/** 화면 하단(하단 바 위)에 붙는 미니 카드. 높이 ≤ 30vh, 맵은 그대로 보인다. 닫기 아이콘 또는 맵의 다른 곳을 탭하면 닫힌다. */
 export function MiniCard({ target, actions, onClose }: { target: CardTarget; actions: CardActions; onClose: () => void }) {
   const s = useGame();
   let body: ReactNode;
@@ -417,7 +420,7 @@ export function MiniCard({ target, actions, onClose }: { target: CardTarget; act
   return (
     <div data-testid="mini-card" data-kind={target.kind}
       style={{ ...frame, position: 'absolute', left: 6, right: 6, bottom: `calc(${SHELL_BOTTOM + 6}px + env(safe-area-inset-bottom))`, maxHeight: '30vh', overflowY: 'auto', zIndex: 12, padding: '8px 10px', fontSize: 16 }}>
-      <button aria-label="닫기" onClick={onClose} style={{ position: 'absolute', top: 0, right: 0, width: 44, height: 44, border: 0, background: 'transparent', color: PALETTE.inkSoft, fontSize: 18, fontWeight: 700, fontFamily: 'inherit' }}>✕</button>
+      <button aria-label="닫기" onClick={onClose} style={{ position: 'absolute', top: 0, right: 0, width: 44, height: 44, border: 0, background: 'transparent', color: PALETTE.inkSoft, fontSize: 18, fontWeight: 700, fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Icon name="close" size={20} /></button>
       <div style={{ paddingRight: 36 }}>{body}</div>
     </div>
   );

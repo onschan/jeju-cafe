@@ -11,7 +11,7 @@ export function SiteLine({ s, o }: { s: GameState; o: PlacedObject }) {
   const score = siteScore(s, o.type, o.x, o.y);
   return (
     <div style={small} data-testid="site-line">
-      이 자리: {siteLineText(site)}
+      이 자리: {siteLineText(site).split(' · ').map((t, i) => <span key={t}>{i > 0 && ' · '}<span style={{ whiteSpace: 'nowrap' }}>{t}</span></span>)}
       {score !== null && <> · 자리 점수 <b style={{ color: score >= SITE_GOOD ? PALETTE.ok : PALETTE.bad }}>{score}/10</b></>}
     </div>
   );

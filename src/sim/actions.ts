@@ -8,7 +8,7 @@ import { canSetSlot, setSlot } from './menu.ts';
 import { checkFeature, checkGoals } from './goals.ts';
 import { canAcceptChallenge, acceptChallenge } from './challenges.ts';
 import { fillStarterLayout } from './state.ts';
-import { TUTORIAL_STEPS, unlockTutorialFeatures } from './tutorial.ts';
+import { TUTORIAL_STEPS, unlockTutorialFeatures, skipTutorialChapter, noteTutorial, TRACKED_ACTIONS } from './tutorial.ts';
 import { canPostJob, postJob, canHire, hire, canFire, fire, canAssign, assign, canLevelUp, levelUp } from './staff.ts';
 import { canTrain, train } from './training.ts';
 import { canPromote, promote, canSetTarget, setTarget } from './promotions.ts';
@@ -25,17 +25,19 @@ import { canOpenPopup, openPopup, canClosePopup, closePopup } from './popup.ts';
 import { canChallenge, challenge } from './rivals.ts';
 import { canUpgrade, upgrade } from './upgrade.ts';
 import { canRepair, repair } from './cleanliness.ts';
-import { canSetRouteContract, setRouteContract, canExpandParking, parkingExpandCost, PARKING_EXPAND_TO } from './entry.ts';
+import { canSetRouteContract, setRouteContract, canExpandParking, parkingExpandCost, PARKING_EXPAND_TO, unlockRouteFacilities } from './entry.ts';
 import { objectStats } from './compat.ts';
 import { rememberPlace, rememberRemove, rememberMove, canUndo, undoLast } from './undo.ts';
 import { canSetTargets, setTargets } from './segments.ts';
+import { canContinueEnding, continueEnding, canSetSpeed } from './ending.ts'; // z-ending
+import { canDonate, donate, canHoldFestival, holdFestival } from './village.ts'; // z-ending
 
 export const PROTECTED_TYPES = new Set(['busstop', 'warehouse', 'gate', 'spring']);
 /** 회전할 수 있는 오브젝트 (rot 0..3, 스프라이트 변형 _r{n}이 있을 때만 보인다) */
 export const ROTATABLE_TYPES = new Set(['gate', 'bench', 'counter']);
 const ACTION_LOG_CAP = 1000;
 
-const CLIENT_ONLY = new Set<Action['type']>(['setSpeed', 'dismissMonthCard', 'dismissDevelop', 'dismissDraw', 'dismissAnnouncement', 'dismissChallenge', 'dismissAlert', 'dismissTour']);
+const CLIENT_ONLY = new Set<Action['type']>(['setSpeed', 'dismissMonthCard', 'dismissDevelop', 'dismissDraw', 'dismissAnnouncement', 'dismissChallenge', 'dismissAlert', 'dismissTour', 'continueEnding']);
 
 function log(state: GameState, a: Action) {
   if (CLIENT_ONLY.has(a.type)) return;
@@ -50,6 +52,7 @@ export function apply(state: GameState, a: Action): ApplyResult {
   const r = applyInner(state, a);
   if (r.ok) {
     bumpLayoutRev(state); // 배치 캐시 무효화 (layoutRev.ts)
+    if (TRACKED_ACTIONS.has(a.type)) noteTutorial(state, a.type); // 튜토리얼 조건 판정용 (되돌리기·연수·뽑기·선물…)
     log(state, a);
     if (!CLIENT_ONLY.has(a.type)) checkGoals(state);
   }
@@ -63,8 +66,8 @@ export function demolishRefund(objs: PlacedObject[]): number {
   return d;
 }
 
-/** 치우거나 옮길 수 있나: 보호 오브젝트·앉은 손님·지나가는 손님 */
-function canDisturb(state: GameState, obj: PlacedObject): ApplyResult {
+/** 치우거나 옮길 수 있나: 보호 오브젝트·앉은 손님·지나가는 손님 (UI가 고르기 전·배치 바에서 미리 보여 준다) */
+export function canDisturb(state: GameState, obj: PlacedObject): ApplyResult {
   if (PROTECTED_TYPES.has(obj.type)) return { ok: false, reason: '이건 못 없애요' };
   if (state.guests.some((g) => g.seatId === obj.id)) return { ok: false, reason: '손님이 앉아 있어요' };
   const cells = new Set(footprintOf(obj).map((p) => `${p.x},${p.y}`));
@@ -89,6 +92,7 @@ function applyInner(state: GameState, a: Action): ApplyResult {
       rememberPlace(state, obj, cost);
       discoverCombos(state);
       evaluateUnlocks(state); // count 해금 (감귤나무 3그루 → 까치)
+      unlockRouteFacilities(state); // 주차장(쉼 시설 6개) 같은 경로 시설은 다음 날 아침이 아니라 바로 열린다
       checkQuests(state);     // objectPlaced 부탁
       return { ok: true };
     }
@@ -307,9 +311,30 @@ function applyInner(state: GameState, a: Action): ApplyResult {
       setSlot(state, a.slot, a.menuId);
       return { ok: true };
     }
-    case 'setSpeed':
+    case 'setSpeed': {
+      const c = canSetSpeed(state, a.speed); // z-ending: 4배속은 빠른 모드에서만
+      if (!c.ok) return c;
       state.clock.speed = a.speed;
       return { ok: true };
+    }
+    case 'continueEnding': { // z-ending
+      const c = canContinueEnding(state);
+      if (!c.ok) return c;
+      continueEnding(state);
+      return { ok: true };
+    }
+    case 'donateVillage': { // z-ending
+      const c = canDonate(state);
+      if (!c.ok) return c;
+      donate(state);
+      return { ok: true };
+    }
+    case 'holdFestival': { // z-ending
+      const c = canHoldFestival(state);
+      if (!c.ok) return c;
+      holdFestival(state);
+      return { ok: true };
+    }
     case 'dismissAlert':
       state.alerts.shift();
       return { ok: true };
@@ -324,9 +349,19 @@ function applyInner(state: GameState, a: Action): ApplyResult {
       if (state.tutorial.step > 0) return { ok: false, reason: '이미 튜토리얼을 시작했어요' };
       fillStarterLayout(state);
       unlockTutorialFeatures(state); // 튜토리얼 보상으로만 열리는 입지 보기·콤보 도감·명소 지도
-      state.tutorial = { step: TUTORIAL_STEPS, skipped: true };
+      state.tutorial = { step: TUTORIAL_STEPS, skipped: true, seen: state.tutorial.seen ?? [] };
       return { ok: true };
     }
+    case 'skipTutorialChapter': {
+      // 장 단위 건너뛰기: 남은 단계의 해금 보상만 적용. 맨 처음(1장 0단계)이면 빈 마당을 완성 시작 상태로 채워 바로 영업할 수 있게 한다
+      if (state.tutorial.step >= TUTORIAL_STEPS) return { ok: false, reason: '튜토리얼이 끝났어요' };
+      if (state.tutorial.step === 0) fillStarterLayout(state);
+      skipTutorialChapter(state);
+      return { ok: true };
+    }
+    case 'tutorialNote':
+      noteTutorial(state, a.key);
+      return { ok: true };
     case 'dismissMonthCard':
       state.lastMonthCard = null;
       return { ok: true };

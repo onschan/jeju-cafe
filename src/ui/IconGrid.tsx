@@ -2,12 +2,13 @@
  *  잠긴 셀은 `?` + 회색, 새 셀은 NEW 리본, 안 본 항목은 빨간 배지. 창의 하위 탭 바를 대신한다. */
 import type { CSSProperties } from 'react';
 import { PALETTE } from './frame';
+import { Icon } from './Icon';
 
 export interface IconGridItem<K extends string = string> {
   key: K;
   /** 한글 2~3자 */
   label: string;
-  /** 이모지 또는 짧은 기호 (32px) */
+  /** 픽셀 아이콘 이름 (public/assets/icons/icon_<name>.png, 32px로 확대) */
   icon: string;
   /** 잠김: `?` + 회색. 잠긴 이유는 lockedText로 */
   locked?: boolean;
@@ -39,7 +40,7 @@ export function IconGrid<K extends string>({ items, active, onPick, cols = 2, te
             data-tab={it.label} data-tut={`${tutPrefix}:${it.key}`} data-testid={testId ? `${testId}-${it.key}` : undefined} title={it.locked ? it.lockedText : undefined}
             onClick={() => { if (!it.locked) onPick(it.key); }}
             style={{ ...cell, ...(on ? { background: PALETTE.btnOn, color: PALETTE.btnOnText } : {}), ...(it.locked ? { background: '#9a8a74', color: '#e8dcc4', opacity: 0.8 } : {}) }}>
-            <span aria-hidden style={{ fontSize: 28, lineHeight: '32px', height: 32, filter: it.locked ? 'grayscale(1)' : undefined }}>{it.locked ? '?' : it.icon}</span>
+            <span aria-hidden style={{ fontSize: 28, lineHeight: '32px', height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{it.locked ? <Icon name="lock" size={32} /> : <Icon name={it.icon} size={32} />}</span>
             <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>{it.label}</span>
             {it.isNew && !it.locked && <span data-testid="ribbon-new" style={{ position: 'absolute', top: -2, left: -2, background: PALETTE.bad, color: '#fff', fontSize: 10, lineHeight: '14px', padding: '0 5px', borderRadius: '6px 0 6px 0', letterSpacing: 0.5 }}>NEW</span>}
             {!!it.badge && it.badge > 0 && !it.locked && <span data-testid="grid-badge" style={{ position: 'absolute', top: -6, right: -4, minWidth: 18, height: 18, borderRadius: 9, background: PALETTE.bad, color: '#fff', fontSize: 11, lineHeight: '18px', textAlign: 'center', padding: '0 4px' }}>{it.badge}</span>}

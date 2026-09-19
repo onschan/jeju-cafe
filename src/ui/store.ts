@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from 'react';
-import { createInitialState, tick, apply, seasonOf, LocalSaveStore, type GameState, type Action, type ApplyResult, type Mood, type Season } from '../sim/index.ts';
+import { createInitialState, tick, apply, seasonOf, LocalSaveStore, type GameState, type Action, type ApplyResult, type Mood, type Season, type CarryOver, type FinalScore, type BestRecord } from '../sim/index.ts';
 import { sfx, bgm, suspendAudio, resumeAudio, type SfxName } from './audio';
 import { recordMonthCard } from './best';
 import { resetTutorial } from './tutorialDialogue';
@@ -33,7 +33,13 @@ function getOrCreatePlayerId(): string {
   }
 }
 
-let state: GameState = createInitialState(Date.now() % 1_000_000, getOrCreatePlayerId(), Date.now());
+// 개발 중 sim 파일을 고쳐 이 모듈이 다시 실행돼도(HMR) 플레이 중인 상태를 잇는다 — 안 그러면 시작 마당(튜토리얼 건너뜀)으로 조용히 바뀐다.
+// (import.meta.hot.data는 accept 경계 모듈에만 남아 여기선 못 쓴다 → 전역에 둔다. 프로덕션 빌드에선 빠진다)
+const hotGlobal = import.meta.env.DEV ? (globalThis as { __jejuHotState?: GameState }) : null;
+let state: GameState = hotGlobal?.__jejuHotState ?? createInitialState(Date.now() % 1_000_000, getOrCreatePlayerId(), Date.now());
+/** state를 갈아 끼울 때는 이걸로 (HMR 전역도 같이) */
+function setState(s: GameState): void { state = s; if (hotGlobal) hotGlobal.__jejuHotState = s; }
+if (hotGlobal) hotGlobal.__jejuHotState = state;
 let version = 0;
 const listeners = new Set<() => void>();
 let messages: UiMessage[] = [];
@@ -84,9 +90,10 @@ const ACTION_SFX: Record<Action['type'], SfxName> = {
   acceptQuest: 'tap', respondEvent: 'tap', investSpot: 'unlock', hostTour: 'fanfare', dismissTour: 'tap', setTourBus: 'tap', giveGift: 'happy', craftGift: 'unlock',
   develop: 'unlock', dismissDevelop: 'tap', addTopping: 'tap', removeTopping: 'tap', levelUpMenu: 'unlock',
   buyMileage: 'coin', buyTicket: 'coin', drawTicket: 'tap', dismissDraw: 'tap', setUniform: 'tap', useGuestItem: 'unlock', dismissAnnouncement: 'tap',
-  openPopup: 'unlock', closePopup: 'tap', challenge: 'fanfare', dismissChallenge: 'tap', acceptChallenge: 'unlock', skipTutorial: 'tap',
+  openPopup: 'unlock', closePopup: 'tap', challenge: 'fanfare', dismissChallenge: 'tap', acceptChallenge: 'unlock', skipTutorial: 'tap', skipTutorialChapter: 'tap', tutorialNote: 'tap',
   setRouteContract: 'unlock', expandParking: 'place', // 트랙 H
   expandMain: 'unlock', buildSecondFloor: 'unlock', moveMain: 'place', undoMoveMain: 'tap', toggleFireplace: 'tap', setPianoTime: 'tap', setBgm: 'tap', setLighting: 'tap', feedAquarium: 'happy', restockKids: 'coin', setBarEvening: 'tap', addBooks: 'unlock', // y-indoor
+  continueEnding: 'fanfare', donateVillage: 'coin', holdFestival: 'fanfare', // z-ending
 };
 
 export function dispatch(a: Action): ApplyResult {
@@ -182,7 +189,7 @@ export async function hasAnySave(): Promise<boolean> {
 export async function loadSlot(n: number): Promise<boolean> {
   const saved = await saveStore.load(n).catch(() => null);
   if (!saved) return false;
-  state = saved;
+  setState(saved);
   viewReset?.();
   clearDialogues(); // 이전 게임의 대화(알림)가 남아 있으면 새 상태의 알림과 어긋난다
   if (n !== AUTO_SLOT) save(); // 자동 저장본도 이 게임으로 맞춘다
@@ -209,14 +216,22 @@ export function deleteSlot(n: number): void {
 /** 지금 상태를 자동 저장 슬롯에 바로 쓴다 (타이틀로 나갈 때·경영 현황 `저장`). */
 export function autosaveNow(): void { save(); }
 
-export function newGame() {
-  state = createInitialState(Date.now() % 1_000_000, getOrCreatePlayerId(), Date.now(), 'tutorial'); // §7.1 빈 마당 + 손으로 하는 튜토리얼
+/** carry: 엔딩 뒤 「이월해서 새로 시작」(ending.ts makeCarry). 없으면 맨 처음부터. */
+export function newGame(carry: CarryOver | null = null) {
+  setState(createInitialState(Date.now() % 1_000_000, getOrCreatePlayerId(), Date.now(), 'tutorial', carry)); // §7.1 빈 마당 + 손으로 하는 튜토리얼
   viewReset?.();
   resetTutorial();
   clearDialogues();
   save();
   emit();
 }
+
+// ---------- z-ending: 최고 점수 슬롯 ----------
+/** 엔딩 최종 점수를 최고 점수 슬롯에 기록한다. 갱신했으면 true (EndingScreen 「최고 점수 갱신!」). */
+export function recordEnding(score: FinalScore): boolean {
+  return saveStore.saveBest({ score, cafeName: state.cafeName, at: Date.now() });
+}
+export function getBestEnding(): BestRecord | null { return saveStore.loadBest(); }
 
 /** rAF 루프. 렌더 콜백에 상태를 넘긴다. 반환값으로 정지. */
 export function startLoop(render: (s: GameState) => void): () => void {

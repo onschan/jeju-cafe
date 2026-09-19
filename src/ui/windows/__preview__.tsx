@@ -27,7 +27,7 @@ function Preview() {
   useEffect(() => { loadAssets().then((ok) => setAssets(ok)); }, []);
   const dispatch = (a: Action) => {
     const r = apply(s, a);
-    setLog((l) => [`${a.type} ${r.ok ? '✓' : `✗ ${r.reason ?? ''}`}`, ...l].slice(0, 4));
+    setLog((l) => [`${a.type} ${r.ok ? 'OK' : `NG ${r.reason ?? ''}`}`, ...l].slice(0, 4));
     bump();
     return r;
   };
@@ -47,13 +47,13 @@ function Preview() {
       <div style={{ display: 'flex', gap: 4, padding: 6, background: '#1e1e1e', flexWrap: 'wrap' }}>
         {WINS.map((x) => <button key={x.key} style={{ ...(x.key === w ? brownBtnOn : brownBtn), margin: 0, padding: '0 8px', fontSize: 13, minHeight: 36 }} onClick={() => setW(x.key)}>{x.title}</button>)}
         <button style={{ ...brownBtn, margin: 0, padding: '0 8px', fontSize: 13, minHeight: 36 }} onClick={day}>⏩ 하루</button>
-        <span style={{ color: '#ddd', fontSize: 12, alignSelf: 'center' }}>{s.clock.year}년 {s.clock.month}월 {s.clock.day}일 · {wonText(s.money)} · 🔬{s.research} · 시트 {assets ? '✓' : '…'}</span>
+        <span style={{ color: '#ddd', fontSize: 12, alignSelf: 'center' }}>{s.clock.year}년 {s.clock.month}월 {s.clock.day}일 · {wonText(s.money)} · 연구 {s.research} · 시트 {assets ? 'OK' : '…'}</span>
       </div>
-      {/* 트랙 C의 전체 화면 창 셸 흉내: 제목 바 + ✕, 내용 스크롤 */}
+      {/* 트랙 C의 전체 화면 창 셸 흉내: 제목 바 + 닫기, 내용 스크롤 */}
       <div style={{ ...frame, flex: 1, margin: 6, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
         <div style={{ ...frameTitle, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <span>{WINS.find((x) => x.key === w)?.title}</span>
-          <button aria-label="닫기" style={{ background: 'none', border: 0, color: PALETTE.titleText, fontSize: 20, minWidth: 44, minHeight: 36, fontFamily: 'inherit' }} onClick={() => setW('menu')}>✕</button>
+          <button aria-label="닫기" style={{ background: 'none', border: 0, color: PALETTE.titleText, fontSize: 20, minWidth: 44, minHeight: 36, fontFamily: 'inherit' }} onClick={() => setW('menu')}>×</button>
         </div>
         <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>{win(s)}</div>
       </div>

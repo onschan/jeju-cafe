@@ -12,7 +12,7 @@ import { brownBtn, brownBtnOn, brownBtnOff, dangerBtn, card, PALETTE } from './f
 const KIND_LABEL: Record<ObjectKind, string> = {
   seat: '자리', tree: '농원', wall: '담', path: '길', building: '건물', deco: '꾸미기', busstop: '정류장', gate: '대문', landmark: '랜드마크', facility: '시설',
 };
-const ARROW: Record<ComboStrength, string> = { up: '↑', upup: '↑↑', down: '↓', none: '✦' };
+const ARROW: Record<ComboStrength, string> = { up: '↑', upup: '↑↑', down: '↓', none: '·' };
 const TARGET_LABEL: Record<string, string> = { all: '모두', female: '여성 손님', male: '남성 손님', youth: '젊은 손님', adult: '어른 손님', senior: '삼춘', group: '단체 손님' };
 
 function Stat({ icon, label, value, good }: { icon?: string; label: string; value: string; good?: boolean }) {
@@ -64,7 +64,7 @@ export function ObjectInfoPanel({ objectId }: { objectId: string }) {
         <b>{d.name}</b> <span style={{ fontSize: 13, color: PALETTE.inkSoft }}>· {KIND_LABEL[d.kind]}</span>
       </div>
       <div style={{ fontSize: 13, color: PALETTE.inkSoft, marginBottom: 4 }}>{d.desc ?? d.effectText ?? `${d.name}이에요`}</div>
-      {o.build && <div style={{ fontSize: 14, color: PALETTE.title, marginBottom: 4 }} data-testid="building">🔨 짓는 중 — 완공까지 {buildDaysLeft(s, o)}일 (일꾼 삼춘이 일하고 있어요)</div>}
+      {o.build && <div style={{ fontSize: 14, color: PALETTE.title, marginBottom: 4 }} data-testid="building"><Icon name="build" size={14} /> 짓는 중 — 완공까지 {buildDaysLeft(s, o)}일 (일꾼 삼춘이 일하고 있어요)</div>}
       <div style={{ fontSize: 14, marginBottom: 4, lineHeight: 1.7 }}>
         <Stat icon="tourist" label="인기" value={`${st.popularity}`} good={st.popularity > 10 ? true : st.popularity < 10 ? false : undefined} />
         <Stat label="경치" value={`${st.scenery > 0 ? '+' : ''}${st.scenery}`} />
@@ -137,7 +137,7 @@ export function CodexPanel() {
         const known = !c.hidden || found.has(c.id);
         return (
           <div key={c.id} style={{ display: 'flex', gap: 6, alignItems: 'baseline', opacity: known ? 1 : 0.6 }}>
-            <span style={{ width: 18, textAlign: 'center' }}>{found.has(c.id) ? '✓' : ' '}</span>
+            <span style={{ width: 18, textAlign: 'center' }}>{found.has(c.id) ? <Icon name="check" size={12} /> : ' '}</span>
             <b style={{ color: c.strength === 'down' ? PALETTE.bad : PALETTE.ok }}>{ARROW[c.strength]}</b>
             <span>{known ? c.name : '???'}</span>
             <span style={{ fontSize: 12, color: PALETTE.inkSoft }}>

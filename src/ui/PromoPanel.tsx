@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { wonText } from '../data/labels.ts';
+import { josa } from '../sim/josa.ts';
 import { useGame, dispatch } from './store';
 import { canPromote, effectivePopularity, MAX_ACTIVE_PROMOTIONS, PARTTIME_MONEY, APOLOGY_REPUTATION, type PromotionDef } from '../sim/index.ts';
 import { PROMOTIONS, GUEST_TYPES, promotionDef } from '../data/index.ts';
@@ -11,7 +12,7 @@ import { card, brownBtn, brownBtnOn, brownBtnOff, PALETTE } from './frame';
 /** 활동 효과 한 줄. 아직 게임에 없는 손님층(guests.json에 없음)은 sim도 안 쓰므로 숨긴다. */
 function effectText(d: PromotionDef): string {
   if (d.special === 'youtuber') return '60% 확률로 3달 동안 관광객이 2배 와요';
-  if (d.special === 'parttime') return `돈 ${wonText(PARTTIME_MONEY)}을 바로 벌어요`;
+  if (d.special === 'parttime') return `돈 ${josa(wonText(PARTTIME_MONEY), '을/를')} 바로 벌어요`;
   if (d.special === 'apology') return `평판 +${APOLOGY_REPUTATION} (한 달에 한 번)`;
   const parts: string[] = [];
   for (const [k, v] of Object.entries(d.segmentDelta)) {
@@ -42,7 +43,7 @@ export function PromoPanel() {
   const run = (d: PromotionDef) => {
     if (!staff) return;
     const act = () => dispatch({ type: 'promote', staffId: staff.id, promotionId: d.id });
-    if (d.costMoney > 0) Confirm(`${d.name}에 ${wonText(d.costMoney)}을 씁니다. ${staff.name} 씨가 다녀와요`, act, { title: '홍보' });
+    if (d.costMoney > 0) Confirm(`${d.name}에 ${josa(wonText(d.costMoney), '을/를')} 씁니다. ${staff.name} 씨가 다녀와요`, act, { title: '홍보' });
     else act();
   };
 
@@ -58,7 +59,7 @@ export function PromoPanel() {
             <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4, fontSize: 13 }}>
               <Icon name={t.tags.age === 'senior' ? 'local' : 'tourist'} size={20} />
               <span style={{ width: 64 }}>{t.name}</span>
-              <span style={{ fontSize: 11, color: PALETTE.inkSoft, width: 34 }}>{s.guestTypes[t.id]?.regular === 'vip' ? 'VIP' : s.guestTypes[t.id]?.regular === 'regular' ? '단골' : `😊${s.guestTypes[t.id]?.satisfaction ?? 0}`}</span>
+              <span style={{ fontSize: 11, color: PALETTE.inkSoft, width: 34 }}>{s.guestTypes[t.id]?.regular === 'vip' ? 'VIP' : s.guestTypes[t.id]?.regular === 'regular' ? '단골' : <><Icon name="mood_happy" size={11} />{s.guestTypes[t.id]?.satisfaction ?? 0}</>}</span>
               <Bar value={v} max={99} width={90} />
               <span style={{ width: 24 }}>{Math.round(v)}</span>
               <button style={{ ...(on ? brownBtnOn : brownBtn), marginBottom: 0, padding: '0 8px', fontSize: 13 }} onClick={() => dispatch({ type: 'setTarget', segment: t.id })}>
@@ -99,7 +100,7 @@ export function PromoPanel() {
               <div style={{ fontSize: 13, color: PALETTE.inkSoft }}>{effectText(d)}</div>
               {costText(d)}
             </div>
-            <button data-tut="promote" style={{ ...(ok ? brownBtn : brownBtnOff), marginBottom: 0, marginRight: 0 }} disabled={!ok} onClick={() => run(d)}>실행</button>
+            <button data-tut={d.id === 'flyer' ? 'promote' : undefined} style={{ ...(ok ? brownBtn : brownBtnOff), marginBottom: 0, marginRight: 0 }} disabled={!ok} onClick={() => run(d)} aria-label={`${d.name} 실행`}>실행</button>
           </div>
         );
       })}

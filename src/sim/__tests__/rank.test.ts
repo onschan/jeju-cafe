@@ -109,7 +109,7 @@ test('★ 조건 문구 해석: 월 매출·메뉴·직원·손님층 만족·�
 test('★ 승급: 다음 ★ 조건을 다 채우면 월초 검사에서 한 단계 오르고 알림·장면·★ 해금 시설(카운터·주방 증축)', () => {
   const s = richState();
   expect(nextStarConditions(s)!.star).toBe(2);
-  expect(nextStarConditions(s)!.conditions.map((c) => c.text)).toEqual(['월 매출 300,000', '메뉴 15', '손님층 4 만족 30']);
+  expect(nextStarConditions(s)!.conditions.map((c) => c.text)).toEqual(['월 매출 ₩300,000', '메뉴 15', '손님층 4 만족 30']);
   expect(checkStar(s)).toBeNull(); // 메뉴 3·손님층 만족 0
   for (let i = 0; i < 12; i++) s.unlocked.menus.push(`m${i}`); // 3 + 12 = 15
   for (const id of GUEST_TYPES.slice(0, 4).map((t) => t.id)) { unlockGuestType(s, id); s.guestTypes[id]!.satisfaction = 30; }
