@@ -12,7 +12,7 @@ import { placeObject } from '../grid.ts';
 import {
   activeIngredientCombos, comboBonus, matchHiddenRecipe, successRate, bonusWidth, paramDeviation, normalizeParams,
   skillTier, skillTierValue, skillEffects, menuStatsOf, menuSkills, priceOf, priceFromStats, canDevelop, resolveDevelop, developDaysLeft,
-  canAddTopping, canLevelUpMenu, levelUpMenuCost, developCost, costMult, autoMenuName, qualityOf, likesStatsMatch, seatTimeMult, dignityPct,
+  canAddTopping, canLevelUpMenu, levelUpMenuCost, developCost, costMult, autoMenuName, uniqueMenuName, qualityOf, likesStatsMatch, seatTimeMult, dignityPct,
   DEVELOP_DAYS, DEVELOP_RESEARCH, P_SUCCESS, P_GREAT, PARAM_PENALTY, MAX_TOPPINGS, LIKE_STAT_MIN,
 } from '../craft.ts';
 import { menuDef, ingredientDef, toppingDef, MENUS, INGREDIENTS, HIDDEN_RECIPES, ingredientStats } from '../../data/index.ts';
@@ -245,6 +245,7 @@ test('개발 완료: 3일 뒤 결과가 나오고 새 메뉴가 해금·이름 �
   expect(r.combos).toEqual(['latte']);
   expect(r.name).toBe(autoMenuName('drink', ['beans', 'milk']));
   expect(autoMenuName('drink', ['beans', 'milk'])).toBe('원두 음료'); // 스탯 합이 큰 재료가 주재료
+  expect(uniqueMenuName(s, '원두 음료')).toBe(s.customMenus.some((m) => m.name === '원두 음료') ? '원두 음료 2' : '원두 음료'); // 같은 이름이 있으면 번호
   const base = ingredientStats({ beans: 1, milk: 1 });
   const min = base.taste + 3, minLook = base.look + 2; // 라떼 콤보
   if (r.outcome === 'fail') {
