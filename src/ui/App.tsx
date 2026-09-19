@@ -395,7 +395,7 @@ function Game({ onExit }: { onExit: () => void }) {
             // 탭 = 한 칸 사각형. 이미 고른 게 있으면 새로 고른다
             const o = objectAt(st, x, y);
             if (!o) { setRect(null); showMessage('치울 것을 골라 주세요'); }
-            else if (demolishTargets(st, { x0: x, y0: y, x1: x, y1: y }).length === 0) { setRect(null); showMessage('이건 못 치워요'); }
+            else if (demolishTargets(st, { x0: x, y0: y, x1: x, y1: y }).length === 0) { setRect(null); const c = canDisturb(st, o); showMessage(!c.ok && !PROTECTED_TYPES.has(o.type) ? (c.reason ?? '지금은 못 치워요') : '이건 못 치워요'); }
             else setRect({ x0: x, y0: y, x1: x, y1: y });
           } else inspect(st, x, y);
         },
