@@ -159,6 +159,8 @@ export const BOT_COUPLE_POPULARITY = 30;
 export const BOT_COUPLE_GOAL = 'g44';
 /** 커플 해금 체인: 유채밭 Lv4 → 산굼부리 Lv4 → 동백 동산 Lv2 */
 export const BOT_COUPLE_SPOT_CHAIN = ['canola_field', 'sangumburi', 'camellia_hill'];
+/** 체인이 초반 캡(Lv3)을 넘겨 투자할 때는 이만큼 더 남긴다 (3년차 말 자금 밴드 3,000만 유지) */
+export const BOT_COUPLE_CHAIN_RESERVE = 10_000_000;
 /** 3년차부터는 2,000만을 남기고 투자한다 (3년차 말 자금 3,000만~4,500만 밴드 §4.6) */
 export const BOT_RESERVE_YEAR3 = 20_000_000;
 /** 4년차 전엔 관광지 Lv3까지만 (Lv4·5는 350만~1,300만/회). 4년차부터는 2,000만 여유분을 남기고 Lv5까지 올린다 */
@@ -268,11 +270,12 @@ function investSpotIfAny(s: GameState): void {
       const chain = wantCouple && BOT_COUPLE_SPOT_CHAIN.includes(def.id) && (def.id !== 'camellia_hill' || (s.spots[def.id] ?? 0) < 2);
       if (!next.ok || (!chain && s.clock.year < BOT_SPOT_FULL_YEAR && (s.spots[def.id] ?? 0) >= BOT_SPOT_MAX_LEVEL_EARLY)) continue;
       const cost = def.levels.find((l) => l.level === (s.spots[def.id] ?? 0) + 1)?.cost ?? Infinity;
-      if (canSpend(s, cost) && apply(s, { type: 'investSpot', id: def.id }).ok) return true;
+      const capBreak = chain && (s.spots[def.id] ?? 0) >= BOT_SPOT_MAX_LEVEL_EARLY && s.clock.year < BOT_SPOT_FULL_YEAR;
+      if (canSpend(s, cost + (capBreak ? BOT_COUPLE_CHAIN_RESERVE : 0)) && apply(s, { type: 'investSpot', id: def.id }).ok) return true;
     }
     return false;
   };
-  if (once() && wantCouple) once(); // 커플 체인을 쫓는 동안은 한 달 둘
+  once();
 }
 
 /** 낡은 시설(노후·태풍 파손)을 수리비가 있으면 한 달에 몇 개 고친다 — 불만 'worn'이 평판을 깎는다 */
