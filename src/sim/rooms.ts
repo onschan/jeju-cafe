@@ -8,8 +8,8 @@
  */
 import type { GameState, PlacedObject, ApplyResult, MainState, MainWork, Guest, Pt } from './types.ts';
 import { objectDef, ANNEX_IDS } from '../data/index.ts';
-import { cellAt, objectAt, roomAt, doorFrontOf, doorOf, footprint, footprintOf, sizeOf, canPlaceMain, objectsInRoom, removeObject, occupy, vacate, inBounds } from './grid.ts';
-import { isDoorReachable, isWalkable } from './path.ts';
+import { cellAt, objectAt, roomAt, doorFrontOf, doorOf, footprint, footprintOf, sizeOf, canPlaceMain, canPlace, placeObject, objectsInRoom, removeObject, occupy, vacate, inBounds } from './grid.ts';
+import { isDoorReachable, isWalkable, reachMap, busStopPos, cellKey } from './path.ts';
 import { seasonOf, monthIndex } from './clock.ts';
 import { dayIndex } from './effects.ts';
 import { activeEvents } from './events.ts';
@@ -20,6 +20,7 @@ import { guestHasTag } from './events.ts';
 import { tutorialDone } from './tutorial.ts';
 import { fmtNum } from './format.ts';
 import { seatBonusOf } from './upgrade.ts';
+import { layoutSig } from './layoutRev.ts';
 
 // ---------- 상수 (§8.1·8.2·§4.1·§4.3) ----------
 
@@ -215,6 +216,55 @@ function clearPaths(state: GameState, cells: Pt[], ignoreId: string): number {
   state.money += refund;
   return refund;
 }
+/** 올렛길 한 칸 가격 (자동 연결 비용) */
+export const AUTO_PATH_TYPE = 'path';
+export function autoPathCellCost(): number { return objectDef(AUTO_PATH_TYPE).cost; }
+/** 새 문 앞 칸까지 기존 길(정류장에서 닿는 칸)에서 가장 짧은 올렛길을 자동으로 잇는다 (증축·이사로 문이 옮겨졌을 때).
+ *  빈 흙(길을 놓을 수 있는 칸)만 지나며, 이미 있는 길은 그대로 쓴다. 돈이 모자라면 놓지 않고 필요한 칸 수·금액만 돌려준다.
+ *  반환: laid = 새로 놓은 칸 수, cost = 든 돈, need = 돈이 모자라 못 놓았을 때 필요한 금액(0이면 해결됨), route = null이면 이을 길이 없음. */
+export function autoConnectDoor(state: GameState, room: PlacedObject): { laid: number; cost: number; need: number; route: Pt[] | null } {
+  const f = doorFrontOf(room);
+  if (!inBounds(state, f.x, f.y)) return { laid: 0, cost: 0, need: 0, route: null };
+  if (isDoorReachable(state, room)) return { laid: 0, cost: 0, need: 0, route: [] };
+  const reach = reachMap(state, busStopPos(state)).dist;
+  const connected = (p: Pt) => isWalkable(state, p.x, p.y) && reach.has(cellKey(state, p));
+  const passable = (p: Pt) => inBounds(state, p.x, p.y) && cellAt(state, p.x, p.y).roomId === null
+    && (isWalkable(state, p.x, p.y) || canPlace(state, AUTO_PATH_TYPE, p.x, p.y).ok);
+  if (!passable(f)) return { laid: 0, cost: 0, need: 0, route: null };
+  // 문 앞에서 BFS — 정류장과 이어진 첫 칸을 만나면 그 경로가 최단
+  const prev = new Map<number, number>();
+  const queue: Pt[] = [f];
+  prev.set(cellKey(state, f), -1);
+  let goal: Pt | null = null;
+  for (let i = 0; i < queue.length && !goal; i++) {
+    const p = queue[i]!;
+    for (const d of [{ x: 1, y: 0 }, { x: -1, y: 0 }, { x: 0, y: 1 }, { x: 0, y: -1 }]) {
+      const n = { x: p.x + d.x, y: p.y + d.y };
+      const nk = cellKey(state, n);
+      if (prev.has(nk) || !passable(n)) continue;
+      prev.set(nk, cellKey(state, p));
+      if (connected(n)) { goal = n; break; }
+      queue.push(n);
+    }
+  }
+  if (!goal) return { laid: 0, cost: 0, need: 0, route: null };
+  const route: Pt[] = [];
+  for (let k: number = cellKey(state, goal); k !== -1; k = prev.get(k)!) route.push({ x: k % state.grid.w, y: Math.floor(k / state.grid.w) });
+  const empty = route.filter((p) => !isWalkable(state, p.x, p.y));
+  const cost = empty.length * autoPathCellCost();
+  if (state.money < cost) return { laid: 0, cost: 0, need: cost, route };
+  for (const p of empty) placeObject(state, AUTO_PATH_TYPE, p.x, p.y);
+  state.money -= cost;
+  return { laid: empty.length, cost, need: 0, route };
+}
+/** 증축·이사 직후: 자동 연결 결과를 알림 한 줄로 */
+function noticeAutoConnect(state: GameState, r: ReturnType<typeof autoConnectDoor>): string {
+  if (r.laid > 0) { pushNotice(state, `문 앞까지 올렛길 ${r.laid}칸을 자동으로 이었어요 (₩${fmtNum(r.cost)})`); return ''; }
+  if (r.need > 0) return ` — ${DOOR_PATH_WARN} (₩${fmtNum(r.need)} 필요)`;
+  if (r.route === null) return ` — ${DOOR_PATH_WARN}`;
+  return '';
+}
+
 /** 검사 없이 증축을 시작한다 (건축가 1명 7일, 공사 중 영업 정지). 호출 전 canExpandMain. */
 export function expandMain(state: GameState): void {
   const m = mainBuilding(state)!;
@@ -230,7 +280,8 @@ export function expandMain(state: GameState): void {
   state.main.level = next as MainState['level'];
   state.main.work = { kind: 'expand', doneDay: dayIndex(state.clock) + MAIN_EXPAND_DAYS, days: MAIN_EXPAND_DAYS, toLevel: next };
   if (next >= 2) for (const id of LV2_UNLOCK_IDS) if (!state.unlocked.objects.includes(id)) { state.unlocked.objects.push(id); pushNotice(state, `새 시설: ${objectDef(id).name}`); }
-  pushNotice(state, `본관 증축 Lv${next} 공사 시작 (${MAIN_EXPAND_DAYS}일·₩${fmtNum(MAIN_EXPAND_COST[next]!)})`);
+  const warn = noticeAutoConnect(state, autoConnectDoor(state, m));
+  pushNotice(state, `본관 증축 Lv${next} 공사 시작 (${MAIN_EXPAND_DAYS}일·₩${fmtNum(MAIN_EXPAND_COST[next]!)})${warn}`);
 }
 /** 방을 다시 새긴 뒤 안의 가구 칸(objectId)을 되살린다 (occupy(room)가 바닥 전체를 방 id로 덮기 때문) */
 function reoccupyFurniture(state: GameState, room: PlacedObject): void {
@@ -304,7 +355,7 @@ export function moveMain(state: GameState, x: number, y: number): void {
   state.main.undo = { x: prev.x, y: prev.y, day: today, cost: MOVE_COST, prevMovedMonth: state.main.movedMonth };
   state.main.movedMonth = monthIndex(state.clock);
   state.main.work = { kind: 'move', doneDay: today + days, days };
-  const warn = isWalkable(state, doorFrontOf(m).x, doorFrontOf(m).y) ? '' : ` — ${DOOR_PATH_WARN}`;
+  const warn = noticeAutoConnect(state, autoConnectDoor(state, m));
   pushNotice(state, `본관 옮기기 공사 시작 (${days}일·₩${fmtNum(MOVE_COST)})${warn}`);
 }
 export function canUndoMoveMain(state: GameState): ApplyResult {
@@ -550,7 +601,7 @@ export function browseChance(state: GameState, base: number): number {
 interface IndoorFlags { key: string; piano: boolean; kids: boolean; aquarium: boolean; bookshelf: boolean; visitable: number }
 const FLAGS = new WeakMap<GameState, IndoorFlags>();
 function indoorFlags(state: GameState): IndoorFlags {
-  const key = `${dayIndex(state.clock)}:${state.nextId}:${state.actionLog.length}`; // 날(완공·보충 만료)·배치(nextId)·액션(보충 등)이 바뀌면 다시 훑는다 — 스텝마다 훑지 않는다
+  const key = layoutSig(state); // 배치 서명(액션 rev·날·nextId) — actionLog가 1,000개 캡에 닿아도 철거·이동·보충을 놓치지 않는다
   const hit = FLAGS.get(state);
   if (hit && hit.key === key) return hit;
   const f: IndoorFlags = { key, piano: false, kids: false, aquarium: false, bookshelf: false, visitable: 0 };
