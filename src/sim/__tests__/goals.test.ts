@@ -6,6 +6,7 @@ import { DAY_MS } from '../clock.ts';
 import { GOALS, goalDef, objectDef, menuDef, roleDef, FACILITIES, MILEAGE_SHOP, TICKET_SHOP } from '../../data/index.ts';
 import { currentGoal, activeGoals, goalProgress, checkGoals, goalMet, goalForFacility, goalForFeature, checkFeature, grantReward, FEATURE_IDS, ACTION_FEATURE_IDS, goalConditionText, goalRewardText, conditionProgress, conditionCheckers, applyRewards, scaleReward, canOpen, CONCURRENT_GOALS } from '../goals.ts';
 import type { GoalCondition, GoalReward } from '../types.ts';
+import { tutorialFeatureIds } from '../tutorial.ts';
 import { bareState, at } from './helpers.ts';
 
 describe('goals.json 데이터', () => {
@@ -109,11 +110,13 @@ describe('goals.json 데이터', () => {
 });
 
 describe('목표 체인 진행', () => {
-  it('새 게임: 첫 목표는 g01, 진행도 0/1, 기능은 전부 잠겨 있다', () => {
-    const s = createInitialState(1);
+  it('새 게임: 첫 목표는 g01, 진행도 0/1, 기능은 전부 잠겨 있다 (완성 시작 상태는 튜토리얼 보상 기능만 열린 채)', () => {
+    const s = createInitialState(1, 'local', 0, 'tutorial');
     expect(currentGoal(s)?.id).toBe('g01');
     expect(goalProgress(s)).toEqual({ cur: 0, max: 1 });
     for (const f of FEATURE_IDS) expect(s.features[f]).toBe(false);
+    const starter = createInitialState(1);
+    for (const f of FEATURE_IDS) expect(starter.features[f]).toBe(tutorialFeatureIds().includes(f)); // 건너뛴 튜토리얼의 보상 기능(입지 보기 등)은 열려 있다
     expect(checkFeature(s, 'buyParcel').ok).toBe(false);
     expect(checkFeature(s, 'place').ok).toBe(true);
   });

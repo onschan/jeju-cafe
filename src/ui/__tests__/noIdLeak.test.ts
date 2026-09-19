@@ -15,7 +15,7 @@ function expectClean(texts: string[], where: string) {
 }
 
 describe('영문 id 노출 없음 (창·카드·대화)', () => {
-  const s = createInitialState(1, 'p', 0);
+  const s = createInitialState(1, 'p', 0, 'tutorial'); // 빈 마당(기능 전부 잠김) — 완성 시작 상태는 튜토리얼 보상 기능이 열려 있다
 
   it('목표 창: 60개 제목·설명·조건·보상', () => {
     expectClean(GOALS.flatMap((g) => [g.title, g.desc, goalConditionText(g.condition), ...g.reward.map(goalRewardText), g.line ?? '']), '목표');

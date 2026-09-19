@@ -13,7 +13,7 @@ import { initRegions, initNamedGuests, initPopup } from './popup.ts';
 import { initFeatures } from './goals.ts';
 import { drawCandidates } from './staff.ts';
 import { initChallenges, makeMonthly } from './challenges.ts';
-import { initTutorial } from './tutorial.ts';
+import { initTutorial, unlockTutorialFeatures } from './tutorial.ts';
 import { monthIndex } from './clock.ts';
 import { emptyMonthCosts } from './economy.ts';
 import { REPUTATION_START } from './reputation.ts';
@@ -258,7 +258,7 @@ export function createInitialState(seed: number, playerId = 'local', createdAt =
   stamp(state, 'warehouse', ox + 3, oy + 1); // 문 = 정면 왼쪽 (ox+3, oy+2), 그 앞 (ox+3, oy+3)이 창고 앞
   stamp(state, 'gate', ox + 4, oy + PARCEL_H - 2); // 정낭 칸은 gate kind라 걷기 가능(path.ts)
   // §5 완성 시작 상태(올렛길 + 테이블 2 + 파라솔 1 + 메뉴 3종)는 'starter'일 때만. 'tutorial'(§7.1)은 빈 마당 — 손님은 좌석·길·메뉴가 갖춰질 때까지 안 온다(canOpen).
-  if (layout === 'starter') fillStarterLayout(state);
+  if (layout === 'starter') { fillStarterLayout(state); unlockTutorialFeatures(state); }
   const rng = { rng: seed ^ 0x5eed };
   for (const p of parcels) stampParcelObjects(state, p, rng);
   // §5 직원 후보 2명 대기 (전단 등급)

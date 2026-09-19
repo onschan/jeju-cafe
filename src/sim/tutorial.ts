@@ -16,7 +16,7 @@
  * | 8 | 도전 과제 1개 수락                           | goal-bar → tab:challenge → challenge-accept      | ₩50만                |
  * | 9 | 첫 월말 결산 닫기                            | —                                           | 명소 지도            |
  */
-import type { GameState, GoalReward, Pt } from './types.ts';
+import type { GameState, GoalReward, Pt, FeatureId } from './types.ts';
 import { objectDef } from '../data/index.ts';
 import { isDoorReachable, busStopPos } from './path.ts';
 import { doorFrontOf, objectAt, cellAt } from './grid.ts';
@@ -67,6 +67,22 @@ export function seatWithView(s: GameState, view: number): boolean {
   if (list.some((o) => siteOf(s, o.x, o.y).view >= view)) return true;
   return list.length >= 1 && emptyCellsWithView(s, view, 1).length === 0;
 }
+/** 테이블 북서쪽 대각 띠(wallShelteringSeat와 같은 띠)의 빈 흙 칸 — 돌담 안내용. 길 옆 자리는 바로 위 칸이 길이라 띠 전체를 본다. */
+function shelterCells(s: GameState, n: number): Pt[] {
+  const out: Pt[] = [];
+  for (const seat of seats(s)) {
+    for (let dx = 1; dx <= 3; dx++) for (let dy = 1; dy <= 3; dy++) {
+      if (Math.abs(dx - dy) > 1) continue;
+      const x = seat.x - dx, y = seat.y - dy;
+      if (x < 0 || y < 0 || x >= s.grid.w || y >= s.grid.h) continue;
+      const c = cellAt(s, x, y);
+      if (c.terrain !== 'soil' || c.objectId || out.some((q) => q.x === x && q.y === y)) continue;
+      out.push({ x, y });
+      if (out.length >= n) return out;
+    }
+  }
+  return out;
+}
 /** 테이블 북서쪽 대각 띠에 돌담이 있나 (grid.ts windShelter와 같은 띠) */
 export function wallShelteringSeat(s: GameState): boolean {
   for (const seat of seats(s)) {
@@ -111,7 +127,7 @@ export const STEPS: TutorialStepDef[] = [
   { id: 5, key: 'hire', done: (s) => s.staff.length >= 1, reward: [{ type: 'money', amount: 300_000 }], targets: ['nav:people', 'tab:candidates', 'hire'], cells: () => [] },
   // 7단계(홍보)를 바로 할 수 있게 홍보 기능과 전단 연구비(10)를 여기서 준다 — g07(만족 손님 10명)보다 튜토리얼이 먼저 온다
   { id: 6, key: 'wall', done: wallShelteringSeat, reward: [{ type: 'money', amount: 300_000 }, { type: 'unlockFeature', id: 'comboCodex' }, { type: 'unlockFeature', id: 'promote' }, { type: 'research', n: 10 }], targets: ['nav:build', 'tab:wall'],
-    cells: (s) => seats(s).map((o) => ({ x: o.x - 1, y: o.y - 1 })).filter((p) => p.x >= 0 && p.y >= 0 && !cellAt(s, p.x, p.y).objectId) },
+    cells: (s) => shelterCells(s, 6) },
   { id: 7, key: 'promote', done: (s) => s.stats.promotionsDone >= 1, reward: [{ type: 'mileage', n: 30 }], targets: ['nav:cafe', 'tab:promo', 'promote'], cells: () => [] },
   { id: 8, key: 'challenge', done: (s) => s.challenges.active.length + s.challenges.done.length >= 1, reward: [{ type: 'money', amount: 500_000 }], targets: ['goal-bar', 'tab:challenge', 'challenge-accept'], cells: () => [] },
   { id: 9, key: 'month_end', done: firstMonthClosed, reward: [{ type: 'unlockFeature', id: 'spotMap' }], targets: [], cells: () => [] },
@@ -119,6 +135,13 @@ export const STEPS: TutorialStepDef[] = [
 
 export function initTutorial(skipped = false): GameState['tutorial'] {
   return { step: skipped ? TUTORIAL_STEPS : 0, skipped };
+}
+/** 튜토리얼 단계 보상으로만 열리는 기능(입지 보기·콤보 도감·명소 지도 등). 건너뛰거나 완성 시작 상태로 시작하면 이걸 바로 연다. */
+export function tutorialFeatureIds(): FeatureId[] {
+  return STEPS.flatMap((st) => st.reward.filter((r): r is Extract<GoalReward, { type: 'unlockFeature' }> => r.type === 'unlockFeature').map((r) => r.id));
+}
+export function unlockTutorialFeatures(state: GameState): void {
+  for (const id of tutorialFeatureIds()) state.features[id] = true;
 }
 export function tutorialDone(state: GameState): boolean {
   return state.tutorial.step >= TUTORIAL_STEPS;

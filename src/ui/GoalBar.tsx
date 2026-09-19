@@ -1,4 +1,5 @@
 import { useGame } from './store';
+import { fmtNum } from '../sim/format.ts';
 import { currentGoal, urgentChallenge } from './simBridge';
 import { PALETTE } from './frame';
 
@@ -25,7 +26,7 @@ export function GoalBar({ top, onOpen }: { top: number; onOpen: () => void }) {
         {g ? (
           <>
             <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis' }}>목표: {g.title}</span>
-            <span style={{ flex: 'none', color: done ? PALETTE.ink : PALETTE.inkSoft }}>{g.cur}/{g.max}</span>
+            <span style={{ flex: 'none', color: done ? PALETTE.ink : PALETTE.inkSoft }}>{fmtNum(g.cur)}/{fmtNum(g.max)}</span>
             <span aria-hidden style={{ flex: 'none', width: 48, height: 6, background: '#fff8', border: `1px solid ${PALETTE.wood}`, borderRadius: 3, overflow: 'hidden' }}>
               <span style={{ display: 'block', width: `${pct}%`, height: '100%', background: done ? PALETTE.ok : PALETTE.bar }} />
             </span>
@@ -37,7 +38,7 @@ export function GoalBar({ top, onOpen }: { top: number; onOpen: () => void }) {
         {c ? (
           <>
             <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.kind === 'monthly' ? '이달' : '도전'}: {c.title}</span>
-            <span style={{ flex: 'none', color: PALETTE.inkSoft }}>{c.cur}/{c.max} · {c.daysLeft}일</span>
+            <span style={{ flex: 'none', color: PALETTE.inkSoft }}>{fmtNum(c.cur)}/{fmtNum(c.max)} · {c.daysLeft}일</span>
             <span aria-hidden style={{ flex: 'none', width: 36, height: 5, background: '#fff8', border: `1px solid ${PALETTE.wood}`, borderRadius: 3, overflow: 'hidden' }}>
               <span style={{ display: 'block', width: `${cpct}%`, height: '100%', background: PALETTE.bar }} />
             </span>

@@ -3,6 +3,7 @@
  *  상태는 store(useGame)에서 읽고 수락은 dispatch({ type: 'acceptChallenge' }). */
 import { useState } from 'react';
 import { PALETTE } from '../frame';
+import { fmtNum } from '../../sim/format.ts';
 import { body, Bar, rowCard, rowCardLocked, rowBtn, rowBtnOff, soft, Empty, TabBar, useWindowState, type WindowProps } from './shared.tsx';
 import { activeGoals, pastGoals, toGoal, urgentChallenge } from '../simBridge';
 import { offeredChallenges, canAcceptChallenge, challengeProgress, challengeDaysLeft, isChallengeLocked, challengeLockDaysLeft, monthlyProgress, goalConditionText, goalRewardText, CHALLENGE_SLOTS } from '../../sim/index.ts';
@@ -90,7 +91,7 @@ export function GoalWindow(props: GoalWindowProps) {
               <div style={{ fontSize: 14, marginBottom: 6 }}>{def.desc}</div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8, alignItems: 'center', marginBottom: 4 }}>
                 <Bar value={p.cur} max={p.max} height={12} />
-                <b>{p.cur}/{p.max}</b>
+                <b>{fmtNum(p.cur)}/{fmtNum(p.max)}</b>
               </div>
               <div style={{ fontSize: 14 }}>🎁 {rewardsText(def.reward)}</div>
             </div>
@@ -134,7 +135,7 @@ export function GoalWindow(props: GoalWindowProps) {
         <div style={{ fontSize: 15, marginBottom: 8 }}>{goalConditionText(m.condition)} — 난이도는 지난달 기준으로 자동이에요</div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8, alignItems: 'center', marginBottom: 8 }}>
           <Bar value={p.cur} max={p.max} height={14} color={m.status === 'done' ? PALETTE.ok : PALETTE.bar} />
-          <b style={{ fontSize: 16 }}>{p.cur}/{p.max}</b>
+          <b style={{ fontSize: 16 }}>{fmtNum(p.cur)}/{fmtNum(p.max)}</b>
         </div>
         <div style={{ fontSize: 15 }}>🎁 보상: <b>{rewardsText(m.reward)}</b></div>
       </div>

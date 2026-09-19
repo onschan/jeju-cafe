@@ -6,7 +6,7 @@ import { canSetSlot, setSlot } from './menu.ts';
 import { checkFeature, checkGoals } from './goals.ts';
 import { canAcceptChallenge, acceptChallenge } from './challenges.ts';
 import { fillStarterLayout } from './state.ts';
-import { TUTORIAL_STEPS } from './tutorial.ts';
+import { TUTORIAL_STEPS, unlockTutorialFeatures } from './tutorial.ts';
 import { canPostJob, postJob, canHire, hire, canFire, fire, canAssign, assign, canLevelUp, levelUp } from './staff.ts';
 import { canTrain, train } from './training.ts';
 import { canPromote, promote, canSetTarget, setTarget } from './promotions.ts';
@@ -190,6 +190,7 @@ function applyInner(state: GameState, a: Action): ApplyResult {
       // §7.2 건너뛰기(첫 단계에서만): 빈 마당을 완성 시작 상태로 채우고 튜토리얼을 끝낸다
       if (state.tutorial.step > 0) return { ok: false, reason: '이미 튜토리얼을 시작했어요' };
       fillStarterLayout(state);
+      unlockTutorialFeatures(state); // 튜토리얼 보상으로만 열리는 입지 보기·콤보 도감·명소 지도
       state.tutorial = { step: TUTORIAL_STEPS, skipped: true };
       return { ok: true };
     }
