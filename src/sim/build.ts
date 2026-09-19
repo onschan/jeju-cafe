@@ -59,6 +59,8 @@ export function buildDaysLeft(state: GameState, obj: PlacedObject): number {
 export function advanceConstruction(state: GameState): string[] {
   const today = dayIndex(state.clock);
   const done: string[] = [];
+  const names = new Map<string, number>(); // 같은 날 완공은 장면 창 하나로 (실내 테이블 ×3 · 큰 화분)
+  let anyHint = false;
   for (const o of constructions(state)) {
     if (o.build!.doneDay > today) continue;
     delete o.build;
@@ -66,9 +68,14 @@ export function advanceConstruction(state: GameState): string[] {
     const name = objectDef(o.type).name;
     done.push(o.id);
     const hint = needsDoorPath(state, o) ? ` — ${DOOR_PATH_HINT}` : '';
+    if (hint) anyHint = true;
     pushNotice(state, `${name} 완공!${hint}`);
     pushFx(state, { kind: 'complete', x: o.x, y: o.y, tick: state.tick });
-    pushFx(state, { kind: 'scene', title: '완공', text: hint ? `${name} 완공! ${DOOR_PATH_HINT}` : `${name} 완공! 손님을 맞을 준비가 됐어요`, tick: state.tick });
+    names.set(name, (names.get(name) ?? 0) + 1);
+  }
+  if (names.size > 0) {
+    const list = [...names].map(([n, k]) => (k > 1 ? `${n} ×${k}` : n)).join(' · ');
+    pushFx(state, { kind: 'scene', title: '완공', text: anyHint ? `${list} 완공! ${DOOR_PATH_HINT}` : `${list} 완공! 손님을 맞을 준비가 됐어요`, tick: state.tick });
   }
   if (done.length > 0) discoverCombos(state); // 명당은 완공된 시설만 센다
   return done;
