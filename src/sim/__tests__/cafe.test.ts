@@ -10,6 +10,7 @@ import { DAY_MS } from '../clock.ts';
 import { tick } from '../tick.ts';
 import { objectDef } from '../../data/index.ts';
 import { siteBonus } from '../site.ts';
+import { STAY_PER_FACILITY_MS } from '../rooms.ts';
 import type { GameState } from '../types.ts';
 
 function cafe() {
@@ -45,9 +46,9 @@ test('카페 레벨: 누적 매출 구간 1~5, 손님 주문·시설 이용료�
   expect(s2.totalIncome).toBe(4000); // 당근주스
 });
 
-test('증축: 주방(요리 슬롯 +1)·2층(본관 4석)·테라스(야외 좌석 −20%), 한 번씩, 돈이 있어야', () => {
+test('증축: 주방(요리 슬롯 +1)·테라스(야외 좌석 −20%), 한 번씩, 돈이 있어야. 2층은 본관 카드(rooms.ts buildSecondFloor, y-indoor)로 옮겨 갔다', () => {
   const s = bareState(1);
-  expect(EXPANSIONS.map((e) => e.id)).toEqual(['kitchen', 'floor2', 'terrace']);
+  expect(EXPANSIONS.map((e) => e.id)).toEqual(['kitchen', 'terrace']);
   expect(apply(s, { type: 'expand', id: 'nope' }).ok).toBe(false);
   s.money = 1_000_000;
   expect(apply(s, { type: 'expand', id: 'kitchen' }).reason).toBe('돈이 모자라요');
@@ -66,21 +67,22 @@ test('증축: 주방(요리 슬롯 +1)·2층(본관 4석)·테라스(야외 좌�
   const m0 = s.money;
   expect(apply(s, { type: 'place', objectType: 'table_out', x: X(0), y: Y(0) }).ok).toBe(true);
   expect(s.money).toBe(m0 - 40_000);
-  // 2층: 본관이 4석짜리 좌석이 된다
+  // 2층: 본관이 6석짜리 좌석이 된다 (state.main.floor2 — rooms.ts)
   const wh = Object.values(s.objects).find((o) => o.type === 'warehouse')!;
   expect(seatsOf(s, wh)).toBe(0);
   expect(totalSeats(s)).toBe(2);
-  expect(apply(s, { type: 'expand', id: 'floor2' }).ok).toBe(true);
-  expect(seatsOf(s, wh)).toBe(4);
-  expect(totalSeats(s)).toBe(6);
+  expect(apply(s, { type: 'expand', id: 'floor2' }).ok).toBe(false); // 옛 경로는 닫혔다
+  s.main.floor2 = true;
+  expect(seatsOf(s, wh)).toBe(6);
+  expect(totalSeats(s)).toBe(8);
   expect(freeSeats(s).some((o) => o.id === wh.id)).toBe(true);
-  expect(s.expansions).toEqual(['kitchen', 'terrace', 'floor2']);
+  expect(s.expansions).toEqual(['kitchen', 'terrace']);
 });
 
 test('2층 손님: 문 앞에 길이 있으면 본관으로 걸어가 앉는다', () => {
   const s = bareState(1);
   s.money = 1e9;
-  apply(s, { type: 'expand', id: 'floor2' });
+  s.main.floor2 = true;
   for (let y = 3; y <= 5; y++) placeObject(s, 'path', X(4), Y(y));
   placeObject(s, 'path', X(3), Y(3));
   setSlot(s, 0, 'carrot_juice');
@@ -139,7 +141,7 @@ test('시설 순회: 앉았다 일어난 손님이 40%로 닿는 시설에 들�
   let visited = false;
   for (let attempt = 0; attempt < 30 && !visited; attempt++) {
     const snap: GameState = JSON.parse(JSON.stringify(s));
-    updateGuests(snap, SEAT_MS + 1);
+    updateGuests(snap, SEAT_MS + STAY_PER_FACILITY_MS + 1); // y-indoor: 순회 시설(자판기) 1개 → 체류 +8분
     if (snap.guests[0]!.phase === 'visiting') {
       visited = true;
       const v = snap.guests[0]!;
