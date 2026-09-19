@@ -15,7 +15,7 @@ export function ButtonGroup<T extends string>({ value, options, onPick, label, d
   testId?: string;
 }) {
   return (
-    <div role="group" aria-label={label} data-testid={testId} style={{ display: 'flex', flexWrap: 'wrap', gap: 4, ...style }}>
+    <div role="group" aria-label={label} data-testid={testId} data-tut={testId} style={{ display: 'flex', flexWrap: 'wrap', gap: 4, ...style }}>
       {options.map((o) => {
         const on = o.value === value;
         const off = disabled || o.disabled;

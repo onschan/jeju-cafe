@@ -90,7 +90,7 @@ function EventCard({ ev }: { ev: EventState }) {
       <div style={{ fontSize: 13 }}>{def.effectText}</div>
       {pending && (
         <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
-          <button style={{ ...brownBtn, marginBottom: 0 }} onClick={() => dispatch({ type: 'respondEvent', id: ev.id, accept: true })}>수락</button>
+          <button data-tut="event-respond" style={{ ...brownBtn, marginBottom: 0 }} onClick={() => dispatch({ type: 'respondEvent', id: ev.id, accept: true })}>수락</button>
           <button style={{ ...dangerBtn, marginBottom: 0 }} onClick={() => dispatch({ type: 'respondEvent', id: ev.id, accept: false })}>거절</button>
         </div>
       )}
@@ -156,7 +156,7 @@ function SpotCard({ id }: { id: string }) {
       )}
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
         {next && (
-          <button style={{ ...(can.ok ? brownBtn : brownBtnOff), marginTop: 6, marginBottom: 0 }} disabled={!can.ok} onClick={invest} aria-label={`${def.name} 투자`}>
+          <button data-tut="spot-invest" style={{ ...(can.ok ? brownBtn : brownBtnOff), marginTop: 6, marginBottom: 0 }} disabled={!can.ok} onClick={invest} aria-label={`${def.name} 투자`}>
             투자 Lv{next.level} <Icon name="money" /> {wonText(next.cost)}
           </button>
         )}

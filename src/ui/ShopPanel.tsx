@@ -174,7 +174,7 @@ function DrawMachine() {
       <div style={{ ...card, display: 'flex', flexWrap: 'wrap', gap: 4, fontSize: 13 }}>
         {DRAW_PRIZES.map((p) => <span key={p.kind} style={{ background: PALETTE.paperDark, borderRadius: 4, padding: '2px 6px' }}>{p.label} {p.pct}%</span>)}
       </div>
-      <button style={{ ...(can.ok ? brownBtnOn : brownBtnOff), fontSize: 18, width: '100%', marginRight: 0 }} data-testid="draw-btn"
+      <button style={{ ...(can.ok ? brownBtnOn : brownBtnOff), fontSize: 18, width: '100%', marginRight: 0 }} data-testid="draw-btn" data-tut="draw"
         onClick={() => dispatch({ type: 'drawTicket' })} disabled={s.lastDraw !== null}>
         🕹️ 뽑기 {free ? '(무료!)' : '(응모권 1장)'}
       </button>

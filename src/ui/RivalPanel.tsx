@@ -32,7 +32,7 @@ function ChallengePicker({ r, onClose }: { r: RivalState; onClose: () => void })
       )}
       <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
         <button style={{ ...brownBtn, marginBottom: 0 }} onClick={onClose}>취소</button>
-        <button style={{ ...(can.ok ? brownBtnOn : brownBtnOff), marginBottom: 0 }} disabled={!can.ok} onClick={() => { if (dispatch({ type: 'challenge', rivalId: r.id, menuId }).ok) onClose(); }} aria-label="대결 시작">대결!</button>
+        <button data-tut="rival-challenge" style={{ ...(can.ok ? brownBtnOn : brownBtnOff), marginBottom: 0 }} disabled={!can.ok} onClick={() => { if (dispatch({ type: 'challenge', rivalId: r.id, menuId }).ok) onClose(); }} aria-label="대결 시작">대결!</button>
       </div>
     </div>
   );
