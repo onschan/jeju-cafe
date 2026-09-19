@@ -550,7 +550,7 @@ export function browseChance(state: GameState, base: number): number {
 interface IndoorFlags { key: string; piano: boolean; kids: boolean; aquarium: boolean; bookshelf: boolean; visitable: number }
 const FLAGS = new WeakMap<GameState, IndoorFlags>();
 function indoorFlags(state: GameState): IndoorFlags {
-  const key = `${state.tick}:${state.nextId}:${state.actionLog.length}`; // 스텝·배치·액션(보충 등)이 바뀌면 다시 훑는다
+  const key = `${dayIndex(state.clock)}:${state.nextId}:${state.actionLog.length}`; // 날(완공·보충 만료)·배치(nextId)·액션(보충 등)이 바뀌면 다시 훑는다 — 스텝마다 훑지 않는다
   const hit = FLAGS.get(state);
   if (hit && hit.key === key) return hit;
   const f: IndoorFlags = { key, piano: false, kids: false, aquarium: false, bookshelf: false, visitable: 0 };

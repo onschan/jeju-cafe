@@ -413,14 +413,15 @@ function nearestWalkable(state: GameState, to: Pt): Pt {
 }
 
 /** 창고 문 앞 (문 바로 아래 칸). 걷기 칸이 아니면 가장 가까운 걷기 칸. */
-const FRONT_CACHE = new WeakMap<GameState, { tick: number; pt: Pt }>();
+const FRONT_CACHE = new WeakMap<GameState, { key: string; pt: Pt }>();
 export function warehouseFront(state: GameState): Pt {
+  const key = `${state.nextId}:${state.actionLog.length}`; // 배치·액션이 바뀔 때만 다시 찾는다
   const hit = FRONT_CACHE.get(state);
-  if (hit && hit.tick === state.tick) return { ...hit.pt };
+  if (hit && hit.key === key) return { ...hit.pt };
   const wh = Object.values(state.objects).find((o) => o.type === 'warehouse');
   const front = wh ? doorFrontOf(wh) : WAREHOUSE_FRONT; // y-indoor: 본관을 옮기거나 증축하면 문 앞이 바뀐다
   const pt = isWalkable(state, front.x, front.y) ? { ...front } : nearestWalkable(state, front);
-  FRONT_CACHE.set(state, { tick: state.tick, pt });
+  FRONT_CACHE.set(state, { key, pt });
   return { ...pt };
 }
 
