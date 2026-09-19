@@ -438,3 +438,13 @@ describe('z-polish: 올렛길 자동 연결·시설 플래그 캐시', () => {
     expect(indoorSpawnMult(s, 'student')).toBe(1);
   });
 });
+
+test('autoConnectDoor: 문 앞에 시설이 있으면 잇지 않고 blocked에 이름을 돌려준다', () => {
+  const s = cafe();
+  const m = main(s);
+  apply(s, { type: 'remove', objectId: objectAt(s, X(3), Y(3))!.id });
+  placeObject(s, 'table_out', X(3), Y(3));
+  const r = autoConnectDoor(s, m);
+  expect(r.route).toBeNull();
+  expect(r.blocked).toBe(objectDef('table_out').name);
+});

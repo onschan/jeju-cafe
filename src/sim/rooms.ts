@@ -21,6 +21,7 @@ import { tutorialDone } from './tutorial.ts';
 import { fmtNum } from './format.ts';
 import { seatBonusOf } from './upgrade.ts';
 import { layoutSig } from './layoutRev.ts';
+import { josa } from './josa.ts';
 
 // ---------- 상수 (§8.1·8.2·§4.1·§4.3) ----------
 
@@ -222,10 +223,12 @@ export function autoPathCellCost(): number { return objectDef(AUTO_PATH_TYPE).co
 /** 새 문 앞 칸까지 기존 길(정류장에서 닿는 칸)에서 가장 짧은 올렛길을 자동으로 잇는다 (증축·이사로 문이 옮겨졌을 때).
  *  빈 흙(길을 놓을 수 있는 칸)만 지나며, 이미 있는 길은 그대로 쓴다. 돈이 모자라면 놓지 않고 필요한 칸 수·금액만 돌려준다.
  *  반환: laid = 새로 놓은 칸 수, cost = 든 돈, need = 돈이 모자라 못 놓았을 때 필요한 금액(0이면 해결됨), route = null이면 이을 길이 없음. */
-export function autoConnectDoor(state: GameState, room: PlacedObject): { laid: number; cost: number; need: number; route: Pt[] | null } {
+export function autoConnectDoor(state: GameState, room: PlacedObject): { laid: number; cost: number; need: number; route: Pt[] | null; blocked?: string } {
   const f = doorFrontOf(room);
   if (!inBounds(state, f.x, f.y)) return { laid: 0, cost: 0, need: 0, route: null };
   if (isDoorReachable(state, room)) return { laid: 0, cost: 0, need: 0, route: [] };
+  const front = objectAt(state, f.x, f.y);
+  if (front && front.id !== room.id && objectDef(front.type).kind !== 'path') return { laid: 0, cost: 0, need: 0, route: null, blocked: objectDef(front.type).name }; // 문 앞에 시설이 있으면 못 잇는다
   const reach = reachMap(state, busStopPos(state)).dist;
   const connected = (p: Pt) => isWalkable(state, p.x, p.y) && reach.has(cellKey(state, p));
   const passable = (p: Pt) => inBounds(state, p.x, p.y) && cellAt(state, p.x, p.y).roomId === null
@@ -261,6 +264,7 @@ export function autoConnectDoor(state: GameState, room: PlacedObject): { laid: n
 function noticeAutoConnect(state: GameState, r: ReturnType<typeof autoConnectDoor>): string {
   if (r.laid > 0) { pushNotice(state, `문 앞까지 올렛길 ${r.laid}칸을 자동으로 이었어요 (₩${fmtNum(r.cost)})`); return ''; }
   if (r.need > 0) return ` — ${DOOR_PATH_WARN} (₩${fmtNum(r.need)} 필요)`;
+  if (r.blocked) return ` — 문 앞에 ${josa(r.blocked, '이/가')} 있어요. 치우면 올렛길을 이어요`;
   if (r.route === null) return ` — ${DOOR_PATH_WARN}`;
   return '';
 }
