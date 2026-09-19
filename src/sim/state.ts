@@ -190,6 +190,7 @@ export function createInitialState(seed: number, playerId = 'local', createdAt =
     segmentPopularity: initSegmentPopularity(),
     targetSegment: null,
     targets: [],
+    undo: null,
     guestTypes: initGuestTypes(),
     visitBonus: {},
     tickets: 0,

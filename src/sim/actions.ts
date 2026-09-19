@@ -24,6 +24,8 @@ import { canChallenge, challenge } from './rivals.ts';
 import { canUpgrade, upgrade } from './upgrade.ts';
 import { canRepair, repair } from './cleanliness.ts';
 import { objectStats } from './compat.ts';
+import { rememberPlace, rememberRemove, rememberMove, canUndo, undoLast } from './undo.ts';
+import { canSetTargets, setTargets } from './segments.ts';
 
 export const PROTECTED_TYPES = new Set(['busstop', 'warehouse', 'gate', 'spring']);
 /** 회전할 수 있는 오브젝트 (rot 0..3, 스프라이트 변형 _r{n}이 있을 때만 보인다) */
@@ -50,6 +52,13 @@ export function apply(state: GameState, a: Action): ApplyResult {
   return r;
 }
 
+/** 일괄 철거 시 돈 변화(+환불 −철거비 합) */
+export function demolishRefund(objs: PlacedObject[]): number {
+  let d = 0;
+  for (const o of objs) { const def = objectDef(o.type); d += def.removeCost ? -def.removeCost : def.cost; }
+  return d;
+}
+
 /** 치우거나 옮길 수 있나: 보호 오브젝트·앉은 손님·지나가는 손님 */
 function canDisturb(state: GameState, obj: PlacedObject): ApplyResult {
   if (PROTECTED_TYPES.has(obj.type)) return { ok: false, reason: '이건 못 없애요' };
@@ -73,6 +82,7 @@ function applyInner(state: GameState, a: Action): ApplyResult {
       const obj = placeObject(state, a.objectType, a.x, a.y, ROTATABLE_TYPES.has(a.objectType) && a.rot !== undefined ? ((a.rot % 4) + 4) % 4 : undefined);
       startBuild(state, obj);
       state.money -= cost;
+      rememberPlace(state, obj, cost);
       discoverCombos(state);
       evaluateUnlocks(state); // count 해금 (감귤나무 3그루 → 까치)
       checkQuests(state);     // objectPlaced 부탁
@@ -91,7 +101,48 @@ function applyInner(state: GameState, a: Action): ApplyResult {
       } else {
         state.money += def.cost;
       }
+      rememberRemove(state, [obj], def.removeCost ? -def.removeCost : def.cost);
       removeObject(state, a.objectId);
+      return { ok: true };
+    }
+    case 'demolishMany': {
+      // 드래그 사각형 일괄 철거: 보호·덤불·방 안 가구 있는 방은 건너뛰고, 하나라도 못 치우면 그 이유로 거부
+      const objs: PlacedObject[] = [];
+      for (const id of a.objectIds) {
+        const obj = state.objects[id];
+        if (!obj || PROTECTED_TYPES.has(obj.type) || obj.type === 'bush_wild') continue;
+        if (objs.some((o) => o.id === obj.id)) continue;
+        const c = canDisturb(state, obj);
+        if (!c.ok) return c;
+        if (objectDef(obj.type).room && objectsInRoom(state, obj.id).some((r) => !a.objectIds.includes(r.id))) return { ok: false, reason: '안에 가구가 있어요' };
+        objs.push(obj);
+      }
+      if (objs.length === 0) return { ok: false, reason: '치울 게 없어요' };
+      const delta = demolishRefund(objs);
+      if (state.money + delta < 0) return { ok: false, reason: '돈이 모자라요' };
+      state.money += delta;
+      rememberRemove(state, objs, delta);
+      for (const o of objs) removeObject(state, o.id);
+      discoverCombos(state);
+      return { ok: true };
+    }
+    case 'undoLast': {
+      const c = canUndo(state);
+      if (!c.ok) return c;
+      undoLast(state);
+      return { ok: true };
+    }
+    case 'renameObject': {
+      const obj = state.objects[a.objectId];
+      if (!obj) return { ok: false, reason: '없는 오브젝트' };
+      const name = a.name.trim().slice(0, 12);
+      if (name) obj.name = name; else delete obj.name;
+      return { ok: true };
+    }
+    case 'setTargets': {
+      const c = canSetTargets(state, a.targets);
+      if (!c.ok) return c;
+      setTargets(state, a.targets);
       return { ok: true };
     }
     case 'move': {
@@ -103,6 +154,7 @@ function applyInner(state: GameState, a: Action): ApplyResult {
       const p = canPlace(state, obj.type, a.x, a.y, obj.id);
       if (!p.ok) return p;
       // 돈은 그대로: 치우기 환불 + 다시 짓기 비용이 상쇄된다. 방향·놓은 달은 유지.
+      rememberMove(state, obj, obj.x, obj.y);
       relocateObject(state, obj, a.x, a.y);
       discoverCombos(state);
       return { ok: true };

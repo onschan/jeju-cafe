@@ -655,7 +655,14 @@ export interface PlacedObject {
   level?: 1 | 2 | 3;   // 증축 Lv (없으면 1). 스펙 §3.2.2
   uses?: number;       // 누적 이용 횟수 (좌석 주문·시설 방문) — 증축 조건
   wearMonth?: number;  // 노후 기준 달(monthIndex): 완공·증축·수리 시점. 없으면 placedMonth
+  name?: string;       // 개체 이름 (renameObject, UX §5.6). 없으면 종류 이름
 }
+
+/** 되돌리기 1회 스냅샷 (undo.ts). day = 절대 일 인덱스 — 같은 날에만 되돌린다 */
+export type UndoEntry =
+  | { kind: 'place'; day: number; objectId: string; paid: number }
+  | { kind: 'remove'; day: number; objects: PlacedObject[]; moneyDelta: number }
+  | { kind: 'move'; day: number; objectId: string; fromX: number; fromY: number };
 
 /** 필지. 격자는 처음부터 전체 크기이고, 소유한 필지에만 지을 수 있다. */
 export interface Parcel {
@@ -932,6 +939,7 @@ export interface GameState {
   popup: PopupState;                          // 원정 팝업 스토어
   rivals: RivalState[];                       // 라이벌 카페 (동시 최대 2)
   lastChallenge: ChallengeResult | null;      // 마지막 카페 대결 (UI 팝업)
+  undo: UndoEntry | null;                     // 직전 배치·철거·이동 되돌리기 스냅샷 (undo.ts)
   guests: Guest[];
   spawnAcc: number; // 시간대별 스폰 소수 누적
   researchAcc: number; // 만족 손님 누적 (5마다 연구 +1)
@@ -951,6 +959,10 @@ export type Action =
   | { type: 'remove'; objectId: string }
   | { type: 'move'; objectId: string; x: number; y: number }
   | { type: 'rotate'; objectId: string; rot: number }
+  | { type: 'demolishMany'; objectIds: string[] }  // 드래그 사각형 일괄 철거 (undo 1회로 전부 복구)
+  | { type: 'undoLast' }                           // 직전 배치·철거·이동 되돌리기 (같은 날만)
+  | { type: 'renameObject'; objectId: string; name: string }
+  | { type: 'setTargets'; targets: string[] }      // 타깃 손님층 3슬롯 통째로
   | { type: 'upgradeObject'; objectId: string }   // 증축 Lv+1 (upgrade.ts)
   | { type: 'repairObject'; objectId: string }    // 노후 수리 (cleanliness.ts)
   | { type: 'buyParcel'; id: string }

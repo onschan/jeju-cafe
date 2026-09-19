@@ -19,6 +19,7 @@ export function deserialize(json: string): GameState {
 function backfill(state: GameState): void {
   state.lastMonthIncome ??= state.lastMonthCard?.income ?? 0;
   state.researchAcc ??= 0;
+  state.undo ??= null;
   state.eventsFired ??= {};
   state.monthMenuSold ??= {};
 }

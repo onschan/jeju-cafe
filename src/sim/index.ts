@@ -5,7 +5,8 @@ export { tick, step, STEP_MS } from './tick.ts';
 export { upkeepOf, isAged, salaryOf as economySalaryOf, incomeTaxOf, totalCosts, emptyMonthCosts, UPKEEP_RATE, BASE_SALARY_DEFAULT, SALARY_LEVEL_STEP, SALARY_PER_STAT_POINT, ANNUAL_RAISE_PCT, TAX_RATE, TAX_MONTH } from './economy.ts';
 export { addComplaint, addReputation, complaintCounts, topComplaints, reputationGuestMult, reputationTypeMult, reputationTipMult, reputationNamedMult, reputationScore, nightlyReputation, monthlyReputation, makeReviews, reviewScore, applyApology, cleanValue, wornCount, COMPLAINT_REASONS, COMPLAINT_LABEL, COMPLAINT_REVIEW, REPUTATION_START, REP_LOW, REP_HIGH, REP_ALERT, APOLOGY_REPUTATION, MAX_REVIEWS, TOP_COMPLAINTS } from './reputation.ts';
 export { hasLoan, loanRewardMult, canTakeLoan, takeLoan, checkLoan, repayLoan, LOAN_AMOUNT, LOAN_MAX, LOAN_THRESHOLD, LOAN_REPAY_RATIO, LOAN_REWARD_MULT, WARN_DEFICIT_MONTHS, LOAN_DEFICIT_MONTHS, CRISIS_MONEY, CRISIS_MONTHS } from './failure.ts';
-export { apply, PROTECTED_TYPES, ROTATABLE_TYPES } from './actions.ts';
+export { apply, PROTECTED_TYPES, ROTATABLE_TYPES, demolishRefund } from './actions.ts';
+export { canUndo } from './undo.ts';
 export { DAY_MS, seasonOf, monthIndex, DAYS_PER_MONTH } from './clock.ts';
 export { cellAt, objectAt, canPlace, footprint, parcelHasLandmark, isSheltered, sceneryScore, objectScenery, windShelter, SHELTER_THRESHOLD, SCENERY_CAP, doorOf, doorFrontOf, roomAt, isRoomFloor, objectsInRoom, clearCost, canClearRock, hasPickaxe, ROCK_CLEAR_COST, BIG_ROCK_CLEAR_COST, BUSH_CLEAR_COST } from './grid.ts';
 export { FX_CAP } from './fx.ts';
@@ -34,7 +35,7 @@ export { canBuyMileage, canBuyTicket, canDrawTicket, canSetUniform, canUseGuestI
 export { addMileage, codexCount, checkCodexMileage, monthlyMileage, CODEX_PER_MILEAGE, GUESTS_PER_MILEAGE } from './mileage.ts';
 export { rankScore, rankForScore, nextRankThreshold, facilityCount, unlockedGuestTypeCount, updateRank, RANK_THRESHOLDS, MAX_RANK } from './rank.ts';
 export { starConditionMet, starConditionsHeld, isReviewDue, starReview, nextStarConditions, checkStar, judgeScores, guidebookScore, guidebookState, evaluateGuidebooks, guidebooksToAnnounce, announce, rivalScores, rivalTop, rivalBoost, rankAmong, monthlyTarget, targetPopularity, codexTotal, MAX_STAR, JUDGE_KEYS, JUDGE_LABEL, ANNOUNCE_MONTHS, RIVAL_COUNT, PRIZE_RATIO, RANK_MILEAGE, MONTHLY_TAGS, RIVAL_WIN_BOOST, RIVAL_CAFE_BOOST, REVIEW_MIN_STAR, REVIEW_EVERY_YEARS, RANK_SHIELD_ITEM } from './guidebook.ts';
-export { evaluateUnlocks, evaluateFacilityUnlocks, unlockCondMet, isUnlocked, unlockedTypeIds, guestFace, walletOf, regularTier, isTarget, MAX_TARGETS, SAT_QUEST, SAT_REGULAR, SAT_VIP } from './segments.ts';
+export { evaluateUnlocks, evaluateFacilityUnlocks, unlockCondMet, isUnlocked, unlockedTypeIds, guestFace, walletOf, regularTier, isTarget, MAX_TARGETS, TARGET_SPAWN_MULT, canSetTargets, SAT_QUEST, SAT_REGULAR, SAT_VIP } from './segments.ts';
 export { questProgress, canAcceptQuest, canRespondEvent, eventConditionMet, boardBadge, visibleQuests, questRewardText, QUEST_MONTHS } from './board.ts';
 export {
   spotLevel, spotUnlocked, nextSpotLevel, spotAppeal, spotAppealOf, spotGuestBonus, canInvestSpot, spotRequirements, spotVisitors, totalSpotVisitors, dailyVisitors, totalDailyVisitors,
