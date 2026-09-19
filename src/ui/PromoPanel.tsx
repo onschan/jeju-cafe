@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { wonText } from '../data/labels.ts';
+import { josa } from '../sim/josa.ts';
 import { useGame, dispatch } from './store';
 import { canPromote, effectivePopularity, MAX_ACTIVE_PROMOTIONS, PARTTIME_MONEY, APOLOGY_REPUTATION, type PromotionDef } from '../sim/index.ts';
 import { PROMOTIONS, GUEST_TYPES, promotionDef } from '../data/index.ts';
@@ -11,7 +12,7 @@ import { card, brownBtn, brownBtnOn, brownBtnOff, PALETTE } from './frame';
 /** 활동 효과 한 줄. 아직 게임에 없는 손님층(guests.json에 없음)은 sim도 안 쓰므로 숨긴다. */
 function effectText(d: PromotionDef): string {
   if (d.special === 'youtuber') return '60% 확률로 3달 동안 관광객이 2배 와요';
-  if (d.special === 'parttime') return `돈 ${wonText(PARTTIME_MONEY)}을 바로 벌어요`;
+  if (d.special === 'parttime') return `돈 ${josa(wonText(PARTTIME_MONEY), '을/를')} 바로 벌어요`;
   if (d.special === 'apology') return `평판 +${APOLOGY_REPUTATION} (한 달에 한 번)`;
   const parts: string[] = [];
   for (const [k, v] of Object.entries(d.segmentDelta)) {
@@ -42,7 +43,7 @@ export function PromoPanel() {
   const run = (d: PromotionDef) => {
     if (!staff) return;
     const act = () => dispatch({ type: 'promote', staffId: staff.id, promotionId: d.id });
-    if (d.costMoney > 0) Confirm(`${d.name}에 ${wonText(d.costMoney)}을 씁니다. ${staff.name} 씨가 다녀와요`, act, { title: '홍보' });
+    if (d.costMoney > 0) Confirm(`${d.name}에 ${josa(wonText(d.costMoney), '을/를')} 씁니다. ${staff.name} 씨가 다녀와요`, act, { title: '홍보' });
     else act();
   };
 

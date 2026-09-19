@@ -23,6 +23,15 @@ test('조사 선택', () => {
   expect(josa('유채꽃밭', '은/는')).toBe('유채꽃밭은');
 });
 
+test('숫자로 끝나면 읽는 소리로: ₩300,000이 · 5명 · 2가 · 「시설 8개」는', () => {
+  expect(josa('₩300,000', '이/가')).toBe('₩300,000이');
+  expect(josa('₩150,000', '을/를')).toBe('₩150,000을');
+  expect(josa('슬롯 2', '을/를')).toBe('슬롯 2를');
+  expect(josa('슬롯 1', '을/를')).toBe('슬롯 1을');
+  expect(josa('「시설 8개」', '은/는')).toBe('「시설 8개」는');
+  expect(josa('30%', '이/가')).toBe('30%가');
+});
+
 test('fmtNum: 로케일과 무관하게 천 단위 쉼표', () => {
   expect(fmtNum(0)).toBe('0');
   expect(fmtNum(999)).toBe('999');

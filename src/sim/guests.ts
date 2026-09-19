@@ -406,7 +406,7 @@ function resolveMood(state: GameState, g: Guest): void {
           state.money += tip;
           state.monthIncome += tip;
           state.totalIncome += tip;
-          pushNotice(state, `${josa(namedGuestDef(g.namedId).name, '이/가')} 팁 ₩${fmtNum(tip)}을 남겼어요!`);
+          pushNotice(state, `${josa(namedGuestDef(g.namedId).name, '이/가')} 팁 ${josa(`₩${fmtNum(tip)}`, '을/를')} 남겼어요!`);
           pushFx(state, { kind: 'pop', x: seat.x, y: seat.y, n: tip, tick: state.tick });
         }
         return;

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { wonText } from '../data/labels.ts';
+import { josa } from '../sim/josa.ts';
 import { Popup, Confirm } from './Popup';
 import { card, brownBtn, brownBtnOff, dangerBtn, PALETTE } from './frame';
 import { slotSummaries, loadSlot, saveSlot, deleteSlot, AUTO_SLOT, SLOT_COUNT, type SlotSummary } from './store';
@@ -45,7 +46,7 @@ export function SaveSlots({ mode, onClose, onLoaded }: { mode: 'load' | 'save'; 
     if (exists) Confirm(`${slotName(n)}에 덮어쓸까요?`, go, { title: '저장' });
     else go();
   };
-  const del = (n: number) => Confirm(`${slotName(n)}을 지울까요? 되돌릴 수 없어요.`, () => { deleteSlot(n); refresh(); }, { title: '삭제' });
+  const del = (n: number) => Confirm(`${josa(slotName(n), '을/를')} 지울까요? 되돌릴 수 없어요.`, () => { deleteSlot(n); refresh(); }, { title: '삭제' });
   return (
     <Popup title={mode === 'load' ? '이어하기' : '슬롯에 저장'} onBackdrop={onClose}
       buttons={<button style={{ ...brownBtn, marginRight: 0, marginBottom: 0 }} onClick={onClose}>닫기</button>}>

@@ -102,7 +102,7 @@ export function checkStar(state: GameState): number | null {
   state.starReview.promotedYear = state.clock.year;
   state.starReview.warned = false;
   pushNotice(state, `★${next.star} 승급! ${next.unlockText}`);
-  pushFx(state, { kind: 'scene', title: `★${next.star} 승급`, text: `우리 카페가 ★${next.star}이 됐어요! ${next.unlockText}`, tick: state.tick });
+  pushFx(state, { kind: 'scene', title: `★${next.star} 승급`, text: `우리 카페가 ★${next.star} 카페가 됐어요! ${next.unlockText}`, tick: state.tick });
   evaluateUnlocks(state);
   evaluateGuidebooks(state);
   return next.star;

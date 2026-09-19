@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useGame, dispatch } from './store';
+import { josa } from '../sim/josa.ts';
 import {
   questProgress, canAcceptQuest, visibleQuests, questRewardText, spotLevel, spotUnlocked, nextSpotLevel, spotAppeal, spotGuestBonus, canInvestSpot, guestFace, monthIndex,
   spotRequirements, spotVisitors, totalSpotVisitors, dailyVisitors, totalDailyVisitors, tourScore, tourAvailable, canHostTour, hasTourBusKey, canSetTourBus,
@@ -127,7 +128,7 @@ function SpotCard({ id }: { id: string }) {
   const score = tourScore(s, id);
   const invest = () => {
     if (!next) return;
-    Confirm(`${def.name} Lv${next.level}에 ${wonText(next.cost)}을 투자합니다. 매력도 ${appeal} → ${next.appeal}`, () => dispatch({ type: 'investSpot', id }), { title: '관광지 투자' });
+    Confirm(`${def.name} Lv${next.level}에 ${josa(wonText(next.cost), '을/를')} 투자합니다. 매력도 ${appeal} → ${next.appeal}`, () => dispatch({ type: 'investSpot', id }), { title: '관광지 투자' });
   };
   const host = () => {
     Confirm(`${def.name}에서 투어를 열까요? 예상 점수 ${score} (${TOUR_SUCCESS_SCORE} 이상 성공: ₩${fmtNum(score * TOUR_MONEY_PER_SCORE)} · 방문객 +${fmtNum(TOUR_SUCCESS_VISITORS)}, 아니면 ₩${fmtNum(TOUR_FAIL_MONEY)} · 방문객 +${fmtNum(TOUR_FAIL_VISITORS)})`, () => dispatch({ type: 'hostTour', spotId: id }), { title: '투어 개최' });
@@ -184,7 +185,7 @@ function TourBusCard() {
       </div>
       <div style={{ fontSize: 13, color: PALETTE.inkSoft }}>월 {wonText(TOUR_BUS_FEE)} · 전 명소 방문객 ×1.3 · 단체 손님 ×1.3 · Lv3 이상 명소의 손님이 일요일 11시 버스로 와요</div>
       <button style={{ ...(can.ok ? (on ? dangerBtn : brownBtn) : brownBtnOff), marginTop: 6, marginBottom: 0 }} disabled={!can.ok}
-        onClick={() => Confirm(on ? '투어 버스 계약을 끝낼까요?' : `투어 버스를 계약할까요? 월 ${wonText(TOUR_BUS_FEE)}이 들어요.`, () => dispatch({ type: 'setTourBus', on: !on }), { title: '투어 버스' })}>
+        onClick={() => Confirm(on ? '투어 버스 계약을 끝낼까요?' : `투어 버스를 계약할까요? 월 ${josa(wonText(TOUR_BUS_FEE), '이/가')} 들어요.`, () => dispatch({ type: 'setTourBus', on: !on }), { title: '투어 버스' })}>
         {on ? '계약 끝내기' : '계약하기'}
       </button>
     </div>

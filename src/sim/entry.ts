@@ -10,6 +10,7 @@ import type { GameState, Guest, PlacedObject, Pt, RouteId, RouteState, ApplyResu
 import { objectDef, guestTags, MENUS } from '../data/index.ts';
 import { GRID_W, GRID_H, VILLAGE_ROAD_Y, PARCEL_LAYOUT, PARCEL_W, PARCEL_H } from './layout.ts';
 import { footprint, cellAt, objectAt, inBounds } from './grid.ts';
+import { josa } from './josa.ts';
 import { reachMap, cellKey, isWalkable, walkableNeighborsOf, busStopPos } from './path.ts';
 import { parcelById, parcelAt } from './parcels.ts';
 import { pushNotice } from './staff.ts';
@@ -356,7 +357,7 @@ export function canSetRouteContract(state: GameState, route: RouteId, on: boolea
   const st = routeState(state, route);
   if (on === st.contract) return { ok: false, reason: on ? '이미 계약 중이에요' : '계약 중이 아니에요' };
   if (on && !st.unlocked) return { ok: false, reason: '아직 열리지 않았어요' };
-  if (on && !routeFacility(state, route)) return { ok: false, reason: `${objectDef(def.facilities[0]!).name}을 먼저 지어요` };
+  if (on && !routeFacility(state, route)) return { ok: false, reason: `${josa(objectDef(def.facilities[0]!).name, '을/를')} 먼저 지어요` };
   if (on && state.money < SHUTTLE_FEE) return { ok: false, reason: '돈이 모자라요' };
   return { ok: true };
 }

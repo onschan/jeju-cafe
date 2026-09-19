@@ -1,5 +1,5 @@
 import type { GameState, Alert } from '../sim/index.ts';
-import { goalDef, goalRewardText } from '../sim/index.ts';
+import { goalDef, goalRewardText, josa } from '../sim/index.ts';
 import { challengeDef } from '../data/index.ts';
 import { goalLine, failureDialogue, SPEAKER_NAME } from '../data/dialogue/index.ts';
 import { showDialogue, getDialogue, queuedCount, type DialogueReq } from './dialogue.ts';
@@ -37,7 +37,7 @@ export function alertToDialogue(a: Alert): Omit<DialogueReq, 'onClose'> {
     }
     case 'challengeFailed': {
       const c = challengeDef(a.id);
-      return { speaker: { name: SPEAKER_NAME.samchun, portrait: 'samchun' }, lines: [`도전 「${c.title}」은 기한을 넘겼어. 페널티는 없으니 다시 골라 보라.`] };
+      return { speaker: { name: SPEAKER_NAME.samchun, portrait: 'samchun' }, lines: [`도전 ${josa(`「${c.title}」`, '은/는')} 기한을 넘겼어. 페널티는 없으니 다시 골라 보라.`] };
     }
     case 'failure': {
       const f = failureDialogue(a.stage);

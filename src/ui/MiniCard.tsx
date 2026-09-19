@@ -1,5 +1,6 @@
 import { useState, type CSSProperties, type ReactNode } from 'react';
 import { wonText } from '../data/labels.ts';
+import { josa } from '../sim/josa.ts';
 import { useGame, dispatch } from './store';
 import { objectStats, siteOf, siteLineText, clearCost, canClearRock, hasPickaxe, cellAt, walletOf, guestFace, namedGuestFace, canAcceptQuest, parcelPrice, canBuyParcel, canGiveGift, giftFits, giftCount, giftedToday, PROTECTED_TYPES, ROTATABLE_TYPES, LOW_ENERGY, STAT_KEYS, STAT_NAME, staffInRole, canLevelUp, capOf, skillsOf, expNeeded, isUpgradable, canUpgrade, upgradeCost, upgradeConditionText, MAX_OBJECT_LEVEL, canRepair, repairCost, CLEAN_LOW, type GameState, type Guest, type RoleId, type StatKey } from '../sim/index.ts';
 import { BUS_HOUR, isBusDay } from '../sim/spots.ts';
@@ -186,12 +187,12 @@ function ObjectCard({ s, id, a, onClose }: { s: GameState; id: string; a: CardAc
   const canBuildSame = s.unlocked.objects.includes(o.type) && !PROTECTED_TYPES.has(o.type) && o.type !== 'bush_wild';
   const st = objectStats(s, o.id);
   const protectedType = PROTECTED_TYPES.has(o.type);
-  const remove = () => Confirm(`${d.name}${d.removeCost ? `을(를) ${wonText(d.removeCost)} 들여 치울까요?` : `을(를) 치우고 ${wonText(d.cost)}을 돌려받을까요?`}`, () => { dispatch({ type: 'remove', objectId: o.id }); onClose(); }, { title: '철거' });
+  const remove = () => Confirm(`${josa(d.name, '을/를')}${d.removeCost ? ` ${wonText(d.removeCost)} 들여 치울까요?` : ` 치우고 ${josa(wonText(d.cost), '을/를')} 돌려받을까요?`}`, () => { dispatch({ type: 'remove', objectId: o.id }); onClose(); }, { title: '철거' });
   // 트랙 A: 증축 Lv·수리·청결
   const upgradable = isUpgradable(d) && st.level < MAX_OBJECT_LEVEL;
   const up = upgradable ? canUpgrade(s, o.id, st.popularity) : { ok: false, reason: '' };
   const upCost = upgradable ? upgradeCost(s, o) : 0;
-  const doUpgrade = () => Confirm(`${d.name}을(를) Lv${st.level + 1}로 증축할까요? ${wonText(upCost)}${(d.buildDays ?? 0) > 0 ? ` · 공사 ${d.buildDays}일(이용 불가)` : ''}`, () => { dispatch({ type: 'upgradeObject', objectId: o.id }); }, { title: '증축' });
+  const doUpgrade = () => Confirm(`${josa(d.name, '을/를')} Lv${st.level + 1}로 증축할까요? ${wonText(upCost)}${(d.buildDays ?? 0) > 0 ? ` · 공사 ${d.buildDays}일(이용 불가)` : ''}`, () => { dispatch({ type: 'upgradeObject', objectId: o.id }); }, { title: '증축' });
   const rep = canRepair(s, o.id);
   const clean = Math.round(s.clean.value);
   return (

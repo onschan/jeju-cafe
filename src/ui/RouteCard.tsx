@@ -5,6 +5,7 @@
  */
 import type { CSSProperties } from 'react';
 import { dispatch } from './store';
+import { josa } from '../sim/josa.ts';
 import { ENTRY_ROUTES, routeState, routeStats, routeConnected, routeFacility, routeOpened, routeDailyCap, nextArrivalText, canSetRouteContract, canExpandParking, parkingExpandCost, parkingSlots, PARKING_EXPAND_FROM, PARKING_EXPAND_TO, SHUTTLE_FEE, buildDaysLeft, type GameState, type RouteId } from '../sim/index.ts';
 import { objectDef } from '../data/index.ts';
 import { BUS_HOUR, isBusDay } from '../sim/spots.ts';
@@ -41,12 +42,12 @@ export function RouteCard({ s, route, objectId }: { s: GameState; route: RouteId
   const contractOff = canSetRouteContract(s, route, false);
   const contract = () => {
     if (st.contract) { Confirm(`${def.name} 계약을 끝낼까요? 셔틀이 더는 오지 않아요.`, () => { dispatch({ type: 'setRouteContract', route, on: false }); }, { title: '계약 해지' }); return; }
-    Confirm(`${def.name}을 월 ${won(SHUTTLE_FEE)}에 계약할까요? 11시·15시에 6~10명이 와요. (투어 버스 계약 중이면 무료)`, () => { dispatch({ type: 'setRouteContract', route, on: true }); }, { title: '셔틀 계약' });
+    Confirm(`${josa(def.name, '을/를')} 월 ${won(SHUTTLE_FEE)}에 계약할까요? 11시·15시에 6~10명이 와요. (투어 버스 계약 중이면 무료)`, () => { dispatch({ type: 'setRouteContract', route, on: true }); }, { title: '셔틀 계약' });
   };
   // 주차장 넓히기
   const lot = objectId && s.objects[objectId]?.type === PARKING_EXPAND_FROM ? s.objects[objectId]! : Object.values(s.objects).find((o) => o.type === PARKING_EXPAND_FROM) ?? null;
   const expand = lot ? canExpandParking(s, lot.id) : { ok: false, reason: '' };
-  const doExpand = () => { if (!lot) return; Confirm(`${objectDef(PARKING_EXPAND_FROM).name}을 ${objectDef(PARKING_EXPAND_TO).name}(6칸)으로 넓힐까요? 차액 ${won(parkingExpandCost())} · 공사 ${objectDef(PARKING_EXPAND_TO).buildDays ?? 0}일`, () => { dispatch({ type: 'expandParking', objectId: lot.id }); }, { title: '주차장 넓히기' }); };
+  const doExpand = () => { if (!lot) return; Confirm(`${josa(objectDef(PARKING_EXPAND_FROM).name, '을/를')} ${objectDef(PARKING_EXPAND_TO).name}(6칸)으로 넓힐까요? 차액 ${won(parkingExpandCost())} · 공사 ${objectDef(PARKING_EXPAND_TO).buildDays ?? 0}일`, () => { dispatch({ type: 'expandParking', objectId: lot.id }); }, { title: '주차장 넓히기' }); };
   const building = Object.values(s.objects).find((o) => o.build && def.facilities.includes(o.type));
   const status = !st.unlocked ? `잠김 — ${def.unlockText}` : building ? `${objectDef(building.type).name} 짓는 중 · ${buildDaysLeft(s, building)}일` : !facility ? `${facilityName}을 지어요` : def.needsContract && !st.contract ? '계약이 필요해요' : connected ? '손님이 와요' : '길이 끊겼어요';
   return (
