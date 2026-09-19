@@ -25,7 +25,7 @@ function backfill(state: GameState): void {
   state.eventsFired ??= {};
   state.monthMenuSold ??= {};
   state.routes ??= initRoutes(); // 트랙 H 유입 경로 (routes 없는 옛 저장)
-  state.main ??= initMain(); // y-indoor: 본관 증축·이동·분위기 (통합 때 SAVE_VERSION 18)
+  state.main ??= initMain(); // y-indoor: 본관 증축·이동·분위기 (SAVE_VERSION 18)
 }
 
 /** objects.json의 w/h가 바뀌어도 세이브가 깨지지 않도록 cells[].objectId를 objects에서 다시 만든다. */
