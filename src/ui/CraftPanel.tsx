@@ -113,7 +113,7 @@ export function CraftPanel() {
           const disabled = ingredients.length >= slots;
           const stock = i.kind === 'farm' ? ` 창고 ${s.storage[i.id] ?? 0}` : ` ${wonText(i.cost)}`;
           return (
-            <button key={i.id} aria-label={`재료 ${i.name}`} disabled={disabled} title={statText(i.stats)}
+            <button key={i.id} data-tut="craft-ingredient" aria-label={`재료 ${i.name}`} disabled={disabled} title={statText(i.stats)}
               style={{ ...(disabled ? brownBtnOff : brownBtn), fontSize: 13, padding: '0 8px', minHeight: 36, marginRight: 4, marginBottom: 4 }} onClick={() => addIngredient(i.id)}>
               {i.name} <span style={{ fontSize: 11, opacity: 0.85 }}>{INGREDIENT_CATEGORY_NAME[i.category]}{stock}</span>
             </button>
@@ -155,7 +155,7 @@ export function CraftPanel() {
       <div style={{ fontSize: 13, marginBottom: 6 }}>
         성공 <b style={{ color: PALETTE.ok }}>{Math.round(rate)}%</b> · 대성공 <b>{P_GREAT}%</b> · 실패 <b style={{ color: PALETTE.bad }}>{Math.round(100 - P_GREAT - rate)}%</b> · 보너스 폭 +{width}
       </div>
-      <button data-testid="craft-start" style={can.ok ? brownBtnOn : brownBtnOff} disabled={!can.ok} onClick={start}><Icon name="research" /> 개발 시작</button>
+      <button data-testid="craft-start" data-tut="develop" style={can.ok ? brownBtnOn : brownBtnOff} disabled={!can.ok} onClick={start}><Icon name="research" /> 개발 시작</button>
       {!can.ok && <span style={{ fontSize: 13, color: PALETTE.bad }}>{can.reason}</span>}
     </div>
   );

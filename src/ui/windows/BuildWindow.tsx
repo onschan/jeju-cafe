@@ -95,7 +95,7 @@ export function BuildWindow(props: BuildWindowProps) {
           const cost = locked ? def.cost : placeCost(s, def.id);
           const on = picked === def.id;
           return (
-            <button key={def.id} data-testid={`build-card-${def.id}`} aria-pressed={on} aria-disabled={locked || undefined}
+            <button key={def.id} data-testid={`build-card-${def.id}`} data-tut={`build:${def.id}`} aria-pressed={on} aria-disabled={locked || undefined}
               onClick={() => setPicked(on ? null : def.id)}
               style={{ ...cardBase, opacity: locked ? 0.5 : 1, boxShadow: on ? `0 0 0 3px ${PALETTE.btnOn}` : undefined }}>
               <SpriteBox sheet={sheet} id={def.id} kind={def.kind} />

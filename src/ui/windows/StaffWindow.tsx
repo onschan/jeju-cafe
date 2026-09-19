@@ -103,7 +103,7 @@ function TrainingPanel({ st, s, dispatch, onDone }: { st: Staff; s: GameState; d
               <div><b>{def.name}</b> <span style={soft}>{def.days}일</span></div>
               <div style={{ ...soft, fontSize: 13 }}>{def.desc}{unlocked && !ok && reason ? ` · ${reason}` : ''}</div>
             </div>
-            <button style={ok ? rowBtn : rowBtnOff} disabled={!ok} title={reason} onClick={() => { if (dispatch({ type: 'train', staffId: st.id, trainingId: def.id }).ok) onDone(); }} aria-label={`${st.name} ${def.name}`}>
+            <button data-tut="train-pick" style={ok ? rowBtn : rowBtnOff} disabled={!ok} title={reason} onClick={() => { if (dispatch({ type: 'train', staffId: st.id, trainingId: def.id }).ok) onDone(); }} aria-label={`${st.name} ${def.name}`}>
               {wonText(cost)}
             </button>
           </div>
@@ -142,12 +142,12 @@ function StaffCard({ st, s, dispatch }: { st: Staff; s: GameState; dispatch: Dis
       </div>
       <StatRows s={s} who={st} main={mainStatOf(st)} />
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-        <ButtonGroup label="직종" disabled={!!away} value={st.role ?? ''} onPick={(v) => dispatch({ type: 'assign', staffId: st.id, role: (v || null) as RoleId | null })} style={{ flex: '1 1 100%' }}
+        <ButtonGroup testId="assign" label="직종" disabled={!!away} value={st.role ?? ''} onPick={(v) => dispatch({ type: 'assign', staffId: st.id, role: (v || null) as RoleId | null })} style={{ flex: '1 1 100%' }}
           options={[{ value: '', label: '쉬기' }, ...roles.map((r) => ({ value: r, label: label('role', r) }))]} />
         <button style={maxed ? rowBtnOff : promo.ok ? rowBtnOn : rowBtnOff} disabled={!promo.ok} title={promo.reason} onClick={() => dispatch({ type: 'levelUp', staffId: st.id })} aria-label={`${st.name} 승급`}>
           {maxed ? '최고 레벨' : <>승급 <Icon name="research" size={14} />{levelUpCost(st.level)}</>}
         </button>
-        <button style={away ? rowBtnOff : training ? rowBtnOn : rowBtn} disabled={!!away} onClick={() => { setTraining(!training); setFiring(false); }} aria-label={`${st.name} 연수`}>연수</button>
+        <button data-tut="train" style={away ? rowBtnOff : training ? rowBtnOn : rowBtn} disabled={!!away} onClick={() => { setTraining(!training); setFiring(false); }} aria-label={`${st.name} 연수`}>연수</button>
         <button style={away ? rowBtnOff : rowBtnDanger} disabled={!!away} onClick={() => { setFiring(!firing); setTraining(false); }} aria-label={`${st.name} 해고`}>해고</button>
       </div>
       {training && !away && <TrainingPanel st={st} s={s} dispatch={dispatch} onDone={() => setTraining(false)} />}

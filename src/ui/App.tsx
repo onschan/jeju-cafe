@@ -13,7 +13,7 @@ import { Window, type IconGridItem } from './Window';
 import { MessageLine } from './MessageLine';
 import { MiniCard, MainCard, type CardTarget, type CardActions } from './MiniCard';
 import { DialogueHost } from './Dialogue.tsx';
-import { checkTutorial, setTutorialSkip } from './tutorialDialogue';
+import { checkTutorial, setTutorialDispatch, useTutorialNote } from './tutorialDialogue';
 import { useTutorialHighlight } from './tutorialHighlight';
 import { RewardPopup } from './RewardPopup';
 import { checkAlerts } from './alertDialogue.ts';
@@ -204,6 +204,7 @@ function StatusPanel() {
 /** 카페 › 재료: 창고에 있는 재료 (농원 수확·상자) */
 function StoragePanel() {
   const s = useGame();
+  useTutorialNote('storage'); // 튜토리얼 18단계 「재료 창고 보기」
   const rows = Object.entries(s.storage).filter(([, n]) => n > 0).sort((a, b) => b[1] - a[1]);
   return (
     <div data-testid="storage-panel">
@@ -262,7 +263,12 @@ function Game({ onExit }: { onExit: () => void }) {
     setSceneHook((st, title, text) => showScene({ title, text, chars: staffChars(st), sfx: 'fanfare' }));
     return () => { setMonthCardHook(null); setSceneHook(null); };
   }, []);
-  useEffect(() => { setTutorialSkip(() => dispatch({ type: 'skipTutorial' })); return () => setTutorialSkip(null); }, []);
+  // sim 알림(목표 달성·빅 이벤트) → 대화창(보상 상자는 RewardPopup), 그 다음 손으로 하는 튜토리얼 9단계. 알림은 한 번에 하나씩 순서대로.
+  useEffect(() => {
+    checkAlerts(s, () => dispatch({ type: 'dismissAlert' }));
+    checkTutorial(s);
+  });
+  useEffect(() => { setTutorialDispatch(dispatch, getState); return () => setTutorialDispatch(null); }, []);
   const hostRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<GameView | null>(null);
   const [view, setView] = useState<GameView | null>(null);
@@ -591,7 +597,7 @@ function Game({ onExit }: { onExit: () => void }) {
             <div data-testid="build-tools" role="toolbar" aria-label="도구" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 6, marginBottom: 8 }}>
               <button data-tut="tool:move" style={{ ...brownBtn, margin: 0, padding: '0 6px', fontSize: 15 }} onClick={() => { closeWin(); setMode({ kind: 'move' }); }}><Icon name="move" /> 이동</button>
               <button data-tut="tool:remove" style={{ ...dangerBtn, margin: 0, padding: '0 6px', fontSize: 15 }} onClick={() => { closeWin(); setMode({ kind: 'remove' }); }}><Icon name="remove" /> 철거</button>
-              <button data-testid="tool-undo" disabled={!undoOk} title={undoOk ? undefined : canUndo(s).reason} style={{ ...(undoOk ? brownBtn : brownBtnOff), margin: 0, padding: '0 6px', fontSize: 15 }} onClick={undo}><Icon name="undo" /> 되돌리기</button>
+              <button data-testid="tool-undo" data-tut="tool:undo" disabled={!undoOk} title={undoOk ? undefined : canUndo(s).reason} style={{ ...(undoOk ? brownBtn : brownBtnOff), margin: 0, padding: '0 6px', fontSize: 15 }} onClick={undo}><Icon name="undo" /> 되돌리기</button>
             </div>
             <BuildWindow onClose={closeWin} onPickBuild={(t) => pickBuild(t, win.origin)} />
           </Window>

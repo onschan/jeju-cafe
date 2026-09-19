@@ -19,6 +19,7 @@ import { Icon } from './Icon';
 import { SiteLine } from './SiteLine';
 import { SHELL_BOTTOM } from './Shell';
 import { frame, brownBtn, brownBtnOn, brownBtnOff, dangerBtn, brownInput, PALETTE } from './frame';
+import { useTutorialNote } from './tutorialDialogue';
 
 /** 맵에서 탭한 대상. 스펙 §1.2 표. */
 export type CardTarget =
@@ -94,6 +95,7 @@ function Row({ children }: { children: ReactNode }) {
 
 function GuestCard({ s, id, a }: { s: GameState; id: string; a: CardActions }) {
   const [picking, setPicking] = useState(false);
+  useTutorialNote('guestCard'); // 튜토리얼 10단계 「손님 카드 보기」
   const g = s.guests.find((x) => x.id === id);
   if (!g) return <div style={small}>손님이 떠났어요</div>;
   const def = guestTypeDef(g.type);
@@ -118,7 +120,7 @@ function GuestCard({ s, id, a }: { s: GameState; id: string; a: CardActions }) {
       <Row>
         <button style={btn} onClick={() => a.onGuestDetail(g.id)}>자세히</button>
         {quest && <button style={canAcceptQuest(s, quest).ok ? btnOn : btnOff} disabled={!canAcceptQuest(s, quest).ok} onClick={() => a.onQuest(quest)}>! 부탁 듣기</button>}
-        {giftCount(s) > 0 && <button style={giftOk ? btn : btnOff} disabled={!giftOk} onClick={() => setPicking(true)} aria-label="선물하기"><Icon name="gift" /> 선물하기{giftedToday(s) ? ' (내일)' : ''}</button>}
+        {giftCount(s) > 0 && <button data-tut="gift" style={giftOk ? btn : btnOff} disabled={!giftOk} onClick={() => setPicking(true)} aria-label="선물하기"><Icon name="gift" /> 선물하기{giftedToday(s) ? ' (내일)' : ''}</button>}
       </Row>
       {picking && (
         <Popup title={`${guestName(g)}에게 선물`} onBackdrop={() => setPicking(false)} buttons={<button style={brownBtn} onClick={() => setPicking(false)}>닫기</button>}>
@@ -343,7 +345,7 @@ export function MainCard({ s, id, a }: { s: GameState; id: string; a: CardAction
         <button style={mbtn} onClick={() => setMore(!more)} aria-expanded={more}>{more ? '▾ 접기' : '▸ 자세히'}</button>
       </Row>
       <Row>
-        {next && <button style={exp.ok ? mbtnOn : mbtnOff} disabled={!exp.ok} title={exp.ok ? undefined : exp.reason} onClick={doExpand} data-testid="main-expand-btn"><Icon name="build" /> 증축 Lv{next} ({manWon(expandCost(s))}·{MAIN_EXPAND_DAYS}일)</button>}
+        {next && <button style={exp.ok ? mbtnOn : mbtnOff} disabled={!exp.ok} title={exp.ok ? undefined : exp.reason} onClick={doExpand} data-testid="main-expand-btn" data-tut="main-expand"><Icon name="build" /> 증축 Lv{next} ({manWon(expandCost(s))}·{MAIN_EXPAND_DAYS}일)</button>}
         {!s.main.floor2 && <button style={f2.ok ? mbtnOn : mbtnOff} disabled={!f2.ok} title={f2.ok ? undefined : f2.reason} onClick={doFloor2} data-testid="main-floor2-btn"><Icon name="floor2" /> 2층</button>}
         {undo.ok
           ? <button style={mbtn} onClick={() => dispatch({ type: 'undoMoveMain' })} data-testid="main-undo-btn">↩ 되돌리기</button>

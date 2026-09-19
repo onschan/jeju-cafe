@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { Icon } from './Icon';
+import { useTutorialNote } from './tutorialDialogue';
 import { wonText } from '../data/labels.ts';
 import { useGame } from './store';
 import { guestFace, walletOf, canAcceptQuest, namedGuestFace, AFFINITY_MAX, type Guest, type GuestTypeState } from '../sim/index.ts';
@@ -72,6 +73,7 @@ function offeredQuestFor(quests: Record<string, { id: string; status: string }>,
 /** 손님을 누르면: 초상·이름·기분·대사·지갑·만족 게이지·부탁(도전하기) */
 export function GuestPopup({ guestId, onClose, onQuest }: { guestId: string; onClose: () => void; onQuest: (questId: string) => void }) {
   const s = useGame();
+  useTutorialNote('guestCard'); // 튜토리얼 10단계 「손님 카드 보기」
   const g = s.guests.find((x) => x.id === guestId);
   if (!g) return null;
   const def = guestTypeDef(g.type);

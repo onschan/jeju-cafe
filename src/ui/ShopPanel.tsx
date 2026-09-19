@@ -88,7 +88,7 @@ export function ShopPanel({ initialTab = 'mileage' }: { initialTab?: Tab } = {})
         <span data-testid="shop-wallet"><Icon name="money" /> 마일리지 <b>{s.mileage}</b> · 응모권 <b>{s.tickets}</b>{hasFreeDraw(s) ? ' · 무료 뽑기 1회!' : ''}</span>
       </div>
       <div style={{ display: 'flex', marginBottom: 6 }}>
-        {TABS.map((t) => <button key={t.id} style={{ ...(tab === t.id ? brownBtnOn : brownBtn), padding: '0 10px' }} onClick={() => setTab(t.id)} data-testid={`shop-tab-${t.id}`}>{t.label}</button>)}
+        {TABS.map((t) => <button key={t.id} style={{ ...(tab === t.id ? brownBtnOn : brownBtn), padding: '0 10px' }} onClick={() => setTab(t.id)} data-testid={`shop-tab-${t.id}`} data-tut={`shop:${t.id}`}>{t.label}</button>)}
       </div>
       {tab === 'mileage' && <MileageShop />}
       {tab === 'draw' && <DrawMachine />}
@@ -174,7 +174,7 @@ function DrawMachine() {
       <div style={{ ...card, display: 'flex', flexWrap: 'wrap', gap: 4, fontSize: 13 }}>
         {DRAW_PRIZES.map((p) => <span key={p.kind} style={{ background: PALETTE.paperDark, borderRadius: 4, padding: '2px 6px' }}>{p.label} {p.pct}%</span>)}
       </div>
-      <button style={{ ...(can.ok ? brownBtnOn : brownBtnOff), fontSize: 18, width: '100%', marginRight: 0 }} data-testid="draw-btn"
+      <button style={{ ...(can.ok ? brownBtnOn : brownBtnOff), fontSize: 18, width: '100%', marginRight: 0 }} data-testid="draw-btn" data-tut="draw"
         onClick={() => dispatch({ type: 'drawTicket' })} disabled={s.lastDraw !== null}>
         <Icon name="draw" size={20} /> 뽑기 {free ? '(무료!)' : '(응모권 1장)'}
       </button>

@@ -609,7 +609,8 @@ export interface MonthlyState {
   status: 'active' | 'done' | 'failed';
 }
 /** 손으로 하는 튜토리얼 (§7.2): step = 끝낸 단계 수 (0~9). 9면 끝. skipped면 완성 시작 상태로 채웠다. */
-export interface TutorialState { step: number; skipped: boolean }
+/** step = 끝낸 단계 수(0~30), skipped = 장을 건너뛴 적 있음, seen = 조건 판정용 표식(성공한 액션 타입·UI 표식·본 대사 dlg:<id>) — sim/tutorial.ts */
+export interface TutorialState { step: number; skipped: boolean; seen: string[] }
 
 // ---------- 제주 빅 이벤트 (v3 A5) ----------
 /** 손님 태그 배수의 키: 인구 태그 + 외국인·학생·1인·가족 */
@@ -1044,6 +1045,8 @@ export type Action =
   | { type: 'dismissAlert' }
   | { type: 'acceptChallenge'; id: string }
   | { type: 'skipTutorial' }
+  | { type: 'skipTutorialChapter' }               // 현재 장 통째로 건너뛰기 (해금 보상만, sim/tutorial.ts)
+  | { type: 'tutorialNote'; key: string }         // UI 사건 표식 (손님 카드 봄·창고 봄·입지 보기 켬) → state.tutorial.seen
   | { type: 'dismissMonthCard' }
   | { type: 'postJob'; tier: JobTier }
   | { type: 'hire'; candidateId: string; role: RoleId }

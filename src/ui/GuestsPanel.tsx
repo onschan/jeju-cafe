@@ -59,7 +59,7 @@ function TargetSlots({ s }: { s: GameState }) {
         {Array.from({ length: MAX_TARGETS }, (_, i) => {
           const id = s.targets[i];
           return (
-            <button key={i} data-testid={`target-slot-${i}`} aria-label={id ? `타깃 ${guestTypeDef(id).name} 해제` : '빈 슬롯'} onClick={() => (id ? toggle(id) : setPicking(true))}
+            <button key={i} data-testid={`target-slot-${i}`} data-tut={i === s.targets.length ? 'target-slot' : undefined} aria-label={id ? `타깃 ${guestTypeDef(id).name} 해제` : '빈 슬롯'} onClick={() => (id ? toggle(id) : setPicking(true))}
               style={{ ...(id ? brownBtnOn : brownBtn), margin: 0, minHeight: 48, padding: 4, fontSize: 13, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, opacity: id ? 1 : 0.7 }}>
               {id ? <><Portrait parts={guestPortraitParts(id)} face={guestFace(id)} size={24} />{guestTypeDef(id).name}</> : `+ 슬롯 ${i + 1}`}
             </button>
@@ -68,11 +68,11 @@ function TargetSlots({ s }: { s: GameState }) {
       </div>
       {picking && (
         <div data-testid="target-picker" style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 6 }}>
-          {unlocked.map((id) => {
+          {unlocked.map((id, ui) => {
             const on = s.targets.includes(id);
             const full = !on && s.targets.length >= MAX_TARGETS;
             return (
-              <button key={id} aria-pressed={on} disabled={full} onClick={() => toggle(id)}
+              <button key={id} data-tut={ui === 0 ? 'target-pick' : undefined} aria-pressed={on} disabled={full} onClick={() => toggle(id)}
                 style={{ ...(on ? brownBtnOn : brownBtn), margin: 0, minHeight: 40, padding: '0 8px', fontSize: 13, opacity: full ? 0.5 : 1, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
                 <Portrait parts={guestPortraitParts(id)} face={guestFace(id)} size={20} />{guestTypeDef(id).name}
               </button>
@@ -111,12 +111,12 @@ export function GuestsPanel({ onGuest, sub: fixed }: { onGuest: (guestId: string
           <ComplaintsCard />
           <SortChips chips={SORTS} active={sort} onPick={setSort} testId="guest-sort" />
           {s.guests.length === 0 && <div style={{ fontSize: 13, color: PALETTE.inkSoft }}>지금은 손님이 없어요. 맵에서 손님을 눌러도 프로필이 열려요.</div>}
-          {sortGuests(s, s.guests, sort).map((g) => {
+          {sortGuests(s, s.guests, sort).map((g, gi) => {
             const def = guestTypeDef(g.type);
             const q = def.questId && s.board.quests[def.questId]?.status === 'offered';
             const target = s.targets.includes(g.type);
             return (
-              <button key={g.id} style={{ ...card, display: 'flex', alignItems: 'center', gap: 8, width: '100%', textAlign: 'left', fontFamily: 'inherit', fontSize: 14, color: PALETTE.ink }} onClick={() => onGuest(g.id)} aria-label={guestName(g)}>
+              <button key={g.id} data-tut={gi === 0 ? 'guest-row' : undefined} style={{ ...card, display: 'flex', alignItems: 'center', gap: 8, width: '100%', textAlign: 'left', fontFamily: 'inherit', fontSize: 14, color: PALETTE.ink }} onClick={() => onGuest(g.id)} aria-label={guestName(g)}>
                 <Portrait {...guestPortraitOf(g)} size={32} />
                 <span style={{ flex: 1 }}><b>{guestName(g)}</b>{target && <span title="타깃"> <Icon name="target" size={14} /></span>}{g.namedId && <b style={{ color: PALETTE.btn }}> ★</b>}{q && <b style={{ color: PALETTE.bad }}> !</b>}<br /><span style={{ fontSize: 12, color: PALETTE.inkSoft }}>{g.phase === 'seated' ? '자리에서' : g.phase === 'visiting' ? '구경 중' : g.phase === 'leaving' ? '집에 가는 중' : '오는 중'}{g.mood ? <> <Icon name={MOOD_ICON[g.mood] ?? 'mood_meh'} size={14} /></> : ''} · 만족 {s.guestTypes[g.type]?.satisfaction ?? 0}</span></span>
                 <span style={{ fontSize: 12, color: PALETTE.inkSoft }}>지갑 {wonText(guestWallet(s, g))}</span>
