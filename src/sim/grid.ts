@@ -1,4 +1,5 @@
 import type { GameState, Cell, PlacedObject, ApplyResult, ObjectDef, Season, Pt } from './types.ts';
+import { bumpLayoutRev } from './layoutRev.ts';
 import { objectDef, SEASON_SCENERY } from '../data/index.ts';
 import { parcelAt, parcelSceneryBonus } from './parcels.ts';
 import { seasonOf, monthIndex } from './clock.ts';
@@ -109,6 +110,7 @@ export function isRoomFloor(state: GameState, x: number, y: number): boolean {
 
 /** 오브젝트가 발자국 칸을 차지한다. 방이면 roomId도 새긴다. 실내 오브젝트는 objectId만 덮어쓴다(roomId 유지). */
 export function occupy(state: GameState, obj: PlacedObject): void {
+  bumpLayoutRev(state);
   const def = objectDef(obj.type);
   for (const p of footprintOf(obj)) {
     const c = cellAt(state, p.x, p.y);
@@ -119,6 +121,7 @@ export function occupy(state: GameState, obj: PlacedObject): void {
 
 /** 발자국 칸을 비운다. 실내 오브젝트였으면 그 칸은 다시 방 바닥(objectId = roomId)이 된다. */
 export function vacate(state: GameState, obj: PlacedObject): void {
+  bumpLayoutRev(state);
   const def = objectDef(obj.type);
   for (const p of footprintOf(obj)) {
     const c = cellAt(state, p.x, p.y);
@@ -256,6 +259,7 @@ export function clearRock(state: GameState, x: number, y: number): number {
   const o = objectAt(state, x, y);
   if (o) removeObject(state, o.id);
   cellAt(state, x, y).terrain = 'soil';
+  bumpLayoutRev(state); // 걷기 가능 칸이 바뀐다
   if (hasPickaxe(state)) { state.inventory[PICKAXE_ITEM]!--; return 0; }
   state.money -= cost;
   return cost;

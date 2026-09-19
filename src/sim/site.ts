@@ -12,6 +12,7 @@ import { reachMap, cellKey, type Reach } from './path.ts';
 import { seasonOf } from './clock.ts';
 import { staffInRole } from './staff.ts';
 import { FLOOR2_VIEW } from './rooms.ts'; // y-indoor
+import { layoutSig } from './layoutRev.ts';
 
 /** 칸의 입지 5요소 (§6.1 표) */
 export interface Site {
@@ -84,7 +85,7 @@ export function layoutKey(state: GameState): string {
   return parts.join(';');
 }
 function cacheOf(state: GameState): Cache {
-  const key = layoutKey(state);
+  const key = layoutSig(state); // 싼 배치 서명 (layoutRev.ts) — layoutKey는 오브젝트 전체를 훑어 스텝마다 부르면 비싸다
   const hit = CACHE.get(state);
   if (hit && hit.key === key) return hit;
   const c: Cache = { key, sites: new Map(), kitchen: undefined };

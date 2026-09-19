@@ -1,4 +1,5 @@
 import type { GameState, Action, ApplyResult, PlacedObject } from './types.ts';
+import { bumpLayoutRev } from './layoutRev.ts';
 import { objectDef } from '../data/index.ts';
 import { canPlace, placeObject, removeObject, footprintOf, relocateObject, objectsInRoom, canClearRock, clearRock } from './grid.ts';
 import { canExpandMain, expandMain, canBuildSecondFloor, buildSecondFloor, canMoveMain, moveMain, canUndoMoveMain, undoMoveMain, canToggleFireplace, toggleFireplace, canSetPianoTime, canAddBooks, addBooks, canFeedAquarium, feedAquarium, canRestockKids, restockKids, canSetBarEvening, setBarEvening, MAIN_TYPE } from './rooms.ts'; // y-indoor
@@ -48,6 +49,7 @@ export function apply(state: GameState, a: Action): ApplyResult {
   if (!f.ok) return f;
   const r = applyInner(state, a);
   if (r.ok) {
+    bumpLayoutRev(state); // 배치 캐시 무효화 (layoutRev.ts)
     log(state, a);
     if (!CLIENT_ONLY.has(a.type)) checkGoals(state);
   }

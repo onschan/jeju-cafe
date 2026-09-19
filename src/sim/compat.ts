@@ -1,6 +1,7 @@
 import type { GameState, PlacedObject, ComboDef, SetDef, SpotEffectDef, ActiveCombo, ActiveSet, ActiveSpotEffect, ObjectStats, ComboTarget } from './types.ts';
 import { objectDef, COMBOS, SETS, SPOT_EFFECTS, COMBO_META, GUEST_TYPES, guestTags, targetMatches } from '../data/index.ts';
 import { objectScenery, itemScenery, sizeOf } from './grid.ts';
+import { layoutSig } from './layoutRev.ts';
 import { addMileage, checkCodexMileage } from './mileage.ts';
 import { seasonOf } from './clock.ts';
 import { pushNotice } from './staff.ts';
@@ -50,7 +51,7 @@ function dist(a: Entry, b: Entry): number {
  *  같은 틱·같은 오브젝트 집합이면 캐시를 쓴다 — 배치·제거는 count나 nextId를 바꾸고, 이동은 참조가 같아 좌표를 그대로 읽는다. */
 const INDEX_CACHE = new WeakMap<GameState, { key: string; by: ByType }>();
 function indexByType(state: GameState): ByType {
-  const key = `${state.tick}/${Object.keys(state.objects).length}/${state.nextId}`;
+  const key = layoutSig(state); // 배치 서명 (layoutRev.ts): 스텝(tick)이 아니라 배치가 바뀔 때만 다시 묶는다
   const hit = INDEX_CACHE.get(state);
   if (hit && hit.key === key) return hit.by;
   const by: ByType = new Map();

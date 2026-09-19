@@ -1,5 +1,6 @@
 import type { GameState, Pt, PlacedObject } from './types.ts';
 import { objectDef } from '../data/index.ts';
+import { layoutCached } from './layoutRev.ts';
 import { inBounds, cellAt, objectAt, isRoomFloor, doorOf, doorFrontOf } from './grid.ts';
 
 const WALKABLE_KINDS = new Set(['path', 'gate', 'busstop']);
@@ -24,10 +25,13 @@ export function canStep(state: GameState, from: Pt, to: Pt): boolean {
   return true;
 }
 
+const BUS_CACHE = new WeakMap<GameState, { key: string; value: Pt }>();
 export function busStopPos(state: GameState): Pt {
-  const bus = Object.values(state.objects).find((o) => o.type === 'busstop');
-  if (!bus) throw new Error('정류장이 없어요');
-  return { x: bus.x, y: bus.y };
+  return layoutCached(state, BUS_CACHE, () => { // 배치 서명 캐시 — 스텝마다 오브젝트 전체를 훑지 않는다
+    const bus = Object.values(state.objects).find((o) => o.type === 'busstop');
+    if (!bus) throw new Error('정류장이 없어요');
+    return { x: bus.x, y: bus.y };
+  });
 }
 
 const DIRS: Pt[] = [{ x: 1, y: 0 }, { x: -1, y: 0 }, { x: 0, y: 1 }, { x: 0, y: -1 }];
@@ -91,10 +95,13 @@ export const GUEST_SPEED_CELLS_PER_S = 3;
 /** 경로를 따라 걷는다. 손님·직원 공용. 목적지에 닿으면 true. */
 /** 활력 화분(walkSpeedPct) 합산 이동 속도 배수 (최대 +30%). 손님·직원 moveAlong의 dtMs에 곱한다. */
 export const WALK_SPEED_CAP_PCT = 30;
+const WALK_CACHE = new WeakMap<GameState, { key: string; value: number }>();
 export function walkSpeedMult(state: GameState): number {
-  let pct = 0;
-  for (const o of Object.values(state.objects)) { const p = objectDef(o.type).walkSpeedPct; if (p && !o.build) pct += p; }
-  return 1 + Math.min(WALK_SPEED_CAP_PCT, pct) / 100;
+  return layoutCached(state, WALK_CACHE, () => { // 배치 서명 캐시 (완공은 날·액션이 키를 바꾼다)
+    let pct = 0;
+    for (const o of Object.values(state.objects)) { const p = objectDef(o.type).walkSpeedPct; if (p && !o.build) pct += p; }
+    return 1 + Math.min(WALK_SPEED_CAP_PCT, pct) / 100;
+  });
 }
 export function moveAlong(g: { x: number; y: number; path: Pt[] }, dtMs: number): boolean {
   let budget = (dtMs / 1000) * GUEST_SPEED_CELLS_PER_S;

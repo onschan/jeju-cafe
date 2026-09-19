@@ -1,6 +1,7 @@
 /** 증축 Lv1~3 (스펙 §3.2.2, HSS2 탕 S/L/XL의 일반화). 기능 시설(쉼·편의·먹거리·즐길거리·농원·랜드마크·방)만, 경관 장식·길·담은 없다.
  *  크기는 그대로. 비용 Lv2 = 건설비 × 0.8, Lv3 = × 1.5. 공사 기간은 티어별(1/3/7일)이고 공사 중엔 이용 불가(build 표식 재사용). */
 import type { GameState, PlacedObject, ObjectDef, ApplyResult } from './types.ts';
+import { bumpLayoutRev } from './layoutRev.ts';
 import { objectDef } from '../data/index.ts';
 import { placeCost } from './cafe.ts';
 import { monthIndex } from './clock.ts';
@@ -104,7 +105,7 @@ export function upgrade(state: GameState, objId: string): void {
   obj.level = Math.min(MAX_OBJECT_LEVEL, levelOf(obj) + 1) as 1 | 2 | 3;
   obj.wearMonth = monthIndex(state.clock);
   const days = buildDaysOf(obj.type);
-  if (days > 0) obj.build = { doneDay: dayIndex(state.clock) + days, days };
+  if (days > 0) { obj.build = { doneDay: dayIndex(state.clock) + days, days }; bumpLayoutRev(state); }
   pushNotice(state, `${def.name} 증축 Lv${obj.level}${days > 0 ? ` 공사 시작 (${days}일)` : ' 완료!'}`);
   pushFx(state, { kind: 'complete', x: obj.x, y: obj.y, tick: state.tick });
 }
