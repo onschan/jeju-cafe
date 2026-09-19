@@ -23,7 +23,7 @@ import { initEnding, applyCarry } from './ending.ts'; // z-ending
 import { initVillage } from './village.ts'; // z-ending
 
 export { PARCEL_W, PARCEL_H, START_ORIGIN, GRID_W, GRID_H, VILLAGE_ROAD_Y };
-export const SAVE_VERSION = 18; // 18: y 통합 — 되돌리기(undo)·개체 이름(name)·유입 경로(routes·손님 route/foreign)·본관(main·객체 w/h/mode/careDay) (마이그레이션 없음, 17 세이브는 백업 후 새 게임). 17: 컨텐츠 확장 통합 — 경제(삼춘 대출·세금·대기열·★ 유지 심사)·시설 44·증축·청결·명소 방문객·투어·선물·직원 8직종·입지·목표 108·도전·튜토리얼 (마이그레이션 없음). 15: v3 대격변. 14: 라이벌 카페
+export const SAVE_VERSION = 19; // 19: z 통합 — 엔딩·마을·이월·튜토리얼 30단계 seen (마이그레이션 없음). 18: y 통합 — 되돌리기(undo)·개체 이름(name)·유입 경로(routes·손님 route/foreign)·본관(main·객체 w/h/mode/careDay) (마이그레이션 없음, 17 세이브는 백업 후 새 게임). 17: 컨텐츠 확장 통합 — 경제(삼춘 대출·세금·대기열·★ 유지 심사)·시설 44·증축·청결·명소 방문객·투어·선물·직원 8직종·입지·목표 108·도전·튜토리얼 (마이그레이션 없음). 15: v3 대격변. 14: 라이벌 카페
 /** 시작 자금 500만. 정착지원금은 삼춘 대출(failure.ts: 잔고 < 40만 → 300만, 최대 3회)로 바뀌었다 — 확장 스펙 §4.2 #8 */
 export const START_MONEY = 5_000_000;
 export const START_MONTH = 3;
