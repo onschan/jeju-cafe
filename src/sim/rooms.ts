@@ -421,7 +421,7 @@ export function canSetPianoTime(state: GameState): ApplyResult {
 }
 export function isPianoPlaying(state: GameState, hour = state.clock.hour): boolean {
   const t = state.main?.pianoTime ?? 'none';
-  if (t === 'none' || !Object.values(state.objects).some((o) => o.type === 'piano' && !o.build)) return false;
+  if (t === 'none' || !indoorFlags(state).piano) return false;
   const [a, b] = PIANO_HOURS[t];
   return hour >= a && hour < b;
 }
@@ -494,11 +494,19 @@ export function preferIndoor(state: GameState): boolean {
   return activeEvents(state).some((e) => BAD_WEATHER.test(e.id));
 }
 /** 좌석 선택 훅: 실내 우선인 날엔 (문이 길로 이어진 방의) 빈 실내 좌석이 있으면 실내만 고른다 (야외는 실내가 찼을 때만 → 야외 이용률이 크게 준다) */
+const REACH = new WeakMap<GameState, { key: string; rooms: Map<string, boolean> }>();
+/** 방 문이 정류장과 이어졌나 — 같은 스텝 안에서는 한 번만 BFS (스폰이 손님마다 freeSeats를 부른다) */
+function roomReachable(state: GameState, room: PlacedObject): boolean {
+  const key = `${state.tick}:${state.nextId}:${state.actionLog.length}`;
+  let c = REACH.get(state);
+  if (!c || c.key !== key) { c = { key, rooms: new Map() }; REACH.set(state, c); }
+  let r = c.rooms.get(room.id);
+  if (r === undefined) { r = isDoorReachable(state, room); c.rooms.set(room.id, r); }
+  return r;
+}
 export function filterSeatsForWeather(state: GameState, seats: PlacedObject[]): PlacedObject[] {
   if (!preferIndoor(state)) return seats;
-  const reachable = new Map<string, boolean>();
-  const roomOk = (room: PlacedObject) => { let r = reachable.get(room.id); if (r === undefined) { r = isDoorReachable(state, room); reachable.set(room.id, r); } return r; };
-  const indoor = seats.filter((s) => { const room = s.type === MAIN_TYPE ? s : roomAt(state, s.x, s.y); return !!room && roomOk(room); });
+  const indoor = seats.filter((s) => { const room = s.type === MAIN_TYPE ? s : roomAt(state, s.x, s.y); return !!room && roomReachable(state, room); });
   return indoor.length > 0 ? indoor : seats;
 }
 /** 만족 가산(경치 단위 = 스펙 점수 ÷ 10): 소파 +2, 난로 반경 2 겨울 +3 (실내 좌석만) */
@@ -514,9 +522,9 @@ export function indoorSatisfaction(state: GameState, seat: PlacedObject): number
   }
   return pts / 10;
 }
-/** 순회 시설(이용료 시설) 수 — 체류 시간·둘러보기 확률 */
+/** 순회 시설(이용료 시설) 수 — 체류 시간·둘러보기 확률 (같은 스텝 안에서는 캐시) */
 function visitableCount(state: GameState): number {
-  return Object.values(state.objects).filter((o) => !o.build && objectDef(o.type).kind === 'facility' && objectDef(o.type).fee !== undefined).length;
+  return indoorFlags(state).visitable;
 }
 /** 체류 시간(ms): 좌석 기본 + 시설당 +8분(상한 6개) × 소파 +20% × 책장 +15%(신간 +5%) × 따뜻한 조명 저녁 +10% (P1-12·§4.3) */
 export function stayMs(state: GameState, g: Guest, baseMs: number): number {
@@ -538,16 +546,36 @@ export function browseChance(state: GameState, base: number): number {
   const extra = Math.max(0, visitableCount(state) - BROWSE_FACILITIES);
   return Math.min(BROWSE_CHANCE_CAP, base + extra * BROWSE_CHANCE_PER_FACILITY);
 }
+/** 시설 유무 플래그 — typeWeight가 손님·타입마다 부르므로 같은 tick 안에서는 한 번만 훑는다 */
+interface IndoorFlags { key: string; piano: boolean; kids: boolean; aquarium: boolean; bookshelf: boolean; visitable: number }
+const FLAGS = new WeakMap<GameState, IndoorFlags>();
+function indoorFlags(state: GameState): IndoorFlags {
+  const key = `${state.tick}:${state.nextId}:${state.actionLog.length}`; // 스텝·배치·액션(보충 등)이 바뀌면 다시 훑는다
+  const hit = FLAGS.get(state);
+  if (hit && hit.key === key) return hit;
+  const f: IndoorFlags = { key, piano: false, kids: false, aquarium: false, bookshelf: false, visitable: 0 };
+  for (const o of Object.values(state.objects)) {
+    if (o.build) continue;
+    const d = objectDef(o.type);
+    if (d.kind === 'facility' && d.fee !== undefined) f.visitable++;
+    if (o.type === 'piano') f.piano = true;
+    else if (o.type === 'kids_corner' && isKidsStocked(state, o)) f.kids = true;
+    else if (o.type === 'aquarium') f.aquarium = true;
+    else if (o.type === 'bookshelf') f.bookshelf = true;
+  }
+  FLAGS.set(state, f);
+  return f;
+}
 /** 손님층 유입 배수 훅: 피아노 시간대 +10%, 키즈(보충됨) 가족 +25%, 수족관 가족 +10%, 책장 청년 +10%, BGM·조명 +5% */
 export function indoorSpawnMult(state: GameState, typeId: string): number {
   if (!state.main) return 1;
   let m = 1;
-  if (isPianoPlaying(state)) m *= PIANO_MULT;
-  const objs = Object.values(state.objects).filter((o) => !o.build);
+  const f = indoorFlags(state);
+  if (f.piano && isPianoPlaying(state)) m *= PIANO_MULT;
   const family = guestHasTag(typeId, 'family');
-  if (family && objs.some((o) => o.type === 'kids_corner' && isKidsStocked(state, o))) m *= KIDS_FAMILY_MULT;
-  if (family && objs.some((o) => o.type === 'aquarium')) m *= AQUARIUM_FAMILY_MULT;
-  if (guestHasTag(typeId, 'youth') && objs.some((o) => o.type === 'bookshelf')) m *= BOOKSHELF_YOUTH_MULT;
+  if (family && f.kids) m *= KIDS_FAMILY_MULT;
+  if (family && f.aquarium) m *= AQUARIUM_FAMILY_MULT;
+  if (guestHasTag(typeId, 'youth') && f.bookshelf) m *= BOOKSHELF_YOUTH_MULT;
   const bgm = state.main.bgm;
   if (bgm === 'calm' && guestHasTag(typeId, 'senior')) m *= BGM_MULT;
   if (bgm === 'jazz' && guestHasTag(typeId, 'adult')) m *= BGM_MULT;
