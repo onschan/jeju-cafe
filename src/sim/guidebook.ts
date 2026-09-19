@@ -91,7 +91,9 @@ export function nextStarConditions(state: GameState): { star: number; conditions
   if (state.star >= MAX_STAR) return null;
   const def = STARS.find((s) => s.star === state.star + 1);
   if (!def) return null;
-  return { star: def.star, conditions: def.conditions.map((text) => ({ text, met: starConditionMet(state, text) })), unlockText: def.unlockText };
+  // 표 문구 「월 매출 300,000」은 판정 키라 그대로 두고, 보여 줄 때만 ₩를 붙인다
+  const shown = (text: string) => text.replace(/^월 매출 ([\d,]+)$/, '월 매출 ₩$1');
+  return { star: def.star, conditions: def.conditions.map((text) => ({ text: shown(text), met: starConditionMet(state, text) })), unlockText: def.unlockText };
 }
 
 /** 월초: 다음 ★ 조건을 모두 채웠으면 승급 (한 달에 한 단계). 승급했으면 새 ★. */
