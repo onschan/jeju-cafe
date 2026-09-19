@@ -1,16 +1,17 @@
 import { useState, type CSSProperties, type ReactNode } from 'react';
+import { wonText } from '../data/labels.ts';
 import { useGame, dispatch } from './store';
 import { objectStats, siteOf, siteLineText, clearCost, canClearRock, hasPickaxe, cellAt, walletOf, guestFace, namedGuestFace, canAcceptQuest, parcelPrice, canBuyParcel, canGiveGift, giftFits, giftCount, giftedToday, PROTECTED_TYPES, ROTATABLE_TYPES, LOW_ENERGY, STAT_KEYS, STAT_NAME, staffInRole, canLevelUp, capOf, skillsOf, expNeeded, isUpgradable, canUpgrade, upgradeCost, upgradeConditionText, MAX_OBJECT_LEVEL, canRepair, repairCost, CLEAN_LOW, type GameState, type Guest, type RoleId, type StatKey } from '../sim/index.ts';
 import { BUS_HOUR, isBusDay } from '../sim/spots.ts';
 import { objectDef, guestTypeDef, namedGuestDef, questDef, roleDef, skillDef, trainingDef, ROLES, GIFTS } from '../data/index.ts';
 import { staffParts } from '../render/character';
 import { Portrait, guestPortraitParts, namedPortraitParts, guestName } from './GuestPopup';
-import { Bar, EnergyBar } from './StaffPanel';
+import { Bar, EnergyBar } from './Bars';
 import { Confirm, Popup } from './Popup';
 import { Icon } from './Icon';
 import { SiteLine } from './SiteLine';
 import { BOTTOM_BAR_H } from './Shell';
-import { frame, brownBtn, brownBtnOn, brownBtnOff, dangerBtn, PALETTE, won } from './frame';
+import { frame, brownBtn, brownBtnOn, brownBtnOff, dangerBtn, PALETTE } from './frame';
 
 /** 맵에서 탭한 대상. 스펙 §1.2 표. */
 export type CardTarget =
@@ -69,7 +70,7 @@ function GuestCard({ s, id, a }: { s: GameState; id: string; a: CardActions }) {
         {nd ? <Portrait parts={namedPortraitParts(nd.id)} face={namedGuestFace(nd)} size={56} /> : <Portrait parts={guestPortraitParts(g.type)} face={guestFace(g.type)} size={56} />}
         <div style={{ flex: 1, minWidth: 0, fontSize: 14, lineHeight: 1.5 }}>
           <div><b>{guestName(g)}</b>{quest && <span style={{ color: PALETTE.bad, fontWeight: 700 }}> !</span>}</div>
-          <div style={small}>예산 {def.wallet > 0 ? won(walletOf(s, g.type)) : '없음'} · {state}</div>
+          <div style={small}>예산 {def.wallet > 0 ? wonText(walletOf(s, g.type)) : '없음'} · {state}</div>
           <div style={{ whiteSpace: 'nowrap' }}>만족 <Bar value={st?.satisfaction ?? 0} max={100} width={80} /> {st?.satisfaction ?? 0}{st?.regular === 'vip' ? ' · VIP' : st?.regular === 'regular' ? ' · 단골' : ''}</div>
           {wants.length > 0 && <div style={small}>좋아하는 것: {wants.join(' · ')}</div>}
         </div>
@@ -122,7 +123,7 @@ function StaffCard({ s, id, a }: { s: GameState; id: string; a: CardActions }) {
           <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr auto 1fr', columnGap: 6, fontSize: 12, alignItems: 'center' }}>
             {STAT_KEYS.map((k) => <span key={k} style={{ display: 'contents' }}><span>{STAT_NAME[k as StatKey]}</span><Bar value={st.stats[k as StatKey]} max={Math.max(100, capOf(s, st, k as StatKey))} width={56} /></span>)}
           </div>
-          <div style={{ fontSize: 13 }}><EnergyBar energy={st.energy} />{st.energy < LOW_ENERGY && <span style={{ color: PALETTE.bad }}> 지침</span>} · 월급 {won(st.salary)}</div>
+          <div style={{ fontSize: 13 }}><EnergyBar energy={st.energy} />{st.energy < LOW_ENERGY && <span style={{ color: PALETTE.bad }}> 지침</span>} · 월급 {wonText(st.salary)}</div>
         </div>
       </div>
       <Row>
@@ -140,26 +141,26 @@ function ObjectCard({ s, id, a, onClose }: { s: GameState; id: string; a: CardAc
   const d = objectDef(o.type);
   const st = objectStats(s, o.id);
   const protectedType = PROTECTED_TYPES.has(o.type);
-  const remove = () => Confirm(`${d.name}${d.removeCost ? `을(를) ${won(d.removeCost)} 들여 치울까요?` : `을(를) 치우고 ${won(d.cost)}을 돌려받을까요?`}`, () => { dispatch({ type: 'remove', objectId: o.id }); onClose(); }, { title: '철거' });
+  const remove = () => Confirm(`${d.name}${d.removeCost ? `을(를) ${wonText(d.removeCost)} 들여 치울까요?` : `을(를) 치우고 ${wonText(d.cost)}을 돌려받을까요?`}`, () => { dispatch({ type: 'remove', objectId: o.id }); onClose(); }, { title: '철거' });
   // 트랙 A: 증축 Lv·수리·청결
   const upgradable = isUpgradable(d) && st.level < MAX_OBJECT_LEVEL;
   const up = upgradable ? canUpgrade(s, o.id, st.popularity) : { ok: false, reason: '' };
   const upCost = upgradable ? upgradeCost(s, o) : 0;
-  const doUpgrade = () => Confirm(`${d.name}을(를) Lv${st.level + 1}로 증축할까요? ${won(upCost)}${(d.buildDays ?? 0) > 0 ? ` · 공사 ${d.buildDays}일(이용 불가)` : ''}`, () => { dispatch({ type: 'upgradeObject', objectId: o.id }); }, { title: '증축' });
+  const doUpgrade = () => Confirm(`${d.name}을(를) Lv${st.level + 1}로 증축할까요? ${wonText(upCost)}${(d.buildDays ?? 0) > 0 ? ` · 공사 ${d.buildDays}일(이용 불가)` : ''}`, () => { dispatch({ type: 'upgradeObject', objectId: o.id }); }, { title: '증축' });
   const rep = canRepair(s, o.id);
   const clean = Math.round(s.clean.value);
   return (
     <div data-testid="card-object">
       <div style={{ fontSize: 14, lineHeight: 1.5 }}>
         <div><Icon name={KIND_ICON[d.kind] ?? 'build'} size={18} /> <b>{d.name}</b>{st.level >= 2 && <b style={{ color: PALETTE.title }}> Lv{st.level}</b>}{o.build && <span style={{ color: PALETTE.title }}> · 짓는 중</span>}{st.wear > 0 && <span style={{ color: PALETTE.bad }}> · 낡았어요 (인기 −{st.wear})</span>}</div>
-        <div style={small}>인기 <b style={{ color: PALETTE.ink }}>{st.popularity}</b> · 경관 <b style={{ color: PALETTE.ink }}>{st.scenery > 0 ? '+' : ''}{st.scenery}</b> · 요금 <b style={{ color: PALETTE.ink }}>{st.feePct}%</b>{st.upkeep > 0 && ` · 유지비 ${won(st.upkeep)}/달`}{(o.uses ?? 0) > 0 && ` · 이용 ${o.uses}회`}</div>
+        <div style={small}>인기 <b style={{ color: PALETTE.ink }}>{st.popularity}</b> · 경관 <b style={{ color: PALETTE.ink }}>{st.scenery > 0 ? '+' : ''}{st.scenery}</b> · 요금 <b style={{ color: PALETTE.ink }}>{st.feePct}%</b>{st.upkeep > 0 && ` · 유지비 ${wonText(st.upkeep)}/달`}{(o.uses ?? 0) > 0 && ` · 이용 ${o.uses}회`}</div>
         <div style={small}>주변 시너지: {st.combos.length > 0 ? st.combos.map((c) => `${c.strength === 'down' ? '↓' : '↑'}${c.name}${c.count > 1 ? ` ×${c.count}` : ''}`).join(' · ') : '없음'}{st.sets.length > 0 && ` · 세트 ${st.sets.map((x) => x.name).join(', ')}`}{st.spot && ` · 명당 ${st.spot.name}`}</div>
         <SiteLine s={s} o={o} />
         <div style={{ ...small, whiteSpace: 'nowrap' }} data-testid="clean-bar">카페 청결 <Bar value={clean} max={100} width={80} /> {clean}{clean < CLEAN_LOW && <span style={{ color: PALETTE.bad }}> 지저분해요</span>}</div>
       </div>
       <Row>
-        {upgradable && <button style={up.ok ? btnOn : btnOff} disabled={!up.ok} title={up.ok ? undefined : up.reason} onClick={doUpgrade} data-testid="upgrade-btn">증축 Lv{st.level + 1} ({won(upCost)})</button>}
-        {st.wear > 0 && <button style={rep.ok ? btnOn : btnOff} disabled={!rep.ok} onClick={() => dispatch({ type: 'repairObject', objectId: o.id })} data-testid="repair-btn">수리 ({won(repairCost(s, o))})</button>}
+        {upgradable && <button style={up.ok ? btnOn : btnOff} disabled={!up.ok} title={up.ok ? undefined : up.reason} onClick={doUpgrade} data-testid="upgrade-btn">증축 Lv{st.level + 1} ({wonText(upCost)})</button>}
+        {st.wear > 0 && <button style={rep.ok ? btnOn : btnOff} disabled={!rep.ok} onClick={() => dispatch({ type: 'repairObject', objectId: o.id })} data-testid="repair-btn">수리 ({wonText(repairCost(s, o))})</button>}
         {!protectedType && <button style={btn} onClick={() => a.onMove(o.id)}>이동</button>}
         {ROTATABLE_TYPES.has(o.type) && <button style={btn} onClick={() => dispatch({ type: 'rotate', objectId: o.id, rot: ((o.rot ?? 0) + 1) % 4 })}>회전</button>}
         {!protectedType && o.type !== 'bush_wild' && <button style={btnDanger} onClick={remove}>철거</button>}
@@ -181,7 +182,7 @@ function RockCard({ s, x, y, onClose }: { s: GameState; x: number; y: number; on
     <div data-testid="card-rock">
       <div style={{ fontSize: 14, lineHeight: 1.5 }}>
         <div><b>{name}</b> <span style={small}>({x},{y})</span></div>
-        <div style={small}>치우기 비용 {free ? '곡괭이 1개' : won(cost)} · 기간 즉시{!can.ok && can.reason && ` · ${can.reason}`}</div>
+        <div style={small}>치우기 비용 {free ? '곡괭이 1개' : wonText(cost)} · 기간 즉시{!can.ok && can.reason && ` · ${can.reason}`}</div>
       </div>
       <Row><button style={can.ok ? btnOn : btnOff} disabled={!can.ok} onClick={() => { if (dispatch({ type: 'clearRock', x, y }).ok) onClose(); }}><Icon name="remove" /> 치우기</button></Row>
     </div>
@@ -206,12 +207,12 @@ function ParcelCard({ s, id, onClose }: { s: GameState; id: string; onClose: () 
   if (!p || p.owned) return <div style={small}>이미 우리 땅이에요</div>;
   const can = canBuyParcel(s, p.id);
   const price = parcelPrice(s, p);
-  const buy = () => Confirm(`${p.name} 필지를 ${won(price)}에 살까요? 맵이 넓어져요.`, () => { if (dispatch({ type: 'buyParcel', id: p.id }).ok) onClose(); }, { title: '필지 구매' });
+  const buy = () => Confirm(`${p.name} 필지를 ${wonText(price)}에 살까요? 맵이 넓어져요.`, () => { if (dispatch({ type: 'buyParcel', id: p.id }).ok) onClose(); }, { title: '필지 구매' });
   return (
     <div data-testid="card-parcel">
       <div style={{ fontSize: 14, lineHeight: 1.5 }}>
         <div><b>{p.name}</b> <span style={small}>{p.w}×{p.h}칸</span></div>
-        <div style={small}>가격 {won(price)}{!can.ok && can.reason && ` · ${can.reason}`}</div>
+        <div style={small}>가격 {wonText(price)}{!can.ok && can.reason && ` · ${can.reason}`}</div>
       </div>
       <Row><button style={can.ok ? btnOn : btnOff} disabled={!can.ok} onClick={buy}><Icon name="money" /> 사기</button></Row>
     </div>
@@ -244,7 +245,7 @@ function CounterCard({ s, a }: { s: GameState; a: CardActions }) {
     <div data-testid="card-counter">
       <div style={{ fontSize: 14, lineHeight: 1.5 }}>
         <div><Icon name="menu" size={18} /> <b>{s.cafeName || '우리 카페'}</b> <span style={small}>본관 카운터</span></div>
-        <div style={small}>메뉴 {menus}개 · 직원 {s.staff.length}명 · 이번 달 손님 {s.monthGuests}명 · 매출 {won(s.monthIncome)}</div>
+        <div style={small}>메뉴 {menus}개 · 직원 {s.staff.length}명 · 이번 달 손님 {s.monthGuests}명 · 매출 {wonText(s.monthIncome)}</div>
       </div>
       <Row><button style={btnOn} onClick={a.onCafe}>카페 창</button></Row>
     </div>

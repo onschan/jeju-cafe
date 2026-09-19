@@ -1,9 +1,10 @@
 /** 월말 결산 창 (스펙 §2.1). 순수 컴포넌트 — 수입/비용 표(항목 한글), 이달의 하이라이트 3줄, 다음 달 팁 1줄, ★ 게이지.
  *  card는 기존 state.lastMonthCard 형태 + 선택 필드. 하이라이트·팁은 호출자(통합)가 sim 상태로 만들어 넘긴다 — 없으면 카드만. */
 import type { MonthCosts, ComplaintReason } from '../../sim/index.ts';
+import { wonText } from '../../data/labels.ts';
 import { COMPLAINT_LABEL } from '../../sim/index.ts';
 import { PALETTE, brownBtn } from '../frame';
-import { body, Stars, rowCard, soft, win } from './shared.tsx';
+import { body, Stars, rowCard, soft } from './shared.tsx';
 
 export interface ReportCard {
   income: number;
@@ -67,25 +68,25 @@ export function ReportWindow({ card: c, star, prevStar, starProgress, monthRecor
       </div>
 
       <div style={rowCard}>
-        <Row label="수입" value={`+${win(c.income)}`} color={PALETTE.ok} bold />
-        <Row label="메뉴 판매" value={`+${win(c.income)}`} indent />
+        <Row label="수입" value={`+${wonText(c.income)}`} color={PALETTE.ok} bold />
+        <Row label="메뉴 판매" value={`+${wonText(c.income)}`} indent />
         {c.harvested !== undefined && c.harvested > 0 && <Row label="농원 수확" value={`재료 ${c.harvested}개`} indent />}
-        {c.ingredientSaved !== undefined && c.ingredientSaved > 0 && <Row label="자급 재료로 아낀 돈" value={`+${win(c.ingredientSaved)}`} indent color={PALETTE.ok} />}
+        {c.ingredientSaved !== undefined && c.ingredientSaved > 0 && <Row label="자급 재료로 아낀 돈" value={`+${wonText(c.ingredientSaved)}`} indent color={PALETTE.ok} />}
         <div style={{ borderTop: `1px dashed ${PALETTE.woodLight}`, margin: '6px 0' }} />
-        <Row label="비용" value={`-${win(totalCost)}`} color={PALETTE.bad} bold />
-        <Row label="재료비" value={`-${win(cost.ingredients)}`} indent />
-        <Row label="월급" value={`-${win(cost.salary)}`} indent />
-        <Row label="유지비" value={`-${win(cost.upkeep)}`} indent />
-        <Row label="홍보" value={`-${win(cost.ads)}`} indent />
-        {(cost.recruit ?? 0) > 0 && <Row label="채용 공고·연수" value={`-${win(cost.recruit)}`} indent />}
-        {(cost.tax ?? 0) > 0 && <Row label="소득세" value={`-${win(cost.tax)}`} indent />}
-        {(cost.tourBus ?? 0) > 0 && <Row label="투어 버스" value={`-${win(cost.tourBus)}`} indent />}
-        {(cost.loanRepay ?? 0) > 0 && <Row label="삼춘 대출 상환" value={`-${win(cost.loanRepay)}`} indent />}
+        <Row label="비용" value={`-${wonText(totalCost)}`} color={PALETTE.bad} bold />
+        <Row label="재료비" value={`-${wonText(cost.ingredients)}`} indent />
+        <Row label="월급" value={`-${wonText(cost.salary)}`} indent />
+        <Row label="유지비" value={`-${wonText(cost.upkeep)}`} indent />
+        <Row label="홍보" value={`-${wonText(cost.ads)}`} indent />
+        {(cost.recruit ?? 0) > 0 && <Row label="채용 공고·연수" value={`-${wonText(cost.recruit)}`} indent />}
+        {(cost.tax ?? 0) > 0 && <Row label="소득세" value={`-${wonText(cost.tax)}`} indent />}
+        {(cost.tourBus ?? 0) > 0 && <Row label="투어 버스" value={`-${wonText(cost.tourBus)}`} indent />}
+        {(cost.loanRepay ?? 0) > 0 && <Row label="삼춘 대출 상환" value={`-${wonText(cost.loanRepay)}`} indent />}
         <div style={{ borderTop: `2px solid ${PALETTE.wood}`, margin: '6px 0' }} />
-        <Row label="순이익" value={`${c.net >= 0 ? '+' : '-'}${win(Math.abs(c.net))}`} color={c.net >= 0 ? PALETTE.ok : PALETTE.bad} bold />
+        <Row label="순이익" value={`${c.net >= 0 ? '+' : '-'}${wonText(Math.abs(c.net))}`} color={c.net >= 0 ? PALETTE.ok : PALETTE.bad} bold />
         {(c.deficitStreak ?? 0) >= 3 && <div style={{ color: PALETTE.bad, fontSize: 14, marginTop: 4 }}>적자 {c.deficitStreak}개월째 — 비용부터 줄여 보세요</div>}
-        {(c.loanTaken ?? 0) > 0 && <Row label="삼춘 대출 받음" value={`+${win(c.loanTaken ?? 0)}`} color={PALETTE.bad} />}
-        {(c.loanBalance ?? 0) > 0 && <Row label="대출 잔액" value={win(c.loanBalance ?? 0)} color={PALETTE.inkSoft} />}
+        {(c.loanTaken ?? 0) > 0 && <Row label="삼춘 대출 받음" value={`+${wonText(c.loanTaken ?? 0)}`} color={PALETTE.bad} />}
+        {(c.loanBalance ?? 0) > 0 && <Row label="대출 잔액" value={wonText(c.loanBalance ?? 0)} color={PALETTE.inkSoft} />}
       </div>
 
       {c.reputation !== undefined && (

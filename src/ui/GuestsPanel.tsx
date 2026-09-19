@@ -1,13 +1,14 @@
 import { useState } from 'react';
+import { wonText } from '../data/labels.ts';
 import { useGame } from './store';
 import { guestFace, unlockedTypeIds } from '../sim/index.ts';
 import { guestTypeDef, GUEST_TYPES } from '../data/index.ts';
 import { BoardPanel } from './BoardPanel';
 import { RivalPanel } from './RivalPanel';
 import { Portrait, guestPortraitParts, guestPortraitOf, guestWallet, guestName } from './GuestPopup';
-import { Bar } from './StaffPanel';
+import { Bar } from './Bars';
 import { ComplaintsCard } from './ComplaintsCard';
-import { card, brownBtn, brownBtnOn, PALETTE, won } from './frame';
+import { card, brownBtn, brownBtnOn, PALETTE } from './frame';
 
 type Sub = 'now' | 'quests' | 'codex' | 'rivals';
 const SUBS: { id: Sub; label: string }[] = [{ id: 'now', label: '지금 온 손님' }, { id: 'quests', label: '부탁' }, { id: 'codex', label: '손님 도감' }, { id: 'rivals', label: '라이벌' }];
@@ -39,7 +40,7 @@ export function GuestsPanel({ onGuest }: { onGuest: (guestId: string) => void })
               <button key={g.id} style={{ ...card, display: 'flex', alignItems: 'center', gap: 8, width: '100%', textAlign: 'left', fontFamily: 'inherit', fontSize: 14, color: PALETTE.ink }} onClick={() => onGuest(g.id)} aria-label={guestName(g)}>
                 <Portrait {...guestPortraitOf(g)} size={32} />
                 <span style={{ flex: 1 }}><b>{guestName(g)}</b>{g.namedId && <b style={{ color: PALETTE.btn }}> ★</b>}{q && <b style={{ color: PALETTE.bad }}> !</b>}<br /><span style={{ fontSize: 12, color: PALETTE.inkSoft }}>{g.phase === 'seated' ? '자리에서' : g.phase === 'visiting' ? '구경 중' : g.phase === 'leaving' ? '집에 가는 중' : '오는 중'}{g.mood ? ` ${MOOD_ICON[g.mood]}` : ''}</span></span>
-                <span style={{ fontSize: 12, color: PALETTE.inkSoft }}>지갑 {won(guestWallet(s, g))}</span>
+                <span style={{ fontSize: 12, color: PALETTE.inkSoft }}>지갑 {wonText(guestWallet(s, g))}</span>
               </button>
             );
           })}

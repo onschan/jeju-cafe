@@ -1,6 +1,6 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, test, expect } from 'vitest';
 import { MENUS, OBJECTS, INGREDIENTS, GUEST_TYPES, QUESTS, ITEMS, SPOTS, ROLES, SKILLS, PROMOTIONS, REGIONS, FACILITIES } from '../../data/index.ts';
-import { label, hasIdToken, requireText, ingredientsText, unlockText, unlockCondText, conditionText, rewardText, humanize, ifClause } from '../../data/labels.ts';
+import { label, hasIdToken, requireText, ingredientsText, unlockText, unlockCondText, conditionText, rewardText, humanize, ifClause, wonText } from '../../data/labels.ts';
 import { TUTORIAL_STEPS, GOAL_LINES, EVENT_DIALOGUES, SAMCHUN, goalLine, eventDialogue, samchunDef } from '../../data/dialogue/index.ts';
 
 const ID_ONLY = /^[a-z0-9_]+$/;
@@ -172,5 +172,19 @@ describe('hasIdToken', () => {
     expect(hasIdToken('americano')).toBe(true);
     expect(hasIdToken('아이템 honey')).toBe(false); // 밑줄 없는 단어 하나는 id로 보지 않는다 (SNS·LP판 같은 표기 허용)
     expect(hasIdToken('감귤주스 10잔 팔기')).toBe(false);
+  });
+});
+
+describe('wonText (UX §5.4 돈 표기 단일화)', () => {
+  test('카드·목록: 천 단위 구분, 음수는 −₩', () => {
+    expect(wonText(1_240_000)).toBe('₩1,240,000');
+    expect(wonText(-3_500)).toBe('−₩3,500');
+    expect(wonText(0)).toBe('₩0');
+  });
+  test('short: 1만 이상 만 단위 내림, 1억 이상 억', () => {
+    expect(wonText(1_240_000, true)).toBe('₩124만');
+    expect(wonText(9_900, true)).toBe('₩9,900');
+    expect(wonText(123_456_789, true)).toBe('₩1.2억');
+    expect(wonText(-20_000, true)).toBe('−₩2만');
   });
 });

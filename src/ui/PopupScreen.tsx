@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
+import { wonText } from '../data/labels.ts';
 import { useGame, dispatch } from './store';
 import { Popup } from './Popup';
-import { Bar } from './StaffPanel';
-import { brownBtn, dangerBtn, card, PALETTE, won } from './frame';
+import { Bar } from './Bars';
+import { brownBtn, dangerBtn, card, PALETTE } from './frame';
 import { loadSheet, drawFrame, type Sheet } from './sheetCanvas';
 import { HAIR_RGB, TOP_RGB, namedGuestParts, type CharacterParts } from '../render/character';
 import { namedGuestFace, regionProgress, menuOf, priceOf, AFFINITY_MAX, POPUP_GUESTS_MAX, type PopupVisit } from '../sim/index.ts';
@@ -194,7 +195,7 @@ export function PopupScreen({ onClose }: { onClose: () => void }) {
       </>}>
       <canvas ref={ref} width={POPUP_W} height={POPUP_H} data-testid="popup-scene" style={{ display: 'block', width: '100%', aspectRatio: `${POPUP_W} / ${POPUP_H}`, imageRendering: 'pixelated', border: `2px solid ${PALETTE.wood}`, borderRadius: 4, background: PALETTE.paperDark }} />
       <div style={{ fontSize: 12, color: PALETTE.inkSoft, margin: '6px 0' }}>
-        {open ? `줄 ${s.popup.queue.length}명 남음 · ` : '오늘 팝업은 끝났어요 · '}방문 {visits.length} · 만난 손님 {prog.met}/{prog.total} · 단골★ {prog.regular} · 매출 {won(visits.reduce((n, v) => n + (v.menuId ? priceOf(s, v.menuId) : 0), 0))}
+        {open ? `줄 ${s.popup.queue.length}명 남음 · ` : '오늘 팝업은 끝났어요 · '}방문 {visits.length} · 만난 손님 {prog.met}/{prog.total} · 단골★ {prog.regular} · 매출 {wonText(visits.reduce((n, v) => n + (v.menuId ? priceOf(s, v.menuId) : 0), 0))}
       </div>
       <div style={{ ...card, marginBottom: 0, minHeight: 72 }} data-testid="popup-visit">
         {shown ? <VisitLine v={shown} /> : <span style={{ fontSize: 13, color: PALETTE.inkSoft }}>손님을 기다리는 중… 매 시간 한 명씩 와요</span>}

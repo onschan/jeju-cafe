@@ -1,12 +1,13 @@
 import { useEffect, useRef } from 'react';
+import { wonText } from '../data/labels.ts';
 import { useGame } from './store';
 import { guestFace, walletOf, canAcceptQuest, namedGuestFace, AFFINITY_MAX, type Guest, type GuestTypeState } from '../sim/index.ts';
 import { guestTypeDef, questDef, namedGuestDef, regionDef, NAMES } from '../data/index.ts';
 import { guestParts, staffParts, namedGuestParts, type CharacterParts } from '../render/character';
 import { drawPortrait, PORTRAIT_SIZE } from '../render/portrait';
 import { Popup } from './Popup';
-import { Bar, Face } from './StaffPanel';
-import { brownBtn, brownBtnOn, PALETTE, won } from './frame';
+import { Bar, Face } from './Bars';
+import { brownBtn, brownBtnOn, PALETTE } from './frame';
 import type { Face as FaceParts, RoleId } from '../sim/index.ts';
 
 const MOOD_TEXT: Record<string, string> = { happy: '기분 좋음 😊', meh: '그저 그럼 😐', angry: '화남 😠' };
@@ -87,7 +88,7 @@ export function GuestPopup({ guestId, onClose, onQuest }: { guestId: string; onC
           <div style={{ flex: 1, fontSize: 14, lineHeight: 1.6 }}>
             <div><b>{nd.name}</b> <span style={{ fontSize: 12, color: PALETTE.inkSoft }}>{nd.job} · {regionDef(nd.regionId).name}</span>{ns?.regular && <span style={{ color: PALETTE.btn, fontWeight: 700 }}> ★ 단골</span>}</div>
             <div>기분: {mood}{g.moodReason && g.mood !== 'happy' ? ` (${REASON_TEXT[g.moodReason]})` : ''}</div>
-            <div>지갑: {won(nd.budget)}</div>
+            <div>지갑: {wonText(nd.budget)}</div>
             <div style={{ whiteSpace: 'nowrap' }}>호감 <Bar value={ns?.affinity ?? 0} max={AFFINITY_MAX} width={90} /> {ns?.affinity ?? 0}/{AFFINITY_MAX}</div>
           </div>
         </div>
@@ -110,7 +111,7 @@ export function GuestPopup({ guestId, onClose, onQuest }: { guestId: string; onC
         <div style={{ flex: 1, fontSize: 14, lineHeight: 1.6 }}>
           <div><b>{def.name}</b>{quest && <span style={{ color: PALETTE.bad, fontWeight: 700 }}> !</span>} <span style={{ fontSize: 12, color: PALETTE.inkSoft }}>{def.tags.age === 'senior' ? '삼춘' : def.tags.age === 'youth' ? '청년' : def.tags.age === 'adult' ? '어른' : ''}{def.tags.group ? ' · 단체' : ''}</span></div>
           <div>기분: {mood}{g.moodReason && g.mood !== 'happy' ? ` (${REASON_TEXT[g.moodReason]})` : ''}</div>
-          <div>지갑: {def.wallet > 0 ? won(walletOf(s, g.type)) : '없음'}</div>
+          <div>지갑: {def.wallet > 0 ? wonText(walletOf(s, g.type)) : '없음'}</div>
           <div style={{ whiteSpace: 'nowrap' }}>만족 <Bar value={st?.satisfaction ?? 0} max={100} width={90} /> {st?.satisfaction ?? 0}{st?.regular === 'vip' ? ' · VIP' : st?.regular === 'regular' ? ' · 단골' : ''}</div>
         </div>
       </div>

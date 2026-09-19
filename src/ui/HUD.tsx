@@ -1,13 +1,5 @@
 import { useGame, getToast } from './store';
 
-/** 돈을 짧게: 1만 이상은 '497만'처럼 만 단위(내림), 그 아래는 그대로. 375px 폰에서 상단 바 한 줄에 들어가도록. */
-export function compactMoney(n: number): string {
-  const neg = n < 0 ? '-' : '';
-  const a = Math.abs(n);
-  if (a >= 10_000) return `${neg}${Math.floor(a / 10_000).toLocaleString()}만`;
-  return `${neg}${a.toLocaleString()}`;
-}
-
 /** 연구 포인트를 짧게: 1만 이상은 '1.2만'(소수 1자리), 그 아래는 구분 기호 없이 그대로. */
 export function compactNumber(n: number): string {
   const a = Math.abs(n);

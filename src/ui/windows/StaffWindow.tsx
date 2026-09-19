@@ -5,11 +5,11 @@ import { ButtonGroup } from '../ButtonGroup';
 import type { GameState, Staff, Candidate, RoleId, StatKey, JobTier, Face } from '../../sim/index.ts';
 import { TIERS, LOW_ENERGY, STAT_KEYS, levelUpCost, expNeeded, mainStatOf, canHire, canLevelUp, canPostJob, staffInRole, postJobCost, tierUnlocked, availablePool, staffCapacity, staffRoomCount, capOf, capBonus, skillsOf, salaryDue, trainingOptions, trainingUnlocked, TRAINING_RANK } from '../../sim/index.ts';
 import { ROLES, RECRUIT_TIERS, skillDef, trainingDef, staffPoolDef } from '../../data/index.ts';
-import { label } from '../../data/labels.ts';
+import { label, wonText } from '../../data/labels.ts';
 import { PALETTE, brownBtn, brownBtnOff } from '../frame';
 import { drawPortrait, PORTRAIT_SIZE } from '../../render/portrait';
 import { partsOfFace, staffParts, HAIR_RGB, SKIN_RGB, TOP_RGB } from '../../render/character';
-import { useWindowState, body, TabBar, Bar, rowCard, rowCardOn, rowBtn, rowBtnOn, rowBtnOff, rowBtnDanger, soft, Empty, ConfirmRow, win, type Dispatch, type WindowProps } from './shared.tsx';
+import { useWindowState, body, TabBar, Bar, rowCard, rowCardOn, rowBtn, rowBtnOn, rowBtnOff, rowBtnDanger, soft, Empty, ConfirmRow, type Dispatch, type WindowProps } from './shared.tsx';
 
 const TIER_ORDER: JobTier[] = RECRUIT_TIERS.map((t) => t.id);
 /** v3에서 없어지는 직종(밭)은 목록에서 뺀다 */
@@ -101,7 +101,7 @@ function TrainingPanel({ st, s, dispatch, onDone }: { st: Staff; s: GameState; d
               <div style={{ ...soft, fontSize: 13 }}>{def.desc}{unlocked && !ok && reason ? ` · ${reason}` : ''}</div>
             </div>
             <button style={ok ? rowBtn : rowBtnOff} disabled={!ok} title={reason} onClick={() => { if (dispatch({ type: 'train', staffId: st.id, trainingId: def.id }).ok) onDone(); }} aria-label={`${st.name} ${def.name}`}>
-              {win(cost)}
+              {wonText(cost)}
             </button>
           </div>
         ))}
@@ -129,7 +129,7 @@ function StaffCard({ st, s, dispatch }: { st: Staff; s: GameState; dispatch: Dis
             <b style={{ fontSize: 16 }}>{st.name}</b>
             <span style={{ fontSize: 14 }}>{away ? `연수 중 · ${away.name} ${st.training!.daysLeft}일 남음` : st.role ? label('role', st.role) : '쉬는 중'} · Lv.{st.level}<span style={soft}>/{st.maxLevel}</span></span>
           </div>
-          <div style={soft}>월급 {win(due)}{due < st.salary ? ' (쉬는 중 50%)' : ''}{st.unpaidMonths > 0 && <span style={{ color: PALETTE.bad }}> · 월급 밀림 {st.unpaidMonths}달</span>}</div>
+          <div style={soft}>월급 {wonText(due)}{due < st.salary ? ' (쉬는 중 50%)' : ''}{st.unpaidMonths > 0 && <span style={{ color: PALETTE.bad }}> · 월급 밀림 {st.unpaidMonths}달</span>}</div>
           <div style={{ marginTop: 2 }}><SkillBadges who={st} /></div>
         </div>
       </div>
@@ -148,7 +148,7 @@ function StaffCard({ st, s, dispatch }: { st: Staff; s: GameState; dispatch: Dis
         <button style={away ? rowBtnOff : rowBtnDanger} disabled={!!away} onClick={() => { setFiring(!firing); setTraining(false); }} aria-label={`${st.name} 해고`}>해고</button>
       </div>
       {training && !away && <TrainingPanel st={st} s={s} dispatch={dispatch} onDone={() => setTraining(false)} />}
-      {firing && <ConfirmRow text={`${st.name} 씨를 내보낼까요? 퇴직금 ${win(st.salary)}이 나가요.`} yes="내보내기" onYes={() => dispatch({ type: 'fire', staffId: st.id })} onNo={() => setFiring(false)} />}
+      {firing && <ConfirmRow text={`${st.name} 씨를 내보낼까요? 퇴직금 ${wonText(st.salary)}이 나가요.`} yes="내보내기" onYes={() => dispatch({ type: 'fire', staffId: st.id })} onNo={() => setFiring(false)} />}
     </div>
   );
 }
@@ -168,7 +168,7 @@ function CandidateCard({ c, s, dispatch }: { c: Candidate; s: GameState; dispatc
             <b style={{ fontSize: 16 }}>{c.name}</b>
             <span style={{ fontSize: 14 }}>최대 Lv.{c.maxLevel}</span>
           </div>
-          <div style={soft}>월급 {win(c.salary)} · <SkillBadges who={c} /></div>
+          <div style={soft}>월급 {wonText(c.salary)} · <SkillBadges who={c} /></div>
           {bio && <div style={{ ...soft, fontSize: 13 }}>{bio}</div>}
         </div>
       </div>
@@ -177,7 +177,7 @@ function CandidateCard({ c, s, dispatch }: { c: Candidate; s: GameState; dispatc
         <ButtonGroup label="직종" value={chosen} onPick={(r) => setRole(r)} style={{ flex: '1 1 100%' }}
           options={roles.length === 0 ? [{ value: '' as RoleId, label: '자리 없음', disabled: true }] : roles.map((r) => ({ value: r, label: label('role', r) }))} />
         <button data-tut="hire" style={check.ok ? rowBtnOn : rowBtnOff} disabled={!check.ok} title={check.reason} onClick={() => { if (chosen) dispatch({ type: 'hire', candidateId: c.id, role: chosen }); }} aria-label={`${c.name} 채용`}>
-          채용 · 월급 {win(c.salary)}
+          채용 · 월급 {wonText(c.salary)}
         </button>
       </div>
       {!check.ok && check.reason && <div style={{ ...soft, fontSize: 13, marginTop: 4 }}>{check.reason}</div>}
@@ -217,7 +217,7 @@ export function StaffWindow(props: StaffWindowProps) {
               const locked = !tierUnlocked(s, t);
               return (
                 <button key={t} style={{ ...(check.ok ? brownBtn : brownBtnOff), margin: 0, padding: '6px 4px', fontSize: 14, lineHeight: 1.25 }} disabled={!check.ok} title={check.reason} onClick={() => dispatch({ type: 'postJob', tier: t })} data-testid={`post-${t}`}>
-                  {def.name}<br /><span style={{ fontSize: 13, fontWeight: 400 }}>{locked ? `★${def.unlock?.star ?? ''}부터` : `${cost > 0 ? win(cost) : '무료'} · ${left}명 남음`}</span>
+                  {def.name}<br /><span style={{ fontSize: 13, fontWeight: 400 }}>{locked ? `★${def.unlock?.star ?? ''}부터` : `${cost > 0 ? wonText(cost) : '무료'} · ${left}명 남음`}</span>
                 </button>
               );
             })}

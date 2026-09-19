@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { wonText } from '../data/labels.ts';
 import { GameView, type GhostSpec } from '../render/GameView';
 import { startLoop, dispatch, getState, useGame, setViewReset, autosaveNow, hasAnySave, loadSlot, setMonthCardHook, setSceneHook, showToast, pauseGame } from './store';
 import { unlockAudio, bgm, isMuted, setMuted, getBgmVolume, getSfxVolume, setBgmVolume, setSfxVolume, sfx } from './audio';
@@ -31,7 +32,7 @@ import { BoardPanel } from './BoardPanel';
 import { RegionPanel } from './RegionPanel';
 import { ObjectInfoPanel, CodexPanel } from './ObjectInfoPanel';
 import { PopupHost, Confirm } from './Popup';
-import { won, brownBtn, dangerBtn, card, PALETTE } from './frame';
+import { brownBtn, dangerBtn, card, PALETTE } from './frame';
 import { compactNumber } from './HUD';
 import { Icon } from './Icon';
 import { TitleScreen } from './TitleScreen';
@@ -157,11 +158,11 @@ function StatusPanel() {
   const rows: [string, string][] = [
     ['카페', s.cafeName || '우리 카페'],
     ['날짜', `${s.clock.year}년 ${s.clock.month}월 ${s.clock.day}일`],
-    ['자금', won(s.money)],
+    ['자금', wonText(s.money)],
     ['연구 포인트', compactNumber(s.research)],
     ['★ 등급', `${s.star} · 랭크 ${s.rank}위`],
-    ['이번 달 손님', `${s.monthGuests}명 · 매출 ${won(s.monthIncome)}`],
-    ['누적 손님', `${s.totalGuests}명 · 누적 매출 ${won(s.totalIncome)}`],
+    ['이번 달 손님', `${s.monthGuests}명 · 매출 ${wonText(s.monthIncome)}`],
+    ['누적 손님', `${s.totalGuests}명 · 누적 매출 ${wonText(s.totalIncome)}`],
     ['직원', `${s.staff.length}명 · 후보 ${s.candidates.length}명`],
     ['메뉴', `${s.menuSlots.filter((m) => m !== null).length}개`],
     ['필지', `${s.parcels.filter((p) => p.owned).length}/${s.parcels.length}`],
@@ -193,7 +194,7 @@ function Game({ onExit }: { onExit: () => void }) {
   useEffect(() => {
     setMonthCardHook((st, rec) => {
       const card = st.lastMonthCard;
-      if (rec.monthRecord && card) showScene({ title: '월 매출 신기록', text: `${card.month}월 매출 ${won(card.income)} — 신기록!`, chars: staffChars(st), sfx: 'fanfare' });
+      if (rec.monthRecord && card) showScene({ title: '월 매출 신기록', text: `${card.month}월 매출 ${wonText(card.income)} — 신기록!`, chars: staffChars(st), sfx: 'fanfare' });
     });
     setSceneHook((st, title, text) => showScene({ title, text, chars: staffChars(st), sfx: 'fanfare' }));
     return () => { setMonthCardHook(null); setSceneHook(null); };
@@ -310,7 +311,7 @@ function Game({ onExit }: { onExit: () => void }) {
             const o = objectAt(st, x, y);
             if (!o) showToast('치울 것을 골라 주세요');
             else if (PROTECTED_TYPES.has(o.type) || o.type === 'bush_wild') showToast('이건 못 치워요');
-            else { const d = objectDef(o.type); Confirm(`${d.name}${d.removeCost ? `을(를) ${won(d.removeCost)} 들여 치울까요?` : `을(를) 치우고 ${won(d.cost)}을 돌려받을까요?`}`, () => dispatch({ type: 'remove', objectId: o.id }), { title: '철거' }); }
+            else { const d = objectDef(o.type); Confirm(`${d.name}${d.removeCost ? `을(를) ${wonText(d.removeCost)} 들여 치울까요?` : `을(를) 치우고 ${wonText(d.cost)}을 돌려받을까요?`}`, () => dispatch({ type: 'remove', objectId: o.id }), { title: '철거' }); }
           } else inspect(st, x, y);
         },
         onLongPress: liftObject,
@@ -360,13 +361,13 @@ function Game({ onExit }: { onExit: () => void }) {
     const def = objectDef(mode.objectType);
     const cost = placeCost(s, mode.objectType);
     if (PAINT_KINDS.has(def.kind)) {
-      place = { text: `${def.name} · ${won(cost)}/칸 · 칸을 누르거나 끌어서 이어 놓아요`, ok: true, canRotate: false, paint: true, onConfirm: () => {}, onRotate: () => {}, onCancel: () => setMode({ kind: 'idle' }) };
+      place = { text: `${def.name} · ${wonText(cost)}/칸 · 칸을 누르거나 끌어서 이어 놓아요`, ok: true, canRotate: false, paint: true, onConfirm: () => {}, onRotate: () => {}, onCancel: () => setMode({ kind: 'idle' }) };
     } else if (ghost) {
       const can = canPlace(s, mode.objectType, ghost.x, ghost.y);
       const ok = can.ok && s.money >= cost;
-      ghostSpec = { type: mode.objectType, x: ghost.x, y: ghost.y, rot: ROTATABLE_TYPES.has(mode.objectType) ? ghost.rot : undefined, ok, text: `${def.name} ${won(cost)}` };
+      ghostSpec = { type: mode.objectType, x: ghost.x, y: ghost.y, rot: ROTATABLE_TYPES.has(mode.objectType) ? ghost.rot : undefined, ok, text: `${def.name} ${wonText(cost)}` };
       place = {
-        text: `${def.name} · ${won(cost)} · ${ok ? '여기에 지을 수 있어요' : (can.reason ?? '돈이 모자라요')}`,
+        text: `${def.name} · ${wonText(cost)} · ${ok ? '여기에 지을 수 있어요' : (can.reason ?? '돈이 모자라요')}`,
         ok,
         canRotate: ROTATABLE_TYPES.has(mode.objectType),
         onConfirm: () => {

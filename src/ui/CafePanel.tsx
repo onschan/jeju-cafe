@@ -1,10 +1,11 @@
 import { useState } from 'react';
+import { wonText } from '../data/labels.ts';
 import { useGame, dispatch } from './store';
 import { cafeLevel, nextCafeLevelIncome, canExpand, canRenameCafe, EXPANSIONS, CAFE_NAME_MAX, WALL_COLORS, SIGN_MAX, CAFE_LEVEL_INCOME, josa } from '../sim/index.ts';
 import { Icon } from './Icon';
 import { Confirm } from './Popup';
-import { Bar } from './StaffPanel';
-import { card, brownBtn, brownBtnOn, brownBtnOff, brownSelect, PALETTE, won } from './frame';
+import { Bar } from './Bars';
+import { card, brownBtn, brownBtnOn, brownBtnOff, brownInput, PALETTE } from './frame';
 
 const css = (rgb: number) => `#${rgb.toString(16).padStart(6, '0')}`;
 const WALL_NAMES = ['흰 벽', '귤빛 벽', '하늘빛 벽'];
@@ -25,7 +26,7 @@ export function CafePanel({ onMenu }: { onMenu: () => void }) {
     <div data-testid="cafe-panel">
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
         <input value={name} maxLength={CAFE_NAME_MAX} onChange={(e) => setName(e.target.value)} aria-label="카페 이름"
-          style={{ ...brownSelect, flex: 1, minWidth: 0, marginRight: 0, marginBottom: 0 }} />
+          style={{ ...brownInput, flex: 1, minWidth: 0, marginRight: 0, marginBottom: 0 }} />
         <button style={canRenameCafe(s, name).ok && name.trim() !== s.cafeName ? brownBtnOn : brownBtnOff} disabled={!canRenameCafe(s, name).ok || name.trim() === s.cafeName}
           onClick={rename} aria-label="이름 저장">이름 짓기</button>
       </div>
@@ -33,11 +34,11 @@ export function CafePanel({ onMenu }: { onMenu: () => void }) {
       <div style={{ ...card, padding: 6 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
           <b>카페 레벨 {lv}</b>
-          <span style={{ fontSize: 13, color: PALETTE.inkSoft }}>누적 매출 {won(s.totalIncome)}</span>
+          <span style={{ fontSize: 13, color: PALETTE.inkSoft }}>누적 매출 {wonText(s.totalIncome)}</span>
         </div>
         {next !== null ? (
           <div style={{ fontSize: 13, marginTop: 2 }}>
-            <Bar value={s.totalIncome - floor} max={next - floor} width={140} /> 다음 레벨까지 {won(Math.max(0, next - s.totalIncome))}
+            <Bar value={s.totalIncome - floor} max={next - floor} width={140} /> 다음 레벨까지 {wonText(Math.max(0, next - s.totalIncome))}
           </div>
         ) : <div style={{ fontSize: 13, marginTop: 2, color: PALETTE.ok }}>최고 레벨이에요!</div>}
       </div>
@@ -50,11 +51,11 @@ export function CafePanel({ onMenu }: { onMenu: () => void }) {
           <div key={e.id} style={{ ...card, padding: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
             <div style={{ flex: 1 }}>
               <div><b>{e.name}</b>{done && <span style={{ color: PALETTE.ok, fontSize: 13 }}> · 완공</span>}</div>
-              <div style={{ fontSize: 13, color: PALETTE.inkSoft }}>{e.desc} · {won(e.cost)}</div>
+              <div style={{ fontSize: 13, color: PALETTE.inkSoft }}>{e.desc} · {wonText(e.cost)}</div>
             </div>
             {!done && (
               <button style={can.ok ? brownBtnOn : brownBtnOff} disabled={!can.ok} aria-label={`${e.name} 증축`}
-                onClick={() => Confirm(`${josa(e.name, '을/를')} ${won(e.cost)}에 할까요? ${e.desc}.`, () => dispatch({ type: 'expand', id: e.id }), { title: '증축' })}>
+                onClick={() => Confirm(`${josa(e.name, '을/를')} ${wonText(e.cost)}에 할까요? ${e.desc}.`, () => dispatch({ type: 'expand', id: e.id }), { title: '증축' })}>
                 <Icon name="build" /> 짓기
               </button>
             )}
@@ -73,7 +74,7 @@ export function CafePanel({ onMenu }: { onMenu: () => void }) {
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
         <input value={sign} maxLength={SIGN_MAX} placeholder="간판 문구" onChange={(e) => setSign(e.target.value)} aria-label="간판 문구"
-          style={{ ...brownSelect, flex: 1, minWidth: 0, marginRight: 0, marginBottom: 0 }} />
+          style={{ ...brownInput, flex: 1, minWidth: 0, marginRight: 0, marginBottom: 0 }} />
         <button style={sign.trim() !== s.cosmetics.sign ? brownBtnOn : brownBtnOff} disabled={sign.trim() === s.cosmetics.sign}
           onClick={() => dispatch({ type: 'setCosmetic', sign })}>간판 달기</button>
       </div>

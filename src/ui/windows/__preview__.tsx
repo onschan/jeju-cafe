@@ -1,5 +1,6 @@
 /** DEV 전용 창 미리보기. `pnpm dev --port 5175` 뒤 http://localhost:5175/src/ui/windows/__preview__.html
  *  store를 안 쓰고(자동 저장을 덮어쓰지 않게) 로컬 상태 + apply()로 돈다. main.tsx는 건드리지 않는다 — 통합 때 트랙 C의 Window 셸에 끼운다. */
+import { wonText } from '../../data/labels.ts';
 import { useEffect, useMemo, useReducer, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { createInitialState, apply, tick, DAY_MS, type GameState, type Action } from '../../sim/index.ts';
@@ -46,7 +47,7 @@ function Preview() {
       <div style={{ display: 'flex', gap: 4, padding: 6, background: '#1e1e1e', flexWrap: 'wrap' }}>
         {WINS.map((x) => <button key={x.key} style={{ ...(x.key === w ? brownBtnOn : brownBtn), margin: 0, padding: '0 8px', fontSize: 13, minHeight: 36 }} onClick={() => setW(x.key)}>{x.title}</button>)}
         <button style={{ ...brownBtn, margin: 0, padding: '0 8px', fontSize: 13, minHeight: 36 }} onClick={day}>⏩ 하루</button>
-        <span style={{ color: '#ddd', fontSize: 12, alignSelf: 'center' }}>{s.clock.year}년 {s.clock.month}월 {s.clock.day}일 · ₩{s.money.toLocaleString()} · 🔬{s.research} · 시트 {assets ? '✓' : '…'}</span>
+        <span style={{ color: '#ddd', fontSize: 12, alignSelf: 'center' }}>{s.clock.year}년 {s.clock.month}월 {s.clock.day}일 · {wonText(s.money)} · 🔬{s.research} · 시트 {assets ? '✓' : '…'}</span>
       </div>
       {/* 트랙 C의 전체 화면 창 셸 흉내: 제목 바 + ✕, 내용 스크롤 */}
       <div style={{ ...frame, flex: 1, margin: 6, display: 'flex', flexDirection: 'column', minHeight: 0 }}>

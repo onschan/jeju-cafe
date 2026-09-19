@@ -80,11 +80,15 @@ export function hasIdToken(text: string): boolean {
   return /(^|[^A-Za-z])[a-z][a-z0-9]*_[a-z0-9_]+(?![A-Za-z])/.test(text) || /^[a-z0-9_]+$/.test(text.trim());
 }
 
-export function wonText(n: number): string {
-  const neg = n < 0 ? '-' : '';
-  const s = Math.round(Math.abs(n)).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-  return `${neg}₩${s}`;
+/** 돈 표기 단일 함수 (UX §5.4, 로케일 무관). 카드·목록 = `₩1,240,000`, short(상단 바·요약) = 1만 이상 만 단위 내림 `₩124만`, 1억 이상 `₩1.2억`. 음수 = `−₩…` */
+export function wonText(n: number, short = false): string {
+  const neg = n < 0 ? '−' : '';
+  const a = Math.round(Math.abs(n));
+  if (short && a >= 100_000_000) return `${neg}₩${(Math.floor(a / 10_000_000) / 10).toFixed(a % 100_000_000 >= 10_000_000 ? 1 : 0)}억`;
+  if (short && a >= 10_000) return `${neg}₩${groupDigits(Math.floor(a / 10_000))}만`;
+  return `${neg}₩${groupDigits(a)}`;
 }
+function groupDigits(a: number): string { return a.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ','); }
 
 // ---------- 메뉴 ----------
 /** "바리스타 필요" / "커피 장인 필요". 조건 없으면 null. */

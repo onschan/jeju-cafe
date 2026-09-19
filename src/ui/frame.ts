@@ -66,7 +66,8 @@ export const brownBtnOn: CSSProperties = { ...brownBtn, background: PALETTE.btnO
 export const brownBtnOff: CSSProperties = { ...brownBtn, opacity: 0.45 };
 export const dangerBtn: CSSProperties = { ...brownBtn, background: '#8a2a2a' };
 
-export const brownSelect: CSSProperties = {
+/** 텍스트 입력 상자 (카페 이름·간판). 셀렉트 박스는 쓰지 않는다 — 버튼 그룹으로. */
+export const brownInput: CSSProperties = {
   minHeight: 44,
   fontSize: 16,
   fontFamily: 'inherit',
@@ -79,4 +80,3 @@ export const brownSelect: CSSProperties = {
   marginBottom: 6,
 };
 
-export const won = (n: number) => `₩${n.toLocaleString()}`;

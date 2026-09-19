@@ -7,11 +7,11 @@ import {
   type QuestState, type QuestCondition, type SpotCategory, type EventState, type UnlockCond,
 } from '../sim/index.ts';
 import { questDef, guestTypeDef, eventDef, spotDef, SPOTS, objectDef, menuDef, itemDef } from '../data/index.ts';
-import { label } from '../data/labels.ts';
+import { label, wonText } from '../data/labels.ts';
 import { Icon } from './Icon';
 import { Confirm, Popup } from './Popup';
-import { Face, Bar } from './StaffPanel';
-import { card, brownBtn, brownBtnOn, brownBtnOff, dangerBtn, PALETTE, won } from './frame';
+import { Face, Bar } from './Bars';
+import { card, brownBtn, brownBtnOn, brownBtnOff, dangerBtn, PALETTE } from './frame';
 import { fmtNum } from '../sim/format.ts';
 import { RegionPanel } from './RegionPanel';
 
@@ -127,7 +127,7 @@ function SpotCard({ id }: { id: string }) {
   const score = tourScore(s, id);
   const invest = () => {
     if (!next) return;
-    Confirm(`${def.name} Lv${next.level}에 ${won(next.cost)}을 투자합니다. 매력도 ${appeal} → ${next.appeal}`, () => dispatch({ type: 'investSpot', id }), { title: '관광지 투자' });
+    Confirm(`${def.name} Lv${next.level}에 ${wonText(next.cost)}을 투자합니다. 매력도 ${appeal} → ${next.appeal}`, () => dispatch({ type: 'investSpot', id }), { title: '관광지 투자' });
   };
   const host = () => {
     Confirm(`${def.name}에서 투어를 열까요? 예상 점수 ${score} (${TOUR_SUCCESS_SCORE} 이상 성공: ₩${fmtNum(score * TOUR_MONEY_PER_SCORE)} · 방문객 +${fmtNum(TOUR_SUCCESS_VISITORS)}, 아니면 ₩${fmtNum(TOUR_FAIL_MONEY)} · 방문객 +${fmtNum(TOUR_FAIL_VISITORS)})`, () => dispatch({ type: 'hostTour', spotId: id }), { title: '투어 개최' });
@@ -157,7 +157,7 @@ function SpotCard({ id }: { id: string }) {
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
         {next && (
           <button style={{ ...(can.ok ? brownBtn : brownBtnOff), marginTop: 6, marginBottom: 0 }} disabled={!can.ok} onClick={invest} aria-label={`${def.name} 투자`}>
-            투자 Lv{next.level} <Icon name="money" /> {won(next.cost)}
+            투자 Lv{next.level} <Icon name="money" /> {wonText(next.cost)}
           </button>
         )}
         {lv > 0 && s.clock.year >= TOUR_YEAR && (
@@ -182,9 +182,9 @@ function TourBusCard() {
         <b style={{ flex: 1 }}>🚌 투어 버스 계약</b>
         <span style={{ fontSize: 12, color: on ? PALETTE.ok : PALETTE.inkSoft }}>{on ? '계약 중' : '계약 없음'}{s.tourBusFreeMonths > 0 ? ` · 무료 ${s.tourBusFreeMonths}달` : ''}</span>
       </div>
-      <div style={{ fontSize: 13, color: PALETTE.inkSoft }}>월 {won(TOUR_BUS_FEE)} · 전 명소 방문객 ×1.3 · 단체 손님 ×1.3 · Lv3 이상 명소의 손님이 일요일 11시 버스로 와요</div>
+      <div style={{ fontSize: 13, color: PALETTE.inkSoft }}>월 {wonText(TOUR_BUS_FEE)} · 전 명소 방문객 ×1.3 · 단체 손님 ×1.3 · Lv3 이상 명소의 손님이 일요일 11시 버스로 와요</div>
       <button style={{ ...(can.ok ? (on ? dangerBtn : brownBtn) : brownBtnOff), marginTop: 6, marginBottom: 0 }} disabled={!can.ok}
-        onClick={() => Confirm(on ? '투어 버스 계약을 끝낼까요?' : `투어 버스를 계약할까요? 월 ${won(TOUR_BUS_FEE)}이 들어요.`, () => dispatch({ type: 'setTourBus', on: !on }), { title: '투어 버스' })}>
+        onClick={() => Confirm(on ? '투어 버스 계약을 끝낼까요?' : `투어 버스를 계약할까요? 월 ${wonText(TOUR_BUS_FEE)}이 들어요.`, () => dispatch({ type: 'setTourBus', on: !on }), { title: '투어 버스' })}>
         {on ? '계약 끝내기' : '계약하기'}
       </button>
     </div>
@@ -256,7 +256,7 @@ export function TourPopup() {
     <Popup title="투어 개최" onBackdrop={close} buttons={<button style={brownBtn} onClick={close} data-testid="tour-close">받기</button>}>
       <div data-testid="tour-result">
         <div style={{ fontSize: 18, fontWeight: 700 }}>{r.success ? `${name} 투어 대성공!` : `${name} 투어는 아쉬웠어요`}</div>
-        <div>점수 {r.score} (성공 기준 {TOUR_SUCCESS_SCORE}) · <Icon name="money" /> {won(r.money)} · 방문객 +{fmtNum(r.visitors)}</div>
+        <div>점수 {r.score} (성공 기준 {TOUR_SUCCESS_SCORE}) · <Icon name="money" /> {wonText(r.money)} · 방문객 +{fmtNum(r.visitors)}</div>
         <div style={{ fontSize: 13, color: PALETTE.inkSoft, marginTop: 4 }}>점수 = 매력 + 30 × (그 명소 손님층 인기 ÷ 100) + 발견한 상성 수. 투어는 달마다 한 번 열 수 있어요.</div>
       </div>
     </Popup>

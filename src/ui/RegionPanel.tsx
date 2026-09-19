@@ -1,11 +1,12 @@
 import { useGame, dispatch } from './store';
+import { wonText } from '../data/labels.ts';
 import { isWeekend, daysToWeekend, popupCost, popupGuestCount, canOpenPopup, regionState, regionProgress, metCount, regularCount } from '../sim/index.ts';
 import { REGIONS, NAMED_GUESTS } from '../data/index.ts';
 import { Icon } from './Icon';
 import { Confirm } from './Popup';
-import { Bar } from './StaffPanel';
+import { Bar } from './Bars';
 import { showPopupScreen } from './PopupScreen';
-import { card, brownBtn, brownBtnOn, brownBtnOff, PALETTE, won } from './frame';
+import { card, brownBtn, brownBtnOn, brownBtnOff, PALETTE } from './frame';
 
 /** 지역 지도 (투자 탭): 7지역의 활기·식욕 게이지, 만난 손님·단골★, 주말 팝업 열기 */
 export function RegionPanel() {
@@ -39,8 +40,8 @@ export function RegionPanel() {
             </div>
             {r.note && <div style={{ fontSize: 12, color: PALETTE.inkSoft }}>{r.note} · 취향이 까다롭고 지갑이 커요</div>}
             <button style={{ ...(can.ok ? brownBtn : brownBtnOff), marginTop: 4, marginBottom: 0 }} disabled={!can.ok} aria-label={`${r.name} 팝업 열기`}
-              onClick={() => Confirm(`${r.name}에 ${won(cost)}으로 ${weekend ? '이번 주말' : '주말'} 팝업을 열까요? 손님 ${popupGuestCount(st.appetite)}명이 와요.`, () => dispatch({ type: 'openPopup', regionId: r.id }), { title: '팝업 스토어' })}>
-              팝업 열기 <Icon name="money" /> {won(cost)}{!can.ok && !isOpen ? ` · ${can.reason}` : ''}
+              onClick={() => Confirm(`${r.name}에 ${wonText(cost)}으로 ${weekend ? '이번 주말' : '주말'} 팝업을 열까요? 손님 ${popupGuestCount(st.appetite)}명이 와요.`, () => dispatch({ type: 'openPopup', regionId: r.id }), { title: '팝업 스토어' })}>
+              팝업 열기 <Icon name="money" /> {wonText(cost)}{!can.ok && !isOpen ? ` · ${can.reason}` : ''}
             </button>
           </div>
         );

@@ -1,4 +1,5 @@
 import { useState, useMemo, type ReactNode } from 'react';
+import { wonText } from '../data/labels.ts';
 import { ButtonGroup } from './ButtonGroup';
 import { useGame, dispatch } from './store';
 import {
@@ -11,8 +12,8 @@ import {
 import { INGREDIENTS, TOPPINGS, HIDDEN_RECIPES, INGREDIENT_COMBOS, ingredientDef, toppingDef, ingredientComboDef, ingredientStats, addStats, MENU_STAT_KEYS, MENU_STAT_LABEL, INGREDIENT_CATEGORY_NAME } from '../data/index.ts';
 import { Icon } from './Icon';
 import { Confirm, Popup } from './Popup';
-import { Bar } from './StaffPanel';
-import { card, brownBtn, brownBtnOn, brownBtnOff, dangerBtn, PALETTE, won } from './frame';
+import { Bar } from './Bars';
+import { card, brownBtn, brownBtnOn, brownBtnOff, dangerBtn, PALETTE } from './frame';
 
 const BASES: MenuBase[] = ['drink', 'dessert', 'meal', 'signature'];
 const STAT_MAX = 40;
@@ -76,7 +77,7 @@ export function CraftPanel() {
   const removeAt = (i: number) => setPicked(ingredients.filter((_, j) => j !== i));
   const start = () => {
     const name = hidden ? '???' : autoMenuName(base, ingredients);
-    Confirm(`${josa(name, '을/를')} ${DEVELOP_DAYS}일 동안 개발할까요? 연구 ${DEVELOP_RESEARCH} · 재료비 ${won(cost)} · 성공 ${Math.round(rate)}%`, () => {
+    Confirm(`${josa(name, '을/를')} ${DEVELOP_DAYS}일 동안 개발할까요? 연구 ${DEVELOP_RESEARCH} · 재료비 ${wonText(cost)} · 성공 ${Math.round(rate)}%`, () => {
       if (dispatch({ type: 'develop', base, ingredients, params: norm, staffId }).ok) setPicked([]);
     }, { title: '메뉴 개발' });
   };
@@ -110,7 +111,7 @@ export function CraftPanel() {
       <div style={{ maxHeight: 160, overflowY: 'auto', ...card, padding: 4 }}>
         {available.map((i) => {
           const disabled = ingredients.length >= slots;
-          const stock = i.kind === 'farm' ? ` 창고 ${s.storage[i.id] ?? 0}` : ` ${won(i.cost)}`;
+          const stock = i.kind === 'farm' ? ` 창고 ${s.storage[i.id] ?? 0}` : ` ${wonText(i.cost)}`;
           return (
             <button key={i.id} aria-label={`재료 ${i.name}`} disabled={disabled} title={statText(i.stats)}
               style={{ ...(disabled ? brownBtnOff : brownBtn), fontSize: 13, padding: '0 8px', minHeight: 36, marginRight: 4, marginBottom: 4 }} onClick={() => addIngredient(i.id)}>
@@ -124,7 +125,7 @@ export function CraftPanel() {
       {ingredients.length > 0 && (
         <div style={{ ...card, padding: 6 }}>
           <div style={{ fontSize: 13, marginBottom: 4 }}>
-            <b>{hidden ? '??? (뭔가 특별한 조합!)' : autoMenuName(base, ingredients)}</b> · 재료비 {won(cost)} · 예상 {qualityOf(preview)}
+            <b>{hidden ? '??? (뭔가 특별한 조합!)' : autoMenuName(base, ingredients)}</b> · 재료비 {wonText(cost)} · 예상 {qualityOf(preview)}
           </div>
           <StatBars stats={preview} compact />
           <div style={{ fontSize: 13, marginTop: 4 }}>
@@ -177,7 +178,7 @@ export function DevelopResultPopup() {
         <StatBars stats={r.stats} />
         {r.combos.length > 0 && <div style={{ fontSize: 13, marginTop: 6 }}>콤보: {r.combos.map((c) => ingredientComboDef(c).name).join(' · ')}</div>}
         {r.outcome === 'fail' && <div style={{ fontSize: 13, marginTop: 6, color: PALETTE.bad }}>재료는 못 건졌어요. 파라미터를 기본에 가깝게 하면 성공률이 올라요.</div>}
-        {r.menuId && <div style={{ fontSize: 13, marginTop: 6 }}>메뉴판에 올리면 팔 수 있어요 (판매가 {won(priceOf(s, r.menuId))})</div>}
+        {r.menuId && <div style={{ fontSize: 13, marginTop: 6 }}>메뉴판에 올리면 팔 수 있어요 (판매가 {wonText(priceOf(s, r.menuId))})</div>}
       </div>
     </Popup>
   );
@@ -206,7 +207,7 @@ export function MenuDetail({ menuId }: { menuId: string }) {
     <div data-testid="menu-detail" style={{ ...card, padding: 6 }}>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, flexWrap: 'wrap' }}>
         <b style={{ fontSize: 16 }}>{def.name}</b>
-        <span style={{ fontSize: 13, color: PALETTE.inkSoft }}>Lv{mod.level} · {won(priceOf(s, menuId))}{def.quality ? ` · ${def.quality}` : ''}{isCustomMenu(s, menuId) ? ' · 개발 메뉴' : ''}</span>
+        <span style={{ fontSize: 13, color: PALETTE.inkSoft }}>Lv{mod.level} · {wonText(priceOf(s, menuId))}{def.quality ? ` · ${def.quality}` : ''}{isCustomMenu(s, menuId) ? ' · 개발 메뉴' : ''}</span>
         {req && <span style={{ fontSize: 13, color: PALETTE.bad }}>{req}</span>}
       </div>
       <div style={{ fontSize: 13, color: PALETTE.inkSoft, marginBottom: 4 }}>
@@ -232,7 +233,7 @@ export function MenuDetail({ menuId }: { menuId: string }) {
             <button key={t.id} aria-label={`토핑 추가 ${t.name}`} disabled={!ok} title={`${statText(t.stats)} · ${t.skillText}`}
               style={{ ...(ok ? brownBtn : brownBtnOff), minHeight: 36, fontSize: 13, padding: '0 8px', marginRight: 4, marginBottom: 4 }}
               onClick={() => dispatch({ type: 'addTopping', menuId, toppingId: t.id })}>
-              + {t.name} <span style={{ fontSize: 11, opacity: 0.85 }}>{t.cost > 0 ? won(t.cost) : '밭'} · {t.skillText}</span>
+              + {t.name} <span style={{ fontSize: 11, opacity: 0.85 }}>{t.cost > 0 ? wonText(t.cost) : '밭'} · {t.skillText}</span>
             </button>
           );
         })}
@@ -240,8 +241,8 @@ export function MenuDetail({ menuId }: { menuId: string }) {
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4, flexWrap: 'wrap' }}>
         <button aria-label="메뉴 레벨업" style={canLv.ok ? brownBtnOn : brownBtnOff} disabled={!canLv.ok}
-          onClick={() => Confirm(`${josa(def.name, '을/를')} Lv${mod.level + 1}로 올릴까요? 판매가 +10%, 더 잘 팔려요. 비용 ${won(lvCost.money)}${Object.keys(lvCost.ingredients).length > 0 ? ' + ' + Object.entries(lvCost.ingredients).map(([id, n]) => `${ingredientDef(id).name} ${n}`).join('·') : ''}`, () => dispatch({ type: 'levelUpMenu', menuId }), { title: '메뉴 레벨업' })}>
-          <Icon name="unlock" /> 레벨업 {mod.level >= MAX_MENU_LEVEL ? '(최고)' : won(lvCost.money)}
+          onClick={() => Confirm(`${josa(def.name, '을/를')} Lv${mod.level + 1}로 올릴까요? 판매가 +10%, 더 잘 팔려요. 비용 ${wonText(lvCost.money)}${Object.keys(lvCost.ingredients).length > 0 ? ' + ' + Object.entries(lvCost.ingredients).map(([id, n]) => `${ingredientDef(id).name} ${n}`).join('·') : ''}`, () => dispatch({ type: 'levelUpMenu', menuId }), { title: '메뉴 레벨업' })}>
+          <Icon name="unlock" /> 레벨업 {mod.level >= MAX_MENU_LEVEL ? '(최고)' : wonText(lvCost.money)}
         </button>
         {!canLv.ok && mod.level < MAX_MENU_LEVEL && <span style={{ fontSize: 13, color: PALETTE.inkSoft }}>{canLv.reason}</span>}
       </div>

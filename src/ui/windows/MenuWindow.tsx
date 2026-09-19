@@ -4,9 +4,9 @@ import { useState } from 'react';
 import type { GameState, MenuDef, MenuCategory } from '../../sim/index.ts';
 import { menuOf, priceOf, hasMenuStaff, isMenuAvailable, menuStatsOf } from '../../sim/index.ts';
 import { MENUS, statSum } from '../../data/index.ts';
-import { label, requireText, ingredientsText, unlockText } from '../../data/labels.ts';
+import { label, requireText, ingredientsText, unlockText, wonText } from '../../data/labels.ts';
 import { PALETTE } from '../frame';
-import { useWindowState, body, Chips, Stars, rowCard, rowCardOn, rowCardLocked, rowBtn, rowBtnOn, rowBtnOff, soft, Empty, win, type WindowProps } from './shared.tsx';
+import { useWindowState, body, Chips, Stars, rowCard, rowCardOn, rowCardLocked, rowBtn, rowBtnOn, rowBtnOff, soft, Empty, type WindowProps } from './shared.tsx';
 
 const CAT_ICON: Record<MenuCategory, string> = { drink: '☕', dessert: '🍰', meal: '🍽️', signature: '✨' };
 type Filter = 'all' | MenuCategory;
@@ -74,7 +74,7 @@ export function MenuWindow(props: MenuWindowProps) {
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
                   <b style={{ fontSize: 16 }}>{def.name}</b>
-                  <span style={{ fontSize: 14, whiteSpace: 'nowrap' }}>{win(price)}</span>
+                  <span style={{ fontSize: 14, whiteSpace: 'nowrap' }}>{wonText(price)}</span>
                 </div>
                 <div style={{ ...soft, marginTop: 2 }}>
                   {locked ? unlock : (

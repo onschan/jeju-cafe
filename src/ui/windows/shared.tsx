@@ -21,8 +21,6 @@ export function useWindowState(props: { state?: GameState; dispatch?: Dispatch }
   return { s: props.state ?? getState(), dispatch: props.dispatch ?? storeDispatch };
 }
 
-export const win = (n: number) => `₩${Math.round(n).toLocaleString('ko-KR')}`;
-
 /** 창 본문 바탕: 종이색, 세로 스크롤은 셸이 맡는다 */
 export const body: CSSProperties = { color: PALETTE.ink, fontSize: 14, lineHeight: 1.35 };
 

@@ -4,10 +4,10 @@ import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import type { GameState, ObjectDef } from '../../sim/index.ts';
 import { placeCost, constructions, canStartBuild, goalForFacility, isUpgradable, tierOf, featureOpen } from '../../sim/index.ts';
 import { OBJECTS } from '../../data/index.ts';
-import { unlockText } from '../../data/labels.ts';
+import { unlockText, wonText } from '../../data/labels.ts';
 import { loadSheet, drawFrame, type Sheet } from '../sheetCanvas';
 import { PALETTE, brownBtn, brownBtnOff } from '../frame';
-import { useWindowState, body, TabBar, soft, Empty, win, type WindowProps } from './shared.tsx';
+import { useWindowState, body, TabBar, soft, Empty, type WindowProps } from './shared.tsx';
 import { SiteToggle } from '../SiteToggle.tsx';
 
 export type BuildTab = 'rest' | 'convenience' | 'food' | 'fun' | 'farm' | 'scenery' | 'path' | 'wall';
@@ -77,7 +77,7 @@ export function BuildWindow(props: BuildWindowProps) {
     <div style={body} data-testid="build-window">
       <TabBar tabs={BUILD_TABS.map((t) => ({ ...t, badge: undefined }))} active={tab} onPick={(k) => { setTab(k); setPicked(null); }} testId="build-tab" />
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0 8px', marginBottom: 6 }}>
-        <span style={soft}>열린 것 {counts[tab] ?? 0} · 자금 {win(s.money)}</span>
+        <span style={soft}>열린 것 {counts[tab] ?? 0} · 자금 {wonText(s.money)}</span>
         <span style={{ ...soft, color: busy >= s.builders ? PALETTE.bad : PALETTE.inkSoft }} data-testid="builders">건축가 {busy}/{s.builders} 작업 중</span>
         {featureOpen(s, 'siteView') && <SiteToggle />}{/* 트랙 B: 튜토리얼 2단계 보상으로 열린다 */}
       </div>
@@ -92,7 +92,7 @@ export function BuildWindow(props: BuildWindowProps) {
               style={{ ...cardBase, opacity: locked ? 0.5 : 1, boxShadow: on ? `0 0 0 3px ${PALETTE.btnOn}` : undefined }}>
               <SpriteBox sheet={sheet} id={def.id} kind={def.kind} />
               <div style={{ fontSize: 15, fontWeight: 700, lineHeight: 1.2 }}>{locked ? '🔒 ' : ''}{def.name}{def.indoor ? ' 🏠' : ''}</div>
-              <div style={{ fontSize: 14 }}>{cost > 0 ? win(cost) : '무료'}{def.fee !== undefined && def.fee > 0 ? ` · 요금 ${win(def.fee)}` : ''}</div>
+              <div style={{ fontSize: 14 }}>{cost > 0 ? wonText(cost) : '무료'}{def.fee !== undefined && def.fee > 0 ? ` · 요금 ${wonText(def.fee)}` : ''}</div>
               <div style={{ ...soft, fontSize: 13 }}>
                 {def.kind === 'seat' ? `🪑 ${def.seats ?? 2}` : `👍 ${def.popularity ?? 10}`} · 🌿 {def.scenery}
               </div>
@@ -120,7 +120,7 @@ function PickedDetail({ s: def, locked, state, onPick }: { s: ObjectDef; locked:
   const facts = [
     def.kind === 'seat' ? `좌석 ${def.seats ?? 2}` : `인기 ${def.popularity ?? 10}`,
     `경관 ${def.scenery}`,
-    def.upkeep > 0 ? `유지비 ${win(def.upkeep)}/월` : null,
+    def.upkeep > 0 ? `유지비 ${wonText(def.upkeep)}/월` : null,
     days > 0 ? `공사 ${days}일` : '바로 완성',
     `${def.w}×${def.h}칸`,
     def.indoor ? '실내(본관 안)' : null,
@@ -128,7 +128,7 @@ function PickedDetail({ s: def, locked, state, onPick }: { s: ObjectDef; locked:
   ].filter(Boolean).join(' · ');
   return (
     <div data-testid="build-detail" style={{ position: 'sticky', bottom: 0, marginTop: 8, background: PALETTE.paper, borderTop: `3px solid ${PALETTE.wood}`, padding: '8px 0 4px' }}>
-      <div style={{ fontSize: 16, fontWeight: 700 }}>{def.name} <span style={{ fontWeight: 400, fontSize: 14 }}>{cost > 0 ? win(cost) : '무료'}</span></div>
+      <div style={{ fontSize: 16, fontWeight: 700 }}>{def.name} <span style={{ fontWeight: 400, fontSize: 14 }}>{cost > 0 ? wonText(cost) : '무료'}</span></div>
       <div style={{ fontSize: 14, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{def.desc ?? def.name}</div>
       <div style={{ ...soft, marginBottom: 6 }}>{facts}</div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
