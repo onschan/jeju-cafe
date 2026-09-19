@@ -3,7 +3,7 @@ import { wonText, label } from '../data/labels.ts';
 import { GameView, type GhostSpec, type RangeHint } from '../render/GameView';
 import { startLoop, dispatch, getState, useGame, setViewReset, autosaveNow, hasAnySave, loadSlot, setMonthCardHook, setSceneHook, showMessage, pauseGame, isSpeedLocked, setSpeedLocked } from './store';
 import { unlockAudio, bgm, isMuted, setMuted, getBgmVolume, getSfxVolume, setBgmVolume, setSfxVolume, sfx } from './audio';
-import { seasonOf, canPlace, objectAt, footprint, sizeOf, mainBuilding, parcelAt, clearCost, placeCost, PROTECTED_TYPES, ROTATABLE_TYPES, goalForMenu, featureOpen, canUndo, demolishRefund, routeAtCell, type GameState } from '../sim/index.ts';
+import { seasonOf, canPlace, objectAt, footprint, sizeOf, mainBuilding, parcelAt, clearCost, placeCost, PROTECTED_TYPES, ROTATABLE_TYPES, goalForMenu, featureOpen, canUndo, demolishRefund, routeAtCell, tutorialDone, type GameState } from '../sim/index.ts';
 import { RoutesSection } from './RouteCard'; // 트랙 H
 import { objectDef } from '../data/index.ts';
 // render/·ui/는 Vite 전용이라 확장자 없는 import 허용. sim/·data/만 .ts 확장자 규칙.
@@ -462,6 +462,8 @@ function Game({ onExit }: { onExit: () => void }) {
       const confirm = () => {
         const r = dispatch({ type: 'place', objectType: mode.objectType, x: ghost.x, y: ghost.y, rot: ghost.rot });
         if (!r.ok) return;
+        // 튜토리얼 중엔 연속 배치를 끈다 — 배치 바가 하단 바를 덮어 다음 단계 버튼을 못 누른다 (y 통합 미해결 a)
+        if (!tutorialDone(getState())) { setMode({ kind: 'idle' }); return; }
         // 연속 배치(§5.3): 고스트를 옆 칸으로 옮겨 남긴다. 돈이 모자라면 자동 종료
         const nx = nextGhostAfterPlace(getState(), mode.objectType, ghost);
         if (nx.done) { setMode({ kind: 'idle' }); showMessage(nx.reason); return; }
