@@ -33,10 +33,13 @@ function getOrCreatePlayerId(): string {
   }
 }
 
-// 개발 중 sim 파일을 고쳐 이 모듈이 다시 실행돼도(HMR) 플레이 중인 상태를 잇는다 — 안 그러면 시작 마당(튜토리얼 건너뜀)으로 조용히 바뀐다
-const hotData = (import.meta.hot?.data ?? null) as { state?: GameState } | null;
-let state: GameState = hotData?.state ?? createInitialState(Date.now() % 1_000_000, getOrCreatePlayerId(), Date.now());
-if (import.meta.hot) import.meta.hot.dispose((d) => { d.state = state; });
+// 개발 중 sim 파일을 고쳐 이 모듈이 다시 실행돼도(HMR) 플레이 중인 상태를 잇는다 — 안 그러면 시작 마당(튜토리얼 건너뜀)으로 조용히 바뀐다.
+// (import.meta.hot.data는 accept 경계 모듈에만 남아 여기선 못 쓴다 → 전역에 둔다. 프로덕션 빌드에선 빠진다)
+const hotGlobal = import.meta.env.DEV ? (globalThis as { __jejuHotState?: GameState }) : null;
+let state: GameState = hotGlobal?.__jejuHotState ?? createInitialState(Date.now() % 1_000_000, getOrCreatePlayerId(), Date.now());
+/** state를 갈아 끼울 때는 이걸로 (HMR 전역도 같이) */
+function setState(s: GameState): void { state = s; if (hotGlobal) hotGlobal.__jejuHotState = s; }
+if (hotGlobal) hotGlobal.__jejuHotState = state;
 let version = 0;
 const listeners = new Set<() => void>();
 let messages: UiMessage[] = [];
@@ -185,7 +188,7 @@ export async function hasAnySave(): Promise<boolean> {
 export async function loadSlot(n: number): Promise<boolean> {
   const saved = await saveStore.load(n).catch(() => null);
   if (!saved) return false;
-  state = saved;
+  setState(saved);
   viewReset?.();
   clearDialogues(); // 이전 게임의 대화(알림)가 남아 있으면 새 상태의 알림과 어긋난다
   if (n !== AUTO_SLOT) save(); // 자동 저장본도 이 게임으로 맞춘다
@@ -213,7 +216,7 @@ export function deleteSlot(n: number): void {
 export function autosaveNow(): void { save(); }
 
 export function newGame() {
-  state = createInitialState(Date.now() % 1_000_000, getOrCreatePlayerId(), Date.now(), 'tutorial'); // §7.1 빈 마당 + 손으로 하는 튜토리얼
+  setState(createInitialState(Date.now() % 1_000_000, getOrCreatePlayerId(), Date.now(), 'tutorial')); // §7.1 빈 마당 + 손으로 하는 튜토리얼
   viewReset?.();
   resetTutorial();
   clearDialogues();
