@@ -9,7 +9,9 @@ import failureJson from './failure.json' with { type: 'json' };
 export type Speaker = 'halmang' | 'samchun' | 'hero' | 'haenyeo' | 'jangnim';
 export const SPEAKER_NAME: Record<Speaker, string> = { halmang: '할망', samchun: '삼춘', hero: '나', haenyeo: '해녀 삼춘', jangnim: '이장님' };
 
-export interface TutorialStep { id: number; key: string; title: string; speaker: Speaker; lines: string[]; done: string | null; button: string }
+export interface TutorialStep { id: number; key: string; chapter: number; title: string; speaker: Speaker; lines: string[]; done: string | null; button: string }
+/** 튜토리얼 장(章) 제목·한 줄 소개 (z-tutorial 5장) */
+export interface TutorialChapterText { id: number; title: string; intro: string }
 export interface GoalLine { id: string; speaker: Speaker; line: string }
 export interface EventDialogue { id: string; title: string; speaker: Speaker; season: 'spring' | 'summer' | 'autumn' | 'winter' | 'any'; lines: string[]; endLine: string }
 export interface SamchunStep { step: number; ask: string; lines: string[]; doneLine: string }
@@ -17,6 +19,7 @@ export interface FailureDialogue { stage: 'warn' | 'loan' | 'crisis' | 'demote';
 export interface SamchunDef { id: string; name: string; job: string; portrait: Speaker; intro: string; chain: SamchunStep[]; rewardText: string }
 
 export const TUTORIAL_STEPS: TutorialStep[] = (tutorialJson as { steps: TutorialStep[] }).steps;
+export const TUTORIAL_CHAPTER_TEXTS: TutorialChapterText[] = (tutorialJson as { chapters: TutorialChapterText[] }).chapters;
 export const GOAL_LINES: GoalLine[] = (goalsLinesJson as { lines: GoalLine[] }).lines;
 export const EVENT_DIALOGUES: EventDialogue[] = (eventsJson as { events: EventDialogue[] }).events;
 export const SAMCHUN: SamchunDef[] = (samchunJson as { samchun: SamchunDef[] }).samchun;
