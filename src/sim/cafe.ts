@@ -10,15 +10,15 @@ export const DEFAULT_CAFE_NAME = '제주 카페';
 export const CAFE_NAME_MAX = 12;
 /** 카페 레벨 1~5: 누적 매출 구간 (원) */
 export const CAFE_LEVEL_INCOME = [0, 10_000_000, 50_000_000, 200_000_000, 500_000_000];
-/** 증축 3종: 주방 증축(요리 슬롯 +1) · 2층(본관 위 실내 좌석 4) · 테라스(야외 좌석 건설비 −20%) */
+/** 증축 2종: 주방 증축(요리 슬롯 +1) · 테라스(야외 좌석 건설비 −20%). 2층은 본관 카드 「2층 올리기」(rooms.ts buildSecondFloor, Lv3·₩1,500만·정원 +6)로 옮겨 갔다. */
 export type ExpansionId = 'kitchen' | 'floor2' | 'terrace';
 export interface ExpansionDef { id: ExpansionId; name: string; cost: number; desc: string }
 export const EXPANSIONS: ExpansionDef[] = [
   { id: 'kitchen', name: '주방 증축', cost: 5_000_000, desc: '요리 직원 자리 +1' },
-  { id: 'floor2', name: '2층 올리기', cost: 8_000_000, desc: '본관 2층에 실내 자리 4석' },
   { id: 'terrace', name: '테라스', cost: 3_000_000, desc: '야외 좌석 건설비 −20%' },
 ];
-export const FLOOR2_SEATS = 4;
+/** 2층 실내 정원 (rooms.ts FLOOR2_SEATS와 같은 값 — 순환 import 방지로 여기 둔다) */
+export const FLOOR2_SEATS = 6;
 export const TERRACE_DISCOUNT = 0.2;
 /** 외벽 색 3종 (스프라이트 tint) */
 export const WALL_COLORS = [0xffffff, 0xf3d9a4, 0xa9d3e8];
@@ -75,10 +75,10 @@ export function placeCost(state: GameState, type: string): number {
   return def.cost;
 }
 
-/** 2층을 올리면 본관이 실내 좌석 4석짜리 자리가 된다 (손님이 본관 위에 앉는다 = 2층) */
+/** 2층을 올리면 본관이 실내 좌석 6석짜리 자리가 된다 (손님이 본관 위에 앉는다 = 2층). 공사 중엔 0. */
 export function seatsOf(state: GameState, o: PlacedObject): number {
   if (o.build) return 0; // 건설 중엔 앉을 수 없다
-  if (o.type === 'warehouse') return hasExpansion(state, 'floor2') ? FLOOR2_SEATS : 0;
+  if (o.type === 'warehouse') return state.main?.floor2 && !state.main.work ? FLOOR2_SEATS : 0;
   const base = objectDef(o.type).seats ?? (objectDef(o.type).kind === 'seat' ? 1 : 0);
   return base > 0 ? base + seatBonusOf(o) : 0; // 증축 Lv2 +1석·Lv3 +2석 (upgrade.ts)
 }

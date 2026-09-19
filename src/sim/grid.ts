@@ -43,22 +43,36 @@ export function objectAt(state: GameState, x: number, y: number): PlacedObject |
   return id ? state.objects[id] ?? null : null;
 }
 
-export function footprint(type: string, x: number, y: number): { x: number; y: number }[] {
+/** 발자국 크기: PlacedObject의 w/h 덮어쓰기(본관 증축 Lv2~4)가 있으면 그것, 없으면 정의 크기 */
+export type Sized = Pick<PlacedObject, 'type'> & Partial<Pick<PlacedObject, 'w' | 'h'>>;
+export function sizeOf(o: Sized): { w: number; h: number } {
+  const def = objectDef(o.type);
+  return { w: o.w ?? def.w, h: o.h ?? def.h };
+}
+
+/** 발자국 칸 (w/h를 주면 그 크기 — 본관 증축 미리보기·가변 크기). */
+export function footprint(type: string, x: number, y: number, w?: number, h?: number): { x: number; y: number }[] {
   const def = objectDef(type);
+  const fw = w ?? def.w, fh = h ?? def.h;
   const cells = [];
-  for (let dy = 0; dy < def.h; dy++) for (let dx = 0; dx < def.w; dx++) cells.push({ x: x + dx, y: y + dy });
+  for (let dy = 0; dy < fh; dy++) for (let dx = 0; dx < fw; dx++) cells.push({ x: x + dx, y: y + dy });
   return cells;
+}
+/** 놓인 오브젝트의 발자국 (w/h 덮어쓰기 반영) */
+export function footprintOf(o: Sized & Pick<PlacedObject, 'x' | 'y'>): { x: number; y: number }[] {
+  const { w, h } = sizeOf(o);
+  return footprint(o.type, o.x, o.y, w, h);
 }
 
 // ---------- 실내 바닥(room) ----------
 
 /** 방(room 오브젝트)의 문 칸 = 정면 왼쪽 (x, y+h−1). 밖에서 안으로는 이 칸으로만 드나든다. */
-export function doorOf(room: PlacedObject): Pt {
-  return { x: room.x, y: room.y + objectDef(room.type).h - 1 };
+export function doorOf(room: Sized & Pick<PlacedObject, 'x' | 'y'>): Pt {
+  return { x: room.x, y: room.y + sizeOf(room).h - 1 };
 }
 
 /** 문 앞 칸 = 문 바로 아래(바깥). 손님이 들어오려면 이 칸이 걷기 칸(올렛길)이어야 한다. */
-export function doorFrontOf(room: PlacedObject): Pt {
+export function doorFrontOf(room: Sized & Pick<PlacedObject, 'x' | 'y'>): Pt {
   const d = doorOf(room);
   return { x: d.x, y: d.y + 1 };
 }
@@ -96,7 +110,7 @@ export function isRoomFloor(state: GameState, x: number, y: number): boolean {
 /** 오브젝트가 발자국 칸을 차지한다. 방이면 roomId도 새긴다. 실내 오브젝트는 objectId만 덮어쓴다(roomId 유지). */
 export function occupy(state: GameState, obj: PlacedObject): void {
   const def = objectDef(obj.type);
-  for (const p of footprint(obj.type, obj.x, obj.y)) {
+  for (const p of footprintOf(obj)) {
     const c = cellAt(state, p.x, p.y);
     c.objectId = obj.id;
     if (def.room) c.roomId = obj.id;
@@ -106,7 +120,7 @@ export function occupy(state: GameState, obj: PlacedObject): void {
 /** 발자국 칸을 비운다. 실내 오브젝트였으면 그 칸은 다시 방 바닥(objectId = roomId)이 된다. */
 export function vacate(state: GameState, obj: PlacedObject): void {
   const def = objectDef(obj.type);
-  for (const p of footprint(obj.type, obj.x, obj.y)) {
+  for (const p of footprintOf(obj)) {
     const c = cellAt(state, p.x, p.y);
     if (def.room) c.roomId = null;
     c.objectId = def.room ? null : c.roomId;
@@ -126,9 +140,13 @@ export function parcelHasLandmark(state: GameState, parcelId: string, ignoreId?:
 /** ignoreId: 옮기는 중인 오브젝트는 자기 발자국을 비어 있는 것으로 본다 */
 export function canPlace(state: GameState, type: string, x: number, y: number, ignoreId?: string): ApplyResult {
   const def = objectDef(type);
+  // 옮기는 중인 오브젝트는 자기 크기(본관 증축 w/h)를 그대로 가져간다
+  const moving = ignoreId ? state.objects[ignoreId] : undefined;
+  const size = moving && moving.type === type ? sizeOf(moving) : { w: def.w, h: def.h };
+  if (type === 'warehouse') return canPlaceMain(state, x, y, size.w, size.h, ignoreId);
   const parcelIds = new Set<string>();
   const roomIds = new Set<string | null>();
-  for (const p of footprint(type, x, y)) {
+  for (const p of footprint(type, x, y, size.w, size.h)) {
     if (!inBounds(state, p.x, p.y)) return { ok: false, reason: '격자 밖이에요' };
     const parcel = parcelAt(state, p.x, p.y);
     if (!parcel?.owned) return { ok: false, reason: '아직 내 땅이 아니에요' };
@@ -137,7 +155,7 @@ export function canPlace(state: GameState, type: string, x: number, y: number, i
     if (def.indoor) {
       // 실내 오브젝트: 방 바닥(비어 있는) 위에만, 문 칸은 비워 둔다
       const room = cell.roomId ? state.objects[cell.roomId] : null;
-      if (!room) return { ok: false, reason: '실내에만 놓을 수 있어요' };
+      if (!room) return { ok: false, reason: '실내 가구는 건물 안에만 놓아요' };
       if (cell.objectId !== cell.roomId && cell.objectId !== ignoreId) return { ok: false, reason: '이미 뭔가 있어요' };
       const door = doorOf(room);
       if (door.x === p.x && door.y === p.y) return { ok: false, reason: '문 앞은 비워 둬요' };
@@ -152,7 +170,7 @@ export function canPlace(state: GameState, type: string, x: number, y: number, i
   if (def.indoor && roomIds.size > 1) return { ok: false, reason: '한 방 안에 놓아요' };
   if (def.room) {
     // 새 방의 문 앞 칸이 막혀 있으면(다른 오브젝트·격자 밖) 손님이 못 들어온다
-    const f = doorFrontOf({ id: '', type, x, y, placedMonth: 0 });
+    const f = doorFrontOf({ type, x, y, w: size.w, h: size.h });
     if (!inBounds(state, f.x, f.y)) return { ok: false, reason: '문 앞이 격자 밖이에요' };
     const front = objectAt(state, f.x, f.y);
     if (front && front.id !== ignoreId && blocksDoorFront(objectDef(front.type))) return { ok: false, reason: '문 앞이 막혀 있어요' };
@@ -162,6 +180,25 @@ export function canPlace(state: GameState, type: string, x: number, y: number, i
     if (parcelIds.size > 1) return { ok: false, reason: '랜드마크는 한 필지 안에 놓아요' };
     for (const id of parcelIds) if (parcelHasLandmark(state, id, ignoreId)) return { ok: false, reason: '이 필지엔 이미 랜드마크가 있어요' };
   }
+  return { ok: true };
+}
+
+/** 본관 발자국 검사 (증축·옮기기 공통, §4.1·§8.1): 전부 내 필지 흙이고 바위·시설·다른 방 없음. 올렛길은 있어도 된다(자동 철거·환불).
+ *  ignoreId(본관 자신)의 칸은 비어 있는 것으로 본다. 문 앞 칸은 막혀 있어도 되지만 격자 밖이면 안 된다. */
+export function canPlaceMain(state: GameState, x: number, y: number, w: number, h: number, ignoreId?: string): ApplyResult {
+  for (const p of footprint('warehouse', x, y, w, h)) {
+    if (!inBounds(state, p.x, p.y)) return { ok: false, reason: '격자 밖이에요' };
+    if (!parcelAt(state, p.x, p.y)?.owned) return { ok: false, reason: '아직 내 땅이 아니에요' };
+    const cell = cellAt(state, p.x, p.y);
+    if (ignoreId && (cell.objectId === ignoreId || cell.roomId === ignoreId)) continue; // 본관 자신·안의 가구는 같이 간다
+    if (cell.objectId) {
+      const o = state.objects[cell.objectId];
+      if (!o || objectDef(o.type).kind !== 'path') return { ok: false, reason: cell.roomId ? '다른 건물이 있어요' : '시설을 먼저 치워요' };
+    }
+    if (cell.terrain !== 'soil') return { ok: false, reason: cell.terrain === 'rock' || cell.terrain === 'rock_big' ? '바위를 먼저 치워요' : '여기엔 못 놓아요' };
+  }
+  const f = doorFrontOf({ type: 'warehouse', x, y, w, h });
+  if (!inBounds(state, f.x, f.y)) return { ok: false, reason: '문 앞이 격자 밖이에요' };
   return { ok: true };
 }
 

@@ -4,6 +4,7 @@ import { randInt, pickWeighted } from './rng.ts';
 import { monthIndex } from './clock.ts';
 import { isWalkable, findPath, walkableNeighborsOf, moveAlong, walkSpeedMult } from './path.ts';
 import { WAREHOUSE_FRONT } from './layout.ts';
+import { doorFrontOf } from './grid.ts';
 import { salaryOf as economySalaryOf } from './economy.ts';
 
 /** 채용 방법 5단계 (recruit_tiers.json, §3.6.6). id → 정의 */
@@ -412,8 +413,16 @@ function nearestWalkable(state: GameState, to: Pt): Pt {
 }
 
 /** 창고 문 앞 (문 바로 아래 칸). 걷기 칸이 아니면 가장 가까운 걷기 칸. */
+const FRONT_CACHE = new WeakMap<GameState, { key: string; pt: Pt }>();
 export function warehouseFront(state: GameState): Pt {
-  return isWalkable(state, WAREHOUSE_FRONT.x, WAREHOUSE_FRONT.y) ? { ...WAREHOUSE_FRONT } : nearestWalkable(state, WAREHOUSE_FRONT);
+  const key = `${state.nextId}:${state.actionLog.length}`; // 배치·액션이 바뀔 때만 다시 찾는다
+  const hit = FRONT_CACHE.get(state);
+  if (hit && hit.key === key) return { ...hit.pt };
+  const wh = Object.values(state.objects).find((o) => o.type === 'warehouse');
+  const front = wh ? doorFrontOf(wh) : WAREHOUSE_FRONT; // y-indoor: 본관을 옮기거나 증축하면 문 앞이 바뀐다
+  const pt = isWalkable(state, front.x, front.y) ? { ...front } : nearestWalkable(state, front);
+  FRONT_CACHE.set(state, { key, pt });
+  return { ...pt };
 }
 
 function adjacentWalkableTo(state: GameState, kind: string): Pt | null {

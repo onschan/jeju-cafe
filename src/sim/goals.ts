@@ -38,6 +38,7 @@ import { checkChallenges } from './challenges.ts';
 import { checkTutorial, TUTORIAL_STEPS } from './tutorial.ts';
 import { hasLoan, loanRewardMult } from './failure.ts';
 import { levelOf } from './upgrade.ts';
+import { indoorSeats, mainLevel, annexCount, isMainClosed } from './rooms.ts'; // y-indoor
 import { grantItem } from './items.ts';
 import { spotEffectAt } from './compat.ts';
 import { totalSpotVisitors } from './spots.ts';
@@ -105,6 +106,7 @@ function seatObjectsOf(state: GameState) {
  *  메뉴 조건은 튜토리얼 중에만 본다 — 완성 시작 상태·기존 테스트(빈 메뉴판에 손님을 넣는다)는 그대로 돈다. */
 export function canOpen(state: GameState): boolean {
   if (state.tutorial.step < TUTORIAL_STEPS && !state.menuSlots.some((m) => m !== null)) return false;
+  if (isMainClosed(state)) return false; // y-indoor: 본관 공사(증축·이동·2층) 중 영업 정지
   const seats = seatObjectsOf(state);
   if (seats.length === 0) return false;
   const reach = reachMap(state, busStopPos(state));
@@ -164,6 +166,9 @@ export const conditionCheckers: CheckerMap = {
   staffLevel: (s, c) => n(s.staff.filter((st) => st.level >= c.lv).length, c.n),
   trainings: (s, c) => n(s.stats.trainings, c.n), // x-staff가 stats.trainings를 올린다
   facilityLv: (s, c) => n(Object.values(s.objects).filter((o) => !o.build && levelOf(o) >= c.lv).length, c.n), // 트랙 A 증축 Lv
+  indoorSeats: (s, c) => n(indoorSeats(s), c.n), // y-indoor 실내 좌석 정원
+  mainLevel: (s, c) => n(mainLevel(s), c.lv),    // y-indoor 본관 증축 Lv
+  annex: (s, c) => n(annexCount(s), c.n),        // y-indoor 완공된 별관
   comboCount: (s, c) => n(activeComboIds(s).size, c.n),
   setCount: (s, c) => n(activeSetIds(s).size, c.n),
   spotEffect: (s, c) => n(activeSpotEffectCount(s), c.n), // 트랙 A 명당(발동 중)
@@ -286,6 +291,9 @@ export function goalConditionText(c: GoalCondition): string {
     case 'staffLevel': return `Lv${c.lv} 직원 ${c.n}명`;
     case 'trainings': case 'training': return `연수 ${c.n}회`;
     case 'facilityLv': case 'upgraded': return `Lv${c.lv} 시설 ${c.n}개`;
+    case 'indoorSeats': return `실내 좌석 ${c.n}석`;
+    case 'mainLevel': return `본관 Lv${c.lv}`;
+    case 'annex': return `별관 ${c.n}동`;
     case 'comboCount': return `콤보 ${c.n}개`;
     case 'setCount': return `세트 효과 ${c.n}개`;
     case 'spotEffect': case 'spotEffects': return `명당 ${c.n}개`;

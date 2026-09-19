@@ -1,6 +1,6 @@
 import { Application, Container, Sprite, Graphics, Texture, Text } from 'pixi.js';
 import type { GameState, PlacedObject, Guest, Staff, Season, RoleId, Pt, RouteId } from '../sim/index.ts';
-import { seasonOf, LOW_ENERGY, parcelPrice, footprint, roomAt, doorFrontOf, WALL_COLORS, dayIndex, menuOf } from '../sim/index.ts';
+import { seasonOf, LOW_ENERGY, parcelPrice, footprint, roomAt, doorFrontOf, WALL_COLORS, dayIndex, menuOf, sizeOf, MAIN_SIZE } from '../sim/index.ts';
 import type { Parcel } from '../sim/index.ts';
 import { objectDef } from '../data/index.ts';
 import { isoTerrainTexture, isoObjectTexture, glowTexture, label, clearTextureCache, loadLabelFont } from './textures';
@@ -27,7 +27,7 @@ export interface GameViewOptions extends Pick<CameraOptions, 'onTap' | 'dragCapt
 }
 
 /** 배치 모드 고스트: 손가락 아래 반투명 오브젝트. ok면 초록, 아니면 빨강. text는 비용 라벨. */
-export interface GhostSpec { type: string; x: number; y: number; rot?: number; ok: boolean; text: string }
+export interface GhostSpec { type: string; x: number; y: number; rot?: number; ok: boolean; text: string; w?: number; h?: number }
 /** 효과 범위 힌트 (UX §5.3): 중심 시설 발자국 + 반경(칸) 타원, 콤보가 성립하는 상대 시설 발자국 위 ◎ */
 export interface RangeHint { x: number; y: number; w: number; h: number; radius: number; marks: { x: number; y: number; w: number; h: number }[] }
 /** 콤보·경관 범위 기본 반경 2칸 (5×5) */
@@ -175,18 +175,18 @@ interface Fx {
   kind: 'coin' | 'sparkle';
 }
 
-/** 오브젝트 상태별 스프라이트 변형 이름. 본관은 증축 수에 따라 lv2·lv3. */
-function objectVariant(o: Pick<PlacedObject, 'type'>, expansions = 0): string | undefined {
-  if (o.type === 'warehouse') return expansions >= 2 ? 'lv3' : expansions >= 1 ? 'lv2' : undefined;
+/** 오브젝트 상태별 스프라이트 변형 이름. 본관은 증축 Lv(state.main.level)에 따라 lv2·lv3·lv4 (y-indoor §8.1 — SPRITE_ALIAS가 아니라 level로 고른다). */
+function objectVariant(o: Pick<PlacedObject, 'type'>, mainLevel = 1): string | undefined {
+  if (o.type === 'warehouse') return mainLevel >= 2 ? `lv${Math.min(4, mainLevel)}` : undefined;
   if (o.type === 'gate') return '0'; // 2B에서 영업 토글 연동
   return undefined;
 }
 
 /** 아이소 스프라이트(회전 _r{n} → 변형 → 기본) → 탑다운 스프라이트(변형 → 기본) 순으로 찾는다. 다 없으면 null. */
-function objectTex(o: Pick<PlacedObject, 'type' | 'rot'>, expansions = 0): { texture: Texture; iso: boolean } | null {
+function objectTex(o: Pick<PlacedObject, 'type' | 'rot'>, mainLevel = 1): { texture: Texture; iso: boolean } | null {
   if (!hasAssets()) return null;
   const name = SPRITE_ALIAS[o.type] ?? o.type;
-  const variant = objectVariant(o, expansions);
+  const variant = objectVariant(o, mainLevel);
   const rotated = o.rot !== undefined ? peekTex(spriteName.isoObject(name, `r${o.rot}`)) : null;
   const iso = rotated ?? peekTex(spriteName.isoObject(name, variant)) ?? (variant ? peekTex(spriteName.isoObject(name)) : null);
   if (iso) return { texture: iso, iso: true };
@@ -245,6 +245,8 @@ export class GameView {
   private entryKey = '';
   private ghost: Container | null = null;
   private ghostKey = '';
+  /** 마지막 render의 본관 Lv (고스트 크기·텍스처용) */
+  private lastMainLevel = 1;
   /** 입지(트랙 F): 고스트 배지·색 갱신용 스펙과 마지막 키 */
   private ghostSpec: GhostSpec | null = null;
   private ghostSiteKey = '';
@@ -368,22 +370,25 @@ export class GameView {
     this.ghostSiteKey = '';
     if (!g) return;
     const def = objectDef(g.type);
+    // 본관 옮기기 고스트는 현재 Lv 크기 (y-indoor §4.1)
+    const mainLv = this.lastMainLevel;
+    const gw = g.w ?? (g.type === 'warehouse' ? MAIN_SIZE[mainLv]!.w : def.w), gh = g.h ?? (g.type === 'warehouse' ? MAIN_SIZE[mainLv]!.h : def.h);
     const c = new Container();
-    const { sx, sy } = footAnchor(g.x, g.y, def.w, def.h);
+    const { sx, sy } = footAnchor(g.x, g.y, gw, gh);
     c.position.set(sx, sy);
     c.alpha = GHOST_ALPHA;
     // 발자국 다이아몬드(초록/빨강)
     const fp = new Graphics();
-    for (const p of footprint(g.type, g.x, g.y)) {
+    for (const p of footprint(g.type, g.x, g.y, gw, gh)) {
       const t = cellToScreen(p.x, p.y);
       fp.poly([t.sx - sx, t.sy - sy, t.sx - sx + ISO_W / 2, t.sy - sy + ISO_H / 2, t.sx - sx, t.sy - sy + ISO_H, t.sx - sx - ISO_W / 2, t.sy - sy + ISO_H / 2])
         .fill({ color: g.ok ? GHOST_OK : GHOST_BAD, alpha: 0.5 });
     }
     c.addChild(fp);
-    const t = objectTex({ type: g.type, rot: g.rot });
-    const sp = new Sprite(t?.texture ?? isoObjectTexture(this.app.renderer, def.kind, def.w, def.h));
+    const t = objectTex({ type: g.type, rot: g.rot }, mainLv);
+    const sp = new Sprite(t?.texture ?? isoObjectTexture(this.app.renderer, def.kind, gw, gh));
     sp.anchor.set(0.5, 1);
-    if (t && !t.iso) sp.position.y = -def.h * (ISO_H / 2);
+    if (t && !t.iso) sp.position.y = -gh * (ISO_H / 2);
     sp.tint = g.ok ? GHOST_OK : GHOST_BAD;
     sp.label = 'ghostSprite';
     c.addChild(sp);
@@ -531,6 +536,7 @@ export class GameView {
 
   render(state: GameState) {
     const season = seasonOf(state.clock.month);
+    this.lastMainLevel = state.main?.level ?? 1;
     if (!this.tilesBuilt) {
       this.buildTiles(state, season);
       this.fitCamera(state);
@@ -727,7 +733,7 @@ export class GameView {
   /** 정렬 깊이. 방 안(실내 가구·손님)은 방보다 앞에 그려 지붕 없는 상자 안이 보이게 한다. */
   private depthOf(state: GameState, x: number, y: number, w = 1, h = 1): number {
     const room = roomAt(state, Math.round(x), Math.round(y));
-    if (room) { const rd = objectDef(room.type); return depth(room.x, room.y, rd.w, rd.h) + 0.2 + (x + y) * 1e-3; }
+    if (room) { const rd = sizeOf(room); return depth(room.x, room.y, rd.w, rd.h) + 0.2 + (x + y) * 1e-3; }
     return depth(x, y, w, h);
   }
 
@@ -751,32 +757,33 @@ export class GameView {
 
   private makeObjectNode(state: GameState, o: PlacedObject): ObjEntry {
     const def = objectDef(o.type);
+    const { w, h } = sizeOf(o); // y-indoor: 본관 증축 크기
     const c = new Container();
-    const { sx, sy } = footAnchor(o.x, o.y, def.w, def.h);
+    const { sx, sy } = footAnchor(o.x, o.y, w, h);
     c.position.set(sx, sy);
-    c.zIndex = this.depthOf(state, o.x, o.y, def.w, def.h);
+    c.zIndex = this.depthOf(state, o.x, o.y, w, h);
     if (def.room) c.addChild(this.doorMarker(o, { sx, sy }));
     let glow: Sprite | null = null;
     if (GLOW_TYPES.has(o.type)) {
       glow = new Sprite(glowTexture(this.app.renderer));
       glow.anchor.set(0.5, 0.5);
       glow.blendMode = 'add';
-      const gc = this.footCenter(o, def.w, def.h);
+      const gc = this.footCenter(o, w, h);
       glow.position.set(gc.sx, gc.sy - 10);
-      glow.scale.set(def.w === 1 && def.h === 1 ? 1 : 1.8);
+      glow.scale.set(w === 1 && h === 1 ? 1 : 1.8);
       glow.alpha = 0;
       this.lights.addChild(glow);
     }
-    const t = objectTex(o);
+    const t = objectTex(o, state.main?.level ?? 1);
     if (t) {
       const sp = new Sprite(t.texture);
       // 탑다운 스프라이트 폴백은 발자국 중심 쪽으로 올려 대충 맞춘다
       sp.anchor.set(0.5, 1);
-      if (!t.iso) sp.position.y = -def.h * (ISO_H / 2);
+      if (!t.iso) sp.position.y = -h * (ISO_H / 2);
       c.addChild(sp);
-      return { node: c, type: o.type, sprite: sp, glow, posKey: `${o.x},${o.y}` };
+      return { node: c, type: o.type, sprite: sp, glow, posKey: `${o.x},${o.y}:${w}x${h}` };
     }
-    const sp = new Sprite(isoObjectTexture(this.app.renderer, def.kind, def.w, def.h));
+    const sp = new Sprite(isoObjectTexture(this.app.renderer, def.kind, w, h));
     sp.anchor.set(0.5, 1);
     c.addChild(sp);
     if (!hasAssets()) {
@@ -788,7 +795,7 @@ export class GameView {
     const badge = new Graphics();
     badge.label = 'badge';
     c.addChild(badge);
-    return { node: c, type: o.type, sprite: null, glow, posKey: `${o.x},${o.y}` };
+    return { node: c, type: o.type, sprite: null, glow, posKey: `${o.x},${o.y}:${w}x${h}` };
   }
 
   /** 건설 중: 반투명 + 머리 위 망치 아이콘과 "N일" 배지 (오버레이 레이어 — 본관 같은 큰 이웃 뒤에 숨지 않게). 남은 날이 바뀔 때만 다시 그린다. */
@@ -801,8 +808,8 @@ export class GameView {
     entry.badge = null;
     entry.node.alpha = o.build ? BUILDING_ALPHA : 1;
     if (!o.build) return;
-    const def = objectDef(o.type);
-    const gc = this.footCenter(o, def.w, def.h);
+    const size = sizeOf(o);
+    const gc = this.footCenter(o, size.w, size.h);
     const top = gc.sy - (entry.sprite?.height ?? 40) * 0.6 - 4; // 스프라이트 위쪽 언저리
     const c = new Container();
     const l = label(`${left}일`, 10);
@@ -849,6 +856,17 @@ export class GameView {
   /** 본관 인테리어: 외벽 색 tint + 간판 문구 라벨 */
   private decorateCafe(entry: ObjEntry, state: GameState) {
     if (entry.sprite) entry.sprite.tint = WALL_COLORS[state.cosmetics?.wallColor ?? 0] ?? 0xffffff;
+    // y-indoor §8.2: 2층은 본관 벽 위에 2층 창문 띠 오버레이 (같은 발자국 스프라이트라 하단 중앙 앵커가 맞는다)
+    entry.node.getChildByLabel('floor2')?.destroy({ children: true });
+    const lv = state.main?.level ?? 1;
+    const band = state.main?.floor2 && lv >= 3 ? peekTex(spriteName.isoObject('warehouse', `floor2_lv${Math.min(4, lv)}`)) : null;
+    if (band) {
+      const f2 = new Sprite(band);
+      f2.label = 'floor2';
+      f2.anchor.set(0.5, 1);
+      f2.tint = entry.sprite?.tint ?? 0xffffff;
+      entry.node.addChild(f2);
+    }
     entry.node.getChildByLabel('sign')?.destroy({ children: true });
     const text = state.cosmetics?.sign;
     if (!text) return;
@@ -921,23 +939,24 @@ export class GameView {
       if (entry.glow) { entry.glow.alpha = glowAlpha; entry.glow.visible = glowAlpha > 0; }
       this.syncBuilding(entry, o, state);
       this.syncLevelBadge(entry, o);
-      // 자리가 바뀌었으면(이동) 노드 위치·깊이 갱신
-      const def = objectDef(o.type);
-      const posKey = `${o.x},${o.y}`;
+      // 자리·크기가 바뀌었으면(이동·본관 증축) 노드 위치·깊이 갱신
+      const { w, h } = sizeOf(o);
+      const posKey = `${o.x},${o.y}:${w}x${h}`;
       if (entry.posKey !== posKey) {
         entry.posKey = posKey;
-        const { sx, sy } = footAnchor(o.x, o.y, def.w, def.h);
+        const { sx, sy } = footAnchor(o.x, o.y, w, h);
         entry.node.position.set(sx, sy);
-        entry.node.zIndex = this.depthOf(state, o.x, o.y, def.w, def.h);
-        if (entry.glow) { const gc = this.footCenter(o, def.w, def.h); entry.glow.position.set(gc.sx, gc.sy - 10); }
+        entry.node.zIndex = this.depthOf(state, o.x, o.y, w, h);
+        if (entry.glow) { const gc = this.footCenter(o, w, h); entry.glow.position.set(gc.sx, gc.sy - 10); }
       }
       if (entry.sprite) {
         // 시트 모드: 변형(심음·어린 나무·증축)이 바뀔 때만 텍스처를 갱신. 수확은 자동이라 링 대신 반짝임(syncFx).
         const isCafe = o.type === 'warehouse';
-        const key = `${objectVariant(o, state.expansions?.length ?? 0) ?? ''}:${o.rot ?? ''}${isCafe ? `:${state.cosmetics?.wallColor ?? 0}:${state.cosmetics?.sign ?? ''}` : ''}`;
+        const mainLv = state.main?.level ?? 1;
+        const key = `${objectVariant(o, mainLv) ?? ''}:${o.rot ?? ''}${isCafe ? `:${state.cosmetics?.wallColor ?? 0}:${state.cosmetics?.sign ?? ''}:${state.main?.floor2 ? 'F2' : ''}` : ''}`;
         if (this.badgeKeys.get(o.id) === key) continue;
         this.badgeKeys.set(o.id, key);
-        const t = objectTex(o, state.expansions?.length ?? 0);
+        const t = objectTex(o, mainLv);
         if (t) entry.sprite.texture = t.texture;
         if (isCafe) this.decorateCafe(entry, state);
         continue;

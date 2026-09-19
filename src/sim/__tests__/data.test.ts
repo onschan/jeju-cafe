@@ -14,8 +14,11 @@ test('짓기 탭 카테고리: v1·v2 id 모두 카테고리를 찾는다 (경�
   expect(buildGroupOf('canola')).toBe('sceneryDeco'); // v1 경관
   expect(buildGroupOf('observatory')).toBe('sceneryDeco'); // 랜드마크
   expect(buildGroupOf('deco_planter')).toBe('sceneryDeco'); // 새 장식 20종
-  expect(buildGroupOf('counter_bar')).toBe('sceneryDeco');
-  expect(buildGroupOf('menu_board')).toBe('sceneryDeco');
+  expect(buildGroupOf('counter_bar')).toBe('indoor'); // y-indoor: 실내 전용은 「실내」 탭
+  expect(buildGroupOf('menu_board')).toBe('indoor');
+  expect(buildGroupOf('table_in')).toBe('indoor');
+  expect(buildGroupOf('sofa_seat')).toBe('indoor');
+  expect(buildGroupOf('annex_cafe')).toBe('rest'); // 별관은 건물이라 쉼 탭
   expect(buildGroupOf('path')).toBe('pathWall');
   expect(buildGroupOf('stonewall')).toBe('pathWall');
 });

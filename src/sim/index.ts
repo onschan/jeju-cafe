@@ -51,3 +51,12 @@ export { josa, hasBatchim } from './josa.ts';
 export { isWeekend, daysToWeekend, popupCost, popupGuestCount, affinityGain, namedLikes, namedGuestFace, canOpenPopup, canClosePopup, regionState, namedGuestState, regularIds, regularVisitSlot, regularsDueNow, metCount, regularCount, regionProgress, bestRegion, WEEKEND_DAYS, POPUP_COST_SCALE, POPUP_GUESTS_MIN, POPUP_GUESTS_MAX, AFFINITY_PER_VISIT, AFFINITY_TASTE_MULT, AFFINITY_MAX, AFFINITY_REWARD_STEP, AFFINITY_REWARD_COUNT, POPUP_VISIT_CAP } from './popup.ts';
 export { rivalState, rivalMonths, rivalPower, judgeBreakdown, challengeOdds, canChallenge, rivalGuestLossPct, rivalGuestMult, RIVAL_GUEST_PENALTY_PCT, RIVAL_START_YEAR, RIVAL_MONTHLY_CHANCE, RIVAL_MAX, RIVAL_LEAVE_MONTHS, CHALLENGE_WIN_MILEAGE, CHALLENGE_LOSE_POPULARITY, JUDGE_LUCK, SIZE_POWER } from './rivals.ts';
 export { siteOf, seatScore, siteScore, siteTone, kindWeights, scoreWith, siteBonus, siteSay, siteBadgeText, siteBadgeTextPlain, siteLineText, layoutKey, isOutdoorSeat, seaInRange, SITE_KEYS, SITE_LABEL, SITE_ICON, SITE_MAX, SITE_GOOD, SEAT_WEIGHTS, STALL_WEIGHTS, SITE_SAY, type Site, type SiteKey, type SiteWeights, type SiteBonus } from './site.ts';
+export { sizeOf, footprintOf, canPlaceMain } from './grid.ts';
+export {
+  mainBuilding, mainLevel, mainSize, mainDoorFront, isMainClosed, mainWorkDaysLeft, isIndoorCell, isIndoorSeat, roomSeats, indoorSeats, roomSeatsUsed, freeFloorCells,
+  isAnnex, annexCount, isRoomCut, cutRooms, nextMainLevel, expandCost, expandCells, canExpandMain, canBuildSecondFloor, moveDays, canMoveThisMonth, canStartMoveMain, canMoveMain, canUndoMoveMain,
+  seatsShort, seatUsePct, isFireplaceOn, canToggleFireplace, canSetPianoTime, isPianoPlaying, canAddBooks, hasNewBooks, canFeedAquarium, isAquariumHungry, canRestockKids, isKidsStocked, canSetBarEvening, isBarEvening,
+  preferIndoor, stayMs, browseChance, indoorSpawnMult, indoorFeeMult, mainSummary, initMain,
+  MAIN_TYPE, MAIN_MAX_LEVEL, MAIN_SIZE, MAIN_EXPAND_COST, MAIN_EXPAND_DAYS, FLOOR2_COST, FLOOR2_MIN_LEVEL, FLOOR2_DAYS, FLOOR2_VIEW, MOVE_COST, MOVE_DAYS, FIREPLACE_FUEL, FIREPLACE_RADIUS, NEW_BOOKS_MILEAGE, KIDS_RESTOCK_COST,
+  SEAT_FULL_PCT, SEAT_FULL_DAYS, SEAT_FULL_TEXT, DOOR_PATH_WARN, ANNEX_CUT_TEXT, BGM_LABEL, LIGHT_LABEL, PIANO_LABEL, STAY_PER_FACILITY_MS,
+} from './rooms.ts';

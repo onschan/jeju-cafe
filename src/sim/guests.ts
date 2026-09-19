@@ -2,7 +2,7 @@ import type { GameState, Guest, PlacedObject, Pt, MenuCategory, MenuStatKey, Rol
 import { canOpen } from './goals.ts';
 import { objectDef, guestTypeDef, guestTags, guestDialogue, canonicalGuestId, namedGuestDef, NAMED_TYPE } from '../data/index.ts';
 import { pickWeighted, nextRandom, randInt } from './rng.ts';
-import { sceneryScore, objectAt } from './grid.ts';
+import { sceneryScore, objectAt, sizeOf } from './grid.ts';
 import { availableMenus, consumeIngredients, isMenuAvailable } from './menu.ts';
 import { busStopPos, findPath, walkableNeighborsOf, reachMap, pathFromReach, cellKey, moveAlong, walkSpeedMult, GUEST_SPEED_CELLS_PER_S } from './path.ts';
 import { roleEffect, skillTotal, pushNotice, staffInRole, addRoleExp, LOW_ENERGY } from './staff.ts';
@@ -21,6 +21,7 @@ import { effectMult, noGuestsToday } from './effects.ts';
 import { spotGuestBonus, busSpots, isBusDay, BUS_HOUR, BUS_MIN, BUS_MAX, spotSpawnMult } from './spots.ts';
 import type { ParcelBonus } from './types.ts';
 import { seatsOf, isSeat } from './cafe.ts';
+import { filterSeatsForWeather, stayMs, browseChance, indoorSatisfaction, indoorSpawnMult, indoorFeeMult } from './rooms.ts'; // y-indoor 훅: 실내 우선·체류·둘러보기·만족·유입·바 요금
 import { pushFx } from './fx.ts';
 import { menuOf, priceOf, likesStatsMatch, statsMatchCount, guestEvalBonus, guestLikesCategory, seatTimeMult, dignityPct, photoChance, menuOrderWeight, LIKE_BONUS_CAP } from './craft.ts';
 import { addAffinity, affinityGain, namedLikes, regularsDueNow, NAMED_MIN_SCENERY } from './popup.ts';
@@ -92,7 +93,7 @@ function firstFreeSlot(state: GameState, seat: PlacedObject): number {
 
 /** 자리 번호 → 좌석 오브젝트 위 좌표. 가로로 n등분 (table_out 2석: x−0.25, x+0.25). */
 export function seatSlotPos(seat: PlacedObject, slot: number, n = objectDef(seat.type).seats ?? 1): Pt {
-  const def = objectDef(seat.type);
+  const def = sizeOf(seat); // y-indoor: 본관 증축 크기
   return { x: seat.x + ((slot + 0.5) / n) * def.w - def.w / 2 + (def.w - 1) / 2, y: seat.y + (def.h - 1) / 2 };
 }
 
@@ -100,7 +101,7 @@ export function seatSlotPos(seat: PlacedObject, slot: number, n = objectDef(seat
 export function freeSeats(state: GameState): PlacedObject[] {
   const taken = new Map<string, number>();
   for (const g of state.guests) if (g.seatId && g.phase !== 'leaving') taken.set(g.seatId, (taken.get(g.seatId) ?? 0) + 1);
-  return seatObjects(state).filter((o) => (taken.get(o.id) ?? 0) < seatsOf(state, o));
+  return filterSeatsForWeather(state, seatObjects(state).filter((o) => (taken.get(o.id) ?? 0) < seatsOf(state, o))); // y-indoor: 겨울·비·태풍엔 실내 우선
 }
 
 /** 정류장에서 걸어서 닿는 좌석이 하나라도 있나. 점유 여부는 보지 않는다 (길이 이어졌는지 판정하는 안내용). */
@@ -117,7 +118,7 @@ export function totalSeats(state: GameState): number {
 
 /** 손님층 유입 배수 = (1 + 유효 인기/50) × 유튜버 부스트 × (1 + 인기쟁이 스킬). 유효 인기 = 기본 + 활성 기간형 홍보. */
 export function spawnMultiplier(state: GameState, typeId: string): number {
-  return (1 + effectivePopularity(state, typeId) / 50) * youtuberMultiplier(state, typeId) * (1 + skillTotal(state, 'spawnBonus')) * spotSpawnMult(state, typeId); // 트랙 C: 명소 태그 배수·투어 버스
+  return (1 + effectivePopularity(state, typeId) / 50) * youtuberMultiplier(state, typeId) * (1 + skillTotal(state, 'spawnBonus')) * spotSpawnMult(state, typeId) * indoorSpawnMult(state, typeId); // 트랙 C: 명소 태그 배수·투어 버스 · y-indoor: 피아노·키즈·BGM·조명
 }
 
 /** 시간대별 손님층 가중: 아침(6~9) 시니어(삼춘) 2배, 낮(11~17) 청년(관광객) 2배 */
@@ -370,7 +371,7 @@ export function popularityBonus(popularity: number): number {
 
 /** 만족 판정 가산(경치 단위): 콤보(손님층 +5·전체 +3)·청결(80 이상 +3, 50 미만 −5)은 10으로 나눠 경치 단위로 (트랙 A) */
 export function extraSatisfaction(state: GameState, g: Guest, seat: PlacedObject): number {
-  return (comboSatisfaction(state, seat.id, g.type) + cleanSatisfaction(state)) / 10;
+  return (comboSatisfaction(state, seat.id, g.type) + cleanSatisfaction(state)) / 10 + indoorSatisfaction(state, seat); // y-indoor: 소파 +2·난로 겨울 +3
 }
 /** 저녁 손님 기준 시각 (특기 night_owl) */
 export const NIGHT_HOUR = 18;
@@ -476,7 +477,7 @@ function order(state: GameState, g: Guest): void {
   consumeIngredients(state, menuId);
   const seat = state.objects[g.seatId!]!;
   recordUse(seat); // 트랙 A: 증축 조건(누적 이용)
-  const price = Math.round(priceOf(state, menuId) * parcelFeeMult(parcelBonusAt(state, seat.x, seat.y)) * (objectStats(state, seat.id).feePct / 100) * eventFeeMult(state) * siteBonus(state, seat).feeMult); // 트랙 F 입지 요금
+  const price = Math.round(priceOf(state, menuId) * parcelFeeMult(parcelBonusAt(state, seat.x, seat.y)) * (objectStats(state, seat.id).feePct / 100) * eventFeeMult(state) * siteBonus(state, seat).feeMult * indoorFeeMult(state, seat, g.type)); // 트랙 F 입지 요금 · y-indoor 바 저녁 세트
   state.money += price;
   state.monthIncome += price;
   state.totalIncome += price;
@@ -492,7 +493,7 @@ function order(state: GameState, g: Guest): void {
 /** 자리에서 일어난 손님이 들를 시설을 고른다: 좋아하는 종류이고 걸어서 닿는 것 중 하나 (40%). 없으면 null. */
 export function pickVisit(state: GameState, g: Guest, from: Pt): { obj: PlacedObject; path: Pt[] } | null {
   const candidates = Object.values(state.objects).filter((o) => !o.build && isVisitable(o.type) && likesFacility(g.type, o.type));
-  if (candidates.length === 0 || nextRandom(state) >= VISIT_CHANCE) return null;
+  if (candidates.length === 0 || nextRandom(state) >= browseChance(state, VISIT_CHANCE)) return null; // y-indoor P1-12: 시설 3개 초과 시 둘러보기 확률 상승
   const reach = reachMap(state, from);
   const reachable: { obj: PlacedObject; target: Pt }[] = [];
   for (const obj of candidates) {
@@ -575,7 +576,7 @@ export function updateGuests(state: GameState, dtMs: number): void {
         if (g.waitMs <= 0) {
           g.waitMs = 0;
           resolveMood(state, g);
-          g.timerMs = SEAT_MS * seatTimeMult(state, g.menuId) * routeStayMult(g); // 트랙 H: 주차장 ×1.2·크루즈 ×0.7
+          g.timerMs = stayMs(state, g, SEAT_MS * seatTimeMult(state, g.menuId)) * routeStayMult(g); // y-indoor P1-12: 시설당 +8분·소파·책장·조명 × 트랙 H: 주차장 ×1.2·크루즈 ×0.7
         }
         continue;
       }

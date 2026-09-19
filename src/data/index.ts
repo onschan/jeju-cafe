@@ -36,6 +36,7 @@ import compatMetaJson from './generated/compat_meta.json' with { type: 'json' };
 import facilitiesJson from './generated/v2/facilities.json' with { type: 'json' };
 import facilitiesXJson from './facilities_x.json' with { type: 'json' };
 import facilitiesShopJson from './facilities_shop.json' with { type: 'json' }; // 상점 설계도·황금 감귤 시설 4종 (트랙 C 참조, 통합 때 추가)
+import facilitiesIndoorJson from './facilities_indoor.json' with { type: 'json' }; // 실내 가구 7 + 별관 2 (트랙 G §8.2·8.3, y-indoor)
 import combosJson from './combos.json' with { type: 'json' };
 import spotEffectsJson from './spot_effects.json' with { type: 'json' };
 import ingredientsV1Json from './generated/ingredients.json' with { type: 'json' };
@@ -226,11 +227,14 @@ export const GUEST_CHAINS: GuestChainDef[] = (chainsJson as GuestChainDef[]).map
 
 // ---------- v2 시설 87 → ObjectDef (objects.json에 없는 것만) ----------
 /** 실내 바닥이 있는 건물(방): 발자국 위에 indoor 오브젝트를 놓고 손님이 문(정면 왼쪽)으로 드나든다 */
-export const ROOM_IDS = new Set(['warehouse', 'kitchen_ext', 'gallery', 'restroom', 'pottery_studio', 'vinyl_house_room', 'tangerine_hall']);
+export const ROOM_IDS = new Set(['warehouse', 'kitchen_ext', 'gallery', 'restroom', 'pottery_studio', 'vinyl_house_room', 'tangerine_hall', 'annex_cafe', 'greenhouse_cafe']);
+/** 별관(§8.2): 본관이 아닌 손님용 방 — 올렛길로 이어져야 손님이 간다. 목표 「별관 짓기」·길 끊김 경고 대상. */
+export const ANNEX_IDS = new Set(['annex_cafe', 'greenhouse_cafe', 'gallery', 'tangerine_hall', 'vinyl_house_room']);
 /** 실내 전용 오브젝트 (방 바닥 위에만) */
 export const INDOOR_IDS = new Set([
   'table_in', 'counter', 'sofa', 'bookshelf', 'vending', 'roaster',
   'deco_chalkboard', 'deco_cake_case', 'deco_coffee_machine', 'deco_lp_shelf', 'deco_bookshelf_small', 'deco_umbrella_stand', 'counter_bar', 'menu_board',
+  'sofa_seat', 'bar_counter', 'fireplace', 'piano', 'aquarium', 'kids_corner', 'counter_ext', // 트랙 G 실내 가구 (facilities_indoor.json)
 ]);
 /** 좌석 수: 소형 2, 중형 4, 대형 6 */
 const SEATS_BY_TIER: Record<string, number> = { small: 2, medium: 4, large: 6 };
@@ -242,6 +246,7 @@ type RawFacility = {
   popularity: number; feePct: number | null; fee: number | null; scenery: number; noise: number;
   seasonBonus: Record<string, number>; unlock: Record<string, unknown>; unlockText?: string; description: string | null;
   walkSpeedPct?: number; // 활력 화분: 손님·직원 이동 속도 +% (facilities_shop.json)
+  seats?: number; // 좌석 정원 덮어쓰기 (facilities_indoor.json 소파석·바 3석) — 없으면 tier 표
 };
 /** v3: 밭은 없다. v2 표의 field 행은 버린다. */
 const REMOVED_FACILITY_IDS = new Set(['field']);
@@ -266,7 +271,7 @@ export function adaptFacility(r: RawFacility): ObjectDef {
     buildDays: typeof r.buildDays === 'number' ? r.buildDays : BUILD_DAYS_BY_TIER[r.tier] ?? 1,
   };
   if (FACILITY_CATEGORIES.has(r.category as FacilityCategory)) def.category = r.category as FacilityCategory;
-  if (kind === 'seat') def.seats = SEATS_BY_TIER[r.tier] ?? 2;
+  if (kind === 'seat') def.seats = typeof r.seats === 'number' ? r.seats : SEATS_BY_TIER[r.tier] ?? 2;
   if (typeof r.fee === 'number') def.fee = r.fee;
   if (Object.keys(season).length > 0) def.seasonScenery = season;
   if (room) def.room = true;
@@ -281,7 +286,7 @@ const BASE_OBJECTS: ObjectDef[] = [...(objectsJson as ObjectDef[]), ...TERRAIN_O
 const BASE_IDS = new Set(BASE_OBJECTS.map((o) => o.id));
 /** v2 시설 중 objects.json·랜드마크에 아직 없는 것 (시설 순회·실내 가구·증축용) */
 /** v2 표 109 + HSS2 확장 44 (facilities_x.json, 스펙 §3.2.1). 쉼 분류라도 요금이 있으면(족욕탕 등) 순회 시설. */
-const FACILITY_ROWS: RawFacility[] = [...(facilitiesJson as unknown as RawFacility[]), ...(facilitiesXJson as unknown as RawFacility[]), ...(facilitiesShopJson as unknown as RawFacility[])];
+const FACILITY_ROWS: RawFacility[] = [...(facilitiesJson as unknown as RawFacility[]), ...(facilitiesXJson as unknown as RawFacility[]), ...(facilitiesShopJson as unknown as RawFacility[]), ...(facilitiesIndoorJson as unknown as RawFacility[])];
 /** 확장 44종 id (스펙 §3.2.1). 목표 해금(goal:gNN)은 트랙 B의 108 목표가 연다 — unlockRef에 목표 번호가 남아 있다. */
 export const FACILITY_X_IDS = new Set((facilitiesXJson as { id: string }[]).map((f) => f.id));
 export const FACILITY_X_GOAL_REFS: Record<string, string> = Object.fromEntries((facilitiesXJson as { id: string; unlockRef: string }[]).filter((f) => f.unlockRef.startsWith('goal:')).map((f) => [f.id, f.unlockRef.slice(5)]));
@@ -297,15 +302,16 @@ for (const r of FACILITY_ROWS) {
   if (FACILITY_CATEGORIES.has(r.category as FacilityCategory)) FACILITY_CATEGORY_BY_ID[r.id] = r.category as FacilityCategory;
 }
 /** 짓기 탭 하위 탭 7종 */
-export type BuildGroup = 'rest' | 'convenience' | 'food' | 'fun' | 'farm' | 'sceneryDeco' | 'pathWall';
+export type BuildGroup = 'indoor' | 'rest' | 'convenience' | 'food' | 'fun' | 'farm' | 'sceneryDeco' | 'pathWall';
 export const BUILD_GROUPS: { key: BuildGroup; label: string }[] = [
-  { key: 'rest', label: '쉼' }, { key: 'convenience', label: '편의' }, { key: 'food', label: '먹거리' },
+  { key: 'indoor', label: '실내' }, { key: 'rest', label: '쉼' }, { key: 'convenience', label: '편의' }, { key: 'food', label: '먹거리' },
   { key: 'fun', label: '즐길거리' }, { key: 'farm', label: '농원' }, { key: 'sceneryDeco', label: '경관·장식' }, { key: 'pathWall', label: '길·담' },
 ];
 /** 오브젝트 하나가 짓기 탭 어느 하위 탭에 속하는지. 길·담 타일은 카테고리가 없어 kind로 가른다. 경관·랜드마크·미분류는 경관·장식으로 묶는다. */
 export function buildGroupOf(id: string): BuildGroup {
   const def = objectDef(id);
   if (def.kind === 'path' || def.kind === 'wall' || def.kind === 'gate') return 'pathWall';
+  if (def.indoor) return 'indoor'; // 트랙 G: 실내 가구는 「실내」 탭
   const cat = FACILITY_CATEGORY_BY_ID[id] ?? def.category;
   if (cat === 'rest' || cat === 'convenience' || cat === 'food' || cat === 'fun' || cat === 'farm') return cat;
   return 'sceneryDeco';

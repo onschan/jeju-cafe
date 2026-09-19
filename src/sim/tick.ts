@@ -26,6 +26,7 @@ import { hourlyPopup, dailyPopup } from './popup.ts';
 import { monthlyRivals } from './rivals.ts';
 import { dailyCleanliness } from './cleanliness.ts';
 import { dailyRoutes, monthlyRoutes } from './entry.ts';
+import { dailyRooms, monthlyRooms, accumulateSeatUse, MS_PER_HOUR } from './rooms.ts'; // y-indoor: 본관 공사·좌석 이용률·난로 연료
 
 export const STEP_MS = 100;        // 고정 스텝 (게임 ms)
 const MAX_STEPS_PER_TICK = 600;    // 백그라운드 복귀 등 폭주 방지 (60초 게임 시간)
@@ -34,6 +35,7 @@ const HOURS_PER_DAY = END_HOUR - START_HOUR;
 /** 시간이 한 칸 지날 때마다 (새 시각 = state.clock.hour) */
 function onNewHour(state: GameState): void {
   hourlyEnergy(state);
+  accumulateSeatUse(state, MS_PER_HOUR); // y-indoor: 지난 한 시간 좌석 이용 (이용률)
   hourlyRegulars(state); // 단골★·특별 손님이 일반 손님(대기열)보다 먼저 자리를 잡는다
   hourlyBigEvents(state);
   hourlySpawn(state);
@@ -58,6 +60,7 @@ function onNewDay(state: GameState): void {
   resolveDevelop(state);
   advanceConstruction(state);
   dailyRoutes(state); // 트랙 H: 경로 해금·길 끊김·오늘 손님 리셋
+  dailyRooms(state); // y-indoor: 본관 증축·이동·2층 완공, 어제 이용률, 난로 자동 ON
   checkGoals(state);
 }
 
@@ -66,6 +69,7 @@ function onNewMonth(state: GameState, prevMonth: number, prevYear: number): void
   const newYear = state.clock.month === TAX_MONTH && state.clock.year >= 2;
   if (newYear) annualRaise(state);
   payroll(state);
+  monthlyRooms(state); // y-indoor: 켜 둔 난로 연료비
   expirePromotions(state);
   upkeep(state);
   if (newYear) incomeTax(state);
