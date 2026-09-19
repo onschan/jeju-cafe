@@ -197,6 +197,19 @@ describe('본관 옮기기 (§4.1)', () => {
     apply(s, { type: 'expandMain' });
     expect(canStartMoveMain(s).reason).toBe('공사 중이에요');
   });
+  test('손님: 마당 자리 손님은 상관없고, 본관 자리에 앉았거나 본관 발자국(옮길 자리 포함)을 지나는 손님이 있으면 금지', () => {
+    const s = cafe();
+    s.tutorial.step = 99;
+    placeObject(s, 'table_out', X(6), Y(6));
+    const base = { id: 'g1', type: 'student', phase: 'seated', x: X(6), y: Y(6), path: [], seatId: objectAt(s, X(6), Y(6))!.id, seatSlot: 0, approachCell: null, menuId: null, mood: null, moodReason: null, say: null, visitId: null, timerMs: 0, waitMs: 0, paid: 0 } as never;
+    s.guests.push(base);
+    expect(canStartMoveMain(s).ok).toBe(true); // 마당 손님만
+    s.guests[0] = { ...(base as object), seatId: main(s).id } as never; // 본관 카운터에 앉음
+    expect(canStartMoveMain(s).reason).toBe('본관에 손님이 있을 땐 못 옮겨요');
+    s.guests[0] = { ...(base as object), path: [{ x: X(7), y: Y(7) }] } as never; // 옮길 자리를 지나감
+    expect(canStartMoveMain(s).ok).toBe(true);
+    expect(canMoveMain(s, X(7), Y(7)).reason).toBe('손님이 지나가는 자리예요');
+  });
   test('직원 대기 칸·주방 거리는 옮긴 본관 문 앞 기준, 저장 왕복에 w/h·main이 남는다', () => {
     const s = cafe();
     apply(s, { type: 'expandMain' });

@@ -274,14 +274,31 @@ export function canStartMoveMain(state: GameState): ApplyResult {
   if (!tutorialDone(state) && state.tutorial.step < MOVE_TUTORIAL_MIN_STEP) return { ok: false, reason: '튜토리얼을 먼저 끝내요' };
   if (activeEvents(state).length > 0) return { ok: false, reason: '이벤트 중엔 못 옮겨요' };
   if (state.money < MOVE_COST) return { ok: false, reason: '돈이 모자라요' };
-  if (state.guests.length > 0) return { ok: false, reason: '손님이 있을 땐 못 옮겨요' };
+  if (guestsBlockMain(state)) return { ok: false, reason: '본관에 손님이 있을 땐 못 옮겨요' };
   return { ok: true };
+}
+/** 본관·실내 가구에 앉았거나, 본관 발자국(옮길 자리 포함)을 지나가는 손님이 있나. 마당 손님은 상관없다 — 손님이 0명인 순간은 영업 중엔 사실상 안 온다. */
+export function guestsBlockMain(state: GameState, to?: Pt): boolean {
+  const m = mainBuilding(state);
+  if (!m) return false;
+  const { w, h } = sizeOf(m);
+  const cells = new Set(footprint(MAIN_TYPE, m.x, m.y, w, h).map((p) => `${p.x},${p.y}`));
+  if (to) for (const p of footprint(MAIN_TYPE, to.x, to.y, w, h)) cells.add(`${p.x},${p.y}`);
+  const seats = new Set([m.id, ...objectsInRoom(state, m.id).map((o) => o.id)]);
+  for (const g of state.guests) {
+    if (g.seatId && seats.has(g.seatId)) return true;
+    if (cells.has(`${Math.round(g.x)},${Math.round(g.y)}`)) return true;
+    if (g.approachCell && cells.has(`${g.approachCell.x},${g.approachCell.y}`)) return true;
+    if (g.path.some((p) => cells.has(`${p.x},${p.y}`))) return true;
+  }
+  return false;
 }
 export function canMoveMain(state: GameState, x: number, y: number): ApplyResult {
   const c = canStartMoveMain(state);
   if (!c.ok) return c;
   const m = mainBuilding(state)!;
   if (m.x === x && m.y === y) return { ok: false, reason: '지금 자리예요' };
+  if (guestsBlockMain(state, { x, y })) return { ok: false, reason: '손님이 지나가는 자리예요' };
   const { w, h } = sizeOf(m);
   return canPlaceMain(state, x, y, w, h, m.id);
 }
