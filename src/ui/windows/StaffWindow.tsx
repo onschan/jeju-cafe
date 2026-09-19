@@ -233,7 +233,7 @@ export function StaffWindow(props: StaffWindowProps) {
               const locked = !tierUnlocked(s, t);
               return (
                 <button key={t} style={{ ...(check.ok ? brownBtn : brownBtnOff), margin: 0, padding: '6px 4px', fontSize: 14, lineHeight: 1.25 }} disabled={!check.ok} title={check.reason} onClick={() => dispatch({ type: 'postJob', tier: t })} data-testid={`post-${t}`}>
-                  {def.name}<br /><span style={{ fontSize: 13, fontWeight: 400 }}>{locked ? `★${def.unlock?.star ?? ''}부터` : `${cost > 0 ? wonText(cost) : '무료'} · ${left}명 남음`}</span>
+                  {def.name}<br /><span style={{ fontSize: 13, fontWeight: 400 }}>{locked ? `★${def.unlock?.star ?? ''}부터` : <>{cost > 0 ? wonText(cost) : '무료'}<br />{left}명 남음</>}</span>
                 </button>
               );
             })}
