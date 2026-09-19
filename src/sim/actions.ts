@@ -1,6 +1,7 @@
 import type { GameState, Action, ApplyResult, PlacedObject } from './types.ts';
 import { objectDef } from '../data/index.ts';
-import { canPlace, placeObject, removeObject, footprint, relocateObject, objectsInRoom, canClearRock, clearRock } from './grid.ts';
+import { canPlace, placeObject, removeObject, footprintOf, relocateObject, objectsInRoom, canClearRock, clearRock } from './grid.ts';
+import { canExpandMain, expandMain, canBuildSecondFloor, buildSecondFloor, canMoveMain, moveMain, canUndoMoveMain, undoMoveMain, canToggleFireplace, toggleFireplace, canSetPianoTime, canAddBooks, addBooks, canFeedAquarium, feedAquarium, canRestockKids, restockKids, canSetBarEvening, setBarEvening, MAIN_TYPE } from './rooms.ts'; // y-indoor
 import { canBuyParcel, buyParcel } from './parcels.ts';
 import { canSetSlot, setSlot } from './menu.ts';
 import { checkFeature, checkGoals } from './goals.ts';
@@ -54,7 +55,7 @@ export function apply(state: GameState, a: Action): ApplyResult {
 function canDisturb(state: GameState, obj: PlacedObject): ApplyResult {
   if (PROTECTED_TYPES.has(obj.type)) return { ok: false, reason: '이건 못 없애요' };
   if (state.guests.some((g) => g.seatId === obj.id)) return { ok: false, reason: '손님이 앉아 있어요' };
-  const cells = new Set(footprint(obj.type, obj.x, obj.y).map((p) => `${p.x},${p.y}`));
+  const cells = new Set(footprintOf(obj).map((p) => `${p.x},${p.y}`));
   const guestCells = state.guests.flatMap((g) => [`${Math.round(g.x)},${Math.round(g.y)}`, ...(g.approachCell ? [`${g.approachCell.x},${g.approachCell.y}`] : []), ...g.path.map((p) => `${p.x},${p.y}`)]);
   if (guestCells.some((c) => cells.has(c))) return { ok: false, reason: '손님이 지나가는 중이에요' };
   return { ok: true };
@@ -97,6 +98,13 @@ function applyInner(state: GameState, a: Action): ApplyResult {
     case 'move': {
       const obj = state.objects[a.objectId];
       if (!obj) return { ok: false, reason: '없는 오브젝트' };
+      if (obj.type === MAIN_TYPE) { // 본관은 PROTECTED_TYPES 예외 경로 — moveMain (§4.1)
+        const m = canMoveMain(state, a.x, a.y);
+        if (!m.ok) return m;
+        moveMain(state, a.x, a.y);
+        discoverCombos(state);
+        return { ok: true };
+      }
       const c = canDisturb(state, obj);
       if (!c.ok) return c;
       if (objectDef(obj.type).room && objectsInRoom(state, obj.id).length > 0) return { ok: false, reason: '안에 가구가 있어요' };
@@ -154,6 +162,76 @@ function applyInner(state: GameState, a: Action): ApplyResult {
       const c = canExpand(state, a.id);
       if (!c.ok) return c;
       expand(state, a.id as ExpansionId);
+      return { ok: true };
+    }
+    // ---- y-indoor: 본관 증축·2층·이동·실내 요소 (rooms.ts) ----
+    case 'expandMain': {
+      const c = canExpandMain(state);
+      if (!c.ok) return c;
+      expandMain(state);
+      discoverCombos(state);
+      return { ok: true };
+    }
+    case 'buildSecondFloor': {
+      const c = canBuildSecondFloor(state);
+      if (!c.ok) return c;
+      buildSecondFloor(state);
+      return { ok: true };
+    }
+    case 'moveMain': {
+      const c = canMoveMain(state, a.x, a.y);
+      if (!c.ok) return c;
+      moveMain(state, a.x, a.y);
+      discoverCombos(state);
+      return { ok: true };
+    }
+    case 'undoMoveMain': {
+      const c = canUndoMoveMain(state);
+      if (!c.ok) return c;
+      undoMoveMain(state);
+      discoverCombos(state);
+      return { ok: true };
+    }
+    case 'toggleFireplace': {
+      const c = canToggleFireplace(state, a.objectId);
+      if (!c.ok) return c;
+      toggleFireplace(state, a.objectId);
+      return { ok: true };
+    }
+    case 'setPianoTime': {
+      const c = canSetPianoTime(state);
+      if (!c.ok) return c;
+      state.main.pianoTime = a.time;
+      return { ok: true };
+    }
+    case 'setBgm':
+      state.main.bgm = a.bgm;
+      return { ok: true };
+    case 'setLighting':
+      state.main.lighting = a.lighting;
+      return { ok: true };
+    case 'feedAquarium': {
+      const c = canFeedAquarium(state, a.objectId);
+      if (!c.ok) return c;
+      feedAquarium(state, a.objectId);
+      return { ok: true };
+    }
+    case 'restockKids': {
+      const c = canRestockKids(state, a.objectId);
+      if (!c.ok) return c;
+      restockKids(state, a.objectId);
+      return { ok: true };
+    }
+    case 'setBarEvening': {
+      const c = canSetBarEvening(state, a.objectId);
+      if (!c.ok) return c;
+      setBarEvening(state, a.objectId, a.on);
+      return { ok: true };
+    }
+    case 'addBooks': {
+      const c = canAddBooks(state, a.objectId);
+      if (!c.ok) return c;
+      addBooks(state, a.objectId);
       return { ok: true };
     }
     case 'setCosmetic': {

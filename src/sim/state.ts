@@ -17,6 +17,7 @@ import { initTutorial, unlockTutorialFeatures } from './tutorial.ts';
 import { monthIndex } from './clock.ts';
 import { emptyMonthCosts } from './economy.ts';
 import { REPUTATION_START } from './reputation.ts';
+import { initMain } from './rooms.ts';
 
 export { PARCEL_W, PARCEL_H, START_ORIGIN, GRID_W, GRID_H, VILLAGE_ROAD_Y };
 export const SAVE_VERSION = 17; // 17: 컨텐츠 확장 통합 — 경제(삼춘 대출·세금·대기열·★ 유지 심사)·시설 44·증축·청결·명소 방문객·투어·선물·직원 8직종·입지·목표 108·도전·튜토리얼 (마이그레이션 없음). 15: v3 대격변. 14: 라이벌 카페
@@ -240,6 +241,7 @@ export function createInitialState(seed: number, playerId = 'local', createdAt =
     popup: initPopup(),
     rivals: [],
     lastChallenge: null,
+    main: initMain(),
     guests: [],
     spawnAcc: START_SPAWN_ACC,
     researchAcc: 0,

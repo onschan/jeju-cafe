@@ -502,6 +502,9 @@ export type GoalCondition =
   | { type: 'skills'; n: number }                 // 특기 보유 직원 n명
   | { type: 'selfSupply'; pct: number }           // 재료 자급률 % (x-spots/farm)
   | { type: 'training'; n: number }               // 연수 완료 (x-staff, trainings 별칭)
+  | { type: 'indoorSeats'; n: number }            // 실내 좌석 정원 n석 (y-indoor rooms.ts indoorSeats)
+  | { type: 'mainLevel'; lv: number }             // 본관 증축 Lv 이상 (y-indoor)
+  | { type: 'annex'; n: number }                  // 완공된 별관 n동 (y-indoor)
   // ---- 도전·월간 과제 전용 ----
   | { type: 'seats'; n: number }                  // 좌석 시설 수
   | { type: 'noLossMonth'; n: number }            // 적자 없이 n달 (연속 흑자, 수락 시점 대비)
@@ -655,6 +658,10 @@ export interface PlacedObject {
   level?: 1 | 2 | 3;   // 증축 Lv (없으면 1). 스펙 §3.2.2
   uses?: number;       // 누적 이용 횟수 (좌석 주문·시설 방문) — 증축 조건
   wearMonth?: number;  // 노후 기준 달(monthIndex): 완공·증축·수리 시점. 없으면 placedMonth
+  w?: number;          // 발자국 크기 덮어쓰기 (본관 증축 Lv2~4, rooms.ts MAIN_SIZE). 없으면 objectDef의 w/h
+  h?: number;
+  mode?: string;       // 실내 요소 설정 (rooms.ts §4.3): 난로 on/off · 피아노 lunch/evening/none · 바 저녁 세트 on/off
+  careDay?: number;    // 실내 요소 마지막 손질 일 인덱스 (수족관 먹이·키즈 장난감 보충·책장 신간)
 }
 
 /** 필지. 격자는 처음부터 전체 크기이고, 소유한 필지에만 지을 수 있다. */
@@ -932,6 +939,7 @@ export interface GameState {
   popup: PopupState;                          // 원정 팝업 스토어
   rivals: RivalState[];                       // 라이벌 카페 (동시 최대 2)
   lastChallenge: ChallengeResult | null;      // 마지막 카페 대결 (UI 팝업)
+  main: MainState;                            // 본관 증축·2층·이동·분위기 (rooms.ts, y-indoor)
   guests: Guest[];
   spawnAcc: number; // 시간대별 스폰 소수 누적
   researchAcc: number; // 만족 손님 누적 (5마다 연구 +1)
@@ -943,6 +951,22 @@ export interface GameState {
   lastMonthCard: MonthCard | null;
   tick: number; // 고정 스텝 카운터
   actionLog: { tick: number; action: Action }[];
+}
+
+/** 본관 상태 (rooms.ts): 증축 Lv1~4·2층·이동·분위기. 결정적 — 공사는 doneDay(일 인덱스)로 끝난다. */
+export interface MainWork { kind: 'expand' | 'move' | 'floor2'; doneDay: number; days: number; toLevel?: number }
+export interface MainState {
+  level: 1 | 2 | 3 | 4;              // 증축 단계 (footprint: 3×2 → 4×3 → 5×3 → 6×4)
+  floor2: boolean;                   // 2층 (실내 좌석 정원 +6, 전망 +1)
+  work: MainWork | null;             // 진행 중 공사 (증축·이동·2층). 공사 중엔 본관 영업 정지
+  movedMonth: number;                // 마지막으로 옮긴 달(monthIndex), 월 1회 제한. -1이면 없음
+  undo: { x: number; y: number; day: number; cost: number; prevMovedMonth: number } | null; // 같은 날 되돌리기 1회
+  bgm: 'calm' | 'jazz' | 'folk' | null;      // BGM 버튼 그룹 (§4.3)
+  lighting: 'warm' | 'bright';               // 저녁 조명
+  pianoTime: 'lunch' | 'evening' | 'none';   // 피아노 연주 시간
+  seatLog: number[];                         // 최근 좌석 이용률 %(일별, 최대 7일) — "자리가 모자라요" (P1-7)
+  usedSeatMs: number;                        // 오늘 누적 (좌석 사용 × ms) — 하루 끝에 이용률로
+  openMs: number;                            // 오늘 누적 (정원 × ms)
 }
 
 // ---------- 액션 ----------
@@ -957,6 +981,18 @@ export type Action =
   | { type: 'clearRock'; x: number; y: number }
   | { type: 'renameCafe'; name: string }
   | { type: 'expand'; id: string }
+  | { type: 'expandMain' }                         // 본관 증축 Lv+1 (rooms.ts)
+  | { type: 'buildSecondFloor' }                   // 본관 2층 (Lv3 이상)
+  | { type: 'moveMain'; x: number; y: number }     // 본관 옮기기 (월 1회·₩200만·3일)
+  | { type: 'undoMoveMain' }                       // 같은 날 되돌리기 1회
+  | { type: 'toggleFireplace'; objectId: string }
+  | { type: 'setPianoTime'; time: 'lunch' | 'evening' | 'none' }
+  | { type: 'setBgm'; bgm: 'calm' | 'jazz' | 'folk' | null }
+  | { type: 'setLighting'; lighting: 'warm' | 'bright' }
+  | { type: 'feedAquarium'; objectId: string }
+  | { type: 'restockKids'; objectId: string }
+  | { type: 'setBarEvening'; objectId: string; on: boolean }
+  | { type: 'addBooks'; objectId: string }
   | { type: 'setCosmetic'; wallColor?: number; sign?: string }
   | { type: 'praise'; staffId: string }
   | { type: 'setSlot'; slot: number; menuId: string | null }

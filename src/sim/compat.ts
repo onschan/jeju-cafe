@@ -1,6 +1,6 @@
 import type { GameState, PlacedObject, ComboDef, SetDef, SpotEffectDef, ActiveCombo, ActiveSet, ActiveSpotEffect, ObjectStats, ComboTarget } from './types.ts';
 import { objectDef, COMBOS, SETS, SPOT_EFFECTS, COMBO_META, GUEST_TYPES, guestTags, targetMatches } from '../data/index.ts';
-import { objectScenery, itemScenery } from './grid.ts';
+import { objectScenery, itemScenery, sizeOf } from './grid.ts';
 import { addMileage, checkCodexMileage } from './mileage.ts';
 import { seasonOf } from './clock.ts';
 import { pushNotice } from './staff.ts';
@@ -37,8 +37,8 @@ function isB(type: string, combo: ComboDef): boolean {
 interface Entry { o: PlacedObject; w: number; h: number }
 type ByType = Map<string, Entry[]>;
 function entryOf(o: PlacedObject): Entry {
-  const d = objectDef(o.type);
-  return { o, w: d.w, h: d.h };
+  const { w, h } = sizeOf(o); // 본관 증축 w/h (y-indoor)
+  return { o, w, h };
 }
 /** 두 오브젝트 발자국 사이의 체비쇼프 거리 (가장 가까운 칸끼리). 겹치면 0. */
 function dist(a: Entry, b: Entry): number {
