@@ -42,7 +42,7 @@ test('연속 배치: 놓은 뒤 옆 빈 칸으로 고스트가 옮겨지고, 돈
 
 test('연속 배치: 사방이 막혀 있으면 제자리에 남는다', () => {
   const s = bareState(1);
-  for (const [dx, dy] of [[1, 0], [0, 1], [-1, 0], [0, -1]]) apply(s, { type: 'place', objectType: WALL, x: X(3) + dx, y: Y(3) + dy });
+  for (const [dx, dy] of [[1, 0], [0, 1], [-1, 0], [0, -1]] as const) apply(s, { type: 'place', objectType: WALL, x: X(3) + dx, y: Y(3) + dy });
   apply(s, { type: 'place', objectType: WALL, x: X(3), y: Y(3) });
   const nx = nextGhostAfterPlace(s, WALL, { x: X(3), y: Y(3), rot: 0 });
   expect(nx.done).toBe(false);

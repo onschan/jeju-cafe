@@ -496,11 +496,13 @@ export class GameView {
       if (o.build || (def.kind !== 'seat' && def.kind !== 'facility')) continue;
       const st = objectStats(state, o.id);
       const gc = this.footCenter(o, def.w, def.h);
-      const y = gc.sy - 30 - def.h * 8;
+      // 스프라이트 위 (발자국 앞 꼭짓점 − 스프라이트 높이)
+      const fa = footAnchor(o.x, o.y, def.w, def.h);
+      const y = fa.sy - Math.min(48, this.objNodes.get(o.id)?.sprite?.height ?? 40) - 10; // 키 큰 스프라이트(파라솔)는 중간 높이에
       const W = 24;
       const pct = Math.max(0, Math.min(1, st.popularity / GAUGE_MAX));
-      this.gaugeGfx.rect(gc.sx - W / 2 - 1, y - 1, W + 2, 8).fill({ color: 0x000000, alpha: 0.5 });
-      this.gaugeGfx.rect(gc.sx - W / 2, y, W * pct, 6).fill({ color: pct >= 0.66 ? 0x4c9a2a : pct >= 0.33 ? 0xe0a24c : 0xc9184a });
+      this.gaugeGfx.roundRect(gc.sx - W / 2 - 2, y - 2, W + 4, 10, 2).fill({ color: 0x3b1f0e, alpha: 0.85 }).stroke({ color: 0xf6e7c6, width: 1, alpha: 0.9 });
+      this.gaugeGfx.rect(gc.sx - W / 2, y, Math.max(1, W * pct), 6).fill({ color: pct >= 0.66 ? 0x6fd43a : pct >= 0.33 ? 0xffc85c : 0xff5a7a });
       if (activeCombos(state, o.id).some((c) => c.strength !== 'down' && c.strength !== 'none')) {
         this.gaugeGfx.circle(gc.sx + W / 2 + 8, y + 3, 5).fill({ color: 0xfff3b0 }).stroke({ color: 0xd08a00, width: 1.5 });
         this.gaugeGfx.circle(gc.sx + W / 2 + 8, y + 3, 2).stroke({ color: 0xd08a00, width: 1.5 });
