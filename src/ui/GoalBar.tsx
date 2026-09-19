@@ -15,6 +15,8 @@ export function GoalBar({ top, onOpen }: { top: number; onOpen: () => void }) {
   const g = currentGoal(s);
   const c = urgentChallenge(s);
   const done = g ? g.cur >= g.max : false;
+  // 돈 목표(자금 1,200만)는 「3,495,720/12,000,000」이 제목을 밀어내 375px에서 「자금 1,…」로 잘린다 → 10만 이상이면 만 단위로 줄인다
+  const num = (n: number, max: number) => (max >= 100_000 ? `${fmtNum(Math.round(n / 10_000))}만` : fmtNum(n));
   const pct = g && g.max > 0 ? Math.min(100, Math.round((g.cur / g.max) * 100)) : 0;
   const cpct = c && c.max > 0 ? Math.min(100, Math.round((c.cur / c.max) * 100)) : 0;
   return (
@@ -26,7 +28,7 @@ export function GoalBar({ top, onOpen }: { top: number; onOpen: () => void }) {
         {g ? (
           <>
             <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis' }}>목표: {g.title}</span>
-            <span style={{ flex: 'none', color: done ? PALETTE.ink : PALETTE.inkSoft }}>{fmtNum(g.cur)}/{fmtNum(g.max)}</span>
+            <span style={{ flex: 'none', color: done ? PALETTE.ink : PALETTE.inkSoft }}>{num(g.cur, g.max)}/{num(g.max, g.max)}</span>
             <span aria-hidden style={{ flex: 'none', width: 48, height: 6, background: '#fff8', border: `1px solid ${PALETTE.wood}`, borderRadius: 3, overflow: 'hidden' }}>
               <span style={{ display: 'block', width: `${pct}%`, height: '100%', background: done ? PALETTE.ok : PALETTE.bar }} />
             </span>
@@ -38,7 +40,7 @@ export function GoalBar({ top, onOpen }: { top: number; onOpen: () => void }) {
         {c ? (
           <>
             <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.kind === 'monthly' ? '이달' : '도전'}: {c.title}</span>
-            <span style={{ flex: 'none', color: PALETTE.inkSoft }}>{fmtNum(c.cur)}/{fmtNum(c.max)} · {c.daysLeft}일</span>
+            <span style={{ flex: 'none', color: PALETTE.inkSoft }}>{num(c.cur, c.max)}/{num(c.max, c.max)} · {c.daysLeft}일</span>
             <span aria-hidden style={{ flex: 'none', width: 36, height: 5, background: '#fff8', border: `1px solid ${PALETTE.wood}`, borderRadius: 3, overflow: 'hidden' }}>
               <span style={{ display: 'block', width: `${cpct}%`, height: '100%', background: PALETTE.bar }} />
             </span>
