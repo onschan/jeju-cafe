@@ -131,7 +131,7 @@ function SpotCard({ id }: { id: string }) {
     Confirm(`${def.name} Lv${next.level}에 ${josa(wonText(next.cost), '을/를')} 투자합니다. 매력도 ${appeal} → ${next.appeal}`, () => dispatch({ type: 'investSpot', id }), { title: '관광지 투자' });
   };
   const host = () => {
-    Confirm(`${def.name}에서 투어를 열까요? 예상 점수 ${score} (${TOUR_SUCCESS_SCORE} 이상 성공: ₩${fmtNum(score * TOUR_MONEY_PER_SCORE)} · 방문객 +${fmtNum(TOUR_SUCCESS_VISITORS)}, 아니면 ₩${fmtNum(TOUR_FAIL_MONEY)} · 방문객 +${fmtNum(TOUR_FAIL_VISITORS)})`, () => dispatch({ type: 'hostTour', spotId: id }), { title: '투어 개최' });
+    Confirm(`${def.name}에서 투어를 열까요? 예상 점수 ${score} (${TOUR_SUCCESS_SCORE} 이상이면 성공: 점수×₩${fmtNum(TOUR_MONEY_PER_SCORE)} = ₩${fmtNum(Math.max(score, TOUR_SUCCESS_SCORE) * TOUR_MONEY_PER_SCORE)}${score < TOUR_SUCCESS_SCORE ? ' 이상' : ''} · 방문객 +${fmtNum(TOUR_SUCCESS_VISITORS)}, 아니면 ₩${fmtNum(TOUR_FAIL_MONEY)} · 방문객 +${fmtNum(TOUR_FAIL_VISITORS)})`, () => dispatch({ type: 'hostTour', spotId: id }), { title: '투어 개최' });
   };
   return (
     <div style={{ ...card, opacity: unlocked ? 1 : 0.55 }} data-testid={`spot-${id}`}>
