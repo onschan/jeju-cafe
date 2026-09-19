@@ -3,6 +3,7 @@ import { initRoutes } from './entry.ts';
 import { SAVE_VERSION } from './state.ts';
 import { footprintOf } from './grid.ts';
 import { initMain } from './rooms.ts';
+import { TUTORIAL_STEPS } from './tutorial.ts';
 
 export function serialize(state: GameState): string {
   return JSON.stringify(state);
@@ -26,6 +27,10 @@ function backfill(state: GameState): void {
   state.monthMenuSold ??= {};
   state.routes ??= initRoutes(); // 트랙 H 유입 경로 (routes 없는 옛 저장)
   state.main ??= initMain(); // y-indoor: 본관 증축·이동·분위기 (SAVE_VERSION 18)
+  if (state.tutorial.seen === undefined) { // z-tutorial: 30단계 판정 표식이 없는 옛 9단계 저장 — 건너뛴 것은 계속 끝난 상태(30), 손으로 한 것은 10단계부터 이어 간다
+    state.tutorial.seen = [];
+    if (state.tutorial.skipped && state.tutorial.step < TUTORIAL_STEPS) state.tutorial.step = TUTORIAL_STEPS;
+  }
 }
 
 /** objects.json의 w/h가 바뀌어도 세이브가 깨지지 않도록 cells[].objectId를 objects에서 다시 만든다. */

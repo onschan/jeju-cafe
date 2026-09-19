@@ -8,7 +8,7 @@ import { canSetSlot, setSlot } from './menu.ts';
 import { checkFeature, checkGoals } from './goals.ts';
 import { canAcceptChallenge, acceptChallenge } from './challenges.ts';
 import { fillStarterLayout } from './state.ts';
-import { TUTORIAL_STEPS, unlockTutorialFeatures } from './tutorial.ts';
+import { TUTORIAL_STEPS, unlockTutorialFeatures, skipTutorialChapter, noteTutorial, TRACKED_ACTIONS } from './tutorial.ts';
 import { canPostJob, postJob, canHire, hire, canFire, fire, canAssign, assign, canLevelUp, levelUp } from './staff.ts';
 import { canTrain, train } from './training.ts';
 import { canPromote, promote, canSetTarget, setTarget } from './promotions.ts';
@@ -50,6 +50,7 @@ export function apply(state: GameState, a: Action): ApplyResult {
   const r = applyInner(state, a);
   if (r.ok) {
     bumpLayoutRev(state); // 배치 캐시 무효화 (layoutRev.ts)
+    if (TRACKED_ACTIONS.has(a.type)) noteTutorial(state, a.type); // 튜토리얼 조건 판정용 (되돌리기·연수·뽑기·선물…)
     log(state, a);
     if (!CLIENT_ONLY.has(a.type)) checkGoals(state);
   }
@@ -324,9 +325,19 @@ function applyInner(state: GameState, a: Action): ApplyResult {
       if (state.tutorial.step > 0) return { ok: false, reason: '이미 튜토리얼을 시작했어요' };
       fillStarterLayout(state);
       unlockTutorialFeatures(state); // 튜토리얼 보상으로만 열리는 입지 보기·콤보 도감·명소 지도
-      state.tutorial = { step: TUTORIAL_STEPS, skipped: true };
+      state.tutorial = { step: TUTORIAL_STEPS, skipped: true, seen: state.tutorial.seen ?? [] };
       return { ok: true };
     }
+    case 'skipTutorialChapter': {
+      // 장 단위 건너뛰기: 남은 단계의 해금 보상만 적용. 맨 처음(1장 0단계)이면 빈 마당을 완성 시작 상태로 채워 바로 영업할 수 있게 한다
+      if (state.tutorial.step >= TUTORIAL_STEPS) return { ok: false, reason: '튜토리얼이 끝났어요' };
+      if (state.tutorial.step === 0) fillStarterLayout(state);
+      skipTutorialChapter(state);
+      return { ok: true };
+    }
+    case 'tutorialNote':
+      noteTutorial(state, a.key);
+      return { ok: true };
     case 'dismissMonthCard':
       state.lastMonthCard = null;
       return { ok: true };
