@@ -246,6 +246,11 @@ function BusStopCard({ s, id }: { s: GameState; id: string }) {
 
 /** 본관 카드 (UX 참고 §4.2, y-indoor): 3줄(이름·Lv·실내 좌석 / 주방·재고 / 매출·직원·이용률) + 버튼 2줄(메뉴판·실내 꾸미기·카페 창 / 증축·2층·옮기기) + ▸ 자세히(재고·콤보·청결·난로/피아노/BGM/조명) */
 const LOW_STOCK = 3;
+/** ₩300만 식 짧은 돈 표기 (본관 카드 버튼) */
+const manWon = (n: number) => (n % 10_000 === 0 ? `₩${(n / 10_000).toLocaleString()}만` : won(n));
+const mbtn: CSSProperties = { ...btn, padding: '0 8px' };
+const mbtnOn: CSSProperties = { ...btnOn, padding: '0 8px' };
+const mbtnOff: CSSProperties = { ...btnOff, padding: '0 8px' };
 function MainCard({ s, id, a }: { s: GameState; id: string; a: CardActions }) {
   const [more, setMore] = useState(false);
   const o = s.objects[id];
@@ -261,8 +266,8 @@ function MainCard({ s, id, a }: { s: GameState; id: string; a: CardActions }) {
   const mv = canStartMoveMain(s);
   const undo = canUndoMoveMain(s);
   const workText = m.work ? `${m.work.kind === 'expand' ? `증축 Lv${m.work.toLevel}` : m.work.kind === 'floor2' ? '2층' : '이사'} 공사 중 · ${m.daysLeft}일` : null;
-  const doExpand = () => Confirm(`본관을 Lv${next}로 증축할까요? ${won(expandCost(s))} · 공사 ${MAIN_EXPAND_DAYS}일(영업 정지)`, () => { dispatch({ type: 'expandMain' }); }, { title: '본관 증축' });
-  const doFloor2 = () => Confirm(`2층을 올릴까요? ${won(FLOOR2_COST)} · 공사 ${FLOOR2_DAYS}일(영업 정지) · 실내 자리 +6`, () => { dispatch({ type: 'buildSecondFloor' }); }, { title: '2층 올리기' });
+  const doExpand = () => Confirm(`본관을 Lv${next}로 증축할까요? ${manWon(expandCost(s))} · 공사 ${MAIN_EXPAND_DAYS}일(영업 정지)`, () => { dispatch({ type: 'expandMain' }); }, { title: '본관 증축' });
+  const doFloor2 = () => Confirm(`2층을 올릴까요? ${manWon(FLOOR2_COST)} · 공사 ${FLOOR2_DAYS}일(영업 정지) · 실내 자리 +6`, () => { dispatch({ type: 'buildSecondFloor' }); }, { title: '2층 올리기' });
   const reason = m.work ? null : !exp.ok && next ? `증축: ${exp.reason}` : s.main.floor2 || !f2.ok && s.main.level >= 3 ? (!f2.ok && !s.main.floor2 ? `2층: ${f2.reason}` : null) : null;
   const combos = o ? activeCombos(s, o.id) : [];
   const stock = Object.entries(s.storage).filter(([, n]) => n > 0);
@@ -276,16 +281,16 @@ function MainCard({ s, id, a }: { s: GameState; id: string; a: CardActions }) {
         {m.cut && <div style={{ color: PALETTE.bad, fontWeight: 700 }} data-testid="main-cut">{ANNEX_CUT_TEXT} — {DOOR_PATH_WARN}</div>}
       </div>
       <Row>
-        <button style={btn} onClick={a.onCafe}>📋 메뉴판</button>
-        <button style={btn} onClick={() => { if (o) { requestBuildTab('indoor'); a.onBuild(o.x, o.y); } }} data-testid="main-indoor-btn">🪑 실내 꾸미기</button>
-        <button style={btn} onClick={() => setMore(!more)} aria-expanded={more}>{more ? '▾ 접기' : '▸ 자세히'}</button>
+        <button style={mbtn} onClick={a.onCafe}>📋 메뉴판</button>
+        <button style={mbtn} onClick={() => { if (o) { requestBuildTab('indoor'); a.onBuild(o.x, o.y); } }} data-testid="main-indoor-btn">🪑 실내 꾸미기</button>
+        <button style={mbtn} onClick={() => setMore(!more)} aria-expanded={more}>{more ? '▾ 접기' : '▸ 자세히'}</button>
       </Row>
       <Row>
-        {next && <button style={exp.ok ? btnOn : btnOff} disabled={!exp.ok} title={exp.ok ? undefined : exp.reason} onClick={doExpand} data-testid="main-expand-btn">🔨 증축 Lv{next} ({won(expandCost(s))}·{MAIN_EXPAND_DAYS}일)</button>}
-        {!s.main.floor2 && <button style={f2.ok ? btnOn : btnOff} disabled={!f2.ok} title={f2.ok ? undefined : f2.reason} onClick={doFloor2} data-testid="main-floor2-btn">🏗 2층 올리기</button>}
+        {next && <button style={exp.ok ? mbtnOn : mbtnOff} disabled={!exp.ok} title={exp.ok ? undefined : exp.reason} onClick={doExpand} data-testid="main-expand-btn">🔨 증축 Lv{next} ({manWon(expandCost(s))}·{MAIN_EXPAND_DAYS}일)</button>}
+        {!s.main.floor2 && <button style={f2.ok ? mbtnOn : mbtnOff} disabled={!f2.ok} title={f2.ok ? undefined : f2.reason} onClick={doFloor2} data-testid="main-floor2-btn">🏗 2층</button>}
         {undo.ok
-          ? <button style={btn} onClick={() => dispatch({ type: 'undoMoveMain' })} data-testid="main-undo-btn">↩ 되돌리기</button>
-          : <button style={mv.ok ? btn : btnOff} disabled={!mv.ok} title={mv.ok ? undefined : mv.reason} onClick={() => o && a.onMove(o.id)} data-testid="main-move-btn">🚚 옮기기 ({won(MOVE_COST)}·{moveDays(s)}일)</button>}
+          ? <button style={mbtn} onClick={() => dispatch({ type: 'undoMoveMain' })} data-testid="main-undo-btn">↩ 되돌리기</button>
+          : <button style={mv.ok ? mbtn : mbtnOff} disabled={!mv.ok} title={mv.ok ? undefined : mv.reason} onClick={() => o && a.onMove(o.id)} data-testid="main-move-btn">🚚 옮기기 ({manWon(MOVE_COST)}·{moveDays(s)}일)</button>}
       </Row>
       <div style={{ ...small, marginTop: 4 }}>이달 이동 {canMoveThisMonth(s) ? '가능 ○' : '끝 ✕'}{reason && ` · ${reason}`}{!mv.ok && canMoveThisMonth(s) && !m.work && ` · 옮기기: ${mv.reason}`}</div>
       {more && (
