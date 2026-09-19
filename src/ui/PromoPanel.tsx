@@ -99,7 +99,7 @@ export function PromoPanel() {
               <div style={{ fontSize: 13, color: PALETTE.inkSoft }}>{effectText(d)}</div>
               {costText(d)}
             </div>
-            <button data-tut="promote" style={{ ...(ok ? brownBtn : brownBtnOff), marginBottom: 0, marginRight: 0 }} disabled={!ok} onClick={() => run(d)}>실행</button>
+            <button data-tut={d.id === 'flyer' ? 'promote' : undefined} style={{ ...(ok ? brownBtn : brownBtnOff), marginBottom: 0, marginRight: 0 }} disabled={!ok} onClick={() => run(d)} aria-label={`${d.name} 실행`}>실행</button>
           </div>
         );
       })}
