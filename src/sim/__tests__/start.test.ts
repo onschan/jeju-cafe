@@ -27,15 +27,15 @@ describe('v3 시작 상태 (§5)', () => {
     expect(s.storage).toEqual({});
   });
 
-  it('하루 손님 수는 8~12명이고 첫 손님이 게임 1시간 안에 온다', () => {
+  it('하루 손님 수는 7~12명이고 첫 손님이 게임 1시간 안에 온다 (통합 튜닝 21/16 뒤 시작 7명 — §5의 8명에서 1명 줄었다)', () => {
     const s = createInitialState(1);
     const n = dailyGuestCount(s);
-    expect(n).toBeGreaterThanOrEqual(8);
+    expect(n).toBeGreaterThanOrEqual(7);
     expect(n).toBeLessThanOrEqual(12);
     tick(s, HOUR_MS);
     expect(s.guests.length).toBeGreaterThan(0);
     tick(s, DAY_MS);
-    expect(s.totalGuests).toBeGreaterThanOrEqual(8);
+    expect(s.totalGuests).toBeGreaterThanOrEqual(7);
     expect(s.totalGuests).toBeLessThanOrEqual(14);
   });
 

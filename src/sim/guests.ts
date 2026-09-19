@@ -41,7 +41,7 @@ export const MAX_GUESTS = 60;
 export const MIN_DAILY_GUESTS = 2;
 export const MAX_DAILY_GUESTS = 300;
 /** 하루 손님 수 = min(좌석 × 6, 인기·명소 기반값) (확장 §4.2 #1).
- *  기반값 = 4 + 해금 손님층 유효 인기 합 ÷ 17 + 시설(좌석 제외) 인기 합 ÷ 12 + 명소 방문객 × 3%, × 평판 배수(0.5~1.5). 시작(6석, 인기 합 75, 평판 50)에 8명. */
+ *  기반값 = 4 + 해금 손님층 유효 인기 합 ÷ 21 + 시설(좌석 제외) 인기 합 ÷ 16 + 명소 방문객 × 3%, × 평판 배수(0.5~1.5). 시작(6석, 인기 합 75, 평판 50)에 7명. 통합 튜닝: §4.6 밴드(3년차 손님 1,500~3,000·자금)에 맞춰 17/12 → 21/16. */
 export const GUESTS_PER_SEAT = 6;
 export const BASE_DAILY_GUESTS = 4;
 export const POP_SUM_PER_GUEST = 21;
@@ -166,7 +166,7 @@ export function facilityPopularitySum(state: GameState): number {
 export function spotDailyGuests(state: GameState): number {
   return spotGuestBonus(state);
 }
-/** 인기·명소 기반 하루 손님 (좌석 상한 전): 4 + 인기 합/17 + 시설 인기 합/12 + 명소 방문객 × 3% */
+/** 인기·명소 기반 하루 손님 (좌석 상한 전): 4 + 인기 합/21 + 시설 인기 합/16 + 명소 방문객 × 3% */
 export function popularityGuestBase(state: GameState): number {
   return BASE_DAILY_GUESTS + Math.floor(popularitySum(state) / POP_SUM_PER_GUEST) + Math.floor(facilityPopularitySum(state) / FACILITY_POP_PER_GUEST) + spotDailyGuests(state);
 }
