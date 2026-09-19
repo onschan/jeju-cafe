@@ -17,7 +17,7 @@ import { createInitialState } from './state.ts';
 import { tick } from './tick.ts';
 import { apply } from './actions.ts';
 import { DAY_MS } from './clock.ts';
-import { canPlace, objectAt, cellAt } from './grid.ts';
+import { canPlace, objectAt, cellAt, footprint } from './grid.ts';
 import { START_ORIGIN } from './layout.ts';
 import { objectDef, COMBOS, SETS, questDef } from '../data/index.ts';
 import { DEVELOP_RESEARCH, menuOf } from './craft.ts';
@@ -368,8 +368,24 @@ function laySteps(s: GameState, cells: { x: number; y: number }[]): void {
     if (!objectAt(s, c.x, c.y)) apply(s, { type: 'place', objectType: 'path', ...c });
   }
 }
+/** 경로 시설은 2년차부터 — 1년차에 주차장을 지으면 가족·커플 손님 매출로 §4.6 밴드(1년차 순이익 300~800만)를 넘는다. 목표도 g36(2년차)부터 */
+export const BOT_ROUTE_YEAR = 2;
+/** 시작 필지 오른쪽 아래(마을 길 옆) 2×2 — 2년차에 그 자리의 테이블·시설을 치우고(환불) 주차장을 놓는다. 1년차 배치는 §4.6 밴드 그대로. */
+export const BOT_PARKING_SITE = at(8, 5);
+function clearParkingSite(s: GameState): boolean {
+  for (const c of footprint(PARKING_EXPAND_FROM, BOT_PARKING_SITE.x, BOT_PARKING_SITE.y)) {
+    const o = objectAt(s, c.x, c.y);
+    if (o && !apply(s, { type: 'remove', objectId: o.id }).ok) return false; // 손님이 앉아 있으면 다음 달
+  }
+  return true;
+}
 function planRoutes(s: GameState): void {
-  if (!routeFacility(s, 'parking') && s.unlocked.objects.includes(PARKING_EXPAND_FROM) && canSpend(s, objectDef(PARKING_EXPAND_FROM).cost)) { const site = parkingSites(s)[0]; if (site) place(s, PARKING_EXPAND_FROM, site.x, site.y); }
+  if (s.clock.year < BOT_ROUTE_YEAR) return;
+  if (!routeFacility(s, 'parking') && !Object.values(s.objects).some((o) => o.type === PARKING_EXPAND_FROM) && s.unlocked.objects.includes(PARKING_EXPAND_FROM) && canSpend(s, objectDef(PARKING_EXPAND_FROM).cost)) {
+    const sites = parkingSites(s);
+    const site = sites.find((p) => p.x === BOT_PARKING_SITE.x && p.y === BOT_PARKING_SITE.y) ?? (clearParkingSite(s) ? BOT_PARKING_SITE : sites[0]);
+    if (site) place(s, PARKING_EXPAND_FROM, site.x, site.y);
+  }
   for (const route of ['olle', 'shuttle', 'cruise'] as const) {
     const type = ENTRY_ROUTES[route].facilities[0]!;
     const site = BOT_ROUTE_SITES[route];
