@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { GameView, type GhostSpec } from '../render/GameView';
 import { startLoop, dispatch, getState, useGame, setViewReset, autosaveNow, hasAnySave, loadSlot, setMonthCardHook, setSceneHook, showToast, pauseGame } from './store';
 import { unlockAudio, bgm, isMuted, setMuted, getBgmVolume, getSfxVolume, setBgmVolume, setSfxVolume, sfx } from './audio';
-import { seasonOf, canPlace, objectAt, footprint, parcelAt, clearCost, placeCost, PROTECTED_TYPES, ROTATABLE_TYPES, goalForMenu, type GameState } from '../sim/index.ts';
+import { seasonOf, canPlace, objectAt, footprint, parcelAt, clearCost, placeCost, PROTECTED_TYPES, ROTATABLE_TYPES, goalForMenu, routeAtCell, type GameState } from '../sim/index.ts';
+import { RoutesSection } from './RouteCard'; // 트랙 H
 import { objectDef } from '../data/index.ts';
 // render/·ui/는 Vite 전용이라 확장자 없는 import 허용. sim/·data/만 .ts 확장자 규칙.
 import { NightOverlay, Toast } from './HUD';
@@ -92,6 +93,7 @@ function targetAt(s: GameState, x: number, y: number): CardTarget | null {
   if (guest) return { kind: 'guest', id: guest.id };
   const staff = s.staff.find((st) => Math.round(st.x) === x && Math.round(st.y) === y);
   if (staff) return { kind: 'staff', id: staff.id };
+  const rt = routeAtCell(s, x, y); if (rt) return { kind: 'route', route: rt, id: objectAt(s, x, y)?.id }; // 트랙 H: 진입점·경로 시설(정류장 포함) → 경로 카드
   const p = parcelAt(s, x, y);
   if (p && !p.owned) return { kind: 'parcel', id: p.id };
   const o = objectAt(s, x, y);
@@ -172,6 +174,7 @@ function StatusPanel() {
       <div style={{ ...card, display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '4px 12px', fontSize: 15 }}>
         {rows.map(([k, v]) => <span key={k} style={{ display: 'contents' }}><span style={{ color: PALETTE.inkSoft }}>{k}</span><b>{v}</b></span>)}
       </div>
+      <RoutesSection s={s} />{/* 트랙 H: 손님 경로 표 */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 14 }}>
         <Icon name="local" size={18} alt="동네 손님" /> 동네
         <meter min={-100} max={100} value={s.popularity} style={{ flex: 1 }} />

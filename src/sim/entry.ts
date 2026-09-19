@@ -308,7 +308,7 @@ export function nextArrivalText(state: GameState, route: RouteId): string {
     return next !== undefined ? `오늘 ${next}시` : `내일 ${def.fixedHours[0]}시`;
   }
   if (def.hours.length === 0) return '상시';
-  return def.hours.map(([a, b]) => `${a}~${b}시`).join(' · ');
+  return def.hours.map(([a, b]) => `${a}~${b - 1}시`).join(' · '); // [10,18) → "10~17시"
 }
 
 // ---------- 손님 기록·정산 ----------
