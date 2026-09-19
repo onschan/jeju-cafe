@@ -223,7 +223,7 @@ export function MenuDetail({ menuId }: { menuId: string }) {
       <div style={{ display: 'flex', flexWrap: 'wrap' }}>
         {mod.toppings.map((t) => (
           <button key={t} aria-label={`토핑 빼기 ${toppingDef(t).name}`} style={{ ...dangerBtn, minHeight: 36, fontSize: 13, padding: '0 8px' }} disabled={!canRemoveTopping(s, menuId, t).ok}
-            onClick={() => dispatch({ type: 'removeTopping', menuId, toppingId: t })}>✗ {toppingDef(t).name}</button>
+            onClick={() => dispatch({ type: 'removeTopping', menuId, toppingId: t })}><Icon name="close" size={12} /> {toppingDef(t).name}</button>
         ))}
       </div>
       <div style={{ display: 'flex', flexWrap: 'wrap' }}>
@@ -272,7 +272,7 @@ export function RecipeCodex() {
       </div>
       {INGREDIENT_COMBOS.map((c) => (
         <div key={c.id} style={{ display: 'flex', gap: 6, alignItems: 'baseline' }}>
-          <span style={{ width: 18, textAlign: 'center' }}>{combos.has(c.id) ? '✓' : ' '}</span>
+          <span style={{ width: 18, textAlign: 'center' }}>{combos.has(c.id) ? <Icon name="check" size={12} /> : ' '}</span>
           <span>{c.name}</span>
           <span style={{ fontSize: 12, color: PALETTE.inkSoft }}>{c.pairText} → {c.bonusText}</span>
         </div>

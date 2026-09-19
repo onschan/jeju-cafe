@@ -1,6 +1,7 @@
 /** 직원 창 (스펙 §4.3 + HSS2 확장 §3.6). 하위 탭: 우리 직원 / 채용 후보. 카드 1열: 파츠 초상·이름·직종·특기 배지·경험치 바·4스탯 바(상한 눈금)·급여·에너지·레벨.
  *  버튼: 승급(경험치+연구)·연수(5종, 랭크 3)·해고(확인)·후보는 채용·공고 내기(채용 5단계, 풀에서 온다). sim 액션: postJob·hire·fire·assign·levelUp·train. */
 import { useEffect, useRef, useState } from 'react';
+import { Icon } from '../Icon';
 import { ButtonGroup } from '../ButtonGroup';
 import type { GameState, Staff, Candidate, RoleId, StatKey, JobTier, Face } from '../../sim/index.ts';
 import { TIERS, LOW_ENERGY, STAT_KEYS, levelUpCost, expNeeded, mainStatOf, canHire, canLevelUp, canPostJob, staffInRole, postJobCost, tierUnlocked, availablePool, staffCapacity, staffRoomCount, capOf, capBonus, skillsOf, salaryDue, trainingOptions, trainingUnlocked, TRAINING_RANK } from '../../sim/index.ts';
@@ -143,7 +144,7 @@ function StaffCard({ st, s, dispatch }: { st: Staff; s: GameState; dispatch: Dis
         <ButtonGroup label="직종" disabled={!!away} value={st.role ?? ''} onPick={(v) => dispatch({ type: 'assign', staffId: st.id, role: (v || null) as RoleId | null })} style={{ flex: '1 1 100%' }}
           options={[{ value: '', label: '쉬기' }, ...roles.map((r) => ({ value: r, label: label('role', r) }))]} />
         <button style={maxed ? rowBtnOff : promo.ok ? rowBtnOn : rowBtnOff} disabled={!promo.ok} title={promo.reason} onClick={() => dispatch({ type: 'levelUp', staffId: st.id })} aria-label={`${st.name} 승급`}>
-          {maxed ? '최고 레벨' : `승급 🔬${levelUpCost(st.level)}`}
+          {maxed ? '최고 레벨' : <>승급 <Icon name="research" size={14} />{levelUpCost(st.level)}</>}
         </button>
         <button style={away ? rowBtnOff : training ? rowBtnOn : rowBtn} disabled={!!away} onClick={() => { setTraining(!training); setFiring(false); }} aria-label={`${st.name} 연수`}>연수</button>
         <button style={away ? rowBtnOff : rowBtnDanger} disabled={!!away} onClick={() => { setFiring(!firing); setTraining(false); }} aria-label={`${st.name} 해고`}>해고</button>
@@ -190,7 +191,7 @@ export interface StaffWindowProps extends WindowProps { initialTab?: Tab; focusI
 
 /** 정렬 칩 (§5.4): 직원 [직종] [급여↓] [피로↓]. 세션 기억 */
 export type StaffSort = 'role' | 'salary' | 'fatigue';
-const STAFF_SORTS: { key: StaffSort; label: string }[] = [{ key: 'role', label: '👔 직종' }, { key: 'salary', label: '💰 급여↓' }, { key: 'fatigue', label: '😮‍💨 피로↓' }];
+const STAFF_SORTS: { key: StaffSort; label: string; icon: string }[] = [{ key: 'role', label: '직종', icon: 'tie' }, { key: 'salary', label: '급여↓', icon: 'money' }, { key: 'fatigue', label: '피로↓', icon: 'tired' }];
 let rememberedStaffSort: StaffSort = 'role';
 export function sortStaff(staff: Staff[], sort: StaffSort): Staff[] {
   const arr = [...staff];

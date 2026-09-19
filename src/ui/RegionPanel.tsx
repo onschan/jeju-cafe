@@ -20,7 +20,7 @@ export function RegionPanel() {
       </div>
       <div style={{ fontSize: 13, marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
         <b style={{ color: weekend ? PALETTE.ok : PALETTE.inkSoft }}>{weekend ? '오늘은 주말 — 이번 주말 팝업을 열 수 있어요' : `다음 주말까지 ${daysToWeekend(s.clock.day)}일`}</b>
-        {open && <button style={{ ...brownBtnOn, marginBottom: 0 }} onClick={showPopupScreen} aria-label="팝업 보기">🏪 팝업 보기</button>}
+        {open && <button style={{ ...brownBtnOn, marginBottom: 0 }} onClick={showPopupScreen} aria-label="팝업 보기"><Icon name="popup" /> 팝업 보기</button>}
       </div>
       {REGIONS.map((r) => {
         const st = regionState(s, r.id);

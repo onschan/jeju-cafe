@@ -1,4 +1,5 @@
 import { useGame } from './store';
+import { Icon } from './Icon';
 import { fmtNum } from '../sim/format.ts';
 import { currentGoal, urgentChallenge } from './simBridge';
 import { PALETTE } from './frame';
@@ -34,7 +35,7 @@ export function GoalBar({ top, onOpen }: { top: number; onOpen: () => void }) {
         ) : <span style={{ flex: 1, color: PALETTE.inkSoft }}>목표: 모두 달성!</span>}
       </span>
       <span data-testid="challenge-line" style={{ height: CHALLENGE_LINE_H, padding: '0 10px', display: 'flex', alignItems: 'center', gap: 6, width: '100%', boxSizing: 'border-box', fontSize: 13, fontWeight: 700, background: '#0000000c' }}>
-        <span style={{ color: PALETTE.title }}>{c?.kind === 'monthly' ? '📅' : '🎯'}</span>
+        <span style={{ color: PALETTE.title, display: 'flex' }}><Icon name={c?.kind === 'monthly' ? 'calendar' : 'target'} size={14} /></span>
         {c ? (
           <>
             <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.kind === 'monthly' ? '이달' : '도전'}: {c.title}</span>

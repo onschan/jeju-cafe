@@ -157,11 +157,11 @@ function SettingsPanel({ onExit, gauges, onGauges }: { onExit: () => void; gauge
     <div style={{ display: 'grid', gap: 6 }} data-testid="settings">
       {slider('배경음', bgmVol, (n) => { setBgmVolume(n); setBgmVol(n); })}
       {slider('효과음', sfxVol, (n) => { setSfxVolume(n); setSfxVol(n); sfx('tap'); })}
-      <button style={{ ...brownBtn, marginRight: 0, marginBottom: 0 }} onClick={toggleMute}>{muted ? '🔊 소리 켜기' : '🔇 소리 끄기'}</button>
-      <OnOff label="🔒 속도 잠금 (창을 열어도 안 멈춤)" on={isSpeedLocked()} onChange={setSpeedLocked} testId="setting-speed-lock" />
-      <OnOff label="📊 시설 위 인기 바·◎ 콤보 표시" on={gauges} onChange={onGauges} testId="setting-gauges" />
-      <button style={{ ...brownBtn, marginRight: 0, marginBottom: 0 }} onClick={() => setSlots(true)}>💾 슬롯에 저장</button>
-      <button style={{ ...dangerBtn, marginRight: 0, marginBottom: 0 }} onClick={() => Confirm('자동 저장하고 타이틀로 나갈까요?', onExit, { title: '타이틀로' })}>🚪 타이틀로</button>
+      <button style={{ ...brownBtn, marginRight: 0, marginBottom: 0 }} onClick={toggleMute}>{muted ? <><Icon name="sound_on" /> 소리 켜기</> : <><Icon name="sound_off" /> 소리 끄기</>}</button>
+      <OnOff label="속도 잠금 (창을 열어도 안 멈춤)" on={isSpeedLocked()} onChange={setSpeedLocked} testId="setting-speed-lock" />
+      <OnOff label="시설 위 인기 바·◎ 콤보 표시" on={gauges} onChange={onGauges} testId="setting-gauges" />
+      <button style={{ ...brownBtn, marginRight: 0, marginBottom: 0 }} onClick={() => setSlots(true)}><Icon name="save" /> 슬롯에 저장</button>
+      <button style={{ ...dangerBtn, marginRight: 0, marginBottom: 0 }} onClick={() => Confirm('자동 저장하고 타이틀로 나갈까요?', onExit, { title: '타이틀로' })}><Icon name="door" /> 타이틀로</button>
       {slots && <SaveSlots mode="save" onClose={() => setSlots(false)} />}
     </div>
   );
@@ -186,7 +186,7 @@ function StatusPanel() {
   ];
   return (
     <div data-testid="status">
-      <button data-testid="status-save" style={{ ...brownBtnOn, width: '100%', marginRight: 0, minHeight: 48 }} onClick={() => { autosaveNow(); setSaved(true); showMessage('저장했어요'); }}>💾 {saved ? '저장했어요' : '저장'}</button>
+      <button data-testid="status-save" style={{ ...brownBtnOn, width: '100%', marginRight: 0, minHeight: 48 }} onClick={() => { autosaveNow(); setSaved(true); showMessage('저장했어요'); }}><Icon name="save" /> {saved ? '저장했어요' : '저장'}</button>
       <div style={{ ...card, display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '4px 12px', fontSize: 15 }}>
         {rows.map(([k, v]) => <span key={k} style={{ display: 'contents' }}><span style={{ color: PALETTE.inkSoft }}>{k}</span><b>{v}</b></span>)}
       </div>
@@ -221,7 +221,7 @@ function menuUnlockText(menuId: string): string | null {
   return g ? `「${g.title}」 목표를 이루면 열려요` : null;
 }
 
-/** 고스트 밑 ✓↻ 원형 버튼 48px (§5.3): DOM 오버레이가 고스트의 화면 좌표를 따라간다. 고스트가 화면 위 40%에 있으면 숨긴다(§5.6 하단 바 버튼만). */
+/** 고스트 밑 확정·회전 원형 버튼 48px (§5.3): DOM 오버레이가 고스트의 화면 좌표를 따라간다. 고스트가 화면 위 40%에 있으면 숨긴다(§5.6 하단 바 버튼만). */
 function GhostButtons({ view, cell, ok, canRotate, onConfirm, onRotate }: { view: GameView | null; cell: { x: number; y: number; w: number; h: number }; ok: boolean; canRotate: boolean; onConfirm: () => void; onRotate: () => void }) {
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -244,8 +244,8 @@ function GhostButtons({ view, cell, ok, canRotate, onConfirm, onRotate }: { view
   const round = (bg: string): React.CSSProperties => ({ width: 48, height: 48, borderRadius: 24, border: `3px solid ${PALETTE.wood}`, background: bg, color: '#fff', fontSize: 22, fontWeight: 700, fontFamily: 'inherit', boxShadow: '0 2px 0 #0006', padding: 0 });
   return (
     <div ref={ref} data-testid="ghost-buttons" style={{ position: 'absolute', left: -52, top: 0, display: 'none', gap: 8, zIndex: 13, pointerEvents: 'auto', willChange: 'transform' }}>
-      <button aria-label="확정" disabled={!ok} onClick={onConfirm} style={{ ...round(ok ? '#e8892b' : '#9a8a74'), opacity: ok ? 1 : 0.6 }}>✓</button>
-      {canRotate && <button aria-label="회전" onClick={onRotate} style={round('#4c9a2a')}>↻</button>}
+      <button aria-label="확정" disabled={!ok} onClick={onConfirm} style={{ ...round(ok ? '#e8892b' : '#9a8a74'), opacity: ok ? 1 : 0.6, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Icon name="check" size={24} /></button>
+      {canRotate && <button aria-label="회전" onClick={onRotate} style={{ ...round('#4c9a2a'), display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Icon name="undo" size={24} /></button>}
     </div>
   );
 }
@@ -351,7 +351,7 @@ function Game({ onExit }: { onExit: () => void }) {
     const at = origin ?? (home ? { x: home.x + Math.floor(home.w / 2), y: home.y + Math.floor(home.h / 2) } : { x: Math.floor(st.grid.w / 2), y: Math.floor(st.grid.h / 2) });
     setGhost({ x: at.x, y: at.y, rot: 0 });
   };
-  /** 카메라를 본관에 (§5.6 🏠) */
+  /** 카메라를 본관에 (§5.6 홈 버튼) */
   const goHome = () => {
     const st = getState();
     const home = Object.values(st.objects).find((o) => o.type === 'warehouse');
@@ -545,31 +545,31 @@ function Game({ onExit }: { onExit: () => void }) {
   useTutorialHighlight(view);
 
   const CAFE_MENU: IconGridItem<CafeTab>[] = [
-    { key: 'menu', label: '메뉴판', icon: '☕' },
-    { key: 'ingredients', label: '재료', icon: '🍊' },
-    { key: 'craft', label: '연구', icon: '🔬', locked: !featureOpen(s, 'craft'), lockedText: '연구 개발은 목표를 이루면 열려요' },
-    { key: 'promo', label: '홍보', icon: '📣', locked: !featureOpen(s, 'promote'), lockedText: '홍보는 튜토리얼 7단계에서 열려요' },
-    { key: 'building', label: '본관', icon: '🏠' },
-    { key: 'indoor', label: '실내', icon: '🪑' },
+    { key: 'menu', label: '메뉴판', icon: 'coffee' },
+    { key: 'ingredients', label: '재료', icon: 'harvest' },
+    { key: 'craft', label: '연구', icon: 'research', locked: !featureOpen(s, 'craft'), lockedText: '연구 개발은 목표를 이루면 열려요' },
+    { key: 'promo', label: '홍보', icon: 'promo', locked: !featureOpen(s, 'promote'), lockedText: '홍보는 튜토리얼 7단계에서 열려요' },
+    { key: 'building', label: '본관', icon: 'home' },
+    { key: 'indoor', label: '실내', icon: 'chair' },
   ];
   const offered = Object.values(s.board.quests).filter((q) => q.status === 'offered').length;
   const PEOPLE_MENU: IconGridItem<PeopleTab>[] = [
-    { key: 'staff', label: '직원', icon: '👩‍🍳', badge: s.staff.filter((st) => st.energy < 20).length },
-    { key: 'candidates', label: '채용', icon: '📋', badge: s.candidates.length },
-    { key: 'guests', label: '손님', icon: '🙂', badge: s.guests.length },
-    { key: 'codex', label: '도감', icon: '📖', locked: !featureOpen(s, 'comboCodex'), lockedText: '콤보 도감은 튜토리얼 6단계에서 열려요' },
-    { key: 'quests', label: '부탁', icon: '❗', badge: offered },
-    { key: 'rivals', label: '라이벌', icon: '⚔️', locked: !featureOpen(s, 'challenge'), lockedText: '카페 대결은 목표를 이루면 열려요', isNew: s.rivals.length > 0 },
+    { key: 'staff', label: '직원', icon: 'staff', badge: s.staff.filter((st) => st.energy < 20).length },
+    { key: 'candidates', label: '채용', icon: 'hire', badge: s.candidates.length },
+    { key: 'guests', label: '손님', icon: 'guest', badge: s.guests.length },
+    { key: 'codex', label: '도감', icon: 'book', locked: !featureOpen(s, 'comboCodex'), lockedText: '콤보 도감은 튜토리얼 6단계에서 열려요' },
+    { key: 'quests', label: '부탁', icon: 'quest', badge: offered },
+    { key: 'rivals', label: '라이벌', icon: 'rival', locked: !featureOpen(s, 'challenge'), lockedText: '카페 대결은 목표를 이루면 열려요', isNew: s.rivals.length > 0 },
   ];
   const LEDGER_MENU: IconGridItem<LedgerTab>[] = [
-    { key: 'report', label: '경영', icon: '📊' },
-    { key: 'invest', label: '투자', icon: '💰', badge: s.board.events.filter((e) => e.status === 'pending').length },
-    { key: 'spots', label: '명소', icon: '🗺️', locked: !featureOpen(s, 'spotMap'), lockedText: '명소 지도는 첫 달을 마치면 열려요' },
-    { key: 'shop', label: '상점', icon: '🛒' },
-    { key: 'tickets', label: '응모권', icon: '🎟️', badge: s.tickets },
-    { key: 'rank', label: '랭킹', icon: '🏆' },
-    { key: 'region', label: '지역', icon: '🌊', locked: !featureOpen(s, 'popup'), lockedText: '팝업 스토어는 목표를 이루면 열려요' },
-    { key: 'settings', label: '설정', icon: '⚙️' },
+    { key: 'report', label: '경영', icon: 'report' },
+    { key: 'invest', label: '투자', icon: 'money', badge: s.board.events.filter((e) => e.status === 'pending').length },
+    { key: 'spots', label: '명소', icon: 'map', locked: !featureOpen(s, 'spotMap'), lockedText: '명소 지도는 첫 달을 마치면 열려요' },
+    { key: 'shop', label: '상점', icon: 'shop' },
+    { key: 'tickets', label: '응모권', icon: 'ticket', badge: s.tickets },
+    { key: 'rank', label: '랭킹', icon: 'trophy' },
+    { key: 'region', label: '지역', icon: 'wave', locked: !featureOpen(s, 'popup'), lockedText: '팝업 스토어는 목표를 이루면 열려요' },
+    { key: 'settings', label: '설정', icon: 'settings' },
   ];
 
   const renderWindow = () => {
@@ -579,9 +579,9 @@ function Game({ onExit }: { onExit: () => void }) {
         return (
           <Window title="짓기" onClose={closeWin} testId="window-build">
             <div data-testid="build-tools" role="toolbar" aria-label="도구" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 6, marginBottom: 8 }}>
-              <button data-tut="tool:move" style={{ ...brownBtn, margin: 0, padding: '0 6px', fontSize: 15 }} onClick={() => { closeWin(); setMode({ kind: 'move' }); }}>🪑 이동</button>
-              <button data-tut="tool:remove" style={{ ...dangerBtn, margin: 0, padding: '0 6px', fontSize: 15 }} onClick={() => { closeWin(); setMode({ kind: 'remove' }); }}>🔨 철거</button>
-              <button data-testid="tool-undo" disabled={!undoOk} title={undoOk ? undefined : canUndo(s).reason} style={{ ...(undoOk ? brownBtn : brownBtnOff), margin: 0, padding: '0 6px', fontSize: 15 }} onClick={undo}>↶ 되돌리기</button>
+              <button data-tut="tool:move" style={{ ...brownBtn, margin: 0, padding: '0 6px', fontSize: 15 }} onClick={() => { closeWin(); setMode({ kind: 'move' }); }}><Icon name="move" /> 이동</button>
+              <button data-tut="tool:remove" style={{ ...dangerBtn, margin: 0, padding: '0 6px', fontSize: 15 }} onClick={() => { closeWin(); setMode({ kind: 'remove' }); }}><Icon name="remove" /> 철거</button>
+              <button data-testid="tool-undo" disabled={!undoOk} title={undoOk ? undefined : canUndo(s).reason} style={{ ...(undoOk ? brownBtn : brownBtnOff), margin: 0, padding: '0 6px', fontSize: 15 }} onClick={undo}><Icon name="undo" /> 되돌리기</button>
             </div>
             <BuildWindow onClose={closeWin} onPickBuild={(t) => pickBuild(t, win.origin)} />
           </Window>
@@ -642,7 +642,7 @@ function Game({ onExit }: { onExit: () => void }) {
       <TopShell onStatus={() => setWin({ kind: 'status' })} onGoal={() => setWin({ kind: 'goal' })} />
       {!place && !cardTarget && (
         <button data-testid="home-btn" aria-label="본관으로" onClick={goHome}
-          style={{ position: 'absolute', left: 8, bottom: `calc(${SHELL_BOTTOM + 8}px + env(safe-area-inset-bottom))`, width: 44, height: 44, borderRadius: 22, border: `3px solid ${PALETTE.wood}`, background: PALETTE.paper, fontSize: 20, zIndex: 11, padding: 0, boxShadow: '0 2px 0 #0004' }}>🏠</button>
+          style={{ position: 'absolute', left: 8, bottom: `calc(${SHELL_BOTTOM + 8}px + env(safe-area-inset-bottom))`, width: 44, height: 44, borderRadius: 22, border: `3px solid ${PALETTE.wood}`, background: PALETTE.paper, fontSize: 20, zIndex: 11, padding: 0, boxShadow: '0 2px 0 #0004', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Icon name="home" size={24} /></button>
       )}
       {place && ghostCell && <GhostButtons view={view} cell={ghostCell} ok={place.ok} canRotate={place.canRotate} onConfirm={place.onConfirm} onRotate={place.onRotate} />}
       <MessageLine bottom={BOTTOM_BAR_H} />

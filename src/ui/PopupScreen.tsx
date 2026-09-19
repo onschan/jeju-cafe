@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
+import { Icon } from './Icon';
 import { wonText } from '../data/labels.ts';
 import { useGame, dispatch } from './store';
 import { Popup } from './Popup';
@@ -107,7 +108,7 @@ export function drawPopupScene(canvas: HTMLCanvasElement, sheet: Sheet | null, r
     else if (phase === 'exit') drawChar(ctx, sheet, p, COUNTER_X + 30 - (COUNTER_X + 60) * t, 'left', frame);
     else {
       drawChar(ctx, sheet, p, COUNTER_X + 30, 'down', 1);
-      // 말풍선 (대사는 HTML에) — 아이콘만: 주문 ☕ / 반응
+      // 말풍선 (대사는 HTML에) — 아이콘만: 주문(커피) / 반응(하트·음표·₩·?)
       const x = COUNTER_X + 30;
       const y = FEET_Y - 52;
       ctx.fillStyle = '#fffaf0';
@@ -121,8 +122,9 @@ export function drawPopupScene(canvas: HTMLCanvasElement, sheet: Sheet | null, r
       ctx.textAlign = 'center';
       ctx.fillStyle = PALETTE.ink;
       const v = anim.visit;
-      const icon = phase === 'bubble' ? (v.menuId ? '☕' : '…') : v.mood === 'happy' ? (v.taste ? '♥' : '♪') : v.reason === 'price' ? '₩' : '?';
-      ctx.fillText(icon, x, y + 1);
+      const sprite = phase === 'bubble' ? (v.menuId ? 'icon_coffee' : null) : v.mood === 'happy' ? (v.taste ? 'icon_heart' : 'icon_note') : null;
+      const glyph = phase === 'bubble' ? '…' : v.reason === 'price' ? '₩' : '?';
+      if (!(sprite && sheet && drawFrame(ctx, sheet, sprite, x, y - 4, { anchorX: 0.5, anchorY: 0.5, scale: 0.75 }))) ctx.fillText(glyph, x, y + 1);
       if (phase === 'react' && v.mood === 'happy') {
         ctx.fillStyle = v.taste ? '#e63946' : PALETTE.ok;
         ctx.font = 'bold 10px sans-serif';
@@ -135,12 +137,12 @@ export function drawPopupScene(canvas: HTMLCanvasElement, sheet: Sheet | null, r
 function VisitLine({ v }: { v: PopupVisit }) {
   const d = namedGuestDef(v.namedId);
   const menu = v.menuId ? menuOf(getState(), v.menuId).name : null;
-  const react = v.mood === 'happy' ? (v.taste ? `${menu} — 딱 취향! 호감 +${v.gain}` : `${menu} — 호감 +${v.gain}`) : v.reason === 'price' ? '비싸다… (예산 초과)' : '먹을 게 없네… 😐';
+  const react = v.mood === 'happy' ? (v.taste ? `${menu} — 딱 취향! 호감 +${v.gain}` : `${menu} — 호감 +${v.gain}`) : v.reason === 'price' ? '비싸다… (예산 초과)' : '먹을 게 없네…';
   return (
     <div style={{ fontSize: 13 }}>
       <b>{d.name}</b> <span style={{ color: PALETTE.inkSoft }}>{d.job}</span>
       <div style={{ fontStyle: 'italic', color: PALETTE.inkSoft }}>“{d.line}”</div>
-      <div>{react}{v.regularNow ? ' · ★ 단골이 됐어요!' : ''}{v.reward ? ` · 🎁 ${v.reward}` : ''}</div>
+      <div>{react}{v.regularNow ? ' · ★ 단골이 됐어요!' : ''}{v.reward ? <> · <Icon name="gift" size={12} /> {v.reward}</> : ''}</div>
       <div style={{ whiteSpace: 'nowrap' }}>호감 <Bar value={v.affinity} max={AFFINITY_MAX} width={120} color={v.taste ? '#e63946' : PALETTE.bar} /> {v.affinity}/{AFFINITY_MAX}</div>
     </div>
   );

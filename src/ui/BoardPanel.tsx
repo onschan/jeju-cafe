@@ -149,7 +149,7 @@ function SpotCard({ id }: { id: string }) {
           <div>Lv{next.level} 효과: {levelEffectText(def, next.level)}</div>
           {reqs.length > 0 && (
             <div style={{ color: PALETTE.inkSoft }}>
-              조건: {reqs.map((r, i) => <span key={i} style={{ color: r.met ? PALETTE.ok : PALETTE.bad, marginRight: 6 }}>{r.met ? '✓' : '✗'} {r.text}</span>)}
+              조건: {reqs.map((r, i) => <span key={i} style={{ color: r.met ? PALETTE.ok : PALETTE.bad, marginRight: 6 }}><Icon name={r.met ? 'check' : 'close'} size={12} /> {r.text}</span>)}
             </div>
           )}
         </div>
@@ -162,7 +162,7 @@ function SpotCard({ id }: { id: string }) {
         )}
         {lv > 0 && s.clock.year >= TOUR_YEAR && (
           <button style={{ ...(tourOk.ok ? brownBtnOn : brownBtnOff), marginTop: 6, marginBottom: 0 }} disabled={!tourOk.ok} onClick={host} aria-label={`${def.name} 투어 개최`}>
-            🚌 투어 개최 (점수 {score})
+            <Icon name="bus" /> 투어 개최 (점수 {score})
           </button>
         )}
       </div>
@@ -179,7 +179,7 @@ function TourBusCard() {
   return (
     <div style={card} data-testid="tour-bus-card">
       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-        <b style={{ flex: 1 }}>🚌 투어 버스 계약</b>
+        <b style={{ flex: 1 }}><Icon name="bus" /> 투어 버스 계약</b>
         <span style={{ fontSize: 12, color: on ? PALETTE.ok : PALETTE.inkSoft }}>{on ? '계약 중' : '계약 없음'}{s.tourBusFreeMonths > 0 ? ` · 무료 ${s.tourBusFreeMonths}달` : ''}</span>
       </div>
       <div style={{ fontSize: 13, color: PALETTE.inkSoft }}>월 {wonText(TOUR_BUS_FEE)} · 전 명소 방문객 ×1.3 · 단체 손님 ×1.3 · Lv3 이상 명소의 손님이 일요일 11시 버스로 와요</div>

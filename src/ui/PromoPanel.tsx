@@ -58,7 +58,7 @@ export function PromoPanel() {
             <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4, fontSize: 13 }}>
               <Icon name={t.tags.age === 'senior' ? 'local' : 'tourist'} size={20} />
               <span style={{ width: 64 }}>{t.name}</span>
-              <span style={{ fontSize: 11, color: PALETTE.inkSoft, width: 34 }}>{s.guestTypes[t.id]?.regular === 'vip' ? 'VIP' : s.guestTypes[t.id]?.regular === 'regular' ? '단골' : `😊${s.guestTypes[t.id]?.satisfaction ?? 0}`}</span>
+              <span style={{ fontSize: 11, color: PALETTE.inkSoft, width: 34 }}>{s.guestTypes[t.id]?.regular === 'vip' ? 'VIP' : s.guestTypes[t.id]?.regular === 'regular' ? '단골' : <><Icon name="mood_happy" size={11} />{s.guestTypes[t.id]?.satisfaction ?? 0}</>}</span>
               <Bar value={v} max={99} width={90} />
               <span style={{ width: 24 }}>{Math.round(v)}</span>
               <button style={{ ...(on ? brownBtnOn : brownBtn), marginBottom: 0, padding: '0 8px', fontSize: 13 }} onClick={() => dispatch({ type: 'setTarget', segment: t.id })}>
