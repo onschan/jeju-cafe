@@ -608,6 +608,24 @@ export function botDay(s: GameState, cur: BotCursor, onCard?: (card: MonthCard) 
 }
 
 export function runBot(years: number, seed: number): BotRow[] {
+  let rows: BotRow[] = [];
+  for (const r of botDays(years, seed)) rows = r;
+  return rows;
+}
+
+/** 긴 실행(5·10년)용: 며칠마다 이벤트 루프에 양보해 vitest 워커 RPC(onTaskUpdate)가 굶지 않게 한다 */
+export async function runBotAsync(years: number, seed: number, yieldEveryDays = 30): Promise<BotRow[]> {
+  let rows: BotRow[] = [];
+  let d = 0;
+  for (const r of botDays(years, seed)) {
+    rows = r;
+    if (++d % yieldEveryDays === 0) await new Promise<void>((resolve) => setTimeout(resolve, 0));
+  }
+  return rows;
+}
+
+/** 하루씩 진행하며 지금까지의 월별 행을 낸다 (runBot·runBotAsync 공용) */
+function* botDays(years: number, seed: number): Generator<BotRow[]> {
   const s = createInitialState(seed);
   const rows: BotRow[] = [];
   const cur = newBotCursor();
@@ -634,6 +652,6 @@ export function runBot(years: number, seed: number): BotRow[] {
       minMoney = s.money;
       apply(s, { type: 'dismissMonthCard' });
     }
+    yield rows;
   }
-  return rows;
 }
