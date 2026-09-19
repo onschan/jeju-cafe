@@ -341,7 +341,7 @@ function placeIndoorSeats(s: GameState): void {
 function expandMainIfCan(s: GameState): void {
   if (s.clock.year < BOT_EXPAND_YEAR || !mainBuilding(s)) return;
   const next = nextMainLevel(s);
-  if (!next || next > BOT_EXPAND_MAX_LEVEL || !canSpend(s, expandCost(s) + BOT_UPGRADE_MIN_MONEY)) return;
+  if (!next || next > BOT_EXPAND_MAX_LEVEL || s.money < expandCost(s) + BOT_UPGRADE_MIN_MONEY) return; // 목표 g41(본관 Lv2)이 체인을 막지 않게 별관처럼 3년차 여유분(2,000만)은 안 본다 (y 통합: 주차장 자리 좌석 철거로 3년차 초 자금이 2,700만에 못 미치는 시드가 있다)
   for (const p of expandCells(s)) {
     const o = objectAt(s, p.x, p.y);
     if (o && !objectDef(o.type).room && objectDef(o.type).kind !== 'path') apply(s, { type: 'remove', objectId: o.id });
@@ -447,7 +447,12 @@ function planRoutes(s: GameState): void {
   for (const route of ['olle', 'shuttle', 'cruise'] as const) {
     const type = ENTRY_ROUTES[route].facilities[0]!;
     const site = BOT_ROUTE_SITES[route];
-    if (!routeFacility(s, route) && !objectAt(s, site.x, site.y) && canSpend(s, objectDef(type).cost)) place(s, type, site.x, site.y);
+    if (!routeFacility(s, route) && !Object.values(s.objects).some((o) => o.type === type) && canSpend(s, objectDef(type).cost)) {
+      // 자리에 올렛길이 먼저 깔려 있으면(별관 문 앞 올렛길 — placeAnnex) 걷어내고 놓는다. 표지·정류장은 걷기 칸이라 문 앞이 막히지 않는다.
+      const here = objectAt(s, site.x, site.y);
+      if (here?.type === 'path') apply(s, { type: 'remove', objectId: here.id });
+      if (!objectAt(s, site.x, site.y)) place(s, type, site.x, site.y);
+    }
     if (!Object.values(s.objects).some((o) => o.type === type)) continue;
     laySteps(s, [...routePathCells(route, site), ...BOT_ROUTE_LINKS[route]]);
   }
