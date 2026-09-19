@@ -25,7 +25,7 @@ import { canOpenPopup, openPopup, canClosePopup, closePopup } from './popup.ts';
 import { canChallenge, challenge } from './rivals.ts';
 import { canUpgrade, upgrade } from './upgrade.ts';
 import { canRepair, repair } from './cleanliness.ts';
-import { canSetRouteContract, setRouteContract, canExpandParking, parkingExpandCost, PARKING_EXPAND_TO } from './entry.ts';
+import { canSetRouteContract, setRouteContract, canExpandParking, parkingExpandCost, PARKING_EXPAND_TO, unlockRouteFacilities } from './entry.ts';
 import { objectStats } from './compat.ts';
 import { rememberPlace, rememberRemove, rememberMove, canUndo, undoLast } from './undo.ts';
 import { canSetTargets, setTargets } from './segments.ts';
@@ -89,6 +89,7 @@ function applyInner(state: GameState, a: Action): ApplyResult {
       rememberPlace(state, obj, cost);
       discoverCombos(state);
       evaluateUnlocks(state); // count 해금 (감귤나무 3그루 → 까치)
+      unlockRouteFacilities(state); // 주차장(쉼 시설 6개) 같은 경로 시설은 다음 날 아침이 아니라 바로 열린다
       checkQuests(state);     // objectPlaced 부탁
       return { ok: true };
     }
