@@ -93,7 +93,7 @@ export function monthlyRivals(state: GameState): void {
       const pick = pickWeighted(state, regularIds(state), () => 1);
       if (!pick) break;
       namedGuestState(state, pick).regular = false;
-      r.stolen.push(pick);
+      if (!r.stolen.includes(pick)) r.stolen.push(pick); // 팝업에서 다시 단골이 된 손님을 또 뺏으면 이름이 두 번 찍히지 않게
       pushNotice(state, `${josa(namedGuestDef(pick).name, '을/를')} ${def.name}에 빼앗겼어요`);
     }
     r.penaltyPct += def.statPenalty;
