@@ -294,7 +294,7 @@ function BusStopCard({ s, id }: { s: GameState; id: string }) {
     <div data-testid="card-busstop">
       <div style={{ fontSize: 14, lineHeight: 1.5 }}>
         <div><Icon name="calendar" size={18} /> <b>{name}</b></div>
-        <div style={small}>이번 달 손님 {s.monthGuests}명 · 지금 {s.guests.length}명 · 다음 버스 {nextBus}</div>
+        <div style={small}>이번 달 손님 {s.monthGuests}명 · 지금 {s.guests.length}명{o?.type === 'gate' ? ' · 손님은 여기서 올렛길로 들어와요' : ` · 다음 버스 ${nextBus}`}</div>
       </div>
     </div>
   );
