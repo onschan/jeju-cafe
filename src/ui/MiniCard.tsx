@@ -307,7 +307,7 @@ const manWon = (n: number) => (n % 10_000 === 0 ? `₩${(n / 10_000).toLocaleStr
 const mbtn: CSSProperties = { ...btn, padding: '0 8px' };
 const mbtnOn: CSSProperties = { ...btnOn, padding: '0 8px' };
 const mbtnOff: CSSProperties = { ...btnOff, padding: '0 8px' };
-function MainCard({ s, id, a }: { s: GameState; id: string; a: CardActions }) {
+export function MainCard({ s, id, a }: { s: GameState; id: string; a: CardActions }) {
   const [more, setMore] = useState(false);
   const o = s.objects[id];
   const m = mainSummary(s);

@@ -3,7 +3,7 @@ import { wonText, label } from '../data/labels.ts';
 import { GameView, type GhostSpec, type RangeHint } from '../render/GameView';
 import { startLoop, dispatch, getState, useGame, setViewReset, autosaveNow, hasAnySave, loadSlot, setMonthCardHook, setSceneHook, showMessage, pauseGame, isSpeedLocked, setSpeedLocked } from './store';
 import { unlockAudio, bgm, isMuted, setMuted, getBgmVolume, getSfxVolume, setBgmVolume, setSfxVolume, sfx } from './audio';
-import { seasonOf, canPlace, objectAt, footprint, parcelAt, clearCost, placeCost, PROTECTED_TYPES, ROTATABLE_TYPES, goalForMenu, featureOpen, canUndo, demolishRefund, routeAtCell, type GameState } from '../sim/index.ts';
+import { seasonOf, canPlace, objectAt, footprint, sizeOf, mainBuilding, parcelAt, clearCost, placeCost, PROTECTED_TYPES, ROTATABLE_TYPES, goalForMenu, featureOpen, canUndo, demolishRefund, routeAtCell, type GameState } from '../sim/index.ts';
 import { RoutesSection } from './RouteCard'; // 트랙 H
 import { objectDef } from '../data/index.ts';
 // render/·ui/는 Vite 전용이라 확장자 없는 import 허용. sim/·data/만 .ts 확장자 규칙.
@@ -11,7 +11,7 @@ import { NightOverlay } from './HUD';
 import { TopShell, BottomBar, PlaceBar, SHELL_BOTTOM, BOTTOM_BAR_H, type WindowKind, type PlaceBarProps } from './Shell';
 import { Window, type IconGridItem } from './Window';
 import { MessageLine } from './MessageLine';
-import { MiniCard, type CardTarget, type CardActions } from './MiniCard';
+import { MiniCard, MainCard, type CardTarget, type CardActions } from './MiniCard';
 import { DialogueHost } from './Dialogue.tsx';
 import { checkTutorial, setTutorialSkip } from './tutorialDialogue';
 import { useTutorialHighlight } from './tutorialHighlight';
@@ -82,8 +82,9 @@ function staffChars(s: GameState): SceneChar[] {
   return s.staff.slice(0, 3).map((st) => ({ parts: staffParts(st.face, st.role, s.uniform ?? null) }));
 }
 
-function inFootprint(type: string, ox: number, oy: number, x: number, y: number): boolean {
-  return footprint(type, ox, oy).some((p) => p.x === x && p.y === y);
+/** (ox,oy)에 놓인 발자국 안에 (x,y)가 있나. w/h를 주면 그 크기(본관 증축 Lv2+ 옮기기 — sizeOf). */
+function inFootprint(type: string, ox: number, oy: number, x: number, y: number, w?: number, h?: number): boolean {
+  return footprint(type, ox, oy, w, h).some((p) => p.x === x && p.y === y);
 }
 
 /** 보기 모드에서 칸을 눌렀을 때 카드 대상. 손님 → 직원 → 필지(미소유) → 오브젝트 → 바위 → 빈 땅. */
@@ -403,7 +404,7 @@ function Game({ onExit }: { onExit: () => void }) {
           } else if (m.kind === 'move') {
             const mv = movingRef.current;
             const o = mv ? getState().objects[mv.objectId] : null;
-            if (mv && o && inFootprint(o.type, mv.x, mv.y, x, y)) { dragOffset.current = { dx: x - mv.x, dy: y - mv.y }; return true; }
+            if (mv && o && inFootprint(o.type, mv.x, mv.y, x, y, sizeOf(o).w, sizeOf(o).h)) { dragOffset.current = { dx: x - mv.x, dy: y - mv.y }; return true; }
           } else if (m.kind === 'remove') {
             const st = getState();
             if (x < 0 || y < 0 || x >= st.grid.w || y >= st.grid.h) return false;
@@ -482,10 +483,11 @@ function Game({ onExit }: { onExit: () => void }) {
     const o = moving ? s.objects[moving.objectId] : null;
     if (moving && o) {
       const def = objectDef(o.type);
+      const size = sizeOf(o); // 본관 증축 Lv2+는 정의 크기와 다르다 (y-indoor)
       const can = canPlace(s, o.type, moving.x, moving.y, o.id);
-      ghostSpec = { type: o.type, x: moving.x, y: moving.y, rot: o.rot, ok: can.ok, text: `${def.name} 옮기기` };
+      ghostSpec = { type: o.type, x: moving.x, y: moving.y, rot: o.rot, ok: can.ok, text: `${def.name} 옮기기`, w: size.w, h: size.h };
       rangeHint = rangeHintFor(s, o.type, moving.x, moving.y, o.id);
-      ghostCell = { x: moving.x, y: moving.y, w: def.w, h: def.h };
+      ghostCell = { x: moving.x, y: moving.y, w: size.w, h: size.h };
       place = {
         text: `${def.name} · ${can.ok ? '여기로 옮길 수 있어요' : (can.reason ?? '여기엔 못 옮겨요')}`,
         ok: can.ok,
@@ -591,8 +593,11 @@ function Game({ onExit }: { onExit: () => void }) {
             {win.tab === 'ingredients' && <StoragePanel />}
             {win.tab === 'craft' && <CraftPanel />}
             {win.tab === 'promo' && <PromoPanel />}
-            {win.tab === 'building' && <CafePanel onMenu={() => setWin({ kind: 'cafe', tab: 'menu' })} />}
-            {win.tab === 'indoor' && <BuildWindow onClose={closeWin} onPickBuild={(t) => pickBuild(t)} initialTab="rest" />}
+            {win.tab === 'building' && (<>
+              {mainBuilding(s) && <MainCard s={s} id={mainBuilding(s)!.id} a={{ ...cardActions, onCafe: () => setWin({ kind: 'cafe', tab: 'menu' }) }} />}{/* y-indoor 본관 카드 본문 (창 안) */}
+              <CafePanel onMenu={() => setWin({ kind: 'cafe', tab: 'menu' })} />
+            </>)}
+            {win.tab === 'indoor' && <BuildWindow onClose={closeWin} onPickBuild={(t) => pickBuild(t)} initialTab="indoor" />}{/* y-indoor 「실내」 탭 */}
           </Window>
         );
       case 'people':
