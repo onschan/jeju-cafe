@@ -304,6 +304,7 @@ export function checkVisitorPrizes(state: GameState, id: string): void {
   if (!state.goldenTangerineGiven && totalSpotVisitors(state) >= GOLDEN_TANGERINE_VISITORS) {
     state.goldenTangerineGiven = true;
     grantItem(state, 'golden_tangerine');
+    if (!state.unlocked.objects.includes('golden_tangerine_tree')) state.unlocked.objects.push('golden_tangerine_tree'); // 장식 「황금 감귤나무」 해금
     pushNotice(state, `명소 방문객 ${fmtNum(GOLDEN_TANGERINE_VISITORS)}명! 황금 감귤을 받았어요`);
   }
 }

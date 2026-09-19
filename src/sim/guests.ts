@@ -4,7 +4,7 @@ import { objectDef, guestTypeDef, guestTags, guestDialogue, canonicalGuestId, na
 import { pickWeighted, nextRandom, randInt } from './rng.ts';
 import { sceneryScore, objectAt } from './grid.ts';
 import { availableMenus, consumeIngredients, isMenuAvailable } from './menu.ts';
-import { busStopPos, findPath, walkableNeighborsOf, reachMap, pathFromReach, cellKey, moveAlong, GUEST_SPEED_CELLS_PER_S } from './path.ts';
+import { busStopPos, findPath, walkableNeighborsOf, reachMap, pathFromReach, cellKey, moveAlong, walkSpeedMult, GUEST_SPEED_CELLS_PER_S } from './path.ts';
 import { roleEffect, skillTotal, pushNotice, staffInRole, addRoleExp, LOW_ENERGY } from './staff.ts';
 import { effectivePopularity, youtuberMultiplier } from './promotions.ts';
 import { START_HOUR, END_HOUR, seasonOf } from './clock.ts';
@@ -511,9 +511,10 @@ function leaveSeat(state: GameState, g: Guest, bus: Pt): void {
 
 export function updateGuests(state: GameState, dtMs: number): void {
   const bus = busStopPos(state);
+  const walkMs = dtMs * walkSpeedMult(state); // 활력 화분 이동 속도
   for (const g of state.guests) {
     if (g.phase === 'walking') {
-      if (moveAlong(g, dtMs)) {
+      if (moveAlong(g, walkMs)) {
         g.phase = 'seated';
         g.approachCell = { x: Math.round(g.x), y: Math.round(g.y) };
         const seat = state.objects[g.seatId!]!;
@@ -524,7 +525,7 @@ export function updateGuests(state: GameState, dtMs: number): void {
       }
     } else if (g.phase === 'visiting') {
       if (g.path.length > 0) {
-        if (!moveAlong(g, dtMs)) continue;
+        if (!moveAlong(g, walkMs)) continue;
         const obj = g.visitId ? state.objects[g.visitId] : undefined;
         if (obj) useFacility(state, g, obj);
         g.approachCell = { x: Math.round(g.x), y: Math.round(g.y) };
@@ -551,7 +552,7 @@ export function updateGuests(state: GameState, dtMs: number): void {
       g.timerMs -= dtMs;
       if (g.timerMs <= 0) leaveSeat(state, g, bus);
     } else if (g.phase === 'leaving') {
-      moveAlong(g, dtMs);
+      moveAlong(g, walkMs);
     }
   }
   state.guests = state.guests.filter((g) => !(g.phase === 'leaving' && g.path.length === 0));

@@ -101,7 +101,7 @@ describe('goals.json 데이터', () => {
   });
 
   it('v2 표에서 시작(start)이었다가 목표 보상으로 바뀐 시설은 전부 어떤 목표가 연다', () => {
-    const shopUnlocked = new Set([...MILEAGE_SHOP, ...TICKET_SHOP].map((x) => x.objectId).filter((x): x is string => !!x)); // 설계도(트랙 C 상점)로 열리는 시설은 제외
+    const shopUnlocked = new Set([...[...MILEAGE_SHOP, ...TICKET_SHOP].map((x) => x.objectId).filter((x): x is string => !!x), 'golden_tangerine_tree']); // 설계도(트랙 C 상점)·황금 감귤(명소 방문객 10만)로 열리는 시설은 제외
     const goalGated = FACILITIES.filter((f) => f.unlock?.type === 'goal' && !shopUnlocked.has(f.id));
     expect(goalGated.length).toBeGreaterThan(10);
     for (const f of goalGated) expect(goalForFacility(f.id), f.id).not.toBeNull();

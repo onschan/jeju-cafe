@@ -1,0 +1,26 @@
+[
+  {
+    "id": "plant_speed", "name": "활력 화분", "category": "scenery", "categoryName": "경관", "tier": "small", "w": 1, "h": 1,
+    "cost": 400000, "buildDays": 1, "upkeep": 6000, "popularity": 3, "feePct": null, "fee": null, "feeText": null, "scenery": 3, "noise": 0, "seasonBonus": {},
+    "unlock": { "type": "shop", "itemId": "ms_speed_plant" }, "unlockRef": "mileage:ms_speed_plant", "unlockText": "마일리지 상점",
+    "walkSpeedPct": 2, "description": "향이 좋아 걸음이 가벼워져요. 손님·직원 이동 속도 +2% (합산 최대 +30%)."
+  },
+  {
+    "id": "plant_speed_large", "name": "큰 활력 화분", "category": "scenery", "categoryName": "경관", "tier": "small", "w": 1, "h": 1,
+    "cost": 800000, "buildDays": 1, "upkeep": 12000, "popularity": 4, "feePct": null, "fee": null, "feeText": null, "scenery": 4, "noise": 0, "seasonBonus": {},
+    "unlock": { "type": "shop", "itemId": "ts_large_plant" }, "unlockRef": "ticket:ts_large_plant", "unlockText": "응모권 상점",
+    "walkSpeedPct": 3, "description": "큼직한 활력 화분. 손님·직원 이동 속도 +3% (합산 최대 +30%)."
+  },
+  {
+    "id": "plant_speed_season", "name": "계절 활력 화분", "category": "scenery", "categoryName": "경관", "tier": "small", "w": 1, "h": 1,
+    "cost": 1200000, "buildDays": 1, "upkeep": 18000, "popularity": 5, "feePct": null, "fee": null, "feeText": null, "scenery": 4, "noise": 0, "seasonBonus": { "spring": 2, "autumn": 2 },
+    "unlock": { "type": "shop", "itemId": "ts_seasonal_plant" }, "unlockRef": "ticket:ts_seasonal_plant", "unlockText": "응모권 상점",
+    "walkSpeedPct": 4, "description": "철마다 꽃이 바뀌는 활력 화분. 손님·직원 이동 속도 +4% (합산 최대 +30%). 봄·가을 경관 +2."
+  },
+  {
+    "id": "golden_tangerine_tree", "name": "황금 감귤나무", "category": "scenery", "categoryName": "경관", "tier": "medium", "w": 1, "h": 1,
+    "cost": 5000000, "buildDays": 3, "upkeep": 0, "popularity": 8, "feePct": null, "fee": null, "feeText": null, "scenery": 12, "noise": 0, "seasonBonus": { "summer": 6 },
+    "unlock": { "type": "goal" }, "unlockRef": "item:golden_tangerine", "unlockText": "황금 감귤(명소 방문객 10만)",
+    "description": "명소 방문객 10만 명의 기념. 경관 +12 (여름 +18). 잎이 금빛으로 빛나요."
+  }
+]

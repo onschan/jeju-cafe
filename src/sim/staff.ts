@@ -2,7 +2,7 @@ import type { GameState, ApplyResult, Candidate, Staff, Stats, StatKey, RoleId, 
 import { RECRUIT_TIERS, STAFF_POOL, roleDef, skillDef, objectDef, staffPoolDef, recruitTierDef, ROLES } from '../data/index.ts';
 import { randInt, pickWeighted } from './rng.ts';
 import { monthIndex } from './clock.ts';
-import { isWalkable, findPath, walkableNeighborsOf, moveAlong } from './path.ts';
+import { isWalkable, findPath, walkableNeighborsOf, moveAlong, walkSpeedMult } from './path.ts';
 import { WAREHOUSE_FRONT } from './layout.ts';
 import { salaryOf as economySalaryOf } from './economy.ts';
 
@@ -457,8 +457,9 @@ function goTo(state: GameState, st: Staff, to: Pt): void {
 
 /** 직원 걷기. 배치된 직원은 앵커 반경 2의 걷기 칸을 1~3초마다 골라 산책. 미배치·기력 0·연수 중이면 창고 앞에 선다. */
 export function moveStaff(state: GameState, dtMs: number): void {
+  const walkMs = dtMs * walkSpeedMult(state); // 활력 화분 이동 속도
   for (const st of state.staff) {
-    if (st.path.length) { moveAlong(st, dtMs); continue; }
+    if (st.path.length) { moveAlong(st, walkMs); continue; }
     if (st.role === null || st.energy <= 0 || st.training) {
       st.anchor = warehouseFront(state);
       goTo(state, st, st.anchor);

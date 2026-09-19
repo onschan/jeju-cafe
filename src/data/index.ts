@@ -35,6 +35,7 @@ import ranksJson from './generated/ranks.json' with { type: 'json' };
 import compatMetaJson from './generated/compat_meta.json' with { type: 'json' };
 import facilitiesJson from './generated/v2/facilities.json' with { type: 'json' };
 import facilitiesXJson from './facilities_x.json' with { type: 'json' };
+import facilitiesShopJson from './facilities_shop.json' with { type: 'json' }; // 상점 설계도·황금 감귤 시설 4종 (트랙 C 참조, 통합 때 추가)
 import combosJson from './combos.json' with { type: 'json' };
 import spotEffectsJson from './spot_effects.json' with { type: 'json' };
 import ingredientsV1Json from './generated/ingredients.json' with { type: 'json' };
@@ -237,6 +238,7 @@ type RawFacility = {
   id: string; name: string; category: string; tier: string; w: number; h: number; cost: number; upkeep: number; buildDays?: number;
   popularity: number; feePct: number | null; fee: number | null; scenery: number; noise: number;
   seasonBonus: Record<string, number>; unlock: Record<string, unknown>; unlockText?: string; description: string | null;
+  walkSpeedPct?: number; // 활력 화분: 손님·직원 이동 속도 +% (facilities_shop.json)
 };
 /** v3: 밭은 없다. v2 표의 field 행은 버린다. */
 const REMOVED_FACILITY_IDS = new Set(['field']);
@@ -268,13 +270,15 @@ export function adaptFacility(r: RawFacility): ObjectDef {
   if (INDOOR_IDS.has(r.id)) def.indoor = true;
   if (typeof r.unlockText === 'string') def.unlockText = def.unlock?.type === 'goal' ? '목표 보상' : r.unlockText;
   if (FARM_YIELDS[r.id]) def.yield = FARM_YIELDS[r.id];
+  if (typeof r.walkSpeedPct === 'number') def.walkSpeedPct = r.walkSpeedPct;
+  if (r.unlock?.type === 'shop' && typeof r.unlockText === 'string') def.unlockText = r.unlockText; // 상점 설계도는 '목표 보상' 대신 상점 이름
   return def;
 }
 const BASE_OBJECTS: ObjectDef[] = [...(objectsJson as ObjectDef[]), ...TERRAIN_OBJECTS, ...LANDMARKS].map((o) => (ROOM_IDS.has(o.id) ? { ...o, room: true as const } : o));
 const BASE_IDS = new Set(BASE_OBJECTS.map((o) => o.id));
 /** v2 시설 중 objects.json·랜드마크에 아직 없는 것 (시설 순회·실내 가구·증축용) */
 /** v2 표 109 + HSS2 확장 44 (facilities_x.json, 스펙 §3.2.1). 쉼 분류라도 요금이 있으면(족욕탕 등) 순회 시설. */
-const FACILITY_ROWS: RawFacility[] = [...(facilitiesJson as unknown as RawFacility[]), ...(facilitiesXJson as unknown as RawFacility[])];
+const FACILITY_ROWS: RawFacility[] = [...(facilitiesJson as unknown as RawFacility[]), ...(facilitiesXJson as unknown as RawFacility[]), ...(facilitiesShopJson as unknown as RawFacility[])];
 /** 확장 44종 id (스펙 §3.2.1). 목표 해금(goal:gNN)은 트랙 B의 108 목표가 연다 — unlockRef에 목표 번호가 남아 있다. */
 export const FACILITY_X_IDS = new Set((facilitiesXJson as { id: string }[]).map((f) => f.id));
 export const FACILITY_X_GOAL_REFS: Record<string, string> = Object.fromEntries((facilitiesXJson as { id: string; unlockRef: string }[]).filter((f) => f.unlockRef.startsWith('goal:')).map((f) => [f.id, f.unlockRef.slice(5)]));

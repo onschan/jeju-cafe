@@ -89,6 +89,13 @@ export function findPath(state: GameState, from: Pt, to: Pt): Pt[] | null {
 export const GUEST_SPEED_CELLS_PER_S = 3;
 
 /** 경로를 따라 걷는다. 손님·직원 공용. 목적지에 닿으면 true. */
+/** 활력 화분(walkSpeedPct) 합산 이동 속도 배수 (최대 +30%). 손님·직원 moveAlong의 dtMs에 곱한다. */
+export const WALK_SPEED_CAP_PCT = 30;
+export function walkSpeedMult(state: GameState): number {
+  let pct = 0;
+  for (const o of Object.values(state.objects)) { const p = objectDef(o.type).walkSpeedPct; if (p && !o.build) pct += p; }
+  return 1 + Math.min(WALK_SPEED_CAP_PCT, pct) / 100;
+}
 export function moveAlong(g: { x: number; y: number; path: Pt[] }, dtMs: number): boolean {
   let budget = (dtMs / 1000) * GUEST_SPEED_CELLS_PER_S;
   while (budget > 0 && g.path.length) {

@@ -27,6 +27,7 @@ export interface ObjectDef {
   terrain: Terrain[];  // 놓을 수 있는 지형
   removeCost?: number; // 치울 때 환불 대신 드는 돈 (곶자왈 덤불처럼 처음부터 있던 것)
   effectText?: string; // 랜드마크 효과 설명 (데이터만, 효과는 TODO)
+  walkSpeedPct?: number; // 활력 화분: 놓여 있으면 손님·직원 이동 속도 +% (합산 상한 30, path.ts walkSpeedMult)
   popularity?: number; // 기본 인기 (없으면 BASE_POPULARITY 10)
   feePct?: number;     // 기본 요금 % (없으면 100)
   desc?: string;       // 정보 패널 설명 (없으면 이름)
