@@ -1,4 +1,4 @@
-import { useGame, getToast } from './store';
+import { useGame } from './store';
 
 /** 연구 포인트를 짧게: 1만 이상은 '1.2만'(소수 1자리), 그 아래는 구분 기호 없이 그대로. */
 export function compactNumber(n: number): string {
@@ -25,16 +25,4 @@ export function NightOverlay() {
   const a = nightAlpha(s.clock.hour);
   if (a <= 0) return null;
   return <div data-testid="night" style={{ position: 'absolute', inset: 0, background: `rgba(11,26,58,${a.toFixed(3)})`, pointerEvents: 'none' }} />;
-}
-
-/** 액션 실패 문구 등 짧은 토스트. 목표 줄 바로 아래에 뜬다. */
-export function Toast({ top }: { top: number }) {
-  useGame();
-  const toast = getToast();
-  if (!toast) return null;
-  return (
-    <div data-testid="toast" style={{ position: 'absolute', top: top + 6, left: 12, right: 12, zIndex: 15, background: '#c9184a', color: '#fff', padding: '8px 10px', borderRadius: 8, fontSize: 15, fontWeight: 700, pointerEvents: 'none' }}>
-      {toast}
-    </div>
-  );
 }

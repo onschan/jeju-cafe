@@ -10,8 +10,8 @@ import { Bar, EnergyBar } from './Bars';
 import { Confirm, Popup } from './Popup';
 import { Icon } from './Icon';
 import { SiteLine } from './SiteLine';
-import { BOTTOM_BAR_H } from './Shell';
-import { frame, brownBtn, brownBtnOn, brownBtnOff, dangerBtn, PALETTE } from './frame';
+import { SHELL_BOTTOM } from './Shell';
+import { frame, brownBtn, brownBtnOn, brownBtnOff, dangerBtn, brownInput, PALETTE } from './frame';
 
 /** 맵에서 탭한 대상. 스펙 §1.2 표. */
 export type CardTarget =
@@ -31,7 +31,39 @@ export interface CardActions {
   onObjectDetail: (objectId: string) => void;
   onMove: (objectId: string) => void;
   onBuild: (x: number, y: number) => void;
+  /** 같은 것 더 짓기 (§5.3): 그 시설 고스트로 바로 진입 */
+  onBuildSame: (objectType: string, x: number, y: number) => void;
   onCafe: () => void;
+  /** ◀ ▶ 같은 종류 순회 (§1.3): 카드 대상을 바꾼다 */
+  onSelect: (target: CardTarget) => void;
+}
+
+/** 카드·창 표 접기 상태 (§5.4: 3줄까지만 펼치고 `▸ 자세히`, 세션 동안 기억) */
+const detailOpen = new Map<string, boolean>();
+export function Details({ id, children, lines = 3 }: { id: string; children: ReactNode[]; lines?: number }) {
+  const [open, setOpen] = useState(detailOpen.get(id) ?? false);
+  const items = children.filter((c) => c !== null && c !== false && c !== undefined);
+  const more = items.length > lines;
+  return (
+    <>
+      {(open || !more ? items : items.slice(0, lines)).map((c, i) => <div key={i}>{c}</div>)}
+      {more && <button data-testid="details-toggle" aria-expanded={open} onClick={() => { detailOpen.set(id, !open); setOpen(!open); }}
+        style={{ border: 0, background: 'transparent', color: PALETTE.title, fontFamily: 'inherit', fontSize: 13, fontWeight: 700, padding: '4px 0', minHeight: 28 }}>{open ? '▾ 접기' : `▸ 자세히 (+${items.length - lines})`}</button>}
+    </>
+  );
+}
+
+/** 시설 이름 바꾸기 팝업 (§5.6, sim renameObject) */
+function RenamePopup({ objectId, current, onClose }: { objectId: string; current: string; onClose: () => void }) {
+  const [name, setName] = useState(current);
+  const save = () => { dispatch({ type: 'renameObject', objectId, name }); onClose(); };
+  return (
+    <Popup title="이름 바꾸기" onBackdrop={onClose} buttons={<><button style={brownBtnOn} onClick={save}>✓ 저장</button><button style={brownBtn} onClick={onClose}>닫기</button></>}>
+      <input value={name} maxLength={12} onChange={(e) => setName(e.target.value)} aria-label="시설 이름" placeholder="12자까지" autoFocus
+        style={{ ...brownInput, width: '100%', boxSizing: 'border-box', marginRight: 0, marginBottom: 0 }} />
+      <div style={{ ...small, marginTop: 4 }}>비우면 원래 이름으로 돌아가요</div>
+    </Popup>
+  );
 }
 
 const WANT_LABEL: Record<string, string> = { rest: '쉬는 자리', food: '먹거리', fun: '즐길거리', scenery: '경치', convenience: '편의 시설', farm: '농원' };
@@ -136,9 +168,15 @@ function StaffCard({ s, id, a }: { s: GameState; id: string; a: CardActions }) {
 }
 
 function ObjectCard({ s, id, a, onClose }: { s: GameState; id: string; a: CardActions; onClose: () => void }) {
+  const [renaming, setRenaming] = useState(false);
   const o = s.objects[id];
   if (!o) return <div style={small}>없어진 시설이에요</div>;
   const d = objectDef(o.type);
+  // ◀ ▶ 같은 종류 순회 (§1.3)
+  const sameKind = Object.values(s.objects).filter((x) => x.type === o.type);
+  const idx = sameKind.findIndex((x) => x.id === o.id);
+  const cycle = (dir: -1 | 1) => { const n = sameKind[(idx + dir + sameKind.length) % sameKind.length]; if (n) a.onSelect({ kind: 'object', id: n.id }); };
+  const canBuildSame = s.unlocked.objects.includes(o.type) && !PROTECTED_TYPES.has(o.type) && o.type !== 'bush_wild';
   const st = objectStats(s, o.id);
   const protectedType = PROTECTED_TYPES.has(o.type);
   const remove = () => Confirm(`${d.name}${d.removeCost ? `을(를) ${wonText(d.removeCost)} 들여 치울까요?` : `을(를) 치우고 ${wonText(d.cost)}을 돌려받을까요?`}`, () => { dispatch({ type: 'remove', objectId: o.id }); onClose(); }, { title: '철거' });
@@ -152,11 +190,22 @@ function ObjectCard({ s, id, a, onClose }: { s: GameState; id: string; a: CardAc
   return (
     <div data-testid="card-object">
       <div style={{ fontSize: 14, lineHeight: 1.5 }}>
-        <div><Icon name={KIND_ICON[d.kind] ?? 'build'} size={18} /> <b>{d.name}</b>{st.level >= 2 && <b style={{ color: PALETTE.title }}> Lv{st.level}</b>}{o.build && <span style={{ color: PALETTE.title }}> · 짓는 중</span>}{st.wear > 0 && <span style={{ color: PALETTE.bad }}> · 낡았어요 (인기 −{st.wear})</span>}</div>
-        <div style={small}>인기 <b style={{ color: PALETTE.ink }}>{st.popularity}</b> · 경관 <b style={{ color: PALETTE.ink }}>{st.scenery > 0 ? '+' : ''}{st.scenery}</b> · 요금 <b style={{ color: PALETTE.ink }}>{st.feePct}%</b>{st.upkeep > 0 && ` · 유지비 ${wonText(st.upkeep)}/달`}{(o.uses ?? 0) > 0 && ` · 이용 ${o.uses}회`}</div>
-        <div style={small}>주변 시너지: {st.combos.length > 0 ? st.combos.map((c) => `${c.strength === 'down' ? '↓' : '↑'}${c.name}${c.count > 1 ? ` ×${c.count}` : ''}`).join(' · ') : '없음'}{st.sets.length > 0 && ` · 세트 ${st.sets.map((x) => x.name).join(', ')}`}{st.spot && ` · 명당 ${st.spot.name}`}</div>
-        <SiteLine s={s} o={o} />
-        <div style={{ ...small, whiteSpace: 'nowrap' }} data-testid="clean-bar">카페 청결 <Bar value={clean} max={100} width={80} /> {clean}{clean < CLEAN_LOW && <span style={{ color: PALETTE.bad }}> 지저분해요</span>}</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+          <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}><Icon name={KIND_ICON[d.kind] ?? 'build'} size={18} /> <b>{o.name ?? d.name}</b>{o.name && <span style={small}> ({d.name})</span>}{st.level >= 2 && <b style={{ color: PALETTE.title }}> Lv{st.level}</b>}{o.build && <span style={{ color: PALETTE.title }}> · 짓는 중</span>}{st.wear > 0 && <span style={{ color: PALETTE.bad }}> · 낡았어요 (인기 −{st.wear})</span>}</span>
+          {sameKind.length > 1 && (
+            <span data-testid="card-cycle" style={{ flex: 'none', display: 'inline-flex', gap: 2, alignItems: 'center', fontSize: 12, color: PALETTE.inkSoft }}>
+              <button aria-label="이전 같은 시설" onClick={() => cycle(-1)} style={{ ...btn, minHeight: 36, minWidth: 36, padding: 0, fontSize: 14 }}>◀</button>
+              {idx + 1}/{sameKind.length}
+              <button aria-label="다음 같은 시설" onClick={() => cycle(1)} style={{ ...btn, minHeight: 36, minWidth: 36, padding: 0, fontSize: 14 }}>▶</button>
+            </span>
+          )}
+        </div>
+        <Details id={`object:${o.type}`}>
+          <div style={small}>인기 <b style={{ color: PALETTE.ink }}>{st.popularity}</b> · 경관 <b style={{ color: PALETTE.ink }}>{st.scenery > 0 ? '+' : ''}{st.scenery}</b> · 요금 <b style={{ color: PALETTE.ink }}>{st.feePct}%</b>{st.upkeep > 0 && ` · 유지비 ${wonText(st.upkeep)}/달`}{(o.uses ?? 0) > 0 && ` · 이용 ${o.uses}회`}</div>
+          <div style={small}>주변 시너지: {st.combos.length > 0 ? st.combos.map((c) => `${c.strength === 'down' ? '↓' : '↑'}${c.name}${c.count > 1 ? ` ×${c.count}` : ''}`).join(' · ') : '없음'}{st.sets.length > 0 && ` · 세트 ${st.sets.map((x) => x.name).join(', ')}`}{st.spot && ` · 명당 ${st.spot.name}`}</div>
+          <SiteLine s={s} o={o} />
+          <div style={{ ...small, whiteSpace: 'nowrap' }} data-testid="clean-bar">카페 청결 <Bar value={clean} max={100} width={80} /> {clean}{clean < CLEAN_LOW && <span style={{ color: PALETTE.bad }}> 지저분해요</span>}</div>
+        </Details>
       </div>
       <Row>
         {upgradable && <button style={up.ok ? btnOn : btnOff} disabled={!up.ok} title={up.ok ? undefined : up.reason} onClick={doUpgrade} data-testid="upgrade-btn">증축 Lv{st.level + 1} ({wonText(upCost)})</button>}
@@ -164,9 +213,12 @@ function ObjectCard({ s, id, a, onClose }: { s: GameState; id: string; a: CardAc
         {!protectedType && <button style={btn} onClick={() => a.onMove(o.id)}>이동</button>}
         {ROTATABLE_TYPES.has(o.type) && <button style={btn} onClick={() => dispatch({ type: 'rotate', objectId: o.id, rot: ((o.rot ?? 0) + 1) % 4 })}>회전</button>}
         {!protectedType && o.type !== 'bush_wild' && <button style={btnDanger} onClick={remove}>철거</button>}
+        {canBuildSame && <button style={btn} data-testid="build-same" onClick={() => a.onBuildSame(o.type, o.x + d.w, o.y)}>➕ 같은 것 더</button>}
+        <button style={btn} data-testid="rename-object" onClick={() => setRenaming(true)}>✏️ 이름</button>
         <button style={btn} onClick={() => a.onObjectDetail(o.id)}>자세히</button>
       </Row>
       {upgradable && !up.ok && up.reason && <div style={{ ...small, marginTop: 4 }}>증축 조건: {upgradeConditionText(o, d)}</div>}
+      {renaming && <RenamePopup objectId={o.id} current={o.name ?? ''} onClose={() => setRenaming(false)} />}
     </div>
   );
 }
@@ -268,7 +320,7 @@ export function MiniCard({ target, actions, onClose }: { target: CardTarget; act
   }
   return (
     <div data-testid="mini-card" data-kind={target.kind}
-      style={{ ...frame, position: 'absolute', left: 6, right: 6, bottom: `calc(${BOTTOM_BAR_H + 6}px + env(safe-area-inset-bottom))`, maxHeight: '30vh', overflowY: 'auto', zIndex: 12, padding: '8px 10px', fontSize: 16 }}>
+      style={{ ...frame, position: 'absolute', left: 6, right: 6, bottom: `calc(${SHELL_BOTTOM + 6}px + env(safe-area-inset-bottom))`, maxHeight: '30vh', overflowY: 'auto', zIndex: 12, padding: '8px 10px', fontSize: 16 }}>
       <button aria-label="닫기" onClick={onClose} style={{ position: 'absolute', top: 0, right: 0, width: 44, height: 44, border: 0, background: 'transparent', color: PALETTE.inkSoft, fontSize: 18, fontWeight: 700, fontFamily: 'inherit' }}>✕</button>
       <div style={{ paddingRight: 36 }}>{body}</div>
     </div>

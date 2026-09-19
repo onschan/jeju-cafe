@@ -79,9 +79,9 @@ function ItemCodex() {
 }
 
 /** 상점 탭: 마일리지 상점 / 인형뽑기 / 응모권 상점 + 아래 인벤토리 */
-export function ShopPanel() {
+export function ShopPanel({ initialTab = 'mileage' }: { initialTab?: Tab } = {}) {
   const s = useGame();
-  const [tab, setTab] = useState<Tab>('mileage');
+  const [tab, setTab] = useState<Tab>(initialTab);
   return (
     <div data-testid="shop-panel">
       <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 6, flexWrap: 'wrap' }}>

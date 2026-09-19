@@ -9,6 +9,7 @@ import { label, wonText } from '../../data/labels.ts';
 import { PALETTE, brownBtn, brownBtnOff } from '../frame';
 import { drawPortrait, PORTRAIT_SIZE } from '../../render/portrait';
 import { partsOfFace, staffParts, HAIR_RGB, SKIN_RGB, TOP_RGB } from '../../render/character';
+import { SortChips } from '../GuestsPanel';
 import { useWindowState, body, TabBar, Bar, rowCard, rowCardOn, rowBtn, rowBtnOn, rowBtnOff, rowBtnDanger, soft, Empty, ConfirmRow, type Dispatch, type WindowProps } from './shared.tsx';
 
 const TIER_ORDER: JobTier[] = RECRUIT_TIERS.map((t) => t.id);
@@ -187,22 +188,37 @@ function CandidateCard({ c, s, dispatch }: { c: Candidate; s: GameState; dispatc
 
 export interface StaffWindowProps extends WindowProps { initialTab?: Tab; focusId?: string | null }
 
+/** 정렬 칩 (§5.4): 직원 [직종] [급여↓] [피로↓]. 세션 기억 */
+export type StaffSort = 'role' | 'salary' | 'fatigue';
+const STAFF_SORTS: { key: StaffSort; label: string }[] = [{ key: 'role', label: '👔 직종' }, { key: 'salary', label: '💰 급여↓' }, { key: 'fatigue', label: '😮‍💨 피로↓' }];
+let rememberedStaffSort: StaffSort = 'role';
+export function sortStaff(staff: Staff[], sort: StaffSort): Staff[] {
+  const arr = [...staff];
+  if (sort === 'salary') arr.sort((a, b) => b.salary - a.salary);
+  else if (sort === 'fatigue') arr.sort((a, b) => a.energy - b.energy);
+  else arr.sort((a, b) => (a.role ?? 'zz').localeCompare(b.role ?? 'zz'));
+  return arr;
+}
+
 export function StaffWindow(props: StaffWindowProps) {
   const { s, dispatch } = useWindowState(props);
   const [tab, setTab] = useState<Tab>(props.initialTab ?? (s.staff.length === 0 && s.candidates.length > 0 ? 'candidates' : 'ours'));
+  const [sort, setSortState] = useState<StaffSort>(rememberedStaffSort);
+  const setSort = (k: StaffSort) => { rememberedStaffSort = k; setSortState(k); };
   const slots = ROLES.filter((r) => !HIDDEN_ROLES.has(r.id) && s.unlocked.roles.includes(r.id)).map((r) => `${r.name} ${staffInRole(s, r.id).length}/${s.slots[r.id] ?? 0}`).join(' · ');
   const cap = staffCapacity(s);
   const rooms = staffRoomCount(s);
   const bonus = capBonus(s);
   return (
     <div style={body} data-testid="staff-window">
-      <TabBar tabs={[{ key: 'ours', label: `우리 직원 ${s.staff.length}/${cap}` }, { key: 'candidates', label: '채용 후보', badge: s.candidates.length }]} active={tab} onPick={setTab} testId="staff-tab" />
+      <TabBar tabs={[{ key: 'ours', label: `직원 ${s.staff.length}/${cap}` }, { key: 'candidates', label: '채용', badge: s.candidates.length }]} active={tab} onPick={setTab} testId="staff-tab" />
       {tab === 'ours' && (
         <>
           <div style={{ ...soft, marginBottom: 2 }}>정원 {s.staff.length}/{cap}명{rooms > 0 ? ` (휴게실 ${rooms})` : ' · 휴게실을 지으면 +3명'}{bonus > 0 ? ` · 유니폼 상한 +${bonus}` : ''}</div>
           <div style={{ ...soft, marginBottom: 6 }}>자리: {slots}</div>
+          {s.staff.length > 1 && <SortChips chips={STAFF_SORTS} active={sort} onPick={setSort} testId="staff-sort" />}
           {s.staff.length === 0 && <Empty>아직 직원이 없어요. 채용 후보 탭에서 공고를 내 보세요.</Empty>}
-          {s.staff.map((st) => <StaffCard key={st.id} st={st} s={s} dispatch={dispatch} />)}
+          {sortStaff(s.staff, sort).map((st) => <StaffCard key={st.id} st={st} s={s} dispatch={dispatch} />)}
         </>
       )}
       {tab === 'candidates' && (

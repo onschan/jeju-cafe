@@ -14,6 +14,7 @@ import { namedGuestFace } from '../sim/popup.ts';
 import { guestTypeDef, namedGuestDef } from '../data/index.ts';
 import { Background } from './Background';
 import { siteOf, siteBadgeTextPlain, siteTone, layoutKey } from '../sim/site.ts';
+import { objectStats, activeCombos } from '../sim/compat.ts';
 import { isSiteOverlayOn, setSiteOverlayOn, siteOverlayKey, drawSiteOverlay, GHOST_GOOD, GHOST_WARN } from './siteOverlay';
 
 /** 전용 스프라이트가 있는 손님 타입 (guest_local·guest_tourist 시트) */
@@ -26,6 +27,12 @@ export interface GameViewOptions extends Pick<CameraOptions, 'onTap' | 'dragCapt
 
 /** 배치 모드 고스트: 손가락 아래 반투명 오브젝트. ok면 초록, 아니면 빨강. text는 비용 라벨. */
 export interface GhostSpec { type: string; x: number; y: number; rot?: number; ok: boolean; text: string }
+/** 효과 범위 힌트 (UX §5.3): 중심 시설 발자국 + 반경(칸) 타원, 콤보가 성립하는 상대 시설 발자국 위 ◎ */
+export interface RangeHint { x: number; y: number; w: number; h: number; radius: number; marks: { x: number; y: number; w: number; h: number }[] }
+/** 콤보·경관 범위 기본 반경 2칸 (5×5) */
+export const RANGE_RADIUS = 2;
+/** 시설 위 인기 미니 바 최대값 (§5.4: 0~48) */
+export const GAUGE_MAX = 48;
 
 /** 말풍선 내용: 글자, 시트 아이콘(icon_*·bubble_* 프레임 이름), 기분 아이콘 중 하나 이상 */
 export interface BubbleContent { text?: string; icon?: string; mood?: Guest['mood'] }
@@ -242,6 +249,17 @@ export class GameView {
   private detachCamera: (() => void) | null = null;
   private selection = new Graphics();
   private highlight = new Graphics(); // 튜토리얼 칸 글로우 (x-goals)
+  /** 효과 범위 타원(타일 위·오브젝트 아래) + ◎ 마크(오버레이) */
+  private rangeGfx = new Graphics();
+  private rangeMarks = new Graphics();
+  private rangeKey = '';
+  /** 일괄 철거 드래그 사각형 (§5.3) */
+  private rectGfx = new Graphics();
+  /** 시설 위 인기 미니 바·◎ 콤보 마크 (§5.4, 설정 토글). 1초에 한 번만 다시 계산한다 */
+  private gaugeGfx = new Graphics();
+  private gaugesOn = false;
+  private gaugeAt = 0;
+  private gaugeKey = '';
   private hostWidth = 0;
   private bounds: CameraBounds | null = null;
   private nightAlpha = 0;
@@ -266,8 +284,12 @@ export class GameView {
     this.actors.sortableChildren = true;
     this.world.addChild(this.background.node, this.tiles, this.siteLayer, this.actors, this.overlay);
     this.siteLayer.addChild(this.siteGfx);
+    this.siteLayer.addChild(this.rangeGfx, this.rectGfx);
     this.overlay.addChild(this.selection);
     this.overlay.addChild(this.highlight);
+    this.rangeMarks.zIndex = 1e6 - 1;
+    this.gaugeGfx.zIndex = 1e6 - 2;
+    this.overlay.addChild(this.rangeMarks, this.gaugeGfx);
     this.night.eventMode = 'none';
     this.ui.eventMode = 'none';
     this.ui.addChild(this.night, this.lights);
@@ -407,6 +429,85 @@ export class GameView {
     }
   }
 
+  /** 효과 범위 힌트(§5.3): 고스트·이동·카드 열림 중 반경 radius 타원 + 성립 상대 위 ◎. null이면 지운다. 같은 내용이면 다시 그리지 않는다. */
+  setRangeHint(h: RangeHint | null) {
+    const key = h ? `${h.x},${h.y},${h.w},${h.h},${h.radius}|${h.marks.map((m) => `${m.x},${m.y}`).join(';')}` : '';
+    if (key === this.rangeKey) return;
+    this.rangeKey = key;
+    if (this.rangeGfx.destroyed || this.rangeMarks.destroyed) return;
+    this.rangeGfx.clear();
+    this.rangeMarks.clear();
+    if (!h) return;
+    const c = cellCenter(h.x + (h.w - 1) / 2, h.y + (h.h - 1) / 2);
+    const r = h.radius + Math.max(h.w, h.h) / 2;
+    // 셀 공간의 원 → 아이소 타원 (rx = R·32·√2, ry = R·16·√2)
+    this.rangeGfx.ellipse(c.sx, c.sy, r * (ISO_W / 2) * Math.SQRT2, r * (ISO_H / 2) * Math.SQRT2).fill({ color: 0x5ad1ff, alpha: 0.18 }).stroke({ color: 0x2aa7e0, width: 2, alpha: 0.9 });
+    for (const m of h.marks) {
+      const mc = cellCenter(m.x + (m.w - 1) / 2, m.y + (m.h - 1) / 2);
+      const y = mc.sy - 44;
+      this.rangeMarks.circle(mc.sx, y, 9).fill({ color: 0xfff3b0, alpha: 0.95 }).stroke({ color: 0xd08a00, width: 2 });
+      this.rangeMarks.circle(mc.sx, y, 4).stroke({ color: 0xd08a00, width: 2 });
+    }
+  }
+
+  /** 일괄 철거 선택 칸 (빨간 반투명 마름모). 빈 배열이면 지운다 */
+  setRectCells(cells: { x: number; y: number }[]) {
+    if (this.rectGfx.destroyed) return;
+    this.rectGfx.clear();
+    for (const cell of cells) {
+      const { sx, sy } = cellToScreen(cell.x, cell.y);
+      this.rectGfx.poly([sx, sy, sx + ISO_W / 2, sy + ISO_H / 2, sx, sy + ISO_H, sx - ISO_W / 2, sy + ISO_H / 2]).fill({ color: 0xc9184a, alpha: 0.35 }).stroke({ color: 0xc9184a, width: 2 });
+    }
+  }
+
+  /** 시설 위 인기 미니 바(6px)·◎ 콤보 마크 켜기/끄기 (§5.4 설정 토글) */
+  setGauges(on: boolean) {
+    this.gaugesOn = on;
+    if (!on && !this.gaugeGfx.destroyed) { this.gaugeGfx.clear(); this.gaugeKey = ''; }
+  }
+
+  /** 셀 → 브라우저 클라이언트 좌표 (발자국 앞 꼭짓점). 고스트 밑 ✓↻ DOM 버튼 위치용 */
+  cellToClient(x: number, y: number, w = 1, h = 1): { left: number; top: number } {
+    const rect = this.app.canvas.getBoundingClientRect();
+    const { sx, sy } = footAnchor(x, y, w, h);
+    return { left: rect.left + this.world.x + sx * this.world.scale.x, top: rect.top + this.world.y + sy * this.world.scale.y };
+  }
+
+  /** 카메라를 셀 중심에 맞춘다 (🏠 본관으로, §5.6: 줌 1.5) */
+  focusCell(x: number, y: number, w = 1, h = 1, scale = 1.5) {
+    const width = this.app.screen.width || this.hostWidth;
+    const height = this.app.screen.height;
+    const c = cellCenter(x + (w - 1) / 2, y + (h - 1) / 2);
+    this.world.scale.set(scale);
+    this.world.position.set(width / 2 - c.sx * scale, height / 2 - c.sy * scale);
+  }
+
+  private syncGauges(state: GameState, now: number) {
+    if (!this.gaugesOn || this.gaugeGfx.destroyed) return;
+    if (now - this.gaugeAt < 1000) return;
+    this.gaugeAt = now;
+    const ids = Object.keys(state.objects);
+    const key = `${state.tick >> 6}:${ids.length}:${layoutKey(state)}`;
+    if (key === this.gaugeKey) return;
+    this.gaugeKey = key;
+    this.gaugeGfx.clear();
+    for (const o of Object.values(state.objects)) {
+      const def = objectDef(o.type);
+      if (o.build || (def.kind !== 'seat' && def.kind !== 'facility')) continue;
+      const st = objectStats(state, o.id);
+      const gc = this.footCenter(o, def.w, def.h);
+      const y = gc.sy - 30 - def.h * 8;
+      const W = 24;
+      const pct = Math.max(0, Math.min(1, st.popularity / GAUGE_MAX));
+      this.gaugeGfx.rect(gc.sx - W / 2 - 1, y - 1, W + 2, 8).fill({ color: 0x000000, alpha: 0.5 });
+      this.gaugeGfx.rect(gc.sx - W / 2, y, W * pct, 6).fill({ color: pct >= 0.66 ? 0x4c9a2a : pct >= 0.33 ? 0xe0a24c : 0xc9184a });
+      if (activeCombos(state, o.id).some((c) => c.strength !== 'down' && c.strength !== 'none')) {
+        this.gaugeGfx.circle(gc.sx + W / 2 + 8, y + 3, 5).fill({ color: 0xfff3b0 }).stroke({ color: 0xd08a00, width: 1.5 });
+        this.gaugeGfx.circle(gc.sx + W / 2 + 8, y + 3, 2).stroke({ color: 0xd08a00, width: 1.5 });
+      }
+    }
+  }
+
   setSelection(cell: { x: number; y: number } | null) {
     this.selection.clear();
     if (!cell) return;
@@ -438,6 +539,7 @@ export class GameView {
     this.drawNight();
     this.syncSiteOverlay(state);
     this.syncGhostSite(state);
+    this.syncGauges(state, now);
   }
 
   // ---------- 입지 (트랙 F, 스펙 §6.2) ----------

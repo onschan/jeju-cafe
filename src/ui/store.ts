@@ -11,8 +11,14 @@ export const AUTO_SLOT = 0;
 /** 수동 슬롯 1~3 (0은 자동 저장) */
 export const SLOT_COUNT = 3;
 const PLAYER_ID_KEY = 'jeju-cafe:playerId';
-/** 틱이 안 바뀌어도(일시정지 등) 이 간격으로는 React를 깨운다 — 토스트 만료 같은 시간 기반 UI용 */
+/** 틱이 안 바뀌어도(일시정지 등) 이 간격으로는 React를 깨운다 — 메시지 줄 회색 전환 같은 시간 기반 UI용 */
 const UI_EMIT_INTERVAL_MS = 250;
+const SPEED_LOCK_KEY = 'jeju-cafe:speedLock';
+/** 메시지 줄(§5.5): 최근 N개만 남긴다. 새 메시지가 오면 앞에 붙는다 */
+export const MESSAGE_KEEP = 10;
+/** 메시지가 이 시간 지나면 회색으로 남는다 */
+export const MESSAGE_FRESH_MS = 3000;
+export interface UiMessage { id: number; text: string; at: number }
 
 /** localStorage에 저장된 플레이어 id를 읽거나, 없으면 새로 만들어 저장한다. */
 function getOrCreatePlayerId(): string {
@@ -30,7 +36,8 @@ function getOrCreatePlayerId(): string {
 let state: GameState = createInitialState(Date.now() % 1_000_000, getOrCreatePlayerId(), Date.now());
 let version = 0;
 const listeners = new Set<() => void>();
-let toast: { text: string; until: number } | null = null;
+let messages: UiMessage[] = [];
+let messageSeq = 0;
 let viewReset: (() => void) | null = null;
 /** 월말 카드가 새로 떴을 때 UI가 반응하도록 (신기록 장면 창 등) */
 let monthCardHook: ((s: GameState, rec: { monthRecord: boolean; yearRecord: boolean }) => void) | null = null;
@@ -44,20 +51,29 @@ function save() {
     state.clock.speed = speedBeforePause;
     const p = saveStore.save(AUTO_SLOT, state);
     state.clock.speed = 0;
-    p.catch(() => { toast = { text: '저장에 실패했어요', until: performance.now() + 2000 }; emit(); });
+    p.catch(() => showMessage('저장에 실패했어요'));
     return;
   }
-  saveStore.save(AUTO_SLOT, state).catch(() => {
-    toast = { text: '저장에 실패했어요', until: performance.now() + 2000 };
-    emit();
-  });
+  saveStore.save(AUTO_SLOT, state).catch(() => showMessage('저장에 실패했어요'));
 }
 
 export function getState() { return state; }
 export function getVersion() { return version; }
-export function getToast() { return toast && toast.until > performance.now() ? toast.text : null; }
-/** UI 안내 문구를 잠깐 띄운다 ("옮길 것을 골라 주세요" 등) */
-export function showToast(text: string, ms = 1500) { toast = { text, until: performance.now() + ms }; emit(); }
+/** 메시지 줄 목록 (최신이 앞). 하단 바 위 24px 줄이 [0]을 보여 주고, 탭하면 전부 */
+export function getMessages(): UiMessage[] { return messages; }
+/** 가장 최근 메시지가 아직 "새것"(3초 안)인가 */
+export function isMessageFresh(m: UiMessage, now = performance.now()): boolean { return now - m.at < MESSAGE_FRESH_MS; }
+/** UI 안내 문구를 메시지 줄에 남긴다 ("옮길 것을 골라 주세요" 등). 같은 문구가 연달아 오면 시각만 갱신 */
+export function showMessage(text: string): void {
+  const now = performance.now();
+  if (messages[0]?.text === text) { messages = [{ ...messages[0], at: now }, ...messages.slice(1)]; emit(); return; }
+  messages = [{ id: ++messageSeq, text, at: now }, ...messages].slice(0, MESSAGE_KEEP);
+  emit();
+}
+/** @deprecated 옛 이름 — 다른 트랙 코드 호환용. showMessage와 같다 */
+export const showToast = (text: string) => showMessage(text);
+/** 테스트용: 메시지 줄 비우기 */
+export function clearMessages(): void { messages = []; }
 
 /** 액션이 성공했을 때 내는 효과음 */
 const ACTION_SFX: Record<Action['type'], SfxName> = {
@@ -73,7 +89,7 @@ const ACTION_SFX: Record<Action['type'], SfxName> = {
 
 export function dispatch(a: Action): ApplyResult {
   const r = apply(state, a);
-  if (!r.ok && r.reason) toast = { text: r.reason, until: performance.now() + 1500 };
+  if (!r.ok && r.reason) showMessage(r.reason);
   sfx(r.ok ? ACTION_SFX[a.type] : 'error');
   if (r.ok) save();
   emit();
@@ -86,9 +102,19 @@ export function subscribe(l: () => void) { listeners.add(l); return () => listen
 /** 열려 있는 창/대화/배치의 수. 0→1이 될 때 속도를 기억하고 멈추고, 1→0이 될 때 되돌린다. */
 let pauseDepth = 0;
 let speedBeforePause: GameState['clock']['speed'] = 1;
+/** 속도 잠금(§5.6): 잠기면 창을 열어도 멈추지 않고, 대화창·배치만 멈춘다. localStorage에 기억 */
+let speedLocked = (() => { try { return localStorage.getItem(SPEED_LOCK_KEY) === '1'; } catch { return false; } })();
+export function isSpeedLocked(): boolean { return speedLocked; }
+export function setSpeedLocked(on: boolean): void {
+  speedLocked = on;
+  try { localStorage.setItem(SPEED_LOCK_KEY, on ? '1' : '0'); } catch { /* noop */ }
+  emit();
+}
 
-/** 창이 열릴 때. 되돌릴 함수를 돌려주므로 useEffect 정리에 그대로 쓴다. */
-export function pauseGame(): () => void {
+/** 창이 열릴 때. 되돌릴 함수를 돌려주므로 useEffect 정리에 그대로 쓴다.
+ *  kind='window'는 속도 잠금이 켜져 있으면 멈추지 않는다(no-op 반환). 'dialogue'·'place'는 항상 멈춘다. */
+export function pauseGame(kind: 'window' | 'dialogue' | 'place' = 'window'): () => void {
+  if (kind === 'window' && speedLocked) return () => {};
   if (pauseDepth++ === 0) {
     speedBeforePause = state.clock.speed;
     if (state.clock.speed !== 0) { apply(state, { type: 'setSpeed', speed: 0 }); emit(); }
@@ -169,8 +195,7 @@ export async function saveSlot(n: number): Promise<boolean> {
     localStorage.setItem(`${SLOT_PREFIX}at:${n}`, String(Date.now()));
     return true;
   } catch {
-    toast = { text: '저장에 실패했어요', until: performance.now() + 2000 };
-    emit();
+    showMessage('저장에 실패했어요');
     return false;
   }
 }
@@ -179,7 +204,7 @@ export function deleteSlot(n: number): void {
   try { localStorage.removeItem(`${SLOT_PREFIX}${n}`); localStorage.removeItem(`${SLOT_PREFIX}at:${n}`); } catch { /* noop */ }
 }
 
-/** 지금 상태를 자동 저장 슬롯에 바로 쓴다 (타이틀로 나갈 때). */
+/** 지금 상태를 자동 저장 슬롯에 바로 쓴다 (타이틀로 나갈 때·경영 현황 `저장`). */
 export function autosaveNow(): void { save(); }
 
 export function newGame() {
@@ -220,6 +245,8 @@ export function startLoop(render: (s: GameState) => void): () => void {
       sfx('month');
       const rec = recordMonthCard(state.playerId, state.lastMonthCard);
       monthCardHook?.(state, rec);
+      save(); // 월말 자동 저장 (§5.6 P2-16)
+      showMessage('월말 자동 저장했어요');
     }
     prevMonthCard = state.lastMonthCard;
     const since = sceneSeenTick;
