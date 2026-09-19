@@ -23,7 +23,7 @@ function Row({ n, sum, mode, onLoad, onSave, onDelete }: { n: number; sum: SlotS
       </div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 6, marginTop: 2 }}>
         <span style={{ fontSize: 13, color: PALETTE.inkSoft, whiteSpace: 'nowrap' }}>
-          {sum ? `${sum.year}년 ${sum.month}월 ${sum.day}일 · ₩${wonText(sum.money, true)}` : '비어 있음'}
+          {sum ? `${sum.year}년 ${sum.month}월 ${sum.day}일 · ${wonText(sum.money, true)}` : '비어 있음'}
         </span>
         <span style={{ display: 'flex', gap: 4, flex: 'none' }}>
           {mode === 'load' && <button style={sum ? smallBtn : { ...brownBtnOff, ...smallBtn, opacity: 0.45 }} disabled={!sum} onClick={onLoad}>불러오기</button>}
