@@ -9,6 +9,7 @@ import { effectivePopularity } from './promotions.ts';
 import { addEffect, filterMatches } from './effects.ts';
 import { spotLevel, SPOT_QUEST_LEVEL } from './spots.ts';
 import { fmtNum } from './format.ts';
+import { villageQuestOpen } from './village.ts'; // z-ending
 
 /** 부탁 기한: 수락한 달 + 2 */
 export const QUEST_MONTHS = 2;
@@ -37,7 +38,7 @@ function shouldOffer(state: GameState, q: QuestDef): boolean {
   const st = guestTypeState(state, q.guestId);
   if (st.questDone) return false;
   const def = guestTypeDef(q.guestId);
-  return st.satisfaction >= SAT_QUEST || def.unlock.type === 'quest';
+  return st.satisfaction >= SAT_QUEST || def.unlock.type === 'quest' || villageQuestOpen(state, q.guestId); // z-ending: 정착 등급 3이면 삼춘 부탁은 만족 조건 없이
 }
 
 /** 만족 30에 닿은 타입의 부탁을 올린다. 새로 올린 id 목록. */

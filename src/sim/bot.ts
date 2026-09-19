@@ -46,6 +46,7 @@ import { canHire } from './staff.ts';
 import { parkingSites, routePathCells, routeFacility, canSetRouteContract, ENTRY_ROUTES, PARKING_EXPAND_FROM } from './entry.ts'; // 트랙 H
 import { mainBuilding, freeFloorCells, nextMainLevel, expandCost, expandCells, canExpandMain, isAnnex, indoorSeats } from './rooms.ts'; // y-indoor
 import type { Candidate, RoleId, StatKey } from './types.ts';
+import { canDonate, canHoldFestival } from './village.ts'; // z-ending
 
 export interface BotRow {
   year: number;
@@ -64,6 +65,7 @@ export interface BotRow {
   mileage: number;
   goals: number;      // 달성한 목표 수
   events: number;     // 그달 말 활성 빅 이벤트 수
+  ending: { total: number; title: string } | null; // z-ending: 엔딩 뒤 최종 점수 (10년차 3월부터)
 }
 
 /** 시작 필지 상대 좌표 → 격자 좌표 */
@@ -144,6 +146,9 @@ export const BOT_REPAIRS_PER_MONTH = 6;
 /** 연수: 랭크 3부터 돈 300만 넘으면 한 달에 한 명 (목표 g33·도전) */
 export const BOT_TRAIN_MIN_MONEY = 3_000_000;
 export const BOT_TRAINING_ID = 'tr_service';
+/** z-ending: 마을 기부는 잔고 ₩2,000만 이상일 때 한 달 ₩50만, 누적 ₩1,000만(기부 항목 20점)까지 */
+export const BOT_DONATE_MIN_MONEY = 20_000_000;
+export const BOT_DONATE_CAP = 10_000_000;
 /** 연수는 이만큼만 (비용이 회당 +20%씩 오른다) */
 export const BOT_TRAIN_MAX = 4;
 /** 증축: 돈 여유가 있으면 한 달에 하나 (목표 g41·g63·g95) */
@@ -549,11 +554,14 @@ function monthlyPlan(s: GameState, monthsPlayed: number): void {
   investSpotIfAny(s);
   clearOneRock(s);
   planRoutes(s); // 트랙 H
+  // z-ending: 돈이 넉넉하면 마을 기부(정착 등급 「기부」 항목, 누적 상한까지), 10월엔 마을제 (g82·g90)
+  if (s.money >= BOT_DONATE_MIN_MONEY && s.village.donated < BOT_DONATE_CAP && canDonate(s).ok) apply(s, { type: 'donateVillage' });
+  if (canHoldFestival(s).ok) apply(s, { type: 'holdFestival' });
 }
 
 /** 매일 아침 */
 function dailyPlan(s: GameState): void {
-  while (s.alerts.length > 0) apply(s, { type: 'dismissAlert' });
+  while (s.alerts.length > 0) apply(s, s.alerts[0]!.type === 'ending' ? { type: 'continueEnding' } : { type: 'dismissAlert' }); // z-ending: 엔딩은 「계속하기」
   // 게시판 부탁은 오는 대로 받는다 (랜드마크·손님 해금이 부탁 보상)
   if (s.clock.year >= BOT_QUEST_YEAR) for (const q of Object.values(s.board.quests)) if (q.status === 'offered' && canAcceptQuest(s, q.id).ok) apply(s, { type: 'acceptQuest', id: q.id });
   if (s.lastChallenge) apply(s, { type: 'dismissChallenge' });
@@ -621,6 +629,7 @@ export function runBot(years: number, seed: number): BotRow[] {
         year: card.year, month: card.month, money: s.money, minMoney, research: s.research, popularity: s.popularity,
         net: card.net, staff: s.staff.length, promos: s.activePromotions.length, guests: card.guests, customMenus: s.customMenus.length,
         rank: s.rank, star: s.star, mileage: s.mileage, goals: s.goals.claimed.length, events: s.events.length,
+        ending: s.ending.score ? { total: s.ending.score.total, title: s.ending.score.title } : null,
       });
       minMoney = s.money;
       apply(s, { type: 'dismissMonthCard' });

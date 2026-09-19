@@ -513,7 +513,10 @@ export type GoalCondition =
   // ---- 트랙 H 손님 유입 경로 (entry.ts) ----
   | { type: 'routeGuests'; route: RouteId; n: number } // 그 경로로 온 누적 손님
   | { type: 'routeUnlocked'; route: RouteId }     // 경로 열림 (셔틀은 계약까지)
-  | { type: 'facility'; id: string };             // 그 시설을 1개 이상 지었나 (완공)
+  | { type: 'facility'; id: string }              // 그 시설을 1개 이상 지었나 (완공)
+  // ---- z-ending 정착 등급·마을제 (village.ts) ----
+  | { type: 'villageGrade'; n: number }           // 정착 등급 ≥ n (1 외지인 ~ 5 촌장 후보)
+  | { type: 'festivals'; n: number };             // 마을제 개최 횟수
 export type FeatureId = 'clearRock' | 'promote' | 'craft' | 'popup' | 'challenge' | 'parcel' | 'siteView' | 'comboCodex' | 'spotMap';
 export type GoalReward =
   | { type: 'money'; amount: number }
@@ -570,7 +573,12 @@ export type Alert =
   | { type: 'reward'; source: RewardSource; refId: string; title: string; items: GoalReward[]; line?: string; speaker?: GoalSpeaker }
   | { type: 'challengeFailed'; id: string }
   | { type: 'failure'; stage: 'warn' | 'loan' | 'crisis' | 'demote' }
-  | { type: 'reputation'; text: string }; // 평판 20 미만 삼춘 경고 (reputation.ts)
+  | { type: 'reputation'; text: string } // 평판 20 미만 삼춘 경고 (reputation.ts)
+  // ---- z-ending ----
+  | { type: 'ending' }                                        // 10년차 엔딩 (EndingScreen — 대화창이 아니다)
+  | { type: 'village'; grade: number; up: boolean }           // 9월 1일 정착 등급 심사 결과 (village.ts)
+  | { type: 'festivalOffer' }                                 // 10월 1일 마을제 개최 안내 (등급 4 이상)
+  | { type: 'centennial'; success: boolean };                 // 20년차 100주년 감귤축제 (성공이면 EndingScreen 두 번째 컷)
 
 // ---------- 도전 과제 3레인 (§7.3) ----------
 export interface ChallengeDef {
@@ -840,6 +848,8 @@ export interface Guest {
   route?: RouteId;      // 어느 유입 경로로 왔나 (트랙 H entry.ts). 없으면 정류장
 }
 
+/** 속도 4(빠른 모드)는 엔딩 뒤 「계속하기」로만 열린다 (ending.ts) */
+export type Speed = 0 | 1 | 2 | 3 | 4;
 export interface Clock {
   day: number;   // 1~30
   month: number; // 1~12
@@ -847,7 +857,7 @@ export interface Clock {
   hour: number;  // 6~24
   accMs: number; // 하루 누적 (게임 ms)
   carryMs: number; // 고정 스텝 잔여 (실시간×speed)
-  speed: 0 | 1 | 2 | 3;
+  speed: Speed;
 }
 
 /** 불만 사유 (reputation.ts COMPLAINT_LABEL로 표시) */
@@ -968,6 +978,9 @@ export interface GameState {
   main: MainState;                            // 본관 증축·2층·이동·분위기 (rooms.ts, y-indoor)
   guests: Guest[];
   routes: Record<RouteId, RouteState>;        // 손님 유입 경로 5종 (트랙 H entry.ts)
+  ending: EndingState;                        // 10년차 엔딩·빠른 모드·100주년 (ending.ts, z-ending)
+  village: VillageState;                      // 정착 등급·마을제·기부 (village.ts, z-ending)
+  carry: CarryOver | null;                    // 이월해서 시작한 게임이면 그 내용 (기록용)
   spawnAcc: number; // 시간대별 스폰 소수 누적
   researchAcc: number; // 만족 손님 누적 (5마다 연구 +1)
   nextId: number;
@@ -1027,7 +1040,7 @@ export type Action =
   | { type: 'setCosmetic'; wallColor?: number; sign?: string }
   | { type: 'praise'; staffId: string }
   | { type: 'setSlot'; slot: number; menuId: string | null }
-  | { type: 'setSpeed'; speed: 0 | 1 | 2 | 3 }
+  | { type: 'setSpeed'; speed: Speed }
   | { type: 'dismissAlert' }
   | { type: 'acceptChallenge'; id: string }
   | { type: 'skipTutorial' }
@@ -1066,6 +1079,41 @@ export type Action =
   | { type: 'openPopup'; regionId: string }
   | { type: 'closePopup' }
   | { type: 'challenge'; rivalId: string; menuId: string } // rivalId = RivalState.id
-  | { type: 'dismissChallenge' };
+  | { type: 'dismissChallenge' }
+  // ---- z-ending ----
+  | { type: 'continueEnding' }                      // 엔딩 뒤 「계속하기」: 알림 닫고 빠른 모드(4배속) 해금
+  | { type: 'donateVillage' }                       // 마을 기부 (VILLAGE_DONATION, 정착 등급 항목)
+  | { type: 'holdFestival' };                       // 마을제 개최 (등급 4 이상·10월·₩200만)
 
 export interface ApplyResult { ok: boolean; reason?: string }
+
+// ---------- z-ending: 엔딩·이월·정착 등급 ----------
+/** 최종 점수 항목 9 (ending.ts SCORE_ITEMS 순서) */
+export interface ScoreItem { key: ScoreKey; label: string; value: number; points: number }
+export type ScoreKey = 'money' | 'guests' | 'star' | 'rank' | 'reputation' | 'goals' | 'combos' | 'spots' | 'regulars';
+export interface FinalScore { items: ScoreItem[]; total: number; title: string; tier: number; villageGrade: number; year: number; month: number }
+export interface EndingState {
+  reached: boolean;            // 10년차 3월 1일 엔딩 카드가 떴다
+  score: FinalScore | null;    // 엔딩 시점 점수 (계속하기 뒤에도 남는다)
+  continued: boolean;          // 「계속하기」를 골랐다
+  fastMode: boolean;           // 4배속 해금
+  centennial: 'none' | 'done' | 'failed'; // 20년차 100주년 감귤축제 결과
+}
+/** 이월 6종 (UX §6 P2-17): 콤보 도감·명소 Lv·유니폼·돌하르방·마일리지 20%·정규 손님 인기 20% (+ 100주년 성공 시 천년 팽나무) */
+export interface CarryOver {
+  combos: string[];
+  spots: Record<string, number>;
+  uniforms: string[];
+  dolhareubang: number;
+  mileage: number;
+  guestPopularity: Record<string, number>;
+  millennium: boolean;
+  fromScore: number;            // 이월한 게임의 최종 점수 (기록)
+}
+export interface VillageState {
+  grade: number;               // 1 외지인 · 2 이웃 · 3 식구 · 4 삼춘 · 5 촌장 후보
+  lastReviewYear: number;      // 마지막 심사 연차 (0 = 아직)
+  donated: number;             // 누적 기부액
+  festivals: number;           // 마을제 개최 횟수
+  festivalYear: number;        // 마지막으로 마을제를 연 연차 (0 = 아직)
+}

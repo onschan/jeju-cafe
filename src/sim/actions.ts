@@ -29,13 +29,15 @@ import { canSetRouteContract, setRouteContract, canExpandParking, parkingExpandC
 import { objectStats } from './compat.ts';
 import { rememberPlace, rememberRemove, rememberMove, canUndo, undoLast } from './undo.ts';
 import { canSetTargets, setTargets } from './segments.ts';
+import { canContinueEnding, continueEnding, canSetSpeed } from './ending.ts'; // z-ending
+import { canDonate, donate, canHoldFestival, holdFestival } from './village.ts'; // z-ending
 
 export const PROTECTED_TYPES = new Set(['busstop', 'warehouse', 'gate', 'spring']);
 /** 회전할 수 있는 오브젝트 (rot 0..3, 스프라이트 변형 _r{n}이 있을 때만 보인다) */
 export const ROTATABLE_TYPES = new Set(['gate', 'bench', 'counter']);
 const ACTION_LOG_CAP = 1000;
 
-const CLIENT_ONLY = new Set<Action['type']>(['setSpeed', 'dismissMonthCard', 'dismissDevelop', 'dismissDraw', 'dismissAnnouncement', 'dismissChallenge', 'dismissAlert', 'dismissTour']);
+const CLIENT_ONLY = new Set<Action['type']>(['setSpeed', 'dismissMonthCard', 'dismissDevelop', 'dismissDraw', 'dismissAnnouncement', 'dismissChallenge', 'dismissAlert', 'dismissTour', 'continueEnding']);
 
 function log(state: GameState, a: Action) {
   if (CLIENT_ONLY.has(a.type)) return;
@@ -308,9 +310,30 @@ function applyInner(state: GameState, a: Action): ApplyResult {
       setSlot(state, a.slot, a.menuId);
       return { ok: true };
     }
-    case 'setSpeed':
+    case 'setSpeed': {
+      const c = canSetSpeed(state, a.speed); // z-ending: 4배속은 빠른 모드에서만
+      if (!c.ok) return c;
       state.clock.speed = a.speed;
       return { ok: true };
+    }
+    case 'continueEnding': { // z-ending
+      const c = canContinueEnding(state);
+      if (!c.ok) return c;
+      continueEnding(state);
+      return { ok: true };
+    }
+    case 'donateVillage': { // z-ending
+      const c = canDonate(state);
+      if (!c.ok) return c;
+      donate(state);
+      return { ok: true };
+    }
+    case 'holdFestival': { // z-ending
+      const c = canHoldFestival(state);
+      if (!c.ok) return c;
+      holdFestival(state);
+      return { ok: true };
+    }
     case 'dismissAlert':
       state.alerts.shift();
       return { ok: true };

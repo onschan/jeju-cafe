@@ -27,6 +27,8 @@ import { monthlyRivals } from './rivals.ts';
 import { dailyCleanliness } from './cleanliness.ts';
 import { dailyRoutes, monthlyRoutes } from './entry.ts';
 import { dailyRooms, monthlyRooms, accumulateSeatUse, MS_PER_HOUR } from './rooms.ts'; // y-indoor: 본관 공사·좌석 이용률·난로 연료
+import { endingMonthly } from './ending.ts'; // z-ending: 10년차 엔딩·100주년
+import { villageMonthly, festivalMonthly } from './village.ts'; // z-ending: 9월 정착 등급 심사·10월 마을제
 
 export const STEP_MS = 100;        // 고정 스텝 (게임 ms)
 const MAX_STEPS_PER_TICK = 600;    // 백그라운드 복귀 등 폭주 방지 (60초 게임 시간)
@@ -88,6 +90,9 @@ function onNewMonth(state: GameState, prevMonth: number, prevYear: number): void
   monthlyRank(state);
   monthlyRivals(state);
   monthlyBigEvents(state);
+  villageMonthly(state); // z-ending: 9월 1일 정착 등급 심사
+  festivalMonthly(state); // z-ending: 10월 1일 마을제 안내
+  endingMonthly(state); // z-ending: 10년차 3월 1일 엔딩 (결산 카드 뒤) · 20년차 11월 100주년
 }
 
 /** 고정 스텝 하나. 결정적. 리플레이는 이 함수만 호출한다. */
