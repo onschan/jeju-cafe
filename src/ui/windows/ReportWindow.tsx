@@ -78,7 +78,7 @@ export function ReportWindow({ card: c, star, prevStar, starProgress, monthRecor
         <Row label="월급" value={`-${wonText(cost.salary)}`} indent />
         <Row label="유지비" value={`-${wonText(cost.upkeep)}`} indent />
         <Row label="홍보" value={`-${wonText(cost.ads)}`} indent />
-        {(cost.recruit ?? 0) > 0 && <Row label="채용 공고·연수" value={`-${wonText(cost.recruit)}`} indent />}
+        {(cost.recruit ?? 0) > 0 && <Row label="채용·퇴직금·연수" value={`-${wonText(cost.recruit)}`} indent />}
         {(cost.tax ?? 0) > 0 && <Row label="소득세" value={`-${wonText(cost.tax)}`} indent />}
         {(cost.tourBus ?? 0) > 0 && <Row label="투어 버스" value={`-${wonText(cost.tourBus)}`} indent />}
         {(cost.loanRepay ?? 0) > 0 && <Row label="삼춘 대출 상환" value={`-${wonText(cost.loanRepay)}`} indent />}
