@@ -1,4 +1,5 @@
 import type { GameState } from './types.ts';
+import { initRoutes } from './entry.ts';
 import { SAVE_VERSION } from './state.ts';
 import { footprint } from './grid.ts';
 
@@ -21,6 +22,7 @@ function backfill(state: GameState): void {
   state.researchAcc ??= 0;
   state.eventsFired ??= {};
   state.monthMenuSold ??= {};
+  state.routes ??= initRoutes(); // 트랙 H 유입 경로 (routes 없는 옛 저장)
 }
 
 /** objects.json의 w/h가 바뀌어도 세이브가 깨지지 않도록 cells[].objectId를 objects에서 다시 만든다. */

@@ -101,7 +101,7 @@ export interface MenuMod { toppings: string[]; level: number }
 /** 인구 태그 (마스터 GDD §1): 콤보·세트의 대상 손님층은 이 태그로 판정한다 */
 export type Gender = 'female' | 'male' | 'any';
 export type AgeTag = 'youth' | 'adult' | 'senior' | 'none'; // none = 동물·정령 (연령 대상 콤보에 안 걸린다)
-export interface GuestTags { gender: Gender; age: AgeTag; group: boolean }
+export interface GuestTags { gender: Gender; age: AgeTag; group: boolean; foreign?: boolean } // foreign: 외국인 손님(트랙 H §3.2 — 공항·항구 경로 가중, 이모지 말풍선)
 
 /** 손님 효과 6종 (마스터 GDD §3): 만족 방문마다 발동 */
 export type GuestEffect = 'item' | 'money' | 'ad' | 'research' | 'popularity' | 'ticket';
@@ -506,7 +506,11 @@ export type GoalCondition =
   | { type: 'seats'; n: number }                  // 좌석 시설 수
   | { type: 'noLossMonth'; n: number }            // 적자 없이 n달 (연속 흑자, 수락 시점 대비)
   | { type: 'monthGuests'; n: number }            // 이달 손님 수
-  | { type: 'monthSales'; n: number };            // 이달 매출
+  | { type: 'monthSales'; n: number }             // 이달 매출
+  // ---- 트랙 H 손님 유입 경로 (entry.ts) ----
+  | { type: 'routeGuests'; route: RouteId; n: number } // 그 경로로 온 누적 손님
+  | { type: 'routeUnlocked'; route: RouteId }     // 경로 열림 (셔틀은 계약까지)
+  | { type: 'facility'; id: string };             // 그 시설을 1개 이상 지었나 (완공)
 export type FeatureId = 'clearRock' | 'promote' | 'craft' | 'popup' | 'challenge' | 'parcel' | 'siteView' | 'comboCodex' | 'spotMap';
 export type GoalReward =
   | { type: 'money'; amount: number }
@@ -671,6 +675,19 @@ export interface Parcel {
   bonus: ParcelBonus;
 }
 
+/** 손님 유입 경로 5종 (트랙 H, UX 참고 §3): 정류장(기본)·주차장(렌터카)·공항 셔틀·항구(크루즈)·올레길 */
+export type RouteId = 'bus' | 'parking' | 'shuttle' | 'cruise' | 'olle';
+export interface RouteState {
+  unlocked: boolean;      // 해금 조건 충족 (entry.ts evaluateRoutes)
+  contract: boolean;      // 셔틀: 월 계약 중
+  todayGuests: number;    // 오늘 이 경로로 온 손님
+  monthGuests: number;    // 이달
+  monthIncome: number;    // 이달 그 손님들이 낸 돈 (장부 매출 비중)
+  totalGuests: number;    // 누적 (목표 routeGuests)
+  lastArrivalDay: number; // 마지막 도착 절대 일 (셔틀·크루즈 1회 배치·항만 사용료 판정, −1 = 없음)
+  broken: boolean;        // 길이 끊긴 상태 (알림은 끊길 때 한 번)
+}
+
 /** 렌더 전용 연출 큐 (sim이 남기고 렌더가 tick으로 새 항목만 읽는다). 최근 FX_CAP개만 보관. */
 export type FxEvent =
   | { kind: 'harvest'; x: number; y: number; tick: number } // 농원 월 수확 반짝임
@@ -806,6 +823,7 @@ export interface Guest {
   timerMs: number;      // seated·visiting 남은 시간
   waitMs: number;       // 주문 후 조리 대기 남은 시간
   paid: number;         // 주문 시 낸 돈 (자금 효과의 팁 계산용)
+  route?: RouteId;      // 어느 유입 경로로 왔나 (트랙 H entry.ts). 없으면 정류장
 }
 
 export interface Clock {
@@ -933,6 +951,7 @@ export interface GameState {
   rivals: RivalState[];                       // 라이벌 카페 (동시 최대 2)
   lastChallenge: ChallengeResult | null;      // 마지막 카페 대결 (UI 팝업)
   guests: Guest[];
+  routes: Record<RouteId, RouteState>;        // 손님 유입 경로 5종 (트랙 H entry.ts)
   spawnAcc: number; // 시간대별 스폰 소수 누적
   researchAcc: number; // 만족 손님 누적 (5마다 연구 +1)
   nextId: number;
@@ -980,6 +999,8 @@ export type Action =
   | { type: 'hostTour'; spotId: string }
   | { type: 'dismissTour' }
   | { type: 'setTourBus'; on: boolean }
+  | { type: 'setRouteContract'; route: RouteId; on: boolean } // 공항 셔틀 계약/해지 (트랙 H)
+  | { type: 'expandParking'; objectId: string }               // 주차장 2×2 → 3×2 교체 (트랙 H)
   | { type: 'giveGift'; guestId: string; itemId: string }
   | { type: 'craftGift'; itemId: string }
   | { type: 'develop'; base: MenuBase; ingredients: string[]; params?: BrewParams; staffId: string }

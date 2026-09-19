@@ -1,0 +1,304 @@
+import { bareState, X, Y } from './helpers.ts';
+import { createInitialState, VILLAGE_ROAD_Y, GRID_W, GRID_H } from '../state.ts';
+import { placeObject, removeObject, canPlace, objectAt } from '../grid.ts';
+import { setSlot } from '../menu.ts';
+import { apply } from '../actions.ts';
+import { tick } from '../tick.ts';
+import { DAY_MS } from '../clock.ts';
+import { dayIndex } from '../effects.ts';
+import { spawnGuests, hourlySpawn, updateGuests, dailyGuestCount } from '../guests.ts';
+import { guestTags } from '../../data/index.ts';
+import { conditionProgress, goalConditionText, conditionCheckers } from '../goals.ts';
+import { guestSay } from '../say.ts';
+import type { GameState, GoalCondition } from '../types.ts';
+import {
+  ENTRY_ROUTES, ROUTE_IDS, entryPoints, routeConnected, routeTarget, routeSpawnPos, routeActive, routeOpened, routeState, routeStats, routeTagMult, hasRouteTag, isForeign,
+  spawnRouteWeights, routeArrivals, routeDailyCap, routeCapLeft, dailyRoutes, monthlyRoutes, routePlaceCheck, parkingSlots, parkingSites, canExpandParking, parkingExpandCost,
+  canSetRouteContract, routeUnlockMet, routeFacilityUnlockMet, routeAtCell, nextArrivalText, PARKING_GUESTS_PER_SLOT, SHUTTLE_FEE, CRUISE_PORT_FEE, CRUISE_EVENT,
+} from '../entry.ts';
+
+/** 시작 필지 안: 좌석 + 메뉴 (정류장 경로가 열린 최소 카페) */
+function cafe(): GameState {
+  const s = bareState(1);
+  placeObject(s, 'table_out', X(4), Y(5));
+  setSlot(s, 0, 'carrot_juice');
+  s.storage['carrot'] = 50;
+  return s;
+}
+function own(s: GameState, id: string) { s.parcels.find((p) => p.id === id)!.owned = true; }
+function unlock(s: GameState, ...ids: string[]) { for (const id of ids) if (!s.unlocked.objects.includes(id)) s.unlocked.objects.push(id); }
+/** 한 줄 올렛길 */
+function road(s: GameState, cells: { x: number; y: number }[]) { for (const c of cells) { const o = objectAt(s, c.x, c.y); if (o && o.type !== 'path') removeObject(s, o.id); if (!objectAt(s, c.x, c.y)) placeObject(s, 'path', c.x, c.y); } } // 덤불·돌담은 걷어낸다
+
+test('진입점 좌표는 §3.4 표대로 — 서(0,15) 버스 · 서(0,11) 올레 · 동(29,15) 렌터카 · 남(15,23) 셔틀 · 북(14,0) 크루즈', () => {
+  expect(ENTRY_ROUTES.bus.entry).toEqual({ x: 0, y: VILLAGE_ROAD_Y });
+  expect(ENTRY_ROUTES.olle.entry).toEqual({ x: 0, y: 11 });
+  expect(ENTRY_ROUTES.parking.entry).toEqual({ x: GRID_W - 1, y: VILLAGE_ROAD_Y });
+  expect(ENTRY_ROUTES.shuttle.entry).toEqual({ x: 15, y: GRID_H - 1 });
+  expect(ENTRY_ROUTES.cruise.entry).toEqual({ x: 14, y: 0 });
+  expect(ROUTE_IDS).toHaveLength(5);
+});
+
+test('시작 상태: 정류장만 열려 있고 나머지는 잠김·미연결', () => {
+  const s = createInitialState(1);
+  const eps = entryPoints(s);
+  expect(eps.find((e) => e.route === 'bus')).toMatchObject({ unlocked: true, connected: true, active: true, weight: 1 });
+  for (const r of ['parking', 'shuttle', 'cruise', 'olle'] as const) expect(eps.find((e) => e.route === r)).toMatchObject({ unlocked: false, connected: false, active: false });
+  expect(spawnRouteWeights(s).map((w) => w.route)).toEqual(['bus']);
+});
+
+test('길 연결 검사: 올레 표식은 (0,11)에서 path로 이어져야 연결·활성, 끊기면 false + 알림', () => {
+  const s = cafe();
+  own(s, 'parcel4');
+  unlock(s, 'olle_sign');
+  placeObject(s, 'olle_sign', 3, 11);
+  routeState(s, 'olle').unlocked = true;
+  expect(routeConnected(s, 'olle')).toBe(false); // 아직 길 없음
+  road(s, [{ x: 0, y: 11 }, { x: 1, y: 11 }, { x: 2, y: 11 }]);
+  expect(routeConnected(s, 'olle')).toBe(true);
+  expect(routeActive(s, 'olle')).toBe(true);
+  expect(routeSpawnPos(s, 'olle')).toEqual({ x: 0, y: 11 }); // 올레꾼은 진입점에서 걸어 들어온다
+  // 끊김: 가운데 칸 제거 → dailyRoutes가 한 번 알린다
+  removeObject(s, objectAt(s, 1, 11)!.id);
+  expect(routeConnected(s, 'olle')).toBe(false);
+  const n0 = s.notices.length;
+  dailyRoutes(s);
+  expect(routeState(s, 'olle').broken).toBe(true);
+  expect(s.notices.slice(n0).some((t) => t.includes('길이 끊겼어요'))).toBe(true);
+  dailyRoutes(s);
+  expect(s.notices.length).toBe(n0 + 1); // 두 번 알리지 않는다
+});
+
+test('주차장: 마을 길에 붙여야 놓을 수 있고, 앞 칸(도로)이 스폰 시작점·칸 × 9이 하루 상한', () => {
+  const s = cafe();
+  unlock(s, 'parking_lot');
+  expect(routePlaceCheck(s, 'parking_lot', X(0), Y(2)).ok).toBe(false); // 길에서 멀다
+  expect(canPlace(s, 'parking_lot', X(0), Y(2)).ok).toBe(false);
+  expect(routePlaceCheck(s, 'parking_lot', X(0), Y(5)).ok).toBe(true); // (10..11, 13..14) — 아래가 마을 길 y=15
+  expect(parkingSites(s).length).toBeGreaterThan(0);
+  placeObject(s, 'parking_lot', X(0), Y(5));
+  routeState(s, 'parking').unlocked = true;
+  expect(parkingSlots(s)).toBe(4);
+  expect(routeDailyCap(s, 'parking')).toBe(4 * PARKING_GUESTS_PER_SLOT);
+  expect(routeTarget(s, 'parking')).toEqual({ x: X(0), y: VILLAGE_ROAD_Y }); // 도로 이웃을 앞 칸으로
+  expect(routeConnected(s, 'parking')).toBe(true); // (29,15) 마을 길 → 앞 칸
+  expect(routeActive(s, 'parking')).toBe(true);
+  s.clock.hour = 12;
+  expect(spawnRouteWeights(s)).toEqual([{ route: 'bus', weight: 1 }, { route: 'parking', weight: 0.6 }]); // 칸당 0.15
+  s.clock.hour = 8;
+  expect(spawnRouteWeights(s).map((w) => w.route)).toEqual(['bus']); // 10~17시 밖
+  s.clock.hour = 12;
+  routeState(s, 'parking').todayGuests = 36;
+  expect(routeCapLeft(s, 'parking')).toBe(0);
+  expect(spawnRouteWeights(s).map((w) => w.route)).toEqual(['bus']); // 상한
+});
+
+test('선착장은 북쪽 끝(y=0)에만', () => {
+  const s = cafe();
+  own(s, 'parcel3');
+  unlock(s, 'pier');
+  expect(routePlaceCheck(s, 'pier', 14, 1).ok).toBe(false);
+  expect(routePlaceCheck(s, 'pier', 14, 0).ok).toBe(true);
+});
+
+test('entry 인자로 스폰하면 그 진입점에서 출발하고 Guest.route·경로 통계에 기록되며, 돌아갈 때도 그 경로로 간다', () => {
+  const s = cafe();
+  unlock(s, 'parking_lot');
+  placeObject(s, 'parking_lot', X(0), Y(5));
+  routeState(s, 'parking').unlocked = true;
+  const pos = routeSpawnPos(s, 'parking')!;
+  expect(spawnGuests(s, 1, undefined, { route: 'parking', pos })).toBe(1);
+  const g = s.guests[0]!;
+  expect(g.route).toBe('parking');
+  expect({ x: g.x, y: g.y }).toEqual(pos);
+  expect(routeState(s, 'parking')).toMatchObject({ todayGuests: 1, monthGuests: 1, totalGuests: 1 });
+  updateGuests(s, 20000); // 앉고
+  expect(g.phase).toBe('seated');
+  expect(routeState(s, 'parking').monthIncome).toBeGreaterThan(0); // 주문값이 경로 매출로
+  updateGuests(s, 20000); // 기분·체류 끝
+  updateGuests(s, 20000);
+  expect(['leaving', 'visiting']).toContain(g.phase);
+  if (g.phase === 'leaving') expect(g.path[g.path.length - 1] ?? { x: g.x, y: g.y }).toEqual(pos);
+  const st = routeStats(s);
+  expect(st.find((r) => r.route === 'parking')!.guestShare).toBe(1);
+});
+
+test('경로 태그 가중치: 주차장은 가족 ×2·커플 ×1.6, 셔틀은 단체 ×1.5·외국인 ×2, 올레는 혼자 ×2', () => {
+  expect(routeTagMult('parking', 'rentcar_family')).toBe(2);
+  expect(routeTagMult('parking', 'couple')).toBe(1.6);
+  expect(routeTagMult('parking', 'student')).toBe(1);
+  expect(routeTagMult('shuttle', 'group_cn')).toBe(1.5 * 2); // 단체 + 외국인
+  expect(routeTagMult('cruise', 'solo_foreign')).toBe(3);
+  expect(routeTagMult('olle', 'olle_walker')).toBe(2);
+  expect(routeTagMult('bus', 'olle_walker')).toBe(1);
+  expect(hasRouteTag('grandma_gyecheo', 'senior')).toBe(true);
+});
+
+test('foreign 태그: 어댑터가 외국인 체인 7종에 붙이고, 말풍선은 이모지', () => {
+  for (const id of ['group_cn', 'group_jp', 'group_sea', 'solo_foreign', 'foreign_chef', 'foreign_vlogger', 'world_traveler']) expect(guestTags(id).foreign, id).toBe(true);
+  expect(guestTags('student').foreign).toBeFalsy();
+  expect(isForeign('group_cn')).toBe(true);
+  const s = cafe();
+  spawnGuests(s, 1, 'group_cn');
+  const g = s.guests[0]!;
+  updateGuests(s, 20000);
+  const say = guestSay(s, g);
+  expect(say).not.toBeNull();
+  expect(/[가-힣A-Za-z]/.test(say!)).toBe(false); // 한글·영문 없이 이모지만
+});
+
+test('시각 고정 배치: 셔틀은 계약 + 길 연결 뒤 11·15시에 6~10명, 상한 20', () => {
+  const s = cafe();
+  own(s, 'parcel6');
+  unlock(s, 'shuttle_stop');
+  placeObject(s, 'shuttle_stop', 15, 20);
+  road(s, [{ x: 15, y: 23 }, { x: 15, y: 22 }, { x: 15, y: 21 }]);
+  const st = routeState(s, 'shuttle');
+  st.unlocked = true;
+  expect(canSetRouteContract(s, 'shuttle', true).ok).toBe(true);
+  const money0 = s.money;
+  expect(apply(s, { type: 'setRouteContract', route: 'shuttle', on: true }).ok).toBe(true);
+  expect(s.money).toBe(money0 - SHUTTLE_FEE); // 첫 달 요금
+  expect(routeOpened(s, 'shuttle')).toBe(true);
+  expect(routeActive(s, 'shuttle')).toBe(true);
+  s.clock.hour = 10;
+  expect(routeArrivals(s)).toEqual([]);
+  s.clock.hour = 11;
+  const a = routeArrivals(s);
+  expect(a).toHaveLength(1);
+  expect(a[0]!.route).toBe('shuttle');
+  expect(a[0]!.n).toBeGreaterThanOrEqual(6);
+  expect(a[0]!.n).toBeLessThanOrEqual(10);
+  st.todayGuests = 20;
+  expect(routeArrivals(s)).toEqual([]); // 상한
+  expect(nextArrivalText(s, 'shuttle')).toBe('오늘 15시');
+  // 월초 계약비 (투어 버스와 같은 항목)
+  const m0 = s.money;
+  monthlyRoutes(s);
+  expect(s.money).toBe(m0 - SHUTTLE_FEE);
+  expect(s.monthCosts.tourBus).toBe(SHUTTLE_FEE * 2);
+  expect(apply(s, { type: 'setRouteContract', route: 'shuttle', on: false }).ok).toBe(true);
+  expect(routeActive(s, 'shuttle')).toBe(false);
+});
+
+test('크루즈: 입항 이벤트 날 13시에 25~30명, 기항 1회 항만 사용료 30만', () => {
+  const s = cafe();
+  own(s, 'parcel3');
+  unlock(s, 'pier');
+  placeObject(s, 'pier', 14, 0);
+  own(s, 'parcel2'); own(s, 'parcel4');
+  road(s, [...[1, 2, 3, 4, 5, 6, 7].map((y) => ({ x: 14, y })), ...[13, 12, 11, 10, 9].map((x) => ({ x, y: 7 })), ...[8, 9, 10, 11, 12].map((y) => ({ x: 9, y })), ...[10, 11, 12, 13, 14, 15, 16, 17, 18, 19].map((x) => ({ x, y: 12 }))]); // 선착장 → x=14 → y=7 서쪽 → x=9 남쪽 → 가로 길(y=12). 본관(13~15, 9~10)은 못 지난다
+  s.star = 3;
+  routeState(s, 'cruise').unlocked = true;
+  expect(routeConnected(s, 'cruise')).toBe(true);
+  s.clock.hour = 13;
+  expect(routeArrivals(s)).toEqual([]); // 이벤트 없음
+  const today = dayIndex(s.clock);
+  s.events.push({ id: CRUISE_EVENT, startDay: today, endsDay: today + 3, specialVisited: false });
+  const a = routeArrivals(s);
+  expect(a).toHaveLength(1);
+  expect(a[0]!.n).toBeGreaterThanOrEqual(25);
+  expect(a[0]!.n).toBeLessThanOrEqual(30);
+  // hourlySpawn이 항만 사용료를 한 번만 걷는다
+  for (const x of [10, 11, 12, 13, 15, 16, 17, 18, 19]) { placeObject(s, 'table_out', x, 11); placeObject(s, 'table_out', x, 13); } // 가로 길 양옆 18개 = 36석
+  s.clock.hour = 13;
+  const m0 = s.money;
+  hourlySpawn(s);
+  expect(s.guests.some((g) => g.route === 'cruise')).toBe(true);
+  expect(s.money).toBeLessThanOrEqual(m0 - CRUISE_PORT_FEE + 1);
+  expect(routeState(s, 'cruise').lastArrivalDay).toBe(today);
+  s.guests = [];
+  routeState(s, 'cruise').todayGuests = 0;
+  const m1 = s.money;
+  hourlySpawn(s);
+  expect(s.money).toBeGreaterThanOrEqual(m1); // 같은 기항엔 다시 안 낸다 (손님 매출로 오히려 오를 수 있다)
+});
+
+test('해금: 주차장은 쉼 시설 6개, 셔틀은 parcel6 + 열쇠, 크루즈는 ★3 + parcel3, 올레는 parcel4 — dailyRoutes가 시설·경로를 연다', () => {
+  const s = cafe();
+  expect(routeFacilityUnlockMet(s, 'parking_lot')).toBe(false);
+  for (let i = 1; i <= 5; i++) placeObject(s, 'table_out', X(i), Y(3));
+  expect(routeFacilityUnlockMet(s, 'parking_lot')).toBe(true);
+  expect(routeUnlockMet(s, 'olle')).toBe(false);
+  own(s, 'parcel4');
+  expect(routeUnlockMet(s, 'olle')).toBe(true);
+  expect(routeUnlockMet(s, 'shuttle')).toBe(false);
+  own(s, 'parcel6');
+  s.inventory['tour_bus_key'] = 1;
+  expect(routeUnlockMet(s, 'shuttle')).toBe(true);
+  own(s, 'parcel3');
+  expect(routeUnlockMet(s, 'cruise')).toBe(false);
+  s.star = 3;
+  expect(routeUnlockMet(s, 'cruise')).toBe(true);
+  dailyRoutes(s);
+  for (const id of ['parking_lot', 'shuttle_stop', 'pier', 'olle_sign']) expect(s.unlocked.objects, id).toContain(id);
+  expect(s.unlocked.objects).not.toContain('parking_big'); // 주차장을 지어야
+  for (const r of ROUTE_IDS) expect(routeState(s, r).unlocked, r).toBe(true);
+});
+
+test('주차장 넓히기: 2×2 → 3×2 같은 원점, 차액만 낸다', () => {
+  const s = cafe();
+  unlock(s, 'parking_lot', 'parking_big');
+  const o = placeObject(s, 'parking_lot', X(0), Y(5));
+  expect(canExpandParking(s, o.id).ok).toBe(true);
+  const m0 = s.money;
+  expect(apply(s, { type: 'expandParking', objectId: o.id }).ok).toBe(true);
+  expect(s.money).toBe(m0 - parkingExpandCost());
+  const big = objectAt(s, X(0), Y(5))!;
+  expect(big.type).toBe('parking_big');
+  expect(objectAt(s, X(2), Y(6))?.id).toBe(big.id);
+  // 옆이 막히면 못 넓힌다
+  const o2 = placeObject(s, 'parking_lot', X(5), Y(5));
+  placeObject(s, 'stonewall', X(7), Y(5));
+  expect(canExpandParking(s, o2.id).ok).toBe(false);
+});
+
+test('목표 조건 routeGuests·routeUnlocked·facility', () => {
+  const s = cafe();
+  routeState(s, 'parking').totalGuests = 7;
+  expect(conditionProgress(s, { type: 'routeGuests', route: 'parking', n: 20 })).toEqual({ cur: 7, max: 20 });
+  expect(conditionProgress(s, { type: 'routeUnlocked', route: 'shuttle' }).cur).toBe(0);
+  routeState(s, 'shuttle').unlocked = true;
+  expect(conditionProgress(s, { type: 'routeUnlocked', route: 'shuttle' }).cur).toBe(0); // 계약까지
+  routeState(s, 'shuttle').contract = true;
+  expect(conditionProgress(s, { type: 'routeUnlocked', route: 'shuttle' }).cur).toBe(1);
+  expect(conditionProgress(s, { type: 'facility', id: 'parking_lot' }).cur).toBe(0);
+  unlock(s, 'parking_big');
+  placeObject(s, 'parking_big', X(0), Y(5));
+  expect(conditionProgress(s, { type: 'facility', id: 'parking_lot' }).cur).toBe(1); // 넓힌 것도 친다
+  for (const t of ['routeGuests', 'routeUnlocked', 'facility']) expect(conditionCheckers[t as GoalCondition['type']]).toBeDefined();
+  expect(goalConditionText({ type: 'routeGuests', route: 'olle', n: 10 })).toBe('올레꾼 손님 10명');
+  expect(goalConditionText({ type: 'routeUnlocked', route: 'shuttle' })).toBe('공항 셔틀 계약');
+  expect(goalConditionText({ type: 'facility', id: 'parking_lot' })).toContain('주차장');
+});
+
+test('결정성: 같은 시드·같은 배치면 경로 스폰 결과가 같다 · 정류장만 열려 있으면 rng를 안 쓴다', () => {
+  const build = () => {
+    const s = cafe();
+    unlock(s, 'parking_lot');
+    placeObject(s, 'parking_lot', X(0), Y(5));
+    routeState(s, 'parking').unlocked = true;
+    for (let i = 1; i <= 5; i++) placeObject(s, 'table_out', X(i), Y(3));
+    return s;
+  };
+  const a = build(), b = build();
+  for (let i = 0; i < 3; i++) { tick(a, DAY_MS); tick(b, DAY_MS); }
+  expect(a.rng).toBe(b.rng);
+  expect(a.routes).toEqual(b.routes);
+  expect(a.routes.parking.totalGuests).toBeGreaterThan(0);
+  expect(a.routes.bus.totalGuests).toBeGreaterThan(0);
+  // 정류장만: spawnByRoutes가 rng를 소비하지 않아 기존 스폰과 같은 rng 흐름
+  const c = cafe();
+  const r0 = c.rng;
+  c.spawnAcc = 0;
+  expect(spawnRouteWeights(c)).toHaveLength(1);
+  expect(c.rng).toBe(r0);
+});
+
+test('올레길이 열려도 하루 손님 배수는 1 (가중치 share만) · 카드 분기 routeAtCell', () => {
+  const s = cafe();
+  expect(dailyGuestCount(s)).toBe(dailyGuestCount(s));
+  expect(routeAtCell(s, 0, 11)).toBe('olle');
+  expect(routeAtCell(s, X(0), VILLAGE_ROAD_Y)).toBe('bus'); // 정류장 칸
+  expect(routeAtCell(s, X(5), Y(2))).toBeNull();
+});

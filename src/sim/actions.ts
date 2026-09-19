@@ -23,6 +23,7 @@ import { canOpenPopup, openPopup, canClosePopup, closePopup } from './popup.ts';
 import { canChallenge, challenge } from './rivals.ts';
 import { canUpgrade, upgrade } from './upgrade.ts';
 import { canRepair, repair } from './cleanliness.ts';
+import { canSetRouteContract, setRouteContract, canExpandParking, parkingExpandCost, PARKING_EXPAND_TO } from './entry.ts';
 import { objectStats } from './compat.ts';
 
 export const PROTECTED_TYPES = new Set(['busstop', 'warehouse', 'gate', 'spring']);
@@ -284,6 +285,23 @@ function applyInner(state: GameState, a: Action): ApplyResult {
       const c = canSetTourBus(state, a.on);
       if (!c.ok) return c;
       setTourBus(state, a.on);
+      return { ok: true };
+    }
+    case 'setRouteContract': { // 트랙 H: 공항 셔틀 계약/해지
+      const c = canSetRouteContract(state, a.route, a.on);
+      if (!c.ok) return c;
+      setRouteContract(state, a.route, a.on);
+      return { ok: true };
+    }
+    case 'expandParking': { // 트랙 H: 주차장 2×2 → 3×2 교체 (차액)
+      const c = canExpandParking(state, a.objectId);
+      if (!c.ok) return c;
+      const o = state.objects[a.objectId]!;
+      const { x, y } = o;
+      removeObject(state, o.id);
+      const big = placeObject(state, PARKING_EXPAND_TO, x, y);
+      startBuild(state, big);
+      state.money -= parkingExpandCost();
       return { ok: true };
     }
     case 'giveGift': {

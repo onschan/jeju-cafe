@@ -180,8 +180,11 @@ function minSceneryOf(wants: GuestWant[], tags: GuestTags): number {
   if (wants.includes('scenery')) return 3;
   return tags.age === 'youth' ? 2 : tags.age === 'adult' ? 1 : 0;
 }
+/** 외국인 손님 체인 (트랙 H §3.2 foreign 태그: 공항 셔틀 ×2·크루즈 ×3, 이모지 말풍선, 감귤 메뉴 선호) */
+export const FOREIGN_CHAINS = new Set(['c18_group_foreign', 'c19_solo_foreign']);
 export function adaptGuest(r: RawGuest): GuestTypeDef {
   const tags = toTags(r.tags ?? { gender: null, age: null, group: false });
+  if (r.chain && FOREIGN_CHAINS.has(r.chain)) tags.foreign = true;
   const wants = (r.likes ?? []).filter((w): w is GuestWant => WANTS.has(w as GuestWant));
   return {
     id: canonicalGuestId(r.id),
