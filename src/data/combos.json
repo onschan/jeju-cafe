@@ -898,5 +898,125 @@
       "feePct": 5
     },
     "hidden": false
+  },
+  {
+    "id": "cb_fire_sofa",
+    "name": "불멍 소파",
+    "a": "sofa_seat",
+    "b": "fireplace",
+    "target": "adult",
+    "targetName": "어른",
+    "applyTo": "a",
+    "grade": "upup",
+    "bonus": {
+      "pop": 6,
+      "feePct": 10
+    },
+    "hidden": false
+  },
+  {
+    "id": "cb_book_window",
+    "name": "책 읽는 창가",
+    "a": "window_seat",
+    "b": "bookshelf",
+    "target": "youth",
+    "targetName": "젊은이",
+    "applyTo": "a",
+    "grade": "up",
+    "bonus": {
+      "pop": 3,
+      "feePct": 5
+    },
+    "hidden": false
+  },
+  {
+    "id": "cb_piano_bar",
+    "name": "재즈 바",
+    "a": "bar_counter",
+    "b": "piano",
+    "target": "adult",
+    "targetName": "어른",
+    "applyTo": "both",
+    "grade": "up",
+    "bonus": {
+      "pop": 3,
+      "feePct": 5
+    },
+    "hidden": false
+  },
+  {
+    "id": "cb_fish_kids",
+    "name": "물고기 구경",
+    "a": "kids_corner",
+    "b": "aquarium",
+    "target": "group",
+    "targetName": "단체",
+    "applyTo": "both",
+    "grade": "up",
+    "bonus": {
+      "pop": 3,
+      "feePct": 5
+    },
+    "hidden": false
+  },
+  {
+    "id": "cb_fire_table",
+    "name": "난롯가 테이블",
+    "a": "table_in",
+    "b": "fireplace",
+    "target": "senior",
+    "targetName": "시니어",
+    "applyTo": "a",
+    "grade": "up",
+    "bonus": {
+      "pop": 3,
+      "feePct": 5
+    },
+    "hidden": true
+  },
+  {
+    "id": "cb_counter_bar",
+    "name": "바리스타 앞자리",
+    "a": "bar_counter",
+    "b": "counter_ext",
+    "target": "all",
+    "targetName": "전체",
+    "applyTo": "a",
+    "grade": "up",
+    "bonus": {
+      "pop": 3,
+      "feePct": 5
+    },
+    "hidden": true
+  },
+  {
+    "id": "cb_sofa_window",
+    "name": "창가 소파",
+    "a": "sofa_seat",
+    "b": "window_seat",
+    "target": "female",
+    "targetName": "여성",
+    "applyTo": "both",
+    "grade": "up",
+    "bonus": {
+      "pop": 3,
+      "feePct": 5
+    },
+    "hidden": false
+  },
+  {
+    "id": "cb_piano_fish",
+    "name": "물결 선율",
+    "a": "aquarium",
+    "b": "piano",
+    "target": "all",
+    "targetName": "전체",
+    "applyTo": "b",
+    "grade": "up",
+    "bonus": {
+      "pop": 3,
+      "feePct": 5
+    },
+    "hidden": true
   }
 ]
