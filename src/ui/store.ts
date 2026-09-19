@@ -69,6 +69,7 @@ const ACTION_SFX: Record<Action['type'], SfxName> = {
   develop: 'unlock', dismissDevelop: 'tap', addTopping: 'tap', removeTopping: 'tap', levelUpMenu: 'unlock',
   buyMileage: 'coin', buyTicket: 'coin', drawTicket: 'tap', dismissDraw: 'tap', setUniform: 'tap', useGuestItem: 'unlock', dismissAnnouncement: 'tap',
   openPopup: 'unlock', closePopup: 'tap', challenge: 'fanfare', dismissChallenge: 'tap', acceptChallenge: 'unlock', skipTutorial: 'tap',
+  expandMain: 'unlock', buildSecondFloor: 'unlock', moveMain: 'place', undoMoveMain: 'tap', toggleFireplace: 'tap', setPianoTime: 'tap', setBgm: 'tap', setLighting: 'tap', feedAquarium: 'happy', restockKids: 'coin', setBarEvening: 'tap', addBooks: 'unlock', // y-indoor
 };
 
 export function dispatch(a: Action): ApplyResult {

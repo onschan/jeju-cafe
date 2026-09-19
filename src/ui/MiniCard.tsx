@@ -2,6 +2,10 @@ import { useState, type CSSProperties, type ReactNode } from 'react';
 import { useGame, dispatch } from './store';
 import { objectStats, siteOf, siteLineText, clearCost, canClearRock, hasPickaxe, cellAt, walletOf, guestFace, namedGuestFace, canAcceptQuest, parcelPrice, canBuyParcel, canGiveGift, giftFits, giftCount, giftedToday, PROTECTED_TYPES, ROTATABLE_TYPES, LOW_ENERGY, STAT_KEYS, STAT_NAME, staffInRole, canLevelUp, capOf, skillsOf, expNeeded, isUpgradable, canUpgrade, upgradeCost, upgradeConditionText, MAX_OBJECT_LEVEL, canRepair, repairCost, CLEAN_LOW, type GameState, type Guest, type RoleId, type StatKey } from '../sim/index.ts';
 import { BUS_HOUR, isBusDay } from '../sim/spots.ts';
+import { mainSummary, canExpandMain, expandCost, nextMainLevel, canBuildSecondFloor, canStartMoveMain, canUndoMoveMain, canMoveThisMonth, moveDays, isRoomCut, isAnnex, roomSeats, roomSeatsUsed, isFireplaceOn, canToggleFireplace, canSetPianoTime, canAddBooks, hasNewBooks, canFeedAquarium, isAquariumHungry, canRestockKids, isKidsStocked, canSetBarEvening, isBarEvening, activeCombos, MAIN_EXPAND_DAYS, FLOOR2_COST, FLOOR2_DAYS, MOVE_COST, NEW_BOOKS_MILEAGE, KIDS_RESTOCK_COST, ANNEX_CUT_TEXT, DOOR_PATH_WARN, BGM_LABEL, LIGHT_LABEL, PIANO_LABEL } from '../sim/index.ts'; // y-indoor
+import { ButtonGroup } from './ButtonGroup';
+import { requestBuildTab } from './windows/BuildWindow';
+import { label as labelOf } from '../data/labels.ts';
 import { objectDef, guestTypeDef, namedGuestDef, questDef, roleDef, skillDef, trainingDef, ROLES, GIFTS } from '../data/index.ts';
 import { staffParts } from '../render/character';
 import { Portrait, guestPortraitParts, namedPortraitParts, guestName } from './GuestPopup';
@@ -155,9 +159,11 @@ function ObjectCard({ s, id, a, onClose }: { s: GameState; id: string; a: CardAc
         <div style={small}>인기 <b style={{ color: PALETTE.ink }}>{st.popularity}</b> · 경관 <b style={{ color: PALETTE.ink }}>{st.scenery > 0 ? '+' : ''}{st.scenery}</b> · 요금 <b style={{ color: PALETTE.ink }}>{st.feePct}%</b>{st.upkeep > 0 && ` · 유지비 ${won(st.upkeep)}/달`}{(o.uses ?? 0) > 0 && ` · 이용 ${o.uses}회`}</div>
         <div style={small}>주변 시너지: {st.combos.length > 0 ? st.combos.map((c) => `${c.strength === 'down' ? '↓' : '↑'}${c.name}${c.count > 1 ? ` ×${c.count}` : ''}`).join(' · ') : '없음'}{st.sets.length > 0 && ` · 세트 ${st.sets.map((x) => x.name).join(', ')}`}{st.spot && ` · 명당 ${st.spot.name}`}</div>
         <SiteLine s={s} o={o} />
+        {isAnnex(o) && <div style={small}>실내 {roomSeatsUsed(s, o)}/{roomSeats(s, o)}석{isRoomCut(s, o) && <span style={{ color: PALETTE.bad, fontWeight: 700 }} data-testid="annex-cut"> · {ANNEX_CUT_TEXT} — {DOOR_PATH_WARN}</span>}</div>}
         <div style={{ ...small, whiteSpace: 'nowrap' }} data-testid="clean-bar">카페 청결 <Bar value={clean} max={100} width={80} /> {clean}{clean < CLEAN_LOW && <span style={{ color: PALETTE.bad }}> 지저분해요</span>}</div>
       </div>
       <Row>
+        <IndoorButtons s={s} o={o} />
         {upgradable && <button style={up.ok ? btnOn : btnOff} disabled={!up.ok} title={up.ok ? undefined : up.reason} onClick={doUpgrade} data-testid="upgrade-btn">증축 Lv{st.level + 1} ({won(upCost)})</button>}
         {st.wear > 0 && <button style={rep.ok ? btnOn : btnOff} disabled={!rep.ok} onClick={() => dispatch({ type: 'repairObject', objectId: o.id })} data-testid="repair-btn">수리 ({won(repairCost(s, o))})</button>}
         {!protectedType && <button style={btn} onClick={() => a.onMove(o.id)}>이동</button>}
@@ -238,17 +244,98 @@ function BusStopCard({ s, id }: { s: GameState; id: string }) {
   );
 }
 
-function CounterCard({ s, a }: { s: GameState; a: CardActions }) {
-  const menus = s.menuSlots.filter((m) => m !== null).length;
+/** 본관 카드 (UX 참고 §4.2, y-indoor): 3줄(이름·Lv·실내 좌석 / 주방·재고 / 매출·직원·이용률) + 버튼 2줄(메뉴판·실내 꾸미기·카페 창 / 증축·2층·옮기기) + ▸ 자세히(재고·콤보·청결·난로/피아노/BGM/조명) */
+const LOW_STOCK = 3;
+function MainCard({ s, id, a }: { s: GameState; id: string; a: CardActions }) {
+  const [more, setMore] = useState(false);
+  const o = s.objects[id];
+  const m = mainSummary(s);
+  const menus = s.menuSlots.filter((x) => x !== null).length;
+  const cooking = s.guests.filter((g) => g.phase === 'seated' && g.mood === null && g.menuId).length;
+  const waiting = s.guests.filter((g) => g.phase === 'walking').length + s.waiting.length;
+  const low = Object.entries(s.storage).filter(([, n]) => n > 0 && n <= LOW_STOCK).slice(0, 2);
+  const working = s.staff.filter((st) => st.role !== null && !st.training).length;
+  const next = nextMainLevel(s);
+  const exp = canExpandMain(s);
+  const f2 = canBuildSecondFloor(s);
+  const mv = canStartMoveMain(s);
+  const undo = canUndoMoveMain(s);
+  const workText = m.work ? `${m.work.kind === 'expand' ? `증축 Lv${m.work.toLevel}` : m.work.kind === 'floor2' ? '2층' : '이사'} 공사 중 · ${m.daysLeft}일` : null;
+  const doExpand = () => Confirm(`본관을 Lv${next}로 증축할까요? ${won(expandCost(s))} · 공사 ${MAIN_EXPAND_DAYS}일(영업 정지)`, () => { dispatch({ type: 'expandMain' }); }, { title: '본관 증축' });
+  const doFloor2 = () => Confirm(`2층을 올릴까요? ${won(FLOOR2_COST)} · 공사 ${FLOOR2_DAYS}일(영업 정지) · 실내 자리 +6`, () => { dispatch({ type: 'buildSecondFloor' }); }, { title: '2층 올리기' });
+  const reason = m.work ? null : !exp.ok && next ? `증축: ${exp.reason}` : s.main.floor2 || !f2.ok && s.main.level >= 3 ? (!f2.ok && !s.main.floor2 ? `2층: ${f2.reason}` : null) : null;
+  const combos = o ? activeCombos(s, o.id) : [];
+  const stock = Object.entries(s.storage).filter(([, n]) => n > 0);
+  const pianoOk = canSetPianoTime(s).ok;
   return (
-    <div data-testid="card-counter">
+    <div data-testid="card-main">
       <div style={{ fontSize: 14, lineHeight: 1.5 }}>
-        <div><Icon name="menu" size={18} /> <b>{s.cafeName || '우리 카페'}</b> <span style={small}>본관 카운터</span></div>
-        <div style={small}>메뉴 {menus}개 · 직원 {s.staff.length}명 · 이번 달 손님 {s.monthGuests}명 · 매출 {won(s.monthIncome)}</div>
+        <div>🏠 <b>{s.cafeName || '우리 카페'} Lv{m.level}</b>{s.main.floor2 && ' · 2층'} · 실내 {m.seatsUsed}/{m.seats}석{workText && <span style={{ color: PALETTE.title }}> · {workText}</span>}</div>
+        <div style={small}>🍳 주문 대기 {waiting} · 조리 중 {cooking} · 메뉴 {menus}개{low.length > 0 && <span style={{ color: PALETTE.bad }}> · ⚠ {low.map(([k, n]) => `${labelOf('ingredient', k)} ${n}개 남음`).join(' · ')}</span>}</div>
+        <div style={small}>{won(s.monthIncome)} · 직원 {working} · 이용률 {m.usePct === null ? '—' : `${m.usePct}%`}{m.short && <span style={{ color: PALETTE.bad }}> · 자리가 모자라요</span>}</div>
+        {m.cut && <div style={{ color: PALETTE.bad, fontWeight: 700 }} data-testid="main-cut">{ANNEX_CUT_TEXT} — {DOOR_PATH_WARN}</div>}
       </div>
-      <Row><button style={btnOn} onClick={a.onCafe}>카페 창</button></Row>
+      <Row>
+        <button style={btn} onClick={a.onCafe}>📋 메뉴판</button>
+        <button style={btn} onClick={() => { if (o) { requestBuildTab('indoor'); a.onBuild(o.x, o.y); } }} data-testid="main-indoor-btn">🪑 실내 꾸미기</button>
+        <button style={btn} onClick={() => setMore(!more)} aria-expanded={more}>{more ? '▾ 접기' : '▸ 자세히'}</button>
+      </Row>
+      <Row>
+        {next && <button style={exp.ok ? btnOn : btnOff} disabled={!exp.ok} title={exp.ok ? undefined : exp.reason} onClick={doExpand} data-testid="main-expand-btn">🔨 증축 Lv{next} ({won(expandCost(s))}·{MAIN_EXPAND_DAYS}일)</button>}
+        {!s.main.floor2 && <button style={f2.ok ? btnOn : btnOff} disabled={!f2.ok} title={f2.ok ? undefined : f2.reason} onClick={doFloor2} data-testid="main-floor2-btn">🏗 2층 올리기</button>}
+        {undo.ok
+          ? <button style={btn} onClick={() => dispatch({ type: 'undoMoveMain' })} data-testid="main-undo-btn">↩ 되돌리기</button>
+          : <button style={mv.ok ? btn : btnOff} disabled={!mv.ok} title={mv.ok ? undefined : mv.reason} onClick={() => o && a.onMove(o.id)} data-testid="main-move-btn">🚚 옮기기 ({won(MOVE_COST)}·{moveDays(s)}일)</button>}
+      </Row>
+      <div style={{ ...small, marginTop: 4 }}>이달 이동 {canMoveThisMonth(s) ? '가능 ○' : '끝 ✕'}{reason && ` · ${reason}`}{!mv.ok && canMoveThisMonth(s) && !m.work && ` · 옮기기: ${mv.reason}`}</div>
+      {more && (
+        <div style={{ ...small, marginTop: 6, borderTop: `1px solid ${PALETTE.woodLight}`, paddingTop: 6 }} data-testid="main-detail">
+          <div>재고: {stock.length > 0 ? stock.map(([k, n]) => `${labelOf('ingredient', k)} ${n}`).join(' · ') : '없음'}</div>
+          <div>콤보: {combos.length > 0 ? combos.map((c) => `${c.strength === 'down' ? '↓' : '↑'}${c.name}`).join(' · ') : '없음'}</div>
+          <div style={{ whiteSpace: 'nowrap' }}>청결 <Bar value={Math.round(s.clean.value)} max={100} width={80} /> {Math.round(s.clean.value)}</div>
+          <div style={{ marginTop: 4 }}>🎵 BGM</div>
+          <ButtonGroup label="BGM" value={s.main.bgm ?? 'none'} onPick={(v) => dispatch({ type: 'setBgm', bgm: v === 'none' ? null : v })} testId="main-bgm"
+            options={[{ value: 'none', label: '끔' }, { value: 'calm', label: BGM_LABEL.calm }, { value: 'jazz', label: BGM_LABEL.jazz }, { value: 'folk', label: BGM_LABEL.folk }]} />
+          <div style={{ marginTop: 4 }}>💡 저녁 조명</div>
+          <ButtonGroup label="저녁 조명" value={s.main.lighting} onPick={(v) => dispatch({ type: 'setLighting', lighting: v })} testId="main-light"
+            options={[{ value: 'warm', label: LIGHT_LABEL.warm }, { value: 'bright', label: LIGHT_LABEL.bright }]} />
+          <div style={{ marginTop: 4 }}>🎹 피아노 연주 시간{!pianoOk && ' (피아노 없음)'}</div>
+          <ButtonGroup label="피아노 연주 시간" value={s.main.pianoTime} disabled={!pianoOk} onPick={(v) => dispatch({ type: 'setPianoTime', time: v })} testId="main-piano"
+            options={[{ value: 'lunch', label: PIANO_LABEL.lunch }, { value: 'evening', label: PIANO_LABEL.evening }, { value: 'none', label: PIANO_LABEL.none }]} />
+        </div>
+      )}
     </div>
   );
+}
+
+/** 실내 요소 상호작용 버튼 (UX 참고 §4.3, y-indoor): 난로 켜기/끄기 · 책장 신간 · 수족관 먹이 · 키즈 장난감 · 바 저녁 세트 — 전부 버튼(셀렉트 없음) */
+function IndoorButtons({ s, o }: { s: GameState; o: { id: string; type: string } }) {
+  const obj = s.objects[o.id]!;
+  switch (o.type) {
+    case 'fireplace': {
+      const on = isFireplaceOn(s, obj);
+      const can = canToggleFireplace(s, o.id);
+      return <button style={can.ok ? (on ? btnOn : btn) : btnOff} disabled={!can.ok} onClick={() => dispatch({ type: 'toggleFireplace', objectId: o.id })} data-testid="fireplace-btn">🔥 {on ? '난로 끄기' : '난로 켜기'}</button>;
+    }
+    case 'bookshelf': {
+      const can = canAddBooks(s, o.id);
+      return <button style={can.ok ? btnOn : btnOff} disabled={!can.ok} title={can.ok ? undefined : can.reason} onClick={() => dispatch({ type: 'addBooks', objectId: o.id })} data-testid="books-btn">📚 신간 넣기 (마일리지 {NEW_BOOKS_MILEAGE}){hasNewBooks(s, obj) && ' · 신간 있음'}</button>;
+    }
+    case 'aquarium': {
+      const can = canFeedAquarium(s, o.id);
+      return <button style={can.ok ? btnOn : btnOff} disabled={!can.ok} title={can.ok ? undefined : can.reason} onClick={() => dispatch({ type: 'feedAquarium', objectId: o.id })} data-testid="feed-btn">🐟 먹이 주기{isAquariumHungry(s, obj) && ' · 배고파요'}</button>;
+    }
+    case 'kids_corner': {
+      const can = canRestockKids(s, o.id);
+      return <button style={can.ok ? btnOn : btnOff} disabled={!can.ok} title={can.ok ? undefined : can.reason} onClick={() => dispatch({ type: 'restockKids', objectId: o.id })} data-testid="kids-btn">🧸 장난감 보충 ({won(KIDS_RESTOCK_COST)}){isKidsStocked(s, obj) ? ' · 넉넉' : ' · 필요'}</button>;
+    }
+    case 'bar_counter': {
+      const can = canSetBarEvening(s, o.id);
+      const on = isBarEvening(obj);
+      return <button style={can.ok ? (on ? btnOn : btn) : btnOff} disabled={!can.ok} onClick={() => dispatch({ type: 'setBarEvening', objectId: o.id, on: !on })} aria-pressed={on} data-testid="bar-btn">🍸 저녁 세트 {on ? 'ON' : 'OFF'}</button>;
+    }
+    default: return null;
+  }
 }
 
 /** 화면 하단(하단 바 위)에 붙는 미니 카드. 높이 ≤ 30vh, 맵은 그대로 보인다. ✕ 또는 맵의 다른 곳을 탭하면 닫힌다. */
@@ -263,7 +350,7 @@ export function MiniCard({ target, actions, onClose }: { target: CardTarget; act
     case 'empty': body = <EmptyCard s={s} x={target.x} y={target.y} a={actions} />; break;
     case 'parcel': body = <ParcelCard s={s} id={target.id} onClose={onClose} />; break;
     case 'busstop': body = <BusStopCard s={s} id={target.id} />; break;
-    case 'counter': body = <CounterCard s={s} a={actions} />; break;
+    case 'counter': body = <MainCard s={s} id={target.id} a={actions} />; break;
   }
   return (
     <div data-testid="mini-card" data-kind={target.kind}
