@@ -27,12 +27,16 @@ export function tutorialTargets(s: GameState): { targets: string[]; cells: Pt[] 
   return { targets: step.targets, cells: step.cells(s) };
 }
 
-/** 문서 안의 [data-tut] 요소에 글로우를 맞춘다 (타깃에 없는 것은 뗀다). 칠한 요소 수. */
+/** 문서 안의 [data-tut] 요소에 글로우를 맞춘다 (타깃에 없는 것은 뗀다). 같은 타깃 값은 눌 수 있는 첫 요소 하나만 빛난다(채용·홍보 「실행」이 줄줄이 빛나지 않게).
+ *  data-tut이 조건부로 떨어진 요소(.tut-glow만 남은 것)도 훑어 글로우를 뗀다. 칠한 요소 수. */
 export function applyGlow(targets: string[], root: ParentNode = document): number {
   const want = new Set(targets);
+  const lit = new Set<string>();
   let n = 0;
-  for (const el of Array.from(root.querySelectorAll<HTMLElement>('[data-tut]'))) {
-    const on = want.has(el.dataset.tut ?? '') && !(el as HTMLButtonElement).disabled; // 눌러도 안 되는 버튼(연구 부족 등)은 빛내지 않는다
+  for (const el of Array.from(root.querySelectorAll<HTMLElement>(`[data-tut], .${TUT_GLOW_CLASS}`))) {
+    const v = el.dataset.tut ?? '';
+    const on = want.has(v) && !(el as HTMLButtonElement).disabled && !lit.has(v); // 눌러도 안 되는 버튼(연구 부족 등)은 빛내지 않는다
+    if (on) lit.add(v);
     const was = el.classList.contains(TUT_GLOW_CLASS);
     el.classList.toggle(TUT_GLOW_CLASS, on);
     if (on) n++;

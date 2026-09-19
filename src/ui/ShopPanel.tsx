@@ -88,7 +88,7 @@ export function ShopPanel({ initialTab = 'mileage' }: { initialTab?: Tab } = {})
         <span data-testid="shop-wallet"><Icon name="money" /> 마일리지 <b>{s.mileage}</b> · 응모권 <b>{s.tickets}</b>{hasFreeDraw(s) ? ' · 무료 뽑기 1회!' : ''}</span>
       </div>
       <div style={{ display: 'flex', marginBottom: 6 }}>
-        {TABS.map((t) => <button key={t.id} style={{ ...(tab === t.id ? brownBtnOn : brownBtn), padding: '0 10px' }} onClick={() => setTab(t.id)} data-testid={`shop-tab-${t.id}`}>{t.label}</button>)}
+        {TABS.map((t) => <button key={t.id} style={{ ...(tab === t.id ? brownBtnOn : brownBtn), padding: '0 10px' }} onClick={() => setTab(t.id)} data-testid={`shop-tab-${t.id}`} data-tut={`shop:${t.id}`}>{t.label}</button>)}
       </div>
       {tab === 'mileage' && <MileageShop />}
       {tab === 'draw' && <DrawMachine />}

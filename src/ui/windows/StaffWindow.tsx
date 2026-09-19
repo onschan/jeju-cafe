@@ -101,7 +101,7 @@ function TrainingPanel({ st, s, dispatch, onDone }: { st: Staff; s: GameState; d
               <div><b>{def.name}</b> <span style={soft}>{def.days}일</span></div>
               <div style={{ ...soft, fontSize: 13 }}>{def.desc}{unlocked && !ok && reason ? ` · ${reason}` : ''}</div>
             </div>
-            <button data-tut="train" style={ok ? rowBtn : rowBtnOff} disabled={!ok} title={reason} onClick={() => { if (dispatch({ type: 'train', staffId: st.id, trainingId: def.id }).ok) onDone(); }} aria-label={`${st.name} ${def.name}`}>
+            <button data-tut="train-pick" style={ok ? rowBtn : rowBtnOff} disabled={!ok} title={reason} onClick={() => { if (dispatch({ type: 'train', staffId: st.id, trainingId: def.id }).ok) onDone(); }} aria-label={`${st.name} ${def.name}`}>
               {wonText(cost)}
             </button>
           </div>

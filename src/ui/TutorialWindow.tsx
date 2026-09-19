@@ -1,4 +1,4 @@
-/** 튜토리얼 창 「할망의 가르침」: 5장·30단계 목록(완료 ✓ · 지금 ▶ · 아직 ○), 현재 단계 대사 다시 보기, 이 장 건너뛰기(보상 없음).
+/** 튜토리얼 창 「할망의 가르침」: 5장 목록(완료 ✓ · 지금 ▶ · 아직 ○, 장마다 n/m)과 지금 장의 단계 목록, 현재 단계 대사 다시 보기, 이 장 건너뛰기(보상 없음).
  *  목표 줄 왼쪽 「📖 n/30」 배지에서 연다 (GoalBar.tsx). 진행은 sim 상태(state.tutorial)에서 읽는다. */
 import { useGame } from './store';
 import { Popup, confirm } from './Popup';
@@ -22,9 +22,9 @@ export function TutorialWindow({ onClose }: { onClose: () => void }) {
   return (
     <Popup title={`📖 할망의 가르침 ${Math.min(s.tutorial.step, TUTORIAL_STEPS)}/${TUTORIAL_STEPS}`} onBackdrop={onClose}
       buttons={<>
-        {!done && <button data-testid="tutorial-skip-chapter" style={{ ...brownBtn, margin: 0 }} onClick={skip}>이 장 건너뛰기</button>}
-        {!done && curDlg && <button data-testid="tutorial-replay" style={{ ...brownBtnOn, margin: 0 }} onClick={replay}>대사 다시 보기</button>}
-        <button style={{ ...brownBtn, margin: 0 }} onClick={onClose}>닫기</button>
+        {!done && <button data-testid="tutorial-skip-chapter" style={{ ...brownBtn, margin: 0, whiteSpace: 'nowrap' }} onClick={skip} aria-label="이 장 건너뛰기">⏭ 건너뛰기</button>}
+        {!done && curDlg && <button data-testid="tutorial-replay" style={{ ...brownBtnOn, margin: 0, whiteSpace: 'nowrap' }} onClick={replay} aria-label="대사 다시 보기">💬 다시 보기</button>}
+        <button style={{ ...brownBtn, margin: 0, whiteSpace: 'nowrap' }} onClick={onClose}>닫기</button>
       </>}>
       <div data-testid="tutorial-window" style={{ fontSize: 14 }}>
         {done ? (
@@ -45,9 +45,9 @@ export function TutorialWindow({ onClose }: { onClose: () => void }) {
           return (
             <div key={c.id} data-testid={`tutorial-chapter-${c.id}`} style={{ marginBottom: 6 }}>
               <div style={{ fontWeight: 700, color: chapterDone ? PALETTE.inkSoft : active ? PALETTE.title : PALETTE.ink }}>
-                {chapterDone ? '✓' : active ? '▶' : '○'} {c.id}장 {t.title}{t.intro && <span style={{ fontWeight: 400, color: PALETTE.inkSoft }}> — {t.intro}</span>}
+                {chapterDone ? '✓' : active ? '▶' : '○'} {c.id}장 {t.title} <span style={{ fontWeight: 400, color: PALETTE.inkSoft }}>{Math.max(0, Math.min(c.to, s.tutorial.step) - c.from + 1)}/{c.to - c.from + 1}{t.intro ? ` — ${t.intro}` : ''}</span>
               </div>
-              {(active || !chapterDone) && (
+              {active && (
                 <ul style={{ margin: '2px 0 0 14px', padding: 0, listStyle: 'none', fontSize: 13, lineHeight: 1.6 }}>
                   {TUTORIAL_DIALOGUES.filter((d) => d.chapter === c.id).map((d) => {
                     const isDone = tutorialStepDone(s, d.id);

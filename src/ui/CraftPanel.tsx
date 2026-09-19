@@ -113,7 +113,7 @@ export function CraftPanel() {
           const disabled = ingredients.length >= slots;
           const stock = i.kind === 'farm' ? ` 창고 ${s.storage[i.id] ?? 0}` : ` ${wonText(i.cost)}`;
           return (
-            <button key={i.id} aria-label={`재료 ${i.name}`} disabled={disabled} title={statText(i.stats)}
+            <button key={i.id} data-tut="craft-ingredient" aria-label={`재료 ${i.name}`} disabled={disabled} title={statText(i.stats)}
               style={{ ...(disabled ? brownBtnOff : brownBtn), fontSize: 13, padding: '0 8px', minHeight: 36, marginRight: 4, marginBottom: 4 }} onClick={() => addIngredient(i.id)}>
               {i.name} <span style={{ fontSize: 11, opacity: 0.85 }}>{INGREDIENT_CATEGORY_NAME[i.category]}{stock}</span>
             </button>

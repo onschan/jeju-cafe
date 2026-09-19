@@ -27,13 +27,13 @@
  * |  | 17 clean | 홀·청소 직원 배치 | tab:staff·hire·assign | ₩20만 |
  * |  | 18 storage | 재료 창고 보기(seen storage) | tab:ingredients | 연구 5 |
  * |  | 19 harvest | 농원 수확(다음 달 1일) | tab:farm | ₩30만 |
- * | 4 키우기 | 20 expand | 본관 Lv2 완공 | tab:building·main-expand | ₩50만 |
+ * | 4 키우기 | 20 expand | 본관 Lv2 완공 | tab:building·main-expand·막는 시설 칸 | ₩50만 |
  * |  | 21 indoor2 | 실내 좌석 2개 | tab:indoor·build:table_in·방 안 칸 | ₩30만 |
- * |  | 22 train | 연수 1회(랭크 3) | tab:staff·train | 연구 20·연구 개발 |
- * |  | 23 recipe | 레시피 개발 1회 | tab:craft·develop | ₩50만 |
+ * |  | 22 train | 연수 1회(랭크 3) | tab:staff·train·train-pick | 연구 20·연구 개발 |
+ * |  | 23 recipe | 레시피 개발 1회 | tab:craft·craft-ingredient·develop | ₩50만 |
  * |  | 24 spot | 명소 투자 1회 | tab:spots·spot-invest | ₩30만·주차장 |
  * |  | 25 parking | 렌터카 손님 1명 | tab:convenience·build:parking_lot | ₩30만·응모권 1 |
- * |  | 26 shop | 상점 뽑기·구매 1회 | tab:tickets·draw | 마일리지 30·선물 1 |
+ * |  | 26 shop | 상점 뽑기·구매 1회 | tab:tickets·shop:draw·draw | 마일리지 30·선물 1 |
  * | 5 마을과 세상 | 27 gift | 선물 1회 | gift | 응모권 1 |
  * |  | 28 event | 이벤트 1개 겪기(대화 닫기·응답) | tab:invest·event-respond | ₩50만·팝업 스토어 |
  * |  | 29 popup_rival | 팝업 또는 대결 1회 | tab:region·popup-open·tab:rivals·rival-challenge | ₩50만 |
@@ -47,7 +47,7 @@ import { applyRewards } from './goals.ts';
 import { siteOf } from './site.ts';
 import { parcelAt } from './parcels.ts';
 import { activeCombos } from './compat.ts';
-import { freeFloorCells } from './rooms.ts';
+import { freeFloorCells, expandCells } from './rooms.ts';
 import { isFarmObject } from './orchard.ts';
 
 export const TUTORIAL_STEPS = 30;
@@ -216,6 +216,11 @@ function comboCells(s: GameState, n: number): Pt[] {
   }
   return both.length > 0 ? both : one;
 }
+/** 본관 Lv2 증축 발자국 중 시설(길 제외)이 막고 있는 칸 — 「이동」으로 치우라는 안내용. 공사 중이거나 이미 Lv2면 없음. */
+function expandBlockedCells(s: GameState): Pt[] {
+  if (s.main.level >= 2 || s.main.work) return [];
+  return expandCells(s).filter((p) => { const o = objectAt(s, p.x, p.y); return !!o && objectDef(o.type).kind !== 'path'; });
+}
 /** 실내 좌석 오브젝트 (방 안 가구 중 kind seat) */
 function indoorSeatObjects(s: GameState): PlacedObject[] {
   return Object.values(s.objects).filter((o) => { const d = objectDef(o.type); return d.indoor && d.kind === 'seat'; });
@@ -278,17 +283,18 @@ export const STEPS: TutorialStepDef[] = [
   { id: 18, key: 'storage', chapter: 3, done: (s) => seen(s, 'storage'), reward: [{ type: 'research', n: 5 }], targets: ['nav:cafe', 'tab:ingredients'], cells: none },
   { id: 19, key: 'harvest', chapter: 3, done: (s) => hasFarm(s) && harvestedAny(s), reward: [money(300_000)], targets: ['nav:build', 'tab:farm', 'build:tangerine_tree'], cells: none },
   // ---- 4장 키우기 (5~7월) ----
-  { id: 20, key: 'expand', chapter: 4, done: (s) => s.main.level >= 2 && !s.main.work, reward: [money(500_000)], targets: ['nav:cafe', 'tab:building', 'main-expand'], cells: none },
+  { id: 20, key: 'expand', chapter: 4, done: (s) => s.main.level >= 2 && !s.main.work, reward: [money(500_000)], targets: ['nav:cafe', 'tab:building', 'main-expand'],
+    cells: (s) => expandBlockedCells(s) },
   { id: 21, key: 'indoor2', chapter: 4, done: (s) => indoorSeatObjects(s).length >= 2, reward: [money(300_000)], targets: ['nav:cafe', 'tab:indoor', 'build:table_in'],
     cells: (s) => mainFloorCells(s, 3) },
   // 23단계(레시피)를 바로 할 수 있게 연구 개발 기능을 여기서 연다 — g16(메뉴 4개)보다 먼저 올 수 있다
-  { id: 22, key: 'train', chapter: 4, done: (s) => s.stats.trainings >= 1 || seen(s, 'train'), reward: [{ type: 'research', n: 20 }, feature('craft')], targets: ['nav:people', 'tab:staff', 'train'], cells: none },
-  { id: 23, key: 'recipe', chapter: 4, done: (s) => s.stats.recipesMade >= 1 || s.customMenus.length >= 1 || seen(s, 'develop'), reward: [money(500_000)], targets: ['nav:cafe', 'tab:craft', 'develop'], cells: none },
+  { id: 22, key: 'train', chapter: 4, done: (s) => s.stats.trainings >= 1 || seen(s, 'train'), reward: [{ type: 'research', n: 20 }, feature('craft')], targets: ['nav:people', 'tab:staff', 'train', 'train-pick'], cells: none },
+  { id: 23, key: 'recipe', chapter: 4, done: (s) => s.stats.recipesMade >= 1 || s.customMenus.length >= 1 || seen(s, 'develop'), reward: [money(500_000)], targets: ['nav:cafe', 'tab:craft', 'craft-ingredient', 'develop'], cells: none },
   // 25단계(주차장)를 바로 지을 수 있게 주차장 시설을 여기서 연다 (좌석 6개 조건보다 먼저 올 수 있다)
   { id: 24, key: 'spot', chapter: 4, done: (s) => Object.values(s.spots).some((lv) => lv >= 1) || seen(s, 'investSpot'), reward: [money(300_000), { type: 'unlockFacility', id: 'parking_lot' }], targets: ['nav:ledger', 'tab:spots', 'spot-invest'], cells: none },
   { id: 25, key: 'parking', chapter: 4, done: (s) => (s.routes?.parking?.totalGuests ?? 0) >= 1, reward: [money(300_000), { type: 'tickets', n: 1 }], targets: ['nav:build', 'tab:convenience', 'build:parking_lot'], cells: none },
   // 27단계(선물)를 바로 할 수 있게 선물 하나를 준다
-  { id: 26, key: 'shop', chapter: 4, done: (s) => seen(s, 'drawTicket') || seen(s, 'buyMileage') || seen(s, 'buyTicket'), reward: [{ type: 'mileage', n: 30 }, { type: 'item', id: 'gift_tangerine_box', n: 1 }], targets: ['nav:ledger', 'tab:tickets', 'draw'], cells: none },
+  { id: 26, key: 'shop', chapter: 4, done: (s) => seen(s, 'drawTicket') || seen(s, 'buyMileage') || seen(s, 'buyTicket'), reward: [{ type: 'mileage', n: 30 }, { type: 'item', id: 'gift_tangerine_box', n: 1 }], targets: ['nav:ledger', 'tab:tickets', 'shop:draw', 'draw'], cells: none },
   // ---- 5장 마을과 세상 (8~12월) ----
   { id: 27, key: 'gift', chapter: 5, done: (s) => seen(s, 'giveGift') || s.giftDay >= 0, reward: [{ type: 'tickets', n: 1 }], targets: ['gift'], cells: none },
   // 29단계(팝업)를 바로 할 수 있게 팝업 스토어 기능을 여기서 연다 — g18(랭크 2)보다 먼저 올 수 있다
