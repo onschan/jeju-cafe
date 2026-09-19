@@ -7,6 +7,7 @@ import { Confirm } from './Popup';
 import { Bar } from './Bars';
 import { showPopupScreen } from './PopupScreen';
 import { card, brownBtn, brownBtnOn, brownBtnOff, PALETTE } from './frame';
+import { VillageCard } from './VillageCard'; // z-ending: 정착 등급·마을제
 
 /** 지역 지도 (투자 탭): 7지역의 활기·식욕 게이지, 만난 손님·단골★, 주말 팝업 열기 */
 export function RegionPanel() {
@@ -15,6 +16,7 @@ export function RegionPanel() {
   const open = s.popup.regionId;
   return (
     <div data-testid="region-panel">
+      <VillageCard />
       <div style={{ fontSize: 13, color: PALETTE.inkSoft, marginBottom: 4 }}>
         주말(6·13·20·27일)에 팝업을 열면 그 지역 손님 6~8명이 와요. 연 지역은 활기·식욕 −8, 나머지는 주말마다 +5 · 만난 손님 {metCount(s)}/{NAMED_GUESTS.length} · 단골★ {regularCount(s)}
       </div>

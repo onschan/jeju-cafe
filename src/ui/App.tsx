@@ -38,6 +38,7 @@ import { brownBtn, brownBtnOn, brownBtnOff, dangerBtn, card, PALETTE } from './f
 import { compactNumber } from './HUD';
 import { Icon } from './Icon';
 import { TitleScreen } from './TitleScreen';
+import { EndingScreen } from './EndingScreen'; // z-ending
 import { SaveSlots } from './SaveSlots';
 import { showScene, SceneHost, type SceneChar } from './SceneWindow';
 import { staffParts } from '../render/character';
@@ -658,6 +659,7 @@ function Game({ onExit }: { onExit: () => void }) {
       {guestPopup && <GuestPopup guestId={guestPopup} onClose={() => setGuestPopup(null)} onQuest={(id) => { dispatch({ type: 'acceptQuest', id }); setWin({ kind: 'people', tab: 'quests' }); }} />}
       {renderWindow()}
       <RewardPopup />
+      <EndingScreen onExit={onExit} />
       <DialogueHost />
     </div>
   );

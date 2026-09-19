@@ -6,7 +6,8 @@ import { HAIR_RGB, TOP_RGB } from '../render/character';
 import { frame, brownBtn, brownBtnOff, PALETTE } from './frame';
 import { Popup, Confirm } from './Popup';
 import { SaveSlots } from './SaveSlots';
-import { newGame, hasAnySave } from './store';
+import { newGame, hasAnySave, getBestEnding } from './store';
+import { ScoreCard } from './EndingScreen'; // z-ending: 엔딩 최종 점수 카드
 import { getBest } from './best';
 import { unlockAudio, bgm } from './audio';
 
@@ -146,6 +147,7 @@ export function TitleScreen({ onEnter }: { onEnter: () => void }) {
     else go();
   };
   const b = getBest();
+  const be = getBestEnding(); // z-ending: 엔딩 최고 점수
   return (
     <div data-testid="title" onPointerDownCapture={onPointerDown} style={{ position: 'absolute', inset: 0, overflow: 'hidden', fontFamily: "'Galmuri11', system-ui, sans-serif" }}>
       <DemoBackdrop />
@@ -164,7 +166,8 @@ export function TitleScreen({ onEnter }: { onEnter: () => void }) {
       {slots && <SaveSlots mode="load" onClose={() => setSlots(false)} onLoaded={onEnter} />}
       {best && (
         <Popup title="최고 점수" onBackdrop={() => setBest(false)} buttons={<button style={{ ...brownBtn, marginRight: 0, marginBottom: 0 }} onClick={() => setBest(false)}>닫기</button>}>
-          <div style={frameTitleRow}><span>연 매출 최고</span><b>{b.yearScore > 0 ? wonText(b.yearScore) : '아직 없음'}</b></div>
+          {be ? <ScoreCard score={be.score} cafeName={be.cafeName} /> : <div style={{ fontSize: 13, color: PALETTE.inkSoft, marginBottom: 8 }}>10년차 결산 점수는 아직 없어요.</div>}
+          <div style={{ ...frameTitleRow, marginTop: 10, borderTop: `1px dashed ${PALETTE.woodLight}`, paddingTop: 8 }}><span>연 매출 최고</span><b>{b.yearScore > 0 ? wonText(b.yearScore) : '아직 없음'}</b></div>
           {b.at && <div style={{ fontSize: 13, color: PALETTE.inkSoft }}>{b.at.year}년차 기록</div>}
           <div style={{ ...frameTitleRow, marginTop: 8 }}><span>월 매출 최고</span><b>{b.monthIncome > 0 ? wonText(b.monthIncome) : '아직 없음'}</b></div>
           <div style={{ fontSize: 13, color: PALETTE.inkSoft, marginTop: 8 }}>연 매출은 12월 결산 때 갱신돼요.</div>

@@ -4,6 +4,7 @@ import goalsLinesJson from './goals_lines.json' with { type: 'json' };
 import eventsJson from './events.json' with { type: 'json' };
 import samchunJson from './samchun.json' with { type: 'json' };
 import failureJson from './failure.json' with { type: 'json' };
+import endingJson from './ending.json' with { type: 'json' }; // z-ending: 엔딩·100주년·마을 반상회
 
 /** 화자 키 = public/assets/icons/portrait_<key>.png */
 export type Speaker = 'halmang' | 'samchun' | 'hero' | 'haenyeo' | 'jangnim';
@@ -23,6 +24,16 @@ export const SAMCHUN: SamchunDef[] = (samchunJson as { samchun: SamchunDef[] }).
 /** 실패 상태 대화 4단계 (§4.4) */
 export const FAILURE_DIALOGUES: FailureDialogue[] = (failureJson as { stages: FailureDialogue[] }).stages;
 export const failureDialogue = (stage: FailureDialogue['stage']): FailureDialogue => FAILURE_DIALOGUES.find((f) => f.stage === stage)!;
+/** z-ending: 엔딩 컷 대사(할망·삼춘·나 3줄, 촌장 분기)·100주년 성공/실패·정착 등급 심사(등급별 상승/유지)·마을제 안내 */
+export interface SpokenLine { speaker: Speaker; line: string }
+export interface VillageReviewLine { grade: number; speaker: Speaker; up: string; same: string }
+export interface EndingDialogues {
+  ending: { title: string; lines: SpokenLine[]; chief: SpokenLine[] };
+  centennial: { title: string; success: SpokenLine[]; fail: SpokenLine[] };
+  village: { title: string; review: VillageReviewLine[]; festivalOffer: { speaker: Speaker; lines: string[] } };
+}
+export const ENDING_DIALOGUES: EndingDialogues = endingJson as EndingDialogues;
+export const villageReviewLine = (grade: number): VillageReviewLine => ENDING_DIALOGUES.village.review.find((r) => r.grade === grade) ?? ENDING_DIALOGUES.village.review[0]!;
 
 const GOAL_LINE = new Map(GOAL_LINES.map((g) => [g.id, g]));
 const EVENT_DIALOGUE = new Map(EVENT_DIALOGUES.map((e) => [e.id, e]));

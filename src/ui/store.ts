@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from 'react';
-import { createInitialState, tick, apply, seasonOf, LocalSaveStore, type GameState, type Action, type ApplyResult, type Mood, type Season } from '../sim/index.ts';
+import { createInitialState, tick, apply, seasonOf, LocalSaveStore, type GameState, type Action, type ApplyResult, type Mood, type Season, type CarryOver, type FinalScore, type BestRecord } from '../sim/index.ts';
 import { sfx, bgm, suspendAudio, resumeAudio, type SfxName } from './audio';
 import { recordMonthCard } from './best';
 import { resetTutorial } from './tutorialDialogue';
@@ -87,6 +87,7 @@ const ACTION_SFX: Record<Action['type'], SfxName> = {
   openPopup: 'unlock', closePopup: 'tap', challenge: 'fanfare', dismissChallenge: 'tap', acceptChallenge: 'unlock', skipTutorial: 'tap',
   setRouteContract: 'unlock', expandParking: 'place', // 트랙 H
   expandMain: 'unlock', buildSecondFloor: 'unlock', moveMain: 'place', undoMoveMain: 'tap', toggleFireplace: 'tap', setPianoTime: 'tap', setBgm: 'tap', setLighting: 'tap', feedAquarium: 'happy', restockKids: 'coin', setBarEvening: 'tap', addBooks: 'unlock', // y-indoor
+  continueEnding: 'fanfare', donateVillage: 'coin', holdFestival: 'fanfare', // z-ending
 };
 
 export function dispatch(a: Action): ApplyResult {
@@ -209,14 +210,22 @@ export function deleteSlot(n: number): void {
 /** 지금 상태를 자동 저장 슬롯에 바로 쓴다 (타이틀로 나갈 때·경영 현황 `저장`). */
 export function autosaveNow(): void { save(); }
 
-export function newGame() {
-  state = createInitialState(Date.now() % 1_000_000, getOrCreatePlayerId(), Date.now(), 'tutorial'); // §7.1 빈 마당 + 손으로 하는 튜토리얼
+/** carry: 엔딩 뒤 「이월해서 새로 시작」(ending.ts makeCarry). 없으면 맨 처음부터. */
+export function newGame(carry: CarryOver | null = null) {
+  state = createInitialState(Date.now() % 1_000_000, getOrCreatePlayerId(), Date.now(), 'tutorial', carry); // §7.1 빈 마당 + 손으로 하는 튜토리얼
   viewReset?.();
   resetTutorial();
   clearDialogues();
   save();
   emit();
 }
+
+// ---------- z-ending: 최고 점수 슬롯 ----------
+/** 엔딩 최종 점수를 최고 점수 슬롯에 기록한다. 갱신했으면 true (EndingScreen 「최고 점수 갱신!」). */
+export function recordEnding(score: FinalScore): boolean {
+  return saveStore.saveBest({ score, cafeName: state.cafeName, at: Date.now() });
+}
+export function getBestEnding(): BestRecord | null { return saveStore.loadBest(); }
 
 /** rAF 루프. 렌더 콜백에 상태를 넘긴다. 반환값으로 정지. */
 export function startLoop(render: (s: GameState) => void): () => void {
