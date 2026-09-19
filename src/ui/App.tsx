@@ -44,11 +44,10 @@ import { PopupScreenHost } from './PopupScreen';
 import { ChallengePopup, RivalPanel } from './RivalPanel';
 import { TourPopup } from './BoardPanel';
 import { rangeHintFor } from './rangeHint';
+import { rectCells, demolishTargets, nextGhostAfterPlace, type Rect, type BuildGhost } from './placing';
 
 /** 길·돌담은 드래그로 연속해서 놓는다 (고스트 없이) */
 const PAINT_KINDS = new Set(['path', 'wall']);
-/** 일괄 철거에서 빼는 종류 (§5.3): 본관·정낭·정류장·진입점 시설 */
-const NO_DEMOLISH_KINDS = new Set(['busstop', 'gate', 'building']);
 const GAUGES_KEY = 'jeju-cafe:gauges';
 function gaugesPref(): boolean { try { return localStorage.getItem(GAUGES_KEY) !== '0'; } catch { return true; } }
 
@@ -74,12 +73,8 @@ type Win =
 
 const DEFAULT_WIN: Record<WindowKind, Win> = { build: { kind: 'build' }, cafe: { kind: 'cafe', tab: null }, people: { kind: 'people', tab: null }, ledger: { kind: 'ledger', tab: null } };
 
-/** 짓기 모드 고스트(놓을 자리·방향) */
-interface BuildGhost { x: number; y: number; rot: number }
 /** 이동 모드: 고른 오브젝트와 옮길 자리 */
 interface Moving { objectId: string; x: number; y: number }
-/** 철거 모드: 드래그 사각형(셀) */
-interface Rect { x0: number; y0: number; x1: number; y1: number }
 
 /** 장면 창에 세울 직원(최대 3명). 없으면 SceneWindow가 기본 인물을 세운다. */
 function staffChars(s: GameState): SceneChar[] {
@@ -88,24 +83,6 @@ function staffChars(s: GameState): SceneChar[] {
 
 function inFootprint(type: string, ox: number, oy: number, x: number, y: number): boolean {
   return footprint(type, ox, oy).some((p) => p.x === x && p.y === y);
-}
-
-/** 사각형 안 셀 목록 */
-function rectCells(r: Rect): { x: number; y: number }[] {
-  const out: { x: number; y: number }[] = [];
-  for (let x = Math.min(r.x0, r.x1); x <= Math.max(r.x0, r.x1); x++) for (let y = Math.min(r.y0, r.y1); y <= Math.max(r.y0, r.y1); y++) out.push({ x, y });
-  return out;
-}
-/** 사각형에 발자국이 걸치는 철거 가능한 시설 id (본관·정낭·정류장·진입점·덤불 제외) */
-export function demolishTargets(s: GameState, r: Rect): string[] {
-  const cells = new Set(rectCells(r).map((c) => `${c.x},${c.y}`));
-  const ids: string[] = [];
-  for (const o of Object.values(s.objects)) {
-    const d = objectDef(o.type);
-    if (PROTECTED_TYPES.has(o.type) || NO_DEMOLISH_KINDS.has(d.kind) || o.type === 'bush_wild') continue;
-    if (footprint(o.type, o.x, o.y).some((p) => cells.has(`${p.x},${p.y}`))) ids.push(o.id);
-  }
-  return ids;
 }
 
 /** 보기 모드에서 칸을 눌렀을 때 카드 대상. 손님 → 직원 → 필지(미소유) → 오브젝트 → 바위 → 빈 땅. */
@@ -483,11 +460,9 @@ function Game({ onExit }: { onExit: () => void }) {
         const r = dispatch({ type: 'place', objectType: mode.objectType, x: ghost.x, y: ghost.y, rot: ghost.rot });
         if (!r.ok) return;
         // 연속 배치(§5.3): 고스트를 옆 칸으로 옮겨 남긴다. 돈이 모자라면 자동 종료
-        const st = getState();
-        if (st.money < placeCost(st, mode.objectType)) { setMode({ kind: 'idle' }); showMessage('돈이 모자라 배치를 마쳤어요'); return; }
-        const next = { x: ghost.x + def.w, y: ghost.y };
-        const inMap = next.x < st.grid.w;
-        setGhost({ ...ghost, ...(inMap && canPlace(st, mode.objectType, next.x, next.y).ok ? next : {}) });
+        const nx = nextGhostAfterPlace(getState(), mode.objectType, ghost);
+        if (nx.done) { setMode({ kind: 'idle' }); showMessage(nx.reason); return; }
+        setGhost(nx.ghost);
         setMode({ kind: 'build', objectType: mode.objectType, count: mode.count + 1 });
       };
       place = {
