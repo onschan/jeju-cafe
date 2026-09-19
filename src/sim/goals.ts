@@ -45,6 +45,7 @@ import { totalSpotVisitors } from './spots.ts';
 import { cleanStreakDays, cleanAvgDays, dirtyForDays, CLEAN_HISTORY_DAYS, CLEAN_LOW } from './cleanliness.ts';
 import { siteOf } from './site.ts';
 import { routeState, routeOpened, ENTRY_ROUTES, PARKING_SLOTS, PARKING_EXPAND_FROM } from './entry.ts'; // 트랙 H
+import { VILLAGE_GRADE_NAME } from './village.ts'; // z-ending
 /** 경로 손님 부르는 말 (목표 문구) */
 const ROUTE_GUEST_NAME: Record<string, string> = { bus: '버스', parking: '렌터카', shuttle: '셔틀', cruise: '크루즈', olle: '올레꾼' };
 
@@ -203,12 +204,15 @@ export const conditionCheckers: CheckerMap = {
   routeGuests: (s, c) => n(routeState(s, c.route).totalGuests, c.n),
   routeUnlocked: (s, c) => flag(routeOpened(s, c.route)),
   facility: (s, c) => flag(Object.values(s.objects).some((o) => !o.build && (o.type === c.id || (c.id === PARKING_EXPAND_FROM && PARKING_SLOTS[o.type] !== undefined)))), // 주차장은 넓힌 것도 친다
+  // ---- z-ending 정착 등급·마을제 (village.ts) ----
+  villageGrade: (s, c) => n(s.village.grade, c.n),
+  festivals: (s, c) => n(s.village.festivals, c.n),
 };
 
 /** 코드 판정 조건 */
 export function customMet(state: GameState, id: string): boolean {
   switch (id) {
-    case 'centennial': return state.clock.year >= 10 && state.clock.month === 11 && state.star >= 5; // 10년차 11월 감귤축제, ★5
+    case 'centennial': return state.ending.centennial === 'done'; // z-ending: 20년차 11월 100주년 감귤축제 성공 (ending.ts centennialMonthly)
     case 'dirty30': return dirtyForDays(state, CLEAN_LOW, CLEAN_HISTORY_DAYS); // 트랙 A: 청결 < 50 상태 30일 (§4.3 악플 이벤트 조건)
     case 'noParking': return !Object.values(state.objects).some((o) => PARKING_SLOTS[o.type] !== undefined); // 렌터카 대란 (§4.5) — 트랙 H 주차장 4종 전부
     default: return false;
@@ -287,6 +291,8 @@ export function goalConditionText(c: GoalCondition): string {
     case 'promotions': return `홍보 ${c.n}회`;
     case 'rivalWins': return `라이벌 대결 ${c.n}승`;
     case 'year': return `${c.n}년차`;
+    case 'villageGrade': return `정착 등급 「${VILLAGE_GRADE_NAME[c.n] ?? c.n}」`; // z-ending
+    case 'festivals': return c.n === 1 ? '마을제 개최' : `마을제 ${c.n}회`; // z-ending
     case 'monthIncome': return `월 매출 ₩${fmtNum(c.n)}`;
     case 'staffLevel': return `Lv${c.lv} 직원 ${c.n}명`;
     case 'trainings': case 'training': return `연수 ${c.n}회`;

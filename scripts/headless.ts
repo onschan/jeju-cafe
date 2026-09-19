@@ -16,4 +16,5 @@ for (const r of rows) {
 const last = rows[rows.length - 1];
 const minMoney = Math.min(...rows.map((r) => r.minMoney));
 const byYear = rows.filter((r) => r.month === 12).map((r) => `${r.year}년차 말 ₩${r.money.toLocaleString('en-US')}`).join(' · ');
-console.error(`요약: 목표 ${last?.goals ?? 0}개 달성 · 최저 잔고 ₩${minMoney.toLocaleString('en-US')}${minMoney < 0 ? ' (파산!)' : ''} · ${byYear} · 랭크 ${last?.rank} ★${last?.star}`);
+const ending = rows.find((r) => r.ending)?.ending; // z-ending: 10년차 3월 엔딩 최종 점수
+console.error(`요약: 목표 ${last?.goals ?? 0}개 달성 · 최저 잔고 ₩${minMoney.toLocaleString('en-US')}${minMoney < 0 ? ' (파산!)' : ''} · ${byYear} · 랭크 ${last?.rank} ★${last?.star}${ending ? ` · 엔딩 ${ending.total}점 「${ending.title}」` : ''}`);
