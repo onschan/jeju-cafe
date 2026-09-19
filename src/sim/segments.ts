@@ -1,5 +1,5 @@
 import type { GameState, Guest, GuestTypeState, UnlockCond, ApplyResult, Face, RegularTier, GuestTags } from './types.ts';
-import { GUEST_TYPES, FACILITIES, guestTypeDef, guestTags, canonicalGuestId, ITEMS, objectDef } from '../data/index.ts';
+import { GUEST_TYPES, FACILITIES, LANDMARKS, guestTypeDef, guestTags, canonicalGuestId, ITEMS, objectDef } from '../data/index.ts';
 import { nextRandom, pickWeighted } from './rng.ts';
 import { monthIndex } from './clock.ts';
 import { pushNotice } from './staff.ts';
@@ -107,7 +107,7 @@ export function unlockGuestType(state: GameState, typeId: string): boolean {
 /** v2 시설의 해금 조건(랭크·★·손님 인기·부탁·관광지·날짜·개수)을 검사해 새로 열린 시설 id를 돌려준다. */
 export function evaluateFacilityUnlocks(state: GameState): string[] {
   const opened: string[] = [];
-  for (const f of FACILITIES) {
+  for (const f of [...FACILITIES, ...LANDMARKS]) { // 랜드마크(landmarks.json)도 부탁·명소 Lv 조건으로 연다
     if (!f.unlock || state.unlocked.objects.includes(f.id)) continue;
     if (!unlockCondMet(state, f.unlock)) continue;
     state.unlocked.objects.push(f.id);

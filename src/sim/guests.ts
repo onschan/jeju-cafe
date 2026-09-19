@@ -44,8 +44,8 @@ export const MAX_DAILY_GUESTS = 300;
  *  기반값 = 4 + 해금 손님층 유효 인기 합 ÷ 17 + 시설(좌석 제외) 인기 합 ÷ 12 + 명소 방문객 × 3%, × 평판 배수(0.5~1.5). 시작(6석, 인기 합 75, 평판 50)에 8명. */
 export const GUESTS_PER_SEAT = 6;
 export const BASE_DAILY_GUESTS = 4;
-export const POP_SUM_PER_GUEST = 17;
-export const FACILITY_POP_PER_GUEST = 12;
+export const POP_SUM_PER_GUEST = 21;
+export const FACILITY_POP_PER_GUEST = 16;
 /** 명소 하루 방문객(spots.dailyVisitors = 매력 × 2, 투어 버스 ×1.3) × VISITOR_GUEST_RATE(3%)가 하루 손님으로 유입 — 명소 투자가 손님 수의 큰 축 (§4.2 #1 "인기·명소 기반값") */
 /** 대기열: 빈 자리가 없으면 3명까지 기다리고, 넘치면 돌아간다(그 손님층 만족 −10) — §4.3 웨이팅 */
 export const WAIT_MAX = 3;

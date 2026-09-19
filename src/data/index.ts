@@ -52,9 +52,17 @@ const TERRAIN_OBJECTS: ObjectDef[] = [
 ];
 /** 랜드마크 (§1.6). 데이터만 — 효과는 경치·요금 외 TODO. 비용은 화폐 리스케일 ×100. */
 export const LANDMARK_COST_SCALE = 100;
-export const LANDMARKS: ObjectDef[] = (landmarksJson as { id: string; name: string; w: number; h: number; cost: number; effectText: string }[]).map((l) => ({
-  id: l.id, name: l.name, kind: 'landmark', w: l.w, h: l.h, cost: l.cost * LANDMARK_COST_SCALE, scenery: 3, noise: 0, wind: 1, upkeep: 0, terrain: ['soil', 'rock'], effectText: l.effectText,
-}));
+/** 랜드마크 해금 조건은 v2 시설 표(부탁·명소 Lv)에서 가져온다 — 표에 없는 폭낭(hackberry)은 ★3 */
+const LANDMARK_UNLOCK: Record<string, { unlock: Record<string, unknown>; unlockText?: string } | undefined> = Object.fromEntries((facilitiesJson as unknown as { id: string; category: string; unlock: Record<string, unknown>; unlockText?: string }[]).filter((r) => r.category === 'landmark').map((r) => [r.id, r]));
+export const LANDMARKS: ObjectDef[] = (landmarksJson as { id: string; name: string; w: number; h: number; cost: number; effectText: string }[]).map((l) => {
+  const v2 = LANDMARK_UNLOCK[l.id];
+  const def: ObjectDef = {
+    id: l.id, name: l.name, kind: 'landmark', category: 'landmark', w: l.w, h: l.h, cost: l.cost * LANDMARK_COST_SCALE, scenery: 3, noise: 0, wind: 1, upkeep: 0, terrain: ['soil', 'rock'], effectText: l.effectText,
+    unlock: v2 ? toUnlockCond(v2.unlock) : { type: 'star', star: 3 },
+  };
+  def.unlockText = v2?.unlockText ?? '★3';
+  return def;
+});
 
 export interface ParcelDef { id: string; no: number; name: string; price: number; start: boolean; w: number; h: number; bonusText: string | null }
 export const PARCELS = parcelsJson as ParcelDef[];

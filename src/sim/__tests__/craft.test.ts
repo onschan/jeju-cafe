@@ -192,7 +192,7 @@ test('히든 레시피 발견: 실패하지 않고 이름·품질(최고) 고정
 });
 
 // ---------- 개발 생명주기 ----------
-test('개발 조건: 재료 수·베이스·직원·연구·돈, farm 재료는 창고 없으면 산다, 시그니처는 ★3부터, 진행 중엔 하나만', () => {
+test('개발 조건: 재료 수·베이스·직원·연구·돈, farm 재료는 창고 없으면 산다, 시그니처는 ★2부터, 진행 중엔 하나만', () => {
   const s = bareState(1);
   const id = 'nobody';
   expect(canDevelop(s, 'drink', ['beans', 'milk'], id).reason).toBe('없는 직원이에요');
@@ -201,9 +201,9 @@ test('개발 조건: 재료 수·베이스·직원·연구·돈, farm 재료는 
   expect(canDevelop(s, 'dessert', ['flour', 'egg'], st.id).ok).toBe(false);   // 디저트는 3개부터
   expect(canDevelop(s, 'drink', ['beans', 'milk', 'ice', 'sugar', 'honey'], st.id).ok).toBe(false); // 4개까지
   expect(canDevelop(s, 'signature', ['beans', 'milk', 'ice', 'sugar'], st.id).ok).toBe(false);
-  s.star = 3;
+  s.star = 2;
   expect(canDevelop(s, 'signature', ['beans', 'milk', 'ice', 'sugar'], st.id).ok).toBe(true);
-  expect(canDevelop(s, 'drink', ['beans', 'milk', 'ice', 'sugar', 'honey', 'tea', 'flour', 'egg'], st.id).ok).toBe(true); // ★3이면 8개
+  expect(canDevelop(s, 'drink', ['beans', 'milk', 'ice', 'sugar', 'honey', 'tea', 'flour', 'egg'], st.id).ok).toBe(true); // ★2면 8개
   s.star = 1;
   // v3: farm 재료도 창고에 없으면 원가로 산다 — "창고에 없어요" 거부는 없다
   expect(canDevelop(s, 'drink', ['beans', 'carrot'], st.id).ok).toBe(true);
