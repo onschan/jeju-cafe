@@ -8,9 +8,10 @@ import { dispatch } from './store';
 import { ENTRY_ROUTES, routeState, routeStats, routeConnected, routeFacility, routeOpened, routeDailyCap, nextArrivalText, canSetRouteContract, canExpandParking, parkingExpandCost, parkingSlots, PARKING_EXPAND_FROM, PARKING_EXPAND_TO, SHUTTLE_FEE, buildDaysLeft, type GameState, type RouteId } from '../sim/index.ts';
 import { objectDef } from '../data/index.ts';
 import { BUS_HOUR, isBusDay } from '../sim/spots.ts';
-import { Bar } from './StaffPanel';
+import { Bar } from './Bars';
+import { wonText as won } from '../data/labels.ts';
 import { Confirm } from './Popup';
-import { brownBtnOn, brownBtnOff, dangerBtn, PALETTE, won, card } from './frame';
+import { brownBtnOn, brownBtnOff, dangerBtn, PALETTE, card } from './frame';
 
 const small: CSSProperties = { fontSize: 13, color: PALETTE.inkSoft };
 const btnOn: CSSProperties = { ...brownBtnOn, margin: 0, padding: '0 10px', fontSize: 15 };
