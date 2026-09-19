@@ -50,14 +50,15 @@ describe('데이터', () => {
     expect(objectDef('pinball').unlock).toEqual({ type: 'goal' });
     for (const id of FACILITY_X_IDS) expect(objectDef(id).unlock?.type).not.toBe('start');
   });
-  it('콤보 60: 앞 45는 v2 그대로, 46~60 신규, 등급이 grade 열에서 읽힌다', () => {
-    expect(COMBOS.length).toBe(60);
+  it('콤보 68: 앞 45는 v2 그대로, 46~60 신규, 61~68 실내(y-indoor), 등급이 grade 열에서 읽힌다', () => {
+    expect(COMBOS.length).toBe(68);
     expect(COMBOS[0]).toMatchObject({ id: 'cb_tangerine_view', strength: 'up', applyTo: 'both', target: 'all' });
     expect(COMBOS[10]).toMatchObject({ id: 'cb_photo_souvenir', strength: 'upup', hidden: true });
     expect(COMBOS[44]).toMatchObject({ id: 'cb_boardgame_karaoke', strength: 'down' });
     expect(COMBOS[59]).toMatchObject({ id: 'cb_marble_atm', a: 'marble_game', bIds: ['atm'], applyTo: 'a' });
     for (const c of COMBOS) { expect(objectDef(c.a)).toBeDefined(); for (const b of c.bIds) expect(objectDef(b)).toBeDefined(); expect(c.radius).toBe(2); }
-    expect(COMBOS.filter((c) => c.hidden).length).toBe(25);
+    expect(COMBOS.filter((c) => c.hidden).length).toBe(28); // 25 + 실내 히든 3
+    expect(COMBOS[60]).toMatchObject({ id: 'cb_fire_sofa', a: 'sofa_seat', bIds: ['fireplace'], strength: 'upup', target: 'adult' });
   });
   it('강화 아이템 잘 맞는 시설: 새 시설 편입, 밭 제거', () => {
     const salt = ITEMS.find((i) => i.id === 'jeju_salt')!;

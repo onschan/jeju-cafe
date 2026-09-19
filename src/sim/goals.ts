@@ -38,11 +38,15 @@ import { checkChallenges } from './challenges.ts';
 import { checkTutorial, TUTORIAL_STEPS } from './tutorial.ts';
 import { hasLoan, loanRewardMult } from './failure.ts';
 import { levelOf } from './upgrade.ts';
+import { indoorSeats, mainLevel, annexCount, isMainClosed } from './rooms.ts'; // y-indoor
 import { grantItem } from './items.ts';
 import { spotEffectAt } from './compat.ts';
 import { totalSpotVisitors } from './spots.ts';
 import { cleanStreakDays, cleanAvgDays, dirtyForDays, CLEAN_HISTORY_DAYS, CLEAN_LOW } from './cleanliness.ts';
 import { siteOf } from './site.ts';
+import { routeState, routeOpened, ENTRY_ROUTES, PARKING_SLOTS, PARKING_EXPAND_FROM } from './entry.ts'; // 트랙 H
+/** 경로 손님 부르는 말 (목표 문구) */
+const ROUTE_GUEST_NAME: Record<string, string> = { bus: '버스', parking: '렌터카', shuttle: '셔틀', cruise: '크루즈', olle: '올레꾼' };
 
 /** 발동 중인 명당(자리 효과) 수 (트랙 A spotEffectAt) */
 function activeSpotEffectCount(state: GameState): number {
@@ -102,6 +106,7 @@ function seatObjectsOf(state: GameState) {
  *  메뉴 조건은 튜토리얼 중에만 본다 — 완성 시작 상태·기존 테스트(빈 메뉴판에 손님을 넣는다)는 그대로 돈다. */
 export function canOpen(state: GameState): boolean {
   if (state.tutorial.step < TUTORIAL_STEPS && !state.menuSlots.some((m) => m !== null)) return false;
+  if (isMainClosed(state)) return false; // y-indoor: 본관 공사(증축·이동·2층) 중 영업 정지
   const seats = seatObjectsOf(state);
   if (seats.length === 0) return false;
   const reach = reachMap(state, busStopPos(state));
@@ -161,6 +166,9 @@ export const conditionCheckers: CheckerMap = {
   staffLevel: (s, c) => n(s.staff.filter((st) => st.level >= c.lv).length, c.n),
   trainings: (s, c) => n(s.stats.trainings, c.n), // x-staff가 stats.trainings를 올린다
   facilityLv: (s, c) => n(Object.values(s.objects).filter((o) => !o.build && levelOf(o) >= c.lv).length, c.n), // 트랙 A 증축 Lv
+  indoorSeats: (s, c) => n(indoorSeats(s), c.n), // y-indoor 실내 좌석 정원
+  mainLevel: (s, c) => n(mainLevel(s), c.lv),    // y-indoor 본관 증축 Lv
+  annex: (s, c) => n(annexCount(s), c.n),        // y-indoor 완공된 별관
   comboCount: (s, c) => n(activeComboIds(s).size, c.n),
   setCount: (s, c) => n(activeSetIds(s).size, c.n),
   spotEffect: (s, c) => n(activeSpotEffectCount(s), c.n), // 트랙 A 명당(발동 중)
@@ -191,6 +199,10 @@ export const conditionCheckers: CheckerMap = {
   noLossMonth: (s, c) => n(s.stats.profitMonths, c.n),
   monthGuests: (s, c) => n(s.monthGuests, c.n),
   monthSales: (s, c) => n(s.monthIncome, c.n),
+  // ---- 트랙 H 유입 경로 ----
+  routeGuests: (s, c) => n(routeState(s, c.route).totalGuests, c.n),
+  routeUnlocked: (s, c) => flag(routeOpened(s, c.route)),
+  facility: (s, c) => flag(Object.values(s.objects).some((o) => !o.build && (o.type === c.id || (c.id === PARKING_EXPAND_FROM && PARKING_SLOTS[o.type] !== undefined)))), // 주차장은 넓힌 것도 친다
 };
 
 /** 코드 판정 조건 */
@@ -198,7 +210,7 @@ export function customMet(state: GameState, id: string): boolean {
   switch (id) {
     case 'centennial': return state.clock.year >= 10 && state.clock.month === 11 && state.star >= 5; // 10년차 11월 감귤축제, ★5
     case 'dirty30': return dirtyForDays(state, CLEAN_LOW, CLEAN_HISTORY_DAYS); // 트랙 A: 청결 < 50 상태 30일 (§4.3 악플 이벤트 조건)
-    case 'noParking': return !Object.values(state.objects).some((o) => o.type === 'parking'); // 렌터카 대란 (§4.5)
+    case 'noParking': return !Object.values(state.objects).some((o) => PARKING_SLOTS[o.type] !== undefined); // 렌터카 대란 (§4.5) — 트랙 H 주차장 4종 전부
     default: return false;
   }
 }
@@ -279,6 +291,9 @@ export function goalConditionText(c: GoalCondition): string {
     case 'staffLevel': return `Lv${c.lv} 직원 ${c.n}명`;
     case 'trainings': case 'training': return `연수 ${c.n}회`;
     case 'facilityLv': case 'upgraded': return `Lv${c.lv} 시설 ${c.n}개`;
+    case 'indoorSeats': return `실내 좌석 ${c.n}석`;
+    case 'mainLevel': return `본관 Lv${c.lv}`;
+    case 'annex': return `별관 ${c.n}동`;
     case 'comboCount': return `콤보 ${c.n}개`;
     case 'setCount': return `세트 효과 ${c.n}개`;
     case 'spotEffect': case 'spotEffects': return `명당 ${c.n}개`;
@@ -304,6 +319,9 @@ export function goalConditionText(c: GoalCondition): string {
     case 'noLossMonth': return `적자 없이 ${c.n}달`;
     case 'monthGuests': return `이달 손님 ${fmtNum(c.n)}명`;
     case 'monthSales': return `이달 매출 ₩${fmtNum(c.n)}`;
+    case 'routeGuests': return `${ROUTE_GUEST_NAME[c.route] ?? '경로'} 손님 ${fmtNum(c.n)}명`;
+    case 'routeUnlocked': return c.route === 'shuttle' ? '공항 셔틀 계약' : `${ENTRY_ROUTES[c.route]?.name ?? '경로'} 열기`;
+    case 'facility': return `${name.object(c.id)} 짓기`;
   }
 }
 

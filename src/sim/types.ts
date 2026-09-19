@@ -101,7 +101,7 @@ export interface MenuMod { toppings: string[]; level: number }
 /** 인구 태그 (마스터 GDD §1): 콤보·세트의 대상 손님층은 이 태그로 판정한다 */
 export type Gender = 'female' | 'male' | 'any';
 export type AgeTag = 'youth' | 'adult' | 'senior' | 'none'; // none = 동물·정령 (연령 대상 콤보에 안 걸린다)
-export interface GuestTags { gender: Gender; age: AgeTag; group: boolean }
+export interface GuestTags { gender: Gender; age: AgeTag; group: boolean; foreign?: boolean } // foreign: 외국인 손님(트랙 H §3.2 — 공항·항구 경로 가중, 이모지 말풍선)
 
 /** 손님 효과 6종 (마스터 GDD §3): 만족 방문마다 발동 */
 export type GuestEffect = 'item' | 'money' | 'ad' | 'research' | 'popularity' | 'ticket';
@@ -502,11 +502,18 @@ export type GoalCondition =
   | { type: 'skills'; n: number }                 // 특기 보유 직원 n명
   | { type: 'selfSupply'; pct: number }           // 재료 자급률 % (x-spots/farm)
   | { type: 'training'; n: number }               // 연수 완료 (x-staff, trainings 별칭)
+  | { type: 'indoorSeats'; n: number }            // 실내 좌석 정원 n석 (y-indoor rooms.ts indoorSeats)
+  | { type: 'mainLevel'; lv: number }             // 본관 증축 Lv 이상 (y-indoor)
+  | { type: 'annex'; n: number }                  // 완공된 별관 n동 (y-indoor)
   // ---- 도전·월간 과제 전용 ----
   | { type: 'seats'; n: number }                  // 좌석 시설 수
   | { type: 'noLossMonth'; n: number }            // 적자 없이 n달 (연속 흑자, 수락 시점 대비)
   | { type: 'monthGuests'; n: number }            // 이달 손님 수
-  | { type: 'monthSales'; n: number };            // 이달 매출
+  | { type: 'monthSales'; n: number }             // 이달 매출
+  // ---- 트랙 H 손님 유입 경로 (entry.ts) ----
+  | { type: 'routeGuests'; route: RouteId; n: number } // 그 경로로 온 누적 손님
+  | { type: 'routeUnlocked'; route: RouteId }     // 경로 열림 (셔틀은 계약까지)
+  | { type: 'facility'; id: string };             // 그 시설을 1개 이상 지었나 (완공)
 export type FeatureId = 'clearRock' | 'promote' | 'craft' | 'popup' | 'challenge' | 'parcel' | 'siteView' | 'comboCodex' | 'spotMap';
 export type GoalReward =
   | { type: 'money'; amount: number }
@@ -655,7 +662,18 @@ export interface PlacedObject {
   level?: 1 | 2 | 3;   // 증축 Lv (없으면 1). 스펙 §3.2.2
   uses?: number;       // 누적 이용 횟수 (좌석 주문·시설 방문) — 증축 조건
   wearMonth?: number;  // 노후 기준 달(monthIndex): 완공·증축·수리 시점. 없으면 placedMonth
+  name?: string;       // 개체 이름 (renameObject, UX §5.6). 없으면 종류 이름
+  w?: number;          // 발자국 크기 덮어쓰기 (본관 증축 Lv2~4, rooms.ts MAIN_SIZE). 없으면 objectDef의 w/h
+  h?: number;
+  mode?: string;       // 실내 요소 설정 (rooms.ts §4.3): 난로 on/off · 피아노 lunch/evening/none · 바 저녁 세트 on/off
+  careDay?: number;    // 실내 요소 마지막 손질 일 인덱스 (수족관 먹이·키즈 장난감 보충·책장 신간)
 }
+
+/** 되돌리기 1회 스냅샷 (undo.ts). day = 절대 일 인덱스 — 같은 날에만 되돌린다 */
+export type UndoEntry =
+  | { kind: 'place'; day: number; objectId: string; paid: number }
+  | { kind: 'remove'; day: number; objects: PlacedObject[]; moneyDelta: number }
+  | { kind: 'move'; day: number; objectId: string; fromX: number; fromY: number };
 
 /** 필지. 격자는 처음부터 전체 크기이고, 소유한 필지에만 지을 수 있다. */
 export interface Parcel {
@@ -669,6 +687,19 @@ export interface Parcel {
   owned: boolean;
   price: number;
   bonus: ParcelBonus;
+}
+
+/** 손님 유입 경로 5종 (트랙 H, UX 참고 §3): 정류장(기본)·주차장(렌터카)·공항 셔틀·항구(크루즈)·올레길 */
+export type RouteId = 'bus' | 'parking' | 'shuttle' | 'cruise' | 'olle';
+export interface RouteState {
+  unlocked: boolean;      // 해금 조건 충족 (entry.ts evaluateRoutes)
+  contract: boolean;      // 셔틀: 월 계약 중
+  todayGuests: number;    // 오늘 이 경로로 온 손님
+  monthGuests: number;    // 이달
+  monthIncome: number;    // 이달 그 손님들이 낸 돈 (장부 매출 비중)
+  totalGuests: number;    // 누적 (목표 routeGuests)
+  lastArrivalDay: number; // 마지막 도착 절대 일 (셔틀·크루즈 1회 배치·항만 사용료 판정, −1 = 없음)
+  broken: boolean;        // 길이 끊긴 상태 (알림은 끊길 때 한 번)
 }
 
 /** 렌더 전용 연출 큐 (sim이 남기고 렌더가 tick으로 새 항목만 읽는다). 최근 FX_CAP개만 보관. */
@@ -806,6 +837,7 @@ export interface Guest {
   timerMs: number;      // seated·visiting 남은 시간
   waitMs: number;       // 주문 후 조리 대기 남은 시간
   paid: number;         // 주문 시 낸 돈 (자금 효과의 팁 계산용)
+  route?: RouteId;      // 어느 유입 경로로 왔나 (트랙 H entry.ts). 없으면 정류장
 }
 
 export interface Clock {
@@ -932,7 +964,10 @@ export interface GameState {
   popup: PopupState;                          // 원정 팝업 스토어
   rivals: RivalState[];                       // 라이벌 카페 (동시 최대 2)
   lastChallenge: ChallengeResult | null;      // 마지막 카페 대결 (UI 팝업)
+  undo: UndoEntry | null;                     // 직전 배치·철거·이동 되돌리기 스냅샷 (undo.ts)
+  main: MainState;                            // 본관 증축·2층·이동·분위기 (rooms.ts, y-indoor)
   guests: Guest[];
+  routes: Record<RouteId, RouteState>;        // 손님 유입 경로 5종 (트랙 H entry.ts)
   spawnAcc: number; // 시간대별 스폰 소수 누적
   researchAcc: number; // 만족 손님 누적 (5마다 연구 +1)
   nextId: number;
@@ -945,18 +980,50 @@ export interface GameState {
   actionLog: { tick: number; action: Action }[];
 }
 
+/** 본관 상태 (rooms.ts): 증축 Lv1~4·2층·이동·분위기. 결정적 — 공사는 doneDay(일 인덱스)로 끝난다. */
+export interface MainWork { kind: 'expand' | 'move' | 'floor2'; doneDay: number; days: number; toLevel?: number }
+export interface MainState {
+  level: 1 | 2 | 3 | 4;              // 증축 단계 (footprint: 3×2 → 4×3 → 5×3 → 6×4)
+  floor2: boolean;                   // 2층 (실내 좌석 정원 +6, 전망 +1)
+  work: MainWork | null;             // 진행 중 공사 (증축·이동·2층). 공사 중엔 본관 영업 정지
+  movedMonth: number;                // 마지막으로 옮긴 달(monthIndex), 월 1회 제한. -1이면 없음
+  undo: { x: number; y: number; day: number; cost: number; prevMovedMonth: number } | null; // 같은 날 되돌리기 1회
+  bgm: 'calm' | 'jazz' | 'folk' | null;      // BGM 버튼 그룹 (§4.3)
+  lighting: 'warm' | 'bright';               // 저녁 조명
+  pianoTime: 'lunch' | 'evening' | 'none';   // 피아노 연주 시간
+  seatLog: number[];                         // 최근 좌석 이용률 %(일별, 최대 7일) — "자리가 모자라요" (P1-7)
+  usedSeatMs: number;                        // 오늘 누적 (좌석 사용 × ms) — 하루 끝에 이용률로
+  openMs: number;                            // 오늘 누적 (정원 × ms)
+}
+
 // ---------- 액션 ----------
 export type Action =
   | { type: 'place'; objectType: string; x: number; y: number; rot?: number }
   | { type: 'remove'; objectId: string }
   | { type: 'move'; objectId: string; x: number; y: number }
   | { type: 'rotate'; objectId: string; rot: number }
+  | { type: 'demolishMany'; objectIds: string[] }  // 드래그 사각형 일괄 철거 (undo 1회로 전부 복구)
+  | { type: 'undoLast' }                           // 직전 배치·철거·이동 되돌리기 (같은 날만)
+  | { type: 'renameObject'; objectId: string; name: string }
+  | { type: 'setTargets'; targets: string[] }      // 타깃 손님층 3슬롯 통째로
   | { type: 'upgradeObject'; objectId: string }   // 증축 Lv+1 (upgrade.ts)
   | { type: 'repairObject'; objectId: string }    // 노후 수리 (cleanliness.ts)
   | { type: 'buyParcel'; id: string }
   | { type: 'clearRock'; x: number; y: number }
   | { type: 'renameCafe'; name: string }
   | { type: 'expand'; id: string }
+  | { type: 'expandMain' }                         // 본관 증축 Lv+1 (rooms.ts)
+  | { type: 'buildSecondFloor' }                   // 본관 2층 (Lv3 이상)
+  | { type: 'moveMain'; x: number; y: number }     // 본관 옮기기 (월 1회·₩200만·3일)
+  | { type: 'undoMoveMain' }                       // 같은 날 되돌리기 1회
+  | { type: 'toggleFireplace'; objectId: string }
+  | { type: 'setPianoTime'; time: 'lunch' | 'evening' | 'none' }
+  | { type: 'setBgm'; bgm: 'calm' | 'jazz' | 'folk' | null }
+  | { type: 'setLighting'; lighting: 'warm' | 'bright' }
+  | { type: 'feedAquarium'; objectId: string }
+  | { type: 'restockKids'; objectId: string }
+  | { type: 'setBarEvening'; objectId: string; on: boolean }
+  | { type: 'addBooks'; objectId: string }
   | { type: 'setCosmetic'; wallColor?: number; sign?: string }
   | { type: 'praise'; staffId: string }
   | { type: 'setSlot'; slot: number; menuId: string | null }
@@ -980,6 +1047,8 @@ export type Action =
   | { type: 'hostTour'; spotId: string }
   | { type: 'dismissTour' }
   | { type: 'setTourBus'; on: boolean }
+  | { type: 'setRouteContract'; route: RouteId; on: boolean } // 공항 셔틀 계약/해지 (트랙 H)
+  | { type: 'expandParking'; objectId: string }               // 주차장 2×2 → 3×2 교체 (트랙 H)
   | { type: 'giveGift'; guestId: string; itemId: string }
   | { type: 'craftGift'; itemId: string }
   | { type: 'develop'; base: MenuBase; ingredients: string[]; params?: BrewParams; staffId: string }

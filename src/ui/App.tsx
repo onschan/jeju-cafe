@@ -1,14 +1,17 @@
 import { useEffect, useRef, useState } from 'react';
-import { GameView, type GhostSpec } from '../render/GameView';
-import { startLoop, dispatch, getState, useGame, setViewReset, autosaveNow, hasAnySave, loadSlot, setMonthCardHook, setSceneHook, showToast, pauseGame } from './store';
+import { wonText, label } from '../data/labels.ts';
+import { GameView, type GhostSpec, type RangeHint } from '../render/GameView';
+import { startLoop, dispatch, getState, useGame, setViewReset, autosaveNow, hasAnySave, loadSlot, setMonthCardHook, setSceneHook, showMessage, pauseGame, isSpeedLocked, setSpeedLocked } from './store';
 import { unlockAudio, bgm, isMuted, setMuted, getBgmVolume, getSfxVolume, setBgmVolume, setSfxVolume, sfx } from './audio';
-import { seasonOf, canPlace, objectAt, footprint, parcelAt, clearCost, placeCost, PROTECTED_TYPES, ROTATABLE_TYPES, goalForMenu, type GameState } from '../sim/index.ts';
+import { seasonOf, canPlace, objectAt, footprint, sizeOf, mainBuilding, parcelAt, clearCost, placeCost, PROTECTED_TYPES, ROTATABLE_TYPES, goalForMenu, featureOpen, canUndo, demolishRefund, routeAtCell, type GameState } from '../sim/index.ts';
+import { RoutesSection } from './RouteCard'; // 트랙 H
 import { objectDef } from '../data/index.ts';
 // render/·ui/는 Vite 전용이라 확장자 없는 import 허용. sim/·data/만 .ts 확장자 규칙.
-import { NightOverlay, Toast } from './HUD';
-import { TopShell, BottomBar, PlaceBar, SHELL_TOP, type WindowKind, type PlaceBarProps } from './Shell';
-import { Window, type WindowTab } from './Window';
-import { MiniCard, type CardTarget, type CardActions } from './MiniCard';
+import { NightOverlay } from './HUD';
+import { TopShell, BottomBar, PlaceBar, SHELL_BOTTOM, BOTTOM_BAR_H, type WindowKind, type PlaceBarProps } from './Shell';
+import { Window, type IconGridItem } from './Window';
+import { MessageLine } from './MessageLine';
+import { MiniCard, MainCard, type CardTarget, type CardActions } from './MiniCard';
 import { DialogueHost } from './Dialogue.tsx';
 import { checkTutorial, setTutorialSkip } from './tutorialDialogue';
 import { useTutorialHighlight } from './tutorialHighlight';
@@ -31,7 +34,7 @@ import { BoardPanel } from './BoardPanel';
 import { RegionPanel } from './RegionPanel';
 import { ObjectInfoPanel, CodexPanel } from './ObjectInfoPanel';
 import { PopupHost, Confirm } from './Popup';
-import { won, brownBtn, dangerBtn, card, PALETTE } from './frame';
+import { brownBtn, brownBtnOn, brownBtnOff, dangerBtn, card, PALETTE } from './frame';
 import { compactNumber } from './HUD';
 import { Icon } from './Icon';
 import { TitleScreen } from './TitleScreen';
@@ -39,41 +42,38 @@ import { SaveSlots } from './SaveSlots';
 import { showScene, SceneHost, type SceneChar } from './SceneWindow';
 import { staffParts } from '../render/character';
 import { PopupScreenHost } from './PopupScreen';
-import { ChallengePopup } from './RivalPanel';
+import { ChallengePopup, RivalPanel } from './RivalPanel';
 import { TourPopup } from './BoardPanel';
+import { rangeHintFor } from './rangeHint';
+import { rectCells, demolishTargets, nextGhostAfterPlace, type Rect, type BuildGhost } from './placing';
 
 /** 길·돌담은 드래그로 연속해서 놓는다 (고스트 없이) */
 const PAINT_KINDS = new Set(['path', 'wall']);
+const GAUGES_KEY = 'jeju-cafe:gauges';
+function gaugesPref(): boolean { try { return localStorage.getItem(GAUGES_KEY) !== '0'; } catch { return true; } }
 
-/** 맵 조작 모드. 창·카드는 별도 상태. */
+/** 맵 조작 모드. 창·카드는 별도 상태. build.count = 이번 연속 배치에서 놓은 수 */
 type Mode =
   | { kind: 'idle' }
-  | { kind: 'build'; objectType: string }
+  | { kind: 'build'; objectType: string; count: number }
   | { kind: 'move' }
   | { kind: 'remove' };
 
-/** 전체 화면 창과 그 하위 탭 */
-type BuildTab = 'build' | 'remove' | 'move';
-type CafeTab = 'menu' | 'ingredients' | 'craft' | 'promo';
-type PeopleTab = 'staff' | 'guests' | 'codex' | 'quests';
-type LedgerTab = 'invest' | 'shop' | 'rank' | 'region' | 'settings';
+/** 전체 화면 창과 그 아이콘 그리드 항목 (§5.1) */
+type CafeTab = 'menu' | 'ingredients' | 'craft' | 'promo' | 'building' | 'indoor';
+type PeopleTab = 'staff' | 'candidates' | 'guests' | 'codex' | 'quests' | 'rivals';
+type LedgerTab = 'report' | 'invest' | 'spots' | 'shop' | 'tickets' | 'rank' | 'region' | 'settings';
 type Win =
-  | { kind: 'build'; tab: BuildTab; origin?: { x: number; y: number } }
-  | { kind: 'cafe'; tab: CafeTab }
-  | { kind: 'people'; tab: PeopleTab; focusId?: string }
-  | { kind: 'ledger'; tab: LedgerTab }
+  | { kind: 'build'; origin?: { x: number; y: number } }
+  | { kind: 'cafe'; tab: CafeTab | null }
+  | { kind: 'people'; tab: PeopleTab | null; focusId?: string }
+  | { kind: 'ledger'; tab: LedgerTab | null }
   | { kind: 'status' }
   | { kind: 'goal' }
   | { kind: 'object'; id: string };
 
-const BUILD_TABS: WindowTab<BuildTab>[] = [{ key: 'build', label: '시설' }, { key: 'remove', label: '철거' }, { key: 'move', label: '이동' }];
-const CAFE_TABS: WindowTab<CafeTab>[] = [{ key: 'menu', label: '메뉴판' }, { key: 'ingredients', label: '재료' }, { key: 'craft', label: '연구' }, { key: 'promo', label: '홍보' }];
-const PEOPLE_TABS: WindowTab<PeopleTab>[] = [{ key: 'staff', label: '직원' }, { key: 'guests', label: '손님' }, { key: 'codex', label: '도감' }, { key: 'quests', label: '부탁' }];
-const LEDGER_TABS: WindowTab<LedgerTab>[] = [{ key: 'invest', label: '투자' }, { key: 'shop', label: '상점' }, { key: 'rank', label: '랭킹' }, { key: 'region', label: '지역' }, { key: 'settings', label: '설정' }];
-const DEFAULT_TAB: Record<WindowKind, Win> = { build: { kind: 'build', tab: 'build' }, cafe: { kind: 'cafe', tab: 'menu' }, people: { kind: 'people', tab: 'staff' }, ledger: { kind: 'ledger', tab: 'invest' } };
+const DEFAULT_WIN: Record<WindowKind, Win> = { build: { kind: 'build' }, cafe: { kind: 'cafe', tab: null }, people: { kind: 'people', tab: null }, ledger: { kind: 'ledger', tab: null } };
 
-/** 짓기 모드 고스트(놓을 자리·방향) */
-interface BuildGhost { x: number; y: number; rot: number }
 /** 이동 모드: 고른 오브젝트와 옮길 자리 */
 interface Moving { objectId: string; x: number; y: number }
 
@@ -82,8 +82,9 @@ function staffChars(s: GameState): SceneChar[] {
   return s.staff.slice(0, 3).map((st) => ({ parts: staffParts(st.face, st.role, s.uniform ?? null) }));
 }
 
-function inFootprint(type: string, ox: number, oy: number, x: number, y: number): boolean {
-  return footprint(type, ox, oy).some((p) => p.x === x && p.y === y);
+/** (ox,oy)에 놓인 발자국 안에 (x,y)가 있나. w/h를 주면 그 크기(본관 증축 Lv2+ 옮기기 — sizeOf). */
+function inFootprint(type: string, ox: number, oy: number, x: number, y: number, w?: number, h?: number): boolean {
+  return footprint(type, ox, oy, w, h).some((p) => p.x === x && p.y === y);
 }
 
 /** 보기 모드에서 칸을 눌렀을 때 카드 대상. 손님 → 직원 → 필지(미소유) → 오브젝트 → 바위 → 빈 땅. */
@@ -92,6 +93,7 @@ function targetAt(s: GameState, x: number, y: number): CardTarget | null {
   if (guest) return { kind: 'guest', id: guest.id };
   const staff = s.staff.find((st) => Math.round(st.x) === x && Math.round(st.y) === y);
   if (staff) return { kind: 'staff', id: staff.id };
+  const rt = routeAtCell(s, x, y); if (rt) return { kind: 'route', route: rt, id: objectAt(s, x, y)?.id }; // 트랙 H: 진입점·경로 시설(정류장 포함) → 경로 카드
   const p = parcelAt(s, x, y);
   if (p && !p.owned) return { kind: 'parcel', id: p.id };
   const o = objectAt(s, x, y);
@@ -125,16 +127,28 @@ export function App() {
   );
 }
 
-/** 장부 → 설정: 소리·슬롯 저장·타이틀로 */
-function SettingsPanel({ onExit }: { onExit: () => void }) {
+/** 켜짐/꺼짐 2버튼 그룹 (셀렉트·체크박스 대신) */
+function OnOff({ label: text, on, onChange, testId }: { label: string; on: boolean; onChange: (v: boolean) => void; testId?: string }) {
+  return (
+    <div role="radiogroup" aria-label={text} data-testid={testId} style={{ display: 'grid', gridTemplateColumns: '1fr auto auto', alignItems: 'center', gap: 6, minHeight: 44, fontSize: 14 }}>
+      <span>{text}</span>
+      <button aria-pressed={on} style={{ ...(on ? brownBtnOn : brownBtn), margin: 0, padding: '0 10px', fontSize: 14 }} onClick={() => onChange(true)}>켜기</button>
+      <button aria-pressed={!on} style={{ ...(!on ? brownBtnOn : brownBtn), margin: 0, padding: '0 10px', fontSize: 14 }} onClick={() => onChange(false)}>끄기</button>
+    </div>
+  );
+}
+
+/** 장부 → 설정: 소리·속도 잠금·시설 게이지·슬롯 저장·타이틀로 */
+function SettingsPanel({ onExit, gauges, onGauges }: { onExit: () => void; gauges: boolean; onGauges: (v: boolean) => void }) {
   const [slots, setSlots] = useState(false);
   const [muted, setMutedState] = useState(isMuted());
   const toggleMute = () => { const m = !muted; setMuted(m); setMutedState(m); };
   const [bgmVol, setBgmVol] = useState(getBgmVolume());
   const [sfxVol, setSfxVol] = useState(getSfxVolume());
-  const slider = (label: string, v: number, set: (n: number) => void) => (
+  useGame();
+  const slider = (text: string, v: number, set: (n: number) => void) => (
     <label style={{ display: 'grid', gridTemplateColumns: '64px 1fr 40px', alignItems: 'center', gap: 8, fontSize: 14, minHeight: 44 }}>
-      <span>{label}</span>
+      <span>{text}</span>
       <input type="range" min={0} max={100} step={5} value={v} onChange={(e) => set(Number(e.target.value))} style={{ width: '100%', accentColor: PALETTE.paperDark }} />
       <span style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{v}</span>
     </label>
@@ -143,25 +157,28 @@ function SettingsPanel({ onExit }: { onExit: () => void }) {
     <div style={{ display: 'grid', gap: 6 }} data-testid="settings">
       {slider('배경음', bgmVol, (n) => { setBgmVolume(n); setBgmVol(n); })}
       {slider('효과음', sfxVol, (n) => { setSfxVolume(n); setSfxVol(n); sfx('tap'); })}
-      <button style={{ ...brownBtn, marginRight: 0, marginBottom: 0 }} onClick={toggleMute}>{muted ? '소리 켜기' : '소리 전부 끄기'}</button>
-      <button style={{ ...brownBtn, marginRight: 0, marginBottom: 0 }} onClick={() => setSlots(true)}>슬롯에 저장</button>
-      <button style={{ ...dangerBtn, marginRight: 0, marginBottom: 0 }} onClick={() => Confirm('자동 저장하고 타이틀로 나갈까요?', onExit, { title: '타이틀로' })}>타이틀로 나가기</button>
+      <button style={{ ...brownBtn, marginRight: 0, marginBottom: 0 }} onClick={toggleMute}>{muted ? '🔊 소리 켜기' : '🔇 소리 끄기'}</button>
+      <OnOff label="🔒 속도 잠금 (창을 열어도 안 멈춤)" on={isSpeedLocked()} onChange={setSpeedLocked} testId="setting-speed-lock" />
+      <OnOff label="📊 시설 위 인기 바·◎ 콤보 표시" on={gauges} onChange={onGauges} testId="setting-gauges" />
+      <button style={{ ...brownBtn, marginRight: 0, marginBottom: 0 }} onClick={() => setSlots(true)}>💾 슬롯에 저장</button>
+      <button style={{ ...dangerBtn, marginRight: 0, marginBottom: 0 }} onClick={() => Confirm('자동 저장하고 타이틀로 나갈까요?', onExit, { title: '타이틀로' })}>🚪 타이틀로</button>
       {slots && <SaveSlots mode="save" onClose={() => setSlots(false)} />}
     </div>
   );
 }
 
-/** 상단 바를 누르면: 경영 현황 */
+/** 상단 바를 누르면: 경영 현황 (§5.1: 저장 · 이달 요약 · 손님 경로 자리 · 랭크) */
 function StatusPanel() {
   const s = useGame();
+  const [saved, setSaved] = useState(false);
   const rows: [string, string][] = [
     ['카페', s.cafeName || '우리 카페'],
     ['날짜', `${s.clock.year}년 ${s.clock.month}월 ${s.clock.day}일`],
-    ['자금', won(s.money)],
+    ['자금', wonText(s.money)],
     ['연구 포인트', compactNumber(s.research)],
     ['★ 등급', `${s.star} · 랭크 ${s.rank}위`],
-    ['이번 달 손님', `${s.monthGuests}명 · 매출 ${won(s.monthIncome)}`],
-    ['누적 손님', `${s.totalGuests}명 · 누적 매출 ${won(s.totalIncome)}`],
+    ['이번 달 손님', `${s.monthGuests}명 · 매출 ${wonText(s.monthIncome)}`],
+    ['누적 손님', `${s.totalGuests}명 · 누적 매출 ${wonText(s.totalIncome)}`],
     ['직원', `${s.staff.length}명 · 후보 ${s.candidates.length}명`],
     ['메뉴', `${s.menuSlots.filter((m) => m !== null).length}개`],
     ['필지', `${s.parcels.filter((p) => p.owned).length}/${s.parcels.length}`],
@@ -169,13 +186,30 @@ function StatusPanel() {
   ];
   return (
     <div data-testid="status">
+      <button data-testid="status-save" style={{ ...brownBtnOn, width: '100%', marginRight: 0, minHeight: 48 }} onClick={() => { autosaveNow(); setSaved(true); showMessage('저장했어요'); }}>💾 {saved ? '저장했어요' : '저장'}</button>
       <div style={{ ...card, display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '4px 12px', fontSize: 15 }}>
         {rows.map(([k, v]) => <span key={k} style={{ display: 'contents' }}><span style={{ color: PALETTE.inkSoft }}>{k}</span><b>{v}</b></span>)}
       </div>
+      <RoutesSection s={s} />{/* 트랙 H: 손님 경로 표 */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 14 }}>
         <Icon name="local" size={18} alt="동네 손님" /> 동네
         <meter min={-100} max={100} value={s.popularity} style={{ flex: 1 }} />
         인기 <Icon name="tourist" size={18} alt="관광객" />
+      </div>
+    </div>
+  );
+}
+
+/** 카페 › 재료: 창고에 있는 재료 (농원 수확·상자) */
+function StoragePanel() {
+  const s = useGame();
+  const rows = Object.entries(s.storage).filter(([, n]) => n > 0).sort((a, b) => b[1] - a[1]);
+  return (
+    <div data-testid="storage-panel">
+      <div style={{ fontSize: 13, color: PALETTE.inkSoft, marginBottom: 6 }}>창고 재료는 메뉴를 만들 때 먼저 쓰고, 없으면 자동으로 사요.</div>
+      {rows.length === 0 && <div style={{ fontSize: 14, color: PALETTE.inkSoft, padding: '12px 0', textAlign: 'center' }}>창고가 비어 있어요. 농원에서 수확하면 쌓여요.</div>}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+        {rows.map(([id, n]) => <div key={id} style={{ ...card, marginBottom: 0, display: 'flex', justifyContent: 'space-between', fontSize: 14 }}><span>{label('ingredient', id)}</span><b>{n}개</b></div>)}
       </div>
     </div>
   );
@@ -187,13 +221,42 @@ function menuUnlockText(menuId: string): string | null {
   return g ? `「${g.title}」 목표를 이루면 열려요` : null;
 }
 
+/** 고스트 밑 ✓↻ 원형 버튼 48px (§5.3): DOM 오버레이가 고스트의 화면 좌표를 따라간다. 고스트가 화면 위 40%에 있으면 숨긴다(§5.6 하단 바 버튼만). */
+function GhostButtons({ view, cell, ok, canRotate, onConfirm, onRotate }: { view: GameView | null; cell: { x: number; y: number; w: number; h: number }; ok: boolean; canRotate: boolean; onConfirm: () => void; onRotate: () => void }) {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    let raf = 0;
+    const tick = () => {
+      const el = ref.current;
+      if (el && view) {
+        const p = view.cellToClient(cell.x, cell.y, cell.w, cell.h);
+        const host = el.offsetParent as HTMLElement | null;
+        const r = host?.getBoundingClientRect() ?? { left: 0, top: 0, height: window.innerHeight };
+        const top = p.top - r.top + 8;
+        el.style.transform = `translate(${Math.round(p.left - r.left)}px, ${Math.round(top)}px)`;
+        el.style.display = top < r.height * 0.4 ? 'none' : 'flex';
+      }
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [view, cell.x, cell.y, cell.w, cell.h]);
+  const round = (bg: string): React.CSSProperties => ({ width: 48, height: 48, borderRadius: 24, border: `3px solid ${PALETTE.wood}`, background: bg, color: '#fff', fontSize: 22, fontWeight: 700, fontFamily: 'inherit', boxShadow: '0 2px 0 #0006', padding: 0 });
+  return (
+    <div ref={ref} data-testid="ghost-buttons" style={{ position: 'absolute', left: -52, top: 0, display: 'none', gap: 8, zIndex: 13, pointerEvents: 'auto', willChange: 'transform' }}>
+      <button aria-label="확정" disabled={!ok} onClick={onConfirm} style={{ ...round(ok ? '#e8892b' : '#9a8a74'), opacity: ok ? 1 : 0.6 }}>✓</button>
+      {canRotate && <button aria-label="회전" onClick={onRotate} style={round('#4c9a2a')}>↻</button>}
+    </div>
+  );
+}
+
 function Game({ onExit }: { onExit: () => void }) {
   const s = useGame();
   // 월 매출 신기록 → 장면 창
   useEffect(() => {
     setMonthCardHook((st, rec) => {
-      const card = st.lastMonthCard;
-      if (rec.monthRecord && card) showScene({ title: '월 매출 신기록', text: `${card.month}월 매출 ${won(card.income)} — 신기록!`, chars: staffChars(st), sfx: 'fanfare' });
+      const c = st.lastMonthCard;
+      if (rec.monthRecord && c) showScene({ title: '월 매출 신기록', text: `${c.month}월 매출 ${wonText(c.income)} — 신기록!`, chars: staffChars(st), sfx: 'fanfare' });
     });
     setSceneHook((st, title, text) => showScene({ title, text, chars: staffChars(st), sfx: 'fanfare' }));
     return () => { setMonthCardHook(null); setSceneHook(null); };
@@ -206,6 +269,7 @@ function Game({ onExit }: { onExit: () => void }) {
   useEffect(() => { setTutorialSkip(() => dispatch({ type: 'skipTutorial' })); return () => setTutorialSkip(null); }, []);
   const hostRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<GameView | null>(null);
+  const [view, setView] = useState<GameView | null>(null);
   const modeRef = useRef<Mode>({ kind: 'idle' });
   const [mode, setModeState] = useState<Mode>({ kind: 'idle' });
   const [win, setWin] = useState<Win | null>(null);
@@ -216,23 +280,30 @@ function Game({ onExit }: { onExit: () => void }) {
   const [ghost, setGhostState] = useState<BuildGhost | null>(null);
   const movingRef = useRef<Moving | null>(null);
   const [moving, setMovingState] = useState<Moving | null>(null);
+  const rectRef = useRef<Rect | null>(null);
+  const [rect, setRectState] = useState<Rect | null>(null);
   /** 드래그 시작 칸과 고스트 원점의 차이 (여러 칸 오브젝트를 잡은 칸 기준으로 끌기) */
   const dragOffset = useRef({ dx: 0, dy: 0 });
   /** 손님 프로필 팝업 */
   const [guestPopup, setGuestPopup] = useState<string | null>(null);
   /** 길게 눌러 들어 올린 이동이면 확정·취소 뒤 보기로 돌아간다 */
   const liftedRef = useRef(false);
+  const [gauges, setGaugesState] = useState(gaugesPref);
+  const setGauges = (v: boolean) => { setGaugesState(v); try { localStorage.setItem(GAUGES_KEY, v ? '1' : '0'); } catch { /* noop */ } };
+  useEffect(() => { view?.setGauges(gauges); }, [view, gauges]);
 
   // 첫 터치에서 오디오를 열고 현재 계절 BGM을 시작한다 (이후 호출은 no-op)
   const onPointerDown = () => { unlockAudio(); void bgm(seasonOf(getState().clock.month)); };
   const setGhost = (g: BuildGhost | null) => { ghostRef.current = g; setGhostState(g); };
   const setMoving = (m: Moving | null) => { movingRef.current = m; setMovingState(m); };
+  const setRect = (r: Rect | null) => { rectRef.current = r; setRectState(r); viewRef.current?.setRectCells(r ? rectCells(r) : []); };
   const setMode = (m: Mode) => {
     modeRef.current = m;
     setModeState(m);
     if (m.kind !== 'idle') { setCardTarget(null); viewRef.current?.setSelection(null); }
     if (m.kind !== 'build') setGhost(null);
     if (m.kind !== 'move') setMoving(null);
+    if (m.kind !== 'remove') setRect(null);
   };
   const openCard = (t: CardTarget | null) => {
     setCardTarget(t);
@@ -273,22 +344,31 @@ function Game({ onExit }: { onExit: () => void }) {
   /** 짓기 창에서 시설을 고르면: 창을 닫고 맵에 고스트 (origin이 있으면 그 칸, 없으면 시작 필지 가운데) */
   const pickBuild = (objectType: string, origin?: { x: number; y: number }) => {
     setWin(null);
-    setMode({ kind: 'build', objectType });
+    setMode({ kind: 'build', objectType, count: 0 });
     if (PAINT_KINDS.has(objectDef(objectType).kind)) return;
     const st = getState();
     const home = st.parcels.find((p) => p.no === 1);
     const at = origin ?? (home ? { x: home.x + Math.floor(home.w / 2), y: home.y + Math.floor(home.h / 2) } : { x: Math.floor(st.grid.w / 2), y: Math.floor(st.grid.h / 2) });
     setGhost({ x: at.x, y: at.y, rot: 0 });
   };
+  /** 카메라를 본관에 (§5.6 🏠) */
+  const goHome = () => {
+    const st = getState();
+    const home = Object.values(st.objects).find((o) => o.type === 'warehouse');
+    if (!home) return;
+    const d = objectDef(home.type);
+    viewRef.current?.focusCell(home.x, home.y, d.w, d.h, 1.5);
+  };
+  const undo = () => { if (dispatch({ type: 'undoLast' }).ok) showMessage('되돌렸어요'); };
 
   useEffect(() => {
     const host = hostRef.current!;
-    const view = new GameView();
-    viewRef.current = view;
+    const v = new GameView();
+    viewRef.current = v;
     let stop: (() => void) | null = null;
     let disposed = false;
     (async () => {
-      await view.init(host, {
+      await v.init(host, {
         guestSay,
         onTap: (x, y) => {
           const m = modeRef.current;
@@ -302,15 +382,16 @@ function Game({ onExit }: { onExit: () => void }) {
             if (mv) setMoving({ ...mv, x, y });
             else {
               const o = objectAt(st, x, y);
-              if (!o) showToast('옮길 것을 골라 주세요');
-              else if (PROTECTED_TYPES.has(o.type)) showToast('이건 못 옮겨요');
+              if (!o) showMessage('옮길 것을 골라 주세요');
+              else if (PROTECTED_TYPES.has(o.type)) showMessage('이건 못 옮겨요');
               else setMoving({ objectId: o.id, x: o.x, y: o.y });
             }
           } else if (m.kind === 'remove') {
+            // 탭 = 한 칸 사각형. 이미 고른 게 있으면 새로 고른다
             const o = objectAt(st, x, y);
-            if (!o) showToast('치울 것을 골라 주세요');
-            else if (PROTECTED_TYPES.has(o.type) || o.type === 'bush_wild') showToast('이건 못 치워요');
-            else { const d = objectDef(o.type); Confirm(`${d.name}${d.removeCost ? `을(를) ${won(d.removeCost)} 들여 치울까요?` : `을(를) 치우고 ${won(d.cost)}을 돌려받을까요?`}`, () => dispatch({ type: 'remove', objectId: o.id }), { title: '철거' }); }
+            if (!o) { setRect(null); showMessage('치울 것을 골라 주세요'); }
+            else if (demolishTargets(st, { x0: x, y0: y, x1: x, y1: y }).length === 0) { setRect(null); showMessage('이건 못 치워요'); }
+            else setRect({ x0: x, y0: y, x1: x, y1: y });
           } else inspect(st, x, y);
         },
         onLongPress: liftObject,
@@ -323,7 +404,12 @@ function Game({ onExit }: { onExit: () => void }) {
           } else if (m.kind === 'move') {
             const mv = movingRef.current;
             const o = mv ? getState().objects[mv.objectId] : null;
-            if (mv && o && inFootprint(o.type, mv.x, mv.y, x, y)) { dragOffset.current = { dx: x - mv.x, dy: y - mv.y }; return true; }
+            if (mv && o && inFootprint(o.type, mv.x, mv.y, x, y, sizeOf(o).w, sizeOf(o).h)) { dragOffset.current = { dx: x - mv.x, dy: y - mv.y }; return true; }
+          } else if (m.kind === 'remove') {
+            const st = getState();
+            if (x < 0 || y < 0 || x >= st.grid.w || y >= st.grid.h) return false;
+            setRect({ x0: x, y0: y, x1: x, y1: y });
+            return true;
           }
           return false;
         },
@@ -337,42 +423,58 @@ function Game({ onExit }: { onExit: () => void }) {
               if (canPlace(st, m.objectType, x, y).ok) dispatch({ type: 'place', objectType: m.objectType, x, y });
             } else if (ghostRef.current) setGhost({ ...ghostRef.current, x: x - dx, y: y - dy });
           } else if (m.kind === 'move' && movingRef.current) setMoving({ ...movingRef.current, x: x - dx, y: y - dy });
+          else if (m.kind === 'remove' && rectRef.current) setRect({ ...rectRef.current, x1: x, y1: y });
         },
       });
-      if (disposed) { view.destroy(); return; } // init 중 언마운트(Fast Refresh 등)
+      if (disposed) { v.destroy(); return; } // init 중 언마운트(Fast Refresh 등)
       // 개발 중 브라우저 자동화가 셀 → 화면 좌표를 계산할 수 있도록 (프로덕션 빌드에는 포함되지 않음)
-      if (import.meta.env.DEV) (window as unknown as { __view: unknown }).__view = view;
-      setViewReset(() => view.reset());
-      stop = startLoop((st) => view.render(st));
+      if (import.meta.env.DEV) (window as unknown as { __view: unknown }).__view = v;
+      setViewReset(() => v.reset());
+      v.setGauges(gaugesPref());
+      stop = startLoop((st) => v.render(st));
+      setView(v);
     })();
-    return () => { disposed = true; stop?.(); setViewReset(null); view.destroy(); viewRef.current = null; };
+    return () => { disposed = true; stop?.(); setViewReset(null); v.destroy(); viewRef.current = null; setView(null); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // 배치·이동·철거 중에는 게임을 멈춘다
   const placing = mode.kind !== 'idle';
-  useEffect(() => { if (placing) return pauseGame(); }, [placing]);
+  useEffect(() => { if (placing) return pauseGame('place'); }, [placing]);
 
-  // 고스트를 뷰에 반영한다
+  const undoOk = canUndo(s).ok;
+  // 고스트·범위 힌트를 뷰에 반영한다
   let ghostSpec: GhostSpec | null = null;
+  let rangeHint: RangeHint | null = null;
+  let ghostCell: { x: number; y: number; w: number; h: number } | null = null;
   let place: PlaceBarProps | null = null;
   if (mode.kind === 'build') {
     const def = objectDef(mode.objectType);
     const cost = placeCost(s, mode.objectType);
     if (PAINT_KINDS.has(def.kind)) {
-      place = { text: `${def.name} · ${won(cost)}/칸 · 칸을 누르거나 끌어서 이어 놓아요`, ok: true, canRotate: false, paint: true, onConfirm: () => {}, onRotate: () => {}, onCancel: () => setMode({ kind: 'idle' }) };
+      place = { text: `${def.name} · ${wonText(cost)}/칸 · 칸을 누르거나 끌어서 이어 놓아요`, ok: true, canRotate: false, paint: true, onUndo: undoOk ? undo : null, onConfirm: () => {}, onRotate: () => {}, onCancel: () => setMode({ kind: 'idle' }) };
     } else if (ghost) {
       const can = canPlace(s, mode.objectType, ghost.x, ghost.y);
       const ok = can.ok && s.money >= cost;
-      ghostSpec = { type: mode.objectType, x: ghost.x, y: ghost.y, rot: ROTATABLE_TYPES.has(mode.objectType) ? ghost.rot : undefined, ok, text: `${def.name} ${won(cost)}` };
+      ghostSpec = { type: mode.objectType, x: ghost.x, y: ghost.y, rot: ROTATABLE_TYPES.has(mode.objectType) ? ghost.rot : undefined, ok, text: `${def.name} ${wonText(cost)}` };
+      rangeHint = rangeHintFor(s, mode.objectType, ghost.x, ghost.y);
+      ghostCell = { x: ghost.x, y: ghost.y, w: def.w, h: def.h };
+      const confirm = () => {
+        const r = dispatch({ type: 'place', objectType: mode.objectType, x: ghost.x, y: ghost.y, rot: ghost.rot });
+        if (!r.ok) return;
+        // 연속 배치(§5.3): 고스트를 옆 칸으로 옮겨 남긴다. 돈이 모자라면 자동 종료
+        const nx = nextGhostAfterPlace(getState(), mode.objectType, ghost);
+        if (nx.done) { setMode({ kind: 'idle' }); showMessage(nx.reason); return; }
+        setGhost(nx.ghost);
+        setMode({ kind: 'build', objectType: mode.objectType, count: mode.count + 1 });
+      };
       place = {
-        text: `${def.name} · ${won(cost)} · ${ok ? '여기에 지을 수 있어요' : (can.reason ?? '돈이 모자라요')}`,
+        text: `${def.name} · ${wonText(cost)} · ${ok ? (mode.count > 0 ? `${mode.count}개 놓음 · 계속 놓을 수 있어요` : '여기에 지을 수 있어요') : (can.reason ?? '돈이 모자라요')}`,
         ok,
         canRotate: ROTATABLE_TYPES.has(mode.objectType),
-        onConfirm: () => {
-          const r = dispatch({ type: 'place', objectType: mode.objectType, x: ghost.x, y: ghost.y, rot: ghost.rot });
-          if (r.ok) setMode({ kind: 'idle' });
-        },
+        continuous: mode.count > 0,
+        onUndo: undoOk ? undo : null,
+        onConfirm: confirm,
         onRotate: () => setGhost({ ...ghost, rot: (ghost.rot + 1) % 4 }),
         onCancel: () => setMode({ kind: 'idle' }),
       };
@@ -381,12 +483,16 @@ function Game({ onExit }: { onExit: () => void }) {
     const o = moving ? s.objects[moving.objectId] : null;
     if (moving && o) {
       const def = objectDef(o.type);
+      const size = sizeOf(o); // 본관 증축 Lv2+는 정의 크기와 다르다 (y-indoor)
       const can = canPlace(s, o.type, moving.x, moving.y, o.id);
-      ghostSpec = { type: o.type, x: moving.x, y: moving.y, rot: o.rot, ok: can.ok, text: `${def.name} 옮기기` };
+      ghostSpec = { type: o.type, x: moving.x, y: moving.y, rot: o.rot, ok: can.ok, text: `${def.name} 옮기기`, w: size.w, h: size.h };
+      rangeHint = rangeHintFor(s, o.type, moving.x, moving.y, o.id);
+      ghostCell = { x: moving.x, y: moving.y, w: size.w, h: size.h };
       place = {
         text: `${def.name} · ${can.ok ? '여기로 옮길 수 있어요' : (can.reason ?? '여기엔 못 옮겨요')}`,
         ok: can.ok,
         canRotate: ROTATABLE_TYPES.has(o.type),
+        onUndo: undoOk ? undo : null,
         onConfirm: () => {
           const r = dispatch({ type: 'move', objectId: o.id, x: moving.x, y: moving.y });
           if (!r.ok) return;
@@ -396,76 +502,126 @@ function Game({ onExit }: { onExit: () => void }) {
         onCancel: () => { if (liftedRef.current) { liftedRef.current = false; setMode({ kind: 'idle' }); } else setMoving(null); },
       };
     } else {
-      place = { text: '옮길 시설을 누르세요 (돈은 안 들어요)', ok: true, canRotate: false, paint: true, onConfirm: () => {}, onRotate: () => {}, onCancel: () => setMode({ kind: 'idle' }) };
+      place = { text: '옮길 시설을 누르세요 (돈은 안 들어요)', ok: true, canRotate: false, paint: true, onUndo: undoOk ? undo : null, onConfirm: () => {}, onRotate: () => {}, onCancel: () => setMode({ kind: 'idle' }) };
     }
   } else if (mode.kind === 'remove') {
-    place = { text: '치울 시설을 누르세요', ok: true, canRotate: false, paint: true, onConfirm: () => {}, onRotate: () => {}, onCancel: () => setMode({ kind: 'idle' }) };
+    const ids = rect ? demolishTargets(s, rect) : [];
+    if (rect && ids.length > 0) {
+      const objs = ids.map((id) => s.objects[id]!);
+      const delta = demolishRefund(objs);
+      place = {
+        text: `${ids.length}개 철거 · ${delta >= 0 ? `환불 ${wonText(delta)}` : `비용 ${wonText(-delta)}`}`,
+        ok: true, canRotate: false, onUndo: undoOk ? undo : null,
+        onConfirm: () => {
+          const r = dispatch({ type: 'demolishMany', objectIds: ids });
+          if (r.ok) { setRect(null); showMessage(`${ids.length}개 치웠어요 (↶ 되돌리기 가능)`); }
+        },
+        onRotate: () => {},
+        onCancel: () => setRect(null),
+      };
+    } else {
+      place = { text: '치울 시설을 누르거나 끌어서 여러 개 고르세요', ok: true, canRotate: false, paint: true, onUndo: undoOk ? undo : null, onConfirm: () => {}, onRotate: () => {}, onCancel: () => setMode({ kind: 'idle' }) };
+    }
+  } else if (cardTarget?.kind === 'object') {
+    const o = s.objects[cardTarget.id];
+    if (o) rangeHint = rangeHintFor(s, o.type, o.x, o.y, o.id);
   }
-  useEffect(() => { viewRef.current?.setGhost(ghostSpec); });
+  useEffect(() => { viewRef.current?.setGhost(ghostSpec); viewRef.current?.setRangeHint(rangeHint); });
 
-  const openWindow = (kind: WindowKind) => { setMode({ kind: 'idle' }); openCard(null); setWin(DEFAULT_TAB[kind]); };
+  const openWindow = (kind: WindowKind) => { setMode({ kind: 'idle' }); openCard(null); setWin(DEFAULT_WIN[kind]); };
   const cardActions: CardActions = {
     onGuestDetail: (id) => { openCard(null); setGuestPopup(id); },
     onQuest: (questId) => { openCard(null); if (dispatch({ type: 'acceptQuest', id: questId }).ok) setWin({ kind: 'people', tab: 'quests' }); },
     onStaffDetail: (id) => { openCard(null); setWin({ kind: 'people', tab: 'staff', focusId: id }); },
     onObjectDetail: (id) => { openCard(null); setWin({ kind: 'object', id }); },
     onMove: (id) => { openCard(null); startMove(id); },
-    onBuild: (x, y) => { openCard(null); setWin({ kind: 'build', tab: 'build', origin: { x, y } }); },
-    onCafe: () => { openCard(null); setWin({ kind: 'cafe', tab: 'menu' }); },
+    onBuild: (x, y) => { openCard(null); setWin({ kind: 'build', origin: { x, y } }); },
+    onBuildSame: (type, x, y) => { openCard(null); pickBuild(type, { x, y }); },
+    onCafe: () => { openCard(null); setWin({ kind: 'cafe', tab: 'building' }); },
+    onSelect: (t) => openCard(t),
   };
   const closeWin = () => setWin(null);
   // 튜토리얼 하이라이트 (data-tut 글로우 + 맵 칸)
-  useTutorialHighlight(viewRef.current);
+  useTutorialHighlight(view);
+
+  const CAFE_MENU: IconGridItem<CafeTab>[] = [
+    { key: 'menu', label: '메뉴판', icon: '☕' },
+    { key: 'ingredients', label: '재료', icon: '🍊' },
+    { key: 'craft', label: '연구', icon: '🔬', locked: !featureOpen(s, 'craft'), lockedText: '연구 개발은 목표를 이루면 열려요' },
+    { key: 'promo', label: '홍보', icon: '📣', locked: !featureOpen(s, 'promote'), lockedText: '홍보는 튜토리얼 7단계에서 열려요' },
+    { key: 'building', label: '본관', icon: '🏠' },
+    { key: 'indoor', label: '실내', icon: '🪑' },
+  ];
+  const offered = Object.values(s.board.quests).filter((q) => q.status === 'offered').length;
+  const PEOPLE_MENU: IconGridItem<PeopleTab>[] = [
+    { key: 'staff', label: '직원', icon: '👩‍🍳', badge: s.staff.filter((st) => st.energy < 20).length },
+    { key: 'candidates', label: '채용', icon: '📋', badge: s.candidates.length },
+    { key: 'guests', label: '손님', icon: '🙂', badge: s.guests.length },
+    { key: 'codex', label: '도감', icon: '📖', locked: !featureOpen(s, 'comboCodex'), lockedText: '콤보 도감은 튜토리얼 6단계에서 열려요' },
+    { key: 'quests', label: '부탁', icon: '❗', badge: offered },
+    { key: 'rivals', label: '라이벌', icon: '⚔️', locked: !featureOpen(s, 'challenge'), lockedText: '카페 대결은 목표를 이루면 열려요', isNew: s.rivals.length > 0 },
+  ];
+  const LEDGER_MENU: IconGridItem<LedgerTab>[] = [
+    { key: 'report', label: '경영', icon: '📊' },
+    { key: 'invest', label: '투자', icon: '💰', badge: s.board.events.filter((e) => e.status === 'pending').length },
+    { key: 'spots', label: '명소', icon: '🗺️', locked: !featureOpen(s, 'spotMap'), lockedText: '명소 지도는 첫 달을 마치면 열려요' },
+    { key: 'shop', label: '상점', icon: '🛒' },
+    { key: 'tickets', label: '응모권', icon: '🎟️', badge: s.tickets },
+    { key: 'rank', label: '랭킹', icon: '🏆' },
+    { key: 'region', label: '지역', icon: '🌊', locked: !featureOpen(s, 'popup'), lockedText: '팝업 스토어는 목표를 이루면 열려요' },
+    { key: 'settings', label: '설정', icon: '⚙️' },
+  ];
 
   const renderWindow = () => {
     if (!win) return null;
     switch (win.kind) {
-      case 'build': {
-        const tab = win.tab;
+      case 'build':
         return (
-          <Window title="짓기" tabs={BUILD_TABS} tab={tab} onTab={(t) => setWin({ ...win, tab: t })} onClose={closeWin} testId="window-build">
-            {tab === 'build' && <BuildWindow onClose={closeWin} onPickBuild={(t) => pickBuild(t, win.origin)} />}
-            {tab === 'remove' && (
-              <div>
-                <div style={{ fontSize: 14, marginBottom: 8 }}>맵에서 치울 시설을 누르면 돈을 돌려받아요. 본관·정낭·정류장은 못 치워요.</div>
-                <button style={dangerBtn} onClick={() => { closeWin(); setMode({ kind: 'remove' }); }}><Icon name="remove" /> 철거 시작</button>
-              </div>
-            )}
-            {tab === 'move' && (
-              <div>
-                <div style={{ fontSize: 14, marginBottom: 8 }}>옮길 시설을 누르고 새 자리를 누른 뒤 ✓로 확정해요 (돈은 안 들어요). 맵에서 시설을 길게 눌러도 들어 올려져요.</div>
-                <button style={brownBtn} onClick={() => { closeWin(); setMode({ kind: 'move' }); }}><Icon name="harvest" /> 이동 시작</button>
-              </div>
-            )}
+          <Window title="짓기" onClose={closeWin} testId="window-build">
+            <div data-testid="build-tools" role="toolbar" aria-label="도구" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 6, marginBottom: 8 }}>
+              <button data-tut="tool:move" style={{ ...brownBtn, margin: 0, padding: '0 6px', fontSize: 15 }} onClick={() => { closeWin(); setMode({ kind: 'move' }); }}>🪑 이동</button>
+              <button data-tut="tool:remove" style={{ ...dangerBtn, margin: 0, padding: '0 6px', fontSize: 15 }} onClick={() => { closeWin(); setMode({ kind: 'remove' }); }}>🔨 철거</button>
+              <button data-testid="tool-undo" disabled={!undoOk} title={undoOk ? undefined : canUndo(s).reason} style={{ ...(undoOk ? brownBtn : brownBtnOff), margin: 0, padding: '0 6px', fontSize: 15 }} onClick={undo}>↶ 되돌리기</button>
+            </div>
+            <BuildWindow onClose={closeWin} onPickBuild={(t) => pickBuild(t, win.origin)} />
           </Window>
         );
-      }
       case 'cafe':
         return (
-          <Window title="카페" tabs={CAFE_TABS} tab={win.tab} onTab={(t) => setWin({ kind: 'cafe', tab: t })} onClose={closeWin} testId="window-cafe">
+          <Window title="카페" menu={CAFE_MENU} tab={win.tab} onTab={(t) => setWin({ kind: 'cafe', tab: t })} onClose={closeWin} testId="window-cafe">
             {win.tab === 'menu' && <MenuWindow onClose={closeWin} menuUnlockText={menuUnlockText} />}
-            {win.tab === 'ingredients' && <CafePanel onMenu={() => setWin({ kind: 'cafe', tab: 'menu' })} />}
+            {win.tab === 'ingredients' && <StoragePanel />}
             {win.tab === 'craft' && <CraftPanel />}
             {win.tab === 'promo' && <PromoPanel />}
+            {win.tab === 'building' && (<>
+              {mainBuilding(s) && <MainCard s={s} id={mainBuilding(s)!.id} a={{ ...cardActions, onCafe: () => setWin({ kind: 'cafe', tab: 'menu' }) }} />}{/* y-indoor 본관 카드 본문 (창 안) */}
+              <CafePanel onMenu={() => setWin({ kind: 'cafe', tab: 'menu' })} />
+            </>)}
+            {win.tab === 'indoor' && <BuildWindow onClose={closeWin} onPickBuild={(t) => pickBuild(t)} initialTab="indoor" />}{/* y-indoor 「실내」 탭 */}
           </Window>
         );
       case 'people':
         return (
-          <Window title="사람" tabs={PEOPLE_TABS} tab={win.tab} onTab={(t) => setWin({ kind: 'people', tab: t })} onClose={closeWin} testId="window-people">
-            {win.tab === 'staff' && <StaffWindow onClose={closeWin} focusId={win.focusId ?? null} />}
-            {win.tab === 'guests' && <GuestsPanel onGuest={setGuestPopup} />}
-            {win.tab === 'codex' && <CodexPanel />}
+          <Window title="사람" menu={PEOPLE_MENU} tab={win.tab} onTab={(t) => setWin({ kind: 'people', tab: t })} onClose={closeWin} testId="window-people">
+            {win.tab === 'staff' && <StaffWindow onClose={closeWin} focusId={win.focusId ?? null} initialTab="ours" />}
+            {win.tab === 'candidates' && <StaffWindow onClose={closeWin} focusId={null} initialTab="candidates" />}
+            {win.tab === 'guests' && <GuestsPanel onGuest={setGuestPopup} sub="now" />}
+            {win.tab === 'codex' && <><GuestsPanel onGuest={setGuestPopup} sub="codex" /><CodexPanel /></>}
             {win.tab === 'quests' && <BoardPanel tabs={['quests']} />}
+            {win.tab === 'rivals' && <RivalPanel />}
           </Window>
         );
       case 'ledger':
         return (
-          <Window title="장부" tabs={LEDGER_TABS} tab={win.tab} onTab={(t) => setWin({ kind: 'ledger', tab: t })} onClose={closeWin} testId="window-ledger">
-            {win.tab === 'invest' && <BoardPanel tabs={['spots', 'events']} />}
+          <Window title="장부" menu={LEDGER_MENU} tab={win.tab} onTab={(t) => setWin({ kind: 'ledger', tab: t })} onClose={closeWin} testId="window-ledger">
+            {win.tab === 'report' && <StatusPanel />}
+            {win.tab === 'invest' && <BoardPanel tabs={['events']} />}
+            {win.tab === 'spots' && <BoardPanel tabs={['spots']} />}
             {win.tab === 'shop' && <ShopPanel />}
+            {win.tab === 'tickets' && <ShopPanel initialTab="ticket" />}
             {win.tab === 'rank' && <RankPanel />}
             {win.tab === 'region' && <RegionPanel />}
-            {win.tab === 'settings' && <SettingsPanel onExit={onExit} />}
+            {win.tab === 'settings' && <SettingsPanel onExit={onExit} gauges={gauges} onGauges={setGauges} />}
           </Window>
         );
       case 'status':
@@ -474,7 +630,7 @@ function Game({ onExit }: { onExit: () => void }) {
         return <Window title="목표" onClose={closeWin} testId="window-goal"><GoalWindow onClose={closeWin} /></Window>;
       case 'object': {
         const o = s.objects[win.id];
-        return <Window title={o ? objectDef(o.type).name : '시설'} onClose={closeWin} testId="window-object">{o ? <ObjectInfoPanel objectId={o.id} /> : <div>없어진 시설이에요</div>}</Window>;
+        return <Window title={o ? (o.name ?? objectDef(o.type).name) : '시설'} onClose={closeWin} testId="window-object">{o ? <ObjectInfoPanel objectId={o.id} /> : <div>없어진 시설이에요</div>}</Window>;
       }
     }
   };
@@ -484,7 +640,12 @@ function Game({ onExit }: { onExit: () => void }) {
       <div ref={hostRef} style={{ position: 'absolute', inset: 0, touchAction: 'none' }} />
       <NightOverlay />
       <TopShell onStatus={() => setWin({ kind: 'status' })} onGoal={() => setWin({ kind: 'goal' })} />
-      <Toast top={SHELL_TOP} />
+      {!place && !cardTarget && (
+        <button data-testid="home-btn" aria-label="본관으로" onClick={goHome}
+          style={{ position: 'absolute', left: 8, bottom: `calc(${SHELL_BOTTOM + 8}px + env(safe-area-inset-bottom))`, width: 44, height: 44, borderRadius: 22, border: `3px solid ${PALETTE.wood}`, background: PALETTE.paper, fontSize: 20, zIndex: 11, padding: 0, boxShadow: '0 2px 0 #0004' }}>🏠</button>
+      )}
+      {place && ghostCell && <GhostButtons view={view} cell={ghostCell} ok={place.ok} canRotate={place.canRotate} onConfirm={place.onConfirm} onRotate={place.onRotate} />}
+      <MessageLine bottom={BOTTOM_BAR_H} />
       {place ? <PlaceBar {...place} /> : <BottomBar onOpen={openWindow} />}
       {cardTarget && !place && <MiniCard target={cardTarget} actions={cardActions} onClose={() => openCard(null)} />}
       <MonthCard />

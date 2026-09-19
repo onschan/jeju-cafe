@@ -8,7 +8,7 @@ import { apply } from '../actions.ts';
 import { spawnGuests, updateGuests, typeWeight, affordableMenus, PREP_MS } from '../guests.ts';
 import {
   evaluateUnlocks, unlockCondMet, unlockGuestType, isUnlocked, unlockedTypeIds, addSatisfaction, onHappyVisit, onAngryVisit, walletOf, regularFreqMult, guestFace, updateRank,
-  SAT_HAPPY, SAT_TARGET, SAT_REGULAR, SAT_VIP, REGULAR_FREQ, REGULAR_WALLET, VIP_FREQ, VIP_WALLET, MAX_TARGETS, UNLOCK_POPULARITY, TIP_RATE, VISIT_BONUS_CAP,
+  SAT_HAPPY, SAT_TARGET, SAT_REGULAR, SAT_VIP, REGULAR_FREQ, REGULAR_WALLET, VIP_FREQ, VIP_WALLET, MAX_TARGETS, TARGET_SPAWN_MULT, UNLOCK_POPULARITY, TIP_RATE, VISIT_BONUS_CAP,
 } from '../segments.ts';
 import { objectStats, BASE_POPULARITY } from '../compat.ts';
 import { GUEST_TYPES, GUEST_CHAINS, guestTypeDef, guestTags, canonicalGuestId, QUESTS } from '../../data/index.ts';
@@ -182,7 +182,7 @@ test('만족 게이지: happy +2, 타깃 +3, angry −1, 50 단골(빈도 ×1.5�
   expect(s.guestTypes['local_auntie']!.regular).toBe('vip');
   expect(regularFreqMult(s, 'local_auntie')).toBe(VIP_FREQ);
   expect(walletOf(s, 'local_auntie')).toBe(Math.round(6000 * VIP_WALLET));
-  expect(typeWeight(s, 'local_auntie', 12)).toBeCloseTo(5 * (1 + 30 / 50) * VIP_FREQ);
+  expect(typeWeight(s, 'local_auntie', 12)).toBeCloseTo(5 * (1 + 30 / 50) * VIP_FREQ * TARGET_SPAWN_MULT); // 타깃 스폰 ×1.3 (y-ui)
   addSatisfaction(s, 'local_auntie', 999);
   expect(s.guestTypes['local_auntie']!.satisfaction).toBe(100);
 });

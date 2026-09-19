@@ -1,4 +1,5 @@
 import { useEffect, useState, type CSSProperties } from 'react';
+import { wonText } from '../data/labels.ts';
 import { useGame, dispatch } from './store';
 import { rankScore, nextRankThreshold, nextStarConditions, judgeScores, guidebookScore, monthlyTarget, MAX_STAR, JUDGE_LABEL, ANNOUNCE_MONTHS } from '../sim/index.ts';
 import type { AnnouncementEntry, JudgeKey } from '../sim/index.ts';
@@ -6,7 +7,7 @@ import { GUIDEBOOKS } from '../data/index.ts';
 import { Popup } from './Popup';
 import { Icon } from './Icon';
 import { sfx } from './audio';
-import { card, brownBtn, PALETTE, won } from './frame';
+import { card, brownBtn, PALETTE } from './frame';
 
 const small: CSSProperties = { fontSize: 13, color: PALETTE.inkSoft };
 const stars = (n: number) => '★'.repeat(n) + '☆'.repeat(Math.max(0, MAX_STAR - n));
@@ -75,7 +76,7 @@ export function RankPanel() {
             </div>
             <div style={small}>
               {unlocked ? `심사: ${g.criteriaText}${g.monthly ? ` (이번 달 타깃: ${monthlyTarget(s).label} 손님)` : ''} · 지금 점수 ${guidebookScore(s, g, scores)}` : `해금: ${g.unlockText}`}
-              {' · '}1위 {won(g.prize)} + 연구 {g.research}{g.seeds.length ? ' + 씨앗' : ''}
+              {' · '}1위 {wonText(g.prize)} + 연구 {g.research}{g.seeds.length ? ' + 씨앗' : ''}
             </div>
           </div>
         );
@@ -124,7 +125,7 @@ export function AnnouncementPopup() {
         </div>
         {stage >= rankStage && (
           <div style={{ fontSize: 14, marginTop: 4 }}>
-            {entry.prize > 0 ? <div>상금 {won(entry.prize)} + 연구 {entry.research}{entry.mileage ? ` + 마일리지 ${entry.mileage}` : ''}{entry.seedText ? ` + ${entry.seedText}` : ''}</div> : <div style={small}>다음엔 더 잘해 봐요! 심사표에서 약한 항목을 보세요.</div>}
+            {entry.prize > 0 ? <div>상금 {wonText(entry.prize)} + 연구 {entry.research}{entry.mileage ? ` + 마일리지 ${entry.mileage}` : ''}{entry.seedText ? ` + ${entry.seedText}` : ''}</div> : <div style={small}>다음엔 더 잘해 봐요! 심사표에서 약한 항목을 보세요.</div>}
           </div>
         )}
         {done && (

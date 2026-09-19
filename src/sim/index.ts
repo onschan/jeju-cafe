@@ -5,7 +5,8 @@ export { tick, step, STEP_MS } from './tick.ts';
 export { upkeepOf, isAged, salaryOf as economySalaryOf, incomeTaxOf, totalCosts, emptyMonthCosts, UPKEEP_RATE, BASE_SALARY_DEFAULT, SALARY_LEVEL_STEP, SALARY_PER_STAT_POINT, ANNUAL_RAISE_PCT, TAX_RATE, TAX_MONTH } from './economy.ts';
 export { addComplaint, addReputation, complaintCounts, topComplaints, reputationGuestMult, reputationTypeMult, reputationTipMult, reputationNamedMult, reputationScore, nightlyReputation, monthlyReputation, makeReviews, reviewScore, applyApology, cleanValue, wornCount, COMPLAINT_REASONS, COMPLAINT_LABEL, COMPLAINT_REVIEW, REPUTATION_START, REP_LOW, REP_HIGH, REP_ALERT, APOLOGY_REPUTATION, MAX_REVIEWS, TOP_COMPLAINTS } from './reputation.ts';
 export { hasLoan, loanRewardMult, canTakeLoan, takeLoan, checkLoan, repayLoan, LOAN_AMOUNT, LOAN_MAX, LOAN_THRESHOLD, LOAN_REPAY_RATIO, LOAN_REWARD_MULT, WARN_DEFICIT_MONTHS, LOAN_DEFICIT_MONTHS, CRISIS_MONEY, CRISIS_MONTHS } from './failure.ts';
-export { apply, PROTECTED_TYPES, ROTATABLE_TYPES } from './actions.ts';
+export { apply, PROTECTED_TYPES, ROTATABLE_TYPES, demolishRefund } from './actions.ts';
+export { canUndo } from './undo.ts';
 export { DAY_MS, seasonOf, monthIndex, DAYS_PER_MONTH } from './clock.ts';
 export { cellAt, objectAt, canPlace, footprint, parcelHasLandmark, isSheltered, sceneryScore, objectScenery, windShelter, SHELTER_THRESHOLD, SCENERY_CAP, doorOf, doorFrontOf, roomAt, isRoomFloor, objectsInRoom, clearCost, canClearRock, hasPickaxe, ROCK_CLEAR_COST, BIG_ROCK_CLEAR_COST, BUSH_CLEAR_COST } from './grid.ts';
 export { FX_CAP } from './fx.ts';
@@ -16,6 +17,7 @@ export { offeredChallenges, canAcceptChallenge, challengeProgress, challengeDays
 export { STEPS as TUTORIAL_STEP_DEFS, TUTORIAL_STEPS, currentTutorialStep, tutorialDone, pathConnected, seatWithView, wallShelteringSeat, firstMonthClosed } from './tutorial.ts';
 export { activeEvents, isEventActive, eventDaysLeft, eventGuestMult, eventTagMult, eventFeeMult, eventEligible, guestHasTag, isSpecialGuest, specialGuestTip, specialGuestsMet, MAX_ACTIVE_EVENTS, SPECIAL_GUEST_HOUR } from './events.ts';
 export { guestSay, staffSay } from './say.ts';
+export { ENTRY_ROUTES, ROUTE_IDS, routeDef, entryPoints, routeStats, routeState, routeActive, routeOpened, routeConnected, routeFacility, routeTarget, routeSpawnPos, routeHome, routeAtCell, routeOfFacility, routeDailyCap, routeCapLeft, nextArrivalText, parkingSlots, parkingSites, routePathCells, canSetRouteContract, canExpandParking, parkingExpandCost, spawnRouteWeights, routeArrivals, routeTagMult, hasRouteTag, isForeign, cruiseDocked, routeUnlockMet, routeFacilityUnlockMet, PARKING_SLOTS, PARKING_GUESTS_PER_SLOT, PARKING_EXPAND_FROM, PARKING_EXPAND_TO, SHUTTLE_FEE, CRUISE_PORT_FEE, CRUISE_EVENT, CRUISE_STAR, OLLE_GUEST_MULT, FOREIGN_WALLET_MULT, type RouteDef, type RouteTag, type EntryPoint, type RouteStat } from './entry.ts'; // 트랙 H
 export { isMenuAvailable, availableMenus, canSetSlot, hasMenuStaff, menuRequirementText, menuOf, purchaseCost, ingredientCost } from './menu.ts';
 export { menuMod, menuStatsOf, rivalStatPenaltyPct, RIVAL_PENALTY_CAP, menuSkills, skillEffects, skillTier, skillTierValue, priceOf, priceFromStats, toppingCost, costMult, activeIngredientCombos, comboBonus, matchHiddenRecipe, normalizeParams, paramDeviation, successRate, bonusWidth, developStaffStat, developCost, canDevelop, developDaysLeft, autoMenuName, canAddTopping, canRemoveTopping, canLevelUpMenu, levelUpMenuCost, maxSlots, isStaffBusy, isCustomMenu, qualityOf, countIngredients, DEVELOP_DAYS, DEVELOP_RESEARCH, BASE_NAME, BASE_MIN, PARAM_AXES, PARAM_LABEL, PARAM_DEFAULT, BASE_STAT, MENU_SKILLS, SKILL_TIER_VALUES, SKILL_DESC, TIER_NAMES, MAX_TOPPINGS, MAX_MENU_LEVEL, SIGNATURE_STAR, P_GREAT, type MenuSkill, type SkillEffects } from './craft.ts';
 export { isWalkable, busStopPos, isDoorReachable } from './path.ts';
@@ -34,7 +36,7 @@ export { canBuyMileage, canBuyTicket, canDrawTicket, canSetUniform, canUseGuestI
 export { addMileage, codexCount, checkCodexMileage, monthlyMileage, CODEX_PER_MILEAGE, GUESTS_PER_MILEAGE } from './mileage.ts';
 export { rankScore, rankForScore, nextRankThreshold, facilityCount, unlockedGuestTypeCount, updateRank, RANK_THRESHOLDS, MAX_RANK } from './rank.ts';
 export { starConditionMet, starConditionsHeld, isReviewDue, starReview, nextStarConditions, checkStar, judgeScores, guidebookScore, guidebookState, evaluateGuidebooks, guidebooksToAnnounce, announce, rivalScores, rivalTop, rivalBoost, rankAmong, monthlyTarget, targetPopularity, codexTotal, MAX_STAR, JUDGE_KEYS, JUDGE_LABEL, ANNOUNCE_MONTHS, RIVAL_COUNT, PRIZE_RATIO, RANK_MILEAGE, MONTHLY_TAGS, RIVAL_WIN_BOOST, RIVAL_CAFE_BOOST, REVIEW_MIN_STAR, REVIEW_EVERY_YEARS, RANK_SHIELD_ITEM } from './guidebook.ts';
-export { evaluateUnlocks, evaluateFacilityUnlocks, unlockCondMet, isUnlocked, unlockedTypeIds, guestFace, walletOf, regularTier, isTarget, MAX_TARGETS, SAT_QUEST, SAT_REGULAR, SAT_VIP } from './segments.ts';
+export { evaluateUnlocks, evaluateFacilityUnlocks, unlockCondMet, isUnlocked, unlockedTypeIds, guestFace, walletOf, regularTier, isTarget, MAX_TARGETS, TARGET_SPAWN_MULT, canSetTargets, SAT_QUEST, SAT_REGULAR, SAT_VIP } from './segments.ts';
 export { questProgress, canAcceptQuest, canRespondEvent, eventConditionMet, boardBadge, visibleQuests, questRewardText, QUEST_MONTHS } from './board.ts';
 export {
   spotLevel, spotUnlocked, nextSpotLevel, spotAppeal, spotAppealOf, spotGuestBonus, canInvestSpot, spotRequirements, spotVisitors, totalSpotVisitors, dailyVisitors, totalDailyVisitors,
@@ -49,3 +51,12 @@ export { josa, hasBatchim } from './josa.ts';
 export { isWeekend, daysToWeekend, popupCost, popupGuestCount, affinityGain, namedLikes, namedGuestFace, canOpenPopup, canClosePopup, regionState, namedGuestState, regularIds, regularVisitSlot, regularsDueNow, metCount, regularCount, regionProgress, bestRegion, WEEKEND_DAYS, POPUP_COST_SCALE, POPUP_GUESTS_MIN, POPUP_GUESTS_MAX, AFFINITY_PER_VISIT, AFFINITY_TASTE_MULT, AFFINITY_MAX, AFFINITY_REWARD_STEP, AFFINITY_REWARD_COUNT, POPUP_VISIT_CAP } from './popup.ts';
 export { rivalState, rivalMonths, rivalPower, judgeBreakdown, challengeOdds, canChallenge, rivalGuestLossPct, rivalGuestMult, RIVAL_GUEST_PENALTY_PCT, RIVAL_START_YEAR, RIVAL_MONTHLY_CHANCE, RIVAL_MAX, RIVAL_LEAVE_MONTHS, CHALLENGE_WIN_MILEAGE, CHALLENGE_LOSE_POPULARITY, JUDGE_LUCK, SIZE_POWER } from './rivals.ts';
 export { siteOf, seatScore, siteScore, siteTone, kindWeights, scoreWith, siteBonus, siteSay, siteBadgeText, siteBadgeTextPlain, siteLineText, layoutKey, isOutdoorSeat, seaInRange, SITE_KEYS, SITE_LABEL, SITE_ICON, SITE_MAX, SITE_GOOD, SEAT_WEIGHTS, STALL_WEIGHTS, SITE_SAY, type Site, type SiteKey, type SiteWeights, type SiteBonus } from './site.ts';
+export { sizeOf, footprintOf, canPlaceMain } from './grid.ts';
+export {
+  mainBuilding, mainLevel, mainSize, mainDoorFront, isMainClosed, mainWorkDaysLeft, isIndoorCell, isIndoorSeat, roomSeats, indoorSeats, roomSeatsUsed, freeFloorCells,
+  isAnnex, annexCount, isRoomCut, cutRooms, nextMainLevel, expandCost, expandCells, canExpandMain, canBuildSecondFloor, moveDays, canMoveThisMonth, canStartMoveMain, canMoveMain, canUndoMoveMain,
+  seatsShort, seatUsePct, isFireplaceOn, canToggleFireplace, canSetPianoTime, isPianoPlaying, canAddBooks, hasNewBooks, canFeedAquarium, isAquariumHungry, canRestockKids, isKidsStocked, canSetBarEvening, isBarEvening,
+  preferIndoor, stayMs, browseChance, indoorSpawnMult, indoorFeeMult, mainSummary, initMain,
+  MAIN_TYPE, MAIN_MAX_LEVEL, MAIN_SIZE, MAIN_EXPAND_COST, MAIN_EXPAND_DAYS, FLOOR2_COST, FLOOR2_MIN_LEVEL, FLOOR2_DAYS, FLOOR2_VIEW, MOVE_COST, MOVE_DAYS, FIREPLACE_FUEL, FIREPLACE_RADIUS, NEW_BOOKS_MILEAGE, KIDS_RESTOCK_COST,
+  SEAT_FULL_PCT, SEAT_FULL_DAYS, SEAT_FULL_TEXT, DOOR_PATH_WARN, ANNEX_CUT_TEXT, BGM_LABEL, LIGHT_LABEL, PIANO_LABEL, STAY_PER_FACILITY_MS,
+} from './rooms.ts';

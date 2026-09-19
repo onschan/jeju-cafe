@@ -4,6 +4,7 @@ import { useSyncExternalStore, type CSSProperties, type ReactNode } from 'react'
 import type { GameState, Action, ApplyResult } from '../../sim/index.ts';
 import { getState, getVersion, subscribe, dispatch as storeDispatch } from '../store';
 import { PALETTE, brownBtn, brownBtnOn, brownBtnOff } from '../frame';
+import { IconGrid } from '../IconGrid';
 
 export type Dispatch = (a: Action) => ApplyResult;
 
@@ -21,13 +22,17 @@ export function useWindowState(props: { state?: GameState; dispatch?: Dispatch }
   return { s: props.state ?? getState(), dispatch: props.dispatch ?? storeDispatch };
 }
 
-export const win = (n: number) => `₩${Math.round(n).toLocaleString('ko-KR')}`;
-
 /** 창 본문 바탕: 종이색, 세로 스크롤은 셸이 맡는다 */
 export const body: CSSProperties = { color: PALETTE.ink, fontSize: 14, lineHeight: 1.35 };
 
-/** 상단 가로 탭 바 (하위 탭). 44px, 가로 스크롤. */
-export function TabBar<K extends string>({ tabs, active, onPick, testId }: { tabs: { key: K; label: string; badge?: number }[]; active: K; onPick: (k: K) => void; testId?: string }) {
+/** 하위 탭의 기본 아이콘 (키별). 없으면 ▪ */
+const TAB_ICON: Record<string, string> = { main: '🎯', challenge: '🏁', monthly: '📅', ours: '👩‍🍳', candidates: '📋', now: '🙂', quests: '❗', codex: '📖', rivals: '⚔️', spots: '🗺️', events: '📨', regions: '🌊', mileage: '🎁', draw: '🎰', ticket: '🎟️' };
+
+/** 하위 탭 바 (UX §5.1): 5개 이하면 아이콘 셀(64px, 아이콘+한글) 한 줄, 그보다 많으면(짓기 카테고리) 가로 텍스트 탭. data-tut="tab:<key>" 유지. */
+export function TabBar<K extends string>({ tabs, active, onPick, testId }: { tabs: { key: K; label: string; badge?: number; icon?: string; locked?: boolean }[]; active: K; onPick: (k: K) => void; testId?: string }) {
+  if (tabs.length <= 5) {
+    return <IconGrid items={tabs.map((t) => ({ key: t.key, label: t.label, icon: t.icon ?? TAB_ICON[t.key] ?? '▪', badge: t.badge, locked: t.locked }))} active={active} onPick={onPick} cols={tabs.length} testId={testId} />;
+  }
   return (
     <div data-testid={testId} style={{ display: 'flex', gap: 4, overflowX: 'auto', paddingBottom: 6, marginBottom: 6, borderBottom: `2px solid ${PALETTE.woodLight}`, scrollbarWidth: 'none' }}>
       {tabs.map((t) => (

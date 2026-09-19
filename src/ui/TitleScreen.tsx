@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
+import { wonText } from '../data/labels.ts';
 import { loadSheet, drawFrame, type Sheet } from './sheetCanvas';
 import { cellToScreen, footAnchor, depth, ISO_W } from '../render/iso';
 import { HAIR_RGB, TOP_RGB } from '../render/character';
-import { frame, brownBtn, brownBtnOff, PALETTE, won } from './frame';
+import { frame, brownBtn, brownBtnOff, PALETTE } from './frame';
 import { Popup, Confirm } from './Popup';
 import { SaveSlots } from './SaveSlots';
 import { newGame, hasAnySave } from './store';
@@ -163,9 +164,9 @@ export function TitleScreen({ onEnter }: { onEnter: () => void }) {
       {slots && <SaveSlots mode="load" onClose={() => setSlots(false)} onLoaded={onEnter} />}
       {best && (
         <Popup title="최고 점수" onBackdrop={() => setBest(false)} buttons={<button style={{ ...brownBtn, marginRight: 0, marginBottom: 0 }} onClick={() => setBest(false)}>닫기</button>}>
-          <div style={frameTitleRow}><span>연 매출 최고</span><b>{b.yearScore > 0 ? won(b.yearScore) : '아직 없음'}</b></div>
+          <div style={frameTitleRow}><span>연 매출 최고</span><b>{b.yearScore > 0 ? wonText(b.yearScore) : '아직 없음'}</b></div>
           {b.at && <div style={{ fontSize: 13, color: PALETTE.inkSoft }}>{b.at.year}년차 기록</div>}
-          <div style={{ ...frameTitleRow, marginTop: 8 }}><span>월 매출 최고</span><b>{b.monthIncome > 0 ? won(b.monthIncome) : '아직 없음'}</b></div>
+          <div style={{ ...frameTitleRow, marginTop: 8 }}><span>월 매출 최고</span><b>{b.monthIncome > 0 ? wonText(b.monthIncome) : '아직 없음'}</b></div>
           <div style={{ fontSize: 13, color: PALETTE.inkSoft, marginTop: 8 }}>연 매출은 12월 결산 때 갱신돼요.</div>
         </Popup>
       )}

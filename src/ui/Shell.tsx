@@ -1,9 +1,10 @@
 import type { CSSProperties } from 'react';
-import { useGame, getToast } from './store';
+import { wonText } from '../data/labels.ts';
+import { useGame } from './store';
 import { seasonOf, boardBadge, type Season } from '../sim/index.ts';
 import { Icon } from './Icon';
-import { compactMoney } from './HUD';
 import { GoalBar, GOAL_BAR_H } from './GoalBar';
+import { MESSAGE_LINE_H } from './MessageLine';
 import { SpeedBar } from './SpeedBar';
 import { brownBtn, brownBtnOn, brownBtnOff, dangerBtn, PALETTE } from './frame';
 
@@ -11,6 +12,8 @@ import { brownBtn, brownBtnOn, brownBtnOff, dangerBtn, PALETTE } from './frame';
 export const TOP_BAR_H = 28;
 export const SHELL_TOP = TOP_BAR_H + GOAL_BAR_H;
 export const BOTTOM_BAR_H = 48;
+/** 하단 바 48 + 메시지 줄 24 (§5.5). 미니카드·고스트 버튼은 이 위에 놓는다 */
+export const SHELL_BOTTOM = BOTTOM_BAR_H + MESSAGE_LINE_H;
 
 const SEASON_ICON: Record<Season, string> = { spring: '🌸', summer: '☀️', autumn: '🍂', winter: '❄️' };
 
@@ -32,7 +35,7 @@ export function TopBar({ onOpen }: { onOpen: () => void }) {
       style={{ position: 'absolute', top: 0, left: 0, right: 0, height: TOP_BAR_H, padding: '0 10px', border: 0, borderBottom: `2px solid ${PALETTE.wood}`, background: PALETTE.paper, color: PALETTE.ink, fontFamily: 'inherit', fontSize: 14, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, whiteSpace: 'nowrap', overflow: 'hidden', zIndex: 10 }}>
       <span>{s.clock.year}년 {s.clock.month}월 {s.clock.day}일</span>
       <span aria-label={season}>{SEASON_ICON[season]}</span>
-      <span title={s.money.toLocaleString()}><Icon name="money" size={16} alt="돈" /> {compactMoney(s.money)}</span>
+      <span title={wonText(s.money)}><Icon name="money" size={16} alt="돈" /> {wonText(s.money, true)}</span>
       <span aria-label={`평판 ${Math.round(s.reputation)}`} title="평판">♥{Math.round(s.reputation)}</span>
       <span aria-label={`별 ${s.star}`}>{'★'.repeat(Math.max(1, Math.min(5, s.star)))}<span style={{ color: PALETTE.inkSoft }}>{'☆'.repeat(5 - Math.max(1, Math.min(5, s.star)))}</span></span>
     </button>
@@ -72,28 +75,34 @@ export function BottomBar({ onOpen }: { onOpen: (kind: WindowKind) => void }) {
   );
 }
 
-/** 고스트 배치 확정 줄: 하단 바 자리에 `회전 · 확정 · 취소` 3버튼 1줄. text는 상태 문구(위에 작게). */
+/** 고스트 배치 확정 줄: 하단 바 자리에 `회전 · 확정 · 취소/완료` 3버튼 1줄. text는 상태 문구(메시지 줄 위에 작게). */
 export interface PlaceBarProps {
   text: string;
   ok: boolean;
   canRotate: boolean;
-  /** 확정 버튼 없이 취소만 (길·담 칠하기) */
+  /** 확정 버튼 없이 완료만 (길·담 칠하기·철거·이동 대기) */
   paint?: boolean;
+  /** 연속 배치 모드(§5.3): 취소 대신 `✓ 완료`로 나간다 */
+  continuous?: boolean;
+  /** 되돌리기 가능하면 ↶ 버튼 (§5.3) */
+  onUndo?: (() => void) | null;
   onConfirm: () => void;
   onRotate: () => void;
   onCancel: () => void;
 }
 
-export function PlaceBar({ text, ok, canRotate, paint, onConfirm, onRotate, onCancel }: PlaceBarProps) {
-  const toast = getToast();
+export function PlaceBar({ text, ok, canRotate, paint, continuous, onUndo, onConfirm, onRotate, onCancel }: PlaceBarProps) {
   return (
     <div data-testid="place-bar" style={barStyle}>
-      <div style={{ position: 'absolute', left: 8, right: 8, bottom: `calc(100% + 4px)`, background: toast ? PALETTE.bad : PALETTE.paper, color: toast ? '#fff' : ok ? PALETTE.ok : PALETTE.bad, border: `2px solid ${PALETTE.wood}`, borderRadius: 6, padding: '4px 8px', fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', pointerEvents: 'none' }}>{toast ?? text}</div>
-      {canRotate && <button aria-label="회전" style={{ ...brownBtn, margin: 0, flex: 1, minWidth: 0, fontSize: 16 }} onClick={onRotate}>↻ 회전</button>}
+      <div data-testid="place-text" style={{ position: 'absolute', left: 8, right: 8, bottom: `calc(100% + ${MESSAGE_LINE_H + 4}px)`, background: PALETTE.paper, color: ok ? PALETTE.ok : PALETTE.bad, border: `2px solid ${PALETTE.wood}`, borderRadius: 6, padding: '4px 8px', fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', pointerEvents: 'none' }}>{text}</div>
+      {onUndo !== undefined && <button aria-label="되돌리기" disabled={!onUndo} style={{ ...(onUndo ? brownBtn : brownBtnOff), margin: 0, flex: 1, minWidth: 0, fontSize: 15, padding: 0 }} onClick={() => onUndo?.()}>↶ 되돌리기</button>}
+      {canRotate && <button aria-label="회전" style={{ ...brownBtn, margin: 0, flex: 1, minWidth: 0, fontSize: 16, padding: 0 }} onClick={onRotate}>↻ 회전</button>}
       {paint
         ? <button aria-label="완료" style={{ ...brownBtnOn, margin: 0, flex: 2, minWidth: 0, fontSize: 16 }} onClick={onCancel}>✓ 완료</button>
         : <button aria-label="확정" style={{ ...(ok ? brownBtnOn : brownBtnOff), margin: 0, flex: 2, minWidth: 0, fontSize: 16 }} onClick={onConfirm}>✓ 확정</button>}
-      <button aria-label="취소" style={{ ...dangerBtn, margin: 0, flex: 1, minWidth: 0, fontSize: 16 }} onClick={onCancel}>✗ 취소</button>
+      {!paint && (continuous
+        ? <button aria-label="완료" style={{ ...brownBtn, margin: 0, flex: 1, minWidth: 0, fontSize: 15, padding: 0 }} onClick={onCancel}>✓ 완료</button>
+        : <button aria-label="취소" style={{ ...dangerBtn, margin: 0, flex: 1, minWidth: 0, fontSize: 16, padding: 0 }} onClick={onCancel}>✗ 취소</button>)}
     </div>
   );
 }

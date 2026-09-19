@@ -1,4 +1,5 @@
-"""환경 오브젝트 14종 `iso_obj_<id>` (데이터 표 §1.5). 나무·꽃·석상은 빌보드, 돌·석등·연못·꽃밭은 상자/원판."""
+"""환경 오브젝트 14종 `iso_obj_<id>` (데이터 표 §1.5). 나무·꽃·석상은 빌보드, 돌·석등·연못·꽃밭은 상자/원판.
+트랙 H 손님 유입 경로: 경로 시설 5종(렌터카 주차장 2×2·넓은 주차장 3×2·셔틀 정류장·선착장 2×1·올레 표식)과 진입점 표지 5종 `iso_obj_route_<bus|car|plane|ship|ribbon>`(잠김은 렌더가 회색 tint)."""
 from __future__ import annotations
 from px import Canvas, PAL, OUT, hexc, Color
 from iso import IsoCanvas, texture_where
@@ -227,6 +228,123 @@ def signboard() -> IsoCanvas:
     return billboard(s, 0.28)
 
 
+# ---------------------------------------------------------------- 트랙 H: 손님 유입 경로 시설·진입점 표지
+ASPHALT = (hexc('3a3a40'), hexc('55555c'), hexc('76767e'))
+PLANK = (hexc('6a4a2a'), hexc('a07a48'), hexc('c9a06a'))
+OLLE_BLUE = (hexc('1f5fa8'), hexc('3b8ad9'), hexc('8ec1f0'))
+OLLE_ORANGE = (hexc('c8601a'), hexc('f28c28'), hexc('ffc27a'))
+
+
+def car(c: IsoCanvas, x: float, y: float, z0: int, body: tuple[Color, Color, Color]) -> None:
+    """작은 렌터카: 차체 상자 + 유리 캐빈 + 앞 유리 하이라이트 (셀 좌표 중심 x,y)."""
+    c.box(5, body, (x - 0.32, y - 0.2, x + 0.32, y + 0.2), z0=z0)
+    c.box(3, (SKY[0], SKY[1], SKY[2]), (x - 0.16, y - 0.16, x + 0.14, y + 0.16), z0=z0 + 5, edge=False)
+    sx, sy = c.spx(x + 0.32, y + 0.2, z0 + 2); c.put(sx, sy, YELLOW[2]); c.put(sx - 1, sy, YELLOW[1])   # 전조등
+
+
+def parking(cw: int, cars: list[tuple[float, float, tuple[Color, Color, Color]]]) -> IsoCanvas:
+    """아스팔트 판 + 흰 주차선 + 차 몇 대."""
+    c = cv(14, cw, 2, pad=2, shadow=1.0)
+    c.box(2, ASPHALT)
+    for i in range(1, cw):                                                      # 세로 주차선
+        c.line((i, 0.08, 2), (i, 1.92, 2), WHITE[1])
+    c.line((0.08, 1.0, 2), (cw - 0.08, 1.0, 2), WHITE[0])                       # 가운데 통로선
+    for (x, y, col) in cars:
+        car(c, x, y, 2, col)
+    sx, sy = c.spx(cw - 0.25, 1.75, 2)
+    sign = Canvas(9, 12)
+    sign.rect(4, 4, 1, 8, BASALT[1]); sign.shade_rect(1, 0, 7, 5, (SKY[0], SKY[1], SKY[2])); sign.rect(3, 1, 3, 3, WHITE[2]); sign.put(4, 2, SKY[1])
+    c.blit(sign, sx - 4, sy - 12)                                               # P 표지판
+    c.outline()
+    return c
+
+
+def parking_lot() -> IsoCanvas:
+    return parking(2, [(0.5, 0.5, RED), (1.5, 1.5, WHITE)])
+
+
+def parking_big() -> IsoCanvas:
+    return parking(3, [(0.5, 0.5, RED), (1.5, 0.5, SKY), (2.5, 1.5, WHITE)])
+
+
+def shuttle_stop() -> IsoCanvas:
+    """공항 셔틀 정류장: 정류장 기둥 + 흰 바탕 비행기 표지 + 벤치."""
+    c = cv(40, shadow=0.45)
+    c.box(4, PLANK, (0.3, 0.6, 0.94, 0.86))
+    c.box(4, PLANK, (0.28, 0.58, 0.96, 0.88), z0=4)
+    c.pillar(0.22, 0.22, 2, 30, BASALT)
+    sign = Canvas(14, 11)
+    sign.shade_rect(0, 0, 14, 11, WHITE)
+    sign.hline(3, 10, 5, SKY[0]); sign.hline(4, 9, 4, SKY[1]); sign.vline(7, 2, 8, SKY[0]); sign.put(6, 3, SKY[1]); sign.put(8, 3, SKY[1])  # 비행기
+    sign.outline()
+    sx, sy = c.spx(0.22, 0.22, 30)
+    c.blit(sign, sx - 6, sy - 9)
+    c.outline()
+    return c
+
+
+def pier() -> IsoCanvas:
+    """선착장 2×1: 널판 데크 + 계선주 + 구명 튜브. 북쪽 끝(y=0)에 붙여 바다 쪽으로 낸다."""
+    c = cv(18, 2, 1, pad=2, shadow=0.8)
+    c.box(3, PLANK)
+    for i in range(1, 8):                                                        # 널판 이음새
+        c.line((i / 4, 0.05, 3), (i / 4, 0.95, 3), PLANK[0])
+    for (x, y) in ((0.25, 0.25), (1.75, 0.25)):
+        c.disc(x, y, 0.1, 9, BASALT, z0=3, edge=True)                            # 계선주
+    ring = Canvas(9, 9)
+    ring.ellipse(4, 4, 4, 4, RED[1]); ring.ellipse(4, 4, 1.6, 1.6, (0, 0, 0, 0)); ring.put(1, 4, WHITE[1]); ring.put(7, 4, WHITE[1]); ring.put(4, 1, WHITE[1]); ring.put(4, 7, WHITE[1])
+    sx, sy = c.spx(1.1, 0.7, 3)
+    c.blit(ring, sx - 4, sy - 10)
+    c.outline()
+    return c
+
+
+def olle_sign() -> IsoCanvas:
+    """올레 표식: 나무 말뚝에 파랑·주황 리본 두 가닥 + 화살표 조랑말 판."""
+    s = Canvas(22, 32)
+    s.rect(10, 8, 3, 24, WOOD[0]); s.vline(10, 8, 31, WOOD[1])
+    s.shade_rect(6, 4, 11, 6, (OLLE_BLUE[0], OLLE_BLUE[1], OLLE_BLUE[2]))       # 파란 화살표 판
+    s.hline(8, 13, 7, WHITE[2]); s.put(14, 7, WHITE[2]); s.put(13, 6, WHITE[2]); s.put(13, 8, WHITE[2])
+    for i, (dx, col) in enumerate(((0, OLLE_BLUE), (3, OLLE_ORANGE))):           # 리본 두 가닥
+        x0 = 13 + dx
+        for y in range(11, 24):
+            s.put(x0 + (1 if (y // 3) % 2 == 0 else 0) + (1 if i else 0), y, col[1] if y % 4 else col[2])
+    return billboard(s, 0.28)
+
+
+def route_marker(icon: Canvas) -> IsoCanvas:
+    """진입점 표지: 짧은 말뚝 위 흰 판에 아이콘. 렌더가 잠긴 경로엔 회색 tint를 건다."""
+    s = Canvas(16, 22)
+    s.rect(7, 12, 2, 10, WOOD[0]); s.put(7, 12, WOOD[1])
+    s.shade_rect(1, 0, 14, 13, WHITE)
+    s.blit(icon, 3, 2)
+    return billboard(s, 0.22, outline=True)
+
+
+def icon_bus() -> Canvas:
+    i = Canvas(10, 9); i.shade_rect(0, 1, 10, 7, YELLOW); i.rect(1, 2, 3, 3, SKY[2]); i.rect(5, 2, 3, 3, SKY[2]); i.put(1, 8, BASALT[0]); i.put(8, 8, BASALT[0]); return i
+
+
+def icon_car() -> Canvas:
+    i = Canvas(10, 9); i.rect(0, 4, 10, 4, RED[1]); i.rect(2, 1, 6, 3, RED[0]); i.rect(3, 2, 4, 2, SKY[2]); i.put(1, 8, BASALT[0]); i.put(8, 8, BASALT[0]); i.put(9, 5, YELLOW[2]); return i
+
+
+def icon_plane() -> Canvas:
+    i = Canvas(10, 9); i.hline(0, 9, 4, SKY[0]); i.hline(1, 8, 3, SKY[1]); i.vline(5, 0, 8, SKY[0]); i.put(4, 1, SKY[1]); i.put(6, 1, SKY[1]); i.put(4, 7, SKY[1]); i.put(6, 7, SKY[1]); return i
+
+
+def icon_ship() -> Canvas:
+    i = Canvas(10, 9); i.rect(0, 5, 10, 3, SKY[0]); i.hline(1, 8, 8, SKY[1]); i.rect(2, 2, 6, 3, WHITE[1]); i.rect(3, 3, 1, 1, SKY[2]); i.rect(5, 3, 1, 1, SKY[2]); i.rect(4, 0, 2, 2, RED[1]); return i
+
+
+def icon_ribbon() -> Canvas:
+    i = Canvas(10, 9)
+    for y in range(9):
+        i.put(2 + (y % 2), y, OLLE_BLUE[1]); i.put(6 + (y % 2), y, OLLE_ORANGE[1])
+    i.put(3, 0, OLLE_BLUE[2]); i.put(7, 0, OLLE_ORANGE[2])
+    return i
+
+
 def sprites() -> dict[str, Canvas]:
     return {
         'iso_obj_basalt_rock': basalt_rock(), 'iso_obj_dolhareubang': dolhareubang(), 'iso_obj_pampas': pampas(),
@@ -234,4 +352,8 @@ def sprites() -> dict[str, Canvas]:
         'iso_obj_pine': pine(), 'iso_obj_palm': palm(), 'iso_obj_stone_lantern': stone_lantern(),
         'iso_obj_water_jar': water_jar(), 'iso_obj_flower_bed': flower_bed(), 'iso_obj_pond': pond(),
         'iso_obj_scarecrow': scarecrow(), 'iso_obj_signboard': signboard(),
+        # 트랙 H 손님 유입 경로
+        'iso_obj_parking_lot': parking_lot(), 'iso_obj_parking_big': parking_big(), 'iso_obj_shuttle_stop': shuttle_stop(), 'iso_obj_pier': pier(), 'iso_obj_olle_sign': olle_sign(),
+        'iso_obj_route_bus': route_marker(icon_bus()), 'iso_obj_route_car': route_marker(icon_car()), 'iso_obj_route_plane': route_marker(icon_plane()),
+        'iso_obj_route_ship': route_marker(icon_ship()), 'iso_obj_route_ribbon': route_marker(icon_ribbon()),
     }

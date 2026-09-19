@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
+import { wonText } from '../data/labels.ts';
 import { Popup, Confirm } from './Popup';
 import { card, brownBtn, brownBtnOff, dangerBtn, PALETTE } from './frame';
-import { compactMoney } from './HUD';
 import { slotSummaries, loadSlot, saveSlot, deleteSlot, AUTO_SLOT, SLOT_COUNT, type SlotSummary } from './store';
 
 const smallBtn = { ...brownBtn, minHeight: 36, fontSize: 14, padding: '0 10px', marginBottom: 0 } as const;
@@ -22,7 +22,7 @@ function Row({ n, sum, mode, onLoad, onSave, onDelete }: { n: number; sum: SlotS
       </div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 6, marginTop: 2 }}>
         <span style={{ fontSize: 13, color: PALETTE.inkSoft, whiteSpace: 'nowrap' }}>
-          {sum ? `${sum.year}년 ${sum.month}월 ${sum.day}일 · ₩${compactMoney(sum.money)}` : '비어 있음'}
+          {sum ? `${sum.year}년 ${sum.month}월 ${sum.day}일 · ₩${wonText(sum.money, true)}` : '비어 있음'}
         </span>
         <span style={{ display: 'flex', gap: 4, flex: 'none' }}>
           {mode === 'load' && <button style={sum ? smallBtn : { ...brownBtnOff, ...smallBtn, opacity: 0.45 }} disabled={!sum} onClick={onLoad}>불러오기</button>}

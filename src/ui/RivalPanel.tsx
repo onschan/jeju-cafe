@@ -4,7 +4,7 @@ import { useGame, dispatch } from './store';
 import { rivalMonths, rivalPower, judgeBreakdown, challengeOdds, canChallenge, menuStatsOf, menuOf, rivalStatPenaltyPct, josa, RIVAL_LEAVE_MONTHS, JUDGE_LUCK, type RivalState, type MenuStatKey } from '../sim/index.ts';
 import { rivalDef, namedGuestDef, MENU_STAT_LABEL } from '../data/index.ts';
 import { Popup } from './Popup';
-import { Bar } from './StaffPanel';
+import { Bar } from './Bars';
 import { card, brownBtn, brownBtnOn, brownBtnOff, PALETTE } from './frame';
 
 const SIZE_LABEL: Record<string, string> = { small: '소형', medium: '중형', large: '대형' };

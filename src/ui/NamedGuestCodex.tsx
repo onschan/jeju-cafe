@@ -1,10 +1,11 @@
 import { useState } from 'react';
+import { wonText } from '../data/labels.ts';
 import { useGame } from './store';
 import { namedGuestFace, metCount, regularCount, regionProgress, AFFINITY_MAX } from '../sim/index.ts';
 import { REGIONS, NAMED_GUESTS, namedGuestsOf } from '../data/index.ts';
 import { Portrait, namedPortraitParts } from './GuestPopup';
-import { Bar } from './StaffPanel';
-import { brownBtn, brownBtnOn, PALETTE, won } from './frame';
+import { Bar } from './Bars';
+import { brownBtn, brownBtnOn, PALETTE } from './frame';
 
 /** 도감: 지역 손님 56 — 만나기 전엔 실루엣(???), 만나면 이름·직업·한 줄 소개·호감도·단골★ */
 export function NamedGuestCodex() {
@@ -39,7 +40,7 @@ export function NamedGuestCodex() {
               <b>{met ? g.name : '???'}</b>{met && st?.regular && <span style={{ color: PALETTE.btnOn }}> ★</span>}
               <span style={{ fontSize: 12, color: PALETTE.inkSoft }}> {met ? g.job : '아직 못 만난 손님'}</span>
               <br />
-              <span style={{ fontSize: 12, color: PALETTE.inkSoft, fontStyle: 'italic' }}>{met ? `“${g.line}” · 지갑 ${won(g.budget)}` : '팝업을 열어 만나 보세요'}</span>
+              <span style={{ fontSize: 12, color: PALETTE.inkSoft, fontStyle: 'italic' }}>{met ? `“${g.line}” · 지갑 ${wonText(g.budget)}` : '팝업을 열어 만나 보세요'}</span>
             </span>
             {met && <span style={{ fontSize: 12, whiteSpace: 'nowrap' }}><Bar value={st?.affinity ?? 0} max={AFFINITY_MAX} width={60} /> {st?.affinity ?? 0}</span>}
           </div>

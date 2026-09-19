@@ -57,7 +57,7 @@ function DialogueBox({ req, page }: { req: DialogueReq; page: number }) {
   const last = page >= pages - 1;
   // 페이지가 바뀌면 다시 타자
   useEffect(() => { setTyped(false); }, [page, req]);
-  useEffect(() => pauseGame(), []);
+  useEffect(() => pauseGame('dialogue'), []);
   const tap = () => {
     if (!typed) { setTyped(true); return; }
     if (!last) nextPage();

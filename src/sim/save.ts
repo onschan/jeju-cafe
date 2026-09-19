@@ -1,6 +1,8 @@
 import type { GameState } from './types.ts';
+import { initRoutes } from './entry.ts';
 import { SAVE_VERSION } from './state.ts';
-import { footprint } from './grid.ts';
+import { footprintOf } from './grid.ts';
+import { initMain } from './rooms.ts';
 
 export function serialize(state: GameState): string {
   return JSON.stringify(state);
@@ -19,15 +21,18 @@ export function deserialize(json: string): GameState {
 function backfill(state: GameState): void {
   state.lastMonthIncome ??= state.lastMonthCard?.income ?? 0;
   state.researchAcc ??= 0;
+  state.undo ??= null;
   state.eventsFired ??= {};
   state.monthMenuSold ??= {};
+  state.routes ??= initRoutes(); // 트랙 H 유입 경로 (routes 없는 옛 저장)
+  state.main ??= initMain(); // y-indoor: 본관 증축·이동·분위기 (SAVE_VERSION 18)
 }
 
 /** objects.json의 w/h가 바뀌어도 세이브가 깨지지 않도록 cells[].objectId를 objects에서 다시 만든다. */
 function rebuildCellOwnership(state: GameState): void {
   for (const c of state.grid.cells) c.objectId = null;
   for (const o of Object.values(state.objects))
-    for (const p of footprint(o.type, o.x, o.y)) {
+    for (const p of footprintOf(o)) {
       const cell = state.grid.cells[p.y * state.grid.w + p.x];
       if (cell) cell.objectId = o.id;
     }

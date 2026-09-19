@@ -1,6 +1,7 @@
 import type { GameState, PlacedObject, ApplyResult } from './types.ts';
 import { objectDef } from '../data/index.ts';
 import { dayIndex } from './effects.ts';
+import { bumpLayoutRev } from './layoutRev.ts';
 import { pushNotice } from './staff.ts';
 import { pushFx } from './fx.ts';
 import { roomAt } from './grid.ts';
@@ -46,6 +47,7 @@ export function startBuild(state: GameState, obj: PlacedObject): void {
   const days = buildDaysOf(obj.type);
   if (days <= 0) return;
   obj.build = { doneDay: dayIndex(state.clock) + days, days };
+  bumpLayoutRev(state);
 }
 
 /** 남은 날 (완공이면 0) */
@@ -60,6 +62,7 @@ export function advanceConstruction(state: GameState): string[] {
   for (const o of constructions(state)) {
     if (o.build!.doneDay > today) continue;
     delete o.build;
+    bumpLayoutRev(state);
     const name = objectDef(o.type).name;
     done.push(o.id);
     const hint = needsDoorPath(state, o) ? ` — ${DOOR_PATH_HINT}` : '';

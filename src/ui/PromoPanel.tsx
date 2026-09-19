@@ -1,16 +1,17 @@
 import { useState } from 'react';
+import { wonText } from '../data/labels.ts';
 import { useGame, dispatch } from './store';
 import { canPromote, effectivePopularity, MAX_ACTIVE_PROMOTIONS, PARTTIME_MONEY, APOLOGY_REPUTATION, type PromotionDef } from '../sim/index.ts';
 import { PROMOTIONS, GUEST_TYPES, promotionDef } from '../data/index.ts';
 import { Icon } from './Icon';
 import { Confirm } from './Popup';
-import { Face, Bar, EnergyBar } from './StaffPanel';
-import { card, brownBtn, brownBtnOn, brownBtnOff, PALETTE, won } from './frame';
+import { Face, Bar, EnergyBar } from './Bars';
+import { card, brownBtn, brownBtnOn, brownBtnOff, PALETTE } from './frame';
 
 /** 활동 효과 한 줄. 아직 게임에 없는 손님층(guests.json에 없음)은 sim도 안 쓰므로 숨긴다. */
 function effectText(d: PromotionDef): string {
   if (d.special === 'youtuber') return '60% 확률로 3달 동안 관광객이 2배 와요';
-  if (d.special === 'parttime') return `돈 ${won(PARTTIME_MONEY)}을 바로 벌어요`;
+  if (d.special === 'parttime') return `돈 ${wonText(PARTTIME_MONEY)}을 바로 벌어요`;
   if (d.special === 'apology') return `평판 +${APOLOGY_REPUTATION} (한 달에 한 번)`;
   const parts: string[] = [];
   for (const [k, v] of Object.entries(d.segmentDelta)) {
@@ -27,7 +28,7 @@ function costText(d: PromotionDef) {
   return (
     <span style={{ fontSize: 13, whiteSpace: 'nowrap' }}>
       {d.costResearch > 0 && <span style={{ marginRight: 6 }}><Icon name="research" /> {d.costResearch}</span>}
-      {d.costMoney > 0 && <span style={{ marginRight: 6 }}><Icon name="money" /> {won(d.costMoney)}</span>}
+      {d.costMoney > 0 && <span style={{ marginRight: 6 }}><Icon name="money" /> {wonText(d.costMoney)}</span>}
       <span>기력 -{d.energy}</span>
     </span>
   );
@@ -41,7 +42,7 @@ export function PromoPanel() {
   const run = (d: PromotionDef) => {
     if (!staff) return;
     const act = () => dispatch({ type: 'promote', staffId: staff.id, promotionId: d.id });
-    if (d.costMoney > 0) Confirm(`${d.name}에 ${won(d.costMoney)}을 씁니다. ${staff.name} 씨가 다녀와요`, act, { title: '홍보' });
+    if (d.costMoney > 0) Confirm(`${d.name}에 ${wonText(d.costMoney)}을 씁니다. ${staff.name} 씨가 다녀와요`, act, { title: '홍보' });
     else act();
   };
 

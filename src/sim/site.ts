@@ -11,6 +11,8 @@ import { inBounds, cellAt, objectAt, doorFrontOf } from './grid.ts';
 import { reachMap, cellKey, type Reach } from './path.ts';
 import { seasonOf } from './clock.ts';
 import { staffInRole } from './staff.ts';
+import { FLOOR2_VIEW } from './rooms.ts'; // y-indoor
+import { layoutSig } from './layoutRev.ts';
 
 /** 칸의 입지 5요소 (§6.1 표) */
 export interface Site {
@@ -78,12 +80,12 @@ const CACHE = new WeakMap<GameState, Cache>();
 
 /** 오브젝트 배치 서명. 배치·제거·이동·완공이 바뀌면 달라진다. */
 export function layoutKey(state: GameState): string {
-  const parts: string[] = [];
-  for (const o of Object.values(state.objects)) parts.push(`${o.id}:${o.x},${o.y}${o.build ? 'b' : ''}`);
+  const parts: string[] = [state.main?.floor2 ? 'F2' : ''];
+  for (const o of Object.values(state.objects)) parts.push(`${o.id}:${o.x},${o.y}${o.w ? `x${o.w}x${o.h}` : ''}${o.build ? 'b' : ''}`); // y-indoor: 본관 크기·2층도 서명에
   return parts.join(';');
 }
 function cacheOf(state: GameState): Cache {
-  const key = layoutKey(state);
+  const key = layoutSig(state); // 싼 배치 서명 (layoutRev.ts) — layoutKey는 오브젝트 전체를 훑어 스텝마다 부르면 비싸다
   const hit = CACHE.get(state);
   if (hit && hit.key === key) return hit;
   const c: Cache = { key, sites: new Map(), kitchen: undefined };
@@ -97,6 +99,25 @@ function kitchenReach(state: GameState, c: Cache): Reach | null {
   const wh = Object.values(state.objects).find((o) => o.type === 'warehouse');
   c.kitchen = wh ? reachMap(state, doorFrontOf(wh)) : null;
   return c.kitchen;
+}
+/** y-indoor 실내 규칙 한 곳 (§8.2·§4.3): 온실 카페 안 전망 +2 고정, 창가석은 벽(방 가장자리)에 붙으면 +2·바다 방향(북쪽 벽) +3, 본관 2층 +1, 카운터 확장은 주방 거리 −1(서빙 −10%). */
+const GREENHOUSE_VIEW = 2;
+const WINDOW_WALL_VIEW = 2;
+const WINDOW_SEA_VIEW = 3;
+const COUNTER_EXT_KITCHEN = 1;
+function indoorAdjust(state: GameState, x: number, y: number, site: Site): void {
+  const cell = cellAt(state, x, y);
+  const room = cell.roomId ? state.objects[cell.roomId] : null;
+  if (!room) return;
+  if (room.type === 'greenhouse_cafe') site.view = clamp(site.view + GREENHOUSE_VIEW, 0, SITE_MAX.view);
+  const o = cell.objectId ? state.objects[cell.objectId] : null;
+  if (o && o.type === 'window_seat') {
+    const w = room.w ?? objectDef(room.type).w, h = room.h ?? objectDef(room.type).h;
+    const onWall = x === room.x || y === room.y || x === room.x + w - 1 || y === room.y + h - 1;
+    if (onWall) site.view = clamp(site.view + (y === room.y && seaInRange(state, x, y) ? WINDOW_SEA_VIEW : WINDOW_WALL_VIEW), 0, SITE_MAX.view);
+  }
+  if (room.type === 'warehouse' && state.main?.floor2) site.view = clamp(site.view + FLOOR2_VIEW, 0, SITE_MAX.view);
+  if (Object.values(state.objects).some((c2) => c2.type === 'counter_ext' && !c2.build)) site.kitchen = clamp(site.kitchen - COUNTER_EXT_KITCHEN, 0, SITE_MAX.kitchen);
 }
 
 // ---------- 5요소 ----------
@@ -216,6 +237,7 @@ export function siteOf(state: GameState, x: number, y: number): Site {
     traffic: trafficOf(state, x, y, selfId),
     kitchen: kitchenOf(state, x, y, kitchenReach(state, c)),
   };
+  indoorAdjust(state, x, y, site); // y-indoor
   c.sites.set(key, site);
   return site;
 }

@@ -57,7 +57,7 @@ test('방 발자국 칸은 roomId를 갖고, 문은 정면 왼쪽, 빈 바닥은
 test('실내 오브젝트는 방 바닥 위에만, 문 칸엔 못 놓고, 바깥 오브젝트는 방 바닥에 못 놓는다', () => {
   const s = bareState(1);
   const wh = warehouse(s);
-  expect(canPlace(s, 'table_in', X(0), Y(0)).reason).toBe('실내에만 놓을 수 있어요');
+  expect(canPlace(s, 'table_in', X(0), Y(0)).reason).toBe('실내 가구는 건물 안에만 놓아요');
   expect(canPlace(s, 'table_in', X(3), Y(2)).reason).toBe('문 앞은 비워 둬요');
   expect(canPlace(s, 'table_in', X(4), Y(1)).ok).toBe(true);
   expect(canPlace(s, 'carrot_field', X(4), Y(1)).reason).toBe('이미 뭔가 있어요');
@@ -86,7 +86,7 @@ test('장식 22종: 마당 장식(deco_planter)은 밖에, 실내 장식(deco_ca
   expect(canPlace(s, 'deco_planter', X(0), Y(0)).ok).toBe(true);
   expect(canPlace(s, 'deco_planter', X(4), Y(1)).reason).toBe('이미 뭔가 있어요');
   // 실내 장식: 마당엔 못 놓고, 폐창고 방 바닥엔 놓을 수 있다
-  expect(canPlace(s, 'deco_cake_case', X(0), Y(0)).reason).toBe('실내에만 놓을 수 있어요');
+  expect(canPlace(s, 'deco_cake_case', X(0), Y(0)).reason).toBe('실내 가구는 건물 안에만 놓아요');
   expect(canPlace(s, 'deco_cake_case', X(4), Y(1)).ok).toBe(true);
   placeObject(s, 'deco_cake_case', X(4), Y(1));
   expect(objectsInRoom(s, wh.id).map((o) => o.type)).toEqual(['deco_cake_case']);
@@ -106,7 +106,7 @@ test('가구가 든 방은 못 옮기고 못 치운다; 실내 오브젝트 move
   const t = objectAt(s, X(1), Y(0))!;
   expect(apply(s, { type: 'move', objectId: k.id, x: X(1), y: Y(1) }).reason).toBe('안에 가구가 있어요');
   expect(apply(s, { type: 'remove', objectId: k.id }).reason).toBe('안에 가구가 있어요');
-  expect(apply(s, { type: 'move', objectId: t.id, x: X(2), y: Y(0) }).reason).toBe('실내에만 놓을 수 있어요');
+  expect(apply(s, { type: 'move', objectId: t.id, x: X(2), y: Y(0) }).reason).toBe('실내 가구는 건물 안에만 놓아요');
   expect(apply(s, { type: 'move', objectId: t.id, x: X(4), y: Y(1) }).ok).toBe(true); // 폐창고 안으로
   expect(cellAt(s, X(1), Y(0)).objectId).toBe(k.id);
   expect(cellAt(s, X(4), Y(1)).objectId).toBe(t.id);

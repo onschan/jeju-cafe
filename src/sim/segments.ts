@@ -147,6 +147,24 @@ export function canSetTarget(state: GameState, segment: string | null): ApplyRes
 }
 
 /** null = 전부 해제. 이미 타깃이면 해제, 아니면 추가 (최대 3). targetSegment는 첫 타깃의 별칭. */
+/** 타깃 3슬롯을 통째로 (UX §5.4): 모르는·안 오는 손님층·3개 초과 거부 */
+export function canSetTargets(state: GameState, targets: string[]): ApplyResult {
+  const ids = [...new Set(targets.map(canonicalGuestId))];
+  if (ids.length > MAX_TARGETS) return { ok: false, reason: `타깃은 ${MAX_TARGETS}개까지` };
+  for (const id of ids) {
+    if (!GUEST_TYPES.some((t) => t.id === id)) return { ok: false, reason: '모르는 손님층이에요' };
+    if (!isUnlocked(state, id)) return { ok: false, reason: '아직 안 오는 손님이에요' };
+  }
+  return { ok: true };
+}
+export function setTargets(state: GameState, targets: string[]): void {
+  state.targets = [...new Set(targets.map(canonicalGuestId))].slice(0, MAX_TARGETS);
+  state.targetSegment = state.targets[0] ?? null;
+}
+/** 타깃 손님층 스폰 가중치 ×1.3 (guests.ts 스폰 훅) */
+export const TARGET_SPAWN_MULT = 1.3;
+export function targetSpawnMult(state: GameState, typeId: string): number { return isTarget(state, typeId) ? TARGET_SPAWN_MULT : 1; }
+
 export function setTarget(state: GameState, segment: string | null): void {
   if (segment === null) state.targets = [];
   else {
