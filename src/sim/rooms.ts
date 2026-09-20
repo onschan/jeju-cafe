@@ -22,6 +22,7 @@ import { fmtNum } from './format.ts';
 import { seatBonusOf } from './upgrade.ts';
 import { layoutSig } from './layoutRev.ts';
 import { josa } from './josa.ts';
+import { parcelAt } from './parcels.ts';
 
 // ---------- 상수 (§8.1·8.2·§4.1·§4.3) ----------
 
@@ -41,8 +42,13 @@ export const FLOOR2_VIEW = 1;
 /** 옮기기: ₩200만 + 3일 (Lv2 이상은 Lv당 +1일), 월 1회, 같은 날 되돌리기 1회 */
 export const MOVE_COST = 2_000_000;
 export const MOVE_DAYS = 3;
-/** 튜토리얼 1~4단계에서는 못 옮긴다 (§4.1 금지) */
-export const MOVE_TUTORIAL_MIN_STEP = 4;
+/** 튜토리얼 앞 단계(둘러보기·본관 짓기·본관 보기·길 잇기)에서는 못 옮긴다 (§4.1 금지). w-start: 30단계 4 → 33단계 7 */
+export const MOVE_TUTORIAL_MIN_STEP = 7;
+/** 첫 본관은 무료·즉시 완공 (w-start 맨땅 튜토리얼 2단계) */
+export const MAIN_BUILD_COST = 0;
+/** 본관 추천 자리(tutorial.ts recommendedMainCells): 문 앞 칸이 정낭에서 체비쇼프 거리 ≤ 5 인 자리 중 바람 적은 순 상위 3 (튜토리얼 2단계 글로우) */
+export const MAIN_RECOMMEND_GATE_DIST = 5;
+export const MAIN_RECOMMEND_N = 3;
 /** 본관 Lv2 증축 때 열리는 실내 가구 */
 export const LV2_UNLOCK_IDS = ['counter_ext'];
 
@@ -121,6 +127,30 @@ export function mainWorkDaysLeft(state: GameState): number {
   return w ? Math.max(0, w.doneDay - dayIndex(state.clock)) : 0;
 }
 
+// ---------- 본관 짓기 (w-start: 맨땅 튜토리얼 — 첫 본관은 플레이어가 자리를 골라 짓는다) ----------
+
+/** 본관을 (x,y)에 지을 수 있나: 아직 본관이 없고, Lv1 발자국(3×2) 규칙은 옮기기와 같고(내 필지·바위·시설 없음, 올렛길은 걷어낸다), 문 앞 칸이 내 필지 안. */
+export function canBuildMain(state: GameState, x: number, y: number): ApplyResult {
+  if (mainBuilding(state)) return { ok: false, reason: '이미 본관이 있어요' };
+  const size = MAIN_SIZE[1]!;
+  const c = canPlaceMain(state, x, y, size.w, size.h);
+  if (!c.ok) return c;
+  const f = doorFrontOf({ type: MAIN_TYPE, x, y, w: size.w, h: size.h });
+  if (!parcelAt(state, f.x, f.y)?.owned) return { ok: false, reason: '문 앞이 내 땅이어야 해요' };
+  if (cellAt(state, f.x, f.y).terrain === 'road') return { ok: false, reason: '문 앞이 마을 길이면 안 돼요' };
+  return { ok: true };
+}
+/** 검사 없이 짓는다 (무료·즉시 완공·공사 없음). 발자국 안 올렛길은 걷어내 환불. 길은 잇지 않는다 — 튜토리얼 4단계에서 직접 잇는다. 호출 전 canBuildMain. */
+export function placeMain(state: GameState, x: number, y: number): PlacedObject {
+  const size = MAIN_SIZE[1]!;
+  clearPaths(state, footprint(MAIN_TYPE, x, y, size.w, size.h), '');
+  state.money -= MAIN_BUILD_COST;
+  const m = placeObject(state, MAIN_TYPE, x, y);
+  state.main.level = 1;
+  pushFx(state, { kind: 'complete', x: m.x, y: m.y, tick: state.tick });
+  pushNotice(state, `카페 본관을 지었어요 — ${DOOR_PATH_WARN}`);
+  return m;
+}
 // ---------- 실내 칸·좌석 ----------
 
 /** 방(본관·별관) 바닥 칸인가 */

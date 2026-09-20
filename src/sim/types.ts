@@ -1026,6 +1026,7 @@ export type Action =
   | { type: 'clearRock'; x: number; y: number }
   | { type: 'renameCafe'; name: string }
   | { type: 'expand'; id: string }
+  | { type: 'placeMain'; x: number; y: number }    // 첫 본관 짓기 (w-start 맨땅 튜토리얼: 무료·즉시·1회, rooms.ts placeMain)
   | { type: 'expandMain' }                         // 본관 증축 Lv+1 (rooms.ts)
   | { type: 'buildSecondFloor' }                   // 본관 2층 (Lv3 이상)
   | { type: 'moveMain'; x: number; y: number }     // 본관 옮기기 (월 1회·₩200만·3일)

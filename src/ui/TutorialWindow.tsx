@@ -1,5 +1,5 @@
 /** 튜토리얼 창 「할망의 가르침」: 5장 목록(완료 ✓ · 지금 ▶ · 아직 ○, 장마다 n/m)과 지금 장의 단계 목록, 현재 단계 대사 다시 보기, 이 장 건너뛰기(보상 없음).
- *  목표 줄 왼쪽 「📖 n/30」 배지에서 연다 (GoalBar.tsx). 진행은 sim 상태(state.tutorial)에서 읽는다. */
+ *  목표 줄 왼쪽 「📖 n/33」 배지에서 연다 (GoalBar.tsx). 진행은 sim 상태(state.tutorial)에서 읽는다. */
 import { useGame } from './store';
 import { Popup, confirm } from './Popup';
 import { PALETTE, brownBtn, brownBtnOn, card } from './frame';

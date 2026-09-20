@@ -1,8 +1,8 @@
 {
-  "_": "손으로 하는 튜토리얼 「할망의 가르침」 30단계·5장 (스펙 §7.2 확장). 화자 speaker는 public/assets/icons/portrait_<speaker>.png. 조건 판정·보상·장 구분은 sim/tutorial.ts(key·chapter로 짝을 맞춘다), 하이라이트는 ui/tutorialHighlight.ts. 한 줄 20자 안팎, 초중생 어휘, 왜 하는지 한 줄. 조사는 완성 문장으로 썼다.",
+  "_": "손으로 하는 튜토리얼 「할망의 가르침」 33단계·5장 (스펙 §7.2 확장 + w-start 맨땅 시작: 1~3단계 둘러보기·본관 짓기·본관 보기). 화자 speaker는 public/assets/icons/portrait_<speaker>.png. 조건 판정·보상·장 구분은 sim/tutorial.ts(key·chapter로 짝을 맞춘다), 하이라이트는 ui/tutorialHighlight.ts. 한 줄 20자 안팎, 초중생 어휘, 왜 하는지 한 줄. 조사는 완성 문장으로 썼다.",
   "speakers": { "halmang": "할망", "samchun": "삼춘", "hero": "나", "haenyeo": "해녀 삼춘", "jangnim": "이장님" },
   "chapters": [
-    { "id": 1, "title": "개업", "intro": "폐창고를 카페로 열어 보자" },
+    { "id": 1, "title": "개업", "intro": "맨땅에 카페를 세워 열어 보자" },
     { "id": 2, "title": "자리와 손님", "intro": "자리를 고르고 손님을 알아 가자" },
     { "id": 3, "title": "첫 달 결산", "intro": "장부를 읽고 카페를 다듬자" },
     { "id": 4, "title": "키우기", "intro": "본관을 넓히고 사람을 키우자" },
@@ -10,11 +10,46 @@
   ],
   "steps": [
     {
-      "id": 1, "key": "path", "chapter": 1,
+      "id": 1, "key": "look", "chapter": 1,
+      "title": "여기가 네 땅이우다",
+      "speaker": "halmang",
+      "lines": [
+        "어서 오라. 여기가 네 땅이우다.",
+        "아직 아무것도 없주. 빛나는 걸 하나씩 눌러 보라.",
+        "뭔지 알아야 카페를 짓지."
+      ],
+      "done": "정낭·정류장·바위·마을 길을 눌러 봤다",
+      "button": "눌러 볼게요"
+    },
+    {
+      "id": 2, "key": "build_main", "chapter": 1,
+      "title": "카페는 집이 먼저",
+      "speaker": "halmang",
+      "lines": [
+        "카페는 집이 먼저. 「짓기」→「건물」을 열라.",
+        "「카페 본관」을 골라 빛나는 칸에 놓으라.",
+        "바람 적고 정낭 가까운 데가 좋다."
+      ],
+      "done": "카페 본관을 지었다",
+      "button": "지어 볼게요"
+    },
+    {
+      "id": 3, "key": "look_main", "chapter": 1,
+      "title": "문이 생겼다",
+      "speaker": "halmang",
+      "lines": [
+        "문이 생겼다. 앞 칸 보이지?",
+        "본관을 한 번 눌러 보라.",
+        "카운터·주방·실내 자리가 다 거기 있다."
+      ],
+      "done": "본관을 눌러 봤다",
+      "button": "눌러 볼게요"
+    },
+    {
+      "id": 4, "key": "path", "chapter": 1,
       "title": "손님은 길로 온다",
       "speaker": "halmang",
       "lines": [
-        "어서 오라. 폐창고로 카페를 한다니 용감하우다.",
         "손님은 길로 온다. 아래 「짓기」→「길」을 고르라.",
         "빛나는 정낭에서 문 앞까지 쭉 칠하면 된다."
       ],
@@ -22,7 +57,7 @@
       "button": "해 볼게요"
     },
     {
-      "id": 2, "key": "seat_view", "chapter": 1,
+      "id": 5, "key": "seat_view", "chapter": 1,
       "title": "같은 테이블도 자리가 다르다",
       "speaker": "halmang",
       "lines": [
@@ -34,7 +69,7 @@
       "button": "놓아 볼게요"
     },
     {
-      "id": 3, "key": "menu", "chapter": 1,
+      "id": 6, "key": "menu", "chapter": 1,
       "title": "메뉴가 있어야 팔지",
       "speaker": "halmang",
       "lines": [
@@ -45,7 +80,7 @@
       "button": "올릴게요"
     },
     {
-      "id": 4, "key": "first_pay", "chapter": 1,
+      "id": 7, "key": "first_pay", "chapter": 1,
       "title": "왔다!",
       "speaker": "halmang",
       "lines": [
@@ -57,7 +92,7 @@
       "button": "지켜볼게요"
     },
     {
-      "id": 5, "key": "hire", "chapter": 1,
+      "id": 8, "key": "hire", "chapter": 1,
       "title": "혼자는 못 한다",
       "speaker": "samchun",
       "lines": [
@@ -69,7 +104,7 @@
       "button": "뽑을게요"
     },
     {
-      "id": 6, "key": "wall", "chapter": 1,
+      "id": 9, "key": "wall", "chapter": 1,
       "title": "겨울 북서풍은 돌담이 막는다",
       "speaker": "halmang",
       "lines": [
@@ -81,7 +116,7 @@
       "button": "쌓아 볼게요"
     },
     {
-      "id": 7, "key": "promote", "chapter": 1,
+      "id": 10, "key": "promote", "chapter": 1,
       "title": "동네에 알려야지",
       "speaker": "samchun",
       "lines": [
@@ -92,7 +127,7 @@
       "button": "돌려 볼게요"
     },
     {
-      "id": 8, "key": "challenge", "chapter": 1,
+      "id": 11, "key": "challenge", "chapter": 1,
       "title": "저 줄이 네 길잡이다",
       "speaker": "halmang",
       "lines": [
@@ -104,7 +139,7 @@
       "button": "골라 볼게요"
     },
     {
-      "id": 9, "key": "site_seat", "chapter": 2,
+      "id": 12, "key": "site_seat", "chapter": 2,
       "title": "땅을 읽는 눈",
       "speaker": "halmang",
       "lines": [
@@ -116,7 +151,7 @@
       "button": "켜 볼게요"
     },
     {
-      "id": 10, "key": "guest_card", "chapter": 2,
+      "id": 13, "key": "guest_card", "chapter": 2,
       "title": "손님을 알아야 판다",
       "speaker": "samchun",
       "lines": [
@@ -128,7 +163,7 @@
       "button": "볼게요"
     },
     {
-      "id": 11, "key": "target", "chapter": 2,
+      "id": 14, "key": "target", "chapter": 2,
       "title": "누구를 부를까",
       "speaker": "samchun",
       "lines": [
@@ -140,7 +175,7 @@
       "button": "고를게요"
     },
     {
-      "id": 12, "key": "combo2", "chapter": 2,
+      "id": 15, "key": "combo2", "chapter": 2,
       "title": "궁합이 맞으면 콤보",
       "speaker": "halmang",
       "lines": [
@@ -152,7 +187,7 @@
       "button": "심을게요"
     },
     {
-      "id": 13, "key": "path10", "chapter": 2,
+      "id": 16, "key": "path10", "chapter": 2,
       "title": "길은 쭉 그린다",
       "speaker": "halmang",
       "lines": [
@@ -164,7 +199,7 @@
       "button": "그을게요"
     },
     {
-      "id": 14, "key": "undo", "chapter": 2,
+      "id": 17, "key": "undo", "chapter": 2,
       "title": "실수해도 괜찮다",
       "speaker": "samchun",
       "lines": [
@@ -176,7 +211,7 @@
       "button": "해 볼게요"
     },
     {
-      "id": 15, "key": "month_end", "chapter": 3,
+      "id": 18, "key": "month_end", "chapter": 3,
       "title": "장부를 읽어라",
       "speaker": "halmang",
       "lines": [
@@ -188,7 +223,7 @@
       "button": "읽을게요"
     },
     {
-      "id": 16, "key": "seats4", "chapter": 3,
+      "id": 19, "key": "seats4", "chapter": 3,
       "title": "불만 하나를 고친다",
       "speaker": "halmang",
       "lines": [
@@ -200,7 +235,7 @@
       "button": "늘릴게요"
     },
     {
-      "id": 17, "key": "clean", "chapter": 3,
+      "id": 20, "key": "clean", "chapter": 3,
       "title": "깨끗해야 다시 온다",
       "speaker": "samchun",
       "lines": [
@@ -212,7 +247,7 @@
       "button": "맡길게요"
     },
     {
-      "id": 18, "key": "storage", "chapter": 3,
+      "id": 21, "key": "storage", "chapter": 3,
       "title": "재료는 창고에서 먼저",
       "speaker": "samchun",
       "lines": [
@@ -224,7 +259,7 @@
       "button": "볼게요"
     },
     {
-      "id": 19, "key": "harvest", "chapter": 3,
+      "id": 22, "key": "harvest", "chapter": 3,
       "title": "다음 달 1일에 귤이 온다",
       "speaker": "halmang",
       "lines": [
@@ -236,7 +271,7 @@
       "button": "기다릴게요"
     },
     {
-      "id": 20, "key": "expand", "chapter": 4,
+      "id": 23, "key": "expand", "chapter": 4,
       "title": "본관을 넓히자",
       "speaker": "halmang",
       "lines": [
@@ -248,7 +283,7 @@
       "button": "모아 볼게요"
     },
     {
-      "id": 21, "key": "indoor2", "chapter": 4,
+      "id": 24, "key": "indoor2", "chapter": 4,
       "title": "안에도 앉힌다",
       "speaker": "samchun",
       "lines": [
@@ -260,7 +295,7 @@
       "button": "놓을게요"
     },
     {
-      "id": 22, "key": "train", "chapter": 4,
+      "id": 25, "key": "train", "chapter": 4,
       "title": "사람을 키운다",
       "speaker": "samchun",
       "lines": [
@@ -272,7 +307,7 @@
       "button": "보낼게요"
     },
     {
-      "id": 23, "key": "recipe", "chapter": 4,
+      "id": 26, "key": "recipe", "chapter": 4,
       "title": "우리 카페만의 맛",
       "speaker": "halmang",
       "lines": [
@@ -284,7 +319,7 @@
       "button": "만들게요"
     },
     {
-      "id": 24, "key": "spot", "chapter": 4,
+      "id": 27, "key": "spot", "chapter": 4,
       "title": "마을 명소에 투자",
       "speaker": "jangnim",
       "lines": [
@@ -296,7 +331,7 @@
       "button": "투자할게요"
     },
     {
-      "id": 25, "key": "parking", "chapter": 4,
+      "id": 28, "key": "parking", "chapter": 4,
       "title": "렌터카 손님을 받자",
       "speaker": "jangnim",
       "lines": [
@@ -308,7 +343,7 @@
       "button": "지을게요"
     },
     {
-      "id": 26, "key": "shop", "chapter": 4,
+      "id": 29, "key": "shop", "chapter": 4,
       "title": "응모권과 마일리지",
       "speaker": "samchun",
       "lines": [
@@ -320,7 +355,7 @@
       "button": "뽑을게요"
     },
     {
-      "id": 27, "key": "gift", "chapter": 5,
+      "id": 30, "key": "gift", "chapter": 5,
       "title": "선물이 단골을 만든다",
       "speaker": "halmang",
       "lines": [
@@ -332,7 +367,7 @@
       "button": "건넬게요"
     },
     {
-      "id": 28, "key": "event", "chapter": 5,
+      "id": 31, "key": "event", "chapter": 5,
       "title": "제주의 일 년",
       "speaker": "jangnim",
       "lines": [
@@ -344,7 +379,7 @@
       "button": "지켜볼게요"
     },
     {
-      "id": 29, "key": "popup_rival", "chapter": 5,
+      "id": 32, "key": "popup_rival", "chapter": 5,
       "title": "바깥으로 나가 보자",
       "speaker": "samchun",
       "lines": [
@@ -356,7 +391,7 @@
       "button": "나가 볼게요"
     },
     {
-      "id": 30, "key": "graduate", "chapter": 5,
+      "id": 33, "key": "graduate", "chapter": 5,
       "title": "이제 네 카페다",
       "speaker": "halmang",
       "lines": [

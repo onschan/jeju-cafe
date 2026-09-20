@@ -2,7 +2,7 @@ import type { GameState, Action, ApplyResult, PlacedObject } from './types.ts';
 import { bumpLayoutRev } from './layoutRev.ts';
 import { objectDef } from '../data/index.ts';
 import { canPlace, placeObject, removeObject, footprintOf, relocateObject, objectsInRoom, canClearRock, clearRock } from './grid.ts';
-import { canExpandMain, expandMain, canBuildSecondFloor, buildSecondFloor, canMoveMain, moveMain, canUndoMoveMain, undoMoveMain, canToggleFireplace, toggleFireplace, canSetPianoTime, canAddBooks, addBooks, canFeedAquarium, feedAquarium, canRestockKids, restockKids, canSetBarEvening, setBarEvening, MAIN_TYPE } from './rooms.ts'; // y-indoor
+import { canBuildMain, placeMain, canExpandMain, expandMain, canBuildSecondFloor, buildSecondFloor, canMoveMain, moveMain, canUndoMoveMain, undoMoveMain, canToggleFireplace, toggleFireplace, canSetPianoTime, canAddBooks, addBooks, canFeedAquarium, feedAquarium, canRestockKids, restockKids, canSetBarEvening, setBarEvening, MAIN_TYPE } from './rooms.ts'; // y-indoor
 import { canBuyParcel, buyParcel } from './parcels.ts';
 import { canSetSlot, setSlot } from './menu.ts';
 import { checkFeature, checkGoals } from './goals.ts';
@@ -79,6 +79,7 @@ export function canDisturb(state: GameState, obj: PlacedObject): ApplyResult {
 function applyInner(state: GameState, a: Action): ApplyResult {
   switch (a.type) {
     case 'place': {
+      if (a.objectType === MAIN_TYPE) return applyInner(state, { type: 'placeMain', x: a.x, y: a.y }); // 본관은 짓기 창 「건물」 탭 카드 → placeMain (w-start)
       if (!state.unlocked.objects.includes(a.objectType)) return { ok: false, reason: '아직 못 짓는 것' };
       const cost = placeCost(state, a.objectType);
       if (state.money < cost) return { ok: false, reason: '돈이 모자라요' };
@@ -221,6 +222,14 @@ function applyInner(state: GameState, a: Action): ApplyResult {
       const c = canExpand(state, a.id);
       if (!c.ok) return c;
       expand(state, a.id as ExpansionId);
+      return { ok: true };
+    }
+    // ---- w-start: 첫 본관 짓기 (맨땅 튜토리얼 2단계) ----
+    case 'placeMain': {
+      const c = canBuildMain(state, a.x, a.y);
+      if (!c.ok) return c;
+      placeMain(state, a.x, a.y);
+      discoverCombos(state);
       return { ok: true };
     }
     // ---- y-indoor: 본관 증축·2층·이동·실내 요소 (rooms.ts) ----

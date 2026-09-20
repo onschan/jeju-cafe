@@ -1,4 +1,4 @@
-import { useState, type CSSProperties, type ReactNode } from 'react';
+import { useState, useEffect, type CSSProperties, type ReactNode } from 'react';
 import { wonText } from '../data/labels.ts';
 import { josa } from '../sim/josa.ts';
 import { useGame, dispatch } from './store';
@@ -20,6 +20,7 @@ import { SiteLine } from './SiteLine';
 import { SHELL_BOTTOM } from './Shell';
 import { frame, brownBtn, brownBtnOn, brownBtnOff, dangerBtn, brownInput, PALETTE } from './frame';
 import { useTutorialNote } from './tutorialDialogue';
+import { LOOK_TEXT, type LookId } from '../sim/index.ts';
 
 /** 맵에서 탭한 대상. 스펙 §1.2 표. */
 export type CardTarget =
@@ -31,6 +32,7 @@ export type CardTarget =
   | { kind: 'parcel'; id: string }
   | { kind: 'busstop'; id: string }
   | { kind: 'counter'; id: string }
+  | { kind: 'road'; x: number; y: number } // w-start 둘러보기: 마을 길 칸
   | { kind: 'route'; route: RouteId; id?: string }; // 트랙 H: 진입점·경로 시설 → RouteCard
 
 export interface CardActions {
@@ -60,6 +62,23 @@ export function Details({ id, children, lines = 3 }: { id: string; children: Rea
         style={{ border: 0, background: 'transparent', color: PALETTE.title, fontFamily: 'inherit', fontSize: 13, fontWeight: 700, padding: '4px 0', minHeight: 28 }}>{open ? '▾ 접기' : `▸ 자세히 (+${items.length - lines})`}</button>}
     </>
   );
+}
+
+/** 「이게 뭐예요」 한 줄 (w-start): 처음부터 놓여 있는 것(정낭·정류장·바위·마을 길·용천수·옆 필지·본관) 카드 맨 위에 초중생 어휘 설명 한 줄.
+ *  세션에 한 번만 펼쳐 보이고, 그 뒤엔 「? 이게 뭐예요」 버튼으로 접힌다 (다시 누르면 펼친다). 튜토리얼 1·3단계 둘러보기 표식(look:<id>)도 여기서 남긴다. */
+const hintShown = new Set<string>();
+export const HINT_TEXT: Record<LookId | 'spring' | 'parcel', string> = {
+  ...LOOK_TEXT,
+  spring: '용천수: 땅에서 솟는 맑은 물. 못 옮기고 옆 경치가 좋아져요',
+  parcel: '옆 땅: 사면 카페가 넓어져요. 땅마다 특색이 달라요',
+};
+export function Hint({ id }: { id: keyof typeof HINT_TEXT }) {
+  const [open, setOpen] = useState(!hintShown.has(id));
+  useTutorialNote(id === 'spring' || id === 'parcel' ? null : `look:${id}`);
+  useEffect(() => { hintShown.add(id); }, [id]);
+  return open
+    ? <div data-testid={`hint-${id}`} style={{ fontSize: 14, color: PALETTE.title, fontWeight: 700, marginBottom: 4, lineHeight: 1.4 }}><Icon name="bulb" size={14} /> {HINT_TEXT[id]}</div>
+    : <button data-testid={`hint-${id}`} aria-expanded={false} onClick={() => setOpen(true)} style={{ border: 0, background: 'transparent', color: PALETTE.title, fontFamily: 'inherit', fontSize: 13, fontWeight: 700, padding: '2px 0', minHeight: 24 }}>? 이게 뭐예요</button>;
 }
 
 /** 시설 이름 바꾸기 팝업 (§5.6, sim renameObject) */
@@ -199,6 +218,7 @@ function ObjectCard({ s, id, a, onClose }: { s: GameState; id: string; a: CardAc
   const clean = Math.round(s.clean.value);
   return (
     <div data-testid="card-object">
+      {o.type === 'spring' && <Hint id="spring" />}
       <div style={{ fontSize: 14, lineHeight: 1.5 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
           <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}><Icon name={KIND_ICON[d.kind] ?? 'build'} size={18} /> <b>{o.name ?? d.name}</b>{o.name && <span style={small}> ({d.name})</span>}{st.level >= 2 && <b style={{ color: PALETTE.title }}> Lv{st.level}</b>}{o.build && <span style={{ color: PALETTE.title }}> · 짓는 중</span>}{st.wear > 0 && <span style={{ color: PALETTE.bad }}> · 낡았어요 (인기 −{st.wear})</span>}</span>
@@ -244,6 +264,7 @@ function RockCard({ s, x, y, onClose }: { s: GameState; x: number; y: number; on
   const free = hasPickaxe(s);
   return (
     <div data-testid="card-rock">
+      {terrain !== 'soil' && <Hint id="rock" />}
       <div style={{ fontSize: 14, lineHeight: 1.5 }}>
         <div><b>{name}</b> <span style={small}>({x},{y})</span></div>
         <div style={small}>치우기 비용 {free ? '곡괭이 1개' : wonText(cost)} · 기간 즉시{!can.ok && can.reason && ` · ${can.reason}`}</div>
@@ -266,6 +287,19 @@ function EmptyCard({ s, x, y, a }: { s: GameState; x: number; y: number; a: Card
   );
 }
 
+/** 마을 길 칸 (w-start 둘러보기): 버스가 다니는 길, 여기서 올렛길을 잇는다 */
+function RoadCard({ s, x, y }: { s: GameState; x: number; y: number }) {
+  return (
+    <div data-testid="card-road">
+      <Hint id="road" />
+      <div style={{ fontSize: 14, lineHeight: 1.5 }}>
+        <div><b>마을 길</b> <span style={small}>({x},{y})</span></div>
+        <div style={small}>이번 달 손님 {s.monthGuests}명이 이 길로 왔어요 · 길 위엔 못 지어요</div>
+      </div>
+    </div>
+  );
+}
+
 function ParcelCard({ s, id, onClose }: { s: GameState; id: string; onClose: () => void }) {
   const p = s.parcels.find((x) => x.id === id);
   if (!p || p.owned) return <div style={small}>이미 우리 땅이에요</div>;
@@ -274,6 +308,7 @@ function ParcelCard({ s, id, onClose }: { s: GameState; id: string; onClose: () 
   const buy = () => Confirm(`${p.name} 필지를 ${wonText(price)}에 살까요? 맵이 넓어져요.`, () => { if (dispatch({ type: 'buyParcel', id: p.id }).ok) onClose(); }, { title: '필지 구매' });
   return (
     <div data-testid="card-parcel">
+      <Hint id="parcel" />
       <div style={{ fontSize: 14, lineHeight: 1.5 }}>
         <div><b>{p.name}</b> <span style={small}>{p.w}×{p.h}칸</span></div>
         <div style={small}>가격 {wonText(price)}{!can.ok && can.reason && ` · ${can.reason}`}</div>
@@ -295,6 +330,7 @@ function BusStopCard({ s, id }: { s: GameState; id: string }) {
   })();
   return (
     <div data-testid="card-busstop">
+      <Hint id={o?.type === 'gate' ? 'gate' : 'busstop'} />
       <div style={{ fontSize: 14, lineHeight: 1.5 }}>
         <div><Icon name="calendar" size={18} /> <b>{name}</b></div>
         <div style={small}>이번 달 손님 {s.monthGuests}명 · 지금 {s.guests.length}명{o?.type === 'gate' ? ' · 손님은 여기서 올렛길로 들어와요' : ` · 다음 버스 ${nextBus}`}</div>
@@ -333,6 +369,7 @@ export function MainCard({ s, id, a }: { s: GameState; id: string; a: CardAction
   const pianoOk = canSetPianoTime(s).ok;
   return (
     <div data-testid="card-main">
+      <Hint id="main" />
       <div style={{ fontSize: 14, lineHeight: 1.5 }}>
         <div><Icon name="home" /> <b>{s.cafeName || '우리 카페'} Lv{m.level}</b>{s.main.floor2 && ' · 2층'} · 실내 {m.seatsUsed}/{m.seats}석{workText && <span style={{ color: PALETTE.title }}> · {workText}</span>}</div>
         <div style={small}><Icon name="kitchen" size={14} /> 주문 대기 {waiting} · 조리 중 {cooking} · 메뉴 {menus}개{low.length > 0 && <span style={{ color: PALETTE.bad }}> · <Icon name="warn" size={14} /> {low.map(([k, n]) => `${labelOf('ingredient', k)} ${n}개 남음`).join(' · ')}</span>}</div>
@@ -415,7 +452,8 @@ export function MiniCard({ target, actions, onClose }: { target: CardTarget; act
     case 'parcel': body = <ParcelCard s={s} id={target.id} onClose={onClose} />; break;
     case 'busstop': body = <BusStopCard s={s} id={target.id} />; break;
     case 'counter': body = <MainCard s={s} id={target.id} a={actions} />; break; // y-indoor
-    case 'route': body = <RouteCard s={s} route={target.route} objectId={target.id} />; break; // 트랙 H
+    case 'road': body = <RoadCard s={s} x={target.x} y={target.y} />; break; // w-start
+    case 'route': body = <>{target.route === 'bus' && <Hint id="busstop" />}<RouteCard s={s} route={target.route} objectId={target.id} /></>; break; // 트랙 H (정류장은 둘러보기 힌트 포함)
   }
   return (
     <div data-testid="mini-card" data-kind={target.kind}

@@ -30,7 +30,7 @@ export interface GameViewOptions extends Pick<CameraOptions, 'onTap' | 'dragCapt
 }
 
 /** 배치 모드 고스트: 손가락 아래 반투명 오브젝트. ok면 초록, 아니면 빨강. text는 비용 라벨. */
-export interface GhostSpec { type: string; x: number; y: number; rot?: number; ok: boolean; text: string; w?: number; h?: number }
+export interface GhostSpec { type: string; x: number; y: number; rot?: number; ok: boolean; text: string; w?: number; h?: number; /** 문 앞 칸 미리보기 (w-start 본관 짓기: 파란 마름모 + 「문 앞」) */ door?: { x: number; y: number } }
 /** 효과 범위 힌트 (UX §5.3): 중심 시설 발자국 + 반경(칸) 타원, 콤보가 성립하는 상대 시설 발자국 위 ◎ */
 export interface RangeHint { x: number; y: number; w: number; h: number; radius: number; marks: { x: number; y: number; w: number; h: number }[] }
 /** 콤보·경관 범위 기본 반경 2칸 (5×5) */
@@ -364,7 +364,7 @@ export class GameView {
 
   /** 배치 고스트를 놓거나(null이면) 치운다. 같은 내용이면 다시 만들지 않는다. */
   setGhost(g: GhostSpec | null) {
-    const key = g ? `${g.type}:${g.x},${g.y}:${g.rot ?? ''}:${g.ok}:${g.text}` : '';
+    const key = g ? `${g.type}:${g.x},${g.y}:${g.rot ?? ''}:${g.ok}:${g.text}:${g.door ? `${g.door.x},${g.door.y}` : ''}` : '';
     if (key === this.ghostKey) return;
     this.ghostKey = key;
     this.ghost?.destroy({ children: true });
@@ -388,6 +388,17 @@ export class GameView {
         .fill({ color: g.ok ? GHOST_OK : GHOST_BAD, alpha: 0.5 });
     }
     c.addChild(fp);
+    if (g.door) { // 문 앞 칸 미리보기 — 손님이 드나드는 칸 (w-start 본관 고스트)
+      const d = cellToScreen(g.door.x, g.door.y);
+      const dg = new Graphics()
+        .poly([d.sx - sx, d.sy - sy, d.sx - sx + ISO_W / 2, d.sy - sy + ISO_H / 2, d.sx - sx, d.sy - sy + ISO_H, d.sx - sx - ISO_W / 2, d.sy - sy + ISO_H / 2])
+        .fill({ color: 0x5ad1ff, alpha: 0.35 }).stroke({ color: 0x2aa7e0, width: 2 });
+      const dl = label('문 앞', 9);
+      dl.anchor.set(0.5, 0.5);
+      dl.position.set(d.sx - sx, d.sy - sy + ISO_H / 2);
+      dg.label = 'ghostDoor';
+      c.addChild(dg, dl);
+    }
     const t = objectTex({ type: g.type, rot: g.rot }, mainLv);
     const sp = new Sprite(t?.texture ?? isoObjectTexture(this.app.renderer, def.kind, gw, gh));
     sp.anchor.set(0.5, 1);
@@ -603,7 +614,9 @@ export class GameView {
     const cost = c.getChildByLabel('ghostCost') as Text | null;
     const badge = new Container();
     badge.label = 'siteBadge';
-    const l = label(siteBadgeTextPlain(siteOf(state, g.x, g.y)), 10);
+    // 본관 자체를 놓을 땐 주방 거리가 없다 (w-start) → 「주방 —」
+    const badgeText = g.type === 'warehouse' ? siteBadgeTextPlain(siteOf(state, g.x, g.y)).replace(/주방\d+/, '주방—') : siteBadgeTextPlain(siteOf(state, g.x, g.y));
+    const l = label(badgeText, 10);
     l.anchor.set(0.5, 1);
     const top = cost ? cost.y - cost.height - 3 : -(sp?.height ?? 24) - 4;
     l.position.set(0, top);

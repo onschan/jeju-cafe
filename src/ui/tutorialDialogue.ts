@@ -4,7 +4,7 @@ import { TUTORIAL_STEPS as STEP_DATA, TUTORIAL_CHAPTER_TEXTS, SPEAKER_NAME, type
 import { showDialogue, getDialogue } from './dialogue.ts';
 import { confirm } from './Popup';
 
-/** 손으로 하는 튜토리얼 「할망의 가르침」 30단계·5장 대화. 대사는 data/dialogue/tutorial.json, 진행(끝낸 단계 수)은 sim 상태 state.tutorial.step —
+/** 손으로 하는 튜토리얼 「할망의 가르침」 33단계·5장 대화 (w-start: 1~3단계 둘러보기·본관 짓기·본관 보기). 대사는 data/dialogue/tutorial.json, 진행(끝낸 단계 수)은 sim 상태 state.tutorial.step —
  *  조건 판정·보상은 sim/tutorial.ts가 한다. 여기서는 "현재 단계의 대사를 한 번 띄우는" 일만 한다.
  *  대사를 닫으면 `tutorialNote dlg:<id>`를 보내 sim이 그 단계를 끝낼 수 있게 한다(이미 충족된 단계는 대사만 뜨고 바로 통과).
  *  보상 상자(alerts)가 떠 있는 동안은 기다렸다가, 닫히면 다음 단계 대사를 띄운다. 건너뛰기는 장 단위(각 장 첫 단계 대사의 「건너뛰기」·튜토리얼 창). */
@@ -43,13 +43,13 @@ export function isChapterStart(step: TutorialStep): boolean {
   return TUTORIAL_CHAPTERS.some((c) => c.from === step.id);
 }
 
-/** UI 사건 표식 — sim 조건 판정용 (손님 카드 봄·창고 봄·입지 보기 켬). 튜토리얼이 끝났거나 이미 남겼으면 sim이 무시한다. */
+/** UI 사건 표식 — sim 조건 판정용 (손님 카드 봄·창고 봄·입지 보기 켬·둘러보기 look:<id>). 튜토리얼이 끝났거나 이미 남겼으면 sim이 무시한다. */
 export function noteTutorial(key: TutorialNoteKey): void {
   note(key);
 }
-/** 컴포넌트가 뜰 때 한 번 표식을 남기는 훅 (StoragePanel·손님 카드 등에서 한 줄) */
-export function useTutorialNote(key: TutorialNoteKey, on = true): void {
-  useEffect(() => { if (on) noteTutorial(key); }, [key, on]);
+/** 컴포넌트가 뜰 때 한 번 표식을 남기는 훅 (StoragePanel·손님 카드·둘러보기 힌트 등에서 한 줄). key가 null이면 아무것도 안 한다 (훅 순서를 지키려고). */
+export function useTutorialNote(key: TutorialNoteKey | null, on = true): void {
+  useEffect(() => { if (on && key) noteTutorial(key); }, [key, on]);
 }
 /** 현재 장을 통째로 건너뛴다 (보상 없음, 해금만) */
 export function skipCurrentChapter(): void {

@@ -3,26 +3,28 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { Icon } from '../Icon';
 import type { GameState, ObjectDef } from '../../sim/index.ts';
-import { placeCost, constructions, canStartBuild, goalForFacility, isUpgradable, tierOf, featureOpen } from '../../sim/index.ts';
-import { OBJECTS } from '../../data/index.ts';
+import { placeCost, constructions, canStartBuild, goalForFacility, isUpgradable, tierOf, featureOpen, mainBuilding, MAIN_TYPE } from '../../sim/index.ts';
+import { OBJECTS, objectDef } from '../../data/index.ts';
 import { unlockText, wonText } from '../../data/labels.ts';
 import { loadSheet, drawFrame, type Sheet } from '../sheetCanvas';
 import { PALETTE, brownBtn, brownBtnOff } from '../frame';
 import { useWindowState, body, TabBar, soft, Empty, type WindowProps } from './shared.tsx';
 import { SiteToggle } from '../SiteToggle.tsx';
 
-export type BuildTab = 'indoor' | 'rest' | 'convenience' | 'food' | 'fun' | 'farm' | 'scenery' | 'path' | 'wall';
-/** 탭 순서 (§8.4): 실내 · 쉼 · 편의 · 먹거리 · 즐길거리 · 농원 · 경관 · 길 · 담 */
+export type BuildTab = 'building' | 'indoor' | 'rest' | 'convenience' | 'food' | 'fun' | 'farm' | 'scenery' | 'path' | 'wall';
+/** 탭 순서 (§8.4): [건물 — 본관이 없을 때만(w-start)] · 실내 · 쉼 · 편의 · 먹거리 · 즐길거리 · 농원 · 경관 · 길 · 담 */
 export const BUILD_TABS: { key: BuildTab; label: string }[] = [
-  { key: 'indoor', label: '실내' }, { key: 'rest', label: '쉼' }, { key: 'convenience', label: '편의' }, { key: 'food', label: '먹거리' }, { key: 'fun', label: '즐길거리' },
+  { key: 'building', label: '건물' }, { key: 'indoor', label: '실내' }, { key: 'rest', label: '쉼' }, { key: 'convenience', label: '편의' }, { key: 'food', label: '먹거리' }, { key: 'fun', label: '즐길거리' },
   { key: 'farm', label: '농원' }, { key: 'scenery', label: '경관' }, { key: 'path', label: '길' }, { key: 'wall', label: '담' },
 ];
 /** 본관 카드 「실내 꾸미기」처럼 창을 여는 쪽이 첫 탭을 지정한다 (App 창 매핑을 안 건드리고 — y-indoor). 한 번 읽으면 지워진다. */
 let requestedTab: BuildTab | null = null;
 export function requestBuildTab(tab: BuildTab): void { requestedTab = tab; }
 function takeRequestedTab(): BuildTab | null { const t = requestedTab; requestedTab = null; return t; }
-/** 처음부터 맵에 있는 것·지형 — 짓기 목록에 안 나온다 */
+/** 처음부터 맵에 있는 것·지형 — 짓기 목록에 안 나온다 (본관은 「건물」 탭에서 따로, 없을 때만) */
 const HIDDEN_IDS = new Set(['busstop', 'warehouse', 'gate', 'bush_wild', 'spring']);
+/** 「건물」 탭 안내 (w-start 맨땅 튜토리얼 2단계) */
+export const MAIN_CARD_HINT = '첫 본관은 무료·바로 완성 · 문은 앞쪽 왼쪽에 생겨요';
 
 /** 오브젝트가 어느 탭에 속하나. 길·담·정낭은 kind로, 나무·농사 시설은 농원, 좌석은 쉼, 나머지는 시설 분류. */
 export function buildTabOf(def: ObjectDef): BuildTab {
@@ -66,29 +68,35 @@ export interface BuildWindowProps extends WindowProps { initialTab?: BuildTab }
 
 export function BuildWindow(props: BuildWindowProps) {
   const { s } = useWindowState(props);
-  const [tab, setTab] = useState<BuildTab>(() => props.initialTab ?? takeRequestedTab() ?? 'rest');
+  const noMain = !mainBuilding(s); // w-start: 맨땅이면 「건물」 탭(카페 본관 카드)이 맨 앞에, 본관을 지으면 사라진다
+  const [tab, setTab] = useState<BuildTab>(() => props.initialTab ?? takeRequestedTab() ?? (mainBuilding(s) ? 'rest' : 'building'));
+  const tabs = noMain ? BUILD_TABS : BUILD_TABS.filter((t) => t.key !== 'building');
+  const activeTab: BuildTab = tab === 'building' && !noMain ? 'rest' : tab;
   const [picked, setPicked] = useState<string | null>(null);
   const [sheet, setSheet] = useState<Sheet | null>(null);
   useEffect(() => { let on = true; loadSheet().then((sh) => { if (on) setSheet(sh); }); return () => { on = false; }; }, []);
 
   const unlocked = new Set(s.unlocked.objects);
-  const items = OBJECTS.filter((d) => !HIDDEN_IDS.has(d.id) && buildTabOf(d) === tab)
-    .map((def) => ({ def, locked: !unlocked.has(def.id) }))
-    .sort((a, b) => Number(a.locked) - Number(b.locked) || a.def.cost - b.def.cost);
-  const counts: Partial<Record<BuildTab, number>> = {};
+  const items = activeTab === 'building'
+    ? (noMain ? [{ def: objectDef(MAIN_TYPE), locked: false }] : [])
+    : OBJECTS.filter((d) => !HIDDEN_IDS.has(d.id) && buildTabOf(d) === activeTab)
+      .map((def) => ({ def, locked: !unlocked.has(def.id) }))
+      .sort((a, b) => Number(a.locked) - Number(b.locked) || a.def.cost - b.def.cost);
+  const counts: Partial<Record<BuildTab, number>> = { building: noMain ? 1 : 0 };
   for (const d of OBJECTS) if (!HIDDEN_IDS.has(d.id) && unlocked.has(d.id)) counts[buildTabOf(d)] = (counts[buildTabOf(d)] ?? 0) + 1;
   const busy = constructions(s).length;
   const sel = picked ? items.find((i) => i.def.id === picked) : undefined;
 
   return (
     <div style={body} data-testid="build-window">
-      <TabBar tabs={BUILD_TABS.map((t) => ({ ...t, badge: undefined }))} active={tab} onPick={(k) => { setTab(k); setPicked(null); }} testId="build-tab" />
+      <TabBar tabs={tabs.map((t) => ({ ...t, badge: undefined }))} active={activeTab} onPick={(k) => { setTab(k); setPicked(null); }} testId="build-tab" />
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0 8px', marginBottom: 6 }}>
-        <span style={soft}>열린 것 {counts[tab] ?? 0} · 자금 {wonText(s.money)}</span>
+        <span style={soft}>열린 것 {counts[activeTab] ?? 0} · 자금 {wonText(s.money)}</span>
         <span style={{ ...soft, color: busy >= s.builders ? PALETTE.bad : PALETTE.inkSoft }} data-testid="builders">건축가 {busy}/{s.builders} 작업 중</span>
         {featureOpen(s, 'siteView') && <SiteToggle />}{/* 트랙 B: 튜토리얼 2단계 보상으로 열린다 */}
       </div>
-      {tab === 'indoor' && <div style={{ ...soft, marginBottom: 6 }}><Icon name="home" size={14} /> 실내 가구는 건물(본관·별관) 안 바닥에만 놓아요 — 문 칸은 비워 둬요</div>}
+      {activeTab === 'building' && <div style={{ ...soft, marginBottom: 6 }} data-testid="build-main-hint"><Icon name="home" size={14} /> {MAIN_CARD_HINT}</div>}
+      {activeTab === 'indoor' && <div style={{ ...soft, marginBottom: 6 }}><Icon name="home" size={14} /> 실내 가구는 건물(본관·별관) 안 바닥에만 놓아요 — 문 칸은 비워 둬요</div>}
       {items.length === 0 && <Empty>아직 여기엔 지을 게 없어요</Empty>}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
         {items.map(({ def, locked }) => {
@@ -102,7 +110,7 @@ export function BuildWindow(props: BuildWindowProps) {
               <div style={{ fontSize: 15, fontWeight: 700, lineHeight: 1.2 }}>{locked ? <><Icon name="lock" size={14} /> </> : ''}{def.name}{def.indoor ? <> <Icon name="home" size={14} /></> : ''}</div>
               <div style={{ fontSize: 14 }}>{cost > 0 ? wonText(cost) : '무료'}{def.fee !== undefined && def.fee > 0 ? ` · 요금 ${wonText(def.fee)}` : ''}</div>
               <div style={{ ...soft, fontSize: 13 }}>
-                {def.kind === 'seat' ? <><Icon name="chair" size={13} /> {def.seats ?? 2}</> : <><Icon name="thumb" size={13} /> {def.popularity ?? 10}</>} · <Icon name="plant" size={13} /> {def.scenery}
+                {def.id === MAIN_TYPE ? <><Icon name="home" size={13} /> {def.w}×{def.h}칸 · 1회</> : <>{def.kind === 'seat' ? <><Icon name="chair" size={13} /> {def.seats ?? 2}</> : <><Icon name="thumb" size={13} /> {def.popularity ?? 10}</>} · <Icon name="plant" size={13} /> {def.scenery}</>}
               </div>
             </button>
           );
@@ -128,8 +136,8 @@ function PickedDetail({ s: def, locked, state, onPick }: { s: ObjectDef; locked:
   const ok = !locked && start.ok && !poor && !!onPick;
   const days = def.buildDays ?? 0;
   const facts = [
-    def.kind === 'seat' ? `좌석 ${def.seats ?? 2}` : `인기 ${def.popularity ?? 10}`,
-    `경관 ${def.scenery}`,
+    def.id === MAIN_TYPE ? '카운터·주방·실내 자리' : def.kind === 'seat' ? `좌석 ${def.seats ?? 2}` : `인기 ${def.popularity ?? 10}`,
+    def.id === MAIN_TYPE ? '문은 앞쪽 왼쪽' : `경관 ${def.scenery}`,
     def.upkeep > 0 ? `유지비 ${wonText(def.upkeep)}/월` : null,
     days > 0 ? `공사 ${days}일` : '바로 완성',
     `${def.w}×${def.h}칸`,
