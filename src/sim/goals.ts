@@ -38,7 +38,7 @@ import { checkChallenges } from './challenges.ts';
 import { checkTutorial, TUTORIAL_STEPS } from './tutorial.ts';
 import { hasLoan, loanRewardMult } from './failure.ts';
 import { levelOf } from './upgrade.ts';
-import { indoorSeats, mainLevel, annexCount, isMainClosed } from './rooms.ts'; // y-indoor
+import { indoorSeats, mainLevel, annexCount, isMainClosed, mainBuilding } from './rooms.ts'; // y-indoor
 import { grantItem } from './items.ts';
 import { spotEffectAt } from './compat.ts';
 import { totalSpotVisitors } from './spots.ts';
@@ -107,6 +107,7 @@ function seatObjectsOf(state: GameState) {
  *  메뉴 조건은 튜토리얼 중에만 본다 — 완성 시작 상태·기존 테스트(빈 메뉴판에 손님을 넣는다)는 그대로 돈다. */
 export function canOpen(state: GameState): boolean {
   if (state.tutorial.step < TUTORIAL_STEPS && !state.menuSlots.some((m) => m !== null)) return false;
+  if (!mainBuilding(state)) return false; // w-start: 맨땅(본관 없음)엔 손님이 안 온다 — 튜토리얼 2단계에서 본관을 짓는다
   if (isMainClosed(state)) return false; // y-indoor: 본관 공사(증축·이동·2층) 중 영업 정지
   const seats = seatObjectsOf(state);
   if (seats.length === 0) return false;

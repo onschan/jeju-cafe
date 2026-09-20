@@ -116,9 +116,9 @@ describe('대화 데이터 (src/data/dialogue)', () => {
     ...SAMCHUN.flatMap((s) => [s.name, s.job, s.intro, s.rewardText, ...s.chain.flatMap((c) => [c.ask, ...c.lines, c.doneLine])]),
   ];
 
-  it('튜토리얼 30단계·5장(§7.2 확장), 단계당 2~3줄, 화자는 할망·삼춘·이장님, 단계마다 done 조건 문구', () => {
-    expect(TUTORIAL_STEPS.map((t) => t.id)).toEqual(Array.from({ length: 30 }, (_, i) => i + 1));
-    expect(TUTORIAL_STEPS.map((t) => t.chapter)).toEqual(TUTORIAL_STEPS.map((t) => t.id <= 8 ? 1 : t.id <= 14 ? 2 : t.id <= 19 ? 3 : t.id <= 26 ? 4 : 5));
+  it('튜토리얼 33단계·5장(§7.2 확장 + w-start 맨땅 3단계), 단계당 2~3줄, 화자는 할망·삼춘·이장님, 단계마다 done 조건 문구', () => {
+    expect(TUTORIAL_STEPS.map((t) => t.id)).toEqual(Array.from({ length: 33 }, (_, i) => i + 1));
+    expect(TUTORIAL_STEPS.map((t) => t.chapter)).toEqual(TUTORIAL_STEPS.map((t) => t.id <= 11 ? 1 : t.id <= 17 ? 2 : t.id <= 22 ? 3 : t.id <= 29 ? 4 : 5));
     for (const t of TUTORIAL_STEPS) {
       expect(t.lines.length).toBeGreaterThanOrEqual(2);
       expect(t.lines.length).toBeLessThanOrEqual(3);

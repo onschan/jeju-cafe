@@ -4,7 +4,7 @@ import { START_HOUR } from './clock.ts';
 import { makeParcels } from './parcels.ts';
 import { PARCEL_W, PARCEL_H, START_ORIGIN, GRID_W, GRID_H, VILLAGE_ROAD_Y } from './layout.ts';
 import { initRoutes } from './entry.ts';
-import { occupy } from './grid.ts';
+import { occupy, canPlaceMain } from './grid.ts';
 import { nextRandom } from './rng.ts';
 import { initGuestTypes, initSegmentPopularity } from './segments.ts';
 import { DEFAULT_CAFE_NAME } from './cafe.ts';
@@ -18,7 +18,7 @@ import { initTutorial, unlockTutorialFeatures } from './tutorial.ts';
 import { monthIndex } from './clock.ts';
 import { emptyMonthCosts } from './economy.ts';
 import { REPUTATION_START } from './reputation.ts';
-import { initMain } from './rooms.ts';
+import { initMain, MAIN_TYPE, MAIN_SIZE } from './rooms.ts';
 import { initEnding, applyCarry } from './ending.ts'; // z-ending
 import { initVillage } from './village.ts'; // z-ending
 
@@ -38,6 +38,8 @@ export const START_SPAWN_ACC = 0.6;
 const GOTJAWAL_BUSHES = 10;
 /** 옛 감귤밭의 감귤나무 위치 (필지 상대) */
 const ORCHARD_TREES = [{ lx: 2, ly: 2 }, { lx: 6, ly: 2 }, { lx: 2, ly: 5 }, { lx: 6, ly: 5 }];
+/** 완성 시작 상태의 본관 자리 (필지 상대, 3×2): 문 = 정면 왼쪽 (3,2), 그 앞 (3,3)이 창고 앞 (layout.ts WAREHOUSE_FRONT) */
+export const START_MAIN = { lx: 3, ly: 1 } as const;
 /** 시작 필지 안 시작 시설 (필지 상대): 본관 문 앞(3,3)에서 정낭(4,6)까지 올렛길, 그 양옆에 테이블 2 + 파라솔 1 */
 export const START_PATH: { lx: number; ly: number }[] = [{ lx: 3, ly: 3 }, { lx: 4, ly: 3 }, { lx: 4, ly: 4 }, { lx: 4, ly: 5 }];
 export const START_SEATS: { type: string; lx: number; ly: number }[] = [
@@ -119,12 +121,25 @@ function stampParcelObjects(state: GameState, p: Parcel, rng: { rng: number }): 
   }
 }
 
-/** 시작 배치: 'starter' = v3 완성 시작 상태(올렛길·테이블 2·파라솔·메뉴 3종, 튜토리얼 끝남 — 봇·테스트 기본), 'tutorial' = §7.1 빈 마당(길·좌석·메뉴 없음, 손으로 하는 튜토리얼) */
+/** 시작 배치: 'starter' = v3 완성 시작 상태(본관·올렛길·테이블 2·파라솔·메뉴 3종, 튜토리얼 끝남 — 봇·테스트 기본), 'tutorial' = §7.1 맨땅(본관도 없다 — 길·좌석·메뉴 없음, 손으로 하는 튜토리얼이 본관 짓기부터) */
 export type StartLayout = 'starter' | 'tutorial';
 
-/** §7.2 건너뛰기: 빈 마당에 기존 완성 시작 상태(올렛길·테이블 2·파라솔·메뉴 3종)를 채운다. 이미 있는 칸은 건너뛴다. */
+/** 완성 시작 상태의 본관을 새긴다 (w-start: 맨땅 튜토리얼은 플레이어가 placeMain으로 직접 짓는다). 이미 본관이 있으면 그대로.
+ *  기본 자리(3,1)가 막혀 있으면(둘러보기 중에 뭔가 놓았을 때) 시작 필지 안에서 놓을 수 있는 첫 자리를 찾는다. */
+function stampMain(state: GameState): void {
+  if (Object.values(state.objects).some((o) => o.type === MAIN_TYPE)) return;
+  const { x: ox, y: oy } = START_ORIGIN;
+  if (stamp(state, MAIN_TYPE, ox + START_MAIN.lx, oy + START_MAIN.ly)) return;
+  const size = MAIN_SIZE[1]!;
+  for (let ly = 0; ly < PARCEL_H; ly++) for (let lx = 0; lx < PARCEL_W; lx++) {
+    if (canPlaceMain(state, ox + lx, oy + ly, size.w, size.h).ok && stamp(state, MAIN_TYPE, ox + lx, oy + ly)) return;
+  }
+}
+
+/** §7.2 건너뛰기: 맨땅에 기존 완성 시작 상태(본관·올렛길·테이블 2·파라솔·메뉴 3종)를 채운다. 이미 있는 칸은 건너뛴다. */
 export function fillStarterLayout(state: GameState): void {
   const { x: ox, y: oy } = START_ORIGIN;
+  stampMain(state);
   for (const c of START_PATH) stamp(state, 'path', ox + c.lx, oy + c.ly);
   for (const st of START_SEATS) stamp(state, st.type, ox + st.lx, oy + st.ly);
   for (const m of START_MENUS) {
@@ -266,9 +281,8 @@ export function createInitialState(seed: number, playerId = 'local', createdAt =
   // 시작 필지(1번, 정중앙): 정류장은 필지 아래 변의 마을 길에 (첫날부터 손님이 온다)
   const { x: ox, y: oy } = START_ORIGIN;
   stamp(state, 'busstop', ox, oy + PARCEL_H - 1);
-  stamp(state, 'warehouse', ox + 3, oy + 1); // 문 = 정면 왼쪽 (ox+3, oy+2), 그 앞 (ox+3, oy+3)이 창고 앞
   stamp(state, 'gate', ox + 4, oy + PARCEL_H - 2); // 정낭 칸은 gate kind라 걷기 가능(path.ts)
-  // §5 완성 시작 상태(올렛길 + 테이블 2 + 파라솔 1 + 메뉴 3종)는 'starter'일 때만. 'tutorial'(§7.1)은 빈 마당 — 손님은 좌석·길·메뉴가 갖춰질 때까지 안 온다(canOpen).
+  // §5 완성 시작 상태(본관 + 올렛길 + 테이블 2 + 파라솔 1 + 메뉴 3종)는 'starter'일 때만. 'tutorial'(§7.1·w-start)은 맨땅 — 본관은 튜토리얼 2단계에서 직접 짓고(placeMain), 손님은 본관·좌석·길·메뉴가 갖춰질 때까지 안 온다(canOpen).
   if (layout === 'starter') { fillStarterLayout(state); unlockTutorialFeatures(state); }
   const rng = { rng: seed ^ 0x5eed };
   for (const p of parcels) stampParcelObjects(state, p, rng);

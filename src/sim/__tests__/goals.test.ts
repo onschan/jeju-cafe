@@ -190,13 +190,15 @@ describe('목표 체인 진행', () => {
     for (const r of rs) expect(goalRewardText(r).length).toBeGreaterThan(0);
   });
 
-  it('canOpen(§7.1): 빈 마당은 손님 0, 길·좌석이 생기면 열린다 (튜토리얼 중엔 메뉴도 필요)', () => {
+  it('canOpen(§7.1): 맨땅은 손님 0, 본관·길·좌석이 생기면 열린다 (튜토리얼 중엔 메뉴도 필요)', () => {
     const s = createInitialState(1, 'local', 0, 'tutorial');
     expect(canOpen(s)).toBe(false);
     expect(s.menuSlots.every((m) => m === null)).toBe(true);
     for (let d = 0; d < 2; d++) tick(s, DAY_MS);
     expect(s.totalGuests).toBe(0);
     s.menuSlots[0] = 'americano';
+    expect(canOpen(s)).toBe(false);
+    expect(apply(s, { type: 'placeMain', ...at(3, 1) }).ok).toBe(true); // w-start: 본관 없이는 안 열린다
     expect(canOpen(s)).toBe(false);
     for (const c of [{ lx: 3, ly: 3 }, { lx: 4, ly: 3 }, { lx: 4, ly: 4 }, { lx: 4, ly: 5 }]) expect(apply(s, { type: 'place', objectType: 'path', ...at(c.lx, c.ly) }).ok).toBe(true);
     expect(canOpen(s)).toBe(false);
