@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { useGame } from './store';
 import { Icon } from './Icon';
 import { fmtNum } from '../sim/format.ts';
-import { TUTORIAL_STEPS, tutorialDone } from '../sim/index.ts';
+import { TUTORIAL_STEPS, tutorialDone, mainBuilding } from '../sim/index.ts';
 import { currentGoal, urgentChallenge } from './simBridge';
 import { PALETTE } from './frame';
 import { TutorialWindow } from './TutorialWindow';
@@ -15,7 +15,7 @@ export const GOAL_BAR_H = GOAL_LINE_H + CHALLENGE_LINE_H;
 /** 튜토리얼 배지 너비 (목표 줄 왼쪽 한 칸) */
 export const TUT_BADGE_W = 60;
 
-/** 목표 줄 왼쪽 「📖 n/30」 배지 (z-tutorial): 탭하면 튜토리얼 창(현재 단계 대사 다시 보기·장 목록·장 건너뛰기). 튜토리얼이 끝나면 안 보인다.
+/** 목표 줄 왼쪽 「📖 n/33」 배지 (z-tutorial): 탭하면 튜토리얼 창(현재 단계 대사 다시 보기·장 목록·장 건너뛰기). 튜토리얼이 끝나면 안 보인다.
  *  창은 #root에 포털로 띄운다 (목표 줄이 absolute라 그 안에 두면 갇힌다). */
 function TutorialBadge() {
   const s = useGame();
@@ -45,6 +45,7 @@ export function GoalBar({ top, onOpen }: { top: number; onOpen: () => void }) {
   const pct = g && g.max > 0 ? Math.min(100, Math.round((g.cur / g.max) * 100)) : 0;
   const cpct = c && c.max > 0 ? Math.min(100, Math.round((c.cur / c.max) * 100)) : 0;
   const badge = !tutorialDone(s);
+  const noMain = badge && !mainBuilding(s); // w-start: 본관을 짓기 전엔 첫 목표(아메리카노)를 이룰 수 없다 → 문구로 안내
   return (
     <div style={{ position: 'absolute', top, left: 0, right: 0, height: GOAL_BAR_H, zIndex: 10 }}>
       <TutorialBadge />
@@ -53,7 +54,9 @@ export function GoalBar({ top, onOpen }: { top: number; onOpen: () => void }) {
         <style>{'@keyframes goal-blink { 0%, 100% { filter: brightness(1); } 50% { filter: brightness(1.25); } }'}</style>
         <span style={{ height: GOAL_LINE_H, padding: '0 10px', paddingLeft: badge ? TUT_BADGE_W + 8 : 10, display: 'flex', alignItems: 'center', gap: 6, width: '100%', boxSizing: 'border-box' }}>
           <span style={{ color: PALETTE.title }}>▶</span>
-          {g ? (
+          {g && noMain ? (
+            <span data-testid="goal-no-main" style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis' }}>목표: <span style={{ color: PALETTE.title }}>먼저 본관을 지어요</span> · {g.title}</span>
+          ) : g ? (
             <>
               <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis' }}>목표: {g.title}</span>
               <span style={{ flex: 'none', color: done ? PALETTE.ink : PALETTE.inkSoft }}>{num(g.cur, g.max)}/{num(g.max, g.max)}</span>

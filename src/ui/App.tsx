@@ -3,7 +3,7 @@ import { wonText, label } from '../data/labels.ts';
 import { GameView, type GhostSpec, type RangeHint } from '../render/GameView';
 import { startLoop, dispatch, getState, useGame, setViewReset, autosaveNow, hasAnySave, loadSlot, setMonthCardHook, setSceneHook, showMessage, pauseGame, isSpeedLocked, setSpeedLocked } from './store';
 import { unlockAudio, bgm, isMuted, setMuted, getBgmVolume, getSfxVolume, setBgmVolume, setSfxVolume, sfx } from './audio';
-import { seasonOf, canPlace, objectAt, footprint, sizeOf, mainBuilding, parcelAt, clearCost, placeCost, PROTECTED_TYPES, ROTATABLE_TYPES, goalForMenu, featureOpen, canUndo, demolishRefund, canDisturb, routeAtCell, tutorialDone, type GameState } from '../sim/index.ts';
+import { seasonOf, canPlace, objectAt, footprint, sizeOf, mainBuilding, parcelAt, clearCost, placeCost, PROTECTED_TYPES, ROTATABLE_TYPES, goalForMenu, featureOpen, canUndo, demolishRefund, canDisturb, routeAtCell, tutorialDone, canBuildMain, recommendedMainCells, cellAt, doorFrontOf, MAIN_TYPE, MAIN_BUILD_COST, type GameState } from '../sim/index.ts';
 import { RoutesSection } from './RouteCard'; // 트랙 H
 import { objectDef } from '../data/index.ts';
 // render/·ui/는 Vite 전용이라 확장자 없는 import 허용. sim/·data/만 .ts 확장자 규칙.
@@ -105,6 +105,7 @@ function targetAt(s: GameState, x: number, y: number): CardTarget | null {
     return { kind: 'object', id: o.id };
   }
   if (clearCost(s, x, y) !== null) return { kind: 'rock', x, y };
+  if (cellAt(s, x, y).terrain === 'road') return { kind: 'road', x, y }; // w-start 둘러보기: 마을 길 칸 카드
   if (!p) return null;
   return { kind: 'empty', x, y };
 }
@@ -360,7 +361,8 @@ function Game({ onExit }: { onExit: () => void }) {
     if (PAINT_KINDS.has(objectDef(objectType).kind)) return;
     const st = getState();
     const home = st.parcels.find((p) => p.no === 1);
-    const at = origin ?? (home ? { x: home.x + Math.floor(home.w / 2), y: home.y + Math.floor(home.h / 2) } : { x: Math.floor(st.grid.w / 2), y: Math.floor(st.grid.h / 2) });
+    const center = home ? { x: home.x + Math.floor(home.w / 2), y: home.y + Math.floor(home.h / 2) } : { x: Math.floor(st.grid.w / 2), y: Math.floor(st.grid.h / 2) };
+    const at = origin ?? (objectType === MAIN_TYPE ? recommendedMainCells(st)[0] ?? center : center); // w-start: 본관 고스트는 추천 1순위 칸에서 시작
     setGhost({ x: at.x, y: at.y, rot: 0 });
   };
   /** 카메라를 본관에 (§5.6 홈 버튼) */
@@ -460,7 +462,31 @@ function Game({ onExit }: { onExit: () => void }) {
   let rangeHint: RangeHint | null = null;
   let ghostCell: { x: number; y: number; w: number; h: number } | null = null;
   let place: PlaceBarProps | null = null;
-  if (mode.kind === 'build') {
+  if (mode.kind === 'build' && mode.objectType === MAIN_TYPE) {
+    // w-start: 첫 본관 고스트 — 무료·1회, 문 앞 칸 미리보기(파란 마름모), 입지 배지는 주방 —(GameView), 확정하면 placeMain
+    const def = objectDef(MAIN_TYPE);
+    if (ghost) {
+      const can = canBuildMain(s, ghost.x, ghost.y);
+      const front = doorFrontOf({ type: MAIN_TYPE, x: ghost.x, y: ghost.y, w: def.w, h: def.h });
+      ghostSpec = { type: MAIN_TYPE, x: ghost.x, y: ghost.y, ok: can.ok, text: `${def.name} ${MAIN_BUILD_COST > 0 ? wonText(MAIN_BUILD_COST) : '무료'}`, w: def.w, h: def.h, door: front };
+      rangeHint = null;
+      ghostCell = { x: ghost.x, y: ghost.y, w: def.w, h: def.h };
+      place = {
+        text: `${def.name} · 무료 · 문은 앞쪽 왼쪽에 생겨요 · ${can.ok ? '여기에 지을 수 있어요' : (can.reason ?? '여기엔 못 지어요')}`,
+        ok: can.ok,
+        canRotate: false,
+        onUndo: null,
+        onConfirm: () => {
+          const r = dispatch({ type: 'placeMain', x: ghost.x, y: ghost.y });
+          if (!r.ok) { showMessage(r.reason ?? '여기엔 못 지어요'); return; }
+          setMode({ kind: 'idle' });
+          showMessage('카페 본관을 지었어요 — 문 앞 칸까지 올렛길을 이어요');
+        },
+        onRotate: () => {},
+        onCancel: () => setMode({ kind: 'idle' }),
+      };
+    }
+  } else if (mode.kind === 'build') {
     const def = objectDef(mode.objectType);
     const cost = placeCost(s, mode.objectType);
     if (PAINT_KINDS.has(def.kind)) {
@@ -564,7 +590,7 @@ function Game({ onExit }: { onExit: () => void }) {
     { key: 'menu', label: '메뉴판', icon: 'coffee' },
     { key: 'ingredients', label: '재료', icon: 'harvest' },
     { key: 'craft', label: '연구', icon: 'research', locked: !featureOpen(s, 'craft'), lockedText: '연구 개발은 목표를 이루면 열려요' },
-    { key: 'promo', label: '홍보', icon: 'promo', locked: !featureOpen(s, 'promote'), lockedText: '홍보는 튜토리얼 7단계에서 열려요' },
+    { key: 'promo', label: '홍보', icon: 'promo', locked: !featureOpen(s, 'promote'), lockedText: '홍보는 튜토리얼 10단계에서 열려요' },
     { key: 'building', label: '본관', icon: 'home' },
     { key: 'indoor', label: '실내', icon: 'chair' },
   ];
@@ -573,7 +599,7 @@ function Game({ onExit }: { onExit: () => void }) {
     { key: 'staff', label: '직원', icon: 'staff', badge: s.staff.filter((st) => st.energy < 20).length },
     { key: 'candidates', label: '채용', icon: 'hire', badge: s.candidates.length },
     { key: 'guests', label: '손님', icon: 'guest', badge: s.guests.length },
-    { key: 'codex', label: '도감', icon: 'book', locked: !featureOpen(s, 'comboCodex'), lockedText: '콤보 도감은 튜토리얼 6단계에서 열려요' },
+    { key: 'codex', label: '도감', icon: 'book', locked: !featureOpen(s, 'comboCodex'), lockedText: '콤보 도감은 튜토리얼 9단계에서 열려요' },
     { key: 'quests', label: '부탁', icon: 'quest', badge: offered },
     { key: 'rivals', label: '라이벌', icon: 'rival', locked: !featureOpen(s, 'challenge'), lockedText: '카페 대결은 목표를 이루면 열려요', isNew: s.rivals.length > 0 },
   ];
