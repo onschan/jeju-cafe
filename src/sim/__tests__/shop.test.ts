@@ -7,7 +7,7 @@ import { placeObject } from '../grid.ts';
 import { objectStats } from '../compat.ts';
 import { sceneryScore } from '../grid.ts';
 import { grantItem, itemEffect, ITEM_SCENERY_CAP } from '../items.ts';
-import { rollPrize, hasFreeDraw, canDrawTicket, SEED_PACK, DRAW_MONEY_PER_YEAR, UNIFORM_PIECES_PER_SET, MONTHLY_FREE_TICKETS } from '../shop.ts';
+import { rollPrize, hasFreeDraw, canDrawTicket, SEED_PACK, DRAW_MONEY_PER_YEAR, UNIFORM_PIECES_PER_SET, MONTHLY_FREE_TICKETS, MID_MONTH_TICKET_DAY } from '../shop.ts';
 import { START_BUILDERS, MAX_BUILDERS } from '../build.ts';
 import { addMileage, checkCodexMileage, monthlyMileage, CODEX_PER_MILEAGE } from '../mileage.ts';
 import { discoverCombos } from '../compat.ts';
@@ -166,13 +166,18 @@ test('인형뽑기 상품 적용: 돈은 5만×년차, 마일리지 +1, 유니�
   expect(seen.size).toBe(8);
 });
 
-test('매월 1일: 응모권 +1과 무료 추첨 리셋', () => {
+test('매월 1일 무료 추첨 리셋, 보름(15일)에 응모권 +1 (game-feel: 달 가운데 보상)', () => {
   const s = bareState(1);
   s.freeDrawMonth = -1;
   const tickets = s.tickets;
-  for (let d = 0; d < 31; d++) tick(s, DAY_MS);
-  expect(s.clock.month).toBe(4);
+  for (let d = 0; d < 13; d++) tick(s, DAY_MS); // 3월 14일
+  expect(s.tickets).toBe(tickets);
+  tick(s, DAY_MS); // 3월 15일 아침
+  expect(s.clock.day).toBe(MID_MONTH_TICKET_DAY);
   expect(s.tickets).toBe(tickets + MONTHLY_FREE_TICKETS);
+  for (let d = 0; d < 17; d++) tick(s, DAY_MS);
+  expect(s.clock.month).toBe(4);
+  expect(s.tickets).toBe(tickets + MONTHLY_FREE_TICKETS); // 1일엔 응모권 없음
   expect(s.freeDrawMonth).toBe(monthIndex(s.clock));
 });
 

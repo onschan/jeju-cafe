@@ -16,7 +16,7 @@ import { dailyBoard, monthlyBoard } from './board.ts';
 import { pruneEffects } from './effects.ts';
 import { resolveDevelop } from './craft.ts';
 import { advanceConstruction } from './build.ts';
-import { monthlyShop } from './shop.ts';
+import { monthlyShop, dailyShop } from './shop.ts';
 import { monthlyRank } from './guidebook.ts';
 import { monthlyMileage } from './mileage.ts';
 import { dailySpots, monthlySpots } from './spots.ts';
@@ -66,6 +66,7 @@ function onNewDay(state: GameState): void {
   dailyRooms(state); // y-indoor: 본관 증축·이동·2층 완공, 어제 이용률, 난로 자동 ON
   evaluateUnlocks(state); // game-feel: 손님층·시설 해금·랭크업을 월초가 아니라 조건을 채운 날에 (월초 몰림 방지)
   checkGoals(state);
+  dailyShop(state); // game-feel: 보름 응모권
 }
 
 /** 월 바뀜 (1일의 날 처리보다 먼저): (3월) 급여 인상 → 월급 → 홍보 만료·인기 감소 → 유지비 → 투어 버스 → (3월) 소득세 → 명소 월 정산·선물 → 손님 수 마일리지 → 정산 → 실패 상태(경고·대출·상환·위기) → 평판 후기 → 농원 수확 → 후보 만료 → 손님 해금 → 게시판 → 응모권·무료 추첨 → ★·가이드북 발표 → 라이벌 (빅 이벤트 판정은 매일 onNewDay) */
