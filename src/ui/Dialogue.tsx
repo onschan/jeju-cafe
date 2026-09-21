@@ -12,18 +12,19 @@ import { brownBtn, brownBtnOn, PALETTE } from './frame';
 export const TYPE_MS = 20;
 const FIXED_PORTRAITS = new Set(['halmang', 'samchun', 'hero', 'haenyeo', 'jangnim']);
 
-/** 초상 64×64: 고정 인물은 아이콘 png, 직원·손님 id는 파츠 초상 */
+/** 초상 96×96 (48 원본 2배): 고정 인물은 아이콘 png(portrait_<key>[_<expr>]), 직원·손님 id는 파츠 초상 */
+const PORTRAIT_PX = 96;
 function Speaker({ portrait }: { portrait: string }) {
   const s = useGame();
   if (FIXED_PORTRAITS.has(portrait)) {
-    return <img className="px" src={assetUrl(`assets/icons/portrait_${portrait}.png`)} width={64} height={64} alt="" style={{ flex: 'none', imageRendering: 'pixelated', border: `2px solid ${PALETTE.woodLight}`, borderRadius: 6, background: PALETTE.paperDark }} />;
+    return <img className="px" src={assetUrl(`assets/icons/portrait_${portrait}.png`)} width={PORTRAIT_PX} height={PORTRAIT_PX} alt="" style={{ flex: 'none', imageRendering: 'pixelated', border: `2px solid ${PALETTE.woodLight}`, borderRadius: 6, background: PALETTE.paperDark }} />;
   }
   const st = s.staff.find((x) => x.id === portrait) ?? s.candidates.find((x) => x.id === portrait);
   if (st) return <Portrait parts={staffParts(st.face, 'role' in st ? st.role : null, s.uniform ?? null)} face={st.face} />;
   const g = s.guests.find((x) => x.id === portrait);
   if (g?.namedId) { const nd = namedGuestDef(g.namedId); return <Portrait parts={namedPortraitParts(nd.id)} face={namedGuestFace(nd)} />; }
   if (g) return <Portrait parts={guestPortraitParts(g.type)} face={guestFace(g.type)} />;
-  return <img className="px" src={assetUrl('assets/icons/portrait_halmang.png')} width={64} height={64} alt="" style={{ flex: 'none', imageRendering: 'pixelated' }} />;
+  return <img className="px" src={assetUrl('assets/icons/portrait_halmang.png')} width={PORTRAIT_PX} height={PORTRAIT_PX} alt="" style={{ flex: 'none', imageRendering: 'pixelated' }} />;
 }
 
 /** 한 페이지(최대 2줄)를 타자 효과로. 탭하면 즉시 전부. */

@@ -112,7 +112,7 @@ export function ScoreCard({ score, record, cafeName }: { score: FinalScore; reco
 function SpeakerLine({ l }: { l: SpokenLine }) {
   return (
     <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
-      <img className="px" src={assetUrl(`assets/icons/portrait_${l.speaker}.png`)} width={32} height={32} alt="" style={{ imageRendering: 'pixelated', flex: 'none', border: `2px solid ${PALETTE.wood}`, borderRadius: 4 }} />
+      <img className="px" src={assetUrl(`assets/icons/portrait_${l.speaker}.png`)} width={48} height={48} alt="" style={{ imageRendering: 'pixelated', flex: 'none', border: `2px solid ${PALETTE.wood}`, borderRadius: 4 }} />
       <div style={{ fontSize: 15, lineHeight: 1.35 }}><b>{SPEAKER_NAME[l.speaker]}</b> {l.line}</div>
     </div>
   );

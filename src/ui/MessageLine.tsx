@@ -22,7 +22,7 @@ export function MessageLine({ bottom }: { bottom: number }) {
       )}
       <button onClick={() => setOpen((v) => !v)} aria-label="최근 메시지" aria-expanded={open}
         style={{ width: '100%', height: MESSAGE_LINE_H, padding: '0 8px', border: 0, borderTop: `1px solid ${PALETTE.woodLight}`, background: fresh ? PALETTE.paper : PALETTE.paperDark, color: fresh ? PALETTE.ink : PALETTE.inkSoft, fontFamily: 'inherit', fontSize: 13, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6, textAlign: 'left', whiteSpace: 'nowrap', overflow: 'hidden', boxSizing: 'border-box', transition: 'background .3s, color .3s' }}>
-        <img className="px" src={assetUrl('assets/icons/portrait_samchun.png')} width={20} height={20} alt="" style={{ flex: 'none', imageRendering: 'pixelated', borderRadius: 3, opacity: head ? 1 : 0.4 }} />
+        <img className="px" src={assetUrl('assets/icons/portrait_samchun.png')} width={24} height={24} alt="" style={{ flex: 'none', imageRendering: 'pixelated', borderRadius: 3, opacity: head ? 1 : 0.4 }} />
         <span data-testid="message-text" style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis' }}>{head?.text ?? ''}</span>
       </button>
     </div>

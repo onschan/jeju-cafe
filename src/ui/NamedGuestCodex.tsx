@@ -34,7 +34,7 @@ export function NamedGuestCodex() {
         return (
           <div key={g.id} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4, fontSize: 14, opacity: met ? 1 : 0.6 }} data-testid={`codex-${g.id}`}>
             <span style={{ filter: met ? 'none' : 'brightness(0) opacity(0.55)', display: 'inline-flex' }}>
-              <Portrait parts={namedPortraitParts(g.id)} face={namedGuestFace(g)} size={32} />
+              <Portrait parts={namedPortraitParts(g.id)} face={namedGuestFace(g)} size={48} />
             </span>
             <span style={{ flex: 1, minWidth: 0 }}>
               <b>{met ? g.name : '???'}</b>{met && st?.regular && <span style={{ color: PALETTE.btnOn }}> ★</span>}

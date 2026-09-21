@@ -6,7 +6,7 @@ import { useGame } from './store';
 import { guestFace, walletOf, canAcceptQuest, namedGuestFace, AFFINITY_MAX, type Guest, type GuestTypeState } from '../sim/index.ts';
 import { guestTypeDef, questDef, namedGuestDef, regionDef, NAMES } from '../data/index.ts';
 import { guestParts, staffParts, namedGuestParts, type CharacterParts } from '../render/character';
-import { drawPortrait, PORTRAIT_SIZE } from '../render/portrait';
+import { drawPortrait, PORTRAIT_SIZE, PORTRAIT_DISPLAY, type PortraitExpr } from '../render/portrait';
 import { Popup } from './Popup';
 import { Bar, Face } from './Bars';
 import { brownBtn, brownBtnOn, PALETTE } from './frame';
@@ -16,14 +16,14 @@ const MOOD_TEXT: Record<string, string> = { happy: '기분 좋음', meh: '그저
 const MOOD_ICON: Record<string, string> = { happy: 'mood_happy', meh: 'mood_meh', angry: 'mood_angry' };
 const REASON_TEXT: Record<string, string> = { no_menu: '먹을 게 없어요', scenery: '경치가 아쉬워요', wait: '오래 기다렸어요', price: '너무 비싸요' };
 
-/** 파츠 초상(캔버스). 시트가 없으면 색 사각형 얼굴로. */
-export function Portrait({ parts, size = PORTRAIT_SIZE, face }: { parts: CharacterParts; size?: number; face: FaceParts }) {
+/** 파츠 초상(캔버스, 48 원본 → size로 픽셀 확대; 기본 96). 시트가 없으면 색 사각형 얼굴로. */
+export function Portrait({ parts, size = PORTRAIT_DISPLAY, face, expr = 'normal' }: { parts: CharacterParts; size?: number; face: FaceParts; expr?: PortraitExpr }) {
   const ref = useRef<HTMLCanvasElement>(null);
   const okRef = useRef(true);
   useEffect(() => {
-    if (ref.current) okRef.current = drawPortrait(ref.current, parts);
+    if (ref.current) okRef.current = drawPortrait(ref.current, parts, expr);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [parts.skin, parts.hairStyle, parts.hairColor, parts.top, parts.accs.join(',')]);
+  }, [parts.skin, parts.hairStyle, parts.hairColor, parts.top, parts.accs.join(','), parts.portrait, expr]);
   return (
     <span style={{ display: 'inline-block', width: size, height: size, background: PALETTE.paperDark, border: `2px solid ${PALETTE.woodLight}`, borderRadius: 6, overflow: 'hidden', flex: 'none' }}>
       <canvas ref={ref} width={PORTRAIT_SIZE} height={PORTRAIT_SIZE} style={{ width: size, height: size, imageRendering: 'pixelated', display: okRef.current ? 'block' : 'none' }} aria-label="초상" />

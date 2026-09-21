@@ -128,7 +128,7 @@ function GuestCard({ s, id, a }: { s: GameState; id: string; a: CardActions }) {
   return (
     <div data-testid="card-guest">
       <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-        {nd ? <Portrait parts={namedPortraitParts(nd.id)} face={namedGuestFace(nd)} size={56} /> : <Portrait parts={guestPortraitParts(g.type)} face={guestFace(g.type)} size={56} />}
+        {nd ? <Portrait parts={namedPortraitParts(nd.id)} face={namedGuestFace(nd)} size={64} /> : <Portrait parts={guestPortraitParts(g.type)} face={guestFace(g.type)} size={64} />}
         <div style={{ flex: 1, minWidth: 0, fontSize: 14, lineHeight: 1.5 }}>
           <div><b>{guestName(g)}</b>{quest && <span style={{ color: PALETTE.bad, fontWeight: 700 }}> !</span>}</div>
           <div style={small}>예산 {def.wallet > 0 ? wonText(walletOf(s, g.type)) : '없음'} · {state}</div>
@@ -177,7 +177,7 @@ function StaffCard({ s, id, a }: { s: GameState; id: string; a: CardActions }) {
   return (
     <div data-testid="card-staff">
       <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-        <Portrait parts={staffParts(st.face, st.role, s.uniform ?? null)} face={st.face} size={56} />
+        <Portrait parts={staffParts(st.face, st.role, s.uniform ?? null)} face={st.face} size={64} />
         <div style={{ flex: 1, minWidth: 0, fontSize: 14, lineHeight: 1.5 }}>
           <div><b>{st.name}</b> <span style={small}>{away ? `연수 중 (${away.name} ${st.training!.daysLeft}일)` : st.role ? roleDef(st.role).name : '쉬는 중'} · Lv.{st.level}/{st.maxLevel}</span></div>
           <div style={{ fontSize: 12, color: PALETTE.inkSoft, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>특기 {skillsOf(st).map((id) => skillDef(id).name).join(' · ')}{st.level < st.maxLevel ? ` · 경험치 ${Math.floor(st.exp)}/${expNeeded(st.level)}` : ''}</div>

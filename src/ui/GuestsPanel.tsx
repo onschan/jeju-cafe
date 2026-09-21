@@ -74,7 +74,7 @@ function TargetSlots({ s }: { s: GameState }) {
             return (
               <button key={id} data-tut={ui === 0 ? 'target-pick' : undefined} aria-pressed={on} disabled={full} onClick={() => toggle(id)}
                 style={{ ...(on ? brownBtnOn : brownBtn), margin: 0, minHeight: 40, padding: '0 8px', fontSize: 13, opacity: full ? 0.5 : 1, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                <Portrait parts={guestPortraitParts(id)} face={guestFace(id)} size={20} />{guestTypeDef(id).name}
+                <Portrait parts={guestPortraitParts(id)} face={guestFace(id)} size={24} />{guestTypeDef(id).name}
               </button>
             );
           })}
