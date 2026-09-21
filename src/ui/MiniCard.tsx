@@ -219,6 +219,7 @@ function ObjectCard({ s, id, a, onClose }: { s: GameState; id: string; a: CardAc
   return (
     <div data-testid="card-object">
       {o.type === 'spring' && <Hint id="spring" />}
+      {o.type === 'gate' && <Hint id="gate" />}{/* w-free: 정낭은 일반 시설 카드(이동·회전·철거·같은 것 더) + 둘러보기 힌트 */}
       <div style={{ fontSize: 14, lineHeight: 1.5 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
           <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}><Icon name={KIND_ICON[d.kind] ?? 'build'} size={18} /> <b>{o.name ?? d.name}</b>{o.name && <span style={small}> ({d.name})</span>}{st.level >= 2 && <b style={{ color: PALETTE.title }}> Lv{st.level}</b>}{o.build && <span style={{ color: PALETTE.title }}> · 짓는 중</span>}{st.wear > 0 && <span style={{ color: PALETTE.bad }}> · 낡았어요 (인기 −{st.wear})</span>}</span>
@@ -261,15 +262,16 @@ function RockCard({ s, x, y, onClose }: { s: GameState; x: number; y: number; on
   const terrain = cellAt(s, x, y).terrain;
   const name = terrain === 'rock_big' ? '큰 바위' : terrain === 'rock' ? '바위' : '곶자왈 덤불';
   const can = canClearRock(s, x, y);
-  const free = hasPickaxe(s);
+  const discount = hasPickaxe(s);
+  // w-free: 「치우기 ₩N」 버튼 하나 — 즉시·건축가 불필요. 곡괭이가 있으면 50% 할인 표시
   return (
     <div data-testid="card-rock">
       {terrain !== 'soil' && <Hint id="rock" />}
       <div style={{ fontSize: 14, lineHeight: 1.5 }}>
         <div><b>{name}</b> <span style={small}>({x},{y})</span></div>
-        <div style={small}>치우기 비용 {free ? '곡괭이 1개' : wonText(cost)} · 기간 즉시{!can.ok && can.reason && ` · ${can.reason}`}</div>
+        <div style={small}>바로 치울 수 있어요{discount && ' · 곡괭이 50% 할인'}{!can.ok && can.reason && ` · ${can.reason}`}</div>
       </div>
-      <Row><button style={can.ok ? btnOn : btnOff} disabled={!can.ok} onClick={() => { if (dispatch({ type: 'clearRock', x, y }).ok) onClose(); }}><Icon name="remove" /> 치우기</button></Row>
+      <Row><button data-testid="rock-clear" style={can.ok ? btnOn : btnOff} disabled={!can.ok} onClick={() => { if (dispatch({ type: 'clearRock', x, y }).ok) onClose(); }}><Icon name="remove" /> 치우기 {wonText(cost)}</button></Row>
     </div>
   );
 }
@@ -330,10 +332,10 @@ function BusStopCard({ s, id }: { s: GameState; id: string }) {
   })();
   return (
     <div data-testid="card-busstop">
-      <Hint id={o?.type === 'gate' ? 'gate' : 'busstop'} />
+      <Hint id="busstop" />
       <div style={{ fontSize: 14, lineHeight: 1.5 }}>
         <div><Icon name="calendar" size={18} /> <b>{name}</b></div>
-        <div style={small}>이번 달 손님 {s.monthGuests}명 · 지금 {s.guests.length}명{o?.type === 'gate' ? ' · 손님은 여기서 올렛길로 들어와요' : ` · 다음 버스 ${nextBus}`}</div>
+        <div style={small}>이번 달 손님 {s.monthGuests}명 · 지금 {s.guests.length}명 · 다음 버스 {nextBus}</div>
       </div>
     </div>
   );

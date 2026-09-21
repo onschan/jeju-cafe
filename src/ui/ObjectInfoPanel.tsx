@@ -23,7 +23,7 @@ function Stat({ icon, label, value, good }: { icon?: string; label: string; valu
   );
 }
 
-/** 바위·큰 바위·곶자왈 덤불 칸: 치우기 + 비용 (곡괭이가 있으면 무료) */
+/** 바위·큰 바위·곶자왈 덤불 칸: 즉시 치우기 + 비용 (곡괭이가 있으면 50% 할인, w-free) */
 export function RockPanel({ x, y }: { x: number; y: number }) {
   const s = useGame();
   const cost = clearCost(s, x, y);
@@ -31,14 +31,14 @@ export function RockPanel({ x, y }: { x: number; y: number }) {
   const terrain = cellAt(s, x, y).terrain;
   const name = terrain === 'rock_big' ? '큰 바위' : terrain === 'rock' ? '바위' : '곶자왈 덤불';
   const can = canClearRock(s, x, y);
-  const free = hasPickaxe(s);
-  const desc = terrain === 'rock_big' ? '오름 능선의 큰 바위예요. 치우려면 힘이 많이 들어요.' : terrain === 'rock' ? '길을 막는 돌멩이. 치우면 흙 칸이 돼요.' : '가시덤불이에요. 치우면 흙 칸이 돼요.';
+  const discount = hasPickaxe(s);
+  const desc = terrain === 'rock_big' ? '오름 능선의 큰 바위예요. 치우는 데 돈이 더 들어요.' : terrain === 'rock' ? '길을 막는 돌멩이. 치우면 바로 흙 칸이 돼요.' : '가시덤불이에요. 치우면 바로 흙 칸이 돼요.';
   return (
     <div data-testid="rock-panel">
       <div style={{ marginBottom: 2 }}><b>{name}</b> <span style={{ fontSize: 13, color: PALETTE.inkSoft }}>· 지형 ({x},{y})</span></div>
       <div style={{ fontSize: 13, color: PALETTE.inkSoft, marginBottom: 6 }}>{desc}</div>
       <button style={can.ok ? brownBtnOn : brownBtnOff} disabled={!can.ok} onClick={() => dispatch({ type: 'clearRock', x, y })}>
-        <Icon name="remove" /> 치우기 ({free ? '곡괭이 1개' : wonText(cost)}){!can.ok && can.reason && ` · ${can.reason}`}
+        <Icon name="remove" /> 치우기 {wonText(cost)}{discount && ' (곡괭이 할인)'}{!can.ok && can.reason && ` · ${can.reason}`}
       </button>
     </div>
   );
