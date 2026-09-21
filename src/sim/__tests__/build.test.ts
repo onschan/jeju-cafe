@@ -5,7 +5,7 @@ import { tick } from '../tick.ts';
 import { DAY_MS } from '../clock.ts';
 import { dayIndex } from '../effects.ts';
 import { objectAt } from '../grid.ts';
-import { buildDaysOf, constructions, buildDaysLeft, canStartBuild, START_BUILDERS } from '../build.ts';
+import { buildDaysOf, effectiveBuildDays, constructions, buildDaysLeft, canStartBuild, START_BUILDERS, FAST_HAMMER_ITEM, INSTANT_HAMMER_ITEM } from '../build.ts';
 import { seatsOf } from '../cafe.ts';
 import { freeSeats } from '../guests.ts';
 import { FACILITIES, objectDef, BUILD_DAYS_BY_TIER } from '../../data/index.ts';
@@ -61,4 +61,27 @@ test('동시 건설은 일꾼 수(기본 2)까지, 일꾼을 사면 늘어난다
   expect(apply(s, { type: 'buyMileage', id: 'ms_worker_3' }).ok).toBe(true);
   expect(apply(s, { type: 'place', objectType: BUILT.id, x: X(9), y: Y(4) }).ok).toBe(true);
   expect(constructions(s)).toHaveLength(3);
+});
+
+test('ease 망치 아이템: 빠른 건축 망치는 공사 −1일(최소 1일, 안 줄어듦), 곰 삼춘의 망치는 다음 공사 1건 즉시 완공(1개 소모)', () => {
+  const s = bareState(1);
+  s.money = 100_000_000;
+  s.unlocked.objects.push(BUILT.id);
+  const base = buildDaysOf(BUILT.id);
+  expect(effectiveBuildDays(s, BUILT.id)).toBe(base);
+  expect(effectiveBuildDays(s, 'path')).toBe(0);
+  s.inventory[FAST_HAMMER_ITEM] = 1;
+  expect(effectiveBuildDays(s, BUILT.id)).toBe(Math.max(1, base - 1));
+  expect(apply(s, { type: 'place', objectType: BUILT.id, x: X(6), y: Y(4) }).ok).toBe(true);
+  const o = objectAt(s, X(6), Y(4))!;
+  expect(o.build).toEqual({ doneDay: dayIndex(s.clock) + Math.max(1, base - 1), days: Math.max(1, base - 1) });
+  expect(s.inventory[FAST_HAMMER_ITEM]).toBe(1);
+  s.inventory[INSTANT_HAMMER_ITEM] = 1;
+  expect(effectiveBuildDays(s, BUILT.id)).toBe(0);
+  expect(apply(s, { type: 'place', objectType: BUILT.id, x: X(1), y: Y(4) }).ok).toBe(true);
+  const o2 = objectAt(s, X(1), Y(4))!;
+  expect(o2.build).toBeUndefined();
+  expect(s.inventory[INSTANT_HAMMER_ITEM]).toBe(0);
+  expect(s.notices.at(-1)).toContain('곰 삼춘의 망치');
+  expect(effectiveBuildDays(s, BUILT.id)).toBe(Math.max(1, base - 1));
 });

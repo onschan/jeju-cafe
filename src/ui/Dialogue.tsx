@@ -75,8 +75,11 @@ function DialogueBox({ req, page }: { req: DialogueReq; page: number }) {
           </div>
         </div>
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6, flexWrap: 'wrap', minHeight: 44 }}>
-          {page === 0 && req.onSkip && (
-            <button aria-label="건너뛰기" style={{ ...brownBtn, margin: 0, background: '#fffaf0', color: PALETTE.inkSoft, marginRight: 'auto' }} onClick={() => { const skip = req.onSkip!; closeDialogue(); skip(); }}>건너뛰기</button>
+          {(req.onSkipStep || (page === 0 && req.onSkip)) && (
+            <span style={{ display: 'flex', gap: 6, marginRight: 'auto' }}>
+              {req.onSkipStep && <button aria-label="이미 알아요" data-testid="tutorial-skip-step" style={{ ...brownBtn, margin: 0, background: '#fffaf0', color: PALETTE.inkSoft }} onClick={() => { const skip = req.onSkipStep!; closeDialogue(); skip(); }}>이미 알아요</button>}
+              {page === 0 && req.onSkip && <button aria-label="건너뛰기" style={{ ...brownBtn, margin: 0, background: '#fffaf0', color: PALETTE.inkSoft }} onClick={() => { const skip = req.onSkip!; closeDialogue(); skip(); }}>건너뛰기</button>}
+            </span>
           )}
           {!typed || !last
             ? <button aria-label="다음" style={{ ...brownBtn, margin: 0 }} onClick={tap}>{typed ? '다음 ▶' : '▶'}</button>

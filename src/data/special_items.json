@@ -128,15 +128,15 @@
     "effectText": "겨울 손님 ×1.2"
   },
   {
-    "id": "pickaxe",
-    "name": "바위 곡괭이",
+    "id": "fast_hammer",
+    "name": "빠른 건축 망치",
     "sources": [
       {
         "type": "mileage_shop"
       }
     ],
-    "sourceText": "마일리지 상점",
-    "effectText": "바위·덤불 치우기 50% 할인"
+    "sourceText": "마일리지 상점 3",
+    "effectText": "새로 짓는 시설 공사 −1일 (최소 1일)"
   },
   {
     "id": "worker_hire",
@@ -170,7 +170,7 @@
       }
     ],
     "sourceText": "마일리지 상점 4",
-    "effectText": "곶자왈 덤불 1칸 제거 (치우기 비용 없음)"
+    "effectText": "다음에 짓는 시설 1개 즉시 완공 (1개 소모)"
   },
   {
     "id": "little_guardian",

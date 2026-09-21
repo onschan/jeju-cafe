@@ -83,10 +83,10 @@ export function clearMessages(): void { messages = []; }
 
 /** 액션이 성공했을 때 내는 효과음 */
 const ACTION_SFX: Record<Action['type'], SfxName> = {
-  place: 'place', remove: 'remove',
+  place: 'place', placeLine: 'place', autoConnectPath: 'place', remove: 'remove', skipTutorialStep: 'tap',
   setSlot: 'tap', setSpeed: 'tap', dismissAlert: 'tap', dismissMonthCard: 'tap',
   postJob: 'tap', hire: 'tap', fire: 'tap', assign: 'tap', levelUp: 'tap', train: 'unlock', promote: 'tap', setTarget: 'tap',
-  move: 'place', rotate: 'tap', demolishMany: 'remove', undoLast: 'tap', renameObject: 'tap', setTargets: 'tap', upgradeObject: 'unlock', repairObject: 'place', buyParcel: 'unlock', useItem: 'unlock', clearRock: 'remove', renameCafe: 'tap', expand: 'unlock', setCosmetic: 'tap', praise: 'happy',
+  move: 'place', rotate: 'tap', demolishMany: 'remove', undoLast: 'tap', renameObject: 'tap', setTargets: 'tap', upgradeObject: 'unlock', repairObject: 'place', buyParcel: 'unlock', useItem: 'unlock', renameCafe: 'tap', expand: 'unlock', setCosmetic: 'tap', praise: 'happy',
   acceptQuest: 'tap', respondEvent: 'tap', investSpot: 'unlock', hostTour: 'fanfare', dismissTour: 'tap', setTourBus: 'tap', giveGift: 'happy', craftGift: 'unlock',
   develop: 'unlock', dismissDevelop: 'tap', addTopping: 'tap', removeTopping: 'tap', levelUpMenu: 'unlock',
   buyMileage: 'coin', buyTicket: 'coin', drawTicket: 'tap', dismissDraw: 'tap', setUniform: 'tap', useGuestItem: 'unlock', dismissAnnouncement: 'tap',

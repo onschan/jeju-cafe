@@ -15,7 +15,7 @@ export const POINTS_PER_GUEST_TYPE = 5;
 export const RANK_THRESHOLDS = [0, 50, 120, 220, 360, 550, 800, 1100, 1500, 2000];
 export const MAX_RANK = RANK_THRESHOLDS.length;
 /** 점수에 세는 시설: 길·돌담·정류장·정낭·본관·처음부터 있던 것은 제외 */
-const NOT_FACILITY = new Set(['path', 'stonewall', 'busstop', 'gate', 'warehouse', 'bush_wild', 'spring']);
+const NOT_FACILITY = new Set(['path', 'stonewall', 'busstop', 'gate', 'warehouse', 'spring']);
 
 export function facilityCount(state: GameState): number {
   let n = 0;

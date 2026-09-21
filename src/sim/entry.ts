@@ -394,7 +394,7 @@ export function canExpandParking(state: GameState, objectId: string): ApplyResul
     if (!parcelAt(state, p.x, p.y)?.owned) return { ok: false, reason: '옆 칸이 내 땅이 아니에요' };
     const other = objectAt(state, p.x, p.y);
     if (other && other.id !== o.id) return { ok: false, reason: '옆 칸이 비어 있어야 해요' };
-    if (!big.terrain.includes(cellAt(state, p.x, p.y).terrain)) return { ok: false, reason: '옆 칸 바위를 먼저 치워요' };
+    if (!big.terrain.includes(cellAt(state, p.x, p.y).terrain)) return { ok: false, reason: '옆 칸이 마을 길이에요' };
   }
   if (!touchesRoad(state, PARKING_EXPAND_TO, o.x, o.y)) return { ok: false, reason: '마을 길에 붙여 지어요' };
   return { ok: true };

@@ -38,9 +38,9 @@ test('필지별 지형·시작 오브젝트는 seed로 결정적이다', () => {
   const a = bareState(4), b = bareState(4);
   expect(a.grid.cells).toEqual(b.grid.cells);
   expect(a.objects).toEqual(b.objects);
-  // 곶자왈(3번) 덤불, 밭담(4번) 돌담, 용천수(6번) 샘
+  // 밭담(4번) 돌담, 용천수(6번) 샘 (ease: 곶자왈 덤불은 없다)
   const inParcel = (s: GameState, no: number, type: string) => Object.values(s.objects).filter((o) => o.type === type && parcelAt(s, o.x, o.y)?.no === no).length;
-  expect(inParcel(a, 3, 'bush_wild')).toBeGreaterThan(3);
+  expect(inParcel(a, 3, 'bush_wild')).toBe(0);
   expect(inParcel(a, 4, 'stonewall')).toBe(14);
   expect(inParcel(a, 6, 'spring')).toBe(1);
   expect(inParcel(a, 8, 'stonewall')).toBe(6); // 돌담 언덕
@@ -50,13 +50,13 @@ test('필지별 지형·시작 오브젝트는 seed로 결정적이다', () => {
     expect(o.placedMonth).toBeLessThanOrEqual(monthIndex(a.clock));
     expect(monthlyYieldOf(a, o)).toBe(0); // 아직 내 땅이 아니다
   }
-  // 오름(2번, 왼쪽 위)은 능선(y=2, x 2..7)이 큰 바위
-  for (let x = 2; x <= 7; x++) expect(cellAt(a, x, 2).terrain).toBe('rock_big');
+  // 오름(2번, 왼쪽 위) 옛 능선(y=2, x 2..7)도 흙
+  for (let x = 2; x <= 7; x++) expect(cellAt(a, x, 2).terrain).toBe('soil');
   // 해안(5번, 오른쪽 아래)은 먼 변 두 줄이 도로, 마을 어귀(7번)는 오른쪽 변이 길
   for (let x = 20; x < 30; x++) { expect(cellAt(a, x, 22).terrain).toBe('road'); expect(cellAt(a, x, 23).terrain).toBe('road'); }
   for (let y = 8; y < 16; y++) expect(cellAt(a, 29, y).terrain).toBe('road');
-  // 다른 seed면 지형이 다르다
-  expect(bareState(5).grid.cells).not.toEqual(a.grid.cells);
+  // 지형은 seed와 무관 (필지 배치만으로 정해진다)
+  expect(bareState(5).grid.cells).toEqual(a.grid.cells);
 });
 
 test('소유하지 않은 필지엔 못 짓는다', () => {
@@ -169,18 +169,11 @@ test('랜드마크는 필지당 하나, 데이터는 landmarks.json에서 온다
   expect(canPlace(s, 'hackberry', 12, 4).ok).toBe(true);
 });
 
-test('곶자왈 덤불은 5만 원에 치우고, 용천수는 못 치운다', () => {
+test('용천수는 못 치운다', () => {
   const s = bareState(1);
   own(s, 3, 6);
-  const bush = Object.values(s.objects).find((o) => o.type === 'bush_wild')!;
   const spring = Object.values(s.objects).find((o) => o.type === 'spring')!;
   expect(apply(s, { type: 'remove', objectId: spring.id }).ok).toBe(false);
-  s.money = 40_000;
-  expect(apply(s, { type: 'remove', objectId: bush.id }).reason).toBe('돈이 모자라요');
-  s.money = 60_000;
-  expect(apply(s, { type: 'remove', objectId: bush.id }).ok).toBe(true);
-  expect(s.money).toBe(10_000);
-  expect(s.objects[bush.id]).toBeUndefined();
 });
 
 test('move: 돈은 그대로, 칸이 옮겨지고, 막힌 곳이면 실패', () => {

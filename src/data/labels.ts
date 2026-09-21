@@ -193,7 +193,6 @@ export function conditionText(c: LooseCondition): string {
     case 'research': return `연구 포인트 ${n()} 모으기`;
     case 'namedGuest': return `이름 있는 손님 ${n()}명 만나기`;
     case 'promotion': case 'promote': return `홍보 ${n()}회 하기`;
-    case 'rocks': case 'clearRock': return `바위 ${n()}개 치우기`;
     case 'recipe': case 'develop': return `레시피 ${n()}개 개발하기`;
     case 'menus': return `메뉴 ${n()}개 올리기`;
     case 'none': return '조건 없음';

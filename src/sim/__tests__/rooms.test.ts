@@ -91,18 +91,17 @@ describe('본관 증축 (§8.1)', () => {
     expect(isMainClosed(s)).toBe(false);
     expect(s.notices.some((n) => n.includes('본관 증축 Lv2 완공'))).toBe(true);
   });
-  test('조건: 확장 칸에 시설·바위·남의 땅이 있으면 안 되고, 돈이 모자라면 안 된다. Lv4가 끝', () => {
+  test('조건: 확장 칸에 시설·마을 길·남의 땅이 있으면 안 되고, 돈이 모자라면 안 된다. Lv4가 끝', () => {
     const s = cafe();
     placeObject(s, 'table_out', X(6), Y(2));
     expect(canExpandMain(s).reason).toBe('시설을 먼저 치워요');
     apply(s, { type: 'remove', objectId: objectAt(s, X(6), Y(2))!.id });
-    cellAt(s, X(6), Y(1)).terrain = 'rock';
-    expect(canExpandMain(s).reason).toBe('바위를 먼저 치워요');
+    cellAt(s, X(6), Y(1)).terrain = 'road';
+    expect(canExpandMain(s).reason).toBe('여기엔 못 놓아요');
     cellAt(s, X(6), Y(1)).terrain = 'soil';
     s.money = 1_000_000;
     expect(canExpandMain(s).reason).toBe('돈이 모자라요');
     s.money = 100_000_000;
-    for (let x = 3; x <= 8; x++) for (let y = 1; y <= 4; y++) cellAt(s, X(x), Y(y)).terrain = 'soil'; // 시작 필지 바위 패턴((lx+ly)%7==3: (7,3)·(8,2)) 치움
     for (const lv of [2, 3, 4]) {
       expect(apply(s, { type: 'expandMain' }).ok, `Lv${lv}`).toBe(true);
       for (let i = 0; i < MAIN_EXPAND_DAYS; i++) tick(s, DAY_MS);
@@ -433,9 +432,9 @@ describe('z-polish: 올렛길 자동 연결·시설 플래그 캐시', () => {
     expect(r.laid).toBe(0);
     expect(r.need).toBe(autoPathCellCost());
     expect(objectAt(s, X(3), Y(3))).toBeNull();
-    // 문 앞이 큰 바위(길을 못 놓는 지형)면 이을 수 없다
+    // 문 앞이 남의 땅(올렛길을 못 놓는 칸)이면 이을 수 없다
     s.money = 100_000_000;
-    cellAt(s, X(3), Y(3)).terrain = 'rock_big';
+    s.parcels.find((p) => p.no === 1)!.owned = false;
     expect(autoConnectDoor(s, m).route).toBeNull();
   });
   test('indoorFlags 캐시 키는 배치 서명: actionLog가 캡(1,000)에 닿아도 철거를 바로 본다', () => {

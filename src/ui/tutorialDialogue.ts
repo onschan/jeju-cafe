@@ -56,14 +56,20 @@ export function skipCurrentChapter(): void {
   dispatchFn?.({ type: 'skipTutorialChapter' });
   shownFor = -1; // 다음 장 첫 대사를 띄운다
 }
+/** ease 「이미 알아요」: 이 단계만 보상 없이 통과 (해금만). 다음 단계 대사가 바로 뜬다. */
+export function skipCurrentStep(): void {
+  dispatchFn?.({ type: 'skipTutorialStep' });
+  shownFor = -1;
+}
 
 export const SKIP_TEXT = '이 장을 통째로 건너뛸까요? 단계 보상은 못 받아요.';
-/** 단계 대사를 띄운다 (다시 보기 포함). 닫으면 dlg:<id> 표식. */
-export function showTutorialStep(step: TutorialStep, opts: { skip?: boolean } = {}): void {
+/** 단계 대사를 띄운다 (다시 보기 포함). 닫으면 dlg:<id> 표식. skipStep(기본 true)이면 왼쪽 아래 「이미 알아요」— 그 단계만 보상 없이 통과 (ease). */
+export function showTutorialStep(step: TutorialStep, opts: { skip?: boolean; skipStep?: boolean } = {}): void {
   showDialogue({
     speaker: { name: SPEAKER_NAME[step.speaker], portrait: step.speaker },
     lines: step.lines,
     choices: [{ label: step.button, onPick: () => note(`dlg:${step.id}`) }],
+    onSkipStep: opts.skipStep === false ? undefined : () => { const s = stateFn?.(); if (s && s.tutorial.step === step.id - 1) skipCurrentStep(); },
     // 장 단위 건너뛰기 (보상 없음) — 확인에서 아니요를 누르면 대사를 다시 띄운다 (dlg 표식이 남아야 단계가 끝나므로)
     onSkip: opts.skip ? () => { void confirm(SKIP_TEXT, { title: '건너뛰기', yes: '건너뛰기', no: '계속 배우기' }).then((ok) => { if (ok) skipCurrentChapter(); else showTutorialStep(step, opts); }); } : undefined,
   });

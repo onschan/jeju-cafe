@@ -4,7 +4,7 @@ import { ISO_W, ISO_H } from './iso';
 
 export const TILE = 32;
 
-const TERRAIN_COLOR: Record<Terrain, number> = { soil: 0x8a6a3a, rock: 0x555555, rock_big: 0x3a3a44, road: 0x9a9a9a };
+const TERRAIN_COLOR: Record<Terrain, number> = { soil: 0x8a6a3a, road: 0x9a9a9a };
 const KIND_COLOR: Record<ObjectKind, number> = {
   tree: 0xe38b1e, seat: 0xd9c27a, wall: 0x3a3a3a, path: 0xc9b58a,
   building: 0x7a4a2a, deco: 0xaa66aa, busstop: 0x2a5aaa, gate: 0x6a4a2a, landmark: 0x8a6a3a, facility: 0x4a7a8a,

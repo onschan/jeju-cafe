@@ -42,7 +42,7 @@ export function siteOverlayKey(state: GameState): string {
   return `${layoutKey(state)}|${state.parcels.filter((p) => p.owned).map((p) => p.id).join(',')}`;
 }
 
-/** 내 땅의 빈 흙·바위 칸에 좌석 적합도 타일을 그린다 */
+/** 내 땅의 빈 흙 칸에 좌석 적합도 타일을 그린다 */
 export function drawSiteOverlay(g: Graphics, state: GameState): void {
   g.clear();
   const { w, h } = state.grid;

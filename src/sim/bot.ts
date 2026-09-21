@@ -6,7 +6,7 @@
  * - 첫날 후보 중 미소 최고를 홀로 채용. 2달째 전단 공고 → 기술 최고를 바리스타. 1년차 7월에 요리사, 2년차부터 빈 슬롯(2 + 년차 명까지).
  * - 열린 시설(감귤나무·화분·벤치·돌담·당근밭…)을 정해진 칸에 하나씩 놓는다. 시설 수 목표를 밀어 준다.
  * - 홍보가 열리면 돈 500만 넘고 기력 60 넘는 직원이 있을 때 전단 (한 달에 한 번).
- * - 필지 구매가 열리면 돈 800만 넘을 때 살 수 있는 필지를 산다. 바위 치우기가 열리면 소유 필지의 작은 바위를 한 달에 하나.
+ * - 필지 구매가 열리면 돈 800만 넘을 때 살 수 있는 필지를 산다.
  * - 연구 개발이 열리고 연구 20 이상이면 원두+우유 음료를 레시피 3개까지 개발하고 첫 메뉴를 메뉴판 4번 칸에 올린다.
  * - 돈 200만 미만이면 아르바이트. 마일리지 3 이상이면 일꾼 삼춘, 무료 인형뽑기, 아이템은 야외 테이블에.
  * - 팝업이 열리면 주말마다 돈이 500만 넘을 때 활기가 가장 높은 지역에 팝업.
@@ -28,7 +28,7 @@ import { POPULARITY_FRUIT } from '../data/index.ts';
 import { MAX_BUILDERS } from './build.ts';
 import { canUseItem } from './items.ts';
 import { isWeekend, canOpenPopup, bestRegion } from './popup.ts';
-import { featureOpen, currentGoal, activeGoals } from './goals.ts';
+import { featureOpen, goalClaimed, currentGoal, activeGoals } from './goals.ts';
 import { seatScore } from './site.ts';
 import { canBuyParcel, ownedParcels, parcelAt } from './parcels.ts';
 import { isWorn, canRepair } from './cleanliness.ts';
@@ -131,7 +131,7 @@ export const BOT_ANNEX_TYPE = 'annex_cafe';
 export const BOT_ANNEX_AT = at(-7, 0);
 export const BOT_ANNEX_PATH: { x: number; y: number }[] = [at(-7, 3), ...[-7, -6, -5, -4, -3, -2, -1].map((x) => at(x, 4))];
 export const BOT_ANNEX_RESERVE = 4_000_000;
-/** 산 필지의 확장 칸 (격자 절대 좌표): 3번 필지(위) 아래 두 줄, 4번 필지(왼쪽) 오른쪽 두 열. 안 산 필지·바위는 canPlace가 거른다. */
+/** 산 필지의 확장 칸 (격자 절대 좌표): 3번 필지(위) 아래 두 줄, 4번 필지(왼쪽) 오른쪽 두 열. 안 산 필지는 canPlace가 거른다. */
 export const BOT_EXTRA_CELLS: { x: number; y: number }[] = [
   ...[10, 11, 12, 13, 14, 15, 16, 17, 18, 19].flatMap((x) => [{ x, y: 6 }, { x, y: 7 }]),
   ...[8, 9].flatMap((x) => [8, 9, 10, 11, 12, 13, 14, 15].map((y) => ({ x, y }))),
@@ -416,29 +416,16 @@ function placeForQuest(s: GameState): void {
 }
 
 /** 열린 필지 중 살 수 있는 것을 하나 산다 */
+/** 봇의 레시피 개발 시점: 연구 개발은 처음부터 열려 있지만(ease) 봇은 예전처럼 g16(메뉴 4개) 뒤에만 — 1년차 밴드를 그대로 두려고 */
+function botCraftOpen(s: GameState): boolean {
+  return goalClaimed(s, 'g16');
+}
 function buyParcelIfAny(s: GameState): void {
   if (!featureOpen(s, 'parcel') || s.money < BOT_PARCEL_MIN_MONEY) return;
   for (const p of s.parcels) if (!p.owned && canBuyParcel(s, p.id).ok && canSpend(s, p.price) && apply(s, { type: 'buyParcel', id: p.id }).ok) return;
 }
 
-/** 봇의 바위 치우기 시점: 바위 치우기는 시작부터 열려 있지만(w-free) 봇은 예전 g12(필지 2개) 이후에만 치운다 — 1년차 배치·밴드를 그대로 두려고 */
-function botCanClearRock(s: GameState): boolean {
-  return ownedParcels(s).length >= 2;
-}
-/** 소유 필지의 작은 바위를 하나 치운다 (덤불도) */
-function clearOneRock(s: GameState): void {
-  if (!botCanClearRock(s) || s.money < 2_000_000) return;
-  for (const p of ownedParcels(s))
-    for (let ly = 0; ly < p.h; ly++)
-      for (let lx = 0; lx < p.w; lx++) {
-        const x = p.x + lx, y = p.y + ly;
-        const c = cellAt(s, x, y);
-        const o = objectAt(s, x, y);
-        if ((c?.terrain === 'rock' && !o) || o?.type === 'bush_wild') if (apply(s, { type: 'clearRock', x, y }).ok) return;
-      }
-}
-
-/** 트랙 H 유입 경로: 주차장(마을 길 옆 첫 자리) → 올레 표식·셔틀 정류장·선착장 + 진입점까지 올렛길(덤불·바위는 치운다) → 셔틀 계약 */
+/** 트랙 H 유입 경로: 주차장(마을 길 옆 첫 자리) → 올레 표식·셔틀 정류장·선착장 + 진입점까지 올렛길 → 셔틀 계약 */
 export const BOT_ROUTE_SITES: Record<'olle' | 'shuttle' | 'cruise', { x: number; y: number }> = { olle: { x: 3, y: 11 }, shuttle: { x: 15, y: 20 }, cruise: { x: 14, y: 0 } }; // 셔틀은 샘(15,19) 아래, 옆 열(x=16)로 마을 길까지
 /** 경로 시설에서 시작 필지 올렛길(가로 y=12 · 세로 x=14)까지 잇는 칸. 크루즈는 parcel2·parcel4를 지나므로 그 필지를 산 뒤에 이어진다. */
 const BOT_ROUTE_LINKS: Record<'olle' | 'shuttle' | 'cruise', { x: number; y: number }[]> = {
@@ -450,7 +437,6 @@ function laySteps(s: GameState, cells: { x: number; y: number }[]): void {
   for (const c of cells) {
     const o = objectAt(s, c.x, c.y);
     if (o?.type === 'path' || objectDef(o?.type ?? 'path').kind === 'busstop') continue;
-    if ((o?.type === 'bush_wild' || (!o && cellAt(s, c.x, c.y).terrain === 'rock')) && botCanClearRock(s)) apply(s, { type: 'clearRock', x: c.x, y: c.y });
     if (!objectAt(s, c.x, c.y)) apply(s, { type: 'place', objectType: 'path', ...c });
   }
 }
@@ -509,7 +495,7 @@ function monthlyPlan(s: GameState, monthsPlayed: number): void {
   else hireForFreeSlot(s);
 
   // 홍보: 매달 전단 (돈 100만 넘고 기력 60 넘는 직원), 돈 400만 넘으면 SNS도 — 인기가 손님 수를 정하므로 (§4.2 #1) 꾸준히
-  if (featureOpen(s, 'promote') && s.money > FLYER_MIN_MONEY) {
+  if (s.money > FLYER_MIN_MONEY) {
     const st = s.staff.find((x) => x.role !== null && x.energy > FLYER_MIN_ENERGY);
     if (st) apply(s, { type: 'promote', staffId: st.id, promotionId: 'flyer' });
     const st2 = s.staff.find((x) => x.role !== null && x.energy > FLYER_MIN_ENERGY);
@@ -517,7 +503,7 @@ function monthlyPlan(s: GameState, monthsPlayed: number): void {
   }
 
   // 평판이 40 아래면 사과 이벤트 (월 1회, 50만) — 청소·수리(트랙 A repairObject)가 들어오면 그쪽을 먼저
-  if (s.reputation < BOT_APOLOGY_REPUTATION && s.money > BOT_APOLOGY_MIN_MONEY && featureOpen(s, 'promote')) {
+  if (s.reputation < BOT_APOLOGY_REPUTATION && s.money > BOT_APOLOGY_MIN_MONEY) {
     const st = s.staff.find((x) => x.role !== null && x.energy > 10);
     if (st) apply(s, { type: 'promote', staffId: st.id, promotionId: 'apology_event' });
   }
@@ -531,7 +517,7 @@ function monthlyPlan(s: GameState, monthsPlayed: number): void {
   if (effectivePopularity(s, BOT_COUPLE_ID) < BOT_COUPLE_POPULARITY && canUseGuestItem(s, POPULARITY_FRUIT, BOT_COUPLE_ID).ok) apply(s, { type: 'useGuestItem', itemId: POPULARITY_FRUIT, guestId: BOT_COUPLE_ID });
   if (s.lastAnnouncement) apply(s, { type: 'dismissAnnouncement' });
 
-  // 시설·돌담·필지·바위
+  // 시설·돌담·필지
   placeDecos(s);
   for (const p of BOT_WALLS) if (!objectAt(s, p.x, p.y)) place(s, 'stonewall', p.x, p.y); // 시작 돌담이 있어도 봇 돌담(콤보 「돌담 수확」·세트 「감성 카페」)은 따로 놓는다
   repairWorn(s);
@@ -556,7 +542,6 @@ function monthlyPlan(s: GameState, monthsPlayed: number): void {
   }
   buyParcelIfAny(s);
   investSpotIfAny(s);
-  clearOneRock(s);
   planRoutes(s); // 트랙 H
   // z-ending: 돈이 넉넉하면 마을 기부(정착 등급 「기부」 항목, 누적 상한까지), 10월엔 마을제 (g82·g90)
   if (s.money >= BOT_DONATE_MIN_MONEY && s.village.donated < BOT_DONATE_CAP && canDonate(s).ok) apply(s, { type: 'donateVillage' });
@@ -570,17 +555,17 @@ function dailyPlan(s: GameState): void {
   if (s.clock.year >= BOT_QUEST_YEAR) for (const q of Object.values(s.board.quests)) if (q.status === 'offered' && canAcceptQuest(s, q.id).ok) apply(s, { type: 'acceptQuest', id: q.id });
   if (s.lastChallenge) apply(s, { type: 'dismissChallenge' });
 
-  if (s.money < PARTTIME_MAX_MONEY && featureOpen(s, 'promote')) {
+  if (s.money < PARTTIME_MAX_MONEY) {
     for (const st of s.staff) if (apply(s, { type: 'promote', staffId: st.id, promotionId: 'parttime' }).ok) break;
   }
 
   // 연구 개발이 열리면 레시피 3개까지 개발 (기술 최고 직원). 첫 메뉴는 4번 칸에.
-  if (featureOpen(s, 'craft') && s.research >= DEVELOP_RESEARCH && !s.developing && s.customMenus.length < BOT_RECIPES) {
+  if (botCraftOpen(s) && s.research >= DEVELOP_RESEARCH && !s.developing && s.customMenus.length < BOT_RECIPES) {
     const st = [...s.staff].sort((a, b) => b.stats.skill - a.stats.skill)[0];
     if (st) apply(s, { type: 'develop', base: 'drink', ingredients: BOT_DEVELOP_INGREDIENTS, staffId: st.id });
   }
   // ★2부터 시그니처 1개 (★3 승급 조건) — 요리사가 맡는다
-  if (featureOpen(s, 'craft') && s.star >= 2 && s.clock.year >= BOT_SIGNATURE_YEAR && s.research >= DEVELOP_RESEARCH && !s.developing && !s.customMenus.some((m) => m.category === 'signature')) {
+  if (botCraftOpen(s) && s.star >= 2 && s.clock.year >= BOT_SIGNATURE_YEAR && s.research >= DEVELOP_RESEARCH && !s.developing && !s.customMenus.some((m) => m.category === 'signature')) {
     const cook = s.staff.find((x) => x.role === 'cook');
     if (cook) apply(s, { type: 'develop', base: 'signature', ingredients: BOT_SIGNATURE_INGREDIENTS, staffId: cook.id });
   }

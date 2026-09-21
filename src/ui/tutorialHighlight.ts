@@ -1,7 +1,7 @@
 import { useEffect, useSyncExternalStore } from 'react';
 import type { GameState, Pt } from '../sim/index.ts';
 import { currentTutorialStep } from '../sim/index.ts';
-import { useGame } from './store';
+import { useGame, showMessage } from './store';
 
 /** 튜토리얼 하이라이트 (스펙 §7.2 + w-free 스포트라이트): 현재 단계의 `data-tut` 타깃(하단 버튼·창 탭·창 안 버튼)에 글로우 클래스를 붙이고,
  *  맵 칸은 GameView.setHighlightCells로 빛낸다. 타깃 목록은 sim/tutorial.ts STEPS[].targets / cells.
@@ -15,12 +15,28 @@ import { useGame } from './store';
  *  - 맵 칸 타깃은 GameView.setSpotlightCells: 맵 전체 반투명 검정 + 타깃 칸 구멍 (타깃이 여러 개면 전부 구멍). DOM 타깃이 켜져 있으면 DOM 그림자가
  *    맵까지 덮으므로 맵 어둠은 DOM 타깃이 없을 때만 깐다.
  *  - 셸(상단 바·목표 줄·하단 바·홈 버튼)에서 탭할 수 있는 건 타깃뿐 — 그 밖의 셸 클릭은 document 캡처 단계에서 막는다.
- *    ✕/닫기·「건너뛰기」·튜토리얼 배지(📖)·대화창·창·팝업·카드·맵(캔버스)은 항상 허용. */
+ *    ✕/닫기·「건너뛰기」·튜토리얼 배지(📖)·대화창·창·팝업·카드·맵(캔버스)은 항상 허용.
+ *  - 막힌 셸을 짧은 간격으로 두 번 연속 탭하면 「튜토리얼 밖 조작은 📖에서 끌 수 있어요」를 세션에 한 번 보여 준다 (ease). */
 
 export const TUT_GLOW_CLASS = 'tut-glow';
 /** 글로우 + 사방 어둠 (창 밖 타깃) */
 export const TUT_SPOT_CLASS = 'tut-spot';
 export const SPOT_ALPHA = 0.55;
+/** 막힌 탭 두 번 연속 판정 간격(ms)과 안내 문구 (ease) */
+export const BLOCKED_DOUBLE_TAP_MS = 1500;
+export const BLOCKED_HINT = '튜토리얼 밖 조작은 📖에서 끌 수 있어요';
+let blockedHintShown = false;
+let lastBlockedAt = 0;
+/** 막힌 셸 클릭을 세고, 두 번 연속이면 안내를 한 번 띄운다. 띄웠으면 true. (테스트용 export) */
+export function noteBlockedClick(now = Date.now()): boolean {
+  const twice = lastBlockedAt > 0 && now - lastBlockedAt <= BLOCKED_DOUBLE_TAP_MS;
+  lastBlockedAt = now;
+  if (!twice || blockedHintShown) return false;
+  blockedHintShown = true;
+  showMessage(BLOCKED_HINT);
+  return true;
+}
+export function resetBlockedHint(): void { blockedHintShown = false; lastBlockedAt = 0; }
 const STYLE_ID = 'tut-glow-style';
 const CSS = `@keyframes tut-glow { 0%, 100% { box-shadow: 0 0 0 3px #ffd54a, 0 0 10px 4px #ffb300aa; } 50% { box-shadow: 0 0 0 5px #fff176, 0 0 18px 8px #ffb300; } }
 @keyframes tut-glow-spot { 0%, 100% { box-shadow: 0 0 0 3px #ffd54a, 0 0 10px 4px #ffb300aa, 0 0 0 200vmax rgba(0,0,0,${SPOT_ALPHA}); } 50% { box-shadow: 0 0 0 5px #fff176, 0 0 18px 8px #ffb300, 0 0 0 200vmax rgba(0,0,0,${SPOT_ALPHA}); } }
@@ -119,7 +135,7 @@ export function useTutorialHighlight(view: HighlightView | null): void {
     const mo = new MutationObserver(() => { if (raf) return; raf = requestAnimationFrame(() => { raf = 0; paint(); }); });
     mo.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['disabled', 'data-tut'] });
     // 셸의 다른 버튼 클릭 차단 (캡처 단계 — React 루트보다 먼저)
-    const onClick = (e: Event) => { if (blocking && shouldBlockClick(e.target as Element | null)) { e.stopPropagation(); e.preventDefault(); } };
+    const onClick = (e: Event) => { if (blocking && shouldBlockClick(e.target as Element | null)) { e.stopPropagation(); e.preventDefault(); noteBlockedClick(); } };
     document.addEventListener('click', onClick, true);
     return () => {
       mo.disconnect();

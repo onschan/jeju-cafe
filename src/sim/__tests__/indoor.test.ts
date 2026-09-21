@@ -3,7 +3,8 @@ import { X, Y } from './helpers.ts';
 import { apply } from '../actions.ts';
 import { createInitialState } from '../state.ts';
 import { checkFeature } from '../goals.ts';
-import { canPlace, placeObject, cellAt, objectAt, doorOf, doorFrontOf, roomAt, isRoomFloor, objectsInRoom, clearCost, baseClearCost, canClearRock, clearRock, ROCK_CLEAR_COST, BIG_ROCK_CLEAR_COST, BUSH_CLEAR_COST } from '../grid.ts';
+import { canPlace, placeObject, cellAt, objectAt, doorOf, doorFrontOf, roomAt, isRoomFloor, objectsInRoom } from '../grid.ts';
+import { serialize, deserialize } from '../save.ts';
 import { isWalkable, walkableNeighborsOf, findPath, busStopPos, isDoorReachable } from '../path.ts';
 import { advanceConstruction, needsDoorPath, DOOR_PATH_HINT } from '../build.ts';
 import { dayIndex } from '../effects.ts';
@@ -188,48 +189,26 @@ test('실내 테이블이 완공됐는데 문 앞까지 길이 없으면 알림�
   expect(dayIndex(s.clock)).toBeGreaterThan(0);
 });
 
-test('clearRock(w-free): 작은 바위 10만·큰 바위 30만·덤불 2만, 시작부터 열려 있고 즉시, 곡괭이가 있으면 50% 할인(아이템 유지), 내 땅만', () => {
+test('ease: 지형은 흙·마을 길뿐 — 시작 필지·오름·곶자왈에 바위·큰 바위·덤불이 없고, 옛 저장의 바위 칸·덤불은 로드 때 흙으로 채운다', () => {
   const s = bareState(1);
-  s.features.clearRock = false; // 옛 저장처럼 꺼져 있어도 액션은 잠기지 않는다
-  expect(ROCK_CLEAR_COST).toBe(100_000); expect(BIG_ROCK_CLEAR_COST).toBe(300_000); expect(BUSH_CLEAR_COST).toBe(20_000);
-  expect(createInitialState(1, 'local', 0, 'tutorial').features.clearRock).toBe(true);
-  expect(checkFeature(s, 'clearRock').ok).toBe(true);
-  // 시작 필지 (3,0)은 바위 ((lx+ly)%7===3)
-  expect(cellAt(s, X(3), Y(0)).terrain).toBe('rock');
-  expect(clearCost(s, X(3), Y(0))).toBe(ROCK_CLEAR_COST);
-  expect(clearCost(s, X(0), Y(0))).toBeNull();
-  expect(canClearRock(s, X(0), Y(0)).reason).toBe('치울 바위가 없어요');
-  expect(canPlace(s, 'carrot_field', X(3), Y(0)).reason).toBe('바위를 먼저 치워요');
-  s.money = 50_000;
-  expect(canClearRock(s, X(3), Y(0)).reason).toBe('돈이 모자라요');
-  s.money = 100_000;
-  s.builders = 0; // 건축가 불필요
-  expect(apply(s, { type: 'clearRock', x: X(3), y: Y(0) }).ok).toBe(true);
-  expect(s.money).toBe(0);
-  expect(s.stats.rocksCleared).toBe(1);
-  expect(cellAt(s, X(3), Y(0)).terrain).toBe('soil');
+  expect((s.features as Record<string, boolean>)['clearRock']).toBeUndefined();
+  expect((s.stats as unknown as Record<string, number>)['rocksCleared']).toBeUndefined();
+  for (const c of s.grid.cells) expect(['soil', 'road']).toContain(c.terrain);
+  expect(Object.values(s.objects).some((o) => o.type === 'bush_wild')).toBe(false);
+  expect(cellAt(s, X(3), Y(0)).terrain).toBe('soil'); // 옛 바위 패턴 칸
   expect(canPlace(s, 'carrot_field', X(3), Y(0)).ok).toBe(true);
-  expect(s.actionLog.at(-1)!.action).toEqual({ type: 'clearRock', x: X(3), y: Y(0) });
-  // 오름 능선 큰 바위 (2..7, 2): 안 산 땅이면 못 치운다
-  expect(cellAt(s, 4, 2).terrain).toBe('rock_big');
-  expect(clearCost(s, 4, 2)).toBe(BIG_ROCK_CLEAR_COST);
-  expect(canClearRock(s, 4, 2).reason).toBe('아직 내 땅이 아니에요');
-  s.parcels.find((p) => p.no === 2)!.owned = true;
-  s.inventory['pickaxe'] = 1;
-  expect(baseClearCost(s, 4, 2)).toBe(BIG_ROCK_CLEAR_COST);
-  expect(clearCost(s, 4, 2)).toBe(BIG_ROCK_CLEAR_COST / 2); // 곡괭이 50% 할인
-  s.money = BIG_ROCK_CLEAR_COST / 2;
-  expect(apply(s, { type: 'clearRock', x: 4, y: 2 }).ok).toBe(true);
-  expect(s.money).toBe(0);
-  expect(s.inventory['pickaxe']).toBe(1); // 아이템은 안 줄어든다
-  expect(cellAt(s, 4, 2).terrain).toBe('soil');
-  delete s.inventory['pickaxe'];
-  // 곶자왈 덤불
-  s.parcels.find((p) => p.no === 3)!.owned = true;
-  const bush = Object.values(s.objects).find((o) => o.type === 'bush_wild')!;
-  expect(clearCost(s, bush.x, bush.y)).toBe(BUSH_CLEAR_COST);
-  s.money = 50_000;
-  expect(clearRock(s, bush.x, bush.y)).toBe(BUSH_CLEAR_COST);
-  expect(s.objects[bush.id]).toBeUndefined();
-  expect(cellAt(s, bush.x, bush.y)).toMatchObject({ terrain: 'soil', objectId: null });
+  expect(cellAt(s, 4, 2).terrain).toBe('soil'); // 옛 오름 능선
+  expect(checkFeature(s, 'place').ok).toBe(true);
+  // 옛 저장(v19) 호환: 바위 칸·덤불 오브젝트가 든 세이브를 불러오면 흙·없음
+  const st = JSON.parse(serialize(s)) as GameState;
+  (st.grid.cells[Y(0) * st.grid.w + X(0)]!.terrain as string) = 'rock';
+  (st.grid.cells[Y(1) * st.grid.w + X(1)]!.terrain as string) = 'rock_big';
+  st.objects['bush'] = { id: 'bush', type: 'bush_wild', x: X(2), y: Y(2), placedMonth: 0 };
+  (st.features as Record<string, boolean>)['clearRock'] = true;
+  const loaded = deserialize(JSON.stringify(st));
+  expect(cellAt(loaded, X(0), Y(0)).terrain).toBe('soil');
+  expect(cellAt(loaded, X(1), Y(1)).terrain).toBe('soil');
+  expect(loaded.objects['bush']).toBeUndefined();
+  expect(cellAt(loaded, X(2), Y(2)).objectId).toBeNull();
+  expect((loaded.features as Record<string, boolean>)['clearRock']).toBeUndefined();
 });

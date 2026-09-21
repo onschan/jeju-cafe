@@ -21,18 +21,19 @@ test('초기 상태: 1년 3월 1일 6시, 30×24 격자(필지 9장), 시작 오
   expect(s.slots).toEqual({ barista: 1, cook: 1, hall: 2, carry: 0, guide: 0, clean: 2, garden: 2, promo: 1 }); // v3: 밭 직종 없음, 직종 8 (x-staff)
   const gate = Object.values(s.objects).find((o) => o.type === 'gate')!;
   expect(s.grid.cells[gate.y * 30 + gate.x]!.objectId).toBe(gate.id);
-  expect(s.grid.cells[gate.y * 30 + gate.x]!.terrain).toBe('rock');
+  expect(s.grid.cells[gate.y * 30 + gate.x]!.terrain).toBe('soil'); // ease: 바위 지형 없음
   const wh = Object.values(s.objects).find((o) => o.type === 'warehouse')!;
   expect(s.grid.cells[(wh.y + 1) * 30 + (wh.x + 2)]!.objectId).toBe(wh.id);
 });
 
-test('마을 길(시작 필지 아래 변 y=15)은 맵 가로 전체 도로, 해안(오른쪽 아래)은 먼 변 2줄, 오름 능선은 큰 바위', () => {
+test('마을 길(시작 필지 아래 변 y=15)은 맵 가로 전체 도로, 해안(오른쪽 아래)은 먼 변 2줄, 나머지는 전부 흙 (ease: 바위 없음)', () => {
   const s = bareState(1);
   expect(VILLAGE_ROAD_Y).toBe(15);
   for (let x = 0; x < GRID_W; x++) expect(s.grid.cells[VILLAGE_ROAD_Y * GRID_W + x]!.terrain).toBe('road');
   for (let x = 20; x < 30; x++) for (const y of [22, 23]) expect(s.grid.cells[y * GRID_W + x]!.terrain).toBe('road');
   expect(s.grid.cells[(GRID_H - 1) * GRID_W + 0]!.terrain).toBe('soil'); // 옛 감귤밭 아랫줄은 흙
-  for (let lx = 2; lx <= 7; lx++) expect(s.grid.cells[2 * GRID_W + lx]!.terrain).toBe('rock_big'); // 오름 (0,0) 필지 3번째 줄
+  for (let lx = 2; lx <= 7; lx++) expect(s.grid.cells[2 * GRID_W + lx]!.terrain).toBe('soil'); // 옛 오름 능선도 흙
+  for (const c of s.grid.cells) expect(['soil', 'road']).toContain(c.terrain);
   expect(s.grid.cells[0]!.roomId).toBeNull();
 });
 

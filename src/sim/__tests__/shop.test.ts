@@ -25,7 +25,7 @@ test('데이터: 마일리지 상점 20+1(망치) · 응모권 상점 9(추첨 �
   for (const t of TICKET_SHOP) if (t.itemId) expect(itemDef(t.itemId).id).toBe(t.itemId);
   // v2 20종은 잘 맞는 시설이 있고, 특수 12종 중 씨앗 3종만 효과가 있다
   expect(ITEMS.filter((i) => i.fitIds.length > 0).length).toBeGreaterThanOrEqual(20);
-  expect(ITEMS.filter((i) => ['pony_doll', 'deer_bell', 'pickaxe', 'worker_hire'].includes(i.id)).every((i) => i.value === 0)).toBe(true);
+  expect(ITEMS.filter((i) => ['pony_doll', 'deer_bell', 'fast_hammer', 'worker_hire'].includes(i.id)).every((i) => i.value === 0)).toBe(true);
   expect(itemDef('tangerine_seed')).toMatchObject({ stat: 'popularity', value: 5 });
   expect(itemDef('hallabong_seed')).toMatchObject({ stat: 'feePct', value: 5 });
   expect(itemDef('scenery_seed')).toMatchObject({ stat: 'scenery', value: 3 });
@@ -53,11 +53,12 @@ test('마일리지 상점: 일꾼 삼춘은 순서대로(3→4→5) 동시 건�
   expect(apply(s, { type: 'buyMileage', id: 'ms_nope' }).ok).toBe(false);
 });
 
-test('마일리지 상점: 곡괭이·응모권·씨앗·묶음팩·강화 아이템·스카우트권', () => {
+test('마일리지 상점: 빠른 건축 망치·응모권·씨앗·묶음팩·강화 아이템·스카우트권', () => {
   const s = bareState(1);
   s.mileage = 100;
-  expect(apply(s, { type: 'buyMileage', id: 'ms_pickaxe' }).ok).toBe(true);
-  expect(s.inventory['pickaxe']).toBe(1);
+  expect(apply(s, { type: 'buyMileage', id: 'ms_pickaxe' }).ok).toBe(false); // ease: 곡괭이는 없다
+  expect(apply(s, { type: 'buyMileage', id: 'ms_fast_hammer' }).ok).toBe(true);
+  expect(s.inventory['fast_hammer']).toBe(1);
   expect(apply(s, { type: 'buyMileage', id: 'ms_ticket' }).ok).toBe(true);
   expect(s.tickets).toBe(1);
   expect(apply(s, { type: 'buyMileage', id: 'ms_tangerine_seed' }).ok).toBe(true);
@@ -68,7 +69,7 @@ test('마일리지 상점: 곡괭이·응모권·씨앗·묶음팩·강화 아�
   expect(s.inventory['jeju_salt']).toBe(1);
   expect(apply(s, { type: 'buyMileage', id: 'ms_scout' }).ok).toBe(true);
   expect(s.freeRecruits).toBe(1);
-  expect(s.mileage).toBe(100 - 2 - 1 - 1 - 4 - 1 - 2);
+  expect(s.mileage).toBe(100 - 3 - 1 - 1 - 4 - 1 - 2);
   // 스카우트권: 다음 공고비 무료
   const money = s.money;
   expect(apply(s, { type: 'postJob', tier: 'flyer' }).ok).toBe(true);

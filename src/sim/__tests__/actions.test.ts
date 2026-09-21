@@ -37,7 +37,6 @@ test('정낭(w-free): 보호 시설이 아니라 옮기고·없애고·더 놓�
   expect(Object.values(s.objects).some((o) => o.type === 'gate')).toBe(false);
   // 정낭 없이도 정류장(마을 길) → 올렛길 → 테이블로 손님이 온다
   s.money = 5_000_000;
-  apply(s, { type: 'clearRock', x: X(4), y: Y(6) }); // 옛 정낭 자리는 바위 칸
   for (const y of [6, 5]) expect(apply(s, { type: 'place', objectType: 'path', x: X(4), y: Y(y) }).ok).toBe(true);
   apply(s, { type: 'place', objectType: 'table_out', x: X(4), y: Y(4) });
   expect(routeConnected(s, 'bus')).toBe(true);

@@ -11,6 +11,11 @@ export function rememberPlace(state: GameState, obj: PlacedObject, paid: number)
   state.undo = { kind: 'place', day: dayIndex(state.clock), objectId: obj.id, paid };
 }
 
+/** 라인 배치 직후(ease 두 번 탭): 되돌리면 그 줄 전체를 철거하고 낸 돈을 돌려준다 */
+export function rememberPlaceMany(state: GameState, objects: PlacedObject[], paid: number): void {
+  state.undo = { kind: 'placeMany', day: dayIndex(state.clock), objectIds: objects.map((o) => o.id), paid };
+}
+
 /** 철거 직후(여러 개 가능): 되돌리면 같은 자리에 같은 개체를 다시 놓고 환불·비용을 되돌린다 */
 export function rememberRemove(state: GameState, objects: PlacedObject[], moneyDelta: number): void {
   state.undo = { kind: 'remove', day: dayIndex(state.clock), objects: objects.map((o) => ({ ...o })), moneyDelta };
@@ -30,6 +35,12 @@ export function canUndo(state: GameState): ApplyResult {
       const o = state.objects[u.objectId];
       if (!o) return { ok: false, reason: '이미 없어진 시설이에요' };
       if (state.guests.some((g) => g.seatId === o.id)) return { ok: false, reason: '손님이 앉아 있어요' };
+      return { ok: true };
+    }
+    case 'placeMany': {
+      const objs = u.objectIds.map((id) => state.objects[id]);
+      if (objs.some((o) => !o)) return { ok: false, reason: '이미 없어진 시설이에요' };
+      if (objs.some((o) => state.guests.some((g) => g.seatId === o!.id))) return { ok: false, reason: '손님이 앉아 있어요' };
       return { ok: true };
     }
     case 'remove': {
@@ -52,6 +63,10 @@ export function undoLast(state: GameState): UndoEntry['kind'] {
   switch (u.kind) {
     case 'place':
       removeObject(state, u.objectId);
+      state.money += u.paid;
+      break;
+    case 'placeMany':
+      for (const id of u.objectIds) removeObject(state, id);
       state.money += u.paid;
       break;
     case 'remove':

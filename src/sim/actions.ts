@@ -1,14 +1,14 @@
 import type { GameState, Action, ApplyResult, PlacedObject } from './types.ts';
 import { bumpLayoutRev } from './layoutRev.ts';
 import { objectDef } from '../data/index.ts';
-import { canPlace, placeObject, removeObject, footprintOf, relocateObject, objectsInRoom, canClearRock, clearRock } from './grid.ts';
-import { canBuildMain, placeMain, canExpandMain, expandMain, canBuildSecondFloor, buildSecondFloor, canMoveMain, moveMain, canUndoMoveMain, undoMoveMain, canToggleFireplace, toggleFireplace, canSetPianoTime, canAddBooks, addBooks, canFeedAquarium, feedAquarium, canRestockKids, restockKids, canSetBarEvening, setBarEvening, MAIN_TYPE } from './rooms.ts'; // y-indoor
+import { canPlace, placeObject, removeObject, footprintOf, relocateObject, objectsInRoom } from './grid.ts';
+import { canBuildMain, placeMain, canExpandMain, expandMain, canBuildSecondFloor, buildSecondFloor, canMoveMain, moveMain, canUndoMoveMain, undoMoveMain, canToggleFireplace, toggleFireplace, canSetPianoTime, canAddBooks, addBooks, canFeedAquarium, feedAquarium, canRestockKids, restockKids, canSetBarEvening, setBarEvening, canAutoConnectPath, autoConnectPath, MAIN_TYPE } from './rooms.ts'; // y-indoor
 import { canBuyParcel, buyParcel } from './parcels.ts';
 import { canSetSlot, setSlot } from './menu.ts';
 import { checkFeature, checkGoals } from './goals.ts';
 import { canAcceptChallenge, acceptChallenge } from './challenges.ts';
 import { fillStarterLayout } from './state.ts';
-import { TUTORIAL_STEPS, unlockTutorialFeatures, skipTutorialChapter, noteTutorial, TRACKED_ACTIONS } from './tutorial.ts';
+import { TUTORIAL_STEPS, unlockTutorialFeatures, skipTutorialChapter, skipTutorialStep, noteTutorial, TRACKED_ACTIONS } from './tutorial.ts';
 import { canPostJob, postJob, canHire, hire, canFire, fire, canAssign, assign, canLevelUp, levelUp } from './staff.ts';
 import { canTrain, train } from './training.ts';
 import { canPromote, promote, canSetTarget, setTarget } from './promotions.ts';
@@ -27,7 +27,8 @@ import { canUpgrade, upgrade } from './upgrade.ts';
 import { canRepair, repair } from './cleanliness.ts';
 import { canSetRouteContract, setRouteContract, canExpandParking, parkingExpandCost, PARKING_EXPAND_TO, unlockRouteFacilities } from './entry.ts';
 import { objectStats } from './compat.ts';
-import { rememberPlace, rememberRemove, rememberMove, canUndo, undoLast } from './undo.ts';
+import { rememberPlace, rememberPlaceMany, rememberRemove, rememberMove, canUndo, undoLast } from './undo.ts';
+import { planLine, isLineType } from './line.ts';
 import { canSetTargets, setTargets } from './segments.ts';
 import { canContinueEnding, continueEnding, canSetSpeed } from './ending.ts'; // z-ending
 import { canDonate, donate, canHoldFestival, holdFestival } from './village.ts'; // z-ending
@@ -98,6 +99,36 @@ function applyInner(state: GameState, a: Action): ApplyResult {
       checkQuests(state);     // objectPlaced 부탁
       return { ok: true };
     }
+    case 'placeLine': {
+      // ease: 길·담 두 번 탭 — 시작→끝 직선/ㄱ자. 이미 있는 칸은 건너뛰고, 놓은 칸 전체를 되돌리기 1회로 묶는다
+      if (!isLineType(a.objectType)) return { ok: false, reason: '길·담만 줄로 놓아요' };
+      if (!state.unlocked.objects.includes(a.objectType)) return { ok: false, reason: '아직 못 짓는 것' };
+      const plan = planLine(state, a.objectType, a.from, a.to, a.order ?? 'xy');
+      if (!plan.ok) return { ok: false, reason: plan.reason ?? '여기엔 못 놓아요' };
+      const per = placeCost(state, a.objectType);
+      const placed: PlacedObject[] = [];
+      for (const p of plan.cells) {
+        const obj = placeObject(state, a.objectType, p.x, p.y);
+        startBuild(state, obj);
+        placed.push(obj);
+      }
+      state.money -= plan.cost;
+      rememberPlaceMany(state, placed, per * placed.length);
+      discoverCombos(state);
+      evaluateUnlocks(state);
+      unlockRouteFacilities(state);
+      checkQuests(state);
+      return { ok: true };
+    }
+    case 'autoConnectPath': {
+      // ease 「마을 길까지 자동 잇기」: 본관 문 앞 → 정류장과 이어진 칸까지 최단 올렛길. 되돌리기 1회로 전부
+      const c = canAutoConnectPath(state);
+      if (!c.ok) return { ok: false, reason: c.reason };
+      const placed = autoConnectPath(state);
+      rememberPlaceMany(state, placed, c.route!.cost);
+      discoverCombos(state);
+      return { ok: true };
+    }
     case 'remove': {
       const obj = state.objects[a.objectId];
       if (!obj) return { ok: false, reason: '없는 오브젝트' };
@@ -116,11 +147,11 @@ function applyInner(state: GameState, a: Action): ApplyResult {
       return { ok: true };
     }
     case 'demolishMany': {
-      // 드래그 사각형 일괄 철거: 보호·덤불·방 안 가구 있는 방은 건너뛰고, 하나라도 못 치우면 그 이유로 거부
+      // 드래그 사각형 일괄 철거: 보호·방 안 가구 있는 방은 건너뛰고, 하나라도 못 치우면 그 이유로 거부
       const objs: PlacedObject[] = [];
       for (const id of a.objectIds) {
         const obj = state.objects[id];
-        if (!obj || PROTECTED_TYPES.has(obj.type) || obj.type === 'bush_wild') continue;
+        if (!obj || PROTECTED_TYPES.has(obj.type)) continue;
         if (objs.some((o) => o.id === obj.id)) continue;
         const c = canDisturb(state, obj);
         if (!c.ok) return c;
@@ -204,13 +235,6 @@ function applyInner(state: GameState, a: Action): ApplyResult {
       const c = canBuyParcel(state, a.id);
       if (!c.ok) return c;
       buyParcel(state, a.id);
-      return { ok: true };
-    }
-    case 'clearRock': {
-      const c = canClearRock(state, a.x, a.y);
-      if (!c.ok) return c;
-      clearRock(state, a.x, a.y);
-      state.stats.rocksCleared++;
       return { ok: true };
     }
     case 'renameCafe': {
@@ -367,6 +391,12 @@ function applyInner(state: GameState, a: Action): ApplyResult {
       if (state.tutorial.step >= TUTORIAL_STEPS) return { ok: false, reason: '튜토리얼이 끝났어요' };
       if (state.tutorial.step === 0) fillStarterLayout(state);
       skipTutorialChapter(state);
+      return { ok: true };
+    }
+    case 'skipTutorialStep': {
+      // ease 「이미 알아요」: 이 단계만 보상 없이 통과. 0단계(둘러보기)는 맨땅 그대로 — 본관은 2단계에서 짓는다
+      if (state.tutorial.step >= TUTORIAL_STEPS) return { ok: false, reason: '튜토리얼이 끝났어요' };
+      skipTutorialStep(state);
       return { ok: true };
     }
     case 'tutorialNote':

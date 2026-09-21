@@ -203,7 +203,6 @@ test('정낭 효과(w-free): 자리로 오는 길에 정낭을 지나면 Guest.g
   expect(apply(s2, { type: 'remove', objectId: gate.id }).ok).toBe(true);
   expect(objectAt(s2, gate.x, gate.y)).toBeNull();
   s2.money = 1_000_000;
-  expect(apply(s2, { type: 'clearRock', x: gate.x, y: gate.y }).ok).toBe(true); // 정낭 자리는 바위 칸
   expect(apply(s2, { type: 'place', objectType: 'path', x: gate.x, y: gate.y }).ok).toBe(true);
   expect(spawnGuests(s2, 1)).toBe(1);
   expect(s2.guests[0]!.gates).toBeUndefined();
