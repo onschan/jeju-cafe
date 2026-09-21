@@ -15,6 +15,7 @@ import { MiniCard, MainCard, type CardTarget, type CardActions } from './MiniCar
 import { DialogueHost } from './Dialogue.tsx';
 import { checkTutorial, setTutorialDispatch, useTutorialNote } from './tutorialDialogue';
 import { useTutorialHighlight, useSpotlightPref, setSpotlightOn } from './tutorialHighlight';
+import { SiteOverlayChip } from './SiteToggle';
 import { RewardPopup } from './RewardPopup';
 import { checkAlerts } from './alertDialogue.ts';
 import { guestSay, staffSay } from './simBridge';
@@ -746,6 +747,7 @@ function Game({ onExit }: { onExit: () => void }) {
     <div onPointerDownCapture={onPointerDown} style={{ position: 'relative', width: '100%', height: '100%' }}>
       <div ref={hostRef} style={{ position: 'absolute', inset: 0, touchAction: 'none' }} />
       <NightOverlay />
+      <SiteOverlayChip />
       <TopShell onStatus={() => setWin({ kind: 'status' })} onGoal={() => setWin({ kind: 'goal' })} />
       {!place && !cardTarget && (
         <button data-testid="home-btn" aria-label="본관으로" onClick={goHome}
