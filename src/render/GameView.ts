@@ -87,6 +87,8 @@ const COIN_RISE_PX = 12;
 /** 자동 수확 반짝임: 4프레임 × 120ms */
 const SPARKLE_FRAME_MS = 120;
 const SPARKLE_FRAMES = 4;
+/** 튜토리얼 스포트라이트 어둠 (ui/tutorialHighlight.ts SPOT_ALPHA와 같은 값 — render/는 ui/를 import하지 않는다) */
+const SPOT_ALPHA = 0.55;
 /** 큰 바위(rock_big) 타일은 바위 타일을 어둡게 */
 const BIG_ROCK_TINT = 0x8a8a9a;
 /** 숫자 팝업(+N): 700ms 동안 16px 떠오르며 사라진다 */
@@ -261,6 +263,9 @@ export class GameView {
   private detachCamera: (() => void) | null = null;
   private selection = new Graphics();
   private highlight = new Graphics(); // 튜토리얼 칸 글로우 (x-goals)
+  /** 튜토리얼 스포트라이트(w-free): 맵 전체 반투명 검정 + 타깃 칸 구멍. 오브젝트·손님(actors) 위, 글로우·말풍선 아래 */
+  private spot = new Graphics();
+  private spotKey = '';
   /** 효과 범위 타원(타일 위·오브젝트 아래) + ◎ 마크(오버레이) */
   private rangeGfx = new Graphics();
   private rangeMarks = new Graphics();
@@ -298,6 +303,8 @@ export class GameView {
     this.siteLayer.addChild(this.siteGfx);
     this.siteLayer.addChild(this.rangeGfx, this.rectGfx);
     this.overlay.addChild(this.selection);
+    this.spot.eventMode = 'none';
+    this.overlay.addChild(this.spot);
     this.overlay.addChild(this.highlight);
     this.rangeMarks.zIndex = 1e6 - 1;
     this.gaugeGfx.zIndex = 1e6 - 2;
@@ -455,6 +462,23 @@ export class GameView {
         .poly([sx, sy, sx + ISO_W / 2, sy + ISO_H / 2, sx, sy + ISO_H, sx - ISO_W / 2, sy + ISO_H / 2])
         .fill({ color: 0xffd54a, alpha: 0.45 })
         .stroke({ color: 0xffb300, width: 3 });
+    }
+  }
+
+  /** 튜토리얼 스포트라이트(w-free tutorialHighlight.ts): 맵(월드 좌표) 전체를 반투명 검정으로 덮고 타깃 칸(여러 개면 전부)만 구멍을 낸다. null이면 걷는다.
+   *  overlay 레이어라 타일·오브젝트·캐릭터 위, 칸 글로우·말풍선(나중에 addChild) 아래. 같은 칸 목록이면 다시 그리지 않는다. */
+  setSpotlightCells(cells: { x: number; y: number }[] | null) {
+    if (!this.spot || this.spot.destroyed) return;
+    const key = cells ? cells.map((c) => `${c.x},${c.y}`).join('|') : '';
+    if (key === this.spotKey) return;
+    this.spotKey = key;
+    this.spot.clear();
+    if (!cells) return;
+    const R = 1e5; // 월드 좌표 전체 (카메라가 어디를 보든 덮인다)
+    this.spot.rect(-R, -R, 2 * R, 2 * R).fill({ color: 0x000000, alpha: SPOT_ALPHA });
+    for (const cell of cells) {
+      const { sx, sy } = cellToScreen(cell.x, cell.y);
+      this.spot.poly([sx, sy, sx + ISO_W / 2, sy + ISO_H / 2, sx, sy + ISO_H, sx - ISO_W / 2, sy + ISO_H / 2]).cut();
     }
   }
 

@@ -14,7 +14,7 @@ import { MessageLine } from './MessageLine';
 import { MiniCard, MainCard, type CardTarget, type CardActions } from './MiniCard';
 import { DialogueHost } from './Dialogue.tsx';
 import { checkTutorial, setTutorialDispatch, useTutorialNote } from './tutorialDialogue';
-import { useTutorialHighlight } from './tutorialHighlight';
+import { useTutorialHighlight, useSpotlightPref, setSpotlightOn } from './tutorialHighlight';
 import { RewardPopup } from './RewardPopup';
 import { checkAlerts } from './alertDialogue.ts';
 import { guestSay, staffSay } from './simBridge';
@@ -167,7 +167,8 @@ function SettingsPanel({ onExit, gauges, onGauges }: { onExit: () => void; gauge
   const toggleMute = () => { const m = !muted; setMuted(m); setMutedState(m); };
   const [bgmVol, setBgmVol] = useState(getBgmVolume());
   const [sfxVol, setSfxVol] = useState(getSfxVolume());
-  useGame();
+  const s = useGame();
+  const spotlight = useSpotlightPref();
   const slider = (text: string, v: number, set: (n: number) => void) => (
     <label style={{ display: 'grid', gridTemplateColumns: '64px 1fr 40px', alignItems: 'center', gap: 8, fontSize: 14, minHeight: 44 }}>
       <span>{text}</span>
@@ -182,6 +183,7 @@ function SettingsPanel({ onExit, gauges, onGauges }: { onExit: () => void; gauge
       <button style={{ ...brownBtn, marginRight: 0, marginBottom: 0 }} onClick={toggleMute}>{muted ? <><Icon name="sound_on" /> 소리 켜기</> : <><Icon name="sound_off" /> 소리 끄기</>}</button>
       <OnOff label="속도 잠금 (창을 열어도 안 멈춤)" on={isSpeedLocked()} onChange={setSpeedLocked} testId="setting-speed-lock" />
       <OnOff label="시설 위 인기 바·◎ 콤보 표시" on={gauges} onChange={onGauges} testId="setting-gauges" />
+      {!tutorialDone(s) && <OnOff label="튜토리얼 스포트라이트 (빛나는 것 빼고 어둡게)" on={spotlight} onChange={setSpotlightOn} testId="setting-spotlight" />}{/* w-free */}
       <button style={{ ...brownBtn, marginRight: 0, marginBottom: 0 }} onClick={() => setSlots(true)}><Icon name="save" /> 슬롯에 저장</button>
       <button style={{ ...dangerBtn, marginRight: 0, marginBottom: 0 }} onClick={() => Confirm('자동 저장하고 타이틀로 나갈까요?', onExit, { title: '타이틀로' })}><Icon name="door" /> 타이틀로</button>
       {slots && <SaveSlots mode="save" onClose={() => setSlots(false)} />}
@@ -284,11 +286,6 @@ function Game({ onExit }: { onExit: () => void }) {
     setSceneHook((st, title, text) => showScene({ title, text, chars: staffChars(st), sfx: 'fanfare' }));
     return () => { setMonthCardHook(null); setSceneHook(null); };
   }, []);
-  // sim 알림(목표 달성·빅 이벤트) → 대화창(보상 상자는 RewardPopup), 그 다음 손으로 하는 튜토리얼 9단계. 알림은 한 번에 하나씩 순서대로.
-  useEffect(() => {
-    checkAlerts(s, () => dispatch({ type: 'dismissAlert' }));
-    checkTutorial(s);
-  });
   useEffect(() => { setTutorialDispatch(dispatch, getState); return () => setTutorialDispatch(null); }, []);
   const hostRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<GameView | null>(null);

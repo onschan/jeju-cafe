@@ -6,6 +6,7 @@ import { PALETTE, brownBtn, brownBtnOn, card } from './frame';
 import { TUTORIAL_STEPS, TUTORIAL_CHAPTERS, currentTutorialStep, currentTutorialChapter, tutorialDone, tutorialStepDone } from '../sim/index.ts';
 import { SPEAKER_NAME } from '../data/dialogue/index.ts';
 import { TUTORIAL_DIALOGUES, chapterText, showTutorialStep, skipCurrentChapter, isChapterStart, SKIP_TEXT } from './tutorialDialogue';
+import { useSpotlightPref, setSpotlightOn } from './tutorialHighlight';
 
 export const GRADUATE_TITLE = '할망의 제자';
 
@@ -15,6 +16,7 @@ export function TutorialWindow({ onClose }: { onClose: () => void }) {
   const ch = currentTutorialChapter(s);
   const done = tutorialDone(s);
   const curDlg = cur ? TUTORIAL_DIALOGUES[cur.id - 1] : null;
+  const spotlight = useSpotlightPref(); // w-free: 스포트라이트(나머지 어둡게) — 설정 창이 가려져 있어도 여기서 끌 수 있다
   const replay = () => { if (curDlg) { onClose(); showTutorialStep(curDlg, { skip: isChapterStart(curDlg) }); } };
   const skip = () => {
     void confirm(SKIP_TEXT, { title: `${ch?.id}장 「${ch?.title}」 건너뛰기`, yes: '건너뛰기', no: '계속 배우기' }).then((ok) => { if (ok) { skipCurrentChapter(); onClose(); } });
@@ -37,6 +39,12 @@ export function TutorialWindow({ onClose }: { onClose: () => void }) {
             <div style={{ color: PALETTE.inkSoft, fontSize: 13 }}>{SPEAKER_NAME[curDlg.speaker]}: {curDlg.lines[0]}</div>
             {curDlg.done && <div style={{ fontSize: 13, marginTop: 2 }}>할 일: {curDlg.done}</div>}
           </div>
+        )}
+        {!done && (
+          <button data-testid="tutorial-spotlight" aria-pressed={spotlight} onClick={() => setSpotlightOn(!spotlight)}
+            style={{ ...(spotlight ? brownBtnOn : brownBtn), margin: '0 0 8px', width: '100%', minHeight: 44, fontSize: 14 }}>
+            🔦 스포트라이트 {spotlight ? '켬 (빛나는 것 빼고 어둡게)' : '끔'}
+          </button>
         )}
         {TUTORIAL_CHAPTERS.map((c) => {
           const t = chapterText(c.id);
