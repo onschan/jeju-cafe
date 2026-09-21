@@ -1,5 +1,6 @@
 /**
- * 제주 빅 이벤트 (v3 A5): events_v3.json. 매월 1일 판정(rng) → 동시 최대 2개 → state.events에 활성.
+ * 제주 빅 이벤트 (v3 A5): events_v3.json. 매일 판정(rng, 월 확률을 하루 확률로 환산) → 동시 최대 2개 → state.events에 활성.
+ * (game-feel 감사: 월 1일 판정이라 보상 사건의 2/3가 매월 1~2일에 몰렸다 → 달 안에 고르게 퍼지게 매일 굴린다. monthlyBigEvents는 테스트·호환용으로 남긴다.)
  * 발동 시 alerts { type: 'event', id } (UI 대화창), 끝나면 { type: 'eventEnd', id }.
  * 효과: 하루 손님 수 배수(guestMult)·손님층 가중치 배수(tagMult)·메뉴 값 배수(feeMult)는 guests.ts가 곱한다.
  * 즉시 효과: moneyBonus·popularity·repairCost(시설당). specialGuest는 이름 있는 손님 흐름(spawnNamedGuest)으로 1회 방문 — 만족하면 tip.
@@ -9,6 +10,7 @@ import type { GameState, BigEventDef, BigEventTag, ActiveBigEvent } from './type
 import { BIG_EVENTS, bigEventDef, guestTypeDef, canonicalGuestId, SPECIAL_REGION, specialGuestId } from '../data/index.ts';
 import { nextRandom } from './rng.ts';
 import { dayIndex } from './effects.ts';
+import { DAYS_PER_MONTH } from './clock.ts';
 import { goalMet } from './goals.ts';
 import { pushNotice, staffInRole, skillTotal } from './staff.ts';
 import { isWorn, WEAR_START_MONTHS } from './cleanliness.ts';
@@ -168,6 +170,20 @@ export function monthlyBigEvents(state: GameState): string[] {
     if (activeEvents(state).length >= MAX_ACTIVE_EVENTS) break;
     if (!eventEligible(state, def)) continue;
     if (nextRandom(state) >= eventChance(state, def)) continue;
+    startEvent(state, def.id);
+    started.push(def.id);
+  }
+  return started;
+}
+
+/** 매일: 월 확률 p를 하루 확률 1−(1−p)^(1/30)로 환산해 굴린다 (한 달 기대 발동 수는 월 1회 판정과 같고, 날짜만 달 안에 퍼진다). 발동한 id 목록. */
+export function dailyBigEventRoll(state: GameState, defs: BigEventDef[] = BIG_EVENTS): string[] {
+  const started: string[] = [];
+  for (const def of defs) {
+    if (activeEvents(state).length >= MAX_ACTIVE_EVENTS) break;
+    if (!eventEligible(state, def)) continue;
+    const p = 1 - Math.pow(1 - Math.min(1, eventChance(state, def)), 1 / DAYS_PER_MONTH);
+    if (nextRandom(state) >= p) continue;
     startEvent(state, def.id);
     started.push(def.id);
   }

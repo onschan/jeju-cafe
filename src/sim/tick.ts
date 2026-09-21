@@ -2,7 +2,7 @@ import type { GameState } from './types.ts';
 import { advanceClock, END_HOUR, START_HOUR } from './clock.ts';
 import { monthlyHarvest } from './orchard.ts';
 import { checkGoals } from './goals.ts';
-import { monthlyBigEvents, dailyBigEvents, hourlyBigEvents } from './events.ts';
+import { dailyBigEvents, dailyBigEventRoll, hourlyBigEvents } from './events.ts';
 import { hourlySpawn, hourlyRegulars, updateGuests } from './guests.ts';
 import { upkeep, closeMonth, annualRaise, incomeTax, TAX_MONTH } from './economy.ts';
 import { checkLoan, monthlyFailure } from './failure.ts';
@@ -52,6 +52,7 @@ function onNewDay(state: GameState): void {
   pruneEffects(state);
   dailyCleanliness(state); // 트랙 A: 청결 일일 변화 (spawnMult 효과 갱신)
   dailyBigEvents(state);
+  dailyBigEventRoll(state); // game-feel: 빅 이벤트는 매일 굴려 달 안에 퍼진다 (월초 몰림 방지)
   dailyPopup(state);
   nightlyRecovery(state);
   dailyWorkExp(state);
@@ -63,10 +64,11 @@ function onNewDay(state: GameState): void {
   advanceConstruction(state);
   dailyRoutes(state); // 트랙 H: 경로 해금·길 끊김·오늘 손님 리셋
   dailyRooms(state); // y-indoor: 본관 증축·이동·2층 완공, 어제 이용률, 난로 자동 ON
+  evaluateUnlocks(state); // game-feel: 손님층·시설 해금·랭크업을 월초가 아니라 조건을 채운 날에 (월초 몰림 방지)
   checkGoals(state);
 }
 
-/** 월 바뀜 (1일의 날 처리보다 먼저): (3월) 급여 인상 → 월급 → 홍보 만료·인기 감소 → 유지비 → 투어 버스 → (3월) 소득세 → 명소 월 정산·선물 → 손님 수 마일리지 → 정산 → 실패 상태(경고·대출·상환·위기) → 평판 후기 → 농원 수확 → 후보 만료 → 손님 해금 → 게시판 → 응모권·무료 추첨 → ★·가이드북 발표 → 라이벌 → 빅 이벤트 판정 */
+/** 월 바뀜 (1일의 날 처리보다 먼저): (3월) 급여 인상 → 월급 → 홍보 만료·인기 감소 → 유지비 → 투어 버스 → (3월) 소득세 → 명소 월 정산·선물 → 손님 수 마일리지 → 정산 → 실패 상태(경고·대출·상환·위기) → 평판 후기 → 농원 수확 → 후보 만료 → 손님 해금 → 게시판 → 응모권·무료 추첨 → ★·가이드북 발표 → 라이벌 (빅 이벤트 판정은 매일 onNewDay) */
 function onNewMonth(state: GameState, prevMonth: number, prevYear: number): void {
   const newYear = state.clock.month === TAX_MONTH && state.clock.year >= 2;
   if (newYear) annualRaise(state);
@@ -89,7 +91,6 @@ function onNewMonth(state: GameState, prevMonth: number, prevYear: number): void
   monthlyShop(state);
   monthlyRank(state);
   monthlyRivals(state);
-  monthlyBigEvents(state);
   villageMonthly(state); // z-ending: 9월 1일 정착 등급 심사
   festivalMonthly(state); // z-ending: 10월 1일 마을제 안내
   endingMonthly(state); // z-ending: 10년차 3월 1일 엔딩 (결산 카드 뒤) · 20년차 11월 100주년
