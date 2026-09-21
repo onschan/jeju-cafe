@@ -35,8 +35,6 @@ export function hasOldSave(storage: Pick<Storage, 'length' | 'key' | 'getItem'> 
   return false;
 }
 
-/** README 링크. 배포 환경에 맞춰 VITE_SITE_URL로 바꿀 수 있다. */
-const SITE_URL: string = (import.meta.env.VITE_SITE_URL as string | undefined) ?? 'https://github.com/cks3066/jeju-cafe#readme';
 
 // ---------- 배경: 시트 프레임으로 고정 데모 배치를 그린 캔버스 ----------
 
@@ -187,7 +185,6 @@ export function TitleScreen({ onEnter }: { onEnter: () => void }) {
           <button style={canContinue ? titleBtn : { ...brownBtnOff, ...titleBtn, opacity: 0.45 }} disabled={!canContinue} onClick={() => setSlots(true)}><Icon name="play" size={20} /> 이어하기</button>
           <button style={titleBtn} onClick={() => setBest(true)}><Icon name="trophy" size={20} /> 최고 점수</button>
           <button style={titleBtn} onClick={() => setSound(true)} data-testid="title-settings"><Icon name="settings" size={20} /> 설정</button>
-          <a href={SITE_URL} target="_blank" rel="noreferrer" style={{ ...titleBtn, display: 'flex', alignItems: 'center', justifyContent: 'center', textDecoration: 'none', boxSizing: 'border-box' }}><Icon name="book" size={20} />&nbsp;사이트</a>
           {oldSave && <div data-testid="old-save-note" style={{ fontSize: 13, color: PALETTE.inkSoft, textAlign: 'center' }}>옛 세이브는 백업됐어요 (v{SAVE_VERSION} 이전 세이브는 새 게임으로)</div>}
           <div data-testid="title-version" style={{ fontSize: 12, color: PALETTE.inkSoft, textAlign: 'center' }}>{VERSION_TEXT}</div>
         </div>
