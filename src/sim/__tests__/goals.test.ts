@@ -102,9 +102,8 @@ describe('goals.json 데이터', () => {
       const openers = GOALS.filter((g) => g.reward.some((r) => r.type === 'unlockFeature' && r.id === f));
       expect(openers.length, f).toBe(1);
     }
-    expect(idx(goalForFeature('promote')!.id)).toBeLessThan(idx(GOALS.find((g) => g.condition.type === 'promotions')!.id));
+    expect(GOALS.some((g) => g.reward.some((r) => r.type === 'unlockFeature' && (r.id as string) === 'promote'))).toBe(false); // ease: 홍보·연구는 처음부터
     expect(idx(goalForFeature('parcel')!.id)).toBeLessThan(idx(GOALS.find((g) => g.condition.type === 'parcels')!.id));
-    expect(idx(goalForFeature('craft')!.id)).toBeLessThan(idx(GOALS.find((g) => g.condition.type === 'recipes')!.id));
     expect(idx(goalForFeature('popup')!.id)).toBeLessThan(idx(GOALS.find((g) => g.condition.type === 'namedGuest')!.id));
     expect(idx(goalForFeature('challenge')!.id)).toBeLessThan(idx(GOALS.find((g) => g.condition.type === 'rivalWins')!.id));
   });

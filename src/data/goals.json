@@ -118,12 +118,12 @@
         "n": 10
       },
       {
-        "type": "unlockFeature",
-        "id": "promote"
+        "type": "tickets",
+        "n": 1
       }
     ],
     "speaker": "hero",
-    "line": "손님들이 웃고 갔어요. 이제 홍보도 할 수 있어요."
+    "line": "손님들이 웃고 갔어요. 홍보로 더 불러 볼까."
   },
   {
     "id": "g08",
@@ -285,8 +285,8 @@
     },
     "reward": [
       {
-        "type": "unlockFeature",
-        "id": "craft"
+        "type": "money",
+        "amount": 300000
       },
       {
         "type": "research",
@@ -294,7 +294,7 @@
       }
     ],
     "speaker": "halmang",
-    "line": "메뉴판이 꽉 찼네. 이제 새 레시피를 연구해 보라."
+    "line": "메뉴판이 꽉 찼네. 새 레시피도 연구해 보라."
   },
   {
     "id": "g17",

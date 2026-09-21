@@ -5,17 +5,13 @@
  * `// TODO(x-<트랙>)` 스텁으로 { cur: 0 }을 돌려 두고 통합 때 한 줄씩 연결한다.
  * 도전 과제·월간 과제·튜토리얼 판정도 checkGoals에서 같이 돈다 (tick·액션 훅은 그대로 한 곳).
  *
- * 기능 잠금표 (state.features — 목표·튜토리얼 보상 unlockFeature로 열린다. 열리기 전엔 해당 액션이 ok:false):
+ * 기능 잠금표 (state.features — 목표 보상 unlockFeature로 열린다. 열리기 전엔 해당 액션이 ok:false).
+ * ease: 홍보·연구 개발·입지 보기·콤보 도감·명소 지도는 처음부터 열려 있다(튜토리얼이 순서를 안내하니 잠금이 필요 없다) — 남은 잠금은 셋뿐.
  * | feature    | 여는 목표 | 잠기는 액션                                          |
  * |------------|-----------|------------------------------------------------------|
- * | promote    | g07       | promote (홍보 활동: 전단·SNS·아르바이트…)             |
  * | parcel     | g11       | buyParcel                                            |
- * | craft      | g16       | develop · addTopping · removeTopping · levelUpMenu   |
  * | popup      | g18       | openPopup (원정 팝업 스토어)                          |
  * | challenge  | g47       | challenge (라이벌 카페 대결)                          |
- * | siteView   | 튜토리얼 2 | (UI만: 입지 보기 배지)                                |
- * | comboCodex | 튜토리얼 6 | (UI만: 콤보 도감)                                     |
- * | spotMap    | 튜토리얼 9 | (UI만: 명소 지도)                                     |
  */
 import type { GameState, GoalDef, GoalCondition, GoalReward, FeatureId, Action, ApplyResult, RewardSource, GoalSpeaker } from './types.ts';
 import { GOALS, goalDef, objectDef, menuDef, roleDef, ROLES, OBJECTS, MENUS, spotDef, guestTypeDef, guidebookDef, itemDef, ITEMS } from '../data/index.ts';
@@ -61,14 +57,12 @@ function selfSupplyPct(state: GameState): number {
   return total <= 0 ? 0 : Math.round((saved / total) * 100);
 }
 
-export const FEATURE_IDS: FeatureId[] = ['promote', 'craft', 'popup', 'challenge', 'parcel', 'siteView', 'comboCodex', 'spotMap'];
-/** 액션을 잠그는 기능 (목표에서 정확히 한 번 열린다). 나머지는 UI 표시용. */
-export const ACTION_FEATURE_IDS: FeatureId[] = ['promote', 'craft', 'popup', 'challenge', 'parcel'];
-export const FEATURE_NAME: Record<FeatureId, string> = { promote: '홍보', craft: '연구 개발', popup: '팝업 스토어', challenge: '카페 대결', parcel: '필지 구매', siteView: '입지 보기', comboCodex: '콤보 도감', spotMap: '명소 지도' };
+export const FEATURE_IDS: FeatureId[] = ['popup', 'challenge', 'parcel'];
+/** 액션을 잠그는 기능 (목표에서 정확히 한 번 열린다) */
+export const ACTION_FEATURE_IDS: FeatureId[] = ['popup', 'challenge', 'parcel'];
+export const FEATURE_NAME: Record<FeatureId, string> = { popup: '팝업 스토어', challenge: '카페 대결', parcel: '필지 구매' };
 /** 액션 → 필요한 기능 (표는 파일 상단 주석) */
 export const FEATURE_OF_ACTION: Partial<Record<Action['type'], FeatureId>> = {
-  promote: 'promote',
-  develop: 'craft', addTopping: 'craft', removeTopping: 'craft', levelUpMenu: 'craft',
   openPopup: 'popup',
   challenge: 'challenge',
   buyParcel: 'parcel',
@@ -81,7 +75,7 @@ export const CONCURRENT_GOALS = 2;
 export const GOAL_LOOKAHEAD = 2;
 
 export function initFeatures(): Record<FeatureId, boolean> {
-  return { promote: false, craft: false, popup: false, challenge: false, parcel: false, siteView: false, comboCodex: false, spotMap: false };
+  return { popup: false, challenge: false, parcel: false };
 }
 
 export function featureOpen(state: GameState, id: FeatureId): boolean {

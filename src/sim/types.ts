@@ -516,7 +516,8 @@ export type GoalCondition =
   // ---- z-ending 정착 등급·마을제 (village.ts) ----
   | { type: 'villageGrade'; n: number }           // 정착 등급 ≥ n (1 외지인 ~ 5 촌장 후보)
   | { type: 'festivals'; n: number };             // 마을제 개최 횟수
-export type FeatureId = 'promote' | 'craft' | 'popup' | 'challenge' | 'parcel' | 'siteView' | 'comboCodex' | 'spotMap';
+/** 목표 뒤에 남는 기능 잠금 (ease): 팝업 스토어·카페 대결·필지 구매만. 홍보·연구·입지 보기·콤보 도감·명소 지도는 처음부터 열려 있다(튜토리얼이 순서를 안내). */
+export type FeatureId = 'popup' | 'challenge' | 'parcel';
 export type GoalReward =
   | { type: 'money'; amount: number }
   | { type: 'unlockFacility'; id: string }

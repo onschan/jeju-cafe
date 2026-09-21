@@ -28,7 +28,7 @@ import { POPULARITY_FRUIT } from '../data/index.ts';
 import { MAX_BUILDERS } from './build.ts';
 import { canUseItem } from './items.ts';
 import { isWeekend, canOpenPopup, bestRegion } from './popup.ts';
-import { featureOpen, currentGoal, activeGoals } from './goals.ts';
+import { featureOpen, goalClaimed, currentGoal, activeGoals } from './goals.ts';
 import { seatScore } from './site.ts';
 import { canBuyParcel, ownedParcels, parcelAt } from './parcels.ts';
 import { isWorn, canRepair } from './cleanliness.ts';
@@ -416,6 +416,10 @@ function placeForQuest(s: GameState): void {
 }
 
 /** 열린 필지 중 살 수 있는 것을 하나 산다 */
+/** 봇의 레시피 개발 시점: 연구 개발은 처음부터 열려 있지만(ease) 봇은 예전처럼 g16(메뉴 4개) 뒤에만 — 1년차 밴드를 그대로 두려고 */
+function botCraftOpen(s: GameState): boolean {
+  return goalClaimed(s, 'g16');
+}
 function buyParcelIfAny(s: GameState): void {
   if (!featureOpen(s, 'parcel') || s.money < BOT_PARCEL_MIN_MONEY) return;
   for (const p of s.parcels) if (!p.owned && canBuyParcel(s, p.id).ok && canSpend(s, p.price) && apply(s, { type: 'buyParcel', id: p.id }).ok) return;
@@ -491,7 +495,7 @@ function monthlyPlan(s: GameState, monthsPlayed: number): void {
   else hireForFreeSlot(s);
 
   // 홍보: 매달 전단 (돈 100만 넘고 기력 60 넘는 직원), 돈 400만 넘으면 SNS도 — 인기가 손님 수를 정하므로 (§4.2 #1) 꾸준히
-  if (featureOpen(s, 'promote') && s.money > FLYER_MIN_MONEY) {
+  if (s.money > FLYER_MIN_MONEY) {
     const st = s.staff.find((x) => x.role !== null && x.energy > FLYER_MIN_ENERGY);
     if (st) apply(s, { type: 'promote', staffId: st.id, promotionId: 'flyer' });
     const st2 = s.staff.find((x) => x.role !== null && x.energy > FLYER_MIN_ENERGY);
@@ -499,7 +503,7 @@ function monthlyPlan(s: GameState, monthsPlayed: number): void {
   }
 
   // 평판이 40 아래면 사과 이벤트 (월 1회, 50만) — 청소·수리(트랙 A repairObject)가 들어오면 그쪽을 먼저
-  if (s.reputation < BOT_APOLOGY_REPUTATION && s.money > BOT_APOLOGY_MIN_MONEY && featureOpen(s, 'promote')) {
+  if (s.reputation < BOT_APOLOGY_REPUTATION && s.money > BOT_APOLOGY_MIN_MONEY) {
     const st = s.staff.find((x) => x.role !== null && x.energy > 10);
     if (st) apply(s, { type: 'promote', staffId: st.id, promotionId: 'apology_event' });
   }
@@ -551,17 +555,17 @@ function dailyPlan(s: GameState): void {
   if (s.clock.year >= BOT_QUEST_YEAR) for (const q of Object.values(s.board.quests)) if (q.status === 'offered' && canAcceptQuest(s, q.id).ok) apply(s, { type: 'acceptQuest', id: q.id });
   if (s.lastChallenge) apply(s, { type: 'dismissChallenge' });
 
-  if (s.money < PARTTIME_MAX_MONEY && featureOpen(s, 'promote')) {
+  if (s.money < PARTTIME_MAX_MONEY) {
     for (const st of s.staff) if (apply(s, { type: 'promote', staffId: st.id, promotionId: 'parttime' }).ok) break;
   }
 
   // 연구 개발이 열리면 레시피 3개까지 개발 (기술 최고 직원). 첫 메뉴는 4번 칸에.
-  if (featureOpen(s, 'craft') && s.research >= DEVELOP_RESEARCH && !s.developing && s.customMenus.length < BOT_RECIPES) {
+  if (botCraftOpen(s) && s.research >= DEVELOP_RESEARCH && !s.developing && s.customMenus.length < BOT_RECIPES) {
     const st = [...s.staff].sort((a, b) => b.stats.skill - a.stats.skill)[0];
     if (st) apply(s, { type: 'develop', base: 'drink', ingredients: BOT_DEVELOP_INGREDIENTS, staffId: st.id });
   }
   // ★2부터 시그니처 1개 (★3 승급 조건) — 요리사가 맡는다
-  if (featureOpen(s, 'craft') && s.star >= 2 && s.clock.year >= BOT_SIGNATURE_YEAR && s.research >= DEVELOP_RESEARCH && !s.developing && !s.customMenus.some((m) => m.category === 'signature')) {
+  if (botCraftOpen(s) && s.star >= 2 && s.clock.year >= BOT_SIGNATURE_YEAR && s.research >= DEVELOP_RESEARCH && !s.developing && !s.customMenus.some((m) => m.category === 'signature')) {
     const cook = s.staff.find((x) => x.role === 'cook');
     if (cook) apply(s, { type: 'develop', base: 'signature', ingredients: BOT_SIGNATURE_INGREDIENTS, staffId: cook.id });
   }

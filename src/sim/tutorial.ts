@@ -13,11 +13,11 @@
  * |  | 2 build_main | 본관 짓기(placeMain) | nav:build·tab:building·build:warehouse·추천 칸 3 | ₩30만 |
  * |  | 3 look_main | 본관 카드 보기(seen look:main) | 본관 발자국 | — |
  * |  | 4 path | 마을 길→문 앞 올렛길 | nav:build·tab:path·마을 길(정낭이 있으면 정낭)·문 앞 | ₩30만 |
- * |  | 5 seat_view | 전망 2+ 자리 테이블 | tab:rest·길 옆 빈 칸 | ₩30만·입지 보기 |
+ * |  | 5 seat_view | 전망 2+ 자리 테이블 | tab:rest·길 옆 빈 칸 | ₩30만 |
  * |  | 6 menu | 아메리카노·감귤주스 | nav:cafe·tab:menu·menu-put | ₩20만 |
  * |  | 7 first_pay | 첫 결제 | 정류장 칸 | 응모권 1 |
  * |  | 8 hire | 직원 1명 | nav:people·tab:candidates·hire | ₩30만 |
- * |  | 9 wall | 돌담을 테이블 북서쪽 | tab:wall·북서 띠 | ₩30만·콤보 도감·홍보·연구 10 |
+ * |  | 9 wall | 돌담을 테이블 북서쪽 | tab:wall·북서 띠 | ₩30만·응모권 1·연구 10 |
  * |  | 10 promote | 홍보 1회 | tab:promo·promote | 마일리지 30 |
  * |  | 11 challenge | 도전 1개 수락 | goal-bar·tab:challenge·challenge-accept | ₩50만 |
  * | 2 자리와 손님 | 12 site_seat | 입지 보기 켜고 전망 자리 테이블 2개 | site-toggle·tab:rest | ₩20만 |
@@ -26,14 +26,14 @@
  * |  | 15 combo2 | 콤보 2개(감귤나무: 귤밭 뷰·밭담 귤 수확) | tab:farm·build:tangerine_tree·후보 칸 | ₩30만 |
  * |  | 16 path10 | 올렛길 10칸 | tab:path | ₩10만 |
  * |  | 17 undo | 되돌리기 1회 | tool:undo | ₩10만 |
- * | 3 첫 달 결산 | 18 month_end | 첫 월말 결산 닫기 | — | 명소 지도 |
+ * | 3 첫 달 결산 | 18 month_end | 첫 월말 결산 닫기 | — | 응모권 1 |
  * |  | 19 seats4 | 좌석 4개(자리 없음 불만 해결) | tab:rest | ₩30만 |
  * |  | 20 clean | 홀·청소 직원 배치 | tab:staff·hire·assign | ₩20만 |
  * |  | 21 storage | 재료 창고 보기(seen storage) | tab:ingredients | 연구 5 |
  * |  | 22 harvest | 농원 수확(다음 달 1일) | tab:farm | ₩30만 |
  * | 4 키우기 | 23 expand | 본관 Lv2 완공 | tab:building·main-expand·막는 시설 칸 | ₩50만 |
  * |  | 24 indoor2 | 실내 좌석 2개 | tab:indoor·build:table_in·방 안 칸 | ₩30만 |
- * |  | 25 train | 연수 1회(랭크 3) | tab:staff·train·train-pick | 연구 20·연구 개발 |
+ * |  | 25 train | 연수 1회(랭크 3) | tab:staff·train·train-pick | 연구 20 |
  * |  | 26 recipe | 레시피 개발 1회 | tab:craft·craft-ingredient·develop | ₩50만 |
  * |  | 27 spot | 명소 투자 1회 | tab:spots·spot-invest | ₩30만·주차장 |
  * |  | 28 parking | 렌터카 손님 1명 | tab:convenience·build:parking_lot | ₩30만·응모권 1 |
@@ -338,13 +338,13 @@ export const STEPS: TutorialStepDef[] = [
   { id: 3, key: 'look_main', chapter: 1, done: (s) => seen(s, 'look:main'), reward: [], targets: [], cells: mainCells },
   { id: 4, key: 'path', chapter: 1, done: pathConnected, reward: [money(300_000)], targets: ['nav:build', 'tab:path', 'build:path'],
     cells: pathCells },
-  { id: 5, key: 'seat_view', chapter: 1, done: (s) => seatWithView(s, 2), reward: [money(300_000), feature('siteView')], targets: ['nav:build', 'tab:rest', 'build:table_out'],
+  { id: 5, key: 'seat_view', chapter: 1, done: (s) => seatWithView(s, 2), reward: [money(300_000)], targets: ['nav:build', 'tab:rest', 'build:table_out'],
     cells: (s) => emptyCellsNearPath(s, 3) },
   { id: 6, key: 'menu', chapter: 1, done: (s) => s.menuSlots.includes('americano') && s.menuSlots.includes('tangerine_juice'), reward: [money(200_000)], targets: ['nav:cafe', 'tab:menu', 'menu-put'], cells: none },
   { id: 7, key: 'first_pay', chapter: 1, done: (s) => s.totalIncome > 0, reward: [{ type: 'tickets', n: 1 }], targets: [], cells: (s) => [busStopPos(s)] },
   { id: 8, key: 'hire', chapter: 1, done: (s) => s.staff.length >= 1, reward: [money(300_000)], targets: ['nav:people', 'tab:candidates', 'hire'], cells: none },
-  // 10단계(홍보)를 바로 할 수 있게 홍보 기능과 전단 연구비(10)를 여기서 준다 — g07(만족 손님 10명)보다 튜토리얼이 먼저 온다
-  { id: 9, key: 'wall', chapter: 1, done: wallShelteringSeat, reward: [money(300_000), feature('comboCodex'), feature('promote'), { type: 'research', n: 10 }], targets: ['nav:build', 'tab:wall', 'build:stonewall'],
+  // 10단계(홍보)를 바로 할 수 있게 전단 연구비(10)를 여기서 준다 (ease: 홍보·콤보 도감은 처음부터 열려 있다)
+  { id: 9, key: 'wall', chapter: 1, done: wallShelteringSeat, reward: [money(300_000), { type: 'tickets', n: 1 }, { type: 'research', n: 10 }], targets: ['nav:build', 'tab:wall', 'build:stonewall'],
     cells: (s) => shelterCells(s, 6) },
   { id: 10, key: 'promote', chapter: 1, done: (s) => s.stats.promotionsDone >= 1, reward: [{ type: 'mileage', n: 30 }], targets: ['nav:cafe', 'tab:promo', 'promote'], cells: none },
   { id: 11, key: 'challenge', chapter: 1, done: (s) => s.challenges.active.length + s.challenges.done.length >= 1, reward: [money(500_000)], targets: ['goal-bar', 'tab:challenge', 'challenge-accept'], cells: none },
@@ -358,7 +358,7 @@ export const STEPS: TutorialStepDef[] = [
   { id: 16, key: 'path10', chapter: 2, done: (s) => count(s, 'path') >= 10, reward: [money(100_000)], targets: ['nav:build', 'tab:path', 'build:path'], cells: none },
   { id: 17, key: 'undo', chapter: 2, done: (s) => seen(s, 'undoLast'), reward: [money(100_000)], targets: ['nav:build', 'tool:undo'], cells: none },
   // ---- 3장 첫 달 결산 (4월 1일~) ----
-  { id: 18, key: 'month_end', chapter: 3, done: firstMonthClosed, reward: [feature('spotMap')], targets: [], cells: none },
+  { id: 18, key: 'month_end', chapter: 3, done: firstMonthClosed, reward: [{ type: 'tickets', n: 1 }], targets: [], cells: none },
   { id: 19, key: 'seats4', chapter: 3, done: (s) => seats(s).length >= 4, reward: [money(300_000)], targets: ['nav:build', 'tab:rest', 'build:table_out'],
     cells: (s) => emptyCellsNearPath(s, 3) },
   { id: 20, key: 'clean', chapter: 3, done: (s) => s.staff.some((st) => st.role === 'hall' || st.role === 'clean'), reward: [money(200_000)], targets: ['nav:people', 'tab:staff', 'tab:candidates', 'hire', 'assign'], cells: none },
@@ -369,8 +369,7 @@ export const STEPS: TutorialStepDef[] = [
     cells: (s) => expandBlockedCells(s) },
   { id: 24, key: 'indoor2', chapter: 4, done: (s) => indoorSeatObjects(s).length >= 2, reward: [money(300_000)], targets: ['nav:cafe', 'tab:indoor', 'build:table_in'],
     cells: (s) => mainFloorCells(s, 3) },
-  // 26단계(레시피)를 바로 할 수 있게 연구 개발 기능을 여기서 연다 — g16(메뉴 4개)보다 먼저 올 수 있다
-  { id: 25, key: 'train', chapter: 4, done: (s) => s.stats.trainings >= 1 || seen(s, 'train'), reward: [{ type: 'research', n: 20 }, feature('craft')], targets: ['nav:people', 'tab:staff', 'train', 'train-pick'], cells: none },
+  { id: 25, key: 'train', chapter: 4, done: (s) => s.stats.trainings >= 1 || seen(s, 'train'), reward: [{ type: 'research', n: 20 }], targets: ['nav:people', 'tab:staff', 'train', 'train-pick'], cells: none },
   { id: 26, key: 'recipe', chapter: 4, done: (s) => s.stats.recipesMade >= 1 || s.customMenus.length >= 1 || seen(s, 'develop'), reward: [money(500_000)], targets: ['nav:cafe', 'tab:craft', 'craft-ingredient', 'develop'], cells: none },
   // 28단계(주차장)를 바로 지을 수 있게 주차장 시설을 여기서 연다 (좌석 6개 조건보다 먼저 올 수 있다)
   { id: 27, key: 'spot', chapter: 4, done: (s) => Object.values(s.spots).some((lv) => lv >= 1) || seen(s, 'investSpot'), reward: [money(300_000), { type: 'unlockFacility', id: 'parking_lot' }], targets: ['nav:ledger', 'tab:spots', 'spot-invest'], cells: none },
@@ -388,9 +387,9 @@ export const STEPS: TutorialStepDef[] = [
 export function initTutorial(skipped = false): GameState['tutorial'] {
   return { step: skipped ? TUTORIAL_STEPS : 0, skipped, seen: [] };
 }
-/** 완성 시작 상태(starter)·전체 건너뛰기에서 바로 여는 튜토리얼 기능: 1장 보상 중 목표 체인이 안 주는 것(입지 보기·콤보 도감·명소 지도)과 홍보.
- *  25·31단계가 주는 연구 개발·팝업 스토어는 목표(g16·g18)가 여니 여기서 안 연다 — 봇(starter)의 진행이 바뀌지 않게. */
-export const STARTER_FEATURE_IDS: FeatureId[] = ['siteView', 'comboCodex', 'promote', 'spotMap'];
+/** 완성 시작 상태(starter)·전체 건너뛰기에서 바로 여는 튜토리얼 기능. ease: 입지 보기·콤보 도감·홍보·명소 지도가 처음부터 열려 있어 비었다.
+ *  31단계가 주는 팝업 스토어는 목표(g18)가 여니 여기서 안 연다 — 봇(starter)의 진행이 바뀌지 않게. */
+export const STARTER_FEATURE_IDS: FeatureId[] = [];
 export function tutorialFeatureIds(): FeatureId[] {
   return STARTER_FEATURE_IDS;
 }

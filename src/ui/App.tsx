@@ -632,8 +632,8 @@ function Game({ onExit }: { onExit: () => void }) {
   const CAFE_MENU: IconGridItem<CafeTab>[] = [
     { key: 'menu', label: '메뉴판', icon: 'coffee' },
     { key: 'ingredients', label: '재료', icon: 'harvest' },
-    { key: 'craft', label: '연구', icon: 'research', locked: !featureOpen(s, 'craft'), lockedText: '연구 개발은 목표를 이루면 열려요' },
-    { key: 'promo', label: '홍보', icon: 'promo', locked: !featureOpen(s, 'promote'), lockedText: '홍보는 튜토리얼 10단계에서 열려요' },
+    { key: 'craft', label: '연구', icon: 'research' }, // ease: 연구·홍보는 처음부터 열려 있다
+    { key: 'promo', label: '홍보', icon: 'promo' },
     { key: 'building', label: '본관', icon: 'home' },
     { key: 'indoor', label: '실내', icon: 'chair' },
   ];
@@ -642,14 +642,14 @@ function Game({ onExit }: { onExit: () => void }) {
     { key: 'staff', label: '직원', icon: 'staff', badge: s.staff.filter((st) => st.energy < 20).length },
     { key: 'candidates', label: '채용', icon: 'hire', badge: s.candidates.length },
     { key: 'guests', label: '손님', icon: 'guest', badge: s.guests.length },
-    { key: 'codex', label: '도감', icon: 'book', locked: !featureOpen(s, 'comboCodex'), lockedText: '콤보 도감은 튜토리얼 9단계에서 열려요' },
+    { key: 'codex', label: '도감', icon: 'book' },
     { key: 'quests', label: '부탁', icon: 'quest', badge: offered },
     { key: 'rivals', label: '라이벌', icon: 'rival', locked: !featureOpen(s, 'challenge'), lockedText: '카페 대결은 목표를 이루면 열려요', isNew: s.rivals.length > 0 },
   ];
   const LEDGER_MENU: IconGridItem<LedgerTab>[] = [
     { key: 'report', label: '경영', icon: 'report' },
     { key: 'invest', label: '투자', icon: 'money', badge: s.board.events.filter((e) => e.status === 'pending').length },
-    { key: 'spots', label: '명소', icon: 'map', locked: !featureOpen(s, 'spotMap'), lockedText: '명소 지도는 첫 달을 마치면 열려요' },
+    { key: 'spots', label: '명소', icon: 'map' },
     { key: 'shop', label: '상점', icon: 'shop' },
     { key: 'tickets', label: '응모권', icon: 'ticket', badge: s.tickets },
     { key: 'rank', label: '랭킹', icon: 'trophy' },
