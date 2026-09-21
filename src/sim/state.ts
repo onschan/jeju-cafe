@@ -177,6 +177,7 @@ export function createInitialState(seed: number, playerId = 'local', createdAt =
     alerts: [],
     events: [],
     eventsFired: {},
+    weeklyEventDay: 0,
     monthHarvest: { harvested: {}, ingredientSaved: 0 },
     staff: [],
     candidates: [],

@@ -178,7 +178,8 @@ test('매월 1일 무료 추첨 리셋, 보름(15일)에 응모권 +1 (game-feel
   expect(s.tickets).toBe(tickets + MONTHLY_FREE_TICKETS);
   for (let d = 0; d < 17; d++) tick(s, DAY_MS);
   expect(s.clock.month).toBe(4);
-  expect(s.tickets).toBe(tickets + MONTHLY_FREE_TICKETS); // 1일엔 응모권 없음
+  expect(s.tickets).toBe(tickets + MONTHLY_FREE_TICKETS + 1); // 1일엔 응모권 없음 — +1은 4월에 열리는 육지 삼춘 해금 보상(game-feel P1 GUEST_UNLOCK_REWARDS)
+  expect(s.alerts.some((a) => a.type === 'reward' && a.source === 'unlock')).toBe(true);
   expect(s.freeDrawMonth).toBe(monthIndex(s.clock));
 });
 

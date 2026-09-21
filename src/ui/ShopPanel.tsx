@@ -18,6 +18,8 @@ const TABS: { id: Tab; label: string }[] = [
 ];
 /** 인형뽑기 연출 길이 (ms) */
 export const DRAW_ANIM_MS = 2000;
+/** 집게 연출 중 긴장 효과음(tap) 시점 — 점점 느려지는 룰렛 소리 */
+export const DRAW_TICK_MS = [250, 550, 900, 1300, 1750];
 
 const row: CSSProperties = { ...card, display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 };
 const price: CSSProperties = { fontWeight: 700, whiteSpace: 'nowrap' };
@@ -259,7 +261,9 @@ export function DrawPopup() {
     if (!r) return;
     setPhase('anim');
     const t = setTimeout(() => { setPhase('result'); sfx(r.kind === 'miss' ? 'meh' : 'fanfare'); }, DRAW_ANIM_MS);
-    return () => clearTimeout(t);
+    // game-feel P2: 룰렛 긴장감 — 집게가 내려가는 동안 똑·똑·똑 (간격이 점점 벌어진다)
+    const ticks = DRAW_TICK_MS.map((ms) => setTimeout(() => sfx('tap'), ms));
+    return () => { clearTimeout(t); ticks.forEach(clearTimeout); };
   }, [r]);
   if (!r) return null;
   const close = () => dispatch({ type: 'dismissDraw' });
@@ -269,12 +273,15 @@ export function DrawPopup() {
         @keyframes claw-drop { 0% { transform: translateY(0) } 40% { transform: translateY(58px) } 60% { transform: translateY(58px) } 100% { transform: translateY(0) } }
         @keyframes prize-rise { 0%, 55% { transform: translateY(0); opacity: .35 } 100% { transform: translateY(-58px); opacity: 1 } }
         @keyframes prize-pop { 0% { transform: scale(.6) } 60% { transform: scale(1.15) } 100% { transform: scale(1) } }
+        @keyframes prize-roulette { 0%, 100% { opacity: .35 } 50% { opacity: 1; transform: translateY(-3px) } }
       `}</style>
       <div data-testid="draw-anim" data-phase={phase} style={{ position: 'relative', height: 120, background: `linear-gradient(#bfe3ff, ${PALETTE.paperDark})`, border: `3px solid ${PALETTE.wood}`, borderRadius: 8, overflow: 'hidden', marginBottom: 8 }}>
         <div style={{ position: 'absolute', left: 0, right: 0, top: 0, height: 10, background: PALETTE.wood }} />
         <div style={{ position: 'absolute', left: '50%', top: 10, width: 2, height: 24, marginLeft: -1, background: '#444', animation: phase === 'anim' ? `claw-drop ${DRAW_ANIM_MS}ms ease-in-out forwards` : undefined }} />
         <div style={{ position: 'absolute', left: '50%', top: 30, marginLeft: -14, fontSize: 24, lineHeight: 1, animation: phase === 'anim' ? `claw-drop ${DRAW_ANIM_MS}ms ease-in-out forwards` : undefined }}><Icon name="hand" size={28} /></div>
-        <div style={{ position: 'absolute', left: 0, right: 0, bottom: 6, textAlign: 'center', fontSize: 22, letterSpacing: 6, opacity: 0.55, display: 'flex', justifyContent: 'center', gap: 6 }}><Icon name="toy" size={24} /><Icon name="gift" size={24} /><Icon name="ticket" size={24} /><Icon name="gift" size={24} /><Icon name="toy" size={24} /></div>
+        <div data-testid="draw-roulette" style={{ position: 'absolute', left: 0, right: 0, bottom: 6, textAlign: 'center', fontSize: 22, letterSpacing: 6, opacity: 0.55, display: 'flex', justifyContent: 'center', gap: 6 }}>
+          {(['toy', 'gift', 'ticket', 'gift', 'toy'] as const).map((n, i) => <span key={i} style={{ display: 'inline-flex', animation: phase === 'anim' ? `prize-roulette 0.5s ease-in-out ${i * 0.1}s infinite` : undefined }}><Icon name={n} size={24} /></span>)}
+        </div>
         <div style={{ position: 'absolute', left: '50%', bottom: 8, marginLeft: -14, fontSize: 26, lineHeight: 1, animation: phase === 'anim' ? `prize-rise ${DRAW_ANIM_MS}ms ease-in-out forwards` : `prize-pop 400ms ease-out` }}><Icon name={prizeIcon(r.kind)} size={28} /></div>
       </div>
       {phase === 'result' ? (

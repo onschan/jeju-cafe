@@ -9,7 +9,7 @@ import { DAY_MS } from '../clock.ts';
 import { placeObject } from '../grid.ts';
 import { setSlot } from '../menu.ts';
 import { unlockGuestType } from '../segments.ts';
-import { rankScore, rankForScore, nextRankThreshold, facilityCount, updateRank, RANK_THRESHOLDS, MAX_RANK, GUESTS_PER_POINT } from '../rank.ts';
+import { rankScore, rankForScore, nextRankThreshold, facilityCount, updateRank, RANK_THRESHOLDS, MAX_RANK, GUESTS_PER_POINT, POINTS_PER_GUEST_TYPE, rankUpRewards, RANK_UP_MILEAGE } from '../rank.ts';
 import {
   starConditionMet, nextStarConditions, checkStar, judgeScores, guidebookScore, evaluateGuidebooks, guidebooksToAnnounce, announce, rivalScores, rivalTop, rankAmong, monthlyTarget, codexTotal,
   MAX_STAR, RIVAL_COUNT, PRIZE_RATIO, RANK_MILEAGE, MONTHLY_TAGS, JUDGE_KEYS,
@@ -38,12 +38,12 @@ test('데이터: 가이드북 11 (해금·가중치 합 1·상금), ★ 5단계 
 test('랭크 점수·문턱: 누적 손님/50 + 시설×2 + 해금 손님층×5, 길·돌담·본관은 시설로 안 센다', () => {
   const s = bareState(1);
   expect(facilityCount(s)).toBe(0);
-  expect(rankScore(s)).toBe(3 * 5); // 시작 손님층 3
+  expect(rankScore(s)).toBe(3 * POINTS_PER_GUEST_TYPE); // 시작 손님층 3 (game-feel P1: 5 → 2점)
   placeObject(s, 'path', X(4), Y(5));
   placeObject(s, 'table_out', X(6), Y(4));
   expect(facilityCount(s)).toBe(1);
   s.totalGuests = 623;
-  expect(rankScore(s)).toBe(12 + 2 + 15);
+  expect(rankScore(s)).toBe(12 + 2 + 3 * POINTS_PER_GUEST_TYPE);
   expect(rankForScore(0)).toBe(1);
   expect(rankForScore(RANK_THRESHOLDS[1]!)).toBe(2);
   expect(rankForScore(RANK_THRESHOLDS[MAX_RANK - 1]!)).toBe(MAX_RANK);
@@ -244,4 +244,19 @@ test('발표 시점: 9월 1일 월초에 lastAnnouncement가 생기고, 다른 �
   expect(s.clock.month).toBe(11);
   expect(s.lastAnnouncement!.entries.map((e) => e.id)).toEqual(['gb_coop_monthly']);
   expect(s.lastAnnouncement!.entries[0]!.targetText).not.toBeNull();
+});
+
+// ---------- game-feel P1: 승급 보상 ----------
+test('랭크 업·★ 승급은 장면 창 뒤에 보상 상자(응모권 + 마일리지)를 준다', () => {
+  const s = bareState(1);
+  s.alerts = [];
+  const t0 = s.tickets, m0 = s.mileage;
+  s.totalGuests = 100_000;
+  expect(updateRank(s)).toBe(true);
+  const box = s.alerts.find((a) => a.type === 'reward' && a.source === 'rank') as Extract<GameState['alerts'][number], { type: 'reward' }> | undefined;
+  expect(box).toBeDefined();
+  expect(box!.items).toEqual(rankUpRewards(MAX_RANK));
+  expect(s.tickets).toBe(t0 + 2); // 랭크 5부터 2장
+  expect(s.mileage).toBe(m0 + RANK_UP_MILEAGE);
+  expect(rankUpRewards(2)).toEqual([{ type: 'tickets', n: 1 }, { type: 'mileage', n: RANK_UP_MILEAGE }]);
 });

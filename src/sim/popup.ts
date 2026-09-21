@@ -10,6 +10,7 @@ import { reputationNamedMult } from './reputation.ts';
 import { dayIndex } from './effects.ts';
 import { josa } from './josa.ts';
 import { fmtNum } from './format.ts';
+import { pushFx } from './fx.ts';
 
 /**
  * 원정 팝업 스토어 (스펙 §15.2, 계획 2B-4 Task 2)
@@ -23,6 +24,8 @@ export const WEEKEND_DAYS = [6, 13, 20, 27] as const;
 export const POPUP_COST_SCALE = 100;
 export const POPUP_GUESTS_MIN = 6;
 export const POPUP_GUESTS_MAX = 8;
+/** 팝업 하루에 처음 만나는 손님 상한 (game-feel P1) */
+export const POPUP_NEW_MAX = 3;
 export const AFFINITY_PER_VISIT = 10;
 export const AFFINITY_TASTE_MULT = 2;
 export const AFFINITY_MAX = 300;
@@ -109,9 +112,12 @@ export function openPopup(state: GameState, regionId: string): void {
   r.vitality = Math.max(0, r.vitality - def.decayPerWeek);
   r.appetite = Math.max(0, r.appetite - def.decayPerWeek);
   const n = popupGuestCount(r.appetite + def.decayPerWeek); // 이번 주 식욕(깎기 전)으로 센다
-  const pool = namedGuestsOf(regionId).map((g) => g.id);
+  // game-feel P1: 처음 보는 손님은 한 번에 POPUP_NEW_MAX명까지 (한 달에 25명이 첫 등장하면 신선함이 한 달에 다 탄다) — 나머지 줄은 이미 만난 손님이 채운다
+  const fresh = namedGuestsOf(regionId).map((g) => g.id).filter((id) => !namedGuestState(state, id).met);
+  const known = namedGuestsOf(regionId).map((g) => g.id).filter((id) => namedGuestState(state, id).met);
   const queue: string[] = [];
-  while (queue.length < n && pool.length > 0) queue.push(pool.splice(randInt(state, 0, pool.length - 1), 1)[0]!);
+  while (queue.length < Math.min(n, POPUP_NEW_MAX) && fresh.length > 0) queue.push(fresh.splice(randInt(state, 0, fresh.length - 1), 1)[0]!);
+  while (queue.length < n && known.length > 0) queue.push(known.splice(randInt(state, 0, known.length - 1), 1)[0]!);
   state.popup = { regionId, openedDay: dayIndex(state.clock), lastRegionId: regionId, queue, visits: [] };
   pushNotice(state, `${def.name}에 팝업을 열었어요 (₩${fmtNum(cost)})`);
 }
@@ -156,6 +162,7 @@ export function dailyPopup(state: GameState): void {
 export function resolvePopupVisit(state: GameState, namedId: string): PopupVisit {
   const def = namedGuestDef(namedId);
   const st = namedGuestState(state, namedId);
+  if (!st.met) pushFx(state, { kind: 'scene', title: '첫 만남', text: `${def.name}(${def.job}) — 「${def.line}」 손님 도감에 올랐어요`, tick: state.tick }); // game-feel P1: 첫 등장은 장면 창 + 도감 NEW
   st.met = true;
   const likes = namedLikes(def);
   const liked = availableMenus(state).filter((id) => guestLikesCategory(likes, menuOf(state, id).category));

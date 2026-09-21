@@ -19,9 +19,9 @@ import { apply } from './actions.ts';
 import { DAY_MS } from './clock.ts';
 import { canPlace, objectAt, cellAt, footprint, doorFrontOf } from './grid.ts';
 import { START_ORIGIN } from './layout.ts';
-import { objectDef, COMBOS, SETS, questDef } from '../data/index.ts';
+import { objectDef, COMBOS, SETS, questDef, challengeDef, INDOOR_IDS } from '../data/index.ts';
 import { DEVELOP_RESEARCH, menuOf } from './craft.ts';
-import { canDrawTicket, hasFreeDraw, canBuyTicket, canUseGuestItem } from './shop.ts';
+import { canDrawTicket, hasFreeDraw, canBuyTicket, canUseGuestItem, MID_MONTH_TICKET_DAY } from './shop.ts';
 import { effectivePopularity } from './promotions.ts';
 import { isUnlocked } from './segments.ts';
 import { POPULARITY_FRUIT } from '../data/index.ts';
@@ -34,6 +34,9 @@ import { canBuyParcel, ownedParcels, parcelAt } from './parcels.ts';
 import { isWorn, canRepair } from './cleanliness.ts';
 import { complaintCounts } from './reputation.ts';
 import { canAcceptQuest } from './board.ts';
+import { offeredChallenges, canAcceptChallenge } from './challenges.ts';
+import { spotEffectAt } from './compat.ts';
+import { SPOT_EFFECTS } from '../data/index.ts';
 import { canChallenge, challengeOdds } from './rivals.ts';
 import { canLevelUp } from './staff.ts';
 import { canTrain } from './training.ts';
@@ -43,9 +46,9 @@ import { objectStats, activeCombos, setLevels } from './compat.ts';
 import { canInvestSpot, canHostTour, tourScore, TOUR_SUCCESS_SCORE } from './spots.ts';
 import { SPOTS } from '../data/index.ts';
 import { canHire } from './staff.ts';
-import { parkingSites, routePathCells, routeFacility, canSetRouteContract, ENTRY_ROUTES, PARKING_EXPAND_FROM } from './entry.ts'; // 트랙 H
+import { parkingSites, routePathCells, routeFacility, canSetRouteContract, ENTRY_ROUTES, PARKING_EXPAND_FROM, PARKING_SLOTS } from './entry.ts'; // 트랙 H
 import { mainBuilding, freeFloorCells, nextMainLevel, expandCost, expandCells, canExpandMain, isAnnex, indoorSeats } from './rooms.ts'; // y-indoor
-import type { Candidate, RoleId, StatKey } from './types.ts';
+import type { Candidate, RoleId, StatKey, QuestDef } from './types.ts';
 import { canDonate, canHoldFestival } from './village.ts'; // z-ending
 
 export interface BotRow {
@@ -94,8 +97,26 @@ export const BOT_DEVELOP_INGREDIENTS = ['beans', 'milk'];
 export const BOT_SIGNATURE_INGREDIENTS = ['beans', 'milk', 'tangerine', 'sugar'];
 /** 시그니처(★3 조건)는 3년차부터 — 그 전엔 §4.6 3년 밴드의 봇 그대로 */
 export const BOT_SIGNATURE_YEAR = 3;
-/** 게시판 부탁 수락은 4년차부터 (부탁 보상 돈·손님 해금이 커서 3년 밴드 봇에는 넣지 않는다 — 랜드마크·★4는 이걸로 연다) */
-export const BOT_QUEST_YEAR = 4;
+/** 게시판 부탁 수락 (game-feel P1: 2년차부터 — 부탁 완료가 달 중반 사건·손님층 체인이라 헤드리스 KPI도 플레이어에 가깝게. 1년차부터 받으면 1년차 순이익이 900만+로 §4.6 밴드(300~800만)를 넘는다).
+ *  지금 할 수 있는 것(questFeasible: 시설·메뉴 열림·아이템 있음)만 받는다 */
+export const BOT_QUEST_YEAR = 2;
+/** 도전 과제 수락도 2년차부터 (1년차 도전 보상 돈 100만+가 1년차 순이익 밴드를 넘긴다) */
+export const BOT_CHALLENGE_YEAR = 2;
+/** 동시에 하는 부탁 수 (한 번에 하나 — 부탁 시설을 몰아 지으면 시설 인기 합이 불어 3년 자금이 1억을 넘는다) */
+export const BOT_QUEST_ACTIVE_MAX = 2;
+export const BOT_QUEST_PLACES_PER_MONTH = 1;
+/** 도전 과제: 빈 슬롯은 늘 채운다 (tier 낮은 것부터, 명당·숨은 레시피·콤보처럼 봇이 할 줄 아는 것 우선) — game-feel P2 */
+export const BOT_CHALLENGE_PREFER = ['c41', 'c43', 'c46', 'c42', 'c44', 'c45'];
+/** tier 3 이상(요금 +5%·칭호·마일리지 100 같은 큰 보상)은 안 받는다 — 3년 자금 밴드 */
+export const BOT_CHALLENGE_MAX_TIER = 2;
+/** 응모권은 보름(15일)에 1장만 쓴다 — 보름 응모권(P0-4)을 플레이어처럼. 다 쓰면(해금·승급·도전 응모권 100장+ → 연구·아이템) 3년 자금이 1억을 넘는다(§4.6 밴드) */
+export const BOT_DRAW_TICKETS = true;
+/** 명당 만들기: 도전·월간 과제에 명당이 걸려 있거나 2년차부터, 도감에 없는 명당 하나를 만든다 (한 달 하나) */
+export const BOT_SPOT_EFFECT_YEAR = 2;
+export const BOT_SPOT_CELLS: { x: number; y: number }[] = [0, 1, 2, 3, 6, 7, 8, 9].flatMap((x) => [at(x, 1), at(x, 2)]); // 시작 필지 위쪽 두 줄 (테이블 줄 y=3 위)
+export const BOT_SPOT_ORDER = ['spot_orchard', 'spot_bubble', 'spot_massage', 'spot_waterfall', 'spot_oreum'];
+/** 레시피 개발 재료 순서: 2·4번째는 숨은 레시피(한라봉 에이드·용천수 콜드브루) — 도감·도전 「숨은 레시피 찾기」 */
+export const BOT_RECIPE_PLAN: string[][] = [['beans', 'milk'], ['hallabong', 'ice', 'honey'], ['beans', 'milk'], ['water_spring', 'beans_roast', 'ice'], ['beans', 'milk']];
 /** 콤보 만들기(짝 시설 놓기)는 2년차부터 */
 export const BOT_COMBO_YEAR = 2;
 /** 콤보·세트·부탁·랜드마크용 시설은 자금이 이만큼 넘을 때만 (채용·명소 투자보다 뒤) */
@@ -234,7 +255,7 @@ function placeDecos(s: GameState): void {
     if (placed >= BOT_DECOS_PER_MONTH) return;
     if (!s.unlocked.objects.includes(type)) continue;
     if (!canSpend(s, objectDef(type).cost)) return;
-    const cell = (s.clock.year >= BOT_EXTRA_TABLE_YEAR ? cells : BOT_DECO_CELLS).find((c) => !objectAt(s, c.x, c.y) && canPlace(s, type, c.x, c.y).ok); // 발자국이 맞는 첫 빈 칸 (4년차부터는 산 필지까지)
+    const cell = (s.clock.year >= BOT_EXTRA_TABLE_YEAR ? cells : [...BOT_DECO_CELLS, ...BOT_EXTRA_CELLS]).find((c) => !objectAt(s, c.x, c.y) && canPlace(s, type, c.x, c.y).ok); // 발자국이 맞는 첫 빈 칸 (장식 칸이 차면 산 필지 — 부탁·명당 시설이 늘어 휴게실(직원 정원 +3) 자리가 없던 시드가 있었다)
     if (!cell || !place(s, type, cell.x, cell.y)) return;
     have.set(type, (have.get(type) ?? 0) + 1);
     placed++;
@@ -347,6 +368,48 @@ function placeForSet(s: GameState): void {
     }
   }
 }
+/** 명당 만들기 (game-feel P1: 봇 3년 명당 0/12): 도감에 없는 명당 중 중심·필요 시설이 다 열려 있는 것 하나 — 중심을 놓고(있으면 그것) 반경 안 빈 칸에 모자란 시설을 채운다. 한 달 하나. */
+function placeForSpot(s: GameState): void {
+  const wanted = s.challenges.active.some((a) => challengeDef(a.id).condition.type === 'spotEffects') || s.monthly?.condition.type === 'spotEffects';
+  if (!wanted && s.clock.year < BOT_SPOT_EFFECT_YEAR) return;
+  const cells = [...BOT_EXTRA_CELLS, ...BOT_SPOT_CELLS]; // 산 필지(위 3번·왼쪽 4번)에 먼저 — 시작 필지 위쪽 줄은 창고·바위·부탁 시설로 붐빈다
+  const free = (type: string, c: { x: number; y: number }) => !objectAt(s, c.x, c.y) && canPlace(s, type, c.x, c.y).ok;
+  const near = (a: { x: number; y: number }, b: { x: number; y: number }, r: number) => Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y)) <= r;
+  for (const id of BOT_SPOT_ORDER) {
+    const sp = SPOT_EFFECTS.find((x) => x.id === id);
+    if (!sp || s.codex.spots.includes(sp.id)) continue;
+    if (![sp.center, ...sp.requires.map((r) => r.objectId)].every((t) => s.unlocked.objects.includes(t))) continue;
+    const objs = Object.values(s.objects);
+    // 중심 후보: 이미 있는 중심 시설(명당 아닌 것) 또는 빈 칸 — 반경 안에 모자란 시설을 다 놓을 빈 칸이 있는 곳
+    const fits = (at: { x: number; y: number }, isNew: boolean): boolean => {
+      let needCells = 0;
+      for (const r of sp.requires) {
+        const have = objs.filter((o) => o.type === r.objectId && near(o, at, sp.radius)).length;
+        const need = Math.max(0, r.count - have);
+        if (cells.filter((q) => near(q, at, sp.radius) && (q.x !== at.x || q.y !== at.y) && free(r.objectId, q)).length < need) return false;
+        needCells += need;
+      }
+      return cells.filter((q) => near(q, at, sp.radius) && (q.x !== at.x || q.y !== at.y) && !objectAt(s, q.x, q.y)).length >= needCells + (isNew ? 0 : 0);
+    };
+    let center = objs.find((o) => o.type === sp.center && !spotEffectAt(s, o.id) && fits(o, false));
+    if (!center) {
+      const c = cells.find((q) => free(sp.center, q) && fits(q, true));
+      if (!c || !canSpend(s, objectDef(sp.center).cost) || !place(s, sp.center, c.x, c.y)) continue;
+      center = objectAt(s, c.x, c.y)!;
+    }
+    const at = center;
+    for (const r of sp.requires) {
+      let have = Object.values(s.objects).filter((o) => o.type === r.objectId && o.id !== at.id && near(o, at, sp.radius)).length;
+      while (have < r.count) {
+        if (!canSpend(s, objectDef(r.objectId).cost)) return;
+        const c = cells.find((q) => near(q, at, sp.radius) && free(r.objectId, q));
+        if (!c || !place(s, r.objectId, c.x, c.y)) return;
+        have++;
+      }
+    }
+    return;
+  }
+}
 /** y-indoor: 본관·별관 바닥 짝수 줄에 실내 테이블 (통로 줄은 비운다) */
 function placeIndoorSeats(s: GameState): void {
   const goalActive = activeGoals(s).some((g) => g.id === BOT_INDOOR_GOAL);
@@ -401,17 +464,41 @@ function placeLandmark(s: GameState): void {
   }
 }
 /** 부탁(게시판) 중 「시설 N개 놓기」는 열려 있으면 놓아 준다 (한 달 하나) */
+export const BOT_QUEST_BUILD_MIN_MONEY = 3_000_000;
+export const BOT_QUEST_CHEAP = 200_000;
+/** 장식 칸은 이만큼 비워 둔다 (휴게실·화장실 등 목표 시설 자리) */
+export const BOT_DECO_RESERVE = 6;
 function placeForQuest(s: GameState): void {
-  if (s.money < BOT_BUILD_MIN_MONEY) return;
+  if (s.money < BOT_QUEST_BUILD_MIN_MONEY) return;
   for (const q of Object.values(s.board.quests)) {
     if (q.status !== 'active') continue;
     const cond = questDef(q.id).condition;
     if (cond.type !== 'objectPlaced') continue;
     const { objectId, count } = cond.params;
-    if (!s.unlocked.objects.includes(objectId) || Object.values(s.objects).filter((o) => o.type === objectId).length >= count) continue;
-    if (!canSpend(s, objectDef(objectId).cost)) continue;
-    const cell = [...BOT_DECO_CELLS, ...BOT_EXTRA_CELLS].find((c) => !objectAt(s, c.x, c.y) && canPlace(s, objectId, c.x, c.y).ok);
-    if (cell && place(s, objectId, cell.x, cell.y)) return;
+    if (!s.unlocked.objects.includes(objectId)) continue;
+    if (objectDef(objectId).cost > BOT_QUEST_CHEAP && s.money < BOT_BUILD_MIN_MONEY) continue; // 비싼 시설은 자금 800만부터
+    // 부탁 시설은 산 필지·위쪽 줄에 먼저 — 장식 칸(BOT_DECO_CELLS)을 부탁 시설이 채우면 휴게실 자리가 없어 직원 3명에 묶인다(3년 밴드 붕괴)
+    const freeDeco = BOT_DECO_CELLS.filter((c) => !objectAt(s, c.x, c.y)).length;
+    const cells = [...BOT_EXTRA_CELLS, ...BOT_SPOT_CELLS, ...(freeDeco > BOT_DECO_RESERVE ? BOT_DECO_CELLS : [])];
+    let placed = 0;
+    while (Object.values(s.objects).filter((o) => o.type === objectId).length < count && placed < BOT_QUEST_PLACES_PER_MONTH) { // 싼 시설(꽃·등)은 한 달에 몇 개씩
+      if (!canSpend(s, objectDef(objectId).cost)) return;
+      const cell = cells.find((c) => !objectAt(s, c.x, c.y) && canPlace(s, objectId, c.x, c.y).ok);
+      if (!cell || !place(s, objectId, cell.x, cell.y)) return;
+      placed++;
+    }
+    if (placed > 0) return;
+  }
+}
+/** 봇이 끝낼 수 있는 부탁인가: 시설은 열려 있고 봇이 놓을 수 있는 종류(경로 시설·건물 제외), 메뉴는 지금 메뉴판에 있는 것, 아이템은 갖고 있는 것 */
+export function botCanDoQuest(s: GameState, q: QuestDef): boolean {
+  const c = q.condition;
+  switch (c.type) {
+    case 'objectPlaced': { const d = objectDef(c.params.objectId); return s.unlocked.objects.includes(d.id) && d.cost <= BOT_QUEST_CHEAP && !d.room && d.kind !== 'landmark' && PARKING_SLOTS[d.id] === undefined && !INDOOR_IDS.has(d.id); }
+    case 'menuSold': return s.menuSlots.includes(c.params.menuId);
+    case 'item': return (s.inventory[c.params.itemId] ?? 0) >= c.params.count;
+    case 'none': return true;
+    default: return false;
   }
 }
 
@@ -528,6 +615,7 @@ function monthlyPlan(s: GameState, monthsPlayed: number): void {
   placeAnnex(s);
   placeForCombo(s);
   placeForSet(s);
+  placeForSpot(s);
   placeForQuest(s);
   placeLandmark(s);
   // 투어 개최: 점수 60 이상인 명소가 있으면 월 1회 (목표 g71)
@@ -551,9 +639,16 @@ function monthlyPlan(s: GameState, monthsPlayed: number): void {
 /** 매일 아침 */
 function dailyPlan(s: GameState): void {
   while (s.alerts.length > 0) apply(s, s.alerts[0]!.type === 'ending' ? { type: 'continueEnding' } : { type: 'dismissAlert' }); // z-ending: 엔딩은 「계속하기」
-  // 게시판 부탁은 오는 대로 받는다 (랜드마크·손님 해금이 부탁 보상)
-  if (s.clock.year >= BOT_QUEST_YEAR) for (const q of Object.values(s.board.quests)) if (q.status === 'offered' && canAcceptQuest(s, q.id).ok) apply(s, { type: 'acceptQuest', id: q.id });
+  // 게시판 부탁은 지금 할 수 있는 것(시설·메뉴 열림·아이템 있음)만 받는다 (랜드마크·손님 해금이 부탁 보상)
+  if (s.clock.year >= BOT_QUEST_YEAR) for (const q of Object.values(s.board.quests)) if (Object.values(s.board.quests).filter((x) => x.status === 'active').length < BOT_QUEST_ACTIVE_MAX && q.status === 'offered' && botCanDoQuest(s, questDef(q.id)) && canAcceptQuest(s, q.id).ok) apply(s, { type: 'acceptQuest', id: q.id });
   if (s.lastChallenge) apply(s, { type: 'dismissChallenge' });
+  // 도전 2슬롯은 늘 채운다 (게임이 아는 것 우선, 그다음 tier 낮은 순) — game-feel P2
+  if (s.clock.year >= BOT_CHALLENGE_YEAR) for (const c of [...offeredChallenges(s)].filter((c) => c.tier <= BOT_CHALLENGE_MAX_TIER).sort((a, b) => (BOT_CHALLENGE_PREFER.indexOf(a.id) + 1 || 99) - (BOT_CHALLENGE_PREFER.indexOf(b.id) + 1 || 99) || a.tier - b.tier)) {
+    if (s.challenges.active.length >= 2) break;
+    if (canAcceptChallenge(s, c.id).ok) apply(s, { type: 'acceptChallenge', id: c.id });
+  }
+  // 보름 응모권: 15일에 한 장
+  if (BOT_DRAW_TICKETS && s.clock.day === MID_MONTH_TICKET_DAY && !hasFreeDraw(s) && s.tickets >= 1 && canDrawTicket(s).ok && apply(s, { type: 'drawTicket' }).ok) apply(s, { type: 'dismissDraw' });
 
   if (s.money < PARTTIME_MAX_MONEY) {
     for (const st of s.staff) if (apply(s, { type: 'promote', staffId: st.id, promotionId: 'parttime' }).ok) break;
@@ -562,7 +657,8 @@ function dailyPlan(s: GameState): void {
   // 연구 개발이 열리면 레시피 3개까지 개발 (기술 최고 직원). 첫 메뉴는 4번 칸에.
   if (botCraftOpen(s) && s.research >= DEVELOP_RESEARCH && !s.developing && s.customMenus.length < BOT_RECIPES) {
     const st = [...s.staff].sort((a, b) => b.stats.skill - a.stats.skill)[0];
-    if (st) apply(s, { type: 'develop', base: 'drink', ingredients: BOT_DEVELOP_INGREDIENTS, staffId: st.id });
+    const ingredients = BOT_RECIPE_PLAN[s.customMenus.length] ?? BOT_DEVELOP_INGREDIENTS;
+    if (st && !apply(s, { type: 'develop', base: 'drink', ingredients, staffId: st.id }).ok) apply(s, { type: 'develop', base: 'drink', ingredients: BOT_DEVELOP_INGREDIENTS, staffId: st.id });
   }
   // ★2부터 시그니처 1개 (★3 승급 조건) — 요리사가 맡는다
   if (botCraftOpen(s) && s.star >= 2 && s.clock.year >= BOT_SIGNATURE_YEAR && s.research >= DEVELOP_RESEARCH && !s.developing && !s.customMenus.some((m) => m.category === 'signature')) {

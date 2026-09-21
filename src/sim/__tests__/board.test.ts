@@ -9,7 +9,7 @@ import { spawnGuests, updateGuests, dailyGuestCount, popularityGuestBase, spotDa
 import { monthlyYieldOf } from '../orchard.ts';
 import { upkeep } from '../economy.ts';
 import {
-  offerQuest, refreshQuests, questProgress, checkQuests, expireQuests, rollEvents, eventConditionMet, eventEligible, applyEventEffect, expireEvents, boardBadge, afterInvest, QUEST_MONTHS,
+  offerQuest, refreshQuests, questProgress, checkQuests, expireQuests, rollEvents, eventConditionMet, eventEligible, applyEventEffect, expireEvents, boardBadge, afterInvest, QUEST_MONTHS, questOffersToday, questOfferDay, questFeasible, pendingQuestOffers, QUEST_OFFERS_FIRST, QUEST_OFFERS_MID, QUEST_OFFER_DAY_MIN, QUEST_OFFER_DAY_SPAN,
 } from '../board.ts';
 import { spotAppeal, spotGuestBonus, spotUnlocked, canInvestSpot, nextSpotLevel, busSpots, totalDailyVisitors, VISITOR_GUEST_RATE, SPOT_MAX_LEVEL } from '../spots.ts';
 import { effectMult, noGuestsToday, pruneEffects, dayIndex, filterMatches } from '../effects.ts';
@@ -344,4 +344,26 @@ test('월초 훅: 해금 → 기한·이벤트·부탁이 순서대로 돌고 �
   expect(spawnGuests(s, 1)).toBeGreaterThanOrEqual(0);
   updateGuests(s, 100);
   void afterInvest;
+});
+
+// ---------- game-feel P1: 부탁 제안 스케줄 ----------
+test('부탁 제안은 1일에 1개, 매월 12~18일 제안일에 2개 — 할 수 있는 부탁(시설·메뉴 열림)부터. 다른 날엔 안 올라온다', () => {
+  const s = bareState(1);
+  for (const id of ['student', 'village_head', 'local_auntie', 'rentcar_family']) { unlockGuestType(s, id); addSatisfaction(s, id, SAT_QUEST); }
+  s.clock.day = 5;
+  expect(questOffersToday(s)).toBe(0);
+  expect(refreshQuests(s)).toEqual([]);
+  s.clock.day = 1;
+  expect(questOffersToday(s)).toBe(QUEST_OFFERS_FIRST);
+  expect(refreshQuests(s)).toHaveLength(1);
+  const mid = questOfferDay(monthIndex(s.clock));
+  expect(mid).toBeGreaterThanOrEqual(QUEST_OFFER_DAY_MIN);
+  expect(mid).toBeLessThan(QUEST_OFFER_DAY_MIN + QUEST_OFFER_DAY_SPAN);
+  s.clock.day = mid;
+  expect(questOffersToday(s)).toBe(QUEST_OFFERS_MID);
+  const order = pendingQuestOffers(s).map((q) => questFeasible(s, q));
+  expect(order.indexOf(false) === -1 || order.lastIndexOf(true) < order.indexOf(false)).toBe(true); // 할 수 있는 것 먼저
+  const offered = refreshQuests(s);
+  expect(offered).toHaveLength(2);
+  expect(new Set(Array.from({ length: 12 }, (_, m) => questOfferDay(m))).size).toBeGreaterThan(3); // 달마다 다른 날
 });

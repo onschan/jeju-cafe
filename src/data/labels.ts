@@ -122,6 +122,7 @@ export function unlockCondText(c: UnlockCond): string {
     case 'segmentPop': return `${label('guest', c.guestId)} 손님 인기 ${c.popularity}`;
     case 'goal': return '목표 보상';
     case 'all': return c.conditions.length > 0 ? c.conditions.map(unlockCondText).join(' + ') : '아직 열 수 없음';
+    case 'any': return c.conditions.length > 0 ? c.conditions.map(unlockCondText).join(' 또는 ') : '아직 열 수 없음';
   }
 }
 
