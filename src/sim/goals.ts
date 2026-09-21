@@ -79,6 +79,8 @@ export const FEATURE_OF_ACTION: Partial<Record<Action['type'], FeatureId>> = {
 export const MAX_GOALS_PER_CHECK = 10;
 /** 메인 목표 동시 진행 수 (§7.3) */
 export const CONCURRENT_GOALS = 2;
+/** 진행 중 목표 뒤에서 미리 인정하는 목표 수 (claimableGoals) */
+export const GOAL_LOOKAHEAD = 2;
 
 export function initFeatures(): Record<FeatureId, boolean> {
   return { clearRock: false, promote: false, craft: false, popup: false, challenge: false, parcel: false, siteView: false, comboCodex: false, spotMap: false };
@@ -240,6 +242,16 @@ export function goalMet(state: GameState, c: GoalCondition): boolean {
 export function activeGoals(state: GameState): GoalDef[] {
   const out: GoalDef[] = [];
   for (let i = state.goals.index; i < GOALS.length && out.length < CONCURRENT_GOALS; i++) {
+    const g = GOALS[i]!;
+    if (!state.goals.claimed.includes(g.id)) out.push(g);
+  }
+  return out;
+}
+/** 판정 대상 = 진행 중 2개 + 그 뒤 GOAL_LOOKAHEAD개 (안 이룬 것). 앞의 목표가 막혀 있어도 뒤에서 이미 이룬 목표는 그 자리에서 인정해
+ *  「막힌 목표 하나 뒤에 10개가 몰아 터지는」 정체를 막는다 (game-feel 감사: 봇 3년에서 목표 63개 중 40개가 4일에 몰렸다). 목표 줄·창은 activeGoals(2개)만 보여 준다. */
+export function claimableGoals(state: GameState): GoalDef[] {
+  const out: GoalDef[] = [];
+  for (let i = state.goals.index; i < GOALS.length && out.length < CONCURRENT_GOALS + GOAL_LOOKAHEAD; i++) {
     const g = GOALS[i]!;
     if (!state.goals.claimed.includes(g.id)) out.push(g);
   }
@@ -452,7 +464,7 @@ export function checkGoals(state: GameState): string[] {
   observeMonth(state);
   const done: string[] = [];
   for (let i = 0; i < MAX_GOALS_PER_CHECK; i++) {
-    const g = activeGoals(state).find((x) => goalMet(state, x.condition));
+    const g = claimableGoals(state).find((x) => goalMet(state, x.condition));
     if (!g) break;
     state.goals.claimed.push(g.id);
     applyRewards(state, g.reward, { source: 'goal', refId: g.id, title: g.title });
