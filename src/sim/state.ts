@@ -5,7 +5,6 @@ import { makeParcels } from './parcels.ts';
 import { PARCEL_W, PARCEL_H, START_ORIGIN, GRID_W, GRID_H, VILLAGE_ROAD_Y } from './layout.ts';
 import { initRoutes } from './entry.ts';
 import { occupy, canPlaceMain } from './grid.ts';
-import { nextRandom } from './rng.ts';
 import { initGuestTypes, initSegmentPopularity } from './segments.ts';
 import { DEFAULT_CAFE_NAME } from './cafe.ts';
 import { START_BUILDERS } from './build.ts';
@@ -34,8 +33,6 @@ export const START_MENUS = ['americano', 'latte', 'tangerine_juice'];
 export const START_CANDIDATES = 2;
 /** 첫 손님이 게임 1시간 안에 오도록 스폰 누적을 미리 채워 둔다 (7시 첫 스폰) */
 export const START_SPAWN_ACC = 0.6;
-/** 곶자왈 덤불 개수 */
-const GOTJAWAL_BUSHES = 10;
 /** 옛 감귤밭의 감귤나무 위치 (필지 상대) */
 const ORCHARD_TREES = [{ lx: 2, ly: 2 }, { lx: 6, ly: 2 }, { lx: 2, ly: 5 }, { lx: 6, ly: 5 }];
 /** 완성 시작 상태의 본관 자리 (필지 상대, 3×2): 문 = 정면 왼쪽 (3,2), 그 앞 (3,3)이 창고 앞 (layout.ts WAREHOUSE_FRONT) */
@@ -46,36 +43,22 @@ export const START_SEATS: { type: string; lx: number; ly: number }[] = [
   { type: 'table_out', lx: 3, ly: 4 }, { type: 'table_out', lx: 5, ly: 4 }, { type: 'table_parasol', lx: 5, ly: 5 },
 ];
 
-/** 필지 안 상대 좌표 (lx, ly)의 지형. 결정적(seed rng). */
-function terrainFor(p: Parcel, lx: number, ly: number, rng: { rng: number }): Terrain {
+/** 필지 안 상대 좌표 (lx, ly)의 지형. */
+function terrainFor(p: Parcel, lx: number, ly: number): Terrain {
   const y = p.y + ly;
   // 마을 길(가운데 줄 아래 변)은 맵 가로 전체 도로. 해안은 먼 변 2줄이 해안 도로. 마을 어귀는 오른쪽 변이 마을로 나가는 길.
   if (y === VILLAGE_ROAD_Y) return 'road';
   if (p.bonus === 'coast' && ly >= p.h - 2) return 'road';
   if (p.bonus === 'village' && lx === p.w - 1) return 'road';
-  switch (p.bonus) {
-    case 'oreum':
-      // 바위가 많고, 3번째 줄에 큰 바위 능선(치우는 데 100만)
-      if (ly === 2 && lx >= 2 && lx <= 7) return 'rock_big';
-      return nextRandom(rng) < 0.2 ? 'rock' : 'soil';
-    case 'stonehill':
-      return nextRandom(rng) < 0.15 ? 'rock' : 'soil';
-    case 'spring':
-      return nextRandom(rng) < 0.08 ? 'rock' : 'soil';
-    case 'none':
-      // 시작 필지: 필지 상대 패턴 (정낭 (4,6)이 바위 칸)
-      return (lx + ly) % 7 === 3 ? 'rock' : 'soil';
-    default:
-      return 'soil';
-  }
+  // ease: 바위·큰 바위 지형은 없앴다 — 마을 길 밖은 전부 흙. 확장 장벽은 필지 경계뿐.
+  return 'soil';
 }
 
-function makeCells(parcels: Parcel[], seed: number): Cell[] {
-  const rng = { rng: seed };
+function makeCells(parcels: Parcel[]): Cell[] {
   const cells: Cell[] = Array.from({ length: GRID_W * GRID_H }, () => ({ terrain: 'soil' as Terrain, objectId: null, roomId: null }));
   for (const p of parcels)
     for (let ly = 0; ly < p.h; ly++)
-      for (let lx = 0; lx < p.w; lx++) cells[(p.y + ly) * GRID_W + (p.x + lx)] = { terrain: terrainFor(p, lx, ly, rng), objectId: null, roomId: null };
+      for (let lx = 0; lx < p.w; lx++) cells[(p.y + ly) * GRID_W + (p.x + lx)] = { terrain: terrainFor(p, lx, ly), objectId: null, roomId: null };
   return cells;
 }
 
@@ -91,17 +74,10 @@ function stamp(state: GameState, type: string, x: number, y: number): PlacedObje
   return obj;
 }
 
-/** 필지별 시작 오브젝트: 곶자왈 덤불, 밭담 돌담, 용천수 샘. 결정적(seed rng). */
-function stampParcelObjects(state: GameState, p: Parcel, rng: { rng: number }): void {
+/** 필지별 시작 오브젝트: 밭담 돌담, 용천수 샘 (ease: 곶자왈 덤불은 없앴다). */
+function stampParcelObjects(state: GameState, p: Parcel): void {
   const soil = (lx: number, ly: number) => state.grid.cells[(p.y + ly) * state.grid.w + (p.x + lx)]!.terrain === 'soil';
   switch (p.bonus) {
-    case 'gotjawal':
-      for (let i = 0; i < GOTJAWAL_BUSHES; i++) {
-        const lx = Math.floor(nextRandom(rng) * p.w);
-        const ly = Math.floor(nextRandom(rng) * (p.h - 1));
-        if (soil(lx, ly)) stamp(state, 'bush_wild', p.x + lx, p.y + ly);
-      }
-      break;
     case 'batdam':
       // 가로 돌담 두 줄 (밭담 골짜기)
       for (const [ly, xs] of [[2, [1, 2, 3, 4, 6, 7, 8]], [5, [1, 2, 3, 5, 6, 7, 8]]] as const)
@@ -109,7 +85,7 @@ function stampParcelObjects(state: GameState, p: Parcel, rng: { rng: number }): 
       break;
     case 'stonehill':
       // 언덕을 따라 비스듬한 돌담 한 줄
-      for (let lx = 1; lx <= 8; lx++) if (lx !== 4 && lx !== 5) stamp(state, 'stonewall', p.x + lx, p.y + 3); // 돌담은 바위 위에도 선다
+      for (let lx = 1; lx <= 8; lx++) if (lx !== 4 && lx !== 5) stamp(state, 'stonewall', p.x + lx, p.y + 3);
       break;
     case 'orchard':
       // 옛 감귤밭: 감귤나무 4그루 (사면 다음 달 1일부터 감귤이 들어온다)
@@ -162,7 +138,7 @@ export function createInitialState(seed: number, playerId = 'local', createdAt =
     money: START_MONEY,
     research: 0,
     popularity: 0,
-    grid: { w: GRID_W, h: GRID_H, cells: makeCells(parcels, seed) },
+    grid: { w: GRID_W, h: GRID_H, cells: makeCells(parcels) },
     parcels,
     loan: { count: 0, balance: 0, lastMonthIndex: -1 },
     deficitMonths: 0,
@@ -192,7 +168,7 @@ export function createInitialState(seed: number, playerId = 'local', createdAt =
     },
     goals: { index: 0, claimed: [] },
     features: initFeatures(),
-    stats: { satisfiedTotal: 0, rocksCleared: 0, promotionsDone: 0, recipesMade: 0, rivalWins: 0, profitMonths: 0, lossMonths: 0, guidebookWins: 0, itemsUsed: 0, trainings: 0, toursHeld: 0, seenMonth: -1, seenAnnouncement: -1 },
+    stats: { satisfiedTotal: 0, promotionsDone: 0, recipesMade: 0, rivalWins: 0, profitMonths: 0, lossMonths: 0, guidebookWins: 0, itemsUsed: 0, trainings: 0, toursHeld: 0, seenMonth: -1, seenAnnouncement: -1 },
     challenges: initChallenges(),
     monthly: null,
     tutorial: initTutorial(layout === 'starter'),
@@ -284,8 +260,7 @@ export function createInitialState(seed: number, playerId = 'local', createdAt =
   stamp(state, 'gate', ox + 4, oy + PARCEL_H - 2); // 정낭 칸은 gate kind라 걷기 가능(path.ts)
   // §5 완성 시작 상태(본관 + 올렛길 + 테이블 2 + 파라솔 1 + 메뉴 3종)는 'starter'일 때만. 'tutorial'(§7.1·w-start)은 맨땅 — 본관은 튜토리얼 2단계에서 직접 짓고(placeMain), 손님은 본관·좌석·길·메뉴가 갖춰질 때까지 안 온다(canOpen).
   if (layout === 'starter') { fillStarterLayout(state); unlockTutorialFeatures(state); }
-  const rng = { rng: seed ^ 0x5eed };
-  for (const p of parcels) stampParcelObjects(state, p, rng);
+  for (const p of parcels) stampParcelObjects(state, p);
   // §5 직원 후보 2명 대기 (전단 등급)
   drawCandidates(state, 'flyer', START_CANDIDATES);
   state.monthly = makeMonthly(state); // 이달의 과제 (§7.3) — 시작 달 것은 알림 없이

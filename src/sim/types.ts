@@ -1,5 +1,5 @@
-/** rock_big = 오름 능선의 큰 바위 (치우는 데 100만) */
-export type Terrain = 'soil' | 'rock' | 'rock_big' | 'road';
+/** 지형: 흙(짓는 칸)·마을 길. 바위·덤불 시스템은 ease에서 없앴다 — 옛 세이브의 바위 칸은 로드 때 흙으로 채운다(save.ts). */
+export type Terrain = 'soil' | 'road';
 export type ObjectKind = 'tree' | 'seat' | 'wall' | 'path' | 'building' | 'deco' | 'busstop' | 'gate' | 'landmark' | 'facility';
 /** 필지 구역 보너스 종류 (§18) */
 export type ParcelBonus = 'none' | 'oreum' | 'gotjawal' | 'batdam' | 'coast' | 'spring' | 'village' | 'stonehill' | 'orchard';
@@ -466,7 +466,6 @@ export type GoalCondition =
   | { type: 'regular'; n: number }                // 단골★ 수
   | { type: 'research'; n: number }               // 보유 연구 포인트
   | { type: 'namedGuest'; n: number }             // 만난 이름 있는 손님 수
-  | { type: 'rocks'; n: number }                  // 치운 바위·덤불
   | { type: 'menus'; n: number }                  // 메뉴판에 올린 메뉴 수
   | { type: 'recipes'; n: number }                // 개발한 레시피
   | { type: 'promotions'; n: number }             // 홍보 실행 횟수
@@ -517,7 +516,7 @@ export type GoalCondition =
   // ---- z-ending 정착 등급·마을제 (village.ts) ----
   | { type: 'villageGrade'; n: number }           // 정착 등급 ≥ n (1 외지인 ~ 5 촌장 후보)
   | { type: 'festivals'; n: number };             // 마을제 개최 횟수
-export type FeatureId = 'clearRock' | 'promote' | 'craft' | 'popup' | 'challenge' | 'parcel' | 'siteView' | 'comboCodex' | 'spotMap';
+export type FeatureId = 'promote' | 'craft' | 'popup' | 'challenge' | 'parcel' | 'siteView' | 'comboCodex' | 'spotMap';
 export type GoalReward =
   | { type: 'money'; amount: number }
   | { type: 'unlockFacility'; id: string }
@@ -550,7 +549,6 @@ export interface GoalDef {
 export interface GoalsState { index: number; claimed: string[] }
 export interface GameStats {
   satisfiedTotal: number;  // 누적 만족(happy) 손님
-  rocksCleared: number;    // 치운 바위·덤불
   promotionsDone: number;  // 홍보 실행 횟수
   recipesMade: number;     // 개발 성공한 레시피
   rivalWins: number;       // 카페 대결 승리
@@ -1024,7 +1022,6 @@ export type Action =
   | { type: 'upgradeObject'; objectId: string }   // 증축 Lv+1 (upgrade.ts)
   | { type: 'repairObject'; objectId: string }    // 노후 수리 (cleanliness.ts)
   | { type: 'buyParcel'; id: string }
-  | { type: 'clearRock'; x: number; y: number }
   | { type: 'renameCafe'; name: string }
   | { type: 'expand'; id: string }
   | { type: 'placeMain'; x: number; y: number }    // 첫 본관 짓기 (w-start 맨땅 튜토리얼: 무료·즉시·1회, rooms.ts placeMain)

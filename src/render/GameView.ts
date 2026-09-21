@@ -89,8 +89,6 @@ const SPARKLE_FRAME_MS = 120;
 const SPARKLE_FRAMES = 4;
 /** 튜토리얼 스포트라이트 어둠 (ui/tutorialHighlight.ts SPOT_ALPHA와 같은 값 — render/는 ui/를 import하지 않는다) */
 const SPOT_ALPHA = 0.55;
-/** 큰 바위(rock_big) 타일은 바위 타일을 어둡게 */
-const BIG_ROCK_TINT = 0x8a8a9a;
 /** 숫자 팝업(+N): 700ms 동안 16px 떠오르며 사라진다 */
 const POP_MS = 700;
 const POP_RISE_PX = 16;
@@ -708,7 +706,7 @@ export class GameView {
     price.position.set(center.sx, center.sy + 1);
     const w = Math.max(name.width, price.width) + 12;
     const bg = new Graphics().roundRect(center.sx - w / 2, center.sy - name.height - 4, w, name.height + price.height + 8, 4).fill({ color: 0x000000, alpha: 0.6 });
-    // 어두운 덮개 타일은 tiles 안(오브젝트 아래), 가격 라벨은 overlay(오브젝트·캐릭터 위) — 바위·시설에 가려지지 않게
+    // 어두운 덮개 타일은 tiles 안(오브젝트 아래), 가격 라벨은 overlay(오브젝트·캐릭터 위) — 시설에 가려지지 않게
     this.tiles.addChild(c);
     const lbl = new Container();
     lbl.label = 'parcel-label';
@@ -720,17 +718,14 @@ export class GameView {
 
   private tileTexture(state: GameState, i: number, season: Season): Texture {
     const cell = state.grid.cells[i]!;
-    // 큰 바위는 전용 타일이 없으면 바위 타일을 빌려 어둡게(tint) 그린다
-    const name = cell.terrain === 'rock_big' && hasAssets() && !peekTex(spriteName.isoTile('rock_big', season)) ? 'rock' : cell.terrain;
-    return (hasAssets() ? tex(spriteName.isoTile(name, season)) : null) ?? isoTerrainTexture(this.app.renderer, cell.terrain);
+    return (hasAssets() ? tex(spriteName.isoTile(cell.terrain, season)) : null) ?? isoTerrainTexture(this.app.renderer, cell.terrain);
   }
 
-  /** 지형이 바뀌면(바위 치우기) 타일 텍스처를 갱신한다 */
+  /** 지형·계절이 바뀌면 타일 텍스처를 갱신한다 */
   private syncTile(state: GameState, i: number, season: Season) {
     const sp = this.tileSprites[i];
     if (!sp) return;
     sp.texture = this.tileTexture(state, i, season);
-    sp.tint = state.grid.cells[i]!.terrain === 'rock_big' ? BIG_ROCK_TINT : 0xffffff;
   }
 
   private buildTiles(state: GameState, season: Season) {
@@ -742,7 +737,6 @@ export class GameView {
         sp.anchor.set(0.5, 0); // 위 꼭짓점 기준
         const { sx, sy } = cellToScreen(x, y);
         sp.position.set(sx, sy);
-        if (state.grid.cells[y * state.grid.w + x]!.terrain === 'rock_big') sp.tint = BIG_ROCK_TINT;
         this.tiles.addChild(sp);
         this.tileSprites.push(sp);
       }
@@ -759,7 +753,7 @@ export class GameView {
     this.lastSeason = season;
   }
 
-  /** 바위 치우기로 지형이 바뀐 칸만 갱신 (마지막으로 그린 지형을 기억) */
+  /** 지형이 바뀐 칸만 갱신 (마지막으로 그린 지형을 기억 — 옛 세이브 로드 등) */
   private terrainKeys: string[] = [];
   private syncTerrain(state: GameState, season: Season) {
     const cells = state.grid.cells;

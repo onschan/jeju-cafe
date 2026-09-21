@@ -3,7 +3,7 @@ import { wonText, label } from '../data/labels.ts';
 import { GameView, type GhostSpec, type RangeHint } from '../render/GameView';
 import { startLoop, dispatch, getState, useGame, setViewReset, autosaveNow, hasAnySave, loadSlot, setMonthCardHook, setSceneHook, showMessage, pauseGame, isSpeedLocked, setSpeedLocked } from './store';
 import { unlockAudio, bgm, isMuted, setMuted, getBgmVolume, getSfxVolume, setBgmVolume, setSfxVolume, sfx } from './audio';
-import { seasonOf, canPlace, objectAt, footprint, sizeOf, mainBuilding, parcelAt, clearCost, hasPickaxe, canClearRock, ROCK_CLEAR_COST, BIG_ROCK_CLEAR_COST, BUSH_CLEAR_COST, placeCost, PROTECTED_TYPES, ROTATABLE_TYPES, goalForMenu, featureOpen, canUndo, demolishRefund, canDisturb, routeAtCell, tutorialDone, canBuildMain, recommendedMainCells, cellAt, doorFrontOf, MAIN_TYPE, MAIN_BUILD_COST, type GameState } from '../sim/index.ts';
+import { seasonOf, canPlace, objectAt, footprint, sizeOf, mainBuilding, parcelAt, placeCost, PROTECTED_TYPES, ROTATABLE_TYPES, goalForMenu, featureOpen, canUndo, demolishRefund, canDisturb, routeAtCell, tutorialDone, canBuildMain, recommendedMainCells, cellAt, doorFrontOf, MAIN_TYPE, MAIN_BUILD_COST, type GameState } from '../sim/index.ts';
 import { RoutesSection } from './RouteCard'; // 트랙 H
 import { objectDef } from '../data/index.ts';
 // render/·ui/는 Vite 전용이라 확장자 없는 import 허용. sim/·data/만 .ts 확장자 규칙.
@@ -58,8 +58,7 @@ type Mode =
   | { kind: 'idle' }
   | { kind: 'build'; objectType: string; count: number }
   | { kind: 'move' }
-  | { kind: 'remove' }
-  | { kind: 'rock'; count: number; spent: number }; // w-free: 바위 치우기 모드 — 탭·드래그로 지나는 바위마다 즉시 치운다
+  | { kind: 'remove' };
 
 /** 전체 화면 창과 그 아이콘 그리드 항목 (§5.1) */
 type CafeTab = 'menu' | 'ingredients' | 'craft' | 'promo' | 'building' | 'indoor';
@@ -89,26 +88,7 @@ function inFootprint(type: string, ox: number, oy: number, x: number, y: number,
   return footprint(type, ox, oy, w, h).some((p) => p.x === x && p.y === y);
 }
 
-/** 발자국 안의 바위·덤불 칸과 치우는 데 드는 돈 합 (w-free 고스트 겹침 안내). 내 땅이 아닌 칸은 못 치우므로 ok:false. */
-function rocksUnder(s: GameState, type: string, x: number, y: number, w?: number, h?: number): { cells: { x: number; y: number }[]; cost: number; ok: boolean } {
-  const cells: { x: number; y: number }[] = [];
-  let cost = 0, ok = true;
-  for (const p of footprint(type, x, y, w, h)) {
-    const c = clearCost(s, p.x, p.y);
-    if (c === null) continue;
-    cells.push(p);
-    cost += c;
-    if (!canClearRock(s, p.x, p.y).ok) ok = false;
-  }
-  return { cells, cost, ok: ok && cells.length > 0 && s.money >= cost };
-}
-/** 고스트 밑 바위를 전부 치운다 (하나라도 실패하면 이유). 고스트는 그대로 둔다. */
-function clearRocksUnder(cells: { x: number; y: number }[]): void {
-  for (const c of cells) { const r = dispatch({ type: 'clearRock', x: c.x, y: c.y }); if (!r.ok) { showMessage(r.reason ?? '지금은 못 치워요'); return; } }
-  showMessage(`바위를 치웠어요 — 이제 놓을 수 있어요`);
-}
-
-/** 보기 모드에서 칸을 눌렀을 때 카드 대상. 손님 → 직원 → 필지(미소유) → 오브젝트 → 바위 → 빈 땅. */
+/** 보기 모드에서 칸을 눌렀을 때 카드 대상. 손님 → 직원 → 필지(미소유) → 오브젝트 → 마을 길 → 빈 땅. */
 function targetAt(s: GameState, x: number, y: number): CardTarget | null {
   const guest = s.guests.find((g) => Math.round(g.x) === x && Math.round(g.y) === y);
   if (guest) return { kind: 'guest', id: guest.id };
@@ -124,7 +104,6 @@ function targetAt(s: GameState, x: number, y: number): CardTarget | null {
     if (kind === 'busstop') return { kind: 'busstop', id: o.id }; // 정낭은 일반 시설 카드 (w-free)
     return { kind: 'object', id: o.id };
   }
-  if (clearCost(s, x, y) !== null) return { kind: 'rock', x, y };
   if (cellAt(s, x, y).terrain === 'road') return { kind: 'road', x, y }; // w-start 둘러보기: 마을 길 칸 카드
   if (!p) return null;
   return { kind: 'empty', x, y };
@@ -333,7 +312,7 @@ function Game({ onExit }: { onExit: () => void }) {
   });
   const openCard = (t: CardTarget | null) => {
     setCardTarget(t);
-    const cell = t && (t.kind === 'rock' || t.kind === 'empty') ? { x: t.x, y: t.y } : null;
+    const cell = t && t.kind === 'empty' ? { x: t.x, y: t.y } : null;
     viewRef.current?.setSelection(cell);
   };
   /** 보기 모드에서 칸을 누르면: 말풍선(손님·직원) + 미니 카드. 같은 대상을 다시 누르면 닫힌다. */
@@ -391,16 +370,6 @@ function Game({ onExit }: { onExit: () => void }) {
     viewRef.current?.focusCell(home.x, home.y, d.w, d.h, 1.5);
   };
   const undo = () => { if (dispatch({ type: 'undoLast' }).ok) showMessage('되돌렸어요'); };
-  /** 바위 치우기 모드(w-free): 이 칸의 바위·덤불을 즉시 치운다. 탭이면 이유를, 드래그면 조용히. 치운 수·쓴 돈은 모드에 누적해 배치 바에 보인다. */
-  const clearRockAt = (x: number, y: number, tapped: boolean) => {
-    const st = getState();
-    const cost = clearCost(st, x, y);
-    if (cost === null) { if (tapped) showMessage('치울 바위가 없어요'); return; }
-    const r = dispatch({ type: 'clearRock', x, y });
-    if (!r.ok) { if (tapped) showMessage(r.reason ?? '지금은 못 치워요'); return; }
-    const m = modeRef.current;
-    if (m.kind === 'rock') setMode({ kind: 'rock', count: m.count + 1, spent: m.spent + cost });
-  };
 
   useEffect(() => {
     const host = hostRef.current!;
@@ -418,12 +387,7 @@ function Game({ onExit }: { onExit: () => void }) {
           if (m.kind === 'build') {
             if (PAINT_KINDS.has(objectDef(m.objectType).kind)) {
               const r = dispatch({ type: 'place', objectType: m.objectType, x, y });
-              const rc = r.ok ? null : clearCost(st, x, y);
-              if (rc !== null) { // w-free: 길·담 칠하기 중 바위를 탭하면 바로 치우고 놓는다 (드래그로 지나가면 건너뛴다)
-                const c = canClearRock(st, x, y);
-                if (!c.ok) { showMessage(`바위를 치우면 놓을 수 있어요 (${wonText(rc)}) · ${c.reason}`); return; }
-                if (dispatch({ type: 'clearRock', x, y }).ok) { const r2 = dispatch({ type: 'place', objectType: m.objectType, x, y }); showMessage(r2.ok ? `바위를 치우고 놓았어요 (${wonText(rc + placeCost(getState(), m.objectType))})` : `바위를 치웠어요 (${wonText(rc)})`); }
-              }
+              if (!r.ok) showMessage(r.reason ?? '여기엔 못 놓아요');
             } else setGhost({ x, y, rot: ghostRef.current?.rot ?? 0 });
           } else if (m.kind === 'move') {
             const mv = movingRef.current;
@@ -434,8 +398,6 @@ function Game({ onExit }: { onExit: () => void }) {
               else if (PROTECTED_TYPES.has(o.type)) showMessage('이건 못 옮겨요');
               else { const c = canDisturb(st, o); if (!c.ok) showMessage(c.reason ?? '지금은 못 옮겨요'); else setMoving({ objectId: o.id, x: o.x, y: o.y }); }
             }
-          } else if (m.kind === 'rock') {
-            clearRockAt(x, y, true);
           } else if (m.kind === 'remove') {
             // 탭 = 한 칸 사각형. 이미 고른 게 있으면 새로 고른다
             const o = objectAt(st, x, y);
@@ -460,8 +422,6 @@ function Game({ onExit }: { onExit: () => void }) {
             if (x < 0 || y < 0 || x >= st.grid.w || y >= st.grid.h) return false;
             setRect({ x0: x, y0: y, x1: x, y1: y });
             return true;
-          } else if (m.kind === 'rock') {
-            return clearCost(getState(), x, y) !== null; // 바위에서 시작한 드래그만 잡는다 (빈 땅에서는 카메라)
           }
           return false;
         },
@@ -476,7 +436,6 @@ function Game({ onExit }: { onExit: () => void }) {
             } else if (ghostRef.current) setGhost({ ...ghostRef.current, x: x - dx, y: y - dy });
           } else if (m.kind === 'move' && movingRef.current) setMoving({ ...movingRef.current, x: x - dx, y: y - dy });
           else if (m.kind === 'remove' && rectRef.current) setRect({ ...rectRef.current, x1: x, y1: y });
-          else if (m.kind === 'rock') clearRockAt(x, y, false);
         },
       });
       if (disposed) { v.destroy(); return; } // init 중 언마운트(Fast Refresh 등)
@@ -533,8 +492,6 @@ function Game({ onExit }: { onExit: () => void }) {
     } else if (ghost) {
       const can = canPlace(s, mode.objectType, ghost.x, ghost.y);
       const ok = can.ok && s.money >= cost;
-      const rocks = ok ? null : rocksUnder(s, mode.objectType, ghost.x, ghost.y); // w-free: 바위 칸에 겹치면 「치우기 ₩N」로 바로 치우고 고스트 유지
-      const rockBlock = !!rocks && rocks.cells.length > 0 && !can.ok;
       ghostSpec = { type: mode.objectType, x: ghost.x, y: ghost.y, rot: ROTATABLE_TYPES.has(mode.objectType) ? ghost.rot : undefined, ok, text: `${def.name} ${wonText(cost)}` };
       rangeHint = rangeHintFor(s, mode.objectType, ghost.x, ghost.y);
       ghostCell = { x: ghost.x, y: ghost.y, w: def.w, h: def.h };
@@ -550,12 +507,11 @@ function Game({ onExit }: { onExit: () => void }) {
         setMode({ kind: 'build', objectType: mode.objectType, count: mode.count + 1 });
       };
       place = {
-        text: `${def.name} · ${wonText(cost)} · ${ok ? (mode.count > 0 ? `${mode.count}개 놓음 · 계속 놓을 수 있어요` : '여기에 지을 수 있어요') : rockBlock ? `바위를 치우면 놓을 수 있어요 (${wonText(rocks.cost)})` : (can.reason ?? '돈이 모자라요')}`,
+        text: `${def.name} · ${wonText(cost)} · ${ok ? (mode.count > 0 ? `${mode.count}개 놓음 · 계속 놓을 수 있어요` : '여기에 지을 수 있어요') : (can.reason ?? '돈이 모자라요')}`,
         ok,
         canRotate: ROTATABLE_TYPES.has(mode.objectType),
         continuous: mode.count > 0,
         onUndo: undoOk ? undo : null,
-        clearRocks: rockBlock ? { cost: rocks.cost, ok: rocks.ok, onClick: () => clearRocksUnder(rocks.cells) } : null,
         onConfirm: confirm,
         onRotate: () => setGhost({ ...ghost, rot: (ghost.rot + 1) % 4 }),
         onCancel: () => setMode({ kind: 'idle' }),
@@ -568,17 +524,14 @@ function Game({ onExit }: { onExit: () => void }) {
       const size = sizeOf(o); // 본관 증축 Lv2+는 정의 크기와 다르다 (y-indoor)
       const can0 = canPlace(s, o.type, moving.x, moving.y, o.id);
       const can = can0.ok && o.type !== 'warehouse' ? canDisturb(s, o) : can0; // 고른 뒤 손님이 앉거나 지나가면 확정이 조용히 실패하지 않게 이유를 보여 준다
-      const rocks = can.ok ? null : rocksUnder(s, o.type, moving.x, moving.y, size.w, size.h); // w-free: 옮길 자리의 바위도 바로 치운다
-      const rockBlock = !!rocks && rocks.cells.length > 0 && !can0.ok;
       ghostSpec = { type: o.type, x: moving.x, y: moving.y, rot: o.rot, ok: can.ok, text: `${def.name} 옮기기`, w: size.w, h: size.h };
       rangeHint = rangeHintFor(s, o.type, moving.x, moving.y, o.id);
       ghostCell = { x: moving.x, y: moving.y, w: size.w, h: size.h };
       place = {
-        text: `${def.name} · ${can.ok ? '여기로 옮길 수 있어요' : rockBlock ? `바위를 치우면 옮길 수 있어요 (${wonText(rocks.cost)})` : (can.reason ?? '여기엔 못 옮겨요')}`,
+        text: `${def.name} · ${can.ok ? '여기로 옮길 수 있어요' : (can.reason ?? '여기엔 못 옮겨요')}`,
         ok: can.ok,
         canRotate: ROTATABLE_TYPES.has(o.type),
         onUndo: undoOk ? undo : null,
-        clearRocks: rockBlock ? { cost: rocks.cost, ok: rocks.ok, onClick: () => clearRocksUnder(rocks.cells) } : null,
         onConfirm: () => {
           const r = dispatch({ type: 'move', objectId: o.id, x: moving.x, y: moving.y });
           if (!r.ok) { showMessage(r.reason ?? '여기엔 못 옮겨요'); return; }
@@ -609,11 +562,6 @@ function Game({ onExit }: { onExit: () => void }) {
     } else {
       place = { text: '치울 시설을 누르거나 끌어서 여러 개 고르세요', ok: true, canRotate: false, paint: true, onUndo: undoOk ? undo : null, onConfirm: () => {}, onRotate: () => {}, onCancel: () => setMode({ kind: 'idle' }) };
     }
-  } else if (mode.kind === 'rock') {
-    place = {
-      text: mode.count > 0 ? `${mode.count}개 치움 · ${wonText(mode.spent)} 씀 · 계속 누르거나 끌어요` : `바위 ${wonText(ROCK_CLEAR_COST)} · 큰 바위 ${wonText(BIG_ROCK_CLEAR_COST)} · 덤불 ${wonText(BUSH_CLEAR_COST)}${hasPickaxe(s) ? ' · 곡괭이 50% 할인' : ''} · 바위를 누르거나 끌면 바로 치워요`,
-      ok: true, canRotate: false, paint: true, onUndo: null, onConfirm: () => {}, onRotate: () => {}, onCancel: () => setMode({ kind: 'idle' }),
-    };
   } else if (cardTarget?.kind === 'object') {
     const o = s.objects[cardTarget.id];
     if (o) rangeHint = rangeHintFor(s, o.type, o.x, o.y, o.id);
@@ -673,7 +621,6 @@ function Game({ onExit }: { onExit: () => void }) {
             <div data-testid="build-tools" role="toolbar" aria-label="도구" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, marginBottom: 8 }}>
               <button data-tut="tool:move" style={{ ...brownBtn, margin: 0, padding: '0 6px', fontSize: 15 }} onClick={() => { closeWin(); setMode({ kind: 'move' }); }}><Icon name="move" /> 이동</button>
               <button data-tut="tool:remove" style={{ ...dangerBtn, margin: 0, padding: '0 6px', fontSize: 15 }} onClick={() => { closeWin(); setMode({ kind: 'remove' }); }}><Icon name="remove" /> 철거</button>
-              <button data-testid="tool-rock" data-tut="tool:rock" style={{ ...brownBtn, margin: 0, padding: '0 6px', fontSize: 15 }} onClick={() => { closeWin(); setMode({ kind: 'rock', count: 0, spent: 0 }); }}><Icon name="hand" /> 바위 치우기</button>{/* w-free: 탭·드래그로 바위마다 즉시 치우는 모드 */}
               <button data-testid="tool-undo" data-tut="tool:undo" disabled={!undoOk} title={undoOk ? undefined : canUndo(s).reason} style={{ ...(undoOk ? brownBtn : brownBtnOff), margin: 0, padding: '0 6px', fontSize: 15 }} onClick={undo}><Icon name="undo" /> 되돌리기</button>
             </div>
             <BuildWindow onClose={closeWin} onPickBuild={(t) => pickBuild(t, win.origin)} />

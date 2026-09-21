@@ -8,7 +8,7 @@ export { hasLoan, loanRewardMult, canTakeLoan, takeLoan, checkLoan, repayLoan, L
 export { apply, PROTECTED_TYPES, ROTATABLE_TYPES, demolishRefund, canDisturb } from './actions.ts';
 export { canUndo } from './undo.ts';
 export { DAY_MS, seasonOf, monthIndex, DAYS_PER_MONTH } from './clock.ts';
-export { cellAt, objectAt, canPlace, footprint, parcelHasLandmark, isSheltered, sceneryScore, objectScenery, windShelter, SHELTER_THRESHOLD, SCENERY_CAP, doorOf, doorFrontOf, roomAt, isRoomFloor, objectsInRoom, clearCost, baseClearCost, canClearRock, hasPickaxe, ROCK_CLEAR_COST, BIG_ROCK_CLEAR_COST, BUSH_CLEAR_COST, PICKAXE_DISCOUNT_PCT } from './grid.ts';
+export { cellAt, objectAt, canPlace, footprint, parcelHasLandmark, isSheltered, sceneryScore, objectScenery, windShelter, SHELTER_THRESHOLD, SCENERY_CAP, doorOf, doorFrontOf, roomAt, isRoomFloor, objectsInRoom } from './grid.ts';
 export { FX_CAP } from './fx.ts';
 export { isFarmObject, monthlyYieldOf, expectedHarvest, emptyMonthHarvest } from './orchard.ts';
 export { stockOf } from './warehouse.ts';
@@ -31,7 +31,7 @@ export { objectStats, activeCombos, popularityFor, segmentBonus, setLevels, comb
 export { levelOf, tierOf, isUpgradable, upgradeCost, usesOf, recordUse, upgradeConditionText, canUpgrade, seatBonusOf, facilityFee, yieldMultOf, MAX_OBJECT_LEVEL, LEVEL_COST_MULT, LEVEL_POPULARITY, LEVEL_SCENERY, LEVEL_FEE_PCT, LEVEL_MENU_PCT, LEVEL_UPKEEP_MULT, LEVEL_COMBO_MULT, LEVEL_SEATS, LEVEL_YIELD_MULT, UPGRADE_USES, UPGRADE_POP_ALT, STAR_BY_TIER, type Tier } from './upgrade.ts';
 export { dailyCleanliness, dailyCleanRecovery, cleanReduceMult, cleanGuestMult, cleanSatisfaction, cleanJudgePenalty, wearOf, isWorn, repairCost, canRepair, upkeepMultOf, CLEAN_MAX, CLEAN_HIGH, CLEAN_LOW, CLEAN_CRIT, CLEAN_ROLE, WEAR_START_MONTHS, WEAR_STEP_MONTHS, WEAR_MAX, REPAIR_COST_PCT, WORN_UPKEEP_MULT } from './cleanliness.ts';
 export { canUseItem, grantItem, itemEffect, ITEM_POP_CAP, ITEM_SCENERY_CAP, canGiveGift, giftFits, giftedToday, giftCount, hasSpecial, canCraftGift, GIFT_POPULARITY, GIFT_SATISFACTION, GIFT_FIT_MULT } from './items.ts';
-export { buildDaysOf, isUnderConstruction, constructions, canStartBuild, buildDaysLeft, START_BUILDERS, MAX_BUILDERS, needsDoorPath, DOOR_PATH_HINT } from './build.ts';
+export { buildDaysOf, effectiveBuildDays, FAST_HAMMER_ITEM, INSTANT_HAMMER_ITEM, isUnderConstruction, constructions, canStartBuild, buildDaysLeft, START_BUILDERS, MAX_BUILDERS, needsDoorPath, DOOR_PATH_HINT } from './build.ts';
 export { canBuyMileage, canBuyTicket, canDrawTicket, canSetUniform, canUseGuestItem, hasFreeDraw, hasUniform, rollPrize, SEED_PACK, DRAW_MONEY_PER_YEAR, UNIFORM_PIECES_PER_SET, MONTHLY_FREE_TICKETS } from './shop.ts';
 export { addMileage, codexCount, checkCodexMileage, monthlyMileage, CODEX_PER_MILEAGE, GUESTS_PER_MILEAGE } from './mileage.ts';
 export { rankScore, rankForScore, nextRankThreshold, facilityCount, unlockedGuestTypeCount, updateRank, RANK_THRESHOLDS, MAX_RANK } from './rank.ts';

@@ -93,10 +93,10 @@ describe('goals.json 데이터', () => {
     expect(conditionProgress(s, { type: 'festivals', n: 1 })).toEqual({ cur: 0, max: 1 });
   });
 
-  it('액션 잠금 기능 5종은 각각 정확히 한 목표에서 열리고, 그 기능이 필요한 목표는 그 뒤에 온다 (바위 치우기는 w-free부터 시작 개방 — 어떤 목표도 안 연다)', () => {
+  it('액션 잠금 기능 5종은 각각 정확히 한 목표에서 열리고, 그 기능이 필요한 목표는 그 뒤에 온다 (ease: 바위 시스템은 없다 — rocks 조건·clearRock 기능 없음)', () => {
     const idx = (id: string) => GOALS.findIndex((g) => g.id === id);
-    expect(ACTION_FEATURE_IDS).not.toContain('clearRock');
-    expect(GOALS.some((g) => g.reward.some((r) => r.type === 'unlockFeature' && r.id === 'clearRock'))).toBe(false);
+    expect(GOALS.some((g) => (g.condition.type as string) === 'rocks')).toBe(false);
+    expect(FEATURE_IDS).not.toContain('clearRock' as never);
     expect(GOALS.find((g) => g.id === 'g12')!.reward).toEqual([{ type: 'tickets', n: 2 }]);
     for (const f of ACTION_FEATURE_IDS) {
       const openers = GOALS.filter((g) => g.reward.some((r) => r.type === 'unlockFeature' && r.id === f));
@@ -118,13 +118,13 @@ describe('goals.json 데이터', () => {
 });
 
 describe('목표 체인 진행', () => {
-  it('새 게임: 첫 목표는 g01, 진행도 0/1, 기능은 바위 치우기(w-free 시작 개방)만 빼고 잠겨 있다 (완성 시작 상태는 튜토리얼 보상 기능만 열린 채)', () => {
+  it('새 게임: 첫 목표는 g01, 진행도 0/1, 기능은 잠겨 있다 (완성 시작 상태는 튜토리얼 보상 기능만 열린 채)', () => {
     const s = createInitialState(1, 'local', 0, 'tutorial');
     expect(currentGoal(s)?.id).toBe('g01');
     expect(goalProgress(s)).toEqual({ cur: 0, max: 1 });
-    for (const f of FEATURE_IDS) expect(s.features[f], f).toBe(f === 'clearRock');
+    for (const f of FEATURE_IDS) expect(s.features[f], f).toBe(false);
     const starter = createInitialState(1);
-    for (const f of FEATURE_IDS) expect(starter.features[f], f).toBe(f === 'clearRock' || tutorialFeatureIds().includes(f)); // 건너뛴 튜토리얼의 보상 기능(입지 보기 등)은 열려 있다
+    for (const f of FEATURE_IDS) expect(starter.features[f], f).toBe(tutorialFeatureIds().includes(f)); // 건너뛴 튜토리얼의 보상 기능(입지 보기 등)은 열려 있다
     expect(checkFeature(s, 'buyParcel').ok).toBe(false);
     expect(checkFeature(s, 'place').ok).toBe(true);
   });

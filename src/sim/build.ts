@@ -7,6 +7,7 @@ import { pushFx } from './fx.ts';
 import { roomAt } from './grid.ts';
 import { isDoorReachable } from './path.ts';
 import { discoverCombos } from './compat.ts';
+import { josa } from './josa.ts';
 
 export const DOOR_PATH_HINT = '문 앞까지 올렛길을 이어 주세요';
 
@@ -42,10 +43,27 @@ export function canStartBuild(state: GameState, type: string): ApplyResult {
   return { ok: true };
 }
 
-/** 놓은 직후: 건설 기간이 있으면 build 표식을 붙인다. 호출 전 canStartBuild. */
+/** 마일리지 상점 아이템 (ease: 곡괭이 대신): 빠른 건축 망치 = 가지고 있으면 공사 −1일(최소 1일, 안 줄어든다) · 곰 삼춘의 망치 = 다음 공사 1건 즉시 완공(1개 소모) */
+export const FAST_HAMMER_ITEM = 'fast_hammer';
+export const INSTANT_HAMMER_ITEM = 'hammer_bearing';
+/** 이 종류를 실제로 짓는 데 걸리는 날 (아이템 반영, 소모 없음) */
+export function effectiveBuildDays(state: GameState, type: string): number {
+  const base = buildDaysOf(type);
+  if (base <= 0) return 0;
+  if ((state.inventory[INSTANT_HAMMER_ITEM] ?? 0) > 0) return 0;
+  return (state.inventory[FAST_HAMMER_ITEM] ?? 0) > 0 ? Math.max(1, base - 1) : base;
+}
+
+/** 놓은 직후: 건설 기간이 있으면 build 표식을 붙인다. 호출 전 canStartBuild. 곰 삼춘의 망치가 있으면 하나 쓰고 바로 완공. */
 export function startBuild(state: GameState, obj: PlacedObject): void {
-  const days = buildDaysOf(obj.type);
-  if (days <= 0) return;
+  const base = buildDaysOf(obj.type);
+  if (base <= 0) return;
+  if ((state.inventory[INSTANT_HAMMER_ITEM] ?? 0) > 0) {
+    state.inventory[INSTANT_HAMMER_ITEM]! -= 1;
+    pushNotice(state, `곰 삼춘의 망치! ${josa(objectDef(obj.type).name, '이/가')} 바로 완공됐어요`);
+    return;
+  }
+  const days = effectiveBuildDays(state, obj.type);
   obj.build = { doneDay: dayIndex(state.clock) + days, days };
   bumpLayoutRev(state);
 }

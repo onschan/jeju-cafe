@@ -70,7 +70,7 @@ goals.forEach((g, i) => {
 // 기능 선후: 액션 잠금 기능이 필요한 조건은 그 기능을 여는 목표 뒤에
 const featureOpener = new Map<string, number>();
 goals.forEach((g, i) => { for (const r of g.reward) if (r.type === 'unlockFeature') featureOpener.set(r.id!, i); });
-const NEEDS: Record<string, string> = { promotions: 'promote', parcels: 'parcel', rocks: 'clearRock', recipes: 'craft', namedGuest: 'popup', rivalWins: 'challenge' };
+const NEEDS: Record<string, string> = { promotions: 'promote', parcels: 'parcel', recipes: 'craft', namedGuest: 'popup', rivalWins: 'challenge' };
 goals.forEach((g, i) => {
   const f = NEEDS[g.condition.type];
   if (f && (featureOpener.get(f) ?? -1) >= i && g.condition.type !== 'parcels') warn(`goal ${g.id}: 조건 '${g.condition.type}'에 필요한 기능 '${f}'를 여는 목표가 뒤에 있음`);

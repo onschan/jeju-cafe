@@ -19,7 +19,7 @@ import { TUTORIAL_STEPS as DIALOGUE, TUTORIAL_CHAPTER_TEXTS } from '../../data/d
 function tutorialState(seed = 1) {
   return createInitialState(seed, 'local', 0, 'tutorial');
 }
-/** 1단계 둘러보기 4곳을 다 본 것으로 표시 */
+/** 1단계 둘러보기 3곳(정낭·정류장·마을 길)을 다 본 것으로 표시 */
 function lookAll(s: GameState) {
   for (const id of LOOK_IDS) apply(s, { type: 'tutorialNote', key: `look:${id}` });
 }
@@ -117,12 +117,12 @@ describe('손으로 하는 튜토리얼 「할망의 가르침」 33단계·5장
     expect(serialize(deserialize(serialize(s)))).toBe(serialize(s));
   });
 
-  it('placeMain(w-start): 첫 본관은 무료·즉시 완공·1회 — 옮기기와 같은 발자국 규칙(내 땅·바위·시설 없음, 올렛길은 걷어내 환불) + 문 앞이 내 땅. 길은 자동으로 잇지 않는다', () => {
+  it('placeMain(w-start): 첫 본관은 무료·즉시 완공·1회 — 옮기기와 같은 발자국 규칙(내 땅·시설 없음, 올렛길은 걷어내 환불) + 문 앞이 내 땅. 길은 자동으로 잇지 않는다', () => {
     const s = tutorialState();
     const money = s.money;
     expect(MAIN_BUILD_COST).toBe(0);
     expect(canBuildMain(s, START_ORIGIN.x - 5, START_ORIGIN.y).ok).toBe(false); // 남의 땅
-    expect(canBuildMain(s, START_ORIGIN.x + 1, START_ORIGIN.y).reason).toBe('바위를 먼저 치워요'); // (3,0)이 바위
+    expect(canBuildMain(s, START_ORIGIN.x + 1, START_ORIGIN.y).ok).toBe(true); // ease: 옛 바위 칸 (3,0)도 흙
     expect(canBuildMain(s, START_ORIGIN.x + 2, START_ORIGIN.y + 6).ok).toBe(false); // 문 앞 (2,8)이 마을 길
     expect(canBuildMain(s, START_ORIGIN.x + 6, START_ORIGIN.y + 7).ok).toBe(false); // 마을 길 위
     // 발자국 안 올렛길은 걷어내 환불
@@ -169,11 +169,10 @@ describe('손으로 하는 튜토리얼 「할망의 가르침」 33단계·5장
     expect(m.grid.cells[STEPS[3]!.cells(m)[0]!.y * m.grid.w + STEPS[3]!.cells(m)[0]!.x]!.terrain).toBe('road');
     const s = tutorialState();
     expect(LOOK_TEXT.gate).toContain('옮겨도 돼');
-    expect(LOOK_TEXT.rock).toContain('₩10만');
     const gate = Object.values(s.objects).find((o) => o.type === 'gate')!;
     expect(apply(s, { type: 'remove', objectId: gate.id }).ok).toBe(true);
-    // 1단계 둘러보기: 정낭 칸은 빠지고 정류장·바위·마을 길 3곳 (정류장 기준으로 가장 가까운 바위·길)
-    expect(STEPS[0]!.cells(s)).toHaveLength(3);
+    // 1단계 둘러보기: 정낭 칸은 빠지고 정류장·마을 길 2곳 (정류장 기준으로 가장 가까운 길)
+    expect(STEPS[0]!.cells(s)).toHaveLength(2);
     expect(recommendedMainCells(s).length).toBe(3); // 정류장 기준 거리
     throughMain(s);
     const f = doorFrontOf(mainBuilding(s)!);
@@ -183,8 +182,7 @@ describe('손으로 하는 튜토리얼 「할망의 가르침」 33단계·5장
     expect(s.grid.cells[cells[0]!.y * s.grid.w + cells[0]!.x]!.terrain).toBe('road');
     expect(pathConnected(s)).toBe(false);
     seeDialogue(s);
-    // 문 앞(3,3)에서 마을 길(y=7)까지 옛 정낭 자리(4,6, 바위)를 치우고 올렛길
-    apply(s, { type: 'clearRock', x: X(4), y: Y(6) });
+    // 문 앞(3,3)에서 마을 길(y=7)까지 옛 정낭 자리(4,6)를 지나 올렛길
     for (const c of [...PATH, { lx: 4, ly: 6 }]) expect(apply(s, { type: 'place', objectType: 'path', ...at(c.lx, c.ly) }).ok).toBe(true);
     expect(pathConnected(s)).toBe(true);
     expect(s.tutorial.step).toBe(4);
@@ -192,10 +190,10 @@ describe('손으로 하는 튜토리얼 「할망의 가르침」 33단계·5장
 
   it('대사 게이트: 조건이 먼저 차도 대사(dlg:<id>)를 보기 전엔 안 끝나고, 보고 나면 바로 통과한다. 보상 없는 단계(둘러보기)는 빈 보상 상자를 안 띄운다', () => {
     const s = tutorialState();
-    // 1단계 둘러보기: 4곳(정낭·정류장·바위·마을 길) 글로우, 본 것부터 꺼진다
-    expect(STEPS[0]!.cells(s)).toHaveLength(4);
-    apply(s, { type: 'tutorialNote', key: 'look:gate' });
+    // 1단계 둘러보기: 3곳(정낭·정류장·마을 길) 글로우, 본 것부터 꺼진다
     expect(STEPS[0]!.cells(s)).toHaveLength(3);
+    apply(s, { type: 'tutorialNote', key: 'look:gate' });
+    expect(STEPS[0]!.cells(s)).toHaveLength(2);
     expect(lookedAll(s)).toBe(false);
     lookAll(s);
     expect(lookedAll(s)).toBe(true);
@@ -292,16 +290,15 @@ describe('손으로 하는 튜토리얼 「할망의 가르침」 33단계·5장
   it('1장(1~11): 둘러보기 → 본관 짓기 → 본관 보기 → 길 → … 순서대로 손으로 하면 단계마다 보상 상자가 뜨고 step이 오른다 (하이라이트 칸·타깃 포함)', () => {
     const s = tutorialState();
     const money0 = s.money;
-    // 1: 둘러보기 — 정낭·정류장·바위·마을 길 4곳 글로우, 타깃(버튼) 없음, 보상 없음
+    // 1: 둘러보기 — 정낭·정류장·마을 길 3곳 글로우, 타깃(버튼) 없음, 보상 없음
     seeDialogue(s);
     expect(STEPS[0]!.targets).toEqual([]);
     const look = STEPS[0]!.cells(s);
-    expect(look).toHaveLength(4);
+    expect(look).toHaveLength(3);
     const g = Object.values(s.objects).find((o) => o.type === 'gate')!;
     expect(look[0]).toEqual({ x: g.x, y: g.y });
     expect(look[1]).toEqual({ x: X(0), y: Y(7) }); // 정류장
-    expect(s.grid.cells[look[2]!.y * s.grid.w + look[2]!.x]!.terrain).toBe('rock');
-    expect(s.grid.cells[look[3]!.y * s.grid.w + look[3]!.x]!.terrain).toBe('road');
+    expect(s.grid.cells[look[2]!.y * s.grid.w + look[2]!.x]!.terrain).toBe('road');
     expect(apply(s, { type: 'tutorialNote', key: 'look:gate' }).ok).toBe(true);
     expect(s.tutorial.step).toBe(0);
     lookAll(s);

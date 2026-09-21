@@ -1,7 +1,7 @@
 import type { GameState, Action, ApplyResult, PlacedObject } from './types.ts';
 import { bumpLayoutRev } from './layoutRev.ts';
 import { objectDef } from '../data/index.ts';
-import { canPlace, placeObject, removeObject, footprintOf, relocateObject, objectsInRoom, canClearRock, clearRock } from './grid.ts';
+import { canPlace, placeObject, removeObject, footprintOf, relocateObject, objectsInRoom } from './grid.ts';
 import { canBuildMain, placeMain, canExpandMain, expandMain, canBuildSecondFloor, buildSecondFloor, canMoveMain, moveMain, canUndoMoveMain, undoMoveMain, canToggleFireplace, toggleFireplace, canSetPianoTime, canAddBooks, addBooks, canFeedAquarium, feedAquarium, canRestockKids, restockKids, canSetBarEvening, setBarEvening, MAIN_TYPE } from './rooms.ts'; // y-indoor
 import { canBuyParcel, buyParcel } from './parcels.ts';
 import { canSetSlot, setSlot } from './menu.ts';
@@ -116,11 +116,11 @@ function applyInner(state: GameState, a: Action): ApplyResult {
       return { ok: true };
     }
     case 'demolishMany': {
-      // 드래그 사각형 일괄 철거: 보호·덤불·방 안 가구 있는 방은 건너뛰고, 하나라도 못 치우면 그 이유로 거부
+      // 드래그 사각형 일괄 철거: 보호·방 안 가구 있는 방은 건너뛰고, 하나라도 못 치우면 그 이유로 거부
       const objs: PlacedObject[] = [];
       for (const id of a.objectIds) {
         const obj = state.objects[id];
-        if (!obj || PROTECTED_TYPES.has(obj.type) || obj.type === 'bush_wild') continue;
+        if (!obj || PROTECTED_TYPES.has(obj.type)) continue;
         if (objs.some((o) => o.id === obj.id)) continue;
         const c = canDisturb(state, obj);
         if (!c.ok) return c;
@@ -204,13 +204,6 @@ function applyInner(state: GameState, a: Action): ApplyResult {
       const c = canBuyParcel(state, a.id);
       if (!c.ok) return c;
       buyParcel(state, a.id);
-      return { ok: true };
-    }
-    case 'clearRock': {
-      const c = canClearRock(state, a.x, a.y);
-      if (!c.ok) return c;
-      clearRock(state, a.x, a.y);
-      state.stats.rocksCleared++;
       return { ok: true };
     }
     case 'renameCafe': {

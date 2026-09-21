@@ -15,13 +15,13 @@ export function rectCells(r: Rect): { x: number; y: number }[] {
   return out;
 }
 
-/** 사각형에 발자국이 걸치는 철거 가능한 시설 id (본관·정낭·정류장·진입점·덤불 제외, 손님이 앉았거나 지나가는 시설도 제외 — 하나 때문에 일괄 철거가 통째로 막히지 않게) */
+/** 사각형에 발자국이 걸치는 철거 가능한 시설 id (본관·정류장·진입점 제외, 손님이 앉았거나 지나가는 시설도 제외 — 하나 때문에 일괄 철거가 통째로 막히지 않게) */
 export function demolishTargets(s: GameState, r: Rect): string[] {
   const cells = new Set(rectCells(r).map((c) => `${c.x},${c.y}`));
   const ids: string[] = [];
   for (const o of Object.values(s.objects)) {
     const d = objectDef(o.type);
-    if (PROTECTED_TYPES.has(o.type) || NO_DEMOLISH_KINDS.has(d.kind) || o.type === 'bush_wild') continue;
+    if (PROTECTED_TYPES.has(o.type) || NO_DEMOLISH_KINDS.has(d.kind)) continue;
     if (!footprint(o.type, o.x, o.y).some((p) => cells.has(`${p.x},${p.y}`))) continue;
     if (!canDisturb(s, o).ok) continue;
     ids.push(o.id);

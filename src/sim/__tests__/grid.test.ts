@@ -20,7 +20,7 @@ test('빈 흙 칸에 당근밭(농원)을 놓을 수 있다', () => {
 test('지형이 맞지 않으면 실패', () => {
   const s = bareState(1);
   expect(canPlace(s, 'carrot_field', X(0), Y(7)).ok).toBe(false); // 도로
-  expect(canPlace(s, 'carrot_field', X(3), Y(0)).ok).toBe(false); // (3+0)%7===3 → rock
+  expect(canPlace(s, 'carrot_field', X(3), Y(0)).ok).toBe(true); // ease: 옛 바위 패턴 칸도 흙
 });
 
 test('겹치거나 격자 밖이면 실패', () => {

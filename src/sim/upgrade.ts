@@ -27,7 +27,7 @@ export const UPGRADE_POP_ALT = 30;
 export const STAR_BY_TIER: Record<Tier, number> = { small: 2, medium: 3, large: 4 };
 export type Tier = 'small' | 'medium' | 'large';
 
-const NO_UPGRADE_TYPES = new Set(['busstop', 'warehouse', 'gate', 'spring', 'bush_wild']);
+const NO_UPGRADE_TYPES = new Set(['busstop', 'warehouse', 'gate', 'spring']);
 
 export function levelOf(obj: PlacedObject): number {
   return obj.level ?? 1;

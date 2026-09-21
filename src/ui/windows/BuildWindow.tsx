@@ -22,7 +22,7 @@ let requestedTab: BuildTab | null = null;
 export function requestBuildTab(tab: BuildTab): void { requestedTab = tab; }
 function takeRequestedTab(): BuildTab | null { const t = requestedTab; requestedTab = null; return t; }
 /** 처음부터 맵에 있는 것·지형 — 짓기 목록에 안 나온다 (본관은 「건물」 탭에서 따로, 없을 때만) */
-const HIDDEN_IDS = new Set(['busstop', 'warehouse', 'bush_wild', 'spring']);
+const HIDDEN_IDS = new Set(['busstop', 'warehouse', 'spring']);
 /** 「건물」 탭 안내 (w-start 맨땅 튜토리얼 2단계) */
 export const MAIN_CARD_HINT = '첫 본관은 무료·바로 완성 · 문은 앞쪽 왼쪽에 생겨요';
 

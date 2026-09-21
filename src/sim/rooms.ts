@@ -129,7 +129,7 @@ export function mainWorkDaysLeft(state: GameState): number {
 
 // ---------- 본관 짓기 (w-start: 맨땅 튜토리얼 — 첫 본관은 플레이어가 자리를 골라 짓는다) ----------
 
-/** 본관을 (x,y)에 지을 수 있나: 아직 본관이 없고, Lv1 발자국(3×2) 규칙은 옮기기와 같고(내 필지·바위·시설 없음, 올렛길은 걷어낸다), 문 앞 칸이 내 필지 안. */
+/** 본관을 (x,y)에 지을 수 있나: 아직 본관이 없고, Lv1 발자국(3×2) 규칙은 옮기기와 같고(내 필지·시설 없음, 올렛길은 걷어낸다), 문 앞 칸이 내 필지 안. */
 export function canBuildMain(state: GameState, x: number, y: number): ApplyResult {
   if (mainBuilding(state)) return { ok: false, reason: '이미 본관이 있어요' };
   const size = MAIN_SIZE[1]!;

@@ -1,6 +1,6 @@
 import { useGame, dispatch } from './store';
 import { wonText } from '../data/labels.ts';
-import { objectStats, sceneryScore, canUseItem, itemEffect, PROTECTED_TYPES, clearCost, canClearRock, hasPickaxe, cellAt, type ObjectKind, type ComboStrength, buildDaysLeft, josa } from '../sim/index.ts';
+import { objectStats, sceneryScore, canUseItem, itemEffect, PROTECTED_TYPES, type ObjectKind, type ComboStrength, buildDaysLeft, josa } from '../sim/index.ts';
 import { objectDef, itemDef, COMBOS, SETS } from '../data/index.ts';
 import { Icon } from './Icon';
 import { Confirm } from './Popup';
@@ -20,27 +20,6 @@ function Stat({ icon, label, value, good }: { icon?: string; label: string; valu
     <span style={{ display: 'inline-block', marginRight: 10, whiteSpace: 'nowrap' }}>
       {icon && <Icon name={icon} />} {label} <b style={{ color: good === undefined ? PALETTE.ink : good ? PALETTE.ok : PALETTE.bad }}>{value}</b>
     </span>
-  );
-}
-
-/** 바위·큰 바위·곶자왈 덤불 칸: 즉시 치우기 + 비용 (곡괭이가 있으면 50% 할인, w-free) */
-export function RockPanel({ x, y }: { x: number; y: number }) {
-  const s = useGame();
-  const cost = clearCost(s, x, y);
-  if (cost === null) return null;
-  const terrain = cellAt(s, x, y).terrain;
-  const name = terrain === 'rock_big' ? '큰 바위' : terrain === 'rock' ? '바위' : '곶자왈 덤불';
-  const can = canClearRock(s, x, y);
-  const discount = hasPickaxe(s);
-  const desc = terrain === 'rock_big' ? '오름 능선의 큰 바위예요. 치우는 데 돈이 더 들어요.' : terrain === 'rock' ? '길을 막는 돌멩이. 치우면 바로 흙 칸이 돼요.' : '가시덤불이에요. 치우면 바로 흙 칸이 돼요.';
-  return (
-    <div data-testid="rock-panel">
-      <div style={{ marginBottom: 2 }}><b>{name}</b> <span style={{ fontSize: 13, color: PALETTE.inkSoft }}>· 지형 ({x},{y})</span></div>
-      <div style={{ fontSize: 13, color: PALETTE.inkSoft, marginBottom: 6 }}>{desc}</div>
-      <button style={can.ok ? brownBtnOn : brownBtnOff} disabled={!can.ok} onClick={() => dispatch({ type: 'clearRock', x, y })}>
-        <Icon name="remove" /> 치우기 {wonText(cost)}{discount && ' (곡괭이 할인)'}{!can.ok && can.reason && ` · ${can.reason}`}
-      </button>
-    </div>
   );
 }
 
@@ -99,8 +78,7 @@ export function ObjectInfoPanel({ objectId }: { objectId: string }) {
           아이템 보너스: 인기 +{s.itemBonus[o.type]!.popularity}{s.itemBonus[o.type]!.feePct > 0 && ` · 요금 +${s.itemBonus[o.type]!.feePct}%`}
         </div>
       )}
-      {o.type === 'bush_wild' && <RockPanel x={o.x} y={o.y} />}
-      {!PROTECTED_TYPES.has(o.type) && o.type !== 'bush_wild' && (
+      {!PROTECTED_TYPES.has(o.type) && (
         <button style={dangerBtn} onClick={() => dispatch({ type: 'remove', objectId: o.id })}><Icon name="remove" /> 치우기 ({d.removeCost ? `${wonText(d.removeCost)} 들어요` : `${wonText(d.cost)} 돌려받음`})</button>
       )}
       {/* 아이템은 심기·치우기 아래에 — 아이템이 10개를 넘으면 기본 동작이 화면 밖으로 밀려난다 */}

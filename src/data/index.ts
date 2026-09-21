@@ -47,10 +47,9 @@ import regionsJson from './generated/regions.json' with { type: 'json' };
 import namedGuestsJson from './generated/named_guests.json' with { type: 'json' };
 import rivalsJson from './generated/v2/rivals.json' with { type: 'json' };
 
-/** 시작부터 있는 특수 오브젝트 (필지 지형 생성용). 덤불은 곡괭이 대신 5만 원에 치운다. */
+/** 시작부터 있는 특수 오브젝트 (필지 지형 생성용). ease: 곶자왈 덤불(bush_wild)은 없앴다 — 옛 세이브의 덤불은 로드 때 지운다. */
 const TERRAIN_OBJECTS: ObjectDef[] = [
-  { id: 'bush_wild', name: '곶자왈 덤불', kind: 'deco', w: 1, h: 1, cost: 0, scenery: 1, noise: 0, wind: 1, upkeep: 0, terrain: ['soil', 'rock'], removeCost: 50000 },
-  { id: 'spring', name: '용천수', kind: 'deco', w: 2, h: 1, cost: 0, scenery: 2, noise: 0, wind: 0, upkeep: 0, terrain: ['soil', 'rock'] },
+  { id: 'spring', name: '용천수', kind: 'deco', w: 2, h: 1, cost: 0, scenery: 2, noise: 0, wind: 0, upkeep: 0, terrain: ['soil'] },
 ];
 /** 랜드마크 (§1.6). 데이터만 — 효과는 경치·요금 외 TODO. 비용은 화폐 리스케일 ×100. */
 export const LANDMARK_COST_SCALE = 100;
@@ -59,7 +58,7 @@ const LANDMARK_UNLOCK: Record<string, { unlock: Record<string, unknown>; unlockT
 export const LANDMARKS: ObjectDef[] = (landmarksJson as { id: string; name: string; w: number; h: number; cost: number; effectText: string }[]).map((l) => {
   const v2 = LANDMARK_UNLOCK[l.id];
   const def: ObjectDef = {
-    id: l.id, name: l.name, kind: 'landmark', category: 'landmark', w: l.w, h: l.h, cost: l.cost * LANDMARK_COST_SCALE, scenery: 3, noise: 0, wind: 1, upkeep: 0, terrain: ['soil', 'rock'], effectText: l.effectText,
+    id: l.id, name: l.name, kind: 'landmark', category: 'landmark', w: l.w, h: l.h, cost: l.cost * LANDMARK_COST_SCALE, scenery: 3, noise: 0, wind: 1, upkeep: 0, terrain: ['soil'], effectText: l.effectText,
     unlock: v2 ? toUnlockCond(v2.unlock) : { type: 'star', star: 3 },
   };
   def.unlockText = v2?.unlockText ?? '★3';
@@ -266,7 +265,7 @@ export function adaptFacility(r: RawFacility): ObjectDef {
   for (const k of ['spring', 'summer', 'autumn', 'winter'] as Season[]) if (typeof r.seasonBonus?.[k] === 'number') season[k] = r.seasonBonus[k];
   const def: ObjectDef = {
     id: r.id, name: r.name, kind, w: r.w, h: r.h, cost: r.cost, scenery: r.scenery, noise: Math.max(0, r.noise), wind: r.category === 'scenery' && r.h >= 1 && ['palm', 'cedar'].includes(r.id) ? 1 : 0,
-    upkeep: r.upkeep, terrain: r.category === 'farm' ? ['soil'] : ['soil', 'rock'], popularity: r.popularity, feePct: r.feePct ?? 100,
+    upkeep: r.upkeep, terrain: ['soil'], popularity: r.popularity, feePct: r.feePct ?? 100,
     desc: r.description ?? undefined, unlock: r.unlock?.type === 'start' && !START_OBJECT_IDS.includes(r.id) ? { type: 'goal' } : toUnlockCond(r.unlock),
     buildDays: typeof r.buildDays === 'number' ? r.buildDays : BUILD_DAYS_BY_TIER[r.tier] ?? 1,
   };

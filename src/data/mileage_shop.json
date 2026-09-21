@@ -18,11 +18,11 @@
     "description": "동시에 지을 수 있는 시설 +1"
   },
   {
-    "id": "ms_pickaxe",
-    "name": "바위 곡괭이",
-    "price": 2,
-    "description": "가지고 있으면 바위·덤불 치우기가 50% 할인돼요",
-    "itemId": "pickaxe"
+    "id": "ms_fast_hammer",
+    "name": "빠른 건축 망치",
+    "price": 3,
+    "description": "가지고 있으면 새로 짓는 시설의 공사가 1일 짧아져요 (최소 1일)",
+    "itemId": "fast_hammer"
   },
   {
     "id": "ms_ticket",
@@ -135,7 +135,7 @@
     "id": "ms_hammer",
     "name": "곰 삼춘의 망치",
     "price": 4,
-    "description": "곶자왈 덤불 1칸 제거 (치우기 비용 없음, 최대 10개)",
+    "description": "다음에 짓는 시설 1개가 바로 완공돼요 (최대 10개)",
     "itemId": "hammer_bearing"
   }
 ]

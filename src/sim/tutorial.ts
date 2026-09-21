@@ -9,7 +9,7 @@
  * 대사는 data/dialogue/tutorial.json(key로 짝). 하이라이트(data-tut·맵 칸)는 ui/tutorialHighlight.ts.
  *
  * | 장 | 단계 | 조건 | 하이라이트(data-tut / 맵 칸) | 보상 |
- * | 1 개업 | 1 look | 정낭·정류장·바위·마을 길 탭(seen look:*) | 아직 안 본 칸 | — |
+ * | 1 개업 | 1 look | 정낭·정류장·마을 길 탭(seen look:*) | 아직 안 본 칸 | — |
  * |  | 2 build_main | 본관 짓기(placeMain) | nav:build·tab:building·build:warehouse·추천 칸 3 | ₩30만 |
  * |  | 3 look_main | 본관 카드 보기(seen look:main) | 본관 발자국 | — |
  * |  | 4 path | 마을 길→문 앞 올렛길 | nav:build·tab:path·마을 길(정낭이 있으면 정낭)·문 앞 | ₩30만 |
@@ -81,16 +81,15 @@ export interface TutorialStepDef {
 export const TRACKED_ACTIONS: ReadonlySet<Action['type']> = new Set<Action['type']>([
   'undoLast', 'train', 'develop', 'drawTicket', 'buyMileage', 'buyTicket', 'giveGift', 'respondEvent', 'openPopup', 'challenge', 'investSpot',
 ]);
-/** UI가 tutorialNote로 남기는 키. `look:<id>`는 1·3단계 둘러보기(정낭·정류장·바위·마을 길·본관 카드를 열었다) */
+/** UI가 tutorialNote로 남기는 키. `look:<id>`는 1·3단계 둘러보기(정낭·정류장·마을 길·본관 카드를 열었다) */
 export type TutorialNoteKey = 'siteView' | 'guestCard' | 'storage' | `look:${LookId}`;
 /** 1단계 둘러보기에서 하나씩 눌러 보는 것 (순서대로 글로우) + 3단계 본관 */
-export type LookId = 'gate' | 'busstop' | 'rock' | 'road' | 'main';
-export const LOOK_IDS: LookId[] = ['gate', 'busstop', 'rock', 'road'];
+export type LookId = 'gate' | 'busstop' | 'road' | 'main';
+export const LOOK_IDS: LookId[] = ['gate', 'busstop', 'road'];
 /** 둘러보기 카드 위 한 줄 설명 (초중생 어휘, MiniCard Hint) */
 export const LOOK_TEXT: Record<LookId, string> = {
   gate: '정낭: 제주식 대문. 있으면 관광객이 좋아해. 옮겨도 돼',
   busstop: '정류장: 버스가 손님을 내려 줘요',
-  rock: '바위: ₩10만이면 바로 치워',
   road: '마을 길: 버스가 다니는 길. 여기서 우리 길을 이어요',
   main: '카페 본관: 카운터·주방·실내 자리가 다 여기 있어요',
 };
@@ -263,7 +262,7 @@ function announcementSeen(s: GameState): boolean {
   return s.stats.seenAnnouncement >= 0 && s.lastAnnouncement === null;
 }
 
-/** 1단계 둘러보기: 아직 안 본 것의 칸 (정낭·정류장·정낭(없으면 정류장)에서 가장 가까운 바위·마을 길 칸) — 본 것부터 글로우가 꺼진다 */
+/** 1단계 둘러보기: 아직 안 본 것의 칸 (정낭·정류장·정낭(없으면 정류장)에서 가장 가까운 마을 길 칸) — 본 것부터 글로우가 꺼진다 */
 function lookCells(s: GameState): Pt[] {
   const out: Pt[] = [];
   const g = gate(s);
@@ -271,7 +270,6 @@ function lookCells(s: GameState): Pt[] {
   if (!seen(s, 'look:gate') && g) out.push({ x: g.x, y: g.y });
   if (!seen(s, 'look:busstop') && bus) out.push({ x: bus.x, y: bus.y });
   const from = g ? { x: g.x, y: g.y } : bus ? { x: bus.x, y: bus.y } : { x: 0, y: 0 };
-  if (!seen(s, 'look:rock')) { const r = nearestRock(s, from); if (r) out.push(r); }
   if (!seen(s, 'look:road')) { const r = nearestRoad(s, from); if (r) out.push(r); }
   return out;
 }
@@ -283,10 +281,6 @@ function nearestCell(s: GameState, from: Pt, ok: (x: number, y: number) => boole
     if (d < bd) { bd = d; best = { x, y }; }
   }
   return best;
-}
-/** 내 필지의 빈 바위 칸 중 from에서 가장 가까운 것 */
-function nearestRock(s: GameState, from: Pt): Pt | null {
-  return nearestCell(s, from, (x, y) => { const c = cellAt(s, x, y); return (c.terrain === 'rock' || c.terrain === 'rock_big') && !c.objectId && !!parcelAt(s, x, y)?.owned; });
 }
 /** 마을 길 칸 중 from에서 가장 가까운 것 */
 function nearestRoad(s: GameState, from: Pt): Pt | null {

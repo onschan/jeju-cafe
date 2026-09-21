@@ -2,7 +2,7 @@ import { useState, useEffect, type CSSProperties, type ReactNode } from 'react';
 import { wonText } from '../data/labels.ts';
 import { josa } from '../sim/josa.ts';
 import { useGame, dispatch } from './store';
-import { objectStats, siteOf, siteLineText, clearCost, canClearRock, hasPickaxe, cellAt, walletOf, guestFace, namedGuestFace, canAcceptQuest, parcelPrice, canBuyParcel, canGiveGift, giftFits, giftCount, giftedToday, PROTECTED_TYPES, ROTATABLE_TYPES, LOW_ENERGY, STAT_KEYS, STAT_NAME, staffInRole, canLevelUp, capOf, skillsOf, expNeeded, isUpgradable, canUpgrade, upgradeCost, upgradeConditionText, MAX_OBJECT_LEVEL, canRepair, repairCost, CLEAN_LOW, type GameState, type Guest, type RoleId, type StatKey } from '../sim/index.ts';
+import { objectStats, siteOf, siteLineText, cellAt, walletOf, guestFace, namedGuestFace, canAcceptQuest, parcelPrice, canBuyParcel, canGiveGift, giftFits, giftCount, giftedToday, PROTECTED_TYPES, ROTATABLE_TYPES, LOW_ENERGY, STAT_KEYS, STAT_NAME, staffInRole, canLevelUp, capOf, skillsOf, expNeeded, isUpgradable, canUpgrade, upgradeCost, upgradeConditionText, MAX_OBJECT_LEVEL, canRepair, repairCost, CLEAN_LOW, type GameState, type Guest, type RoleId, type StatKey } from '../sim/index.ts';
 import { BUS_HOUR, isBusDay } from '../sim/spots.ts';
 import { RouteCard } from './RouteCard';
 import type { RouteId } from '../sim/index.ts';
@@ -27,7 +27,6 @@ export type CardTarget =
   | { kind: 'guest'; id: string }
   | { kind: 'staff'; id: string }
   | { kind: 'object'; id: string }
-  | { kind: 'rock'; x: number; y: number }
   | { kind: 'empty'; x: number; y: number }
   | { kind: 'parcel'; id: string }
   | { kind: 'busstop'; id: string }
@@ -64,7 +63,7 @@ export function Details({ id, children, lines = 3 }: { id: string; children: Rea
   );
 }
 
-/** 「이게 뭐예요」 한 줄 (w-start): 처음부터 놓여 있는 것(정낭·정류장·바위·마을 길·용천수·옆 필지·본관) 카드 맨 위에 초중생 어휘 설명 한 줄.
+/** 「이게 뭐예요」 한 줄 (w-start): 처음부터 놓여 있는 것(정낭·정류장·마을 길·용천수·옆 필지·본관) 카드 맨 위에 초중생 어휘 설명 한 줄.
  *  세션에 한 번만 펼쳐 보이고, 그 뒤엔 「? 이게 뭐예요」 버튼으로 접힌다 (다시 누르면 펼친다). 튜토리얼 1·3단계 둘러보기 표식(look:<id>)도 여기서 남긴다. */
 const hintShown = new Set<string>();
 export const HINT_TEXT: Record<LookId | 'spring' | 'parcel', string> = {
@@ -205,7 +204,7 @@ function ObjectCard({ s, id, a, onClose }: { s: GameState; id: string; a: CardAc
   const sameKind = Object.values(s.objects).filter((x) => x.type === o.type);
   const idx = sameKind.findIndex((x) => x.id === o.id);
   const cycle = (dir: -1 | 1) => { const n = sameKind[(idx + dir + sameKind.length) % sameKind.length]; if (n) a.onSelect({ kind: 'object', id: n.id }); };
-  const canBuildSame = s.unlocked.objects.includes(o.type) && !PROTECTED_TYPES.has(o.type) && o.type !== 'bush_wild';
+  const canBuildSame = s.unlocked.objects.includes(o.type) && !PROTECTED_TYPES.has(o.type);
   const st = objectStats(s, o.id);
   const protectedType = PROTECTED_TYPES.has(o.type);
   const remove = () => Confirm(`${josa(d.name, '을/를')}${d.removeCost ? ` ${wonText(d.removeCost)} 들여 치울까요?` : ` 치우고 ${josa(wonText(d.cost), '을/를')} 돌려받을까요?`}`, () => { dispatch({ type: 'remove', objectId: o.id }); onClose(); }, { title: '철거' });
@@ -245,33 +244,13 @@ function ObjectCard({ s, id, a, onClose }: { s: GameState; id: string; a: CardAc
         {st.wear > 0 && <button style={rep.ok ? btnOn : btnOff} disabled={!rep.ok} onClick={() => dispatch({ type: 'repairObject', objectId: o.id })} data-testid="repair-btn">수리 ({wonText(repairCost(s, o))})</button>}
         {!protectedType && <button style={btn} onClick={() => a.onMove(o.id)}>이동</button>}
         {ROTATABLE_TYPES.has(o.type) && <button style={btn} onClick={() => dispatch({ type: 'rotate', objectId: o.id, rot: ((o.rot ?? 0) + 1) % 4 })}>회전</button>}
-        {!protectedType && o.type !== 'bush_wild' && <button style={btnDanger} onClick={remove}>철거</button>}
+        {!protectedType && <button style={btnDanger} onClick={remove}>철거</button>}
         {canBuildSame && <button style={btn} data-testid="build-same" onClick={() => a.onBuildSame(o.type, o.x + d.w, o.y)}><Icon name="plus" /> 같은 것 더</button>}
         <button style={btn} data-testid="rename-object" onClick={() => setRenaming(true)}><Icon name="pencil" /> 이름</button>
         <button style={btn} onClick={() => a.onObjectDetail(o.id)}>자세히</button>
       </Row>
       {upgradable && !up.ok && up.reason && <div style={{ ...small, marginTop: 4 }}>증축 조건: {upgradeConditionText(o, d)}</div>}
       {renaming && <RenamePopup objectId={o.id} current={o.name ?? ''} onClose={() => setRenaming(false)} />}
-    </div>
-  );
-}
-
-function RockCard({ s, x, y, onClose }: { s: GameState; x: number; y: number; onClose: () => void }) {
-  const cost = clearCost(s, x, y);
-  if (cost === null) return <div style={small}>바위가 아니에요</div>;
-  const terrain = cellAt(s, x, y).terrain;
-  const name = terrain === 'rock_big' ? '큰 바위' : terrain === 'rock' ? '바위' : '곶자왈 덤불';
-  const can = canClearRock(s, x, y);
-  const discount = hasPickaxe(s);
-  // w-free: 「치우기 ₩N」 버튼 하나 — 즉시·건축가 불필요. 곡괭이가 있으면 50% 할인 표시
-  return (
-    <div data-testid="card-rock">
-      {terrain !== 'soil' && <Hint id="rock" />}
-      <div style={{ fontSize: 14, lineHeight: 1.5 }}>
-        <div><b>{name}</b> <span style={small}>({x},{y})</span></div>
-        <div style={small}>바로 치울 수 있어요{discount && ' · 곡괭이 50% 할인'}{!can.ok && can.reason && ` · ${can.reason}`}</div>
-      </div>
-      <Row><button data-testid="rock-clear" style={can.ok ? btnOn : btnOff} disabled={!can.ok} onClick={() => { if (dispatch({ type: 'clearRock', x, y }).ok) onClose(); }}><Icon name="remove" /> 치우기 {wonText(cost)}</button></Row>
     </div>
   );
 }
@@ -449,7 +428,6 @@ export function MiniCard({ target, actions, onClose }: { target: CardTarget; act
     case 'guest': body = <GuestCard s={s} id={target.id} a={actions} />; break;
     case 'staff': body = <StaffCard s={s} id={target.id} a={actions} />; break;
     case 'object': body = <ObjectCard s={s} id={target.id} a={actions} onClose={onClose} />; break;
-    case 'rock': body = <RockCard s={s} x={target.x} y={target.y} onClose={onClose} />; break;
     case 'empty': body = <EmptyCard s={s} x={target.x} y={target.y} a={actions} />; break;
     case 'parcel': body = <ParcelCard s={s} id={target.id} onClose={onClose} />; break;
     case 'busstop': body = <BusStopCard s={s} id={target.id} />; break;
