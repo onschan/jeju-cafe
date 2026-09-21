@@ -49,7 +49,7 @@ export function guestHasTag(typeId: string, tag: BigEventTag): boolean {
 
 export function activeEvents(state: GameState): ActiveBigEvent[] {
   const today = dayIndex(state.clock);
-  return state.events.filter((e) => e.startDay <= today && e.endsDay > today);
+  return state.events.filter((e) => (e.startDay ?? 0) <= today && e.endsDay > today); // startDay가 없는 항목(테스트 스텁)은 시작한 것으로
 }
 /** 예약(아직 시작 전) + 진행 중 — 자격 판정용 */
 export function scheduledEvents(state: GameState): ActiveBigEvent[] {
