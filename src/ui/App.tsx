@@ -3,7 +3,7 @@ import { wonText, label } from '../data/labels.ts';
 import { GameView, RECT_COLOR_LINE, type GhostSpec, type RangeHint } from '../render/GameView';
 import { startLoop, dispatch, getState, useGame, setViewReset, autosaveNow, hasAnySave, loadSlot, setMonthCardHook, setSceneHook, showMessage, pauseGame, isSpeedLocked, setSpeedLocked } from './store';
 import { unlockAudio, bgm, isMuted, setMuted, getBgmVolume, getSfxVolume, setBgmVolume, setSfxVolume, sfx } from './audio';
-import { seasonOf, canPlace, objectAt, footprint, sizeOf, mainBuilding, parcelAt, placeCost, isLineType, lineCells, planLine, type LineOrder, type Pt, PROTECTED_TYPES, ROTATABLE_TYPES, goalForMenu, featureOpen, canUndo, demolishRefund, canDisturb, routeAtCell, tutorialDone, canBuildMain, recommendedMainCells, cellAt, doorFrontOf, MAIN_TYPE, MAIN_BUILD_COST, type GameState } from '../sim/index.ts';
+import { seasonOf, canPlace, objectAt, footprint, sizeOf, mainBuilding, parcelAt, placeCost, isLineType, lineCells, planLine, canAutoConnectPath, type LineOrder, type Pt, PROTECTED_TYPES, ROTATABLE_TYPES, goalForMenu, featureOpen, canUndo, demolishRefund, canDisturb, routeAtCell, tutorialDone, canBuildMain, recommendedMainCells, cellAt, doorFrontOf, MAIN_TYPE, MAIN_BUILD_COST, type GameState } from '../sim/index.ts';
 import { RoutesSection } from './RouteCard'; // 트랙 H
 import { objectDef } from '../data/index.ts';
 // render/·ui/는 Vite 전용이라 확장자 없는 import 허용. sim/·data/만 .ts 확장자 규칙.
@@ -58,7 +58,8 @@ type Mode =
   | { kind: 'idle' }
   | { kind: 'build'; objectType: string; count: number }
   | { kind: 'move' }
-  | { kind: 'remove' };
+  | { kind: 'remove' }
+  | { kind: 'autopath' }; // ease: 「마을 길까지 자동 잇기」 파란 미리보기 → ✓
 
 /** 전체 화면 창과 그 아이콘 그리드 항목 (§5.1) */
 type CafeTab = 'menu' | 'ingredients' | 'craft' | 'promo' | 'building' | 'indoor';
@@ -310,6 +311,7 @@ function Game({ onExit }: { onExit: () => void }) {
     setModeState(m);
     if (m.kind !== 'idle') { setCardTarget(null); viewRef.current?.setSelection(null); }
     if (m.kind !== 'build') { setGhost(null); setLine(null); }
+    if (m.kind !== 'autopath' && m.kind !== 'remove') viewRef.current?.setRectCells([]);
     if (m.kind !== 'move') setMoving(null);
     if (m.kind !== 'remove') setRect(null);
   };
@@ -607,11 +609,29 @@ function Game({ onExit }: { onExit: () => void }) {
     } else {
       place = { text: '치울 시설을 누르거나 끌어서 여러 개 고르세요', ok: true, canRotate: false, paint: true, onUndo: undoOk ? undo : null, onConfirm: () => {}, onRotate: () => {}, onCancel: () => setMode({ kind: 'idle' }) };
     }
+  } else if (mode.kind === 'autopath') {
+    // ease 「마을 길까지 자동 잇기」: canAutoConnectPath의 빈 칸을 파란 마름모로, ✓면 autoConnectPath (되돌리기 1회로 전부)
+    const c = canAutoConnectPath(s);
+    const r = c.route;
+    place = {
+      text: c.ok && r ? `올렛길 ${r.empty.length}칸 · ${wonText(r.cost)} · 문 앞까지 자동으로 이어요 · ✓ 확정` : (c.reason ?? '이을 길이 없어요'),
+      ok: c.ok, canRotate: false, onUndo: undoOk ? undo : null,
+      onConfirm: () => {
+        const res = dispatch({ type: 'autoConnectPath' });
+        if (!res.ok) { showMessage(res.reason ?? '이을 길이 없어요'); return; }
+        showMessage(`올렛길 ${r?.empty.length ?? 0}칸을 이었어요 (↶ 되돌리기 가능)`);
+        setMode({ kind: 'idle' });
+      },
+      onRotate: () => {},
+      onCancel: () => setMode({ kind: 'idle' }),
+    };
   } else if (cardTarget?.kind === 'object') {
     const o = s.objects[cardTarget.id];
     if (o) rangeHint = rangeHintFor(s, o.type, o.x, o.y, o.id);
   }
   useEffect(() => { viewRef.current?.setGhost(ghostSpec); viewRef.current?.setRangeHint(rangeHint); });
+  // 자동 잇기 미리보기 칸 (상태가 바뀌면 다시 계산)
+  useEffect(() => { if (mode.kind !== 'autopath') return; const r = canAutoConnectPath(s).route; viewRef.current?.setRectCells(r?.empty ?? [], RECT_COLOR_LINE); }, [mode.kind, s]);
 
   const openWindow = (kind: WindowKind) => { setMode({ kind: 'idle' }); openCard(null); setWin(DEFAULT_WIN[kind]); };
   const cardActions: CardActions = {
@@ -623,6 +643,7 @@ function Game({ onExit }: { onExit: () => void }) {
     onBuild: (x, y) => { openCard(null); setWin({ kind: 'build', origin: { x, y } }); },
     onBuildSame: (type, x, y) => { openCard(null); pickBuild(type, { x, y }); },
     onCafe: () => { openCard(null); setWin({ kind: 'cafe', tab: 'building' }); },
+    onAutoPath: () => { openCard(null); closeWin(); setMode({ kind: 'autopath' }); const m = mainBuilding(getState()); if (m) viewRef.current?.focusCell(m.x, m.y + 2, 3, 3, 1.2); },
     onSelect: (t) => openCard(t),
   };
   const closeWin = () => setWin(null);

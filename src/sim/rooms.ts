@@ -253,17 +253,28 @@ export function autoPathCellCost(): number { return objectDef(AUTO_PATH_TYPE).co
 /** 새 문 앞 칸까지 기존 길(정류장에서 닿는 칸)에서 가장 짧은 올렛길을 자동으로 잇는다 (증축·이사로 문이 옮겨졌을 때).
  *  빈 흙(길을 놓을 수 있는 칸)만 지나며, 이미 있는 길은 그대로 쓴다. 돈이 모자라면 놓지 않고 필요한 칸 수·금액만 돌려준다.
  *  반환: laid = 새로 놓은 칸 수, cost = 든 돈, need = 돈이 모자라 못 놓았을 때 필요한 금액(0이면 해결됨), route = null이면 이을 길이 없음. */
-export function autoConnectDoor(state: GameState, room: PlacedObject): { laid: number; cost: number; need: number; route: Pt[] | null; blocked?: string } {
+export interface AutoRoute {
+  /** 문 앞→정류장과 이어진 첫 칸까지의 경로 (이미 이어져 있으면 [], 이을 길이 없으면 null) */
+  route: Pt[] | null;
+  /** 새로 놓아야 하는 빈 칸 (route 중 걷지 못하는 칸) */
+  empty: Pt[];
+  /** 놓는 데 드는 돈 */
+  cost: number;
+  /** 문 앞을 막은 시설 이름 */
+  blocked?: string;
+}
+/** 자동 잇기 경로만 계산한다 (놓지 않음, ease 「마을 길까지 자동 잇기」 미리보기용): 문 앞에서 BFS — 정류장과 이어진 첫 칸을 만나면 그 경로가 최단. */
+export function autoConnectRoute(state: GameState, room: PlacedObject): AutoRoute {
   const f = doorFrontOf(room);
-  if (!inBounds(state, f.x, f.y)) return { laid: 0, cost: 0, need: 0, route: null };
-  if (isDoorReachable(state, room)) return { laid: 0, cost: 0, need: 0, route: [] };
+  if (!inBounds(state, f.x, f.y)) return { route: null, empty: [], cost: 0 };
+  if (isDoorReachable(state, room)) return { route: [], empty: [], cost: 0 };
   const front = objectAt(state, f.x, f.y);
-  if (front && front.id !== room.id && objectDef(front.type).kind !== 'path') return { laid: 0, cost: 0, need: 0, route: null, blocked: objectDef(front.type).name }; // 문 앞에 시설이 있으면 못 잇는다
+  if (front && front.id !== room.id && objectDef(front.type).kind !== 'path') return { route: null, empty: [], cost: 0, blocked: objectDef(front.type).name }; // 문 앞에 시설이 있으면 못 잇는다
   const reach = reachMap(state, busStopPos(state)).dist;
   const connected = (p: Pt) => isWalkable(state, p.x, p.y) && reach.has(cellKey(state, p));
   const passable = (p: Pt) => inBounds(state, p.x, p.y) && cellAt(state, p.x, p.y).roomId === null
     && (isWalkable(state, p.x, p.y) || canPlace(state, AUTO_PATH_TYPE, p.x, p.y).ok);
-  if (!passable(f)) return { laid: 0, cost: 0, need: 0, route: null };
+  if (!passable(f)) return { route: null, empty: [], cost: 0 };
   // 문 앞에서 BFS — 정류장과 이어진 첫 칸을 만나면 그 경로가 최단
   const prev = new Map<number, number>();
   const queue: Pt[] = [f];
@@ -280,15 +291,38 @@ export function autoConnectDoor(state: GameState, room: PlacedObject): { laid: n
       queue.push(n);
     }
   }
-  if (!goal) return { laid: 0, cost: 0, need: 0, route: null };
+  if (!goal) return { route: null, empty: [], cost: 0 };
   const route: Pt[] = [];
   for (let k: number = cellKey(state, goal); k !== -1; k = prev.get(k)!) route.push({ x: k % state.grid.w, y: Math.floor(k / state.grid.w) });
   const empty = route.filter((p) => !isWalkable(state, p.x, p.y));
-  const cost = empty.length * autoPathCellCost();
-  if (state.money < cost) return { laid: 0, cost: 0, need: cost, route };
-  for (const p of empty) placeObject(state, AUTO_PATH_TYPE, p.x, p.y);
-  state.money -= cost;
-  return { laid: empty.length, cost, need: 0, route };
+  return { route, empty, cost: empty.length * autoPathCellCost() };
+}
+export function autoConnectDoor(state: GameState, room: PlacedObject): { laid: number; cost: number; need: number; route: Pt[] | null; blocked?: string } {
+  const r = autoConnectRoute(state, room);
+  if (r.route === null) return { laid: 0, cost: 0, need: 0, route: null, ...(r.blocked ? { blocked: r.blocked } : {}) };
+  if (r.route.length === 0) return { laid: 0, cost: 0, need: 0, route: [] };
+  if (state.money < r.cost) return { laid: 0, cost: 0, need: r.cost, route: r.route };
+  for (const p of r.empty) placeObject(state, AUTO_PATH_TYPE, p.x, p.y);
+  state.money -= r.cost;
+  return { laid: r.empty.length, cost: r.cost, need: 0, route: r.route };
+}
+/** ease 「마을 길까지 자동 잇기」 (본관·정류장 카드 버튼): 미리보기 뒤 ✓ — 놓은 칸은 되돌리기 1회로 전부. */
+export function canAutoConnectPath(state: GameState): ApplyResult & { route?: AutoRoute } {
+  const m = mainBuilding(state);
+  if (!m) return { ok: false, reason: '본관이 없어요' };
+  const r = autoConnectRoute(state, m);
+  if (r.route === null) return { ok: false, reason: r.blocked ? `문 앞에 ${josa(r.blocked, '이/가')} 있어요` : '이을 길이 없어요', route: r };
+  if (r.route.length === 0 || r.empty.length === 0) return { ok: false, reason: '이미 이어져 있어요', route: r };
+  if (state.money < r.cost) return { ok: false, reason: '돈이 모자라요', route: r };
+  return { ok: true, route: r };
+}
+/** 호출 전 canAutoConnectPath. 놓은 올렛길 목록을 돌려준다. */
+export function autoConnectPath(state: GameState): PlacedObject[] {
+  const r = canAutoConnectPath(state).route!;
+  const placed: PlacedObject[] = [];
+  for (const p of r.empty) placed.push(placeObject(state, AUTO_PATH_TYPE, p.x, p.y));
+  state.money -= r.cost;
+  return placed;
 }
 /** 증축·이사 직후: 자동 연결 결과를 알림 한 줄로 */
 function noticeAutoConnect(state: GameState, r: ReturnType<typeof autoConnectDoor>): string {

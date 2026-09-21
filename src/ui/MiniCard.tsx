@@ -6,7 +6,7 @@ import { objectStats, siteOf, siteLineText, cellAt, walletOf, guestFace, namedGu
 import { BUS_HOUR, isBusDay } from '../sim/spots.ts';
 import { RouteCard } from './RouteCard';
 import type { RouteId } from '../sim/index.ts';
-import { mainSummary, canExpandMain, expandCost, nextMainLevel, canBuildSecondFloor, canStartMoveMain, canUndoMoveMain, canMoveThisMonth, moveDays, isRoomCut, isAnnex, roomSeats, roomSeatsUsed, isFireplaceOn, canToggleFireplace, canSetPianoTime, canAddBooks, hasNewBooks, canFeedAquarium, isAquariumHungry, canRestockKids, isKidsStocked, canSetBarEvening, isBarEvening, activeCombos, MAIN_EXPAND_DAYS, FLOOR2_COST, FLOOR2_DAYS, MOVE_COST, NEW_BOOKS_MILEAGE, KIDS_RESTOCK_COST, ANNEX_CUT_TEXT, DOOR_PATH_WARN, BGM_LABEL, LIGHT_LABEL, PIANO_LABEL } from '../sim/index.ts'; // y-indoor
+import { mainSummary, canAutoConnectPath, canExpandMain, expandCost, nextMainLevel, canBuildSecondFloor, canStartMoveMain, canUndoMoveMain, canMoveThisMonth, moveDays, isRoomCut, isAnnex, roomSeats, roomSeatsUsed, isFireplaceOn, canToggleFireplace, canSetPianoTime, canAddBooks, hasNewBooks, canFeedAquarium, isAquariumHungry, canRestockKids, isKidsStocked, canSetBarEvening, isBarEvening, activeCombos, MAIN_EXPAND_DAYS, FLOOR2_COST, FLOOR2_DAYS, MOVE_COST, NEW_BOOKS_MILEAGE, KIDS_RESTOCK_COST, ANNEX_CUT_TEXT, DOOR_PATH_WARN, BGM_LABEL, LIGHT_LABEL, PIANO_LABEL } from '../sim/index.ts'; // y-indoor
 import { ButtonGroup } from './ButtonGroup';
 import { requestBuildTab } from './windows/BuildWindow';
 import { label as labelOf } from '../data/labels.ts';
@@ -44,6 +44,8 @@ export interface CardActions {
   /** 같은 것 더 짓기 (§5.3): 그 시설 고스트로 바로 진입 */
   onBuildSame: (objectType: string, x: number, y: number) => void;
   onCafe: () => void;
+  /** ease 「마을 길까지 자동 잇기」: 미리보기(파란 칸) 모드로 (본관·정류장 카드) */
+  onAutoPath: () => void;
   /** ◀ ▶ 같은 종류 순회 (§1.3): 카드 대상을 바꾼다 */
   onSelect: (target: CardTarget) => void;
 }
@@ -327,6 +329,14 @@ const manWon = (n: number) => (n % 10_000 === 0 ? `₩${(n / 10_000).toLocaleStr
 const mbtn: CSSProperties = { ...btn, padding: '0 8px' };
 const mbtnOn: CSSProperties = { ...btnOn, padding: '0 8px' };
 const mbtnOff: CSSProperties = { ...btnOff, padding: '0 8px' };
+/** ease: 「마을 길까지 자동 잇기 ₩N」 — 본관 문 앞이 정류장과 안 이어졌을 때만 보인다. 누르면 파란 미리보기 → ✓ (확인 팝업 없음) */
+export function AutoPathButton({ s, onAutoPath }: { s: GameState; onAutoPath: () => void }) {
+  const c = canAutoConnectPath(s);
+  const r = c.route;
+  if (!r || r.route === null || r.route.length === 0) return null; // 본관 없음·이미 이어짐·이을 길 없음(문 앞 막힘은 카드 문구가 알린다)
+  return <button style={c.ok ? mbtnOn : mbtnOff} disabled={!c.ok} title={c.ok ? undefined : c.reason} onClick={onAutoPath} data-testid="auto-path-btn"><Icon name="build" /> 마을 길까지 자동 잇기 {wonText(r.cost)}{!c.ok && c.reason ? ` · ${c.reason}` : ''}</button>;
+}
+
 export function MainCard({ s, id, a }: { s: GameState; id: string; a: CardActions }) {
   const [more, setMore] = useState(false);
   const o = s.objects[id];
@@ -357,6 +367,7 @@ export function MainCard({ s, id, a }: { s: GameState; id: string; a: CardAction
         <div style={small}>{wonText(s.monthIncome)} · 직원 {working} · 이용률 {m.usePct === null ? '—' : `${m.usePct}%`}{m.short && <span style={{ color: PALETTE.bad }}> · 자리가 모자라요</span>}</div>
         {m.cut && <div style={{ color: PALETTE.bad, fontWeight: 700 }} data-testid="main-cut">{ANNEX_CUT_TEXT} — {DOOR_PATH_WARN}</div>}
       </div>
+      <Row><AutoPathButton s={s} onAutoPath={a.onAutoPath} /></Row>
       <Row>
         <button style={mbtn} onClick={a.onCafe}><Icon name="coffee" /> 메뉴판</button>
         <button style={mbtn} onClick={() => { if (o) { requestBuildTab('indoor'); a.onBuild(o.x, o.y); } }} data-testid="main-indoor-btn"><Icon name="chair" /> 실내 꾸미기</button>
@@ -433,7 +444,7 @@ export function MiniCard({ target, actions, onClose }: { target: CardTarget; act
     case 'busstop': body = <BusStopCard s={s} id={target.id} />; break;
     case 'counter': body = <MainCard s={s} id={target.id} a={actions} />; break; // y-indoor
     case 'road': body = <RoadCard s={s} x={target.x} y={target.y} />; break; // w-start
-    case 'route': body = <>{target.route === 'bus' && <Hint id="busstop" />}<RouteCard s={s} route={target.route} objectId={target.id} /></>; break; // 트랙 H (정류장은 둘러보기 힌트 포함)
+    case 'route': body = <>{target.route === 'bus' && <Hint id="busstop" />}<RouteCard s={s} route={target.route} objectId={target.id} />{target.route === 'bus' && <Row><AutoPathButton s={s} onAutoPath={actions.onAutoPath} /></Row>}</>; break; // 트랙 H (정류장은 둘러보기 힌트·자동 잇기 포함)
   }
   return (
     <div data-testid="mini-card" data-kind={target.kind}

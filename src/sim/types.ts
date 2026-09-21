@@ -1014,7 +1014,8 @@ export interface MainState {
 // ---------- 액션 ----------
 export type Action =
   | { type: 'place'; objectType: string; x: number; y: number; rot?: number }
-  | { type: 'placeLine'; objectType: string; from: Pt; to: Pt; order?: 'xy' | 'yx' } // ease: 길·담 두 번 탭 — 시작→끝 직선/ㄱ자, 있는 칸은 건너뜀, 되돌리기 1회로 전부
+  | { type: 'placeLine'; objectType: string; from: Pt; to: Pt; order?: 'xy' | 'yx' }
+  | { type: 'autoConnectPath' } // ease: 본관 문 앞까지 마을 길에서 자동으로 올렛길 잇기 (미리보기 뒤 ✓, 되돌리기 1회로 전부) // ease: 길·담 두 번 탭 — 시작→끝 직선/ㄱ자, 있는 칸은 건너뜀, 되돌리기 1회로 전부
   | { type: 'remove'; objectId: string }
   | { type: 'move'; objectId: string; x: number; y: number }
   | { type: 'rotate'; objectId: string; rot: number }

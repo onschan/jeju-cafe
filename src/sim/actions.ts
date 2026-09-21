@@ -2,7 +2,7 @@ import type { GameState, Action, ApplyResult, PlacedObject } from './types.ts';
 import { bumpLayoutRev } from './layoutRev.ts';
 import { objectDef } from '../data/index.ts';
 import { canPlace, placeObject, removeObject, footprintOf, relocateObject, objectsInRoom } from './grid.ts';
-import { canBuildMain, placeMain, canExpandMain, expandMain, canBuildSecondFloor, buildSecondFloor, canMoveMain, moveMain, canUndoMoveMain, undoMoveMain, canToggleFireplace, toggleFireplace, canSetPianoTime, canAddBooks, addBooks, canFeedAquarium, feedAquarium, canRestockKids, restockKids, canSetBarEvening, setBarEvening, MAIN_TYPE } from './rooms.ts'; // y-indoor
+import { canBuildMain, placeMain, canExpandMain, expandMain, canBuildSecondFloor, buildSecondFloor, canMoveMain, moveMain, canUndoMoveMain, undoMoveMain, canToggleFireplace, toggleFireplace, canSetPianoTime, canAddBooks, addBooks, canFeedAquarium, feedAquarium, canRestockKids, restockKids, canSetBarEvening, setBarEvening, canAutoConnectPath, autoConnectPath, MAIN_TYPE } from './rooms.ts'; // y-indoor
 import { canBuyParcel, buyParcel } from './parcels.ts';
 import { canSetSlot, setSlot } from './menu.ts';
 import { checkFeature, checkGoals } from './goals.ts';
@@ -118,6 +118,15 @@ function applyInner(state: GameState, a: Action): ApplyResult {
       evaluateUnlocks(state);
       unlockRouteFacilities(state);
       checkQuests(state);
+      return { ok: true };
+    }
+    case 'autoConnectPath': {
+      // ease 「마을 길까지 자동 잇기」: 본관 문 앞 → 정류장과 이어진 칸까지 최단 올렛길. 되돌리기 1회로 전부
+      const c = canAutoConnectPath(state);
+      if (!c.ok) return { ok: false, reason: c.reason };
+      const placed = autoConnectPath(state);
+      rememberPlaceMany(state, placed, c.route!.cost);
+      discoverCombos(state);
       return { ok: true };
     }
     case 'remove': {

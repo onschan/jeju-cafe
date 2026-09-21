@@ -4,6 +4,8 @@ import { canUndo } from '../undo.ts';
 import { objectAt } from '../grid.ts';
 import { placeCost } from '../cafe.ts';
 import { lineCells, planLine, isLineType } from '../line.ts';
+import { canAutoConnectPath, mainBuilding } from '../rooms.ts';
+import { isDoorReachable } from '../path.ts';
 
 test('lineCells: 직선(가로·세로)·같은 칸·ㄱ자(먼저 x → y, ↻ 방향이면 먼저 y → x), 시작·끝 포함', () => {
   expect(lineCells({ x: 2, y: 5 }, { x: 5, y: 5 })).toEqual([{ x: 2, y: 5 }, { x: 3, y: 5 }, { x: 4, y: 5 }, { x: 5, y: 5 }]);
@@ -64,4 +66,25 @@ test('placeLine: 확정 때만 돈이 나가고, 되돌리기 1회로 그 줄 �
   expect(objectAt(s, X(1), Y(0))?.type).toBe('stonewall');
   expect(objectAt(s, X(0), Y(0))).toBeNull();
   expect(s.money).toBe(m2);
+});
+
+test('autoConnectPath (ease 자동 잇기): 본관 문 앞 → 정류장과 이어진 칸까지 빈 칸만 놓고, 이미 이어졌으면 거부, 되돌리기 1회로 전부', () => {
+  const s = bareState(1); // 완성 시작 상태에서 올렛길을 걷어낸 빈 마당 — 본관은 있다
+  const m = mainBuilding(s)!;
+  const pre = canAutoConnectPath(s);
+  expect(pre.ok).toBe(true);
+  expect(pre.route!.empty.length).toBeGreaterThan(0);
+  expect(pre.route!.cost).toBe(pre.route!.empty.length * placeCost(s, 'path'));
+  const money = s.money;
+  expect(apply(s, { type: 'autoConnectPath' }).ok).toBe(true);
+  expect(s.money).toBe(money - pre.route!.cost);
+  expect(isDoorReachable(s, m)).toBe(true);
+  for (const p of pre.route!.empty) expect(objectAt(s, p.x, p.y)?.type).toBe('path');
+  expect(canAutoConnectPath(s).reason).toBe('이미 이어져 있어요');
+  expect(apply(s, { type: 'autoConnectPath' }).ok).toBe(false);
+  expect(apply(s, { type: 'undoLast' }).ok).toBe(true);
+  expect(s.money).toBe(money);
+  expect(isDoorReachable(s, m)).toBe(false);
+  s.money = 0;
+  expect(canAutoConnectPath(s).reason).toBe('돈이 모자라요');
 });

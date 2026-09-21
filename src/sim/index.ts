@@ -60,6 +60,7 @@ export {
   preferIndoor, stayMs, browseChance, indoorSpawnMult, indoorFeeMult, mainSummary, initMain,
   MAIN_TYPE, MAIN_MAX_LEVEL, MAIN_SIZE, MAIN_EXPAND_COST, MAIN_EXPAND_DAYS, FLOOR2_COST, FLOOR2_MIN_LEVEL, FLOOR2_DAYS, FLOOR2_VIEW, MOVE_COST, MOVE_DAYS, FIREPLACE_FUEL, FIREPLACE_RADIUS, NEW_BOOKS_MILEAGE, KIDS_RESTOCK_COST,
   SEAT_FULL_PCT, SEAT_FULL_DAYS, SEAT_FULL_TEXT, DOOR_PATH_WARN, ANNEX_CUT_TEXT, BGM_LABEL, LIGHT_LABEL, PIANO_LABEL, STAY_PER_FACILITY_MS,
+  autoConnectRoute, canAutoConnectPath, type AutoRoute,
 } from './rooms.ts';
 // ---------- z-ending ----------
 export { computeScore, scoreTier, spotLevelSum, endingDue, endingMonthly, canContinueEnding, canSetSpeed, centennialConditions, centennialDue, hasGuidebookTop, makeCarry, applyCarry, carryText, dolhareubangCount, initEnding, ENDING_YEAR, ENDING_MONTH, CENTENNIAL_YEAR, CENTENNIAL_MONTH, CENTENNIAL_STAR, CENTENNIAL_RANK, CENTENNIAL_REPUTATION, MILLENNIUM_TREE, FAST_SPEED, CARRY_RATIO, SCORE_ITEMS, SCORE_TITLES, CHIEF_PREFIX, CHIEF_BONUS } from './ending.ts';
