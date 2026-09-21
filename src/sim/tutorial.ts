@@ -312,14 +312,19 @@ export function recommendedMainCells(s: GameState, n = MAIN_RECOMMEND_N): Pt[] {
   out.sort((a, b) => a.wind - b.wind || a.dist - b.dist || a.p.y - b.p.y || a.p.x - b.p.x);
   return out.slice(0, n).map((o) => o.p);
 }
-/** 4단계 길 잇기 글로우: 길의 시작(정낭이 있으면 정낭, 없으면 문 앞에서 가장 가까운 마을 길 칸)과 본관 문 앞 (w-free: 정낭은 필수가 아니다) */
+/** 4단계 길 잇기 글로우: 길의 시작과 본관 문 앞 (w-free: 정낭은 필수가 아니다).
+ *  시작 = 마을 길에 붙어 있는 정낭(대문 구실을 하는 것)이 있으면 그 칸, 아니면 문 앞에서 가장 가까운 마을 길 칸. */
 function pathCells(s: GameState): Pt[] {
   const b = mainBuilding(s);
   if (!b) return [];
   const f = doorFrontOf(b);
-  const g = gate(s);
+  const g = Object.values(s.objects).find((o) => o.type === 'gate' && nextToRoad(s, o.x, o.y));
   const start = g ? { x: g.x, y: g.y } : nearestRoad(s, f);
   return [...(start ? [start] : []), f];
+}
+/** 4방향 이웃에 마을 길 칸이 있나 */
+function nextToRoad(s: GameState, x: number, y: number): boolean {
+  return ([[1, 0], [-1, 0], [0, 1], [0, -1]] as const).some(([dx, dy]) => inBounds(s, x + dx, y + dy) && cellAt(s, x + dx, y + dy).terrain === 'road');
 }
 /** 본관 발자국 칸 (3단계 글로우) */
 function mainCells(s: GameState): Pt[] {

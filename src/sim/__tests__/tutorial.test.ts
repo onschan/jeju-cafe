@@ -159,7 +159,14 @@ describe('손으로 하는 튜토리얼 「할망의 가르침」 33단계·5장
     expect(canBuildMain(t, X(START_MAIN.lx), Y(START_MAIN.ly)).ok).toBe(true);
   });
 
-  it('정낭 없이도(w-free) 4단계 「마을 길 → 문 앞」 조건·글로우·본관 추천 자리가 안전하다: 정낭을 없애면 시작 칸은 문 앞에서 가장 가까운 마을 길 칸', () => {
+  it('정낭 없이도(w-free) 4단계 「마을 길 → 문 앞」 조건·글로우·본관 추천 자리가 안전하다: 정낭을 없애면(또는 마을 길에서 떼어 놓으면) 시작 칸은 문 앞에서 가장 가까운 마을 길 칸', () => {
+    // 정낭을 마을 길에서 떨어진 곳으로 옮기면 시작 칸은 마을 길
+    const m = tutorialState();
+    throughMain(m);
+    const mg = Object.values(m.objects).find((o) => o.type === 'gate')!;
+    expect(STEPS[3]!.cells(m)[0]).toEqual({ x: mg.x, y: mg.y }); // 마을 길에 붙은 정낭 = 시작
+    expect(apply(m, { type: 'move', objectId: mg.id, x: X(8), y: Y(1) }).ok).toBe(true);
+    expect(m.grid.cells[STEPS[3]!.cells(m)[0]!.y * m.grid.w + STEPS[3]!.cells(m)[0]!.x]!.terrain).toBe('road');
     const s = tutorialState();
     expect(LOOK_TEXT.gate).toContain('옮겨도 돼');
     expect(LOOK_TEXT.rock).toContain('₩10만');
