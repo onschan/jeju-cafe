@@ -286,7 +286,9 @@ export function discoverCombos(state: GameState, combos: ComboDef[] = COMBOS, se
       if (state.codex.combos.includes(c.id)) continue;
       state.codex.combos.push(c.id);
       if (c.hidden) { pushNotice(state, `숨은 상성 발견! ${c.name}`); state.tickets += HIDDEN_COMBO_TICKETS; }
-      if (state.codex.combos.length === 1) addMileage(state, 1);
+      else pushNotice(state, `상성 발견! ${c.name} ◎ — ${objectDef(obj.o.type).name}`); // game-feel: 처음 발동한 상성은 전부 메시지 줄에 (선택의 결과가 바로 보이게)
+      if (state.codex.combos.length === 1) { addMileage(state, 1); pushFx(state, { kind: 'scene', title: '첫 상성', text: `${c.name} ◎ 발동! 시설을 짝지어 놓으면 손님이 더 좋아해요. 콤보 도감에 올랐어요`, tick: state.tick }); }
+      else if (c.hidden) pushFx(state, { kind: 'scene', title: '숨은 상성', text: `${c.name} ◎ — 응모권 +${HIDDEN_COMBO_TICKETS}`, tick: state.tick });
     }
     const sp = spotEffectOf(obj, spots, by);
     if (sp && !state.codex.spots.includes(sp.id)) {
@@ -300,6 +302,7 @@ export function discoverCombos(state: GameState, combos: ComboDef[] = COMBOS, se
       if (state.codex.sets.includes(st.id)) continue;
       state.codex.sets.push(st.id);
       pushNotice(state, `세트 완성! ${st.name}`);
+      pushFx(state, { kind: 'scene', title: '세트 완성', text: `${st.name} 세트 완성! 도감에 올랐어요`, tick: state.tick }); // game-feel: 세트는 장면 창으로
       if (state.codex.sets.length === 1) addMileage(state, 1);
     }
   }

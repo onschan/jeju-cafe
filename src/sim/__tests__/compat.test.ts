@@ -115,12 +115,17 @@ test('히든 상성은 처음 발동할 때 한 번만 도감에 오르고 알�
   discoverCombos(s, [hidden], []);
   expect(s.codex.combos).toEqual(['cb_hidden']);
   expect(s.notices.length).toBe(n0 + 1);
-  // 보통 상성은 조용히 도감에만
+  // 보통 상성도 처음 발동하면 메시지 줄 한 줄 (game-feel: 선택의 결과가 보이게) + 첫 상성은 장면 창
   const s2 = bareState(1);
   placeObject(s2, 'table_out', X(7), Y(4));
   discoverCombos(s2, [BIG], []);
   expect(s2.codex.combos).toEqual(['cb_test_big']);
-  expect(s2.notices.length).toBe(0);
+  expect(s2.notices.length).toBe(1);
+  expect(s2.notices[0]).toContain('상성 발견');
+  expect(s2.fx.some((f) => f.kind === 'scene' && f.title === '첫 상성')).toBe(true);
+  const n2 = s2.notices.length;
+  discoverCombos(s2, [BIG], []); // 두 번째 판정에선 조용
+  expect(s2.notices.length).toBe(n2);
 });
 
 test('place 액션이 상성 발견을 돌린다', () => {
