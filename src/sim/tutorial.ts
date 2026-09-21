@@ -53,6 +53,12 @@ import { parcelAt } from './parcels.ts';
 import { activeCombos } from './compat.ts';
 import { freeFloorCells, expandCells, canBuildMain, MAIN_TYPE, MAIN_SIZE, MAIN_RECOMMEND_GATE_DIST, MAIN_RECOMMEND_N } from './rooms.ts';
 import { isFarmObject } from './orchard.ts';
+import { TUTORIAL_STEPS as TUTORIAL_STEP_TEXTS } from '../data/dialogue/index.ts';
+
+/** 보상 상자 제목: 단계 이름 (dialogue/tutorial.json title, game-feel P2 — 「튜토리얼 2단계」 대신 「카페는 집이 먼저」) */
+export function tutorialStepTitle(id: number): string {
+  return TUTORIAL_STEP_TEXTS.find((t) => t.id === id)?.title ?? `튜토리얼 ${id}단계`;
+}
 
 export const TUTORIAL_STEPS = 33;
 
@@ -429,7 +435,7 @@ export function checkTutorial(state: GameState): number | null {
   const step = currentTutorialStep(state);
   if (!step || !dialogueSeen(state, step.id) || !step.done(state)) return null;
   state.tutorial.step++;
-  if (step.reward.length > 0) applyRewards(state, step.reward, { source: 'tutorial', refId: String(step.id), title: `튜토리얼 ${step.id}단계` }); // 보상 없는 단계(둘러보기)는 빈 상자를 안 띄운다
+  if (step.reward.length > 0) applyRewards(state, step.reward, { source: 'tutorial', refId: String(step.id), title: tutorialStepTitle(step.id) }); // 보상 없는 단계(둘러보기)는 빈 상자를 안 띄운다
   return step.id;
 }
 

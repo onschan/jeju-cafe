@@ -116,6 +116,7 @@ function targetAt(s: GameState, x: number, y: number): CardTarget | null {
   if (staff) return { kind: 'staff', id: staff.id };
   const rt = routeAtCell(s, x, y); if (rt) return { kind: 'route', route: rt, id: objectAt(s, x, y)?.id }; // 트랙 H: 진입점·경로 시설(정류장 포함) → 경로 카드
   const p = parcelAt(s, x, y);
+  if (p && !p.owned && cellAt(s, x, y).terrain === 'road' && !objectAt(s, x, y)) return { kind: 'road', x, y }; // game-feel P2: 안 산 필지 안 마을 길도 길 카드 (튜토리얼 1단계 look:road가 필지 카드에 막히지 않게)
   if (p && !p.owned) return { kind: 'parcel', id: p.id };
   const o = objectAt(s, x, y);
   if (o) {
