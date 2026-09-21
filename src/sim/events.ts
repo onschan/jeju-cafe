@@ -20,7 +20,7 @@ import { addEffect } from './effects.ts';
 import { objectDef } from '../data/index.ts';
 import { parcelAt } from './parcels.ts';
 import { spawnNamedGuest } from './guests.ts';
-import { namedGuestState } from './popup.ts';
+import { namedGuestState, isWeekend } from './popup.ts';
 import { fmtNum } from './format.ts';
 import { josa } from './josa.ts';
 
@@ -59,7 +59,11 @@ export function scheduledEvents(state: GameState): ActiveBigEvent[] {
 /** 1일 판정의 동시 상한용: 지연 없이 1일에 시작했더라면 아직 안 끝났을 이벤트. 발동일 분산이 다음 달 판정 슬롯을 잡아먹어 발동 수가 줄지 않게(예약 지연은 같은 달 안이라 startDay의 달 1일 = floor(startDay/30)×30) */
 export function slotEvents(state: GameState): ActiveBigEvent[] {
   const today = dayIndex(state.clock);
-  return state.events.filter((e) => e.endsDay - (e.startDay - Math.floor(e.startDay / DAYS_PER_MONTH) * DAYS_PER_MONTH) > today);
+  return state.events.filter((e) => !isWeeklyEvent(e.id) && e.endsDay - (e.startDay - Math.floor(e.startDay / DAYS_PER_MONTH) * DAYS_PER_MONTH) > today);
+}
+/** 주간 미니 사건인가 (events_v3.json weekly) */
+export function isWeeklyEvent(id: string): boolean {
+  return bigEventDef(id).weekly === true;
 }
 export function isEventActive(state: GameState, id: string): boolean {
   return scheduledEvents(state).some((e) => e.id === id);
@@ -94,6 +98,7 @@ export function eventFeeMult(state: GameState): number {
 
 /** 이 달에 이 이벤트를 굴릴 수 있나 (확률은 빼고) */
 export function eventEligible(state: GameState, def: BigEventDef): boolean {
+  if (def.weekly) return false; // 주간 미니 사건은 weeklyMiniEvent가 따로 고른다
   if (isEventActive(state, def.id)) return false;
   if (def.once && (state.eventsFired[def.id] ?? 0) > 0) return false;
   if (def.month !== undefined && def.month !== state.clock.month) return false;
@@ -202,18 +207,39 @@ export function monthlyBigEvents(state: GameState): string[] {
   return started;
 }
 
-/** 매일: 예약일이 된 이벤트를 발동하고, 끝난 이벤트를 치우고 eventEnd 알림. 끝난 id 목록. */
+/** 주간 미니 사건 (game-feel P1: 달 중반에 sim이 스스로 주는 사건): 토요일 아침 WEEKLY_EVENT_CHANCE로 weekly 이벤트 중 조건이 맞는 것 하나(rng)를 그날 하루 발동.
+ *  빅 이벤트 동시 상한에 안 세고, 끝날 때 eventEnd 알림도 없다(하루짜리). 결정적(state.rng — 토요일에만 소비). */
+export const WEEKLY_EVENT_CHANCE = 0.4;
+/** 이만큼 조용했으면 이번 토요일은 확정 — 1일(무료 뽑기·월간 과제)·15일(보름 응모권)과 합쳐 sim이 주는 사건 공백이 12일을 안 넘게 */
+export const WEEKLY_EVENT_FORCE_DAYS = 14;
+export function weeklyMiniEvent(state: GameState): string | null {
+  if (!isWeekend(state.clock.day)) return null;
+  const today = dayIndex(state.clock);
+  const forced = today - (state.weeklyEventDay ?? 0) >= WEEKLY_EVENT_FORCE_DAYS;
+  const r = nextRandom(state); // rng 한 번: 발동 여부 + 어떤 사건인지
+  if (r >= WEEKLY_EVENT_CHANCE && !forced) return null;
+  const pool = BIG_EVENTS.filter((d) => d.weekly && !isEventActive(state, d.id) && (!d.condition || goalMet(state, d.condition)));
+  if (pool.length === 0) return null;
+  const def = pool[Math.floor((r * 1000) % pool.length)]!;
+  startEvent(state, def.id, 0);
+  state.weeklyEventDay = today;
+  return def.id;
+}
+
+/** 매일: 예약일이 된 이벤트를 발동하고, 끝난 이벤트를 치우고 eventEnd 알림(주간 미니 사건은 알림 없이). 끝난 id 목록. */
 export function dailyBigEvents(state: GameState): string[] {
   const today = dayIndex(state.clock);
   for (const e of state.events) if (e.startDay === today && e.endsDay > today) applyEventStart(state, e);
   const ended = state.events.filter((e) => e.endsDay <= today);
-  if (ended.length === 0) return [];
-  state.events = state.events.filter((e) => e.endsDay > today);
-  for (const e of ended) {
-    const def = bigEventDef(e.id);
-    state.alerts.push({ type: 'eventEnd', id: e.id });
-    pushNotice(state, def.endDialogue ?? `${josa(def.title, '이/가')} 끝났어요`);
+  if (ended.length > 0) {
+    state.events = state.events.filter((e) => e.endsDay > today);
+    for (const e of ended) {
+      const def = bigEventDef(e.id);
+      if (!def.weekly) state.alerts.push({ type: 'eventEnd', id: e.id });
+      pushNotice(state, def.endDialogue ?? `${josa(def.title, '이/가')} 끝났어요`);
+    }
   }
+  weeklyMiniEvent(state);
   return ended.map((e) => e.id);
 }
 

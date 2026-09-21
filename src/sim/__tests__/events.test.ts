@@ -4,7 +4,7 @@ import { apply } from '../actions.ts';
 import { tick } from '../tick.ts';
 import { DAY_MS, HOUR_MS } from '../clock.ts';
 import { BIG_EVENTS, bigEventDef, specialGuestId, namedGuestDef, SPECIAL_GUESTS } from '../../data/index.ts';
-import { monthlyBigEvents, dailyBigEvents, hourlyBigEvents, eventStartDelay, EVENT_START_SPREAD, scheduledEvents, startEvent, eventEligible, activeEvents, eventGuestMult, eventTagMult, eventFeeMult, guestHasTag, isSpecialGuest, specialGuestTip, specialGuestsMet, MAX_ACTIVE_EVENTS } from '../events.ts';
+import { monthlyBigEvents, dailyBigEvents, hourlyBigEvents, eventStartDelay, EVENT_START_SPREAD, scheduledEvents, startEvent, eventEligible, activeEvents, eventGuestMult, eventTagMult, eventFeeMult, guestHasTag, isSpecialGuest, specialGuestTip, specialGuestsMet, MAX_ACTIVE_EVENTS, weeklyMiniEvent, slotEvents } from '../events.ts';
 import { dailyGuestCount, popularityGuestBase, totalSeats, typeWeight, GUESTS_PER_SEAT } from '../guests.ts';
 import { dayIndex } from '../effects.ts';
 import { serialize } from '../save.ts';
@@ -18,7 +18,7 @@ describe('events_v3.json 데이터', () => {
     for (const real of ['백종원', '이효리', '이상순', '아이유', '연돈']) expect(json).not.toContain(real);
     for (const p of ['백중원', '이요리', '이장순', '유아이', '돈돈']) expect(json).toContain(p);
     for (const e of BIG_EVENTS) {
-      expect(e.chance).toBeGreaterThan(0);
+      if (e.weekly) expect(e.chance).toBe(0); else expect(e.chance).toBeGreaterThan(0); // 주간 미니 사건은 매월 판정에서 빠진다 (weeklyMiniEvent가 고른다)
       expect(e.chance).toBeLessThanOrEqual(1);
       expect(e.durationDays).toBeGreaterThanOrEqual(1);
       expect(e.dialogue.lines.length).toBeGreaterThan(0);
@@ -161,5 +161,29 @@ describe('빅 이벤트 판정·효과', () => {
     const b = run(11);
     expect(a.log).toEqual(b.log);
     expect(a.json).toBe(b.json);
+  });
+});
+
+// ---------- game-feel P1: 주간 미니 사건 ----------
+describe('주간 미니 사건 (weekly)', () => {
+  it('weekly 4종은 매월 판정에서 빠지고 동시 상한에 안 센다; 토요일 아침 40%로 하나 발동(하루), 끝나도 eventEnd 알림이 없다', () => {
+    const weekly = BIG_EVENTS.filter((e) => e.weekly);
+    expect(weekly.map((e) => e.id).sort()).toEqual(['ev_group_booking', 'ev_influencer_visit', 'ev_rainy_indoor', 'ev_weekend_rush']);
+    const s = createInitialState(1);
+    for (const e of weekly) expect(eventEligible(s, e)).toBe(false);
+    // 토요일(6일)로 맞추고 rng를 여러 번 돌려 한 번은 발동
+    let fired: string | null = null;
+    for (let i = 0; i < 40 && !fired; i++) { s.clock.day = 6; fired = weeklyMiniEvent(s); }
+    expect(fired).not.toBeNull();
+    expect(bigEventDef(fired!).weekly).toBe(true);
+    expect(s.alerts.some((a) => a.type === 'event' && a.id === fired)).toBe(true);
+    expect(slotEvents(s)).toHaveLength(0); // 동시 상한에 안 센다
+    expect(eventGuestMult(s)).toBeGreaterThan(1);
+    s.alerts = [];
+    s.clock.day = 7;
+    const ended = dailyBigEvents(s);
+    expect(ended).toContain(fired);
+    expect(s.alerts.some((a) => a.type === 'eventEnd')).toBe(false);
+    expect(weeklyMiniEvent(s)).toBeNull(); // 평일
   });
 });
