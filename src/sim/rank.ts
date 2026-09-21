@@ -2,15 +2,16 @@
  * 카페 랭크 (2B-2 Task 7): 랭크 점수 = 누적 손님/50 + 시설 수×2 + 해금 손님층×5. 문턱표를 넘으면 랭크 업 (내려가지 않는다).
  * segments.evaluateUnlocks가 부르므로 여기서는 segments를 import하지 않는다.
  */
-import type { GameState } from './types.ts';
+import type { GameState, GoalReward } from './types.ts';
 import { objectDef } from '../data/index.ts';
 import { parcelAt } from './parcels.ts';
 import { pushNotice } from './staff.ts';
 import { pushFx } from './fx.ts';
+import { applyRewards } from './goals.ts';
 
 export const GUESTS_PER_POINT = 50;
 export const POINTS_PER_FACILITY = 2;
-export const POINTS_PER_GUEST_TYPE = 5;
+export const POINTS_PER_GUEST_TYPE = 2; // game-feel P1: 손님층 해금이 3배로 늘어(3년 17 → 50종+) 5점이면 3년 안에 랭크 10이 찬다 → 2점
 /** 랭크 r이 되려면 점수 ≥ RANK_THRESHOLDS[r−1] */
 export const RANK_THRESHOLDS = [0, 50, 120, 220, 360, 550, 800, 1100, 1500, 2000];
 export const MAX_RANK = RANK_THRESHOLDS.length;
@@ -45,6 +46,13 @@ export function nextRankThreshold(state: GameState): number | null {
   return state.rank >= MAX_RANK ? null : RANK_THRESHOLDS[state.rank]!;
 }
 
+/** 랭크 업 보상 (game-feel P1: 장면 창만 있고 손에 남는 게 없었다): 응모권 1장(랭크 5부터 2장) + 마일리지 5 — 장면 창 뒤에 보상 상자 */
+export const RANK_UP_TICKETS_HIGH_FROM = 5;
+export const RANK_UP_MILEAGE = 5;
+export function rankUpRewards(rank: number): GoalReward[] {
+  return [{ type: 'tickets', n: rank >= RANK_UP_TICKETS_HIGH_FROM ? 2 : 1 }, { type: 'mileage', n: RANK_UP_MILEAGE }];
+}
+
 /** 점수로 랭크를 올린다 (내려가지 않는다). 올랐으면 true. */
 export function updateRank(state: GameState): boolean {
   const r = Math.max(state.rank, rankForScore(rankScore(state)));
@@ -52,5 +60,6 @@ export function updateRank(state: GameState): boolean {
   state.rank = r;
   pushNotice(state, `카페 랭크 ${r}!`);
   pushFx(state, { kind: 'scene', title: '랭크 업', text: `카페 랭크 ${r}! 더 많은 손님과 시설이 열려요`, tick: state.tick });
+  applyRewards(state, rankUpRewards(r), { source: 'rank', refId: `rank${r}`, title: `카페 랭크 ${r}` });
   return true;
 }
