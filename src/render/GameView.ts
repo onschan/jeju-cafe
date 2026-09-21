@@ -33,6 +33,9 @@ export interface GameViewOptions extends Pick<CameraOptions, 'onTap' | 'dragCapt
 export interface GhostSpec { type: string; x: number; y: number; rot?: number; ok: boolean; text: string; w?: number; h?: number; /** 문 앞 칸 미리보기 (w-start 본관 짓기: 파란 마름모 + 「문 앞」) */ door?: { x: number; y: number } }
 /** 효과 범위 힌트 (UX §5.3): 중심 시설 발자국 + 반경(칸) 타원, 콤보가 성립하는 상대 시설 발자국 위 ◎ */
 export interface RangeHint { x: number; y: number; w: number; h: number; radius: number; marks: { x: number; y: number; w: number; h: number }[] }
+/** 선택 칸 색: 철거 빨강 · 라인 미리보기 파랑 (ease 두 번 탭) */
+export const RECT_COLOR_REMOVE = 0xc9184a;
+export const RECT_COLOR_LINE = 0x2f7fd9;
 /** 콤보·경관 범위 기본 반경 2칸 (5×5) */
 export const RANGE_RADIUS = 2;
 /** 시설 위 인기 미니 바 최대값 (§5.4: 0~48) */
@@ -503,13 +506,14 @@ export class GameView {
     }
   }
 
-  /** 일괄 철거 선택 칸 (빨간 반투명 마름모). 빈 배열이면 지운다 */
-  setRectCells(cells: { x: number; y: number }[]) {
+  /** 선택 칸 마름모: 일괄 철거(빨강, 기본) · 길·담 두 번 탭 미리보기(파랑, ease). 빈 배열이면 지운다. strong 칸(시작 칸)은 더 진하게 */
+  setRectCells(cells: { x: number; y: number }[], color = RECT_COLOR_REMOVE, strong?: { x: number; y: number } | null) {
     if (this.rectGfx.destroyed) return;
     this.rectGfx.clear();
     for (const cell of cells) {
       const { sx, sy } = cellToScreen(cell.x, cell.y);
-      this.rectGfx.poly([sx, sy, sx + ISO_W / 2, sy + ISO_H / 2, sx, sy + ISO_H, sx - ISO_W / 2, sy + ISO_H / 2]).fill({ color: 0xc9184a, alpha: 0.35 }).stroke({ color: 0xc9184a, width: 2 });
+      const isStrong = !!strong && strong.x === cell.x && strong.y === cell.y;
+      this.rectGfx.poly([sx, sy, sx + ISO_W / 2, sy + ISO_H / 2, sx, sy + ISO_H, sx - ISO_W / 2, sy + ISO_H / 2]).fill({ color, alpha: isStrong ? 0.6 : 0.35 }).stroke({ color, width: isStrong ? 3 : 2 });
     }
   }
 

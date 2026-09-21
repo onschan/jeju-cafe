@@ -27,7 +27,8 @@ import { canUpgrade, upgrade } from './upgrade.ts';
 import { canRepair, repair } from './cleanliness.ts';
 import { canSetRouteContract, setRouteContract, canExpandParking, parkingExpandCost, PARKING_EXPAND_TO, unlockRouteFacilities } from './entry.ts';
 import { objectStats } from './compat.ts';
-import { rememberPlace, rememberRemove, rememberMove, canUndo, undoLast } from './undo.ts';
+import { rememberPlace, rememberPlaceMany, rememberRemove, rememberMove, canUndo, undoLast } from './undo.ts';
+import { planLine, isLineType } from './line.ts';
 import { canSetTargets, setTargets } from './segments.ts';
 import { canContinueEnding, continueEnding, canSetSpeed } from './ending.ts'; // z-ending
 import { canDonate, donate, canHoldFestival, holdFestival } from './village.ts'; // z-ending
@@ -96,6 +97,27 @@ function applyInner(state: GameState, a: Action): ApplyResult {
       evaluateUnlocks(state); // count 해금 (감귤나무 3그루 → 까치)
       unlockRouteFacilities(state); // 주차장(쉼 시설 6개) 같은 경로 시설은 다음 날 아침이 아니라 바로 열린다
       checkQuests(state);     // objectPlaced 부탁
+      return { ok: true };
+    }
+    case 'placeLine': {
+      // ease: 길·담 두 번 탭 — 시작→끝 직선/ㄱ자. 이미 있는 칸은 건너뛰고, 놓은 칸 전체를 되돌리기 1회로 묶는다
+      if (!isLineType(a.objectType)) return { ok: false, reason: '길·담만 줄로 놓아요' };
+      if (!state.unlocked.objects.includes(a.objectType)) return { ok: false, reason: '아직 못 짓는 것' };
+      const plan = planLine(state, a.objectType, a.from, a.to, a.order ?? 'xy');
+      if (!plan.ok) return { ok: false, reason: plan.reason ?? '여기엔 못 놓아요' };
+      const per = placeCost(state, a.objectType);
+      const placed: PlacedObject[] = [];
+      for (const p of plan.cells) {
+        const obj = placeObject(state, a.objectType, p.x, p.y);
+        startBuild(state, obj);
+        placed.push(obj);
+      }
+      state.money -= plan.cost;
+      rememberPlaceMany(state, placed, per * placed.length);
+      discoverCombos(state);
+      evaluateUnlocks(state);
+      unlockRouteFacilities(state);
+      checkQuests(state);
       return { ok: true };
     }
     case 'remove': {

@@ -679,6 +679,7 @@ export interface PlacedObject {
 /** 되돌리기 1회 스냅샷 (undo.ts). day = 절대 일 인덱스 — 같은 날에만 되돌린다 */
 export type UndoEntry =
   | { kind: 'place'; day: number; objectId: string; paid: number }
+  | { kind: 'placeMany'; day: number; objectIds: string[]; paid: number } // ease: 길·담 두 번 탭 라인 배치 한 줄 전체
   | { kind: 'remove'; day: number; objects: PlacedObject[]; moneyDelta: number }
   | { kind: 'move'; day: number; objectId: string; fromX: number; fromY: number };
 
@@ -1012,6 +1013,7 @@ export interface MainState {
 // ---------- 액션 ----------
 export type Action =
   | { type: 'place'; objectType: string; x: number; y: number; rot?: number }
+  | { type: 'placeLine'; objectType: string; from: Pt; to: Pt; order?: 'xy' | 'yx' } // ease: 길·담 두 번 탭 — 시작→끝 직선/ㄱ자, 있는 칸은 건너뜀, 되돌리기 1회로 전부
   | { type: 'remove'; objectId: string }
   | { type: 'move'; objectId: string; x: number; y: number }
   | { type: 'rotate'; objectId: string; rot: number }

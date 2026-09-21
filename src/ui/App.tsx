@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { wonText, label } from '../data/labels.ts';
-import { GameView, type GhostSpec, type RangeHint } from '../render/GameView';
+import { GameView, RECT_COLOR_LINE, type GhostSpec, type RangeHint } from '../render/GameView';
 import { startLoop, dispatch, getState, useGame, setViewReset, autosaveNow, hasAnySave, loadSlot, setMonthCardHook, setSceneHook, showMessage, pauseGame, isSpeedLocked, setSpeedLocked } from './store';
 import { unlockAudio, bgm, isMuted, setMuted, getBgmVolume, getSfxVolume, setBgmVolume, setSfxVolume, sfx } from './audio';
-import { seasonOf, canPlace, objectAt, footprint, sizeOf, mainBuilding, parcelAt, placeCost, PROTECTED_TYPES, ROTATABLE_TYPES, goalForMenu, featureOpen, canUndo, demolishRefund, canDisturb, routeAtCell, tutorialDone, canBuildMain, recommendedMainCells, cellAt, doorFrontOf, MAIN_TYPE, MAIN_BUILD_COST, type GameState } from '../sim/index.ts';
+import { seasonOf, canPlace, objectAt, footprint, sizeOf, mainBuilding, parcelAt, placeCost, isLineType, lineCells, planLine, type LineOrder, type Pt, PROTECTED_TYPES, ROTATABLE_TYPES, goalForMenu, featureOpen, canUndo, demolishRefund, canDisturb, routeAtCell, tutorialDone, canBuildMain, recommendedMainCells, cellAt, doorFrontOf, MAIN_TYPE, MAIN_BUILD_COST, type GameState } from '../sim/index.ts';
 import { RoutesSection } from './RouteCard'; // 트랙 H
 import { objectDef } from '../data/index.ts';
 // render/·ui/는 Vite 전용이라 확장자 없는 import 허용. sim/·data/만 .ts 확장자 규칙.
@@ -48,8 +48,8 @@ import { TourPopup } from './BoardPanel';
 import { rangeHintFor } from './rangeHint';
 import { rectCells, demolishTargets, nextGhostAfterPlace, type Rect, type BuildGhost } from './placing';
 
-/** 길·돌담은 드래그로 연속해서 놓는다 (고스트 없이) */
-const PAINT_KINDS = new Set(['path', 'wall']);
+/** 길·담 두 번 탭 라인 배치 상태 (ease, sim/line.ts): 탭 1 시작 칸 → 탭 2 끝 칸 → 파란 미리보기 → ✓ 확정. 드래그는 언제나 카메라. */
+interface Line { from: Pt; to: Pt | null; order: LineOrder }
 const GAUGES_KEY = 'jeju-cafe:gauges';
 function gaugesPref(): boolean { try { return localStorage.getItem(GAUGES_KEY) !== '0'; } catch { return true; } }
 
@@ -281,6 +281,8 @@ function Game({ onExit }: { onExit: () => void }) {
   const [moving, setMovingState] = useState<Moving | null>(null);
   const rectRef = useRef<Rect | null>(null);
   const [rect, setRectState] = useState<Rect | null>(null);
+  const lineRef = useRef<Line | null>(null);
+  const [line, setLineState] = useState<Line | null>(null);
   /** 드래그 시작 칸과 고스트 원점의 차이 (여러 칸 오브젝트를 잡은 칸 기준으로 끌기) */
   const dragOffset = useRef({ dx: 0, dy: 0 });
   /** 손님 프로필 팝업 */
@@ -296,11 +298,18 @@ function Game({ onExit }: { onExit: () => void }) {
   const setGhost = (g: BuildGhost | null) => { ghostRef.current = g; setGhostState(g); };
   const setMoving = (m: Moving | null) => { movingRef.current = m; setMovingState(m); };
   const setRect = (r: Rect | null) => { rectRef.current = r; setRectState(r); viewRef.current?.setRectCells(r ? rectCells(r) : []); };
+  /** 라인 미리보기: 시작 칸만 있으면 그 칸, 끝까지 있으면 두 칸 사이 경로를 파란 마름모로 (시작 칸은 진하게) */
+  const setLine = (l: Line | null) => {
+    lineRef.current = l;
+    setLineState(l);
+    const cells = !l ? [] : l.to ? lineCells(l.from, l.to, l.order) : [l.from];
+    viewRef.current?.setRectCells(cells, RECT_COLOR_LINE, l?.from ?? null);
+  };
   const setMode = (m: Mode) => {
     modeRef.current = m;
     setModeState(m);
     if (m.kind !== 'idle') { setCardTarget(null); viewRef.current?.setSelection(null); }
-    if (m.kind !== 'build') setGhost(null);
+    if (m.kind !== 'build') { setGhost(null); setLine(null); }
     if (m.kind !== 'move') setMoving(null);
     if (m.kind !== 'remove') setRect(null);
   };
@@ -350,11 +359,11 @@ function Game({ onExit }: { onExit: () => void }) {
     setMoving({ objectId: o.id, x: o.x, y: o.y });
     dragOffset.current = { dx: 0, dy: 0 };
   };
-  /** 짓기 창에서 시설을 고르면: 창을 닫고 맵에 고스트 (origin이 있으면 그 칸, 없으면 시작 필지 가운데) */
+  /** 짓기 창에서 시설을 고르면: 창을 닫고 맵에 고스트 (origin이 있으면 그 칸, 없으면 시작 필지 가운데). 길·담은 고스트 없이 두 번 탭(origin이 있으면 그 칸이 시작 칸). */
   const pickBuild = (objectType: string, origin?: { x: number; y: number }) => {
     setWin(null);
     setMode({ kind: 'build', objectType, count: 0 });
-    if (PAINT_KINDS.has(objectDef(objectType).kind)) return;
+    if (isLineType(objectType)) { if (origin) setLine({ from: origin, to: null, order: 'xy' }); return; }
     const st = getState();
     const home = st.parcels.find((p) => p.no === 1);
     const center = home ? { x: home.x + Math.floor(home.w / 2), y: home.y + Math.floor(home.h / 2) } : { x: Math.floor(st.grid.w / 2), y: Math.floor(st.grid.h / 2) };
@@ -385,10 +394,12 @@ function Game({ onExit }: { onExit: () => void }) {
           const st = getState();
           if (x < 0 || y < 0 || x >= st.grid.w || y >= st.grid.h) { if (m.kind === 'idle') openCard(null); return; }
           if (m.kind === 'build') {
-            if (PAINT_KINDS.has(objectDef(m.objectType).kind)) {
-              const r = dispatch({ type: 'place', objectType: m.objectType, x, y });
-              if (!r.ok) showMessage(r.reason ?? '여기엔 못 놓아요');
-            } else setGhost({ x, y, rot: ghostRef.current?.rot ?? 0 });
+            if (isLineType(m.objectType)) {
+              // 두 번 탭: 시작 칸 → 끝 칸(같은 칸이면 1칸). 미리보기가 떠 있는데 또 누르면 새 시작 칸
+              const l = lineRef.current;
+              if (!l || l.to) setLine({ from: { x, y }, to: null, order: l?.order ?? 'xy' });
+              else setLine({ ...l, to: { x, y } });
+            } else setGhost({ x, y, rot: ghostRef.current?.rot ?? 0 }); // 고스트는 탭으로 옮긴다 (끌기는 길게 누른 뒤에만)
           } else if (m.kind === 'move') {
             const mv = movingRef.current;
             if (mv) setMoving({ ...mv, x, y });
@@ -406,18 +417,25 @@ function Game({ onExit }: { onExit: () => void }) {
             else setRect({ x0: x, y0: y, x1: x, y1: y });
           } else inspect(st, x, y);
         },
-        onLongPress: liftObject,
-        dragCapture: (x, y) => {
+        // 길게 누르기: 보기 모드면 오브젝트 들어 올리기, 고스트·옮기는 시설 위면 그때부터 끌기 (ease: 짧은 드래그는 언제나 카메라)
+        onLongPress: (x, y) => {
           const m = modeRef.current;
-          if (m.kind === 'build') {
-            if (PAINT_KINDS.has(objectDef(m.objectType).kind)) return true;
+          if (m.kind === 'build' && !isLineType(m.objectType)) {
             const g = ghostRef.current;
             if (g && inFootprint(m.objectType, g.x, g.y, x, y)) { dragOffset.current = { dx: x - g.x, dy: y - g.y }; return true; }
-          } else if (m.kind === 'move') {
+            return false;
+          }
+          if (m.kind === 'move') {
             const mv = movingRef.current;
             const o = mv ? getState().objects[mv.objectId] : null;
             if (mv && o && inFootprint(o.type, mv.x, mv.y, x, y, sizeOf(o).w, sizeOf(o).h)) { dragOffset.current = { dx: x - mv.x, dy: y - mv.y }; return true; }
-          } else if (m.kind === 'remove') {
+            return false;
+          }
+          return liftObject(x, y);
+        },
+        dragCapture: (x, y) => {
+          const m = modeRef.current;
+          if (m.kind === 'remove') {
             const st = getState();
             if (x < 0 || y < 0 || x >= st.grid.w || y >= st.grid.h) return false;
             setRect({ x0: x, y0: y, x1: x, y1: y });
@@ -431,9 +449,7 @@ function Game({ onExit }: { onExit: () => void }) {
           if (x < 0 || y < 0 || x >= st.grid.w || y >= st.grid.h) return;
           const { dx, dy } = dragOffset.current;
           if (m.kind === 'build') {
-            if (PAINT_KINDS.has(objectDef(m.objectType).kind)) {
-              if (canPlace(st, m.objectType, x, y).ok) dispatch({ type: 'place', objectType: m.objectType, x, y });
-            } else if (ghostRef.current) setGhost({ ...ghostRef.current, x: x - dx, y: y - dy });
+            if (!isLineType(m.objectType) && ghostRef.current) setGhost({ ...ghostRef.current, x: x - dx, y: y - dy });
           } else if (m.kind === 'move' && movingRef.current) setMoving({ ...movingRef.current, x: x - dx, y: y - dy });
           else if (m.kind === 'remove' && rectRef.current) setRect({ ...rectRef.current, x1: x, y1: y });
         },
@@ -487,8 +503,37 @@ function Game({ onExit }: { onExit: () => void }) {
   } else if (mode.kind === 'build') {
     const def = objectDef(mode.objectType);
     const cost = placeCost(s, mode.objectType);
-    if (PAINT_KINDS.has(def.kind)) {
-      place = { text: `${def.name} · ${wonText(cost)}/칸 · 칸을 누르거나 끌어서 이어 놓아요`, ok: true, canRotate: false, paint: true, onUndo: undoOk ? undo : null, onConfirm: () => {}, onRotate: () => {}, onCancel: () => setMode({ kind: 'idle' }) };
+    if (isLineType(def.id)) {
+      // ease 두 번 탭: 시작 칸 → 끝 칸 → 미리보기(파란 칸 + 비용 합계) → ✓ 확정 / ↻ 방향(ㄱ자 꺾는 순서) / ✕ 취소. 확정 전엔 돈이 안 나간다
+      const done = mode.count > 0 ? `${mode.count}줄 놓음 · ` : '';
+      if (!line) {
+        place = { text: `${def.name} · ${wonText(cost)}/칸 · ${done}시작 칸을 누르세요 → 끝 칸을 누르세요`, ok: true, canRotate: false, paint: true, onUndo: undoOk ? undo : null, onConfirm: () => {}, onRotate: () => {}, onCancel: () => setMode({ kind: 'idle' }) };
+      } else if (!line.to) {
+        place = { text: `${def.name} · ${wonText(cost)}/칸 · 끝 칸을 누르세요 (한 칸이면 같은 칸을 다시)`, ok: true, canRotate: false, paint: true, onUndo: undoOk ? undo : null, onConfirm: () => {}, onRotate: () => {}, onCancel: () => setMode({ kind: 'idle' }) };
+      } else {
+        const plan = planLine(s, def.id, line.from, line.to, line.order);
+        const bent = line.from.x !== line.to.x && line.from.y !== line.to.y;
+        const skip = plan.skipped.length > 0 ? ` · 있는 칸 ${plan.skipped.length} 건너뜀` : '';
+        const blocked = plan.ok && plan.blocked.length > plan.skipped.length ? ` · 못 놓는 칸 ${plan.blocked.length - plan.skipped.length}` : '';
+        ghostCell = { x: line.to.x, y: line.to.y, w: 1, h: 1 };
+        place = {
+          text: plan.ok ? `${def.name} ${plan.cells.length}칸 · ${wonText(plan.cost)}${skip}${blocked} · ✓ 확정` : `${def.name} · ${plan.reason ?? '여기엔 못 놓아요'}${skip}`,
+          ok: plan.ok,
+          canRotate: bent,
+          rotateLabel: '방향',
+          onUndo: undoOk ? undo : null,
+          onConfirm: () => {
+            const r = dispatch({ type: 'placeLine', objectType: def.id, from: line.from, to: line.to!, order: line.order });
+            if (!r.ok) { showMessage(r.reason ?? '여기엔 못 놓아요'); return; }
+            showMessage(`${def.name} ${plan.cells.length}칸을 놓았어요 (↶ 되돌리기 가능)`);
+            setLine(null);
+            if (!tutorialDone(getState())) { setMode({ kind: 'idle' }); return; } // 튜토리얼 중엔 배치 바가 하단 바를 덮지 않게
+            setMode({ kind: 'build', objectType: def.id, count: mode.count + 1 });
+          },
+          onRotate: () => setLine({ ...line, order: line.order === 'xy' ? 'yx' : 'xy' }),
+          onCancel: () => setLine(null),
+        };
+      }
     } else if (ghost) {
       const can = canPlace(s, mode.objectType, ghost.x, ghost.y);
       const ok = can.ok && s.money >= cost;
@@ -507,7 +552,7 @@ function Game({ onExit }: { onExit: () => void }) {
         setMode({ kind: 'build', objectType: mode.objectType, count: mode.count + 1 });
       };
       place = {
-        text: `${def.name} · ${wonText(cost)} · ${ok ? (mode.count > 0 ? `${mode.count}개 놓음 · 계속 놓을 수 있어요` : '여기에 지을 수 있어요') : (can.reason ?? '돈이 모자라요')}`,
+        text: `${def.name} · ${wonText(cost)} · ${ok ? (mode.count > 0 ? `${mode.count}개 놓음 · 계속 놓을 수 있어요` : '여기에 지을 수 있어요 · 칸을 누르면 옮겨요') : (can.reason ?? '돈이 모자라요')}`,
         ok,
         canRotate: ROTATABLE_TYPES.has(mode.objectType),
         continuous: mode.count > 0,

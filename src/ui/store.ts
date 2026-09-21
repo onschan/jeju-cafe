@@ -83,7 +83,7 @@ export function clearMessages(): void { messages = []; }
 
 /** 액션이 성공했을 때 내는 효과음 */
 const ACTION_SFX: Record<Action['type'], SfxName> = {
-  place: 'place', remove: 'remove',
+  place: 'place', placeLine: 'place', remove: 'remove',
   setSlot: 'tap', setSpeed: 'tap', dismissAlert: 'tap', dismissMonthCard: 'tap',
   postJob: 'tap', hire: 'tap', fire: 'tap', assign: 'tap', levelUp: 'tap', train: 'unlock', promote: 'tap', setTarget: 'tap',
   move: 'place', rotate: 'tap', demolishMany: 'remove', undoLast: 'tap', renameObject: 'tap', setTargets: 'tap', upgradeObject: 'unlock', repairObject: 'place', buyParcel: 'unlock', useItem: 'unlock', renameCafe: 'tap', expand: 'unlock', setCosmetic: 'tap', praise: 'happy',
