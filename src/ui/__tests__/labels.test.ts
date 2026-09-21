@@ -2,6 +2,7 @@ import { describe, it, test, expect } from 'vitest';
 import { MENUS, OBJECTS, INGREDIENTS, GUEST_TYPES, QUESTS, ITEMS, SPOTS, ROLES, SKILLS, PROMOTIONS, REGIONS, FACILITIES } from '../../data/index.ts';
 import { label, hasIdToken, requireText, ingredientsText, unlockText, unlockCondText, conditionText, rewardText, humanize, ifClause, wonText } from '../../data/labels.ts';
 import { TUTORIAL_STEPS, GOAL_LINES, EVENT_DIALOGUES, SAMCHUN, goalLine, eventDialogue, samchunDef } from '../../data/dialogue/index.ts';
+import { createInitialState, strategyVars, fillTemplate } from '../../sim/index.ts';
 
 const ID_ONLY = /^[a-z0-9_]+$/;
 
@@ -107,22 +108,24 @@ describe('부탁·목표 조건/보상', () => {
 });
 
 describe('대화 데이터 (src/data/dialogue)', () => {
-  const SPEAKERS = new Set(['halmang', 'samchun', 'hero', 'haenyeo', 'jangnim']);
+  const SPEAKERS = new Set(['halmang', 'samchun', 'hero', 'haenyeo', 'jangnim', 'pro']); // pro-guide: 프로 삼춘(portrait_pro)
   const BANNED = /술|맥주|소주|막걸리|와인|칵테일|\{[a-z]+\}|이\(가\)|을\(를\)|은\(는\)/;
+  // pro-guide: 튜토리얼 대사의 {seatScore} 같은 토큰은 표시 때 strategyVars로 채워지므로 채운 뒤 검사한다 (안 채워진 {템플릿}은 BANNED에 걸린다)
+  const VARS = strategyVars(createInitialState(1, 'local', 0, 'tutorial'));
   const allTexts = (): string[] => [
-    ...TUTORIAL_STEPS.flatMap((t) => [t.title, ...t.lines, t.button, t.done ?? '']),
+    ...TUTORIAL_STEPS.flatMap((t) => [t.title, ...t.lines, t.button, t.done ?? ''].map((l) => fillTemplate(l, VARS))),
     ...GOAL_LINES.map((g) => g.line),
     ...EVENT_DIALOGUES.flatMap((e) => [e.title, ...e.lines, e.endLine]),
     ...SAMCHUN.flatMap((s) => [s.name, s.job, s.intro, s.rewardText, ...s.chain.flatMap((c) => [c.ask, ...c.lines, c.doneLine])]),
   ];
 
-  it('튜토리얼 33단계·5장(§7.2 확장 + w-start 맨땅 3단계), 단계당 2~3줄, 화자는 할망·삼춘·이장님, 단계마다 done 조건 문구', () => {
+  it('튜토리얼 33단계·5장(§7.2 확장 + w-start 맨땅 3단계), 단계당 2~3줄, 화자는 ①할망·②~㉝프로 삼춘, 단계마다 done 조건 문구', () => {
     expect(TUTORIAL_STEPS.map((t) => t.id)).toEqual(Array.from({ length: 33 }, (_, i) => i + 1));
     expect(TUTORIAL_STEPS.map((t) => t.chapter)).toEqual(TUTORIAL_STEPS.map((t) => t.id <= 11 ? 1 : t.id <= 17 ? 2 : t.id <= 22 ? 3 : t.id <= 29 ? 4 : 5));
     for (const t of TUTORIAL_STEPS) {
       expect(t.lines.length).toBeGreaterThanOrEqual(2);
       expect(t.lines.length).toBeLessThanOrEqual(3);
-      expect(['halmang', 'samchun', 'jangnim']).toContain(t.speaker);
+      expect(t.speaker).toBe(t.id === 1 ? 'halmang' : 'pro');
       expect(t.button.length).toBeGreaterThan(0);
       expect(t.done).not.toBeNull();
     }

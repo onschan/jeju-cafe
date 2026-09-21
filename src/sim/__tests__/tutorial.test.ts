@@ -8,6 +8,7 @@ import { canOpen, checkGoals, FEATURE_OF_ACTION, initFeatures } from '../goals.t
 import { hire, warehouseFront } from '../staff.ts';
 import { mainBuilding, canBuildMain, MAIN_BUILD_COST } from '../rooms.ts';
 import { doorFrontOf, objectAt } from '../grid.ts';
+import { bestSeatCells, combosIfPlaced, strategyVars, fillTemplate } from '../strategy.ts';
 
 import { serialize, deserialize } from '../save.ts';
 import { objectDef } from '../../data/index.ts';
@@ -75,11 +76,14 @@ describe('손으로 하는 튜토리얼 「할망의 가르침」 33단계·5장
     for (const c of TUTORIAL_CHAPTERS) { expect(c.from).toBe(next); expect(c.to).toBeGreaterThanOrEqual(c.from); next = c.to + 1; }
     expect(next).toBe(34);
     for (const st of STEPS) expect(TUTORIAL_CHAPTERS.find((c) => c.id === st.chapter)!.from <= st.id && st.id <= TUTORIAL_CHAPTERS.find((c) => c.id === st.chapter)!.to).toBe(true);
-    // 대사: 단계마다 2~3줄, 한 줄 ≤ 28자(20자 안팎), 버튼·제목 있음
+    // 대사(pro-guide): 단계마다 2~3줄, 토큰을 채운 한 줄 ≤ 24자, 마지막 줄은 「→ 지금: …」 행동 지시, ①만 할망·②부터 프로 삼춘, 버튼·제목 있음
+    const vars = strategyVars(createInitialState(1, 'local', 0, 'tutorial'));
     for (const d of DIALOGUE) {
       expect(d.lines.length, d.key).toBeGreaterThanOrEqual(2);
       expect(d.lines.length, d.key).toBeLessThanOrEqual(3);
-      for (const l of d.lines) expect(l.length, `${d.key}: ${l}`).toBeLessThanOrEqual(28);
+      for (const l of d.lines) { const f = fillTemplate(l, vars); expect(f, `${d.key}: ${f}`).not.toMatch(/\{[A-Za-z]+\}/); expect(f.length, `${d.key}: ${f}`).toBeLessThanOrEqual(24); }
+      expect(d.lines[d.lines.length - 1]!.startsWith('→ 지금: '), d.key).toBe(true);
+      expect(d.speaker).toBe(d.id === 1 ? 'halmang' : 'pro');
       expect(d.button.length).toBeGreaterThan(0);
       expect(d.title.length).toBeGreaterThan(0);
     }
@@ -364,10 +368,11 @@ describe('손으로 하는 튜토리얼 「할망의 가르침」 33단계·5장
     expect(s.tutorial.step).toBe(4);
     expect(lastReward(s)).toMatchObject({ refId: '4', items: [{ type: 'money', amount: 300_000 }] });
     expect(s.money).toBe(money0 - 4 * 10_000 + 600_000);
-    // 5: 테이블 (전망 자리)
+    // 5: 테이블 — pro-guide 글로우 = 걸어 닿는 칸 중 입지 최고 1칸 (strategy.bestSeatCells)
     seeDialogue(s);
-    expect(STEPS[4]!.cells(s).length).toBeGreaterThan(0);
-    expect(STEPS[4]!.cells(s).length).toBeLessThanOrEqual(3);
+    const seatGlow = STEPS[4]!.cells(s);
+    expect(seatGlow).toHaveLength(1);
+    expect(seatGlow[0]).toEqual(bestSeatCells(s, 1)[0]);
     expect(apply(s, { type: 'place', objectType: 'table_out', ...at(3, 4) }).ok).toBe(true);
     expect(s.tutorial.step).toBe(5);
     expect(canOpen(s)).toBe(false); // 아직 메뉴 없음
@@ -394,7 +399,7 @@ describe('손으로 하는 튜토리얼 「할망의 가르침」 33단계·5장
     seeDialogue(s);
     expect(wallShelteringSeat(s)).toBe(false);
     const cells = STEPS[8]!.cells(s);
-    expect(cells).toContainEqual(at(2, 3));
+    expect(cells).toEqual([at(2, 3)]); // pro-guide: 테이블(3,4) 북서 대각 1칸 = 최적 돌담 칸 1개
     expect(apply(s, { type: 'place', objectType: 'stonewall', ...at(2, 3) }).ok).toBe(true);
     expect(wallShelteringSeat(s)).toBe(true);
     expect(s.tutorial.step).toBe(9);
@@ -438,8 +443,8 @@ describe('손으로 하는 튜토리얼 「할망의 가르침」 33단계·5장
     expect(apply(s, { type: 'place', objectType: 'stonewall', ...at(2, 3) }).ok).toBe(true);
     const combo0 = activeComboCount(s);
     const cand = STEPS[14]!.cells(s);
-    expect(cand.length).toBeGreaterThan(0);
-    expect(cand.length).toBeLessThanOrEqual(3);
+    expect(cand).toHaveLength(1); // pro-guide: 콤보 최다 칸 1개
+    expect(combosIfPlaced(s, 'tangerine_tree', cand[0]!.x, cand[0]!.y)).toBeGreaterThanOrEqual(2);
     expect(apply(s, { type: 'place', objectType: 'tangerine_tree', ...cand[0]! }).ok).toBe(true);
     expect(activeComboCount(s)).toBeGreaterThanOrEqual(combo0 + 2);
     expect(s.tutorial.step).toBe(15);
@@ -518,13 +523,19 @@ describe('손으로 하는 튜토리얼 「할망의 가르침」 33단계·5장
     checkGoals(s);
     expect(s.tutorial.step).toBe(23);
     expect(lastReward(s)).toMatchObject({ refId: '23', items: [{ type: 'money', amount: 500_000 }] });
-    // 24: 실내 테이블 2개 (안내 칸 = 본관 방 안 빈 바닥)
+    // 24: 실내 테이블 2개 (pro-guide: 안내 칸 = 창가(벽에 붙은 바닥) 최적 1칸, 놓으면 다음 최적 칸으로 옮겨 간다)
     seeDialogue(s);
-    const floor = STEPS[23]!.cells(s);
-    expect(floor.length).toBeGreaterThanOrEqual(2);
-    expect(apply(s, { type: 'place', objectType: 'table_in', ...floor[0]! }).ok).toBe(true);
+    const m2 = mainBuilding(s)!;
+    const onWall = (p: { x: number; y: number }) => p.x === m2.x || p.y === m2.y || p.x === m2.x + m2.w! - 1 || p.y === m2.y + m2.h! - 1;
+    const floor1 = STEPS[23]!.cells(s);
+    expect(floor1).toHaveLength(1);
+    expect(onWall(floor1[0]!)).toBe(true);
+    expect(apply(s, { type: 'place', objectType: 'table_in', ...floor1[0]! }).ok).toBe(true);
     expect(s.tutorial.step).toBe(23);
-    expect(apply(s, { type: 'place', objectType: 'table_in', ...floor[1]! }).ok).toBe(true);
+    const floor2 = STEPS[23]!.cells(s);
+    expect(floor2).toHaveLength(1);
+    expect(floor2[0]).not.toEqual(floor1[0]);
+    expect(apply(s, { type: 'place', objectType: 'table_in', ...floor2[0]! }).ok).toBe(true);
     expect(s.tutorial.step).toBe(24);
     // 25: 연수 1회 (랭크 3부터) — 성공한 train 액션이 seen에 남는다 → 연구 개발이 열린다
     seeDialogue(s);

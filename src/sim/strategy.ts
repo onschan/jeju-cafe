@@ -1,0 +1,345 @@
+/**
+ * 프로 삼춘의 정석 (pro-guide): 튜토리얼 글로우 칸·「지금 추천 행동」을 실제 수치로 고른다 — 고정 좌표 없음.
+ * 모든 함수는 sim 상태만 읽고 결정적이다(rng·Date 없음). 튜토리얼(tutorial.ts cells)·공략 노트(TutorialWindow)·무행동 힌트(hints.ts)가 부른다.
+ *
+ * - bestMainCell     본관 원점: 바람 최소 → 정낭(정류장)과 문 앞 거리 최소 (tutorial.recommendedMainCells와 같은 순서)
+ * - bestSeatCells    야외 테이블: 정류장에서 걸어 닿는 길 옆 빈 칸 중 seatScore(입지 0~10) 최고 → 문 앞과 가까운 순
+ * - bestWallCells    돌담: 테이블 북서 쐐기(site.ts windOf와 같은 띠) 빈 칸 중 가리는 테이블 수 최다 → 테이블과 가까운 순
+ * - bestComboCells   감귤나무 등: 놓으면 활성 콤보(compat.ts 규칙: 반경·bCount)가 가장 많이 나는 빈 칸
+ * - bestIndoorSeats  실내 테이블: 본관 빈 바닥 중 벽에 붙은 창가(북쪽 벽 우선) → 입지 점수 순
+ * - bestParkingCells 주차장: 마을 길에 접한 자리(entry.ts parkingSites) 중 본관 문 앞과 가까운 순
+ * - bestSpotToInvest 명소: 지금 투자할 수 있는 것 중 그 태그 손님층 인기(spots.ts tagPopularity) 최고 → 싼 순
+ * - openingBuild     1년차 월별 정석 빌드 표 (공략 노트)
+ * - nextMove         현재 상태에서 정석의 다음 수 한 줄 (+ 글로우 칸) — 튜토리얼이 끝난 뒤에도 남는 코치
+ * - strategyVars     대사 토큰 `{seatScore}` 같은 것에 넣을 실제 수치 (ui/tutorialDialogue.ts fillTutorialLines)
+ */
+import type { GameState, Pt, PlacedObject, RoleId } from './types.ts';
+import { objectDef, COMBOS, SPOTS } from '../data/index.ts';
+import { siteOf, seatScore, FEE_PER_VIEW, SAT_WIND_WINTER } from './site.ts';
+import { canPlace, cellAt, objectAt, doorFrontOf, footprint } from './grid.ts';
+import { parcelAt } from './parcels.ts';
+import { reachMap, busStopPos, cellKey, walkableNeighborsOf, isDoorReachable } from './path.ts';
+import { mainBuilding, freeFloorCells, MAIN_TYPE, MAIN_SIZE, MAIN_EXPAND_COST, canBuildMain, MAIN_RECOMMEND_GATE_DIST } from './rooms.ts';
+import { parkingSites, PARKING_EXPAND_FROM, ENTRY_ROUTES } from './entry.ts';
+import { spotUnlocked, nextSpotLevel, spotRequirements, tagPopularity } from './spots.ts';
+import { staffInRole } from './staff.ts';
+import { offeredChallenges } from './challenges.ts';
+
+export const SEAT_TYPE = 'table_out';
+export const WALL_TYPE = 'stonewall';
+export const TREE_TYPE = 'tangerine_tree';
+export const INDOOR_SEAT_TYPE = 'table_in';
+/** 주차장 해금 조건(entry.ts routeFacilityUnlockMet)과 같은 쉼 시설 수 */
+export const PARKING_REST_COUNT = 6;
+/** 정석 야외 좌석 수 (3월 4 → 여름 6) */
+export const OPENING_SEATS = 4;
+export const SUMMER_SEATS = 6;
+
+const cheb = (a: Pt, b: Pt) => Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y));
+const byPos = (a: Pt, b: Pt) => a.y - b.y || a.x - b.x;
+
+function emptyOwnedSoil(s: GameState, x: number, y: number): boolean {
+  if (x < 0 || y < 0 || x >= s.grid.w || y >= s.grid.h) return false;
+  const c = cellAt(s, x, y);
+  return c.terrain === 'soil' && !c.objectId && !c.roomId && !!parcelAt(s, x, y)?.owned;
+}
+function* ownedEmptyCells(s: GameState): Iterable<Pt> {
+  for (let y = 0; y < s.grid.h; y++) for (let x = 0; x < s.grid.w; x++) if (emptyOwnedSoil(s, x, y)) yield { x, y };
+}
+function objectsOf(s: GameState, type: string): PlacedObject[] {
+  return Object.values(s.objects).filter((o) => o.type === type);
+}
+function outdoorSeats(s: GameState): PlacedObject[] {
+  return Object.values(s.objects).filter((o) => { const d = objectDef(o.type); return d.kind === 'seat' && !d.indoor; });
+}
+function indoorSeats(s: GameState): PlacedObject[] {
+  return Object.values(s.objects).filter((o) => { const d = objectDef(o.type); return d.kind === 'seat' && d.indoor; });
+}
+function doorFront(s: GameState): Pt | null {
+  const m = mainBuilding(s);
+  return m ? doorFrontOf(m) : null;
+}
+function unlocked(s: GameState, type: string): boolean {
+  return s.unlocked.objects.includes(type);
+}
+
+// ---------- 본관 ----------
+
+/** 본관 원점 추천(바람 최소 → 정낭/정류장과 문 앞 거리 최소 → 위·왼쪽). 본관이 있으면 []. tutorial.recommendedMainCells가 이걸 쓴다. */
+export function bestMainCells(s: GameState, n = 3): Pt[] {
+  if (mainBuilding(s)) return [];
+  const g0 = objectsOf(s, 'gate')[0];
+  const g = g0 ? { x: g0.x, y: g0.y } : busStopPos(s);
+  const size = MAIN_SIZE[1]!;
+  const out: { p: Pt; wind: number; dist: number }[] = [];
+  for (let y = 0; y < s.grid.h; y++) for (let x = 0; x < s.grid.w; x++) {
+    if (!canBuildMain(s, x, y).ok) continue;
+    const f = doorFrontOf({ type: MAIN_TYPE, x, y, w: size.w, h: size.h });
+    const dist = cheb(g, f);
+    if (dist > MAIN_RECOMMEND_GATE_DIST) continue;
+    out.push({ p: { x, y }, wind: siteOf(s, x, y).wind, dist });
+  }
+  out.sort((a, b) => a.wind - b.wind || a.dist - b.dist || byPos(a.p, b.p));
+  return out.slice(0, n).map((o) => o.p);
+}
+export function bestMainCell(s: GameState): Pt | null {
+  return bestMainCells(s, 1)[0] ?? null;
+}
+
+// ---------- 야외 테이블 ----------
+
+/** 손님이 앉을 수 있는 칸인가: 4방향 이웃 중 정류장에서 걸어 닿는 걷기 칸이 있다 (guests.ts와 같은 규칙) */
+function seatReachable(s: GameState, reach: ReturnType<typeof reachMap>, x: number, y: number): boolean {
+  return walkableNeighborsOf(s, x, y).some((nb) => reach.dist.has(cellKey(s, nb)));
+}
+/** 야외 테이블 최적 칸 n개 (좋은 순): 걸어 닿는 빈 흙 칸 중 seatScore 최고 → 문 앞(없으면 정류장)과 가까운 순. 닿는 칸이 없으면(길이 아직 없다) 길·마을 길 옆 빈 칸으로 대신한다. */
+export function bestSeatCells(s: GameState, n = 3, type = SEAT_TYPE): Pt[] {
+  const reach = reachMap(s, busStopPos(s));
+  const anchor = doorFront(s) ?? busStopPos(s);
+  const scored: { p: Pt; score: number; d: number }[] = [];
+  for (const p of ownedEmptyCells(s)) {
+    if (!canPlace(s, type, p.x, p.y).ok || !seatReachable(s, reach, p.x, p.y)) continue;
+    scored.push({ p, score: seatScore(s, p.x, p.y), d: cheb(p, anchor) });
+  }
+  scored.sort((a, b) => b.score - a.score || a.d - b.d || byPos(a.p, b.p));
+  return scored.slice(0, n).map((o) => o.p);
+}
+export function bestSeatCell(s: GameState): Pt | null {
+  return bestSeatCells(s, 1)[0] ?? null;
+}
+
+// ---------- 돌담 ----------
+
+/** 북서 쐐기(반경 3, |dx−dy| ≤ 1) — site.ts windOf·grid.ts windShelter와 같은 띠 */
+function inWindWedge(seat: Pt, x: number, y: number): boolean {
+  const dx = seat.x - x, dy = seat.y - y;
+  return dx >= 1 && dx <= 3 && dy >= 1 && dy <= 3 && Math.abs(dx - dy) <= 1;
+}
+/** 돌담 최적 칸 n개: 야외 테이블 북서 쐐기의 빈 흙 칸 중 가리는 테이블 수 최다 → (특정 테이블이면 그) 테이블과 가까운 순. 테이블이 없으면 []. */
+export function bestWallCells(s: GameState, n = 3, seat?: Pt): Pt[] {
+  const seats = seat ? [seat] : outdoorSeats(s).map((o) => ({ x: o.x, y: o.y }));
+  if (seats.length === 0) return [];
+  const all = outdoorSeats(s).map((o) => ({ x: o.x, y: o.y }));
+  const cand = new Map<number, { p: Pt; covers: number; d: number }>();
+  for (const st of seats) {
+    for (let dx = 1; dx <= 3; dx++) for (let dy = 1; dy <= 3; dy++) {
+      if (Math.abs(dx - dy) > 1) continue;
+      const x = st.x - dx, y = st.y - dy;
+      if (!emptyOwnedSoil(s, x, y) || !canPlace(s, WALL_TYPE, x, y).ok) continue;
+      const k = cellKey(s, { x, y });
+      if (cand.has(k)) continue;
+      const covers = all.filter((t) => inWindWedge(t, x, y)).length;
+      cand.set(k, { p: { x, y }, covers, d: Math.min(...seats.map((t) => cheb(t, { x, y }))) });
+    }
+  }
+  return [...cand.values()].sort((a, b) => b.covers - a.covers || a.d - b.d || byPos(a.p, b.p)).slice(0, n).map((o) => o.p);
+}
+export function bestWallCell(s: GameState, seat?: Pt): Pt | null {
+  return bestWallCells(s, 1, seat)[0] ?? null;
+}
+
+// ---------- 콤보 ----------
+
+function typeMatches(type: string, pattern: string): boolean {
+  return pattern.endsWith('*') ? type.startsWith(pattern.slice(0, -1)) : type === pattern;
+}
+/** 오브젝트 발자국과 칸의 체비쇼프 거리 (compat.ts dist와 같은 셈) */
+function distToCell(o: PlacedObject, x: number, y: number): number {
+  const w = o.w ?? objectDef(o.type).w ?? 1, h = o.h ?? objectDef(o.type).h ?? 1;
+  return Math.max(Math.max(0, o.x - x, x - (o.x + w - 1)), Math.max(0, o.y - y, y - (o.y + h - 1)));
+}
+/** type을 (x,y)에 놓으면 새로 나는 콤보 수 (compat.ts 규칙: A는 반경 안 B가 bCount개, B는 반경 안 A가 활성). 같은 콤보는 한 번. */
+export function combosIfPlaced(s: GameState, type: string, x: number, y: number): number {
+  const objs = Object.values(s.objects);
+  let n = 0;
+  for (const c of COMBOS) {
+    const r = c.radius, need = Math.max(1, c.bCount);
+    if (c.a === type) {
+      const bs = objs.filter((o) => c.bIds.some((p) => typeMatches(o.type, p)) && distToCell(o, x, y) <= r).length;
+      if (bs >= need) { n++; continue; }
+    }
+    if (c.bIds.some((p) => typeMatches(type, p))) {
+      const anchors = objs.filter((o) => o.type === c.a && distToCell(o, x, y) <= r);
+      // 내가 하나 더 붙어 anchor의 B 수가 bCount를 채우는가
+      const active = anchors.some((a) => {
+        const others = objs.filter((o) => o.id !== a.id && c.bIds.some((p) => typeMatches(o.type, p)) && distToCell(a, o.x, o.y) <= r).length;
+        return others + 1 >= need;
+      });
+      if (active) n++;
+    }
+  }
+  return n;
+}
+/** 콤보 최적 칸 n개: 빈 흙 칸 중 combosIfPlaced 최다(1 이상) → 야외 테이블과 가까운 순. 콤보가 나는 칸이 없으면 테이블 옆 빈 칸. */
+export function bestComboCells(s: GameState, type = TREE_TYPE, n = 3): Pt[] {
+  const seats = outdoorSeats(s);
+  const near = (p: Pt) => (seats.length ? Math.min(...seats.map((t) => cheb(t, p))) : 0);
+  const scored: { p: Pt; n: number; d: number }[] = [];
+  for (const p of ownedEmptyCells(s)) {
+    if (!canPlace(s, type, p.x, p.y).ok) continue;
+    scored.push({ p, n: combosIfPlaced(s, type, p.x, p.y), d: near(p) });
+  }
+  scored.sort((a, b) => b.n - a.n || a.d - b.d || byPos(a.p, b.p));
+  const best = scored[0];
+  if (!best) return [];
+  if (best.n > 0) return scored.filter((o) => o.n === best.n).slice(0, n).map((o) => o.p);
+  return scored.filter((o) => o.d <= 1).slice(0, n).map((o) => o.p);
+}
+export function bestComboCell(s: GameState, type = TREE_TYPE): Pt | null {
+  return bestComboCells(s, type, 1)[0] ?? null;
+}
+
+// ---------- 실내 ----------
+
+/** 실내 테이블 최적 칸 n개: 본관 빈 바닥 중 벽에 붙은 창가(북쪽 벽 = 바다 방향 우선) → 입지 점수 → 위·왼쪽. 공사 중이면 []. */
+export function bestIndoorSeats(s: GameState, n = 3): Pt[] {
+  const m = mainBuilding(s);
+  if (!m || s.main.work) return [];
+  const w = m.w ?? objectDef(m.type).w, h = m.h ?? objectDef(m.type).h;
+  const onWall = (p: Pt) => p.x === m.x || p.y === m.y || p.x === m.x + w - 1 || p.y === m.y + h - 1;
+  const rank = (p: Pt) => (p.y === m.y ? 2 : onWall(p) ? 1 : 0);
+  return freeFloorCells(s, m)
+    .filter((p) => canPlace(s, 'table_in', p.x, p.y).ok) // fix-indoor: 고정 설비·통로 검사 통과 칸만
+    .map((p) => ({ p, wall: rank(p), score: seatScore(s, p.x, p.y) }))
+    .sort((a, b) => b.wall - a.wall || b.score - a.score || byPos(a.p, b.p))
+    .slice(0, n).map((o) => o.p);
+}
+export function bestIndoorSeat(s: GameState): Pt | null {
+  return bestIndoorSeats(s, 1)[0] ?? null;
+}
+
+// ---------- 주차장 ----------
+
+/** 주차장 원점 n개: 마을 길에 접한 자리 중 놓을 수 있는 것, 본관 문 앞(없으면 정류장)과 가까운 순. 이미 주차장이 있으면 []. */
+export function bestParkingCells(s: GameState, n = 3): Pt[] {
+  if (hasParking(s)) return [];
+  const anchor = doorFront(s) ?? busStopPos(s);
+  const def = objectDef(PARKING_EXPAND_FROM);
+  return parkingSites(s)
+    .filter((p) => canPlace(s, PARKING_EXPAND_FROM, p.x, p.y).ok)
+    .map((p) => ({ p, d: Math.min(...footprint(PARKING_EXPAND_FROM, p.x, p.y, def.w, def.h).map((q) => cheb(q, anchor))) }))
+    .sort((a, b) => a.d - b.d || byPos(a.p, b.p))
+    .slice(0, n).map((o) => o.p);
+}
+/** 주차장 시설이 (공사 중이라도) 있나 — entry.routeFacility는 완공된 것만 본다 */
+export function hasParking(s: GameState): boolean {
+  const types = ENTRY_ROUTES.parking.facilities;
+  return Object.values(s.objects).some((o) => types.includes(o.type));
+}
+export function bestParkingCell(s: GameState): Pt | null {
+  return bestParkingCells(s, 1)[0] ?? null;
+}
+
+// ---------- 명소 ----------
+
+/** 지금 투자할 수 있는(해금·조건 충족, 돈은 안 본다) 명소 중 그 태그 손님층 인기 최고 → 싼 순. 없으면 null. */
+export function bestSpotToInvest(s: GameState): { id: string; name: string; cost: number; tag: string; popularity: number } | null {
+  const cands = SPOTS.flatMap((d) => {
+    if (!spotUnlocked(s, d.id)) return [];
+    const next = nextSpotLevel(s, d.id);
+    if (!next || spotRequirements(s, d.id).some((r) => !r.met)) return [];
+    return [{ id: d.id, name: d.name, cost: next.cost, tag: d.tag as string, popularity: tagPopularity(s, d.tag) }];
+  });
+  cands.sort((a, b) => b.popularity - a.popularity || a.cost - b.cost || a.id.localeCompare(b.id));
+  return cands[0] ?? null;
+}
+
+// ---------- 정석 빌드 표 ----------
+
+export interface BuildPlanRow { month: number; title: string; what: string; why: string }
+/** 1년차 월별 정석 (공략 노트). 튜토리얼 33단계와 같은 순서, 봇(bot.ts)의 실제 수순을 사람 말로. */
+export function openingBuild(): BuildPlanRow[] {
+  return [
+    { month: 3, title: '개업', what: '본관·올렛길·야외 테이블 4·홀 1·메뉴 2', why: '자리 4면 「자리 없음」 불만이 안 뜬다' },
+    { month: 4, title: '홍보·감귤나무', what: '전단 홍보 + 감귤나무(귤밭 뷰·밭담 수확 콤보)', why: '콤보 1개 = 인기 +3·요금 +5%' },
+    { month: 5, title: '증축 저축', what: `₩${MAIN_EXPAND_COST[2]! / 10_000}만 모으기 (새 시설 금지)`, why: '5월에 돈을 쓰면 6월 증축이 밀린다' },
+    { month: 6, title: '본관 Lv2', what: '증축 → 문 앞 길 다시 잇기', why: '실내 자리 = 비 오는 날 매출' },
+    { month: 7, title: '실내 2', what: '실내 테이블 2 (창가) + 야외 6', why: '여름 손님 피크에 자리 6+2' },
+    { month: 8, title: '연수', what: '바리스타 연수 1회 (랭크 3)', why: '손재주 +1 = 서빙 대기 −15%' },
+    { month: 9, title: '가이드북 대비', what: '청소 직원·청결 90 유지', why: '9월 발표: 청결이 별점을 가른다' },
+    { month: 10, title: '주차장', what: '쉼 시설 6 → 렌터카 주차장', why: '차 손님 지갑 ×1.2·체류 ×1.2' },
+    { month: 11, title: '감귤 축제', what: '감귤주스·감귤 레시피 메뉴판 앞줄', why: '11월 축제 이벤트에 감귤 메뉴 보너스' },
+    { month: 12, title: '실내 난로', what: '난로(실내) + 돌담으로 바람 0', why: `겨울 바람 1당 만족 ${SAT_WIND_WINTER}` },
+  ];
+}
+
+// ---------- 지금 추천 행동 ----------
+
+export interface NextMove { text: string; cells: Pt[] }
+function hasRole(s: GameState, ...roles: RoleId[]): boolean {
+  return roles.some((r) => staffInRole(s, r).length > 0);
+}
+/** 현재 상태에서 정석의 다음 수 한 줄 (+ 글로우 칸). 튜토리얼 33단계 순서와 같은 우선순위. 할 게 없으면 null. */
+export function nextMove(s: GameState): NextMove | null {
+  const m = mainBuilding(s);
+  if (!m) { const p = bestMainCell(s); return { text: '본관부터. 빛나는 칸(바람 최소)에 짓기', cells: p ? [p] : [] }; }
+  if (!isDoorReachable(s, m)) { const f = doorFrontOf(m); return { text: '마을 길 → 문 앞 올렛길 잇기. 길 없으면 손님 0', cells: [f] }; }
+  const seats = outdoorSeats(s).length;
+  const menus = s.menuSlots.filter((x) => x !== null).length;
+  if (seats < 1) return { text: `야외 테이블 1개. 빛나는 칸이 입지 최고`, cells: bestSeatCells(s, 1) };
+  if (menus < 2) return { text: '메뉴판에 아메리카노·감귤주스. 2개면 개업', cells: [] };
+  if (s.staff.length < 1) return { text: '홀 직원 1명 채용. 서빙 대기 절반', cells: [] };
+  if (!wallSheltered(s)) return { text: `돌담 1개를 테이블 북서쪽에. 바람 −1 = 겨울 만족 +${-SAT_WIND_WINTER}`, cells: bestWallCells(s, 1) };
+  if (s.stats.promotionsDone < 1) return { text: '전단 홍보 1회. 타깃 손님층이면 1.5배', cells: [] };
+  if (s.challenges.active.length === 0 && offeredChallenges(s).length > 0) return { text: '도전 과제 1개 수락. 목표 줄을 탭', cells: [] };
+  if (unlocked(s, TREE_TYPE) && objectsOf(s, TREE_TYPE).length < 1) { const c = bestComboCells(s, TREE_TYPE, 1); if (c.length) return { text: `감귤나무 1그루. 빛나는 칸이면 콤보 ${combosIfPlaced(s, TREE_TYPE, c[0]!.x, c[0]!.y)}개`, cells: c }; }
+  if (seats < OPENING_SEATS) return { text: `야외 테이블 ${seats}/${OPENING_SEATS}. 4개면 「자리 없음」 불만 0`, cells: bestSeatCells(s, 1) };
+  if (!hasRole(s, 'hall', 'clean')) return { text: '홀(또는 청소) 직원 배치. 청결이 별점', cells: [] };
+  if (s.main.level < 2 && !s.main.work) {
+    const cost = MAIN_EXPAND_COST[2]!;
+    return s.money >= cost
+      ? { text: `본관 Lv2 증축(₩${cost / 10_000}만). 실내 자리가 열린다`, cells: [] }
+      : { text: `증축 저축 ₩${Math.ceil((cost - s.money) / 10_000)}만 남음. 새 시설 금지`, cells: [] };
+  }
+  if (s.main.level >= 2 && !s.main.work && indoorSeats(s).length < 2) return { text: `실내 테이블 ${indoorSeats(s).length}/2. 창가(벽 옆) 칸`, cells: bestIndoorSeats(s, 1) };
+  if (seats < SUMMER_SEATS) return { text: `야외 테이블 ${seats}/${SUMMER_SEATS}. 6개면 주차장이 열린다`, cells: bestSeatCells(s, 1) };
+  if (unlocked(s, PARKING_EXPAND_FROM) && !hasParking(s)) return { text: '렌터카 주차장을 마을 길 옆에. 차 손님 지갑 ×1.2', cells: bestParkingCells(s, 1) };
+  const spot = bestSpotToInvest(s);
+  if (spot && s.money >= spot.cost) return { text: `명소 「${spot.name}」 투자(₩${spot.cost / 10_000}만). 인기 손님층과 맞다`, cells: [] };
+  if (s.main.level < 3 && !s.main.work) return { text: `다음은 본관 Lv3(₩${MAIN_EXPAND_COST[3]! / 10_000}만). 저축`, cells: [] };
+  return null;
+}
+/** 야외 테이블 북서 쐐기에 돌담(또는 방풍 시설)이 하나라도 있나 — 첫 돌담 판정 */
+export function wallSheltered(s: GameState): boolean {
+  for (const seat of outdoorSeats(s)) {
+    for (let dx = 1; dx <= 3; dx++) for (let dy = 1; dy <= 3; dy++) {
+      if (Math.abs(dx - dy) > 1) continue;
+      const o = objectAt(s, seat.x - dx, seat.y - dy);
+      if (o && objectDef(o.type).kind === 'wall') return true;
+    }
+  }
+  return false;
+}
+
+// ---------- 대사 토큰 ----------
+
+/** 튜토리얼 대사 `{토큰}`에 넣을 실제 수치. 계산이 안 되는 상황(본관 없음 등)엔 정석 기본값. 키에 밑줄을 쓰지 않는다(noIdLeak). */
+export function strategyVars(s: GameState): Record<string, string> {
+  const m = mainBuilding(s);
+  const main = m ? doorFrontOf(m) : bestMainCell(s); // 본관이 있으면(다시 보기) 문 앞 칸의 바람
+  const mainWind = main ? siteOf(s, main.x, main.y).wind : 1;
+  const seat = bestSeatCell(s);
+  const seatSite = seat ? siteOf(s, seat.x, seat.y) : null;
+  const firstSeat = outdoorSeats(s)[0];
+  const wallWind = firstSeat ? siteOf(s, firstSeat.x, firstSeat.y).wind : 3;
+  const tree = bestComboCell(s);
+  const comboN = tree ? combosIfPlaced(s, TREE_TYPE, tree.x, tree.y) : 2;
+  const spot = bestSpotToInvest(s);
+  const cur = s.money;
+  return {
+    mainWind: String(mainWind),
+    seatScore: seatSite ? String(seatScore(s, seat!.x, seat!.y)) : '5',
+    seatView: seatSite ? String(seatSite.view) : '0',
+    seatFee: seatSite ? String(Math.round(seatSite.view * FEE_PER_VIEW * 100)) : '0',
+    wallWind: String(wallWind),
+    wallAfter: String(Math.max(0, wallWind - 1)),
+    comboN: String(comboN),
+    spotName: spot?.name ?? '유채꽃밭',
+    expandLeft: String(Math.max(0, Math.ceil((MAIN_EXPAND_COST[2]! - cur) / 10_000))),
+    seats: String(outdoorSeats(s).length),
+  };
+}
+/** `{키}`를 vars로 치환. 모르는 키는 그대로 둔다. */
+export function fillTemplate(line: string, vars: Record<string, string>): string {
+  return line.replace(/\{([A-Za-z]+)\}/g, (m, k: string) => vars[k] ?? m);
+}

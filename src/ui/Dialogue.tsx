@@ -10,7 +10,7 @@ import { brownBtn, brownBtnOn, PALETTE } from './frame';
 
 /** 타자 효과: 글자당 ms */
 export const TYPE_MS = 20;
-const FIXED_PORTRAITS = new Set(['halmang', 'samchun', 'hero', 'haenyeo', 'jangnim']);
+const FIXED_PORTRAITS = new Set(['halmang', 'samchun', 'hero', 'haenyeo', 'jangnim', 'pro']); // pro-guide: 프로 삼춘
 
 /** 초상 96×96 (48 원본 2배): 고정 인물은 아이콘 png(portrait_<key>[_<expr>]), 직원·손님 id는 파츠 초상 */
 const PORTRAIT_PX = 96;
