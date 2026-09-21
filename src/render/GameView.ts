@@ -92,6 +92,8 @@ const BIG_ROCK_TINT = 0x8a8a9a;
 /** 숫자 팝업(+N): 700ms 동안 16px 떠오르며 사라진다 */
 const POP_MS = 700;
 const POP_RISE_PX = 16;
+/** 동시에 떠 있는 숫자 팝업 상한 (결제 「+₩」 스로틀) */
+const MONEY_POP_MAX = 8;
 /** 직원 인사 말풍선: 손님이 2칸 안에 오면 20%로 1.2초 */
 const GREET_RADIUS = 2;
 const GREET_CHANCE = 0.2;
@@ -1042,10 +1044,11 @@ export class GameView {
       } else if (entry.char) {
         updateCharacterNode(entry.char, guestDir(g), walking ? walkFrame : 1);
       }
-      // 첫 주문(판매) 순간에 코인 팝 + 주문 메뉴 말풍선
+      // 첫 주문(판매) 순간에 코인 팝 + 「+₩4,500」 숫자 + 주문 메뉴 말풍선 (game-feel: 돈이 들어오는 게 보이게 — 카이로 G9)
       if (!entry.hadMenu && g.menuId !== null) {
         entry.hadMenu = true;
         this.spawnCoin(node.x, node.y - GUEST_H - 4, now);
+        if (g.paid > 0) this.spawnMoneyPop(node.x, node.y - GUEST_H - 10, g.paid, now);
         let name = '', icon = 'coffee';
         try { const def = menuOf(state, g.menuId); name = shortMenuName(def.name); icon = MENU_BUBBLE_ICON[def.category] ?? 'coffee'; } catch { /* 모르는 메뉴 id */ }
         this.showBubble(g.id, { icon: spriteName.icon(icon), text: name || undefined });
@@ -1186,6 +1189,21 @@ export class GameView {
     c.zIndex = 1e6;
     this.overlay.addChild(c);
     this.pops.push({ node: c, born: now, y0: sy - 24 });
+  }
+
+  /** 「+₩n」 숫자 팝업 (결제). 화면 좌표. 한꺼번에 많이 뜨면(MONEY_POP_MAX 초과) 건너뛴다 — 코인은 그대로 뜬다 */
+  private spawnMoneyPop(x: number, y0: number, amount: number, now: number) {
+    if (this.pops.length >= MONEY_POP_MAX) return;
+    const c = new Container();
+    const l = label(`+₩${amount.toLocaleString('en-US')}`, 11);
+    l.anchor.set(0.5, 1);
+    l.style.fill = 0xffe066;
+    const bg = new Graphics().roundRect(-l.width / 2 - 3, -l.height - 1, l.width + 6, l.height + 2, 3).fill({ color: 0x000000, alpha: 0.5 });
+    c.addChild(bg, l);
+    c.position.set(x, y0);
+    c.zIndex = 1e6;
+    this.overlay.addChild(c);
+    this.pops.push({ node: c, born: now, y0 });
   }
 
   private spawnCoin(x: number, y0: number, now: number) {
