@@ -51,6 +51,7 @@ BLUSH: tuple[Color, ...] = (hexc('ffb0bd'), hexc('f09a8c'), hexc('d9826d'), hexc
 EYE_RING, EYE_IN, GLINT = hexc('2b2118'), hexc('4a3328'), hexc('ffffff')
 BROW = hexc('4a3328')
 MOUTH_IN, MOUTH_LINE = hexc('e8788f'), hexc('7a3a3a')
+HAPPY_BLUSH: Color = (240, 110, 130, 120)                        # 기쁨 표정의 진한 볼터치 (입 레이어에 반투명으로)
 
 HAIR_STYLES = ('bob', 'short', 'pony', 'perm', 'updo', 'sport', 'long', 'bald',   # 0..7 = 걷기 몸과 같은 순서
                'part', 'bangs', 'braid', 'bun')                                    # 8..11 초상 전용 변형
@@ -153,8 +154,8 @@ def face(skin: int, shape: str) -> Canvas:
 
 
 # ---------------------------------------------------------------- 눈·눈썹·입 (고유색)
-def eye(c: Canvas, x0: int, y0: int, h: int, kind: str, right: bool) -> None:
-    """4×h 점 눈: 짙은 테 + 안쪽 2×(h-2) + 왼쪽 위 하이라이트 1픽셀."""
+def eye(c: Canvas, x0: int, y0: int, h: int, kind: str, right: bool, glint: int = 1) -> None:
+    """4×h 점 눈: 짙은 테 + 안쪽 2×(h-2) + 왼쪽 위 하이라이트(glint 픽셀, 가로로). 감은 눈(^^)은 어떤 표정에도 쓰지 않는다."""
     c.rect(x0, y0, 4, h, EYE_RING)
     c.rect(x0 + 1, y0 + 1, 2, h - 2, EYE_IN)
     for cx_, cy_ in ((x0, y0), (x0 + 3, y0), (x0, y0 + h - 1), (x0 + 3, y0 + h - 1)):   # 모서리 깎아 둥근 점
@@ -164,7 +165,7 @@ def eye(c: Canvas, x0: int, y0: int, h: int, kind: str, right: bool) -> None:
         c.put(outer, y0, CLEAR); c.put(inner, y0 + h - 1, CLEAR)
     elif kind == 'droop':                                          # 바깥 위만 깎아 순한 눈
         c.put(outer, y0, CLEAR)
-    c.put(x0 + 1, y0 + 1, GLINT)
+    c.hline(x0 + 1, x0 + glint, y0 + 1, GLINT)
 
 
 def eyes_raw(kind: str, expr: str) -> Canvas:
@@ -172,9 +173,8 @@ def eyes_raw(kind: str, expr: str) -> Canvas:
     if expr == 'surprised':
         eye(c, EYE_L, EYE_Y - 1, 5, kind, False); eye(c, EYE_R, EYE_Y - 1, 5, kind, True)
         by = BROW_Y - 2
-    elif expr == 'happy':
-        eye(c, EYE_L, EYE_Y, 4, kind, False); eye(c, EYE_R, EYE_Y, 4, kind, True)
-        c.put(EYE_L + 2, EYE_Y + 2, GLINT); c.put(EYE_R + 2, EYE_Y + 2, GLINT)   # 두 번째 반짝
+    elif expr == 'happy':                                          # 기쁨도 점 눈 그대로, 하이라이트만 2픽셀
+        eye(c, EYE_L, EYE_Y, 4, kind, False, glint=2); eye(c, EYE_R, EYE_Y, 4, kind, True, glint=2)
         by = BROW_Y
     else:
         eye(c, EYE_L, EYE_Y, 4, kind, False); eye(c, EYE_R, EYE_Y, 4, kind, True)
@@ -195,7 +195,9 @@ def mouth_raw(expr: str) -> Canvas:
     y = MOUTH_Y
     if expr == 'normal':                                           # 작은 미소 (양 끝 1px 올라감)
         c.hline(CX - 2, CX + 1, y, MOUTH_LINE); c.put(CX - 3, y - 1, MOUTH_LINE); c.put(CX + 2, y - 1, MOUTH_LINE)
-    elif expr == 'happy':                                          # 열린 웃음 6×3, 안은 분홍
+    elif expr == 'happy':                                          # 열린 웃음 6×3, 안은 분홍 + 볼터치 진하게(반투명, 피부색 무관)
+        for bx in (10, 33):
+            c.rect(bx, 24, 5, 3, HAPPY_BLUSH)
         c.rect(CX - 2, y - 1, 4, 2, MOUTH_IN)
         c.vline(CX - 3, y - 2, y, MOUTH_LINE); c.vline(CX + 2, y - 2, y, MOUTH_LINE)
         c.hline(CX - 2, CX + 1, y + 1, MOUTH_LINE)
