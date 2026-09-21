@@ -84,14 +84,14 @@ describe('실내 가구 겹침·통로', () => {
 });
 
 describe('시작 배치·옛 저장', () => {
-  test('완성 시작 상태는 본관 안 실내 테이블 2개를 통로 검사를 통과하는 칸에 정식 배치한다; 장 건너뛰기(indoor=false)는 비워 둔다', () => {
+  test('완성 시작 상태의 본관 안은 비어 있다; fillStarterLayout(indoor=true)면 실내 테이블 2개를 통로 검사를 통과하는 칸에 정식 배치한다', () => {
     const s = createInitialState(1);
-    const tables = Object.values(s.objects).filter((o) => o.type === 'table_in').map((o) => [o.x, o.y]);
-    expect(tables).toEqual([[X(3), Y(1)], [X(5), Y(2)]]);
-    for (const [x, y] of tables) expect(cellAt(s, x!, y!).roomId).toBe(mainBuilding(s)!.id);
+    expect(Object.values(s.objects).some((o) => o.type === 'table_in')).toBe(false);
     const t = createInitialState(2, 'local', 0, 'tutorial');
-    fillStarterLayout(t, false);
-    expect(Object.values(t.objects).some((o) => o.type === 'table_in')).toBe(false);
+    fillStarterLayout(t, true);
+    const tables = Object.values(t.objects).filter((o) => o.type === 'table_in').map((o) => [o.x, o.y]);
+    expect(tables).toEqual([[X(3), Y(1)], [X(5), Y(2)]]);
+    for (const [x, y] of tables) expect(cellAt(t, x!, y!).roomId).toBe(mainBuilding(t)!.id);
     expect(Object.values(t.objects).some((o) => o.type === 'table_out')).toBe(true);
   });
 

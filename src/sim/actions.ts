@@ -389,7 +389,7 @@ function applyInner(state: GameState, a: Action): ApplyResult {
     case 'skipTutorialChapter': {
       // 장 단위 건너뛰기: 남은 단계의 해금 보상만 적용. 맨 처음(1장 0단계)이면 빈 마당을 완성 시작 상태로 채워 바로 영업할 수 있게 한다
       if (state.tutorial.step >= TUTORIAL_STEPS) return { ok: false, reason: '튜토리얼이 끝났어요' };
-      if (state.tutorial.step === 0) fillStarterLayout(state, false); // 본관 안은 비워 둔다 — 24단계(실내 테이블)를 손으로 한다
+      if (state.tutorial.step === 0) fillStarterLayout(state); // 본관 안은 비워 둔다 — 24단계(실내 테이블)를 손으로 한다
       skipTutorialChapter(state);
       return { ok: true };
     }

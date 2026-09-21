@@ -42,8 +42,9 @@ export const START_MAIN = { lx: 3, ly: 1 } as const;
 export const START_PATH: { lx: number; ly: number }[] = [{ lx: 3, ly: 3 }, { lx: 4, ly: 3 }, { lx: 4, ly: 4 }, { lx: 4, ly: 5 }];
 export const START_SEATS: { type: string; lx: number; ly: number }[] = [
   { type: 'table_out', lx: 3, ly: 4 }, { type: 'table_out', lx: 5, ly: 4 }, { type: 'table_parasol', lx: 5, ly: 5 },
-  { type: 'table_in', lx: 3, ly: 1 }, { type: 'table_in', lx: 5, ly: 2 },
 ];
+/** 본관 안 실내 테이블 2 (fillStarterLayout(indoor=true)에서만 — 시작 배치엔 없다) */
+export const START_INDOOR_SEATS: { type: string; lx: number; ly: number }[] = [{ type: 'table_in', lx: 3, ly: 1 }, { type: 'table_in', lx: 5, ly: 2 }];
 
 /** 필지 안 상대 좌표 (lx, ly)의 지형. */
 function terrainFor(p: Parcel, lx: number, ly: number): Terrain {
@@ -114,16 +115,15 @@ function stampMain(state: GameState): void {
   }
 }
 
-/** §7.2 건너뛰기: 맨땅에 기존 완성 시작 상태(본관·올렛길·테이블 2·파라솔·실내 테이블 2·메뉴 3종)를 채운다. 이미 있는 칸은 건너뛴다.
- *  indoor=false면 본관 안은 비워 둔다 (장 건너뛰기 — 튜토리얼 24단계에서 실내 테이블을 처음 놓는다). */
-export function fillStarterLayout(state: GameState, indoor = true): void {
+/** §7.2 건너뛰기: 맨땅에 기존 완성 시작 상태(본관·올렛길·테이블 2·파라솔·메뉴 3종)를 채운다. 이미 있는 칸은 건너뛴다.
+ *  indoor=true면 본관 안에 실내 테이블 2(START_INDOOR_SEATS)를 정식 배치한다. 기본은 비움 — 시작 좌석이 5개면 목표 g03 「자리 4개」가 바로 끝나고
+ *  1년차 밴드(적자 달)가 흔들리며, 튜토리얼 24단계에서 실내 테이블을 처음 놓는다. 봇은 placeIndoorSeats(g23)에서 정식 배치한다. */
+export function fillStarterLayout(state: GameState, indoor = false): void {
   const { x: ox, y: oy } = START_ORIGIN;
   stampMain(state);
   for (const c of START_PATH) stamp(state, 'path', ox + c.lx, oy + c.ly);
-  for (const st of START_SEATS) {
-    if (objectDef(st.type).indoor) { if (indoor && canPlace(state, st.type, ox + st.lx, oy + st.ly).ok) placeObject(state, st.type, ox + st.lx, oy + st.ly); } // 실내 가구는 방 바닥 위에 정식 배치 (고정 설비·통로 검사)
-    else stamp(state, st.type, ox + st.lx, oy + st.ly);
-  }
+  for (const st of START_SEATS) stamp(state, st.type, ox + st.lx, oy + st.ly);
+  if (indoor) for (const st of START_INDOOR_SEATS) if (canPlace(state, st.type, ox + st.lx, oy + st.ly).ok) placeObject(state, st.type, ox + st.lx, oy + st.ly); // 실내 가구는 방 바닥 위에 정식 배치 (고정 설비·통로 검사)
   for (const m of START_MENUS) {
     if (state.menuSlots.includes(m)) continue;
     const slot = state.menuSlots.indexOf(null);

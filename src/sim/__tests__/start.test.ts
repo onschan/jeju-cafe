@@ -16,7 +16,7 @@ describe('v3 시작 상태 (§5)', () => {
     expect(hasReachableSeat(s)).toBe(true);
     const seats = Object.values(s.objects).filter((o) => objectDef(o.type).kind === 'seat');
     expect(seats.map((o) => o.type).sort()).toEqual(START_SEATS.map((x) => x.type).sort());
-    expect(totalSeats(s)).toBe(10); // 야외 테이블 2×2 + 파라솔 2 + 실내 테이블 2×2 (fix-indoor: 본관 안 정식 배치)
+    expect(totalSeats(s)).toBe(6);
     expect(s.menuSlots).toEqual([...START_MENUS, null]);
     expect(s.candidates).toHaveLength(START_CANDIDATES);
     expect(s.unlocked.objects.sort()).toEqual([...new Set(START_OBJECT_IDS)].sort());
