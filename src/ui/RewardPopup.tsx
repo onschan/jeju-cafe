@@ -17,7 +17,7 @@ import { alertToDialogue } from './alertDialogue.ts';
 export const SHAKE_MS = 600;
 export const ITEM_INTERVAL_MS = 300;
 
-const SOURCE_TITLE: Record<Extract<Alert, { type: 'reward' }>['source'], string> = { goal: '목표 달성!', challenge: '도전 성공!', monthly: '이달의 과제 달성!', tutorial: '잘했다!' };
+const SOURCE_TITLE: Record<Extract<Alert, { type: 'reward' }>['source'], string> = { goal: '목표 달성!', challenge: '도전 성공!', monthly: '이달의 과제 달성!', tutorial: '잘했다!', rank: '랭크 업!', star: '★ 승급!', unlock: '새 손님!', milestone: '반쯤 왔다!', bundle: '한꺼번에!' };
 
 function rewardIcon(r: GoalReward): string {
   switch (r.type) {

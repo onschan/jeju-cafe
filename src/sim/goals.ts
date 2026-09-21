@@ -18,7 +18,7 @@
  * | comboCodex | 튜토리얼 6 | (UI만: 콤보 도감)                                     |
  * | spotMap    | 튜토리얼 9 | (UI만: 명소 지도)                                     |
  */
-import type { GameState, GoalDef, GoalCondition, GoalReward, FeatureId, Action, ApplyResult, RewardSource, GoalSpeaker } from './types.ts';
+import type { GameState, GoalDef, GoalCondition, GoalReward, FeatureId, Action, ApplyResult, RewardSource, GoalSpeaker, Alert } from './types.ts';
 import { GOALS, goalDef, objectDef, menuDef, roleDef, ROLES, OBJECTS, MENUS, spotDef, guestTypeDef, guidebookDef, itemDef, ITEMS } from '../data/index.ts';
 import { facilityCount } from './rank.ts';
 import { countCategory } from './segments.ts';
@@ -33,6 +33,7 @@ import { activeCombos, setLevels } from './compat.ts';
 import { effectivePopularity } from './promotions.ts';
 import { seatsOf } from './cafe.ts';
 import { monthIndex } from './clock.ts';
+import { dayIndex } from './effects.ts';
 import { reachMap, busStopPos, cellKey, walkableNeighborsOf } from './path.ts';
 import { checkChallenges } from './challenges.ts';
 import { checkTutorial, TUTORIAL_STEPS } from './tutorial.ts';
@@ -74,8 +75,15 @@ export const FEATURE_OF_ACTION: Partial<Record<Action['type'], FeatureId>> = {
   challenge: 'challenge',
   buyParcel: 'parcel',
 };
-/** 한 번의 checkGoals에서 연달아 처리할 최대 목표 수 (무한 루프 방지) */
-export const MAX_GOALS_PER_CHECK = 10;
+/** 한 번의 checkGoals에서 연달아 처리할 최대 목표 수 (game-feel P1: 10 → 3, 나머지는 다음 시간 틱에) */
+export const MAX_GOALS_PER_CHECK = 3;
+/** 하루에 인정하는 메인 목표 상한 (game-feel P1: 봇이 월초에 몰아 행동해 하루 10개가 터졌다 — 넘치면 다음 날 아침부터) */
+export const MAX_GOALS_PER_DAY = 3;
+/** 같은 큐에 보상 상자가 이만큼 이상 쌓이면 하나로 묶는다 (「목표 3개 달성!」, 아이템 합산, 축하 대사는 마지막 하나) */
+export const REWARD_BUNDLE_MIN = 3;
+/** 자금 목표 마일스톤 (25·50·75%마다 응모권 1) */
+export const MONEY_MILESTONES = [0.25, 0.5, 0.75];
+export const MILESTONE_TICKETS = 1;
 /** 메인 목표 동시 진행 수 (§7.3) */
 export const CONCURRENT_GOALS = 2;
 /** 진행 중 목표 뒤에서 미리 인정하는 목표 수 (claimableGoals) */
@@ -192,6 +200,7 @@ export const conditionCheckers: CheckerMap = {
   windlessSeats: (s, c) => n(seatObjectsOf(s).filter((o) => siteOf(s, o.x, o.y).wind === 0).length, c.n), // 트랙 F 바람 0
   combos: (s, c) => n(s.codex.combos.length, c.n),
   spotEffects: (s, c) => n(s.codex.spots.length, c.n), // 트랙 A 도감에 오른 명당 수
+  hiddenRecipes: (s, c) => n(s.codex.recipes.length, c.n), // 도감에 오른 숨은 레시피 수
   upgraded: (s, c) => n(Object.values(s.objects).filter((o) => !o.build && levelOf(o) >= c.lv).length, c.n), // 트랙 A 증축
   clean: (s, c) => flag(cleanAvgDays(s, c.days) >= c.avg), // 트랙 A: 최근 days일 평균 청결 ≥ avg
   skills: (s, c) => n(s.staff.filter((st) => hasSkill(st.skill)).length, c.n),
@@ -315,6 +324,7 @@ export function goalConditionText(c: GoalCondition): string {
     case 'comboCount': return `콤보 ${c.n}개`;
     case 'setCount': return `세트 효과 ${c.n}개`;
     case 'spotEffect': case 'spotEffects': return `명당 ${c.n}개`;
+    case 'hiddenRecipes': return `숨은 레시피 ${c.n}개`;
     case 'spotLevel': return `${name.spot(c.spotId)} Lv${c.lv}`;
     case 'spotAny': return `Lv${c.lv} 명소 ${c.n}곳`;
     case 'visitorsTotal': return `명소 방문객 ${fmtNum(c.n)}명`;
@@ -437,6 +447,66 @@ export function applyRewards(state: GameState, rewards: GoalReward[], meta: { so
   return items;
 }
 
+/** 같은 종류의 보상(돈·응모권·마일리지·연구)은 합치고 나머지는 이어 붙인다 */
+export function mergeRewardItems(lists: GoalReward[][]): GoalReward[] {
+  const out: GoalReward[] = [];
+  const sum: Partial<Record<'money' | 'tickets' | 'mileage' | 'research', number>> = {};
+  for (const items of lists) for (const r of items) {
+    if (r.type === 'money') sum.money = (sum.money ?? 0) + r.amount;
+    else if (r.type === 'tickets' || r.type === 'mileage' || r.type === 'research') sum[r.type] = (sum[r.type] ?? 0) + r.n;
+    else out.push(r);
+  }
+  const head: GoalReward[] = [];
+  if (sum.money) head.push({ type: 'money', amount: sum.money });
+  if (sum.tickets) head.push({ type: 'tickets', n: sum.tickets });
+  if (sum.mileage) head.push({ type: 'mileage', n: sum.mileage });
+  if (sum.research) head.push({ type: 'research', n: sum.research });
+  return [...head, ...out];
+}
+
+/** 아직 안 본 큐(state.alerts)에 보상 상자가 REWARD_BUNDLE_MIN개 이상 쌓였으면 첫 상자 자리에 하나로 묶는다 (game-feel P1: 4월 1일 팝업 9연속·3월 큐 11개).
+ *  제목은 「목표 n개 달성!」(전부 목표) / 「보상 n개!」, 아이템은 합산, 축하 대사(line·speaker)는 마지막 상자 것만. 목표 축하 대화({ type: 'goal' })도 마지막 하나만 남긴다.
+ *  결정적·멱등: 이미 묶인 상자(count)도 다시 셀 수 있다. 엔딩·이벤트 등 다른 알림은 순서를 지킨다. */
+export function coalesceRewardAlerts(state: GameState): void {
+  const rewards = state.alerts.filter((a): a is Extract<Alert, { type: 'reward' }> => a.type === 'reward' && a.source !== 'tutorial'); // 튜토리얼 상자는 단계마다 하나씩 (대사 게이트)
+  const total = rewards.reduce((n, a) => n + (a.count ?? 1), 0);
+  if (rewards.length < REWARD_BUNDLE_MIN) return;
+  const goalIds = state.alerts.filter((a): a is Extract<Alert, { type: 'goal' }> => a.type === 'goal').map((a) => a.goalId);
+  const allGoals = rewards.every((a) => a.source === 'goal' || a.source === 'bundle');
+  const last = rewards[rewards.length - 1]!;
+  const bundle: Alert = {
+    type: 'reward', source: 'bundle', refId: rewards.map((a) => a.refId).join(','), count: total,
+    title: allGoals ? `목표 ${total}개 달성!` : `보상 ${total}개!`,
+    items: mergeRewardItems(rewards.map((a) => a.items)), line: last.line, speaker: last.speaker,
+  };
+  const first = state.alerts.indexOf(rewards[0]!);
+  const lastGoal = goalIds[goalIds.length - 1];
+  const keep = (a: Alert) => (a.type !== 'reward' || a.source === 'tutorial') && (a.type !== 'goal' || a.goalId === lastGoal);
+  const kept = state.alerts.filter(keep);
+  const at = state.alerts.slice(0, first).filter(keep).length;
+  kept.splice(at, 0, bundle);
+  state.alerts.splice(0, state.alerts.length, ...kept);
+}
+
+/** 자금 목표의 25·50·75% 마일스톤: 처음 넘는 단계마다 응모권 1장 + 메시지 줄 (goals.milestones에 단계 기록 → GoalBar가 반짝인다). 새로 넘은 단계 목록. */
+export function checkMoneyMilestones(state: GameState): { goalId: string; stage: number }[] {
+  const out: { goalId: string; stage: number }[] = [];
+  for (const g of activeGoals(state)) {
+    if (g.condition.type !== 'money') continue;
+    const ms = (state.goals.milestones ??= {});
+    const pct = state.money / g.condition.n;
+    let stage = ms[g.id] ?? 0;
+    while (stage < MONEY_MILESTONES.length && pct >= MONEY_MILESTONES[stage]!) {
+      stage++;
+      ms[g.id] = stage;
+      state.tickets += MILESTONE_TICKETS;
+      pushNotice(state, `「${g.title}」 ${Math.round(MONEY_MILESTONES[stage - 1]! * 100)}% 달성 — 응모권 ${MILESTONE_TICKETS}장!`);
+      out.push({ goalId: g.id, stage });
+    }
+  }
+  return out;
+}
+
 // ---------- 월말·발표 누적 카운터 (E 소유 economy/guidebook을 안 건드리고 여기서 관찰) ----------
 
 /** 월이 바뀐 뒤 처음 판정할 때: 지난달 흑자/적자 연속 수, 가이드북 1위 횟수 갱신 */
@@ -462,18 +532,23 @@ function observeMonth(state: GameState): void {
 export function checkGoals(state: GameState): string[] {
   observeMonth(state);
   const done: string[] = [];
-  for (let i = 0; i < MAX_GOALS_PER_CHECK; i++) {
+  const today = dayIndex(state.clock);
+  if (state.goals.day !== today) { state.goals.day = today; state.goals.dayCount = 0; }
+  for (let i = 0; i < MAX_GOALS_PER_CHECK && (state.goals.dayCount ?? 0) < MAX_GOALS_PER_DAY; i++) {
     const g = claimableGoals(state).find((x) => goalMet(state, x.condition));
     if (!g) break;
     state.goals.claimed.push(g.id);
+    state.goals.dayCount = (state.goals.dayCount ?? 0) + 1;
     applyRewards(state, g.reward, { source: 'goal', refId: g.id, title: g.title });
     state.alerts.push({ type: 'goal', goalId: g.id });
     pushNotice(state, `목표 달성: ${g.title} — ${g.reward.map(goalRewardText).join(' · ')}`);
     done.push(g.id);
     while (state.goals.index < GOALS.length && state.goals.claimed.includes(GOALS[state.goals.index]!.id)) state.goals.index++;
   }
+  checkMoneyMilestones(state);
   checkChallenges(state);
   checkTutorial(state);
+  coalesceRewardAlerts(state); // 이번 판정(목표·도전·월간·튜토리얼·해금·승급)으로 쌓인 상자가 3개 이상이면 하나로
   return done;
 }
 

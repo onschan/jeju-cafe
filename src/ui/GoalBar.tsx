@@ -44,6 +44,7 @@ export function GoalBar({ top, onOpen }: { top: number; onOpen: () => void }) {
   const num = (n: number, max: number) => (max >= 100_000 ? `${fmtNum(Math.round(n / 10_000))}만` : fmtNum(n));
   const pct = g && g.max > 0 ? Math.min(100, Math.round((g.cur / g.max) * 100)) : 0;
   const cpct = c && c.max > 0 ? Math.min(100, Math.round((c.cur / c.max) * 100)) : 0;
+  const milestone = g ? (s.goals.milestones?.[g.id] ?? 0) : 0; // game-feel P1: 자금 목표 25/50/75% 마일스톤 — 단계가 바뀌면 key가 바뀌어 반짝임이 다시 돈다
   const badge = !tutorialDone(s);
   const noMain = badge && !mainBuilding(s); // w-start: 본관을 짓기 전엔 첫 목표(아메리카노)를 이룰 수 없다 → 문구로 안내
   return (
@@ -51,7 +52,7 @@ export function GoalBar({ top, onOpen }: { top: number; onOpen: () => void }) {
       <TutorialBadge />
       <button data-testid="goal-bar" data-tut="goal-bar" onClick={onOpen} aria-label="목표"
         style={{ position: 'absolute', inset: 0, height: GOAL_BAR_H, padding: 0, border: 0, borderBottom: `2px solid ${PALETTE.wood}`, background: done ? PALETTE.btnOn : PALETTE.paperDark, color: PALETTE.ink, fontFamily: 'inherit', fontSize: 14, fontWeight: 700, textAlign: 'left', display: 'flex', flexDirection: 'column', whiteSpace: 'nowrap', overflow: 'hidden', animation: done ? 'goal-blink 1s ease-in-out infinite' : undefined }}>
-        <style>{'@keyframes goal-blink { 0%, 100% { filter: brightness(1); } 50% { filter: brightness(1.25); } }'}</style>
+        <style>{'@keyframes goal-blink { 0%, 100% { filter: brightness(1); } 50% { filter: brightness(1.25); } } @keyframes goal-flash { 0%, 100% { box-shadow: 0 0 0 0 #ffd54a00; } 50% { box-shadow: 0 0 6px 3px #ffd54a; } }'}</style>
         <span style={{ height: GOAL_LINE_H, padding: '0 10px', paddingLeft: badge ? TUT_BADGE_W + 8 : 10, display: 'flex', alignItems: 'center', gap: 6, width: '100%', boxSizing: 'border-box' }}>
           <span style={{ color: PALETTE.title }}>▶</span>
           {g && noMain ? (
@@ -60,7 +61,7 @@ export function GoalBar({ top, onOpen }: { top: number; onOpen: () => void }) {
             <>
               <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis' }}>목표: {g.title}</span>
               <span style={{ flex: 'none', color: done ? PALETTE.ink : PALETTE.inkSoft }}>{num(g.cur, g.max)}/{num(g.max, g.max)}</span>
-              <span aria-hidden style={{ flex: 'none', width: 48, height: 6, background: '#fff8', border: `1px solid ${PALETTE.wood}`, borderRadius: 3, overflow: 'hidden' }}>
+              <span key={`${g.id}:${milestone}`} data-testid="goal-progress" data-milestone={milestone} aria-hidden style={{ flex: 'none', width: 48, height: 6, background: '#fff8', border: `1px solid ${PALETTE.wood}`, borderRadius: 3, overflow: 'hidden', animation: milestone > 0 ? 'goal-flash 0.9s ease-out 2' : undefined }}>
                 <span style={{ display: 'block', width: `${pct}%`, height: '100%', background: done ? PALETTE.ok : PALETTE.bar }} />
               </span>
             </>

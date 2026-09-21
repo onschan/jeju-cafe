@@ -120,7 +120,8 @@ export type UnlockCond =
   | { type: 'category'; category: FacilityCategory; count: number }   // 분류별 시설 개수 (가이드북)
   | { type: 'segmentPop'; guestId: string; popularity: number }        // 손님층 인기 (가이드북)
   | { type: 'goal' }                                                   // 목표 보상으로만 열린다 (v3, goals.ts goalForFacility)
-  | { type: 'all'; conditions: UnlockCond[] };
+  | { type: 'all'; conditions: UnlockCond[] }
+  | { type: 'any'; conditions: UnlockCond[] };                         // 하나만 채우면 (game-feel: 손님층 체인 「명소 Lv2 또는 랭크 n」)
 
 export interface GuestTypeDef {
   id: string;
@@ -135,6 +136,7 @@ export interface GuestTypeDef {
   wallet: number;          // 예산 상한 (이보다 비싼 메뉴는 주문 안 함). 0 = 주문 안 함(동물·정령)
   wants: GuestWant[];      // v2 likes 코드
   unlock: UnlockCond;
+  unlockBase?: UnlockCond; // 원본 표의 해금 조건 (game-feel P1 단계 해금으로 앞당겨 열린 타입은 이 조건을 채우기 전엔 손님 수(popularitySum)에 안 센다)
   questId: string | null;
   nextGuest: string | null;
   chain: string | null;
@@ -497,6 +499,7 @@ export type GoalCondition =
   | { type: 'windlessSeats'; n: number }          // 바람 0 좌석 n개 (x-site)
   | { type: 'combos'; n: number }                 // 도감에 발견한 콤보 수
   | { type: 'spotEffects'; n: number }            // 명당 효과 수 (x-facility)
+  | { type: 'hiddenRecipes'; n: number }          // 도감에 오른 숨은 레시피 수 (game-feel: 도전 「숨은 레시피 찾기」)
   | { type: 'upgraded'; lv: number; n: number }   // 증축 Lv 이상 시설 n개 (x-facility)
   | { type: 'clean'; avg: number; days: number }  // 청결 avg 이상 days일 (x-facility)
   | { type: 'skills'; n: number }                 // 특기 보유 직원 n명
@@ -547,7 +550,8 @@ export interface GoalDef {
   line?: string;      // 축하 대사 1줄
 }
 /** index = 아직 안 이룬 첫 목표 순번 (goals.json), claimed = 달성한 목표 id (메인 2개 동시 진행이라 순서가 어긋날 수 있다) */
-export interface GoalsState { index: number; claimed: string[] }
+/** milestones = 자금 목표 id → 지난 마일스톤 단계(1=25%·2=50%·3=75%, 응모권 1장씩). day/dayCount = 하루 목표 인정 상한(MAX_GOALS_PER_DAY)용 */
+export interface GoalsState { index: number; claimed: string[]; milestones?: Record<string, number>; day?: number; dayCount?: number }
 export interface GameStats {
   satisfiedTotal: number;  // 누적 만족(happy) 손님
   rocksCleared: number;    // 치운 바위·덤불
@@ -564,14 +568,15 @@ export interface GameStats {
   seenAnnouncement: number; // 마지막으로 센 가이드북 발표 monthIndex
 }
 /** 보상 상자에 담기는 보상 알림의 출처 */
-export type RewardSource = 'goal' | 'challenge' | 'monthly' | 'tutorial';
+export type RewardSource = 'goal' | 'challenge' | 'monthly' | 'tutorial' | 'rank' | 'star' | 'unlock' | 'milestone' | 'bundle'; // rank·star = 승급 보상, unlock = 손님층 해금, milestone = 자금 목표 25/50/75%, bundle = 같은 큐의 상자 3개 이상을 하나로 묶은 것
 /** UI 대화창·팝업 큐 항목 */
 export type Alert =
   | { type: 'goal'; goalId: string }
   | { type: 'event'; id: string }
   | { type: 'eventEnd'; id: string }
-  | { type: 'reward'; source: RewardSource; refId: string; title: string; items: GoalReward[]; line?: string; speaker?: GoalSpeaker }
+  | { type: 'reward'; source: RewardSource; refId: string; title: string; items: GoalReward[]; line?: string; speaker?: GoalSpeaker; count?: number } // count = bundle로 묶인 상자 수
   | { type: 'challengeFailed'; id: string }
+  | { type: 'monthlyFailed'; title: string; next: string } // 월간 과제 실패 (game-feel P2: 대사 + 다음 과제 예고)
   | { type: 'failure'; stage: 'warn' | 'loan' | 'crisis' | 'demote' }
   | { type: 'reputation'; text: string } // 평판 20 미만 삼춘 경고 (reputation.ts)
   // ---- z-ending ----
@@ -645,6 +650,7 @@ export interface BigEventDef {
   year?: number;              // n년차 이후
   once?: boolean;             // 한 번만
   chance: number;             // 0~1, 매월 1일 판정
+  weekly?: boolean;           // 주간 미니 사건 (game-feel): 매월 판정에서 빠지고 토요일 아침 weeklyMiniEvent가 40%로 하나 고른다. 동시 상한에 안 센다
   condition?: GoalCondition;  // 추가 조건
   durationDays: number;
   effects: BigEventEffects;
@@ -917,6 +923,7 @@ export interface GameState {
   alerts: Alert[];                            // UI 대화창 큐 (목표 달성·빅 이벤트). dismissAlert로 앞에서 뺀다
   events: ActiveBigEvent[];                   // 진행 중인 제주 빅 이벤트 (동시 최대 2)
   eventsFired: Record<string, number>;        // 빅 이벤트 id → 발동 횟수 (once 판정)
+  weeklyEventDay?: number;                    // 마지막 주간 미니 사건 발동일(dayIndex) — 두 토요일 연속 조용하면 다음 토요일은 확정 (game-feel P1, 없으면 0)
   monthHarvest: MonthHarvest;                 // 이달 농원 수확·절감 (월말 카드로 옮긴다)
   staff: Staff[];
   candidates: Candidate[];
