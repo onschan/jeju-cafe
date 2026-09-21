@@ -1,6 +1,6 @@
 import type { GameState, Guest, PlacedObject, Pt, MenuCategory, MenuStatKey, RoleId, GuestWant, ComplaintReason, RouteId } from './types.ts';
 import { canOpen } from './goals.ts';
-import { objectDef, guestTypeDef, guestTags, guestDialogue, canonicalGuestId, namedGuestDef, NAMED_TYPE } from '../data/index.ts';
+import { objectDef, guestTypeDef, guestTags, guestDialogue, canonicalGuestId, namedGuestDef, NAMED_TYPE, chainPosition } from '../data/index.ts';
 import { pickWeighted, nextRandom, randInt } from './rng.ts';
 import { sceneryScore, objectAt, sizeOf } from './grid.ts';
 import { availableMenus, consumeIngredients, isMenuAvailable } from './menu.ts';
@@ -11,7 +11,7 @@ import { START_HOUR, END_HOUR, seasonOf } from './clock.ts';
 import { parcelBonusAt, parcelSpawnMult, parcelFeeMult, parcelAt } from './parcels.ts';
 import { objectStats, popularityFor, comboPickMult, comboSatisfaction, BASE_POPULARITY } from './compat.ts';
 import { cleanSatisfaction, CLEAN_LOW } from './cleanliness.ts';
-import { isUnlocked, unlockedTypeIds, regularFreqMult, walletOf, onHappyVisit, addSatisfaction, VISIT_BONUS_CAP, targetSpawnMult } from './segments.ts';
+import { isUnlocked, unlockedTypeIds, regularFreqMult, walletOf, onHappyVisit, addSatisfaction, VISIT_BONUS_CAP, targetSpawnMult, stagedFull } from './segments.ts';
 import { rivalGuestMult } from './rivals.ts';
 import { addComplaint, noteGuest, noteSatisfied, reputationGuestMult, reputationTypeMult, reputationTipMult } from './reputation.ts';
 import { villageLocalMult } from './village.ts'; // z-ending
@@ -48,7 +48,7 @@ export const MAX_DAILY_GUESTS = 300;
 export const GUESTS_PER_SEAT = 6;
 export const BASE_DAILY_GUESTS = 4;
 export const POP_SUM_PER_GUEST = 21;
-export const FACILITY_POP_PER_GUEST = 16;
+export const FACILITY_POP_PER_GUEST = 21; // game-feel P1: 봇이 부탁·명당·도전으로 시설을 더 짓게 되어(3년 122 → 140개+) 16이면 3년차 말 자금이 7,000~9,000만 → 21 (§4.6 레버 #1, seed 1~3: 6,259·6,306·2,821만)
 /** 명소 하루 방문객(spots.dailyVisitors = 매력 × 2, 투어 버스 ×1.3) × VISITOR_GUEST_RATE(3%)가 하루 손님으로 유입 — 명소 투자가 손님 수의 큰 축 (§4.2 #1 "인기·명소 기반값") */
 /** 대기열: 빈 자리가 없으면 3명까지 기다리고, 넘치면 돌아간다(그 손님층 만족 −10) — §4.3 웨이팅 */
 export const WAIT_MAX = 3;
@@ -134,7 +134,7 @@ function hourTypeMult(hour: number, typeId: string): number {
 export function typeWeight(state: GameState, typeId: string, hour = state.clock.hour, bonus: ParcelBonus = 'none'): number {
   if (!isUnlocked(state, typeId)) return 0;
   // 투어 버스 단체 ×1.3은 spawnMultiplier 안의 spotSpawnMult(트랙 C)가 맡는다
-  return guestTypeDef(typeId).weight * spawnMultiplier(state, typeId) * hourTypeMult(hour, typeId) * parcelSpawnMult(bonus, typeId)
+  return guestTypeDef(typeId).weight * stagedSpawnMult(state, typeId) * spawnMultiplier(state, typeId) * hourTypeMult(hour, typeId) * parcelSpawnMult(bonus, typeId)
     * regularFreqMult(state, typeId) * effectMult(state, 'spawnMult', typeId) * eventTagMult(state, typeId) * reputationTypeMult(state, typeId) * targetSpawnMult(state, typeId) * villageLocalMult(state, typeId); // 타깃 손님층 ×1.3 (y-ui, UX §5.4) · 정착 등급 2 동네 손님 ×1.1 (z-ending)
 }
 
@@ -149,9 +149,25 @@ export function hourShare(hour: number): number {
 export function seasonGuestMult(month: number): number {
   return SEASON_GUEST_MULT[month] ?? 1;
 }
-/** 해금 손님층 유효 인기 합 (홍보·유튜버 부스트 포함) */
+/** 손님 수에 세는 손님층 수 상한 (game-feel P1): 해금 조건 완화로 3년에 60종이 열리면 인기 합이 선형으로 불어 하루 300명·자금 1.6억이 됐다.
+ *  인기 상위 POP_TOP_TYPES종만 더한다 — 원래 봇(3년 17종, 아래쪽은 인기 0~18)의 손님 수는 거의 그대로고, 새 손님층은 스폰 비중·도감·부탁으로만 늘어난다. */
+export const POP_TOP_TYPES = 12;
+/** 앞당겨 열린 손님층(어댑터 stagedUnlock: 원본 조건 unlockBase를 아직 못 채운)의 스폰 비중 — 「소문 듣고 가끔 오는 손님」. 원본 조건을 채우면 1.
+ *  체인 2번째부터(부탁·만족으로 열린)는 지갑·팁 효과가 커서 비중을 그대로 두면 3년 자금이 1.3억(§4.6 밴드 3,000~6,500만)까지 튄다. */
+export const STAGED_SPAWN_WEIGHT = 0.25;
+export function stagedSpawnMult(state: GameState, typeId: string): number {
+  return stagedFull(state, typeId) ? 1 : STAGED_SPAWN_WEIGHT;
+}
+/** 손님 수에 세는 손님층인가 (game-feel P1): 체인 머리(chainPosition 0)만, 그것도 단계 해금(어댑터 stagedUnlock)으로 앞당겨 열렸으면 원본 조건(unlockBase)을 채웠을 때.
+ *  체인 후속 손님(부탁·만족으로 열리는 2번째부터)은 스폰 비중·도감·부탁·랭크 점수로만 늘고 하루 손님 수는 원래 밸런스(§4.6 밴드, 3년 봇 기준 머리 11종)를 따른다.
+ *  — 봇이 1년차부터 부탁을 받고 손님층이 3년에 60종+ 열리면서 인기 합이 5배가 돼 자금이 3.6억까지 튀었다. */
+export function countsForGuests(state: GameState, typeId: string): boolean {
+  return chainPosition(typeId) === 0 && stagedFull(state, typeId);
+}
+/** 해금 손님층 유효 인기 합 (홍보·유튜버 부스트 포함) — 원본 조건을 채운 타입의 상위 POP_TOP_TYPES종 */
 export function popularitySum(state: GameState): number {
-  return unlockedTypeIds(state).reduce((s, id) => s + effectivePopularity(state, id), 0);
+  const pops = unlockedTypeIds(state).filter((id) => countsForGuests(state, id)).map((id) => effectivePopularity(state, id)).sort((a, b) => b - a);
+  return pops.slice(0, POP_TOP_TYPES).reduce((s, p) => s + p, 0);
 }
 /** 소유 필지의 완공된 시설(좌석·길·돌담 제외) 인기 합 — 시설이 늘수록 손님이 는다 */
 export function facilityPopularitySum(state: GameState): number {

@@ -1,4 +1,4 @@
-import type { GameState, Guest, GuestTypeState, UnlockCond, ApplyResult, Face, RegularTier, GuestTags } from './types.ts';
+import type { GameState, Guest, GuestTypeState, UnlockCond, ApplyResult, Face, RegularTier, GuestTags, GoalReward } from './types.ts';
 import { GUEST_TYPES, FACILITIES, LANDMARKS, guestTypeDef, guestTags, canonicalGuestId, ITEMS, objectDef } from '../data/index.ts';
 import { nextRandom, pickWeighted } from './rng.ts';
 import { monthIndex } from './clock.ts';
@@ -7,6 +7,7 @@ import { grantItem } from './items.ts';
 import { pushFx } from './fx.ts';
 import { parcelAt } from './parcels.ts';
 import { updateRank } from './rank.ts';
+import { applyRewards } from './goals.ts';
 import { josa } from './josa.ts';
 import { addResearchProgress } from './progress.ts';
 import { spotWalletMult } from './spots.ts';
@@ -28,10 +29,14 @@ export const VIP_WALLET = 1.6;
 export const MAX_TARGETS = 3;
 /** 새로 해금된 타입의 시작 인기 */
 export const UNLOCK_POPULARITY = 20;
+/** 손님층 해금 보상 (game-feel P1) */
+export const GUEST_UNLOCK_REWARDS: GoalReward[] = [{ type: 'tickets', n: 1 }];
 /** 효과 6종 */
 export const ITEM_DROP_CHANCE = 0.05;
 export const TIP_RATE = 0.2;
 export const AD_DELTA = 1;
+/** 'ad' 효과가 한 번에 올리는 타입 수 상한 (game-feel P1) */
+export const AD_TARGETS = 2;
 export const RESEARCH_BONUS = 1; // 연구 진행 1명 몫을 더 쌓는다 (기본 1 + 1 = 취향 일치와 같은 2명 몫)
 export const VISIT_BONUS_CAP = 10;
 export const TICKET_CHANCE = 0.01;
@@ -90,6 +95,7 @@ export function unlockCondMet(state: GameState, c: UnlockCond): boolean {
     case 'segmentPop': return (state.segmentPopularity[canonicalGuestId(c.guestId)] ?? 0) >= c.popularity;
     case 'goal': return false; // 목표 보상(goals.ts)이 직접 unlocked.objects에 넣는다
     case 'all': return c.conditions.every((x) => unlockCondMet(state, x));
+    case 'any': return c.conditions.some((x) => unlockCondMet(state, x));
   }
 }
 
@@ -100,7 +106,10 @@ export function unlockGuestType(state: GameState, typeId: string): boolean {
   if (st.unlocked) return false;
   st.unlocked = true;
   state.segmentPopularity[id] ??= UNLOCK_POPULARITY;
-  pushNotice(state, `새 손님: ${guestTypeDef(id).name}`);
+  const name = guestTypeDef(id).name;
+  pushNotice(state, `새 손님: ${name}`);
+  // game-feel P1: 손님층 해금도 손에 남는 보상 — 응모권 1장 상자 + 첫 손님 말풍선(say.ts freshTypeSay). 3개 이상 한 번에 열리면 checkGoals가 한 상자로 묶는다
+  applyRewards(state, GUEST_UNLOCK_REWARDS, { source: 'unlock', refId: id, title: `새 손님 ${name}`, line: `${josa(name, '이/가')} 우리 카페 소문을 들었대. 곧 올 거여!`, speaker: 'samchun' });
   return true;
 }
 
@@ -211,11 +220,19 @@ function sharesTags(a: GuestTags, b: GuestTags): boolean {
   return (a.age !== 'none' && a.age === b.age) || (a.group && b.group);
 }
 
-/** 만족 방문(happy)마다: 만족 +2/+3, 타입 효과 발동. 호출 전 g.mood === 'happy'. */
+/** 앞당겨 열린 손님층(어댑터 stagedUnlock)이 원본 조건(unlockBase)까지 채웠나. 못 채웠으면 「소문 듣고 가끔 오는 손님」 — 스폰 비중 ¼(guests.ts stagedSpawnMult)·타입 효과 없음.
+ *  (효과 'popularity'가 좌석 인기(visitBonus)를 1년차부터 채워 시설 인기 합 → 손님 수 → 자금이 3년에 2억까지 튀었다 — §4.6 밴드) */
+export function stagedFull(state: GameState, typeId: string): boolean {
+  const def = guestTypeDef(typeId);
+  return !def.unlockBase || def.unlockBase === def.unlock || unlockCondMet(state, def.unlockBase);
+}
+
+/** 만족 방문(happy)마다: 만족 +2/+3, 타입 효과 발동(원본 조건을 채운 타입만). 호출 전 g.mood === 'happy'. */
 export function onHappyVisit(state: GameState, g: Guest, satMult = 1): void {
   const id = canonicalGuestId(g.type);
   const def = guestTypeDef(id);
   addSatisfaction(state, id, (isTarget(state, id) ? SAT_TARGET : SAT_HAPPY) * satMult);
+  if (!stagedFull(state, id)) return;
   switch (def.effect) {
     case 'item':
       if (nextRandom(state) < ITEM_DROP_CHANCE) {
@@ -230,12 +247,14 @@ export function onHappyVisit(state: GameState, g: Guest, satMult = 1): void {
       state.totalIncome += tip;
       break;
     }
-    case 'ad':
-      for (const t of GUEST_TYPES) {
-        if (!state.guestTypes[t.id]?.unlocked || !sharesTags(def.tags, t.tags)) continue;
-        state.segmentPopularity[t.id] = Math.min(99, (state.segmentPopularity[t.id] ?? 0) + AD_DELTA);
-      }
+    case 'ad': {
+      // game-feel P1: 태그를 공유하는 열린 타입 **전부** +1이면 손님층이 25종 넘게 열렸을 때 인기 합이 몇 주 만에 상한(97)으로 치솟아 손님 수·자금이 폭주한다
+      // (3년 1.6억) → 공유 타입 중 AD_TARGETS종에만(인기 낮은 순, 결정적) +1. 원래 5종 시절엔 공유 타입이 1~2종이라 거의 같다.
+      const shared = GUEST_TYPES.filter((t) => state.guestTypes[t.id]?.unlocked && sharesTags(def.tags, t.tags))
+        .sort((a, b) => (state.segmentPopularity[a.id] ?? 0) - (state.segmentPopularity[b.id] ?? 0) || a.id.localeCompare(b.id));
+      for (const t of shared.slice(0, AD_TARGETS)) state.segmentPopularity[t.id] = Math.min(99, (state.segmentPopularity[t.id] ?? 0) + AD_DELTA);
       break;
+    }
     case 'research':
       addResearchProgress(state, RESEARCH_BONUS);
       break;

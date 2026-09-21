@@ -30,6 +30,15 @@ const NO_SEAT_LINES_SENIOR = ['자리가 어수다.', '앉을 디가 없저.', '
 const LEAVE_HAPPY = ['또 올게요!', '잘 먹었어요!', '맛있었다!'];
 const LEAVE_MEH = ['다음에…', '음, 글쎄…', '아쉽네…'];
 const VISIT_LINES = ['구경 좀 하고 갈게요.', '여기 뭐가 있지?', '사진 한 장!'];
+/** 갓 열린 손님층(만족 < FRESH_SAT)의 손님이 자리로 가며 하는 말 — 해금 말풍선 (game-feel P1). 상태를 새로 두지 않고 만족 게이지로 「처음」을 판정한다. */
+const NEW_TYPE_LINES = ['소문 듣고 왔어요!', '여기가 그 카페구나.', '처음 와 봐요, 잘 부탁해요.'];
+const NEW_TYPE_LINES_SENIOR = ['소문 듣고 와 봤저.', '여기가 그 카페여?', '처음 와 봤수다.'];
+export const FRESH_SAT = 6;
+export function freshTypeSay(state: GameState, g: Guest): string | null {
+  const st = state.guestTypes[g.type];
+  if (!st || st.satisfaction >= FRESH_SAT) return null;
+  return pick(guestTags(g.type).age === 'senior' ? NEW_TYPE_LINES_SENIOR : NEW_TYPE_LINES, g.id);
+}
 /** 외국인 손님(트랙 H foreign 태그)은 한국어 대신 이모지 말풍선 */
 const FOREIGN_LINES: Record<Guest['phase'] | 'happy' | 'meh' | 'price' | 'wait' | 'order', string[]> = {
   walking: ['😕💺', '🙁🔍'], seated: ['🤔'], visiting: ['📸✨', '👀🍊', '🗺️'], leaving: ['👋'],
@@ -62,7 +71,8 @@ export function guestSay(state: GameState, guest: Guest): string | null {
   const fill = (s: string | null) => (s ? s.replace('{menu}로', josa(menuName ?? '뭐라도', '으로/로')).replace('{menu}', menuName ?? '뭐라도') : null);
   switch (g.phase) {
     case 'walking':
-      return g.seatId ? null : pick(senior ? NO_SEAT_LINES_SENIOR : NO_SEAT_LINES, g.id);
+      if (g.seatId) return freshTypeSay(state, g); // game-feel P1: 갓 열린 손님층의 첫 손님들은 자리로 가며 인사 한마디
+      return pick(senior ? NO_SEAT_LINES_SENIOR : NO_SEAT_LINES, g.id);
     case 'seated': {
       if (g.mood === null) {
         if (!g.menuId) return null;
