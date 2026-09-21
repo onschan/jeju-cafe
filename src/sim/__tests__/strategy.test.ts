@@ -96,7 +96,10 @@ describe('프로 삼춘의 정석 (strategy.ts): 글로우 칸은 실제 수치�
     const cells = bestIndoorSeats(s, 3);
     expect(cells.length).toBeGreaterThan(0);
     expect(cells[0]!.y).toBe(m.y); // 북쪽 벽 = 바다 방향
-    for (const p of cells) expect(p.x === m.x || p.y === m.y || p.x === m.x + m.w! - 1 || p.y === m.y + m.h! - 1).toBe(true);
+    // fix-indoor 뒤 통로·고정 설비 검사로 벽 칸이 모자랄 수 있다 — 벽 칸이 앞에 오고(내림차순), 첫 칸은 벽
+    const onWall = (p: { x: number; y: number }) => p.x === m.x || p.y === m.y || p.x === m.x + m.w! - 1 || p.y === m.y + m.h! - 1;
+    expect(onWall(cells[0]!)).toBe(true);
+    for (let i = 1; i < cells.length; i++) expect(Number(onWall(cells[i]!))).toBeLessThanOrEqual(Number(onWall(cells[i - 1]!)));
     s.main.work = { kind: 'expand', to: 2, days: 3 } as never;
     expect(bestIndoorSeats(s, 3)).toEqual([]);
   });

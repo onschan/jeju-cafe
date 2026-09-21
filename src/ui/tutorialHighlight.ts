@@ -79,6 +79,7 @@ export const CELL_LABEL: Record<string, string> = {
   seats4: '여기에 자리 놓기',
   expand: '치워야 증축돼요',
   indoor2: '여기에 실내 테이블',
+  parking: '여기에 주차장',
 };
 export const CELL_LABEL_DEFAULT = '여기에 놓아 보라';
 /** 현재 단계의 DOM 타깃(data-tut 값)과 맵 칸, 칸 라벨 */
