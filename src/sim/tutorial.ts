@@ -46,7 +46,7 @@
 import type { GameState, GoalReward, Pt, FeatureId, PlacedObject, Action } from './types.ts';
 import { objectDef, COMBOS } from '../data/index.ts';
 import { isDoorReachable, busStopPos } from './path.ts';
-import { doorFrontOf, objectAt, cellAt, footprintOf } from './grid.ts';
+import { doorFrontOf, objectAt, cellAt, footprintOf, canPlace } from './grid.ts';
 import { applyRewards } from './goals.ts';
 import { siteOf } from './site.ts';
 import { parcelAt } from './parcels.ts';
@@ -245,11 +245,18 @@ function expandBlockedCells(s: GameState): Pt[] {
 function indoorSeatObjects(s: GameState): PlacedObject[] {
   return Object.values(s.objects).filter((o) => { const d = objectDef(o.type); return d.indoor && d.kind === 'seat'; });
 }
-/** 본관 방 안의 빈 바닥 칸 (실내 가구 안내용) */
+/** 본관 방 안에 실내 테이블을 놓을 수 있는 칸 (실내 가구 안내용). fix-indoor: 고정 설비·통로 검사를 통과하는 칸만, 서로 붙지 않게 골라 차례로 놓아도 길이 막히지 않는다. */
 function mainFloorCells(s: GameState, n: number): Pt[] {
   const m = mainBuilding(s);
   if (!m || s.main.work) return [];
-  return freeFloorCells(s, m).slice(0, n);
+  const out: Pt[] = [];
+  for (const p of freeFloorCells(s, m)) {
+    if (out.length >= n) break;
+    if (!canPlace(s, 'table_in', p.x, p.y).ok) continue;
+    if (out.some((q) => Math.abs(q.x - p.x) + Math.abs(q.y - p.y) === 1)) continue;
+    out.push(p);
+  }
+  return out;
 }
 /** 농원에서 수확한 적이 있나 (이달 수확 또는 지난달 카드) */
 function harvestedAny(s: GameState): boolean {

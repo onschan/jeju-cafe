@@ -4,7 +4,7 @@ import { START_HOUR } from './clock.ts';
 import { makeParcels } from './parcels.ts';
 import { PARCEL_W, PARCEL_H, START_ORIGIN, GRID_W, GRID_H, VILLAGE_ROAD_Y } from './layout.ts';
 import { initRoutes } from './entry.ts';
-import { occupy, canPlaceMain } from './grid.ts';
+import { occupy, canPlaceMain, canPlace, placeObject } from './grid.ts';
 import { initGuestTypes, initSegmentPopularity } from './segments.ts';
 import { DEFAULT_CAFE_NAME } from './cafe.ts';
 import { START_BUILDERS } from './build.ts';
@@ -37,10 +37,12 @@ export const START_SPAWN_ACC = 0.6;
 const ORCHARD_TREES = [{ lx: 2, ly: 2 }, { lx: 6, ly: 2 }, { lx: 2, ly: 5 }, { lx: 6, ly: 5 }];
 /** 완성 시작 상태의 본관 자리 (필지 상대, 3×2): 문 = 정면 왼쪽 (3,2), 그 앞 (3,3)이 창고 앞 (layout.ts WAREHOUSE_FRONT) */
 export const START_MAIN = { lx: 3, ly: 1 } as const;
-/** 시작 필지 안 시작 시설 (필지 상대): 본관 문 앞(3,3)에서 정낭(4,6)까지 올렛길, 그 양옆에 테이블 2 + 파라솔 1 */
+/** 시작 필지 안 시작 시설 (필지 상대): 본관 문 앞(3,3)에서 정낭(4,6)까지 올렛길, 그 양옆에 테이블 2 + 파라솔 1,
+ *  본관 안 실내 테이블 2 (fix-indoor: 그림으로 박혀 있던 가구 대신 정식 배치 — 뒷벽 카운터 칸(4,1)·(5,1)을 피해 문 옆 (3,1)과 (5,2)) */
 export const START_PATH: { lx: number; ly: number }[] = [{ lx: 3, ly: 3 }, { lx: 4, ly: 3 }, { lx: 4, ly: 4 }, { lx: 4, ly: 5 }];
 export const START_SEATS: { type: string; lx: number; ly: number }[] = [
   { type: 'table_out', lx: 3, ly: 4 }, { type: 'table_out', lx: 5, ly: 4 }, { type: 'table_parasol', lx: 5, ly: 5 },
+  { type: 'table_in', lx: 3, ly: 1 }, { type: 'table_in', lx: 5, ly: 2 },
 ];
 
 /** 필지 안 상대 좌표 (lx, ly)의 지형. */
@@ -112,12 +114,16 @@ function stampMain(state: GameState): void {
   }
 }
 
-/** §7.2 건너뛰기: 맨땅에 기존 완성 시작 상태(본관·올렛길·테이블 2·파라솔·메뉴 3종)를 채운다. 이미 있는 칸은 건너뛴다. */
-export function fillStarterLayout(state: GameState): void {
+/** §7.2 건너뛰기: 맨땅에 기존 완성 시작 상태(본관·올렛길·테이블 2·파라솔·실내 테이블 2·메뉴 3종)를 채운다. 이미 있는 칸은 건너뛴다.
+ *  indoor=false면 본관 안은 비워 둔다 (장 건너뛰기 — 튜토리얼 24단계에서 실내 테이블을 처음 놓는다). */
+export function fillStarterLayout(state: GameState, indoor = true): void {
   const { x: ox, y: oy } = START_ORIGIN;
   stampMain(state);
   for (const c of START_PATH) stamp(state, 'path', ox + c.lx, oy + c.ly);
-  for (const st of START_SEATS) stamp(state, st.type, ox + st.lx, oy + st.ly);
+  for (const st of START_SEATS) {
+    if (objectDef(st.type).indoor) { if (indoor && canPlace(state, st.type, ox + st.lx, oy + st.ly).ok) placeObject(state, st.type, ox + st.lx, oy + st.ly); } // 실내 가구는 방 바닥 위에 정식 배치 (고정 설비·통로 검사)
+    else stamp(state, st.type, ox + st.lx, oy + st.ly);
+  }
   for (const m of START_MENUS) {
     if (state.menuSlots.includes(m)) continue;
     const slot = state.menuSlots.indexOf(null);

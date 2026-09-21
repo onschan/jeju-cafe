@@ -8,7 +8,7 @@
  */
 import type { GameState, PlacedObject, ApplyResult, MainState, MainWork, Guest, Pt } from './types.ts';
 import { objectDef, ANNEX_IDS } from '../data/index.ts';
-import { cellAt, objectAt, roomAt, doorFrontOf, doorOf, footprint, footprintOf, sizeOf, canPlaceMain, canPlace, placeObject, objectsInRoom, removeObject, occupy, vacate, inBounds } from './grid.ts';
+import { cellAt, objectAt, roomAt, doorFrontOf, doorOf, footprint, footprintOf, sizeOf, canPlaceMain, canPlace, placeObject, objectsInRoom, removeObject, occupy, vacate, inBounds, fixedCellsOf, isFixedCell } from './grid.ts';
 import { isDoorReachable, isWalkable, reachMap, busStopPos, cellKey } from './path.ts';
 import { seasonOf, monthIndex } from './clock.ts';
 import { dayIndex } from './effects.ts';
@@ -179,10 +179,14 @@ export function roomSeatsUsed(state: GameState, room: PlacedObject): number {
   ids.add(room.id);
   return state.guests.filter((g) => g.seatId && ids.has(g.seatId) && g.phase !== 'leaving').length;
 }
-/** 실내 가구가 놓일 수 있는 빈 바닥 칸 (문 칸 제외) */
+/** 방의 고정 설비 칸(카운터+주방, 뒷벽 1줄) — 배치 불가·걷기 불가 (fix-indoor, grid.ts fixedCellsOf). 카운터 앞 1줄이 직원 대기·주문 칸. */
+export function fixedCells(room: PlacedObject): Pt[] {
+  return fixedCellsOf(room);
+}
+/** 실내 가구가 놓일 수 있는 빈 바닥 칸 (문 칸·고정 설비 칸 제외) */
 export function freeFloorCells(state: GameState, room: PlacedObject): Pt[] {
   const door = doorOf(room);
-  return footprintOf(room).filter((p) => { const c = cellAt(state, p.x, p.y); return c.objectId === room.id && !(p.x === door.x && p.y === door.y); });
+  return footprintOf(room).filter((p) => { const c = cellAt(state, p.x, p.y); return c.objectId === room.id && !(p.x === door.x && p.y === door.y) && !isFixedCell(state, p.x, p.y); });
 }
 
 // ---------- 별관·길 끊김 (P1-13) ----------

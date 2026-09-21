@@ -1,7 +1,9 @@
 import type { GameState } from './types.ts';
 import { initRoutes } from './entry.ts';
 import { SAVE_VERSION } from './state.ts';
-import { footprintOf } from './grid.ts';
+import { footprintOf, fixedCellsOf } from './grid.ts';
+import { objectDef } from '../data/index.ts';
+import { josa } from './josa.ts';
 import { initMain } from './rooms.ts';
 import { initEnding } from './ending.ts'; // z-ending
 import { initVillage } from './village.ts'; // z-ending
@@ -18,7 +20,23 @@ export function deserialize(json: string): GameState {
   if (obj.version !== SAVE_VERSION) throw new Error(`save version mismatch: ${obj.version} (expected ${SAVE_VERSION})`);
   backfill(obj);
   rebuildCellOwnership(obj);
+  evictFixedCellFurniture(obj);
   return obj;
+}
+
+/** fix-indoor: 옛 저장에서 카운터·주방 고정 칸(뒷벽 줄) 위에 놓여 있던 실내 가구는 걷어내고 값을 돌려준다 (그 칸은 이제 배치 불가). */
+function evictFixedCellFurniture(state: GameState): void {
+  const fixed = new Set<string>();
+  for (const o of Object.values(state.objects)) for (const p of fixedCellsOf(o)) fixed.add(`${p.x},${p.y}`);
+  if (fixed.size === 0) return;
+  for (const o of Object.values(state.objects)) {
+    const def = objectDef(o.type);
+    if (!def.indoor || !footprintOf(o).some((p) => fixed.has(`${p.x},${p.y}`))) continue;
+    for (const p of footprintOf(o)) { const c = state.grid.cells[p.y * state.grid.w + p.x]; if (c) c.objectId = c.roomId; }
+    delete state.objects[o.id];
+    state.money += def.cost;
+    state.notices.push(`${josa(def.name, '이/가')} 카운터 자리에 있어 치우고 값을 돌려줬어요`);
+  }
 }
 
 /** 같은 SAVE_VERSION 안에서 뒤에 추가된 필드를 기본값으로 채운다 (버전을 올리지 않고 붙인 필드). */

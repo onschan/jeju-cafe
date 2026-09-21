@@ -49,7 +49,7 @@ function clearAlerts(s: GameState) { s.alerts = []; }
 /** 단계 id까지 끝난 상태로 만든다 (앞 단계 보상만 적용, 조건은 안 만든다) */
 function stateAtStep(step: number, seed = 1): GameState {
   const s = tutorialState(seed);
-  fillStarterLayout(s);
+  fillStarterLayout(s, false); // 손으로 하는 튜토리얼: 본관 안은 24단계에서 채운다
   for (const st of STEPS) {
     if (st.id > step) break;
     for (const r of st.reward) {
@@ -229,12 +229,13 @@ describe('손으로 하는 튜토리얼 「할망의 가르침」 33단계·5장
     expect(apply(s, { type: 'skipTutorial' }).ok).toBe(true);
     expect(s.tutorial).toEqual({ step: TUTORIAL_STEPS, skipped: true, seen: [] });
     expect(mainBuilding(s)).toMatchObject(at(START_MAIN.lx, START_MAIN.ly));
-    const seats = Object.values(s.objects).filter((o) => o.type === 'table_out' || o.type === 'table_parasol');
+    const seats = Object.values(s.objects).filter((o) => o.type === 'table_out' || o.type === 'table_parasol' || o.type === 'table_in');
     expect(seats).toHaveLength(START_SEATS.length);
+    expect(Object.values(s.objects).filter((o) => o.type === 'table_in')).toHaveLength(2); // fix-indoor: 본관 안 실내 테이블 2
     expect(Object.values(s.objects).filter((o) => o.type === 'path')).toHaveLength(START_PATH.length);
     expect(s.menuSlots.slice(0, START_MENUS.length)).toEqual(START_MENUS);
     expect(canOpen(s)).toBe(true);
-    expect(s.alerts.filter((a) => a.type === 'reward')).toHaveLength(0); // 건너뛰면 단계 보상 없음
+    expect(s.alerts.filter((a) => a.type === 'reward' && a.source !== 'goal')).toHaveLength(0); // 건너뛰면 단계 보상 없음 (시작 좌석 5개로 목표 「자리 4개」는 바로 이룬다)
     const t = tutorialState();
     t.tutorial.step = 1;
     expect(apply(t, { type: 'skipTutorial' }).ok).toBe(false);
@@ -261,6 +262,7 @@ describe('손으로 하는 튜토리얼 「할망의 가르침」 33단계·5장
     expect(s.money).toBe(money);
     expect(s.tickets).toBe(0);
     expect(s.alerts.filter((a) => a.type === 'reward')).toHaveLength(0);
+    expect(Object.values(s.objects).filter((o) => o.type === 'table_in')).toHaveLength(0); // 장 건너뛰기는 본관 안을 비워 둔다 (24단계에서 처음 놓는다)
     expect(Object.values(s.objects).filter((o) => o.type === 'path')).toHaveLength(START_PATH.length); // 맨땅을 채워 바로 영업
     expect(mainBuilding(s)).not.toBeNull();
     expect(canOpen(s)).toBe(true);

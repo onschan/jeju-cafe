@@ -59,38 +59,43 @@ def warehouse(level: int = 1) -> IsoCanvas:
         for z in (z2 + 4, z2 + 8):
             c.line((0.2, 0.2, z), (0.2, 1.95, z), WOOD[2]); c.line((0.2, 0.2, z), (2.95, 0.2, z), WOOD[2])
             c.line((0.2, 0.2, z - 1), (0.2, 1.95, z - 1), WOOD[0]); c.line((0.2, 0.2, z - 1), (2.95, 0.2, z - 1), WOOD[0])
-    # 실내: 에스프레소 카운터(뒤-오른쪽 벽 앞) + 선반 + 테이블
-    z = r.z
-    top = counter_block(c, (0.5, 0.3, 2.3, 0.62), z)
-    espresso_machine(c, 0.85, 0.4, top)
-    c.pillar(1.25, 0.4, 3, 8, BLACK, z0=top); c.disc(1.25, 0.4, 0.06, 2, STEEL, z0=top + 8)
-    for x, col in ((1.55, WHITE[1]), (1.75, RED[1]), (1.95, WHITE[1]), (2.15, YELLOW[1])):
-        cup(c, x, 0.4, top, col)
-    sx, sy = c.spx(2.1, 0.55, top); c.rect(sx - 3, sy - 5, 7, 4, BLACK[0]); c.rect(sx - 2, sy - 4, 5, 2, SKY[2])   # 포스
-    for x in (0.9, 1.4, 1.9):
-        stool(c, x, 0.82, z)
-    if level == 1:
-        table_set(c, 1.0, 1.4, z, (WHITE[1],)); table_set(c, 2.1, 1.4, z, (RED[1], WHITE[1]))
-        plant_in_pot(c, 2.75, 1.75, 0.1, 6, CLAY, LEAF, 5)
-        c.box(6, WOOD, (2.5, 0.25, 2.85, 0.6), z0=z); sx, sy = c.spx(2.68, 0.42, z + 6)
-        for dx, dy in ((-3, -2), (0, -3), (3, -2), (-1, -1), (2, 0)):
-            tangerine(c, sx + dx, sy + dy)
-    else:
-        table_set(c, 0.8, 1.35, z, (WHITE[1],), round_top=True); table_set(c, 1.6, 1.35, z, (RED[1], WHITE[1]), round_top=True)
-        table_set(c, 2.4, 1.35, z, (YELLOW[1],), round_top=True)
-        # 케이크 진열장
-        c.box(9, WHITE, (2.5, 0.28, 2.88, 0.6), z0=z); c.box(1, STEEL, (2.48, 0.26, 2.9, 0.62), z0=z + 9, edge=False)
-        for x, y, col in ((2.58, 0.4, PINK), (2.72, 0.36, YELLOW), (2.8, 0.5, RED)):
-            c.disc(x, y, 0.06, 3, col, z0=z + 10)
-        plant_in_pot(c, 2.75, 1.8, 0.1, 6, CLAY, LEAF, 5); plant_in_pot(c, 0.3, 1.8, 0.1, 6, CLAY, PINK, 5)
-        if level == 3:
-            string_lights(c, (0.12, 2.0, r.top - 2), (3.0, 0.12, r.top - 2), 10, 12)
-            sx, sy = c.spx(1.9, 1.85, z); lp = Canvas(12, 10); lp.rect(0, 0, 12, 10, WOOD[0])
-            for i, col in enumerate((RED, SKY, YELLOW, MINT)):
-                lp.rect(1 + i * 3, 2, 2, 7, col[1]); lp.put(1 + i * 3, 2, col[2])
-            c.box(9, WOOD, (1.75, 1.75, 2.05, 1.95), z0=z); c.blit(lp, sx - 6, sy - 18)
+    # 실내(fix-indoor): 고정 설비는 뒷벽 줄의 카운터+주방 칸(x=1..2, y=0 — rooms.ts fixedCells)뿐. 나머지 바닥은 비워 둔다 — 플레이어가 실내 가구를 놓는 자리.
+    counter_kitchen(c, r.z, 1, 3, level)
     c.outline()
     return c
+
+
+def counter_kitchen(c: IsoCanvas, z: int, x0: int, x1: int, level: int) -> None:
+    """뒷벽(y=0 줄) x0..x1 칸에 붙은 에스프레소 카운터 + 주방 블록. 칸 밖으로 나가지 않는다 (앞줄 y≥1은 손님·직원 통로).
+    왼쪽 칸: 카운터(에스프레소 머신·컵·포스), 오른쪽 끝 칸: 주방(조리대·화구·냉장고). 칸이 2개뿐이면 카운터 1 + 주방 1."""
+    n = x1 - x0
+    kx = x1 - 1                                  # 주방 칸
+    # 카운터 (x0 .. kx)
+    top = counter_block(c, (x0 + 0.12, 0.3, kx - 0.08, 0.66), z)
+    espresso_machine(c, x0 + 0.45, 0.42, top)
+    c.pillar(x0 + 0.85, 0.42, 3, 8, BLACK, z0=top); c.disc(x0 + 0.85, 0.42, 0.06, 2, STEEL, z0=top + 8)   # 그라인더
+    cols = (WHITE[1], RED[1], WHITE[1], YELLOW[1], SKY[2])
+    cx = x0 + 1.15
+    i = 0
+    while cx < kx - 0.45:
+        cup(c, cx, 0.42, top, cols[i % len(cols)]); cx += 0.2; i += 1
+    sx, sy = c.spx(kx - 0.3, 0.55, top); c.rect(sx - 3, sy - 5, 7, 4, BLACK[0]); c.rect(sx - 2, sy - 4, 5, 2, SKY[2])   # 포스
+    if n >= 3 and level >= 2:
+        # 케이크 진열장 (카운터 오른쪽 끝)
+        cx0 = kx - 0.62
+        c.box(9, WHITE, (cx0, 0.28, cx0 + 0.42, 0.62), z0=z); c.box(1, STEEL, (cx0 - 0.02, 0.26, cx0 + 0.44, 0.64), z0=z + 9, edge=False)
+        for dx, dy, col in ((0.1, 0.4, PINK), (0.24, 0.36, YELLOW), (0.32, 0.52, RED)):
+            c.disc(cx0 + dx, dy, 0.06, 3, col, z0=z + 10)
+    # 주방 칸: 스테인리스 조리대 + 화구·냄비 + 냉장고
+    ktop = counter_block(c, (kx + 0.1, 0.15, kx + 0.62, 0.55), z, 12, STEEL, (STEEL[0], STEEL[1], STEEL[2]))
+    c.disc(kx + 0.3, 0.32, 0.07, 1, BLACK, z0=ktop)
+    sx, sy = c.spx(kx + 0.3, 0.32, ktop + 1); c.rect(sx - 3, sy - 4, 6, 4, STEEL[1]); c.hline(sx - 3, sx + 2, sy - 4, STEEL[2]); smoke(c, sx, sy - 7, 2)   # 냄비
+    c.box(24, STEEL, (kx + 0.66, 0.12, kx + 0.94, 0.42), z0=z); sx, sy = c.spx(kx + 0.94, 0.27, z + 14); c.put(sx - 1, sy, STEEL[0]); c.put(sx - 1, sy + 1, STEEL[0])   # 냉장고
+    if level == 1:
+        # 감귤 상자 (주방 앞)
+        c.box(5, WOOD, (kx + 0.15, 0.62, kx + 0.5, 0.9), z0=z); sx, sy = c.spx(kx + 0.32, 0.76, z + 5)
+        for dx, dy in ((-3, -2), (0, -3), (3, -2), (-1, -1), (2, 0)):
+            tangerine(c, sx + dx, sy + dy)
 
 
 def kitchen_ext() -> IsoCanvas:
@@ -183,25 +188,8 @@ def _hall_walls(c: IsoCanvas, w: int, h: int, wall_h: int, wall, sign_w: int) ->
 
 
 def _hall_interior(c: IsoCanvas, r: Room, w: int, h: int, level: int) -> None:
-    """뒤-오른쪽 벽 앞 에스프레소 카운터(왼쪽 위 벽에 붙음) + 원탁들 + 화분 + 케이크 진열장. Lv4는 알전구."""
-    z = r.z
-    top = counter_block(c, (0.5, 0.3, min(2.3, w - 0.9), 0.62), z)
-    espresso_machine(c, 0.85, 0.4, top)
-    c.pillar(1.25, 0.4, 3, 8, BLACK, z0=top); c.disc(1.25, 0.4, 0.06, 2, STEEL, z0=top + 8)
-    for x, col in ((1.55, WHITE[1]), (1.75, RED[1]), (1.95, WHITE[1])):
-        cup(c, x, 0.4, top, col)
-    for x in (0.9, 1.4, 1.9):
-        stool(c, x, 0.82, z)
-    # 케이크 진열장 (카운터 오른쪽)
-    cx0 = min(2.5, w - 0.9)
-    c.box(9, WHITE, (cx0, 0.28, cx0 + 0.38, 0.6), z0=z); c.box(1, STEEL, (cx0 - 0.02, 0.26, cx0 + 0.4, 0.62), z0=z + 9, edge=False)
-    for dx, dy, col in ((0.08, 0.4, PINK), (0.22, 0.36, YELLOW), (0.3, 0.5, RED)):
-        c.disc(cx0 + dx, dy, 0.06, 3, col, z0=z + 10)
-    # 장식 원탁은 오른쪽 벽가 한 줄만 — 나머지 바닥은 플레이어가 실내 가구(§8.3)를 놓는 자리
-    cups = ((WHITE[1],), (RED[1], WHITE[1]), (YELLOW[1],), (WHITE[1], SKY[2]))
-    for i, ty in enumerate(range(1, h - 1)):
-        table_set(c, w - 0.45, ty + 0.5, z, cups[i % 4], round_top=True)
-    plant_in_pot(c, w - 0.3, h - 0.3, 0.1, 6, CLAY, LEAF, 5); plant_in_pot(c, 0.3, h - 0.25, 0.1, 6, CLAY, PINK, 5)
+    """뒷벽 줄(y=0) x=1..w-1 칸의 카운터+주방 블록만 고정 설비(rooms.ts fixedCells). 나머지 바닥은 비워 둔다 — 플레이어가 실내 가구(§8.3)를 놓는 자리. Lv4는 알전구."""
+    counter_kitchen(c, r.z, 1, w, level)
     if level >= 4:
         string_lights(c, (0.4, h - 0.4, r.top - 2), (w - 0.4, 0.4, r.top - 2), 10, 14)
 
@@ -240,7 +228,7 @@ def floor2_band(level: int) -> IsoCanvas:
 
 
 def annex_cafe() -> IsoCanvas:
-    """카페 별관 4×3: 흰 벽·초록 차양, 안에 원탁 6."""
+    """카페 별관 4×3: 흰 벽·초록 차양. 안은 뒷벽 카운터만 있는 빈 바닥."""
     w, h = 4, 3
     c = cv(60, w, h, pad=8, shadow=1.8)
     tile_floor(c, (0, 0, w, h), 3, TILE_A, TILE_B, 0.25)
@@ -253,21 +241,14 @@ def annex_cafe() -> IsoCanvas:
     for k in range(w):
         r.on_right(window_sprite(14, 11), 12 + k * 32, 12)
     awning(c, (0.12, h - 1.15, 0.5, h - 0.45), r.top - 9, LEAF, WHITE, 'y', 3)
-    z = r.z
-    cups = ((WHITE[1],), (RED[1], WHITE[1]), (YELLOW[1],))
-    i = 0
-    for ty in range(h):
-        for tx in range(w):
-            if (tx == 0 and ty == h - 1) or ty == 1:
-                continue
-            table_set(c, tx + 0.55, ty + 0.5, z, cups[i % 3], round_top=True); i += 1
-    plant_in_pot(c, w - 0.3, h - 0.3, 0.1, 6, CLAY, LEAF, 5)
+    # fix-indoor: 고정 설비는 뒷벽 줄 x=1..3 카운터+주방뿐, 바닥은 비워 둔다(실내 가구 자리)
+    counter_kitchen(c, r.z, 1, w, 2)
     c.outline()
     return c
 
 
 def greenhouse_cafe() -> IsoCanvas:
-    """온실 카페 3×3: 낮은 돌 기단 + 유리 벽(반투명) + 안에 화분·테이블. 지붕 없음(방 문법)."""
+    """온실 카페 3×3: 낮은 돌 기단 + 유리 벽(반투명). 안은 뒷벽 카운터·화분만 있는 빈 바닥. 지붕 없음(방 문법)."""
     w, h = 3, 3
     c = cv(52, w, h, pad=8, shadow=1.5)
     r = room(c, (0, 0, w, h), 4, STONE3, PALEWOOD, 'y', base_h=4, step=0.3)
@@ -275,9 +256,10 @@ def greenhouse_cafe() -> IsoCanvas:
     glass_box(c, (0, 0, 0.12, h), 24, z0=r.top, alpha=120)
     r.on_left(door_sprite(18, 19), 7, 8 - 19 + 4)
     z = r.z
-    for x, y, leaf in ((0.5, 0.5, LEAF), (1.5, 0.45, PINK), (2.5, 0.5, YELLOW), (2.6, 1.5, LEAF), (0.4, 1.6, LEAF)):
-        plant_in_pot(c, x, y, 0.13, 7, CLAY, leaf, 6)
-    table_set(c, 1.55, 1.5, z, (WHITE[1],), round_top=True); table_set(c, 2.5, 2.4, z, (SKY[2], WHITE[1]), round_top=True); table_set(c, 1.5, 2.45, z, (RED[1],), round_top=True)
+    # fix-indoor: 고정 설비는 뒷벽 줄 x=1..2 (작은 카운터 + 화분 선반)뿐, 바닥은 비워 둔다(실내 가구 자리)
+    counter_kitchen(c, z, 1, w, 1)
+    for x, y, leaf in ((1.2, 0.8, LEAF), (2.75, 0.75, PINK)):
+        plant_in_pot(c, x, y, 0.11, 6, CLAY, leaf, 5)
     c.outline()
     return c
 

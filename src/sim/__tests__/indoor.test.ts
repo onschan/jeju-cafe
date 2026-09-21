@@ -3,7 +3,8 @@ import { X, Y } from './helpers.ts';
 import { apply } from '../actions.ts';
 import { createInitialState } from '../state.ts';
 import { checkFeature } from '../goals.ts';
-import { canPlace, placeObject, cellAt, objectAt, doorOf, doorFrontOf, roomAt, isRoomFloor, objectsInRoom } from '../grid.ts';
+import { canPlace, placeObject, cellAt, objectAt, doorOf, doorFrontOf, roomAt, isRoomFloor, objectsInRoom, isFixedCell } from '../grid.ts';
+import { fixedCells, freeFloorCells } from '../rooms.ts';
 import { serialize, deserialize } from '../save.ts';
 import { isWalkable, walkableNeighborsOf, findPath, busStopPos, isDoorReachable } from '../path.ts';
 import { advanceConstruction, needsDoorPath, DOOR_PATH_HINT } from '../build.ts';
@@ -48,9 +49,14 @@ test('방 발자국 칸은 roomId를 갖고, 문은 정면 왼쪽, 빈 바닥은
     const c = cellAt(s, wh.x + dx, wh.y + dy);
     expect(c.roomId).toBe(wh.id);
     expect(c.objectId).toBe(wh.id);
-    expect(isRoomFloor(s, wh.x + dx, wh.y + dy)).toBe(true);
-    expect(isWalkable(s, wh.x + dx, wh.y + dy)).toBe(true);
+    // fix-indoor: 뒷벽 줄(dy 0)의 문 기둥(dx 0)을 뺀 칸은 카운터·주방 고정 설비 — 못 걷고 못 놓는다
+    const fixed = dy === 0 && dx > 0;
+    expect(isFixedCell(s, wh.x + dx, wh.y + dy)).toBe(fixed);
+    expect(isRoomFloor(s, wh.x + dx, wh.y + dy)).toBe(!fixed);
+    expect(isWalkable(s, wh.x + dx, wh.y + dy)).toBe(!fixed);
   }
+  expect(fixedCells(wh)).toEqual([{ x: X(4), y: Y(1) }, { x: X(5), y: Y(1) }]);
+  expect(freeFloorCells(s, wh)).toEqual([{ x: X(3), y: Y(1) }, { x: X(4), y: Y(2) }, { x: X(5), y: Y(2) }]);
   expect(doorOf(wh)).toEqual({ x: X(3), y: Y(2) });
   expect(roomAt(s, X(4), Y(1))?.id).toBe(wh.id);
   expect(roomAt(s, X(0), Y(0))).toBeNull();
@@ -62,21 +68,22 @@ test('실내 오브젝트는 방 바닥 위에만, 문 칸엔 못 놓고, 바깥
   const wh = warehouse(s);
   expect(canPlace(s, 'table_in', X(0), Y(0)).reason).toBe('실내 가구는 건물 안에만 놓아요');
   expect(canPlace(s, 'table_in', X(3), Y(2)).reason).toBe('문 앞은 비워 둬요');
-  expect(canPlace(s, 'table_in', X(4), Y(1)).ok).toBe(true);
-  expect(canPlace(s, 'carrot_field', X(4), Y(1)).reason).toBe('이미 뭔가 있어요');
-  const t = placeObject(s, 'table_in', X(4), Y(1));
-  expect(cellAt(s, X(4), Y(1))).toEqual({ terrain: expect.any(String), objectId: t.id, roomId: wh.id });
-  expect(objectAt(s, X(4), Y(1))?.id).toBe(t.id);
-  expect(isWalkable(s, X(4), Y(1))).toBe(false); // 가구가 있는 바닥은 못 걷는다
-  expect(canPlace(s, 'table_in', X(4), Y(1)).reason).toBe('이미 뭔가 있어요');
-  expect(objectsInRoom(s, wh.id).map((o) => o.id)).toEqual([t.id]);
+  expect(canPlace(s, 'table_in', X(4), Y(1)).reason).toBe('카운터·주방 자리예요'); // fix-indoor: 고정 설비 칸
   // 2×1 카운터는 한 방 안에 다 들어가야 한다
   expect(canPlace(s, 'counter', X(4), Y(2)).ok).toBe(true);   // (4,2),(5,2)
   expect(canPlace(s, 'counter', X(5), Y(2)).ok).toBe(false);  // (6,2)는 바깥
+  expect(canPlace(s, 'table_in', X(4), Y(2)).ok).toBe(true);
+  expect(canPlace(s, 'carrot_field', X(4), Y(2)).reason).toBe('이미 뭔가 있어요');
+  const t = placeObject(s, 'table_in', X(4), Y(2));
+  expect(cellAt(s, X(4), Y(2))).toEqual({ terrain: expect.any(String), objectId: t.id, roomId: wh.id });
+  expect(objectAt(s, X(4), Y(2))?.id).toBe(t.id);
+  expect(isWalkable(s, X(4), Y(2))).toBe(false); // 가구가 있는 바닥은 못 걷는다
+  expect(canPlace(s, 'table_in', X(4), Y(2)).reason).toBe('이미 뭔가 있어요');
+  expect(objectsInRoom(s, wh.id).map((o) => o.id)).toEqual([t.id]);
   // 치우면 다시 방 바닥이 된다
   expect(apply(s, { type: 'remove', objectId: t.id }).ok).toBe(true);
-  expect(cellAt(s, X(4), Y(1)).objectId).toBe(wh.id);
-  expect(isRoomFloor(s, X(4), Y(1))).toBe(true);
+  expect(cellAt(s, X(4), Y(2)).objectId).toBe(wh.id);
+  expect(isRoomFloor(s, X(4), Y(2))).toBe(true);
 });
 
 test('장식 22종: 마당 장식(deco_planter)은 밖에, 실내 장식(deco_cake_case)은 폐창고 안에만 놓는다', () => {
@@ -87,15 +94,17 @@ test('장식 22종: 마당 장식(deco_planter)은 밖에, 실내 장식(deco_ca
   expect(objectDef('deco_cake_case').indoor).toBe(true);
   // 마당 장식: 빈 마당 칸엔 놓을 수 있고, 방 바닥엔 못 놓는다(이미 방이 그 칸을 차지)
   expect(canPlace(s, 'deco_planter', X(0), Y(0)).ok).toBe(true);
-  expect(canPlace(s, 'deco_planter', X(4), Y(1)).reason).toBe('이미 뭔가 있어요');
+  expect(canPlace(s, 'deco_planter', X(4), Y(2)).reason).toBe('이미 뭔가 있어요');
   // 실내 장식: 마당엔 못 놓고, 폐창고 방 바닥엔 놓을 수 있다
   expect(canPlace(s, 'deco_cake_case', X(0), Y(0)).reason).toBe('실내 가구는 건물 안에만 놓아요');
-  expect(canPlace(s, 'deco_cake_case', X(4), Y(1)).ok).toBe(true);
-  placeObject(s, 'deco_cake_case', X(4), Y(1));
-  expect(objectsInRoom(s, wh.id).map((o) => o.type)).toEqual(['deco_cake_case']);
   // 2×1 카운터 바도 실내 전용, 한 방 안에 다 들어가야 한다
   expect(canPlace(s, 'counter_bar', X(4), Y(2)).ok).toBe(true);
   expect(canPlace(s, 'counter_bar', X(5), Y(2)).ok).toBe(false);
+  expect(canPlace(s, 'deco_cake_case', X(3), Y(1)).ok).toBe(true);
+  placeObject(s, 'deco_cake_case', X(3), Y(1));
+  expect(objectsInRoom(s, wh.id).map((o) => o.type)).toEqual(['deco_cake_case']);
+  // fix-indoor: 문(3,2)이 장식·카운터 바에 갇히면 카운터까지 갈 길이 없다
+  expect(canPlace(s, 'counter_bar', X(4), Y(2)).reason).toBe('손님이 카운터까지 갈 길이 없어요');
 });
 
 test('가구가 든 방은 못 옮기고 못 치운다; 실내 오브젝트 move는 방 안에서만', () => {
@@ -110,9 +119,9 @@ test('가구가 든 방은 못 옮기고 못 치운다; 실내 오브젝트 move
   expect(apply(s, { type: 'move', objectId: k.id, x: X(1), y: Y(1) }).reason).toBe('안에 가구가 있어요');
   expect(apply(s, { type: 'remove', objectId: k.id }).reason).toBe('안에 가구가 있어요');
   expect(apply(s, { type: 'move', objectId: t.id, x: X(2), y: Y(0) }).reason).toBe('실내 가구는 건물 안에만 놓아요');
-  expect(apply(s, { type: 'move', objectId: t.id, x: X(4), y: Y(1) }).ok).toBe(true); // 폐창고 안으로
+  expect(apply(s, { type: 'move', objectId: t.id, x: X(4), y: Y(2) }).ok).toBe(true); // 폐창고 안으로
   expect(cellAt(s, X(1), Y(0)).objectId).toBe(k.id);
-  expect(cellAt(s, X(4), Y(1)).objectId).toBe(t.id);
+  expect(cellAt(s, X(4), Y(2)).objectId).toBe(t.id);
   // 이제 빈 방은 옮길 수 있고 roomId가 따라간다
   expect(apply(s, { type: 'move', objectId: k.id, x: X(0), y: Y(2) }).ok).toBe(true);
   expect(cellAt(s, X(0), Y(0)).roomId).toBeNull();
@@ -125,19 +134,20 @@ test('가구가 든 방은 못 옮기고 못 치운다; 실내 오브젝트 move
 test('방은 문으로만 드나든다: 문 앞에 길을 놓으면 안까지 경로가 생기고, 다른 변에선 못 들어간다', () => {
   const s = bareState(1);
   const wh = warehouse(s);
-  // 문 (3,2) 아래 (3,3)에 길이 없으면 방 안(4,1)까지 못 간다. (4,3)·(5,3)에 길이 있어도 (4,2)는 문이 아니라 못 들어간다.
+  // 문 (3,2) 아래 (3,3)에 길이 없으면 방 안(4,2)까지 못 간다. (4,3)·(5,3)에 길이 있어도 (4,2)는 문이 아니라 못 들어간다.
   placeObject(s, 'path', X(4), Y(3));
   placeObject(s, 'path', X(4), Y(4));
   placeObject(s, 'path', X(4), Y(5));
   expect(walkableNeighborsOf(s, X(4), Y(3)).some((p) => p.y === Y(2))).toBe(false);
-  expect(findPath(s, busStopPos(s), { x: X(4), y: Y(1) })).toBeNull();
+  expect(findPath(s, busStopPos(s), { x: X(4), y: Y(2) })).toBeNull();
   placeObject(s, 'path', X(3), Y(3));
   expect(walkableNeighborsOf(s, X(3), Y(3)).some((p) => p.x === X(3) && p.y === Y(2))).toBe(true);
-  const path = findPath(s, busStopPos(s), { x: X(5), y: Y(1) })!;
+  const path = findPath(s, busStopPos(s), { x: X(5), y: Y(2) })!;
   expect(path).not.toBeNull();
   expect(path.some((p) => p.x === doorOf(wh).x && p.y === doorOf(wh).y)).toBe(true);
+  expect(findPath(s, busStopPos(s), { x: X(5), y: Y(1) })).toBeNull(); // fix-indoor: 카운터·주방 칸은 못 걷는다
   // 손님이 실내 테이블에 앉는다
-  placeObject(s, 'table_in', X(5), Y(1));
+  placeObject(s, 'table_in', X(5), Y(2));
   setSlot(s, 0, 'carrot_juice');
   s.storage['carrot'] = 5;
   expect(spawnGuests(s, 1)).toBe(1);
@@ -173,8 +183,8 @@ test('실내 테이블이 완공됐는데 문 앞까지 길이 없으면 알림�
   s.unlocked.objects.push('table_in');
   const wh = warehouse(s);
   expect(isDoorReachable(s, wh)).toBe(false);
-  expect(apply(s, { type: 'place', objectType: 'table_in', x: X(5), y: Y(1) }).ok).toBe(true);
-  const t = objectAt(s, X(5), Y(1))!;
+  expect(apply(s, { type: 'place', objectType: 'table_in', x: X(5), y: Y(2) }).ok).toBe(true);
+  const t = objectAt(s, X(5), Y(2))!;
   expect(needsDoorPath(s, t)).toBe(true);
   s.clock.day += 1;
   expect(advanceConstruction(s)).toEqual([t.id]);
