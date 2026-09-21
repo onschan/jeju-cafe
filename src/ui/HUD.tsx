@@ -1,5 +1,3 @@
-import { useGame } from './store';
-
 /** 연구 포인트를 짧게: 1만 이상은 '1.2만'(소수 1자리), 그 아래는 구분 기호 없이 그대로. */
 export function compactNumber(n: number): string {
   const a = Math.abs(n);
@@ -12,17 +10,4 @@ export function compactNumber(n: number): string {
 export function clockText(hour: number): string {
   const h12 = hour % 12 === 0 ? 12 : hour % 12;
   return `${hour < 12 || hour >= 24 ? 'AM' : 'PM'} ${h12}:00`;
-}
-
-/** 밤 오버레이 알파: 18시 0 → 22시 0.55 */
-export function nightAlpha(hour: number): number {
-  return Math.max(0, Math.min(1, (hour - 18) / 4)) * 0.55;
-}
-
-/** 캔버스 위·셸 아래에 깔리는 밤 어둠. 터치는 통과한다. */
-export function NightOverlay() {
-  const s = useGame();
-  const a = nightAlpha(s.clock.hour);
-  if (a <= 0) return null;
-  return <div data-testid="night" style={{ position: 'absolute', inset: 0, background: `rgba(11,26,58,${a.toFixed(3)})`, pointerEvents: 'none' }} />;
 }

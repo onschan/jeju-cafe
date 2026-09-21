@@ -65,11 +65,28 @@ export function useSpotlightPref(): boolean {
   return useSyncExternalStore((l) => { listeners.add(l); return () => { listeners.delete(l); }; }, spotlightOn, spotlightOn);
 }
 
-/** 현재 단계의 DOM 타깃(data-tut 값)과 맵 칸 */
-export function tutorialTargets(s: GameState): { targets: string[]; cells: Pt[] } {
+/** 맵 글로우 칸 위 말풍선 문구 (단계 key별). 빛나는 칸엔 반드시 왜 빛나는지 적는다 (fix-indoor). 표에 없는 단계는 기본 문구. */
+export const CELL_LABEL: Record<string, string> = {
+  look: '탭해서 둘러보기',
+  build_main: '본관 추천 자리',
+  look_main: '본관을 탭해 보기',
+  path: '여기까지 길 잇기',
+  seat_view: '여기에 자리 놓기',
+  first_pay: '손님이 오는 정류장',
+  wall: '여기에 돌담 놓기',
+  site_seat: '추천 자리',
+  combo2: '콤보 ◎ 자리',
+  seats4: '여기에 자리 놓기',
+  expand: '치워야 증축돼요',
+  indoor2: '여기에 실내 테이블',
+  parking: '여기에 주차장',
+};
+export const CELL_LABEL_DEFAULT = '여기에 놓아 보라';
+/** 현재 단계의 DOM 타깃(data-tut 값)과 맵 칸, 칸 라벨 */
+export function tutorialTargets(s: GameState): { targets: string[]; cells: Pt[]; label: string } {
   const step = currentTutorialStep(s);
-  if (!step) return { targets: [], cells: [] };
-  return { targets: step.targets, cells: step.cells(s) };
+  if (!step) return { targets: [], cells: [], label: '' };
+  return { targets: step.targets, cells: step.cells(s), label: CELL_LABEL[step.key] ?? CELL_LABEL_DEFAULT };
 }
 
 /** 창 안(전체 화면 창·대화창·팝업)에 있으면 어둠을 안 깐다 — 창이 밝고 타깃만 글로우 */
@@ -111,21 +128,21 @@ export function shouldBlockClick(target: Element | null): boolean {
   return !!target.closest(SHELL);
 }
 
-export interface HighlightView { setHighlightCells(cells: Pt[]): void; setSpotlightCells?(cells: Pt[] | null): void }
+export interface HighlightView { setHighlightCells(cells: Pt[], label?: string): void; setSpotlightCells?(cells: Pt[] | null): void }
 
 /** App에서 한 줄: useTutorialHighlight(viewRef.current). 상태가 바뀌거나 DOM이 바뀔 때마다 글로우·스포트라이트를 맞춘다. */
 export function useTutorialHighlight(view: HighlightView | null): void {
   const s = useGame();
   const spotlight = useSpotlightPref();
-  const { targets, cells } = tutorialTargets(s);
-  const key = targets.join('|') + '#' + cells.map((c) => `${c.x},${c.y}`).join('|');
+  const { targets, cells, label } = tutorialTargets(s);
+  const key = targets.join('|') + '#' + cells.map((c) => `${c.x},${c.y}`).join('|') + '#' + label;
   useEffect(() => {
     ensureStyle();
     let blocking = false;
     const paint = () => {
       const r = applyGlow(targets, document, spotlight);
       blocking = spotlight && r.spot > 0;
-      view?.setHighlightCells(cells);
+      view?.setHighlightCells(cells, label);
       // 맵 어둠: 스포트라이트가 켜져 있고 맵 칸 타깃이 있고, DOM 그림자가 맵을 덮고 있지 않을 때만
       view?.setSpotlightCells?.(spotlight && cells.length > 0 && r.spot === 0 ? cells : null);
     };

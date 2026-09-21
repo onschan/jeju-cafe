@@ -97,7 +97,7 @@ export function glowTexture(renderer: Renderer, radius = 48): Texture {
   const steps = 12;
   for (let i = steps; i >= 1; i--) {
     const k = i / steps;
-    g.circle(radius, radius, radius * k).fill({ color: 0xffd27a, alpha: 0.09 * (1 - k) + 0.02 });
+    g.circle(radius, radius, radius * k).fill({ color: 0xffd27a, alpha: 0.045 * (1 - k) + 0.012 }); // fix-indoor: 따뜻한 노랑. 링 12장이 add로 겹치므로 링당 알파는 낮게(중심 ≈0.4) — 반경이 커져도 하얗게 타지 않게
   }
   const tex = renderer.generateTexture(g);
   g.destroy();

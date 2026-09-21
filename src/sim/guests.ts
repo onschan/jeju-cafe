@@ -22,7 +22,8 @@ import { effectMult, noGuestsToday, filterMatches } from './effects.ts';
 import { spotGuestBonus, busSpots, isBusDay, BUS_HOUR, BUS_MIN, BUS_MAX, spotSpawnMult } from './spots.ts';
 import type { ParcelBonus } from './types.ts';
 import { seatsOf, isSeat } from './cafe.ts';
-import { filterSeatsForWeather, stayMs, browseChance, indoorSatisfaction, indoorSpawnMult, indoorFeeMult } from './rooms.ts'; // y-indoor 훅: 실내 우선·체류·둘러보기·만족·유입·바 요금
+import { filterSeatsForWeather, stayMs, browseChance, indoorSatisfaction, indoorSpawnMult, indoorFeeMult } from './rooms.ts';
+import { nightSatisfaction } from './lighting.ts'; // fix-indoor: 밤 조명 — 가로등 +2·어두운 야외 자리 −2 // y-indoor 훅: 실내 우선·체류·둘러보기·만족·유입·바 요금
 import { pushFx } from './fx.ts';
 import { menuOf, priceOf, likesStatsMatch, statsMatchCount, guestEvalBonus, guestLikesCategory, seatTimeMult, dignityPct, photoChance, menuOrderWeight, LIKE_BONUS_CAP } from './craft.ts';
 import { addAffinity, affinityGain, namedLikes, regularsDueNow, NAMED_MIN_SCENERY } from './popup.ts';
@@ -403,7 +404,7 @@ export function countGatesOn(state: GameState, path: Pt[]): number {
 }
 /** 만족 판정 가산(경치 단위): 콤보(손님층 +5·전체 +3)·청결(80 이상 +3, 50 미만 −5)은 10으로 나눠 경치 단위로 (트랙 A) + 정낭 인상(w-free) */
 export function extraSatisfaction(state: GameState, g: Guest, seat: PlacedObject): number {
-  return (comboSatisfaction(state, seat.id, g.type) + cleanSatisfaction(state)) / 10 + indoorSatisfaction(state, seat) + gateSatisfaction(g); // y-indoor: 소파 +2·난로 겨울 +3
+  return (comboSatisfaction(state, seat.id, g.type) + cleanSatisfaction(state)) / 10 + indoorSatisfaction(state, seat) + gateSatisfaction(g) + nightSatisfaction(state, seat); // y-indoor: 소파 +2·난로 겨울 +3 · fix-indoor: 밤 조명
 }
 /** 저녁 손님 기준 시각 (특기 night_owl) */
 export const NIGHT_HOUR = 18;

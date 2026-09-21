@@ -14,6 +14,7 @@ export { isFarmObject, monthlyYieldOf, expectedHarvest, emptyMonthHarvest } from
 export { stockOf } from './warehouse.ts';
 export { currentGoal, activeGoals, goalClaimed, goalProgress, goalValue, goalMet, conditionProgress, conditionCheckers, goalConditionText, goalRewardText, goalForFacility, goalForMenu, goalForFeature, featureOpen, checkFeature, canOpen, applyRewards, grantReward, scaleReward, underLoan, FEATURE_IDS, ACTION_FEATURE_IDS, FEATURE_NAME, FEATURE_OF_ACTION, CONCURRENT_GOALS, goalDef, type Progress } from './goals.ts';
 export { offeredChallenges, canAcceptChallenge, challengeProgress, challengeDaysLeft, isChallengeLocked, challengeLockDaysLeft, monthlyProgress, CHALLENGE_SLOTS, CHALLENGE_OFFERS, CHALLENGE_LOCK_TIER, CHALLENGE_LOCK_DAYS } from './challenges.ts';
+export { bestMainCell, bestMainCells, bestSeatCell, bestSeatCells, bestWallCell, bestWallCells, bestComboCell, bestComboCells, combosIfPlaced, bestIndoorSeat, bestIndoorSeats, bestParkingCell, bestParkingCells, bestSpotToInvest, openingBuild, nextMove, strategyVars, fillTemplate, wallSheltered, OPENING_SEATS, SUMMER_SEATS, type BuildPlanRow, type NextMove } from './strategy.ts'; // pro-guide
 export { STEPS as TUTORIAL_STEP_DEFS, TUTORIAL_STEPS, TUTORIAL_CHAPTERS, currentTutorialStep, currentTutorialChapter, tutorialStepDone, tutorialDone, dialogueSeen, pathConnected, seatWithView, wallShelteringSeat, firstMonthClosed, activeComboCount, recommendedMainCells, lookedAll, LOOK_IDS, LOOK_TEXT, type TutorialChapter, type TutorialStepDef, type TutorialNoteKey, type LookId } from './tutorial.ts';
 export { activeEvents, isEventActive, eventDaysLeft, eventGuestMult, eventTagMult, eventFeeMult, eventEligible, guestHasTag, isSpecialGuest, specialGuestTip, specialGuestsMet, MAX_ACTIVE_EVENTS, SPECIAL_GUEST_HOUR } from './events.ts';
 export { guestSay, staffSay } from './say.ts';
@@ -52,9 +53,9 @@ export { josa, hasBatchim } from './josa.ts';
 export { isWeekend, daysToWeekend, popupCost, popupGuestCount, affinityGain, namedLikes, namedGuestFace, canOpenPopup, canClosePopup, regionState, namedGuestState, regularIds, regularVisitSlot, regularsDueNow, metCount, regularCount, regionProgress, bestRegion, WEEKEND_DAYS, POPUP_COST_SCALE, POPUP_GUESTS_MIN, POPUP_GUESTS_MAX, AFFINITY_PER_VISIT, AFFINITY_TASTE_MULT, AFFINITY_MAX, AFFINITY_REWARD_STEP, AFFINITY_REWARD_COUNT, POPUP_VISIT_CAP } from './popup.ts';
 export { rivalState, rivalMonths, rivalPower, judgeBreakdown, challengeOdds, canChallenge, rivalGuestLossPct, rivalGuestMult, RIVAL_GUEST_PENALTY_PCT, RIVAL_START_YEAR, RIVAL_MONTHLY_CHANCE, RIVAL_MAX, RIVAL_LEAVE_MONTHS, CHALLENGE_WIN_MILEAGE, CHALLENGE_LOSE_POPULARITY, JUDGE_LUCK, SIZE_POWER } from './rivals.ts';
 export { siteOf, seatScore, siteScore, siteTone, kindWeights, scoreWith, siteBonus, siteSay, siteBadgeText, siteBadgeTextPlain, siteLineText, layoutKey, isOutdoorSeat, seaInRange, SITE_KEYS, SITE_LABEL, SITE_ICON, SITE_MAX, SITE_GOOD, SEAT_WEIGHTS, STALL_WEIGHTS, SITE_SAY, type Site, type SiteKey, type SiteWeights, type SiteBonus } from './site.ts';
-export { sizeOf, footprintOf, canPlaceMain } from './grid.ts';
+export { sizeOf, footprintOf, canPlaceMain, fixedCellsOf, isFixedCell, indoorRouteCheck } from './grid.ts';
 export {
-  mainBuilding, mainLevel, mainSize, mainDoorFront, isMainClosed, mainWorkDaysLeft, isIndoorCell, isIndoorSeat, roomSeats, indoorSeats, roomSeatsUsed, freeFloorCells,
+  mainBuilding, mainLevel, mainSize, mainDoorFront, isMainClosed, mainWorkDaysLeft, isIndoorCell, isIndoorSeat, roomSeats, indoorSeats, roomSeatsUsed, freeFloorCells, fixedCells,
   canBuildMain, MAIN_BUILD_COST, isAnnex, annexCount, isRoomCut, cutRooms, nextMainLevel, expandCost, expandCells, canExpandMain, canBuildSecondFloor, moveDays, canMoveThisMonth, canStartMoveMain, canMoveMain, canUndoMoveMain,
   seatsShort, seatUsePct, isFireplaceOn, canToggleFireplace, canSetPianoTime, isPianoPlaying, canAddBooks, hasNewBooks, canFeedAquarium, isAquariumHungry, canRestockKids, isKidsStocked, canSetBarEvening, isBarEvening,
   preferIndoor, stayMs, browseChance, indoorSpawnMult, indoorFeeMult, mainSummary, initMain,
@@ -62,6 +63,8 @@ export {
   SEAT_FULL_PCT, SEAT_FULL_DAYS, SEAT_FULL_TEXT, DOOR_PATH_WARN, ANNEX_CUT_TEXT, BGM_LABEL, LIGHT_LABEL, PIANO_LABEL, STAY_PER_FACILITY_MS,
   autoConnectRoute, canAutoConnectPath, type AutoRoute,
 } from './rooms.ts';
+// ---------- fix-indoor: 밤 조명 ----------
+export { NIGHT_HOUR, LIGHT_RADIUS, STREETLIGHT_SAT, DARK_SAT, DARK_TEXT, isNight, isLightType, lights, lightAt, litCellsOf, nightSeatPoints, nightSatisfaction, nightSeatLine } from './lighting.ts';
 // ---------- z-ending ----------
 export { computeScore, scoreTier, spotLevelSum, endingDue, endingMonthly, canContinueEnding, canSetSpeed, centennialConditions, centennialDue, hasGuidebookTop, makeCarry, applyCarry, carryText, dolhareubangCount, initEnding, ENDING_YEAR, ENDING_MONTH, CENTENNIAL_YEAR, CENTENNIAL_MONTH, CENTENNIAL_STAR, CENTENNIAL_RANK, CENTENNIAL_REPUTATION, MILLENNIUM_TREE, FAST_SPEED, CARRY_RATIO, SCORE_ITEMS, SCORE_TITLES, CHIEF_PREFIX, CHIEF_BONUS } from './ending.ts';
 export { villageReview, nextGradeScore, localSatisfaction, questsDone, totalScenery, totalNoise, canDonate, canHoldFestival, villageLocalMult, villageQuestOpen, villageParcelDiscount, isChiefCandidate, isLocalGuestType, initVillage, VILLAGE_GRADE_MAX, VILLAGE_GRADE_NAME, VILLAGE_GRADE_SCORE, VILLAGE_REVIEW_MONTH, VILLAGE_ITEM_LABEL, FESTIVAL_MONTH, FESTIVAL_GRADE, FESTIVAL_COST, FESTIVAL_GUEST_MULT, FESTIVAL_REPUTATION, FESTIVAL_TICKETS, VILLAGE_DONATION, LOCAL_GUEST_MULT, PARCEL_DISCOUNT, type VillageItem, type VillageReview, type VillageKey } from './village.ts';

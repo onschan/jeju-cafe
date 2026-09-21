@@ -24,7 +24,7 @@ function TutorialBadge() {
   const root = typeof document !== 'undefined' ? document.getElementById('root') : null;
   return (
     <>
-      <button data-testid="tutorial-badge" aria-label={`할망의 가르침 ${s.tutorial.step}/${TUTORIAL_STEPS}`} onClick={() => setOpen(true)}
+      <button data-testid="tutorial-badge" aria-label={`프로 삼춘 공략 ${s.tutorial.step}/${TUTORIAL_STEPS}`} onClick={() => setOpen(true)}
         style={{ position: 'absolute', left: 0, top: 0, width: TUT_BADGE_W, height: GOAL_LINE_H, padding: 0, border: 0, borderRight: `2px solid ${PALETTE.wood}`, background: PALETTE.btnOn, color: PALETTE.btnOnText, fontFamily: 'inherit', fontSize: 13, fontWeight: 700, zIndex: 11, whiteSpace: 'nowrap' }}>
         📖 {s.tutorial.step}/{TUTORIAL_STEPS}
       </button>

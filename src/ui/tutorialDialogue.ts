@@ -1,10 +1,10 @@
 import { useEffect } from 'react';
-import { type GameState, type Action, tutorialDone, TUTORIAL_CHAPTERS, dialogueSeen, type TutorialNoteKey } from '../sim/index.ts';
+import { type GameState, type Action, tutorialDone, TUTORIAL_CHAPTERS, dialogueSeen, strategyVars, fillTemplate, type TutorialNoteKey } from '../sim/index.ts';
 import { TUTORIAL_STEPS as STEP_DATA, TUTORIAL_CHAPTER_TEXTS, SPEAKER_NAME, type TutorialStep } from '../data/dialogue/index.ts';
 import { showDialogue, getDialogue } from './dialogue.ts';
 import { confirm } from './Popup';
 
-/** 손으로 하는 튜토리얼 「할망의 가르침」 33단계·5장 대화 (w-start: 1~3단계 둘러보기·본관 짓기·본관 보기). 대사는 data/dialogue/tutorial.json, 진행(끝낸 단계 수)은 sim 상태 state.tutorial.step —
+/** 손으로 하는 튜토리얼 「프로 삼춘의 정석」 33단계·5장 대화 (w-start: 1~3단계 둘러보기·본관 짓기·본관 보기, pro-guide: 대사의 `{토큰}`은 sim/strategy.ts strategyVars로 채운다). 대사는 data/dialogue/tutorial.json, 진행(끝낸 단계 수)은 sim 상태 state.tutorial.step —
  *  조건 판정·보상은 sim/tutorial.ts가 한다. 여기서는 "현재 단계의 대사를 한 번 띄우는" 일만 한다.
  *  대사를 닫으면 `tutorialNote dlg:<id>`를 보내 sim이 그 단계를 끝낼 수 있게 한다(이미 충족된 단계는 대사만 뜨고 바로 통과).
  *  보상 상자(alerts)가 떠 있는 동안은 기다렸다가, 닫히면 다음 단계 대사를 띄운다. 건너뛰기는 장 단위(각 장 첫 단계 대사의 「건너뛰기」·튜토리얼 창). */
@@ -29,10 +29,16 @@ export function tutorialShown(): number { return shownFor + 1; }
 /** 새 게임을 시작할 때 처음부터 */
 export function resetTutorial(): void { shownFor = -1; }
 
-/** 현재 단계(state.tutorial.step)의 대사. 끝났으면 null. */
+/** 현재 단계(state.tutorial.step)의 대사 (토큰을 실제 수치로 채운 것). 끝났으면 null. */
 export function currentTutorialDialogue(s: GameState): TutorialStep | null {
   if (tutorialDone(s)) return null;
-  return TUTORIAL_DIALOGUES[s.tutorial.step] ?? null;
+  const st = TUTORIAL_DIALOGUES[s.tutorial.step];
+  return st ? fillTutorialStep(st, s) : null;
+}
+/** pro-guide: 대사·제목의 `{seatScore}` 같은 토큰을 지금 상태의 정석 수치로 채운다 (입지 배지와 같은 숫자). */
+export function fillTutorialStep(step: TutorialStep, s: GameState): TutorialStep {
+  const vars = strategyVars(s);
+  return { ...step, title: fillTemplate(step.title, vars), lines: step.lines.map((l) => fillTemplate(l, vars)) };
 }
 /** 장 제목·소개 (json) */
 export function chapterText(id: number): { id: number; title: string; intro: string } {
@@ -64,7 +70,9 @@ export function skipCurrentStep(): void {
 
 export const SKIP_TEXT = '이 장을 통째로 건너뛸까요? 단계 보상은 못 받아요.';
 /** 단계 대사를 띄운다 (다시 보기 포함). 닫으면 dlg:<id> 표식. skipStep(기본 true)이면 왼쪽 아래 「이미 알아요」— 그 단계만 보상 없이 통과 (ease). */
-export function showTutorialStep(step: TutorialStep, opts: { skip?: boolean; skipStep?: boolean } = {}): void {
+export function showTutorialStep(step0: TutorialStep, opts: { skip?: boolean; skipStep?: boolean } = {}): void {
+  const s0 = stateFn?.();
+  const step = s0 ? fillTutorialStep(step0, s0) : step0;
   showDialogue({
     speaker: { name: SPEAKER_NAME[step.speaker], portrait: step.speaker },
     lines: step.lines,
