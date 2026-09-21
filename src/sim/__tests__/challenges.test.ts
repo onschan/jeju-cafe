@@ -127,7 +127,7 @@ describe('월간 과제 (§7.3)', () => {
     expect((guestsTask.condition as { n: number }).n).toBe(120); // 200 × 0.6 (game-feel P1: 달 중반 달성)
     const sales = kinds.find((k) => k.condition.type === 'monthSales')!;
     expect((sales.condition as { n: number }).n).toBe(1_800_000); // 300만 × 0.6
-    s.clock.year = 2; s.features.craft = true;
+    s.clock.year = 2;
     const kinds2 = [4, 5, 6, 7, 8, 9, 10, 11].map((m) => { s.clock.month = m; return makeMonthly(s); });
     expect(kinds2.some((k) => k.condition.type === 'spotEffects')).toBe(true); // 2년차부터 명당·숨은 레시피 과제
     expect(kinds2.some((k) => k.condition.type === 'hiddenRecipes')).toBe(true);

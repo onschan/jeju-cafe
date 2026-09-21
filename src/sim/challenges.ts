@@ -122,7 +122,7 @@ export const MONTHLY_TARGET_RATIO = 0.6;
 export function makeMonthly(state: GameState): MonthlyState {
   const mi = monthIndex(state.clock);
   let kind = MONTHLY_KINDS[mi % MONTHLY_KINDS.length]!;
-  if ((kind === 'spot' || kind === 'hidden') && (state.clock.year < MONTHLY_CODEX_YEAR || (kind === 'hidden' && !state.features.craft))) kind = kind === 'spot' ? 'guests' : 'sales';
+  if ((kind === 'spot' || kind === 'hidden') && state.clock.year < MONTHLY_CODEX_YEAR) kind = kind === 'spot' ? 'guests' : 'sales';
   const lastGuests = Math.max(30, state.lastMonthCard?.guests ?? state.monthGuests);
   const lastIncome = Math.max(500_000, state.lastMonthIncome);
   let condition: GoalCondition; let title: string; let base = 0; let reward: GoalReward[];
