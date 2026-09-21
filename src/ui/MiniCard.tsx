@@ -1,7 +1,7 @@
 import { useState, useEffect, type CSSProperties, type ReactNode } from 'react';
 import { wonText } from '../data/labels.ts';
 import { josa } from '../sim/josa.ts';
-import { useGame, dispatch } from './store';
+import { useGame, dispatch, showMessage } from './store';
 import { objectStats, siteOf, siteLineText, cellAt, walletOf, guestFace, namedGuestFace, canAcceptQuest, parcelPrice, canBuyParcel, canGiveGift, giftFits, giftCount, giftedToday, PROTECTED_TYPES, ROTATABLE_TYPES, LOW_ENERGY, STAT_KEYS, STAT_NAME, staffInRole, canLevelUp, capOf, skillsOf, expNeeded, isUpgradable, canUpgrade, upgradeCost, upgradeConditionText, MAX_OBJECT_LEVEL, canRepair, repairCost, CLEAN_LOW, type GameState, type Guest, type RoleId, type StatKey } from '../sim/index.ts';
 import { BUS_HOUR, isBusDay } from '../sim/spots.ts';
 import { RouteCard } from './RouteCard';
@@ -33,6 +33,9 @@ export type CardTarget =
   | { kind: 'counter'; id: string }
   | { kind: 'road'; x: number; y: number } // w-start 둘러보기: 마을 길 칸
   | { kind: 'route'; route: RouteId; id?: string }; // 트랙 H: 진입점·경로 시설 → RouteCard
+
+/** ease: 이 금액 이상 드는 확정만 확인 팝업을 띄운다 (본관 옮기기·필지 구매·연수·투자는 각자 유지) */
+export const CONFIRM_MIN_COST = 1_000_000;
 
 export interface CardActions {
   onGuestDetail: (guestId: string) => void;
@@ -209,7 +212,12 @@ function ObjectCard({ s, id, a, onClose }: { s: GameState; id: string; a: CardAc
   const canBuildSame = s.unlocked.objects.includes(o.type) && !PROTECTED_TYPES.has(o.type);
   const st = objectStats(s, o.id);
   const protectedType = PROTECTED_TYPES.has(o.type);
-  const remove = () => Confirm(`${josa(d.name, '을/를')}${d.removeCost ? ` ${wonText(d.removeCost)} 들여 치울까요?` : ` 치우고 ${josa(wonText(d.cost), '을/를')} 돌려받을까요?`}`, () => { dispatch({ type: 'remove', objectId: o.id }); onClose(); }, { title: '철거' });
+  /** ease: 철거는 확인 팝업 없이 바로 — 되돌리기 1회가 보호한다 (₩100만 이상 철거 비용이 드는 것만 확인) */
+  const remove = () => {
+    const go = () => { const r = dispatch({ type: 'remove', objectId: o.id }); if (r.ok) { showMessage(`${josa(d.name, '을/를')} 치웠어요${d.removeCost ? '' : ` · ${wonText(d.cost)} 돌려받음`} (↶ 되돌리기 가능)`); onClose(); } else showMessage(r.reason ?? '지금은 못 치워요'); };
+    if ((d.removeCost ?? 0) >= CONFIRM_MIN_COST) Confirm(`${josa(d.name, '을/를')} ${wonText(d.removeCost!)} 들여 치울까요?`, go, { title: '철거' });
+    else go();
+  };
   // 트랙 A: 증축 Lv·수리·청결
   const upgradable = isUpgradable(d) && st.level < MAX_OBJECT_LEVEL;
   const up = upgradable ? canUpgrade(s, o.id, st.popularity) : { ok: false, reason: '' };

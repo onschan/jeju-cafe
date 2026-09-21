@@ -21,6 +21,25 @@ export const BUILD_TABS: { key: BuildTab; label: string }[] = [
 let requestedTab: BuildTab | null = null;
 export function requestBuildTab(tab: BuildTab): void { requestedTab = tab; }
 function takeRequestedTab(): BuildTab | null { const t = requestedTab; requestedTab = null; return t; }
+/** ease: 짓기 창은 마지막 탭·스크롤 위치를 기억한다 (세션, 창을 여는 쪽이 탭을 지정하면 그게 우선) */
+let lastTab: BuildTab | null = null;
+let lastScrollTop = 0;
+/** 테스트·새 게임용 초기화 */
+export function resetBuildWindowMemory(): void { lastTab = null; lastScrollTop = 0; }
+/** 「최근」 줄 개수 */
+export const RECENT_N = 3;
+/** ease 「최근」: 최근에 지은 시설 종류 (액션 로그의 place·placeLine 뒤에서부터, 중복 없이 최대 n) — 열려 있고 목록에 나오는 것만 */
+export function recentBuildTypes(s: GameState, n = RECENT_N): string[] {
+  const out: string[] = [];
+  for (let i = s.actionLog.length - 1; i >= 0 && out.length < n; i--) {
+    const a = s.actionLog[i]!.action;
+    if (a.type !== 'place' && a.type !== 'placeLine') continue;
+    const t = a.objectType;
+    if (out.includes(t) || HIDDEN_IDS.has(t) || t === MAIN_TYPE || !s.unlocked.objects.includes(t)) continue;
+    out.push(t);
+  }
+  return out;
+}
 /** 처음부터 맵에 있는 것·지형 — 짓기 목록에 안 나온다 (본관은 「건물」 탭에서 따로, 없을 때만) */
 const HIDDEN_IDS = new Set(['busstop', 'warehouse', 'spring']);
 /** 「건물」 탭 안내 (w-start 맨땅 튜토리얼 2단계) */
@@ -69,7 +88,19 @@ export interface BuildWindowProps extends WindowProps { initialTab?: BuildTab }
 export function BuildWindow(props: BuildWindowProps) {
   const { s } = useWindowState(props);
   const noMain = !mainBuilding(s); // w-start: 맨땅이면 「건물」 탭(카페 본관 카드)이 맨 앞에, 본관을 지으면 사라진다
-  const [tab, setTab] = useState<BuildTab>(() => props.initialTab ?? takeRequestedTab() ?? (mainBuilding(s) ? 'rest' : 'building'));
+  const [tab, setTabState] = useState<BuildTab>(() => props.initialTab ?? takeRequestedTab() ?? (mainBuilding(s) ? (lastTab ?? 'rest') : 'building'));
+  const setTab = (t: BuildTab) => { lastTab = t; lastScrollTop = 0; setTabState(t); };
+  const rootRef = useRef<HTMLDivElement>(null);
+  // 스크롤 위치 기억: 셸의 스크롤 컨테이너(window-body)에 붙여, 열 때 되돌리고 닫힐 때 저장 (ease)
+  useEffect(() => {
+    const el = rootRef.current?.closest<HTMLElement>('[data-testid="window-body"]');
+    if (!el) return;
+    if (!props.initialTab && lastScrollTop > 0) el.scrollTop = lastScrollTop;
+    const onScroll = () => { lastScrollTop = el.scrollTop; };
+    el.addEventListener('scroll', onScroll, { passive: true });
+    return () => el.removeEventListener('scroll', onScroll);
+  }, [props.initialTab]);
+  const recent = activeTabIsList(tab, noMain) ? recentBuildTypes(s) : [];
   const tabs = noMain ? BUILD_TABS : BUILD_TABS.filter((t) => t.key !== 'building');
   const activeTab: BuildTab = tab === 'building' && !noMain ? 'rest' : tab;
   const [picked, setPicked] = useState<string | null>(null);
@@ -88,8 +119,19 @@ export function BuildWindow(props: BuildWindowProps) {
   const sel = picked ? items.find((i) => i.def.id === picked) : undefined;
 
   return (
-    <div style={body} data-testid="build-window">
+    <div ref={rootRef} style={body} data-testid="build-window">
       <TabBar tabs={tabs.map((t) => ({ ...t, badge: undefined }))} active={activeTab} onPick={(k) => { setTab(k); setPicked(null); }} testId="build-tab" />
+      {recent.length > 0 && (
+        <div data-testid="build-recent" style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6, flexWrap: 'wrap' }}>
+          <span style={{ ...soft, whiteSpace: 'nowrap' }}><Icon name="undo" size={13} /> 최근</span>
+          {recent.map((id) => {
+            const def = objectDef(id);
+            const cost = placeCost(s, id);
+            const ok = canStartBuild(s, id).ok && s.money >= cost && !!props.onPickBuild;
+            return <button key={id} data-testid={`build-recent-${id}`} style={{ ...(ok ? brownBtn : brownBtnOff), margin: 0, padding: '0 8px', fontSize: 14, minHeight: 40 }} disabled={!ok} onClick={() => props.onPickBuild?.(id)}>{def.name} <span style={{ fontWeight: 400 }}>{cost > 0 ? wonText(cost) : '무료'}</span></button>;
+          })}
+        </div>
+      )}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0 8px', marginBottom: 6 }}>
         <span style={soft}>열린 것 {counts[activeTab] ?? 0} · 자금 {wonText(s.money)}</span>
         <span style={{ ...soft, color: busy >= s.builders ? PALETTE.bad : PALETTE.inkSoft }} data-testid="builders">건축가 {busy}/{s.builders} 작업 중</span>
@@ -119,6 +161,11 @@ export function BuildWindow(props: BuildWindowProps) {
       {sel && <PickedDetail s={sel.def} locked={sel.locked} state={s} onPick={props.onPickBuild} />}
     </div>
   );
+}
+
+/** 「최근」 줄은 시설 목록 탭에서만 (「건물」 탭엔 본관 카드 하나뿐) */
+function activeTabIsList(tab: BuildTab, noMain: boolean): boolean {
+  return !(tab === 'building' && noMain);
 }
 
 /** 잠긴 카드 문구: 여는 목표가 있으면 "「제목」 목표를 이루면 열려요", 아니면 해금 조건(labels.unlockText) */

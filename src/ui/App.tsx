@@ -684,7 +684,7 @@ function Game({ onExit }: { onExit: () => void }) {
       case 'build':
         return (
           <Window title="짓기" onClose={closeWin} testId="window-build">
-            <div data-testid="build-tools" role="toolbar" aria-label="도구" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, marginBottom: 8 }}>
+            <div data-testid="build-tools" role="toolbar" aria-label="도구" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 6, marginBottom: 8 }}>
               <button data-tut="tool:move" style={{ ...brownBtn, margin: 0, padding: '0 6px', fontSize: 15 }} onClick={() => { closeWin(); setMode({ kind: 'move' }); }}><Icon name="move" /> 이동</button>
               <button data-tut="tool:remove" style={{ ...dangerBtn, margin: 0, padding: '0 6px', fontSize: 15 }} onClick={() => { closeWin(); setMode({ kind: 'remove' }); }}><Icon name="remove" /> 철거</button>
               <button data-testid="tool-undo" data-tut="tool:undo" disabled={!undoOk} title={undoOk ? undefined : canUndo(s).reason} style={{ ...(undoOk ? brownBtn : brownBtnOff), margin: 0, padding: '0 6px', fontSize: 15 }} onClick={undo}><Icon name="undo" /> 되돌리기</button>
