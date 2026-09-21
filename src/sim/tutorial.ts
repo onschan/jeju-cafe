@@ -9,15 +9,15 @@
  * 대사는 data/dialogue/tutorial.json(key로 짝). 하이라이트(data-tut·맵 칸)는 ui/tutorialHighlight.ts.
  *
  * | 장 | 단계 | 조건 | 하이라이트(data-tut / 맵 칸) | 보상 |
- * | 1 개업 | 1 look | 정낭·정류장·바위·마을 길 탭(seen look:*) | 아직 안 본 칸 | — |
+ * | 1 개업 | 1 look | 정낭·정류장·마을 길 탭(seen look:*) | 아직 안 본 칸 | — |
  * |  | 2 build_main | 본관 짓기(placeMain) | nav:build·tab:building·build:warehouse·추천 칸 3 | ₩30만 |
  * |  | 3 look_main | 본관 카드 보기(seen look:main) | 본관 발자국 | — |
  * |  | 4 path | 마을 길→문 앞 올렛길 | nav:build·tab:path·마을 길(정낭이 있으면 정낭)·문 앞 | ₩30만 |
- * |  | 5 seat_view | 전망 2+ 자리 테이블 | tab:rest·길 옆 빈 칸 | ₩30만·입지 보기 |
+ * |  | 5 seat_view | 전망 2+ 자리 테이블 | tab:rest·길 옆 빈 칸 | ₩30만 |
  * |  | 6 menu | 아메리카노·감귤주스 | nav:cafe·tab:menu·menu-put | ₩20만 |
  * |  | 7 first_pay | 첫 결제 | 정류장 칸 | 응모권 1 |
  * |  | 8 hire | 직원 1명 | nav:people·tab:candidates·hire | ₩30만 |
- * |  | 9 wall | 돌담을 테이블 북서쪽 | tab:wall·북서 띠 | ₩30만·콤보 도감·홍보·연구 10 |
+ * |  | 9 wall | 돌담을 테이블 북서쪽 | tab:wall·북서 띠 | ₩30만·응모권 1·연구 10 |
  * |  | 10 promote | 홍보 1회 | tab:promo·promote | 마일리지 30 |
  * |  | 11 challenge | 도전 1개 수락 | goal-bar·tab:challenge·challenge-accept | ₩50만 |
  * | 2 자리와 손님 | 12 site_seat | 입지 보기 켜고 전망 자리 테이블 2개 | site-toggle·tab:rest | ₩20만 |
@@ -26,14 +26,14 @@
  * |  | 15 combo2 | 콤보 2개(감귤나무: 귤밭 뷰·밭담 귤 수확) | tab:farm·build:tangerine_tree·후보 칸 | ₩30만 |
  * |  | 16 path10 | 올렛길 10칸 | tab:path | ₩10만 |
  * |  | 17 undo | 되돌리기 1회 | tool:undo | ₩10만 |
- * | 3 첫 달 결산 | 18 month_end | 첫 월말 결산 닫기 | — | 명소 지도 |
+ * | 3 첫 달 결산 | 18 month_end | 첫 월말 결산 닫기 | — | 응모권 1 |
  * |  | 19 seats4 | 좌석 4개(자리 없음 불만 해결) | tab:rest | ₩30만 |
  * |  | 20 clean | 홀·청소 직원 배치 | tab:staff·hire·assign | ₩20만 |
  * |  | 21 storage | 재료 창고 보기(seen storage) | tab:ingredients | 연구 5 |
  * |  | 22 harvest | 농원 수확(다음 달 1일) | tab:farm | ₩30만 |
  * | 4 키우기 | 23 expand | 본관 Lv2 완공 | tab:building·main-expand·막는 시설 칸 | ₩50만 |
  * |  | 24 indoor2 | 실내 좌석 2개 | tab:indoor·build:table_in·방 안 칸 | ₩30만 |
- * |  | 25 train | 연수 1회(랭크 3) | tab:staff·train·train-pick | 연구 20·연구 개발 |
+ * |  | 25 train | 연수 1회(랭크 3) | tab:staff·train·train-pick | 연구 20 |
  * |  | 26 recipe | 레시피 개발 1회 | tab:craft·craft-ingredient·develop | ₩50만 |
  * |  | 27 spot | 명소 투자 1회 | tab:spots·spot-invest | ₩30만·주차장 |
  * |  | 28 parking | 렌터카 손님 1명 | tab:convenience·build:parking_lot | ₩30만·응모권 1 |
@@ -53,6 +53,12 @@ import { parcelAt } from './parcels.ts';
 import { activeCombos } from './compat.ts';
 import { freeFloorCells, expandCells, canBuildMain, MAIN_TYPE, MAIN_SIZE, MAIN_RECOMMEND_GATE_DIST, MAIN_RECOMMEND_N } from './rooms.ts';
 import { isFarmObject } from './orchard.ts';
+import { TUTORIAL_STEPS as TUTORIAL_STEP_TEXTS } from '../data/dialogue/index.ts';
+
+/** 보상 상자 제목: 단계 이름 (dialogue/tutorial.json title, game-feel P2 — 「튜토리얼 2단계」 대신 「카페는 집이 먼저」) */
+export function tutorialStepTitle(id: number): string {
+  return TUTORIAL_STEP_TEXTS.find((t) => t.id === id)?.title ?? `튜토리얼 ${id}단계`;
+}
 
 export const TUTORIAL_STEPS = 33;
 
@@ -81,16 +87,15 @@ export interface TutorialStepDef {
 export const TRACKED_ACTIONS: ReadonlySet<Action['type']> = new Set<Action['type']>([
   'undoLast', 'train', 'develop', 'drawTicket', 'buyMileage', 'buyTicket', 'giveGift', 'respondEvent', 'openPopup', 'challenge', 'investSpot',
 ]);
-/** UI가 tutorialNote로 남기는 키. `look:<id>`는 1·3단계 둘러보기(정낭·정류장·바위·마을 길·본관 카드를 열었다) */
+/** UI가 tutorialNote로 남기는 키. `look:<id>`는 1·3단계 둘러보기(정낭·정류장·마을 길·본관 카드를 열었다) */
 export type TutorialNoteKey = 'siteView' | 'guestCard' | 'storage' | `look:${LookId}`;
 /** 1단계 둘러보기에서 하나씩 눌러 보는 것 (순서대로 글로우) + 3단계 본관 */
-export type LookId = 'gate' | 'busstop' | 'rock' | 'road' | 'main';
-export const LOOK_IDS: LookId[] = ['gate', 'busstop', 'rock', 'road'];
+export type LookId = 'gate' | 'busstop' | 'road' | 'main';
+export const LOOK_IDS: LookId[] = ['gate', 'busstop', 'road'];
 /** 둘러보기 카드 위 한 줄 설명 (초중생 어휘, MiniCard Hint) */
 export const LOOK_TEXT: Record<LookId, string> = {
   gate: '정낭: 제주식 대문. 있으면 관광객이 좋아해. 옮겨도 돼',
   busstop: '정류장: 버스가 손님을 내려 줘요',
-  rock: '바위: ₩10만이면 바로 치워',
   road: '마을 길: 버스가 다니는 길. 여기서 우리 길을 이어요',
   main: '카페 본관: 카운터·주방·실내 자리가 다 여기 있어요',
 };
@@ -263,7 +268,7 @@ function announcementSeen(s: GameState): boolean {
   return s.stats.seenAnnouncement >= 0 && s.lastAnnouncement === null;
 }
 
-/** 1단계 둘러보기: 아직 안 본 것의 칸 (정낭·정류장·정낭(없으면 정류장)에서 가장 가까운 바위·마을 길 칸) — 본 것부터 글로우가 꺼진다 */
+/** 1단계 둘러보기: 아직 안 본 것의 칸 (정낭·정류장·정낭(없으면 정류장)에서 가장 가까운 마을 길 칸) — 본 것부터 글로우가 꺼진다 */
 function lookCells(s: GameState): Pt[] {
   const out: Pt[] = [];
   const g = gate(s);
@@ -271,7 +276,6 @@ function lookCells(s: GameState): Pt[] {
   if (!seen(s, 'look:gate') && g) out.push({ x: g.x, y: g.y });
   if (!seen(s, 'look:busstop') && bus) out.push({ x: bus.x, y: bus.y });
   const from = g ? { x: g.x, y: g.y } : bus ? { x: bus.x, y: bus.y } : { x: 0, y: 0 };
-  if (!seen(s, 'look:rock')) { const r = nearestRock(s, from); if (r) out.push(r); }
   if (!seen(s, 'look:road')) { const r = nearestRoad(s, from); if (r) out.push(r); }
   return out;
 }
@@ -283,10 +287,6 @@ function nearestCell(s: GameState, from: Pt, ok: (x: number, y: number) => boole
     if (d < bd) { bd = d; best = { x, y }; }
   }
   return best;
-}
-/** 내 필지의 빈 바위 칸 중 from에서 가장 가까운 것 */
-function nearestRock(s: GameState, from: Pt): Pt | null {
-  return nearestCell(s, from, (x, y) => { const c = cellAt(s, x, y); return (c.terrain === 'rock' || c.terrain === 'rock_big') && !c.objectId && !!parcelAt(s, x, y)?.owned; });
 }
 /** 마을 길 칸 중 from에서 가장 가까운 것 */
 function nearestRoad(s: GameState, from: Pt): Pt | null {
@@ -344,13 +344,13 @@ export const STEPS: TutorialStepDef[] = [
   { id: 3, key: 'look_main', chapter: 1, done: (s) => seen(s, 'look:main'), reward: [], targets: [], cells: mainCells },
   { id: 4, key: 'path', chapter: 1, done: pathConnected, reward: [money(300_000)], targets: ['nav:build', 'tab:path', 'build:path'],
     cells: pathCells },
-  { id: 5, key: 'seat_view', chapter: 1, done: (s) => seatWithView(s, 2), reward: [money(300_000), feature('siteView')], targets: ['nav:build', 'tab:rest', 'build:table_out'],
+  { id: 5, key: 'seat_view', chapter: 1, done: (s) => seatWithView(s, 2), reward: [money(300_000)], targets: ['nav:build', 'tab:rest', 'build:table_out'],
     cells: (s) => emptyCellsNearPath(s, 3) },
   { id: 6, key: 'menu', chapter: 1, done: (s) => s.menuSlots.includes('americano') && s.menuSlots.includes('tangerine_juice'), reward: [money(200_000)], targets: ['nav:cafe', 'tab:menu', 'menu-put'], cells: none },
   { id: 7, key: 'first_pay', chapter: 1, done: (s) => s.totalIncome > 0, reward: [{ type: 'tickets', n: 1 }], targets: [], cells: (s) => [busStopPos(s)] },
   { id: 8, key: 'hire', chapter: 1, done: (s) => s.staff.length >= 1, reward: [money(300_000)], targets: ['nav:people', 'tab:candidates', 'hire'], cells: none },
-  // 10단계(홍보)를 바로 할 수 있게 홍보 기능과 전단 연구비(10)를 여기서 준다 — g07(만족 손님 10명)보다 튜토리얼이 먼저 온다
-  { id: 9, key: 'wall', chapter: 1, done: wallShelteringSeat, reward: [money(300_000), feature('comboCodex'), feature('promote'), { type: 'research', n: 10 }], targets: ['nav:build', 'tab:wall', 'build:stonewall'],
+  // 10단계(홍보)를 바로 할 수 있게 전단 연구비(10)를 여기서 준다 (ease: 홍보·콤보 도감은 처음부터 열려 있다)
+  { id: 9, key: 'wall', chapter: 1, done: wallShelteringSeat, reward: [money(300_000), { type: 'tickets', n: 1 }, { type: 'research', n: 10 }], targets: ['nav:build', 'tab:wall', 'build:stonewall'],
     cells: (s) => shelterCells(s, 6) },
   { id: 10, key: 'promote', chapter: 1, done: (s) => s.stats.promotionsDone >= 1, reward: [{ type: 'mileage', n: 30 }], targets: ['nav:cafe', 'tab:promo', 'promote'], cells: none },
   { id: 11, key: 'challenge', chapter: 1, done: (s) => s.challenges.active.length + s.challenges.done.length >= 1, reward: [money(500_000)], targets: ['goal-bar', 'tab:challenge', 'challenge-accept'], cells: none },
@@ -364,7 +364,7 @@ export const STEPS: TutorialStepDef[] = [
   { id: 16, key: 'path10', chapter: 2, done: (s) => count(s, 'path') >= 10, reward: [money(100_000)], targets: ['nav:build', 'tab:path', 'build:path'], cells: none },
   { id: 17, key: 'undo', chapter: 2, done: (s) => seen(s, 'undoLast'), reward: [money(100_000)], targets: ['nav:build', 'tool:undo'], cells: none },
   // ---- 3장 첫 달 결산 (4월 1일~) ----
-  { id: 18, key: 'month_end', chapter: 3, done: firstMonthClosed, reward: [feature('spotMap')], targets: [], cells: none },
+  { id: 18, key: 'month_end', chapter: 3, done: firstMonthClosed, reward: [{ type: 'tickets', n: 1 }], targets: [], cells: none },
   { id: 19, key: 'seats4', chapter: 3, done: (s) => seats(s).length >= 4, reward: [money(300_000)], targets: ['nav:build', 'tab:rest', 'build:table_out'],
     cells: (s) => emptyCellsNearPath(s, 3) },
   { id: 20, key: 'clean', chapter: 3, done: (s) => s.staff.some((st) => st.role === 'hall' || st.role === 'clean'), reward: [money(200_000)], targets: ['nav:people', 'tab:staff', 'tab:candidates', 'hire', 'assign'], cells: none },
@@ -375,8 +375,7 @@ export const STEPS: TutorialStepDef[] = [
     cells: (s) => expandBlockedCells(s) },
   { id: 24, key: 'indoor2', chapter: 4, done: (s) => indoorSeatObjects(s).length >= 2, reward: [money(300_000)], targets: ['nav:cafe', 'tab:indoor', 'build:table_in'],
     cells: (s) => mainFloorCells(s, 3) },
-  // 26단계(레시피)를 바로 할 수 있게 연구 개발 기능을 여기서 연다 — g16(메뉴 4개)보다 먼저 올 수 있다
-  { id: 25, key: 'train', chapter: 4, done: (s) => s.stats.trainings >= 1 || seen(s, 'train'), reward: [{ type: 'research', n: 20 }, feature('craft')], targets: ['nav:people', 'tab:staff', 'train', 'train-pick'], cells: none },
+  { id: 25, key: 'train', chapter: 4, done: (s) => s.stats.trainings >= 1 || seen(s, 'train'), reward: [{ type: 'research', n: 20 }], targets: ['nav:people', 'tab:staff', 'train', 'train-pick'], cells: none },
   { id: 26, key: 'recipe', chapter: 4, done: (s) => s.stats.recipesMade >= 1 || s.customMenus.length >= 1 || seen(s, 'develop'), reward: [money(500_000)], targets: ['nav:cafe', 'tab:craft', 'craft-ingredient', 'develop'], cells: none },
   // 28단계(주차장)를 바로 지을 수 있게 주차장 시설을 여기서 연다 (좌석 6개 조건보다 먼저 올 수 있다)
   { id: 27, key: 'spot', chapter: 4, done: (s) => Object.values(s.spots).some((lv) => lv >= 1) || seen(s, 'investSpot'), reward: [money(300_000), { type: 'unlockFacility', id: 'parking_lot' }], targets: ['nav:ledger', 'tab:spots', 'spot-invest'], cells: none },
@@ -394,9 +393,9 @@ export const STEPS: TutorialStepDef[] = [
 export function initTutorial(skipped = false): GameState['tutorial'] {
   return { step: skipped ? TUTORIAL_STEPS : 0, skipped, seen: [] };
 }
-/** 완성 시작 상태(starter)·전체 건너뛰기에서 바로 여는 튜토리얼 기능: 1장 보상 중 목표 체인이 안 주는 것(입지 보기·콤보 도감·명소 지도)과 홍보.
- *  25·31단계가 주는 연구 개발·팝업 스토어는 목표(g16·g18)가 여니 여기서 안 연다 — 봇(starter)의 진행이 바뀌지 않게. */
-export const STARTER_FEATURE_IDS: FeatureId[] = ['siteView', 'comboCodex', 'promote', 'spotMap'];
+/** 완성 시작 상태(starter)·전체 건너뛰기에서 바로 여는 튜토리얼 기능. ease: 입지 보기·콤보 도감·홍보·명소 지도가 처음부터 열려 있어 비었다.
+ *  31단계가 주는 팝업 스토어는 목표(g18)가 여니 여기서 안 연다 — 봇(starter)의 진행이 바뀌지 않게. */
+export const STARTER_FEATURE_IDS: FeatureId[] = [];
 export function tutorialFeatureIds(): FeatureId[] {
   return STARTER_FEATURE_IDS;
 }
@@ -429,8 +428,20 @@ export function checkTutorial(state: GameState): number | null {
   const step = currentTutorialStep(state);
   if (!step || !dialogueSeen(state, step.id) || !step.done(state)) return null;
   state.tutorial.step++;
-  if (step.reward.length > 0) applyRewards(state, step.reward, { source: 'tutorial', refId: String(step.id), title: `튜토리얼 ${step.id}단계` }); // 보상 없는 단계(둘러보기)는 빈 상자를 안 띄운다
+  if (step.reward.length > 0) applyRewards(state, step.reward, { source: 'tutorial', refId: String(step.id), title: tutorialStepTitle(step.id) }); // 보상 없는 단계(둘러보기)는 빈 상자를 안 띄운다
   return step.id;
+}
+
+/** 현재 단계 하나만 건너뛴다 (ease 「이미 알아요」): 그 단계의 해금 보상(기능·시설)만 조용히 적용하고 step++. 돈·응모권 등은 안 준다. skipped 표식은 안 바꾼다(장 건너뛰기와 별개). 건너뛴 단계 id 또는 null. */
+export function skipTutorialStep(state: GameState): number | null {
+  const st = currentTutorialStep(state);
+  if (!st) return null;
+  for (const r of st.reward) {
+    if (r.type === 'unlockFeature') state.features[r.id] = true;
+    else if (r.type === 'unlockFacility' && !state.unlocked.objects.includes(r.id)) state.unlocked.objects.push(r.id);
+  }
+  state.tutorial.step++;
+  return st.id;
 }
 
 /** 현재 장을 통째로 건너뛴다: 남은 단계의 해금 보상(기능·시설)만 조용히 적용하고 step을 장 끝으로. 돈·응모권 등은 안 준다. 건너뛴 장 수. */

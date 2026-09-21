@@ -4,7 +4,7 @@ import { apply } from '../actions.ts';
 import { tick } from '../tick.ts';
 import { DAY_MS } from '../clock.ts';
 import { GOALS, goalDef, objectDef, menuDef, roleDef, FACILITIES, MILEAGE_SHOP, TICKET_SHOP } from '../../data/index.ts';
-import { currentGoal, activeGoals, claimableGoals, GOAL_LOOKAHEAD, goalProgress, checkGoals, goalMet, goalForFacility, goalForFeature, checkFeature, grantReward, FEATURE_IDS, ACTION_FEATURE_IDS, goalConditionText, goalRewardText, conditionProgress, conditionCheckers, applyRewards, scaleReward, canOpen, CONCURRENT_GOALS } from '../goals.ts';
+import { currentGoal, activeGoals, claimableGoals, GOAL_LOOKAHEAD, goalProgress, checkGoals, goalMet, goalForFacility, goalForFeature, checkFeature, grantReward, FEATURE_IDS, ACTION_FEATURE_IDS, goalConditionText, goalRewardText, conditionProgress, conditionCheckers, applyRewards, scaleReward, canOpen, CONCURRENT_GOALS, coalesceRewardAlerts, checkMoneyMilestones, MAX_GOALS_PER_CHECK, MAX_GOALS_PER_DAY, MILESTONE_TICKETS } from '../goals.ts';
 import type { GoalCondition, GoalReward } from '../types.ts';
 import { tutorialFeatureIds } from '../tutorial.ts';
 import { bareState, at } from './helpers.ts';
@@ -93,18 +93,17 @@ describe('goals.json 데이터', () => {
     expect(conditionProgress(s, { type: 'festivals', n: 1 })).toEqual({ cur: 0, max: 1 });
   });
 
-  it('액션 잠금 기능 5종은 각각 정확히 한 목표에서 열리고, 그 기능이 필요한 목표는 그 뒤에 온다 (바위 치우기는 w-free부터 시작 개방 — 어떤 목표도 안 연다)', () => {
+  it('액션 잠금 기능 5종은 각각 정확히 한 목표에서 열리고, 그 기능이 필요한 목표는 그 뒤에 온다 (ease: 바위 시스템은 없다 — rocks 조건·clearRock 기능 없음)', () => {
     const idx = (id: string) => GOALS.findIndex((g) => g.id === id);
-    expect(ACTION_FEATURE_IDS).not.toContain('clearRock');
-    expect(GOALS.some((g) => g.reward.some((r) => r.type === 'unlockFeature' && r.id === 'clearRock'))).toBe(false);
+    expect(GOALS.some((g) => (g.condition.type as string) === 'rocks')).toBe(false);
+    expect(FEATURE_IDS).not.toContain('clearRock' as never);
     expect(GOALS.find((g) => g.id === 'g12')!.reward).toEqual([{ type: 'tickets', n: 2 }]);
     for (const f of ACTION_FEATURE_IDS) {
       const openers = GOALS.filter((g) => g.reward.some((r) => r.type === 'unlockFeature' && r.id === f));
       expect(openers.length, f).toBe(1);
     }
-    expect(idx(goalForFeature('promote')!.id)).toBeLessThan(idx(GOALS.find((g) => g.condition.type === 'promotions')!.id));
+    expect(GOALS.some((g) => g.reward.some((r) => r.type === 'unlockFeature' && (r.id as string) === 'promote'))).toBe(false); // ease: 홍보·연구는 처음부터
     expect(idx(goalForFeature('parcel')!.id)).toBeLessThan(idx(GOALS.find((g) => g.condition.type === 'parcels')!.id));
-    expect(idx(goalForFeature('craft')!.id)).toBeLessThan(idx(GOALS.find((g) => g.condition.type === 'recipes')!.id));
     expect(idx(goalForFeature('popup')!.id)).toBeLessThan(idx(GOALS.find((g) => g.condition.type === 'namedGuest')!.id));
     expect(idx(goalForFeature('challenge')!.id)).toBeLessThan(idx(GOALS.find((g) => g.condition.type === 'rivalWins')!.id));
   });
@@ -118,13 +117,13 @@ describe('goals.json 데이터', () => {
 });
 
 describe('목표 체인 진행', () => {
-  it('새 게임: 첫 목표는 g01, 진행도 0/1, 기능은 바위 치우기(w-free 시작 개방)만 빼고 잠겨 있다 (완성 시작 상태는 튜토리얼 보상 기능만 열린 채)', () => {
+  it('새 게임: 첫 목표는 g01, 진행도 0/1, 기능은 잠겨 있다 (완성 시작 상태는 튜토리얼 보상 기능만 열린 채)', () => {
     const s = createInitialState(1, 'local', 0, 'tutorial');
     expect(currentGoal(s)?.id).toBe('g01');
     expect(goalProgress(s)).toEqual({ cur: 0, max: 1 });
-    for (const f of FEATURE_IDS) expect(s.features[f], f).toBe(f === 'clearRock');
+    for (const f of FEATURE_IDS) expect(s.features[f], f).toBe(false);
     const starter = createInitialState(1);
-    for (const f of FEATURE_IDS) expect(starter.features[f], f).toBe(f === 'clearRock' || tutorialFeatureIds().includes(f)); // 건너뛴 튜토리얼의 보상 기능(입지 보기 등)은 열려 있다
+    for (const f of FEATURE_IDS) expect(starter.features[f], f).toBe(tutorialFeatureIds().includes(f)); // 건너뛴 튜토리얼의 보상 기능(입지 보기 등)은 열려 있다
     expect(checkFeature(s, 'buyParcel').ok).toBe(false);
     expect(checkFeature(s, 'place').ok).toBe(true);
   });
@@ -287,5 +286,55 @@ describe('목표 체인 진행', () => {
     for (let d = 0; d < 3; d++) tick(s, DAY_MS);
     expect(s.goals.index).toBeGreaterThanOrEqual(2);
     expect(s.goals.claimed.slice(0, 2)).toEqual(['g01', 'g02']);
+  });
+});
+
+// ---------- game-feel P1: 보상 상자 묶기 · 하루 목표 상한 · 자금 마일스톤 ----------
+describe('game-feel P1 리듬', () => {
+  it('같은 큐에 보상 상자 3개 이상이면 한 상자로 묶고(아이템 합산, 대사는 마지막), 목표 축하 대화는 마지막 하나만. 튜토리얼 상자는 안 묶는다', () => {
+    const s = bareState(1);
+    s.alerts = [];
+    applyRewards(s, [{ type: 'money', amount: 100_000 }, { type: 'tickets', n: 1 }], { source: 'goal', refId: 'g1', title: 'A' });
+    s.alerts.push({ type: 'goal', goalId: 'g01' });
+    applyRewards(s, [{ type: 'money', amount: 200_000 }], { source: 'goal', refId: 'g2', title: 'B' });
+    s.alerts.push({ type: 'goal', goalId: 'g02' });
+    applyRewards(s, [{ type: 'tickets', n: 2 }, { type: 'unlockFacility', id: 'deco_planter' }], { source: 'challenge', refId: 'c1', title: 'C', line: '마지막 대사', speaker: 'samchun' });
+    applyRewards(s, [{ type: 'money', amount: 1 }], { source: 'tutorial', refId: '3', title: '튜토리얼' });
+    coalesceRewardAlerts(s);
+    expect(s.alerts.map((a) => a.type)).toEqual(['reward', 'goal', 'reward']);
+    const b = s.alerts[0] as Extract<typeof s.alerts[number], { type: 'reward' }>;
+    expect(b).toMatchObject({ source: 'bundle', count: 3, title: '보상 3개!', line: '마지막 대사', speaker: 'samchun' });
+    expect(b.items).toEqual([{ type: 'money', amount: 300_000 }, { type: 'tickets', n: 3 }, { type: 'unlockFacility', id: 'deco_planter' }]);
+    expect(s.alerts[1]).toEqual({ type: 'goal', goalId: 'g02' });
+    expect((s.alerts[2] as { source: string }).source).toBe('tutorial');
+    coalesceRewardAlerts(s); // 멱등
+    expect(s.alerts).toHaveLength(3);
+  });
+  it('한 번의 checkGoals에서 3개, 하루에 MAX_GOALS_PER_DAY개까지만 인정하고 나머지는 다음 날', () => {
+    const s = bareState(1);
+    s.totalGuests = 1_000_000; s.money = 1_000_000_000; s.stats.satisfiedTotal = 1_000_000; s.menuSold['americano'] = 1_000_000;
+    const first = checkGoals(s);
+    expect(first.length).toBeLessThanOrEqual(MAX_GOALS_PER_CHECK);
+    for (let i = 0; i < 10; i++) checkGoals(s); // 같은 날 여러 번 판정해도
+    expect(s.goals.claimed.length).toBe(MAX_GOALS_PER_DAY);
+    tick(s, DAY_MS);
+    expect(s.goals.claimed.length).toBeGreaterThan(MAX_GOALS_PER_DAY);
+    expect(s.goals.claimed.length).toBeLessThanOrEqual(MAX_GOALS_PER_DAY * 2);
+  });
+  it('자금 목표 25·50·75% 마일스톤마다 응모권 1장 + 메시지, 단계는 goals.milestones에 남는다 (한 번만)', () => {
+    const s = bareState(1);
+    const money = GOALS.find((g) => g.condition.type === 'money')!;
+    s.goals.index = GOALS.indexOf(money);
+    s.goals.claimed = GOALS.slice(0, s.goals.index).map((g) => g.id);
+    const n = (money.condition as { n: number }).n;
+    s.money = Math.floor(n * 0.3); const t0 = s.tickets;
+    expect(checkMoneyMilestones(s)).toEqual([{ goalId: money.id, stage: 1 }]);
+    expect(s.tickets).toBe(t0 + MILESTONE_TICKETS);
+    expect(s.goals.milestones?.[money.id]).toBe(1);
+    expect(checkMoneyMilestones(s)).toEqual([]);
+    s.money = Math.floor(n * 0.8);
+    expect(checkMoneyMilestones(s).map((m) => m.stage)).toEqual([2, 3]);
+    expect(s.tickets).toBe(t0 + MILESTONE_TICKETS * 3);
+    expect(s.notices.at(-1)).toContain('75%');
   });
 });

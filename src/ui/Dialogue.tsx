@@ -12,18 +12,19 @@ import { brownBtn, brownBtnOn, PALETTE } from './frame';
 export const TYPE_MS = 20;
 const FIXED_PORTRAITS = new Set(['halmang', 'samchun', 'hero', 'haenyeo', 'jangnim']);
 
-/** 초상 64×64: 고정 인물은 아이콘 png, 직원·손님 id는 파츠 초상 */
+/** 초상 96×96 (48 원본 2배): 고정 인물은 아이콘 png(portrait_<key>[_<expr>]), 직원·손님 id는 파츠 초상 */
+const PORTRAIT_PX = 96;
 function Speaker({ portrait }: { portrait: string }) {
   const s = useGame();
   if (FIXED_PORTRAITS.has(portrait)) {
-    return <img className="px" src={assetUrl(`assets/icons/portrait_${portrait}.png`)} width={64} height={64} alt="" style={{ flex: 'none', imageRendering: 'pixelated', border: `2px solid ${PALETTE.woodLight}`, borderRadius: 6, background: PALETTE.paperDark }} />;
+    return <img className="px" src={assetUrl(`assets/icons/portrait_${portrait}.png`)} width={PORTRAIT_PX} height={PORTRAIT_PX} alt="" style={{ flex: 'none', imageRendering: 'pixelated', border: `2px solid ${PALETTE.woodLight}`, borderRadius: 6, background: PALETTE.paperDark }} />;
   }
   const st = s.staff.find((x) => x.id === portrait) ?? s.candidates.find((x) => x.id === portrait);
   if (st) return <Portrait parts={staffParts(st.face, 'role' in st ? st.role : null, s.uniform ?? null)} face={st.face} />;
   const g = s.guests.find((x) => x.id === portrait);
   if (g?.namedId) { const nd = namedGuestDef(g.namedId); return <Portrait parts={namedPortraitParts(nd.id)} face={namedGuestFace(nd)} />; }
   if (g) return <Portrait parts={guestPortraitParts(g.type)} face={guestFace(g.type)} />;
-  return <img className="px" src={assetUrl('assets/icons/portrait_halmang.png')} width={64} height={64} alt="" style={{ flex: 'none', imageRendering: 'pixelated' }} />;
+  return <img className="px" src={assetUrl('assets/icons/portrait_halmang.png')} width={PORTRAIT_PX} height={PORTRAIT_PX} alt="" style={{ flex: 'none', imageRendering: 'pixelated' }} />;
 }
 
 /** 한 페이지(최대 2줄)를 타자 효과로. 탭하면 즉시 전부. */
@@ -74,8 +75,11 @@ function DialogueBox({ req, page }: { req: DialogueReq; page: number }) {
           </div>
         </div>
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6, flexWrap: 'wrap', minHeight: 44 }}>
-          {page === 0 && req.onSkip && (
-            <button aria-label="건너뛰기" style={{ ...brownBtn, margin: 0, background: '#fffaf0', color: PALETTE.inkSoft, marginRight: 'auto' }} onClick={() => { const skip = req.onSkip!; closeDialogue(); skip(); }}>건너뛰기</button>
+          {(req.onSkipStep || (page === 0 && req.onSkip)) && (
+            <span style={{ display: 'flex', gap: 6, marginRight: 'auto' }}>
+              {req.onSkipStep && <button aria-label="이미 알아요" data-testid="tutorial-skip-step" style={{ ...brownBtn, margin: 0, background: '#fffaf0', color: PALETTE.inkSoft }} onClick={() => { const skip = req.onSkipStep!; closeDialogue(); skip(); }}>이미 알아요</button>}
+              {page === 0 && req.onSkip && <button aria-label="건너뛰기" style={{ ...brownBtn, margin: 0, background: '#fffaf0', color: PALETTE.inkSoft }} onClick={() => { const skip = req.onSkip!; closeDialogue(); skip(); }}>건너뛰기</button>}
+            </span>
           )}
           {!typed || !last
             ? <button aria-label="다음" style={{ ...brownBtn, margin: 0 }} onClick={tap}>{typed ? '다음 ▶' : '▶'}</button>

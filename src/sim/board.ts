@@ -38,13 +38,51 @@ function shouldOffer(state: GameState, q: QuestDef): boolean {
   const st = guestTypeState(state, q.guestId);
   if (st.questDone) return false;
   const def = guestTypeDef(q.guestId);
-  return st.satisfaction >= SAT_QUEST || def.unlock.type === 'quest' || villageQuestOpen(state, q.guestId); // z-ending: 정착 등급 3이면 삼춘 부탁은 만족 조건 없이
+  return st.satisfaction >= SAT_QUEST || def.unlock.type === 'quest' || def.unlockBase?.type === 'quest' || villageQuestOpen(state, q.guestId); // z-ending: 정착 등급 3이면 삼춘 부탁은 만족 조건 없이. unlockBase: 단계 해금(어댑터)으로 앞당겨진 체인 후속도 원래대로 바로
 }
 
-/** 만족 30에 닿은 타입의 부탁을 올린다. 새로 올린 id 목록. */
-export function refreshQuests(state: GameState): string[] {
+/** 부탁 제안 스케줄 (game-feel P1: sim이 스스로 주는 달 중반 사건): 1일에 QUEST_OFFERS_FIRST개, 매월 questOfferDay(12~18일, 결정적)에 QUEST_OFFERS_MID개.
+ *  지금 할 수 있는 부탁(시설이 열려 있고·메뉴가 열려 있고·아이템이 있는)을 먼저 올린다 — 「삼춘이 지금 할 수 있는 부탁을 골라 온다」. */
+export const QUEST_OFFER_DAY_MIN = 12;
+export const QUEST_OFFER_DAY_SPAN = 7;
+export const QUEST_OFFERS_FIRST = 1;
+export const QUEST_OFFERS_MID = 2;
+export function questOfferDay(mi: number): number {
+  return QUEST_OFFER_DAY_MIN + (mi * 3) % QUEST_OFFER_DAY_SPAN;
+}
+/** 오늘 올릴 수 있는 부탁 수 (제안일이 아니면 0) */
+export function questOffersToday(state: GameState): number {
+  const d = state.clock.day;
+  if (d === 1) return QUEST_OFFERS_FIRST;
+  if (d === questOfferDay(monthIndex(state.clock))) return QUEST_OFFERS_MID;
+  return 0;
+}
+/** 지금 조건을 채울 수 있는 부탁인가 (시설·메뉴가 열려 있거나 아이템이 있거나 조건이 없거나) */
+export function questFeasible(state: GameState, q: QuestDef): boolean {
+  const c = q.condition;
+  switch (c.type) {
+    case 'objectPlaced': return state.unlocked.objects.includes(c.params.objectId);
+    case 'menuSold': return state.unlocked.menus.includes(c.params.menuId) || state.customMenus.some((m) => m.id === c.params.menuId);
+    case 'item': return (state.inventory[c.params.itemId] ?? 0) >= c.params.count;
+    case 'spotLevel': return spotLevel(state, c.params.spotId) >= c.params.level - 1;
+    case 'segmentPopularity': return isUnlocked(state, c.params.guestId);
+    case 'none': return true;
+  }
+}
+/** 올릴 수 있는 부탁 후보 (할 수 있는 것 먼저, 표 순서 유지) */
+export function pendingQuestOffers(state: GameState): QuestDef[] {
+  const pool = QUESTS.filter((q) => shouldOffer(state, q));
+  return [...pool.filter((q) => questFeasible(state, q)), ...pool.filter((q) => !questFeasible(state, q))];
+}
+
+/** 제안일이면 후보를 스케줄만큼 올린다 (limit을 주면 그만큼 바로 — 부탁 완료 뒤 체인 후속 1개). 새로 올린 id 목록. */
+export function refreshQuests(state: GameState, limit = questOffersToday(state)): string[] {
   const out: string[] = [];
-  for (const q of QUESTS) if (shouldOffer(state, q) && offerQuest(state, q.id)) out.push(q.id);
+  if (limit <= 0) return out;
+  for (const q of pendingQuestOffers(state)) {
+    if (out.length >= limit) break;
+    if (offerQuest(state, q.id)) out.push(q.id);
+  }
   return out;
 }
 
@@ -119,7 +157,7 @@ export function completeQuest(state: GameState, id: string): void {
   pushNotice(state, `부탁 완료! ${guestTypeDef(q.guestId).name} — ${questRewardText(q)}`);
   if (q.unlockGuestId) unlockGuestType(state, q.unlockGuestId);
   evaluateUnlocks(state);
-  refreshQuests(state);
+  refreshQuests(state, 1); // 체인 후속 부탁 하나는 바로
 }
 
 /** 진행 중인 부탁의 조건을 검사해 완료 처리. 완료된 id 목록. */
@@ -266,18 +304,17 @@ export function afterInvest(state: GameState, spotId: string, level: number): vo
 
 // ---------- 매일·매월 ----------
 
-/** 매일: 조건 진행 확인 → 완료, 만족 30 타입 부탁 올리기 */
+/** 매일: 조건 진행 확인 → 완료, 제안일(1일·보름께)이면 부탁 올리기 */
 export function dailyBoard(state: GameState): void {
   checkQuests(state);
   refreshQuests(state);
 }
 
-/** 월초 (손님 해금 뒤): 기한·선택 만료 → 이벤트 롤 → 부탁 올리기 */
+/** 월초 (손님 해금 뒤): 기한·선택 만료 → 이벤트 롤 (부탁은 dailyBoard가 1일 몫을 올린다) */
 export function monthlyBoard(state: GameState): void {
   expireQuests(state);
   expireEvents(state);
   rollEvents(state);
-  refreshQuests(state);
 }
 
 /** UI 배지: 도전 안 한 부탁 + 답 안 한 이벤트 */

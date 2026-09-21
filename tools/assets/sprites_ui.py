@@ -250,6 +250,187 @@ def icon_art(name: str) -> Canvas:
     return c
 
 
+# ---------------------------------------------------------------- 보상 상자 64×64 (RewardPopup: 8프레임, 80ms)
+# 0 닫힘 · 1~2 흔들(좌/우) · 3 뚜껑 살짝 · 4 활짝+빛줄기 · 5~6 반짝 파티클 · 7 활짝(정지)
+CHEST_GOLD = (hexc('c98a1a'), hexc('ffd54a'), hexc('fff3b0'))
+CHEST_IRON = (hexc('3b3b44'), hexc('6a6a76'), hexc('9a9aa8'))
+
+
+def _chest_body(c: Canvas, dx: int = 0) -> None:
+    """상자 몸통 x 8~55, y 32~58: 나무 널빤지(가로 결) + 쇠 테 2줄 + 앞면 자물쇠 판."""
+    wdk, wmd, wlt = WOOD
+    idk, imd, ilt = CHEST_IRON
+    x0, y0, w, h = 8 + dx, 32, 48, 27
+    c.rect(x0, y0, w, h, wmd)
+    for y in range(y0 + 1, y0 + h - 1, 5):                       # 널빤지 결
+        c.hline(x0 + 1, x0 + w - 2, y, wlt); c.hline(x0 + 1, x0 + w - 2, y + 4, wdk)
+    c.rect(x0, y0 + h - 3, w, 3, wdk)                           # 밑단 그늘
+    for bx in (x0 + 6, x0 + w - 10):                             # 세로 쇠 테
+        c.rect(bx, y0, 4, h, imd); c.vline(bx, y0, y0 + h - 1, ilt); c.vline(bx + 3, y0, y0 + h - 1, idk)
+        for ry in range(y0 + 3, y0 + h - 2, 6):
+            c.put(bx + 1, ry, idk)
+    c.rect(x0 + 20, y0 + 2, 8, 9, imd); c.rect(x0 + 21, y0 + 3, 6, 7, ilt)      # 자물쇠 판
+    c.rect(x0 + 23, y0 + 5, 2, 3, idk); c.put(x0 + 24, y0 + 8, idk)             # 열쇠 구멍
+
+
+def _chest_lid(c: Canvas, dx: int = 0, lift: int = 0) -> None:
+    """닫힌 뚜껑(둥근 위) x 6~57, y 18~33. lift만큼 위로 든다."""
+    wdk, wmd, wlt = WOOD
+    idk, imd, ilt = CHEST_IRON
+    y0 = 18 - lift
+    hws = [18, 22, 24, 25, 26, 26, 26, 26, 26, 26, 26, 26, 26, 26, 26, 26]
+    for i, hw in enumerate(hws):
+        c.hline(32 - hw + dx, 32 + hw - 1 + dx, y0 + i, wmd)
+    c.hline(32 - 17 + dx, 32 + 16 + dx, y0 + 1, wlt); c.hline(32 - 21 + dx, 32 + 20 + dx, y0 + 2, wlt)
+    c.hline(32 - 23 + dx, 32 + 22 + dx, y0 + 3, wlt)
+    c.rect(6 + dx, y0 + 13, 52, 3, wdk)                                         # 뚜껑 밑단 그늘
+    for bx in (14 + dx, 46 + dx):                                               # 쇠 테
+        c.rect(bx, y0 + 1, 4, 15, imd); c.vline(bx, y0 + 2, y0 + 15, ilt); c.vline(bx + 3, y0 + 2, y0 + 15, idk)
+    c.rect(28 + dx, y0 + 11, 8, 5, imd); c.rect(29 + dx, y0 + 12, 6, 3, ilt)    # 걸쇠
+
+
+def _chest_open_lid(c: Canvas) -> None:
+    """뒤로 젖혀진 뚜껑: 위쪽에 안쪽 면(어두운 나무)이 보인다. x 6~57, y 4~18."""
+    wdk, wmd, wlt = WOOD
+    idk, imd, ilt = CHEST_IRON
+    c.rect(6, 4, 52, 14, wdk); c.rect(8, 6, 48, 10, hexc('4a2c14'))
+    c.hline(6, 57, 4, wmd); c.hline(6, 57, 17, wmd)
+    for bx in (14, 46):
+        c.rect(bx, 4, 4, 14, imd); c.vline(bx, 5, 16, ilt); c.vline(bx + 3, 5, 16, idk)
+    c.rect(28, 13, 8, 4, imd); c.rect(29, 14, 6, 2, ilt)
+
+
+def _chest_glow(c: Canvas, strength: int) -> None:
+    """열린 상자 속 금빛 + 위로 뻗는 빛줄기. strength 0~2."""
+    gdk, gmd, glt = CHEST_GOLD
+    c.rect(10, 18, 44, 14, gmd); c.rect(12, 18, 40, 6, glt)                      # 상자 입구 금빛
+    for x in range(12, 52, 6):                                                  # 금화 무더기
+        c.rect(x, 26, 5, 3, gdk); c.rect(x + 1, 25, 3, 1, gmd)
+    if strength <= 0:
+        return
+    # 빛줄기: 위로 갈수록 가늘어지는 기둥 (가운데가 길고 바깥은 짧고 비스듬)
+    rays = ((12, 6, -1), (22, 1, 0), (32, 0, 0), (42, 1, 0), (52, 6, 1)) if strength == 2 else ((17, 4, -1), (32, 2, 0), (47, 4, 1))
+    for rx, top, slant in rays:
+        for y in range(top, 18):
+            x = rx + slant * (17 - y) // 4
+            w = 1 if y < top + 6 else 2 if y < 14 else 3
+            c.hline(x - w // 2, x - w // 2 + w - 1, y, glt)
+            if w == 3:
+                c.put(x - 1, y, gmd)
+
+
+def _spark(c: Canvas, x: int, y: int, size: int) -> None:
+    for i in range(size + 1):
+        col = WHITE[2] if i < size else YELLOW[2]
+        c.put(x + i, y, col); c.put(x - i, y, col); c.put(x, y + i, col); c.put(x, y - i, col)
+    c.put(x, y, YELLOW[1])
+
+
+def chest(frame: int) -> Canvas:
+    c = Canvas(64, 64)
+    if frame <= 2:
+        dx = (0, -2, 2)[frame]
+        _chest_body(c, dx); _chest_lid(c, dx)
+        c.outline()
+        if frame:                                                               # 흔들릴 때 땀방울 같은 움직임 선
+            for y in (24, 40):
+                c.put(4 + dx if dx < 0 else 59 + dx, y, BASALT[2])
+        return c
+    if frame == 3:
+        _chest_body(c)
+        c.rect(10, 28, 44, 4, CHEST_GOLD[2])                                     # 틈으로 새는 빛
+        _chest_lid(c, 0, 5)
+        c.outline()
+        c.rect(12, 30, 40, 2, CHEST_GOLD[1])
+        return c
+    _chest_body(c)
+    c.outline()
+    lid = Canvas(64, 64); _chest_open_lid(lid); lid.outline(); c.blit(lid, 0, 0)
+    _chest_glow(c, {4: 2, 5: 1, 6: 2, 7: 0}[frame])                             # 빛줄기는 젖혀진 뚜껑 앞으로
+    if frame in (5, 6):
+        for (sx, sy, sz) in (((3, 14, 2), (60, 10, 1), (8, 44, 1), (57, 36, 2)) if frame == 5 else ((6, 8, 1), (58, 18, 2), (4, 38, 2), (60, 46, 1))):
+            _spark(c, sx, sy, sz)
+    return c
+
+
+def ui_sparkle(frame: int) -> Canvas:
+    """8×8 반짝 3프레임: 점 → 십자 → 4각 별."""
+    c = Canvas(8, 8)
+    if frame == 0:
+        c.rect(3, 3, 2, 2, YELLOW[2]); c.put(3, 3, WHITE[2])
+    elif frame == 1:
+        c.hline(1, 6, 3, WHITE[2]); c.hline(1, 6, 4, WHITE[2]); c.vline(3, 1, 6, WHITE[2]); c.vline(4, 1, 6, WHITE[2])
+        c.rect(3, 3, 2, 2, YELLOW[1])
+    else:
+        c.hline(0, 7, 3, YELLOW[2]); c.vline(3, 0, 7, YELLOW[2])
+        c.hline(2, 4, 4, YELLOW[2]); c.vline(4, 2, 4, YELLOW[2])
+        c.rect(2, 2, 3, 3, WHITE[2]); c.put(3, 3, YELLOW[1])
+    return c
+
+
+def ui_coin(frame: int) -> Canvas:
+    """12×12 동전 4프레임(회전): 정면 → 반 → 옆 → 반(뒤집힘)."""
+    c = Canvas(12, 12)
+    if frame == 2:                                                              # 옆면: 3px 기둥 (outline이 먹지 않게 직접)
+        c.rect(4, 1, 4, 10, YELLOW[1]); c.vline(5, 1, 10, YELLOW[2]); c.vline(4, 1, 10, OUT); c.vline(7, 1, 10, OUT)
+        c.hline(4, 7, 0, OUT); c.hline(4, 7, 11, OUT)
+        return c
+    rx = (5.5, 3.5, 0, 3.5)[frame]
+    light = (-0.45, -0.55) if frame != 3 else (0.45, -0.55)
+    c.shade_ellipse(5.5, 5.5, rx, 5.5, YELLOW, light=light)
+    if frame == 0:
+        c.rect(5, 3, 2, 6, YELLOW[0]); c.hline(4, 7, 3, YELLOW[0]); c.hline(4, 7, 8, YELLOW[0])
+    else:
+        c.vline(5, 4, 8, YELLOW[0]); c.hline(4, 6, 4, YELLOW[0]); c.hline(4, 6, 8, YELLOW[0])
+    c.outline()
+    return c
+
+
+def ui_ribbon_banner() -> Canvas:
+    """240×40 리본 배너(제목 글자는 DOM). 가운데 띠 + 양 끝 제비꼬리 + 접힘. 9-slice 가능(양 끝 40px, 가운데 반복)."""
+    c = Canvas(240, 40)
+    rdk, rmd, rlt = RED
+    ydk, ymd, ylt = YELLOW
+    # 뒤쪽 꼬리 (좌우) y 12~37
+    for tx, dirn in ((0, 1), (239, -1)):
+        for y in range(12, 38):
+            cut = abs(y - 25) // 3                                                # 제비꼬리 V
+            x0 = tx + dirn * cut
+            for i in range(30 - cut):
+                c.put(x0 + dirn * i, y, rdk)
+    # 가운데 띠 y 4~31
+    c.rect(24, 4, 192, 28, rmd)
+    c.hline(24, 215, 5, rlt); c.hline(24, 215, 6, rlt)
+    c.rect(24, 28, 192, 4, rdk)
+    c.hline(26, 213, 8, ymd); c.hline(26, 213, 27, ymd)                            # 금줄
+    # 접힘(띠 양끝 아래 삼각 그늘)
+    for i in range(8):
+        c.vline(24 + i, 32, 32 + i, hexc('6a1414')); c.vline(215 - i, 32, 32 + i, hexc('6a1414'))
+    c.outline()
+    return c
+
+
+def icon_home_cafe() -> Canvas:
+    """24×24 카페 본관 미니 아이콘: 지붕 없는 흰 벽(제주 돌담 밑단) + 창 너머 카운터·컵 + 감귤 간판."""
+    c = Canvas(24, 24)
+    wdk, wmd, wlt = WHITE
+    bdk, bmd, blt = BASALT
+    tdk, tmd, tlt = WOOD
+    c.rect(1, 7, 22, 16, wmd); c.hline(2, 21, 8, wlt); c.vline(2, 8, 21, wlt)       # 흰 벽
+    c.rect(1, 5, 22, 2, bmd); c.hline(1, 22, 5, blt)                                 # 옥상 난간(평지붕)
+    c.rect(1, 20, 22, 3, bmd); c.dither(2, 21, 20, 2, bdk, bmd)                      # 돌담 밑단
+    c.rect(3, 10, 9, 8, SKY[2]); c.hline(3, 11, 10, WHITE[2])                        # 창
+    c.rect(3, 14, 9, 4, tmd); c.hline(3, 11, 14, tlt)                                # 창 너머 카운터
+    c.rect(4, 12, 2, 2, wlt); c.rect(7, 12, 2, 2, wlt); c.put(10, 12, wlt)           # 컵
+    c.rect(14, 11, 6, 9, tmd); c.vline(14, 11, 19, tlt); c.hline(14, 19, 11, tlt); c.put(18, 15, YELLOW[1])   # 나무 문
+    c.rect(13, 0, 9, 6, wlt); c.rect(14, 1, 7, 4, WHITE[2])                          # 간판 (흰 판)
+    c.rect(16, 1, 4, 4, ORANGE[1]); c.put(16, 1, CLEAR); c.put(19, 1, CLEAR); c.put(16, 4, CLEAR); c.put(19, 4, CLEAR)   # 감귤
+    c.put(17, 2, ORANGE[2]); c.put(18, 0, LEAF[1])
+    c.outline()
+    c.put(18, 0, LEAF[1]); c.put(17, 2, ORANGE[2])
+    return c
+
+
 # ---------------------------------------------------------------- 장면 창 배경 160×90 (로비: 회벽 + 카운터 + 창문)
 def scene_lobby() -> Canvas:
     c = Canvas(160, 90)
@@ -324,4 +505,12 @@ def sprites() -> dict[str, Canvas]:
     for n in ICONS:
         s[f'icon_{n}'] = icon(n)
     s['scene_lobby'] = scene_lobby()
+    for i in range(8):
+        s[f'ui_chest_{i}'] = chest(i)
+    for i in range(3):
+        s[f'ui_sparkle_{i}'] = ui_sparkle(i)
+    for i in range(4):
+        s[f'ui_coin_{i}'] = ui_coin(i)
+    s['ui_ribbon_banner'] = ui_ribbon_banner()
+    s['icon_home_cafe'] = icon_home_cafe()
     return s

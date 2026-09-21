@@ -33,7 +33,11 @@ function backfill(state: GameState): void {
   state.ending ??= initEnding(); // z-ending: 엔딩·빠른 모드·100주년 (v18 세이브엔 없다)
   state.village ??= initVillage(); // z-ending: 정착 등급·마을제
   state.carry ??= null; // z-ending: 이월 묶음
-  state.features.clearRock = true; // w-free: 바위 치우기는 시작부터 열려 있다 (옛 저장은 g12 전이면 false)
+  for (const k of ['clearRock', 'promote', 'craft', 'siteView', 'comboCodex', 'spotMap']) delete (state.features as Record<string, boolean>)[k]; // ease: 바위 삭제·처음부터 열린 기능 — 옛 저장의 기능 키는 지운다
+  delete (state.stats as unknown as Record<string, number>)['rocksCleared'];
+  // ease: 옛 저장(v19)의 바위·큰 바위 칸은 흙으로, 곶자왈 덤불 오브젝트는 지운다 (지형·오브젝트 정의가 없어졌다)
+  for (const c of state.grid.cells) if ((c.terrain as string) !== 'soil' && (c.terrain as string) !== 'road') c.terrain = 'soil';
+  for (const o of Object.values(state.objects)) if (o.type === 'bush_wild') delete state.objects[o.id];
   if (state.tutorial.seen === undefined) { // z-tutorial: 30단계 판정 표식이 없는 옛 9단계 저장 — 건너뛴 것은 계속 끝난 상태(30), 손으로 한 것은 10단계부터 이어 간다
     state.tutorial.seen = [];
     if (state.tutorial.skipped && state.tutorial.step < TUTORIAL_STEPS) state.tutorial.step = TUTORIAL_STEPS;

@@ -111,36 +111,49 @@ export function checkChallenges(state: GameState): string[] {
 
 // ---------- 월간 과제 ----------
 
-type MonthlyKind = 'guests' | 'sales' | 'satisfied' | 'seats';
-const MONTHLY_KINDS: MonthlyKind[] = ['guests', 'sales', 'satisfied', 'seats'];
+type MonthlyKind = 'guests' | 'sales' | 'satisfied' | 'seats' | 'spot' | 'hidden';
+/** 종류 순환. 명당·숨은 레시피(game-feel P1: 있지만 못 만나는 컨텐츠)는 2년차부터 끼어든다 — 그 전엔 손님·매출로 대신 */
+const MONTHLY_KINDS: MonthlyKind[] = ['guests', 'sales', 'satisfied', 'seats', 'spot', 'guests', 'sales', 'hidden'];
+export const MONTHLY_CODEX_YEAR = 2;
 
-/** 이달 과제를 만든다 (결정적: monthIndex로 종류를 고른다). 난이도 = 현재 수치 기준 자동. */
+/** 월간 과제 목표치 = 지난달 실적의 이 비율 (game-feel P1: 1.3·1.2배는 월말에나 닿아 달 중반이 비었다 → 60%, 달 중반 달성) */
+export const MONTHLY_TARGET_RATIO = 0.6;
+/** 이달 과제를 만든다 (결정적: monthIndex로 종류를 고른다). 난이도 = 지난달 실적 × MONTHLY_TARGET_RATIO. */
 export function makeMonthly(state: GameState): MonthlyState {
   const mi = monthIndex(state.clock);
-  const kind = MONTHLY_KINDS[mi % MONTHLY_KINDS.length]!;
+  let kind = MONTHLY_KINDS[mi % MONTHLY_KINDS.length]!;
+  if ((kind === 'spot' || kind === 'hidden') && state.clock.year < MONTHLY_CODEX_YEAR) kind = kind === 'spot' ? 'guests' : 'sales';
   const lastGuests = Math.max(30, state.lastMonthCard?.guests ?? state.monthGuests);
   const lastIncome = Math.max(500_000, state.lastMonthIncome);
   let condition: GoalCondition; let title: string; let base = 0; let reward: GoalReward[];
   switch (kind) {
     case 'guests': {
-      const n = Math.ceil(lastGuests * 1.3 / 10) * 10;
+      const n = Math.max(20, Math.ceil(lastGuests * MONTHLY_TARGET_RATIO / 10) * 10);
       condition = { type: 'monthGuests', n }; title = `이달 손님 ${n}명`; reward = [{ type: 'tickets', n: 2 }, { type: 'mileage', n: 10 }];
       break;
     }
     case 'sales': {
-      const n = Math.ceil(lastIncome * 1.2 / 100_000) * 100_000;
+      const n = Math.max(300_000, Math.ceil(lastIncome * MONTHLY_TARGET_RATIO / 100_000) * 100_000);
       condition = { type: 'monthSales', n }; title = `이달 매출 ₩${(n / 10_000).toLocaleString('en-US')}만`; reward = [{ type: 'tickets', n: 3 }];
       break;
     }
     case 'satisfied': {
-      const n = Math.max(10, Math.ceil(lastGuests * 0.8 / 10) * 10);
+      const n = Math.max(10, Math.ceil(lastGuests * MONTHLY_TARGET_RATIO * 0.7 / 10) * 10);
       condition = { type: 'satisfied', n }; base = state.stats.satisfiedTotal; title = `만족 손님 ${n}명 더`; reward = [{ type: 'mileage', n: 20 }];
       break;
     }
     case 'seats': {
       const cur = conditionProgress(state, { type: 'seats', n: 1 }).cur;
-      const n = cur + 2;
+      const n = cur + 1;
       condition = { type: 'seats', n }; title = `좌석 시설 ${n}개`; reward = [{ type: 'tickets', n: 2 }];
+      break;
+    }
+    case 'spot': {
+      condition = { type: 'spotEffects', n: 1 }; base = state.codex.spots.length; title = '명당 하나 더'; reward = [{ type: 'tickets', n: 3 }, { type: 'mileage', n: 10 }];
+      break;
+    }
+    case 'hidden': {
+      condition = { type: 'hiddenRecipes', n: 1 }; base = state.codex.recipes.length; title = '숨은 레시피 하나'; reward = [{ type: 'tickets', n: 3 }, { type: 'research', n: 20 }];
       break;
     }
   }
@@ -158,9 +171,11 @@ export function monthlyProgress(state: GameState): Progress {
 export function checkMonthly(state: GameState): void {
   const mi = monthIndex(state.clock);
   if (!state.monthly || state.monthly.monthIndex !== mi) {
-    if (state.monthly && state.monthly.status === 'active') state.monthly.status = 'failed';
+    const failed = state.monthly && state.monthly.status === 'active' ? state.monthly : null;
+    if (failed) failed.status = 'failed';
     state.monthly = makeMonthly(state);
     pushNotice(state, `이달의 과제: ${state.monthly.title}`);
+    if (failed) state.alerts.push({ type: 'monthlyFailed', title: failed.title, next: state.monthly.title }); // game-feel P2: 실패 대사 한 줄 + 다음 과제 예고
   }
   const m = state.monthly;
   if (m.status !== 'active') return;

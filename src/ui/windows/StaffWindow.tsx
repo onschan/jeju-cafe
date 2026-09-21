@@ -20,8 +20,8 @@ const HIDDEN_ROLES = new Set<string>(['field']);
 const css = (rgb: number) => `#${rgb.toString(16).padStart(6, '0')}`;
 type Tab = 'ours' | 'candidates';
 
-/** 파츠 초상 48px. 시트가 아직 없으면(Pixi 미로드) 머리·피부·상의 색 상자로 대신한다. */
-export function Portrait({ face, role, size = 48 }: { face: Face; role: RoleId | null; size?: number }) {
+/** 파츠 초상 96px(48 원본 2배). 시트가 아직 없으면(Pixi 미로드) 머리·피부·상의 색 상자로 대신한다. */
+export function Portrait({ face, role, size = 96 }: { face: Face; role: RoleId | null; size?: number }) {
   const ref = useRef<HTMLCanvasElement>(null);
   const [ok, setOk] = useState(false);
   useEffect(() => { if (ref.current) setOk(drawPortrait(ref.current, staffParts(face, role))); }, [face.hair, face.skin, face.top, role]);

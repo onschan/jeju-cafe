@@ -6,14 +6,6 @@ import { seasonOf, monthIndex } from './clock.ts';
 import { spotSceneryBonus } from './spots.ts';
 import { routePlaceCheck } from './entry.ts';
 
-/** 바위 치우기 비용 (w-free: 시작부터 열려 있고 즉시·건축가 불필요): 작은 바위 10만, 큰 바위(오름 능선) 30만, 곶자왈 덤불 2만. 곡괭이가 있으면 50% 할인(아이템은 안 줄어든다). */
-export const ROCK_CLEAR_COST = 100_000;
-export const BIG_ROCK_CLEAR_COST = 300_000;
-export const BUSH_CLEAR_COST = 20_000;
-export const PICKAXE_ITEM = 'pickaxe';
-/** 곡괭이 할인율 (%) */
-export const PICKAXE_DISCOUNT_PCT = 50;
-
 export const SHELTER_THRESHOLD = 3;
 export const SCENERY_RADIUS = 2;
 /** 경관 상한 (마스터 GDD §2.2) */
@@ -168,7 +160,7 @@ export function canPlace(state: GameState, type: string, x: number, y: number, i
       continue;
     }
     if (cell.objectId && cell.objectId !== ignoreId) return { ok: false, reason: '이미 뭔가 있어요' };
-    if (!def.terrain.includes(cell.terrain)) return { ok: false, reason: cell.terrain === 'rock' || cell.terrain === 'rock_big' ? '바위를 먼저 치워요' : cell.terrain === 'road' ? '마을 길 위엔 못 놓아요' : '여기엔 못 놓아요' };
+    if (!def.terrain.includes(cell.terrain)) return { ok: false, reason: cell.terrain === 'road' ? '마을 길 위엔 못 놓아요' : '여기엔 못 놓아요' };
     // 방의 문 앞 칸은 손님 출입구라 길·정낭만 놓는다
     if (blocksDoorFront(def) && roomWithDoorFrontAt(state, p.x, p.y, ignoreId)) return { ok: false, reason: '문 앞은 비워 둬요' };
   }
@@ -188,7 +180,7 @@ export function canPlace(state: GameState, type: string, x: number, y: number, i
   return { ok: true };
 }
 
-/** 본관 발자국 검사 (증축·옮기기 공통, §4.1·§8.1): 전부 내 필지 흙이고 바위·시설·다른 방 없음. 올렛길은 있어도 된다(자동 철거·환불).
+/** 본관 발자국 검사 (증축·옮기기 공통, §4.1·§8.1): 전부 내 필지 흙이고 시설·다른 방 없음. 올렛길은 있어도 된다(자동 철거·환불).
  *  ignoreId(본관 자신)의 칸은 비어 있는 것으로 본다. 문 앞 칸은 막혀 있어도 되지만 격자 밖이면 안 된다. */
 export function canPlaceMain(state: GameState, x: number, y: number, w: number, h: number, ignoreId?: string): ApplyResult {
   for (const p of footprint('warehouse', x, y, w, h)) {
@@ -200,7 +192,7 @@ export function canPlaceMain(state: GameState, x: number, y: number, w: number, 
       const o = state.objects[cell.objectId];
       if (!o || objectDef(o.type).kind !== 'path') return { ok: false, reason: cell.roomId ? '다른 건물이 있어요' : '시설을 먼저 치워요' };
     }
-    if (cell.terrain !== 'soil') return { ok: false, reason: cell.terrain === 'rock' || cell.terrain === 'rock_big' ? '바위를 먼저 치워요' : '여기엔 못 놓아요' };
+    if (cell.terrain !== 'soil') return { ok: false, reason: '여기엔 못 놓아요' };
   }
   const f = doorFrontOf({ type: 'warehouse', x, y, w, h });
   if (!inBounds(state, f.x, f.y)) return { ok: false, reason: '문 앞이 격자 밖이에요' };
@@ -230,47 +222,6 @@ export function relocateObject(state: GameState, obj: PlacedObject, x: number, y
   obj.x = x;
   obj.y = y;
   occupy(state, obj);
-}
-
-// ---------- 바위·덤불 치우기 ----------
-
-/** 이 칸을 치우는 데 드는 돈 (곡괭이 할인 반영). 치울 게 없으면 null. */
-export function clearCost(state: GameState, x: number, y: number): number | null {
-  const base = baseClearCost(state, x, y);
-  if (base === null) return null;
-  return hasPickaxe(state) ? Math.round(base * (1 - PICKAXE_DISCOUNT_PCT / 100)) : base;
-}
-/** 할인 전 비용 */
-export function baseClearCost(state: GameState, x: number, y: number): number | null {
-  if (!inBounds(state, x, y)) return null;
-  const o = objectAt(state, x, y);
-  if (o) return o.type === 'bush_wild' ? BUSH_CLEAR_COST : null;
-  const t = cellAt(state, x, y).terrain;
-  return t === 'rock' ? ROCK_CLEAR_COST : t === 'rock_big' ? BIG_ROCK_CLEAR_COST : null;
-}
-
-/** 곡괭이 아이템이 있나 (바위 치우기 50% 할인, w-free) */
-export function hasPickaxe(state: GameState): boolean {
-  return (state.inventory[PICKAXE_ITEM] ?? 0) > 0;
-}
-
-export function canClearRock(state: GameState, x: number, y: number): ApplyResult {
-  const cost = clearCost(state, x, y);
-  if (cost === null) return { ok: false, reason: '치울 바위가 없어요' };
-  if (!parcelAt(state, x, y)?.owned) return { ok: false, reason: '아직 내 땅이 아니에요' };
-  if (state.money < cost) return { ok: false, reason: '돈이 모자라요' };
-  return { ok: true };
-}
-
-/** 바위·덤불을 즉시 치워 흙 칸으로 만든다 (공사·건축가 없음). 곡괭이가 있으면 50% 할인. 호출 전 canClearRock으로 확인할 것. 낸 돈을 돌려준다. */
-export function clearRock(state: GameState, x: number, y: number): number {
-  const cost = clearCost(state, x, y) ?? 0;
-  const o = objectAt(state, x, y);
-  if (o) removeObject(state, o.id);
-  cellAt(state, x, y).terrain = 'soil';
-  bumpLayoutRev(state); // 걷기 가능 칸이 바뀐다
-  state.money -= cost;
-  return cost;
 }
 
 /** 북서쪽 대각 띠(7칸)의 wind 합 */

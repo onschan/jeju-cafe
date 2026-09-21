@@ -275,7 +275,7 @@ describe('투어 개최 (§3.4.5)', () => {
     expect(r).toMatchObject({ success: true, money: score * TOUR_MONEY_PER_SCORE, visitors: TOUR_SUCCESS_VISITORS });
     expect(s.money).toBe(score * TOUR_MONEY_PER_SCORE);
     expect(spotVisitors(s, 'canola_field')).toBe(TOUR_FAIL_VISITORS + TOUR_SUCCESS_VISITORS);
-    expect(s.tickets).toBe(1); // 누적 2,500 → 1,000 상품
+    expect(s.tickets).toBeGreaterThanOrEqual(1); // 누적 2,500 → 1,000 상품 (+ 명소 Lv5로 열린 손님층·랭크 업 보상 응모권, game-feel P1)
   });
 });
 

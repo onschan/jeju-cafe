@@ -11,7 +11,7 @@ import { updateGuests, hourlyRegulars, spawnNamedGuest, GUEST_SPEED_CELLS_PER_S,
 import {
   isWeekend, daysToWeekend, popupCost, popupGuestCount, affinityGain, canOpenPopup, resolvePopupVisit, addAffinity, namedGuestState, regionState,
   regularIds, regularVisitSlot, regularsDueNow, metCount, regionProgress, bestRegion, namedGuestFace, namedLikes,
-  POPUP_COST_SCALE, AFFINITY_MAX, AFFINITY_REWARD_STEP, POPUP_GUESTS_MAX,
+  POPUP_COST_SCALE, AFFINITY_MAX, AFFINITY_REWARD_STEP, POPUP_GUESTS_MAX, POPUP_NEW_MAX,
 } from '../popup.ts';
 import { botDay, newBotCursor } from '../bot.ts';
 import { REGIONS, NAMED_GUESTS, MENUS, regionDef, namedGuestDef, namedGuestsOf, guestTypeDef, NAMED_TYPE } from '../../data/index.ts';
@@ -78,8 +78,14 @@ test('팝업 열기: 주말에만, 비용·이미 열림·돈 부족 거부, 열
   expect(s.money).toBe(1_000_000 - 50_000);
   expect(s.monthCosts.ads).toBe(50_000);
   expect(s.popup.regionId).toBe('dongmun');
-  expect(s.popup.queue).toHaveLength(POPUP_GUESTS_MAX); // 식욕 100 → 8명
-  expect(new Set(s.popup.queue).size).toBe(8);
+  expect(s.popup.queue).toHaveLength(POPUP_NEW_MAX); // 식욕 100 → 8명이지만 처음 보는 손님은 3명까지 (game-feel P1), 나머지 줄은 이미 만난 손님이 채운다
+  expect(new Set(s.popup.queue).size).toBe(POPUP_NEW_MAX);
+  // 다 만난 지역이면 8명
+  const s8 = bareState(1); toWeekend(s8); s8.money = 1_000_000;
+  for (const g of namedGuestsOf('dongmun')) namedGuestState(s8, g.id).met = true;
+  expect(apply(s8, { type: 'openPopup', regionId: 'dongmun' }).ok).toBe(true);
+  expect(s8.popup.queue).toHaveLength(POPUP_GUESTS_MAX);
+  expect(new Set(s8.popup.queue).size).toBe(8);
   expect(regionState(s, 'dongmun')).toEqual({ vitality: 92, appetite: 92 });
   expect(apply(s, { type: 'openPopup', regionId: 'hyeopjae' })).toMatchObject({ ok: false, reason: '이미 팝업을 열었어요' });
   expect(apply(s, { type: 'closePopup' }).ok).toBe(true);
@@ -100,6 +106,7 @@ test('손님 수 = 8 × 식욕/100 (6~8) · 호감도 = 10 × 취향 ×2 × max(
 
 test('팝업 하루: 매 시간 한 명씩 카운터에 와서 메뉴를 고르고 호감도가 오른다, 다음 날 아침 정리·닫힘', () => {
   const s = cafe(toWeekend());
+  for (const g of namedGuestsOf('dongmun')) namedGuestState(s, g.id).met = true; // 다 만난 지역 → 8명 줄 (처음 보는 손님은 하루 3명까지, game-feel P1)
   apply(s, { type: 'openPopup', regionId: 'dongmun' });
   const money0 = s.money;
   tick(s, HOUR_MS);
@@ -136,7 +143,7 @@ test('팝업 당일에 닫으면 남은 줄은 안 온다 · 열린 채 날이 �
   tick(s2, HOUR_MS * 14); // 20시에 연다 → 4명만 시간 안에
   apply(s2, { type: 'openPopup', regionId: 'hyeopjae' });
   tick(s2, DAY_MS);
-  expect(s2.popup.visits).toHaveLength(8);
+  expect(s2.popup.visits).toHaveLength(POPUP_NEW_MAX);
   expect(s2.popup.regionId).toBeNull();
 });
 

@@ -98,30 +98,28 @@ export interface PlaceBarProps {
   text: string;
   ok: boolean;
   canRotate: boolean;
+  /** 회전 버튼 라벨 (기본 「회전」, 길·담 ㄱ자는 「방향」 — ease) */
+  rotateLabel?: string;
   /** 확정 버튼 없이 완료만 (길·담 칠하기·철거·이동 대기) */
   paint?: boolean;
   /** 연속 배치 모드(§5.3): 취소 대신 `완료`로 나간다 */
   continuous?: boolean;
   /** 되돌리기 가능하면 ↶ 버튼 (§5.3) */
   onUndo?: (() => void) | null;
-  /** 고스트가 바위·덤불 칸에 겹칠 때(w-free): 확정 대신 「치우기 ₩N」 — 누르면 그 칸들을 즉시 치우고 고스트는 그대로 */
-  clearRocks?: { cost: number; ok: boolean; onClick: () => void } | null;
   onConfirm: () => void;
   onRotate: () => void;
   onCancel: () => void;
 }
 
-export function PlaceBar({ text, ok, canRotate, paint, continuous, onUndo, clearRocks, onConfirm, onRotate, onCancel }: PlaceBarProps) {
+export function PlaceBar({ text, ok, canRotate, rotateLabel = '회전', paint, continuous, onUndo, onConfirm, onRotate, onCancel }: PlaceBarProps) {
   return (
     <div data-testid="place-bar" style={barStyle}>
       <div data-testid="place-text" style={{ position: 'absolute', left: 8, right: 8, bottom: `calc(100% + ${MESSAGE_LINE_H + 4}px)`, background: PALETTE.paper, color: ok ? PALETTE.ok : PALETTE.bad, border: `2px solid ${PALETTE.wood}`, borderRadius: 6, padding: '4px 8px', fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', pointerEvents: 'none' }}>{text}</div>
       {onUndo !== undefined && <button aria-label="되돌리기" disabled={!onUndo} style={{ ...(onUndo ? brownBtn : brownBtnOff), margin: 0, flex: 1, minWidth: 0, fontSize: 15, padding: 0 }} onClick={() => onUndo?.()}><Icon name="undo" /> 되돌리기</button>}
-      {canRotate && <button aria-label="회전" style={{ ...brownBtn, margin: 0, flex: 1, minWidth: 0, fontSize: 16, padding: 0 }} onClick={onRotate}>↻ 회전</button>}
+      {canRotate && <button aria-label={rotateLabel} style={{ ...brownBtn, margin: 0, flex: 1, minWidth: 0, fontSize: 16, padding: 0 }} onClick={onRotate}>↻ {rotateLabel}</button>}
       {paint
         ? <button aria-label="완료" style={{ ...brownBtnOn, margin: 0, flex: 2, minWidth: 0, fontSize: 16 }} onClick={onCancel}><Icon name="check" /> 완료</button>
-        : clearRocks
-          ? <button aria-label="바위 치우기" data-testid="place-clear-rocks" disabled={!clearRocks.ok} style={{ ...(clearRocks.ok ? brownBtnOn : brownBtnOff), margin: 0, flex: 2, minWidth: 0, fontSize: 15 }} onClick={clearRocks.onClick}><Icon name="hand" /> 치우기 {wonText(clearRocks.cost)}</button>
-          : <button aria-label="확정" style={{ ...(ok ? brownBtnOn : brownBtnOff), margin: 0, flex: 2, minWidth: 0, fontSize: 16 }} onClick={onConfirm}><Icon name="check" /> 확정</button>}
+        : <button aria-label="확정" style={{ ...(ok ? brownBtnOn : brownBtnOff), margin: 0, flex: 2, minWidth: 0, fontSize: 16 }} onClick={onConfirm}><Icon name="check" /> 확정</button>}
       {!paint && (continuous
         ? <button aria-label="완료" style={{ ...brownBtn, margin: 0, flex: 1, minWidth: 0, fontSize: 15, padding: 0 }} onClick={onCancel}><Icon name="check" /> 완료</button>
         : <button aria-label="취소" style={{ ...dangerBtn, margin: 0, flex: 1, minWidth: 0, fontSize: 16, padding: 0 }} onClick={onCancel}><Icon name="close" /> 취소</button>)}

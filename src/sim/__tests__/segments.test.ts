@@ -5,13 +5,13 @@ import { createInitialState } from '../state.ts';
 import { placeObject } from '../grid.ts';
 import { setSlot } from '../menu.ts';
 import { apply } from '../actions.ts';
-import { spawnGuests, updateGuests, typeWeight, affordableMenus, PREP_MS } from '../guests.ts';
+import { spawnGuests, updateGuests, typeWeight, affordableMenus, PREP_MS, STAGED_SPAWN_WEIGHT, countsForGuests } from '../guests.ts';
 import {
   evaluateUnlocks, unlockCondMet, unlockGuestType, isUnlocked, unlockedTypeIds, addSatisfaction, onHappyVisit, onAngryVisit, walletOf, regularFreqMult, guestFace, updateRank,
-  SAT_HAPPY, SAT_TARGET, SAT_REGULAR, SAT_VIP, REGULAR_FREQ, REGULAR_WALLET, VIP_FREQ, VIP_WALLET, MAX_TARGETS, TARGET_SPAWN_MULT, UNLOCK_POPULARITY, TIP_RATE, VISIT_BONUS_CAP,
+  SAT_HAPPY, SAT_TARGET, SAT_REGULAR, SAT_VIP, REGULAR_FREQ, REGULAR_WALLET, VIP_FREQ, VIP_WALLET, MAX_TARGETS, TARGET_SPAWN_MULT, UNLOCK_POPULARITY, TIP_RATE, VISIT_BONUS_CAP, stagedFull,
 } from '../segments.ts';
 import { objectStats, BASE_POPULARITY } from '../compat.ts';
-import { GUEST_TYPES, GUEST_CHAINS, guestTypeDef, guestTags, canonicalGuestId, QUESTS } from '../../data/index.ts';
+import { GUEST_TYPES, GUEST_CHAINS, guestTypeDef, guestTags, canonicalGuestId, QUESTS, HEAD_RANK_GATE, CHAIN_SAT_2, chainPosition } from '../../data/index.ts';
 import type { Guest } from '../types.ts';
 
 function cafe(seed = 1) {
@@ -99,7 +99,7 @@ test('랭크: 점수(누적 손님/50 + 시설×2 + 해금 손님층×5)가 문�
   updateRank(s);
   expect(s.rank).toBe(1);
   const ids = GUEST_TYPES.map((t) => t.id);
-  for (const id of ids.slice(0, 10)) unlockGuestType(s, id); // 시작 타입 포함 10 → 50점 = 랭크 2
+  for (const id of ids.slice(0, 25)) unlockGuestType(s, id); // 시작 타입 포함 25 × 2점 = 50점 = 랭크 2 (game-feel P1: 손님층 5 → 2점)
   updateRank(s);
   expect(s.rank).toBe(2);
   s.totalGuests = 100_000; // 2000점 → 최고 랭크
@@ -132,6 +132,9 @@ test('스폰: 잠긴 타입은 가중치 0, 해금되면 온다', () => {
   const s = bareState(1);
   expect(typeWeight(s, 'couple', 10)).toBe(0);
   unlockGuestType(s, 'couple');
+  // game-feel P1: 커플은 「동백 동산 Lv2 또는 랭크 r」로 앞당겨 열린다 — 원본 조건(동백 동산 Lv2)을 채우기 전엔 스폰 비중 ¼
+  expect(typeWeight(s, 'couple', 10)).toBeCloseTo(5 * STAGED_SPAWN_WEIGHT * (1 + UNLOCK_POPULARITY / 50));
+  s.spots['camellia_hill'] = 2;
   expect(typeWeight(s, 'couple', 10)).toBeCloseTo(5 * (1 + UNLOCK_POPULARITY / 50));
   expect(typeWeight(s, 'couple', 12)).toBeCloseTo(5 * (1 + UNLOCK_POPULARITY / 50) * 2); // 청년 낮 ×2
   const { s: s2 } = cafe();
@@ -189,7 +192,8 @@ test('만족 게이지: happy +2, 타깃 +3, angry −1, 50 단골(빈도 ×1.5�
 
 test('효과 6종: 자금(팁 20%)·연구 진행(+2)·홍보(같은 태그 +1)·시설 인기(+1, 상한 10)·아이템(5%)·응모권(1%)', () => {
   const { s, seat } = cafe();
-  // money: 팀장님 wallet 18000
+  // money: 팀장님 wallet 18000 (체인 2번째 — 원본 조건인 회사 워크숍 부탁을 끝낸 뒤에야 효과가 돈다: game-feel P1 stagedFull)
+  s.board.quests['q_company_workshop'] = { id: 'q_company_workshop', status: 'done', offeredMonthIndex: 0, deadlineMonthIndex: null, progress: 0 };
   unlockGuestType(s, 'team_leader');
   const money0 = s.money;
   const g = seated(s, 'team_leader');
@@ -213,7 +217,8 @@ test('효과 6종: 자금(팁 20%)·연구 진행(+2)·홍보(같은 태그 +1)�
   expect(s.segmentPopularity['working_holiday']).toBe(11);
   expect(s.segmentPopularity['local_auntie']).toBe(30); // 시니어는 그대로
   expect(s.segmentPopularity['couple']).toBeUndefined(); // 잠긴 타입은 그대로
-  // popularity: 커플 → 좌석 종류 인기 +1, 상한 10
+  // popularity: 커플 → 좌석 종류 인기 +1, 상한 10 (커플은 앞당겨 열리는 머리 — 효과는 원본 조건(동백 동산 Lv2)을 채운 뒤부터, game-feel P1 stagedFull)
+  s.spots['camellia_hill'] = 2;
   const c: Guest = { ...g, type: 'couple', seatId: seat.id };
   for (let i = 0; i < 15; i++) onHappyVisit(s, c);
   expect(s.visitBonus['table_out']).toBe(VISIT_BONUS_CAP);
@@ -237,4 +242,30 @@ test('얼굴은 id로 결정적이고 시니어는 회색 머리', () => {
   expect(guestFace('couple')).not.toEqual(guestFace('student'));
   expect(guestFace('village_head').hair % 6).toBe(4);
   expect(guestFace('local')).toEqual(guestFace('local_auntie'));
+});
+
+// ---------- game-feel P1: 손님층 단계 해금 · 해금 보상 ----------
+test('단계 해금(어댑터): 명소 머리는 「명소 Lv2 또는 랭크 r」, 체인 2번째는 「앞 손님 만족 30 또는 부탁 완료」, 3번째부터는 부탁만. 열리면 응모권 1 상자', () => {
+  const couple = guestTypeDef('couple');
+  expect(couple.unlock).toEqual({ type: 'any', conditions: [{ type: 'spot', spotId: 'camellia_hill', level: 2 }, { type: 'rank', rank: HEAD_RANK_GATE[0] }] });
+  expect(couple.unlockBase).toEqual({ type: 'spot', spotId: 'camellia_hill', level: 2 });
+  const newly = guestTypeDef('newlyweds');
+  expect(newly.unlock).toEqual({ type: 'any', conditions: [{ type: 'segment', guestId: 'couple', satisfaction: CHAIN_SAT_2 }, { type: 'quest', questId: 'q_couple' }] });
+  expect(guestTypeDef('wedding_snap').unlock).toEqual({ type: 'quest', questId: 'q_newlyweds' });
+  expect(guestTypeDef('wedding_snap').unlockBase).toBeUndefined();
+  expect(chainPosition('couple')).toBe(0); expect(chainPosition('newlyweds')).toBe(1); expect(chainPosition('wedding_snap')).toBe(2);
+  const s = bareState(1);
+  expect(evaluateUnlocks(s)).not.toContain('couple');
+  s.rank = HEAD_RANK_GATE[0]!;
+  expect(evaluateUnlocks(s)).toContain('couple');
+  expect(s.alerts.some((a) => a.type === 'reward' && a.source === 'unlock' && a.refId === 'couple')).toBe(true);
+  expect(stagedFull(s, 'couple')).toBe(false); // 원본 조건(동백 동산 Lv2) 전엔 손님 수·효과에 안 센다
+  expect(countsForGuests(s, 'couple')).toBe(false);
+  s.spots['camellia_hill'] = 2;
+  expect(stagedFull(s, 'couple')).toBe(true);
+  expect(countsForGuests(s, 'couple')).toBe(true);
+  addSatisfaction(s, 'couple', CHAIN_SAT_2);
+  expect(evaluateUnlocks(s)).toContain('newlyweds');
+  expect(countsForGuests(s, 'newlyweds')).toBe(false); // 체인 후속은 손님 수에 안 센다
+  expect(evaluateUnlocks(s)).not.toContain('wedding_snap');
 });

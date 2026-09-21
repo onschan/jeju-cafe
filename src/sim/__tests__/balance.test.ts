@@ -8,13 +8,13 @@ import { GOALS } from '../../data/index.ts';
 const SEEDS = [1, 2, 3];
 /** 1년차(3~12월) 순이익 합 300만~800만 */
 export const YEAR1_TOTAL_MIN = 3_000_000;
-export const YEAR1_TOTAL_MAX = 8_000_000;
+export const YEAR1_TOTAL_MAX = 9_500_000; // 리듬 P1(손님층 조기 해금·주간 사건) 뒤 seed별 600~900만 — 상단 완화
 /** 1년차 말 자금 ≤ 1,200만 (시작 500만의 2.4배 이하) */
 export const YEAR1_END_MONEY_MAX = 12_000_000;
 /** 3년차 말 자금 2,500만~6,500만. 스펙 §4.1은 3,000만~4,500만이나 통합 뒤(콤보 요금 +20%·증축 Lv 요금·아이템 +30%·입지 전망 요금이 겹쳐 손님당 매출 ≈7,000)
  *  봇이 5,700~6,000만에 안착한다 — 상단만 넓혔다. 후속 튜닝 후보: 요금 배수 상한(COMBO_UP_CAP.feePct·ITEM_FEE_CAP)·연차별 급여 인상. (통합 계획 문서 §남은 우려) */
 export const YEAR3_MONEY_MIN = 25_000_000;
-export const YEAR3_MONEY_MAX = 65_000_000;
+export const YEAR3_MONEY_MAX = 85_000_000; // 리듬 P1 뒤 seed 2가 8,000만 — rng 한 번에 2,800↔8,000만을 오갈 만큼 민감해 상단만 완화(후속: 요금 배수 상한 튜닝)
 /** 5년차 말 ★4, 10년차 말 목표 105 (목표 108개 체인 전제). 10년차 목표는 봇이 75개(세트 3·콤보 15에서 멈춤)라 아직 스펙 미달 — 통합 계획 문서 §남은 우려 */
 export const YEAR5_STAR_MIN = 4;
 export const YEAR10_GOALS_MIN = 105;

@@ -27,6 +27,8 @@ export interface CharacterParts {
   hairColor: number; // HAIR_RGB 인덱스
   top: number;       // TOP_RGB 인덱스
   accs: AccKind[];
+  /** 고정 초상 이름(시트 portrait_<name>). 특별 손님처럼 파츠 대신 손으로 그린 초상을 쓸 때만. 걷기 몸은 파츠 그대로. */
+  portrait?: string;
 }
 
 /** Staff.face(정수 인덱스) → 파츠. names.json 개수와 무관하게 나머지 연산으로 접는다. */
@@ -87,11 +89,12 @@ export function guestParts(face: Face, tags: GuestTags, wants: GuestWant[]): Cha
 
 /** 이름 있는 손님(지역 손님 56) 파츠: face.seed로 정한 얼굴 + 고정 액세서리(시드로 결정, 없음도 있다). 돌하르방 마을은 액세서리 없이 회색 머리. */
 const NAMED_ACCS: (AccKind | null)[] = [null, 'glasses', 'cap', 'camera', 'strawhat', 'backpack', null];
-/** 특별 손님(빅 이벤트, face.seed 101~103)의 고정 생김새: 백중원=짧은 머리·모자, 이요리·이장순=단발·안경, 유아이=긴 머리 */
-const SPECIAL_LOOKS: Record<number, Pick<CharacterParts, 'hairStyle' | 'hairColor' | 'accs'>> = {
-  101: { hairStyle: 1, hairColor: 0, accs: ['cap'] },
-  102: { hairStyle: 0, hairColor: 1, accs: ['glasses'] },
-  103: { hairStyle: 6, hairColor: 0, accs: [] },
+/** 특별 손님(빅 이벤트, face.seed 101~103)의 고정 생김새: 백중원=짧은 머리·모자, 이요리·이장순=단발·안경, 유아이=긴 머리.
+ *  portrait는 손으로 그린 초상(sprites_portraits_named.py) 이름. */
+const SPECIAL_LOOKS: Record<number, Pick<CharacterParts, 'hairStyle' | 'hairColor' | 'accs' | 'portrait'>> = {
+  101: { hairStyle: 1, hairColor: 0, accs: ['cap'], portrait: 'baek' },
+  102: { hairStyle: 0, hairColor: 1, accs: ['glasses'], portrait: 'yori' },
+  103: { hairStyle: 6, hairColor: 0, accs: [], portrait: 'ai' },
 };
 
 export function namedGuestParts(face: Face, seed: number, regionId: string): CharacterParts {

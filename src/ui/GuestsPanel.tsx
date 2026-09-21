@@ -1,6 +1,25 @@
 import { useState } from 'react';
 import { Icon } from './Icon';
-import { wonText } from '../data/labels.ts';
+import { wonText, unlockText } from '../data/labels.ts';
+import type { GuestTypeDef, UnlockCond } from '../sim/index.ts';
+
+/** 조건이 지금 손에 잡히는 잠긴 손님층 (game-feel P1): 앞 손님이 열려 있는 만족 조건, 랭크·명소·날짜·개수 조건, 열린 손님의 부탁. 최대 CODEX_NEXT_MAX개. */
+export const CODEX_NEXT_MAX = 8;
+function condNear(s: GameState, c: UnlockCond, unlocked: Set<string>): boolean {
+  switch (c.type) {
+    case 'segment': case 'segmentPop': return unlocked.has(c.guestId);
+    case 'quest': { const q = GUEST_TYPES.find((t) => t.questId === c.questId); return !!q && unlocked.has(q.id); }
+    case 'rank': return c.rank <= s.rank + 2;
+    case 'star': return c.star <= s.star + 1;
+    case 'spot': case 'date': case 'count': case 'category': return true;
+    case 'any': return c.conditions.some((x) => condNear(s, x, unlocked));
+    case 'all': return c.conditions.every((x) => condNear(s, x, unlocked));
+    default: return false;
+  }
+}
+export function nextGuestTypes(s: GameState, unlocked: Set<string>): GuestTypeDef[] {
+  return GUEST_TYPES.filter((t) => !unlocked.has(t.id) && condNear(s, t.unlock, unlocked)).slice(0, CODEX_NEXT_MAX);
+}
 import { useGame, dispatch } from './store';
 import { guestFace, unlockedTypeIds, MAX_TARGETS, type GameState, type Guest } from '../sim/index.ts';
 import { guestTypeDef, GUEST_TYPES } from '../data/index.ts';
@@ -74,7 +93,7 @@ function TargetSlots({ s }: { s: GameState }) {
             return (
               <button key={id} data-tut={ui === 0 ? 'target-pick' : undefined} aria-pressed={on} disabled={full} onClick={() => toggle(id)}
                 style={{ ...(on ? brownBtnOn : brownBtn), margin: 0, minHeight: 40, padding: '0 8px', fontSize: 13, opacity: full ? 0.5 : 1, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                <Portrait parts={guestPortraitParts(id)} face={guestFace(id)} size={20} />{guestTypeDef(id).name}
+                <Portrait parts={guestPortraitParts(id)} face={guestFace(id)} size={24} />{guestTypeDef(id).name}
               </button>
             );
           })}
@@ -94,6 +113,7 @@ export function GuestsPanel({ onGuest, sub: fixed }: { onGuest: (guestId: string
   const setSort = (k: GuestSort) => { rememberedSort = k; setSortState(k); };
   const offered = Object.values(s.board.quests).filter((q) => q.status === 'offered').length;
   const unlocked = new Set(unlockedTypeIds(s));
+  const next = nextGuestTypes(s, unlocked);
   return (
     <div>
       {!fixed && (
@@ -140,12 +160,24 @@ export function GuestsPanel({ onGuest, sub: fixed }: { onGuest: (guestId: string
               </div>
             );
           })}
-          {/* 아직 안 온 손님은 한 줄에 하나씩 100개를 늘어놓지 않고 ? 칸으로 모아 보여 준다 */}
-          {GUEST_TYPES.length > unlocked.size && (
+          {/* game-feel P1 (카이로식): 다음에 올 손님 — 조건이 손에 잡히는 잠긴 손님층은 이름 없이 「? · 대학생 손님 만족 30이면 열려요」 한 줄씩 */}
+          {next.length > 0 && (
+            <div style={{ marginTop: 6 }} data-testid="codex-next">
+              <div style={{ fontSize: 13, color: PALETTE.inkSoft, marginBottom: 4 }}>다음에 올 손님</div>
+              {next.map((t) => (
+                <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2, fontSize: 14 }}>
+                  <span style={{ width: 24, height: 24, lineHeight: '24px', textAlign: 'center', border: `1px solid ${PALETTE.woodLight}`, borderRadius: 4, color: PALETTE.inkSoft, fontSize: 13, flex: 'none' }}>?</span>
+                  <span style={{ flex: 1, color: PALETTE.inkSoft, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{unlockText({ unlock: t.unlock })}</span>
+                </div>
+              ))}
+            </div>
+          )}
+          {/* 나머지 잠긴 손님은 한 줄에 하나씩 100개를 늘어놓지 않고 ? 칸으로 모아 보여 준다 */}
+          {GUEST_TYPES.length > unlocked.size + next.length && (
             <div style={{ marginTop: 6 }}>
-              <div style={{ fontSize: 13, color: PALETTE.inkSoft, marginBottom: 4 }}>아직 안 온 손님 {GUEST_TYPES.length - unlocked.size}종</div>
+              <div style={{ fontSize: 13, color: PALETTE.inkSoft, marginBottom: 4 }}>아직 먼 손님 {GUEST_TYPES.length - unlocked.size - next.length}종</div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }} data-testid="codex-locked">
-                {GUEST_TYPES.filter((t) => !unlocked.has(t.id)).map((t) => <span key={t.id} style={{ width: 24, height: 24, lineHeight: '24px', textAlign: 'center', border: `1px solid ${PALETTE.woodLight}`, borderRadius: 4, color: PALETTE.inkSoft, fontSize: 13 }}>?</span>)}
+                {GUEST_TYPES.filter((t) => !unlocked.has(t.id) && !next.includes(t)).map((t) => <span key={t.id} style={{ width: 24, height: 24, lineHeight: '24px', textAlign: 'center', border: `1px solid ${PALETTE.woodLight}`, borderRadius: 4, color: PALETTE.inkSoft, fontSize: 13 }}>?</span>)}
               </div>
             </div>
           )}

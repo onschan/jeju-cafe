@@ -122,6 +122,7 @@ export function unlockCondText(c: UnlockCond): string {
     case 'segmentPop': return `${label('guest', c.guestId)} 손님 인기 ${c.popularity}`;
     case 'goal': return '목표 보상';
     case 'all': return c.conditions.length > 0 ? c.conditions.map(unlockCondText).join(' + ') : '아직 열 수 없음';
+    case 'any': return c.conditions.length > 0 ? c.conditions.map(unlockCondText).join(' 또는 ') : '아직 열 수 없음';
   }
 }
 
@@ -193,7 +194,6 @@ export function conditionText(c: LooseCondition): string {
     case 'research': return `연구 포인트 ${n()} 모으기`;
     case 'namedGuest': return `이름 있는 손님 ${n()}명 만나기`;
     case 'promotion': case 'promote': return `홍보 ${n()}회 하기`;
-    case 'rocks': case 'clearRock': return `바위 ${n()}개 치우기`;
     case 'recipe': case 'develop': return `레시피 ${n()}개 개발하기`;
     case 'menus': return `메뉴 ${n()}개 올리기`;
     case 'none': return '조건 없음';

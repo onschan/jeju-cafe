@@ -6,7 +6,7 @@
  *   상태에서 계산해 가중 합(guidebooks.json weights) → 경쟁 카페 9곳(§3.7.3 성장 곡선 top_b(y) − 6(i−1) ± 4, seed 결정적)과 비교해 순위 → 1위 상금·연구·씨앗·마일리지.
  *   플레이어가 1위 하면 그 가이드북 라이벌은 다음 해 +3(boost), 라이벌 카페 등장 중이면 +5.
  */
-import type { GameState, GuidebookDef, GuidebookState, JudgeKey, JudgeScores, Announcement, AnnouncementEntry, GuestTags } from './types.ts';
+import type { GameState, GuidebookDef, GuidebookState, JudgeKey, JudgeScores, Announcement, AnnouncementEntry, GuestTags, GoalReward } from './types.ts';
 import { cleanJudgePenalty } from './cleanliness.ts';
 import { GUIDEBOOKS, STARS, GUEST_TYPES, COMBOS, SETS, HIDDEN_RECIPES, INGREDIENT_COMBOS, objectDef, guestTags, statSum } from '../data/index.ts';
 import { staffInRole, energyFactor, pushNotice } from './staff.ts';
@@ -21,10 +21,13 @@ import { effectivePopularity } from './promotions.ts';
 import { monthIndex } from './clock.ts';
 import { parcelAt } from './parcels.ts';
 import { pushFx } from './fx.ts';
+import { applyRewards } from './goals.ts';
 import { fmtNum } from './format.ts';
 import { reputationScore } from './reputation.ts';
 
 export const MAX_STAR = 5;
+/** ★ 승급 보상 (game-feel P1): 응모권 2 + 마일리지 10 — 장면 창 뒤 보상 상자 */
+export const STAR_UP_REWARDS: GoalReward[] = [{ type: 'tickets', n: 2 }, { type: 'mileage', n: 10 }];
 export const JUDGE_KEYS: JudgeKey[] = ['smile', 'scenery', 'menu', 'fun', 'group', 'rest', 'clean', 'price', 'reputation', 'overall'];
 export const JUDGE_LABEL: Record<JudgeKey, string> = { smile: '미소', scenery: '경관', menu: '메뉴', fun: '체험', group: '단체', rest: '쉼', clean: '청결', price: '가성비', reputation: '평판', overall: '종합' };
 /** 종합 = 8항목(평판 제외) 평균 + 카페 랭크 × 3 + 콤보 수 × 1 */
@@ -105,6 +108,7 @@ export function checkStar(state: GameState): number | null {
   state.starReview.warned = false;
   pushNotice(state, `★${next.star} 승급! ${next.unlockText}`);
   pushFx(state, { kind: 'scene', title: `★${next.star} 승급`, text: `우리 카페가 ★${next.star} 카페가 됐어요! ${next.unlockText}`, tick: state.tick });
+  applyRewards(state, STAR_UP_REWARDS, { source: 'star', refId: `star${next.star}`, title: `★${next.star} 승급` }); // game-feel P1: 승급에 손에 남는 보상
   evaluateUnlocks(state);
   evaluateGuidebooks(state);
   return next.star;

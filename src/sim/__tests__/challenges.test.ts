@@ -10,9 +10,10 @@ import { dayIndex } from '../effects.ts';
 import { bareState, at } from './helpers.ts';
 
 describe('challenges.json', () => {
-  it('40개, id 유일, tier 1~5, 제목 14자 이내, 기한·보상이 있고 조건이 전부 판정된다', () => {
-    expect(CHALLENGES).toHaveLength(40);
-    expect(new Set(CHALLENGES.map((c) => c.id)).size).toBe(40);
+  it('46개(40 + 명당·숨은 레시피·콤보·세트 6), id 유일, tier 1~5, 제목 14자 이내, 기한·보상이 있고 조건이 전부 판정된다', () => {
+    expect(CHALLENGES).toHaveLength(46);
+    expect(new Set(CHALLENGES.map((c) => c.id)).size).toBe(46);
+    expect(CHALLENGES.filter((c) => c.condition.type === 'spotEffects' || c.condition.type === 'hiddenRecipes')).toHaveLength(4); // game-feel P1: 있지만 못 만나는 컨텐츠를 도전 풀에
     const s = createInitialState(1);
     for (const c of CHALLENGES) {
       expect(c.title.length, c.id).toBeLessThanOrEqual(14);
@@ -118,13 +119,18 @@ describe('월간 과제 (§7.3)', () => {
     expect(p.max).toBeGreaterThan(0);
     s.lastMonthCard = { income: 3_000_000, guests: 200, month: 3, year: 1, costs: { ingredients: 0, salary: 0, ads: 0, upkeep: 0, recruit: 0 }, net: 1 } as never;
     s.lastMonthIncome = 3_000_000;
-    s.clock.month = 4; // monthIndex % 4 → guests 종류 (3 = 1년 4월 → (0*12+3) % 4 = 3 → seats)
-    const kinds = [4, 5, 6, 7].map((m) => { s.clock.month = m; return makeMonthly(s); });
+    s.clock.month = 4; // monthIndex % 8 → 종류 순환 (guests·sales·satisfied·seats·spot·guests·sales·hidden). 1년차엔 spot·hidden 대신 guests·sales
+    const kinds = [4, 5, 6, 7, 8, 9, 10, 11].map((m) => { s.clock.month = m; return makeMonthly(s); });
     expect(new Set(kinds.map((k) => k.condition.type)).size).toBe(4);
+    expect(kinds.some((k) => k.condition.type === 'spotEffects' || k.condition.type === 'hiddenRecipes')).toBe(false); // 1년차
     const guestsTask = kinds.find((k) => k.condition.type === 'monthGuests')!;
-    expect((guestsTask.condition as { n: number }).n).toBe(260); // 200 × 1.3
+    expect((guestsTask.condition as { n: number }).n).toBe(120); // 200 × 0.6 (game-feel P1: 달 중반 달성)
     const sales = kinds.find((k) => k.condition.type === 'monthSales')!;
-    expect((sales.condition as { n: number }).n).toBe(3_600_000); // 300만 × 1.2
+    expect((sales.condition as { n: number }).n).toBe(1_800_000); // 300만 × 0.6
+    s.clock.year = 2;
+    const kinds2 = [4, 5, 6, 7, 8, 9, 10, 11].map((m) => { s.clock.month = m; return makeMonthly(s); });
+    expect(kinds2.some((k) => k.condition.type === 'spotEffects')).toBe(true); // 2년차부터 명당·숨은 레시피 과제
+    expect(kinds2.some((k) => k.condition.type === 'hiddenRecipes')).toBe(true);
   });
 
   it('달성하면 보상 상자·done, 월이 바뀌면 미달은 failed로 두고 새 과제를 만든다', () => {

@@ -47,10 +47,9 @@ import regionsJson from './generated/regions.json' with { type: 'json' };
 import namedGuestsJson from './generated/named_guests.json' with { type: 'json' };
 import rivalsJson from './generated/v2/rivals.json' with { type: 'json' };
 
-/** 시작부터 있는 특수 오브젝트 (필지 지형 생성용). 덤불은 곡괭이 대신 5만 원에 치운다. */
+/** 시작부터 있는 특수 오브젝트 (필지 지형 생성용). ease: 곶자왈 덤불(bush_wild)은 없앴다 — 옛 세이브의 덤불은 로드 때 지운다. */
 const TERRAIN_OBJECTS: ObjectDef[] = [
-  { id: 'bush_wild', name: '곶자왈 덤불', kind: 'deco', w: 1, h: 1, cost: 0, scenery: 1, noise: 0, wind: 1, upkeep: 0, terrain: ['soil', 'rock'], removeCost: 50000 },
-  { id: 'spring', name: '용천수', kind: 'deco', w: 2, h: 1, cost: 0, scenery: 2, noise: 0, wind: 0, upkeep: 0, terrain: ['soil', 'rock'] },
+  { id: 'spring', name: '용천수', kind: 'deco', w: 2, h: 1, cost: 0, scenery: 2, noise: 0, wind: 0, upkeep: 0, terrain: ['soil'] },
 ];
 /** 랜드마크 (§1.6). 데이터만 — 효과는 경치·요금 외 TODO. 비용은 화폐 리스케일 ×100. */
 export const LANDMARK_COST_SCALE = 100;
@@ -59,7 +58,7 @@ const LANDMARK_UNLOCK: Record<string, { unlock: Record<string, unknown>; unlockT
 export const LANDMARKS: ObjectDef[] = (landmarksJson as { id: string; name: string; w: number; h: number; cost: number; effectText: string }[]).map((l) => {
   const v2 = LANDMARK_UNLOCK[l.id];
   const def: ObjectDef = {
-    id: l.id, name: l.name, kind: 'landmark', category: 'landmark', w: l.w, h: l.h, cost: l.cost * LANDMARK_COST_SCALE, scenery: 3, noise: 0, wind: 1, upkeep: 0, terrain: ['soil', 'rock'], effectText: l.effectText,
+    id: l.id, name: l.name, kind: 'landmark', category: 'landmark', w: l.w, h: l.h, cost: l.cost * LANDMARK_COST_SCALE, scenery: 3, noise: 0, wind: 1, upkeep: 0, terrain: ['soil'], effectText: l.effectText,
     unlock: v2 ? toUnlockCond(v2.unlock) : { type: 'star', star: 3 },
   };
   def.unlockText = v2?.unlockText ?? '★3';
@@ -155,6 +154,7 @@ export function toUnlockCond(u: Record<string, unknown> | string | null | undefi
     case 'date': return { type: 'date', year: n('year') || 1, month: n('month') || 1 };
     case 'count': return { type: 'count', objectId: String(u.objectId), count: n('count') || 1 };
     case 'all': return { type: 'all', conditions: (Array.isArray(u.conditions) ? u.conditions : []).map((c) => toUnlockCond(c as Record<string, unknown>)) };
+    case 'any': return { type: 'any', conditions: (Array.isArray(u.conditions) ? u.conditions : []).map((c) => toUnlockCond(c as Record<string, unknown>)) };
     case 'goal': return { type: 'goal' };
     case 'shop': return { type: 'goal' }; // 마일리지 상점 구매로 열린다 (trackC shop.ts) — 짓기 창엔 '목표 보상'처럼 잠김 표시
     default: return { type: 'all', conditions: [{ type: 'rank', rank: 99 }] };
@@ -183,8 +183,41 @@ function minSceneryOf(wants: GuestWant[], tags: GuestTags): number {
 }
 /** 외국인 손님 체인 (트랙 H §3.2 foreign 태그: 공항 셔틀 ×2·크루즈 ×3, 이모지 말풍선, 감귤 메뉴 선호) */
 export const FOREIGN_CHAINS = new Set(['c18_group_foreign', 'c19_solo_foreign']);
+// ---------- game-feel P1: 손님층 해금 단계화 (카이로식 「앞 손님 만족 30/50이면 다음 손님」) ----------
+/** 원본 표(guests.json)의 체인은 머리(명소 Lv2)→부탁→부탁→… 이라 3년 봇이 19/103밖에 못 만났다. 어댑터에서만 조건을 바꾼다(표·생성 파일은 그대로):
+ *  - 체인 머리(명소 Lv2): 「명소 Lv2 **또는** 랭크 r」 — r은 체인 순서대로 HEAD_RANK_GATE(3~10)로 흩어 랭크 업마다 새 손님층이 2~4종 열린다.
+ *  - 2번째: 「앞 손님 만족 CHAIN_SAT_2(30) 또는 부탁 완료」. 부탁 완료(quest unlockGuestId)로도 여전히 바로 열린다.
+ *  - 3번째부터는 원래대로 부탁 완료만 — 3번째부터는 지갑(평균 1.4만~5.8만)·팁 효과가 커서 앞당기면 3년 자금이 1억을 넘는다(§4.6 밴드). 깊은 컨텐츠도 남긴다.
+ *  STAGE_MAX_POS = 앞당기는 마지막 위치. */
+export const CHAIN_SAT_2 = 30;
+export const STAGE_MAX_POS = 1;
+export const HEAD_RANK_GATE = [3, 3, 4, 4, 5, 5, 5, 6, 6, 6, 7, 7, 7, 7, 8, 8, 8, 8, 9, 9, 9, 10, 10, 10];
+const RAW_GUESTS = guestsJson as RawGuest[];
+const PREV_GUEST = new Map<string, string>();
+for (const r of RAW_GUESTS) if (r.nextGuestId) PREV_GUEST.set(canonicalGuestId(r.nextGuestId), canonicalGuestId(r.id));
+/** 체인 안 위치 (머리 0) */
+export function chainPosition(id: string): number {
+  let p = 0;
+  for (let cur = canonicalGuestId(id); PREV_GUEST.has(cur); cur = PREV_GUEST.get(cur)!) p++;
+  return p;
+}
+const SPOT_HEAD_ORDER: string[] = RAW_GUESTS.filter((r) => r.unlock && (r.unlock as { type?: string }).type === 'spot' && chainPosition(r.id) === 0).map((r) => canonicalGuestId(r.id));
+export function stagedUnlock(id: string, base: UnlockCond): UnlockCond {
+  const cid = canonicalGuestId(id);
+  const pos = chainPosition(cid);
+  if (pos === 0 && base.type === 'spot') {
+    const i = SPOT_HEAD_ORDER.indexOf(cid);
+    return { type: 'any', conditions: [base, { type: 'rank', rank: HEAD_RANK_GATE[i] ?? HEAD_RANK_GATE[HEAD_RANK_GATE.length - 1]! }] };
+  }
+  const prev = PREV_GUEST.get(cid);
+  if (prev && base.type === 'quest' && pos >= 1 && pos <= STAGE_MAX_POS) return { type: 'any', conditions: [{ type: 'segment', guestId: prev, satisfaction: CHAIN_SAT_2 }, base] }; // 부탁 완료 경로(evaluateUnlocks)도 그대로
+  return base;
+}
+
 export function adaptGuest(r: RawGuest): GuestTypeDef {
   const tags = toTags(r.tags ?? { gender: null, age: null, group: false });
+  const base = toUnlockCond(r.unlock);
+  const staged = stagedUnlock(r.id, base);
   if (r.chain && FOREIGN_CHAINS.has(r.chain)) tags.foreign = true;
   const wants = (r.likes ?? []).filter((w): w is GuestWant => WANTS.has(w as GuestWant));
   return {
@@ -199,7 +232,8 @@ export function adaptGuest(r: RawGuest): GuestTypeDef {
     effect: EFFECTS.has(r.effect as GuestEffect) ? (r.effect as GuestEffect) : 'research',
     wallet: Math.max(0, Number(r.money) || 0),
     wants,
-    unlock: toUnlockCond(r.unlock),
+    unlock: staged,
+    unlockBase: staged === base ? undefined : base, // 단계 해금으로 바뀐 타입만 (guests.ts stagedFull)
     questId: r.questId ?? null,
     nextGuest: r.nextGuestId ? canonicalGuestId(r.nextGuestId) : null,
     chain: r.chain ?? null,
@@ -266,7 +300,7 @@ export function adaptFacility(r: RawFacility): ObjectDef {
   for (const k of ['spring', 'summer', 'autumn', 'winter'] as Season[]) if (typeof r.seasonBonus?.[k] === 'number') season[k] = r.seasonBonus[k];
   const def: ObjectDef = {
     id: r.id, name: r.name, kind, w: r.w, h: r.h, cost: r.cost, scenery: r.scenery, noise: Math.max(0, r.noise), wind: r.category === 'scenery' && r.h >= 1 && ['palm', 'cedar'].includes(r.id) ? 1 : 0,
-    upkeep: r.upkeep, terrain: r.category === 'farm' ? ['soil'] : ['soil', 'rock'], popularity: r.popularity, feePct: r.feePct ?? 100,
+    upkeep: r.upkeep, terrain: ['soil'], popularity: r.popularity, feePct: r.feePct ?? 100,
     desc: r.description ?? undefined, unlock: r.unlock?.type === 'start' && !START_OBJECT_IDS.includes(r.id) ? { type: 'goal' } : toUnlockCond(r.unlock),
     buildDays: typeof r.buildDays === 'number' ? r.buildDays : BUILD_DAYS_BY_TIER[r.tier] ?? 1,
   };
@@ -629,9 +663,11 @@ export const UNIFORMS: UniformDef[] = uniformsJson as UniformDef[];
 /** 인형뽑기 상품: v1 roulette.json 8칸 가중치를 그대로 쓰고 라벨만 바꾼다 */
 const DRAW_KIND_OF: Record<string, DrawPrizeKind> = { money: 'money', research: 'research', ingredient_box: 'ingredient_box', medal: 'mileage', item: 'item', samchun_visit: 'seed', free_promo: 'uniform_piece', miss: 'miss' };
 const DRAW_LABEL: Record<DrawPrizeKind, string> = { money: '돈', research: '연구', ingredient_box: '재료 상자', mileage: '마일리지', item: '강화 아이템', seed: '씨앗', uniform_piece: '유니폼 조각', miss: '꽝' };
+/** game-feel P2: 꽝이 5%라 3년 132회 중 3번 — 당첨이 당연해진다 → 꽝 15%, 4등(돈·연구)을 그만큼 줄인다 (표 roulette.json은 그대로, 어댑터에서 덧씌움) */
+export const DRAW_PCT_OVERRIDE: Record<string, number> = { miss: 15, money: 20, research: 15 };
 export const DRAW_PRIZES: DrawPrizeDef[] = (rouletteJson as { slots: { id: string; pct: number }[] }).slots.map((sl) => {
   const kind = DRAW_KIND_OF[sl.id] ?? 'miss';
-  return { kind, label: DRAW_LABEL[kind], pct: sl.pct };
+  return { kind, label: DRAW_LABEL[kind], pct: DRAW_PCT_OVERRIDE[sl.id] ?? sl.pct };
 });
 /** 가이드북 심사 가중치(합 1)·라이벌 곡선은 guidebooks.json에 (트랙 E §3.7) */
 type RawGuidebook = { id: string; name: string; unlock: Record<string, unknown>; unlockText: string; criteriaText: string; prize: number; research: number; seeds: { itemId: string; count: number }[]; weights: Partial<Record<JudgeKey, number>>; rivalTop: number; rivalGrowth: number; mileage?: number };

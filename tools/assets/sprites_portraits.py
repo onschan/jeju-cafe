@@ -1,41 +1,65 @@
-"""초상 파츠 시스템 (정면). 카이로소프트 치비: 큰 둥근 머리, 점 눈(흰자·속눈썹·눈썹 없음, 표정 모두 점 눈), 발그레한 볼, 작은 입, 밑에 깃·어깨.
-걷기 몸(sprites_chars)과는 별개 파츠다.
+"""초상 파츠 시스템 (정면, 48×48 원본 → UI에서 2배 96px 표시).
+카이로소프트 치비 흉상: 머리 큰 3등신, 어깨까지. 점 눈(4×4: 짙은 테 + 안쪽 2×2 + 하이라이트 1픽셀), 눈썹 1줄, 볼터치,
+작은 입(웃음·평·놀람), 머리카락 덩어리 2~3단 셰이딩, 상의 칼라. 흰자·속눈썹·`^^` 감은 눈 없음.
+걷기 몸(sprites_chars)과는 별개 파츠다. 고정 인물은 sprites_portraits_named.py.
 
-32×32 격자에 그리고 2배로 키워 64×64로 내보낸다. 월드 스프라이트가 1.5~3배로 그려지므로 초상도 같은 굵기의 도트로 보이게 한다.
-(64 격자에 1px 디테일을 넣으면 옆의 월드보다 '매끈한 일러스트'처럼 보인다.)
+레이어(아래→위)와 시트 이름(모두 48×48):
+  pt_face_{skin}_{shape}   12장  얼굴 바탕(얼굴·목·귀·볼). 피부 4종 × 얼굴형 3종(round·slim·square). tint 없음.
+  pt_eyes_{kind}_{expr}     9장  눈+눈썹. 눈 3종(round·narrow·droop) × 표정 3종(normal·happy·surprised). 고유색.
+  pt_mouth_{expr}           3장  입 3종.
+  pt_top(_gloss)            2장  어깨·칼라. 흰 3톤 → tint = 상의색 (+ 광택).
+  pt_hair_{style}(_gloss)  24장  머리 12종. 흰 3톤 → tint = 머리색 (+ 광택).
+  pt_acc_{kind}            12장  액세서리, 고유색.
 
-레이어(아래→위)와 시트 이름(모두 64×64):
-  pt_face_{skin}_{expr}   12장  얼굴 바탕(얼굴·목·귀·눈·입·볼). 피부 3종 × 표정 4종. tint 없음.
-  pt_top                   1장  어깨·깃. 흰 4톤 → Pixi tint = 상의색.
-  pt_hair_{style}          8장  머리 8종(정면). 흰 4톤 → tint = 머리색.
-  pt_acc_{kind}            6장  액세서리 6종, 고유색.
-  portrait_{name}          5장  고정 초상(할망·주인공·삼춘·해녀·이장님). icons/로도 내보낸다.
-
-tint 파츠는 흰(#ffffff)이 하이라이트 띠, #e4e4e4가 본색, #b4b4b4가 그늘, #848484가 깊은 그늘(안쪽 경계선).
-합성 순서: face → top → hair → acc. 각 파츠 외곽선은 아래 레이어 위에 얹힌 상태로 계산한다:
-바깥 실루엣은 OUT, 아래 레이어와 맞닿는 가장자리는 파츠의 깊은 그늘 톤(머리카락-이마 경계선, 깃-목 경계선).
-얼굴 안쪽에는 투명 픽셀을 두지 않는다(외곽선 계산이 구멍을 선으로 바꾼다). 톤은 2~3단만, 안티에일리어싱·1px 잔디테일 없음.
+tint 파츠는 #ffffff가 본색, #c4c4c4가 그늘, #8c8c8c가 깊은 그늘(안쪽 경계선). 하이라이트는 tint로 못 내므로
+반투명 흰 광택 레이어 pt_top_gloss / pt_hair_{style}_gloss 를 tint 뒤에 따로 얹는다.
+합성 순서: face → top(+gloss) → hair(+gloss) → eyes → mouth → acc. 외곽선은 아래 레이어 위에 얹힌 상태로 계산한다(outline_layer).
 """
 from __future__ import annotations
 import random
 from px import Canvas, PAL, OUT, hexc, Color
-from sprites_chars import SKINS, HAIR_RGB, TOP_RGB, tinted
+from sprites_chars import HAIR_RGB, TOP_RGB, tinted
 
 CLEAR = (0, 0, 0, 0)
-G = 32                                    # 작업 격자
-SCALE = 2                                 # 내보내기 배율 (64×64)
-CX = 16                                   # 중심: x 15 | 16 사이
+G = 48                                    # 격자 = 출력 크기
+CX = 24                                   # 중심: x 23 | 24 사이
 
-# tint용 흰 4톤
-T_HI, T_BASE, T_MD, T_DK = hexc('ffffff'), hexc('e4e4e4'), hexc('b4b4b4'), hexc('848484')
+# tint용 흰 3톤(본색 흰 = tint 색 그대로, 그늘은 곱셈으로 어둡게) + 하이라이트 표식.
+# tint(곱셈)로는 본색보다 밝은 색을 낼 수 없어서, T_HI 픽셀은 split_gloss()로 떼어 반투명 흰 '광택' 레이어(pt_*_gloss)로 따로 얹는다.
+T_HI, T_BASE, T_MD, T_DK = (255, 255, 254, 255), hexc('ffffff'), hexc('c4c4c4'), hexc('8c8c8c')
+GLOSS: Color = (255, 255, 255, 96)
 
-HAIR_STYLES = ('bob', 'short', 'pony', 'perm', 'updo', 'sport', 'long', 'bald')
-ACC_KINDS = ('strawhat', 'cap', 'glasses', 'headband', 'earrings', 'apron')
-EXPRS = ('normal', 'happy', 'sad', 'surprised')
 
-GLINT = hexc('ffffff')
-MOUTH_IN = hexc('e8788f')
-BLUSH: tuple[Color, ...] = (hexc('ffb3c1'), hexc('e8907e'), hexc('b8624a'))
+def split_gloss(part: Canvas) -> tuple[Canvas, Canvas]:
+    """T_HI 픽셀 → (본색으로 바꾼 파츠, 반투명 흰 광택 레이어)."""
+    base, gloss = part.copy(), Canvas(part.w, part.h)
+    for y in range(part.h):
+        for x in range(part.w):
+            if part.px[y][x] == T_HI:
+                base.px[y][x] = T_BASE
+                gloss.px[y][x] = GLOSS
+    return base, gloss
+
+# 피부 4종 (DK, MD, LT): 밝음·보통·탄 피부·짙음
+SKINS: tuple[tuple[Color, Color, Color], ...] = (
+    (hexc('e8a97e'), hexc('f7cfa8'), hexc('ffe4cc')),
+    (hexc('c98a58'), hexc('e6b587'), hexc('f4cfa6')),
+    (hexc('a86a3c'), hexc('cf9462'), hexc('e2b184')),
+    (hexc('6f4426'), hexc('9a6540'), hexc('b8825a')),
+)
+BLUSH: tuple[Color, ...] = (hexc('ffb0bd'), hexc('f09a8c'), hexc('d9826d'), hexc('b86a55'))
+EYE_RING, EYE_IN, GLINT = hexc('2b2118'), hexc('4a3328'), hexc('ffffff')
+BROW = hexc('4a3328')
+MOUTH_IN, MOUTH_LINE = hexc('e8788f'), hexc('7a3a3a')
+HAPPY_BLUSH: Color = (240, 110, 130, 120)                        # 기쁨 표정의 진한 볼터치 (입 레이어에 반투명으로)
+
+HAIR_STYLES = ('bob', 'short', 'pony', 'perm', 'updo', 'sport', 'long', 'bald',   # 0..7 = 걷기 몸과 같은 순서
+               'part', 'bangs', 'braid', 'bun')                                    # 8..11 초상 전용 변형
+FACE_SHAPES = ('round', 'slim', 'square')
+EYE_KINDS = ('round', 'narrow', 'droop')
+EXPRS = ('normal', 'happy', 'surprised')
+ACC_KINDS = ('glasses', 'sunglasses', 'strawhat', 'cap', 'beanie', 'ribbon', 'headphone', 'flower', 'towel',
+             'apron', 'camera', 'backpack')
 
 
 # ---------------------------------------------------------------- 공용
@@ -80,93 +104,131 @@ def outline_layer(part: Canvas, context: Canvas, inner: Color | None) -> Canvas:
     return out
 
 
-def _stack(layers: list[Canvas]) -> Canvas:
+def stack(layers: list[Canvas]) -> Canvas:
     c = Canvas(G, G)
     for l in layers:
         c.blit(l, 0, 0)
     return c
 
 
-def up(c: Canvas, k: int = SCALE) -> Canvas:
-    out = Canvas(c.w * k, c.h * k)
-    for y in range(out.h):
-        for x in range(out.w):
-            out.px[y][x] = c.px[y // k][x // k]
-    return out
-
-
 # ---------------------------------------------------------------- 얼굴 바탕
-# 얼굴 실루엣 y 3~24: 이마보다 볼이 넓고 턱은 완전히 둥글게. 너비 26 (=64px의 81%).
-FACE_Y = 3
-FACE_HW = [5, 8, 10, 11, 12, 12, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 12, 11, 9, 6]
-NECK_X0, NECK_W = 13, 6                   # 목 x 13~18
-EYE_Y = 15                                # 눈 y 15~17 (얼굴 아래 1/3)
-EYE_L, EYE_R = 10, 20                     # 왼눈 x 10~11, 오른눈 x 20~21 (사이 8칸)
-MOUTH_Y = 20
+FACE_Y = 7
+FACE_HW = {
+    'round':  [6, 9, 11, 12, 13, 14, 14, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 14, 13, 12, 10, 7, 4],
+    'slim':   [6, 9, 11, 12, 13, 13, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 13, 13, 12, 12, 11, 10, 8, 6, 3],
+    'square': [7, 10, 12, 13, 14, 14, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 14, 12, 9, 5],
+}
+NECK_X0, NECK_W = 20, 8                   # 목 x 20~27
+EYE_Y = 21                                # 눈 y 21~24
+EYE_L, EYE_R = 15, 29                     # 왼눈 x 15~18, 오른눈 x 29~32 (사이 10칸)
+BROW_Y = 18
+MOUTH_Y = 29
+EAR_Y = 19
 
 
-def face_shape(c: Canvas, skin: int) -> None:
+def face_raw(skin: int, shape: str) -> Canvas:
     dk, md, lt = SKINS[skin]
-    c.rect(NECK_X0, 22, NECK_W, 7, md)                            # 목 y 22~28 (턱 밑 그늘 2줄)
-    c.rect(NECK_X0, 24, NECK_W, 2, dk)
-    profile(c, FACE_Y, FACE_HW, md)
-    for x0 in (1, 29):                                             # 귀 2×3 (y 15~17)
-        c.rect(x0, 15, 2, 3, md)
-        c.put(x0 + (1 if x0 < CX else 0), 16, dk)
-    c.hline(11, 17, 5, lt); c.hline(10, 12, 6, lt)                # 정수리 하이라이트(대머리·모자용)
-
-
-def eye_dot(c: Canvas, x0: int, y: int, h: int = 3) -> None:
-    """점 눈 2×h + 왼쪽 위 흰 하이라이트 1px."""
-    c.rect(x0, y, 2, h, OUT)
-    c.put(x0, y, GLINT)
-
-
-def mouth(c: Canvas, kind: str) -> None:
-    y = MOUTH_Y
-    if kind == 'normal':                                           # 작은 미소 (양 끝 1px 올라감)
-        c.hline(15, 16, y, OUT); c.put(14, y - 1, OUT); c.put(17, y - 1, OUT)
-    elif kind == 'happy':                                          # 작은 u 입, 안은 분홍
-        c.rect(15, y - 1, 2, 2, MOUTH_IN)
-        c.vline(14, y - 1, y, OUT); c.vline(17, y - 1, y, OUT); c.hline(15, 16, y + 1, OUT)
-    elif kind == 'sad':                                            # 작은 ∩ 입
-        c.hline(15, 16, y - 1, OUT); c.put(14, y, OUT); c.put(17, y, OUT)
-    elif kind == 'surprised':                                      # 작은 o
-        c.rect(15, y - 1, 2, 2, MOUTH_IN)
-        c.vline(14, y - 1, y, OUT); c.vline(17, y - 1, y, OUT); c.hline(15, 16, y - 2, OUT); c.hline(15, 16, y + 1, OUT)
-
-
-def face_raw(skin: int, expr: str) -> Canvas:
     c = Canvas(G, G)
-    face_shape(c, skin)
-    if expr == 'happy':                                            # 살짝 눌린 점 눈
-        eye_dot(c, EYE_L, EYE_Y, 2); eye_dot(c, EYE_R, EYE_Y, 2)
-    elif expr == 'surprised':
-        eye_dot(c, EYE_L, EYE_Y - 1, 4); eye_dot(c, EYE_R, EYE_Y - 1, 4)
-    else:
-        eye_dot(c, EYE_L, EYE_Y); eye_dot(c, EYE_R, EYE_Y)
-        if expr == 'sad':                                          # 안쪽 위 1px 처진 눈꼬리
-            c.put(EYE_L + 2, EYE_Y - 1, OUT); c.put(EYE_R - 1, EYE_Y - 1, OUT)
-    c.rect(7, 18, 2, 1, BLUSH[skin]); c.rect(23, 18, 2, 1, BLUSH[skin])   # 볼
-    mouth(c, expr)
+    c.rect(NECK_X0, 32, NECK_W, 8, md)                             # 목 y 32~39
+    c.rect(NECK_X0, 34, NECK_W, 2, dk)                             # 턱 밑 그늘
+    profile(c, FACE_Y, FACE_HW[shape], md)
+    hws = FACE_HW[shape]
+    for i, hw in enumerate(hws):                                   # 볼·턱 아래쪽 그늘 1px(오른쪽 아래)
+        y = FACE_Y + i
+        if i >= len(hws) - 6:
+            c.put(CX + hw - 1, y, dk)
+            if i >= len(hws) - 3:
+                c.hline(CX - hw + 2, CX + hw - 2, y, dk) if i == len(hws) - 1 else None
+    c.hline(CX - 8, CX + 6, FACE_Y + 2, lt); c.hline(CX - 10, CX + 8, FACE_Y + 3, lt)   # 이마 하이라이트
+    c.hline(CX - 11, CX - 6, FACE_Y + 4, lt)
+    for x0 in (7, 39):                                             # 귀 2×5 (y 19~23) + 안쪽 그늘
+        c.rect(x0, EAR_Y, 2, 5, md)
+        c.put(x0 + (1 if x0 < CX else 0), EAR_Y + 1, dk); c.put(x0 + (1 if x0 < CX else 0), EAR_Y + 2, dk)
+    c.rect(11, 25, 4, 2, BLUSH[skin]); c.rect(33, 25, 4, 2, BLUSH[skin])                # 볼터치 4×2
+    c.put(11, 25, md); c.put(36, 25, md)
     return c
 
 
-def face(skin: int, expr: str) -> Canvas:
-    return outline_layer(face_raw(skin, expr), Canvas(G, G), None)
+def face(skin: int, shape: str) -> Canvas:
+    return outline_layer(face_raw(skin, shape), Canvas(G, G), None)
 
 
-# ---------------------------------------------------------------- 어깨·깃 (흰 4톤)
+# ---------------------------------------------------------------- 눈·눈썹·입 (고유색)
+def eye(c: Canvas, x0: int, y0: int, h: int, kind: str, right: bool, glint: int = 1) -> None:
+    """4×h 점 눈: 짙은 테 + 안쪽 2×(h-2) + 왼쪽 위 하이라이트(glint 픽셀, 가로로). 감은 눈(^^)은 어떤 표정에도 쓰지 않는다."""
+    c.rect(x0, y0, 4, h, EYE_RING)
+    c.rect(x0 + 1, y0 + 1, 2, h - 2, EYE_IN)
+    for cx_, cy_ in ((x0, y0), (x0 + 3, y0), (x0, y0 + h - 1), (x0 + 3, y0 + h - 1)):   # 모서리 깎아 둥근 점
+        c.put(cx_, cy_, CLEAR)
+    outer, inner = (x0 + 2, x0 + 1) if right else (x0 + 1, x0 + 2)
+    if kind == 'narrow':                                           # 바깥 위·안쪽 아래를 깎아 살짝 치켜뜬 눈매
+        c.put(outer, y0, CLEAR); c.put(inner, y0 + h - 1, CLEAR)
+    elif kind == 'droop':                                          # 바깥 위만 깎아 순한 눈
+        c.put(outer, y0, CLEAR)
+    c.hline(x0 + 1, x0 + glint, y0 + 1, GLINT)
+
+
+def eyes_raw(kind: str, expr: str) -> Canvas:
+    c = Canvas(G, G)
+    if expr == 'surprised':
+        eye(c, EYE_L, EYE_Y - 1, 5, kind, False); eye(c, EYE_R, EYE_Y - 1, 5, kind, True)
+        by = BROW_Y - 2
+    elif expr == 'happy':                                          # 기쁨도 점 눈 그대로, 하이라이트만 2픽셀
+        eye(c, EYE_L, EYE_Y, 4, kind, False, glint=2); eye(c, EYE_R, EYE_Y, 4, kind, True, glint=2)
+        by = BROW_Y
+    else:
+        eye(c, EYE_L, EYE_Y, 4, kind, False); eye(c, EYE_R, EYE_Y, 4, kind, True)
+        by = BROW_Y
+    if kind == 'droop':                                            # 눈썹 바깥쪽이 내려감
+        c.hline(EYE_L, EYE_L + 2, by, BROW); c.put(EYE_L + 3, by + 1, BROW)
+        c.hline(EYE_R + 1, EYE_R + 3, by, BROW); c.put(EYE_R, by + 1, BROW)
+    elif kind == 'narrow':                                         # 살짝 올라간 눈썹
+        c.hline(EYE_L + 1, EYE_L + 3, by, BROW); c.put(EYE_L, by + 1, BROW)
+        c.hline(EYE_R, EYE_R + 2, by, BROW); c.put(EYE_R + 3, by + 1, BROW)
+    else:
+        c.hline(EYE_L, EYE_L + 3, by, BROW); c.hline(EYE_R, EYE_R + 3, by, BROW)
+    return c
+
+
+def mouth_raw(expr: str) -> Canvas:
+    c = Canvas(G, G)
+    y = MOUTH_Y
+    if expr == 'normal':                                           # 작은 미소 (양 끝 1px 올라감)
+        c.hline(CX - 2, CX + 1, y, MOUTH_LINE); c.put(CX - 3, y - 1, MOUTH_LINE); c.put(CX + 2, y - 1, MOUTH_LINE)
+    elif expr == 'happy':                                          # 열린 웃음 6×3, 안은 분홍 + 볼터치 진하게(반투명, 피부색 무관)
+        for bx in (10, 33):
+            c.rect(bx, 24, 5, 3, HAPPY_BLUSH)
+        c.rect(CX - 2, y - 1, 4, 2, MOUTH_IN)
+        c.vline(CX - 3, y - 2, y, MOUTH_LINE); c.vline(CX + 2, y - 2, y, MOUTH_LINE)
+        c.hline(CX - 2, CX + 1, y + 1, MOUTH_LINE)
+        c.hline(CX - 2, CX + 1, y - 1, hexc('ffffff'))            # 윗니 한 줄
+    elif expr == 'surprised':                                      # 작은 o
+        c.rect(CX - 1, y - 1, 2, 2, MOUTH_IN)
+        c.vline(CX - 2, y - 1, y, MOUTH_LINE); c.vline(CX + 1, y - 1, y, MOUTH_LINE)
+        c.hline(CX - 1, CX, y - 2, MOUTH_LINE); c.hline(CX - 1, CX, y + 1, MOUTH_LINE)
+    return c
+
+
+# ---------------------------------------------------------------- 어깨·칼라 (흰 4톤)
+TOP_Y = 37
+TOP_HW = [11, 15, 18, 20, 22, 23, 24, 24, 24, 24, 24]              # y 37~47
+
+
 def top_raw() -> Canvas:
     c = Canvas(G, G)
-    profile(c, 26, [12, 14, 15, 16, 16, 16], T_BASE)               # y 26~31
-    row(c, 26, 4, CLEAR); row(c, 27, 4, CLEAR); row(c, 28, 3, CLEAR)   # 목선 개구부
-    for y, hw in ((26, 5), (27, 5), (28, 4)):                      # 깃 하이라이트
-        mirror(c, CX - hw, y, T_HI)
-    c.hline(CX - 3, CX + 2, 29, T_HI)
-    c.hline(CX - 11, CX - 6, 26, T_HI); c.hline(CX + 5, CX + 10, 26, T_HI)   # 어깨 윗줄
-    for y in range(29, 32):                                        # 팔 경계 그늘
-        mirror(c, CX - 8, y, T_MD)
+    profile(c, TOP_Y, TOP_HW, T_BASE)
+    row(c, 37, 4, CLEAR); row(c, 38, 4, CLEAR); row(c, 39, 3, CLEAR)     # 목선 개구부 (V)
+    for y, hw in ((37, 6), (38, 6), (39, 5), (40, 4)):                  # 칼라 하이라이트(양쪽 깃)
+        mirror(c, CX - hw, y, T_HI); mirror(c, CX - hw + 1, y, T_HI)
+    c.hline(CX - 3, CX + 2, 40, T_HI); c.hline(CX - 2, CX + 1, 41, T_HI)
+    for y, hw in ((37, 7), (38, 7), (39, 6), (40, 5), (41, 4)):         # 깃 아래 그늘 선
+        mirror(c, CX - hw, y, T_MD)
+    c.hline(CX - 11, CX - 7, 37, T_HI); c.hline(CX + 6, CX + 10, 37, T_HI)   # 어깨 윗줄 빛
+    c.hline(CX - 15, CX - 12, 38, T_HI); c.hline(CX + 11, CX + 14, 38, T_HI)
+    for y in range(42, 48):                                             # 팔 경계 그늘
+        mirror(c, CX - 13, y, T_MD)
+    for y in range(45, 48):
+        mirror(c, CX - 14, y, T_MD)
     return c
 
 
@@ -174,68 +236,111 @@ def top_part(context: Canvas) -> Canvas:
     return outline_layer(top_raw(), context, T_DK)
 
 
-# ---------------------------------------------------------------- 머리 (흰 4톤, 정면)
-CAP_HW = [5, 9, 11, 12, 13, 13, 14, 14, 14, 14]                    # y 1~10
+# ---------------------------------------------------------------- 머리 (흰 4톤)
+CAP_Y = 1
+CAP_HW = [6, 10, 12, 13, 14, 15, 15, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16]    # y 1~17
 
 
-def band(c: Canvas, y: int) -> None:
-    """하이라이트 띠 하나: 왼쪽 위 호."""
-    c.hline(CX - 7, CX - 1, y, T_HI); c.hline(CX - 9, CX - 7, y + 1, T_HI)
+def band(c: Canvas, y: int, x0: int = CX - 10, x1: int = CX - 2) -> None:
+    """하이라이트 띠: 왼쪽 위 호, 2px 굵기."""
+    c.rect(x0, y, x1 - x0 + 1, 2, T_HI); c.rect(x0 - 3, y + 1, 3, 2, T_HI); c.rect(x1 + 1, y - 1, 3, 2, T_HI)
+    c.put(x0 - 4, y + 3, T_HI); c.put(x1 + 4, y - 1, T_HI)
 
 
-def bangs(c: Canvas, y: int, tips: tuple[int, ...]) -> None:
-    """앞머리 밑단 y줄 아래로 2칸짜리 뾰족 가닥."""
+def bangs(c: Canvas, y: int, tips: tuple[int, ...], w: int = 3, depth: int = 2) -> None:
+    """앞머리 밑단 y줄 아래로 w칸 너비·depth줄 깊이의 가닥. 가닥 왼쪽 위는 그늘."""
     for tx in tips:
-        c.hline(tx, tx + 1, y + 1, T_BASE)
+        c.rect(tx, y + 1, w, depth, T_BASE)
+        c.put(tx + w - 1, y + depth, T_MD)
+    c.hline(CX - 16, CX + 15, y, T_MD)                             # 밑단 그늘 줄
 
 
 def side_lock(c: Canvas, x_out: int, y0: int, y1: int, w: int) -> None:
-    """얼굴 옆으로 흘러내린 머리(좌우 대칭). 아래 1줄 그늘."""
+    """얼굴 옆으로 흘러내린 머리(좌우 대칭). 안쪽 세로 그늘 + 아래 1줄 그늘."""
     mirror_rect(c, x_out, y0, w, y1 - y0 + 1, T_BASE)
+    mirror_rect(c, x_out + w - 1, y0, 1, y1 - y0 + 1, T_MD)
     mirror_rect(c, x_out, y1, w, 1, T_MD)
+
+
+def cap(c: Canvas, hws: list[int] = CAP_HW, y0: int = CAP_Y) -> None:
+    profile(c, y0, hws, T_BASE)
+    band(c, y0 + 3)
+    for i, hw in enumerate(hws):                                   # 오른쪽·아래 그늘 2px
+        y = y0 + i
+        if i >= 2:
+            c.hline(CX + hw - 2, CX + hw - 1, y, T_MD)
 
 
 def hair_raw(style: str) -> Canvas:
     c = Canvas(G, G)
     if style == 'bald':
-        side_lock(c, 1, 9, 14, 3)
+        side_lock(c, 5, 13, 21, 2)                                 # 귀 바깥쪽 옆머리만
+        c.rect(CX - 16, 12, 6, 2, T_BASE); c.rect(CX + 10, 12, 6, 2, T_BASE)
         return c
-    if style == 'sport':                                           # 짧은 스포츠: 딱 맞는 캡 + 삐죽 3개
-        profile(c, 2, [5, 8, 10, 11, 12, 12, 12, 13, 13], T_BASE)   # y 2~10
-        c.rect(CX - 6, 1, 2, 1, T_BASE); c.rect(CX - 1, 0, 2, 2, T_BASE); c.rect(CX + 4, 1, 2, 1, T_BASE)
-        band(c, 3)
+    if style == 'sport':                                           # 모자 밑 짧은 머리: 딱 맞는 캡 + 삐죽 3개
+        cap(c, [5, 9, 11, 13, 14, 14, 15, 15, 15, 15, 15], 3)      # y 3~13
+        c.rect(CX - 9, 2, 3, 1, T_BASE); c.rect(CX - 2, 1, 4, 2, T_BASE); c.rect(CX + 6, 2, 3, 1, T_BASE)
+        c.hline(CX - 15, CX + 14, 13, T_MD)
+        side_lock(c, 7, 13, 17, 2)
         return c
-    if style == 'updo':                                            # 올림머리: 이마 넓게 + 정수리 쪽
-        row(c, 0, 3, T_BASE); row(c, 1, 4, T_BASE); row(c, 2, 4, T_MD)       # 쪽
-        profile(c, 3, [7, 10, 11, 12, 13, 13], T_BASE)                        # y 3~8
-        side_lock(c, 2, 8, 12, 2)
-        band(c, 4)
+    if style in ('updo', 'bun'):                                   # 올림머리·묶음: 이마 넓게 + 정수리 쪽
+        cap(c, [8, 11, 13, 14, 15, 15, 16, 16, 16], 4)             # y 4~12
+        c.hline(CX - 15, CX + 14, 12, T_MD)
+        side_lock(c, 8, 12, 17, 3)
+        if style == 'updo':
+            profile(c, 0, [3, 5, 6, 6, 5], T_BASE); c.hline(CX - 4, CX + 3, 4, T_MD)   # 위로 올린 쪽
+            c.hline(CX - 4, CX - 1, 1, T_HI)
+        else:
+            c.rect(CX + 6, 2, 8, 6, T_BASE); c.rect(CX + 7, 1, 6, 1, T_BASE)           # 옆으로 묶은 둥근 쪽
+            c.rect(CX + 12, 3, 2, 4, T_MD); c.hline(CX + 7, CX + 9, 2, T_HI)
+            c.rect(CX + 5, 5, 2, 2, T_DK)                                            # 머리끈
         return c
-    profile(c, 1, CAP_HW, T_BASE)                                  # 공통 캡 y 1~10
-    band(c, 3)
+    if style == 'perm':
+        profile(c, 0, [5, 9, 12, 14, 15, 16, 16, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17], T_BASE)   # y 0~17
+        band(c, 3, CX - 11, CX - 3)
+        for x in range(CX - 17, CX + 17, 5):                       # 밑단 둥근 혹
+            c.rect(x, 18, 4, 2, T_BASE); c.put(x + 3, 19, T_MD)
+        c.hline(CX - 16, CX + 15, 17, T_MD)
+        for y0 in (12, 18, 24):                                    # 옆 뭉치 3단
+            mirror_rect(c, 4, y0, 4, 6, T_BASE); mirror_rect(c, 3, y0 + 1, 1, 4, T_BASE)
+            mirror_rect(c, 4, y0 + 5, 4, 1, T_MD); mirror_rect(c, 7, y0, 1, 6, T_MD)
+        return c
+    cap(c)                                                         # 공통 캡 y 1~17
     if style == 'short':
-        bangs(c, 10, (5, 11, 17, 23))
-        side_lock(c, 2, 10, 14, 2)
+        bangs(c, 17, (8, 14, 21, 28, 35))
+        side_lock(c, 7, 16, 21, 2)
+    elif style == 'part':                                          # 가르마: 왼쪽에서 갈라진 앞머리
+        c.rect(CX - 16, 18, 10, 3, T_BASE); c.rect(CX - 4, 18, 20, 2, T_BASE)   # 양쪽 큰 덩어리
+        c.put(CX - 7, 20, T_MD); c.hline(CX - 4, CX + 15, 19, T_MD); c.hline(CX - 16, CX - 7, 20, T_MD)
+        c.vline(CX - 5, 13, 18, T_MD)                                            # 가르마 선
+        side_lock(c, 7, 16, 22, 2)
     elif style == 'bob':
-        bangs(c, 10, (5, 11, 17, 23))
-        side_lock(c, 1, 9, 21, 3)
+        bangs(c, 17, (8, 14, 21, 28, 35))
+        side_lock(c, 5, 14, 31, 4)
+        mirror_rect(c, 5, 30, 5, 2, T_BASE); mirror_rect(c, 5, 31, 5, 1, T_MD)   # 밑단 안쪽으로 말림
+    elif style == 'bangs':                                         # 뱅헤어: 일자 앞머리 + 단발
+        c.hline(CX - 16, CX + 15, 17, T_MD)
+        c.rect(CX - 14, 18, 28, 2, T_BASE); c.hline(CX - 14, CX + 13, 19, T_MD)
+        side_lock(c, 5, 14, 33, 4)
     elif style == 'long':
-        bangs(c, 10, (5, 11, 17, 23))
-        side_lock(c, 1, 9, 26, 3)
-        mirror_rect(c, 0, 24, 4, 8, T_BASE); mirror_rect(c, 0, 31, 4, 1, T_MD)   # 어깨 위로
+        bangs(c, 17, (8, 14, 21, 28, 35))
+        side_lock(c, 4, 14, 36, 4)
+        mirror_rect(c, 2, 30, 7, 14, T_BASE); mirror_rect(c, 2, 43, 7, 1, T_MD)   # 어깨 위로 흘러내림
+        mirror_rect(c, 8, 30, 1, 13, T_MD)
+    elif style == 'braid':                                         # 땋음: 앞머리 + 한쪽 땋은 머리
+        bangs(c, 17, (8, 14, 21, 28, 35))
+        side_lock(c, 6, 14, 22, 3)
+        for i, y0 in enumerate(range(22, 46, 4)):                  # 오른쪽 어깨로 땋음 (마디 6칸)
+            c.rect(CX + 12, y0, 6, 4, T_BASE); c.hline(CX + 12, CX + 17, y0 + 3, T_MD)
+            c.put(CX + 12 + (i % 2) * 3, y0 + 1, T_MD); c.put(CX + 13 + ((i + 1) % 2) * 3, y0, T_HI)
+        c.rect(CX + 13, 45, 4, 2, T_DK)                                            # 머리끈
     elif style == 'pony':
-        bangs(c, 10, (5, 11, 17, 23))
-        side_lock(c, 2, 10, 13, 2)
-        c.rect(CX + 6, 0, 6, 2, T_BASE); c.rect(CX + 11, 1, 3, 3, T_BASE)    # 높이 묶은 꼬리
-        c.rect(CX + 12, 3, 3, 11, T_BASE); c.vline(CX + 14, 4, 13, T_MD)
-        c.rect(CX + 9, 2, 2, 2, T_DK)                                        # 머리끈
-    elif style == 'perm':
-        profile(c, 0, [4, 8, 10, 12, 13, 13, 14, 14, 14, 14, 14], T_BASE)   # y 0~10, 1줄 크게
-        for x in range(CX - 13, CX + 13, 4):                                  # 밑단 둥근 혹
-            c.hline(x, x + 1, 11, T_BASE)
-        for y0 in (9, 13, 17):                                               # 옆 뭉치 3개
-            mirror_rect(c, 1, y0, 3, 4, T_BASE); mirror_rect(c, 0, y0 + 1, 1, 2, T_BASE)
-            mirror_rect(c, 1, y0 + 3, 3, 1, T_MD)
+        bangs(c, 17, (8, 14, 21, 28, 35))
+        side_lock(c, 7, 16, 20, 2)
+        c.rect(CX + 9, 0, 8, 3, T_BASE); c.rect(CX + 15, 2, 5, 4, T_BASE)      # 높이 묶은 꼬리
+        c.rect(CX + 17, 5, 5, 16, T_BASE); c.vline(CX + 21, 6, 20, T_MD); c.hline(CX + 17, CX + 21, 20, T_MD)
+        c.vline(CX + 18, 6, 15, T_HI)
+        c.rect(CX + 13, 3, 3, 3, T_DK)                                         # 머리끈
     return c
 
 
@@ -248,37 +353,82 @@ def acc_raw(kind: str) -> Canvas:
     c = Canvas(G, G)
     if kind == 'strawhat':
         ydk, ymd, ylt = PAL['yellow']
-        c.rect(CX - 9, 0, 18, 6, ymd); c.hline(CX - 9, CX + 8, 0, ylt)       # 크라운 y 0~5
-        c.put(CX - 9, 0, CLEAR); c.put(CX + 8, 0, CLEAR)
-        c.hline(CX - 9, CX + 8, 4, ydk)                                       # 띠
-        c.rect(CX - 15, 6, 30, 2, ymd); c.hline(CX - 15, CX + 14, 7, ydk)     # 챙 y 6~7
+        profile(c, 0, [9, 12, 13, 13, 13, 13, 13, 13, 13], ymd)                  # 크라운 y 0~8
+        c.hline(CX - 10, CX - 2, 1, ylt); c.hline(CX - 12, CX - 10, 2, ylt)
+        c.rect(CX - 13, 6, 26, 2, PAL['red'][1]); c.hline(CX - 13, CX + 12, 7, PAL['red'][0])   # 띠
+        c.rect(CX - 22, 9, 44, 3, ymd); c.hline(CX - 22, CX + 21, 9, ylt); c.hline(CX - 22, CX + 21, 11, ydk)   # 챙 y 9~11
+        c.hline(CX - 21, CX + 20, 12, ydk)
     elif kind == 'cap':
         bdk, bmd, blt = PAL['sky']
-        profile(c, 1, [5, 8, 10, 11, 12, 13, 13], bmd)                        # 크라운 y 1~7
-        c.hline(CX - 6, CX - 1, 2, blt); c.hline(CX - 8, CX - 6, 3, blt)
-        c.rect(CX - 1, 0, 2, 1, bdk)                                          # 꼭지
-        c.rect(CX - 2, 4, 4, 2, PAL['orange'][1])                             # 감귤 패치
-        c.rect(CX - 13, 8, 26, 2, bdk); c.hline(CX - 13, CX + 12, 8, bmd)     # 챙 y 8~9
-    elif kind == 'glasses':
-        fr = hexc('3b3b44'); glint = hexc('8ec1f0')
-        for x0 in (EYE_L - 2, EYE_R - 2):                                     # 6×5 테 (안은 비움)
-            c.rect(x0, EYE_Y - 1, 6, 5, fr); c.rect(x0 + 1, EYE_Y, 4, 3, CLEAR)
-            c.put(x0 + 4, EYE_Y, glint)
-        c.hline(EYE_L + 4, EYE_R - 3, EYE_Y, fr)                              # 브리지
-        c.hline(3, EYE_L - 3, EYE_Y, fr); c.hline(EYE_R + 4, 28, EYE_Y, fr)   # 안경다리
-    elif kind == 'headband':
+        profile(c, 0, [7, 11, 13, 14, 15, 16, 16, 16, 16, 16], bmd)               # 크라운 y 0~9
+        c.hline(CX - 9, CX - 2, 1, blt); c.hline(CX - 12, CX - 9, 2, blt); c.hline(CX - 13, CX - 12, 3, blt)
+        c.rect(CX - 2, 0, 4, 1, bdk)                                              # 꼭지
+        c.rect(CX - 3, 4, 6, 4, PAL['orange'][1]); c.put(CX - 1, 3, PAL['leaf'][1])   # 감귤 패치
+        c.rect(CX - 19, 10, 38, 3, bdk); c.hline(CX - 19, CX + 18, 10, bmd)      # 챙 y 10~12
+    elif kind == 'beanie':
         rdk, rmd, rlt = PAL['red']
-        c.rect(CX - 13, 8, 26, 2, rmd); c.hline(CX - 13, CX + 12, 8, rlt)
-        c.rect(CX + 12, 6, 2, 2, rmd); c.put(CX + 13, 6, rdk)                 # 매듭
-    elif kind == 'earrings':
-        gdk, gmd, glt = PAL['yellow']
-        for x in (1, 30):
-            c.put(x, 18, gmd); c.put(x, 19, gdk)
+        profile(c, 0, [6, 10, 13, 14, 15, 16, 16, 17, 17, 17, 17, 17, 17, 17], rmd)   # y 0~13
+        c.hline(CX - 9, CX - 2, 2, rlt); c.hline(CX - 12, CX - 9, 3, rlt)
+        c.rect(CX - 17, 11, 34, 4, rmd); c.hline(CX - 17, CX + 16, 11, rlt); c.hline(CX - 17, CX + 16, 14, rdk)   # 접은 단
+        for x in range(CX - 16, CX + 16, 3):
+            c.vline(x, 12, 13, rdk)
+        c.rect(CX - 2, 0, 4, 1, PAL['white'][1])                                  # 방울
+    elif kind in ('glasses', 'sunglasses'):
+        fr = hexc('3b3b44')
+        for x0 in (EYE_L - 2, EYE_R - 2):                                         # 8×7 테 (안은 비움)
+            c.rect(x0, EYE_Y - 2, 8, 7, fr)
+            if kind == 'glasses':
+                c.rect(x0 + 1, EYE_Y - 1, 6, 5, CLEAR); c.put(x0 + 6, EYE_Y - 1, hexc('8ec1f0'))
+            else:
+                c.rect(x0 + 1, EYE_Y - 1, 6, 5, hexc('2a2a3a')); c.hline(x0 + 1, x0 + 3, EYE_Y - 1, hexc('55556a'))
+        c.hline(EYE_L + 6, EYE_R - 3, EYE_Y, fr)                                   # 브리지
+        c.hline(8, EYE_L - 3, EYE_Y, fr); c.hline(EYE_R + 6, 39, EYE_Y, fr)        # 안경다리
+    elif kind == 'ribbon':
+        pdk, pmd, plt = PAL['pink']
+        rx, ry = CX + 8, 4                                                        # 머리 오른쪽 위
+        for w, y in ((2, ry), (4, ry + 1), (5, ry + 2), (5, ry + 3), (4, ry + 4), (2, ry + 5)):
+            c.rect(rx - w - 1, y, w, 1, pmd); c.rect(rx + 2, y, w, 1, pmd)
+        c.rect(rx - 1, ry + 1, 3, 4, pdk); c.put(rx, ry + 2, plt)
+        c.put(rx - 5, ry + 1, plt); c.put(rx + 3, ry + 1, plt)
+    elif kind == 'headphone':
+        bdk, bmd, blt = PAL['basalt']
+        for i, hw in enumerate((11, 14, 16, 17, 18, 18)):                          # 헤드밴드 호 y 0~5
+            c.put(CX - hw, i, bdk); c.put(CX + hw - 1, i, bdk)
+            c.put(CX - hw + 1, i, bmd); c.put(CX + hw - 2, i, bmd)
+        c.hline(CX - 10, CX + 9, 0, bdk); c.hline(CX - 10, CX + 9, 1, bmd)
+        mirror_rect(c, 3, 6, 2, 12, bdk)                                          # 옆 줄
+        mirror_rect(c, 3, 17, 6, 8, bmd); mirror_rect(c, 3, 17, 6, 1, blt)         # 이어컵 6×8
+        mirror_rect(c, 4, 19, 3, 4, PAL['orange'][1])
+    elif kind == 'flower':
+        fx, fy = CX + 11, 8                                                       # 머리 오른쪽에 감귤꽃
+        odk, omd, olt = PAL['orange']
+        for dx, dy in ((-2, 0), (2, 0), (0, -2), (0, 2), (-1, -1), (1, -1), (-1, 1), (1, 1)):
+            c.rect(fx + dx - 1, fy + dy - 1, 2, 2, hexc('ffffff'))
+        c.rect(fx - 1, fy - 1, 2, 2, PAL['yellow'][1])
+        c.rect(fx + 1, fy + 3, 3, 2, PAL['leaf'][1]); c.put(fx + 3, fy + 4, PAL['leaf'][0])
+    elif kind == 'towel':                                                         # 머리에 두른 수건 (농부)
+        wdk, wmd, wlt = PAL['white']
+        c.rect(CX - 16, 6, 32, 6, wmd); c.hline(CX - 16, CX + 15, 6, wlt); c.hline(CX - 16, CX + 15, 11, wdk)
+        c.rect(CX - 15, 4, 30, 2, wmd)
+        for x in range(CX - 14, CX + 14, 4):
+            c.vline(x, 7, 9, PAL['sky'][1])
+        c.rect(CX + 15, 8, 5, 6, wmd); c.rect(CX + 16, 10, 3, 5, wmd); c.hline(CX + 16, CX + 18, 14, wdk)   # 매듭 자락
     elif kind == 'apron':
         adk, amd, alt = PAL['leaf']
-        c.rect(CX - 5, 28, 10, 4, amd); c.hline(CX - 5, CX + 4, 28, alt)     # 가슴받이
-        mirror_rect(c, CX - 6, 26, 1, 2, adk)                                 # 어깨끈
-        c.rect(CX - 2, 30, 4, 2, adk)                                         # 주머니
+        c.rect(CX - 7, 42, 14, 6, amd); c.hline(CX - 7, CX + 6, 42, alt)          # 가슴받이
+        mirror_rect(c, CX - 8, 38, 2, 4, adk)                                     # 어깨끈
+        c.rect(CX - 3, 45, 6, 3, adk)                                             # 주머니
+    elif kind == 'camera':
+        bdk, bmd, blt = PAL['basalt']
+        for i in range(6):                                                        # 목에 건 끈
+            c.put(CX - 8 + i, 38 + i, bdk); c.put(CX + 7 - i, 38 + i, bdk)
+        c.rect(CX - 5, 43, 10, 5, bmd); c.hline(CX - 5, CX + 4, 43, blt)          # 카메라 몸통
+        c.rect(CX - 1, 44, 3, 3, bdk); c.put(CX, 45, hexc('8ec1f0'))
+        c.rect(CX + 2, 42, 2, 1, PAL['red'][1])
+    elif kind == 'backpack':
+        odk, omd, olt = PAL['orange']
+        mirror_rect(c, CX - 13, 37, 4, 11, omd); mirror_rect(c, CX - 13, 37, 1, 11, olt)   # 어깨끈 2줄
+        mirror_rect(c, CX - 10, 37, 1, 11, odk)
     return c
 
 
@@ -286,128 +436,80 @@ def acc_part(kind: str, context: Canvas) -> Canvas:
     return outline_layer(acc_raw(kind), context, None)
 
 
-# ---------------------------------------------------------------- 조합 (32 격자)
+# ---------------------------------------------------------------- 조합
 def compose(skin: int, hair_style: int | str, hair_rgb: Color, top_rgb: Color,
-            accs: tuple[str, ...] | list[str], expr: str = 'normal') -> Canvas:
-    """face → top(tint) → hair(tint) → acc. 외곽선은 아래 레이어 기준으로 계산. 32×32."""
+            accs: tuple[str, ...] | list[str], expr: str = 'normal', shape: str = 'round', eyes: str = 'round',
+            extra: Canvas | None = None) -> Canvas:
+    """face → top(tint) → hair(tint) → [extra] → eyes → mouth → acc. 외곽선은 아래 레이어 기준. 48×48.
+    extra는 머리 위·표정 아래에 얹는 고정 인물용 그림(모자·후드 등, 이미 색이 칠해진 것)."""
     style = HAIR_STYLES[hair_style] if isinstance(hair_style, int) else hair_style
-    f = face(skin, expr)
-    t = tinted(top_part(f), top_rgb)
-    ctx = _stack([f, t])
-    h = tinted(hair_part(style, ctx), hair_rgb)
-    out = _stack([ctx, h])
+    f = face(skin, shape)
+    tb, tg = split_gloss(top_part(f))
+    ctx = stack([f, tinted(tb, top_rgb), tg])
+    hb, hg = split_gloss(hair_part(style, ctx))
+    out = stack([ctx, tinted(hb, hair_rgb), hg])
+    if extra is not None:
+        out = stack([out, outline_layer(extra, out, None)])
+    out = stack([out, eyes_raw(eyes, expr), mouth_raw(expr)])
     for kind in accs:
-        out = _stack([out, acc_part(kind, out)])
+        out = stack([out, acc_part(kind, out)])
     return out
 
 
-def portrait(skin: int, hair_style: int | str, hair_rgb: Color, top_rgb: Color,
-             accs: tuple[str, ...] | list[str], expr: str = 'normal') -> Canvas:
-    """64×64 초상."""
-    return up(compose(skin, hair_style, hair_rgb, top_rgb, accs, expr))
-
-
-# ---------------------------------------------------------------- 고정 초상 (32 격자에서 손질 후 확대)
-def _halmang() -> Canvas:
-    c = compose(0, 'updo', HAIR_RGB['grey'], TOP_RGB['pink'], (), 'normal')    # 점 눈 + 잔잔한 미소
-    c.rect(6, 18, 3, 2, BLUSH[0]); c.rect(23, 18, 3, 2, BLUSH[0])              # 깊은 홍조
-    wlt, wmd = PAL['white'][2], PAL['white'][1]
-    for i in range(3):                                                          # 저고리 동정 (흰 V)
-        c.put(CX - 4 + i, 26 + i, wlt); c.put(CX + 3 - i, 26 + i, wmd)
-    c.put(CX - 1, 29, wlt); c.put(CX, 29, wmd)
-    fx, fy = CX + 8, 5                                                          # 감귤꽃(머리 위 오른쪽): 흰 꽃잎 + 노란 수술 + 잎
-    for dx, dy in ((-1, 0), (1, 0), (0, -1), (0, 1)):
-        c.put(fx + dx, fy + dy, hexc('ffffff'))
-    c.put(fx, fy, PAL['yellow'][1]); c.put(fx + 1, fy + 1, PAL['leaf'][1]); c.put(fx + 2, fy + 1, PAL['leaf'][0])
-    return c
-
-
-def _hero() -> Canvas:
-    return compose(0, 'short', HAIR_RGB['black'], TOP_RGB['white'], ('apron',), 'normal')
-
-
-def _samchun() -> Canvas:
-    c = compose(1, 'sport', HAIR_RGB['grey'], TOP_RGB['orange'], ('cap',), 'happy')
-    c.hline(14, 17, 18, hexc('8a8a90'))                                         # 콧수염
-    return c
-
-
-def _haenyeo() -> Canvas:
-    c = compose(2, 'short', HAIR_RGB['black'], hexc('3a3a44'), (), 'normal')
-    hood = Canvas(G, G)
-    hdk, hmd, hlt = hexc('1e1e26'), hexc('34343e'), hexc('55555f')
-    profile(hood, 1, [6, 9, 11, 12, 13, 14, 14, 14, 14, 14], hmd)              # y 1~10
-    mirror_rect(hood, 1, 11, 3, 15, hmd)                                        # 양옆 얼굴 감싸기
-    mirror_rect(hood, 0, 24, 5, 3, hmd)
-    hood.hline(CX - 13, CX + 12, 10, hdk)                                       # 이마 접힌 단
-    hood.hline(CX - 7, CX - 1, 3, hlt); hood.hline(CX - 9, CX - 7, 4, hlt)
-    c.blit(outline_layer(hood, c, None), 0, 0)
-    return c
-
-
-def _jangnim() -> Canvas:
-    c = compose(0, 'bald', HAIR_RGB['grey'], hexc('2f3d63'), ('glasses',), 'normal')
-    wlt = PAL['white'][2]
-    for i in range(3):                                                          # 흰 셔츠 깃 V + 넥타이
-        c.put(CX - 4 + i, 26 + i, wlt); c.put(CX + 3 - i, 26 + i, wlt)
-    c.rect(CX - 1, 28, 2, 4, wlt); c.rect(CX - 1, 29, 2, 3, PAL['red'][1])
-    ldk = hexc('232d4a')
-    for i in range(3):                                                          # 라펠
-        c.put(CX - 5 - i, 26 + i, ldk); c.put(CX + 4 + i, 26 + i, ldk)
-    g = HAIR_RGB['grey']                                                        # 가는 회색 눈썹 호
-    for x0 in (EYE_L - 1, EYE_R - 1):
-        c.put(x0, 13, g); c.hline(x0 + 1, x0 + 2, 12, g); c.put(x0 + 3, 13, g)
-    return c
-
-
-FIXED = {'halmang': _halmang, 'hero': _hero, 'samchun': _samchun, 'haenyeo': _haenyeo, 'jangnim': _jangnim}
-
-
-def portrait_halmang() -> Canvas:
-    return up(_halmang())
+def portrait(*args, **kwargs) -> Canvas:
+    return compose(*args, **kwargs)
 
 
 # ---------------------------------------------------------------- 시트 + 검토 시트
 def sprites() -> dict[str, Canvas]:
     s: dict[str, Canvas] = {}
-    base_face = face(0, 'normal')
+    base_face = face(0, 'round')
     for skin in range(len(SKINS)):
+        for shape in FACE_SHAPES:
+            s[f'pt_face_{skin}_{shape}'] = face(skin, shape)
+    for kind in EYE_KINDS:
         for expr in EXPRS:
-            s[f'pt_face_{skin}_{expr}'] = face(skin, expr)
-    s['pt_top'] = top_part(base_face)
-    ctx = _stack([base_face, top_part(base_face)])
+            s[f'pt_eyes_{kind}_{expr}'] = eyes_raw(kind, expr)
+    for expr in EXPRS:
+        s[f'pt_mouth_{expr}'] = mouth_raw(expr)
+    s['pt_top'], s['pt_top_gloss'] = split_gloss(top_part(base_face))
+    ctx = stack([base_face, top_part(base_face)])
     for style in HAIR_STYLES:
-        s[f'pt_hair_{style}'] = hair_part(style, ctx)
-    ctx2 = _stack([ctx, hair_part('short', ctx)])
+        s[f'pt_hair_{style}'], s[f'pt_hair_{style}_gloss'] = split_gloss(hair_part(style, ctx))
+    ctx2 = stack([ctx, hair_part('short', ctx)])
     for kind in ACC_KINDS:
         s[f'pt_acc_{kind}'] = acc_part(kind, ctx2)
-    for name, fn in FIXED.items():
-        s[f'portrait_{name}'] = fn()
-    return {k: up(v) for k, v in s.items()}
+    return s
 
 
-def portraits_preview(seed: int = 3, scale: int = 4) -> Canvas:
-    """검토 시트(8열, 64×64를 4배): 고정 5 / 무작위 조합 12(머리 8종이 한 번씩은 나오도록) / 한 얼굴의 표정 4."""
+def portraits_preview(seed: int = 3, scale: int = 3) -> Canvas:
+    """검토 시트(8열): 머리 12종 / 액세서리 12종 / 얼굴형×피부 12 / 표정 3 × 눈 3 / 무작위 8."""
     from sheet import contact_sheet
     rng = random.Random(seed)
     cells: dict[str, Canvas] = {}
-    for name, fn in FIXED.items():
-        cells[name] = up(fn())
-    for i in range(3):
-        cells[f'pad{i}'] = Canvas(G * SCALE, G * SCALE)
     hair_keys, top_keys = list(HAIR_RGB), list(TOP_RGB)
-    order = ('apron', 'earrings', 'glasses', 'headband', 'cap', 'strawhat')
-    for i in range(12):
-        accs = rng.sample(ACC_KINDS, rng.choice((0, 1, 1, 2)))
-        if 'cap' in accs and 'strawhat' in accs:                                  # 모자는 하나만
-            accs.remove('cap')
-        accs.sort(key=order.index)
-        cells[f'r{i}'] = portrait(rng.randrange(len(SKINS)), i % len(HAIR_STYLES),
-                                  HAIR_RGB[rng.choice(hair_keys)], TOP_RGB[rng.choice(top_keys)], accs, rng.choice(EXPRS))
+    for i, style in enumerate(HAIR_STYLES):
+        cells[f'h_{style}'] = compose(i % 4, style, HAIR_RGB[hair_keys[i % len(hair_keys)]], TOP_RGB[top_keys[i % len(top_keys)]], ())
     for i in range(4):
-        cells[f'pad{3 + i}'] = Canvas(G * SCALE, G * SCALE)
-    for expr in EXPRS:
-        cells[f'e_{expr}'] = portrait(0, 'bob', HAIR_RGB['dark'], TOP_RGB['yellow'], (), expr)
+        cells[f'pad0_{i}'] = Canvas(G, G)
+    for i, kind in enumerate(ACC_KINDS):
+        cells[f'a_{kind}'] = compose(i % 4, 'short' if kind not in ('ribbon', 'flower') else 'bob', HAIR_RGB['dark'], TOP_RGB['sky'], (kind,))
+    for i in range(4):
+        cells[f'pad1_{i}'] = Canvas(G, G)
+    for skin in range(4):
+        for shape in FACE_SHAPES:
+            cells[f'f_{skin}_{shape}'] = compose(skin, 'bald', HAIR_RGB['grey'], TOP_RGB['white'], (), shape=shape)
+    for i in range(4):
+        cells[f'pad2_{i}'] = Canvas(G, G)
+    for eyes in EYE_KINDS:
+        for expr in EXPRS:
+            cells[f'e_{eyes}_{expr}'] = compose(0, 'bob', HAIR_RGB['dark'], TOP_RGB['yellow'], (), expr, eyes=eyes)
+    for i in range(7):
+        cells[f'pad3_{i}'] = Canvas(G, G)
+    for i in range(8):
+        accs = rng.sample(ACC_KINDS, rng.choice((0, 1, 1, 2)))
+        cells[f'r{i}'] = compose(rng.randrange(len(SKINS)), rng.randrange(len(HAIR_STYLES)), HAIR_RGB[rng.choice(hair_keys)],
+                                 TOP_RGB[rng.choice(top_keys)], accs, rng.choice(EXPRS), rng.choice(FACE_SHAPES), rng.choice(EYE_KINDS))
     return contact_sheet(cells, cols=8, scale=scale)
 
 

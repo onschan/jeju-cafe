@@ -19,7 +19,7 @@ import { TUTORIAL_STEPS as DIALOGUE, TUTORIAL_CHAPTER_TEXTS } from '../../data/d
 function tutorialState(seed = 1) {
   return createInitialState(seed, 'local', 0, 'tutorial');
 }
-/** 1단계 둘러보기 4곳을 다 본 것으로 표시 */
+/** 1단계 둘러보기 3곳(정낭·정류장·마을 길)을 다 본 것으로 표시 */
 function lookAll(s: GameState) {
   for (const id of LOOK_IDS) apply(s, { type: 'tutorialNote', key: `look:${id}` });
 }
@@ -89,8 +89,8 @@ describe('손으로 하는 튜토리얼 「할망의 가르침」 33단계·5장
     expect(currentTutorialStep(starter)).toBeNull();
     for (const f of STARTER_FEATURE_IDS) expect(starter.features[f]).toBe(true);
     expect(mainBuilding(starter)).not.toBeNull(); // 완성 시작 상태(봇·헤드리스)는 본관 포함
-    expect(starter.features.craft).toBe(false); // 25단계 보상이지만 목표 g16이 여니 완성 시작 상태에서는 안 연다 (봇 진행 유지)
-    expect(starter.features.popup).toBe(false);
+    expect(starter.features.popup).toBe(false); // 31단계 보상이지만 목표 g18이 여니 완성 시작 상태에서는 안 연다 (봇 진행 유지)
+    expect(starter.features.parcel).toBe(false);
   });
 
   it('§7.1 시작 상태(w-start 맨땅): 정낭·정류장·지형만 — 본관·길·좌석·메뉴 없음, 자금 500만, 후보 2명, 손님 0, 직원 대기도 안전', () => {
@@ -117,12 +117,12 @@ describe('손으로 하는 튜토리얼 「할망의 가르침」 33단계·5장
     expect(serialize(deserialize(serialize(s)))).toBe(serialize(s));
   });
 
-  it('placeMain(w-start): 첫 본관은 무료·즉시 완공·1회 — 옮기기와 같은 발자국 규칙(내 땅·바위·시설 없음, 올렛길은 걷어내 환불) + 문 앞이 내 땅. 길은 자동으로 잇지 않는다', () => {
+  it('placeMain(w-start): 첫 본관은 무료·즉시 완공·1회 — 옮기기와 같은 발자국 규칙(내 땅·시설 없음, 올렛길은 걷어내 환불) + 문 앞이 내 땅. 길은 자동으로 잇지 않는다', () => {
     const s = tutorialState();
     const money = s.money;
     expect(MAIN_BUILD_COST).toBe(0);
     expect(canBuildMain(s, START_ORIGIN.x - 5, START_ORIGIN.y).ok).toBe(false); // 남의 땅
-    expect(canBuildMain(s, START_ORIGIN.x + 1, START_ORIGIN.y).reason).toBe('바위를 먼저 치워요'); // (3,0)이 바위
+    expect(canBuildMain(s, START_ORIGIN.x + 1, START_ORIGIN.y).ok).toBe(true); // ease: 옛 바위 칸 (3,0)도 흙
     expect(canBuildMain(s, START_ORIGIN.x + 2, START_ORIGIN.y + 6).ok).toBe(false); // 문 앞 (2,8)이 마을 길
     expect(canBuildMain(s, START_ORIGIN.x + 6, START_ORIGIN.y + 7).ok).toBe(false); // 마을 길 위
     // 발자국 안 올렛길은 걷어내 환불
@@ -169,11 +169,10 @@ describe('손으로 하는 튜토리얼 「할망의 가르침」 33단계·5장
     expect(m.grid.cells[STEPS[3]!.cells(m)[0]!.y * m.grid.w + STEPS[3]!.cells(m)[0]!.x]!.terrain).toBe('road');
     const s = tutorialState();
     expect(LOOK_TEXT.gate).toContain('옮겨도 돼');
-    expect(LOOK_TEXT.rock).toContain('₩10만');
     const gate = Object.values(s.objects).find((o) => o.type === 'gate')!;
     expect(apply(s, { type: 'remove', objectId: gate.id }).ok).toBe(true);
-    // 1단계 둘러보기: 정낭 칸은 빠지고 정류장·바위·마을 길 3곳 (정류장 기준으로 가장 가까운 바위·길)
-    expect(STEPS[0]!.cells(s)).toHaveLength(3);
+    // 1단계 둘러보기: 정낭 칸은 빠지고 정류장·마을 길 2곳 (정류장 기준으로 가장 가까운 길)
+    expect(STEPS[0]!.cells(s)).toHaveLength(2);
     expect(recommendedMainCells(s).length).toBe(3); // 정류장 기준 거리
     throughMain(s);
     const f = doorFrontOf(mainBuilding(s)!);
@@ -183,8 +182,7 @@ describe('손으로 하는 튜토리얼 「할망의 가르침」 33단계·5장
     expect(s.grid.cells[cells[0]!.y * s.grid.w + cells[0]!.x]!.terrain).toBe('road');
     expect(pathConnected(s)).toBe(false);
     seeDialogue(s);
-    // 문 앞(3,3)에서 마을 길(y=7)까지 옛 정낭 자리(4,6, 바위)를 치우고 올렛길
-    apply(s, { type: 'clearRock', x: X(4), y: Y(6) });
+    // 문 앞(3,3)에서 마을 길(y=7)까지 옛 정낭 자리(4,6)를 지나 올렛길
     for (const c of [...PATH, { lx: 4, ly: 6 }]) expect(apply(s, { type: 'place', objectType: 'path', ...at(c.lx, c.ly) }).ok).toBe(true);
     expect(pathConnected(s)).toBe(true);
     expect(s.tutorial.step).toBe(4);
@@ -192,10 +190,10 @@ describe('손으로 하는 튜토리얼 「할망의 가르침」 33단계·5장
 
   it('대사 게이트: 조건이 먼저 차도 대사(dlg:<id>)를 보기 전엔 안 끝나고, 보고 나면 바로 통과한다. 보상 없는 단계(둘러보기)는 빈 보상 상자를 안 띄운다', () => {
     const s = tutorialState();
-    // 1단계 둘러보기: 4곳(정낭·정류장·바위·마을 길) 글로우, 본 것부터 꺼진다
-    expect(STEPS[0]!.cells(s)).toHaveLength(4);
-    apply(s, { type: 'tutorialNote', key: 'look:gate' });
+    // 1단계 둘러보기: 3곳(정낭·정류장·마을 길) 글로우, 본 것부터 꺼진다
     expect(STEPS[0]!.cells(s)).toHaveLength(3);
+    apply(s, { type: 'tutorialNote', key: 'look:gate' });
+    expect(STEPS[0]!.cells(s)).toHaveLength(2);
     expect(lookedAll(s)).toBe(false);
     lookAll(s);
     expect(lookedAll(s)).toBe(true);
@@ -259,10 +257,7 @@ describe('손으로 하는 튜토리얼 「할망의 가르침」 33단계·5장
     expect(apply(s, { type: 'skipTutorialChapter' }).ok).toBe(true);
     expect(s.tutorial.step).toBe(11);
     expect(s.tutorial.skipped).toBe(true);
-    expect(s.features.siteView).toBe(true);
-    expect(s.features.comboCodex).toBe(true);
-    expect(s.features.promote).toBe(true);
-    expect(s.features.spotMap).toBe(false); // 3장 보상은 아직
+    expect(s.features.popup).toBe(false); // 5장 보상은 아직
     expect(s.money).toBe(money);
     expect(s.tickets).toBe(0);
     expect(s.alerts.filter((a) => a.type === 'reward')).toHaveLength(0);
@@ -275,11 +270,10 @@ describe('손으로 하는 튜토리얼 「할망의 가르침」 33단계·5장
     s.tutorial.step = 13;
     expect(skipTutorialChapter(s)).toBe(2);
     expect(s.tutorial.step).toBe(17);
-    // 4장: 주차장·연구 개발이 열린다
+    // 4장: 주차장이 열린다
     s.tutorial.step = 22;
     expect(apply(s, { type: 'skipTutorialChapter' }).ok).toBe(true);
     expect(s.tutorial.step).toBe(29);
-    expect(s.features.craft).toBe(true);
     expect(s.unlocked.objects).toContain('parking_lot');
     expect(s.inventory['gift_tangerine_box'] ?? 0).toBe(0); // 아이템 보상은 안 준다
     // 5장 → 끝
@@ -289,19 +283,48 @@ describe('손으로 하는 튜토리얼 「할망의 가르침」 33단계·5장
     expect(apply(s, { type: 'skipTutorialChapter' }).ok).toBe(false);
   });
 
+  it('단계 건너뛰기 「이미 알아요」(ease): 현재 단계만 보상 없이 통과, 해금(시설·기능)은 적용, skipped 표식·마당은 그대로, 장 건너뛰기와 별개', () => {
+    const s = tutorialState();
+    const money = s.money;
+    expect(apply(s, { type: 'skipTutorialStep' }).ok).toBe(true); // 1 둘러보기
+    expect(s.tutorial.step).toBe(1);
+    expect(s.tutorial.skipped).toBe(false);
+    expect(mainBuilding(s)).toBeNull(); // 맨땅 그대로 — 본관은 2단계에서 직접
+    expect(apply(s, { type: 'skipTutorialStep' }).ok).toBe(true); // 2 본관 짓기 (₩30만) — 보상 없음
+    expect(s.tutorial.step).toBe(2);
+    expect(s.money).toBe(money);
+    expect(s.alerts.filter((a) => a.type === 'reward')).toHaveLength(0);
+    expect(currentTutorialStep(s)?.id).toBe(3);
+    // 27단계(명소 투자)를 건너뛰면 주차장 시설은 열린다
+    s.tutorial.step = 26;
+    expect(apply(s, { type: 'skipTutorialStep' }).ok).toBe(true);
+    expect(s.tutorial.step).toBe(27);
+    expect(s.unlocked.objects).toContain('parking_lot');
+    // 31단계 → 팝업 스토어 기능
+    s.tutorial.step = 30;
+    expect(apply(s, { type: 'skipTutorialStep' }).ok).toBe(true);
+    expect(s.features.popup).toBe(true);
+    expect(s.money).toBe(money);
+    // 마지막 단계도 건너뛸 수 있고, 끝나면 거부
+    s.tutorial.step = 32;
+    expect(apply(s, { type: 'skipTutorialStep' }).ok).toBe(true);
+    expect(tutorialDone(s)).toBe(true);
+    expect(s.titles).not.toContain('halmang_pupil'); // 칭호 보상은 안 준다
+    expect(apply(s, { type: 'skipTutorialStep' }).ok).toBe(false);
+  });
+
   it('1장(1~11): 둘러보기 → 본관 짓기 → 본관 보기 → 길 → … 순서대로 손으로 하면 단계마다 보상 상자가 뜨고 step이 오른다 (하이라이트 칸·타깃 포함)', () => {
     const s = tutorialState();
     const money0 = s.money;
-    // 1: 둘러보기 — 정낭·정류장·바위·마을 길 4곳 글로우, 타깃(버튼) 없음, 보상 없음
+    // 1: 둘러보기 — 정낭·정류장·마을 길 3곳 글로우, 타깃(버튼) 없음, 보상 없음
     seeDialogue(s);
     expect(STEPS[0]!.targets).toEqual([]);
     const look = STEPS[0]!.cells(s);
-    expect(look).toHaveLength(4);
+    expect(look).toHaveLength(3);
     const g = Object.values(s.objects).find((o) => o.type === 'gate')!;
     expect(look[0]).toEqual({ x: g.x, y: g.y });
     expect(look[1]).toEqual({ x: X(0), y: Y(7) }); // 정류장
-    expect(s.grid.cells[look[2]!.y * s.grid.w + look[2]!.x]!.terrain).toBe('rock');
-    expect(s.grid.cells[look[3]!.y * s.grid.w + look[3]!.x]!.terrain).toBe('road');
+    expect(s.grid.cells[look[2]!.y * s.grid.w + look[2]!.x]!.terrain).toBe('road');
     expect(apply(s, { type: 'tutorialNote', key: 'look:gate' }).ok).toBe(true);
     expect(s.tutorial.step).toBe(0);
     lookAll(s);
@@ -345,7 +368,6 @@ describe('손으로 하는 튜토리얼 「할망의 가르침」 33단계·5장
     expect(STEPS[4]!.cells(s).length).toBeLessThanOrEqual(3);
     expect(apply(s, { type: 'place', objectType: 'table_out', ...at(3, 4) }).ok).toBe(true);
     expect(s.tutorial.step).toBe(5);
-    expect(s.features.siteView).toBe(true);
     expect(canOpen(s)).toBe(false); // 아직 메뉴 없음
     // 6: 메뉴 두 개
     seeDialogue(s);
@@ -374,8 +396,7 @@ describe('손으로 하는 튜토리얼 「할망의 가르침」 33단계·5장
     expect(apply(s, { type: 'place', objectType: 'stonewall', ...at(2, 3) }).ok).toBe(true);
     expect(wallShelteringSeat(s)).toBe(true);
     expect(s.tutorial.step).toBe(9);
-    expect(s.features.comboCodex).toBe(true);
-    expect(s.features.promote).toBe(true);
+    expect(lastReward(s)).toMatchObject({ refId: '9', items: expect.arrayContaining([{ type: 'tickets', n: 1 }]) }); // ease: 콤보 도감·홍보 대신 응모권
     // 10: 홍보
     seeDialogue(s);
     s.stats.promotionsDone = 1;
@@ -448,7 +469,6 @@ describe('손으로 하는 튜토리얼 「할망의 가르침」 33단계·5장
     expect(apply(s, { type: 'dismissMonthCard' }).ok).toBe(true);
     checkGoals(s);
     expect(s.tutorial.step).toBe(18);
-    expect(s.features.spotMap).toBe(true);
     clearAlerts(s);
     // 19: 좌석 4개 (완성 시작 상태 3개 + 1)
     seeDialogue(s);
@@ -508,10 +528,8 @@ describe('손으로 하는 튜토리얼 「할망의 가르침」 33단계·5장
     seeDialogue(s);
     hire(s, s.candidates[0]!.id, 'hall');
     s.rank = 3;
-    expect(s.features.craft).toBe(false);
     expect(apply(s, { type: 'train', staffId: s.staff[0]!.id, trainingId: 'tr_basic' }).ok || s.tutorial.seen.includes('train') || (() => { s.stats.trainings = 1; checkGoals(s); return true; })()).toBe(true);
     expect(s.tutorial.step).toBe(25);
-    expect(s.features.craft).toBe(true);
     // 26: 레시피 개발 (액션 대신 카운터로도 통과)
     seeDialogue(s);
     s.stats.recipesMade = 1;
@@ -587,10 +605,10 @@ describe('손으로 하는 튜토리얼 「할망의 가르침」 33단계·5장
   it('순서·해금 정합: 각 단계가 요구하는 기능·시설은 그 전 단계 보상(또는 시작 상태)으로 열려 있다 — 목표 체인 없이도', () => {
     // 단계 → 요구하는 기능·시설 (조건을 채우는 데 필요한 것)
     const NEED: Record<number, { features?: FeatureId[]; objects?: string[] }> = {
-      4: { objects: ['path'] }, 5: { objects: ['table_out'] }, 9: { objects: ['stonewall'] }, 10: { features: ['promote'] },
-      12: { features: ['siteView'], objects: ['table_out'] }, 15: { objects: ['tangerine_tree'] }, 16: { objects: ['path'] },
+      4: { objects: ['path'] }, 5: { objects: ['table_out'] }, 9: { objects: ['stonewall'] },
+      12: { objects: ['table_out'] }, 15: { objects: ['tangerine_tree'] }, 16: { objects: ['path'] },
       19: { objects: ['table_out'] }, 22: { objects: ['tangerine_tree'] }, 24: { objects: ['table_in'] },
-      26: { features: ['craft'] }, 27: { features: ['spotMap'] }, 28: { objects: ['parking_lot'] }, 32: { features: ['popup'] },
+      28: { objects: ['parking_lot'] }, 32: { features: ['popup'] }, // ease: 홍보·입지 보기·연구·명소 지도는 처음부터 열려 있다
     };
     const base = tutorialState();
     const features = initFeatures();
@@ -608,9 +626,9 @@ describe('손으로 하는 튜토리얼 「할망의 가르침」 33단계·5장
       }
     }
     // 기능 잠금이 걸린 액션(FEATURE_OF_ACTION)을 요구하는 단계는 그 기능을 앞에서 연다
-    expect(FEATURE_OF_ACTION.develop).toBe('craft');
+    expect(FEATURE_OF_ACTION.develop).toBeUndefined(); // ease: 연구 개발·홍보는 잠기지 않는다
     expect(FEATURE_OF_ACTION.openPopup).toBe('popup');
-    expect(FEATURE_OF_ACTION.promote).toBe('promote');
+    expect(FEATURE_OF_ACTION.promote).toBeUndefined();
     // 단계 타깃의 data-tut 이름은 소문자·콜론·하이픈만 (UI 속성과 짝)
     for (const st of STEPS) for (const t of st.targets) expect(t).toMatch(/^[a-z][a-z0-9:_-]*$/);
   });
