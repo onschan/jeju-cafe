@@ -35,6 +35,27 @@ class Canvas:
         self.w, self.h = w, h
         self.px: list[list[Color]] = [[CLEAR] * w for _ in range(h)]
 
+    @classmethod
+    def from_art(cls, rows: list[str], legend: dict[str, Color], w: int | None = None, h: int | None = None,
+                 x: int = 0, y: int = 0) -> 'Canvas':
+        """문자 그림 → 캔버스. `.`과 공백은 투명, 나머지 글자는 legend 색. 모든 행 길이가 같아야 한다.
+        w/h를 주면 그 크기 캔버스의 (x, y)에 그림을 얹는다(부분 그림용)."""
+        if not rows:
+            raise ValueError('빈 ART')
+        width = len(rows[0])
+        for i, r in enumerate(rows):
+            if len(r) != width:
+                raise ValueError(f'ART 행 {i} 길이 {len(r)} != {width}: {r!r}')
+        c = cls(w or width, h or len(rows))
+        for yy, r in enumerate(rows):
+            for xx, ch in enumerate(r):
+                if ch in '. ':
+                    continue
+                if ch not in legend:
+                    raise KeyError(f'ART 글자 {ch!r} (행 {yy}, 열 {xx})가 legend에 없다')
+                c.put(x + xx, y + yy, legend[ch])
+        return c
+
     # ---- 픽셀 ----
     def put(self, x: int, y: int, c: Color) -> None:
         if 0 <= x < self.w and 0 <= y < self.h:

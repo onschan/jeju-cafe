@@ -15,7 +15,7 @@ def all_sprites():
     s = {}
     for mod in (sprites_tiles, sprites_objects):
         s.update(mod.sprites())
-    for name in ('sprites_chars', 'sprites_portraits', 'sprites_ui', 'sprites_bg', 'sprites_iso_tiles', 'sprites_iso_objects', 'sprites_iso_env',
+    for name in ('sprites_chars', 'sprites_portraits', 'sprites_portraits_named', 'sprites_ui', 'sprites_bg', 'sprites_iso_tiles', 'sprites_iso_objects', 'sprites_iso_env',
                  'sprites_iso_rooms', 'sprites_iso_facilities', 'sprites_iso_facilities_x', 'sprites_iso_decor', 'sprites_iso_shop'):
         try:
             s.update(__import__(name).sprites())
@@ -29,9 +29,13 @@ def main():
     sheet, frames = pack(sprites)
     write_spritesheet(sheet, frames, os.path.join(OUT_DIR, 'sheet.png'), os.path.join(OUT_DIR, 'sheet.json'))
     for name, c in sprites.items():
-        if name.startswith('icon_') or name.startswith('portrait_'):
+        if name.startswith(('icon_', 'portrait_', 'ui_')):       # ui_*: RewardPopup이 <img>로 쓰는 상자·반짝·동전·리본
             c.save(os.path.join(ICON_DIR, f'{name}.png'))
     contact_sheet(sprites, cols=10, scale=3).save(os.path.join(REVIEW_DIR, 'contact.png'))
+    import sprites_portraits, sprites_portraits_named
+    sprites_portraits.portraits_preview().save(os.path.join(REVIEW_DIR, 'portraits_contact.png'))
+    sprites_portraits_named.named_preview().save(os.path.join(REVIEW_DIR, 'portraits_named_contact.png'))
+    contact_sheet({n: c for n, c in sprites.items() if n.startswith(('ui_chest_', 'ui_sparkle_', 'ui_coin_'))}, cols=8, scale=4).save(os.path.join(REVIEW_DIR, 'chest_contact.png'))
     iso = {n: c for n, c in sprites.items() if n.startswith('iso_')}
     if iso:
         contact_sheet(iso, cols=8, scale=2).save(os.path.join(REVIEW_DIR, 'contact_iso.png'))
