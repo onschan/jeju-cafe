@@ -847,6 +847,7 @@ export interface Guest {
   waitMs: number;       // 주문 후 조리 대기 남은 시간
   paid: number;         // 주문 시 낸 돈 (자금 효과의 팁 계산용)
   route?: RouteId;      // 어느 유입 경로로 왔나 (트랙 H entry.ts). 없으면 정류장
+  gates?: number;       // 자리로 오는 길에 지나간 정낭 수 (w-free: 「제주 대문」 인상 — 관광객 만족 +1/개, 최대 GATE_SATISFACTION_MAX). 0이면 없다
 }
 
 /** 속도 4(빠른 모드)는 엔딩 뒤 「계속하기」로만 열린다 (ending.ts) */

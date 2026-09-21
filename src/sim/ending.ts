@@ -10,7 +10,7 @@
 import type { GameState, FinalScore, ScoreItem, ScoreKey, CarryOver, EndingState, ApplyResult } from './types.ts';
 import { regularCount } from './popup.ts';
 import { objectDef } from '../data/index.ts';
-import { occupy } from './grid.ts';
+import { occupy, doorFrontOf } from './grid.ts';
 import { monthIndex } from './clock.ts';
 import { START_ORIGIN } from './layout.ts';
 import { pushNotice } from './staff.ts';
@@ -34,8 +34,16 @@ export const CARRY_RATIO = 0.2;
 /** 이월 돌하르방 최대 (정낭 양옆) */
 export const CARRY_DOLHAREUBANG_MAX = 2;
 export const DOLHAREUBANG_TYPES = new Set(['dolhareubang', 'dolhareubang_pair', 'deco_dolhareubang_set']);
-/** 이월 돌하르방이 놓이는 시작 필지 상대 좌표 (정낭 (4,6) 양옆) */
+/** 이월 돌하르방이 놓이는 시작 필지 상대 좌표 (정낭 (4,6) 양옆) — 정낭이 없으면 carryDolhareubangCells가 문 양옆으로 (w-free) */
 export const CARRY_DOLHAREUBANG_AT: { lx: number; ly: number }[] = [{ lx: 3, ly: 6 }, { lx: 5, ly: 6 }];
+/** 이월 돌하르방 자리: 정낭 양옆 → (정낭이 없으면) 본관 문 앞 양옆 → (둘 다 없으면) 기본 좌표 */
+export function carryDolhareubangCells(state: GameState): { x: number; y: number }[] {
+  const gate = Object.values(state.objects).find((o) => o.type === 'gate');
+  if (gate) return [{ x: gate.x - 1, y: gate.y }, { x: gate.x + 1, y: gate.y }];
+  const main = Object.values(state.objects).find((o) => o.type === 'warehouse');
+  if (main) { const f = doorFrontOf(main); return [{ x: f.x - 1, y: f.y }, { x: f.x + 1, y: f.y }]; }
+  return CARRY_DOLHAREUBANG_AT.map((c) => ({ x: START_ORIGIN.x + c.lx, y: START_ORIGIN.y + c.ly }));
+}
 
 /** 점수 항목 9: 값 → 점수 환산 (합 최대 약 1,000점 + 촌장 보너스) */
 export const SCORE_ITEMS: { key: ScoreKey; label: string; per: number; cap: number }[] = [
@@ -182,7 +190,7 @@ export function makeCarry(state: GameState): CarryOver {
   };
 }
 
-/** 새 게임에 이월을 적용한다 (state.ts createInitialState 끝에서). 돌하르방은 정낭 양옆 빈 칸에 놓는다. */
+/** 새 게임에 이월을 적용한다 (state.ts createInitialState 끝에서). 돌하르방은 정낭 양옆(없으면 문 양옆) 빈 칸에 놓는다. */
 export function applyCarry(state: GameState, carry: CarryOver): void {
   state.carry = carry;
   for (const id of carry.combos) if (!state.codex.combos.includes(id)) state.codex.combos.push(id);
@@ -193,8 +201,8 @@ export function applyCarry(state: GameState, carry: CarryOver): void {
   if (carry.dolhareubang > 0) {
     if (!state.unlocked.objects.includes('dolhareubang')) state.unlocked.objects.push('dolhareubang');
     const def = objectDef('dolhareubang');
-    for (const c of CARRY_DOLHAREUBANG_AT.slice(0, carry.dolhareubang)) {
-      const x = START_ORIGIN.x + c.lx, y = START_ORIGIN.y + c.ly;
+    for (const { x, y } of carryDolhareubangCells(state).slice(0, carry.dolhareubang)) {
+      if (x < 0 || y < 0 || x >= state.grid.w || y >= state.grid.h) continue;
       const cell = state.grid.cells[y * state.grid.w + x];
       if (!cell || cell.objectId || !def.terrain.includes(cell.terrain)) continue;
       const id = `o${state.nextId++}`;

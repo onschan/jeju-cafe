@@ -32,7 +32,8 @@ import { canSetTargets, setTargets } from './segments.ts';
 import { canContinueEnding, continueEnding, canSetSpeed } from './ending.ts'; // z-ending
 import { canDonate, donate, canHoldFestival, holdFestival } from './village.ts'; // z-ending
 
-export const PROTECTED_TYPES = new Set(['busstop', 'warehouse', 'gate', 'spring']);
+/** 못 옮기고 못 없애는 것 (정류장·본관·샘). 정낭은 w-free부터 일반 시설 — 옮기고 없애고 더 놓을 수 있다. */
+export const PROTECTED_TYPES = new Set(['busstop', 'warehouse', 'spring']);
 /** 회전할 수 있는 오브젝트 (rot 0..3, 스프라이트 변형 _r{n}이 있을 때만 보인다) */
 export const ROTATABLE_TYPES = new Set(['gate', 'bench', 'counter']);
 const ACTION_LOG_CAP = 1000;

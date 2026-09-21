@@ -548,11 +548,11 @@ test('조리 시간: 직원 없으면 PREP_MS, 바리스타(감각 50)면 그 70
 
 test('홀 직원 서비스는 만족 기준을 낮춘다', () => {
   // tourist minScenery 2, 자리 경치 1 → meh(scenery). 홀 미소 60이면 happy
-  const s = cafe(); spawnGuests(s, 1); s.guests[0]!.type = 'student'; updateGuests(s, 6000); updateGuests(s, PREP_MS);
+  const s = cafe(); spawnGuests(s, 1); s.guests[0]!.type = 'student'; delete s.guests[0]!.gates; updateGuests(s, 6000); updateGuests(s, PREP_MS); // 정낭 인상(+1, w-free)은 guests.test에서
   expect(s.guests[0]!.mood).toBe('meh');
   expect(s.guests[0]!.moodReason).toBe('scenery');
   const s2 = cafe(); s2.staff.push(staffWith({ smile: 60 }, 'hall'));
-  spawnGuests(s2, 1); s2.guests[0]!.type = 'student'; updateGuests(s2, 6000); updateGuests(s2, PREP_MS);
+  spawnGuests(s2, 1); s2.guests[0]!.type = 'student'; delete s2.guests[0]!.gates; updateGuests(s2, 6000); updateGuests(s2, PREP_MS);
   expect(s2.guests[0]!.mood).toBe('happy');
   expect(s2.guests[0]!.moodReason).toBeNull();
 });

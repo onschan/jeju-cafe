@@ -19,9 +19,9 @@
   },
   {
     "id": "ms_pickaxe",
-    "name": "돌담 철거 곡괭이",
+    "name": "바위 곡괭이",
     "price": 2,
-    "description": "부지에 원래 있던 돌담을 1칸 없애요",
+    "description": "가지고 있으면 바위·덤불 치우기가 50% 할인돼요",
     "itemId": "pickaxe"
   },
   {

@@ -207,12 +207,12 @@
     },
     "reward": [
       {
-        "type": "unlockFeature",
-        "id": "clearRock"
+        "type": "tickets",
+        "n": 2
       }
     ],
     "speaker": "samchun",
-    "line": "땅이 넓어졌네. 바위는 치워야 쓸 수 있어."
+    "line": "땅이 넓어졌네. 바위는 ₩10만이면 바로 치워."
   },
   {
     "id": "g13",

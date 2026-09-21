@@ -2,8 +2,8 @@
 import { canPlace, placeCost, footprint, PROTECTED_TYPES, canDisturb, type GameState } from '../sim/index.ts';
 import { objectDef } from '../data/index.ts';
 
-/** 일괄 철거에서 빼는 종류 (§5.3): 본관·정낭·정류장·진입점 시설 */
-export const NO_DEMOLISH_KINDS = new Set(['busstop', 'gate', 'building']);
+/** 일괄 철거에서 빼는 종류 (§5.3): 본관·정류장·진입점 시설 (정낭은 w-free부터 일반 시설) */
+export const NO_DEMOLISH_KINDS = new Set(['busstop', 'building']);
 
 export interface Rect { x0: number; y0: number; x1: number; y1: number }
 export interface BuildGhost { x: number; y: number; rot: number }

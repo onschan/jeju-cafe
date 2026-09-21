@@ -10,7 +10,7 @@
  * |------------|-----------|------------------------------------------------------|
  * | promote    | g07       | promote (홍보 활동: 전단·SNS·아르바이트…)             |
  * | parcel     | g11       | buyParcel                                            |
- * | clearRock  | g12       | clearRock (바위·덤불 치우기)                          |
+ * | clearRock  | (시작부터 열림, w-free) | — 옛 g12 보상. 액션을 잠그지 않는다                  |
  * | craft      | g16       | develop · addTopping · removeTopping · levelUpMenu   |
  * | popup      | g18       | openPopup (원정 팝업 스토어)                          |
  * | challenge  | g47       | challenge (라이벌 카페 대결)                          |
@@ -64,11 +64,10 @@ function selfSupplyPct(state: GameState): number {
 
 export const FEATURE_IDS: FeatureId[] = ['clearRock', 'promote', 'craft', 'popup', 'challenge', 'parcel', 'siteView', 'comboCodex', 'spotMap'];
 /** 액션을 잠그는 기능 (목표에서 정확히 한 번 열린다). 나머지는 UI 표시용. */
-export const ACTION_FEATURE_IDS: FeatureId[] = ['clearRock', 'promote', 'craft', 'popup', 'challenge', 'parcel'];
+export const ACTION_FEATURE_IDS: FeatureId[] = ['promote', 'craft', 'popup', 'challenge', 'parcel']; // w-free: clearRock은 시작부터 열려 있어 뺐다
 export const FEATURE_NAME: Record<FeatureId, string> = { clearRock: '바위 치우기', promote: '홍보', craft: '연구 개발', popup: '팝업 스토어', challenge: '카페 대결', parcel: '필지 구매', siteView: '입지 보기', comboCodex: '콤보 도감', spotMap: '명소 지도' };
 /** 액션 → 필요한 기능 (표는 파일 상단 주석) */
 export const FEATURE_OF_ACTION: Partial<Record<Action['type'], FeatureId>> = {
-  clearRock: 'clearRock',
   promote: 'promote',
   develop: 'craft', addTopping: 'craft', removeTopping: 'craft', levelUpMenu: 'craft',
   openPopup: 'popup',
@@ -81,7 +80,7 @@ export const MAX_GOALS_PER_CHECK = 10;
 export const CONCURRENT_GOALS = 2;
 
 export function initFeatures(): Record<FeatureId, boolean> {
-  return { clearRock: false, promote: false, craft: false, popup: false, challenge: false, parcel: false, siteView: false, comboCodex: false, spotMap: false };
+  return { clearRock: true, promote: false, craft: false, popup: false, challenge: false, parcel: false, siteView: false, comboCodex: false, spotMap: false };
 }
 
 export function featureOpen(state: GameState, id: FeatureId): boolean {
