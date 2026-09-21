@@ -735,7 +735,7 @@ function Game({ onExit }: { onExit: () => void }) {
       <TopShell onStatus={() => setWin({ kind: 'status' })} onGoal={() => setWin({ kind: 'goal' })} />
       {!place && !cardTarget && (
         <button data-testid="home-btn" aria-label="본관으로" onClick={goHome}
-          style={{ position: 'absolute', left: 8, bottom: `calc(${SHELL_BOTTOM + 8}px + env(safe-area-inset-bottom))`, width: 44, height: 44, borderRadius: 22, border: `3px solid ${PALETTE.wood}`, background: PALETTE.paper, fontSize: 20, zIndex: 11, padding: 0, boxShadow: '0 2px 0 #0004', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Icon name="home" size={24} /></button>
+          style={{ position: 'absolute', left: 8, bottom: `calc(${SHELL_BOTTOM + 8}px + env(safe-area-inset-bottom))`, width: 56, height: 56, borderRadius: 28, border: `3px solid ${PALETTE.wood}`, background: PALETTE.paper, fontSize: 20, zIndex: 11, padding: 0, boxShadow: '0 2px 0 #0004', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Icon name="home_cafe" size={48} /></button>
       )}
       {place && ghostCell && <GhostButtons view={view} cell={ghostCell} ok={place.ok} canRotate={place.canRotate} onConfirm={place.onConfirm} onRotate={place.onRotate} />}
       <MessageLine bottom={BOTTOM_BAR_H} />
