@@ -62,6 +62,8 @@ export {
   SEAT_FULL_PCT, SEAT_FULL_DAYS, SEAT_FULL_TEXT, DOOR_PATH_WARN, ANNEX_CUT_TEXT, BGM_LABEL, LIGHT_LABEL, PIANO_LABEL, STAY_PER_FACILITY_MS,
   autoConnectRoute, canAutoConnectPath, type AutoRoute,
 } from './rooms.ts';
+// ---------- fix-indoor: 밤 조명 ----------
+export { NIGHT_HOUR, LIGHT_RADIUS, STREETLIGHT_SAT, DARK_SAT, DARK_TEXT, isNight, isLightType, lights, lightAt, litCellsOf, nightSeatPoints, nightSatisfaction, nightSeatLine } from './lighting.ts';
 // ---------- z-ending ----------
 export { computeScore, scoreTier, spotLevelSum, endingDue, endingMonthly, canContinueEnding, canSetSpeed, centennialConditions, centennialDue, hasGuidebookTop, makeCarry, applyCarry, carryText, dolhareubangCount, initEnding, ENDING_YEAR, ENDING_MONTH, CENTENNIAL_YEAR, CENTENNIAL_MONTH, CENTENNIAL_STAR, CENTENNIAL_RANK, CENTENNIAL_REPUTATION, MILLENNIUM_TREE, FAST_SPEED, CARRY_RATIO, SCORE_ITEMS, SCORE_TITLES, CHIEF_PREFIX, CHIEF_BONUS } from './ending.ts';
 export { villageReview, nextGradeScore, localSatisfaction, questsDone, totalScenery, totalNoise, canDonate, canHoldFestival, villageLocalMult, villageQuestOpen, villageParcelDiscount, isChiefCandidate, isLocalGuestType, initVillage, VILLAGE_GRADE_MAX, VILLAGE_GRADE_NAME, VILLAGE_GRADE_SCORE, VILLAGE_REVIEW_MONTH, VILLAGE_ITEM_LABEL, FESTIVAL_MONTH, FESTIVAL_GRADE, FESTIVAL_COST, FESTIVAL_GUEST_MULT, FESTIVAL_REPUTATION, FESTIVAL_TICKETS, VILLAGE_DONATION, LOCAL_GUEST_MULT, PARCEL_DISCOUNT, type VillageItem, type VillageReview, type VillageKey } from './village.ts';

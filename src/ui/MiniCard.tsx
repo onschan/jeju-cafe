@@ -2,7 +2,7 @@ import { useState, useEffect, type CSSProperties, type ReactNode } from 'react';
 import { wonText } from '../data/labels.ts';
 import { josa } from '../sim/josa.ts';
 import { useGame, dispatch, showMessage } from './store';
-import { objectStats, siteOf, siteLineText, cellAt, walletOf, guestFace, namedGuestFace, canAcceptQuest, parcelPrice, canBuyParcel, canGiveGift, giftFits, giftCount, giftedToday, PROTECTED_TYPES, ROTATABLE_TYPES, LOW_ENERGY, STAT_KEYS, STAT_NAME, staffInRole, canLevelUp, capOf, skillsOf, expNeeded, isUpgradable, canUpgrade, upgradeCost, upgradeConditionText, MAX_OBJECT_LEVEL, canRepair, repairCost, CLEAN_LOW, type GameState, type Guest, type RoleId, type StatKey } from '../sim/index.ts';
+import { nightSeatLine, objectStats, siteOf, siteLineText, cellAt, walletOf, guestFace, namedGuestFace, canAcceptQuest, parcelPrice, canBuyParcel, canGiveGift, giftFits, giftCount, giftedToday, PROTECTED_TYPES, ROTATABLE_TYPES, LOW_ENERGY, STAT_KEYS, STAT_NAME, staffInRole, canLevelUp, capOf, skillsOf, expNeeded, isUpgradable, canUpgrade, upgradeCost, upgradeConditionText, MAX_OBJECT_LEVEL, canRepair, repairCost, CLEAN_LOW, type GameState, type Guest, type RoleId, type StatKey } from '../sim/index.ts';
 import { BUS_HOUR, isBusDay } from '../sim/spots.ts';
 import { RouteCard } from './RouteCard';
 import type { RouteId } from '../sim/index.ts';
@@ -244,6 +244,7 @@ function ObjectCard({ s, id, a, onClose }: { s: GameState; id: string; a: CardAc
           <div style={small}>인기 <b style={{ color: PALETTE.ink }}>{st.popularity}</b> · 경관 <b style={{ color: PALETTE.ink }}>{st.scenery > 0 ? '+' : ''}{st.scenery}</b> · 요금 <b style={{ color: PALETTE.ink }}>{st.feePct}%</b>{st.upkeep > 0 && ` · 유지비 ${wonText(st.upkeep)}/달`}{(o.uses ?? 0) > 0 && ` · 이용 ${o.uses}회`}</div>
           <div style={small}>주변 시너지: {st.combos.length > 0 ? st.combos.map((c) => `${c.strength === 'down' ? '↓' : '↑'}${c.name}${c.count > 1 ? ` ×${c.count}` : ''}`).join(' · ') : '없음'}{st.sets.length > 0 && ` · 세트 ${st.sets.map((x) => x.name).join(', ')}`}{st.spot && ` · 명당 ${st.spot.name}`}</div>
           <SiteLine s={s} o={o} />
+          {(() => { const nl = nightSeatLine(s, o); return nl ? <div style={{ ...small, ...(nl.bad ? { color: PALETTE.bad } : {}) }} data-testid="night-line">🌙 {nl.text}</div> : null; })()}
           {isAnnex(o) && <div style={small}>실내 {roomSeatsUsed(s, o)}/{roomSeats(s, o)}석{isRoomCut(s, o) && <span style={{ color: PALETTE.bad, fontWeight: 700 }} data-testid="annex-cut"> · {ANNEX_CUT_TEXT} — {DOOR_PATH_WARN}</span>}</div>}
           <div style={{ ...small, whiteSpace: 'nowrap' }} data-testid="clean-bar">카페 청결 <Bar value={clean} max={100} width={80} /> {clean}{clean < CLEAN_LOW && <span style={{ color: PALETTE.bad }}> 지저분해요</span>}</div>
         </Details>

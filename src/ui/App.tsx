@@ -7,7 +7,6 @@ import { seasonOf, canPlace, objectAt, footprint, sizeOf, mainBuilding, parcelAt
 import { RoutesSection } from './RouteCard'; // 트랙 H
 import { objectDef } from '../data/index.ts';
 // render/·ui/는 Vite 전용이라 확장자 없는 import 허용. sim/·data/만 .ts 확장자 규칙.
-import { NightOverlay } from './HUD';
 import { TopShell, BottomBar, PlaceBar, SHELL_BOTTOM, BOTTOM_BAR_H, type WindowKind, type PlaceBarProps } from './Shell';
 import { Window, type IconGridItem } from './Window';
 import { MessageLine } from './MessageLine';
@@ -746,7 +745,6 @@ function Game({ onExit }: { onExit: () => void }) {
   return (
     <div onPointerDownCapture={onPointerDown} style={{ position: 'relative', width: '100%', height: '100%' }}>
       <div ref={hostRef} style={{ position: 'absolute', inset: 0, touchAction: 'none' }} />
-      <NightOverlay />
       <SiteOverlayChip />
       <TopShell onStatus={() => setWin({ kind: 'status' })} onGoal={() => setWin({ kind: 'goal' })} />
       {!place && !cardTarget && (

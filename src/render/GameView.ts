@@ -1,6 +1,6 @@
 import { Application, Container, Sprite, Graphics, Texture, Text } from 'pixi.js';
 import type { GameState, PlacedObject, Guest, Staff, Season, RoleId, Pt, RouteId } from '../sim/index.ts';
-import { seasonOf, LOW_ENERGY, parcelPrice, footprint, roomAt, doorFrontOf, WALL_COLORS, dayIndex, menuOf, sizeOf, MAIN_SIZE } from '../sim/index.ts';
+import { seasonOf, LOW_ENERGY, parcelPrice, footprint, roomAt, doorFrontOf, WALL_COLORS, dayIndex, menuOf, sizeOf, MAIN_SIZE, LIGHT_RADIUS } from '../sim/index.ts';
 import type { Parcel } from '../sim/index.ts';
 import { objectDef } from '../data/index.ts';
 import { isoTerrainTexture, isoObjectTexture, glowTexture, label, clearTextureCache, loadLabelFont } from './textures';
@@ -124,11 +124,21 @@ const BUILDING_ALPHA = 0.5;
 const DOOR_MARK_COLOR = 0xffd166;
 /** 글로우 라벨을 다는 칸 수 상한 (칸이 많으면 앞 몇 개만) */
 const HIGHLIGHT_LABEL_MAX = 3;
-/** 밤 오버레이 색·최대 알파 */
+/** 밤 오버레이 색·최대 알파 (fix-indoor: 0.55 → 0.38, 남색 유지. DOM NightOverlay는 없앴다 — 둘이 겹쳐 너무 어두웠다) */
 const NIGHT_COLOR = 0x0b1a3a;
-const NIGHT_MAX_ALPHA = 0.55;
-/** 밤에 빛나는 오브젝트 */
-const GLOW_TYPES = new Set(['lantern_path', 'stone_lantern', 'warehouse', 'busstop']);
+const NIGHT_MAX_ALPHA = 0.38;
+/** 밤에 빛나는 오브젝트: 조명 시설(sim/lighting LIGHT_RADIUS) + 정류장. 방(본관·별관)은 실내 전체에 따뜻한 빛을 깐다(syncRoomLights). */
+const GLOW_EXTRA_TYPES = new Set(['busstop']);
+function glowScale(type: string, w: number, h: number): number {
+  const r = LIGHT_RADIUS[type];
+  if (r !== undefined) return 1 + r * 1.2; // 반경 1 → 2.2 (예전 1의 2배), 반경 2 → 3.4
+  return w === 1 && h === 1 ? 1.4 : 1.8;
+}
+/** 글로우 밝기 배수 (fix-indoor: 1.4배) */
+const GLOW_BRIGHT = 1.4;
+/** 실내 빛 오버레이 색·알파 (add 블렌드) */
+const ROOM_LIGHT_COLOR = 0xffc46a;
+const ROOM_LIGHT_ALPHA = 0.28;
 /** 맵 경계 위쪽 여유(키 큰 오브젝트와 지평선 배경 띠가 보이도록) */
 const BOUNDS_TOP_PAD = 180;
 
@@ -241,6 +251,9 @@ export class GameView {
   private night = new Graphics();
   /** 밤 오버레이 위에 그리는 additive 글로우. 매 프레임 world와 같은 변환을 따른다. */
   private lights = new Container();
+  /** 방(본관·별관) 실내 전체를 밤에도 밝히는 따뜻한 빛 (add 블렌드). 배치가 바뀔 때만 다시 그린다 (fix-indoor) */
+  private roomLight = new Graphics();
+  private roomLightKey = '';
   private objNodes = new Map<string, ObjEntry>();
   private guestNodes = new Map<string, GuestEntry>();
   private staffNodes = new Map<string, StaffEntry>();
@@ -321,6 +334,8 @@ export class GameView {
     this.overlay.addChild(this.rangeMarks, this.gaugeGfx);
     this.night.eventMode = 'none';
     this.ui.eventMode = 'none';
+    this.roomLight.blendMode = 'add';
+    this.lights.addChild(this.roomLight);
     this.ui.addChild(this.night, this.lights);
     this.app.stage.addChild(this.world, this.ui);
     this.detachCamera = attachCamera(this.app.stage, {
@@ -479,7 +494,12 @@ export class GameView {
         .stroke({ color: 0xffb300, width: 3 });
     }
     if (!text) return;
-    for (const cell of cells.slice(0, HIGHLIGHT_LABEL_MAX)) {
+    // 가까운 칸(체비쇼프 ≤2)은 한 묶음으로 보고 라벨 하나만 — 말풍선이 겹치지 않게 (본관 3×2 발자국도 하나)
+    const labeled: { x: number; y: number }[] = [];
+    for (const cell of cells) {
+      if (labeled.length >= HIGHLIGHT_LABEL_MAX) break;
+      if (labeled.some((l) => Math.max(Math.abs(l.x - cell.x), Math.abs(l.y - cell.y)) <= 2)) continue;
+      labeled.push(cell);
       const { sx, sy } = cellToScreen(cell.x, cell.y);
       this.highlightLabels.addChild(this.speechLabel(text, sx, sy - 6));
     }
@@ -836,13 +856,13 @@ export class GameView {
     c.zIndex = this.depthOf(state, o.x, o.y, w, h);
     if (def.room) c.addChild(this.doorMarker(o, { sx, sy }));
     let glow: Sprite | null = null;
-    if (GLOW_TYPES.has(o.type)) {
+    if (o.type in LIGHT_RADIUS || GLOW_EXTRA_TYPES.has(o.type)) {
       glow = new Sprite(glowTexture(this.app.renderer));
       glow.anchor.set(0.5, 0.5);
       glow.blendMode = 'add';
       const gc = this.footCenter(o, w, h);
       glow.position.set(gc.sx, gc.sy - 10);
-      glow.scale.set(w === 1 && h === 1 ? 1 : 1.8);
+      glow.scale.set(glowScale(o.type, w, h));
       glow.alpha = 0;
       this.lights.addChild(glow);
     }
@@ -1000,7 +1020,8 @@ export class GameView {
       }
     }
     const blinkOn = Math.floor(now / 300) % 2 === 0;
-    const glowAlpha = Math.min(1, this.nightAlpha * 1.2);
+    const glowAlpha = Math.min(1, (this.nightAlpha / NIGHT_MAX_ALPHA) * 0.66 * GLOW_BRIGHT); // 밤이 깊을수록 밝게, 최대 ≈0.92
+    this.syncRoomLights(state, glowAlpha);
     for (const o of Object.values(state.objects)) {
       let entry = this.objNodes.get(o.id);
       if (!entry) {
@@ -1294,6 +1315,25 @@ export class GameView {
       if (e.kind === 'harvest' || e.kind === 'complete') this.spawnSparkle(e.x, e.y, now);
       else if (e.kind === 'pop') this.spawnPop(e.x, e.y, e.n, now);
       else if (e.kind === 'photo') this.spawnSparkle(e.x, e.y, now);
+    }
+  }
+
+  /** 방(본관·별관, 공사 중 제외) 발자국 전체에 따뜻한 빛 다이아몬드 — 실내는 밤에도 밝다 (fix-indoor). 배치 서명이 바뀔 때만 다시 그린다. */
+  private syncRoomLights(state: GameState, glowAlpha: number) {
+    if (this.roomLight.destroyed) return;
+    this.roomLight.alpha = glowAlpha;
+    this.roomLight.visible = glowAlpha > 0;
+    if (glowAlpha <= 0) return;
+    const key = layoutKey(state);
+    if (key === this.roomLightKey) return;
+    this.roomLightKey = key;
+    this.roomLight.clear();
+    for (const o of Object.values(state.objects)) {
+      if (!objectDef(o.type).room || o.build) continue;
+      // 발자국 전체를 다이아몬드 하나로 (칸마다 그리면 add 블렌드가 겹쳐 격자 무늬가 생긴다)
+      const { w, h } = sizeOf(o);
+      const t = cellToScreen(o.x, o.y), r = cellToScreen(o.x + w - 1, o.y), b = cellToScreen(o.x + w - 1, o.y + h - 1), l = cellToScreen(o.x, o.y + h - 1);
+      this.roomLight.poly([t.sx, t.sy - 4, r.sx + ISO_W / 2 + 4, r.sy + ISO_H / 2, b.sx, b.sy + ISO_H + 4, l.sx - ISO_W / 2 - 4, l.sy + ISO_H / 2]).fill({ color: ROOM_LIGHT_COLOR, alpha: ROOM_LIGHT_ALPHA });
     }
   }
 

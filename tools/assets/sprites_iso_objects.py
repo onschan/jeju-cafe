@@ -520,6 +520,33 @@ def lantern_path() -> IsoCanvas:
     return c
 
 
+def streetlight() -> IsoCanvas:
+    """가로등 1×1 (fix-indoor): 현무암 받침 + 검은 기둥 + 팔 + 따뜻한 갓등. 밤엔 GameView가 반경 2 글로우를 얹는다."""
+    c = cv(44, shadow=0.4)
+    c.disc(0.5, 0.5, 0.16, 3, BASALT)
+    c.pillar(0.5, 0.5, 2, 34, (hexc('2b2b33'), hexc('44444e'), hexc('6a6a76')), z0=3)
+    sx, sy = c.spx(0.5, 0.5, 37)
+    c.hline(sx - 1, sx + 7, sy, hexc('44444e')); c.hline(sx - 1, sx + 7, sy - 1, hexc('6a6a76'))
+    head = Canvas(9, 8)
+    head.rect(0, 0, 9, 3, hexc('2b2b33')); head.rect(1, 0, 7, 1, hexc('6a6a76'))
+    head.rect(1, 3, 7, 4, YELLOW[1]); head.rect(2, 4, 5, 2, hexc('fff3b0')); head.rect(3, 7, 3, 1, hexc('ffe066'))
+    head.outline()
+    c.blit(head, sx + 4, sy - 3)
+    return c
+
+
+def garden_lamp() -> IsoCanvas:
+    """정원등 1×1 (fix-indoor): 짧은 나무 말뚝 + 둥근 유리 갓. 밤엔 반경 1 글로우."""
+    c = cv(22, shadow=0.3)
+    c.disc(0.5, 0.5, 0.12, 2, BASALT)
+    c.pillar(0.5, 0.5, 2, 12, WOOD, z0=2)
+    sx, sy = c.spx(0.5, 0.5, 14)
+    c.shade_ellipse(sx, sy - 3, 4, 3.5, (hexc('d9a300'), YELLOW[1], hexc('fff3b0')))
+    c.put(sx - 1, sy - 5, hexc('ffffff'))
+    c.rect(sx - 2, sy, 4, 1, hexc('2b2b33'))
+    return c
+
+
 def busstop() -> IsoCanvas:
     c = cv(40, shadow=0.45)
     c.box(4, WOOD, (0.3, 0.6, 0.94, 0.86))
@@ -549,6 +576,7 @@ def sprites() -> dict[str, Canvas]:
         'iso_obj_tea_bush': tea_bush(), 'iso_obj_chicken_coop': chicken_coop(), 'iso_obj_beehive': beehive(),
         'iso_obj_path': path(), 'iso_obj_stonewall': stonewall(), 'iso_obj_windbreak': windbreak(),
         'iso_obj_stone_floor': stone_floor(), 'iso_obj_lantern_path': lantern_path(), 'iso_obj_busstop': busstop(),
+        'iso_obj_streetlight': streetlight(), 'iso_obj_garden_lamp': garden_lamp(),
     }
     for n in range(4):
         s[f'iso_obj_gate_{n}'] = gate(n)
