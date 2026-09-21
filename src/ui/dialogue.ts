@@ -13,8 +13,10 @@ export interface DialogueReq {
   lines: string[];
   /** 마지막 페이지의 버튼. 없으면 '알겠다' 하나 */
   choices?: DialogueChoice[];
-  /** 첫 페이지에 '건너뛰기' 버튼을 보여 준다 (튜토리얼) */
+  /** 첫 페이지에 '건너뛰기' 버튼을 보여 준다 (튜토리얼 장 건너뛰기) */
   onSkip?: () => void;
+  /** 모든 페이지 왼쪽 아래에 '이미 알아요' 버튼 (ease: 이 단계만 보상 없이 통과) */
+  onSkipStep?: () => void;
   /** 닫힐 때(선택지 포함) */
   onClose?: () => void;
 }

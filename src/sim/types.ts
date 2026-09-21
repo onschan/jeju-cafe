@@ -1048,7 +1048,8 @@ export type Action =
   | { type: 'acceptChallenge'; id: string }
   | { type: 'skipTutorial' }
   | { type: 'skipTutorialChapter' }               // 현재 장 통째로 건너뛰기 (해금 보상만, sim/tutorial.ts)
-  | { type: 'tutorialNote'; key: string }         // UI 사건 표식 (손님 카드 봄·창고 봄·입지 보기 켬) → state.tutorial.seen
+  | { type: 'tutorialNote'; key: string }
+  | { type: 'skipTutorialStep' } // ease 「이미 알아요」: 현재 단계만 보상 없이 통과 (해금은 적용, 장 건너뛰기와 별개)         // UI 사건 표식 (손님 카드 봄·창고 봄·입지 보기 켬) → state.tutorial.seen
   | { type: 'dismissMonthCard' }
   | { type: 'postJob'; tier: JobTier }
   | { type: 'hire'; candidateId: string; role: RoleId }

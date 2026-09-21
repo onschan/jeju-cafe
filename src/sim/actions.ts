@@ -8,7 +8,7 @@ import { canSetSlot, setSlot } from './menu.ts';
 import { checkFeature, checkGoals } from './goals.ts';
 import { canAcceptChallenge, acceptChallenge } from './challenges.ts';
 import { fillStarterLayout } from './state.ts';
-import { TUTORIAL_STEPS, unlockTutorialFeatures, skipTutorialChapter, noteTutorial, TRACKED_ACTIONS } from './tutorial.ts';
+import { TUTORIAL_STEPS, unlockTutorialFeatures, skipTutorialChapter, skipTutorialStep, noteTutorial, TRACKED_ACTIONS } from './tutorial.ts';
 import { canPostJob, postJob, canHire, hire, canFire, fire, canAssign, assign, canLevelUp, levelUp } from './staff.ts';
 import { canTrain, train } from './training.ts';
 import { canPromote, promote, canSetTarget, setTarget } from './promotions.ts';
@@ -382,6 +382,12 @@ function applyInner(state: GameState, a: Action): ApplyResult {
       if (state.tutorial.step >= TUTORIAL_STEPS) return { ok: false, reason: '튜토리얼이 끝났어요' };
       if (state.tutorial.step === 0) fillStarterLayout(state);
       skipTutorialChapter(state);
+      return { ok: true };
+    }
+    case 'skipTutorialStep': {
+      // ease 「이미 알아요」: 이 단계만 보상 없이 통과. 0단계(둘러보기)는 맨땅 그대로 — 본관은 2단계에서 짓는다
+      if (state.tutorial.step >= TUTORIAL_STEPS) return { ok: false, reason: '튜토리얼이 끝났어요' };
+      skipTutorialStep(state);
       return { ok: true };
     }
     case 'tutorialNote':

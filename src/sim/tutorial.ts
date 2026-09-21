@@ -426,6 +426,18 @@ export function checkTutorial(state: GameState): number | null {
   return step.id;
 }
 
+/** 현재 단계 하나만 건너뛴다 (ease 「이미 알아요」): 그 단계의 해금 보상(기능·시설)만 조용히 적용하고 step++. 돈·응모권 등은 안 준다. skipped 표식은 안 바꾼다(장 건너뛰기와 별개). 건너뛴 단계 id 또는 null. */
+export function skipTutorialStep(state: GameState): number | null {
+  const st = currentTutorialStep(state);
+  if (!st) return null;
+  for (const r of st.reward) {
+    if (r.type === 'unlockFeature') state.features[r.id] = true;
+    else if (r.type === 'unlockFacility' && !state.unlocked.objects.includes(r.id)) state.unlocked.objects.push(r.id);
+  }
+  state.tutorial.step++;
+  return st.id;
+}
+
 /** 현재 장을 통째로 건너뛴다: 남은 단계의 해금 보상(기능·시설)만 조용히 적용하고 step을 장 끝으로. 돈·응모권 등은 안 준다. 건너뛴 장 수. */
 export function skipTutorialChapter(state: GameState): number {
   const ch = currentTutorialChapter(state);

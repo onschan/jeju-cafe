@@ -283,6 +283,36 @@ describe('손으로 하는 튜토리얼 「할망의 가르침」 33단계·5장
     expect(apply(s, { type: 'skipTutorialChapter' }).ok).toBe(false);
   });
 
+  it('단계 건너뛰기 「이미 알아요」(ease): 현재 단계만 보상 없이 통과, 해금(시설·기능)은 적용, skipped 표식·마당은 그대로, 장 건너뛰기와 별개', () => {
+    const s = tutorialState();
+    const money = s.money;
+    expect(apply(s, { type: 'skipTutorialStep' }).ok).toBe(true); // 1 둘러보기
+    expect(s.tutorial.step).toBe(1);
+    expect(s.tutorial.skipped).toBe(false);
+    expect(mainBuilding(s)).toBeNull(); // 맨땅 그대로 — 본관은 2단계에서 직접
+    expect(apply(s, { type: 'skipTutorialStep' }).ok).toBe(true); // 2 본관 짓기 (₩30만) — 보상 없음
+    expect(s.tutorial.step).toBe(2);
+    expect(s.money).toBe(money);
+    expect(s.alerts.filter((a) => a.type === 'reward')).toHaveLength(0);
+    expect(currentTutorialStep(s)?.id).toBe(3);
+    // 27단계(명소 투자)를 건너뛰면 주차장 시설은 열린다
+    s.tutorial.step = 26;
+    expect(apply(s, { type: 'skipTutorialStep' }).ok).toBe(true);
+    expect(s.tutorial.step).toBe(27);
+    expect(s.unlocked.objects).toContain('parking_lot');
+    // 31단계 → 팝업 스토어 기능
+    s.tutorial.step = 30;
+    expect(apply(s, { type: 'skipTutorialStep' }).ok).toBe(true);
+    expect(s.features.popup).toBe(true);
+    expect(s.money).toBe(money);
+    // 마지막 단계도 건너뛸 수 있고, 끝나면 거부
+    s.tutorial.step = 32;
+    expect(apply(s, { type: 'skipTutorialStep' }).ok).toBe(true);
+    expect(tutorialDone(s)).toBe(true);
+    expect(s.titles).not.toContain('halmang_pupil'); // 칭호 보상은 안 준다
+    expect(apply(s, { type: 'skipTutorialStep' }).ok).toBe(false);
+  });
+
   it('1장(1~11): 둘러보기 → 본관 짓기 → 본관 보기 → 길 → … 순서대로 손으로 하면 단계마다 보상 상자가 뜨고 step이 오른다 (하이라이트 칸·타깃 포함)', () => {
     const s = tutorialState();
     const money0 = s.money;
