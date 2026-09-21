@@ -12,7 +12,7 @@
  * | 1 개업 | 1 look | 정낭·정류장·바위·마을 길 탭(seen look:*) | 아직 안 본 칸 | — |
  * |  | 2 build_main | 본관 짓기(placeMain) | nav:build·tab:building·build:warehouse·추천 칸 3 | ₩30만 |
  * |  | 3 look_main | 본관 카드 보기(seen look:main) | 본관 발자국 | — |
- * |  | 4 path | 정낭→문 올렛길 | nav:build·tab:path·정낭·문 앞 | ₩30만 |
+ * |  | 4 path | 마을 길→문 앞 올렛길 | nav:build·tab:path·마을 길(정낭이 있으면 정낭)·문 앞 | ₩30만 |
  * |  | 5 seat_view | 전망 2+ 자리 테이블 | tab:rest·길 옆 빈 칸 | ₩30만·입지 보기 |
  * |  | 6 menu | 아메리카노·감귤주스 | nav:cafe·tab:menu·menu-put | ₩20만 |
  * |  | 7 first_pay | 첫 결제 | 정류장 칸 | 응모권 1 |
@@ -88,9 +88,9 @@ export type LookId = 'gate' | 'busstop' | 'rock' | 'road' | 'main';
 export const LOOK_IDS: LookId[] = ['gate', 'busstop', 'rock', 'road'];
 /** 둘러보기 카드 위 한 줄 설명 (초중생 어휘, MiniCard Hint) */
 export const LOOK_TEXT: Record<LookId, string> = {
-  gate: '정낭: 손님이 들어오는 문이에요. 여기서 올렛길을 시작해요',
+  gate: '정낭: 제주식 대문. 있으면 관광객이 좋아해. 옮겨도 돼',
   busstop: '정류장: 버스가 손님을 내려 줘요',
-  rock: '바위: 나중에 곡괭이로 치워요',
+  rock: '바위: ₩10만이면 바로 치워',
   road: '마을 길: 버스가 다니는 길. 여기서 우리 길을 이어요',
   main: '카페 본관: 카운터·주방·실내 자리가 다 여기 있어요',
 };
@@ -123,7 +123,7 @@ function gate(s: GameState) {
 function count(s: GameState, type: string): number {
   return Object.values(s.objects).filter((o) => o.type === type).length;
 }
-/** 정낭에서 본관 문까지 올렛길이 이어졌나 */
+/** 마을 길(정류장)에서 본관 문 앞까지 올렛길이 이어졌나 (path/road/gate 걷기 BFS — 정낭 경유 조건 없음, w-free) */
 export function pathConnected(s: GameState): boolean {
   const b = mainBuilding(s);
   return b ? isDoorReachable(s, b) : false;
@@ -263,15 +263,16 @@ function announcementSeen(s: GameState): boolean {
   return s.stats.seenAnnouncement >= 0 && s.lastAnnouncement === null;
 }
 
-/** 1단계 둘러보기: 아직 안 본 것의 칸 (정낭·정류장·정낭에서 가장 가까운 바위·정낭 아래 마을 길 칸) — 본 것부터 글로우가 꺼진다 */
+/** 1단계 둘러보기: 아직 안 본 것의 칸 (정낭·정류장·정낭(없으면 정류장)에서 가장 가까운 바위·마을 길 칸) — 본 것부터 글로우가 꺼진다 */
 function lookCells(s: GameState): Pt[] {
   const out: Pt[] = [];
   const g = gate(s);
   const bus = Object.values(s.objects).find((o) => o.type === 'busstop');
   if (!seen(s, 'look:gate') && g) out.push({ x: g.x, y: g.y });
   if (!seen(s, 'look:busstop') && bus) out.push({ x: bus.x, y: bus.y });
-  if (!seen(s, 'look:rock')) { const r = nearestRock(s, g ? { x: g.x, y: g.y } : { x: 0, y: 0 }); if (r) out.push(r); }
-  if (!seen(s, 'look:road')) { const r = nearestRoad(s, g ? { x: g.x, y: g.y } : { x: 0, y: 0 }); if (r) out.push(r); }
+  const from = g ? { x: g.x, y: g.y } : bus ? { x: bus.x, y: bus.y } : { x: 0, y: 0 };
+  if (!seen(s, 'look:rock')) { const r = nearestRock(s, from); if (r) out.push(r); }
+  if (!seen(s, 'look:road')) { const r = nearestRoad(s, from); if (r) out.push(r); }
   return out;
 }
 function nearestCell(s: GameState, from: Pt, ok: (x: number, y: number) => boolean): Pt | null {
@@ -294,21 +295,31 @@ function nearestRoad(s: GameState, from: Pt): Pt | null {
 export function lookedAll(s: GameState): boolean {
   return LOOK_IDS.every((id) => seen(s, `look:${id}`));
 }
-/** 본관 발자국 원점 후보 중 추천 자리 (원점 칸, 최대 n): 문 앞 칸이 정낭에서 MAIN_RECOMMEND_GATE_DIST 안인 자리를 바람 적은 순(원점 칸 입지 wind) → 정낭 거리 순으로. 빈 마당은 바람이 대부분 3이라 바람은 잘라내지 않고 정렬만 한다. 본관이 이미 있으면 []. 2단계 글로우·짓기 고스트 첫 자리. */
+/** 본관 발자국 원점 후보 중 추천 자리 (원점 칸, 최대 n): 문 앞 칸이 정낭(없으면 정류장)에서 MAIN_RECOMMEND_GATE_DIST 안인 자리를 바람 적은 순(원점 칸 입지 wind) → 거리 순으로. 빈 마당은 바람이 대부분 3이라 바람은 잘라내지 않고 정렬만 한다. 본관이 이미 있으면 []. 2단계 글로우·짓기 고스트 첫 자리. */
 export function recommendedMainCells(s: GameState, n = MAIN_RECOMMEND_N): Pt[] {
   if (mainBuilding(s)) return [];
-  const g = gate(s);
+  const g0 = gate(s);
+  const g = g0 ? { x: g0.x, y: g0.y } : busStopPos(s); // 정낭을 치웠으면 정류장 기준 (w-free)
   const size = MAIN_SIZE[1]!;
   const out: { p: Pt; wind: number; dist: number }[] = [];
   for (let y = 0; y < s.grid.h; y++) for (let x = 0; x < s.grid.w; x++) {
     if (!canBuildMain(s, x, y).ok) continue;
     const f = doorFrontOf({ type: MAIN_TYPE, x, y, w: size.w, h: size.h });
-    const dist = g ? Math.max(Math.abs(g.x - f.x), Math.abs(g.y - f.y)) : 0;
+    const dist = Math.max(Math.abs(g.x - f.x), Math.abs(g.y - f.y));
     if (dist > MAIN_RECOMMEND_GATE_DIST) continue;
     out.push({ p: { x, y }, wind: siteOf(s, x, y).wind, dist });
   }
   out.sort((a, b) => a.wind - b.wind || a.dist - b.dist || a.p.y - b.p.y || a.p.x - b.p.x);
   return out.slice(0, n).map((o) => o.p);
+}
+/** 4단계 길 잇기 글로우: 길의 시작(정낭이 있으면 정낭, 없으면 문 앞에서 가장 가까운 마을 길 칸)과 본관 문 앞 (w-free: 정낭은 필수가 아니다) */
+function pathCells(s: GameState): Pt[] {
+  const b = mainBuilding(s);
+  if (!b) return [];
+  const f = doorFrontOf(b);
+  const g = gate(s);
+  const start = g ? { x: g.x, y: g.y } : nearestRoad(s, f);
+  return [...(start ? [start] : []), f];
 }
 /** 본관 발자국 칸 (3단계 글로우) */
 function mainCells(s: GameState): Pt[] {
@@ -327,7 +338,7 @@ export const STEPS: TutorialStepDef[] = [
     cells: (s) => recommendedMainCells(s) },
   { id: 3, key: 'look_main', chapter: 1, done: (s) => seen(s, 'look:main'), reward: [], targets: [], cells: mainCells },
   { id: 4, key: 'path', chapter: 1, done: pathConnected, reward: [money(300_000)], targets: ['nav:build', 'tab:path', 'build:path'],
-    cells: (s) => { const b = mainBuilding(s); const g = gate(s); return [...(g ? [{ x: g.x, y: g.y }] : []), ...(b ? [doorFrontOf(b)] : [])]; } },
+    cells: pathCells },
   { id: 5, key: 'seat_view', chapter: 1, done: (s) => seatWithView(s, 2), reward: [money(300_000), feature('siteView')], targets: ['nav:build', 'tab:rest', 'build:table_out'],
     cells: (s) => emptyCellsNearPath(s, 3) },
   { id: 6, key: 'menu', chapter: 1, done: (s) => s.menuSlots.includes('americano') && s.menuSlots.includes('tangerine_juice'), reward: [money(200_000)], targets: ['nav:cafe', 'tab:menu', 'menu-put'], cells: none },

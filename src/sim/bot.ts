@@ -421,9 +421,13 @@ function buyParcelIfAny(s: GameState): void {
   for (const p of s.parcels) if (!p.owned && canBuyParcel(s, p.id).ok && canSpend(s, p.price) && apply(s, { type: 'buyParcel', id: p.id }).ok) return;
 }
 
+/** 봇의 바위 치우기 시점: 바위 치우기는 시작부터 열려 있지만(w-free) 봇은 예전 g12(필지 2개) 이후에만 치운다 — 1년차 배치·밴드를 그대로 두려고 */
+function botCanClearRock(s: GameState): boolean {
+  return ownedParcels(s).length >= 2;
+}
 /** 소유 필지의 작은 바위를 하나 치운다 (덤불도) */
 function clearOneRock(s: GameState): void {
-  if (!featureOpen(s, 'clearRock') || s.money < 2_000_000) return;
+  if (!botCanClearRock(s) || s.money < 2_000_000) return;
   for (const p of ownedParcels(s))
     for (let ly = 0; ly < p.h; ly++)
       for (let lx = 0; lx < p.w; lx++) {
@@ -446,7 +450,7 @@ function laySteps(s: GameState, cells: { x: number; y: number }[]): void {
   for (const c of cells) {
     const o = objectAt(s, c.x, c.y);
     if (o?.type === 'path' || objectDef(o?.type ?? 'path').kind === 'busstop') continue;
-    if ((o?.type === 'bush_wild' || (!o && cellAt(s, c.x, c.y).terrain === 'rock')) && featureOpen(s, 'clearRock')) apply(s, { type: 'clearRock', x: c.x, y: c.y });
+    if ((o?.type === 'bush_wild' || (!o && cellAt(s, c.x, c.y).terrain === 'rock')) && botCanClearRock(s)) apply(s, { type: 'clearRock', x: c.x, y: c.y });
     if (!objectAt(s, c.x, c.y)) apply(s, { type: 'place', objectType: 'path', ...c });
   }
 }

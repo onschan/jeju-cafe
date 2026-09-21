@@ -8,7 +8,7 @@ export { hasLoan, loanRewardMult, canTakeLoan, takeLoan, checkLoan, repayLoan, L
 export { apply, PROTECTED_TYPES, ROTATABLE_TYPES, demolishRefund, canDisturb } from './actions.ts';
 export { canUndo } from './undo.ts';
 export { DAY_MS, seasonOf, monthIndex, DAYS_PER_MONTH } from './clock.ts';
-export { cellAt, objectAt, canPlace, footprint, parcelHasLandmark, isSheltered, sceneryScore, objectScenery, windShelter, SHELTER_THRESHOLD, SCENERY_CAP, doorOf, doorFrontOf, roomAt, isRoomFloor, objectsInRoom, clearCost, canClearRock, hasPickaxe, ROCK_CLEAR_COST, BIG_ROCK_CLEAR_COST, BUSH_CLEAR_COST } from './grid.ts';
+export { cellAt, objectAt, canPlace, footprint, parcelHasLandmark, isSheltered, sceneryScore, objectScenery, windShelter, SHELTER_THRESHOLD, SCENERY_CAP, doorOf, doorFrontOf, roomAt, isRoomFloor, objectsInRoom, clearCost, baseClearCost, canClearRock, hasPickaxe, ROCK_CLEAR_COST, BIG_ROCK_CLEAR_COST, BUSH_CLEAR_COST, PICKAXE_DISCOUNT_PCT } from './grid.ts';
 export { FX_CAP } from './fx.ts';
 export { isFarmObject, monthlyYieldOf, expectedHarvest, emptyMonthHarvest } from './orchard.ts';
 export { stockOf } from './warehouse.ts';
@@ -23,7 +23,7 @@ export { menuMod, menuStatsOf, rivalStatPenaltyPct, RIVAL_PENALTY_CAP, menuSkill
 export { isWalkable, busStopPos, isDoorReachable } from './path.ts';
 export { addResearchProgress, HAPPY_PER_RESEARCH, TASTE_MATCH_WEIGHT } from './progress.ts';
 export { serialize, deserialize, MemorySaveStore, LocalSaveStore, type SaveStore, type BestRecord } from './save.ts';
-export { freeSeats, hasReachableSeat, seatSlotPos, dailyGuestCount, popularityGuestBase, popularitySum, facilityPopularitySum, spotDailyGuests, seasonGuestMult, spawnMultiplier, prepTimeMs, serviceBonus, isVisitable, likesFacility, spawnNamedGuest, hourlyRegulars, totalSeats, GUEST_SPEED_CELLS_PER_S, SEAT_MS, PREP_MS, VISIT_CHANCE, GUESTS_PER_SEAT, BASE_DAILY_GUESTS, POP_SUM_PER_GUEST, FACILITY_POP_PER_GUEST, WAIT_MAX, SEASON_GUEST_MULT } from './guests.ts';
+export { freeSeats, hasReachableSeat, seatSlotPos, dailyGuestCount, gateSatisfaction, countGatesOn, GATE_SATISFACTION_MAX, popularityGuestBase, popularitySum, facilityPopularitySum, spotDailyGuests, seasonGuestMult, spawnMultiplier, prepTimeMs, serviceBonus, isVisitable, likesFacility, spawnNamedGuest, hourlyRegulars, totalSeats, GUEST_SPEED_CELLS_PER_S, SEAT_MS, PREP_MS, VISIT_CHANCE, GUESTS_PER_SEAT, BASE_DAILY_GUESTS, POP_SUM_PER_GUEST, FACILITY_POP_PER_GUEST, WAIT_MAX, SEASON_GUEST_MULT } from './guests.ts';
 export { canPromote, effectivePopularity, MAX_ACTIVE_PROMOTIONS, PARTTIME_MONEY } from './promotions.ts';
 export { TIERS, MAX_LEVEL, MAX_STAT, LOW_ENERGY, STAT_KEYS, STAT_NAME, salaryOf, salaryDue, SALARY_PER_STAT, UNASSIGNED_SALARY_RATIO, levelUpCost, expNeeded, mainStatOf, addRoleExp, EXP_PER_SERVE, EXP_PER_WORKDAY, roleEffect, ingredientDiscount, staffInRole, canHire, canLevelUp, canPostJob, postJobCost, tierUnlocked, availablePool, addPoolCandidate, staffCapacity, staffRoomCount, capOf, capBonus, skillsOf, hasSkill, skillTotal, cleanPowerOf, gardenBonusOf, gardenDecayOf, promoBonusOf, promoEnergyFactorOf, farmCount, roleUnlockMet, BASE_STAFF_SLOTS, SLOTS_PER_STAFF_ROOM, STAFF_ROOM_TYPE } from './staff.ts';
 export { canTrain, trainingCost, trainingOptions, trainingUnlocked, trainingMultOf, TRAINING_RANK, TRAINING_COST_STEP } from './training.ts';

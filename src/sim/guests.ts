@@ -18,7 +18,7 @@ import { villageLocalMult } from './village.ts'; // z-ending
 import { isAged } from './economy.ts';
 import { recordUse, facilityFee } from './upgrade.ts'; // 트랙 A 훅: 이용 횟수·Lv 요금
 import { addResearchProgress, TASTE_MATCH_WEIGHT } from './progress.ts';
-import { effectMult, noGuestsToday } from './effects.ts';
+import { effectMult, noGuestsToday, filterMatches } from './effects.ts';
 import { spotGuestBonus, busSpots, isBusDay, BUS_HOUR, BUS_MIN, BUS_MAX, spotSpawnMult } from './spots.ts';
 import type { ParcelBonus } from './types.ts';
 import { seatsOf, isSeat } from './cafe.ts';
@@ -274,13 +274,15 @@ export function spawnGuests(state: GameState, n: number, forceType?: string, ent
     return best;
   };
   const seatGuest = (best: { seat: PlacedObject; target: Pt }, typeId: string) => {
+    const path = pathFromReach(state, reach, best.target)!.slice(1);
+    const gates = countGatesOn(state, path); // w-free: 정낭을 지나면 「제주 대문」 인상
     state.guests.push({
       id: `g${state.nextId++}`,
       type: typeId,
       phase: 'walking',
       x: start.x,
       y: start.y,
-      path: pathFromReach(state, reach, best.target)!.slice(1),
+      path,
       seatId: best.seat.id,
       seatSlot: firstFreeSlot(state, best.seat),
       approachCell: null,
@@ -293,6 +295,7 @@ export function spawnGuests(state: GameState, n: number, forceType?: string, ent
       waitMs: 0,
       paid: 0,
       ...(entry ? { route } : {}),
+      ...(gates > 0 ? { gates } : {}),
     });
     if (entry) noteRouteGuest(state, route); else noteRouteGuest(state, 'bus');
     spawned++;
@@ -370,9 +373,21 @@ export function popularityBonus(popularity: number): number {
   return Math.floor((popularity - BASE_POPULARITY) / POP_PER_SCENERY);
 }
 
-/** 만족 판정 가산(경치 단위): 콤보(손님층 +5·전체 +3)·청결(80 이상 +3, 50 미만 −5)은 10으로 나눠 경치 단위로 (트랙 A) */
+/** 「제주 대문」 인상 (w-free): 자리로 오는 길에 지나간 정낭 1개당 관광객(육지 손님) 만족 +1, 최대 2. 정낭이 없으면 효과만 없다. */
+export const GATE_SATISFACTION_MAX = 2;
+export function gateSatisfaction(g: Pick<Guest, 'type' | 'namedId' | 'gates'>): number {
+  if (!g.gates || g.namedId || g.type === NAMED_TYPE || !filterMatches('tourist', g.type)) return 0;
+  return Math.min(GATE_SATISFACTION_MAX, g.gates);
+}
+/** 경로가 지나는 정낭 수 (스폰 때 한 번 세어 Guest.gates에 둔다) */
+export function countGatesOn(state: GameState, path: Pt[]): number {
+  let n = 0;
+  for (const p of path) if (objectAt(state, p.x, p.y)?.type === 'gate') n++;
+  return n;
+}
+/** 만족 판정 가산(경치 단위): 콤보(손님층 +5·전체 +3)·청결(80 이상 +3, 50 미만 −5)은 10으로 나눠 경치 단위로 (트랙 A) + 정낭 인상(w-free) */
 export function extraSatisfaction(state: GameState, g: Guest, seat: PlacedObject): number {
-  return (comboSatisfaction(state, seat.id, g.type) + cleanSatisfaction(state)) / 10 + indoorSatisfaction(state, seat); // y-indoor: 소파 +2·난로 겨울 +3
+  return (comboSatisfaction(state, seat.id, g.type) + cleanSatisfaction(state)) / 10 + indoorSatisfaction(state, seat) + gateSatisfaction(g); // y-indoor: 소파 +2·난로 겨울 +3
 }
 /** 저녁 손님 기준 시각 (특기 night_owl) */
 export const NIGHT_HOUR = 18;

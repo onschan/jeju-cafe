@@ -129,14 +129,14 @@
   },
   {
     "id": "pickaxe",
-    "name": "돌담 철거 곡괭이",
+    "name": "바위 곡괭이",
     "sources": [
       {
         "type": "mileage_shop"
       }
     ],
     "sourceText": "마일리지 상점",
-    "effectText": "기본 돌담 1칸 철거"
+    "effectText": "바위·덤불 치우기 50% 할인"
   },
   {
     "id": "worker_hire",

@@ -6,11 +6,13 @@ import { seasonOf, monthIndex } from './clock.ts';
 import { spotSceneryBonus } from './spots.ts';
 import { routePlaceCheck } from './entry.ts';
 
-/** 바위 치우기 비용: 작은 바위 30만, 큰 바위(오름 능선) 100만, 곶자왈 덤불 5만. 곡괭이가 있으면 무료(1개 소모). */
-export const ROCK_CLEAR_COST = 300_000;
-export const BIG_ROCK_CLEAR_COST = 1_000_000;
-export const BUSH_CLEAR_COST = 50_000;
+/** 바위 치우기 비용 (w-free: 시작부터 열려 있고 즉시·건축가 불필요): 작은 바위 10만, 큰 바위(오름 능선) 30만, 곶자왈 덤불 2만. 곡괭이가 있으면 50% 할인(아이템은 안 줄어든다). */
+export const ROCK_CLEAR_COST = 100_000;
+export const BIG_ROCK_CLEAR_COST = 300_000;
+export const BUSH_CLEAR_COST = 20_000;
 export const PICKAXE_ITEM = 'pickaxe';
+/** 곡괭이 할인율 (%) */
+export const PICKAXE_DISCOUNT_PCT = 50;
 
 export const SHELTER_THRESHOLD = 3;
 export const SCENERY_RADIUS = 2;
@@ -232,8 +234,14 @@ export function relocateObject(state: GameState, obj: PlacedObject, x: number, y
 
 // ---------- 바위·덤불 치우기 ----------
 
-/** 이 칸을 치우는 데 드는 돈 (곡괭이 없을 때). 치울 게 없으면 null. */
+/** 이 칸을 치우는 데 드는 돈 (곡괭이 할인 반영). 치울 게 없으면 null. */
 export function clearCost(state: GameState, x: number, y: number): number | null {
+  const base = baseClearCost(state, x, y);
+  if (base === null) return null;
+  return hasPickaxe(state) ? Math.round(base * (1 - PICKAXE_DISCOUNT_PCT / 100)) : base;
+}
+/** 할인 전 비용 */
+export function baseClearCost(state: GameState, x: number, y: number): number | null {
   if (!inBounds(state, x, y)) return null;
   const o = objectAt(state, x, y);
   if (o) return o.type === 'bush_wild' ? BUSH_CLEAR_COST : null;
@@ -241,6 +249,7 @@ export function clearCost(state: GameState, x: number, y: number): number | null
   return t === 'rock' ? ROCK_CLEAR_COST : t === 'rock_big' ? BIG_ROCK_CLEAR_COST : null;
 }
 
+/** 곡괭이 아이템이 있나 (바위 치우기 50% 할인, w-free) */
 export function hasPickaxe(state: GameState): boolean {
   return (state.inventory[PICKAXE_ITEM] ?? 0) > 0;
 }
@@ -249,18 +258,17 @@ export function canClearRock(state: GameState, x: number, y: number): ApplyResul
   const cost = clearCost(state, x, y);
   if (cost === null) return { ok: false, reason: '치울 바위가 없어요' };
   if (!parcelAt(state, x, y)?.owned) return { ok: false, reason: '아직 내 땅이 아니에요' };
-  if (!hasPickaxe(state) && state.money < cost) return { ok: false, reason: '돈이 모자라요' };
+  if (state.money < cost) return { ok: false, reason: '돈이 모자라요' };
   return { ok: true };
 }
 
-/** 바위·덤불을 치워 흙 칸으로 만든다. 곡괭이가 있으면 1개 쓰고 무료. 호출 전 canClearRock으로 확인할 것. 낸 돈을 돌려준다. */
+/** 바위·덤불을 즉시 치워 흙 칸으로 만든다 (공사·건축가 없음). 곡괭이가 있으면 50% 할인. 호출 전 canClearRock으로 확인할 것. 낸 돈을 돌려준다. */
 export function clearRock(state: GameState, x: number, y: number): number {
   const cost = clearCost(state, x, y) ?? 0;
   const o = objectAt(state, x, y);
   if (o) removeObject(state, o.id);
   cellAt(state, x, y).terrain = 'soil';
   bumpLayoutRev(state); // 걷기 가능 칸이 바뀐다
-  if (hasPickaxe(state)) { state.inventory[PICKAXE_ITEM]!--; return 0; }
   state.money -= cost;
   return cost;
 }

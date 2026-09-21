@@ -6,7 +6,7 @@ import { serialize, deserialize } from '../save.ts';
 import { DAY_MS } from '../clock.ts';
 import { objectAt } from '../grid.ts';
 import {
-  computeScore, scoreTier, endingDue, endingMonthly, makeCarry, applyCarry, carryText, centennialMonthly, centennialConditions, canSetSpeed,
+  computeScore, scoreTier, endingDue, endingMonthly, makeCarry, applyCarry, carryText, carryDolhareubangCells, centennialMonthly, centennialConditions, canSetSpeed,
   SCORE_TITLES, SCORE_ITEMS, CHIEF_BONUS, CHIEF_PREFIX, ENDING_YEAR, ENDING_MONTH, CENTENNIAL_YEAR, CENTENNIAL_MONTH, MILLENNIUM_TREE, CARRY_RATIO, FAST_SPEED,
 } from '../ending.ts';
 
@@ -133,6 +133,13 @@ describe('이월', () => {
     expect(s.unlocked.objects).toContain(MILLENNIUM_TREE);
     expect(objectAt(s, START_ORIGIN.x + 3, START_ORIGIN.y + 6)?.type).toBe('dolhareubang');
     expect(objectAt(s, START_ORIGIN.x + 5, START_ORIGIN.y + 6)).toBeNull();
+    // w-free: 정낭이 없으면 문 앞 양옆, 본관도 없으면 기본 좌표
+    expect(carryDolhareubangCells(s)).toEqual([{ x: START_ORIGIN.x + 3, y: START_ORIGIN.y + 6 }, { x: START_ORIGIN.x + 5, y: START_ORIGIN.y + 6 }]);
+    const gate = Object.values(s.objects).find((o) => o.type === 'gate')!;
+    apply(s, { type: 'remove', objectId: gate.id });
+    expect(carryDolhareubangCells(s)).toEqual([{ x: START_ORIGIN.x + 3, y: START_ORIGIN.y + 6 }, { x: START_ORIGIN.x + 5, y: START_ORIGIN.y + 6 }]); // 본관 없음 → 기본 좌표
+    apply(s, { type: 'placeMain', x: START_ORIGIN.x + 3, y: START_ORIGIN.y + 1 });
+    expect(carryDolhareubangCells(s)).toEqual([{ x: START_ORIGIN.x + 2, y: START_ORIGIN.y + 3 }, { x: START_ORIGIN.x + 4, y: START_ORIGIN.y + 3 }]); // 문 앞 (3,3) 양옆
     // 이월 없는 새 게임은 그대로
     const plain = createInitialState(7, 'local', 0, 'tutorial');
     expect(plain.carry).toBeNull();

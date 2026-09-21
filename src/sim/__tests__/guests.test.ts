@@ -1,9 +1,10 @@
 import { bareState } from './helpers.ts';
 import { X, Y } from './helpers.ts';
 import { createInitialState } from '../state.ts';
-import { placeObject } from '../grid.ts';
+import { placeObject, objectAt } from '../grid.ts';
+import { apply } from '../actions.ts';
 import { setSlot } from '../menu.ts';
-import { spawnGuests, updateGuests, freeSeats, hasReachableSeat, dailyGuestCount, popularityGuestBase, popularitySum, facilityPopularitySum, resetWaiting, totalSeats, hourShare, typeWeight, GUEST_SPEED_CELLS_PER_S, SEAT_MS, PREP_MS, MAX_GUESTS, MIN_DAILY_GUESTS, MAX_DAILY_GUESTS, GUESTS_PER_SEAT, BASE_DAILY_GUESTS, POP_SUM_PER_GUEST, FACILITY_POP_PER_GUEST, WAIT_MAX, SEASON_GUEST_MULT } from '../guests.ts';
+import { spawnGuests, updateGuests, gateSatisfaction, countGatesOn, GATE_SATISFACTION_MAX, freeSeats, hasReachableSeat, dailyGuestCount, popularityGuestBase, popularitySum, facilityPopularitySum, resetWaiting, totalSeats, hourShare, typeWeight, GUEST_SPEED_CELLS_PER_S, SEAT_MS, PREP_MS, MAX_GUESTS, MIN_DAILY_GUESTS, MAX_DAILY_GUESTS, GUESTS_PER_SEAT, BASE_DAILY_GUESTS, POP_SUM_PER_GUEST, FACILITY_POP_PER_GUEST, WAIT_MAX, SEASON_GUEST_MULT } from '../guests.ts';
 import { moveAlong } from '../path.ts';
 import { tick } from '../tick.ts';
 import { HOUR_MS, START_HOUR, END_HOUR } from '../clock.ts';
@@ -170,6 +171,7 @@ test('관광객은 경치가 모자라면 meh, 돌담을 두면 happy', () => {
   const { s } = cafe();
   spawnGuests(s, 1);
   s.guests[0]!.type = 'student'; // minScenery 2, 자리 (4,5) 경치 1(정낭)
+  delete s.guests[0]!.gates; // 정낭을 지나온 「제주 대문」 인상(+1, w-free)은 아래 별도 테스트 — 여기선 경치만 본다
   updateGuests(s, 6000); updateGuests(s, PREP_MS);
   expect(s.guests[0]!.mood).toBe('meh');
   expect(s.guests[0]!.moodReason).toBe('scenery');
@@ -177,8 +179,35 @@ test('관광객은 경치가 모자라면 meh, 돌담을 두면 happy', () => {
   placeObject(s2, 'stonewall', X(5), Y(4)); // scenery +1 → 2
   spawnGuests(s2, 1);
   s2.guests[0]!.type = 'student';
+  delete s2.guests[0]!.gates;
   updateGuests(s2, 6000); updateGuests(s2, PREP_MS);
   expect(s2.guests[0]!.mood).toBe('happy');
+});
+
+test('정낭 효과(w-free): 자리로 오는 길에 정낭을 지나면 Guest.gates에 세고, 관광객(육지 손님)만 만족 +1/개(최대 2). 삼춘·단골★은 0. 정낭이 없으면 효과만 없고 손님은 온다', () => {
+  const { s } = cafe();
+  spawnGuests(s, 1);
+  const g = s.guests[0]!;
+  expect(g.gates).toBe(1); // 정류장 → 마을 길 → 정낭(4,6) → (4,5) 테이블
+  g.type = 'student';
+  expect(gateSatisfaction(g)).toBe(1);
+  expect(gateSatisfaction({ ...g, type: 'local_auntie' })).toBe(0);
+  expect(gateSatisfaction({ ...g, namedId: 'x' })).toBe(0);
+  expect(gateSatisfaction({ ...g, gates: 5 })).toBe(GATE_SATISFACTION_MAX);
+  expect(gateSatisfaction({ ...g, gates: undefined })).toBe(0);
+  updateGuests(s, 6000); updateGuests(s, PREP_MS);
+  expect(g.mood).toBe('happy'); // 경치 1 + 정낭 1 ≥ minScenery 2
+  // 정낭을 없애고 그 자리에 올렛길 → 손님은 그대로 오고 gates 없음
+  const { s: s2 } = cafe();
+  const gate = Object.values(s2.objects).find((o) => o.type === 'gate')!;
+  expect(apply(s2, { type: 'remove', objectId: gate.id }).ok).toBe(true);
+  expect(objectAt(s2, gate.x, gate.y)).toBeNull();
+  s2.money = 1_000_000;
+  expect(apply(s2, { type: 'clearRock', x: gate.x, y: gate.y }).ok).toBe(true); // 정낭 자리는 바위 칸
+  expect(apply(s2, { type: 'place', objectType: 'path', x: gate.x, y: gate.y }).ok).toBe(true);
+  expect(spawnGuests(s2, 1)).toBe(1);
+  expect(s2.guests[0]!.gates).toBeUndefined();
+  expect(countGatesOn(s2, s2.guests[0]!.path)).toBe(0);
 });
 
 test('대사: 30%쯤은 말풍선 텍스트, 손님층·기분·이유에 맞는 문장', () => {

@@ -3,7 +3,7 @@ import { createInitialState, START_SEATS, START_PATH, START_MENUS, START_ORIGIN,
 import { apply } from '../actions.ts';
 import { tick } from '../tick.ts';
 import { DAY_MS, HOUR_MS, DAYS_PER_MONTH } from '../clock.ts';
-import { STEPS, TUTORIAL_STEPS, TUTORIAL_CHAPTERS, TRACKED_ACTIONS, STARTER_FEATURE_IDS, LOOK_IDS, currentTutorialStep, currentTutorialChapter, checkTutorial, tutorialDone, pathConnected, wallShelteringSeat, firstMonthClosed, noteTutorial, dialogueSeen, skipTutorialChapter, activeComboCount, lookedAll, recommendedMainCells } from '../tutorial.ts';
+import { STEPS, TUTORIAL_STEPS, TUTORIAL_CHAPTERS, TRACKED_ACTIONS, STARTER_FEATURE_IDS, LOOK_IDS, LOOK_TEXT, currentTutorialStep, currentTutorialChapter, checkTutorial, tutorialDone, pathConnected, wallShelteringSeat, firstMonthClosed, noteTutorial, dialogueSeen, skipTutorialChapter, activeComboCount, lookedAll, recommendedMainCells } from '../tutorial.ts';
 import { canOpen, checkGoals, FEATURE_OF_ACTION, initFeatures } from '../goals.ts';
 import { hire, warehouseFront } from '../staff.ts';
 import { mainBuilding, canBuildMain, MAIN_BUILD_COST } from '../rooms.ts';
@@ -157,6 +157,30 @@ describe('손으로 하는 튜토리얼 「할망의 가르침」 33단계·5장
     }
     // 봇·완성 시작 상태의 본관 자리는 규칙에 맞는다
     expect(canBuildMain(t, X(START_MAIN.lx), Y(START_MAIN.ly)).ok).toBe(true);
+  });
+
+  it('정낭 없이도(w-free) 4단계 「마을 길 → 문 앞」 조건·글로우·본관 추천 자리가 안전하다: 정낭을 없애면 시작 칸은 문 앞에서 가장 가까운 마을 길 칸', () => {
+    const s = tutorialState();
+    expect(LOOK_TEXT.gate).toContain('옮겨도 돼');
+    expect(LOOK_TEXT.rock).toContain('₩10만');
+    const gate = Object.values(s.objects).find((o) => o.type === 'gate')!;
+    expect(apply(s, { type: 'remove', objectId: gate.id }).ok).toBe(true);
+    // 1단계 둘러보기: 정낭 칸은 빠지고 정류장·바위·마을 길 3곳 (정류장 기준으로 가장 가까운 바위·길)
+    expect(STEPS[0]!.cells(s)).toHaveLength(3);
+    expect(recommendedMainCells(s).length).toBe(3); // 정류장 기준 거리
+    throughMain(s);
+    const f = doorFrontOf(mainBuilding(s)!);
+    const cells = STEPS[3]!.cells(s);
+    expect(cells).toHaveLength(2);
+    expect(cells[1]).toEqual(f);
+    expect(s.grid.cells[cells[0]!.y * s.grid.w + cells[0]!.x]!.terrain).toBe('road');
+    expect(pathConnected(s)).toBe(false);
+    seeDialogue(s);
+    // 문 앞(3,3)에서 마을 길(y=7)까지 옛 정낭 자리(4,6, 바위)를 치우고 올렛길
+    apply(s, { type: 'clearRock', x: X(4), y: Y(6) });
+    for (const c of [...PATH, { lx: 4, ly: 6 }]) expect(apply(s, { type: 'place', objectType: 'path', ...at(c.lx, c.ly) }).ok).toBe(true);
+    expect(pathConnected(s)).toBe(true);
+    expect(s.tutorial.step).toBe(4);
   });
 
   it('대사 게이트: 조건이 먼저 차도 대사(dlg:<id>)를 보기 전엔 안 끝나고, 보고 나면 바로 통과한다. 보상 없는 단계(둘러보기)는 빈 보상 상자를 안 띄운다', () => {
