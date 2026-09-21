@@ -4,7 +4,7 @@ import { apply } from '../actions.ts';
 import { tick } from '../tick.ts';
 import { DAY_MS, HOUR_MS } from '../clock.ts';
 import { BIG_EVENTS, bigEventDef, specialGuestId, namedGuestDef, SPECIAL_GUESTS } from '../../data/index.ts';
-import { monthlyBigEvents, dailyBigEvents, dailyBigEventRoll, hourlyBigEvents, startEvent, eventEligible, activeEvents, eventGuestMult, eventTagMult, eventFeeMult, guestHasTag, isSpecialGuest, specialGuestTip, specialGuestsMet, MAX_ACTIVE_EVENTS } from '../events.ts';
+import { monthlyBigEvents, dailyBigEvents, hourlyBigEvents, eventStartDelay, EVENT_START_SPREAD, scheduledEvents, startEvent, eventEligible, activeEvents, eventGuestMult, eventTagMult, eventFeeMult, guestHasTag, isSpecialGuest, specialGuestTip, specialGuestsMet, MAX_ACTIVE_EVENTS } from '../events.ts';
 import { dailyGuestCount, popularityGuestBase, totalSeats, typeWeight, GUESTS_PER_SEAT } from '../guests.ts';
 import { dayIndex } from '../effects.ts';
 import { serialize } from '../save.ts';
@@ -80,25 +80,25 @@ describe('빅 이벤트 판정·효과', () => {
     expect(dailyBigEvents(t)).toEqual([]);
   });
 
-  it('매일 판정(game-feel): 월 확률을 하루 확률로 환산해 굴리므로 한 달 발동 기대치는 같고 날짜는 달 안에 퍼진다 — 봇 3년에서 발동일이 1~2일에 몰린 비율 61/61 → 6/67', () => {
-    // 확률 1인 이벤트는 매일 굴려도 첫날 발동 (1−(1−1)^(1/30) = 1), 상한 2
+  it('발동일 분산(game-feel): 1일 판정은 그대로(rng 소비 동일), k번째 예약은 eventStartDelay일 뒤 아침에 발동 — 예약 중엔 효과·대화가 없다', () => {
     const s = bareState(1);
     s.goals.index = 999;
     s.clock.month = 4;
-    const sure = BIG_EVENTS.filter((e) => eventEligible(s, e)).slice(0, 3).map((e) => ({ ...e, chance: 1 }));
-    expect(dailyBigEventRoll(s, sure)).toHaveLength(MAX_ACTIVE_EVENTS);
-    // 월 확률 0.5짜리 하나를 30일 동안 매일 굴리면 (seed 여러 개) 발동일이 1일에만 몰리지 않는다
+    const money = s.money;
+    const e = startEvent(s, 'ev_lunar_new_year', 3); // moneyBonus 30만은 3일 뒤
+    expect(s.money).toBe(money);
+    expect(s.alerts).toEqual([]);
+    expect(activeEvents(s)).toEqual([]);
+    expect(scheduledEvents(s)).toHaveLength(1);
+    expect(eventEligible(s, bigEventDef('ev_lunar_new_year'))).toBe(false); // 예약 중이면 다시 안 굴린다
+    for (let d = 0; d < 3; d++) tick(s, DAY_MS);
+    expect(activeEvents(s).map((x) => x.id)).toEqual([e.id]);
+    expect(s.money).toBe(money + 300_000);
+    expect(s.alerts).toContainEqual({ type: 'event', id: 'ev_lunar_new_year' });
+    // 지연일은 달·순번에 따라 0~EVENT_START_SPREAD−1 사이에서 퍼진다
     const days = new Set<number>();
-    for (let seed = 1; seed <= 12; seed++) {
-      const t = bareState(seed);
-      t.goals.index = 999;
-      t.clock.month = 4;
-      const half = [{ ...BIG_EVENTS.find((e) => eventEligible(t, e))!, chance: 0.5 }];
-      for (let d = 1; d <= 30 && dailyBigEventRoll(t, half).length === 0; d++) { t.clock.day = d; }
-      if (activeEvents(t).length) days.add(t.clock.day);
-    }
-    expect(days.size).toBeGreaterThan(1);
-    expect([...days].some((d) => d > 2)).toBe(true);
+    for (let mi = 0; mi < 12; mi++) for (let k = 0; k < 2; k++) { const d = eventStartDelay(mi, k); expect(d).toBeGreaterThanOrEqual(0); expect(d).toBeLessThan(EVENT_START_SPREAD); days.add(d); }
+    expect(days.size).toBeGreaterThan(3);
   });
 
   it('효과 적용: 손님 수 배수·태그 가중치·메뉴 값 배수가 guests.ts에 곱해진다', () => {

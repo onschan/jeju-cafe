@@ -1,6 +1,7 @@
 /**
- * 제주 빅 이벤트 (v3 A5): events_v3.json. 매일 판정(rng, 월 확률을 하루 확률로 환산) → 동시 최대 2개 → state.events에 활성.
- * (game-feel 감사: 월 1일 판정이라 보상 사건의 2/3가 매월 1~2일에 몰렸다 → 달 안에 고르게 퍼지게 매일 굴린다. monthlyBigEvents는 테스트·호환용으로 남긴다.)
+ * 제주 빅 이벤트 (v3 A5): events_v3.json. 매월 1일 판정(rng) → 동시 최대 2개 → state.events에 예약(startDay) → 그날 아침 발동(즉시 효과·대화창).
+ * (game-feel 감사: 판정도 발동도 1일이라 보상 사건의 2/3가 매월 1~2일에 몰렸다 → 판정(rng 소비)은 1일 그대로 두고 발동일만 달 안에 퍼뜨린다:
+ *  startDay = 1일 + eventStartDelay(monthIndex, k) (0~EVENT_START_SPREAD−1, rng 없이 결정적). 예약 중(startDay > 오늘)인 이벤트는 효과·특별 손님·대화가 없다.)
  * 발동 시 alerts { type: 'event', id } (UI 대화창), 끝나면 { type: 'eventEnd', id }.
  * 효과: 하루 손님 수 배수(guestMult)·손님층 가중치 배수(tagMult)·메뉴 값 배수(feeMult)는 guests.ts가 곱한다.
  * 즉시 효과: moneyBonus·popularity·repairCost(시설당). specialGuest는 이름 있는 손님 흐름(spawnNamedGuest)으로 1회 방문 — 만족하면 tip.
@@ -10,11 +11,10 @@ import type { GameState, BigEventDef, BigEventTag, ActiveBigEvent } from './type
 import { BIG_EVENTS, bigEventDef, guestTypeDef, canonicalGuestId, SPECIAL_REGION, specialGuestId } from '../data/index.ts';
 import { nextRandom } from './rng.ts';
 import { dayIndex } from './effects.ts';
-import { DAYS_PER_MONTH } from './clock.ts';
 import { goalMet } from './goals.ts';
 import { pushNotice, staffInRole, skillTotal } from './staff.ts';
 import { isWorn, WEAR_START_MONTHS } from './cleanliness.ts';
-import { monthIndex } from './clock.ts';
+import { monthIndex, DAYS_PER_MONTH } from './clock.ts';
 import { facilityCount } from './rank.ts';
 import { addEffect } from './effects.ts';
 import { objectDef } from '../data/index.ts';
@@ -49,10 +49,20 @@ export function guestHasTag(typeId: string, tag: BigEventTag): boolean {
 
 export function activeEvents(state: GameState): ActiveBigEvent[] {
   const today = dayIndex(state.clock);
+  return state.events.filter((e) => e.startDay <= today && e.endsDay > today);
+}
+/** 예약(아직 시작 전) + 진행 중 — 자격 판정용 */
+export function scheduledEvents(state: GameState): ActiveBigEvent[] {
+  const today = dayIndex(state.clock);
   return state.events.filter((e) => e.endsDay > today);
 }
+/** 1일 판정의 동시 상한용: 지연 없이 1일에 시작했더라면 아직 안 끝났을 이벤트. 발동일 분산이 다음 달 판정 슬롯을 잡아먹어 발동 수가 줄지 않게(예약 지연은 같은 달 안이라 startDay의 달 1일 = floor(startDay/30)×30) */
+export function slotEvents(state: GameState): ActiveBigEvent[] {
+  const today = dayIndex(state.clock);
+  return state.events.filter((e) => e.endsDay - (e.startDay - Math.floor(e.startDay / DAYS_PER_MONTH) * DAYS_PER_MONTH) > today);
+}
 export function isEventActive(state: GameState, id: string): boolean {
-  return activeEvents(state).some((e) => e.id === id);
+  return scheduledEvents(state).some((e) => e.id === id);
 }
 /** 남은 날 (오늘 포함) */
 export function eventDaysLeft(state: GameState, e: ActiveBigEvent): number {
@@ -121,13 +131,29 @@ export function eventChance(state: GameState, def: BigEventDef): number {
   return d && (state.inventory[d.itemId] ?? 0) > 0 ? def.chance * d.chanceMult : def.chance;
 }
 
-/** 이벤트를 발동한다 (판정 없이): 활성 목록 + 즉시 효과 + 알림·대화창. */
-export function startEvent(state: GameState, id: string): ActiveBigEvent {
+/** 발동일 분산 폭 (달 안 0~EVENT_START_SPREAD−1일 뒤). 1일 판정에서 k번째로 뽑힌 이벤트의 지연일 — rng 없이 결정적.
+ *  폭 20·15로도 재봤지만 3년 자금 밴드(seed 1~3)가 흔들려(₩8,144만·1.04억) 8로 확정 — 봇 KPI는 rng 흐름에 민감하다. */
+export const EVENT_START_SPREAD = 8;
+export function eventStartDelay(mi: number, k: number): number {
+  return (mi * 3 + k * 5) % EVENT_START_SPREAD;
+}
+
+/** 이벤트를 예약/발동한다 (판정 없이): delay 0이면 오늘 바로 발동(즉시 효과 + 알림·대화창), 아니면 startDay에 dailyBigEvents가 발동한다. */
+export function startEvent(state: GameState, id: string, delay = 0): ActiveBigEvent {
   const def = bigEventDef(id);
   const today = dayIndex(state.clock);
-  const e: ActiveBigEvent = { id, startDay: today, endsDay: today + def.durationDays, specialVisited: !def.effects.specialGuest };
+  const e: ActiveBigEvent = { id, startDay: today + delay, endsDay: today + delay + def.durationDays, specialVisited: !def.effects.specialGuest };
   state.events.push(e);
   state.eventsFired[id] = (state.eventsFired[id] ?? 0) + 1;
+  if (delay === 0) applyEventStart(state, e);
+  else pushNotice(state, `${def.title} 소식이 들려요 — ${delay}일 뒤`);
+  return e;
+}
+
+/** 발동 당일: 즉시 효과 + 알림·대화창 */
+function applyEventStart(state: GameState, e: ActiveBigEvent): void {
+  const id = e.id;
+  const def = bigEventDef(id);
   const fx = def.effects;
   if (fx.moneyBonus) state.money += fx.moneyBonus;
   if (fx.popularity) state.popularity = Math.max(-100, Math.min(100, state.popularity + fx.popularity));
@@ -152,7 +178,7 @@ export function startEvent(state: GameState, id: string): ActiveBigEvent {
     pushNotice(state, `${def.title}: 난방비 ₩${fmtNum(fx.heatingCost)}`);
   }
   if (fx.harvestMult !== undefined) {
-    // 노루·까치: 운반 직원 힘 ≥ carryStrength면 완화
+    // 감귤 수확철: 운반 담당 힘 ≥ carryStrength면 harvestMultCarry
     const strong = fx.carryStrength !== undefined && staffInRole(state, 'carry').some((st) => st.stats.strength >= fx.carryStrength!);
     const mult = strong && fx.harvestMultCarry !== undefined ? fx.harvestMultCarry : fx.harvestMult;
     addEffect(state, { kind: 'harvestMult', mult, days: fx.harvestDays ?? 30, source: id });
@@ -160,39 +186,26 @@ export function startEvent(state: GameState, id: string): ActiveBigEvent {
   if (fx.spawnFilter) addEffect(state, { kind: 'spawnMult', mult: fx.spawnFilter.mult, filter: fx.spawnFilter.filter, days: fx.spawnFilter.days, source: id });
   state.alerts.push({ type: 'event', id });
   pushNotice(state, `빅 이벤트: ${def.title}`);
-  return e;
 }
 
-/** 매월 1일: 정의 순서대로 자격·확률을 굴려 동시 2개까지 발동한다. 발동한 id 목록. 결정적(state.rng). */
+/** 매월 1일: 정의 순서대로 자격·확률을 굴려 동시 2개까지 예약한다 (k번째는 eventStartDelay만큼 뒤에 발동). 예약한 id 목록. 결정적(state.rng). */
 export function monthlyBigEvents(state: GameState): string[] {
   const started: string[] = [];
+  const mi = monthIndex(state.clock);
   for (const def of BIG_EVENTS) {
-    if (activeEvents(state).length >= MAX_ACTIVE_EVENTS) break;
+    if (slotEvents(state).length >= MAX_ACTIVE_EVENTS) break;
     if (!eventEligible(state, def)) continue;
     if (nextRandom(state) >= eventChance(state, def)) continue;
-    startEvent(state, def.id);
+    startEvent(state, def.id, eventStartDelay(mi, started.length));
     started.push(def.id);
   }
   return started;
 }
 
-/** 매일: 월 확률 p를 하루 확률 1−(1−p)^(1/30)로 환산해 굴린다 (한 달 기대 발동 수는 월 1회 판정과 같고, 날짜만 달 안에 퍼진다). 발동한 id 목록. */
-export function dailyBigEventRoll(state: GameState, defs: BigEventDef[] = BIG_EVENTS): string[] {
-  const started: string[] = [];
-  for (const def of defs) {
-    if (activeEvents(state).length >= MAX_ACTIVE_EVENTS) break;
-    if (!eventEligible(state, def)) continue;
-    const p = 1 - Math.pow(1 - Math.min(1, eventChance(state, def)), 1 / DAYS_PER_MONTH);
-    if (nextRandom(state) >= p) continue;
-    startEvent(state, def.id);
-    started.push(def.id);
-  }
-  return started;
-}
-
-/** 매일: 끝난 이벤트를 치우고 eventEnd 알림. 끝난 id 목록. */
+/** 매일: 예약일이 된 이벤트를 발동하고, 끝난 이벤트를 치우고 eventEnd 알림. 끝난 id 목록. */
 export function dailyBigEvents(state: GameState): string[] {
   const today = dayIndex(state.clock);
+  for (const e of state.events) if (e.startDay === today && e.endsDay > today) applyEventStart(state, e);
   const ended = state.events.filter((e) => e.endsDay <= today);
   if (ended.length === 0) return [];
   state.events = state.events.filter((e) => e.endsDay > today);
