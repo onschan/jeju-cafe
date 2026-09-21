@@ -14,7 +14,8 @@
     "data": "python3 tools/data/from_tables.py",
     "assets": "python3 tools/assets/build.py",
     "assets:audio": "python3 tools/assets/sfx.py && python3 tools/assets/bgm.py",
-    "assets:font": "bash tools/assets/fetch_font.sh"
+    "assets:font": "bash tools/assets/fetch_font.sh",
+    "dopamine": "tsx scripts/dopamine.ts"
   },
   "dependencies": {
     "pixi.js": "^8.6.0",

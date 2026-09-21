@@ -4,7 +4,7 @@ import { apply } from '../actions.ts';
 import { tick } from '../tick.ts';
 import { DAY_MS } from '../clock.ts';
 import { GOALS, goalDef, objectDef, menuDef, roleDef, FACILITIES, MILEAGE_SHOP, TICKET_SHOP } from '../../data/index.ts';
-import { currentGoal, activeGoals, goalProgress, checkGoals, goalMet, goalForFacility, goalForFeature, checkFeature, grantReward, FEATURE_IDS, ACTION_FEATURE_IDS, goalConditionText, goalRewardText, conditionProgress, conditionCheckers, applyRewards, scaleReward, canOpen, CONCURRENT_GOALS } from '../goals.ts';
+import { currentGoal, activeGoals, claimableGoals, GOAL_LOOKAHEAD, goalProgress, checkGoals, goalMet, goalForFacility, goalForFeature, checkFeature, grantReward, FEATURE_IDS, ACTION_FEATURE_IDS, goalConditionText, goalRewardText, conditionProgress, conditionCheckers, applyRewards, scaleReward, canOpen, CONCURRENT_GOALS } from '../goals.ts';
 import type { GoalCondition, GoalReward } from '../types.ts';
 import { tutorialFeatureIds } from '../tutorial.ts';
 import { bareState, at } from './helpers.ts';
@@ -161,6 +161,23 @@ describe('목표 체인 진행', () => {
     expect(checkGoals(s)).toEqual(['g01']);
     expect(s.goals.index).toBe(2);
     expect(activeGoals(s).map((g) => g.id)).toEqual(['g03', 'g04']);
+  });
+
+  it('앞서 이룬 목표 미리 인정(game-feel): 진행 중 2개가 막혀 있어도 그 뒤 GOAL_LOOKAHEAD개 안에서 이미 이룬 목표는 바로 보상한다 — 목표 줄은 여전히 앞 2개', () => {
+    const s = createInitialState(1);
+    // g01(아메리카노 1잔)·g02(손님 5명)는 아직. g03(자리 4개)은 시작 좌석 3개라 아직, g04(직원 1명)는 채용하면 바로 이룬다 → index 0에서 g04를 미리 인정
+    expect(claimableGoals(s).map((g) => g.id)).toEqual(['g01', 'g02', 'g03', 'g04'].slice(0, CONCURRENT_GOALS + GOAL_LOOKAHEAD));
+    expect(apply(s, { type: 'hire', candidateId: s.candidates[0]!.id, role: 'hall' }).ok).toBe(true); // apply가 바로 checkGoals
+    expect(s.goals.claimed).toContain('g04');
+    expect(s.goals.index).toBe(0);
+    expect(activeGoals(s).map((g) => g.id)).toEqual(['g01', 'g02']); // 표시는 앞 2개 그대로
+    expect(currentGoal(s)?.id).toBe('g01');
+    // 창 밖(g08 홍보 1회)은 미리 인정하지 않는다 — 창은 안 이룬 것 기준 g01·g02·g03·g05
+    s.stats.promotionsDone = 1;
+    expect(checkGoals(s)).toEqual([]);
+    s.totalGuests = 20;
+    expect(checkGoals(s)).toEqual(['g02', 'g05']); // 둘 다 창 안
+    expect(s.goals.claimed).not.toContain('g08');
   });
 
   it('applyRewards 한 곳: 보상 상자 알림 하나에 아이템이 다 담기고, 대출 중이면 돈 50%·응모권/마일리지 절반(내림)', () => {

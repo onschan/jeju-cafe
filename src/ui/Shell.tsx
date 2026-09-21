@@ -1,4 +1,4 @@
-import type { CSSProperties } from 'react';
+import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { wonText } from '../data/labels.ts';
 import { useGame } from './store';
 import { seasonOf, boardBadge, type Season } from '../sim/index.ts';
@@ -31,16 +31,33 @@ const MAIN_TABS: { kind: WindowKind; icon: string; label: string }[] = [
 export function TopBar({ onOpen }: { onOpen: () => void }) {
   const s = useGame();
   const season = seasonOf(s.clock.month);
+  const bump = useMoneyBump(s.money);
   return (
     <button data-testid="top-bar" onClick={onOpen} aria-label="경영 현황"
       style={{ position: 'absolute', top: 0, left: 0, right: 0, height: TOP_BAR_H, padding: '0 10px', border: 0, borderBottom: `2px solid ${PALETTE.wood}`, background: PALETTE.paper, color: PALETTE.ink, fontFamily: 'inherit', fontSize: 14, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, whiteSpace: 'nowrap', overflow: 'hidden', zIndex: 10 }}>
       <span>{s.clock.year}년 {s.clock.month}월 {s.clock.day}일</span>
       <span aria-label={SEASON_LABEL[season]} title={SEASON_LABEL[season]}><Icon name={SEASON_ICON[season]} size={16} /></span>
-      <span title={wonText(s.money)}><Icon name="money" size={16} alt="돈" /> {wonText(s.money, true)}</span>
+      <span title={wonText(s.money)} style={{ display: 'inline-block', transition: 'transform 0.12s ease-out', transform: bump ? 'scale(1.18)' : 'scale(1)', color: bump ? PALETTE.btn : undefined }}><Icon name="money" size={16} alt="돈" /> {wonText(s.money, true)}</span>
       <span aria-label={`평판 ${Math.round(s.reputation)}`} title="평판"><Icon name="heart" size={14} />{Math.round(s.reputation)}</span>
       <span aria-label={`별 ${s.star}`}>{'★'.repeat(Math.max(1, Math.min(5, s.star)))}<span style={{ color: PALETTE.inkSoft }}>{'☆'.repeat(5 - Math.max(1, Math.min(5, s.star)))}</span></span>
     </button>
   );
+}
+
+/** 자금이 늘 때 숫자가 살짝 튀는 연출 (game-feel: 결제가 보이게). 줄어들 땐 안 튄다. 잦은 결제는 MONEY_BUMP_MS 동안 한 번으로 묶는다. */
+const MONEY_BUMP_MS = 160;
+function useMoneyBump(money: number): boolean {
+  const prev = useRef(money);
+  const [bump, setBump] = useState(false);
+  useEffect(() => {
+    const up = money > prev.current;
+    prev.current = money;
+    if (!up) return;
+    setBump(true);
+    const t = setTimeout(() => setBump(false), MONEY_BUMP_MS);
+    return () => clearTimeout(t);
+  }, [money]);
+  return bump;
 }
 
 /** 상단 바 + 목표 줄 묶음 */

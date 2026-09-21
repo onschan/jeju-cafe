@@ -230,7 +230,14 @@ export function drawTicket(state: GameState): DrawResult {
 
 /** 월초: 응모권 1장 + 무료 추첨 1회 */
 export function monthlyShop(state: GameState): void {
-  state.tickets += MONTHLY_FREE_TICKETS;
   state.freeDrawMonth = monthIndex(state.clock);
-  pushNotice(state, '이달의 응모권 1장 + 무료 인형뽑기 1회!');
+  pushNotice(state, '이달의 무료 인형뽑기 1회! (보름엔 응모권 1장)');
+}
+
+/** 매월 MID_MONTH_TICKET_DAY일: 「보름 응모권」 1장 (game-feel: 월초에 다 몰린 보상 사건 하나를 달 가운데로 옮겨 사건 공백을 줄인다 — 총량은 그대로 월 1장) */
+export const MID_MONTH_TICKET_DAY = 15;
+export function dailyShop(state: GameState): void {
+  if (state.clock.day !== MID_MONTH_TICKET_DAY) return;
+  state.tickets += MONTHLY_FREE_TICKETS;
+  pushNotice(state, '보름 응모권 1장이 왔어요! 장부 → 상점에서 뽑아 봐요');
 }

@@ -297,7 +297,7 @@ export function routeArrivals(state: GameState, hour = state.clock.hour): { rout
 /** 크루즈 입항 이벤트가 진행 중인가 */
 export function cruiseDocked(state: GameState): boolean {
   const today = dayIndex(state.clock);
-  return state.events.some((e) => e.id === CRUISE_EVENT && e.endsDay > today);
+  return state.events.some((e) => e.id === CRUISE_EVENT && (e.startDay ?? 0) <= today && e.endsDay > today);
 }
 /** 다음 도착 안내 문구 (카드): 시각 고정 경로는 다음 fixedHour, 상시 경로는 시간대 */
 export function nextArrivalText(state: GameState, route: RouteId): string {
@@ -330,7 +330,7 @@ export function noteRouteIncome(state: GameState, g: Pick<Guest, 'route'>, amoun
 export function chargePortFee(state: GameState): void {
   const st = routeState(state, 'cruise');
   const today = dayIndex(state.clock);
-  const ev = state.events.find((e) => e.id === CRUISE_EVENT && e.endsDay > today);
+  const ev = state.events.find((e) => e.id === CRUISE_EVENT && (e.startDay ?? 0) <= today && e.endsDay > today);
   if (!ev || st.lastArrivalDay >= ev.startDay) return; // 이번 기항엔 이미 냈다
   state.money -= CRUISE_PORT_FEE;
   state.monthCosts.upkeep += CRUISE_PORT_FEE;

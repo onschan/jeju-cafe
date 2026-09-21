@@ -4,7 +4,7 @@ import { apply } from '../actions.ts';
 import { tick } from '../tick.ts';
 import { DAY_MS, HOUR_MS } from '../clock.ts';
 import { BIG_EVENTS, bigEventDef, specialGuestId, namedGuestDef, SPECIAL_GUESTS } from '../../data/index.ts';
-import { monthlyBigEvents, dailyBigEvents, hourlyBigEvents, startEvent, eventEligible, activeEvents, eventGuestMult, eventTagMult, eventFeeMult, guestHasTag, isSpecialGuest, specialGuestTip, specialGuestsMet, MAX_ACTIVE_EVENTS } from '../events.ts';
+import { monthlyBigEvents, dailyBigEvents, hourlyBigEvents, eventStartDelay, EVENT_START_SPREAD, scheduledEvents, startEvent, eventEligible, activeEvents, eventGuestMult, eventTagMult, eventFeeMult, guestHasTag, isSpecialGuest, specialGuestTip, specialGuestsMet, MAX_ACTIVE_EVENTS } from '../events.ts';
 import { dailyGuestCount, popularityGuestBase, totalSeats, typeWeight, GUESTS_PER_SEAT } from '../guests.ts';
 import { dayIndex } from '../effects.ts';
 import { serialize } from '../save.ts';
@@ -78,6 +78,27 @@ describe('빅 이벤트 판정·효과', () => {
     startEvent(t, 'ev_typhoon_aug');
     expect(t.money).toBe(m);
     expect(dailyBigEvents(t)).toEqual([]);
+  });
+
+  it('발동일 분산(game-feel): 1일 판정은 그대로(rng 소비 동일), k번째 예약은 eventStartDelay일 뒤 아침에 발동 — 예약 중엔 효과·대화가 없다', () => {
+    const s = bareState(1);
+    s.goals.index = 999;
+    s.clock.month = 4;
+    const money = s.money;
+    const e = startEvent(s, 'ev_lunar_new_year', 3); // moneyBonus 30만은 3일 뒤
+    expect(s.money).toBe(money);
+    expect(s.alerts).toEqual([]);
+    expect(activeEvents(s)).toEqual([]);
+    expect(scheduledEvents(s)).toHaveLength(1);
+    expect(eventEligible(s, bigEventDef('ev_lunar_new_year'))).toBe(false); // 예약 중이면 다시 안 굴린다
+    for (let d = 0; d < 3; d++) tick(s, DAY_MS);
+    expect(activeEvents(s).map((x) => x.id)).toEqual([e.id]);
+    expect(s.money).toBe(money + 300_000);
+    expect(s.alerts).toContainEqual({ type: 'event', id: 'ev_lunar_new_year' });
+    // 지연일은 달·순번에 따라 0~EVENT_START_SPREAD−1 사이에서 퍼진다
+    const days = new Set<number>();
+    for (let mi = 0; mi < 12; mi++) for (let k = 0; k < 2; k++) { const d = eventStartDelay(mi, k); expect(d).toBeGreaterThanOrEqual(0); expect(d).toBeLessThan(EVENT_START_SPREAD); days.add(d); }
+    expect(days.size).toBeGreaterThan(3);
   });
 
   it('효과 적용: 손님 수 배수·태그 가중치·메뉴 값 배수가 guests.ts에 곱해진다', () => {

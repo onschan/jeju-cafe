@@ -16,7 +16,7 @@ import { dailyBoard, monthlyBoard } from './board.ts';
 import { pruneEffects } from './effects.ts';
 import { resolveDevelop } from './craft.ts';
 import { advanceConstruction } from './build.ts';
-import { monthlyShop } from './shop.ts';
+import { monthlyShop, dailyShop } from './shop.ts';
 import { monthlyRank } from './guidebook.ts';
 import { monthlyMileage } from './mileage.ts';
 import { dailySpots, monthlySpots } from './spots.ts';
@@ -29,6 +29,7 @@ import { dailyRoutes, monthlyRoutes } from './entry.ts';
 import { dailyRooms, monthlyRooms, accumulateSeatUse, MS_PER_HOUR } from './rooms.ts'; // y-indoor: 본관 공사·좌석 이용률·난로 연료
 import { endingMonthly } from './ending.ts'; // z-ending: 10년차 엔딩·100주년
 import { villageMonthly, festivalMonthly } from './village.ts'; // z-ending: 9월 정착 등급 심사·10월 마을제
+import { dailyIdleHint } from './hints.ts'; // game-feel: 3일 무행동이면 삼춘 힌트
 
 export const STEP_MS = 100;        // 고정 스텝 (게임 ms)
 const MAX_STEPS_PER_TICK = 600;    // 백그라운드 복귀 등 폭주 방지 (60초 게임 시간)
@@ -51,7 +52,7 @@ function onNewDay(state: GameState): void {
   resetWaiting(state);
   pruneEffects(state);
   dailyCleanliness(state); // 트랙 A: 청결 일일 변화 (spawnMult 효과 갱신)
-  dailyBigEvents(state);
+  dailyBigEvents(state); // 예약일이 된 빅 이벤트 발동 + 끝난 것 정리
   dailyPopup(state);
   nightlyRecovery(state);
   dailyWorkExp(state);
@@ -63,10 +64,13 @@ function onNewDay(state: GameState): void {
   advanceConstruction(state);
   dailyRoutes(state); // 트랙 H: 경로 해금·길 끊김·오늘 손님 리셋
   dailyRooms(state); // y-indoor: 본관 증축·이동·2층 완공, 어제 이용률, 난로 자동 ON
+  evaluateUnlocks(state); // game-feel: 손님층·시설 해금·랭크업을 월초가 아니라 조건을 채운 날에 (월초 몰림 방지)
   checkGoals(state);
+  dailyShop(state); // game-feel: 보름 응모권
+  dailyIdleHint(state);
 }
 
-/** 월 바뀜 (1일의 날 처리보다 먼저): (3월) 급여 인상 → 월급 → 홍보 만료·인기 감소 → 유지비 → 투어 버스 → (3월) 소득세 → 명소 월 정산·선물 → 손님 수 마일리지 → 정산 → 실패 상태(경고·대출·상환·위기) → 평판 후기 → 농원 수확 → 후보 만료 → 손님 해금 → 게시판 → 응모권·무료 추첨 → ★·가이드북 발표 → 라이벌 → 빅 이벤트 판정 */
+/** 월 바뀜 (1일의 날 처리보다 먼저): (3월) 급여 인상 → 월급 → 홍보 만료·인기 감소 → 유지비 → 투어 버스 → (3월) 소득세 → 명소 월 정산·선물 → 손님 수 마일리지 → 정산 → 실패 상태(경고·대출·상환·위기) → 평판 후기 → 농원 수확 → 후보 만료 → 손님 해금 → 게시판 → 응모권·무료 추첨 → ★·가이드북 발표 → 라이벌 → 빅 이벤트 판정(예약) */
 function onNewMonth(state: GameState, prevMonth: number, prevYear: number): void {
   const newYear = state.clock.month === TAX_MONTH && state.clock.year >= 2;
   if (newYear) annualRaise(state);
@@ -89,7 +93,7 @@ function onNewMonth(state: GameState, prevMonth: number, prevYear: number): void
   monthlyShop(state);
   monthlyRank(state);
   monthlyRivals(state);
-  monthlyBigEvents(state);
+  monthlyBigEvents(state); // 판정은 1일, 발동은 달 안에 퍼진다 (game-feel)
   villageMonthly(state); // z-ending: 9월 1일 정착 등급 심사
   festivalMonthly(state); // z-ending: 10월 1일 마을제 안내
   endingMonthly(state); // z-ending: 10년차 3월 1일 엔딩 (결산 카드 뒤) · 20년차 11월 100주년
