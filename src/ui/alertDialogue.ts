@@ -36,6 +36,7 @@ export function alertToDialogue(a: Alert): Omit<DialogueReq, 'onClose'> {
       const speaker = a.speaker ?? 'halmang';
       return { speaker: { name: SPEAKER_NAME[speaker], portrait: speaker }, lines: a.line ? [a.line] : [] };
     }
+    case 'monthlyFailed': return { speaker: { name: SPEAKER_NAME.halmang, portrait: 'halmang' }, lines: [`이달의 과제 「${a.title}」는 아쉽게 못 채웠져. 괜찮아, 달은 또 오는 거니까.`, `다음 과제는 「${a.next}」 — 이번엔 보름 안에 끝내 보자!`] };
     case 'challengeFailed': {
       const c = challengeDef(a.id);
       return { speaker: { name: SPEAKER_NAME.samchun, portrait: 'samchun' }, lines: [`도전 ${josa(`「${c.title}」`, '은/는')} 기한을 넘겼어. 페널티는 없으니 다시 골라 보라.`] };
