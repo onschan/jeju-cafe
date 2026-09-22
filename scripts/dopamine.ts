@@ -24,7 +24,7 @@ export type EventKind =
   | '랭크업' | '★승급' | '손님·첫등장' | '손님·특별' | '이벤트·빅' | '이벤트·주간' | '이벤트·게시판' | '부탁완료'
   | '랭크업보상' | '★승급보상' | '손님층보상' | '마일스톤' | '보름응모권'
   | '레시피' | '히든레시피' | '코너첫완성' | '세트첫발견' | '재료콤보'
-  | '뽑기당첨' | '뽑기꽝' | '정착등급' | '마을제' | '가이드북1위' | '신기록' | '명소Lv' | '방문객상품' | '칭호' | '완공' | '투어성공';
+  | '뽑기당첨' | '뽑기꽝' | '가이드북1위' | '신기록' | '명소Lv' | '방문객상품' | '칭호' | '완공' | '투어성공';
 export type NegKind = '실패알림' | '★강등' | '악평' | '이벤트종료';
 
 /** 사건 간 공백을 셀 때 빼는 것(플레이어가 직접 시킨 일의 완료·꽝) */
@@ -96,7 +96,6 @@ export function runDopamine(years: number, seed: number, player = false): Dopami
       else if (a.type === 'eventEnd') neg('이벤트종료', a.id);
       else if (a.type === 'failure') { if (a.stage === 'demote') neg('★강등', 'demote'); else neg('실패알림', a.stage); }
       else if (a.type === 'reputation') neg('악평', 'reputation');
-      else if (a.type === 'village') push('정착등급', `grade ${a.grade}`);
     }
     return origAlertPush(...items);
   };
@@ -134,7 +133,7 @@ export function runDopamine(years: number, seed: number, player = false): Dopami
     quests: Object.values(s.board.quests).filter((q) => q.status === 'done').length,
     recipes: s.stats.recipesMade, hidden: s.codex.recipes.length,
     corners: s.codex.corners?.length ?? 0, sets: s.codex.sets.length, ingCombos: s.codex.ingredientCombos.length,
-    festivals: s.village.festivals, titles: s.titles.length,
+    titles: s.titles.length,
     spots: { ...s.spots }, prizes: Object.values(s.spotPrizes).reduce((a, b) => a + b, 0),
     income: s.lastMonthCard?.income ?? 0,
   });
@@ -170,7 +169,6 @@ export function runDopamine(years: number, seed: number, player = false): Dopami
     if (after.corners > before.corners) push('코너첫완성', (s.codex.corners ?? []).slice(before.corners).join(','));
     if (after.sets > before.sets) push('세트첫발견', s.codex.sets.slice(before.sets).join(','));
     if (after.ingCombos > before.ingCombos) push('재료콤보', s.codex.ingredientCombos.slice(before.ingCombos).join(','));
-    if (after.festivals > before.festivals) push('마을제', `${after.festivals}회`);
     if (after.titles > before.titles) push('칭호', s.titles.slice(before.titles).join(','));
     for (const [id, lv] of Object.entries(after.spots)) if (lv > (before.spots[id] ?? 0)) push('명소Lv', `${id} Lv${lv}`);
     if (after.prizes > before.prizes) push('방문객상품', `+${after.prizes - before.prizes}`);

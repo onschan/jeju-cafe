@@ -21,7 +21,6 @@ import { canRenameCafe, renameCafe, canExpand, expand, canSetCosmetic, setCosmet
 import { canDevelop, develop, canAddTopping, addTopping, canRemoveTopping, removeTopping, canLevelUpMenu, levelUpMenu } from './craft.ts';
 import { canStartBuild, startBuild } from './build.ts';
 import { canBuyMileage, buyMileage, canBuyTicket, buyTicket, canDrawTicket, drawTicket, canSetUniform, setUniform, canUseGuestItem, useGuestItem } from './shop.ts';
-import { canOpenPopup, openPopup, canClosePopup, closePopup } from './popup.ts';
 import { canUpgrade, upgrade } from './upgrade.ts';
 import { canRepair, repair } from './cleanliness.ts';
 import { canTreeUpgrade, treeUpgrade } from './tree.ts'; // fun 업그레이드 트리
@@ -31,7 +30,6 @@ import { rememberPlace, rememberPlaceMany, rememberRemove, rememberMove, canUndo
 import { planLine, isLineType } from './line.ts';
 import { canSetTargets, setTargets } from './segments.ts';
 import { canContinueEnding, continueEnding, canSetSpeed } from './ending.ts'; // z-ending
-import { canDonate, donate, canHoldFestival, holdFestival } from './village.ts'; // z-ending
 
 /** 못 옮기고 못 없애는 것 (정류장·본관·샘). 정낭은 w-free부터 일반 시설 — 옮기고 없애고 더 놓을 수 있다. */
 export const PROTECTED_TYPES = new Set(['busstop', 'warehouse', 'spring']);
@@ -375,18 +373,6 @@ function applyInner(state: GameState, a: Action): ApplyResult {
       continueEnding(state);
       return { ok: true };
     }
-    case 'donateVillage': { // z-ending
-      const c = canDonate(state);
-      if (!c.ok) return c;
-      donate(state);
-      return { ok: true };
-    }
-    case 'holdFestival': { // z-ending
-      const c = canHoldFestival(state);
-      if (!c.ok) return c;
-      holdFestival(state);
-      return { ok: true };
-    }
     case 'dismissAlert':
       state.alerts.shift();
       return { ok: true };
@@ -610,18 +596,6 @@ function applyInner(state: GameState, a: Action): ApplyResult {
     case 'dismissAnnouncement':
       state.lastAnnouncement = null;
       return { ok: true };
-    case 'openPopup': {
-      const c = canOpenPopup(state, a.regionId);
-      if (!c.ok) return c;
-      openPopup(state, a.regionId);
-      return { ok: true };
-    }
-    case 'closePopup': {
-      const c = canClosePopup(state);
-      if (!c.ok) return c;
-      closePopup(state);
-      return { ok: true };
-    }
     case 'dismissOutcome': // staff-luck 룰렛 팝업
       state.lastOutcome = null;
       return { ok: true };

@@ -11,7 +11,7 @@ import { ISO_W, ISO_H, cellToScreen, cellCenter, footAnchor, depth, screenToCell
 import { makeCharacterNode, updateCharacterNode, staffParts, guestParts, namedGuestParts, sameAccs, CHAR_H, type CharacterNode, type Dir, type Frame } from './character';
 import { guestFace } from '../sim/segments.ts';
 import { regularFace } from '../sim/interact.ts'; // fun-guest: 단골 고정 얼굴
-import { namedGuestFace } from '../sim/popup.ts';
+import { namedGuestFace } from '../sim/named.ts';
 import { guestTypeDef, namedGuestDef } from '../data/index.ts';
 import { Background } from './Background';
 import { siteOf, siteBadgeText, siteTone, layoutKey } from '../sim/site.ts';

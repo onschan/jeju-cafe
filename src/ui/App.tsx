@@ -35,7 +35,6 @@ import { CafePanel } from './CafePanel';
 import { PromoPanel } from './PromoPanel';
 import { GuestsPanel } from './GuestsPanel';
 import { BoardPanel } from './BoardPanel';
-import { RegionPanel } from './RegionPanel';
 import { ObjectInfoPanel, CodexPanel } from './ObjectInfoPanel';
 import { PopupHost, Confirm } from './Popup';
 import { brownBtn, brownBtnOn, brownBtnOff, dangerBtn, card, PALETTE } from './frame';
@@ -47,7 +46,6 @@ import { IntroScreen } from './IntroScreen'; // intro: 새 게임 프롤로그 6
 import { SaveSlots } from './SaveSlots';
 import { showScene, SceneHost, type SceneChar } from './SceneWindow';
 import { staffParts } from '../render/character';
-import { PopupScreenHost } from './PopupScreen';
 import { TourPopup } from './BoardPanel';
 import { rangeHintFor } from './rangeHint';
 import { AppealPanel } from './AppealPanel'; // fun: 카페 매력도
@@ -70,7 +68,7 @@ type Mode =
 /** 전체 화면 창과 그 아이콘 그리드 항목 (§5.1) */
 type CafeTab = 'menu' | 'ingredients' | 'craft' | 'promo' | 'building' | 'indoor';
 type PeopleTab = 'staff' | 'candidates' | 'guests' | 'codex' | 'quests';
-type LedgerTab = 'report' | 'invest' | 'spots' | 'shop' | 'tickets' | 'rank' | 'region' | 'settings';
+type LedgerTab = 'report' | 'invest' | 'spots' | 'shop' | 'tickets' | 'rank' | 'settings';
 type Win =
   | { kind: 'build'; origin?: { x: number; y: number } }
   | { kind: 'cafe'; tab: CafeTab | null }
@@ -699,13 +697,12 @@ function Game({ onExit }: { onExit: () => void }) {
     { key: 'shop', label: '상점', icon: 'shop' },
     { key: 'tickets', label: '응모권', icon: 'ticket', badge: s.tickets },
     { key: 'rank', label: '랭킹', icon: 'trophy' },
-    { key: 'region', label: '지역', icon: 'wave', locked: !featureOpen(s, 'popup'), lockedText: '팝업 스토어는 목표를 이루면 열려요' },
     { key: 'settings', label: '설정', icon: 'settings' },
   ];
 
   const cafeMenu = revealed ? CAFE_MENU : CAFE_MENU.filter((t) => t.key !== 'building' && t.key !== 'indoor');
   const peopleMenu = PEOPLE_MENU;
-  const ledgerMenu = revealed ? LEDGER_MENU : LEDGER_MENU.filter((t) => t.key !== 'spots' && t.key !== 'region');
+  const ledgerMenu = revealed ? LEDGER_MENU : LEDGER_MENU.filter((t) => t.key !== 'spots');
   const renderWindow = () => {
     if (!win) return null;
     switch (win.kind) {
@@ -753,7 +750,6 @@ function Game({ onExit }: { onExit: () => void }) {
             {win.tab === 'shop' && <ShopPanel />}
             {win.tab === 'tickets' && <ShopPanel initialTab="ticket" />}
             {win.tab === 'rank' && <RankPanel />}
-            {win.tab === 'region' && <RegionPanel />}
             {win.tab === 'settings' && <SettingsPanel onExit={onExit} gauges={gauges} onGauges={setGauges} />}
           </Window>
         );
@@ -787,7 +783,6 @@ function Game({ onExit }: { onExit: () => void }) {
       <DrawPopup />
       <AnnouncementPopup />
       <TourPopup />
-      <PopupScreenHost />
       {guestPopup && <GuestPopup guestId={guestPopup} onClose={() => setGuestPopup(null)} onQuest={(id) => { dispatch({ type: 'acceptQuest', id }); setWin({ kind: 'people', tab: 'quests' }); }} />}
       {renderWindow()}
       <RewardPopup />

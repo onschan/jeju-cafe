@@ -18,7 +18,7 @@ import { staffParts } from '../render/character';
 import { TitleRibbon } from './TitleBadge'; // staff-luck 칭호 리본
 import { Portrait, namedPortraitParts, guestName } from './GuestPopup';
 import { guestParts } from '../render/character';
-import { canGreet, canRecommend, recommendFits, regularHearts, regularById, requestDef, requestHint, regularFace, GAUGE_MAX, AFFINITY_MAX, availableMenus, menuOf } from '../sim/index.ts'; // fun-guest
+import { canGreet, canRecommend, recommendFits, regularHearts, regularById, requestDef, requestHint, regularFace, GAUGE_MAX, availableMenus, menuOf } from '../sim/index.ts'; // fun-guest
 import { Bar, EnergyBar } from './Bars';
 import { Confirm, Popup } from './Popup';
 import { Icon } from './Icon';
@@ -185,9 +185,7 @@ function GuestCard({ s, id, a }: { s: GameState; id: string; a: CardActions }) {
           </div>
           <div style={small}>{regular && <b style={{ color: PALETTE.btn }}>♥ 단골 · </b>}{nd ? nd.job : def.name} · {state}</div>
           <div style={small}>예산 {nd ? wonText(nd.budget) : def.wallet > 0 ? wonText(walletOf(s, g.type)) : '없음'}</div>
-          {nd
-            ? <div style={{ whiteSpace: 'nowrap' }}>호감 <Bar value={s.namedGuests[nd.id]?.affinity ?? 0} max={AFFINITY_MAX} width={70} /> {s.namedGuests[nd.id]?.affinity ?? 0}</div>
-            : <div style={{ whiteSpace: 'nowrap' }}>단골 <Hearts n={regularHearts(s, g.type)} /> <span style={small}>만족 {st?.satisfaction ?? 0}{st?.regular === 'vip' ? ' · VIP' : ''}</span></div>}
+          {!nd && <div style={{ whiteSpace: 'nowrap' }}>단골 <Hearts n={regularHearts(s, g.type)} /> <span style={small}>만족 {st?.satisfaction ?? 0}{st?.regular === 'vip' ? ' · VIP' : ''}</span></div>}
           {wants.length > 0 && !nd && <div style={small}>좋아하는 것: {wants.join(' · ')}</div>}
         </div>
       </div>

@@ -16,7 +16,7 @@ import { josa } from './josa.ts';
 import { pushNotice } from './staff.ts';
 import { pushFx } from './fx.ts';
 import { nextRandom, pickWeighted } from './rng.ts';
-import { regularIds, namedGuestState } from './popup.ts';
+import { regularList, forgetRegular } from './interact.ts';
 
 export const REPUTATION_START = 50;
 export const REPUTATION_MAX = 100;
@@ -172,8 +172,8 @@ export function monthlyReputation(state: GameState, card: MonthCard | null = sta
     card.reputation = state.reputation;
   }
   if (state.reputation < REP_LOW && nextRandom(state) < LOW_REP_REGULAR_LEAVE) {
-    const id = pickWeighted(state, regularIds(state), () => 1);
-    if (id) { namedGuestState(state, id).regular = false; pushNotice(state, `평판이 나빠 단골이 발길을 끊었어요`); }
+    const r = pickWeighted(state, regularList(state), () => 1);
+    if (r && forgetRegular(state, r.id)) pushNotice(state, `평판이 나빠 ${r.name} 발길을 끊었어요`);
   }
   if (state.reputation < REP_ALERT && !state.reputationWarned) {
     state.reputationWarned = true;

@@ -14,7 +14,6 @@ import { cornerVisitTargets, cornerOfPiece, visitCorner, CORNER_VISIT_WEIGHT } f
 import { cleanSatisfaction, CLEAN_LOW } from './cleanliness.ts';
 import { isUnlocked, unlockedTypeIds, regularFreqMult, walletOf, onHappyVisit, addSatisfaction, VISIT_BONUS_CAP, targetSpawnMult, stagedFull } from './segments.ts';
 import { addComplaint, noteGuest, noteSatisfied, reputationGuestMult, reputationTypeMult, reputationTipMult } from './reputation.ts';
-import { villageLocalMult } from './village.ts'; // z-ending
 import { isAged } from './economy.ts';
 import { recordUse, facilityFee } from './upgrade.ts'; // 트랙 A 훅: 이용 횟수·Lv 요금
 import { addResearchProgress, TASTE_MATCH_WEIGHT } from './progress.ts';
@@ -29,7 +28,7 @@ import { guestCap } from './grade.ts'; // fun-rank 훅: 마당 동시 손님 상
 import { rollOutcome, bestStaffFor } from './luck.ts'; // staff-luck: 서빙 대박/쪽박
 import { titleBonus, isWorking } from './titles.ts'; // staff-luck: 칭호 요금·만족·속도·손님·사진
 import { menuOf, priceOf, likesStatsMatch, statsMatchCount, guestEvalBonus, guestLikesCategory, seatTimeMult, dignityPct, photoChance, menuOrderWeight, LIKE_BONUS_CAP } from './craft.ts';
-import { addAffinity, affinityGain, namedLikes, regularsDueNow, NAMED_MIN_SCENERY } from './popup.ts';
+import { namedLikes, NAMED_MIN_SCENERY } from './named.ts';
 import { eventGuestMult, eventTagMult, eventFeeMult, isSpecialGuest, specialGuestTip } from './events.ts';
 import { fmtNum } from './format.ts';
 import { josa } from './josa.ts';
@@ -141,7 +140,7 @@ export function typeWeight(state: GameState, typeId: string, hour = state.clock.
   if (!isUnlocked(state, typeId)) return 0;
   // 투어 버스 단체 ×1.3은 spawnMultiplier 안의 spotSpawnMult(트랙 C)가 맡는다
   return guestTypeDef(typeId).weight * stagedSpawnMult(state, typeId) * spawnMultiplier(state, typeId) * hourTypeMult(hour, typeId) * parcelSpawnMult(bonus, typeId)
-    * regularFreqMult(state, typeId) * effectMult(state, 'spawnMult', typeId) * eventTagMult(state, typeId) * reputationTypeMult(state, typeId) * targetSpawnMult(state, typeId) * villageLocalMult(state, typeId) * sceneryTouristMult(state, typeId); // 타깃 손님층 ×1.3 (y-ui, UX §5.4) · 정착 등급 2 동네 손님 ×1.1 (z-ending) · fun 경관 → 관광객 ×0.85~1.25 (appeal.ts)
+    * regularFreqMult(state, typeId) * effectMult(state, 'spawnMult', typeId) * eventTagMult(state, typeId) * reputationTypeMult(state, typeId) * targetSpawnMult(state, typeId) * sceneryTouristMult(state, typeId); // 타깃 손님층 ×1.3 (y-ui, UX §5.4) · 정착 등급 2 동네 손님 ×1.1 (z-ending) · fun 경관 → 관광객 ×0.85~1.25 (appeal.ts)
 }
 
 /** 시간대별 손님 수 비중 (하루 합 1). 정오 피크 2배, 18시 이후 절반. */
@@ -282,12 +281,11 @@ export function spawnNamedGuest(state: GameState, namedId: string): boolean {
   return true;
 }
 
-/** 매 시간: 오늘 이 시각에 오기로 한 단골★을 스폰한다 (popup.ts regularVisitSlot). 실제 스폰 수. */
+/** 매 시간: 오늘 이 시각에 오기로 한 단골을 스폰한다 (interact.ts regularVisitSlot). 실제 스폰 수. */
 export function hourlyRegulars(state: GameState): number {
   if (noGuestsToday(state)) return 0;
   let n = 0;
-  for (const def of regularsDueNow(state)) if (spawnNamedGuest(state, def.id)) n++;
-  // fun-guest: 게이지로 등록된 단골(state.regulars)도 정한 요일·시각에 온다 — 이름·얼굴 고정, "OO 왔다!".
+  // fun-guest: 게이지로 등록된 단골(state.regulars)이 정한 요일·시각에 온다 — 이름·얼굴 고정, "OO 왔다!".
   // 단골은 그날 손님 수 안에서 온다(spawnAcc −1): 손님층마다 한 명씩 매주 오는 단골이 하루 손님 위에 얹히면 3년차 손님·랭크·자금이 밴드(§4.6)를 넘는다.
   for (const r of regularsDue(state)) {
     if (!isUnlocked(state, r.guestType) || spawnGuests(state, 1, r.guestType) === 0) continue;
@@ -486,8 +484,7 @@ function resolveMood(state: GameState, g: Guest): void {
         }
         return;
       }
-      // 단골★: 본점에서도 호감도가 오른다 (손님층 만족·효과 대신). 만족하면 자기 대사를 한다.
-      addAffinity(state, g.namedId, affinityGain(tasteMatch));
+      // 특별 손님은 손님층 만족·효과 대신 자기 대사만 한다.
       return;
     }
     state.popularity = Math.max(-100, Math.min(100, state.popularity + type.popularityShift));

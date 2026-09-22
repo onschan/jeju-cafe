@@ -31,7 +31,7 @@ describe('goals.json 데이터', () => {
       for (const r of g.reward) expect(goalRewardText(r).length).toBeGreaterThan(0);
     }
     expect(goalDef('g01').id).toBe('g01');
-    expect(goalDef('g108').condition).toEqual({ type: 'custom', id: 'centennial' });
+    expect(goalDef('g108').condition).toEqual({ type: 'reputation', n: 90 });
   });
 
   it('조건 타입 전부(기존 19 + 신설 14 + 전략 + 도전·월간)에 판정기가 있고 goals.json 108개 조건이 전부 판정된다 (스텁 포함)', () => {
@@ -82,15 +82,6 @@ describe('goals.json 데이터', () => {
       expect(conditionProgress(s, c).cur, c.type).toBe(0);
       expect(goalMet(s, c), c.type).toBe(false);
     }
-    // z-ending: 100주년 감귤축제는 20년차 11월 ending.ts centennialMonthly가 판정해 ending.centennial = 'done'으로 남긴다
-    expect(goalMet(s, { type: 'custom', id: 'centennial' })).toBe(false);
-    s.ending.centennial = 'done';
-    expect(goalMet(s, { type: 'custom', id: 'centennial' })).toBe(true);
-    // z-ending: 정착 등급·마을제
-    expect(goalMet(s, { type: 'villageGrade', n: 3 })).toBe(false);
-    s.village.grade = 3;
-    expect(goalMet(s, { type: 'villageGrade', n: 3 })).toBe(true);
-    expect(conditionProgress(s, { type: 'festivals', n: 1 })).toEqual({ cur: 0, max: 1 });
   });
 
   it('액션 잠금 기능 5종은 각각 정확히 한 목표에서 열리고, 그 기능이 필요한 목표는 그 뒤에 온다 (ease: 바위 시스템은 없다 — rocks 조건·clearRock 기능 없음)', () => {
@@ -104,7 +95,6 @@ describe('goals.json 데이터', () => {
     }
     expect(GOALS.some((g) => g.reward.some((r) => r.type === 'unlockFeature' && (r.id as string) === 'promote'))).toBe(false); // ease: 홍보·연구는 처음부터
     expect(idx(goalForFeature('parcel')!.id)).toBeLessThan(idx(GOALS.find((g) => g.condition.type === 'parcels')!.id));
-    expect(idx(goalForFeature('popup')!.id)).toBeLessThan(idx(GOALS.find((g) => g.condition.type === 'namedGuest')!.id));
   });
 
   it('v2 표에서 시작(start)이었다가 목표 보상으로 바뀐 시설은 전부 어떤 목표가 연다', () => {

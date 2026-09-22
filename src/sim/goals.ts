@@ -10,14 +10,14 @@
  * | feature    | 여는 목표 | 잠기는 액션                                          |
  * |------------|-----------|------------------------------------------------------|
  * | parcel     | g11       | buyParcel                                            |
- * | popup      | g18       | openPopup (원정 팝업 스토어)                          |
  */
 import type { GameState, GoalDef, GoalCondition, GoalReward, FeatureId, Action, ApplyResult, RewardSource, GoalSpeaker, Alert, PlacedObject } from './types.ts';
 import { GOALS, goalDef, objectDef, menuDef, roleDef, ROLES, OBJECTS, MENUS, spotDef, guestTypeDef, guidebookDef, itemDef, ITEMS } from '../data/index.ts';
 import { facilityCount } from './rank.ts';
 import { countCategory } from './segments.ts';
 import { ownedParcels } from './parcels.ts';
-import { metCount, regularCount } from './popup.ts';
+import { regularCount } from './interact.ts';
+import { metCount } from './named.ts';
 import { pushNotice } from './staff.ts';
 import { addMileage } from './mileage.ts';
 import { MAX_BUILDERS } from './build.ts';
@@ -40,7 +40,6 @@ import { totalSpotVisitors } from './spots.ts';
 import { cleanStreakDays, cleanAvgDays, dirtyForDays, CLEAN_HISTORY_DAYS, CLEAN_LOW } from './cleanliness.ts';
 import { siteOf } from './site.ts';
 import { routeState, routeOpened, ENTRY_ROUTES, PARKING_SLOTS, PARKING_EXPAND_FROM } from './entry.ts'; // 트랙 H
-import { VILLAGE_GRADE_NAME } from './village.ts'; // z-ending
 import { GRADE_NAMES } from './grade.ts'; // fun-rank: 등급 조건
 import { treeOf } from './tree.ts'; // fun: 트리 단계를 Lv로
 import { titleGradeOf } from './titles.ts';
@@ -55,13 +54,12 @@ function selfSupplyPct(state: GameState): number {
   return total <= 0 ? 0 : Math.round((saved / total) * 100);
 }
 
-export const FEATURE_IDS: FeatureId[] = ['popup', 'parcel'];
+export const FEATURE_IDS: FeatureId[] = ['parcel'];
 /** 액션을 잠그는 기능 (목표에서 정확히 한 번 열린다) */
-export const ACTION_FEATURE_IDS: FeatureId[] = ['popup', 'parcel'];
-export const FEATURE_NAME: Record<FeatureId, string> = { popup: '팝업 스토어', parcel: '필지 구매' };
+export const ACTION_FEATURE_IDS: FeatureId[] = ['parcel'];
+export const FEATURE_NAME: Record<FeatureId, string> = { parcel: '필지 구매' };
 /** 액션 → 필요한 기능 (표는 파일 상단 주석) */
 export const FEATURE_OF_ACTION: Partial<Record<Action['type'], FeatureId>> = {
-  openPopup: 'popup',
   buyParcel: 'parcel',
 };
 /** 한 번의 checkGoals에서 연달아 처리할 최대 목표 수 (game-feel P1: 10 → 3, 나머지는 다음 시간 틱에) */
@@ -79,7 +77,7 @@ export const CONCURRENT_GOALS = 2;
 export const GOAL_LOOKAHEAD = 2;
 
 export function initFeatures(): Record<FeatureId, boolean> {
-  return { popup: false, parcel: false };
+  return { parcel: false };
 }
 
 export function featureOpen(state: GameState, id: FeatureId): boolean {
@@ -146,7 +144,7 @@ export const conditionCheckers: CheckerMap = {
   rank: (s, c) => flag(bestRank(s) <= c.n),
   cafeRank: (s, c) => n(s.rank, c.n),
   stars: (s, c) => n(s.star, c.n),
-  regular: (s, c) => n(regularCount(s) + Object.values(s.guestTypes).filter((t) => t.regular !== 'none').length, c.n),
+  regular: (s, c) => n(regularCount(s), c.n),
   research: (s, c) => n(s.research, c.n),
   namedGuest: (s, c) => n(metCount(s), c.n),
   menus: (s, c) => n(s.menuSlots.filter((m) => m !== null).length, c.n),
@@ -192,9 +190,6 @@ export const conditionCheckers: CheckerMap = {
   routeGuests: (s, c) => n(routeState(s, c.route).totalGuests, c.n),
   routeUnlocked: (s, c) => flag(routeOpened(s, c.route)),
   facility: (s, c) => flag(Object.values(s.objects).some((o) => !o.build && (o.type === c.id || (c.id === PARKING_EXPAND_FROM && PARKING_SLOTS[o.type] !== undefined)))), // 주차장은 넓힌 것도 친다
-  // ---- z-ending 정착 등급·마을제 (village.ts) ----
-  villageGrade: (s, c) => n(s.village.grade, c.n),
-  festivals: (s, c) => n(s.village.festivals, c.n),
   // ---- fun-rank 눈에 보이는 성장 (grade.ts) ----
   grade: (s, c) => n(s.grade ?? 1, c.n),
   regulars: (s, c) => n(s.regulars?.length ?? 0, c.n), // 트랙 G 단골 등록 손님 수(state.regulars)
@@ -212,7 +207,6 @@ function goalLevelOf(o: PlacedObject): number {
 /** 코드 판정 조건 */
 export function customMet(state: GameState, id: string): boolean {
   switch (id) {
-    case 'centennial': return state.ending.centennial === 'done'; // z-ending: 20년차 11월 100주년 감귤축제 성공 (ending.ts centennialMonthly)
     case 'dirty30': return dirtyForDays(state, CLEAN_LOW, CLEAN_HISTORY_DAYS); // 트랙 A: 청결 < 50 상태 30일 (§4.3 악플 이벤트 조건)
     case 'noParking': return !Object.values(state.objects).some((o) => PARKING_SLOTS[o.type] !== undefined); // 렌터카 대란 (§4.5) — 트랙 H 주차장 4종 전부
     default: return false;
@@ -294,13 +288,11 @@ export function goalConditionText(c: GoalCondition): string {
     case 'stars': return `★${c.n}`;
     case 'regular': return `단골 ${c.n}명`;
     case 'research': return `연구 ${c.n}`;
-    case 'namedGuest': return `이름 있는 손님 ${c.n}명`;
+    case 'namedGuest': return `특별 손님 ${c.n}명`;
     case 'menus': return `메뉴 ${c.n}개 올리기`;
     case 'recipes': return `레시피 ${c.n}개 개발`;
     case 'promotions': return `홍보 ${c.n}회`;
     case 'year': return `${c.n}년차`;
-    case 'villageGrade': return `정착 등급 「${VILLAGE_GRADE_NAME[c.n] ?? c.n}」`; // z-ending
-    case 'festivals': return c.n === 1 ? '마을제 개최' : `마을제 ${c.n}회`; // z-ending
     case 'monthIncome': return `월 매출 ₩${fmtNum(c.n)}`;
     case 'staffLevel': return `Lv${c.lv} 직원 ${c.n}명`;
     case 'trainings': case 'training': return `연수 ${c.n}회`;
@@ -321,7 +313,7 @@ export function goalConditionText(c: GoalCondition): string {
     case 'tourGroup': return `투어 개최 ${c.n}회`;
     case 'itemsUsed': return `강화 아이템 ${c.n}개 사용`;
     case 'uniforms': return `유니폼 ${c.n}단계`;
-    case 'custom': return c.id === 'centennial' ? '100주년 감귤축제' : '특별 조건';
+    case 'custom': return '특별 조건';
     case 'siteSeats': return `전망 ${c.view} 이상 좌석 ${c.n}개`;
     case 'corners': return `코너 ${c.n}개`;
     case 'clean': return `청결 ${c.avg} 이상 ${c.days}일`;

@@ -9,7 +9,7 @@ import { initGuestTypes, initSegmentPopularity } from './segments.ts';
 import { DEFAULT_CAFE_NAME } from './cafe.ts';
 import { START_BUILDERS } from './build.ts';
 import { initGuidebooks } from './guidebook.ts';
-import { initRegions, initNamedGuests, initPopup } from './popup.ts';
+import { initNamedGuests } from './named.ts';
 import { initFeatures } from './goals.ts';
 import { drawCandidates } from './staff.ts';
 import { makeMonthly } from './monthly.ts';
@@ -19,7 +19,6 @@ import { emptyMonthCosts } from './economy.ts';
 import { REPUTATION_START } from './reputation.ts';
 import { initMain, MAIN_TYPE, MAIN_SIZE } from './rooms.ts';
 import { initEnding, applyCarry } from './ending.ts'; // z-ending
-import { initVillage } from './village.ts'; // z-ending
 
 export { PARCEL_W, PARCEL_H, START_ORIGIN, GRID_W, GRID_H, VILLAGE_ROAD_Y };
 export const SAVE_VERSION = 20; // 20: 재미 리셋 통합(fun) — 시작 3분 튜토리얼 7단계·손님 상호작용(regulars·requests)·코너(codex.corners)·등급(grade)·제주 배경 (optional 필드 + backfill, 19 세이브는 백업 후 새 게임). 19: z 통합 — 엔딩·마을·이월·튜토리얼 30단계 seen (마이그레이션 없음). 18: y 통합 — 되돌리기(undo)·개체 이름(name)·유입 경로(routes·손님 route/foreign)·본관(main·객체 w/h/mode/careDay) (마이그레이션 없음, 17 세이브는 백업 후 새 게임). 17: 컨텐츠 확장 통합 — 경제(삼춘 대출·세금·대기열·★ 유지 심사)·시설 44·증축·청결·명소 방문객·투어·선물·직원 8직종·입지·목표 108·도전·튜토리얼 (마이그레이션 없음). 15: v3 대격변. 14: 라이벌 카페
@@ -251,9 +250,7 @@ export function createInitialState(seed: number, playerId = 'local', createdAt =
     expansions: [],
     cosmetics: { wallColor: 0, sign: '' },
     praised: {},
-    regions: initRegions(),
     namedGuests: initNamedGuests(),
-    popup: initPopup(),
     lastOutcome: null,   // staff-luck 대박/중박/쪽박 팝업
     luckSeq: 0,
     monthGreatServes: 0,
@@ -261,7 +258,6 @@ export function createInitialState(seed: number, playerId = 'local', createdAt =
     guests: [],
     routes: initRoutes(), // 트랙 H 손님 유입 경로 5종
     ending: initEnding(), // z-ending
-    village: initVillage(), // z-ending
     carry: null,
     spawnAcc: START_SPAWN_ACC,
     researchAcc: 0,

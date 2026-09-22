@@ -459,7 +459,7 @@ export type GoalCondition =
   | { type: 'tourGroup'; n: number }              // 투어 개최 (x-spots)
   | { type: 'itemsUsed'; n: number }              // 강화 아이템 사용
   | { type: 'uniforms'; n: number }               // 유니폼 단계
-  | { type: 'custom'; id: string; n?: number }    // 코드 판정 (centennial 등)
+  | { type: 'custom'; id: string; n?: number }    // 코드 판정
   // ---- §7.5 전략 조건 ----
   | { type: 'siteSeats'; view: number; n: number } // 전망 view 이상 좌석 n개 (x-site)
   | { type: 'corners'; n: number }                // 만든 코너 수 (fun-corner, corners.ts 도감)
@@ -481,9 +481,6 @@ export type GoalCondition =
   | { type: 'routeGuests'; route: RouteId; n: number } // 그 경로로 온 누적 손님
   | { type: 'routeUnlocked'; route: RouteId }     // 경로 열림 (셔틀은 계약까지)
   | { type: 'facility'; id: string }              // 그 시설을 1개 이상 지었나 (완공)
-  // ---- z-ending 정착 등급·마을제 (village.ts) ----
-  | { type: 'villageGrade'; n: number }           // 정착 등급 ≥ n (1 외지인 ~ 5 촌장 후보)
-  | { type: 'festivals'; n: number }              // 마을제 개최 횟수
   // ---- fun-rank 눈에 보이는 성장 (grade.ts) ----
   | { type: 'grade'; n: number }                  // 카페 등급 ≥ n (1 올레길 노점 ~ 5 전설의 카페)
   | { type: 'regulars'; n: number }               // 단골 수 (트랙 G regulars — 없으면 기존 regular 판정)
@@ -492,7 +489,7 @@ export type GoalCondition =
   | { type: 'legendStaff'; n: number }            // 전설 칭호 직원 n명
   | { type: 'routesOpen'; n: number };            // 열린 유입 경로 n종 (정류장 제외)
 /** 목표 뒤에 남는 기능 잠금 (ease): 팝업 스토어·카페 대결·필지 구매만. 홍보·연구·입지 보기·콤보 도감·명소 지도는 처음부터 열려 있다(튜토리얼이 순서를 안내). */
-export type FeatureId = 'popup' | 'parcel';
+export type FeatureId = 'parcel';
 export type GoalReward =
   | { type: 'money'; amount: number }
   | { type: 'unlockFacility'; id: string }
@@ -551,9 +548,6 @@ export type Alert =
   | { type: 'reputation'; text: string } // 평판 20 미만 삼춘 경고 (reputation.ts)
   // ---- z-ending ----
   | { type: 'ending' }                                        // 10년차 엔딩 (EndingScreen — 대화창이 아니다)
-  | { type: 'village'; grade: number; up: boolean }           // 9월 1일 정착 등급 심사 결과 (village.ts)
-  | { type: 'festivalOffer' }                                 // 10월 1일 마을제 개최 안내 (등급 4 이상)
-  | { type: 'centennial'; success: boolean }                  // 20년차 100주년 감귤축제 (성공이면 EndingScreen 두 번째 컷)
   | { type: 'grade'; grade: number };                         // fun-rank: 카페 등급 승급 (할망 축하 대사, 보상 상자 뒤)
 
 // ---------- 월간 과제 ----------
@@ -732,7 +726,6 @@ export interface AnnouncementEntry {
 export interface Announcement { monthIndex: number; month: number; year: number; entries: AnnouncementEntry[]; starBefore: number; starAfter: number }
 
 // ---------- 원정 팝업·지역·이름 있는 손님 (2B-4) ----------
-export interface RegionDef { id: string; name: string; popupCost: number; vitality: number; appetite: number; decayPerWeek: number; recoverPerWeek: number; note?: string }
 /** likesBase의 'any'는 모든 분류 */
 export interface NamedGuestDef {
   id: string;
@@ -747,24 +740,8 @@ export interface NamedGuestDef {
   face: { seed: number };
   acc: string[];
 }
-export interface RegionState { vitality: number; appetite: number }
 /** affinity 0~300, rewardsTaken 0~3(100·200·300에서 보상), regular = 첫 보상 때 ★ → 본점 방문. met = 한 번이라도 만났다(도감 공개) */
-export interface NamedGuestState { affinity: number; rewardsTaken: number; regular: boolean; met: boolean }
-/** 팝업 손님 한 명의 방문 결과 (PopupScreen 연출용, 최근 POPUP_VISIT_CAP개) */
-export interface PopupVisit {
-  namedId: string;
-  menuId: string | null;
-  mood: Mood;
-  reason: 'no_menu' | 'price' | null;
-  taste: boolean;        // 취향 일치(×2)
-  gain: number;          // 호감도 증가
-  affinity: number;      // 방문 뒤 호감도
-  reward: string | null; // 이 방문에서 받은 보상 문구
-  regularNow: boolean;   // 이 방문에서 단골★이 됐다
-  tick: number;
-}
-/** regionId = 열려 있는 팝업 지역(null이면 없음). openedDay = 연 날(절대 일 인덱스). lastRegionId = 이번 주 팝업을 연 지역(주말 회복에서 제외). queue = 오늘 아직 안 온 손님 id(매 시간 한 명). */
-export interface PopupState { regionId: string | null; openedDay: number; lastRegionId: string | null; queue: string[]; visits: PopupVisit[] }
+export interface NamedGuestState { met: boolean }
 
 
 export interface Guest {
@@ -928,9 +905,7 @@ export interface GameState {
   expansions: string[];                       // 증축 id (kitchen·floor2·terrace)
   cosmetics: { wallColor: number; sign: string }; // 인테리어 (외벽 색 인덱스·간판 문구) — 연출만
   praised: Record<string, number>;            // staffId → 마지막으로 칭찬한 일 인덱스
-  regions: Record<string, RegionState>;       // 지역 활기·식욕 (2B-4)
-  namedGuests: Record<string, NamedGuestState>; // 이름 있는 손님 56 호감도·단골★
-  popup: PopupState;                          // 원정 팝업 스토어
+  namedGuests: Record<string, NamedGuestState>; // 빅 이벤트 특별 손님을 만난 적이 있는지
   lastOutcome?: OutcomeResult | null;         // 마지막 작업 판정 대박/중박/쪽박 (UI 룰렛 팝업, staff-luck)
   monthGreatServes?: number;                  // 이달 서빙 대박 횟수 (월말 카드 하이라이트, staff-luck)
   cornerVisits?: { day: number; counts: Record<string, number> }; // fun-corner: 오늘 코너별 손님 방문 수 (하루 상한, 날이 바뀌면 corners.ts가 초기화)
@@ -947,7 +922,6 @@ export interface GameState {
   regulars?: Regular[];                       // 단골 등록 손님
   routes: Record<RouteId, RouteState>;        // 손님 유입 경로 5종 (트랙 H entry.ts)
   ending: EndingState;                        // 10년차 엔딩·빠른 모드·100주년 (ending.ts, z-ending)
-  village: VillageState;                      // 정착 등급·마을제·기부 (village.ts, z-ending)
   carry: CarryOver | null;                    // 이월해서 시작한 게임이면 그 내용 (기록용)
   spawnAcc: number; // 시간대별 스폰 소수 누적
   researchAcc: number; // 만족 손님 누적 (5마다 연구 +1)
@@ -1052,13 +1026,9 @@ export type Action =
   | { type: 'setUniform'; id: string | null }
   | { type: 'useGuestItem'; itemId: string; guestId: string }
   | { type: 'dismissAnnouncement' }
-  | { type: 'openPopup'; regionId: string }
-  | { type: 'closePopup' }
   | { type: 'dismissOutcome' }                      // staff-luck: 대박/중박/쪽박 룰렛 팝업 닫기
   // ---- z-ending ----
   | { type: 'continueEnding' }                      // 엔딩 뒤 「계속하기」: 알림 닫고 빠른 모드(4배속) 해금
-  | { type: 'donateVillage' }                       // 마을 기부 (VILLAGE_DONATION, 정착 등급 항목)
-  | { type: 'holdFestival' };                       // 마을제 개최 (등급 4 이상·10월·₩200만)
 
 export interface ApplyResult { ok: boolean; reason?: string }
 
@@ -1066,13 +1036,12 @@ export interface ApplyResult { ok: boolean; reason?: string }
 /** 최종 점수 항목 9 (ending.ts SCORE_ITEMS 순서) */
 export interface ScoreItem { key: ScoreKey; label: string; value: number; points: number }
 export type ScoreKey = 'money' | 'guests' | 'star' | 'rank' | 'reputation' | 'goals' | 'corners' | 'spots' | 'regulars';
-export interface FinalScore { items: ScoreItem[]; total: number; title: string; tier: number; villageGrade: number; year: number; month: number }
+export interface FinalScore { items: ScoreItem[]; total: number; title: string; tier: number; year: number; month: number }
 export interface EndingState {
   reached: boolean;            // 10년차 3월 1일 엔딩 카드가 떴다
   score: FinalScore | null;    // 엔딩 시점 점수 (계속하기 뒤에도 남는다)
   continued: boolean;          // 「계속하기」를 골랐다
   fastMode: boolean;           // 4배속 해금
-  centennial: 'none' | 'done' | 'failed'; // 20년차 100주년 감귤축제 결과
 }
 /** 이월 6종 (UX §6 P2-17): 콤보 도감·명소 Lv·유니폼·돌하르방·마일리지 20%·정규 손님 인기 20% (+ 100주년 성공 시 천년 팽나무) */
 export interface CarryOver {

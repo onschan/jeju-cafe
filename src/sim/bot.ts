@@ -27,7 +27,6 @@ import { isUnlocked } from './segments.ts';
 import { POPULARITY_FRUIT } from '../data/index.ts';
 import { MAX_BUILDERS } from './build.ts';
 import { canUseItem } from './items.ts';
-import { isWeekend, canOpenPopup, bestRegion } from './popup.ts';
 import { featureOpen, goalClaimed, currentGoal, activeGoals } from './goals.ts';
 import { seatScore } from './site.ts';
 import { bestSeatCellsHeuristic } from './strategy.ts'; // fun-rank: 증축으로 치운 테이블을 산 필지 어디든 다시
@@ -52,7 +51,6 @@ import type { JobTier } from './types.ts';
 import { parkingSites, routePathCells, routeFacility, canSetRouteContract, ENTRY_ROUTES, PARKING_EXPAND_FROM, PARKING_SLOTS } from './entry.ts'; // 트랙 H
 import { mainBuilding, freeFloorCells, nextMainLevel, expandCost, expandCells, canExpandMain, isAnnex, indoorSeats } from './rooms.ts'; // y-indoor
 import type { Candidate, RoleId, StatKey, QuestDef } from './types.ts';
-import { canDonate, canHoldFestival } from './village.ts'; // z-ending
 import { bestMoves, BOT_SOLVER_OPTIONS, type SolverOptions } from './solver.ts'; // solver 정책
 
 /** 봇 정책: heuristic = 아래 v3 정석(밸런스 밴드 기준), solver = 며칠마다 solver.bestMoves 1위 수 하나만 실행(집안일 빼고 아무 정석도 모른다) */
@@ -692,8 +690,6 @@ function monthlyPlan(s: GameState, monthsPlayed: number): void {
   investSpotIfAny(s);
   planRoutes(s); // 트랙 H
   // z-ending: 돈이 넉넉하면 마을 기부(정착 등급 「기부」 항목, 누적 상한까지), 10월엔 마을제 (g82·g90)
-  if (s.money >= BOT_DONATE_MIN_MONEY && s.village.donated < BOT_DONATE_CAP && canDonate(s).ok) apply(s, { type: 'donateVillage' });
-  if (canHoldFestival(s).ok) apply(s, { type: 'holdFestival' });
 }
 
 /** fun-guest: 봇이 하루에 인사하는 손님 수 */
@@ -726,11 +722,6 @@ function dailyPlan(s: GameState): void {
   if (custom && !s.menuSlots.includes(custom.id)) apply(s, { type: 'setSlot', slot: 3, menuId: custom.id });
   if (s.lastDevelop) apply(s, { type: 'dismissDevelop' });
 
-  // 주말: 활기가 가장 높은 지역에 팝업
-  if (featureOpen(s, 'popup') && isWeekend(s.clock.day) && s.money > BOT_POPUP_MIN_MONEY && !s.popup.regionId) {
-    const regionId = bestRegion(s);
-    if (canOpenPopup(s, regionId).ok) apply(s, { type: 'openPopup', regionId });
-  }
 }
 
 /** 봇 진행 커서 (한 상태를 이어서 돌릴 때 — 세이브 왕복 테스트 등) */

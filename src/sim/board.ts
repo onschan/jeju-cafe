@@ -9,7 +9,6 @@ import { effectivePopularity } from './promotions.ts';
 import { addEffect, filterMatches } from './effects.ts';
 import { spotLevel, SPOT_QUEST_LEVEL } from './spots.ts';
 import { fmtNum } from './format.ts';
-import { villageQuestOpen } from './village.ts'; // z-ending
 
 /** 부탁 기한: 수락한 달 + 2 */
 export const QUEST_MONTHS = 2;
@@ -38,7 +37,7 @@ function shouldOffer(state: GameState, q: QuestDef): boolean {
   const st = guestTypeState(state, q.guestId);
   if (st.questDone) return false;
   const def = guestTypeDef(q.guestId);
-  return st.satisfaction >= SAT_QUEST || def.unlock.type === 'quest' || def.unlockBase?.type === 'quest' || villageQuestOpen(state, q.guestId); // z-ending: 정착 등급 3이면 삼춘 부탁은 만족 조건 없이. unlockBase: 단계 해금(어댑터)으로 앞당겨진 체인 후속도 원래대로 바로
+  return st.satisfaction >= SAT_QUEST || def.unlock.type === 'quest' || def.unlockBase?.type === 'quest'; // unlockBase: 단계 해금(어댑터)으로 앞당겨진 체인 후속도 원래대로 바로
 }
 
 /** 부탁 제안 스케줄 (game-feel P1: sim이 스스로 주는 달 중반 사건): 1일에 QUEST_OFFERS_FIRST개, 매월 questOfferDay(12~18일, 결정적)에 QUEST_OFFERS_MID개.

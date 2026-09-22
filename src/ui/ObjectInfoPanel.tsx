@@ -5,7 +5,6 @@ import { objectDef, itemDef, SETS } from '../data/index.ts';
 import { Icon } from './Icon';
 import { Confirm } from './Popup';
 import { RecipeCodex } from './CraftPanel';
-import { NamedGuestCodex } from './NamedGuestCodex';
 import { TitleCodex } from './TitleCodex'; // staff-luck 칭호 도감
 import { CornerCodex } from './CornerCodex';
 import { brownBtn, brownBtnOn, brownBtnOff, dangerBtn, card, PALETTE } from './frame';
@@ -114,7 +113,6 @@ export function CodexPanel() {
       ))}
       <CornerCodex />
       <RecipeCodex />
-      <NamedGuestCodex />
       <TitleCodex />
     </div>
   );

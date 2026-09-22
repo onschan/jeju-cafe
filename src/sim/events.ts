@@ -20,7 +20,7 @@ import { addEffect } from './effects.ts';
 import { objectDef } from '../data/index.ts';
 import { parcelAt } from './parcels.ts';
 import { spawnNamedGuest } from './guests.ts';
-import { namedGuestState, isWeekend } from './popup.ts';
+import { namedGuestState } from './named.ts';
 import { fmtNum } from './format.ts';
 import { josa } from './josa.ts';
 
@@ -209,6 +209,11 @@ export function monthlyBigEvents(state: GameState): string[] {
 
 /** 주간 미니 사건 (game-feel P1: 달 중반에 sim이 스스로 주는 사건): 토요일 아침 WEEKLY_EVENT_CHANCE로 weekly 이벤트 중 조건이 맞는 것 하나(rng)를 그날 하루 발동.
  *  빅 이벤트 동시 상한에 안 세고, 끝날 때 eventEnd 알림도 없다(하루짜리). 결정적(state.rng — 토요일에만 소비). */
+/** 주말: 매월 6·13·20·27일 */
+export const WEEKEND_DAYS = [6, 13, 20, 27] as const;
+export function isWeekend(day: number): boolean {
+  return (WEEKEND_DAYS as readonly number[]).includes(day);
+}
 export const WEEKLY_EVENT_CHANCE = 0.4;
 /** 이만큼 조용했으면 이번 토요일은 확정 — 1일(무료 뽑기·월간 과제)·15일(보름 응모권)과 합쳐 sim이 주는 사건 공백이 12일을 안 넘게 */
 export const WEEKLY_EVENT_FORCE_DAYS = 14;

@@ -8,25 +8,16 @@
  * 결정적 — rng를 쓰지 않는다.
  */
 import type { GameState, FinalScore, ScoreItem, ScoreKey, CarryOver, EndingState, ApplyResult } from './types.ts';
-import { regularCount } from './popup.ts';
+import { regularCount } from './interact.ts';
 import { objectDef } from '../data/index.ts';
 import { occupy, doorFrontOf } from './grid.ts';
 import { monthIndex } from './clock.ts';
 import { START_ORIGIN } from './layout.ts';
 import { pushNotice } from './staff.ts';
-import { isChiefCandidate } from './village.ts';
-import { grantItem } from './items.ts';
 
 export const ENDING_YEAR = 10;
 export const ENDING_MONTH = 3;
-/** 100주년 감귤축제: 계속하기 뒤 이 연차 11월 1일 (goals.ts customMet 'centennial'과 같은 달) */
-export const CENTENNIAL_YEAR = 20;
-export const CENTENNIAL_MONTH = 11;
-export const CENTENNIAL_STAR = 5;
-export const CENTENNIAL_RANK = 1;
-export const CENTENNIAL_REPUTATION = 80;
 export const MILLENNIUM_TREE = 'hackberry_millennium';
-export const MILLENNIUM_SEED = 'millennium_seed';
 /** 빠른 모드 배속 */
 export const FAST_SPEED = 4;
 /** 이월 비율 (마일리지·정규 손님 인기) */
@@ -67,12 +58,9 @@ export const SCORE_TITLES: { min: number; title: string }[] = [
   { min: 600, title: '제주 명소 카페' },
   { min: 800, title: '제주의 전설 카페' },
 ];
-/** 촌장 후보(정착 등급 5)면 칭호 앞에 붙는 말 + 보너스 점수 */
-export const CHIEF_PREFIX = '촌장이 된 ';
-export const CHIEF_BONUS = 50;
 
 export function initEnding(): EndingState {
-  return { reached: false, score: null, continued: false, fastMode: false, centennial: 'none' };
+  return { reached: false, score: null, continued: false, fastMode: false };
 }
 
 export function spotLevelSum(state: GameState): number {
@@ -102,11 +90,10 @@ export function computeScore(state: GameState): FinalScore {
     const value = rawValue(state, d.key);
     return { key: d.key, label: d.label, value, points: Math.min(d.cap, Math.floor(value * d.per)) };
   });
-  const chief = isChiefCandidate(state);
-  const total = items.reduce((s, i) => s + i.points, 0) + (chief ? CHIEF_BONUS : 0);
+  const total = items.reduce((s, i) => s + i.points, 0);
   const tier = scoreTier(total);
-  const title = (chief ? CHIEF_PREFIX : '') + SCORE_TITLES[tier - 1]!.title;
-  return { items, total, title, tier, villageGrade: state.village.grade, year: state.clock.year, month: state.clock.month };
+  const title = SCORE_TITLES[tier - 1]!.title;
+  return { items, total, title, tier, year: state.clock.year, month: state.clock.month };
 }
 
 /** 엔딩 시점을 지났나 (10년차 3월 1일 이후) */
@@ -122,7 +109,6 @@ export function endingMonthly(state: GameState): void {
     state.alerts.push({ type: 'ending' });
     pushNotice(state, `10년차 결산 — 최종 점수 ${state.ending.score.total}점 「${state.ending.score.title}」`);
   }
-  centennialMonthly(state);
 }
 
 /** 계속하기: 엔딩 알림을 닫고 빠른 모드를 연다 */
@@ -139,31 +125,6 @@ export function continueEnding(state: GameState): void {
 export function canSetSpeed(state: GameState, speed: number): ApplyResult {
   if (speed >= FAST_SPEED && !state.ending.fastMode) return { ok: false, reason: '빠른 모드는 10년차 엔딩 뒤 「계속하기」로 열려요' };
   return { ok: true };
-}
-
-// ---------- 100주년 감귤축제 (연장 플레이) ----------
-
-/** 가이드북 최고 순위 1위를 한 적이 있나 */
-export function hasGuidebookTop(state: GameState, rank = CENTENNIAL_RANK): boolean {
-  return Object.values(state.guidebooks).some((g) => g.best !== null && g.best <= rank);
-}
-export function centennialConditions(state: GameState): { star: boolean; rank: boolean; reputation: boolean } {
-  return { star: state.star >= CENTENNIAL_STAR, rank: hasGuidebookTop(state), reputation: state.reputation >= CENTENNIAL_REPUTATION };
-}
-export function centennialDue(state: GameState): boolean {
-  return state.ending.continued && state.ending.centennial === 'none' && state.clock.year >= CENTENNIAL_YEAR && state.clock.month === CENTENNIAL_MONTH;
-}
-export function centennialMonthly(state: GameState): void {
-  if (!centennialDue(state)) return;
-  const c = centennialConditions(state);
-  const success = c.star && c.rank && c.reputation;
-  state.ending.centennial = success ? 'done' : 'failed';
-  if (success) {
-    if (!state.unlocked.objects.includes(MILLENNIUM_TREE)) state.unlocked.objects.push(MILLENNIUM_TREE);
-    grantItem(state, MILLENNIUM_SEED, 1);
-    pushNotice(state, '100주년 감귤축제 — 「천년 팽나무」를 심을 수 있어요');
-  } else pushNotice(state, '100주년 감귤축제가 조용히 지나갔어요');
-  state.alerts.push({ type: 'centennial', success });
 }
 
 // ---------- 이월 ----------
@@ -187,7 +148,7 @@ export function makeCarry(state: GameState): CarryOver {
     dolhareubang: Math.min(CARRY_DOLHAREUBANG_MAX, dolhareubangCount(state)),
     mileage: Math.floor(state.mileage * CARRY_RATIO),
     guestPopularity,
-    millennium: state.ending.centennial === 'done' || state.unlocked.objects.includes(MILLENNIUM_TREE),
+    millennium: state.unlocked.objects.includes(MILLENNIUM_TREE),
     fromScore: state.ending.score?.total ?? computeScore(state).total,
   };
 }

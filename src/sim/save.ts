@@ -6,7 +6,6 @@ import { objectDef } from '../data/index.ts';
 import { josa } from './josa.ts';
 import { initMain } from './rooms.ts';
 import { initEnding } from './ending.ts'; // z-ending
-import { initVillage } from './village.ts'; // z-ending
 import type { FinalScore } from './types.ts';
 import { TUTORIAL_STEPS } from './tutorial.ts';
 
@@ -48,8 +47,7 @@ function backfill(state: GameState): void {
   state.monthMenuSold ??= {};
   state.routes ??= initRoutes(); // 트랙 H 유입 경로 (routes 없는 옛 저장)
   state.main ??= initMain(); // y-indoor: 본관 증축·이동·분위기 (SAVE_VERSION 18)
-  state.ending ??= initEnding(); // z-ending: 엔딩·빠른 모드·100주년 (v18 세이브엔 없다)
-  state.village ??= initVillage(); // z-ending: 정착 등급·마을제
+  state.ending ??= initEnding(); // z-ending: 엔딩·빠른 모드 (v18 세이브엔 없다)
   state.carry ??= null; // z-ending: 이월 묶음
   state.codex.titles ??= []; // staff-luck: 만난 칭호 도감
   state.codex.corners ??= []; // fun-corner: 만든 코너 도감

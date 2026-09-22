@@ -3,7 +3,6 @@ import { pushFx } from './fx.ts';
 import { ITEMS, GIFTS, itemDef, objectDef, giftDef, isGiftId, guestTypeDef, ingredientDef, NAMED_TYPE } from '../data/index.ts';
 import { pushNotice, skillTotal } from './staff.ts';
 import { addSatisfaction } from './segments.ts';
-import { addAffinity } from './popup.ts';
 import { MAX_SEGMENT_POPULARITY } from './promotions.ts';
 import { tagMatches } from './spots.ts';
 import { dayIndex } from './effects.ts';
@@ -134,14 +133,11 @@ export function giveGift(state: GameState, guestId: string, itemId: string): num
   recordOutcome(state, { task: 'gift', outcome, staffId: staff?.id ?? null, title: gift.name, chances, lines: [`${OUTCOME_NAME[outcome]}: 선물 효과 ×${OUTCOME_MULT[outcome]}${fit ? ' · 잘 맞아요 ×2' : ''}`] });
   state.inventory[itemId] = (state.inventory[itemId] ?? 0) - 1;
   state.giftDay = dayIndex(state.clock);
-  if (g.namedId) {
-    addAffinity(state, g.namedId, GIFT_AFFINITY * k);
-    pushNotice(state, `${josa(gift.name, '을/를')} 선물했어요 — 호감도 +${GIFT_AFFINITY * k}`);
-  } else {
+  if (!g.namedId) {
     state.segmentPopularity[g.type] = Math.min(MAX_SEGMENT_POPULARITY, (state.segmentPopularity[g.type] ?? 0) + GIFT_POPULARITY * k);
     addSatisfaction(state, g.type, GIFT_SATISFACTION * k);
-    pushNotice(state, `${guestTypeDef(g.type).name}에게 ${josa(gift.name, '을/를')} 선물했어요${fit ? ' (잘 맞아요 ×2)' : ''} — 인기 +${GIFT_POPULARITY * k} · 만족 +${GIFT_SATISFACTION * k}`);
   }
+  pushNotice(state, `${guestTypeDef(g.type).name}에게 ${josa(gift.name, '을/를')} 선물했어요${fit ? ' (잘 맞아요 ×2)' : ''} — 인기 +${GIFT_POPULARITY * k} · 만족 +${GIFT_SATISFACTION * k}`);
   g.mood = 'happy';
   g.say = outcome === 'fail' ? '아… 고마워요' : fit ? '이런 걸 다… 고마워요!' : '고마워요!';
   pushFx(state, { kind: 'pop', x: Math.round(g.x), y: Math.round(g.y), n: GIFT_POPULARITY * k, tick: state.tick });

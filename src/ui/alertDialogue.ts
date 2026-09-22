@@ -1,7 +1,7 @@
 import type { GameState, Alert } from '../sim/index.ts';
 import { goalDef, goalRewardText, josa } from '../sim/index.ts';
-import { goalLine, failureDialogue, SPEAKER_NAME, ENDING_DIALOGUES, villageReviewLine } from '../data/dialogue/index.ts';
-import { VILLAGE_GRADE_NAME, gradeName, GRADE_CAPTION } from '../sim/index.ts'; // z-ending · fun-rank
+import { goalLine, failureDialogue, SPEAKER_NAME, ENDING_DIALOGUES } from '../data/dialogue/index.ts';
+import { gradeName, GRADE_CAPTION } from '../sim/index.ts'; // fun-rank
 import { showDialogue, getDialogue, queuedCount, type DialogueReq } from './dialogue.ts';
 import { eventStartDialogue, eventEndDialogue } from './eventText.ts';
 
@@ -13,7 +13,7 @@ let showingFor: Alert | null = null;
 
 /** 보상 상자가 맡는 알림인가 */
 export function isPopupAlert(a: Alert): boolean {
-  return a.type === 'reward' || a.type === 'ending' || (a.type === 'centennial' && a.success); // z-ending: 엔딩·100주년 성공은 EndingScreen
+  return a.type === 'reward' || a.type === 'ending'; // z-ending: 엔딩은 EndingScreen
 }
 
 export function alertToDialogue(a: Alert): Omit<DialogueReq, 'onClose'> {
@@ -41,19 +41,6 @@ export function alertToDialogue(a: Alert): Omit<DialogueReq, 'onClose'> {
       return { speaker: { name: SPEAKER_NAME[f.speaker], portrait: f.speaker }, lines: [...f.lines, f.tip] };
     }
     // ---- z-ending ----
-    case 'village': {
-      const r = villageReviewLine(a.grade);
-      return { speaker: { name: SPEAKER_NAME[r.speaker], portrait: r.speaker }, lines: [`【${ENDING_DIALOGUES.village.title}】 정착 등급 「${VILLAGE_GRADE_NAME[a.grade]}」`, a.up ? r.up : r.same] };
-    }
-    case 'festivalOffer': {
-      const f = ENDING_DIALOGUES.village.festivalOffer;
-      return { speaker: { name: SPEAKER_NAME[f.speaker], portrait: f.speaker }, lines: f.lines };
-    }
-    case 'centennial': {
-      // 성공은 EndingScreen(두 번째 컷)이 맡는다 — 여기 오는 건 실패
-      const ls = a.success ? ENDING_DIALOGUES.centennial.success : ENDING_DIALOGUES.centennial.fail;
-      return { speaker: { name: SPEAKER_NAME[ls[0]!.speaker], portrait: ls[0]!.speaker }, lines: ls.map((l) => l.line) };
-    }
     case 'ending':
       return { speaker: { name: SPEAKER_NAME.halmang, portrait: 'halmang' }, lines: [] }; // EndingScreen이 맡는다
     case 'grade': // fun-rank: 등급 승급 축하 (보상 상자 뒤)

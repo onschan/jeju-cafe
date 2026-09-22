@@ -22,12 +22,10 @@ import { monthlyMileage } from './mileage.ts';
 import { dailySpots, monthlySpots } from './spots.ts';
 import { monthlyGifts } from './items.ts';
 import { fmtNum } from './format.ts';
-import { hourlyPopup, dailyPopup } from './popup.ts';
 import { dailyCleanliness } from './cleanliness.ts';
 import { dailyRoutes, monthlyRoutes } from './entry.ts';
 import { dailyRooms, monthlyRooms, accumulateSeatUse, MS_PER_HOUR } from './rooms.ts'; // y-indoor: 본관 공사·좌석 이용률·난로 연료
 import { endingMonthly } from './ending.ts'; // z-ending: 10년차 엔딩·100주년
-import { villageMonthly, festivalMonthly } from './village.ts'; // z-ending: 9월 정착 등급 심사·10월 마을제
 import { dailyIdleHint } from './hints.ts'; // game-feel: 3일 무행동이면 삼춘 힌트
 
 export const STEP_MS = 100;        // 고정 스텝 (게임 ms)
@@ -41,7 +39,6 @@ function onNewHour(state: GameState): void {
   hourlyRegulars(state); // 단골★·특별 손님이 일반 손님(대기열)보다 먼저 자리를 잡는다
   hourlyBigEvents(state);
   hourlySpawn(state);
-  hourlyPopup(state);
   checkGoals(state); // 목표 줄이 1/1로 하루 종일 멈춰 있지 않게 매시간 판정 (달성 즉시 보상·대화창)
 }
 
@@ -52,7 +49,6 @@ function onNewDay(state: GameState): void {
   pruneEffects(state);
   dailyCleanliness(state); // 트랙 A: 청결 일일 변화 (spawnMult 효과 갱신)
   dailyBigEvents(state); // 예약일이 된 빅 이벤트 발동 + 끝난 것 정리
-  dailyPopup(state);
   nightlyRecovery(state);
   dailyWorkExp(state);
   dailyTraining(state);
@@ -93,8 +89,6 @@ function onNewMonth(state: GameState, prevMonth: number, prevYear: number): void
   monthlyShop(state);
   monthlyRank(state);
   monthlyBigEvents(state); // 판정은 1일, 발동은 달 안에 퍼진다 (game-feel)
-  villageMonthly(state); // z-ending: 9월 1일 정착 등급 심사
-  festivalMonthly(state); // z-ending: 10월 1일 마을제 안내
   endingMonthly(state); // z-ending: 10년차 3월 1일 엔딩 (결산 카드 뒤) · 20년차 11월 100주년
 }
 

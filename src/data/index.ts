@@ -1,4 +1,4 @@
-import type { ObjectDef, MenuDef, GuestTypeDef, IngredientDef, FarmYield, GoalDef, BigEventDef, RoleDef, SkillDef, PromotionDef, GuestTags, ComboTarget, SetDef, ItemDef, ItemSlot, Season, MenuCategory, GuestEffect, GuestWant, UnlockCond, QuestDef, QuestCondition, QuestReward, SpotDef, SpotCategory, SpotSpecial, SpotTag, GiftDef, EventDef, MenuStats, MenuStatKey, IngredientCategory, IngredientComboDef, ToppingDef, HiddenRecipeDef, FacilityCategory, MileageShopDef, TicketShopDef, UniformDef, GuidebookDef, DrawPrizeDef, DrawPrizeKind, JudgeKey, RegionDef, NamedGuestDef, StaffPoolDef, RecruitTierDef, TrainingDef, TitleDef } from '../sim/types.ts';
+import type { ObjectDef, MenuDef, GuestTypeDef, IngredientDef, FarmYield, GoalDef, BigEventDef, RoleDef, SkillDef, PromotionDef, GuestTags, ComboTarget, SetDef, ItemDef, ItemSlot, Season, MenuCategory, GuestEffect, GuestWant, UnlockCond, QuestDef, QuestCondition, QuestReward, SpotDef, SpotCategory, SpotSpecial, SpotTag, GiftDef, EventDef, MenuStats, MenuStatKey, IngredientCategory, IngredientComboDef, ToppingDef, HiddenRecipeDef, FacilityCategory, MileageShopDef, TicketShopDef, UniformDef, GuidebookDef, DrawPrizeDef, DrawPrizeKind, JudgeKey, NamedGuestDef, StaffPoolDef, RecruitTierDef, TrainingDef, TitleDef } from '../sim/types.ts';
 import objectsJson from './objects.json' with { type: 'json' };
 import menusJson from './menus.json' with { type: 'json' };
 import guestsJson from './generated/v2/guests.json' with { type: 'json' };
@@ -40,8 +40,6 @@ import ingredientsV1Json from './generated/ingredients.json' with { type: 'json'
 import ingredientCombosJson from './generated/ingredient_combos.json' with { type: 'json' };
 import toppingsJson from './generated/toppings.json' with { type: 'json' };
 import hiddenRecipesJson from './generated/hidden_recipes.json' with { type: 'json' };
-import regionsJson from './generated/regions.json' with { type: 'json' };
-import namedGuestsJson from './generated/named_guests.json' with { type: 'json' };
 
 /** 시작부터 있는 특수 오브젝트 (필지 지형 생성용). ease: 곶자왈 덤불(bush_wild)은 없앴다 — 옛 세이브의 덤불은 로드 때 지운다. */
 const TERRAIN_OBJECTS: ObjectDef[] = [
@@ -238,9 +236,6 @@ export function adaptGuest(r: RawGuest): GuestTypeDef {
 }
 export const GUEST_TYPES: GuestTypeDef[] = (guestsJson as RawGuest[]).map(adaptGuest);
 // ---------- 지역 7 · 이름 있는 손님 56 (2B-4, generated/regions.json·named_guests.json) ----------
-export const REGIONS: RegionDef[] = regionsJson as RegionDef[];
-export const NAMED_GUESTS: NamedGuestDef[] = namedGuestsJson as NamedGuestDef[];
-export const namedGuestsOf = (regionId: string): NamedGuestDef[] => NAMED_GUESTS.filter((g) => g.regionId === regionId);
 /** 라이벌 카페 타입 6 (v2 표 §15.3) */
 /** 단골★이 본점에 올 때 쓰는 손님 타입 id. GUEST_TYPES에는 없고(스폰·도감·해금 대상 아님) guestTypeDef로만 찾는다 — 취향·예산은 NamedGuestDef가 대신한다. */
 export const NAMED_TYPE = 'named';
@@ -445,10 +440,10 @@ export const GOALS: GoalDef[] = goalsJson as unknown as GoalDef[];
 /** 도전 과제 풀 40 (§7.3) */
 /** 제주 빅 이벤트 (v3 A5) */
 export const BIG_EVENTS: BigEventDef[] = eventsV3Json as unknown as BigEventDef[];
-/** 빅 이벤트 특별 손님의 지역 id (REGIONS에는 없다 — 팝업 대상이 아니다). namedId = 'special:<eventId>' */
+/** 빅 이벤트 특별 손님의 지역 id. namedId = 'special:<eventId>' */
 export const SPECIAL_REGION = 'special';
 export const specialGuestId = (eventId: string): string => `${SPECIAL_REGION}:${eventId}`;
-/** 특별 손님 → NamedGuestDef (namedGuestDef로만 찾는다. NAMED_GUESTS·도감 56에는 안 들어간다) */
+/** 특별 손님 → NamedGuestDef */
 export const SPECIAL_GUESTS: NamedGuestDef[] = BIG_EVENTS.filter((e) => e.effects.specialGuest).map((e, i) => {
   const g = e.effects.specialGuest!;
   return { id: specialGuestId(e.id), regionId: SPECIAL_REGION, no: 100 + i, name: g.name, job: '특별 손님', line: g.line, likesBase: ['any'], likesStats: [], budget: g.budget, face: { seed: g.portraitSeed }, acc: [] };
@@ -689,9 +684,7 @@ const GOAL = indexBy(GOALS);
 const BIG_EVENT = indexBy(BIG_EVENTS);
 export const goalDef = (id: string) => must(GOAL, id, 'goal');
 export const bigEventDef = (id: string) => must(BIG_EVENT, id, 'bigEvent');
-const REGION = indexBy(REGIONS);
-const NAMED_GUEST = indexBy([...NAMED_GUESTS, ...SPECIAL_GUESTS]);
-export const regionDef = (id: string) => must(REGION, id, 'region');
+const NAMED_GUEST = indexBy(SPECIAL_GUESTS);
 export const namedGuestDef = (id: string) => must(NAMED_GUEST, id, 'namedGuest');
 
 /** 게임 시작 시 이미 열려 있는 것 (v3 §2: 시설 8종·메뉴 3종. 나머지는 목표·랭크·부탁 보상) */
