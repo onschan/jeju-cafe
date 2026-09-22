@@ -11,6 +11,7 @@ import type { GameState, PlacedObject, ComboTarget, Guest } from './types.ts';
 import cornersJson from '../data/corners.json' with { type: 'json' };
 import { guestTags, targetMatches } from '../data/index.ts';
 import { sizeOf } from './grid.ts';
+import { parcelAt } from './parcels.ts';
 import { layoutCached } from './layoutRev.ts';
 import { monthIndex, DAYS_PER_MONTH } from './clock.ts';
 import { pushNotice } from './staff.ts';
@@ -73,11 +74,15 @@ export function footDist(a: Foot, b: Foot): number {
   return Math.max(dx, dy);
 }
 
-/** 놓인(공사 끝난) 오브젝트를 종류별로 (판정 한 번당 한 번 만든다) */
-function byType(state: GameState, extra?: PlacedObject): Map<string, PlacedObject[]> {
+/** 코너 조각이 될 수 있는 오브젝트: 공사가 끝났고 내 필지 위 (안 산 필지의 옛 밭담·감귤밭은 안 센다) */
+function isPiece(state: GameState, o: PlacedObject): boolean {
+  return !o.build && !!parcelAt(state, o.x, o.y)?.owned;
+}
+/** 조각 후보를 종류별로 (판정 한 번당 한 번 만든다) */
+function byType(state: GameState, ignoreId?: string, extra?: PlacedObject): Map<string, PlacedObject[]> {
   const by = new Map<string, PlacedObject[]>();
   const add = (o: PlacedObject) => { const arr = by.get(o.type); if (arr) arr.push(o); else by.set(o.type, [o]); };
-  for (const o of Object.values(state.objects)) if (!o.build) add(o);
+  for (const o of Object.values(state.objects)) if (o.id !== ignoreId && isPiece(state, o)) add(o);
   if (extra) add(extra);
   return by;
 }
@@ -149,9 +154,7 @@ export function cornerProgress(state: GameState): CornerProgress[] {
 export function cornerIfPlaced(state: GameState, type: string, x: number, y: number, ignoreId?: string): CornerDef | null {
   const done = new Set(completedCorners(state).map((c) => c.id));
   const ghost: PlacedObject = { id: '__ghost', type, x, y, placedMonth: 0 };
-  const by = new Map<string, PlacedObject[]>();
-  for (const o of Object.values(state.objects)) if (!o.build && o.id !== ignoreId) { const arr = by.get(o.type); if (arr) arr.push(o); else by.set(o.type, [o]); }
-  { const arr = by.get(type); if (arr) arr.push(ghost); else by.set(type, [ghost]); }
+  const by = byType(state, ignoreId, ghost);
   for (const def of cornersWithPiece(type)) {
     if (done.has(def.id)) continue;
     const c = completedOf(def, by);
