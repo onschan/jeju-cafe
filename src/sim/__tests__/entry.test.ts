@@ -7,14 +7,14 @@ import { tick } from '../tick.ts';
 import { DAY_MS, HOUR_MS } from '../clock.ts';
 import { parcelPrice } from '../parcels.ts';
 import { dayIndex } from '../effects.ts';
-import { spawnGuests, hourlySpawn, updateGuests, dailyGuestCount } from '../guests.ts';
+import { spawnGuests, hourlySpawn, updateGuests, dailyGuestCount, flushParking } from '../guests.ts';
 import { guestTags } from '../../data/index.ts';
 import { conditionProgress, goalConditionText, conditionCheckers } from '../goals.ts';
 import { guestSay } from '../say.ts';
 import type { GameState, GoalCondition } from '../types.ts';
 import {
   ENTRY_ROUTES, ROUTE_IDS, entryPoints, routeConnected, routeTarget, routeSpawnPos, routeActive, routeOpened, routeState, routeStats, routeTagMult, hasRouteTag, isForeign,
-  spawnRouteWeights, routeArrivals, routeDailyCap, routeCapLeft, dailyRoutes, monthlyRoutes, routePlaceCheck, parkingSlots, parkingSites, canExpandParking, parkingExpandCost, routeShare, routeLinked, installRouteForParcel, canAutoLinkRoute, ROUTE_AUTO_SITES, PARKING_SHARE_MIN, PARKING_SHARE_MAX, OLLE_SHARE,
+  spawnRouteWeights, routeArrivals, routeDailyCap, routeCapLeft, dailyRoutes, monthlyRoutes, routePlaceCheck, parkingSlots, parkingSites, canExpandParking, parkingExpandCost, routeShare, routeLinked, installRouteForParcel, canAutoLinkRoute, ROUTE_AUTO_SITES, PARKING_SHARE_MIN, PARKING_SHARE_MAX, OLLE_SHARE, CAR_GUESTS_MIN, CAR_GUESTS_MAX,
   canSetRouteContract, routeUnlockMet, routeFacilityUnlockMet, routeAtCell, nextArrivalText, PARKING_GUESTS_PER_SLOT, SHUTTLE_FEE, CRUISE_PORT_FEE, CRUISE_EVENT,
 } from '../entry.ts';
 
@@ -350,22 +350,34 @@ test('fun P0 비중: 주차장이 이어지면 10~17시 손님의 30%(4칸)가 �
   expect(st.find((r) => r.route === 'olle')!.totalGuests).toBeGreaterThan(0);
 });
 
-test('fun P0 도착 연출: 주차장 손님은 2~4명씩 렌터카 한 대로 내리고(arrive fx), 올레꾼은 걸어오는 fx', () => {
-  const s = cafe();
-  for (let i = 1; i <= 5; i++) placeObject(s, 'table_out', X(i), Y(3));
-  placeObject(s, 'parking_lot', X(0), Y(5));
-  s.clock.hour = 6;
+test('fun P0 도착 연출: 주차장 손님은 2~4명씩 렌터카 한 대로 내리고(arrive fx), 남은 한 명은 저녁에', () => {
+  const s = createInitialState(1);
+  const site = parkingSites(s)[0]!;
+  placeObject(s, 'parking_lot', site.x, site.y);
   const arrivals: { n: number; x: number; y: number }[] = [];
   let seen = 0;
-  for (let h = 0; h < 18 * 3; h++) { // fx 큐는 최근 것만 남으니 시간마다 모은다
+  for (let h = 0; h < 18 * 5; h++) { // fx 큐는 최근 것만 남으니 시간마다 모은다
     tick(s, HOUR_MS);
     for (const f of s.fx) if (f.tick >= seen && f.kind === 'arrive' && f.route === 'parking') arrivals.push(f);
     seen = s.tick;
   }
   expect(arrivals.length).toBeGreaterThan(0);
   expect(arrivals.reduce((a, x) => a + x.n, 0)).toBe(s.routes.parking.totalGuests); // 주차장 손님은 전부 차로 내렸다
-  for (const a of arrivals) { expect(a.n).toBeGreaterThanOrEqual(1); expect(a.n).toBeLessThanOrEqual(4); expect(routeSpawnPos(s, 'parking')).toEqual({ x: a.x, y: a.y }); }
-  expect(arrivals.some((a) => a.n >= 2)).toBe(true);
+  for (const a of arrivals) { expect(a.n).toBeGreaterThanOrEqual(1); expect(a.n).toBeLessThanOrEqual(CAR_GUESTS_MAX); expect(routeSpawnPos(s, 'parking')).toEqual({ x: a.x, y: a.y }); }
+  // 모인 손님이 2명 이상이면 한 대에 함께 내린다 (직접 확인 — 작은 카페에선 하루 한 명씩 오기도 한다)
+  const t = createInitialState(2);
+  const site2 = parkingSites(t)[0]!;
+  placeObject(t, 'parking_lot', site2.x, site2.y);
+  t.clock.hour = 12;
+  routeState(t, 'parking').pending = 5;
+  const before = t.fx.length;
+  const got = flushParking(t, false);
+  const cars = t.fx.slice(before).filter((f) => f.kind === 'arrive') as { n: number }[];
+  expect(got).toBe(CAR_GUESTS_MAX); // 4명이 한 대로
+  expect(cars.map((c) => c.n)).toEqual([CAR_GUESTS_MAX]);
+  expect(routeState(t, 'parking').pending).toBe(1); // 남은 1명은 다음 차를 기다린다
+  expect(flushParking(t, true)).toBe(1); // 저녁엔 남은 한 명도 태워 보낸다
+  expect(routeState(t, 'parking').pending).toBe(0);
 });
 
 test('fun P0 땅을 사면 경로가 열린다: 서쪽 밭담 골짜기 → 올레 표식(3,11)+진입점 올렛길 무료, 남쪽 샘터 → 셔틀 정류장, 북쪽 곶자왈 → 선착장(★ 무관), 장면 창 한 줄', () => {

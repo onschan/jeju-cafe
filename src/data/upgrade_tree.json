@@ -50,7 +50,7 @@
           }
         },
         {
-          "type": "observatory",
+          "type": "open_air_footbath",
           "need": {
             "grade": 3,
             "corners": 1
@@ -66,23 +66,25 @@
       "street": "매대 골목",
       "steps": [
         {
-          "type": "lemonade_cart"
+          "type": "omegi_stall"
         },
         {
-          "type": "food_vending",
-          "need": {}
-        },
-        {
-          "type": "souvenir",
+          "type": "tart_bakery",
           "need": {
             "grade": 2
           }
         },
         {
-          "type": "tart_bakery",
+          "type": "brunch_house",
           "need": {
             "grade": 3,
             "star": 2
+          }
+        },
+        {
+          "type": "fine_dining",
+          "need": {
+            "grade": 4
           }
         }
       ]
@@ -98,11 +100,11 @@
           "type": "flower_bed"
         },
         {
-          "type": "deco_flower_pots",
+          "type": "camellia",
           "need": {}
         },
         {
-          "type": "hydrangea",
+          "type": "palm",
           "need": {
             "grade": 2
           }
@@ -131,7 +133,7 @@
           "need": {}
         },
         {
-          "type": "lantern_path",
+          "type": "deco_string_lights",
           "need": {
             "grade": 2
           }

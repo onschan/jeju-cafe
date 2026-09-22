@@ -1,4 +1,5 @@
 import { bareState } from './helpers.ts';
+import { cafeScenery, sceneryMultOf } from '../appeal.ts'; // fun: 경관 → 관광객 배수
 import { X, Y } from './helpers.ts';
 import { placeObject } from '../grid.ts';
 import { setSlot } from '../menu.ts';
@@ -215,8 +216,8 @@ test('효과 DSL: 손님 배수(전체·필터)·손님 0·수확·유지비·�
   applyEventEffect(s, { kind: 'spawnMult', mult: 2, days: 3 }, 't');
   expect(dailyGuestCount(s)).toBe(Math.min(totalSeats(s) * GUESTS_PER_SEAT, base * 2)); // 좌석 × 6 상한
   applyEventEffect(s, { kind: 'spawnMult', mult: 3, days: 3, filter: 'senior' }, 't');
-  expect(typeWeight(s, 'local_auntie', 12)).toBeCloseTo(5 * 1.6 * 3);
-  expect(typeWeight(s, 'student', 10)).toBeCloseTo(5 * 1.4); // 청년엔 안 걸림
+  expect(typeWeight(s, 'local_auntie', 12)).toBeCloseTo(5 * 1.6 * 3); // 삼춘은 동네 손님이라 경관 배수가 없다
+  expect(typeWeight(s, 'student', 10)).toBeCloseTo(5 * 1.4 * sceneryMultOf(cafeScenery(s))); // 청년엔 안 걸림 · fun 경관 배수(관광객)
   expect(filterMatches('family', 'rentcar_family')).toBe(true);
   expect(filterMatches({ guestId: 'couple' }, 'couple')).toBe(true);
   expect(filterMatches('tourist', 'local_auntie')).toBe(false);

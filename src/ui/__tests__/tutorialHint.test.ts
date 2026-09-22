@@ -75,7 +75,7 @@ test('solver: 추천 행동 포커스(setGuideFocus)는 같은 상태 키에서�
   s.money += 1_000_000;
   const t2 = tutorialTargets(s);
   expect(t2.guide).toBeUndefined();
-  expect(t2.targets).toEqual(['nav:build', 'tab:rest', 'build:table_out']);
+  expect(t2.targets).toEqual(['nav:build', 'tile:seat', 'tab:rest', 'build:table_out', 'build-go']); // fun: 짓기 6타일
   setGuideFocus(null);
   setSolverResult(null);
 });

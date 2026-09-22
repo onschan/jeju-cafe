@@ -188,9 +188,9 @@ export const BUILD_TILES: BuildTile[] = [
 /** 타일별 하위 목록에 넣을 종류 (기본 시설·트리 단계·서비스 시설·유입 시설) — 전체 목록은 탭이 맡는다 */
 export const TILE_TYPES: Record<Exclude<BuildTileId, 'all' | 'building'>, string[]> = {
   seat: ['table_out', 'table_parasol', 'terrace_seat', 'oreum_bench', 'table_big', 'rest_pavilion'],
-  service: ['lemonade_cart', 'food_vending', 'souvenir', 'tart_bakery', 'restroom', 'staff_room', 'kitchen_ext', 'cleaning_room', 'storage', 'wifi_zone'],
-  charm: ['flower_bed', 'deco_flower_pots', 'hydrangea', 'pond', 'deco_wood_bench', 'hammock', 'cauldron_footbath', 'observatory', 'stonewall', 'signboard', 'cherry_tree'],
-  inflow: ['parking_lot', 'path', 'gate', 'garden_lamp', 'streetlight', 'lantern_path', 'lighthouse', 'olle_sign', 'shuttle_stop', 'pier'],
+  service: ['omegi_stall', 'tart_bakery', 'brunch_house', 'fine_dining', 'restroom', 'staff_room', 'kitchen_ext', 'cleaning_room', 'storage', 'wifi_zone'],
+  charm: ['flower_bed', 'camellia', 'palm', 'pond', 'deco_wood_bench', 'hammock', 'cauldron_footbath', 'open_air_footbath', 'stonewall', 'signboard', 'cherry_tree'],
+  inflow: ['parking_lot', 'path', 'gate', 'garden_lamp', 'streetlight', 'deco_string_lights', 'lighthouse', 'olle_sign', 'shuttle_stop', 'pier'],
 };
 
 // ---------- 병목 (타일 배지) ----------

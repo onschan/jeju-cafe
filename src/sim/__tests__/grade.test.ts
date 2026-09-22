@@ -128,7 +128,7 @@ test('목표 사다리 새 조건: 등급·코너·단골·2층·평판·전설 
   s.reputation = 81.4;
   expect(conditionProgress(s, { type: 'reputation', n: 80 })).toEqual({ cur: 81, max: 80 });
   expect(conditionProgress(s, { type: 'legendStaff', n: 1 })).toEqual({ cur: 0, max: 1 });
-  expect(conditionProgress(s, { type: 'routesOpen', n: 4 })).toEqual({ cur: 0, max: 4 });
+  expect(conditionProgress(s, { type: 'routesOpen', n: 4 })).toEqual({ cur: 1, max: 4 }); // fun P0: 주차장은 처음부터 열린 경로
   expect(conditionProgress(s, { type: 'regulars', n: 30 }).max).toBe(30);
   expect(goalConditionText({ type: 'grade', n: 4 })).toBe('등급 「제주 명소」');
   expect(goalConditionText({ type: 'corners', n: 5 })).toBe('코너 5개');

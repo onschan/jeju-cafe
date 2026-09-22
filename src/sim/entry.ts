@@ -69,6 +69,8 @@ export const PARKING_SHARE_MIN = 0.30;
 export const PARKING_SHARE_MAX = 0.45;
 export const PARKING_SHARE_PER_SLOT = 0.0375; // 4칸 넘는 칸마다 (6칸 = 37.5%, 8칸 = 45%)
 export const OLLE_SHARE = 0.20;
+/** 남은 주차장 손님을 한 대로 태워 보내는 시각 (그 전엔 2~4명이 찰 때까지 기다린다) */
+export const PARKING_FLUSH_HOUR = 20;
 /** 렌터카 한 대에 내리는 손님 수 (주차장 손님은 모아서 차 한 대로 온다) */
 export const CAR_GUESTS_MIN = 2;
 export const CAR_GUESTS_MAX = 4;

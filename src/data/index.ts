@@ -292,7 +292,7 @@ export const FARM_YIELDS: Record<string, FarmYield> = {
   tea_field: { ingredientId: 'tea', perMonth: 4 },
 };
 /** v3 시작 시 열려 있는 시설 8종 (§2 해금 리듬). v2 표에서 unlock이 start인 나머지는 목표 보상으로만 열린다({ type: 'goal' }). */
-export const START_OBJECT_IDS = ['table_out', 'table_in', 'table_parasol', 'deco_planter', 'deco_wood_bench', 'stonewall', 'path', 'tangerine_tree', 'gate', 'streetlight', 'garden_lamp', 'flower_bed', 'signboard', 'railing', 'shell_deco', 'telescope', 'cherry_tree', 'parking_lot', 'lemonade_cart']; // fun P0: 주차장은 처음부터 (₩120만) — 렌터카 손님이 동쪽에서 온다 · fun 트리: 매대 기본(레몬에이드 카트)도 처음부터 // fix-indoor: 가로등·정원등은 처음부터 (밤 조명) // w-free: 정낭은 길·담 탭의 일반 시설(₩5만, 이동·철거·추가 가능)
+export const START_OBJECT_IDS = ['table_out', 'table_in', 'table_parasol', 'deco_planter', 'deco_wood_bench', 'stonewall', 'path', 'tangerine_tree', 'gate', 'streetlight', 'garden_lamp', 'flower_bed', 'signboard', 'railing', 'shell_deco', 'telescope', 'cherry_tree', 'parking_lot', 'omegi_stall']; // fun P0: 주차장은 처음부터 (₩120만) — 렌터카 손님이 동쪽에서 온다 · fun 트리: 매대 기본(오메기떡 매대)도 처음부터 // fix-indoor: 가로등·정원등은 처음부터 (밤 조명) // w-free: 정낭은 길·담 탭의 일반 시설(₩5만, 이동·철거·추가 가능)
 /** v2 시설 표 → ObjectDef. 쉼 → seat, 편의·먹거리·즐길거리·농사 → facility, 경관 → deco, 랜드마크 → landmark. 방은 building. 농원은 경관(deco)+yield. */
 export function adaptFacility(r: RawFacility): ObjectDef {
   const room = ROOM_IDS.has(r.id);
