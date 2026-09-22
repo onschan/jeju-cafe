@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { Icon } from '../Icon';
 import type { GameState, ObjectDef } from '../../sim/index.ts';
-import { placeCost, constructions, canStartBuild, goalForFacility, isUpgradable, tierOf, mainBuilding, MAIN_TYPE, BUILD_TILES, TILE_TYPES, tileBadges, seatUseRate, totalSeats, cafeScenery, treeOf, sceneryGainText, routeTakesGuests, ROUTE_IDS, gradeOf, type BuildTileId } from '../../sim/index.ts';
+import { placeCost, constructions, canStartBuild, goalForFacility, isUpgradable, tierOf, mainBuilding, MAIN_TYPE, BUILD_TILES, TILE_TYPES, tileBadges, seatUseRate, STREET_BONUS_PCT, totalSeats, cafeScenery, treeOf, sceneryGainText, routeTakesGuests, ROUTE_IDS, gradeOf, type BuildTileId } from '../../sim/index.ts';
 import { OBJECTS, objectDef } from '../../data/index.ts';
 import { unlockText, wonText } from '../../data/labels.ts';
 import { loadSheet, drawFrame, type Sheet } from '../sheetCanvas';
@@ -178,7 +178,7 @@ export function BuildWindow(props: BuildWindowProps) {
       {!tileMode && activeTab === 'building' && <div style={{ ...soft, marginBottom: 6 }} data-testid="build-main-hint"><Icon name="home" size={14} /> {MAIN_CARD_HINT}</div>}
       {!tileMode && activeTab === 'indoor' && <div style={{ ...soft, marginBottom: 6 }}><Icon name="home" size={14} /> 실내 가구는 건물(본관·별관) 안 바닥에만 놓아요 — 문 칸은 비워 둬요</div>}
       {!tileMode && activeTab === 'corner' && <CornerTab s={s} onPickBuild={props.onPickBuild} />}
-      {tileMode && <div style={{ ...soft, marginBottom: 6 }}><Icon name="bulb" size={14} /> 기본을 놓고, 시설 카드에서 같은 자리 「업그레이드 ▲」로 키워요{tileMode === 'seat' ? ' · 파라솔 이상 3개를 이으면 테라스 거리 +10%' : ''}</div>}
+      {tileMode && <div style={{ ...soft, marginBottom: 6 }}><Icon name="bulb" size={14} /> 기본을 놓고, 시설 카드에서 같은 자리 「업그레이드 ▲」로 키워요{tileMode === 'seat' ? ` · 파라솔 이상 3개를 이으면 테라스 거리 +${STREET_BONUS_PCT}%` : ''}</div>}
       {(tileMode || activeTab !== 'corner') && items.length === 0 && <Empty>아직 여기엔 지을 게 없어요</Empty>}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
         {items.map(({ def, locked }) => {

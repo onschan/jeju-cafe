@@ -57,7 +57,7 @@ export const MAX_DAILY_GUESTS = 300;
 export const GUESTS_PER_SEAT = 6;
 export const BASE_DAILY_GUESTS = 4;
 export const POP_SUM_PER_GUEST = 21;
-export const FACILITY_POP_PER_GUEST = 19; // fun 통합: 콤보 68→12 축소(fun-corner)로 1년차 하반기 손님이 −15%라 적자 달이 5회로 늘어 21 → 19 (seed 1~3 적자 4·3·4, 3년차 5,420·3,676·2,569만). game-feel P1: 봇이 부탁·명당·도전으로 시설을 더 짓게 되어(3년 122 → 140개+) 16이면 3년차 말 자금이 7,000~9,000만 → 21 (§4.6 레버 #1, seed 1~3: 6,259·6,306·2,821만)
+export const FACILITY_POP_PER_GUEST = 18; // fun 통합: 콤보 68→12 축소(fun-corner)로 1년차 손님이 줄어 21 → 18 (seed 1~3 적자 4·2·2, 3년차 4,191·4,740·5,434만, 5년차 KPI 통과). game-feel P1: 봇이 부탁·명당·도전으로 시설을 더 짓게 되어(3년 122 → 140개+) 16이면 3년차 말 자금이 7,000~9,000만 → 21 (§4.6 레버 #1, seed 1~3: 6,259·6,306·2,821만)
 /** 명소 하루 방문객(spots.dailyVisitors = 매력 × 2, 투어 버스 ×1.3) × VISITOR_GUEST_RATE(3%)가 하루 손님으로 유입 — 명소 투자가 손님 수의 큰 축 (§4.2 #1 "인기·명소 기반값") */
 /** 대기열: 빈 자리가 없으면 3명까지 기다리고, 넘치면 돌아간다(그 손님층 만족 −10) — §4.3 웨이팅 */
 export const WAIT_MAX = 3;

@@ -62,7 +62,7 @@ describe('업그레이드 트리 (fun: 부루마블처럼 같은 자리에서)',
     expect(treeOf('terrace_seat')).toEqual({ tree: TREES[0], index: 2 });
   });
 
-  it('거리 보너스: 파라솔 이상 3개를 가로로 이으면 그 줄 전부 요금 ×1.10 — 기본 야외 테이블 줄은 안 센다', () => {
+  it('거리 보너스: 파라솔 이상 3개를 가로로 이으면 그 줄 전부 요금이 오른다 — 기본 야외 테이블 줄은 안 센다', () => {
     const s = bareState(1);
     const a = placeObject(s, 'table_out', X(2), Y(2));
     placeObject(s, 'table_out', X(3), Y(2));

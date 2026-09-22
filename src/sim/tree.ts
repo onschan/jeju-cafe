@@ -3,7 +3,7 @@
  * - 트리 5종(data/upgrade_tree.json): 자리·놀거리·매대·정원·조명. steps[0]이 짓기 타일이 놓는 기본 시설, 다음 단계는 놓인 시설 카드 「업그레이드 ▲」로
  *   같은 원점에서 종류가 바뀐다(부루마블 집→빌라→호텔). 비용 = 건설비 차액, 공사 기간은 새 단계 것. 단계마다 조건(등급·★·코너).
  * - 트리 단계는 unlocked.objects 해금과 무관하게 조건만 맞으면 올릴 수 있다(선택지 대신 업그레이드). 기존 증축 Lv1~3(upgrade.ts)은 트리에 없는 시설에만 보인다.
- * - 「거리」 보너스: 같은 트리의 시설이 가로·세로로 3개 이상 이어지면(발자국 변 맞댐) 그 줄 전부 요금·이용료 +10% (부루마블 같은 색 독점).
+ * - 「거리」 보너스: 같은 트리의 2단계 이상 시설이 가로·세로로 3개 이상 이어지면(발자국 변 맞댐) 그 줄 전부 요금·이용료 +STREET_BONUS_PCT% (부루마블 같은 색 독점).
  * - 「이 자리에서 올리면 +₩n/일」: solver.evaluate(14일 롤아웃)의 자금 차이를 하루로 나눈 값 (upgradeGain).
  * 결정적: rng 안 씀.
  */
@@ -34,7 +34,7 @@ for (const t of TREES) t.steps.forEach((st, i) => STEP_OF.set(st.type, { tree: t
 
 /** 「거리」 보너스: 같은 트리의 2단계 이상(파라솔 테이블부터 — 기본 야외 테이블 줄은 안 센다, 1년차 밴드) 시설이 한 줄로 STREET_MIN개 이상이면 요금 +STREET_BONUS_PCT% */
 export const STREET_MIN = 3;
-export const STREET_BONUS_PCT = 10;
+export const STREET_BONUS_PCT = 5; // 10%면 5년차 자금이 3억(KPI 2억 초과)이라 5%
 export const STREET_MIN_STEP = 1;
 
 export function treeDef(id: TreeId): TreeDef {
@@ -156,7 +156,7 @@ export function streetLength(state: GameState, obj: PlacedObject): number {
 export function streetFeeMult(state: GameState, obj: PlacedObject): number {
   return streetLength(state, obj) >= STREET_MIN ? 1 + STREET_BONUS_PCT / 100 : 1;
 }
-/** 거리 문구 (카드): "테라스 거리 3칸 · 요금 +10%" / "하나 더 이으면 거리 보너스" */
+/** 거리 문구 (카드): "테라스 거리 3칸 · 요금 +5%" / "하나 더 이으면 거리 보너스" */
 export function streetText(state: GameState, obj: PlacedObject): string {
   const t = treeOf(obj.type);
   if (!t) return '';
