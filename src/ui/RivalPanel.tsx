@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { ButtonGroup } from './ButtonGroup';
 import { useGame, dispatch } from './store';
-import { rivalMonths, rivalPower, judgeBreakdown, challengeOdds, canChallenge, menuStatsOf, menuOf, rivalStatPenaltyPct, josa, RIVAL_LEAVE_MONTHS, JUDGE_LUCK, type RivalState, RIVAL_START_YEAR, type MenuStatKey } from '../sim/index.ts';
+import { rivalMonths, rivalPower, judgeBreakdown, challengeOdds, canChallenge, menuStatsOf, menuOf, rivalStatPenaltyPct, josa, RIVAL_LEAVE_MONTHS, JUDGE_LUCK, type RivalState, RIVAL_START_YEAR, type MenuStatKey, challengeChances, challengeTitleBonus, chanceText } from '../sim/index.ts';
 import { rivalDef, namedGuestDef, MENU_STAT_LABEL } from '../data/index.ts';
 import { Popup } from './Popup';
 import { Bar } from './Bars';
@@ -19,6 +19,8 @@ function ChallengePicker({ r, onClose }: { r: RivalState; onClose: () => void })
   const bd = menuId ? judgeBreakdown(def, menuStatsOf(s, menuId)) : null;
   const odds = menuId ? challengeOdds(s, r.id, menuId) : 0;
   const can = menuId ? canChallenge(s, r.id, menuId) : { ok: false, reason: '메뉴가 없어요' };
+  const luck = challengeChances(s); // staff-luck: 대박이면 운 최대, 쪽박이면 운 0
+  const titleBonus = challengeTitleBonus(s);
   return (
     <div style={{ marginTop: 8, borderTop: `2px solid ${PALETTE.woodLight}`, paddingTop: 6 }} data-testid="challenge-picker">
       <div style={{ fontSize: 13, marginBottom: 6 }}>심사 기준: {Object.entries(def.judge).map(([k, w]) => `${MENU_STAT_LABEL[k as MenuStatKey]} ${Math.round((w ?? 0) * 100)}%`).join(' · ')} · 라이벌 점수 <b>{power}</b> (+ 우리 운 0~{JUDGE_LUCK})</div>
@@ -27,7 +29,8 @@ function ChallengePicker({ r, onClose }: { r: RivalState; onClose: () => void })
       {bd && (
         <div style={{ fontSize: 13, marginTop: 4 }}>
           {Object.entries(bd.breakdown).map(([k, v]) => `${MENU_STAT_LABEL[k as MenuStatKey]} ${v}`).join(' · ')}
-          <div style={{ marginTop: 2 }}>예상 <b>{bd.total}</b> vs {power} · 승산 <b style={{ color: odds >= 0.5 ? PALETTE.ok : PALETTE.bad }}>{Math.round(odds * 100)}%</b>{!can.ok && <span style={{ color: PALETTE.bad }}> · {can.reason}</span>}</div>
+          <div style={{ marginTop: 2 }}>예상 <b>{bd.total}</b>{titleBonus > 0 ? ` (+칭호 ${titleBonus})` : ''} vs {power} · 승산 <b style={{ color: odds >= 0.5 ? PALETTE.ok : PALETTE.bad }}>{Math.round(odds * 100)}%</b>{!can.ok && <span style={{ color: PALETTE.bad }}> · {can.reason}</span>}</div>
+          <div style={{ marginTop: 2, color: PALETTE.inkSoft }}>판정 {chanceText(luck.chances)}{luck.staff ? ` · ${luck.staff.name} 기준` : ''} — 대박이면 운 {JUDGE_LUCK} 확정, 쪽박이면 운 0</div>
         </div>
       )}
       <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>

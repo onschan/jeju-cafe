@@ -1,6 +1,6 @@
 import { assetUrl } from './assetUrl';
 
-export type SfxName = 'tap' | 'place' | 'remove' | 'plant' | 'harvest' | 'coin' | 'happy' | 'meh' | 'unlock' | 'month' | 'fanfare' | 'error' | 'bus';
+export type SfxName = 'tap' | 'place' | 'remove' | 'plant' | 'harvest' | 'coin' | 'happy' | 'meh' | 'unlock' | 'month' | 'fanfare' | 'error' | 'bus' | 'drumroll'; // drumroll: 대박/중박/쪽박 룰렛 긴장음 (staff-luck)
 export type BgmName = 'spring' | 'summer' | 'autumn' | 'winter' | 'title' | 'intro'; // intro: 프롤로그 1~3컷 잔잔한 단조
 
 const MUTE_KEY = 'jeju-cafe:muted';
@@ -50,7 +50,7 @@ export function unlockAudio(): void {
   bgmGain = ctx.createGain(); bgmGain.gain.value = volToGain(bgmVolume); bgmGain.connect(master);
   sfxGain = ctx.createGain(); sfxGain.gain.value = volToGain(sfxVolume); sfxGain.connect(master);
   void ctx.resume();
-  for (const n of ['tap', 'place', 'remove', 'plant', 'harvest', 'coin', 'happy', 'meh', 'unlock', 'month', 'fanfare', 'error', 'bus']) void load(assetUrl(`assets/sfx/${n}.m4a`));
+  for (const n of ['tap', 'place', 'remove', 'plant', 'harvest', 'coin', 'happy', 'meh', 'unlock', 'month', 'fanfare', 'error', 'bus', 'drumroll']) void load(assetUrl(`assets/sfx/${n}.m4a`));
 }
 
 export function sfx(name: SfxName): void {

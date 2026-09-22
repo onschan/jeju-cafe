@@ -17,6 +17,7 @@ import { startSolverLoop } from './solverClient';
 import { useTutorialHighlight, useSpotlightPref, setSpotlightOn } from './tutorialHighlight';
 import { SiteOverlayChip } from './SiteToggle';
 import { RewardPopup } from './RewardPopup';
+import { OutcomePopup } from './OutcomePopup'; // staff-luck: 대박/중박/쪽박 룰렛
 import { checkAlerts } from './alertDialogue.ts';
 import { guestSay, staffSay } from './simBridge';
 import { BuildWindow } from './windows/BuildWindow.tsx';
@@ -771,6 +772,7 @@ function Game({ onExit }: { onExit: () => void }) {
       {guestPopup && <GuestPopup guestId={guestPopup} onClose={() => setGuestPopup(null)} onQuest={(id) => { dispatch({ type: 'acceptQuest', id }); setWin({ kind: 'people', tab: 'quests' }); }} />}
       {renderWindow()}
       <RewardPopup />
+      <OutcomePopup />
       <EndingScreen onExit={onExit} />
       <DialogueHost />
     </div>

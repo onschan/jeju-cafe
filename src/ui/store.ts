@@ -89,14 +89,14 @@ const ACTION_SFX: Record<Action['type'], SfxName> = {
   setSlot: 'tap', setSpeed: 'tap', dismissAlert: 'tap', dismissMonthCard: 'tap',
   postJob: 'tap', hire: 'tap', fire: 'tap', assign: 'tap', levelUp: 'tap', train: 'unlock', promote: 'tap', setTarget: 'tap',
   move: 'place', rotate: 'tap', demolishMany: 'remove', undoLast: 'tap', renameObject: 'tap', setTargets: 'tap', upgradeObject: 'unlock', repairObject: 'place', buyParcel: 'unlock', useItem: 'unlock', renameCafe: 'tap', expand: 'unlock', setCosmetic: 'tap', praise: 'happy',
-  acceptQuest: 'tap', respondEvent: 'tap', investSpot: 'unlock', hostTour: 'fanfare', dismissTour: 'tap', setTourBus: 'tap', giveGift: 'happy', craftGift: 'unlock',
+  acceptQuest: 'tap', respondEvent: 'tap', investSpot: 'unlock', hostTour: 'tap', dismissTour: 'tap', setTourBus: 'tap', giveGift: 'tap', craftGift: 'unlock',
   develop: 'unlock', dismissDevelop: 'tap', addTopping: 'tap', removeTopping: 'tap', levelUpMenu: 'unlock',
   buyMileage: 'coin', buyTicket: 'coin', drawTicket: 'tap', dismissDraw: 'tap', setUniform: 'tap', useGuestItem: 'unlock', dismissAnnouncement: 'tap',
-  openPopup: 'unlock', closePopup: 'tap', challenge: 'fanfare', dismissChallenge: 'tap', acceptChallenge: 'unlock', skipTutorial: 'tap', skipTutorialChapter: 'tap', tutorialNote: 'tap',
+  openPopup: 'unlock', closePopup: 'tap', challenge: 'tap', dismissChallenge: 'tap', dismissOutcome: 'tap', acceptChallenge: 'unlock', skipTutorial: 'tap', skipTutorialChapter: 'tap', tutorialNote: 'tap',
   setRouteContract: 'unlock', expandParking: 'place', // 트랙 H
   placeMain: 'fanfare', expandMain: 'unlock', buildSecondFloor: 'unlock', moveMain: 'place', undoMoveMain: 'tap', toggleFireplace: 'tap', setPianoTime: 'tap', setBgm: 'tap', setLighting: 'tap', feedAquarium: 'happy', restockKids: 'coin', setBarEvening: 'tap', addBooks: 'unlock', // y-indoor
   continueEnding: 'fanfare', donateVillage: 'coin', holdFestival: 'fanfare', // z-ending
-};
+}; // 홍보·투어·대결·선물은 룰렛 팝업(OutcomePopup)이 drumroll → fanfare/coin/error를 낸다 (staff-luck)
 
 export function dispatch(a: Action): ApplyResult {
   const r = apply(state, a);
@@ -248,6 +248,7 @@ export function startLoop(render: (s: GameState) => void): () => void {
   let prevMonthCard: GameState['lastMonthCard'] = state.lastMonthCard;
   // 장면 fx: 지난 프레임의 state.tick 이상인 항목이 새것 (GameView.syncFx와 같은 규칙). 불러오기 직후 밀린 것은 건너뛴다.
   let sceneSeenTick = state.tick;
+  const seenScenes = new WeakSet<object>(); // 멈춘 상태(speed 0)에서는 tick이 안 올라 같은 장면 fx가 매 프레임 다시 걸린다 — 한 번 띄운 항목은 건너뛴다 (staff-luck: 프로·전설 지원자 장면 창)
 
   const detectSounds = () => {
     const moods = new Map<string, Mood | null>();
@@ -270,7 +271,7 @@ export function startLoop(render: (s: GameState) => void): () => void {
     prevMonthCard = state.lastMonthCard;
     const since = sceneSeenTick;
     sceneSeenTick = state.tick;
-    if (since <= state.tick) for (const e of state.fx ?? []) if (e.kind === 'scene' && e.tick >= since) sceneHook?.(state, e.title, e.text);
+    if (since <= state.tick) for (const e of state.fx ?? []) if (e.kind === 'scene' && e.tick >= since && !seenScenes.has(e)) { seenScenes.add(e); sceneHook?.(state, e.title, e.text); }
     const season = seasonOf(state.clock.month);
     if (season !== prevSeason) { prevSeason = season; void bgm(season); }
   };

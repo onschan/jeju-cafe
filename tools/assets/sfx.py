@@ -1,4 +1,4 @@
-"""8비트 효과음 13개 → public/assets/sfx/{name}.m4a"""
+"""8비트 효과음 14개 → public/assets/sfx/{name}.m4a"""
 import os, sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from synth import Synth, write_wav, to_m4a, soften
@@ -20,6 +20,16 @@ def seq(s, bufs):
         parts.append((b, t))
         t += len(b) / 22050
     return s.mix(parts)
+
+
+def drum_times(total):
+    """점점 빨라지는 타격 시각: 간격 0.12s → 0.04s"""
+    out, t, gap = [], 0.0, 0.12
+    while t < total:
+        out.append(t)
+        t += gap
+        gap = max(0.04, gap * 0.92)
+    return out
 
 
 def build():
@@ -96,6 +106,11 @@ def build():
             (s.noise(0.5, 0.25, env=(0.05, 0.1, 0.7, 0.2), lowpass=0.9), 0),
             (s.tone('C3', 0.5, 'triangle', 0.2, env=(0.05, 0.1, 0.7, 0.2)), 0),
         ]),
+        # 드럼롤(대박/중박/쪽박 룰렛, 1.2초): 짧은 노이즈 타격이 점점 빨라지며 반음씩 오르는 저음
+        'drumroll': s.mix(
+            [(s.noise(0.04, 0.3, env=(0.002, 0.01, 0.5, 0.02), lowpass=0.6), t) for t in drum_times(1.2)]
+            + [(s.tone(n, 0.3, 'triangle', 0.15, env=(0.01, 0.05, 0.6, 0.05)), i * 0.3) for i, n in enumerate(['C3', 'C#3', 'D3', 'D#3'])]
+        ),
     }
     for name, buf in recipes.items():
         buf = normalize(soften(buf, 0.3, 2), PEAK_OVERRIDE.get(name, PEAK))

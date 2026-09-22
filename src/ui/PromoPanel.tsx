@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { wonText } from '../data/labels.ts';
 import { josa } from '../sim/josa.ts';
 import { useGame, dispatch } from './store';
-import { canPromote, effectivePopularity, MAX_ACTIVE_PROMOTIONS, PARTTIME_MONEY, APOLOGY_REPUTATION, type PromotionDef } from '../sim/index.ts';
+import { canPromote, effectivePopularity, MAX_ACTIVE_PROMOTIONS, PARTTIME_MONEY, APOLOGY_REPUTATION, promoChances, chanceText, outcomeChances, bestStaffFor, type PromotionDef } from '../sim/index.ts';
+import { TitleRibbon } from './TitleBadge'; // staff-luck
 import { PROMOTIONS, GUEST_TYPES, promotionDef } from '../data/index.ts';
 import { Icon } from './Icon';
 import { Confirm } from './Popup';
@@ -79,12 +80,12 @@ export function PromoPanel() {
       )}
 
       {/* 직원 고르기 */}
-      <div style={{ marginBottom: 4 }}><b>누가 갈까?</b></div>
+      <div style={{ marginBottom: 4 }}><b>누가 갈까?</b> <span style={{ fontSize: 13, color: PALETTE.inkSoft }}>홍보는 대박·성공·쪽박이 갈려요 — 미소가 높고 기력이 남은 직원일수록 대박{(() => { const b = bestStaffFor(s, 'promo'); return b ? ` · 추천 ${b.name}` : ''; })()}</span></div>
       {s.staff.length === 0 && <div style={{ fontSize: 13, color: PALETTE.inkSoft, marginBottom: 6 }}>홍보는 직원이 해요. 먼저 직원을 뽑아요.</div>}
       <div style={{ display: 'flex', flexWrap: 'wrap' }}>
         {s.staff.map((st) => (
           <button key={st.id} style={{ ...(staff?.id === st.id ? brownBtnOn : brownBtn), fontSize: 13, textAlign: 'left' }} onClick={() => setPicked(st.id)}>
-            <Face face={st.face} />{st.name}<br /><EnergyBar energy={st.energy} />
+            <Face face={st.face} />{st.name}<br /><EnergyBar energy={st.energy} /><br /><TitleRibbon titleId={st.title} size="sm" /><span style={{ fontSize: 12 }} data-testid={`promo-luck-${st.id}`}>대박 {Math.round(outcomeChances(s, 'promo', st).great * 100)}%</span>
           </button>
         ))}
       </div>
@@ -93,12 +94,14 @@ export function PromoPanel() {
       <div style={{ marginBottom: 4 }}><b>홍보 활동</b></div>
       {PROMOTIONS.map((d) => {
         const ok = staff !== null && canPromote(s, staff.id, d.id).ok;
+        const luck = staff ? promoChances(s, staff.id, d.id) : null; // staff-luck: 시키기 전에 확률 미리 보기
         return (
           <div key={d.id} style={{ ...card, display: 'flex', alignItems: 'center', gap: 8 }}>
             <div style={{ flex: 1 }}>
               <div><b>{d.name}</b></div>
               <div style={{ fontSize: 13, color: PALETTE.inkSoft }}>{effectText(d)}</div>
               {costText(d)}
+              {luck && <div style={{ fontSize: 13, color: PALETTE.inkSoft }} data-testid={`promo-chance-${d.id}`}>{chanceText(luck)}</div>}
             </div>
             <button data-tut={d.id === 'flyer' ? 'promote' : undefined} style={{ ...(ok ? brownBtn : brownBtnOff), marginBottom: 0, marginRight: 0 }} disabled={!ok} onClick={() => run(d)} aria-label={`${d.name} 실행`}>실행</button>
           </div>

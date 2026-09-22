@@ -29,6 +29,7 @@ export function MonthCard() {
   for (const [id, gt] of Object.entries(s.guestTypes)) if (gt.unlocked && gt.satisfaction > best) { best = gt.satisfaction; bestType = id; }
   if (bestType) highlights.push(`가장 만족한 손님층: ${label('guest', bestType)} (${best})`);
   if (opened.current.length > 0) highlights.push(`새로 열림: ${opened.current.join(' · ')}`);
+  if ((c.greatServes ?? 0) > 0) highlights.push(`서빙 대박 ${c.greatServes}번 — 손님이 「최고!」라며 팁을 남겼어요`); // staff-luck
 
   const g = currentGoal(s);
   const tip = g ? `다음 목표는 「${g.title}」 — ${g.desc || goalConditionText(g.condition)}` : '목표를 다 이뤘어요. 마음껏 카페를 키워 보세요.';
