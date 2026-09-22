@@ -3,7 +3,8 @@
  *
  * - 액션(배치·철거·이동·회전·증축·되돌리기·주차장 넓히기 …)은 전부 actions.ts apply()를 지나므로 성공할 때 rev를 올린다.
  * - 날이 바뀔 때 일어나는 변화(공사 완공·본관 증축/이사 완료·경로 시설 해금)는 dayIndex가 덮는다.
- * - nextId는 apply를 거치지 않고 placeObject를 직접 부른 경우(테스트·초기 배치)를 덮는다.
+ * - apply를 거치지 않고 placeObject/removeObject를 직접 부른 경우(테스트·초기 배치)도 occupy/vacate가 rev를 올린다.
+ *   (solver: 예전엔 nextId도 키에 넣었는데 손님 스폰마다 `g${nextId++}`로 서명이 바뀌어 site·compat·reach 캐시가 매시간 무효화됐다 — 빼니 하루 tick 6.7ms → 2.9ms, 봇 3년 결과 동일)
  *
  * rev는 저장하지 않는다(WeakMap). 캐시도 전부 state 객체를 키로 한 WeakMap이라 새로 불러온 state는 새 캐시를 쓴다.
  */
@@ -17,10 +18,10 @@ export function bumpLayoutRev(state: GameState): void {
   REV.set(state, (REV.get(state) ?? 0) + 1);
 }
 
-/** 배치 캐시 키. 같으면 오브젝트 배치·크기·공사 상태가 그대로라고 본다. */
+/** 배치 캐시 키 (rev:날). 같으면 오브젝트 배치·크기·공사 상태가 그대로라고 본다. */
 export function layoutSig(state: GameState): string {
   const c = state.clock;
-  return `${REV.get(state) ?? 0}:${monthIndex(c) * DAYS_PER_MONTH + (c.day - 1)}:${state.nextId}`;
+  return `${REV.get(state) ?? 0}:${monthIndex(c) * DAYS_PER_MONTH + (c.day - 1)}`;
 }
 
 /** layoutSig 기반 한 줄 캐시: `cached(state, CACHE, () => 계산)` */

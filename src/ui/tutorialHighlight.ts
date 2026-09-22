@@ -1,6 +1,6 @@
 import { useEffect, useSyncExternalStore } from 'react';
 import type { GameState, Pt } from '../sim/index.ts';
-import { currentTutorialStep } from '../sim/index.ts';
+import { currentTutorialStep, solverKey } from '../sim/index.ts';
 import { useGame, showMessage } from './store';
 
 /** 튜토리얼 하이라이트 (스펙 §7.2 + w-free 스포트라이트): 현재 단계의 `data-tut` 타깃(하단 버튼·창 탭·창 안 버튼)에 글로우 클래스를 붙이고,
@@ -82,8 +82,23 @@ export const CELL_LABEL: Record<string, string> = {
   parking: '여기에 주차장',
 };
 export const CELL_LABEL_DEFAULT = '여기에 놓아 보라';
-/** 현재 단계의 DOM 타깃(data-tut 값)과 맵 칸, 칸 라벨 */
-export function tutorialTargets(s: GameState): { targets: string[]; cells: Pt[]; label: string } {
+
+// ---------- solver 「지금 추천 행동」 탭 → 그 행동의 타깃 글로우 ----------
+export interface GuideFocus { key: string; targets: string[]; cells: Pt[]; label: string }
+let guideFocus: GuideFocus | null = null;
+const focusListeners = new Set<() => void>();
+/** 공략 노트에서 추천 행동을 탭하면 그 행동의 타깃(칸·창 버튼)을 빛낸다. 상태 키(solverKey)가 바뀌면(행동을 했거나 날·자금이 바뀜) 저절로 꺼진다. null이면 끔. */
+export function setGuideFocus(f: GuideFocus | null): void {
+  guideFocus = f;
+  for (const l of focusListeners) l();
+}
+export function getGuideFocus(): GuideFocus | null { return guideFocus; }
+export function useGuideFocus(): GuideFocus | null {
+  return useSyncExternalStore((l) => { focusListeners.add(l); return () => { focusListeners.delete(l); }; }, getGuideFocus, getGuideFocus);
+}
+/** 현재 단계의 DOM 타깃(data-tut 값)과 맵 칸, 칸 라벨. solver 추천 행동 포커스가 지금 상태 것이면 그것이 우선(guide: true — 어둠·셸 차단 없이 글로우만). */
+export function tutorialTargets(s: GameState): { targets: string[]; cells: Pt[]; label: string; guide?: boolean } {
+  if (guideFocus && guideFocus.key === solverKey(s)) return { targets: guideFocus.targets, cells: guideFocus.cells, label: guideFocus.label, guide: true };
   const step = currentTutorialStep(s);
   if (!step) return { targets: [], cells: [], label: '' };
   return { targets: step.targets, cells: step.cells(s), label: CELL_LABEL[step.key] ?? CELL_LABEL_DEFAULT };
@@ -133,8 +148,10 @@ export interface HighlightView { setHighlightCells(cells: Pt[], label?: string):
 /** App에서 한 줄: useTutorialHighlight(viewRef.current). 상태가 바뀌거나 DOM이 바뀔 때마다 글로우·스포트라이트를 맞춘다. */
 export function useTutorialHighlight(view: HighlightView | null): void {
   const s = useGame();
-  const spotlight = useSpotlightPref();
-  const { targets, cells, label } = tutorialTargets(s);
+  const pref = useSpotlightPref();
+  useGuideFocus();
+  const { targets, cells, label, guide } = tutorialTargets(s);
+  const spotlight = pref && !guide; // solver 추천 포커스는 글로우만 (어둠·셸 차단 없음)
   const key = targets.join('|') + '#' + cells.map((c) => `${c.x},${c.y}`).join('|') + '#' + label;
   useEffect(() => {
     ensureStyle();

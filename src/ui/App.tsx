@@ -13,6 +13,7 @@ import { MessageLine } from './MessageLine';
 import { MiniCard, MainCard, type CardTarget, type CardActions } from './MiniCard';
 import { DialogueHost } from './Dialogue.tsx';
 import { checkTutorial, setTutorialDispatch, useTutorialNote } from './tutorialDialogue';
+import { startSolverLoop } from './solverClient';
 import { useTutorialHighlight, useSpotlightPref, setSpotlightOn } from './tutorialHighlight';
 import { SiteOverlayChip } from './SiteToggle';
 import { RewardPopup } from './RewardPopup';
@@ -272,6 +273,7 @@ function Game({ onExit }: { onExit: () => void }) {
     return () => { setMonthCardHook(null); setSceneHook(null); };
   }, []);
   useEffect(() => { setTutorialDispatch(dispatch, getState); return () => setTutorialDispatch(null); }, []);
+  useEffect(() => startSolverLoop(), []); // solver: 워커에서 롤아웃 탐색 → 공략 노트 「지금 추천 행동」·글로우 칸·대사 근거
   const hostRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<GameView | null>(null);
   const [view, setView] = useState<GameView | null>(null);

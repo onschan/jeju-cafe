@@ -65,6 +65,8 @@ function save() {
 
 export function getState() { return state; }
 export function getVersion() { return version; }
+/** 바깥 사건(solver 워커 결과 등)으로 React를 깨운다 (solverClient) */
+export function bumpVersion(): void { emit(); }
 /** 메시지 줄 목록 (최신이 앞). 하단 바 위 24px 줄이 [0]을 보여 주고, 탭하면 전부 */
 export function getMessages(): UiMessage[] { return messages; }
 /** 가장 최근 메시지가 아직 "새것"(3초 안)인가 */

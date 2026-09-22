@@ -50,6 +50,13 @@ import { parkingSites, routePathCells, routeFacility, canSetRouteContract, ENTRY
 import { mainBuilding, freeFloorCells, nextMainLevel, expandCost, expandCells, canExpandMain, isAnnex, indoorSeats } from './rooms.ts'; // y-indoor
 import type { Candidate, RoleId, StatKey, QuestDef } from './types.ts';
 import { canDonate, canHoldFestival } from './village.ts'; // z-ending
+import { bestMoves, BOT_SOLVER_OPTIONS, type SolverOptions } from './solver.ts'; // solver 정책
+
+/** 봇 정책: heuristic = 아래 v3 정석(밸런스 밴드 기준), solver = 며칠마다 solver.bestMoves 1위 수 하나만 실행(집안일 빼고 아무 정석도 모른다) */
+export type BotPolicy = 'heuristic' | 'solver';
+/** solver 봇: 이 간격(일)마다 한 번 bestMoves. 후반(3년차)엔 14일 롤아웃 하나가 0.5s(하루 tick 37ms)라 매일 돌리면 3년에 한 시간 — 5일마다 12회로 10분 남짓 */
+export const BOT_SOLVER_EVERY_DAYS = 5;
+export interface BotSolverConfig { everyDays?: number; solver?: Partial<SolverOptions> }
 
 export interface BotRow {
   year: number;
@@ -692,37 +699,57 @@ export function botDay(s: GameState, cur: BotCursor, onCard?: (card: MonthCard) 
   if (s.lastMonthCard) { onCard?.(s.lastMonthCard); apply(s, { type: 'dismissMonthCard' }); }
 }
 
-export function runBot(years: number, seed: number): BotRow[] {
+export function runBot(years: number, seed: number, policy: BotPolicy = 'heuristic', cfg: BotSolverConfig = {}): BotRow[] {
   let rows: BotRow[] = [];
-  for (const r of botDays(years, seed)) rows = r;
+  for (const r of botDays(years, seed, policy, cfg)) rows = r;
   return rows;
 }
 
 /** 긴 실행(5·10년)용: 며칠마다 이벤트 루프에 양보해 vitest 워커 RPC(onTaskUpdate)가 굶지 않게 한다 */
-export async function runBotAsync(years: number, seed: number, yieldEveryDays = 30): Promise<BotRow[]> {
+export async function runBotAsync(years: number, seed: number, yieldEveryDays = 30, policy: BotPolicy = 'heuristic', cfg: BotSolverConfig = {}): Promise<BotRow[]> {
   let rows: BotRow[] = [];
   let d = 0;
-  for (const r of botDays(years, seed)) {
+  for (const r of botDays(years, seed, policy, cfg)) {
     rows = r;
     if (++d % yieldEveryDays === 0) await new Promise<void>((resolve) => setTimeout(resolve, 0));
   }
   return rows;
 }
 
+/** solver 정책의 집안일: 알림·카드·결과 창 닫기만 (정석 지식 없음) */
+function solverChores(s: GameState): void {
+  while (s.alerts.length > 0) apply(s, s.alerts[0]!.type === 'ending' ? { type: 'continueEnding' } : { type: 'dismissAlert' });
+  if (s.lastChallenge) apply(s, { type: 'dismissChallenge' });
+  if (s.lastDraw) apply(s, { type: 'dismissDraw' });
+  if (s.lastDevelop) apply(s, { type: 'dismissDevelop' });
+  if (s.lastTour) apply(s, { type: 'dismissTour' });
+  if (s.lastAnnouncement) apply(s, { type: 'dismissAnnouncement' });
+}
+/** solver 정책의 하루: everyDays(기본 BOT_SOLVER_EVERY_DAYS)일마다 bestMoves 1위 수(저축보다 나을 때만) 하나 */
+function solverDay(s: GameState, d: number, cfg: BotSolverConfig): void {
+  solverChores(s);
+  if (d % (cfg.everyDays ?? BOT_SOLVER_EVERY_DAYS) !== 0) return;
+  const top = bestMoves(s, { ...BOT_SOLVER_OPTIONS, ...cfg.solver }).moves[0];
+  if (top && top.score > 0) apply(s, top.action);
+}
+
 /** 하루씩 진행하며 지금까지의 월별 행을 낸다 (runBot·runBotAsync 공용) */
-function* botDays(years: number, seed: number): Generator<BotRow[]> {
+function* botDays(years: number, seed: number, policy: BotPolicy = 'heuristic', cfg: BotSolverConfig = {}): Generator<BotRow[]> {
   const s = createInitialState(seed);
   const rows: BotRow[] = [];
   const cur = newBotCursor();
   let minMoney = s.money;
   const totalDays = years * 12 * 30;
   for (let d = 0; d < totalDays; d++) {
-    if (s.clock.month !== cur.lastMonth) {
-      cur.lastMonth = s.clock.month;
-      cur.monthsPlayed++;
-      monthlyPlan(s, cur.monthsPlayed);
+    if (policy === 'solver') solverDay(s, d, cfg);
+    else {
+      if (s.clock.month !== cur.lastMonth) {
+        cur.lastMonth = s.clock.month;
+        cur.monthsPlayed++;
+        monthlyPlan(s, cur.monthsPlayed);
+      }
+      dailyPlan(s);
     }
-    dailyPlan(s);
     minMoney = Math.min(minMoney, s.money);
     tick(s, DAY_MS);
     minMoney = Math.min(minMoney, s.money);

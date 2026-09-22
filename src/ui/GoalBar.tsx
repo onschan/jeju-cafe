@@ -15,18 +15,19 @@ export const GOAL_BAR_H = GOAL_LINE_H + CHALLENGE_LINE_H;
 /** 튜토리얼 배지 너비 (목표 줄 왼쪽 한 칸) */
 export const TUT_BADGE_W = 60;
 
-/** 목표 줄 왼쪽 「📖 n/33」 배지 (z-tutorial): 탭하면 튜토리얼 창(현재 단계 대사 다시 보기·장 목록·장 건너뛰기). 튜토리얼이 끝나면 안 보인다.
+/** 목표 줄 왼쪽 「📖 n/33」 배지 (z-tutorial): 탭하면 튜토리얼 창(현재 단계 대사 다시 보기·장 목록·장 건너뛰기).
+ *  튜토리얼이 끝나면 「📖 공략」 — 공략 노트(solver 「지금 추천 행동」)는 졸업 뒤에도 남는 코치라 배지도 남긴다.
  *  창은 #root에 포털로 띄운다 (목표 줄이 absolute라 그 안에 두면 갇힌다). */
 function TutorialBadge() {
   const s = useGame();
   const [open, setOpen] = useState(false);
-  if (tutorialDone(s)) return null;
+  const done = tutorialDone(s);
   const root = typeof document !== 'undefined' ? document.getElementById('root') : null;
   return (
     <>
-      <button data-testid="tutorial-badge" aria-label={`프로 삼춘 공략 ${s.tutorial.step}/${TUTORIAL_STEPS}`} onClick={() => setOpen(true)}
+      <button data-testid="tutorial-badge" aria-label={done ? '프로 삼춘 공략 노트' : `프로 삼춘 공략 ${s.tutorial.step}/${TUTORIAL_STEPS}`} onClick={() => setOpen(true)}
         style={{ position: 'absolute', left: 0, top: 0, width: TUT_BADGE_W, height: GOAL_LINE_H, padding: 0, border: 0, borderRight: `2px solid ${PALETTE.wood}`, background: PALETTE.btnOn, color: PALETTE.btnOnText, fontFamily: 'inherit', fontSize: 13, fontWeight: 700, zIndex: 11, whiteSpace: 'nowrap' }}>
-        📖 {s.tutorial.step}/{TUTORIAL_STEPS}
+        📖 {done ? '공략' : `${s.tutorial.step}/${TUTORIAL_STEPS}`}
       </button>
       {open && root && createPortal(<TutorialWindow onClose={() => setOpen(false)} />, root)}
     </>
@@ -45,8 +46,8 @@ export function GoalBar({ top, onOpen }: { top: number; onOpen: () => void }) {
   const pct = g && g.max > 0 ? Math.min(100, Math.round((g.cur / g.max) * 100)) : 0;
   const cpct = c && c.max > 0 ? Math.min(100, Math.round((c.cur / c.max) * 100)) : 0;
   const milestone = g ? (s.goals.milestones?.[g.id] ?? 0) : 0; // game-feel P1: 자금 목표 25/50/75% 마일스톤 — 단계가 바뀌면 key가 바뀌어 반짝임이 다시 돈다
-  const badge = !tutorialDone(s);
-  const noMain = badge && !mainBuilding(s); // w-start: 본관을 짓기 전엔 첫 목표(아메리카노)를 이룰 수 없다 → 문구로 안내
+  const badge = true; // 배지는 튜토리얼 뒤에도 남는다 (공략 노트)
+  const noMain = !tutorialDone(s) && !mainBuilding(s); // w-start: 본관을 짓기 전엔 첫 목표(아메리카노)를 이룰 수 없다 → 문구로 안내
   return (
     <div style={{ position: 'absolute', top, left: 0, right: 0, height: GOAL_BAR_H, zIndex: 10 }}>
       <TutorialBadge />
