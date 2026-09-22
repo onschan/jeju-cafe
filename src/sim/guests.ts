@@ -63,8 +63,6 @@ export const WAIT_MAX = 3;
 export const WAIT_LEAVE_SATISFACTION = 10;
 /** 계절 배수: 1·2월 비수기 0.8, 12월 0.9, 3·11월 0.95, 7·8월 성수기 1.15, 5·10월 1.1 */
 export const SEASON_GUEST_MULT: Record<number, number> = { 1: 0.8, 2: 0.8, 3: 0.95, 5: 1.1, 7: 1.15, 8: 1.15, 10: 1.1, 11: 0.95, 12: 0.9 };
-/** 자리 주변 2칸 소음 합이 이 이상이면 불만 'noise' (§4.3 소음 ≥ 5) */
-export const NOISE_COMPLAINT = 5;
 /** 시설 순회: 앉았다 일어난 손님 40%가 시설 하나(포토존·기념품·자판기·서가·갤러리·공방…)에 들러 이용료를 내고 간다 */
 export const VISIT_CHANCE = 0.4;
 export const VISIT_MS = 1500;
@@ -500,29 +498,19 @@ function resolveMood(state: GameState, g: Guest): void {
   } else {
     g.mood = 'meh';
     g.moodReason = 'scenery';
-    const why = g.luck === 'fail' ? { reason: staffInRole(state, 'hall').length > 0 ? 'rude' as const : 'wait_long' as const } : mehCause(state, seat); // staff-luck 쪽박 = 불친절/오래 기다림
+    const why = g.luck === 'fail' ? { reason: 'wait_long' as const } : mehCause(state, seat); // staff-luck 쪽박 = 오래 기다림
     if (why) addComplaint(state, why.reason, g, why.detail);
   }
   if (!g.namedId) maybeSay(state, g);
 }
 
-/** 불만 원인 추정 (경치 미달로 meh일 때): 지친 홀 직원 → rude, 낡은 자리 → worn, 청결 < 50 → dirty, 입지 만족이 음수인 야외 자리(겨울 바람·여름 그늘 없음, 트랙 F) → cold_hot, 주변 소음 ≥ 5 → noise. 없으면 null(불만 아님). */
+/** 불만 원인 추정 (경치 미달로 meh일 때, trim 4사유): 지친 홀 직원 → wait_long, 낡은 자리·청결 < 50 → dirty. 없으면 null(불만 아님). */
 export function mehCause(state: GameState, seat: PlacedObject): { reason: ComplaintReason; detail?: string } | null {
   const hall = staffInRole(state, 'hall');
-  if (hall.length > 0 && hall.every((st) => st.energy < LOW_ENERGY)) return { reason: 'rude' };
-  if (isAged(state, seat)) return { reason: 'worn', detail: objectDef(seat.type).name };
+  if (hall.length > 0 && hall.every((st) => st.energy < LOW_ENERGY)) return { reason: 'wait_long' };
+  if (isAged(state, seat)) return { reason: 'dirty', detail: objectDef(seat.type).name };
   if (state.clean.value < CLEAN_LOW) return { reason: 'dirty' };
-  const season = seasonOf(state.clock.month);
-  if ((season === 'winter' || season === 'summer') && siteBonus(state, seat).satisfaction < 0) return { reason: 'cold_hot', detail: season };
-  let noise = 0;
-  for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) { const o = objectAt(state, seat.x + dx, seat.y + dy); if (o && o.id !== seat.id) noise += objectDef(o.type).noise; }
-  if (noise >= NOISE_COMPLAINT) return { reason: 'noise' };
   return null;
-}
-/** 손님이 좋아하는 종류인데 지금 못 만드는(직원 조건 미달) 메뉴판 메뉴 이름 — 후기 "OO가 자주 품절이래요" */
-function unavailableLikedName(state: GameState, likes: MenuCategory[]): string | undefined {
-  const id = state.menuSlots.find((m): m is string => m !== null && guestLikesCategory(likes, menuOf(state, m).category) && !isMenuAvailable(state, m));
-  return id ? menuOf(state, id).name : undefined;
 }
 
 /** 예산(지갑) 안에서 주문할 수 있는 메뉴 */
@@ -570,7 +558,6 @@ function order(state: GameState, g: Guest): void {
     g.moodReason = liked.length > 0 ? 'price' : 'no_menu';
     g.timerMs = SEAT_MS;
     if (g.moodReason === 'price') addComplaint(state, 'expensive', g, menuOf(state, liked.sort((a, b) => priceOf(state, a) - priceOf(state, b))[0]!).name);
-    else addComplaint(state, 'no_menu', g, unavailableLikedName(state, p.likes));
     maybeSay(state, g);
     return;
   }
@@ -588,7 +575,7 @@ function order(state: GameState, g: Guest): void {
   noteRouteIncome(state, g, price); // 트랙 H 경로 매출
   g.menuId = menuId;
   g.paid = price;
-  g.waitMs = prepTimeMs(state, menu.category) * siteBonus(state, seat).serveMult; // 트랙 F: 주방 거리 서빙 시간
+  g.waitMs = prepTimeMs(state, menu.category);
   addRoleExp(state, prepRole(menu.category)); addRoleExp(state, 'hall'); // 트랙 D: 조리·서빙 1건 경험치 +0.2
   state.menuSold[menuId] = (state.menuSold[menuId] ?? 0) + 1;
   state.monthMenuSold[menuId] = (state.monthMenuSold[menuId] ?? 0) + 1;

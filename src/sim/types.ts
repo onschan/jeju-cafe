@@ -462,7 +462,6 @@ export type GoalCondition =
   | { type: 'custom'; id: string; n?: number }    // 코드 판정 (centennial 등)
   // ---- §7.5 전략 조건 ----
   | { type: 'siteSeats'; view: number; n: number } // 전망 view 이상 좌석 n개 (x-site)
-  | { type: 'windlessSeats'; n: number }          // 바람 0 좌석 n개 (x-site)
   | { type: 'corners'; n: number }                // 만든 코너 수 (fun-corner, corners.ts 도감)
   | { type: 'hiddenRecipes'; n: number }          // 도감에 오른 숨은 레시피 수 (game-feel: 도전 「숨은 레시피 찾기」)
   | { type: 'upgraded'; lv: number; n: number }   // 증축 Lv 이상 시설 n개 (x-facility)
@@ -818,7 +817,7 @@ export interface Clock {
 }
 
 /** 불만 사유 (reputation.ts COMPLAINT_LABEL로 표시) */
-export type ComplaintReason = 'no_menu' | 'wait_long' | 'no_seat' | 'dirty' | 'worn' | 'noise' | 'expensive' | 'cold_hot' | 'rude';
+export type ComplaintReason = 'no_seat' | 'wait_long' | 'expensive' | 'dirty';
 /** 불만 한 건 (최근 30일 롤링). detail = 메뉴·시설 이름 등 후기 문장용 */
 export interface Complaint { day: number; reason: ComplaintReason; guestType: string; detail?: string }
 /** 월말 후기 (최대 8개, 최신이 앞) */

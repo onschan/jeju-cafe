@@ -19,7 +19,7 @@
 import type { GameState, Pt, PlacedObject, RoleId } from './types.ts';
 import { objectDef, SPOTS } from '../data/index.ts';
 import { CORNERS, cornersWithPiece, cornerIfPlaced } from './corners.ts';
-import { siteOf, seatScore, FEE_PER_VIEW, SAT_WIND_WINTER } from './site.ts';
+import { siteOf, seatScore, FEE_PER_VIEW, SAT_SHADE_SUMMER } from './site.ts';
 import { canPlace, cellAt, objectAt, doorFrontOf, footprint } from './grid.ts';
 import { parcelAt } from './parcels.ts';
 import { reachMap, busStopPos, cellKey, walkableNeighborsOf, isDoorReachable } from './path.ts';
@@ -69,21 +69,21 @@ function unlocked(s: GameState, type: string): boolean {
 
 // ---------- 본관 ----------
 
-/** 본관 원점 추천(바람 최소 → 정낭/정류장과 문 앞 거리 최소 → 위·왼쪽). 본관이 있으면 []. tutorial.recommendedMainCells가 이걸 쓴다. */
+/** 본관 원점 추천(정낭/정류장과 문 앞 거리 최소 → 자리 점수 최고 → 위·왼쪽). 본관이 있으면 []. tutorial.recommendedMainCells가 이걸 쓴다. */
 export function bestMainCells(s: GameState, n = 3): Pt[] {
   if (mainBuilding(s)) return [];
   const g0 = objectsOf(s, 'gate')[0];
   const g = g0 ? { x: g0.x, y: g0.y } : busStopPos(s);
   const size = MAIN_SIZE[1]!;
-  const out: { p: Pt; wind: number; dist: number }[] = [];
+  const out: { p: Pt; score: number; dist: number }[] = [];
   for (let y = 0; y < s.grid.h; y++) for (let x = 0; x < s.grid.w; x++) {
     if (!canBuildMain(s, x, y).ok) continue;
     const f = doorFrontOf({ type: MAIN_TYPE, x, y, w: size.w, h: size.h });
     const dist = cheb(g, f);
     if (dist > MAIN_RECOMMEND_GATE_DIST) continue;
-    out.push({ p: { x, y }, wind: siteOf(s, x, y).wind, dist });
+    out.push({ p: { x, y }, score: seatScore(s, x, y), dist });
   }
-  out.sort((a, b) => a.wind - b.wind || a.dist - b.dist || byPos(a.p, b.p));
+  out.sort((a, b) => a.dist - b.dist || b.score - a.score || byPos(a.p, b.p));
   return out.slice(0, n).map((o) => o.p);
 }
 export function bestMainCell(s: GameState): Pt | null {
@@ -278,7 +278,7 @@ export function openingBuild(): BuildPlanRow[] {
     { month: 9, title: '가이드북', what: '청소 직원을 두고 청결 90을 지킨다', why: '9월 발표는 청결로 별점을 가른다' },
     { month: 10, title: '주차장', what: '쉼 시설 6개가 되면 렌터카 주차장', why: '차로 온 손님은 더 쓰고 더 머문다' },
     { month: 11, title: '감귤 축제', what: '감귤주스·감귤 메뉴를 앞줄에', why: '11월 축제엔 감귤 메뉴가 잘 팔린다' },
-    { month: 12, title: '난로', what: '실내 난로와 돌담으로 바람을 막는다', why: `겨울 바람은 1당 만족 ${SAT_WIND_WINTER}` },
+    { month: 12, title: '난로', what: '실내 난로를 켜고 실내 자리를 늘린다', why: '겨울엔 야외 그늘 자리가 춥다' },
   ];
 }
 
@@ -302,14 +302,14 @@ export function nextMove(s: GameState): NextMove | null {
 /** 1년차 표 순서의 다음 수 — solver 결과가 없을 때의 대체. 문구는 「무엇 — 왜」 한 줄. */
 export function heuristicNextMove(s: GameState): NextMove | null {
   const m = mainBuilding(s);
-  if (!m) { const p = bestMainCell(s); return { text: '본관이 먼저다 — 빛나는 칸이 바람이 제일 적다', cells: p ? [p] : [] }; }
+  if (!m) { const p = bestMainCell(s); return { text: '본관이 먼저다 — 빛나는 칸이 자리 점수가 제일 높다', cells: p ? [p] : [] }; }
   if (!isDoorReachable(s, m)) { const f = doorFrontOf(m); return { text: '마을 길에서 문 앞까지 올렛길 — 길이 없으면 손님이 못 온다', cells: [f] }; }
   const seats = outdoorSeats(s).length;
   const menus = s.menuSlots.filter((x) => x !== null).length;
   if (seats < 1) return { text: `야외 테이블 하나 — ${seatWhy(s)}`, cells: bestSeatCells(s, 1) };
   if (menus < 2) return { text: '메뉴판에 아메리카노·감귤주스 — 둘이면 문을 열 수 있다', cells: [] };
   if (s.staff.length < 1) return { text: '홀 직원 한 명 — 서빙 기다리는 시간이 반으로 준다', cells: [] };
-  if (!wallSheltered(s)) return { text: `돌담 하나를 테이블 북서쪽에 — 바람 1이 줄면 겨울 만족 +${-SAT_WIND_WINTER}`, cells: bestWallCells(s, 1) };
+  if (!wallSheltered(s)) return { text: '돌담 하나를 테이블 곁에 — 밭담 코너 조각이 된다', cells: bestWallCells(s, 1) };
   if (s.stats.promotionsDone < 1) return { text: '전단 홍보 한 번 — 타깃 손님층이면 1.5배로 온다', cells: [] };
   if (unlocked(s, TREE_TYPE) && objectsOf(s, TREE_TYPE).length < 1) { const c = bestCornerCells(s, TREE_TYPE, 1); if (c.length) return { text: `감귤나무 한 그루 — 빛나는 칸이면 ${cornerNameForPiece(s, TREE_TYPE)} 조각이 모인다`, cells: c }; }
   if (seats < OPENING_SEATS) return { text: `야외 테이블 ${seats}/${OPENING_SEATS} — 4개면 자리가 없어 돌아가는 손님이 없다`, cells: bestSeatCells(s, 1) };
@@ -347,14 +347,13 @@ export function solverDeltaText(s: GameState, pick: (m: SolverMove) => boolean):
   const m = cachedMoves(s, pick)[0];
   return m ? m.why.split(',')[0]! : '';
 }
-/** 추천 테이블 칸이 왜 좋은지 한 줄 (≤ 14자, 튜토리얼 1단계 `{seatWhy}`·다음 수 문구): 전망 → 요금, 주방 가까움 → 서빙, 바람 적음 → 겨울, 아니면 길 옆. */
+/** 추천 테이블 칸이 왜 좋은지 한 줄 (≤ 14자, 튜토리얼 1단계 `{seatWhy}`·다음 수 문구): 전망 → 요금, 그늘 → 여름, 아니면 길 옆. */
 export function seatWhy(s: GameState): string {
   const seat = bestSeatCell(s);
   if (!seat) return '길 옆이라 손님이 잘 앉는다';
   const site = siteOf(s, seat.x, seat.y);
   if (site.view >= 1) return `바다가 보여 요금 +${Math.round(site.view * FEE_PER_VIEW * 100)}%`;
-  if (site.kitchen >= 3) return '주방이 가까워 서빙이 빠르다';
-  if (site.wind <= 1) return '바람이 적어 겨울에도 좋다';
+  if (site.shade >= 1) return `그늘이라 여름 만족 +${SAT_SHADE_SUMMER}`;
   return '길 옆이라 손님이 잘 앉는다';
 }
 const placing = (type: string) => (m: SolverMove) => m.action.type === 'place' && m.action.objectType === type;
@@ -362,24 +361,20 @@ const placing = (type: string) => (m: SolverMove) => m.action.type === 'place' &
  *  `seatWhy`는 1단계 「빛나는 칸은 {seatWhy}」. solver 토큰(`seatDelta` 등)은 롤아웃 결과가 캐시에 있을 때만 채워지고 없으면 ''. */
 export function strategyVars(s: GameState): Record<string, string> {
   const m = mainBuilding(s);
-  const main = m ? doorFrontOf(m) : bestMainCell(s); // 본관이 있으면(다시 보기) 문 앞 칸의 바람
-  const mainWind = main ? siteOf(s, main.x, main.y).wind : 1;
+  const main = m ? doorFrontOf(m) : bestMainCell(s); // 본관이 있으면(다시 보기) 문 앞 칸의 자리 점수
+  const mainScore = main ? seatScore(s, main.x, main.y) : 5;
   const seat = bestSeatCell(s);
   const seatSite = seat ? siteOf(s, seat.x, seat.y) : null;
-  const firstSeat = outdoorSeats(s)[0];
-  const wallWind = firstSeat ? siteOf(s, firstSeat.x, firstSeat.y).wind : 3;
   const tree = bestCornerCell(s);
   const cornerN = tree ? cornerScoreIfPlaced(s, TREE_TYPE, tree.x, tree.y) : 2;
   const spot = bestSpotToInvest(s);
   const cur = s.money;
   return {
-    mainWind: String(mainWind),
+    mainScore: String(mainScore),
     seatScore: seatSite ? String(seatScore(s, seat!.x, seat!.y)) : '5',
     seatView: seatSite ? String(seatSite.view) : '0',
     seatFee: seatSite ? String(Math.round(seatSite.view * FEE_PER_VIEW * 100)) : '0',
     seatWhy: seatWhy(s),
-    wallWind: String(wallWind),
-    wallAfter: String(Math.max(0, wallWind - 1)),
     cornerN: String(cornerN),
     cornerName: cornerNameForPiece(s, TREE_TYPE),
     spotName: spot?.name ?? '유채꽃밭',

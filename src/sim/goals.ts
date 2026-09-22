@@ -175,8 +175,7 @@ export const conditionCheckers: CheckerMap = {
   uniforms: (s, c) => n(s.uniforms.length, c.n),
   custom: (s, c) => flag(customMet(s, c.id)),
   // ---- §7.5 전략 조건 ----
-  siteSeats: (s, c) => n(seatObjectsOf(s).filter((o) => siteOf(s, o.x, o.y).view >= c.view).length, c.n), // 트랙 F 전망
-  windlessSeats: (s, c) => n(seatObjectsOf(s).filter((o) => siteOf(s, o.x, o.y).wind === 0).length, c.n), // 트랙 F 바람 0
+  siteSeats: (s, c) => n(seatObjectsOf(s).filter((o) => siteOf(s, o.x, o.y).view >= c.view).length, c.n), // 자리 전망
   corners: (s, c) => n(cornersMade(s), c.n), // fun-corner: 만든 코너 수 (도감)
   hiddenRecipes: (s, c) => n(s.codex.recipes.length, c.n), // 도감에 오른 숨은 레시피 수
   upgraded: (s, c) => n(Object.values(s.objects).filter((o) => !o.build && goalLevelOf(o) >= c.lv).length, c.n), // 트랙 A 증축 · fun 트리 단계
@@ -324,7 +323,6 @@ export function goalConditionText(c: GoalCondition): string {
     case 'uniforms': return `유니폼 ${c.n}단계`;
     case 'custom': return c.id === 'centennial' ? '100주년 감귤축제' : '특별 조건';
     case 'siteSeats': return `전망 ${c.view} 이상 좌석 ${c.n}개`;
-    case 'windlessSeats': return `바람 없는 좌석 ${c.n}개`;
     case 'corners': return `코너 ${c.n}개`;
     case 'clean': return `청결 ${c.avg} 이상 ${c.days}일`;
     case 'skills': return `특기 직원 ${c.n}명`;

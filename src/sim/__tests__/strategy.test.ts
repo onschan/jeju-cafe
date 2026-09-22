@@ -37,14 +37,12 @@ function allEmptyOwned(s: GameState, type: string): Pt[] {
 }
 
 describe('할망의 정석 (strategy.ts): 글로우 칸은 실제 수치로 고른 최적 칸', () => {
-  it('bestMainCells: 바람 최소 → 정낭과 문 앞 거리 최소. tutorial.recommendedMainCells와 같다 (옛 맨땅 bare)', () => {
+  it('bestMainCells: 정낭과 문 앞 거리 최소 → 자리 점수 최고. tutorial.recommendedMainCells와 같다 (옛 맨땅 bare)', () => {
     const s = createInitialState(1, 'local', 0, 'bare');
     const rec = bestMainCells(s);
     expect(rec).toHaveLength(3);
     expect(rec).toEqual(recommendedMainCells(s));
-    const winds = rec.map((p) => siteOf(s, p.x, p.y).wind);
-    expect(winds[0]).toBeLessThanOrEqual(winds[1]!);
-    expect(winds[1]).toBeLessThanOrEqual(winds[2]!);
+    for (const p of rec) { const sc = seatScore(s, p.x, p.y); expect(sc).toBeGreaterThanOrEqual(0); expect(sc).toBeLessThanOrEqual(10); }
     apply(s, { type: 'placeMain', ...rec[0]! });
     expect(bestMainCells(s)).toEqual([]);
   });
@@ -64,12 +62,11 @@ describe('할망의 정석 (strategy.ts): 글로우 칸은 실제 수치로 고�
     expect(bestSeatCells(s, 1)[0]).not.toEqual(best);
   });
 
-  it('bestWallCell: 테이블 북서 쐐기의 칸이라 놓으면 그 테이블 바람이 1 준다. 테이블이 없으면 null', () => {
+  it('bestWallCell: 테이블 북서 쐐기의 칸 — 돌담을 놓으면 wallSheltered. 테이블이 없으면 null', () => {
     const s = yardWithPath();
     expect(bestWallCell(s)).toBeNull();
     const seat = bestSeatCells(s, 1)[0]!;
     apply(s, { type: 'place', objectType: 'table_out', ...seat });
-    const wind0 = siteOf(s, seat.x, seat.y).wind;
     const w = bestWallCell(s)!;
     expect(w).not.toBeNull();
     expect(seat.x - w.x).toBeGreaterThanOrEqual(1);
@@ -77,7 +74,6 @@ describe('할망의 정석 (strategy.ts): 글로우 칸은 실제 수치로 고�
     expect(wallSheltered(s)).toBe(false);
     apply(s, { type: 'place', objectType: 'stonewall', ...w });
     expect(wallSheltered(s)).toBe(true);
-    expect(siteOf(s, seat.x, seat.y).wind).toBe(Math.max(0, wind0 - 1));
   });
 
   it('bestCornerCells: 감귤나무를 놓으면 코너 조각이 가장 많이 모이는 칸 — 다른 어떤 칸도 더 높지 않다', () => {
@@ -136,13 +132,13 @@ describe('할망의 정석 (strategy.ts): 글로우 칸은 실제 수치로 고�
     for (const r of rows) { expect(r.what.length).toBeGreaterThan(0); expect(r.why.length).toBeGreaterThan(0); expect(r.title.length).toBeLessThanOrEqual(8); }
   });
 
-  it('nextMove: 상태에 따라 다음 수 — 본관 → 길 → 테이블 → 메뉴 → 채용 → 돌담 → … 완성 시작 상태는 증축/저축 쪽. 문구는 「무엇 — 왜」', () => {
+  it('nextMove: 상태에 따라 다음 수 — 본관 → 길 → 테이블 → 메뉴 → 채용 → … 완성 시작 상태는 증축/저축 쪽. 문구는 「무엇 — 왜」', () => {
     const s = createInitialState(1, 'local', 0, 'bare');
     expect(nextMove(s)!.text).toContain('본관');
     expect(nextMove(s)!.cells).toEqual([recommendedMainCells(s)[0]]);
     apply(s, { type: 'placeMain', ...recommendedMainCells(s)[0]! });
-    expect(nextMove(s)!.text).toContain('올렛길');
     const door = doorFrontOf(mainBuilding(s)!);
+    if (!isDoorReachable(s, mainBuilding(s)!)) expect(nextMove(s)!.text).toContain('올렛길');
     const start = { x: door.x, y: VILLAGE_ROAD_Y - 1 };
     for (let y = Math.min(start.y, door.y); y <= Math.max(start.y, door.y); y++) apply(s, { type: 'place', objectType: 'path', x: door.x, y });
     const m = nextMove(s)!;
@@ -164,7 +160,7 @@ describe('할망의 정석 (strategy.ts): 글로우 칸은 실제 수치로 고�
     const v = strategyVars(s);
     const seat = bestSeatCells(s, 1)[0]!;
     expect(v.seatScore).toBe(String(seatScore(s, seat.x, seat.y)));
-    expect(v.mainWind).toBe(String(siteOf(s, doorFrontOf(mainBuilding(s)!).x, doorFrontOf(mainBuilding(s)!).y).wind));
+    expect(v.mainScore).toBe(String(seatScore(s, doorFrontOf(mainBuilding(s)!).x, doorFrontOf(mainBuilding(s)!).y)));
     expect(fillTemplate('입지 {seatScore}/10 · {nope}', v)).toBe(`입지 ${v.seatScore}/10 · {nope}`);
     for (const k of Object.keys(v)) expect(k).not.toContain('_'); // noIdLeak: 토큰 키에 밑줄 없음
   });

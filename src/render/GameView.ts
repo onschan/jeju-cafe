@@ -14,7 +14,7 @@ import { regularFace } from '../sim/interact.ts'; // fun-guest: 단골 고정 �
 import { namedGuestFace } from '../sim/popup.ts';
 import { guestTypeDef, namedGuestDef } from '../data/index.ts';
 import { Background } from './Background';
-import { siteOf, siteBadgeTextPlain, siteTone, layoutKey } from '../sim/site.ts';
+import { siteOf, siteBadgeText, siteTone, layoutKey } from '../sim/site.ts';
 import { objectStats } from '../sim/compat.ts';
 import { entryPoints, ROUTE_IDS, ENTRY_ROUTES } from '../sim/entry.ts'; // 트랙 H 진입점 표지
 import { completedCorners, cornerDef } from '../sim/corners.ts'; // fun-corner 코너 팻말
@@ -808,7 +808,7 @@ export class GameView {
     const badge = new Container();
     badge.label = 'siteBadge';
     // 본관 자체를 놓을 땐 주방 거리가 없다 (w-start) → 「주방 —」
-    const badgeText = g.type === 'warehouse' ? siteBadgeTextPlain(siteOf(state, g.x, g.y)).replace(/주방\d+/, '주방—') : siteBadgeTextPlain(siteOf(state, g.x, g.y));
+    const badgeText = siteBadgeText(siteOf(state, g.x, g.y));
     const l = label(badgeText, 10);
     l.anchor.set(0.5, 1);
     const top = cost ? cost.y - cost.height - 3 : -(sp?.height ?? 24) - 4;

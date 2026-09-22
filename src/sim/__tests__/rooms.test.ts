@@ -106,10 +106,10 @@ describe('본관 증축 (§8.1)', () => {
     expect(canExpandMain(s).reason).toBe('이미 최고 단계예요');
     expect(footprintOf(main(s)).length).toBe(24);
   });
-  test('실내 칸 입지: 바람 0·그늘 2. 실내 가구는 방 안에만 (밖이면 "실내 가구는 건물 안에만 놓아요")', () => {
+  test('실내 칸 자리: 그늘 2. 실내 가구는 방 안에만 (밖이면 "실내 가구는 건물 안에만 놓아요")', () => {
     const s = cafe();
     const site = siteOf(s, X(4), Y(2));
-    expect(site.wind).toBe(0); expect(site.shade).toBe(2);
+    expect(site.shade).toBe(2);
     expect(canPlace(s, 'sofa_seat', X(0), Y(0)).reason).toBe('실내 가구는 건물 안에만 놓아요');
     expect(canPlace(s, 'sofa_seat', X(4), Y(2)).ok).toBe(true);
     expect(canPlace(s, 'sofa_seat', X(4), Y(1)).reason).toBe('카운터·주방 자리예요'); // fix-indoor: 뒷벽 줄은 고정 설비

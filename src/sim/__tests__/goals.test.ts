@@ -78,7 +78,7 @@ describe('goals.json 데이터', () => {
     expect(goalMet(s, { type: 'monthSales', n: 5_000_000 })).toBe(true);
     expect(conditionProgress(s, { type: 'guestType', guestId: 'couple', n: 30 }).max).toBe(30);
     // 아직 없는 시스템은 스텁 0 (통합 때 연결): 증축·청결·방문객·입지·자급률
-    for (const c of [{ type: 'facilityLv', lv: 2, n: 1 }, { type: 'cleanliness', n: 80 }, { type: 'visitorsTotal', n: 1 }, { type: 'siteSeats', view: 2, n: 1 }, { type: 'windlessSeats', n: 1 }, { type: 'upgraded', lv: 2, n: 1 }, { type: 'clean', avg: 90, days: 30 }, { type: 'selfSupply', pct: 50 }] as GoalCondition[]) {
+    for (const c of [{ type: 'facilityLv', lv: 2, n: 1 }, { type: 'cleanliness', n: 80 }, { type: 'visitorsTotal', n: 1 }, { type: 'siteSeats', view: 2, n: 1 }, { type: 'upgraded', lv: 2, n: 1 }, { type: 'clean', avg: 90, days: 30 }, { type: 'selfSupply', pct: 50 }] as GoalCondition[]) {
       expect(conditionProgress(s, c).cur, c.type).toBe(0);
       expect(goalMet(s, c), c.type).toBe(false);
     }
