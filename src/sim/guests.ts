@@ -25,6 +25,7 @@ import { seatsOf, isSeat } from './cafe.ts';
 import { filterSeatsForWeather, stayMs, browseChance, indoorSatisfaction, indoorSpawnMult, indoorFeeMult } from './rooms.ts';
 import { nightSatisfaction } from './lighting.ts'; // fix-indoor: 밤 조명 — 가로등 +2·어두운 야외 자리 −2 // y-indoor 훅: 실내 우선·체류·둘러보기·만족·유입·바 요금
 import { pushFx } from './fx.ts';
+import { guestCap } from './grade.ts'; // fun-rank 훅: 마당 동시 손님 상한 = 등급별 (30 + 10/등급)
 import { rollOutcome, bestStaffFor } from './luck.ts'; // staff-luck: 서빙 대박/쪽박
 import { titleBonus, isWorking } from './titles.ts'; // staff-luck: 칭호 요금·만족·속도·손님·사진
 import { menuOf, priceOf, likesStatsMatch, statsMatchCount, guestEvalBonus, guestLikesCategory, seatTimeMult, dignityPct, photoChance, menuOrderWeight, LIKE_BONUS_CAP } from './craft.ts';
@@ -43,7 +44,7 @@ export const MAX_SPEED_SKILL = 0.5;
 export const SERVICE_PER_SCENERY = 30; // 홀 서비스 30당 경치 기준 −1
 export const POP_PER_SCENERY = 3;      // 좌석 인기가 기본(10)에서 3 벗어날 때마다 경치 ±1
 export const SAY_CHANCE = 0.3;     // §19 손님 대사 확률
-export const MAX_GUESTS = 60;
+export const MAX_GUESTS = 60; // 상한 표(등급 4)와 같은 값 — 실제 상한은 grade.ts guestCap(state)
 export const MIN_DAILY_GUESTS = 2;
 export const MAX_DAILY_GUESTS = 300;
 /** 하루 손님 수 = min(좌석 × 6, 인기·명소 기반값) (확장 §4.2 #1).
@@ -320,14 +321,15 @@ export function spawnGuests(state: GameState, n: number, forceType?: string, ent
     spawned++;
   };
   // 대기열부터 (n과 별도로 앉힌다). 단골★·투어 버스(forceType)는 줄과 상관없이 바로 자리를 찾는다.
-  while (!forceType && state.waiting.length > 0 && state.guests.length < MAX_GUESTS) {
+  const cap = guestCap(state); // fun-rank: 등급별 상한
+  while (!forceType && state.waiting.length > 0 && state.guests.length < cap) {
     const best = findSeat();
     if (!best) break;
     const t = state.waiting.shift()!;
     seatGuest(best, t);
     addComplaint(state, 'wait_long', t); // 줄을 섰다 앉은 손님은 오래 기다렸다고 한다
   }
-  for (let i = 0; i < n && state.guests.length < MAX_GUESTS; i++) {
+  for (let i = 0; i < n && state.guests.length < cap; i++) {
     const best = findSeat();
     if (!best) {
       if (forceType) break; // 투어 버스·단골★은 줄을 서지 않는다

@@ -49,6 +49,9 @@ export { buildDaysOf, effectiveBuildDays, FAST_HAMMER_ITEM, INSTANT_HAMMER_ITEM,
 export { canBuyMileage, canBuyTicket, canDrawTicket, canSetUniform, canUseGuestItem, hasFreeDraw, hasUniform, rollPrize, SEED_PACK, DRAW_MONEY_PER_YEAR, UNIFORM_PIECES_PER_SET, MONTHLY_FREE_TICKETS } from './shop.ts';
 export { addMileage, codexCount, checkCodexMileage, monthlyMileage, CODEX_PER_MILEAGE, GUESTS_PER_MILEAGE } from './mileage.ts';
 export { rankScore, rankForScore, nextRankThreshold, facilityCount, unlockedGuestTypeCount, updateRank, RANK_THRESHOLDS, MAX_RANK } from './rank.ts';
+// ---------- fun-rank: 카페 등급 5단계·필지 특징 ----------
+export { gradeOf, gradeName, gradeProgress, gradeMet, cornerCount, checkGrade, gradeUpRewards, guestCap, GRADE_NAMES, GRADE_CAPTION, GRADE_REQS, MAX_GRADE, GRADE_GUEST_CAP_BASE, GRADE_GUEST_CAP_STEP, GRADE_BGM_LAYER_FROM, type GradeReq, type GradeProgressRow } from './grade.ts';
+export { parcelFeature, PARCEL_FEATURES, type ParcelFeature } from './parcels.ts';
 export { starConditionMet, starConditionsHeld, isReviewDue, starReview, nextStarConditions, checkStar, judgeScores, guidebookScore, guidebookState, evaluateGuidebooks, guidebooksToAnnounce, announce, rivalScores, rivalTop, rivalBoost, rankAmong, monthlyTarget, targetPopularity, codexTotal, MAX_STAR, JUDGE_KEYS, JUDGE_LABEL, ANNOUNCE_MONTHS, RIVAL_COUNT, PRIZE_RATIO, RANK_MILEAGE, MONTHLY_TAGS, RIVAL_WIN_BOOST, RIVAL_CAFE_BOOST, REVIEW_MIN_STAR, REVIEW_EVERY_YEARS, RANK_SHIELD_ITEM } from './guidebook.ts';
 export { evaluateUnlocks, evaluateFacilityUnlocks, unlockCondMet, isUnlocked, unlockedTypeIds, guestFace, walletOf, regularTier, isTarget, MAX_TARGETS, TARGET_SPAWN_MULT, canSetTargets, SAT_QUEST, SAT_REGULAR, SAT_VIP } from './segments.ts';
 export { questProgress, canAcceptQuest, canRespondEvent, eventConditionMet, boardBadge, visibleQuests, questRewardText, QUEST_MONTHS } from './board.ts';

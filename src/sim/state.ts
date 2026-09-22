@@ -200,6 +200,7 @@ export function createInitialState(seed: number, playerId = 'local', createdAt =
     mileage: 0,
     rank: 1,
     star: 1,
+    grade: 1, // fun-rank: 카페 등급 「올레길 노점」
     totalGuests: 0,
     builders: START_BUILDERS,
     uniform: null,
