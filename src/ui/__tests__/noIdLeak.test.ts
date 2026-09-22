@@ -58,7 +58,7 @@ describe('영문 id 노출 없음 (창·카드·대화)', () => {
     expectClean(TUTORIAL_STEPS.flatMap((t) => [t.title, t.button, ...t.lines]), '튜토리얼');
   });
 
-  it('공략 노트(pro-guide): 월별 정석 표·지금 추천 행동·토큰을 채운 튜토리얼 대사', () => {
+  it('추천 탭(pro-guide): 월별 정석 표·시뮬 추천·토큰을 채운 튜토리얼 대사', () => {
     expectClean(openingBuild().flatMap((r) => [r.title, r.what, r.why]), '정석 빌드 표');
     const texts: string[] = [];
     const t = createInitialState(1, 'p', 0, 'tutorial');

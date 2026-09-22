@@ -10,7 +10,6 @@
   baek     백중원: 덩치·검정 모자·수염 없음
   yori     이요리: 단발·선글라스 이마
   ai       유아이: 긴 머리·리본
-  pro      프로 삼춘(pro-guide 튜토리얼 화자): 초록 후드(흰 끈)·헤드폰·눈 가늘게 — 카이로 게임 100시간 한 동네 청년
 """
 from __future__ import annotations
 from px import Canvas, PAL, OUT, hexc, Color
@@ -313,30 +312,8 @@ def ai(expr: str) -> Canvas:
     return c
 
 
-# ---------------------------------------------------------------- 프로 삼춘: 초록 후드(어두운 후드 깃 + 흰 끈 2줄) + 헤드폰(파츠 acc)
-PRO_HOOD = [   # x 12~35, y 37~47 (11줄): 어깨 위 후드 깃(어두운 잎색), 가슴 가운데 흰 끈 2줄
-'....KeeeeeeeKKKKeeeeeee.',
-'...KeeGGeeeeeWWeeeeGGee.',
-'..KeeGgggeeeWKKWeeegggeK',
-'..KeGggggeeeWeeWeeeggggK',
-'..KeggggeeeeWeeWeeeeggge',
-'..KegggeeeeeWeeWeeeeegge',
-'...KeeeeeeeeWeeWeeeeeeeK',
-'............WeeW........',
-'............WeeW........',
-'............WeeW........',
-'............WWWW........',
-]
-
-
-def pro(expr: str) -> Canvas:
-    c = compose(1, 'short', HAIR_RGB['dark'], TOP_RGB['leaf'], ('headphone',), expr, shape='round', eyes='narrow')
-    c.blit(art(PRO_HOOD, 12, 37), 0, 0)
-    return c
-
-
 FIXED = {'halmang': halmang, 'samchun': samchun, 'hero': hero, 'jangnim': jangnim, 'haenyeo': haenyeo,
-         'baek': baek, 'yori': yori, 'ai': ai, 'pro': pro}
+         'baek': baek, 'yori': yori, 'ai': ai}
 
 
 def sprites() -> dict[str, Canvas]:

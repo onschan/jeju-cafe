@@ -1,5 +1,5 @@
 /**
- * 프로 삼춘의 정석 (pro-guide → solver): 튜토리얼 글로우 칸·「지금 추천 행동」을 실제 수치로 고른다 — 고정 좌표 없음.
+ * 할망의 정석 (pro-guide → solver): 튜토리얼 글로우 칸·「시뮬 추천」을 실제 수치로 고른다 — 고정 좌표 없음.
  * 모든 함수는 sim 상태만 읽고 결정적이다(rng·Date 없음). 튜토리얼(tutorial.ts cells)·공략 노트(TutorialWindow)·무행동 힌트(hints.ts)가 부른다.
  *
  * solver: `bestSeatCells` 같은 공개 함수는 휴리스틱(`*Heuristic`)으로 후보를 뽑은 뒤, 같은 상태의 롤아웃 결과(solverCache — 워커 또는 solveSync가 채운다)가
@@ -12,7 +12,7 @@
  * - bestIndoorSeats  실내 테이블: 본관 빈 바닥 중 벽에 붙은 창가(북쪽 벽 우선) → 입지 점수 순
  * - bestParkingCells 주차장: 마을 길에 접한 자리(entry.ts parkingSites) 중 본관 문 앞과 가까운 순
  * - bestSpotToInvest 명소: 지금 투자할 수 있는 것 중 그 태그 손님층 인기(spots.ts tagPopularity) 최고 → 싼 순
- * - openingBuild     1년차 월별 정석 빌드 표 (공략 노트)
+ * - openingBuild     1년차 월별 정석 빌드 표 (추천 탭)
  * - nextMove         현재 상태에서 정석의 다음 수 한 줄 (+ 글로우 칸) — 튜토리얼이 끝난 뒤에도 남는 코치
  * - strategyVars     대사 토큰 `{seatScore}` 같은 것에 넣을 실제 수치 (ui/tutorialDialogue.ts fillTutorialLines)
  */

@@ -108,7 +108,7 @@ describe('부탁·목표 조건/보상', () => {
 });
 
 describe('대화 데이터 (src/data/dialogue)', () => {
-  const SPEAKERS = new Set(['halmang', 'samchun', 'hero', 'haenyeo', 'jangnim', 'pro']); // pro-guide: 프로 삼춘(portrait_pro)
+  const SPEAKERS = new Set(['halmang', 'samchun', 'hero', 'haenyeo', 'jangnim']);
   const BANNED = /술|맥주|소주|막걸리|와인|칵테일|\{[a-z]+\}|이\(가\)|을\(를\)|은\(는\)/;
   // pro-guide: 튜토리얼 대사의 {seatScore} 같은 토큰은 표시 때 strategyVars로 채워지므로 채운 뒤 검사한다 (안 채워진 {템플릿}은 BANNED에 걸린다)
   const VARS = strategyVars(createInitialState(1, 'local', 0, 'tutorial'));
@@ -119,13 +119,13 @@ describe('대화 데이터 (src/data/dialogue)', () => {
     ...SAMCHUN.flatMap((s) => [s.name, s.job, s.intro, s.rewardText, ...s.chain.flatMap((c) => [c.ask, ...c.lines, c.doneLine])]),
   ];
 
-  it('튜토리얼 33단계·5장(§7.2 확장 + w-start 맨땅 3단계), 단계당 2~3줄, 화자는 ①할망·②~㉝프로 삼춘, 단계마다 done 조건 문구', () => {
+  it('튜토리얼 33단계·5장(§7.2 확장 + w-start 맨땅 3단계), 단계당 2~3줄, 화자는 전부 할망, 단계마다 done 조건 문구', () => {
     expect(TUTORIAL_STEPS.map((t) => t.id)).toEqual(Array.from({ length: 33 }, (_, i) => i + 1));
     expect(TUTORIAL_STEPS.map((t) => t.chapter)).toEqual(TUTORIAL_STEPS.map((t) => t.id <= 11 ? 1 : t.id <= 17 ? 2 : t.id <= 22 ? 3 : t.id <= 29 ? 4 : 5));
     for (const t of TUTORIAL_STEPS) {
       expect(t.lines.length).toBeGreaterThanOrEqual(2);
       expect(t.lines.length).toBeLessThanOrEqual(3);
-      expect(t.speaker).toBe(t.id === 1 ? 'halmang' : 'pro');
+      expect(t.speaker).toBe('halmang');
       expect(t.button.length).toBeGreaterThan(0);
       expect(t.done).not.toBeNull();
     }
