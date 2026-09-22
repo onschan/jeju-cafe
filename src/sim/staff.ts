@@ -6,6 +6,9 @@ import { isWalkable, findPath, walkableNeighborsOf, moveAlong, walkSpeedMult } f
 import { WAREHOUSE_FRONT } from './layout.ts';
 import { doorFrontOf } from './grid.ts';
 import { salaryOf as economySalaryOf } from './economy.ts';
+import { rollTitle, titleSalaryMult, isRare, noteTitleMet, titleBonus, staffTitleEffect, RARE_STAY_DAYS, TITLE_GRADES } from './titles.ts'; // staff-luck 칭호
+import { dayIndex } from './effects.ts';
+import { pushFx } from './fx.ts';
 
 /** 채용 방법 5단계 (recruit_tiers.json, §3.6.6). id → 정의 */
 export const TIERS: Record<JobTier, RecruitTierDef> = Object.fromEntries(RECRUIT_TIERS.map((t) => [t.id, t])) as Record<JobTier, RecruitTierDef>;
@@ -41,8 +44,8 @@ export function staffCapacity(state: GameState): number {
 /** 월급 = 기본급 × (1 + 0.15 × (Lv − 1)) × (1 + 인상%) + 스탯 합 × 1,000원 (§3.6.3, economy.ts). 배치 안 된 직원은 payroll에서 50%. */
 export { SALARY_PER_STAT_POINT as SALARY_PER_STAT } from './economy.ts';
 export const UNASSIGNED_SALARY_RATIO = 0.5;
-export function salaryOf(staff: { baseSalary: number; level: number; stats: Stats }, raisePct = 0): number {
-  return economySalaryOf(staff, raisePct);
+export function salaryOf(staff: { baseSalary: number; level: number; stats: Stats; title?: string }, raisePct = 0): number {
+  return Math.round(economySalaryOf(staff, raisePct) * titleSalaryMult(staff.title)); // staff-luck: 칭호 급여 배수 1.2/1.6/2.5
 }
 /** 이달 실제로 나가는 월급 (쉬는 직원 50%, 연수 중은 그대로) */
 export function salaryDue(staff: Staff): number {
@@ -132,7 +135,7 @@ export function roleEffect(state: GameState, role: RoleId): number {
 
 /** 운반 효과와 절약 스킬로 재료비 할인. 최대 30%. */
 export function ingredientDiscount(state: GameState): number {
-  return Math.min(0.3, roleEffect(state, 'carry') / 500 + skillTotal(state, 'ingredientDiscount'));
+  return Math.min(0.3, roleEffect(state, 'carry') / 500 + skillTotal(state, 'ingredientDiscount') + titleBonus(state, 'discount')); // staff-luck 칭호
 }
 
 // ---------- 신설 직종 효과 훅 (§3.6.1) — A(청결)·농원 수확·홍보가 곱한다 ----------
@@ -140,7 +143,7 @@ export function ingredientDiscount(state: GameState): number {
 /** 청소 직원의 하루 청결 회복량 = Σ(기술÷5 + 힘÷10) × 기력 계수 × (1 + 청소 달인). 청소 직원이 없으면 0. */
 export function cleanPowerOf(state: GameState): number {
   const base = staffInRole(state, 'clean').reduce((s, st) => s + (st.stats.skill / 5 + st.stats.strength / 10) * energyFactor(st), 0);
-  return base * (1 + skillTotal(state, 'cleanBonus', 'clean'));
+  return base * (1 + skillTotal(state, 'cleanBonus', 'clean') + titleBonus(state, 'clean')); // staff-luck 칭호(청소의 신…)
 }
 export const GARDEN_BONUS_PER_STAFF = 0.5;
 export const GARDEN_STAFF_MAX = 2;
@@ -148,7 +151,7 @@ export const GARDEN_DECAY_FACTOR = 0.5;
 /** 농원 수확 배수 = 1 + 0.5 × 농원지기 수(최대 2) + 농원지기 특기 합. 없으면 1. */
 export function gardenBonusOf(state: GameState): number {
   const n = Math.min(GARDEN_STAFF_MAX, staffInRole(state, 'garden').length);
-  return 1 + GARDEN_BONUS_PER_STAFF * n + skillTotal(state, 'harvestBonus');
+  return 1 + GARDEN_BONUS_PER_STAFF * n + skillTotal(state, 'harvestBonus') + titleBonus(state, 'harvest'); // staff-luck 칭호(감귤 장인…)
 }
 /** 농원 시설 노후 배수: 농원지기가 있으면 0.5 (A의 upgrade/노후가 곱한다) */
 export function gardenDecayOf(state: GameState): number {
@@ -156,9 +159,9 @@ export function gardenDecayOf(state: GameState): number {
 }
 export const PROMO_EFFECT_BONUS = 1.2;
 export const PROMO_ENERGY_FACTOR = 0.5;
-/** 홍보 효과 배수: 홍보 담당이 있으면 1.2 */
+/** 홍보 효과 배수: 홍보 담당이 있으면 1.2 (× 칭호 홍보 효과, staff-luck) */
 export function promoBonusOf(state: GameState): number {
-  return staffInRole(state, 'promo').length > 0 ? PROMO_EFFECT_BONUS : 1;
+  return (staffInRole(state, 'promo').length > 0 ? PROMO_EFFECT_BONUS : 1) * (1 + titleBonus(state, 'promo'));
 }
 /** 홍보 활동 기력 소모 배수: 홍보 담당이 있으면 0.5 */
 export function promoEnergyFactorOf(state: GameState): number {
@@ -197,13 +200,25 @@ export function checkRoleUnlocks(state: GameState): void {
 
 // ---------- 공고·후보 (§3.6.2 직원 풀 27 · §3.6.6 채용 5단계) ----------
 
-function candidateOf(state: GameState, def: StaffPoolDef): Candidate {
+function candidateOf(state: GameState, def: StaffPoolDef, tier?: JobTier, guaranteePro = false): Candidate {
   const stats: Stats = { ...def.stats };
-  return {
+  const title = tier ? rollTitle(state, tier, def, guaranteePro) : null; // staff-luck: 칭호는 공고로 온 후보에게만 (특수 직원은 없다)
+  const c: Candidate = {
     id: `c${state.nextId++}`, poolId: def.id, name: def.name, face: { ...def.face }, stats, statCaps: { ...def.statCaps }, skill: def.skill,
-    level: 1, maxLevel: def.maxLevel, baseSalary: def.baseSalary, salary: salaryOf({ baseSalary: def.baseSalary, level: 1, stats }, state.salaryRaisePct),
+    level: 1, maxLevel: def.maxLevel, baseSalary: def.baseSalary, salary: salaryOf({ baseSalary: def.baseSalary, level: 1, stats, title: title?.id }, state.salaryRaisePct),
     expiresMonthIndex: monthIndex(state.clock) + 1,
   };
+  if (title) {
+    c.title = title.id;
+    noteTitleMet(state, title.id);
+    if (isRare(title.grade)) {
+      c.expiresDay = dayIndex(state.clock) + RARE_STAY_DAYS; // 프로·전설은 3일만 머문다
+      const text = `${TITLE_GRADES[title.grade].name} 「${title.name}」 ${def.name} 씨가 이력서를 냈어요! (${RARE_STAY_DAYS}일만 기다려요)`;
+      pushNotice(state, text);
+      pushFx(state, { kind: 'scene', title: title.grade === 'legend' ? '전설의 지원자!' : '프로 지원자', text, tick: state.tick });
+    }
+  }
+  return c;
 }
 
 /** 지금 우리 직원이거나 후보로 와 있는 풀 id */
@@ -217,14 +232,15 @@ export function availablePool(state: GameState, tier: number): StaffPoolDef[] {
   return STAFF_POOL.filter((p) => p.tier === tier && !taken.has(p.id));
 }
 
-/** 그 단계 풀에서 n명을 무작위로 뽑아 후보로 (state.rng, 결정적). 뽑힌 수. */
-export function drawCandidates(state: GameState, tier: JobTier, n: number): number {
+/** 그 단계 풀에서 n명을 무작위로 뽑아 후보로 (state.rng, 결정적). 뽑힌 수.
+ *  staff-luck: 칭호를 굴린다(titles=false면 안 굴린다 — 시작 후보). guaranteePro면 첫 후보는 프로 이상(스카우트권). */
+export function drawCandidates(state: GameState, tier: JobTier, n: number, opts: { guaranteePro?: boolean; titles?: boolean } = {}): number {
   const pool = availablePool(state, TIERS[tier].tier);
   let got = 0;
   for (let i = 0; i < n && pool.length > 0; i++) {
     const def = pickWeighted(state, pool, () => 1)!;
     pool.splice(pool.indexOf(def), 1);
-    state.candidates.push(candidateOf(state, def));
+    state.candidates.push(candidateOf(state, def, opts.titles === false ? undefined : tier, !!opts.guaranteePro && i === 0));
     got++;
   }
   return got;
@@ -259,16 +275,25 @@ export function canPostJob(state: GameState, tier: JobTier): ApplyResult {
 export function postJob(state: GameState, tier: JobTier): void {
   const t = TIERS[tier];
   const cost = postJobCost(state, tier);
-  if (cost === 0 && state.freeRecruits > 0) state.freeRecruits -= 1;
+  const scout = cost === 0 && state.freeRecruits > 0;
+  if (scout) state.freeRecruits -= 1;
   state.money -= cost;
   state.monthCosts.recruit += cost;
-  drawCandidates(state, tier, t.count);
+  drawCandidates(state, tier, t.count, { guaranteePro: scout }); // 스카우트권이면 첫 후보는 프로 이상 (staff-luck)
 }
 
 /** 월초: 지난달 후보를 지운다. */
 export function expireCandidates(state: GameState): void {
   const now = monthIndex(state.clock);
   state.candidates = state.candidates.filter((c) => c.expiresMonthIndex > now);
+}
+/** 새 날: 3일이 지난 프로·전설 후보는 떠난다 (staff-luck) */
+export function expireRareCandidates(state: GameState): void {
+  const today = dayIndex(state.clock);
+  const gone = state.candidates.filter((c) => c.expiresDay !== undefined && c.expiresDay <= today);
+  if (gone.length === 0) return;
+  state.candidates = state.candidates.filter((c) => !gone.includes(c));
+  for (const c of gone) pushNotice(state, `${c.name} 씨가 다른 카페로 갔어요`);
 }
 
 // ---------- 채용·해고·배치·승급 ----------
@@ -294,6 +319,7 @@ export function hire(state: GameState, candidateId: string, role: RoleId): Staff
     level: c.level, maxLevel: c.maxLevel, baseSalary: c.baseSalary, salary: c.salary, exp: 0, trainingCount: 0, training: null,
     role, unpaidMonths: 0, energy: 100, lastParttimeMonthIndex: -1, x: front.x, y: front.y, path: [], anchor: null, waitMs: 0,
   };
+  if (c.title) staff.title = c.title; // staff-luck 칭호
   staff.anchor = staffAnchor(state, staff);
   state.staff.push(staff);
   return staff;
@@ -385,7 +411,7 @@ export function payroll(state: GameState): void {
 export function hourlyEnergy(state: GameState): void {
   for (const st of state.staff) {
     if (st.role === null || st.training) continue;
-    st.energy = Math.max(0, st.energy - ENERGY_PER_HOUR * (1 - skillValue(st, 'stamina')));
+    st.energy = Math.max(0, st.energy - ENERGY_PER_HOUR * (1 - skillValue(st, 'stamina')) * (1 - Math.min(0.9, staffTitleEffect(st, 'energy')))); // staff-luck 칭호 기력 소모 −
   }
 }
 

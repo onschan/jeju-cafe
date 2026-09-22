@@ -224,7 +224,7 @@ export function createInitialState(seed: number, playerId = 'local', createdAt =
     effects: [],
     menuSold: {},
     monthMenuSold: {},
-    codex: { combos: [], sets: [], recipes: [], ingredientCombos: [], spots: [] },
+    codex: { combos: [], sets: [], recipes: [], ingredientCombos: [], spots: [], titles: [] }, // titles: 만난 직원 칭호 (staff-luck)
     clean: { value: 100, lastGuests: 0, history: [] },
     customMenus: [],
     menuMods: {},
@@ -244,6 +244,9 @@ export function createInitialState(seed: number, playerId = 'local', createdAt =
     popup: initPopup(),
     rivals: [],
     lastChallenge: null,
+    lastOutcome: null,   // staff-luck 대박/중박/쪽박 팝업
+    luckSeq: 0,
+    monthGreatServes: 0,
     main: initMain(),
     guests: [],
     routes: initRoutes(), // 트랙 H 손님 유입 경로 5종
@@ -269,7 +272,7 @@ export function createInitialState(seed: number, playerId = 'local', createdAt =
   if (layout === 'starter') { fillStarterLayout(state); unlockTutorialFeatures(state); }
   for (const p of parcels) stampParcelObjects(state, p);
   // §5 직원 후보 2명 대기 (전단 등급)
-  drawCandidates(state, 'flyer', START_CANDIDATES);
+  drawCandidates(state, 'flyer', START_CANDIDATES, { titles: false }); // 시작 후보는 칭호 없이 (튜토리얼·리플레이 고정)
   state.monthly = makeMonthly(state); // 이달의 과제 (§7.3) — 시작 달 것은 알림 없이
   if (carry) applyCarry(state, carry); // z-ending 이월 6종
   return state;
