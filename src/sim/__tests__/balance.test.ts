@@ -17,6 +17,10 @@ export const YEAR3_MONEY_MIN = 25_000_000;
 export const YEAR3_MONEY_MAX = 85_000_000; // 리듬 P1 뒤 seed 2가 8,000만 — rng 한 번에 2,800↔8,000만을 오갈 만큼 민감해 상단만 완화(후속: 요금 배수 상한 튜닝)
 /** 5년차 말 ★4, 10년차 말 목표 105 (목표 108개 체인 전제). 10년차 목표는 봇이 75개(세트 3·콤보 15에서 멈춤)라 아직 스펙 미달 — 통합 계획 문서 §남은 우려 */
 export const YEAR5_STAR_MIN = 4;
+/** fun-rank(재미 리셋 §5 3년차 이후 정체 해소): 5년차 말 목표 ≥ 95 · 직원 ≥ 7 · 자금 ≤ 2억 (seed 1~3: 목표 99~101 · 직원 8 · 3,100~3,700만) */
+export const YEAR5_GOALS_MIN = 95;
+export const YEAR5_STAFF_MIN = 7;
+export const YEAR5_MONEY_MAX = 200_000_000;
 export const YEAR10_GOALS_MIN = 105;
 export const YEAR10_GOALS_NOW = 70; // 지금 봇이 확실히 넘는 선 (회귀 방지)
 /** 1년차 적자 달: 스펙 1~2회 목표, 채용·비수기 달이 겹치면 4회까지 (seed 1) */
@@ -74,10 +78,13 @@ test('같은 seed면 같은 결과 (결정적)', () => {
 
 // 트랙 B의 목표 108개가 들어오면 켜진다 (§4.6 5년차 ★4 · 10년차 목표 105)
 describe.skipIf(GOALS.length < 108)('봇 장기 KPI (목표 108 체인)', () => {
-  test('5년차 말 ★4 이상', async () => {
+  test('5년차 말 ★4 이상 · 목표 95개 이상 · 직원 7명 이상 · 자금 2억 이하 (fun-rank: 등급·본관 Lv3/4·2층·명소 Lv4~5·직원 정원이 3~5년차 사다리)', async () => {
     const last = (await runBotAsync(5, 1)).filter((r) => r.year <= 5).at(-1)!;
     expect(last.star).toBeGreaterThanOrEqual(YEAR5_STAR_MIN);
-  }, 120_000);
+    expect(last.goals).toBeGreaterThanOrEqual(YEAR5_GOALS_MIN);
+    expect(last.staff).toBeGreaterThanOrEqual(YEAR5_STAFF_MIN);
+    expect(last.money).toBeLessThanOrEqual(YEAR5_MONEY_MAX);
+  }, 180_000);
   test('10년차 말 목표 70개 이상 (스펙 105 — 봇이 세트 3·콤보 15에서 멈춰 아직 미달, 회귀 방지선만)', async () => {
     const last = (await runBotAsync(10, 1)).filter((r) => r.year <= 10).at(-1)!;
     expect(last.goals).toBeGreaterThanOrEqual(YEAR10_GOALS_NOW);

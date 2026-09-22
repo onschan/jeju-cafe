@@ -30,6 +30,7 @@ import { canUseItem } from './items.ts';
 import { isWeekend, canOpenPopup, bestRegion } from './popup.ts';
 import { featureOpen, goalClaimed, currentGoal, activeGoals } from './goals.ts';
 import { seatScore } from './site.ts';
+import { bestSeatCellsHeuristic } from './strategy.ts'; // fun-rank: 증축으로 치운 테이블을 산 필지 어디든 다시
 import { canBuyParcel, ownedParcels, parcelAt } from './parcels.ts';
 import { isWorn, canRepair } from './cleanliness.ts';
 import { complaintCounts } from './reputation.ts';
@@ -44,9 +45,13 @@ import { bestStaffFor } from './luck.ts'; // staff-luck: 대박 기대값이 가
 import { staffCapacity } from './staff.ts';
 import { canUpgrade, upgradeCost, isUpgradable } from './upgrade.ts';
 import { objectStats, activeCombos, setLevels } from './compat.ts';
-import { canInvestSpot, canHostTour, tourScore, TOUR_SUCCESS_SCORE } from './spots.ts';
+import { canInvestSpot, canHostTour, tourScore, TOUR_SUCCESS_SCORE, spotLevel, SPOT_POP_REQ_LV4 } from './spots.ts';
+import { canonicalGuestId } from '../data/index.ts';
 import { SPOTS } from '../data/index.ts';
-import { canHire } from './staff.ts';
+import { canHire, canPostJob, postJobCost, TIERS } from './staff.ts';
+import { canBuildSecondFloor, FLOOR2_COST } from './rooms.ts'; // fun-rank: 2층
+import { isSeat } from './cafe.ts';
+import type { JobTier } from './types.ts';
 import { parkingSites, routePathCells, routeFacility, canSetRouteContract, ENTRY_ROUTES, PARKING_EXPAND_FROM, PARKING_SLOTS } from './entry.ts'; // 트랙 H
 import { mainBuilding, freeFloorCells, nextMainLevel, expandCost, expandCells, canExpandMain, isAnnex, indoorSeats } from './rooms.ts'; // y-indoor
 import type { Candidate, RoleId, StatKey, QuestDef } from './types.ts';
@@ -92,6 +97,7 @@ export const BOT_DECO_CELLS: { x: number; y: number }[] = [at(6, 6), at(7, 6), a
 /** 시설 수 목표를 위해 놓는 시설 종류 (열린 것만, 이 순서로 하나씩) */
 /** 열린 순서대로(앞이 잠겨 있으면 멈춘다): 감귤나무 2(세트 「감성 카페」·콤보 「귤밭 뷰」「돌담 수확」) → 목표 보상 순 → 휴게실(★2) */
 export const BOT_DECO_TYPES = ['tangerine_tree', 'tangerine_tree', 'deco_planter', 'deco_wood_bench', 'terrace_seat', 'deco_flower_pots', 'bench_stonewall', 'canola', 'restroom', 'staff_room', 'footbath', 'vending', 'rest_pavilion', 'pampas', 'souvenir', 'dolhareubang', 'carrot_field', 'handdrip_bar', 'bike_rack', 'deco_lamp_post', 'cedar', 'basalt_rock', 'deco_mailbox', 'deco_water_jar_set',
+  'staff_room', // fun-rank: 휴게실 2개째 — 직원 정원 9 (목표 g88·g98 직원 7·9명)
   // 랜드마크(★4 조건 2개): 부탁·명소 Lv4 보상으로 열리는 것부터 — 필지당 하나라 canPlace가 자리를 고른다
   'dolhareubang_pair', 'stone_guardians', 'millstone', 'hackberry_shade', 'observatory', 'lighthouse'];
 export const BOT_WALLS: { x: number; y: number }[] = [at(5, 5), at(6, 5)];
@@ -144,6 +150,8 @@ export const BOT_EXTRA_TABLE_LEFT = 30;
 export const BOT_EXTRA_TABLES_PER_MONTH = 2;
 /** 확장 테이블은 4년차부터 (3년차까지는 §4.6 밴드의 봇 그대로) */
 export const BOT_EXTRA_TABLE_YEAR = 4;
+/** fun-rank: 야외 테이블 상한 (시작 3 + 테이블 줄 16 + 확장 칸 몫) */
+export const BOT_OUTDOOR_MAX = 32;
 /** y-indoor: 실내 테이블(80만)은 방 안 짝수 줄(ly 0·2)에만 놓아 홀수 줄이 통로가 되게 (문은 항상 비움). 한 달 3개.
  *  목표 g23 「실내 좌석 6석」이 진행 중이거나, 2년차부터 돈 여유(800만)가 있을 때만 — 1년차 자금 목표(700만)를 늦추지 않게 */
 export const BOT_INDOOR_PER_MONTH = 3;
@@ -152,9 +160,23 @@ export const BOT_INDOOR_YEAR = 2;
 export const BOT_INDOOR_MIN_MONEY = 12_000_000;
 /** 실내 좌석은 이만큼까지만 (야외 테이블 5만 vs 실내 80만 — 자금 KPI) */
 export const BOT_INDOOR_MAX_SEATS = 14;
-/** y-indoor: 본관 증축은 2년차부터 Lv2까지(Lv3 800만 + 7일 휴업은 3년차 KPI 밴드를 깎는다), 비용 + 여유 400만 (목표 g41 「본관 Lv2」). 늘어나는 칸의 테이블·장식은 치운다 */
+/** fun-rank: 본관 Lv4 뒤엔 실내 20석까지 (Lv4 증축이 손님을 확 늘려 자리 불만(no_seat)이 평판을 깎는다) */
+export const BOT_INDOOR_MAX_SEATS_LV4 = 20;
+/** y-indoor: 본관 증축은 2년차부터 Lv2까지(Lv3 800만 + 7일 휴업은 3년차 KPI 밴드를 깎는다), 비용 + 여유 400만 (목표 g41 「본관 Lv2」). 늘어나는 칸의 테이블·장식은 치운다.
+ *  fun-rank: Lv3은 3년차, Lv4는 4년차부터 (목표 g77·g89 — 3년차 이후 돈 쓸 곳). 2층은 Lv3 뒤 3년차부터 (g80). */
 export const BOT_EXPAND_YEAR = 2;
 export const BOT_EXPAND_MAX_LEVEL = 2;
+export const BOT_EXPAND_LEVEL_YEAR: Record<number, number> = { 2: 2, 3: 3, 4: 4 };
+export const BOT_FLOOR2_YEAR = 3;
+/** fun-rank: 3년차부터 열린 큰 시설(₩300만 이상 — 라운지·파인다이닝·볼링장…)을 한 달 하나, 여유 1,000만을 남기고 짓는다 (목표 보상이 돈 쓸 곳이 되게) */
+export const BOT_LUXURY_YEAR = 3;
+export const BOT_LUXURY_MIN_COST = 3_000_000;
+export const BOT_LUXURY_RESERVE = 10_000_000;
+/** fun-rank: 채용 공고는 전단이 바닥나면 다음 방법(사이트·잡지·인턴·대학)으로 — 4년차 직원 5명 고정의 원인이 「전단으로 올 사람은 다 왔어요」였다 */
+export const BOT_JOB_TIERS: JobTier[] = ['flyer', 'site', 'magazine', 'intern', 'college'];
+/** fun-rank: 명소 투자는 3년차부터 Lv4, 4년차부터 Lv5까지, 4년차부터 한 달 최대 3곳 (24곳 Lv5 = ₩8억이 5년차 자금 ≤2억의 주된 씀씀이) */
+export const BOT_SPOT_PER_MONTH_LATE = 3;
+export const BOT_SPOT_LV4_YEAR = 3;
 /** y-indoor: 별관(카페 별관 4×3)은 서쪽 필지(parcel4) 위쪽 (−7,0)에 — 밭담 돌담이 겹치면 치운다. 문 앞 (−7,3)에서 y=4 올렛길을 동쪽으로 이어 시작 필지 가로 길에 붙인다 (목표 g45 「별관 짓기」) */
 export const BOT_ANNEX_TYPE = 'annex_cafe';
 export const BOT_ANNEX_AT = at(-7, 0);
@@ -180,8 +202,9 @@ export const BOT_DONATE_MIN_MONEY = 20_000_000;
 export const BOT_DONATE_CAP = 10_000_000;
 /** 연수는 이만큼만 (비용이 회당 +20%씩 오른다) */
 export const BOT_TRAIN_MAX = 4;
-/** 증축: 돈 여유가 있으면 한 달에 하나 (목표 g41·g63·g95) */
+/** 증축: 돈 여유가 있으면 한 달에 하나 (목표 g41·g63·g95). fun-rank: 3년차부터 한 달 셋 */
 export const BOT_UPGRADE_MIN_MONEY = 4_000_000;
+export const BOT_UPGRADES_PER_MONTH_LATE = 3;
 /** 관광지 투자: 돈이 다음 레벨 비용 + 여유분을 넘으면 (§4.6 투자 규칙) */
 export const BOT_SPOT_RESERVE = 3_000_000;
 /** 평판이 이 아래면 사과 이벤트 */
@@ -200,12 +223,17 @@ export const BOT_RESERVE_YEAR3 = 20_000_000;
 /** 4년차 전엔 관광지 Lv3까지만 (Lv4·5는 350만~1,300만/회). 4년차부터는 2,000만 여유분을 남기고 Lv5까지 올린다 */
 export const BOT_SPOT_MAX_LEVEL_EARLY = 3;
 export const BOT_SPOT_FULL_YEAR = 4;
-/** 직원 수 상한 = 2 + 년차 (2년차 4 · 3년차 5 · 6년차 8) */
+/** 직원 수 상한 = 2 + 년차 (2년차 4 · 3년차 5), fun-rank: 4년차부터 3 + 년차 (4년차 7 · 5년차 8 · 6년차 9 — 급여가 후반 씀씀이) */
 export const BOT_STAFF_PER_YEAR = 1;
 export const BOT_STAFF_BASE = 2;
+export const BOT_STAFF_BASE_LATE = 3;
+export const BOT_STAFF_LATE_YEAR = 4;
 export const BOT_SPOT_YEAR = 2;
 const WORKER_IDS = ['ms_worker_3', 'ms_worker_4', 'ms_worker_5'];
 
+function countType(s: GameState, type: string): number {
+  return Object.values(s.objects).filter((o) => o.type === type).length;
+}
 function countKind(s: GameState, kind: string): number {
   return Object.values(s.objects).filter((o) => objectDef(o.type).kind === kind).length;
 }
@@ -284,32 +312,56 @@ function canSpend(s: GameState, cost: number): boolean {
 
 /** 2년차부터: 빈 슬롯(홀 → 바리스타 → 요리사 → 운반 → 안내)이 있고 돈이 넉넉하면 전단 공고 → 핵심 스탯 최고를 채용 (한 달 한 명) */
 function hireForFreeSlot(s: GameState): void {
-  if (s.clock.year < BOT_HIRE_YEAR || !canSpend(s, BOT_HIRE_MIN_MONEY) || s.staff.length >= BOT_STAFF_BASE + BOT_STAFF_PER_YEAR * s.clock.year || s.staff.length >= staffCapacity(s)) return; // 정원(휴게실 +3)이 차면 공고를 내지 않는다
+  const base = s.clock.year >= BOT_STAFF_LATE_YEAR ? BOT_STAFF_BASE_LATE : BOT_STAFF_BASE;
+  if (s.clock.year < BOT_HIRE_YEAR || !canSpend(s, BOT_HIRE_MIN_MONEY) || s.staff.length >= base + BOT_STAFF_PER_YEAR * s.clock.year || s.staff.length >= staffCapacity(s)) return; // 정원(휴게실 +3)이 차면 공고를 내지 않는다
   for (const role of BOT_HIRE_ORDER) {
     if (!s.unlocked.roles.includes(role) || s.staff.filter((st) => st.role === role).length >= (s.slots[role] ?? 0)) continue;
-    if (s.candidates.length === 0 && !apply(s, { type: 'postJob', tier: 'flyer' }).ok) return;
+    if (s.candidates.length === 0 && !postJobAny(s)) return;
     const c = s.candidates.find((x) => canHire(s, x.id, role).ok);
     if (c && apply(s, { type: 'hire', candidateId: c.id, role }).ok) return;
   }
 }
+/** fun-rank: 낼 수 있는 가장 싼 공고 (전단 → 사이트 → 잡지 → 인턴 → 대학). 비싼 공고일수록 급여가 높아 후반 씀씀이가 된다. */
+function postJobAny(s: GameState): boolean {
+  // 4년차부터 돈이 넉넉하면(인턴 ₩2,000만 + 여유) 비싼 공고부터 — 전설 칭호(목표 g94)는 인턴·대학에서만 나온다
+  const tiers = s.clock.year >= BOT_STAFF_LATE_YEAR ? [...BOT_JOB_TIERS].reverse() : BOT_JOB_TIERS;
+  for (const tier of tiers) {
+    if (!canPostJob(s, tier).ok || !canSpend(s, postJobCost(s, tier) + (TIERS[tier].tier >= 4 ? BOT_LUXURY_RESERVE : 0))) continue;
+    if (apply(s, { type: 'postJob', tier }).ok) return true;
+  }
+  return false;
+}
 
+/** fun-rank: 명소 Lv3 → Lv4 조건 「그 손님층 인기 40」이 5년차까지 명소 16곳(₩5억)을 잠갔다 — 열린 손님층이면 응모권으로 인기 열매를 사서 준다 (한 달 하나) */
+function feedSpotGuest(s: GameState): void {
+  if (s.clock.year < BOT_SPOT_LV4_YEAR) return;
+  for (const def of SPOTS) {
+    if (spotLevel(s, def.id) !== 3 || !def.lv2GuestId) continue;
+    const g = canonicalGuestId(def.lv2GuestId);
+    if (!isUnlocked(s, g) || (s.segmentPopularity[g] ?? 0) >= SPOT_POP_REQ_LV4) continue;
+    if ((s.inventory[POPULARITY_FRUIT] ?? 0) <= 0 && canBuyTicket(s, 'ts_popularity_fruit').ok) apply(s, { type: 'buyTicket', id: 'ts_popularity_fruit' });
+    if (canUseGuestItem(s, POPULARITY_FRUIT, g).ok && apply(s, { type: 'useGuestItem', itemId: POPULARITY_FRUIT, guestId: g }).ok) return;
+  }
+}
 /** 2년차부터: 투자할 수 있는 관광지 중 다음 레벨 비용 + 여유 300만이 있으면 하나 (한 달 하나) */
 function investSpotIfAny(s: GameState): void {
   if (s.clock.year < BOT_SPOT_YEAR) return;
   // g44 「커플 손님 인기 30」이 열렸는데 커플이 안 오면(camellia_hill Lv2 해금) 유채밭→산굼부리→동백 체인은 초반 Lv3 캡을 안 본다
   const wantCouple = !isUnlocked(s, BOT_COUPLE_ID) && activeGoals(s).some((g) => g.id === BOT_COUPLE_GOAL);
+  const maxLv = s.clock.year >= BOT_SPOT_FULL_YEAR ? 5 : s.clock.year >= BOT_SPOT_LV4_YEAR ? 4 : BOT_SPOT_MAX_LEVEL_EARLY; // fun-rank: 3년차 Lv4 · 4년차 Lv5
   const once = (): boolean => {
     for (const def of SPOTS) {
       const next = canInvestSpot(s, def.id);
       const chain = wantCouple && BOT_COUPLE_SPOT_CHAIN.includes(def.id) && (def.id !== 'camellia_hill' || (s.spots[def.id] ?? 0) < 2);
-      if (!next.ok || (!chain && s.clock.year < BOT_SPOT_FULL_YEAR && (s.spots[def.id] ?? 0) >= BOT_SPOT_MAX_LEVEL_EARLY)) continue;
+      if (!next.ok || (!chain && (s.spots[def.id] ?? 0) >= maxLv)) continue;
       const cost = def.levels.find((l) => l.level === (s.spots[def.id] ?? 0) + 1)?.cost ?? Infinity;
       const capBreak = chain && (s.spots[def.id] ?? 0) >= BOT_SPOT_MAX_LEVEL_EARLY && s.clock.year < BOT_SPOT_FULL_YEAR;
       if (canSpend(s, cost + (capBreak ? BOT_COUPLE_CHAIN_RESERVE : 0)) && apply(s, { type: 'investSpot', id: def.id }).ok) return true;
     }
     return false;
   };
-  once();
+  const times = s.clock.year >= BOT_SPOT_FULL_YEAR ? BOT_SPOT_PER_MONTH_LATE : 1;
+  for (let i = 0; i < times && once(); i++) { /* 한 달 최대 times곳 */ }
 }
 
 /** 낡은 시설(노후·태풍 파손)을 수리비가 있으면 한 달에 몇 개 고친다 — 불만 'worn'이 평판을 깎는다 */
@@ -329,9 +381,13 @@ function trainOne(s: GameState): void {
 /** 증축: 조건(이용 횟수·인기)이 찬 시설 하나를 한 달에 하나 증축 */
 function upgradeOne(s: GameState): void {
   if (!canSpend(s, BOT_UPGRADE_MIN_MONEY)) return;
+  let n = 0;
+  const max = s.clock.year >= BOT_LUXURY_YEAR ? BOT_UPGRADES_PER_MONTH_LATE : 1;
   for (const o of Object.values(s.objects)) {
+    if (n >= max) return;
+    if (s.clock.year >= BOT_LUXURY_YEAR && isSeat(s, o)) continue; // fun-rank: 3년차부터 좌석 증축(Lv3 +2석)은 안 한다 — 좌석이 곧 매출이라 5년차 자금이 4억을 넘는다
     if (!isUpgradable(objectDef(o.type)) || !canUpgrade(s, o.id, objectStats(s, o.id).popularity).ok) continue;
-    if (canSpend(s, upgradeCost(s, o)) && apply(s, { type: 'upgradeObject', objectId: o.id }).ok) return;
+    if (canSpend(s, upgradeCost(s, o)) && apply(s, { type: 'upgradeObject', objectId: o.id }).ok) n++;
   }
 }
 
@@ -421,7 +477,8 @@ function placeForSpot(s: GameState): void {
 /** y-indoor: 본관·별관 바닥 짝수 줄에 실내 테이블 (통로 줄은 비운다) */
 function placeIndoorSeats(s: GameState): void {
   const goalActive = activeGoals(s).some((g) => g.id === BOT_INDOOR_GOAL);
-  if (!goalActive && (s.clock.year < BOT_INDOOR_YEAR || indoorSeats(s) >= BOT_INDOOR_MAX_SEATS || !canSpend(s, objectDef('table_in').cost + BOT_INDOOR_MIN_MONEY))) return;
+  const maxSeats = (s.main?.level ?? 1) >= 4 ? BOT_INDOOR_MAX_SEATS_LV4 : BOT_INDOOR_MAX_SEATS;
+  if (!goalActive && (s.clock.year < BOT_INDOOR_YEAR || indoorSeats(s) >= maxSeats || !canSpend(s, objectDef('table_in').cost + BOT_INDOOR_MIN_MONEY))) return;
   let n = 0;
   for (const room of Object.values(s.objects).filter((o) => o.type === 'warehouse' || isAnnex(o))) {
     if (room.build) continue;
@@ -436,7 +493,8 @@ function placeIndoorSeats(s: GameState): void {
 function expandMainIfCan(s: GameState): void {
   if (s.clock.year < BOT_EXPAND_YEAR || !mainBuilding(s)) return;
   const next = nextMainLevel(s);
-  if (!next || next > BOT_EXPAND_MAX_LEVEL || s.money < expandCost(s) + BOT_UPGRADE_MIN_MONEY) return; // 목표 g41(본관 Lv2)이 체인을 막지 않게 별관처럼 3년차 여유분(2,000만)은 안 본다 (y 통합: 주차장 자리 좌석 철거로 3년차 초 자금이 2,700만에 못 미치는 시드가 있다)
+  if (!next || s.clock.year < (BOT_EXPAND_LEVEL_YEAR[next] ?? Infinity) || s.money < expandCost(s) + BOT_UPGRADE_MIN_MONEY) return; // 목표 g41(본관 Lv2)이 체인을 막지 않게 별관처럼 3년차 여유분(2,000만)은 안 본다 (y 통합: 주차장 자리 좌석 철거로 3년차 초 자금이 2,700만에 못 미치는 시드가 있다). fun-rank: Lv3 3년차·Lv4 4년차
+  if (next > BOT_EXPAND_MAX_LEVEL && !canSpend(s, expandCost(s))) return; // Lv3·4는 여유분(2,000만)을 남기고
   for (const p of expandCells(s)) {
     const o = objectAt(s, p.x, p.y);
     if (o && !objectDef(o.type).room && objectDef(o.type).kind !== 'path') apply(s, { type: 'remove', objectId: o.id });
@@ -447,6 +505,31 @@ function expandMainIfCan(s: GameState): void {
   const blocker = objectAt(s, f.x, f.y);
   if (blocker && objectDef(blocker.type).kind !== 'path') apply(s, { type: 'remove', objectId: blocker.id });
   if (!objectAt(s, f.x, f.y)) place(s, 'path', f.x, f.y);
+}
+/** fun-rank: 본관 Lv3 뒤 2층 올리기 (₩1,500만, 목표 g80) — 3년차부터, 여유분을 남기고 */
+function buildSecondFloorIfCan(s: GameState): void {
+  if (s.clock.year < BOT_FLOOR2_YEAR || !canBuildSecondFloor(s).ok || !canSpend(s, FLOOR2_COST)) return;
+  apply(s, { type: 'buildSecondFloor' });
+}
+/** fun-rank: 열린 큰 시설(₩300만 이상, 방·랜드마크·주차장·실내 가구 제외)을 아직 없는 종류부터 하나 — 산 필지 전체를 훑어 놓는다 (목표 보상 시설이 돈 쓸 곳이 되게). 한 달 하나. */
+function placeLuxury(s: GameState): void {
+  if (s.clock.year < BOT_LUXURY_YEAR) return;
+  // 직원 정원이 찼으면 휴게실(+3)을 산 필지 어디든 먼저 (장식 칸이 차서 2개째 휴게실을 못 놓던 시드)
+  if (s.staff.length >= staffCapacity(s) - 1 && s.unlocked.objects.includes('staff_room') && canSpend(s, objectDef('staff_room').cost)) {
+    for (const p of ownedParcels(s)) for (let ly = 0; ly < p.h; ly++) for (let lx = 0; lx < p.w; lx++) {
+      const x = p.x + lx, y = p.y + ly;
+      if (!objectAt(s, x, y) && canPlace(s, 'staff_room', x, y).ok && place(s, 'staff_room', x, y)) return;
+    }
+  }
+  const have = new Set(Object.values(s.objects).map((o) => o.type));
+  const cands = s.unlocked.objects.map((id) => objectDef(id)).filter((d) => d.cost >= BOT_LUXURY_MIN_COST && !have.has(d.id) && !d.room && d.kind !== 'landmark' && PARKING_SLOTS[d.id] === undefined && !INDOOR_IDS.has(d.id)).sort((a, b) => a.cost - b.cost);
+  for (const d of cands) {
+    if (!canSpend(s, d.cost + BOT_LUXURY_RESERVE)) return;
+    for (const p of ownedParcels(s)) for (let ly = 0; ly < p.h; ly++) for (let lx = 0; lx < p.w; lx++) {
+      const x = p.x + lx, y = p.y + ly;
+      if (!objectAt(s, x, y) && canPlace(s, d.id, x, y).ok && place(s, d.id, x, y)) return;
+    }
+  }
 }
 /** y-indoor: 서쪽 필지를 사면 별관 자리까지 올렛길을 먼저 깔고, 별관이 열리고 돈이 되면 짓는다 */
 function placeAnnex(s: GameState): void {
@@ -578,6 +661,8 @@ function monthlyPlan(s: GameState, monthsPlayed: number): void {
   if (s.clock.year >= BOT_EXTRA_TABLE_YEAR && (complaintCounts(s).find((c) => c.reason === 'no_seat')?.count ?? 0) >= BOT_EXTRA_TABLE_LEFT) {
     let extra = 0;
     for (const p of BOT_EXTRA_CELLS) { if (extra >= BOT_EXTRA_TABLES_PER_MONTH) break; if (!objectAt(s, p.x, p.y) && place(s, 'table_out', p.x, p.y)) extra++; }
+    // fun-rank: 확장 칸이 다 찼으면(본관 Lv3·4 증축이 테이블 줄을 삼킨다) 산 필지 어디든 닿는 자리 중 점수 높은 칸에 — 야외 테이블 BOT_OUTDOOR_MAX개까지 (좌석이 곧 매출이라 무한정 늘리면 5년차 자금이 9억을 넘는다)
+    for (const p of bestSeatCellsHeuristic(s, BOT_TABLES_PER_MONTH)) { if (extra >= BOT_TABLES_PER_MONTH || countType(s, 'table_out') >= BOT_OUTDOOR_MAX) break; if (place(s, 'table_out', p.x, p.y)) extra++; }
   }
   setMenuIfEmpty(s, 3, 'green_tea');
   pickDessert(s);
@@ -611,6 +696,7 @@ function monthlyPlan(s: GameState, monthsPlayed: number): void {
   // 커플 인기(g44 「커플 손님 인기 30」): 응모권 5장이면 인기 열매를 사서 커플에게 (홍보는 커플을 안 올린다)
   if (effectivePopularity(s, BOT_COUPLE_ID) < BOT_COUPLE_POPULARITY && isUnlocked(s, BOT_COUPLE_ID) && (s.inventory[POPULARITY_FRUIT] ?? 0) <= 0 && canBuyTicket(s, 'ts_popularity_fruit').ok) apply(s, { type: 'buyTicket', id: 'ts_popularity_fruit' });
   if (effectivePopularity(s, BOT_COUPLE_ID) < BOT_COUPLE_POPULARITY && canUseGuestItem(s, POPULARITY_FRUIT, BOT_COUPLE_ID).ok) apply(s, { type: 'useGuestItem', itemId: POPULARITY_FRUIT, guestId: BOT_COUPLE_ID });
+  feedSpotGuest(s); // fun-rank: 명소 Lv4 조건(손님층 인기 40)을 인기 열매로
   if (s.lastAnnouncement) apply(s, { type: 'dismissAnnouncement' });
 
   // 시설·돌담·필지
@@ -620,6 +706,7 @@ function monthlyPlan(s: GameState, monthsPlayed: number): void {
   trainOne(s);
   upgradeOne(s);
   expandMainIfCan(s); // y-indoor
+  buildSecondFloorIfCan(s); // fun-rank
   placeIndoorSeats(s);
   placeAnnex(s);
   placeForCombo(s);
@@ -627,6 +714,7 @@ function monthlyPlan(s: GameState, monthsPlayed: number): void {
   placeForSpot(s);
   placeForQuest(s);
   placeLandmark(s);
+  placeLuxury(s); // fun-rank: 3년차부터 큰 시설
   // 투어 개최: 점수 60 이상인 명소가 있으면 월 1회 (목표 g71)
   if (!s.lastTour) for (const def of SPOTS) if (canHostTour(s, def.id).ok && tourScore(s, def.id) >= TOUR_SUCCESS_SCORE) { apply(s, { type: 'hostTour', spotId: def.id }); break; }
   if (s.lastTour) apply(s, { type: 'dismissTour' });

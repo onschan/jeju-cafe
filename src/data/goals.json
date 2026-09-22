@@ -1116,8 +1116,8 @@
     "title": "콤보 8개",
     "desc": "활성 콤보 8개",
     "condition": {
-      "type": "comboCount",
-      "n": 8
+      "type": "corners",
+      "n": 5
     },
     "reward": [
       {
@@ -1322,9 +1322,8 @@
     "title": "크루즈 손님 맞이",
     "desc": "★3에 곶자왈 가장자리 필지 북쪽 끝에 선착장을 짓자 — 크루즈 입항 날 외국 손님이 내려요",
     "condition": {
-      "type": "routeGuests",
-      "route": "cruise",
-      "n": 1
+      "type": "routeUnlocked",
+      "route": "cruise"
     },
     "reward": [
       {
@@ -1443,7 +1442,7 @@
     "title": "세트 효과 3개",
     "desc": "세트 효과 3개",
     "condition": {
-      "type": "setCount",
+      "type": "grade",
       "n": 3
     },
     "reward": [
@@ -1460,8 +1459,8 @@
     "title": "콤보 15개",
     "desc": "활성 콤보 15개",
     "condition": {
-      "type": "comboCount",
-      "n": 15
+      "type": "mainLevel",
+      "lv": 3
     },
     "reward": [
       {
@@ -1479,7 +1478,7 @@
     "condition": {
       "type": "spotAny",
       "lv": 4,
-      "n": 4
+      "n": 2
     },
     "reward": [
       {
@@ -1495,8 +1494,8 @@
     "title": "유니폼 3단계",
     "desc": "유니폼 3단계",
     "condition": {
-      "type": "uniforms",
-      "n": 3
+      "type": "staff",
+      "n": 6
     },
     "reward": [
       {
@@ -1512,8 +1511,7 @@
     "title": "직원 6명",
     "desc": "직원 6명 고용",
     "condition": {
-      "type": "staff",
-      "n": 6
+      "type": "secondFloor"
     },
     "reward": [
       {
@@ -1568,8 +1566,8 @@
     "title": "자금 1억",
     "desc": "자금 ₩100,000,000 이상",
     "condition": {
-      "type": "money",
-      "n": 100000000
+      "type": "grade",
+      "n": 4
     },
     "reward": [
       {
@@ -1657,9 +1655,8 @@
     "title": "직원 Lv8 2명",
     "desc": "Lv8 이상 직원 2명",
     "condition": {
-      "type": "staffLevel",
-      "lv": 8,
-      "n": 2
+      "type": "staff",
+      "n": 7
     },
     "reward": [
       {
@@ -1675,8 +1672,8 @@
     "title": "손님 1만 명",
     "desc": "손님이 다녀간 수 10,000명",
     "condition": {
-      "type": "guests",
-      "n": 10000
+      "type": "mainLevel",
+      "lv": 4
     },
     "reward": [
       {
@@ -1709,8 +1706,8 @@
     "title": "★5 전설의 카페",
     "desc": "★ 등급 5를 받자",
     "condition": {
-      "type": "stars",
-      "n": 5
+      "type": "routesOpen",
+      "n": 4
     },
     "reward": [
       {
@@ -1726,9 +1723,9 @@
     "title": "전국 카페 투어 1위",
     "desc": "전국 카페 투어 가이드북 1위 안",
     "condition": {
-      "type": "guidebookRank",
-      "bookId": "gb_national_tour",
-      "n": 1
+      "type": "spotAny",
+      "lv": 4,
+      "n": 6
     },
     "reward": [
       {
@@ -1748,8 +1745,8 @@
     "title": "콤보 30개",
     "desc": "활성 콤보 30개",
     "condition": {
-      "type": "comboCount",
-      "n": 30
+      "type": "corners",
+      "n": 7
     },
     "reward": [
       {
@@ -1765,8 +1762,8 @@
     "title": "세트 효과 6개",
     "desc": "세트 효과 6개",
     "condition": {
-      "type": "setCount",
-      "n": 6
+      "type": "guests",
+      "n": 30000
     },
     "reward": [
       {
@@ -1782,9 +1779,8 @@
     "title": "시설 Lv3 10개",
     "desc": "Lv3 이상으로 증축한 시설 10개",
     "condition": {
-      "type": "facilityLv",
-      "lv": 3,
-      "n": 10
+      "type": "regulars",
+      "n": 30
     },
     "reward": [
       {
@@ -1802,7 +1798,7 @@
     "condition": {
       "type": "spotAny",
       "lv": 5,
-      "n": 12
+      "n": 4
     },
     "reward": [
       {
@@ -1818,8 +1814,8 @@
     "title": "단골 30명",
     "desc": "단골 손님 30명",
     "condition": {
-      "type": "regular",
-      "n": 30
+      "type": "reputation",
+      "n": 80
     },
     "reward": [
       {
@@ -1835,8 +1831,8 @@
     "title": "라이벌 10승",
     "desc": "카페 대결 10승",
     "condition": {
-      "type": "rivalWins",
-      "n": 10
+      "type": "staff",
+      "n": 9
     },
     "reward": [
       {
@@ -1852,8 +1848,8 @@
     "title": "자금 3억",
     "desc": "자금 ₩300,000,000 이상",
     "condition": {
-      "type": "money",
-      "n": 300000000
+      "type": "visitorsTotal",
+      "n": 200000
     },
     "reward": [
       {
@@ -1873,13 +1869,18 @@
     "title": "손님 3만 명",
     "desc": "손님이 다녀간 수 30,000명",
     "condition": {
-      "type": "guests",
-      "n": 30000
+      "type": "spotAny",
+      "lv": 5,
+      "n": 8
     },
     "reward": [
       {
-        "type": "money",
-        "amount": 30000000
+        "type": "mileage",
+        "n": 30
+      },
+      {
+        "type": "tickets",
+        "n": 5
       }
     ],
     "speaker": "halmang",
@@ -1890,8 +1891,7 @@
     "title": "직원 Lv10 1명",
     "desc": "Lv10 이상 직원 1명",
     "condition": {
-      "type": "staffLevel",
-      "lv": 10,
+      "type": "legendStaff",
       "n": 1
     },
     "reward": [
@@ -1909,8 +1909,8 @@
     "title": "24개월 연속 흑자",
     "desc": "24개월 연속 흑자",
     "condition": {
-      "type": "profitMonths",
-      "n": 24
+      "type": "grade",
+      "n": 5
     },
     "reward": [
       {
@@ -1928,7 +1928,7 @@
     "condition": {
       "type": "spotAny",
       "lv": 5,
-      "n": 24
+      "n": 12
     },
     "reward": [
       {
@@ -1970,8 +1970,8 @@
     "title": "자금 5억",
     "desc": "자금 ₩500,000,000 이상",
     "condition": {
-      "type": "money",
-      "n": 500000000
+      "type": "stars",
+      "n": 5
     },
     "reward": [
       {
@@ -1987,8 +1987,9 @@
     "title": "월 매출 1억",
     "desc": "지난달 매출 ₩100,000,000 이상",
     "condition": {
-      "type": "monthIncome",
-      "n": 100000000
+      "type": "facilityLv",
+      "lv": 2,
+      "n": 10
     },
     "reward": [
       {
@@ -2009,8 +2010,12 @@
     },
     "reward": [
       {
-        "type": "money",
-        "amount": 100000000
+        "type": "tickets",
+        "n": 20
+      },
+      {
+        "type": "mileage",
+        "n": 50
       }
     ],
     "speaker": "samchun",

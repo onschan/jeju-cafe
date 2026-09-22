@@ -38,11 +38,11 @@ export const VISITORS_PER_APPEAL = 2;
 export const BUS_VISITOR_MULT = 1.3;
 export const VISITOR_GUEST_RATE = 0.03;
 /** Lv별 추가 조건 (Lv2~5 누적 방문객) */
-export const SPOT_VISITOR_REQ: Record<number, number> = { 2: 1_000, 3: 5_000, 4: 15_000, 5: 40_000 };
+export const SPOT_VISITOR_REQ: Record<number, number> = { 2: 1_000, 3: 5_000, 4: 10_000, 5: 25_000 }; // fun-rank: Lv4·5가 3~5년차에 열리게 (15,000/40,000 → 10,000/25,000) — 명소 Lv4~5(₩6억)가 후반의 주된 돈 쓸 곳
 export const SPOT_YEAR_REQ_LV3 = 2;
 export const SPOT_POP_REQ_LV4 = 40;
-/** Lv5 ★ 조건: k=1·2 → ★3, 3·4 → ★4, 5·6 → ★5 */
-export const spotStarReq = (k: number): number => (k <= 2 ? 3 : k <= 4 ? 4 : 5);
+/** Lv5 ★ 조건: k=1·2 → ★3, 3~6 → ★4 (fun-rank: ★5는 5년차 봇도 못 닿아 명소 8곳이 영영 Lv4에 묶였다) */
+export const spotStarReq = (k: number): number => (k <= 2 ? 3 : 4);
 /** Lv별 태그 손님 유입 배수 (누적 아님 — 그 Lv의 값), 같은 태그 합산 상한 */
 export const SPOT_TAG_MULT = [1, 1.05, 1.1, 1.15, 1.2, 1.25] as const;
 export const SPOT_TAG_MULT_CAP = 2.0;
