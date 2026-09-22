@@ -14,6 +14,7 @@ import { canTrain, train } from './training.ts';
 import { canPromote, promote, canSetTarget, setTarget } from './promotions.ts';
 import { discoverCombos } from './compat.ts';
 import { canUseItem, useItem, canGiveGift, giveGift, canCraftGift, craftGift } from './items.ts';
+import { canGreet, greetGuest, canRecommend, recommendMenu } from './interact.ts'; // fun-guest: 인사·추천
 import { evaluateUnlocks } from './segments.ts';
 import { canAcceptQuest, acceptQuest, canRespondEvent, respondEvent, afterInvest, checkQuests } from './board.ts';
 import { canInvestSpot, investSpot, canHostTour, hostTour, canSetTourBus, setTourBus } from './spots.ts';
@@ -515,6 +516,18 @@ function applyInner(state: GameState, a: Action): ApplyResult {
       const c = canGiveGift(state, a.guestId, a.itemId);
       if (!c.ok) return c;
       giveGift(state, a.guestId, a.itemId);
+      return { ok: true };
+    }
+    case 'greetGuest': { // fun-guest
+      const c = canGreet(state, a.guestId);
+      if (!c.ok) return c;
+      greetGuest(state, a.guestId);
+      return { ok: true };
+    }
+    case 'recommendMenu': { // fun-guest
+      const c = canRecommend(state, a.guestId, a.menuId);
+      if (!c.ok) return c;
+      recommendMenu(state, a.guestId, a.menuId);
       return { ok: true };
     }
     case 'craftGift': {

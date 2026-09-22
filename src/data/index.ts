@@ -466,7 +466,7 @@ export const STAFF_POOL = staffPoolJson as StaffPoolDef[];
 export const RECRUIT_TIERS = recruitTiersJson as RecruitTierDef[];
 export const TRAININGS = trainingsJson as TrainingDef[];
 export const TITLES = titlesJson as TitleDef[]; // 직원 칭호 30 (staff-luck)
-export const NAMES = namesJson as { names: string[]; hair: number; skin: number; top: number };
+export const NAMES = namesJson as { names: string[]; surnames: string[]; given: string[]; hair: number; skin: number; top: number }; // fun-guest: 성·이름 풀 추가
 export const PROMOTIONS = promotionsJson as unknown as PromotionDef[];
 export const DIALOGUE = dialogueJson as {
   guest: Record<string, { happy: string[]; meh: { no_menu: string[]; scenery: string[]; wait: string[] } }>;
