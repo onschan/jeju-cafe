@@ -21,7 +21,7 @@ describe('v3 시작 상태 (§5)', () => {
     expect(s.candidates).toHaveLength(START_CANDIDATES);
     expect(s.unlocked.objects.sort()).toEqual([...new Set(START_OBJECT_IDS)].sort());
     expect(s.unlocked.menus).toEqual(INITIAL_UNLOCKED.menus);
-    expect(s.unlocked.objects).toHaveLength(11); // 8종 + 정낭 (w-free) + 가로등·정원등 (fix-indoor)
+    expect(s.unlocked.objects).toHaveLength(17); // fun-corner: 코너 조각 장식 6종(꽃밭·표지판·난간·소라·망원경·벚나무) 추가 — 8종 + 정낭 (w-free) + 가로등·정원등 (fix-indoor)
     expect(s.unlocked.menus).toHaveLength(3);
     expect(s.slots).toEqual({ barista: 1, cook: 1, hall: 2, carry: 0, guide: 0, clean: 2, garden: 2, promo: 1 });
     expect(s.storage).toEqual({});

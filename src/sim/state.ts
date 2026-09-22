@@ -236,7 +236,7 @@ export function createInitialState(seed: number, playerId = 'local', createdAt =
     effects: [],
     menuSold: {},
     monthMenuSold: {},
-    codex: { combos: [], sets: [], recipes: [], ingredientCombos: [], spots: [], titles: [] }, // titles: 만난 직원 칭호 (staff-luck)
+    codex: { combos: [], sets: [], recipes: [], ingredientCombos: [], spots: [], titles: [], corners: [] }, // titles: 만난 직원 칭호 (staff-luck) · corners: 만든 코너 (fun-corner)
     clean: { value: 100, lastGuests: 0, history: [] },
     customMenus: [],
     menuMods: {},

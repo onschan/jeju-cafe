@@ -17,6 +17,7 @@ import { Background } from './Background';
 import { siteOf, siteBadgeTextPlain, siteTone, layoutKey } from '../sim/site.ts';
 import { objectStats, activeCombos } from '../sim/compat.ts';
 import { entryPoints, ROUTE_IDS } from '../sim/entry.ts'; // 트랙 H 진입점 표지
+import { completedCorners, cornerDef } from '../sim/corners.ts'; // fun-corner 코너 팻말
 import { isSiteOverlayOn, setSiteOverlayOn, siteOverlayKey, drawSiteOverlay, GHOST_GOOD, GHOST_WARN } from './siteOverlay';
 
 /** 주문 말풍선: 메뉴 분류별 픽셀 아이콘(icon_*) — MenuWindow의 CAT_ICON과 같은 이름 */
@@ -33,7 +34,7 @@ export interface GameViewOptions extends Pick<CameraOptions, 'onTap' | 'dragCapt
 /** 배치 모드 고스트: 손가락 아래 반투명 오브젝트. ok면 초록, 아니면 빨강. text는 비용 라벨. */
 export interface GhostSpec { type: string; x: number; y: number; rot?: number; ok: boolean; text: string; w?: number; h?: number; /** 문 앞 칸 미리보기 (w-start 본관 짓기: 파란 마름모 + 「문 앞」) */ door?: { x: number; y: number } }
 /** 효과 범위 힌트 (UX §5.3): 중심 시설 발자국 + 반경(칸) 타원, 콤보가 성립하는 상대 시설 발자국 위 ◎ */
-export interface RangeHint { x: number; y: number; w: number; h: number; radius: number; marks: { x: number; y: number; w: number; h: number }[] }
+export interface RangeHint { x: number; y: number; w: number; h: number; radius: number; marks: { x: number; y: number; w: number; h: number }[]; /** fun-corner: 코너 배지 ("이걸 놓으면 꽃길 완성") */ badge?: string }
 /** 선택 칸 색: 철거 빨강 · 라인 미리보기 파랑 (ease 두 번 탭) */
 export const RECT_COLOR_REMOVE = 0xc9184a;
 export const RECT_COLOR_LINE = 0x2f7fd9;
@@ -200,8 +201,12 @@ interface Fx {
   sprite: Sprite;
   born: number;
   y0: number;
-  kind: 'coin' | 'sparkle';
+  kind: 'coin' | 'sparkle' | 'flash';
 }
+/** fun-corner: 카메라 플래시 3프레임 */
+const FLASH_FRAME_MS = 90;
+const FLASH_FRAMES = 3;
+const CORNER_SAY_MS = 1800;
 
 /** 오브젝트 상태별 스프라이트 변형 이름. 본관은 증축 Lv(state.main.level)에 따라 lv2·lv3·lv4 (y-indoor §8.1 — SPRITE_ALIAS가 아니라 level로 고른다). */
 function objectVariant(o: Pick<PlacedObject, 'type'>, mainLevel = 1): string | undefined {
@@ -274,6 +279,10 @@ export class GameView {
   /** 트랙 H: 진입점 표지 (경로 id → 노드·상태 키). 배치·해금이 바뀔 때만 다시 만든다. */
   private entryMarkers = new Map<RouteId, { node: Container; key: string }>();
   private entryKey = '';
+  /** fun-corner: 완성 코너 팻말(코너 id → 노드). 배치가 바뀔 때만 다시 만든다. */
+  private cornerSigns = new Map<string, Container>();
+  private cornerKey = '';
+  private rangeBadge: Container | null = null;
   private ghost: Container | null = null;
   private ghostKey = '';
   /** 마지막 render의 본관 Lv (고스트 크기·텍스처용) */
@@ -391,6 +400,9 @@ export class GameView {
     this.lockedNodes.clear();
     for (const e of this.entryMarkers.values()) e.node.destroy({ children: true });
     this.entryMarkers.clear();
+    for (const n of this.cornerSigns.values()) n.destroy({ children: true }); // fun-corner 팻말
+    this.cornerSigns.clear();
+    this.cornerKey = '';
     this.entryKey = '';
     this.tiles.removeChildren().forEach((c) => c.destroy());
     this.tileSprites = [];
@@ -562,15 +574,28 @@ export class GameView {
 
   /** 효과 범위 힌트(§5.3): 고스트·이동·카드 열림 중 반경 radius 타원 + 성립 상대 위 ◎. null이면 지운다. 같은 내용이면 다시 그리지 않는다. */
   setRangeHint(h: RangeHint | null) {
-    const key = h ? `${h.x},${h.y},${h.w},${h.h},${h.radius}|${h.marks.map((m) => `${m.x},${m.y}`).join(';')}` : '';
+    const key = h ? `${h.x},${h.y},${h.w},${h.h},${h.radius}|${h.marks.map((m) => `${m.x},${m.y}`).join(';')}|${h.badge ?? ''}` : '';
     if (key === this.rangeKey) return;
     this.rangeKey = key;
     if (this.rangeGfx.destroyed || this.rangeMarks.destroyed) return;
     this.rangeGfx.clear();
     this.rangeMarks.clear();
+    this.rangeBadge?.destroy({ children: true });
+    this.rangeBadge = null;
     if (!h) return;
     const c = cellCenter(h.x + (h.w - 1) / 2, h.y + (h.h - 1) / 2);
     const r = h.radius + Math.max(h.w, h.h) / 2;
+    if (h.badge) { // fun-corner: 고스트 위 갈색 배지 "이걸 놓으면 꽃길 완성"
+      const badge = new Container();
+      const l = label(h.badge, 10);
+      l.anchor.set(0.5, 1);
+      const bg = new Graphics().roundRect(-l.width / 2 - 5, -l.height - 3, l.width + 10, l.height + 4, 3).fill({ color: 0x6b3d1e, alpha: 0.92 }).stroke({ color: 0xf6e7c6, width: 1 });
+      badge.addChild(bg, l);
+      badge.position.set(c.sx, c.sy - r * (ISO_H / 2) * Math.SQRT2 - 64); // 고스트 이름·입지 배지(전망·바람) 두 줄 위로
+      badge.zIndex = 1e6 - 1;
+      this.overlay.addChild(badge);
+      this.rangeBadge = badge;
+    }
     // 셀 공간의 원 → 아이소 타원 (rx = R·32·√2, ry = R·16·√2)
     this.rangeGfx.ellipse(c.sx, c.sy, r * (ISO_W / 2) * Math.SQRT2, r * (ISO_H / 2) * Math.SQRT2).fill({ color: 0x5ad1ff, alpha: 0.18 }).stroke({ color: 0x2aa7e0, width: 2, alpha: 0.9 });
     for (const m of h.marks) {
@@ -668,6 +693,7 @@ export class GameView {
     this.nightAlpha = nightAlpha((state.clock as { hour?: number }).hour ?? 12);
     this.syncObjects(state, now);
     this.syncEntryMarkers(state);
+    this.syncCornerSigns(state);
     this.syncGuests(state, now);
     this.syncStaff(state, now);
     this.syncFx(state, now);
@@ -1339,6 +1365,66 @@ export class GameView {
       else if (e.kind === 'pop') this.spawnPop(e.x, e.y, e.n, now);
       else if (e.kind === 'photo') this.spawnSparkle(e.x, e.y, now);
       else if (e.kind === 'react') this.spawnReaction(e, now);
+      else if (e.kind === 'corner' || e.kind === 'flash') this.spawnCornerFx(e, now);
+    }
+  }
+
+  /** fun-corner 연출 하나: 코너 완성(팻말 자리 반짝 3개) · 손님 사진(카메라 플래시 + "사진 찍자!" 말풍선) */
+  private spawnCornerFx(e: Extract<FxEvent, { kind: 'corner' | 'flash' }>, now: number) {
+    if (e.kind === 'corner') {
+      for (const [dx, dy] of [[0, 0], [1, 0], [0, 1]] as const) this.spawnSparkle(e.x + dx, e.y + dy, now);
+      return;
+    }
+    const t = tex('fx_flash_0');
+    if (t) {
+      const sp = new Sprite(t);
+      sp.anchor.set(0.5, 0.5);
+      const { sx, sy } = cellCenter(e.x, e.y);
+      sp.position.set(sx, sy - 20);
+      sp.zIndex = 1e6;
+      this.overlay.addChild(sp);
+      this.fxQueue.push({ sprite: sp, born: now, y0: sy - 20, kind: 'flash' });
+    }
+    this.showBubble(e.guestId, { text: e.text }, CORNER_SAY_MS);
+  }
+
+  /** fun-corner: 완성 코너마다 닻 칸 위에 갈색 팻말 스프라이트 + 코너 이름 라벨. 배치 서명이 바뀔 때만 다시 만든다. */
+  private syncCornerSigns(state: GameState) {
+    const key = layoutKey(state);
+    if (key === this.cornerKey) return;
+    this.cornerKey = key;
+    const done = completedCorners(state);
+    const keep = new Set(done.map((c) => c.id));
+    for (const [id, node] of this.cornerSigns) if (!keep.has(id)) { node.destroy({ children: true }); this.cornerSigns.delete(id); }
+    for (const c of done) {
+      const anchor = state.objects[c.anchorId];
+      if (!anchor) continue;
+      const { w, h } = sizeOf(anchor);
+      const { sx, sy } = cellCenter(anchor.x + (w - 1) / 2, anchor.y + (h - 1) / 2);
+      let node = this.cornerSigns.get(c.id);
+      if (!node) {
+        node = new Container();
+        node.label = `corner-${c.id}`;
+        const t = tex('fx_corner_sign');
+        const l = label(cornerDef(c.id).name, 10);
+        l.anchor.set(0.5, 0.5);
+        if (t) {
+          const sp = new Sprite(t);
+          sp.anchor.set(0.5, 1);
+          sp.scale.set(Math.max(1, (l.width + 12) / t.width));
+          node.addChild(sp);
+          l.position.set(0, -t.height * sp.scale.y + 8 * sp.scale.y);
+        } else {
+          const bg = new Graphics().roundRect(-l.width / 2 - 4, -l.height - 2, l.width + 8, l.height + 4, 3).fill({ color: 0x6b3d1e, alpha: 0.9 });
+          node.addChild(bg);
+          l.position.set(0, -l.height / 2 - 1);
+        }
+        node.addChild(l);
+        this.overlay.addChild(node);
+        this.cornerSigns.set(c.id, node);
+      }
+      node.position.set(sx, sy - ISO_H / 2);
+      node.zIndex = 1e6 - 3;
     }
   }
 
@@ -1424,6 +1510,13 @@ export class GameView {
           const total = SPARKLE_FRAME_MS * SPARKLE_FRAMES;
           if (age >= total) { fx.sprite.destroy(); return false; }
           const t = tex(`fx_sparkle_${Math.floor(age / SPARKLE_FRAME_MS)}`);
+          if (t) fx.sprite.texture = t;
+          return true;
+        }
+        if (fx.kind === 'flash') {
+          const total = FLASH_FRAME_MS * FLASH_FRAMES;
+          if (age >= total) { fx.sprite.destroy(); return false; }
+          const t = tex(`fx_flash_${Math.floor(age / FLASH_FRAME_MS)}`);
           if (t) fx.sprite.texture = t;
           return true;
         }

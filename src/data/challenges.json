@@ -13,7 +13,7 @@
   {"id": "c11", "title": "자금 +300만", "desc": "30일 안에 자금 300만 늘리기", "condition": {"type": "money", "n": 3000000}, "delta": true, "days": 30, "reward": [{"type": "tickets", "n": 5}], "tier": 2},
   {"id": "c12", "title": "손님 100명 더", "desc": "30일 안에 손님 100명 더", "condition": {"type": "guests", "n": 100}, "delta": true, "days": 30, "reward": [{"type": "mileage", "n": 20}], "tier": 2},
   {"id": "c13", "title": "한 달 적자 없이", "desc": "적자 없이 한 달 나기", "condition": {"type": "noLossMonth", "n": 1}, "days": 45, "reward": [{"type": "mileage", "n": 50}], "tier": 2},
-  {"id": "c14", "title": "콤보 3개 발견", "desc": "60일 안에 콤보 도감 3개", "condition": {"type": "combos", "n": 3}, "days": 60, "reward": [{"type": "item", "id": "wind_charm", "n": 1}], "tier": 2},
+  {"id": "c14", "title": "콤보 3개 발견", "desc": "60일 안에 콤보 도감 3개", "condition": {"type": "corners", "n": 3}, "days": 60, "reward": [{"type": "item", "id": "wind_charm", "n": 1}], "tier": 2},
   {"id": "c15", "title": "자리 8개", "desc": "30일 안에 좌석 시설 8개", "condition": {"type": "seats", "n": 8}, "days": 30, "reward": [{"type": "unlockFacility", "id": "hammock"}], "tier": 2},
   {"id": "c16", "title": "만족 손님 80명 더", "desc": "30일 안에 만족 손님 80명", "condition": {"type": "satisfied", "n": 80}, "delta": true, "days": 30, "reward": [{"type": "research", "n": 10}], "tier": 2},
   {"id": "c17", "title": "바다 명당 5자리", "desc": "60일 안에 전망 3 이상 좌석 5개", "condition": {"type": "siteSeats", "view": 3, "n": 5}, "days": 60, "reward": [{"type": "title", "id": "sea_spot", "name": "바다 명당"}, {"type": "feeBonus", "pct": 5}], "tier": 2},

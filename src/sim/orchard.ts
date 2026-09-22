@@ -2,6 +2,7 @@
  * 농원 (v3 §3): 밭·심기·계절은 없다. 감귤나무·당근밭·녹차밭 같은 농원 시설(ObjectDef.yield)은
  * 매월 1일 창고(state.storage)에 재료를 넣는다. 놓은 달은 제외(다음 달 1일부터), 건설 중·안 산 필지는 제외.
  * 필지 보너스(밭담 ×1.2·용천수 ×1.1·곶자왈 차 ×1.1)와 이벤트 수확 배수(풍년·흉년 harvestMult)를 곱해 내림.
+ * fun-corner(스펙 §3): 감귤나무는 먼저 심은 3그루까지만 정상 수확, 그 뒤 나무는 1/3 (귤나무 ×10 과잉 억제).
  */
 import type { GameState, PlacedObject, MonthHarvest } from './types.ts';
 import { objectDef, ingredientDef } from '../data/index.ts';
@@ -31,8 +32,25 @@ export function monthlyYieldOf(state: GameState, obj: PlacedObject): number {
 }
 
 function yieldAmount(state: GameState, obj: PlacedObject, ingredientId: string, perMonth: number): number {
-  return Math.floor(perMonth * yieldMultOf(obj) * parcelHarvestMult(parcelBonusAt(state, obj.x, obj.y), ingredientId) * effectMult(state, 'harvestMult') * gardenBonusOf(state)); // 증축 Lv ×1.5/×2 (upgrade.ts) · 농원지기(x-staff)
+  return Math.floor(perMonth * yieldMultOf(obj) * parcelHarvestMult(parcelBonusAt(state, obj.x, obj.y), ingredientId) * effectMult(state, 'harvestMult') * gardenBonusOf(state) * orchardCapMult(state, obj)); // 증축 Lv ×1.5/×2 (upgrade.ts) · 농원지기(x-staff) · 감귤 3그루 상한(fun-corner)
 }
+
+/** 정상 수확하는 감귤나무 수. 그 뒤 나무는 ORCHARD_OVER_MULT. */
+export const ORCHARD_FULL_TREES = 3;
+export const ORCHARD_OVER_MULT = 1 / 3;
+/** 감귤나무 순번: 먼저 심은(placedMonth 작은, 같으면 id 등록 순) 3그루까지 ×1, 그 뒤 ×1/3. 다른 농원 시설은 ×1. */
+export function orchardCapMult(state: GameState, obj: PlacedObject): number {
+  if (obj.type !== TANGERINE_TREE) return 1;
+  let ahead = 0;
+  for (const o of Object.values(state.objects)) {
+    if (o.type !== TANGERINE_TREE || o.id === obj.id || o.build || !parcelAt(state, o.x, o.y)?.owned) continue; // 안 산 필지의 옛 감귤밭은 안 센다
+    if (o.placedMonth < obj.placedMonth) ahead++;
+    else if (o.placedMonth === obj.placedMonth && idNum(o.id) < idNum(obj.id)) ahead++;
+  }
+  return ahead < ORCHARD_FULL_TREES ? 1 : ORCHARD_OVER_MULT;
+}
+const TANGERINE_TREE = 'tangerine_tree';
+function idNum(id: string): number { const n = Number(id.replace(/\D/g, '')); return Number.isFinite(n) ? n : 0; }
 
 /** 다음 달 1일 수확 예정 (UI "이달 수확 예정: 감귤 6"): ingredientId → 개수 */
 export function expectedHarvest(state: GameState): Record<string, number> {

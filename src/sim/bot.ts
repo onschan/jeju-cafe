@@ -36,6 +36,7 @@ import { complaintCounts } from './reputation.ts';
 import { canAcceptQuest } from './board.ts';
 import { offeredChallenges, canAcceptChallenge } from './challenges.ts';
 import { spotEffectAt } from './compat.ts';
+import { cornerProgress } from './corners.ts'; // fun-corner: 코너 만들기 (목표 g21·g35·g59·g77·g93)
 import { SPOT_EFFECTS } from '../data/index.ts';
 import { canChallenge, challengeOdds } from './rivals.ts';
 import { canLevelUp } from './staff.ts';
@@ -356,6 +357,20 @@ function placeForCombo(s: GameState): void {
     if (cell && place(s, want, cell.x, cell.y)) return;
   }
 }
+/** 코너 만들기 (fun-corner, 목표 g21·g35·g59·g77·g93 corners(n)): 아직 안 만든 코너 중 조각이 다 열려 있는 것 하나 — 닻이 있으면 그 반경 안 빈 칸에 모자란 조각을, 없으면 닻부터. 한 달 하나. */
+function placeForCorner(s: GameState): void {
+  if (s.clock.year < BOT_COMBO_YEAR || s.money < BOT_BUILD_MIN_MONEY) return;
+  const cells = [...BOT_DECO_CELLS, ...BOT_EXTRA_CELLS];
+  const free = (type: string, near?: { x: number; y: number; r: number }) => cells.find((c) => (!near || Math.max(Math.abs(c.x - near.x), Math.abs(c.y - near.y)) <= near.r) && !objectAt(s, c.x, c.y) && canPlace(s, type, c.x, c.y).ok);
+  for (const p of cornerProgress(s)) {
+    if (p.done || s.codex.corners?.includes(p.def.id)) continue;
+    if (!p.def.pieces.every((pc) => s.unlocked.objects.includes(pc.type))) continue;
+    const want = p.missing[0]?.type ?? p.def.pieces[0]!.type;
+    if (!canSpend(s, objectDef(want).cost)) continue;
+    const cell = p.anchor ? free(want, { x: p.anchor.x, y: p.anchor.y, r: p.def.radius }) : free(want);
+    if (cell && place(s, want, cell.x, cell.y)) return;
+  }
+}
 /** 세트 만들기 (목표 g48·g76·g94): 아직 안 켜진 세트 중 필요한 시설이 다 열려 있으면 모자란 것을 첫 시설 반경 안에 놓는다 (한 달 하나) */
 function placeForSet(s: GameState): void {
   if (s.clock.year < BOT_COMBO_YEAR || s.money < BOT_BUILD_MIN_MONEY) return;
@@ -623,6 +638,7 @@ function monthlyPlan(s: GameState, monthsPlayed: number): void {
   placeIndoorSeats(s);
   placeAnnex(s);
   placeForCombo(s);
+  placeForCorner(s); // fun-corner
   placeForSet(s);
   placeForSpot(s);
   placeForQuest(s);

@@ -9,6 +9,7 @@ import { pushFx } from './fx.ts';
 import { levelOf, LEVEL_POPULARITY, LEVEL_SCENERY, LEVEL_FEE_PCT, LEVEL_MENU_PCT, LEVEL_COMBO_MULT } from './upgrade.ts';
 import { wearOf, upkeepMultOf } from './cleanliness.ts';
 import { spotFeePct } from './spots.ts';
+import { cornerBonusAt, cornerPickMult, discoverCorners } from './corners.ts';
 
 /** ObjectDef에 popularity·feePct가 없을 때 (v1 objects.json) */
 export const BASE_POPULARITY = 10;
@@ -117,7 +118,7 @@ export function comboPickMult(state: GameState, objId: string, typeId: string, c
   let n = 0;
   for (const c of activeCombos(state, objId, combos)) if (c.target !== 'all' && c.strength !== 'down' && c.strength !== 'none' && targetMatches(c.target, tags)) n += c.count;
   const spot = spotEffectOf(entryOf(obj), SPOT_EFFECTS, indexByType(state));
-  return Math.min(COMBO_PICK_CAP, Math.pow(COMBO_PICK_MULT, n)) * (spot && targetMatches(spot.target, tags) ? spot.guestMult : 1);
+  return Math.min(COMBO_PICK_CAP, Math.pow(COMBO_PICK_MULT, n) * cornerPickMult(state, obj, typeId)) * (spot && targetMatches(spot.target, tags) ? spot.guestMult : 1); // fun-corner: 태그 코너 ×1.3
 }
 /** 콤보 만족 가산: 손님층 대상 콤보가 맞으면 +5, 전체 대상 콤보는 +3 (가장 큰 것 하나). — guests.ts(E) 만족 판정 훅용 */
 export function comboSatisfaction(state: GameState, objId: string, typeId: string, combos: ComboDef[] = COMBOS): number {
@@ -226,9 +227,10 @@ function rawStats(state: GameState, obj: PlacedObject, active: ActiveCombo[], sp
   const item = state.itemBonus[obj.type] ?? { popularity: 0, feePct: 0 };
   const level = levelOf(obj);
   const total = comboTotal(active, level);
-  const pop = (def.popularity ?? BASE_POPULARITY) + item.popularity + (state.visitBonus[obj.type] ?? 0) + total.pop + (spot?.popularity ?? 0);
+  const corner = cornerBonusAt(state, obj); // fun-corner: 반경 안 완성 코너 인기 +5·요금 +5% (합산 상한)
+  const pop = (def.popularity ?? BASE_POPULARITY) + item.popularity + (state.visitBonus[obj.type] ?? 0) + total.pop + (spot?.popularity ?? 0) + corner.pop;
   const feePct = (def.feePct ?? BASE_FEE_PCT) + item.feePct + total.feePct + ((def.fee !== undefined ? LEVEL_FEE_PCT[level] : LEVEL_MENU_PCT[level]) ?? 0)
-    + spotFeePct(state, def.category); // 트랙 C: 명소 Lv3 +2%·Lv5 +5%
+    + spotFeePct(state, def.category) + corner.feePct; // 트랙 C: 명소 Lv3 +2%·Lv5 +5%
   return { pop, feePct };
 }
 /** 상한(40) 뒤에 더하는 인기: 증축 Lv(+4/+8) − 노후(−1~−6). 0 아래로는 안 간다. */
@@ -307,4 +309,5 @@ export function discoverCombos(state: GameState, combos: ComboDef[] = COMBOS, se
     }
   }
   if (state.codex.combos.length + state.codex.sets.length + state.codex.spots.length !== before) checkCodexMileage(state);
+  discoverCorners(state); // fun-corner: 처음 완성한 코너 → 도감·장면 창·팻말 반짝
 }
