@@ -1,7 +1,7 @@
 import { assetUrl } from './assetUrl';
 
 export type SfxName = 'tap' | 'place' | 'remove' | 'plant' | 'harvest' | 'coin' | 'happy' | 'meh' | 'unlock' | 'month' | 'fanfare' | 'error' | 'bus';
-export type BgmName = 'spring' | 'summer' | 'autumn' | 'winter' | 'title';
+export type BgmName = 'spring' | 'summer' | 'autumn' | 'winter' | 'title' | 'intro'; // intro: 프롤로그 1~3컷 잔잔한 단조
 
 const MUTE_KEY = 'jeju-cafe:muted';
 let ctx: AudioContext | null = null;

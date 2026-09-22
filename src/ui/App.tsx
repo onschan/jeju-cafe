@@ -39,6 +39,7 @@ import { compactNumber } from './HUD';
 import { Icon } from './Icon';
 import { TitleScreen } from './TitleScreen';
 import { EndingScreen } from './EndingScreen'; // z-ending
+import { IntroScreen } from './IntroScreen'; // intro: 새 게임 프롤로그 6컷
 import { SaveSlots } from './SaveSlots';
 import { showScene, SceneHost, type SceneChar } from './SceneWindow';
 import { staffParts } from '../render/character';
@@ -111,9 +112,10 @@ function targetAt(s: GameState, x: number, y: number): CardTarget | null {
   return { kind: 'empty', x, y };
 }
 
-/** 타이틀 → 게임. 게임에서 메뉴로 나가면 자동 저장 뒤 타이틀로. */
+/** 타이틀 → (새 게임이면 프롤로그 →) 게임. 게임에서 메뉴로 나가면 자동 저장 뒤 타이틀로. 설정 「프롤로그 다시 보기」는 끝나면 타이틀로. */
 export function App() {
-  const [screen, setScreen] = useState<'title' | 'game'>('title');
+  const [screen, setScreen] = useState<'title' | 'intro' | 'game'>('title');
+  const [introReplay, setIntroReplay] = useState(false);
   // 개발 자동화용: ?game 이면 자동 저장(없으면 새 게임)으로 바로 들어간다
   useEffect(() => {
     if (!import.meta.env.DEV || !new URLSearchParams(location.search).has('game')) return;
@@ -122,8 +124,10 @@ export function App() {
   return (
     <div style={{ position: 'relative', width: '100%', height: '100%' }}>
       {screen === 'title'
-        ? <TitleScreen onEnter={() => setScreen('game')} />
-        : <Game onExit={() => { autosaveNow(); setScreen('title'); }} />}
+        ? <TitleScreen onEnter={() => setScreen('game')} onNewGame={() => { setIntroReplay(false); setScreen('intro'); }} onReplayIntro={() => { setIntroReplay(true); setScreen('intro'); }} />
+        : screen === 'intro'
+          ? <IntroScreen replay={introReplay} onDone={() => setScreen(introReplay ? 'title' : 'game')} />
+          : <Game onExit={() => { autosaveNow(); setScreen('title'); }} />}
       <PopupHost />
       <SceneHost />
     </div>

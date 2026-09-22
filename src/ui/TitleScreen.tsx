@@ -157,7 +157,8 @@ const titleBtn: CSSProperties = { ...brownBtn, width: '100%', marginRight: 0, mi
 
 // ---------- 타이틀 화면 ----------
 
-export function TitleScreen({ onEnter }: { onEnter: () => void }) {
+/** onEnter: 이어하기(프롤로그 없이 게임). onNewGame: 새 게임 상태를 만든 뒤 프롤로그로. onReplayIntro: 설정 「프롤로그 다시 보기」 */
+export function TitleScreen({ onEnter, onNewGame, onReplayIntro }: { onEnter: () => void; onNewGame: () => void; onReplayIntro: () => void }) {
   const [canContinue, setCanContinue] = useState(false);
   const [slots, setSlots] = useState(false);
   const [best, setBest] = useState(false);
@@ -166,7 +167,7 @@ export function TitleScreen({ onEnter }: { onEnter: () => void }) {
   useEffect(() => { void hasAnySave().then(setCanContinue); setOldSave(hasOldSave()); }, []);
   const onPointerDown = () => { unlockAudio(); void bgm('title'); };
   const start = () => {
-    const go = () => { newGame(); onEnter(); };
+    const go = () => { newGame(); onNewGame(); };
     if (canContinue) Confirm('새로 시작하면 자동 저장이 새 게임으로 바뀌어요. 슬롯 1~3의 저장은 남아요.', go, { title: '새 게임' });
     else go();
   };
@@ -190,7 +191,7 @@ export function TitleScreen({ onEnter }: { onEnter: () => void }) {
         </div>
       </div>
       {slots && <SaveSlots mode="load" onClose={() => setSlots(false)} onLoaded={onEnter} />}
-      {sound && <SoundPopup onClose={() => setSound(false)} />}
+      {sound && <SoundPopup onClose={() => setSound(false)} onReplayIntro={() => { setSound(false); onReplayIntro(); }} />}
       {best && (
         <Popup title="최고 점수" onBackdrop={() => setBest(false)} buttons={<button style={{ ...brownBtn, marginRight: 0, marginBottom: 0 }} onClick={() => setBest(false)}>닫기</button>}>
           {be ? <ScoreCard score={be.score} cafeName={be.cafeName} /> : <div style={{ fontSize: 13, color: PALETTE.inkSoft, marginBottom: 8 }}>10년차 결산 점수는 아직 없어요.</div>}
@@ -206,8 +207,8 @@ export function TitleScreen({ onEnter }: { onEnter: () => void }) {
 
 const frameTitleRow: CSSProperties = { display: 'flex', justifyContent: 'space-between', gap: 12 };
 
-/** 타이틀 설정(소리): 배경음·효과음 슬라이더 + 음소거 (게임 안 설정 탭과 같은 값) */
-function SoundPopup({ onClose }: { onClose: () => void }) {
+/** 타이틀 설정(소리): 배경음·효과음 슬라이더 + 음소거 (게임 안 설정 탭과 같은 값) + 프롤로그 다시 보기 */
+function SoundPopup({ onClose, onReplayIntro }: { onClose: () => void; onReplayIntro: () => void }) {
   const [bgmVol, setBgmVol] = useState(getBgmVolume());
   const [sfxVol, setSfxVol] = useState(getSfxVolume());
   const [muted, setMutedState] = useState(isMuted());
@@ -224,6 +225,7 @@ function SoundPopup({ onClose }: { onClose: () => void }) {
         {slider('배경음', bgmVol, (n) => { setBgmVolume(n); setBgmVol(n); })}
         {slider('효과음', sfxVol, (n) => { setSfxVolume(n); setSfxVol(n); sfx('tap'); })}
         <button style={{ ...brownBtn, marginRight: 0, marginBottom: 0 }} onClick={() => { setMuted(!isMuted()); setMutedState(isMuted()); }}>{muted ? <><Icon name="sound_on" /> 소리 켜기</> : <><Icon name="sound_off" /> 소리 끄기</>}</button>
+        <button style={{ ...brownBtn, marginRight: 0, marginBottom: 0 }} data-testid="title-replay-intro" onClick={onReplayIntro}><Icon name="play" /> 프롤로그 다시 보기</button>
         <div style={{ fontSize: 12, color: PALETTE.inkSoft }}>{VERSION_TEXT}</div>
       </div>
     </Popup>

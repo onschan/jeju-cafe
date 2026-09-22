@@ -1,0 +1,10 @@
+{
+  "cuts": [
+    { "id": 1, "caption": "서울, 밤 11시", "speaker": null, "lines": ["또 막차. 오늘도 야근.", "벽시계는 벌써 열한 시."] },
+    { "id": 2, "caption": "출근길 지하철", "speaker": null, "lines": ["폰 속 바다만 보다 내렸다.", "내일도 똑같겠지."] },
+    { "id": 3, "caption": "사직서", "speaker": "hero", "lines": ["그만두겠습니다.", "손이 떨렸다."] },
+    { "id": 4, "caption": "제주행 비행기", "speaker": null, "lines": ["한 시간. 세상이 바뀌는 데", "한 시간이면 됐다."] },
+    { "id": 5, "caption": "제주, 폐창고 앞", "speaker": "halmang", "lines": ["여기, 네 가게다.", "값은 안 받으마."] },
+    { "id": 6, "caption": "개업 첫날", "speaker": "hero", "lines": ["자, 시작해 볼까."] }
+  ]
+}
