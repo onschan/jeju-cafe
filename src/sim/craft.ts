@@ -7,9 +7,11 @@
  * - 메뉴 레벨업(재료 5 + 돈) → 판매가 +10%, 주문 가중치 +
  */
 import { checkCodexMileage } from './mileage.ts';
-import type { GameState, ApplyResult, MenuDef, MenuStats, MenuStatKey, MenuBase, MenuMod, MenuQuality, BrewParams, ParamAxis, IngredientDef, IngredientComboDef, IngredientComboSide, DevelopOutcome, DevelopResult, Staff, MenuCategory, RoleId, StatKey } from './types.ts';
+import type { GameState, ApplyResult, MenuDef, MenuStats, MenuStatKey, MenuBase, MenuMod, MenuQuality, BrewParams, ParamAxis, IngredientDef, IngredientComboDef, IngredientComboSide, DevelopOutcome, DevelopResult, Staff, MenuCategory, RoleId, StatKey, Developing } from './types.ts';
 import { menuDef, ingredientDef, toppingDef, INGREDIENT_COMBOS, HIDDEN_RECIPES, MENU_STAT_KEYS, ZERO_STATS, addStats, statSum, ingredientStats, GUEST_TYPES, guestTypeDef } from '../data/index.ts';
-import { nextRandom, randInt } from './rng.ts';
+import { randInt, nextRandom } from './rng.ts';
+import { rollOutcome as rollLuck, outcomeChances, luckSkill, LUCK_SKILL_GREAT, type Chances } from './luck.ts'; // staff-luck
+import { staffTitleEffect } from './titles.ts';
 import { findStaff, ingredientDiscount, pushNotice } from './staff.ts';
 import { dayIndex } from './effects.ts';
 import { josa } from './josa.ts';
@@ -350,11 +352,15 @@ export function uniqueMenuName(state: GameState, base: string): string {
   if (!taken.has(base)) return base;
   for (let n = 2; ; n++) { const name = `${base} ${n}`; if (!taken.has(name)) return name; }
 }
-function rollOutcome(state: GameState, rate: number): DevelopOutcome {
-  const r = nextRandom(state) * 100;
-  if (r < P_GREAT) return 'great';
-  if (r < P_GREAT + rate) return 'success';
-  return 'fail';
+/** 개발 확률 (0~1): 대성공 10% × (1 + 칭호 develop, 미슐랑 셰프 = 2배) + 칭호 대박 + 행운아, 성공 = successRate, 나머지 실패. 청결·평판 수정치는 outcomeChances가 더한다 (staff-luck). */
+export function developChances(state: GameState, base: MenuBase, params: BrewParams, staff: Staff | undefined): Chances {
+  const great = (P_GREAT / 100) * (1 + staffTitleEffect(staff, 'develop')) + staffTitleEffect(staff, 'great') + luckSkill(staff) * LUCK_SKILL_GREAT;
+  const success = Math.min(1 - great, successRate(base, params, developStaffStat(staff, base)) / 100);
+  return outcomeChances(state, 'develop', null, { base: { great: great * 100, success: success * 100, fail: (1 - great - success) * 100 } });
+}
+function rollOutcome(state: GameState, dev: Developing, staff: Staff | undefined): DevelopOutcome {
+  const c = developChances(state, dev.base, dev.params, staff);
+  return rollLuck(state, { task: 'develop', staff: null, mods: { base: { great: c.great * 100, success: c.success * 100, fail: c.fail * 100 } }, r: nextRandom(state) }); // 주 스트림 (원래 굴리던 자리)
 }
 /** 보너스 점수를 무작위 스탯에 나눠 준다 */
 function spreadBonus(state: GameState, stats: MenuStats, points: number): MenuStats {
@@ -370,7 +376,7 @@ export function resolveDevelop(state: GameState): DevelopResult | null {
   const staff = findStaff(state, dev.staffId);
   const stat = developStaffStat(staff, dev.base);
   const hiddenId = matchHiddenRecipe(dev.ingredients);
-  let outcome = rollOutcome(state, successRate(dev.base, dev.params, stat));
+  let outcome = rollOutcome(state, dev, staff);
   if (hiddenId && outcome === 'fail') outcome = 'success';
   const combos = activeIngredientCombos(dev.ingredients);
   for (const c of combos) if (!state.codex.ingredientCombos.includes(c)) state.codex.ingredientCombos.push(c);

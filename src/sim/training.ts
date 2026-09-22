@@ -4,6 +4,7 @@ import type { GameState, ApplyResult, Staff, StatKey, TrainingDef } from './type
 import { TRAININGS, SKILLS, trainingDef } from '../data/index.ts';
 import { pickWeighted } from './rng.ts';
 import { findStaff, addStat, skillsOf, salaryOf, pushNotice, STAT_KEYS, STAT_NAME, staffAnchor } from './staff.ts';
+import { rollOutcome, recordOutcome, outcomeChances, OUTCOME_MULT, FAIL_ENERGY, OUTCOME_NAME, type Chances } from './luck.ts'; // staff-luck
 
 export const TRAINING_RANK = 3;          // 연수 해금 랭크
 export const TRAINING_COST_STEP = 0.2;   // 회당 비용 증가
@@ -68,17 +69,26 @@ export function train(state: GameState, staffId: string, trainingId: string): vo
   st.anchor = staffAnchor(state, st);
 }
 
-/** 복귀: 스탯 상승(상한 내, 우등생 ×1.5) + 종합 연수면 없는 특기 1개. 올린 스탯 요약 문자열. */
+/** 이 직원을 연수 보내면 (복귀 때 굴린다: 대박 스탯 ×2 / 쪽박 ×0.5 + 기력 −20) */
+export function trainingChances(state: GameState, staffId: string): Chances {
+  return outcomeChances(state, 'training', findStaff(state, staffId));
+}
+
+/** 복귀: 대박/중박/쪽박을 굴려(staff-luck) 스탯 상승(상한 내, 우등생 ×1.5, 대박 ×2·쪽박 ×0.5) + 종합 연수면 없는 특기 1개. 올린 스탯 요약 문자열. */
 export function finishTraining(state: GameState, st: Staff): string {
   const def = trainingDef(st.training!.id);
-  const mult = trainingMultOf(st);
+  const chances = outcomeChances(state, 'training', st);
+  const outcome = rollOutcome(state, { task: 'training', staff: st });
+  const mult = trainingMultOf(st) * OUTCOME_MULT[outcome];
   const parts: string[] = [];
   for (const k of STAT_KEYS) {
     const d = def.stats[k as StatKey];
     if (!d) continue;
-    const got = addStat(state, st, k, Math.round(d * mult));
+    const got = addStat(state, st, k, Math.max(1, Math.round(d * mult)));
     if (got > 0) parts.push(`${STAT_NAME[k]} +${got}`);
   }
+  if (outcome === 'fail') { st.energy = Math.max(0, st.energy - FAIL_ENERGY); parts.push(`기력 −${FAIL_ENERGY}`); }
+  recordOutcome(state, { task: 'training', outcome, staffId: st.id, title: def.name, chances, lines: [`${OUTCOME_NAME[outcome]}: 효과 ×${OUTCOME_MULT[outcome]}`] });
   if (def.grantSkill) {
     const have = new Set(skillsOf(st));
     const pool = SKILLS.filter((s) => !have.has(s.id));

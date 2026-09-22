@@ -40,6 +40,7 @@ import { SPOT_EFFECTS } from '../data/index.ts';
 import { canChallenge, challengeOdds } from './rivals.ts';
 import { canLevelUp } from './staff.ts';
 import { canTrain } from './training.ts';
+import { bestStaffFor } from './luck.ts'; // staff-luck: 대박 기대값이 가장 높은 직원에게 시킨다
 import { staffCapacity } from './staff.ts';
 import { canUpgrade, upgradeCost, isUpgradable } from './upgrade.ts';
 import { objectStats, activeCombos, setLevels } from './compat.ts';
@@ -590,9 +591,10 @@ function monthlyPlan(s: GameState, monthsPlayed: number): void {
 
   // 홍보: 매달 전단 (돈 100만 넘고 기력 60 넘는 직원), 돈 400만 넘으면 SNS도 — 인기가 손님 수를 정하므로 (§4.2 #1) 꾸준히
   if (s.money > FLYER_MIN_MONEY) {
-    const st = s.staff.find((x) => x.role !== null && x.energy > FLYER_MIN_ENERGY);
+    const pick = () => bestStaffFor(s, 'promo', s.staff.filter((x) => x.role !== null && !x.training && x.energy > FLYER_MIN_ENERGY)); // staff-luck: 대박 기대값 최고 (미소·기력·칭호)
+    const st = pick();
     if (st) apply(s, { type: 'promote', staffId: st.id, promotionId: 'flyer' });
-    const st2 = s.staff.find((x) => x.role !== null && x.energy > FLYER_MIN_ENERGY);
+    const st2 = pick();
     if (st2 && s.money > SNS_MIN_MONEY) apply(s, { type: 'promote', staffId: st2.id, promotionId: 'sns' });
   }
 

@@ -39,7 +39,7 @@ export const PROTECTED_TYPES = new Set(['busstop', 'warehouse', 'spring']);
 export const ROTATABLE_TYPES = new Set(['gate', 'bench', 'counter']);
 const ACTION_LOG_CAP = 1000;
 
-const CLIENT_ONLY = new Set<Action['type']>(['setSpeed', 'dismissMonthCard', 'dismissDevelop', 'dismissDraw', 'dismissAnnouncement', 'dismissChallenge', 'dismissAlert', 'dismissTour', 'continueEnding']);
+const CLIENT_ONLY = new Set<Action['type']>(['setSpeed', 'dismissMonthCard', 'dismissDevelop', 'dismissDraw', 'dismissAnnouncement', 'dismissChallenge', 'dismissAlert', 'dismissTour', 'dismissOutcome', 'continueEnding']);
 
 function log(state: GameState, a: Action) {
   if (CLIENT_ONLY.has(a.type)) return;
@@ -606,6 +606,9 @@ function applyInner(state: GameState, a: Action): ApplyResult {
     }
     case 'dismissChallenge':
       state.lastChallenge = null;
+      return { ok: true };
+    case 'dismissOutcome': // staff-luck 룰렛 팝업
+      state.lastOutcome = null;
       return { ok: true };
     default:
       return { ok: false, reason: '아직 구현 안 됨' };

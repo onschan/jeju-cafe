@@ -25,6 +25,8 @@ import { seatsOf, isSeat } from './cafe.ts';
 import { filterSeatsForWeather, stayMs, browseChance, indoorSatisfaction, indoorSpawnMult, indoorFeeMult } from './rooms.ts';
 import { nightSatisfaction } from './lighting.ts'; // fix-indoor: 밤 조명 — 가로등 +2·어두운 야외 자리 −2 // y-indoor 훅: 실내 우선·체류·둘러보기·만족·유입·바 요금
 import { pushFx } from './fx.ts';
+import { rollOutcome, bestStaffFor } from './luck.ts'; // staff-luck: 서빙 대박/쪽박
+import { titleBonus, isWorking } from './titles.ts'; // staff-luck: 칭호 요금·만족·속도·손님·사진
 import { menuOf, priceOf, likesStatsMatch, statsMatchCount, guestEvalBonus, guestLikesCategory, seatTimeMult, dignityPct, photoChance, menuOrderWeight, LIKE_BONUS_CAP } from './craft.ts';
 import { addAffinity, affinityGain, namedLikes, regularsDueNow, NAMED_MIN_SCENERY } from './popup.ts';
 import { eventGuestMult, eventTagMult, eventFeeMult, isSpecialGuest, specialGuestTip } from './events.ts';
@@ -120,7 +122,7 @@ export function totalSeats(state: GameState): number {
 
 /** 손님층 유입 배수 = (1 + 유효 인기/50) × 유튜버 부스트 × (1 + 인기쟁이 스킬). 유효 인기 = 기본 + 활성 기간형 홍보. */
 export function spawnMultiplier(state: GameState, typeId: string): number {
-  return (1 + effectivePopularity(state, typeId) / 50) * youtuberMultiplier(state, typeId) * (1 + skillTotal(state, 'spawnBonus')) * spotSpawnMult(state, typeId) * indoorSpawnMult(state, typeId); // 트랙 C: 명소 태그 배수·투어 버스 · y-indoor: 피아노·키즈·BGM·조명
+  return (1 + effectivePopularity(state, typeId) / 50) * youtuberMultiplier(state, typeId) * (1 + skillTotal(state, 'spawnBonus') + titleBonus(state, 'spawn')) * spotSpawnMult(state, typeId) * indoorSpawnMult(state, typeId); // 트랙 C: 명소 태그 배수·투어 버스 · y-indoor: 피아노·키즈·BGM·조명
 }
 
 /** 시간대별 손님층 가중: 아침(6~9) 시니어(삼춘) 2배, 낮(11~17) 청년(관광객) 2배 */
@@ -369,7 +371,7 @@ function profileOf(state: GameState, g: Guest): GuestProfile {
 export function prepTimeMs(state: GameState, category: MenuCategory): number {
   const role = prepRole(category);
   const cut = Math.min(MAX_PREP_CUT, roleEffect(state, role) / 100);
-  const speed = Math.min(MAX_SPEED_SKILL, skillTotal(state, 'speed', role));
+  const speed = Math.min(MAX_SPEED_SKILL, skillTotal(state, 'speed', role) + titleBonus(state, 'speed', role)); // staff-luck 칭호
   return PREP_MS * (1 - cut) * (1 - speed);
 }
 
@@ -404,7 +406,7 @@ export function countGatesOn(state: GameState, path: Pt[]): number {
 }
 /** 만족 판정 가산(경치 단위): 콤보(손님층 +5·전체 +3)·청결(80 이상 +3, 50 미만 −5)은 10으로 나눠 경치 단위로 (트랙 A) + 정낭 인상(w-free) */
 export function extraSatisfaction(state: GameState, g: Guest, seat: PlacedObject): number {
-  return (comboSatisfaction(state, seat.id, g.type) + cleanSatisfaction(state)) / 10 + indoorSatisfaction(state, seat) + gateSatisfaction(g) + nightSatisfaction(state, seat); // y-indoor: 소파 +2·난로 겨울 +3 · fix-indoor: 밤 조명
+  return (comboSatisfaction(state, seat.id, g.type) + cleanSatisfaction(state) + titleBonus(state, 'satisfaction')) / 10 + indoorSatisfaction(state, seat) + gateSatisfaction(g) + nightSatisfaction(state, seat); // staff-luck 칭호 만족 // y-indoor: 소파 +2·난로 겨울 +3 · fix-indoor: 밤 조명
 }
 /** 저녁 손님 기준 시각 (특기 night_owl) */
 export const NIGHT_HOUR = 18;
@@ -423,7 +425,8 @@ function resolveMood(state: GameState, g: Guest): void {
   const p = profileOf(state, g);
   const match = g.namedId ? statsMatchCount(state, p.likesStats, g.menuId) : likesStatsMatch(state, g.type, g.menuId);
   const taste = g.namedId ? Math.min(LIKE_BONUS_CAP, match) : tasteBonus(state, g.type, g.menuId);
-  if (sceneryScore(state, seat.x, seat.y) + serviceBonus(state) + popularityBonus(popularityFor(state, seat.id, g.type)) + taste + extraSatisfaction(state, g, seat) + siteBonus(state, seat).satisfaction >= p.minScenery) { // 트랙 A 콤보·청결 + 트랙 F 입지
+  const scored = sceneryScore(state, seat.x, seat.y) + serviceBonus(state) + popularityBonus(popularityFor(state, seat.id, g.type)) + taste + extraSatisfaction(state, g, seat) + siteBonus(state, seat).satisfaction >= p.minScenery; // 트랙 A 콤보·청결 + 트랙 F 입지
+  if (g.luck === 'great' || (scored && g.luck !== 'fail')) { // staff-luck: 서빙 대박은 무조건 만족, 쪽박은 무조건 불만
     g.mood = 'happy';
     g.moodReason = null;
     state.stats.satisfiedTotal++;
@@ -450,12 +453,12 @@ function resolveMood(state: GameState, g: Guest): void {
     }
     state.popularity = Math.max(-100, Math.min(100, state.popularity + type.popularityShift));
     onHappyVisit(state, g, (tasteMatch ? 2 : 1) * skillSatMult(state, g));
-    const photo = foreignPhotoChance(g.type, photoChance(state, g.type, g.menuId)); // 트랙 H: 외국인 ×2
+    const photo = foreignPhotoChance(g.type, photoChance(state, g.type, g.menuId)) * (1 + titleBonus(state, 'photo')); // 트랙 H: 외국인 ×2 · staff-luck 칭호
     if (photo > 0 && nextRandom(state) < photo) pushFx(state, { kind: 'photo', x: seat.x, y: seat.y, tick: state.tick });
   } else {
     g.mood = 'meh';
     g.moodReason = 'scenery';
-    const why = mehCause(state, seat);
+    const why = g.luck === 'fail' ? { reason: staffInRole(state, 'hall').length > 0 ? 'rude' as const : 'wait_long' as const } : mehCause(state, seat); // staff-luck 쪽박 = 불친절/오래 기다림
     if (why) addComplaint(state, why.reason, g, why.detail);
   }
   if (!g.namedId) maybeSay(state, g);
@@ -487,6 +490,29 @@ export function affordableMenus(state: GameState, typeId: string): string[] {
   return availableMenus(state).filter((id) => guestLikesCategory(type.likes, menuOf(state, id).category) && priceOf(state, id) <= wallet);
 }
 
+/** 서빙 판정 기준 직원: 홀·바리스타·요리사 중 대박 기대값 최고 (없으면 null = 기본표) */
+const SERVE_ROLES = new Set<RoleId>(['hall', 'barista', 'cook']);
+export function serveStaff(state: GameState) {
+  return bestStaffFor(state, 'serve', state.staff.filter((st) => st.role !== null && SERVE_ROLES.has(st.role) && isWorking(state, st)));
+}
+/** 서빙 대박 팁 = 요금 × 20% × (1 + 칭호 팁) (봇 밴드 유지: 3년차 말 자금이 main 대비 +5%를 넘지 않게) */
+export const SERVE_TIP_RATE = 0.2;
+/** 주문마다 작은 판정 (staff-luck): 홀·조리 직원 중 대박 기대값 최고 직원 기준. 대박 = 팁·「최고!」·이달 대박 +1, 쪽박 = 기분 판정 때 불친절 불만. 특별 손님·단골★은 안 굴린다. */
+function serveLuck(state: GameState, g: Guest, seat: PlacedObject, price: number): void {
+  if (g.namedId || state.staff.length === 0) return;
+  const outcome = rollOutcome(state, { task: 'serve', staff: serveStaff(state) });
+  if (outcome === 'success') return;
+  g.luck = outcome;
+  if (outcome === 'fail') return;
+  const tip = Math.round(price * SERVE_TIP_RATE * (1 + titleBonus(state, 'tip')) * reputationTipMult(state));
+  state.money += tip;
+  state.monthIncome += tip;
+  state.totalIncome += tip;
+  state.monthGreatServes = (state.monthGreatServes ?? 0) + 1;
+  g.say = '최고!';
+  if (tip > 0) pushFx(state, { kind: 'pop', x: seat.x, y: seat.y, n: tip, tick: state.tick });
+}
+
 /** 자리에 앉는 순간: 메뉴 결정·재료·돈은 즉시, 기분은 조리(waitMs) 뒤에. 예산 초과면 주문 안 함(price). 지갑 0(동물·정령)은 주문 없이 바로 기분. */
 function order(state: GameState, g: Guest): void {
   const p = profileOf(state, g);
@@ -510,10 +536,11 @@ function order(state: GameState, g: Guest): void {
   consumeIngredients(state, menuId);
   const seat = state.objects[g.seatId!]!;
   recordUse(seat); // 트랙 A: 증축 조건(누적 이용)
-  const price = Math.round(priceOf(state, menuId) * parcelFeeMult(parcelBonusAt(state, seat.x, seat.y)) * (objectStats(state, seat.id).feePct / 100) * eventFeeMult(state) * siteBonus(state, seat).feeMult * indoorFeeMult(state, seat, g.type)); // 트랙 F 입지 요금 · y-indoor 바 저녁 세트
+  const price = Math.round(priceOf(state, menuId) * parcelFeeMult(parcelBonusAt(state, seat.x, seat.y)) * (objectStats(state, seat.id).feePct / 100) * eventFeeMult(state) * siteBonus(state, seat).feeMult * indoorFeeMult(state, seat, g.type) * (1 + titleBonus(state, 'fee'))); // 트랙 F 입지 요금 · y-indoor 바 저녁 세트 · staff-luck 칭호 요금
   state.money += price;
   state.monthIncome += price;
   state.totalIncome += price;
+  serveLuck(state, g, seat, price); // staff-luck: 주문마다 작은 판정
   noteRouteIncome(state, g, price); // 트랙 H 경로 매출
   g.menuId = menuId;
   g.paid = price;

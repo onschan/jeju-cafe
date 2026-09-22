@@ -7,6 +7,8 @@ import { menuOf, menuStatsOf } from './craft.ts';
 import { addMileage } from './mileage.ts';
 import { regularIds, namedGuestState } from './popup.ts';
 import { josa } from './josa.ts';
+import { rollOutcome, recordOutcome, outcomeChances, bestStaffFor, OUTCOME_NAME, type Chances } from './luck.ts'; // staff-luck
+import { titleBonus } from './titles.ts';
 
 /**
  * 라이벌 카페 (스펙 §15.3, 계획 2B-4 Task 3, 확장 §4.2 #7)
@@ -57,13 +59,22 @@ export function judgeBreakdown(def: RivalDef, stats: MenuStats): { breakdown: Pa
   }
   return { breakdown, total: Math.round(total * 10) / 10 };
 }
+/** 심사 점수에 더하는 직원 칭호(미슐랑 셰프·미식가…) 보너스 (staff-luck) */
+export function challengeTitleBonus(state: GameState): number {
+  return titleBonus(state, 'challenge');
+}
 /** UI용: 운을 빼고 본 승산 (0~1). 운이 0~4 균등이라 부족분이 4 이상이면 0. */
 export function challengeOdds(state: GameState, rivalStateId: string, menuId: string): number {
   const r = rivalState(state, rivalStateId);
   if (!r) return 0;
   const def = rivalDef(r.rivalId);
-  const need = rivalPower(def, state.clock.year) - judgeBreakdown(def, menuStatsOf(state, menuId)).total;
+  const need = rivalPower(def, state.clock.year) - judgeBreakdown(def, menuStatsOf(state, menuId)).total - challengeTitleBonus(state);
   return Math.max(0, Math.min(1, 1 - need / JUDGE_LUCK));
+}
+/** 대결에 내보낼 직원(조리 직원 중 대박 기대값 최고)과 확률: 대박이면 운 최대(4), 쪽박이면 운 0 */
+export function challengeChances(state: GameState): { staff: ReturnType<typeof bestStaffFor>; chances: Chances } {
+  const staff = bestStaffFor(state, 'challenge');
+  return { staff, chances: outcomeChances(state, 'challenge', staff) };
 }
 
 /** 라이벌 하나 등장 (월간 판정·정착 실패 위기 failure.ts) */
@@ -118,8 +129,11 @@ export function challenge(state: GameState, rivalStateId: string, menuId: string
   const def = rivalDef(r.rivalId);
   r.lastChallengeMonth = monthIndex(state.clock);
   const { breakdown, total } = judgeBreakdown(def, menuStatsOf(state, menuId));
-  const luck = Math.round(nextRandom(state) * JUDGE_LUCK * 10) / 10;
-  const score = Math.round((total + luck) * 10) / 10;
+  const { staff, chances } = challengeChances(state); // staff-luck: 대박 = 운 최대, 쪽박 = 운 0, 중박 = 0~4 균등
+  const outcome = rollOutcome(state, { task: 'challenge', staff });
+  const rolled = Math.round(nextRandom(state) * JUDGE_LUCK * 10) / 10; // 주 스트림 소비는 원래대로 1회
+  const luck = outcome === 'great' ? JUDGE_LUCK : outcome === 'fail' ? 0 : rolled;
+  const score = Math.round((total + luck + challengeTitleBonus(state)) * 10) / 10;
   const power = rivalPower(def, state.clock.year);
   const win = score > power;
   const result: ChallengeResult = { rivalStateId, rivalId: r.rivalId, menuId, menuName: menuOf(state, menuId).name, breakdown, score, luck, power, win };
@@ -132,5 +146,6 @@ export function challenge(state: GameState, rivalStateId: string, menuId: string
     pushNotice(state, `${josa(def.name, '과/와')}의 대결에서 졌어요 — 인기 −${CHALLENGE_LOSE_POPULARITY}`);
   }
   state.lastChallenge = result;
+  recordOutcome(state, { task: 'challenge', outcome, staffId: staff?.id ?? null, title: `${josa(def.name, '과/와')}의 대결`, chances, lines: [`심사 운 +${luck} (${OUTCOME_NAME[outcome]})`, win ? '이겼어요!' : '졌어요…'] });
   return result;
 }

@@ -113,6 +113,7 @@ export function closeMonth(state: GameState, prevMonth: number, prevYear: number
     deficitStreak: state.deficitMonths, loanTaken: state.monthLoan, loanBalance: state.loan.balance,
     rivalLossPct: rivalGuestLossPct(state), guestsLeft: state.monthGuestsLeft,
     reputation: state.reputation, reputationDelta: 0, topComplaints: [],
+    greatServes: state.monthGreatServes ?? 0, // staff-luck 서빙 대박 횟수
   };
   state.lastMonthIncome = state.monthIncome;
   state.monthIncome = 0;
@@ -122,4 +123,5 @@ export function closeMonth(state: GameState, prevMonth: number, prevYear: number
   state.monthCosts = emptyMonthCosts();
   state.monthHarvest = { harvested: {}, ingredientSaved: 0 };
   state.monthMenuSold = {};
+  state.monthGreatServes = 0;
 }
