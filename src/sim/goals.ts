@@ -45,7 +45,7 @@ import { treeOf } from './tree.ts'; // fun: 트리 단계를 Lv로
 import { titleGradeOf } from './titles.ts';
 import { ROUTE_IDS } from './entry.ts';
 /** 경로 손님 부르는 말 (목표 문구) */
-const ROUTE_GUEST_NAME: Record<string, string> = { bus: '버스', parking: '렌터카', shuttle: '셔틀', cruise: '크루즈', olle: '올레꾼' };
+const ROUTE_GUEST_NAME: Record<string, string> = { bus: '버스', parking: '렌터카', olle: '올레꾼' };
 
 /** 이달 재료 자급률 % = 농원 절감액(창고 재료로 만든 몫) ÷ (절감액 + 산 재료비). 아직 판 게 없으면 0. */
 function selfSupplyPct(state: GameState): number {
@@ -168,7 +168,6 @@ export const conditionCheckers: CheckerMap = {
   guidebookWins: (s, c) => n(s.stats.guidebookWins, c.n),
   cleanliness: (s, c) => n(cleanStreakDays(s, c.n), CLEAN_HISTORY_DAYS), // 트랙 A: 청결 ≥ n 연속 30일
   profitMonths: (s, c) => n(s.stats.profitMonths, c.n),
-  tourGroup: (s, c) => n(s.stats.toursHeld, c.n), // x-spots가 stats.toursHeld를 올린다
   itemsUsed: (s, c) => n(s.stats.itemsUsed, c.n),
   uniforms: (s, c) => n(s.uniforms.length, c.n),
   custom: (s, c) => flag(customMet(s, c.id)),
@@ -310,7 +309,6 @@ export function goalConditionText(c: GoalCondition): string {
     case 'guidebookWins': return `가이드북 1위 ${c.n}회`;
     case 'cleanliness': return `청결 ${c.n} 한 달 유지`;
     case 'profitMonths': return `${c.n}개월 연속 흑자`;
-    case 'tourGroup': return `투어 개최 ${c.n}회`;
     case 'itemsUsed': return `강화 아이템 ${c.n}개 사용`;
     case 'uniforms': return `유니폼 ${c.n}단계`;
     case 'custom': return '특별 조건';
@@ -324,7 +322,7 @@ export function goalConditionText(c: GoalCondition): string {
     case 'monthGuests': return `이달 손님 ${fmtNum(c.n)}명`;
     case 'monthSales': return `이달 매출 ₩${fmtNum(c.n)}`;
     case 'routeGuests': return `${ROUTE_GUEST_NAME[c.route] ?? '경로'} 손님 ${fmtNum(c.n)}명`;
-    case 'routeUnlocked': return c.route === 'shuttle' ? '공항 셔틀 계약' : `${ENTRY_ROUTES[c.route]?.name ?? '경로'} 열기`;
+    case 'routeUnlocked': return `${ENTRY_ROUTES[c.route]?.name ?? '경로'} 열기`;
     case 'facility': return `${name.object(c.id)} 짓기`;
     // ---- fun-rank ----
     case 'grade': return `등급 「${GRADE_NAMES[c.n - 1] ?? c.n}」`;

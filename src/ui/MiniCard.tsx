@@ -4,7 +4,6 @@ import { josa } from '../sim/josa.ts';
 import { useGame, dispatch, showMessage } from './store';
 import { parcelFeature } from '../sim/index.ts'; // fun-rank: 필지 특징·"사면 생기는 것"
 import { nightSeatLine, objectStats, siteOf, siteLineText, cellAt, walletOf, guestFace, namedGuestFace, canAcceptQuest, parcelPrice, canBuyParcel, canGiveGift, giftFits, giftCount, giftedToday, PROTECTED_TYPES, ROTATABLE_TYPES, LOW_ENERGY, STAT_KEYS, STAT_NAME, staffInRole, canLevelUp, capOf, skillsOf, expNeeded, isUpgradable, canUpgrade, upgradeCost, upgradeConditionText, MAX_OBJECT_LEVEL, canRepair, repairCost, CLEAN_LOW, type GameState, type Guest, type RoleId, type StatKey } from '../sim/index.ts';
-import { BUS_HOUR, isBusDay } from '../sim/spots.ts';
 import { RouteCard } from './RouteCard';
 import { TreeUpgradeRow } from './TreeUpgrade'; // fun: 같은 자리 업그레이드 트리
 import { treeOf } from '../sim/index.ts';
@@ -394,19 +393,12 @@ function ParcelCard({ s, id, onClose }: { s: GameState; id: string; onClose: () 
 function BusStopCard({ s, id }: { s: GameState; id: string }) {
   const o = s.objects[id];
   const name = o ? objectDef(o.type).name : '정류장';
-  const nextBus = (() => {
-    if (!s.tourBus) return '계약 없음 (투자 창)';
-    const { day, hour } = s.clock;
-    if (isBusDay(day) && hour < BUS_HOUR) return `오늘 ${BUS_HOUR}시`;
-    for (let d = 1; d <= 7; d++) if (isBusDay(((day - 1 + d) % 30) + 1)) return d === 1 ? `내일 ${BUS_HOUR}시` : `${d}일 뒤 ${BUS_HOUR}시`;
-    return '미정';
-  })();
   return (
     <div data-testid="card-busstop">
       <Hint id="busstop" />
       <div style={{ fontSize: 14, lineHeight: 1.5 }}>
         <div><Icon name="calendar" size={18} /> <b>{name}</b></div>
-        <div style={small}>이번 달 손님 {s.monthGuests}명 · 지금 {s.guests.length}명 · 다음 버스 {nextBus}</div>
+        <div style={small}>이번 달 손님 {s.monthGuests}명 · 지금 {s.guests.length}명</div>
       </div>
     </div>
   );

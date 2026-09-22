@@ -6,7 +6,6 @@ import { tick } from '../tick.ts';
 import { DAY_MS } from '../clock.ts';
 import { OUTCOME_TABLE, outcomeChances, rollOutcome, bestStaffFor, chanceText, OUTCOME_MULT, GREAT_REPUTATION, FAIL_REPUTATION, FAIL_ENERGY, GREAT_TICKETS, LOW_ENERGY_FAIL, STAT_GREAT_PER_100 } from '../luck.ts';
 import { promoChances } from '../promotions.ts';
-import { tourChances, TOUR_YEAR, TOUR_SUCCESS_SCORE, TOUR_MONEY_PER_SCORE, TOUR_FAIL_MONEY, tourScore } from '../spots.ts';
 import { developChances } from '../craft.ts';
 import { sideRandom, nextRandom } from '../rng.ts';
 import { staffWith } from './staff.test.ts';
@@ -122,23 +121,6 @@ test('홍보: 대박 = 인기 ×2 + 응모권 +1 + 평판 +3, 중박 = 표대로
   s.reputation = 30;
   apply(s, { type: 'promote', staffId: st.id, promotionId: 'apology_event' });
   expect(s.lastOutcome).toBeNull();
-});
-
-test('투어: 대박 = 돈·방문객 ×2 + 응모권·평판 +3, 쪽박 = ×0.5 + 평판 −2 (안내 직원 = 대박 기대값 최고)', () => {
-  for (const want of ['great', 'fail'] as Outcome[]) {
-    const make = () => { const x = withStaff(4, 80); x.s.clock.year = TOUR_YEAR; x.s.reputation = 50; x.s.spots['canola_field'] = 1; return x; };
-    const probe = make();
-    const score = tourScore(probe.s, 'canola_field');
-    const baseMoney = score >= TOUR_SUCCESS_SCORE ? score * TOUR_MONEY_PER_SCORE : TOUR_FAIL_MONEY;
-    const money0 = probe.s.money;
-    expect(tourChances(probe.s).staff?.id).toBe(probe.s.staff[0]!.id);
-    const { s } = findTick(make, want, (x) => apply(x.s, { type: 'hostTour', spotId: 'canola_field' }), (x) => x.s.lastOutcome?.outcome);
-    expect(s.lastOutcome!.task).toBe('tour');
-    expect(s.money - money0).toBe(Math.round(baseMoney * OUTCOME_MULT[want]));
-    expect(s.lastTour!.money).toBe(Math.round(baseMoney * OUTCOME_MULT[want]));
-    expect(s.reputation).toBe(50 + (want === 'great' ? GREAT_REPUTATION : -FAIL_REPUTATION));
-    if (want === 'great') expect(s.tickets).toBeGreaterThanOrEqual(probe.s.tickets + GREAT_TICKETS);
-  }
 });
 
 test('연수 복귀: 대박 = 스탯 ×2, 쪽박 = ×0.5 + 기력 −20, 결과 팝업(lastOutcome.task = training)', () => {

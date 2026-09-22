@@ -19,7 +19,7 @@ import { advanceConstruction } from './build.ts';
 import { monthlyShop, dailyShop } from './shop.ts';
 import { monthlyRank } from './guidebook.ts';
 import { monthlyMileage } from './mileage.ts';
-import { dailySpots, monthlySpots } from './spots.ts';
+import { dailySpots } from './spots.ts';
 import { monthlyGifts } from './items.ts';
 import { fmtNum } from './format.ts';
 import { dailyCleanliness } from './cleanliness.ts';
@@ -75,7 +75,6 @@ function onNewMonth(state: GameState, prevMonth: number, prevYear: number): void
   expirePromotions(state);
   upkeep(state);
   if (newYear) incomeTax(state);
-  monthlySpots(state); // 투어 버스 월 계약비(트랙 C chargeTourBus → monthCosts.tourBus)
   monthlyRoutes(state); // 트랙 H: 경로 월 리셋·셔틀 계약비
   monthlyGifts(state);
   monthlyMileage(state);

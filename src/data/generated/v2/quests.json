@@ -606,7 +606,7 @@
     "condition": {
       "type": "spotLevel",
       "params": {
-        "spotId": "hallasan",
+        "spotId": "gotjawal",
         "level": 3
       }
     },
@@ -1695,7 +1695,7 @@
     "condition": {
       "type": "spotLevel",
       "params": {
-        "spotId": "seongsan",
+        "spotId": "sangumburi",
         "level": 3
       }
     },
@@ -1795,7 +1795,7 @@
     "condition": {
       "type": "spotLevel",
       "params": {
-        "spotId": "baengnokdam",
+        "spotId": "gotjawal",
         "level": 3
       }
     },
@@ -2220,7 +2220,7 @@
     "condition": {
       "type": "spotLevel",
       "params": {
-        "spotId": "theme_park",
+        "spotId": "horse_ranch",
         "level": 3
       }
     },

@@ -73,7 +73,6 @@ export function buyMileage(state: GameState, id: string): void {
   if (def.itemId) { grantItem(state, def.itemId); pushNotice(state, `${josa(def.name, '을/를')} 샀어요`); return; }
   switch (id) {
     case 'ms_ticket': state.tickets += 1; pushNotice(state, '응모권 1장을 샀어요'); return;
-    case 'ms_bus_contract': state.tourBusFreeMonths += 1; pushNotice(state, '투어 버스 계약권! 다음 계약비가 무료예요'); return;
     case 'ms_gift_box': {
       const got = openGiftBox(state);
       pushNotice(state, `제주 선물 상자! ${got.map((g) => giftDef(g).name).join(' · ')}`);

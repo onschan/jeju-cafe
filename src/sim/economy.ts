@@ -37,10 +37,10 @@ export function ingredientCost(state: GameState, menuId: string): number {
 }
 
 export function emptyMonthCosts(): MonthCosts {
-  return { ingredients: 0, salary: 0, ads: 0, upkeep: 0, recruit: 0, tax: 0, loanRepay: 0, tourBus: 0 };
+  return { ingredients: 0, salary: 0, ads: 0, upkeep: 0, recruit: 0, tax: 0, loanRepay: 0, shuttle: 0 };
 }
 export function totalCosts(c: MonthCosts): number {
-  return c.ingredients + c.salary + c.ads + c.upkeep + c.recruit + c.tax + c.loanRepay + c.tourBus;
+  return c.ingredients + c.salary + c.ads + c.upkeep + c.recruit + c.tax + c.loanRepay + c.shuttle;
 }
 
 // ---------- 유지비 ----------

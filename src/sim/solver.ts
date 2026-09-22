@@ -30,7 +30,7 @@ import { canSetSlot, availableMenus, menuOf } from './menu.ts';
 import { canAcceptQuest } from './board.ts';
 import { canGiveGift } from './items.ts';
 import { mainBuilding, freeFloorCells, canExpandMain, canBuildSecondFloor, canAutoConnectPath, MAIN_TYPE } from './rooms.ts';
-import { canSetRouteContract, canExpandParking, PARKING_EXPAND_FROM, PARKING_SLOTS } from './entry.ts';
+import { canExpandParking, PARKING_EXPAND_FROM, PARKING_SLOTS } from './entry.ts';
 import { seatScore } from './site.ts';
 import { dailyGuestCount } from './guests.ts';
 import { bestMainCells, bestSeatCellsHeuristic, bestWallCellsHeuristic, bestCornerCellsHeuristic, bestIndoorSeatsHeuristic, bestParkingCellsHeuristic } from './strategy.ts';
@@ -212,7 +212,6 @@ export function candidateActions(s: GameState, k = 3): SolverCandidate[] {
   for (const p of s.parcels) { if (parcels >= 2 || p.owned || !canBuyParcel(s, p.id).ok) continue; add({ action: { type: 'buyParcel', id: p.id }, label: `필지 「${p.name}」 사기`, cells: [{ x: p.x, y: p.y }], targets: ['nav:ledger', 'tab:invest'], prio: 28 }); parcels++; }
 
   // 경로: 셔틀 계약·주차장 넓히기
-  if (canSetRouteContract(s, 'shuttle', true).ok) add({ action: { type: 'setRouteContract', route: 'shuttle', on: true }, label: '공항 셔틀 계약', cells: [], targets: ['nav:ledger', 'tab:invest'], prio: 34 });
   for (const o of Object.values(s.objects)) if (o.type === PARKING_EXPAND_FROM && canExpandParking(s, o.id).ok) { add({ action: { type: 'expandParking', objectId: o.id }, label: '주차장 넓히기', cells: [{ x: o.x, y: o.y }], targets: ['nav:build', 'tab:convenience'], prio: 33 }); break; }
 
   // 선물: 지금 있는 손님 하나에게 가진 선물 하나

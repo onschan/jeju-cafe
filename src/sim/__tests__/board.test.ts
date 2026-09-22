@@ -6,13 +6,13 @@ import { setSlot } from '../menu.ts';
 import { apply } from '../actions.ts';
 import { tick, step } from '../tick.ts';
 import { DAY_MS, HOUR_MS, monthIndex } from '../clock.ts';
-import { spawnGuests, updateGuests, dailyGuestCount, popularityGuestBase, spotDailyGuests, totalSeats, hourlySpawn, tourBus, typeWeight, GUESTS_PER_SEAT } from '../guests.ts';
+import { spawnGuests, updateGuests, dailyGuestCount, popularityGuestBase, spotDailyGuests, totalSeats, hourlySpawn, typeWeight, GUESTS_PER_SEAT } from '../guests.ts';
 import { monthlyYieldOf } from '../orchard.ts';
 import { upkeep } from '../economy.ts';
 import {
   offerQuest, refreshQuests, questProgress, checkQuests, expireQuests, rollEvents, eventConditionMet, eventEligible, applyEventEffect, expireEvents, boardBadge, afterInvest, QUEST_MONTHS, questOffersToday, questOfferDay, questFeasible, pendingQuestOffers, QUEST_OFFERS_FIRST, QUEST_OFFERS_MID, QUEST_OFFER_DAY_MIN, QUEST_OFFER_DAY_SPAN,
 } from '../board.ts';
-import { spotAppeal, spotGuestBonus, spotUnlocked, canInvestSpot, nextSpotLevel, busSpots, totalDailyVisitors, VISITOR_GUEST_RATE, SPOT_MAX_LEVEL } from '../spots.ts';
+import { spotAppeal, spotGuestBonus, spotUnlocked, canInvestSpot, nextSpotLevel, totalDailyVisitors, VISITOR_GUEST_RATE, SPOT_MAX_LEVEL } from '../spots.ts';
 import { effectMult, noGuestsToday, pruneEffects, dayIndex, filterMatches } from '../effects.ts';
 import { unlockGuestType, isUnlocked, addSatisfaction, SAT_QUEST } from '../segments.ts';
 import { QUESTS, EVENTS, SPOTS, questDef, eventDef, parseSeasonMonths, spotDef } from '../../data/index.ts';
@@ -25,14 +25,13 @@ function cafe(seed = 1) {
   return { s, seat };
 }
 
-test('데이터: 부탁 103·이벤트 42·관광지 24, 참조가 유효하고 계절 문자열이 달로 풀린다', () => {
+test('데이터: 부탁 103·이벤트 42·관광지 8, 참조가 유효하고 계절 문자열이 달로 풀린다', () => {
   expect(QUESTS.length).toBe(103);
   expect(EVENTS.length).toBe(42);
-  expect(SPOTS.length).toBe(24);
+  expect(SPOTS.length).toBe(8);
   for (const sp of SPOTS) {
-    expect(sp.levels.map((l) => l.level)).toEqual([1, 2, 3, 4, 5]);
-    if (sp.nextSpotId) expect(spotDef(sp.nextSpotId).unlock).toEqual({ type: 'spot', spotId: sp.id, level: 4 });
-    if (sp.lv4QuestId) questDef(sp.lv4QuestId);
+    expect(sp.levels.map((l) => l.level)).toEqual([1, 2, 3]);
+    if (sp.nextSpotId) expect(spotDef(sp.nextSpotId).unlock).toEqual({ type: 'spot', spotId: sp.id, level: 3 });
   }
   expect(parseSeasonMonths('7~9월·12~1월')).toEqual([1, 7, 8, 9, 12]);
   expect(parseSeasonMonths('봄·가을')).toEqual([3, 4, 5, 9, 10, 11]);
@@ -261,7 +260,7 @@ function meetSpotReqs(s: ReturnType<typeof bareState>, id: string) {
   const g = spotDef(id).lv2GuestId; if (g) s.segmentPopularity[g] = 99;
 }
 
-test('관광지: 시작·랭크·앞 관광지 Lv4 해금, 레벨별 비용, 매력도 합 → 하루 손님, Lv2 손님·Lv4 부탁', () => {
+test('관광지: 시작·랭크·앞 관광지 Lv3 해금, 레벨별 비용, 매력도 합 → 하루 손님, Lv2 손님', () => {
   const s = bareState(1);
   s.money = 1e9;
   meetSpotReqs(s, 'canola_field');
@@ -281,55 +280,18 @@ test('관광지: 시작·랭크·앞 관광지 Lv4 해금, 레벨별 비용, 매
   expect(spotAppeal(s)).toBe(20);
   const g0 = popularityGuestBase(s);
   apply(s, { type: 'investSpot', id: 'canola_field' }); // Lv3 (32)
-  apply(s, { type: 'investSpot', id: 'canola_field' }); // Lv4 (44)
   expect(spotGuestBonus(s)).toBe(Math.floor(totalDailyVisitors(s) * VISITOR_GUEST_RATE + 1e-9));
   expect(spotDailyGuests(s)).toBe(spotGuestBonus(s)); // 방문객/일 × 3%가 하루 손님으로
-  expect(popularityGuestBase(s)).toBeGreaterThan(g0);
-  expect(s.board.quests['q_influencer']!.status).toBe('offered'); // Lv4 부탁
-  expect(isUnlocked(s, 'influencer')).toBe(true);
+  expect(popularityGuestBase(s)).toBeGreaterThanOrEqual(g0);
   expect(spotUnlocked(s, 'sangumburi')).toBe(true); // 다음 관광지
   expect(s.notices).toContain('산굼부리에 투자할 수 있어요');
-  apply(s, { type: 'investSpot', id: 'canola_field' }); // Lv5
   expect(s.spots['canola_field']).toBe(SPOT_MAX_LEVEL);
   expect(apply(s, { type: 'investSpot', id: 'canola_field' }).ok).toBe(false);
-  expect(spotAppeal(s)).toBe(55);
+  expect(spotAppeal(s)).toBe(32);
   s.money = 100;
   expect(apply(s, { type: 'investSpot', id: 'sangumburi' }).ok).toBe(false); // 돈
   s.rank = 2;
   expect(spotUnlocked(s, 'olle_trail')).toBe(true);
-});
-
-test('투어 버스: Lv3 이상 관광지의 Lv2 손님이 일요일 11시에 4~6명 한꺼번에', () => {
-  const { s } = cafe();
-  for (let x = 0; x < 4; x++) placeObject(s, 'table_out', X(x), Y(5)); // 좌석 10
-  for (const x of [0, 1, 2, 3, 5]) placeObject(s, 'path', X(x), Y(6));
-  s.money = 1e9;
-  expect(busSpots(s)).toEqual([]);
-  expect(tourBus(s)).toBe(0);
-  meetSpotReqs(s, 'canola_field');
-  for (let i = 0; i < 3; i++) apply(s, { type: 'investSpot', id: 'canola_field' });
-  expect(busSpots(s)).toEqual([]); // 계약 전엔 안 온다 (트랙 C)
-  s.tourBus = true;
-  expect(busSpots(s).map((d) => d.id)).toEqual(['canola_field']);
-  const n = tourBus(s);
-  expect(n).toBeGreaterThanOrEqual(4); expect(n).toBeLessThanOrEqual(6);
-  expect(s.guests.every((g) => g.type === 'insta_traveler')).toBe(true);
-  // 스케줄: 7일 11시에만
-  const s2 = bareState(1); placeObject(s2, 'table_out', X(4), Y(5)); s2.money = 1e9; s2.tourBus = true;
-  meetSpotReqs(s2, 'canola_field');
-  for (let i = 0; i < 3; i++) apply(s2, { type: 'investSpot', id: 'canola_field' });
-  s2.segmentPopularity = {};
-  for (const id of Object.keys(s2.guestTypes)) if (id !== 'insta_traveler') s2.guestTypes[id]!.unlocked = false;
-  s2.guestTypes['insta_traveler']!.unlocked = true;
-  s2.segmentPopularity['insta_traveler'] = 0;
-  // 6일 밤까지 진행 뒤 7일 11시
-  let seen = 0;
-  for (let d = 1; d <= 7; d++) for (let h = 6; h < 24; h++) {
-    tick(s2, HOUR_MS);
-    if (s2.clock.day === 7 && s2.clock.hour === 12) seen = s2.guests.length + seen;
-  }
-  expect(seen).toBeGreaterThanOrEqual(1);
-  void step;
 });
 
 test('월초 훅: 해금 → 기한·이벤트·부탁이 순서대로 돌고 저장/복원이 같다', () => {

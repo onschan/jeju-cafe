@@ -18,7 +18,7 @@ import { isAged } from './economy.ts';
 import { recordUse, facilityFee } from './upgrade.ts'; // 트랙 A 훅: 이용 횟수·Lv 요금
 import { addResearchProgress, TASTE_MATCH_WEIGHT } from './progress.ts';
 import { effectMult, noGuestsToday, filterMatches } from './effects.ts';
-import { spotGuestBonus, busSpots, isBusDay, BUS_HOUR, BUS_MIN, BUS_MAX, spotSpawnMult } from './spots.ts';
+import { spotGuestBonus, spotSpawnMult } from './spots.ts';
 import type { ParcelBonus } from './types.ts';
 import { seatsOf, isSeat } from './cafe.ts';
 import { filterSeatsForWeather, stayMs, browseChance, indoorSatisfaction, indoorSpawnMult, indoorFeeMult } from './rooms.ts';
@@ -33,7 +33,7 @@ import { eventGuestMult, eventTagMult, eventFeeMult, isSpecialGuest, specialGues
 import { fmtNum } from './format.ts';
 import { josa } from './josa.ts';
 import { siteBonus } from './site.ts';
-import { spawnRouteWeights, routeArrivals, routeSpawnPos, routeTagMult, routeWalletMult, routeStayMult, routeGuestMult, routeHome, noteRouteGuest, noteRouteIncome, foreignPhotoChance, foreignMenuMult, chargePortFee, routeState, CAR_GUESTS_MIN, CAR_GUESTS_MAX, PARKING_FLUSH_HOUR } from './entry.ts'; // 트랙 H 유입 경로
+import { spawnRouteWeights, routeArrivals, routeSpawnPos, routeTagMult, routeWalletMult, routeStayMult, routeGuestMult, routeHome, noteRouteGuest, noteRouteIncome, foreignPhotoChance, foreignMenuMult, routeState, CAR_GUESTS_MIN, CAR_GUESTS_MAX, PARKING_FLUSH_HOUR } from './entry.ts'; // 트랙 H 유입 경로
 import { hashOf } from './say.ts';
 import { streetFeeMult } from './tree.ts'; // fun: 같은 트리 3연속 「거리」 요금 +10%
 import { sceneryTouristMult, notePhoto } from './appeal.ts'; // fun: 경관 → 관광객, 사진 → 평판
@@ -220,12 +220,10 @@ export function hourlySpawn(state: GameState): number {
   const n = Math.floor(state.spawnAcc + 1e-9);
   state.spawnAcc -= n;
   let spawned = n > 0 ? spawnByRoutes(state, n) : 0;
-  if (state.clock.hour === BUS_HOUR && isBusDay(state.clock.day)) spawned += tourBus(state);
   // 트랙 H: 시각 고정 경로 — 공항 셔틀(11·15시)·크루즈(입항 날 13시)
   for (const a of routeArrivals(state)) {
     const pos = routeSpawnPos(state, a.route);
     if (!pos) continue;
-    if (a.route === 'cruise') chargePortFee(state);
     const k = spawnGuests(state, a.n, undefined, { route: a.route, pos });
     if (k > 0) pushFx(state, { kind: 'arrive', route: a.route, x: pos.x, y: pos.y, n: k, tick: state.tick }); // fun P0: 셔틀 정차·배 도착 연출
     spawned += k;
@@ -292,16 +290,6 @@ export function hourlyRegulars(state: GameState): number {
     dressAsRegular(state, state.guests[state.guests.length - 1]!, r);
     state.spawnAcc -= 1;
     n++;
-  }
-  return n;
-}
-
-/** 투어 버스: Lv3 이상 관광지마다 그곳의 Lv2 손님 타입 4~6명이 한꺼번에. 실제 스폰 수. */
-export function tourBus(state: GameState): number {
-  let n = 0;
-  for (const spot of busSpots(state)) {
-    if (!spot.lv2GuestId || !isUnlocked(state, spot.lv2GuestId)) continue;
-    n += spawnGuests(state, randInt(state, BUS_MIN, BUS_MAX), spot.lv2GuestId);
   }
   return n;
 }

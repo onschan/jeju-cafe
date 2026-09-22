@@ -14,13 +14,12 @@ export const OUTCOME_TABLE: Record<LuckTask, Chances> = {
   promo: { great: 15, success: 65, fail: 20 },
   develop: { great: 10, success: 60, fail: 30 },
   training: { great: 20, success: 70, fail: 10 },
-  tour: { great: 15, success: 65, fail: 20 },
   gift: { great: 15, success: 70, fail: 15 },
   serve: { great: 5, success: 91, fail: 4 },       // 손님 주문마다 작은 판정: 대박 = 팁, 쪽박 = 불친절 불만 (봇 3년 밴드 ×1.0 근처가 되게 낮춰 둔 값)
 };
-export const TASK_NAME: Record<LuckTask, string> = { promo: '홍보', develop: '레시피 개발', training: '연수', tour: '투어 개최', gift: '선물', serve: '서빙' };
+export const TASK_NAME: Record<LuckTask, string> = { promo: '홍보', develop: '레시피 개발', training: '연수', gift: '선물', serve: '서빙' };
 /** 작업마다 보는 직원 스탯 */
-export const TASK_STAT: Record<LuckTask, StatKey> = { promo: 'smile', develop: 'skill', training: 'stamina', tour: 'smile', gift: 'smile', serve: 'smile' };
+export const TASK_STAT: Record<LuckTask, StatKey> = { promo: 'smile', develop: 'skill', training: 'stamina', gift: 'smile', serve: 'smile' };
 export const OUTCOME_NAME: Record<Outcome, string> = { great: '대박', success: '성공', fail: '쪽박' };
 
 /** 수정치 (확률 0~1 단위) */

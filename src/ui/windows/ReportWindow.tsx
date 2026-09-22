@@ -55,7 +55,7 @@ function Row({ label, value, color, bold, indent }: { label: string; value: stri
 
 export function ReportWindow({ card: c, star, prevStar, starProgress, monthRecord, onClose }: ReportWindowProps) {
   const cost = c.costs;
-  const totalCost = cost.ingredients + cost.salary + cost.upkeep + cost.ads + (cost.recruit ?? 0) + (cost.tax ?? 0) + (cost.loanRepay ?? 0) + (cost.tourBus ?? 0);
+  const totalCost = cost.ingredients + cost.salary + cost.upkeep + cost.ads + (cost.recruit ?? 0) + (cost.tax ?? 0) + (cost.loanRepay ?? 0) + (cost.shuttle ?? 0);
   const complaints = (c.topComplaints ?? []).slice(0, 3);
   const up = star !== undefined && prevStar !== undefined && star > prevStar;
   const highlights = (c.highlights ?? []).filter(Boolean).slice(0, 3);
@@ -80,7 +80,7 @@ export function ReportWindow({ card: c, star, prevStar, starProgress, monthRecor
         <Row label="홍보" value={`-${wonText(cost.ads)}`} indent />
         {(cost.recruit ?? 0) > 0 && <Row label="채용·퇴직금·연수" value={`-${wonText(cost.recruit)}`} indent />}
         {(cost.tax ?? 0) > 0 && <Row label="소득세" value={`-${wonText(cost.tax)}`} indent />}
-        {(cost.tourBus ?? 0) > 0 && <Row label="투어 버스" value={`-${wonText(cost.tourBus)}`} indent />}
+        {(cost.shuttle ?? 0) > 0 && <Row label="공항 셔틀" value={`-${wonText(cost.shuttle)}`} indent />}
         {(cost.loanRepay ?? 0) > 0 && <Row label="삼춘 대출 상환" value={`-${wonText(cost.loanRepay)}`} indent />}
         <div style={{ borderTop: `2px solid ${PALETTE.wood}`, margin: '6px 0' }} />
         <Row label="순이익" value={`${c.net >= 0 ? '+' : '-'}${wonText(Math.abs(c.net))}`} color={c.net >= 0 ? PALETTE.ok : PALETTE.bad} bold />

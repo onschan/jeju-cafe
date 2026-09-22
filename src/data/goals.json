@@ -1126,11 +1126,12 @@
   },
   {
     "id": "g60",
-    "title": "공항 셔틀 계약",
-    "desc": "용천수 샘터 필지에 셔틀 정류장을 짓고 남쪽 끝까지 길을 이은 뒤 계약하자",
+    "title": "주차장 손님 200명",
+    "desc": "렌터카로 온 손님 200명",
     "condition": {
-      "type": "routeUnlocked",
-      "route": "shuttle"
+      "type": "routeGuests",
+      "route": "parking",
+      "n": 200
     },
     "reward": [
       {
@@ -1139,7 +1140,7 @@
       }
     ],
     "speaker": "hero",
-    "line": "공항 셔틀 계약! 11시·15시에 단체 손님이 와요."
+    "line": "차로 오는 손님이 이만큼이여."
   },
   {
     "id": "g61",
@@ -1315,11 +1316,12 @@
   },
   {
     "id": "g70",
-    "title": "크루즈 선착장 열기",
-    "desc": "선착장을 지으면 배 손님이 온다",
+    "title": "올레꾼 300명",
+    "desc": "올레길로 온 손님 300명",
     "condition": {
-      "type": "routeUnlocked",
-      "route": "cruise"
+      "type": "routeGuests",
+      "route": "olle",
+      "n": 300
     },
     "reward": [
       {
@@ -1328,15 +1330,16 @@
       }
     ],
     "speaker": "halmang",
-    "line": "배에서 내린 손님이 여기까지 왔구나. 바다 건너 소문이 났저."
+    "line": "올레꾼들이 우리 마당에서 쉬어 간다."
   },
   {
     "id": "g71",
-    "title": "투어 개최 1회 성공",
-    "desc": "투어 개최 1회 성공",
+    "title": "명소 둘 Lv3",
+    "desc": "명소 두 곳을 Lv3까지",
     "condition": {
-      "type": "tourGroup",
-      "n": 1
+      "type": "spotAny",
+      "lv": 3,
+      "n": 2
     },
     "reward": [
       {
@@ -1345,7 +1348,7 @@
       }
     ],
     "speaker": "samchun",
-    "line": "투어 1회 성공! 버스가 줄줄이 온다."
+    "line": "명소 둘이 우리 카페를 끌어 준다."
   },
   {
     "id": "g72",

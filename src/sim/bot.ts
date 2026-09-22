@@ -41,14 +41,14 @@ import { bestStaffFor } from './luck.ts'; // staff-luck: 대박 기대값이 가
 import { staffCapacity } from './staff.ts';
 import { canUpgrade, upgradeCost, isUpgradable } from './upgrade.ts';
 import { objectStats, setLevels } from './compat.ts';
-import { canInvestSpot, canHostTour, tourScore, TOUR_SUCCESS_SCORE, spotLevel, SPOT_POP_REQ_LV4 } from './spots.ts';
+import { canInvestSpot, spotLevel } from './spots.ts';
 import { canonicalGuestId } from '../data/index.ts';
 import { SPOTS } from '../data/index.ts';
 import { canHire, canPostJob, postJobCost, TIERS } from './staff.ts';
 import { canBuildSecondFloor, FLOOR2_COST } from './rooms.ts'; // fun-rank: 2층
 import { isSeat } from './cafe.ts';
 import type { JobTier } from './types.ts';
-import { parkingSites, routePathCells, routeFacility, canSetRouteContract, ENTRY_ROUTES, PARKING_EXPAND_FROM, PARKING_SLOTS } from './entry.ts'; // 트랙 H
+import { parkingSites, routePathCells, routeFacility, ENTRY_ROUTES, PARKING_EXPAND_FROM, PARKING_SLOTS } from './entry.ts'; // 트랙 H
 import { mainBuilding, freeFloorCells, nextMainLevel, expandCost, expandCells, canExpandMain, isAnnex, indoorSeats } from './rooms.ts'; // y-indoor
 import type { Candidate, RoleId, StatKey, QuestDef } from './types.ts';
 import { bestMoves, BOT_SOLVER_OPTIONS, type SolverOptions } from './solver.ts'; // solver 정책
@@ -328,17 +328,6 @@ function postJobAny(s: GameState): boolean {
   return false;
 }
 
-/** fun-rank: 명소 Lv3 → Lv4 조건 「그 손님층 인기 40」이 5년차까지 명소 16곳(₩5억)을 잠갔다 — 열린 손님층이면 응모권으로 인기 열매를 사서 준다 (한 달 하나) */
-function feedSpotGuest(s: GameState): void {
-  if (s.clock.year < BOT_SPOT_LV4_YEAR) return;
-  for (const def of SPOTS) {
-    if (spotLevel(s, def.id) !== 3 || !def.lv2GuestId) continue;
-    const g = canonicalGuestId(def.lv2GuestId);
-    if (!isUnlocked(s, g) || (s.segmentPopularity[g] ?? 0) >= SPOT_POP_REQ_LV4) continue;
-    if ((s.inventory[POPULARITY_FRUIT] ?? 0) <= 0 && canBuyTicket(s, 'ts_popularity_fruit').ok) apply(s, { type: 'buyTicket', id: 'ts_popularity_fruit' });
-    if (canUseGuestItem(s, POPULARITY_FRUIT, g).ok && apply(s, { type: 'useGuestItem', itemId: POPULARITY_FRUIT, guestId: g }).ok) return;
-  }
-}
 /** 2년차부터: 투자할 수 있는 관광지 중 다음 레벨 비용 + 여유 300만이 있으면 하나 (한 달 하나) */
 function investSpotIfAny(s: GameState): void {
   if (s.clock.year < BOT_SPOT_YEAR) return;
@@ -571,12 +560,10 @@ function buyParcelIfAny(s: GameState): void {
 }
 
 /** 트랙 H 유입 경로: 주차장(마을 길 옆 첫 자리) → 올레 표식·셔틀 정류장·선착장 + 진입점까지 올렛길 → 셔틀 계약 */
-export const BOT_ROUTE_SITES: Record<'olle' | 'shuttle' | 'cruise', { x: number; y: number }> = { olle: { x: 3, y: 11 }, shuttle: { x: 15, y: 20 }, cruise: { x: 14, y: 0 } }; // 셔틀은 샘(15,19) 아래, 옆 열(x=16)로 마을 길까지
+export const BOT_ROUTE_SITES: Record<'olle', { x: number; y: number }> = { olle: { x: 3, y: 11 } };
 /** 경로 시설에서 시작 필지 올렛길(가로 y=12 · 세로 x=14)까지 잇는 칸. 크루즈는 parcel2·parcel4를 지나므로 그 필지를 산 뒤에 이어진다. */
-const BOT_ROUTE_LINKS: Record<'olle' | 'shuttle' | 'cruise', { x: number; y: number }[]> = {
+const BOT_ROUTE_LINKS: Record<'olle', { x: number; y: number }[]> = {
   olle: [{ x: 3, y: 12 }, ...[4, 5, 6, 7, 8, 9].map((x) => ({ x, y: 12 }))],
-  shuttle: [16, 17, 18, 19, 20].map((y) => ({ x: 16, y })),
-  cruise: [...[1, 2, 3, 4, 5, 6, 7].map((y) => ({ x: 14, y })), ...[13, 12, 11, 10, 9].map((x) => ({ x, y: 7 })), ...[8, 9, 10, 11, 12].map((y) => ({ x: 9, y }))], // 본관(13~15, 9~10)·북쪽 테이블 줄을 피해 오름 자락(9,7)→밭담 골짜기 x=9로 내려와 가로 올렛길(10,12)에 닿는다
 };
 function laySteps(s: GameState, cells: { x: number; y: number }[]): void {
   for (const c of cells) {
@@ -603,7 +590,7 @@ function planRoutes(s: GameState): void {
     const site = sites.find((p) => p.x === BOT_PARKING_SITE.x && p.y === BOT_PARKING_SITE.y) ?? (clearParkingSite(s) ? BOT_PARKING_SITE : sites[0]);
     if (site) place(s, PARKING_EXPAND_FROM, site.x, site.y);
   }
-  for (const route of ['olle', 'shuttle', 'cruise'] as const) {
+  for (const route of ['olle'] as const) {
     const type = ENTRY_ROUTES[route].facilities[0]!;
     const site = BOT_ROUTE_SITES[route];
     if (!routeFacility(s, route) && !Object.values(s.objects).some((o) => o.type === type) && canSpend(s, objectDef(type).cost)) {
@@ -615,7 +602,6 @@ function planRoutes(s: GameState): void {
     if (!Object.values(s.objects).some((o) => o.type === type)) continue;
     laySteps(s, [...routePathCells(route, site), ...BOT_ROUTE_LINKS[route]]);
   }
-  if (canSetRouteContract(s, 'shuttle', true).ok && canSpend(s, 2_000_000)) apply(s, { type: 'setRouteContract', route: 'shuttle', on: true });
 }
 
 /** 매달 1일 */
@@ -663,7 +649,6 @@ function monthlyPlan(s: GameState, monthsPlayed: number): void {
   // 커플 인기(g44 「커플 손님 인기 30」): 응모권 5장이면 인기 열매를 사서 커플에게 (홍보는 커플을 안 올린다)
   if (effectivePopularity(s, BOT_COUPLE_ID) < BOT_COUPLE_POPULARITY && isUnlocked(s, BOT_COUPLE_ID) && (s.inventory[POPULARITY_FRUIT] ?? 0) <= 0 && canBuyTicket(s, 'ts_popularity_fruit').ok) apply(s, { type: 'buyTicket', id: 'ts_popularity_fruit' });
   if (effectivePopularity(s, BOT_COUPLE_ID) < BOT_COUPLE_POPULARITY && canUseGuestItem(s, POPULARITY_FRUIT, BOT_COUPLE_ID).ok) apply(s, { type: 'useGuestItem', itemId: POPULARITY_FRUIT, guestId: BOT_COUPLE_ID });
-  feedSpotGuest(s); // fun-rank: 명소 Lv4 조건(손님층 인기 40)을 인기 열매로
   if (s.lastAnnouncement) apply(s, { type: 'dismissAnnouncement' });
 
   // 시설·돌담·필지
@@ -682,8 +667,6 @@ function monthlyPlan(s: GameState, monthsPlayed: number): void {
   placeLandmark(s);
   placeLuxury(s); // fun-rank: 3년차부터 큰 시설
   // 투어 개최: 점수 60 이상인 명소가 있으면 월 1회 (목표 g71)
-  if (!s.lastTour) for (const def of SPOTS) if (canHostTour(s, def.id).ok && tourScore(s, def.id) >= TOUR_SUCCESS_SCORE) { apply(s, { type: 'hostTour', spotId: def.id }); break; }
-  if (s.lastTour) apply(s, { type: 'dismissTour' });
   // 승급: 경험치·연구가 찬 직원 하나 (목표 g66·g88)
   if (s.clock.year >= BOT_LEVELUP_YEAR && s.money >= BOT_LEVELUP_MIN_MONEY && (s.customMenus.length >= BOT_RECIPES || s.research >= DEVELOP_RESEARCH * 2)) for (const st of s.staff) if (canLevelUp(s, st.id).ok && apply(s, { type: 'levelUp', staffId: st.id }).ok) break; // 연구 포인트는 레시피 개발이 먼저
   buyParcelIfAny(s);
@@ -762,7 +745,6 @@ function solverChores(s: GameState): void {
   while (s.alerts.length > 0) apply(s, s.alerts[0]!.type === 'ending' ? { type: 'continueEnding' } : { type: 'dismissAlert' });
   if (s.lastDraw) apply(s, { type: 'dismissDraw' });
   if (s.lastDevelop) apply(s, { type: 'dismissDevelop' });
-  if (s.lastTour) apply(s, { type: 'dismissTour' });
   if (s.lastAnnouncement) apply(s, { type: 'dismissAnnouncement' });
 }
 /** solver 정책의 하루: everyDays(기본 BOT_SOLVER_EVERY_DAYS)일마다 bestMoves 1위 수(저축보다 나을 때만) 하나 */

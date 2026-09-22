@@ -21,7 +21,7 @@ export { solverKey, moneyBucket, setSolverResult, solverResult, lastSolverResult
 export { STEPS as TUTORIAL_STEP_DEFS, TUTORIAL_STEPS, currentTutorialStep, stepTargets, tutorialStepDone, tutorialDone, dialogueSeen, pathConnected, recommendedMainCells, cornerMade, cornerMissingType, cornerCells, greetedGuest, LOOK_TEXT, type TutorialStepDef, type TutorialNoteKey, type LookId } from './tutorial.ts';
 export { activeEvents, isEventActive, eventDaysLeft, eventGuestMult, eventTagMult, eventFeeMult, eventEligible, guestHasTag, isSpecialGuest, specialGuestTip, specialGuestsMet, MAX_ACTIVE_EVENTS, SPECIAL_GUEST_HOUR } from './events.ts';
 export { guestSay, staffSay } from './say.ts';
-export { ENTRY_ROUTES, ROUTE_IDS, routeDef, entryPoints, routeStats, routeState, routeActive, routeOpened, routeConnected, routeLinked, routeShare, routeTakesGuests, canAutoLinkRoute, installRouteForParcel, parkingTodayText, PARCEL_ROUTE, ROUTE_AUTO_SITES, ROUTE_OPEN_LINE, PARKING_SHARE_MIN, PARKING_SHARE_MAX, OLLE_SHARE, CAR_GUESTS_MIN, CAR_GUESTS_MAX, PARKING_FLUSH_HOUR, routeFacility, routeTarget, routeSpawnPos, routeHome, routeAtCell, routeOfFacility, routeDailyCap, routeCapLeft, nextArrivalText, parkingSlots, parkingSites, routePathCells, canSetRouteContract, canExpandParking, parkingExpandCost, spawnRouteWeights, routeArrivals, routeTagMult, hasRouteTag, isForeign, cruiseDocked, routeUnlockMet, routeFacilityUnlockMet, PARKING_SLOTS, PARKING_GUESTS_PER_SLOT, PARKING_EXPAND_FROM, PARKING_EXPAND_TO, SHUTTLE_FEE, CRUISE_PORT_FEE, CRUISE_EVENT, CRUISE_STAR, OLLE_GUEST_MULT, FOREIGN_WALLET_MULT, type RouteDef, type RouteTag, type EntryPoint, type RouteStat } from './entry.ts'; // 트랙 H
+export { ENTRY_ROUTES, ROUTE_IDS, routeDef, entryPoints, routeStats, routeState, routeActive, routeOpened, routeConnected, routeLinked, routeShare, routeTakesGuests, canAutoLinkRoute, installRouteForParcel, parkingTodayText, PARCEL_ROUTE, ROUTE_AUTO_SITES, ROUTE_OPEN_LINE, PARKING_SHARE_MIN, PARKING_SHARE_MAX, OLLE_SHARE, CAR_GUESTS_MIN, CAR_GUESTS_MAX, PARKING_FLUSH_HOUR, routeFacility, routeTarget, routeSpawnPos, routeHome, routeAtCell, routeOfFacility, routeDailyCap, routeCapLeft, nextArrivalText, parkingSlots, parkingSites, routePathCells, canExpandParking, parkingExpandCost, spawnRouteWeights, routeArrivals, routeTagMult, hasRouteTag, isForeign, routeUnlockMet, routeFacilityUnlockMet, PARKING_SLOTS, PARKING_GUESTS_PER_SLOT, PARKING_EXPAND_FROM, PARKING_EXPAND_TO, OLLE_GUEST_MULT, FOREIGN_WALLET_MULT, type RouteDef, type RouteTag, type EntryPoint, type RouteStat } from './entry.ts'; // 트랙 H
 export { isMenuAvailable, availableMenus, canSetSlot, hasMenuStaff, menuRequirementText, menuOf, purchaseCost, ingredientCost } from './menu.ts';
 export { menuMod, menuStatsOf, menuSkills, skillEffects, skillTier, skillTierValue, priceOf, priceFromStats, toppingCost, costMult, activeIngredientCombos, comboBonus, matchHiddenRecipe, normalizeParams, paramDeviation, successRate, bonusWidth, developStaffStat, developCost, canDevelop, developDaysLeft, autoMenuName, canAddTopping, canRemoveTopping, canLevelUpMenu, levelUpMenuCost, maxSlots, isStaffBusy, isCustomMenu, qualityOf, countIngredients, DEVELOP_DAYS, DEVELOP_RESEARCH, BASE_NAME, BASE_MIN, PARAM_AXES, PARAM_LABEL, PARAM_DEFAULT, BASE_STAT, MENU_SKILLS, SKILL_TIER_VALUES, SKILL_DESC, TIER_NAMES, MAX_TOPPINGS, MAX_MENU_LEVEL, SIGNATURE_STAR, P_GREAT, type MenuSkill, type SkillEffects } from './craft.ts';
 export { isWalkable, busStopPos, isDoorReachable } from './path.ts';
@@ -35,7 +35,6 @@ export { canTrain, trainingCost, trainingOptions, trainingUnlocked, trainingMult
 export { TITLE_GRADES, GRADE_ORDER, RARE_STAY_DAYS, LEGEND_MIN_TIER, LEGEND_MIN_STAR, titleDef, titleGradeOf, titleName, titleSalaryMult, titleChances, rollGrade, fitRolesOf, pickTitle, rollTitle, noteTitleMet, titlesMet, staffTitleEffect, isWorking, titleBonus, titlesOfGrade, candidateDaysLeft, isRare } from './titles.ts';
 export { OUTCOME_TABLE, TASK_NAME, TASK_STAT, OUTCOME_NAME, OUTCOME_MULT, GREAT_REPUTATION, FAIL_REPUTATION, FAIL_ENERGY, GREAT_TICKETS, LOW_ENERGY_FAIL, outcomeChances, rollOutcome, bestStaffFor, chanceText, recordOutcome, luckSkill, type Chances, type LuckMods } from './luck.ts';
 export { promoChances } from './promotions.ts';
-export { tourChances } from './spots.ts';
 export { giftChances } from './items.ts';
 export { developChances } from './craft.ts';
 export { serveStaff, SERVE_TIP_RATE } from './guests.ts';
@@ -60,9 +59,9 @@ export { evaluateUnlocks, evaluateFacilityUnlocks, unlockCondMet, isUnlocked, un
 export { questProgress, canAcceptQuest, canRespondEvent, eventConditionMet, boardBadge, visibleQuests, questRewardText, QUEST_MONTHS } from './board.ts';
 export {
   spotLevel, spotUnlocked, nextSpotLevel, spotAppeal, spotAppealOf, spotGuestBonus, canInvestSpot, spotRequirements, spotVisitors, totalSpotVisitors, dailyVisitors, totalDailyVisitors,
-  spotSpawnMult, spotWalletMult, spotFeePct, spotSceneryBonus, tagPopularity, tourScore, tourAvailable, canHostTour, hasTourBusKey, canSetTourBus, spotStarReq, spotCost,
-  SPOT_MAX_LEVEL, SPOT_BUS_LEVEL, SPOT_GUEST_LEVEL, SPOT_ITEM_LEVEL, SPOT_QUEST_LEVEL, SPOT_TAG_MULT, SPOT_FEE_PCT, SPOT_SCENERY, SPOT_LV5_MILEAGE, SPOT_VISITOR_REQ, SPOT_YEAR_REQ_LV3, SPOT_POP_REQ_LV4,
-  VISITOR_PRIZES, GOLDEN_TANGERINE_VISITORS, TOUR_BUS_KEY, TOUR_BUS_FEE, TOUR_YEAR, TOUR_SUCCESS_SCORE, TOUR_MONEY_PER_SCORE, TOUR_SUCCESS_VISITORS, TOUR_FAIL_MONEY, TOUR_FAIL_VISITORS, VISITOR_GUEST_RATE,
+  spotSpawnMult, spotFeePct, spotSceneryBonus, tagPopularity, spotCost,
+  SPOT_MAX_LEVEL, SPOT_GUEST_LEVEL, SPOT_ITEM_LEVEL, SPOT_NEXT_LEVEL, SPOT_TAG_MULT, SPOT_FEE_PCT, SPOT_SCENERY, SPOT_LV3_MILEAGE, SPOT_VISITOR_REQ, SPOT_YEAR_REQ_LV3,
+  VISITOR_PRIZES, GOLDEN_TANGERINE_VISITORS, VISITOR_GUEST_RATE,
   type SpotRequirement,
 } from './spots.ts';
 export { effectMult, noGuestsToday, dayIndex } from './effects.ts';

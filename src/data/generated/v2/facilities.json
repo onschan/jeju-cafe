@@ -927,7 +927,7 @@
     },
     "unlock": {
       "type": "spot",
-      "spotId": "udo_peanut_village",
+      "spotId": "noodle_street",
       "level": 2
     },
     "unlockText": "관광지 udo_peanut_village Lv2",
@@ -1059,8 +1059,8 @@
     "seasonBonus": {},
     "unlock": {
       "type": "spot",
-      "spotId": "black_pork_street",
-      "level": 4
+      "spotId": "noodle_street",
+      "level": 3
     },
     "unlockText": "관광지 black_pork_street Lv4",
     "description": "흑돼지를 굽는 식당. 저녁 손님이 몰려요."
@@ -1114,8 +1114,8 @@
     },
     "unlock": {
       "type": "spot",
-      "spotId": "barley_brewery",
-      "level": 4
+      "spotId": "noodle_street",
+      "level": 3
     },
     "unlockText": "관광지 barley_brewery Lv4",
     "description": "보리 음료를 마시는 어른 손님 전용 펍."
@@ -1462,7 +1462,7 @@
     "unlock": {
       "type": "spot",
       "spotId": "horse_ranch",
-      "level": 4
+      "level": 3
     },
     "unlockText": "관광지 horse_ranch Lv4",
     "description": "조랑말 등에 타 보는 체험장."
@@ -1489,8 +1489,8 @@
     },
     "unlock": {
       "type": "spot",
-      "spotId": "udo_bike",
-      "level": 4
+      "spotId": "horse_ranch",
+      "level": 3
     },
     "unlockText": "관광지 udo_bike Lv4",
     "description": "해안길 달리는 전동 스쿠터 대여소."
@@ -1806,7 +1806,7 @@
     },
     "unlock": {
       "type": "spot",
-      "spotId": "jungmun_surf",
+      "spotId": "horse_ranch",
       "level": 2
     },
     "unlockText": "관광지 jungmun_surf Lv2",
@@ -2224,7 +2224,7 @@
     "unlock": {
       "type": "spot",
       "spotId": "oreum",
-      "level": 4
+      "level": 3
     },
     "unlockText": "관광지 oreum Lv4",
     "description": "범위 좌석 요금 +30%. 최고 경관."

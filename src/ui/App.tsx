@@ -46,7 +46,6 @@ import { IntroScreen } from './IntroScreen'; // intro: 새 게임 프롤로그 6
 import { SaveSlots } from './SaveSlots';
 import { showScene, SceneHost, type SceneChar } from './SceneWindow';
 import { staffParts } from '../render/character';
-import { TourPopup } from './BoardPanel';
 import { rangeHintFor } from './rangeHint';
 import { AppealPanel } from './AppealPanel'; // fun: 카페 매력도
 import { tradeoffOf } from './tradeoff'; // fun: 배치 트레이드오프
@@ -782,7 +781,6 @@ function Game({ onExit }: { onExit: () => void }) {
       <DevelopResultPopup />
       <DrawPopup />
       <AnnouncementPopup />
-      <TourPopup />
       {guestPopup && <GuestPopup guestId={guestPopup} onClose={() => setGuestPopup(null)} onQuest={(id) => { dispatch({ type: 'acceptQuest', id }); setWin({ kind: 'people', tab: 'quests' }); }} />}
       {renderWindow()}
       <RewardPopup />

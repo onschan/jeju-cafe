@@ -7,7 +7,7 @@ import { grantItem } from './items.ts';
 import { guestTypeState, isUnlocked, unlockGuestType, evaluateUnlocks, countObjects, SAT_QUEST } from './segments.ts';
 import { effectivePopularity } from './promotions.ts';
 import { addEffect, filterMatches } from './effects.ts';
-import { spotLevel, SPOT_QUEST_LEVEL } from './spots.ts';
+import { spotLevel, SPOT_NEXT_LEVEL } from './spots.ts';
 import { fmtNum } from './format.ts';
 
 /** 부탁 기한: 수락한 달 + 2 */
@@ -288,16 +288,11 @@ export function expireEvents(state: GameState): void {
 
 // ---------- 관광지 훅 ----------
 
-/** 투자 뒤: Lv2 손님·Lv4 부탁·다음 관광지 해금 */
+/** 투자 뒤: Lv2 손님·Lv3 다음 관광지 해금 */
 export function afterInvest(state: GameState, spotId: string, level: number): void {
   evaluateUnlocks(state); // Lv2 손님 (spot 해금형)
   const def = spotDef(spotId);
-  if (level >= SPOT_QUEST_LEVEL && def.lv4QuestId) {
-    const q = questDef(def.lv4QuestId);
-    if (!isUnlocked(state, q.guestId)) unlockGuestType(state, q.guestId);
-    offerQuest(state, def.lv4QuestId);
-  }
-  if (level >= SPOT_QUEST_LEVEL && def.nextSpotId) pushNotice(state, `${spotDef(def.nextSpotId).name}에 투자할 수 있어요`);
+  if (level >= SPOT_NEXT_LEVEL && def.nextSpotId) pushNotice(state, `${spotDef(def.nextSpotId).name}에 투자할 수 있어요`);
   checkQuests(state);
 }
 

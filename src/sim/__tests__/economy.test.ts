@@ -3,7 +3,6 @@ import { X, Y } from './helpers.ts';
 import { apply } from '../actions.ts';
 import { isMenuAvailable, consumeIngredients, purchaseCost } from '../menu.ts';
 import { ingredientCost, upkeep, upkeepOf, closeMonth, incomeTaxOf, salaryOf, annualRaise, ANNUAL_RAISE_PCT } from '../economy.ts';
-import { TOUR_BUS_FEE, TOUR_BUS_GROUP_MULT, TOUR_BUS_KEY } from '../spots.ts';
 import { WEAR_START_MONTHS } from '../cleanliness.ts';
 import { LOAN_MAX } from '../failure.ts';
 import { typeWeight } from '../guests.ts';
@@ -101,8 +100,8 @@ test('월말 카드에 수입·재료비·월급·광고·유지비·순이익�
   expect(c.income).toBeGreaterThan(0);
   expect(c.costs.ingredients).toBeGreaterThan(0);
   expect(c.costs.upkeep).toBeGreaterThan(0);
-  expect(c.net).toBe(c.income - c.costs.ingredients - c.costs.salary - c.costs.ads - c.costs.upkeep - c.costs.recruit - c.costs.tax - c.costs.loanRepay - c.costs.tourBus);
-  expect(s.monthCosts).toEqual({ ingredients: 0, salary: 0, ads: 0, upkeep: 0, recruit: 0, tax: 0, loanRepay: 0, tourBus: 0 });
+  expect(c.net).toBe(c.income - c.costs.ingredients - c.costs.salary - c.costs.ads - c.costs.upkeep - c.costs.recruit - c.costs.tax - c.costs.loanRepay - c.costs.shuttle);
+  expect(s.monthCosts).toEqual({ ingredients: 0, salary: 0, ads: 0, upkeep: 0, recruit: 0, tax: 0, loanRepay: 0, shuttle: 0 });
 });
 
 test('공고비·퇴직금은 카드의 recruit에 잡히고 순이익에서 빠진다', () => {
@@ -134,7 +133,7 @@ test('소득세: 매년 3월 1일 전년 순이익 × 10% (적자면 0), 2월 �
   const c = s.lastMonthCard!;
   expect(c.month).toBe(2);
   expect(c.costs.tax).toBe(500_000);
-  expect(c.net).toBe(c.income - c.costs.ingredients - c.costs.salary - c.costs.ads - c.costs.upkeep - c.costs.recruit - 500_000 - c.costs.loanRepay - c.costs.tourBus);
+  expect(c.net).toBe(c.income - c.costs.ingredients - c.costs.salary - c.costs.ads - c.costs.upkeep - c.costs.recruit - 500_000 - c.costs.loanRepay - c.costs.shuttle);
   expect(before - s.money).toBeGreaterThanOrEqual(500_000);
   expect(s.notices.some((n) => n.includes('소득세'))).toBe(true);
   // 1년차 3월(2년차 전)엔 세금이 없다
@@ -178,32 +177,6 @@ test('급여 인상: 2년차부터 매년 3월 1일 전 직원 월급 +5% 누적
   annualRaise(s);
   expect(s.salaryRaisePct).toBe(10);
   expect(s.staff[0]!.salary).toBe(551_250);
-});
-
-test('투어 버스: setTourBus로 계약하면 월초 50만 고정비(카드 tourBus 줄), 단체 손님 가중 ×1.3, 끄면 없다', () => {
-  const s = bareState(1);
-  s.loan.count = LOAN_MAX;
-  expect(apply(s, { type: 'setTourBus', on: false }).ok).toBe(false);
-  s.money = 10_000_000;
-  expect(apply(s, { type: 'setTourBus', on: true }).ok).toBe(false); // 투어 버스 열쇠(트랙 C)가 필요
-  s.inventory[TOUR_BUS_KEY] = 1;
-  const w0 = typeWeight(s, 'local_auntie', 12);
-  expect(apply(s, { type: 'setTourBus', on: true }).ok).toBe(true);
-  expect(apply(s, { type: 'setTourBus', on: true }).ok).toBe(false);
-  expect(typeWeight(s, 'local_auntie', 12)).toBeCloseTo(w0); // 단체가 아니면 그대로
-  const group = GUEST_TYPES.find((t) => t.tags.group)!.id;
-  unlockGuestType(s, group);
-  const g0 = typeWeight(s, group, 12);
-  s.tourBus = false;
-  expect(typeWeight(s, group, 12)).toBeCloseTo(g0 / TOUR_BUS_GROUP_MULT);
-  s.tourBus = true;
-  s.clock.day = 30; s.clock.hour = 23;
-  tick(s, DAY_MS);
-  expect(s.lastMonthCard!.costs.tourBus).toBe(2 * TOUR_BUS_FEE); // 계약 시 첫 달 요금 + 월초 요금
-  expect(apply(s, { type: 'setTourBus', on: false }).ok).toBe(true);
-  s.clock.day = 30; s.clock.hour = 23;
-  tick(s, DAY_MS);
-  expect(s.lastMonthCard!.costs.tourBus).toBe(0);
 });
 
 test('유지비: 노후(트랙 A wearOf, 24개월 경과)면 +50%', () => {

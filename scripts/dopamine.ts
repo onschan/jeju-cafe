@@ -24,7 +24,7 @@ export type EventKind =
   | '랭크업' | '★승급' | '손님·첫등장' | '손님·특별' | '이벤트·빅' | '이벤트·주간' | '이벤트·게시판' | '부탁완료'
   | '랭크업보상' | '★승급보상' | '손님층보상' | '마일스톤' | '보름응모권'
   | '레시피' | '히든레시피' | '코너첫완성' | '세트첫발견' | '재료콤보'
-  | '뽑기당첨' | '뽑기꽝' | '가이드북1위' | '신기록' | '명소Lv' | '방문객상품' | '칭호' | '완공' | '투어성공';
+  | '뽑기당첨' | '뽑기꽝' | '가이드북1위' | '신기록' | '명소Lv' | '방문객상품' | '칭호' | '완공';
 export type NegKind = '실패알림' | '★강등' | '악평' | '이벤트종료';
 
 /** 사건 간 공백을 셀 때 빼는 것(플레이어가 직접 시킨 일의 완료·꽝) */
@@ -114,12 +114,11 @@ export function runDopamine(years: number, seed: number, player = false): Dopami
     return origFxPush(...items);
   };
   // 결과 팝업(봇이 같은 틱에 닫는다)은 setter로 가로챈다
-  const hookLast = <K extends 'lastDraw' | 'lastTour'>(key: K, on: (v: NonNullable<GameState[K]>) => void) => {
+  const hookLast = <K extends 'lastDraw'>(key: K, on: (v: NonNullable<GameState[K]>) => void) => {
     let v = s[key];
     Object.defineProperty(s, key, { get: () => v, set: (nv) => { v = nv; if (nv) on(nv as NonNullable<GameState[K]>); }, enumerable: true, configurable: true });
   };
   hookLast('lastDraw', (d) => push(d.kind === 'miss' ? '뽑기꽝' : '뽑기당첨', d.label));
-  hookLast('lastTour', (t) => { if (t.success) push('투어성공', t.spotId); });
 
   const snap = () => ({
     objects: s.unlocked.objects.length, menus: s.unlocked.menus.length, roles: s.unlocked.roles.length,

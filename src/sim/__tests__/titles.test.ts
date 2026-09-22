@@ -8,7 +8,6 @@ import { dayIndex } from '../effects.ts';
 import { TITLES, ROLES } from '../../data/index.ts';
 import { TITLE_GRADES, titleChances, rollGrade, pickTitle, rollTitle, titleSalaryMult, titleBonus, staffTitleEffect, fitRolesOf, titlesMet, RARE_STAY_DAYS, LEGEND_MIN_TIER, LEGEND_MIN_STAR } from '../titles.ts';
 import { drawCandidates, salaryOf, cleanPowerOf, gardenBonusOf, promoBonusOf, ingredientDiscount, hourlyEnergy, availablePool } from '../staff.ts';
-import { tourScore } from '../spots.ts';
 import { staffWith } from './staff.test.ts';
 import type { GameState, TitleGrade } from '../types.ts';
 
@@ -143,11 +142,4 @@ test('효과 훅: 청소·수확·홍보·요금 할인·기력·투어·대결 
   carry.title = 'tt_iron_body'; // 재료비 −5%
   s.staff.push(carry);
   expect(ingredientDiscount(s)).toBeCloseTo(10 / 500 + 0.05, 5);
-  const guide = staffWith({}, 'guide');
-  guide.title = 'tt_olle_legend'; // 투어 +25
-  s.staff.push(guide);
-  s.spots['canola_field'] = 1;
-  const before = tourScore(s, 'canola_field');
-  guide.title = undefined;
-  expect(before - tourScore(s, 'canola_field')).toBe(25);
 });

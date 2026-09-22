@@ -5,7 +5,7 @@ import { makeParcels } from '../../sim/parcels.ts';
 import { GRID_W, GRID_H, VILLAGE_ROAD_Y } from '../../sim/layout.ts';
 import { ENTRY_ROUTES } from '../../sim/entry.ts';
 
-const ROADS = { villageRoadY: VILLAGE_ROAD_Y, olleY: ENTRY_ROUTES.olle.entry.y, shuttleX: ENTRY_ROUTES.shuttle.entry.x };
+const ROADS = { villageRoadY: VILLAGE_ROAD_Y, olleY: ENTRY_ROUTES.olle.entry.y, shuttleX: -1 };
 
 describe('링 타일(맵 둘레 제주 풍경)', () => {
   it('2×2 매크로 타일 280장 — 배경 스프라이트 예산 400 안', () => {
@@ -40,8 +40,6 @@ describe('링 타일(맵 둘레 제주 풍경)', () => {
     expect(ringKind(cx, 4, GRID_W, GRID_H, ROADS)).toBe('road_y');
     const olleRow = ROADS.olleY - (ROADS.olleY % RING_STEP);
     expect(ringKind(-2, olleRow, GRID_W, GRID_H, ROADS)).toBe('path_x');
-    const shuttleCol = ROADS.shuttleX - (ROADS.shuttleX % RING_STEP);
-    expect(ringKind(shuttleCol, GRID_H, GRID_W, GRID_H, ROADS)).toBe('road_y');
   });
 });
 

@@ -226,8 +226,6 @@ export interface SpotDef {
   lv3ItemId: string | null;      // Lv3 도달 시 주는 강화 아이템
   lv5Special: SpotSpecial | null;
 }
-/** 투어 개최 결과 (UI 팝업, dismissTour로 닫는다) */
-export interface TourResult { spotId: string; score: number; success: boolean; money: number; visitors: number }
 /** 손님 선물 (gifts.json §3.3.5): 손님 카드 「선물하기」 */
 export interface GiftDef {
   id: string;
@@ -307,7 +305,6 @@ export type SkillEffect =
   | { type: 'regularBonus'; value: number }        // 단골 전환 +v
   | { type: 'nightSatisfaction'; value: number }   // 18시 이후 손님 만족 +v
   | { type: 'stormRepairDiscount'; value: number } // 태풍 수리비 −v
-  | { type: 'tourScore'; value: number }           // 투어 개최 점수 +v
   | { type: 'giftBonus'; value: number };          // 손님 선물 효과 ×(1+v)
 export interface SkillDef { id: string; name: string; desc: string; effect: SkillEffect }
 
@@ -334,12 +331,12 @@ export interface TrainingDef { id: string; name: string; cost: number; days: num
 export interface StaffTraining { id: string; daysLeft: number }
 /** 직원 칭호(titles.json, staff-luck): 등급 숙련/프로/전설. roles = 잘 맞는 직종(빈 배열 = 아무 직종). 효과는 titleBonus가 소비처마다 더한다. */
 export type TitleGrade = 'skilled' | 'pro' | 'legend';
-export type TitleEffectType = 'fee' | 'satisfaction' | 'clean' | 'harvest' | 'promo' | 'develop' | 'tour' | 'speed' | 'spawn' | 'photo' | 'great' | 'safe' | 'energy' | 'tip' | 'discount';
+export type TitleEffectType = 'fee' | 'satisfaction' | 'clean' | 'harvest' | 'promo' | 'develop' | 'speed' | 'spawn' | 'photo' | 'great' | 'safe' | 'energy' | 'tip' | 'discount';
 export interface TitleEffect { type: TitleEffectType; value: number }
 export interface TitleDef { id: string; name: string; grade: TitleGrade; roles: RoleId[]; desc: string; effects: TitleEffect[] }
 /** 작업 확률 결과 (luck.ts): 대박 / 중박 / 쪽박 */
 export type Outcome = 'great' | 'success' | 'fail';
-export type LuckTask = 'promo' | 'develop' | 'training' | 'tour' | 'gift' | 'serve';
+export type LuckTask = 'promo' | 'develop' | 'training' | 'gift' | 'serve';
 /** 마지막 작업 판정 (UI 룰렛 팝업, dismissOutcome으로 닫는다) */
 export interface OutcomeResult { task: LuckTask; outcome: Outcome; staffId: string | null; title: string; chances: { great: number; success: number; fail: number }; lines: string[]; day: number }
 
@@ -397,8 +394,8 @@ export interface ActivePromotion { promotionId: string; remainingMonths: number;
 export interface Pt { x: number; y: number }
 
 /** 월 비용 항목. recruit = 공고비 + 퇴직금 */
-/** 월 비용 항목. tax = 소득세(매년 3월 1일, 전년 순이익 ×10%), loanRepay = 삼춘 대출 자동 상환(흑자 달 순이익 30%), tourBus = 투어 버스 월 고정비 */
-export interface MonthCosts { ingredients: number; salary: number; ads: number; upkeep: number; recruit: number; tax: number; loanRepay: number; tourBus: number }
+/** 월 비용 항목. tax = 소득세(매년 3월 1일, 전년 순이익 ×10%), loanRepay = 삼춘 대출 자동 상환(흑자 달 순이익 30%), shuttle = 공항 셔틀 월 고정비 */
+export interface MonthCosts { ingredients: number; salary: number; ads: number; upkeep: number; recruit: number; tax: number; loanRepay: number; shuttle: number }
 /** 농원: harvested = 이달 1일 창고에 들어온 재료, ingredientSaved = 창고 재료를 써서 안 산 재료비 */
 export interface MonthHarvest { harvested: Record<string, number>; ingredientSaved: number }
 /** 월말 정산 카드 */
@@ -456,7 +453,6 @@ export type GoalCondition =
   | { type: 'guidebookWins'; n: number }          // 가이드북 1위 횟수
   | { type: 'cleanliness'; n: number }            // 청결 n 이상 한 달 (x-facility)
   | { type: 'profitMonths'; n: number }           // 연속 흑자 달
-  | { type: 'tourGroup'; n: number }              // 투어 개최 (x-spots)
   | { type: 'itemsUsed'; n: number }              // 강화 아이템 사용
   | { type: 'uniforms'; n: number }               // 유니폼 단계
   | { type: 'custom'; id: string; n?: number }    // 코드 판정
@@ -479,7 +475,7 @@ export type GoalCondition =
   | { type: 'monthSales'; n: number }             // 이달 매출
   // ---- 트랙 H 손님 유입 경로 (entry.ts) ----
   | { type: 'routeGuests'; route: RouteId; n: number } // 그 경로로 온 누적 손님
-  | { type: 'routeUnlocked'; route: RouteId }     // 경로 열림 (셔틀은 계약까지)
+  | { type: 'routeUnlocked'; route: RouteId }     // 경로 열림
   | { type: 'facility'; id: string }              // 그 시설을 1개 이상 지었나 (완공)
   // ---- fun-rank 눈에 보이는 성장 (grade.ts) ----
   | { type: 'grade'; n: number }                  // 카페 등급 ≥ n (1 올레길 노점 ~ 5 전설의 카페)
@@ -530,7 +526,6 @@ export interface GameStats {
   guidebookWins: number;   // 가이드북 1위 횟수
   itemsUsed: number;       // 강화 아이템 사용 횟수
   trainings: number;       // 연수 완료 횟수 (x-staff가 올린다)
-  toursHeld: number;       // 투어 개최 성공 (x-spots가 올린다)
   seenMonth: number;       // 월말 관찰용 monthIndex (goals.ts observeMonth)
   seenAnnouncement: number; // 마지막으로 센 가이드북 발표 monthIndex
   cornerVisits?: number;   // 손님이 코너를 찾아온 누적 횟수 (fun-corner)
@@ -654,7 +649,7 @@ export interface Parcel {
 }
 
 /** 손님 유입 경로 5종 (트랙 H, UX 참고 §3): 정류장(기본)·주차장(렌터카)·공항 셔틀·항구(크루즈)·올레길 */
-export type RouteId = 'bus' | 'parking' | 'shuttle' | 'cruise' | 'olle';
+export type RouteId = 'bus' | 'parking' | 'olle';
 export interface RouteState {
   unlocked: boolean;      // 해금 조건 충족 (entry.ts evaluateRoutes)
   contract: boolean;      // 셔틀: 월 계약 중
@@ -680,7 +675,7 @@ export type FxEvent =
   | { kind: 'flash'; x: number; y: number; guestId: string; text: string; tick: number } // fun-corner: 손님이 코너에서 사진 (카메라 플래시 + 말풍선)
   | { kind: 'applause'; tick: number } // fun-rank: 등급 승급 — 마당 손님 전원 박수(하트·반짝)
   | { kind: 'parcel'; id: string; tick: number } // fun-rank: 필지 구매 — 덮개 안개 걷힘 + 랜드마크 등장 반짝
-  | { kind: 'arrive'; route: RouteId; x: number; y: number; n: number; tick: number }; // fun P0: 경로 도착 — 렌터카·셔틀·배가 서고 손님 n명이 내린다 (올레는 걸어옴), 작은 문구
+  | { kind: 'arrive'; route: RouteId; x: number; y: number; n: number; tick: number }; // fun P0: 경로 도착 — 렌터카가 서고 손님 n명이 내린다 (올레는 걸어옴), 작은 문구
 
 // ---------- 상점·추첨·유니폼·가이드북 (2B-2 Task 6·7) ----------
 export interface MileageShopDef { id: string; name: string; price: number; description: string; itemId?: string; objectId?: string }
@@ -882,10 +877,6 @@ export interface GameState {
   spotVisitors: Record<string, number>;       // spotId → 누적 방문객 (매일 매력 × 2, 투어 버스 ×1.3)
   spotPrizes: Record<string, number>;         // spotId → 받은 방문객 상품 단계 수 (1,000/5,000/20,000/50,000)
   goldenTangerineGiven: boolean;              // 전체 방문객 10만 상품(황금 감귤) 1회
-  tourBus: boolean;                           // 투어 버스 계약 중 (월초 50만 원, 방문객 ×1.3, 단체 손님 ×1.3)
-  tourBusFreeMonths: number;                  // 계약권으로 무료인 달 수
-  tourMonth: number;                          // 마지막으로 투어를 개최한 monthIndex (−1 = 없음), 월 1회
-  lastTour: TourResult | null;                // 마지막 투어 개최 결과 (UI 팝업)
   giftDay: number;                            // 마지막으로 선물한 절대 일 인덱스 (하루 1회)
   effects: ActiveEffect[];                    // 이벤트 효과 (기간형)
   menuSold: Record<string, number>;           // menuId → 누적 판매 수 (부탁 진행: 수락 시점 값과의 차, 목표 menuSold)
@@ -920,7 +911,7 @@ export interface GameState {
   requestThanks?: number;                     // 고마워요를 받은 횟수 (첫 REQUEST_TICKET_COUNT회 응모권)
   regularsGauge?: Record<string, number>;     // 손님층 → 단골 게이지 0~5
   regulars?: Regular[];                       // 단골 등록 손님
-  routes: Record<RouteId, RouteState>;        // 손님 유입 경로 5종 (트랙 H entry.ts)
+  routes: Record<RouteId, RouteState>;        // 손님 유입 경로 3종 (트랙 H entry.ts)
   ending: EndingState;                        // 10년차 엔딩·빠른 모드·100주년 (ending.ts, z-ending)
   carry: CarryOver | null;                    // 이월해서 시작한 게임이면 그 내용 (기록용)
   spawnAcc: number; // 시간대별 스폰 소수 누적
@@ -1005,10 +996,6 @@ export type Action =
   | { type: 'acceptQuest'; id: string }
   | { type: 'respondEvent'; id: string; accept: boolean }
   | { type: 'investSpot'; id: string }
-  | { type: 'hostTour'; spotId: string }
-  | { type: 'dismissTour' }
-  | { type: 'setTourBus'; on: boolean }
-  | { type: 'setRouteContract'; route: RouteId; on: boolean } // 공항 셔틀 계약/해지 (트랙 H)
   | { type: 'expandParking'; objectId: string }               // 주차장 2×2 → 3×2 교체 (트랙 H)
   | { type: 'giveGift'; guestId: string; itemId: string }
   | { type: 'greetGuest'; guestId: string }                   // 트랙 G: 인사 (손님당 1회·하루 10회)

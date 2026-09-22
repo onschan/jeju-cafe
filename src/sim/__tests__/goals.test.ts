@@ -63,12 +63,11 @@ describe('goals.json 데이터', () => {
     s.guidebooks['gb_kind_cafe'] = { unlocked: true, lastRank: 4, best: 4, boost: 0, pending: 0 };
     expect(goalMet(s, { type: 'guidebookRank', bookId: 'gb_kind_cafe', n: 5 })).toBe(true);
     expect(goalMet(s, { type: 'guidebookRank', bookId: 'gb_local_map', n: 5 })).toBe(false);
-    s.stats.guidebookWins = 3; s.stats.profitMonths = 6; s.stats.itemsUsed = 20; s.stats.trainings = 1; s.stats.toursHeld = 1;
+    s.stats.guidebookWins = 3; s.stats.profitMonths = 6; s.stats.itemsUsed = 20; s.stats.trainings = 1;
     expect(goalMet(s, { type: 'guidebookWins', n: 3 })).toBe(true);
     expect(goalMet(s, { type: 'profitMonths', n: 6 })).toBe(true);
     expect(goalMet(s, { type: 'itemsUsed', n: 20 })).toBe(true);
     expect(goalMet(s, { type: 'trainings', n: 1 })).toBe(true);
-    expect(goalMet(s, { type: 'tourGroup', n: 1 })).toBe(true);
     s.uniforms.push('u1', 'u2', 'u3');
     expect(goalMet(s, { type: 'uniforms', n: 3 })).toBe(true);
     expect(conditionProgress(s, { type: 'skills', n: 1 }).cur).toBe(s.staff.filter((st) => st.skill && st.skill !== 'none').length);

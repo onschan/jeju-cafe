@@ -133,12 +133,12 @@ test('스폰: 잠긴 타입은 가중치 0, 해금되면 온다', () => {
   const s = bareState(1);
   expect(typeWeight(s, 'couple', 10)).toBe(0);
   unlockGuestType(s, 'couple');
-  // game-feel P1: 커플은 「동백 동산 Lv2 또는 랭크 r」로 앞당겨 열린다 — 원본 조건(동백 동산 Lv2)을 채우기 전엔 스폰 비중 ¼
+  // game-feel P1: 커플은 「산굼부리 Lv2 또는 랭크 r」로 앞당겨 열린다 — 원본 조건(산굼부리 Lv2)을 채우기 전엔 스폰 비중 ¼
   // fun: 관광객 태그는 경관 배수(자리 평균 경치, 자리가 없으면 최솟값 0.85 — appeal.ts)도 곱해진다
   const sc = sceneryMultOf(cafeScenery(s));
   expect(sc).toBe(SCENERY_MULT_MIN);
   expect(typeWeight(s, 'couple', 10)).toBeCloseTo(5 * STAGED_SPAWN_WEIGHT * (1 + UNLOCK_POPULARITY / 50) * sc);
-  s.spots['camellia_hill'] = 2;
+  s.spots['sangumburi'] = 2;
   expect(typeWeight(s, 'couple', 10)).toBeCloseTo(5 * (1 + UNLOCK_POPULARITY / 50) * sc);
   expect(typeWeight(s, 'couple', 12)).toBeCloseTo(5 * (1 + UNLOCK_POPULARITY / 50) * 2 * sc); // 청년 낮 ×2
   const { s: s2 } = cafe();
@@ -221,8 +221,8 @@ test('효과 6종: 자금(팁 20%)·연구 진행(+2)·홍보(같은 태그 +1)�
   expect(s.segmentPopularity['working_holiday']).toBe(11);
   expect(s.segmentPopularity['local_auntie']).toBe(30); // 시니어는 그대로
   expect(s.segmentPopularity['couple']).toBeUndefined(); // 잠긴 타입은 그대로
-  // popularity: 커플 → 좌석 종류 인기 +1, 상한 10 (커플은 앞당겨 열리는 머리 — 효과는 원본 조건(동백 동산 Lv2)을 채운 뒤부터, game-feel P1 stagedFull)
-  s.spots['camellia_hill'] = 2;
+  // popularity: 커플 → 좌석 종류 인기 +1, 상한 10 (커플은 앞당겨 열리는 머리 — 효과는 원본 조건(산굼부리 Lv2)을 채운 뒤부터, game-feel P1 stagedFull)
+  s.spots['sangumburi'] = 2;
   const c: Guest = { ...g, type: 'couple', seatId: seat.id };
   for (let i = 0; i < 15; i++) onHappyVisit(s, c);
   expect(s.visitBonus['table_out']).toBe(VISIT_BONUS_CAP);
@@ -251,8 +251,8 @@ test('얼굴은 id로 결정적이고 시니어는 회색 머리', () => {
 // ---------- game-feel P1: 손님층 단계 해금 · 해금 보상 ----------
 test('단계 해금(어댑터): 명소 머리는 「명소 Lv2 또는 랭크 r」, 체인 2번째는 「앞 손님 만족 30 또는 부탁 완료」, 3번째부터는 부탁만. 열리면 응모권 1 상자', () => {
   const couple = guestTypeDef('couple');
-  expect(couple.unlock).toEqual({ type: 'any', conditions: [{ type: 'spot', spotId: 'camellia_hill', level: 2 }, { type: 'rank', rank: HEAD_RANK_GATE[0] }] });
-  expect(couple.unlockBase).toEqual({ type: 'spot', spotId: 'camellia_hill', level: 2 });
+  expect(couple.unlock).toEqual({ type: 'any', conditions: [{ type: 'spot', spotId: 'sangumburi', level: 2 }, { type: 'rank', rank: HEAD_RANK_GATE[0] }] });
+  expect(couple.unlockBase).toEqual({ type: 'spot', spotId: 'sangumburi', level: 2 });
   const newly = guestTypeDef('newlyweds');
   expect(newly.unlock).toEqual({ type: 'any', conditions: [{ type: 'segment', guestId: 'couple', satisfaction: CHAIN_SAT_2 }, { type: 'quest', questId: 'q_couple' }] });
   expect(guestTypeDef('wedding_snap').unlock).toEqual({ type: 'quest', questId: 'q_newlyweds' });
@@ -263,9 +263,9 @@ test('단계 해금(어댑터): 명소 머리는 「명소 Lv2 또는 랭크 r�
   s.rank = HEAD_RANK_GATE[0]!;
   expect(evaluateUnlocks(s)).toContain('couple');
   expect(s.alerts.some((a) => a.type === 'reward' && a.source === 'unlock' && a.refId === 'couple')).toBe(true);
-  expect(stagedFull(s, 'couple')).toBe(false); // 원본 조건(동백 동산 Lv2) 전엔 손님 수·효과에 안 센다
+  expect(stagedFull(s, 'couple')).toBe(false); // 원본 조건(산굼부리 Lv2) 전엔 손님 수·효과에 안 센다
   expect(countsForGuests(s, 'couple')).toBe(false);
-  s.spots['camellia_hill'] = 2;
+  s.spots['sangumburi'] = 2;
   expect(stagedFull(s, 'couple')).toBe(true);
   expect(countsForGuests(s, 'couple')).toBe(true);
   addSatisfaction(s, 'couple', CHAIN_SAT_2);

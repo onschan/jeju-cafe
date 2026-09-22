@@ -16,7 +16,7 @@ import { canUseItem, useItem, canGiveGift, giveGift, canCraftGift, craftGift } f
 import { canGreet, greetGuest, canRecommend, recommendMenu } from './interact.ts'; // fun-guest: 인사·추천
 import { evaluateUnlocks } from './segments.ts';
 import { canAcceptQuest, acceptQuest, canRespondEvent, respondEvent, afterInvest, checkQuests } from './board.ts';
-import { canInvestSpot, investSpot, canHostTour, hostTour, canSetTourBus, setTourBus } from './spots.ts';
+import { canInvestSpot, investSpot } from './spots.ts';
 import { canRenameCafe, renameCafe, canExpand, expand, canSetCosmetic, setCosmetic, canPraise, praise, placeCost, type ExpansionId } from './cafe.ts';
 import { canDevelop, develop, canAddTopping, addTopping, canRemoveTopping, removeTopping, canLevelUpMenu, levelUpMenu } from './craft.ts';
 import { canStartBuild, startBuild } from './build.ts';
@@ -24,7 +24,7 @@ import { canBuyMileage, buyMileage, canBuyTicket, buyTicket, canDrawTicket, draw
 import { canUpgrade, upgrade } from './upgrade.ts';
 import { canRepair, repair } from './cleanliness.ts';
 import { canTreeUpgrade, treeUpgrade } from './tree.ts'; // fun 업그레이드 트리
-import { canSetRouteContract, setRouteContract, canExpandParking, parkingExpandCost, PARKING_EXPAND_TO, unlockRouteFacilities, installRouteForParcel, canAutoLinkRoute, autoLinkRoute } from './entry.ts';
+import { canExpandParking, parkingExpandCost, PARKING_EXPAND_TO, unlockRouteFacilities, installRouteForParcel, canAutoLinkRoute, autoLinkRoute } from './entry.ts';
 import { objectStats } from './compat.ts';
 import { rememberPlace, rememberPlaceMany, rememberRemove, rememberMove, canUndo, undoLast } from './undo.ts';
 import { planLine, isLineType } from './line.ts';
@@ -37,7 +37,7 @@ export const PROTECTED_TYPES = new Set(['busstop', 'warehouse', 'spring']);
 export const ROTATABLE_TYPES = new Set(['gate', 'bench', 'counter']);
 const ACTION_LOG_CAP = 1000;
 
-const CLIENT_ONLY = new Set<Action['type']>(['setSpeed', 'dismissMonthCard', 'dismissDevelop', 'dismissDraw', 'dismissAnnouncement', 'dismissAlert', 'dismissTour', 'dismissOutcome', 'continueEnding']);
+const CLIENT_ONLY = new Set<Action['type']>(['setSpeed', 'dismissMonthCard', 'dismissDevelop', 'dismissDraw', 'dismissAnnouncement', 'dismissAlert', 'dismissOutcome', 'continueEnding']);
 
 function log(state: GameState, a: Action) {
   if (CLIENT_ONLY.has(a.type)) return;
@@ -475,27 +475,6 @@ function applyInner(state: GameState, a: Action): ApplyResult {
       if (!c.ok) return c;
       const level = investSpot(state, a.id);
       afterInvest(state, a.id, level);
-      return { ok: true };
-    }
-    case 'hostTour': {
-      const c = canHostTour(state, a.spotId);
-      if (!c.ok) return c;
-      hostTour(state, a.spotId);
-      return { ok: true };
-    }
-    case 'dismissTour':
-      state.lastTour = null;
-      return { ok: true };
-    case 'setTourBus': {
-      const c = canSetTourBus(state, a.on);
-      if (!c.ok) return c;
-      setTourBus(state, a.on);
-      return { ok: true };
-    }
-    case 'setRouteContract': { // 트랙 H: 공항 셔틀 계약/해지
-      const c = canSetRouteContract(state, a.route, a.on);
-      if (!c.ok) return c;
-      setRouteContract(state, a.route, a.on);
       return { ok: true };
     }
     case 'expandParking': { // 트랙 H: 주차장 2×2 → 3×2 교체 (차액)
