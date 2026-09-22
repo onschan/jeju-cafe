@@ -36,13 +36,15 @@ export const CARRY_DOLHAREUBANG_MAX = 2;
 export const DOLHAREUBANG_TYPES = new Set(['dolhareubang', 'dolhareubang_pair', 'deco_dolhareubang_set']);
 /** 이월 돌하르방이 놓이는 시작 필지 상대 좌표 (정낭 (4,6) 양옆) — 정낭이 없으면 carryDolhareubangCells가 문 양옆으로 (w-free) */
 export const CARRY_DOLHAREUBANG_AT: { lx: number; ly: number }[] = [{ lx: 3, ly: 6 }, { lx: 5, ly: 6 }];
-/** 이월 돌하르방 자리: 정낭 양옆 → (정낭이 없으면) 본관 문 앞 양옆 → (둘 다 없으면) 기본 좌표 */
+/** 이월 돌하르방 자리: 정낭 양옆 → (정낭이 없으면) 마을 어귀 기본 좌표(올렛길 입구 (4,6) 양옆, 비어 있을 때 — fun-start 새 게임엔 정낭이 없다) → 본관 문 앞 양옆 → 기본 좌표 */
 export function carryDolhareubangCells(state: GameState): { x: number; y: number }[] {
   const gate = Object.values(state.objects).find((o) => o.type === 'gate');
   if (gate) return [{ x: gate.x - 1, y: gate.y }, { x: gate.x + 1, y: gate.y }];
+  const def = CARRY_DOLHAREUBANG_AT.map((c) => ({ x: START_ORIGIN.x + c.lx, y: START_ORIGIN.y + c.ly }));
+  if (def.every((c) => { const cell = state.grid.cells[c.y * state.grid.w + c.x]; if (!cell || cell.terrain !== 'soil') return false; const o = cell.objectId ? state.objects[cell.objectId] : null; return !o || DOLHAREUBANG_TYPES.has(o.type); })) return def;
   const main = Object.values(state.objects).find((o) => o.type === 'warehouse');
   if (main) { const f = doorFrontOf(main); return [{ x: f.x - 1, y: f.y }, { x: f.x + 1, y: f.y }]; }
-  return CARRY_DOLHAREUBANG_AT.map((c) => ({ x: START_ORIGIN.x + c.lx, y: START_ORIGIN.y + c.ly }));
+  return def;
 }
 
 /** 점수 항목 9: 값 → 점수 환산 (합 최대 약 1,000점 + 촌장 보너스) */

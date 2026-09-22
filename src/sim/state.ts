@@ -43,6 +43,8 @@ export const START_PATH: { lx: number; ly: number }[] = [{ lx: 3, ly: 3 }, { lx:
 export const START_SEATS: { type: string; lx: number; ly: number }[] = [
   { type: 'table_out', lx: 3, ly: 4 }, { type: 'table_out', lx: 5, ly: 4 }, { type: 'table_parasol', lx: 5, ly: 5 },
 ];
+/** 올렛길 마지막 칸 (4,6): 정낭이 없는 마당(fun-start 새 게임)에서 마을 길(4,7)까지 잇는다. 정낭이 그 칸에 있으면(starter) 정낭 칸이 걷기 칸이라 안 놓는다. */
+export const START_PATH_ROAD_LINK = { lx: 4, ly: 6 } as const;
 /** 본관 안 실내 테이블 2 (fillStarterLayout(indoor=true)에서만 — 시작 배치엔 없다) */
 export const START_INDOOR_SEATS: { type: string; lx: number; ly: number }[] = [{ type: 'table_in', lx: 3, ly: 1 }, { type: 'table_in', lx: 5, ly: 2 }];
 
@@ -100,8 +102,12 @@ function stampParcelObjects(state: GameState, p: Parcel): void {
   }
 }
 
-/** 시작 배치: 'starter' = v3 완성 시작 상태(본관·올렛길·테이블 2·파라솔·메뉴 3종, 튜토리얼 끝남 — 봇·테스트 기본), 'tutorial' = §7.1 맨땅(본관도 없다 — 길·좌석·메뉴 없음, 손으로 하는 튜토리얼이 본관 짓기부터) */
-export type StartLayout = 'starter' | 'tutorial';
+/** 시작 배치:
+ *  - 'starter'  = v3 완성 시작 상태(본관·올렛길·테이블 2·파라솔·메뉴 3종·정낭, 튜토리얼 끝남 — 봇·테스트 기본)
+ *  - 'tutorial' = fun-start 새 게임: 할망이 준 폐창고(본관)가 이미 서 있고 마을 길에서 문 앞까지 올렛길이 이어져 있다. 정낭·좌석·메뉴 없음, 자금 500만, 후보 2.
+ *                 7단계 튜토리얼이 테이블 1개부터 시작한다 (첫 손님이 3분 안에 온다).
+ *  - 'bare'     = 옛 w-start 맨땅(본관도 없다 — 정낭·정류장·지형만). placeMain·본관 추천 자리 테스트용. */
+export type StartLayout = 'starter' | 'tutorial' | 'bare';
 
 /** 완성 시작 상태의 본관을 새긴다 (w-start: 맨땅 튜토리얼은 플레이어가 placeMain으로 직접 짓는다). 이미 본관이 있으면 그대로.
  *  기본 자리(3,1)가 막혀 있으면(둘러보기 중에 뭔가 놓았을 때) 시작 필지 안에서 놓을 수 있는 첫 자리를 찾는다. */
@@ -115,13 +121,19 @@ function stampMain(state: GameState): void {
   }
 }
 
+/** 본관 + 마을 길→문 앞 올렛길 (fun-start 새 게임의 시작 모습, 건너뛰기·완성 시작 상태도 같은 길). 정낭이 (4,6)에 있으면 그 칸은 정낭이 잇는다. */
+function stampMainAndPath(state: GameState): void {
+  const { x: ox, y: oy } = START_ORIGIN;
+  stampMain(state);
+  for (const c of [...START_PATH, START_PATH_ROAD_LINK]) stamp(state, 'path', ox + c.lx, oy + c.ly);
+}
+
 /** §7.2 건너뛰기: 맨땅에 기존 완성 시작 상태(본관·올렛길·테이블 2·파라솔·메뉴 3종)를 채운다. 이미 있는 칸은 건너뛴다.
  *  indoor=true면 본관 안에 실내 테이블 2(START_INDOOR_SEATS)를 정식 배치한다. 기본은 비움 — 시작 좌석이 5개면 목표 g03 「자리 4개」가 바로 끝나고
  *  1년차 밴드(적자 달)가 흔들리며, 튜토리얼 24단계에서 실내 테이블을 처음 놓는다. 봇은 placeIndoorSeats(g23)에서 정식 배치한다. */
 export function fillStarterLayout(state: GameState, indoor = false): void {
   const { x: ox, y: oy } = START_ORIGIN;
-  stampMain(state);
-  for (const c of START_PATH) stamp(state, 'path', ox + c.lx, oy + c.ly);
+  stampMainAndPath(state);
   for (const st of START_SEATS) stamp(state, st.type, ox + st.lx, oy + st.ly);
   if (indoor) for (const st of START_INDOOR_SEATS) if (canPlace(state, st.type, ox + st.lx, oy + st.ly).ok) placeObject(state, st.type, ox + st.lx, oy + st.ly); // 실내 가구는 방 바닥 위에 정식 배치 (고정 설비·통로 검사)
   for (const m of START_MENUS) {
@@ -267,9 +279,12 @@ export function createInitialState(seed: number, playerId = 'local', createdAt =
   // 시작 필지(1번, 정중앙): 정류장은 필지 아래 변의 마을 길에 (첫날부터 손님이 온다)
   const { x: ox, y: oy } = START_ORIGIN;
   stamp(state, 'busstop', ox, oy + PARCEL_H - 1);
-  stamp(state, 'gate', ox + 4, oy + PARCEL_H - 2); // 정낭 칸은 gate kind라 걷기 가능(path.ts)
-  // §5 완성 시작 상태(본관 + 올렛길 + 테이블 2 + 파라솔 1 + 메뉴 3종)는 'starter'일 때만. 'tutorial'(§7.1·w-start)은 맨땅 — 본관은 튜토리얼 2단계에서 직접 짓고(placeMain), 손님은 본관·좌석·길·메뉴가 갖춰질 때까지 안 온다(canOpen).
+  // 정낭은 새 게임('tutorial') 시작 맵에 없다 — 「담」 탭 장식으로만 (fun-start §2). starter·bare는 옛 모습 그대로(봇 진행이 안 바뀌게).
+  if (layout !== 'tutorial') stamp(state, 'gate', ox + 4, oy + PARCEL_H - 2); // 정낭 칸은 gate kind라 걷기 가능(path.ts)
+  // §5 완성 시작 상태(본관 + 올렛길 + 테이블 2 + 파라솔 1 + 메뉴 3종)는 'starter'일 때만.
+  // 'tutorial'은 본관 + 올렛길만 — 손님은 테이블·메뉴가 생기면 바로 온다(canOpen). 'bare'는 맨땅 — 본관은 placeMain으로 직접 짓는다.
   if (layout === 'starter') { fillStarterLayout(state); unlockTutorialFeatures(state); }
+  else if (layout === 'tutorial') stampMainAndPath(state);
   for (const p of parcels) stampParcelObjects(state, p);
   // §5 직원 후보 2명 대기 (전단 등급)
   drawCandidates(state, 'flyer', START_CANDIDATES, { titles: false }); // 시작 후보는 칭호 없이 (튜토리얼·리플레이 고정)

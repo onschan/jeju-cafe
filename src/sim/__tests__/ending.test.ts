@@ -135,11 +135,15 @@ describe('이월', () => {
     expect(objectAt(s, START_ORIGIN.x + 5, START_ORIGIN.y + 6)).toBeNull();
     // w-free: 정낭이 없으면 문 앞 양옆, 본관도 없으면 기본 좌표
     expect(carryDolhareubangCells(s)).toEqual([{ x: START_ORIGIN.x + 3, y: START_ORIGIN.y + 6 }, { x: START_ORIGIN.x + 5, y: START_ORIGIN.y + 6 }]);
-    const gate = Object.values(s.objects).find((o) => o.type === 'gate')!;
-    apply(s, { type: 'remove', objectId: gate.id });
-    expect(carryDolhareubangCells(s)).toEqual([{ x: START_ORIGIN.x + 3, y: START_ORIGIN.y + 6 }, { x: START_ORIGIN.x + 5, y: START_ORIGIN.y + 6 }]); // 본관 없음 → 기본 좌표
-    apply(s, { type: 'placeMain', x: START_ORIGIN.x + 3, y: START_ORIGIN.y + 1 });
-    expect(carryDolhareubangCells(s)).toEqual([{ x: START_ORIGIN.x + 2, y: START_ORIGIN.y + 3 }, { x: START_ORIGIN.x + 4, y: START_ORIGIN.y + 3 }]); // 문 앞 (3,3) 양옆
+    expect(Object.values(s.objects).some((o) => o.type === 'gate')).toBe(false); // fun-start: 새 게임 시작 맵엔 정낭이 없다
+    const b = createInitialState(7, 'local', 0, 'bare', carry); // 옛 맨땅: 정낭 있음·본관 없음
+    const gate = Object.values(b.objects).find((o) => o.type === 'gate')!;
+    apply(b, { type: 'remove', objectId: gate.id });
+    expect(carryDolhareubangCells(b)).toEqual([{ x: START_ORIGIN.x + 3, y: START_ORIGIN.y + 6 }, { x: START_ORIGIN.x + 5, y: START_ORIGIN.y + 6 }]); // 본관 없음 → 기본 좌표
+    apply(b, { type: 'placeMain', x: START_ORIGIN.x + 3, y: START_ORIGIN.y + 1 });
+    expect(carryDolhareubangCells(b)).toEqual([{ x: START_ORIGIN.x + 3, y: START_ORIGIN.y + 6 }, { x: START_ORIGIN.x + 5, y: START_ORIGIN.y + 6 }]); // 마을 어귀가 비어 있으면 거기
+    expect(apply(b, { type: 'place', objectType: 'table_out', x: START_ORIGIN.x + 5, y: START_ORIGIN.y + 6 }).ok).toBe(true); // (3,6)엔 이월 돌하르방이 이미 있다
+    expect(carryDolhareubangCells(b)).toEqual([{ x: START_ORIGIN.x + 2, y: START_ORIGIN.y + 3 }, { x: START_ORIGIN.x + 4, y: START_ORIGIN.y + 3 }]); // 막히면 문 앞 (3,3) 양옆
     // 이월 없는 새 게임은 그대로
     const plain = createInitialState(7, 'local', 0, 'tutorial');
     expect(plain.carry).toBeNull();
