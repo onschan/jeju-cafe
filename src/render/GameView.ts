@@ -91,7 +91,9 @@ const COIN_RISE_PX = 12;
 const SPARKLE_FRAME_MS = 120;
 const SPARKLE_FRAMES = 4;
 /** 튜토리얼 스포트라이트 어둠 (ui/tutorialHighlight.ts SPOT_ALPHA와 같은 값 — render/는 ui/를 import하지 않는다) */
-const SPOT_ALPHA = 0.55;
+const SPOT_ALPHA = 0.22; // fun-start: 0.55는 너무 어두워 게임 요소를 못 알아봤다
+/** 스포트라이트 구멍 반경(체비쇼프): 타깃 칸 주변 이 반경 안은 아예 안 어둡고, 맨 바깥 고리는 반만 어둡다(부드러운 가장자리) */
+const SPOT_HOLE_RADIUS = 3;
 /** 숫자 팝업(+N): 700ms 동안 16px 떠오르며 사라진다 */
 const POP_MS = 700;
 const POP_RISE_PX = 16;
@@ -531,9 +533,22 @@ export class GameView {
     if (!cells) return;
     const R = 1e5; // 월드 좌표 전체 (카메라가 어디를 보든 덮인다)
     this.spot.rect(-R, -R, 2 * R, 2 * R).fill({ color: 0x000000, alpha: SPOT_ALPHA });
+    // 타깃 칸 주변 반경 SPOT_HOLE_RADIUS 안은 구멍(안 어둡게), 맨 바깥 고리는 반만 어둡게 — 구멍이 부드럽게 넓어진다
+    const ring: { x: number; y: number }[] = [];
+    const seen = new Set<string>();
     for (const cell of cells) {
-      const { sx, sy } = cellToScreen(cell.x, cell.y);
-      this.spot.poly([sx, sy, sx + ISO_W / 2, sy + ISO_H / 2, sx, sy + ISO_H, sx - ISO_W / 2, sy + ISO_H / 2]).cut();
+      for (let dy = -SPOT_HOLE_RADIUS; dy <= SPOT_HOLE_RADIUS; dy++) for (let dx = -SPOT_HOLE_RADIUS; dx <= SPOT_HOLE_RADIUS; dx++) {
+        const x = cell.x + dx, y = cell.y + dy, k = `${x},${y}`;
+        if (seen.has(k)) continue;
+        seen.add(k);
+        const { sx, sy } = cellToScreen(x, y);
+        this.spot.poly([sx, sy, sx + ISO_W / 2, sy + ISO_H / 2, sx, sy + ISO_H, sx - ISO_W / 2, sy + ISO_H / 2]).cut();
+        if (Math.max(Math.abs(dx), Math.abs(dy)) === SPOT_HOLE_RADIUS && !cells.some((c) => Math.max(Math.abs(c.x - x), Math.abs(c.y - y)) < SPOT_HOLE_RADIUS)) ring.push({ x, y });
+      }
+    }
+    for (const { x, y } of ring) {
+      const { sx, sy } = cellToScreen(x, y);
+      this.spot.poly([sx, sy, sx + ISO_W / 2, sy + ISO_H / 2, sx, sy + ISO_H, sx - ISO_W / 2, sy + ISO_H / 2]).fill({ color: 0x000000, alpha: SPOT_ALPHA / 2 });
     }
   }
 
