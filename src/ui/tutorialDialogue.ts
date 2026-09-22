@@ -35,10 +35,15 @@ export function currentTutorialDialogue(s: GameState): TutorialStep | null {
   const st = TUTORIAL_DIALOGUES[s.tutorial.step];
   return st ? fillTutorialStep(st, s) : null;
 }
-/** pro-guide: 대사·제목의 `{seatScore}` 같은 토큰을 지금 상태의 정석 수치로 채운다 (입지 배지와 같은 숫자). */
+/** solver: 단계 key → 그 단계 행동의 롤아웃 근거 토큰 (strategyVars의 `{seatDelta}` 등). 결과가 있으면 「→ 지금:」 줄 앞에 한 줄 끼운다 ("시뮬 14일 굴려 보니 자금 +₩42만"). json은 2~3줄 그대로. */
+export const STEP_DELTA_TOKEN: Record<string, string> = { seat_view: 'seatDelta', site_seat: 'seatDelta', seats4: 'seatDelta', wall: 'wallDelta', combo2: 'treeDelta', indoor2: 'indoorDelta', parking: 'parkingDelta' };
+/** pro-guide: 대사·제목의 `{seatScore}` 같은 토큰을 지금 상태의 정석 수치로 채운다 (입지 배지와 같은 숫자). solver 근거 줄은 STEP_DELTA_TOKEN 참고. */
 export function fillTutorialStep(step: TutorialStep, s: GameState): TutorialStep {
   const vars = strategyVars(s);
-  return { ...step, title: fillTemplate(step.title, vars), lines: step.lines.map((l) => fillTemplate(l, vars)) };
+  const lines = step.lines.map((l) => fillTemplate(l, vars));
+  const delta = STEP_DELTA_TOKEN[step.key] ? vars[STEP_DELTA_TOKEN[step.key]!] : '';
+  if (delta) lines.splice(Math.max(0, lines.length - 1), 0, delta);
+  return { ...step, title: fillTemplate(step.title, vars), lines };
 }
 /** 장 제목·소개 (json) */
 export function chapterText(id: number): { id: number; title: string; intro: string } {
