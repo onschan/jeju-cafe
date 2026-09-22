@@ -29,3 +29,17 @@ export function bareState(seed = 1, playerId = 'local', createdAt = 0): GameStat
   s.spawnAcc = 0;
   return openAllFeatures(s);
 }
+
+// ---------- staff-luck ----------
+import { sideRandom } from '../rng.ts';
+import type { Outcome } from '../types.ts';
+/** 다음 대박/중박/쪽박 굴림이 want가 되도록 보조 스트림 연번(luckSeq)을 맞춘다. chances는 그 작업의 outcomeChances(promoChances·tourChances…) 값.
+ *  효과 자체를 검증하는 기존 테스트가 seed에 따라 대박·쪽박에 걸리지 않게 한다. */
+export function forceNextOutcome(s: GameState, want: Outcome, chances: { great: number; success: number; fail: number }): void {
+  for (let n = 0; n < 100_000; n++) {
+    const r = sideRandom({ seed: s.seed, tick: s.tick, luckSeq: n });
+    const o: Outcome = r < chances.great ? 'great' : r < chances.great + chances.success ? 'success' : 'fail';
+    if (o === want) { s.luckSeq = n; return; }
+  }
+  throw new Error(`forceNextOutcome: ${want} 못 찾음`);
+}

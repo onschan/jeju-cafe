@@ -1,6 +1,8 @@
 /** 트랙 C (스펙 §3.3·§3.4): 명소 24 Lv5 조건·효과, 방문객 누적·상품 5단계, 투어 버스·투어 개최, 선물, 상점 */
-import { bareState } from './helpers.ts';
+import { bareState, forceNextOutcome } from './helpers.ts';
 import { X, Y } from './helpers.ts';
+import { tourChances } from '../spots.ts';
+import { giftChances } from '../items.ts';
 import { apply } from '../actions.ts';
 import { tick } from '../tick.ts';
 import { DAY_MS, monthIndex } from '../clock.ts';
@@ -257,6 +259,7 @@ describe('투어 개최 (§3.4.5)', () => {
     expect(canHostTour(s, 'canola_field')).toMatchObject({ ok: false, reason: expect.stringContaining('2년차') });
     s.clock.year = 2;
     expect(canHostTour(s, 'sangumburi').ok).toBe(false); // 미투자
+    forceNextOutcome(s, 'success', tourChances(s).chances); // staff-luck: 판정 「성공(×1)」으로 고정 — 투어 공식 자체를 본다
     expect(apply(s, { type: 'hostTour', spotId: 'canola_field' }).ok).toBe(true);
     expect(s.lastTour).toMatchObject({ spotId: 'canola_field', score: 20, success: false, money: TOUR_FAIL_MONEY, visitors: TOUR_FAIL_VISITORS });
     expect(s.money).toBe(TOUR_FAIL_MONEY);
@@ -271,6 +274,7 @@ describe('투어 개최 (§3.4.5)', () => {
     const score = tourScore(s, 'canola_field');
     expect(score).toBe(55 + 15 + 3);
     expect(score).toBeGreaterThanOrEqual(TOUR_SUCCESS_SCORE);
+    forceNextOutcome(s, 'success', tourChances(s).chances);
     const r = hostTour(s, 'canola_field');
     expect(r).toMatchObject({ success: true, money: score * TOUR_MONEY_PER_SCORE, visitors: TOUR_SUCCESS_VISITORS });
     expect(s.money).toBe(score * TOUR_MONEY_PER_SCORE);
@@ -302,6 +306,7 @@ describe('손님 선물 (§3.3.5)', () => {
     expect(apply(s, { type: 'giveGift', guestId: g.id, itemId: 'gift_peanut_bag' })).toMatchObject({ ok: false, reason: expect.stringContaining('없') });
     grantItem(s, 'gift_peanut_bag', 2); grantItem(s, 'gift_tangerine_box');
     expect(apply(s, { type: 'giveGift', guestId: g.id, itemId: 'jeju_salt' }).ok).toBe(false);
+    forceNextOutcome(s, 'success', giftChances(s).chances); // staff-luck: 판정 「성공(×1)」으로 고정
     expect(apply(s, { type: 'giveGift', guestId: g.id, itemId: 'gift_peanut_bag' }).ok).toBe(true); // youth ×2
     expect(s.segmentPopularity['student']).toBe(10 + GIFT_POPULARITY * GIFT_FIT_MULT);
     expect(s.guestTypes['student']!.satisfaction).toBe(GIFT_SATISFACTION * GIFT_FIT_MULT);
@@ -313,6 +318,7 @@ describe('손님 선물 (§3.3.5)', () => {
     expect(spawnGuests(s, 1, 'student')).toBe(1);
     const g2 = s.guests[0]!;
     expect(canGiveGift(s, g2.id, 'gift_tangerine_box').ok).toBe(true);
+    forceNextOutcome(s, 'success', giftChances(s).chances);
     expect(apply(s, { type: 'giveGift', guestId: g2.id, itemId: 'gift_tangerine_box' }).ok).toBe(true); // senior → 기본
     expect(s.segmentPopularity['student']).toBe(10 + GIFT_POPULARITY * GIFT_FIT_MULT + GIFT_POPULARITY);
     expect(s.guestTypes['student']!.satisfaction).toBe(GIFT_SATISFACTION * GIFT_FIT_MULT + GIFT_SATISFACTION);

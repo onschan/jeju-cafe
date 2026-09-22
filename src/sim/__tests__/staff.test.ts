@@ -5,6 +5,7 @@ import { apply } from '../actions.ts';
 import { placeObject } from '../grid.ts';
 import { salaryOf, salaryDue, roleEffect, ingredientDiscount, canHire, moveStaff, staffAnchor, drawCandidates, availablePool, addPoolCandidate, staffCapacity, capOf, expNeeded, levelUpCost, addRoleExp, dailyWorkExp, cleanPowerOf, gardenBonusOf, gardenDecayOf, promoBonusOf, promoEnergyFactorOf, checkRoleUnlocks, farmCount, skillTotal, TIERS } from '../staff.ts';
 import { trainingCost, canTrain, trainingMultOf, TRAINING_RANK } from '../training.ts';
+import { OUTCOME_MULT } from '../luck.ts';
 import { ingredientCost } from '../economy.ts';
 import { expectedHarvest } from '../orchard.ts';
 import { tick } from '../tick.ts';
@@ -75,7 +76,7 @@ test('같은 단계를 다시 내면 남은 사람만 오고, 다 오면 더 못
   expect(a.candidates.length).toBe(5);
   expect(apply(a, { type: 'postJob', tier: 'site' }).ok).toBe(false); // 다 왔다
   const c = a.candidates[0]!;
-  expect(c.salary).toBe(salaryOf({ baseSalary: c.baseSalary, level: 1, stats: c.stats }));
+  expect(c.salary).toBe(salaryOf({ baseSalary: c.baseSalary, level: 1, stats: c.stats, title: c.title })); // staff-luck: 칭호 급여 배수
   expect(drawCandidates(a, 'college', 1)).toBe(1);
 });
 
@@ -288,9 +289,9 @@ test('연수 5종: 랭크 3부터, 비용을 내고 n일 자리를 비운 뒤 �
   expect(st.energy).toBe(85); // 연수 중엔 안 닳고 밤에 +40씩 회복
   tick(s, DAY_MS);
   expect(st.training).toBeNull();
-  expect(st.stats.skill).toBe(skill0 + 6);
+  expect(st.stats.skill).toBe(skill0 + Math.round(6 * OUTCOME_MULT[s.lastOutcome!.outcome])); // staff-luck: 복귀 판정 배수
   expect(st.role).toBe('hall');
-  expect(s.notices.some((n) => n.includes('돌아왔어요') && n.includes('기술 +6'))).toBe(true);
+  expect(s.notices.some((n) => n.includes('돌아왔어요') && n.includes(`기술 +${Math.round(6 * OUTCOME_MULT[s.lastOutcome!.outcome])}`))).toBe(true);
   expect(st.salary).toBe(salaryOf(st));
 });
 
@@ -311,7 +312,9 @@ test('연수 5종 효과: 기술·미소·체력·힘 +6, 종합은 전 스탯 +
     expect(apply(s, { type: 'train', staffId: st.id, trainingId: def.id }).ok).toBe(true);
     for (let d = 0; d < def.days; d++) tick(s, DAY_MS);
     expect(st.training).toBeNull();
-    for (const k of ['stamina', 'strength', 'skill', 'smile'] as const) expect(st.stats[k]).toBe(10 + (expected[def.id]![k] ?? 0));
+    const mult = OUTCOME_MULT[s.lastOutcome!.outcome]; // staff-luck: 복귀 때 대박 ×2 / 쪽박 ×0.5
+    expect(s.lastOutcome!.task).toBe('training');
+    for (const k of ['stamina', 'strength', 'skill', 'smile'] as const) expect(st.stats[k]).toBe(10 + (expected[def.id]![k] ? Math.max(1, Math.round(expected[def.id]![k]! * mult)) : 0));
     if (def.grantSkill) {
       expect(st.extraSkills.length).toBe(1);
       expect(st.extraSkills[0]).not.toBe(st.skill);
@@ -345,7 +348,7 @@ test('연수 우등생 특기는 연수 효과 ×1.5', () => {
   const before = st.stats.smile;
   apply(s, { type: 'train', staffId: st.id, trainingId: 'tr_service' });
   for (let d = 0; d < 3; d++) tick(s, DAY_MS);
-  expect(st.stats.smile).toBe(before + 9);
+  expect(st.stats.smile).toBe(before + Math.max(1, Math.round(9 * OUTCOME_MULT[s.lastOutcome!.outcome]))); // staff-luck: 복귀 판정 배수
 });
 
 // ---------- 신설 직종 효과 훅 ----------
