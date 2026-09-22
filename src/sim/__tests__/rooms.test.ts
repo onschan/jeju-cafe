@@ -12,7 +12,7 @@ import { seatsOf } from '../cafe.ts';
 import { siteOf } from '../site.ts';
 import { serialize, deserialize } from '../save.ts';
 import { goalProgress } from '../goals.ts';
-import { objectDef, goalDef, COMBOS, INDOOR_IDS, ROOM_IDS, ANNEX_IDS, buildGroupOf } from '../../data/index.ts';
+import { objectDef, goalDef, INDOOR_IDS, ROOM_IDS, ANNEX_IDS, buildGroupOf } from '../../data/index.ts';
 import {
   mainBuilding, mainLevel, indoorSeats, roomSeats, freeFloorCells, fixedCells, expandCells, canExpandMain, expandMain, canBuildSecondFloor, canStartMoveMain, canMoveMain, canUndoMoveMain,
   isRoomCut, annexCount, preferIndoor, filterSeatsForWeather, stayMs, browseChance, indoorSatisfaction, indoorSpawnMult, indoorFeeMult, isFireplaceOn, isPianoPlaying, hasNewBooks, isKidsStocked,
@@ -45,11 +45,6 @@ describe('데이터 (§8.2·8.3)', () => {
     for (const id of ['annex_cafe', 'greenhouse_cafe']) { expect(objectDef(id).room, id).toBe(true); expect(ROOM_IDS.has(id)).toBe(true); expect(ANNEX_IDS.has(id)).toBe(true); }
     expect(objectDef('annex_cafe')).toMatchObject({ kind: 'building', w: 4, h: 3, cost: 6_000_000, buildDays: 7 });
     expect(objectDef('greenhouse_cafe')).toMatchObject({ w: 3, h: 3, cost: 4_500_000 });
-  });
-  test('실내 콤보 2 (피아노+바·수족관+키즈) — 나머지 실내 짝은 fun-corner 코너(독서 정원)로 옮겼다', () => {
-    const ids = ['cb_piano_bar', 'cb_fish_kids'];
-    for (const id of ids) expect(COMBOS.find((c) => c.id === id), id).toBeDefined();
-    expect(COMBOS.length).toBeLessThanOrEqual(12);
   });
   test('목표 3개 교체(id 유지·보상 유지): g23 실내 좌석 6석 · g41 본관 Lv2 · g45 별관', () => {
     expect(goalDef('g23')).toMatchObject({ condition: { type: 'indoorSeats', n: 6 }, reward: [{ type: 'unlockFacility', id: 'vending' }] });

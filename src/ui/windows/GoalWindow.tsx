@@ -1,20 +1,17 @@
-/** 목표 창 (스펙 §2 → §7.3 3레인). [메인/도전/월간] 탭.
- *  메인: 동시 진행 2개 크게 + 다음 목표 미리보기 + 지난 목표 체크 목록. 도전: 진행 중 2슬롯 + 고를 수 있는 6개(수락 버튼, 잠긴 것은 남은 날). 월간: 이달의 과제 1개.
- *  상태는 store(useGame)에서 읽고 수락은 dispatch({ type: 'acceptChallenge' }). */
+/** 목표 창 (trim: 도전 탭을 걷어내고 [메인/월간] 두 탭).
+ *  메인: 동시 진행 2개 크게 + 다음 목표 미리보기 + 지난 목표 체크 목록 + 한 줄 추천. 월간: 이달의 과제 1개. */
 import { useState } from 'react';
 import { Icon } from '../Icon';
 import { PALETTE } from '../frame';
 import { fmtNum } from '../../sim/format.ts';
 import { body, Bar, rowCard, rowCardLocked, rowBtn, rowBtnOff, soft, Empty, TabBar, useWindowState, type WindowProps } from './shared.tsx';
 import { activeGoals, pastGoals, toGoal, urgentChallenge } from '../simBridge';
-import { offeredChallenges, canAcceptChallenge, challengeProgress, challengeDaysLeft, isChallengeLocked, challengeLockDaysLeft, monthlyProgress, goalConditionText, goalRewardText, CHALLENGE_SLOTS } from '../../sim/index.ts';
-import { GOALS, challengeDef } from '../../data/index.ts';
-import { showToast } from '../store';
+import { monthlyProgress, goalConditionText, goalRewardText } from '../../sim/index.ts';
+import { GOALS } from '../../data/index.ts';
 import { useTutorialNote } from '../tutorialDialogue';
 
-export type GoalTab = 'main' | 'challenge' | 'monthly';
-const TABS: { key: GoalTab; label: string }[] = [{ key: 'main', label: '메인' }, { key: 'challenge', label: '도전' }, { key: 'monthly', label: '월간' }];
-const TIER_STARS = (t: number) => '★'.repeat(t);
+export type GoalTab = 'main' | 'monthly';
+const TABS: { key: GoalTab; label: string }[] = [{ key: 'main', label: '메인' }, { key: 'monthly', label: '월간' }];
 
 export interface GoalWindowProps extends WindowProps {
   onClose(): void;
@@ -76,55 +73,6 @@ export function GoalWindow(props: GoalWindowProps) {
     );
   };
 
-  const renderChallenge = () => {
-    const offered = offeredChallenges(s);
-    return (
-      <>
-        <div style={{ fontWeight: 700, marginBottom: 4 }}>진행 중 {s.challenges.active.length}/{CHALLENGE_SLOTS}</div>
-        {s.challenges.active.length === 0 && <Empty>아직 받은 도전이 없어요. 아래에서 골라 받아요 (기한이 있어요).</Empty>}
-        {s.challenges.active.map((a) => {
-          const def = challengeDef(a.id);
-          const p = challengeProgress(s, a.id);
-          return (
-            <div key={a.id} data-testid="challenge-active" style={{ ...rowCard, borderColor: PALETTE.wood, borderWidth: 3 }}>
-              <div style={{ display: 'flex', gap: 6, alignItems: 'baseline' }}>
-                <b style={{ flex: 1, fontSize: 17 }}>{def.title}</b>
-                <span style={{ ...soft, fontSize: 13 }}>{TIER_STARS(def.tier)} · {challengeDaysLeft(s, a.id)}일 남음</span>
-              </div>
-              <div style={{ fontSize: 14, marginBottom: 6 }}>{def.desc}</div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8, alignItems: 'center', marginBottom: 4 }}>
-                <Bar value={p.cur} max={p.max} height={12} />
-                <b>{fmtNum(p.cur)}/{fmtNum(p.max)}</b>
-              </div>
-              <div style={{ fontSize: 14 }}><Icon name="gift" size={14} /> {rewardsText(def.reward)}</div>
-            </div>
-          );
-        })}
-        <div style={{ fontWeight: 700, margin: '10px 0 4px' }}>고를 수 있는 도전</div>
-        {offered.length === 0 && <Empty>지금 고를 수 있는 도전이 없어요. 메인 목표를 더 이루면 늘어나요.</Empty>}
-        {offered.map((def, i) => {
-          const can = canAcceptChallenge(s, def.id);
-          const locked = isChallengeLocked(s, def.id);
-          return (
-            <div key={def.id} data-testid="challenge-offer" style={locked ? rowCardLocked : rowCard}>
-              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                <div style={{ flex: 1 }}>
-                  <div><b>{def.title}</b> <span style={{ ...soft, fontSize: 13 }}>{TIER_STARS(def.tier)} · {def.days}일</span></div>
-                  <div style={{ ...soft, fontSize: 13 }}>{def.desc || goalConditionText(def.condition)}</div>
-                  <div style={{ fontSize: 13 }}><Icon name="gift" size={13} /> {rewardsText(def.reward)}</div>
-                  {locked && <div style={{ fontSize: 13, color: PALETTE.bad }}>실패로 잠김 · {challengeLockDaysLeft(s, def.id)}일 뒤</div>}
-                </div>
-                <button data-tut={i === 0 ? 'challenge-accept' : undefined} data-testid="challenge-accept" style={can.ok ? rowBtn : rowBtnOff} disabled={!can.ok} aria-label={`${def.title} 수락`}
-                  onClick={() => { const r = dispatch({ type: 'acceptChallenge', id: def.id }); if (!r.ok && r.reason) showToast(r.reason); }}>수락</button>
-              </div>
-            </div>
-          );
-        })}
-        {s.challenges.done.length > 0 && <div style={{ ...soft, fontSize: 13, marginTop: 8 }}>이룬 도전 {s.challenges.done.length}개</div>}
-      </>
-    );
-  };
-
   const renderMonthly = () => {
     const m = s.monthly;
     if (!m) return <Empty>이달의 과제는 매월 1일에 나와요.</Empty>;
@@ -149,7 +97,6 @@ export function GoalWindow(props: GoalWindowProps) {
     <div style={body} data-testid="goal-window">
       <TabBar tabs={TABS} active={tab} onPick={setTab} testId="goal-tab" />
       {tab === 'main' && renderMain()}
-      {tab === 'challenge' && renderChallenge()}
       {tab === 'monthly' && renderMonthly()}
     </div>
   );

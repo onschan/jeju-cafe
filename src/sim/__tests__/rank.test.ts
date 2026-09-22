@@ -70,7 +70,7 @@ test('랭크 2에 오르면 랭크 해금 시설(실내 테이블·주차장)과
 
 function richState(): GameState {
   const s = bareState(1);
-  s.lastMonthCard = { income: 400_000, guests: 100, month: 3, year: 1, costs: emptyMonthCosts(), net: 400_000, ...emptyMonthHarvest(), topMenu: null, deficitStreak: 0, loanTaken: 0, loanBalance: 0, rivalLossPct: 0, guestsLeft: 0, reputation: 50, reputationDelta: 0, topComplaints: [] };
+  s.lastMonthCard = { income: 400_000, guests: 100, month: 3, year: 1, costs: emptyMonthCosts(), net: 400_000, ...emptyMonthHarvest(), topMenu: null, deficitStreak: 0, loanTaken: 0, loanBalance: 0, guestsLeft: 0, reputation: 50, reputationDelta: 0, topComplaints: [] };
   s.lastMonthIncome = 400_000;
   return s;
 }
@@ -143,11 +143,11 @@ test('심사 점수는 모두 0~100이고 같은 상태면 같은 값(결정적)
   expect(b.clean).toBe(100); // 트랙 A의 cleanliness가 없으면 100
   expect(b.price).toBeGreaterThan(0); // 100 − 평균 가격/평균 소지금
   expect(b.rest).toBeGreaterThan(0); // 좌석 = 쉼 시설
-  expect(b.overall).toBe(Math.round((b.smile + b.scenery + b.menu + b.fun + b.group + b.rest + b.clean + b.price) / 8 + s.rank * 3 + s.codex.combos.length));
+  expect(b.overall).toBe(Math.round((b.smile + b.scenery + b.menu + b.fun + b.group + b.rest + b.clean + b.price) / 8 + s.rank * 3 + (s.codex.corners?.length ?? 0)));
   // 가중 합 (guidebooks.json weights)
   expect(b.reputation).toBe(50); // 시작 평판
   expect(guidebookScore(s, guidebookDef('gb_kind_cafe'), b)).toBe(Math.round(b.smile * 0.4 + b.menu * 0.1 + b.rest * 0.1 + b.clean * 0.2 + b.price * 0.1 + b.reputation * 0.1));
-  s.rank = 5; s.codex.combos.push('c1', 'c2');
+  s.rank = 5; (s.codex.corners ??= []).push('c1', 'c2');
   expect(judgeScores(s).overall).toBe(Math.min(100, b.overall + 4 * 3 + 2)); // 랭크 ×3 + 콤보 ×1
   // 월간 추천: 타깃 태그가 monthIndex로 돈다
   expect(MONTHLY_TAGS.map((t) => t.key)).toContain(monthlyTarget(s).key);

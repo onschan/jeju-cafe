@@ -92,11 +92,9 @@ test('위기: 잔고 < −500만이 3개월이면 마지막에 산 필지를 강
   expect(ownedParcels(s)).toHaveLength(1); // 시작 필지는 안 판다
   expect(s.money).toBe(CRISIS_MONEY - 1 + Math.round(p.price * 0.5) + objRefund);
   for (const o of objs) expect(s.objects[o.id]).toBeUndefined();
-  expect(s.rivals).toHaveLength(1);
   expect(s.alerts.some((a) => a.type === 'failure' && a.stage === 'crisis')).toBe(true); // 트랙 B 실패 대화
-  // 팔 필지가 없으면 라이벌만
+  // 팔 필지가 없으면 알림만
   const t = bareState(3);
   crisis(t);
-  expect(t.rivals).toHaveLength(1);
   expect(ownedParcels(t)).toHaveLength(1);
 });

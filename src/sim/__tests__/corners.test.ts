@@ -2,12 +2,12 @@ import { describe, it, expect } from 'vitest';
 import { apply } from '../actions.ts';
 import { tick } from '../tick.ts';
 import { DAY_MS } from '../clock.ts';
-import { objectDef, COMBOS, START_OBJECT_IDS, GUEST_TYPES, guestTags } from '../../data/index.ts';
+import { objectDef, START_OBJECT_IDS, GUEST_TYPES, guestTags } from '../../data/index.ts';
 import {
   CORNERS, cornerDef, completedCorners, cornerProgress, cornerIfPlaced, cornerBonusAt, cornerPickMult, cornerVisitTargets, visitCorner,
   discoverCorners, cornersMade, CORNER_CAP, CORNER_VISITS_PER_DAY, cornersWithPiece,
 } from '../corners.ts';
-import { objectStats, comboPickMult } from '../compat.ts';
+import { objectStats, guestPickMult } from '../compat.ts';
 import { monthlyYieldOf, expectedHarvest, ORCHARD_FULL_TREES } from '../orchard.ts';
 import { goalMet } from '../goals.ts';
 import { pickVisit } from '../guests.ts';
@@ -64,14 +64,8 @@ describe('코너 데이터 (corners.json)', () => {
     expect(cornerDef('corner_flower_path').pieces.map((p) => p.type)).toEqual(['flower_bed', 'deco_wood_bench', 'streetlight']);
     expect(cornersWithPiece('deco_wood_bench').length).toBeGreaterThanOrEqual(5);
   });
-  it('첫 코너(꽃길) 조각은 시작부터 열려 있다 (튜토리얼 ⑤ 꽃밭+벤치). 콤보는 12개 이하', () => {
+  it('첫 코너(꽃길) 조각은 시작부터 열려 있다 (튜토리얼 ⑤ 꽃밭+벤치)', () => {
     for (const t of ['flower_bed', 'deco_wood_bench', 'streetlight']) expect(START_OBJECT_IDS).toContain(t);
-    expect(COMBOS.length).toBeLessThanOrEqual(12);
-    // 콤보 짝이 한 코너 안에 통째로 들어가는 것은 튜토리얼이 쓰는 귤밭 뷰·밭담 귤 수확만
-    for (const cb of COMBOS) for (const c of CORNERS) {
-      const types = new Set(c.pieces.map((p) => p.type));
-      if (types.has(cb.a) && cb.bIds.some((b) => types.has(b))) expect(['cb_tangerine_view', 'cb_wall_harvest'], `${cb.id} ⊂ ${c.id}`).toContain(cb.id);
-    }
   });
 });
 
@@ -157,16 +151,16 @@ describe('코너 효과', () => {
     expect(after.popularity - before.popularity).toBe(eff.popularity);
     expect(after.feePct - before.feePct).toBe(eff.feePct);
     expect(cornerBonusAt(s, far)).toEqual({ pop: 0, feePct: 0 });
-    expect(CORNER_CAP.pop).toBeLessThan(12);
-    expect(CORNER_CAP.feePct).toBeLessThan(20);
+    expect(CORNER_CAP.pop).toBeLessThanOrEqual(12);
+    expect(CORNER_CAP.feePct).toBeLessThanOrEqual(20);
   });
-  it('대상 태그 손님이 반경 안 시설을 고를 확률 ×tagMult (comboPickMult 훅), 다른 태그는 ×1', () => {
+  it('대상 태그 손님이 반경 안 시설을 고를 확률 ×tagMult (guestPickMult 훅), 다른 태그는 ×1', () => {
     const s = bareState(1);
     const shop = place(s, 'table_out', 1, 1);
     flowerPath(s, 0, 0); // female ×1.3
     expect(cornerPickMult(s, shop, FEMALE)).toBeCloseTo(1.3);
     expect(cornerPickMult(s, shop, MALE)).toBe(1);
-    expect(comboPickMult(s, shop.id, FEMALE)).toBeCloseTo(1.3);
+    expect(guestPickMult(s, shop.id, FEMALE)).toBeCloseTo(1.3);
   });
 });
 

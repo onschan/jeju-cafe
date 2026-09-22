@@ -92,7 +92,7 @@ const ACTION_SFX: Record<Action['type'], SfxName> = {
   acceptQuest: 'tap', respondEvent: 'tap', investSpot: 'unlock', hostTour: 'tap', dismissTour: 'tap', setTourBus: 'tap', giveGift: 'tap', craftGift: 'unlock',
   develop: 'unlock', dismissDevelop: 'tap', addTopping: 'tap', removeTopping: 'tap', levelUpMenu: 'unlock',
   buyMileage: 'coin', buyTicket: 'coin', drawTicket: 'tap', dismissDraw: 'tap', setUniform: 'tap', useGuestItem: 'unlock', dismissAnnouncement: 'tap',
-  openPopup: 'unlock', closePopup: 'tap', challenge: 'tap', dismissChallenge: 'tap', dismissOutcome: 'tap', acceptChallenge: 'unlock', skipTutorial: 'tap', skipTutorialChapter: 'tap', tutorialNote: 'tap',
+  openPopup: 'unlock', closePopup: 'tap', dismissOutcome: 'tap', skipTutorial: 'tap', skipTutorialChapter: 'tap', tutorialNote: 'tap',
   setRouteContract: 'unlock', expandParking: 'place', // 트랙 H
   placeMain: 'fanfare', expandMain: 'unlock', buildSecondFloor: 'unlock', moveMain: 'place', undoMoveMain: 'tap', toggleFireplace: 'tap', setPianoTime: 'tap', setBgm: 'tap', setLighting: 'tap', feedAquarium: 'happy', restockKids: 'coin', setBarEvening: 'tap', addBooks: 'unlock', // y-indoor
   continueEnding: 'fanfare', donateVillage: 'coin', holdFestival: 'fanfare', // z-ending

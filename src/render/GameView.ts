@@ -15,7 +15,7 @@ import { namedGuestFace } from '../sim/popup.ts';
 import { guestTypeDef, namedGuestDef } from '../data/index.ts';
 import { Background } from './Background';
 import { siteOf, siteBadgeTextPlain, siteTone, layoutKey } from '../sim/site.ts';
-import { objectStats, activeCombos } from '../sim/compat.ts';
+import { objectStats } from '../sim/compat.ts';
 import { entryPoints, ROUTE_IDS, ENTRY_ROUTES } from '../sim/entry.ts'; // 트랙 H 진입점 표지
 import { completedCorners, cornerDef } from '../sim/corners.ts'; // fun-corner 코너 팻말
 import { isSiteOverlayOn, setSiteOverlayOn, siteOverlayKey, drawSiteOverlay, GHOST_GOOD, GHOST_WARN } from './siteOverlay';
@@ -725,10 +725,6 @@ export class GameView {
       const pct = Math.max(0, Math.min(1, st.popularity / GAUGE_MAX));
       this.gaugeGfx.roundRect(gc.sx - W / 2 - 2, y - 2, W + 4, 10, 2).fill({ color: 0x3b1f0e, alpha: 0.85 }).stroke({ color: 0xf6e7c6, width: 1, alpha: 0.9 });
       this.gaugeGfx.rect(gc.sx - W / 2, y, Math.max(1, W * pct), 6).fill({ color: pct >= 0.66 ? 0x6fd43a : pct >= 0.33 ? 0xffc85c : 0xff5a7a });
-      if (activeCombos(state, o.id).some((c) => c.strength !== 'down' && c.strength !== 'none')) {
-        this.gaugeGfx.circle(gc.sx + W / 2 + 8, y + 3, 5).fill({ color: 0xfff3b0 }).stroke({ color: 0xd08a00, width: 1.5 });
-        this.gaugeGfx.circle(gc.sx + W / 2 + 8, y + 3, 2).stroke({ color: 0xd08a00, width: 1.5 });
-      }
     }
   }
 

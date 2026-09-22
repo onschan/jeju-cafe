@@ -10,9 +10,9 @@ import { tutorialFeatureIds } from '../tutorial.ts';
 import { bareState, at } from './helpers.ts';
 
 describe('goals.json 데이터', () => {
-  it('108개 순차 목표(§3.5), id 유일, 제목 14자 이내, 문구가 있고, v3 시절 id(앞 20개·메뉴)는 전부 존재한다', () => {
+  it('순차 목표(§3.5), id 유일, 제목 14자 이내, 문구가 있고, v3 시절 id(앞 20개·메뉴)는 전부 존재한다', () => {
     expect(GOALS.length).toBe(108);
-    expect(new Set(GOALS.map((g) => g.id)).size).toBe(108);
+    expect(new Set(GOALS.map((g) => g.id)).size).toBe(GOALS.length);
     for (const [i, g] of GOALS.entries()) {
       expect(g.id).toBe(`g${String(i + 1).padStart(2, '0')}`);
       expect(g.title.length, g.id).toBeLessThanOrEqual(14);
@@ -47,15 +47,15 @@ describe('goals.json 데이터', () => {
     for (const t of Object.keys(conditionCheckers)) expect(goalConditionText({ ...({ type: t, n: 1, lv: 1, view: 1, avg: 1, days: 1, pct: 1, id: 'centennial', menuId: 'americano', spotId: 'canola_field', guestId: 'couple', bookId: 'gb_kind_cafe' } as object) } as GoalCondition).length, t).toBeGreaterThan(0);
   });
 
-  it('신설 조건 판정: 월 매출·Lv 직원·콤보·명소·손님 타입·가이드북·흑자 달·아이템·유니폼·특기·좌석·이달 손님/매출', () => {
+  it('신설 조건 판정: 월 매출·Lv 직원·코너·명소·손님 타입·가이드북·흑자 달·아이템·유니폼·특기·좌석·이달 손님/매출', () => {
     const s = bareState(1);
     s.lastMonthIncome = 20_000_000;
     expect(goalMet(s, { type: 'monthIncome', n: 20_000_000 })).toBe(true);
     s.staff.push({ ...s.candidates[0]!, level: 5, role: 'hall', unpaidMonths: 0, energy: 100, lastParttimeMonthIndex: -1, x: 0, y: 0, path: [], anchor: null, waitMs: 0 } as never);
     expect(conditionProgress(s, { type: 'staffLevel', lv: 5, n: 2 })).toEqual({ cur: 1, max: 2 });
     expect(conditionProgress(s, { type: 'staffLevel', lv: 6, n: 1 }).cur).toBe(0);
-    s.codex.combos.push('x1', 'x2');
-    expect(conditionProgress(s, { type: 'combos', n: 3 })).toEqual({ cur: 2, max: 3 });
+    (s.codex.corners ??= []).push('x1', 'x2');
+    expect(conditionProgress(s, { type: 'corners', n: 3 })).toEqual({ cur: 2, max: 3 });
     s.spots['canola_field'] = 2; s.spots['seongsan'] = 3;
     expect(goalMet(s, { type: 'spotLevel', spotId: 'canola_field', lv: 2 })).toBe(true);
     expect(conditionProgress(s, { type: 'spotAny', lv: 2, n: 2 })).toEqual({ cur: 2, max: 2 });
@@ -77,8 +77,8 @@ describe('goals.json 데이터', () => {
     expect(goalMet(s, { type: 'monthGuests', n: 150 })).toBe(true);
     expect(goalMet(s, { type: 'monthSales', n: 5_000_000 })).toBe(true);
     expect(conditionProgress(s, { type: 'guestType', guestId: 'couple', n: 30 }).max).toBe(30);
-    // 아직 없는 시스템은 스텁 0 (통합 때 연결): 증축·청결·명당·방문객·입지·자급률
-    for (const c of [{ type: 'facilityLv', lv: 2, n: 1 }, { type: 'cleanliness', n: 80 }, { type: 'spotEffect', n: 1 }, { type: 'visitorsTotal', n: 1 }, { type: 'siteSeats', view: 2, n: 1 }, { type: 'windlessSeats', n: 1 }, { type: 'upgraded', lv: 2, n: 1 }, { type: 'clean', avg: 90, days: 30 }, { type: 'selfSupply', pct: 50 }, { type: 'spotEffects', n: 1 }] as GoalCondition[]) {
+    // 아직 없는 시스템은 스텁 0 (통합 때 연결): 증축·청결·방문객·입지·자급률
+    for (const c of [{ type: 'facilityLv', lv: 2, n: 1 }, { type: 'cleanliness', n: 80 }, { type: 'visitorsTotal', n: 1 }, { type: 'siteSeats', view: 2, n: 1 }, { type: 'windlessSeats', n: 1 }, { type: 'upgraded', lv: 2, n: 1 }, { type: 'clean', avg: 90, days: 30 }, { type: 'selfSupply', pct: 50 }] as GoalCondition[]) {
       expect(conditionProgress(s, c).cur, c.type).toBe(0);
       expect(goalMet(s, c), c.type).toBe(false);
     }
@@ -105,7 +105,6 @@ describe('goals.json 데이터', () => {
     expect(GOALS.some((g) => g.reward.some((r) => r.type === 'unlockFeature' && (r.id as string) === 'promote'))).toBe(false); // ease: 홍보·연구는 처음부터
     expect(idx(goalForFeature('parcel')!.id)).toBeLessThan(idx(GOALS.find((g) => g.condition.type === 'parcels')!.id));
     expect(idx(goalForFeature('popup')!.id)).toBeLessThan(idx(GOALS.find((g) => g.condition.type === 'namedGuest')!.id));
-    expect(idx(goalForFeature('challenge')!.id)).toBeLessThan(idx(GOALS.find((g) => g.condition.type === 'rivalWins')!.id));
   });
 
   it('v2 표에서 시작(start)이었다가 목표 보상으로 바뀐 시설은 전부 어떤 목표가 연다', () => {
@@ -182,10 +181,10 @@ describe('목표 체인 진행', () => {
   it('applyRewards 한 곳: 보상 상자 알림 하나에 아이템이 다 담기고, 대출 중이면 돈 50%·응모권/마일리지 절반(내림)', () => {
     const s = bareState(1);
     const money = s.money;
-    const items = applyRewards(s, [{ type: 'money', amount: 1_000_000 }, { type: 'tickets', n: 3 }, { type: 'unlockFacility', id: 'restroom' }], { source: 'challenge', refId: 'c01', title: '테스트', line: '축하' });
+    const items = applyRewards(s, [{ type: 'money', amount: 1_000_000 }, { type: 'tickets', n: 3 }, { type: 'unlockFacility', id: 'restroom' }], { source: 'monthly', refId: 'c01', title: '테스트', line: '축하' });
     expect(items).toHaveLength(3);
     expect(s.money).toBe(money + 1_000_000);
-    expect(s.alerts).toEqual([{ type: 'reward', source: 'challenge', refId: 'c01', title: '테스트', items, line: '축하', speaker: undefined }]);
+    expect(s.alerts).toEqual([{ type: 'reward', source: 'monthly', refId: 'c01', title: '테스트', items, line: '축하', speaker: undefined }]);
     s.loan.balance = 3_000_000; // 트랙 E 삼춘 대출
     expect(scaleReward(s, { type: 'money', amount: 1_000_000 })).toEqual({ type: 'money', amount: 500_000 });
     expect(scaleReward(s, { type: 'tickets', n: 3 })).toEqual({ type: 'tickets', n: 1 });
@@ -298,7 +297,7 @@ describe('game-feel P1 리듬', () => {
     s.alerts.push({ type: 'goal', goalId: 'g01' });
     applyRewards(s, [{ type: 'money', amount: 200_000 }], { source: 'goal', refId: 'g2', title: 'B' });
     s.alerts.push({ type: 'goal', goalId: 'g02' });
-    applyRewards(s, [{ type: 'tickets', n: 2 }, { type: 'unlockFacility', id: 'deco_planter' }], { source: 'challenge', refId: 'c1', title: 'C', line: '마지막 대사', speaker: 'samchun' });
+    applyRewards(s, [{ type: 'tickets', n: 2 }, { type: 'unlockFacility', id: 'deco_planter' }], { source: 'monthly', refId: 'c1', title: 'C', line: '마지막 대사', speaker: 'samchun' });
     applyRewards(s, [{ type: 'money', amount: 1 }], { source: 'tutorial', refId: '3', title: '튜토리얼' });
     coalesceRewardAlerts(s);
     expect(s.alerts.map((a) => a.type)).toEqual(['reward', 'goal', 'reward']);

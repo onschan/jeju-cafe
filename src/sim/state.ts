@@ -12,7 +12,7 @@ import { initGuidebooks } from './guidebook.ts';
 import { initRegions, initNamedGuests, initPopup } from './popup.ts';
 import { initFeatures } from './goals.ts';
 import { drawCandidates } from './staff.ts';
-import { initChallenges, makeMonthly } from './challenges.ts';
+import { makeMonthly } from './monthly.ts';
 import { initTutorial, unlockTutorialFeatures } from './tutorial.ts';
 import { monthIndex } from './clock.ts';
 import { emptyMonthCosts } from './economy.ts';
@@ -186,8 +186,7 @@ export function createInitialState(seed: number, playerId = 'local', createdAt =
     },
     goals: { index: 0, claimed: [] },
     features: initFeatures(),
-    stats: { satisfiedTotal: 0, promotionsDone: 0, recipesMade: 0, rivalWins: 0, profitMonths: 0, lossMonths: 0, guidebookWins: 0, itemsUsed: 0, trainings: 0, toursHeld: 0, seenMonth: -1, seenAnnouncement: -1 },
-    challenges: initChallenges(),
+    stats: { satisfiedTotal: 0, promotionsDone: 0, recipesMade: 0, profitMonths: 0, lossMonths: 0, guidebookWins: 0, itemsUsed: 0, trainings: 0, toursHeld: 0, seenMonth: -1, seenAnnouncement: -1 },
     monthly: null,
     tutorial: initTutorial(layout === 'starter'),
     titles: [],
@@ -237,7 +236,7 @@ export function createInitialState(seed: number, playerId = 'local', createdAt =
     effects: [],
     menuSold: {},
     monthMenuSold: {},
-    codex: { combos: [], sets: [], recipes: [], ingredientCombos: [], spots: [], titles: [], corners: [] }, // titles: 만난 직원 칭호 (staff-luck) · corners: 만든 코너 (fun-corner)
+    codex: { sets: [], recipes: [], ingredientCombos: [], titles: [], corners: [] }, // titles: 만난 직원 칭호 · corners: 만든 코너
     clean: { value: 100, lastGuests: 0, history: [] },
     customMenus: [],
     menuMods: {},
@@ -255,8 +254,6 @@ export function createInitialState(seed: number, playerId = 'local', createdAt =
     regions: initRegions(),
     namedGuests: initNamedGuests(),
     popup: initPopup(),
-    rivals: [],
-    lastChallenge: null,
     lastOutcome: null,   // staff-luck 대박/중박/쪽박 팝업
     luckSeq: 0,
     monthGreatServes: 0,

@@ -10,9 +10,7 @@ import { grantItem, itemEffect, ITEM_SCENERY_CAP } from '../items.ts';
 import { rollPrize, hasFreeDraw, canDrawTicket, SEED_PACK, DRAW_MONEY_PER_YEAR, UNIFORM_PIECES_PER_SET, MONTHLY_FREE_TICKETS, MID_MONTH_TICKET_DAY } from '../shop.ts';
 import { START_BUILDERS, MAX_BUILDERS } from '../build.ts';
 import { addMileage, checkCodexMileage, monthlyMileage, CODEX_PER_MILEAGE } from '../mileage.ts';
-import { discoverCombos } from '../compat.ts';
-import { MILEAGE_SHOP, TICKET_SHOP, UNIFORMS, DRAW_PRIZES, ITEMS, itemDef, objectDef, COMBOS, POPULARITY_FRUIT, POPULARITY_FRUIT_DELTA } from '../../data/index.ts';
-import type { ComboDef } from '../types.ts';
+import { MILEAGE_SHOP, TICKET_SHOP, UNIFORMS, DRAW_PRIZES, ITEMS, itemDef, objectDef, POPULARITY_FRUIT, POPULARITY_FRUIT_DELTA } from '../../data/index.ts';
 
 test('데이터: 마일리지 상점 20+1(망치) · 응모권 상점 9(추첨 제외) · 유니폼 5 · 인형뽑기 8칸 합 100% · 강화 아이템 20 + 특수 18+2(도구) + 선물 8', () => {
   expect(MILEAGE_SHOP).toHaveLength(21);
@@ -193,21 +191,13 @@ test('마일리지: 월말 손님 300명마다 +1 (closeMonth 전에 준다)', (
   expect(s.notices.at(-1)).toBe('이달 손님 650명 — 마일리지 +2');
 });
 
-test('마일리지: 첫 상성 발견 +1, 도감 10개마다 +1 (한 단계는 한 번만)', () => {
+test('마일리지: 도감 10개마다 +1 (한 단계는 한 번만)', () => {
   const s = bareState(1);
-  const combo = COMBOS.find((c) => c.a === 'table_out' && !c.hidden) ?? ({ id: 'cb_t', name: 't', a: 'table_out', bIds: ['tangerine_tree'], bCount: 1, target: 'all', strength: 'up', applyTo: 'a', hidden: false, radius: 2, effectText: '' } satisfies ComboDef);
-  placeObject(s, 'table_out', X(6), Y(4));
-  placeObject(s, combo.bIds[0]!.replace('*', ''), X(7), Y(4));
-  discoverCombos(s, [combo], []);
-  expect(s.codex.combos).toEqual([combo.id]);
-  expect(s.mileage).toBe(1);
-  discoverCombos(s, [combo], []);
-  expect(s.mileage).toBe(1);
   for (let i = 0; i < CODEX_PER_MILEAGE * 2; i++) s.codex.recipes.push(`r${i}`);
   checkCodexMileage(s);
-  expect(s.mileage).toBe(1 + 2);
+  expect(s.mileage).toBe(2);
   checkCodexMileage(s);
-  expect(s.mileage).toBe(3);
+  expect(s.mileage).toBe(2);
   addMileage(s, 0);
-  expect(s.mileage).toBe(3);
+  expect(s.mileage).toBe(2);
 });

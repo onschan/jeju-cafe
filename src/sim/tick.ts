@@ -23,7 +23,6 @@ import { dailySpots, monthlySpots } from './spots.ts';
 import { monthlyGifts } from './items.ts';
 import { fmtNum } from './format.ts';
 import { hourlyPopup, dailyPopup } from './popup.ts';
-import { monthlyRivals } from './rivals.ts';
 import { dailyCleanliness } from './cleanliness.ts';
 import { dailyRoutes, monthlyRoutes } from './entry.ts';
 import { dailyRooms, monthlyRooms, accumulateSeatUse, MS_PER_HOUR } from './rooms.ts'; // y-indoor: 본관 공사·좌석 이용률·난로 연료
@@ -93,7 +92,6 @@ function onNewMonth(state: GameState, prevMonth: number, prevYear: number): void
   monthlyBoard(state);
   monthlyShop(state);
   monthlyRank(state);
-  monthlyRivals(state);
   monthlyBigEvents(state); // 판정은 1일, 발동은 달 안에 퍼진다 (game-feel)
   villageMonthly(state); // z-ending: 9월 1일 정착 등급 심사
   festivalMonthly(state); // z-ending: 10월 1일 마을제 안내

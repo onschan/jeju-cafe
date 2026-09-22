@@ -13,7 +13,7 @@
  * 설계 목표였던 「30일 ≤ 8ms」는 손님 시뮬(시간당 스폰·이동·주문)이 비용의 대부분이라 닿지 않는다 — 대신 UI 기본 지평을 14일로 두고 워커에서 돌린다.
  */
 import type { GameState, Action, Pt, RoleId, ObjectDef } from './types.ts';
-import { objectDef, PROMOTIONS, ROLES, SPOTS, TRAININGS, roleDef, spotDef, menuDef, promotionDef, trainingDef, challengeDef, questDef } from '../data/index.ts';
+import { objectDef, PROMOTIONS, ROLES, SPOTS, TRAININGS, roleDef, spotDef, menuDef, promotionDef, trainingDef, questDef } from '../data/index.ts';
 import { tick } from './tick.ts';
 import { DAY_MS } from './clock.ts';
 import { apply, PROTECTED_TYPES } from './actions.ts';
@@ -27,14 +27,13 @@ import { canPromote } from './promotions.ts';
 import { canInvestSpot, nextSpotLevel, tagPopularity } from './spots.ts';
 import { canBuyParcel } from './parcels.ts';
 import { canSetSlot, availableMenus, menuOf } from './menu.ts';
-import { canAcceptChallenge, offeredChallenges } from './challenges.ts';
 import { canAcceptQuest } from './board.ts';
 import { canGiveGift } from './items.ts';
 import { mainBuilding, freeFloorCells, canExpandMain, canBuildSecondFloor, canAutoConnectPath, MAIN_TYPE } from './rooms.ts';
 import { canSetRouteContract, canExpandParking, PARKING_EXPAND_FROM, PARKING_SLOTS } from './entry.ts';
 import { seatScore } from './site.ts';
 import { dailyGuestCount } from './guests.ts';
-import { bestMainCells, bestSeatCellsHeuristic, bestWallCellsHeuristic, bestComboCellsHeuristic, bestIndoorSeatsHeuristic, bestParkingCellsHeuristic } from './strategy.ts';
+import { bestMainCells, bestSeatCellsHeuristic, bestWallCellsHeuristic, bestCornerCellsHeuristic, bestIndoorSeatsHeuristic, bestParkingCellsHeuristic } from './strategy.ts';
 import { setSolverResult, solverKey, type SolverMove, type SolverResult } from './solverCache.ts';
 
 // ---------- 가중치 ----------
@@ -122,7 +121,7 @@ function cellsFor(s: GameState, def: ObjectDef, k: number): Pt[] {
   if (def.indoor) return def.kind === 'seat' ? bestIndoorSeatsHeuristic(s, k) : indoorCells(s, def.id, k);
   if (def.kind === 'seat') return bestSeatCellsHeuristic(s, k, def.id);
   if (def.kind === 'wall') return bestWallCellsHeuristic(s, k);
-  return bestComboCellsHeuristic(s, def.id, k);
+  return bestCornerCellsHeuristic(s, def.id, k);
 }
 function indoorCells(s: GameState, type: string, k: number): Pt[] {
   const m = mainBuilding(s);
@@ -197,8 +196,6 @@ export function candidateActions(s: GameState, k = 3): SolverCandidate[] {
   }
 
   // 도전·부탁 수락
-  let ch = 0;
-  for (const c of offeredChallenges(s)) { if (ch >= k || !canAcceptChallenge(s, c.id).ok) continue; add({ action: { type: 'acceptChallenge', id: c.id }, label: `도전 「${challengeDef(c.id).title}」 수락`, cells: [], targets: ['goal-bar', 'tab:challenge', 'challenge-accept'], prio: 50 }); ch++; }
   let q = 0;
   for (const qs of Object.values(s.board.quests).sort((a, b) => a.id.localeCompare(b.id))) { if (q >= k || qs.status !== 'offered' || !canAcceptQuest(s, qs.id).ok) continue; add({ action: { type: 'acceptQuest', id: qs.id }, label: `부탁 「${questDef(qs.id).description}」 수락`, cells: [], targets: ['nav:ledger', 'tab:invest'], prio: 35 }); q++; }
 

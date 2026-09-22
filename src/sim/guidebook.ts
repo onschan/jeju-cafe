@@ -8,7 +8,8 @@
  */
 import type { GameState, GuidebookDef, GuidebookState, JudgeKey, JudgeScores, Announcement, AnnouncementEntry, GuestTags, GoalReward } from './types.ts';
 import { cleanJudgePenalty } from './cleanliness.ts';
-import { GUIDEBOOKS, STARS, GUEST_TYPES, COMBOS, SETS, HIDDEN_RECIPES, INGREDIENT_COMBOS, objectDef, guestTags, statSum } from '../data/index.ts';
+import { GUIDEBOOKS, STARS, GUEST_TYPES, SETS, HIDDEN_RECIPES, INGREDIENT_COMBOS, objectDef, guestTags, statSum } from '../data/index.ts';
+import { CORNERS } from './corners.ts';
 import { staffInRole, energyFactor, pushNotice } from './staff.ts';
 import { sceneryScore } from './grid.ts';
 import { isSeat, seatsOf, cafeLevel } from './cafe.ts';
@@ -30,15 +31,14 @@ export const MAX_STAR = 5;
 export const STAR_UP_REWARDS: GoalReward[] = [{ type: 'tickets', n: 2 }, { type: 'mileage', n: 10 }];
 export const JUDGE_KEYS: JudgeKey[] = ['smile', 'scenery', 'menu', 'fun', 'group', 'rest', 'clean', 'price', 'reputation', 'overall'];
 export const JUDGE_LABEL: Record<JudgeKey, string> = { smile: '미소', scenery: '경관', menu: '메뉴', fun: '체험', group: '단체', rest: '쉼', clean: '청결', price: '가성비', reputation: '평판', overall: '종합' };
-/** 종합 = 8항목(평판 제외) 평균 + 카페 랭크 × 3 + 콤보 수 × 1 */
+/** 종합 = 8항목(평판 제외) 평균 + 카페 랭크 × 3 + 코너 수 × 1 */
 export const OVERALL_PER_RANK = 3;
-export const OVERALL_PER_COMBO = 1;
+export const OVERALL_PER_CORNER = 1;
 /** 라이벌 곡선: i번째(0~8) 라이벌 = top − 6i ± 4 */
 export const RIVAL_STEP = 6;
 export const RIVAL_NOISE = 4;
-/** 플레이어 1위 → 다음 해 라이벌 +3, 라이벌 카페 등장 중 +5 */
+/** 플레이어 1위 → 다음 해 경쟁 점수 +3 */
 export const RIVAL_WIN_BOOST = 3;
-export const RIVAL_CAFE_BOOST = 5;
 /** ★ 유지 심사: ★3 이상, 승급 2년 뒤부터 2년마다 3월, 9월 재심사 */
 export const REVIEW_MIN_STAR = 3;
 export const REVIEW_EVERY_YEARS = 2;
@@ -65,9 +65,9 @@ const NO_STAFF_SMILE = 5;
 
 // ---------- ★ 조건 ----------
 
-/** 도감 항목 총수 (상성·세트·히든 레시피·재료 콤보) */
+/** 도감 항목 총수 (코너·세트·히든 레시피·재료 콤보) */
 export function codexTotal(): number {
-  return COMBOS.length + SETS.length + HIDDEN_RECIPES.length + INGREDIENT_COMBOS.length;
+  return CORNERS.length + SETS.length + HIDDEN_RECIPES.length + INGREDIENT_COMBOS.length;
 }
 
 /** ranks.json 조건 문구 하나를 판정한다. 모르는 문구는 false (조용히 승급되지 않게). */
@@ -219,7 +219,7 @@ function priceScore(state: GameState): number {
 export function judgeScores(state: GameState): JudgeScores {
   const smile = smileScore(state), scenery = scenerySc(state), menu = menuScore(state), fun = funScore(state), group = groupScore(state);
   const rest = restScore(state), clean = cleanScore(state), price = priceScore(state), reputation = reputationScore(state);
-  const overall = clamp100((smile + scenery + menu + fun + group + rest + clean + price) / 8 + state.rank * OVERALL_PER_RANK + state.codex.combos.length * OVERALL_PER_COMBO);
+  const overall = clamp100((smile + scenery + menu + fun + group + rest + clean + price) / 8 + state.rank * OVERALL_PER_RANK + (state.codex.corners?.length ?? 0) * OVERALL_PER_CORNER);
   return { smile, scenery, menu, fun, group, rest, clean, price, reputation, overall };
 }
 
@@ -269,7 +269,7 @@ export function rivalScores(seed: number, gbId: string, year: number, month: num
 }
 /** 이 가이드북의 라이벌 가산 (state.guidebooks boost + 라이벌 카페 등장 중 +5) */
 export function rivalBoost(state: GameState, gbId: string): number {
-  return guidebookState(state, gbId).boost + (state.rivals.length > 0 ? RIVAL_CAFE_BOOST : 0);
+  return guidebookState(state, gbId).boost;
 }
 export function rankAmong(score: number, rivals: number[]): number {
   return 1 + rivals.filter((r) => r > score).length;

@@ -1,4 +1,4 @@
-import type { SpotEffectDef, ObjectDef, MenuDef, GuestTypeDef, IngredientDef, FarmYield, GoalDef, ChallengeDef, BigEventDef, RoleDef, SkillDef, PromotionDef, GuestTags, ComboDef, ComboTarget, ComboStrength, ComboSide, SetDef, ItemDef, ItemSlot, Season, MenuCategory, GuestEffect, GuestWant, UnlockCond, QuestDef, QuestCondition, QuestReward, SpotDef, SpotCategory, SpotSpecial, SpotTag, GiftDef, EventDef, MenuStats, MenuStatKey, IngredientCategory, IngredientComboDef, ToppingDef, HiddenRecipeDef, FacilityCategory, MileageShopDef, TicketShopDef, UniformDef, GuidebookDef, DrawPrizeDef, DrawPrizeKind, JudgeKey, RegionDef, NamedGuestDef, RivalDef, StaffPoolDef, RecruitTierDef, TrainingDef, TitleDef } from '../sim/types.ts';
+import type { ObjectDef, MenuDef, GuestTypeDef, IngredientDef, FarmYield, GoalDef, BigEventDef, RoleDef, SkillDef, PromotionDef, GuestTags, ComboTarget, SetDef, ItemDef, ItemSlot, Season, MenuCategory, GuestEffect, GuestWant, UnlockCond, QuestDef, QuestCondition, QuestReward, SpotDef, SpotCategory, SpotSpecial, SpotTag, GiftDef, EventDef, MenuStats, MenuStatKey, IngredientCategory, IngredientComboDef, ToppingDef, HiddenRecipeDef, FacilityCategory, MileageShopDef, TicketShopDef, UniformDef, GuidebookDef, DrawPrizeDef, DrawPrizeKind, JudgeKey, RegionDef, NamedGuestDef, StaffPoolDef, RecruitTierDef, TrainingDef, TitleDef } from '../sim/types.ts';
 import objectsJson from './objects.json' with { type: 'json' };
 import menusJson from './menus.json' with { type: 'json' };
 import guestsJson from './generated/v2/guests.json' with { type: 'json' };
@@ -8,7 +8,6 @@ import spotsJson from './spots.json' with { type: 'json' };
 import eventsJson from './generated/v2/events.json' with { type: 'json' };
 import { EVENT_EFFECTS } from './event_effects.ts';
 import goalsJson from './goals.json' with { type: 'json' };
-import challengesJson from './challenges.json' with { type: 'json' };
 import eventsV3Json from './events_v3.json' with { type: 'json' };
 import ingredientsJson from './ingredients.json' with { type: 'json' };
 import staffRolesJson from './staff_roles.json' with { type: 'json' };
@@ -33,20 +32,16 @@ import uniformsJson from './generated/v2/uniforms.json' with { type: 'json' };
 import guidebooksJson from './generated/v2/guidebooks.json' with { type: 'json' };
 import rouletteJson from './generated/roulette.json' with { type: 'json' };
 import ranksJson from './generated/ranks.json' with { type: 'json' };
-import compatMetaJson from './generated/compat_meta.json' with { type: 'json' };
 import facilitiesJson from './generated/v2/facilities.json' with { type: 'json' };
 import facilitiesXJson from './facilities_x.json' with { type: 'json' };
 import facilitiesShopJson from './facilities_shop.json' with { type: 'json' }; // 상점 설계도·황금 감귤 시설 4종 (트랙 C 참조, 통합 때 추가)
 import facilitiesIndoorJson from './facilities_indoor.json' with { type: 'json' }; // 실내 가구 7 + 별관 2 (트랙 G §8.2·8.3, y-indoor)
-import combosJson from './combos.json' with { type: 'json' };
-import spotEffectsJson from './spot_effects.json' with { type: 'json' };
 import ingredientsV1Json from './generated/ingredients.json' with { type: 'json' };
 import ingredientCombosJson from './generated/ingredient_combos.json' with { type: 'json' };
 import toppingsJson from './generated/toppings.json' with { type: 'json' };
 import hiddenRecipesJson from './generated/hidden_recipes.json' with { type: 'json' };
 import regionsJson from './generated/regions.json' with { type: 'json' };
 import namedGuestsJson from './generated/named_guests.json' with { type: 'json' };
-import rivalsJson from './generated/v2/rivals.json' with { type: 'json' };
 
 /** 시작부터 있는 특수 오브젝트 (필지 지형 생성용). ease: 곶자왈 덤불(bush_wild)은 없앴다 — 옛 세이브의 덤불은 로드 때 지운다. */
 const TERRAIN_OBJECTS: ObjectDef[] = [
@@ -247,7 +242,6 @@ export const REGIONS: RegionDef[] = regionsJson as RegionDef[];
 export const NAMED_GUESTS: NamedGuestDef[] = namedGuestsJson as NamedGuestDef[];
 export const namedGuestsOf = (regionId: string): NamedGuestDef[] => NAMED_GUESTS.filter((g) => g.regionId === regionId);
 /** 라이벌 카페 타입 6 (v2 표 §15.3) */
-export const RIVALS: RivalDef[] = rivalsJson as RivalDef[];
 /** 단골★이 본점에 올 때 쓰는 손님 타입 id. GUEST_TYPES에는 없고(스폰·도감·해금 대상 아님) guestTypeDef로만 찾는다 — 취향·예산은 NamedGuestDef가 대신한다. */
 export const NAMED_TYPE = 'named';
 const NAMED_TYPE_DEF: GuestTypeDef = {
@@ -449,7 +443,6 @@ export const EVENTS: EventDef[] = (eventsJson as RawEvent[]).map((r) => {
 /** 목표 체인 60 (v3 §2, 순차) */
 export const GOALS: GoalDef[] = goalsJson as unknown as GoalDef[];
 /** 도전 과제 풀 40 (§7.3) */
-export const CHALLENGES: ChallengeDef[] = challengesJson as unknown as ChallengeDef[];
 /** 제주 빅 이벤트 (v3 A5) */
 export const BIG_EVENTS: BigEventDef[] = eventsV3Json as unknown as BigEventDef[];
 /** 빅 이벤트 특별 손님의 지역 id (REGIONS에는 없다 — 팝업 대상이 아니다). namedId = 'special:<eventId>' */
@@ -506,62 +499,11 @@ function toTarget(v: unknown): ComboTarget {
   const first = v.split(/[·,/]/)[0]!.trim();
   return TARGET_KO[first] ?? 'all';
 }
-/** v1 effectText에서 대상 손님층을 찾는다 ("관광객 ↑ …" → youth). 없으면 전체. */
-function targetFromText(text: string): ComboTarget {
-  for (const [ko, code] of Object.entries(TARGET_KO)) if (ko !== '전체' && text.includes(ko)) return code;
-  return 'all';
-}
-const UPUP_NAMES = new Set(['정상 전망', '천년의 그늘', '저녁 한 상', '인생샷 기념품', '바리스타 쇼']);
-/** v2 규칙: 이름에 소음·시끄러운 → ↓, 특정 5개 → ↑↑, 나머지 ↑. v1은 effectText의 화살표로. */
-function toStrength(v: unknown, name: string, text: string): ComboStrength {
-  if (v === 'up' || v === 'upup' || v === 'down' || v === 'none') return v;
-  if (text.includes('↑↑')) return 'upup';
-  if (text.includes('↑')) return 'up';
-  if (text.includes('↓')) return 'down';
-  if (name.includes('소음') || name.includes('시끄러운')) return 'down';
-  if (UPUP_NAMES.has(name)) return 'upup';
-  return text ? 'none' : 'up';
-}
-function toSide(v: unknown): ComboSide {
-  if (v === 'a' || v === 'b' || v === 'both') return v;
-  if (v === 'A') return 'a';
-  if (v === 'B') return 'b';
-  if (v === '둘 다') return 'both';
-  return 'a';
-}
 function toBool(v: unknown): boolean { return v === true || v === '예' || v === 'true'; }
 function toIds(v: unknown): string[] {
   if (Array.isArray(v)) return v.map(String);
   if (typeof v === 'string') return v.split(/[/·,]/).map((x) => x.trim().split(' ')[0]!).filter(Boolean);
   return [];
-}
-/** v1 effectText의 따옴표 이름("귤밭 뷰") → 콤보 이름. 없으면 텍스트 그대로. */
-function nameFromText(text: string, a: string, b: string): string {
-  const m = /"([^"]+)"/.exec(text);
-  return m?.[1] ?? (text || `${a}+${b}`);
-}
-const SIDE_WORDS = new Set(['A', 'B', '둘 다', 'a', 'b', 'both']);
-type RawCombo = Record<string, unknown>;
-export function adaptCombo(r: RawCombo): ComboDef {
-  const a = String(r.a ?? r.objectA ?? '');
-  const bIds = toIds(r.bIds ?? r.b);
-  const text = typeof r.effectText === 'string' ? r.effectText : '';
-  const name = typeof r.name === 'string' ? r.name : nameFromText(text, a, bIds[0] ?? '');
-  // v2 표의 "효과" 열은 보너스를 받는 쪽(A/B/둘 다). v1엔 없어 A.
-  const applyToRaw = r.applyTo ?? r.side ?? (typeof r.effect === 'string' && SIDE_WORDS.has(r.effect) ? r.effect : undefined);
-  return {
-    id: typeof r.id === 'string' ? r.id : `cb_${a}_${bIds[0] ?? 'x'}`,
-    name,
-    a,
-    bIds,
-    bCount: typeof r.bCount === 'number' ? r.bCount : 1,
-    target: r.target !== undefined ? toTarget(r.target) : targetFromText(text),
-    strength: toStrength(r.strength ?? r.grade, name, text),
-    applyTo: toSide(applyToRaw),
-    hidden: toBool(r.hidden),
-    radius: typeof r.radius === 'number' ? r.radius : COMBO_META.radius,
-    effectText: text || name,
-  };
 }
 type RawSet = Record<string, unknown>;
 export function adaptSet(r: RawSet): SetDef {
@@ -603,19 +545,6 @@ export function adaptItem(r: RawItem): ItemDef {
     sourceText: String(r.sourceText ?? r.source ?? ''),
   };
 }
-export const COMBO_META = {
-  radius: (compatMetaJson as { radius?: number }).radius ?? 2,
-  up: (compatMetaJson as { up?: { pop: number; feePct: number } }).up ?? { pop: 3, feePct: 5 },
-  upup: (compatMetaJson as { upup?: { pop: number; feePct: number } }).upup ?? { pop: 6, feePct: 10 },
-  down: (compatMetaJson as { down?: { pop: number; feePct: number } }).down ?? { pop: -3, feePct: -5 },
-  segmentPopularity: (compatMetaJson as { segmentPopularity?: number }).segmentPopularity ?? 3,
-};
-/** 상성 12 (combos.json, 스펙 §3.1 → fun-reset §3: 코너와 겹치거나 같은 시설 반복인 것은 코너 24종으로 옮겼다). */
-export const COMBOS: ComboDef[] = (combosJson as RawCombo[]).map(adaptCombo);
-/** 명당 12 (spot_effects.json, 스펙 §3.1): 중심 시설 1개 + 반경 2칸 안의 시설 조합 */
-export const SPOT_EFFECTS: SpotEffectDef[] = (spotEffectsJson as { id: string; name: string; center: string; requires: { objectId: string; count: number }[]; target: string; radius: number; guestMult: number; popularity: number; tickets: number; line: string }[]).map((r) => ({
-  id: r.id, name: r.name, center: r.center, requires: r.requires, target: toTarget(r.target), radius: r.radius, guestMult: r.guestMult, popularity: r.popularity, tickets: r.tickets, line: r.line,
-}));
 export const SETS: SetDef[] = (aurasJson as RawSet[]).map(adaptSet);
 /** 강화 아이템 20(v2: 잘 맞는 시설 ×2) — v1 표에도 있는 것은 v1 분류(0~3)를 같이 갖는다 + v1에만 있는 것 + 특수 아이템 12(씨앗 3종만 효과) */
 const ITEMS_V1: ItemDef[] = (itemsJson as RawItem[]).map(adaptItem);
@@ -722,9 +651,7 @@ const RECRUIT_TIER = indexBy(RECRUIT_TIERS);
 const TRAINING = indexBy(TRAININGS);
 const TITLE = indexBy(TITLES);
 const PROMOTION = indexBy(PROMOTIONS);
-const COMBO = indexBy(COMBOS);
 const SET = indexBy(SETS);
-const SPOT_EFFECT = indexBy(SPOT_EFFECTS);
 const ITEM = indexBy(ITEMS);
 
 function must<T>(map: Record<string, T>, id: string, what: string): T {
@@ -733,9 +660,7 @@ function must<T>(map: Record<string, T>, id: string, what: string): T {
   return v;
 }
 export const objectDef = (id: string) => must(OBJ, id, 'object');
-export const comboDef = (id: string) => must(COMBO, id, 'combo');
 export const setDef = (id: string) => must(SET, id, 'set');
-export const spotEffectDef = (id: string) => must(SPOT_EFFECT, id, 'spotEffect');
 export const itemDef = (id: string) => must(ITEM, id, 'item');
 export const menuDef = (id: string) => must(MENU, id, 'menu');
 export const guestTypeDef = (id: string) => must(GUEST, canonicalGuestId(id), 'guestType');
@@ -761,14 +686,10 @@ export const giftDef = (id: string) => must(GIFT, id, 'gift');
 export const isGiftId = (id: string): boolean => id in GIFT;
 export const guidebookDef = (id: string) => must(GUIDEBOOK, id, 'guidebook');
 const GOAL = indexBy(GOALS);
-const CHALLENGE = indexBy(CHALLENGES);
 const BIG_EVENT = indexBy(BIG_EVENTS);
 export const goalDef = (id: string) => must(GOAL, id, 'goal');
-export const challengeDef = (id: string) => must(CHALLENGE, id, 'challenge');
 export const bigEventDef = (id: string) => must(BIG_EVENT, id, 'bigEvent');
 const REGION = indexBy(REGIONS);
-const RIVAL = indexBy(RIVALS);
-export const rivalDef = (id: string) => must(RIVAL, id, 'rival');
 const NAMED_GUEST = indexBy([...NAMED_GUESTS, ...SPECIAL_GUESTS]);
 export const regionDef = (id: string) => must(REGION, id, 'region');
 export const namedGuestDef = (id: string) => must(NAMED_GUEST, id, 'namedGuest');

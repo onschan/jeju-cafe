@@ -14,7 +14,6 @@ import { isWorn } from './cleanliness.ts';
 import { effectMult } from './effects.ts';
 import { pushNotice, STAT_KEYS } from './staff.ts';
 import { fmtNum } from './format.ts';
-import { rivalGuestLossPct } from './rivals.ts';
 
 /** 유지비: 건설비의 2.5%/월. 데이터(objects/facilities)의 upkeep 값은 1.5% 기준이라 배율로 환산한다. */
 export const UPKEEP_RATE = 0.025;
@@ -111,7 +110,7 @@ export function closeMonth(state: GameState, prevMonth: number, prevYear: number
     income: state.monthIncome, guests: state.monthGuests, month: prevMonth, year: prevYear, costs, net,
     harvested: { ...state.monthHarvest.harvested }, ingredientSaved: state.monthHarvest.ingredientSaved, topMenu,
     deficitStreak: state.deficitMonths, loanTaken: state.monthLoan, loanBalance: state.loan.balance,
-    rivalLossPct: rivalGuestLossPct(state), guestsLeft: state.monthGuestsLeft,
+    guestsLeft: state.monthGuestsLeft,
     reputation: state.reputation, reputationDelta: 0, topComplaints: [],
     greatServes: state.monthGreatServes ?? 0, // staff-luck 서빙 대박 횟수
   };

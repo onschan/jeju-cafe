@@ -877,10 +877,6 @@
       {
         "type": "unlockFacility",
         "id": "deco_lamp_post"
-      },
-      {
-        "type": "unlockFeature",
-        "id": "challenge"
       }
     ],
     "speaker": "samchun",
@@ -1225,11 +1221,11 @@
   },
   {
     "id": "g65",
-    "title": "라이벌 대결 1승",
-    "desc": "라이벌 카페와 대결해 이기자",
+    "title": "코너 6개",
+    "desc": "서로 다른 코너 6개를 만들어 보자",
     "condition": {
-      "type": "rivalWins",
-      "n": 1
+      "type": "corners",
+      "n": 6
     },
     "reward": [
       {
@@ -1242,7 +1238,7 @@
       }
     ],
     "speaker": "samchun",
-    "line": "1승! 라이벌이 짐 싸는 소리 들리져?"
+    "line": "코너가 여섯이면 마당이 달라 보이는구나."
   },
   {
     "id": "g66",
@@ -1374,11 +1370,11 @@
   },
   {
     "id": "g73",
-    "title": "라이벌 3승",
-    "desc": "라이벌 카페 대결에서 3번 이기자",
+    "title": "코너 8개",
+    "desc": "서로 다른 코너 8개",
     "condition": {
-      "type": "rivalWins",
-      "n": 3
+      "type": "corners",
+      "n": 8
     },
     "reward": [
       {
@@ -1391,7 +1387,7 @@
       }
     ],
     "speaker": "halmang",
-    "line": "대결 3승. 이기고도 겸손하라."
+    "line": "여덟 군데나 사진 찍을 데가 생겼져."
   },
   {
     "id": "g74",

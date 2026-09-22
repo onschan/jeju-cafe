@@ -273,7 +273,7 @@ describe('투어 개최 (§3.4.5)', () => {
     s.tourMonth = -1; s.money = 0;
     s.spots['canola_field'] = 5;
     for (const id of Object.keys(s.guestTypes)) if (guestTypeDef(id).tags.gender === 'female') s.segmentPopularity[id] = 50;
-    s.codex.combos = ['a', 'b', 'c'];
+    s.codex.corners = ['a', 'b', 'c'];
     const score = tourScore(s, 'canola_field');
     expect(score).toBe(55 + 15 + 3);
     expect(score).toBeGreaterThanOrEqual(TOUR_SUCCESS_SCORE);

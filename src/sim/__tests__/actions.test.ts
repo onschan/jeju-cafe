@@ -131,7 +131,7 @@ test('setSpeed·setSlot·dismissMonthCard', () => {
   expect(apply(s, { type: 'setSpeed', speed: 3 }).ok).toBe(true);
   expect(s.clock.speed).toBe(3);
   expect(apply(s, { type: 'setSlot', slot: 0, menuId: 'americano' }).ok).toBe(true);
-  s.lastMonthCard = { income: 1, guests: 1, month: 1, year: 1, costs: emptyMonthCosts(), net: 1, ...emptyMonthHarvest(), topMenu: null, deficitStreak: 0, loanTaken: 0, loanBalance: 0, rivalLossPct: 0, guestsLeft: 0, reputation: 50, reputationDelta: 0, topComplaints: [] };
+  s.lastMonthCard = { income: 1, guests: 1, month: 1, year: 1, costs: emptyMonthCosts(), net: 1, ...emptyMonthHarvest(), topMenu: null, deficitStreak: 0, loanTaken: 0, loanBalance: 0, guestsLeft: 0, reputation: 50, reputationDelta: 0, topComplaints: [] };
   apply(s, { type: 'dismissMonthCard' });
   expect(s.lastMonthCard).toBeNull();
 });

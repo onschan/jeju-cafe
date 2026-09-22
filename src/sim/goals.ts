@@ -11,7 +11,6 @@
  * |------------|-----------|------------------------------------------------------|
  * | parcel     | g11       | buyParcel                                            |
  * | popup      | g18       | openPopup (원정 팝업 스토어)                          |
- * | challenge  | g47       | challenge (라이벌 카페 대결)                          |
  */
 import type { GameState, GoalDef, GoalCondition, GoalReward, FeatureId, Action, ApplyResult, RewardSource, GoalSpeaker, Alert, PlacedObject } from './types.ts';
 import { GOALS, goalDef, objectDef, menuDef, roleDef, ROLES, OBJECTS, MENUS, spotDef, guestTypeDef, guidebookDef, itemDef, ITEMS } from '../data/index.ts';
@@ -24,20 +23,19 @@ import { addMileage } from './mileage.ts';
 import { MAX_BUILDERS } from './build.ts';
 import { fmtNum } from './format.ts';
 import { josa } from './josa.ts';
-import { activeCombos, setLevels } from './compat.ts';
+import { setLevels } from './compat.ts';
 import { cornersMade } from './corners.ts';
 import { effectivePopularity } from './promotions.ts';
 import { seatsOf } from './cafe.ts';
 import { monthIndex } from './clock.ts';
 import { dayIndex } from './effects.ts';
 import { reachMap, busStopPos, cellKey, walkableNeighborsOf } from './path.ts';
-import { checkChallenges } from './challenges.ts';
+import { checkMonthly } from './monthly.ts';
 import { checkTutorial, TUTORIAL_STEPS } from './tutorial.ts';
 import { hasLoan, loanRewardMult } from './failure.ts';
 import { levelOf } from './upgrade.ts';
 import { indoorSeats, mainLevel, annexCount, isMainClosed, mainBuilding } from './rooms.ts'; // y-indoor
 import { grantItem } from './items.ts';
-import { spotEffectAt } from './compat.ts';
 import { totalSpotVisitors } from './spots.ts';
 import { cleanStreakDays, cleanAvgDays, dirtyForDays, CLEAN_HISTORY_DAYS, CLEAN_LOW } from './cleanliness.ts';
 import { siteOf } from './site.ts';
@@ -50,12 +48,6 @@ import { ROUTE_IDS } from './entry.ts';
 /** 경로 손님 부르는 말 (목표 문구) */
 const ROUTE_GUEST_NAME: Record<string, string> = { bus: '버스', parking: '렌터카', shuttle: '셔틀', cruise: '크루즈', olle: '올레꾼' };
 
-/** 발동 중인 명당(자리 효과) 수 (트랙 A spotEffectAt) */
-function activeSpotEffectCount(state: GameState): number {
-  let k = 0;
-  for (const o of Object.values(state.objects)) if (!o.build && spotEffectAt(state, o.id)) k++;
-  return k;
-}
 /** 이달 재료 자급률 % = 농원 절감액(창고 재료로 만든 몫) ÷ (절감액 + 산 재료비). 아직 판 게 없으면 0. */
 function selfSupplyPct(state: GameState): number {
   const saved = state.monthHarvest.ingredientSaved;
@@ -63,14 +55,13 @@ function selfSupplyPct(state: GameState): number {
   return total <= 0 ? 0 : Math.round((saved / total) * 100);
 }
 
-export const FEATURE_IDS: FeatureId[] = ['popup', 'challenge', 'parcel'];
+export const FEATURE_IDS: FeatureId[] = ['popup', 'parcel'];
 /** 액션을 잠그는 기능 (목표에서 정확히 한 번 열린다) */
-export const ACTION_FEATURE_IDS: FeatureId[] = ['popup', 'challenge', 'parcel'];
-export const FEATURE_NAME: Record<FeatureId, string> = { popup: '팝업 스토어', challenge: '카페 대결', parcel: '필지 구매' };
+export const ACTION_FEATURE_IDS: FeatureId[] = ['popup', 'parcel'];
+export const FEATURE_NAME: Record<FeatureId, string> = { popup: '팝업 스토어', parcel: '필지 구매' };
 /** 액션 → 필요한 기능 (표는 파일 상단 주석) */
 export const FEATURE_OF_ACTION: Partial<Record<Action['type'], FeatureId>> = {
   openPopup: 'popup',
-  challenge: 'challenge',
   buyParcel: 'parcel',
 };
 /** 한 번의 checkGoals에서 연달아 처리할 최대 목표 수 (game-feel P1: 10 → 3, 나머지는 다음 시간 틱에) */
@@ -88,7 +79,7 @@ export const CONCURRENT_GOALS = 2;
 export const GOAL_LOOKAHEAD = 2;
 
 export function initFeatures(): Record<FeatureId, boolean> {
-  return { popup: false, challenge: false, parcel: false };
+  return { popup: false, parcel: false };
 }
 
 export function featureOpen(state: GameState, id: FeatureId): boolean {
@@ -134,12 +125,6 @@ function bestRank(state: GameState, bookId?: string): number {
   for (const [id, g] of Object.entries(state.guidebooks)) if ((!bookId || id === bookId) && g.best !== null) best = Math.min(best, g.best);
   return best;
 }
-/** 활성 콤보 id 집합 (마당 전체) */
-function activeComboIds(state: GameState): Set<string> {
-  const ids = new Set<string>();
-  for (const id of Object.keys(state.objects)) for (const c of activeCombos(state, id)) ids.add(c.id);
-  return ids;
-}
 function activeSetIds(state: GameState): Set<string> {
   const ids = new Set<string>();
   for (const id of Object.keys(state.objects)) for (const s of setLevels(state, id)) ids.add(s.id);
@@ -167,7 +152,6 @@ export const conditionCheckers: CheckerMap = {
   menus: (s, c) => n(s.menuSlots.filter((m) => m !== null).length, c.n),
   recipes: (s, c) => n(s.stats.recipesMade, c.n),
   promotions: (s, c) => n(s.stats.promotionsDone, c.n),
-  rivalWins: (s, c) => n(s.stats.rivalWins, c.n),
   year: (s, c) => n(s.clock.year, c.n),
   // ---- §3.5 신설 ----
   monthIncome: (s, c) => n(s.lastMonthIncome, c.n),
@@ -177,9 +161,7 @@ export const conditionCheckers: CheckerMap = {
   indoorSeats: (s, c) => n(indoorSeats(s), c.n), // y-indoor 실내 좌석 정원
   mainLevel: (s, c) => n(mainLevel(s), c.lv),    // y-indoor 본관 증축 Lv
   annex: (s, c) => n(annexCount(s), c.n),        // y-indoor 완공된 별관
-  comboCount: (s, c) => n(activeComboIds(s).size, c.n),
   setCount: (s, c) => n(activeSetIds(s).size, c.n),
-  spotEffect: (s, c) => n(activeSpotEffectCount(s), c.n), // 트랙 A 명당(발동 중)
   spotLevel: (s, c) => n(s.spots[c.spotId] ?? 0, c.lv),
   spotAny: (s, c) => n(Object.values(s.spots).filter((lv) => lv >= c.lv).length, c.n),
   visitorsTotal: (s, c) => n(totalSpotVisitors(s), c.n), // 트랙 C 명소 누적 방문객
@@ -195,9 +177,7 @@ export const conditionCheckers: CheckerMap = {
   // ---- §7.5 전략 조건 ----
   siteSeats: (s, c) => n(seatObjectsOf(s).filter((o) => siteOf(s, o.x, o.y).view >= c.view).length, c.n), // 트랙 F 전망
   windlessSeats: (s, c) => n(seatObjectsOf(s).filter((o) => siteOf(s, o.x, o.y).wind === 0).length, c.n), // 트랙 F 바람 0
-  combos: (s, c) => n(s.codex.combos.length, c.n),
   corners: (s, c) => n(cornersMade(s), c.n), // fun-corner: 만든 코너 수 (도감)
-  spotEffects: (s, c) => n(s.codex.spots.length, c.n), // 트랙 A 도감에 오른 명당 수
   hiddenRecipes: (s, c) => n(s.codex.recipes.length, c.n), // 도감에 오른 숨은 레시피 수
   upgraded: (s, c) => n(Object.values(s.objects).filter((o) => !o.build && goalLevelOf(o) >= c.lv).length, c.n), // 트랙 A 증축 · fun 트리 단계
   clean: (s, c) => flag(cleanAvgDays(s, c.days) >= c.avg), // 트랙 A: 최근 days일 평균 청결 ≥ avg
@@ -319,7 +299,6 @@ export function goalConditionText(c: GoalCondition): string {
     case 'menus': return `메뉴 ${c.n}개 올리기`;
     case 'recipes': return `레시피 ${c.n}개 개발`;
     case 'promotions': return `홍보 ${c.n}회`;
-    case 'rivalWins': return `라이벌 대결 ${c.n}승`;
     case 'year': return `${c.n}년차`;
     case 'villageGrade': return `정착 등급 「${VILLAGE_GRADE_NAME[c.n] ?? c.n}」`; // z-ending
     case 'festivals': return c.n === 1 ? '마을제 개최' : `마을제 ${c.n}회`; // z-ending
@@ -330,9 +309,7 @@ export function goalConditionText(c: GoalCondition): string {
     case 'indoorSeats': return `실내 좌석 ${c.n}석`;
     case 'mainLevel': return `본관 Lv${c.lv}`;
     case 'annex': return `별관 ${c.n}동`;
-    case 'comboCount': return `콤보 ${c.n}개`;
     case 'setCount': return `세트 효과 ${c.n}개`;
-    case 'spotEffect': case 'spotEffects': return `명당 ${c.n}개`;
     case 'hiddenRecipes': return `숨은 레시피 ${c.n}개`;
     case 'spotLevel': return `${name.spot(c.spotId)} Lv${c.lv}`;
     case 'spotAny': return `Lv${c.lv} 명소 ${c.n}곳`;
@@ -348,7 +325,6 @@ export function goalConditionText(c: GoalCondition): string {
     case 'custom': return c.id === 'centennial' ? '100주년 감귤축제' : '특별 조건';
     case 'siteSeats': return `전망 ${c.view} 이상 좌석 ${c.n}개`;
     case 'windlessSeats': return `바람 없는 좌석 ${c.n}개`;
-    case 'combos': return `콤보 도감 ${c.n}개`;
     case 'corners': return `코너 ${c.n}개`;
     case 'clean': return `청결 ${c.avg} 이상 ${c.days}일`;
     case 'skills': return `특기 직원 ${c.n}명`;
@@ -362,7 +338,6 @@ export function goalConditionText(c: GoalCondition): string {
     case 'facility': return `${name.object(c.id)} 짓기`;
     // ---- fun-rank ----
     case 'grade': return `등급 「${GRADE_NAMES[c.n - 1] ?? c.n}」`;
-    case 'corners': return `코너 ${c.n}개`;
     case 'regulars': return `단골 ${c.n}명`;
     case 'secondFloor': return '본관 2층 올리기';
     case 'reputation': return `평판 ${c.n}`;
@@ -405,7 +380,7 @@ export function goalForFeature(id: FeatureId): GoalDef | null {
   return GOALS.find((g) => g.reward.some((r) => r.type === 'unlockFeature' && r.id === id)) ?? null;
 }
 
-// ---------- 보상 지급 (goals/challenges/tutorial 공용) ----------
+// ---------- 보상 지급 (목표/월간 과제/튜토리얼 공용) ----------
 
 /** 삼춘 대출 중인가 (§4.4 — 트랙 E failure.ts의 state.loan.balance) */
 export function underLoan(state: GameState): boolean {
@@ -564,7 +539,7 @@ export function checkGoals(state: GameState): string[] {
     while (state.goals.index < GOALS.length && state.goals.claimed.includes(GOALS[state.goals.index]!.id)) state.goals.index++;
   }
   checkMoneyMilestones(state);
-  checkChallenges(state);
+  checkMonthly(state);
   checkTutorial(state);
   coalesceRewardAlerts(state); // 이번 판정(목표·도전·월간·튜토리얼·해금·승급)으로 쌓인 상자가 3개 이상이면 하나로
   return done;

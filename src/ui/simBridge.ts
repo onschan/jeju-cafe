@@ -1,6 +1,6 @@
 import type { GameState, GoalDef, Alert } from '../sim/index.ts';
-import { currentGoal as simCurrentGoal, activeGoals as simActiveGoals, goalClaimed, goalProgress, goalConditionText, goalRewardText as simRewardText, challengeProgress, challengeDaysLeft, monthlyProgress } from '../sim/index.ts';
-import { GOALS, challengeDef } from '../data/index.ts';
+import { currentGoal as simCurrentGoal, activeGoals as simActiveGoals, goalClaimed, goalProgress, goalConditionText, goalRewardText as simRewardText, monthlyProgress } from '../sim/index.ts';
+import { GOALS } from '../data/index.ts';
 import { dayIndex } from '../sim/effects.ts';
 import { DAYS_PER_MONTH } from '../sim/clock.ts';
 
@@ -48,14 +48,9 @@ export function goalsAchieved(s: GameState): number {
   return s.goals.claimed.length;
 }
 
-/** 목표 줄 두 번째 줄: 가장 급한 도전(남은 날이 적은 것), 없으면 이달의 과제 */
-export interface UrgentTask { kind: 'challenge' | 'monthly'; id: string; title: string; cur: number; max: number; daysLeft: number }
+/** 목표 줄 두 번째 줄: 이달의 과제 */
+export interface UrgentTask { kind: 'monthly'; id: string; title: string; cur: number; max: number; daysLeft: number }
 export function urgentChallenge(s: GameState): UrgentTask | null {
-  const list = s.challenges.active.map((a) => {
-    const p = challengeProgress(s, a.id);
-    return { kind: 'challenge' as const, id: a.id, title: challengeDef(a.id).title, cur: p.cur, max: p.max, daysLeft: challengeDaysLeft(s, a.id) };
-  }).sort((a, b) => a.daysLeft - b.daysLeft);
-  if (list[0]) return list[0];
   const m = s.monthly;
   if (m && m.status === 'active') {
     const p = monthlyProgress(s);

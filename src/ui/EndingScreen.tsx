@@ -86,7 +86,7 @@ function valueText(key: FinalScore['items'][number]['key'], v: number): string {
     case 'rank': return `${v}`;
     case 'reputation': return `${Math.round(v)}`;
     case 'goals': return `${v}개`;
-    case 'combos': return `${v}개`;
+    case 'corners': return `${v}개`;
     case 'spots': return `${v}`;
     case 'regulars': return `${v}명`;
   }

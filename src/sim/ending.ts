@@ -55,7 +55,7 @@ export const SCORE_ITEMS: { key: ScoreKey; label: string; per: number; cap: numb
   { key: 'rank', label: '카페 랭크', per: 10, cap: 100 },              // 랭크 1 = 10점
   { key: 'reputation', label: '평판', per: 0.5, cap: 50 },             // 평판 2 = 1점
   { key: 'goals', label: '달성 목표', per: 1, cap: 108 },              // 목표 1 = 1점
-  { key: 'combos', label: '코너 도감', per: 1, cap: 24 },              // fun-corner: 코너 1 = 1점 (24종, 콤보 도감 대신)
+  { key: 'corners', label: '코너 도감', per: 1, cap: 24 },             // 코너 1 = 1점 (24종)
   { key: 'spots', label: '명소 Lv 합', per: 0.5, cap: 60 },            // Lv 2 = 1점 (24곳 × Lv5)
   { key: 'regulars', label: '단골', per: 1, cap: 56 },                 // 단골 1 = 1점
 ];
@@ -86,7 +86,7 @@ function rawValue(state: GameState, key: ScoreKey): number {
     case 'rank': return state.rank;
     case 'reputation': return state.reputation;
     case 'goals': return state.goals.claimed.length;
-    case 'combos': return state.codex.corners?.length ?? 0; // fun-corner: 콤보 도감 → 코너 도감
+    case 'corners': return state.codex.corners?.length ?? 0;
     case 'spots': return spotLevelSum(state);
     case 'regulars': return regularCount(state);
   }
@@ -181,7 +181,7 @@ export function makeCarry(state: GameState): CarryOver {
   const spots: Record<string, number> = {};
   for (const [id, lv] of Object.entries(state.spots)) if (lv > 0) spots[id] = lv;
   return {
-    combos: [...state.codex.combos],
+    corners: [...(state.codex.corners ?? [])],
     spots,
     uniforms: [...state.uniforms],
     dolhareubang: Math.min(CARRY_DOLHAREUBANG_MAX, dolhareubangCount(state)),
@@ -195,7 +195,8 @@ export function makeCarry(state: GameState): CarryOver {
 /** 새 게임에 이월을 적용한다 (state.ts createInitialState 끝에서). 돌하르방은 정낭 양옆(없으면 문 양옆) 빈 칸에 놓는다. */
 export function applyCarry(state: GameState, carry: CarryOver): void {
   state.carry = carry;
-  for (const id of carry.combos) if (!state.codex.combos.includes(id)) state.codex.combos.push(id);
+  const codex = (state.codex.corners ??= []);
+  for (const id of carry.corners) if (!codex.includes(id)) codex.push(id);
   for (const [id, lv] of Object.entries(carry.spots)) state.spots[id] = Math.max(state.spots[id] ?? 0, lv);
   for (const id of carry.uniforms) if (!state.uniforms.includes(id)) state.uniforms.push(id);
   state.mileage += carry.mileage;
@@ -218,7 +219,7 @@ export function applyCarry(state: GameState, carry: CarryOver): void {
 /** 이월 묶음 요약 문구 (EndingScreen·TitleScreen) */
 export function carryText(c: CarryOver): string[] {
   const out: string[] = [];
-  out.push(`콤보 도감 ${c.combos.length}개`);
+  out.push(`코너 도감 ${c.corners.length}개`);
   out.push(`명소 Lv 합 ${Object.values(c.spots).reduce((s, v) => s + v, 0)}`);
   out.push(`유니폼 ${c.uniforms.length}벌`);
   out.push(`돌하르방 ${c.dolhareubang}개`);

@@ -23,14 +23,14 @@ describe('최종 점수', () => {
     const sc = computeScore(s);
     expect(sc.items.map((i) => i.key)).toEqual(SCORE_ITEMS.map((i) => i.key));
     const pt = Object.fromEntries(sc.items.map((i) => [i.key, i.points]));
-    expect(pt).toMatchObject({ money: 50, guests: 123, star: 60, rank: 60, reputation: 35, goals: 60, combos: 3, spots: 4, regulars: 0 });
+    expect(pt).toMatchObject({ money: 50, guests: 123, star: 60, rank: 60, reputation: 35, goals: 60, corners: 3, spots: 4, regulars: 0 });
     expect(sc.total).toBe(50 + 123 + 60 + 60 + 35 + 60 + 3 + 4);
     expect(sc.tier).toBe(scoreTier(sc.total));
     expect(sc.title).toBe(SCORE_TITLES[sc.tier - 1]!.title);
     // 상한: 자금 3억 → 300점, 그 이상도 300 · 코너 24
     s.money = 9_000_000_000;
     s.codex.corners = Array.from({ length: 30 }, (_, i) => `c${i}`);
-    expect(computeScore(s).items.find((i) => i.key === 'combos')!.points).toBe(24);
+    expect(computeScore(s).items.find((i) => i.key === 'corners')!.points).toBe(24);
     expect(computeScore(s).items.find((i) => i.key === 'money')!.points).toBe(300);
     // 칭호 문턱
     expect(scoreTier(0)).toBe(1); expect(scoreTier(199)).toBe(1); expect(scoreTier(200)).toBe(2); expect(scoreTier(800)).toBe(5);
@@ -101,13 +101,13 @@ describe('10년차 엔딩', () => {
 });
 
 describe('이월', () => {
-  test('makeCarry: 콤보 도감·명소 Lv·유니폼·돌하르방(최대 2)·마일리지 20%·손님 인기 20%', () => {
+  test('makeCarry: 코너 도감·명소 Lv·유니폼·돌하르방(최대 2)·마일리지 20%·손님 인기 20%', () => {
     const s = bareState(4);
-    s.codex.combos = ['cb1', 'cb2']; s.spots = { a: 3, b: 0 }; s.uniforms = ['uf_galot']; s.mileage = 57; s.segmentPopularity = { student: 40, local_auntie: 7, x: 0 };
+    s.codex.corners = ['cb1', 'cb2']; s.spots = { a: 3, b: 0 }; s.uniforms = ['uf_galot']; s.mileage = 57; s.segmentPopularity = { student: 40, local_auntie: 7, x: 0 };
     s.unlocked.objects.push('dolhareubang'); s.builders = 3; // 동시 건설 3
     for (const [x, y] of [[3, 4], [5, 4], [5, 5]] as const) expect(apply(s, { type: 'place', objectType: 'dolhareubang', x: START_ORIGIN.x + x, y: START_ORIGIN.y + y }).ok).toBe(true); // 시작 좌석 자리(빈 마당)
     const c = makeCarry(s);
-    expect(c.combos).toEqual(['cb1', 'cb2']);
+    expect(c.corners).toEqual(['cb1', 'cb2']);
     expect(c.spots).toEqual({ a: 3 });
     expect(c.uniforms).toEqual(['uf_galot']);
     expect(c.dolhareubang).toBe(2);
@@ -119,14 +119,14 @@ describe('이월', () => {
 
   test('createInitialState(carry): 새 게임에 적용 — 돌하르방은 정낭 양옆, 튜토리얼 빈 마당에도', () => {
     const s0 = bareState(4);
-    s0.codex.combos = ['cb1']; s0.spots = { a: 2 }; s0.uniforms = ['uf_galot']; s0.mileage = 100; s0.segmentPopularity = { student: 50 };
+    s0.codex.corners = ['cb1']; s0.spots = { a: 2 }; s0.uniforms = ['uf_galot']; s0.mileage = 100; s0.segmentPopularity = { student: 50 };
     s0.unlocked.objects.push('dolhareubang');
     expect(apply(s0, { type: 'place', objectType: 'dolhareubang', x: START_ORIGIN.x + 3, y: START_ORIGIN.y + 4 }).ok).toBe(true);
     s0.ending.centennial = 'done';
     const carry = makeCarry(s0);
     const s = createInitialState(7, 'local', 0, 'tutorial', carry);
     expect(s.carry).toEqual(carry);
-    expect(s.codex.combos).toContain('cb1');
+    expect(s.codex.corners).toContain('cb1');
     expect(s.spots.a).toBe(2);
     expect(s.uniforms).toContain('uf_galot');
     expect(s.mileage).toBe(createInitialState(7, 'local', 0, 'tutorial').mileage + 20);
@@ -152,7 +152,7 @@ describe('이월', () => {
     expect(plain.unlocked.objects).not.toContain(MILLENNIUM_TREE);
     // 두 번 적용해도 중복 없음
     applyCarry(s, carry);
-    expect(s.codex.combos.filter((c) => c === 'cb1')).toHaveLength(1);
+    expect(s.codex.corners!.filter((c: string) => c === 'cb1')).toHaveLength(1);
   });
 });
 

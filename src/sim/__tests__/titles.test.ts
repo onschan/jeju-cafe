@@ -9,7 +9,6 @@ import { TITLES, ROLES } from '../../data/index.ts';
 import { TITLE_GRADES, titleChances, rollGrade, pickTitle, rollTitle, titleSalaryMult, titleBonus, staffTitleEffect, fitRolesOf, titlesMet, RARE_STAY_DAYS, LEGEND_MIN_TIER, LEGEND_MIN_STAR } from '../titles.ts';
 import { drawCandidates, salaryOf, cleanPowerOf, gardenBonusOf, promoBonusOf, ingredientDiscount, hourlyEnergy, availablePool } from '../staff.ts';
 import { tourScore } from '../spots.ts';
-import { challengeTitleBonus } from '../rivals.ts';
 import { staffWith } from './staff.test.ts';
 import type { GameState, TitleGrade } from '../types.ts';
 
@@ -151,12 +150,4 @@ test('효과 훅: 청소·수확·홍보·요금 할인·기력·투어·대결 
   const before = tourScore(s, 'canola_field');
   guide.title = undefined;
   expect(before - tourScore(s, 'canola_field')).toBe(25);
-  const chef = staffWith({}, 'cook');
-  chef.title = 'tt_michelin_chef'; // 대결 +4
-  s.staff.push(chef);
-  expect(challengeTitleBonus(s)).toBe(4);
-  chef.training = { id: 'tr_barista', daysLeft: 1 }; // 연수 중이면 빠진다
-  expect(challengeTitleBonus(s)).toBe(0);
-  chef.training = null; chef.role = null; // 쉬는 중도 빠진다
-  expect(challengeTitleBonus(s)).toBe(0);
 });

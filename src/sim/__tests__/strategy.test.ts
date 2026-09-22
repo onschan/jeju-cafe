@@ -6,10 +6,9 @@ import { siteOf, seatScore } from '../site.ts';
 import { canPlace, doorFrontOf } from '../grid.ts';
 import { mainBuilding } from '../rooms.ts';
 import { reachMap, busStopPos, walkableNeighborsOf, cellKey, isDoorReachable } from '../path.ts';
-import { activeCombos } from '../compat.ts';
 import { parkingSites } from '../entry.ts';
 import {
-  bestMainCells, bestSeatCells, bestWallCell, bestComboCells, combosIfPlaced, bestIndoorSeats, bestParkingCells, bestSpotToInvest,
+  bestMainCells, bestSeatCells, bestWallCell, bestCornerCells, cornerScoreIfPlaced, bestIndoorSeats, bestParkingCells, bestSpotToInvest,
   openingBuild, nextMove, strategyVars, fillTemplate, wallSheltered, TREE_TYPE,
 } from '../strategy.ts';
 import type { GameState, Pt } from '../types.ts';
@@ -81,21 +80,18 @@ describe('할망의 정석 (strategy.ts): 글로우 칸은 실제 수치로 고�
     expect(siteOf(s, seat.x, seat.y).wind).toBe(Math.max(0, wind0 - 1));
   });
 
-  it('bestComboCells: 감귤나무를 놓으면 콤보가 가장 많이 나는 칸 — combosIfPlaced가 실제 activeCombos와 맞고, 다른 어떤 칸도 더 많지 않다', () => {
+  it('bestCornerCells: 감귤나무를 놓으면 코너 조각이 가장 많이 모이는 칸 — 다른 어떤 칸도 더 높지 않다', () => {
     const s = bareYardWithPath();
     const seat = bestSeatCells(s, 1)[0]!;
     apply(s, { type: 'place', objectType: 'table_out', ...seat });
     apply(s, { type: 'place', objectType: 'stonewall', ...bestWallCell(s)! });
-    const best = bestComboCells(s, TREE_TYPE, 1)[0]!;
-    const n = combosIfPlaced(s, TREE_TYPE, best.x, best.y);
-    expect(n).toBeGreaterThanOrEqual(2); // 귤밭 뷰 + 밭담 귤 수확
-    for (const p of allEmptyOwned(s, TREE_TYPE)) expect(combosIfPlaced(s, TREE_TYPE, p.x, p.y)).toBeLessThanOrEqual(n);
+    const best = bestCornerCells(s, TREE_TYPE, 1)[0]!;
+    const n = cornerScoreIfPlaced(s, TREE_TYPE, best.x, best.y);
+    expect(n).toBeGreaterThanOrEqual(1); // 돌담이 곁에 있으면 밭담 코너 조각
+    for (const p of allEmptyOwned(s, TREE_TYPE)) expect(cornerScoreIfPlaced(s, TREE_TYPE, p.x, p.y)).toBeLessThanOrEqual(n);
     const r = apply(s, { type: 'place', objectType: TREE_TYPE, ...best });
     expect(r.ok).toBe(true);
     const tree = Object.values(s.objects).find((o) => o.type === TREE_TYPE)!;
-    const ids = new Set<string>();
-    for (const id of Object.keys(s.objects)) for (const c of activeCombos(s, id)) ids.add(c.id);
-    expect(ids.has('cb_tangerine_view') && ids.has('cb_wall_harvest')).toBe(true);
     expect(tree.type).toBe(TREE_TYPE);
   });
 

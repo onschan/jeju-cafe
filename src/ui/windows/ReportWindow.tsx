@@ -26,7 +26,6 @@ export interface ReportCard {
   deficitStreak?: number;            // 연속 적자 달 (3 이상이면 배지)
   loanTaken?: number;                // 그달 받은 삼춘 대출
   loanBalance?: number;              // 월말 대출 잔액
-  rivalLossPct?: number;             // 라이벌 때문에 줄어든 손님 %
   guestsLeft?: number;               // 대기열이 차서 돌아간 손님
   reputation?: number;               // 월말 평판
   reputationDelta?: number;          // 그달 평판 변화
@@ -100,7 +99,6 @@ export function ReportWindow({ card: c, star, prevStar, starProgress, monthRecor
             ? complaints.map((t) => <div key={t.reason} style={{ fontSize: 14, lineHeight: 1.5 }}>· 불만 {COMPLAINT_LABEL[t.reason]} <span style={{ color: PALETTE.inkSoft }}>{t.count}건</span></div>)
             : <div style={{ fontSize: 14, color: PALETTE.inkSoft }}>불만이 없었어요</div>}
           {(c.guestsLeft ?? 0) > 0 && <div style={{ fontSize: 14, lineHeight: 1.5 }}>· 자리가 없어 돌아간 손님 <span style={{ color: PALETTE.inkSoft }}>{c.guestsLeft}명</span></div>}
-          {(c.rivalLossPct ?? 0) > 0 && <div style={{ fontSize: 14, lineHeight: 1.5 }}>· 라이벌 카페 때문에 손님 <span style={{ color: PALETTE.bad }}>−{c.rivalLossPct}%</span></div>}
         </div>
       )}
 

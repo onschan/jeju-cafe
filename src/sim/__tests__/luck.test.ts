@@ -7,11 +7,10 @@ import { DAY_MS } from '../clock.ts';
 import { OUTCOME_TABLE, outcomeChances, rollOutcome, bestStaffFor, chanceText, OUTCOME_MULT, GREAT_REPUTATION, FAIL_REPUTATION, FAIL_ENERGY, GREAT_TICKETS, LOW_ENERGY_FAIL, STAT_GREAT_PER_100 } from '../luck.ts';
 import { promoChances } from '../promotions.ts';
 import { tourChances, TOUR_YEAR, TOUR_SUCCESS_SCORE, TOUR_MONEY_PER_SCORE, TOUR_FAIL_MONEY, tourScore } from '../spots.ts';
-import { challengeChances, spawnRival, JUDGE_LUCK } from '../rivals.ts';
 import { developChances } from '../craft.ts';
 import { sideRandom, nextRandom } from '../rng.ts';
 import { staffWith } from './staff.test.ts';
-import { RIVALS, promotionDef } from '../../data/index.ts';
+import { promotionDef } from '../../data/index.ts';
 import type { GameState, Outcome, Staff } from '../types.ts';
 
 function withStaff(seed = 1, smile = 10): { s: GameState; st: Staff } {
@@ -139,16 +138,6 @@ test('투어: 대박 = 돈·방문객 ×2 + 응모권·평판 +3, 쪽박 = ×0.5
     expect(s.lastTour!.money).toBe(Math.round(baseMoney * OUTCOME_MULT[want]));
     expect(s.reputation).toBe(50 + (want === 'great' ? GREAT_REPUTATION : -FAIL_REPUTATION));
     if (want === 'great') expect(s.tickets).toBeGreaterThanOrEqual(probe.s.tickets + GREAT_TICKETS);
-  }
-});
-
-test('카페 대결: 대박이면 운 4 확정, 쪽박이면 운 0 (이기고 지는 건 스탯 비교)', () => {
-  for (const want of ['great', 'fail'] as Outcome[]) {
-    const make = () => { const x = withStaff(6); x.s.clock.year = 2; const r = spawnRival(x.s, RIVALS[0]!.id); return { ...x, r }; };
-    expect(challengeChances(make().s).chances.great).toBeGreaterThan(0);
-    const { s } = findTick(make, want, (x) => apply(x.s, { type: 'challenge', rivalId: x.r.id, menuId: x.s.unlocked.menus[0]! }), (x) => x.s.lastOutcome?.outcome);
-    expect(s.lastChallenge!.luck).toBe(want === 'great' ? JUDGE_LUCK : 0);
-    expect(s.lastOutcome!.task).toBe('challenge');
   }
 });
 

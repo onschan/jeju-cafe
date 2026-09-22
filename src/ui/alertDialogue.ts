@@ -1,6 +1,5 @@
 import type { GameState, Alert } from '../sim/index.ts';
 import { goalDef, goalRewardText, josa } from '../sim/index.ts';
-import { challengeDef } from '../data/index.ts';
 import { goalLine, failureDialogue, SPEAKER_NAME, ENDING_DIALOGUES, villageReviewLine } from '../data/dialogue/index.ts';
 import { VILLAGE_GRADE_NAME, gradeName, GRADE_CAPTION } from '../sim/index.ts'; // z-ending · fun-rank
 import { showDialogue, getDialogue, queuedCount, type DialogueReq } from './dialogue.ts';
@@ -32,15 +31,11 @@ export function alertToDialogue(a: Alert): Omit<DialogueReq, 'onClose'> {
     case 'eventEnd': return eventEndDialogue(a.id);
     case 'reputation': return { speaker: { name: SPEAKER_NAME.samchun, portrait: 'samchun' }, lines: ['【평판 경고】', a.text] }; // 트랙 E reputation.ts
     case 'reward': {
-      // 보상 상자를 닫은 뒤 이어지는 축하 대사 (도전·월간). 목표는 뒤에 { type: 'goal' }이 따로 온다.
+      // 보상 상자를 닫은 뒤 이어지는 축하 대사 (월간 과제). 목표는 뒤에 { type: 'goal' }이 따로 온다.
       const speaker = a.speaker ?? 'halmang';
       return { speaker: { name: SPEAKER_NAME[speaker], portrait: speaker }, lines: a.line ? [a.line] : [] };
     }
     case 'monthlyFailed': return { speaker: { name: SPEAKER_NAME.halmang, portrait: 'halmang' }, lines: [`이달의 과제 「${a.title}」는 아쉽게 못 채웠져. 괜찮아, 달은 또 오는 거니까.`, `다음 과제는 「${a.next}」 — 이번엔 보름 안에 끝내 보자!`] };
-    case 'challengeFailed': {
-      const c = challengeDef(a.id);
-      return { speaker: { name: SPEAKER_NAME.samchun, portrait: 'samchun' }, lines: [`도전 ${josa(`「${c.title}」`, '은/는')} 기한을 넘겼어. 페널티는 없으니 다시 골라 보라.`] };
-    }
     case 'failure': {
       const f = failureDialogue(a.stage);
       return { speaker: { name: SPEAKER_NAME[f.speaker], portrait: f.speaker }, lines: [...f.lines, f.tip] };

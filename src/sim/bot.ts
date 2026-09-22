@@ -19,7 +19,7 @@ import { apply } from './actions.ts';
 import { DAY_MS } from './clock.ts';
 import { canPlace, objectAt, cellAt, footprint, doorFrontOf } from './grid.ts';
 import { START_ORIGIN } from './layout.ts';
-import { objectDef, COMBOS, SETS, questDef, challengeDef, INDOOR_IDS } from '../data/index.ts';
+import { objectDef, SETS, questDef, INDOOR_IDS } from '../data/index.ts';
 import { DEVELOP_RESEARCH, menuOf } from './craft.ts';
 import { canDrawTicket, hasFreeDraw, canBuyTicket, canUseGuestItem, MID_MONTH_TICKET_DAY } from './shop.ts';
 import { effectivePopularity } from './promotions.ts';
@@ -35,17 +35,13 @@ import { canBuyParcel, ownedParcels, parcelAt } from './parcels.ts';
 import { isWorn, canRepair } from './cleanliness.ts';
 import { complaintCounts } from './reputation.ts';
 import { canAcceptQuest } from './board.ts';
-import { offeredChallenges, canAcceptChallenge } from './challenges.ts';
-import { spotEffectAt } from './compat.ts';
 import { cornerProgress } from './corners.ts'; // fun-corner: 코너 만들기 (목표 g21·g35·g59·g77·g93)
-import { SPOT_EFFECTS } from '../data/index.ts';
-import { canChallenge, challengeOdds } from './rivals.ts';
 import { canLevelUp } from './staff.ts';
 import { canTrain } from './training.ts';
 import { bestStaffFor } from './luck.ts'; // staff-luck: 대박 기대값이 가장 높은 직원에게 시킨다
 import { staffCapacity } from './staff.ts';
 import { canUpgrade, upgradeCost, isUpgradable } from './upgrade.ts';
-import { objectStats, activeCombos, setLevels } from './compat.ts';
+import { objectStats, setLevels } from './compat.ts';
 import { canInvestSpot, canHostTour, tourScore, TOUR_SUCCESS_SCORE, spotLevel, SPOT_POP_REQ_LV4 } from './spots.ts';
 import { canonicalGuestId } from '../data/index.ts';
 import { SPOTS } from '../data/index.ts';
@@ -116,28 +112,22 @@ export const BOT_SIGNATURE_YEAR = 3;
  *  지금 할 수 있는 것(questFeasible: 시설·메뉴 열림·아이템 있음)만 받는다 */
 export const BOT_QUEST_YEAR = 2;
 /** 도전 과제 수락도 2년차부터 (1년차 도전 보상 돈 100만+가 1년차 순이익 밴드를 넘긴다) */
-export const BOT_CHALLENGE_YEAR = 2;
 /** 동시에 하는 부탁 수 (한 번에 하나 — 부탁 시설을 몰아 지으면 시설 인기 합이 불어 3년 자금이 1억을 넘는다) */
 export const BOT_QUEST_ACTIVE_MAX = 2;
 export const BOT_QUEST_PLACES_PER_MONTH = 1;
 /** 도전 과제: 빈 슬롯은 늘 채운다 (tier 낮은 것부터, 명당·숨은 레시피·콤보처럼 봇이 할 줄 아는 것 우선) — game-feel P2 */
-export const BOT_CHALLENGE_PREFER = ['c41', 'c43', 'c46', 'c42', 'c44', 'c45'];
 /** tier 3 이상(요금 +5%·칭호·마일리지 100 같은 큰 보상)은 안 받는다 — 3년 자금 밴드 */
-export const BOT_CHALLENGE_MAX_TIER = 2;
 /** 응모권은 보름(15일)에 1장만 쓴다 — 보름 응모권(P0-4)을 플레이어처럼. 다 쓰면(해금·승급·도전 응모권 100장+ → 연구·아이템) 3년 자금이 1억을 넘는다(§4.6 밴드) */
 export const BOT_DRAW_TICKETS = true;
 /** 명당 만들기: 도전·월간 과제에 명당이 걸려 있거나 2년차부터, 도감에 없는 명당 하나를 만든다 (한 달 하나) */
-export const BOT_SPOT_EFFECT_YEAR = 2;
 export const BOT_SPOT_CELLS: { x: number; y: number }[] = [0, 1, 2, 3, 6, 7, 8, 9].flatMap((x) => [at(x, 1), at(x, 2)]); // 시작 필지 위쪽 두 줄 (테이블 줄 y=3 위)
-export const BOT_SPOT_ORDER = ['spot_orchard', 'spot_bubble', 'spot_massage', 'spot_waterfall', 'spot_oreum'];
 /** 레시피 개발 재료 순서: 2·4번째는 숨은 레시피(한라봉 에이드·용천수 콜드브루) — 도감·도전 「숨은 레시피 찾기」 */
 export const BOT_RECIPE_PLAN: string[][] = [['beans', 'milk'], ['hallabong', 'ice', 'honey'], ['beans', 'milk'], ['water_spring', 'beans_roast', 'ice'], ['beans', 'milk']];
 /** 콤보 만들기(짝 시설 놓기)는 2년차부터 */
-export const BOT_COMBO_YEAR = 2;
+export const BOT_CORNER_YEAR = 2;
 /** 콤보·세트·부탁·랜드마크용 시설은 자금이 이만큼 넘을 때만 (채용·명소 투자보다 뒤) */
 export const BOT_BUILD_MIN_MONEY = 8_000_000;
 /** 라이벌 대결은 승산이 이만큼일 때만 */
-export const BOT_CHALLENGE_ODDS = 0.5;
 /** 승급(월급 +15%/Lv)은 2년차·자금 1,000만부터 */
 export const BOT_LEVELUP_YEAR = 2;
 export const BOT_LEVELUP_MIN_MONEY = 10_000_000;
@@ -399,31 +389,10 @@ function upgradeOne(s: GameState): void {
   }
 }
 
-/** 콤보 만들기 (목표 g21·g35·g59·g77·g93): 아직 발동 안 한 콤보 중 A·B가 다 열려 있고 살 수 있는 것 하나 — 이미 놓인 짝 옆(반경 안) 빈 칸에 상대를 놓는다. 한 달 하나. */
-function placeForCombo(s: GameState): void {
-  if (s.clock.year < BOT_COMBO_YEAR || s.money < BOT_BUILD_MIN_MONEY) return;
-  const active = new Set<string>();
-  for (const id of Object.keys(s.objects)) for (const c of activeCombos(s, id)) active.add(c.id);
-  const cells = [...BOT_DECO_CELLS, ...BOT_EXTRA_CELLS];
-  const near = (o: { x: number; y: number }, type: string, r: number) => cells.find((c) => Math.max(Math.abs(c.x - o.x), Math.abs(c.y - o.y)) <= r && !objectAt(s, c.x, c.y) && canPlace(s, type, c.x, c.y).ok);
-  for (const c of COMBOS) {
-    if (active.has(c.id) || c.strength === 'down' || c.bCount > 1) continue;
-    const b = c.bIds.find((id) => !id.endsWith('*') && s.unlocked.objects.includes(id));
-    if (!b || !s.unlocked.objects.includes(c.a)) continue;
-    const objs = Object.values(s.objects);
-    const anchorA = objs.find((o) => o.type === c.a);
-    const anchorB = objs.find((o) => o.type === b);
-    const want = anchorA ? b : c.a; // 하나가 있으면 상대를, 둘 다 없으면 A부터
-    if (!canSpend(s, objectDef(want).cost)) continue;
-    const at = anchorA ?? anchorB;
-    const cell = at ? near(at, want, c.radius) : cells.find((x) => !objectAt(s, x.x, x.y) && canPlace(s, want, x.x, x.y).ok);
-    if (cell && place(s, want, cell.x, cell.y)) return;
-  }
-}
 /** 코너 만들기 (fun-corner, 목표 g21·g35·g59·g77·g93 corners(n)): 아직 안 만든 코너 중 조각이 다 열려 있는 것 하나 — 닻(첫 조각) 후보마다 반경 안에 모자란 조각을 다 놓을 자리가 있는지 보고,
  *  자리가 있는 닻에 모자란 조각을 하나 놓는다. 그런 닻이 없으면 빈 자리가 넉넉한 곳에 닻을 새로 놓는다(닻은 종류당 3개까지). 한 달 하나. */
 function placeForCorner(s: GameState): void {
-  if (s.clock.year < BOT_COMBO_YEAR || s.money < BOT_BUILD_MIN_MONEY) return;
+  if (s.clock.year < BOT_CORNER_YEAR || s.money < BOT_BUILD_MIN_MONEY) return;
   const cells = [...BOT_DECO_CELLS, ...BOT_EXTRA_CELLS, ...BOT_CORNER_CELLS];
   const dist = (a: { x: number; y: number }, b: { x: number; y: number }) => Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y));
   const freeNear = (type: string, near: { x: number; y: number }, r: number) => cells.filter((c) => dist(c, near) <= r && !objectAt(s, c.x, c.y) && canPlace(s, type, c.x, c.y).ok);
@@ -456,7 +425,7 @@ function placeForCorner(s: GameState): void {
 const BOT_CORNER_ANCHORS_MAX = 3;
 /** 세트 만들기 (목표 g48·g76·g94): 아직 안 켜진 세트 중 필요한 시설이 다 열려 있으면 모자란 것을 첫 시설 반경 안에 놓는다 (한 달 하나) */
 function placeForSet(s: GameState): void {
-  if (s.clock.year < BOT_COMBO_YEAR || s.money < BOT_BUILD_MIN_MONEY) return;
+  if (s.clock.year < BOT_CORNER_YEAR || s.money < BOT_BUILD_MIN_MONEY) return;
   const active = new Set<string>();
   for (const id of Object.keys(s.objects)) for (const st of setLevels(s, id)) active.add(st.id);
   const cells = [...BOT_DECO_CELLS, ...BOT_EXTRA_CELLS];
@@ -472,48 +441,6 @@ function placeForSet(s: GameState): void {
       if (cell && place(s, r.objectId, cell.x, cell.y)) return;
       break; // 이 세트는 자리가 없다 → 다음 세트
     }
-  }
-}
-/** 명당 만들기 (game-feel P1: 봇 3년 명당 0/12): 도감에 없는 명당 중 중심·필요 시설이 다 열려 있는 것 하나 — 중심을 놓고(있으면 그것) 반경 안 빈 칸에 모자란 시설을 채운다. 한 달 하나. */
-function placeForSpot(s: GameState): void {
-  const wanted = s.challenges.active.some((a) => challengeDef(a.id).condition.type === 'spotEffects') || s.monthly?.condition.type === 'spotEffects';
-  if (!wanted && s.clock.year < BOT_SPOT_EFFECT_YEAR) return;
-  const cells = [...BOT_EXTRA_CELLS, ...BOT_SPOT_CELLS]; // 산 필지(위 3번·왼쪽 4번)에 먼저 — 시작 필지 위쪽 줄은 창고·바위·부탁 시설로 붐빈다
-  const free = (type: string, c: { x: number; y: number }) => !objectAt(s, c.x, c.y) && canPlace(s, type, c.x, c.y).ok;
-  const near = (a: { x: number; y: number }, b: { x: number; y: number }, r: number) => Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y)) <= r;
-  for (const id of BOT_SPOT_ORDER) {
-    const sp = SPOT_EFFECTS.find((x) => x.id === id);
-    if (!sp || s.codex.spots.includes(sp.id)) continue;
-    if (![sp.center, ...sp.requires.map((r) => r.objectId)].every((t) => s.unlocked.objects.includes(t))) continue;
-    const objs = Object.values(s.objects);
-    // 중심 후보: 이미 있는 중심 시설(명당 아닌 것) 또는 빈 칸 — 반경 안에 모자란 시설을 다 놓을 빈 칸이 있는 곳
-    const fits = (at: { x: number; y: number }, isNew: boolean): boolean => {
-      let needCells = 0;
-      for (const r of sp.requires) {
-        const have = objs.filter((o) => o.type === r.objectId && near(o, at, sp.radius)).length;
-        const need = Math.max(0, r.count - have);
-        if (cells.filter((q) => near(q, at, sp.radius) && (q.x !== at.x || q.y !== at.y) && free(r.objectId, q)).length < need) return false;
-        needCells += need;
-      }
-      return cells.filter((q) => near(q, at, sp.radius) && (q.x !== at.x || q.y !== at.y) && !objectAt(s, q.x, q.y)).length >= needCells + (isNew ? 0 : 0);
-    };
-    let center = objs.find((o) => o.type === sp.center && !spotEffectAt(s, o.id) && fits(o, false));
-    if (!center) {
-      const c = cells.find((q) => free(sp.center, q) && fits(q, true));
-      if (!c || !canSpend(s, objectDef(sp.center).cost) || !place(s, sp.center, c.x, c.y)) continue;
-      center = objectAt(s, c.x, c.y)!;
-    }
-    const at = center;
-    for (const r of sp.requires) {
-      let have = Object.values(s.objects).filter((o) => o.type === r.objectId && o.id !== at.id && near(o, at, sp.radius)).length;
-      while (have < r.count) {
-        if (!canSpend(s, objectDef(r.objectId).cost)) return;
-        const c = cells.find((q) => near(q, at, sp.radius) && free(r.objectId, q));
-        if (!c || !place(s, r.objectId, c.x, c.y)) return;
-        have++;
-      }
-    }
-    return;
   }
 }
 /** y-indoor: 본관·별관 바닥 짝수 줄에 실내 테이블 (통로 줄은 비운다) */
@@ -751,10 +678,8 @@ function monthlyPlan(s: GameState, monthsPlayed: number): void {
   buildSecondFloorIfCan(s); // fun-rank
   placeIndoorSeats(s);
   placeAnnex(s);
-  placeForCombo(s);
   placeForCorner(s); // fun-corner
   placeForSet(s);
-  placeForSpot(s);
   placeForQuest(s);
   placeLandmark(s);
   placeLuxury(s); // fun-rank: 3년차부터 큰 시설
@@ -763,11 +688,6 @@ function monthlyPlan(s: GameState, monthsPlayed: number): void {
   if (s.lastTour) apply(s, { type: 'dismissTour' });
   // 승급: 경험치·연구가 찬 직원 하나 (목표 g66·g88)
   if (s.clock.year >= BOT_LEVELUP_YEAR && s.money >= BOT_LEVELUP_MIN_MONEY && (s.customMenus.length >= BOT_RECIPES || s.research >= DEVELOP_RESEARCH * 2)) for (const st of s.staff) if (canLevelUp(s, st.id).ok && apply(s, { type: 'levelUp', staffId: st.id }).ok) break; // 연구 포인트는 레시피 개발이 먼저
-  // 라이벌 대결: 승산 50% 넘는 메뉴가 있으면 한 달 한 번 (목표 g65·g98)
-  if (!s.lastChallenge) {
-    const menus = [...s.menuSlots.filter((m): m is string => !!m), ...s.customMenus.map((m) => m.id)];
-    outer: for (const r of s.rivals) for (const m of menus) if (canChallenge(s, r.id, m).ok && challengeOdds(s, r.id, m) >= BOT_CHALLENGE_ODDS) { apply(s, { type: 'challenge', rivalId: r.id, menuId: m }); break outer; }
-  }
   buyParcelIfAny(s);
   investSpotIfAny(s);
   planRoutes(s); // 트랙 H
@@ -783,13 +703,7 @@ function dailyPlan(s: GameState): void {
   while (s.alerts.length > 0) apply(s, s.alerts[0]!.type === 'ending' ? { type: 'continueEnding' } : { type: 'dismissAlert' }); // z-ending: 엔딩은 「계속하기」
   // 게시판 부탁은 지금 할 수 있는 것(시설·메뉴 열림·아이템 있음)만 받는다 (랜드마크·손님 해금이 부탁 보상)
   if (s.clock.year >= BOT_QUEST_YEAR) for (const q of Object.values(s.board.quests)) if (Object.values(s.board.quests).filter((x) => x.status === 'active').length < BOT_QUEST_ACTIVE_MAX && q.status === 'offered' && botCanDoQuest(s, questDef(q.id)) && canAcceptQuest(s, q.id).ok) apply(s, { type: 'acceptQuest', id: q.id });
-  if (s.lastChallenge) apply(s, { type: 'dismissChallenge' });
   for (const g of s.guests.filter((x) => x.phase !== 'leaving').slice(0, BOT_GREETS_PER_DAY)) apply(s, { type: 'greetGuest', guestId: g.id }); // fun-guest: 아침에 와 있는 손님 3명에게 인사 (결정적)
-  // 도전 2슬롯은 늘 채운다 (게임이 아는 것 우선, 그다음 tier 낮은 순) — game-feel P2
-  if (s.clock.year >= BOT_CHALLENGE_YEAR) for (const c of [...offeredChallenges(s)].filter((c) => c.tier <= BOT_CHALLENGE_MAX_TIER).sort((a, b) => (BOT_CHALLENGE_PREFER.indexOf(a.id) + 1 || 99) - (BOT_CHALLENGE_PREFER.indexOf(b.id) + 1 || 99) || a.tier - b.tier)) {
-    if (s.challenges.active.length >= 2) break;
-    if (canAcceptChallenge(s, c.id).ok) apply(s, { type: 'acceptChallenge', id: c.id });
-  }
   // 보름 응모권: 15일에 한 장
   if (BOT_DRAW_TICKETS && s.clock.day === MID_MONTH_TICKET_DAY && !hasFreeDraw(s) && s.tickets >= 1 && canDrawTicket(s).ok && apply(s, { type: 'drawTicket' }).ok) apply(s, { type: 'dismissDraw' });
 
@@ -855,7 +769,6 @@ export async function runBotAsync(years: number, seed: number, yieldEveryDays = 
 /** solver 정책의 집안일: 알림·카드·결과 창 닫기만 (정석 지식 없음) */
 function solverChores(s: GameState): void {
   while (s.alerts.length > 0) apply(s, s.alerts[0]!.type === 'ending' ? { type: 'continueEnding' } : { type: 'dismissAlert' });
-  if (s.lastChallenge) apply(s, { type: 'dismissChallenge' });
   if (s.lastDraw) apply(s, { type: 'dismissDraw' });
   if (s.lastDevelop) apply(s, { type: 'dismissDevelop' });
   if (s.lastTour) apply(s, { type: 'dismissTour' });

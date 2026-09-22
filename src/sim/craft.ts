@@ -140,12 +140,7 @@ export function skillEffects(state: GameState, menuId: string): SkillEffects {
   const v = (s: MenuSkill) => skillTierValue(s, sk[s] ?? 0);
   return { taste: v('맛있음'), aroma: v('향긋함'), jeju: v('제주다움'), healthEval: v('건강함'), heartyEval: v('든든함'), seatPct: v('목넘김'), costPct: v('세련미'), pricePct: v('희귀함'), dignityPct: v('품격'), photoPct: v('인생샷') };
 }
-/** 라이벌 카페가 깎는 양·보기 누적 −% (합 상한 50, 스펙 §15.3) */
-export const RIVAL_PENALTY_CAP = 50;
-export function rivalStatPenaltyPct(state: GameState): number {
-  return Math.min(RIVAL_PENALTY_CAP, (state.rivals ?? []).reduce((n, r) => n + r.penaltyPct, 0));
-}
-/** 메뉴 스탯 = (정의 스탯 + 토핑 스탯 + 스킬(맛있음·향긋함·제주다움)) 에서 라이벌 페널티(양·보기 −%)를 뺀 것 */
+/** 메뉴 스탯 = 정의 스탯 + 토핑 스탯 + 스킬(맛있음·향긋함·제주다움) */
 export function menuStatsOf(state: GameState, menuId: string): MenuStats {
   let s = { ...menuOf(state, menuId).stats };
   for (const t of menuMod(state, menuId).toppings) s = addStats(s, toppingDef(t).stats);
@@ -153,11 +148,6 @@ export function menuStatsOf(state: GameState, menuId: string): MenuStats {
   s.taste += e.taste;
   s.aroma += e.aroma;
   s.jeju += e.jeju;
-  const pen = rivalStatPenaltyPct(state);
-  if (pen > 0) {
-    s.volume = Math.round(s.volume * (1 - pen / 100));
-    s.look = Math.round(s.look * (1 - pen / 100));
-  }
   return s;
 }
 /** 스탯 기반 판매가 (개발 메뉴의 기본가) */

@@ -245,20 +245,16 @@ test('하루 손님 수 = min(좌석×6, (4 + 인기 합/21 + 시설 인기 합/
   placeObject(s, 'table_out', X(5), Y(5)); // 4석 → 상한 24
   const base240 = BASE_DAILY_GUESTS + Math.floor(240 / POP_SUM_PER_GUEST);
   expect(dailyGuestCount(s)).toBe(base240);
-  placeObject(s, 'tangerine_tree', X(8), Y(1)); placeObject(s, 'tangerine_tree', X(9), Y(1)); // 시설 인기 10×2 → 합 20 → +1 (테이블과 3칸 이상 떨어뜨려 '귤밭 뷰' 콤보 제외)
+  placeObject(s, 'tangerine_tree', X(8), Y(1)); placeObject(s, 'tangerine_tree', X(9), Y(1)); // 시설 인기 10×2 → 합 20 → +1 (테이블과 떨어뜨려 코너 제외)
   expect(facilityPopularitySum(s)).toBe(20);
   const b2 = base240 + Math.floor(20 / FACILITY_POP_PER_GUEST);
   expect(popularityGuestBase(s)).toBe(b2);
   s.clock.month = 1; // 비수기 0.8
   expect(dailyGuestCount(s)).toBe(Math.round(b2 * SEASON_GUEST_MULT[1]!));
   s.clock.month = 4;
-  s.rivals.push({ id: 'r1', rivalId: 'rv_local_cafe', openedMonthIndex: 0, penaltyPct: 0, stolen: [], lastChallengeMonth: -1 }); // 라이벌 1곳 −5%
-  expect(dailyGuestCount(s)).toBe(Math.round(b2 * 0.95));
-  s.rivals = [];
   s.reputation = 100; // 평판 ×1.5
   expect(dailyGuestCount(s)).toBe(Math.min(24, Math.round(b2 * 1.5)));
   s.reputation = 50;
-  s.rivals = [];
   s.effects.push({ kind: 'spawnMult', mult: 40, untilDay: 9999, source: 't' });
   for (let x = 10; x < 30; x++) for (const y of [1, 2, 3]) placeObject(s, 'table_out', x, y); // 124석 → 상한 744 → 전체 상한 300
   expect(totalSeats(s)).toBe(124);

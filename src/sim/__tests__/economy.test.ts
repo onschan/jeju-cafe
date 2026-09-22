@@ -215,14 +215,13 @@ test('유지비: 노후(트랙 A wearOf, 24개월 경과)면 +50%', () => {
   expect(upkeepOf(s, o)).toBe(1875);
 });
 
-test('월말 카드: 라이벌 손실 %·대기 이탈 수·대출 줄', () => {
+test('월말 카드: 대기 이탈 수·대출 줄', () => {
   const s = bareState(1);
-  s.rivals.push({ id: 'r1', rivalId: 'rv_local_cafe', openedMonthIndex: 0, penaltyPct: 0, stolen: [], lastChallengeMonth: -1 });
   s.monthGuestsLeft = 7;
   s.monthLoan = 3_000_000;
   s.loan.balance = 3_000_000;
   closeMonth(s, 3, 1);
-  expect(s.lastMonthCard).toMatchObject({ rivalLossPct: 5, guestsLeft: 7, loanTaken: 3_000_000, loanBalance: 3_000_000, deficitStreak: 0 });
+  expect(s.lastMonthCard).toMatchObject({ guestsLeft: 7, loanTaken: 3_000_000, loanBalance: 3_000_000, deficitStreak: 0 });
   expect(s.monthGuestsLeft).toBe(0);
   expect(s.monthLoan).toBe(0);
 });

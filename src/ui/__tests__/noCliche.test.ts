@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { createInitialState, strategyVars, fillTemplate, openingBuild, heuristicNextMove, nextMove } from '../../sim/index.ts';
-import { GOALS, CHALLENGES } from '../../data/index.ts';
+import { GOALS } from '../../data/index.ts';
 import { TUTORIAL_STEPS, INTRO_CUTS, FIRST_TIPS } from '../../data/dialogue/index.ts';
 import { idleHint } from '../../sim/hints.ts';
 import { CELL_LABEL, CELL_LABEL_DEFAULT, BLOCKED_HINT } from '../tutorialHighlight.ts';
@@ -48,9 +48,8 @@ describe('문구 규칙 §6: 지시문·화살표·정석·시뮬 없음', () =>
     expect(INTRO_CUTS[4]!.speaker).toBe('halmang');
     expect(INTRO_CUTS[4]!.lines.join(' ')).toContain('창고');
   });
-  it('목표 title/desc·도전 문구', () => {
+  it('목표 title/desc 문구', () => {
     expectClean(GOALS.flatMap((g) => [g.title, g.desc, g.line ?? '']), '목표');
-    expectClean(CHALLENGES.flatMap((c) => [c.title, c.desc ?? '']), '도전');
   });
   it('힌트·추천·다음 수·칸 라벨·창 문구 (실제 상태로 만든 문자열)', () => {
     const texts: string[] = [...Object.values(CELL_LABEL), CELL_LABEL_DEFAULT, BLOCKED_HINT, ...Object.values(LOOK_TEXT), NO_MOVE_TEXT, SOLVER_BUSY_TEXT, SOLVER_SAVE_TEXT, RECOMMEND_TITLE, PLAN_TITLE, SKIP_TEXT];

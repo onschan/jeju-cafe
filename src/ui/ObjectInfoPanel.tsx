@@ -1,7 +1,7 @@
 import { useGame, dispatch } from './store';
 import { wonText } from '../data/labels.ts';
-import { objectStats, sceneryScore, canUseItem, itemEffect, PROTECTED_TYPES, type ObjectKind, type ComboStrength, buildDaysLeft, josa } from '../sim/index.ts';
-import { objectDef, itemDef, COMBOS, SETS } from '../data/index.ts';
+import { objectStats, sceneryScore, canUseItem, itemEffect, PROTECTED_TYPES, type ObjectKind, buildDaysLeft, josa } from '../sim/index.ts';
+import { objectDef, itemDef, SETS } from '../data/index.ts';
 import { Icon } from './Icon';
 import { Confirm } from './Popup';
 import { RecipeCodex } from './CraftPanel';
@@ -14,7 +14,6 @@ import { brownBtn, brownBtnOn, brownBtnOff, dangerBtn, card, PALETTE } from './f
 const KIND_LABEL: Record<ObjectKind, string> = {
   seat: '자리', tree: '농원', wall: '담', path: '길', building: '건물', deco: '꾸미기', busstop: '정류장', gate: '대문', landmark: '랜드마크', facility: '시설',
 };
-const ARROW: Record<ComboStrength, string> = { up: '↑', upup: '↑↑', down: '↓', none: '·' };
 const TARGET_LABEL: Record<string, string> = { all: '모두', female: '여성 손님', male: '남성 손님', youth: '젊은 손님', adult: '어른 손님', senior: '삼춘', group: '단체 손님' };
 
 function Stat({ icon, label, value, good }: { icon?: string; label: string; value: string; good?: boolean }) {
@@ -55,16 +54,10 @@ export function ObjectInfoPanel({ objectId }: { objectId: string }) {
         {st.noise > 0 && <Stat label="소음" value={`${st.noise}`} good={false} />}
       </div>
 
-      {st.combos.length > 0 && (
+      {(st.corner.pop > 0 || st.corner.feePct > 0) && (
         <div style={{ ...card, padding: 6, marginBottom: 6 }}>
-          <div style={{ fontSize: 13, color: PALETTE.inkSoft }}>발동 중인 상성</div>
-          {st.combos.map((c) => (
-            <div key={c.id} style={{ fontSize: 14 }}>
-              <b style={{ color: c.strength === 'down' ? PALETTE.bad : PALETTE.ok }}>{ARROW[c.strength]}</b> {c.name}
-              {c.target !== 'all' && <span style={{ fontSize: 12, color: PALETTE.inkSoft }}> · {TARGET_LABEL[c.target]}</span>}
-              {c.hidden && <span style={{ fontSize: 12, color: PALETTE.title }}> · 숨은 상성!</span>}
-            </div>
-          ))}
+          <div style={{ fontSize: 13, color: PALETTE.inkSoft }}>가까운 코너 덕</div>
+          <div style={{ fontSize: 14 }}><b style={{ color: PALETTE.ok }}>인기 +{st.corner.pop}</b> · 요금 +{st.corner.feePct}%</div>
         </div>
       )}
       {st.sets.length > 0 && (
@@ -103,30 +96,13 @@ function nameOf(objectId: string): string {
   try { return objectDef(objectId).name; } catch { return objectId; }
 }
 
-/** 상성·세트 도감: 찾은 것은 이름, 숨은 상성은 발견 전까지 ??? */
+/** 세트·코너·레시피 도감 */
 export function CodexPanel() {
   const s = useGame();
-  const found = new Set(s.codex.combos);
   const doneSets = new Set(s.codex.sets);
   return (
     <div style={{ fontSize: 14 }}>
-      <div style={{ fontSize: 13, color: PALETTE.inkSoft, marginBottom: 4 }}>
-        상성 도감 {found.size}/{COMBOS.length} · 시설을 2칸 안에 나란히 두면 발동해요
-      </div>
-      {COMBOS.map((c) => {
-        const known = !c.hidden || found.has(c.id);
-        return (
-          <div key={c.id} style={{ display: 'flex', gap: 6, alignItems: 'baseline', opacity: known ? 1 : 0.6 }}>
-            <span style={{ width: 18, textAlign: 'center' }}>{found.has(c.id) ? <Icon name="check" size={12} /> : ' '}</span>
-            <b style={{ color: c.strength === 'down' ? PALETTE.bad : PALETTE.ok }}>{ARROW[c.strength]}</b>
-            <span>{known ? c.name : '???'}</span>
-            <span style={{ fontSize: 12, color: PALETTE.inkSoft }}>
-              {known ? `${nameOf(c.a)} + ${c.bIds.map(nameOf).join('/')}${c.bCount > 1 ? ` ×${c.bCount}` : ''}` : '숨은 상성'}
-            </span>
-          </div>
-        );
-      })}
-      <div style={{ fontSize: 13, color: PALETTE.inkSoft, margin: '8px 0 4px' }}>
+      <div style={{ fontSize: 13, color: PALETTE.inkSoft, margin: '0 0 4px' }}>
         세트 도감 {doneSets.size}/{SETS.length} · 반경 3칸 안에 다 모으면 완성, 2배·3배면 레벨 업
       </div>
       {SETS.map((x) => (
@@ -136,7 +112,7 @@ export function CodexPanel() {
           <span style={{ fontSize: 12, color: PALETTE.inkSoft }}>{x.requires.map((r) => `${nameOf(r.objectId)} ${r.count}`).join(' · ')} → {TARGET_LABEL[x.target]}</span>
         </div>
       ))}
-      <CornerCodex />{/* fun-corner 코너 도감 */}
+      <CornerCodex />
       <RecipeCodex />
       <NamedGuestCodex />
       <TitleCodex />

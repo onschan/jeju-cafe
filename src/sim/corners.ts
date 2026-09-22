@@ -4,7 +4,7 @@
  * - 판정: corners.json의 pieces[0] 종류 오브젝트를 "닻"으로 삼고, 나머지 조각이 닻 발자국에서 체비쇼프 거리 radius 안에
  *   count개 이상(서로 다른 개체) 있으면 완성. 같은 코너는 한 번만(맨 처음 만족한 닻) — 같은 시설을 더 놓아도 효과는 1회.
  * - 효과: 코너 중심(닻)에서 radius 안의 시설에 요금 +feePct%·인기 +popularity (합산 상한 CORNER_CAP),
- *   대상 태그 손님이 그 시설을 고를 확률 ×tagMult (compat.comboPickMult 훅), 손님이 코너를 찾아와 사진(photo 확률).
+ *   대상 태그 손님이 그 시설을 고를 확률 ×tagMult (compat.guestPickMult 훅), 손님이 코너를 찾아와 사진(photo 확률).
  * - 결정적: state.rng만 쓰고, 판정은 배치 서명(layoutRev.ts)으로 캐시한다.
  */
 import type { GameState, PlacedObject, ComboTarget, Guest } from './types.ts';
@@ -54,8 +54,11 @@ export function cornersWithPiece(type: string): CornerDef[] {
   return CORNERS.filter((c) => c.pieces.some((p) => p.type === type));
 }
 
-/** 시설 하나가 받는 코너 효과 합산 상한 (콤보 상한 +12/+20%보다 낮게 — 코너가 콤보를 대체하므로 자금 밴드 유지) */
-export const CORNER_CAP = { pop: 6, feePct: 8 };
+/** 시설 하나가 받는 코너 효과 합산 상한 (trim: 콤보·명당을 걷어낸 만큼 코너가 그 자리를 받는다) */
+export const CORNER_CAP = { pop: 10, feePct: 14 };
+/** 코너 만족 가산: 태그가 맞는 코너가 반경 안에 있으면 +5, 전체 대상 코너는 +3 (가장 큰 것 하나) */
+export const CORNER_SATISFACTION = 5;
+export const CORNER_SATISFACTION_ALL = 3;
 /** 손님이 코너를 찾아갈 가중치 (시설 대비 ×3) · 코너별 하루 방문 상한 */
 export const CORNER_VISIT_WEIGHT = 3;
 export const CORNER_VISITS_PER_DAY = 8;
@@ -179,7 +182,7 @@ export function cornerBonusAt(state: GameState, obj: PlacedObject): { pop: numbe
   }
   return { pop: Math.min(CORNER_CAP.pop, pop), feePct: Math.min(CORNER_CAP.feePct, feePct) };
 }
-/** 손님층이 이 시설을 고를 확률 배수: 반경 안 코너 중 태그가 맞는 것마다 ×tagMult — compat.comboPickMult 훅 */
+/** 손님층이 이 시설을 고를 확률 배수: 반경 안 코너 중 태그가 맞는 것마다 ×tagMult — compat.guestPickMult 훅 */
 export function cornerPickMult(state: GameState, obj: PlacedObject, typeId: string): number {
   const tags = guestTags(typeId);
   const foot = footOf(obj);
@@ -191,6 +194,20 @@ export function cornerPickMult(state: GameState, obj: PlacedObject, typeId: stri
     if (targetMatches(def.effect.target, tags)) m *= def.effect.tagMult;
   }
   return m;
+}
+/** 코너 만족 가산: 반경 안 완성 코너 중 태그가 맞으면 +5, 전체 대상이면 +3 (가장 큰 것 하나) — compat.cornerSatisfaction 훅 */
+export function cornerSatisfactionAt(state: GameState, obj: PlacedObject, typeId: string): number {
+  const tags = guestTags(typeId);
+  const foot = footOf(obj);
+  let best = 0;
+  for (const c of completedCorners(state)) {
+    const def = cornerDef(c.id);
+    const anchor = state.objects[c.anchorId];
+    if (!anchor || footDist(foot, footOf(anchor)) > def.radius) continue;
+    if (def.effect.target === 'all') best = Math.max(best, CORNER_SATISFACTION_ALL);
+    else if (targetMatches(def.effect.target, tags)) best = Math.max(best, CORNER_SATISFACTION);
+  }
+  return best;
 }
 
 // ---------- 손님 방문 ----------
@@ -236,7 +253,7 @@ export function visitCorner(state: GameState, g: Guest, piece: PlacedObject): vo
 }
 
 // ---------- 완성 발견 (도감·연출) ----------
-/** 배치·완공 뒤 (compat.discoverCombos에서 부른다): 처음 완성한 코너를 도감에 올리고 장면 창·팻말 반짝·메시지 줄. */
+/** 배치·완공 뒤 (compat.discoverPlacement에서 부른다): 처음 완성한 코너를 도감에 올리고 장면 창·팻말 반짝·메시지 줄. */
 export function discoverCorners(state: GameState): void {
   const codex = (state.codex.corners ??= []);
   for (const c of completedCorners(state)) {

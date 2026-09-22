@@ -6,13 +6,12 @@ import { canBuildMain, placeMain, canExpandMain, expandMain, canBuildSecondFloor
 import { canBuyParcel, buyParcel } from './parcels.ts';
 import { canSetSlot, setSlot } from './menu.ts';
 import { checkFeature, checkGoals } from './goals.ts';
-import { canAcceptChallenge, acceptChallenge } from './challenges.ts';
 import { fillStarterLayout } from './state.ts';
 import { TUTORIAL_STEPS, unlockTutorialFeatures, skipTutorialChapter, skipTutorialStep, noteTutorial, TRACKED_ACTIONS } from './tutorial.ts';
 import { canPostJob, postJob, canHire, hire, canFire, fire, canAssign, assign, canLevelUp, levelUp } from './staff.ts';
 import { canTrain, train } from './training.ts';
 import { canPromote, promote, canSetTarget, setTarget } from './promotions.ts';
-import { discoverCombos } from './compat.ts';
+import { discoverPlacement } from './compat.ts';
 import { canUseItem, useItem, canGiveGift, giveGift, canCraftGift, craftGift } from './items.ts';
 import { canGreet, greetGuest, canRecommend, recommendMenu } from './interact.ts'; // fun-guest: 인사·추천
 import { evaluateUnlocks } from './segments.ts';
@@ -23,7 +22,6 @@ import { canDevelop, develop, canAddTopping, addTopping, canRemoveTopping, remov
 import { canStartBuild, startBuild } from './build.ts';
 import { canBuyMileage, buyMileage, canBuyTicket, buyTicket, canDrawTicket, drawTicket, canSetUniform, setUniform, canUseGuestItem, useGuestItem } from './shop.ts';
 import { canOpenPopup, openPopup, canClosePopup, closePopup } from './popup.ts';
-import { canChallenge, challenge } from './rivals.ts';
 import { canUpgrade, upgrade } from './upgrade.ts';
 import { canRepair, repair } from './cleanliness.ts';
 import { canTreeUpgrade, treeUpgrade } from './tree.ts'; // fun 업그레이드 트리
@@ -41,7 +39,7 @@ export const PROTECTED_TYPES = new Set(['busstop', 'warehouse', 'spring']);
 export const ROTATABLE_TYPES = new Set(['gate', 'bench', 'counter']);
 const ACTION_LOG_CAP = 1000;
 
-const CLIENT_ONLY = new Set<Action['type']>(['setSpeed', 'dismissMonthCard', 'dismissDevelop', 'dismissDraw', 'dismissAnnouncement', 'dismissChallenge', 'dismissAlert', 'dismissTour', 'dismissOutcome', 'continueEnding']);
+const CLIENT_ONLY = new Set<Action['type']>(['setSpeed', 'dismissMonthCard', 'dismissDevelop', 'dismissDraw', 'dismissAnnouncement', 'dismissAlert', 'dismissTour', 'dismissOutcome', 'continueEnding']);
 
 function log(state: GameState, a: Action) {
   if (CLIENT_ONLY.has(a.type)) return;
@@ -95,7 +93,7 @@ function applyInner(state: GameState, a: Action): ApplyResult {
       startBuild(state, obj);
       state.money -= cost;
       rememberPlace(state, obj, cost);
-      discoverCombos(state);
+      discoverPlacement(state);
       evaluateUnlocks(state); // count 해금 (감귤나무 3그루 → 까치)
       unlockRouteFacilities(state); // 주차장(쉼 시설 6개) 같은 경로 시설은 다음 날 아침이 아니라 바로 열린다
       checkQuests(state);     // objectPlaced 부탁
@@ -116,7 +114,7 @@ function applyInner(state: GameState, a: Action): ApplyResult {
       }
       state.money -= plan.cost;
       rememberPlaceMany(state, placed, per * placed.length);
-      discoverCombos(state);
+      discoverPlacement(state);
       evaluateUnlocks(state);
       unlockRouteFacilities(state);
       checkQuests(state);
@@ -127,7 +125,7 @@ function applyInner(state: GameState, a: Action): ApplyResult {
       if (!c.ok) return { ok: false, reason: c.reason };
       const placed = autoLinkRoute(state, a.route);
       rememberPlaceMany(state, placed, c.route!.cost);
-      discoverCombos(state);
+      discoverPlacement(state);
       return { ok: true };
     }
     case 'autoConnectPath': {
@@ -136,7 +134,7 @@ function applyInner(state: GameState, a: Action): ApplyResult {
       if (!c.ok) return { ok: false, reason: c.reason };
       const placed = autoConnectPath(state);
       rememberPlaceMany(state, placed, c.route!.cost);
-      discoverCombos(state);
+      discoverPlacement(state);
       return { ok: true };
     }
     case 'remove': {
@@ -174,7 +172,7 @@ function applyInner(state: GameState, a: Action): ApplyResult {
       state.money += delta;
       rememberRemove(state, objs, delta);
       for (const o of objs) removeObject(state, o.id);
-      discoverCombos(state);
+      discoverPlacement(state);
       return { ok: true };
     }
     case 'undoLast': {
@@ -203,7 +201,7 @@ function applyInner(state: GameState, a: Action): ApplyResult {
         const m = canMoveMain(state, a.x, a.y);
         if (!m.ok) return m;
         moveMain(state, a.x, a.y);
-        discoverCombos(state);
+        discoverPlacement(state);
         return { ok: true };
       }
       const c = canDisturb(state, obj);
@@ -214,7 +212,7 @@ function applyInner(state: GameState, a: Action): ApplyResult {
       // 돈은 그대로: 치우기 환불 + 다시 짓기 비용이 상쇄된다. 방향·놓은 달은 유지.
       rememberMove(state, obj, obj.x, obj.y);
       relocateObject(state, obj, a.x, a.y);
-      discoverCombos(state);
+      discoverPlacement(state);
       return { ok: true };
     }
     case 'rotate': {
@@ -230,7 +228,7 @@ function applyInner(state: GameState, a: Action): ApplyResult {
       const d = canDisturb(state, state.objects[a.objectId]!);
       if (!d.ok) return d;
       treeUpgrade(state, a.objectId);
-      discoverCombos(state);
+      discoverPlacement(state);
       return { ok: true };
     }
     case 'upgradeObject': {
@@ -241,7 +239,7 @@ function applyInner(state: GameState, a: Action): ApplyResult {
       const d = canDisturb(state, obj);
       if (!d.ok) return d;
       upgrade(state, a.objectId);
-      discoverCombos(state);
+      discoverPlacement(state);
       return { ok: true };
     }
     case 'repairObject': {
@@ -274,7 +272,7 @@ function applyInner(state: GameState, a: Action): ApplyResult {
       const c = canBuildMain(state, a.x, a.y);
       if (!c.ok) return c;
       placeMain(state, a.x, a.y);
-      discoverCombos(state);
+      discoverPlacement(state);
       return { ok: true };
     }
     // ---- y-indoor: 본관 증축·2층·이동·실내 요소 (rooms.ts) ----
@@ -282,7 +280,7 @@ function applyInner(state: GameState, a: Action): ApplyResult {
       const c = canExpandMain(state);
       if (!c.ok) return c;
       expandMain(state);
-      discoverCombos(state);
+      discoverPlacement(state);
       return { ok: true };
     }
     case 'buildSecondFloor': {
@@ -295,14 +293,14 @@ function applyInner(state: GameState, a: Action): ApplyResult {
       const c = canMoveMain(state, a.x, a.y);
       if (!c.ok) return c;
       moveMain(state, a.x, a.y);
-      discoverCombos(state);
+      discoverPlacement(state);
       return { ok: true };
     }
     case 'undoMoveMain': {
       const c = canUndoMoveMain(state);
       if (!c.ok) return c;
       undoMoveMain(state);
-      discoverCombos(state);
+      discoverPlacement(state);
       return { ok: true };
     }
     case 'toggleFireplace': {
@@ -392,12 +390,6 @@ function applyInner(state: GameState, a: Action): ApplyResult {
     case 'dismissAlert':
       state.alerts.shift();
       return { ok: true };
-    case 'acceptChallenge': {
-      const c = canAcceptChallenge(state, a.id);
-      if (!c.ok) return c;
-      acceptChallenge(state, a.id);
-      return { ok: true };
-    }
     case 'skipTutorial': {
       // §7.2 건너뛰기(첫 단계에서만): 빈 마당을 완성 시작 상태로 채우고 튜토리얼을 끝낸다
       if (state.tutorial.step > 0) return { ok: false, reason: '이미 튜토리얼을 시작했어요' };
@@ -630,15 +622,6 @@ function applyInner(state: GameState, a: Action): ApplyResult {
       closePopup(state);
       return { ok: true };
     }
-    case 'challenge': {
-      const c = canChallenge(state, a.rivalId, a.menuId);
-      if (!c.ok) return c;
-      challenge(state, a.rivalId, a.menuId);
-      return { ok: true };
-    }
-    case 'dismissChallenge':
-      state.lastChallenge = null;
-      return { ok: true };
     case 'dismissOutcome': // staff-luck 룰렛 팝업
       state.lastOutcome = null;
       return { ok: true };

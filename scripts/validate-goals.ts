@@ -1,5 +1,5 @@
 /**
- * goals.json(108)·challenges.json(40)의 참조 id 검증 (스펙 §5 트랙 B 머지 조건).
+ * goals.json의 참조 id 검증 (스펙 §5 트랙 B 머지 조건).
  * - unlockFacility → facilities.json(+ facilities_x.json이 있으면) / objects.json id 존재
  * - unlockMenu → menus.json + extra_menus.json, spotLevel → spots.json, trainings 조건 → trainings.json(있으면), unlockRole/staffSlot → staff_roles.json,
  *   item/seed → items.json + special_items.json, unlockGuest/guestType → guests.json, guidebook → guidebooks.json, unlockRecruit → recruit_tiers.json
@@ -17,10 +17,8 @@ const ids = (p: string): Set<string> => existsSync(resolve(root, p)) ? new Set((
 type Cond = { type: string; menuId?: string; spotId?: string; guestId?: string; bookId?: string };
 type Reward = { type: string; id?: string; role?: string; kind?: string };
 type Goal = { id: string; title: string; condition: Cond; reward: Reward[] };
-type Challenge = Goal & { requires?: number };
 
 const goals = read<Goal[]>('src/data/goals.json');
-const challenges = read<Challenge[]>('src/data/challenges.json');
 const facilities = new Set([...ids('src/data/generated/v2/facilities.json'), ...ids('src/data/facilities_x.json'), ...ids('src/data/objects.json'), ...ids('src/data/generated/objects.json')]);
 const menus = new Set([...ids('src/data/menus.json'), ...ids('src/data/generated/v2/extra_menus.json')]);
 const spots = new Set([...ids('src/data/spots.json'), ...ids('src/data/generated/v2/spots.json')]);
@@ -57,7 +55,6 @@ function checkRefs(kind: string, g: Goal) {
   }
 }
 for (const g of goals) checkRefs('goal', g);
-for (const c of challenges) checkRefs('challenge', c);
 
 // 해금 선후: 조건이 쓰는 메뉴(menuSold)가 목표 보상으로 열리면 그 목표가 앞에 있어야 한다
 const menuOpener = new Map<string, number>();
@@ -70,21 +67,19 @@ goals.forEach((g, i) => {
 // 기능 선후: 액션 잠금 기능이 필요한 조건은 그 기능을 여는 목표 뒤에
 const featureOpener = new Map<string, number>();
 goals.forEach((g, i) => { for (const r of g.reward) if (r.type === 'unlockFeature') featureOpener.set(r.id!, i); });
-const NEEDS: Record<string, string> = { parcels: 'parcel', namedGuest: 'popup', rivalWins: 'challenge' };
+const NEEDS: Record<string, string> = { parcels: 'parcel', namedGuest: 'popup' };
 goals.forEach((g, i) => {
   const f = NEEDS[g.condition.type];
   if (f && (featureOpener.get(f) ?? -1) >= i && g.condition.type !== 'parcels') warn(`goal ${g.id}: 조건 '${g.condition.type}'에 필요한 기능 '${f}'를 여는 목표가 뒤에 있음`);
   if (f === 'parcel' && (featureOpener.get(f) ?? -1) >= i) warn(`goal ${g.id}: 필지 구매 기능이 뒤에서 열림`);
 });
-// 도전 requires는 목표 개수 안
-for (const c of challenges) if ((c.requires ?? 0) > goals.length) warn(`challenge ${c.id}: requires ${c.requires} > 목표 ${goals.length}`);
 // 중복 id
-for (const [name, list] of [['goal', goals], ['challenge', challenges]] as const) {
+{
   const seen = new Set<string>();
-  for (const g of list) { if (seen.has(g.id)) warn(`${name} id 중복: ${g.id}`); seen.add(g.id); }
+  for (const g of goals) { if (seen.has(g.id)) warn(`goal id 중복: ${g.id}`); seen.add(g.id); }
 }
 
 const missingFacilities = new Set(problems.filter((p) => p.includes('보상 시설')).map((p) => /'([^']+)'/.exec(p)?.[1]));
-console.log(`validate-goals: 목표 ${goals.length} · 도전 ${challenges.length} · 문제 ${problems.length}${missingFacilities.size ? ` (없는 시설 ${missingFacilities.size}종)` : ''}`);
+console.log(`validate-goals: 목표 ${goals.length} · 문제 ${problems.length}${missingFacilities.size ? ` (없는 시설 ${missingFacilities.size}종)` : ''}`);
 for (const p of problems) console.log(`  ${strict ? 'ERROR' : 'WARN'} ${p}`);
 if (strict && problems.length > 0) process.exit(1);
