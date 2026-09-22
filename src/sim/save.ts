@@ -52,6 +52,7 @@ function backfill(state: GameState): void {
   state.village ??= initVillage(); // z-ending: 정착 등급·마을제
   state.carry ??= null; // z-ending: 이월 묶음
   state.codex.titles ??= []; // staff-luck: 만난 칭호 도감
+  state.codex.corners ??= []; // fun-corner: 만든 코너 도감
   state.lastOutcome ??= null;
   state.luckSeq ??= 0;
   state.monthGreatServes ??= 0;

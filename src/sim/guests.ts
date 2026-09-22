@@ -10,6 +10,7 @@ import { effectivePopularity, youtuberMultiplier } from './promotions.ts';
 import { START_HOUR, END_HOUR, seasonOf } from './clock.ts';
 import { parcelBonusAt, parcelSpawnMult, parcelFeeMult, parcelAt } from './parcels.ts';
 import { objectStats, popularityFor, comboPickMult, comboSatisfaction, BASE_POPULARITY } from './compat.ts';
+import { cornerVisitTargets, isCornerAnchor, visitCorner, CORNER_VISIT_WEIGHT } from './corners.ts';
 import { cleanSatisfaction, CLEAN_LOW } from './cleanliness.ts';
 import { isUnlocked, unlockedTypeIds, regularFreqMult, walletOf, onHappyVisit, addSatisfaction, VISIT_BONUS_CAP, targetSpawnMult, stagedFull } from './segments.ts';
 import { rivalGuestMult } from './rivals.ts';
@@ -552,7 +553,9 @@ function order(state: GameState, g: Guest): void {
 
 /** 자리에서 일어난 손님이 들를 시설을 고른다: 좋아하는 종류이고 걸어서 닿는 것 중 하나 (40%). 없으면 null. */
 export function pickVisit(state: GameState, g: Guest, from: Pt): { obj: PlacedObject; path: Pt[] } | null {
-  const candidates = Object.values(state.objects).filter((o) => !o.build && isVisitable(o.type) && likesFacility(g.type, o.type));
+  const facilities = Object.values(state.objects).filter((o) => !o.build && isVisitable(o.type) && likesFacility(g.type, o.type));
+  const corners = cornerVisitTargets(state, g.type).filter((o) => !facilities.includes(o)); // fun-corner: 완성 코너의 닻도 시설처럼 찾아간다 (가중치 ×3, 하루 상한)
+  const candidates = [...facilities, ...corners];
   if (candidates.length === 0 || nextRandom(state) >= browseChance(state, VISIT_CHANCE)) return null; // y-indoor P1-12: 시설 3개 초과 시 둘러보기 확률 상승
   const reach = reachMap(state, from);
   const reachable: { obj: PlacedObject; target: Pt }[] = [];
@@ -564,7 +567,7 @@ export function pickVisit(state: GameState, g: Guest, from: Pt): { obj: PlacedOb
     }
     if (best) reachable.push({ obj, target: best.target });
   }
-  const pick = pickWeighted(state, reachable, (r) => comboPickMult(state, r.obj.id, g.type)); // 트랙 A: 손님층 콤보 ×1.3/개(최대 ×2)·명당 ×1.5
+  const pick = pickWeighted(state, reachable, (r) => (corners.includes(r.obj) ? CORNER_VISIT_WEIGHT : comboPickMult(state, r.obj.id, g.type))); // 트랙 A: 손님층 콤보 ×1.3/개(최대 ×2)·명당 ×1.5 · fun-corner 코너 ×3
   if (!pick) return null;
   return { obj: pick.obj, path: pathFromReach(state, reach, pick.target)! };
 }
@@ -618,7 +621,7 @@ export function updateGuests(state: GameState, dtMs: number): void {
       if (g.path.length > 0) {
         if (!moveAlong(g, walkMs)) continue;
         const obj = g.visitId ? state.objects[g.visitId] : undefined;
-        if (obj) useFacility(state, g, obj);
+        if (obj) { if (isVisitable(obj.type)) useFacility(state, g, obj); if (isCornerAnchor(state, obj.id)) visitCorner(state, g, obj); } // fun-corner: 코너 닻이면 사진(장식이면 요금 없음)
         g.approachCell = { x: Math.round(g.x), y: Math.round(g.y) };
       }
       g.timerMs -= dtMs;

@@ -25,6 +25,7 @@ import { MAX_BUILDERS } from './build.ts';
 import { fmtNum } from './format.ts';
 import { josa } from './josa.ts';
 import { activeCombos, setLevels } from './compat.ts';
+import { cornersMade } from './corners.ts';
 import { effectivePopularity } from './promotions.ts';
 import { seatsOf } from './cafe.ts';
 import { monthIndex } from './clock.ts';
@@ -191,6 +192,7 @@ export const conditionCheckers: CheckerMap = {
   siteSeats: (s, c) => n(seatObjectsOf(s).filter((o) => siteOf(s, o.x, o.y).view >= c.view).length, c.n), // 트랙 F 전망
   windlessSeats: (s, c) => n(seatObjectsOf(s).filter((o) => siteOf(s, o.x, o.y).wind === 0).length, c.n), // 트랙 F 바람 0
   combos: (s, c) => n(s.codex.combos.length, c.n),
+  corners: (s, c) => n(cornersMade(s), c.n), // fun-corner: 만든 코너 수 (도감)
   spotEffects: (s, c) => n(s.codex.spots.length, c.n), // 트랙 A 도감에 오른 명당 수
   hiddenRecipes: (s, c) => n(s.codex.recipes.length, c.n), // 도감에 오른 숨은 레시피 수
   upgraded: (s, c) => n(Object.values(s.objects).filter((o) => !o.build && levelOf(o) >= c.lv).length, c.n), // 트랙 A 증축
@@ -331,6 +333,7 @@ export function goalConditionText(c: GoalCondition): string {
     case 'siteSeats': return `전망 ${c.view} 이상 좌석 ${c.n}개`;
     case 'windlessSeats': return `바람 없는 좌석 ${c.n}개`;
     case 'combos': return `콤보 도감 ${c.n}개`;
+    case 'corners': return `코너 ${c.n}개`;
     case 'clean': return `청결 ${c.avg} 이상 ${c.days}일`;
     case 'skills': return `특기 직원 ${c.n}명`;
     case 'selfSupply': return `재료 자급률 ${c.pct}%`;

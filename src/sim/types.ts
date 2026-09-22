@@ -510,6 +510,7 @@ export type GoalCondition =
   | { type: 'siteSeats'; view: number; n: number } // 전망 view 이상 좌석 n개 (x-site)
   | { type: 'windlessSeats'; n: number }          // 바람 0 좌석 n개 (x-site)
   | { type: 'combos'; n: number }                 // 도감에 발견한 콤보 수
+  | { type: 'corners'; n: number }                // 만든 코너 수 (fun-corner, corners.ts 도감)
   | { type: 'spotEffects'; n: number }            // 명당 효과 수 (x-facility)
   | { type: 'hiddenRecipes'; n: number }          // 도감에 오른 숨은 레시피 수 (game-feel: 도전 「숨은 레시피 찾기」)
   | { type: 'upgraded'; lv: number; n: number }   // 증축 Lv 이상 시설 n개 (x-facility)
@@ -578,6 +579,7 @@ export interface GameStats {
   toursHeld: number;       // 투어 개최 성공 (x-spots가 올린다)
   seenMonth: number;       // 월말 관찰용 monthIndex (goals.ts observeMonth)
   seenAnnouncement: number; // 마지막으로 센 가이드북 발표 monthIndex
+  cornerVisits?: number;   // 손님이 코너를 찾아온 누적 횟수 (fun-corner)
 }
 /** 보상 상자에 담기는 보상 알림의 출처 */
 export type RewardSource = 'goal' | 'challenge' | 'monthly' | 'tutorial' | 'rank' | 'star' | 'unlock' | 'milestone' | 'bundle'; // rank·star = 승급 보상, unlock = 손님층 해금, milestone = 자금 목표 25/50/75%, bundle = 같은 큐의 상자 3개 이상을 하나로 묶은 것
@@ -737,7 +739,9 @@ export type FxEvent =
   | { kind: 'greet'; staffId: string; tick: number }
   | { kind: 'photo'; x: number; y: number; tick: number } // 인생샷 스킬: 손님이 사진을 찍었다
   | { kind: 'complete'; x: number; y: number; tick: number } // 시설 완공 반짝임
-  | { kind: 'scene'; title: string; text: string; tick: number }; // UI 장면 창(완공·★ 승급·랭크 업). 렌더는 무시한다
+  | { kind: 'scene'; title: string; text: string; tick: number } // UI 장면 창(완공·★ 승급·랭크 업). 렌더는 무시한다
+  | { kind: 'corner'; id: string; x: number; y: number; tick: number } // fun-corner: 코너 완성 — 팻말 자리 반짝
+  | { kind: 'flash'; x: number; y: number; guestId: string; text: string; tick: number }; // fun-corner: 손님이 코너에서 사진 (카메라 플래시 + 말풍선)
 
 // ---------- 상점·추첨·유니폼·가이드북 (2B-2 Task 6·7) ----------
 export interface MileageShopDef { id: string; name: string; price: number; description: string; itemId?: string; objectId?: string }
@@ -978,7 +982,7 @@ export interface GameState {
   effects: ActiveEffect[];                    // 이벤트 효과 (기간형)
   menuSold: Record<string, number>;           // menuId → 누적 판매 수 (부탁 진행: 수락 시점 값과의 차, 목표 menuSold)
   monthMenuSold: Record<string, number>;      // 이달 판매 수 (월말 카드 최다 판매 메뉴)
-  codex: { combos: string[]; sets: string[]; recipes: string[]; ingredientCombos: string[]; spots: string[]; titles?: string[] }; // 발동한 적 있는 상성·세트·히든 레시피·재료 콤보·명당 id (도감) + 만난 직원 칭호(staff-luck)
+  codex: { combos: string[]; sets: string[]; recipes: string[]; ingredientCombos: string[]; spots: string[]; titles?: string[]; corners?: string[] }; // 발동한 적 있는 상성·세트·히든 레시피·재료 콤보·명당 id (도감) + 만난 직원 칭호(staff-luck)
   clean: { value: number; lastGuests: number; history: number[] }; // 카페 청결 0~100 (cleanliness.ts) + 어제까지의 누적 손님 수 + 최근 30일 값(목표 판정용, 새 날마다 push)
   customMenus: MenuDef[];                     // 개발한 메뉴 (id m_custom_N). menuOf(state, id)가 기본 메뉴보다 먼저 찾는다
   menuMods: Record<string, MenuMod>;          // menuId → 토핑·레벨 (없으면 토핑 없음·레벨 1)
@@ -1000,6 +1004,7 @@ export interface GameState {
   lastChallenge: ChallengeResult | null;      // 마지막 카페 대결 (UI 팝업)
   lastOutcome?: OutcomeResult | null;         // 마지막 작업 판정 대박/중박/쪽박 (UI 룰렛 팝업, staff-luck)
   monthGreatServes?: number;                  // 이달 서빙 대박 횟수 (월말 카드 하이라이트, staff-luck)
+  cornerVisits?: { day: number; counts: Record<string, number> }; // fun-corner: 오늘 코너별 손님 방문 수 (하루 상한, 날이 바뀌면 corners.ts가 초기화)
   undo: UndoEntry | null;                     // 직전 배치·철거·이동 되돌리기 스냅샷 (undo.ts)
   main: MainState;                            // 본관 증축·2층·이동·분위기 (rooms.ts, y-indoor)
   guests: Guest[];

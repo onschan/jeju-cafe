@@ -610,7 +610,7 @@ export const COMBO_META = {
   down: (compatMetaJson as { down?: { pop: number; feePct: number } }).down ?? { pop: -3, feePct: -5 },
   segmentPopularity: (compatMetaJson as { segmentPopularity?: number }).segmentPopularity ?? 3,
 };
-/** 상성 60 (combos.json, 스펙 §3.1). v1 compat.json 25종은 v2 표로 흡수됐다. */
+/** 상성 12 (combos.json, 스펙 §3.1 → fun-reset §3: 코너와 겹치거나 같은 시설 반복인 것은 코너 24종으로 옮겼다). */
 export const COMBOS: ComboDef[] = (combosJson as RawCombo[]).map(adaptCombo);
 /** 명당 12 (spot_effects.json, 스펙 §3.1): 중심 시설 1개 + 반경 2칸 안의 시설 조합 */
 export const SPOT_EFFECTS: SpotEffectDef[] = (spotEffectsJson as { id: string; name: string; center: string; requires: { objectId: string; count: number }[]; target: string; radius: number; guestMult: number; popularity: number; tickets: number; line: string }[]).map((r) => ({
