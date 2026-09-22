@@ -12,6 +12,7 @@ import cornersJson from '../data/corners.json' with { type: 'json' };
 import { guestTags, targetMatches } from '../data/index.ts';
 import { sizeOf } from './grid.ts';
 import { parcelAt } from './parcels.ts';
+import { walkableNeighborsOf } from './path.ts';
 import { layoutCached } from './layoutRev.ts';
 import { monthIndex, DAYS_PER_MONTH } from './clock.ts';
 import { pushNotice } from './staff.ts';
@@ -74,15 +75,15 @@ export function footDist(a: Foot, b: Foot): number {
   return Math.max(dx, dy);
 }
 
-/** 코너 조각이 될 수 있는 오브젝트: 공사가 끝났고 내 필지 위 (안 산 필지의 옛 밭담·감귤밭은 안 센다) */
-function isPiece(state: GameState, o: PlacedObject): boolean {
-  return !o.build && !!parcelAt(state, o.x, o.y)?.owned;
+/** 코너 조각이 될 수 있는 오브젝트: 공사가 끝났고 내 필지 위 (안 산 필지의 옛 밭담·감귤밭은 안 센다). building=true면 공사 중도 센다(진행 표시용). */
+function isPiece(state: GameState, o: PlacedObject, building = false): boolean {
+  return (building || !o.build) && !!parcelAt(state, o.x, o.y)?.owned;
 }
 /** 조각 후보를 종류별로 (판정 한 번당 한 번 만든다) */
-function byType(state: GameState, ignoreId?: string, extra?: PlacedObject): Map<string, PlacedObject[]> {
+function byType(state: GameState, ignoreId?: string, extra?: PlacedObject, building = false): Map<string, PlacedObject[]> {
   const by = new Map<string, PlacedObject[]>();
   const add = (o: PlacedObject) => { const arr = by.get(o.type); if (arr) arr.push(o); else by.set(o.type, [o]); };
-  for (const o of Object.values(state.objects)) if (o.id !== ignoreId && isPiece(state, o)) add(o);
+  for (const o of Object.values(state.objects)) if (o.id !== ignoreId && isPiece(state, o, building)) add(o);
   if (extra) add(extra);
   return by;
 }
@@ -125,13 +126,14 @@ export function completedCorners(state: GameState): CompletedCorner[] {
     return out;
   });
 }
-export function isCornerAnchor(state: GameState, objId: string): CompletedCorner | null {
-  return completedCorners(state).find((c) => c.anchorId === objId) ?? null;
+/** 이 오브젝트가 조각인 완성 코너 (없으면 null) */
+export function cornerOfPiece(state: GameState, objId: string): CompletedCorner | null {
+  return completedCorners(state).find((c) => c.pieceIds.includes(objId)) ?? null;
 }
 
-/** 코너 진행 상황 전부 (짓기 탭·도감). 미완성은 조각을 가장 많이 모은 닻 기준. */
+/** 코너 진행 상황 전부 (짓기 탭·도감). 미완성은 조각을 가장 많이 모은 닻 기준. 공사 중인 조각도 "있는 것"으로 센다(짓는 중이면 done=false·missing=[]). */
 export function cornerProgress(state: GameState): CornerProgress[] {
-  const by = byType(state);
+  const by = byType(state, undefined, undefined, true);
   const done = new Map(completedCorners(state).map((c) => [c.id, c]));
   return CORNERS.map((def) => {
     const d = done.get(def.id);
@@ -150,11 +152,11 @@ export function cornerProgress(state: GameState): CornerProgress[] {
   });
 }
 
-/** 이 종류를 (x, y)에 놓으면 완성되는 코너 (짓기 고스트 배지 "이걸 놓으면 꽃길 완성"). 이미 완성된 코너는 뺀다. */
+/** 이 종류를 (x, y)에 놓으면 완성되는 코너 (짓기 고스트 배지 "이걸 놓으면 꽃길 완성"). 공사 중인 조각도 센다(완공되면 완성). 이미 완성된 코너는 뺀다. */
 export function cornerIfPlaced(state: GameState, type: string, x: number, y: number, ignoreId?: string): CornerDef | null {
   const done = new Set(completedCorners(state).map((c) => c.id));
   const ghost: PlacedObject = { id: '__ghost', type, x, y, placedMonth: 0 };
-  const by = byType(state, ignoreId, ghost);
+  const by = byType(state, ignoreId, ghost, true);
   for (const def of cornersWithPiece(type)) {
     if (done.has(def.id)) continue;
     const c = completedOf(def, by);
@@ -200,7 +202,7 @@ function visitsToday(state: GameState): Record<string, number> {
   if (!state.cornerVisits || state.cornerVisits.day !== day) state.cornerVisits = { day, counts: {} };
   return state.cornerVisits.counts;
 }
-/** 오늘 아직 상한이 안 찬 코너의 닻 오브젝트 (guests.pickVisit 후보에 섞는다, 가중치 ×3) */
+/** 오늘 아직 상한이 안 찬 코너마다 손님이 찾아갈 조각 하나 — 걷는 칸(올렛길·마을 길)이 옆에 붙은 첫 조각 (guests.pickVisit 후보에 섞는다, 가중치 ×3). 붙은 길이 없는 코너는 못 간다. */
 export function cornerVisitTargets(state: GameState, typeId: string): PlacedObject[] {
   const done = completedCorners(state);
   if (done.length === 0) return [];
@@ -211,21 +213,26 @@ export function cornerVisitTargets(state: GameState, typeId: string): PlacedObje
     if ((counts[c.id] ?? 0) >= CORNER_VISITS_PER_DAY) continue;
     const def = cornerDef(c.id);
     if (def.effect.target !== 'all' && !targetMatches(def.effect.target, tags)) continue;
-    const anchor = state.objects[c.anchorId];
-    if (anchor) out.push(anchor);
+    const piece = c.pieceIds.map((id) => state.objects[id]).find((o) => o && reachableSide(state, o));
+    if (piece) out.push(piece);
   }
   return out;
 }
-/** 손님이 코너에 도착: 방문 수 +1, photo 확률로 카메라 플래시 fx + 말풍선. 요금은 없다(장식). */
-export function visitCorner(state: GameState, g: Guest, anchor: PlacedObject): void {
-  const c = isCornerAnchor(state, anchor.id);
+function reachableSide(state: GameState, o: PlacedObject): boolean {
+  const { w, h } = sizeOf(o);
+  for (let dx = 0; dx < w; dx++) for (let dy = 0; dy < h; dy++) if (walkableNeighborsOf(state, o.x + dx, o.y + dy).length > 0) return true;
+  return false;
+}
+/** 손님이 코너 조각에 도착: 방문 수 +1, photo 확률로 카메라 플래시 fx + 말풍선. 요금은 없다(장식). */
+export function visitCorner(state: GameState, g: Guest, piece: PlacedObject): void {
+  const c = cornerOfPiece(state, piece.id);
   if (!c) return;
   const def = cornerDef(c.id);
   const counts = visitsToday(state);
   counts[c.id] = (counts[c.id] ?? 0) + 1;
   state.stats.cornerVisits = (state.stats.cornerVisits ?? 0) + 1;
   g.say = def.guestLine;
-  if (nextRandom(state) < def.effect.photo) pushFx(state, { kind: 'flash', x: anchor.x, y: anchor.y, guestId: g.id, text: def.guestLine, tick: state.tick });
+  if (nextRandom(state) < def.effect.photo) pushFx(state, { kind: 'flash', x: piece.x, y: piece.y, guestId: g.id, text: def.guestLine, tick: state.tick });
 }
 
 // ---------- 완성 발견 (도감·연출) ----------

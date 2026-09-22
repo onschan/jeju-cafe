@@ -568,7 +568,7 @@ export class GameView {
       l.anchor.set(0.5, 1);
       const bg = new Graphics().roundRect(-l.width / 2 - 5, -l.height - 3, l.width + 10, l.height + 4, 3).fill({ color: 0x6b3d1e, alpha: 0.92 }).stroke({ color: 0xf6e7c6, width: 1 });
       badge.addChild(bg, l);
-      badge.position.set(c.sx, c.sy - r * (ISO_H / 2) * Math.SQRT2 - 6);
+      badge.position.set(c.sx, c.sy - r * (ISO_H / 2) * Math.SQRT2 - 64); // 고스트 이름·입지 배지(전망·바람) 두 줄 위로
       badge.zIndex = 1e6 - 1;
       this.overlay.addChild(badge);
       this.rangeBadge = badge;

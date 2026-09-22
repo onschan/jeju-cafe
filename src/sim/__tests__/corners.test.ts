@@ -206,7 +206,10 @@ describe('코너 완성 연출·도감·손님', () => {
   it('손님 방문: 완성 코너의 닻이 방문 후보에 들고(태그 맞는 손님만), 하루 상한이 차면 빠진다. 도착하면 말풍선·사진 fx·누적 수', () => {
     const s = bareState(1);
     const bed = flowerPath(s);
-    expect(cornerVisitTargets(s, FEMALE).map((o) => o.id)).toEqual([bed.id]);
+    expect(cornerVisitTargets(s, FEMALE)).toEqual([]); // 붙은 길이 없으면 못 간다
+    place(s, 'path', 0, 2); // 가로등(0,1) 아래 올렛길 → 가로등 조각으로 찾아간다
+    const light = Object.values(s.objects).find((o) => o.type === 'streetlight')!;
+    expect(cornerVisitTargets(s, FEMALE).map((o) => o.id)).toEqual([light.id]);
     expect(cornerVisitTargets(s, MALE)).toEqual([]);
     const g = guestOf(s, FEMALE, bed.x + 2, bed.y + 2);
     let photos = 0;
@@ -222,7 +225,7 @@ describe('코너 완성 연출·도감·손님', () => {
     expect(cornerVisitTargets(s, FEMALE)).toEqual([]); // 오늘 상한
     s.guests = [];
     tick(s, DAY_MS);
-    expect(cornerVisitTargets(s, FEMALE).map((o) => o.id)).toEqual([bed.id]); // 새 날
+    expect(cornerVisitTargets(s, FEMALE).map((o) => o.id)).toEqual([light.id]); // 새 날
   });
   it('pickVisit: 코너 닻이 시설처럼 뽑힌다 (시설이 없어도), 닻은 걷는 칸이 아니라 옆 칸으로 간다', () => {
     const s = bareState(1);

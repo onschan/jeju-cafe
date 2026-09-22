@@ -10,7 +10,7 @@ import { effectivePopularity, youtuberMultiplier } from './promotions.ts';
 import { START_HOUR, END_HOUR, seasonOf } from './clock.ts';
 import { parcelBonusAt, parcelSpawnMult, parcelFeeMult, parcelAt } from './parcels.ts';
 import { objectStats, popularityFor, comboPickMult, comboSatisfaction, BASE_POPULARITY } from './compat.ts';
-import { cornerVisitTargets, isCornerAnchor, visitCorner, CORNER_VISIT_WEIGHT } from './corners.ts';
+import { cornerVisitTargets, cornerOfPiece, visitCorner, CORNER_VISIT_WEIGHT } from './corners.ts';
 import { cleanSatisfaction, CLEAN_LOW } from './cleanliness.ts';
 import { isUnlocked, unlockedTypeIds, regularFreqMult, walletOf, onHappyVisit, addSatisfaction, VISIT_BONUS_CAP, targetSpawnMult, stagedFull } from './segments.ts';
 import { rivalGuestMult } from './rivals.ts';
@@ -621,7 +621,7 @@ export function updateGuests(state: GameState, dtMs: number): void {
       if (g.path.length > 0) {
         if (!moveAlong(g, walkMs)) continue;
         const obj = g.visitId ? state.objects[g.visitId] : undefined;
-        if (obj) { if (isVisitable(obj.type)) useFacility(state, g, obj); if (isCornerAnchor(state, obj.id)) visitCorner(state, g, obj); } // fun-corner: 코너 닻이면 사진(장식이면 요금 없음)
+        if (obj) { if (isVisitable(obj.type)) useFacility(state, g, obj); if (cornerOfPiece(state, obj.id)) visitCorner(state, g, obj); } // fun-corner: 코너 조각이면 사진(장식이면 요금 없음)
         g.approachCell = { x: Math.round(g.x), y: Math.round(g.y) };
       }
       g.timerMs -= dtMs;

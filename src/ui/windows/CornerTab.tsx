@@ -21,6 +21,7 @@ export function cornerEffectText(p: CornerProgress): string {
 /** 미완성 한 줄: "벤치 하나만 더" / "돌담 2개, 올렛길 하나 더" */
 export function cornerMissingText(p: CornerProgress): string {
   if (p.done) return '완성! 손님이 사진 찍으러 와요';
+  if (p.missing.length === 0) return '짓는 중 — 완공되면 완성';
   const parts = p.missing.map((m) => `${objectDef(m.type).name} ${m.count === 1 ? '하나' : `${m.count}개`}`);
   return parts.length === 1 ? `${parts[0]}만 더` : `${parts.join(', ')} 더`;
 }
