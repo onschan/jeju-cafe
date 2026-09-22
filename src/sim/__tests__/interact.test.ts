@@ -11,6 +11,7 @@ import { guestSay } from '../say.ts';
 import { hasIdToken } from '../../data/labels.ts';
 import { createInitialState } from '../state.ts';
 import { runBot } from '../bot.ts';
+import * as botApi from '../bot.ts';
 import { serialize, deserialize } from '../save.ts';
 import type { Guest } from '../types.ts';
 
@@ -319,12 +320,18 @@ describe('결정성·저장·봇', () => {
     expect(back.requests).toEqual(u.requests);
     expect(back.guests[0]!.name).toBe(u.guests[0]!.name);
   });
-  test('봇 1년: 인사·요청·단골이 자금을 흔들지 않는다 (밴드 ≤ 1,000만) 그리고 상호작용이 실제로 일어난다', () => {
-    const rows = runBot(1, 1);
+  test('봇 반년: 인사·요청·단골이 자금을 흔들지 않고(파산 없음) 요청·게이지가 실제로 쌓인다 (1년차 밴드는 headless로)', () => {
+    const rows = runBot(0.5, 1);
     const last = rows.at(-1)!;
     expect(last.money).toBeLessThanOrEqual(10_000_000);
     expect(last.minMoney).toBeGreaterThan(-5_000_000);
-  });
+    const s = createInitialState(1);
+    const { botDay, newBotCursor } = botApi;
+    const cur = newBotCursor();
+    for (let d = 0; d < 60; d++) botDay(s, cur);
+    expect((s.requests ?? []).length).toBeGreaterThan(0);
+    expect(Object.keys(s.regularsGauge ?? {}).length).toBeGreaterThan(0);
+  }, 60_000);
   test('옛 저장(필드 없음)도 그대로 돈다', () => {
     const s = cafe();
     delete s.requests; delete s.regularsGauge; delete s.regulars; delete s.greetDay;

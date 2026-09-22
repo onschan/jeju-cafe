@@ -13,7 +13,9 @@ import { label as labelOf } from '../data/labels.ts';
 import { objectDef, guestTypeDef, namedGuestDef, questDef, roleDef, skillDef, trainingDef, ROLES, GIFTS } from '../data/index.ts';
 import { staffParts } from '../render/character';
 import { TitleRibbon } from './TitleBadge'; // staff-luck 칭호 리본
-import { Portrait, guestPortraitParts, namedPortraitParts, guestName } from './GuestPopup';
+import { Portrait, namedPortraitParts, guestName } from './GuestPopup';
+import { guestParts } from '../render/character';
+import { canGreet, canRecommend, recommendFits, regularHearts, regularById, requestDef, requestHint, regularFace, GAUGE_MAX, AFFINITY_MAX, availableMenus, menuOf } from '../sim/index.ts'; // fun-guest
 import { Bar, EnergyBar } from './Bars';
 import { Confirm, Popup } from './Popup';
 import { Icon } from './Icon';
@@ -117,9 +119,21 @@ function Row({ children }: { children: ReactNode }) {
   return <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>{children}</div>;
 }
 
+/** 단골 게이지 하트 5칸 (fun-guest §4): 찬 칸은 진하게, 빈 칸은 흐리게 */
+export function Hearts({ n, max = GAUGE_MAX }: { n: number; max?: number }) {
+  return (
+    <span data-testid="hearts" aria-label={`단골 게이지 ${n}/${max}`} style={{ display: 'inline-flex', gap: 2, verticalAlign: 'middle' }}>
+      {Array.from({ length: max }, (_, i) => <span key={i} style={{ opacity: i < n ? 1 : 0.25, lineHeight: 0 }}><Icon name="heart" size={14} /></span>)}
+    </span>
+  );
+}
+
+/** 손님 카드 (fun-guest §4): 큰 얼굴 96px + 이름, 선택지 3개(인사·추천·선물)를 누르면 바로 말풍선·표정·하트/땀. 요청 줄 + 들어주기 힌트, 단골 하트 5칸. */
 function GuestCard({ s, id, a }: { s: GameState; id: string; a: CardActions }) {
   const [picking, setPicking] = useState(false);
-  useTutorialNote('guestCard'); // 튜토리얼 10단계 「손님 카드 보기」
+  const [recommending, setRecommending] = useState(false);
+  const [expr, setExpr] = useState<'normal' | 'happy' | 'surprised'>('normal');
+  useTutorialNote('guestCard'); // 튜토리얼 「손님 카드 보기」
   const g = s.guests.find((x) => x.id === id);
   if (!g) return <div style={small}>손님이 떠났어요</div>;
   const def = guestTypeDef(g.type);
@@ -130,30 +144,76 @@ function GuestCard({ s, id, a }: { s: GameState; id: string; a: CardActions }) {
   const wants = def.wants.slice(0, 2).map((w) => WANT_LABEL[w] ?? w);
   const gifts = GIFTS.filter((x) => (s.inventory[x.id] ?? 0) > 0);
   const giftOk = gifts.length > 0 && !giftedToday(s) && g.phase !== 'leaving';
+  const greet = canGreet(s, g.id);
+  const recommend = canRecommend(s, g.id);
+  const menus = availableMenus(s).filter((m) => m !== g.menuId);
+  const regular = g.regularId ? regularById(s, g.regularId) : null;
+  const request = g.requestId ? requestDef(g.requestId) : null;
+  const face = g.faceSeed !== undefined ? regularFace(g.faceSeed) : guestFace(g.type);
+  const parts = nd ? namedPortraitParts(nd.id) : guestParts(face, def.tags, def.wants);
+  const portraitExpr = expr !== 'normal' ? expr : g.mood === 'happy' ? 'happy' : 'normal';
+  const pressGreet = () => { if (dispatch({ type: 'greetGuest', guestId: g.id }).ok) setExpr('happy'); };
+  const pressRecommend = (menuId: string) => {
+    setRecommending(false);
+    const fits = recommendFits(s, g, menuId);
+    if (dispatch({ type: 'recommendMenu', guestId: g.id, menuId }).ok) setExpr(fits ? 'happy' : 'surprised');
+  };
+  const tri: CSSProperties = { flex: 1, minWidth: 0, margin: 0, padding: '0 4px', fontSize: 15, minHeight: 44 };
   return (
     <div data-testid="card-guest">
       <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-        {nd ? <Portrait parts={namedPortraitParts(nd.id)} face={namedGuestFace(nd)} size={64} /> : <Portrait parts={guestPortraitParts(g.type)} face={guestFace(g.type)} size={64} />}
+        <Portrait parts={parts} face={nd ? namedGuestFace(nd) : face} size={96} expr={portraitExpr} />
         <div style={{ flex: 1, minWidth: 0, fontSize: 14, lineHeight: 1.5 }}>
-          <div><b>{guestName(g)}</b>{quest && <span style={{ color: PALETTE.bad, fontWeight: 700 }}> !</span>}</div>
-          <div style={small}>예산 {def.wallet > 0 ? wonText(walletOf(s, g.type)) : '없음'} · {state}</div>
-          <div style={{ whiteSpace: 'nowrap' }}>만족 <Bar value={st?.satisfaction ?? 0} max={100} width={80} /> {st?.satisfaction ?? 0}{st?.regular === 'vip' ? ' · VIP' : st?.regular === 'regular' ? ' · 단골' : ''}</div>
-          {wants.length > 0 && <div style={small}>좋아하는 것: {wants.join(' · ')}</div>}
+          <div style={{ fontSize: 17, fontWeight: 700 }} data-testid="guest-name">{nd ? nd.name : (g.name ?? guestName(g))}{regular && <span style={{ color: PALETTE.btnOn }}> ♥ 단골</span>}{quest && <span style={{ color: PALETTE.bad }}> !</span>}</div>
+          <div style={small}>{nd ? nd.job : def.name} · {state}</div>
+          <div style={small}>예산 {nd ? wonText(nd.budget) : def.wallet > 0 ? wonText(walletOf(s, g.type)) : '없음'}</div>
+          {nd
+            ? <div style={{ whiteSpace: 'nowrap' }}>호감 <Bar value={s.namedGuests[nd.id]?.affinity ?? 0} max={AFFINITY_MAX} width={70} /> {s.namedGuests[nd.id]?.affinity ?? 0}</div>
+            : <div style={{ whiteSpace: 'nowrap' }}>단골 <Hearts n={regularHearts(s, g.type)} /> <span style={small}>만족 {st?.satisfaction ?? 0}{st?.regular === 'vip' ? ' · VIP' : ''}</span></div>}
+          {wants.length > 0 && !nd && <div style={small}>좋아하는 것: {wants.join(' · ')}</div>}
         </div>
       </div>
+      {g.say && <div data-testid="guest-say" style={{ marginTop: 6, fontStyle: 'italic', color: PALETTE.inkSoft, fontSize: 14 }}>“{g.say}”</div>}
+      {request && (
+        <div data-testid="guest-request" style={{ marginTop: 6, fontSize: 14, lineHeight: 1.5 }}>
+          <div><b>요청</b> {request.text}</div>
+          <div style={small}><Icon name="bulb" size={14} /> {requestHint(request)}</div>
+        </div>
+      )}
+      <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
+        <button data-tut="greet" data-testid="btn-greet" style={greet.ok ? tri : { ...tri, ...btnOff }} disabled={!greet.ok} onClick={pressGreet} aria-label="인사"
+          title={greet.reason}><Icon name="wave" /> 인사{g.greeted ? ' ✓' : ''}</button>
+        <button data-testid="btn-recommend" style={recommend.ok && menus.length > 0 ? tri : { ...tri, ...btnOff }} disabled={!recommend.ok || menus.length === 0} onClick={() => setRecommending(true)} aria-label="추천"
+          title={recommend.reason}><Icon name="menu" /> 추천{g.recommended ? ' ✓' : ''}</button>
+        <button data-tut="gift" data-testid="btn-gift" style={giftOk ? tri : { ...tri, ...btnOff }} disabled={!giftOk} onClick={() => setPicking(true)} aria-label="선물하기"
+          title={gifts.length === 0 ? '선물이 없어요' : giftedToday(s) ? '선물은 하루 한 번' : undefined}><Icon name="gift" /> 선물</button>
+      </div>
+      {!greet.ok && greet.reason && <div style={{ ...small, marginTop: 4 }}>{greet.reason}</div>}
       <Row>
         <button style={btn} onClick={() => a.onGuestDetail(g.id)}>자세히</button>
         {quest && <button style={canAcceptQuest(s, quest).ok ? btnOn : btnOff} disabled={!canAcceptQuest(s, quest).ok} onClick={() => a.onQuest(quest)}>! 부탁 듣기</button>}
-        {giftCount(s) > 0 && <button data-tut="gift" style={giftOk ? btn : btnOff} disabled={!giftOk} onClick={() => setPicking(true)} aria-label="선물하기"><Icon name="gift" /> 선물하기{giftedToday(s) ? ' (내일)' : ''}</button>}
       </Row>
+      {recommending && (
+        <Popup title={`${g.name ?? guestName(g)}에게 추천`} onBackdrop={() => setRecommending(false)} buttons={<button style={brownBtn} onClick={() => setRecommending(false)}>닫기</button>}>
+          <div style={{ ...small, marginBottom: 6 }}>취향에 맞으면 주문을 바꾸고 팁을 더 내요</div>
+          {menus.map((m) => {
+            const fits = recommendFits(s, g, m);
+            return (
+              <button key={m} style={{ ...brownBtn, width: '100%', marginRight: 0, textAlign: 'left' }} data-testid={`recommend-${m}`} onClick={() => pressRecommend(m)}>
+                {menuOf(s, m).name}{fits ? ' ★ 좋아할 듯' : ''}
+              </button>
+            );
+          })}
+        </Popup>
+      )}
       {picking && (
-        <Popup title={`${guestName(g)}에게 선물`} onBackdrop={() => setPicking(false)} buttons={<button style={brownBtn} onClick={() => setPicking(false)}>닫기</button>}>
+        <Popup title={`${g.name ?? guestName(g)}에게 선물`} onBackdrop={() => setPicking(false)} buttons={<button style={brownBtn} onClick={() => setPicking(false)}>닫기</button>}>
           {gifts.map((x) => {
             const can = canGiveGift(s, g.id, x.id);
             const fit = giftFits(x, g.type);
             return (
               <button key={x.id} style={{ ...(can.ok ? brownBtn : brownBtnOff), width: '100%', marginRight: 0, textAlign: 'left' }} disabled={!can.ok} data-testid={`gift-${x.id}`}
-                onClick={() => { setPicking(false); dispatch({ type: 'giveGift', guestId: g.id, itemId: x.id }); }}>
+                onClick={() => { setPicking(false); if (dispatch({ type: 'giveGift', guestId: g.id, itemId: x.id }).ok) setExpr('happy'); }}>
                 {x.name} ×{s.inventory[x.id]}{fit ? ' ★ 잘 맞아요 (×2)' : ''}
               </button>
             );

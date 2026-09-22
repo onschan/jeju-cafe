@@ -3,7 +3,7 @@ import { Icon } from './Icon';
 import { useTutorialNote } from './tutorialDialogue';
 import { wonText } from '../data/labels.ts';
 import { useGame } from './store';
-import { guestFace, walletOf, canAcceptQuest, namedGuestFace, AFFINITY_MAX, type Guest, type GuestTypeState } from '../sim/index.ts';
+import { guestFace, walletOf, canAcceptQuest, namedGuestFace, regularFace, AFFINITY_MAX, type Guest, type GuestTypeState } from '../sim/index.ts';
 import { guestTypeDef, questDef, namedGuestDef, regionDef, NAMES } from '../data/index.ts';
 import { guestParts, staffParts, namedGuestParts, type CharacterParts } from '../render/character';
 import { drawPortrait, PORTRAIT_SIZE, PORTRAIT_DISPLAY, type PortraitExpr } from '../render/portrait';
@@ -48,6 +48,7 @@ export function staffPortraitParts(face: FaceParts, role: RoleId | null): Charac
 /** 손님 초상 파츠·얼굴·지갑 — 단골★(namedId)은 NamedGuestDef에서 */
 export function guestPortraitOf(g: Guest): { parts: CharacterParts; face: FaceParts } {
   if (g.namedId) return { parts: namedPortraitParts(g.namedId), face: namedGuestFace(namedGuestDef(g.namedId)) };
+  if (g.faceSeed !== undefined) { const def = guestTypeDef(g.type); const face = regularFace(g.faceSeed); return { parts: guestParts(face, def.tags, def.wants), face }; } // fun-guest: 단골 고정 얼굴
   return { parts: guestPortraitParts(g.type), face: guestFace(g.type) };
 }
 export function guestWallet(s: Parameters<typeof walletOf>[0], g: Guest): number {
@@ -57,6 +58,7 @@ export function guestWallet(s: Parameters<typeof walletOf>[0], g: Guest): number
 /** 손님 이름: 이름 풀(names.json)에서 id 번호로 고른 이름 + 타입명 — "동네 삼춘 2153호" 대신 "김민준 (동네 삼춘)". 결정적(id는 세이브에 있다). */
 export function guestName(g: Guest): string {
   if (g.namedId) { const d = namedGuestDef(g.namedId); return `${d.name} (${d.job})`; }
+  if (g.name) return `${g.name} (${guestTypeDef(g.type).name})`; // fun-guest: 스폰 때 받은 성+이름 (단골은 고정 이름)
   const n = Number(g.id.replace(/^g/, '')) || 0;
   const name = NAMES.names[n % NAMES.names.length] ?? '손님';
   return `${name} (${guestTypeDef(g.type).name})`;
@@ -111,9 +113,9 @@ export function GuestPopup({ guestId, onClose, onQuest }: { guestId: string; onC
         <button style={brownBtn} onClick={onClose}>닫기</button>
       </>}>
       <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-        <Portrait parts={guestPortraitParts(g.type)} face={guestFace(g.type)} />
+        <Portrait {...guestPortraitOf(g)} />
         <div style={{ flex: 1, fontSize: 14, lineHeight: 1.6 }}>
-          <div><b>{def.name}</b>{quest && <span style={{ color: PALETTE.bad, fontWeight: 700 }}> !</span>} <span style={{ fontSize: 12, color: PALETTE.inkSoft }}>{def.tags.age === 'senior' ? '삼춘' : def.tags.age === 'youth' ? '청년' : def.tags.age === 'adult' ? '어른' : ''}{def.tags.group ? ' · 단체' : ''}</span></div>
+          <div><b>{g.name ?? def.name}</b>{g.name && <span style={{ fontSize: 12, color: PALETTE.inkSoft }}> {def.name}</span>}{quest && <span style={{ color: PALETTE.bad, fontWeight: 700 }}> !</span>} <span style={{ fontSize: 12, color: PALETTE.inkSoft }}>{def.tags.age === 'senior' ? '삼춘' : def.tags.age === 'youth' ? '청년' : def.tags.age === 'adult' ? '어른' : ''}{def.tags.group ? ' · 단체' : ''}</span></div>
           <div>기분: {g.mood && <><Icon name={MOOD_ICON[g.mood] ?? 'mood_meh'} size={14} /> </>}{mood}{g.moodReason && g.mood !== 'happy' ? ` (${REASON_TEXT[g.moodReason]})` : ''}</div>
           <div>지갑: {def.wallet > 0 ? wonText(walletOf(s, g.type)) : '없음'}</div>
           <div style={{ whiteSpace: 'nowrap' }}>만족 <Bar value={st?.satisfaction ?? 0} max={100} width={90} /> {st?.satisfaction ?? 0}{st?.regular === 'vip' ? ' · VIP' : st?.regular === 'regular' ? ' · 단골' : ''}</div>
