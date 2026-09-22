@@ -88,7 +88,7 @@ const ACTION_SFX: Record<Action['type'], SfxName> = {
   place: 'place', placeLine: 'place', autoConnectPath: 'place', autoLinkRoute: 'place', remove: 'remove', skipTutorialStep: 'tap',
   setSlot: 'tap', setSpeed: 'tap', dismissAlert: 'tap', dismissMonthCard: 'tap',
   postJob: 'tap', hire: 'tap', fire: 'tap', assign: 'tap', levelUp: 'tap', train: 'unlock', promote: 'tap', setTarget: 'tap',
-  move: 'place', rotate: 'tap', demolishMany: 'remove', undoLast: 'tap', renameObject: 'tap', setTargets: 'tap', upgradeObject: 'unlock', repairObject: 'place', buyParcel: 'unlock', useItem: 'unlock', renameCafe: 'tap', expand: 'unlock', setCosmetic: 'tap', praise: 'happy',
+  move: 'place', rotate: 'tap', demolishMany: 'remove', undoLast: 'tap', renameObject: 'tap', setTargets: 'tap', upgradeObject: 'unlock', treeUpgrade: 'unlock', repairObject: 'place', buyParcel: 'unlock', useItem: 'unlock', renameCafe: 'tap', expand: 'unlock', setCosmetic: 'tap', praise: 'happy',
   acceptQuest: 'tap', respondEvent: 'tap', investSpot: 'unlock', hostTour: 'tap', dismissTour: 'tap', setTourBus: 'tap', giveGift: 'tap', craftGift: 'unlock',
   develop: 'unlock', dismissDevelop: 'tap', addTopping: 'tap', removeTopping: 'tap', levelUpMenu: 'unlock',
   buyMileage: 'coin', buyTicket: 'coin', drawTicket: 'tap', dismissDraw: 'tap', setUniform: 'tap', useGuestItem: 'unlock', dismissAnnouncement: 'tap',

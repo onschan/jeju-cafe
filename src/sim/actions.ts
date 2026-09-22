@@ -26,6 +26,7 @@ import { canOpenPopup, openPopup, canClosePopup, closePopup } from './popup.ts';
 import { canChallenge, challenge } from './rivals.ts';
 import { canUpgrade, upgrade } from './upgrade.ts';
 import { canRepair, repair } from './cleanliness.ts';
+import { canTreeUpgrade, treeUpgrade } from './tree.ts'; // fun 업그레이드 트리
 import { canSetRouteContract, setRouteContract, canExpandParking, parkingExpandCost, PARKING_EXPAND_TO, unlockRouteFacilities, installRouteForParcel, canAutoLinkRoute, autoLinkRoute } from './entry.ts';
 import { objectStats } from './compat.ts';
 import { rememberPlace, rememberPlaceMany, rememberRemove, rememberMove, canUndo, undoLast } from './undo.ts';
@@ -221,6 +222,15 @@ function applyInner(state: GameState, a: Action): ApplyResult {
       if (!obj) return { ok: false, reason: '없는 오브젝트' };
       if (!ROTATABLE_TYPES.has(obj.type)) return { ok: false, reason: '돌릴 수 없는 거예요' };
       obj.rot = ((a.rot % 4) + 4) % 4;
+      return { ok: true };
+    }
+    case 'treeUpgrade': { // fun: 업그레이드 트리 (같은 원점에서 종류 교체, 차액)
+      const c = canTreeUpgrade(state, a.objectId);
+      if (!c.ok) return { ok: false, reason: c.reason };
+      const d = canDisturb(state, state.objects[a.objectId]!);
+      if (!d.ok) return d;
+      treeUpgrade(state, a.objectId);
+      discoverCombos(state);
       return { ok: true };
     }
     case 'upgradeObject': {

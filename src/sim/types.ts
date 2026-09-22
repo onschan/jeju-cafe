@@ -951,6 +951,7 @@ export interface GameState {
   monthComplaints: Partial<Record<ComplaintReason, number>>; // 이달 사유별 불만 수 (카드 TOP3)
   monthReputationDelta: number;               // 이달 평판 변화 누적 (카드)
   dayStats: { satisfied: number; complained: number; total: number }; // 오늘 만족·불만·총손님 (밤에 평판 계산 후 리셋)
+  dayPhotos?: number;                          // fun: 오늘 손님이 찍은 사진 수 (밤에 평판 +0.05/장, 상한 0.5 — appeal.ts)
   reputationWarned: boolean;                  // 평판 20 미만 경고를 띄웠나 (30 이상 회복하면 리셋)
   lastApologyMonthIndex: number;              // 사과 이벤트는 월 1회 (−1 = 아직)
   objects: Record<string, PlacedObject>; // 키는 'o123' 형태(비정수 문자열)라 삽입 순서가 보존됨 → 결정적 순회
@@ -1089,6 +1090,7 @@ export type Action =
   | { type: 'renameObject'; objectId: string; name: string }
   | { type: 'setTargets'; targets: string[] }      // 타깃 손님층 3슬롯 통째로
   | { type: 'upgradeObject'; objectId: string }   // 증축 Lv+1 (upgrade.ts)
+  | { type: 'treeUpgrade'; objectId: string }     // fun: 같은 자리 업그레이드 트리 다음 단계 (tree.ts — 테이블 → 파라솔 → 테라스 → 전망 테라스)
   | { type: 'repairObject'; objectId: string }    // 노후 수리 (cleanliness.ts)
   | { type: 'buyParcel'; id: string }
   | { type: 'renameCafe'; name: string }

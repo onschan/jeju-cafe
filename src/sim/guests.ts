@@ -37,6 +37,8 @@ import { josa } from './josa.ts';
 import { siteBonus } from './site.ts';
 import { spawnRouteWeights, routeArrivals, routeSpawnPos, routeTagMult, routeWalletMult, routeStayMult, routeGuestMult, routeHome, noteRouteGuest, noteRouteIncome, foreignPhotoChance, foreignMenuMult, chargePortFee, routeState, CAR_GUESTS_MIN, CAR_GUESTS_MAX } from './entry.ts'; // 트랙 H 유입 경로
 import { hashOf } from './say.ts';
+import { streetFeeMult } from './tree.ts'; // fun: 같은 트리 3연속 「거리」 요금 +10%
+import { sceneryTouristMult, notePhoto } from './appeal.ts'; // fun: 경관 → 관광객, 사진 → 평판
 import { assignGuestName, regularsDue, dressAsRegular, regularTip, thankIfDone, maybeRequest, addRegularGauge, requestDef, GAUGE_HAPPY_VISIT } from './interact.ts'; // fun-guest (트랙 G): 이름·단골·요청·게이지
 
 export { moveAlong, GUEST_SPEED_CELLS_PER_S }; // 하위 호환 재수출 (본체는 path.ts)
@@ -55,7 +57,7 @@ export const MAX_DAILY_GUESTS = 300;
 export const GUESTS_PER_SEAT = 6;
 export const BASE_DAILY_GUESTS = 4;
 export const POP_SUM_PER_GUEST = 21;
-export const FACILITY_POP_PER_GUEST = 21; // game-feel P1: 봇이 부탁·명당·도전으로 시설을 더 짓게 되어(3년 122 → 140개+) 16이면 3년차 말 자금이 7,000~9,000만 → 21 (§4.6 레버 #1, seed 1~3: 6,259·6,306·2,821만)
+export const FACILITY_POP_PER_GUEST = 19; // fun 통합: 콤보 68→12 축소(fun-corner)로 1년차 하반기 손님이 −15%라 적자 달이 5회로 늘어 21 → 19 (seed 1~3 적자 4·3·4, 3년차 5,420·3,676·2,569만). game-feel P1: 봇이 부탁·명당·도전으로 시설을 더 짓게 되어(3년 122 → 140개+) 16이면 3년차 말 자금이 7,000~9,000만 → 21 (§4.6 레버 #1, seed 1~3: 6,259·6,306·2,821만)
 /** 명소 하루 방문객(spots.dailyVisitors = 매력 × 2, 투어 버스 ×1.3) × VISITOR_GUEST_RATE(3%)가 하루 손님으로 유입 — 명소 투자가 손님 수의 큰 축 (§4.2 #1 "인기·명소 기반값") */
 /** 대기열: 빈 자리가 없으면 3명까지 기다리고, 넘치면 돌아간다(그 손님층 만족 −10) — §4.3 웨이팅 */
 export const WAIT_MAX = 3;
@@ -142,7 +144,7 @@ export function typeWeight(state: GameState, typeId: string, hour = state.clock.
   if (!isUnlocked(state, typeId)) return 0;
   // 투어 버스 단체 ×1.3은 spawnMultiplier 안의 spotSpawnMult(트랙 C)가 맡는다
   return guestTypeDef(typeId).weight * stagedSpawnMult(state, typeId) * spawnMultiplier(state, typeId) * hourTypeMult(hour, typeId) * parcelSpawnMult(bonus, typeId)
-    * regularFreqMult(state, typeId) * effectMult(state, 'spawnMult', typeId) * eventTagMult(state, typeId) * reputationTypeMult(state, typeId) * targetSpawnMult(state, typeId) * villageLocalMult(state, typeId); // 타깃 손님층 ×1.3 (y-ui, UX §5.4) · 정착 등급 2 동네 손님 ×1.1 (z-ending)
+    * regularFreqMult(state, typeId) * effectMult(state, 'spawnMult', typeId) * eventTagMult(state, typeId) * reputationTypeMult(state, typeId) * targetSpawnMult(state, typeId) * villageLocalMult(state, typeId) * sceneryTouristMult(state, typeId); // 타깃 손님층 ×1.3 (y-ui, UX §5.4) · 정착 등급 2 동네 손님 ×1.1 (z-ending) · fun 경관 → 관광객 ×0.85~1.25 (appeal.ts)
 }
 
 /** 시간대별 손님 수 비중 (하루 합 1). 정오 피크 2배, 18시 이후 절반. */
@@ -495,7 +497,7 @@ function resolveMood(state: GameState, g: Guest): void {
     onHappyVisit(state, g, (tasteMatch ? 2 : 1) * skillSatMult(state, g));
     addRegularGauge(state, g.type, GAUGE_HAPPY_VISIT); // fun-guest: 만족 방문 → 단골 게이지 +0.2
     const photo = foreignPhotoChance(g.type, photoChance(state, g.type, g.menuId)) * (1 + titleBonus(state, 'photo')); // 트랙 H: 외국인 ×2 · staff-luck 칭호
-    if (photo > 0 && nextRandom(state) < photo) pushFx(state, { kind: 'photo', x: seat.x, y: seat.y, tick: state.tick });
+    if (photo > 0 && nextRandom(state) < photo) { pushFx(state, { kind: 'photo', x: seat.x, y: seat.y, tick: state.tick }); notePhoto(state); } // fun: 사진 → 그날 밤 평판 (appeal.ts)
   } else {
     g.mood = 'meh';
     g.moodReason = 'scenery';
@@ -578,7 +580,7 @@ function order(state: GameState, g: Guest): void {
   consumeIngredients(state, menuId);
   const seat = state.objects[g.seatId!]!;
   recordUse(seat); // 트랙 A: 증축 조건(누적 이용)
-  const price = Math.round(priceOf(state, menuId) * parcelFeeMult(parcelBonusAt(state, seat.x, seat.y)) * (objectStats(state, seat.id).feePct / 100) * eventFeeMult(state) * siteBonus(state, seat).feeMult * indoorFeeMult(state, seat, g.type) * (1 + titleBonus(state, 'fee'))); // 트랙 F 입지 요금 · y-indoor 바 저녁 세트 · staff-luck 칭호 요금
+  const price = Math.round(priceOf(state, menuId) * parcelFeeMult(parcelBonusAt(state, seat.x, seat.y)) * (objectStats(state, seat.id).feePct / 100) * eventFeeMult(state) * siteBonus(state, seat).feeMult * indoorFeeMult(state, seat, g.type) * (1 + titleBonus(state, 'fee')) * streetFeeMult(state, seat)); // 트랙 F 입지 요금 · y-indoor 바 저녁 세트 · staff-luck 칭호 요금 · fun 거리 보너스
   const tip = regularTip(g, price); // fun-guest: 단골 팁 +20%
   state.money += price + tip;
   state.monthIncome += price + tip;
@@ -616,7 +618,7 @@ export function pickVisit(state: GameState, g: Guest, from: Pt): { obj: PlacedOb
 
 /** 시설 도착: 이용료를 내고 시설 인기 +1(상한), 숫자 팝업 연출 */
 function useFacility(state: GameState, g: Guest, obj: PlacedObject): void {
-  const fee = Math.round(facilityFee(state, obj) * (1 + skillTotal(state, 'feeBonus')) * siteBonus(state, obj).feeMult); // 트랙 A: Lv 요금 +10%/+20% · 트랙 D 특기 haggler +5% · 트랙 F 입지
+  const fee = Math.round(facilityFee(state, obj) * (1 + skillTotal(state, 'feeBonus')) * siteBonus(state, obj).feeMult * streetFeeMult(state, obj)); // 트랙 A: Lv 요금 +10%/+20% · 트랙 D 특기 haggler +5% · 트랙 F 입지 · fun 거리 보너스
   recordUse(obj);
   state.money += fee;
   state.monthIncome += fee;
