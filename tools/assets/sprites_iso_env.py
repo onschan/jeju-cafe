@@ -1,5 +1,7 @@
 """환경 오브젝트 14종 `iso_obj_<id>` (데이터 표 §1.5). 나무·꽃·석상은 빌보드, 돌·석등·연못·꽃밭은 상자/원판.
-트랙 H 손님 유입 경로: 경로 시설 5종(렌터카 주차장 2×2·넓은 주차장 3×2·셔틀 정류장·선착장 2×1·올레 표식)과 진입점 표지 5종 `iso_obj_route_<bus|car|plane|ship|ribbon>`(잠김은 렌더가 회색 tint)."""
+트랙 H 손님 유입 경로: 경로 시설 5종(렌터카 주차장 2×2·넓은 주차장 3×2·셔틀 정류장·선착장 2×1·올레 표식)과 진입점 표지 5종 `iso_obj_route_<bus|car|plane|ship|ribbon>`(잠김은 렌더가 회색 tint).
+트랙 E 제주 풍경(렌더 전용 장식, 오브젝트 데이터 없음): 마을 버스 2프레임 `iso_obj_bus_0/1`(2×1, x 방향) · 렌터카 `iso_obj_car_y`(y 방향) ·
+초가 `iso_obj_thatched`(2×2) · 필지 경계 돌담선 `iso_obj_wall_ne`(y=const 변)·`iso_obj_wall_nw`(x=const 변)."""
 from __future__ import annotations
 from px import Canvas, PAL, OUT, hexc, Color
 from iso import IsoCanvas, texture_where
@@ -345,8 +347,66 @@ def icon_ribbon() -> Canvas:
     return i
 
 
+# ---------------------------------------------------------------- 트랙 E: 제주 풍경 장식
+BUS_BODY = (hexc('2f7a4a'), hexc('4aa86a'), hexc('8fe0a8'))
+GLASS3 = (hexc('7fb0d8'), hexc('a9d3f0'), hexc('dff1ff'))
+
+
+def bus(frame: int) -> IsoCanvas:
+    """마을 버스(2×1, x 방향으로 달린다): 초록 차체 + 창문 줄 + 바퀴. frame 1은 차체가 1px 내려앉는다(덜컹)."""
+    c = cv(22, 2, 1, pad=2, shadow=0.7)
+    z = 3 - frame
+    c.box(12, BUS_BODY, (0.08, 0.18, 1.92, 0.82), z0=z)
+    c.box(6, GLASS3, (0.15, 0.2, 1.85, 0.8), z0=z + 12, edge=False)
+    c.box(2, BUS_BODY, (0.1, 0.18, 1.9, 0.82), z0=z + 18, edge=False)
+    for i in range(4):                                                     # 옆 창 구분 기둥(앞면 = y 큰 쪽)
+        x = 0.35 + i * 0.42
+        c.line((x, 0.82, z + 12), (x, 0.82, z + 18), BUS_BODY[0])
+    sx, sy = c.spx(1.92, 0.5, z + 6); c.put(sx - 1, sy, YELLOW[2]); c.put(sx - 1, sy - 1, YELLOW[1])   # 앞 전조등
+    sx, sy = c.spx(1.3, 0.82, z + 2); c.rect(sx - 1, sy - 9, 3, 9, hexc('2b2118'))                     # 문
+    for x in (0.4, 1.6):                                                   # 바퀴
+        wx, wy = c.spx(x, 0.85, 0); c.ellipse(wx, wy - 2, 3, 2.2, BASALT[0]); c.put(wx, wy - 2, BASALT[2])
+    c.outline()
+    return c
+
+
+def car_y() -> IsoCanvas:
+    """렌터카(1×1, y 방향으로 달린다). 렌더가 색을 tint로 바꾼다(흰 차체)."""
+    c = cv(12, shadow=0.45)
+    c.box(5, WHITE, (0.25, 0.05, 0.75, 0.95), z0=2)
+    c.box(3, GLASS3, (0.3, 0.25, 0.7, 0.75), z0=7, edge=False)
+    sx, sy = c.spx(0.5, 0.95, 4); c.put(sx - 2, sy, YELLOW[2]); c.put(sx + 1, sy, YELLOW[2])            # 전조등(앞 = y 큰 쪽)
+    for x, y in ((0.3, 0.2), (0.7, 0.2), (0.3, 0.8), (0.7, 0.8)):
+        wx, wy = c.spx(x, y, 0); c.rect(wx - 1, wy - 2, 2, 3, BASALT[0])
+    c.outline()
+    return c
+
+
+def thatched() -> IsoCanvas:
+    """초가 2×2(미소유 마을 어귀 필지 풍경). sprites_iso_ring.thatched_house와 같은 그림."""
+    from sprites_iso_ring import thatched_house
+    c = cv(44, 2, 2, shadow=0.9)
+    thatched_house(c, (0.3, 0.3, 1.7, 1.7), 14)
+    c.outline()
+    return c
+
+
+def wall_segment(axis: str) -> IsoCanvas:
+    """필지 경계 낮은 돌담선 한 칸. 'ne'는 셀의 y=0 변(화면 우상), 'nw'는 x=0 변(화면 좌상)을 따라 놓인다."""
+    c = cv(8)
+    rect = (0, 0, 1, 0.2) if axis == 'ne' else (0, 0, 0.2, 1)
+    c.box(6, BASALT, rect)
+    from sprites_iso_objects import stone_texture
+    stone_texture(c, {BASALT[0], BASALT[1], BASALT[2]}, 2.6, 1.8, 6, 4)
+    c.outline()
+    return c
+
+
 def sprites() -> dict[str, Canvas]:
     return {
+        # 트랙 E 제주 풍경 장식
+        'iso_obj_bus_0': bus(0), 'iso_obj_bus_1': bus(1), 'iso_obj_car_y': car_y(), 'iso_obj_thatched': thatched(),
+        'iso_obj_wall_ne': wall_segment('ne'), 'iso_obj_wall_nw': wall_segment('nw'),
         'iso_obj_basalt_rock': basalt_rock(), 'iso_obj_dolhareubang': dolhareubang(), 'iso_obj_pampas': pampas(),
         'iso_obj_canola': canola(), 'iso_obj_camellia': camellia(), 'iso_obj_hydrangea': hydrangea(),
         'iso_obj_pine': pine(), 'iso_obj_palm': palm(), 'iso_obj_stone_lantern': stone_lantern(),

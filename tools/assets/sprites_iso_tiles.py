@@ -1,5 +1,6 @@
-"""아이소 타일: iso_tile_{soil,rock,road}_{season} 64×32 + iso_tile_locked.
-탑다운 타일과 같은 팔레트·계절 힌트(점무늬·유채·낙엽·눈). 외곽선 없음, 장식은 다이아몬드 안쪽에만."""
+"""아이소 타일: iso_tile_{soil,rock,road}_{season} 64×32 + iso_tile_locked + 미소유 필지 풍경 iso_tile_field_{orchard,canola,pampas,stone}.
+탑다운 타일과 같은 팔레트·계절 힌트(점무늬·유채·낙엽·눈). 외곽선 없음, 장식은 다이아몬드 안쪽에만.
+맵 둘레 2×2 매크로 타일(iso_ring_*)은 sprites_iso_ring.py."""
 from __future__ import annotations
 from px import Canvas, PAL, hexc, Color
 from iso import ISO_W, ISO_H, iso_tile, tile_mask, Mask
@@ -106,11 +107,69 @@ def tile_locked() -> Canvas:
     return c
 
 
+# ---------------------------------------------------------------- 미소유 필지 풍경 (트랙 E)
+PAMPAS = (hexc('b89a5a'), hexc('d9c07a'), hexc('f0e2a8'))
+DARKLEAF = (hexc('1f5a22'), hexc('2f7a2a'), hexc('4fae3a'))
+YELLOW = PAL['yellow']
+ORANGE = PAL['orange']
+
+
+def tile_field_orchard() -> Canvas:
+    """감귤밭 줄: 흙 바탕에 어두운 초록 관목 줄 2개 + 주황 열매 점."""
+    c = iso_tile(SOIL[1], SOIL[0])
+    tmp = Canvas(ISO_W, ISO_H)
+    for (cx, cy) in ((22, 12), (42, 12), (32, 21)):
+        tmp.ellipse(cx, cy, 7, 3.5, DARKLEAF[0])
+        tmp.ellipse(cx - 1, cy - 1, 5, 2.4, DARKLEAF[1])
+        tmp.put(cx - 3, cy - 1, DARKLEAF[2]); tmp.put(cx + 2, cy, ORANGE[1]); tmp.put(cx - 1, cy + 1, ORANGE[1]); tmp.put(cx + 4, cy - 2, ORANGE[2])
+    clip(c, tmp)
+    return c
+
+
+def tile_field_canola() -> Canvas:
+    """유채밭: 초록 바탕에 노란 꽃 점."""
+    c = iso_tile(GRASS[1], GRASS[0])
+    tmp = Canvas(ISO_W, ISO_H)
+    for (x, y) in ((18, 12), (26, 8), (34, 14), (44, 10), (30, 20), (40, 22), (22, 18), (48, 17), (14, 15), (36, 6)):
+        tmp.rect(x, y, 2, 2, YELLOW[1]); tmp.put(x, y, YELLOW[2]); tmp.put(x, y + 2, GRASS[0])
+    clip(c, tmp)
+    return c
+
+
+def tile_field_pampas() -> Canvas:
+    """억새 언덕: 누런 풀 바탕에 억새 이삭."""
+    c = iso_tile(PAMPAS[1], PAMPAS[0])
+    tmp = Canvas(ISO_W, ISO_H)
+    for (x, y) in ((18, 14), (30, 9), (42, 13), (26, 22), (46, 20), (36, 17)):
+        tmp.vline(x, y - 4, y, PAMPAS[0]); tmp.vline(x + 1, y - 3, y, GRASS[0]); tmp.put(x, y - 5, PAMPAS[2]); tmp.put(x + 1, y - 4, PAMPAS[2])
+    dots(tmp, [(22, 10), (38, 24), (50, 15)], GRASS[1], 2, 1)
+    clip(c, tmp)
+    return c
+
+
+def tile_field_stone() -> Canvas:
+    """돌 많은 풀밭(곶자왈·돌담 언덕): 초록 바탕에 현무암 자갈."""
+    c = iso_tile(GRASS[1], GRASS[0])
+    tmp = Canvas(ISO_W, ISO_H)
+    stone(tmp, 24, 12, 4, 2.2)
+    stone(tmp, 42, 19, 3.2, 1.8)
+    stone(tmp, 34, 8, 2.4, 1.4)
+    dots(tmp, [(16, 16), (48, 12), (30, 24)], ROCK[0])
+    grass_tuft(tmp, 14, 13); grass_tuft(tmp, 46, 24)
+    clip(c, tmp)
+    return c
+
+
 def sprites() -> dict[str, Canvas]:
-    s: dict[str, Canvas] = {}
+    import sprites_iso_ring
+    s: dict[str, Canvas] = dict(sprites_iso_ring.sprites())
     for season in SEASONS:
         s[f'iso_tile_soil_{season}'] = tile_soil(season)
         s[f'iso_tile_rock_{season}'] = tile_rock(season)
         s[f'iso_tile_road_{season}'] = tile_road(season)
     s['iso_tile_locked'] = tile_locked()
+    s['iso_tile_field_orchard'] = tile_field_orchard()
+    s['iso_tile_field_canola'] = tile_field_canola()
+    s['iso_tile_field_pampas'] = tile_field_pampas()
+    s['iso_tile_field_stone'] = tile_field_stone()
     return s
