@@ -376,7 +376,7 @@
     "title": "첫 콤보 만들기",
     "desc": "활성 콤보 1개",
     "condition": {
-      "type": "comboCount",
+      "type": "corners",
       "n": 1
     },
     "reward": [
@@ -646,8 +646,8 @@
     "title": "콤보 3개 만들기",
     "desc": "활성 콤보 3개",
     "condition": {
-      "type": "comboCount",
-      "n": 3
+      "type": "corners",
+      "n": 2
     },
     "reward": [
       {
@@ -1116,8 +1116,8 @@
     "title": "콤보 8개",
     "desc": "활성 콤보 8개",
     "condition": {
-      "type": "comboCount",
-      "n": 8
+      "type": "corners",
+      "n": 4
     },
     "reward": [
       {
@@ -1460,8 +1460,8 @@
     "title": "콤보 15개",
     "desc": "활성 콤보 15개",
     "condition": {
-      "type": "comboCount",
-      "n": 15
+      "type": "corners",
+      "n": 7
     },
     "reward": [
       {
@@ -1748,8 +1748,8 @@
     "title": "콤보 30개",
     "desc": "활성 콤보 30개",
     "condition": {
-      "type": "comboCount",
-      "n": 30
+      "type": "corners",
+      "n": 12
     },
     "reward": [
       {

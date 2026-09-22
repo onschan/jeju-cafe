@@ -53,7 +53,7 @@ export function cornersWithPiece(type: string): CornerDef[] {
 }
 
 /** 시설 하나가 받는 코너 효과 합산 상한 (콤보 상한 +12/+20%보다 낮게 — 코너가 콤보를 대체하므로 자금 밴드 유지) */
-export const CORNER_CAP = { pop: 10, feePct: 12 };
+export const CORNER_CAP = { pop: 6, feePct: 8 };
 /** 손님이 코너를 찾아갈 가중치 (시설 대비 ×3) · 코너별 하루 방문 상한 */
 export const CORNER_VISIT_WEIGHT = 3;
 export const CORNER_VISITS_PER_DAY = 8;
