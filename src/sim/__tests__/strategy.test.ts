@@ -28,7 +28,7 @@ function allEmptyOwned(s: GameState, type: string): Pt[] {
   return out;
 }
 
-describe('프로 삼춘의 정석 (strategy.ts): 글로우 칸은 실제 수치로 고른 최적 칸', () => {
+describe('할망의 정석 (strategy.ts): 글로우 칸은 실제 수치로 고른 최적 칸', () => {
   it('bestMainCells: 바람 최소 → 정낭과 문 앞 거리 최소. tutorial.recommendedMainCells와 같다', () => {
     const s = createInitialState(1, 'local', 0, 'tutorial');
     const rec = bestMainCells(s);

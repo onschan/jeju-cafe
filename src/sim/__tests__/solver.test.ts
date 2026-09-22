@@ -177,7 +177,7 @@ describe('solver: 빔 서치', () => {
     expect(top).toBeDefined(); // 완성 시작 상태에는 저축보다 나은 수가 있다
     expect(nextMove(s)!.move).toBe(top);
     expect(nextMove(s)!.text).toContain(top!.why);
-    expect(idleHint(s)).toContain(`프로 삼춘 시뮬 — ${top!.label}`);
+    expect(idleHint(s)).toContain(`할망: 시뮬로 보니 — ${top!.label}`);
     expect(strategyVars(s).solverDelta).toContain('시뮬');
     // 하루 지나면(날이 키에 들어간다) 캐시는 안 맞는다
     tick(s, DAY_MS);

@@ -1,24 +1,24 @@
-/** 튜토리얼 창 「프로 삼춘 공략」: 「진행」 탭 = 5장 목록(완료 ✓ · 지금 ▶ · 아직 ○, 장마다 n/m)과 지금 장의 단계 목록, 현재 단계 대사 다시 보기, 이 장 건너뛰기(보상 없음).
- *  「공략 노트」 탭(pro-guide → solver) = 「지금 추천 행동」 = solver(sim/solver.ts bestMoves, 워커) 상위 3수 + 각 예상 이득("14일 굴려 보니 자금 +₩42만") — 탭하면 그 행동의 타깃(칸·창 버튼)이 글로우(tutorialHighlight setGuideFocus).
+/** 튜토리얼 창 「할망의 가르침」: 「진행」 탭 = 5장 목록(완료 ✓ · 지금 ▶ · 아직 ○, 장마다 n/m)과 지금 장의 단계 목록, 현재 단계 대사 다시 보기, 이 장 건너뛰기(보상 없음).
+ *  「추천」 탭(solver) = 「시뮬 추천 (14일 굴려 본 결과)」 = solver(sim/solver.ts bestMoves, 워커) 상위 3수 + 각 예상 이득("14일 굴려 보니 자금 +₩42만") — 탭하면 그 행동의 타깃(칸·창 버튼)이 글로우(tutorialHighlight setGuideFocus).
  *  결과가 아직 없으면 정석 표의 다음 수(strategy.heuristicNextMove) + 「계산 중…」. 그 아래 1년차 월별 정석 빌드 표(strategy.openingBuild). 3일 무행동 힌트(hints.ts)도 같은 1위 수.
  *  목표 줄 왼쪽 「📖 n/33」 배지에서 연다 (GoalBar.tsx). 진행은 sim 상태(state.tutorial)에서 읽는다. */
 import { useState } from 'react';
 import { useGame } from './store';
 import { Popup, confirm } from './Popup';
 import { PALETTE, brownBtn, brownBtnOn, card } from './frame';
-import { TUTORIAL_STEPS, TUTORIAL_CHAPTERS, currentTutorialStep, currentTutorialChapter, tutorialDone, tutorialStepDone, openingBuild, heuristicNextMove, solverResult, solverKey } from '../sim/index.ts';
+import { TUTORIAL_STEPS, TUTORIAL_CHAPTERS, currentTutorialStep, currentTutorialChapter, tutorialDone, tutorialStepDone, openingBuild, heuristicNextMove, solverResult, solverKey, UI_SOLVER_OPTIONS } from '../sim/index.ts';
 import { SPEAKER_NAME } from '../data/dialogue/index.ts';
 import { TUTORIAL_DIALOGUES, chapterText, showTutorialStep, skipCurrentChapter, isChapterStart, SKIP_TEXT, fillTutorialStep } from './tutorialDialogue';
 import { useSpotlightPref, setSpotlightOn, setGuideFocus } from './tutorialHighlight';
 import { solverBusy } from './solverClient';
 
 export const GRADUATE_TITLE = '할망의 제자';
-export const NOTE_TAB = '공략 노트';
+export const NOTE_TAB = '추천';
 export const NO_MOVE_TEXT = '정석은 다 했다. 네 빌드를 해 봐';
 export const SOLVER_BUSY_TEXT = '시뮬 계산 중…';
 export const SOLVER_SAVE_TEXT = '지금은 저축이 최선 — 어떤 수도 안 하는 것보다 낫지 않아';
 
-/** 공략 노트: 지금 추천 행동(solver 상위 3 + 예상 이득, 탭하면 글로우) + 월별 정석 표 */
+/** 추천 탭: 시뮬 추천(solver 상위 3 + 예상 이득, 탭하면 글로우) + 월별 정석 표 */
 export function StrategyNote({ onFocus }: { onFocus?: () => void } = {}) {
   const s = useGame();
   const res = solverResult(s);
@@ -33,13 +33,13 @@ export function StrategyNote({ onFocus }: { onFocus?: () => void } = {}) {
   return (
     <div data-testid="tutorial-note">
       <div data-testid="tutorial-next-move" style={{ ...card, marginBottom: 8, borderColor: PALETTE.title }}>
-        <div style={{ fontWeight: 700 }}>🎯 지금 추천 행동 <span style={{ fontWeight: 400, color: PALETTE.inkSoft, fontSize: 13 }}>{res ? `${res.horizon}일 시뮬 ${res.rollouts}회` : solverBusy() ? SOLVER_BUSY_TEXT : ''}</span></div>
-        {res ? (moves.length === 0 ? <div style={{ fontSize: 14 }}>프로 삼춘: {SOLVER_SAVE_TEXT}</div> : moves.map((m, i) => (
+        <div style={{ fontWeight: 700 }}>🎯 시뮬 추천 ({res ? res.horizon : UI_SOLVER_OPTIONS.horizon}일 굴려 본 결과) <span style={{ fontWeight: 400, color: PALETTE.inkSoft, fontSize: 13 }}>{res ? `${res.rollouts}회` : solverBusy() ? SOLVER_BUSY_TEXT : ''}</span></div>
+        {res ? (moves.length === 0 ? <div style={{ fontSize: 14 }}>할망: {SOLVER_SAVE_TEXT}</div> : moves.map((m, i) => (
           <button key={i} data-testid={`solver-move-${i + 1}`} onClick={() => focus(i)} aria-label={`${i + 1}위 ${m.label} 보기`}
             style={{ ...brownBtn, margin: '4px 0 0', width: '100%', minHeight: 44, fontSize: 14, textAlign: 'left', whiteSpace: 'normal', lineHeight: 1.35 }}>
             <b>{i + 1}위</b> {m.label}<div style={{ fontSize: 13, color: PALETTE.inkSoft }}>{m.why}</div>
           </button>
-        ))) : <div style={{ fontSize: 14 }}>프로 삼춘: {fallback ? fallback.text : NO_MOVE_TEXT}</div>}
+        ))) : <div style={{ fontSize: 14 }}>할망: {fallback ? fallback.text : NO_MOVE_TEXT}</div>}
       </div>
       <div style={{ fontWeight: 700, marginBottom: 4 }}>📅 1년차 정석 빌드</div>
       <div style={{ overflowX: 'auto' }}>
@@ -71,7 +71,7 @@ export function TutorialWindow({ onClose }: { onClose: () => void }) {
     void confirm(SKIP_TEXT, { title: `${ch?.id}장 「${ch?.title}」 건너뛰기`, yes: '건너뛰기', no: '계속 배우기' }).then((ok) => { if (ok) { skipCurrentChapter(); onClose(); } });
   };
   return (
-    <Popup title={`📖 프로 삼춘 공략 ${Math.min(s.tutorial.step, TUTORIAL_STEPS)}/${TUTORIAL_STEPS}`} onBackdrop={onClose}
+    <Popup title={`📖 할망의 가르침 ${Math.min(s.tutorial.step, TUTORIAL_STEPS)}/${TUTORIAL_STEPS}`} onBackdrop={onClose}
       buttons={<>
         {!done && <button data-testid="tutorial-skip-chapter" style={{ ...brownBtn, margin: 0, whiteSpace: 'nowrap' }} onClick={skip} aria-label="이 장 건너뛰기">⏭ 건너뛰기</button>}
         {!done && curDlg && <button data-testid="tutorial-replay" style={{ ...brownBtnOn, margin: 0, whiteSpace: 'nowrap' }} onClick={replay} aria-label="대사 다시 보기">💬 다시 보기</button>}
@@ -84,7 +84,7 @@ export function TutorialWindow({ onClose }: { onClose: () => void }) {
         </div>
         {tab === 'note' ? <StrategyNote onFocus={onClose} /> : done ? (
           <div style={{ ...card, marginBottom: 8 }}>
-            <b>졸업!</b> 프로 삼춘 공략을 다 마쳤어요.{s.titles.includes('halmang_pupil') && <> 칭호 「{GRADUATE_TITLE}」</>}
+            <b>졸업!</b> 할망의 가르침을 다 마쳤어요.{s.titles.includes('halmang_pupil') && <> 칭호 「{GRADUATE_TITLE}」</>}
           </div>
         ) : curDlg && (
           <div data-testid="tutorial-current" style={{ ...card, marginBottom: 8, borderColor: PALETTE.title }}>

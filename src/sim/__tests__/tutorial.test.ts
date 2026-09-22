@@ -76,14 +76,14 @@ describe('손으로 하는 튜토리얼 「할망의 가르침」 33단계·5장
     for (const c of TUTORIAL_CHAPTERS) { expect(c.from).toBe(next); expect(c.to).toBeGreaterThanOrEqual(c.from); next = c.to + 1; }
     expect(next).toBe(34);
     for (const st of STEPS) expect(TUTORIAL_CHAPTERS.find((c) => c.id === st.chapter)!.from <= st.id && st.id <= TUTORIAL_CHAPTERS.find((c) => c.id === st.chapter)!.to).toBe(true);
-    // 대사(pro-guide): 단계마다 2~3줄, 토큰을 채운 한 줄 ≤ 24자, 마지막 줄은 「→ 지금: …」 행동 지시, ①만 할망·②부터 프로 삼춘, 버튼·제목 있음
+    // 대사(pro-guide): 단계마다 2~3줄, 토큰을 채운 한 줄 ≤ 24자, 마지막 줄은 「→ 지금: …」 행동 지시, 화자는 전부 할망, 버튼·제목 있음
     const vars = strategyVars(createInitialState(1, 'local', 0, 'tutorial'));
     for (const d of DIALOGUE) {
       expect(d.lines.length, d.key).toBeGreaterThanOrEqual(2);
       expect(d.lines.length, d.key).toBeLessThanOrEqual(3);
       for (const l of d.lines) { const f = fillTemplate(l, vars); expect(f, `${d.key}: ${f}`).not.toMatch(/\{[A-Za-z]+\}/); expect(f.length, `${d.key}: ${f}`).toBeLessThanOrEqual(24); }
       expect(d.lines[d.lines.length - 1]!.startsWith('→ 지금: '), d.key).toBe(true);
-      expect(d.speaker).toBe(d.id === 1 ? 'halmang' : 'pro');
+      expect(d.speaker).toBe('halmang');
       expect(d.button.length).toBeGreaterThan(0);
       expect(d.title.length).toBeGreaterThan(0);
     }

@@ -7,9 +7,9 @@ import failureJson from './failure.json' with { type: 'json' };
 import endingJson from './ending.json' with { type: 'json' }; // z-ending: 엔딩·100주년·마을 반상회
 import introJson from './intro.json' with { type: 'json' }; // intro: 프롤로그 6컷(서울 야근 → 제주 카페)
 
-/** 화자 키 = public/assets/icons/portrait_<key>.png. pro = 「프로 삼춘」(pro-guide 튜토리얼 화자: 카이로 게임 100시간 한 동네 청년, 초록 후드·헤드폰) */
-export type Speaker = 'halmang' | 'samchun' | 'hero' | 'haenyeo' | 'jangnim' | 'pro';
-export const SPEAKER_NAME: Record<Speaker, string> = { halmang: '할망', samchun: '삼춘', hero: '나', haenyeo: '해녀 삼춘', jangnim: '이장님', pro: '프로 삼춘' };
+/** 화자 키 = public/assets/icons/portrait_<key>.png. 튜토리얼 화자는 할망 */
+export type Speaker = 'halmang' | 'samchun' | 'hero' | 'haenyeo' | 'jangnim';
+export const SPEAKER_NAME: Record<Speaker, string> = { halmang: '할망', samchun: '삼춘', hero: '나', haenyeo: '해녀 삼춘', jangnim: '이장님' };
 
 export interface TutorialStep { id: number; key: string; chapter: number; title: string; speaker: Speaker; lines: string[]; done: string | null; button: string }
 /** 튜토리얼 장(章) 제목·한 줄 소개 (z-tutorial 5장) */
