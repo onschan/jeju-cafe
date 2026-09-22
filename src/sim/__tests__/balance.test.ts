@@ -1,6 +1,6 @@
 /**
  * 봇 KPI 밴드 (확장 스펙 §4.6). 봇 3년 × seed 3개. 밴드 밖이면 guests.ts 레버 #1(POP_SUM_PER_GUEST·FACILITY_POP_PER_GUEST·spots VISITOR_GUEST_RATE)·
- * ingredients.json 레버 #4(원가)부터 조정한다. 5년차 ★4·10년차 목표 105는 트랙 B의 목표 108개가 들어온 뒤에 켜진다.
+ * craft.ts 레버(PRICE_PER_STAT)·ingredients.json 레버 #4(원가)부터 조정한다.
  */
 import { runBot, runBotAsync } from '../bot.ts';
 import { GOALS } from '../../data/index.ts';
@@ -8,23 +8,21 @@ import { GOALS } from '../../data/index.ts';
 const SEEDS = [1, 2, 3];
 /** 1년차(3~12월) 순이익 합 300만~800만 */
 export const YEAR1_TOTAL_MIN = 3_000_000;
-export const YEAR1_TOTAL_MAX = 9_500_000; // 리듬 P1(손님층 조기 해금·주간 사건) 뒤 seed별 600~900만 — 상단 완화
+export const YEAR1_TOTAL_MAX = 10_500_000; // trim 뒤 seed별 700~1,000만 (1년차 말 자금은 그대로 1,000만 아래) — 상단 완화
 /** 1년차 말 자금 ≤ 1,200만 (시작 500만의 2.4배 이하) */
 export const YEAR1_END_MONEY_MAX = 12_000_000;
-/** 3년차 말 자금 2,500만~6,500만. 스펙 §4.1은 3,000만~4,500만이나 통합 뒤(콤보 요금 +20%·증축 Lv 요금·아이템 +30%·입지 전망 요금이 겹쳐 손님당 매출 ≈7,000)
- *  봇이 5,700~6,000만에 안착한다 — 상단만 넓혔다. 후속 튜닝 후보: 요금 배수 상한(COMBO_UP_CAP.feePct·ITEM_FEE_CAP)·연차별 급여 인상. (통합 계획 문서 §남은 우려) */
+/** 3년차 말 자금 2,500만~8,500만 (trim 뒤 seed 1~3: 3,500~3,700만) */
 export const YEAR3_MONEY_MIN = 25_000_000;
 export const YEAR3_MONEY_MAX = 85_000_000; // 리듬 P1 뒤 seed 2가 8,000만 — rng 한 번에 2,800↔8,000만을 오갈 만큼 민감해 상단만 완화(후속: 요금 배수 상한 튜닝)
-/** 5년차 말 ★4, 10년차 말 목표 105 (목표 108개 체인 전제). 10년차 목표는 봇이 75개(세트 3·콤보 15에서 멈춤)라 아직 스펙 미달 — 통합 계획 문서 §남은 우려 */
+/** 5년차 말 ★4 */
 export const YEAR5_STAR_MIN = 4;
-/** fun-rank(재미 리셋 §5 3년차 이후 정체 해소): 5년차 말 목표 ≥ 95 · 직원 ≥ 7 · 자금 ≤ 2억 (seed 1~3: 목표 99~101 · 직원 8 · 3,100~3,700만) */
-export const YEAR5_GOALS_MIN = 95;
+/** trim(목표 60개 사슬): 5년차 말 목표 ≥ 50 · 직원 ≥ 7 · 자금 ≤ 2억 (seed 1~3: 목표 58 · 직원 8 · 9,500만~1억 6,000만) */
+export const YEAR5_GOALS_MIN = 50;
 export const YEAR5_STAFF_MIN = 7;
 export const YEAR5_MONEY_MAX = 200_000_000;
-export const YEAR10_GOALS_MIN = 105;
-export const YEAR10_GOALS_NOW = 70; // 지금 봇이 확실히 넘는 선 (회귀 방지)
-/** 1년차 적자 달: 스펙 1~2회 목표, 채용·비수기 달이 겹치면 4회까지 (seed 1) */
-const YEAR1_DEFICIT_MIN = 1;
+export const YEAR10_GOALS_NOW = 55; // 지금 봇이 확실히 넘는 선 (회귀 방지)
+/** 1년차 적자 달: 스펙 1~2회 목표, 채용·비수기 달이 겹치면 4회까지. trim 뒤 seed에 따라 0회(개발 메뉴 값이 내려가 지출이 줄었다) */
+const YEAR1_DEFICIT_MIN = 0;
 const YEAR1_DEFICIT_MAX = 4;
 /** 3년차 월 손님 평균 (스펙 2,000~2,800 목표, 하한은 1,500) */
 const YEAR3_GUESTS_MIN = 1_500;
@@ -39,7 +37,7 @@ describe.each(SEEDS)('봇 3년 KPI 밴드 §4.6 (seed %i)', (seed) => {
   const y1Last = year1.at(-1)!;
   const y3Last = year3.at(-1)!;
 
-  test('1년차: 10달(3~12월), 순이익 합 300만~800만, 적자 달 1~4회, 말 자금 ≤ 1,200만, 직원 3', () => {
+  test('1년차: 10달(3~12월), 순이익 합 300만~1,050만, 적자 달 0~4회, 말 자금 ≤ 1,200만, 직원 3', () => {
     expect(year1.map((r) => r.month)).toEqual([3, 4, 5, 6, 7, 8, 9, 10, 11, 12]);
     const total = year1.reduce((s, r) => s + r.net, 0);
     expect(total).toBeGreaterThanOrEqual(YEAR1_TOTAL_MIN);
@@ -66,7 +64,7 @@ describe.each(SEEDS)('봇 3년 KPI 밴드 §4.6 (seed %i)', (seed) => {
     expect(guests).toBeGreaterThanOrEqual(YEAR3_GUESTS_MIN);
     expect(guests).toBeLessThanOrEqual(YEAR3_GUESTS_MAX);
     expect(y3Last.customMenus).toBeGreaterThanOrEqual(1);
-    expect(y3Last.mileage).toBeGreaterThan(0);
+    expect(y3Last.tickets).toBeGreaterThan(0);
     for (const r of rows) expect(r.minMoney, `${r.year}년 ${r.month}월 minMoney`).toBeGreaterThan(400_000); // 삼춘 대출 문턱 위
   });
 });
@@ -76,18 +74,18 @@ test('같은 seed면 같은 결과 (결정적)', () => {
   expect(runBot(1, 1)).toEqual(runBot(1, 1));
 }, 30_000);
 
-// 트랙 B의 목표 108개가 들어오면 켜진다 (§4.6 5년차 ★4 · 10년차 목표 105)
-describe.skipIf(GOALS.length < 108)('봇 장기 KPI (목표 108 체인)', () => {
-  test('5년차 말 ★4 이상 · 목표 95개 이상 · 직원 7명 이상 · 자금 2억 이하 (fun-rank: 등급·본관 Lv3/4·2층·명소 Lv4~5·직원 정원이 3~5년차 사다리)', async () => {
+// trim: 목표 60개 사슬 기준 (§4.6 5년차 ★4 · 자금 2억 이하)
+describe.skipIf(GOALS.length < 60)('봇 장기 KPI (목표 60 사슬)', () => {
+  test('5년차 말 ★4 이상 · 목표 50개 이상 · 직원 7명 이상 · 자금 2억 이하 (등급·본관 Lv3/4·2층·명소 Lv3·직원 정원이 3~5년차 사다리)', async () => {
     const last = (await runBotAsync(5, 1)).filter((r) => r.year <= 5).at(-1)!;
     expect(last.star).toBeGreaterThanOrEqual(YEAR5_STAR_MIN);
     expect(last.goals).toBeGreaterThanOrEqual(YEAR5_GOALS_MIN);
     expect(last.staff).toBeGreaterThanOrEqual(YEAR5_STAFF_MIN);
     expect(last.money).toBeLessThanOrEqual(YEAR5_MONEY_MAX);
   }, 180_000);
-  test('10년차 말 목표 70개 이상 (스펙 105 — 봇이 세트 3·콤보 15에서 멈춰 아직 미달, 회귀 방지선만)', async () => {
+  // 10년차 목표선은 trim 뒤 사슬이 60개라 5년차 KPI로 갈음한다 (10년 봇 실행 2분 — 필요할 때만 켠다)
+  test.skip('10년차 말 목표 55개 이상', async () => {
     const last = (await runBotAsync(10, 1)).filter((r) => r.year <= 10).at(-1)!;
     expect(last.goals).toBeGreaterThanOrEqual(YEAR10_GOALS_NOW);
-    expect(YEAR10_GOALS_MIN).toBe(105); // 스펙 값은 남겨 둔다
   }, 300_000);
 });

@@ -25,14 +25,9 @@ export function trainingCost(staff: { trainingCount: number }, trainingId: strin
   return state && hasTrainingVoucher(state) ? Math.round(base * TRAINING_VOUCHER_RATE) : base;
 }
 
-/** 연수 효과 배수: 1 + 연수 우등생 특기 값 (그 직원 것만) */
-export function trainingMultOf(staff: Staff): number {
-  let v = 0;
-  for (const id of skillsOf(staff)) {
-    const e = SKILLS.find((s) => s.id === id)?.effect;
-    if (e?.type === 'trainingBonus') v += e.value;
-  }
-  return 1 + v;
+/** 연수 효과 배수 (trim: 연수 우등생 특기를 없애 1 고정 — 훅은 남겨 둔다) */
+export function trainingMultOf(_staff: Staff): number {
+  return 1;
 }
 
 /** 조건형 연수(종합 연수 ★3·Lv5)를 이 직원이 갈 수 있나 */

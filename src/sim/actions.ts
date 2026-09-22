@@ -2,46 +2,42 @@ import type { GameState, Action, ApplyResult, PlacedObject } from './types.ts';
 import { bumpLayoutRev } from './layoutRev.ts';
 import { objectDef } from '../data/index.ts';
 import { canPlace, placeObject, removeObject, footprintOf, relocateObject, objectsInRoom } from './grid.ts';
-import { canBuildMain, placeMain, canExpandMain, expandMain, canBuildSecondFloor, buildSecondFloor, canMoveMain, moveMain, canUndoMoveMain, undoMoveMain, canToggleFireplace, toggleFireplace, canSetPianoTime, canAddBooks, addBooks, canFeedAquarium, feedAquarium, canRestockKids, restockKids, canSetBarEvening, setBarEvening, canAutoConnectPath, autoConnectPath, MAIN_TYPE } from './rooms.ts'; // y-indoor
+import { canBuildMain, placeMain, canExpandMain, expandMain, canBuildSecondFloor, buildSecondFloor, canMoveMain, moveMain, canUndoMoveMain, undoMoveMain, canAutoConnectPath, autoConnectPath, MAIN_TYPE } from './rooms.ts'; // y-indoor
 import { canBuyParcel, buyParcel } from './parcels.ts';
 import { canSetSlot, setSlot } from './menu.ts';
 import { checkFeature, checkGoals } from './goals.ts';
-import { canAcceptChallenge, acceptChallenge } from './challenges.ts';
 import { fillStarterLayout } from './state.ts';
 import { TUTORIAL_STEPS, unlockTutorialFeatures, skipTutorialChapter, skipTutorialStep, noteTutorial, TRACKED_ACTIONS } from './tutorial.ts';
 import { canPostJob, postJob, canHire, hire, canFire, fire, canAssign, assign, canLevelUp, levelUp } from './staff.ts';
 import { canTrain, train } from './training.ts';
 import { canPromote, promote, canSetTarget, setTarget } from './promotions.ts';
-import { discoverCombos } from './compat.ts';
+import { discoverPlacement } from './compat.ts';
 import { canUseItem, useItem, canGiveGift, giveGift, canCraftGift, craftGift } from './items.ts';
 import { canGreet, greetGuest, canRecommend, recommendMenu } from './interact.ts'; // fun-guest: 인사·추천
 import { evaluateUnlocks } from './segments.ts';
 import { canAcceptQuest, acceptQuest, canRespondEvent, respondEvent, afterInvest, checkQuests } from './board.ts';
-import { canInvestSpot, investSpot, canHostTour, hostTour, canSetTourBus, setTourBus } from './spots.ts';
+import { canInvestSpot, investSpot } from './spots.ts';
 import { canRenameCafe, renameCafe, canExpand, expand, canSetCosmetic, setCosmetic, canPraise, praise, placeCost, type ExpansionId } from './cafe.ts';
 import { canDevelop, develop, canAddTopping, addTopping, canRemoveTopping, removeTopping, canLevelUpMenu, levelUpMenu } from './craft.ts';
 import { canStartBuild, startBuild } from './build.ts';
-import { canBuyMileage, buyMileage, canBuyTicket, buyTicket, canDrawTicket, drawTicket, canSetUniform, setUniform, canUseGuestItem, useGuestItem } from './shop.ts';
-import { canOpenPopup, openPopup, canClosePopup, closePopup } from './popup.ts';
-import { canChallenge, challenge } from './rivals.ts';
+import { canDrawTicket, drawTicket, canSetUniform, setUniform, canUseGuestItem, useGuestItem } from './shop.ts';
 import { canUpgrade, upgrade } from './upgrade.ts';
 import { canRepair, repair } from './cleanliness.ts';
 import { canTreeUpgrade, treeUpgrade } from './tree.ts'; // fun 업그레이드 트리
-import { canSetRouteContract, setRouteContract, canExpandParking, parkingExpandCost, PARKING_EXPAND_TO, unlockRouteFacilities, installRouteForParcel, canAutoLinkRoute, autoLinkRoute } from './entry.ts';
+import { canExpandParking, parkingExpandCost, PARKING_EXPAND_TO, unlockRouteFacilities, installRouteForParcel, canAutoLinkRoute, autoLinkRoute } from './entry.ts';
 import { objectStats } from './compat.ts';
 import { rememberPlace, rememberPlaceMany, rememberRemove, rememberMove, canUndo, undoLast } from './undo.ts';
 import { planLine, isLineType } from './line.ts';
 import { canSetTargets, setTargets } from './segments.ts';
 import { canContinueEnding, continueEnding, canSetSpeed } from './ending.ts'; // z-ending
-import { canDonate, donate, canHoldFestival, holdFestival } from './village.ts'; // z-ending
 
 /** 못 옮기고 못 없애는 것 (정류장·본관·샘). 정낭은 w-free부터 일반 시설 — 옮기고 없애고 더 놓을 수 있다. */
 export const PROTECTED_TYPES = new Set(['busstop', 'warehouse', 'spring']);
 /** 회전할 수 있는 오브젝트 (rot 0..3, 스프라이트 변형 _r{n}이 있을 때만 보인다) */
-export const ROTATABLE_TYPES = new Set(['gate', 'bench', 'counter']);
+export const ROTATABLE_TYPES = new Set(['gate', 'counter']);
 const ACTION_LOG_CAP = 1000;
 
-const CLIENT_ONLY = new Set<Action['type']>(['setSpeed', 'dismissMonthCard', 'dismissDevelop', 'dismissDraw', 'dismissAnnouncement', 'dismissChallenge', 'dismissAlert', 'dismissTour', 'dismissOutcome', 'continueEnding']);
+const CLIENT_ONLY = new Set<Action['type']>(['setSpeed', 'dismissMonthCard', 'dismissDevelop', 'dismissDraw', 'dismissAnnouncement', 'dismissAlert', 'dismissOutcome', 'continueEnding']);
 
 function log(state: GameState, a: Action) {
   if (CLIENT_ONLY.has(a.type)) return;
@@ -95,7 +91,7 @@ function applyInner(state: GameState, a: Action): ApplyResult {
       startBuild(state, obj);
       state.money -= cost;
       rememberPlace(state, obj, cost);
-      discoverCombos(state);
+      discoverPlacement(state);
       evaluateUnlocks(state); // count 해금 (감귤나무 3그루 → 까치)
       unlockRouteFacilities(state); // 주차장(쉼 시설 6개) 같은 경로 시설은 다음 날 아침이 아니라 바로 열린다
       checkQuests(state);     // objectPlaced 부탁
@@ -116,7 +112,7 @@ function applyInner(state: GameState, a: Action): ApplyResult {
       }
       state.money -= plan.cost;
       rememberPlaceMany(state, placed, per * placed.length);
-      discoverCombos(state);
+      discoverPlacement(state);
       evaluateUnlocks(state);
       unlockRouteFacilities(state);
       checkQuests(state);
@@ -127,7 +123,7 @@ function applyInner(state: GameState, a: Action): ApplyResult {
       if (!c.ok) return { ok: false, reason: c.reason };
       const placed = autoLinkRoute(state, a.route);
       rememberPlaceMany(state, placed, c.route!.cost);
-      discoverCombos(state);
+      discoverPlacement(state);
       return { ok: true };
     }
     case 'autoConnectPath': {
@@ -136,7 +132,7 @@ function applyInner(state: GameState, a: Action): ApplyResult {
       if (!c.ok) return { ok: false, reason: c.reason };
       const placed = autoConnectPath(state);
       rememberPlaceMany(state, placed, c.route!.cost);
-      discoverCombos(state);
+      discoverPlacement(state);
       return { ok: true };
     }
     case 'remove': {
@@ -174,7 +170,7 @@ function applyInner(state: GameState, a: Action): ApplyResult {
       state.money += delta;
       rememberRemove(state, objs, delta);
       for (const o of objs) removeObject(state, o.id);
-      discoverCombos(state);
+      discoverPlacement(state);
       return { ok: true };
     }
     case 'undoLast': {
@@ -203,7 +199,7 @@ function applyInner(state: GameState, a: Action): ApplyResult {
         const m = canMoveMain(state, a.x, a.y);
         if (!m.ok) return m;
         moveMain(state, a.x, a.y);
-        discoverCombos(state);
+        discoverPlacement(state);
         return { ok: true };
       }
       const c = canDisturb(state, obj);
@@ -214,7 +210,7 @@ function applyInner(state: GameState, a: Action): ApplyResult {
       // 돈은 그대로: 치우기 환불 + 다시 짓기 비용이 상쇄된다. 방향·놓은 달은 유지.
       rememberMove(state, obj, obj.x, obj.y);
       relocateObject(state, obj, a.x, a.y);
-      discoverCombos(state);
+      discoverPlacement(state);
       return { ok: true };
     }
     case 'rotate': {
@@ -230,7 +226,7 @@ function applyInner(state: GameState, a: Action): ApplyResult {
       const d = canDisturb(state, state.objects[a.objectId]!);
       if (!d.ok) return d;
       treeUpgrade(state, a.objectId);
-      discoverCombos(state);
+      discoverPlacement(state);
       return { ok: true };
     }
     case 'upgradeObject': {
@@ -241,7 +237,7 @@ function applyInner(state: GameState, a: Action): ApplyResult {
       const d = canDisturb(state, obj);
       if (!d.ok) return d;
       upgrade(state, a.objectId);
-      discoverCombos(state);
+      discoverPlacement(state);
       return { ok: true };
     }
     case 'repairObject': {
@@ -274,7 +270,7 @@ function applyInner(state: GameState, a: Action): ApplyResult {
       const c = canBuildMain(state, a.x, a.y);
       if (!c.ok) return c;
       placeMain(state, a.x, a.y);
-      discoverCombos(state);
+      discoverPlacement(state);
       return { ok: true };
     }
     // ---- y-indoor: 본관 증축·2층·이동·실내 요소 (rooms.ts) ----
@@ -282,7 +278,7 @@ function applyInner(state: GameState, a: Action): ApplyResult {
       const c = canExpandMain(state);
       if (!c.ok) return c;
       expandMain(state);
-      discoverCombos(state);
+      discoverPlacement(state);
       return { ok: true };
     }
     case 'buildSecondFloor': {
@@ -295,26 +291,14 @@ function applyInner(state: GameState, a: Action): ApplyResult {
       const c = canMoveMain(state, a.x, a.y);
       if (!c.ok) return c;
       moveMain(state, a.x, a.y);
-      discoverCombos(state);
+      discoverPlacement(state);
       return { ok: true };
     }
     case 'undoMoveMain': {
       const c = canUndoMoveMain(state);
       if (!c.ok) return c;
       undoMoveMain(state);
-      discoverCombos(state);
-      return { ok: true };
-    }
-    case 'toggleFireplace': {
-      const c = canToggleFireplace(state, a.objectId);
-      if (!c.ok) return c;
-      toggleFireplace(state, a.objectId);
-      return { ok: true };
-    }
-    case 'setPianoTime': {
-      const c = canSetPianoTime(state);
-      if (!c.ok) return c;
-      state.main.pianoTime = a.time;
+      discoverPlacement(state);
       return { ok: true };
     }
     case 'setBgm':
@@ -323,30 +307,6 @@ function applyInner(state: GameState, a: Action): ApplyResult {
     case 'setLighting':
       state.main.lighting = a.lighting;
       return { ok: true };
-    case 'feedAquarium': {
-      const c = canFeedAquarium(state, a.objectId);
-      if (!c.ok) return c;
-      feedAquarium(state, a.objectId);
-      return { ok: true };
-    }
-    case 'restockKids': {
-      const c = canRestockKids(state, a.objectId);
-      if (!c.ok) return c;
-      restockKids(state, a.objectId);
-      return { ok: true };
-    }
-    case 'setBarEvening': {
-      const c = canSetBarEvening(state, a.objectId);
-      if (!c.ok) return c;
-      setBarEvening(state, a.objectId, a.on);
-      return { ok: true };
-    }
-    case 'addBooks': {
-      const c = canAddBooks(state, a.objectId);
-      if (!c.ok) return c;
-      addBooks(state, a.objectId);
-      return { ok: true };
-    }
     case 'setCosmetic': {
       const c = canSetCosmetic(state, a);
       if (!c.ok) return c;
@@ -377,27 +337,9 @@ function applyInner(state: GameState, a: Action): ApplyResult {
       continueEnding(state);
       return { ok: true };
     }
-    case 'donateVillage': { // z-ending
-      const c = canDonate(state);
-      if (!c.ok) return c;
-      donate(state);
-      return { ok: true };
-    }
-    case 'holdFestival': { // z-ending
-      const c = canHoldFestival(state);
-      if (!c.ok) return c;
-      holdFestival(state);
-      return { ok: true };
-    }
     case 'dismissAlert':
       state.alerts.shift();
       return { ok: true };
-    case 'acceptChallenge': {
-      const c = canAcceptChallenge(state, a.id);
-      if (!c.ok) return c;
-      acceptChallenge(state, a.id);
-      return { ok: true };
-    }
     case 'skipTutorial': {
       // §7.2 건너뛰기(첫 단계에서만): 빈 마당을 완성 시작 상태로 채우고 튜토리얼을 끝낸다
       if (state.tutorial.step > 0) return { ok: false, reason: '이미 튜토리얼을 시작했어요' };
@@ -499,27 +441,6 @@ function applyInner(state: GameState, a: Action): ApplyResult {
       afterInvest(state, a.id, level);
       return { ok: true };
     }
-    case 'hostTour': {
-      const c = canHostTour(state, a.spotId);
-      if (!c.ok) return c;
-      hostTour(state, a.spotId);
-      return { ok: true };
-    }
-    case 'dismissTour':
-      state.lastTour = null;
-      return { ok: true };
-    case 'setTourBus': {
-      const c = canSetTourBus(state, a.on);
-      if (!c.ok) return c;
-      setTourBus(state, a.on);
-      return { ok: true };
-    }
-    case 'setRouteContract': { // 트랙 H: 공항 셔틀 계약/해지
-      const c = canSetRouteContract(state, a.route, a.on);
-      if (!c.ok) return c;
-      setRouteContract(state, a.route, a.on);
-      return { ok: true };
-    }
     case 'expandParking': { // 트랙 H: 주차장 2×2 → 3×2 교체 (차액)
       const c = canExpandParking(state, a.objectId);
       if (!c.ok) return c;
@@ -582,18 +503,6 @@ function applyInner(state: GameState, a: Action): ApplyResult {
       levelUpMenu(state, a.menuId);
       return { ok: true };
     }
-    case 'buyMileage': {
-      const c = canBuyMileage(state, a.id);
-      if (!c.ok) return c;
-      buyMileage(state, a.id);
-      return { ok: true };
-    }
-    case 'buyTicket': {
-      const c = canBuyTicket(state, a.id);
-      if (!c.ok) return c;
-      buyTicket(state, a.id);
-      return { ok: true };
-    }
     case 'drawTicket': {
       const c = canDrawTicket(state);
       if (!c.ok) return c;
@@ -617,27 +526,6 @@ function applyInner(state: GameState, a: Action): ApplyResult {
     }
     case 'dismissAnnouncement':
       state.lastAnnouncement = null;
-      return { ok: true };
-    case 'openPopup': {
-      const c = canOpenPopup(state, a.regionId);
-      if (!c.ok) return c;
-      openPopup(state, a.regionId);
-      return { ok: true };
-    }
-    case 'closePopup': {
-      const c = canClosePopup(state);
-      if (!c.ok) return c;
-      closePopup(state);
-      return { ok: true };
-    }
-    case 'challenge': {
-      const c = canChallenge(state, a.rivalId, a.menuId);
-      if (!c.ok) return c;
-      challenge(state, a.rivalId, a.menuId);
-      return { ok: true };
-    }
-    case 'dismissChallenge':
-      state.lastChallenge = null;
       return { ok: true };
     case 'dismissOutcome': // staff-luck 룰렛 팝업
       state.lastOutcome = null;

@@ -20,7 +20,7 @@ import { addEffect } from './effects.ts';
 import { objectDef } from '../data/index.ts';
 import { parcelAt } from './parcels.ts';
 import { spawnNamedGuest } from './guests.ts';
-import { namedGuestState, isWeekend } from './popup.ts';
+import { namedGuestState } from './named.ts';
 import { fmtNum } from './format.ts';
 import { josa } from './josa.ts';
 
@@ -127,7 +127,6 @@ export function typhoonRepairCost(state: GameState, def: BigEventDef): number {
   if (base <= 0) return 0; // 야외 시설이 없으면 수리할 게 없다
   let cost = Math.max(fx.repairMin ?? 0, Math.min(fx.repairMax ?? Infinity, base * fx.repairPct / 100));
   for (const d of fx.itemDiscount ?? []) if ((state.inventory[d.itemId] ?? 0) > 0) cost *= d.mult;
-  cost *= Math.max(0, 1 - skillTotal(state, 'stormRepairDiscount')); // 트랙 D 특기 storm_ready −30%
   return Math.round(cost);
 }
 /** 이 이벤트의 이번 달 발동 확률 (deterItem이 있으면 배수) */
@@ -183,8 +182,8 @@ function applyEventStart(state: GameState, e: ActiveBigEvent): void {
     pushNotice(state, `${def.title}: 난방비 ₩${fmtNum(fx.heatingCost)}`);
   }
   if (fx.harvestMult !== undefined) {
-    // 감귤 수확철: 운반 담당 힘 ≥ carryStrength면 harvestMultCarry
-    const strong = fx.carryStrength !== undefined && staffInRole(state, 'carry').some((st) => st.stats.strength >= fx.carryStrength!);
+    // 감귤 수확철: 요리사 힘 ≥ carryStrength면 harvestMultCarry (trim: 운반 직종은 없앴다)
+    const strong = fx.carryStrength !== undefined && staffInRole(state, 'cook').some((st) => st.stats.strength >= fx.carryStrength!);
     const mult = strong && fx.harvestMultCarry !== undefined ? fx.harvestMultCarry : fx.harvestMult;
     addEffect(state, { kind: 'harvestMult', mult, days: fx.harvestDays ?? 30, source: id });
   }
@@ -209,6 +208,11 @@ export function monthlyBigEvents(state: GameState): string[] {
 
 /** 주간 미니 사건 (game-feel P1: 달 중반에 sim이 스스로 주는 사건): 토요일 아침 WEEKLY_EVENT_CHANCE로 weekly 이벤트 중 조건이 맞는 것 하나(rng)를 그날 하루 발동.
  *  빅 이벤트 동시 상한에 안 세고, 끝날 때 eventEnd 알림도 없다(하루짜리). 결정적(state.rng — 토요일에만 소비). */
+/** 주말: 매월 6·13·20·27일 */
+export const WEEKEND_DAYS = [6, 13, 20, 27] as const;
+export function isWeekend(day: number): boolean {
+  return (WEEKEND_DAYS as readonly number[]).includes(day);
+}
 export const WEEKLY_EVENT_CHANCE = 0.4;
 /** 이만큼 조용했으면 이번 토요일은 확정 — 1일(무료 뽑기·월간 과제)·15일(보름 응모권)과 합쳐 sim이 주는 사건 공백이 12일을 안 넘게 */
 export const WEEKLY_EVENT_FORCE_DAYS = 14;

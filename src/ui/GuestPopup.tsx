@@ -3,8 +3,8 @@ import { Icon } from './Icon';
 import { useTutorialNote } from './tutorialDialogue';
 import { wonText } from '../data/labels.ts';
 import { useGame } from './store';
-import { guestFace, walletOf, canAcceptQuest, namedGuestFace, regularFace, AFFINITY_MAX, type Guest, type GuestTypeState } from '../sim/index.ts';
-import { guestTypeDef, questDef, namedGuestDef, regionDef, NAMES } from '../data/index.ts';
+import { guestFace, walletOf, canAcceptQuest, namedGuestFace, regularFace, type Guest, type GuestTypeState } from '../sim/index.ts';
+import { guestTypeDef, questDef, namedGuestDef, NAMES } from '../data/index.ts';
 import { guestParts, staffParts, namedGuestParts, type CharacterParts } from '../render/character';
 import { drawPortrait, PORTRAIT_SIZE, PORTRAIT_DISPLAY, type PortraitExpr } from '../render/portrait';
 import { Popup } from './Popup';
@@ -92,10 +92,9 @@ export function GuestPopup({ guestId, onClose, onQuest }: { guestId: string; onC
         <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }} data-testid="named-guest-popup">
           <Portrait parts={namedPortraitParts(nd.id)} face={namedGuestFace(nd)} />
           <div style={{ flex: 1, fontSize: 14, lineHeight: 1.6 }}>
-            <div><b>{nd.name}</b> <span style={{ fontSize: 12, color: PALETTE.inkSoft }}>{nd.job} · {regionDef(nd.regionId).name}</span>{ns?.regular && <span style={{ color: PALETTE.btn, fontWeight: 700 }}> ★ 단골</span>}</div>
+            <div><b>{nd.name}</b> <span style={{ fontSize: 12, color: PALETTE.inkSoft }}>{nd.job}</span></div>
             <div>기분: {g.mood && <><Icon name={MOOD_ICON[g.mood] ?? 'mood_meh'} size={14} /> </>}{mood}{g.moodReason && g.mood !== 'happy' ? ` (${REASON_TEXT[g.moodReason]})` : ''}</div>
             <div>지갑: {wonText(nd.budget)}</div>
-            <div style={{ whiteSpace: 'nowrap' }}>호감 <Bar value={ns?.affinity ?? 0} max={AFFINITY_MAX} width={90} /> {ns?.affinity ?? 0}/{AFFINITY_MAX}</div>
           </div>
         </div>
         <div style={{ marginTop: 8, fontStyle: 'italic', color: PALETTE.inkSoft, fontSize: 14 }}>“{g.say ?? nd.line}”</div>

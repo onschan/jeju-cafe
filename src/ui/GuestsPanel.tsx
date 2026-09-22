@@ -24,7 +24,6 @@ import { useGame, dispatch } from './store';
 import { guestFace, unlockedTypeIds, MAX_TARGETS, type GameState, type Guest } from '../sim/index.ts';
 import { guestTypeDef, GUEST_TYPES } from '../data/index.ts';
 import { BoardPanel } from './BoardPanel';
-import { RivalPanel } from './RivalPanel';
 import { Portrait, guestPortraitParts, guestPortraitOf, guestWallet, guestName } from './GuestPopup';
 import { Bar } from './Bars';
 import { ComplaintsCard } from './ComplaintsCard';
@@ -123,7 +122,7 @@ export function GuestsPanel({ onGuest, sub: fixed }: { onGuest: (guestId: string
         <div style={{ display: 'flex', flexWrap: 'wrap', marginBottom: 4 }}>
           {SUBS.map((t) => (
             <button key={t.id} style={{ ...(sub === t.id ? brownBtnOn : brownBtn), padding: '0 10px' }} onClick={() => setSub(t.id)}>
-              {t.label}{t.id === 'quests' && offered > 0 ? ` (${offered})` : ''}{t.id === 'now' ? ` ${s.guests.length}` : ''}{t.id === 'rivals' && s.rivals.length > 0 ? ` (${s.rivals.length})` : ''}
+              {t.label}{t.id === 'quests' && offered > 0 ? ` (${offered})` : ''}{t.id === 'now' ? ` ${s.guests.length}` : ''}
             </button>
           ))}
         </div>
@@ -150,7 +149,6 @@ export function GuestsPanel({ onGuest, sub: fixed }: { onGuest: (guestId: string
         </div>
       )}
       {sub === 'quests' && <BoardPanel tabs={['quests']} />}
-      {sub === 'rivals' && <RivalPanel />}
       {sub === 'codex' && (
         <div>
           <div style={{ fontSize: 13, color: PALETTE.inkSoft, marginBottom: 4 }}>손님 도감 {unlocked.size}/{GUEST_TYPES.length} · 만족 30이면 부탁을 들고 와요</div>

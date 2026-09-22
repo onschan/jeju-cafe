@@ -6,7 +6,7 @@ import { pushNotice } from './staff.ts';
 import { pushFx } from './fx.ts';
 import { roomAt } from './grid.ts';
 import { isDoorReachable } from './path.ts';
-import { discoverCombos } from './compat.ts';
+import { discoverPlacement } from './compat.ts';
 import { josa } from './josa.ts';
 
 export const DOOR_PATH_HINT = '문 앞까지 올렛길을 이어 주세요';
@@ -95,6 +95,6 @@ export function advanceConstruction(state: GameState): string[] {
     const list = [...names].map(([n, k]) => (k > 1 ? `${n} ×${k}` : n)).join(' · ');
     pushFx(state, { kind: 'scene', title: '완공', text: anyHint ? `${list} 완공! ${DOOR_PATH_HINT}` : `${list} 완공! 손님을 맞을 준비가 됐어요`, tick: state.tick });
   }
-  if (done.length > 0) discoverCombos(state); // 명당은 완공된 시설만 센다
+  if (done.length > 0) discoverPlacement(state); // 코너는 완공된 시설만 센다
   return done;
 }

@@ -11,6 +11,7 @@ import { objectDef } from '../data/index.ts';
 import { TopShell, BottomBar, PlaceBar, SHELL_BOTTOM, SHELL_TOP, BOTTOM_BAR_H, type WindowKind, type PlaceBarProps } from './Shell';
 import { Window, type IconGridItem } from './Window';
 import { MessageLine } from './MessageLine';
+import { VoiceFeed } from './VoiceFeed'; // trim: 손님 목소리 피드
 import { MiniCard, MainCard, type CardTarget, type CardActions } from './MiniCard';
 import { DialogueHost } from './Dialogue.tsx';
 import { checkTutorial, setTutorialDispatch, useTutorialNote } from './tutorialDialogue';
@@ -22,7 +23,7 @@ import { RewardPopup } from './RewardPopup';
 import { OutcomePopup } from './OutcomePopup'; // staff-luck: 대박/중박/쪽박 룰렛
 import { checkAlerts } from './alertDialogue.ts';
 import { guestSay, staffSay } from './simBridge';
-import { BuildWindow } from './windows/BuildWindow.tsx';
+import { BuildWindow, requestBuildTab } from './windows/BuildWindow.tsx';
 import { MenuWindow } from './windows/MenuWindow.tsx';
 import { StaffWindow } from './windows/StaffWindow.tsx';
 import { GoalWindow } from './windows/GoalWindow.tsx';
@@ -35,7 +36,6 @@ import { CafePanel } from './CafePanel';
 import { PromoPanel } from './PromoPanel';
 import { GuestsPanel } from './GuestsPanel';
 import { BoardPanel } from './BoardPanel';
-import { RegionPanel } from './RegionPanel';
 import { ObjectInfoPanel, CodexPanel } from './ObjectInfoPanel';
 import { PopupHost, Confirm } from './Popup';
 import { brownBtn, brownBtnOn, brownBtnOff, dangerBtn, card, PALETTE } from './frame';
@@ -47,9 +47,6 @@ import { IntroScreen } from './IntroScreen'; // intro: 새 게임 프롤로그 6
 import { SaveSlots } from './SaveSlots';
 import { showScene, SceneHost, type SceneChar } from './SceneWindow';
 import { staffParts } from '../render/character';
-import { PopupScreenHost } from './PopupScreen';
-import { ChallengePopup, RivalPanel } from './RivalPanel';
-import { TourPopup } from './BoardPanel';
 import { rangeHintFor } from './rangeHint';
 import { AppealPanel } from './AppealPanel'; // fun: 카페 매력도
 import { tradeoffOf } from './tradeoff'; // fun: 배치 트레이드오프
@@ -70,8 +67,8 @@ type Mode =
 
 /** 전체 화면 창과 그 아이콘 그리드 항목 (§5.1) */
 type CafeTab = 'menu' | 'ingredients' | 'craft' | 'promo' | 'building' | 'indoor';
-type PeopleTab = 'staff' | 'candidates' | 'guests' | 'codex' | 'quests' | 'rivals';
-type LedgerTab = 'report' | 'invest' | 'spots' | 'shop' | 'tickets' | 'rank' | 'region' | 'settings';
+type PeopleTab = 'staff' | 'candidates' | 'guests' | 'codex' | 'quests';
+type LedgerTab = 'report' | 'invest' | 'spots' | 'shop' | 'tickets' | 'rank' | 'settings';
 type Win =
   | { kind: 'build'; origin?: { x: number; y: number } }
   | { kind: 'cafe'; tab: CafeTab | null }
@@ -173,7 +170,7 @@ function SettingsPanel({ onExit, gauges, onGauges }: { onExit: () => void; gauge
       {slider('효과음', sfxVol, (n) => { setSfxVolume(n); setSfxVol(n); sfx('tap'); })}
       <button style={{ ...brownBtn, marginRight: 0, marginBottom: 0 }} onClick={toggleMute}>{muted ? <><Icon name="sound_on" /> 소리 켜기</> : <><Icon name="sound_off" /> 소리 끄기</>}</button>
       <OnOff label="속도 잠금 (창을 열어도 안 멈춤)" on={isSpeedLocked()} onChange={setSpeedLocked} testId="setting-speed-lock" />
-      <OnOff label="시설 위 인기 바·◎ 콤보 표시" on={gauges} onChange={onGauges} testId="setting-gauges" />
+      <OnOff label="시설 위 인기 바 표시" on={gauges} onChange={onGauges} testId="setting-gauges" />
       {!tutorialDone(s) && <OnOff label="튜토리얼 스포트라이트 (빛나는 것 빼고 어둡게)" on={spotlight} onChange={setSpotlightOn} testId="setting-spotlight" />}{/* w-free */}
       <button style={{ ...brownBtn, marginRight: 0, marginBottom: 0 }} onClick={() => setSlots(true)}><Icon name="save" /> 슬롯에 저장</button>
       <button style={{ ...dangerBtn, marginRight: 0, marginBottom: 0 }} onClick={() => Confirm('자동 저장하고 타이틀로 나갈까요?', onExit, { title: '타이틀로' })}><Icon name="door" /> 타이틀로</button>
@@ -197,7 +194,7 @@ function StatusPanel() {
     ['직원', `${s.staff.length}명 · 후보 ${s.candidates.length}명`],
     ['메뉴', `${s.menuSlots.filter((m) => m !== null).length}개`],
     ['필지', `${s.parcels.filter((p) => p.owned).length}/${s.parcels.length}`],
-    ['응모권·마일리지', `${s.tickets} · ${s.mileage}`],
+    ['응모권', `${s.tickets}`],
   ];
   const [detail, setDetail] = useState(false); // fun: 잔지표는 「자세히」 접힘
   return (
@@ -691,9 +688,8 @@ function Game({ onExit }: { onExit: () => void }) {
     { key: 'guests', label: '손님', icon: 'guest', badge: s.guests.length },
     { key: 'codex', label: '도감', icon: 'book' },
     { key: 'quests', label: '부탁', icon: 'quest', badge: offered },
-    { key: 'rivals', label: '라이벌', icon: 'rival', locked: !featureOpen(s, 'challenge'), lockedText: '카페 대결은 목표를 이루면 열려요', isNew: s.rivals.length > 0 },
   ];
-  const revealed = gradeOf(s) >= REVEAL_GRADE; // fun 점진 공개: 등급 3부터 실내·본관·라이벌·명소·지역이 나타난다 (잠금 표시 대신 아예 안 보임)
+  const revealed = gradeOf(s) >= REVEAL_GRADE; // fun 점진 공개: 등급 3부터 실내·본관·명소·지역이 나타난다 (잠금 표시 대신 아예 안 보임)
   const LEDGER_MENU: IconGridItem<LedgerTab>[] = [
     { key: 'report', label: '경영', icon: 'report' },
     { key: 'invest', label: '투자', icon: 'money', badge: s.board.events.filter((e) => e.status === 'pending').length },
@@ -701,13 +697,12 @@ function Game({ onExit }: { onExit: () => void }) {
     { key: 'shop', label: '상점', icon: 'shop' },
     { key: 'tickets', label: '응모권', icon: 'ticket', badge: s.tickets },
     { key: 'rank', label: '랭킹', icon: 'trophy' },
-    { key: 'region', label: '지역', icon: 'wave', locked: !featureOpen(s, 'popup'), lockedText: '팝업 스토어는 목표를 이루면 열려요' },
     { key: 'settings', label: '설정', icon: 'settings' },
   ];
 
   const cafeMenu = revealed ? CAFE_MENU : CAFE_MENU.filter((t) => t.key !== 'building' && t.key !== 'indoor');
-  const peopleMenu = revealed ? PEOPLE_MENU : PEOPLE_MENU.filter((t) => t.key !== 'rivals');
-  const ledgerMenu = revealed ? LEDGER_MENU : LEDGER_MENU.filter((t) => t.key !== 'spots' && t.key !== 'region');
+  const peopleMenu = PEOPLE_MENU;
+  const ledgerMenu = revealed ? LEDGER_MENU : LEDGER_MENU.filter((t) => t.key !== 'spots');
   const renderWindow = () => {
     if (!win) return null;
     switch (win.kind) {
@@ -744,7 +739,6 @@ function Game({ onExit }: { onExit: () => void }) {
             {win.tab === 'guests' && <GuestsPanel onGuest={setGuestPopup} sub="now" />}
             {win.tab === 'codex' && <><GuestsPanel onGuest={setGuestPopup} sub="codex" /><CodexPanel /></>}
             {win.tab === 'quests' && <BoardPanel tabs={['quests']} />}
-            {win.tab === 'rivals' && <RivalPanel />}
           </Window>
         );
       case 'ledger':
@@ -754,9 +748,8 @@ function Game({ onExit }: { onExit: () => void }) {
             {win.tab === 'invest' && <BoardPanel tabs={['events']} />}
             {win.tab === 'spots' && <BoardPanel tabs={['spots']} />}
             {win.tab === 'shop' && <ShopPanel />}
-            {win.tab === 'tickets' && <ShopPanel initialTab="ticket" />}
+            {win.tab === 'tickets' && <ShopPanel initialTab="draw" />}
             {win.tab === 'rank' && <RankPanel />}
-            {win.tab === 'region' && <RegionPanel />}
             {win.tab === 'settings' && <SettingsPanel onExit={onExit} gauges={gauges} onGauges={setGauges} />}
           </Window>
         );
@@ -782,6 +775,16 @@ function Game({ onExit }: { onExit: () => void }) {
           style={{ position: 'absolute', left: 8, bottom: `calc(${SHELL_BOTTOM + 8}px + env(safe-area-inset-bottom))`, width: 56, height: 56, borderRadius: 28, border: `3px solid ${PALETTE.wood}`, background: PALETTE.paper, fontSize: 20, zIndex: 11, padding: 0, boxShadow: '0 2px 0 #0004', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Icon name="home_cafe" size={48} /></button>
       )}
       {place && ghostCell && <GhostButtons view={view} cell={ghostCell} ok={place.ok} canRotate={place.canRotate} onConfirm={place.onConfirm} onRotate={place.onRotate} />}
+      {!place && !cardTarget && !win && (
+        <VoiceFeed bottom={BOTTOM_BAR_H + 26}
+          onFocus={(x, y) => viewRef.current?.focusCell(x, y, 1, 1, 1.6)}
+          onFix={(fix) => {
+            if (fix === 'seat') { requestBuildTab('rest'); setWin({ kind: 'build' }); }
+            else if (fix === 'staff') setWin({ kind: 'people', tab: 'staff' });
+            else if (fix === 'menu') setWin({ kind: 'cafe', tab: 'menu' });
+            else if (fix === 'clean') { setMode({ kind: 'idle' }); showMessage('낡은 시설을 골라 고쳐 보세요'); }
+          }} />
+      )}
       <MessageLine bottom={BOTTOM_BAR_H} />
       {place ? <PlaceBar {...place} /> : <BottomBar onOpen={openWindow} />}
       {cardTarget && !place && <MiniCard target={cardTarget} actions={cardActions} onClose={() => openCard(null)} />}
@@ -789,9 +792,6 @@ function Game({ onExit }: { onExit: () => void }) {
       <DevelopResultPopup />
       <DrawPopup />
       <AnnouncementPopup />
-      <ChallengePopup />
-      <TourPopup />
-      <PopupScreenHost />
       {guestPopup && <GuestPopup guestId={guestPopup} onClose={() => setGuestPopup(null)} onQuest={(id) => { dispatch({ type: 'acceptQuest', id }); setWin({ kind: 'people', tab: 'quests' }); }} />}
       {renderWindow()}
       <RewardPopup />

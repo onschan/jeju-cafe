@@ -6,8 +6,8 @@ import { serialize, deserialize } from '../save.ts';
 import { DAY_MS } from '../clock.ts';
 import { objectAt } from '../grid.ts';
 import {
-  computeScore, scoreTier, endingDue, endingMonthly, makeCarry, applyCarry, carryText, carryDolhareubangCells, centennialMonthly, centennialConditions, canSetSpeed,
-  SCORE_TITLES, SCORE_ITEMS, CHIEF_BONUS, CHIEF_PREFIX, ENDING_YEAR, ENDING_MONTH, CENTENNIAL_YEAR, CENTENNIAL_MONTH, MILLENNIUM_TREE, CARRY_RATIO, FAST_SPEED,
+  computeScore, scoreTier, endingDue, endingMonthly, makeCarry, applyCarry, carryText, carryDolhareubangCells, canSetSpeed,
+  SCORE_TITLES, SCORE_ITEMS, ENDING_YEAR, ENDING_MONTH, MILLENNIUM_TREE, CARRY_RATIO, FAST_SPEED,
 } from '../ending.ts';
 
 /** 10년차 3월 1일 직전(2월 30일 23시)으로 시계를 맞춘다 */
@@ -23,28 +23,20 @@ describe('최종 점수', () => {
     const sc = computeScore(s);
     expect(sc.items.map((i) => i.key)).toEqual(SCORE_ITEMS.map((i) => i.key));
     const pt = Object.fromEntries(sc.items.map((i) => [i.key, i.points]));
-    expect(pt).toMatchObject({ money: 50, guests: 123, star: 60, rank: 60, reputation: 35, goals: 60, combos: 3, spots: 4, regulars: 0 });
+    expect(pt).toMatchObject({ money: 50, guests: 123, star: 60, rank: 60, reputation: 35, goals: 60, corners: 3, spots: 4, regulars: 0 });
     expect(sc.total).toBe(50 + 123 + 60 + 60 + 35 + 60 + 3 + 4);
     expect(sc.tier).toBe(scoreTier(sc.total));
     expect(sc.title).toBe(SCORE_TITLES[sc.tier - 1]!.title);
     // 상한: 자금 3억 → 300점, 그 이상도 300 · 코너 24
     s.money = 9_000_000_000;
     s.codex.corners = Array.from({ length: 30 }, (_, i) => `c${i}`);
-    expect(computeScore(s).items.find((i) => i.key === 'combos')!.points).toBe(24);
+    expect(computeScore(s).items.find((i) => i.key === 'corners')!.points).toBe(24);
     expect(computeScore(s).items.find((i) => i.key === 'money')!.points).toBe(300);
     // 칭호 문턱
     expect(scoreTier(0)).toBe(1); expect(scoreTier(199)).toBe(1); expect(scoreTier(200)).toBe(2); expect(scoreTier(800)).toBe(5);
     expect(SCORE_TITLES[0]!.title).toBe('올레길 커피 노점'); expect(SCORE_TITLES[4]!.title).toBe('제주의 전설 카페');
   });
 
-  test('촌장 후보(정착 등급 5)면 보너스 + 칭호 접두', () => {
-    const s = bareState(1);
-    const base = computeScore(s).total;
-    s.village.grade = 5;
-    const sc = computeScore(s);
-    expect(sc.total).toBe(base + CHIEF_BONUS);
-    expect(sc.title.startsWith(CHIEF_PREFIX)).toBe(true);
-  });
 });
 
 describe('10년차 엔딩', () => {
@@ -77,18 +69,16 @@ describe('10년차 엔딩', () => {
     expect(s.clock.month).toBe(ENDING_MONTH + 1);
   });
 
-  test('저장 왕복: ending·village·carry 유지, v18 세이브(필드 없음)는 backfill', () => {
+  test('저장 왕복: ending·carry 유지, v18 세이브(필드 없음)는 backfill', () => {
     const s = bareState(3);
     beforeEnding(s);
     tick(s, 4000);
     const back = deserialize(serialize(s));
     expect(back.ending).toEqual(s.ending);
-    expect(back.village).toEqual(s.village);
     const obj = JSON.parse(serialize(bareState(3))) as Record<string, unknown>;
-    delete obj.ending; delete obj.village; delete obj.carry;
+    delete obj.ending; delete obj.carry;
     const old = deserialize(JSON.stringify(obj));
-    expect(old.ending).toEqual({ reached: false, score: null, continued: false, fastMode: false, centennial: 'none' });
-    expect(old.village.grade).toBe(1);
+    expect(old.ending).toEqual({ reached: false, score: null, continued: false, fastMode: false });
     expect(old.carry).toBeNull();
   });
 
@@ -101,17 +91,17 @@ describe('10년차 엔딩', () => {
 });
 
 describe('이월', () => {
-  test('makeCarry: 콤보 도감·명소 Lv·유니폼·돌하르방(최대 2)·마일리지 20%·손님 인기 20%', () => {
+  test('makeCarry: 코너 도감·명소 Lv·유니폼·돌하르방(최대 2)·응모권 20%·손님 인기 20%', () => {
     const s = bareState(4);
-    s.codex.combos = ['cb1', 'cb2']; s.spots = { a: 3, b: 0 }; s.uniforms = ['uf_galot']; s.mileage = 57; s.segmentPopularity = { student: 40, local_auntie: 7, x: 0 };
+    s.codex.corners = ['cb1', 'cb2']; s.spots = { a: 3, b: 0 }; s.uniforms = ['uf_galot']; s.tickets = 57; s.segmentPopularity = { student: 40, local_auntie: 7, x: 0 };
     s.unlocked.objects.push('dolhareubang'); s.builders = 3; // 동시 건설 3
     for (const [x, y] of [[3, 4], [5, 4], [5, 5]] as const) expect(apply(s, { type: 'place', objectType: 'dolhareubang', x: START_ORIGIN.x + x, y: START_ORIGIN.y + y }).ok).toBe(true); // 시작 좌석 자리(빈 마당)
     const c = makeCarry(s);
-    expect(c.combos).toEqual(['cb1', 'cb2']);
+    expect(c.corners).toEqual(['cb1', 'cb2']);
     expect(c.spots).toEqual({ a: 3 });
     expect(c.uniforms).toEqual(['uf_galot']);
     expect(c.dolhareubang).toBe(2);
-    expect(c.mileage).toBe(Math.floor(57 * CARRY_RATIO));
+    expect(c.tickets).toBe(Math.floor(57 * CARRY_RATIO));
     expect(c.guestPopularity).toEqual({ student: 8, local_auntie: 1 });
     expect(c.millennium).toBe(false);
     expect(carryText(c).length).toBeGreaterThanOrEqual(6);
@@ -119,17 +109,17 @@ describe('이월', () => {
 
   test('createInitialState(carry): 새 게임에 적용 — 돌하르방은 정낭 양옆, 튜토리얼 빈 마당에도', () => {
     const s0 = bareState(4);
-    s0.codex.combos = ['cb1']; s0.spots = { a: 2 }; s0.uniforms = ['uf_galot']; s0.mileage = 100; s0.segmentPopularity = { student: 50 };
+    s0.codex.corners = ['cb1']; s0.spots = { a: 2 }; s0.uniforms = ['uf_galot']; s0.tickets = 100; s0.segmentPopularity = { student: 50 };
     s0.unlocked.objects.push('dolhareubang');
     expect(apply(s0, { type: 'place', objectType: 'dolhareubang', x: START_ORIGIN.x + 3, y: START_ORIGIN.y + 4 }).ok).toBe(true);
-    s0.ending.centennial = 'done';
+    s0.unlocked.objects.push(MILLENNIUM_TREE);
     const carry = makeCarry(s0);
     const s = createInitialState(7, 'local', 0, 'tutorial', carry);
     expect(s.carry).toEqual(carry);
-    expect(s.codex.combos).toContain('cb1');
+    expect(s.codex.corners).toContain('cb1');
     expect(s.spots.a).toBe(2);
     expect(s.uniforms).toContain('uf_galot');
-    expect(s.mileage).toBe(createInitialState(7, 'local', 0, 'tutorial').mileage + 20);
+    expect(s.tickets).toBe(createInitialState(7, 'local', 0, 'tutorial').tickets + 20);
     expect(s.segmentPopularity.student).toBeGreaterThanOrEqual(10);
     expect(s.unlocked.objects).toContain('dolhareubang');
     expect(s.unlocked.objects).toContain(MILLENNIUM_TREE);
@@ -152,39 +142,6 @@ describe('이월', () => {
     expect(plain.unlocked.objects).not.toContain(MILLENNIUM_TREE);
     // 두 번 적용해도 중복 없음
     applyCarry(s, carry);
-    expect(s.codex.combos.filter((c) => c === 'cb1')).toHaveLength(1);
-  });
-});
-
-describe('100주년 감귤축제', () => {
-  test('계속하기 뒤 20년차 11월 1회: 조건(★5·가이드북 1위·평판 80) 충족이면 천년 팽나무 해금 + 알림', () => {
-    const s = bareState(6);
-    s.ending.continued = true;
-    s.clock.year = CENTENNIAL_YEAR; s.clock.month = CENTENNIAL_MONTH;
-    s.star = 5; s.reputation = 85;
-    expect(centennialConditions(s)).toEqual({ star: true, rank: false, reputation: true });
-    centennialMonthly(s);
-    expect(s.ending.centennial).toBe('failed');
-    expect(s.alerts.at(-1)).toEqual({ type: 'centennial', success: false });
-    expect(s.unlocked.objects).not.toContain(MILLENNIUM_TREE);
-    // 실패는 1회로 끝 — 조건을 채워도 다시 안 뜬다
-    s.guidebooks[Object.keys(s.guidebooks)[0]!]!.best = 1;
-    centennialMonthly(s);
-    expect(s.ending.centennial).toBe('failed');
-    // 성공 케이스
-    const t = bareState(6);
-    t.ending.continued = true; t.clock.year = CENTENNIAL_YEAR; t.clock.month = CENTENNIAL_MONTH; t.star = 5; t.reputation = 80;
-    t.guidebooks[Object.keys(t.guidebooks)[0]!]!.best = 1;
-    centennialMonthly(t);
-    expect(t.ending.centennial).toBe('done');
-    expect(t.unlocked.objects).toContain(MILLENNIUM_TREE);
-    expect(t.inventory.millennium_seed).toBe(1);
-    expect(t.alerts.at(-1)).toEqual({ type: 'centennial', success: true });
-    expect(makeCarry(t).millennium).toBe(true);
-    // 계속하기를 안 골랐으면(엔딩 전) 안 뜬다
-    const u = bareState(6);
-    u.clock.year = CENTENNIAL_YEAR; u.clock.month = CENTENNIAL_MONTH; u.star = 5; u.reputation = 80;
-    centennialMonthly(u);
-    expect(u.ending.centennial).toBe('none');
+    expect(s.codex.corners!.filter((c: string) => c === 'cb1')).toHaveLength(1);
   });
 });

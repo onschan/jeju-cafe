@@ -133,7 +133,7 @@ export class Background {
     this.band('bg_oreum', OREUM_BAND_Y, left, Math.min(0, right));
 
     // 장식 타일 링
-    const roads = { villageRoadY: VILLAGE_ROAD_Y, olleY: ENTRY_ROUTES.olle.entry.y, shuttleX: ENTRY_ROUTES.shuttle.entry.x };
+    const roads = { villageRoadY: VILLAGE_ROAD_Y, olleY: ENTRY_ROUTES.olle.entry.y, shuttleX: -1 };
     for (const c of ringCells(w, h)) {
       const kind = ringKind(c.x, c.y, w, h, roads);
       const sp = this.ringSprite(kind);

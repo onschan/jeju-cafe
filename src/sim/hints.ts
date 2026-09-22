@@ -10,7 +10,6 @@ import { pushNotice } from './staff.ts';
 import { currentGoal } from './goals.ts';
 import { TUTORIAL_STEPS } from './tutorial.ts';
 import { objectDef } from '../data/index.ts';
-import { offeredChallenges } from './challenges.ts';
 import { nextMove } from './strategy.ts';
 
 export const IDLE_DAYS = 3;
@@ -25,7 +24,6 @@ export function idleDays(state: GameState): number {
 /** 지금 가장 값진 다음 행동 한 줄 (없으면 null). 도전 다음엔 solver의 다음 수(strategy.nextMove — 추천 탭 「할망의 추천」과 같은 수).
  *  solver 결과(롤아웃)가 캐시에 있으면 그 1위 수를 예상 수치와 함께("할망: 야외 테이블 (12,9) — 14일 뒤 자금 +₩42만"), 없으면 1년차 표의 다음 수. 문구 규칙 §6: 지시문·화살표 없이 이유 한 줄. */
 export function idleHint(state: GameState): string | null {
-  if (state.challenges.active.length === 0 && offeredChallenges(state).length > 0) return '할망: 도전이 비었다. 목표 줄에 있고 보상이 쏠쏠하다';
   const move = nextMove(state);
   if (move) return `할망: ${move.text}`;
   const unbuilt = state.unlocked.objects.filter((t) => objectDef(t).cost > 0 && !Object.values(state.objects).some((o) => o.type === t));

@@ -1,10 +1,30 @@
 [
-  {"id": "barista", "name": "바리스타", "stat": "skill", "unlockedAtStart": true, "desc": "음료 조리 속도와 품질"},
-  {"id": "cook", "name": "요리사", "stat": "skill", "unlockedAtStart": true, "desc": "디저트·식사 조리"},
-  {"id": "hall", "name": "홀", "stat": "smile", "unlockedAtStart": true, "desc": "서빙·손님 기분"},
-  {"id": "carry", "name": "운반", "stat": "strength", "unlockedAtStart": false, "desc": "재료 입고·창고, 야생동물 쫓기"},
-  {"id": "guide", "name": "안내", "stat": "smile", "unlockedAtStart": false, "desc": "단체 손님 만족 +10%, 투어 점수 +5"},
-  {"id": "clean", "name": "청소", "stat": "skill", "unlockedAtStart": false, "desc": "청결 회복 (기술÷5 + 힘÷10)/일", "unlock": {"goal": "g26"}},
-  {"id": "garden", "name": "농원지기", "stat": "strength", "unlockedAtStart": false, "desc": "농원 수확 +50%/명(최대 2명), 노후 −50%", "unlock": {"farms": 3}},
-  {"id": "promo", "name": "홍보 담당", "stat": "smile", "unlockedAtStart": false, "desc": "홍보 기력 소모 −50%, 효과 +20%", "unlock": {"rank": 4}}
+  {
+    "id": "barista",
+    "name": "바리스타",
+    "stat": "skill",
+    "unlockedAtStart": true,
+    "desc": "음료 조리 속도와 품질"
+  },
+  {
+    "id": "cook",
+    "name": "요리사",
+    "stat": "skill",
+    "unlockedAtStart": true,
+    "desc": "디저트·식사 조리"
+  },
+  {
+    "id": "hall",
+    "name": "홀",
+    "stat": "smile",
+    "unlockedAtStart": true,
+    "desc": "서빙·손님 기분"
+  },
+  {
+    "id": "clean",
+    "name": "청소",
+    "stat": "skill",
+    "unlockedAtStart": true,
+    "desc": "청결 회복 (기술÷5 + 힘÷10)/일"
+  }
 ]

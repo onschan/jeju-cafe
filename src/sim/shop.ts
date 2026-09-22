@@ -5,7 +5,7 @@
  * - 응모권 상점: 유니폼 5(연출)·경관 씨앗·인기 열매
  */
 import type { GameState, ApplyResult, DrawResult, DrawPrizeDef } from './types.ts';
-import { MILEAGE_SHOP, TICKET_SHOP, UNIFORMS, DRAW_PRIZES, ITEMS, FARM_INGREDIENT_IDS, ingredientDef, GUEST_TYPES, POPULARITY_FRUIT, POPULARITY_FRUIT_DELTA, mileageShopDef, ticketShopDef, uniformDef, canonicalGuestId, guestTypeDef, OBJECTS, objectDef, giftDef, itemDef } from '../data/index.ts';
+import { OBJECTS, UNIFORMS, DRAW_PRIZES, ITEMS, FARM_INGREDIENT_IDS, ingredientDef, GUEST_TYPES, POPULARITY_FRUIT, POPULARITY_FRUIT_DELTA, canonicalGuestId, guestTypeDef, itemDef } from '../data/index.ts';
 import { grantItem, openGiftBox } from './items.ts';
 import { pushNotice } from './staff.ts';
 import { nextRandom, pickWeighted, randInt } from './rng.ts';
@@ -20,8 +20,8 @@ export const SEED_PACK = { tangerine_seed: 3, hallabong_seed: 2 } as const;
 /** 인형뽑기 상품 크기 */
 export const DRAW_MONEY_PER_YEAR = 50_000;
 export const DRAW_RESEARCH = 10;
+export const DRAW_TICKET = 1;
 export const DRAW_INGREDIENTS = 8;
-export const DRAW_MILEAGE = 1;
 /** 유니폼 조각 5개 → 아직 없는 유니폼 1벌 (다 모았으면 응모권 3장) */
 export const UNIFORM_PIECES_PER_SET = 5;
 export const UNIFORM_PIECES_TICKETS = 3;
@@ -44,85 +44,16 @@ export function objectAlreadyUnlocked(state: GameState, objectId: string): boole
   return state.unlocked.objects.includes(objectId);
 }
 
-// ---------- 마일리지 상점 ----------
-
-export function canBuyMileage(state: GameState, id: string): ApplyResult {
-  const def = MILEAGE_SHOP.find((m) => m.id === id);
-  if (!def) return { ok: false, reason: '없는 상품이에요' };
-  const m = WORKER_RE.exec(id);
-  if (m) {
-    const n = Number(m[1]);
-    if (state.builders >= MAX_BUILDERS) return { ok: false, reason: '일꾼 삼춘은 이제 다 모였어요' };
-    if (state.builders !== n - 1) return { ok: false, reason: state.builders >= n ? '이미 고용했어요' : '먼저 앞 번호 삼춘을 고용해요' };
-  }
-  if (def.objectId && objectAlreadyUnlocked(state, def.objectId)) return { ok: false, reason: '이미 열린 시설이에요' };
-  if (def.itemId === 'hammer_bearing' && (state.inventory[def.itemId] ?? 0) >= HAMMER_MAX) return { ok: false, reason: `망치는 ${HAMMER_MAX}개까지만 둘 수 있어요` };
-  if (state.mileage < def.price) return { ok: false, reason: '마일리지가 모자라요' };
-  return { ok: true };
-}
-
-/** 호출 전 canBuyMileage */
-export function buyMileage(state: GameState, id: string): void {
-  const def = mileageShopDef(id);
-  state.mileage -= def.price;
-  if (WORKER_RE.test(id)) { state.builders += 1; pushNotice(state, `일꾼 삼춘 합류! 동시 건설 ${state.builders}`); return; }
-  if (def.objectId) {
-    pushNotice(state, unlockObjectByShop(state, def.objectId) ? `${josa(objectDef(def.objectId).name, '을/를')} 지을 수 있어요` : `${josa(def.name, '을/를')} 샀어요 (시설은 곧 열려요)`);
-    return;
-  }
-  if (def.itemId) { grantItem(state, def.itemId); pushNotice(state, `${josa(def.name, '을/를')} 샀어요`); return; }
-  switch (id) {
-    case 'ms_ticket': state.tickets += 1; pushNotice(state, '응모권 1장을 샀어요'); return;
-    case 'ms_bus_contract': state.tourBusFreeMonths += 1; pushNotice(state, '투어 버스 계약권! 다음 계약비가 무료예요'); return;
-    case 'ms_gift_box': {
-      const got = openGiftBox(state);
-      pushNotice(state, `제주 선물 상자! ${got.map((g) => giftDef(g).name).join(' · ')}`);
-      return;
-    }
-    case 'ms_seed_pack':
-      for (const [item, n] of Object.entries(SEED_PACK)) grantItem(state, item, n);
-      pushNotice(state, '씨앗 묶음팩! 감귤 씨앗 3 · 한라봉 씨앗 2');
-      return;
-    case 'ms_scout': state.freeRecruits += 1; pushNotice(state, '스카우트권! 다음 공고비가 무료예요'); return;
-    default: pushNotice(state, `${josa(def.name, '을/를')} 샀어요`);
-  }
-}
-
-// ---------- 응모권 상점 ----------
+// ---------- 유니폼 ----------
 
 export function hasUniform(state: GameState, uniformId: string): boolean {
   return state.uniforms.includes(uniformId);
 }
-
-export function canBuyTicket(state: GameState, id: string): ApplyResult {
-  const def = TICKET_SHOP.find((t) => t.id === id);
-  if (!def) return { ok: false, reason: '없는 상품이에요' };
-  if (def.uniformId && hasUniform(state, def.uniformId)) return { ok: false, reason: '이미 가진 유니폼이에요' };
-  if (def.objectId && objectAlreadyUnlocked(state, def.objectId)) return { ok: false, reason: '이미 열린 시설이에요' };
-  if (state.tickets < def.price) return { ok: false, reason: '응모권이 모자라요' };
-  return { ok: true };
-}
-
-/** 유니폼을 얻으면 바로 입는다 (연출). 이미 있으면 false. */
+/** 새 유니폼을 준다 (이미 있으면 false) */
 export function grantUniform(state: GameState, uniformId: string): boolean {
-  uniformDef(uniformId);
   if (hasUniform(state, uniformId)) return false;
   state.uniforms.push(uniformId);
-  state.uniform = uniformId;
-  pushNotice(state, `새 유니폼: ${uniformDef(uniformId).name}`);
   return true;
-}
-
-/** 호출 전 canBuyTicket */
-export function buyTicket(state: GameState, id: string): void {
-  const def = ticketShopDef(id);
-  state.tickets -= def.price;
-  if (def.uniformId) { grantUniform(state, def.uniformId); return; }
-  if (def.objectId) {
-    pushNotice(state, unlockObjectByShop(state, def.objectId) ? `${josa(objectDef(def.objectId).name, '을/를')} 지을 수 있어요` : `${josa(def.name, '을/를')} 샀어요 (시설은 곧 열려요)`);
-    return;
-  }
-  if (def.itemId) { grantItem(state, def.itemId); pushNotice(state, `${josa(def.name, '을/를')} 샀어요`); }
 }
 
 export function canSetUniform(state: GameState, id: string | null): ApplyResult {
@@ -179,6 +110,7 @@ function applyPrize(state: GameState, prize: DrawPrizeDef): string {
       return `${josa(`₩${fmtNum(n)}`, '을/를')} 받았어요`;
     }
     case 'research': state.research += DRAW_RESEARCH; return `연구 +${DRAW_RESEARCH}`;
+    case 'ticket': state.tickets += DRAW_TICKET; return `응모권 +${DRAW_TICKET}`;
     case 'ingredient_box': {
       const crops = FARM_INGREDIENT_IDS;
       const got: Record<string, number> = {};
@@ -189,7 +121,6 @@ function applyPrize(state: GameState, prize: DrawPrizeDef): string {
       }
       return `재료 상자! ${Object.entries(got).map(([id, n]) => `${ingredientDef(id).name} ${n}`).join(' · ')}`;
     }
-    case 'mileage': state.mileage += DRAW_MILEAGE; return `마일리지 +${DRAW_MILEAGE}`;
     case 'item': {
       if (nextRandom(state) < DRAW_GUARDIAN_CHANCE) { grantItem(state, DRAW_GUARDIAN); return `${josa(itemDef(DRAW_GUARDIAN).name, '을/를')} 뽑았어요!`; }
       const pool = ITEMS.filter((i) => i.value > 0 && i.fitIds.length > 0);

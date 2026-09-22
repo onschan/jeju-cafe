@@ -35,7 +35,7 @@ export function moneyBucket(money: number): number {
 }
 /** 같은 답을 내는 상태 범위의 키 */
 export function solverKey(s: GameState): string {
-  return `${layoutSig(s)}:${moneyBucket(s.money)}:${s.staff.length}:${s.candidates.length}:${s.menuSlots.join(',')}:${s.tutorial.step}:${s.activePromotions.length}:${s.challenges.active.length}`;
+  return `${layoutSig(s)}:${moneyBucket(s.money)}:${s.staff.length}:${s.candidates.length}:${s.menuSlots.join(',')}:${s.tutorial.step}:${s.activePromotions.length}`;
 }
 
 let last: SolverResult | null = null;

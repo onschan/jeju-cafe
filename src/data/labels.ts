@@ -3,12 +3,12 @@
  *  sim 런타임에는 의존하지 않는다(타입만) — 트랙 A가 sim을 바꾸는 중이라 데이터만 본다. */
 import type { MenuDef, ObjectDef, UnlockCond, QuestReward, QuestCondition } from '../sim/types.ts';
 import {
-  MENUS, OBJECTS, INGREDIENTS, GUEST_TYPES, NAMED_GUESTS, ROLES, ITEMS, QUESTS, SPOTS, REGIONS, SKILLS, PROMOTIONS,
+  MENUS, OBJECTS, INGREDIENTS, GUEST_TYPES, ROLES, ITEMS, QUESTS, SPOTS, SKILLS, PROMOTIONS,
   INGREDIENT_CATEGORY_NAME, MENU_STAT_LABEL, canonicalGuestId,
 } from './index.ts';
 import extraMenusJson from './generated/v2/extra_menus.json' with { type: 'json' };
 
-export type LabelKind = 'menu' | 'facility' | 'ingredient' | 'guest' | 'role' | 'item' | 'quest' | 'spot' | 'region' | 'skill' | 'promotion' | 'stat' | 'category';
+export type LabelKind = 'menu' | 'facility' | 'ingredient' | 'guest' | 'role' | 'item' | 'quest' | 'spot' | 'skill' | 'promotion' | 'stat' | 'category';
 
 /** 직원 스탯 4 (sim/staff.ts STAT_NAME과 같은 값 — sim 의존을 피하려고 여기 둔다) */
 const STAFF_STAT_LABEL: Record<string, string> = { stamina: '체력', strength: '힘', skill: '기술', smile: '미소' };
@@ -33,7 +33,6 @@ function table(kind: LabelKind): Map<string, string> {
     for (const m of extraMenusJson as { id: string; name: string }[]) if (!menu.has(m.id)) menu.set(m.id, m.name);
     const ingredient = byId(INGREDIENTS);
     const guest = byId(GUEST_TYPES);
-    for (const g of NAMED_GUESTS) guest.set(g.id, g.name);
     // 부탁은 이름이 없어 "OO의 부탁"으로 부른다
     const quest = new Map<string, string>();
     for (const q of QUESTS) quest.set(q.id, `${guest.get(q.guestId) ?? humanize(q.guestId)}의 부탁`);
@@ -46,7 +45,6 @@ function table(kind: LabelKind): Map<string, string> {
       item: byId(ITEMS),
       quest,
       spot: byId(SPOTS),
-      region: byId(REGIONS),
       skill: byId(SKILLS),
       promotion: byId(PROMOTIONS),
       stat: new Map(Object.entries({ ...STAFF_STAT_LABEL, ...MENU_STAT_LABEL })),
@@ -67,7 +65,7 @@ export function label(kind: LabelKind, id: string): string {
   const key = kind === 'guest' ? canonicalGuestId(id) : id;
   const hit = table(kind).get(key);
   if (hit) return hit;
-  for (const k of ['menu', 'facility', 'ingredient', 'guest', 'item', 'spot', 'region', 'role', 'skill', 'promotion', 'quest', 'stat', 'category'] as LabelKind[]) {
+  for (const k of ['menu', 'facility', 'ingredient', 'guest', 'item', 'spot', 'role', 'skill', 'promotion', 'quest', 'stat', 'category'] as LabelKind[]) {
     if (k === kind) continue;
     const v = table(k).get(key);
     if (v) return v;

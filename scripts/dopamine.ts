@@ -12,7 +12,6 @@ import type { GameState, Alert, FxEvent } from '../src/sim/types.ts';
 import { createInitialState } from '../src/sim/state.ts';
 import { botDay, newBotCursor } from '../src/sim/bot.ts';
 import { apply } from '../src/sim/actions.ts';
-import { offeredChallenges, canAcceptChallenge } from '../src/sim/challenges.ts';
 import { canRespondEvent } from '../src/sim/board.ts';
 import { canDrawTicket, hasFreeDraw } from '../src/sim/shop.ts';
 import { monthIndex } from '../src/sim/clock.ts';
@@ -20,13 +19,13 @@ import { dayIndex } from '../src/sim/effects.ts';
 import { bigEventDef } from '../src/data/index.ts';
 
 export type EventKind =
-  | '목표' | '도전' | '월간과제' | '튜토리얼'
+  | '목표' | '월간과제' | '튜토리얼'
   | '해금·시설' | '해금·메뉴' | '해금·직종' | '해금·기능' | '해금·손님층' | '해금·가이드북'
   | '랭크업' | '★승급' | '손님·첫등장' | '손님·특별' | '이벤트·빅' | '이벤트·주간' | '이벤트·게시판' | '부탁완료'
   | '랭크업보상' | '★승급보상' | '손님층보상' | '마일스톤' | '보름응모권'
-  | '레시피' | '히든레시피' | '콤보첫발견' | '세트첫발견' | '명당첫발견' | '재료콤보'
-  | '뽑기당첨' | '뽑기꽝' | '정착등급' | '마을제' | '라이벌승' | '가이드북1위' | '신기록' | '명소Lv' | '방문객상품' | '칭호' | '완공' | '투어성공';
-export type NegKind = '실패알림' | '도전실패' | '★강등' | '악평' | '이벤트종료';
+  | '레시피' | '히든레시피' | '코너첫완성' | '세트첫발견' | '재료콤보'
+  | '뽑기당첨' | '뽑기꽝' | '가이드북1위' | '신기록' | '명소Lv' | '방문객상품' | '칭호' | '완공';
+export type NegKind = '실패알림' | '★강등' | '악평' | '이벤트종료';
 
 /** 사건 간 공백을 셀 때 빼는 것(플레이어가 직접 시킨 일의 완료·꽝) */
 export const MINOR: EventKind[] = ['완공', '뽑기꽝', '이벤트·게시판', '랭크업보상', '★승급보상', '손님층보상']; // 승급·해금 보상 상자는 승급·해금 사건과 같은 날이라 따로 안 센다
@@ -50,15 +49,14 @@ export interface DopamineResult {
   boxes: number;                    // 보상 상자 수 (묶인 상자는 1)
   minMonthYear1: number;            // 1년차 월 주요 사건 최소
   guestTypes3y: number;             // 3년 손님층 해금 수 (시작 3종 제외)
-  spotsCodex: number; hiddenCodex: number; questsDone: number; challengesDone: number;
+  cornersCodex: number; hiddenCodex: number; questsDone: number;
   criteria: { name: string; value: string; ok: boolean }[]; // 감사 §7 성공 기준
 }
 
 function dateOf(s: GameState): string { return `${s.clock.year}년 ${s.clock.month}월 ${s.clock.day}일`; }
 
-/** 얇은 플레이어 층: 도전 2슬롯 채우기, 게시판 이벤트 수락, 응모권 있으면 뽑기 */
+/** 얇은 플레이어 층: 게시판 이벤트 수락, 응모권 있으면 뽑기 */
 function playerLayer(s: GameState): void {
-  for (const c of offeredChallenges(s)) if (s.challenges.active.length < 2 && canAcceptChallenge(s, c.id).ok) apply(s, { type: 'acceptChallenge', id: c.id });
   for (const e of s.board.events) if (canRespondEvent(s, e.id).ok) apply(s, { type: 'respondEvent', id: e.id, accept: true });
   if (!hasFreeDraw(s) && s.tickets >= 1 && canDrawTicket(s).ok && apply(s, { type: 'drawTicket' }).ok) apply(s, { type: 'dismissDraw' });
 }
@@ -92,14 +90,12 @@ export function runDopamine(years: number, seed: number, player = false): Dopami
         // 목표는 claimed diff로 센다(같은 큐의 상자 3개 이상은 bundle 하나로 묶이므로). 상자 수 자체는 boxes로 따로.
         boxes++;
         if (a.source === 'goal' || a.source === 'bundle') continue;
-        const src = a.source === 'challenge' ? '도전' : a.source === 'monthly' ? '월간과제' : a.source === 'tutorial' ? '튜토리얼' : a.source === 'rank' ? '랭크업보상' : a.source === 'star' ? '★승급보상' : a.source === 'unlock' ? '손님층보상' : '마일스톤';
+        const src = a.source === 'monthly' ? '월간과제' : a.source === 'tutorial' ? '튜토리얼' : a.source === 'rank' ? '랭크업보상' : a.source === 'star' ? '★승급보상' : a.source === 'unlock' ? '손님층보상' : '마일스톤';
         push(src, a.title);
       } else if (a.type === 'event') push(bigEventDef(a.id).weekly ? '이벤트·주간' : '이벤트·빅', a.id);
       else if (a.type === 'eventEnd') neg('이벤트종료', a.id);
-      else if (a.type === 'challengeFailed') neg('도전실패', a.id);
       else if (a.type === 'failure') { if (a.stage === 'demote') neg('★강등', 'demote'); else neg('실패알림', a.stage); }
       else if (a.type === 'reputation') neg('악평', 'reputation');
-      else if (a.type === 'village') push('정착등급', `grade ${a.grade}`);
     }
     return origAlertPush(...items);
   };
@@ -110,7 +106,6 @@ export function runDopamine(years: number, seed: number, player = false): Dopami
       if (f.kind === 'pop') pops++;
       else if (f.kind === 'scene') {
         if (f.title === '완공') push('완공', f.text.slice(0, 30));
-        else if (f.title === '명당') push('명당첫발견', f.text.slice(0, 30));
         else if (f.title === '가이드북 1위') push('가이드북1위', f.text.slice(0, 30));
         else if (f.title === '악평') neg('악평', f.text.slice(0, 30));
         // 랭크 업·★ 승급은 아래 diff로 (중복 방지)
@@ -119,13 +114,11 @@ export function runDopamine(years: number, seed: number, player = false): Dopami
     return origFxPush(...items);
   };
   // 결과 팝업(봇이 같은 틱에 닫는다)은 setter로 가로챈다
-  const hookLast = <K extends 'lastDraw' | 'lastChallenge' | 'lastTour'>(key: K, on: (v: NonNullable<GameState[K]>) => void) => {
+  const hookLast = <K extends 'lastDraw'>(key: K, on: (v: NonNullable<GameState[K]>) => void) => {
     let v = s[key];
     Object.defineProperty(s, key, { get: () => v, set: (nv) => { v = nv; if (nv) on(nv as NonNullable<GameState[K]>); }, enumerable: true, configurable: true });
   };
   hookLast('lastDraw', (d) => push(d.kind === 'miss' ? '뽑기꽝' : '뽑기당첨', d.label));
-  hookLast('lastChallenge', (c) => { if (c.win) push('라이벌승', c.menuName); });
-  hookLast('lastTour', (t) => { if (t.success) push('투어성공', t.spotId); });
 
   const snap = () => ({
     objects: s.unlocked.objects.length, menus: s.unlocked.menus.length, roles: s.unlocked.roles.length,
@@ -138,8 +131,8 @@ export function runDopamine(years: number, seed: number, player = false): Dopami
     boardEvents: s.board.events.map((e) => e.id),
     quests: Object.values(s.board.quests).filter((q) => q.status === 'done').length,
     recipes: s.stats.recipesMade, hidden: s.codex.recipes.length,
-    combos: s.codex.combos.length, sets: s.codex.sets.length, spotsCodex: s.codex.spots.length, ingCombos: s.codex.ingredientCombos.length,
-    festivals: s.village.festivals, titles: s.titles.length,
+    corners: s.codex.corners?.length ?? 0, sets: s.codex.sets.length, ingCombos: s.codex.ingredientCombos.length,
+    titles: s.titles.length,
     spots: { ...s.spots }, prizes: Object.values(s.spotPrizes).reduce((a, b) => a + b, 0),
     income: s.lastMonthCard?.income ?? 0,
   });
@@ -172,10 +165,9 @@ export function runDopamine(years: number, seed: number, player = false): Dopami
     if (after.quests > before.quests) push('부탁완료', `+${after.quests - before.quests}`);
     if (after.recipes > before.recipes) push('레시피', `+${after.recipes - before.recipes}`);
     if (after.hidden > before.hidden) push('히든레시피', s.codex.recipes.slice(before.hidden).join(','));
-    if (after.combos > before.combos) push('콤보첫발견', s.codex.combos.slice(before.combos).join(','));
+    if (after.corners > before.corners) push('코너첫완성', (s.codex.corners ?? []).slice(before.corners).join(','));
     if (after.sets > before.sets) push('세트첫발견', s.codex.sets.slice(before.sets).join(','));
     if (after.ingCombos > before.ingCombos) push('재료콤보', s.codex.ingredientCombos.slice(before.ingCombos).join(','));
-    if (after.festivals > before.festivals) push('마을제', `${after.festivals}회`);
     if (after.titles > before.titles) push('칭호', s.titles.slice(before.titles).join(','));
     for (const [id, lv] of Object.entries(after.spots)) if (lv > (before.spots[id] ?? 0)) push('명소Lv', `${id} Lv${lv}`);
     if (after.prizes > before.prizes) push('방문객상품', `+${after.prizes - before.prizes}`);
@@ -221,11 +213,11 @@ export function runDopamine(years: number, seed: number, player = false): Dopami
     { name: '하루 최대 목표 달성 ≤ 3', value: `${maxGoalsPerDay}`, ok: maxGoalsPerDay <= 3 },
     { name: '1년차 매월 주요 사건 ≥ 8', value: `최소 ${minMonthYear1}`, ok: minMonthYear1 >= 8 },
     { name: '3년간 손님층 해금 ≥ 45', value: `${guestTypes3y}`, ok: guestTypes3y >= 45 },
-    { name: '명당 발견 ≥ 2', value: `${s.codex.spots.length}`, ok: s.codex.spots.length >= 2 },
+    { name: '코너 완성 ≥ 2', value: `${s.codex.corners?.length ?? 0}`, ok: (s.codex.corners?.length ?? 0) >= 2 },
     { name: '히든 레시피 ≥ 2', value: `${s.codex.recipes.length}`, ok: s.codex.recipes.length >= 2 },
     { name: '부탁 완료 ≥ 20', value: `${questsDone}`, ok: questsDone >= 20 },
   ];
-  return { years, seed, player, events, negs, popPerDay: pops / totalDays, monthly, gaps: gaps.slice(0, 8), maxGap, maxGapYear1, windows, byKind, byNeg, unlocks3y, day1Share, maxGoalsPerDay, boxes, minMonthYear1, guestTypes3y, spotsCodex: s.codex.spots.length, hiddenCodex: s.codex.recipes.length, questsDone, challengesDone: s.challenges.done.length, criteria };
+  return { years, seed, player, events, negs, popPerDay: pops / totalDays, monthly, gaps: gaps.slice(0, 8), maxGap, maxGapYear1, windows, byKind, byNeg, unlocks3y, day1Share, maxGoalsPerDay, boxes, minMonthYear1, guestTypes3y, cornersCodex: s.codex.corners?.length ?? 0, hiddenCodex: s.codex.recipes.length, questsDone, criteria };
 }
 
 export function toMarkdown(r: DopamineResult): string {
@@ -238,7 +230,7 @@ export function toMarkdown(r: DopamineResult): string {
   L.push(`- 주요 사건 총 ${r.events.filter((e) => !MINOR.includes(e.kind)).length} (전체 ${r.events.length}, 완공·꽝·게시판 제외) · 월 평균 ${(r.events.filter((e) => !MINOR.includes(e.kind)).length / (r.years * 12)).toFixed(1)} · 1년차 월 평균 ${((r.windows['1년'] ?? 0) / 12).toFixed(1)}`);
   L.push(`- 사건 간 최대 공백 ${r.maxGap}일 (1년차 안 ${r.maxGapYear1}일) · 해금(시설·메뉴·손님층·손님 첫 등장) 3년 ${r.unlocks3y} · 주요 사건의 ${(r.day1Share * 100).toFixed(0)}%가 매월 1~2일에 몰림`);
   L.push(`- 부정 사건: ${Object.entries(r.byNeg).map(([k, v]) => `${k} ${v}`).join(' · ') || '없음'}`);
-  L.push(`- 하루 최대 목표 ${r.maxGoalsPerDay}개 · 보상 상자 ${r.boxes}개(묶음 포함) · 1년차 월 최소 주요 사건 ${r.minMonthYear1} · 손님층 +${r.guestTypes3y} · 명당 ${r.spotsCodex} · 히든 레시피 ${r.hiddenCodex} · 부탁 완료 ${r.questsDone} · 도전 성공 ${r.challengesDone}`);
+  L.push(`- 하루 최대 목표 ${r.maxGoalsPerDay}개 · 보상 상자 ${r.boxes}개(묶음 포함) · 1년차 월 최소 주요 사건 ${r.minMonthYear1} · 손님층 +${r.guestTypes3y} · 코너 ${r.cornersCodex} · 히든 레시피 ${r.hiddenCodex} · 부탁 완료 ${r.questsDone}`);
   L.push('');
   L.push('성공 기준 (감사 §7):');
   L.push('');

@@ -19,7 +19,7 @@ function warehouse(s: GameState) {
   return Object.values(s.objects).find((o) => o.type === 'warehouse')!;
 }
 
-test('데이터: 폐창고·주방 증축·갤러리·화장실은 방(room), 실내 테이블·카운터·소파·서가·자판기·로스터기는 indoor', () => {
+test('데이터: 폐창고·주방 증축·화장실·청소도구실은 방(room), 실내 테이블·카운터·자판기는 indoor', () => {
   for (const id of ROOM_IDS) expect(objectDef(id).room, id).toBe(true);
   for (const id of INDOOR_IDS) expect(objectDef(id).indoor, id).toBe(true);
   expect(objectDef('table_out').indoor).toBeUndefined();
@@ -31,14 +31,14 @@ test('데이터: 폐창고·주방 증축·갤러리·화장실은 방(room), �
   expect(s.unlocked.objects).toContain('table_in'); // v3 시작 해금 시설 8종에 실내 테이블 포함
   expect(s.unlocked.objects).not.toContain('vending'); // 목표 보상으로만 열린다
   expect(objectDef('vending').unlock).toEqual({ type: 'goal' });
-  expect(s.unlocked.objects).not.toContain('parking'); // 랭크 2
+  expect(s.unlocked.objects).not.toContain('deco_string_lights'); // 랭크 2
   s.rank = 2;
-  expect(evaluateFacilityUnlocks(s)).toEqual(expect.arrayContaining(['parking', 'prop_shop']));
-  expect(s.unlocked.objects).toContain('parking');
+  expect(evaluateFacilityUnlocks(s)).toEqual(expect.arrayContaining(['deco_string_lights', 'deco_wind_chime']));
+  expect(s.unlocked.objects).toContain('deco_string_lights');
   expect(s.unlocked.objects).not.toContain('vending'); // goal 해금은 랭크로 안 열린다
   expect(s.notices.at(-1)).toMatch(/^새 시설: /);
   expect(evaluateFacilityUnlocks(s)).toEqual([]); // 두 번 열지 않는다
-  expect(s.unlocked.objects).not.toContain('sofa'); // ★3
+  expect(s.unlocked.objects).not.toContain('greenhouse_cafe'); // ★3
 });
 
 test('방 발자국 칸은 roomId를 갖고, 문은 정면 왼쪽, 빈 바닥은 걸을 수 있다', () => {
@@ -86,25 +86,25 @@ test('실내 오브젝트는 방 바닥 위에만, 문 칸엔 못 놓고, 바깥
   expect(isRoomFloor(s, X(4), Y(2))).toBe(true);
 });
 
-test('장식 22종: 마당 장식(deco_planter)은 밖에, 실내 장식(deco_cake_case)은 폐창고 안에만 놓는다', () => {
+test('마당 장식(deco_planter)은 밖에, 실내 장식(우산꽂이)은 폐창고 안에만 놓는다', () => {
   const s = bareState(1);
   const wh = warehouse(s);
-  s.unlocked.objects.push('deco_planter', 'deco_cake_case', 'counter_bar');
+  s.unlocked.objects.push('deco_planter', 'deco_umbrella_stand', 'counter');
   expect(objectDef('deco_planter').indoor).toBeUndefined();
-  expect(objectDef('deco_cake_case').indoor).toBe(true);
+  expect(objectDef('deco_umbrella_stand').indoor).toBe(true);
   // 마당 장식: 빈 마당 칸엔 놓을 수 있고, 방 바닥엔 못 놓는다(이미 방이 그 칸을 차지)
   expect(canPlace(s, 'deco_planter', X(0), Y(0)).ok).toBe(true);
   expect(canPlace(s, 'deco_planter', X(4), Y(2)).reason).toBe('이미 뭔가 있어요');
   // 실내 장식: 마당엔 못 놓고, 폐창고 방 바닥엔 놓을 수 있다
-  expect(canPlace(s, 'deco_cake_case', X(0), Y(0)).reason).toBe('실내 가구는 건물 안에만 놓아요');
+  expect(canPlace(s, 'deco_umbrella_stand', X(0), Y(0)).reason).toBe('실내 가구는 건물 안에만 놓아요');
   // 2×1 카운터 바도 실내 전용, 한 방 안에 다 들어가야 한다
-  expect(canPlace(s, 'counter_bar', X(4), Y(2)).ok).toBe(true);
-  expect(canPlace(s, 'counter_bar', X(5), Y(2)).ok).toBe(false);
-  expect(canPlace(s, 'deco_cake_case', X(3), Y(1)).ok).toBe(true);
-  placeObject(s, 'deco_cake_case', X(3), Y(1));
-  expect(objectsInRoom(s, wh.id).map((o) => o.type)).toEqual(['deco_cake_case']);
+  expect(canPlace(s, 'counter', X(4), Y(2)).ok).toBe(true);
+  expect(canPlace(s, 'counter', X(5), Y(2)).ok).toBe(false);
+  expect(canPlace(s, 'deco_umbrella_stand', X(3), Y(1)).ok).toBe(true);
+  placeObject(s, 'deco_umbrella_stand', X(3), Y(1));
+  expect(objectsInRoom(s, wh.id).map((o) => o.type)).toEqual(['deco_umbrella_stand']);
   // fix-indoor: 문(3,2)이 장식·카운터 바에 갇히면 카운터까지 갈 길이 없다
-  expect(canPlace(s, 'counter_bar', X(4), Y(2)).reason).toBe('손님이 카운터까지 갈 길이 없어요');
+  expect(canPlace(s, 'counter', X(4), Y(2)).reason).toBe('손님이 카운터까지 갈 길이 없어요');
 });
 
 test('가구가 든 방은 못 옮기고 못 치운다; 실내 오브젝트 move는 방 안에서만', () => {

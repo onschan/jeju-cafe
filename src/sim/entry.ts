@@ -18,10 +18,9 @@ import { pushFx } from './fx.ts';
 import { dayIndex } from './effects.ts';
 import { randInt } from './rng.ts';
 import { fmtNum } from './format.ts';
-import { hasTourBusKey } from './spots.ts';
 import { autoConnectFrom, type AutoRoute } from './rooms.ts';
 
-export const ROUTE_IDS: RouteId[] = ['bus', 'parking', 'shuttle', 'cruise', 'olle'];
+export const ROUTE_IDS: RouteId[] = ['bus', 'parking', 'olle'];
 
 /** 경로별 손님 태그 가중치 키 (§3.2 표) */
 export type RouteTag = 'family' | 'couple' | 'group' | 'foreign' | 'senior' | 'solo' | 'youth';
@@ -36,24 +35,20 @@ export interface RouteDef {
   tagMult: Partial<Record<RouteTag, number>>;
   walletMult: number;
   stayMult: number;
-  hours: [number, number][];          // 오는 시간대 [시작, 끝) — 비어 있으면 상시. 셔틀·크루즈는 fixedHours
-  fixedHours: number[];               // 시각 고정 배치 (셔틀 11·15, 크루즈 13)
+  hours: [number, number][];          // 오는 시간대 [시작, 끝) — 비어 있으면 상시
   groupSize: [number, number];        // 1회 인원 (시각 고정 경로)
   dailyCap: number | null;            // 하루 상한 (null = 기본 상한 안에서 가중치만)
   weight: number;                     // 기본 스폰 가중치 (주차장은 칸당)
   cost: number;                       // 경로 시설 값 (안내용)
-  needsContract: boolean;             // 셔틀: 월 계약이 있어야 온다
   unlockText: string;
 }
 
-/** 진입점 좌표 (§3.4). 서 (0,15) 버스 · 서 (0,11) 올레 · 동 (29,15) 렌터카 · 남 (15,23) 셔틀 · 북 (14,0) 크루즈 */
-const P3 = PARCEL_LAYOUT.parcel3!, P4 = PARCEL_LAYOUT.parcel4!, P6 = PARCEL_LAYOUT.parcel6!;
+/** 진입점 좌표 (§3.4). 서 (0,15) 버스 · 서 (0,11) 올레 · 동 (29,15) 렌터카 */
+const P4 = PARCEL_LAYOUT.parcel4!;
 export const ENTRY_ROUTES: Record<RouteId, RouteDef> = {
-  bus: { id: 'bus', name: '정류장', icon: '🚌', entry: { x: 0, y: VILLAGE_ROAD_Y }, facilities: ['busstop'], parcelId: null, tagMult: {}, walletMult: 1, stayMult: 1, hours: [], fixedHours: [], groupSize: [1, 1], dailyCap: null, weight: 1, cost: 0, needsContract: false, unlockText: '시작' },
-  parking: { id: 'parking', name: '주차장', icon: '🚗', entry: { x: GRID_W - 1, y: VILLAGE_ROAD_Y }, facilities: ['parking_lot', 'parking_big', 'parking', 'parking_large'], parcelId: null, tagMult: { family: 2, couple: 1.6 }, walletMult: 1.2, stayMult: 1.2, hours: [[9, 21]], fixedHours: [], groupSize: [2, 4], dailyCap: null, weight: 0.15, cost: 1_200_000, needsContract: false, unlockText: '처음부터' }, // fun P0: 렌터카는 9~20시 (30~45% 비중이 하루 손님에서 보이게)
-  shuttle: { id: 'shuttle', name: '공항 셔틀', icon: '✈️', entry: { x: P6.col * PARCEL_W + 5, y: GRID_H - 1 }, facilities: ['shuttle_stop'], parcelId: 'parcel6', tagMult: { group: 1.5, foreign: 2, senior: 1.3 }, walletMult: 1, stayMult: 1, hours: [], fixedHours: [11, 15], groupSize: [6, 10], dailyCap: 20, weight: 0, cost: 800_000, needsContract: true, unlockText: '용천수 샘터 + 투어 버스 열쇠(또는 명소 Lv2 + 홍보 1회)' },
-  cruise: { id: 'cruise', name: '항구', icon: '🚢', entry: { x: P3.col * PARCEL_W + 4, y: 0 }, facilities: ['pier'], parcelId: 'parcel3', tagMult: { foreign: 3, senior: 1.5, group: 1.3 }, walletMult: 1.5, stayMult: 0.7, hours: [], fixedHours: [13], groupSize: [25, 30], dailyCap: 30, weight: 0, cost: 3_000_000, needsContract: false, unlockText: '곶자왈 가장자리(북쪽 땅)' },
-  olle: { id: 'olle', name: '올레길', icon: '🎗️', entry: { x: 0, y: P4.row * PARCEL_H + 3 }, facilities: ['olle_sign'], parcelId: 'parcel4', tagMult: { solo: 2, youth: 1.5, senior: 1.3 }, walletMult: 0.8, stayMult: 1, hours: [[8, 12], [16, 19]], fixedHours: [], groupSize: [1, 2], dailyCap: null, weight: 0.15, cost: 200_000, needsContract: false, unlockText: '밭담 골짜기' },
+  bus: { id: 'bus', name: '정류장', icon: '🚌', entry: { x: 0, y: VILLAGE_ROAD_Y }, facilities: ['busstop'], parcelId: null, tagMult: {}, walletMult: 1, stayMult: 1, hours: [], groupSize: [1, 1], dailyCap: null, weight: 1, cost: 0, unlockText: '시작' },
+  parking: { id: 'parking', name: '주차장', icon: '🚗', entry: { x: GRID_W - 1, y: VILLAGE_ROAD_Y }, facilities: ['parking_lot', 'parking_big'], parcelId: null, tagMult: { family: 2, couple: 1.6 }, walletMult: 1.2, stayMult: 1.2, hours: [[9, 21]], groupSize: [2, 4], dailyCap: null, weight: 0.15, cost: 1_200_000, unlockText: '처음부터' }, // fun P0: 렌터카는 9~20시 (30~45% 비중이 하루 손님에서 보이게)
+  olle: { id: 'olle', name: '올레길', icon: '🎗️', entry: { x: 0, y: P4.row * PARCEL_H + 3 }, facilities: ['olle_sign'], parcelId: 'parcel4', tagMult: { solo: 2, youth: 1.5, senior: 1.3 }, walletMult: 0.8, stayMult: 1, hours: [[8, 12], [16, 19]], groupSize: [1, 2], dailyCap: null, weight: 0.15, cost: 200_000, unlockText: '밭담 골짜기' },
 };
 
 /** 주차 칸 수 (시설 타입별). 렌터카 1대 = 2~4명, 칸 × 3대/일 → 하루 상한 = 칸 × PARKING_GUESTS_PER_SLOT */
@@ -74,17 +69,6 @@ export const PARKING_FLUSH_HOUR = 20;
 /** 렌터카 한 대에 내리는 손님 수 (주차장 손님은 모아서 차 한 대로 온다) */
 export const CAR_GUESTS_MIN = 2;
 export const CAR_GUESTS_MAX = 4;
-/** 셔틀 월 계약비 (투어 버스 계약과 같은 항목 monthCosts.tourBus) */
-export const SHUTTLE_FEE = 500_000;
-/** 크루즈 기항 1회 항만 사용료 */
-export const CRUISE_PORT_FEE = 300_000;
-/** 크루즈 입항 빅 이벤트 id (events_v3) */
-export const CRUISE_EVENT = 'ev_cruise';
-/** 크루즈 해금 ★ */
-export const CRUISE_STAR = 3;
-/** 셔틀 대체 해금: 명소 Lv2 1곳 + 홍보 1회 */
-export const SHUTTLE_SPOT_LV = 2;
-export const SHUTTLE_PROMOTIONS = 1;
 /** 올레길이 열리면 하루 손님 배수. §3.2의 "+15%/일"은 스폰 가중치 0.15(share)로 이미 반영 — 둘 다 걸면 3년차 자금이 밴드(3,000~6,500만)를 넘어 1.0 */
 export const OLLE_GUEST_MULT = 1.0;
 /** 외국인: 요금 민감도 낮음(지갑 ×1.3)·사진 ×2(기본 확률 바닥)·감귤 계열 메뉴 선호 ×2 */
@@ -105,7 +89,7 @@ export function initRoute(unlocked = false): RouteState {
   return { unlocked, contract: false, todayGuests: 0, monthGuests: 0, monthIncome: 0, totalGuests: 0, lastArrivalDay: -1, broken: false };
 }
 export function initRoutes(): Record<RouteId, RouteState> {
-  return { bus: initRoute(true), parking: initRoute(true), shuttle: initRoute(), cruise: initRoute(), olle: initRoute() }; // fun P0: 주차장은 처음부터 열림
+  return { bus: initRoute(true), parking: initRoute(true), olle: initRoute() }; // fun P0: 주차장은 처음부터 열림
 }
 /** 옛 저장(routes 없음)·테스트 픽스처용: 없으면 채운다 */
 export function routeState(state: GameState, id: RouteId): RouteState {
@@ -188,7 +172,6 @@ export function touchesRoad(state: GameState, type: string, x: number, y: number
 /** 경로 시설 배치 규칙 (grid.canPlace 훅): 주차장은 마을 길에 1칸 이상 접해야, 선착장은 북쪽 끝(y=0)에 붙여야 한다 */
 export function routePlaceCheck(state: GameState, type: string, x: number, y: number): ApplyResult {
   if (PARKING_SLOTS[type] !== undefined && !touchesRoad(state, type, x, y)) return { ok: false, reason: '마을 길에 붙여 지어요' };
-  if (type === 'pier' && !footprint(type, x, y).some((p) => p.y === 0)) return { ok: false, reason: '북쪽 끝에 붙여 지어요' };
   return { ok: true };
 }
 /** 경로 시설의 걷기 목표 칸: 걷는 시설(정류장 kind)은 그 칸, 주차장은 발자국 옆 걷기 칸(주차장 앞 칸). 없으면 null. */
@@ -236,8 +219,7 @@ export function routeUnlockMet(state: GameState, route: RouteId): boolean {
   switch (route) {
     case 'bus': return true;
     case 'parking': return true; // fun P0: 주차장은 처음부터 (해금 조건 없음)
-    case 'shuttle': return hasTourBusKey(state) || (Object.values(state.spots).some((lv) => lv >= SHUTTLE_SPOT_LV) && state.stats.promotionsDone >= SHUTTLE_PROMOTIONS);
-    case 'cruise': return true; // fun P0: 북쪽 땅을 사면 선착장이 생기고 열린다 (배는 입항 이벤트 날)
+    case 'olle': return true;    // 밭담 골짜기 땅을 사면
     case 'olle': return true;
   }
 }
@@ -245,13 +227,12 @@ export function routeUnlockMet(state: GameState, route: RouteId): boolean {
 export function routeActive(state: GameState, route: RouteId): boolean {
   const st = routeState(state, route);
   if (!st.unlocked) return false;
-  if (ENTRY_ROUTES[route].needsContract && !st.contract) return false;
   return routeConnected(state, route);
 }
 /** 목표 routeUnlocked: 열림(셔틀은 계약까지) */
 export function routeOpened(state: GameState, route: RouteId): boolean {
   const st = routeState(state, route);
-  return st.unlocked && (!ENTRY_ROUTES[route].needsContract || st.contract);
+  return st.unlocked;
 }
 /** 하루 상한: 주차장은 칸 × 9, 셔틀 20, 크루즈 30, 나머지 없음(null) */
 export function routeDailyCap(state: GameState, route: RouteId): number | null {
@@ -302,7 +283,6 @@ export function routeShare(state: GameState, route: RouteId, hour = state.clock.
 export function spawnRouteWeights(state: GameState, hour = state.clock.hour): { route: RouteId; weight: number }[] {
   const out: { route: RouteId; weight: number }[] = [];
   for (const route of ROUTE_IDS) {
-    if (route === 'shuttle' || route === 'cruise') continue; // 시각 고정 도착
     const weight = routeShare(state, route, hour);
     if (weight > 0) out.push({ route, weight });
   }
@@ -313,33 +293,14 @@ export function routeGuestMult(state: GameState): number {
   return routeActive(state, 'olle') ? OLLE_GUEST_MULT : 1;
 }
 
-/** 시각 고정 배치: 이 시각에 셔틀(11·15시, 6~10명)·크루즈(입항 이벤트 날 13시, 25~30명)가 오면 { route, n }. 상한 안. */
-export function routeArrivals(state: GameState, hour = state.clock.hour): { route: RouteId; n: number }[] {
-  const out: { route: RouteId; n: number }[] = [];
-  for (const route of ['shuttle', 'cruise'] as RouteId[]) {
-    const def = ENTRY_ROUTES[route];
-    if (!def.fixedHours.includes(hour) || !routeActive(state, route)) continue;
-    if (route === 'cruise' && !cruiseDocked(state)) continue;
-    const left = routeCapLeft(state, route);
-    if (left <= 0) continue;
-    out.push({ route, n: Math.min(left, randInt(state, def.groupSize[0], def.groupSize[1])) });
-  }
-  return out;
+/** 시각 고정 배치는 없앴다 (trim: 셔틀·크루즈 삭제) — 늘 빈 목록 */
+export function routeArrivals(_state: GameState, _hour?: number): { route: RouteId; n: number }[] {
+  return [];
 }
-/** 크루즈 입항 이벤트가 진행 중인가 */
-export function cruiseDocked(state: GameState): boolean {
-  const today = dayIndex(state.clock);
-  return state.events.some((e) => e.id === CRUISE_EVENT && (e.startDay ?? 0) <= today && e.endsDay > today);
-}
-/** 다음 도착 안내 문구 (카드): 시각 고정 경로는 다음 fixedHour, 상시 경로는 시간대 */
+/** 다음 도착 안내 문구 (카드): 시간대 */
 export function nextArrivalText(state: GameState, route: RouteId): string {
   const def = ENTRY_ROUTES[route];
-  const hour = state.clock.hour;
-  if (def.fixedHours.length > 0) {
-    if (route === 'cruise' && !cruiseDocked(state)) return '입항 이벤트 때';
-    const next = def.fixedHours.find((h) => h > hour);
-    return next !== undefined ? `오늘 ${next}시` : `내일 ${def.fixedHours[0]}시`;
-  }
+  void state;
   if (def.hours.length === 0) return '상시';
   return def.hours.map(([a, b]) => `${a}~${b - 1}시`).join(' · '); // [10,18) → "10~17시"
 }
@@ -358,17 +319,6 @@ export function noteRouteGuest(state: GameState, route: RouteId): void {
 export function noteRouteIncome(state: GameState, g: Pick<Guest, 'route'>, amount: number): void {
   routeState(state, g.route ?? 'bus').monthIncome += amount;
 }
-/** 크루즈 손님이 처음 내리는 날 항만 사용료 (기항 1회 30만) */
-export function chargePortFee(state: GameState): void {
-  const st = routeState(state, 'cruise');
-  const today = dayIndex(state.clock);
-  const ev = state.events.find((e) => e.id === CRUISE_EVENT && (e.startDay ?? 0) <= today && e.endsDay > today);
-  if (!ev || st.lastArrivalDay >= ev.startDay) return; // 이번 기항엔 이미 냈다
-  state.money -= CRUISE_PORT_FEE;
-  state.monthCosts.upkeep += CRUISE_PORT_FEE;
-  pushNotice(state, `크루즈 기항 — 항만 사용료 ₩${fmtNum(CRUISE_PORT_FEE)}`);
-}
-
 /** 경로별 이달 손님·매출과 비중 (장부 › 경영 "손님 경로" 표) */
 export interface RouteStat { route: RouteId; name: string; icon: string; todayGuests: number; monthGuests: number; totalGuests: number; monthIncome: number; guestShare: number; incomeShare: number; active: boolean; unlocked: boolean }
 export function routeStats(state: GameState): RouteStat[] {
@@ -381,33 +331,7 @@ export function routeStats(state: GameState): RouteStat[] {
   });
 }
 
-// ---------- 계약·넓히기 (액션) ----------
-
-export function canSetRouteContract(state: GameState, route: RouteId, on: boolean): ApplyResult {
-  const def = ENTRY_ROUTES[route];
-  if (!def.needsContract) return { ok: false, reason: '계약이 필요 없는 경로예요' };
-  const st = routeState(state, route);
-  if (on === st.contract) return { ok: false, reason: on ? '이미 계약 중이에요' : '계약 중이 아니에요' };
-  if (on && !st.unlocked) return { ok: false, reason: '아직 열리지 않았어요' };
-  if (on && !routeFacility(state, route)) return { ok: false, reason: `${josa(objectDef(def.facilities[0]!).name, '을/를')} 먼저 지어요` };
-  if (on && state.money < SHUTTLE_FEE) return { ok: false, reason: '돈이 모자라요' };
-  return { ok: true };
-}
-/** 계약 시작(첫 달 요금 바로)/해지. 호출 전 canSetRouteContract. */
-export function setRouteContract(state: GameState, route: RouteId, on: boolean): void {
-  const st = routeState(state, route);
-  st.contract = on;
-  if (on) { chargeShuttle(state); pushNotice(state, `${ENTRY_ROUTES[route].name} 계약! 11시·15시에 셔틀이 와요`); }
-  else pushNotice(state, `${ENTRY_ROUTES[route].name} 계약을 끝냈어요`);
-}
-/** 셔틀 월 계약비 50만 (투어 버스와 같은 결산 항목). 투어 버스 계약 중이면 같은 항목이라 무료. */
-export function chargeShuttle(state: GameState): void {
-  if (!routeState(state, 'shuttle').contract) return;
-  if (state.tourBus) { pushNotice(state, '공항 셔틀: 투어 버스 계약에 포함 — 이달 무료'); return; }
-  state.money -= SHUTTLE_FEE;
-  state.monthCosts.tourBus += SHUTTLE_FEE;
-  pushNotice(state, `공항 셔틀 월 계약비 ₩${fmtNum(SHUTTLE_FEE)}`);
-}
+// ---------- 넓히기 (액션) ----------
 
 /** 넓히기 비용 = 3×2 값 − 2×2 값 */
 export function parkingExpandCost(): number {
@@ -453,7 +377,7 @@ export function dailyRoutes(state: GameState): void {
 }
 /** objects.json의 경로 시설 해금 조건을 본다 (segments.evaluateFacilityUnlocks는 v2 시설·랜드마크만 돌기 때문) */
 export function unlockRouteFacilities(state: GameState): void {
-  for (const id of ['parking_lot', 'parking_big', 'shuttle_stop', 'pier', 'olle_sign']) {
+  for (const id of ['parking_lot', 'parking_big', 'olle_sign']) {
     if (state.unlocked.objects.includes(id)) continue;
     const def = objectDef(id);
     if (!routeFacilityUnlockMet(state, id)) continue;
@@ -461,35 +385,30 @@ export function unlockRouteFacilities(state: GameState): void {
     pushNotice(state, `새 시설: ${def.name}`);
   }
 }
-/** 시설별 해금: 주차장 = 처음부터(fun P0), 넓은 주차장 = 주차장 1개, 셔틀 정류장 = parcel6, 선착장 = parcel3(fun P0: ★ 조건 없음 — 땅을 사면 무료로 생긴다), 올레 표식 = parcel4 */
+/** 시설별 해금: 주차장 = 처음부터(fun P0), 넓은 주차장 = 주차장 1개, 올레 표식 = parcel4 */
 export function routeFacilityUnlockMet(state: GameState, id: string): boolean {
   switch (id) {
     case 'parking_lot': return true;
     case 'parking_big': return Object.values(state.objects).some((o) => o.type === 'parking_lot');
-    case 'shuttle_stop': return !!parcelById(state, 'parcel6')?.owned;
-    case 'pier': return !!parcelById(state, 'parcel3')?.owned;
     case 'olle_sign': return !!parcelById(state, 'parcel4')?.owned;
     default: return false;
   }
 }
-/** 월초: 이달 손님·매출 리셋, 셔틀 계약비 */
+/** 월초: 이달 손님·매출 리셋 */
 export function monthlyRoutes(state: GameState): void {
   state.routes ??= initRoutes();
   for (const route of ROUTE_IDS) { const st = routeState(state, route); st.monthGuests = 0; st.monthIncome = 0; }
-  chargeShuttle(state);
 }
 
 // ---------- fun P0: 땅을 사면 경로가 열린다 ----------
 
-/** 필지 → 경로: 서쪽 밭담 골짜기(parcel4) = 올레길, 남쪽 용천수 샘터(parcel6) = 공항 셔틀, 북쪽 곶자왈 가장자리(parcel3) = 항구 */
-export const PARCEL_ROUTE: Record<string, RouteId> = { parcel4: 'olle', parcel6: 'shuttle', parcel3: 'cruise' };
-/** 자동으로 세우는 경로 시설 자리 (봇 BOT_ROUTE_SITES와 같은 칸): 올레 표식 (3,11) · 셔틀 정류장 (15,20) · 선착장 (14,0) */
-export const ROUTE_AUTO_SITES: Record<'olle' | 'shuttle' | 'cruise', Pt> = { olle: { x: 3, y: 11 }, shuttle: { x: 15, y: 20 }, cruise: { x: 14, y: 0 } };
+/** 필지 → 경로: 서쪽 밭담 골짜기(parcel4) = 올레길 */
+export const PARCEL_ROUTE: Record<string, RouteId> = { parcel4: 'olle' };
+/** 자동으로 세우는 경로 시설 자리 (봇 BOT_ROUTE_SITES와 같은 칸): 올레 표식 (3,11) */
+export const ROUTE_AUTO_SITES: Record<'olle', Pt> = { olle: { x: 3, y: 11 } };
 /** 경로가 열릴 때 장면 창 한 줄 */
-export const ROUTE_OPEN_LINE: Record<'olle' | 'shuttle' | 'cruise', string> = {
+export const ROUTE_OPEN_LINE: Record<'olle', string> = {
   olle: '이제 올레꾼이 서쪽에서 걸어온다',
-  shuttle: '이제 공항 셔틀이 남쪽에 선다',
-  cruise: '이제 크루즈 손님이 북쪽 항구에 내린다',
 };
 /** 땅을 산 직후: 그 땅의 경로 시설을 무료로 세우고 진입점까지 올렛길을 잇는다(무료). 길이 자리까지 안 이어져 있으면 카드에 「자동 잇기」가 뜬다.
  *  이미 그 시설이 있으면 안 세운다. 자리에 올렛길이 있으면 걷어낸다. 놓을 수 없는 자리면(시설이 있음) 세우지 않고 해금만. 세웠으면 true. */

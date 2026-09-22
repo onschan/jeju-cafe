@@ -7,12 +7,12 @@ import { idleDays, idleHint, IDLE_DAYS, IDLE_REPEAT_DAYS } from '../hints.ts';
 import { TUTORIAL_STEPS } from '../tutorial.ts';
 
 describe('할망 힌트 (game-feel: 3일 무행동)', () => {
-  it('idleDays는 마지막 액션 뒤 지난 날수, 힌트는 도전 과제가 비었으면 도전을 권한다', () => {
+  it('idleDays는 마지막 액션 뒤 지난 날수, 힌트는 다음에 할 일을 한 줄로 권한다', () => {
     const s = createInitialState(1);
     expect(idleDays(s)).toBe(0);
     for (let d = 0; d < 2; d++) { tick(s, DAY_MS); while (s.alerts.length) apply(s, { type: 'dismissAlert' }); }
     expect(idleDays(s)).toBe(2);
-    expect(idleHint(s)).toContain('도전');
+    expect(idleHint(s)).toContain('할망');
     expect(idleHint(s)).not.toMatch(/시뮬|정석|→/);
     expect(apply(s, { type: 'renameCafe', name: '감귤 카페' }).ok).toBe(true); // 액션이 있으면 리셋 (dismissAlert는 로그에 없다)
     expect(idleDays(s)).toBe(0);

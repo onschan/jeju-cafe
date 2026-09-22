@@ -11,11 +11,11 @@ import { ISO_W, ISO_H, cellToScreen, cellCenter, footAnchor, depth, screenToCell
 import { makeCharacterNode, updateCharacterNode, staffParts, guestParts, namedGuestParts, sameAccs, CHAR_H, type CharacterNode, type Dir, type Frame } from './character';
 import { guestFace } from '../sim/segments.ts';
 import { regularFace } from '../sim/interact.ts'; // fun-guest: 단골 고정 얼굴
-import { namedGuestFace } from '../sim/popup.ts';
+import { namedGuestFace } from '../sim/named.ts';
 import { guestTypeDef, namedGuestDef } from '../data/index.ts';
 import { Background } from './Background';
-import { siteOf, siteBadgeTextPlain, siteTone, layoutKey } from '../sim/site.ts';
-import { objectStats, activeCombos } from '../sim/compat.ts';
+import { siteOf, siteBadgeText, siteTone, layoutKey } from '../sim/site.ts';
+import { objectStats } from '../sim/compat.ts';
 import { entryPoints, ROUTE_IDS, ENTRY_ROUTES } from '../sim/entry.ts'; // 트랙 H 진입점 표지
 import { completedCorners, cornerDef } from '../sim/corners.ts'; // fun-corner 코너 팻말
 import { isSiteOverlayOn, setSiteOverlayOn, siteOverlayKey, drawSiteOverlay, GHOST_GOOD, GHOST_WARN } from './siteOverlay';
@@ -52,11 +52,11 @@ export const BUBBLE_MS = 1500;
 
 /** 아직 시트에 없는 오브젝트가 빌려 쓰는 스프라이트 */
 /** 시트 이름이 다른 오브젝트. 감귤나무는 v3에서 성장 단계가 없어 늘 열매 달린 모습으로 */
-const SPRITE_ALIAS: Record<string, string> = { bush_wild: 'tea_bush', spring: 'pond', dolhareubang_pair: 'dolhareubang', hackberry: 'hackberry_shade', tangerine_tree: 'tangerine_tree_ready' };
+const SPRITE_ALIAS: Record<string, string> = { spring: 'pond', dolhareubang_pair: 'dolhareubang', tangerine_tree: 'tangerine_tree_ready' };
 /** 캐릭터(손님·직원)는 모든 시설·건물보다 앞에 그린다 — 건물 뒤·안에 있어도 사람이 보여야 한다(카이로식). 캐릭터끼리는 x+y 순. */
 const CHAR_Z = 1e4;
-/** 트랙 H: 경로별 진입점 표지 스프라이트 (버스·자동차·비행기·배·리본) */
-const ROUTE_MARKER_SPRITE: Record<RouteId, string> = { bus: 'route_bus', parking: 'route_car', shuttle: 'route_plane', cruise: 'route_ship', olle: 'route_ribbon' };
+/** 트랙 H: 경로별 진입점 표지 스프라이트 (버스·자동차·리본) */
+const ROUTE_MARKER_SPRITE: Record<RouteId, string> = { bus: 'route_bus', parking: 'route_car', olle: 'route_ribbon' };
 const ROUTE_LOCKED_TINT = 0x8a8a8a;
 
 /** 미소유 필지 풍경 노드(트랙 E): 풍경 타일(tiles)·소품(actors, 깊이 정렬)·이름 팻말(overlay)을 한데 묶는다. 사면 1초 페이드 뒤 지운다(keep 소품은 남는다). */
@@ -159,7 +159,7 @@ const GUEST_H = CHAR_H;
 /** 앉은 손님을 좌석 칸 중심보다 살짝 위로(의자에 앉은 느낌, 화면 px) */
 const SEAT_LIFT_PX = 4;
 /** 직원 역할 배지(머리 위 16px 아이콘) */
-const ROLE_ICON: Record<RoleId, string> = { hall: 'look', barista: 'menu', cook: 'harvest', carry: 'money', guide: 'research', clean: 'remove', garden: 'plant', promo: 'tourist' }; // clean·garden·promo: x-staff
+const ROLE_ICON: Record<RoleId, string> = { hall: 'look', barista: 'menu', cook: 'harvest', clean: 'remove' };
 /** 배지 아래 끝 y(발끝 기준). 캐릭터 프레임 48px 중 위 13px은 비어 있고(머리 y=16, 모자 챙 y=13) 그 위 3px 띄운다 */
 const ROLE_ICON_Y = -(CHAR_H - 10);
 /** 기력이 낮은 직원은 흐리게 */
@@ -725,10 +725,6 @@ export class GameView {
       const pct = Math.max(0, Math.min(1, st.popularity / GAUGE_MAX));
       this.gaugeGfx.roundRect(gc.sx - W / 2 - 2, y - 2, W + 4, 10, 2).fill({ color: 0x3b1f0e, alpha: 0.85 }).stroke({ color: 0xf6e7c6, width: 1, alpha: 0.9 });
       this.gaugeGfx.rect(gc.sx - W / 2, y, Math.max(1, W * pct), 6).fill({ color: pct >= 0.66 ? 0x6fd43a : pct >= 0.33 ? 0xffc85c : 0xff5a7a });
-      if (activeCombos(state, o.id).some((c) => c.strength !== 'down' && c.strength !== 'none')) {
-        this.gaugeGfx.circle(gc.sx + W / 2 + 8, y + 3, 5).fill({ color: 0xfff3b0 }).stroke({ color: 0xd08a00, width: 1.5 });
-        this.gaugeGfx.circle(gc.sx + W / 2 + 8, y + 3, 2).stroke({ color: 0xd08a00, width: 1.5 });
-      }
     }
   }
 
@@ -812,7 +808,7 @@ export class GameView {
     const badge = new Container();
     badge.label = 'siteBadge';
     // 본관 자체를 놓을 땐 주방 거리가 없다 (w-start) → 「주방 —」
-    const badgeText = g.type === 'warehouse' ? siteBadgeTextPlain(siteOf(state, g.x, g.y)).replace(/주방\d+/, '주방—') : siteBadgeTextPlain(siteOf(state, g.x, g.y));
+    const badgeText = siteBadgeText(siteOf(state, g.x, g.y));
     const l = label(badgeText, 10);
     l.anchor.set(0.5, 1);
     const top = cost ? cost.y - cost.height - 3 : -(sp?.height ?? 24) - 4;
@@ -1547,9 +1543,9 @@ export class GameView {
     this.pops.push({ node: c, born: now, y0: sy - 24 });
   }
 
-  /** fun P0: 경로 도착 — 렌터카(동쪽 마을 길에서 주차장 앞)·셔틀(남쪽 끝에서 정류장)·배(북쪽 바다에서 선착장)가 들어와 서고, 「렌터카 손님 3명!」 문구. 올레꾼은 걸어오니 문구만. */
+  /** fun P0: 경로 도착 — 렌터카(동쪽 마을 길에서 주차장 앞)가 들어와 서고, 「렌터카 손님 3명!」 문구. 올레꾼은 걸어오니 문구만. */
   private spawnArrival(state: GameState, e: Extract<FxEvent, { kind: 'arrive' }>, now: number) {
-    const name = e.route === 'parking' ? '렌터카' : e.route === 'shuttle' ? '셔틀' : e.route === 'cruise' ? '크루즈' : '올레꾼';
+    const name = e.route === 'parking' ? '렌터카' : '올레꾼';
     const text = e.route === 'olle' ? `올레꾼 ${e.n}명이 걸어와요` : `${name} 손님 ${e.n}명!`;
     const c = new Container();
     const l = label(text, 11);
@@ -1563,7 +1559,7 @@ export class GameView {
     this.overlay.addChild(c);
     this.pops.push({ node: c, born: now, y0: sy - 30 });
     if (e.route === 'olle' || !hasAssets()) return;
-    const sprite = e.route === 'parking' ? 'route_car' : e.route === 'shuttle' ? 'route_bus' : 'route_ship';
+    const sprite = 'route_car';
     const t = peekTex(spriteName.isoObject(sprite));
     if (!t) return;
     const entry = ENTRY_ROUTES[e.route].entry;

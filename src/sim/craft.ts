@@ -6,7 +6,7 @@
  * - 토핑(최대 3) → 스탯·스킬 누적 → 스킬 티어(§15.1 표) 효과
  * - 메뉴 레벨업(재료 5 + 돈) → 판매가 +10%, 주문 가중치 +
  */
-import { checkCodexMileage } from './mileage.ts';
+import { checkCodexTickets } from './mileage.ts';
 import type { GameState, ApplyResult, MenuDef, MenuStats, MenuStatKey, MenuBase, MenuMod, MenuQuality, BrewParams, ParamAxis, IngredientDef, IngredientComboDef, IngredientComboSide, DevelopOutcome, DevelopResult, Staff, MenuCategory, RoleId, StatKey, Developing } from './types.ts';
 import { menuDef, ingredientDef, toppingDef, INGREDIENT_COMBOS, HIDDEN_RECIPES, MENU_STAT_KEYS, ZERO_STATS, addStats, statSum, ingredientStats, GUEST_TYPES, guestTypeDef } from '../data/index.ts';
 import { randInt, nextRandom } from './rng.ts';
@@ -43,7 +43,7 @@ export const LEVEL_UP_MONEY = 20_000;      // × 현재 레벨
 export const LEVEL_PRICE_PCT = 10;         // 레벨당 판매가 +10%
 /** 판매가 = 2,000 + 150 × (맛 + 보기 + 제주) — 아메리카노(6/2/0)가 3,200이 되는 식 */
 export const PRICE_BASE = 2000;
-export const PRICE_PER_STAT = 150;
+export const PRICE_PER_STAT = 115;
 /** 품질 경계 (스탯 합) */
 export const QUALITY_GOOD = 45;
 export const QUALITY_BEST = 80;
@@ -140,12 +140,7 @@ export function skillEffects(state: GameState, menuId: string): SkillEffects {
   const v = (s: MenuSkill) => skillTierValue(s, sk[s] ?? 0);
   return { taste: v('맛있음'), aroma: v('향긋함'), jeju: v('제주다움'), healthEval: v('건강함'), heartyEval: v('든든함'), seatPct: v('목넘김'), costPct: v('세련미'), pricePct: v('희귀함'), dignityPct: v('품격'), photoPct: v('인생샷') };
 }
-/** 라이벌 카페가 깎는 양·보기 누적 −% (합 상한 50, 스펙 §15.3) */
-export const RIVAL_PENALTY_CAP = 50;
-export function rivalStatPenaltyPct(state: GameState): number {
-  return Math.min(RIVAL_PENALTY_CAP, (state.rivals ?? []).reduce((n, r) => n + r.penaltyPct, 0));
-}
-/** 메뉴 스탯 = (정의 스탯 + 토핑 스탯 + 스킬(맛있음·향긋함·제주다움)) 에서 라이벌 페널티(양·보기 −%)를 뺀 것 */
+/** 메뉴 스탯 = 정의 스탯 + 토핑 스탯 + 스킬(맛있음·향긋함·제주다움) */
 export function menuStatsOf(state: GameState, menuId: string): MenuStats {
   let s = { ...menuOf(state, menuId).stats };
   for (const t of menuMod(state, menuId).toppings) s = addStats(s, toppingDef(t).stats);
@@ -153,11 +148,6 @@ export function menuStatsOf(state: GameState, menuId: string): MenuStats {
   s.taste += e.taste;
   s.aroma += e.aroma;
   s.jeju += e.jeju;
-  const pen = rivalStatPenaltyPct(state);
-  if (pen > 0) {
-    s.volume = Math.round(s.volume * (1 - pen / 100));
-    s.look = Math.round(s.look * (1 - pen / 100));
-  }
   return s;
 }
 /** 스탯 기반 판매가 (개발 메뉴의 기본가) */
@@ -380,7 +370,7 @@ export function resolveDevelop(state: GameState): DevelopResult | null {
   if (hiddenId && outcome === 'fail') outcome = 'success';
   const combos = activeIngredientCombos(dev.ingredients);
   for (const c of combos) if (!state.codex.ingredientCombos.includes(c)) state.codex.ingredientCombos.push(c);
-  checkCodexMileage(state);
+  checkCodexTickets(state);
   const bonus = comboBonus(combos);
   let stats = addStats(ingredientStats(countIngredients(dev.ingredients)), bonus.stats);
   const width = bonusWidth(dev.base, dev.params);
@@ -397,7 +387,7 @@ export function resolveDevelop(state: GameState): DevelopResult | null {
   let quality = qualityOf(stats);
   if (outcome === 'great' && quality !== '최고') quality = quality === '좋음' ? '최고' : '좋음';
   const hidden = hiddenId ? HIDDEN_RECIPES.find((r) => r.id === hiddenId)! : null;
-  if (hidden) { quality = '최고'; if (!state.codex.recipes.includes(hidden.id)) { state.codex.recipes.push(hidden.id); checkCodexMileage(state); } }
+  if (hidden) { quality = '최고'; if (!state.codex.recipes.includes(hidden.id)) { state.codex.recipes.push(hidden.id); checkCodexTickets(state); } }
   const id = `m_custom_${state.customMenus.length + 1}`;
   state.stats.recipesMade++;
   const def: MenuDef = {

@@ -8,14 +8,13 @@ import { NAMES, guestTypeDef, namedGuestDef, guestTags, objectDef, menuDef, NAME
 import { dayIndex } from './effects.ts';
 import { hashOf } from './say.ts';
 import { addSatisfaction } from './segments.ts';
-import { addAffinity } from './popup.ts';
 import { pushNotice } from './staff.ts';
 import { pushFx } from './fx.ts';
 import { parcelAt } from './parcels.ts';
 import { completedCorners, cornerTags } from './corners.ts'; // 트랙 C 코너 판정
 import { availableMenus } from './menu.ts';
 import { menuOf, statsMatchCount, guestLikesCategory } from './craft.ts';
-import { namedLikes } from './popup.ts';
+import { namedLikes } from './named.ts';
 import { isForeign } from './entry.ts';
 import { josa } from './josa.ts';
 
@@ -106,15 +105,14 @@ export function canGreet(state: GameState, guestId: string): ApplyResult {
   if (dayCounters(state).greet >= GREET_DAY_MAX) return { ok: false, reason: '오늘 인사는 여기까지' };
   return { ok: true };
 }
-/** 호출 전 canGreet. 만족 +1(이름 있는 손님은 호감 +2)·단골 게이지 +1, 반응 대사 6종 로테이션 + 하트. 그저 그렇던 손님은 기분이 풀린다. */
+/** 호출 전 canGreet. 만족 +1·단골 게이지 +1, 반응 대사 6종 로테이션 + 하트. 그저 그렇던 손님은 기분이 풀린다. */
 export function greetGuest(state: GameState, guestId: string): string {
   const g = state.guests.find((x) => x.id === guestId)!;
   const c = dayCounters(state);
   const line = greetLine(state, g, c.greet);
   state.greetCount = c.greet + 1;
   g.greeted = true;
-  if (g.namedId) addAffinity(state, g.namedId, GREET_AFFINITY);
-  else {
+  if (!g.namedId) {
     addSatisfaction(state, g.type, GREET_SATISFACTION);
     addRegularGauge(state, g.type, GREET_GAUGE);
   }
@@ -253,7 +251,7 @@ export function thankIfDone(state: GameState, g: Guest): GuestRequestDef | null 
 
 // ---------- 단골 게이지·등록 ----------
 function gauges(state: GameState): Record<string, number> { return (state.regularsGauge ??= {}); }
-function regularList(state: GameState): Regular[] { return (state.regulars ??= []); }
+export function regularList(state: GameState): Regular[] { return (state.regulars ??= []); }
 export function regularGauge(state: GameState, typeId: string): number {
   return Math.min(GAUGE_MAX, gauges(state)[typeId] ?? 0);
 }
@@ -287,6 +285,19 @@ export function registerRegular(state: GameState, typeId: string): Regular {
   pushNotice(state, `${josa(name, '이/가')} 단골이 됐어요 — 매주 와요`);
   pushFx(state, { kind: 'scene', title: '단골이 생겼다', text: `${name}(${typeName}) — 매주 오고 팁을 더 내요`, tick: state.tick });
   return r;
+}
+/** 단골 수 (엔딩 점수·목표) */
+export function regularCount(state: GameState): number {
+  return regularList(state).length;
+}
+/** 단골 하나가 발길을 끊는다 (평판이 낮을 때). 게이지도 같이 내린다. */
+export function forgetRegular(state: GameState, id: string): Regular | null {
+  const list = regularList(state);
+  const i = list.findIndex((r) => r.id === id);
+  if (i < 0) return null;
+  const [r] = list.splice(i, 1);
+  if (r) gauges(state)[r.guestType] = 0;
+  return r ?? null;
 }
 /** 단골 방문 요일(day % 7)·시각 — id 해시로 결정 */
 export function regularVisitSlot(r: Regular): { weekday: number; hour: number } {

@@ -6,12 +6,10 @@ import { tick } from '../tick.ts';
 import { DAY_MS } from '../clock.ts';
 import { OUTCOME_TABLE, outcomeChances, rollOutcome, bestStaffFor, chanceText, OUTCOME_MULT, GREAT_REPUTATION, FAIL_REPUTATION, FAIL_ENERGY, GREAT_TICKETS, LOW_ENERGY_FAIL, STAT_GREAT_PER_100 } from '../luck.ts';
 import { promoChances } from '../promotions.ts';
-import { tourChances, TOUR_YEAR, TOUR_SUCCESS_SCORE, TOUR_MONEY_PER_SCORE, TOUR_FAIL_MONEY, tourScore } from '../spots.ts';
-import { challengeChances, spawnRival, JUDGE_LUCK } from '../rivals.ts';
 import { developChances } from '../craft.ts';
 import { sideRandom, nextRandom } from '../rng.ts';
 import { staffWith } from './staff.test.ts';
-import { RIVALS, promotionDef } from '../../data/index.ts';
+import { promotionDef } from '../../data/index.ts';
 import type { GameState, Outcome, Staff } from '../types.ts';
 
 function withStaff(seed = 1, smile = 10): { s: GameState; st: Staff } {
@@ -125,33 +123,6 @@ test('홍보: 대박 = 인기 ×2 + 응모권 +1 + 평판 +3, 중박 = 표대로
   expect(s.lastOutcome).toBeNull();
 });
 
-test('투어: 대박 = 돈·방문객 ×2 + 응모권·평판 +3, 쪽박 = ×0.5 + 평판 −2 (안내 직원 = 대박 기대값 최고)', () => {
-  for (const want of ['great', 'fail'] as Outcome[]) {
-    const make = () => { const x = withStaff(4, 80); x.s.clock.year = TOUR_YEAR; x.s.reputation = 50; x.s.spots['canola_field'] = 1; return x; };
-    const probe = make();
-    const score = tourScore(probe.s, 'canola_field');
-    const baseMoney = score >= TOUR_SUCCESS_SCORE ? score * TOUR_MONEY_PER_SCORE : TOUR_FAIL_MONEY;
-    const money0 = probe.s.money;
-    expect(tourChances(probe.s).staff?.id).toBe(probe.s.staff[0]!.id);
-    const { s } = findTick(make, want, (x) => apply(x.s, { type: 'hostTour', spotId: 'canola_field' }), (x) => x.s.lastOutcome?.outcome);
-    expect(s.lastOutcome!.task).toBe('tour');
-    expect(s.money - money0).toBe(Math.round(baseMoney * OUTCOME_MULT[want]));
-    expect(s.lastTour!.money).toBe(Math.round(baseMoney * OUTCOME_MULT[want]));
-    expect(s.reputation).toBe(50 + (want === 'great' ? GREAT_REPUTATION : -FAIL_REPUTATION));
-    if (want === 'great') expect(s.tickets).toBeGreaterThanOrEqual(probe.s.tickets + GREAT_TICKETS);
-  }
-});
-
-test('카페 대결: 대박이면 운 4 확정, 쪽박이면 운 0 (이기고 지는 건 스탯 비교)', () => {
-  for (const want of ['great', 'fail'] as Outcome[]) {
-    const make = () => { const x = withStaff(6); x.s.clock.year = 2; const r = spawnRival(x.s, RIVALS[0]!.id); return { ...x, r }; };
-    expect(challengeChances(make().s).chances.great).toBeGreaterThan(0);
-    const { s } = findTick(make, want, (x) => apply(x.s, { type: 'challenge', rivalId: x.r.id, menuId: x.s.unlocked.menus[0]! }), (x) => x.s.lastOutcome?.outcome);
-    expect(s.lastChallenge!.luck).toBe(want === 'great' ? JUDGE_LUCK : 0);
-    expect(s.lastOutcome!.task).toBe('challenge');
-  }
-});
-
 test('연수 복귀: 대박 = 스탯 ×2, 쪽박 = ×0.5 + 기력 −20, 결과 팝업(lastOutcome.task = training)', () => {
   for (const want of ['great', 'fail'] as Outcome[]) {
     const make = () => { const x = withStaff(8); x.s.rank = 3; x.st.stats.skill = 10; return x; };
@@ -168,8 +139,8 @@ test('레시피 개발 확률: 미슐랑 셰프는 대성공 2배, 행운아 +5%
   s.staff.push(chef);
   const base = developChances(s, 'drink', {}, chef);
   expect(base.great).toBeCloseTo(0.1, 3);
-  chef.title = 'tt_michelin_chef';
-  expect(developChances(s, 'drink', {}, chef).great).toBeCloseTo(0.2, 3);
+  chef.title = 'tt_pastry_pro'; // 레시피 대성공 +60%
+  expect(developChances(s, 'drink', {}, chef).great).toBeCloseTo(0.16, 3);
   chef.title = undefined; chef.skill = 'lucky';
   expect(developChances(s, 'drink', {}, chef).great).toBeCloseTo(0.15, 3);
   const c = developChances(s, 'drink', {}, chef);

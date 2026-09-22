@@ -5,7 +5,6 @@ import { tick } from '../tick.ts';
 import { DAY_MS } from '../clock.ts';
 import { serialize } from '../save.ts';
 import { STEPS, recommendedMainCells, currentTutorialStep, TUTORIAL_STEPS } from '../tutorial.ts';
-import { offeredChallenges } from '../challenges.ts';
 import { cloneState, candidateActions, pickDiverse, candidateGroup, evaluate, bestMoves, solveSync, metricsOf, scoreOf, rolloutDays, SOLVER_WEIGHTS, DEFAULT_SOLVER_OPTIONS } from '../solver.ts';
 import { solverKey, solverResult, setSolverResult, rankCellsByCache, cachedMoves } from '../solverCache.ts';
 import { bestSeatCells, bestSeatCellsHeuristic, nextMove, strategyVars, heuristicNextMove } from '../strategy.ts';
@@ -166,7 +165,6 @@ describe('solver: 빔 서치', () => {
     expect(solverResult(s)).toBeNull();
     expect(nextMove(s)).toEqual(heuristicNextMove(s));
     expect(strategyVars(s).solverDelta).toBe('');
-    for (const c of offeredChallenges(s)) if (apply(s, { type: 'acceptChallenge', id: c.id }).ok) break; // 무행동 힌트가 도전 권유 대신 다음 수를 내게
     const r = solveSync(s, { horizon: 7, maxCandidates: 10, maxRollouts: 12 });
     expect(solverResult(s)).toBe(r);
     const top = cachedMoves(s, (m) => m.score > 0)[0];

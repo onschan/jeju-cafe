@@ -45,7 +45,7 @@ test('건설: 놓으면 build 표식(남은 날), 좌석은 앉을 수 없고, �
   expect(s.fx.some((f) => f.kind === 'scene' && f.text.includes(`${BUILT.name} 완공!`))).toBe(true);
 });
 
-test('동시 건설은 일꾼 수(기본 2)까지, 일꾼을 사면 늘어난다. 즉시 완공 종류는 일꾼이 필요 없다.', () => {
+test('동시 건설은 일꾼 수(기본 2)까지, 목표 보상으로 늘어난다. 즉시 완공 종류는 일꾼이 필요 없다.', () => {
   const s = bareState(1);
   s.money = 100_000_000;
   s.unlocked.objects.push(BUILT.id);
@@ -57,8 +57,7 @@ test('동시 건설은 일꾼 수(기본 2)까지, 일꾼을 사면 늘어난다
   expect(r.reason).toContain('일꾼');
   expect(canStartBuild(s, 'table_out').ok).toBe(true);
   expect(apply(s, { type: 'place', objectType: 'table_out', x: X(8), y: Y(4) }).ok).toBe(true);
-  s.mileage = 30;
-  expect(apply(s, { type: 'buyMileage', id: 'ms_worker_3' }).ok).toBe(true);
+  s.builders += 1; // trim: 일꾼은 목표 보상(builder)으로만 는다
   expect(apply(s, { type: 'place', objectType: BUILT.id, x: X(9), y: Y(4) }).ok).toBe(true);
   expect(constructions(s)).toHaveLength(3);
 });

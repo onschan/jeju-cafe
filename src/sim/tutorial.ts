@@ -54,7 +54,7 @@ export function stepTargets(step: TutorialStepDef, s: GameState): string[] {
 
 /** apply가 성공하면 state.tutorial.seen에 타입을 남기는 액션 (조건 판정용). 문자열 집합 — `greetGuest`는 트랙 G(손님 인사)가 만드는 액션이라 아직 Action 타입에 없어도 미리 둔다. */
 export const TRACKED_ACTIONS: ReadonlySet<string> = new Set<string>([
-  'greetGuest', 'undoLast', 'train', 'develop', 'drawTicket', 'buyMileage', 'buyTicket', 'giveGift', 'respondEvent', 'openPopup', 'challenge', 'investSpot',
+  'greetGuest', 'undoLast', 'train', 'develop', 'drawTicket', 'buyMileage', 'buyTicket', 'giveGift', 'respondEvent', 'investSpot',
 ]);
 /** UI가 tutorialNote로 남기는 키. `look:<id>`는 미니 카드 「이게 뭐예요」 힌트(정낭·정류장·마을 길·본관), goalWindow는 목표 창을 열었다(6단계). */
 export type TutorialNoteKey = 'siteView' | 'guestCard' | 'storage' | 'goalWindow' | `look:${LookId}`;

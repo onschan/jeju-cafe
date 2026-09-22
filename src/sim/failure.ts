@@ -7,14 +7,13 @@
  * - 강등(★ 유지 심사)은 guidebook.ts starReview.
  */
 import type { GameState, MonthCard, Parcel } from './types.ts';
-import { RIVALS, objectDef } from '../data/index.ts';
+import { objectDef } from '../data/index.ts';
 import { pushNotice } from './staff.ts';
 import { fmtNum } from './format.ts';
 import { josa } from './josa.ts';
 import { monthIndex } from './clock.ts';
 import { removeObject } from './grid.ts';
 import { ownedParcels, parcelAt } from './parcels.ts';
-import { spawnRival, RIVAL_MAX } from './rivals.ts';
 import { pickWeighted } from './rng.ts';
 
 export const LOAN_AMOUNT = 3_000_000;
@@ -96,10 +95,6 @@ export function crisis(state: GameState): void {
     p.owned = false;
     state.money += refund;
     pushNotice(state, `정착 실패 위기: ${p.name} 필지를 팔았어요 (₩${fmtNum(refund)} 환불)`);
-  }
-  if (state.rivals.length < RIVAL_MAX) {
-    const def = pickWeighted(state, RIVALS, () => 1);
-    if (def) spawnRival(state, def.id);
   }
   state.alerts.push({ type: 'failure', stage: 'crisis' }); // 트랙 B 대화(data/dialogue/failure.json)
 }

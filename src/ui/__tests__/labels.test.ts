@@ -1,5 +1,5 @@
 import { describe, it, test, expect } from 'vitest';
-import { MENUS, OBJECTS, INGREDIENTS, GUEST_TYPES, QUESTS, ITEMS, SPOTS, ROLES, SKILLS, PROMOTIONS, REGIONS, FACILITIES } from '../../data/index.ts';
+import { MENUS, OBJECTS, INGREDIENTS, GUEST_TYPES, QUESTS, ITEMS, SPOTS, ROLES, SKILLS, PROMOTIONS, FACILITIES } from '../../data/index.ts';
 import { label, hasIdToken, requireText, ingredientsText, unlockText, unlockCondText, conditionText, rewardText, humanize, ifClause, wonText } from '../../data/labels.ts';
 import { TUTORIAL_STEPS, GOAL_LINES, EVENT_DIALOGUES, SAMCHUN, goalLine, eventDialogue, samchunDef } from '../../data/dialogue/index.ts';
 import { createInitialState, strategyVars, fillTemplate } from '../../sim/index.ts';
@@ -7,10 +7,10 @@ import { createInitialState, strategyVars, fillTemplate } from '../../sim/index.
 const ID_ONLY = /^[a-z0-9_]+$/;
 
 describe('label(kind, id)', () => {
-  it('메뉴·시설·재료·손님·부탁·아이템·관광지·직종·스킬·홍보·지역 전부 한글 이름을 찾는다', () => {
+  it('메뉴·시설·재료·손님·부탁·아이템·관광지·직종·스킬·홍보 전부 한글 이름을 찾는다', () => {
     const cases: [Parameters<typeof label>[0], { id: string }[]][] = [
       ['menu', MENUS], ['facility', OBJECTS], ['ingredient', INGREDIENTS], ['guest', GUEST_TYPES], ['quest', QUESTS],
-      ['item', ITEMS], ['spot', SPOTS], ['role', ROLES], ['skill', SKILLS], ['promotion', PROMOTIONS], ['region', REGIONS],
+      ['item', ITEMS], ['spot', SPOTS], ['role', ROLES], ['skill', SKILLS], ['promotion', PROMOTIONS],
     ];
     for (const [kind, xs] of cases) {
       expect(xs.length).toBeGreaterThan(0);
@@ -87,7 +87,7 @@ describe('부탁·목표 조건/보상', () => {
   });
   it('부탁 조건 예시', () => {
     expect(conditionText({ type: 'menuSold', params: { menuId: 'americano', count: 20 } })).toBe('아메리카노 20잔 팔기');
-    expect(conditionText({ type: 'objectPlaced', params: { objectId: 'chicken_coop', count: 1 } })).toBe('닭장 1개 놓기');
+    expect(conditionText({ type: 'objectPlaced', params: { objectId: 'flower_bed', count: 1 } })).toBe('꽃밭 1개 놓기');
     expect(rewardText([{ type: 'item', itemId: 'honey' }])).toBe(label('item', 'honey'));
     expect(rewardText([{ type: 'money', amount: 200000 }, { type: 'research', amount: 20 }])).toBe('₩200,000 · 연구 20');
     expect(rewardText([])).toBe('없음');

@@ -6,9 +6,15 @@ import { objectDef } from '../data/index.ts';
 import { josa } from './josa.ts';
 import { initMain } from './rooms.ts';
 import { initEnding } from './ending.ts'; // z-ending
-import { initVillage } from './village.ts'; // z-ending
 import type { FinalScore } from './types.ts';
 import { TUTORIAL_STEPS } from './tutorial.ts';
+import { ROUTE_IDS } from './entry.ts';
+import { OBJECTS, SPOTS, ROLES, GOALS, MENUS } from '../data/index.ts';
+import { SPOT_MAX_LEVEL } from './spots.ts';
+import { fmtNum } from './format.ts';
+
+/** trim에서 없어진 것들이 들어 있는 v20 세이브를 v21로 올린다 */
+export const MIGRATE_FROM = 20;
 
 export function serialize(state: GameState): string {
   return JSON.stringify(state);
@@ -17,6 +23,7 @@ export function serialize(state: GameState): string {
 export function deserialize(json: string): GameState {
   const obj = JSON.parse(json) as GameState;
   if (!obj || typeof obj !== 'object') throw new Error('save: not an object');
+  if (obj.version === MIGRATE_FROM) migrateTrim(obj);
   if (obj.version !== SAVE_VERSION) throw new Error(`save version mismatch: ${obj.version} (expected ${SAVE_VERSION})`);
   backfill(obj);
   rebuildCellOwnership(obj);
@@ -39,6 +46,44 @@ function evictFixedCellFurniture(state: GameState): void {
   }
 }
 
+/** v20 → v21 (trim): 없어진 시설·직종·경로·명소·목표·메뉴를 환불하거나 치환하고 알림 한 줄을 남긴다. */
+function migrateTrim(state: GameState): void {
+  const facility = new Set(OBJECTS.map((o) => o.id));
+  const spot = new Set(SPOTS.map((d) => d.id));
+  const role = new Set(ROLES.map((r) => r.id));
+  const goal = new Set(GOALS.map((g) => g.id));
+  const menu = new Set(MENUS.map((m) => m.id));
+  let refund = 0;
+  let removed = 0;
+  // 시설: 정의가 없어진 것은 치우고 값을 돌려준다
+  for (const o of Object.values(state.objects)) {
+    if (facility.has(o.type)) continue;
+    delete state.objects[o.id];
+    removed++;
+  }
+  state.unlocked.objects = state.unlocked.objects.filter((id) => facility.has(id));
+  state.unlocked.menus = state.unlocked.menus.filter((id) => menu.has(id));
+  state.menuSlots = state.menuSlots.map((id) => (id && menu.has(id) ? id : null));
+  // 명소: 없어진 곳의 투자금을 절반 돌려주고 Lv는 3으로 깎는다
+  for (const [id, lv] of Object.entries(state.spots)) {
+    if (!spot.has(id)) { refund += lv * 500_000; delete state.spots[id]; delete state.spotVisitors[id]; delete state.spotPrizes[id]; continue; }
+    if (lv > SPOT_MAX_LEVEL) { refund += (lv - SPOT_MAX_LEVEL) * 1_000_000; state.spots[id] = SPOT_MAX_LEVEL; }
+  }
+  // 직종: 없어진 직종에 배치된 직원은 쉬는 중으로
+  for (const st of state.staff) if (st.role && !role.has(st.role)) st.role = null;
+  for (const k of Object.keys(state.slots)) if (!role.has(k as never)) delete (state.slots as unknown as Record<string, number>)[k];
+  // 경로: 없어진 경로 상태는 지운다
+  for (const k of Object.keys(state.routes)) if (!(ROUTE_IDS as string[]).includes(k)) delete (state.routes as Record<string, unknown>)[k];
+  // 목표: 없어진 목표 id는 달성 기록에서 뺀다 (index는 남은 목표 수 안으로)
+  state.goals.claimed = state.goals.claimed.filter((id) => goal.has(id));
+  state.goals.index = Math.min(state.goals.index, GOALS.length);
+  if (refund > 0) state.money += refund;
+  if (removed > 0 || refund > 0) {
+    state.notices.push(`정리된 콘텐츠를 환불했어요 — 시설 ${removed}개 · ₩${fmtNum(refund)}`);
+  }
+  state.version = SAVE_VERSION;
+}
+
 /** 같은 SAVE_VERSION 안에서 뒤에 추가된 필드를 기본값으로 채운다 (버전을 올리지 않고 붙인 필드). */
 function backfill(state: GameState): void {
   state.lastMonthIncome ??= state.lastMonthCard?.income ?? 0;
@@ -48,14 +93,14 @@ function backfill(state: GameState): void {
   state.monthMenuSold ??= {};
   state.routes ??= initRoutes(); // 트랙 H 유입 경로 (routes 없는 옛 저장)
   state.main ??= initMain(); // y-indoor: 본관 증축·이동·분위기 (SAVE_VERSION 18)
-  state.ending ??= initEnding(); // z-ending: 엔딩·빠른 모드·100주년 (v18 세이브엔 없다)
-  state.village ??= initVillage(); // z-ending: 정착 등급·마을제
+  state.ending ??= initEnding(); // z-ending: 엔딩·빠른 모드 (v18 세이브엔 없다)
   state.carry ??= null; // z-ending: 이월 묶음
   state.codex.titles ??= []; // staff-luck: 만난 칭호 도감
   state.codex.corners ??= []; // fun-corner: 만든 코너 도감
   state.lastOutcome ??= null;
   state.luckSeq ??= 0;
   state.monthGreatServes ??= 0;
+  state.voices ??= []; // trim: 손님 목소리 피드
   state.grade ??= 1; // fun-rank: 카페 등급 (옛 세이브는 「올레길 노점」에서 시작 — 조건이 차 있으면 다음 날 판정에서 오른다)
   for (const k of ['clearRock', 'promote', 'craft', 'siteView', 'comboCodex', 'spotMap']) delete (state.features as Record<string, boolean>)[k]; // ease: 바위 삭제·처음부터 열린 기능 — 옛 저장의 기능 키는 지운다
   delete (state.stats as unknown as Record<string, number>)['rocksCleared'];

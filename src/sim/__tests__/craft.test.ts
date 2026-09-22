@@ -13,7 +13,7 @@ import {
   activeIngredientCombos, comboBonus, matchHiddenRecipe, successRate, bonusWidth, paramDeviation, normalizeParams,
   skillTier, skillTierValue, skillEffects, menuStatsOf, menuSkills, priceOf, priceFromStats, canDevelop, resolveDevelop, developDaysLeft,
   canAddTopping, canLevelUpMenu, levelUpMenuCost, developCost, costMult, autoMenuName, uniqueMenuName, qualityOf, likesStatsMatch, seatTimeMult, dignityPct,
-  DEVELOP_DAYS, DEVELOP_RESEARCH, P_SUCCESS, P_GREAT, PARAM_PENALTY, MAX_TOPPINGS, LIKE_STAT_MIN,
+  DEVELOP_DAYS, DEVELOP_RESEARCH, P_SUCCESS, P_GREAT, PARAM_PENALTY, MAX_TOPPINGS, LIKE_STAT_MIN, PRICE_PER_STAT,
 } from '../craft.ts';
 import { menuDef, ingredientDef, toppingDef, MENUS, INGREDIENTS, HIDDEN_RECIPES, ingredientStats } from '../../data/index.ts';
 import { staffWith } from './staff.test.ts';
@@ -41,8 +41,8 @@ test('기본 메뉴 18의 스탯은 재료 합으로 계산된다 (아메리카�
   expect(menuDef('americano').stats).toEqual(ingredientDef('beans').stats);
   expect(menuDef('latte').stats).toEqual(ingredientStats({ beans: 1, milk: 1 }));
   expect(menuDef('egg_sandwich').stats.volume).toBe(ingredientDef('egg').stats.volume * 2 + ingredientDef('flour').stats.volume);
-  // 스탯 가격 공식이 아메리카노 3,200과 맞는다
-  expect(priceFromStats(menuDef('americano').stats)).toBe(3200);
+  // trim: 스탯 가격은 기본 메뉴 정가(아메리카노 3,200)보다 조금 낮다 — 개발 메뉴가 후반 돈줄이 되지 않게 (PRICE_PER_STAT 150 → 115)
+  expect(priceFromStats(menuDef('americano').stats)).toBe(2000 + PRICE_PER_STAT * 8);
 });
 
 // ---------- 콤보 ----------
@@ -111,8 +111,8 @@ test('토핑 스킬이 티어 효과로: 금박(희귀함 3·품격 2) → 판�
   const e = skillEffects(s, 'americano');
   expect(e.pricePct).toBe(8);
   expect(e.dignityPct).toBe(4);
-  // 판매가 = (3,200 + 금박 보기 5 × 150) × 1.08
-  expect(priceOf(s, 'americano')).toBe(Math.round((3200 + 750) * 1.08));
+  // 판매가 = (3,200 + 금박 보기 5 × 115) × 1.08
+  expect(priceOf(s, 'americano')).toBe(Math.round((3200 + 5 * PRICE_PER_STAT) * 1.08));
   expect(menuStatsOf(s, 'americano').look).toBe(2 + 5);
   // 메뉴판에 있어야 품격이 손님 수에 붙는다
   expect(dignityPct(s)).toBe(0);

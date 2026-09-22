@@ -12,12 +12,12 @@ import { seatsOf } from '../cafe.ts';
 import { siteOf } from '../site.ts';
 import { serialize, deserialize } from '../save.ts';
 import { goalProgress } from '../goals.ts';
-import { objectDef, goalDef, COMBOS, INDOOR_IDS, ROOM_IDS, ANNEX_IDS, buildGroupOf } from '../../data/index.ts';
+import { objectDef, goalDef, INDOOR_IDS, ROOM_IDS, ANNEX_IDS, buildGroupOf } from '../../data/index.ts';
 import {
   mainBuilding, mainLevel, indoorSeats, roomSeats, freeFloorCells, fixedCells, expandCells, canExpandMain, expandMain, canBuildSecondFloor, canStartMoveMain, canMoveMain, canUndoMoveMain,
-  isRoomCut, annexCount, preferIndoor, filterSeatsForWeather, stayMs, browseChance, indoorSatisfaction, indoorSpawnMult, indoorFeeMult, isFireplaceOn, isPianoPlaying, hasNewBooks, isKidsStocked,
+  isRoomCut, annexCount, preferIndoor, filterSeatsForWeather, stayMs, browseChance, indoorSpawnMult,
   seatsShort, seatUsePct, dailyRooms, accumulateSeatUse, isMainClosed, mainSummary, autoConnectDoor, autoPathCellCost,
-  MAIN_SIZE, MAIN_EXPAND_COST, MAIN_EXPAND_DAYS, FLOOR2_COST, FLOOR2_SEATS, MOVE_COST, MOVE_DAYS, FIREPLACE_FUEL, STAY_PER_FACILITY_MS, SEAT_FULL_TEXT, KIDS_RESTOCK_COST, NEW_BOOKS_MILEAGE,
+  MAIN_SIZE, MAIN_EXPAND_COST, MAIN_EXPAND_DAYS, FLOOR2_COST, FLOOR2_SEATS, MOVE_COST, MOVE_DAYS, STAY_PER_FACILITY_MS, SEAT_FULL_TEXT,
 } from '../rooms.ts';
 import type { GameState } from '../types.ts';
 
@@ -33,28 +33,20 @@ function cafe(seed = 1): GameState {
 const main = (s: GameState) => mainBuilding(s)!;
 
 describe('데이터 (§8.2·8.3)', () => {
-  test('실내 가구 7 + 별관 2가 objectDef에 있고, 실내 가구는 indoor·「실내」 탭, 별관은 room·별관 목록', () => {
-    for (const id of ['sofa_seat', 'bar_counter', 'fireplace', 'piano', 'aquarium', 'kids_corner', 'counter_ext']) {
+  test('실내 가구(trim: 6종) + 별관 2가 objectDef에 있고, 실내 가구는 indoor·「실내」 탭, 별관은 room·별관 목록', () => {
+    for (const id of ['table_in', 'counter', 'counter_ext', 'vending', 'window_seat', 'deco_umbrella_stand']) {
       expect(objectDef(id).indoor, id).toBe(true);
       expect(INDOOR_IDS.has(id), id).toBe(true);
       expect(buildGroupOf(id), id).toBe('indoor');
     }
-    expect(objectDef('sofa_seat')).toMatchObject({ kind: 'seat', seats: 3, w: 2, h: 1, cost: 900_000 });
-    expect(objectDef('bar_counter')).toMatchObject({ kind: 'seat', seats: 3, unlock: { type: 'star', star: 2 } });
-    expect(objectDef('kids_corner')).toMatchObject({ w: 2, h: 2, noise: 1 });
     for (const id of ['annex_cafe', 'greenhouse_cafe']) { expect(objectDef(id).room, id).toBe(true); expect(ROOM_IDS.has(id)).toBe(true); expect(ANNEX_IDS.has(id)).toBe(true); }
     expect(objectDef('annex_cafe')).toMatchObject({ kind: 'building', w: 4, h: 3, cost: 6_000_000, buildDays: 7 });
     expect(objectDef('greenhouse_cafe')).toMatchObject({ w: 3, h: 3, cost: 4_500_000 });
   });
-  test('실내 콤보 2 (피아노+바·수족관+키즈) — 나머지 실내 짝은 fun-corner 코너(독서 정원)로 옮겼다', () => {
-    const ids = ['cb_piano_bar', 'cb_fish_kids'];
-    for (const id of ids) expect(COMBOS.find((c) => c.id === id), id).toBeDefined();
-    expect(COMBOS.length).toBeLessThanOrEqual(12);
-  });
-  test('목표 3개 교체(id 유지·보상 유지): g23 실내 좌석 6석 · g41 본관 Lv2 · g45 별관', () => {
-    expect(goalDef('g23')).toMatchObject({ condition: { type: 'indoorSeats', n: 6 }, reward: [{ type: 'unlockFacility', id: 'vending' }] });
-    expect(goalDef('g41')).toMatchObject({ condition: { type: 'mainLevel', lv: 2 }, reward: [{ type: 'unlockFacility', id: 'drum_footbath' }] });
-    expect(goalDef('g45')).toMatchObject({ condition: { type: 'annex', n: 1 }, reward: [{ type: 'builder', n: 1 }] });
+  test('목표 3개: 실내 좌석 6석 · 본관 Lv2 · 별관 (trim: 60개로 줄이며 번호가 바뀌었다)', () => {
+    expect(goalDef('g23').condition).toEqual({ type: 'indoorSeats', n: 6 });
+    expect(goalDef('g36').condition).toEqual({ type: 'mainLevel', lv: 2 });
+    expect(goalDef('g39').condition).toEqual({ type: 'annex', n: 1 });
   });
 });
 
@@ -111,19 +103,16 @@ describe('본관 증축 (§8.1)', () => {
     expect(canExpandMain(s).reason).toBe('이미 최고 단계예요');
     expect(footprintOf(main(s)).length).toBe(24);
   });
-  test('실내 칸 입지: 바람 0·그늘 2. 실내 가구는 방 안에만 (밖이면 "실내 가구는 건물 안에만 놓아요")', () => {
+  test('실내 칸 자리: 그늘 2. 실내 가구는 방 안에만 (밖이면 "실내 가구는 건물 안에만 놓아요")', () => {
     const s = cafe();
     const site = siteOf(s, X(4), Y(2));
-    expect(site.wind).toBe(0); expect(site.shade).toBe(2);
-    expect(canPlace(s, 'sofa_seat', X(0), Y(0)).reason).toBe('실내 가구는 건물 안에만 놓아요');
-    expect(canPlace(s, 'sofa_seat', X(4), Y(2)).ok).toBe(true);
-    expect(canPlace(s, 'sofa_seat', X(4), Y(1)).reason).toBe('카운터·주방 자리예요'); // fix-indoor: 뒷벽 줄은 고정 설비
-    expect(canPlace(s, 'kids_corner', X(4), Y(1)).reason).toBe('카운터·주방 자리예요'); // 2×2: (4,1)이 카운터
-    expect(canPlace(s, 'kids_corner', X(3), Y(1)).reason).toBe('카운터·주방 자리예요'); // (4,1)이 카운터 (그리고 (3,2)가 문)
-    expect(canPlace(s, 'kids_corner', X(5), Y(2)).reason).toBe('실내 가구는 건물 안에만 놓아요'); // (6,·)는 밖
-    // Lv2(4×3)에선 2×2가 들어간다: (4,2)-(5,3) 바닥, 문(3,3)에서 (3,2)→카운터 앞으로 통한다
+    expect(site.shade).toBe(2);
+    expect(canPlace(s, 'table_in', X(0), Y(0)).reason).toBe('실내 가구는 건물 안에만 놓아요');
+    expect(canPlace(s, 'table_in', X(4), Y(2)).ok).toBe(true);
+    expect(canPlace(s, 'table_in', X(4), Y(1)).reason).toBe('카운터·주방 자리예요'); // fix-indoor: 뒷벽 줄은 고정 설비
+    expect(canPlace(s, 'table_in', X(6), Y(2)).reason).toBe('실내 가구는 건물 안에만 놓아요'); // (6,·)는 밖
     s.money = 1e9; apply(s, { type: 'expandMain' });
-    expect(canPlace(s, 'kids_corner', X(4), Y(2)).ok).toBe(true);
+    expect(canPlace(s, 'table_in', X(4), Y(2)).ok).toBe(true);
   });
 });
 
@@ -260,7 +249,7 @@ describe('손님: 겨울·비·태풍 실내 우선, 체류 시간, 둘러보기
     expect(isDoorReachable(s, main(s))).toBe(false);
     expect(freeSeats(s).map((o) => o.type)).toContain('table_out'); // 실내 우선을 풀고 야외도 돌려준다
   });
-  test('체류 시간 = 좌석 기본 + 순회 시설당 +8분(상한 6), 소파 +20%, 책장 +15%, 따뜻한 조명 저녁 +10%; 둘러보기 확률은 시설 3개 초과분 +5%', () => {
+  test('체류 시간 = 좌석 기본 + 순회 시설당 +8분(상한 6), 따뜻한 조명 저녁 +10%; 둘러보기 확률은 시설 3개 초과분 +5%', () => {
     const s = cafe();
     const g = { seatId: null } as never;
     expect(stayMs(s, g, SEAT_MS)).toBe(SEAT_MS);
@@ -269,13 +258,13 @@ describe('손님: 겨울·비·태풍 실내 우선, 체류 시간, 둘러보기
     expect(browseChance(s, 0.4)).toBe(0.4);
     for (const [x, y] of [[0, 0], [1, 0], [2, 0], [6, 0]] as const) placeObject(s, 'vending', X(x), Y(y)); // (밖에도 놓이나 테스트용으로 직접)
     expect(browseChance(s, 0.4)).toBeCloseTo(0.5);
-    const sofa = placeObject(s, 'sofa_seat', X(4), Y(2));
-    const gs = { seatId: sofa.id } as never;
-    expect(stayMs(s, gs, 1000)).toBe(Math.round((1000 + 5 * STAY_PER_FACILITY_MS) * 1.2));
+    const seat = placeObject(s, 'table_in', X(4), Y(2));
+    const gs = { seatId: seat.id } as never;
+    expect(stayMs(s, gs, 1000)).toBe(1000 + 5 * STAY_PER_FACILITY_MS);
     s.clock.hour = 19;
-    expect(stayMs(s, gs, 1000)).toBe(Math.round((1000 + 5 * STAY_PER_FACILITY_MS) * 1.3)); // 따뜻한 조명 저녁
+    expect(stayMs(s, gs, 1000)).toBe(Math.round((1000 + 5 * STAY_PER_FACILITY_MS) * 1.1)); // 따뜻한 조명 저녁
     s.main.lighting = 'bright';
-    expect(stayMs(s, gs, 1000)).toBe(Math.round((1000 + 5 * STAY_PER_FACILITY_MS) * 1.2));
+    expect(stayMs(s, gs, 1000)).toBe(1000 + 5 * STAY_PER_FACILITY_MS);
   });
   test('좌석 이용률: 시간마다 누적, 새 날에 %로 기록, 80% 초과 3일 연속이면 "자리가 모자라요"', () => {
     const s = cafe();
@@ -299,89 +288,6 @@ describe('손님: 겨울·비·태풍 실내 우선, 체류 시간, 둘러보기
   });
 });
 
-describe('실내 요소 상호작용 (§4.3)', () => {
-  test('난로: 켜기/끄기, 12~2월 자동 ON, 반경 2 실내 좌석 겨울 만족 +3, 켜 두면 월 연료 ₩5만', () => {
-    const s = cafe();
-    const fire = placeObject(s, 'fireplace', X(4), Y(2));
-    const seat = placeObject(s, 'table_in', X(5), Y(2));
-    s.clock.month = 7;
-    expect(isFireplaceOn(s, fire)).toBe(false);
-    expect(apply(s, { type: 'toggleFireplace', objectId: fire.id }).ok).toBe(true);
-    expect(isFireplaceOn(s, fire)).toBe(true);
-    expect(indoorSatisfaction(s, seat)).toBe(0); // 여름엔 없다
-    s.clock.month = 12;
-    expect(indoorSatisfaction(s, seat)).toBeCloseTo(0.3);
-    apply(s, { type: 'toggleFireplace', objectId: fire.id });
-    expect(isFireplaceOn(s, fire)).toBe(false);
-    expect(indoorSatisfaction(s, seat)).toBe(0);
-    // 12월 1일 자동 ON은 미설정 난로만
-    const s2 = cafe();
-    const fire2 = placeObject(s2, 'fireplace', X(4), Y(2));
-    s2.clock.month = 11; s2.clock.day = 30;
-    tick(s2, DAY_MS);
-    expect(s2.clock.month).toBe(12);
-    expect(isFireplaceOn(s2, fire2)).toBe(true);
-    for (let d = 0; d < 30; d++) tick(s2, DAY_MS);
-    expect(s2.clock.month).toBe(1);
-    expect(s2.lastMonthCard?.costs.upkeep ?? 0).toBeGreaterThanOrEqual(FIREPLACE_FUEL); // 1월 1일 연료비가 12월 정산에 잡힌다
-  });
-  test('소파 만족 +2, 바 저녁 세트 18시 이후 1인 손님 요금 +15%, 책장 신간(마일리지 1·한 달), 수족관 먹이(하루 1회·청결 +2), 키즈 장난감(₩10만·한 달·가족 +25%)', () => {
-    const s = cafe();
-    const sofa = placeObject(s, 'sofa_seat', X(4), Y(2));
-    expect(indoorSatisfaction(s, sofa)).toBeCloseTo(0.2);
-    const bar = placeObject(s, 'bar_counter', X(4), Y(2));
-    expect(indoorFeeMult(s, bar, 'student')).toBe(1);
-    expect(apply(s, { type: 'setBarEvening', objectId: bar.id, on: true }).ok).toBe(true);
-    s.clock.hour = 19;
-    expect(indoorFeeMult(s, bar, 'digital_nomad')).toBe(1.15); // 1인 손님
-    expect(indoorFeeMult(s, bar, 'rentcar_family')).toBe(1);
-    s.clock.hour = 12;
-    expect(indoorFeeMult(s, bar, 'digital_nomad')).toBe(1);
-    // 책장
-    const shelf = placeObject(s, 'bookshelf', X(0), Y(0));
-    s.mileage = 0;
-    expect(apply(s, { type: 'addBooks', objectId: shelf.id }).reason).toBe('마일리지가 모자라요');
-    s.mileage = 2;
-    expect(apply(s, { type: 'addBooks', objectId: shelf.id }).ok).toBe(true);
-    expect(s.mileage).toBe(2 - NEW_BOOKS_MILEAGE);
-    expect(hasNewBooks(s, shelf)).toBe(true);
-    expect(apply(s, { type: 'addBooks', objectId: shelf.id }).reason).toBe('아직 신간이 있어요');
-    // 수족관
-    const aq = placeObject(s, 'aquarium', X(1), Y(0));
-    s.clean.value = 50;
-    expect(apply(s, { type: 'feedAquarium', objectId: aq.id }).ok).toBe(true);
-    expect(s.clean.value).toBe(52);
-    expect(apply(s, { type: 'feedAquarium', objectId: aq.id }).reason).toBe('오늘은 이미 줬어요');
-    // 키즈
-    const kids = placeObject(s, 'kids_corner', X(2), Y(0));
-    expect(isKidsStocked(s, kids)).toBe(false);
-    expect(indoorSpawnMult(s, 'rentcar_family')).toBeCloseTo(1.1); // 수족관 가족 +10%만
-    const money = s.money;
-    expect(apply(s, { type: 'restockKids', objectId: kids.id }).ok).toBe(true);
-    expect(s.money).toBe(money - KIDS_RESTOCK_COST);
-    expect(isKidsStocked(s, kids)).toBe(true);
-    expect(indoorSpawnMult(s, 'rentcar_family')).toBeCloseTo(1.1 * 1.25);
-    expect(indoorSpawnMult(s, 'student')).toBeCloseTo(1.1); // 책장 청년 +10%
-  });
-  test('피아노 연주 시간·BGM·조명 버튼 그룹은 sim 상태에 저장되고 유입 배수로 이어진다', () => {
-    const s = cafe();
-    expect(apply(s, { type: 'setPianoTime', time: 'lunch' }).reason).toBe('피아노가 없어요');
-    placeObject(s, 'piano', X(4), Y(2));
-    expect(apply(s, { type: 'setPianoTime', time: 'lunch' }).ok).toBe(true);
-    s.clock.hour = 13;
-    expect(isPianoPlaying(s)).toBe(true);
-    expect(indoorSpawnMult(s, 'student')).toBeCloseTo(1.1);
-    s.clock.hour = 15;
-    expect(isPianoPlaying(s)).toBe(false);
-    expect(apply(s, { type: 'setBgm', bgm: 'calm' }).ok).toBe(true);
-    expect(indoorSpawnMult(s, 'local_auntie')).toBeCloseTo(1.05); // senior
-    expect(indoorSpawnMult(s, 'student')).toBe(1);
-    expect(apply(s, { type: 'setLighting', lighting: 'bright' }).ok).toBe(true);
-    expect(indoorSpawnMult(s, 'student')).toBeCloseTo(1.05);
-    expect(s.actionLog.at(-1)?.action).toEqual({ type: 'setLighting', lighting: 'bright' });
-  });
-});
-
 describe('별관·목표 (§8.2·P1-13)', () => {
   test('별관은 완공돼야 세고, 문이 길로 안 이어지면 "길 끊김"; 목표 실내 좌석·본관 Lv·별관 판정', () => {
     const s = cafe();
@@ -389,18 +295,18 @@ describe('별관·목표 (§8.2·P1-13)', () => {
     expect(apply(s, { type: 'place', objectType: 'annex_cafe', x: X(0), y: Y(4) }).ok).toBe(true); // 문 (0,6) 앞 (0,7) 마을 길
     const annex = objectAt(s, X(0), Y(4))!;
     expect(annexCount(s)).toBe(0); // 짓는 중
-    expect(goalProgress(s, goalDef('g45'))).toEqual({ cur: 0, max: 1 });
+    expect(goalProgress(s, goalDef('g39'))).toEqual({ cur: 0, max: 1 });
     for (let d = 0; d < 7; d++) tick(s, DAY_MS);
     expect(annexCount(s)).toBe(1);
-    expect(goalProgress(s, goalDef('g45'))).toEqual({ cur: 1, max: 1 });
+    expect(goalProgress(s, goalDef('g39'))).toEqual({ cur: 1, max: 1 });
     expect(isRoomCut(s, annex)).toBe(false); // 마을 길(도로)이 문 앞
     placeObject(s, 'table_in', X(1), Y(4)); placeObject(s, 'table_in', X(2), Y(4)); placeObject(s, 'table_in', X(3), Y(4));
     expect(roomSeats(s, annex)).toBe(6);
     expect(indoorSeats(s)).toBe(6);
     expect(goalProgress(s, goalDef('g23'))).toEqual({ cur: 6, max: 6 });
-    expect(goalProgress(s, goalDef('g41'))).toEqual({ cur: 1, max: 2 });
+    expect(goalProgress(s, goalDef('g36'))).toEqual({ cur: 1, max: 2 });
     apply(s, { type: 'expandMain' });
-    expect(goalProgress(s, goalDef('g41'))).toEqual({ cur: 2, max: 2 });
+    expect(goalProgress(s, goalDef('g36'))).toEqual({ cur: 2, max: 2 });
     // 온실 카페: 안 자리 전망 +2
     s.unlocked.objects.push('greenhouse_cafe');
     const g = placeObject(s, 'greenhouse_cafe', X(7), Y(0));
@@ -442,17 +348,13 @@ describe('z-polish: 올렛길 자동 연결·시설 플래그 캐시', () => {
     s.parcels.find((p) => p.no === 1)!.owned = false;
     expect(autoConnectDoor(s, m).route).toBeNull();
   });
-  test('indoorFlags 캐시 키는 배치 서명: actionLog가 캡(1,000)에 닿아도 철거를 바로 본다', () => {
+  test('BGM·조명 유입 배수: 잔잔 BGM은 어르신 +5%, 밝은 조명은 청년 +5%', () => {
     const s = cafe();
-    placeObject(s, 'piano', X(4), Y(2));
-    apply(s, { type: 'setPianoTime', time: 'lunch' });
-    s.clock.hour = 13;
-    for (let i = 0; i < 1001; i++) s.actionLog.push({ tick: s.tick, action: { type: 'setBgm', bgm: null } });
-    expect(indoorSpawnMult(s, 'student')).toBeCloseTo(1.1);
-    const len = s.actionLog.length;
-    expect(apply(s, { type: 'remove', objectId: objectAt(s, X(4), Y(2))!.id }).ok).toBe(true);
-    expect(s.actionLog.length).toBe(len); // 캡에 닿아 길이가 안 바뀐다
     expect(indoorSpawnMult(s, 'student')).toBe(1);
+    apply(s, { type: 'setBgm', bgm: 'calm' });
+    expect(indoorSpawnMult(s, 'local_auntie')).toBeCloseTo(1.05);
+    apply(s, { type: 'setLighting', lighting: 'bright' });
+    expect(indoorSpawnMult(s, 'student')).toBeCloseTo(1.05);
   });
 });
 

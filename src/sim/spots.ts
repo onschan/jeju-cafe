@@ -5,7 +5,7 @@
  * - Lv별 효과(누적): 분류 태그 손님 ×1.05/1.10/1.15/1.20/1.25(같은 태그 합산 상한 ×2), Lv3 요금 +2% · Lv5 +5%(분류 대응 시설), Lv4 좌석 경관 +1 · Lv5 +2
  * - 해금: Lv2 손님(evaluateUnlocks) · Lv3 강화 아이템 · Lv4 부탁·다음 명소(board.afterInvest) · Lv5 마일리지 10 + k=6 특수
  */
-import type { GameState, ApplyResult, SpotDef, SpotTag, GuestTags, FacilityCategory, TourResult } from './types.ts';
+import type { GameState, ApplyResult, SpotDef, SpotTag, GuestTags, FacilityCategory } from './types.ts';
 import { rollOutcome, recordOutcome, outcomeChances, bestStaffFor, OUTCOME_MULT, GREAT_REPUTATION, FAIL_REPUTATION, GREAT_TICKETS, OUTCOME_NAME, type Chances } from './luck.ts'; // staff-luck
 import { titleBonus } from './titles.ts';
 import { addReputation } from './reputation.ts';
@@ -13,44 +13,35 @@ import { SPOTS, spotDef, GUEST_TYPES, guestTypeDef, canonicalGuestId, itemDef } 
 import { unlockCondMet, isUnlocked, unlockGuestType, unlockedTypeIds } from './segments.ts';
 import { pushNotice, skillTotal } from './staff.ts';
 import { grantItem } from './items.ts';
-import { addMileage } from './mileage.ts';
+import { addTickets } from './mileage.ts';
 import { monthIndex } from './clock.ts';
 import { MAX_SEGMENT_POPULARITY } from './promotions.ts';
 import { josa } from './josa.ts';
 import { fmtNum } from './format.ts';
 
-export const SPOT_MAX_LEVEL = 5;
-/** Lv2 손님 해금, Lv3 강화 아이템·요금, Lv4 부탁·다음 명소·경관, Lv5 마일리지·특수 */
+/** trim: 명소 24 → 8곳, Lv1~3 */
+export const SPOT_MAX_LEVEL = 3;
+/** Lv2 손님 해금, Lv3 강화 아이템·요금·다음 명소·경관 */
 export const SPOT_GUEST_LEVEL = 2;
 export const SPOT_ITEM_LEVEL = 3;
-export const SPOT_QUEST_LEVEL = 4;
-/** 투어 버스(계약)가 오는 명소 최소 레벨 */
-export const SPOT_BUS_LEVEL = 3;
-/** 투어 버스: 매주 일요일(7·14·21·28일) 11시에 4~6명 */
-export const BUS_HOUR = 11;
-export const BUS_MIN = 4;
-export const BUS_MAX = 6;
-/** 투자금 기준 B_k (분류 안 순서 k = 1~6) × Lv 배수 */
-export const SPOT_BASE_COST = [500_000, 750_000, 1_000_000, 1_300_000, 1_650_000, 2_000_000] as const;
-export const SPOT_COST_MULT = [1, 2, 4.5, 8, 13] as const;
-/** 방문객/일 = 매력 × 2, 투어 버스 ×1.3. 카페 유입 = 방문객/일 × 3% */
+export const SPOT_NEXT_LEVEL = 3;
+/** 투자금 기준 B_k (분류 안 순서 k = 1~2) × Lv 배수 */
+export const SPOT_BASE_COST = [500_000, 750_000] as const;
+export const SPOT_COST_MULT = [1, 2, 4.5] as const;
+/** 방문객/일 = 매력 × 2. 카페 유입 = 방문객/일 × 3% */
 export const VISITORS_PER_APPEAL = 2;
-export const BUS_VISITOR_MULT = 1.3;
 export const VISITOR_GUEST_RATE = 0.03;
-/** Lv별 추가 조건 (Lv2~5 누적 방문객) */
-export const SPOT_VISITOR_REQ: Record<number, number> = { 2: 1_000, 3: 5_000, 4: 10_000, 5: 25_000 }; // fun-rank: Lv4·5가 3~5년차에 열리게 (15,000/40,000 → 10,000/25,000) — 명소 Lv4~5(₩6억)가 후반의 주된 돈 쓸 곳
+/** Lv별 추가 조건 (Lv2~3 누적 방문객) */
+export const SPOT_VISITOR_REQ: Record<number, number> = { 2: 1_000, 3: 5_000 };
 export const SPOT_YEAR_REQ_LV3 = 2;
-export const SPOT_POP_REQ_LV4 = 40;
-/** Lv5 ★ 조건: k=1·2 → ★3, 3~6 → ★4 (fun-rank: ★5는 5년차 봇도 못 닿아 명소 8곳이 영영 Lv4에 묶였다) */
-export const spotStarReq = (k: number): number => (k <= 2 ? 3 : 4);
 /** Lv별 태그 손님 유입 배수 (누적 아님 — 그 Lv의 값), 같은 태그 합산 상한 */
-export const SPOT_TAG_MULT = [1, 1.05, 1.1, 1.15, 1.2, 1.25] as const;
+export const SPOT_TAG_MULT = [1, 1.05, 1.1, 1.15] as const;
 export const SPOT_TAG_MULT_CAP = 2.0;
-/** Lv3 요금 +2%, Lv5 +5% (분류 대응 시설) · Lv4 좌석 경관 +1, Lv5 +2 */
-export const SPOT_FEE_PCT: Record<number, number> = { 3: 2, 4: 2, 5: 5 };
-export const SPOT_SCENERY: Record<number, number> = { 4: 1, 5: 2 };
-export const SPOT_LV5_MILEAGE = 10;
-/** 방문객 상품 5단계 (§3.4.4): 명소별 1,000/5,000/20,000/50,000, 전체 합산 100,000 → 황금 감귤 1회 */
+/** Lv3 요금 +2% (분류 대응 시설) · Lv3 좌석 경관 +1 */
+export const SPOT_FEE_PCT: Record<number, number> = { 3: 2 };
+export const SPOT_SCENERY: Record<number, number> = { 3: 1 };
+export const SPOT_LV3_TICKETS = 10;
+/** 방문객 상품 4단계: 명소별 1,000/5,000/20,000/50,000, 전체 합산 100,000 → 황금 감귤 1회 */
 export const VISITOR_PRIZES: { visitors: number; text: string }[] = [
   { visitors: 1_000, text: '응모권 1' },
   { visitors: 5_000, text: '마일리지 3' },
@@ -58,17 +49,6 @@ export const VISITOR_PRIZES: { visitors: number; text: string }[] = [
   { visitors: 50_000, text: '씨앗 5개 묶음팩' },
 ];
 export const GOLDEN_TANGERINE_VISITORS = 100_000;
-/** 투어 버스 계약: tour_bus_key 보유 후, 월초 50만 원. 단체 손님 ×1.3 */
-export const TOUR_BUS_KEY = 'tour_bus_key';
-export const TOUR_BUS_FEE = 500_000;
-export const TOUR_BUS_GROUP_MULT = 1.3;
-/** 투어 개최: 2년차부터 월 1회. 점수 = 매력 + 30 × (태그 손님 인기 ÷ 100) + 콤보 수. 60 이상 성공 */
-export const TOUR_YEAR = 2;
-export const TOUR_SUCCESS_SCORE = 60;
-export const TOUR_MONEY_PER_SCORE = 20_000;
-export const TOUR_SUCCESS_VISITORS = 2_000;
-export const TOUR_FAIL_MONEY = 1_000_000;
-export const TOUR_FAIL_VISITORS = 500;
 
 // ---------- 레벨·투자금 ----------
 
@@ -76,12 +56,12 @@ export function spotLevel(state: GameState, id: string): number {
   return state.spots[id] ?? 0;
 }
 
-/** 투자금 표 (§3.4.1): B_k × (1, 2, 4.5, 8, 13) */
+/** 투자금 표: B_k × (1, 2, 4.5) */
 export function spotCost(k: number, level: number): number {
-  return Math.round((SPOT_BASE_COST[k - 1] ?? SPOT_BASE_COST[5]) * (SPOT_COST_MULT[level - 1] ?? 1));
+  return Math.round((SPOT_BASE_COST[k - 1] ?? SPOT_BASE_COST[1]) * (SPOT_COST_MULT[level - 1] ?? 1));
 }
 
-/** 투자할 수 있는 관광지인가: 시작 / 랭크 / 앞 관광지 Lv4 */
+/** 투자할 수 있는 관광지인가: 시작 / 랭크 / 앞 관광지 Lv3 */
 export function spotUnlocked(state: GameState, id: string): boolean {
   return unlockCondMet(state, spotDef(id).unlock);
 }
@@ -147,11 +127,6 @@ export function spotRequirements(state: GameState, id: string): SpotRequirement[
   const need = SPOT_VISITOR_REQ[next];
   if (need) out.push({ text: `누적 방문객 ${fmtNum(need)}명`, met: spotVisitors(state, id) >= need });
   if (next === 3) out.push({ text: `${SPOT_YEAR_REQ_LV3}년차 이상`, met: state.clock.year >= SPOT_YEAR_REQ_LV3 });
-  if (next === 4 && def.lv2GuestId) {
-    const g = canonicalGuestId(def.lv2GuestId);
-    out.push({ text: `${guestTypeDef(g).name} 인기 ${SPOT_POP_REQ_LV4}`, met: (state.segmentPopularity[g] ?? 0) >= SPOT_POP_REQ_LV4 });
-  }
-  if (next === 5) { const star = spotStarReq(def.order); out.push({ text: `★${star} 이상`, met: state.star >= star }); }
   return out;
 }
 
@@ -167,7 +142,7 @@ export function canInvestSpot(state: GameState, id: string): ApplyResult {
   return { ok: true };
 }
 
-/** 다음 레벨로 투자. 호출 전 canInvestSpot. Lv3 아이템·Lv5 마일리지·특수는 여기서, Lv2 손님·Lv4 부탁·다음 명소는 board.afterInvest가. */
+/** 다음 레벨로 투자. 호출 전 canInvestSpot. Lv3 아이템·마일리지는 여기서, Lv2 손님·Lv3 다음 명소는 board.afterInvest가. */
 export function investSpot(state: GameState, id: string): number {
   const def = spotDef(id);
   const next = nextSpotLevel(state, id)!;
@@ -177,10 +152,7 @@ export function investSpot(state: GameState, id: string): number {
   if (next.level === SPOT_ITEM_LEVEL && def.lv3ItemId) {
     try { grantItem(state, def.lv3ItemId); pushNotice(state, `${def.name}에서 ${josa(itemName(def.lv3ItemId), '을/를')} 받았어요`); } catch { /* 표에만 있는 아이템 */ }
   }
-  if (next.level === SPOT_MAX_LEVEL) {
-    addMileage(state, SPOT_LV5_MILEAGE, `${def.name} Lv5`);
-    if (def.lv5Special) applySpecial(state, def);
-  }
+  if (next.level === SPOT_MAX_LEVEL) addTickets(state, SPOT_LV3_TICKETS, `${def.name} Lv${SPOT_MAX_LEVEL}`);
   return next.level;
 }
 
@@ -188,30 +160,9 @@ function itemName(id: string): string {
   try { return itemDef(id).name; } catch { return id; }
 }
 
-/** Lv5 특수 (k=6 명소): 손님 해금 / 인기 +n / 소지금 배수·상시 출현은 조회형(spotWalletMult·spotSpawnMult) */
-function applySpecial(state: GameState, def: SpotDef): void {
-  const sp = def.lv5Special!;
-  switch (sp.type) {
-    case 'unlockGuest':
-      if (GUEST_TYPES.some((t) => t.id === sp.guestId)) { if (!isUnlocked(state, sp.guestId)) unlockGuestType(state, sp.guestId); }
-      else pushNotice(state, `${def.name} Lv5: ${sp.text} (아직 오지 않는 손님)`);
-      return;
-    case 'popularity': {
-      const g = canonicalGuestId(sp.guestId);
-      state.segmentPopularity[g] = Math.min(MAX_SEGMENT_POPULARITY, (state.segmentPopularity[g] ?? 0) + sp.n);
-      pushNotice(state, `${def.name} Lv5: ${sp.text}`);
-      return;
-    }
-    case 'walletMult':
-    case 'spawnMult':
-      pushNotice(state, `${def.name} Lv5: ${sp.text}`);
-      return;
-  }
-}
-
 // ---------- 효과 조회 (다른 시스템이 부른다) ----------
 
-/** 이 손님 타입의 명소 유입 배수: 태그 명소 Lv 배수 곱(상한 ×2) × 투어 버스 단체 ×1.3 × Lv5 상시 출현 */
+/** 이 손님 타입의 명소 유입 배수: 태그 명소 Lv 배수 곱 (상한 ×2) */
 export function spotSpawnMult(state: GameState, typeId: string): number {
   const id = canonicalGuestId(typeId);
   const def = GUEST_TYPES.find((t) => t.id === id);
@@ -220,24 +171,11 @@ export function spotSpawnMult(state: GameState, typeId: string): number {
   for (const spot of SPOTS) {
     const lv = spotLevel(state, spot.id);
     if (lv > 0 && tagMatches(def.tags, spot.tag)) mult *= SPOT_TAG_MULT[lv] ?? 1;
-    if (lv === SPOT_MAX_LEVEL && spot.lv5Special?.type === 'spawnMult' && canonicalGuestId(spot.lv5Special.guestId) === id) mult *= spot.lv5Special.mult;
   }
-  mult = Math.min(SPOT_TAG_MULT_CAP, mult);
-  if (state.tourBus && def.tags.group) mult *= TOUR_BUS_GROUP_MULT;
-  return mult;
+  return Math.min(SPOT_TAG_MULT_CAP, mult);
 }
 
-/** Lv5 특수: 소지금 배수 (요트 투어 → 요트 오너 ×1.5) */
-export function spotWalletMult(state: GameState, typeId: string): number {
-  const id = canonicalGuestId(typeId);
-  let mult = 1;
-  for (const spot of SPOTS) {
-    if (spotLevel(state, spot.id) === SPOT_MAX_LEVEL && spot.lv5Special?.type === 'walletMult' && canonicalGuestId(spot.lv5Special.guestId) === id) mult *= spot.lv5Special.mult;
-  }
-  return mult;
-}
-
-/** 이 분류 시설의 요금 보너스 %: 대응 명소 Lv3 +2, Lv5 +5 (명소마다 합산) */
+/** 이 분류 시설의 요금 보너스 %: 대응 명소 Lv3 +2 (명소마다 합산) */
 export function spotFeePct(state: GameState, category: FacilityCategory | undefined): number {
   if (!category) return 0;
   let pct = 0;
@@ -245,7 +183,7 @@ export function spotFeePct(state: GameState, category: FacilityCategory | undefi
   return pct;
 }
 
-/** 전 좌석 경관 보너스: 명소 Lv4 +1, Lv5 +2 (합산) */
+/** 전 좌석 경관 보너스: 명소 Lv3 +1 (합산) */
 export function spotSceneryBonus(state: GameState): number {
   let n = 0;
   for (const spot of SPOTS) n += SPOT_SCENERY[spotLevel(state, spot.id)] ?? 0;
@@ -254,10 +192,9 @@ export function spotSceneryBonus(state: GameState): number {
 
 // ---------- 방문객 ----------
 
-/** 이 명소의 하루 방문객 = 매력 × 2 (투어 버스 ×1.3) */
+/** 이 명소의 하루 방문객 = 매력 × 2 */
 export function dailyVisitors(state: GameState, id: string): number {
-  const appeal = spotAppealOf(spotDef(id), spotLevel(state, id));
-  return Math.round(appeal * VISITORS_PER_APPEAL * (state.tourBus ? BUS_VISITOR_MULT : 1));
+  return Math.round(spotAppealOf(spotDef(id), spotLevel(state, id)) * VISITORS_PER_APPEAL);
 }
 
 /** 전 명소 하루 방문객 합 */
@@ -272,7 +209,7 @@ export function spotGuestBonus(state: GameState): number {
   return Math.floor(totalDailyVisitors(state) * VISITOR_GUEST_RATE + 1e-9);
 }
 
-/** 방문객을 더하고 상품 단계를 확인한다 (투어 개최 보상도 이걸 쓴다) */
+/** 방문객을 더하고 상품 단계를 확인한다 */
 export function addVisitors(state: GameState, id: string, n: number): void {
   if (n <= 0) return;
   state.spotVisitors[id] = (state.spotVisitors[id] ?? 0) + n;
@@ -287,7 +224,7 @@ export function dailySpots(state: GameState): void {
   }
 }
 
-/** 방문객 상품 (§3.4.4): 명소별 4단계 + 전체 합산 10만 황금 감귤 1회 */
+/** 방문객 상품: 명소별 4단계 + 전체 합산 10만 황금 감귤 1회 */
 export function checkVisitorPrizes(state: GameState, id: string): void {
   const name = spotDef(id).name;
   const v = spotVisitors(state, id);
@@ -296,7 +233,7 @@ export function checkVisitorPrizes(state: GameState, id: string): void {
     const p = VISITOR_PRIZES[tier]!;
     switch (tier) {
       case 0: state.tickets += 1; break;
-      case 1: addMileage(state, 3); break;
+      case 1: addTickets(state, 3); break;
       case 2: grantItem(state, 'tangerine_seed', 2); break;
       case 3: grantItem(state, 'tangerine_seed', 3); grantItem(state, 'hallabong_seed', 2); break;
     }
@@ -310,98 +247,4 @@ export function checkVisitorPrizes(state: GameState, id: string): void {
     if (!state.unlocked.objects.includes('golden_tangerine_tree')) state.unlocked.objects.push('golden_tangerine_tree'); // 장식 「황금 감귤나무」 해금
     pushNotice(state, `명소 방문객 ${fmtNum(GOLDEN_TANGERINE_VISITORS)}명! 황금 감귤을 받았어요`);
   }
-}
-
-// ---------- 투어 버스 ----------
-
-export function hasTourBusKey(state: GameState): boolean {
-  return (state.inventory[TOUR_BUS_KEY] ?? 0) > 0;
-}
-
-export function canSetTourBus(state: GameState, on: boolean): ApplyResult {
-  if (on === state.tourBus) return { ok: false, reason: on ? '이미 계약 중이에요' : '계약 중이 아니에요' };
-  if (on && !hasTourBusKey(state)) return { ok: false, reason: '투어 버스 열쇠가 필요해요' };
-  return { ok: true };
-}
-
-/** 계약 시작/해지. 첫 달 요금은 바로 낸다(계약권이 있으면 무료). 호출 전 canSetTourBus. */
-export function setTourBus(state: GameState, on: boolean): void {
-  state.tourBus = on;
-  if (on) { chargeTourBus(state); pushNotice(state, '투어 버스 계약! 명소 방문객 ×1.3 · 단체 손님 ×1.3'); }
-  else pushNotice(state, '투어 버스 계약을 끝냈어요');
-}
-
-/** 월초(경제 upkeep 뒤): 계약 중이면 50만 원 (계약권 달은 무료). 돈이 모자라도 낸다(마이너스 → 실패 상태는 E 트랙). */
-export function chargeTourBus(state: GameState): void {
-  if (!state.tourBus) return;
-  if (state.tourBusFreeMonths > 0) { state.tourBusFreeMonths -= 1; pushNotice(state, '투어 버스: 계약권으로 이달 무료'); return; }
-  state.money -= TOUR_BUS_FEE;
-  state.monthCosts.tourBus += TOUR_BUS_FEE; // 트랙 E 결산 항목
-  pushNotice(state, `투어 버스 월 계약비 ₩${fmtNum(TOUR_BUS_FEE)}`);
-}
-
-export function monthlySpots(state: GameState): void {
-  chargeTourBus(state);
-}
-
-/** 투어 버스가 오는 관광지들 (계약 중 · Lv3 이상 · Lv2 손님 있음) */
-export function busSpots(state: GameState): SpotDef[] {
-  if (!state.tourBus) return [];
-  return SPOTS.filter((d) => spotLevel(state, d.id) >= SPOT_BUS_LEVEL && d.lv2GuestId);
-}
-
-export function isBusDay(day: number): boolean {
-  return day % 7 === 0;
-}
-
-// ---------- 투어 개최 ----------
-
-export function tourScore(state: GameState, spotId: string): number {
-  const def = spotDef(spotId);
-  const appeal = spotAppealOf(def, spotLevel(state, spotId));
-  return Math.round(appeal + 30 * (tagPopularity(state, def.tag) / 100) + state.codex.combos.length + skillTotal(state, 'tourScore') + titleBonus(state, 'tour')); // 트랙 D 특기 tour_guide +10 · staff-luck 칭호
-}
-
-export function tourAvailable(state: GameState): boolean {
-  return state.clock.year >= TOUR_YEAR && state.tourMonth !== monthIndex(state.clock);
-}
-
-export function canHostTour(state: GameState, spotId: string): ApplyResult {
-  let def: SpotDef;
-  try { def = spotDef(spotId); } catch { return { ok: false, reason: '없는 관광지예요' }; }
-  if (state.clock.year < TOUR_YEAR) return { ok: false, reason: `투어 개최는 ${TOUR_YEAR}년차부터예요` };
-  if (state.tourMonth === monthIndex(state.clock)) return { ok: false, reason: '이달 투어는 이미 열었어요' };
-  if (spotLevel(state, spotId) <= 0) return { ok: false, reason: `${josa(def.name, '은/는')} 아직 투자하지 않았어요` };
-  return { ok: true };
-}
-
-/** 투어를 이끄는 직원(일하는 직원 중 대박 기대값 최고)과 확률 — UI 미리 보기 */
-export function tourChances(state: GameState): { staff: ReturnType<typeof bestStaffFor>; chances: Chances } {
-  const staff = bestStaffFor(state, 'tour');
-  return { staff, chances: outcomeChances(state, 'tour', staff) };
-}
-
-/** 월 1회 투어 개최: 점수 60 이상 성공 → 점수 × 2만 원 + 방문객 2,000, 실패 → 100만 원 + 방문객 500. 호출 전 canHostTour.
- *  staff-luck: 대박/중박/쪽박(안내 직원 기준)이 돈·방문객에 ×2 / ×1 / ×0.5, 대박은 응모권·평판 +3, 쪽박은 평판 −2. */
-export function hostTour(state: GameState, spotId: string): TourResult {
-  const score = tourScore(state, spotId);
-  const success = score >= TOUR_SUCCESS_SCORE;
-  const { staff, chances } = tourChances(state);
-  const outcome = rollOutcome(state, { task: 'tour', staff });
-  const mult = OUTCOME_MULT[outcome];
-  const money = Math.round((success ? score * TOUR_MONEY_PER_SCORE : TOUR_FAIL_MONEY) * mult);
-  const visitors = Math.round((success ? TOUR_SUCCESS_VISITORS : TOUR_FAIL_VISITORS) * mult);
-  const lines = [`점수 ${score} · ₩${fmtNum(money)} · 방문객 +${fmtNum(visitors)} (×${mult})`];
-  if (outcome === 'great') { state.tickets += GREAT_TICKETS; addReputation(state, GREAT_REPUTATION); lines.push(`응모권 +${GREAT_TICKETS} · 평판 +${GREAT_REPUTATION}`); }
-  else if (outcome === 'fail') { addReputation(state, -FAIL_REPUTATION); lines.push(`평판 −${FAIL_REPUTATION}`); }
-  recordOutcome(state, { task: 'tour', outcome, staffId: staff?.id ?? null, title: `${spotDef(spotId).name} 투어`, chances, lines });
-  state.money += money;
-  state.monthIncome += money;
-  state.tourMonth = monthIndex(state.clock);
-  if (success) state.stats.toursHeld++; // 목표 tourGroup (트랙 B)
-  addVisitors(state, spotId, visitors);
-  const result: TourResult = { spotId, score, success, money, visitors };
-  state.lastTour = result;
-  pushNotice(state, `${spotDef(spotId).name} 투어 ${success ? '성공' : '아쉬움'}·${OUTCOME_NAME[outcome]} (점수 ${score}) — ₩${fmtNum(money)} · 방문객 +${fmtNum(visitors)}`);
-  return result;
 }

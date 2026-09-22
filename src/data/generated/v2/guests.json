@@ -146,7 +146,7 @@
     "likesText": "쉼·경관",
     "unlock": {
       "type": "spot",
-      "spotId": "camellia_hill",
+      "spotId": "sangumburi",
       "level": 2
     },
     "unlockText": "관광지 camellia_hill Lv2",
@@ -668,7 +668,7 @@
     "likesText": "쉼·경관",
     "unlock": {
       "type": "spot",
-      "spotId": "jungmun_surf",
+      "spotId": "horse_ranch",
       "level": 2
     },
     "unlockText": "관광지 jungmun_surf Lv2",
@@ -747,7 +747,7 @@
     "likesText": "먹거리·쉼",
     "unlock": {
       "type": "spot",
-      "spotId": "jeongbang_falls",
+      "spotId": "gotjawal",
       "level": 2
     },
     "unlockText": "관광지 jeongbang_falls Lv2",
@@ -1216,7 +1216,7 @@
     "likesText": "즐길거리·먹거리",
     "unlock": {
       "type": "spot",
-      "spotId": "manjanggul",
+      "spotId": "sangumburi",
       "level": 2
     },
     "unlockText": "관광지 manjanggul Lv2",
@@ -1321,7 +1321,7 @@
     "likesText": "쉼·먹거리",
     "unlock": {
       "type": "spot",
-      "spotId": "black_pork_street",
+      "spotId": "noodle_street",
       "level": 2
     },
     "unlockText": "관광지 black_pork_street Lv2",
@@ -1426,7 +1426,7 @@
     "likesText": "쉼·먹거리",
     "unlock": {
       "type": "spot",
-      "spotId": "bijarim",
+      "spotId": "sangumburi",
       "level": 2
     },
     "unlockText": "관광지 bijarim Lv2",
@@ -1531,7 +1531,7 @@
     "likesText": "편의·쉼",
     "unlock": {
       "type": "spot",
-      "spotId": "udo_bike",
+      "spotId": "horse_ranch",
       "level": 2
     },
     "unlockText": "관광지 udo_bike Lv2",
@@ -1741,7 +1741,7 @@
     "likesText": "즐길거리·편의",
     "unlock": {
       "type": "spot",
-      "spotId": "seongsan",
+      "spotId": "sangumburi",
       "level": 2
     },
     "unlockText": "관광지 seongsan Lv2",
@@ -1820,7 +1820,7 @@
     "likesText": "쉼·경관",
     "unlock": {
       "type": "spot",
-      "spotId": "hallasan",
+      "spotId": "gotjawal",
       "level": 2
     },
     "unlockText": "관광지 hallasan Lv2",
@@ -2214,7 +2214,7 @@
     "likesText": "먹거리·쉼",
     "unlock": {
       "type": "spot",
-      "spotId": "haenyeo_house",
+      "spotId": "noodle_street",
       "level": 2
     },
     "unlockText": "관광지 haenyeo_house Lv2",
@@ -2293,7 +2293,7 @@
     "likesText": "쉼·편의",
     "unlock": {
       "type": "spot",
-      "spotId": "theme_park",
+      "spotId": "horse_ranch",
       "level": 2
     },
     "unlockText": "관광지 theme_park Lv2",
@@ -2372,7 +2372,7 @@
     "likesText": "경관·쉼",
     "unlock": {
       "type": "spot",
-      "spotId": "yongmeori_coast",
+      "spotId": "gotjawal",
       "level": 2
     },
     "unlockText": "관광지 yongmeori_coast Lv2",
@@ -2477,7 +2477,7 @@
     "likesText": "먹거리·즐길거리",
     "unlock": {
       "type": "spot",
-      "spotId": "udo_peanut_village",
+      "spotId": "noodle_street",
       "level": 2
     },
     "unlockText": "관광지 udo_peanut_village Lv2",
@@ -2635,7 +2635,7 @@
     "likesText": "쉼·먹거리",
     "unlock": {
       "type": "spot",
-      "spotId": "barley_brewery",
+      "spotId": "noodle_street",
       "level": 2
     },
     "unlockText": "관광지 barley_brewery Lv2",
@@ -2662,7 +2662,7 @@
     "likesText": "쉼·경관",
     "unlock": {
       "type": "spot",
-      "spotId": "yacht_tour",
+      "spotId": "horse_ranch",
       "level": 2
     },
     "unlockText": "관광지 yacht_tour Lv2",
@@ -2689,7 +2689,7 @@
     "likesText": "경관·쉼",
     "unlock": {
       "type": "spot",
-      "spotId": "baengnokdam",
+      "spotId": "gotjawal",
       "level": 2
     },
     "unlockText": "관광지 baengnokdam Lv2",

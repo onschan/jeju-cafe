@@ -9,20 +9,19 @@ import { initGuestTypes, initSegmentPopularity } from './segments.ts';
 import { DEFAULT_CAFE_NAME } from './cafe.ts';
 import { START_BUILDERS } from './build.ts';
 import { initGuidebooks } from './guidebook.ts';
-import { initRegions, initNamedGuests, initPopup } from './popup.ts';
+import { initNamedGuests } from './named.ts';
 import { initFeatures } from './goals.ts';
 import { drawCandidates } from './staff.ts';
-import { initChallenges, makeMonthly } from './challenges.ts';
+import { makeMonthly } from './monthly.ts';
 import { initTutorial, unlockTutorialFeatures } from './tutorial.ts';
 import { monthIndex } from './clock.ts';
 import { emptyMonthCosts } from './economy.ts';
 import { REPUTATION_START } from './reputation.ts';
 import { initMain, MAIN_TYPE, MAIN_SIZE } from './rooms.ts';
 import { initEnding, applyCarry } from './ending.ts'; // z-ending
-import { initVillage } from './village.ts'; // z-ending
 
 export { PARCEL_W, PARCEL_H, START_ORIGIN, GRID_W, GRID_H, VILLAGE_ROAD_Y };
-export const SAVE_VERSION = 20; // 20: 재미 리셋 통합(fun) — 시작 3분 튜토리얼 7단계·손님 상호작용(regulars·requests)·코너(codex.corners)·등급(grade)·제주 배경 (optional 필드 + backfill, 19 세이브는 백업 후 새 게임). 19: z 통합 — 엔딩·마을·이월·튜토리얼 30단계 seen (마이그레이션 없음). 18: y 통합 — 되돌리기(undo)·개체 이름(name)·유입 경로(routes·손님 route/foreign)·본관(main·객체 w/h/mode/careDay) (마이그레이션 없음, 17 세이브는 백업 후 새 게임). 17: 컨텐츠 확장 통합 — 경제(삼춘 대출·세금·대기열·★ 유지 심사)·시설 44·증축·청결·명소 방문객·투어·선물·직원 8직종·입지·목표 108·도전·튜토리얼 (마이그레이션 없음). 15: v3 대격변. 14: 라이벌 카페
+export const SAVE_VERSION = 21; // 21: 덜어내기(trim) — 콤보·명당·도전·라이벌·팝업 원정·지역 손님·투어·마을제·100주년 삭제, 입지 5요소 → 자리 점수, 명소 24 → 8(Lv3), 경로 5 → 3, 불만 9 → 4, 손님 목소리 피드(voices). v20 세이브는 migrateTrim이 환불·치환 + 알림 한 줄. 20: 재미 리셋 통합(fun) — 시작 3분 튜토리얼 7단계·손님 상호작용(regulars·requests)·코너(codex.corners)·등급(grade)·제주 배경 (optional 필드 + backfill, 19 세이브는 백업 후 새 게임). 19: z 통합 — 엔딩·마을·이월·튜토리얼 30단계 seen (마이그레이션 없음). 18: y 통합 — 되돌리기(undo)·개체 이름(name)·유입 경로(routes·손님 route/foreign)·본관(main·객체 w/h/mode/careDay) (마이그레이션 없음, 17 세이브는 백업 후 새 게임). 17: 컨텐츠 확장 통합 — 경제(삼춘 대출·세금·대기열·★ 유지 심사)·시설 44·증축·청결·명소 방문객·투어·선물·직원 8직종·입지·목표 108·도전·튜토리얼 (마이그레이션 없음). 15: v3 대격변. 14: 라이벌 카페
 /** 시작 자금 500만. 정착지원금은 삼춘 대출(failure.ts: 잔고 < 40만 → 300만, 최대 3회)로 바뀌었다 — 확장 스펙 §4.2 #8 */
 export const START_MONEY = 5_000_000;
 export const START_MONTH = 3;
@@ -172,6 +171,7 @@ export function createInitialState(seed: number, playerId = 'local', createdAt =
     complaints: [],
     reviews: [],
     monthComplaints: {},
+    voices: [], // trim: 손님 목소리 피드
     monthReputationDelta: 0,
     dayStats: { satisfied: 0, complained: 0, total: 0 },
     reputationWarned: false,
@@ -186,8 +186,7 @@ export function createInitialState(seed: number, playerId = 'local', createdAt =
     },
     goals: { index: 0, claimed: [] },
     features: initFeatures(),
-    stats: { satisfiedTotal: 0, promotionsDone: 0, recipesMade: 0, rivalWins: 0, profitMonths: 0, lossMonths: 0, guidebookWins: 0, itemsUsed: 0, trainings: 0, toursHeld: 0, seenMonth: -1, seenAnnouncement: -1 },
-    challenges: initChallenges(),
+    stats: { satisfiedTotal: 0, promotionsDone: 0, recipesMade: 0, profitMonths: 0, lossMonths: 0, guidebookWins: 0, itemsUsed: 0, trainings: 0, seenMonth: -1, seenAnnouncement: -1 },
     monthly: null,
     tutorial: initTutorial(layout === 'starter'),
     titles: [],
@@ -199,7 +198,7 @@ export function createInitialState(seed: number, playerId = 'local', createdAt =
     monthHarvest: { harvested: {}, ingredientSaved: 0 },
     staff: [],
     candidates: [],
-    slots: { barista: 1, cook: 1, hall: 2, carry: 0, guide: 0, clean: 2, garden: 2, promo: 1 },
+    slots: { barista: 1, cook: 1, hall: 2, clean: 2 },
     activePromotions: [],
     youtuberBoostMonths: 0,
     segmentPopularity: initSegmentPopularity(),
@@ -209,7 +208,6 @@ export function createInitialState(seed: number, playerId = 'local', createdAt =
     guestTypes: initGuestTypes(),
     visitBonus: {},
     tickets: 0,
-    mileage: 0,
     rank: 1,
     star: 1,
     grade: 1, // fun-rank: 카페 등급 「올레길 노점」
@@ -221,7 +219,7 @@ export function createInitialState(seed: number, playerId = 'local', createdAt =
     freeDrawMonth: START_MONTH - 1, // 첫 달(monthIndex) 무료 추첨 1회
     lastDraw: null,
     freeRecruits: 0,
-    codexMileage: 0,
+    codexTickets: 0,
     guidebooks: initGuidebooks(),
     lastAnnouncement: null,
     board: { quests: {}, events: [] },
@@ -229,15 +227,11 @@ export function createInitialState(seed: number, playerId = 'local', createdAt =
     spotVisitors: {},
     spotPrizes: {},
     goldenTangerineGiven: false,
-    tourBus: false,
-    tourBusFreeMonths: 0,
-    tourMonth: -1,
-    lastTour: null,
     giftDay: -1,
     effects: [],
     menuSold: {},
     monthMenuSold: {},
-    codex: { combos: [], sets: [], recipes: [], ingredientCombos: [], spots: [], titles: [], corners: [] }, // titles: 만난 직원 칭호 (staff-luck) · corners: 만든 코너 (fun-corner)
+    codex: { sets: [], recipes: [], ingredientCombos: [], titles: [], corners: [] }, // titles: 만난 직원 칭호 · corners: 만든 코너
     clean: { value: 100, lastGuests: 0, history: [] },
     customMenus: [],
     menuMods: {},
@@ -252,11 +246,7 @@ export function createInitialState(seed: number, playerId = 'local', createdAt =
     expansions: [],
     cosmetics: { wallColor: 0, sign: '' },
     praised: {},
-    regions: initRegions(),
     namedGuests: initNamedGuests(),
-    popup: initPopup(),
-    rivals: [],
-    lastChallenge: null,
     lastOutcome: null,   // staff-luck 대박/중박/쪽박 팝업
     luckSeq: 0,
     monthGreatServes: 0,
@@ -264,7 +254,6 @@ export function createInitialState(seed: number, playerId = 'local', createdAt =
     guests: [],
     routes: initRoutes(), // 트랙 H 손님 유입 경로 5종
     ending: initEnding(), // z-ending
-    village: initVillage(), // z-ending
     carry: null,
     spawnAcc: START_SPAWN_ACC,
     researchAcc: 0,

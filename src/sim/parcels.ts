@@ -4,7 +4,6 @@ import { pushNotice } from './staff.ts';
 import { PARCEL_COLS, PARCEL_ROWS, PARCEL_W, PARCEL_H, START_ORIGIN, PARCEL_LAYOUT as LAYOUT } from './layout.ts';
 import { fmtNum } from './format.ts';
 import { josa } from './josa.ts';
-import { villageParcelDiscount } from './village.ts'; // z-ending
 import { pushFx } from './fx.ts'; // fun-rank: 구매 연출(안개 걷힘·랜드마크 등장)
 
 export { PARCEL_COLS, PARCEL_ROWS, PARCEL_W, PARCEL_H, START_ORIGIN };
@@ -102,7 +101,7 @@ export function parcelsAdjacent(a: Parcel, b: Parcel): boolean {
 
 /** 지금 사면 드는 값 (신구간 할인 반영) */
 export function parcelPrice(state: GameState, p: Parcel): number {
-  const disc = (state.clock.month === SINGUGAN_MONTH ? SINGUGAN_DISCOUNT : 0) + villageParcelDiscount(state); // z-ending: 정착 등급 4 −10%
+  const disc = state.clock.month === SINGUGAN_MONTH ? SINGUGAN_DISCOUNT : 0;
   return Math.round(p.price * (1 - disc));
 }
 

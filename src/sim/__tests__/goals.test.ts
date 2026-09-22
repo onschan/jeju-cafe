@@ -3,16 +3,16 @@ import { createInitialState } from '../state.ts';
 import { apply } from '../actions.ts';
 import { tick } from '../tick.ts';
 import { DAY_MS } from '../clock.ts';
-import { GOALS, goalDef, objectDef, menuDef, roleDef, FACILITIES, MILEAGE_SHOP, TICKET_SHOP } from '../../data/index.ts';
+import { GOALS, goalDef, objectDef, menuDef, roleDef, FACILITIES } from '../../data/index.ts';
 import { currentGoal, activeGoals, claimableGoals, GOAL_LOOKAHEAD, goalProgress, checkGoals, goalMet, goalForFacility, goalForFeature, checkFeature, grantReward, FEATURE_IDS, ACTION_FEATURE_IDS, goalConditionText, goalRewardText, conditionProgress, conditionCheckers, applyRewards, scaleReward, canOpen, CONCURRENT_GOALS, coalesceRewardAlerts, checkMoneyMilestones, MAX_GOALS_PER_CHECK, MAX_GOALS_PER_DAY, MILESTONE_TICKETS } from '../goals.ts';
 import type { GoalCondition, GoalReward } from '../types.ts';
 import { tutorialFeatureIds } from '../tutorial.ts';
 import { bareState, at } from './helpers.ts';
 
 describe('goals.json 데이터', () => {
-  it('108개 순차 목표(§3.5), id 유일, 제목 14자 이내, 문구가 있고, v3 시절 id(앞 20개·메뉴)는 전부 존재한다', () => {
-    expect(GOALS.length).toBe(108);
-    expect(new Set(GOALS.map((g) => g.id)).size).toBe(108);
+  it('순차 목표(§3.5), id 유일, 제목 14자 이내, 문구가 있고, v3 시절 id(앞 20개·메뉴)는 전부 존재한다', () => {
+    expect(GOALS.length).toBe(60);
+    expect(new Set(GOALS.map((g) => g.id)).size).toBe(GOALS.length);
     for (const [i, g] of GOALS.entries()) {
       expect(g.id).toBe(`g${String(i + 1).padStart(2, '0')}`);
       expect(g.title.length, g.id).toBeLessThanOrEqual(14);
@@ -31,7 +31,7 @@ describe('goals.json 데이터', () => {
       for (const r of g.reward) expect(goalRewardText(r).length).toBeGreaterThan(0);
     }
     expect(goalDef('g01').id).toBe('g01');
-    expect(goalDef('g108').condition).toEqual({ type: 'custom', id: 'centennial' });
+    expect(goalDef('g60').condition).toEqual({ type: 'year', n: 10 });
   });
 
   it('조건 타입 전부(기존 19 + 신설 14 + 전략 + 도전·월간)에 판정기가 있고 goals.json 108개 조건이 전부 판정된다 (스텁 포함)', () => {
@@ -43,19 +43,19 @@ describe('goals.json 데이터', () => {
       expect(Number.isFinite(p.cur), g.id).toBe(true);
     }
     const used = new Set(GOALS.map((g) => g.condition.type));
-    expect(used.size).toBeGreaterThanOrEqual(30);
+    expect(used.size).toBeGreaterThanOrEqual(24);
     for (const t of Object.keys(conditionCheckers)) expect(goalConditionText({ ...({ type: t, n: 1, lv: 1, view: 1, avg: 1, days: 1, pct: 1, id: 'centennial', menuId: 'americano', spotId: 'canola_field', guestId: 'couple', bookId: 'gb_kind_cafe' } as object) } as GoalCondition).length, t).toBeGreaterThan(0);
   });
 
-  it('신설 조건 판정: 월 매출·Lv 직원·콤보·명소·손님 타입·가이드북·흑자 달·아이템·유니폼·특기·좌석·이달 손님/매출', () => {
+  it('신설 조건 판정: 월 매출·Lv 직원·코너·명소·손님 타입·가이드북·흑자 달·아이템·유니폼·특기·좌석·이달 손님/매출', () => {
     const s = bareState(1);
     s.lastMonthIncome = 20_000_000;
     expect(goalMet(s, { type: 'monthIncome', n: 20_000_000 })).toBe(true);
     s.staff.push({ ...s.candidates[0]!, level: 5, role: 'hall', unpaidMonths: 0, energy: 100, lastParttimeMonthIndex: -1, x: 0, y: 0, path: [], anchor: null, waitMs: 0 } as never);
     expect(conditionProgress(s, { type: 'staffLevel', lv: 5, n: 2 })).toEqual({ cur: 1, max: 2 });
     expect(conditionProgress(s, { type: 'staffLevel', lv: 6, n: 1 }).cur).toBe(0);
-    s.codex.combos.push('x1', 'x2');
-    expect(conditionProgress(s, { type: 'combos', n: 3 })).toEqual({ cur: 2, max: 3 });
+    (s.codex.corners ??= []).push('x1', 'x2');
+    expect(conditionProgress(s, { type: 'corners', n: 3 })).toEqual({ cur: 2, max: 3 });
     s.spots['canola_field'] = 2; s.spots['seongsan'] = 3;
     expect(goalMet(s, { type: 'spotLevel', spotId: 'canola_field', lv: 2 })).toBe(true);
     expect(conditionProgress(s, { type: 'spotAny', lv: 2, n: 2 })).toEqual({ cur: 2, max: 2 });
@@ -63,12 +63,11 @@ describe('goals.json 데이터', () => {
     s.guidebooks['gb_kind_cafe'] = { unlocked: true, lastRank: 4, best: 4, boost: 0, pending: 0 };
     expect(goalMet(s, { type: 'guidebookRank', bookId: 'gb_kind_cafe', n: 5 })).toBe(true);
     expect(goalMet(s, { type: 'guidebookRank', bookId: 'gb_local_map', n: 5 })).toBe(false);
-    s.stats.guidebookWins = 3; s.stats.profitMonths = 6; s.stats.itemsUsed = 20; s.stats.trainings = 1; s.stats.toursHeld = 1;
+    s.stats.guidebookWins = 3; s.stats.profitMonths = 6; s.stats.itemsUsed = 20; s.stats.trainings = 1;
     expect(goalMet(s, { type: 'guidebookWins', n: 3 })).toBe(true);
     expect(goalMet(s, { type: 'profitMonths', n: 6 })).toBe(true);
     expect(goalMet(s, { type: 'itemsUsed', n: 20 })).toBe(true);
     expect(goalMet(s, { type: 'trainings', n: 1 })).toBe(true);
-    expect(goalMet(s, { type: 'tourGroup', n: 1 })).toBe(true);
     s.uniforms.push('u1', 'u2', 'u3');
     expect(goalMet(s, { type: 'uniforms', n: 3 })).toBe(true);
     expect(conditionProgress(s, { type: 'skills', n: 1 }).cur).toBe(s.staff.filter((st) => st.skill && st.skill !== 'none').length);
@@ -77,20 +76,11 @@ describe('goals.json 데이터', () => {
     expect(goalMet(s, { type: 'monthGuests', n: 150 })).toBe(true);
     expect(goalMet(s, { type: 'monthSales', n: 5_000_000 })).toBe(true);
     expect(conditionProgress(s, { type: 'guestType', guestId: 'couple', n: 30 }).max).toBe(30);
-    // 아직 없는 시스템은 스텁 0 (통합 때 연결): 증축·청결·명당·방문객·입지·자급률
-    for (const c of [{ type: 'facilityLv', lv: 2, n: 1 }, { type: 'cleanliness', n: 80 }, { type: 'spotEffect', n: 1 }, { type: 'visitorsTotal', n: 1 }, { type: 'siteSeats', view: 2, n: 1 }, { type: 'windlessSeats', n: 1 }, { type: 'upgraded', lv: 2, n: 1 }, { type: 'clean', avg: 90, days: 30 }, { type: 'selfSupply', pct: 50 }, { type: 'spotEffects', n: 1 }] as GoalCondition[]) {
+    // 아직 없는 시스템은 스텁 0 (통합 때 연결): 증축·청결·방문객·입지·자급률
+    for (const c of [{ type: 'facilityLv', lv: 2, n: 1 }, { type: 'cleanliness', n: 80 }, { type: 'visitorsTotal', n: 1 }, { type: 'siteSeats', view: 2, n: 1 }, { type: 'upgraded', lv: 2, n: 1 }, { type: 'clean', avg: 90, days: 30 }, { type: 'selfSupply', pct: 50 }] as GoalCondition[]) {
       expect(conditionProgress(s, c).cur, c.type).toBe(0);
       expect(goalMet(s, c), c.type).toBe(false);
     }
-    // z-ending: 100주년 감귤축제는 20년차 11월 ending.ts centennialMonthly가 판정해 ending.centennial = 'done'으로 남긴다
-    expect(goalMet(s, { type: 'custom', id: 'centennial' })).toBe(false);
-    s.ending.centennial = 'done';
-    expect(goalMet(s, { type: 'custom', id: 'centennial' })).toBe(true);
-    // z-ending: 정착 등급·마을제
-    expect(goalMet(s, { type: 'villageGrade', n: 3 })).toBe(false);
-    s.village.grade = 3;
-    expect(goalMet(s, { type: 'villageGrade', n: 3 })).toBe(true);
-    expect(conditionProgress(s, { type: 'festivals', n: 1 })).toEqual({ cur: 0, max: 1 });
   });
 
   it('액션 잠금 기능 5종은 각각 정확히 한 목표에서 열리고, 그 기능이 필요한 목표는 그 뒤에 온다 (ease: 바위 시스템은 없다 — rocks 조건·clearRock 기능 없음)', () => {
@@ -104,12 +94,10 @@ describe('goals.json 데이터', () => {
     }
     expect(GOALS.some((g) => g.reward.some((r) => r.type === 'unlockFeature' && (r.id as string) === 'promote'))).toBe(false); // ease: 홍보·연구는 처음부터
     expect(idx(goalForFeature('parcel')!.id)).toBeLessThan(idx(GOALS.find((g) => g.condition.type === 'parcels')!.id));
-    expect(idx(goalForFeature('popup')!.id)).toBeLessThan(idx(GOALS.find((g) => g.condition.type === 'namedGuest')!.id));
-    expect(idx(goalForFeature('challenge')!.id)).toBeLessThan(idx(GOALS.find((g) => g.condition.type === 'rivalWins')!.id));
   });
 
   it('v2 표에서 시작(start)이었다가 목표 보상으로 바뀐 시설은 전부 어떤 목표가 연다', () => {
-    const shopUnlocked = new Set([...[...MILEAGE_SHOP, ...TICKET_SHOP].map((x) => x.objectId).filter((x): x is string => !!x), 'golden_tangerine_tree']); // 설계도(트랙 C 상점)·황금 감귤(명소 방문객 10만)로 열리는 시설은 제외
+    const shopUnlocked = new Set(['golden_tangerine_tree']); // 황금 감귤(명소 방문객 10만)로 열리는 시설은 제외
     const goalGated = FACILITIES.filter((f) => f.unlock?.type === 'goal' && !shopUnlocked.has(f.id));
     expect(goalGated.length).toBeGreaterThan(10);
     for (const f of goalGated) expect(goalForFacility(f.id), f.id).not.toBeNull();
@@ -182,14 +170,13 @@ describe('목표 체인 진행', () => {
   it('applyRewards 한 곳: 보상 상자 알림 하나에 아이템이 다 담기고, 대출 중이면 돈 50%·응모권/마일리지 절반(내림)', () => {
     const s = bareState(1);
     const money = s.money;
-    const items = applyRewards(s, [{ type: 'money', amount: 1_000_000 }, { type: 'tickets', n: 3 }, { type: 'unlockFacility', id: 'restroom' }], { source: 'challenge', refId: 'c01', title: '테스트', line: '축하' });
+    const items = applyRewards(s, [{ type: 'money', amount: 1_000_000 }, { type: 'tickets', n: 3 }, { type: 'unlockFacility', id: 'restroom' }], { source: 'monthly', refId: 'c01', title: '테스트', line: '축하' });
     expect(items).toHaveLength(3);
     expect(s.money).toBe(money + 1_000_000);
-    expect(s.alerts).toEqual([{ type: 'reward', source: 'challenge', refId: 'c01', title: '테스트', items, line: '축하', speaker: undefined }]);
+    expect(s.alerts).toEqual([{ type: 'reward', source: 'monthly', refId: 'c01', title: '테스트', items, line: '축하', speaker: undefined }]);
     s.loan.balance = 3_000_000; // 트랙 E 삼춘 대출
     expect(scaleReward(s, { type: 'money', amount: 1_000_000 })).toEqual({ type: 'money', amount: 500_000 });
     expect(scaleReward(s, { type: 'tickets', n: 3 })).toEqual({ type: 'tickets', n: 1 });
-    expect(scaleReward(s, { type: 'mileage', n: 5 })).toEqual({ type: 'mileage', n: 2 });
     expect(scaleReward(s, { type: 'unlockMenu', id: 'toast' })).toEqual({ type: 'unlockMenu', id: 'toast' });
   });
 
@@ -250,22 +237,20 @@ describe('목표 체인 진행', () => {
   it('보상 종류: 돈·시설·메뉴·직종·응모권·마일리지·슬롯·연구·일꾼', () => {
     const s = bareState(1);
     s.goals.index = 999;
-    const before = { money: s.money, tickets: s.tickets, mileage: s.mileage, research: s.research, builders: s.builders, barista: s.slots.barista };
+    const before = { money: s.money, tickets: s.tickets, mileage: s.tickets, research: s.research, builders: s.builders, barista: s.slots.barista };
     grantReward(s, { type: 'money', amount: 10 });
     grantReward(s, { type: 'unlockFacility', id: 'restroom' });
     grantReward(s, { type: 'unlockMenu', id: 'toast' });
-    grantReward(s, { type: 'unlockRole', id: 'guide' });
+    grantReward(s, { type: 'unlockRole', id: 'clean' });
     grantReward(s, { type: 'tickets', n: 2 });
-    grantReward(s, { type: 'mileage', n: 3 });
     grantReward(s, { type: 'staffSlot', role: 'barista', n: 1 });
     grantReward(s, { type: 'research', n: 4 });
     grantReward(s, { type: 'builder', n: 1 });
     expect(s.money).toBe(before.money + 10);
     expect(s.unlocked.objects).toContain('restroom');
     expect(s.unlocked.menus).toContain('toast');
-    expect(s.unlocked.roles).toContain('guide');
+    expect(s.unlocked.roles).toContain('clean');
     expect(s.tickets).toBe(before.tickets + 2);
-    expect(s.mileage).toBe(before.mileage + 3);
     expect(s.slots.barista).toBe(before.barista + 1);
     expect(s.research).toBe(before.research + 4);
     expect(s.builders).toBe(before.builders + 1);
@@ -298,7 +283,7 @@ describe('game-feel P1 리듬', () => {
     s.alerts.push({ type: 'goal', goalId: 'g01' });
     applyRewards(s, [{ type: 'money', amount: 200_000 }], { source: 'goal', refId: 'g2', title: 'B' });
     s.alerts.push({ type: 'goal', goalId: 'g02' });
-    applyRewards(s, [{ type: 'tickets', n: 2 }, { type: 'unlockFacility', id: 'deco_planter' }], { source: 'challenge', refId: 'c1', title: 'C', line: '마지막 대사', speaker: 'samchun' });
+    applyRewards(s, [{ type: 'tickets', n: 2 }, { type: 'unlockFacility', id: 'deco_planter' }], { source: 'monthly', refId: 'c1', title: 'C', line: '마지막 대사', speaker: 'samchun' });
     applyRewards(s, [{ type: 'money', amount: 1 }], { source: 'tutorial', refId: '3', title: '튜토리얼' });
     coalesceRewardAlerts(s);
     expect(s.alerts.map((a) => a.type)).toEqual(['reward', 'goal', 'reward']);

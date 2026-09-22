@@ -11,12 +11,12 @@ import { serialize } from '../save.ts';
 import { bareState } from './helpers.ts';
 
 describe('events_v3.json 데이터', () => {
-  it('24개 이상, id 유일, 확률 0~1, 기간 ≥ 1, 대사가 있고, 실명이 없다 (패러디 이름)', () => {
-    expect(BIG_EVENTS.length).toBeGreaterThanOrEqual(24);
+  it('15개, id 유일, 확률 0~1, 기간 ≥ 1, 대사가 있고, 실명이 없다 (패러디 이름)', () => {
+    expect(BIG_EVENTS.length).toBe(15);
     expect(new Set(BIG_EVENTS.map((e) => e.id)).size).toBe(BIG_EVENTS.length);
     const json = JSON.stringify(BIG_EVENTS);
-    for (const real of ['백종원', '이효리', '이상순', '아이유', '연돈']) expect(json).not.toContain(real);
-    for (const p of ['백중원', '이요리', '이장순', '유아이', '돈돈']) expect(json).toContain(p);
+    for (const real of ['백종원', '이효리', '이상순', '아이유']) expect(json).not.toContain(real);
+    for (const p of ['백중원', '이요리', '유아이']) expect(json).toContain(p);
     for (const e of BIG_EVENTS) {
       if (e.weekly) expect(e.chance).toBe(0); else expect(e.chance).toBeGreaterThan(0); // 주간 미니 사건은 매월 판정에서 빠진다 (weeklyMiniEvent가 고른다)
       expect(e.chance).toBeLessThanOrEqual(1);
@@ -37,8 +37,8 @@ describe('빅 이벤트 판정·효과', () => {
     // 확률 1로 만들어 강제로 굴려도 상한 2
     const boosted = BIG_EVENTS.map((e) => ({ ...e, chance: 1 }));
     const eligible = boosted.filter((e) => eventEligible(s, e));
-    expect(eligible.length).toBeGreaterThan(2);
-    for (const e of eligible.slice(0, 5)) if (activeEvents(s).length < MAX_ACTIVE_EVENTS) startEvent(s, e.id);
+    expect(eligible.length).toBeGreaterThanOrEqual(1);
+    for (const id of ['ev_cheap_flights', 'ev_lunar_new_year', 'ev_tangerine_festival']) if (activeEvents(s).length < MAX_ACTIVE_EVENTS) startEvent(s, id);
     expect(activeEvents(s)).toHaveLength(MAX_ACTIVE_EVENTS);
     expect(monthlyBigEvents(s)).toEqual([]); // 꽉 차면 더 안 켜진다
     // 자격: 월 한정(11월 감귤 축제)은 3월에 안 굴린다, once는 두 번 안 켜진다, 연차·조건
@@ -111,7 +111,7 @@ describe('빅 이벤트 판정·효과', () => {
     startEvent(s, 'ev_cheap_flights'); // ×1.3
     expect(eventGuestMult(s)).toBe(1.3);
     expect(dailyGuestCount(s)).toBe(Math.min(totalSeats(s) * GUESTS_PER_SEAT, Math.round(base * 1.3)));
-    startEvent(s, 'ev_school_trip_season'); // student ×2
+    startEvent(s, 'ev_iu_guest'); // youth ×2
     expect(guestHasTag('student', 'student')).toBe(true);
     expect(guestHasTag('local_auntie', 'student')).toBe(false);
     expect(guestHasTag('group_cn', 'foreign')).toBe(true);
@@ -119,9 +119,6 @@ describe('빅 이벤트 판정·효과', () => {
     expect(eventTagMult(s, 'student')).toBe(2);
     expect(eventTagMult(s, 'local_auntie')).toBe(1);
     expect(typeWeight(s, 'student')).toBeCloseTo(w * 2);
-    s.events = [];
-    startEvent(s, 'ev_golf'); // feeMult 1.2
-    expect(eventFeeMult(s)).toBe(1.2);
   });
 
   it('특별 손님: 발동 다음 날 정오에 이름 있는 손님으로 한 번 오고, 만족하면 팁을 남기고 도감에 남는다', () => {

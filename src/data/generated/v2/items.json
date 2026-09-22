@@ -13,9 +13,9 @@
     ],
     "sourceText": "부탁 q_village_head·마일리지 상점",
     "bestFacilities": [
-      "noodle_shop",
+      "brunch_house",
       "bomal_kalguksu",
-      "haenyeo_mulhoe"
+      "brunch_house"
     ],
     "effect": {
       "stat": "popularity",
@@ -37,9 +37,9 @@
     ],
     "sourceText": "부탁 q_coffee_geek·응모권 추첨",
     "bestFacilities": [
-      "handdrip_bar",
+      "omegi_stall",
       "counter",
-      "roaster"
+      "tart_bakery"
     ],
     "effect": {
       "stat": "price",
@@ -53,14 +53,14 @@
     "sources": [
       {
         "type": "facility",
-        "objectId": "syrup_class"
+        "objectId": "tart_bakery"
       }
     ],
     "sourceText": "syrup_class 체험 보상",
     "bestFacilities": [
-      "hallabong_stand",
+      "omegi_stall",
       "tart_bakery",
-      "syrup_class"
+      "tart_bakery"
     ],
     "effect": {
       "stat": "popularity",
@@ -85,7 +85,7 @@
     "bestFacilities": [
       "terrace_seat",
       "window_seat",
-      "haenyeo_mulhoe"
+      "brunch_house"
     ],
     "effect": {
       "stat": "popularity",
@@ -126,8 +126,8 @@
     "sourceText": "부탁 q_village_painter",
     "bestFacilities": [
       "oreum_bench",
-      "gallery",
-      "wifi_zone"
+      "signboard",
+      "vending"
     ],
     "effect": {
       "stat": "popularity",
@@ -145,9 +145,9 @@
     ],
     "sourceText": "마일리지 상점",
     "bestFacilities": [
-      "bookshelf",
-      "boardgame_room",
-      "sofa"
+      "table_in",
+      "table_in",
+      "table_in"
     ],
     "effect": {
       "stat": "popularity",
@@ -165,9 +165,9 @@
     ],
     "sourceText": "응모권 추첨",
     "bestFacilities": [
-      "sofa",
-      "handdrip_bar",
-      "barley_pub"
+      "table_in",
+      "omegi_stall",
+      "fine_dining"
     ],
     "effect": {
       "stat": "price",
@@ -189,9 +189,9 @@
     ],
     "sourceText": "부탁 q_dolhareubang_spirit·응모권 추첨",
     "bestFacilities": [
-      "souvenir",
-      "photo_spot",
-      "goods_shop"
+      "omegi_stall",
+      "signboard",
+      "omegi_stall"
     ],
     "effect": {
       "stat": "popularity",
@@ -209,9 +209,9 @@
     ],
     "sourceText": "응모권 추첨",
     "bestFacilities": [
-      "bike_rack",
-      "scooter_rental",
-      "picnic"
+      "signboard",
+      "hammock",
+      "table_out"
     ],
     "effect": {
       "stat": "popularity",
@@ -229,9 +229,9 @@
     ],
     "sourceText": "마일리지 상점",
     "bestFacilities": [
-      "bookshelf",
-      "wifi_zone",
-      "gallery"
+      "table_in",
+      "vending",
+      "signboard"
     ],
     "effect": {
       "stat": "price",
@@ -249,9 +249,9 @@
     ],
     "sourceText": "응모권 추첨",
     "bestFacilities": [
-      "gallery",
+      "signboard",
       "toenmaru",
-      "pottery_studio"
+      "tart_bakery"
     ],
     "effect": {
       "stat": "popularity",
@@ -269,9 +269,9 @@
     ],
     "sourceText": "마일리지 상점",
     "bestFacilities": [
-      "staff_room",
-      "karaoke",
-      "table_big"
+      "cleaning_room",
+      "table_in",
+      "table_in"
     ],
     "effect": {
       "stat": "popularity",
@@ -290,8 +290,8 @@
     ],
     "sourceText": "부탁 q_potter",
     "bestFacilities": [
-      "pottery_studio",
-      "handdrip_bar",
+      "tart_bakery",
+      "omegi_stall",
       "tea_field"
     ],
     "effect": {
@@ -315,8 +315,8 @@
     "sourceText": "부탁 q_world_traveler·응모권 추첨",
     "bestFacilities": [
       "tart_bakery",
-      "tangerine_hall",
-      "rooftop"
+      "annex_cafe",
+      "terrace_seat"
     ],
     "effect": {
       "stat": "price",
@@ -335,8 +335,8 @@
     "sourceText": "마일리지 상점",
     "bestFacilities": [
       "tea_field",
-      "sofa",
-      "greenhouse_seat"
+      "table_in",
+      "window_seat"
     ],
     "effect": {
       "stat": "popularity",
@@ -350,7 +350,7 @@
     "sources": [
       {
         "type": "facility",
-        "objectId": "beehive"
+        "objectId": "flower_bed"
       },
       {
         "type": "quest",
@@ -360,8 +360,8 @@
     "sourceText": "beehive·부탁 q_dog_mongi",
     "bestFacilities": [
       "vending",
-      "jam_workshop",
-      "hallabong_stand"
+      "tart_bakery",
+      "omegi_stall"
     ],
     "effect": {
       "stat": "popularity",
@@ -380,8 +380,8 @@
     "sourceText": "응모권 추첨",
     "bestFacilities": [
       "window_seat",
-      "photo_spot",
-      "snap_studio"
+      "signboard",
+      "signboard"
     ],
     "effect": {
       "stat": "popularity",
@@ -403,8 +403,8 @@
     ],
     "sourceText": "부탁 q_lighthouse_keeper·응모권 추첨",
     "bestFacilities": [
-      "stone_lantern",
-      "lantern_path",
+      "garden_lamp",
+      "garden_lamp",
       "fire_pit"
     ],
     "effect": {
@@ -423,12 +423,12 @@
       },
       {
         "type": "facility",
-        "objectId": "haenyeo_hut"
+        "objectId": "toenmaru"
       }
     ],
     "sourceText": "부탁 q_haenyeo·haenyeo_hut",
     "bestFacilities": [
-      "field",
+      "tea_field",
       "tangerine_tree",
       "tea_field"
     ],

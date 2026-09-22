@@ -3,7 +3,7 @@ import { bareState, X, Y } from './helpers.ts';
 import { placeObject } from '../grid.ts';
 import { apply } from '../actions.ts';
 import { spawnGuests } from '../guests.ts';
-import { checkGrade, gradeOf, gradeName, gradeProgress, gradeMet, cornerCount, guestCap, gradeUpRewards, GRADE_NAMES, GRADE_REQS, GRADE_CAPTION, MAX_GRADE, GRADE_GUEST_CAP_BASE, GRADE_GUEST_CAP_STEP, GRADE_UP_TICKETS, GRADE_UP_MILEAGE_PER } from '../grade.ts';
+import { checkGrade, gradeOf, gradeName, gradeProgress, gradeMet, cornerCount, guestCap, gradeUpRewards, GRADE_NAMES, GRADE_REQS, GRADE_CAPTION, MAX_GRADE, GRADE_GUEST_CAP_BASE, GRADE_GUEST_CAP_STEP, GRADE_UP_TICKETS, GRADE_UP_TICKETS_PER } from '../grade.ts';
 import { updateRank } from '../rank.ts';
 import { PARCEL_FEATURES, parcelFeature, buyParcel } from '../parcels.ts';
 import { conditionProgress, goalConditionText } from '../goals.ts';
@@ -47,20 +47,19 @@ test('새 게임은 등급 1, 진행 4줄, 조건이 하나라도 모자라면 �
   expect(gradeOf(s)).toBe(1);
 });
 
-test('조건을 다 채우면 하루 한 단계 승급: 등급·알림·장면·박수 fx·보상 상자(응모권 5·마일리지), rank.ts 훅으로도 돈다', () => {
+test('조건을 다 채우면 하루 한 단계 승급: 등급·알림·장면·박수 fx·보상 상자(응모권), rank.ts 훅으로도 돈다', () => {
   const s = bareState(1);
   meet(s, 2);
   // 코너 1: 꽃길 (트랙 C completedCorners — 꽃밭+벤치+가로등)
   flowerPath(s);
   expect(cornerCount(s)).toBe(1);
-  const tickets = s.tickets, mileage = s.mileage;
+  const tickets = s.tickets, mileage = s.tickets;
   expect(checkGrade(s)).toBe(2);
   expect(gradeOf(s)).toBe(2);
   expect(s.alerts.map((a) => a.type)).toEqual(['reward', 'grade']);
   const reward = s.alerts[0]!;
   expect(reward.type === 'reward' && reward.source === 'grade' && reward.refId === 'grade2').toBe(true);
-  expect(s.tickets).toBe(tickets + GRADE_UP_TICKETS);
-  expect(s.mileage).toBe(mileage + GRADE_UP_MILEAGE_PER);
+  expect(s.tickets).toBe(tickets + GRADE_UP_TICKETS + GRADE_UP_TICKETS_PER * (gradeOf(s) - 1));
   expect(s.fx.map((f) => f.kind)).toEqual(expect.arrayContaining(['scene', 'applause']));
   expect(s.fx.find((f) => f.kind === 'scene')!.kind === 'scene' && (s.fx.find((f) => f.kind === 'scene') as { title: string }).title).toBe('「동네 카페」');
   // 같은 날 두 단계는 오르지 않는다 (조건이 돼도 한 번에 하나)
@@ -74,7 +73,7 @@ test('조건을 다 채우면 하루 한 단계 승급: 등급·알림·장면·
   flowerPath(t);
   updateRank(t);
   expect(gradeOf(t)).toBe(2);
-  expect(gradeUpRewards(5)).toEqual([{ type: 'tickets', n: 5 }, { type: 'mileage', n: 40 }]);
+  expect(gradeUpRewards(5)).toEqual([{ type: 'tickets', n: GRADE_UP_TICKETS + GRADE_UP_TICKETS_PER * 4 }]);
 });
 
 test('마당 동시 손님 상한 = 30 + 10×(등급−1): 등급 4가 예전 60, 등급 5는 70', () => {
@@ -135,14 +134,13 @@ test('목표 사다리 새 조건: 등급·코너·단골·2층·평판·전설 
   expect(goalConditionText({ type: 'secondFloor' })).toBe('본관 2층 올리기');
   expect(goalConditionText({ type: 'legendStaff', n: 1 })).toBe('전설 직원 채용');
   expect(goalConditionText({ type: 'routesOpen', n: 4 })).toBe('손님 오는 길 4종');
-  // 사다리: 3년차 이후 목표(g70~)에 자금 목표가 없고, 등급 3·4·5·본관 Lv3/4·2층·직원 7/9·명소 Lv4/5가 들어 있다
-  const late = GOALS.slice(69).map((g) => g.condition);
+  // 사다리: 후반 목표(g45~)에 자금 목표가 없고, 등급 3·4·5·본관 Lv3/4·2층·직원이 들어 있다 (trim: 목표 60)
+  const late = GOALS.slice(44).map((g) => g.condition);
   expect(late.some((c) => c.type === 'money')).toBe(false);
   expect(late.filter((c) => c.type === 'grade').map((c) => (c as { n: number }).n).sort()).toEqual([3, 4, 5]);
   expect(late.filter((c) => c.type === 'mainLevel').map((c) => (c as { lv: number }).lv).sort()).toEqual([3, 4]);
   expect(late.some((c) => c.type === 'secondFloor')).toBe(true);
-  expect(late.filter((c) => c.type === 'staff').map((c) => (c as { n: number }).n).sort((a, b) => a - b)).toEqual([6, 7, 9]);
-  expect(late.filter((c) => c.type === 'spotAny' && (c as { lv: number }).lv >= 4).length).toBeGreaterThanOrEqual(5);
+  expect(late.some((c) => c.type === 'staff')).toBe(true);
   // 조건 문구는 전부 있다 (switch 누락 방지)
   for (const g of GOALS) expect(goalConditionText(g.condition).length, g.id).toBeGreaterThan(0);
   void apply;

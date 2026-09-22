@@ -14,7 +14,6 @@ import { isWorn } from './cleanliness.ts';
 import { effectMult } from './effects.ts';
 import { pushNotice, STAT_KEYS } from './staff.ts';
 import { fmtNum } from './format.ts';
-import { rivalGuestLossPct } from './rivals.ts';
 
 /** 유지비: 건설비의 2.5%/월. 데이터(objects/facilities)의 upkeep 값은 1.5% 기준이라 배율로 환산한다. */
 export const UPKEEP_RATE = 0.025;
@@ -24,7 +23,7 @@ export const BASE_SALARY_DEFAULT = 400_000;
 export const SALARY_LEVEL_STEP = 0.15;
 export const SALARY_PER_STAT_POINT = 1000;
 /** 매년 3월 1일 급여 인상 % (누적) */
-export const ANNUAL_RAISE_PCT = 5;
+export const ANNUAL_RAISE_PCT = 12;
 /** 소득세율 (전년 순이익 기준) */
 export const TAX_RATE = 0.1;
 export const TAX_MONTH = 3;
@@ -38,10 +37,10 @@ export function ingredientCost(state: GameState, menuId: string): number {
 }
 
 export function emptyMonthCosts(): MonthCosts {
-  return { ingredients: 0, salary: 0, ads: 0, upkeep: 0, recruit: 0, tax: 0, loanRepay: 0, tourBus: 0 };
+  return { ingredients: 0, salary: 0, ads: 0, upkeep: 0, recruit: 0, tax: 0, loanRepay: 0, shuttle: 0 };
 }
 export function totalCosts(c: MonthCosts): number {
-  return c.ingredients + c.salary + c.ads + c.upkeep + c.recruit + c.tax + c.loanRepay + c.tourBus;
+  return c.ingredients + c.salary + c.ads + c.upkeep + c.recruit + c.tax + c.loanRepay + c.shuttle;
 }
 
 // ---------- 유지비 ----------
@@ -111,7 +110,7 @@ export function closeMonth(state: GameState, prevMonth: number, prevYear: number
     income: state.monthIncome, guests: state.monthGuests, month: prevMonth, year: prevYear, costs, net,
     harvested: { ...state.monthHarvest.harvested }, ingredientSaved: state.monthHarvest.ingredientSaved, topMenu,
     deficitStreak: state.deficitMonths, loanTaken: state.monthLoan, loanBalance: state.loan.balance,
-    rivalLossPct: rivalGuestLossPct(state), guestsLeft: state.monthGuestsLeft,
+    guestsLeft: state.monthGuestsLeft,
     reputation: state.reputation, reputationDelta: 0, topComplaints: [],
     greatServes: state.monthGreatServes ?? 0, // staff-luck 서빙 대박 횟수
   };

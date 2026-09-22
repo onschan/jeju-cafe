@@ -26,7 +26,6 @@ export interface ReportCard {
   deficitStreak?: number;            // 연속 적자 달 (3 이상이면 배지)
   loanTaken?: number;                // 그달 받은 삼춘 대출
   loanBalance?: number;              // 월말 대출 잔액
-  rivalLossPct?: number;             // 라이벌 때문에 줄어든 손님 %
   guestsLeft?: number;               // 대기열이 차서 돌아간 손님
   reputation?: number;               // 월말 평판
   reputationDelta?: number;          // 그달 평판 변화
@@ -56,7 +55,7 @@ function Row({ label, value, color, bold, indent }: { label: string; value: stri
 
 export function ReportWindow({ card: c, star, prevStar, starProgress, monthRecord, onClose }: ReportWindowProps) {
   const cost = c.costs;
-  const totalCost = cost.ingredients + cost.salary + cost.upkeep + cost.ads + (cost.recruit ?? 0) + (cost.tax ?? 0) + (cost.loanRepay ?? 0) + (cost.tourBus ?? 0);
+  const totalCost = cost.ingredients + cost.salary + cost.upkeep + cost.ads + (cost.recruit ?? 0) + (cost.tax ?? 0) + (cost.loanRepay ?? 0) + (cost.shuttle ?? 0);
   const complaints = (c.topComplaints ?? []).slice(0, 3);
   const up = star !== undefined && prevStar !== undefined && star > prevStar;
   const highlights = (c.highlights ?? []).filter(Boolean).slice(0, 3);
@@ -81,7 +80,7 @@ export function ReportWindow({ card: c, star, prevStar, starProgress, monthRecor
         <Row label="홍보" value={`-${wonText(cost.ads)}`} indent />
         {(cost.recruit ?? 0) > 0 && <Row label="채용·퇴직금·연수" value={`-${wonText(cost.recruit)}`} indent />}
         {(cost.tax ?? 0) > 0 && <Row label="소득세" value={`-${wonText(cost.tax)}`} indent />}
-        {(cost.tourBus ?? 0) > 0 && <Row label="투어 버스" value={`-${wonText(cost.tourBus)}`} indent />}
+        {(cost.shuttle ?? 0) > 0 && <Row label="공항 셔틀" value={`-${wonText(cost.shuttle)}`} indent />}
         {(cost.loanRepay ?? 0) > 0 && <Row label="삼춘 대출 상환" value={`-${wonText(cost.loanRepay)}`} indent />}
         <div style={{ borderTop: `2px solid ${PALETTE.wood}`, margin: '6px 0' }} />
         <Row label="순이익" value={`${c.net >= 0 ? '+' : '-'}${wonText(Math.abs(c.net))}`} color={c.net >= 0 ? PALETTE.ok : PALETTE.bad} bold />
@@ -100,7 +99,6 @@ export function ReportWindow({ card: c, star, prevStar, starProgress, monthRecor
             ? complaints.map((t) => <div key={t.reason} style={{ fontSize: 14, lineHeight: 1.5 }}>· 불만 {COMPLAINT_LABEL[t.reason]} <span style={{ color: PALETTE.inkSoft }}>{t.count}건</span></div>)
             : <div style={{ fontSize: 14, color: PALETTE.inkSoft }}>불만이 없었어요</div>}
           {(c.guestsLeft ?? 0) > 0 && <div style={{ fontSize: 14, lineHeight: 1.5 }}>· 자리가 없어 돌아간 손님 <span style={{ color: PALETTE.inkSoft }}>{c.guestsLeft}명</span></div>}
-          {(c.rivalLossPct ?? 0) > 0 && <div style={{ fontSize: 14, lineHeight: 1.5 }}>· 라이벌 카페 때문에 손님 <span style={{ color: PALETTE.bad }}>−{c.rivalLossPct}%</span></div>}
         </div>
       )}
 

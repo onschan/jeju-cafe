@@ -47,7 +47,7 @@ describe('데이터: 요청 30개', () => {
       // 코너·태그 요청은 코너 데이터가 없는 동안(통합 전) 시설로 판정할 수 있어야 한다
       if (r.want.corner || r.want.tagCorner) expect(r.want.facility, r.id).toBeTruthy();
     }
-    expect(requestDef('req_photo').want.facility).toBe('photo_spot');
+    expect(requestDef('req_photo').want.facility).toBe('signboard');
     expect(() => requestDef('nope')).toThrow();
   });
 });
@@ -323,7 +323,7 @@ describe('결정성·저장·봇', () => {
   test('봇 반년: 인사·요청·단골이 자금을 흔들지 않고(파산 없음) 요청·게이지가 실제로 쌓인다 (1년차 밴드는 headless로)', () => {
     const rows = runBot(0.5, 1);
     const last = rows.at(-1)!;
-    expect(last.money).toBeLessThanOrEqual(10_000_000);
+    expect(last.money).toBeLessThanOrEqual(12_000_000); // trim: 반년 시점 여유선 (1년차 말 ≤1,000만은 headless가 본다 — 없어진 돈 쓸 곳만큼 반년 잔고가 조금 올랐다)
     expect(last.minMoney).toBeGreaterThan(-5_000_000);
     const s = createInitialState(1);
     const { botDay, newBotCursor } = botApi;

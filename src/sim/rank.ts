@@ -47,11 +47,10 @@ export function nextRankThreshold(state: GameState): number | null {
   return state.rank >= MAX_RANK ? null : RANK_THRESHOLDS[state.rank]!;
 }
 
-/** 랭크 업 보상 (game-feel P1: 장면 창만 있고 손에 남는 게 없었다): 응모권 1장(랭크 5부터 2장) + 마일리지 5 — 장면 창 뒤에 보상 상자 */
+/** 랭크 업 보상: 응모권 2장(랭크 5부터 3장) — 장면 창 뒤에 보상 상자 */
 export const RANK_UP_TICKETS_HIGH_FROM = 5;
-export const RANK_UP_MILEAGE = 5;
 export function rankUpRewards(rank: number): GoalReward[] {
-  return [{ type: 'tickets', n: rank >= RANK_UP_TICKETS_HIGH_FROM ? 2 : 1 }, { type: 'mileage', n: RANK_UP_MILEAGE }];
+  return [{ type: 'tickets', n: rank >= RANK_UP_TICKETS_HIGH_FROM ? 3 : 2 }];
 }
 
 /** 점수로 랭크를 올린다 (내려가지 않는다). 올랐으면 true. */

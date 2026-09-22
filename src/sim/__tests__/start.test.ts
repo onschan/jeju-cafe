@@ -11,7 +11,7 @@ import { serialize, deserialize } from '../save.ts';
 describe('v3 시작 상태 (§5)', () => {
   it('본관 + 테이블 2 + 파라솔 1 + 올렛길로 정류장에서 자리에 닿고, 메뉴 3종이 올라가 있고, 후보 2명이 기다린다', () => {
     const s = createInitialState(1);
-    expect(SAVE_VERSION).toBe(20); // fun 통합
+    expect(SAVE_VERSION).toBe(21); // trim
     expect(s.money).toBe(5_000_000);
     expect(hasReachableSeat(s)).toBe(true);
     const seats = Object.values(s.objects).filter((o) => objectDef(o.type).kind === 'seat');
@@ -21,9 +21,9 @@ describe('v3 시작 상태 (§5)', () => {
     expect(s.candidates).toHaveLength(START_CANDIDATES);
     expect(s.unlocked.objects.sort()).toEqual([...new Set(START_OBJECT_IDS)].sort());
     expect(s.unlocked.menus).toEqual(INITIAL_UNLOCKED.menus);
-    expect(s.unlocked.objects).toHaveLength(19); // fun: 주차장(P0)·레몬에이드 카트(매대 트리 기본) + fun-corner: 코너 조각 장식 6종(꽃밭·표지판·난간·소라·망원경·벚나무) 추가 — 8종 + 정낭 (w-free) + 가로등·정원등 (fix-indoor)
+    expect(s.unlocked.objects).toHaveLength(18); // trim: 소라 장식·망원경을 빼고 물허벅을 넣어 18종 (주차장·오메기떡 매대·코너 조각 장식 포함)
     expect(s.unlocked.menus).toHaveLength(3);
-    expect(s.slots).toEqual({ barista: 1, cook: 1, hall: 2, carry: 0, guide: 0, clean: 2, garden: 2, promo: 1 });
+    expect(s.slots).toEqual({ barista: 1, cook: 1, hall: 2, clean: 2 });
     expect(s.storage).toEqual({});
   });
 

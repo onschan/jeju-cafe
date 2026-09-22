@@ -7,9 +7,8 @@ import { grantItem } from './items.ts';
 import { guestTypeState, isUnlocked, unlockGuestType, evaluateUnlocks, countObjects, SAT_QUEST } from './segments.ts';
 import { effectivePopularity } from './promotions.ts';
 import { addEffect, filterMatches } from './effects.ts';
-import { spotLevel, SPOT_QUEST_LEVEL } from './spots.ts';
+import { spotLevel, SPOT_NEXT_LEVEL } from './spots.ts';
 import { fmtNum } from './format.ts';
-import { villageQuestOpen } from './village.ts'; // z-ending
 
 /** 부탁 기한: 수락한 달 + 2 */
 export const QUEST_MONTHS = 2;
@@ -38,7 +37,7 @@ function shouldOffer(state: GameState, q: QuestDef): boolean {
   const st = guestTypeState(state, q.guestId);
   if (st.questDone) return false;
   const def = guestTypeDef(q.guestId);
-  return st.satisfaction >= SAT_QUEST || def.unlock.type === 'quest' || def.unlockBase?.type === 'quest' || villageQuestOpen(state, q.guestId); // z-ending: 정착 등급 3이면 삼춘 부탁은 만족 조건 없이. unlockBase: 단계 해금(어댑터)으로 앞당겨진 체인 후속도 원래대로 바로
+  return st.satisfaction >= SAT_QUEST || def.unlock.type === 'quest' || def.unlockBase?.type === 'quest'; // unlockBase: 단계 해금(어댑터)으로 앞당겨진 체인 후속도 원래대로 바로
 }
 
 /** 부탁 제안 스케줄 (game-feel P1: sim이 스스로 주는 달 중반 사건): 1일에 QUEST_OFFERS_FIRST개, 매월 questOfferDay(12~18일, 결정적)에 QUEST_OFFERS_MID개.
@@ -126,7 +125,6 @@ export function questRewardText(q: QuestDef): string {
       case 'money': return `자금 ₩${fmtNum(r.amount)}`;
       case 'research': return `연구 ${r.amount}`;
       case 'ticket': return `응모권 ${r.amount}`;
-      case 'mileage': return `마일리지 ${r.amount}`;
       case 'ad': return `${guestTypeDef(q.guestId).name} 인기 +${r.amount}`;
       case 'item': { let name = r.itemId; try { name = itemDef(r.itemId).name; } catch { /* 표에만 있는 아이템 */ } return `아이템 ${name}`; }
     }
@@ -140,7 +138,6 @@ function applyReward(state: GameState, q: QuestDef): void {
       case 'money': state.money += r.amount; state.monthIncome += r.amount; break;
       case 'research': state.research += r.amount; break;
       case 'ticket': state.tickets += r.amount; break;
-      case 'mileage': state.mileage += r.amount; break;
       case 'ad': state.segmentPopularity[q.guestId] = Math.min(99, (state.segmentPopularity[q.guestId] ?? 0) + r.amount); break;
       case 'item': try { grantItem(state, r.itemId); } catch { /* 표에만 있는 아이템은 건너뛴다 */ } break;
     }
@@ -219,7 +216,6 @@ export function applyEventEffect(state: GameState, e: EventEffect, source: strin
   switch (e.kind) {
     case 'money': state.money += e.amount; if (e.amount > 0) state.monthIncome += e.amount; break;
     case 'research': state.research += e.amount; break;
-    case 'mileage': state.mileage += e.amount; break;
     case 'tickets': state.tickets += e.amount; break;
     case 'spawnMult': addEffect(state, { kind: 'spawnMult', mult: e.mult, filter: e.filter, days: e.days, source }); break;
     case 'harvestMult': addEffect(state, { kind: 'harvestMult', mult: e.mult, days: e.days, source }); break;
@@ -289,16 +285,11 @@ export function expireEvents(state: GameState): void {
 
 // ---------- 관광지 훅 ----------
 
-/** 투자 뒤: Lv2 손님·Lv4 부탁·다음 관광지 해금 */
+/** 투자 뒤: Lv2 손님·Lv3 다음 관광지 해금 */
 export function afterInvest(state: GameState, spotId: string, level: number): void {
   evaluateUnlocks(state); // Lv2 손님 (spot 해금형)
   const def = spotDef(spotId);
-  if (level >= SPOT_QUEST_LEVEL && def.lv4QuestId) {
-    const q = questDef(def.lv4QuestId);
-    if (!isUnlocked(state, q.guestId)) unlockGuestType(state, q.guestId);
-    offerQuest(state, def.lv4QuestId);
-  }
-  if (level >= SPOT_QUEST_LEVEL && def.nextSpotId) pushNotice(state, `${spotDef(def.nextSpotId).name}에 투자할 수 있어요`);
+  if (level >= SPOT_NEXT_LEVEL && def.nextSpotId) pushNotice(state, `${spotDef(def.nextSpotId).name}에 투자할 수 있어요`);
   checkQuests(state);
 }
 

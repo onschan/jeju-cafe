@@ -9,10 +9,10 @@ import { DAY_MS } from '../clock.ts';
 import { placeObject } from '../grid.ts';
 import { setSlot } from '../menu.ts';
 import { unlockGuestType } from '../segments.ts';
-import { rankScore, rankForScore, nextRankThreshold, facilityCount, updateRank, RANK_THRESHOLDS, MAX_RANK, GUESTS_PER_POINT, POINTS_PER_GUEST_TYPE, rankUpRewards, RANK_UP_MILEAGE } from '../rank.ts';
+import { rankScore, rankForScore, nextRankThreshold, facilityCount, updateRank, RANK_THRESHOLDS, MAX_RANK, GUESTS_PER_POINT, POINTS_PER_GUEST_TYPE, rankUpRewards } from '../rank.ts';
 import {
   starConditionMet, nextStarConditions, checkStar, judgeScores, guidebookScore, evaluateGuidebooks, guidebooksToAnnounce, announce, rivalScores, rivalTop, rankAmong, monthlyTarget, codexTotal,
-  MAX_STAR, RIVAL_COUNT, PRIZE_RATIO, RANK_MILEAGE, MONTHLY_TAGS, JUDGE_KEYS,
+  MAX_STAR, RIVAL_COUNT, PRIZE_RATIO, RANK_TICKETS, MONTHLY_TAGS, JUDGE_KEYS,
 } from '../guidebook.ts';
 import { GUIDEBOOKS, STARS, guidebookDef, GUEST_TYPES } from '../../data/index.ts';
 import type { GameState } from '../types.ts';
@@ -56,7 +56,7 @@ test('랭크 점수·문턱: 누적 손님/50 + 시설×2 + 해금 손님층×5,
   expect(s.fx.some((f) => f.kind === 'scene' && f.title === '랭크 업')).toBe(true);
 });
 
-test('랭크 2에 오르면 랭크 해금 시설(실내 테이블·주차장)과 손님(렌터카 가족)이 열린다', () => {
+test('랭크 2에 오르면 랭크 해금 시설(실내 테이블·알전구 줄)과 손님(렌터카 가족)이 열린다', () => {
   const s = bareState(1);
   s.totalGuests = RANK_THRESHOLDS[1]! * GUESTS_PER_POINT;
   tick(s, DAY_MS); // 월초 evaluateUnlocks는 다음 달이지만 place 뒤에도 돈다
@@ -64,13 +64,13 @@ test('랭크 2에 오르면 랭크 해금 시설(실내 테이블·주차장)과
   apply(s, { type: 'place', objectType: 'path', x: X(4), y: Y(5) });
   expect(s.rank).toBe(2);
   expect(s.unlocked.objects).toContain('table_in');
-  expect(s.unlocked.objects).toContain('parking');
+  expect(s.unlocked.objects).toContain('deco_string_lights');
   expect(s.guestTypes['rentcar_family']!.unlocked).toBe(true);
 });
 
 function richState(): GameState {
   const s = bareState(1);
-  s.lastMonthCard = { income: 400_000, guests: 100, month: 3, year: 1, costs: emptyMonthCosts(), net: 400_000, ...emptyMonthHarvest(), topMenu: null, deficitStreak: 0, loanTaken: 0, loanBalance: 0, rivalLossPct: 0, guestsLeft: 0, reputation: 50, reputationDelta: 0, topComplaints: [] };
+  s.lastMonthCard = { income: 400_000, guests: 100, month: 3, year: 1, costs: emptyMonthCosts(), net: 400_000, ...emptyMonthHarvest(), topMenu: null, deficitStreak: 0, loanTaken: 0, loanBalance: 0, guestsLeft: 0, reputation: 50, reputationDelta: 0, topComplaints: [] };
   s.lastMonthIncome = 400_000;
   return s;
 }
@@ -143,11 +143,11 @@ test('심사 점수는 모두 0~100이고 같은 상태면 같은 값(결정적)
   expect(b.clean).toBe(100); // 트랙 A의 cleanliness가 없으면 100
   expect(b.price).toBeGreaterThan(0); // 100 − 평균 가격/평균 소지금
   expect(b.rest).toBeGreaterThan(0); // 좌석 = 쉼 시설
-  expect(b.overall).toBe(Math.round((b.smile + b.scenery + b.menu + b.fun + b.group + b.rest + b.clean + b.price) / 8 + s.rank * 3 + s.codex.combos.length));
+  expect(b.overall).toBe(Math.round((b.smile + b.scenery + b.menu + b.fun + b.group + b.rest + b.clean + b.price) / 8 + s.rank * 3 + (s.codex.corners?.length ?? 0)));
   // 가중 합 (guidebooks.json weights)
   expect(b.reputation).toBe(50); // 시작 평판
   expect(guidebookScore(s, guidebookDef('gb_kind_cafe'), b)).toBe(Math.round(b.smile * 0.4 + b.menu * 0.1 + b.rest * 0.1 + b.clean * 0.2 + b.price * 0.1 + b.reputation * 0.1));
-  s.rank = 5; s.codex.combos.push('c1', 'c2');
+  s.rank = 5; (s.codex.corners ??= []).push('c1', 'c2');
   expect(judgeScores(s).overall).toBe(Math.min(100, b.overall + 4 * 3 + 2)); // 랭크 ×3 + 콤보 ×1
   // 월간 추천: 타깃 태그가 monthIndex로 돈다
   expect(MONTHLY_TAGS.map((t) => t.key)).toContain(monthlyTarget(s).key);
@@ -191,7 +191,7 @@ test('가이드북 해금: 시작은 친절 카페만, 1년 7월에 동네 맛�
   expect(evaluateGuidebooks(s)).toEqual(['gb_local_map']);
   s.money = 1e9;
   s.unlocked.objects.push('vending');
-  for (let i = 0; i < 5; i++) placeObject(s, 'hallabong_stand', X(i), Y(2));
+  for (let i = 0; i < 5; i++) placeObject(s, 'omegi_stall', X(i), Y(2));
   expect(evaluateGuidebooks(s)).toEqual(['gb_dessert']);
 });
 
@@ -206,7 +206,7 @@ test('발표: 3·9월에 해금된 가이드북을 채점해 순위·상금·연
   s.clock.month = 9;
   // 1위를 만들어 보상 확인: 심사 점수를 넘어서도록 강한 직원
   s.staff.push({ id: 's1', name: 'a', face: { hair: 0, skin: 0, top: 0 }, stats: { stamina: 99, strength: 99, skill: 99, smile: 99 }, skill: 'none', level: 1, salary: 0, poolId: '', statCaps: { stamina: 100, strength: 100, skill: 100, smile: 100 }, extraSkills: [], maxLevel: 10, baseSalary: 0, exp: 0, trainingCount: 0, training: null, role: 'hall', unpaidMonths: 0, energy: 100, lastParttimeMonthIndex: -1, x: 0, y: 0, path: [], anchor: null, waitMs: 0 });
-  const money = s.money, research = s.research, mileage = s.mileage;
+  const money = s.money, research = s.research, mileage = s.tickets;
   const a = announce(s, [guidebookDef('gb_kind_cafe')])!;
   expect(a.entries).toHaveLength(1);
   const e = a.entries[0]!;
@@ -217,7 +217,7 @@ test('발표: 3·9월에 해금된 가이드북을 채점해 순위·상금·연
   expect(e.prize).toBe(Math.round(100_000 * ratio));
   expect(s.money - money).toBe(e.prize);
   expect(s.research - research).toBe(Math.round(100 * ratio));
-  expect(s.mileage - mileage).toBe(RANK_MILEAGE[e.rank - 1] ?? 0);
+  expect(s.tickets - mileage).toBe(RANK_TICKETS[e.rank - 1] ?? 0);
   expect(s.lastAnnouncement).toBe(a);
   expect(apply(s, { type: 'dismissAnnouncement' }).ok).toBe(true);
   expect(s.lastAnnouncement).toBeNull();
@@ -247,16 +247,15 @@ test('발표 시점: 9월 1일 월초에 lastAnnouncement가 생기고, 다른 �
 });
 
 // ---------- game-feel P1: 승급 보상 ----------
-test('랭크 업·★ 승급은 장면 창 뒤에 보상 상자(응모권 + 마일리지)를 준다', () => {
+test('랭크 업·★ 승급은 장면 창 뒤에 보상 상자(응모권)를 준다', () => {
   const s = bareState(1);
   s.alerts = [];
-  const t0 = s.tickets, m0 = s.mileage;
+  const t0 = s.tickets;
   s.totalGuests = 100_000;
   expect(updateRank(s)).toBe(true);
   const box = s.alerts.find((a) => a.type === 'reward' && a.source === 'rank') as Extract<GameState['alerts'][number], { type: 'reward' }> | undefined;
   expect(box).toBeDefined();
   expect(box!.items).toEqual(rankUpRewards(MAX_RANK));
-  expect(s.tickets).toBe(t0 + 2); // 랭크 5부터 2장
-  expect(s.mileage).toBe(m0 + RANK_UP_MILEAGE);
-  expect(rankUpRewards(2)).toEqual([{ type: 'tickets', n: 1 }, { type: 'mileage', n: RANK_UP_MILEAGE }]);
+  expect(s.tickets).toBe(t0 + 3); // 랭크 5부터 3장
+  expect(rankUpRewards(2)).toEqual([{ type: 'tickets', n: 2 }]);
 });

@@ -4,36 +4,26 @@
  *   그 뒤로도 게임은 그대로 이어진다. 「계속하기」(continueEnding)로 4배속(빠른 모드)이 열린다. 목표는 108 이후 월간 과제만 남는다.
  * - 최종 점수: 항목 9(자금·누적 손님·★·랭크·평판·목표 수·콤보 수·명소 Lv 합·단골 수)에 가중치 → 총점 → 칭호 5단계.
  * - 이월 6종(makeCarry → createInitialState(…, carry) → applyCarry): 콤보 도감·명소 Lv·유니폼·돌하르방·마일리지 20%·정규 손님 인기 20%.
- * - 100주년 감귤축제: 계속하기 뒤 20년차 11월 1일 1회. ★5·가이드북 1위·평판 80이면 「천년 팽나무」 해금 + 두 번째 엔딩 컷, 이월 대상에 추가.
  * 결정적 — rng를 쓰지 않는다.
  */
 import type { GameState, FinalScore, ScoreItem, ScoreKey, CarryOver, EndingState, ApplyResult } from './types.ts';
-import { regularCount } from './popup.ts';
+import { regularCount } from './interact.ts';
 import { objectDef } from '../data/index.ts';
 import { occupy, doorFrontOf } from './grid.ts';
 import { monthIndex } from './clock.ts';
 import { START_ORIGIN } from './layout.ts';
 import { pushNotice } from './staff.ts';
-import { isChiefCandidate } from './village.ts';
-import { grantItem } from './items.ts';
 
 export const ENDING_YEAR = 10;
 export const ENDING_MONTH = 3;
-/** 100주년 감귤축제: 계속하기 뒤 이 연차 11월 1일 (goals.ts customMet 'centennial'과 같은 달) */
-export const CENTENNIAL_YEAR = 20;
-export const CENTENNIAL_MONTH = 11;
-export const CENTENNIAL_STAR = 5;
-export const CENTENNIAL_RANK = 1;
-export const CENTENNIAL_REPUTATION = 80;
-export const MILLENNIUM_TREE = 'hackberry_millennium';
-export const MILLENNIUM_SEED = 'millennium_seed';
+export const MILLENNIUM_TREE = 'hackberry';
 /** 빠른 모드 배속 */
 export const FAST_SPEED = 4;
 /** 이월 비율 (마일리지·정규 손님 인기) */
 export const CARRY_RATIO = 0.2;
 /** 이월 돌하르방 최대 (정낭 양옆) */
 export const CARRY_DOLHAREUBANG_MAX = 2;
-export const DOLHAREUBANG_TYPES = new Set(['dolhareubang', 'dolhareubang_pair', 'deco_dolhareubang_set']);
+export const DOLHAREUBANG_TYPES = new Set(['dolhareubang', 'dolhareubang_pair']);
 /** 이월 돌하르방이 놓이는 시작 필지 상대 좌표 (정낭 (4,6) 양옆) — 정낭이 없으면 carryDolhareubangCells가 문 양옆으로 (w-free) */
 export const CARRY_DOLHAREUBANG_AT: { lx: number; ly: number }[] = [{ lx: 3, ly: 6 }, { lx: 5, ly: 6 }];
 /** 이월 돌하르방 자리: 정낭 양옆 → (정낭이 없으면) 마을 어귀 기본 좌표(올렛길 입구 (4,6) 양옆, 비어 있을 때 — fun-start 새 게임엔 정낭이 없다) → 본관 문 앞 양옆 → 기본 좌표 */
@@ -55,7 +45,7 @@ export const SCORE_ITEMS: { key: ScoreKey; label: string; per: number; cap: numb
   { key: 'rank', label: '카페 랭크', per: 10, cap: 100 },              // 랭크 1 = 10점
   { key: 'reputation', label: '평판', per: 0.5, cap: 50 },             // 평판 2 = 1점
   { key: 'goals', label: '달성 목표', per: 1, cap: 108 },              // 목표 1 = 1점
-  { key: 'combos', label: '코너 도감', per: 1, cap: 24 },              // fun-corner: 코너 1 = 1점 (24종, 콤보 도감 대신)
+  { key: 'corners', label: '코너 도감', per: 1, cap: 24 },             // 코너 1 = 1점 (24종)
   { key: 'spots', label: '명소 Lv 합', per: 0.5, cap: 60 },            // Lv 2 = 1점 (24곳 × Lv5)
   { key: 'regulars', label: '단골', per: 1, cap: 56 },                 // 단골 1 = 1점
 ];
@@ -67,12 +57,9 @@ export const SCORE_TITLES: { min: number; title: string }[] = [
   { min: 600, title: '제주 명소 카페' },
   { min: 800, title: '제주의 전설 카페' },
 ];
-/** 촌장 후보(정착 등급 5)면 칭호 앞에 붙는 말 + 보너스 점수 */
-export const CHIEF_PREFIX = '촌장이 된 ';
-export const CHIEF_BONUS = 50;
 
 export function initEnding(): EndingState {
-  return { reached: false, score: null, continued: false, fastMode: false, centennial: 'none' };
+  return { reached: false, score: null, continued: false, fastMode: false };
 }
 
 export function spotLevelSum(state: GameState): number {
@@ -86,7 +73,7 @@ function rawValue(state: GameState, key: ScoreKey): number {
     case 'rank': return state.rank;
     case 'reputation': return state.reputation;
     case 'goals': return state.goals.claimed.length;
-    case 'combos': return state.codex.corners?.length ?? 0; // fun-corner: 콤보 도감 → 코너 도감
+    case 'corners': return state.codex.corners?.length ?? 0;
     case 'spots': return spotLevelSum(state);
     case 'regulars': return regularCount(state);
   }
@@ -102,11 +89,10 @@ export function computeScore(state: GameState): FinalScore {
     const value = rawValue(state, d.key);
     return { key: d.key, label: d.label, value, points: Math.min(d.cap, Math.floor(value * d.per)) };
   });
-  const chief = isChiefCandidate(state);
-  const total = items.reduce((s, i) => s + i.points, 0) + (chief ? CHIEF_BONUS : 0);
+  const total = items.reduce((s, i) => s + i.points, 0);
   const tier = scoreTier(total);
-  const title = (chief ? CHIEF_PREFIX : '') + SCORE_TITLES[tier - 1]!.title;
-  return { items, total, title, tier, villageGrade: state.village.grade, year: state.clock.year, month: state.clock.month };
+  const title = SCORE_TITLES[tier - 1]!.title;
+  return { items, total, title, tier, year: state.clock.year, month: state.clock.month };
 }
 
 /** 엔딩 시점을 지났나 (10년차 3월 1일 이후) */
@@ -122,7 +108,6 @@ export function endingMonthly(state: GameState): void {
     state.alerts.push({ type: 'ending' });
     pushNotice(state, `10년차 결산 — 최종 점수 ${state.ending.score.total}점 「${state.ending.score.title}」`);
   }
-  centennialMonthly(state);
 }
 
 /** 계속하기: 엔딩 알림을 닫고 빠른 모드를 연다 */
@@ -141,31 +126,6 @@ export function canSetSpeed(state: GameState, speed: number): ApplyResult {
   return { ok: true };
 }
 
-// ---------- 100주년 감귤축제 (연장 플레이) ----------
-
-/** 가이드북 최고 순위 1위를 한 적이 있나 */
-export function hasGuidebookTop(state: GameState, rank = CENTENNIAL_RANK): boolean {
-  return Object.values(state.guidebooks).some((g) => g.best !== null && g.best <= rank);
-}
-export function centennialConditions(state: GameState): { star: boolean; rank: boolean; reputation: boolean } {
-  return { star: state.star >= CENTENNIAL_STAR, rank: hasGuidebookTop(state), reputation: state.reputation >= CENTENNIAL_REPUTATION };
-}
-export function centennialDue(state: GameState): boolean {
-  return state.ending.continued && state.ending.centennial === 'none' && state.clock.year >= CENTENNIAL_YEAR && state.clock.month === CENTENNIAL_MONTH;
-}
-export function centennialMonthly(state: GameState): void {
-  if (!centennialDue(state)) return;
-  const c = centennialConditions(state);
-  const success = c.star && c.rank && c.reputation;
-  state.ending.centennial = success ? 'done' : 'failed';
-  if (success) {
-    if (!state.unlocked.objects.includes(MILLENNIUM_TREE)) state.unlocked.objects.push(MILLENNIUM_TREE);
-    grantItem(state, MILLENNIUM_SEED, 1);
-    pushNotice(state, '100주년 감귤축제 — 「천년 팽나무」를 심을 수 있어요');
-  } else pushNotice(state, '100주년 감귤축제가 조용히 지나갔어요');
-  state.alerts.push({ type: 'centennial', success });
-}
-
 // ---------- 이월 ----------
 
 export function dolhareubangCount(state: GameState): number {
@@ -181,13 +141,13 @@ export function makeCarry(state: GameState): CarryOver {
   const spots: Record<string, number> = {};
   for (const [id, lv] of Object.entries(state.spots)) if (lv > 0) spots[id] = lv;
   return {
-    combos: [...state.codex.combos],
+    corners: [...(state.codex.corners ?? [])],
     spots,
     uniforms: [...state.uniforms],
     dolhareubang: Math.min(CARRY_DOLHAREUBANG_MAX, dolhareubangCount(state)),
-    mileage: Math.floor(state.mileage * CARRY_RATIO),
+    tickets: Math.floor(state.tickets * CARRY_RATIO),
     guestPopularity,
-    millennium: state.ending.centennial === 'done' || state.unlocked.objects.includes(MILLENNIUM_TREE),
+    millennium: state.unlocked.objects.includes(MILLENNIUM_TREE),
     fromScore: state.ending.score?.total ?? computeScore(state).total,
   };
 }
@@ -195,10 +155,11 @@ export function makeCarry(state: GameState): CarryOver {
 /** 새 게임에 이월을 적용한다 (state.ts createInitialState 끝에서). 돌하르방은 정낭 양옆(없으면 문 양옆) 빈 칸에 놓는다. */
 export function applyCarry(state: GameState, carry: CarryOver): void {
   state.carry = carry;
-  for (const id of carry.combos) if (!state.codex.combos.includes(id)) state.codex.combos.push(id);
+  const codex = (state.codex.corners ??= []);
+  for (const id of carry.corners) if (!codex.includes(id)) codex.push(id);
   for (const [id, lv] of Object.entries(carry.spots)) state.spots[id] = Math.max(state.spots[id] ?? 0, lv);
   for (const id of carry.uniforms) if (!state.uniforms.includes(id)) state.uniforms.push(id);
-  state.mileage += carry.mileage;
+  state.tickets += carry.tickets;
   for (const [id, pop] of Object.entries(carry.guestPopularity)) state.segmentPopularity[id] = Math.max(state.segmentPopularity[id] ?? 0, pop);
   if (carry.dolhareubang > 0) {
     if (!state.unlocked.objects.includes('dolhareubang')) state.unlocked.objects.push('dolhareubang');
@@ -218,12 +179,12 @@ export function applyCarry(state: GameState, carry: CarryOver): void {
 /** 이월 묶음 요약 문구 (EndingScreen·TitleScreen) */
 export function carryText(c: CarryOver): string[] {
   const out: string[] = [];
-  out.push(`콤보 도감 ${c.combos.length}개`);
+  out.push(`코너 도감 ${c.corners.length}개`);
   out.push(`명소 Lv 합 ${Object.values(c.spots).reduce((s, v) => s + v, 0)}`);
   out.push(`유니폼 ${c.uniforms.length}벌`);
   out.push(`돌하르방 ${c.dolhareubang}개`);
-  out.push(`마일리지 ${c.mileage}`);
+  out.push(`응모권 ${c.tickets}장`);
   out.push(`손님 인기 ${Object.keys(c.guestPopularity).length}층 (20%)`);
-  if (c.millennium) out.push('천년 팽나무');
+  if (c.millennium) out.push('폭낭 그늘');
   return out;
 }

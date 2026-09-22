@@ -72,3 +72,30 @@ test('같은 버전 안에서 추가된 필드(lastMonthIncome)는 불러올 때
   const back = deserialize(JSON.stringify(obj));
   expect(back.lastMonthIncome).toBe(s.lastMonthCard!.income);
 });
+
+// ---------- trim: v20 → v21 마이그레이션 ----------
+import { MIGRATE_FROM } from '../save.ts';
+import { SPOT_MAX_LEVEL } from '../spots.ts';
+
+test('v20 세이브: 없어진 시설·명소·직종·경로를 환불·치환하고 알림 한 줄', () => {
+  const s = bareState(1);
+  const obj = JSON.parse(serialize(s)) as Record<string, unknown>;
+  obj.version = MIGRATE_FROM;
+  // 없어진 것들을 옛 세이브에 심는다
+  (obj.objects as Record<string, unknown>)['oX'] = { id: 'oX', type: 'shuttle_stop', x: 1, y: 1, placedMonth: 0 };
+  (obj.spots as Record<string, number>)['camellia_hill'] = 3;
+  (obj.spots as Record<string, number>)['canola_field'] = 5;
+  (obj.routes as Record<string, unknown>)['cruise'] = { unlocked: true, contract: false, todayGuests: 0, monthGuests: 0, totalGuests: 0, monthIncome: 0, lastArrivalDay: -1, warned: false };
+  (obj.unlocked as { objects: string[] }).objects.push('pier');
+  (obj.goals as { claimed: string[] }).claimed.push('g_gone');
+  const back = deserialize(JSON.stringify(obj));
+  expect(back.version).toBe(SAVE_VERSION);
+  expect(back.objects['oX']).toBeUndefined();
+  expect(back.spots['camellia_hill']).toBeUndefined();
+  expect(back.spots['canola_field']).toBe(SPOT_MAX_LEVEL);
+  expect((back.routes as Record<string, unknown>)['cruise']).toBeUndefined();
+  expect(back.unlocked.objects).not.toContain('pier');
+  expect(back.goals.claimed).not.toContain('g_gone');
+  expect(back.money).toBeGreaterThan(s.money); // 환불
+  expect(back.notices.some((n) => n.includes('환불'))).toBe(true);
+});

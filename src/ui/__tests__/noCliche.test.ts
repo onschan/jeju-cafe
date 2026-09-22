@@ -1,13 +1,13 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { createInitialState, strategyVars, fillTemplate, openingBuild, heuristicNextMove, nextMove } from '../../sim/index.ts';
-import { GOALS, CHALLENGES } from '../../data/index.ts';
+import { createInitialState, strategyVars, fillTemplate, heuristicNextMove, nextMove } from '../../sim/index.ts';
+import { GOALS } from '../../data/index.ts';
 import { TUTORIAL_STEPS, INTRO_CUTS, FIRST_TIPS } from '../../data/dialogue/index.ts';
 import { idleHint } from '../../sim/hints.ts';
 import { CELL_LABEL, CELL_LABEL_DEFAULT, BLOCKED_HINT } from '../tutorialHighlight.ts';
 import { LOOK_TEXT } from '../../sim/tutorial.ts';
-import { NO_MOVE_TEXT, SOLVER_BUSY_TEXT, SOLVER_SAVE_TEXT, RECOMMEND_TITLE, PLAN_TITLE } from '../TutorialWindow';
+import { NO_MOVE_TEXT, SOLVER_BUSY_TEXT, SOLVER_SAVE_TEXT, RECOMMEND_TITLE } from '../TutorialWindow';
 import { SKIP_TEXT } from '../tutorialDialogue';
 import { TIPS } from '../firstTip';
 import { apply } from '../../sim/actions.ts';
@@ -36,25 +36,23 @@ describe('문구 규칙 §6: 지시문·화살표·정석·시뮬 없음', () =>
     expectClean(texts, '튜토리얼');
     for (const t of TUTORIAL_STEPS) for (const l of t.lines) expect(fillTemplate(l, vars).length, l).toBeLessThanOrEqual(22);
   });
-  it('첫 열기 팁 20개 이상, 한 줄 ≤ 22자, 창·탭 키가 실제 창 이름을 따른다', () => {
+  it('첫 열기 팁 12, 한 줄 ≤ 22자, 창·탭 키가 실제 창 이름을 따른다', () => {
     const keys = Object.keys(FIRST_TIPS);
-    expect(keys.length).toBeGreaterThanOrEqual(20);
+    expect(keys.length).toBe(12);
     expectClean(Object.values(FIRST_TIPS), '팁');
     for (const [k, v] of Object.entries(FIRST_TIPS)) { expect(v.length, k).toBeLessThanOrEqual(22); expect(v.length, k).toBeGreaterThan(0); }
-    for (const k of ['build', 'cafe:menu', 'cafe:building', 'people:staff', 'ledger:spots', 'ledger:shop', 'ledger:rank', 'ledger:region', 'goal', 'siteView', 'undo', 'recommend', 'guest', 'build:parking_lot']) expect(TIPS[k], k).toBeTruthy();
+    for (const k of ['build', 'cafe:menu', 'people:staff', 'ledger:spots', 'goal', 'siteView', 'build:parking_lot']) expect(TIPS[k], k).toBeTruthy();
   });
   it('인트로 6컷 자막: 1인칭 상황, 금지어 없음', () => {
     expectClean(INTRO_CUTS.flatMap((c) => [c.caption, ...c.lines]), '인트로');
     expect(INTRO_CUTS[4]!.speaker).toBe('halmang');
     expect(INTRO_CUTS[4]!.lines.join(' ')).toContain('창고');
   });
-  it('목표 title/desc·도전 문구', () => {
+  it('목표 title/desc 문구', () => {
     expectClean(GOALS.flatMap((g) => [g.title, g.desc, g.line ?? '']), '목표');
-    expectClean(CHALLENGES.flatMap((c) => [c.title, c.desc ?? '']), '도전');
   });
   it('힌트·추천·다음 수·칸 라벨·창 문구 (실제 상태로 만든 문자열)', () => {
-    const texts: string[] = [...Object.values(CELL_LABEL), CELL_LABEL_DEFAULT, BLOCKED_HINT, ...Object.values(LOOK_TEXT), NO_MOVE_TEXT, SOLVER_BUSY_TEXT, SOLVER_SAVE_TEXT, RECOMMEND_TITLE, PLAN_TITLE, SKIP_TEXT];
-    texts.push(...openingBuild().flatMap((r) => [r.title, r.what, r.why]));
+    const texts: string[] = [...Object.values(CELL_LABEL), CELL_LABEL_DEFAULT, BLOCKED_HINT, ...Object.values(LOOK_TEXT), NO_MOVE_TEXT, SOLVER_BUSY_TEXT, SOLVER_SAVE_TEXT, RECOMMEND_TITLE, SKIP_TEXT];
     // 다음 수를 상태를 바꿔 가며 여러 개 뽑는다
     const t = createInitialState(1, 'local', 0, 'bare');
     for (let i = 0; i < 20; i++) {

@@ -16,7 +16,8 @@ import { josa } from './josa.ts';
 import { pushNotice } from './staff.ts';
 import { pushFx } from './fx.ts';
 import { nextRandom, pickWeighted } from './rng.ts';
-import { regularIds, namedGuestState } from './popup.ts';
+import { regularList, forgetRegular } from './interact.ts';
+import { pushVoice, busiestSeat, dirtiestObject } from './voice.ts';
 
 export const REPUTATION_START = 50;
 export const REPUTATION_MAX = 100;
@@ -44,22 +45,16 @@ export const TOP_COMPLAINTS = 3;
 /** 사과 이벤트(promotions.json apology_event) 평판 +8 */
 export const APOLOGY_REPUTATION = 8;
 
-export const COMPLAINT_REASONS: ComplaintReason[] = ['no_menu', 'wait_long', 'no_seat', 'dirty', 'worn', 'noise', 'expensive', 'cold_hot', 'rude'];
+export const COMPLAINT_REASONS: ComplaintReason[] = ['no_seat', 'wait_long', 'expensive', 'dirty'];
 export const COMPLAINT_LABEL: Record<ComplaintReason, string> = {
-  no_menu: '원하는 메뉴 없음', wait_long: '오래 기다림', no_seat: '자리 없음', dirty: '지저분함', worn: '낡은 시설',
-  noise: '시끄러움', expensive: '비쌈', cold_hot: '춥거나 더움', rude: '불친절',
+  no_seat: '자리 없음', wait_long: '오래 기다림', expensive: '비쌈', dirty: '지저분함',
 };
 /** 후기 문장 (detail = 메뉴·시설 이름 등) */
 export const COMPLAINT_REVIEW: Record<ComplaintReason, (detail?: string) => string> = {
-  no_menu: (d) => d ? `${josa(d, '이/가')} 자주 품절이래요` : '먹고 싶은 메뉴가 없대요',
-  wait_long: () => '너무 오래 기다렸대요',
   no_seat: () => '자리가 없어서 그냥 갔대요',
-  dirty: () => '카페가 지저분하대요',
-  worn: (d) => d ? `${josa(d, '이/가')} 낡았대요` : '시설이 낡았대요',
-  noise: () => '자리가 너무 시끄럽대요',
+  wait_long: () => '너무 오래 기다렸대요',
   expensive: (d) => d ? `${josa(d, '이/가')} 너무 비싸대요` : '값이 너무 비싸대요',
-  cold_hot: (d) => d === 'winter' ? '겨울 야외 자리가 너무 춥대요' : '여름 야외 자리가 너무 덥대요',
-  rude: () => '직원이 지쳐서 불친절하대요',
+  dirty: (d) => d ? `${josa(d, '이/가')} 낡고 지저분하대요` : '카페가 지저분하대요',
 };
 const GOOD_REVIEWS = ['또 오고 싶은 카페래요', '경치가 좋고 편하대요', '직원이 친절하대요', '메뉴가 맛있대요'];
 
@@ -73,6 +68,16 @@ export function addComplaint(state: GameState, reason: ComplaintReason, guest: G
   state.complaints.push(c);
   state.monthComplaints[reason] = (state.monthComplaints[reason] ?? 0) + 1;
   state.dayStats.complained++;
+  noteVoice(state, reason, detail); // trim: 손님 목소리 피드 — 월말 카드와 같은 데이터
+}
+/** 불만 한 건 → 목소리 한 줄 (원인 칸을 같이 담는다) */
+function noteVoice(state: GameState, reason: ComplaintReason, detail?: string): void {
+  switch (reason) {
+    case 'no_seat': pushVoice(state, 'no_seat', undefined, busiestSeat(state)); return;
+    case 'wait_long': pushVoice(state, 'wait_long'); return;
+    case 'expensive': pushVoice(state, 'expensive', detail); return;
+    case 'dirty': { const d = dirtiestObject(state); pushVoice(state, 'dirty', d?.name ?? detail, d?.cell); return; }
+  }
 }
 /** 오늘 온 손님(주문 시점) */
 export function noteGuest(state: GameState): void {
@@ -178,8 +183,8 @@ export function monthlyReputation(state: GameState, card: MonthCard | null = sta
     card.reputation = state.reputation;
   }
   if (state.reputation < REP_LOW && nextRandom(state) < LOW_REP_REGULAR_LEAVE) {
-    const id = pickWeighted(state, regularIds(state), () => 1);
-    if (id) { namedGuestState(state, id).regular = false; pushNotice(state, `평판이 나빠 단골이 발길을 끊었어요`); }
+    const r = pickWeighted(state, regularList(state), () => 1);
+    if (r && forgetRegular(state, r.id)) pushNotice(state, `평판이 나빠 ${r.name} 발길을 끊었어요`);
   }
   if (state.reputation < REP_ALERT && !state.reputationWarned) {
     state.reputationWarned = true;

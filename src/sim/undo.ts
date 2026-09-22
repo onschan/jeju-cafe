@@ -4,7 +4,7 @@
 import type { GameState, PlacedObject, ApplyResult, UndoEntry } from './types.ts';
 import { dayIndex } from './effects.ts';
 import { canPlace, occupy, removeObject, relocateObject } from './grid.ts';
-import { discoverCombos } from './compat.ts';
+import { discoverPlacement } from './compat.ts';
 
 /** 배치 직후: 되돌리면 철거하고 낸 돈을 그대로 돌려준다 */
 export function rememberPlace(state: GameState, obj: PlacedObject, paid: number): void {
@@ -79,6 +79,6 @@ export function undoLast(state: GameState): UndoEntry['kind'] {
     }
   }
   state.undo = null;
-  discoverCombos(state);
+  discoverPlacement(state);
   return u.kind;
 }

@@ -35,12 +35,12 @@
     "requires": [
       {
         "name": "평상",
-        "objectId": "bench",
+        "objectId": "bench_stonewall",
         "count": 2
       },
       {
         "name": "폭낭",
-        "objectId": "hackberry",
+        "objectId": "cedar",
         "count": 1
       },
       {
@@ -75,7 +75,7 @@
       },
       {
         "name": "포토존",
-        "objectId": "photo_spot",
+        "objectId": "signboard",
         "count": 1
       }
     ],
@@ -96,17 +96,17 @@
     "requires": [
       {
         "name": "밭",
-        "objectId": "field",
+        "objectId": "tea_field",
         "count": 2
       },
       {
         "name": "닭장",
-        "objectId": "chicken_coop",
+        "objectId": "flower_bed",
         "count": 1
       },
       {
         "name": "큰 테이블",
-        "objectId": "table_big",
+        "objectId": "table_in",
         "count": 1
       }
     ],
@@ -126,7 +126,7 @@
     "requires": [
       {
         "name": "책장",
-        "objectId": "bookshelf",
+        "objectId": "table_in",
         "count": 2
       },
       {
@@ -136,7 +136,7 @@
       },
       {
         "name": "소파",
-        "objectId": "sofa",
+        "objectId": "table_in",
         "count": 1
       }
     ],
@@ -166,7 +166,7 @@
       },
       {
         "name": "해녀 불턱",
-        "objectId": "haenyeo_hut",
+        "objectId": "toenmaru",
         "count": 1
       }
     ],
@@ -186,12 +186,12 @@
     "requires": [
       {
         "name": "석등",
-        "objectId": "stone_lantern",
+        "objectId": "garden_lamp",
         "count": 3
       },
       {
         "name": "초롱길",
-        "objectId": "lantern_path",
+        "objectId": "garden_lamp",
         "count": 5
       },
       {
@@ -216,7 +216,7 @@
     "requires": [
       {
         "name": "자전거 거치대",
-        "objectId": "bike_rack",
+        "objectId": "signboard",
         "count": 2
       },
       {

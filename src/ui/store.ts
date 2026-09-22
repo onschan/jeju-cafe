@@ -89,13 +89,13 @@ const ACTION_SFX: Record<Action['type'], SfxName> = {
   setSlot: 'tap', setSpeed: 'tap', dismissAlert: 'tap', dismissMonthCard: 'tap',
   postJob: 'tap', hire: 'tap', fire: 'tap', assign: 'tap', levelUp: 'tap', train: 'unlock', promote: 'tap', setTarget: 'tap',
   move: 'place', rotate: 'tap', demolishMany: 'remove', undoLast: 'tap', renameObject: 'tap', setTargets: 'tap', upgradeObject: 'unlock', treeUpgrade: 'unlock', repairObject: 'place', buyParcel: 'unlock', useItem: 'unlock', renameCafe: 'tap', expand: 'unlock', setCosmetic: 'tap', praise: 'happy',
-  acceptQuest: 'tap', respondEvent: 'tap', investSpot: 'unlock', hostTour: 'tap', dismissTour: 'tap', setTourBus: 'tap', giveGift: 'tap', craftGift: 'unlock',
+  acceptQuest: 'tap', respondEvent: 'tap', investSpot: 'unlock', giveGift: 'tap', craftGift: 'unlock',
   develop: 'unlock', dismissDevelop: 'tap', addTopping: 'tap', removeTopping: 'tap', levelUpMenu: 'unlock',
-  buyMileage: 'coin', buyTicket: 'coin', drawTicket: 'tap', dismissDraw: 'tap', setUniform: 'tap', useGuestItem: 'unlock', dismissAnnouncement: 'tap',
-  openPopup: 'unlock', closePopup: 'tap', challenge: 'tap', dismissChallenge: 'tap', dismissOutcome: 'tap', acceptChallenge: 'unlock', skipTutorial: 'tap', skipTutorialChapter: 'tap', tutorialNote: 'tap',
-  setRouteContract: 'unlock', expandParking: 'place', // 트랙 H
-  placeMain: 'fanfare', expandMain: 'unlock', buildSecondFloor: 'unlock', moveMain: 'place', undoMoveMain: 'tap', toggleFireplace: 'tap', setPianoTime: 'tap', setBgm: 'tap', setLighting: 'tap', feedAquarium: 'happy', restockKids: 'coin', setBarEvening: 'tap', addBooks: 'unlock', // y-indoor
-  continueEnding: 'fanfare', donateVillage: 'coin', holdFestival: 'fanfare', // z-ending
+  drawTicket: 'tap', dismissDraw: 'tap', setUniform: 'tap', useGuestItem: 'unlock', dismissAnnouncement: 'tap',
+  dismissOutcome: 'tap', skipTutorial: 'tap', skipTutorialChapter: 'tap', tutorialNote: 'tap',
+  expandParking: 'place', // 트랙 H
+  placeMain: 'fanfare', expandMain: 'unlock', buildSecondFloor: 'unlock', moveMain: 'place', undoMoveMain: 'tap', setBgm: 'tap', setLighting: 'tap', // y-indoor
+  continueEnding: 'fanfare', // z-ending
   greetGuest: 'happy', recommendMenu: 'tap', // fun-guest (트랙 G) 훅 한 줄
 }; // 홍보·투어·대결·선물은 룰렛 팝업(OutcomePopup)이 drumroll → fanfare/coin/error를 낸다 (staff-luck)
 

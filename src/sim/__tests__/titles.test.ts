@@ -8,17 +8,15 @@ import { dayIndex } from '../effects.ts';
 import { TITLES, ROLES } from '../../data/index.ts';
 import { TITLE_GRADES, titleChances, rollGrade, pickTitle, rollTitle, titleSalaryMult, titleBonus, staffTitleEffect, fitRolesOf, titlesMet, RARE_STAY_DAYS, LEGEND_MIN_TIER, LEGEND_MIN_STAR } from '../titles.ts';
 import { drawCandidates, salaryOf, cleanPowerOf, gardenBonusOf, promoBonusOf, ingredientDiscount, hourlyEnergy, availablePool } from '../staff.ts';
-import { tourScore } from '../spots.ts';
-import { challengeTitleBonus } from '../rivals.ts';
 import { staffWith } from './staff.test.ts';
 import type { GameState, TitleGrade } from '../types.ts';
 
-test('칭호 30개: 숙련 12·프로 10·전설 8, id 유일, 직종 id 유효, 효과 1개 이상, 등급 급여 배수 1.2/1.6/2.5', () => {
-  expect(TITLES.length).toBe(30);
-  expect(TITLES.filter((t) => t.grade === 'skilled').length).toBe(12);
-  expect(TITLES.filter((t) => t.grade === 'pro').length).toBe(10);
-  expect(TITLES.filter((t) => t.grade === 'legend').length).toBe(8);
-  expect(new Set(TITLES.map((t) => t.id)).size).toBe(30);
+test('칭호 12개: 숙련 4·프로 4·전설 4, id 유일, 직종 id 유효, 효과 1개 이상, 등급 급여 배수 1.2/1.6/2.5', () => {
+  expect(TITLES.length).toBe(12);
+  expect(TITLES.filter((t) => t.grade === 'skilled').length).toBe(4);
+  expect(TITLES.filter((t) => t.grade === 'pro').length).toBe(4);
+  expect(TITLES.filter((t) => t.grade === 'legend').length).toBe(4);
+  expect(new Set(TITLES.map((t) => t.id)).size).toBe(12);
   const roleIds = new Set(ROLES.map((r) => r.id));
   for (const t of TITLES) {
     expect(t.effects.length).toBeGreaterThan(0);
@@ -132,31 +130,4 @@ test('효과 훅: 청소·수확·홍보·요금 할인·기력·투어·대결 
   const e0 = clean.energy;
   hourlyEnergy(s);
   expect(clean.energy).toBeCloseTo(e0 - 2 * 0.8, 5);
-  const garden = staffWith({}, 'garden');
-  garden.title = 'tt_orchard_master'; // 수확 +35%
-  s.staff.push(garden);
-  expect(gardenBonusOf(s)).toBeCloseTo(1 + 0.5 + 0.35, 5);
-  const promo = staffWith({}, 'hall');
-  promo.title = 'tt_sns_celeb'; // 홍보 +30%
-  s.staff.push(promo);
-  expect(promoBonusOf(s)).toBeCloseTo(1.3, 5);
-  const carry = staffWith({}, 'carry');
-  carry.title = 'tt_iron_body'; // 재료비 −5%
-  s.staff.push(carry);
-  expect(ingredientDiscount(s)).toBeCloseTo(10 / 500 + 0.05, 5);
-  const guide = staffWith({}, 'guide');
-  guide.title = 'tt_olle_legend'; // 투어 +25
-  s.staff.push(guide);
-  s.spots['canola_field'] = 1;
-  const before = tourScore(s, 'canola_field');
-  guide.title = undefined;
-  expect(before - tourScore(s, 'canola_field')).toBe(25);
-  const chef = staffWith({}, 'cook');
-  chef.title = 'tt_michelin_chef'; // 대결 +4
-  s.staff.push(chef);
-  expect(challengeTitleBonus(s)).toBe(4);
-  chef.training = { id: 'tr_barista', daysLeft: 1 }; // 연수 중이면 빠진다
-  expect(challengeTitleBonus(s)).toBe(0);
-  chef.training = null; chef.role = null; // 쉬는 중도 빠진다
-  expect(challengeTitleBonus(s)).toBe(0);
 });
