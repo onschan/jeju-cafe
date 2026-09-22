@@ -66,6 +66,10 @@ function destroyScenery(e: SceneryEntry, keepLandmarks: boolean) {
   e.sign.destroy({ children: true });
   for (const p of e.props) if (!(keepLandmarks && p.keep) && !p.node.destroyed) p.node.destroy({ children: true });
 }
+/** fun P0 도착 연출: 들어오는 데 1.2초 · 서 있는 2초 · 나가는 1.2초 */
+const ARRIVE_IN_MS = 1200;
+const ARRIVE_STAY_MS = 2000;
+const ARRIVE_OUT_MS = 1200;
 /** 사면 풍경이 걷히는 시간 */
 const SCENERY_FADE_MS = 1000;
 /** 팻말 배율: 월드 배율이 이 값보다 작으면 그만큼 키워 화면 글자 크기를 지킨다(최대 ×1.8 — 더 키우면 줌아웃 때 팻말끼리 겹친다) */
@@ -366,6 +370,8 @@ export class GameView {
   /** 렌더 전용 애니 큐: 말풍선 팝, 코인 팝, 반짝임 */
   private bubblePops: { node: Container; born: number }[] = [];
   private fxQueue: Fx[] = [];
+  /** fun P0 경로 도착 연출: 렌터카·셔틀·배가 가장자리에서 들어와 서고(손님이 내림) 되돌아 나간다 */
+  private arrivals: { sprite: Sprite; born: number; from: { sx: number; sy: number }; to: { sx: number; sy: number }; flipX: boolean }[] = [];
   /** 마지막 렌더 때의 state.tick. 그 뒤 스텝에서 생긴 fx(tick ≥ 이 값)만 연출한다. −1 = 아직 첫 렌더 전 */
   private fxSeenTick = -1;
   /** 숫자 팝업(+N) 큐 */
@@ -458,6 +464,8 @@ export class GameView {
     this.entryKey = '';
     this.bus?.destroy({ children: true });
     this.bus = null;
+    for (const a of this.arrivals) if (!a.sprite.destroyed) a.sprite.destroy();
+    this.arrivals = [];
     this.busStop = null;
     this.busStopKey = '';
     this.busDropCycle = -1;
@@ -1539,6 +1547,57 @@ export class GameView {
     this.pops.push({ node: c, born: now, y0: sy - 24 });
   }
 
+  /** fun P0: 경로 도착 — 렌터카(동쪽 마을 길에서 주차장 앞)·셔틀(남쪽 끝에서 정류장)·배(북쪽 바다에서 선착장)가 들어와 서고, 「렌터카 손님 3명!」 문구. 올레꾼은 걸어오니 문구만. */
+  private spawnArrival(state: GameState, e: Extract<FxEvent, { kind: 'arrive' }>, now: number) {
+    const name = e.route === 'parking' ? '렌터카' : e.route === 'shuttle' ? '셔틀' : e.route === 'cruise' ? '크루즈' : '올레꾼';
+    const text = e.route === 'olle' ? `올레꾼 ${e.n}명이 걸어와요` : `${name} 손님 ${e.n}명!`;
+    const c = new Container();
+    const l = label(text, 11);
+    l.anchor.set(0.5, 1);
+    l.style.fill = 0xfff2c8;
+    const bg = new Graphics().roundRect(-l.width / 2 - 4, -l.height - 2, l.width + 8, l.height + 4, 3).fill({ color: 0x5a3a1a, alpha: 0.85 });
+    c.addChild(bg, l);
+    const { sx, sy } = cellCenter(e.x, e.y);
+    c.position.set(sx, sy - 30);
+    c.zIndex = 1e6;
+    this.overlay.addChild(c);
+    this.pops.push({ node: c, born: now, y0: sy - 30 });
+    if (e.route === 'olle' || !hasAssets()) return;
+    const sprite = e.route === 'parking' ? 'route_car' : e.route === 'shuttle' ? 'route_bus' : 'route_ship';
+    const t = peekTex(spriteName.isoObject(sprite));
+    if (!t) return;
+    const entry = ENTRY_ROUTES[e.route].entry;
+    const from = footAnchor(entry.x, entry.y, 1, 1);
+    // 서는 자리: 시설 앞 칸 옆(도착 칸에서 진입점 쪽으로 한 칸) — 손님 위에 겹치지 않게
+    const stop = { x: e.x + Math.sign(entry.x - e.x), y: e.y + Math.sign(entry.y - e.y) };
+    const to = footAnchor(stop.x, stop.y, 1, 1);
+    const sp = new Sprite(t);
+    sp.anchor.set(0.5, 1);
+    sp.label = `arrive-${e.route}`;
+    sp.position.set(from.sx, from.sy);
+    sp.zIndex = depth(stop.x, stop.y, 1, 1) + 0.5;
+    sp.scale.x = entry.x > e.x ? -1 : 1; // 동쪽에서 오면 왼쪽을 본다
+    this.actors.addChild(sp);
+    this.arrivals.push({ sprite: sp, born: now, from, to, flipX: entry.x > e.x });
+    this.spawnSparkle(e.x, e.y, now);
+  }
+  private tickArrivals(now: number) {
+    if (!this.arrivals.length) return;
+    this.arrivals = this.arrivals.filter((a) => {
+      if (a.sprite.destroyed) return false;
+      const age = now - a.born;
+      if (age >= ARRIVE_IN_MS + ARRIVE_STAY_MS + ARRIVE_OUT_MS) { a.sprite.destroy(); return false; }
+      let k: number;
+      if (age < ARRIVE_IN_MS) k = age / ARRIVE_IN_MS; // 들어옴
+      else if (age < ARRIVE_IN_MS + ARRIVE_STAY_MS) k = 1; // 정차
+      else { k = 1 - (age - ARRIVE_IN_MS - ARRIVE_STAY_MS) / ARRIVE_OUT_MS; a.sprite.scale.x = a.flipX ? 1 : -1; } // 되돌아 나감
+      const ease = k < 1 ? 1 - (1 - k) * (1 - k) : 1;
+      a.sprite.position.set(a.from.sx + (a.to.sx - a.from.sx) * ease, a.from.sy + (a.to.sy - a.from.sy) * ease);
+      a.sprite.alpha = age > ARRIVE_IN_MS + ARRIVE_STAY_MS + ARRIVE_OUT_MS - 300 ? Math.max(0, (ARRIVE_IN_MS + ARRIVE_STAY_MS + ARRIVE_OUT_MS - age) / 300) : 1;
+      return true;
+    });
+  }
+
   /** 「+₩n」 숫자 팝업 (결제). 화면 좌표. 한꺼번에 많이 뜨면(MONEY_POP_MAX 초과) 건너뛴다 — 코인은 그대로 뜬다 */
   private spawnMoneyPop(x: number, y0: number, amount: number, now: number) {
     if (this.pops.length >= MONEY_POP_MAX) return;
@@ -1598,6 +1657,7 @@ export class GameView {
         for (const g of state.guests) { this.spawnSparkle(Math.round(g.x), Math.round(g.y), now); this.showBubble(g.id, { mood: 'happy' }, 1500); }
       }
       else if (e.kind === 'parcel') { /* 덮개 페이드는 syncLocked(owned 전환)에서 시작한다 */ }
+      else if (e.kind === 'arrive') this.spawnArrival(state, e, now);
     }
   }
 
@@ -1713,6 +1773,7 @@ export class GameView {
 
   /** 렌더 전용 애니 진행: 말풍선 팝 스케일, 코인 프레임·상승, 숫자 팝업, 인사 말풍선 */
   private tickFx(now: number) {
+    this.tickArrivals(now); // fun P0 도착 연출
     if (this.pops.length) {
       this.pops = this.pops.filter((p) => {
         const k = (now - p.born) / POP_MS;

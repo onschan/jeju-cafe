@@ -35,7 +35,7 @@ import { eventGuestMult, eventTagMult, eventFeeMult, isSpecialGuest, specialGues
 import { fmtNum } from './format.ts';
 import { josa } from './josa.ts';
 import { siteBonus } from './site.ts';
-import { spawnRouteWeights, routeArrivals, routeSpawnPos, routeTagMult, routeWalletMult, routeStayMult, routeGuestMult, routeHome, noteRouteGuest, noteRouteIncome, foreignPhotoChance, foreignMenuMult, chargePortFee } from './entry.ts'; // 트랙 H 유입 경로
+import { spawnRouteWeights, routeArrivals, routeSpawnPos, routeTagMult, routeWalletMult, routeStayMult, routeGuestMult, routeHome, noteRouteGuest, noteRouteIncome, foreignPhotoChance, foreignMenuMult, chargePortFee, routeState, CAR_GUESTS_MIN, CAR_GUESTS_MAX } from './entry.ts'; // 트랙 H 유입 경로
 import { hashOf } from './say.ts';
 import { assignGuestName, regularsDue, dressAsRegular, regularTip, thankIfDone, maybeRequest, addRegularGauge, requestDef, GAUGE_HAPPY_VISIT } from './interact.ts'; // fun-guest (트랙 G): 이름·단골·요청·게이지
 
@@ -228,15 +228,18 @@ export function hourlySpawn(state: GameState): number {
     const pos = routeSpawnPos(state, a.route);
     if (!pos) continue;
     if (a.route === 'cruise') chargePortFee(state);
-    spawned += spawnGuests(state, a.n, undefined, { route: a.route, pos });
+    const k = spawnGuests(state, a.n, undefined, { route: a.route, pos });
+    if (k > 0) pushFx(state, { kind: 'arrive', route: a.route, x: pos.x, y: pos.y, n: k, tick: state.tick }); // fun P0: 셔틀 정차·배 도착 연출
+    spawned += k;
   }
   return spawned;
 }
 
-/** 트랙 H: 기본 스폰 n명을 활성 경로 가중치(정류장 1.0 / 주차장 칸당 0.15 / 올레 0.15)로 나눠 진입점별로 스폰. 정류장만 열려 있으면 rng를 쓰지 않는다(결정성 유지). */
+/** 트랙 H: 기본 스폰 n명을 활성 경로 비중(fun P0: 주차장 30~45% / 올레 20% / 정류장 나머지)으로 나눠 진입점별로 스폰. 정류장만 열려 있으면 rng를 쓰지 않는다(결정성 유지).
+ *  주차장 손님은 바로 내리지 않고 모아 뒀다가(pending) 2~4명이 차면 렌터카 한 대로 온다(도착 fx). 올레꾼은 서쪽 표지에서 걸어온다(fx만). */
 export function spawnByRoutes(state: GameState, n: number): number {
   const routes = spawnRouteWeights(state);
-  if (routes.length <= 1 && (routes.length === 0 || routes[0]!.route === 'bus')) return spawnGuests(state, n);
+  if (routes.length <= 1 && (routes.length === 0 || routes[0]!.route === 'bus')) return spawnGuests(state, n) + flushParking(state, true);
   const counts = new Map<RouteId, number>();
   for (let i = 0; i < n; i++) {
     const r = pickWeighted(state, routes, (x) => x.weight)!.route;
@@ -244,9 +247,31 @@ export function spawnByRoutes(state: GameState, n: number): number {
   }
   let spawned = 0;
   for (const [route, k] of counts) {
+    if (route === 'parking') { const st = routeState(state, 'parking'); st.pending = (st.pending ?? 0) + k; continue; }
     const pos = route === 'bus' ? undefined : routeSpawnPos(state, route);
-    spawned += spawnGuests(state, k, undefined, route === 'bus' || !pos ? undefined : { route, pos });
+    const got = spawnGuests(state, k, undefined, route === 'bus' || !pos ? undefined : { route, pos });
+    if (route === 'olle' && pos && got > 0) pushFx(state, { kind: 'arrive', route, x: pos.x, y: pos.y, n: got, tick: state.tick });
+    spawned += got;
   }
+  return spawned + flushParking(state, false);
+}
+/** 모인 주차장 손님을 렌터카 한 대(2~4명)씩 내린다. force면 남은 1명도 내린다(주차장 시간대가 끝날 때). 내린 수. */
+export function flushParking(state: GameState, force: boolean): number {
+  const st = routeState(state, 'parking');
+  let pending = st.pending ?? 0;
+  if (pending <= 0) return 0;
+  const pos = routeSpawnPos(state, 'parking');
+  if (!pos) { st.pending = 0; return 0; }
+  let spawned = 0;
+  while (pending >= CAR_GUESTS_MIN || (force && pending > 0)) {
+    const n = Math.min(CAR_GUESTS_MAX, pending);
+    pending -= n;
+    const got = spawnGuests(state, n, undefined, { route: 'parking', pos });
+    if (got > 0) pushFx(state, { kind: 'arrive', route: 'parking', x: pos.x, y: pos.y, n: got, tick: state.tick });
+    spawned += got;
+    if (got < n) break; // 자리가 없다 — 남은 손님은 다음 차
+  }
+  st.pending = pending;
   return spawned;
 }
 

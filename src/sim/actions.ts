@@ -26,7 +26,7 @@ import { canOpenPopup, openPopup, canClosePopup, closePopup } from './popup.ts';
 import { canChallenge, challenge } from './rivals.ts';
 import { canUpgrade, upgrade } from './upgrade.ts';
 import { canRepair, repair } from './cleanliness.ts';
-import { canSetRouteContract, setRouteContract, canExpandParking, parkingExpandCost, PARKING_EXPAND_TO, unlockRouteFacilities } from './entry.ts';
+import { canSetRouteContract, setRouteContract, canExpandParking, parkingExpandCost, PARKING_EXPAND_TO, unlockRouteFacilities, installRouteForParcel, canAutoLinkRoute, autoLinkRoute } from './entry.ts';
 import { objectStats } from './compat.ts';
 import { rememberPlace, rememberPlaceMany, rememberRemove, rememberMove, canUndo, undoLast } from './undo.ts';
 import { planLine, isLineType } from './line.ts';
@@ -119,6 +119,14 @@ function applyInner(state: GameState, a: Action): ApplyResult {
       evaluateUnlocks(state);
       unlockRouteFacilities(state);
       checkQuests(state);
+      return { ok: true };
+    }
+    case 'autoLinkRoute': {
+      const c = canAutoLinkRoute(state, a.route);
+      if (!c.ok) return { ok: false, reason: c.reason };
+      const placed = autoLinkRoute(state, a.route);
+      rememberPlaceMany(state, placed, c.route!.cost);
+      discoverCombos(state);
       return { ok: true };
     }
     case 'autoConnectPath': {
@@ -236,6 +244,7 @@ function applyInner(state: GameState, a: Action): ApplyResult {
       const c = canBuyParcel(state, a.id);
       if (!c.ok) return c;
       buyParcel(state, a.id);
+      installRouteForParcel(state, a.id); // fun P0: 서·남·북 땅을 사면 경로 시설이 무료로 생기고 열린다
       return { ok: true };
     }
     case 'renameCafe': {

@@ -738,6 +738,7 @@ export interface RouteState {
   totalGuests: number;    // 누적 (목표 routeGuests)
   lastArrivalDay: number; // 마지막 도착 절대 일 (셔틀·크루즈 1회 배치·항만 사용료 판정, −1 = 없음)
   broken: boolean;        // 길이 끊긴 상태 (알림은 끊길 때 한 번)
+  pending?: number;       // 주차장: 차 한 대로 묶어 내릴 손님 대기 수 (fun P0 — 2~4명이 한 차로 온다)
 }
 
 /** 렌더 전용 연출 큐 (sim이 남기고 렌더가 tick으로 새 항목만 읽는다). 최근 FX_CAP개만 보관. */
@@ -752,7 +753,8 @@ export type FxEvent =
   | { kind: 'corner'; id: string; x: number; y: number; tick: number } // fun-corner: 코너 완성 — 팻말 자리 반짝
   | { kind: 'flash'; x: number; y: number; guestId: string; text: string; tick: number } // fun-corner: 손님이 코너에서 사진 (카메라 플래시 + 말풍선)
   | { kind: 'applause'; tick: number } // fun-rank: 등급 승급 — 마당 손님 전원 박수(하트·반짝)
-  | { kind: 'parcel'; id: string; tick: number }; // fun-rank: 필지 구매 — 덮개 안개 걷힘 + 랜드마크 등장 반짝
+  | { kind: 'parcel'; id: string; tick: number } // fun-rank: 필지 구매 — 덮개 안개 걷힘 + 랜드마크 등장 반짝
+  | { kind: 'arrive'; route: RouteId; x: number; y: number; n: number; tick: number }; // fun P0: 경로 도착 — 렌터카·셔틀·배가 서고 손님 n명이 내린다 (올레는 걸어옴), 작은 문구
 
 // ---------- 상점·추첨·유니폼·가이드북 (2B-2 Task 6·7) ----------
 export interface MileageShopDef { id: string; name: string; price: number; description: string; itemId?: string; objectId?: string }
@@ -1077,6 +1079,7 @@ export interface MainState {
 export type Action =
   | { type: 'place'; objectType: string; x: number; y: number; rot?: number }
   | { type: 'placeLine'; objectType: string; from: Pt; to: Pt; order?: 'xy' | 'yx' }
+  | { type: 'autoLinkRoute'; route: RouteId } // fun P0: 경로 시설 앞 칸 → 정류장 길까지 자동 잇기 (되돌리기 1회로 전부)
   | { type: 'autoConnectPath' } // ease: 본관 문 앞까지 마을 길에서 자동으로 올렛길 잇기 (미리보기 뒤 ✓, 되돌리기 1회로 전부) // ease: 길·담 두 번 탭 — 시작→끝 직선/ㄱ자, 있는 칸은 건너뜀, 되돌리기 1회로 전부
   | { type: 'remove'; objectId: string }
   | { type: 'move'; objectId: string; x: number; y: number }

@@ -5,7 +5,7 @@
     "build:corner": "조각 셋이 모이면 팻말이 선다",
     "build:stonewall": "테이블 북서쪽이면 바람을 막는다",
     "build:tangerine_tree": "나무 3그루까지 수확이 는다",
-    "build:parking_lot": "마을 길 옆에 두면 차가 선다",
+    "build:parking_lot": "렌터카 손님이 동쪽에서 온다",
     "build:gate": "정낭은 장식. 관광객이 좋아한다",
     "cafe:menu": "메뉴는 4칸. 앞줄이 잘 팔린다",
     "cafe:ingredients": "재료가 떨어지면 그 메뉴가 쉰다",

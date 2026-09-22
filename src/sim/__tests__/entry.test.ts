@@ -4,7 +4,8 @@ import { placeObject, removeObject, canPlace, objectAt } from '../grid.ts';
 import { setSlot } from '../menu.ts';
 import { apply } from '../actions.ts';
 import { tick } from '../tick.ts';
-import { DAY_MS } from '../clock.ts';
+import { DAY_MS, HOUR_MS } from '../clock.ts';
+import { parcelPrice } from '../parcels.ts';
 import { dayIndex } from '../effects.ts';
 import { spawnGuests, hourlySpawn, updateGuests, dailyGuestCount } from '../guests.ts';
 import { guestTags } from '../../data/index.ts';
@@ -13,7 +14,7 @@ import { guestSay } from '../say.ts';
 import type { GameState, GoalCondition } from '../types.ts';
 import {
   ENTRY_ROUTES, ROUTE_IDS, entryPoints, routeConnected, routeTarget, routeSpawnPos, routeActive, routeOpened, routeState, routeStats, routeTagMult, hasRouteTag, isForeign,
-  spawnRouteWeights, routeArrivals, routeDailyCap, routeCapLeft, dailyRoutes, monthlyRoutes, routePlaceCheck, parkingSlots, parkingSites, canExpandParking, parkingExpandCost,
+  spawnRouteWeights, routeArrivals, routeDailyCap, routeCapLeft, dailyRoutes, monthlyRoutes, routePlaceCheck, parkingSlots, parkingSites, canExpandParking, parkingExpandCost, routeShare, routeLinked, installRouteForParcel, canAutoLinkRoute, ROUTE_AUTO_SITES, PARKING_SHARE_MIN, PARKING_SHARE_MAX, OLLE_SHARE,
   canSetRouteContract, routeUnlockMet, routeFacilityUnlockMet, routeAtCell, nextArrivalText, PARKING_GUESTS_PER_SLOT, SHUTTLE_FEE, CRUISE_PORT_FEE, CRUISE_EVENT,
 } from '../entry.ts';
 
@@ -43,7 +44,8 @@ test('시작 상태: 정류장만 열려 있고 나머지는 잠김·미연결',
   const s = createInitialState(1);
   const eps = entryPoints(s);
   expect(eps.find((e) => e.route === 'bus')).toMatchObject({ unlocked: true, connected: true, active: true, weight: 1 });
-  for (const r of ['parking', 'shuttle', 'cruise', 'olle'] as const) expect(eps.find((e) => e.route === r)).toMatchObject({ unlocked: false, connected: false, active: false });
+  expect(eps.find((e) => e.route === 'parking')).toMatchObject({ unlocked: true, connected: false, active: false }); // fun P0: 주차장은 처음부터 열림 (시설만 지으면 된다)
+  for (const r of ['shuttle', 'cruise', 'olle'] as const) expect(eps.find((e) => e.route === r)).toMatchObject({ unlocked: false, connected: false, active: false });
   expect(spawnRouteWeights(s).map((w) => w.route)).toEqual(['bus']);
 });
 
@@ -84,9 +86,15 @@ test('주차장: 마을 길에 붙여야 놓을 수 있고, 앞 칸(도로)이 �
   expect(routeConnected(s, 'parking')).toBe(true); // (29,15) 마을 길 → 앞 칸
   expect(routeActive(s, 'parking')).toBe(true);
   s.clock.hour = 12;
-  expect(spawnRouteWeights(s)).toEqual([{ route: 'bus', weight: 1 }, { route: 'parking', weight: 0.6 }]); // 칸당 0.15
-  s.clock.hour = 8;
-  expect(spawnRouteWeights(s).map((w) => w.route)).toEqual(['bus']); // 10~17시 밖
+  expect(spawnRouteWeights(s)).toEqual([{ route: 'bus', weight: 0.7 }, { route: 'parking', weight: PARKING_SHARE_MIN }]); // fun P0: 4칸 = 30%, 정류장은 나머지
+  expect(routeShare(s, 'parking')).toBeCloseTo(0.3);
+  placeObject(s, 'parking_lot', X(2), Y(5));
+  expect(parkingSlots(s)).toBe(8);
+  expect(routeShare(s, 'parking')).toBeCloseTo(PARKING_SHARE_MAX); // 8칸 = 45%
+  expect(routeShare(s, 'bus')).toBeCloseTo(1 - PARKING_SHARE_MAX);
+  removeObject(s, objectAt(s, X(2), Y(5))!.id);
+  s.clock.hour = 7;
+  expect(spawnRouteWeights(s).map((w) => w.route)).toEqual(['bus']); // 9~20시 밖
   s.clock.hour = 12;
   routeState(s, 'parking').todayGuests = 36;
   expect(routeCapLeft(s, 'parking')).toBe(0);
@@ -214,11 +222,10 @@ test('크루즈: 입항 이벤트 날 13시에 25~30명, 기항 1회 항만 사�
   expect(s.money).toBeGreaterThanOrEqual(m1); // 같은 기항엔 다시 안 낸다 (손님 매출로 오히려 오를 수 있다)
 });
 
-test('해금: 주차장은 쉼 시설 6개, 셔틀은 parcel6 + 열쇠, 크루즈는 ★3 + parcel3, 올레는 parcel4 — dailyRoutes가 시설·경로를 연다', () => {
+test('해금: 주차장은 처음부터(fun P0), 셔틀은 parcel6 + 열쇠, 크루즈는 parcel3(★ 조건 없음), 올레는 parcel4 — dailyRoutes가 시설·경로를 연다', () => {
   const s = cafe();
-  expect(routeFacilityUnlockMet(s, 'parking_lot')).toBe(false);
-  for (let i = 1; i <= 5; i++) placeObject(s, 'table_out', X(i), Y(3));
   expect(routeFacilityUnlockMet(s, 'parking_lot')).toBe(true);
+  expect(createInitialState(1).unlocked.objects).toContain('parking_lot');
   expect(routeUnlockMet(s, 'olle')).toBe(false);
   own(s, 'parcel4');
   expect(routeUnlockMet(s, 'olle')).toBe(true);
@@ -226,9 +233,8 @@ test('해금: 주차장은 쉼 시설 6개, 셔틀은 parcel6 + 열쇠, 크루�
   own(s, 'parcel6');
   s.inventory['tour_bus_key'] = 1;
   expect(routeUnlockMet(s, 'shuttle')).toBe(true);
-  own(s, 'parcel3');
   expect(routeUnlockMet(s, 'cruise')).toBe(false);
-  s.star = 3;
+  own(s, 'parcel3');
   expect(routeUnlockMet(s, 'cruise')).toBe(true);
   dailyRoutes(s);
   for (const id of ['parking_lot', 'shuttle_stop', 'pier', 'olle_sign']) expect(s.unlocked.objects, id).toContain(id);
@@ -301,4 +307,94 @@ test('올레길이 열려도 하루 손님 배수는 1 (가중치 share만) · �
   expect(routeAtCell(s, 0, 11)).toBe('olle');
   expect(routeAtCell(s, X(0), VILLAGE_ROAD_Y)).toBe('bus'); // 정류장 칸
   expect(routeAtCell(s, X(5), Y(2))).toBeNull();
+});
+
+// ---------- fun P0: 주차장 비중·차 도착·땅 사면 경로 자동 개통 ----------
+
+test('fun P0 비중: 주차장이 이어지면 10~17시 손님의 30%(4칸)가 주차장에서, 총량은 그대로(정류장이 나머지). 올레길은 20%', () => {
+  const s = cafe();
+  for (let i = 1; i <= 5; i++) placeObject(s, 'table_out', X(i), Y(3));
+  placeObject(s, 'parking_lot', X(0), Y(5));
+  own(s, 'parcel4');
+  installRouteForParcel(s, 'parcel4');
+  s.clock.hour = 10; // 주차장 10~17시 · 올레 8~11시
+  const w = spawnRouteWeights(s);
+  expect(w.find((x) => x.route === 'parking')?.weight).toBeCloseTo(PARKING_SHARE_MIN);
+  // 올레 표식은 자리까지 길이 안 이어져 아직 손님을 못 받는다 → 비중 0
+  expect(routeLinked(s, 'olle')).toBe(false);
+  expect(w.find((x) => x.route === 'olle')).toBeUndefined();
+  expect(w.find((x) => x.route === 'bus')?.weight).toBeCloseTo(1 - PARKING_SHARE_MIN);
+  // 자동 잇기 → 올레 20%, 정류장 50%
+  const link = canAutoLinkRoute(s, 'olle');
+  expect(link.ok, link.reason).toBe(true);
+  expect(apply(s, { type: 'autoLinkRoute', route: 'olle' }).ok).toBe(true);
+  expect(routeLinked(s, 'olle')).toBe(true);
+  const w2 = spawnRouteWeights(s);
+  expect(w2.find((x) => x.route === 'olle')?.weight).toBeCloseTo(OLLE_SHARE);
+  expect(w2.reduce((a, x) => a + x.weight, 0)).toBeCloseTo(1);
+  expect(w2.find((x) => x.route === 'bus')?.weight).toBeCloseTo(1 - PARKING_SHARE_MIN - OLLE_SHARE);
+  // 완성 시작 배치(자리 6·길)에서 열흘 굴리면 실제 비중이 표(routeStats)와 맞다: 주차장 손님 ≥ 20% (9~20시만 오니 30%보다 조금 낮다)
+  const t = createInitialState(1);
+  const site = parkingSites(t)[0]!;
+  placeObject(t, 'parking_lot', site.x, site.y);
+  own(t, 'parcel4');
+  installRouteForParcel(t, 'parcel4');
+  expect(apply(t, { type: 'autoLinkRoute', route: 'olle' }).ok).toBe(true);
+  for (let i = 0; i < 10; i++) tick(t, DAY_MS);
+  const st = routeStats(t);
+  const total = st.reduce((a, r) => a + r.totalGuests, 0);
+  const parking = st.find((r) => r.route === 'parking')!;
+  expect(total).toBeGreaterThan(40);
+  expect(parking.totalGuests / total).toBeGreaterThan(0.2);
+  expect(parking.totalGuests / total).toBeLessThan(0.5);
+  expect(st.find((r) => r.route === 'olle')!.totalGuests).toBeGreaterThan(0);
+});
+
+test('fun P0 도착 연출: 주차장 손님은 2~4명씩 렌터카 한 대로 내리고(arrive fx), 올레꾼은 걸어오는 fx', () => {
+  const s = cafe();
+  for (let i = 1; i <= 5; i++) placeObject(s, 'table_out', X(i), Y(3));
+  placeObject(s, 'parking_lot', X(0), Y(5));
+  s.clock.hour = 6;
+  const arrivals: { n: number; x: number; y: number }[] = [];
+  let seen = 0;
+  for (let h = 0; h < 18 * 3; h++) { // fx 큐는 최근 것만 남으니 시간마다 모은다
+    tick(s, HOUR_MS);
+    for (const f of s.fx) if (f.tick >= seen && f.kind === 'arrive' && f.route === 'parking') arrivals.push(f);
+    seen = s.tick;
+  }
+  expect(arrivals.length).toBeGreaterThan(0);
+  expect(arrivals.reduce((a, x) => a + x.n, 0)).toBe(s.routes.parking.totalGuests); // 주차장 손님은 전부 차로 내렸다
+  for (const a of arrivals) { expect(a.n).toBeGreaterThanOrEqual(1); expect(a.n).toBeLessThanOrEqual(4); expect(routeSpawnPos(s, 'parking')).toEqual({ x: a.x, y: a.y }); }
+  expect(arrivals.some((a) => a.n >= 2)).toBe(true);
+});
+
+test('fun P0 땅을 사면 경로가 열린다: 서쪽 밭담 골짜기 → 올레 표식(3,11)+진입점 올렛길 무료, 남쪽 샘터 → 셔틀 정류장, 북쪽 곶자왈 → 선착장(★ 무관), 장면 창 한 줄', () => {
+  const s = cafe();
+  s.money = 100_000_000;
+  own(s, 'parcel2'); own(s, 'village_edge'); // 4번은 필지 3개를 가진 뒤
+  const m0 = s.money;
+  const p4 = s.parcels.find((p) => p.id === 'parcel4')!;
+  const price = parcelPrice(s, p4);
+  expect(apply(s, { type: 'buyParcel', id: 'parcel4' }).ok).toBe(true);
+  expect(s.money).toBe(m0 - price); // 표식·길은 공짜
+  const sign = objectAt(s, ROUTE_AUTO_SITES.olle.x, ROUTE_AUTO_SITES.olle.y);
+  expect(sign?.type).toBe('olle_sign');
+  expect(sign?.build).toBeUndefined();
+  expect(routeState(s, 'olle').unlocked).toBe(true);
+  expect(routeConnected(s, 'olle')).toBe(true); // 진입점(0,11)→표식 올렛길이 깔렸다
+  expect(routeLinked(s, 'olle')).toBe(false); // 자리까지는 아직
+  expect(s.fx.some((f) => f.kind === 'scene' && f.text.includes('올레꾼이 서쪽에서'))).toBe(true);
+  // 남쪽·북쪽 (6번은 필지 5개 뒤 — 5번을 먼저)
+  own(s, 'parcel5');
+  expect(apply(s, { type: 'buyParcel', id: 'parcel6' }).ok).toBe(true);
+  expect(objectAt(s, ROUTE_AUTO_SITES.shuttle.x, ROUTE_AUTO_SITES.shuttle.y)?.type).toBe('shuttle_stop');
+  expect(routeConnected(s, 'shuttle')).toBe(true);
+  s.star = 1;
+  expect(apply(s, { type: 'buyParcel', id: 'parcel3' }).ok).toBe(true);
+  expect(objectAt(s, ROUTE_AUTO_SITES.cruise.x, ROUTE_AUTO_SITES.cruise.y)?.type).toBe('pier');
+  expect(routeState(s, 'cruise').unlocked).toBe(true);
+  expect(routeConnected(s, 'cruise')).toBe(true);
+  // 이미 그 시설이 있으면 또 세우지 않는다
+  expect(installRouteForParcel(s, 'parcel4')).toBe(false);
+  expect(Object.values(s.objects).filter((o) => o.type === 'olle_sign')).toHaveLength(1);
 });
