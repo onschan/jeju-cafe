@@ -755,7 +755,7 @@ function Game({ onExit }: { onExit: () => void }) {
     <div onPointerDownCapture={onPointerDown} style={{ position: 'relative', width: '100%', height: '100%' }}>
       <div ref={hostRef} style={{ position: 'absolute', inset: 0, touchAction: 'none' }} />
       <SiteOverlayChip />
-      <FirstTipBubble top={win ? 52 : SHELL_TOP + 10} />
+      {win ? <FirstTipBubble bottom={76} /> : <FirstTipBubble top={SHELL_TOP + 10} />}
       <TopShell onStatus={() => setWin({ kind: 'status' })} onGoal={() => setWin({ kind: 'goal' })} />
       {!place && !cardTarget && (
         <button data-testid="home-btn" aria-label="본관으로" onClick={goHome}
