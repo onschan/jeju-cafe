@@ -127,7 +127,6 @@ export function typhoonRepairCost(state: GameState, def: BigEventDef): number {
   if (base <= 0) return 0; // 야외 시설이 없으면 수리할 게 없다
   let cost = Math.max(fx.repairMin ?? 0, Math.min(fx.repairMax ?? Infinity, base * fx.repairPct / 100));
   for (const d of fx.itemDiscount ?? []) if ((state.inventory[d.itemId] ?? 0) > 0) cost *= d.mult;
-  cost *= Math.max(0, 1 - skillTotal(state, 'stormRepairDiscount')); // 트랙 D 특기 storm_ready −30%
   return Math.round(cost);
 }
 /** 이 이벤트의 이번 달 발동 확률 (deterItem이 있으면 배수) */
@@ -183,8 +182,8 @@ function applyEventStart(state: GameState, e: ActiveBigEvent): void {
     pushNotice(state, `${def.title}: 난방비 ₩${fmtNum(fx.heatingCost)}`);
   }
   if (fx.harvestMult !== undefined) {
-    // 감귤 수확철: 운반 담당 힘 ≥ carryStrength면 harvestMultCarry
-    const strong = fx.carryStrength !== undefined && staffInRole(state, 'carry').some((st) => st.stats.strength >= fx.carryStrength!);
+    // 감귤 수확철: 요리사 힘 ≥ carryStrength면 harvestMultCarry (trim: 운반 직종은 없앴다)
+    const strong = fx.carryStrength !== undefined && staffInRole(state, 'cook').some((st) => st.stats.strength >= fx.carryStrength!);
     const mult = strong && fx.harvestMultCarry !== undefined ? fx.harvestMultCarry : fx.harvestMult;
     addEffect(state, { kind: 'harvestMult', mult, days: fx.harvestDays ?? 30, source: id });
   }

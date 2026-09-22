@@ -129,7 +129,7 @@ export function giveGift(state: GameState, guestId: string, itemId: string): num
   const fit = giftFits(gift, g.type);
   const { staff, chances } = giftChances(state);
   const outcome = rollOutcome(state, { task: 'gift', staff });
-  const k = (fit ? GIFT_FIT_MULT : 1) * (1 + skillTotal(state, 'giftBonus')) * OUTCOME_MULT[outcome]; // 트랙 D 특기 gift_hands ×1.5
+  const k = (fit ? GIFT_FIT_MULT : 1) * OUTCOME_MULT[outcome];
   recordOutcome(state, { task: 'gift', outcome, staffId: staff?.id ?? null, title: gift.name, chances, lines: [`${OUTCOME_NAME[outcome]}: 선물 효과 ×${OUTCOME_MULT[outcome]}${fit ? ' · 잘 맞아요 ×2' : ''}`] });
   state.inventory[itemId] = (state.inventory[itemId] ?? 0) - 1;
   state.giftDay = dayIndex(state.clock);

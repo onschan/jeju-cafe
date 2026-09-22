@@ -139,8 +139,8 @@ test('레시피 개발 확률: 미슐랑 셰프는 대성공 2배, 행운아 +5%
   s.staff.push(chef);
   const base = developChances(s, 'drink', {}, chef);
   expect(base.great).toBeCloseTo(0.1, 3);
-  chef.title = 'tt_michelin_chef';
-  expect(developChances(s, 'drink', {}, chef).great).toBeCloseTo(0.2, 3);
+  chef.title = 'tt_pastry_pro'; // 레시피 대성공 +60%
+  expect(developChances(s, 'drink', {}, chef).great).toBeCloseTo(0.16, 3);
   chef.title = undefined; chef.skill = 'lucky';
   expect(developChances(s, 'drink', {}, chef).great).toBeCloseTo(0.15, 3);
   const c = developChances(s, 'drink', {}, chef);

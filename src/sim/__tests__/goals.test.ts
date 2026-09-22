@@ -242,7 +242,7 @@ describe('목표 체인 진행', () => {
     grantReward(s, { type: 'money', amount: 10 });
     grantReward(s, { type: 'unlockFacility', id: 'restroom' });
     grantReward(s, { type: 'unlockMenu', id: 'toast' });
-    grantReward(s, { type: 'unlockRole', id: 'guide' });
+    grantReward(s, { type: 'unlockRole', id: 'clean' });
     grantReward(s, { type: 'tickets', n: 2 });
     grantReward(s, { type: 'mileage', n: 3 });
     grantReward(s, { type: 'staffSlot', role: 'barista', n: 1 });
@@ -251,7 +251,7 @@ describe('목표 체인 진행', () => {
     expect(s.money).toBe(before.money + 10);
     expect(s.unlocked.objects).toContain('restroom');
     expect(s.unlocked.menus).toContain('toast');
-    expect(s.unlocked.roles).toContain('guide');
+    expect(s.unlocked.roles).toContain('clean');
     expect(s.tickets).toBe(before.tickets + 2);
     expect(s.mileage).toBe(before.mileage + 3);
     expect(s.slots.barista).toBe(before.barista + 1);

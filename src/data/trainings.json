@@ -1,7 +1,22 @@
 [
-  {"id": "tr_barista", "name": "바리스타 연수", "cost": 1000000, "days": 3, "stats": {"skill": 6}, "desc": "3일 자리를 비우고 기술 +6"},
-  {"id": "tr_service", "name": "서비스 연수", "cost": 800000, "days": 3, "stats": {"smile": 6}, "desc": "3일 자리를 비우고 미소 +6"},
-  {"id": "tr_stamina", "name": "오름 체력 캠프", "cost": 600000, "days": 3, "stats": {"stamina": 6}, "desc": "3일 오름을 오르고 체력 +6"},
-  {"id": "tr_strength", "name": "물허벅 지기 훈련", "cost": 600000, "days": 3, "stats": {"strength": 6}, "desc": "3일 물허벅을 지고 힘 +6"},
-  {"id": "tr_master", "name": "종합 연수(육지 출장)", "cost": 2000000, "days": 5, "stats": {"stamina": 3, "strength": 3, "skill": 3, "smile": 3}, "grantSkill": true, "requires": {"star": 3, "level": 5}, "desc": "5일 육지 출장. 전 스탯 +3, 새 특기 1개 (★3·Lv5부터)"}
+  {
+    "id": "tr_barista",
+    "name": "바리스타 연수",
+    "cost": 1000000,
+    "days": 3,
+    "stats": {
+      "skill": 6
+    },
+    "desc": "3일 자리를 비우고 기술 +6"
+  },
+  {
+    "id": "tr_service",
+    "name": "서비스 연수",
+    "cost": 800000,
+    "days": 3,
+    "stats": {
+      "smile": 6
+    },
+    "desc": "3일 자리를 비우고 미소 +6"
+  }
 ]

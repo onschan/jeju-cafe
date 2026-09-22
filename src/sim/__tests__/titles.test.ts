@@ -11,12 +11,12 @@ import { drawCandidates, salaryOf, cleanPowerOf, gardenBonusOf, promoBonusOf, in
 import { staffWith } from './staff.test.ts';
 import type { GameState, TitleGrade } from '../types.ts';
 
-test('칭호 30개: 숙련 12·프로 10·전설 8, id 유일, 직종 id 유효, 효과 1개 이상, 등급 급여 배수 1.2/1.6/2.5', () => {
-  expect(TITLES.length).toBe(30);
-  expect(TITLES.filter((t) => t.grade === 'skilled').length).toBe(12);
-  expect(TITLES.filter((t) => t.grade === 'pro').length).toBe(10);
-  expect(TITLES.filter((t) => t.grade === 'legend').length).toBe(8);
-  expect(new Set(TITLES.map((t) => t.id)).size).toBe(30);
+test('칭호 12개: 숙련 4·프로 4·전설 4, id 유일, 직종 id 유효, 효과 1개 이상, 등급 급여 배수 1.2/1.6/2.5', () => {
+  expect(TITLES.length).toBe(12);
+  expect(TITLES.filter((t) => t.grade === 'skilled').length).toBe(4);
+  expect(TITLES.filter((t) => t.grade === 'pro').length).toBe(4);
+  expect(TITLES.filter((t) => t.grade === 'legend').length).toBe(4);
+  expect(new Set(TITLES.map((t) => t.id)).size).toBe(12);
   const roleIds = new Set(ROLES.map((r) => r.id));
   for (const t of TITLES) {
     expect(t.effects.length).toBeGreaterThan(0);
@@ -130,16 +130,4 @@ test('효과 훅: 청소·수확·홍보·요금 할인·기력·투어·대결 
   const e0 = clean.energy;
   hourlyEnergy(s);
   expect(clean.energy).toBeCloseTo(e0 - 2 * 0.8, 5);
-  const garden = staffWith({}, 'garden');
-  garden.title = 'tt_orchard_master'; // 수확 +35%
-  s.staff.push(garden);
-  expect(gardenBonusOf(s)).toBeCloseTo(1 + 0.5 + 0.35, 5);
-  const promo = staffWith({}, 'hall');
-  promo.title = 'tt_sns_celeb'; // 홍보 +30%
-  s.staff.push(promo);
-  expect(promoBonusOf(s)).toBeCloseTo(1.3, 5);
-  const carry = staffWith({}, 'carry');
-  carry.title = 'tt_iron_body'; // 재료비 −5%
-  s.staff.push(carry);
-  expect(ingredientDiscount(s)).toBeCloseTo(10 / 500 + 0.05, 5);
 });

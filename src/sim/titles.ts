@@ -70,7 +70,7 @@ export function rollGrade(state: GameState, tier: JobTier, guaranteePro = false)
 }
 
 /** 풀 정의의 상한이 가장 높은 스탯으로 잘 맞는 직종을 고른다 (직종별 칭호 풀) */
-const STAT_ROLES: Record<StatKey, RoleId[]> = { skill: ['barista', 'cook'], smile: ['hall', 'guide', 'promo'], strength: ['carry', 'garden'], stamina: ['clean', 'carry'] };
+const STAT_ROLES: Record<StatKey, RoleId[]> = { skill: ['barista', 'cook'], smile: ['hall'], strength: ['cook'], stamina: ['clean'] };
 export function fitRolesOf(def: Pick<StaffPoolDef, 'statCaps'>): RoleId[] {
   const best = (Object.keys(STAT_ROLES) as StatKey[]).sort((a, b) => def.statCaps[b] - def.statCaps[a])[0]!;
   return STAT_ROLES[best];

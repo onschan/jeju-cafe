@@ -96,9 +96,9 @@ test('메뉴 원가는 가격의 60% 미만 (§4.2 #4 원가 인상 후 크루�
   }
 });
 
-test('역할 8, 스킬 30, 홍보 7(사과 이벤트 포함), 이름 60', () => {
-  expect(ROLES.length).toBe(8);
-  expect(SKILLS.length).toBe(30);
+test('역할 4, 특기 10, 홍보 7(사과 이벤트 포함), 이름 60', () => {
+  expect(ROLES.length).toBe(4);
+  expect(SKILLS.length).toBe(10);
   expect(PROMOTIONS.length).toBe(7);
   expect(NAMES.names.length).toBeGreaterThanOrEqual(60);
 });
@@ -107,7 +107,7 @@ test('역할 정의: id·stat이 유효하다', () => {
   for (const r of ROLES) {
     expect(roleDef(r.id).stat).toBe(r.stat);
   }
-  expect(ROLES.filter((r) => r.unlockedAtStart).map((r) => r.id).sort()).toEqual(['barista', 'cook', 'hall']);
+  expect(ROLES.filter((r) => r.unlockedAtStart).map((r) => r.id).sort()).toEqual(['barista', 'clean', 'cook', 'hall']);
 });
 
 test('대사 데이터: 손님 타입마다(없으면 삼춘·관광객 말투로 대체) happy·meh(no_menu/scenery/wait) 5개씩', () => {

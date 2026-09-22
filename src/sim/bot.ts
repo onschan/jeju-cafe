@@ -187,7 +187,7 @@ export const BOT_RECIPES = 5;
 /** 2년차부터 빈 직원 슬롯을 채운다 (돈 이만큼 넘을 때) — §4.6 직원 3 → 5 → 8 */
 export const BOT_HIRE_MIN_MONEY = 5_000_000;
 export const BOT_HIRE_YEAR = 2;
-export const BOT_HIRE_ORDER: RoleId[] = ['clean', 'hall', 'barista', 'cook', 'carry', 'guide', 'garden', 'promo'];
+export const BOT_HIRE_ORDER: RoleId[] = ['clean', 'hall', 'barista', 'cook'];
 /** 한 달에 수리하는 낡은 시설 수 (트랙 A 노후·태풍 파손) */
 export const BOT_REPAIRS_PER_MONTH = 6;
 /** 연수: 랭크 3부터 돈 300만 넘으면 한 달에 한 명 (목표 g33·도전) */

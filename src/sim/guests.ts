@@ -438,12 +438,9 @@ export function extraSatisfaction(state: GameState, g: Guest, seat: PlacedObject
 }
 /** 저녁 손님 기준 시각 (특기 night_owl) */
 export const NIGHT_HOUR = 18;
-/** 만족 게이지 배수 (트랙 D 특기): 단골 전환 regularBonus + 단체 손님 groupSatisfaction + 18시 이후 nightSatisfaction */
-export function skillSatMult(state: GameState, g: Guest): number {
-  let m = 1 + skillTotal(state, 'regularBonus');
-  if (guestTags(g.type).group) m += skillTotal(state, 'groupSatisfaction');
-  if (state.clock.hour >= NIGHT_HOUR) m += skillTotal(state, 'nightSatisfaction');
-  return m;
+/** 만족 게이지 배수 (trim: 특기 10에는 만족 배수가 없어 1 고정 — 훅은 남겨 둔다) */
+export function skillSatMult(_state: GameState, _g: Guest): number {
+  return 1;
 }
 
 /** 조리가 끝났을 때 만족 판정. 경치 + 홀 서비스 + 좌석 인기 보정 + 메뉴 취향 + 콤보·청결 가산 ≥ 손님층 기준이면 happy → 연구 진행(5명당 1, 취향 일치는 2명 몫)·만족 게이지·타입 효과. 취향이 맞으면 호감도 ×2, 인생샷이면 사진. */
@@ -593,7 +590,7 @@ export function pickVisit(state: GameState, g: Guest, from: Pt): { obj: PlacedOb
 
 /** 시설 도착: 이용료를 내고 시설 인기 +1(상한), 숫자 팝업 연출 */
 function useFacility(state: GameState, g: Guest, obj: PlacedObject): void {
-  const fee = Math.round(facilityFee(state, obj) * (1 + skillTotal(state, 'feeBonus')) * siteBonus(state, obj).feeMult * streetFeeMult(state, obj)); // 트랙 A: Lv 요금 +10%/+20% · 트랙 D 특기 haggler +5% · 트랙 F 입지 · fun 거리 보너스
+  const fee = Math.round(facilityFee(state, obj) * siteBonus(state, obj).feeMult * streetFeeMult(state, obj)); // 트랙 A: Lv 요금 +10%/+20% · 자리 전망 · fun 거리 보너스
   recordUse(obj);
   state.money += fee;
   state.monthIncome += fee;

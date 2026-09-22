@@ -1,5 +1,5 @@
 import type { GameState, ApplyResult, Candidate, Staff, Stats, StatKey, RoleId, JobTier, SkillEffect, Pt, StaffPoolDef, RecruitTierDef } from './types.ts';
-import { RECRUIT_TIERS, STAFF_POOL, roleDef, skillDef, objectDef, staffPoolDef, recruitTierDef, ROLES } from '../data/index.ts';
+import { RECRUIT_TIERS, STAFF_POOL, SKILLS, roleDef, objectDef, staffPoolDef, recruitTierDef, ROLES } from '../data/index.ts';
 import { randInt, pickWeighted } from './rng.ts';
 import { monthIndex } from './clock.ts';
 import { isWalkable, findPath, walkableNeighborsOf, moveAlong, walkSpeedMult } from './path.ts';
@@ -116,7 +116,9 @@ export function energyFactor(staff: Staff): number {
 function skillValue(staff: { skill: string; extraSkills?: string[] }, type: SkillEffect['type']): number {
   let v = 0;
   for (const id of skillsOf(staff)) {
-    const e = skillDef(id).effect;
+    const def = SKILLS.find((s) => s.id === id); // trim: 없어진 특기가 옛 저장에 남아 있어도 0으로 넘긴다
+    if (!def) continue;
+    const e = def.effect;
     if (e.type === type && 'value' in e) v += e.value;
   }
   return v;
@@ -133,9 +135,9 @@ export function roleEffect(state: GameState, role: RoleId): number {
   return staffInRole(state, role).reduce((s, st) => s + st.stats[key] * energyFactor(st), 0);
 }
 
-/** 운반 효과와 절약 스킬로 재료비 할인. 최대 30%. */
+/** 요리사 손과 절약 특기로 재료비 할인. 최대 30%. */
 export function ingredientDiscount(state: GameState): number {
-  return Math.min(0.3, roleEffect(state, 'carry') / 500 + skillTotal(state, 'ingredientDiscount') + titleBonus(state, 'discount')); // staff-luck 칭호
+  return Math.min(0.3, roleEffect(state, 'cook') / 500 + skillTotal(state, 'ingredientDiscount') + titleBonus(state, 'discount')); // staff-luck 칭호
 }
 
 // ---------- 신설 직종 효과 훅 (§3.6.1) — A(청결)·농원 수확·홍보가 곱한다 ----------
@@ -148,27 +150,24 @@ export function cleanPowerOf(state: GameState): number {
 export const GARDEN_BONUS_PER_STAFF = 0.5;
 export const GARDEN_STAFF_MAX = 2;
 export const GARDEN_DECAY_FACTOR = 0.5;
-/** 농원 수확 배수 = 1 + 0.5 × 농원지기 수(최대 2) + 농원지기 특기 합. 없으면 1. */
+/** 농원 수확 배수 = 1 + 0.5 × 청소 직원 수(최대 2, 밭도 같이 돌본다). trim: 농원지기 직종은 없앴다. */
 export function gardenBonusOf(state: GameState): number {
-  const n = Math.min(GARDEN_STAFF_MAX, staffInRole(state, 'garden').length);
-  return 1 + GARDEN_BONUS_PER_STAFF * n + skillTotal(state, 'harvestBonus') + titleBonus(state, 'harvest'); // staff-luck 칭호(감귤 장인…)
+  const n = Math.min(GARDEN_STAFF_MAX, staffInRole(state, 'clean').length);
+  return 1 + GARDEN_BONUS_PER_STAFF * n;
 }
-/** 농원 시설 노후 배수: 농원지기가 있으면 0.5 (A의 upgrade/노후가 곱한다) */
+/** 농원 시설 노후 배수: 청소 직원이 있으면 0.5 (A의 upgrade/노후가 곱한다) */
 export function gardenDecayOf(state: GameState): number {
-  return staffInRole(state, 'garden').length > 0 ? GARDEN_DECAY_FACTOR : 1;
+  return staffInRole(state, 'clean').length > 0 ? GARDEN_DECAY_FACTOR : 1;
 }
-export const PROMO_EFFECT_BONUS = 1.2;
-export const PROMO_ENERGY_FACTOR = 0.5;
-/** 홍보 효과 배수: 홍보 담당이 있으면 1.2 (× 칭호 홍보 효과, staff-luck) */
-export function promoBonusOf(state: GameState): number {
-  return (staffInRole(state, 'promo').length > 0 ? PROMO_EFFECT_BONUS : 1) * (1 + titleBonus(state, 'promo'));
+/** 홍보 효과·기력 배수 (trim: 홍보 담당 직종을 없애 1 고정 — 훅은 남겨 둔다) */
+export function promoBonusOf(_state: GameState): number {
+  return 1;
 }
-/** 홍보 활동 기력 소모 배수: 홍보 담당이 있으면 0.5 */
-export function promoEnergyFactorOf(state: GameState): number {
-  return staffInRole(state, 'promo').length > 0 ? PROMO_ENERGY_FACTOR : 1;
+export function promoEnergyFactorOf(_state: GameState): number {
+  return 1;
 }
 
-/** 내 필지에 다 지어진, 수확 있는 농원 시설 수 — 농원지기 해금 조건 */
+/** 내 필지에 다 지어진, 수확 있는 농원 시설 수 */
 export function farmCount(state: GameState): number {
   let n = 0;
   for (const o of Object.values(state.objects)) {

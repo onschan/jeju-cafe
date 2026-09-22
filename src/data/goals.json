@@ -668,8 +668,8 @@
     },
     "reward": [
       {
-        "type": "unlockRole",
-        "id": "carry"
+        "type": "tickets",
+        "n": 2
       },
       {
         "type": "money",
@@ -1169,8 +1169,8 @@
     },
     "reward": [
       {
-        "type": "unlockRole",
-        "id": "guide"
+        "type": "tickets",
+        "n": 2
       },
       {
         "type": "money",
@@ -1515,7 +1515,7 @@
     "reward": [
       {
         "type": "staffSlot",
-        "role": "carry",
+        "role": "hall",
         "n": 1
       },
       {
@@ -1896,7 +1896,7 @@
     "reward": [
       {
         "type": "staffSlot",
-        "role": "guide",
+        "role": "hall",
         "n": 1
       }
     ],

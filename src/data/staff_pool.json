@@ -1,29 +1,704 @@
 [
-  {"id": "st_kim_minjun", "name": "김민준", "tier": 1, "stats": {"stamina": 30, "strength": 25, "skill": 10, "smile": 15}, "statCaps": {"stamina": 60, "strength": 55, "skill": 28, "smile": 37}, "maxLevel": 5, "baseSalary": 400000, "skill": "hardy", "face": {"hair": 0, "skin": 0, "top": 0}, "bio": "동네 청년. 힘쓰는 일은 자신 있어요"},
-  {"id": "st_lee_seoyeon", "name": "이서연", "tier": 1, "stats": {"stamina": 15, "strength": 10, "skill": 20, "smile": 30}, "statCaps": {"stamina": 37, "strength": 28, "skill": 46, "smile": 60}, "maxLevel": 5, "baseSalary": 450000, "skill": "jeju_friendly", "face": {"hair": 3, "skin": 0, "top": 5}, "bio": "웃음이 많은 옆집 언니"},
-  {"id": "st_park_doyun", "name": "박도윤", "tier": 1, "stats": {"stamina": 20, "strength": 15, "skill": 30, "smile": 12}, "statCaps": {"stamina": 46, "strength": 37, "skill": 60, "smile": 32}, "maxLevel": 5, "baseSalary": 450000, "skill": "coffee_lover", "face": {"hair": 5, "skin": 1, "top": 2}, "bio": "집에서 핸드드립을 내리는 커피 덕후"},
-  {"id": "st_kang_siwoo", "name": "강시우", "tier": 1, "stats": {"stamina": 35, "strength": 40, "skill": 5, "smile": 10}, "statCaps": {"stamina": 65, "strength": 65, "skill": 20, "smile": 28}, "maxLevel": 5, "baseSalary": 500000, "skill": "frugal", "face": {"hair": 1, "skin": 2, "top": 3}, "bio": "말수는 적지만 짐은 잘 날라요"},
-  {"id": "st_jang_yejun", "name": "장예준", "tier": 1, "stats": {"stamina": 25, "strength": 20, "skill": 12, "smile": 28}, "statCaps": {"stamina": 55, "strength": 46, "skill": 32, "smile": 60}, "maxLevel": 6, "baseSalary": 500000, "skill": "photogenic", "face": {"hair": 2, "skin": 0, "top": 7}, "bio": "사진 찍히는 걸 좋아하는 대학생"},
-  {"id": "st_jeong_haeun", "name": "정하은", "tier": 2, "stats": {"stamina": 22, "strength": 22, "skill": 22, "smile": 22}, "statCaps": {"stamina": 50, "strength": 50, "skill": 50, "smile": 50}, "maxLevel": 6, "baseSalary": 550000, "skill": "lucky", "face": {"hair": 4, "skin": 1, "top": 1}, "bio": "뭐든 고르게 잘하는 만능 알바"},
-  {"id": "st_yoon_jia", "name": "윤지아", "tier": 2, "stats": {"stamina": 18, "strength": 12, "skill": 35, "smile": 25}, "statCaps": {"stamina": 42, "strength": 32, "skill": 70, "smile": 55}, "maxLevel": 6, "baseSalary": 650000, "skill": "dessert_lover", "face": {"hair": 6, "skin": 0, "top": 6}, "bio": "제과 학원 출신. 손이 야무져요"},
-  {"id": "st_han_jiho", "name": "한지호", "tier": 2, "stats": {"stamina": 35, "strength": 30, "skill": 30, "smile": 30}, "statCaps": {"stamina": 73, "strength": 64, "skill": 64, "smile": 64}, "maxLevel": 7, "baseSalary": 800000, "skill": "tough", "face": {"hair": 7, "skin": 2, "top": 4}, "bio": "카페 3곳을 거친 경력직"},
-  {"id": "st_oh_sua", "name": "오수아", "tier": 2, "stats": {"stamina": 25, "strength": 20, "skill": 50, "smile": 30}, "statCaps": {"stamina": 55, "strength": 46, "skill": 80, "smile": 64}, "maxLevel": 7, "baseSalary": 950000, "skill": "coffee_master", "face": {"hair": 3, "skin": 1, "top": 0}, "bio": "라테 아트 대회 입상자"},
-  {"id": "st_seo_junseo", "name": "서준서", "tier": 2, "stats": {"stamina": 28, "strength": 22, "skill": 55, "smile": 28}, "statCaps": {"stamina": 60, "strength": 50, "skill": 80, "smile": 60}, "maxLevel": 7, "baseSalary": 950000, "skill": "nimble_fingers", "face": {"hair": 0, "skin": 1, "top": 2}, "bio": "호텔 주방에서 일하던 요리사"},
-  {"id": "st_shin_yuna", "name": "신유나", "tier": 3, "stats": {"stamina": 30, "strength": 20, "skill": 25, "smile": 55}, "statCaps": {"stamina": 64, "strength": 46, "skill": 55, "smile": 80}, "maxLevel": 7, "baseSalary": 900000, "skill": "insta_vibe", "face": {"hair": 5, "skin": 0, "top": 5}, "bio": "팔로워 많은 여행 인플루언서"},
-  {"id": "st_kwon_dohyun", "name": "권도현", "tier": 3, "stats": {"stamina": 45, "strength": 40, "skill": 25, "smile": 25}, "statCaps": {"stamina": 80, "strength": 80, "skill": 55, "smile": 55}, "maxLevel": 7, "baseSalary": 850000, "skill": "thrifty", "face": {"hair": 1, "skin": 2, "top": 3}, "bio": "오름 마라톤 완주자. 지치지 않아요"},
-  {"id": "st_hwang_harin", "name": "황하린", "tier": 3, "stats": {"stamina": 30, "strength": 25, "skill": 45, "smile": 35}, "statCaps": {"stamina": 64, "strength": 55, "skill": 85, "smile": 73}, "maxLevel": 8, "baseSalary": 1000000, "skill": "meal_lover", "face": {"hair": 2, "skin": 1, "top": 1}, "bio": "향토 음식 연구가"},
-  {"id": "st_song_jimin", "name": "송지민", "tier": 3, "stats": {"stamina": 30, "strength": 25, "skill": 35, "smile": 50}, "statCaps": {"stamina": 64, "strength": 55, "skill": 73, "smile": 85}, "maxLevel": 8, "baseSalary": 1000000, "skill": "popular", "face": {"hair": 4, "skin": 0, "top": 6}, "bio": "어디서든 친구를 만드는 사람"},
-  {"id": "st_ryu_siyun", "name": "류시윤", "tier": 3, "stats": {"stamina": 35, "strength": 35, "skill": 55, "smile": 25}, "statCaps": {"stamina": 73, "strength": 73, "skill": 85, "smile": 55}, "maxLevel": 8, "baseSalary": 1050000, "skill": "quick_hands", "face": {"hair": 6, "skin": 2, "top": 7}, "bio": "손이 보이지 않을 만큼 빨라요"},
-  {"id": "st_go_hyunwoo", "name": "고현우", "tier": 4, "stats": {"stamina": 45, "strength": 40, "skill": 55, "smile": 70}, "statCaps": {"stamina": 90, "strength": 82, "skill": 90, "smile": 90}, "maxLevel": 9, "baseSalary": 1400000, "skill": "jeju_native", "face": {"hair": 7, "skin": 1, "top": 4}, "bio": "제주 토박이 호텔리어"},
-  {"id": "st_moon_naeun", "name": "문나은", "tier": 4, "stats": {"stamina": 50, "strength": 45, "skill": 80, "smile": 55}, "statCaps": {"stamina": 95, "strength": 91, "skill": 95, "smile": 95}, "maxLevel": 9, "baseSalary": 1700000, "skill": "dessert_master", "face": {"hair": 3, "skin": 0, "top": 0}, "bio": "파리에서 돌아온 파티시에"},
-  {"id": "st_yang_junhyuk", "name": "양준혁", "tier": 4, "stats": {"stamina": 50, "strength": 45, "skill": 85, "smile": 55}, "statCaps": {"stamina": 95, "strength": 91, "skill": 95, "smile": 95}, "maxLevel": 9, "baseSalary": 1700000, "skill": "meal_master", "face": {"hair": 0, "skin": 2, "top": 2}, "bio": "미슐랭 주방 경력의 셰프"},
-  {"id": "st_son_yerin", "name": "손예린", "tier": 4, "stats": {"stamina": 55, "strength": 40, "skill": 55, "smile": 85}, "statCaps": {"stamina": 95, "strength": 82, "skill": 95, "smile": 95}, "maxLevel": 9, "baseSalary": 1650000, "skill": "face_memory", "face": {"hair": 5, "skin": 0, "top": 5}, "bio": "한 번 본 손님은 잊지 않아요"},
-  {"id": "st_bae_jihun", "name": "배지훈", "tier": 4, "stats": {"stamina": 90, "strength": 80, "skill": 40, "smile": 45}, "statCaps": {"stamina": 95, "strength": 95, "skill": 82, "smile": 91}, "maxLevel": 9, "baseSalary": 1500000, "skill": "clean_master", "face": {"hair": 1, "skin": 2, "top": 3}, "bio": "전직 소방관. 청소가 취미예요"},
-  {"id": "st_baek_soyul", "name": "백소율", "tier": 5, "stats": {"stamina": 65, "strength": 60, "skill": 65, "smile": 65}, "statCaps": {"stamina": 100, "strength": 100, "skill": 100, "smile": 100}, "maxLevel": 10, "baseSalary": 1900000, "skill": "researcher", "face": {"hair": 4, "skin": 1, "top": 6}, "bio": "식품공학 석사. 뭐든 연구해요"},
-  {"id": "st_heo_taeyang", "name": "허태양", "tier": 5, "stats": {"stamina": 55, "strength": 50, "skill": 85, "smile": 50}, "statCaps": {"stamina": 100, "strength": 100, "skill": 100, "smile": 100}, "maxLevel": 10, "baseSalary": 1900000, "skill": "star_student", "face": {"hair": 2, "skin": 0, "top": 1}, "bio": "배우는 속도가 남달라요"},
-  {"id": "st_sim_arin", "name": "심아린", "tier": 5, "stats": {"stamina": 55, "strength": 50, "skill": 80, "smile": 60}, "statCaps": {"stamina": 100, "strength": 100, "skill": 100, "smile": 100}, "maxLevel": 10, "baseSalary": 2000000, "skill": "polyglot", "face": {"hair": 6, "skin": 1, "top": 7}, "bio": "5개 국어를 하는 통역사 출신"},
-  {"id": "st_retired_haenyeo", "name": "고순덕", "tier": 5, "stats": {"stamina": 80, "strength": 70, "skill": 50, "smile": 60}, "statCaps": {"stamina": 100, "strength": 100, "skill": 100, "smile": 100}, "maxLevel": 10, "baseSalary": 1600000, "skill": "storm_ready", "face": {"hair": 7, "skin": 2, "top": 4}, "bio": "은퇴한 상군 해녀. 태풍은 익숙해요"},
-  {"id": "st_nam_jiwon", "name": "남지원", "tier": 5, "stats": {"stamina": 50, "strength": 40, "skill": 55, "smile": 80}, "statCaps": {"stamina": 100, "strength": 82, "skill": 100, "smile": 100}, "maxLevel": 10, "baseSalary": 2200000, "skill": "group_host", "face": {"hair": 3, "skin": 0, "top": 0}, "bio": "단체 관광 가이드 10년 차"},
-  {"id": "st_pony_special", "name": "조랑말 알바", "tier": 0, "stats": {"stamina": 99, "strength": 99, "skill": 60, "smile": 99}, "statCaps": {"stamina": 120, "strength": 120, "skill": 118, "smile": 120}, "maxLevel": 12, "baseSalary": 1000000, "skill": "orchard_keeper", "face": {"hair": 7, "skin": 1, "top": 3}, "bio": "말을 못 하지만 일은 잘해요 (소라로 부른다)"},
-  {"id": "st_dolhareubang", "name": "돌하르방", "tier": 0, "stats": {"stamina": 99, "strength": 99, "skill": 99, "smile": 99}, "statCaps": {"stamina": 120, "strength": 120, "skill": 120, "smile": 120}, "maxLevel": 12, "baseSalary": 2200000, "skill": "night_owl", "face": {"hair": 7, "skin": 2, "top": 2}, "bio": "밤에 움직이는 걸 본 사람이 있대요"}
+  {
+    "id": "st_kim_minjun",
+    "name": "김민준",
+    "tier": 1,
+    "stats": {
+      "stamina": 30,
+      "strength": 25,
+      "skill": 10,
+      "smile": 15
+    },
+    "statCaps": {
+      "stamina": 60,
+      "strength": 55,
+      "skill": 28,
+      "smile": 37
+    },
+    "maxLevel": 5,
+    "baseSalary": 400000,
+    "skill": "tough",
+    "face": {
+      "hair": 0,
+      "skin": 0,
+      "top": 0
+    },
+    "bio": "동네 청년. 힘쓰는 일은 자신 있어요"
+  },
+  {
+    "id": "st_lee_seoyeon",
+    "name": "이서연",
+    "tier": 1,
+    "stats": {
+      "stamina": 15,
+      "strength": 10,
+      "skill": 20,
+      "smile": 30
+    },
+    "statCaps": {
+      "stamina": 37,
+      "strength": 28,
+      "skill": 46,
+      "smile": 60
+    },
+    "maxLevel": 5,
+    "baseSalary": 450000,
+    "skill": "popular",
+    "face": {
+      "hair": 3,
+      "skin": 0,
+      "top": 5
+    },
+    "bio": "웃음이 많은 옆집 언니"
+  },
+  {
+    "id": "st_park_doyun",
+    "name": "박도윤",
+    "tier": 1,
+    "stats": {
+      "stamina": 20,
+      "strength": 15,
+      "skill": 30,
+      "smile": 12
+    },
+    "statCaps": {
+      "stamina": 46,
+      "strength": 37,
+      "skill": 60,
+      "smile": 32
+    },
+    "maxLevel": 5,
+    "baseSalary": 450000,
+    "skill": "coffee_master",
+    "face": {
+      "hair": 5,
+      "skin": 1,
+      "top": 2
+    },
+    "bio": "집에서 핸드드립을 내리는 커피 덕후"
+  },
+  {
+    "id": "st_kang_siwoo",
+    "name": "강시우",
+    "tier": 1,
+    "stats": {
+      "stamina": 35,
+      "strength": 40,
+      "skill": 5,
+      "smile": 10
+    },
+    "statCaps": {
+      "stamina": 65,
+      "strength": 65,
+      "skill": 20,
+      "smile": 28
+    },
+    "maxLevel": 5,
+    "baseSalary": 500000,
+    "skill": "thrifty",
+    "face": {
+      "hair": 1,
+      "skin": 2,
+      "top": 3
+    },
+    "bio": "말수는 적지만 짐은 잘 날라요"
+  },
+  {
+    "id": "st_jang_yejun",
+    "name": "장예준",
+    "tier": 1,
+    "stats": {
+      "stamina": 25,
+      "strength": 20,
+      "skill": 12,
+      "smile": 28
+    },
+    "statCaps": {
+      "stamina": 55,
+      "strength": 46,
+      "skill": 32,
+      "smile": 60
+    },
+    "maxLevel": 6,
+    "baseSalary": 500000,
+    "skill": "popular",
+    "face": {
+      "hair": 2,
+      "skin": 0,
+      "top": 7
+    },
+    "bio": "사진 찍히는 걸 좋아하는 대학생"
+  },
+  {
+    "id": "st_jeong_haeun",
+    "name": "정하은",
+    "tier": 2,
+    "stats": {
+      "stamina": 22,
+      "strength": 22,
+      "skill": 22,
+      "smile": 22
+    },
+    "statCaps": {
+      "stamina": 50,
+      "strength": 50,
+      "skill": 50,
+      "smile": 50
+    },
+    "maxLevel": 6,
+    "baseSalary": 550000,
+    "skill": "lucky",
+    "face": {
+      "hair": 4,
+      "skin": 1,
+      "top": 1
+    },
+    "bio": "뭐든 고르게 잘하는 만능 알바"
+  },
+  {
+    "id": "st_yoon_jia",
+    "name": "윤지아",
+    "tier": 2,
+    "stats": {
+      "stamina": 18,
+      "strength": 12,
+      "skill": 35,
+      "smile": 25
+    },
+    "statCaps": {
+      "stamina": 42,
+      "strength": 32,
+      "skill": 70,
+      "smile": 55
+    },
+    "maxLevel": 6,
+    "baseSalary": 650000,
+    "skill": "dessert_master",
+    "face": {
+      "hair": 6,
+      "skin": 0,
+      "top": 6
+    },
+    "bio": "제과 학원 출신. 손이 야무져요"
+  },
+  {
+    "id": "st_han_jiho",
+    "name": "한지호",
+    "tier": 2,
+    "stats": {
+      "stamina": 35,
+      "strength": 30,
+      "skill": 30,
+      "smile": 30
+    },
+    "statCaps": {
+      "stamina": 73,
+      "strength": 64,
+      "skill": 64,
+      "smile": 64
+    },
+    "maxLevel": 7,
+    "baseSalary": 800000,
+    "skill": "tough",
+    "face": {
+      "hair": 7,
+      "skin": 2,
+      "top": 4
+    },
+    "bio": "카페 3곳을 거친 경력직"
+  },
+  {
+    "id": "st_oh_sua",
+    "name": "오수아",
+    "tier": 2,
+    "stats": {
+      "stamina": 25,
+      "strength": 20,
+      "skill": 50,
+      "smile": 30
+    },
+    "statCaps": {
+      "stamina": 55,
+      "strength": 46,
+      "skill": 80,
+      "smile": 64
+    },
+    "maxLevel": 7,
+    "baseSalary": 950000,
+    "skill": "coffee_master",
+    "face": {
+      "hair": 3,
+      "skin": 1,
+      "top": 0
+    },
+    "bio": "라테 아트 대회 입상자"
+  },
+  {
+    "id": "st_seo_junseo",
+    "name": "서준서",
+    "tier": 2,
+    "stats": {
+      "stamina": 28,
+      "strength": 22,
+      "skill": 55,
+      "smile": 28
+    },
+    "statCaps": {
+      "stamina": 60,
+      "strength": 50,
+      "skill": 80,
+      "smile": 60
+    },
+    "maxLevel": 7,
+    "baseSalary": 950000,
+    "skill": "quick_hands",
+    "face": {
+      "hair": 0,
+      "skin": 1,
+      "top": 2
+    },
+    "bio": "호텔 주방에서 일하던 요리사"
+  },
+  {
+    "id": "st_shin_yuna",
+    "name": "신유나",
+    "tier": 3,
+    "stats": {
+      "stamina": 30,
+      "strength": 20,
+      "skill": 25,
+      "smile": 55
+    },
+    "statCaps": {
+      "stamina": 64,
+      "strength": 46,
+      "skill": 55,
+      "smile": 80
+    },
+    "maxLevel": 7,
+    "baseSalary": 900000,
+    "skill": "popular",
+    "face": {
+      "hair": 5,
+      "skin": 0,
+      "top": 5
+    },
+    "bio": "팔로워 많은 여행 인플루언서"
+  },
+  {
+    "id": "st_kwon_dohyun",
+    "name": "권도현",
+    "tier": 3,
+    "stats": {
+      "stamina": 45,
+      "strength": 40,
+      "skill": 25,
+      "smile": 25
+    },
+    "statCaps": {
+      "stamina": 80,
+      "strength": 80,
+      "skill": 55,
+      "smile": 55
+    },
+    "maxLevel": 7,
+    "baseSalary": 850000,
+    "skill": "thrifty",
+    "face": {
+      "hair": 1,
+      "skin": 2,
+      "top": 3
+    },
+    "bio": "오름 마라톤 완주자. 지치지 않아요"
+  },
+  {
+    "id": "st_hwang_harin",
+    "name": "황하린",
+    "tier": 3,
+    "stats": {
+      "stamina": 30,
+      "strength": 25,
+      "skill": 45,
+      "smile": 35
+    },
+    "statCaps": {
+      "stamina": 64,
+      "strength": 55,
+      "skill": 85,
+      "smile": 73
+    },
+    "maxLevel": 8,
+    "baseSalary": 1000000,
+    "skill": "meal_master",
+    "face": {
+      "hair": 2,
+      "skin": 1,
+      "top": 1
+    },
+    "bio": "향토 음식 연구가"
+  },
+  {
+    "id": "st_song_jimin",
+    "name": "송지민",
+    "tier": 3,
+    "stats": {
+      "stamina": 30,
+      "strength": 25,
+      "skill": 35,
+      "smile": 50
+    },
+    "statCaps": {
+      "stamina": 64,
+      "strength": 55,
+      "skill": 73,
+      "smile": 85
+    },
+    "maxLevel": 8,
+    "baseSalary": 1000000,
+    "skill": "popular",
+    "face": {
+      "hair": 4,
+      "skin": 0,
+      "top": 6
+    },
+    "bio": "어디서든 친구를 만드는 사람"
+  },
+  {
+    "id": "st_ryu_siyun",
+    "name": "류시윤",
+    "tier": 3,
+    "stats": {
+      "stamina": 35,
+      "strength": 35,
+      "skill": 55,
+      "smile": 25
+    },
+    "statCaps": {
+      "stamina": 73,
+      "strength": 73,
+      "skill": 85,
+      "smile": 55
+    },
+    "maxLevel": 8,
+    "baseSalary": 1050000,
+    "skill": "quick_hands",
+    "face": {
+      "hair": 6,
+      "skin": 2,
+      "top": 7
+    },
+    "bio": "손이 보이지 않을 만큼 빨라요"
+  },
+  {
+    "id": "st_go_hyunwoo",
+    "name": "고현우",
+    "tier": 4,
+    "stats": {
+      "stamina": 45,
+      "strength": 40,
+      "skill": 55,
+      "smile": 70
+    },
+    "statCaps": {
+      "stamina": 90,
+      "strength": 82,
+      "skill": 90,
+      "smile": 90
+    },
+    "maxLevel": 9,
+    "baseSalary": 1400000,
+    "skill": "popular",
+    "face": {
+      "hair": 7,
+      "skin": 1,
+      "top": 4
+    },
+    "bio": "제주 토박이 호텔리어"
+  },
+  {
+    "id": "st_moon_naeun",
+    "name": "문나은",
+    "tier": 4,
+    "stats": {
+      "stamina": 50,
+      "strength": 45,
+      "skill": 80,
+      "smile": 55
+    },
+    "statCaps": {
+      "stamina": 95,
+      "strength": 91,
+      "skill": 95,
+      "smile": 95
+    },
+    "maxLevel": 9,
+    "baseSalary": 1700000,
+    "skill": "dessert_master",
+    "face": {
+      "hair": 3,
+      "skin": 0,
+      "top": 0
+    },
+    "bio": "파리에서 돌아온 파티시에"
+  },
+  {
+    "id": "st_yang_junhyuk",
+    "name": "양준혁",
+    "tier": 4,
+    "stats": {
+      "stamina": 50,
+      "strength": 45,
+      "skill": 85,
+      "smile": 55
+    },
+    "statCaps": {
+      "stamina": 95,
+      "strength": 91,
+      "skill": 95,
+      "smile": 95
+    },
+    "maxLevel": 9,
+    "baseSalary": 1700000,
+    "skill": "meal_master",
+    "face": {
+      "hair": 0,
+      "skin": 2,
+      "top": 2
+    },
+    "bio": "미슐랭 주방 경력의 셰프"
+  },
+  {
+    "id": "st_son_yerin",
+    "name": "손예린",
+    "tier": 4,
+    "stats": {
+      "stamina": 55,
+      "strength": 40,
+      "skill": 55,
+      "smile": 85
+    },
+    "statCaps": {
+      "stamina": 95,
+      "strength": 82,
+      "skill": 95,
+      "smile": 95
+    },
+    "maxLevel": 9,
+    "baseSalary": 1650000,
+    "skill": "popular",
+    "face": {
+      "hair": 5,
+      "skin": 0,
+      "top": 5
+    },
+    "bio": "한 번 본 손님은 잊지 않아요"
+  },
+  {
+    "id": "st_bae_jihun",
+    "name": "배지훈",
+    "tier": 4,
+    "stats": {
+      "stamina": 90,
+      "strength": 80,
+      "skill": 40,
+      "smile": 45
+    },
+    "statCaps": {
+      "stamina": 95,
+      "strength": 95,
+      "skill": 82,
+      "smile": 91
+    },
+    "maxLevel": 9,
+    "baseSalary": 1500000,
+    "skill": "clean_master",
+    "face": {
+      "hair": 1,
+      "skin": 2,
+      "top": 3
+    },
+    "bio": "전직 소방관. 청소가 취미예요"
+  },
+  {
+    "id": "st_baek_soyul",
+    "name": "백소율",
+    "tier": 5,
+    "stats": {
+      "stamina": 65,
+      "strength": 60,
+      "skill": 65,
+      "smile": 65
+    },
+    "statCaps": {
+      "stamina": 100,
+      "strength": 100,
+      "skill": 100,
+      "smile": 100
+    },
+    "maxLevel": 10,
+    "baseSalary": 1900000,
+    "skill": "researcher",
+    "face": {
+      "hair": 4,
+      "skin": 1,
+      "top": 6
+    },
+    "bio": "식품공학 석사. 뭐든 연구해요"
+  },
+  {
+    "id": "st_heo_taeyang",
+    "name": "허태양",
+    "tier": 5,
+    "stats": {
+      "stamina": 55,
+      "strength": 50,
+      "skill": 85,
+      "smile": 50
+    },
+    "statCaps": {
+      "stamina": 100,
+      "strength": 100,
+      "skill": 100,
+      "smile": 100
+    },
+    "maxLevel": 10,
+    "baseSalary": 1900000,
+    "skill": "researcher",
+    "face": {
+      "hair": 2,
+      "skin": 0,
+      "top": 1
+    },
+    "bio": "배우는 속도가 남달라요"
+  },
+  {
+    "id": "st_sim_arin",
+    "name": "심아린",
+    "tier": 5,
+    "stats": {
+      "stamina": 55,
+      "strength": 50,
+      "skill": 80,
+      "smile": 60
+    },
+    "statCaps": {
+      "stamina": 100,
+      "strength": 100,
+      "skill": 100,
+      "smile": 100
+    },
+    "maxLevel": 10,
+    "baseSalary": 2000000,
+    "skill": "popular",
+    "face": {
+      "hair": 6,
+      "skin": 1,
+      "top": 7
+    },
+    "bio": "5개 국어를 하는 통역사 출신"
+  },
+  {
+    "id": "st_retired_haenyeo",
+    "name": "고순덕",
+    "tier": 5,
+    "stats": {
+      "stamina": 80,
+      "strength": 70,
+      "skill": 50,
+      "smile": 60
+    },
+    "statCaps": {
+      "stamina": 100,
+      "strength": 100,
+      "skill": 100,
+      "smile": 100
+    },
+    "maxLevel": 10,
+    "baseSalary": 1600000,
+    "skill": "tough",
+    "face": {
+      "hair": 7,
+      "skin": 2,
+      "top": 4
+    },
+    "bio": "은퇴한 상군 해녀. 태풍은 익숙해요"
+  },
+  {
+    "id": "st_nam_jiwon",
+    "name": "남지원",
+    "tier": 5,
+    "stats": {
+      "stamina": 50,
+      "strength": 40,
+      "skill": 55,
+      "smile": 80
+    },
+    "statCaps": {
+      "stamina": 100,
+      "strength": 82,
+      "skill": 100,
+      "smile": 100
+    },
+    "maxLevel": 10,
+    "baseSalary": 2200000,
+    "skill": "popular",
+    "face": {
+      "hair": 3,
+      "skin": 0,
+      "top": 0
+    },
+    "bio": "단체 관광 가이드 10년 차"
+  },
+  {
+    "id": "st_pony_special",
+    "name": "조랑말 알바",
+    "tier": 0,
+    "stats": {
+      "stamina": 99,
+      "strength": 99,
+      "skill": 60,
+      "smile": 99
+    },
+    "statCaps": {
+      "stamina": 120,
+      "strength": 120,
+      "skill": 118,
+      "smile": 120
+    },
+    "maxLevel": 12,
+    "baseSalary": 1000000,
+    "skill": "clean_master",
+    "face": {
+      "hair": 7,
+      "skin": 1,
+      "top": 3
+    },
+    "bio": "말을 못 하지만 일은 잘해요 (소라로 부른다)"
+  },
+  {
+    "id": "st_dolhareubang",
+    "name": "돌하르방",
+    "tier": 0,
+    "stats": {
+      "stamina": 99,
+      "strength": 99,
+      "skill": 99,
+      "smile": 99
+    },
+    "statCaps": {
+      "stamina": 120,
+      "strength": 120,
+      "skill": 120,
+      "smile": 120
+    },
+    "maxLevel": 12,
+    "baseSalary": 2200000,
+    "skill": "lucky",
+    "face": {
+      "hair": 7,
+      "skin": 2,
+      "top": 2
+    },
+    "bio": "밤에 움직이는 걸 본 사람이 있대요"
+  }
 ]

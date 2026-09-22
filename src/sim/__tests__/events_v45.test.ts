@@ -56,8 +56,7 @@ describe('§4.5 이벤트 보정', () => {
     expect(effectMult(s, 'harvestMult')).toBeCloseTo(0.5);
     const t = bareState(1);
     t.candidates = createInitialState(1).candidates;
-    t.unlocked.roles.push('carry');
-    const st = hire(t, t.candidates[0]!.id, 'carry');
+    const st = hire(t, t.candidates[0]!.id, 'cook');
     st.stats.strength = 40;
     startEvent(t, 'ev_deer_raid');
     expect(effectMult(t, 'harvestMult')).toBeCloseTo(0.8);

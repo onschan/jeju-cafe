@@ -198,7 +198,7 @@ export function createInitialState(seed: number, playerId = 'local', createdAt =
     monthHarvest: { harvested: {}, ingredientSaved: 0 },
     staff: [],
     candidates: [],
-    slots: { barista: 1, cook: 1, hall: 2, carry: 0, guide: 0, clean: 2, garden: 2, promo: 1 },
+    slots: { barista: 1, cook: 1, hall: 2, clean: 2 },
     activePromotions: [],
     youtuberBoostMonths: 0,
     segmentPopularity: initSegmentPopularity(),

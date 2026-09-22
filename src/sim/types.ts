@@ -280,33 +280,23 @@ export type IngredientKind = 'bought' | 'farm';
 /** cost: 창고에 없을 때 자동 구매 원가. stats·category는 v1 표(§6.1)에서. */
 export interface IngredientDef { id: string; name: string; kind: IngredientKind; cost: number; category: IngredientCategory; stats: MenuStats; sourceText: string }
 
-export type RoleId = 'barista' | 'cook' | 'hall' | 'carry' | 'guide' | 'clean' | 'garden' | 'promo';
+export type RoleId = 'barista' | 'cook' | 'hall' | 'clean';
 /** 직종 해금 조건 (unlockedAtStart가 아닐 때): goal = 목표 보상 unlockRole(B), farms = 농원(수확 있는) 시설 수, rank = 카페 랭크 */
 export interface RoleUnlock { goal?: string; farms?: number; rank?: number }
 /** 직원 스탯 4 (GDD v2 §5): 체력 stamina · 힘 strength(운반) · 기술 skill(바리스타·요리) · 미소 smile(홀·안내) */
 export type StatKey = 'stamina' | 'strength' | 'skill' | 'smile';
 export interface RoleDef { id: RoleId; name: string; stat: StatKey; unlockedAtStart: boolean; desc?: string; unlock?: RoleUnlock }
 
+/** 특기 10 (trim): 메뉴 품질 3 · 조리 속도 · 재료비 · 연구 · 손님 유입 · 운 · 기력 · 청결 */
 export type SkillEffect =
   | { type: 'menuQuality'; category: MenuCategory; value: number }
   | { type: 'speed'; value: number }
-  | { type: 'localAffinity'; value: number }
-  | { type: 'touristSatisfaction'; value: number }
-  | { type: 'language' }
   | { type: 'ingredientDiscount'; value: number }
   | { type: 'researchBonus'; value: number }
   | { type: 'spawnBonus'; value: number }
   | { type: 'luck'; value: number }
   | { type: 'stamina'; value: number }
-  | { type: 'cleanBonus'; value: number }          // 청소 달인: 청결 회복 ×(1+v)
-  | { type: 'harvestBonus'; value: number }        // 농원지기: 농원 수확 +v
-  | { type: 'groupSatisfaction'; value: number }   // 단체 손님 만족 +v
-  | { type: 'feeBonus'; value: number }            // 담당 시설 요금 +v
-  | { type: 'trainingBonus'; value: number }       // 연수 효과 ×(1+v)
-  | { type: 'regularBonus'; value: number }        // 단골 전환 +v
-  | { type: 'nightSatisfaction'; value: number }   // 18시 이후 손님 만족 +v
-  | { type: 'stormRepairDiscount'; value: number } // 태풍 수리비 −v
-  | { type: 'giftBonus'; value: number };          // 손님 선물 효과 ×(1+v)
+  | { type: 'cleanBonus'; value: number };         // 청소 달인: 청결 회복 ×(1+v)
 export interface SkillDef { id: string; name: string; desc: string; effect: SkillEffect }
 
 export interface Stats { stamina: number; strength: number; skill: number; smile: number }
@@ -332,7 +322,7 @@ export interface TrainingDef { id: string; name: string; cost: number; days: num
 export interface StaffTraining { id: string; daysLeft: number }
 /** 직원 칭호(titles.json, staff-luck): 등급 숙련/프로/전설. roles = 잘 맞는 직종(빈 배열 = 아무 직종). 효과는 titleBonus가 소비처마다 더한다. */
 export type TitleGrade = 'skilled' | 'pro' | 'legend';
-export type TitleEffectType = 'fee' | 'satisfaction' | 'clean' | 'harvest' | 'promo' | 'develop' | 'speed' | 'spawn' | 'photo' | 'great' | 'safe' | 'energy' | 'tip' | 'discount';
+export type TitleEffectType = 'fee' | 'satisfaction' | 'clean' | 'develop' | 'speed' | 'spawn' | 'photo' | 'great' | 'safe' | 'energy' | 'tip' | 'discount';
 export interface TitleEffect { type: TitleEffectType; value: number }
 export interface TitleDef { id: string; name: string; grade: TitleGrade; roles: RoleId[]; desc: string; effects: TitleEffect[] }
 /** 작업 확률 결과 (luck.ts): 대박 / 중박 / 쪽박 */
