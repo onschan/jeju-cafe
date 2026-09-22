@@ -3,7 +3,7 @@ import { useGame, dispatch } from './store';
 import { josa } from '../sim/josa.ts';
 import {
   questProgress, canAcceptQuest, visibleQuests, questRewardText, spotLevel, spotUnlocked, nextSpotLevel, spotAppeal, spotGuestBonus, canInvestSpot, guestFace, monthIndex,
-  spotRequirements, spotVisitors, totalSpotVisitors, dailyVisitors, totalDailyVisitors, tourScore, tourAvailable, canHostTour, hasTourBusKey, canSetTourBus,
+  spotRequirements, spotVisitors, totalSpotVisitors, dailyVisitors, totalDailyVisitors, tourScore, tourAvailable, canHostTour, hasTourBusKey, canSetTourBus, tourChances, chanceText,
   SPOT_MAX_LEVEL, SPOT_GUEST_LEVEL, SPOT_ITEM_LEVEL, SPOT_QUEST_LEVEL, SPOT_TAG_MULT, SPOT_FEE_PCT, SPOT_SCENERY, SPOT_LV5_MILEAGE, VISITOR_PRIZES, TOUR_BUS_FEE, TOUR_YEAR, TOUR_SUCCESS_SCORE, TOUR_MONEY_PER_SCORE, TOUR_SUCCESS_VISITORS, TOUR_FAIL_MONEY, TOUR_FAIL_VISITORS, QUEST_MONTHS,
   type QuestState, type QuestCondition, type SpotCategory, type EventState, type UnlockCond,
 } from '../sim/index.ts';
@@ -126,6 +126,7 @@ function SpotCard({ id }: { id: string }) {
   const prize = VISITOR_PRIZES[s.spotPrizes[id] ?? 0];
   const tourOk = canHostTour(s, id);
   const score = tourScore(s, id);
+  const luck = tourChances(s); // staff-luck: 안내 직원 기준 대박/쪽박
   const invest = () => {
     if (!next) return;
     Confirm(`${def.name} Lv${next.level}에 ${josa(wonText(next.cost), '을/를')} 투자합니다. 매력도 ${appeal} → ${next.appeal}`, () => dispatch({ type: 'investSpot', id }), { title: '관광지 투자' });
@@ -163,7 +164,7 @@ function SpotCard({ id }: { id: string }) {
         )}
         {lv > 0 && s.clock.year >= TOUR_YEAR && (
           <button style={{ ...(tourOk.ok ? brownBtnOn : brownBtnOff), marginTop: 6, marginBottom: 0 }} disabled={!tourOk.ok} onClick={host} aria-label={`${def.name} 투어 개최`}>
-            <Icon name="bus" /> 투어 개최 (점수 {score})
+            <Icon name="bus" /> 투어 개최 (점수 {score})<br /><span style={{ fontSize: 13, fontWeight: 400 }}>{chanceText(luck.chances)}{luck.staff ? ` · ${luck.staff.name}` : ''}</span>
           </button>
         )}
       </div>

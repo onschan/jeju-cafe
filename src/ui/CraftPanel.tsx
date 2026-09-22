@@ -4,9 +4,9 @@ import { ButtonGroup } from './ButtonGroup';
 import { useGame, dispatch } from './store';
 import {
   menuOf, menuMod, menuStatsOf, menuSkills, skillEffects, skillTier, priceOf, activeIngredientCombos, comboBonus, matchHiddenRecipe,
-  normalizeParams, successRate, bonusWidth, developStaffStat, STAT_NAME, developCost, canDevelop, developDaysLeft, autoMenuName, qualityOf, countIngredients,
+  normalizeParams, developChances, bonusWidth, STAT_NAME, developCost, canDevelop, developDaysLeft, autoMenuName, qualityOf, countIngredients,
   canAddTopping, canRemoveTopping, canLevelUpMenu, levelUpMenuCost, maxSlots, isStaffBusy, isCustomMenu, hasMenuStaff, menuRequirementText, isMenuAvailable,
-  DEVELOP_DAYS, DEVELOP_RESEARCH, BASE_NAME, BASE_MIN, PARAM_AXES, PARAM_LABEL, PARAM_DEFAULT, BASE_STAT, MENU_SKILLS, TIER_NAMES, MAX_TOPPINGS, MAX_MENU_LEVEL, SIGNATURE_STAR, P_GREAT,
+  DEVELOP_DAYS, DEVELOP_RESEARCH, BASE_NAME, BASE_MIN, PARAM_AXES, PARAM_LABEL, PARAM_DEFAULT, BASE_STAT, MENU_SKILLS, TIER_NAMES, MAX_TOPPINGS, MAX_MENU_LEVEL, SIGNATURE_STAR,
   josa, type MenuBase, type BrewParams, type ParamAxis, type MenuStats, type MenuSkill,
 } from '../sim/index.ts';
 import { INGREDIENTS, TOPPINGS, HIDDEN_RECIPES, INGREDIENT_COMBOS, ingredientDef, toppingDef, ingredientComboDef, ingredientStats, addStats, MENU_STAT_KEYS, MENU_STAT_LABEL, INGREDIENT_CATEGORY_NAME } from '../data/index.ts';
@@ -49,8 +49,7 @@ export function CraftPanel() {
   const ingredients = picked.slice(0, slots);
   const norm = normalizeParams(base, params);
   const staff = s.staff.find((st) => st.id === staffId);
-  const stat = developStaffStat(staff, base);
-  const rate = successRate(base, norm, stat);
+  const luck = developChances(s, base, norm, staff); // staff-luck: 칭호·행운아·청결·평판까지 반영한 실제 확률
   const width = bonusWidth(base, norm);
   const combos = useMemo(() => activeIngredientCombos(ingredients), [ingredients.join(',')]);
   const preview = useMemo(() => addStats(ingredientStats(countIngredients(ingredients)), comboBonus(combos).stats), [ingredients.join(','), combos.join(',')]);
@@ -77,7 +76,7 @@ export function CraftPanel() {
   const removeAt = (i: number) => setPicked(ingredients.filter((_, j) => j !== i));
   const start = () => {
     const name = hidden ? '???' : autoMenuName(base, ingredients);
-    Confirm(`${josa(name, '을/를')} ${DEVELOP_DAYS}일 동안 개발할까요? 연구 ${DEVELOP_RESEARCH} · 재료비 ${wonText(cost)} · 성공 ${Math.round(rate)}%`, () => {
+    Confirm(`${josa(name, '을/를')} ${DEVELOP_DAYS}일 동안 개발할까요? 연구 ${DEVELOP_RESEARCH} · 재료비 ${wonText(cost)} · 성공 ${Math.round(luck.success * 100)}% · 대성공 ${Math.round(luck.great * 100)}%`, () => {
       if (dispatch({ type: 'develop', base, ingredients, params: norm, staffId }).ok) setPicked([]);
     }, { title: '메뉴 개발' });
   };
@@ -153,7 +152,7 @@ export function CraftPanel() {
           options={s.staff.length === 0 ? [{ value: '', label: '직원이 없어요', disabled: true }] : s.staff.map((st) => ({ value: st.id, label: `${st.name} · ${STAT_NAME[BASE_STAT[base]]} ${st.stats[BASE_STAT[base]]}`, disabled: isStaffBusy(s, st.id) }))} />
       </div>
       <div style={{ fontSize: 13, marginBottom: 6 }}>
-        성공 <b style={{ color: PALETTE.ok }}>{Math.round(rate)}%</b> · 대성공 <b>{P_GREAT}%</b> · 실패 <b style={{ color: PALETTE.bad }}>{Math.round(100 - P_GREAT - rate)}%</b> · 보너스 폭 +{width}
+        성공 <b style={{ color: PALETTE.ok }}>{Math.round(luck.success * 100)}%</b> · 대성공 <b>{Math.round(luck.great * 100)}%</b> · 실패 <b style={{ color: PALETTE.bad }}>{Math.round(luck.fail * 100)}%</b> · 보너스 폭 +{width}
       </div>
       <button data-testid="craft-start" data-tut="develop" style={can.ok ? brownBtnOn : brownBtnOff} disabled={!can.ok} onClick={start}><Icon name="research" /> 개발 시작</button>
       {!can.ok && <span style={{ fontSize: 13, color: PALETTE.bad }}>{can.reason}</span>}

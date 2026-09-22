@@ -6,6 +6,9 @@
  * - 해금: Lv2 손님(evaluateUnlocks) · Lv3 강화 아이템 · Lv4 부탁·다음 명소(board.afterInvest) · Lv5 마일리지 10 + k=6 특수
  */
 import type { GameState, ApplyResult, SpotDef, SpotTag, GuestTags, FacilityCategory, TourResult } from './types.ts';
+import { rollOutcome, recordOutcome, outcomeChances, bestStaffFor, OUTCOME_MULT, GREAT_REPUTATION, FAIL_REPUTATION, GREAT_TICKETS, OUTCOME_NAME, type Chances } from './luck.ts'; // staff-luck
+import { titleBonus } from './titles.ts';
+import { addReputation } from './reputation.ts';
 import { SPOTS, spotDef, GUEST_TYPES, guestTypeDef, canonicalGuestId, itemDef } from '../data/index.ts';
 import { unlockCondMet, isUnlocked, unlockGuestType, unlockedTypeIds } from './segments.ts';
 import { pushNotice, skillTotal } from './staff.ts';
@@ -356,7 +359,7 @@ export function isBusDay(day: number): boolean {
 export function tourScore(state: GameState, spotId: string): number {
   const def = spotDef(spotId);
   const appeal = spotAppealOf(def, spotLevel(state, spotId));
-  return Math.round(appeal + 30 * (tagPopularity(state, def.tag) / 100) + state.codex.combos.length + skillTotal(state, 'tourScore')); // 트랙 D 특기 tour_guide +10
+  return Math.round(appeal + 30 * (tagPopularity(state, def.tag) / 100) + state.codex.combos.length + skillTotal(state, 'tourScore') + titleBonus(state, 'tour')); // 트랙 D 특기 tour_guide +10 · staff-luck 칭호
 }
 
 export function tourAvailable(state: GameState): boolean {
@@ -372,12 +375,26 @@ export function canHostTour(state: GameState, spotId: string): ApplyResult {
   return { ok: true };
 }
 
-/** 월 1회 투어 개최: 점수 60 이상 성공 → 점수 × 2만 원 + 방문객 2,000, 실패 → 100만 원 + 방문객 500. 호출 전 canHostTour. */
+/** 투어를 이끄는 직원(일하는 직원 중 대박 기대값 최고)과 확률 — UI 미리 보기 */
+export function tourChances(state: GameState): { staff: ReturnType<typeof bestStaffFor>; chances: Chances } {
+  const staff = bestStaffFor(state, 'tour');
+  return { staff, chances: outcomeChances(state, 'tour', staff) };
+}
+
+/** 월 1회 투어 개최: 점수 60 이상 성공 → 점수 × 2만 원 + 방문객 2,000, 실패 → 100만 원 + 방문객 500. 호출 전 canHostTour.
+ *  staff-luck: 대박/중박/쪽박(안내 직원 기준)이 돈·방문객에 ×2 / ×1 / ×0.5, 대박은 응모권·평판 +3, 쪽박은 평판 −2. */
 export function hostTour(state: GameState, spotId: string): TourResult {
   const score = tourScore(state, spotId);
   const success = score >= TOUR_SUCCESS_SCORE;
-  const money = success ? score * TOUR_MONEY_PER_SCORE : TOUR_FAIL_MONEY;
-  const visitors = success ? TOUR_SUCCESS_VISITORS : TOUR_FAIL_VISITORS;
+  const { staff, chances } = tourChances(state);
+  const outcome = rollOutcome(state, { task: 'tour', staff });
+  const mult = OUTCOME_MULT[outcome];
+  const money = Math.round((success ? score * TOUR_MONEY_PER_SCORE : TOUR_FAIL_MONEY) * mult);
+  const visitors = Math.round((success ? TOUR_SUCCESS_VISITORS : TOUR_FAIL_VISITORS) * mult);
+  const lines = [`점수 ${score} · ₩${fmtNum(money)} · 방문객 +${fmtNum(visitors)} (×${mult})`];
+  if (outcome === 'great') { state.tickets += GREAT_TICKETS; addReputation(state, GREAT_REPUTATION); lines.push(`응모권 +${GREAT_TICKETS} · 평판 +${GREAT_REPUTATION}`); }
+  else if (outcome === 'fail') { addReputation(state, -FAIL_REPUTATION); lines.push(`평판 −${FAIL_REPUTATION}`); }
+  recordOutcome(state, { task: 'tour', outcome, staffId: staff?.id ?? null, title: `${spotDef(spotId).name} 투어`, chances, lines });
   state.money += money;
   state.monthIncome += money;
   state.tourMonth = monthIndex(state.clock);
@@ -385,6 +402,6 @@ export function hostTour(state: GameState, spotId: string): TourResult {
   addVisitors(state, spotId, visitors);
   const result: TourResult = { spotId, score, success, money, visitors };
   state.lastTour = result;
-  pushNotice(state, `${spotDef(spotId).name} 투어 ${success ? '성공' : '아쉬움'} (점수 ${score}) — ₩${fmtNum(money)} · 방문객 +${fmtNum(visitors)}`);
+  pushNotice(state, `${spotDef(spotId).name} 투어 ${success ? '성공' : '아쉬움'}·${OUTCOME_NAME[outcome]} (점수 ${score}) — ₩${fmtNum(money)} · 방문객 +${fmtNum(visitors)}`);
   return result;
 }

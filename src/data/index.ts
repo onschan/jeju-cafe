@@ -1,4 +1,4 @@
-import type { SpotEffectDef, ObjectDef, MenuDef, GuestTypeDef, IngredientDef, FarmYield, GoalDef, ChallengeDef, BigEventDef, RoleDef, SkillDef, PromotionDef, GuestTags, ComboDef, ComboTarget, ComboStrength, ComboSide, SetDef, ItemDef, ItemSlot, Season, MenuCategory, GuestEffect, GuestWant, UnlockCond, QuestDef, QuestCondition, QuestReward, SpotDef, SpotCategory, SpotSpecial, SpotTag, GiftDef, EventDef, MenuStats, MenuStatKey, IngredientCategory, IngredientComboDef, ToppingDef, HiddenRecipeDef, FacilityCategory, MileageShopDef, TicketShopDef, UniformDef, GuidebookDef, DrawPrizeDef, DrawPrizeKind, JudgeKey, RegionDef, NamedGuestDef, RivalDef, StaffPoolDef, RecruitTierDef, TrainingDef } from '../sim/types.ts';
+import type { SpotEffectDef, ObjectDef, MenuDef, GuestTypeDef, IngredientDef, FarmYield, GoalDef, ChallengeDef, BigEventDef, RoleDef, SkillDef, PromotionDef, GuestTags, ComboDef, ComboTarget, ComboStrength, ComboSide, SetDef, ItemDef, ItemSlot, Season, MenuCategory, GuestEffect, GuestWant, UnlockCond, QuestDef, QuestCondition, QuestReward, SpotDef, SpotCategory, SpotSpecial, SpotTag, GiftDef, EventDef, MenuStats, MenuStatKey, IngredientCategory, IngredientComboDef, ToppingDef, HiddenRecipeDef, FacilityCategory, MileageShopDef, TicketShopDef, UniformDef, GuidebookDef, DrawPrizeDef, DrawPrizeKind, JudgeKey, RegionDef, NamedGuestDef, RivalDef, StaffPoolDef, RecruitTierDef, TrainingDef, TitleDef } from '../sim/types.ts';
 import objectsJson from './objects.json' with { type: 'json' };
 import menusJson from './menus.json' with { type: 'json' };
 import guestsJson from './generated/v2/guests.json' with { type: 'json' };
@@ -16,6 +16,7 @@ import skillsJson from './skills.json' with { type: 'json' };
 import staffPoolJson from './staff_pool.json' with { type: 'json' };
 import recruitTiersJson from './recruit_tiers.json' with { type: 'json' };
 import trainingsJson from './trainings.json' with { type: 'json' };
+import titlesJson from './titles.json' with { type: 'json' };
 import namesJson from './names.json' with { type: 'json' };
 import promotionsJson from './promotions.json' with { type: 'json' };
 import dialogueJson from './dialogue.json' with { type: 'json' };
@@ -464,6 +465,7 @@ export const SKILLS = skillsJson as unknown as SkillDef[];
 export const STAFF_POOL = staffPoolJson as StaffPoolDef[];
 export const RECRUIT_TIERS = recruitTiersJson as RecruitTierDef[];
 export const TRAININGS = trainingsJson as TrainingDef[];
+export const TITLES = titlesJson as TitleDef[]; // 직원 칭호 30 (staff-luck)
 export const NAMES = namesJson as { names: string[]; hair: number; skin: number; top: number };
 export const PROMOTIONS = promotionsJson as unknown as PromotionDef[];
 export const DIALOGUE = dialogueJson as {
@@ -718,6 +720,7 @@ const SKILL = indexBy(SKILLS);
 const STAFF_POOL_BY_ID = indexBy(STAFF_POOL);
 const RECRUIT_TIER = indexBy(RECRUIT_TIERS);
 const TRAINING = indexBy(TRAININGS);
+const TITLE = indexBy(TITLES);
 const PROMOTION = indexBy(PROMOTIONS);
 const COMBO = indexBy(COMBOS);
 const SET = indexBy(SETS);
@@ -744,6 +747,7 @@ export const skillDef = (id: string) => must(SKILL, id, 'skill');
 export const staffPoolDef = (id: string) => must(STAFF_POOL_BY_ID, id, 'staffPool');
 export const recruitTierDef = (id: string) => must(RECRUIT_TIER, id, 'recruitTier');
 export const trainingDef = (id: string) => must(TRAINING, id, 'training');
+export const titleDef = (id: string) => must(TITLE, id, 'title');
 export const promotionDef = (id: string) => must(PROMOTION, id, 'promotion');
 const MILEAGE_ITEM = indexBy(MILEAGE_SHOP);
 const TICKET_ITEM = indexBy(TICKET_SHOP);

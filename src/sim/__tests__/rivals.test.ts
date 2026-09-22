@@ -64,7 +64,7 @@ test('생성: 2년차부터 월 10%(seed 통계), 1년차엔 안 생기고 동�
     const t = bareState(seed);
     t.clock.year = 3; t.clock.month = 1; t.clock.day = 30; t.clock.hour = 23;
     for (let m = 0; m < 6; m++) for (let d = 0; d < 30; d++) tick(t, DAY_MS);
-    any = t.actionLog.length >= 0 && t.notices.some((n) => n.includes('라이벌 카페'));
+    any = t.rivals.length > 0 || t.notices.some((n) => n.includes('라이벌 카페')); // 알림은 링버퍼(30)라 밀려날 수 있어 rivals도 본다
   }
   expect(any).toBe(true);
 });

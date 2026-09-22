@@ -51,6 +51,10 @@ function backfill(state: GameState): void {
   state.ending ??= initEnding(); // z-ending: 엔딩·빠른 모드·100주년 (v18 세이브엔 없다)
   state.village ??= initVillage(); // z-ending: 정착 등급·마을제
   state.carry ??= null; // z-ending: 이월 묶음
+  state.codex.titles ??= []; // staff-luck: 만난 칭호 도감
+  state.lastOutcome ??= null;
+  state.luckSeq ??= 0;
+  state.monthGreatServes ??= 0;
   for (const k of ['clearRock', 'promote', 'craft', 'siteView', 'comboCodex', 'spotMap']) delete (state.features as Record<string, boolean>)[k]; // ease: 바위 삭제·처음부터 열린 기능 — 옛 저장의 기능 키는 지운다
   delete (state.stats as unknown as Record<string, number>)['rocksCleared'];
   // ease: 옛 저장(v19)의 바위·큰 바위 칸은 흙으로, 곶자왈 덤불 오브젝트는 지운다 (지형·오브젝트 정의가 없어졌다)

@@ -374,6 +374,16 @@ export interface RecruitTierDef { id: JobTier; name: string; tier: number; cost:
 /** 연수(trainings.json, §3.6.4) */
 export interface TrainingDef { id: string; name: string; cost: number; days: number; stats: Partial<Stats>; grantSkill?: boolean; requires?: { star?: number; level?: number }; desc?: string }
 export interface StaffTraining { id: string; daysLeft: number }
+/** 직원 칭호(titles.json, staff-luck): 등급 숙련/프로/전설. roles = 잘 맞는 직종(빈 배열 = 아무 직종). 효과는 titleBonus가 소비처마다 더한다. */
+export type TitleGrade = 'skilled' | 'pro' | 'legend';
+export type TitleEffectType = 'fee' | 'satisfaction' | 'clean' | 'harvest' | 'promo' | 'develop' | 'tour' | 'challenge' | 'speed' | 'spawn' | 'photo' | 'great' | 'safe' | 'energy' | 'tip' | 'discount';
+export interface TitleEffect { type: TitleEffectType; value: number }
+export interface TitleDef { id: string; name: string; grade: TitleGrade; roles: RoleId[]; desc: string; effects: TitleEffect[] }
+/** 작업 확률 결과 (luck.ts): 대박 / 중박 / 쪽박 */
+export type Outcome = 'great' | 'success' | 'fail';
+export type LuckTask = 'promo' | 'develop' | 'training' | 'tour' | 'challenge' | 'gift' | 'serve';
+/** 마지막 작업 판정 (UI 룰렛 팝업, dismissOutcome으로 닫는다) */
+export interface OutcomeResult { task: LuckTask; outcome: Outcome; staffId: string | null; title: string; chances: { great: number; success: number; fail: number }; lines: string[]; day: number }
 
 export interface Staff {
   id: string;
@@ -391,6 +401,7 @@ export interface Staff {
   exp: number;            // 승급 경험치 (근무일 1 + 서빙·조리 0.2)
   trainingCount: number;  // 다녀온 연수 횟수 (비용 증가)
   training: StaffTraining | null; // 연수 중이면 자리를 비운다
+  title?: string;         // 칭호 id (titles.json, staff-luck) — 없으면 일반
   role: RoleId | null;
   unpaidMonths: number;
   energy: number; // 0~100
@@ -403,6 +414,7 @@ export interface Staff {
 }
 export interface Candidate extends Omit<Staff, 'role' | 'unpaidMonths' | 'energy' | 'lastParttimeMonthIndex' | 'x' | 'y' | 'path' | 'anchor' | 'waitMs' | 'exp' | 'trainingCount' | 'training' | 'extraSkills'> {
   expiresMonthIndex: number;
+  expiresDay?: number;    // 프로·전설 후보는 3일만 머문다 (dayIndex, staff-luck)
 }
 
 export type JobTier = 'flyer' | 'site' | 'magazine' | 'intern' | 'college';
@@ -450,6 +462,7 @@ export interface MonthCard {
   reputation: number;                // 월말 평판
   reputationDelta: number;           // 그달 평판 변화
   topComplaints: { reason: ComplaintReason; count: number }[]; // 그달 불만 TOP3
+  greatServes?: number;              // 그달 서빙 대박 횟수 (staff-luck)
 }
 
 // ---------- 목표 체인 (v3 §2 → 확장 §3.5·§7) ----------
@@ -837,6 +850,7 @@ export interface Guest {
   id: string;
   type: string; // GuestTypeDef.id
   namedId?: string; // 이름 있는 손님(단골★)이면 NamedGuestDef.id — type은 NAMED_TYPE
+  luck?: 'great' | 'fail'; // 서빙 판정 (staff-luck): 대박 = 팁·「최고!」, 쪽박 = 불친절 불만
   phase: GuestPhase;
   x: number;            // 셀 좌표(소수 허용, 보간용)
   y: number;
@@ -884,6 +898,7 @@ export interface GameState {
   createdAt: number; // epoch ms, 호출자가 지정 (sim은 Date를 쓰지 않는다)
   seed: number;
   rng: number;
+  luckSeq?: number;   // 보조 난수 스트림 연번 (rng.ts sideRandom, staff-luck) — 없으면 0
   clock: Clock;
   money: number;
   research: number;
@@ -963,7 +978,7 @@ export interface GameState {
   effects: ActiveEffect[];                    // 이벤트 효과 (기간형)
   menuSold: Record<string, number>;           // menuId → 누적 판매 수 (부탁 진행: 수락 시점 값과의 차, 목표 menuSold)
   monthMenuSold: Record<string, number>;      // 이달 판매 수 (월말 카드 최다 판매 메뉴)
-  codex: { combos: string[]; sets: string[]; recipes: string[]; ingredientCombos: string[]; spots: string[] }; // 발동한 적 있는 상성·세트·히든 레시피·재료 콤보·명당 id (도감)
+  codex: { combos: string[]; sets: string[]; recipes: string[]; ingredientCombos: string[]; spots: string[]; titles?: string[] }; // 발동한 적 있는 상성·세트·히든 레시피·재료 콤보·명당 id (도감) + 만난 직원 칭호(staff-luck)
   clean: { value: number; lastGuests: number; history: number[] }; // 카페 청결 0~100 (cleanliness.ts) + 어제까지의 누적 손님 수 + 최근 30일 값(목표 판정용, 새 날마다 push)
   customMenus: MenuDef[];                     // 개발한 메뉴 (id m_custom_N). menuOf(state, id)가 기본 메뉴보다 먼저 찾는다
   menuMods: Record<string, MenuMod>;          // menuId → 토핑·레벨 (없으면 토핑 없음·레벨 1)
@@ -983,6 +998,8 @@ export interface GameState {
   popup: PopupState;                          // 원정 팝업 스토어
   rivals: RivalState[];                       // 라이벌 카페 (동시 최대 2)
   lastChallenge: ChallengeResult | null;      // 마지막 카페 대결 (UI 팝업)
+  lastOutcome?: OutcomeResult | null;         // 마지막 작업 판정 대박/중박/쪽박 (UI 룰렛 팝업, staff-luck)
+  monthGreatServes?: number;                  // 이달 서빙 대박 횟수 (월말 카드 하이라이트, staff-luck)
   undo: UndoEntry | null;                     // 직전 배치·철거·이동 되돌리기 스냅샷 (undo.ts)
   main: MainState;                            // 본관 증축·2층·이동·분위기 (rooms.ts, y-indoor)
   guests: Guest[];
@@ -1094,6 +1111,7 @@ export type Action =
   | { type: 'closePopup' }
   | { type: 'challenge'; rivalId: string; menuId: string } // rivalId = RivalState.id
   | { type: 'dismissChallenge' }
+  | { type: 'dismissOutcome' }                      // staff-luck: 대박/중박/쪽박 룰렛 팝업 닫기
   // ---- z-ending ----
   | { type: 'continueEnding' }                      // 엔딩 뒤 「계속하기」: 알림 닫고 빠른 모드(4배속) 해금
   | { type: 'donateVillage' }                       // 마을 기부 (VILLAGE_DONATION, 정착 등급 항목)

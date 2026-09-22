@@ -12,6 +12,7 @@ import { requestBuildTab } from './windows/BuildWindow';
 import { label as labelOf } from '../data/labels.ts';
 import { objectDef, guestTypeDef, namedGuestDef, questDef, roleDef, skillDef, trainingDef, ROLES, GIFTS } from '../data/index.ts';
 import { staffParts } from '../render/character';
+import { TitleRibbon } from './TitleBadge'; // staff-luck 칭호 리본
 import { Portrait, guestPortraitParts, namedPortraitParts, guestName } from './GuestPopup';
 import { Bar, EnergyBar } from './Bars';
 import { Confirm, Popup } from './Popup';
@@ -184,6 +185,7 @@ function StaffCard({ s, id, a }: { s: GameState; id: string; a: CardActions }) {
         <Portrait parts={staffParts(st.face, st.role, s.uniform ?? null)} face={st.face} size={64} />
         <div style={{ flex: 1, minWidth: 0, fontSize: 14, lineHeight: 1.5 }}>
           <div><b>{st.name}</b> <span style={small}>{away ? `연수 중 (${away.name} ${st.training!.daysLeft}일)` : st.role ? roleDef(st.role).name : '쉬는 중'} · Lv.{st.level}/{st.maxLevel}</span></div>
+          {st.title && <div><TitleRibbon titleId={st.title} size="sm" /></div>}
           <div style={{ fontSize: 12, color: PALETTE.inkSoft, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>특기 {skillsOf(st).map((id) => skillDef(id).name).join(' · ')}{st.level < st.maxLevel ? ` · 경험치 ${Math.floor(st.exp)}/${expNeeded(st.level)}` : ''}</div>
           <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr auto 1fr', columnGap: 6, fontSize: 12, alignItems: 'center' }}>
             {STAT_KEYS.map((k) => <span key={k} style={{ display: 'contents' }}><span>{STAT_NAME[k as StatKey]}</span><Bar value={st.stats[k as StatKey]} max={Math.max(100, capOf(s, st, k as StatKey))} width={56} /></span>)}

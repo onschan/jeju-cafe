@@ -18,7 +18,7 @@ test('커플 해금 + 응모권 5장 → 인기 열매 구매·사용, 인기 30
   expect(effectivePopularity(s, BOT_COUPLE_ID)).toBeGreaterThanOrEqual(before + POPULARITY_FRUIT_DELTA);
   expect(s.tickets).toBeLessThanOrEqual(price * 9 + 1); // 하루에 응모권 1장이 들어올 수 있다
   expect(s.inventory[POPULARITY_FRUIT] ?? 0).toBe(0);
-  for (let i = 0; i < 6; i++) botDay(s, cur);
+  for (let i = 0; i < 7; i++) botDay(s, cur); // staff-luck: 서빙 판정이 rng를 쓰면서 seed 1의 만족 손님 수가 조금 달라져 하루 더 (29 → 30+)
   expect(effectivePopularity(s, BOT_COUPLE_ID)).toBeGreaterThanOrEqual(BOT_COUPLE_POPULARITY);
   expect(s.tickets).toBeGreaterThanOrEqual(price * 7); // 열매는 인기 30이 될 때까지만(3개 안팎) 산다
 });

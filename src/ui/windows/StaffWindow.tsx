@@ -5,7 +5,8 @@ import { Icon } from '../Icon';
 import { ButtonGroup } from '../ButtonGroup';
 import { josa } from '../../sim/josa.ts';
 import type { GameState, Staff, Candidate, RoleId, StatKey, JobTier, Face } from '../../sim/index.ts';
-import { TIERS, LOW_ENERGY, STAT_KEYS, levelUpCost, expNeeded, mainStatOf, canHire, canLevelUp, canPostJob, staffInRole, postJobCost, tierUnlocked, availablePool, staffCapacity, staffRoomCount, capOf, capBonus, skillsOf, salaryDue, trainingOptions, trainingUnlocked, TRAINING_RANK } from '../../sim/index.ts';
+import { TIERS, LOW_ENERGY, STAT_KEYS, levelUpCost, expNeeded, mainStatOf, canHire, canLevelUp, canPostJob, staffInRole, postJobCost, tierUnlocked, availablePool, staffCapacity, staffRoomCount, capOf, capBonus, skillsOf, salaryDue, trainingOptions, trainingUnlocked, TRAINING_RANK, titleChances, titleDef, TITLE_GRADES, candidateDaysLeft, dayIndex, outcomeChances, chanceText, trainingChances, isWorking } from '../../sim/index.ts';
+import { TitleRibbon } from '../TitleBadge'; // staff-luck 칭호 리본
 import { ROLES, RECRUIT_TIERS, skillDef, trainingDef, staffPoolDef } from '../../data/index.ts';
 import { label, wonText } from '../../data/labels.ts';
 import { PALETTE, brownBtn, brownBtnOff } from '../frame';
@@ -15,6 +16,12 @@ import { SortChips } from '../GuestsPanel';
 import { useWindowState, body, TabBar, Bar, rowCard, rowCardOn, rowBtn, rowBtnOn, rowBtnOff, rowBtnDanger, soft, Empty, ConfirmRow, type Dispatch, type WindowProps } from './shared.tsx';
 
 const TIER_ORDER: JobTier[] = RECRUIT_TIERS.map((t) => t.id);
+/** 공고 버튼의 칭호 확률 줄 (staff-luck): "프로 8% · 전설 2%" (전설 조건 미달이면 프로만) */
+function titleLine(s: GameState, tier: JobTier) {
+  const c = titleChances(s, tier);
+  const p = (v: number) => `${Math.round(v * 1000) / 10}%`;
+  return <>프로 {p(c.pro)}{c.legend > 0 && <><br />전설 {p(c.legend)}</>}</>;
+}
 /** v3에서 없어지는 직종(밭)은 목록에서 뺀다 */
 const HIDDEN_ROLES = new Set<string>(['field']);
 const css = (rgb: number) => `#${rgb.toString(16).padStart(6, '0')}`;
@@ -95,6 +102,7 @@ function TrainingPanel({ st, s, dispatch, onDone }: { st: Staff; s: GameState; d
   return (
     <div style={{ marginTop: 6, padding: 8, background: PALETTE.paperDark, borderRadius: 6 }} data-testid={`training-${st.id}`}>
       <div style={{ fontSize: 14, marginBottom: 4 }}>어떤 연수를 보낼까? <span style={soft}>{st.trainingCount > 0 ? `${st.trainingCount + 1}번째라 비용 +${st.trainingCount * 20}%` : '그동안 자리를 비워요'}</span></div>
+      <div style={{ ...soft, fontSize: 13, marginBottom: 4 }} data-testid={`training-chance-${st.id}`}>돌아올 때 판정: {chanceText(trainingChances(s, st.id))} (대박이면 효과 2배, 쪽박이면 절반)</div>
       {!unlocked && <div style={{ ...soft, marginBottom: 4 }}>카페 랭크 {TRAINING_RANK}부터 보낼 수 있어요</div>}
       <div style={{ display: 'grid', gap: 4 }}>
         {opts.map(({ def, cost, ok, reason }) => (
@@ -133,7 +141,9 @@ function StaffCard({ st, s, dispatch }: { st: Staff; s: GameState; dispatch: Dis
             <span style={{ fontSize: 14 }}>{away ? `연수 중 · ${away.name} ${st.training!.daysLeft}일 남음` : st.role ? label('role', st.role) : '쉬는 중'} · Lv.{st.level}<span style={soft}>/{st.maxLevel}</span></span>
           </div>
           <div style={soft}>월급 {wonText(due)}{due < st.salary ? ' (쉬는 중 50%)' : ''}{st.unpaidMonths > 0 && <span style={{ color: PALETTE.bad }}> · 월급 밀림 {st.unpaidMonths}달</span>}</div>
-          <div style={{ marginTop: 2 }}><SkillBadges who={st} /></div>
+          <div style={{ marginTop: 2, display: 'flex', gap: 4, flexWrap: 'wrap', alignItems: 'center' }}><TitleRibbon titleId={st.title} /><SkillBadges who={st} /></div>
+          {st.title && <div style={{ ...soft, fontSize: 13 }}>{titleDef(st.title).desc}</div>}
+          {isWorking(s, st) && <div style={{ ...soft, fontSize: 13 }} data-testid={`luck-${st.id}`}>이 직원에게 시키면: 홍보 대박 {Math.round(outcomeChances(s, 'promo', st).great * 100)}% · 쪽박 {Math.round(outcomeChances(s, 'promo', st).fail * 100)}%</div>}
         </div>
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr auto', gap: '3px 8px', alignItems: 'center', fontSize: 14, marginTop: 6 }}>
@@ -162,6 +172,7 @@ function CandidateCard({ c, s, dispatch }: { c: Candidate; s: GameState; dispatc
   const chosen = (role && roles.includes(role) ? role : roles[0]) ?? '';
   const check = chosen !== '' ? canHire(s, c.id, chosen) : { ok: false, reason: '자리 없음' };
   const bio = staffPoolDef(c.poolId).bio;
+  const daysLeft = candidateDaysLeft(c, dayIndex(s.clock)); // staff-luck: 프로·전설 후보는 3일
   return (
     <div style={rowCard} data-testid={`candidate-${c.id}`}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -171,7 +182,9 @@ function CandidateCard({ c, s, dispatch }: { c: Candidate; s: GameState; dispatc
             <b style={{ fontSize: 16 }}>{c.name}</b>
             <span style={{ fontSize: 14 }}>최대 Lv.{c.maxLevel}</span>
           </div>
-          <div style={soft}>월급 {wonText(c.salary)} · <SkillBadges who={c} /></div>
+          <div style={soft}>월급 {wonText(c.salary)}{c.title ? ` (칭호 ×${TITLE_GRADES[titleDef(c.title).grade].salaryMult})` : ''} · <SkillBadges who={c} /></div>
+          {c.title && <div style={{ marginTop: 2, display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}><TitleRibbon titleId={c.title} />{daysLeft !== null && <span style={{ fontSize: 13, color: PALETTE.bad, fontWeight: 700 }} data-testid={`candidate-days-${c.id}`}>{daysLeft > 0 ? `${daysLeft}일 남음` : '오늘까지'}</span>}</div>}
+          {c.title && <div style={{ ...soft, fontSize: 13 }}>{titleDef(c.title).desc}</div>}
           {bio && <div style={{ ...soft, fontSize: 13 }}>{bio}</div>}
         </div>
       </div>
@@ -225,7 +238,7 @@ export function StaffWindow(props: StaffWindowProps) {
       )}
       {tab === 'candidates' && (
         <>
-          <div style={{ marginBottom: 4 }}><b>공고 내기</b> <span style={soft}>돈을 내면 그 방법으로 올 사람이 후보로 와요{s.freeRecruits > 0 ? ` · 스카우트권 ${s.freeRecruits}장` : ''}</span></div>
+          <div style={{ marginBottom: 4 }}><b>공고 내기</b> <span style={soft}>돈을 내면 그 방법으로 올 사람이 후보로 와요{s.freeRecruits > 0 ? ` · 스카우트권 ${s.freeRecruits}장 (쓰면 프로 이상 보장)` : ''}</span></div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(104px, 1fr))', gap: 6, marginBottom: 10 }}>
             {TIER_ORDER.map((t) => {
               const def = TIERS[t];
@@ -235,7 +248,7 @@ export function StaffWindow(props: StaffWindowProps) {
               const locked = !tierUnlocked(s, t);
               return (
                 <button key={t} style={{ ...(check.ok ? brownBtn : brownBtnOff), margin: 0, padding: '6px 4px', fontSize: 14, lineHeight: 1.25 }} disabled={!check.ok} title={check.reason} onClick={() => dispatch({ type: 'postJob', tier: t })} data-testid={`post-${t}`}>
-                  {def.name}<br /><span style={{ fontSize: 13, fontWeight: 400 }}>{locked ? `★${def.unlock?.star ?? ''}부터` : <>{cost > 0 ? wonText(cost) : '무료'}<br />{left}명 남음</>}</span>
+                  {def.name}<br /><span style={{ fontSize: 13, fontWeight: 400 }}>{locked ? `★${def.unlock?.star ?? ''}부터` : <>{cost > 0 ? wonText(cost) : '무료'}<br />{left}명 남음<br />{titleLine(s, t)}</>}</span>
                 </button>
               );
             })}

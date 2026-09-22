@@ -9,6 +9,8 @@ import { tagMatches } from './spots.ts';
 import { dayIndex } from './effects.ts';
 import { randInt } from './rng.ts';
 import { josa } from './josa.ts';
+import { rollOutcome, recordOutcome, outcomeChances, bestStaffFor, OUTCOME_MULT, OUTCOME_NAME, type Chances } from './luck.ts'; // staff-luck
+import { isWorking } from './titles.ts';
 
 /** 같은 종류 시설에 누적되는 아이템 인기 보너스 상한 */
 export const ITEM_POP_CAP = 30;
@@ -115,12 +117,21 @@ export function canGiveGift(state: GameState, guestId: string, itemId: string): 
   return { ok: true };
 }
 
-/** 호출 전 canGiveGift. 효과 배수(1 또는 2)를 돌려준다. */
+/** 선물을 건네는 직원(홀 직원 중 대박 기대값 최고, 없으면 null)과 확률 (staff-luck) */
+export function giftChances(state: GameState): { staff: ReturnType<typeof bestStaffFor>; chances: Chances } {
+  const staff = bestStaffFor(state, 'gift', state.staff.filter((st) => st.role === 'hall' && isWorking(state, st)));
+  return { staff, chances: outcomeChances(state, 'gift', staff) };
+}
+
+/** 호출 전 canGiveGift. 효과 배수를 돌려준다 (잘 맞으면 ×2, 특기 ×1.5, staff-luck 대박 ×2·쪽박 ×0.5). */
 export function giveGift(state: GameState, guestId: string, itemId: string): number {
   const gift = giftDef(itemId);
   const g = state.guests.find((x) => x.id === guestId)!;
   const fit = giftFits(gift, g.type);
-  const k = (fit ? GIFT_FIT_MULT : 1) * (1 + skillTotal(state, 'giftBonus')); // 트랙 D 특기 gift_hands ×1.5
+  const { staff, chances } = giftChances(state);
+  const outcome = rollOutcome(state, { task: 'gift', staff });
+  const k = (fit ? GIFT_FIT_MULT : 1) * (1 + skillTotal(state, 'giftBonus')) * OUTCOME_MULT[outcome]; // 트랙 D 특기 gift_hands ×1.5
+  recordOutcome(state, { task: 'gift', outcome, staffId: staff?.id ?? null, title: gift.name, chances, lines: [`${OUTCOME_NAME[outcome]}: 선물 효과 ×${OUTCOME_MULT[outcome]}${fit ? ' · 잘 맞아요 ×2' : ''}`] });
   state.inventory[itemId] = (state.inventory[itemId] ?? 0) - 1;
   state.giftDay = dayIndex(state.clock);
   if (g.namedId) {
@@ -132,7 +143,7 @@ export function giveGift(state: GameState, guestId: string, itemId: string): num
     pushNotice(state, `${guestTypeDef(g.type).name}에게 ${josa(gift.name, '을/를')} 선물했어요${fit ? ' (잘 맞아요 ×2)' : ''} — 인기 +${GIFT_POPULARITY * k} · 만족 +${GIFT_SATISFACTION * k}`);
   }
   g.mood = 'happy';
-  g.say = fit ? '이런 걸 다… 고마워요!' : '고마워요!';
+  g.say = outcome === 'fail' ? '아… 고마워요' : fit ? '이런 걸 다… 고마워요!' : '고마워요!';
   pushFx(state, { kind: 'pop', x: Math.round(g.x), y: Math.round(g.y), n: GIFT_POPULARITY * k, tick: state.tick });
   return k;
 }

@@ -8,7 +8,7 @@ import { upkeep, closeMonth, annualRaise, incomeTax, TAX_MONTH } from './economy
 import { checkLoan, monthlyFailure } from './failure.ts';
 import { resetWaiting } from './guests.ts';
 import { nightlyReputation, monthlyReputation } from './reputation.ts';
-import { payroll, expireCandidates, hourlyEnergy, nightlyRecovery, moveStaff, dailyWorkExp, checkRoleUnlocks } from './staff.ts';
+import { payroll, expireCandidates, expireRareCandidates, hourlyEnergy, nightlyRecovery, moveStaff, dailyWorkExp, checkRoleUnlocks } from './staff.ts';
 import { dailyTraining } from './training.ts';
 import { expirePromotions } from './promotions.ts';
 import { evaluateUnlocks } from './segments.ts';
@@ -58,6 +58,7 @@ function onNewDay(state: GameState): void {
   dailyWorkExp(state);
   dailyTraining(state);
   checkRoleUnlocks(state);
+  expireRareCandidates(state); // staff-luck: 프로·전설 후보 3일 만료
   dailyBoard(state);
   dailySpots(state);
   resolveDevelop(state);

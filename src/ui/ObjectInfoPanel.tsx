@@ -6,6 +6,7 @@ import { Icon } from './Icon';
 import { Confirm } from './Popup';
 import { RecipeCodex } from './CraftPanel';
 import { NamedGuestCodex } from './NamedGuestCodex';
+import { TitleCodex } from './TitleCodex'; // staff-luck 칭호 도감
 import { brownBtn, brownBtnOn, brownBtnOff, dangerBtn, card, PALETTE } from './frame';
 
 /** 계열 이름 (아이 눈높이) */
@@ -136,6 +137,7 @@ export function CodexPanel() {
       ))}
       <RecipeCodex />
       <NamedGuestCodex />
+      <TitleCodex />
     </div>
   );
 }

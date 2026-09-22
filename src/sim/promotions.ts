@@ -1,8 +1,10 @@
 import type { GameState, ApplyResult, PromotionDef } from './types.ts';
 import { promotionDef, GUEST_TYPES, guestTags, canonicalGuestId } from '../data/index.ts';
 import { nextRandom } from './rng.ts';
-import { applyApology } from './reputation.ts';
-import { findStaff, promoBonusOf, promoEnergyFactorOf } from './staff.ts';
+import { applyApology, addReputation } from './reputation.ts';
+import { rollOutcome, recordOutcome, outcomeChances, OUTCOME_MULT, GREAT_REPUTATION, FAIL_REPUTATION, FAIL_ENERGY, GREAT_TICKETS, OUTCOME_NAME, type Chances } from './luck.ts'; // staff-luck
+import { fmtNum } from './format.ts';
+import { findStaff, promoBonusOf, promoEnergyFactorOf, pushNotice } from './staff.ts';
 import { monthIndex } from './clock.ts';
 import { isTarget, isUnlocked } from './segments.ts';
 export { canSetTarget, setTarget } from './segments.ts';
@@ -76,31 +78,56 @@ export function canPromote(state: GameState, staffId: string, promotionId: strin
   return { ok: true };
 }
 
-/** 비용 차감 뒤 즉시(1회성) 반영하거나 기간형으로 등록한다. */
+/** 이 직원에게 이 홍보를 시키면 (사과 이벤트는 굴리지 않는다 → null) */
+export function promoChances(state: GameState, staffId: string, promotionId: string): Chances | null {
+  if (promotionDef(promotionId).special === 'apology') return null;
+  return outcomeChances(state, 'promo', findStaff(state, staffId));
+}
+
+/** 비용 차감 뒤 대박/중박/쪽박을 굴리고(staff-luck) 즉시(1회성) 반영하거나 기간형으로 등록한다.
+ *  대박 = 효과 ×2 + 응모권 1 + 평판 +3 / 쪽박 = 효과 ×0.5 + 평판 −2 + 기력 −20 (유튜버: 대박 확정·쪽박 무산, 사과 이벤트는 안 굴린다). */
 export function promote(state: GameState, staffId: string, promotionId: string): void {
   const st = findStaff(state, staffId)!;
   const def = promotionDef(promotionId);
+  const chances = outcomeChances(state, 'promo', st); // 기력을 빼기 전 확률 = 버튼에 미리 보인 값
+  const outcome = def.special === 'apology' ? null : rollOutcome(state, { task: 'promo', staff: st });
   st.energy -= def.energy * promoEnergyFactorOf(state); // 홍보 담당(x-staff) ×0.5
   state.research -= def.costResearch;
   state.money -= def.costMoney;
   state.monthCosts.ads += def.costMoney;
+  if (outcome === null) { state.lastApologyMonthIndex = monthIndex(state.clock); applyApology(state); return; } // 사과 이벤트 (트랙 E reputation)
+  const mult = OUTCOME_MULT[outcome];
+  const lines: string[] = [];
   if (def.special === 'youtuber') {
-    if (nextRandom(state) < YOUTUBER_CHANCE) state.youtuberBoostMonths = YOUTUBER_MONTHS;
-    return;
-  }
-  if (def.special === 'apology') { state.lastApologyMonthIndex = monthIndex(state.clock); applyApology(state); return; } // 트랙 E reputation
-  if (def.special === 'parttime') {
+    const r = nextRandom(state); // 주 스트림 소비는 원래대로 1회
+    const hit = outcome === 'great' || (outcome === 'success' && r < YOUTUBER_CHANCE);
+    if (hit) state.youtuberBoostMonths = YOUTUBER_MONTHS;
+    lines.push(hit ? `유튜버 영상이 떴어요 — ${YOUTUBER_MONTHS}달 동안 관광객 2배` : '영상이 묻혔어요…');
+  } else if (def.special === 'parttime') {
     st.lastParttimeMonthIndex = monthIndex(state.clock);
-    state.money += PARTTIME_MONEY;
-    state.monthIncome += PARTTIME_MONEY;
-    return;
+    const money = Math.round(PARTTIME_MONEY * mult);
+    state.money += money;
+    state.monthIncome += money;
+    lines.push(`아르바이트비 ₩${fmtNum(money)}`);
+  } else {
+    if (def.popularityShift) state.popularity = Math.max(-100, Math.min(100, state.popularity + Math.round(def.popularityShift * mult)));
+    const delta = bakeDelta(state, def);
+    for (const t of Object.keys(delta)) delta[t] = Math.round(delta[t]! * mult * 10) / 10;
+    if (def.months > 0) state.activePromotions.push({ promotionId, remainingMonths: def.months, delta });
+    else for (const [t, d] of Object.entries(delta)) state.segmentPopularity[t] = clampPop((state.segmentPopularity[t] ?? 0) + d);
+    lines.push(`손님층 인기 효과 ×${mult}`);
   }
-  if (def.popularityShift) state.popularity = Math.max(-100, Math.min(100, state.popularity + def.popularityShift));
-  if (def.months > 0) {
-    state.activePromotions.push({ promotionId, remainingMonths: def.months, delta: bakeDelta(state, def) });
-    return;
+  if (outcome === 'great') {
+    state.tickets += GREAT_TICKETS;
+    addReputation(state, GREAT_REPUTATION);
+    lines.push(`응모권 +${GREAT_TICKETS} · 평판 +${GREAT_REPUTATION}`);
+  } else if (outcome === 'fail') {
+    addReputation(state, -FAIL_REPUTATION);
+    st.energy = Math.max(0, st.energy - FAIL_ENERGY);
+    lines.push(`평판 −${FAIL_REPUTATION} · ${st.name} 기력 −${FAIL_ENERGY} · 경험치 +1`);
   }
-  for (const [t, d] of Object.entries(bakeDelta(state, def))) state.segmentPopularity[t] = clampPop((state.segmentPopularity[t] ?? 0) + d);
+  recordOutcome(state, { task: 'promo', outcome, staffId: st.id, title: def.name, chances, lines });
+  pushNotice(state, `${def.name} ${OUTCOME_NAME[outcome]}${outcome === 'great' ? '!!' : outcome === 'fail' ? '…' : ''} (${st.name})`);
 }
 
 
