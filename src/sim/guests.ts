@@ -34,6 +34,8 @@ import { fmtNum } from './format.ts';
 import { josa } from './josa.ts';
 import { siteBonus } from './site.ts';
 import { spawnRouteWeights, routeArrivals, routeSpawnPos, routeTagMult, routeWalletMult, routeStayMult, routeGuestMult, routeHome, noteRouteGuest, noteRouteIncome, foreignPhotoChance, foreignMenuMult, chargePortFee } from './entry.ts'; // 트랙 H 유입 경로
+import { hashOf } from './say.ts';
+import { assignGuestName, regularsDue, dressAsRegular, regularTip, thankIfDone, maybeRequest, addRegularGauge, requestDef, GAUGE_HAPPY_VISIT } from './interact.ts'; // fun-guest (트랙 G): 이름·단골·요청·게이지
 
 export { moveAlong, GUEST_SPEED_CELLS_PER_S }; // 하위 호환 재수출 (본체는 path.ts)
 export const SEAT_MS = 3000;       // 기분이 정해진 뒤 앉아 있는 시간 (≈1.5시간)
@@ -42,7 +44,7 @@ export const MAX_PREP_CUT = 0.6;   // 직원 효과로 줄일 수 있는 최대 
 export const MAX_SPEED_SKILL = 0.5;
 export const SERVICE_PER_SCENERY = 30; // 홀 서비스 30당 경치 기준 −1
 export const POP_PER_SCENERY = 3;      // 좌석 인기가 기본(10)에서 3 벗어날 때마다 경치 ±1
-export const SAY_CHANCE = 0.3;     // §19 손님 대사 확률
+export const SAY_CHANCE = 0.35;    // §19 손님 대사 확률 (fun-guest: 20→35%, 요청·인사 대사 우선)
 export const MAX_GUESTS = 60;
 export const MIN_DAILY_GUESTS = 2;
 export const MAX_DAILY_GUESTS = 300;
@@ -259,6 +261,14 @@ export function hourlyRegulars(state: GameState): number {
   if (noGuestsToday(state)) return 0;
   let n = 0;
   for (const def of regularsDueNow(state)) if (spawnNamedGuest(state, def.id)) n++;
+  // fun-guest: 게이지로 등록된 단골(state.regulars)도 정한 요일·시각에 온다 — 이름·얼굴 고정, "OO 왔다!".
+  // 단골은 그날 손님 수 안에서 온다(spawnAcc −1): 손님층마다 한 명씩 매주 오는 단골이 하루 손님 위에 얹히면 3년차 손님·랭크·자금이 밴드(§4.6)를 넘는다.
+  for (const r of regularsDue(state)) {
+    if (!isUnlocked(state, r.guestType) || spawnGuests(state, 1, r.guestType) === 0) continue;
+    dressAsRegular(state, state.guests[state.guests.length - 1]!, r);
+    state.spawnAcc -= 1;
+    n++;
+  }
   return n;
 }
 
@@ -316,6 +326,7 @@ export function spawnGuests(state: GameState, n: number, forceType?: string, ent
       ...(entry ? { route } : {}),
       ...(gates > 0 ? { gates } : {}),
     });
+    assignGuestName(state.guests[state.guests.length - 1]!); // fun-guest: 성+이름 (id 해시, rng 안 씀)
     if (entry) noteRouteGuest(state, route); else noteRouteGuest(state, 'bus');
     spawned++;
   };
@@ -382,9 +393,10 @@ export function serviceBonus(state: GameState): number {
 
 function maybeSay(state: GameState, g: Guest): void {
   if (nextRandom(state) >= SAY_CHANCE) return;
+  if (g.requestId) { g.say = requestDef(g.requestId).text; return; } // fun-guest: 요청 대사 우선
   const d = guestDialogue(g.type);
   const pool = g.mood === 'happy' ? d.happy : g.moodReason && g.moodReason !== 'price' ? d.meh[g.moodReason] : [];
-  g.say = pickWeighted(state, pool, () => 1);
+  g.say = pool.length > 0 ? pool[hashOf(g.id) % pool.length]! : null; // fun-guest: 문장은 id 해시로 — 확률(SAY_CHANCE)을 바꿔도 rng 스트림(밸런스)이 안 흔들린다
 }
 
 /** 좌석 인기(상성·아이템·세트 반영)가 경치 점수에 주는 보정 */
@@ -453,6 +465,7 @@ function resolveMood(state: GameState, g: Guest): void {
     }
     state.popularity = Math.max(-100, Math.min(100, state.popularity + type.popularityShift));
     onHappyVisit(state, g, (tasteMatch ? 2 : 1) * skillSatMult(state, g));
+    addRegularGauge(state, g.type, GAUGE_HAPPY_VISIT); // fun-guest: 만족 방문 → 단골 게이지 +0.2
     const photo = foreignPhotoChance(g.type, photoChance(state, g.type, g.menuId)) * (1 + titleBonus(state, 'photo')); // 트랙 H: 외국인 ×2 · staff-luck 칭호
     if (photo > 0 && nextRandom(state) < photo) pushFx(state, { kind: 'photo', x: seat.x, y: seat.y, tick: state.tick });
   } else {
@@ -519,6 +532,7 @@ function order(state: GameState, g: Guest): void {
   state.monthGuests++;
   state.totalGuests++;
   noteGuest(state);
+  if (!thankIfDone(state, g)) maybeRequest(state, g); // fun-guest: 들어준 요청엔 "고마워요", 아니면 20%가 새 요청
   if (p.wallet <= 0) { g.waitMs = 0; return; }
   const liked = availableMenus(state).filter((id) => guestLikesCategory(p.likes, menuOf(state, id).category));
   const candidates = liked.filter((id) => priceOf(state, id) <= p.wallet);
@@ -537,9 +551,10 @@ function order(state: GameState, g: Guest): void {
   const seat = state.objects[g.seatId!]!;
   recordUse(seat); // 트랙 A: 증축 조건(누적 이용)
   const price = Math.round(priceOf(state, menuId) * parcelFeeMult(parcelBonusAt(state, seat.x, seat.y)) * (objectStats(state, seat.id).feePct / 100) * eventFeeMult(state) * siteBonus(state, seat).feeMult * indoorFeeMult(state, seat, g.type) * (1 + titleBonus(state, 'fee'))); // 트랙 F 입지 요금 · y-indoor 바 저녁 세트 · staff-luck 칭호 요금
-  state.money += price;
-  state.monthIncome += price;
-  state.totalIncome += price;
+  const tip = regularTip(g, price); // fun-guest: 단골 팁 +20%
+  state.money += price + tip;
+  state.monthIncome += price + tip;
+  state.totalIncome += price + tip;
   serveLuck(state, g, seat, price); // staff-luck: 주문마다 작은 판정
   noteRouteIncome(state, g, price); // 트랙 H 경로 매출
   g.menuId = menuId;

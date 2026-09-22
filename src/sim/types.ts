@@ -737,7 +737,8 @@ export type FxEvent =
   | { kind: 'greet'; staffId: string; tick: number }
   | { kind: 'photo'; x: number; y: number; tick: number } // 인생샷 스킬: 손님이 사진을 찍었다
   | { kind: 'complete'; x: number; y: number; tick: number } // 시설 완공 반짝임
-  | { kind: 'scene'; title: string; text: string; tick: number }; // UI 장면 창(완공·★ 승급·랭크 업). 렌더는 무시한다
+  | { kind: 'scene'; title: string; text: string; tick: number } // UI 장면 창(완공·★ 승급·랭크 업). 렌더는 무시한다
+  | { kind: 'react'; guestId: string; text: string; icon?: 'heart' | 'sweat' | 'wave' | 'question' | 'thumb'; tick: number }; // 트랙 G: 손님 반응 — 말풍선 + 머리 위 아이콘(하트·땀·손 흔들기·?)
 
 // ---------- 상점·추첨·유니폼·가이드북 (2B-2 Task 6·7) ----------
 export interface MileageShopDef { id: string; name: string; price: number; description: string; itemId?: string; objectId?: string }
@@ -868,7 +869,20 @@ export interface Guest {
   paid: number;         // 주문 시 낸 돈 (자금 효과의 팁 계산용)
   route?: RouteId;      // 어느 유입 경로로 왔나 (트랙 H entry.ts). 없으면 정류장
   gates?: number;       // 자리로 오는 길에 지나간 정낭 수 (w-free: 「제주 대문」 인상 — 관광객 만족 +1/개, 최대 GATE_SATISFACTION_MAX). 0이면 없다
+  // ---- fun-guest (트랙 G): 이름·얼굴·상호작용 ----
+  name?: string;        // 성+이름 (names.json, id 해시로 결정). 옛 저장엔 없다 → UI가 예전 방식으로 만든다
+  faceSeed?: number;    // 단골(regulars) 고정 얼굴 seed. 없으면 손님층 얼굴(guestFace)
+  regularId?: string;   // 단골(state.regulars)로 온 손님이면 그 id — 팁 +20%·"OO 왔다!"
+  requestId?: string;   // 지금 하고 있는 요청(requests.json id) — 말풍선 "?"·카드 요청 줄
+  greeted?: boolean;    // 오늘 인사했다 (손님당 1회)
+  recommended?: boolean; // 메뉴를 추천했다 (손님당 1회)
 }
+
+/** 손님 요청 (트랙 G requests.json): 앉은 손님 20%가 코너·시설·메뉴를 바란다. 들어주면 다음 그 손님층 방문에 "고마워요" + 단골 게이지 +2. */
+export interface GuestRequestDef { id: string; text: string; want: { corner?: string; facility?: string; menu?: string; tagCorner?: string }; thanks: string }
+export interface GuestRequest { id: string; guestType: string; day: number; done: boolean }
+/** 단골 등록 손님 (트랙 G): 손님층 게이지가 5면 그 손님층에서 이름·얼굴이 고정된 한 명. 매주 방문·팁 +20%. */
+export interface Regular { id: string; guestType: string; name: string; seed: number; day: number }
 
 /** 속도 4(빠른 모드)는 엔딩 뒤 「계속하기」로만 열린다 (ending.ts) */
 export type Speed = 0 | 1 | 2 | 3 | 4;
@@ -1003,6 +1017,14 @@ export interface GameState {
   undo: UndoEntry | null;                     // 직전 배치·철거·이동 되돌리기 스냅샷 (undo.ts)
   main: MainState;                            // 본관 증축·2층·이동·분위기 (rooms.ts, y-indoor)
   guests: Guest[];
+  // ---- fun-guest (트랙 G) — 전부 optional, interact.ts가 처음 쓸 때 채운다 ----
+  greetDay?: number;                          // 인사·추천 횟수를 센 절대 일 인덱스
+  greetCount?: number;                        // 오늘 인사 횟수 (하루 GREET_DAY_MAX)
+  recommendCount?: number;                    // 오늘 추천 횟수
+  requests?: GuestRequest[];                  // 손님 요청 (진행 중·들어준 것)
+  requestThanks?: number;                     // 고마워요를 받은 횟수 (첫 REQUEST_TICKET_COUNT회 응모권)
+  regularsGauge?: Record<string, number>;     // 손님층 → 단골 게이지 0~5
+  regulars?: Regular[];                       // 단골 등록 손님
   routes: Record<RouteId, RouteState>;        // 손님 유입 경로 5종 (트랙 H entry.ts)
   ending: EndingState;                        // 10년차 엔딩·빠른 모드·100주년 (ending.ts, z-ending)
   village: VillageState;                      // 정착 등급·마을제·기부 (village.ts, z-ending)
@@ -1094,6 +1116,8 @@ export type Action =
   | { type: 'setRouteContract'; route: RouteId; on: boolean } // 공항 셔틀 계약/해지 (트랙 H)
   | { type: 'expandParking'; objectId: string }               // 주차장 2×2 → 3×2 교체 (트랙 H)
   | { type: 'giveGift'; guestId: string; itemId: string }
+  | { type: 'greetGuest'; guestId: string }                   // 트랙 G: 인사 (손님당 1회·하루 10회)
+  | { type: 'recommendMenu'; guestId: string; menuId: string } // 트랙 G: 메뉴 추천 (손님당 1회)
   | { type: 'craftGift'; itemId: string }
   | { type: 'develop'; base: MenuBase; ingredients: string[]; params?: BrewParams; staffId: string }
   | { type: 'dismissDevelop' }

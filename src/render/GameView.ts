@@ -1,5 +1,5 @@
 import { Application, Container, Sprite, Graphics, Texture, Text } from 'pixi.js';
-import type { GameState, PlacedObject, Guest, Staff, Season, RoleId, Pt, RouteId } from '../sim/index.ts';
+import type { GameState, PlacedObject, Guest, Staff, Season, RoleId, Pt, RouteId, FxEvent } from '../sim/index.ts';
 import { seasonOf, LOW_ENERGY, parcelPrice, footprint, roomAt, doorFrontOf, WALL_COLORS, dayIndex, menuOf, sizeOf, MAIN_SIZE, LIGHT_RADIUS } from '../sim/index.ts';
 import type { Parcel } from '../sim/index.ts';
 import { objectDef } from '../data/index.ts';
@@ -10,6 +10,7 @@ import { attachCamera, type CameraBounds, type CameraOptions } from './camera';
 import { ISO_W, ISO_H, cellToScreen, cellCenter, footAnchor, depth, screenToCell } from './iso';
 import { makeCharacterNode, updateCharacterNode, staffParts, guestParts, namedGuestParts, sameAccs, CHAR_H, type CharacterNode, type Dir, type Frame } from './character';
 import { guestFace } from '../sim/segments.ts';
+import { regularFace } from '../sim/interact.ts'; // fun-guest: 단골 고정 얼굴
 import { namedGuestFace } from '../sim/popup.ts';
 import { guestTypeDef, namedGuestDef } from '../data/index.ts';
 import { Background } from './Background';
@@ -103,6 +104,11 @@ const MONEY_POP_MAX = 8;
 const GREET_RADIUS = 2;
 const GREET_CHANCE = 0.2;
 const GREET_MS = 1200;
+/** fun-guest 반응 말풍선·아이콘 */
+const REACT_BUBBLE_MS = 2500;
+const REACT_ICON_PX = 12;
+const REACT_ICON_DX = 22;
+const REACT_ICON: Record<NonNullable<Extract<FxEvent, { kind: 'react' }>['icon']>, string> = { heart: 'icon_heart', sweat: 'icon_mood_meh', wave: 'icon_wave', question: 'bubble_question', thumb: 'icon_thumb' };
 const GREET_TEXT = '어서옵서예!';
 /** 앉은 손님 손의 컵(8×8): 몸 오른쪽, 허리 높이 */
 const CUP_OFFSET = { x: 7, y: -14 };
@@ -310,6 +316,8 @@ export class GameView {
   private fxSeenTick = -1;
   /** 숫자 팝업(+N) 큐 */
   private pops: { node: Container; born: number; y0: number }[] = [];
+  /** fun-guest: 멈춘 상태(speed 0)에서는 tick이 안 올라 같은 반응 fx가 매 프레임 다시 걸린다 — 한 번 띄운 항목은 건너뛴다 */
+  private seenReacts = new WeakSet<object>();
   /** 말풍선: 캐릭터(손님·직원) id → 오버레이 레이어의 말풍선. 캐릭터 노드를 따라다니고 캐릭터보다 위에 그려진다. */
   private speech = new Map<string, SpeechEntry>();
   /** 인사 판정을 끝낸 손님 id (손님당 한 번) */
@@ -1090,7 +1098,7 @@ export class GameView {
     }
     const def = guestTypeDef(g.type);
     const named = g.namedId ? namedGuestDef(g.namedId) : null;
-    const parts = named ? namedGuestParts(namedGuestFace(named), named.face.seed, named.regionId) : guestParts(guestFace(g.type), def.tags, def.wants);
+    const parts = named ? namedGuestParts(namedGuestFace(named), named.face.seed, named.regionId) : guestParts(g.faceSeed !== undefined ? regularFace(g.faceSeed) : guestFace(g.type), def.tags, def.wants); // fun-guest 훅: 단골은 seed 얼굴
     const ch = makeCharacterNode(parts, guestDir(g), 1);
     c.addChild(ch);
     return { node: c, sprite: null, char: ch, hadMenu: g.menuId !== null, accKey: '', alert: null, phase: g.phase };
@@ -1330,7 +1338,30 @@ export class GameView {
       if (e.kind === 'harvest' || e.kind === 'complete') this.spawnSparkle(e.x, e.y, now);
       else if (e.kind === 'pop') this.spawnPop(e.x, e.y, e.n, now);
       else if (e.kind === 'photo') this.spawnSparkle(e.x, e.y, now);
+      else if (e.kind === 'react') this.spawnReaction(e, now);
     }
+  }
+
+  /** fun-guest (트랙 G): 손님 반응 — 말풍선(인사·추천·요청·고마워요 대사) + 머리 위로 떠오르는 아이콘(하트·땀·손 흔들기·?). 같은 fx는 한 번만. */
+  private spawnReaction(e: Extract<FxEvent, { kind: 'react' }>, now: number) {
+    if (this.seenReacts.has(e)) return;
+    this.seenReacts.add(e);
+    const target = this.guestNodes.get(e.guestId)?.node;
+    if (!target) return;
+    this.showBubble(e.guestId, { text: e.text }, REACT_BUBBLE_MS);
+    const name = e.icon ? REACT_ICON[e.icon] : null;
+    const t = name ? tex(name) : null;
+    if (!t) return;
+    const c = new Container();
+    const sp = new Sprite(t);
+    sp.anchor.set(0.5, 1);
+    sp.width = REACT_ICON_PX; sp.height = REACT_ICON_PX;
+    c.addChild(sp);
+    // 말풍선(머리 위, 왼쪽 1/3에 꼬리)과 겹치지 않게 오른쪽 어깨 위에서 떠오른다
+    c.position.set(target.x + REACT_ICON_DX, target.y - GUEST_H + 6);
+    c.zIndex = 1e6 + 1;
+    this.overlay.addChild(c);
+    this.pops.push({ node: c, born: now, y0: target.y - GUEST_H + 6 });
   }
 
   /** 방(본관·별관, 공사 중 제외) 발자국 전체에 따뜻한 빛 다이아몬드 — 실내는 밤에도 밝다 (fix-indoor). 배치 서명이 바뀔 때만 다시 그린다. */

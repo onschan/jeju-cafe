@@ -645,12 +645,15 @@ function monthlyPlan(s: GameState, monthsPlayed: number): void {
   if (canHoldFestival(s).ok) apply(s, { type: 'holdFestival' });
 }
 
+/** fun-guest: 봇이 하루에 인사하는 손님 수 */
+const BOT_GREETS_PER_DAY = 3;
 /** 매일 아침 */
 function dailyPlan(s: GameState): void {
   while (s.alerts.length > 0) apply(s, s.alerts[0]!.type === 'ending' ? { type: 'continueEnding' } : { type: 'dismissAlert' }); // z-ending: 엔딩은 「계속하기」
   // 게시판 부탁은 지금 할 수 있는 것(시설·메뉴 열림·아이템 있음)만 받는다 (랜드마크·손님 해금이 부탁 보상)
   if (s.clock.year >= BOT_QUEST_YEAR) for (const q of Object.values(s.board.quests)) if (Object.values(s.board.quests).filter((x) => x.status === 'active').length < BOT_QUEST_ACTIVE_MAX && q.status === 'offered' && botCanDoQuest(s, questDef(q.id)) && canAcceptQuest(s, q.id).ok) apply(s, { type: 'acceptQuest', id: q.id });
   if (s.lastChallenge) apply(s, { type: 'dismissChallenge' });
+  for (const g of s.guests.filter((x) => x.phase !== 'leaving').slice(0, BOT_GREETS_PER_DAY)) apply(s, { type: 'greetGuest', guestId: g.id }); // fun-guest: 아침에 와 있는 손님 3명에게 인사 (결정적)
   // 도전 2슬롯은 늘 채운다 (게임이 아는 것 우선, 그다음 tier 낮은 순) — game-feel P2
   if (s.clock.year >= BOT_CHALLENGE_YEAR) for (const c of [...offeredChallenges(s)].filter((c) => c.tier <= BOT_CHALLENGE_MAX_TIER).sort((a, b) => (BOT_CHALLENGE_PREFER.indexOf(a.id) + 1 || 99) - (BOT_CHALLENGE_PREFER.indexOf(b.id) + 1 || 99) || a.tier - b.tier)) {
     if (s.challenges.active.length >= 2) break;
