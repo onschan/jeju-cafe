@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { Icon } from '../Icon';
 import type { GameState, ObjectDef } from '../../sim/index.ts';
-import { placeCost, constructions, canStartBuild, goalForFacility, isUpgradable, tierOf, mainBuilding, MAIN_TYPE } from '../../sim/index.ts';
+import { placeCost, constructions, canStartBuild, goalForFacility, isUpgradable, tierOf, mainBuilding, MAIN_TYPE, BUILD_TILES, TILE_TYPES, tileBadges, seatUseRate, totalSeats, cafeScenery, treeOf, sceneryGainText, routeTakesGuests, ROUTE_IDS, gradeOf, type BuildTileId } from '../../sim/index.ts';
 import { OBJECTS, objectDef } from '../../data/index.ts';
 import { unlockText, wonText } from '../../data/labels.ts';
 import { loadSheet, drawFrame, type Sheet } from '../sheetCanvas';
@@ -13,6 +13,8 @@ import { SiteToggle } from '../SiteToggle.tsx';
 import { CornerTab } from './CornerTab.tsx'; // fun-corner 「코너」 탭
 
 export type BuildTab = 'building' | 'corner' | 'indoor' | 'rest' | 'convenience' | 'food' | 'fun' | 'farm' | 'scenery' | 'path' | 'wall';
+/** fun: 짓기 창 첫 화면(6타일) · 타일 하위 목록 · 전체 목록(탭) */
+export type BuildView = { kind: 'tiles' } | { kind: 'tile'; tile: BuildTileId } | { kind: 'all' };
 /** 탭 순서 (§8.4): [건물 — 본관이 없을 때만(w-start)] · 코너(fun-corner) · 실내 · 쉼 · 편의 · 먹거리 · 즐길거리 · 농원 · 경관 · 길 · 담 */
 export const BUILD_TABS: { key: BuildTab; label: string }[] = [
   { key: 'building', label: '건물' }, { key: 'corner', label: '코너' }, { key: 'indoor', label: '실내' }, { key: 'rest', label: '쉼' }, { key: 'convenience', label: '편의' }, { key: 'food', label: '먹거리' }, { key: 'fun', label: '즐길거리' },
@@ -21,12 +23,15 @@ export const BUILD_TABS: { key: BuildTab; label: string }[] = [
 /** 본관 카드 「실내 꾸미기」처럼 창을 여는 쪽이 첫 탭을 지정한다 (App 창 매핑을 안 건드리고 — y-indoor). 한 번 읽으면 지워진다. */
 let requestedTab: BuildTab | null = null;
 export function requestBuildTab(tab: BuildTab): void { requestedTab = tab; }
-function takeRequestedTab(): BuildTab | null { const t = requestedTab; requestedTab = null; return t; }
+let requestedTabWas = false;
+function takeRequestedTab(): BuildTab | null { const t = requestedTab; requestedTabWas = t !== null; requestedTab = null; return t; }
+/** fun: 짓기 창 첫 화면 기억 (세션) */
+let lastView: BuildView | null = null;
 /** ease: 짓기 창은 마지막 탭·스크롤 위치를 기억한다 (세션, 창을 여는 쪽이 탭을 지정하면 그게 우선) */
 let lastTab: BuildTab | null = null;
 let lastScrollTop = 0;
 /** 테스트·새 게임용 초기화 */
-export function resetBuildWindowMemory(): void { lastTab = null; lastScrollTop = 0; }
+export function resetBuildWindowMemory(): void { lastTab = null; lastScrollTop = 0; lastView = null; requestedTabWas = false; }
 /** 「최근」 줄 개수 */
 export const RECENT_N = 3;
 /** ease 「최근」: 최근에 지은 시설 종류 (액션 로그의 place·placeLine 뒤에서부터, 중복 없이 최대 n) — 열려 있고 목록에 나오는 것만 */
@@ -89,8 +94,12 @@ export interface BuildWindowProps extends WindowProps { initialTab?: BuildTab }
 export function BuildWindow(props: BuildWindowProps) {
   const { s } = useWindowState(props);
   const noMain = !mainBuilding(s); // w-start: 맨땅이면 「건물」 탭(카페 본관 카드)이 맨 앞에, 본관을 지으면 사라진다
+  const [picked, setPicked] = useState<string | null>(null);
   const [tab, setTabState] = useState<BuildTab>(() => props.initialTab ?? takeRequestedTab() ?? (mainBuilding(s) ? (lastTab ?? 'rest') : 'building'));
   const setTab = (t: BuildTab) => { lastTab = t; lastScrollTop = 0; setTabState(t); };
+  // fun: 첫 화면은 6타일 — 여는 쪽이 탭을 지정했거나(본관 카드 「실내 꾸미기」·코너 탭 글로우) 맨땅(건물 탭)이면 바로 전체 목록
+  const [view, setView] = useState<BuildView>(() => (props.initialTab || requestedTabWas || !mainBuilding(s) ? { kind: 'all' } : (lastView ?? { kind: 'tiles' })));
+  const goView = (v: BuildView) => { lastView = v; lastScrollTop = 0; setView(v); setPicked(null); };
   const rootRef = useRef<HTMLDivElement>(null);
   // 스크롤 위치 기억: 셸의 스크롤 컨테이너(window-body)에 붙여, 열 때 되돌리고 닫힐 때 저장 (ease)
   useEffect(() => {
@@ -101,15 +110,17 @@ export function BuildWindow(props: BuildWindowProps) {
     el.addEventListener('scroll', onScroll, { passive: true });
     return () => el.removeEventListener('scroll', onScroll);
   }, [props.initialTab]);
-  const recent = activeTabIsList(tab, noMain) && tab !== 'corner' ? recentBuildTypes(s) : [];
+  const recent = view.kind === 'all' && activeTabIsList(tab, noMain) && tab !== 'corner' ? recentBuildTypes(s) : [];
   const tabs = noMain ? BUILD_TABS : BUILD_TABS.filter((t) => t.key !== 'building');
   const activeTab: BuildTab = tab === 'building' && !noMain ? 'rest' : tab;
-  const [picked, setPicked] = useState<string | null>(null);
   const [sheet, setSheet] = useState<Sheet | null>(null);
   useEffect(() => { let on = true; loadSheet().then((sh) => { if (on) setSheet(sh); }); return () => { on = false; }; }, []);
 
   const unlocked = new Set(s.unlocked.objects);
-  const items = activeTab === 'building'
+  const tileMode = view.kind === 'tile' && view.tile !== 'building' && view.tile !== 'all' ? view.tile : null;
+  const items = tileMode
+    ? TILE_TYPES[tileMode].map((id) => objectDef(id)).filter((d) => unlocked.has(d.id) || treeOf(d.id)).map((def) => ({ def, locked: !unlocked.has(def.id) && (treeOf(def.id)?.index ?? 0) > 0 }))
+    : activeTab === 'building'
     ? (noMain ? [{ def: objectDef(MAIN_TYPE), locked: false }] : [])
     : activeTab === 'corner' ? [] // fun-corner: 코너 탭은 카드가 아니라 CornerTab
     : OBJECTS.filter((d) => !HIDDEN_IDS.has(d.id) && buildTabOf(d) === activeTab)
@@ -120,9 +131,33 @@ export function BuildWindow(props: BuildWindowProps) {
   const busy = constructions(s).length;
   const sel = picked ? items.find((i) => i.def.id === picked) : undefined;
 
+  if (view.kind === 'tiles') {
+    return (
+      <div ref={rootRef} style={body} data-testid="build-window">
+        <TilesScreen s={s} onTile={(t) => {
+          const tile = BUILD_TILES.find((x) => x.id === t)!;
+          if (t === 'all') { goView({ kind: 'all' }); return; }
+          if (t === 'building') { goView({ kind: 'all' }); setTab(noMain ? 'building' : 'indoor'); return; }
+          goView({ kind: 'tile', tile: t });
+          if (tile.base) setPicked(tile.base);
+        }} />
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0 8px', marginTop: 6 }}>
+          <span style={soft}>자금 {wonText(s.money)}</span>
+          <span style={{ ...soft, color: busy >= s.builders ? PALETTE.bad : PALETTE.inkSoft }} data-testid="builders">건축가 {busy}/{s.builders} 작업 중</span>
+          <SiteToggle />
+        </div>
+      </div>
+    );
+  }
+  const tileDef = tileMode ? BUILD_TILES.find((t) => t.id === tileMode) : null;
   return (
     <div ref={rootRef} style={body} data-testid="build-window">
-      <TabBar tabs={tabs.map((t) => ({ ...t, badge: undefined }))} active={activeTab} onPick={(k) => { setTab(k); setPicked(null); }} testId="build-tab" />
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+        <button data-testid="build-back" style={{ ...brownBtn, margin: 0, padding: '0 10px', fontSize: 14, minHeight: 40 }} onClick={() => goView({ kind: 'tiles' })}>◀ 짓기</button>
+        {tileDef && <span style={{ fontSize: 15, fontWeight: 700 }}><Icon name={tileDef.icon} size={16} /> {tileDef.name} <span style={{ ...soft, fontWeight: 400 }}>{tileDef.purpose}</span></span>}
+        {tileMode === 'charm' && <button data-testid="build-corner-tab" style={{ ...brownBtn, margin: 0, padding: '0 10px', fontSize: 14, minHeight: 40 }} onClick={() => { goView({ kind: 'all' }); setTab('corner'); }}><Icon name="sparkle" size={14} /> 코너</button>}
+      </div>
+      {!tileMode && <TabBar tabs={tabs.map((t) => ({ ...t, badge: undefined }))} active={activeTab} onPick={(k) => { setTab(k); setPicked(null); }} testId="build-tab" />}
       {recent.length > 0 && (
         <div data-testid="build-recent" style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6, flexWrap: 'wrap' }}>
           <span style={{ ...soft, whiteSpace: 'nowrap' }}><Icon name="undo" size={13} /> 최근</span>
@@ -139,10 +174,11 @@ export function BuildWindow(props: BuildWindowProps) {
         <span style={{ ...soft, color: busy >= s.builders ? PALETTE.bad : PALETTE.inkSoft }} data-testid="builders">건축가 {busy}/{s.builders} 작업 중</span>
         <SiteToggle />{/* ease: 입지 보기는 처음부터 */}
       </div>
-      {activeTab === 'building' && <div style={{ ...soft, marginBottom: 6 }} data-testid="build-main-hint"><Icon name="home" size={14} /> {MAIN_CARD_HINT}</div>}
-      {activeTab === 'indoor' && <div style={{ ...soft, marginBottom: 6 }}><Icon name="home" size={14} /> 실내 가구는 건물(본관·별관) 안 바닥에만 놓아요 — 문 칸은 비워 둬요</div>}
-      {activeTab === 'corner' && <CornerTab s={s} onPickBuild={props.onPickBuild} />}
-      {activeTab !== 'corner' && items.length === 0 && <Empty>아직 여기엔 지을 게 없어요</Empty>}
+      {!tileMode && activeTab === 'building' && <div style={{ ...soft, marginBottom: 6 }} data-testid="build-main-hint"><Icon name="home" size={14} /> {MAIN_CARD_HINT}</div>}
+      {!tileMode && activeTab === 'indoor' && <div style={{ ...soft, marginBottom: 6 }}><Icon name="home" size={14} /> 실내 가구는 건물(본관·별관) 안 바닥에만 놓아요 — 문 칸은 비워 둬요</div>}
+      {!tileMode && activeTab === 'corner' && <CornerTab s={s} onPickBuild={props.onPickBuild} />}
+      {tileMode && <div style={{ ...soft, marginBottom: 6 }}><Icon name="bulb" size={14} /> 기본을 놓고, 시설 카드에서 같은 자리 「업그레이드 ▲」로 키워요{tileMode === 'seat' ? ' · 파라솔 이상 3개를 이으면 테라스 거리 +10%' : ''}</div>}
+      {(tileMode || activeTab !== 'corner') && items.length === 0 && <Empty>아직 여기엔 지을 게 없어요</Empty>}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
         {items.map(({ def, locked }) => {
           const cost = locked ? def.cost : placeCost(s, def.id);
@@ -153,6 +189,7 @@ export function BuildWindow(props: BuildWindowProps) {
               style={{ ...cardBase, opacity: locked ? 0.5 : 1, boxShadow: on ? `0 0 0 3px ${PALETTE.btnOn}` : undefined }}>
               <SpriteBox sheet={sheet} id={def.id} kind={def.kind} />
               <div style={{ fontSize: 15, fontWeight: 700, lineHeight: 1.2 }}>{locked ? <><Icon name="lock" size={14} /> </> : ''}{def.name}{def.indoor ? <> <Icon name="home" size={14} /></> : ''}</div>
+              {tileMode && treeOf(def.id) && <div style={{ ...soft, fontSize: 12 }}>{treeOf(def.id)!.tree.name} {treeOf(def.id)!.index + 1}단계{treeOf(def.id)!.index > 0 ? ' · 업그레이드로' : ' · 기본'}</div>}
               <div style={{ fontSize: 14 }}>{cost > 0 ? wonText(cost) : '무료'}{def.fee !== undefined && def.fee > 0 ? ` · 요금 ${wonText(def.fee)}` : ''}</div>
               <div style={{ ...soft, fontSize: 13 }}>
                 {def.id === MAIN_TYPE ? <><Icon name="home" size={13} /> {def.w}×{def.h}칸 · 1회</> : <>{def.kind === 'seat' ? <><Icon name="chair" size={13} /> {def.seats ?? 2}</> : <><Icon name="thumb" size={13} /> {def.popularity ?? 10}</>} · <Icon name="plant" size={13} /> {def.scenery}</>}
@@ -166,6 +203,35 @@ export function BuildWindow(props: BuildWindowProps) {
   );
 }
 
+/** fun: 짓기 첫 화면 6타일 (중요도 순: 자리 → 서비스 → 매력 → 유입 → 실내·건물 → 전체 목록). 타일마다 "무엇에 좋은가" 한 줄 + 지금 병목 배지.
+ *  등급 1~2에선 실내·건물 타일이 안 보인다(점진 공개 — 본관이 없으면 보인다). */
+export function TilesScreen({ s, onTile }: { s: GameState; onTile: (t: BuildTileId) => void }) {
+  const seatUse = seatUseRate(s, totalSeats(s));
+  const scenery = cafeScenery(s);
+  const routesN = ROUTE_IDS.filter((r) => routeTakesGuests(s, r, 12)).length;
+  const badges = tileBadges(s, seatUse, scenery, s.staff.length, routesN);
+  const grade = gradeOf(s);
+  const tiles = BUILD_TILES.filter((t) => t.id !== 'building' || grade >= BUILDING_TILE_GRADE || !mainBuilding(s));
+  return (
+    <div data-testid="build-tiles" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+      {tiles.map((t) => {
+        const badge = badges.find((b) => b.tile === t.id);
+        return (
+          <button key={t.id} data-testid={`build-tile-${t.id}`} data-tut={`tile:${t.id}`} onClick={() => onTile(t.id)}
+            style={{ ...cardBase, minHeight: 96, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4, position: 'relative', cursor: 'pointer' }}>
+            <Icon name={t.icon} size={28} />
+            <div style={{ fontSize: 16, fontWeight: 700 }}>{t.name}</div>
+            <div style={{ ...soft, fontSize: 13, lineHeight: 1.25 }}>{t.purpose}</div>
+            {badge && <div data-testid={`build-tile-badge-${t.id}`} style={{ position: 'absolute', top: 4, right: 4, background: PALETTE.bad, color: '#fff', borderRadius: 8, fontSize: 12, padding: '1px 6px', fontWeight: 700 }}>{badge.text}</div>}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+/** 실내·건물 타일이 보이는 등급 (점진 공개) */
+export const BUILDING_TILE_GRADE = 3;
+
 /** 「최근」 줄은 시설 목록 탭에서만 (「건물」 탭엔 본관 카드 하나뿐) */
 function activeTabIsList(tab: BuildTab, noMain: boolean): boolean {
   return !(tab === 'building' && noMain);
@@ -173,6 +239,8 @@ function activeTabIsList(tab: BuildTab, noMain: boolean): boolean {
 
 /** 잠긴 카드 문구: 여는 목표가 있으면 "「제목」 목표를 이루면 열려요", 아니면 해금 조건(labels.unlockText) */
 export function lockedText(def: ObjectDef): string {
+  const t = treeOf(def.id);
+  if (t && t.index > 0) return `${objectDef(t.tree.steps[t.index - 1]!.type).name}를 놓고 「업그레이드 ▲」로 올려요`; // fun: 트리 단계는 짓지 않고 올린다
   const g = goalForFacility(def.id);
   if (g) return `「${g.title}」 목표를 이루면 열려요`;
   if (def.unlock?.type === 'all' && def.unlock.conditions.length === 0 && def.unlockText) return `${def.unlockText}면 열려요`; // 카운터 확장: 본관 Lv2 증축이 연다 (y-indoor)
@@ -192,7 +260,8 @@ function PickedDetail({ s: def, locked, state, onPick }: { s: ObjectDef; locked:
     days > 0 ? `공사 ${days}일` : '바로 완성',
     `${def.w}×${def.h}칸`,
     def.indoor ? '실내(본관·별관 안)' : null,
-    isUpgradable(def) ? `증축 Lv1~3 (${{ small: '소', medium: '중', large: '대' }[tierOf(def)]}형)` : null,
+    treeOf(def.id) ? `${treeOf(def.id)!.tree.name} 트리 ${treeOf(def.id)!.index + 1}/${treeOf(def.id)!.tree.steps.length}단계` : isUpgradable(def) ? `증축 Lv1~3 (${{ small: '소', medium: '중', large: '대' }[tierOf(def)]}형)` : null,
+    def.scenery !== 0 && !def.indoor ? sceneryGainText(state, def.id, -99, -99).replace(' · 자리 옆이면 관광객이 는다', '') : null, // fun: 경관 시설 「관광객 +n%/일」은 놓을 자리에서 (고스트 배지)
   ].filter(Boolean).join(' · ');
   return (
     <div data-testid="build-detail" style={{ position: 'sticky', bottom: 0, marginTop: 8, background: PALETTE.paper, borderTop: `3px solid ${PALETTE.wood}`, padding: '8px 0 4px' }}>

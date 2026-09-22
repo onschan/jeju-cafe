@@ -5,6 +5,7 @@ import { Icon } from '../Icon';
 import { ButtonGroup } from '../ButtonGroup';
 import { josa } from '../../sim/josa.ts';
 import type { GameState, Staff, Candidate, RoleId, StatKey, JobTier, Face } from '../../sim/index.ts';
+import { gradeOf, REVEAL_GRADE } from '../../sim/index.ts'; // fun 점진 공개
 import { TIERS, LOW_ENERGY, STAT_KEYS, levelUpCost, expNeeded, mainStatOf, canHire, canLevelUp, canPostJob, staffInRole, postJobCost, tierUnlocked, availablePool, staffCapacity, staffRoomCount, capOf, capBonus, skillsOf, salaryDue, trainingOptions, trainingUnlocked, TRAINING_RANK, titleChances, titleDef, TITLE_GRADES, candidateDaysLeft, dayIndex, outcomeChances, chanceText, trainingChances, isWorking } from '../../sim/index.ts';
 import { TitleRibbon } from '../TitleBadge'; // staff-luck 칭호 리본
 import { ROLES, RECRUIT_TIERS, skillDef, trainingDef, staffPoolDef } from '../../data/index.ts';
@@ -157,7 +158,7 @@ function StaffCard({ st, s, dispatch }: { st: Staff; s: GameState; dispatch: Dis
         <button style={maxed ? rowBtnOff : promo.ok ? rowBtnOn : rowBtnOff} disabled={!promo.ok} title={promo.reason} onClick={() => dispatch({ type: 'levelUp', staffId: st.id })} aria-label={`${st.name} 승급`}>
           {maxed ? '최고 레벨' : <>승급 <Icon name="research" size={14} />{levelUpCost(st.level)}</>}
         </button>
-        <button data-tut="train" style={away ? rowBtnOff : training ? rowBtnOn : rowBtn} disabled={!!away} onClick={() => { setTraining(!training); setFiring(false); }} aria-label={`${st.name} 연수`}>연수</button>
+        {gradeOf(s) >= REVEAL_GRADE && <button data-tut="train" style={away ? rowBtnOff : training ? rowBtnOn : rowBtn} disabled={!!away} onClick={() => { setTraining(!training); setFiring(false); }} aria-label={`${st.name} 연수`}>연수</button>}{/* fun 점진 공개: 연수는 등급 3부터 */}
         <button style={away ? rowBtnOff : rowBtnDanger} disabled={!!away} onClick={() => { setFiring(!firing); setTraining(false); }} aria-label={`${st.name} 해고`}>해고</button>
       </div>
       {training && !away && <TrainingPanel st={st} s={s} dispatch={dispatch} onDone={() => setTraining(false)} />}

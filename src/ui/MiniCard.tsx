@@ -6,6 +6,8 @@ import { parcelFeature } from '../sim/index.ts'; // fun-rank: 필지 특징·"�
 import { nightSeatLine, objectStats, siteOf, siteLineText, cellAt, walletOf, guestFace, namedGuestFace, canAcceptQuest, parcelPrice, canBuyParcel, canGiveGift, giftFits, giftCount, giftedToday, PROTECTED_TYPES, ROTATABLE_TYPES, LOW_ENERGY, STAT_KEYS, STAT_NAME, staffInRole, canLevelUp, capOf, skillsOf, expNeeded, isUpgradable, canUpgrade, upgradeCost, upgradeConditionText, MAX_OBJECT_LEVEL, canRepair, repairCost, CLEAN_LOW, type GameState, type Guest, type RoleId, type StatKey } from '../sim/index.ts';
 import { BUS_HOUR, isBusDay } from '../sim/spots.ts';
 import { RouteCard } from './RouteCard';
+import { TreeUpgradeRow } from './TreeUpgrade'; // fun: 같은 자리 업그레이드 트리
+import { treeOf } from '../sim/index.ts';
 import type { RouteId } from '../sim/index.ts';
 import { mainSummary, canAutoConnectPath, canExpandMain, expandCost, nextMainLevel, canBuildSecondFloor, canStartMoveMain, canUndoMoveMain, canMoveThisMonth, moveDays, isRoomCut, isAnnex, roomSeats, roomSeatsUsed, isFireplaceOn, canToggleFireplace, canSetPianoTime, canAddBooks, hasNewBooks, canFeedAquarium, isAquariumHungry, canRestockKids, isKidsStocked, canSetBarEvening, isBarEvening, activeCombos, MAIN_EXPAND_DAYS, FLOOR2_COST, FLOOR2_DAYS, MOVE_COST, NEW_BOOKS_MILEAGE, KIDS_RESTOCK_COST, ANNEX_CUT_TEXT, DOOR_PATH_WARN, BGM_LABEL, LIGHT_LABEL, PIANO_LABEL } from '../sim/index.ts'; // y-indoor
 import { ButtonGroup } from './ButtonGroup';
@@ -297,7 +299,7 @@ function ObjectCard({ s, id, a, onClose }: { s: GameState; id: string; a: CardAc
     else go();
   };
   // 트랙 A: 증축 Lv·수리·청결
-  const upgradable = isUpgradable(d) && st.level < MAX_OBJECT_LEVEL;
+  const upgradable = isUpgradable(d) && st.level < MAX_OBJECT_LEVEL && !treeOf(o.type); // fun: 트리에 있는 시설은 「업그레이드 ▲」가 대신한다
   const up = upgradable ? canUpgrade(s, o.id, st.popularity) : { ok: false, reason: '' };
   const upCost = upgradable ? upgradeCost(s, o) : 0;
   const doUpgrade = () => Confirm(`${josa(d.name, '을/를')} Lv${st.level + 1}로 증축할까요? ${wonText(upCost)}${(d.buildDays ?? 0) > 0 ? ` · 공사 ${d.buildDays}일(이용 불가)` : ''}`, () => { dispatch({ type: 'upgradeObject', objectId: o.id }); }, { title: '증축' });
@@ -339,6 +341,7 @@ function ObjectCard({ s, id, a, onClose }: { s: GameState; id: string; a: CardAc
         <button style={btn} onClick={() => a.onObjectDetail(o.id)}>자세히</button>
       </Row>
       {upgradable && !up.ok && up.reason && <div style={{ ...small, marginTop: 4 }}>증축 조건: {upgradeConditionText(o, d)}</div>}
+      {treeOf(o.type) && <TreeUpgradeRow s={s} o={o} />}
       {renaming && <RenamePopup objectId={o.id} current={o.name ?? ''} onClose={() => setRenaming(false)} />}
     </div>
   );

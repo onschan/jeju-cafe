@@ -3,7 +3,7 @@ import { wonText, label } from '../data/labels.ts';
 import { GameView, RECT_COLOR_LINE, type GhostSpec, type RangeHint } from '../render/GameView';
 import { startLoop, dispatch, getState, useGame, setViewReset, autosaveNow, hasAnySave, loadSlot, setMonthCardHook, setSceneHook, showMessage, pauseGame, isSpeedLocked, setSpeedLocked } from './store';
 import { unlockAudio, bgm, isMuted, setMuted, getBgmVolume, getSfxVolume, setBgmVolume, setSfxVolume, sfx, setBgmLayer } from './audio';
-import { gradeOf, GRADE_BGM_LAYER_FROM } from '../sim/index.ts'; // fun-rank
+import { gradeOf, GRADE_BGM_LAYER_FROM, REVEAL_GRADE } from '../sim/index.ts'; // fun-rank · fun 점진 공개
 import { seasonOf, canPlace, objectAt, footprint, sizeOf, mainBuilding, parcelAt, placeCost, isLineType, lineCells, planLine, canAutoConnectPath, type LineOrder, type Pt, PROTECTED_TYPES, ROTATABLE_TYPES, goalForMenu, featureOpen, canUndo, demolishRefund, canDisturb, routeAtCell, tutorialDone, canBuildMain, recommendedMainCells, cellAt, doorFrontOf, MAIN_TYPE, MAIN_BUILD_COST, type GameState } from '../sim/index.ts';
 import { RoutesSection } from './RouteCard'; // 트랙 H
 import { objectDef } from '../data/index.ts';
@@ -51,6 +51,8 @@ import { PopupScreenHost } from './PopupScreen';
 import { ChallengePopup, RivalPanel } from './RivalPanel';
 import { TourPopup } from './BoardPanel';
 import { rangeHintFor } from './rangeHint';
+import { AppealPanel } from './AppealPanel'; // fun: 카페 매력도
+import { tradeoffOf } from './tradeoff'; // fun: 배치 트레이드오프
 import { rectCells, demolishTargets, nextGhostAfterPlace, type Rect, type BuildGhost } from './placing';
 
 /** 길·담 두 번 탭 라인 배치 상태 (ease, sim/line.ts): 탭 1 시작 칸 → 탭 2 끝 칸 → 파란 미리보기 → ✓ 확정. 드래그는 언제나 카메라. */
@@ -197,18 +199,28 @@ function StatusPanel() {
     ['필지', `${s.parcels.filter((p) => p.owned).length}/${s.parcels.length}`],
     ['응모권·마일리지', `${s.tickets} · ${s.mileage}`],
   ];
+  const [detail, setDetail] = useState(false); // fun: 잔지표는 「자세히」 접힘
   return (
     <div data-testid="status">
-      <button data-testid="status-save" style={{ ...brownBtnOn, width: '100%', marginRight: 0, minHeight: 48 }} onClick={() => { autosaveNow(); setSaved(true); showMessage('저장했어요'); }}><Icon name="save" /> {saved ? '저장했어요' : '저장'}</button>
+      <AppealPanel />{/* fun: 카페 매력도 — 인기·경관·서비스 */}
       <div style={{ ...card, display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '4px 12px', fontSize: 15 }}>
-        {rows.map(([k, v]) => <span key={k} style={{ display: 'contents' }}><span style={{ color: PALETTE.inkSoft }}>{k}</span><b>{v}</b></span>)}
+        {rows.slice(0, 3).map(([k, v]) => <span key={k} style={{ display: 'contents' }}><span style={{ color: PALETTE.inkSoft }}>{k}</span><b>{v}</b></span>)}
       </div>
       <RoutesSection s={s} />{/* 트랙 H: 손님 경로 표 */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 14 }}>
-        <Icon name="local" size={18} alt="동네 손님" /> 동네
-        <meter min={-100} max={100} value={s.popularity} style={{ flex: 1 }} />
-        인기 <Icon name="tourist" size={18} alt="관광객" />
-      </div>
+      <button data-testid="status-detail" style={{ ...brownBtn, width: '100%', marginRight: 0, minHeight: 44 }} onClick={() => setDetail(!detail)}>{detail ? '▲ 접기' : '▼ 자세히'}</button>
+      {detail && (
+        <>
+          <div style={{ ...card, display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '4px 12px', fontSize: 15 }}>
+            {rows.slice(3).map(([k, v]) => <span key={k} style={{ display: 'contents' }}><span style={{ color: PALETTE.inkSoft }}>{k}</span><b>{v}</b></span>)}
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 14 }}>
+            <Icon name="local" size={18} alt="동네 손님" /> 동네
+            <meter min={-100} max={100} value={s.popularity} style={{ flex: 1 }} />
+            인기 <Icon name="tourist" size={18} alt="관광객" />
+          </div>
+        </>
+      )}
+      <button data-testid="status-save" style={{ ...brownBtnOn, width: '100%', marginRight: 0, minHeight: 48 }} onClick={() => { autosaveNow(); setSaved(true); showMessage('저장했어요'); }}><Icon name="save" /> {saved ? '저장했어요' : '저장'}</button>
     </div>
   );
 }
@@ -307,6 +319,7 @@ function Game({ onExit }: { onExit: () => void }) {
   // 첫 터치에서 오디오를 열고 현재 계절 BGM을 시작한다 (이후 호출은 no-op)
   const onPointerDown = () => { unlockAudio(); void bgm(seasonOf(getState().clock.month)); };
   useEffect(() => { setBgmLayer(gradeOf(s) >= GRADE_BGM_LAYER_FROM); }, [s.grade]); // fun-rank: 등급 3부터 타악 레이어
+  useEffect(() => { if (gradeOf(s) >= REVEAL_GRADE) showFirstTip('reveal'); }, [s.grade]); // fun 점진 공개: 등급 3 첫 등장 팁
   const setGhost = (g: BuildGhost | null) => { ghostRef.current = g; setGhostState(g); };
   const setMoving = (m: Moving | null) => { movingRef.current = m; setMovingState(m); };
   const setRect = (r: Rect | null) => { rectRef.current = r; setRectState(r); viewRef.current?.setRectCells(r ? rectCells(r) : []); };
@@ -566,6 +579,7 @@ function Game({ onExit }: { onExit: () => void }) {
       };
       place = {
         text: `${def.name} · ${wonText(cost)} · ${ok ? (mode.count > 0 ? `${mode.count}개 놓음 · 계속 놓을 수 있어요` : '여기에 지을 수 있어요 · 칸을 누르면 옮겨요') : (can.reason ?? '돈이 모자라요')}`,
+        tradeoff: tradeoffOf(s, mode.objectType, ghost.x, ghost.y), // fun: 얻는 것/잃는 것 두 줄
         ok,
         canRotate: ROTATABLE_TYPES.has(mode.objectType),
         continuous: mode.count > 0,
@@ -679,6 +693,7 @@ function Game({ onExit }: { onExit: () => void }) {
     { key: 'quests', label: '부탁', icon: 'quest', badge: offered },
     { key: 'rivals', label: '라이벌', icon: 'rival', locked: !featureOpen(s, 'challenge'), lockedText: '카페 대결은 목표를 이루면 열려요', isNew: s.rivals.length > 0 },
   ];
+  const revealed = gradeOf(s) >= REVEAL_GRADE; // fun 점진 공개: 등급 3부터 실내·본관·라이벌·명소·지역이 나타난다 (잠금 표시 대신 아예 안 보임)
   const LEDGER_MENU: IconGridItem<LedgerTab>[] = [
     { key: 'report', label: '경영', icon: 'report' },
     { key: 'invest', label: '투자', icon: 'money', badge: s.board.events.filter((e) => e.status === 'pending').length },
@@ -690,6 +705,9 @@ function Game({ onExit }: { onExit: () => void }) {
     { key: 'settings', label: '설정', icon: 'settings' },
   ];
 
+  const cafeMenu = revealed ? CAFE_MENU : CAFE_MENU.filter((t) => t.key !== 'building' && t.key !== 'indoor');
+  const peopleMenu = revealed ? PEOPLE_MENU : PEOPLE_MENU.filter((t) => t.key !== 'rivals');
+  const ledgerMenu = revealed ? LEDGER_MENU : LEDGER_MENU.filter((t) => t.key !== 'spots' && t.key !== 'region');
   const renderWindow = () => {
     if (!win) return null;
     switch (win.kind) {
@@ -706,7 +724,7 @@ function Game({ onExit }: { onExit: () => void }) {
         );
       case 'cafe':
         return (
-          <Window title="카페" menu={CAFE_MENU} tab={win.tab} onTab={(t) => setWin({ kind: 'cafe', tab: t })} onClose={closeWin} testId="window-cafe">
+          <Window title="카페" menu={cafeMenu} tab={win.tab} onTab={(t) => setWin({ kind: 'cafe', tab: t })} onClose={closeWin} testId="window-cafe">
             {win.tab === 'menu' && <MenuWindow onClose={closeWin} menuUnlockText={menuUnlockText} />}
             {win.tab === 'ingredients' && <StoragePanel />}
             {win.tab === 'craft' && <CraftPanel />}
@@ -720,7 +738,7 @@ function Game({ onExit }: { onExit: () => void }) {
         );
       case 'people':
         return (
-          <Window title="사람" menu={PEOPLE_MENU} tab={win.tab} onTab={(t) => setWin({ kind: 'people', tab: t })} onClose={closeWin} testId="window-people">
+          <Window title="사람" menu={peopleMenu} tab={win.tab} onTab={(t) => setWin({ kind: 'people', tab: t })} onClose={closeWin} testId="window-people">
             {win.tab === 'staff' && <StaffWindow onClose={closeWin} focusId={win.focusId ?? null} initialTab="ours" />}
             {win.tab === 'candidates' && <StaffWindow onClose={closeWin} focusId={null} initialTab="candidates" />}
             {win.tab === 'guests' && <GuestsPanel onGuest={setGuestPopup} sub="now" />}
@@ -731,7 +749,7 @@ function Game({ onExit }: { onExit: () => void }) {
         );
       case 'ledger':
         return (
-          <Window title="장부" menu={LEDGER_MENU} tab={win.tab} onTab={(t) => setWin({ kind: 'ledger', tab: t })} onClose={closeWin} testId="window-ledger">
+          <Window title="장부" menu={ledgerMenu} tab={win.tab} onTab={(t) => setWin({ kind: 'ledger', tab: t })} onClose={closeWin} testId="window-ledger">
             {win.tab === 'report' && <StatusPanel />}
             {win.tab === 'invest' && <BoardPanel tabs={['events']} />}
             {win.tab === 'spots' && <BoardPanel tabs={['spots']} />}

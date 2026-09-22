@@ -36,6 +36,8 @@ export const GRADE_GUEST_CAP_STEP = 10;
 /** 승급 보상: 응모권 5 + 마일리지 10×(등급−1) */
 export const GRADE_UP_TICKETS = 5;
 export const GRADE_UP_MILEAGE_PER = 10;
+/** fun 점진 공개: 이 등급부터 실내·본관·명소·투어·팝업·대결·연수·경로 계약 창이 나타난다 (아래 등급에선 아예 안 보인다) */
+export const REVEAL_GRADE = 3;
 /** 타악 BGM 레이어가 켜지는 등급 */
 export const GRADE_BGM_LAYER_FROM = 3;
 
