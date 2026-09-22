@@ -1,3 +1,4 @@
+import { cafeScenery, sceneryMultOf, SCENERY_MULT_MIN } from '../appeal.ts';
 import { bareState } from './helpers.ts';
 import { X, Y } from './helpers.ts';
 import { MAX_RANK } from '../rank.ts';
@@ -133,10 +134,13 @@ test('스폰: 잠긴 타입은 가중치 0, 해금되면 온다', () => {
   expect(typeWeight(s, 'couple', 10)).toBe(0);
   unlockGuestType(s, 'couple');
   // game-feel P1: 커플은 「동백 동산 Lv2 또는 랭크 r」로 앞당겨 열린다 — 원본 조건(동백 동산 Lv2)을 채우기 전엔 스폰 비중 ¼
-  expect(typeWeight(s, 'couple', 10)).toBeCloseTo(5 * STAGED_SPAWN_WEIGHT * (1 + UNLOCK_POPULARITY / 50));
+  // fun: 관광객 태그는 경관 배수(자리 평균 경치, 자리가 없으면 최솟값 0.85 — appeal.ts)도 곱해진다
+  const sc = sceneryMultOf(cafeScenery(s));
+  expect(sc).toBe(SCENERY_MULT_MIN);
+  expect(typeWeight(s, 'couple', 10)).toBeCloseTo(5 * STAGED_SPAWN_WEIGHT * (1 + UNLOCK_POPULARITY / 50) * sc);
   s.spots['camellia_hill'] = 2;
-  expect(typeWeight(s, 'couple', 10)).toBeCloseTo(5 * (1 + UNLOCK_POPULARITY / 50));
-  expect(typeWeight(s, 'couple', 12)).toBeCloseTo(5 * (1 + UNLOCK_POPULARITY / 50) * 2); // 청년 낮 ×2
+  expect(typeWeight(s, 'couple', 10)).toBeCloseTo(5 * (1 + UNLOCK_POPULARITY / 50) * sc);
+  expect(typeWeight(s, 'couple', 12)).toBeCloseTo(5 * (1 + UNLOCK_POPULARITY / 50) * 2 * sc); // 청년 낮 ×2
   const { s: s2 } = cafe();
   s2.guestTypes['student']!.unlocked = false;
   s2.guestTypes['village_head']!.unlocked = false;

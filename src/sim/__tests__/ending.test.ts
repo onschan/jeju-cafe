@@ -19,7 +19,7 @@ describe('최종 점수', () => {
   test('항목 9·가중치·상한·칭호 5단계', () => {
     const s = bareState(1);
     s.money = 50_000_000; s.totalGuests = 12_345; s.star = 3; s.rank = 6; s.reputation = 70; s.goals.claimed = Array.from({ length: 60 }, (_, i) => `g${i}`);
-    s.codex.combos = ['a', 'b', 'c']; s.spots = { x: 5, y: 3 };
+    s.codex.corners = ['a', 'b', 'c']; s.spots = { x: 5, y: 3 }; // fun-corner: 콤보 도감 → 코너 도감(24종, 상한 24)
     const sc = computeScore(s);
     expect(sc.items.map((i) => i.key)).toEqual(SCORE_ITEMS.map((i) => i.key));
     const pt = Object.fromEntries(sc.items.map((i) => [i.key, i.points]));
@@ -27,8 +27,10 @@ describe('최종 점수', () => {
     expect(sc.total).toBe(50 + 123 + 60 + 60 + 35 + 60 + 3 + 4);
     expect(sc.tier).toBe(scoreTier(sc.total));
     expect(sc.title).toBe(SCORE_TITLES[sc.tier - 1]!.title);
-    // 상한: 자금 3억 → 300점, 그 이상도 300
+    // 상한: 자금 3억 → 300점, 그 이상도 300 · 코너 24
     s.money = 9_000_000_000;
+    s.codex.corners = Array.from({ length: 30 }, (_, i) => `c${i}`);
+    expect(computeScore(s).items.find((i) => i.key === 'combos')!.points).toBe(24);
     expect(computeScore(s).items.find((i) => i.key === 'money')!.points).toBe(300);
     // 칭호 문턱
     expect(scoreTier(0)).toBe(1); expect(scoreTier(199)).toBe(1); expect(scoreTier(200)).toBe(2); expect(scoreTier(800)).toBe(5);
@@ -135,11 +137,15 @@ describe('이월', () => {
     expect(objectAt(s, START_ORIGIN.x + 5, START_ORIGIN.y + 6)).toBeNull();
     // w-free: 정낭이 없으면 문 앞 양옆, 본관도 없으면 기본 좌표
     expect(carryDolhareubangCells(s)).toEqual([{ x: START_ORIGIN.x + 3, y: START_ORIGIN.y + 6 }, { x: START_ORIGIN.x + 5, y: START_ORIGIN.y + 6 }]);
-    const gate = Object.values(s.objects).find((o) => o.type === 'gate')!;
-    apply(s, { type: 'remove', objectId: gate.id });
-    expect(carryDolhareubangCells(s)).toEqual([{ x: START_ORIGIN.x + 3, y: START_ORIGIN.y + 6 }, { x: START_ORIGIN.x + 5, y: START_ORIGIN.y + 6 }]); // 본관 없음 → 기본 좌표
-    apply(s, { type: 'placeMain', x: START_ORIGIN.x + 3, y: START_ORIGIN.y + 1 });
-    expect(carryDolhareubangCells(s)).toEqual([{ x: START_ORIGIN.x + 2, y: START_ORIGIN.y + 3 }, { x: START_ORIGIN.x + 4, y: START_ORIGIN.y + 3 }]); // 문 앞 (3,3) 양옆
+    expect(Object.values(s.objects).some((o) => o.type === 'gate')).toBe(false); // fun-start: 새 게임 시작 맵엔 정낭이 없다
+    const b = createInitialState(7, 'local', 0, 'bare', carry); // 옛 맨땅: 정낭 있음·본관 없음
+    const gate = Object.values(b.objects).find((o) => o.type === 'gate')!;
+    apply(b, { type: 'remove', objectId: gate.id });
+    expect(carryDolhareubangCells(b)).toEqual([{ x: START_ORIGIN.x + 3, y: START_ORIGIN.y + 6 }, { x: START_ORIGIN.x + 5, y: START_ORIGIN.y + 6 }]); // 본관 없음 → 기본 좌표
+    apply(b, { type: 'placeMain', x: START_ORIGIN.x + 3, y: START_ORIGIN.y + 1 });
+    expect(carryDolhareubangCells(b)).toEqual([{ x: START_ORIGIN.x + 3, y: START_ORIGIN.y + 6 }, { x: START_ORIGIN.x + 5, y: START_ORIGIN.y + 6 }]); // 마을 어귀가 비어 있으면 거기
+    expect(apply(b, { type: 'place', objectType: 'table_out', x: START_ORIGIN.x + 5, y: START_ORIGIN.y + 6 }).ok).toBe(true); // (3,6)엔 이월 돌하르방이 이미 있다
+    expect(carryDolhareubangCells(b)).toEqual([{ x: START_ORIGIN.x + 2, y: START_ORIGIN.y + 3 }, { x: START_ORIGIN.x + 4, y: START_ORIGIN.y + 3 }]); // 막히면 문 앞 (3,3) 양옆
     // 이월 없는 새 게임은 그대로
     const plain = createInitialState(7, 'local', 0, 'tutorial');
     expect(plain.carry).toBeNull();

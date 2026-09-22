@@ -1,11 +1,11 @@
 import { describe, it, expect } from 'vitest';
-import { createInitialState } from '../state.ts';
+import { createInitialState, VILLAGE_ROAD_Y } from '../state.ts';
 import { apply } from '../actions.ts';
-import { STEPS, recommendedMainCells } from '../tutorial.ts';
+import { recommendedMainCells } from '../tutorial.ts';
 import { siteOf, seatScore } from '../site.ts';
 import { canPlace, doorFrontOf } from '../grid.ts';
 import { mainBuilding } from '../rooms.ts';
-import { reachMap, busStopPos, walkableNeighborsOf, cellKey } from '../path.ts';
+import { reachMap, busStopPos, walkableNeighborsOf, cellKey, isDoorReachable } from '../path.ts';
 import { activeCombos } from '../compat.ts';
 import { parkingSites } from '../entry.ts';
 import {
@@ -14,12 +14,21 @@ import {
 } from '../strategy.ts';
 import type { GameState, Pt } from '../types.ts';
 
-/** 맨땅 → 본관(추천 1순위) → 마을 길에서 문 앞까지 올렛길 */
+/** 본관 + 마을 길에서 문 앞까지 올렛길 = fun-start 새 게임 시작 모습 */
 function yardWithPath(seed = 1): GameState {
   const s = createInitialState(seed, 'local', 0, 'tutorial');
+  expect(mainBuilding(s)).not.toBeNull();
+  expect(isDoorReachable(s, mainBuilding(s)!)).toBe(true);
+  return s;
+}
+/** 옛 맨땅(bare) → 본관(추천 1순위) → 문 앞에서 마을 길까지 곧은 올렛길 (콤보 자리 테스트용 넓은 마당) */
+function bareYardWithPath(seed = 1): GameState {
+  const s = createInitialState(seed, 'local', 0, 'bare');
   expect(apply(s, { type: 'placeMain', ...recommendedMainCells(s)[0]! }).ok).toBe(true);
-  const [start, door] = STEPS[3]!.cells(s) as [Pt, Pt];
-  for (let x = Math.min(start.x, door.x); x <= Math.max(start.x, door.x); x++) apply(s, { type: 'place', objectType: 'path', x, y: door.y });
+  const door = doorFrontOf(mainBuilding(s)!);
+  const gate = Object.values(s.objects).find((o) => o.type === 'gate')!; // 옛 맨땅엔 정낭이 마을 길 옆에 있다 — 문 앞에서 정낭까지 가로로
+  for (let x = Math.min(gate.x, door.x); x <= Math.max(gate.x, door.x); x++) apply(s, { type: 'place', objectType: 'path', x, y: door.y });
+  expect(isDoorReachable(s, mainBuilding(s)!)).toBe(true);
   return s;
 }
 function allEmptyOwned(s: GameState, type: string): Pt[] {
@@ -29,8 +38,8 @@ function allEmptyOwned(s: GameState, type: string): Pt[] {
 }
 
 describe('할망의 정석 (strategy.ts): 글로우 칸은 실제 수치로 고른 최적 칸', () => {
-  it('bestMainCells: 바람 최소 → 정낭과 문 앞 거리 최소. tutorial.recommendedMainCells와 같다', () => {
-    const s = createInitialState(1, 'local', 0, 'tutorial');
+  it('bestMainCells: 바람 최소 → 정낭과 문 앞 거리 최소. tutorial.recommendedMainCells와 같다 (옛 맨땅 bare)', () => {
+    const s = createInitialState(1, 'local', 0, 'bare');
     const rec = bestMainCells(s);
     expect(rec).toHaveLength(3);
     expect(rec).toEqual(recommendedMainCells(s));
@@ -73,7 +82,7 @@ describe('할망의 정석 (strategy.ts): 글로우 칸은 실제 수치로 고�
   });
 
   it('bestComboCells: 감귤나무를 놓으면 콤보가 가장 많이 나는 칸 — combosIfPlaced가 실제 activeCombos와 맞고, 다른 어떤 칸도 더 많지 않다', () => {
-    const s = yardWithPath();
+    const s = bareYardWithPath();
     const seat = bestSeatCells(s, 1)[0]!;
     apply(s, { type: 'place', objectType: 'table_out', ...seat });
     apply(s, { type: 'place', objectType: 'stonewall', ...bestWallCell(s)! });
@@ -131,21 +140,24 @@ describe('할망의 정석 (strategy.ts): 글로우 칸은 실제 수치로 고�
     for (const r of rows) { expect(r.what.length).toBeGreaterThan(0); expect(r.why.length).toBeGreaterThan(0); expect(r.title.length).toBeLessThanOrEqual(8); }
   });
 
-  it('nextMove: 상태에 따라 정석 다음 수 — 본관 → 길 → 테이블 → 메뉴 → 채용 → 돌담 → … 완성 시작 상태는 증축/저축 쪽', () => {
-    const s = createInitialState(1, 'local', 0, 'tutorial');
+  it('nextMove: 상태에 따라 다음 수 — 본관 → 길 → 테이블 → 메뉴 → 채용 → 돌담 → … 완성 시작 상태는 증축/저축 쪽. 문구는 「무엇 — 왜」', () => {
+    const s = createInitialState(1, 'local', 0, 'bare');
     expect(nextMove(s)!.text).toContain('본관');
     expect(nextMove(s)!.cells).toEqual([recommendedMainCells(s)[0]]);
     apply(s, { type: 'placeMain', ...recommendedMainCells(s)[0]! });
     expect(nextMove(s)!.text).toContain('올렛길');
-    const [start, door] = STEPS[3]!.cells(s) as [Pt, Pt];
-    for (let x = Math.min(start.x, door.x); x <= Math.max(start.x, door.x); x++) apply(s, { type: 'place', objectType: 'path', x, y: door.y });
+    const door = doorFrontOf(mainBuilding(s)!);
+    const start = { x: door.x, y: VILLAGE_ROAD_Y - 1 };
+    for (let y = Math.min(start.y, door.y); y <= Math.max(start.y, door.y); y++) apply(s, { type: 'place', objectType: 'path', x: door.x, y });
     const m = nextMove(s)!;
+    expect(m.text).toContain(' — ');
+    expect(m.text).not.toMatch(/시뮬|정석|→ 지금|굴려 보니/);
     expect(m.text).toContain('테이블');
     expect(m.cells).toEqual(bestSeatCells(s, 1));
     apply(s, { type: 'place', objectType: 'table_out', ...m.cells[0]! });
     expect(nextMove(s)!.text).toContain('메뉴');
     apply(s, { type: 'setSlot', slot: 0, menuId: 'americano' }); apply(s, { type: 'setSlot', slot: 1, menuId: 'tangerine_juice' });
-    expect(nextMove(s)!.text).toContain('채용');
+    expect(nextMove(s)!.text).toContain('직원');
     const starter = createInitialState(1);
     const sm = nextMove(starter);
     expect(sm === null || sm.text.length > 0).toBe(true);

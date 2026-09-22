@@ -14,6 +14,7 @@ import { canTrain, train } from './training.ts';
 import { canPromote, promote, canSetTarget, setTarget } from './promotions.ts';
 import { discoverCombos } from './compat.ts';
 import { canUseItem, useItem, canGiveGift, giveGift, canCraftGift, craftGift } from './items.ts';
+import { canGreet, greetGuest, canRecommend, recommendMenu } from './interact.ts'; // fun-guest: 인사·추천
 import { evaluateUnlocks } from './segments.ts';
 import { canAcceptQuest, acceptQuest, canRespondEvent, respondEvent, afterInvest, checkQuests } from './board.ts';
 import { canInvestSpot, investSpot, canHostTour, hostTour, canSetTourBus, setTourBus } from './spots.ts';
@@ -25,7 +26,8 @@ import { canOpenPopup, openPopup, canClosePopup, closePopup } from './popup.ts';
 import { canChallenge, challenge } from './rivals.ts';
 import { canUpgrade, upgrade } from './upgrade.ts';
 import { canRepair, repair } from './cleanliness.ts';
-import { canSetRouteContract, setRouteContract, canExpandParking, parkingExpandCost, PARKING_EXPAND_TO, unlockRouteFacilities } from './entry.ts';
+import { canTreeUpgrade, treeUpgrade } from './tree.ts'; // fun 업그레이드 트리
+import { canSetRouteContract, setRouteContract, canExpandParking, parkingExpandCost, PARKING_EXPAND_TO, unlockRouteFacilities, installRouteForParcel, canAutoLinkRoute, autoLinkRoute } from './entry.ts';
 import { objectStats } from './compat.ts';
 import { rememberPlace, rememberPlaceMany, rememberRemove, rememberMove, canUndo, undoLast } from './undo.ts';
 import { planLine, isLineType } from './line.ts';
@@ -118,6 +120,14 @@ function applyInner(state: GameState, a: Action): ApplyResult {
       evaluateUnlocks(state);
       unlockRouteFacilities(state);
       checkQuests(state);
+      return { ok: true };
+    }
+    case 'autoLinkRoute': {
+      const c = canAutoLinkRoute(state, a.route);
+      if (!c.ok) return { ok: false, reason: c.reason };
+      const placed = autoLinkRoute(state, a.route);
+      rememberPlaceMany(state, placed, c.route!.cost);
+      discoverCombos(state);
       return { ok: true };
     }
     case 'autoConnectPath': {
@@ -214,6 +224,15 @@ function applyInner(state: GameState, a: Action): ApplyResult {
       obj.rot = ((a.rot % 4) + 4) % 4;
       return { ok: true };
     }
+    case 'treeUpgrade': { // fun: 업그레이드 트리 (같은 원점에서 종류 교체, 차액)
+      const c = canTreeUpgrade(state, a.objectId);
+      if (!c.ok) return { ok: false, reason: c.reason };
+      const d = canDisturb(state, state.objects[a.objectId]!);
+      if (!d.ok) return d;
+      treeUpgrade(state, a.objectId);
+      discoverCombos(state);
+      return { ok: true };
+    }
     case 'upgradeObject': {
       const obj = state.objects[a.objectId];
       if (!obj) return { ok: false, reason: '없는 오브젝트' };
@@ -235,6 +254,7 @@ function applyInner(state: GameState, a: Action): ApplyResult {
       const c = canBuyParcel(state, a.id);
       if (!c.ok) return c;
       buyParcel(state, a.id);
+      installRouteForParcel(state, a.id); // fun P0: 서·남·북 땅을 사면 경로 시설이 무료로 생기고 열린다
       return { ok: true };
     }
     case 'renameCafe': {
@@ -515,6 +535,18 @@ function applyInner(state: GameState, a: Action): ApplyResult {
       const c = canGiveGift(state, a.guestId, a.itemId);
       if (!c.ok) return c;
       giveGift(state, a.guestId, a.itemId);
+      return { ok: true };
+    }
+    case 'greetGuest': { // fun-guest
+      const c = canGreet(state, a.guestId);
+      if (!c.ok) return c;
+      greetGuest(state, a.guestId);
+      return { ok: true };
+    }
+    case 'recommendMenu': { // fun-guest
+      const c = canRecommend(state, a.guestId, a.menuId);
+      if (!c.ok) return c;
+      recommendMenu(state, a.guestId, a.menuId);
       return { ok: true };
     }
     case 'craftGift': {

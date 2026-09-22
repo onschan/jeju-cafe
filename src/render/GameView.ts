@@ -1,6 +1,6 @@
 import { Application, Container, Sprite, Graphics, Texture, Text } from 'pixi.js';
-import type { GameState, PlacedObject, Guest, Staff, Season, RoleId, Pt, RouteId } from '../sim/index.ts';
-import { seasonOf, LOW_ENERGY, parcelPrice, footprint, roomAt, doorFrontOf, WALL_COLORS, dayIndex, menuOf, sizeOf, MAIN_SIZE, LIGHT_RADIUS } from '../sim/index.ts';
+import type { GameState, PlacedObject, Guest, Staff, Season, RoleId, Pt, RouteId, FxEvent } from '../sim/index.ts';
+import { seasonOf, LOW_ENERGY, parcelPrice, footprint, roomAt, doorFrontOf, WALL_COLORS, dayIndex, menuOf, sizeOf, MAIN_SIZE, LIGHT_RADIUS, gradeOf, objectAt, cellAt } from '../sim/index.ts';
 import type { Parcel } from '../sim/index.ts';
 import { objectDef } from '../data/index.ts';
 import { isoTerrainTexture, isoObjectTexture, glowTexture, label, clearTextureCache, loadLabelFont } from './textures';
@@ -10,13 +10,17 @@ import { attachCamera, type CameraBounds, type CameraOptions } from './camera';
 import { ISO_W, ISO_H, cellToScreen, cellCenter, footAnchor, depth, screenToCell } from './iso';
 import { makeCharacterNode, updateCharacterNode, staffParts, guestParts, namedGuestParts, sameAccs, CHAR_H, type CharacterNode, type Dir, type Frame } from './character';
 import { guestFace } from '../sim/segments.ts';
+import { regularFace } from '../sim/interact.ts'; // fun-guest: 단골 고정 얼굴
 import { namedGuestFace } from '../sim/popup.ts';
 import { guestTypeDef, namedGuestDef } from '../data/index.ts';
 import { Background } from './Background';
 import { siteOf, siteBadgeTextPlain, siteTone, layoutKey } from '../sim/site.ts';
 import { objectStats, activeCombos } from '../sim/compat.ts';
-import { entryPoints, ROUTE_IDS } from '../sim/entry.ts'; // 트랙 H 진입점 표지
+import { entryPoints, ROUTE_IDS, ENTRY_ROUTES } from '../sim/entry.ts'; // 트랙 H 진입점 표지
+import { completedCorners, cornerDef } from '../sim/corners.ts'; // fun-corner 코너 팻말
 import { isSiteOverlayOn, setSiteOverlayOn, siteOverlayKey, drawSiteOverlay, GHOST_GOOD, GHOST_WARN } from './siteOverlay';
+import { parcelScenery, parcelSignLines, wallEdges, ROUTE_PREVIEW, busPose, BUS_PERIOD_MS, BUS_DROP_AT_MS, type SceneryProp } from './scenery'; // 트랙 E 제주 풍경
+import { VILLAGE_ROAD_Y } from '../sim/layout.ts';
 
 /** 주문 말풍선: 메뉴 분류별 픽셀 아이콘(icon_*) — MenuWindow의 CAT_ICON과 같은 이름 */
 const MENU_BUBBLE_ICON: Record<string, string> = { drink: 'coffee', dessert: 'cake', meal: 'meal', signature: 'sparkle' };
@@ -32,7 +36,7 @@ export interface GameViewOptions extends Pick<CameraOptions, 'onTap' | 'dragCapt
 /** 배치 모드 고스트: 손가락 아래 반투명 오브젝트. ok면 초록, 아니면 빨강. text는 비용 라벨. */
 export interface GhostSpec { type: string; x: number; y: number; rot?: number; ok: boolean; text: string; w?: number; h?: number; /** 문 앞 칸 미리보기 (w-start 본관 짓기: 파란 마름모 + 「문 앞」) */ door?: { x: number; y: number } }
 /** 효과 범위 힌트 (UX §5.3): 중심 시설 발자국 + 반경(칸) 타원, 콤보가 성립하는 상대 시설 발자국 위 ◎ */
-export interface RangeHint { x: number; y: number; w: number; h: number; radius: number; marks: { x: number; y: number; w: number; h: number }[] }
+export interface RangeHint { x: number; y: number; w: number; h: number; radius: number; marks: { x: number; y: number; w: number; h: number }[]; /** fun-corner: 코너 배지 ("이걸 놓으면 꽃길 완성") */ badge?: string }
 /** 선택 칸 색: 철거 빨강 · 라인 미리보기 파랑 (ease 두 번 탭) */
 export const RECT_COLOR_REMOVE = 0xc9184a;
 export const RECT_COLOR_LINE = 0x2f7fd9;
@@ -55,12 +59,41 @@ const CHAR_Z = 1e4;
 const ROUTE_MARKER_SPRITE: Record<RouteId, string> = { bus: 'route_bus', parking: 'route_car', shuttle: 'route_plane', cruise: 'route_ship', olle: 'route_ribbon' };
 const ROUTE_LOCKED_TINT = 0x8a8a8a;
 
-/** 미소유 필지 노드: 덮개 타일(tiles)과 가격 라벨(overlay)을 같이 지운다 */
-function destroyLocked(node?: Container) {
-  if (!node) return;
-  (node as Container & { parcelLabel?: Container }).parcelLabel?.destroy({ children: true });
-  node.destroy({ children: true });
+/** 미소유 필지 풍경 노드(트랙 E): 풍경 타일(tiles)·소품(actors, 깊이 정렬)·이름 팻말(overlay)을 한데 묶는다. 사면 1초 페이드 뒤 지운다(keep 소품은 남는다). */
+interface SceneryEntry { tiles: Container; props: { node: Container; keep: boolean; cells: { x: number; y: number }[] }[]; sign: Container; text: string; fadeFrom: number | null; center?: { sx: number; sy: number } }
+function destroyScenery(e: SceneryEntry, keepLandmarks: boolean) {
+  e.tiles.destroy({ children: true });
+  e.sign.destroy({ children: true });
+  for (const p of e.props) if (!(keepLandmarks && p.keep) && !p.node.destroyed) p.node.destroy({ children: true });
 }
+/** fun P0 도착 연출: 들어오는 데 1.2초 · 서 있는 2초 · 나가는 1.2초 */
+const ARRIVE_IN_MS = 1200;
+const ARRIVE_STAY_MS = 2000;
+const ARRIVE_OUT_MS = 1200;
+/** 사면 풍경이 걷히는 시간 */
+const SCENERY_FADE_MS = 1000;
+/** 팻말 배율: 월드 배율이 이 값보다 작으면 그만큼 키워 화면 글자 크기를 지킨다(최대 ×1.8 — 더 키우면 줌아웃 때 팻말끼리 겹친다) */
+const SIGN_MIN_WORLD_SCALE = 1.2;
+const SIGN_MAX_SCALE = 1.8;
+function signScale(worldScale: number): number {
+  return Math.min(SIGN_MAX_SCALE, Math.max(1, SIGN_MIN_WORLD_SCALE / Math.max(0.01, worldScale)));
+}
+/** 맵 안 칸의 지형(밖이면 null) · 시설 유무 · 경로 진입점 칸인가 — 풍경 소품 자리 검사용 */
+function cellTerrain(state: GameState, x: number, y: number): string | null {
+  return x >= 0 && y >= 0 && x < state.grid.w && y < state.grid.h ? cellAt(state, x, y).terrain : null;
+}
+function objectAtCell(state: GameState, x: number, y: number): boolean {
+  return objectAt(state, x, y) !== null;
+}
+function isEntryCell(x: number, y: number): boolean {
+  return ROUTE_IDS.some((r) => ENTRY_ROUTES[r].entry.x === x && ENTRY_ROUTES[r].entry.y === y);
+}
+/** 마을 버스 프레임 간격(달릴 때) */
+const BUS_FRAME_MS = 150;
+/** 진입점 미리 보기 팻말·필지 팻말 색 (갈색 나무판 + 크림 글자) */
+const SIGN_FILL = 0x6b3d1e;
+const SIGN_EDGE = 0x3b1f0e;
+const SIGN_TEXT = 0xfff3d6;
 
 const GHOST_OK = 0x88ff88;
 const GHOST_BAD = 0xff7777;
@@ -68,6 +101,12 @@ const GHOST_ALPHA = 0.65;
 /** 미소유 필지 덮개 색(시트가 없을 때) */
 const LOCKED_COLOR = 0x000000;
 const LOCKED_ALPHA = 0.45;
+/** fun-rank: 필지 구매 연출 — 덮개 안개가 1초 동안 걷힌다 */
+/** fun-rank: 등급별 본관 외벽 tint (플레이어가 외벽 색을 고르지 않았을 때(0) — 등급이 오르면 벽이 산뜻해진다: 회벽 → 크림 → 연노랑 → 연분홍 → 연보라) */
+const GRADE_WALL_TINT = [0xffffff, 0xe6e0d4, 0xfff4dc, 0xfff8c8, 0xffe0e8, 0xe8d8ff];
+/** fun-rank: 본관 뒤 모서리(두 벽이 만나는 꼭대기) 높이 = 기단 10 + 벽 높이(sprites_iso_rooms.py warehouse/MAIN_WALL_H) */
+const MAIN_WALL_TOP: Record<number, number> = { 1: 36, 2: 38, 3: 44, 4: 50 };
+const FLOOR2_BAND_H = 22;
 
 /** 상단 바(28px) + 목표 줄(24px) 아래에 맵 위 꼭짓점이 오도록 하는 기본 세로 오프셋 */
 const WORLD_OFFSET_Y = 76;
@@ -91,7 +130,9 @@ const COIN_RISE_PX = 12;
 const SPARKLE_FRAME_MS = 120;
 const SPARKLE_FRAMES = 4;
 /** 튜토리얼 스포트라이트 어둠 (ui/tutorialHighlight.ts SPOT_ALPHA와 같은 값 — render/는 ui/를 import하지 않는다) */
-const SPOT_ALPHA = 0.55;
+const SPOT_ALPHA = 0.22; // fun-start: 0.55는 너무 어두워 게임 요소를 못 알아봤다
+/** 스포트라이트 구멍 반경(체비쇼프): 타깃 칸 주변 이 반경 안은 아예 안 어둡고, 맨 바깥 고리는 반만 어둡다(부드러운 가장자리) */
+const SPOT_HOLE_RADIUS = 3;
 /** 숫자 팝업(+N): 700ms 동안 16px 떠오르며 사라진다 */
 const POP_MS = 700;
 const POP_RISE_PX = 16;
@@ -101,6 +142,11 @@ const MONEY_POP_MAX = 8;
 const GREET_RADIUS = 2;
 const GREET_CHANCE = 0.2;
 const GREET_MS = 1200;
+/** fun-guest 반응 말풍선·아이콘 */
+const REACT_BUBBLE_MS = 2500;
+const REACT_ICON_PX = 12;
+const REACT_ICON_DX = 22;
+const REACT_ICON: Record<NonNullable<Extract<FxEvent, { kind: 'react' }>['icon']>, string> = { heart: 'icon_heart', sweat: 'icon_mood_meh', wave: 'icon_wave', question: 'bubble_question', thumb: 'icon_thumb' };
 const GREET_TEXT = '어서옵서예!';
 /** 앉은 손님 손의 컵(8×8): 몸 오른쪽, 허리 높이 */
 const CUP_OFFSET = { x: 7, y: -14 };
@@ -140,7 +186,7 @@ const GLOW_BRIGHT = 1.4;
 const ROOM_LIGHT_COLOR = 0xffc46a;
 const ROOM_LIGHT_ALPHA = 0.28;
 /** 맵 경계 위쪽 여유(키 큰 오브젝트와 지평선 배경 띠가 보이도록) */
-const BOUNDS_TOP_PAD = 180;
+const BOUNDS_TOP_PAD = 260;
 
 interface ObjEntry {
   node: Container;
@@ -192,8 +238,12 @@ interface Fx {
   sprite: Sprite;
   born: number;
   y0: number;
-  kind: 'coin' | 'sparkle';
+  kind: 'coin' | 'sparkle' | 'flash';
 }
+/** fun-corner: 카메라 플래시 3프레임 */
+const FLASH_FRAME_MS = 90;
+const FLASH_FRAMES = 3;
+const CORNER_SAY_MS = 1800;
 
 /** 오브젝트 상태별 스프라이트 변형 이름. 본관은 증축 Lv(state.main.level)에 따라 lv2·lv3·lv4 (y-indoor §8.1 — SPRITE_ALIAS가 아니라 level로 고른다). */
 function objectVariant(o: Pick<PlacedObject, 'type'>, mainLevel = 1): string | undefined {
@@ -262,10 +312,26 @@ export class GameView {
   private tileSprites: Sprite[] = [];
   private tilesBuilt = false;
   /** 미소유 필지 덮개 + 가격 라벨. 키는 필지 id, 라벨 문구가 바뀌면(신구간 할인) 다시 만든다. */
-  private lockedNodes = new Map<string, { node: Container; text: string }>();
+  private lockedNodes = new Map<string, SceneryEntry>();
+  /** 사서 걷히는 중인 풍경(1초 페이드) */
+  private fadingScenery: SceneryEntry[] = [];
+  /** 필지 경계 돌담선(내 땅 범위·미소유 경계). 소유·배치가 바뀔 때만 다시 만든다. */
+  private wallNodes: Container[] = [];
+  private wallKey = '';
+  /** 잠긴 경로 진입점 위 미리 보기 팻말 */
+  private entryLabels = new Map<RouteId, Container>();
+  /** 마을 버스(장식 애니): 서쪽에서 들어와 정류장에 5초 서고 동쪽으로 나간다 */
+  private bus: Sprite | null = null;
+  private busStop: { x: number; y: number } | null = null;
+  private busStopKey = '';
+  private busDropCycle = -1;
   /** 트랙 H: 진입점 표지 (경로 id → 노드·상태 키). 배치·해금이 바뀔 때만 다시 만든다. */
   private entryMarkers = new Map<RouteId, { node: Container; key: string }>();
   private entryKey = '';
+  /** fun-corner: 완성 코너 팻말(코너 id → 노드). 배치가 바뀔 때만 다시 만든다. */
+  private cornerSigns = new Map<string, Container>();
+  private cornerKey = '';
+  private rangeBadge: Container | null = null;
   private ghost: Container | null = null;
   private ghostKey = '';
   /** 마지막 render의 본관 Lv (고스트 크기·텍스처용) */
@@ -304,10 +370,14 @@ export class GameView {
   /** 렌더 전용 애니 큐: 말풍선 팝, 코인 팝, 반짝임 */
   private bubblePops: { node: Container; born: number }[] = [];
   private fxQueue: Fx[] = [];
+  /** fun P0 경로 도착 연출: 렌터카·셔틀·배가 가장자리에서 들어와 서고(손님이 내림) 되돌아 나간다 */
+  private arrivals: { sprite: Sprite; born: number; from: { sx: number; sy: number }; to: { sx: number; sy: number }; flipX: boolean }[] = [];
   /** 마지막 렌더 때의 state.tick. 그 뒤 스텝에서 생긴 fx(tick ≥ 이 값)만 연출한다. −1 = 아직 첫 렌더 전 */
   private fxSeenTick = -1;
   /** 숫자 팝업(+N) 큐 */
   private pops: { node: Container; born: number; y0: number }[] = [];
+  /** fun-guest: 멈춘 상태(speed 0)에서는 tick이 안 올라 같은 반응 fx가 매 프레임 다시 걸린다 — 한 번 띄운 항목은 건너뛴다 */
+  private seenReacts = new WeakSet<object>();
   /** 말풍선: 캐릭터(손님·직원) id → 오버레이 레이어의 말풍선. 캐릭터 노드를 따라다니고 캐릭터보다 위에 그려진다. */
   private speech = new Map<string, SpeechEntry>();
   /** 인사 판정을 끝낸 손님 id (손님당 한 번) */
@@ -377,11 +447,28 @@ export class GameView {
     for (const sp of this.speech.values()) sp.node.destroy({ children: true });
     this.speech.clear();
     this.greeted.clear();
-    for (const e of this.lockedNodes.values()) destroyLocked(e.node); // overlay에 있는 가격 라벨까지 같이 지운다
+    for (const e of this.lockedNodes.values()) destroyScenery(e, false); // overlay에 있는 팻말·actors의 소품까지 같이 지운다
     this.lockedNodes.clear();
+    for (const e of this.fadingScenery) destroyScenery(e, false);
+    this.fadingScenery = [];
+    for (const n of this.wallNodes) n.destroy({ children: true });
+    this.wallNodes = [];
+    this.wallKey = '';
     for (const e of this.entryMarkers.values()) e.node.destroy({ children: true });
     this.entryMarkers.clear();
+    for (const n of this.cornerSigns.values()) n.destroy({ children: true }); // fun-corner 팻말
+    this.cornerSigns.clear();
+    this.cornerKey = '';
+    for (const l of this.entryLabels.values()) l.destroy({ children: true });
+    this.entryLabels.clear();
     this.entryKey = '';
+    this.bus?.destroy({ children: true });
+    this.bus = null;
+    for (const a of this.arrivals) if (!a.sprite.destroyed) a.sprite.destroy();
+    this.arrivals = [];
+    this.busStop = null;
+    this.busStopKey = '';
+    this.busDropCycle = -1;
     this.tiles.removeChildren().forEach((c) => c.destroy());
     this.tileSprites = [];
     this.terrainKeys = [];
@@ -531,23 +618,49 @@ export class GameView {
     if (!cells) return;
     const R = 1e5; // 월드 좌표 전체 (카메라가 어디를 보든 덮인다)
     this.spot.rect(-R, -R, 2 * R, 2 * R).fill({ color: 0x000000, alpha: SPOT_ALPHA });
+    // 타깃 칸 주변 반경 SPOT_HOLE_RADIUS 안은 구멍(안 어둡게), 맨 바깥 고리는 반만 어둡게 — 구멍이 부드럽게 넓어진다
+    const ring: { x: number; y: number }[] = [];
+    const seen = new Set<string>();
     for (const cell of cells) {
-      const { sx, sy } = cellToScreen(cell.x, cell.y);
-      this.spot.poly([sx, sy, sx + ISO_W / 2, sy + ISO_H / 2, sx, sy + ISO_H, sx - ISO_W / 2, sy + ISO_H / 2]).cut();
+      for (let dy = -SPOT_HOLE_RADIUS; dy <= SPOT_HOLE_RADIUS; dy++) for (let dx = -SPOT_HOLE_RADIUS; dx <= SPOT_HOLE_RADIUS; dx++) {
+        const x = cell.x + dx, y = cell.y + dy, k = `${x},${y}`;
+        if (seen.has(k)) continue;
+        seen.add(k);
+        const { sx, sy } = cellToScreen(x, y);
+        this.spot.poly([sx, sy, sx + ISO_W / 2, sy + ISO_H / 2, sx, sy + ISO_H, sx - ISO_W / 2, sy + ISO_H / 2]).cut();
+        if (Math.max(Math.abs(dx), Math.abs(dy)) === SPOT_HOLE_RADIUS && !cells.some((c) => Math.max(Math.abs(c.x - x), Math.abs(c.y - y)) < SPOT_HOLE_RADIUS)) ring.push({ x, y });
+      }
+    }
+    for (const { x, y } of ring) {
+      const { sx, sy } = cellToScreen(x, y);
+      this.spot.poly([sx, sy, sx + ISO_W / 2, sy + ISO_H / 2, sx, sy + ISO_H, sx - ISO_W / 2, sy + ISO_H / 2]).fill({ color: 0x000000, alpha: SPOT_ALPHA / 2 });
     }
   }
 
   /** 효과 범위 힌트(§5.3): 고스트·이동·카드 열림 중 반경 radius 타원 + 성립 상대 위 ◎. null이면 지운다. 같은 내용이면 다시 그리지 않는다. */
   setRangeHint(h: RangeHint | null) {
-    const key = h ? `${h.x},${h.y},${h.w},${h.h},${h.radius}|${h.marks.map((m) => `${m.x},${m.y}`).join(';')}` : '';
+    const key = h ? `${h.x},${h.y},${h.w},${h.h},${h.radius}|${h.marks.map((m) => `${m.x},${m.y}`).join(';')}|${h.badge ?? ''}` : '';
     if (key === this.rangeKey) return;
     this.rangeKey = key;
     if (this.rangeGfx.destroyed || this.rangeMarks.destroyed) return;
     this.rangeGfx.clear();
     this.rangeMarks.clear();
+    this.rangeBadge?.destroy({ children: true });
+    this.rangeBadge = null;
     if (!h) return;
     const c = cellCenter(h.x + (h.w - 1) / 2, h.y + (h.h - 1) / 2);
     const r = h.radius + Math.max(h.w, h.h) / 2;
+    if (h.badge) { // fun-corner: 고스트 위 갈색 배지 "이걸 놓으면 꽃길 완성"
+      const badge = new Container();
+      const l = label(h.badge, 10);
+      l.anchor.set(0.5, 1);
+      const bg = new Graphics().roundRect(-l.width / 2 - 5, -l.height - 3, l.width + 10, l.height + 4, 3).fill({ color: 0x6b3d1e, alpha: 0.92 }).stroke({ color: 0xf6e7c6, width: 1 });
+      badge.addChild(bg, l);
+      badge.position.set(c.sx, c.sy - r * (ISO_H / 2) * Math.SQRT2 - 64); // 고스트 이름·입지 배지(전망·바람) 두 줄 위로
+      badge.zIndex = 1e6 - 1;
+      this.overlay.addChild(badge);
+      this.rangeBadge = badge;
+    }
     // 셀 공간의 원 → 아이소 타원 (rx = R·32·√2, ry = R·16·√2)
     this.rangeGfx.ellipse(c.sx, c.sy, r * (ISO_W / 2) * Math.SQRT2, r * (ISO_H / 2) * Math.SQRT2).fill({ color: 0x5ad1ff, alpha: 0.18 }).stroke({ color: 0x2aa7e0, width: 2, alpha: 0.9 });
     for (const m of h.marks) {
@@ -639,12 +752,16 @@ export class GameView {
     }
     this.syncTerrain(state, season);
     this.background.sync(state);
-    this.syncLocked(state);
     const now = performance.now();
+    this.background.tick(now);
+    this.syncLocked(state, now);
+    this.syncWalls(state);
+    this.syncBus(state, now);
     // 시계에 hour가 있는 브랜치(2B-1)와 없는 브랜치 모두에서 동작하도록 정오를 기본값으로
     this.nightAlpha = nightAlpha((state.clock as { hour?: number }).hour ?? 12);
     this.syncObjects(state, now);
     this.syncEntryMarkers(state);
+    this.syncCornerSigns(state);
     this.syncGuests(state, now);
     this.syncStaff(state, now);
     this.syncFx(state, now);
@@ -716,60 +833,198 @@ export class GameView {
     this.world.position.set(width / 2 - centerX * s, WORLD_OFFSET_Y - top * s);
   }
 
-  /** 미소유 필지: 어두운 덮개 타일 + 가운데 가격 라벨. 사면 걷힌다. */
-  private syncLocked(state: GameState) {
+  /** 미소유 필지(트랙 E): 어두운 덮개 대신 제주 풍경(필지 특징에 맞는 밭 타일 + 소품) + 이름 팻말. 사면 1초에 걷히고 랜드마크만 남는다. */
+  private syncLocked(state: GameState, now: number) {
     const alive = new Set<string>();
     for (const p of state.parcels) {
       if (p.owned) continue;
       alive.add(p.id);
-      const text = `₩${parcelPrice(state, p).toLocaleString()} · 탭해서 구매`;
+      const sc = parcelScenery(p.id);
+      const [l1, l2] = parcelSignLines(p.name, parcelPrice(state, p), sc?.feature ?? '');
+      const zoomOut = this.world.scale.x <= SIGN_MIN_WORLD_SCALE; // 줌아웃: 이름 한 줄만·작게(팻말끼리 안 겹치게), 줌인: 2줄
+      const text = `${l1}|${l2}|${zoomOut ? 'z' : ''}`; // 미소유 필지엔 시설을 못 놓으니 배치 서명은 키에 안 넣는다(매 프레임 재생성 방지)
       const cur = this.lockedNodes.get(p.id);
       if (cur?.text === text) continue;
-      destroyLocked(cur?.node);
-      this.lockedNodes.set(p.id, { node: this.makeLockedNode(p, text), text });
+      if (cur && cur.text.split('|').slice(0, 2).join('|') === `${l1}|${l2}`) {
+        // 줌 모드만 바뀜: 팻말만 갈아 끼운다 (풍경 타일·소품은 그대로)
+        const pos = cur.sign.position.clone();
+        cur.sign.destroy({ children: true });
+        cur.sign = this.parcelSign(zoomOut ? [l1] : [l1, l2], zoomOut);
+        cur.sign.position.copyFrom(pos);
+        this.overlay.addChild(cur.sign);
+        cur.text = text;
+        continue;
+      }
+      if (cur) destroyScenery(cur, false);
+      this.lockedNodes.set(p.id, this.makeSceneryNode(state, p, zoomOut ? [l1] : [l1, l2], text, zoomOut));
     }
     for (const [id, entry] of this.lockedNodes) {
       if (alive.has(id)) continue;
-      destroyLocked(entry.node);
+      // 샀다: 페이드 시작 (팻말은 바로 치운다)
+      entry.sign.destroy({ children: true });
+      entry.fadeFrom = now;
+      this.fadingScenery.push(entry);
       this.lockedNodes.delete(id);
     }
+    if (this.fadingScenery.length) {
+      this.fadingScenery = this.fadingScenery.filter((e) => {
+        const k = (now - (e.fadeFrom ?? now)) / SCENERY_FADE_MS;
+        if (k >= 1) {
+          destroyScenery(e, true);
+          // fun-rank: 풍경이 다 걷히면 필지 가운데 반짝(랜드마크 등장)
+          if (e.center) for (const [dx, dy] of [[0, 0], [-1.5, -0.5], [1.5, -0.5], [0, 1]] as const) this.spawnSparkleAt(e.center.sx + dx * 20, e.center.sy + dy * 14, now);
+          return false;
+        }
+        e.tiles.alpha = 1 - k;
+        for (const p of e.props) if (!p.keep) p.node.alpha = 1 - k;
+        return true;
+      });
+    }
+    // 남은 랜드마크: 그 칸에 시설이 놓이면 사라진다
+    for (const e of this.fadingScenery) this.hideCoveredLandmarks(state, e);
+    for (const e of this.lockedNodes.values()) this.hideCoveredLandmarks(state, e);
+    // 팻말은 줌아웃해도 읽히게 화면 크기를 유지한다(월드 배율 1.4 아래에서 키움)
+    const k = signScale(this.world.scale.x);
+    for (const e of this.lockedNodes.values()) e.sign.scale.set(k);
+    for (const l of this.entryLabels.values()) l.scale.set(k);
   }
 
-  private makeLockedNode(p: Parcel, text: string): Container {
+  private hideCoveredLandmarks(state: GameState, e: SceneryEntry) {
+    for (const p of e.props) {
+      if (!p.keep || p.node.destroyed) continue;
+      p.node.visible = !p.cells.some((c) => objectAtCell(state, c.x, c.y));
+    }
+  }
+  /** 팻말(갈색 나무판 + 크림 글자, 1~2줄). 원점은 판 아래 중앙. */
+  private signNode(lines: string[], size = 10): Container {
     const c = new Container();
-    const lockedTex = hasAssets() ? peekTex('iso_tile_locked') : null;
-    const g = lockedTex ? null : new Graphics();
+    const texts = lines.map((t, i) => { const l = label(t, i === 0 ? size + 1 : size); l.anchor.set(0.5, 0); l.tint = SIGN_TEXT; return l; });
+    const w = Math.max(...texts.map((t) => t.width)) + 12;
+    const h = texts.reduce((a, t) => a + t.height, 0) + 8;
+    const bg = new Graphics().roundRect(-w / 2, -h, w, h, 3).fill({ color: SIGN_FILL }).stroke({ color: SIGN_EDGE, width: 2 })
+      .rect(-1, 0, 3, 6).fill(SIGN_EDGE); // 말뚝
+    c.addChild(bg);
+    let y = -h + 4;
+    for (const t of texts) { t.position.set(0, y); y += t.height; c.addChild(t); }
+    return c;
+  }
+
+  /** 필지 이름 팻말 — 줌아웃이면 작은 글자 한 줄 */
+  private parcelSign(lines: string[], small: boolean): Container {
+    const sign = this.signNode(lines, small ? 8 : 10);
+    sign.label = 'parcel-label';
+    return sign;
+  }
+  private makeSceneryNode(state: GameState, p: Parcel, lines: string[], text: string, small = false): SceneryEntry {
+    const sc = parcelScenery(p.id);
+    const tiles = new Container();
+    const fillTex = sc && hasAssets() ? peekTex(`iso_tile_field_${sc.fill}`) : null;
+    const g = fillTex ? null : new Graphics();
     for (let y = p.y; y < p.y + p.h; y++) {
       for (let x = p.x; x < p.x + p.w; x++) {
+        if (cellTerrain(state, x, y) === 'road') continue; // 마을 길은 그대로 보인다
         const { sx, sy } = cellToScreen(x, y);
-        if (lockedTex) {
-          const sp = new Sprite(lockedTex);
+        if (fillTex) {
+          const sp = new Sprite(fillTex);
           sp.anchor.set(0.5, 0);
           sp.position.set(sx, sy);
-          c.addChild(sp);
+          tiles.addChild(sp);
         } else {
           g!.poly([sx, sy, sx + ISO_W / 2, sy + ISO_H / 2, sx, sy + ISO_H, sx - ISO_W / 2, sy + ISO_H / 2]).fill({ color: LOCKED_COLOR, alpha: LOCKED_ALPHA });
         }
       }
     }
-    if (g) c.addChild(g);
+    if (g) tiles.addChild(g);
+    this.tiles.addChild(tiles);
+    // 소품: 길·진입점·시작부터 놓인 시설과 겹치는 것은 뺀다. actors에 두어 손님·시설과 깊이 정렬.
+    const props: SceneryEntry['props'] = [];
+    for (const pr of sc?.props ?? []) {
+      const w = pr.w ?? 1, h = pr.h ?? 1;
+      const cells: { x: number; y: number }[] = [];
+      for (let dy = 0; dy < h; dy++) for (let dx = 0; dx < w; dx++) cells.push({ x: p.x + pr.x + dx, y: p.y + pr.y + dy });
+      if (cells.some((c) => c.x >= p.x + p.w || c.y >= p.y + p.h || cellTerrain(state, c.x, c.y) !== 'soil' || objectAtCell(state, c.x, c.y) || isEntryCell(c.x, c.y))) continue;
+      const node = this.sceneryPropNode(pr, p.x + pr.x, p.y + pr.y, w, h);
+      if (!node) continue;
+      this.actors.addChild(node);
+      props.push({ node, keep: !!pr.keep, cells });
+    }
+    // 이름 팻말: 필지 가운데, overlay(시설·캐릭터 위)
     const center = cellCenter(p.x + (p.w - 1) / 2, p.y + (p.h - 1) / 2);
-    const name = label(p.name, 11);
-    const price = label(text, 10);
-    name.anchor.set(0.5, 1);
-    price.anchor.set(0.5, 0);
-    name.position.set(center.sx, center.sy - 1);
-    price.position.set(center.sx, center.sy + 1);
-    const w = Math.max(name.width, price.width) + 12;
-    const bg = new Graphics().roundRect(center.sx - w / 2, center.sy - name.height - 4, w, name.height + price.height + 8, 4).fill({ color: 0x000000, alpha: 0.6 });
-    // 어두운 덮개 타일은 tiles 안(오브젝트 아래), 가격 라벨은 overlay(오브젝트·캐릭터 위) — 시설에 가려지지 않게
-    this.tiles.addChild(c);
-    const lbl = new Container();
-    lbl.label = 'parcel-label';
-    lbl.addChild(bg, name, price);
-    this.overlay.addChild(lbl);
-    (c as Container & { parcelLabel?: Container }).parcelLabel = lbl;
+    const sign = this.parcelSign(lines, small);
+    sign.position.set(center.sx, center.sy - 2);
+    this.overlay.addChild(sign);
+    return { tiles, props, sign, text, fadeFrom: null, center };
+  }
+
+  private sceneryPropNode(pr: SceneryProp, x: number, y: number, w: number, h: number): Container | null {
+    const t = hasAssets() ? peekTex(spriteName.isoObject(SPRITE_ALIAS[pr.type] ?? pr.type)) : null;
+    if (!t) return null;
+    const c = new Container();
+    c.label = `scenery-${pr.type}`;
+    const { sx, sy } = footAnchor(x, y, w, h);
+    c.position.set(sx, sy);
+    c.zIndex = depth(x, y, w, h) + 1e-3;
+    const sp = new Sprite(t);
+    sp.anchor.set(0.5, 1);
+    c.addChild(sp);
     return c;
+  }
+
+  /** 필지 경계 낮은 돌담선(장식, 통행 무관): 내 땅 범위와 미소유 필지 경계가 보인다. 소유·길이 바뀔 때만 다시 만든다. */
+  private syncWalls(state: GameState) {
+    const key = `${state.parcels.map((p) => (p.owned ? 1 : 0)).join('')}|${layoutKey(state)}|${hasAssets() ? 1 : 0}`;
+    if (key === this.wallKey) return;
+    this.wallKey = key;
+    for (const n of this.wallNodes) n.destroy({ children: true });
+    this.wallNodes = [];
+    const ne = hasAssets() ? peekTex(spriteName.isoObject('wall_ne')) : null;
+    const nw = hasAssets() ? peekTex(spriteName.isoObject('wall_nw')) : null;
+    if (!ne || !nw) return;
+    const edges = wallEdges(state.grid.w, state.grid.h, state.parcels, (x, y) => cellTerrain(state, x, y) === 'road');
+    for (const e of edges) {
+      const sp = new Sprite(e.axis === 'ne' ? ne : nw);
+      sp.anchor.set(0.5, 1);
+      const { sx, sy } = footAnchor(e.x, e.y, 1, 1);
+      sp.position.set(sx, sy);
+      sp.zIndex = e.x + e.y - 0.5; // 뒤 칸 내용 뒤, 이 칸 내용 앞
+      sp.label = 'wall';
+      this.actors.addChild(sp);
+      this.wallNodes.push(sp);
+    }
+  }
+
+  /** 마을 버스 애니(렌더 전용): 마을 길을 따라 서쪽 링에서 들어와 정류장에 5초 서고(손님 내리는 반짝임) 동쪽으로 나간다. */
+  private syncBus(state: GameState, now: number) {
+    const lk = layoutKey(state);
+    if (lk !== this.busStopKey) {
+      this.busStopKey = lk;
+      const stop = Object.values(state.objects).find((o) => o.type === 'busstop');
+      this.busStop = stop ? { x: stop.x, y: stop.y } : null;
+    }
+    if (!this.busStop) { if (this.bus) this.bus.visible = false; return; }
+    if (!this.bus) {
+      const t = hasAssets() ? peekTex(spriteName.isoObject('bus_0')) : null;
+      if (!t) return;
+      this.bus = new Sprite(t);
+      this.bus.anchor.set(0.5, 1);
+      this.bus.label = 'bus';
+      this.actors.addChild(this.bus);
+    }
+    const y = VILLAGE_ROAD_Y;
+    const pose = busPose(now, this.busStop.x - 1, state.grid.w); // 2칸 버스의 앞이 정류장 칸에 닿게
+    this.bus.visible = pose.visible;
+    if (!pose.visible) return;
+    const { sx, sy } = footAnchor(pose.x, y, 2, 1);
+    this.bus.position.set(sx, sy);
+    this.bus.zIndex = depth(pose.x, y, 2, 1) + 0.4;
+    const frame = pose.moving ? Math.floor(now / BUS_FRAME_MS) % 2 : 0;
+    const t = peekTex(spriteName.isoObject(`bus_${frame}`));
+    if (t && this.bus.texture !== t) this.bus.texture = t;
+    const cycle = Math.floor(now / BUS_PERIOD_MS);
+    if (!pose.moving && cycle !== this.busDropCycle && now % BUS_PERIOD_MS >= BUS_DROP_AT_MS) {
+      this.busDropCycle = cycle;
+      this.spawnSparkle(this.busStop.x, this.busStop.y, now);
+    }
   }
 
   private tileTexture(state: GameState, i: number, season: Season): Texture {
@@ -945,9 +1200,23 @@ export class GameView {
     entry.node.addChild(c);
   }
 
-  /** 본관 인테리어: 외벽 색 tint + 간판 문구 라벨 */
+  /** 본관 인테리어: 외벽 색 tint + 간판 문구 라벨. fun-rank: 등급 간판 오버레이(뒤 모서리 꼭대기) + 등급별 외벽 tint(외벽 색을 안 골랐을 때) */
   private decorateCafe(entry: ObjEntry, state: GameState) {
-    if (entry.sprite) entry.sprite.tint = WALL_COLORS[state.cosmetics?.wallColor ?? 0] ?? 0xffffff;
+    const grade = gradeOf(state);
+    const wallColor = state.cosmetics?.wallColor ?? 0;
+    if (entry.sprite) entry.sprite.tint = wallColor === 0 ? GRADE_WALL_TINT[grade] ?? 0xffffff : WALL_COLORS[wallColor] ?? 0xffffff;
+    entry.node.getChildByLabel('gradesign')?.destroy({ children: true });
+    const signTex = peekTex(spriteName.isoObject('warehouse', `sign_g${grade}`));
+    if (signTex) {
+      const lv = state.main?.level ?? 1;
+      const { w, h } = MAIN_SIZE[lv] ?? { w: 3, h: 2 };
+      const gs = new Sprite(signTex);
+      gs.label = 'gradesign';
+      gs.anchor.set(0.5, 1);
+      // 노드 원점 = 발자국 앞 꼭짓점. 뒤 꼭짓점은 x=(h−w)·32, y=−(w+h)·16, 그 위로 벽 높이(+2층 띠)만큼
+      gs.position.set((h - w) * (ISO_W / 2), -(w + h) * (ISO_H / 2) - (MAIN_WALL_TOP[lv] ?? 36) - (state.main?.floor2 && lv >= 3 ? FLOOR2_BAND_H : 0) + 2);
+      entry.node.addChild(gs);
+    }
     // y-indoor §8.2: 2층은 본관 벽 위에 2층 창문 띠 오버레이 (같은 발자국 스프라이트라 하단 중앙 앵커가 맞는다)
     entry.node.getChildByLabel('floor2')?.destroy({ children: true });
     const lv = state.main?.level ?? 1;
@@ -1004,6 +1273,18 @@ export class GameView {
       }
       this.actors.addChild(c);
       this.entryMarkers.set(e.route, { node: c, key: k });
+      // 잠긴 경로: 표지 위 미리 보기 팻말("주차장 자리 — 좌석 6개면 열려요"). 열리면 치운다.
+      this.entryLabels.get(e.route)?.destroy({ children: true });
+      this.entryLabels.delete(e.route);
+      const preview = ROUTE_PREVIEW[e.route];
+      if (!e.unlocked && preview) {
+        const sign = this.signNode(preview, 9);
+        sign.label = `entry-label-${e.route}`;
+        sign.alpha = 0.85;
+        sign.position.set(sx, sy - ISO_H - 26);
+        this.overlay.addChild(sign);
+        this.entryLabels.set(e.route, sign);
+      }
     }
   }
 
@@ -1046,7 +1327,7 @@ export class GameView {
         // 시트 모드: 변형(심음·어린 나무·증축)이 바뀔 때만 텍스처를 갱신. 수확은 자동이라 링 대신 반짝임(syncFx).
         const isCafe = o.type === 'warehouse';
         const mainLv = state.main?.level ?? 1;
-        const key = `${objectVariant(o, mainLv) ?? ''}:${o.rot ?? ''}${isCafe ? `:${state.cosmetics?.wallColor ?? 0}:${state.cosmetics?.sign ?? ''}:${state.main?.floor2 ? 'F2' : ''}` : ''}`;
+        const key = `${objectVariant(o, mainLv) ?? ''}:${o.rot ?? ''}${isCafe ? `:${state.cosmetics?.wallColor ?? 0}:${state.cosmetics?.sign ?? ''}:${state.main?.floor2 ? 'F2' : ''}:g${gradeOf(state)}` : ''}`; // fun-rank: 등급이 바뀌면 간판·외벽 갱신
         if (this.badgeKeys.get(o.id) === key) continue;
         this.badgeKeys.set(o.id, key);
         const t = objectTex(o, mainLv);
@@ -1075,7 +1356,7 @@ export class GameView {
     }
     const def = guestTypeDef(g.type);
     const named = g.namedId ? namedGuestDef(g.namedId) : null;
-    const parts = named ? namedGuestParts(namedGuestFace(named), named.face.seed, named.regionId) : guestParts(guestFace(g.type), def.tags, def.wants);
+    const parts = named ? namedGuestParts(namedGuestFace(named), named.face.seed, named.regionId) : guestParts(g.faceSeed !== undefined ? regularFace(g.faceSeed) : guestFace(g.type), def.tags, def.wants); // fun-guest 훅: 단골은 seed 얼굴
     const ch = makeCharacterNode(parts, guestDir(g), 1);
     c.addChild(ch);
     return { node: c, sprite: null, char: ch, hadMenu: g.menuId !== null, accKey: '', alert: null, phase: g.phase };
@@ -1266,6 +1547,57 @@ export class GameView {
     this.pops.push({ node: c, born: now, y0: sy - 24 });
   }
 
+  /** fun P0: 경로 도착 — 렌터카(동쪽 마을 길에서 주차장 앞)·셔틀(남쪽 끝에서 정류장)·배(북쪽 바다에서 선착장)가 들어와 서고, 「렌터카 손님 3명!」 문구. 올레꾼은 걸어오니 문구만. */
+  private spawnArrival(state: GameState, e: Extract<FxEvent, { kind: 'arrive' }>, now: number) {
+    const name = e.route === 'parking' ? '렌터카' : e.route === 'shuttle' ? '셔틀' : e.route === 'cruise' ? '크루즈' : '올레꾼';
+    const text = e.route === 'olle' ? `올레꾼 ${e.n}명이 걸어와요` : `${name} 손님 ${e.n}명!`;
+    const c = new Container();
+    const l = label(text, 11);
+    l.anchor.set(0.5, 1);
+    l.style.fill = 0xfff2c8;
+    const bg = new Graphics().roundRect(-l.width / 2 - 4, -l.height - 2, l.width + 8, l.height + 4, 3).fill({ color: 0x5a3a1a, alpha: 0.85 });
+    c.addChild(bg, l);
+    const { sx, sy } = cellCenter(e.x, e.y);
+    c.position.set(sx, sy - 30);
+    c.zIndex = 1e6;
+    this.overlay.addChild(c);
+    this.pops.push({ node: c, born: now, y0: sy - 30 });
+    if (e.route === 'olle' || !hasAssets()) return;
+    const sprite = e.route === 'parking' ? 'route_car' : e.route === 'shuttle' ? 'route_bus' : 'route_ship';
+    const t = peekTex(spriteName.isoObject(sprite));
+    if (!t) return;
+    const entry = ENTRY_ROUTES[e.route].entry;
+    const from = footAnchor(entry.x, entry.y, 1, 1);
+    // 서는 자리: 시설 앞 칸 옆(도착 칸에서 진입점 쪽으로 한 칸) — 손님 위에 겹치지 않게
+    const stop = { x: e.x + Math.sign(entry.x - e.x), y: e.y + Math.sign(entry.y - e.y) };
+    const to = footAnchor(stop.x, stop.y, 1, 1);
+    const sp = new Sprite(t);
+    sp.anchor.set(0.5, 1);
+    sp.label = `arrive-${e.route}`;
+    sp.position.set(from.sx, from.sy);
+    sp.zIndex = depth(stop.x, stop.y, 1, 1) + 0.5;
+    sp.scale.x = entry.x > e.x ? -1 : 1; // 동쪽에서 오면 왼쪽을 본다
+    this.actors.addChild(sp);
+    this.arrivals.push({ sprite: sp, born: now, from, to, flipX: entry.x > e.x });
+    this.spawnSparkle(e.x, e.y, now);
+  }
+  private tickArrivals(now: number) {
+    if (!this.arrivals.length) return;
+    this.arrivals = this.arrivals.filter((a) => {
+      if (a.sprite.destroyed) return false;
+      const age = now - a.born;
+      if (age >= ARRIVE_IN_MS + ARRIVE_STAY_MS + ARRIVE_OUT_MS) { a.sprite.destroy(); return false; }
+      let k: number;
+      if (age < ARRIVE_IN_MS) k = age / ARRIVE_IN_MS; // 들어옴
+      else if (age < ARRIVE_IN_MS + ARRIVE_STAY_MS) k = 1; // 정차
+      else { k = 1 - (age - ARRIVE_IN_MS - ARRIVE_STAY_MS) / ARRIVE_OUT_MS; a.sprite.scale.x = a.flipX ? 1 : -1; } // 되돌아 나감
+      const ease = k < 1 ? 1 - (1 - k) * (1 - k) : 1;
+      a.sprite.position.set(a.from.sx + (a.to.sx - a.from.sx) * ease, a.from.sy + (a.to.sy - a.from.sy) * ease);
+      a.sprite.alpha = age > ARRIVE_IN_MS + ARRIVE_STAY_MS + ARRIVE_OUT_MS - 300 ? Math.max(0, (ARRIVE_IN_MS + ARRIVE_STAY_MS + ARRIVE_OUT_MS - age) / 300) : 1;
+      return true;
+    });
+  }
+
   /** 「+₩n」 숫자 팝업 (결제). 화면 좌표. 한꺼번에 많이 뜨면(MONEY_POP_MAX 초과) 건너뛴다 — 코인은 그대로 뜬다 */
   private spawnMoneyPop(x: number, y0: number, amount: number, now: number) {
     if (this.pops.length >= MONEY_POP_MAX) return;
@@ -1293,11 +1625,15 @@ export class GameView {
 
   /** 자동 수확 반짝임: 칸 중심에 fx_sparkle 4프레임 */
   private spawnSparkle(cellX: number, cellY: number, now: number) {
+    const { sx, sy } = cellCenter(cellX, cellY);
+    this.spawnSparkleAt(sx, sy, now);
+  }
+  /** 월드 좌표에 반짝 (fun-rank: 필지 안개 걷힘 뒤 랜드마크 등장) */
+  private spawnSparkleAt(sx: number, sy: number, now: number) {
     const t = tex('fx_sparkle_0');
     if (!t) return;
     const sp = new Sprite(t);
     sp.anchor.set(0.5, 0.5);
-    const { sx, sy } = cellCenter(cellX, cellY);
     sp.position.set(sx, sy - 12);
     this.overlay.addChild(sp);
     this.fxQueue.push({ sprite: sp, born: now, y0: sy - 12, kind: 'sparkle' });
@@ -1315,7 +1651,95 @@ export class GameView {
       if (e.kind === 'harvest' || e.kind === 'complete') this.spawnSparkle(e.x, e.y, now);
       else if (e.kind === 'pop') this.spawnPop(e.x, e.y, e.n, now);
       else if (e.kind === 'photo') this.spawnSparkle(e.x, e.y, now);
+      else if (e.kind === 'react') this.spawnReaction(e, now);
+      else if (e.kind === 'corner' || e.kind === 'flash') this.spawnCornerFx(e, now);
+      else if (e.kind === 'applause') { // fun-rank: 등급 승급 — 마당 손님 전원 머리 위 하트 말풍선 + 반짝
+        for (const g of state.guests) { this.spawnSparkle(Math.round(g.x), Math.round(g.y), now); this.showBubble(g.id, { mood: 'happy' }, 1500); }
+      }
+      else if (e.kind === 'parcel') { /* 덮개 페이드는 syncLocked(owned 전환)에서 시작한다 */ }
+      else if (e.kind === 'arrive') this.spawnArrival(state, e, now);
     }
+  }
+
+  /** fun-corner 연출 하나: 코너 완성(팻말 자리 반짝 3개) · 손님 사진(카메라 플래시 + "사진 찍자!" 말풍선) */
+  private spawnCornerFx(e: Extract<FxEvent, { kind: 'corner' | 'flash' }>, now: number) {
+    if (e.kind === 'corner') {
+      for (const [dx, dy] of [[0, 0], [1, 0], [0, 1]] as const) this.spawnSparkle(e.x + dx, e.y + dy, now);
+      return;
+    }
+    const t = tex('fx_flash_0');
+    if (t) {
+      const sp = new Sprite(t);
+      sp.anchor.set(0.5, 0.5);
+      const { sx, sy } = cellCenter(e.x, e.y);
+      sp.position.set(sx, sy - 20);
+      sp.zIndex = 1e6;
+      this.overlay.addChild(sp);
+      this.fxQueue.push({ sprite: sp, born: now, y0: sy - 20, kind: 'flash' });
+    }
+    this.showBubble(e.guestId, { text: e.text }, CORNER_SAY_MS);
+  }
+
+  /** fun-corner: 완성 코너마다 닻 칸 위에 갈색 팻말 스프라이트 + 코너 이름 라벨. 배치 서명이 바뀔 때만 다시 만든다. */
+  private syncCornerSigns(state: GameState) {
+    const key = layoutKey(state);
+    if (key === this.cornerKey) return;
+    this.cornerKey = key;
+    const done = completedCorners(state);
+    const keep = new Set(done.map((c) => c.id));
+    for (const [id, node] of this.cornerSigns) if (!keep.has(id)) { node.destroy({ children: true }); this.cornerSigns.delete(id); }
+    for (const c of done) {
+      const anchor = state.objects[c.anchorId];
+      if (!anchor) continue;
+      const { w, h } = sizeOf(anchor);
+      const { sx, sy } = cellCenter(anchor.x + (w - 1) / 2, anchor.y + (h - 1) / 2);
+      let node = this.cornerSigns.get(c.id);
+      if (!node) {
+        node = new Container();
+        node.label = `corner-${c.id}`;
+        const t = tex('fx_corner_sign');
+        const l = label(cornerDef(c.id).name, 10);
+        l.anchor.set(0.5, 0.5);
+        if (t) {
+          const sp = new Sprite(t);
+          sp.anchor.set(0.5, 1);
+          sp.scale.set(Math.max(1, (l.width + 12) / t.width));
+          node.addChild(sp);
+          l.position.set(0, -t.height * sp.scale.y + 8 * sp.scale.y);
+        } else {
+          const bg = new Graphics().roundRect(-l.width / 2 - 4, -l.height - 2, l.width + 8, l.height + 4, 3).fill({ color: 0x6b3d1e, alpha: 0.9 });
+          node.addChild(bg);
+          l.position.set(0, -l.height / 2 - 1);
+        }
+        node.addChild(l);
+        this.overlay.addChild(node);
+        this.cornerSigns.set(c.id, node);
+      }
+      node.position.set(sx, sy - ISO_H / 2);
+      node.zIndex = 1e6 - 3;
+    }
+  }
+
+  /** fun-guest (트랙 G): 손님 반응 — 말풍선(인사·추천·요청·고마워요 대사) + 머리 위로 떠오르는 아이콘(하트·땀·손 흔들기·?). 같은 fx는 한 번만. */
+  private spawnReaction(e: Extract<FxEvent, { kind: 'react' }>, now: number) {
+    if (this.seenReacts.has(e)) return;
+    this.seenReacts.add(e);
+    const target = this.guestNodes.get(e.guestId)?.node;
+    if (!target) return;
+    this.showBubble(e.guestId, { text: e.text }, REACT_BUBBLE_MS);
+    const name = e.icon ? REACT_ICON[e.icon] : null;
+    const t = name ? tex(name) : null;
+    if (!t) return;
+    const c = new Container();
+    const sp = new Sprite(t);
+    sp.anchor.set(0.5, 1);
+    sp.width = REACT_ICON_PX; sp.height = REACT_ICON_PX;
+    c.addChild(sp);
+    // 말풍선(머리 위, 왼쪽 1/3에 꼬리)과 겹치지 않게 오른쪽 어깨 위에서 떠오른다
+    c.position.set(target.x + REACT_ICON_DX, target.y - GUEST_H + 6);
+    c.zIndex = 1e6 + 1;
+    this.overlay.addChild(c);
+    this.pops.push({ node: c, born: now, y0: target.y - GUEST_H + 6 });
   }
 
   /** 방(본관·별관, 공사 중 제외) 발자국 전체에 따뜻한 빛 다이아몬드 — 실내는 밤에도 밝다 (fix-indoor). 배치 서명이 바뀔 때만 다시 그린다. */
@@ -1349,6 +1773,7 @@ export class GameView {
 
   /** 렌더 전용 애니 진행: 말풍선 팝 스케일, 코인 프레임·상승, 숫자 팝업, 인사 말풍선 */
   private tickFx(now: number) {
+    this.tickArrivals(now); // fun P0 도착 연출
     if (this.pops.length) {
       this.pops = this.pops.filter((p) => {
         const k = (now - p.born) / POP_MS;
@@ -1378,6 +1803,13 @@ export class GameView {
           const total = SPARKLE_FRAME_MS * SPARKLE_FRAMES;
           if (age >= total) { fx.sprite.destroy(); return false; }
           const t = tex(`fx_sparkle_${Math.floor(age / SPARKLE_FRAME_MS)}`);
+          if (t) fx.sprite.texture = t;
+          return true;
+        }
+        if (fx.kind === 'flash') {
+          const total = FLASH_FRAME_MS * FLASH_FRAMES;
+          if (age >= total) { fx.sprite.destroy(); return false; }
+          const t = tex(`fx_flash_${Math.floor(age / FLASH_FRAME_MS)}`);
           if (t) fx.sprite.texture = t;
           return true;
         }

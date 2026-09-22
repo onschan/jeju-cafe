@@ -52,9 +52,11 @@ function backfill(state: GameState): void {
   state.village ??= initVillage(); // z-ending: 정착 등급·마을제
   state.carry ??= null; // z-ending: 이월 묶음
   state.codex.titles ??= []; // staff-luck: 만난 칭호 도감
+  state.codex.corners ??= []; // fun-corner: 만든 코너 도감
   state.lastOutcome ??= null;
   state.luckSeq ??= 0;
   state.monthGreatServes ??= 0;
+  state.grade ??= 1; // fun-rank: 카페 등급 (옛 세이브는 「올레길 노점」에서 시작 — 조건이 차 있으면 다음 날 판정에서 오른다)
   for (const k of ['clearRock', 'promote', 'craft', 'siteView', 'comboCodex', 'spotMap']) delete (state.features as Record<string, boolean>)[k]; // ease: 바위 삭제·처음부터 열린 기능 — 옛 저장의 기능 키는 지운다
   delete (state.stats as unknown as Record<string, number>)['rocksCleared'];
   // ease: 옛 저장(v19)의 바위·큰 바위 칸은 흙으로, 곶자왈 덤불 오브젝트는 지운다 (지형·오브젝트 정의가 없어졌다)

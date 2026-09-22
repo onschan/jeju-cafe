@@ -9,6 +9,7 @@ import { LOW_ENERGY } from './staff.ts';
 import { josa } from './josa.ts';
 import { siteSay } from './site.ts';
 import { isForeign } from './entry.ts';
+import { requestDef } from './interact.ts'; // fun-guest: 요청 대사 우선
 
 /** 문자열 → 0 이상 정수 해시 (결정적 선택용) */
 export function hashOf(s: string): number {
@@ -74,6 +75,7 @@ export function guestSay(state: GameState, guest: Guest): string | null {
       if (g.seatId) return freshTypeSay(state, g); // game-feel P1: 갓 열린 손님층의 첫 손님들은 자리로 가며 인사 한마디
       return pick(senior ? NO_SEAT_LINES_SENIOR : NO_SEAT_LINES, g.id);
     case 'seated': {
+      if (g.requestId && g.mood === null) return requestDef(g.requestId).text; // fun-guest: 요청 말풍선이 주문·기다림 대사보다 먼저
       if (g.mood === null) {
         if (!g.menuId) return null;
         // 주문 직후엔 주문 대사, 조리가 길어지면 기다림 대사

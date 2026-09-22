@@ -5,6 +5,7 @@ import { isSiteOverlayOn, setSiteOverlayOn, subscribeSiteOverlay } from '../rend
 import { brownBtn, brownBtnOn, PALETTE } from './frame';
 import { SHELL_TOP } from './Shell';
 import { noteTutorial } from './tutorialDialogue';
+import { showFirstTip } from './firstTip';
 
 export function useSiteOverlay(): boolean {
   return useSyncExternalStore(subscribeSiteOverlay, isSiteOverlayOn, isSiteOverlayOn);
@@ -13,7 +14,7 @@ export function useSiteOverlay(): boolean {
 export function SiteToggle() {
   const on = useSiteOverlay();
   return (
-    <button data-testid="site-toggle" data-tut="site-toggle" aria-pressed={on} onClick={() => { setSiteOverlayOn(!on); if (!on) noteTutorial('siteView'); }}
+    <button data-testid="site-toggle" data-tut="site-toggle" aria-pressed={on} onClick={() => { setSiteOverlayOn(!on); if (!on) { noteTutorial('siteView'); showFirstTip('siteView'); } }}
       style={{ ...(on ? brownBtnOn : brownBtn), margin: 0, padding: '0 10px', fontSize: 14, whiteSpace: 'nowrap', flex: '0 0 auto' }}
       title="맵에 좌석 적합도(빨강→초록)를 겹쳐 보여요">
       <Icon name="map" /> 입지 보기{on ? <> <Icon name="check" size={12} /></> : ''}

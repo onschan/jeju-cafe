@@ -10,6 +10,7 @@
 import type { GameState, Guest, ComplaintReason, Complaint, Review, MonthCard } from './types.ts';
 import { canonicalGuestId, NAMED_TYPE } from '../data/index.ts';
 import { dayIndex, filterMatches } from './effects.ts';
+import { photoReputationDelta } from './appeal.ts'; // fun: 사진 → 평판
 import { isAged } from './economy.ts';
 import { josa } from './josa.ts';
 import { pushNotice } from './staff.ts';
@@ -143,6 +144,7 @@ export function nightlyReputation(state: GameState): number {
   if (d.total > 0) delta = Math.max(-REP_DAILY_CAP, Math.min(REP_DAILY_CAP, ((d.satisfied - d.complained * REP_COMPLAINT_WEIGHT) / d.total) * REP_DAILY_RATE));
   if (cleanValue(state) < REP_DIRTY_THRESHOLD) delta -= REP_DIRTY_PENALTY;
   if (wornCount(state) >= REP_WORN_COUNT) delta -= REP_WORN_PENALTY;
+  delta += photoReputationDelta(state); // fun: 사진(입소문) +0.05/장, 하루 +0.5 (appeal.ts)
   const applied = addReputation(state, delta);
   const today = dayIndex(state.clock);
   state.complaints = state.complaints.filter((c) => today - c.day < COMPLAINT_WINDOW_DAYS);

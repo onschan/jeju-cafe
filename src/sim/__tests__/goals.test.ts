@@ -208,8 +208,8 @@ describe('목표 체인 진행', () => {
     for (const r of rs) expect(goalRewardText(r).length).toBeGreaterThan(0);
   });
 
-  it('canOpen(§7.1): 맨땅은 손님 0, 본관·길·좌석이 생기면 열린다 (튜토리얼 중엔 메뉴도 필요)', () => {
-    const s = createInitialState(1, 'local', 0, 'tutorial');
+  it('canOpen(§7.1): 맨땅(bare)은 손님 0, 본관·길·좌석이 생기면 열린다 (튜토리얼 중엔 메뉴도 필요)', () => {
+    const s = createInitialState(1, 'local', 0, 'bare');
     expect(canOpen(s)).toBe(false);
     expect(s.menuSlots.every((m) => m === null)).toBe(true);
     for (let d = 0; d < 2; d++) tick(s, DAY_MS);

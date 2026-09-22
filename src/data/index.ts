@@ -292,7 +292,7 @@ export const FARM_YIELDS: Record<string, FarmYield> = {
   tea_field: { ingredientId: 'tea', perMonth: 4 },
 };
 /** v3 시작 시 열려 있는 시설 8종 (§2 해금 리듬). v2 표에서 unlock이 start인 나머지는 목표 보상으로만 열린다({ type: 'goal' }). */
-export const START_OBJECT_IDS = ['table_out', 'table_in', 'table_parasol', 'deco_planter', 'deco_wood_bench', 'stonewall', 'path', 'tangerine_tree', 'gate', 'streetlight', 'garden_lamp']; // fix-indoor: 가로등·정원등은 처음부터 (밤 조명) // w-free: 정낭은 길·담 탭의 일반 시설(₩5만, 이동·철거·추가 가능)
+export const START_OBJECT_IDS = ['table_out', 'table_in', 'table_parasol', 'deco_planter', 'deco_wood_bench', 'stonewall', 'path', 'tangerine_tree', 'gate', 'streetlight', 'garden_lamp', 'flower_bed', 'signboard', 'railing', 'shell_deco', 'telescope', 'cherry_tree', 'parking_lot', 'omegi_stall']; // fun P0: 주차장은 처음부터 (₩120만) — 렌터카 손님이 동쪽에서 온다 · fun 트리: 매대 기본(오메기떡 매대)도 처음부터 // fix-indoor: 가로등·정원등은 처음부터 (밤 조명) // w-free: 정낭은 길·담 탭의 일반 시설(₩5만, 이동·철거·추가 가능)
 /** v2 시설 표 → ObjectDef. 쉼 → seat, 편의·먹거리·즐길거리·농사 → facility, 경관 → deco, 랜드마크 → landmark. 방은 building. 농원은 경관(deco)+yield. */
 export function adaptFacility(r: RawFacility): ObjectDef {
   const room = ROOM_IDS.has(r.id);
@@ -466,7 +466,7 @@ export const STAFF_POOL = staffPoolJson as StaffPoolDef[];
 export const RECRUIT_TIERS = recruitTiersJson as RecruitTierDef[];
 export const TRAININGS = trainingsJson as TrainingDef[];
 export const TITLES = titlesJson as TitleDef[]; // 직원 칭호 30 (staff-luck)
-export const NAMES = namesJson as { names: string[]; hair: number; skin: number; top: number };
+export const NAMES = namesJson as { names: string[]; surnames: string[]; given: string[]; hair: number; skin: number; top: number }; // fun-guest: 성·이름 풀 추가
 export const PROMOTIONS = promotionsJson as unknown as PromotionDef[];
 export const DIALOGUE = dialogueJson as {
   guest: Record<string, { happy: string[]; meh: { no_menu: string[]; scenery: string[]; wait: string[] } }>;
@@ -610,7 +610,7 @@ export const COMBO_META = {
   down: (compatMetaJson as { down?: { pop: number; feePct: number } }).down ?? { pop: -3, feePct: -5 },
   segmentPopularity: (compatMetaJson as { segmentPopularity?: number }).segmentPopularity ?? 3,
 };
-/** 상성 60 (combos.json, 스펙 §3.1). v1 compat.json 25종은 v2 표로 흡수됐다. */
+/** 상성 12 (combos.json, 스펙 §3.1 → fun-reset §3: 코너와 겹치거나 같은 시설 반복인 것은 코너 24종으로 옮겼다). */
 export const COMBOS: ComboDef[] = (combosJson as RawCombo[]).map(adaptCombo);
 /** 명당 12 (spot_effects.json, 스펙 §3.1): 중심 시설 1개 + 반경 2칸 안의 시설 조합 */
 export const SPOT_EFFECTS: SpotEffectDef[] = (spotEffectsJson as { id: string; name: string; center: string; requires: { objectId: string; count: number }[]; target: string; radius: number; guestMult: number; popularity: number; tickets: number; line: string }[]).map((r) => ({

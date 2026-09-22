@@ -236,6 +236,40 @@ def render(name, song):
     return buf, n / SR
 
 
+# fun-rank: 등급 3(「소문난 카페」)부터 계절곡 위에 겹쳐 트는 타악 레이어 — 같은 bpm·마디라 길이가 같아 동시에 시작하면 맞물린다 (audio.ts 두 트랙 동시 재생)
+PERC_SONGS = ('spring', 'summer', 'autumn', 'winter')
+
+
+def render_perc(name, song):
+    """장구 장단 느낌: 덩(킥+저음 통) 쿵(킥) 덕(림)·16분 셰이커. 멜로디 없이 타악만."""
+    s = Synth(seed=sum(map(ord, name)) + 7)
+    bpm, bars = song['bpm'], song['bars']
+    beat = 60.0 / bpm
+    total_beats = bars * 4
+    kick, snare, hat = _drum_kit(s)
+    tom = s.tone('G2', 0.12, 'triangle', 0.28, env=(0.001, 0.09, 0.0, 0.02))
+    rim = s.noise(0.03, 0.14, env=(0.001, 0.01, 0.1, 0.01), lowpass=0.6)
+    shaker = s.noise(0.02, 0.05, env=(0.001, 0.01, 0.2, 0.006), lowpass=0.2)
+    parts = []
+    e1, _ = song['swing']
+    for bar in range(bars):
+        t0 = bar * 4 * beat
+        for b, hit in ((0, tom), (0, kick), (1, rim), (1.5, kick), (2, tom), (2.5, rim), (3, kick), (3.5, rim)):
+            parts.append((hit, t0 + b * beat))
+        if bar % 4 == 3:
+            parts.append((snare, t0 + 3.5 * beat))
+        for b in range(4):
+            for q in (0.25, 0.5 + (e1 - 0.5) * 0.5, 0.75):
+                parts.append((shaker, t0 + (b + q) * beat))
+    buf = s.mix(parts)
+    n = int(round(SR * total_beats * beat))
+    buf = (buf + [0.0] * n)[:n]
+    buf = soften(buf, 0.25, 1)
+    peak = max(abs(v) for v in buf) or 1.0
+    buf = [v * PEAK * 0.8 / peak for v in buf]
+    return buf, n / SR
+
+
 def build():
     os.makedirs(OUT, exist_ok=True)
     for name, song in SONGS.items():
@@ -245,7 +279,13 @@ def build():
         write_wav(wav, buf)
         to_m4a(wav, os.path.join(OUT, f'{name}.m4a'))
         print(f'{name}: {dur:.2f}s ({song["bpm"]}bpm, {song["bars"]} bars) in {time.time() - t:.1f}s')
-    print(f'{len(SONGS)} bgm')
+        if name in PERC_SONGS:
+            pbuf, _ = render_perc(name, song)
+            pwav = os.path.join(OUT, f'{name}_perc.wav')
+            write_wav(pwav, pbuf)
+            to_m4a(pwav, os.path.join(OUT, f'{name}_perc.m4a'))
+            print(f'{name}_perc: 타악 레이어')
+    print(f'{len(SONGS)} bgm + {len(PERC_SONGS)} perc')
 
 
 if __name__ == '__main__':

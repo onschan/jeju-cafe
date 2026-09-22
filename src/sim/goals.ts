@@ -13,7 +13,7 @@
  * | popup      | g18       | openPopup (원정 팝업 스토어)                          |
  * | challenge  | g47       | challenge (라이벌 카페 대결)                          |
  */
-import type { GameState, GoalDef, GoalCondition, GoalReward, FeatureId, Action, ApplyResult, RewardSource, GoalSpeaker, Alert } from './types.ts';
+import type { GameState, GoalDef, GoalCondition, GoalReward, FeatureId, Action, ApplyResult, RewardSource, GoalSpeaker, Alert, PlacedObject } from './types.ts';
 import { GOALS, goalDef, objectDef, menuDef, roleDef, ROLES, OBJECTS, MENUS, spotDef, guestTypeDef, guidebookDef, itemDef, ITEMS } from '../data/index.ts';
 import { facilityCount } from './rank.ts';
 import { countCategory } from './segments.ts';
@@ -25,6 +25,7 @@ import { MAX_BUILDERS } from './build.ts';
 import { fmtNum } from './format.ts';
 import { josa } from './josa.ts';
 import { activeCombos, setLevels } from './compat.ts';
+import { cornersMade } from './corners.ts';
 import { effectivePopularity } from './promotions.ts';
 import { seatsOf } from './cafe.ts';
 import { monthIndex } from './clock.ts';
@@ -42,6 +43,10 @@ import { cleanStreakDays, cleanAvgDays, dirtyForDays, CLEAN_HISTORY_DAYS, CLEAN_
 import { siteOf } from './site.ts';
 import { routeState, routeOpened, ENTRY_ROUTES, PARKING_SLOTS, PARKING_EXPAND_FROM } from './entry.ts'; // 트랙 H
 import { VILLAGE_GRADE_NAME } from './village.ts'; // z-ending
+import { GRADE_NAMES } from './grade.ts'; // fun-rank: 등급 조건
+import { treeOf } from './tree.ts'; // fun: 트리 단계를 Lv로
+import { titleGradeOf } from './titles.ts';
+import { ROUTE_IDS } from './entry.ts';
 /** 경로 손님 부르는 말 (목표 문구) */
 const ROUTE_GUEST_NAME: Record<string, string> = { bus: '버스', parking: '렌터카', shuttle: '셔틀', cruise: '크루즈', olle: '올레꾼' };
 
@@ -168,7 +173,7 @@ export const conditionCheckers: CheckerMap = {
   monthIncome: (s, c) => n(s.lastMonthIncome, c.n),
   staffLevel: (s, c) => n(s.staff.filter((st) => st.level >= c.lv).length, c.n),
   trainings: (s, c) => n(s.stats.trainings, c.n), // x-staff가 stats.trainings를 올린다
-  facilityLv: (s, c) => n(Object.values(s.objects).filter((o) => !o.build && levelOf(o) >= c.lv).length, c.n), // 트랙 A 증축 Lv
+  facilityLv: (s, c) => n(Object.values(s.objects).filter((o) => !o.build && goalLevelOf(o) >= c.lv).length, c.n), // 트랙 A 증축 Lv · fun 트리 단계(파라솔 = Lv2, 테라스 = Lv3)도 센다
   indoorSeats: (s, c) => n(indoorSeats(s), c.n), // y-indoor 실내 좌석 정원
   mainLevel: (s, c) => n(mainLevel(s), c.lv),    // y-indoor 본관 증축 Lv
   annex: (s, c) => n(annexCount(s), c.n),        // y-indoor 완공된 별관
@@ -191,9 +196,10 @@ export const conditionCheckers: CheckerMap = {
   siteSeats: (s, c) => n(seatObjectsOf(s).filter((o) => siteOf(s, o.x, o.y).view >= c.view).length, c.n), // 트랙 F 전망
   windlessSeats: (s, c) => n(seatObjectsOf(s).filter((o) => siteOf(s, o.x, o.y).wind === 0).length, c.n), // 트랙 F 바람 0
   combos: (s, c) => n(s.codex.combos.length, c.n),
+  corners: (s, c) => n(cornersMade(s), c.n), // fun-corner: 만든 코너 수 (도감)
   spotEffects: (s, c) => n(s.codex.spots.length, c.n), // 트랙 A 도감에 오른 명당 수
   hiddenRecipes: (s, c) => n(s.codex.recipes.length, c.n), // 도감에 오른 숨은 레시피 수
-  upgraded: (s, c) => n(Object.values(s.objects).filter((o) => !o.build && levelOf(o) >= c.lv).length, c.n), // 트랙 A 증축
+  upgraded: (s, c) => n(Object.values(s.objects).filter((o) => !o.build && goalLevelOf(o) >= c.lv).length, c.n), // 트랙 A 증축 · fun 트리 단계
   clean: (s, c) => flag(cleanAvgDays(s, c.days) >= c.avg), // 트랙 A: 최근 days일 평균 청결 ≥ avg
   skills: (s, c) => n(s.staff.filter((st) => hasSkill(st.skill)).length, c.n),
   selfSupply: (s, c) => n(selfSupplyPct(s), c.pct), // 이달 재료 자급률 = 농원 절감액 ÷ (절감액 + 재료비)
@@ -210,7 +216,19 @@ export const conditionCheckers: CheckerMap = {
   // ---- z-ending 정착 등급·마을제 (village.ts) ----
   villageGrade: (s, c) => n(s.village.grade, c.n),
   festivals: (s, c) => n(s.village.festivals, c.n),
+  // ---- fun-rank 눈에 보이는 성장 (grade.ts) ----
+  grade: (s, c) => n(s.grade ?? 1, c.n),
+  regulars: (s, c) => n(s.regulars?.length ?? 0, c.n), // 트랙 G 단골 등록 손님 수(state.regulars)
+  secondFloor: (s) => flag(!!s.main?.floor2),
+  reputation: (s, c) => n(Math.round(s.reputation), c.n),
+  legendStaff: (s, c) => n(s.staff.filter((st) => titleGradeOf(st.title) === 'legend').length, c.n),
+  routesOpen: (s, c) => n(ROUTE_IDS.filter((r) => r !== 'bus' && routeOpened(s, r)).length, c.n),
 };
+
+/** 목표용 시설 단계: 증축 Lv와 업그레이드 트리 단계(index+1) 중 큰 것 (fun: 트리 시설은 증축 대신 트리로 올린다) */
+function goalLevelOf(o: PlacedObject): number {
+  return Math.max(levelOf(o), (treeOf(o.type)?.index ?? 0) + 1);
+}
 
 /** 코드 판정 조건 */
 export function customMet(state: GameState, id: string): boolean {
@@ -308,7 +326,7 @@ export function goalConditionText(c: GoalCondition): string {
     case 'monthIncome': return `월 매출 ₩${fmtNum(c.n)}`;
     case 'staffLevel': return `Lv${c.lv} 직원 ${c.n}명`;
     case 'trainings': case 'training': return `연수 ${c.n}회`;
-    case 'facilityLv': case 'upgraded': return `Lv${c.lv} 시설 ${c.n}개`;
+    case 'facilityLv': case 'upgraded': return `Lv${c.lv}(${c.lv}단계) 시설 ${c.n}개`;
     case 'indoorSeats': return `실내 좌석 ${c.n}석`;
     case 'mainLevel': return `본관 Lv${c.lv}`;
     case 'annex': return `별관 ${c.n}동`;
@@ -331,6 +349,7 @@ export function goalConditionText(c: GoalCondition): string {
     case 'siteSeats': return `전망 ${c.view} 이상 좌석 ${c.n}개`;
     case 'windlessSeats': return `바람 없는 좌석 ${c.n}개`;
     case 'combos': return `콤보 도감 ${c.n}개`;
+    case 'corners': return `코너 ${c.n}개`;
     case 'clean': return `청결 ${c.avg} 이상 ${c.days}일`;
     case 'skills': return `특기 직원 ${c.n}명`;
     case 'selfSupply': return `재료 자급률 ${c.pct}%`;
@@ -341,6 +360,14 @@ export function goalConditionText(c: GoalCondition): string {
     case 'routeGuests': return `${ROUTE_GUEST_NAME[c.route] ?? '경로'} 손님 ${fmtNum(c.n)}명`;
     case 'routeUnlocked': return c.route === 'shuttle' ? '공항 셔틀 계약' : `${ENTRY_ROUTES[c.route]?.name ?? '경로'} 열기`;
     case 'facility': return `${name.object(c.id)} 짓기`;
+    // ---- fun-rank ----
+    case 'grade': return `등급 「${GRADE_NAMES[c.n - 1] ?? c.n}」`;
+    case 'corners': return `코너 ${c.n}개`;
+    case 'regulars': return `단골 ${c.n}명`;
+    case 'secondFloor': return '본관 2층 올리기';
+    case 'reputation': return `평판 ${c.n}`;
+    case 'legendStaff': return c.n === 1 ? '전설 직원 채용' : `전설 직원 ${c.n}명`;
+    case 'routesOpen': return `손님 오는 길 ${c.n}종`;
   }
 }
 

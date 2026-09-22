@@ -510,6 +510,7 @@ export type GoalCondition =
   | { type: 'siteSeats'; view: number; n: number } // 전망 view 이상 좌석 n개 (x-site)
   | { type: 'windlessSeats'; n: number }          // 바람 0 좌석 n개 (x-site)
   | { type: 'combos'; n: number }                 // 도감에 발견한 콤보 수
+  | { type: 'corners'; n: number }                // 만든 코너 수 (fun-corner, corners.ts 도감)
   | { type: 'spotEffects'; n: number }            // 명당 효과 수 (x-facility)
   | { type: 'hiddenRecipes'; n: number }          // 도감에 오른 숨은 레시피 수 (game-feel: 도전 「숨은 레시피 찾기」)
   | { type: 'upgraded'; lv: number; n: number }   // 증축 Lv 이상 시설 n개 (x-facility)
@@ -531,7 +532,14 @@ export type GoalCondition =
   | { type: 'facility'; id: string }              // 그 시설을 1개 이상 지었나 (완공)
   // ---- z-ending 정착 등급·마을제 (village.ts) ----
   | { type: 'villageGrade'; n: number }           // 정착 등급 ≥ n (1 외지인 ~ 5 촌장 후보)
-  | { type: 'festivals'; n: number };             // 마을제 개최 횟수
+  | { type: 'festivals'; n: number }              // 마을제 개최 횟수
+  // ---- fun-rank 눈에 보이는 성장 (grade.ts) ----
+  | { type: 'grade'; n: number }                  // 카페 등급 ≥ n (1 올레길 노점 ~ 5 전설의 카페)
+  | { type: 'regulars'; n: number }               // 단골 수 (트랙 G regulars — 없으면 기존 regular 판정)
+  | { type: 'secondFloor' }                       // 본관 2층 완공
+  | { type: 'reputation'; n: number }             // 평판 ≥ n
+  | { type: 'legendStaff'; n: number }            // 전설 칭호 직원 n명
+  | { type: 'routesOpen'; n: number };            // 열린 유입 경로 n종 (정류장 제외)
 /** 목표 뒤에 남는 기능 잠금 (ease): 팝업 스토어·카페 대결·필지 구매만. 홍보·연구·입지 보기·콤보 도감·명소 지도는 처음부터 열려 있다(튜토리얼이 순서를 안내). */
 export type FeatureId = 'popup' | 'challenge' | 'parcel';
 export type GoalReward =
@@ -578,9 +586,10 @@ export interface GameStats {
   toursHeld: number;       // 투어 개최 성공 (x-spots가 올린다)
   seenMonth: number;       // 월말 관찰용 monthIndex (goals.ts observeMonth)
   seenAnnouncement: number; // 마지막으로 센 가이드북 발표 monthIndex
+  cornerVisits?: number;   // 손님이 코너를 찾아온 누적 횟수 (fun-corner)
 }
 /** 보상 상자에 담기는 보상 알림의 출처 */
-export type RewardSource = 'goal' | 'challenge' | 'monthly' | 'tutorial' | 'rank' | 'star' | 'unlock' | 'milestone' | 'bundle'; // rank·star = 승급 보상, unlock = 손님층 해금, milestone = 자금 목표 25/50/75%, bundle = 같은 큐의 상자 3개 이상을 하나로 묶은 것
+export type RewardSource = 'goal' | 'challenge' | 'monthly' | 'tutorial' | 'rank' | 'star' | 'unlock' | 'milestone' | 'bundle' | 'grade'; // rank·star = 승급 보상, unlock = 손님층 해금, milestone = 자금 목표 25/50/75%, bundle = 같은 큐의 상자 3개 이상을 하나로 묶은 것, grade = 카페 등급 승급 (fun-rank)
 /** UI 대화창·팝업 큐 항목 */
 export type Alert =
   | { type: 'goal'; goalId: string }
@@ -595,7 +604,8 @@ export type Alert =
   | { type: 'ending' }                                        // 10년차 엔딩 (EndingScreen — 대화창이 아니다)
   | { type: 'village'; grade: number; up: boolean }           // 9월 1일 정착 등급 심사 결과 (village.ts)
   | { type: 'festivalOffer' }                                 // 10월 1일 마을제 개최 안내 (등급 4 이상)
-  | { type: 'centennial'; success: boolean };                 // 20년차 100주년 감귤축제 (성공이면 EndingScreen 두 번째 컷)
+  | { type: 'centennial'; success: boolean }                  // 20년차 100주년 감귤축제 (성공이면 EndingScreen 두 번째 컷)
+  | { type: 'grade'; grade: number };                         // fun-rank: 카페 등급 승급 (할망 축하 대사, 보상 상자 뒤)
 
 // ---------- 도전 과제 3레인 (§7.3) ----------
 export interface ChallengeDef {
@@ -728,6 +738,7 @@ export interface RouteState {
   totalGuests: number;    // 누적 (목표 routeGuests)
   lastArrivalDay: number; // 마지막 도착 절대 일 (셔틀·크루즈 1회 배치·항만 사용료 판정, −1 = 없음)
   broken: boolean;        // 길이 끊긴 상태 (알림은 끊길 때 한 번)
+  pending?: number;       // 주차장: 차 한 대로 묶어 내릴 손님 대기 수 (fun P0 — 2~4명이 한 차로 온다)
 }
 
 /** 렌더 전용 연출 큐 (sim이 남기고 렌더가 tick으로 새 항목만 읽는다). 최근 FX_CAP개만 보관. */
@@ -737,7 +748,13 @@ export type FxEvent =
   | { kind: 'greet'; staffId: string; tick: number }
   | { kind: 'photo'; x: number; y: number; tick: number } // 인생샷 스킬: 손님이 사진을 찍었다
   | { kind: 'complete'; x: number; y: number; tick: number } // 시설 완공 반짝임
-  | { kind: 'scene'; title: string; text: string; tick: number }; // UI 장면 창(완공·★ 승급·랭크 업). 렌더는 무시한다
+  | { kind: 'scene'; title: string; text: string; tick: number } // UI 장면 창(완공·★ 승급·랭크 업). 렌더는 무시한다
+  | { kind: 'react'; guestId: string; text: string; icon?: 'heart' | 'sweat' | 'wave' | 'question' | 'thumb'; tick: number } // 트랙 G: 손님 반응 — 말풍선 + 머리 위 아이콘(하트·땀·손 흔들기·?)
+  | { kind: 'corner'; id: string; x: number; y: number; tick: number } // fun-corner: 코너 완성 — 팻말 자리 반짝
+  | { kind: 'flash'; x: number; y: number; guestId: string; text: string; tick: number } // fun-corner: 손님이 코너에서 사진 (카메라 플래시 + 말풍선)
+  | { kind: 'applause'; tick: number } // fun-rank: 등급 승급 — 마당 손님 전원 박수(하트·반짝)
+  | { kind: 'parcel'; id: string; tick: number } // fun-rank: 필지 구매 — 덮개 안개 걷힘 + 랜드마크 등장 반짝
+  | { kind: 'arrive'; route: RouteId; x: number; y: number; n: number; tick: number }; // fun P0: 경로 도착 — 렌터카·셔틀·배가 서고 손님 n명이 내린다 (올레는 걸어옴), 작은 문구
 
 // ---------- 상점·추첨·유니폼·가이드북 (2B-2 Task 6·7) ----------
 export interface MileageShopDef { id: string; name: string; price: number; description: string; itemId?: string; objectId?: string }
@@ -868,7 +885,20 @@ export interface Guest {
   paid: number;         // 주문 시 낸 돈 (자금 효과의 팁 계산용)
   route?: RouteId;      // 어느 유입 경로로 왔나 (트랙 H entry.ts). 없으면 정류장
   gates?: number;       // 자리로 오는 길에 지나간 정낭 수 (w-free: 「제주 대문」 인상 — 관광객 만족 +1/개, 최대 GATE_SATISFACTION_MAX). 0이면 없다
+  // ---- fun-guest (트랙 G): 이름·얼굴·상호작용 ----
+  name?: string;        // 성+이름 (names.json, id 해시로 결정). 옛 저장엔 없다 → UI가 예전 방식으로 만든다
+  faceSeed?: number;    // 단골(regulars) 고정 얼굴 seed. 없으면 손님층 얼굴(guestFace)
+  regularId?: string;   // 단골(state.regulars)로 온 손님이면 그 id — 팁 +20%·"OO 왔다!"
+  requestId?: string;   // 지금 하고 있는 요청(requests.json id) — 말풍선 "?"·카드 요청 줄
+  greeted?: boolean;    // 오늘 인사했다 (손님당 1회)
+  recommended?: boolean; // 메뉴를 추천했다 (손님당 1회)
 }
+
+/** 손님 요청 (트랙 G requests.json): 앉은 손님 20%가 코너·시설·메뉴를 바란다. 들어주면 다음 그 손님층 방문에 "고마워요" + 단골 게이지 +2. */
+export interface GuestRequestDef { id: string; text: string; want: { corner?: string; facility?: string; menu?: string; tagCorner?: string }; thanks: string }
+export interface GuestRequest { id: string; guestType: string; day: number; done: boolean }
+/** 단골 등록 손님 (트랙 G): 손님층 게이지가 5면 그 손님층에서 이름·얼굴이 고정된 한 명. 매주 방문·팁 +20%. */
+export interface Regular { id: string; guestType: string; name: string; seed: number; day: number }
 
 /** 속도 4(빠른 모드)는 엔딩 뒤 「계속하기」로만 열린다 (ending.ts) */
 export type Speed = 0 | 1 | 2 | 3 | 4;
@@ -921,6 +951,7 @@ export interface GameState {
   monthComplaints: Partial<Record<ComplaintReason, number>>; // 이달 사유별 불만 수 (카드 TOP3)
   monthReputationDelta: number;               // 이달 평판 변화 누적 (카드)
   dayStats: { satisfied: number; complained: number; total: number }; // 오늘 만족·불만·총손님 (밤에 평판 계산 후 리셋)
+  dayPhotos?: number;                          // fun: 오늘 손님이 찍은 사진 수 (밤에 평판 +0.05/장, 상한 0.5 — appeal.ts)
   reputationWarned: boolean;                  // 평판 20 미만 경고를 띄웠나 (30 이상 회복하면 리셋)
   lastApologyMonthIndex: number;              // 사과 이벤트는 월 1회 (−1 = 아직)
   objects: Record<string, PlacedObject>; // 키는 'o123' 형태(비정수 문자열)라 삽입 순서가 보존됨 → 결정적 순회
@@ -955,6 +986,7 @@ export interface GameState {
   rank: number;                               // 카페 랭크 1~ (랭크 점수 = 누적 손님 + 시설 + 해금 손님층, 문턱표)
   star: number;                               // ★ 등급 1~5 (ranks.json 조건, 월초 검사)
   totalGuests: number;                        // 누적 손님 수 (랭크 점수)
+  grade?: number;                             // fun-rank: 카페 등급 1~5 (grade.ts, 옛 세이브는 backfill 1)
   builders: number;                           // 일꾼 삼춘 수 = 동시 건설 수 (기본 2)
   uniform: string | null;                     // 입고 있는 유니폼 id (연출)
   uniforms: string[];                         // 가진 유니폼
@@ -978,7 +1010,7 @@ export interface GameState {
   effects: ActiveEffect[];                    // 이벤트 효과 (기간형)
   menuSold: Record<string, number>;           // menuId → 누적 판매 수 (부탁 진행: 수락 시점 값과의 차, 목표 menuSold)
   monthMenuSold: Record<string, number>;      // 이달 판매 수 (월말 카드 최다 판매 메뉴)
-  codex: { combos: string[]; sets: string[]; recipes: string[]; ingredientCombos: string[]; spots: string[]; titles?: string[] }; // 발동한 적 있는 상성·세트·히든 레시피·재료 콤보·명당 id (도감) + 만난 직원 칭호(staff-luck)
+  codex: { combos: string[]; sets: string[]; recipes: string[]; ingredientCombos: string[]; spots: string[]; titles?: string[]; corners?: string[] }; // 발동한 적 있는 상성·세트·히든 레시피·재료 콤보·명당 id (도감) + 만난 직원 칭호(staff-luck)
   clean: { value: number; lastGuests: number; history: number[] }; // 카페 청결 0~100 (cleanliness.ts) + 어제까지의 누적 손님 수 + 최근 30일 값(목표 판정용, 새 날마다 push)
   customMenus: MenuDef[];                     // 개발한 메뉴 (id m_custom_N). menuOf(state, id)가 기본 메뉴보다 먼저 찾는다
   menuMods: Record<string, MenuMod>;          // menuId → 토핑·레벨 (없으면 토핑 없음·레벨 1)
@@ -1000,9 +1032,18 @@ export interface GameState {
   lastChallenge: ChallengeResult | null;      // 마지막 카페 대결 (UI 팝업)
   lastOutcome?: OutcomeResult | null;         // 마지막 작업 판정 대박/중박/쪽박 (UI 룰렛 팝업, staff-luck)
   monthGreatServes?: number;                  // 이달 서빙 대박 횟수 (월말 카드 하이라이트, staff-luck)
+  cornerVisits?: { day: number; counts: Record<string, number> }; // fun-corner: 오늘 코너별 손님 방문 수 (하루 상한, 날이 바뀌면 corners.ts가 초기화)
   undo: UndoEntry | null;                     // 직전 배치·철거·이동 되돌리기 스냅샷 (undo.ts)
   main: MainState;                            // 본관 증축·2층·이동·분위기 (rooms.ts, y-indoor)
   guests: Guest[];
+  // ---- fun-guest (트랙 G) — 전부 optional, interact.ts가 처음 쓸 때 채운다 ----
+  greetDay?: number;                          // 인사·추천 횟수를 센 절대 일 인덱스
+  greetCount?: number;                        // 오늘 인사 횟수 (하루 GREET_DAY_MAX)
+  recommendCount?: number;                    // 오늘 추천 횟수
+  requests?: GuestRequest[];                  // 손님 요청 (진행 중·들어준 것)
+  requestThanks?: number;                     // 고마워요를 받은 횟수 (첫 REQUEST_TICKET_COUNT회 응모권)
+  regularsGauge?: Record<string, number>;     // 손님층 → 단골 게이지 0~5
+  regulars?: Regular[];                       // 단골 등록 손님
   routes: Record<RouteId, RouteState>;        // 손님 유입 경로 5종 (트랙 H entry.ts)
   ending: EndingState;                        // 10년차 엔딩·빠른 모드·100주년 (ending.ts, z-ending)
   village: VillageState;                      // 정착 등급·마을제·기부 (village.ts, z-ending)
@@ -1039,6 +1080,7 @@ export interface MainState {
 export type Action =
   | { type: 'place'; objectType: string; x: number; y: number; rot?: number }
   | { type: 'placeLine'; objectType: string; from: Pt; to: Pt; order?: 'xy' | 'yx' }
+  | { type: 'autoLinkRoute'; route: RouteId } // fun P0: 경로 시설 앞 칸 → 정류장 길까지 자동 잇기 (되돌리기 1회로 전부)
   | { type: 'autoConnectPath' } // ease: 본관 문 앞까지 마을 길에서 자동으로 올렛길 잇기 (미리보기 뒤 ✓, 되돌리기 1회로 전부) // ease: 길·담 두 번 탭 — 시작→끝 직선/ㄱ자, 있는 칸은 건너뜀, 되돌리기 1회로 전부
   | { type: 'remove'; objectId: string }
   | { type: 'move'; objectId: string; x: number; y: number }
@@ -1048,6 +1090,7 @@ export type Action =
   | { type: 'renameObject'; objectId: string; name: string }
   | { type: 'setTargets'; targets: string[] }      // 타깃 손님층 3슬롯 통째로
   | { type: 'upgradeObject'; objectId: string }   // 증축 Lv+1 (upgrade.ts)
+  | { type: 'treeUpgrade'; objectId: string }     // fun: 같은 자리 업그레이드 트리 다음 단계 (tree.ts — 테이블 → 파라솔 → 테라스 → 전망 테라스)
   | { type: 'repairObject'; objectId: string }    // 노후 수리 (cleanliness.ts)
   | { type: 'buyParcel'; id: string }
   | { type: 'renameCafe'; name: string }
@@ -1094,6 +1137,8 @@ export type Action =
   | { type: 'setRouteContract'; route: RouteId; on: boolean } // 공항 셔틀 계약/해지 (트랙 H)
   | { type: 'expandParking'; objectId: string }               // 주차장 2×2 → 3×2 교체 (트랙 H)
   | { type: 'giveGift'; guestId: string; itemId: string }
+  | { type: 'greetGuest'; guestId: string }                   // 트랙 G: 인사 (손님당 1회·하루 10회)
+  | { type: 'recommendMenu'; guestId: string; menuId: string } // 트랙 G: 메뉴 추천 (손님당 1회)
   | { type: 'craftGift'; itemId: string }
   | { type: 'develop'; base: MenuBase; ingredients: string[]; params?: BrewParams; staffId: string }
   | { type: 'dismissDevelop' }

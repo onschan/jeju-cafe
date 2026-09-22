@@ -1,13 +1,13 @@
 import { useEffect } from 'react';
-import { type GameState, type Action, tutorialDone, TUTORIAL_CHAPTERS, dialogueSeen, strategyVars, fillTemplate, type TutorialNoteKey } from '../sim/index.ts';
-import { TUTORIAL_STEPS as STEP_DATA, TUTORIAL_CHAPTER_TEXTS, SPEAKER_NAME, type TutorialStep } from '../data/dialogue/index.ts';
+import { type GameState, type Action, tutorialDone, dialogueSeen, strategyVars, fillTemplate, type TutorialNoteKey } from '../sim/index.ts';
+import { TUTORIAL_STEPS as STEP_DATA, SPEAKER_NAME, type TutorialStep } from '../data/dialogue/index.ts';
 import { showDialogue, getDialogue } from './dialogue.ts';
 import { confirm } from './Popup';
 
-/** 손으로 하는 튜토리얼 「할망의 가르침」 33단계·5장 대화 (w-start: 1~3단계 둘러보기·본관 짓기·본관 보기, pro-guide: 대사의 `{토큰}`은 sim/strategy.ts strategyVars로 채운다). 대사는 data/dialogue/tutorial.json, 진행(끝낸 단계 수)은 sim 상태 state.tutorial.step —
- *  조건 판정·보상은 sim/tutorial.ts가 한다. 여기서는 "현재 단계의 대사를 한 번 띄우는" 일만 한다.
+/** 손으로 하는 튜토리얼 「할망의 가르침」 7단계 대화 (fun-start §2). 대사는 data/dialogue/tutorial.json, `{토큰}`(seatWhy 등)은 sim/strategy.ts strategyVars로 채운다.
+ *  진행(끝낸 단계 수)은 sim 상태 state.tutorial.step — 조건 판정·보상은 sim/tutorial.ts가 한다. 여기서는 "현재 단계의 대사를 한 번 띄우는" 일만 한다.
  *  대사를 닫으면 `tutorialNote dlg:<id>`를 보내 sim이 그 단계를 끝낼 수 있게 한다(이미 충족된 단계는 대사만 뜨고 바로 통과).
- *  보상 상자(alerts)가 떠 있는 동안은 기다렸다가, 닫히면 다음 단계 대사를 띄운다. 건너뛰기는 장 단위(각 장 첫 단계 대사의 「건너뛰기」·튜토리얼 창). */
+ *  보상 상자(alerts)가 떠 있는 동안은 기다렸다가, 닫히면 다음 단계 대사를 띄운다. 「건너뛰기」는 언제나(남은 단계 전부, 보상 없음). */
 
 export type { TutorialStep };
 export const TUTORIAL_DIALOGUES: TutorialStep[] = STEP_DATA;
@@ -35,46 +35,33 @@ export function currentTutorialDialogue(s: GameState): TutorialStep | null {
   const st = TUTORIAL_DIALOGUES[s.tutorial.step];
   return st ? fillTutorialStep(st, s) : null;
 }
-/** solver: 단계 key → 그 단계 행동의 롤아웃 근거 토큰 (strategyVars의 `{seatDelta}` 등). 결과가 있으면 「→ 지금:」 줄 앞에 한 줄 끼운다 ("시뮬 14일 굴려 보니 자금 +₩42만"). json은 2~3줄 그대로. */
-export const STEP_DELTA_TOKEN: Record<string, string> = { seat_view: 'seatDelta', site_seat: 'seatDelta', seats4: 'seatDelta', wall: 'wallDelta', combo2: 'treeDelta', indoor2: 'indoorDelta', parking: 'parkingDelta' };
-/** pro-guide: 대사·제목의 `{seatScore}` 같은 토큰을 지금 상태의 정석 수치로 채운다 (입지 배지와 같은 숫자). solver 근거 줄은 STEP_DELTA_TOKEN 참고. */
+/** 대사·제목의 `{seatWhy}` 같은 토큰을 지금 상태의 실제 수치·이유로 채운다 (입지 배지와 같은 숫자). */
 export function fillTutorialStep(step: TutorialStep, s: GameState): TutorialStep {
   const vars = strategyVars(s);
-  const lines = step.lines.map((l) => fillTemplate(l, vars));
-  const delta = STEP_DELTA_TOKEN[step.key] ? vars[STEP_DELTA_TOKEN[step.key]!] : '';
-  if (delta) lines.splice(Math.max(0, lines.length - 1), 0, delta);
-  return { ...step, title: fillTemplate(step.title, vars), lines };
-}
-/** 장 제목·소개 (json) */
-export function chapterText(id: number): { id: number; title: string; intro: string } {
-  return TUTORIAL_CHAPTER_TEXTS.find((c) => c.id === id) ?? { id, title: TUTORIAL_CHAPTERS.find((c) => c.id === id)?.title ?? '', intro: '' };
-}
-/** 이 단계가 장의 첫 단계인가 (대사에 「건너뛰기」를 보여 준다) */
-export function isChapterStart(step: TutorialStep): boolean {
-  return TUTORIAL_CHAPTERS.some((c) => c.from === step.id);
+  return { ...step, title: fillTemplate(step.title, vars), lines: step.lines.map((l) => fillTemplate(l, vars)) };
 }
 
-/** UI 사건 표식 — sim 조건 판정용 (손님 카드 봄·창고 봄·입지 보기 켬·둘러보기 look:<id>). 튜토리얼이 끝났거나 이미 남겼으면 sim이 무시한다. */
+/** UI 사건 표식 — sim 조건 판정용 (손님 카드 봄·목표 창 봄·창고 봄·입지 보기 켬·카드 힌트 look:<id>). 튜토리얼이 끝났거나 이미 남겼으면 sim이 무시한다. */
 export function noteTutorial(key: TutorialNoteKey): void {
   note(key);
 }
-/** 컴포넌트가 뜰 때 한 번 표식을 남기는 훅 (StoragePanel·손님 카드·둘러보기 힌트 등에서 한 줄). key가 null이면 아무것도 안 한다 (훅 순서를 지키려고). */
+/** 컴포넌트가 뜰 때 한 번 표식을 남기는 훅 (StoragePanel·손님 카드·목표 창 등에서 한 줄). key가 null이면 아무것도 안 한다 (훅 순서를 지키려고). */
 export function useTutorialNote(key: TutorialNoteKey | null, on = true): void {
   useEffect(() => { if (on && key) noteTutorial(key); }, [key, on]);
 }
-/** 현재 장을 통째로 건너뛴다 (보상 없음, 해금만) */
+/** 남은 단계를 통째로 건너뛴다 (보상 없음, 해금만) */
 export function skipCurrentChapter(): void {
   dispatchFn?.({ type: 'skipTutorialChapter' });
-  shownFor = -1; // 다음 장 첫 대사를 띄운다
+  shownFor = -1;
 }
-/** ease 「이미 알아요」: 이 단계만 보상 없이 통과 (해금만). 다음 단계 대사가 바로 뜬다. */
+/** 「이미 알아요」: 이 단계만 보상 없이 통과 (해금만). 다음 단계 대사가 바로 뜬다. */
 export function skipCurrentStep(): void {
   dispatchFn?.({ type: 'skipTutorialStep' });
   shownFor = -1;
 }
 
-export const SKIP_TEXT = '이 장을 통째로 건너뛸까요? 단계 보상은 못 받아요.';
-/** 단계 대사를 띄운다 (다시 보기 포함). 닫으면 dlg:<id> 표식. skipStep(기본 true)이면 왼쪽 아래 「이미 알아요」— 그 단계만 보상 없이 통과 (ease). */
+export const SKIP_TEXT = '남은 가르침을 건너뛸까요? 단계 보상은 못 받아요.';
+/** 단계 대사를 띄운다 (다시 보기 포함). 닫으면 dlg:<id> 표식. 왼쪽 아래 「이미 알아요」(이 단계만 보상 없이 통과)와 「건너뛰기」(남은 전부)는 항상. */
 export function showTutorialStep(step0: TutorialStep, opts: { skip?: boolean; skipStep?: boolean } = {}): void {
   const s0 = stateFn?.();
   const step = s0 ? fillTutorialStep(step0, s0) : step0;
@@ -83,8 +70,8 @@ export function showTutorialStep(step0: TutorialStep, opts: { skip?: boolean; sk
     lines: step.lines,
     choices: [{ label: step.button, onPick: () => note(`dlg:${step.id}`) }],
     onSkipStep: opts.skipStep === false ? undefined : () => { const s = stateFn?.(); if (s && s.tutorial.step === step.id - 1) skipCurrentStep(); },
-    // 장 단위 건너뛰기 (보상 없음) — 확인에서 아니요를 누르면 대사를 다시 띄운다 (dlg 표식이 남아야 단계가 끝나므로)
-    onSkip: opts.skip ? () => { void confirm(SKIP_TEXT, { title: '건너뛰기', yes: '건너뛰기', no: '계속 배우기' }).then((ok) => { if (ok) skipCurrentChapter(); else showTutorialStep(step, opts); }); } : undefined,
+    // 남은 단계 건너뛰기 (보상 없음) — 확인에서 아니요를 누르면 대사를 다시 띄운다 (dlg 표식이 남아야 단계가 끝나므로)
+    onSkip: opts.skip === false ? undefined : () => { void confirm(SKIP_TEXT, { title: '건너뛰기', yes: '건너뛰기', no: '계속 배우기' }).then((ok) => { if (ok) skipCurrentChapter(); else showTutorialStep(step, opts); }); },
   });
 }
 
@@ -95,7 +82,6 @@ export function checkTutorial(s: GameState): boolean {
   if (!step || shownFor === s.tutorial.step) return false;
   shownFor = s.tutorial.step;
   if (dialogueSeen(s, step.id)) return false; // 저장을 불러와 이미 본 대사면 다시 안 띄운다 (튜토리얼 창에서 다시 볼 수 있다)
-  showTutorialStep(step, { skip: isChapterStart(step) });
+  showTutorialStep(step);
   return true;
 }
-

@@ -1,7 +1,7 @@
 /**
  * 손님 유입 경로 5종 (트랙 H, UX 참고 §3): 정류장(버스, 기본)·주차장(렌터카)·공항 셔틀·항구(크루즈)·올레길.
  * - 각 경로는 맵 가장자리 진입점(§3.4) → 길(path/road/gate/정류장 kind) → 경로 시설까지 이어져야 손님이 온다(길 연결 검사 BFS).
- * - 기본 스폰(guests.ts hourlySpawn)은 활성 경로 가중치(정류장 1.0 / 주차장 칸당 0.15 / 올레 0.15)로 진입점을 나눠 뽑고,
+ * - 기본 스폰(guests.ts hourlySpawn)은 활성 경로 비중으로 진입점을 나눠 뽑고 — fun P0: 주차장이 이어져 있으면 하루 손님의 30~45%(칸 수), 올레길 20%, 정류장은 나머지(총량 불변) —
  *   셔틀(11·15시)·크루즈(이벤트 날 13시)는 시각 고정으로 한꺼번에 온다(routeArrivals).
  * - 상태는 state.routes[route] (RouteState). 해금·길 끊김 판정은 하루 한 번(dailyRoutes), 월 정산은 monthlyRoutes.
  * 결정적: rng는 state.rng만 (rng.ts).
@@ -9,15 +9,17 @@
 import type { GameState, Guest, PlacedObject, Pt, RouteId, RouteState, ApplyResult } from './types.ts';
 import { objectDef, guestTags, MENUS } from '../data/index.ts';
 import { GRID_W, GRID_H, VILLAGE_ROAD_Y, PARCEL_LAYOUT, PARCEL_W, PARCEL_H } from './layout.ts';
-import { footprint, cellAt, objectAt, inBounds } from './grid.ts';
+import { footprint, cellAt, objectAt, inBounds, canPlace, placeObject, removeObject } from './grid.ts';
 import { josa } from './josa.ts';
 import { reachMap, cellKey, isWalkable, walkableNeighborsOf, busStopPos } from './path.ts';
 import { parcelById, parcelAt } from './parcels.ts';
 import { pushNotice } from './staff.ts';
+import { pushFx } from './fx.ts';
 import { dayIndex } from './effects.ts';
 import { randInt } from './rng.ts';
 import { fmtNum } from './format.ts';
 import { hasTourBusKey } from './spots.ts';
+import { autoConnectFrom, type AutoRoute } from './rooms.ts';
 
 export const ROUTE_IDS: RouteId[] = ['bus', 'parking', 'shuttle', 'cruise', 'olle'];
 
@@ -48,9 +50,9 @@ export interface RouteDef {
 const P3 = PARCEL_LAYOUT.parcel3!, P4 = PARCEL_LAYOUT.parcel4!, P6 = PARCEL_LAYOUT.parcel6!;
 export const ENTRY_ROUTES: Record<RouteId, RouteDef> = {
   bus: { id: 'bus', name: '정류장', icon: '🚌', entry: { x: 0, y: VILLAGE_ROAD_Y }, facilities: ['busstop'], parcelId: null, tagMult: {}, walletMult: 1, stayMult: 1, hours: [], fixedHours: [], groupSize: [1, 1], dailyCap: null, weight: 1, cost: 0, needsContract: false, unlockText: '시작' },
-  parking: { id: 'parking', name: '주차장', icon: '🚗', entry: { x: GRID_W - 1, y: VILLAGE_ROAD_Y }, facilities: ['parking_lot', 'parking_big', 'parking', 'parking_large'], parcelId: null, tagMult: { family: 2, couple: 1.6 }, walletMult: 1.2, stayMult: 1.2, hours: [[10, 18]], fixedHours: [], groupSize: [2, 4], dailyCap: null, weight: 0.15, cost: 1_200_000, needsContract: false, unlockText: '쉼 시설 6개' },
+  parking: { id: 'parking', name: '주차장', icon: '🚗', entry: { x: GRID_W - 1, y: VILLAGE_ROAD_Y }, facilities: ['parking_lot', 'parking_big', 'parking', 'parking_large'], parcelId: null, tagMult: { family: 2, couple: 1.6 }, walletMult: 1.2, stayMult: 1.2, hours: [[9, 21]], fixedHours: [], groupSize: [2, 4], dailyCap: null, weight: 0.15, cost: 1_200_000, needsContract: false, unlockText: '처음부터' }, // fun P0: 렌터카는 9~20시 (30~45% 비중이 하루 손님에서 보이게)
   shuttle: { id: 'shuttle', name: '공항 셔틀', icon: '✈️', entry: { x: P6.col * PARCEL_W + 5, y: GRID_H - 1 }, facilities: ['shuttle_stop'], parcelId: 'parcel6', tagMult: { group: 1.5, foreign: 2, senior: 1.3 }, walletMult: 1, stayMult: 1, hours: [], fixedHours: [11, 15], groupSize: [6, 10], dailyCap: 20, weight: 0, cost: 800_000, needsContract: true, unlockText: '용천수 샘터 + 투어 버스 열쇠(또는 명소 Lv2 + 홍보 1회)' },
-  cruise: { id: 'cruise', name: '항구', icon: '🚢', entry: { x: P3.col * PARCEL_W + 4, y: 0 }, facilities: ['pier'], parcelId: 'parcel3', tagMult: { foreign: 3, senior: 1.5, group: 1.3 }, walletMult: 1.5, stayMult: 0.7, hours: [], fixedHours: [13], groupSize: [25, 30], dailyCap: 30, weight: 0, cost: 3_000_000, needsContract: false, unlockText: '★3 + 곶자왈 가장자리' },
+  cruise: { id: 'cruise', name: '항구', icon: '🚢', entry: { x: P3.col * PARCEL_W + 4, y: 0 }, facilities: ['pier'], parcelId: 'parcel3', tagMult: { foreign: 3, senior: 1.5, group: 1.3 }, walletMult: 1.5, stayMult: 0.7, hours: [], fixedHours: [13], groupSize: [25, 30], dailyCap: 30, weight: 0, cost: 3_000_000, needsContract: false, unlockText: '곶자왈 가장자리(북쪽 땅)' },
   olle: { id: 'olle', name: '올레길', icon: '🎗️', entry: { x: 0, y: P4.row * PARCEL_H + 3 }, facilities: ['olle_sign'], parcelId: 'parcel4', tagMult: { solo: 2, youth: 1.5, senior: 1.3 }, walletMult: 0.8, stayMult: 1, hours: [[8, 12], [16, 19]], fixedHours: [], groupSize: [1, 2], dailyCap: null, weight: 0.15, cost: 200_000, needsContract: false, unlockText: '밭담 골짜기' },
 };
 
@@ -62,6 +64,16 @@ export const PARKING_GUESTS_PER_SLOT = PARKING_CARS_PER_SLOT * PARKING_GUESTS_PE
 /** 주차장 넓히기: 2×2 → 3×2 교체 (차액만 낸다) */
 export const PARKING_EXPAND_FROM = 'parking_lot';
 export const PARKING_EXPAND_TO = 'parking_big';
+/** fun P0 경로 비중 (총량 불변 — 정류장이 나머지를 받는다): 주차장 30%(4칸)~45%(8칸+), 올레길 20% */
+export const PARKING_SHARE_MIN = 0.30;
+export const PARKING_SHARE_MAX = 0.45;
+export const PARKING_SHARE_PER_SLOT = 0.0375; // 4칸 넘는 칸마다 (6칸 = 37.5%, 8칸 = 45%)
+export const OLLE_SHARE = 0.20;
+/** 남은 주차장 손님을 한 대로 태워 보내는 시각 (그 전엔 2~4명이 찰 때까지 기다린다) */
+export const PARKING_FLUSH_HOUR = 20;
+/** 렌터카 한 대에 내리는 손님 수 (주차장 손님은 모아서 차 한 대로 온다) */
+export const CAR_GUESTS_MIN = 2;
+export const CAR_GUESTS_MAX = 4;
 /** 셔틀 월 계약비 (투어 버스 계약과 같은 항목 monthCosts.tourBus) */
 export const SHUTTLE_FEE = 500_000;
 /** 크루즈 기항 1회 항만 사용료 */
@@ -93,12 +105,12 @@ export function initRoute(unlocked = false): RouteState {
   return { unlocked, contract: false, todayGuests: 0, monthGuests: 0, monthIncome: 0, totalGuests: 0, lastArrivalDay: -1, broken: false };
 }
 export function initRoutes(): Record<RouteId, RouteState> {
-  return { bus: initRoute(true), parking: initRoute(), shuttle: initRoute(), cruise: initRoute(), olle: initRoute() };
+  return { bus: initRoute(true), parking: initRoute(true), shuttle: initRoute(), cruise: initRoute(), olle: initRoute() }; // fun P0: 주차장은 처음부터 열림
 }
 /** 옛 저장(routes 없음)·테스트 픽스처용: 없으면 채운다 */
 export function routeState(state: GameState, id: RouteId): RouteState {
   state.routes ??= initRoutes();
-  return (state.routes[id] ??= initRoute(id === 'bus'));
+  return (state.routes[id] ??= initRoute(id === 'bus' || id === 'parking'));
 }
 
 // ---------- 태그 가중치 ----------
@@ -223,9 +235,9 @@ export function routeUnlockMet(state: GameState, route: RouteId): boolean {
   if (def.parcelId && !parcelById(state, def.parcelId)?.owned) return false;
   switch (route) {
     case 'bus': return true;
-    case 'parking': return state.unlocked.objects.some((id) => PARKING_SLOTS[id] !== undefined) || parkingSlots(state) > 0;
+    case 'parking': return true; // fun P0: 주차장은 처음부터 (해금 조건 없음)
     case 'shuttle': return hasTourBusKey(state) || (Object.values(state.spots).some((lv) => lv >= SHUTTLE_SPOT_LV) && state.stats.promotionsDone >= SHUTTLE_PROMOTIONS);
-    case 'cruise': return state.star >= CRUISE_STAR;
+    case 'cruise': return true; // fun P0: 북쪽 땅을 사면 선착장이 생기고 열린다 (배는 입항 이벤트 날)
     case 'olle': return true;
   }
 }
@@ -263,16 +275,36 @@ export function entryPoints(state: GameState): EntryPoint[] {
     const def = ENTRY_ROUTES[route];
     const connected = routeConnected(state, route);
     const active = routeActive(state, route);
-    const weight = route === 'parking' ? def.weight * parkingSlots(state) : def.weight;
+    const weight = route === 'parking' ? def.weight * parkingSlots(state) : def.weight; // 표지 굵기용 (실제 비중은 routeShare)
     return { route, pos: def.entry, weight, connected, unlocked: routeState(state, route).unlocked, active };
   });
 }
-/** 기본 스폰(시간당)을 나눠 받는 경로와 가중치: 정류장 1.0 / 주차장 칸당 0.15 / 올레 0.15 (시간대·상한 안) */
+/** 경로 시설 앞 칸이 정류장 길과 이어져 있나 (손님이 자리까지 걸어갈 수 있는 상태). 정류장은 늘 true, 시설이 없으면 false. */
+export function routeLinked(state: GameState, route: RouteId): boolean {
+  if (route === 'bus') return routeFacility(state, 'bus') !== null;
+  const target = routeTarget(state, route);
+  if (!target) return false;
+  return reachMap(state, busStopPos(state)).dist.has(cellKey(state, target));
+}
+/** 경로가 지금 손님을 실제로 받나: 활성 + 시간대 + 상한 + 자리까지 길이 이어짐 */
+export function routeTakesGuests(state: GameState, route: RouteId, hour = state.clock.hour): boolean {
+  return routeActive(state, route) && routeOpenAt(route, hour) && routeCapLeft(state, route) > 0 && (route === 'bus' || routeLinked(state, route));
+}
+/** 경로가 받는 하루 손님 비중(fun P0): 주차장 30%(4칸)+칸당 3.75%(최대 45%), 올레길 20%, 정류장은 나머지. 안 받는 경로는 0. */
+export function routeShare(state: GameState, route: RouteId, hour = state.clock.hour): number {
+  if (route === 'bus') return Math.max(0, 1 - routeShare(state, 'parking', hour) - routeShare(state, 'olle', hour));
+  if (!routeTakesGuests(state, route, hour)) return 0;
+  if (route === 'parking') return Math.min(PARKING_SHARE_MAX, PARKING_SHARE_MIN + Math.max(0, parkingSlots(state) - 4) * PARKING_SHARE_PER_SLOT);
+  if (route === 'olle') return OLLE_SHARE;
+  return 0;
+}
+/** 기본 스폰(시간당)을 나눠 받는 경로와 비중: 정류장(나머지) / 주차장 30~45% / 올레 20% (시간대·상한·길 연결 안). 정류장만이면 [{bus, 1}]. */
 export function spawnRouteWeights(state: GameState, hour = state.clock.hour): { route: RouteId; weight: number }[] {
   const out: { route: RouteId; weight: number }[] = [];
-  for (const e of entryPoints(state)) {
-    if (e.weight <= 0 || !e.active || !routeOpenAt(e.route, hour) || routeCapLeft(state, e.route) <= 0) continue;
-    out.push({ route: e.route, weight: e.weight });
+  for (const route of ROUTE_IDS) {
+    if (route === 'shuttle' || route === 'cruise') continue; // 시각 고정 도착
+    const weight = routeShare(state, route, hour);
+    if (weight > 0) out.push({ route, weight });
   }
   return out;
 }
@@ -338,14 +370,14 @@ export function chargePortFee(state: GameState): void {
 }
 
 /** 경로별 이달 손님·매출과 비중 (장부 › 경영 "손님 경로" 표) */
-export interface RouteStat { route: RouteId; name: string; icon: string; todayGuests: number; monthGuests: number; monthIncome: number; guestShare: number; incomeShare: number; active: boolean; unlocked: boolean }
+export interface RouteStat { route: RouteId; name: string; icon: string; todayGuests: number; monthGuests: number; totalGuests: number; monthIncome: number; guestShare: number; incomeShare: number; active: boolean; unlocked: boolean }
 export function routeStats(state: GameState): RouteStat[] {
   const totalG = ROUTE_IDS.reduce((n, r) => n + routeState(state, r).monthGuests, 0);
   const totalI = ROUTE_IDS.reduce((n, r) => n + routeState(state, r).monthIncome, 0);
   return ROUTE_IDS.map((route) => {
     const st = routeState(state, route);
     const def = ENTRY_ROUTES[route];
-    return { route, name: def.name, icon: def.icon, todayGuests: st.todayGuests, monthGuests: st.monthGuests, monthIncome: st.monthIncome, guestShare: totalG > 0 ? st.monthGuests / totalG : 0, incomeShare: totalI > 0 ? st.monthIncome / totalI : 0, active: routeActive(state, route), unlocked: st.unlocked };
+    return { route, name: def.name, icon: def.icon, todayGuests: st.todayGuests, monthGuests: st.monthGuests, totalGuests: st.totalGuests, monthIncome: st.monthIncome, guestShare: totalG > 0 ? st.monthGuests / totalG : 0, incomeShare: totalI > 0 ? st.monthIncome / totalI : 0, active: routeActive(state, route), unlocked: st.unlocked };
   });
 }
 
@@ -429,27 +461,81 @@ export function unlockRouteFacilities(state: GameState): void {
     pushNotice(state, `새 시설: ${def.name}`);
   }
 }
-/** 시설별 해금: 주차장 = 쉼 시설 6개, 넓은 주차장 = 주차장 1개, 셔틀 정류장 = parcel6, 선착장 = ★3 + parcel3, 올레 표식 = parcel4 */
+/** 시설별 해금: 주차장 = 처음부터(fun P0), 넓은 주차장 = 주차장 1개, 셔틀 정류장 = parcel6, 선착장 = parcel3(fun P0: ★ 조건 없음 — 땅을 사면 무료로 생긴다), 올레 표식 = parcel4 */
 export function routeFacilityUnlockMet(state: GameState, id: string): boolean {
   switch (id) {
-    case 'parking_lot': return countCategoryOwned(state, 'rest') >= 6;
+    case 'parking_lot': return true;
     case 'parking_big': return Object.values(state.objects).some((o) => o.type === 'parking_lot');
     case 'shuttle_stop': return !!parcelById(state, 'parcel6')?.owned;
-    case 'pier': return state.star >= CRUISE_STAR && !!parcelById(state, 'parcel3')?.owned;
+    case 'pier': return !!parcelById(state, 'parcel3')?.owned;
     case 'olle_sign': return !!parcelById(state, 'parcel4')?.owned;
     default: return false;
   }
-}
-function countCategoryOwned(state: GameState, category: string): number {
-  let n = 0;
-  for (const o of Object.values(state.objects)) if (objectDef(o.type).category === category && parcelAt(state, o.x, o.y)?.owned) n++;
-  return n;
 }
 /** 월초: 이달 손님·매출 리셋, 셔틀 계약비 */
 export function monthlyRoutes(state: GameState): void {
   state.routes ??= initRoutes();
   for (const route of ROUTE_IDS) { const st = routeState(state, route); st.monthGuests = 0; st.monthIncome = 0; }
   chargeShuttle(state);
+}
+
+// ---------- fun P0: 땅을 사면 경로가 열린다 ----------
+
+/** 필지 → 경로: 서쪽 밭담 골짜기(parcel4) = 올레길, 남쪽 용천수 샘터(parcel6) = 공항 셔틀, 북쪽 곶자왈 가장자리(parcel3) = 항구 */
+export const PARCEL_ROUTE: Record<string, RouteId> = { parcel4: 'olle', parcel6: 'shuttle', parcel3: 'cruise' };
+/** 자동으로 세우는 경로 시설 자리 (봇 BOT_ROUTE_SITES와 같은 칸): 올레 표식 (3,11) · 셔틀 정류장 (15,20) · 선착장 (14,0) */
+export const ROUTE_AUTO_SITES: Record<'olle' | 'shuttle' | 'cruise', Pt> = { olle: { x: 3, y: 11 }, shuttle: { x: 15, y: 20 }, cruise: { x: 14, y: 0 } };
+/** 경로가 열릴 때 장면 창 한 줄 */
+export const ROUTE_OPEN_LINE: Record<'olle' | 'shuttle' | 'cruise', string> = {
+  olle: '이제 올레꾼이 서쪽에서 걸어온다',
+  shuttle: '이제 공항 셔틀이 남쪽에 선다',
+  cruise: '이제 크루즈 손님이 북쪽 항구에 내린다',
+};
+/** 땅을 산 직후: 그 땅의 경로 시설을 무료로 세우고 진입점까지 올렛길을 잇는다(무료). 길이 자리까지 안 이어져 있으면 카드에 「자동 잇기」가 뜬다.
+ *  이미 그 시설이 있으면 안 세운다. 자리에 올렛길이 있으면 걷어낸다. 놓을 수 없는 자리면(시설이 있음) 세우지 않고 해금만. 세웠으면 true. */
+export function installRouteForParcel(state: GameState, parcelId: string): boolean {
+  const route = PARCEL_ROUTE[parcelId];
+  if (!route || route === 'bus' || route === 'parking') return false;
+  const type = ENTRY_ROUTES[route].facilities[0]!;
+  if (!state.unlocked.objects.includes(type)) state.unlocked.objects.push(type);
+  const st = routeState(state, route);
+  st.unlocked = true;
+  if (Object.values(state.objects).some((o) => o.type === type)) return false;
+  const site = ROUTE_AUTO_SITES[route];
+  const here = objectAt(state, site.x, site.y);
+  if (here && objectDef(here.type).kind === 'path') removeObject(state, here.id);
+  if (!canPlace(state, type, site.x, site.y).ok) return false;
+  placeObject(state, type, site.x, site.y); // 무료·바로 완공
+  for (const c of routePathCells(route, site)) {
+    if (objectAt(state, c.x, c.y) || isWalkable(state, c.x, c.y) || !canPlace(state, 'path', c.x, c.y).ok) continue;
+    placeObject(state, 'path', c.x, c.y);
+  }
+  pushNotice(state, `${ENTRY_ROUTES[route].icon} ${objectDef(type).name}이 생겼어요 — ${ROUTE_OPEN_LINE[route]}`);
+  pushFx(state, { kind: 'scene', title: `${ENTRY_ROUTES[route].name} 열림`, text: `${ROUTE_OPEN_LINE[route]}. 자리까지 길만 이으면 돼요.`, tick: state.tick });
+  return true;
+}
+/** 「자동 잇기」(fun P0 경로 카드): 경로 시설 앞 칸에서 정류장 길까지 최단 올렛길. */
+export function canAutoLinkRoute(state: GameState, route: RouteId): ApplyResult & { route?: AutoRoute } {
+  const target = routeTarget(state, route);
+  if (!target) return { ok: false, reason: '경로 시설이 없어요' };
+  const r = autoConnectFrom(state, target);
+  if (r.route === null) return { ok: false, reason: '이을 길이 없어요', route: r };
+  if (r.route.length === 0 || r.empty.length === 0) return { ok: false, reason: '이미 이어져 있어요', route: r };
+  if (state.money < r.cost) return { ok: false, reason: '돈이 모자라요', route: r };
+  return { ok: true, route: r };
+}
+/** 호출 전 canAutoLinkRoute. 놓은 올렛길 목록. */
+export function autoLinkRoute(state: GameState, route: RouteId): PlacedObject[] {
+  const r = canAutoLinkRoute(state, route).route!;
+  const placed: PlacedObject[] = [];
+  for (const p of r.empty) placed.push(placeObject(state, 'path', p.x, p.y));
+  state.money -= r.cost;
+  return placed;
+}
+/** 주차장(fun P0 도착 연출): 오늘 여기서 온 손님·상한 한 줄 (주차장 카드) */
+export function parkingTodayText(state: GameState): string {
+  const cap = routeDailyCap(state, 'parking');
+  return `오늘 여기서 온 손님 ${routeState(state, 'parking').todayGuests}명 · 상한 ${cap ?? 0}명`;
 }
 
 // ---------- 봇·UI 도우미 ----------

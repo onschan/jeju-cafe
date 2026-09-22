@@ -3,7 +3,9 @@ import { PARCELS, guestTags } from '../data/index.ts';
 import { pushNotice } from './staff.ts';
 import { PARCEL_COLS, PARCEL_ROWS, PARCEL_W, PARCEL_H, START_ORIGIN, PARCEL_LAYOUT as LAYOUT } from './layout.ts';
 import { fmtNum } from './format.ts';
+import { josa } from './josa.ts';
 import { villageParcelDiscount } from './village.ts'; // z-ending
+import { pushFx } from './fx.ts'; // fun-rank: 구매 연출(안개 걷힘·랜드마크 등장)
 
 export { PARCEL_COLS, PARCEL_ROWS, PARCEL_W, PARCEL_H, START_ORIGIN };
 /** parcels.json 가격(15만~30만)은 구 화폐 단위라 ×10 → 100만~300만 (시작 자금 500만 기준) */
@@ -32,6 +34,26 @@ export const GOTJAWAL_CROPS = new Set(['tea', 'gosari']);
 export const SPRING_HARVEST_MULT = 1.1;
 
 const BONUS_BY_NO: Record<number, ParcelBonus> = { 1: 'none', 2: 'oreum', 3: 'gotjawal', 4: 'batdam', 5: 'coast', 6: 'spring', 7: 'village', 8: 'stonehill', 9: 'orchard' };
+
+// ---------- fun-rank: 필지 3×3 지도 (특징 아이콘·"사면 생기는 것" 한 줄) ----------
+/** icon = ui Icon 이름(sprites_ui_icons), feature = 특징 이름, gain = 사면 생기는 것 한 줄(≤22자, 문구 규칙 §6), landmark = 사면 마당에 보이는 것 */
+export interface ParcelFeature { icon: string; feature: string; gain: string; landmark: string }
+/** parcels.json은 생성 파일이라 특징·설명은 여기 코드 표에 둔다 (id → 특징). 없는 id는 마을 길 기본값. */
+export const PARCEL_FEATURES: Record<string, ParcelFeature> = {
+  parcel1: { icon: 'home', feature: '폐창고', gain: '할망이 준 창고. 우리 본관', landmark: '본관' },
+  parcel2: { icon: 'mountain', feature: '오름', gain: '오름이 보여 자리 경치 +2', landmark: '오름 실루엣' },
+  parcel3: { icon: 'shade', feature: '곶자왈', gain: '숲이 바람을 막아 준다', landmark: '숲' },
+  parcel4: { icon: 'harvest', feature: '밭담', gain: '밭담 안 밭은 수확이 좋다', landmark: '밭담' },
+  parcel5: { icon: 'wave', feature: '바다 조망', gain: '관광객이 더 오고 더 낸다', landmark: '수평선' },
+  parcel6: { icon: 'well', feature: '샘', gain: '용천수. 작물이 잘 자란다', landmark: '샘터' },
+  village_edge: { icon: 'roadside', feature: '마을 길', gain: '삼춘들이 더 자주 온다', landmark: '정류장 길' },
+  stone_hill: { icon: 'view', feature: '돌담 언덕', gain: '돌담이 있어 경치 +1', landmark: '돌담 언덕' },
+  orchard: { icon: 'tree', feature: '폭낭·감귤밭', gain: '감귤나무 4그루가 있다', landmark: '감귤밭' },
+};
+const DEFAULT_FEATURE: ParcelFeature = { icon: 'roadside', feature: '마을 길', gain: '카페가 넓어진다', landmark: '마을 길' };
+export function parcelFeature(p: Pick<Parcel, 'id'>): ParcelFeature {
+  return PARCEL_FEATURES[p.id] ?? DEFAULT_FEATURE;
+}
 
 /** 소유 필지 수에 따른 해금: 2·3·7(마을 어귀)번은 처음부터, 4·5·8번은 3개 소유 뒤, 6·9번은 5개 소유 뒤 (토지 권리증 투자는 TODO) */
 export function parcelUnlockOwnedCount(no: number): number {
@@ -102,6 +124,8 @@ export function buyParcel(state: GameState, id: string): void {
   state.money -= price;
   p.owned = true;
   pushNotice(state, `${p.name} 필지를 샀어요 (₩${fmtNum(price)})`);
+  pushFx(state, { kind: 'parcel', id: p.id, tick: state.tick }); // fun-rank: 덮개 안개 걷힘 + 랜드마크 등장
+  pushFx(state, { kind: 'scene', title: p.name, text: `안개가 걷히고 ${josa(parcelFeature(p).landmark, '이/가')} 보인다. ${parcelFeature(p).gain}`, tick: state.tick });
 }
 
 // ---------- 구역 보너스 ----------

@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { wonText } from '../data/labels.ts';
 import { useGame } from './store';
-import { seasonOf, boardBadge, type Season } from '../sim/index.ts';
+import { seasonOf, boardBadge, gradeOf, gradeName, type Season } from '../sim/index.ts';
+import { GradeWindow } from './GradeWindow';
 import { Icon } from './Icon';
 import { GoalBar, GOAL_BAR_H } from './GoalBar';
 import { MESSAGE_LINE_H } from './MessageLine';
@@ -27,20 +28,31 @@ const MAIN_TABS: { kind: WindowKind; icon: string; label: string }[] = [
   { kind: 'ledger', icon: 'money', label: '장부' },
 ];
 
-/** 상단 바: 날짜 · 계절 · 자금 · ★. 탭하면 경영 현황 창. */
+/** 상단 바: 날짜 · 계절 · 자금 · 평판 · ★ (탭하면 경영 현황 창) + 오른쪽 끝 카페 등급 이름 (fun-rank: 탭하면 등급 창 — 조건 진행·「5년 뒤 우리 카페」 미리보기). */
 export function TopBar({ onOpen }: { onOpen: () => void }) {
   const s = useGame();
   const season = seasonOf(s.clock.month);
   const bump = useMoneyBump(s.money);
+  const [gradeOpen, setGradeOpen] = useState(false);
+  const grade = gradeOf(s);
   return (
-    <button data-testid="top-bar" onClick={onOpen} aria-label="경영 현황"
-      style={{ position: 'absolute', top: 0, left: 0, right: 0, height: TOP_BAR_H, padding: '0 10px', border: 0, borderBottom: `2px solid ${PALETTE.wood}`, background: PALETTE.paper, color: PALETTE.ink, fontFamily: 'inherit', fontSize: 14, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, whiteSpace: 'nowrap', overflow: 'hidden', zIndex: 10 }}>
-      <span>{s.clock.year}년 {s.clock.month}월 {s.clock.day}일</span>
-      <span aria-label={SEASON_LABEL[season]} title={SEASON_LABEL[season]}><Icon name={SEASON_ICON[season]} size={16} /></span>
-      <span title={wonText(s.money)} style={{ display: 'inline-block', transition: 'transform 0.12s ease-out', transform: bump ? 'scale(1.18)' : 'scale(1)', color: bump ? PALETTE.btn : undefined }}><Icon name="money" size={16} alt="돈" /> {wonText(s.money, true)}</span>
-      <span aria-label={`평판 ${Math.round(s.reputation)}`} title="평판"><Icon name="heart" size={14} />{Math.round(s.reputation)}</span>
-      <span aria-label={`별 ${s.star}`}>{'★'.repeat(Math.max(1, Math.min(5, s.star)))}<span style={{ color: PALETTE.inkSoft }}>{'☆'.repeat(5 - Math.max(1, Math.min(5, s.star)))}</span></span>
-    </button>
+    <>
+      <div data-testid="top-bar-row" style={{ position: 'absolute', top: 0, left: 0, right: 0, height: TOP_BAR_H, borderBottom: `2px solid ${PALETTE.wood}`, background: PALETTE.paper, display: 'flex', alignItems: 'stretch', zIndex: 10 }}>
+        <button data-testid="top-bar" onClick={onOpen} aria-label="경영 현황"
+          style={{ flex: 1, minWidth: 0, height: TOP_BAR_H, padding: '0 4px 0 6px', border: 0, background: 'transparent', color: PALETTE.ink, fontFamily: 'inherit', fontSize: 13, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 3, whiteSpace: 'nowrap', overflow: 'hidden' }}>
+          <span>{s.clock.year}년 {s.clock.month}월 {s.clock.day}일</span>
+          <span aria-label={SEASON_LABEL[season]} title={SEASON_LABEL[season]}><Icon name={SEASON_ICON[season]} size={16} /></span>
+          <span title={wonText(s.money)} style={{ display: 'inline-block', transition: 'transform 0.12s ease-out', transform: bump ? 'scale(1.18)' : 'scale(1)', color: bump ? PALETTE.btn : undefined }}><Icon name="money" size={16} alt="돈" /> {wonText(s.money, true)}</span>
+          <span aria-label={`평판 ${Math.round(s.reputation)}`} title="평판"><Icon name="heart" size={14} />{Math.round(s.reputation)}</span>
+          <span aria-label={`별 ${s.star}`} style={{ letterSpacing: -1 }}>{'★'.repeat(Math.max(1, Math.min(5, s.star)))}<span style={{ color: PALETTE.inkSoft }}>{'☆'.repeat(5 - Math.max(1, Math.min(5, s.star)))}</span></span>
+        </button>
+        <button data-testid="top-grade" data-tut="nav:grade" onClick={() => setGradeOpen(true)} aria-label={`카페 등급 ${gradeName(grade)}`} title="카페 등급"
+          style={{ flex: 'none', height: TOP_BAR_H, padding: '0 6px 0 5px', border: 0, borderLeft: `2px solid ${PALETTE.woodLight}`, background: PALETTE.paperDark, color: PALETTE.ink, fontFamily: 'inherit', fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', gap: 2 }}>
+          <Icon name="home_cafe" size={12} alt="" />{gradeName(grade).replace(' ', '')}
+        </button>
+      </div>
+      {gradeOpen && <GradeWindow onClose={() => setGradeOpen(false)} />}
+    </>
   );
 }
 
@@ -96,6 +108,8 @@ export function BottomBar({ onOpen }: { onOpen: (kind: WindowKind) => void }) {
 /** 고스트 배치 확정 줄: 하단 바 자리에 `회전 · 확정 · 취소/완료` 3버튼 1줄. text는 상태 문구(메시지 줄 위에 작게). */
 export interface PlaceBarProps {
   text: string;
+  /** fun: 트레이드오프 두 줄 — 얻는 것(초록)·잃는 것(빨강) */
+  tradeoff?: { gain: string; loss: string };
   ok: boolean;
   canRotate: boolean;
   /** 회전 버튼 라벨 (기본 「회전」, 길·담 ㄱ자는 「방향」 — ease) */
@@ -111,10 +125,19 @@ export interface PlaceBarProps {
   onCancel: () => void;
 }
 
-export function PlaceBar({ text, ok, canRotate, rotateLabel = '회전', paint, continuous, onUndo, onConfirm, onRotate, onCancel }: PlaceBarProps) {
+export function PlaceBar({ text, tradeoff, ok, canRotate, rotateLabel = '회전', paint, continuous, onUndo, onConfirm, onRotate, onCancel }: PlaceBarProps) {
+  const hasTrade = !!(tradeoff && (tradeoff.gain || tradeoff.loss));
   return (
     <div data-testid="place-bar" style={barStyle}>
-      <div data-testid="place-text" style={{ position: 'absolute', left: 8, right: 8, bottom: `calc(100% + ${MESSAGE_LINE_H + 4}px)`, background: PALETTE.paper, color: ok ? PALETTE.ok : PALETTE.bad, border: `2px solid ${PALETTE.wood}`, borderRadius: 6, padding: '4px 8px', fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', pointerEvents: 'none' }}>{text}</div>
+      <div data-testid="place-text" style={{ position: 'absolute', left: 8, right: 8, bottom: `calc(100% + ${MESSAGE_LINE_H + 4}px)`, background: PALETTE.paper, color: ok ? PALETTE.ok : PALETTE.bad, border: `2px solid ${PALETTE.wood}`, borderRadius: 6, padding: '4px 8px', fontSize: 13, fontWeight: 700, pointerEvents: 'none' }}>
+        <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{text}</div>
+        {hasTrade && (
+          <div data-testid="place-tradeoff" style={{ display: 'flex', gap: 8, fontSize: 12, fontWeight: 700, marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden' }}>
+            {tradeoff!.gain && <span style={{ color: PALETTE.ok, overflow: 'hidden', textOverflow: 'ellipsis' }}>{tradeoff!.gain}</span>}
+            {tradeoff!.loss && <span style={{ color: PALETTE.bad, overflow: 'hidden', textOverflow: 'ellipsis' }}>{tradeoff!.loss}</span>}
+          </div>
+        )}
+      </div>
       {onUndo !== undefined && <button aria-label="되돌리기" disabled={!onUndo} style={{ ...(onUndo ? brownBtn : brownBtnOff), margin: 0, flex: 1, minWidth: 0, fontSize: 15, padding: 0 }} onClick={() => onUndo?.()}><Icon name="undo" /> 되돌리기</button>}
       {canRotate && <button aria-label={rotateLabel} style={{ ...brownBtn, margin: 0, flex: 1, minWidth: 0, fontSize: 16, padding: 0 }} onClick={onRotate}>↻ {rotateLabel}</button>}
       {paint

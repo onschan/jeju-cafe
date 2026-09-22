@@ -1,5 +1,5 @@
-"""맵 밖 배경 띠 4장 (512×96): 숲·오름·바다·마을. 위쪽은 투명(하늘은 렌더가 깐다), 아랫줄은 잔디.
-Background.ts가 지평선에 겹쳐 놓는다: 바다(가장 멀리) → 오름 → 숲 → 마을(가장 가까이)."""
+"""맵 밖 배경 띠 (512×96): 바다(파도 2프레임 bg_sea_0/1, 멀리 배·등대) · 오름 곶(bg_oreum: 오름 2~3개 + 한라산, 바닥은 투명해 바다가 비친다) · 숲 · 마을.
+위쪽은 투명(하늘은 렌더가 깐다). Background.ts가 지평선에 겹쳐 놓는다: 바다(가장 멀리, 항상) → 오름 곶(왼쪽 절반) → 숲·마을(옛 띠, 지금은 안 씀)."""
 from __future__ import annotations
 import math
 from px import Canvas, PAL, hexc, Color
@@ -98,40 +98,73 @@ def hills(c: Canvas, base: int, amp: int, period: float, phase: float, top_min: 
 
 
 def oreum() -> Canvas:
+    """바다 건너 곶: 먼 한라산(넓은 봉우리) + 오름 실루엣 3개. 능선 아래는 바다색 한 줄로 끝나고 그 아래는 투명(바다 띠가 비친다)."""
     c = Canvas(W, H)
-    hills(c, 40, 10, 1.0, 0.4, 18, OREUM_FAR, 1)
-    hills(c, 56, 12, 1.6, 2.1, 30, OREUM_MID, 2)
-    hills(c, 72, 10, 2.4, 4.0, 48, OREUM_NEAR, 3)
-    # 능선 위 억새·작은 나무 점
+    base = 72
+    # 한라산: 가운데 완만하고 넓은 봉우리
+    for x in range(W):
+        t = (x - 210) / 190
+        top = int(base - 60 * max(0.0, 1 - t * t) ** 1.5)
+        if top < base:
+            c.vline(x, top, base, OREUM_FAR)
+            if top < 20:
+                c.vline(x, top, min(top + 3, 20), hexc('9fb3c8'))   # 정상 부근 밝은 눈/구름 띠
+    hills(c, 58, 6, 1.4, 1.1, 44, OREUM_MID, 2)
+    hills(c, 68, 4, 2.6, 4.0, 60, OREUM_NEAR, 3)
+    # 오름 3개: 종 모양 둔덕
+    for cx, r, h in ((60, 34, 18), (330, 40, 22), (455, 30, 15)):
+        for x in range(cx - r, cx + r + 1):
+            t = (x - cx) / r
+            top = int(base - h * max(0.0, 1 - t * t) ** 0.8)
+            c.vline(x, top, base, OREUM_NEAR)
     rng = Rng(23)
-    for _ in range(90):
+    for _ in range(70):
         x = rng.between(0, W - 1)
         for y in range(H):
             if c.get(x, y)[3] == 255:
                 c.put(x, y - 1, GRASS_LT if rng.next() < 0.5 else OREUM_FAR)
                 break
-    grass(c, 84)
+    c.hline(0, W - 1, base, SEA_LT)               # 물가 한 줄
+    for y in range(base + 1, H):                    # 아래는 투명 (바다 띠가 비친다)
+        for x in range(W):
+            c.put(x, y, (0, 0, 0, 0))
     return c
 
 
-def sea() -> Canvas:
+def boat(c: Canvas, x: int, y: int) -> None:
+    """수평선 위 작은 어선: 선체 + 조타실 + 돛대."""
+    c.hline(x, x + 9, y, BASALT_DK)
+    c.hline(x + 1, x + 8, y - 1, WHITE_MD)
+    c.rect(x + 3, y - 4, 4, 3, WHITE_LT); c.put(x + 4, y - 3, SKY_DK)
+    c.vline(x + 5, y - 8, y - 5, BASALT_DK); c.put(x + 6, y - 8, hexc('d62828'))
+
+
+def lighthouse(c: Canvas, x: int, y: int) -> None:
+    """작은 섬 위 흰 등대(빨간 띠)."""
+    c.ellipse(x, y + 1, 9, 2.5, BASALT_MD); c.ellipse(x - 2, y, 6, 1.6, BASALT_LT)
+    c.rect(x - 2, y - 14, 5, 14, WHITE_MD); c.vline(x - 2, y - 14, y - 1, WHITE_LT); c.vline(x + 2, y - 14, y - 1, WHITE_DK)
+    c.rect(x - 2, y - 9, 5, 2, hexc('d62828'))
+    c.rect(x - 3, y - 17, 7, 3, BASALT_DK); c.put(x, y - 16, hexc('fff0b3'))
+
+
+def sea(frame: int = 0) -> Canvas:
+    """수평선 아래는 끝까지 바다(모래·잔디 없음 — 맵 둘레 바다 타일과 색이 이어진다). frame 1은 파도 줄이 4px 밀린다."""
     c = Canvas(W, H)
     horizon = 40
-    c.rect(0, horizon, W, 84 - horizon, SEA_MID)
+    c.rect(0, horizon, W, H - horizon, SEA_MID)
     c.hline(0, W - 1, horizon, FOAM)
     c.hline(0, W - 1, horizon + 1, SEA_LT)
-    for y in range(horizon + 2, 84):
+    for y in range(horizon + 2, H):
         if y % 6 == 0:
             c.hline(0, W - 1, y, SEA_DEEP)
     rng = Rng(31)
     for _ in range(120):
-        x, y = rng.between(0, W - 8), rng.between(horizon + 3, 82)
+        x, y = rng.between(0, W - 8), rng.between(horizon + 3, H - 2)
+        x = (x + 4 * frame) % (W - 8)
         c.hline(x, x + rng.between(2, 6), y, SEA_LT if rng.next() < 0.7 else FOAM)
-    # 모래톱과 잔디
-    c.rect(0, 84, W, 4, SAND)
-    c.hline(0, W - 1, 84, FOAM)
-    c.hline(0, W - 1, 87, SAND_DK)
-    grass(c, 88)
+    boat(c, 300 + 2 * frame, horizon + 6)
+    boat(c, 420, horizon + 12)
+    lighthouse(c, 470, horizon + 4)
     return c
 
 
@@ -184,4 +217,4 @@ def village() -> Canvas:
 
 
 def sprites() -> dict[str, Canvas]:
-    return {'bg_forest': forest(), 'bg_oreum': oreum(), 'bg_sea': sea(), 'bg_village': village()}
+    return {'bg_forest': forest(), 'bg_oreum': oreum(), 'bg_sea_0': sea(0), 'bg_sea_1': sea(1), 'bg_village': village()}

@@ -86,7 +86,8 @@ test('buyParcel: 붙어 있어야 하고, 돈이 있어야 하고, 사면 소유
   expect(apply(s, { type: 'buyParcel', id: 'parcel3' }).ok).toBe(true);
   expect(s.money).toBe(800_000);
   expect(parcelById(s, 'parcel3')!.owned).toBe(true);
-  expect(s.notices.at(-1)).toContain('곶자왈');
+  expect(s.notices.some((t) => t.includes('곶자왈'))).toBe(true);
+  expect(s.notices.at(-1)).toContain('선착장'); // fun P0: 북쪽 땅을 사면 선착장이 무료로 생긴다
   expect(s.actionLog.at(-1)!.action).toEqual({ type: 'buyParcel', id: 'parcel3' });
   // 이제 2번(3번과 붙음)을 살 수 있다
   s.money = 1_500_000;

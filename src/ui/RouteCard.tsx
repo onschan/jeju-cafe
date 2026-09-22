@@ -7,7 +7,8 @@ import type { CSSProperties } from 'react';
 import { Icon } from './Icon';
 import { dispatch } from './store';
 import { josa } from '../sim/josa.ts';
-import { ENTRY_ROUTES, routeState, routeStats, routeConnected, routeFacility, routeOpened, routeDailyCap, nextArrivalText, canSetRouteContract, canExpandParking, parkingExpandCost, parkingSlots, PARKING_EXPAND_FROM, PARKING_EXPAND_TO, SHUTTLE_FEE, buildDaysLeft, type GameState, type RouteId } from '../sim/index.ts';
+import { gradeOf, REVEAL_GRADE } from '../sim/index.ts'; // fun 점진 공개: 경로 계약은 등급 3부터
+import { ENTRY_ROUTES, routeState, routeStats, routeConnected, routeLinked, routeShare, canAutoLinkRoute, routeFacility, routeOpened, routeDailyCap, nextArrivalText, canSetRouteContract, canExpandParking, parkingExpandCost, parkingSlots, PARKING_EXPAND_FROM, PARKING_EXPAND_TO, SHUTTLE_FEE, buildDaysLeft, type GameState, type RouteId } from '../sim/index.ts';
 import { objectDef } from '../data/index.ts';
 import { BUS_HOUR, isBusDay } from '../sim/spots.ts';
 import { Bar } from './Bars';
@@ -17,6 +18,13 @@ import { brownBtnOn, brownBtnOff, dangerBtn, PALETTE, card } from './frame';
 
 /** 경로별 픽셀 아이콘 이름 (sim의 def.icon 이모지 대신) */
 const ROUTE_ICON: Record<string, string> = { bus: 'bus', parking: 'car', shuttle: 'plane', cruise: 'ship', olle: 'ribbon' };
+/** 잠긴 경로 한 줄: 무엇을 하면 누가 오는지 (트랙 E 진입점 미리 보기 — 맵 팻말과 같은 방향의 말) */
+const LOCK_HINT: Record<string, string> = {
+  parking: '주차장을 지으면 렌터카 손님이 와요',
+  shuttle: '남쪽 샘터 땅을 사면 셔틀이 서요',
+  cruise: '북쪽 곶자왈 땅을 사면 배가 와요',
+  olle: '서쪽 밭담 땅을 사면 올레꾼이 와요',
+};
 
 const small: CSSProperties = { fontSize: 13, color: PALETTE.inkSoft };
 const btnOn: CSSProperties = { ...brownBtnOn, margin: 0, padding: '0 10px', fontSize: 15 };
@@ -53,19 +61,29 @@ export function RouteCard({ s, route, objectId }: { s: GameState; route: RouteId
   const expand = lot ? canExpandParking(s, lot.id) : { ok: false, reason: '' };
   const doExpand = () => { if (!lot) return; Confirm(`${josa(objectDef(PARKING_EXPAND_FROM).name, '을/를')} ${objectDef(PARKING_EXPAND_TO).name}(6칸)으로 넓힐까요? 차액 ${won(parkingExpandCost())} · 공사 ${objectDef(PARKING_EXPAND_TO).buildDays ?? 0}일`, () => { dispatch({ type: 'expandParking', objectId: lot.id }); }, { title: '주차장 넓히기' }); };
   const building = Object.values(s.objects).find((o) => o.build && def.facilities.includes(o.type));
-  const status = !st.unlocked ? `잠김 — ${def.unlockText}` : building ? `${objectDef(building.type).name} 짓는 중 · ${buildDaysLeft(s, building)}일` : !facility ? `${facilityName}을 지어요` : def.needsContract && !st.contract ? '계약이 필요해요' : connected ? '손님이 와요' : '길이 끊겼어요';
+  // fun P0: 시설 앞 칸이 자리까지 이어졌나 + 「자동 잇기」
+  const linked = routeLinked(s, route);
+  const autoLink = facility && st.unlocked && !linked ? canAutoLinkRoute(s, route) : null;
+  const doAutoLink = () => { if (!autoLink?.route) return; Confirm(`${josa(facilityName, '을/를')} 정류장 길까지 올렛길 ${autoLink.route.empty.length}칸(${won(autoLink.route.cost)})으로 이을까요?`, () => { dispatch({ type: 'autoLinkRoute', route }); }, { title: '자동 잇기' }); };
+  const share = route === 'bus' || route === 'parking' || route === 'olle' ? routeShare(s, route, route === 'parking' ? 12 : s.clock.hour) : 0;
+  const status = !st.unlocked ? (LOCK_HINT[route] ?? `잠김 — ${def.unlockText}`) : building ? `${objectDef(building.type).name} 짓는 중 · ${buildDaysLeft(s, building)}일` : !facility ? `${facilityName}을 지어요` : def.needsContract && !st.contract ? (gradeOf(s) >= REVEAL_GRADE ? '계약이 필요해요' : '소문난 카페(등급 3)부터 계약해요') : connected ? '손님이 와요' : '길이 끊겼어요';
   return (
     <div data-testid="card-route" data-route={route}>
       <div style={{ fontSize: 14, lineHeight: 1.5 }}>
         <div><Icon name={ROUTE_ICON[def.id] ?? 'bus'} size={18} /> <b>{def.name}</b> <span style={small}>{facility && facility.type !== 'busstop' ? objectDef(facility.type).name : ''}{parcel ? ` · ${parcel.name}${parcel.owned ? '' : ' 필요'}` : ''}</span></div>
-        <div style={small}>오늘 손님 <b style={{ color: PALETTE.ink }}>{st.todayGuests}</b>명 · 이달 {st.monthGuests}명 · 다음 도착 {route === 'bus' ? `상시 · 투어 버스 ${nextTourBusText(s)}` : nextArrivalText(s, route)}</div>
+        <div style={small}>오늘 {route === 'bus' ? '손님' : '여기서 온 손님'} <b style={{ color: PALETTE.ink }}>{st.todayGuests}</b>명 · 이달 {st.monthGuests}명 · 다음 도착 {route === 'bus' ? `상시 · 투어 버스 ${nextTourBusText(s)}` : nextArrivalText(s, route)}</div>
         <div style={small}>상한 {cap === null ? '없음' : `${cap}명/일`}{route === 'parking' && parkingSlots(s) > 0 ? ` (${parkingSlots(s)}칸 × 3대 × 3명)` : ''} · 길 연결 <b style={{ color: connected ? PALETTE.ok : PALETTE.bad }}>{connected ? '○' : '×'}</b>{def.needsContract && ` · 계약 ${st.contract ? '중' : '없음'}`}</div>
         {facility && st.unlocked && !connected
           ? <div style={{ fontSize: 13, color: PALETTE.bad, fontWeight: 700 }} data-testid="route-broken">길이 끊겼어요 — 진입점({def.entry.x},{def.entry.y})까지 올렛길을 이어요</div>
-          : <div style={small}>{status}{!opened && st.unlocked && !facility ? ` · ${facilityName} ${won(objectDef(def.facilities[0]!).cost)}` : ''}</div>}
+          : facility && st.unlocked && !linked
+            ? <div style={{ fontSize: 13, color: PALETTE.bad, fontWeight: 700 }} data-testid="route-unlinked">길이 끊겼어요 — 자리까지 올렛길이 안 이어졌어요</div>
+            : <div style={small}>{status}{!opened && st.unlocked && !facility ? ` · ${facilityName} ${won(objectDef(def.facilities[0]!).cost)}` : ''}</div>}
+        {st.unlocked && facility && connected && linked && share > 0 && <div style={small} data-testid="route-share">하루 손님의 <b style={{ color: PALETTE.ink }}>{Math.round(share * 100)}%</b>가 여기서 와요{route === 'parking' ? ' (10~17시)' : ''}</div>}
       </div>
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
-        {def.needsContract && (st.contract
+        {autoLink && <button style={autoLink.ok ? btnOn : btnOff} disabled={!autoLink.ok} title={autoLink.ok ? undefined : autoLink.reason} onClick={doAutoLink} data-testid="route-autolink"><Icon name="roadside" /> 자동 잇기{autoLink.route && autoLink.route.cost > 0 ? ` (${won(autoLink.route.cost)})` : ''}</button>}
+        {autoLink && !autoLink.ok && autoLink.reason && <span style={{ ...small, alignSelf: 'center' }}>{autoLink.reason}</span>}
+        {def.needsContract && gradeOf(s) >= REVEAL_GRADE && (st.contract
           ? <button style={contractOff.ok ? btnDanger : btnOff} disabled={!contractOff.ok} onClick={contract} data-testid="route-contract">계약 해지</button>
           : <button style={contractOn.ok ? btnOn : btnOff} disabled={!contractOn.ok} title={contractOn.ok ? undefined : contractOn.reason} onClick={contract} data-testid="route-contract"><Icon name="plane" /> 계약 ({won(SHUTTLE_FEE)}/월)</button>)}
         {route === 'parking' && lot && <button style={expand.ok ? btnOn : btnOff} disabled={!expand.ok} title={expand.ok ? undefined : expand.reason} onClick={doExpand} data-testid="route-expand"><Icon name="car" /> 넓히기 ({won(parkingExpandCost())})</button>}

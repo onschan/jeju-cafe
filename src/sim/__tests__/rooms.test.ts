@@ -46,10 +46,10 @@ describe('데이터 (§8.2·8.3)', () => {
     expect(objectDef('annex_cafe')).toMatchObject({ kind: 'building', w: 4, h: 3, cost: 6_000_000, buildDays: 7 });
     expect(objectDef('greenhouse_cafe')).toMatchObject({ w: 3, h: 3, cost: 4_500_000 });
   });
-  test('실내 콤보 8 (난로+소파·책장+창가석·피아노+바·수족관+키즈…)', () => {
-    const ids = ['cb_fire_sofa', 'cb_book_window', 'cb_piano_bar', 'cb_fish_kids', 'cb_fire_table', 'cb_counter_bar', 'cb_sofa_window', 'cb_piano_fish'];
+  test('실내 콤보 2 (피아노+바·수족관+키즈) — 나머지 실내 짝은 fun-corner 코너(독서 정원)로 옮겼다', () => {
+    const ids = ['cb_piano_bar', 'cb_fish_kids'];
     for (const id of ids) expect(COMBOS.find((c) => c.id === id), id).toBeDefined();
-    expect(COMBOS.length).toBe(68);
+    expect(COMBOS.length).toBeLessThanOrEqual(12);
   });
   test('목표 3개 교체(id 유지·보상 유지): g23 실내 좌석 6석 · g41 본관 Lv2 · g45 별관', () => {
     expect(goalDef('g23')).toMatchObject({ condition: { type: 'indoorSeats', n: 6 }, reward: [{ type: 'unlockFacility', id: 'vending' }] });

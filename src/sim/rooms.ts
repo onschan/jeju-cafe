@@ -274,12 +274,17 @@ export function autoConnectRoute(state: GameState, room: PlacedObject): AutoRout
   if (isDoorReachable(state, room)) return { route: [], empty: [], cost: 0 };
   const front = objectAt(state, f.x, f.y);
   if (front && front.id !== room.id && objectDef(front.type).kind !== 'path') return { route: null, empty: [], cost: 0, blocked: objectDef(front.type).name }; // 문 앞에 시설이 있으면 못 잇는다
+  return autoConnectFrom(state, f);
+}
+/** 칸 f에서 정류장과 이어진 첫 칸까지 최단 올렛길 (fun P0: 경로 시설 앞 칸 「자동 잇기」도 이걸 쓴다). f가 이미 이어져 있으면 route []. */
+export function autoConnectFrom(state: GameState, f: Pt): AutoRoute {
   const reach = reachMap(state, busStopPos(state)).dist;
   const connected = (p: Pt) => isWalkable(state, p.x, p.y) && reach.has(cellKey(state, p));
+  if (connected(f)) return { route: [], empty: [], cost: 0 };
   const passable = (p: Pt) => inBounds(state, p.x, p.y) && cellAt(state, p.x, p.y).roomId === null
     && (isWalkable(state, p.x, p.y) || canPlace(state, AUTO_PATH_TYPE, p.x, p.y).ok);
   if (!passable(f)) return { route: null, empty: [], cost: 0 };
-  // 문 앞에서 BFS — 정류장과 이어진 첫 칸을 만나면 그 경로가 최단
+  // f에서 BFS — 정류장과 이어진 첫 칸을 만나면 그 경로가 최단
   const prev = new Map<number, number>();
   const queue: Pt[] = [f];
   prev.set(cellKey(state, f), -1);

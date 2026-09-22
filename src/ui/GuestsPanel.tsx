@@ -28,6 +28,9 @@ import { RivalPanel } from './RivalPanel';
 import { Portrait, guestPortraitParts, guestPortraitOf, guestWallet, guestName } from './GuestPopup';
 import { Bar } from './Bars';
 import { ComplaintsCard } from './ComplaintsCard';
+import { RequestsCard } from './RequestsCard'; // fun-guest: 손님 요청 카드
+import { Hearts } from './MiniCard';
+import { regularHearts } from '../sim/index.ts';
 import { card, brownBtn, brownBtnOn, PALETTE } from './frame';
 
 type Sub = 'now' | 'quests' | 'codex' | 'rivals';
@@ -127,6 +130,7 @@ export function GuestsPanel({ onGuest, sub: fixed }: { onGuest: (guestId: string
       )}
       {sub === 'now' && (
         <div>
+          <RequestsCard />
           <TargetSlots s={s} />
           <ComplaintsCard />
           <SortChips chips={SORTS} active={sort} onPick={setSort} testId="guest-sort" />
@@ -138,7 +142,7 @@ export function GuestsPanel({ onGuest, sub: fixed }: { onGuest: (guestId: string
             return (
               <button key={g.id} data-tut={gi === 0 ? 'guest-row' : undefined} style={{ ...card, display: 'flex', alignItems: 'center', gap: 8, width: '100%', textAlign: 'left', fontFamily: 'inherit', fontSize: 14, color: PALETTE.ink }} onClick={() => onGuest(g.id)} aria-label={guestName(g)}>
                 <Portrait {...guestPortraitOf(g)} size={32} />
-                <span style={{ flex: 1 }}><b>{guestName(g)}</b>{target && <span title="타깃"> <Icon name="target" size={14} /></span>}{g.namedId && <b style={{ color: PALETTE.btn }}> ★</b>}{q && <b style={{ color: PALETTE.bad }}> !</b>}<br /><span style={{ fontSize: 12, color: PALETTE.inkSoft }}>{g.phase === 'seated' ? '자리에서' : g.phase === 'visiting' ? '구경 중' : g.phase === 'leaving' ? '집에 가는 중' : '오는 중'}{g.mood ? <> <Icon name={MOOD_ICON[g.mood] ?? 'mood_meh'} size={14} /></> : ''} · 만족 {s.guestTypes[g.type]?.satisfaction ?? 0}</span></span>
+                <span style={{ flex: 1 }}><b>{guestName(g)}</b>{target && <span title="타깃"> <Icon name="target" size={14} /></span>}{g.namedId && <b style={{ color: PALETTE.btn }}> ★</b>}{g.regularId && <b style={{ color: PALETTE.btn }}> ♥</b>}{g.requestId && <b style={{ color: PALETTE.title }}> ?</b>}{q && <b style={{ color: PALETTE.bad }}> !</b>}<br /><span style={{ fontSize: 12, color: PALETTE.inkSoft }}>{g.phase === 'seated' ? '자리에서' : g.phase === 'visiting' ? '구경 중' : g.phase === 'leaving' ? '집에 가는 중' : '오는 중'}{g.mood ? <> <Icon name={MOOD_ICON[g.mood] ?? 'mood_meh'} size={14} /></> : ''} · 만족 {s.guestTypes[g.type]?.satisfaction ?? 0}</span></span>
                 <span style={{ fontSize: 12, color: PALETTE.inkSoft }}>지갑 {wonText(guestWallet(s, g))}</span>
               </button>
             );
@@ -156,10 +160,18 @@ export function GuestsPanel({ onGuest, sub: fixed }: { onGuest: (guestId: string
               <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2, fontSize: 14 }}>
                 <Portrait parts={guestPortraitParts(t.id)} face={guestFace(t.id)} size={24} />
                 <span style={{ flex: 1 }}>{t.name}</span>
+                <Hearts n={regularHearts(s, t.id)} />
                 <span style={{ fontSize: 12, whiteSpace: 'nowrap' }}><Bar value={st?.satisfaction ?? 0} max={100} width={60} /> {st?.satisfaction ?? 0}{st?.regular === 'vip' ? ' VIP' : st?.regular === 'regular' ? ' 단골' : ''}</span>
               </div>
             );
           })}
+          {/* fun-guest: 도감 「단골」 — 게이지 5로 등록된 이름·얼굴 고정 손님 */}
+          {(s.regulars ?? []).length > 0 && (
+            <div style={{ marginTop: 6, fontSize: 13 }} data-testid="codex-regulars">
+              <b><Icon name="heart" size={14} /> 단골 {(s.regulars ?? []).length}명</b> · 매주 오고 팁을 더 내요<br />
+              <span style={{ color: PALETTE.inkSoft }}>{(s.regulars ?? []).map((r) => `${r.name}(${guestTypeDef(r.guestType).name})`).join(' · ')}</span>
+            </div>
+          )}
           {/* game-feel P1 (카이로식): 다음에 올 손님 — 조건이 손에 잡히는 잠긴 손님층은 이름 없이 「? · 대학생 손님 만족 30이면 열려요」 한 줄씩 */}
           {next.length > 0 && (
             <div style={{ marginTop: 6 }} data-testid="codex-next">
