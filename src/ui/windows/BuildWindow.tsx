@@ -10,11 +10,12 @@ import { loadSheet, drawFrame, type Sheet } from '../sheetCanvas';
 import { PALETTE, brownBtn, brownBtnOff } from '../frame';
 import { useWindowState, body, TabBar, soft, Empty, type WindowProps } from './shared.tsx';
 import { SiteToggle } from '../SiteToggle.tsx';
+import { CornerTab } from './CornerTab.tsx'; // fun-corner 「코너」 탭
 
-export type BuildTab = 'building' | 'indoor' | 'rest' | 'convenience' | 'food' | 'fun' | 'farm' | 'scenery' | 'path' | 'wall';
-/** 탭 순서 (§8.4): [건물 — 본관이 없을 때만(w-start)] · 실내 · 쉼 · 편의 · 먹거리 · 즐길거리 · 농원 · 경관 · 길 · 담 */
+export type BuildTab = 'building' | 'corner' | 'indoor' | 'rest' | 'convenience' | 'food' | 'fun' | 'farm' | 'scenery' | 'path' | 'wall';
+/** 탭 순서 (§8.4): [건물 — 본관이 없을 때만(w-start)] · 코너(fun-corner) · 실내 · 쉼 · 편의 · 먹거리 · 즐길거리 · 농원 · 경관 · 길 · 담 */
 export const BUILD_TABS: { key: BuildTab; label: string }[] = [
-  { key: 'building', label: '건물' }, { key: 'indoor', label: '실내' }, { key: 'rest', label: '쉼' }, { key: 'convenience', label: '편의' }, { key: 'food', label: '먹거리' }, { key: 'fun', label: '즐길거리' },
+  { key: 'building', label: '건물' }, { key: 'corner', label: '코너' }, { key: 'indoor', label: '실내' }, { key: 'rest', label: '쉼' }, { key: 'convenience', label: '편의' }, { key: 'food', label: '먹거리' }, { key: 'fun', label: '즐길거리' },
   { key: 'farm', label: '농원' }, { key: 'scenery', label: '경관' }, { key: 'path', label: '길' }, { key: 'wall', label: '담' },
 ];
 /** 본관 카드 「실내 꾸미기」처럼 창을 여는 쪽이 첫 탭을 지정한다 (App 창 매핑을 안 건드리고 — y-indoor). 한 번 읽으면 지워진다. */
@@ -100,7 +101,7 @@ export function BuildWindow(props: BuildWindowProps) {
     el.addEventListener('scroll', onScroll, { passive: true });
     return () => el.removeEventListener('scroll', onScroll);
   }, [props.initialTab]);
-  const recent = activeTabIsList(tab, noMain) ? recentBuildTypes(s) : [];
+  const recent = activeTabIsList(tab, noMain) && tab !== 'corner' ? recentBuildTypes(s) : [];
   const tabs = noMain ? BUILD_TABS : BUILD_TABS.filter((t) => t.key !== 'building');
   const activeTab: BuildTab = tab === 'building' && !noMain ? 'rest' : tab;
   const [picked, setPicked] = useState<string | null>(null);
@@ -110,6 +111,7 @@ export function BuildWindow(props: BuildWindowProps) {
   const unlocked = new Set(s.unlocked.objects);
   const items = activeTab === 'building'
     ? (noMain ? [{ def: objectDef(MAIN_TYPE), locked: false }] : [])
+    : activeTab === 'corner' ? [] // fun-corner: 코너 탭은 카드가 아니라 CornerTab
     : OBJECTS.filter((d) => !HIDDEN_IDS.has(d.id) && buildTabOf(d) === activeTab)
       .map((def) => ({ def, locked: !unlocked.has(def.id) }))
       .sort((a, b) => Number(a.locked) - Number(b.locked) || a.def.cost - b.def.cost);
@@ -133,13 +135,14 @@ export function BuildWindow(props: BuildWindowProps) {
         </div>
       )}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0 8px', marginBottom: 6 }}>
-        <span style={soft}>열린 것 {counts[activeTab] ?? 0} · 자금 {wonText(s.money)}</span>
+        <span style={soft}>{activeTab === 'corner' ? '' : `열린 것 ${counts[activeTab] ?? 0} · `}자금 {wonText(s.money)}</span>
         <span style={{ ...soft, color: busy >= s.builders ? PALETTE.bad : PALETTE.inkSoft }} data-testid="builders">건축가 {busy}/{s.builders} 작업 중</span>
         <SiteToggle />{/* ease: 입지 보기는 처음부터 */}
       </div>
       {activeTab === 'building' && <div style={{ ...soft, marginBottom: 6 }} data-testid="build-main-hint"><Icon name="home" size={14} /> {MAIN_CARD_HINT}</div>}
       {activeTab === 'indoor' && <div style={{ ...soft, marginBottom: 6 }}><Icon name="home" size={14} /> 실내 가구는 건물(본관·별관) 안 바닥에만 놓아요 — 문 칸은 비워 둬요</div>}
-      {items.length === 0 && <Empty>아직 여기엔 지을 게 없어요</Empty>}
+      {activeTab === 'corner' && <CornerTab s={s} onPickBuild={props.onPickBuild} />}
+      {activeTab !== 'corner' && items.length === 0 && <Empty>아직 여기엔 지을 게 없어요</Empty>}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
         {items.map(({ def, locked }) => {
           const cost = locked ? def.cost : placeCost(s, def.id);

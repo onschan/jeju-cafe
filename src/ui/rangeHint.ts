@@ -3,6 +3,7 @@
 import type { GameState, PlacedObject } from '../sim/index.ts';
 import { objectDef, COMBOS } from '../data/index.ts';
 import type { RangeHint } from '../render/GameView';
+import { cornerIfPlaced, cornersWithPiece } from '../sim/corners.ts'; // fun-corner: 고스트 배지
 
 export const HINT_RADIUS = 2;
 
@@ -36,5 +37,13 @@ export function comboPartners(s: GameState, type: string, x: number, y: number, 
 
 export function rangeHintFor(s: GameState, type: string, x: number, y: number, ignoreId?: string): RangeHint {
   const def = objectDef(type);
-  return { x, y, w: def.w, h: def.h, radius: HINT_RADIUS, marks: comboPartners(s, type, x, y, ignoreId).map((o) => { const d = objectDef(o.type); return { x: o.x, y: o.y, w: d.w, h: d.h }; }) };
+  return { x, y, w: def.w, h: def.h, radius: HINT_RADIUS, marks: comboPartners(s, type, x, y, ignoreId).map((o) => { const d = objectDef(o.type); return { x: o.x, y: o.y, w: d.w, h: d.h }; }), badge: cornerBadge(s, type, x, y, ignoreId) };
+}
+
+/** fun-corner: 고스트가 코너 조각이면 배지 — 여기 놓으면 완성되는 코너가 있으면 "이걸 놓으면 꽃길 완성", 아니면 코너 이름만("꽃길 조각") */
+export function cornerBadge(s: GameState, type: string, x: number, y: number, ignoreId?: string): string | undefined {
+  const done = cornerIfPlaced(s, type, x, y, ignoreId);
+  if (done) return `이걸 놓으면 ${done.name} 완성`;
+  const c = cornersWithPiece(type)[0];
+  return c ? `${c.name} 조각` : undefined;
 }
