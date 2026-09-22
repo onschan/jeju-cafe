@@ -7,7 +7,7 @@ import { seasonOf, canPlace, objectAt, footprint, sizeOf, mainBuilding, parcelAt
 import { RoutesSection } from './RouteCard'; // 트랙 H
 import { objectDef } from '../data/index.ts';
 // render/·ui/는 Vite 전용이라 확장자 없는 import 허용. sim/·data/만 .ts 확장자 규칙.
-import { TopShell, BottomBar, PlaceBar, SHELL_BOTTOM, BOTTOM_BAR_H, type WindowKind, type PlaceBarProps } from './Shell';
+import { TopShell, BottomBar, PlaceBar, SHELL_BOTTOM, SHELL_TOP, BOTTOM_BAR_H, type WindowKind, type PlaceBarProps } from './Shell';
 import { Window, type IconGridItem } from './Window';
 import { MessageLine } from './MessageLine';
 import { MiniCard, MainCard, type CardTarget, type CardActions } from './MiniCard';
@@ -15,6 +15,7 @@ import { DialogueHost } from './Dialogue.tsx';
 import { checkTutorial, setTutorialDispatch, useTutorialNote } from './tutorialDialogue';
 import { startSolverLoop } from './solverClient';
 import { useTutorialHighlight, useSpotlightPref, setSpotlightOn } from './tutorialHighlight';
+import { FirstTipBubble, useFirstTip, tipKeyFor, showFirstTip } from './firstTip'; // fun-start: 창·탭·모드 첫 열기 팁 한 줄
 import { SiteOverlayChip } from './SiteToggle';
 import { RewardPopup } from './RewardPopup';
 import { OutcomePopup } from './OutcomePopup'; // staff-luck: 대박/중박/쪽박 룰렛
@@ -388,7 +389,7 @@ function Game({ onExit }: { onExit: () => void }) {
     const d = objectDef(home.type);
     viewRef.current?.focusCell(home.x, home.y, d.w, d.h, 1.5);
   };
-  const undo = () => { if (dispatch({ type: 'undoLast' }).ok) showMessage('되돌렸어요'); };
+  const undo = () => { if (dispatch({ type: 'undoLast' }).ok) { showMessage('되돌렸어요'); showFirstTip('undo'); } };
 
   useEffect(() => {
     const host = hostRef.current!;
@@ -657,6 +658,7 @@ function Game({ onExit }: { onExit: () => void }) {
   const closeWin = () => setWin(null);
   // 튜토리얼 하이라이트 (data-tut 글로우 + 맵 칸)
   useTutorialHighlight(view);
+  useFirstTip(tipKeyFor(win, mode, !!guestPopup)); // fun-start: 창·탭·모드를 처음 열면 팁 한 줄
 
   const CAFE_MENU: IconGridItem<CafeTab>[] = [
     { key: 'menu', label: '메뉴판', icon: 'coffee' },
@@ -753,6 +755,7 @@ function Game({ onExit }: { onExit: () => void }) {
     <div onPointerDownCapture={onPointerDown} style={{ position: 'relative', width: '100%', height: '100%' }}>
       <div ref={hostRef} style={{ position: 'absolute', inset: 0, touchAction: 'none' }} />
       <SiteOverlayChip />
+      <FirstTipBubble top={win ? 52 : SHELL_TOP + 10} />
       <TopShell onStatus={() => setWin({ kind: 'status' })} onGoal={() => setWin({ kind: 'goal' })} />
       {!place && !cardTarget && (
         <button data-testid="home-btn" aria-label="본관으로" onClick={goHome}
