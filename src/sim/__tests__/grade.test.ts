@@ -134,14 +134,13 @@ test('목표 사다리 새 조건: 등급·코너·단골·2층·평판·전설 
   expect(goalConditionText({ type: 'secondFloor' })).toBe('본관 2층 올리기');
   expect(goalConditionText({ type: 'legendStaff', n: 1 })).toBe('전설 직원 채용');
   expect(goalConditionText({ type: 'routesOpen', n: 4 })).toBe('손님 오는 길 4종');
-  // 사다리: 3년차 이후 목표(g70~)에 자금 목표가 없고, 등급 3·4·5·본관 Lv3/4·2층·직원 7/9·명소 Lv4/5가 들어 있다
-  const late = GOALS.slice(69).map((g) => g.condition);
+  // 사다리: 후반 목표(g45~)에 자금 목표가 없고, 등급 3·4·5·본관 Lv3/4·2층·직원이 들어 있다 (trim: 목표 60)
+  const late = GOALS.slice(44).map((g) => g.condition);
   expect(late.some((c) => c.type === 'money')).toBe(false);
   expect(late.filter((c) => c.type === 'grade').map((c) => (c as { n: number }).n).sort()).toEqual([3, 4, 5]);
   expect(late.filter((c) => c.type === 'mainLevel').map((c) => (c as { lv: number }).lv).sort()).toEqual([3, 4]);
   expect(late.some((c) => c.type === 'secondFloor')).toBe(true);
-  expect(late.filter((c) => c.type === 'staff').map((c) => (c as { n: number }).n).sort((a, b) => a - b)).toEqual([6, 7, 9]);
-  expect(late.filter((c) => c.type === 'spotAny' && (c as { lv: number }).lv >= 4).length).toBeGreaterThanOrEqual(5);
+  expect(late.some((c) => c.type === 'staff')).toBe(true);
   // 조건 문구는 전부 있다 (switch 누락 방지)
   for (const g of GOALS) expect(goalConditionText(g.condition).length, g.id).toBeGreaterThan(0);
   void apply;

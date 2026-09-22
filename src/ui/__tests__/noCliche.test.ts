@@ -36,12 +36,12 @@ describe('문구 규칙 §6: 지시문·화살표·정석·시뮬 없음', () =>
     expectClean(texts, '튜토리얼');
     for (const t of TUTORIAL_STEPS) for (const l of t.lines) expect(fillTemplate(l, vars).length, l).toBeLessThanOrEqual(22);
   });
-  it('첫 열기 팁 20개 이상, 한 줄 ≤ 22자, 창·탭 키가 실제 창 이름을 따른다', () => {
+  it('첫 열기 팁 12, 한 줄 ≤ 22자, 창·탭 키가 실제 창 이름을 따른다', () => {
     const keys = Object.keys(FIRST_TIPS);
-    expect(keys.length).toBeGreaterThanOrEqual(20);
+    expect(keys.length).toBe(12);
     expectClean(Object.values(FIRST_TIPS), '팁');
     for (const [k, v] of Object.entries(FIRST_TIPS)) { expect(v.length, k).toBeLessThanOrEqual(22); expect(v.length, k).toBeGreaterThan(0); }
-    for (const k of ['build', 'cafe:menu', 'cafe:building', 'people:staff', 'ledger:spots', 'ledger:shop', 'ledger:rank', 'ledger:region', 'goal', 'siteView', 'undo', 'recommend', 'guest', 'build:parking_lot']) expect(TIPS[k], k).toBeTruthy();
+    for (const k of ['build', 'cafe:menu', 'people:staff', 'ledger:spots', 'goal', 'siteView', 'build:parking_lot']) expect(TIPS[k], k).toBeTruthy();
   });
   it('인트로 6컷 자막: 1인칭 상황, 금지어 없음', () => {
     expectClean(INTRO_CUTS.flatMap((c) => [c.caption, ...c.lines]), '인트로');

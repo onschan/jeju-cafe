@@ -45,9 +45,9 @@
     "seasonBonus": {},
     "unlock": {
       "type": "goal",
-      "goalId": "g41"
+      "goalId": "g36"
     },
-    "unlockRef": "goal:g41",
+    "unlockRef": "goal:g36",
     "unlockText": "목표 보상",
     "description": "드럼통을 반으로 갈라 만든 족욕통. 장작 냄새가 나요."
   },
@@ -71,9 +71,9 @@
     "seasonBonus": {},
     "unlock": {
       "type": "goal",
-      "goalId": "g48"
+      "goalId": "g41"
     },
-    "unlockRef": "goal:g48",
+    "unlockRef": "goal:g41",
     "unlockText": "목표 보상",
     "description": "무쇠 가마솥 족욕. 삼춘들이 제일 좋아해요."
   },
@@ -178,9 +178,9 @@
     "seasonBonus": {},
     "unlock": {
       "type": "goal",
-      "goalId": "g63"
+      "goalId": "g46"
     },
-    "unlockRef": "goal:g63",
+    "unlockRef": "goal:g46",
     "unlockText": "목표 보상",
     "description": "돌담 두른 노천 족욕탕. 오름을 보며 발을 담가요."
   },
@@ -204,9 +204,9 @@
     "seasonBonus": {},
     "unlock": {
       "type": "goal",
-      "goalId": "g74"
+      "goalId": "g51"
     },
-    "unlockRef": "goal:g74",
+    "unlockRef": "goal:g51",
     "unlockText": "목표 보상",
     "description": "어깨로 떨어지는 물줄기. 물맞이 명당."
   },
@@ -230,9 +230,9 @@
     "seasonBonus": {},
     "unlock": {
       "type": "goal",
-      "goalId": "g81"
+      "goalId": "g54"
     },
-    "unlockRef": "goal:g81",
+    "unlockRef": "goal:g54",
     "unlockText": "목표 보상",
     "description": "현무암 움막 찜질방. 땀 빼고 냉수 족욕으로."
   },
@@ -256,9 +256,9 @@
     "seasonBonus": {},
     "unlock": {
       "type": "goal",
-      "goalId": "g33"
+      "goalId": "g31"
     },
-    "unlockRef": "goal:g33",
+    "unlockRef": "goal:g31",
     "unlockText": "목표 보상",
     "description": "동전 넣고 10분. 어깨가 풀려요."
   },
@@ -308,9 +308,9 @@
     "seasonBonus": {},
     "unlock": {
       "type": "goal",
-      "goalId": "g76"
+      "goalId": "g52"
     },
-    "unlockRef": "goal:g76",
+    "unlockRef": "goal:g52",
     "unlockText": "목표 보상",
     "description": "푹신한 소파와 감귤차. 카페의 거실."
   },
@@ -334,9 +334,9 @@
     "seasonBonus": {},
     "unlock": {
       "type": "goal",
-      "goalId": "g53"
+      "goalId": "g43"
     },
-    "unlockRef": "goal:g53",
+    "unlockRef": "goal:g43",
     "unlockText": "목표 보상",
     "description": "현금이 떨어진 손님을 붙잡아요."
   },
@@ -438,9 +438,9 @@
     "seasonBonus": {},
     "unlock": {
       "type": "goal",
-      "goalId": "g40"
+      "goalId": "g35"
     },
-    "unlockRef": "goal:g40",
+    "unlockRef": "goal:g35",
     "unlockText": "목표 보상",
     "description": "얼음 가득 레몬에이드. 여름 한정 아님."
   },
@@ -518,9 +518,9 @@
     "seasonBonus": {},
     "unlock": {
       "type": "goal",
-      "goalId": "g89"
+      "goalId": "g56"
     },
-    "unlockRef": "goal:g89",
+    "unlockRef": "goal:g56",
     "unlockText": "목표 보상",
     "description": "감귤 사탕과 우도 땅콩 캔디."
   },
@@ -544,9 +544,9 @@
     "seasonBonus": {},
     "unlock": {
       "type": "goal",
-      "goalId": "g43"
+      "goalId": "g37"
     },
-    "unlockRef": "goal:g43",
+    "unlockRef": "goal:g37",
     "unlockText": "목표 보상",
     "description": "녹차와 다과를 내는 조용한 방."
   },
@@ -570,9 +570,9 @@
     "seasonBonus": {},
     "unlock": {
       "type": "goal",
-      "goalId": "g60"
+      "goalId": "g46"
     },
-    "unlockRef": "goal:g60",
+    "unlockRef": "goal:g46",
     "unlockText": "목표 보상",
     "description": "에그 베네딕트와 감귤 샐러드."
   },
@@ -596,9 +596,9 @@
     "seasonBonus": {},
     "unlock": {
       "type": "goal",
-      "goalId": "g77"
+      "goalId": "g53"
     },
-    "unlockRef": "goal:g77",
+    "unlockRef": "goal:g53",
     "unlockText": "목표 보상",
     "description": "오름을 보며 코스 요리. 예약 필수."
   },
@@ -622,9 +622,9 @@
     "seasonBonus": {},
     "unlock": {
       "type": "goal",
-      "goalId": "g35"
+      "goalId": "g32"
     },
-    "unlockRef": "goal:g35",
+    "unlockRef": "goal:g32",
     "unlockText": "목표 보상",
     "description": "동전 하나에 돌하르방 캡슐."
   },
@@ -673,9 +673,9 @@
     "seasonBonus": {},
     "unlock": {
       "type": "goal",
-      "goalId": "g93"
+      "goalId": "g56"
     },
-    "unlockRef": "goal:g93",
+    "unlockRef": "goal:g56",
     "unlockText": "목표 보상",
     "description": "구슬을 굴려 상품을 받는 기계."
   },
@@ -699,9 +699,9 @@
     "seasonBonus": {},
     "unlock": {
       "type": "goal",
-      "goalId": "g72"
+      "goalId": "g50"
     },
-    "unlockRef": "goal:g72",
+    "unlockRef": "goal:g50",
     "unlockText": "목표 보상",
     "description": "옛날 오락기 네 대. 동전 소리가 들려요."
   },
@@ -725,9 +725,9 @@
     "seasonBonus": {},
     "unlock": {
       "type": "goal",
-      "goalId": "g94"
+      "goalId": "g56"
     },
-    "unlockRef": "goal:g94",
+    "unlockRef": "goal:g56",
     "unlockText": "목표 보상",
     "description": "코르크 총으로 인형 맞히기."
   },
@@ -751,9 +751,9 @@
     "seasonBonus": {},
     "unlock": {
       "type": "goal",
-      "goalId": "g78"
+      "goalId": "g53"
     },
-    "unlockRef": "goal:g78",
+    "unlockRef": "goal:g53",
     "unlockText": "목표 보상",
     "description": "과녁을 향해 활을 당겨요."
   },
@@ -777,9 +777,9 @@
     "seasonBonus": {},
     "unlock": {
       "type": "goal",
-      "goalId": "g59"
+      "goalId": "g46"
     },
-    "unlockRef": "goal:g59",
+    "unlockRef": "goal:g46",
     "unlockText": "목표 보상",
     "description": "탁구 한 판. 단짝이 생겨요."
   },
@@ -803,9 +803,9 @@
     "seasonBonus": {},
     "unlock": {
       "type": "goal",
-      "goalId": "g70"
+      "goalId": "g49"
     },
-    "unlockRef": "goal:g70",
+    "unlockRef": "goal:g49",
     "unlockText": "목표 보상",
     "description": "두 레인짜리 미니 볼링장."
   },
@@ -829,9 +829,9 @@
     "seasonBonus": {},
     "unlock": {
       "type": "goal",
-      "goalId": "g66"
+      "goalId": "g46"
     },
-    "unlockRef": "goal:g66",
+    "unlockRef": "goal:g46",
     "unlockText": "목표 보상",
     "description": "아침 요가. 매트가 깔려 있어요."
   },
@@ -882,9 +882,9 @@
     "seasonBonus": {},
     "unlock": {
       "type": "goal",
-      "goalId": "g88"
+      "goalId": "g56"
     },
-    "unlockRef": "goal:g88",
+    "unlockRef": "goal:g56",
     "unlockText": "목표 보상",
     "description": "동백과 수국으로 꽃다발 만들기."
   },
@@ -908,9 +908,9 @@
     "seasonBonus": {},
     "unlock": {
       "type": "goal",
-      "goalId": "g79"
+      "goalId": "g53"
     },
-    "unlockRef": "goal:g79",
+    "unlockRef": "goal:g53",
     "unlockText": "목표 보상",
     "description": "여행 중 머리 손질. 거울이 반짝여요."
   },
@@ -934,9 +934,9 @@
     "seasonBonus": {},
     "unlock": {
       "type": "goal",
-      "goalId": "g95"
+      "goalId": "g56"
     },
-    "unlockRef": "goal:g95",
+    "unlockRef": "goal:g56",
     "unlockText": "목표 보상",
     "description": "보라색 천막 안 타로 점."
   },
@@ -960,9 +960,9 @@
     "seasonBonus": {},
     "unlock": {
       "type": "goal",
-      "goalId": "g83"
+      "goalId": "g55"
     },
-    "unlockRef": "goal:g83",
+    "unlockRef": "goal:g55",
     "unlockText": "목표 보상",
     "description": "작은 무대 위 마술사. 비둘기가 나와요."
   },
@@ -986,9 +986,9 @@
     "seasonBonus": {},
     "unlock": {
       "type": "goal",
-      "goalId": "g84"
+      "goalId": "g55"
     },
-    "unlockRef": "goal:g84",
+    "unlockRef": "goal:g55",
     "unlockText": "목표 보상",
     "description": "오래된 라디오와 접시."
   },
@@ -1012,9 +1012,9 @@
     "seasonBonus": {},
     "unlock": {
       "type": "goal",
-      "goalId": "g85"
+      "goalId": "g55"
     },
-    "unlockRef": "goal:g85",
+    "unlockRef": "goal:g55",
     "unlockText": "목표 보상",
     "description": "린넨 셔츠와 갈옷."
   },
@@ -1038,9 +1038,9 @@
     "seasonBonus": {},
     "unlock": {
       "type": "goal",
-      "goalId": "g44"
+      "goalId": "g38"
     },
-    "unlockRef": "goal:g44",
+    "unlockRef": "goal:g38",
     "unlockText": "목표 보상",
     "description": "유채와 수국 꽃다발을 팔아요."
   },
@@ -1064,9 +1064,9 @@
     "seasonBonus": {},
     "unlock": {
       "type": "goal",
-      "goalId": "g87"
+      "goalId": "g55"
     },
-    "unlockRef": "goal:g87",
+    "unlockRef": "goal:g55",
     "unlockText": "목표 보상",
     "description": "큰 화면으로 제주 영화를."
   },
@@ -1090,9 +1090,9 @@
     "seasonBonus": {},
     "unlock": {
       "type": "goal",
-      "goalId": "g71"
+      "goalId": "g49"
     },
-    "unlockRef": "goal:g71",
+    "unlockRef": "goal:g49",
     "unlockText": "목표 보상",
     "description": "밴드 공연이 열리는 작은 홀."
   },
@@ -1143,9 +1143,9 @@
     "seasonBonus": {},
     "unlock": {
       "type": "goal",
-      "goalId": "g98"
+      "goalId": "g57"
     },
-    "unlockRef": "goal:g98",
+    "unlockRef": "goal:g57",
     "unlockText": "목표 보상",
     "description": "커튼 친 안마 부스. 발 마사지 전문."
   }

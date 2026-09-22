@@ -35,21 +35,10 @@ describe('§4.5 이벤트 보정', () => {
     expect(typhoonRepairCost({ ...big, objects: big.objects } as typeof big, { ...fake, effects: { ...fake.effects, repairMin: 0, repairMax: 20_000_000 } })).toBeLessThanOrEqual(20_000_000);
   });
 
-  it('폭설: 난방비 20만 + 농원 수확 ×0.7 (30일 효과). 해상 안개: 외국 손님 ×0', () => {
-    const s = bareState(1);
-    const money = s.money;
-    startEvent(s, 'ev_snow_jan');
-    expect(s.money).toBe(money - 200_000);
-    expect(effectMult(s, 'harvestMult')).toBeCloseTo(0.7);
-    const f = bareState(1);
-    startEvent(f, 'ev_sea_fog');
-    expect(eventTagMult(f, 'solo_foreign')).toBe(0);
-    expect(eventTagMult(f, 'student')).toBe(1);
-  });
 
-  it('노루·까치 습격(9~11월 25%): 수확 ×0.5, 운반 직원 힘 ≥ 40이면 ×0.8, 노루 방울이 있으면 확률 ×0.5', () => {
+  it('노루·까치 습격(9월 25%): 수확 ×0.5, 운반 직원 힘 ≥ 40이면 ×0.8, 노루 방울이 있으면 확률 ×0.5', () => {
     const defs = BIG_EVENTS.filter((e) => e.title === '노루·까치 습격');
-    expect(defs.map((d) => d.month)).toEqual([9, 10, 11]);
+    expect(defs.map((d) => d.month)).toEqual([9]);
     for (const d of defs) expect(d.chance).toBe(0.25);
     const s = bareState(1);
     startEvent(s, 'ev_deer_raid');
@@ -66,21 +55,6 @@ describe('§4.5 이벤트 보정', () => {
     expect(eventChance(u, bigEventDef('ev_deer_raid'))).toBe(0.125);
   });
 
-  it('렌터카 대란(7~8월 30%): 주차장이 없을 때만, 7일간 가족·단체 ×0.5', () => {
-    const s = bareState(1);
-    s.clock.month = 7;
-    const def = bigEventDef('ev_rental_crisis');
-    expect(def.chance).toBe(0.3);
-    expect(customMet(s, 'noParking')).toBe(true);
-    expect(eventEligible(s, def)).toBe(true);
-    startEvent(s, 'ev_rental_crisis');
-    expect(activeEvents(s).map((e) => e.id)).toEqual(['ev_rental_crisis']);
-    expect(effectMult(s, 'spawnMult', 'rentcar_family')).toBeCloseTo(0.5);
-    expect(eventTagMult(s, 'school_trip')).toBe(0.5); // group
-    // TODO(x-facility): parking 시설이 생기면 놓았을 때 eligible false 검증
-    s.objects['x'] = { id: 'x', type: 'parking', x: 0, y: 0, placedMonth: 0 } as never;
-    expect(customMet(s, 'noParking')).toBe(false);
-  });
 
   it('악플: 청결 < 50 30일(x-facility 전엔 스텁 false)이 조건이라 지금은 발동하지 않는다', () => {
     const s = bareState(1);

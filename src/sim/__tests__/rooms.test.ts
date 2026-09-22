@@ -46,10 +46,10 @@ describe('데이터 (§8.2·8.3)', () => {
     expect(objectDef('annex_cafe')).toMatchObject({ kind: 'building', w: 4, h: 3, cost: 6_000_000, buildDays: 7 });
     expect(objectDef('greenhouse_cafe')).toMatchObject({ w: 3, h: 3, cost: 4_500_000 });
   });
-  test('목표 3개 교체(id 유지·보상 유지): g23 실내 좌석 6석 · g41 본관 Lv2 · g45 별관', () => {
-    expect(goalDef('g23')).toMatchObject({ condition: { type: 'indoorSeats', n: 6 }, reward: [{ type: 'unlockFacility', id: 'vending' }] });
-    expect(goalDef('g41')).toMatchObject({ condition: { type: 'mainLevel', lv: 2 }, reward: [{ type: 'unlockFacility', id: 'drum_footbath' }] });
-    expect(goalDef('g45')).toMatchObject({ condition: { type: 'annex', n: 1 }, reward: [{ type: 'builder', n: 1 }] });
+  test('목표 3개: 실내 좌석 6석 · 본관 Lv2 · 별관 (trim: 60개로 줄이며 번호가 바뀌었다)', () => {
+    expect(goalDef('g23').condition).toEqual({ type: 'indoorSeats', n: 6 });
+    expect(goalDef('g36').condition).toEqual({ type: 'mainLevel', lv: 2 });
+    expect(goalDef('g39').condition).toEqual({ type: 'annex', n: 1 });
   });
 });
 
@@ -384,18 +384,18 @@ describe('별관·목표 (§8.2·P1-13)', () => {
     expect(apply(s, { type: 'place', objectType: 'annex_cafe', x: X(0), y: Y(4) }).ok).toBe(true); // 문 (0,6) 앞 (0,7) 마을 길
     const annex = objectAt(s, X(0), Y(4))!;
     expect(annexCount(s)).toBe(0); // 짓는 중
-    expect(goalProgress(s, goalDef('g45'))).toEqual({ cur: 0, max: 1 });
+    expect(goalProgress(s, goalDef('g39'))).toEqual({ cur: 0, max: 1 });
     for (let d = 0; d < 7; d++) tick(s, DAY_MS);
     expect(annexCount(s)).toBe(1);
-    expect(goalProgress(s, goalDef('g45'))).toEqual({ cur: 1, max: 1 });
+    expect(goalProgress(s, goalDef('g39'))).toEqual({ cur: 1, max: 1 });
     expect(isRoomCut(s, annex)).toBe(false); // 마을 길(도로)이 문 앞
     placeObject(s, 'table_in', X(1), Y(4)); placeObject(s, 'table_in', X(2), Y(4)); placeObject(s, 'table_in', X(3), Y(4));
     expect(roomSeats(s, annex)).toBe(6);
     expect(indoorSeats(s)).toBe(6);
     expect(goalProgress(s, goalDef('g23'))).toEqual({ cur: 6, max: 6 });
-    expect(goalProgress(s, goalDef('g41'))).toEqual({ cur: 1, max: 2 });
+    expect(goalProgress(s, goalDef('g36'))).toEqual({ cur: 1, max: 2 });
     apply(s, { type: 'expandMain' });
-    expect(goalProgress(s, goalDef('g41'))).toEqual({ cur: 2, max: 2 });
+    expect(goalProgress(s, goalDef('g36'))).toEqual({ cur: 2, max: 2 });
     // 온실 카페: 안 자리 전망 +2
     s.unlocked.objects.push('greenhouse_cafe');
     const g = placeObject(s, 'greenhouse_cafe', X(7), Y(0));

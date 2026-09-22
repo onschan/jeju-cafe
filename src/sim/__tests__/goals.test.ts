@@ -11,7 +11,7 @@ import { bareState, at } from './helpers.ts';
 
 describe('goals.json 데이터', () => {
   it('순차 목표(§3.5), id 유일, 제목 14자 이내, 문구가 있고, v3 시절 id(앞 20개·메뉴)는 전부 존재한다', () => {
-    expect(GOALS.length).toBe(108);
+    expect(GOALS.length).toBe(60);
     expect(new Set(GOALS.map((g) => g.id)).size).toBe(GOALS.length);
     for (const [i, g] of GOALS.entries()) {
       expect(g.id).toBe(`g${String(i + 1).padStart(2, '0')}`);
@@ -31,7 +31,7 @@ describe('goals.json 데이터', () => {
       for (const r of g.reward) expect(goalRewardText(r).length).toBeGreaterThan(0);
     }
     expect(goalDef('g01').id).toBe('g01');
-    expect(goalDef('g108').condition).toEqual({ type: 'reputation', n: 90 });
+    expect(goalDef('g60').condition).toEqual({ type: 'year', n: 10 });
   });
 
   it('조건 타입 전부(기존 19 + 신설 14 + 전략 + 도전·월간)에 판정기가 있고 goals.json 108개 조건이 전부 판정된다 (스텁 포함)', () => {
@@ -43,7 +43,7 @@ describe('goals.json 데이터', () => {
       expect(Number.isFinite(p.cur), g.id).toBe(true);
     }
     const used = new Set(GOALS.map((g) => g.condition.type));
-    expect(used.size).toBeGreaterThanOrEqual(30);
+    expect(used.size).toBeGreaterThanOrEqual(24);
     for (const t of Object.keys(conditionCheckers)) expect(goalConditionText({ ...({ type: t, n: 1, lv: 1, view: 1, avg: 1, days: 1, pct: 1, id: 'centennial', menuId: 'americano', spotId: 'canola_field', guestId: 'couple', bookId: 'gb_kind_cafe' } as object) } as GoalCondition).length, t).toBeGreaterThan(0);
   });
 
