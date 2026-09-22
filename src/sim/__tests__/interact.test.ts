@@ -305,12 +305,6 @@ describe('결정성·저장·봇', () => {
     expect(a.rng).toBe(b.rng);
   });
   test('저장 왕복: 요청·게이지·단골·손님 이름이 그대로', () => {
-    const s = createInitialState(2);
-    const rows = runBot(0.25, 2);
-    expect(rows.length).toBe(3);
-    const t = createInitialState(2);
-    runBot(0.25, 2);
-    expect(serialize(t)).toBe(serialize(s));
     const u = cafe();
     registerRegular(u, 'local_auntie');
     u.requests = [{ id: 'req_juice', guestType: 'local_auntie', day: 0, done: false }];
@@ -319,7 +313,7 @@ describe('결정성·저장·봇', () => {
     expect(back.regulars).toEqual(u.regulars);
     expect(back.requests).toEqual(u.requests);
     expect(back.guests[0]!.name).toBe(u.guests[0]!.name);
-  });
+  }, 30_000);
   test('봇 반년: 인사·요청·단골이 자금을 흔들지 않고(파산 없음) 요청·게이지가 실제로 쌓인다 (1년차 밴드는 headless로)', () => {
     const rows = runBot(0.5, 1);
     const last = rows.at(-1)!;

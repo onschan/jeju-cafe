@@ -105,6 +105,7 @@ const GREET_MS = 1200;
 /** fun-guest 반응 말풍선·아이콘 */
 const REACT_BUBBLE_MS = 2500;
 const REACT_ICON_PX = 12;
+const REACT_ICON_DX = 22;
 const REACT_ICON: Record<NonNullable<Extract<FxEvent, { kind: 'react' }>['icon']>, string> = { heart: 'icon_heart', sweat: 'icon_mood_meh', wave: 'icon_wave', question: 'bubble_question', thumb: 'icon_thumb' };
 const GREET_TEXT = '어서옵서예!';
 /** 앉은 손님 손의 컵(8×8): 몸 오른쪽, 허리 높이 */
@@ -1341,10 +1342,11 @@ export class GameView {
     sp.anchor.set(0.5, 1);
     sp.width = REACT_ICON_PX; sp.height = REACT_ICON_PX;
     c.addChild(sp);
-    c.position.set(target.x + 10, target.y - GUEST_H);
-    c.zIndex = 1e6;
+    // 말풍선(머리 위, 왼쪽 1/3에 꼬리)과 겹치지 않게 오른쪽 어깨 위에서 떠오른다
+    c.position.set(target.x + REACT_ICON_DX, target.y - GUEST_H + 6);
+    c.zIndex = 1e6 + 1;
     this.overlay.addChild(c);
-    this.pops.push({ node: c, born: now, y0: target.y - GUEST_H });
+    this.pops.push({ node: c, born: now, y0: target.y - GUEST_H + 6 });
   }
 
   /** 방(본관·별관, 공사 중 제외) 발자국 전체에 따뜻한 빛 다이아몬드 — 실내는 밤에도 밝다 (fix-indoor). 배치 서명이 바뀔 때만 다시 그린다. */
