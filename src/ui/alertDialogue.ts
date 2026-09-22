@@ -2,7 +2,7 @@ import type { GameState, Alert } from '../sim/index.ts';
 import { goalDef, goalRewardText, josa } from '../sim/index.ts';
 import { challengeDef } from '../data/index.ts';
 import { goalLine, failureDialogue, SPEAKER_NAME, ENDING_DIALOGUES, villageReviewLine } from '../data/dialogue/index.ts';
-import { VILLAGE_GRADE_NAME } from '../sim/index.ts'; // z-ending
+import { VILLAGE_GRADE_NAME, gradeName, GRADE_CAPTION } from '../sim/index.ts'; // z-ending · fun-rank
 import { showDialogue, getDialogue, queuedCount, type DialogueReq } from './dialogue.ts';
 import { eventStartDialogue, eventEndDialogue } from './eventText.ts';
 
@@ -61,6 +61,8 @@ export function alertToDialogue(a: Alert): Omit<DialogueReq, 'onClose'> {
     }
     case 'ending':
       return { speaker: { name: SPEAKER_NAME.halmang, portrait: 'halmang' }, lines: [] }; // EndingScreen이 맡는다
+    case 'grade': // fun-rank: 등급 승급 축하 (보상 상자 뒤)
+      return { speaker: { name: SPEAKER_NAME.halmang, portrait: 'halmang' }, lines: [`이제 「${gradeName(a.grade)}」이여. ${GRADE_CAPTION[a.grade] ?? ''}`, '간판을 새로 달았져. 마당에 손님도 더 들어온다.'] };
   }
 }
 

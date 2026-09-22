@@ -99,6 +99,7 @@ test('나가는 손님이 정류장까지 길이 없으면 옆 칸까지만 가�
 
 test('동시 손님은 MAX_GUESTS까지', () => {
   const s = bareState(1);
+  s.grade = 4; // fun-rank: 상한은 등급별(grade.ts guestCap) — 등급 4가 예전 MAX_GUESTS(60)
   // 필지 1·7에 걸쳐 4줄·6줄 테이블, 5줄 올렛길 (placeObject는 소유 검사를 안 한다). 정낭(4,6)은 남긴다.
   for (let x = 0; x < 20; x++) { placeObject(s, 'table_out', X(x), Y(4)); if (x !== 4) placeObject(s, 'table_out', X(x), Y(6)); }
   for (let x = 0; x < 20; x++) placeObject(s, 'path', X(x), Y(5));

@@ -1,8 +1,10 @@
 /** 짓기 창 「코너」 탭 (fun-corner, 스펙 §3): 코너 카드(이름·효과 한 줄·조각 ✓/✗) + 「다음에 놓을 것」 버튼 → 그 시설 고스트(onPickBuild).
  *  완성된 코너는 체크, 미완성은 "벤치 하나만 더"처럼 모자란 것 한 줄. 조각이 아직 안 열렸으면 자물쇠 + 여는 조건. */
+import { useEffect } from 'react';
 import type { GameState } from '../../sim/index.ts';
 import { canStartBuild, placeCost } from '../../sim/index.ts';
 import { cornerProgress, type CornerProgress } from '../../sim/corners.ts';
+import { showFirstTip } from '../firstTip';
 import { objectDef } from '../../data/index.ts';
 import { wonText } from '../../data/labels.ts';
 import { Icon } from '../Icon';
@@ -27,6 +29,7 @@ export function cornerMissingText(p: CornerProgress): string {
 }
 
 export function CornerTab({ s, onPickBuild }: { s: GameState; onPickBuild?: (id: string) => void }) {
+  useEffect(() => { showFirstTip('build:corner'); }, []); // fun-start 첫 열기 팁
   const unlocked = new Set(s.unlocked.objects);
   const list = cornerProgress(s);
   const doneN = list.filter((p) => p.done).length;
@@ -62,7 +65,7 @@ export function CornerTab({ s, onPickBuild }: { s: GameState; onPickBuild?: (id:
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
               {!p.done && nextDef && (
-                <button data-testid={`corner-next-${p.def.id}`} style={ok ? rowBtn : rowBtnOff} disabled={!ok} onClick={() => onPickBuild?.(nextDef.id)}>
+                <button data-testid={`corner-next-${p.def.id}`} data-tut={`corner-next:${p.def.id}`} style={ok ? rowBtn : rowBtnOff} disabled={!ok} onClick={() => onPickBuild?.(nextDef.id)}>
                   <Icon name="build" size={14} /> {nextDef.name} 놓기 {cost > 0 ? wonText(cost) : ''}
                 </button>
               )}

@@ -55,7 +55,7 @@ export const SCORE_ITEMS: { key: ScoreKey; label: string; per: number; cap: numb
   { key: 'rank', label: '카페 랭크', per: 10, cap: 100 },              // 랭크 1 = 10점
   { key: 'reputation', label: '평판', per: 0.5, cap: 50 },             // 평판 2 = 1점
   { key: 'goals', label: '달성 목표', per: 1, cap: 108 },              // 목표 1 = 1점
-  { key: 'combos', label: '콤보 도감', per: 1, cap: 60 },              // 콤보 1 = 1점
+  { key: 'combos', label: '코너 도감', per: 1, cap: 24 },              // fun-corner: 코너 1 = 1점 (24종, 콤보 도감 대신)
   { key: 'spots', label: '명소 Lv 합', per: 0.5, cap: 60 },            // Lv 2 = 1점 (24곳 × Lv5)
   { key: 'regulars', label: '단골', per: 1, cap: 56 },                 // 단골 1 = 1점
 ];
@@ -86,7 +86,7 @@ function rawValue(state: GameState, key: ScoreKey): number {
     case 'rank': return state.rank;
     case 'reputation': return state.reputation;
     case 'goals': return state.goals.claimed.length;
-    case 'combos': return state.codex.combos.length;
+    case 'combos': return state.codex.corners?.length ?? 0; // fun-corner: 콤보 도감 → 코너 도감
     case 'spots': return spotLevelSum(state);
     case 'regulars': return regularCount(state);
   }

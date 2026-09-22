@@ -2,7 +2,7 @@
 카페 본관 `iso_obj_warehouse`(Lv1 3×2) / `_lv2`(4×3) / `_lv3`(5×3) / `_lv4`(6×4) — 증축 스펙 §8.1, 렌더는 state.main.level로 고른다.
 2층 띠 `iso_obj_warehouse_floor2_lv3`/`_lv4`(본관 벽 위 오버레이), 별관 `annex_cafe`(4×3)·`greenhouse_cafe`(3×3), 실내 가구 7종(§8.3)."""
 from __future__ import annotations
-from px import Canvas, hexc
+from px import Canvas, hexc, OUT
 from iso import IsoCanvas, paste_face
 from sprites_objects import tangerine
 from sprites_iso_objects import cv, cup, window_sprite, door_sprite, sign_sprite, PLASTER, SLATE, STONE3, GLASS, STEEL
@@ -366,10 +366,75 @@ def counter_ext() -> IsoCanvas:
     return c
 
 
+# ---------------------------------------------------------------- fun-rank: 등급 간판 오버레이 5종
+def grade_sign(grade: int) -> Canvas:
+    """본관 뒤 모서리(두 벽이 만나는 꼭대기) 위에 얹는 등급 간판 — GameView.decorateCafe가 본관 Lv와 무관하게 같은 스프라이트를 쓴다(Lv×등급 조합 폭발 방지).
+    1 올레길 노점: 작은 나무 팻말 / 2 동네 카페: 나무 간판 / 3 소문난 카페: 감귤 그림 큰 간판 / 4 제주 명소: 알전구 줄 간판 / 5 전설의 카페: 네온 간판(빛 번짐)."""
+    if grade <= 1:
+        s = Canvas(20, 18)
+        s.rect(9, 8, 2, 10, WOOD[0]); s.put(10, 8, WOOD[1])
+        s.shade_rect(2, 1, 16, 8, (WOOD[0], WOOD[1], WOOD[2]))
+        text_lines(s, 5, 3, 10, 2, OUT, 2)
+        s.put(3, 2, WOOD[2]); s.put(16, 7, WOOD[0])
+        s.outline()
+        return s
+    if grade == 2:
+        s = Canvas(34, 16)
+        s.rect(4, 10, 2, 6, WOOD[0]); s.rect(28, 10, 2, 6, WOOD[0])
+        s.shade_rect(1, 1, 32, 10, (WOOD[0], WOOD[1], hexc('e0a866')))
+        s.blit(icon_cup(), 3, 3)
+        text_lines(s, 13, 3, 16, 3, OUT, 2)
+        s.outline()
+        return s
+    if grade == 3:
+        s = Canvas(44, 18)
+        s.rect(6, 12, 2, 6, WOOD[0]); s.rect(36, 12, 2, 6, WOOD[0])
+        s.shade_rect(1, 1, 42, 12, (hexc('c9741a'), CREAM[1], CREAM[2]))
+        s.rect(2, 2, 40, 10, CREAM[1]); s.rect(2, 2, 40, 1, CREAM[2]); s.rect(2, 11, 40, 1, hexc('c9741a'))
+        for ox in (7, 36):
+            s.shade_ellipse(ox, 7, 3.2, 3, ORANGE); s.put(ox + 1, 3, LEAF[1]); s.put(ox + 2, 3, LEAF[2])
+        text_lines(s, 14, 4, 16, 3, OUT, 2)
+        s.outline()
+        return s
+    if grade == 4:
+        s = Canvas(52, 22)
+        s.rect(8, 16, 2, 6, WOOD[0]); s.rect(42, 16, 2, 6, WOOD[0])
+        s.shade_rect(1, 3, 50, 13, (NAVY[0], NAVY[1], NAVY[2]))
+        s.rect(2, 4, 48, 11, NAVY[1]); s.rect(2, 4, 48, 1, NAVY[2])
+        for ox in (8, 43):
+            s.shade_ellipse(ox, 9, 3.2, 3, ORANGE); s.put(ox + 1, 5, LEAF[1]); s.put(ox + 2, 5, LEAF[2])
+        text_lines(s, 15, 6, 22, 3, YELLOW[2], 2)
+        # 알전구 줄 (테두리 위)
+        for k, bx in enumerate(range(3, 50, 5)):
+            col = (YELLOW[2], PINK[1], SKY[2], YELLOW[1])[k % 4]
+            s.put(bx, 1, col); s.put(bx, 2, col); s.put(bx + 1, 2, col)
+        s.outline()
+        return s
+    # 5: 네온
+    s = Canvas(60, 26)
+    s.rect(10, 20, 2, 6, BASALT[0]); s.rect(48, 20, 2, 6, BASALT[0])
+    s.shade_rect(1, 4, 58, 16, BLACK)
+    s.rect(2, 5, 56, 14, hexc('1c1c2c'))
+    neon = hexc('ff7ad9'); neon_lt = hexc('ffd3f2'); cyan = hexc('7af0ff')
+    s.rect(4, 7, 52, 1, neon); s.rect(4, 16, 52, 1, neon); s.rect(4, 7, 1, 10, neon); s.rect(55, 7, 1, 10, neon)
+    for ox in (11, 48):
+        s.shade_ellipse(ox, 12, 3.4, 3.2, ORANGE); s.put(ox + 1, 8, LEAF[1]); s.put(ox + 2, 8, LEAF[2])
+    text_lines(s, 19, 10, 22, 3, cyan, 2)
+    s.put(20, 9, neon_lt); s.put(40, 13, neon_lt)
+    # 빛 번짐: 간판 위·옆 반투명 분홍
+    for x in range(0, 60):
+        s.blend(x, 3, (neon[0], neon[1], neon[2], 70)); s.blend(x, 2, (neon[0], neon[1], neon[2], 35))
+    s.outline()
+    for x in range(1, 59):
+        s.blend(x, 0, (neon[0], neon[1], neon[2], 40)); s.blend(x, 1, (neon[0], neon[1], neon[2], 55))
+    return s
+
+
 def sprites() -> dict[str, Canvas]:
     return {
         'iso_obj_warehouse': warehouse(1), 'iso_obj_warehouse_lv2': main_hall(2), 'iso_obj_warehouse_lv3': main_hall(3), 'iso_obj_warehouse_lv4': main_hall(4),
         'iso_obj_warehouse_floor2_lv3': floor2_band(3), 'iso_obj_warehouse_floor2_lv4': floor2_band(4),
+        **{f'iso_obj_warehouse_sign_g{g}': grade_sign(g) for g in range(1, 6)},  # fun-rank 등급 간판
         'iso_obj_kitchen_ext': kitchen_ext(), 'iso_obj_restroom': restroom(), 'iso_obj_storage': storage(),
         'iso_obj_annex_cafe': annex_cafe(), 'iso_obj_greenhouse_cafe': greenhouse_cafe(),
         'iso_obj_sofa_seat': sofa_seat(), 'iso_obj_bar_counter': bar_counter(), 'iso_obj_fireplace': fireplace(), 'iso_obj_piano': piano(),

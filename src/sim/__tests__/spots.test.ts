@@ -77,15 +77,15 @@ describe('Lv별 조건 (§3.4.2)', () => {
     s.clock.year = 2;
     expect(apply(s, { type: 'investSpot', id }).ok).toBe(true); // Lv3
     expect(s.inventory['flower_poster']).toBe(1); // Lv3 아이템
-    // Lv4: 15,000 + insta_traveler 인기 40
-    s.spotVisitors[id] = 15000; s.spotPrizes[id] = 3;
+    // Lv4: 10,000 + insta_traveler 인기 40 (fun-rank: 15,000 → 10,000)
+    s.spotVisitors[id] = 10000; s.spotPrizes[id] = 3;
     expect(canInvestSpot(s, id).ok).toBe(false);
     s.segmentPopularity['insta_traveler'] = 40;
     expect(apply(s, { type: 'investSpot', id }).ok).toBe(true); // Lv4
     expect(s.board.quests['q_influencer']!.status).toBe('offered');
-    // Lv5: 40,000 + ★3 (k=1)
-    s.spotVisitors[id] = 40000; s.spotPrizes[id] = 3;
-    expect(spotRequirements(s, id)).toEqual([{ text: '누적 방문객 40,000명', met: true }, { text: '★3 이상', met: false }]);
+    // Lv5: 25,000 + ★3 (k=1) (fun-rank: 40,000 → 25,000)
+    s.spotVisitors[id] = 25000; s.spotPrizes[id] = 3;
+    expect(spotRequirements(s, id)).toEqual([{ text: '누적 방문객 25,000명', met: true }, { text: '★3 이상', met: false }]);
     s.star = 3;
     const m0 = s.mileage;
     expect(apply(s, { type: 'investSpot', id }).ok).toBe(true); // Lv5
@@ -93,15 +93,18 @@ describe('Lv별 조건 (§3.4.2)', () => {
     expect(apply(s, { type: 'investSpot', id }).ok).toBe(false); // 최고
   });
 
-  it('Lv5 ★ 조건: k=1·2 → 3, 3·4 → 4, 5·6 → 5', () => {
-    expect([1, 2, 3, 4, 5, 6].map(spotStarReq)).toEqual([3, 3, 4, 4, 5, 5]);
+  it('Lv5 ★ 조건: k=1·2 → 3, 3~6 → 4 (fun-rank: ★5는 5년차 봇도 못 닿아 k=5·6도 ★4)', () => {
+    expect([1, 2, 3, 4, 5, 6].map(spotStarReq)).toEqual([3, 3, 4, 4, 4, 4]);
     const s = rich(); s.rank = 9;
     for (const d of SPOTS) { s.spots[d.id] = 4; s.spotVisitors[d.id] = 1e6; s.spotPrizes[d.id] = 4; }
-    s.clock.year = 2; s.star = 4;
+    s.clock.year = 2; s.star = 3;
     expect(canInvestSpot(s, 'canola_field').ok).toBe(true);   // k=1 ★3
-    expect(canInvestSpot(s, 'seongsan').ok).toBe(true);       // k=4 ★4
-    expect(canInvestSpot(s, 'bijarim').ok).toBe(false);       // k=5 ★5
-    expect(canInvestSpot(s, 'manjanggul').ok).toBe(false);    // k=6 ★5
+    expect(canInvestSpot(s, 'seongsan').ok).toBe(false);      // k=4 ★4
+    expect(canInvestSpot(s, 'bijarim').ok).toBe(false);       // k=5 ★4
+    s.star = 4;
+    expect(canInvestSpot(s, 'seongsan').ok).toBe(true);
+    expect(canInvestSpot(s, 'bijarim').ok).toBe(true);
+    expect(canInvestSpot(s, 'manjanggul').ok).toBe(true);     // k=6 ★4
   });
 
   it('24곳 전부 Lv5까지 투자 가능 (조건을 채우면), 특수: 요트 오너 소지금 ×1.5 · 골퍼 인기 +20 · 한라산 정령 ×3 · 만장굴 손님 해금(없으면 안내)', () => {

@@ -250,6 +250,17 @@ export function discoverCorners(state: GameState): void {
   }
 }
 /** 도감에 오른(한 번이라도 만든) 코너 수 — 목표·도전 corners(n) */
+/** 손님 요청(트랙 G tagCorner)용 코너 태그: photo = 사진 확률 ≥ 0.6, rest = 쉬는 코너 */
+const REST_CORNERS = new Set(['corner_haenyeo_rest', 'corner_spring_rest', 'corner_rainy_eaves', 'corner_hackberry_shade', 'corner_cedar_walk', 'corner_reading_garden']);
+export function cornerTags(id: string): string[] {
+  const def = CORNERS.find((c) => c.id === id);
+  if (!def) return [];
+  const tags: string[] = [];
+  if ((def.effect.photo ?? 0) >= 0.6) tags.push('photo');
+  if (REST_CORNERS.has(id)) tags.push('rest');
+  return tags;
+}
+
 export function cornersMade(state: GameState): number {
   return state.codex.corners?.length ?? 0;
 }

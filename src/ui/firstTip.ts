@@ -47,6 +47,10 @@ export function dismissTip(): void {
   notify();
 }
 export function currentTip(): string | null { return current; }
+/** 지금 떠 있는 팁이 없을 때만 띄운다 (창 안 카드가 창 팁을 밀어내지 않게 — 카드 팁은 다음에 열 때 뜬다) */
+export function showFirstTipIfIdle(key: string): boolean {
+  return current === null ? showFirstTip(key) : false;
+}
 /** 테스트·설정 「팁 다시 보기」: 기억을 지운다 */
 export function resetTips(): void {
   seenTips = new Set();

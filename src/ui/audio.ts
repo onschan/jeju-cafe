@@ -8,7 +8,11 @@ let ctx: AudioContext | null = null;
 let master: GainNode | null = null;
 let bgmGain: GainNode | null = null;
 const buffers = new Map<string, AudioBuffer>();
-let current: { name: BgmName; src: AudioBufferSourceNode; gain: GainNode } | null = null;
+let current: { name: BgmName; src: AudioBufferSourceNode; gain: GainNode; layer: { src: AudioBufferSourceNode; gain: GainNode } | null } | null = null;
+/** fun-rank: 타악 레이어(`{계절}_perc.m4a`) 켜짐 — 카페 등급 3부터 (setBgmLayer). 계절곡과 같은 길이라 같은 시각에 시작해 두 트랙을 동시에 돌린다. */
+let layerOn = false;
+const LAYER_SONGS = new Set<BgmName>(['spring', 'summer', 'autumn', 'winter']);
+const LAYER_FADE_S = 1.5;
 let sfxGain: GainNode | null = null;
 let muted = false;
 /** 0~100. 기본은 낮게(BGM 25·효과음 45) — 폰 스피커에서 8비트 음이 크게 들린다는 피드백 */
@@ -62,15 +66,34 @@ export function sfx(name: SfxName): void {
 
 export async function bgm(name: BgmName): Promise<void> {
   if (!ctx || !bgmGain || current?.name === name) return;
-  const buf = await load(assetUrl(`assets/bgm/${name}.m4a`));
+  const [buf, layerBuf] = await Promise.all([load(assetUrl(`assets/bgm/${name}.m4a`)), LAYER_SONGS.has(name) ? load(assetUrl(`assets/bgm/${name}_perc.m4a`)) : Promise.resolve(null)]);
   if (!buf || !ctx) return;
   const gain = ctx.createGain(); gain.gain.value = 0; gain.connect(bgmGain);
-  const src = ctx.createBufferSource(); src.buffer = buf; src.loop = true; src.connect(gain); src.start();
+  const src = ctx.createBufferSource(); src.buffer = buf; src.loop = true; src.connect(gain);
   const t = ctx.currentTime;
+  src.start(t);
   gain.gain.linearRampToValueAtTime(1, t + 1);
-  if (current) { current.gain.gain.linearRampToValueAtTime(0, t + 1); const old = current.src; setTimeout(() => old.stop(), 1100); }
-  current = { name, src, gain };
+  let layer: { src: AudioBufferSourceNode; gain: GainNode } | null = null;
+  if (layerBuf) { // fun-rank: 타악 레이어는 같은 시각에 시작해 두고 게인만 켜고 끈다
+    const lg = ctx.createGain(); lg.gain.value = layerOn ? 1 : 0; lg.connect(gain);
+    const ls = ctx.createBufferSource(); ls.buffer = layerBuf; ls.loop = true; ls.connect(lg); ls.start(t);
+    layer = { src: ls, gain: lg };
+  }
+  if (current) { current.gain.gain.linearRampToValueAtTime(0, t + 1); const old = current; setTimeout(() => { old.src.stop(); old.layer?.src.stop(); }, 1100); }
+  current = { name, src, gain, layer };
 }
+
+/** fun-rank: 타악 레이어 켜기/끄기 (카페 등급 3 「소문난 카페」부터 — App이 등급을 보고 부른다). 1.5초 페이드. */
+export function setBgmLayer(on: boolean): void {
+  if (layerOn === on) return;
+  layerOn = on;
+  if (!ctx || !current?.layer) return;
+  const g = current.layer.gain.gain;
+  g.cancelScheduledValues(ctx.currentTime);
+  g.setValueAtTime(g.value, ctx.currentTime);
+  g.linearRampToValueAtTime(on ? 1 : 0, ctx.currentTime + LAYER_FADE_S);
+}
+export function isBgmLayerOn(): boolean { return layerOn; }
 
 export function setMuted(m: boolean): void {
   muted = m;

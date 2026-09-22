@@ -2,6 +2,7 @@ import { useState, useEffect, type CSSProperties, type ReactNode } from 'react';
 import { wonText } from '../data/labels.ts';
 import { josa } from '../sim/josa.ts';
 import { useGame, dispatch, showMessage } from './store';
+import { parcelFeature } from '../sim/index.ts'; // fun-rank: 필지 특징·"사면 생기는 것"
 import { nightSeatLine, objectStats, siteOf, siteLineText, cellAt, walletOf, guestFace, namedGuestFace, canAcceptQuest, parcelPrice, canBuyParcel, canGiveGift, giftFits, giftCount, giftedToday, PROTECTED_TYPES, ROTATABLE_TYPES, LOW_ENERGY, STAT_KEYS, STAT_NAME, staffInRole, canLevelUp, capOf, skillsOf, expNeeded, isUpgradable, canUpgrade, upgradeCost, upgradeConditionText, MAX_OBJECT_LEVEL, canRepair, repairCost, CLEAN_LOW, type GameState, type Guest, type RoleId, type StatKey } from '../sim/index.ts';
 import { BUS_HOUR, isBusDay } from '../sim/spots.ts';
 import { RouteCard } from './RouteCard';
@@ -374,12 +375,14 @@ function ParcelCard({ s, id, onClose }: { s: GameState; id: string; onClose: () 
   if (!p || p.owned) return <div style={small}>이미 우리 땅이에요</div>;
   const can = canBuyParcel(s, p.id);
   const price = parcelPrice(s, p);
-  const buy = () => Confirm(`${p.name} 필지를 ${wonText(price)}에 살까요? 맵이 넓어져요.`, () => { if (dispatch({ type: 'buyParcel', id: p.id }).ok) onClose(); }, { title: '필지 구매' });
+  const f = parcelFeature(p); // fun-rank
+  const buy = () => Confirm(`${p.name} 필지를 ${wonText(price)}에 살까요? ${f.gain}`, () => { if (dispatch({ type: 'buyParcel', id: p.id }).ok) onClose(); }, { title: '필지 구매' });
   return (
     <div data-testid="card-parcel">
       <Hint id="parcel" />
       <div style={{ fontSize: 14, lineHeight: 1.5 }}>
-        <div><b>{p.name}</b> <span style={small}>{p.w}×{p.h}칸</span></div>
+        <div><Icon name={f.icon} size={18} alt={f.feature} /> <b>{p.name}</b> <span style={small}>{f.feature} · {p.w}×{p.h}칸</span></div>
+        <div>{f.gain}</div>
         <div style={small}>가격 {wonText(price)}{!can.ok && can.reason && ` · ${can.reason}`}</div>
       </div>
       <Row><button style={can.ok ? btnOn : btnOff} disabled={!can.ok} onClick={buy}><Icon name="money" /> 사기</button></Row>

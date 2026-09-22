@@ -14,6 +14,7 @@ import { runBot } from '../bot.ts';
 import * as botApi from '../bot.ts';
 import { serialize, deserialize } from '../save.ts';
 import type { Guest } from '../types.ts';
+import { completedCorners, cornerTags, CORNERS } from '../corners.ts';
 
 function cafe(seed = 1) {
   const s = bareState(seed);
@@ -230,19 +231,23 @@ describe('요청', () => {
     expect(thankIfDone(s, g)).not.toBeNull();
     expect(s.tickets).toBe(t2);
   });
-  test('코너 요청: completedCorners가 없으면 시설로, 있으면 코너 목록으로 판정', () => {
+  test('코너 요청: 코너가 완성돼 있으면 코너로, 아니면 대체 시설로 판정; tagCorner(photo)는 코너 태그로', () => {
     const s = cafe();
     const def = requestDef('req_flower_path');
+    expect(def.want.corner).toBe('corner_flower_path'); // corners.json 실제 id
     expect(isRequestMet(s, def)).toBe(false);
     placeObject(s, 'canola', X(2), Y(2));
-    expect(isRequestMet(s, def)).toBe(true); // 시설 대체 판정
-    (s as unknown as { completedCorners: string[] }).completedCorners = [];
-    expect(isRequestMet(s, def)).toBe(false); // 코너 데이터가 있으면 코너로만
-    (s as unknown as { completedCorners: string[] }).completedCorners = ['flower_path'];
-    expect(isRequestMet(s, def)).toBe(true);
-    const tag = requestDef('req_photo');
-    (s as unknown as { completedCorners: unknown[] }).completedCorners = [{ id: 'photo_zone', tags: ['photo'] }];
-    expect(isRequestMet(s, tag)).toBe(true);
+    expect(isRequestMet(s, def)).toBe(true); // 대체 시설 판정
+    const t = cafe();
+    placeObject(t, 'flower_bed', X(2), Y(2));
+    placeObject(t, 'deco_wood_bench', X(3), Y(2));
+    placeObject(t, 'streetlight', X(2), Y(3));
+    expect(completedCorners(t).map((c) => c.id)).toContain('corner_flower_path');
+    expect(isRequestMet(t, def)).toBe(true); // 코너 우선
+    expect(isRequestMet(t, requestDef('req_photo'))).toBe(true); // 꽃길은 photo 태그(사진 확률 0.6)
+    expect(cornerTags('corner_flower_path')).toContain('photo');
+    expect(cornerTags('corner_haenyeo_rest')).toContain('rest');
+    for (const r of REQUESTS) if (r.want.corner) expect(CORNERS.some((c) => c.id === r.want.corner), r.id).toBe(true);
   });
 });
 

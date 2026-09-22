@@ -19,7 +19,7 @@ describe('최종 점수', () => {
   test('항목 9·가중치·상한·칭호 5단계', () => {
     const s = bareState(1);
     s.money = 50_000_000; s.totalGuests = 12_345; s.star = 3; s.rank = 6; s.reputation = 70; s.goals.claimed = Array.from({ length: 60 }, (_, i) => `g${i}`);
-    s.codex.combos = ['a', 'b', 'c']; s.spots = { x: 5, y: 3 };
+    s.codex.corners = ['a', 'b', 'c']; s.spots = { x: 5, y: 3 }; // fun-corner: 콤보 도감 → 코너 도감(24종, 상한 24)
     const sc = computeScore(s);
     expect(sc.items.map((i) => i.key)).toEqual(SCORE_ITEMS.map((i) => i.key));
     const pt = Object.fromEntries(sc.items.map((i) => [i.key, i.points]));
@@ -27,8 +27,10 @@ describe('최종 점수', () => {
     expect(sc.total).toBe(50 + 123 + 60 + 60 + 35 + 60 + 3 + 4);
     expect(sc.tier).toBe(scoreTier(sc.total));
     expect(sc.title).toBe(SCORE_TITLES[sc.tier - 1]!.title);
-    // 상한: 자금 3억 → 300점, 그 이상도 300
+    // 상한: 자금 3억 → 300점, 그 이상도 300 · 코너 24
     s.money = 9_000_000_000;
+    s.codex.corners = Array.from({ length: 30 }, (_, i) => `c${i}`);
+    expect(computeScore(s).items.find((i) => i.key === 'combos')!.points).toBe(24);
     expect(computeScore(s).items.find((i) => i.key === 'money')!.points).toBe(300);
     // 칭호 문턱
     expect(scoreTier(0)).toBe(1); expect(scoreTier(199)).toBe(1); expect(scoreTier(200)).toBe(2); expect(scoreTier(800)).toBe(5);

@@ -43,6 +43,9 @@ import { cleanStreakDays, cleanAvgDays, dirtyForDays, CLEAN_HISTORY_DAYS, CLEAN_
 import { siteOf } from './site.ts';
 import { routeState, routeOpened, ENTRY_ROUTES, PARKING_SLOTS, PARKING_EXPAND_FROM } from './entry.ts'; // 트랙 H
 import { VILLAGE_GRADE_NAME } from './village.ts'; // z-ending
+import { GRADE_NAMES } from './grade.ts'; // fun-rank: 등급 조건
+import { titleGradeOf } from './titles.ts';
+import { ROUTE_IDS } from './entry.ts';
 /** 경로 손님 부르는 말 (목표 문구) */
 const ROUTE_GUEST_NAME: Record<string, string> = { bus: '버스', parking: '렌터카', shuttle: '셔틀', cruise: '크루즈', olle: '올레꾼' };
 
@@ -212,6 +215,13 @@ export const conditionCheckers: CheckerMap = {
   // ---- z-ending 정착 등급·마을제 (village.ts) ----
   villageGrade: (s, c) => n(s.village.grade, c.n),
   festivals: (s, c) => n(s.village.festivals, c.n),
+  // ---- fun-rank 눈에 보이는 성장 (grade.ts) ----
+  grade: (s, c) => n(s.grade ?? 1, c.n),
+  regulars: (s, c) => n(s.regulars?.length ?? 0, c.n), // 트랙 G 단골 등록 손님 수(state.regulars)
+  secondFloor: (s) => flag(!!s.main?.floor2),
+  reputation: (s, c) => n(Math.round(s.reputation), c.n),
+  legendStaff: (s, c) => n(s.staff.filter((st) => titleGradeOf(st.title) === 'legend').length, c.n),
+  routesOpen: (s, c) => n(ROUTE_IDS.filter((r) => r !== 'bus' && routeOpened(s, r)).length, c.n),
 };
 
 /** 코드 판정 조건 */
@@ -344,6 +354,14 @@ export function goalConditionText(c: GoalCondition): string {
     case 'routeGuests': return `${ROUTE_GUEST_NAME[c.route] ?? '경로'} 손님 ${fmtNum(c.n)}명`;
     case 'routeUnlocked': return c.route === 'shuttle' ? '공항 셔틀 계약' : `${ENTRY_ROUTES[c.route]?.name ?? '경로'} 열기`;
     case 'facility': return `${name.object(c.id)} 짓기`;
+    // ---- fun-rank ----
+    case 'grade': return `등급 「${GRADE_NAMES[c.n - 1] ?? c.n}」`;
+    case 'corners': return `코너 ${c.n}개`;
+    case 'regulars': return `단골 ${c.n}명`;
+    case 'secondFloor': return '본관 2층 올리기';
+    case 'reputation': return `평판 ${c.n}`;
+    case 'legendStaff': return c.n === 1 ? '전설 직원 채용' : `전설 직원 ${c.n}명`;
+    case 'routesOpen': return `손님 오는 길 ${c.n}종`;
   }
 }
 

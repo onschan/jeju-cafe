@@ -12,6 +12,7 @@ import { addAffinity } from './popup.ts';
 import { pushNotice } from './staff.ts';
 import { pushFx } from './fx.ts';
 import { parcelAt } from './parcels.ts';
+import { completedCorners, cornerTags } from './corners.ts'; // 트랙 C 코너 판정
 import { availableMenus } from './menu.ts';
 import { menuOf, statsMatchCount, guestLikesCategory } from './craft.ts';
 import { namedLikes } from './popup.ts';
@@ -185,19 +186,13 @@ function hasFacility(state: GameState, type: string): boolean {
   for (const o of Object.values(state.objects)) if (o.type === type && !o.build && parcelAt(state, o.x, o.y)?.owned) return true;
   return false;
 }
-/** 트랙 C 코너 완성 목록 (통합 전엔 없다 → null). 문자열 id 또는 { id, tags } 항목 */
-function completedCorners(state: GameState): { id: string; tags: string[] }[] | null {
-  const raw = (state as { completedCorners?: unknown }).completedCorners;
-  if (!Array.isArray(raw)) return null;
-  return raw.map((c) => (typeof c === 'string' ? { id: c, tags: [] } : { id: String((c as { id?: string }).id ?? ''), tags: ((c as { tags?: string[] }).tags ?? []) }));
-}
-/** 요청을 들어줬나: 메뉴 → 메뉴판에 있다, 코너 → completedCorners(없으면 대신 시설), 시설 → 소유 필지에 완공 */
+/** 요청을 들어줬나: 메뉴 → 메뉴판에 있다, 코너 → 트랙 C completedCorners(코너가 있으면 코너 우선, 없으면 대체 시설), 시설 → 소유 필지에 완공 */
 export function isRequestMet(state: GameState, def: GuestRequestDef): boolean {
   const w = def.want;
   if (w.menu) return state.menuSlots.includes(w.menu);
   const corners = completedCorners(state);
-  if (w.corner && corners) return corners.some((c) => c.id === w.corner);
-  if (w.tagCorner && corners) return corners.some((c) => c.tags.includes(w.tagCorner!));
+  if (w.corner && corners.some((c) => c.id === w.corner)) return true;
+  if (w.tagCorner && corners.some((c) => cornerTags(c.id).includes(w.tagCorner!))) return true;
   return w.facility ? hasFacility(state, w.facility) : false;
 }
 /** 카드의 「들어주기 힌트」: 어느 탭에 있는지 한 줄 (≤22자) */

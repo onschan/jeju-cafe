@@ -5,7 +5,7 @@ import { tick, STEP_MS } from '../tick.ts';
 import { DAY_MS } from '../clock.ts';
 import {
   STEPS, TUTORIAL_STEPS, TRACKED_ACTIONS, STARTER_FEATURE_IDS, LOOK_TEXT, currentTutorialStep, checkTutorial, tutorialDone, pathConnected, noteTutorial, dialogueSeen,
-  skipTutorialChapter, skipTutorialStep, stepTargets, cornerMade, cornerMissingType, cornerCells, cornerFlowerType, cornerBenchType, CORNER_RADIUS, greetedGuest, recommendedMainCells,
+  skipTutorialChapter, skipTutorialStep, stepTargets, cornerMade, cornerMissingType, cornerCells, CORNER_PIECE_TYPES, CORNER_RADIUS, TUTORIAL_CORNER_ID, greetedGuest, recommendedMainCells,
 } from '../tutorial.ts';
 import { canOpen } from '../goals.ts';
 import { mainBuilding } from '../rooms.ts';
@@ -14,6 +14,8 @@ import { bestSeatCells, strategyVars, fillTemplate } from '../strategy.ts';
 import { serialize, deserialize } from '../save.ts';
 import type { GameState } from '../types.ts';
 import { at, X, Y } from './helpers.ts';
+import { completedCorners } from '../corners.ts';
+import { walkableNeighborsOf } from '../path.ts';
 import { TUTORIAL_STEPS as DIALOGUE } from '../../data/dialogue/index.ts';
 
 /** fun-start 새 게임: 본관 + 올렛길이 이미 있는 마당에서 한 단계씩 손으로 한다 */
@@ -30,6 +32,12 @@ function seeDialogue(s: GameState) {
 }
 function clearAlerts(s: GameState) { s.alerts = []; }
 /** 게임을 굴려 손님이 올 때까지 (실시간 1배속 기준 ms를 돌려준다) */
+/** 공사 중인 게 없을 때까지 스텝을 돌린다 (벤치·가로등은 공사 1일) — 기다린 게임 ms */
+function finishBuilds(s: GameState, maxMs = 2 * DAY_MS): number {
+  let ms = 0;
+  while (Object.values(s.objects).some((o) => o.build) && ms < maxMs) { tick(s, STEP_MS); ms += STEP_MS; }
+  return ms;
+}
 function untilGuest(s: GameState, maxMs = 60_000): number {
   let ms = 0;
   while (s.guests.length === 0 && ms < maxMs) { tick(s, STEP_MS); ms += STEP_MS; }
@@ -137,26 +145,34 @@ describe('손으로 하는 튜토리얼 「할망의 가르침」 7단계 (fun-s
     expect(s.tutorial.step).toBe(4);
     expect(lastReward(s)).toMatchObject({ refId: '4' });
     clearAlerts(s);
-    // 5: 첫 코너 — 꽃(화분) 놓기 → 벤치 놓기, 글로우는 빠진 것 하나씩·짓기 탭 타깃도 빠진 것
+    // 5: 첫 코너 「꽃길」 — 꽃밭 → 벤치 → 가로등, 글로우는 빠진 조각 하나씩·코너 탭·꽃길 「놓기」 버튼·짓기 카드
     seeDialogue(s);
     expect(cornerMade(s)).toBe(false);
-    const flower = cornerFlowerType(s), bench = cornerBenchType(s);
-    expect(s.unlocked.objects).toContain(flower);
-    expect(s.unlocked.objects).toContain(bench);
+    const [flower, bench, lamp] = CORNER_PIECE_TYPES as [string, string, string];
+    for (const t of [flower, bench, lamp]) expect(s.unlocked.objects).toContain(t);
     expect(cornerMissingType(s)).toBe(flower);
-    expect(stepTargets(STEPS[4]!, s)).toEqual(['nav:build', 'tab:sceneryDeco', `build:${flower}`]);
+    expect(stepTargets(STEPS[4]!, s)).toEqual(['nav:build', 'tab:corner', `corner-next:${TUTORIAL_CORNER_ID}`, `build:${flower}`]);
     const f = cornerCells(s);
     expect(f).toHaveLength(1);
     expect(Math.max(Math.abs(f[0]!.x - glow[0]!.x), Math.abs(f[0]!.y - glow[0]!.y))).toBeLessThanOrEqual(CORNER_RADIUS); // 테이블 옆
+    expect(walkableNeighborsOf(s, f[0]!.x, f[0]!.y).length).toBeGreaterThan(0); // 길 옆 — 손님이 코너를 찾아올 수 있게
     expect(apply(s, { type: 'place', objectType: flower, ...f[0]! }).ok).toBe(true);
     expect(s.tutorial.step).toBe(4);
     expect(cornerMissingType(s)).toBe(bench);
-    expect(stepTargets(STEPS[4]!, s)).toEqual(['nav:build', 'tab:sceneryDeco', `build:${bench}`]);
+    expect(stepTargets(STEPS[4]!, s)).toEqual(['nav:build', 'tab:corner', `corner-next:${TUTORIAL_CORNER_ID}`, `build:${bench}`]);
     const b = cornerCells(s);
     expect(b).toHaveLength(1);
-    expect(Math.max(Math.abs(b[0]!.x - f[0]!.x), Math.abs(b[0]!.y - f[0]!.y))).toBeLessThanOrEqual(CORNER_RADIUS); // 꽃 옆
+    expect(Math.max(Math.abs(b[0]!.x - f[0]!.x), Math.abs(b[0]!.y - f[0]!.y))).toBeLessThanOrEqual(CORNER_RADIUS); // 꽃밭 옆
     expect(apply(s, { type: 'place', objectType: bench, ...b[0]! }).ok).toBe(true);
+    expect(cornerMade(s)).toBe(false);
+    expect(cornerMissingType(s)).toBe(lamp);
+    const l = cornerCells(s);
+    expect(l).toHaveLength(1);
+    expect(Math.max(Math.abs(l[0]!.x - f[0]!.x), Math.abs(l[0]!.y - f[0]!.y))).toBeLessThanOrEqual(CORNER_RADIUS);
+    expect(apply(s, { type: 'place', objectType: lamp, ...l[0]! }).ok).toBe(true);
+    realMs += finishBuilds(s); // 벤치·가로등 공사 1일 — 다음 날 아침 완공까지 (1배속 36초 안)
     expect(cornerMade(s)).toBe(true);
+    expect(completedCorners(s).map((c) => c.id)).toContain(TUTORIAL_CORNER_ID);
     expect(s.tutorial.step).toBe(5);
     expect(lastReward(s)).toMatchObject({ refId: '5' });
     clearAlerts(s);
@@ -180,16 +196,15 @@ describe('손으로 하는 튜토리얼 「할망의 가르침」 7단계 (fun-s
     expect(currentTutorialStep(s)).toBeNull();
   });
 
-  it('트랙 C 코너 훅: state.corners에 코너가 하나라도 있으면 꽃·벤치 없이도 5단계가 찬다; 꽃과 벤치가 멀면(반경 2 밖) 안 찬다', () => {
-    const s = tutorialState();
-    expect(cornerMade(s)).toBe(false);
-    (s as unknown as { corners: unknown[] }).corners = [{ id: 'flower_path' }];
-    expect(cornerMade(s)).toBe(true);
+  it('트랙 C 코너: 완성 코너가 하나라도 있으면 5단계가 찬다; 꽃밭·벤치가 멀면(반경 2 밖) 안 차고 빠진 조각은 벤치', () => {
     const t = tutorialState();
-    expect(apply(t, { type: 'place', objectType: cornerFlowerType(t), ...at(1, 1) }).ok).toBe(true);
-    expect(apply(t, { type: 'place', objectType: cornerBenchType(t), ...at(8, 5) }).ok).toBe(true);
+    const [flower, bench] = CORNER_PIECE_TYPES as [string, string, string];
     expect(cornerMade(t)).toBe(false);
-    expect(cornerMissingType(t)).toBe(cornerBenchType(t)); // 꽃 옆에 벤치 하나 더
+    expect(apply(t, { type: 'place', objectType: flower, ...at(1, 1) }).ok).toBe(true);
+    expect(apply(t, { type: 'place', objectType: bench, ...at(8, 5) }).ok).toBe(true);
+    finishBuilds(t);
+    expect(cornerMade(t)).toBe(false);
+    expect(cornerMissingType(t)).toBe(bench); // 꽃밭 옆에 벤치 하나 더
     expect(cornerCells(t)).toHaveLength(1);
   });
 

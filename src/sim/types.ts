@@ -532,7 +532,14 @@ export type GoalCondition =
   | { type: 'facility'; id: string }              // 그 시설을 1개 이상 지었나 (완공)
   // ---- z-ending 정착 등급·마을제 (village.ts) ----
   | { type: 'villageGrade'; n: number }           // 정착 등급 ≥ n (1 외지인 ~ 5 촌장 후보)
-  | { type: 'festivals'; n: number };             // 마을제 개최 횟수
+  | { type: 'festivals'; n: number }              // 마을제 개최 횟수
+  // ---- fun-rank 눈에 보이는 성장 (grade.ts) ----
+  | { type: 'grade'; n: number }                  // 카페 등급 ≥ n (1 올레길 노점 ~ 5 전설의 카페)
+  | { type: 'regulars'; n: number }               // 단골 수 (트랙 G regulars — 없으면 기존 regular 판정)
+  | { type: 'secondFloor' }                       // 본관 2층 완공
+  | { type: 'reputation'; n: number }             // 평판 ≥ n
+  | { type: 'legendStaff'; n: number }            // 전설 칭호 직원 n명
+  | { type: 'routesOpen'; n: number };            // 열린 유입 경로 n종 (정류장 제외)
 /** 목표 뒤에 남는 기능 잠금 (ease): 팝업 스토어·카페 대결·필지 구매만. 홍보·연구·입지 보기·콤보 도감·명소 지도는 처음부터 열려 있다(튜토리얼이 순서를 안내). */
 export type FeatureId = 'popup' | 'challenge' | 'parcel';
 export type GoalReward =
@@ -582,7 +589,7 @@ export interface GameStats {
   cornerVisits?: number;   // 손님이 코너를 찾아온 누적 횟수 (fun-corner)
 }
 /** 보상 상자에 담기는 보상 알림의 출처 */
-export type RewardSource = 'goal' | 'challenge' | 'monthly' | 'tutorial' | 'rank' | 'star' | 'unlock' | 'milestone' | 'bundle'; // rank·star = 승급 보상, unlock = 손님층 해금, milestone = 자금 목표 25/50/75%, bundle = 같은 큐의 상자 3개 이상을 하나로 묶은 것
+export type RewardSource = 'goal' | 'challenge' | 'monthly' | 'tutorial' | 'rank' | 'star' | 'unlock' | 'milestone' | 'bundle' | 'grade'; // rank·star = 승급 보상, unlock = 손님층 해금, milestone = 자금 목표 25/50/75%, bundle = 같은 큐의 상자 3개 이상을 하나로 묶은 것, grade = 카페 등급 승급 (fun-rank)
 /** UI 대화창·팝업 큐 항목 */
 export type Alert =
   | { type: 'goal'; goalId: string }
@@ -597,7 +604,8 @@ export type Alert =
   | { type: 'ending' }                                        // 10년차 엔딩 (EndingScreen — 대화창이 아니다)
   | { type: 'village'; grade: number; up: boolean }           // 9월 1일 정착 등급 심사 결과 (village.ts)
   | { type: 'festivalOffer' }                                 // 10월 1일 마을제 개최 안내 (등급 4 이상)
-  | { type: 'centennial'; success: boolean };                 // 20년차 100주년 감귤축제 (성공이면 EndingScreen 두 번째 컷)
+  | { type: 'centennial'; success: boolean }                  // 20년차 100주년 감귤축제 (성공이면 EndingScreen 두 번째 컷)
+  | { type: 'grade'; grade: number };                         // fun-rank: 카페 등급 승급 (할망 축하 대사, 보상 상자 뒤)
 
 // ---------- 도전 과제 3레인 (§7.3) ----------
 export interface ChallengeDef {
@@ -742,7 +750,9 @@ export type FxEvent =
   | { kind: 'scene'; title: string; text: string; tick: number } // UI 장면 창(완공·★ 승급·랭크 업). 렌더는 무시한다
   | { kind: 'react'; guestId: string; text: string; icon?: 'heart' | 'sweat' | 'wave' | 'question' | 'thumb'; tick: number } // 트랙 G: 손님 반응 — 말풍선 + 머리 위 아이콘(하트·땀·손 흔들기·?)
   | { kind: 'corner'; id: string; x: number; y: number; tick: number } // fun-corner: 코너 완성 — 팻말 자리 반짝
-  | { kind: 'flash'; x: number; y: number; guestId: string; text: string; tick: number }; // fun-corner: 손님이 코너에서 사진 (카메라 플래시 + 말풍선)
+  | { kind: 'flash'; x: number; y: number; guestId: string; text: string; tick: number } // fun-corner: 손님이 코너에서 사진 (카메라 플래시 + 말풍선)
+  | { kind: 'applause'; tick: number } // fun-rank: 등급 승급 — 마당 손님 전원 박수(하트·반짝)
+  | { kind: 'parcel'; id: string; tick: number }; // fun-rank: 필지 구매 — 덮개 안개 걷힘 + 랜드마크 등장 반짝
 
 // ---------- 상점·추첨·유니폼·가이드북 (2B-2 Task 6·7) ----------
 export interface MileageShopDef { id: string; name: string; price: number; description: string; itemId?: string; objectId?: string }
@@ -973,6 +983,7 @@ export interface GameState {
   rank: number;                               // 카페 랭크 1~ (랭크 점수 = 누적 손님 + 시설 + 해금 손님층, 문턱표)
   star: number;                               // ★ 등급 1~5 (ranks.json 조건, 월초 검사)
   totalGuests: number;                        // 누적 손님 수 (랭크 점수)
+  grade?: number;                             // fun-rank: 카페 등급 1~5 (grade.ts, 옛 세이브는 backfill 1)
   builders: number;                           // 일꾼 삼춘 수 = 동시 건설 수 (기본 2)
   uniform: string | null;                     // 입고 있는 유니폼 id (연출)
   uniforms: string[];                         // 가진 유니폼

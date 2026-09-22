@@ -1,4 +1,6 @@
+import { useEffect } from 'react';
 import { Icon } from './Icon';
+import { showFirstTipIfIdle } from './firstTip';
 import { useGame } from './store';
 import { pendingRequests, doneRequests, requestDef, requestHint, isRequestMet, guestFace, regularHearts } from '../sim/index.ts';
 import { guestTypeDef } from '../data/index.ts';
@@ -11,6 +13,8 @@ export function RequestsCard() {
   const s = useGame();
   const pending = pendingRequests(s);
   const done = doneRequests(s).slice(-3).reverse();
+  const has = pending.length > 0;
+  useEffect(() => { if (!has) return; const t = setTimeout(() => showFirstTipIfIdle('requests'), 0); return () => clearTimeout(t); }, [has]); // fun-start 첫 열기 팁 — 창 팁이 떠 있으면 다음에
   if (pending.length === 0 && done.length === 0) return null;
   return (
     <div data-testid="requests-card" style={{ ...card, padding: 6 }}>
