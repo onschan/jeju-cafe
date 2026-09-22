@@ -161,10 +161,10 @@ test('급여 공식 §3.6.3: 기본급 × (1 + 0.15 × (Lv − 1)) × (1 + 인�
     expect(salaryOf({ stats, level: lv, baseSalary: base }), `${base}/Lv${lv}`).toBe(want);
   }
   expect(salaryOf({ stats: { stamina: 20, strength: 20, skill: 20, smile: 20 }, level: 1 })).toBe(400_000 + 80 * 1000); // 기본급 없으면 40만
-  expect(salaryOf({ stats, level: 1, baseSalary: 400_000 }, 5)).toBe(420_000); // 5% 인상
+  expect(salaryOf({ stats, level: 1, baseSalary: 400_000 }, 12)).toBe(448_000); // 12% 인상
 });
 
-test('급여 인상: 2년차부터 매년 3월 1일 전 직원 월급 +5% 누적', () => {
+test('급여 인상: 2년차부터 매년 3월 1일 전 직원 월급 +12% 누적', () => {
   const s = bareState(1);
   s.loan.count = LOAN_MAX;
   s.money = 50_000_000;
@@ -172,11 +172,11 @@ test('급여 인상: 2년차부터 매년 3월 1일 전 직원 월급 +5% 누적
   s.clock.year = 2; s.clock.month = 2; s.clock.day = 30; s.clock.hour = 23;
   tick(s, DAY_MS);
   expect(s.salaryRaisePct).toBe(ANNUAL_RAISE_PCT);
-  expect(s.staff[0]!.salary).toBe(525_000);
-  expect(s.lastMonthCard!.costs.salary).toBe(525_000); // 인상된 월급이 그달 월급으로 나간다
+  expect(s.staff[0]!.salary).toBe(560_000);
+  expect(s.lastMonthCard!.costs.salary).toBe(560_000); // 인상된 월급이 그달 월급으로 나간다
   annualRaise(s);
-  expect(s.salaryRaisePct).toBe(10);
-  expect(s.staff[0]!.salary).toBe(551_250);
+  expect(s.salaryRaisePct).toBe(24);
+  expect(s.staff[0]!.salary).toBe(627_200);
 });
 
 test('유지비: 노후(트랙 A wearOf, 24개월 경과)면 +50%', () => {

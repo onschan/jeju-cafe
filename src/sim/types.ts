@@ -803,7 +803,7 @@ export interface GameState {
   crisisMonths: number;                       // 잔고 < −500만 연속 달 수 (3: 정착 실패 위기)
   yearNet: number;                            // 올해 순이익 누적 (1~12월)
   lastYearNet: number;                        // 전년 순이익 (3월 1일 소득세 = ×10%)
-  salaryRaisePct: number;                     // 급여 인상 누적 % (매년 3월 +5)
+  salaryRaisePct: number;                     // 급여 인상 누적 % (매년 3월 +12)
   waiting: string[];                          // 대기열 (손님 타입 id, 최대 3 — 넘치면 돌아간다)
   monthGuestsLeft: number;                    // 이달 대기열이 차서 돌아간 손님 수
   monthLoan: number;                          // 이달 받은 대출 금액

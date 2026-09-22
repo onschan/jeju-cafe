@@ -604,7 +604,7 @@ function planRoutes(s: GameState): void {
 }
 
 /** 매달 1일 */
-function monthlyPlan(s: GameState, monthsPlayed: number): void {
+export function monthlyPlan(s: GameState, monthsPlayed: number): void {
   ensurePath(s);
   // 테이블은 한 달에 4개씩 늘린다 (사람처럼): 시작 3석 + 16
   let added = 0;
@@ -675,7 +675,7 @@ function monthlyPlan(s: GameState, monthsPlayed: number): void {
 /** fun-guest: 봇이 하루에 인사하는 손님 수 */
 const BOT_GREETS_PER_DAY = 3;
 /** 매일 아침 */
-function dailyPlan(s: GameState): void {
+export function dailyPlan(s: GameState): void {
   while (s.alerts.length > 0) apply(s, s.alerts[0]!.type === 'ending' ? { type: 'continueEnding' } : { type: 'dismissAlert' }); // z-ending: 엔딩은 「계속하기」
   // 게시판 부탁은 지금 할 수 있는 것(시설·메뉴 열림·아이템 있음)만 받는다 (랜드마크·손님 해금이 부탁 보상)
   if (s.clock.year >= BOT_QUEST_YEAR) for (const q of Object.values(s.board.quests)) if (Object.values(s.board.quests).filter((x) => x.status === 'active').length < BOT_QUEST_ACTIVE_MAX && q.status === 'offered' && botCanDoQuest(s, questDef(q.id)) && canAcceptQuest(s, q.id).ok) apply(s, { type: 'acceptQuest', id: q.id });

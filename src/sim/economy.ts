@@ -23,7 +23,7 @@ export const BASE_SALARY_DEFAULT = 400_000;
 export const SALARY_LEVEL_STEP = 0.15;
 export const SALARY_PER_STAT_POINT = 1000;
 /** 매년 3월 1일 급여 인상 % (누적) */
-export const ANNUAL_RAISE_PCT = 5;
+export const ANNUAL_RAISE_PCT = 12;
 /** 소득세율 (전년 순이익 기준) */
 export const TAX_RATE = 0.1;
 export const TAX_MONTH = 3;

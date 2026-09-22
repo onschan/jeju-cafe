@@ -43,7 +43,7 @@ export const LEVEL_UP_MONEY = 20_000;      // × 현재 레벨
 export const LEVEL_PRICE_PCT = 10;         // 레벨당 판매가 +10%
 /** 판매가 = 2,000 + 150 × (맛 + 보기 + 제주) — 아메리카노(6/2/0)가 3,200이 되는 식 */
 export const PRICE_BASE = 2000;
-export const PRICE_PER_STAT = 150;
+export const PRICE_PER_STAT = 115;
 /** 품질 경계 (스탯 합) */
 export const QUALITY_GOOD = 45;
 export const QUALITY_BEST = 80;
