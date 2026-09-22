@@ -1,7 +1,7 @@
 [
   {"id": "busstop", "name": "정류장", "kind": "busstop", "w": 1, "h": 1, "cost": 0, "scenery": 0, "noise": 1, "wind": 0, "upkeep": 0, "terrain": ["road"]},
   {"id": "warehouse", "name": "카페 본관", "kind": "building", "w": 3, "h": 2, "cost": 0, "scenery": 0, "noise": 0, "wind": 1, "upkeep": 0, "terrain": ["soil"], "desc": "카운터·주방·실내 자리가 있는 카페 건물. 문은 앞쪽 왼쪽에 생겨요. 바람 적고 마을 길 가까운 데가 좋아요."},
-  {"id": "gate", "name": "정낭", "kind": "gate", "w": 1, "h": 1, "cost": 50000, "scenery": 1, "noise": 0, "wind": 0, "upkeep": 0, "terrain": ["soil"], "desc": "제주식 대문. 손님이 지나가면 관광객 만족 +1(최대 2). 없어도 되고 옮겨도 돼요."},
+  {"id": "gate", "name": "정낭", "kind": "gate", "w": 1, "h": 1, "cost": 50000, "scenery": 1, "noise": 0, "wind": 0, "upkeep": 0, "terrain": ["soil"], "desc": "제주식 대문 장식. 관광객이 좋아한다. 지나가는 관광객 만족 +1(최대 2)."},
   {"id": "path", "name": "올렛길", "kind": "path", "w": 1, "h": 1, "cost": 10000, "scenery": 0, "noise": 0, "wind": 0, "upkeep": 150, "terrain": ["soil"]},
   {"id": "tangerine_tree", "name": "감귤나무", "kind": "tree", "category": "farm", "w": 1, "h": 1, "cost": 80000, "scenery": 2, "noise": 0, "wind": 1, "upkeep": 1200, "terrain": ["soil"], "yield": {"ingredientId": "tangerine", "perMonth": 6}, "desc": "매월 1일 감귤 6개가 창고에 들어와요. 경관 +2."},
   {"id": "carrot_field", "name": "당근밭", "kind": "deco", "category": "farm", "w": 1, "h": 1, "cost": 60000, "scenery": 1, "noise": 0, "wind": 0, "upkeep": 900, "terrain": ["soil"], "yield": {"ingredientId": "carrot", "perMonth": 8}, "desc": "구좌 당근밭. 매월 1일 당근 8개가 창고에 들어와요."},

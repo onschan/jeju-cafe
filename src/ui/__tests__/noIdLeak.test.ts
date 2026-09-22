@@ -58,8 +58,8 @@ describe('영문 id 노출 없음 (창·카드·대화)', () => {
     expectClean(TUTORIAL_STEPS.flatMap((t) => [t.title, t.button, ...t.lines]), '튜토리얼');
   });
 
-  it('추천 탭(pro-guide): 월별 정석 표·시뮬 추천·토큰을 채운 튜토리얼 대사', () => {
-    expectClean(openingBuild().flatMap((r) => [r.title, r.what, r.why]), '정석 빌드 표');
+  it('추천 탭: 1년차 월별 표·다음 수·토큰을 채운 튜토리얼 대사', () => {
+    expectClean(openingBuild().flatMap((r) => [r.title, r.what, r.why]), '1년차 표');
     const texts: string[] = [];
     const t = createInitialState(1, 'p', 0, 'tutorial');
     for (let i = 0; i < 6; i++) { const m = nextMove(t); if (!m) break; texts.push(m.text); if (m.cells[0] && !Object.values(t.objects).some((o) => o.type === 'warehouse')) apply(t, { type: 'placeMain', ...m.cells[0] }); else break; }

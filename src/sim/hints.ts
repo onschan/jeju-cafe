@@ -22,16 +22,16 @@ export function idleDays(state: GameState): number {
   return Math.round(((state.tick - last) * STEP_MS) / DAY_MS); // 새 날 처리는 그날의 마지막 스텝 직전에 돌아 floor면 하루가 모자란다
 }
 
-/** 지금 가장 값진 다음 행동 한 줄 (없으면 null). 도전 다음엔 solver의 다음 수(strategy.nextMove — 추천 탭 「시뮬 추천」과 같은 수).
- *  solver 결과(롤아웃)가 캐시에 있으면 그 1위 수를 시뮬 수치와 함께("할망: 시뮬로 보니 — 야외 테이블 (12,9) — 14일 굴려 보니 자금 +₩42만"), 없으면 정석 표의 다음 수. */
+/** 지금 가장 값진 다음 행동 한 줄 (없으면 null). 도전 다음엔 solver의 다음 수(strategy.nextMove — 추천 탭 「할망의 추천」과 같은 수).
+ *  solver 결과(롤아웃)가 캐시에 있으면 그 1위 수를 예상 수치와 함께("할망: 야외 테이블 (12,9) — 14일 뒤 자금 +₩42만"), 없으면 1년차 표의 다음 수. 문구 규칙 §6: 지시문·화살표 없이 이유 한 줄. */
 export function idleHint(state: GameState): string | null {
-  if (state.challenges.active.length === 0 && offeredChallenges(state).length > 0) return '삼춘: 도전 과제가 비었네. 목표 줄을 눌러 하나 골라 봐 — 보상이 쏠쏠해';
+  if (state.challenges.active.length === 0 && offeredChallenges(state).length > 0) return '할망: 도전이 비었다. 목표 줄에 있고 보상이 쏠쏠하다';
   const move = nextMove(state);
-  if (move) return `할망: ${move.move ? '시뮬로 보니' : '정석대로'} — ${move.text}`;
+  if (move) return `할망: ${move.text}`;
   const unbuilt = state.unlocked.objects.filter((t) => objectDef(t).cost > 0 && !Object.values(state.objects).some((o) => o.type === t));
-  if (unbuilt.length >= 3 && state.money >= 2_000_000) return `삼춘: 새로 열린 시설이 ${unbuilt.length}개나 있어. 짓기 창을 열어 봐`;
+  if (unbuilt.length >= 3 && state.money >= 2_000_000) return `할망: 새로 열린 시설이 ${unbuilt.length}개나 된다. 돈도 있으니 마당을 꾸며 보라`;
   const g = currentGoal(state);
-  if (g) return `삼춘: 다음 목표는 「${g.title}」 — ${g.desc}`;
+  if (g) return `할망: 다음 목표는 「${g.title}」 — ${g.desc}`;
   return null;
 }
 

@@ -175,12 +175,12 @@ export function candidateActions(s: GameState, k = 3): SolverCandidate[] {
   let hires = 0;
   for (const c of s.candidates) for (const role of roles) {
     if (hires >= k + 1 || !canHire(s, c.id, role).ok) continue;
-    add({ action: { type: 'hire', candidateId: c.id, role }, label: `${c.name} 채용 → ${roleDef(role).name}`, cells: [], targets: ['nav:people', 'tab:candidates', 'hire'], prio: 70 });
+    add({ action: { type: 'hire', candidateId: c.id, role }, label: `${c.name} ${roleDef(role).name}로 채용`, cells: [], targets: ['nav:people', 'tab:candidates', 'hire'], prio: 70 });
     hires++;
   }
   if (s.candidates.length === 0 && s.staff.length < staffCapacity(s) && canPostJob(s, 'flyer').ok) add({ action: { type: 'postJob', tier: 'flyer' }, label: '전단 공고 (후보 모으기)', cells: [], targets: ['nav:people', 'tab:candidates'], prio: 40 });
   for (const st of s.staff) {
-    if (st.role === null) for (const role of roles) if (canAssign(s, st.id, role).ok) { add({ action: { type: 'assign', staffId: st.id, role }, label: `${st.name} → ${roleDef(role).name} 배치`, cells: [], targets: ['nav:people', 'tab:staff', 'assign'], prio: 68 }); break; }
+    if (st.role === null) for (const role of roles) if (canAssign(s, st.id, role).ok) { add({ action: { type: 'assign', staffId: st.id, role }, label: `${st.name} ${roleDef(role).name}로 배치`, cells: [], targets: ['nav:people', 'tab:staff', 'assign'], prio: 68 }); break; }
     if (canLevelUp(s, st.id).ok) add({ action: { type: 'levelUp', staffId: st.id }, label: `${st.name} 승급`, cells: [], targets: ['nav:people', 'tab:staff'], prio: 32 });
   }
   let trains = 0;
@@ -308,7 +308,7 @@ function whyOf(h: number, d: SolverMove['delta']): string {
   const parts = [`자금 ${fmtWon(d.money)}`];
   if (d.reputation !== 0) parts.push(`평판 ${d.reputation > 0 ? '+' : '−'}${Math.abs(Math.round(d.reputation * 10) / 10)}`);
   if (d.goals !== 0) parts.push(`목표 ${d.goals > 0 ? '+' : '−'}${Math.abs(d.goals)}`);
-  return `${h}일 굴려 보니 ${parts.join(' · ')}`;
+  return `${h}일 뒤 ${parts.join(' · ')}`; // 문구 규칙 §6: 「시뮬」·「굴려 보니」 없이
 }
 
 /** 빔 서치: 후보(우선순위 순) 각각 H일 롤아웃 → 상위 beam은 H/2일 뒤 다음 수 second개까지 보고 최댓값 → 상위 top. 점수·delta는 「아무것도 안 함」 대비. */

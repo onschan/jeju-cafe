@@ -1,6 +1,6 @@
 /**
- * 할망의 정석 (pro-guide → solver): 튜토리얼 글로우 칸·「시뮬 추천」을 실제 수치로 고른다 — 고정 좌표 없음.
- * 모든 함수는 sim 상태만 읽고 결정적이다(rng·Date 없음). 튜토리얼(tutorial.ts cells)·공략 노트(TutorialWindow)·무행동 힌트(hints.ts)가 부른다.
+ * 할망의 추천 (pro-guide → solver): 튜토리얼 글로우 칸·「할망의 추천」을 실제 수치로 고른다 — 고정 좌표 없음.
+ * 모든 함수는 sim 상태만 읽고 결정적이다(rng·Date 없음). 튜토리얼(tutorial.ts cells)·추천 탭(TutorialWindow)·무행동 힌트(hints.ts)가 부른다.
  *
  * solver: `bestSeatCells` 같은 공개 함수는 휴리스틱(`*Heuristic`)으로 후보를 뽑은 뒤, 같은 상태의 롤아웃 결과(solverCache — 워커 또는 solveSync가 채운다)가
  * 있으면 그 점수순으로 다시 세운다. 결과가 없으면 휴리스틱 순서 그대로(동기·렌더 경로에서 롤아웃을 돌리지 않는다). nextMove도 결과가 있으면 solver 1위 수를 낸다.
@@ -12,9 +12,9 @@
  * - bestIndoorSeats  실내 테이블: 본관 빈 바닥 중 벽에 붙은 창가(북쪽 벽 우선) → 입지 점수 순
  * - bestParkingCells 주차장: 마을 길에 접한 자리(entry.ts parkingSites) 중 본관 문 앞과 가까운 순
  * - bestSpotToInvest 명소: 지금 투자할 수 있는 것 중 그 태그 손님층 인기(spots.ts tagPopularity) 최고 → 싼 순
- * - openingBuild     1년차 월별 정석 빌드 표 (추천 탭)
- * - nextMove         현재 상태에서 정석의 다음 수 한 줄 (+ 글로우 칸) — 튜토리얼이 끝난 뒤에도 남는 코치
- * - strategyVars     대사 토큰 `{seatScore}` 같은 것에 넣을 실제 수치 (ui/tutorialDialogue.ts fillTutorialLines)
+ * - openingBuild     1년차 월별 표 (추천 탭)
+ * - nextMove         현재 상태에서 다음 수 한 줄 (+ 글로우 칸) — 튜토리얼이 끝난 뒤에도 남는 코치. 문구는 이유가 있는 한 줄(§6: 지시문·화살표 없음)
+ * - strategyVars     대사 토큰 `{seatWhy}` 같은 것에 넣을 실제 수치·이유 (ui/tutorialDialogue.ts fillTutorialStep)
  */
 import type { GameState, Pt, PlacedObject, RoleId } from './types.ts';
 import { objectDef, COMBOS, SPOTS } from '../data/index.ts';
@@ -35,7 +35,7 @@ export const TREE_TYPE = 'tangerine_tree';
 export const INDOOR_SEAT_TYPE = 'table_in';
 /** 주차장 해금 조건(entry.ts routeFacilityUnlockMet)과 같은 쉼 시설 수 */
 export const PARKING_REST_COUNT = 6;
-/** 정석 야외 좌석 수 (3월 4 → 여름 6) */
+/** 권장 야외 좌석 수 (3월 4 → 여름 6) */
 export const OPENING_SEATS = 4;
 export const SUMMER_SEATS = 6;
 
@@ -267,22 +267,22 @@ export function bestSpotToInvest(s: GameState): { id: string; name: string; cost
   return cands[0] ?? null;
 }
 
-// ---------- 정석 빌드 표 ----------
+// ---------- 1년차 월별 표 ----------
 
 export interface BuildPlanRow { month: number; title: string; what: string; why: string }
-/** 1년차 월별 정석 (공략 노트). 튜토리얼 33단계와 같은 순서, 봇(bot.ts)의 실제 수순을 사람 말로. */
+/** 1년차 월별 표 (추천 탭). 봇(bot.ts)의 실제 수순을 사람 말로 — 무엇을(what)과 왜(why) 한 줄씩. */
 export function openingBuild(): BuildPlanRow[] {
   return [
-    { month: 3, title: '개업', what: '본관·올렛길·야외 테이블 4·홀 1·메뉴 2', why: '자리 4면 「자리 없음」 불만이 안 뜬다' },
-    { month: 4, title: '홍보·감귤나무', what: '전단 홍보 + 감귤나무(귤밭 뷰·밭담 수확 콤보)', why: '콤보 1개 = 인기 +3·요금 +5%' },
-    { month: 5, title: '증축 저축', what: `₩${MAIN_EXPAND_COST[2]! / 10_000}만 모으기 (새 시설 금지)`, why: '5월에 돈을 쓰면 6월 증축이 밀린다' },
-    { month: 6, title: '본관 Lv2', what: '증축 → 문 앞 길 다시 잇기', why: '실내 자리 = 비 오는 날 매출' },
-    { month: 7, title: '실내 2', what: '실내 테이블 2 (창가) + 야외 6', why: '여름 손님 피크에 자리 6+2' },
-    { month: 8, title: '연수', what: '바리스타 연수 1회 (랭크 3)', why: '손재주 +1 = 서빙 대기 −15%' },
-    { month: 9, title: '가이드북 대비', what: '청소 직원·청결 90 유지', why: '9월 발표: 청결이 별점을 가른다' },
-    { month: 10, title: '주차장', what: '쉼 시설 6 → 렌터카 주차장', why: '차 손님 지갑 ×1.2·체류 ×1.2' },
-    { month: 11, title: '감귤 축제', what: '감귤주스·감귤 레시피 메뉴판 앞줄', why: '11월 축제 이벤트에 감귤 메뉴 보너스' },
-    { month: 12, title: '실내 난로', what: '난로(실내) + 돌담으로 바람 0', why: `겨울 바람 1당 만족 ${SAT_WIND_WINTER}` },
+    { month: 3, title: '개업', what: '야외 테이블 4개, 홀 직원 1명, 메뉴 2개', why: '자리가 4개면 손님이 안 돌아간다' },
+    { month: 4, title: '홍보와 나무', what: '전단 홍보 한 번, 감귤나무 한 그루', why: '코너가 하나 생기면 인기가 오른다' },
+    { month: 5, title: '증축 준비', what: `₩${MAIN_EXPAND_COST[2]! / 10_000}만을 모은다`, why: '5월에 쓰면 6월 증축이 늦어진다' },
+    { month: 6, title: '본관 2층', what: '증축하고 문 앞 길을 다시 잇는다', why: '실내 자리는 비 오는 날 매출이다' },
+    { month: 7, title: '실내 자리', what: '창가에 실내 테이블 2개, 야외 6개', why: '여름엔 손님이 몰려 자리가 모자란다' },
+    { month: 8, title: '연수', what: '바리스타 연수 한 번', why: '손재주가 오르면 서빙이 빨라진다' },
+    { month: 9, title: '가이드북', what: '청소 직원을 두고 청결 90을 지킨다', why: '9월 발표는 청결로 별점을 가른다' },
+    { month: 10, title: '주차장', what: '쉼 시설 6개가 되면 렌터카 주차장', why: '차로 온 손님은 더 쓰고 더 머문다' },
+    { month: 11, title: '감귤 축제', what: '감귤주스·감귤 메뉴를 앞줄에', why: '11월 축제엔 감귤 메뉴가 잘 팔린다' },
+    { month: 12, title: '난로', what: '실내 난로와 돌담으로 바람을 막는다', why: `겨울 바람은 1당 만족 ${SAT_WIND_WINTER}` },
   ];
 }
 
@@ -297,40 +297,40 @@ export function solverNextMove(s: GameState): NextMove | null {
 function hasRole(s: GameState, ...roles: RoleId[]): boolean {
   return roles.some((r) => staffInRole(s, r).length > 0);
 }
-/** 현재 상태에서 정석의 다음 수 한 줄 (+ 글로우 칸). 튜토리얼 33단계 순서와 같은 우선순위. 할 게 없으면 null. */
+/** 현재 상태에서 다음 수 한 줄 (+ 글로우 칸). 1년차 표와 같은 우선순위. 할 게 없으면 null. */
 export function nextMove(s: GameState): NextMove | null {
   const sv = solverNextMove(s);
   if (sv) return sv;
   return heuristicNextMove(s);
 }
-/** 정석 표(튜토리얼 33단계 순서)의 다음 수 — solver 결과가 없을 때의 대체 */
+/** 1년차 표 순서의 다음 수 — solver 결과가 없을 때의 대체. 문구는 「무엇 — 왜」 한 줄. */
 export function heuristicNextMove(s: GameState): NextMove | null {
   const m = mainBuilding(s);
-  if (!m) { const p = bestMainCell(s); return { text: '본관부터. 빛나는 칸(바람 최소)에 짓기', cells: p ? [p] : [] }; }
-  if (!isDoorReachable(s, m)) { const f = doorFrontOf(m); return { text: '마을 길 → 문 앞 올렛길 잇기. 길 없으면 손님 0', cells: [f] }; }
+  if (!m) { const p = bestMainCell(s); return { text: '본관이 먼저다 — 빛나는 칸이 바람이 제일 적다', cells: p ? [p] : [] }; }
+  if (!isDoorReachable(s, m)) { const f = doorFrontOf(m); return { text: '마을 길에서 문 앞까지 올렛길 — 길이 없으면 손님이 못 온다', cells: [f] }; }
   const seats = outdoorSeats(s).length;
   const menus = s.menuSlots.filter((x) => x !== null).length;
-  if (seats < 1) return { text: `야외 테이블 1개. 빛나는 칸이 입지 최고`, cells: bestSeatCells(s, 1) };
-  if (menus < 2) return { text: '메뉴판에 아메리카노·감귤주스. 2개면 개업', cells: [] };
-  if (s.staff.length < 1) return { text: '홀 직원 1명 채용. 서빙 대기 절반', cells: [] };
-  if (!wallSheltered(s)) return { text: `돌담 1개를 테이블 북서쪽에. 바람 −1 = 겨울 만족 +${-SAT_WIND_WINTER}`, cells: bestWallCells(s, 1) };
-  if (s.stats.promotionsDone < 1) return { text: '전단 홍보 1회. 타깃 손님층이면 1.5배', cells: [] };
-  if (s.challenges.active.length === 0 && offeredChallenges(s).length > 0) return { text: '도전 과제 1개 수락. 목표 줄을 탭', cells: [] };
-  if (unlocked(s, TREE_TYPE) && objectsOf(s, TREE_TYPE).length < 1) { const c = bestComboCells(s, TREE_TYPE, 1); if (c.length) return { text: `감귤나무 1그루. 빛나는 칸이면 콤보 ${combosIfPlaced(s, TREE_TYPE, c[0]!.x, c[0]!.y)}개`, cells: c }; }
-  if (seats < OPENING_SEATS) return { text: `야외 테이블 ${seats}/${OPENING_SEATS}. 4개면 「자리 없음」 불만 0`, cells: bestSeatCells(s, 1) };
-  if (!hasRole(s, 'hall', 'clean')) return { text: '홀(또는 청소) 직원 배치. 청결이 별점', cells: [] };
+  if (seats < 1) return { text: `야외 테이블 하나 — ${seatWhy(s)}`, cells: bestSeatCells(s, 1) };
+  if (menus < 2) return { text: '메뉴판에 아메리카노·감귤주스 — 둘이면 문을 열 수 있다', cells: [] };
+  if (s.staff.length < 1) return { text: '홀 직원 한 명 — 서빙 기다리는 시간이 반으로 준다', cells: [] };
+  if (!wallSheltered(s)) return { text: `돌담 하나를 테이블 북서쪽에 — 바람 1이 줄면 겨울 만족 +${-SAT_WIND_WINTER}`, cells: bestWallCells(s, 1) };
+  if (s.stats.promotionsDone < 1) return { text: '전단 홍보 한 번 — 타깃 손님층이면 1.5배로 온다', cells: [] };
+  if (s.challenges.active.length === 0 && offeredChallenges(s).length > 0) return { text: '도전 하나 받기 — 목표 줄에 있고 보상이 쏠쏠하다', cells: [] };
+  if (unlocked(s, TREE_TYPE) && objectsOf(s, TREE_TYPE).length < 1) { const c = bestComboCells(s, TREE_TYPE, 1); if (c.length) return { text: `감귤나무 한 그루 — 빛나는 칸이면 콤보 ${combosIfPlaced(s, TREE_TYPE, c[0]!.x, c[0]!.y)}개가 난다`, cells: c }; }
+  if (seats < OPENING_SEATS) return { text: `야외 테이블 ${seats}/${OPENING_SEATS} — 4개면 자리가 없어 돌아가는 손님이 없다`, cells: bestSeatCells(s, 1) };
+  if (!hasRole(s, 'hall', 'clean')) return { text: '홀이나 청소 직원 배치 — 청결이 별점을 가른다', cells: [] };
   if (s.main.level < 2 && !s.main.work) {
     const cost = MAIN_EXPAND_COST[2]!;
     return s.money >= cost
-      ? { text: `본관 Lv2 증축(₩${cost / 10_000}만). 실내 자리가 열린다`, cells: [] }
-      : { text: `증축 저축 ₩${Math.ceil((cost - s.money) / 10_000)}만 남음. 새 시설 금지`, cells: [] };
+      ? { text: `본관 증축(₩${cost / 10_000}만) — 실내 자리가 생긴다`, cells: [] }
+      : { text: `증축까지 ₩${Math.ceil((cost - s.money) / 10_000)}만 — 지금 쓰면 그만큼 늦어진다`, cells: [] };
   }
-  if (s.main.level >= 2 && !s.main.work && indoorSeats(s).length < 2) return { text: `실내 테이블 ${indoorSeats(s).length}/2. 창가(벽 옆) 칸`, cells: bestIndoorSeats(s, 1) };
-  if (seats < SUMMER_SEATS) return { text: `야외 테이블 ${seats}/${SUMMER_SEATS}. 6개면 주차장이 열린다`, cells: bestSeatCells(s, 1) };
-  if (unlocked(s, PARKING_EXPAND_FROM) && !hasParking(s)) return { text: '렌터카 주차장을 마을 길 옆에. 차 손님 지갑 ×1.2', cells: bestParkingCells(s, 1) };
+  if (s.main.level >= 2 && !s.main.work && indoorSeats(s).length < 2) return { text: `실내 테이블 ${indoorSeats(s).length}/2 — 창가 자리가 만족이 높다`, cells: bestIndoorSeats(s, 1) };
+  if (seats < SUMMER_SEATS) return { text: `야외 테이블 ${seats}/${SUMMER_SEATS} — 6개면 주차장이 열린다`, cells: bestSeatCells(s, 1) };
+  if (unlocked(s, PARKING_EXPAND_FROM) && !hasParking(s)) return { text: '렌터카 주차장을 마을 길 옆에 — 차로 온 손님은 더 쓴다', cells: bestParkingCells(s, 1) };
   const spot = bestSpotToInvest(s);
-  if (spot && s.money >= spot.cost) return { text: `명소 「${spot.name}」 투자(₩${spot.cost / 10_000}만). 인기 손님층과 맞다`, cells: [] };
-  if (s.main.level < 3 && !s.main.work) return { text: `다음은 본관 Lv3(₩${MAIN_EXPAND_COST[3]! / 10_000}만). 저축`, cells: [] };
+  if (spot && s.money >= spot.cost) return { text: `명소 「${spot.name}」 투자(₩${spot.cost / 10_000}만) — 요즘 잘 오는 손님층이 좋아한다`, cells: [] };
+  if (s.main.level < 3 && !s.main.work) return { text: `다음은 본관 3층(₩${MAIN_EXPAND_COST[3]! / 10_000}만) — 모아 두면 된다`, cells: [] };
   return null;
 }
 /** 야외 테이블 북서 쐐기에 돌담(또는 방풍 시설)이 하나라도 있나 — 첫 돌담 판정 */
@@ -347,14 +347,24 @@ export function wallSheltered(s: GameState): boolean {
 
 // ---------- 대사 토큰 ----------
 
-/** solver 캐시에서 조건에 맞는 최고 수의 근거 한 줄 ("시뮬 14일 굴려 보니 자금 +₩42만 · 평판 +1" — 2위 비교는 뺀다). 결과가 없으면 ''. */
+/** solver 캐시에서 조건에 맞는 최고 수의 근거 한 줄 ("14일 뒤 자금 +₩42만 · 평판 +1" — 2위 비교는 뺀다). 결과가 없으면 ''. */
 export function solverDeltaText(s: GameState, pick: (m: SolverMove) => boolean): string {
   const m = cachedMoves(s, pick)[0];
-  return m ? `시뮬 ${m.why.split(',')[0]}` : '';
+  return m ? m.why.split(',')[0]! : '';
+}
+/** 추천 테이블 칸이 왜 좋은지 한 줄 (≤ 14자, 튜토리얼 1단계 `{seatWhy}`·다음 수 문구): 전망 → 요금, 주방 가까움 → 서빙, 바람 적음 → 겨울, 아니면 길 옆. */
+export function seatWhy(s: GameState): string {
+  const seat = bestSeatCell(s);
+  if (!seat) return '길 옆이라 손님이 잘 앉는다';
+  const site = siteOf(s, seat.x, seat.y);
+  if (site.view >= 1) return `바다가 보여 요금 +${Math.round(site.view * FEE_PER_VIEW * 100)}%`;
+  if (site.kitchen >= 3) return '주방이 가까워 서빙이 빠르다';
+  if (site.wind <= 1) return '바람이 적어 겨울에도 좋다';
+  return '길 옆이라 손님이 잘 앉는다';
 }
 const placing = (type: string) => (m: SolverMove) => m.action.type === 'place' && m.action.objectType === type;
-/** 튜토리얼 대사 `{토큰}`에 넣을 실제 수치. 계산이 안 되는 상황(본관 없음 등)엔 정석 기본값. 키에 밑줄을 쓰지 않는다(noIdLeak).
- *  solver 토큰(`seatDelta`·`wallDelta`·`treeDelta`·`indoorDelta`·`parkingDelta`·`solverDelta`)은 롤아웃 결과가 캐시에 있을 때만 채워지고 없으면 '' — ui/tutorialDialogue.ts가 단계 key별로 골라 「→ 지금:」 줄 앞에 끼운다. */
+/** 튜토리얼 대사 `{토큰}`에 넣을 실제 수치·이유. 계산이 안 되는 상황(본관 없음 등)엔 기본값. 키에 밑줄을 쓰지 않는다(noIdLeak).
+ *  `seatWhy`는 1단계 「빛나는 칸은 {seatWhy}」. solver 토큰(`seatDelta` 등)은 롤아웃 결과가 캐시에 있을 때만 채워지고 없으면 ''. */
 export function strategyVars(s: GameState): Record<string, string> {
   const m = mainBuilding(s);
   const main = m ? doorFrontOf(m) : bestMainCell(s); // 본관이 있으면(다시 보기) 문 앞 칸의 바람
@@ -372,6 +382,7 @@ export function strategyVars(s: GameState): Record<string, string> {
     seatScore: seatSite ? String(seatScore(s, seat!.x, seat!.y)) : '5',
     seatView: seatSite ? String(seatSite.view) : '0',
     seatFee: seatSite ? String(Math.round(seatSite.view * FEE_PER_VIEW * 100)) : '0',
+    seatWhy: seatWhy(s),
     wallWind: String(wallWind),
     wallAfter: String(Math.max(0, wallWind - 1)),
     comboN: String(comboN),

@@ -14,7 +14,7 @@ export interface SolverMove {
   score: number;
   /** 롤아웃 H일 뒤 저축 대비 차이 */
   delta: { money: number; reputation: number; goals: number };
-  /** 근거 한 줄 — 시뮬 수치로 ("14일 굴려 보니 자금 +₩42만 · 평판 +1") */
+  /** 근거 한 줄 — 예상 수치로 ("14일 뒤 자금 +₩42만 · 평판 +1") */
   why: string;
   /** 행동 이름 (한글, id 노출 없음) */
   label: string;
