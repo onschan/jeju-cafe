@@ -15,6 +15,7 @@ import { Face, Bar } from './Bars';
 import { card, brownBtn, brownBtnOn, brownBtnOff, dangerBtn, PALETTE } from './frame';
 import { fmtNum } from '../sim/format.ts';
 import { RegionPanel } from './RegionPanel';
+import { ParcelMap } from './ParcelMap'; // fun-rank: 장부 › 투자 맨 위 필지 3×3 지도
 
 export type BoardTab = 'quests' | 'events' | 'spots' | 'regions';
 const TABS: { id: BoardTab; label: string }[] = [{ id: 'quests', label: '부탁' }, { id: 'events', label: '이벤트' }, { id: 'spots', label: '투자' }, { id: 'regions', label: '지역 지도' }];
@@ -224,6 +225,7 @@ export function BoardPanel({ tabs = ['quests', 'events', 'spots'] }: { tabs?: Bo
 
       {tab === 'events' && (
         <div>
+          <ParcelMap />{/* fun-rank */}
           {events.length === 0 && <div style={{ fontSize: 13, color: PALETTE.inkSoft }}>이번 달 소식이 없어요. 매월 1일에 투자·행사 제안이 와요.</div>}
           {events.map((ev, i) => <EventCard key={`${ev.id}-${ev.monthIndex}-${i}`} ev={ev} />)}
         </div>

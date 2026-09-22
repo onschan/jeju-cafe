@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { wonText } from '../data/labels.ts';
 import { useGame } from './store';
-import { seasonOf, boardBadge, type Season } from '../sim/index.ts';
+import { seasonOf, boardBadge, gradeOf, gradeName, type Season } from '../sim/index.ts';
+import { GradeWindow } from './GradeWindow';
 import { Icon } from './Icon';
 import { GoalBar, GOAL_BAR_H } from './GoalBar';
 import { MESSAGE_LINE_H } from './MessageLine';
@@ -27,20 +28,31 @@ const MAIN_TABS: { kind: WindowKind; icon: string; label: string }[] = [
   { kind: 'ledger', icon: 'money', label: '장부' },
 ];
 
-/** 상단 바: 날짜 · 계절 · 자금 · ★. 탭하면 경영 현황 창. */
+/** 상단 바: 날짜 · 계절 · 자금 · 평판 · ★ (탭하면 경영 현황 창) + 오른쪽 끝 카페 등급 이름 (fun-rank: 탭하면 등급 창 — 조건 진행·「5년 뒤 우리 카페」 미리보기). */
 export function TopBar({ onOpen }: { onOpen: () => void }) {
   const s = useGame();
   const season = seasonOf(s.clock.month);
   const bump = useMoneyBump(s.money);
+  const [gradeOpen, setGradeOpen] = useState(false);
+  const grade = gradeOf(s);
   return (
-    <button data-testid="top-bar" onClick={onOpen} aria-label="경영 현황"
-      style={{ position: 'absolute', top: 0, left: 0, right: 0, height: TOP_BAR_H, padding: '0 10px', border: 0, borderBottom: `2px solid ${PALETTE.wood}`, background: PALETTE.paper, color: PALETTE.ink, fontFamily: 'inherit', fontSize: 14, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, whiteSpace: 'nowrap', overflow: 'hidden', zIndex: 10 }}>
-      <span>{s.clock.year}년 {s.clock.month}월 {s.clock.day}일</span>
-      <span aria-label={SEASON_LABEL[season]} title={SEASON_LABEL[season]}><Icon name={SEASON_ICON[season]} size={16} /></span>
-      <span title={wonText(s.money)} style={{ display: 'inline-block', transition: 'transform 0.12s ease-out', transform: bump ? 'scale(1.18)' : 'scale(1)', color: bump ? PALETTE.btn : undefined }}><Icon name="money" size={16} alt="돈" /> {wonText(s.money, true)}</span>
-      <span aria-label={`평판 ${Math.round(s.reputation)}`} title="평판"><Icon name="heart" size={14} />{Math.round(s.reputation)}</span>
-      <span aria-label={`별 ${s.star}`}>{'★'.repeat(Math.max(1, Math.min(5, s.star)))}<span style={{ color: PALETTE.inkSoft }}>{'☆'.repeat(5 - Math.max(1, Math.min(5, s.star)))}</span></span>
-    </button>
+    <>
+      <div data-testid="top-bar-row" style={{ position: 'absolute', top: 0, left: 0, right: 0, height: TOP_BAR_H, borderBottom: `2px solid ${PALETTE.wood}`, background: PALETTE.paper, display: 'flex', alignItems: 'stretch', zIndex: 10 }}>
+        <button data-testid="top-bar" onClick={onOpen} aria-label="경영 현황"
+          style={{ flex: 1, minWidth: 0, height: TOP_BAR_H, padding: '0 4px 0 6px', border: 0, background: 'transparent', color: PALETTE.ink, fontFamily: 'inherit', fontSize: 13, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 3, whiteSpace: 'nowrap', overflow: 'hidden' }}>
+          <span>{s.clock.year}년 {s.clock.month}월 {s.clock.day}일</span>
+          <span aria-label={SEASON_LABEL[season]} title={SEASON_LABEL[season]}><Icon name={SEASON_ICON[season]} size={16} /></span>
+          <span title={wonText(s.money)} style={{ display: 'inline-block', transition: 'transform 0.12s ease-out', transform: bump ? 'scale(1.18)' : 'scale(1)', color: bump ? PALETTE.btn : undefined }}><Icon name="money" size={16} alt="돈" /> {wonText(s.money, true)}</span>
+          <span aria-label={`평판 ${Math.round(s.reputation)}`} title="평판"><Icon name="heart" size={14} />{Math.round(s.reputation)}</span>
+          <span aria-label={`별 ${s.star}`} style={{ letterSpacing: -1 }}>{'★'.repeat(Math.max(1, Math.min(5, s.star)))}<span style={{ color: PALETTE.inkSoft }}>{'☆'.repeat(5 - Math.max(1, Math.min(5, s.star)))}</span></span>
+        </button>
+        <button data-testid="top-grade" data-tut="nav:grade" onClick={() => setGradeOpen(true)} aria-label={`카페 등급 ${gradeName(grade)}`} title="카페 등급"
+          style={{ flex: 'none', height: TOP_BAR_H, padding: '0 6px 0 5px', border: 0, borderLeft: `2px solid ${PALETTE.woodLight}`, background: PALETTE.paperDark, color: PALETTE.ink, fontFamily: 'inherit', fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', gap: 2 }}>
+          <Icon name="home_cafe" size={12} alt="" />{gradeName(grade).replace(' ', '')}
+        </button>
+      </div>
+      {gradeOpen && <GradeWindow onClose={() => setGradeOpen(false)} />}
+    </>
   );
 }
 
