@@ -119,12 +119,12 @@ describe('대화 데이터 (src/data/dialogue)', () => {
     ...SAMCHUN.flatMap((s) => [s.name, s.job, s.intro, s.rewardText, ...s.chain.flatMap((c) => [c.ask, ...c.lines, c.doneLine])]),
   ];
 
-  it('튜토리얼 33단계·5장(§7.2 확장 + w-start 맨땅 3단계), 단계당 2~3줄, 화자는 전부 할망, 단계마다 done 조건 문구', () => {
-    expect(TUTORIAL_STEPS.map((t) => t.id)).toEqual(Array.from({ length: 33 }, (_, i) => i + 1));
-    expect(TUTORIAL_STEPS.map((t) => t.chapter)).toEqual(TUTORIAL_STEPS.map((t) => t.id <= 11 ? 1 : t.id <= 17 ? 2 : t.id <= 22 ? 3 : t.id <= 29 ? 4 : 5));
+  it('튜토리얼 7단계(fun-start §2), 단계당 2~3줄·한 줄 ≤ 22자, 화자는 전부 할망, 단계마다 done 조건 문구', () => {
+    expect(TUTORIAL_STEPS.map((t) => t.id)).toEqual(Array.from({ length: 7 }, (_, i) => i + 1));
     for (const t of TUTORIAL_STEPS) {
       expect(t.lines.length).toBeGreaterThanOrEqual(2);
       expect(t.lines.length).toBeLessThanOrEqual(3);
+      for (const l of t.lines) expect(fillTemplate(l, VARS).length, l).toBeLessThanOrEqual(22);
       expect(t.speaker).toBe('halmang');
       expect(t.button.length).toBeGreaterThan(0);
       expect(t.done).not.toBeNull();

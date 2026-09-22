@@ -4,7 +4,7 @@ import { apply } from '../actions.ts';
 import { tick } from '../tick.ts';
 import { DAY_MS } from '../clock.ts';
 import { serialize } from '../save.ts';
-import { STEPS, recommendedMainCells, currentTutorialStep, TUTORIAL_STEPS, LOOK_IDS } from '../tutorial.ts';
+import { STEPS, recommendedMainCells, currentTutorialStep, TUTORIAL_STEPS } from '../tutorial.ts';
 import { offeredChallenges } from '../challenges.ts';
 import { cloneState, candidateActions, pickDiverse, candidateGroup, evaluate, bestMoves, solveSync, metricsOf, scoreOf, rolloutDays, SOLVER_WEIGHTS, DEFAULT_SOLVER_OPTIONS } from '../solver.ts';
 import { solverKey, solverResult, setSolverResult, rankCellsByCache, cachedMoves } from '../solverCache.ts';
@@ -15,13 +15,9 @@ import { canPlace } from '../grid.ts';
 import { handleSolve } from '../../ui/solverProtocol.ts';
 import type { GameState, Pt } from '../types.ts';
 
-/** 맨땅 → 본관 → 문 앞까지 올렛길 (strategy.test와 같은 마당) */
+/** 본관 + 문 앞까지 올렛길 = fun-start 새 게임 시작 모습 (strategy.test와 같은 마당) */
 function yardWithPath(seed = 1): GameState {
-  const s = createInitialState(seed, 'local', 0, 'tutorial');
-  apply(s, { type: 'placeMain', ...recommendedMainCells(s)[0]! });
-  const [start, door] = STEPS[3]!.cells(s) as [Pt, Pt];
-  for (let x = Math.min(start.x, door.x); x <= Math.max(start.x, door.x); x++) apply(s, { type: 'place', objectType: 'path', x, y: door.y });
-  return s;
+  return createInitialState(seed, 'local', 0, 'tutorial');
 }
 /** 완성 시작 상태(영업 중) — 롤아웃에 손님이 온다 */
 function starter(seed = 1): GameState { return createInitialState(seed); }
@@ -62,7 +58,7 @@ describe('solver: 후보 행동', () => {
     s.money = 0;
     const cands = candidateActions(s);
     expect(cands.some((c) => c.action.type === 'place' || c.action.type === 'investSpot' || c.action.type === 'buyParcel')).toBe(false);
-    const bare = createInitialState(1, 'local', 0, 'tutorial');
+    const bare = createInitialState(1, 'local', 0, 'bare');
     const c0 = candidateActions(bare);
     expect(c0.length).toBeGreaterThan(0);
     expect(c0.every((c) => c.action.type === 'placeMain')).toBe(true);
@@ -142,7 +138,7 @@ describe('solver: 빔 서치', () => {
     expect(a.moves.length).toBeLessThanOrEqual(DEFAULT_SOLVER_OPTIONS.top);
     for (let i = 1; i < a.moves.length; i++) expect(a.moves[i]!.score).toBeLessThanOrEqual(a.moves[i - 1]!.score);
     for (const m of a.moves) {
-      expect(m.why).toMatch(/^7일 굴려 보니 자금 [+−]₩/);
+      expect(m.why).toMatch(/^7일 뒤 자금 [+−]₩/);
       expect(m.targets.length).toBeGreaterThan(0);
       expect(typeof m.delta.money).toBe('number');
       expect(m.horizon).toBe(7);
@@ -177,8 +173,9 @@ describe('solver: 빔 서치', () => {
     expect(top).toBeDefined(); // 완성 시작 상태에는 저축보다 나은 수가 있다
     expect(nextMove(s)!.move).toBe(top);
     expect(nextMove(s)!.text).toContain(top!.why);
-    expect(idleHint(s)).toContain(`할망: 시뮬로 보니 — ${top!.label}`);
-    expect(strategyVars(s).solverDelta).toContain('시뮬');
+    expect(idleHint(s)).toContain(`할망: ${top!.label}`);
+    expect(strategyVars(s).solverDelta).toMatch(/^7일 뒤 자금/);
+    expect(idleHint(s)).not.toMatch(/시뮬|정석|굴려 보니|→ 지금/); // 문구 규칙 §6
     // 하루 지나면(날이 키에 들어간다) 캐시는 안 맞는다
     tick(s, DAY_MS);
     expect(solverResult(s)).toBeNull();
@@ -199,22 +196,21 @@ describe('solver: 빔 서치', () => {
 });
 
 describe('solver: 튜토리얼 글로우·워커', () => {
-  it('튜토리얼 5단계 글로우 칸이 solver 점수 최고 칸이고(후보 5칸 중), 그 칸에 놓으면 단계가 통과된다 — 33단계 정의 전부 cells가 solver 캐시가 있어도 안전', () => {
+  it('튜토리얼 1단계 글로우 칸이 solver 점수 최고 칸이고(후보 5칸 중), 그 칸에 놓으면 단계가 통과된다 — 7단계 정의 전부 cells가 solver 캐시가 있어도 안전', () => {
     setSolverResult(null);
     const s = yardWithPath();
-    for (const id of LOOK_IDS) apply(s, { type: 'tutorialNote', key: `look:${id}` });
-    for (let id = 1; id <= 5; id++) { apply(s, { type: 'tutorialNote', key: `dlg:${id}` }); if (id === 3) apply(s, { type: 'tutorialNote', key: 'look:main' }); }
-    expect(currentTutorialStep(s)!.id).toBe(5);
+    apply(s, { type: 'tutorialNote', key: 'dlg:1' });
+    expect(currentTutorialStep(s)!.id).toBe(1);
     const r = solveSync(s, { horizon: 7, maxCandidates: 12, maxRollouts: 14 });
     const seatMoves = r.moves.filter((m) => m.action.type === 'place' && m.action.objectType === 'table_out');
-    const glow = STEPS[4]!.cells(s);
+    const glow = STEPS[0]!.cells(s);
     expect(glow).toHaveLength(1);
     if (seatMoves.length > 0) expect(glow[0]).toEqual(seatMoves[0]!.cells[0]); // solver 1위 좌석 칸
     expect(bestSeatCellsHeuristic(s, 5)).toContainEqual(glow[0]);
     expect(apply(s, { type: 'place', objectType: 'table_out', ...glow[0]! }).ok).toBe(true);
-    expect(s.tutorial.step).toBe(5);
+    expect(s.tutorial.step).toBe(1);
     for (const st of STEPS) { const cells = st.cells(s); for (const p of cells) expect(p.x >= 0 && p.y >= 0).toBe(true); }
-    expect(TUTORIAL_STEPS).toBe(33);
+    expect(TUTORIAL_STEPS).toBe(7);
     setSolverResult(null);
   });
 

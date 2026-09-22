@@ -10,6 +10,7 @@ import { activeGoals, pastGoals, toGoal, urgentChallenge } from '../simBridge';
 import { offeredChallenges, canAcceptChallenge, challengeProgress, challengeDaysLeft, isChallengeLocked, challengeLockDaysLeft, monthlyProgress, goalConditionText, goalRewardText, CHALLENGE_SLOTS } from '../../sim/index.ts';
 import { GOALS, challengeDef } from '../../data/index.ts';
 import { showToast } from '../store';
+import { useTutorialNote } from '../tutorialDialogue';
 
 export type GoalTab = 'main' | 'challenge' | 'monthly';
 const TABS: { key: GoalTab; label: string }[] = [{ key: 'main', label: '메인' }, { key: 'challenge', label: '도전' }, { key: 'monthly', label: '월간' }];
@@ -24,6 +25,7 @@ export interface GoalWindowProps extends WindowProps {
 
 export function GoalWindow(props: GoalWindowProps) {
   const { s, dispatch } = useWindowState(props);
+  useTutorialNote('goalWindow'); // 튜토리얼 6단계 「목표 창 열어 보기」
   const [tab, setTab] = useState<GoalTab>(props.initialTab ?? 'main');
   const pastLimit = props.pastLimit ?? 8;
   const rewardsText = (rs: { type: string }[]) => (rs as Parameters<typeof goalRewardText>[0][]).map(goalRewardText).join(' · ');

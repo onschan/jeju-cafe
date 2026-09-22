@@ -15,8 +15,8 @@ export const GOAL_BAR_H = GOAL_LINE_H + CHALLENGE_LINE_H;
 /** 튜토리얼 배지 너비 (목표 줄 왼쪽 한 칸) */
 export const TUT_BADGE_W = 60;
 
-/** 목표 줄 왼쪽 「📖 n/33」 배지 (z-tutorial): 탭하면 튜토리얼 창(현재 단계 대사 다시 보기·장 목록·장 건너뛰기).
- *  튜토리얼이 끝나면 「📖 추천」 — 추천 탭(solver 「시뮬 추천」)는 졸업 뒤에도 남는 코치라 배지도 남긴다.
+/** 목표 줄 왼쪽 「📖 n/7」 배지 (fun-start): 탭하면 튜토리얼 창(현재 단계 대사 다시 보기·7단계 목록·건너뛰기).
+ *  튜토리얼이 끝나면 「📖 추천」 — 추천 탭(「할망의 추천」)은 다 배운 뒤에도 남는 코치라 배지도 남긴다.
  *  창은 #root에 포털로 띄운다 (목표 줄이 absolute라 그 안에 두면 갇힌다). */
 function TutorialBadge() {
   const s = useGame();
@@ -34,7 +34,7 @@ function TutorialBadge() {
   );
 }
 
-/** 상단 바 아래 목표 줄: [📖 n/30] ▶ 목표: {제목} {cur}/{max} + 얇은 진행 바. 아래 도전 줄: 가장 급한 도전(또는 이달의 과제) 진행·남은 날.
+/** 상단 바 아래 목표 줄: [📖 n/7] ▶ 목표: {제목} {cur}/{max} + 얇은 진행 바. 아래 도전 줄: 가장 급한 도전(또는 이달의 과제) 진행·남은 날.
  *  탭하면 목표 창. 다 채우면 반짝인다. data-tut="goal-bar"(튜토리얼 8단계 글로우). */
 export function GoalBar({ top, onOpen }: { top: number; onOpen: () => void }) {
   const s = useGame();
@@ -46,8 +46,8 @@ export function GoalBar({ top, onOpen }: { top: number; onOpen: () => void }) {
   const pct = g && g.max > 0 ? Math.min(100, Math.round((g.cur / g.max) * 100)) : 0;
   const cpct = c && c.max > 0 ? Math.min(100, Math.round((c.cur / c.max) * 100)) : 0;
   const milestone = g ? (s.goals.milestones?.[g.id] ?? 0) : 0; // game-feel P1: 자금 목표 25/50/75% 마일스톤 — 단계가 바뀌면 key가 바뀌어 반짝임이 다시 돈다
-  const badge = true; // 배지는 튜토리얼 뒤에도 남는다 (공략 노트)
-  const noMain = !tutorialDone(s) && !mainBuilding(s); // w-start: 본관을 짓기 전엔 첫 목표(아메리카노)를 이룰 수 없다 → 문구로 안내
+  const badge = true; // 배지는 튜토리얼 뒤에도 남는다 (추천 탭)
+  const noMain = !tutorialDone(s) && !mainBuilding(s); // 옛 맨땅 저장: 본관을 짓기 전엔 첫 목표(아메리카노)를 이룰 수 없다 → 문구로 안내
   return (
     <div style={{ position: 'absolute', top, left: 0, right: 0, height: GOAL_BAR_H, zIndex: 10 }}>
       <TutorialBadge />
