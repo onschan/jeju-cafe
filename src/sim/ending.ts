@@ -146,7 +146,7 @@ export function makeCarry(state: GameState): CarryOver {
     spots,
     uniforms: [...state.uniforms],
     dolhareubang: Math.min(CARRY_DOLHAREUBANG_MAX, dolhareubangCount(state)),
-    mileage: Math.floor(state.mileage * CARRY_RATIO),
+    tickets: Math.floor(state.tickets * CARRY_RATIO),
     guestPopularity,
     millennium: state.unlocked.objects.includes(MILLENNIUM_TREE),
     fromScore: state.ending.score?.total ?? computeScore(state).total,
@@ -160,7 +160,7 @@ export function applyCarry(state: GameState, carry: CarryOver): void {
   for (const id of carry.corners) if (!codex.includes(id)) codex.push(id);
   for (const [id, lv] of Object.entries(carry.spots)) state.spots[id] = Math.max(state.spots[id] ?? 0, lv);
   for (const id of carry.uniforms) if (!state.uniforms.includes(id)) state.uniforms.push(id);
-  state.mileage += carry.mileage;
+  state.tickets += carry.tickets;
   for (const [id, pop] of Object.entries(carry.guestPopularity)) state.segmentPopularity[id] = Math.max(state.segmentPopularity[id] ?? 0, pop);
   if (carry.dolhareubang > 0) {
     if (!state.unlocked.objects.includes('dolhareubang')) state.unlocked.objects.push('dolhareubang');
@@ -184,7 +184,7 @@ export function carryText(c: CarryOver): string[] {
   out.push(`명소 Lv 합 ${Object.values(c.spots).reduce((s, v) => s + v, 0)}`);
   out.push(`유니폼 ${c.uniforms.length}벌`);
   out.push(`돌하르방 ${c.dolhareubang}개`);
-  out.push(`마일리지 ${c.mileage}`);
+  out.push(`응모권 ${c.tickets}장`);
   out.push(`손님 인기 ${Object.keys(c.guestPopularity).length}층 (20%)`);
   if (c.millennium) out.push('천년 팽나무');
   return out;

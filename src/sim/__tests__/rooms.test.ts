@@ -17,7 +17,7 @@ import {
   mainBuilding, mainLevel, indoorSeats, roomSeats, freeFloorCells, fixedCells, expandCells, canExpandMain, expandMain, canBuildSecondFloor, canStartMoveMain, canMoveMain, canUndoMoveMain,
   isRoomCut, annexCount, preferIndoor, filterSeatsForWeather, stayMs, browseChance, indoorSatisfaction, indoorSpawnMult, indoorFeeMult, isFireplaceOn, isPianoPlaying, hasNewBooks, isKidsStocked,
   seatsShort, seatUsePct, dailyRooms, accumulateSeatUse, isMainClosed, mainSummary, autoConnectDoor, autoPathCellCost,
-  MAIN_SIZE, MAIN_EXPAND_COST, MAIN_EXPAND_DAYS, FLOOR2_COST, FLOOR2_SEATS, MOVE_COST, MOVE_DAYS, FIREPLACE_FUEL, STAY_PER_FACILITY_MS, SEAT_FULL_TEXT, KIDS_RESTOCK_COST, NEW_BOOKS_MILEAGE,
+  MAIN_SIZE, MAIN_EXPAND_COST, MAIN_EXPAND_DAYS, FLOOR2_COST, FLOOR2_SEATS, MOVE_COST, MOVE_DAYS, FIREPLACE_FUEL, STAY_PER_FACILITY_MS, SEAT_FULL_TEXT, KIDS_RESTOCK_COST, NEW_BOOKS_TICKETS,
 } from '../rooms.ts';
 import type { GameState } from '../types.ts';
 
@@ -320,7 +320,7 @@ describe('실내 요소 상호작용 (§4.3)', () => {
     expect(s2.clock.month).toBe(1);
     expect(s2.lastMonthCard?.costs.upkeep ?? 0).toBeGreaterThanOrEqual(FIREPLACE_FUEL); // 1월 1일 연료비가 12월 정산에 잡힌다
   });
-  test('소파 만족 +2, 바 저녁 세트 18시 이후 1인 손님 요금 +15%, 책장 신간(마일리지 1·한 달), 수족관 먹이(하루 1회·청결 +2), 키즈 장난감(₩10만·한 달·가족 +25%)', () => {
+  test('소파 만족 +2, 바 저녁 세트 18시 이후 1인 손님 요금 +15%, 책장 신간(응모권 1·한 달), 수족관 먹이(하루 1회·청결 +2), 키즈 장난감(₩10만·한 달·가족 +25%)', () => {
     const s = cafe();
     const sofa = placeObject(s, 'sofa_seat', X(4), Y(2));
     expect(indoorSatisfaction(s, sofa)).toBeCloseTo(0.2);
@@ -334,11 +334,11 @@ describe('실내 요소 상호작용 (§4.3)', () => {
     expect(indoorFeeMult(s, bar, 'digital_nomad')).toBe(1);
     // 책장
     const shelf = placeObject(s, 'bookshelf', X(0), Y(0));
-    s.mileage = 0;
-    expect(apply(s, { type: 'addBooks', objectId: shelf.id }).reason).toBe('마일리지가 모자라요');
-    s.mileage = 2;
+    s.tickets = 0;
+    expect(apply(s, { type: 'addBooks', objectId: shelf.id }).reason).toBe('응모권이 모자라요');
+    s.tickets = 2;
     expect(apply(s, { type: 'addBooks', objectId: shelf.id }).ok).toBe(true);
-    expect(s.mileage).toBe(2 - NEW_BOOKS_MILEAGE);
+    expect(s.tickets).toBe(2 - NEW_BOOKS_TICKETS);
     expect(hasNewBooks(s, shelf)).toBe(true);
     expect(apply(s, { type: 'addBooks', objectId: shelf.id }).reason).toBe('아직 신간이 있어요');
     // 수족관

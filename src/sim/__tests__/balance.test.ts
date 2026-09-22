@@ -66,7 +66,7 @@ describe.each(SEEDS)('봇 3년 KPI 밴드 §4.6 (seed %i)', (seed) => {
     expect(guests).toBeGreaterThanOrEqual(YEAR3_GUESTS_MIN);
     expect(guests).toBeLessThanOrEqual(YEAR3_GUESTS_MAX);
     expect(y3Last.customMenus).toBeGreaterThanOrEqual(1);
-    expect(y3Last.mileage).toBeGreaterThan(0);
+    expect(y3Last.tickets).toBeGreaterThan(0);
     for (const r of rows) expect(r.minMoney, `${r.year}년 ${r.month}월 minMoney`).toBeGreaterThan(400_000); // 삼춘 대출 문턱 위
   });
 });

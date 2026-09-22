@@ -9,7 +9,7 @@ import { reachMap, busStopPos, walkableNeighborsOf, cellKey, isDoorReachable } f
 import { parkingSites } from '../entry.ts';
 import {
   bestMainCells, bestSeatCells, bestWallCell, bestCornerCells, cornerScoreIfPlaced, bestIndoorSeats, bestParkingCells, bestSpotToInvest,
-  openingBuild, nextMove, strategyVars, fillTemplate, wallSheltered, TREE_TYPE,
+  nextMove, strategyVars, fillTemplate, wallSheltered, TREE_TYPE,
 } from '../strategy.ts';
 import type { GameState, Pt } from '../types.ts';
 
@@ -126,11 +126,6 @@ describe('할망의 정석 (strategy.ts): 글로우 칸은 실제 수치로 고�
     expect(spot.name).not.toMatch(/[a-z_]/);
   });
 
-  it('openingBuild: 3~12월 열 줄, 각 줄에 무엇·왜', () => {
-    const rows = openingBuild();
-    expect(rows.map((r) => r.month)).toEqual([3, 4, 5, 6, 7, 8, 9, 10, 11, 12]);
-    for (const r of rows) { expect(r.what.length).toBeGreaterThan(0); expect(r.why.length).toBeGreaterThan(0); expect(r.title.length).toBeLessThanOrEqual(8); }
-  });
 
   it('nextMove: 상태에 따라 다음 수 — 본관 → 길 → 테이블 → 메뉴 → 채용 → … 완성 시작 상태는 증축/저축 쪽. 문구는 「무엇 — 왜」', () => {
     const s = createInitialState(1, 'local', 0, 'bare');

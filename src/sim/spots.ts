@@ -13,7 +13,7 @@ import { SPOTS, spotDef, GUEST_TYPES, guestTypeDef, canonicalGuestId, itemDef } 
 import { unlockCondMet, isUnlocked, unlockGuestType, unlockedTypeIds } from './segments.ts';
 import { pushNotice, skillTotal } from './staff.ts';
 import { grantItem } from './items.ts';
-import { addMileage } from './mileage.ts';
+import { addTickets } from './mileage.ts';
 import { monthIndex } from './clock.ts';
 import { MAX_SEGMENT_POPULARITY } from './promotions.ts';
 import { josa } from './josa.ts';
@@ -40,7 +40,7 @@ export const SPOT_TAG_MULT_CAP = 2.0;
 /** Lv3 요금 +2% (분류 대응 시설) · Lv3 좌석 경관 +1 */
 export const SPOT_FEE_PCT: Record<number, number> = { 3: 2 };
 export const SPOT_SCENERY: Record<number, number> = { 3: 1 };
-export const SPOT_LV3_MILEAGE = 10;
+export const SPOT_LV3_TICKETS = 10;
 /** 방문객 상품 4단계: 명소별 1,000/5,000/20,000/50,000, 전체 합산 100,000 → 황금 감귤 1회 */
 export const VISITOR_PRIZES: { visitors: number; text: string }[] = [
   { visitors: 1_000, text: '응모권 1' },
@@ -152,7 +152,7 @@ export function investSpot(state: GameState, id: string): number {
   if (next.level === SPOT_ITEM_LEVEL && def.lv3ItemId) {
     try { grantItem(state, def.lv3ItemId); pushNotice(state, `${def.name}에서 ${josa(itemName(def.lv3ItemId), '을/를')} 받았어요`); } catch { /* 표에만 있는 아이템 */ }
   }
-  if (next.level === SPOT_MAX_LEVEL) addMileage(state, SPOT_LV3_MILEAGE, `${def.name} Lv${SPOT_MAX_LEVEL}`);
+  if (next.level === SPOT_MAX_LEVEL) addTickets(state, SPOT_LV3_TICKETS, `${def.name} Lv${SPOT_MAX_LEVEL}`);
   return next.level;
 }
 
@@ -233,7 +233,7 @@ export function checkVisitorPrizes(state: GameState, id: string): void {
     const p = VISITOR_PRIZES[tier]!;
     switch (tier) {
       case 0: state.tickets += 1; break;
-      case 1: addMileage(state, 3); break;
+      case 1: addTickets(state, 3); break;
       case 2: grantItem(state, 'tangerine_seed', 2); break;
       case 3: grantItem(state, 'tangerine_seed', 3); grantItem(state, 'hallabong_seed', 2); break;
     }

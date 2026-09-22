@@ -12,7 +12,6 @@
  * - bestIndoorSeats  실내 테이블: 본관 빈 바닥 중 벽에 붙은 창가(북쪽 벽 우선) → 입지 점수 순
  * - bestParkingCells 주차장: 마을 길에 접한 자리(entry.ts parkingSites) 중 본관 문 앞과 가까운 순
  * - bestSpotToInvest 명소: 지금 투자할 수 있는 것 중 그 태그 손님층 인기(spots.ts tagPopularity) 최고 → 싼 순
- * - openingBuild     1년차 월별 표 (추천 탭)
  * - nextMove         현재 상태에서 다음 수 한 줄 (+ 글로우 칸) — 튜토리얼이 끝난 뒤에도 남는 코치. 문구는 이유가 있는 한 줄(§6: 지시문·화살표 없음)
  * - strategyVars     대사 토큰 `{seatWhy}` 같은 것에 넣을 실제 수치·이유 (ui/tutorialDialogue.ts fillTutorialStep)
  */
@@ -265,22 +264,6 @@ export function bestSpotToInvest(s: GameState): { id: string; name: string; cost
 
 // ---------- 1년차 월별 표 ----------
 
-export interface BuildPlanRow { month: number; title: string; what: string; why: string }
-/** 1년차 월별 표 (추천 탭). 봇(bot.ts)의 실제 수순을 사람 말로 — 무엇을(what)과 왜(why) 한 줄씩. */
-export function openingBuild(): BuildPlanRow[] {
-  return [
-    { month: 3, title: '개업', what: '야외 테이블 4개, 홀 직원 1명, 메뉴 2개', why: '자리가 4개면 손님이 안 돌아간다' },
-    { month: 4, title: '홍보와 나무', what: '전단 홍보 한 번, 감귤나무 한 그루', why: '코너가 하나 생기면 인기가 오른다' },
-    { month: 5, title: '증축 준비', what: `₩${MAIN_EXPAND_COST[2]! / 10_000}만을 모은다`, why: '5월에 쓰면 6월 증축이 늦어진다' },
-    { month: 6, title: '본관 2층', what: '증축하고 문 앞 길을 다시 잇는다', why: '실내 자리는 비 오는 날 매출이다' },
-    { month: 7, title: '실내 자리', what: '창가에 실내 테이블 2개, 야외 6개', why: '여름엔 손님이 몰려 자리가 모자란다' },
-    { month: 8, title: '연수', what: '바리스타 연수 한 번', why: '손재주가 오르면 서빙이 빨라진다' },
-    { month: 9, title: '가이드북', what: '청소 직원을 두고 청결 90을 지킨다', why: '9월 발표는 청결로 별점을 가른다' },
-    { month: 10, title: '주차장', what: '쉼 시설 6개가 되면 렌터카 주차장', why: '차로 온 손님은 더 쓰고 더 머문다' },
-    { month: 11, title: '감귤 축제', what: '감귤주스·감귤 메뉴를 앞줄에', why: '11월 축제엔 감귤 메뉴가 잘 팔린다' },
-    { month: 12, title: '난로', what: '실내 난로를 켜고 실내 자리를 늘린다', why: '겨울엔 야외 그늘 자리가 춥다' },
-  ];
-}
 
 // ---------- 지금 추천 행동 ----------
 

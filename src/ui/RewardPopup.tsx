@@ -39,7 +39,7 @@ function rewardIcon(r: GoalReward): string {
     case 'unlockGuest': return 'tourist';
     case 'staffSlot': return 'local';
     case 'item': case 'seed': return 'plant';
-    case 'tickets': case 'mileage': case 'title': case 'feeBonus': return 'look';
+    case 'tickets': case 'title': case 'feeBonus': return 'look';
   }
 }
 function isUnlock(r: GoalReward): boolean {

@@ -91,7 +91,7 @@ const ACTION_SFX: Record<Action['type'], SfxName> = {
   move: 'place', rotate: 'tap', demolishMany: 'remove', undoLast: 'tap', renameObject: 'tap', setTargets: 'tap', upgradeObject: 'unlock', treeUpgrade: 'unlock', repairObject: 'place', buyParcel: 'unlock', useItem: 'unlock', renameCafe: 'tap', expand: 'unlock', setCosmetic: 'tap', praise: 'happy',
   acceptQuest: 'tap', respondEvent: 'tap', investSpot: 'unlock', giveGift: 'tap', craftGift: 'unlock',
   develop: 'unlock', dismissDevelop: 'tap', addTopping: 'tap', removeTopping: 'tap', levelUpMenu: 'unlock',
-  buyMileage: 'coin', buyTicket: 'coin', drawTicket: 'tap', dismissDraw: 'tap', setUniform: 'tap', useGuestItem: 'unlock', dismissAnnouncement: 'tap',
+  drawTicket: 'tap', dismissDraw: 'tap', setUniform: 'tap', useGuestItem: 'unlock', dismissAnnouncement: 'tap',
   dismissOutcome: 'tap', skipTutorial: 'tap', skipTutorialChapter: 'tap', tutorialNote: 'tap',
   expandParking: 'place', // 트랙 H
   placeMain: 'fanfare', expandMain: 'unlock', buildSecondFloor: 'unlock', moveMain: 'place', undoMoveMain: 'tap', toggleFireplace: 'tap', setPianoTime: 'tap', setBgm: 'tap', setLighting: 'tap', feedAquarium: 'happy', restockKids: 'coin', setBarEvening: 'tap', addBooks: 'unlock', // y-indoor

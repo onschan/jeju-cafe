@@ -41,48 +41,5 @@
       "perMonth": 2
     },
     "sourceText": "기념품 가게 보유 시 월 2개"
-  },
-  {
-    "id": "gift_tea_pack",
-    "name": "녹차 티백 세트",
-    "fitTag": "adult",
-    "source": {
-      "type": "facility",
-      "objectId": "tea_field",
-      "perMonth": 1
-    },
-    "sourceText": "녹차밭 보유 시 월 1개"
-  },
-  {
-    "id": "gift_postcard",
-    "name": "오름 엽서",
-    "fitTag": "female",
-    "source": {
-      "type": "facility",
-      "objectId": "photo_spot",
-      "perMonth": 2
-    },
-    "sourceText": "포토 스팟 보유 시 월 2개"
-  },
-  {
-    "id": "gift_honey_jar",
-    "name": "꿀단지",
-    "fitTag": "senior",
-    "source": {
-      "type": "facility",
-      "objectId": "beehive",
-      "perMonth": 1
-    },
-    "sourceText": "양봉장 보유 시 월 1개"
-  },
-  {
-    "id": "gift_seashell",
-    "name": "소라 껍데기",
-    "fitTag": "youth",
-    "source": {
-      "type": "quest",
-      "questId": "q_haenyeo"
-    },
-    "sourceText": "해녀 삼춘의 부탁"
   }
 ]

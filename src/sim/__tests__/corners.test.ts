@@ -167,7 +167,7 @@ describe('코너 효과', () => {
 describe('코너 완성 연출·도감·손님', () => {
   it('처음 완성하면 도감(codex.corners)·메시지 줄·장면 창(scene)·팻말 반짝(corner fx)·첫 코너 마일리지 +1. 두 번째 완성은 안 한다', () => {
     const s = bareState(1);
-    const m0 = s.mileage;
+    const m0 = s.tickets;
     flowerPath(s);
     expect(s.codex.corners).toEqual(['corner_flower_path']);
     expect(cornersMade(s)).toBe(1);
@@ -175,7 +175,7 @@ describe('코너 완성 연출·도감·손님', () => {
     const scene = s.fx.find((f) => f.kind === 'scene' && f.title.includes('꽃길'));
     expect(scene && scene.kind === 'scene' && scene.text).toBe(cornerDef('corner_flower_path').line);
     expect(s.fx.some((f) => f.kind === 'corner' && f.id === 'corner_flower_path')).toBe(true);
-    expect(s.mileage).toBe(m0 + 1);
+    expect(s.tickets).toBe(m0 + 1);
     const n = s.fx.length;
     flowerPath(s, 7, 4);
     discoverCorners(s);

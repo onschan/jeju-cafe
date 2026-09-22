@@ -15,7 +15,7 @@ console.log('year,month,money,minMoney,research,popularity,net,staff,promos,gues
 const t0 = performance.now();
 const rows = runBot(years, seed, policy);
 for (const r of rows) {
-  console.log([r.year, r.month, r.money, r.minMoney, r.research, r.popularity, r.net, r.staff, r.promos, r.guests, r.customMenus, r.rank, r.star, r.mileage, r.goals, r.events].join(','));
+  console.log([r.year, r.month, r.money, r.minMoney, r.research, r.popularity, r.net, r.staff, r.promos, r.guests, r.customMenus, r.rank, r.star, r.tickets, r.goals, r.events].join(','));
 }
 const last = rows[rows.length - 1];
 const minMoney = Math.min(...rows.map((r) => r.minMoney));

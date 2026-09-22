@@ -7,20 +7,15 @@ import { placeObject } from '../grid.ts';
 import { objectStats } from '../compat.ts';
 import { sceneryScore } from '../grid.ts';
 import { grantItem, itemEffect, ITEM_SCENERY_CAP } from '../items.ts';
-import { rollPrize, hasFreeDraw, canDrawTicket, SEED_PACK, DRAW_MONEY_PER_YEAR, UNIFORM_PIECES_PER_SET, MONTHLY_FREE_TICKETS, MID_MONTH_TICKET_DAY } from '../shop.ts';
-import { START_BUILDERS, MAX_BUILDERS } from '../build.ts';
-import { addMileage, checkCodexMileage, monthlyMileage, CODEX_PER_MILEAGE } from '../mileage.ts';
-import { MILEAGE_SHOP, TICKET_SHOP, UNIFORMS, DRAW_PRIZES, ITEMS, itemDef, objectDef, POPULARITY_FRUIT, POPULARITY_FRUIT_DELTA } from '../../data/index.ts';
+import { rollPrize, hasFreeDraw, canDrawTicket, DRAW_MONEY_PER_YEAR, UNIFORM_PIECES_PER_SET, MONTHLY_FREE_TICKETS, MID_MONTH_TICKET_DAY } from '../shop.ts';
+import { addTickets, checkCodexTickets, monthlyTickets, CODEX_PER_TICKET } from '../mileage.ts';
+import { UNIFORMS, DRAW_PRIZES, ITEMS, itemDef, objectDef, POPULARITY_FRUIT, POPULARITY_FRUIT_DELTA } from '../../data/index.ts';
 
-test('데이터: 마일리지 상점 20+1(망치) · 응모권 상점 9(추첨 제외) · 유니폼 5 · 인형뽑기 8칸 합 100% · 강화 아이템 20 + 특수 18+2(도구) + 선물 8', () => {
-  expect(MILEAGE_SHOP).toHaveLength(21);
-  expect(TICKET_SHOP).toHaveLength(9);
+test('데이터: 유니폼 5 · 인형뽑기 8칸 합 100% · 강화 아이템 20 + 특수 (trim: 마일리지·응모권 상점 삭제)', () => {
   expect(UNIFORMS).toHaveLength(5);
   expect(DRAW_PRIZES).toHaveLength(8);
   expect(DRAW_PRIZES.reduce((n, p) => n + p.pct, 0)).toBe(100);
-  expect(DRAW_PRIZES.map((p) => p.kind)).toEqual(['money', 'research', 'ingredient_box', 'mileage', 'item', 'seed', 'uniform_piece', 'miss']);
-  for (const m of MILEAGE_SHOP) if (m.itemId) expect(itemDef(m.itemId).id).toBe(m.itemId);
-  for (const t of TICKET_SHOP) if (t.itemId) expect(itemDef(t.itemId).id).toBe(t.itemId);
+  expect(DRAW_PRIZES.map((p) => p.kind)).toEqual(['money', 'research', 'ingredient_box', 'ticket', 'item', 'seed', 'uniform_piece', 'miss']);
   // v2 20종은 잘 맞는 시설이 있고, 특수 12종 중 씨앗 3종만 효과가 있다
   expect(ITEMS.filter((i) => i.fitIds.length > 0).length).toBeGreaterThanOrEqual(20);
   expect(ITEMS.filter((i) => ['pony_doll', 'deer_bell', 'fast_hammer', 'worker_hire'].includes(i.id)).every((i) => i.value === 0)).toBe(true);
@@ -33,46 +28,6 @@ test('강화 아이템: 잘 맞는 시설이면 ×2, 아니면 못 쓴다 (v1 �
   const salt = itemDef('jeju_salt'); // bestFacilities: noodle_shop·bomal_kalguksu·haenyeo_mulhoe
   expect(itemEffect(salt, objectDef('noodle_shop'))).toBe(salt.value * 2);
   expect(itemEffect(salt, objectDef('table_out'))).toBe(0);
-});
-
-test('마일리지 상점: 일꾼 삼춘은 순서대로(3→4→5) 동시 건설 +1, 마일리지 부족·순서 위반 거부', () => {
-  const s = bareState(1);
-  expect(s.builders).toBe(START_BUILDERS);
-  expect(apply(s, { type: 'buyMileage', id: 'ms_worker_3' }).ok).toBe(false); // 마일리지 0
-  s.mileage = 300;
-  expect(apply(s, { type: 'buyMileage', id: 'ms_worker_4' }).ok).toBe(false); // 3번째 먼저
-  expect(apply(s, { type: 'buyMileage', id: 'ms_worker_3' }).ok).toBe(true);
-  expect(s.builders).toBe(3);
-  expect(s.mileage).toBe(297);
-  expect(apply(s, { type: 'buyMileage', id: 'ms_worker_3' }).ok).toBe(false); // 이미
-  expect(apply(s, { type: 'buyMileage', id: 'ms_worker_4' }).ok).toBe(true);
-  expect(apply(s, { type: 'buyMileage', id: 'ms_worker_5' }).ok).toBe(true);
-  expect(s.builders).toBe(MAX_BUILDERS);
-  expect(apply(s, { type: 'buyMileage', id: 'ms_nope' }).ok).toBe(false);
-});
-
-test('마일리지 상점: 빠른 건축 망치·응모권·씨앗·묶음팩·강화 아이템·스카우트권', () => {
-  const s = bareState(1);
-  s.mileage = 100;
-  expect(apply(s, { type: 'buyMileage', id: 'ms_pickaxe' }).ok).toBe(false); // ease: 곡괭이는 없다
-  expect(apply(s, { type: 'buyMileage', id: 'ms_fast_hammer' }).ok).toBe(true);
-  expect(s.inventory['fast_hammer']).toBe(1);
-  expect(apply(s, { type: 'buyMileage', id: 'ms_ticket' }).ok).toBe(true);
-  expect(s.tickets).toBe(1);
-  expect(apply(s, { type: 'buyMileage', id: 'ms_tangerine_seed' }).ok).toBe(true);
-  expect(apply(s, { type: 'buyMileage', id: 'ms_seed_pack' }).ok).toBe(true);
-  expect(s.inventory['tangerine_seed']).toBe(1 + SEED_PACK.tangerine_seed);
-  expect(s.inventory['hallabong_seed']).toBe(SEED_PACK.hallabong_seed);
-  expect(apply(s, { type: 'buyMileage', id: 'ms_jeju_salt' }).ok).toBe(true);
-  expect(s.inventory['jeju_salt']).toBe(1);
-  expect(apply(s, { type: 'buyMileage', id: 'ms_scout' }).ok).toBe(true);
-  expect(s.freeRecruits).toBe(1);
-  expect(s.mileage).toBe(100 - 3 - 1 - 1 - 4 - 1 - 2);
-  // 스카우트권: 다음 공고비 무료
-  const money = s.money;
-  expect(apply(s, { type: 'postJob', tier: 'flyer' }).ok).toBe(true);
-  expect(s.money).toBe(money);
-  expect(s.freeRecruits).toBe(0);
 });
 
 test('씨앗: 감귤 씨앗 인기 +5, 한라봉 씨앗 요금 +5%, 경관 씨앗은 경관물 경관 +3(상한 30)이 경치 점수에 반영', () => {
@@ -95,31 +50,6 @@ test('씨앗: 감귤 씨앗 인기 +5, 한라봉 씨앗 요금 +5%, 경관 씨�
   expect(sceneryScore(s, X(6), Y(4))).toBe(before + 3);
   for (let i = 0; i < 11; i++) apply(s, { type: 'useItem', itemId: 'scenery_seed', objectType: 'tangerine_tree' });
   expect(s.itemBonus['tangerine_tree']!.scenery).toBe(ITEM_SCENERY_CAP);
-});
-
-test('응모권 상점: 유니폼은 사면 바로 입고 중복 구매 거부, 경관 씨앗·인기 열매, setUniform', () => {
-  const s = bareState(1);
-  s.tickets = 20;
-  expect(apply(s, { type: 'buyTicket', id: 'ts_uniform_1' }).ok).toBe(true);
-  expect(s.uniforms).toEqual(['uf_hawaiian']);
-  expect(s.uniform).toBe('uf_hawaiian');
-  expect(s.tickets).toBe(17);
-  expect(apply(s, { type: 'buyTicket', id: 'ts_uniform_1' }).ok).toBe(false);
-  expect(apply(s, { type: 'buyTicket', id: 'ts_uniform_5' }).ok).toBe(false); // 25장
-  expect(apply(s, { type: 'buyTicket', id: 'ts_scenery_seed' }).ok).toBe(true);
-  expect(s.inventory['scenery_seed']).toBe(1);
-  expect(apply(s, { type: 'buyTicket', id: 'ts_popularity_fruit' }).ok).toBe(true);
-  expect(apply(s, { type: 'buyTicket', id: 'ts_draw' }).ok).toBe(false); // 추첨은 drawTicket
-  expect(apply(s, { type: 'setUniform', id: 'uf_galot' }).ok).toBe(false);
-  expect(apply(s, { type: 'setUniform', id: null }).ok).toBe(true);
-  expect(s.uniform).toBeNull();
-  expect(apply(s, { type: 'setUniform', id: 'uf_hawaiian' }).ok).toBe(true);
-  // 인기 열매: 손님 1종 인기 +10
-  const pop = s.segmentPopularity['student']!;
-  expect(apply(s, { type: 'useGuestItem', itemId: POPULARITY_FRUIT, guestId: 'couple' }).ok).toBe(false); // 잠긴 손님
-  expect(apply(s, { type: 'useGuestItem', itemId: POPULARITY_FRUIT, guestId: 'student' }).ok).toBe(true);
-  expect(s.segmentPopularity['student']).toBe(pop + POPULARITY_FRUIT_DELTA);
-  expect(s.inventory[POPULARITY_FRUIT]).toBe(0);
 });
 
 test('인형뽑기: 첫 달 무료 1회, 그 뒤 응모권 1장, 결과는 lastDraw에 (dismissDraw로 닫는다)', () => {
@@ -148,17 +78,16 @@ test('인형뽑기 분포: 3000회 뽑으면 칸별 비율이 표와 ±3%p 안',
   for (const p of DRAW_PRIZES) expect(Math.abs((count[p.kind] ?? 0) / n * 100 - p.pct), p.kind).toBeLessThanOrEqual(3);
 });
 
-test('인형뽑기 상품 적용: 돈은 5만×년차, 마일리지 +1, 유니폼 조각 5개 → 유니폼', () => {
+test('인형뽑기 상품 적용: 돈은 5만×년차, 유니폼 조각 5개 → 유니폼', () => {
   const s = bareState(1);
   s.tickets = 500;
   const seen = new Set<string>();
   for (let i = 0; i < 300 && seen.size < 8; i++) {
-    const money = s.money, mileage = s.mileage, pieces = s.uniformPieces, uniforms = s.uniforms.length;
+    const money = s.money, pieces = s.uniformPieces, uniforms = s.uniforms.length;
     apply(s, { type: 'drawTicket' });
     const r = s.lastDraw!;
     seen.add(r.kind);
     if (r.kind === 'money') expect(s.money - money).toBe(DRAW_MONEY_PER_YEAR * s.clock.year);
-    if (r.kind === 'mileage') expect(s.mileage - mileage).toBe(1);
     if (r.kind === 'uniform_piece') expect(pieces + 1 === UNIFORM_PIECES_PER_SET ? s.uniforms.length === uniforms + 1 && s.uniformPieces === 0 : s.uniformPieces === pieces + 1).toBe(true);
     if (r.kind === 'miss') expect(s.money).toBe(money);
   }
@@ -181,23 +110,23 @@ test('매월 1일 무료 추첨 리셋, 보름(15일)에 응모권 +1 (game-feel
   expect(s.freeDrawMonth).toBe(monthIndex(s.clock));
 });
 
-test('마일리지: 월말 손님 300명마다 +1 (closeMonth 전에 준다)', () => {
+test('응모권: 월말 손님 600명마다 +1 (closeMonth 전에 준다)', () => {
   const s = bareState(1);
-  s.monthGuests = 299;
-  expect(monthlyMileage(s)).toBe(0);
-  s.monthGuests = 650;
-  expect(monthlyMileage(s)).toBe(2);
-  expect(s.mileage).toBe(2);
-  expect(s.notices.at(-1)).toBe('이달 손님 650명 — 마일리지 +2');
+  s.monthGuests = 599;
+  expect(monthlyTickets(s)).toBe(0);
+  s.monthGuests = 1300;
+  expect(monthlyTickets(s)).toBe(2);
+  expect(s.tickets).toBe(2);
+  expect(s.notices.at(-1)).toBe('이달 손님 1300명 — 응모권 +2');
 });
 
-test('마일리지: 도감 10개마다 +1 (한 단계는 한 번만)', () => {
+test('응모권: 도감 10개마다 +1 (한 단계는 한 번만)', () => {
   const s = bareState(1);
-  for (let i = 0; i < CODEX_PER_MILEAGE * 2; i++) s.codex.recipes.push(`r${i}`);
-  checkCodexMileage(s);
-  expect(s.mileage).toBe(2);
-  checkCodexMileage(s);
-  expect(s.mileage).toBe(2);
-  addMileage(s, 0);
-  expect(s.mileage).toBe(2);
+  for (let i = 0; i < CODEX_PER_TICKET * 2; i++) s.codex.recipes.push(`r${i}`);
+  checkCodexTickets(s);
+  expect(s.tickets).toBe(2);
+  checkCodexTickets(s);
+  expect(s.tickets).toBe(2);
+  addTickets(s, 0);
+  expect(s.tickets).toBe(2);
 });

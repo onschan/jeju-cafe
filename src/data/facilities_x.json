@@ -647,11 +647,10 @@
     "noise": 2,
     "seasonBonus": {},
     "unlock": {
-      "type": "shop",
-      "itemId": "ms_pinball"
+      "type": "goal"
     },
-    "unlockRef": "mileage:ms_pinball",
-    "unlockText": "마일리지 상점",
+    "unlockRef": "goal",
+    "unlockText": "목표 보상",
     "description": "찰칵찰칵 핀볼. 아저씨들이 좋아해요."
   },
   {

@@ -4,7 +4,7 @@ import { josa } from '../sim/josa.ts';
 import {
   questProgress, canAcceptQuest, visibleQuests, questRewardText, spotLevel, spotUnlocked, nextSpotLevel, spotAppeal, spotGuestBonus, canInvestSpot, guestFace, monthIndex,
   spotRequirements, spotVisitors, totalSpotVisitors, dailyVisitors, totalDailyVisitors,
-  SPOT_MAX_LEVEL, SPOT_GUEST_LEVEL, SPOT_ITEM_LEVEL, SPOT_NEXT_LEVEL, SPOT_TAG_MULT, SPOT_FEE_PCT, SPOT_SCENERY, SPOT_LV3_MILEAGE, VISITOR_PRIZES, QUEST_MONTHS,
+  SPOT_MAX_LEVEL, SPOT_GUEST_LEVEL, SPOT_ITEM_LEVEL, SPOT_NEXT_LEVEL, SPOT_TAG_MULT, SPOT_FEE_PCT, SPOT_SCENERY, SPOT_LV3_TICKETS, VISITOR_PRIZES, QUEST_MONTHS,
   type QuestState, type QuestCondition, type SpotCategory, type EventState, type UnlockCond,
 } from '../sim/index.ts';
 import { questDef, guestTypeDef, eventDef, spotDef, SPOTS, objectDef, menuDef, itemDef } from '../data/index.ts';
@@ -109,7 +109,7 @@ function levelEffectText(def: ReturnType<typeof spotDef>, lv: number): string {
   if (lv === SPOT_GUEST_LEVEL && def.lv2GuestId) parts.push(`${safeName(() => guestTypeDef(def.lv2GuestId!).name, '새 손님')} 방문`);
   if (lv === SPOT_ITEM_LEVEL && def.lv3ItemId) parts.push(`${safeName(() => itemDef(def.lv3ItemId!).name, '강화 아이템')} 1개`);
   if (lv === SPOT_NEXT_LEVEL && def.nextSpotId) parts.push(`${safeName(() => spotDef(def.nextSpotId!).name, '다음 명소')} 개방`);
-  if (lv === SPOT_MAX_LEVEL) parts.push(`마일리지 ${SPOT_LV3_MILEAGE}`);
+  if (lv === SPOT_MAX_LEVEL) parts.push(`마일리지 ${SPOT_LV3_TICKETS}`);
   return parts.join(' · ');
 }
 
@@ -202,7 +202,7 @@ export function BoardPanel({ tabs = ['quests', 'events', 'spots'] }: { tabs?: Bo
 
       {tab === 'spots' && (
         <div>
-          <div style={{ fontSize: 13, color: PALETTE.inkSoft, marginBottom: 4 }}>매력도 합 {spotAppeal(s)} · 방문객 하루 {fmtNum(totalDailyVisitors(s))}명(누적 {fmtNum(totalSpotVisitors(s))}) → 하루 손님 +{spotGuestBonus(s)} · 응모권 {s.tickets} · 마일리지 {s.mileage}</div>
+          <div style={{ fontSize: 13, color: PALETTE.inkSoft, marginBottom: 4 }}>매력도 합 {spotAppeal(s)} · 방문객 하루 {fmtNum(totalDailyVisitors(s))}명(누적 {fmtNum(totalSpotVisitors(s))}) → 하루 손님 +{spotGuestBonus(s)} · 응모권 {s.tickets}</div>
               <div style={{ display: 'flex', flexWrap: 'wrap', marginBottom: 4 }}>
             {SPOT_TABS.map((t) => (
               <button key={t.id} style={{ ...(cat === t.id ? brownBtnOn : brownBtn), padding: '0 8px', fontSize: 13 }} onClick={() => setCat(t.id)}>{t.label}</button>

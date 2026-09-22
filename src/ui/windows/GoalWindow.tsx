@@ -9,6 +9,7 @@ import { activeGoals, pastGoals, toGoal, urgentChallenge } from '../simBridge';
 import { monthlyProgress, goalConditionText, goalRewardText } from '../../sim/index.ts';
 import { GOALS } from '../../data/index.ts';
 import { useTutorialNote } from '../tutorialDialogue';
+import { HalmangLine } from '../TutorialWindow'; // trim: 추천 탭 대신 한 줄
 
 export type GoalTab = 'main' | 'monthly';
 const TABS: { key: GoalTab; label: string }[] = [{ key: 'main', label: '메인' }, { key: 'monthly', label: '월간' }];
@@ -35,6 +36,7 @@ export function GoalWindow(props: GoalWindowProps) {
     const next = nextIdx >= 0 ? toGoal(s, GOALS[nextIdx]!, false) : null;
     return (
       <>
+        <HalmangLine onFocus={props.onClose} />
         <div style={{ ...soft, marginBottom: 6 }}>이룬 목표 {past.length}/{GOALS.length}</div>
         {active.length === 0 && <Empty>{GOALS.length === 0 ? '아직 목표가 없어요' : '목표를 전부 이뤘어요! 이제 마음껏 카페를 키워 보세요.'}</Empty>}
         {active.map((g, i) => (

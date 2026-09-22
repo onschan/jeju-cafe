@@ -194,7 +194,7 @@ function StatusPanel() {
     ['직원', `${s.staff.length}명 · 후보 ${s.candidates.length}명`],
     ['메뉴', `${s.menuSlots.filter((m) => m !== null).length}개`],
     ['필지', `${s.parcels.filter((p) => p.owned).length}/${s.parcels.length}`],
-    ['응모권·마일리지', `${s.tickets} · ${s.mileage}`],
+    ['응모권', `${s.tickets}`],
   ];
   const [detail, setDetail] = useState(false); // fun: 잔지표는 「자세히」 접힘
   return (
@@ -748,7 +748,7 @@ function Game({ onExit }: { onExit: () => void }) {
             {win.tab === 'invest' && <BoardPanel tabs={['events']} />}
             {win.tab === 'spots' && <BoardPanel tabs={['spots']} />}
             {win.tab === 'shop' && <ShopPanel />}
-            {win.tab === 'tickets' && <ShopPanel initialTab="ticket" />}
+            {win.tab === 'tickets' && <ShopPanel initialTab="draw" />}
             {win.tab === 'rank' && <RankPanel />}
             {win.tab === 'settings' && <SettingsPanel onExit={onExit} gauges={gauges} onGauges={setGauges} />}
           </Window>

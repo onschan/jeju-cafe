@@ -156,7 +156,7 @@ export type QuestCondition =
   | { type: 'item'; params: { itemId: string; count: number } }
   | { type: 'none'; params: Record<string, never> };
 export type QuestReward =
-  | { type: 'money' | 'research' | 'ticket' | 'mileage' | 'ad'; amount: number }
+  | { type: 'money' | 'research' | 'ticket' | 'ad'; amount: number }
   | { type: 'item'; itemId: string };
 export interface QuestDef {
   id: string;
@@ -175,7 +175,6 @@ export type EventFilter = 'all' | 'group' | 'female' | 'male' | 'youth' | 'adult
 export type EventEffect =
   | { kind: 'money'; amount: number }
   | { kind: 'research'; amount: number }
-  | { kind: 'mileage'; amount: number }
   | { kind: 'tickets'; amount: number }
   | { kind: 'spawnMult'; mult: number; days: number; filter?: EventFilter }
   | { kind: 'harvestMult'; mult: number; days: number }
@@ -483,7 +482,6 @@ export type GoalReward =
   | { type: 'unlockMenu'; id: string }
   | { type: 'unlockRole'; id: RoleId }
   | { type: 'tickets'; n: number }
-  | { type: 'mileage'; n: number }
   | { type: 'staffSlot'; role: RoleId; n: number }
   | { type: 'research'; n: number }
   | { type: 'builder'; n: number }
@@ -673,7 +671,7 @@ export interface MileageShopDef { id: string; name: string; price: number; descr
 export interface TicketShopDef { id: string; name: string; price: number; description: string; itemId?: string; uniformId?: string; objectId?: string }
 export interface UniformDef { id: string; name: string; ticketTier: number; effectText: string; parts: { top: string; acc?: string } }
 /** 인형뽑기 상품 종류 (v1 roulette.json 가중치를 다시 라벨링) */
-export type DrawPrizeKind = 'money' | 'research' | 'ingredient_box' | 'mileage' | 'item' | 'seed' | 'uniform_piece' | 'miss';
+export type DrawPrizeKind = 'money' | 'research' | 'ingredient_box' | 'ticket' | 'item' | 'seed' | 'uniform_piece' | 'miss';
 export interface DrawPrizeDef { kind: DrawPrizeKind; label: string; pct: number }
 export interface DrawResult { kind: DrawPrizeKind; label: string; text: string; free: boolean }
 /** 가이드북 심사 항목 6종 (0~100) */
@@ -691,7 +689,6 @@ export interface GuidebookDef {
   prize: number;
   research: number;
   seeds: { itemId: string; count: number }[];
-  mileage: number;  // 1위 추가 마일리지 (농협 추천 10)
   monthly: boolean; // 매월 발표 (이번 달 농협 추천)
 }
 /** boost = 라이벌 1위 점수 가산(플레이어가 1위 한 다음 해부터 +3씩 누적), pending = 올해 번 가산(다음 해 1월에 boost로) */
@@ -705,7 +702,6 @@ export interface AnnouncementEntry {
   rank: number;       // 1..10
   prize: number;      // 받은 돈
   research: number;
-  mileage: number;
   seedText: string | null;
   targetText: string | null; // 월간 추천: 이번 달 타깃 손님층
 }
@@ -848,8 +844,7 @@ export interface GameState {
   targets: string[];                          // 타깃 손님 타입 최대 3
   guestTypes: Record<string, GuestTypeState>; // 손님 타입별 해금·만족·단골
   visitBonus: Record<string, number>;         // objectType → 시설 인기 효과 누적 (+10 상한)
-  tickets: number;                            // 응모권
-  mileage: number;
+  tickets: number;                            // 응모권 (trim: 마일리지를 합쳤다)
   rank: number;                               // 카페 랭크 1~ (랭크 점수 = 누적 손님 + 시설 + 해금 손님층, 문턱표)
   star: number;                               // ★ 등급 1~5 (ranks.json 조건, 월초 검사)
   totalGuests: number;                        // 누적 손님 수 (랭크 점수)
@@ -861,7 +856,7 @@ export interface GameState {
   freeDrawMonth: number;                      // 이 monthIndex에 무료 추첨 1회가 남아 있다 (−1 = 없음)
   lastDraw: DrawResult | null;                // 마지막 인형뽑기 결과 (UI 연출, dismissDraw로 닫는다)
   freeRecruits: number;                       // 직원 스카우트권: 다음 공고비 무료 횟수
-  codexMileage: number;                       // 도감 10개마다 준 마일리지 단계
+  codexTickets: number;                       // 도감 10개마다 준 응모권 단계
   guidebooks: Record<string, GuidebookState>; // 가이드북 11종 진행
   lastAnnouncement: Announcement | null;      // 마지막 랭킹 발표 (UI 팝업, dismissAnnouncement로 닫는다)
   board: BoardState;
@@ -998,8 +993,6 @@ export type Action =
   | { type: 'addTopping'; menuId: string; toppingId: string }
   | { type: 'removeTopping'; menuId: string; toppingId: string }
   | { type: 'levelUpMenu'; menuId: string }
-  | { type: 'buyMileage'; id: string }
-  | { type: 'buyTicket'; id: string }
   | { type: 'drawTicket' }
   | { type: 'dismissDraw' }
   | { type: 'setUniform'; id: string | null }
@@ -1028,7 +1021,7 @@ export interface CarryOver {
   spots: Record<string, number>;
   uniforms: string[];
   dolhareubang: number;
-  mileage: number;
+  tickets: number;
   guestPopularity: Record<string, number>;
   millennium: boolean;
   fromScore: number;            // 이월한 게임의 최종 점수 (기록)

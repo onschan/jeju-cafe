@@ -125,7 +125,7 @@ export function AnnouncementPopup() {
         </div>
         {stage >= rankStage && (
           <div style={{ fontSize: 14, marginTop: 4 }}>
-            {entry.prize > 0 ? <div>상금 {wonText(entry.prize)} + 연구 {entry.research}{entry.mileage ? ` + 마일리지 ${entry.mileage}` : ''}{entry.seedText ? ` + ${entry.seedText}` : ''}</div> : <div style={small}>다음엔 더 잘해 봐요! 심사표에서 약한 항목을 보세요.</div>}
+            {entry.prize > 0 ? <div>상금 {wonText(entry.prize)} + 연구 {entry.research}{entry.seedText ? ` + ${entry.seedText}` : ''}</div> : <div style={small}>다음엔 더 잘해 봐요! 심사표에서 약한 항목을 보세요.</div>}
           </div>
         )}
         {done && (

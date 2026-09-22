@@ -364,8 +364,8 @@
         "id": "handdrip_bar"
       },
       {
-        "type": "mileage",
-        "n": 5
+        "type": "tickets",
+        "n": 1
       }
     ],
     "speaker": "hero",
@@ -784,8 +784,8 @@
         "id": "bike_rack"
       },
       {
-        "type": "mileage",
-        "n": 10
+        "type": "tickets",
+        "n": 1
       }
     ],
     "speaker": "hero",
@@ -991,10 +991,6 @@
         "type": "item",
         "id": "clean_charm",
         "n": 1
-      },
-      {
-        "type": "mileage",
-        "n": 10
       }
     ],
     "speaker": "samchun",
@@ -1031,9 +1027,8 @@
     },
     "reward": [
       {
-        "type": "item",
-        "id": "tour_bus_key",
-        "n": 1
+        "type": "tickets",
+        "n": 2
       },
       {
         "type": "unlockFacility",
@@ -1059,6 +1054,10 @@
       {
         "type": "tickets",
         "n": 5
+      },
+      {
+        "type": "unlockFacility",
+        "id": "pinball"
       }
     ],
     "speaker": "samchun",
@@ -1100,8 +1099,8 @@
         "id": "deco_water_jar_set"
       },
       {
-        "type": "mileage",
-        "n": 10
+        "type": "tickets",
+        "n": 1
       }
     ],
     "speaker": "halmang",
@@ -1307,8 +1306,8 @@
     },
     "reward": [
       {
-        "type": "mileage",
-        "n": 20
+        "type": "tickets",
+        "n": 2
       }
     ],
     "speaker": "hero",
@@ -1553,8 +1552,8 @@
     },
     "reward": [
       {
-        "type": "mileage",
-        "n": 30
+        "type": "tickets",
+        "n": 3
       }
     ],
     "speaker": "halmang",
@@ -1818,8 +1817,8 @@
     },
     "reward": [
       {
-        "type": "mileage",
-        "n": 50
+        "type": "tickets",
+        "n": 5
       }
     ],
     "speaker": "halmang",
@@ -1856,8 +1855,8 @@
         "n": 1
       },
       {
-        "type": "mileage",
-        "n": 30
+        "type": "tickets",
+        "n": 3
       }
     ],
     "speaker": "hero",
@@ -1874,8 +1873,8 @@
     },
     "reward": [
       {
-        "type": "mileage",
-        "n": 30
+        "type": "tickets",
+        "n": 3
       },
       {
         "type": "tickets",
@@ -1913,8 +1912,8 @@
     },
     "reward": [
       {
-        "type": "mileage",
-        "n": 50
+        "type": "tickets",
+        "n": 5
       }
     ],
     "speaker": "hero",
@@ -1957,8 +1956,8 @@
         "n": 100
       },
       {
-        "type": "mileage",
-        "n": 50
+        "type": "tickets",
+        "n": 5
       }
     ],
     "speaker": "samchun",
@@ -2013,8 +2012,8 @@
         "n": 20
       },
       {
-        "type": "mileage",
-        "n": 50
+        "type": "tickets",
+        "n": 5
       }
     ],
     "speaker": "samchun",

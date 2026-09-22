@@ -18,7 +18,7 @@ import { resolveDevelop } from './craft.ts';
 import { advanceConstruction } from './build.ts';
 import { monthlyShop, dailyShop } from './shop.ts';
 import { monthlyRank } from './guidebook.ts';
-import { monthlyMileage } from './mileage.ts';
+import { monthlyTickets } from './mileage.ts';
 import { dailySpots } from './spots.ts';
 import { monthlyGifts } from './items.ts';
 import { fmtNum } from './format.ts';
@@ -77,7 +77,7 @@ function onNewMonth(state: GameState, prevMonth: number, prevYear: number): void
   if (newYear) incomeTax(state);
   monthlyRoutes(state); // 트랙 H: 경로 월 리셋·셔틀 계약비
   monthlyGifts(state);
-  monthlyMileage(state);
+  monthlyTickets(state);
   closeMonth(state, prevMonth, prevYear);
   monthlyFailure(state);
   monthlyReputation(state);

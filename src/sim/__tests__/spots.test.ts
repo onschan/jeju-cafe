@@ -12,11 +12,11 @@ import { walletOf, isUnlocked, SAT_REGULAR } from '../segments.ts';
 import {
   spotCost, spotRequirements, canInvestSpot, spotVisitors, totalSpotVisitors, dailyVisitors, totalDailyVisitors, spotGuestBonus, dailySpots, addVisitors, checkVisitorPrizes,
   spotSpawnMult, spotFeePct, spotSceneryBonus, tagPopularity,
-  SPOT_BASE_COST, SPOT_COST_MULT, SPOT_MAX_LEVEL, SPOT_TAG_MULT, SPOT_TAG_MULT_CAP, SPOT_LV3_MILEAGE, VISITOR_PRIZES, GOLDEN_TANGERINE_VISITORS, VISITORS_PER_APPEAL, VISITOR_GUEST_RATE,
+  SPOT_BASE_COST, SPOT_COST_MULT, SPOT_MAX_LEVEL, SPOT_TAG_MULT, SPOT_TAG_MULT_CAP, SPOT_LV3_TICKETS, VISITOR_PRIZES, GOLDEN_TANGERINE_VISITORS, VISITORS_PER_APPEAL, VISITOR_GUEST_RATE,
 } from '../spots.ts';
 import { grantItem, canGiveGift, giftFits, monthlyGifts, GIFT_POPULARITY, GIFT_SATISFACTION, GIFT_FIT_MULT } from '../items.ts';
 import { HAMMER_MAX } from '../shop.ts';
-import { SPOTS, spotDef, itemDef, objectDef, guestTypeDef, GIFTS, MILEAGE_SHOP, TICKET_SHOP, SPECIAL_ITEM_IDS, giftDef } from '../../data/index.ts';
+import { SPOTS, spotDef, itemDef, objectDef, guestTypeDef, GIFTS, SPECIAL_ITEM_IDS, giftDef } from '../../data/index.ts';
 import { hasIdToken } from '../../data/labels.ts';
 
 /** Lv2~3 조건을 다 채운다 */
@@ -66,10 +66,10 @@ describe('Lv별 조건 (trim)', () => {
     expect(spotRequirements(s, id).map((r) => r.met)).toEqual([true, false]);
     expect(canInvestSpot(s, id).ok).toBe(false);
     s.clock.year = 2;
-    const m0 = s.mileage;
+    const m0 = s.tickets;
     expect(apply(s, { type: 'investSpot', id }).ok).toBe(true); // Lv3
     expect(s.inventory['flower_poster']).toBe(1); // Lv3 아이템
-    expect(s.mileage).toBe(m0 + SPOT_LV3_MILEAGE);
+    expect(s.tickets).toBe(m0 + SPOT_LV3_TICKETS + 1); // Lv2 방문객 상품 응모권 1장
     expect(s.notices.some((n) => n.includes('산굼부리'))).toBe(true); // 다음 명소 개방 안내
     expect(apply(s, { type: 'investSpot', id }).ok).toBe(false); // 최고
   });
@@ -87,7 +87,7 @@ describe('Lv별 조건 (trim)', () => {
         expect(s.inventory[d.lv3ItemId!]).toBeGreaterThanOrEqual(1);
       }
     }
-    expect(s.mileage).toBeGreaterThanOrEqual(8 * SPOT_LV3_MILEAGE);
+    expect(s.tickets).toBeGreaterThanOrEqual(8 * SPOT_LV3_TICKETS);
   });
 });
 
@@ -145,7 +145,7 @@ describe('방문객 누적·상품', () => {
     expect(spotVisitors(s, 'canola_field')).toBe(v0 + 40);
   });
 
-  it('상품 4단계: 1,000 응모권 1 / 5,000 마일리지 3 / 20,000 감귤 씨앗 2 / 50,000 묶음팩(감귤 3·한라봉 2) / 전체 100,000 황금 감귤 1회', () => {
+  it('상품 4단계: 1,000 응모권 1 / 5,000 응모권 3 / 20,000 감귤 씨앗 2 / 50,000 묶음팩(감귤 3·한라봉 2) / 전체 100,000 황금 감귤 1회', () => {
     const s = bareState(1);
     s.spots['canola_field'] = 1;
     addVisitors(s, 'canola_field', 999);
@@ -153,7 +153,7 @@ describe('방문객 누적·상품', () => {
     addVisitors(s, 'canola_field', 1);
     expect(s.tickets).toBe(1); expect(s.spotPrizes['canola_field']).toBe(1);
     addVisitors(s, 'canola_field', 4000);
-    expect(s.mileage).toBe(3); expect(s.spotPrizes['canola_field']).toBe(2);
+    expect(s.tickets).toBe(1 + 3); expect(s.spotPrizes['canola_field']).toBe(2);
     addVisitors(s, 'canola_field', 15000);
     expect(s.inventory['tangerine_seed']).toBe(2);
     addVisitors(s, 'canola_field', 30000);
@@ -163,7 +163,7 @@ describe('방문객 누적·상품', () => {
     // 한 번에 여러 단계를 건너뛰어도 전부 준다
     s.spots['oreum'] = 1;
     addVisitors(s, 'oreum', 25000);
-    expect(s.spotPrizes['oreum']).toBe(3); expect(s.tickets).toBe(2); expect(s.mileage).toBe(6);
+    expect(s.spotPrizes['oreum']).toBe(3); expect(s.tickets).toBe(4 + 1 + 3);
     // 전체 합산 10만 → 황금 감귤 1회
     addVisitors(s, 'oreum', GOLDEN_TANGERINE_VISITORS);
     expect(s.inventory['golden_tangerine']).toBe(1);
@@ -182,8 +182,8 @@ describe('손님 선물 (§3.3.5)', () => {
     return { s, g: s.guests[0]! };
   }
 
-  it('데이터: 선물 8, 잘 맞는 손님층·입수처, ITEMS에도 들어 있다', () => {
-    expect(GIFTS).toHaveLength(8);
+  it('데이터: 선물 4, 잘 맞는 손님층·입수처, ITEMS에도 들어 있다', () => {
+    expect(GIFTS).toHaveLength(4);
     for (const g of GIFTS) { expect(itemDef(g.id).name).toBe(g.name); expect(hasIdToken(g.sourceText)).toBe(false); }
     expect(giftDef('gift_tangerine_box').source).toMatchObject({ type: 'craft', ingredientId: 'tangerine', count: 10 });
     expect(giftFits(giftDef('gift_peanut_bag'), 'student')).toBe(true);   // youth
@@ -226,40 +226,6 @@ describe('손님 선물 (§3.3.5)', () => {
     expect(s.storage['tangerine']).toBe(2); expect(s.inventory['gift_tangerine_box']).toBe(1);
     expect(apply(s, { type: 'craftGift', itemId: 'gift_peanut_bag' }).ok).toBe(false);
     expect(monthlyGifts(s)).toBe(0);
-    s.mileage = 2;
-    expect(apply(s, { type: 'buyMileage', id: 'ms_gift_box' }).ok).toBe(true);
-    expect(GIFTS.reduce((n, g) => n + (s.inventory[g.id] ?? 0), 0)).toBe(1 + 2);
-  });
-});
-
-describe('상점·아이템 (§3.3)', () => {
-  it('마일리지 상점 21 · 응모권 상점 9 · 특수 아이템 20(18 + 도구 2) · 상점 itemId·objectId 참조', () => {
-    expect(MILEAGE_SHOP.map((m) => m.id)).toEqual(expect.arrayContaining(['ms_pinball', 'ms_speed_plant', 'ms_repair_kit', 'ms_training_voucher', 'ms_bus_contract', 'ms_gift_box', 'ms_hammer']));
-    expect(TICKET_SHOP.map((t) => t.id)).toEqual(expect.arrayContaining(['ts_large_plant', 'ts_seasonal_plant']));
-    expect(SPECIAL_ITEM_IDS).toHaveLength(20);
-    for (const id of ['tour_bus_key', 'hammer_bearing', 'little_guardian', 'clean_charm', 'rank_shield', 'golden_tangerine', 'repair_kit', 'training_voucher_discount']) expect(itemDef(id).value).toBe(0);
-    for (const m of MILEAGE_SHOP) { if (m.itemId) expect(itemDef(m.itemId).id).toBe(m.itemId); expect(hasIdToken(m.name + m.description)).toBe(false); }
-    for (const t of TICKET_SHOP) { if (t.itemId) expect(itemDef(t.itemId).id).toBe(t.itemId); expect(hasIdToken(t.name + t.description)).toBe(false); }
-  });
-
-  it('구매: 수리 도구·연수 할인권·망치(최대 10) → 인벤토리, 설계도는 시설이 있으면 해금·없으면 안내만·중복 거부', () => {
-    const s = bareState(1); s.mileage = 100; s.tickets = 100;
-    expect(apply(s, { type: 'buyMileage', id: 'ms_repair_kit' }).ok).toBe(true);
-    expect(s.inventory['repair_kit']).toBe(1);
-    expect(apply(s, { type: 'buyMileage', id: 'ms_training_voucher' }).ok).toBe(true);
-    expect(s.inventory['training_voucher_discount']).toBe(1);
-    s.inventory['hammer_bearing'] = HAMMER_MAX;
-    expect(apply(s, { type: 'buyMileage', id: 'ms_hammer' }).ok).toBe(false);
-    s.inventory['hammer_bearing'] = HAMMER_MAX - 1;
-    expect(apply(s, { type: 'buyMileage', id: 'ms_hammer' }).ok).toBe(true);
-    // 설계도: objects.json에 pinball이 있으면 짓기 목록에, 없으면 안내만 (트랙 A가 추가)
-    const n0 = s.unlocked.objects.length;
-    expect(apply(s, { type: 'buyMileage', id: 'ms_pinball' }).ok).toBe(true);
-    const hasPinball = (() => { try { objectDef('pinball'); return true; } catch { return false; } })();
-    expect(s.unlocked.objects.length).toBe(hasPinball ? n0 + 1 : n0);
-    if (hasPinball) expect(apply(s, { type: 'buyMileage', id: 'ms_pinball' }).ok).toBe(false);
-    expect(apply(s, { type: 'buyTicket', id: 'ts_large_plant' }).ok).toBe(true);
-    expect(s.tickets).toBe(100 - 6);
-    expect(s.mileage).toBe(100 - 2 - 2 - 4 - 3);
+    expect(GIFTS.reduce((n, g) => n + (s.inventory[g.id] ?? 0), 0)).toBe(1);
   });
 });

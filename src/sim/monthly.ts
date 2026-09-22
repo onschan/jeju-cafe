@@ -26,7 +26,7 @@ export function makeMonthly(state: GameState): MonthlyState {
   switch (kind) {
     case 'guests': {
       const n = Math.max(20, Math.ceil(lastGuests * MONTHLY_TARGET_RATIO / 10) * 10);
-      condition = { type: 'monthGuests', n }; title = `이달 손님 ${n}명`; reward = [{ type: 'tickets', n: 2 }, { type: 'mileage', n: 10 }];
+      condition = { type: 'monthGuests', n }; title = `이달 손님 ${n}명`; reward = [{ type: 'tickets', n: 2 }, { type: 'tickets', n: 1 }];
       break;
     }
     case 'sales': {
@@ -36,7 +36,7 @@ export function makeMonthly(state: GameState): MonthlyState {
     }
     case 'satisfied': {
       const n = Math.max(10, Math.ceil(lastGuests * MONTHLY_TARGET_RATIO * 0.7 / 10) * 10);
-      condition = { type: 'satisfied', n }; base = state.stats.satisfiedTotal; title = `만족 손님 ${n}명 더`; reward = [{ type: 'mileage', n: 20 }];
+      condition = { type: 'satisfied', n }; base = state.stats.satisfiedTotal; title = `만족 손님 ${n}명 더`; reward = [{ type: 'tickets', n: 2 }];
       break;
     }
     case 'seats': {
@@ -46,7 +46,7 @@ export function makeMonthly(state: GameState): MonthlyState {
       break;
     }
     case 'corner': {
-      condition = { type: 'corners', n: 1 }; base = state.codex.corners?.length ?? 0; title = '코너 하나 더'; reward = [{ type: 'tickets', n: 3 }, { type: 'mileage', n: 10 }];
+      condition = { type: 'corners', n: 1 }; base = state.codex.corners?.length ?? 0; title = '코너 하나 더'; reward = [{ type: 'tickets', n: 3 }, { type: 'tickets', n: 1 }];
       break;
     }
     case 'hidden': {

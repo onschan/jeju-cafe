@@ -14,7 +14,7 @@ export { isFarmObject, monthlyYieldOf, expectedHarvest, emptyMonthHarvest } from
 export { stockOf } from './warehouse.ts';
 export { currentGoal, activeGoals, goalClaimed, goalProgress, goalValue, goalMet, conditionProgress, conditionCheckers, goalConditionText, goalRewardText, goalForFacility, goalForMenu, goalForFeature, featureOpen, checkFeature, canOpen, applyRewards, grantReward, scaleReward, underLoan, FEATURE_IDS, ACTION_FEATURE_IDS, FEATURE_NAME, FEATURE_OF_ACTION, CONCURRENT_GOALS, goalDef, type Progress } from './goals.ts';
 export { monthlyProgress, makeMonthly, checkMonthly, MONTHLY_TARGET_RATIO } from './monthly.ts';
-export { bestMainCell, bestMainCells, bestSeatCell, bestSeatCells, bestWallCell, bestWallCells, bestCornerCell, bestCornerCells, cornerScoreIfPlaced, cornerNameForPiece, bestIndoorSeat, bestIndoorSeats, bestParkingCell, bestParkingCells, bestSpotToInvest, openingBuild, nextMove, heuristicNextMove, solverNextMove, solverDeltaText, strategyVars, fillTemplate, wallSheltered, OPENING_SEATS, SUMMER_SEATS, SOLVER_SEAT_K, SOLVER_CELL_K, type BuildPlanRow, type NextMove } from './strategy.ts'; // pro-guide
+export { bestMainCell, bestMainCells, bestSeatCell, bestSeatCells, bestWallCell, bestWallCells, bestCornerCell, bestCornerCells, cornerScoreIfPlaced, cornerNameForPiece, bestIndoorSeat, bestIndoorSeats, bestParkingCell, bestParkingCells, bestSpotToInvest, nextMove, heuristicNextMove, solverNextMove, solverDeltaText, strategyVars, fillTemplate, wallSheltered, OPENING_SEATS, SUMMER_SEATS, SOLVER_SEAT_K, SOLVER_CELL_K, type NextMove } from './strategy.ts'; // pro-guide
 // ---------- solver: 롤아웃 탐색 (최적해 가이드) ----------
 export { cloneState, candidateActions, pickDiverse, candidateGroup, evaluate, rolloutDays, metricsOf, scoreOf, bestMoves, solveSync, buildTabOf, SOLVER_WEIGHTS, LOW_REPUTATION, DEFAULT_SOLVER_OPTIONS, UI_SOLVER_OPTIONS, BOT_SOLVER_OPTIONS, type SolverOptions, type SolverCandidate, type Metrics, type Evaluation } from './solver.ts';
 export { solverKey, moneyBucket, setSolverResult, solverResult, lastSolverResult, onSolverResult, cachedMoves, rankCellsByCache, type SolverMove, type SolverResult } from './solverCache.ts';
@@ -48,19 +48,19 @@ export { dailyCleanliness, dailyCleanRecovery, cleanReduceMult, cleanGuestMult, 
 export { canUseItem, grantItem, itemEffect, ITEM_POP_CAP, ITEM_SCENERY_CAP, canGiveGift, giftFits, giftedToday, giftCount, hasSpecial, canCraftGift, GIFT_POPULARITY, GIFT_SATISFACTION, GIFT_FIT_MULT } from './items.ts';
 export { lineCells, planLine, isLineType, LINE_KINDS, type LineOrder, type LinePlan } from './line.ts';
 export { buildDaysOf, effectiveBuildDays, FAST_HAMMER_ITEM, INSTANT_HAMMER_ITEM, isUnderConstruction, constructions, canStartBuild, buildDaysLeft, START_BUILDERS, MAX_BUILDERS, needsDoorPath, DOOR_PATH_HINT } from './build.ts';
-export { canBuyMileage, canBuyTicket, canDrawTicket, canSetUniform, canUseGuestItem, hasFreeDraw, hasUniform, rollPrize, SEED_PACK, DRAW_MONEY_PER_YEAR, UNIFORM_PIECES_PER_SET, MONTHLY_FREE_TICKETS } from './shop.ts';
-export { addMileage, codexCount, checkCodexMileage, monthlyMileage, CODEX_PER_MILEAGE, GUESTS_PER_MILEAGE } from './mileage.ts';
+export { canDrawTicket, canSetUniform, canUseGuestItem, hasFreeDraw, hasUniform, rollPrize, SEED_PACK, DRAW_MONEY_PER_YEAR, UNIFORM_PIECES_PER_SET, MONTHLY_FREE_TICKETS } from './shop.ts';
+export { addTickets, codexCount, checkCodexTickets, monthlyTickets, CODEX_PER_TICKET, GUESTS_PER_TICKET } from './mileage.ts';
 export { rankScore, rankForScore, nextRankThreshold, facilityCount, unlockedGuestTypeCount, updateRank, RANK_THRESHOLDS, MAX_RANK } from './rank.ts';
 // ---------- fun-rank: 카페 등급 5단계·필지 특징 ----------
 export { gradeOf, gradeName, gradeProgress, gradeMet, cornerCount, checkGrade, gradeUpRewards, guestCap, GRADE_NAMES, GRADE_CAPTION, GRADE_REQS, MAX_GRADE, GRADE_GUEST_CAP_BASE, GRADE_GUEST_CAP_STEP, GRADE_BGM_LAYER_FROM, REVEAL_GRADE, type GradeReq, type GradeProgressRow } from './grade.ts';
 export { parcelFeature, PARCEL_FEATURES, type ParcelFeature } from './parcels.ts';
-export { starConditionMet, starConditionsHeld, isReviewDue, starReview, nextStarConditions, checkStar, judgeScores, guidebookScore, guidebookState, evaluateGuidebooks, guidebooksToAnnounce, announce, rivalScores, rivalTop, rivalBoost, rankAmong, monthlyTarget, targetPopularity, codexTotal, MAX_STAR, JUDGE_KEYS, JUDGE_LABEL, ANNOUNCE_MONTHS, RIVAL_COUNT, PRIZE_RATIO, RANK_MILEAGE, MONTHLY_TAGS, RIVAL_WIN_BOOST, REVIEW_MIN_STAR, REVIEW_EVERY_YEARS, RANK_SHIELD_ITEM } from './guidebook.ts';
+export { starConditionMet, starConditionsHeld, isReviewDue, starReview, nextStarConditions, checkStar, judgeScores, guidebookScore, guidebookState, evaluateGuidebooks, guidebooksToAnnounce, announce, rivalScores, rivalTop, rivalBoost, rankAmong, monthlyTarget, targetPopularity, codexTotal, MAX_STAR, JUDGE_KEYS, JUDGE_LABEL, ANNOUNCE_MONTHS, RIVAL_COUNT, PRIZE_RATIO, RANK_TICKETS, MONTHLY_TAGS, RIVAL_WIN_BOOST, REVIEW_MIN_STAR, REVIEW_EVERY_YEARS, RANK_SHIELD_ITEM } from './guidebook.ts';
 export { evaluateUnlocks, evaluateFacilityUnlocks, unlockCondMet, isUnlocked, unlockedTypeIds, guestFace, walletOf, regularTier, isTarget, MAX_TARGETS, TARGET_SPAWN_MULT, canSetTargets, SAT_QUEST, SAT_REGULAR, SAT_VIP } from './segments.ts';
 export { questProgress, canAcceptQuest, canRespondEvent, eventConditionMet, boardBadge, visibleQuests, questRewardText, QUEST_MONTHS } from './board.ts';
 export {
   spotLevel, spotUnlocked, nextSpotLevel, spotAppeal, spotAppealOf, spotGuestBonus, canInvestSpot, spotRequirements, spotVisitors, totalSpotVisitors, dailyVisitors, totalDailyVisitors,
   spotSpawnMult, spotFeePct, spotSceneryBonus, tagPopularity, spotCost,
-  SPOT_MAX_LEVEL, SPOT_GUEST_LEVEL, SPOT_ITEM_LEVEL, SPOT_NEXT_LEVEL, SPOT_TAG_MULT, SPOT_FEE_PCT, SPOT_SCENERY, SPOT_LV3_MILEAGE, SPOT_VISITOR_REQ, SPOT_YEAR_REQ_LV3,
+  SPOT_MAX_LEVEL, SPOT_GUEST_LEVEL, SPOT_ITEM_LEVEL, SPOT_NEXT_LEVEL, SPOT_TAG_MULT, SPOT_FEE_PCT, SPOT_SCENERY, SPOT_LV3_TICKETS, SPOT_VISITOR_REQ, SPOT_YEAR_REQ_LV3,
   VISITOR_PRIZES, GOLDEN_TANGERINE_VISITORS, VISITOR_GUEST_RATE,
   type SpotRequirement,
 } from './spots.ts';
@@ -75,7 +75,7 @@ export {
   canBuildMain, MAIN_BUILD_COST, isAnnex, annexCount, isRoomCut, cutRooms, nextMainLevel, expandCost, expandCells, canExpandMain, canBuildSecondFloor, moveDays, canMoveThisMonth, canStartMoveMain, canMoveMain, canUndoMoveMain,
   seatsShort, seatUsePct, isFireplaceOn, canToggleFireplace, canSetPianoTime, isPianoPlaying, canAddBooks, hasNewBooks, canFeedAquarium, isAquariumHungry, canRestockKids, isKidsStocked, canSetBarEvening, isBarEvening,
   preferIndoor, stayMs, browseChance, indoorSpawnMult, indoorFeeMult, mainSummary, initMain,
-  MAIN_TYPE, MAIN_MAX_LEVEL, MAIN_SIZE, MAIN_EXPAND_COST, MAIN_EXPAND_DAYS, FLOOR2_COST, FLOOR2_MIN_LEVEL, FLOOR2_DAYS, FLOOR2_VIEW, MOVE_COST, MOVE_DAYS, FIREPLACE_FUEL, FIREPLACE_RADIUS, NEW_BOOKS_MILEAGE, KIDS_RESTOCK_COST,
+  MAIN_TYPE, MAIN_MAX_LEVEL, MAIN_SIZE, MAIN_EXPAND_COST, MAIN_EXPAND_DAYS, FLOOR2_COST, FLOOR2_MIN_LEVEL, FLOOR2_DAYS, FLOOR2_VIEW, MOVE_COST, MOVE_DAYS, FIREPLACE_FUEL, FIREPLACE_RADIUS, NEW_BOOKS_TICKETS, KIDS_RESTOCK_COST,
   SEAT_FULL_PCT, SEAT_FULL_DAYS, SEAT_FULL_TEXT, DOOR_PATH_WARN, ANNEX_CUT_TEXT, BGM_LABEL, LIGHT_LABEL, PIANO_LABEL, STAY_PER_FACILITY_MS,
   autoConnectRoute, canAutoConnectPath, type AutoRoute,
 } from './rooms.ts';

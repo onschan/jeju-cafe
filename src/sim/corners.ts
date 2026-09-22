@@ -18,7 +18,7 @@ import { monthIndex, DAYS_PER_MONTH } from './clock.ts';
 import { pushNotice } from './staff.ts';
 import { pushFx } from './fx.ts';
 import { nextRandom } from './rng.ts';
-import { addMileage } from './mileage.ts';
+import { addTickets } from './mileage.ts';
 
 export interface CornerPiece { type: string; count: number }
 export interface CornerEffect { feePct: number; popularity: number; target: ComboTarget; tagMult: number; photo: number }
@@ -63,7 +63,7 @@ export const CORNER_SATISFACTION_ALL = 3;
 export const CORNER_VISIT_WEIGHT = 3;
 export const CORNER_VISITS_PER_DAY = 8;
 /** 코너 완성 보상: 첫 코너 마일리지 +1 */
-export const FIRST_CORNER_MILEAGE = 1;
+export const FIRST_CORNER_TICKETS = 1;
 
 // ---------- 거리 ----------
 interface Foot { x: number; y: number; w: number; h: number }
@@ -263,7 +263,7 @@ export function discoverCorners(state: GameState): void {
     pushNotice(state, `${def.name} 완성! 손님이 사진 찍으러 와요`);
     pushFx(state, { kind: 'scene', title: `${def.name} 완성`, text: def.line, tick: state.tick });
     pushFx(state, { kind: 'corner', id: c.id, x: c.x, y: c.y, tick: state.tick });
-    if (codex.length === 1) addMileage(state, FIRST_CORNER_MILEAGE, '첫 코너');
+    if (codex.length === 1) addTickets(state, FIRST_CORNER_TICKETS, '첫 코너');
   }
 }
 /** 도감에 오른(한 번이라도 만든) 코너 수 — 목표·도전 corners(n) */

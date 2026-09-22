@@ -125,7 +125,6 @@ export function questRewardText(q: QuestDef): string {
       case 'money': return `자금 ₩${fmtNum(r.amount)}`;
       case 'research': return `연구 ${r.amount}`;
       case 'ticket': return `응모권 ${r.amount}`;
-      case 'mileage': return `마일리지 ${r.amount}`;
       case 'ad': return `${guestTypeDef(q.guestId).name} 인기 +${r.amount}`;
       case 'item': { let name = r.itemId; try { name = itemDef(r.itemId).name; } catch { /* 표에만 있는 아이템 */ } return `아이템 ${name}`; }
     }
@@ -139,7 +138,6 @@ function applyReward(state: GameState, q: QuestDef): void {
       case 'money': state.money += r.amount; state.monthIncome += r.amount; break;
       case 'research': state.research += r.amount; break;
       case 'ticket': state.tickets += r.amount; break;
-      case 'mileage': state.mileage += r.amount; break;
       case 'ad': state.segmentPopularity[q.guestId] = Math.min(99, (state.segmentPopularity[q.guestId] ?? 0) + r.amount); break;
       case 'item': try { grantItem(state, r.itemId); } catch { /* 표에만 있는 아이템은 건너뛴다 */ } break;
     }
@@ -218,7 +216,6 @@ export function applyEventEffect(state: GameState, e: EventEffect, source: strin
   switch (e.kind) {
     case 'money': state.money += e.amount; if (e.amount > 0) state.monthIncome += e.amount; break;
     case 'research': state.research += e.amount; break;
-    case 'mileage': state.mileage += e.amount; break;
     case 'tickets': state.tickets += e.amount; break;
     case 'spawnMult': addEffect(state, { kind: 'spawnMult', mult: e.mult, filter: e.filter, days: e.days, source }); break;
     case 'harvestMult': addEffect(state, { kind: 'harvestMult', mult: e.mult, days: e.days, source }); break;

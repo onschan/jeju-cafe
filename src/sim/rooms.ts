@@ -62,7 +62,7 @@ export const SOFA_STAY = 0.2;
 export const BOOKSHELF_STAY = 0.15;
 export const NEW_BOOKS_STAY = 0.05;
 export const NEW_BOOKS_DAYS = 30;
-export const NEW_BOOKS_MILEAGE = 1;
+export const NEW_BOOKS_TICKETS = 1;
 export const WARM_EVENING_STAY = 0.1;
 /** 수족관: 먹이 하루 1회 → 청결 +2, 3일 안 주면 경관 0 */
 export const AQUARIUM_CLEAN = 2;
@@ -575,14 +575,14 @@ export function canAddBooks(state: GameState, objectId: string): ApplyResult {
   if (!o || o.type !== 'bookshelf') return { ok: false, reason: '책장이 아니에요' };
   if (o.build) return { ok: false, reason: '짓는 중이에요' };
   if (hasNewBooks(state, o)) return { ok: false, reason: '아직 신간이 있어요' };
-  if (state.mileage < NEW_BOOKS_MILEAGE) return { ok: false, reason: '마일리지가 모자라요' };
+  if (state.tickets < NEW_BOOKS_TICKETS) return { ok: false, reason: '응모권이 모자라요' };
   return { ok: true };
 }
 export function hasNewBooks(state: GameState, o: PlacedObject): boolean {
   return o.careDay !== undefined && dayIndex(state.clock) - o.careDay < NEW_BOOKS_DAYS;
 }
 export function addBooks(state: GameState, objectId: string): void {
-  state.mileage -= NEW_BOOKS_MILEAGE;
+  state.tickets -= NEW_BOOKS_TICKETS;
   state.objects[objectId]!.careDay = dayIndex(state.clock);
 }
 export function canFeedAquarium(state: GameState, objectId: string): ApplyResult {

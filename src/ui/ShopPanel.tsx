@@ -1,19 +1,17 @@
 import { useEffect, useState, type CSSProperties } from 'react';
 import { ButtonGroup } from './ButtonGroup';
 import { useGame, dispatch } from './store';
-import { canBuyMileage, canBuyTicket, canDrawTicket, canUseItem, canUseGuestItem, canCraftGift, hasFreeDraw, hasUniform, itemEffect, constructions, unlockedTypeIds, MAX_BUILDERS, josa } from '../sim/index.ts';
-import { MILEAGE_SHOP, TICKET_SHOP, UNIFORMS, DRAW_PRIZES, ITEMS, GIFTS, SPECIAL_ITEM_IDS, SPECIAL_ITEM_EFFECT, itemDef, objectDef, uniformDef, guestTypeDef, giftDef, isGiftId, ingredientDef, POPULARITY_FRUIT } from '../data/index.ts';
+import { canDrawTicket, canUseItem, canUseGuestItem, canCraftGift, hasFreeDraw, hasUniform, itemEffect, constructions, unlockedTypeIds, MAX_BUILDERS, josa } from '../sim/index.ts';
+import { UNIFORMS, DRAW_PRIZES, ITEMS, GIFTS, SPECIAL_ITEM_IDS, SPECIAL_ITEM_EFFECT, itemDef, objectDef, uniformDef, guestTypeDef, giftDef, isGiftId, ingredientDef, POPULARITY_FRUIT } from '../data/index.ts';
 import { label } from '../data/labels.ts';
 import { Popup, Confirm } from './Popup';
 import { Icon } from './Icon';
 import { sfx } from './audio';
 import { card, brownBtn, brownBtnOn, brownBtnOff, PALETTE } from './frame';
 
-type Tab = 'mileage' | 'draw' | 'ticket' | 'codex';
+type Tab = 'draw' | 'codex';
 const TABS: { id: Tab; label: string }[] = [
-  { id: 'mileage', label: '마일리지' },
   { id: 'draw', label: '인형뽑기' },
-  { id: 'ticket', label: '응모권 상점' },
   { id: 'codex', label: '아이템 도감' },
 ];
 /** 인형뽑기 연출 길이 (ms) */
@@ -81,86 +79,20 @@ function ItemCodex() {
 }
 
 /** 상점 탭: 마일리지 상점 / 인형뽑기 / 응모권 상점 + 아래 인벤토리 */
-export function ShopPanel({ initialTab = 'mileage' }: { initialTab?: Tab } = {}) {
+export function ShopPanel({ initialTab = 'draw' }: { initialTab?: Tab } = {}) {
   const s = useGame();
   const [tab, setTab] = useState<Tab>(initialTab);
   return (
     <div data-testid="shop-panel">
       <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 6, flexWrap: 'wrap' }}>
-        <span data-testid="shop-wallet"><Icon name="money" /> 마일리지 <b>{s.mileage}</b> · 응모권 <b>{s.tickets}</b>{hasFreeDraw(s) ? ' · 무료 뽑기 1회!' : ''}</span>
+        <span data-testid="shop-wallet"><Icon name="ticket" /> 응모권 <b>{s.tickets}</b>{hasFreeDraw(s) ? ' · 무료 뽑기 1회!' : ''}</span>
       </div>
       <div style={{ display: 'flex', marginBottom: 6 }}>
         {TABS.map((t) => <button key={t.id} style={{ ...(tab === t.id ? brownBtnOn : brownBtn), padding: '0 10px' }} onClick={() => setTab(t.id)} data-testid={`shop-tab-${t.id}`} data-tut={`shop:${t.id}`}>{t.label}</button>)}
       </div>
-      {tab === 'mileage' && <MileageShop />}
       {tab === 'draw' && <DrawMachine />}
-      {tab === 'ticket' && <TicketShop />}
       {tab === 'codex' && <ItemCodex />}
       {tab !== 'codex' && <Inventory />}
-    </div>
-  );
-}
-
-function MileageShop() {
-  const s = useGame();
-  const busy = constructions(s).length;
-  return (
-    <div>
-      <div style={small}>농협 마일리지로 사요. 마일리지는 월 손님 300명마다·부탁 완료·가이드북 순위·도감 10개마다 받아요.</div>
-      <div style={{ ...small, marginBottom: 6 }}>일꾼 삼춘 {s.builders}명 (동시에 {s.builders}개까지 지을 수 있어요, 지금 {busy}개 짓는 중)</div>
-      {MILEAGE_SHOP.map((m) => {
-        const can = canBuyMileage(s, m.id);
-        const soldOut = m.id.startsWith('ms_worker_') && (s.builders >= MAX_BUILDERS || s.builders >= Number(m.id.slice(-1)));
-        if (soldOut) return null;
-        return (
-          <div key={m.id} style={row}>
-            <div style={{ flex: 1 }}>
-              <div><b>{m.name}</b></div>
-              <div style={small}>{m.description}</div>
-            </div>
-            <span style={price}>{m.price} 마일리지</span>
-            <button style={{ ...(can.ok ? brownBtn : brownBtnOff), marginBottom: 0, marginRight: 0 }} data-testid={`buy-${m.id}`}
-              onClick={() => { if (!can.ok) { dispatch({ type: 'buyMileage', id: m.id }); return; } Confirm(`${josa(m.name, '을/를')} 마일리지 ${m.price}로 살까요?`, () => dispatch({ type: 'buyMileage', id: m.id }), { title: '마일리지 상점' }); }}>
-              사기
-            </button>
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
-function TicketShop() {
-  const s = useGame();
-  const owned = UNIFORMS.filter((u) => hasUniform(s, u.id));
-  return (
-    <div>
-      <div style={{ ...small, marginBottom: 6 }}>응모권으로 사요. 응모권은 매달 1장, 손님이 주고 가기도 해요.</div>
-      {owned.length > 0 && (
-        <div style={{ ...row }}>
-          <span>입은 유니폼</span>
-          <ButtonGroup label="입은 유니폼" testId="uniform-select" value={s.uniform ?? ''} onPick={(v) => dispatch({ type: 'setUniform', id: v || null })}
-            options={[{ value: '', label: '평상복' }, ...owned.map((u) => ({ value: u.id, label: u.name }))]} />
-        </div>
-      )}
-      {TICKET_SHOP.map((t) => {
-        const can = canBuyTicket(s, t.id);
-        const has = t.uniformId ? hasUniform(s, t.uniformId) : false;
-        const eff = t.uniformId ? uniformDef(t.uniformId).effectText : t.description;
-        return (
-          <div key={t.id} style={row}>
-            <div style={{ flex: 1 }}>
-              <div><b>{t.name}</b>{has ? <> <Icon name="check" size={12} /></> : ''}</div>
-              <div style={small}>{eff}</div>
-            </div>
-            <span style={price}><Icon name="ticket" size={14} />{t.price}</span>
-            <button style={{ ...(can.ok ? brownBtn : brownBtnOff), marginBottom: 0, marginRight: 0 }} data-testid={`buy-${t.id}`}
-              onClick={() => { if (!can.ok) { dispatch({ type: 'buyTicket', id: t.id }); return; } Confirm(`${josa(t.name, '을/를')} 응모권 ${t.price}장으로 살까요?`, () => dispatch({ type: 'buyTicket', id: t.id }), { title: '응모권 상점' }); }}>
-              {has ? '있음' : '사기'}
-            </button>
-          </div>
-        );
-      })}
     </div>
   );
 }

@@ -20,7 +20,7 @@ import { canInvestSpot, investSpot } from './spots.ts';
 import { canRenameCafe, renameCafe, canExpand, expand, canSetCosmetic, setCosmetic, canPraise, praise, placeCost, type ExpansionId } from './cafe.ts';
 import { canDevelop, develop, canAddTopping, addTopping, canRemoveTopping, removeTopping, canLevelUpMenu, levelUpMenu } from './craft.ts';
 import { canStartBuild, startBuild } from './build.ts';
-import { canBuyMileage, buyMileage, canBuyTicket, buyTicket, canDrawTicket, drawTicket, canSetUniform, setUniform, canUseGuestItem, useGuestItem } from './shop.ts';
+import { canDrawTicket, drawTicket, canSetUniform, setUniform, canUseGuestItem, useGuestItem } from './shop.ts';
 import { canUpgrade, upgrade } from './upgrade.ts';
 import { canRepair, repair } from './cleanliness.ts';
 import { canTreeUpgrade, treeUpgrade } from './tree.ts'; // fun 업그레이드 트리
@@ -537,18 +537,6 @@ function applyInner(state: GameState, a: Action): ApplyResult {
       const c = canLevelUpMenu(state, a.menuId);
       if (!c.ok) return c;
       levelUpMenu(state, a.menuId);
-      return { ok: true };
-    }
-    case 'buyMileage': {
-      const c = canBuyMileage(state, a.id);
-      if (!c.ok) return c;
-      buyMileage(state, a.id);
-      return { ok: true };
-    }
-    case 'buyTicket': {
-      const c = canBuyTicket(state, a.id);
-      if (!c.ok) return c;
-      buyTicket(state, a.id);
       return { ok: true };
     }
     case 'drawTicket': {

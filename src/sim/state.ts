@@ -208,7 +208,6 @@ export function createInitialState(seed: number, playerId = 'local', createdAt =
     guestTypes: initGuestTypes(),
     visitBonus: {},
     tickets: 0,
-    mileage: 0,
     rank: 1,
     star: 1,
     grade: 1, // fun-rank: 카페 등급 「올레길 노점」
@@ -220,7 +219,7 @@ export function createInitialState(seed: number, playerId = 'local', createdAt =
     freeDrawMonth: START_MONTH - 1, // 첫 달(monthIndex) 무료 추첨 1회
     lastDraw: null,
     freeRecruits: 0,
-    codexMileage: 0,
+    codexTickets: 0,
     guidebooks: initGuidebooks(),
     lastAnnouncement: null,
     board: { quests: {}, events: [] },

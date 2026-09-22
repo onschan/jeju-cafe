@@ -1,4 +1,4 @@
-import type { ObjectDef, MenuDef, GuestTypeDef, IngredientDef, FarmYield, GoalDef, BigEventDef, RoleDef, SkillDef, PromotionDef, GuestTags, ComboTarget, SetDef, ItemDef, ItemSlot, Season, MenuCategory, GuestEffect, GuestWant, UnlockCond, QuestDef, QuestCondition, QuestReward, SpotDef, SpotCategory, SpotSpecial, SpotTag, GiftDef, EventDef, MenuStats, MenuStatKey, IngredientCategory, IngredientComboDef, ToppingDef, HiddenRecipeDef, FacilityCategory, MileageShopDef, TicketShopDef, UniformDef, GuidebookDef, DrawPrizeDef, DrawPrizeKind, JudgeKey, NamedGuestDef, StaffPoolDef, RecruitTierDef, TrainingDef, TitleDef } from '../sim/types.ts';
+import type { ObjectDef, MenuDef, GuestTypeDef, IngredientDef, FarmYield, GoalDef, BigEventDef, RoleDef, SkillDef, PromotionDef, GuestTags, ComboTarget, SetDef, ItemDef, ItemSlot, Season, MenuCategory, GuestEffect, GuestWant, UnlockCond, QuestDef, QuestCondition, QuestReward, SpotDef, SpotCategory, SpotSpecial, SpotTag, GiftDef, EventDef, MenuStats, MenuStatKey, IngredientCategory, IngredientComboDef, ToppingDef, HiddenRecipeDef, FacilityCategory, UniformDef, GuidebookDef, DrawPrizeDef, DrawPrizeKind, JudgeKey, NamedGuestDef, StaffPoolDef, RecruitTierDef, TrainingDef, TitleDef } from '../sim/types.ts';
 import objectsJson from './objects.json' with { type: 'json' };
 import menusJson from './menus.json' with { type: 'json' };
 import guestsJson from './generated/v2/guests.json' with { type: 'json' };
@@ -25,8 +25,6 @@ import aurasJson from './generated/auras.json' with { type: 'json' };
 import itemsJson from './generated/items.json' with { type: 'json' };
 import itemsV2Json from './generated/v2/items.json' with { type: 'json' };
 import specialItemsJson from './special_items.json' with { type: 'json' };
-import mileageShopJson from './mileage_shop.json' with { type: 'json' };
-import ticketShopJson from './ticket_shop.json' with { type: 'json' };
 import giftsJson from './gifts.json' with { type: 'json' };
 import uniformsJson from './generated/v2/uniforms.json' with { type: 'json' };
 import guidebooksJson from './generated/v2/guidebooks.json' with { type: 'json' };
@@ -358,7 +356,7 @@ function toQuestCondition(c: RawQuest['condition']): QuestCondition {
 function toQuestReward(r: Record<string, unknown>): QuestReward | null {
   const t = r.type;
   if (t === 'item') return typeof r.itemId === 'string' ? { type: 'item', itemId: r.itemId } : null;
-  if (t === 'money' || t === 'research' || t === 'ticket' || t === 'mileage' || t === 'ad') return { type: t, amount: Number(r.amount ?? 0) };
+  if (t === 'money' || t === 'research' || t === 'ticket' || t === 'ad') return { type: t, amount: Number(r.amount ?? 0) };
   return null;
 }
 export const QUESTS: QuestDef[] = (questsJson as RawQuest[]).map((q) => ({
@@ -582,13 +580,11 @@ export const SPECIAL_ITEM_EFFECT: Record<string, string> = Object.fromEntries((s
 export const ITEMS: ItemDef[] = [...ITEMS_V2, ...ITEMS_V1_ONLY, ...SPECIAL_ITEMS, ...GIFT_ITEMS];
 
 // ---------- 마일리지 상점·응모권 상점·유니폼·인형뽑기·가이드북·★ (2B-2 Task 6·7) ----------
-export const MILEAGE_SHOP: MileageShopDef[] = mileageShopJson as MileageShopDef[];
 /** 응모권 상점 (추첨 항목은 drawTicket 액션이 따로 맡는다) */
-export const TICKET_SHOP: TicketShopDef[] = (ticketShopJson as TicketShopDef[]).filter((t) => t.id !== 'ts_draw');
 export const UNIFORMS: UniformDef[] = uniformsJson as UniformDef[];
 /** 인형뽑기 상품: v1 roulette.json 8칸 가중치를 그대로 쓰고 라벨만 바꾼다 */
-const DRAW_KIND_OF: Record<string, DrawPrizeKind> = { money: 'money', research: 'research', ingredient_box: 'ingredient_box', medal: 'mileage', item: 'item', samchun_visit: 'seed', free_promo: 'uniform_piece', miss: 'miss' };
-const DRAW_LABEL: Record<DrawPrizeKind, string> = { money: '돈', research: '연구', ingredient_box: '재료 상자', mileage: '마일리지', item: '강화 아이템', seed: '씨앗', uniform_piece: '유니폼 조각', miss: '꽝' };
+const DRAW_KIND_OF: Record<string, DrawPrizeKind> = { money: 'money', research: 'research', ingredient_box: 'ingredient_box', ticket: 'ticket', item: 'item', samchun_visit: 'seed', free_promo: 'uniform_piece', miss: 'miss' };
+const DRAW_LABEL: Record<DrawPrizeKind, string> = { money: '돈', research: '연구', ingredient_box: '재료 상자', ticket: '응모권', item: '강화 아이템', seed: '씨앗', uniform_piece: '유니폼 조각', miss: '꽝' };
 /** game-feel P2: 꽝이 5%라 3년 132회 중 3번 — 당첨이 당연해진다 → 꽝 15%, 4등(돈·연구)을 그만큼 줄인다 (표 roulette.json은 그대로, 어댑터에서 덧씌움) */
 export const DRAW_PCT_OVERRIDE: Record<string, number> = { miss: 15, money: 20, research: 15 };
 export const DRAW_PRIZES: DrawPrizeDef[] = (rouletteJson as { slots: { id: string; pct: number }[] }).slots.map((sl) => {
@@ -596,7 +592,7 @@ export const DRAW_PRIZES: DrawPrizeDef[] = (rouletteJson as { slots: { id: strin
   return { kind, label: DRAW_LABEL[kind], pct: DRAW_PCT_OVERRIDE[sl.id] ?? sl.pct };
 });
 /** 가이드북 심사 가중치(합 1)·라이벌 곡선은 guidebooks.json에 (트랙 E §3.7) */
-type RawGuidebook = { id: string; name: string; unlock: Record<string, unknown>; unlockText: string; criteriaText: string; prize: number; research: number; seeds: { itemId: string; count: number }[]; weights: Partial<Record<JudgeKey, number>>; rivalTop: number; rivalGrowth: number; mileage?: number };
+type RawGuidebook = { id: string; name: string; unlock: Record<string, unknown>; unlockText: string; criteriaText: string; prize: number; research: number; seeds: { itemId: string; count: number }[]; weights: Partial<Record<JudgeKey, number>>; rivalTop: number; rivalGrowth: number };
 /** 가이드북 해금: count는 분류 개수, segment는 손님층 인기 */
 function toGuidebookUnlock(u: Record<string, unknown>): UnlockCond {
   if (u.type === 'count' && typeof u.category === 'string') return { type: 'category', category: u.category as FacilityCategory, count: Number(u.count) || 1 };
@@ -613,7 +609,7 @@ export const GUIDEBOOKS: GuidebookDef[] = (guidebooksJson as RawGuidebook[]).map
   const unlock = toGuidebookUnlock(g.unlock);
   return {
   id: g.id, name: g.name, unlock, unlockText: guidebookUnlockText(unlock, g.unlockText), criteriaText: g.criteriaText,
-  weights: g.weights, rivalTop: g.rivalTop, rivalGrowth: g.rivalGrowth, prize: g.prize, research: g.research, seeds: g.seeds ?? [], mileage: g.mileage ?? 0, monthly: g.id === 'gb_coop_monthly',
+  weights: g.weights, rivalTop: g.rivalTop, rivalGrowth: g.rivalGrowth, prize: g.prize, research: g.research, seeds: g.seeds ?? [], monthly: g.id === 'gb_coop_monthly',
   };
 });
 export interface StarDef { star: number; conditions: string[]; unlockText: string }
@@ -669,12 +665,8 @@ export const recruitTierDef = (id: string) => must(RECRUIT_TIER, id, 'recruitTie
 export const trainingDef = (id: string) => must(TRAINING, id, 'training');
 export const titleDef = (id: string) => must(TITLE, id, 'title');
 export const promotionDef = (id: string) => must(PROMOTION, id, 'promotion');
-const MILEAGE_ITEM = indexBy(MILEAGE_SHOP);
-const TICKET_ITEM = indexBy(TICKET_SHOP);
 const UNIFORM = indexBy(UNIFORMS);
 const GUIDEBOOK = indexBy(GUIDEBOOKS);
-export const mileageShopDef = (id: string) => must(MILEAGE_ITEM, id, 'mileageShop');
-export const ticketShopDef = (id: string) => must(TICKET_ITEM, id, 'ticketShop');
 export const uniformDef = (id: string) => must(UNIFORM, id, 'uniform');
 const GIFT = indexBy(GIFTS);
 export const giftDef = (id: string) => must(GIFT, id, 'gift');

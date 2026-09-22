@@ -3,7 +3,7 @@ import { createInitialState } from '../state.ts';
 import { apply } from '../actions.ts';
 import { tick } from '../tick.ts';
 import { DAY_MS } from '../clock.ts';
-import { GOALS, goalDef, objectDef, menuDef, roleDef, FACILITIES, MILEAGE_SHOP, TICKET_SHOP } from '../../data/index.ts';
+import { GOALS, goalDef, objectDef, menuDef, roleDef, FACILITIES } from '../../data/index.ts';
 import { currentGoal, activeGoals, claimableGoals, GOAL_LOOKAHEAD, goalProgress, checkGoals, goalMet, goalForFacility, goalForFeature, checkFeature, grantReward, FEATURE_IDS, ACTION_FEATURE_IDS, goalConditionText, goalRewardText, conditionProgress, conditionCheckers, applyRewards, scaleReward, canOpen, CONCURRENT_GOALS, coalesceRewardAlerts, checkMoneyMilestones, MAX_GOALS_PER_CHECK, MAX_GOALS_PER_DAY, MILESTONE_TICKETS } from '../goals.ts';
 import type { GoalCondition, GoalReward } from '../types.ts';
 import { tutorialFeatureIds } from '../tutorial.ts';
@@ -97,7 +97,7 @@ describe('goals.json 데이터', () => {
   });
 
   it('v2 표에서 시작(start)이었다가 목표 보상으로 바뀐 시설은 전부 어떤 목표가 연다', () => {
-    const shopUnlocked = new Set([...[...MILEAGE_SHOP, ...TICKET_SHOP].map((x) => x.objectId).filter((x): x is string => !!x), 'golden_tangerine_tree']); // 설계도(트랙 C 상점)·황금 감귤(명소 방문객 10만)로 열리는 시설은 제외
+    const shopUnlocked = new Set(['golden_tangerine_tree']); // 황금 감귤(명소 방문객 10만)로 열리는 시설은 제외
     const goalGated = FACILITIES.filter((f) => f.unlock?.type === 'goal' && !shopUnlocked.has(f.id));
     expect(goalGated.length).toBeGreaterThan(10);
     for (const f of goalGated) expect(goalForFacility(f.id), f.id).not.toBeNull();
@@ -177,7 +177,6 @@ describe('목표 체인 진행', () => {
     s.loan.balance = 3_000_000; // 트랙 E 삼춘 대출
     expect(scaleReward(s, { type: 'money', amount: 1_000_000 })).toEqual({ type: 'money', amount: 500_000 });
     expect(scaleReward(s, { type: 'tickets', n: 3 })).toEqual({ type: 'tickets', n: 1 });
-    expect(scaleReward(s, { type: 'mileage', n: 5 })).toEqual({ type: 'mileage', n: 2 });
     expect(scaleReward(s, { type: 'unlockMenu', id: 'toast' })).toEqual({ type: 'unlockMenu', id: 'toast' });
   });
 
@@ -238,13 +237,12 @@ describe('목표 체인 진행', () => {
   it('보상 종류: 돈·시설·메뉴·직종·응모권·마일리지·슬롯·연구·일꾼', () => {
     const s = bareState(1);
     s.goals.index = 999;
-    const before = { money: s.money, tickets: s.tickets, mileage: s.mileage, research: s.research, builders: s.builders, barista: s.slots.barista };
+    const before = { money: s.money, tickets: s.tickets, mileage: s.tickets, research: s.research, builders: s.builders, barista: s.slots.barista };
     grantReward(s, { type: 'money', amount: 10 });
     grantReward(s, { type: 'unlockFacility', id: 'restroom' });
     grantReward(s, { type: 'unlockMenu', id: 'toast' });
     grantReward(s, { type: 'unlockRole', id: 'clean' });
     grantReward(s, { type: 'tickets', n: 2 });
-    grantReward(s, { type: 'mileage', n: 3 });
     grantReward(s, { type: 'staffSlot', role: 'barista', n: 1 });
     grantReward(s, { type: 'research', n: 4 });
     grantReward(s, { type: 'builder', n: 1 });
@@ -253,7 +251,6 @@ describe('목표 체인 진행', () => {
     expect(s.unlocked.menus).toContain('toast');
     expect(s.unlocked.roles).toContain('clean');
     expect(s.tickets).toBe(before.tickets + 2);
-    expect(s.mileage).toBe(before.mileage + 3);
     expect(s.slots.barista).toBe(before.barista + 1);
     expect(s.research).toBe(before.research + 4);
     expect(s.builders).toBe(before.builders + 1);

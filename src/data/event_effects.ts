@@ -38,7 +38,7 @@ export const EVENT_EFFECTS: Record<string, EventSpec> = {
   ev_olle_group: { effects: [{ kind: 'spawnMult', mult: 2, days: 1, filter: { guestId: 'olle_walker' } }] },
   ev_bus_breakdown: { effects: [{ kind: 'spawnMult', mult: 1.5, days: 1, filter: 'group' }] },
   ev_foreign_vlogger: { effects: [{ kind: 'popularity', delta: 15, filter: { guestId: 'solo_foreign' } }] },
-  ev_secret_chef: { effects: [{ kind: 'mileage', amount: 3 }] },
+  ev_secret_chef: { effects: [{ kind: 'tickets', amount: 3 }] },
   ev_kimchi_gift: { effects: [{ kind: 'grantItem', itemId: 'honey', n: 1 }] },
   ev_blackout: { effects: [{ kind: 'noGuests', days: 1 }] },
   ev_water_cut: { effects: [{ kind: 'noGuests', days: 1 }] },

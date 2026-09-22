@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { createInitialState, goalConditionText, goalRewardText, checkFeature, FEATURE_OF_ACTION, openingBuild, nextMove, type Action } from '../../sim/index.ts';
+import { createInitialState, goalConditionText, goalRewardText, checkFeature, FEATURE_OF_ACTION, nextMove, type Action } from '../../sim/index.ts';
 import { apply } from '../../sim/actions.ts';
-import { GOALS, OBJECTS, MENUS, BIG_EVENTS, ROLES, SPOTS, MILEAGE_SHOP, TICKET_SHOP, GIFTS, SPECIAL_ITEM_IDS, SPECIAL_ITEM_EFFECT, itemDef } from '../../data/index.ts';
+import { GOALS, OBJECTS, MENUS, BIG_EVENTS, ROLES, SPOTS, GIFTS, SPECIAL_ITEM_IDS, SPECIAL_ITEM_EFFECT, itemDef } from '../../data/index.ts';
 import { spotRequirements, VISITOR_PRIZES } from '../../sim/index.ts';
 import { hasIdToken, unlockText } from '../../data/labels.ts';
 import { lockedText } from '../windows/BuildWindow.tsx';
@@ -33,7 +33,6 @@ describe('영문 id 노출 없음 (창·카드·대화)', () => {
   it('투자 창·상점·도감: 명소 이름·조건·Lv5 특수·상품, 상점 상품명·설명, 특수 아이템·선물 (트랙 C)', () => {
     expectClean(SPOTS.flatMap((d) => [d.name, d.categoryName, d.lv5Special?.text ?? '', ...spotRequirements(s, d.id).map((r) => r.text)]), '명소');
     expectClean(VISITOR_PRIZES.map((p) => p.text), '방문객 상품');
-    expectClean([...MILEAGE_SHOP, ...TICKET_SHOP].flatMap((m) => [m.name, m.description]), '상점');
     expectClean(GIFTS.flatMap((g) => [g.name, g.sourceText]), '선물');
     expectClean(SPECIAL_ITEM_IDS.flatMap((id) => [itemDef(id).name, itemDef(id).sourceText, SPECIAL_ITEM_EFFECT[id] ?? '']), '특수 아이템');
   });
@@ -59,7 +58,6 @@ describe('영문 id 노출 없음 (창·카드·대화)', () => {
   });
 
   it('추천 탭: 1년차 월별 표·다음 수·토큰을 채운 튜토리얼 대사', () => {
-    expectClean(openingBuild().flatMap((r) => [r.title, r.what, r.why]), '1년차 표');
     const texts: string[] = [];
     const t = createInitialState(1, 'p', 0, 'tutorial');
     for (let i = 0; i < 6; i++) { const m = nextMove(t); if (!m) break; texts.push(m.text); if (m.cells[0] && !Object.values(t.objects).some((o) => o.type === 'warehouse')) apply(t, { type: 'placeMain', ...m.cells[0] }); else break; }

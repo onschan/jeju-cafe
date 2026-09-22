@@ -442,8 +442,8 @@
         "amount": 1500000
       },
       {
-        "type": "mileage",
-        "amount": 3
+        "type": "tickets",
+        "n": 1
       }
     ],
     "rewardText": "자금 1,500,000·마일리지 3",
@@ -846,8 +846,8 @@
         "amount": 300000
       },
       {
-        "type": "mileage",
-        "amount": 2
+        "type": "tickets",
+        "n": 1
       }
     ],
     "rewardText": "자금 300,000·마일리지 2",
@@ -1381,8 +1381,8 @@
         "amount": 500000
       },
       {
-        "type": "mileage",
-        "amount": 2
+        "type": "tickets",
+        "n": 1
       }
     ],
     "rewardText": "자금 500,000·마일리지 2",

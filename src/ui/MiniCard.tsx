@@ -8,7 +8,7 @@ import { RouteCard } from './RouteCard';
 import { TreeUpgradeRow } from './TreeUpgrade'; // fun: 같은 자리 업그레이드 트리
 import { treeOf } from '../sim/index.ts';
 import type { RouteId } from '../sim/index.ts';
-import { mainSummary, canAutoConnectPath, canExpandMain, expandCost, nextMainLevel, canBuildSecondFloor, canStartMoveMain, canUndoMoveMain, canMoveThisMonth, moveDays, isRoomCut, isAnnex, roomSeats, roomSeatsUsed, isFireplaceOn, canToggleFireplace, canSetPianoTime, canAddBooks, hasNewBooks, canFeedAquarium, isAquariumHungry, canRestockKids, isKidsStocked, canSetBarEvening, isBarEvening, MAIN_EXPAND_DAYS, FLOOR2_COST, FLOOR2_DAYS, MOVE_COST, NEW_BOOKS_MILEAGE, KIDS_RESTOCK_COST, ANNEX_CUT_TEXT, DOOR_PATH_WARN, BGM_LABEL, LIGHT_LABEL, PIANO_LABEL } from '../sim/index.ts'; // y-indoor
+import { mainSummary, canAutoConnectPath, canExpandMain, expandCost, nextMainLevel, canBuildSecondFloor, canStartMoveMain, canUndoMoveMain, canMoveThisMonth, moveDays, isRoomCut, isAnnex, roomSeats, roomSeatsUsed, isFireplaceOn, canToggleFireplace, canSetPianoTime, canAddBooks, hasNewBooks, canFeedAquarium, isAquariumHungry, canRestockKids, isKidsStocked, canSetBarEvening, isBarEvening, MAIN_EXPAND_DAYS, FLOOR2_COST, FLOOR2_DAYS, MOVE_COST, NEW_BOOKS_TICKETS, KIDS_RESTOCK_COST, ANNEX_CUT_TEXT, DOOR_PATH_WARN, BGM_LABEL, LIGHT_LABEL, PIANO_LABEL } from '../sim/index.ts'; // y-indoor
 import { ButtonGroup } from './ButtonGroup';
 import { requestBuildTab } from './windows/BuildWindow';
 import { label as labelOf } from '../data/labels.ts';
@@ -492,7 +492,7 @@ function IndoorButtons({ s, o }: { s: GameState; o: { id: string; type: string }
     }
     case 'bookshelf': {
       const can = canAddBooks(s, o.id);
-      return <button style={can.ok ? btnOn : btnOff} disabled={!can.ok} title={can.ok ? undefined : can.reason} onClick={() => dispatch({ type: 'addBooks', objectId: o.id })} data-testid="books-btn"><Icon name="book" /> 신간 넣기 (마일리지 {NEW_BOOKS_MILEAGE}){hasNewBooks(s, obj) && ' · 신간 있음'}</button>;
+      return <button style={can.ok ? btnOn : btnOff} disabled={!can.ok} title={can.ok ? undefined : can.reason} onClick={() => dispatch({ type: 'addBooks', objectId: o.id })} data-testid="books-btn"><Icon name="book" /> 신간 넣기 (응모권 {NEW_BOOKS_TICKETS}){hasNewBooks(s, obj) && ' · 신간 있음'}</button>;
     }
     case 'aquarium': {
       const can = canFeedAquarium(s, o.id);

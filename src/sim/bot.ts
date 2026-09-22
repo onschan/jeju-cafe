@@ -21,7 +21,7 @@ import { canPlace, objectAt, cellAt, footprint, doorFrontOf } from './grid.ts';
 import { START_ORIGIN } from './layout.ts';
 import { objectDef, SETS, questDef, INDOOR_IDS } from '../data/index.ts';
 import { DEVELOP_RESEARCH, menuOf } from './craft.ts';
-import { canDrawTicket, hasFreeDraw, canBuyTicket, canUseGuestItem, MID_MONTH_TICKET_DAY } from './shop.ts';
+import { canDrawTicket, hasFreeDraw, canUseGuestItem, MID_MONTH_TICKET_DAY } from './shop.ts';
 import { effectivePopularity } from './promotions.ts';
 import { isUnlocked } from './segments.ts';
 import { POPULARITY_FRUIT } from '../data/index.ts';
@@ -73,7 +73,7 @@ export interface BotRow {
   customMenus: number; // 개발한 메뉴 수
   rank: number;
   star: number;
-  mileage: number;
+  tickets: number;
   goals: number;      // 달성한 목표 수
   events: number;     // 그달 말 활성 빅 이벤트 수
   ending: { total: number; title: string } | null; // z-ending: 엔딩 뒤 최종 점수 (10년차 3월부터)
@@ -643,11 +643,9 @@ function monthlyPlan(s: GameState, monthsPlayed: number): void {
   }
 
   // 상점: 마일리지 3 이상이면 일꾼 삼춘, 무료 인형뽑기, 아이템은 야외 테이블에
-  if (s.mileage >= BOT_WORKER_MILEAGE && s.builders < MAX_BUILDERS) for (const id of WORKER_IDS) if (apply(s, { type: 'buyMileage', id }).ok) break;
   if (hasFreeDraw(s) && canDrawTicket(s).ok && apply(s, { type: 'drawTicket' }).ok) apply(s, { type: 'dismissDraw' });
   for (const [itemId, n] of Object.entries(s.inventory)) if (n > 0 && canUseItem(s, itemId, 'table_out').ok) apply(s, { type: 'useItem', itemId, objectType: 'table_out' });
   // 커플 인기(g44 「커플 손님 인기 30」): 응모권 5장이면 인기 열매를 사서 커플에게 (홍보는 커플을 안 올린다)
-  if (effectivePopularity(s, BOT_COUPLE_ID) < BOT_COUPLE_POPULARITY && isUnlocked(s, BOT_COUPLE_ID) && (s.inventory[POPULARITY_FRUIT] ?? 0) <= 0 && canBuyTicket(s, 'ts_popularity_fruit').ok) apply(s, { type: 'buyTicket', id: 'ts_popularity_fruit' });
   if (effectivePopularity(s, BOT_COUPLE_ID) < BOT_COUPLE_POPULARITY && canUseGuestItem(s, POPULARITY_FRUIT, BOT_COUPLE_ID).ok) apply(s, { type: 'useGuestItem', itemId: POPULARITY_FRUIT, guestId: BOT_COUPLE_ID });
   if (s.lastAnnouncement) apply(s, { type: 'dismissAnnouncement' });
 
@@ -780,7 +778,7 @@ function* botDays(years: number, seed: number, policy: BotPolicy = 'heuristic', 
       rows.push({
         year: card.year, month: card.month, money: s.money, minMoney, research: s.research, popularity: s.popularity,
         net: card.net, staff: s.staff.length, promos: s.activePromotions.length, guests: card.guests, customMenus: s.customMenus.length,
-        rank: s.rank, star: s.star, mileage: s.mileage, goals: s.goals.claimed.length, events: s.events.length,
+        rank: s.rank, star: s.star, tickets: s.tickets, goals: s.goals.claimed.length, events: s.events.length,
         ending: s.ending.score ? { total: s.ending.score.total, title: s.ending.score.title } : null,
       });
       minMoney = s.money;

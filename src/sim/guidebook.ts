@@ -17,7 +17,7 @@ import { menuStatsOf, priceOf } from './craft.ts';
 import { objectStats } from './compat.ts';
 import { unlockCondMet, evaluateUnlocks, unlockedTypeIds, walletOf } from './segments.ts';
 import { grantItem } from './items.ts';
-import { addMileage, codexCount } from './mileage.ts';
+import { addTickets, codexCount } from './mileage.ts';
 import { effectivePopularity } from './promotions.ts';
 import { monthIndex } from './clock.ts';
 import { parcelAt } from './parcels.ts';
@@ -28,7 +28,7 @@ import { reputationScore } from './reputation.ts';
 
 export const MAX_STAR = 5;
 /** ★ 승급 보상 (game-feel P1): 응모권 2 + 마일리지 10 — 장면 창 뒤 보상 상자 */
-export const STAR_UP_REWARDS: GoalReward[] = [{ type: 'tickets', n: 2 }, { type: 'mileage', n: 10 }];
+export const STAR_UP_REWARDS: GoalReward[] = [{ type: 'tickets', n: 2 }, { type: 'tickets', n: 1 }];
 export const JUDGE_KEYS: JudgeKey[] = ['smile', 'scenery', 'menu', 'fun', 'group', 'rest', 'clean', 'price', 'reputation', 'overall'];
 export const JUDGE_LABEL: Record<JudgeKey, string> = { smile: '미소', scenery: '경관', menu: '메뉴', fun: '체험', group: '단체', rest: '쉼', clean: '청결', price: '가성비', reputation: '평판', overall: '종합' };
 /** 종합 = 8항목(평판 제외) 평균 + 카페 랭크 × 3 + 코너 수 × 1 */
@@ -50,7 +50,7 @@ export const ANNOUNCE_MONTHS = [3, 9];
 export const RIVAL_COUNT = 9;
 /** 순위별 보상 비율 (1위 100%, 2위 30%, 3위 10%) · 마일리지 3/2/1 (medal_sources 연말 랭킹) */
 export const PRIZE_RATIO = [1, 0.3, 0.1];
-export const RANK_MILEAGE = [3, 2, 1];
+export const RANK_TICKETS = [3, 2, 1];
 /** 월간 추천의 타깃 손님층 태그 (monthIndex로 돌아간다) */
 export const MONTHLY_TAGS: { key: string; label: string; match: (t: GuestTags) => boolean }[] = [
   { key: 'youth', label: '청년', match: (t) => t.age === 'youth' },
@@ -308,21 +308,21 @@ export function guidebooksToAnnounce(state: GameState, month = state.clock.month
   return GUIDEBOOKS.filter((g) => state.guidebooks[g.id]?.unlocked && (g.monthly || semi));
 }
 
-function applyPrize(state: GameState, def: GuidebookDef, rank: number): { prize: number; research: number; mileage: number; seedText: string | null } {
+function applyPrize(state: GameState, def: GuidebookDef, rank: number): { prize: number; research: number; seedText: string | null } {
   const ratio = PRIZE_RATIO[rank - 1] ?? 0;
   const prize = Math.round(def.prize * ratio);
   const research = Math.round(def.research * ratio);
-  const mileage = (RANK_MILEAGE[rank - 1] ?? 0) + (rank === 1 ? def.mileage : 0);
+  const bonus = RANK_TICKETS[rank - 1] ?? 0;
   state.money += prize;
   state.monthIncome += prize;
   state.research += research;
-  addMileage(state, mileage);
+  addTickets(state, bonus);
   let seedText: string | null = null;
   if (rank === 1 && def.seeds.length > 0) {
     for (const s of def.seeds) grantItem(state, s.itemId, s.count);
     seedText = def.seeds.map((s) => `${s.itemId === 'tangerine_seed' ? '감귤 씨앗' : s.itemId === 'hallabong_seed' ? '한라봉 씨앗' : s.itemId === 'scenery_seed' ? '경관 씨앗' : '인기 열매'} ${s.count}`).join(' · ');
   }
-  return { prize, research, mileage, seedText };
+  return { prize, research, seedText };
 }
 
 /** 발표: 해당 가이드북마다 채점·순위·보상. 발표할 게 없으면 null. */

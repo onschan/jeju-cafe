@@ -8,7 +8,7 @@ import type { GameState, PlacedObject, SetDef, ActiveSet, ObjectStats, ComboTarg
 import { objectDef, SETS, guestTags, targetMatches } from '../data/index.ts';
 import { objectScenery, itemScenery, sizeOf } from './grid.ts';
 import { layoutSig } from './layoutRev.ts';
-import { checkCodexMileage } from './mileage.ts';
+import { checkCodexTickets } from './mileage.ts';
 import { seasonOf } from './clock.ts';
 import { pushNotice } from './staff.ts';
 import { pushFx } from './fx.ts';
@@ -158,6 +158,6 @@ export function discoverPlacement(state: GameState, sets: SetDef[] = SETS): void
       pushFx(state, { kind: 'scene', title: '세트 완성', text: `${st.name} 세트 완성! 도감에 올랐어요`, tick: state.tick });
     }
   }
-  if (state.codex.sets.length !== before) checkCodexMileage(state);
+  if (state.codex.sets.length !== before) checkCodexTickets(state);
   discoverCorners(state); // 처음 완성한 코너 → 도감·장면 창·팻말 반짝
 }

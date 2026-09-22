@@ -19,7 +19,7 @@ import { ownedParcels } from './parcels.ts';
 import { regularCount } from './interact.ts';
 import { metCount } from './named.ts';
 import { pushNotice } from './staff.ts';
-import { addMileage } from './mileage.ts';
+import { addTickets } from './mileage.ts';
 import { MAX_BUILDERS } from './build.ts';
 import { fmtNum } from './format.ts';
 import { josa } from './josa.ts';
@@ -342,7 +342,6 @@ export function goalRewardText(r: GoalReward): string {
     case 'unlockMenu': return `메뉴 ${name.menu(r.id)}`;
     case 'unlockRole': return `직종 ${name.role(r.id)}`;
     case 'tickets': return `응모권 ${r.n}`;
-    case 'mileage': return `마일리지 ${r.n}`;
     case 'staffSlot': return `${name.role(r.role)} 자리 +${r.n}`;
     case 'research': return `연구 ${r.n}`;
     case 'builder': return `일꾼 삼춘 +${r.n}`;
@@ -380,7 +379,7 @@ export function scaleReward(state: GameState, r: GoalReward): GoalReward {
   const mult = loanRewardMult(state);
   if (mult >= 1) return r;
   if (r.type === 'money') return { ...r, amount: Math.floor(r.amount * mult) };
-  if (r.type === 'tickets' || r.type === 'mileage') return { ...r, n: Math.floor(r.n * mult) };
+  if (r.type === 'tickets') return { ...r, n: Math.floor(r.n * mult) };
   return r;
 }
 
@@ -397,7 +396,6 @@ export function grantReward(state: GameState, r: GoalReward): void {
       if (!state.unlocked.roles.includes(r.id) && ROLES.some((x) => x.id === r.id)) { state.unlocked.roles.push(r.id); pushNotice(state, `새 직종: ${name.role(r.id)}`); }
       break;
     case 'tickets': state.tickets += r.n; break;
-    case 'mileage': addMileage(state, r.n); break;
     case 'staffSlot': state.slots[r.role] = (state.slots[r.role] ?? 0) + r.n; break;
     case 'research': state.research += r.n; break;
     case 'builder': state.builders = Math.min(MAX_BUILDERS, state.builders + r.n); break;
@@ -431,16 +429,15 @@ export function applyRewards(state: GameState, rewards: GoalReward[], meta: { so
 /** 같은 종류의 보상(돈·응모권·마일리지·연구)은 합치고 나머지는 이어 붙인다 */
 export function mergeRewardItems(lists: GoalReward[][]): GoalReward[] {
   const out: GoalReward[] = [];
-  const sum: Partial<Record<'money' | 'tickets' | 'mileage' | 'research', number>> = {};
+  const sum: Partial<Record<'money' | 'tickets' | 'research', number>> = {};
   for (const items of lists) for (const r of items) {
     if (r.type === 'money') sum.money = (sum.money ?? 0) + r.amount;
-    else if (r.type === 'tickets' || r.type === 'mileage' || r.type === 'research') sum[r.type] = (sum[r.type] ?? 0) + r.n;
+    else if (r.type === 'tickets' || r.type === 'research') sum[r.type] = (sum[r.type] ?? 0) + r.n;
     else out.push(r);
   }
   const head: GoalReward[] = [];
   if (sum.money) head.push({ type: 'money', amount: sum.money });
   if (sum.tickets) head.push({ type: 'tickets', n: sum.tickets });
-  if (sum.mileage) head.push({ type: 'mileage', n: sum.mileage });
   if (sum.research) head.push({ type: 'research', n: sum.research });
   return [...head, ...out];
 }

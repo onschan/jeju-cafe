@@ -91,9 +91,9 @@ describe('10년차 엔딩', () => {
 });
 
 describe('이월', () => {
-  test('makeCarry: 코너 도감·명소 Lv·유니폼·돌하르방(최대 2)·마일리지 20%·손님 인기 20%', () => {
+  test('makeCarry: 코너 도감·명소 Lv·유니폼·돌하르방(최대 2)·응모권 20%·손님 인기 20%', () => {
     const s = bareState(4);
-    s.codex.corners = ['cb1', 'cb2']; s.spots = { a: 3, b: 0 }; s.uniforms = ['uf_galot']; s.mileage = 57; s.segmentPopularity = { student: 40, local_auntie: 7, x: 0 };
+    s.codex.corners = ['cb1', 'cb2']; s.spots = { a: 3, b: 0 }; s.uniforms = ['uf_galot']; s.tickets = 57; s.segmentPopularity = { student: 40, local_auntie: 7, x: 0 };
     s.unlocked.objects.push('dolhareubang'); s.builders = 3; // 동시 건설 3
     for (const [x, y] of [[3, 4], [5, 4], [5, 5]] as const) expect(apply(s, { type: 'place', objectType: 'dolhareubang', x: START_ORIGIN.x + x, y: START_ORIGIN.y + y }).ok).toBe(true); // 시작 좌석 자리(빈 마당)
     const c = makeCarry(s);
@@ -101,7 +101,7 @@ describe('이월', () => {
     expect(c.spots).toEqual({ a: 3 });
     expect(c.uniforms).toEqual(['uf_galot']);
     expect(c.dolhareubang).toBe(2);
-    expect(c.mileage).toBe(Math.floor(57 * CARRY_RATIO));
+    expect(c.tickets).toBe(Math.floor(57 * CARRY_RATIO));
     expect(c.guestPopularity).toEqual({ student: 8, local_auntie: 1 });
     expect(c.millennium).toBe(false);
     expect(carryText(c).length).toBeGreaterThanOrEqual(6);
@@ -109,7 +109,7 @@ describe('이월', () => {
 
   test('createInitialState(carry): 새 게임에 적용 — 돌하르방은 정낭 양옆, 튜토리얼 빈 마당에도', () => {
     const s0 = bareState(4);
-    s0.codex.corners = ['cb1']; s0.spots = { a: 2 }; s0.uniforms = ['uf_galot']; s0.mileage = 100; s0.segmentPopularity = { student: 50 };
+    s0.codex.corners = ['cb1']; s0.spots = { a: 2 }; s0.uniforms = ['uf_galot']; s0.tickets = 100; s0.segmentPopularity = { student: 50 };
     s0.unlocked.objects.push('dolhareubang');
     expect(apply(s0, { type: 'place', objectType: 'dolhareubang', x: START_ORIGIN.x + 3, y: START_ORIGIN.y + 4 }).ok).toBe(true);
     s0.unlocked.objects.push(MILLENNIUM_TREE);
@@ -119,7 +119,7 @@ describe('이월', () => {
     expect(s.codex.corners).toContain('cb1');
     expect(s.spots.a).toBe(2);
     expect(s.uniforms).toContain('uf_galot');
-    expect(s.mileage).toBe(createInitialState(7, 'local', 0, 'tutorial').mileage + 20);
+    expect(s.tickets).toBe(createInitialState(7, 'local', 0, 'tutorial').tickets + 20);
     expect(s.segmentPopularity.student).toBeGreaterThanOrEqual(10);
     expect(s.unlocked.objects).toContain('dolhareubang');
     expect(s.unlocked.objects).toContain(MILLENNIUM_TREE);
