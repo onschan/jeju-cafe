@@ -249,14 +249,12 @@ export const GUEST_CHAINS: GuestChainDef[] = (chainsJson as GuestChainDef[]).map
 
 // ---------- v2 시설 87 → ObjectDef (objects.json에 없는 것만) ----------
 /** 실내 바닥이 있는 건물(방): 발자국 위에 indoor 오브젝트를 놓고 손님이 문(정면 왼쪽)으로 드나든다 */
-export const ROOM_IDS = new Set(['warehouse', 'kitchen_ext', 'gallery', 'restroom', 'pottery_studio', 'vinyl_house_room', 'tangerine_hall', 'annex_cafe', 'greenhouse_cafe']);
+export const ROOM_IDS = new Set(['warehouse', 'kitchen_ext', 'restroom', 'cleaning_room', 'annex_cafe', 'greenhouse_cafe']);
 /** 별관(§8.2): 본관이 아닌 손님용 방 — 올렛길로 이어져야 손님이 간다. 목표 「별관 짓기」·길 끊김 경고 대상. */
-export const ANNEX_IDS = new Set(['annex_cafe', 'greenhouse_cafe', 'gallery', 'tangerine_hall', 'vinyl_house_room']);
+export const ANNEX_IDS = new Set(['annex_cafe', 'greenhouse_cafe']);
 /** 실내 전용 오브젝트 (방 바닥 위에만) */
 export const INDOOR_IDS = new Set([
-  'table_in', 'counter', 'sofa', 'bookshelf', 'vending', 'roaster',
-  'deco_chalkboard', 'deco_cake_case', 'deco_coffee_machine', 'deco_lp_shelf', 'deco_bookshelf_small', 'deco_umbrella_stand', 'counter_bar', 'menu_board',
-  'sofa_seat', 'bar_counter', 'fireplace', 'piano', 'aquarium', 'kids_corner', 'counter_ext', // 트랙 G 실내 가구 (facilities_indoor.json)
+  'table_in', 'counter', 'counter_ext', 'vending', 'window_seat', 'deco_umbrella_stand',
 ]);
 /** 좌석 수: 소형 2, 중형 4, 대형 6 */
 const SEATS_BY_TIER: Record<string, number> = { small: 2, medium: 4, large: 6 };
@@ -279,7 +277,7 @@ export const FARM_YIELDS: Record<string, FarmYield> = {
   tea_field: { ingredientId: 'tea', perMonth: 4 },
 };
 /** v3 시작 시 열려 있는 시설 8종 (§2 해금 리듬). v2 표에서 unlock이 start인 나머지는 목표 보상으로만 열린다({ type: 'goal' }). */
-export const START_OBJECT_IDS = ['table_out', 'table_in', 'table_parasol', 'deco_planter', 'deco_wood_bench', 'stonewall', 'path', 'tangerine_tree', 'gate', 'streetlight', 'garden_lamp', 'flower_bed', 'signboard', 'railing', 'shell_deco', 'telescope', 'cherry_tree', 'parking_lot', 'omegi_stall']; // fun P0: 주차장은 처음부터 (₩120만) — 렌터카 손님이 동쪽에서 온다 · fun 트리: 매대 기본(오메기떡 매대)도 처음부터 // fix-indoor: 가로등·정원등은 처음부터 (밤 조명) // w-free: 정낭은 길·담 탭의 일반 시설(₩5만, 이동·철거·추가 가능)
+export const START_OBJECT_IDS = ['table_out', 'table_in', 'table_parasol', 'deco_planter', 'deco_wood_bench', 'stonewall', 'path', 'tangerine_tree', 'gate', 'streetlight', 'garden_lamp', 'flower_bed', 'signboard', 'railing', 'water_jar', 'cherry_tree', 'parking_lot', 'omegi_stall']; // fun P0: 주차장은 처음부터 (₩120만) — 렌터카 손님이 동쪽에서 온다 · fun 트리: 매대 기본(오메기떡 매대)도 처음부터 // fix-indoor: 가로등·정원등은 처음부터 (밤 조명) // w-free: 정낭은 길·담 탭의 일반 시설(₩5만, 이동·철거·추가 가능)
 /** v2 시설 표 → ObjectDef. 쉼 → seat, 편의·먹거리·즐길거리·농사 → facility, 경관 → deco, 랜드마크 → landmark. 방은 building. 농원은 경관(deco)+yield. */
 export function adaptFacility(r: RawFacility): ObjectDef {
   const room = ROOM_IDS.has(r.id);
@@ -544,10 +542,10 @@ const ITEMS_V1: ItemDef[] = (itemsJson as RawItem[]).map(adaptItem);
 const V1_BY_ID = new Map(ITEMS_V1.map((i) => [i.id, i] as const));
 /** 강화 아이템 "잘 맞는 시설" 확장 매핑 (스펙 §3.2.1 끝): 새 시설 44종을 기존 20종에 편입. 해초 비료의 field는 밭 폐지로 뺀다. */
 export const ITEM_FIT_EXTRA: Record<string, string[]> = {
-  jeju_salt: ['sauna_hut', 'cauldron_footbath'], bean_sample: ['tea_house'], conch_shell: ['footbath', 'open_air_footbath'], galot_cushion: ['rest_pavilion', 'lie_footbath'],
-  comic_book: ['pc_zone', 'lounge'], lp_record: ['yoga_class', 'vintage_shop'], sneakers: ['fitness_corner', 'pingpong', 'archery_range'], glasses: ['pc_zone', 'shooting_booth', 'archery_range'],
-  folk_scroll: ['tea_house', 'flower_workshop', 'vintage_shop', 'fine_dining'], tv: ['lounge', 'retro_arcade', 'brunch_house'], pottery_jar: ['lounge'], gold_leaf: ['fine_dining', 'clothing_shop'],
-  jeju_tea_set: ['tea_house', 'lounge'], honey: ['sweet_potato_cart', 'candy_shop'], flower_poster: ['flower_shop', 'hair_salon'], lantern: ['waterfall_shower'],
+  jeju_salt: ['open_air_footbath', 'cauldron_footbath'], bean_sample: ['tea_field'], conch_shell: ['open_air_footbath'], galot_cushion: ['toenmaru', 'hammock'],
+  comic_book: ['table_in'], lp_record: ['table_in'], sneakers: ['oreum_bench'], glasses: ['table_in'],
+  folk_scroll: ['fine_dining'], tv: ['brunch_house'], pottery_jar: ['water_jar'], gold_leaf: ['fine_dining'],
+  jeju_tea_set: ['tea_field'], honey: ['tart_bakery'], flower_poster: ['flower_bed'], lantern: ['garden_lamp'],
 };
 const ITEMS_V2: ItemDef[] = (itemsV2Json as RawItem[]).map((r) => {
   const def = adaptItem(r);

@@ -45,7 +45,7 @@ const DEMO_H = 6;
 interface DemoObj { type: string; x: number; y: number; w: number; h: number }
 const DEMO_OBJECTS: DemoObj[] = [
   { type: 'warehouse', x: 0, y: 0, w: 3, h: 2 },
-  { type: 'pine', x: 4, y: 0, w: 1, h: 1 },
+  { type: 'cedar', x: 4, y: 0, w: 1, h: 1 },
   { type: 'tangerine_tree_ready', x: 5, y: 1, w: 1, h: 1 },
   { type: 'camellia', x: 5, y: 3, w: 1, h: 1 },
   { type: 'stonewall', x: 5, y: 0, w: 1, h: 1 },
@@ -53,7 +53,7 @@ const DEMO_OBJECTS: DemoObj[] = [
   { type: 'table_out', x: 3, y: 3, w: 1, h: 1 },
   { type: 'table_out', x: 2, y: 4, w: 1, h: 1 },
   { type: 'flower_bed', x: 0, y: 3, w: 1, h: 1 },
-  { type: 'lantern_path', x: 4, y: 4, w: 1, h: 1 },
+  { type: 'garden_lamp', x: 4, y: 4, w: 1, h: 1 },
   { type: 'gate', x: 2, y: 5, w: 1, h: 1 },
   { type: 'busstop', x: 0, y: 5, w: 1, h: 1 },
 ];

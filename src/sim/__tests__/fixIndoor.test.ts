@@ -65,12 +65,12 @@ describe('실내 가구 겹침·통로', () => {
     // 문 (3,3). 테이블 (3,1)은 (3,2)로만 닿는다 — (3,2)에 뭔가 놓으면 그 자리가 갇힌다
     placeObject(s, 'table_in', X(3), Y(1));
     expect(canPlace(s, 'table_in', X(3), Y(2)).reason).toBe('실내 테이블 자리로 가는 길이 막혀요');
-    expect(canPlace(s, 'fireplace', X(3), Y(2)).reason).toBe('실내 테이블 자리로 가는 길이 막혀요');
+    expect(canPlace(s, 'vending', X(3), Y(2)).reason).toBe('실내 테이블 자리로 가는 길이 막혀요');
     expect(canPlace(s, 'table_in', X(4), Y(2)).ok).toBe(true);
     // 새 좌석 자체가 갇히는 자리도 거부: 구석 (6,3)은 (6,2)·(5,3)이 막히면 닿는 칸이 없다
-    placeObject(s, 'fireplace', X(6), Y(2));
+    placeObject(s, 'vending', X(6), Y(2));
     expect(canPlace(s, 'table_in', X(6), Y(3)).ok).toBe(true);
-    placeObject(s, 'aquarium', X(5), Y(3));
+    placeObject(s, 'deco_umbrella_stand', X(5), Y(3));
     expect(canPlace(s, 'table_in', X(6), Y(3)).reason).toBe('손님이 자리까지 갈 길이 없어요');
   });
 

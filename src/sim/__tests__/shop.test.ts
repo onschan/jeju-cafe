@@ -25,8 +25,8 @@ test('데이터: 유니폼 5 · 인형뽑기 8칸 합 100% · 강화 아이템 2
 });
 
 test('강화 아이템: 잘 맞는 시설이면 ×2, 아니면 못 쓴다 (v1 분류가 없는 v2 아이템)', () => {
-  const salt = itemDef('jeju_salt'); // bestFacilities: noodle_shop·bomal_kalguksu·haenyeo_mulhoe
-  expect(itemEffect(salt, objectDef('noodle_shop'))).toBe(salt.value * 2);
+  const salt = itemDef('jeju_salt'); // bestFacilities: 브런치 하우스·가마솥 족욕
+  expect(itemEffect(salt, objectDef('brunch_house'))).toBe(salt.value * 2);
   expect(itemEffect(salt, objectDef('table_out'))).toBe(0);
 });
 

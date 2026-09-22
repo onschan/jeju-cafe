@@ -24,7 +24,7 @@ import { monthlyGifts } from './items.ts';
 import { fmtNum } from './format.ts';
 import { dailyCleanliness } from './cleanliness.ts';
 import { dailyRoutes, monthlyRoutes } from './entry.ts';
-import { dailyRooms, monthlyRooms, accumulateSeatUse, MS_PER_HOUR } from './rooms.ts'; // y-indoor: 본관 공사·좌석 이용률·난로 연료
+import { dailyRooms, accumulateSeatUse, MS_PER_HOUR } from './rooms.ts'; // y-indoor: 본관 공사·좌석 이용률
 import { endingMonthly } from './ending.ts'; // z-ending: 10년차 엔딩·100주년
 import { dailyIdleHint } from './hints.ts'; // game-feel: 3일 무행동이면 삼춘 힌트
 
@@ -71,7 +71,6 @@ function onNewMonth(state: GameState, prevMonth: number, prevYear: number): void
   const newYear = state.clock.month === TAX_MONTH && state.clock.year >= 2;
   if (newYear) annualRaise(state);
   payroll(state);
-  monthlyRooms(state); // y-indoor: 켜 둔 난로 연료비
   expirePromotions(state);
   upkeep(state);
   if (newYear) incomeTax(state);

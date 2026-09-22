@@ -56,7 +56,7 @@
     "condition": {
       "type": "objectPlaced",
       "params": {
-        "objectId": "wifi_zone",
+        "objectId": "vending",
         "count": 1
       }
     },
@@ -106,7 +106,7 @@
     "condition": {
       "type": "objectPlaced",
       "params": {
-        "objectId": "rooftop",
+        "objectId": "terrace_seat",
         "count": 1
       }
     },
@@ -131,7 +131,7 @@
     "condition": {
       "type": "objectPlaced",
       "params": {
-        "objectId": "snap_studio",
+        "objectId": "signboard",
         "count": 1
       }
     },
@@ -231,7 +231,7 @@
     "condition": {
       "type": "objectPlaced",
       "params": {
-        "objectId": "photo_spot",
+        "objectId": "signboard",
         "count": 1
       }
     },
@@ -306,7 +306,7 @@
     "condition": {
       "type": "objectPlaced",
       "params": {
-        "objectId": "observatory",
+        "objectId": "lighthouse",
         "count": 1
       }
     },
@@ -406,7 +406,7 @@
     "condition": {
       "type": "objectPlaced",
       "params": {
-        "objectId": "field",
+        "objectId": "tea_field",
         "count": 6
       }
     },
@@ -431,7 +431,7 @@
     "condition": {
       "type": "objectPlaced",
       "params": {
-        "objectId": "sorting_house",
+        "objectId": "warehouse",
         "count": 1
       }
     },
@@ -481,7 +481,7 @@
     "condition": {
       "type": "objectPlaced",
       "params": {
-        "objectId": "parking",
+        "objectId": "parking_lot",
         "count": 1
       }
     },
@@ -506,7 +506,7 @@
     "condition": {
       "type": "objectPlaced",
       "params": {
-        "objectId": "kids_table",
+        "objectId": "table_out",
         "count": 2
       }
     },
@@ -656,7 +656,7 @@
     "condition": {
       "type": "objectPlaced",
       "params": {
-        "objectId": "haenyeo_mulhoe",
+        "objectId": "brunch_house",
         "count": 1
       }
     },
@@ -681,7 +681,7 @@
     "condition": {
       "type": "objectPlaced",
       "params": {
-        "objectId": "rooftop",
+        "objectId": "terrace_seat",
         "count": 1
       }
     },
@@ -706,7 +706,7 @@
     "condition": {
       "type": "objectPlaced",
       "params": {
-        "objectId": "handdrip_bar",
+        "objectId": "omegi_stall",
         "count": 1
       }
     },
@@ -935,7 +935,7 @@
     "condition": {
       "type": "objectPlaced",
       "params": {
-        "objectId": "bookshelf",
+        "objectId": "table_in",
         "count": 1
       }
     },
@@ -960,7 +960,7 @@
     "condition": {
       "type": "objectPlaced",
       "params": {
-        "objectId": "sofa",
+        "objectId": "table_in",
         "count": 2
       }
     },
@@ -1010,7 +1010,7 @@
     "condition": {
       "type": "objectPlaced",
       "params": {
-        "objectId": "chicken_coop",
+        "objectId": "flower_bed",
         "count": 1
       }
     },
@@ -1145,7 +1145,7 @@
     "condition": {
       "type": "objectPlaced",
       "params": {
-        "objectId": "karaoke",
+        "objectId": "table_in",
         "count": 1
       }
     },
@@ -1195,7 +1195,7 @@
     "condition": {
       "type": "objectPlaced",
       "params": {
-        "objectId": "boardgame_room",
+        "objectId": "table_in",
         "count": 1
       }
     },
@@ -1245,7 +1245,7 @@
     "condition": {
       "type": "objectPlaced",
       "params": {
-        "objectId": "table_big",
+        "objectId": "table_in",
         "count": 2
       }
     },
@@ -1295,7 +1295,7 @@
     "condition": {
       "type": "objectPlaced",
       "params": {
-        "objectId": "wifi_zone",
+        "objectId": "vending",
         "count": 2
       }
     },
@@ -1320,7 +1320,7 @@
     "condition": {
       "type": "objectPlaced",
       "params": {
-        "objectId": "black_pork_grill",
+        "objectId": "fine_dining",
         "count": 1
       }
     },
@@ -1345,7 +1345,7 @@
     "condition": {
       "type": "objectPlaced",
       "params": {
-        "objectId": "sofa",
+        "objectId": "table_in",
         "count": 1
       }
     },
@@ -1395,7 +1395,7 @@
     "condition": {
       "type": "objectPlaced",
       "params": {
-        "objectId": "bookshelf",
+        "objectId": "table_in",
         "count": 2
       }
     },
@@ -1445,7 +1445,7 @@
     "condition": {
       "type": "objectPlaced",
       "params": {
-        "objectId": "bike_rack",
+        "objectId": "signboard",
         "count": 2
       }
     },
@@ -1495,7 +1495,7 @@
     "condition": {
       "type": "objectPlaced",
       "params": {
-        "objectId": "scooter_rental",
+        "objectId": "hammock",
         "count": 1
       }
     },
@@ -1545,7 +1545,7 @@
     "condition": {
       "type": "objectPlaced",
       "params": {
-        "objectId": "stone_lantern",
+        "objectId": "garden_lamp",
         "count": 3
       }
     },
@@ -1570,7 +1570,7 @@
     "condition": {
       "type": "objectPlaced",
       "params": {
-        "objectId": "lantern_path",
+        "objectId": "garden_lamp",
         "count": 6
       }
     },
@@ -1645,7 +1645,7 @@
     "condition": {
       "type": "objectPlaced",
       "params": {
-        "objectId": "souvenir",
+        "objectId": "omegi_stall",
         "count": 2
       }
     },
@@ -1720,7 +1720,7 @@
     "condition": {
       "type": "objectPlaced",
       "params": {
-        "objectId": "translator",
+        "objectId": "vending",
         "count": 1
       }
     },
@@ -1770,7 +1770,7 @@
     "condition": {
       "type": "objectPlaced",
       "params": {
-        "objectId": "picking_experience",
+        "objectId": "tangerine_tree",
         "count": 1
       }
     },
@@ -1845,7 +1845,7 @@
     "condition": {
       "type": "objectPlaced",
       "params": {
-        "objectId": "gallery",
+        "objectId": "signboard",
         "count": 1
       }
     },
@@ -1870,7 +1870,7 @@
     "condition": {
       "type": "objectPlaced",
       "params": {
-        "objectId": "pottery_studio",
+        "objectId": "tart_bakery",
         "count": 1
       }
     },
@@ -1895,7 +1895,7 @@
     "condition": {
       "type": "objectPlaced",
       "params": {
-        "objectId": "tangerine_hall",
+        "objectId": "annex_cafe",
         "count": 1
       }
     },
@@ -1945,7 +1945,7 @@
     "condition": {
       "type": "objectPlaced",
       "params": {
-        "objectId": "handdrip_bar",
+        "objectId": "omegi_stall",
         "count": 2
       }
     },
@@ -2020,7 +2020,7 @@
     "condition": {
       "type": "objectPlaced",
       "params": {
-        "objectId": "dog_park",
+        "objectId": "flower_bed",
         "count": 1
       }
     },
@@ -2045,7 +2045,7 @@
     "condition": {
       "type": "objectPlaced",
       "params": {
-        "objectId": "picnic",
+        "objectId": "table_out",
         "count": 1
       }
     },
@@ -2070,7 +2070,7 @@
     "condition": {
       "type": "objectPlaced",
       "params": {
-        "objectId": "dog_park",
+        "objectId": "flower_bed",
         "count": 2
       }
     },
@@ -2120,7 +2120,7 @@
     "condition": {
       "type": "objectPlaced",
       "params": {
-        "objectId": "haenyeo_mulhoe",
+        "objectId": "brunch_house",
         "count": 1
       }
     },
@@ -2195,7 +2195,7 @@
     "condition": {
       "type": "objectPlaced",
       "params": {
-        "objectId": "parking",
+        "objectId": "parking_lot",
         "count": 2
       }
     },
@@ -2320,7 +2320,7 @@
     "condition": {
       "type": "objectPlaced",
       "params": {
-        "objectId": "field",
+        "objectId": "tea_field",
         "count": 10
       }
     },
@@ -2370,7 +2370,7 @@
     "condition": {
       "type": "objectPlaced",
       "params": {
-        "objectId": "snap_studio",
+        "objectId": "signboard",
         "count": 2
       }
     },
@@ -2420,7 +2420,7 @@
     "condition": {
       "type": "objectPlaced",
       "params": {
-        "objectId": "parking",
+        "objectId": "parking_lot",
         "count": 1
       }
     },
@@ -2445,7 +2445,7 @@
     "condition": {
       "type": "objectPlaced",
       "params": {
-        "objectId": "parking_large",
+        "objectId": "parking_big",
         "count": 1
       }
     },
@@ -2495,7 +2495,7 @@
     "condition": {
       "type": "objectPlaced",
       "params": {
-        "objectId": "barley_pub",
+        "objectId": "fine_dining",
         "count": 1
       }
     },

@@ -4,7 +4,6 @@
  *   그 뒤로도 게임은 그대로 이어진다. 「계속하기」(continueEnding)로 4배속(빠른 모드)이 열린다. 목표는 108 이후 월간 과제만 남는다.
  * - 최종 점수: 항목 9(자금·누적 손님·★·랭크·평판·목표 수·콤보 수·명소 Lv 합·단골 수)에 가중치 → 총점 → 칭호 5단계.
  * - 이월 6종(makeCarry → createInitialState(…, carry) → applyCarry): 콤보 도감·명소 Lv·유니폼·돌하르방·마일리지 20%·정규 손님 인기 20%.
- * - 100주년 감귤축제: 계속하기 뒤 20년차 11월 1일 1회. ★5·가이드북 1위·평판 80이면 「천년 팽나무」 해금 + 두 번째 엔딩 컷, 이월 대상에 추가.
  * 결정적 — rng를 쓰지 않는다.
  */
 import type { GameState, FinalScore, ScoreItem, ScoreKey, CarryOver, EndingState, ApplyResult } from './types.ts';
@@ -17,14 +16,14 @@ import { pushNotice } from './staff.ts';
 
 export const ENDING_YEAR = 10;
 export const ENDING_MONTH = 3;
-export const MILLENNIUM_TREE = 'hackberry_millennium';
+export const MILLENNIUM_TREE = 'hackberry';
 /** 빠른 모드 배속 */
 export const FAST_SPEED = 4;
 /** 이월 비율 (마일리지·정규 손님 인기) */
 export const CARRY_RATIO = 0.2;
 /** 이월 돌하르방 최대 (정낭 양옆) */
 export const CARRY_DOLHAREUBANG_MAX = 2;
-export const DOLHAREUBANG_TYPES = new Set(['dolhareubang', 'dolhareubang_pair', 'deco_dolhareubang_set']);
+export const DOLHAREUBANG_TYPES = new Set(['dolhareubang', 'dolhareubang_pair']);
 /** 이월 돌하르방이 놓이는 시작 필지 상대 좌표 (정낭 (4,6) 양옆) — 정낭이 없으면 carryDolhareubangCells가 문 양옆으로 (w-free) */
 export const CARRY_DOLHAREUBANG_AT: { lx: number; ly: number }[] = [{ lx: 3, ly: 6 }, { lx: 5, ly: 6 }];
 /** 이월 돌하르방 자리: 정낭 양옆 → (정낭이 없으면) 마을 어귀 기본 좌표(올렛길 입구 (4,6) 양옆, 비어 있을 때 — fun-start 새 게임엔 정낭이 없다) → 본관 문 앞 양옆 → 기본 좌표 */
@@ -186,6 +185,6 @@ export function carryText(c: CarryOver): string[] {
   out.push(`돌하르방 ${c.dolhareubang}개`);
   out.push(`응모권 ${c.tickets}장`);
   out.push(`손님 인기 ${Object.keys(c.guestPopularity).length}층 (20%)`);
-  if (c.millennium) out.push('천년 팽나무');
+  if (c.millennium) out.push('폭낭 그늘');
   return out;
 }

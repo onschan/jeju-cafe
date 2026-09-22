@@ -186,7 +186,7 @@ function funScore(state: GameState): number {
 function groupScore(state: GameState): number {
   const objs = Object.values(state.objects).filter((o) => !o.build);
   const big = objs.filter((o) => seatsOf(state, o) >= 4).length;
-  const parking = objs.filter((o) => o.type === 'parking').length;
+  const parking = objs.filter((o) => o.type === 'parking_lot' || o.type === 'parking_big').length;
   const groups = GUEST_TYPES.filter((t) => t.tags.group && state.guestTypes[t.id]?.unlocked);
   const sat = groups.length ? groups.reduce((n, t) => n + (state.guestTypes[t.id]?.satisfaction ?? 0), 0) / groups.length : 0;
   return clamp100(big * 10 + parking * 20 + sat * 0.3);
@@ -198,7 +198,7 @@ function restScore(state: GameState): number {
   const rest = objs.filter((o) => objectDef(o.type).category === 'rest' || isSeat(state, o));
   if (rest.length === 0) return 0;
   const avgPop = rest.reduce((n, o) => n + objectStats(state, o.id).popularity, 0) / rest.length;
-  const footbath = objs.filter((o) => o.type.startsWith('footbath')).length;
+  const footbath = objs.filter((o) => o.type.endsWith('footbath')).length;
   return clamp100(rest.length * 8 + avgPop + footbath * 5);
 }
 /** 청결: 트랙 A의 state.clean.value (30 미만이면 −10 감점) */

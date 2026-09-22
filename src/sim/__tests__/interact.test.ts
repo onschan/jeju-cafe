@@ -47,7 +47,7 @@ describe('데이터: 요청 30개', () => {
       // 코너·태그 요청은 코너 데이터가 없는 동안(통합 전) 시설로 판정할 수 있어야 한다
       if (r.want.corner || r.want.tagCorner) expect(r.want.facility, r.id).toBeTruthy();
     }
-    expect(requestDef('req_photo').want.facility).toBe('photo_spot');
+    expect(requestDef('req_photo').want.facility).toBe('signboard');
     expect(() => requestDef('nope')).toThrow();
   });
 });

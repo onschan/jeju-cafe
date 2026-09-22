@@ -87,7 +87,7 @@ describe('부탁·목표 조건/보상', () => {
   });
   it('부탁 조건 예시', () => {
     expect(conditionText({ type: 'menuSold', params: { menuId: 'americano', count: 20 } })).toBe('아메리카노 20잔 팔기');
-    expect(conditionText({ type: 'objectPlaced', params: { objectId: 'chicken_coop', count: 1 } })).toBe('닭장 1개 놓기');
+    expect(conditionText({ type: 'objectPlaced', params: { objectId: 'flower_bed', count: 1 } })).toBe('꽃밭 1개 놓기');
     expect(rewardText([{ type: 'item', itemId: 'honey' }])).toBe(label('item', 'honey'));
     expect(rewardText([{ type: 'money', amount: 200000 }, { type: 'research', amount: 20 }])).toBe('₩200,000 · 연구 20');
     expect(rewardText([])).toBe('없음');

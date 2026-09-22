@@ -128,7 +128,7 @@ test('시설 순회: 앉았다 일어난 손님이 40%로 닿는 시설에 들�
   expect(isVisitable('vending')).toBe(true);
   expect(isVisitable('table_out')).toBe(false);
   expect(likesFacility('student', 'vending')).toBe(false);      // 학생: 쉼·즐길거리
-  expect(likesFacility('student', 'souvenir')).toBe(true);
+  expect(likesFacility('student', 'hammock')).toBe(true);
   expect(likesFacility('digital_nomad', 'vending')).toBe(true); // 편의를 바란다
   s.guestTypes['digital_nomad']!.unlocked = true;
   // 결정적: 40%에 걸리도록 rng 상태를 고른다

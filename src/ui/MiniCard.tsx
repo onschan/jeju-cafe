@@ -8,7 +8,7 @@ import { RouteCard } from './RouteCard';
 import { TreeUpgradeRow } from './TreeUpgrade'; // fun: 같은 자리 업그레이드 트리
 import { treeOf } from '../sim/index.ts';
 import type { RouteId } from '../sim/index.ts';
-import { mainSummary, canAutoConnectPath, canExpandMain, expandCost, nextMainLevel, canBuildSecondFloor, canStartMoveMain, canUndoMoveMain, canMoveThisMonth, moveDays, isRoomCut, isAnnex, roomSeats, roomSeatsUsed, isFireplaceOn, canToggleFireplace, canSetPianoTime, canAddBooks, hasNewBooks, canFeedAquarium, isAquariumHungry, canRestockKids, isKidsStocked, canSetBarEvening, isBarEvening, MAIN_EXPAND_DAYS, FLOOR2_COST, FLOOR2_DAYS, MOVE_COST, NEW_BOOKS_TICKETS, KIDS_RESTOCK_COST, ANNEX_CUT_TEXT, DOOR_PATH_WARN, BGM_LABEL, LIGHT_LABEL, PIANO_LABEL } from '../sim/index.ts'; // y-indoor
+import { mainSummary, canAutoConnectPath, canExpandMain, expandCost, nextMainLevel, canBuildSecondFloor, canStartMoveMain, canUndoMoveMain, canMoveThisMonth, moveDays, isRoomCut, isAnnex, roomSeats, roomSeatsUsed, MAIN_EXPAND_DAYS, FLOOR2_COST, FLOOR2_DAYS, MOVE_COST, ANNEX_CUT_TEXT, DOOR_PATH_WARN, BGM_LABEL, LIGHT_LABEL } from '../sim/index.ts'; // y-indoor
 import { ButtonGroup } from './ButtonGroup';
 import { requestBuildTab } from './windows/BuildWindow';
 import { label as labelOf } from '../data/labels.ts';
@@ -328,7 +328,6 @@ function ObjectCard({ s, id, a, onClose }: { s: GameState; id: string; a: CardAc
       </div>
       {treeOf(o.type) && <TreeUpgradeRow s={s} o={o} />}{/* fun: 「업그레이드 ▲」는 카드 맨 위(버튼 줄 위) — 아래에 두면 잘린다 */}
       <Row>
-        <IndoorButtons s={s} o={o} />
         {upgradable && <button style={up.ok ? btnOn : btnOff} disabled={!up.ok} title={up.ok ? undefined : up.reason} onClick={doUpgrade} data-testid="upgrade-btn">증축 Lv{st.level + 1} ({wonText(upCost)})</button>}
         {st.wear > 0 && <button style={rep.ok ? btnOn : btnOff} disabled={!rep.ok} onClick={() => dispatch({ type: 'repairObject', objectId: o.id })} data-testid="repair-btn">수리 ({wonText(repairCost(s, o))})</button>}
         {!protectedType && <button style={btn} onClick={() => a.onMove(o.id)}>이동</button>}
@@ -438,7 +437,6 @@ export function MainCard({ s, id, a }: { s: GameState; id: string; a: CardAction
   const doFloor2 = () => Confirm(`2층을 올릴까요? ${manWon(FLOOR2_COST)} · 공사 ${FLOOR2_DAYS}일(영업 정지) · 실내 자리 +6`, () => { dispatch({ type: 'buildSecondFloor' }); }, { title: '2층 올리기' });
   const reason = m.work ? null : !exp.ok && next ? `증축: ${exp.reason}` : s.main.floor2 || !f2.ok && s.main.level >= 3 ? (!f2.ok && !s.main.floor2 ? `2층: ${f2.reason}` : null) : null;
   const stock = Object.entries(s.storage).filter(([, n]) => n > 0);
-  const pianoOk = canSetPianoTime(s).ok;
   return (
     <div data-testid="card-main">
       <Hint id="main" />
@@ -472,43 +470,10 @@ export function MainCard({ s, id, a }: { s: GameState; id: string; a: CardAction
           <div style={{ marginTop: 4 }}><Icon name="bulb" /> 저녁 조명</div>
           <ButtonGroup label="저녁 조명" value={s.main.lighting} onPick={(v) => dispatch({ type: 'setLighting', lighting: v })} testId="main-light"
             options={[{ value: 'warm', label: LIGHT_LABEL.warm }, { value: 'bright', label: LIGHT_LABEL.bright }]} />
-          <div style={{ marginTop: 4 }}><Icon name="piano" /> 피아노 연주 시간{!pianoOk && ' (피아노 없음)'}</div>
-          <ButtonGroup label="피아노 연주 시간" value={s.main.pianoTime} disabled={!pianoOk} onPick={(v) => dispatch({ type: 'setPianoTime', time: v })} testId="main-piano"
-            options={[{ value: 'lunch', label: PIANO_LABEL.lunch }, { value: 'evening', label: PIANO_LABEL.evening }, { value: 'none', label: PIANO_LABEL.none }]} />
         </div>
       )}
     </div>
   );
-}
-
-/** 실내 요소 상호작용 버튼 (UX 참고 §4.3, y-indoor): 난로 켜기/끄기 · 책장 신간 · 수족관 먹이 · 키즈 장난감 · 바 저녁 세트 — 전부 버튼(셀렉트 없음) */
-function IndoorButtons({ s, o }: { s: GameState; o: { id: string; type: string } }) {
-  const obj = s.objects[o.id]!;
-  switch (o.type) {
-    case 'fireplace': {
-      const on = isFireplaceOn(s, obj);
-      const can = canToggleFireplace(s, o.id);
-      return <button style={can.ok ? (on ? btnOn : btn) : btnOff} disabled={!can.ok} onClick={() => dispatch({ type: 'toggleFireplace', objectId: o.id })} data-testid="fireplace-btn"><Icon name="fire" /> {on ? '난로 끄기' : '난로 켜기'}</button>;
-    }
-    case 'bookshelf': {
-      const can = canAddBooks(s, o.id);
-      return <button style={can.ok ? btnOn : btnOff} disabled={!can.ok} title={can.ok ? undefined : can.reason} onClick={() => dispatch({ type: 'addBooks', objectId: o.id })} data-testid="books-btn"><Icon name="book" /> 신간 넣기 (응모권 {NEW_BOOKS_TICKETS}){hasNewBooks(s, obj) && ' · 신간 있음'}</button>;
-    }
-    case 'aquarium': {
-      const can = canFeedAquarium(s, o.id);
-      return <button style={can.ok ? btnOn : btnOff} disabled={!can.ok} title={can.ok ? undefined : can.reason} onClick={() => dispatch({ type: 'feedAquarium', objectId: o.id })} data-testid="feed-btn"><Icon name="fish" /> 먹이 주기{isAquariumHungry(s, obj) && ' · 배고파요'}</button>;
-    }
-    case 'kids_corner': {
-      const can = canRestockKids(s, o.id);
-      return <button style={can.ok ? btnOn : btnOff} disabled={!can.ok} title={can.ok ? undefined : can.reason} onClick={() => dispatch({ type: 'restockKids', objectId: o.id })} data-testid="kids-btn"><Icon name="toy" /> 장난감 보충 ({wonText(KIDS_RESTOCK_COST)}){isKidsStocked(s, obj) ? ' · 넉넉' : ' · 필요'}</button>;
-    }
-    case 'bar_counter': {
-      const can = canSetBarEvening(s, o.id);
-      const on = isBarEvening(obj);
-      return <button style={can.ok ? (on ? btnOn : btn) : btnOff} disabled={!can.ok} onClick={() => dispatch({ type: 'setBarEvening', objectId: o.id, on: !on })} aria-pressed={on} data-testid="bar-btn"><Icon name="cocktail" /> 저녁 세트 {on ? 'ON' : 'OFF'}</button>;
-    }
-    default: return null;
-  }
 }
 
 /** 화면 하단(하단 바 위)에 붙는 미니 카드. 높이 ≤ 30vh, 맵은 그대로 보인다. 닫기 아이콘 또는 맵의 다른 곳을 탭하면 닫힌다. */

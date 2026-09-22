@@ -47,7 +47,7 @@ export interface RouteDef {
 const P4 = PARCEL_LAYOUT.parcel4!;
 export const ENTRY_ROUTES: Record<RouteId, RouteDef> = {
   bus: { id: 'bus', name: '정류장', icon: '🚌', entry: { x: 0, y: VILLAGE_ROAD_Y }, facilities: ['busstop'], parcelId: null, tagMult: {}, walletMult: 1, stayMult: 1, hours: [], groupSize: [1, 1], dailyCap: null, weight: 1, cost: 0, unlockText: '시작' },
-  parking: { id: 'parking', name: '주차장', icon: '🚗', entry: { x: GRID_W - 1, y: VILLAGE_ROAD_Y }, facilities: ['parking_lot', 'parking_big', 'parking', 'parking_large'], parcelId: null, tagMult: { family: 2, couple: 1.6 }, walletMult: 1.2, stayMult: 1.2, hours: [[9, 21]], groupSize: [2, 4], dailyCap: null, weight: 0.15, cost: 1_200_000, unlockText: '처음부터' }, // fun P0: 렌터카는 9~20시 (30~45% 비중이 하루 손님에서 보이게)
+  parking: { id: 'parking', name: '주차장', icon: '🚗', entry: { x: GRID_W - 1, y: VILLAGE_ROAD_Y }, facilities: ['parking_lot', 'parking_big'], parcelId: null, tagMult: { family: 2, couple: 1.6 }, walletMult: 1.2, stayMult: 1.2, hours: [[9, 21]], groupSize: [2, 4], dailyCap: null, weight: 0.15, cost: 1_200_000, unlockText: '처음부터' }, // fun P0: 렌터카는 9~20시 (30~45% 비중이 하루 손님에서 보이게)
   olle: { id: 'olle', name: '올레길', icon: '🎗️', entry: { x: 0, y: P4.row * PARCEL_H + 3 }, facilities: ['olle_sign'], parcelId: 'parcel4', tagMult: { solo: 2, youth: 1.5, senior: 1.3 }, walletMult: 0.8, stayMult: 1, hours: [[8, 12], [16, 19]], groupSize: [1, 2], dailyCap: null, weight: 0.15, cost: 200_000, unlockText: '밭담 골짜기' },
 };
 

@@ -1,4 +1,4 @@
-/** 트랙 A: 시설 153·콤보 60·명당 12·증축 Lv·노후·청결 (스펙 §3.1·§3.2) */
+/** 트랙 A(trim): 시설 표·증축 Lv·노후·청결 (스펙 §3.1·§3.2 — 덜어내기 뒤 시설 59종) */
 import { bareState, X, Y } from './helpers.ts';
 import { placeObject } from '../grid.ts';
 import { apply } from '../actions.ts';
@@ -11,10 +11,11 @@ import { dailyCleanliness, cleanGuestMult, cleanSatisfaction, wearOf, repairCost
 import { seatsOf } from '../cafe.ts';
 import { monthlyYieldOf } from '../orchard.ts';
 import { effectMult } from '../effects.ts';
-import { OBJECTS, FACILITIES, FACILITY_X_IDS, FACILITY_X_GOAL_REFS, ITEMS, ITEM_FIT_EXTRA, objectDef, buildGroupOf } from '../../data/index.ts';
+import { OBJECTS, MENUS, FACILITIES, FACILITY_X_IDS, FACILITY_X_GOAL_REFS, ITEMS, ITEM_FIT_EXTRA, objectDef, buildGroupOf } from '../../data/index.ts';
 import type { GameState } from '../types.ts';
 import facilitiesJson from '../../data/generated/v2/facilities.json' with { type: 'json' };
 import facilitiesXJson from '../../data/facilities_x.json' with { type: 'json' };
+import extraMenusJson from '../../data/generated/v2/extra_menus.json' with { type: 'json' };
 
 
 function unlockAll(s: GameState, ...ids: string[]) { for (const id of ids) if (!s.unlocked.objects.includes(id)) s.unlocked.objects.push(id); }
@@ -22,36 +23,31 @@ function unlockAll(s: GameState, ...ids: string[]) { for (const id of ids) if (!
 function finish(s: GameState, days: number) { for (let i = 0; i < days; i++) tick(s, DAY_MS); }
 
 describe('데이터', () => {
-  it('시설 153종 (v2 109 + 확장 44)이 OBJECTS에 있고 id가 유일하다', () => {
-    expect(FACILITY_X_IDS.size).toBe(44);
-    expect(facilitiesJson.length + facilitiesXJson.length).toBe(153);
+  it('trim: 시설 표가 전부 OBJECTS에 있고 id가 유일하며, 종류는 60 이하다', () => {
+    expect(FACILITY_X_IDS.size).toBe(5);
     const rowIds = new Set([...facilitiesJson, ...facilitiesXJson].map((f) => f.id));
-    expect(rowIds.size).toBe(153);
-    for (const id of rowIds) if (id !== 'field') expect(objectDef(id).id).toBe(id); // 밭만 v3에서 빠진다
-    expect(FACILITIES.filter((f) => FACILITY_X_IDS.has(f.id)).length).toBe(44);
+    expect(rowIds.size).toBe(facilitiesJson.length + facilitiesXJson.length);
+    for (const id of rowIds) expect(objectDef(id).id).toBe(id);
+    expect(FACILITIES.filter((f) => FACILITY_X_IDS.has(f.id)).length).toBe(5);
     expect(new Set(OBJECTS.map((o) => o.id)).size).toBe(OBJECTS.length);
+    expect(OBJECTS.filter((o) => o.kind !== 'landmark').length).toBeLessThanOrEqual(60);
   });
-  it('확장 시설: 요금 있는 쉼 시설은 순회 시설(facility), 요금 null 쉼은 좌석, 카테고리·건설일이 짓기 탭에 맞는다', () => {
-    expect(objectDef('footbath').kind).toBe('facility');
-    expect(objectDef('footbath').fee).toBe(2000);
-    expect(objectDef('rest_pavilion').kind).toBe('seat');
-    expect(objectDef('lounge').seats).toBe(6);
-    expect(objectDef('mini_bowling')).toMatchObject({ w: 3, h: 2, buildDays: 7, category: 'fun', cost: 24_000_000 });
+  it('확장 시설(trim 5종): 요금 있는 쉼 시설은 순회 시설(facility), 카테고리·건설일이 짓기 탭에 맞는다', () => {
+    expect(objectDef('cauldron_footbath').kind).toBe('facility');
+    expect(objectDef('cauldron_footbath').fee).toBe(5000);
     expect(objectDef('open_air_footbath')).toMatchObject({ popularity: 30, scenery: 20, buildDays: 7 });
-    expect(buildGroupOf('tea_house')).toBe('food');
-    expect(buildGroupOf('atm')).toBe('convenience');
-    // 해금: 목표 33 + 손님층 7 + 랭크 2 + 상점 1 (전부 시작엔 잠김)
-    expect(Object.keys(FACILITY_X_GOAL_REFS).length).toBe(34);
-    expect(FACILITY_X_GOAL_REFS.footbath).toBe('g21');
-    expect(objectDef('lie_footbath').unlock).toEqual({ type: 'segment', guestId: 'retired_teacher', satisfaction: 30 });
-    expect(objectDef('locker').unlock).toEqual({ type: 'rank', rank: 4 });
-    expect(objectDef('pinball').unlock).toEqual({ type: 'goal' });
+    expect(buildGroupOf('brunch_house')).toBe('food');
+    expect(buildGroupOf('cleaning_room')).toBe('convenience');
+    expect(Object.keys(FACILITY_X_GOAL_REFS).length).toBe(5);
+    expect(FACILITY_X_GOAL_REFS.cauldron_footbath).toBe('g41');
+    expect(objectDef('fine_dining').unlock).toEqual({ type: 'goal' });
     for (const id of FACILITY_X_IDS) expect(objectDef(id).unlock?.type).not.toBe('start');
   });
-  it('강화 아이템 잘 맞는 시설: 새 시설 편입, 밭 제거', () => {
+  it('강화 아이템 잘 맞는 시설: trim 뒤에도 남은 시설만 가리킨다', () => {
     const salt = ITEMS.find((i) => i.id === 'jeju_salt')!;
-    expect(salt.fitIds).toEqual(['noodle_shop', 'bomal_kalguksu', 'haenyeo_mulhoe', 'sauna_hut', 'cauldron_footbath']);
-    expect(ITEMS.find((i) => i.id === 'seaweed_fertilizer')!.fitIds).not.toContain('field');
+    expect(salt.fitIds).toContain('cauldron_footbath');
+    const known = new Set([...OBJECTS.map((o) => o.id), ...MENUS.map((m) => m.id), ...extraMenusJson.map((m) => m.id)]);
+    for (const item of ITEMS) for (const f of item.fitIds) expect(known.has(f), f).toBe(true);
     for (const [id, fits] of Object.entries(ITEM_FIT_EXTRA)) {
       const item = ITEMS.find((i) => i.id === id)!;
       for (const f of fits) { expect(objectDef(f)).toBeDefined(); expect(item.fitIds).toContain(f); }
@@ -108,16 +104,16 @@ describe('증축 Lv1~3 (§3.2.2)', () => {
     expect(seatsOf(s, t)).toBe(4);
     expect(apply(s, { type: 'upgradeObject', objectId: t.id }).reason).toContain('최고');
   });
-  it('요금형 시설(포토존): Lv2 요금 +10%, Lv3 +20% (1,000 → 1,100 → 1,200). Lv 인기는 상한 40과 별도로 최대 48', () => {
+  it('요금형 시설(가마솥 족욕): Lv2 요금 +10%, Lv3 +20% (5,000 → 5,500 → 6,000). Lv 인기는 상한 40과 별도로 최대 48', () => {
     const s = bareState(1);
     s.money = 100_000_000;
-    const p = placeObject(s, 'photo_spot', X(6), Y(4));
-    expect(facilityFee(s, p)).toBe(1000);
+    const p = placeObject(s, 'cauldron_footbath', X(6), Y(4));
+    expect(facilityFee(s, p)).toBe(5000);
     p.level = 2;
-    expect(facilityFee(s, p)).toBe(1100);
+    expect(facilityFee(s, p)).toBe(5500);
     expect(objectStats(s, p.id).feePct).toBe(110);
     p.level = 3;
-    expect(facilityFee(s, p)).toBe(1200);
+    expect(facilityFee(s, p)).toBe(6000);
     s.itemBonus[p.type] = { popularity: 100, feePct: 0 };
     expect(objectStats(s, p.id).popularity).toBe(POPULARITY_CAP + 8);
   });

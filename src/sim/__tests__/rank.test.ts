@@ -56,7 +56,7 @@ test('랭크 점수·문턱: 누적 손님/50 + 시설×2 + 해금 손님층×5,
   expect(s.fx.some((f) => f.kind === 'scene' && f.title === '랭크 업')).toBe(true);
 });
 
-test('랭크 2에 오르면 랭크 해금 시설(실내 테이블·주차장)과 손님(렌터카 가족)이 열린다', () => {
+test('랭크 2에 오르면 랭크 해금 시설(실내 테이블·알전구 줄)과 손님(렌터카 가족)이 열린다', () => {
   const s = bareState(1);
   s.totalGuests = RANK_THRESHOLDS[1]! * GUESTS_PER_POINT;
   tick(s, DAY_MS); // 월초 evaluateUnlocks는 다음 달이지만 place 뒤에도 돈다
@@ -64,7 +64,7 @@ test('랭크 2에 오르면 랭크 해금 시설(실내 테이블·주차장)과
   apply(s, { type: 'place', objectType: 'path', x: X(4), y: Y(5) });
   expect(s.rank).toBe(2);
   expect(s.unlocked.objects).toContain('table_in');
-  expect(s.unlocked.objects).toContain('parking');
+  expect(s.unlocked.objects).toContain('deco_string_lights');
   expect(s.guestTypes['rentcar_family']!.unlocked).toBe(true);
 });
 
@@ -191,7 +191,7 @@ test('가이드북 해금: 시작은 친절 카페만, 1년 7월에 동네 맛�
   expect(evaluateGuidebooks(s)).toEqual(['gb_local_map']);
   s.money = 1e9;
   s.unlocked.objects.push('vending');
-  for (let i = 0; i < 5; i++) placeObject(s, 'hallabong_stand', X(i), Y(2));
+  for (let i = 0; i < 5; i++) placeObject(s, 'omegi_stall', X(i), Y(2));
   expect(evaluateGuidebooks(s)).toEqual(['gb_dessert']);
 });
 

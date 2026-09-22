@@ -52,7 +52,7 @@ export const BUBBLE_MS = 1500;
 
 /** 아직 시트에 없는 오브젝트가 빌려 쓰는 스프라이트 */
 /** 시트 이름이 다른 오브젝트. 감귤나무는 v3에서 성장 단계가 없어 늘 열매 달린 모습으로 */
-const SPRITE_ALIAS: Record<string, string> = { bush_wild: 'tea_bush', spring: 'pond', dolhareubang_pair: 'dolhareubang', hackberry: 'hackberry_shade', tangerine_tree: 'tangerine_tree_ready' };
+const SPRITE_ALIAS: Record<string, string> = { spring: 'pond', dolhareubang_pair: 'dolhareubang', tangerine_tree: 'tangerine_tree_ready' };
 /** 캐릭터(손님·직원)는 모든 시설·건물보다 앞에 그린다 — 건물 뒤·안에 있어도 사람이 보여야 한다(카이로식). 캐릭터끼리는 x+y 순. */
 const CHAR_Z = 1e4;
 /** 트랙 H: 경로별 진입점 표지 스프라이트 (버스·자동차·리본) */

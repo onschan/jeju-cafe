@@ -2,7 +2,7 @@ import type { GameState, Action, ApplyResult, PlacedObject } from './types.ts';
 import { bumpLayoutRev } from './layoutRev.ts';
 import { objectDef } from '../data/index.ts';
 import { canPlace, placeObject, removeObject, footprintOf, relocateObject, objectsInRoom } from './grid.ts';
-import { canBuildMain, placeMain, canExpandMain, expandMain, canBuildSecondFloor, buildSecondFloor, canMoveMain, moveMain, canUndoMoveMain, undoMoveMain, canToggleFireplace, toggleFireplace, canSetPianoTime, canAddBooks, addBooks, canFeedAquarium, feedAquarium, canRestockKids, restockKids, canSetBarEvening, setBarEvening, canAutoConnectPath, autoConnectPath, MAIN_TYPE } from './rooms.ts'; // y-indoor
+import { canBuildMain, placeMain, canExpandMain, expandMain, canBuildSecondFloor, buildSecondFloor, canMoveMain, moveMain, canUndoMoveMain, undoMoveMain, canAutoConnectPath, autoConnectPath, MAIN_TYPE } from './rooms.ts'; // y-indoor
 import { canBuyParcel, buyParcel } from './parcels.ts';
 import { canSetSlot, setSlot } from './menu.ts';
 import { checkFeature, checkGoals } from './goals.ts';
@@ -34,7 +34,7 @@ import { canContinueEnding, continueEnding, canSetSpeed } from './ending.ts'; //
 /** 못 옮기고 못 없애는 것 (정류장·본관·샘). 정낭은 w-free부터 일반 시설 — 옮기고 없애고 더 놓을 수 있다. */
 export const PROTECTED_TYPES = new Set(['busstop', 'warehouse', 'spring']);
 /** 회전할 수 있는 오브젝트 (rot 0..3, 스프라이트 변형 _r{n}이 있을 때만 보인다) */
-export const ROTATABLE_TYPES = new Set(['gate', 'bench', 'counter']);
+export const ROTATABLE_TYPES = new Set(['gate', 'counter']);
 const ACTION_LOG_CAP = 1000;
 
 const CLIENT_ONLY = new Set<Action['type']>(['setSpeed', 'dismissMonthCard', 'dismissDevelop', 'dismissDraw', 'dismissAnnouncement', 'dismissAlert', 'dismissOutcome', 'continueEnding']);
@@ -301,48 +301,12 @@ function applyInner(state: GameState, a: Action): ApplyResult {
       discoverPlacement(state);
       return { ok: true };
     }
-    case 'toggleFireplace': {
-      const c = canToggleFireplace(state, a.objectId);
-      if (!c.ok) return c;
-      toggleFireplace(state, a.objectId);
-      return { ok: true };
-    }
-    case 'setPianoTime': {
-      const c = canSetPianoTime(state);
-      if (!c.ok) return c;
-      state.main.pianoTime = a.time;
-      return { ok: true };
-    }
     case 'setBgm':
       state.main.bgm = a.bgm;
       return { ok: true };
     case 'setLighting':
       state.main.lighting = a.lighting;
       return { ok: true };
-    case 'feedAquarium': {
-      const c = canFeedAquarium(state, a.objectId);
-      if (!c.ok) return c;
-      feedAquarium(state, a.objectId);
-      return { ok: true };
-    }
-    case 'restockKids': {
-      const c = canRestockKids(state, a.objectId);
-      if (!c.ok) return c;
-      restockKids(state, a.objectId);
-      return { ok: true };
-    }
-    case 'setBarEvening': {
-      const c = canSetBarEvening(state, a.objectId);
-      if (!c.ok) return c;
-      setBarEvening(state, a.objectId, a.on);
-      return { ok: true };
-    }
-    case 'addBooks': {
-      const c = canAddBooks(state, a.objectId);
-      if (!c.ok) return c;
-      addBooks(state, a.objectId);
-      return { ok: true };
-    }
     case 'setCosmetic': {
       const c = canSetCosmetic(state, a);
       if (!c.ok) return c;

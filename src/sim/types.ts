@@ -923,7 +923,6 @@ export interface MainState {
   undo: { x: number; y: number; day: number; cost: number; prevMovedMonth: number } | null; // 같은 날 되돌리기 1회
   bgm: 'calm' | 'jazz' | 'folk' | null;      // BGM 버튼 그룹 (§4.3)
   lighting: 'warm' | 'bright';               // 저녁 조명
-  pianoTime: 'lunch' | 'evening' | 'none';   // 피아노 연주 시간
   seatLog: number[];                         // 최근 좌석 이용률 %(일별, 최대 7일) — "자리가 모자라요" (P1-7)
   usedSeatMs: number;                        // 오늘 누적 (좌석 사용 × ms) — 하루 끝에 이용률로
   openMs: number;                            // 오늘 누적 (정원 × ms)
@@ -953,14 +952,8 @@ export type Action =
   | { type: 'buildSecondFloor' }                   // 본관 2층 (Lv3 이상)
   | { type: 'moveMain'; x: number; y: number }     // 본관 옮기기 (월 1회·₩200만·3일)
   | { type: 'undoMoveMain' }                       // 같은 날 되돌리기 1회
-  | { type: 'toggleFireplace'; objectId: string }
-  | { type: 'setPianoTime'; time: 'lunch' | 'evening' | 'none' }
   | { type: 'setBgm'; bgm: 'calm' | 'jazz' | 'folk' | null }
   | { type: 'setLighting'; lighting: 'warm' | 'bright' }
-  | { type: 'feedAquarium'; objectId: string }
-  | { type: 'restockKids'; objectId: string }
-  | { type: 'setBarEvening'; objectId: string; on: boolean }
-  | { type: 'addBooks'; objectId: string }
   | { type: 'setCosmetic'; wallColor?: number; sign?: string }
   | { type: 'praise'; staffId: string }
   | { type: 'setSlot'; slot: number; menuId: string | null }

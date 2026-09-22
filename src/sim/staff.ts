@@ -26,7 +26,7 @@ export const STAT_NAME: Record<StatKey, string> = { stamina: '체력', strength:
 export const BASE_STAFF_SLOTS = 3;
 export const SLOTS_PER_STAFF_ROOM = 3;
 export const MAX_STAFF_ROOMS = 3;
-export const STAFF_ROOM_TYPE = 'staff_room'; // A가 만드는 시설 id. 없으면 0개.
+export const STAFF_ROOM_TYPE = 'cleaning_room'; // 직원 휴게 효과를 내는 시설 id. 없으면 0개.
 
 /** 다 지어진 휴게실 수 (최대 3) */
 export function staffRoomCount(state: GameState): number {

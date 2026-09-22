@@ -73,10 +73,9 @@ export { sizeOf, footprintOf, canPlaceMain, fixedCellsOf, isFixedCell, indoorRou
 export {
   mainBuilding, mainLevel, mainSize, mainDoorFront, isMainClosed, mainWorkDaysLeft, isIndoorCell, isIndoorSeat, roomSeats, indoorSeats, roomSeatsUsed, freeFloorCells, fixedCells,
   canBuildMain, MAIN_BUILD_COST, isAnnex, annexCount, isRoomCut, cutRooms, nextMainLevel, expandCost, expandCells, canExpandMain, canBuildSecondFloor, moveDays, canMoveThisMonth, canStartMoveMain, canMoveMain, canUndoMoveMain,
-  seatsShort, seatUsePct, isFireplaceOn, canToggleFireplace, canSetPianoTime, isPianoPlaying, canAddBooks, hasNewBooks, canFeedAquarium, isAquariumHungry, canRestockKids, isKidsStocked, canSetBarEvening, isBarEvening,
-  preferIndoor, stayMs, browseChance, indoorSpawnMult, indoorFeeMult, mainSummary, initMain,
-  MAIN_TYPE, MAIN_MAX_LEVEL, MAIN_SIZE, MAIN_EXPAND_COST, MAIN_EXPAND_DAYS, FLOOR2_COST, FLOOR2_MIN_LEVEL, FLOOR2_DAYS, FLOOR2_VIEW, MOVE_COST, MOVE_DAYS, FIREPLACE_FUEL, FIREPLACE_RADIUS, NEW_BOOKS_TICKETS, KIDS_RESTOCK_COST,
-  SEAT_FULL_PCT, SEAT_FULL_DAYS, SEAT_FULL_TEXT, DOOR_PATH_WARN, ANNEX_CUT_TEXT, BGM_LABEL, LIGHT_LABEL, PIANO_LABEL, STAY_PER_FACILITY_MS,
+  seatsShort, seatUsePct, preferIndoor, stayMs, browseChance, indoorSpawnMult, mainSummary, initMain,
+  MAIN_TYPE, MAIN_MAX_LEVEL, MAIN_SIZE, MAIN_EXPAND_COST, MAIN_EXPAND_DAYS, FLOOR2_COST, FLOOR2_MIN_LEVEL, FLOOR2_DAYS, FLOOR2_VIEW, MOVE_COST, MOVE_DAYS,
+  SEAT_FULL_PCT, SEAT_FULL_DAYS, SEAT_FULL_TEXT, DOOR_PATH_WARN, ANNEX_CUT_TEXT, BGM_LABEL, LIGHT_LABEL, STAY_PER_FACILITY_MS,
   autoConnectRoute, canAutoConnectPath, type AutoRoute,
 } from './rooms.ts';
 // ---------- fix-indoor: 밤 조명 ----------

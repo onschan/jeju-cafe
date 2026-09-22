@@ -44,7 +44,7 @@ export const PARASOL_TYPE = 'table_parasol';
 export const SITE_SAT_PER_SCENERY = 10;
 
 /** 그늘을 주는 시설 (나무·지붕·파라솔 외 명시 목록) */
-const SHADE_IDS = new Set(['table_parasol', 'palm', 'cedar', 'hackberry_shade', 'hackberry_millennium', 'hackberry', 'deco_umbrella_stand']);
+const SHADE_IDS = new Set(['table_parasol', 'palm', 'cedar', 'hackberry', 'deco_umbrella_stand']);
 
 /** 전망이 되는 경관: 실외의 경관치 3 이상 경관·랜드마크·나무(연못·삼나무·수국·돌하르방…). 화분·귤나무 같은 소품은 전망이 아니다. */
 export const VIEW_MIN_SCENERY = 3;

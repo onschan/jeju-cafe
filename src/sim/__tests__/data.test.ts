@@ -7,17 +7,16 @@ import { INITIAL_UNLOCKED } from '../../data/index.ts';
 test('짓기 탭 카테고리: v1·v2 id 모두 카테고리를 찾는다 (경관·랜드마크·장식은 경관·장식으로 묶는다)', () => {
   expect(buildGroupOf('table_out')).toBe('rest'); // v1 id, v2 표에서 카테고리를 찾는다
   expect(buildGroupOf('restroom')).toBe('convenience');
-  expect(buildGroupOf('noodle_shop')).toBe('food');
-  expect(buildGroupOf('souvenir')).toBe('fun');
+  expect(buildGroupOf('brunch_house')).toBe('food');
+  expect(buildGroupOf('cauldron_footbath')).toBe('fun');
   expect(buildGroupOf('tangerine_tree')).toBe('farm');
   expect(buildGroupOf('carrot_field')).toBe('farm');
   expect(buildGroupOf('canola')).toBe('sceneryDeco'); // v1 경관
   expect(buildGroupOf('observatory')).toBe('sceneryDeco'); // 랜드마크
   expect(buildGroupOf('deco_planter')).toBe('sceneryDeco'); // 새 장식 20종
-  expect(buildGroupOf('counter_bar')).toBe('indoor'); // y-indoor: 실내 전용은 「실내」 탭
-  expect(buildGroupOf('menu_board')).toBe('indoor');
+  expect(buildGroupOf('counter')).toBe('indoor'); // y-indoor: 실내 전용은 「실내」 탭
   expect(buildGroupOf('table_in')).toBe('indoor');
-  expect(buildGroupOf('sofa_seat')).toBe('indoor');
+  expect(buildGroupOf('window_seat')).toBe('indoor');
   expect(buildGroupOf('annex_cafe')).toBe('rest'); // 별관은 건물이라 쉼 탭
   expect(buildGroupOf('path')).toBe('pathWall');
   expect(buildGroupOf('stonewall')).toBe('pathWall');

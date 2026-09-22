@@ -38,7 +38,7 @@ import { cornerProgress } from './corners.ts'; // fun-corner: 코너 만들기 (
 import { canLevelUp } from './staff.ts';
 import { canTrain } from './training.ts';
 import { bestStaffFor } from './luck.ts'; // staff-luck: 대박 기대값이 가장 높은 직원에게 시킨다
-import { staffCapacity } from './staff.ts';
+import { staffCapacity, STAFF_ROOM_TYPE } from './staff.ts';
 import { canUpgrade, upgradeCost, isUpgradable } from './upgrade.ts';
 import { objectStats, setLevels } from './compat.ts';
 import { canInvestSpot, spotLevel } from './spots.ts';
@@ -91,10 +91,9 @@ export const BOT_TABLES: { x: number; y: number }[] = [
 export const BOT_DECO_CELLS: { x: number; y: number }[] = [at(6, 6), at(7, 6), at(8, 6), at(9, 6), at(0, 6), at(1, 6), at(2, 6), at(3, 6), at(1, 7), at(2, 7), at(3, 7), at(6, 7), at(7, 7), at(8, 7), at(9, 7), at(0, 0), at(1, 0), at(2, 0), at(6, 0), at(7, 0), at(8, 0), at(9, 0)];
 /** 시설 수 목표를 위해 놓는 시설 종류 (열린 것만, 이 순서로 하나씩) */
 /** 열린 순서대로(앞이 잠겨 있으면 멈춘다): 감귤나무 2(세트 「감성 카페」·콤보 「귤밭 뷰」「돌담 수확」) → 목표 보상 순 → 휴게실(★2) */
-export const BOT_DECO_TYPES = ['tangerine_tree', 'tangerine_tree', 'deco_planter', 'deco_wood_bench', 'terrace_seat', 'deco_flower_pots', 'bench_stonewall', 'canola', 'restroom', 'staff_room', 'footbath', 'vending', 'rest_pavilion', 'pampas', 'souvenir', 'dolhareubang', 'carrot_field', 'handdrip_bar', 'bike_rack', 'deco_lamp_post', 'cedar', 'basalt_rock', 'deco_mailbox', 'deco_water_jar_set',
-  'staff_room', // fun-rank: 휴게실 2개째 — 직원 정원 9 (목표 g88·g98 직원 7·9명)
+export const BOT_DECO_TYPES = ['tangerine_tree', 'tangerine_tree', 'deco_planter', 'deco_wood_bench', 'terrace_seat', 'deco_flower_pots', 'bench_stonewall', 'canola', 'restroom', 'cleaning_room', 'cauldron_footbath', 'vending', 'toenmaru', 'pampas', 'omegi_stall', 'dolhareubang', 'carrot_field', 'tart_bakery', 'signboard', 'streetlight', 'cedar', 'basalt_rock', 'water_jar', 'hydrangea',
   // 랜드마크(★4 조건 2개): 부탁·명소 Lv4 보상으로 열리는 것부터 — 필지당 하나라 canPlace가 자리를 고른다
-  'dolhareubang_pair', 'stone_guardians', 'millstone', 'hackberry_shade', 'observatory', 'lighthouse'];
+  'dolhareubang_pair', 'stone_guardians', 'millstone', 'hackberry', 'observatory', 'lighthouse'];
 export const BOT_WALLS: { x: number; y: number }[] = [at(5, 5), at(6, 5)];
 export const FLYER_MIN_MONEY = 1_000_000;
 /** 돈이 이만큼 넘으면 SNS 홍보도 (연구 20) */
@@ -470,11 +469,11 @@ function buildSecondFloorIfCan(s: GameState): void {
 /** fun-rank: 열린 큰 시설(₩300만 이상, 방·랜드마크·주차장·실내 가구 제외)을 아직 없는 종류부터 하나 — 산 필지 전체를 훑어 놓는다 (목표 보상 시설이 돈 쓸 곳이 되게). 한 달 하나. */
 function placeLuxury(s: GameState): void {
   if (s.clock.year < BOT_LUXURY_YEAR) return;
-  // 직원 정원이 찼으면 휴게실(+3)을 산 필지 어디든 먼저 (장식 칸이 차서 2개째 휴게실을 못 놓던 시드)
-  if (s.staff.length >= staffCapacity(s) - 1 && s.unlocked.objects.includes('staff_room') && canSpend(s, objectDef('staff_room').cost)) {
+  // 직원 정원이 찼으면 청소도구실(+3)을 산 필지 어디든 먼저 (장식 칸이 차서 2개째를 못 놓던 시드)
+  if (s.staff.length >= staffCapacity(s) - 1 && s.unlocked.objects.includes(STAFF_ROOM_TYPE) && canSpend(s, objectDef(STAFF_ROOM_TYPE).cost)) {
     for (const p of ownedParcels(s)) for (let ly = 0; ly < p.h; ly++) for (let lx = 0; lx < p.w; lx++) {
       const x = p.x + lx, y = p.y + ly;
-      if (!objectAt(s, x, y) && canPlace(s, 'staff_room', x, y).ok && place(s, 'staff_room', x, y)) return;
+      if (!objectAt(s, x, y) && canPlace(s, STAFF_ROOM_TYPE, x, y).ok && place(s, STAFF_ROOM_TYPE, x, y)) return;
     }
   }
   const have = new Set(Object.values(s.objects).map((o) => o.type));

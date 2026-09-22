@@ -139,7 +139,7 @@ test('채용: 슬롯이 있어야 하고, 역할이 해금돼야 하고, 후보�
   expect(apply(s, { type: 'hire', candidateId: 'nope', role: 'hall' }).ok).toBe(false);
 });
 
-test('직원 정원 = 3 + 휴게실(staff_room) × 3 (휴게실 최대 3)', () => {
+test('직원 정원 = 3 + 휴게실(청소도구실) × 3 (휴게실 최대 3)', () => {
   const s = bareState(1);
   s.money = 1e9;
   expect(staffCapacity(s)).toBe(3);
@@ -150,10 +150,10 @@ test('직원 정원 = 3 + 휴게실(staff_room) × 3 (휴게실 최대 3)', () =
   const r = apply(s, { type: 'hire', candidateId: s.candidates[0]!.id, role: 'hall' });
   expect(r.ok).toBe(false); expect(r.reason).toContain('3명');
   // 휴게실은 A가 만든다 — 여기서는 objects에 직접 흉내 낸다
-  s.objects['room1'] = { id: 'room1', type: 'staff_room', x: 0, y: 0, rot: 0, placedMonth: 0, build: null } as never;
+  s.objects['room1'] = { id: 'room1', type: 'cleaning_room', x: 0, y: 0, rot: 0, placedMonth: 0, build: null } as never;
   expect(staffCapacity(s)).toBe(6);
   expect(apply(s, { type: 'hire', candidateId: s.candidates[0]!.id, role: 'hall' }).ok).toBe(true);
-  for (let i = 2; i <= 5; i++) s.objects[`room${i}`] = { id: `room${i}`, type: 'staff_room', x: 0, y: i, rot: 0, placedMonth: 0, build: null } as never;
+  for (let i = 2; i <= 5; i++) s.objects[`room${i}`] = { id: `room${i}`, type: 'cleaning_room', x: 0, y: i, rot: 0, placedMonth: 0, build: null } as never;
   expect(staffCapacity(s)).toBe(12);
 });
 

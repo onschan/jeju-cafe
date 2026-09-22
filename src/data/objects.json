@@ -304,40 +304,6 @@
     "desc": "바다 쪽 나무 난간. 파라솔 테이블·화분과 모이면 바다 테라스."
   },
   {
-    "id": "shell_deco",
-    "name": "소라 장식",
-    "kind": "deco",
-    "category": "scenery",
-    "w": 1,
-    "h": 1,
-    "cost": 30000,
-    "scenery": 1,
-    "noise": 0,
-    "wind": 0,
-    "upkeep": 100,
-    "terrain": [
-      "soil"
-    ],
-    "desc": "해녀가 건진 소라 껍데기. 물허벅·벤치와 모이면 해녀 쉼터."
-  },
-  {
-    "id": "telescope",
-    "name": "망원경",
-    "kind": "deco",
-    "category": "scenery",
-    "w": 1,
-    "h": 1,
-    "cost": 150000,
-    "scenery": 1,
-    "noise": 0,
-    "wind": 0,
-    "upkeep": 500,
-    "terrain": [
-      "soil"
-    ],
-    "desc": "오름과 바다를 보는 망원경. 밤엔 별도 보여요."
-  },
-  {
     "id": "cherry_tree",
     "name": "벚나무",
     "kind": "tree",

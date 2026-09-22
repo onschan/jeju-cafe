@@ -361,7 +361,7 @@
     "reward": [
       {
         "type": "unlockFacility",
-        "id": "handdrip_bar"
+        "id": "omegi_stall"
       },
       {
         "type": "tickets",
@@ -382,7 +382,7 @@
     "reward": [
       {
         "type": "unlockFacility",
-        "id": "footbath"
+        "id": "cauldron_footbath"
       }
     ],
     "speaker": "hero",
@@ -451,7 +451,7 @@
     "reward": [
       {
         "type": "unlockFacility",
-        "id": "rest_pavilion"
+        "id": "toenmaru"
       },
       {
         "type": "tickets",
@@ -497,7 +497,7 @@
     "reward": [
       {
         "type": "unlockFacility",
-        "id": "souvenir"
+        "id": "omegi_stall"
       }
     ],
     "speaker": "hero",
@@ -544,7 +544,7 @@
       },
       {
         "type": "unlockFacility",
-        "id": "photo_spot"
+        "id": "signboard"
       }
     ],
     "speaker": "hero",
@@ -561,7 +561,7 @@
     "reward": [
       {
         "type": "unlockFacility",
-        "id": "carrot_field"
+        "id": "tea_field"
       }
     ],
     "speaker": "halmang",
@@ -578,7 +578,7 @@
     "reward": [
       {
         "type": "unlockFacility",
-        "id": "massage_chair"
+        "id": "hammock"
       },
       {
         "type": "unlockMenu",
@@ -599,7 +599,7 @@
     "reward": [
       {
         "type": "unlockFacility",
-        "id": "capsule_machine"
+        "id": "vending"
       },
       {
         "type": "unlockMenu",
@@ -663,7 +663,7 @@
     "reward": [
       {
         "type": "unlockFacility",
-        "id": "lemonade_cart"
+        "id": "omegi_stall"
       },
       {
         "type": "unlockFacility",
@@ -684,7 +684,7 @@
     "reward": [
       {
         "type": "unlockFacility",
-        "id": "drum_footbath"
+        "id": "cauldron_footbath"
       }
     ],
     "speaker": "samchun",
@@ -702,7 +702,7 @@
     "reward": [
       {
         "type": "unlockFacility",
-        "id": "tea_house"
+        "id": "tart_bakery"
       },
       {
         "type": "research",
@@ -710,7 +710,7 @@
       },
       {
         "type": "unlockFacility",
-        "id": "bike_rack"
+        "id": "signboard"
       }
     ],
     "speaker": "halmang",
@@ -728,7 +728,7 @@
     "reward": [
       {
         "type": "unlockFacility",
-        "id": "flower_shop"
+        "id": "flower_bed"
       }
     ],
     "speaker": "samchun",
@@ -779,7 +779,7 @@
     "reward": [
       {
         "type": "unlockFacility",
-        "id": "deco_lamp_post"
+        "id": "streetlight"
       }
     ],
     "speaker": "samchun",
@@ -830,7 +830,7 @@
     "reward": [
       {
         "type": "unlockFacility",
-        "id": "atm"
+        "id": "vending"
       },
       {
         "type": "item",
@@ -852,7 +852,7 @@
     "reward": [
       {
         "type": "unlockFacility",
-        "id": "deco_mailbox"
+        "id": "signboard"
       },
       {
         "type": "tickets",
@@ -860,7 +860,7 @@
       },
       {
         "type": "unlockFacility",
-        "id": "pinball"
+        "id": "hammock"
       },
       {
         "type": "unlockMenu",
@@ -868,7 +868,7 @@
       },
       {
         "type": "unlockFacility",
-        "id": "parking"
+        "id": "parking_lot"
       }
     ],
     "speaker": "samchun",
@@ -885,7 +885,7 @@
     "reward": [
       {
         "type": "unlockFacility",
-        "id": "deco_dolhareubang_set"
+        "id": "dolhareubang"
       },
       {
         "type": "staffSlot",
@@ -907,11 +907,11 @@
     "reward": [
       {
         "type": "unlockFacility",
-        "id": "pingpong"
+        "id": "hammock"
       },
       {
         "type": "unlockFacility",
-        "id": "deco_water_jar_set"
+        "id": "water_jar"
       }
     ],
     "speaker": "samchun",
@@ -948,7 +948,7 @@
       },
       {
         "type": "unlockFacility",
-        "id": "deco_tangerine_crates"
+        "id": "tangerine_tree"
       },
       {
         "type": "unlockMenu",
@@ -956,7 +956,7 @@
       },
       {
         "type": "unlockFacility",
-        "id": "yoga_class"
+        "id": "hammock"
       }
     ],
     "speaker": "halmang",
@@ -1011,15 +1011,15 @@
       },
       {
         "type": "unlockFacility",
-        "id": "retro_arcade"
+        "id": "hammock"
       },
       {
         "type": "unlockFacility",
-        "id": "mini_bowling"
+        "id": "hammock"
       },
       {
         "type": "unlockFacility",
-        "id": "concert_hall"
+        "id": "lighthouse"
       }
     ],
     "speaker": "hero",
@@ -1046,7 +1046,7 @@
       },
       {
         "type": "unlockFacility",
-        "id": "waterfall_shower"
+        "id": "open_air_footbath"
       },
       {
         "type": "unlockMenu",
@@ -1067,7 +1067,7 @@
     "reward": [
       {
         "type": "unlockFacility",
-        "id": "lounge"
+        "id": "table_in"
       }
     ],
     "speaker": "halmang",
@@ -1109,11 +1109,11 @@
       },
       {
         "type": "unlockFacility",
-        "id": "archery_range"
+        "id": "hammock"
       },
       {
         "type": "unlockFacility",
-        "id": "hair_salon"
+        "id": "tart_bakery"
       }
     ],
     "speaker": "samchun",
@@ -1130,7 +1130,7 @@
     "reward": [
       {
         "type": "unlockFacility",
-        "id": "magic_stage"
+        "id": "lighthouse"
       },
       {
         "type": "builder",
@@ -1138,7 +1138,7 @@
       },
       {
         "type": "unlockFacility",
-        "id": "sauna_hut"
+        "id": "open_air_footbath"
       }
     ],
     "speaker": "samchun",
@@ -1155,19 +1155,19 @@
     "reward": [
       {
         "type": "unlockFacility",
-        "id": "flower_workshop"
+        "id": "flower_bed"
       },
       {
         "type": "unlockFacility",
-        "id": "vintage_shop"
+        "id": "omegi_stall"
       },
       {
         "type": "unlockFacility",
-        "id": "clothing_shop"
+        "id": "omegi_stall"
       },
       {
         "type": "unlockFacility",
-        "id": "home_theater"
+        "id": "table_in"
       }
     ],
     "speaker": "halmang",
@@ -1188,23 +1188,23 @@
       },
       {
         "type": "unlockFacility",
-        "id": "candy_shop"
+        "id": "omegi_stall"
       },
       {
         "type": "unlockFacility",
-        "id": "marble_game"
+        "id": "hammock"
       },
       {
         "type": "unlockFacility",
-        "id": "shooting_booth"
+        "id": "hammock"
       },
       {
         "type": "unlockFacility",
-        "id": "tarot_booth"
+        "id": "signboard"
       },
       {
         "type": "unlockFacility",
-        "id": "observatory"
+        "id": "lighthouse"
       }
     ],
     "speaker": "halmang",
@@ -1225,7 +1225,7 @@
       },
       {
         "type": "unlockFacility",
-        "id": "massage_booth"
+        "id": "hammock"
       },
       {
         "type": "builder",

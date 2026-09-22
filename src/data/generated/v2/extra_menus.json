@@ -18,7 +18,7 @@
     "name": "고기국수",
     "base": "meal",
     "price": 8000,
-    "facilityId": "noodle_shop",
+    "facilityId": "brunch_house",
     "hidden": false,
     "ingredients": [
       "pork_black",
@@ -31,7 +31,7 @@
     "name": "보말칼국수",
     "base": "meal",
     "price": 8000,
-    "facilityId": "bomal_kalguksu",
+    "facilityId": "brunch_house",
     "hidden": false,
     "ingredients": [
       "seaweed",
@@ -57,7 +57,7 @@
     "name": "우도 땅콩 아이스크림",
     "base": "dessert",
     "price": 4000,
-    "facilityId": "peanut_icecream",
+    "facilityId": "omegi_stall",
     "hidden": false,
     "ingredients": [
       "peanut",
@@ -70,7 +70,7 @@
     "name": "한라봉 에이드",
     "base": "drink",
     "price": 4500,
-    "facilityId": "hallabong_stand",
+    "facilityId": "omegi_stall",
     "hidden": false,
     "ingredients": [
       "hallabong",

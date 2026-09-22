@@ -1,76 +1,345 @@
 {
   "_comment": "트랙 E: 미소유 필지 풍경(렌더 전용 장식). fill = iso_tile_field_<fill> 덮개 타일, props = iso_obj_<type> 스프라이트(필지 안 상대 칸, w·h 기본 1). keep = 사도 남는 랜드마크(그 칸에 시설이 놓이면 사라짐). feature = 팻말 한 줄(≤22자). 길·진입점·시작부터 놓인 시설 칸은 렌더가 알아서 비운다.",
-  "parcel1": { "feature": "우리 카페 자리", "fill": "stone", "props": [] },
+  "parcel1": {
+    "feature": "우리 카페 자리",
+    "fill": "stone",
+    "props": []
+  },
   "parcel2": {
     "feature": "오름이 보여요",
     "fill": "pampas",
     "props": [
-      { "type": "pampas", "x": 1, "y": 1 }, { "type": "pampas", "x": 4, "y": 2 }, { "type": "pampas", "x": 7, "y": 1 },
-      { "type": "pampas", "x": 2, "y": 5 }, { "type": "pampas", "x": 8, "y": 6 }, { "type": "pampas", "x": 5, "y": 6 },
-      { "type": "basalt_rock", "x": 6, "y": 4, "keep": true }, { "type": "basalt_rock", "x": 1, "y": 7 },
-      { "type": "pine", "x": 8, "y": 3 }
+      {
+        "type": "pampas",
+        "x": 1,
+        "y": 1
+      },
+      {
+        "type": "pampas",
+        "x": 4,
+        "y": 2
+      },
+      {
+        "type": "pampas",
+        "x": 7,
+        "y": 1
+      },
+      {
+        "type": "pampas",
+        "x": 2,
+        "y": 5
+      },
+      {
+        "type": "pampas",
+        "x": 8,
+        "y": 6
+      },
+      {
+        "type": "pampas",
+        "x": 5,
+        "y": 6
+      },
+      {
+        "type": "basalt_rock",
+        "x": 6,
+        "y": 4,
+        "keep": true
+      },
+      {
+        "type": "basalt_rock",
+        "x": 1,
+        "y": 7
+      },
+      {
+        "type": "cedar",
+        "x": 8,
+        "y": 3
+      }
     ]
   },
   "parcel3": {
     "feature": "숲이 바람을 막아요",
     "fill": "stone",
     "props": [
-      { "type": "cedar", "x": 1, "y": 1 }, { "type": "cedar", "x": 3, "y": 3 }, { "type": "cedar", "x": 7, "y": 1 },
-      { "type": "pine", "x": 6, "y": 5 }, { "type": "pine", "x": 1, "y": 6 }, { "type": "cedar", "x": 8, "y": 6, "keep": true },
-      { "type": "hydrangea", "x": 4, "y": 6 }, { "type": "hydrangea", "x": 5, "y": 2 },
-      { "type": "basalt_rock", "x": 2, "y": 4 }
+      {
+        "type": "cedar",
+        "x": 1,
+        "y": 1
+      },
+      {
+        "type": "cedar",
+        "x": 3,
+        "y": 3
+      },
+      {
+        "type": "cedar",
+        "x": 7,
+        "y": 1
+      },
+      {
+        "type": "cedar",
+        "x": 6,
+        "y": 5
+      },
+      {
+        "type": "cedar",
+        "x": 1,
+        "y": 6
+      },
+      {
+        "type": "cedar",
+        "x": 8,
+        "y": 6,
+        "keep": true
+      },
+      {
+        "type": "hydrangea",
+        "x": 4,
+        "y": 6
+      },
+      {
+        "type": "hydrangea",
+        "x": 5,
+        "y": 2
+      },
+      {
+        "type": "basalt_rock",
+        "x": 2,
+        "y": 4
+      }
     ]
   },
   "stone_hill": {
     "feature": "언덕이라 경치가 좋아요",
     "fill": "stone",
     "props": [
-      { "type": "dolhareubang", "x": 2, "y": 1, "keep": true }, { "type": "basalt_rock", "x": 7, "y": 1 },
-      { "type": "pampas", "x": 5, "y": 1 }, { "type": "pampas", "x": 8, "y": 5 }, { "type": "pampas", "x": 1, "y": 6 },
-      { "type": "camellia", "x": 4, "y": 6 }
+      {
+        "type": "dolhareubang",
+        "x": 2,
+        "y": 1,
+        "keep": true
+      },
+      {
+        "type": "basalt_rock",
+        "x": 7,
+        "y": 1
+      },
+      {
+        "type": "pampas",
+        "x": 5,
+        "y": 1
+      },
+      {
+        "type": "pampas",
+        "x": 8,
+        "y": 5
+      },
+      {
+        "type": "pampas",
+        "x": 1,
+        "y": 6
+      },
+      {
+        "type": "camellia",
+        "x": 4,
+        "y": 6
+      }
     ]
   },
   "parcel4": {
     "feature": "유채밭, 밭이 좋아요",
     "fill": "canola",
     "props": [
-      { "type": "canola", "x": 2, "y": 0 }, { "type": "canola", "x": 6, "y": 0 }, { "type": "canola", "x": 4, "y": 3 },
-      { "type": "canola", "x": 7, "y": 4 }, { "type": "canola", "x": 2, "y": 6 }, { "type": "scarecrow", "x": 5, "y": 6 }
+      {
+        "type": "canola",
+        "x": 2,
+        "y": 0
+      },
+      {
+        "type": "canola",
+        "x": 6,
+        "y": 0
+      },
+      {
+        "type": "canola",
+        "x": 4,
+        "y": 3
+      },
+      {
+        "type": "canola",
+        "x": 7,
+        "y": 4
+      },
+      {
+        "type": "canola",
+        "x": 2,
+        "y": 6
+      },
+      {
+        "type": "deco_planter",
+        "x": 5,
+        "y": 6
+      }
     ]
   },
   "village_edge": {
     "feature": "삼춘들이 지나가요",
     "fill": "stone",
     "props": [
-      { "type": "thatched", "x": 1, "y": 1, "w": 2, "h": 2 }, { "type": "hackberry_shade", "x": 5, "y": 2, "w": 2, "h": 2, "keep": true },
-      { "type": "water_jar", "x": 3, "y": 3 }, { "type": "streetlight", "x": 8, "y": 5 }, { "type": "camellia", "x": 8, "y": 1 },
-      { "type": "basalt_rock", "x": 1, "y": 5 }
+      {
+        "type": "thatched",
+        "x": 1,
+        "y": 1,
+        "w": 2,
+        "h": 2
+      },
+      {
+        "type": "cedar",
+        "x": 5,
+        "y": 2,
+        "w": 2,
+        "h": 2,
+        "keep": true
+      },
+      {
+        "type": "water_jar",
+        "x": 3,
+        "y": 3
+      },
+      {
+        "type": "streetlight",
+        "x": 8,
+        "y": 5
+      },
+      {
+        "type": "camellia",
+        "x": 8,
+        "y": 1
+      },
+      {
+        "type": "basalt_rock",
+        "x": 1,
+        "y": 5
+      }
     ]
   },
   "orchard": {
     "feature": "옛 감귤나무가 있어요",
     "fill": "orchard",
     "props": [
-      { "type": "tangerine_tree_ready", "x": 1, "y": 1 }, { "type": "tangerine_tree_ready", "x": 4, "y": 1 }, { "type": "tangerine_tree_ready", "x": 7, "y": 1 },
-      { "type": "tangerine_tree_ready", "x": 1, "y": 6 }, { "type": "tangerine_tree_ready", "x": 7, "y": 6 },
-      { "type": "deco_tangerine_crates", "x": 4, "y": 6 }
+      {
+        "type": "tangerine_tree_ready",
+        "x": 1,
+        "y": 1
+      },
+      {
+        "type": "tangerine_tree_ready",
+        "x": 4,
+        "y": 1
+      },
+      {
+        "type": "tangerine_tree_ready",
+        "x": 7,
+        "y": 1
+      },
+      {
+        "type": "tangerine_tree_ready",
+        "x": 1,
+        "y": 6
+      },
+      {
+        "type": "tangerine_tree_ready",
+        "x": 7,
+        "y": 6
+      },
+      {
+        "type": "tangerine_tree",
+        "x": 4,
+        "y": 6
+      }
     ]
   },
   "parcel6": {
     "feature": "샘물이 나요",
     "fill": "canola",
     "props": [
-      { "type": "water_jar", "x": 2, "y": 3 }, { "type": "water_jar", "x": 7, "y": 3 },
-      { "type": "camellia", "x": 1, "y": 1 }, { "type": "camellia", "x": 8, "y": 1 }, { "type": "hydrangea", "x": 2, "y": 6 }, { "type": "hydrangea", "x": 8, "y": 6 }
+      {
+        "type": "water_jar",
+        "x": 2,
+        "y": 3
+      },
+      {
+        "type": "water_jar",
+        "x": 7,
+        "y": 3
+      },
+      {
+        "type": "camellia",
+        "x": 1,
+        "y": 1
+      },
+      {
+        "type": "camellia",
+        "x": 8,
+        "y": 1
+      },
+      {
+        "type": "hydrangea",
+        "x": 2,
+        "y": 6
+      },
+      {
+        "type": "hydrangea",
+        "x": 8,
+        "y": 6
+      }
     ]
   },
   "parcel5": {
     "feature": "바다가 보여요",
     "fill": "pampas",
     "props": [
-      { "type": "palm", "x": 2, "y": 2, "keep": true }, { "type": "palm", "x": 7, "y": 5 },
-      { "type": "basalt_rock", "x": 5, "y": 1 }, { "type": "basalt_rock", "x": 8, "y": 2 }, { "type": "basalt_rock", "x": 2, "y": 6 },
-      { "type": "pampas", "x": 4, "y": 4 }, { "type": "pampas", "x": 6, "y": 6 }, { "type": "windbreak", "x": 1, "y": 4 }
+      {
+        "type": "palm",
+        "x": 2,
+        "y": 2,
+        "keep": true
+      },
+      {
+        "type": "palm",
+        "x": 7,
+        "y": 5
+      },
+      {
+        "type": "basalt_rock",
+        "x": 5,
+        "y": 1
+      },
+      {
+        "type": "basalt_rock",
+        "x": 8,
+        "y": 2
+      },
+      {
+        "type": "basalt_rock",
+        "x": 2,
+        "y": 6
+      },
+      {
+        "type": "pampas",
+        "x": 4,
+        "y": 4
+      },
+      {
+        "type": "pampas",
+        "x": 6,
+        "y": 6
+      },
+      {
+        "type": "stonewall",
+        "x": 1,
+        "y": 4
+      }
     ]
   }
 }
