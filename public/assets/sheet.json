@@ -9620,9 +9620,29 @@
 "h": 32
 }
 },
-"icon_home_cafe": {
+"iso_obj_warehouse_sign_g5": {
 "frame": {
 "x": 132,
+"y": 3018,
+"w": 60,
+"h": 26
+},
+"rotated": false,
+"trimmed": false,
+"spriteSourceSize": {
+"x": 0,
+"y": 0,
+"w": 60,
+"h": 26
+},
+"sourceSize": {
+"w": 60,
+"h": 26
+}
+},
+"icon_home_cafe": {
+"frame": {
+"x": 193,
 "y": 3018,
 "w": 24,
 "h": 24
@@ -9640,9 +9660,29 @@
 "h": 24
 }
 },
+"iso_obj_warehouse_sign_g4": {
+"frame": {
+"x": 218,
+"y": 3018,
+"w": 52,
+"h": 22
+},
+"rotated": false,
+"trimmed": false,
+"spriteSourceSize": {
+"x": 0,
+"y": 0,
+"w": 52,
+"h": 22
+},
+"sourceSize": {
+"w": 52,
+"h": 22
+}
+},
 "bubble_angry": {
 "frame": {
-"x": 157,
+"x": 271,
 "y": 3018,
 "w": 24,
 "h": 20
@@ -9662,7 +9702,7 @@
 },
 "bubble_happy": {
 "frame": {
-"x": 182,
+"x": 296,
 "y": 3018,
 "w": 24,
 "h": 20
@@ -9682,7 +9722,7 @@
 },
 "bubble_meh": {
 "frame": {
-"x": 207,
+"x": 321,
 "y": 3018,
 "w": 24,
 "h": 20
@@ -9702,7 +9742,7 @@
 },
 "bubble_question": {
 "frame": {
-"x": 232,
+"x": 346,
 "y": 3018,
 "w": 24,
 "h": 20
@@ -9722,7 +9762,7 @@
 },
 "bubble_wait": {
 "frame": {
-"x": 257,
+"x": 371,
 "y": 3018,
 "w": 24,
 "h": 20
@@ -9740,9 +9780,69 @@
 "h": 20
 }
 },
+"iso_obj_warehouse_sign_g3": {
+"frame": {
+"x": 396,
+"y": 3018,
+"w": 44,
+"h": 18
+},
+"rotated": false,
+"trimmed": false,
+"spriteSourceSize": {
+"x": 0,
+"y": 0,
+"w": 44,
+"h": 18
+},
+"sourceSize": {
+"w": 44,
+"h": 18
+}
+},
+"iso_obj_warehouse_sign_g1": {
+"frame": {
+"x": 441,
+"y": 3018,
+"w": 20,
+"h": 18
+},
+"rotated": false,
+"trimmed": false,
+"spriteSourceSize": {
+"x": 0,
+"y": 0,
+"w": 20,
+"h": 18
+},
+"sourceSize": {
+"w": 20,
+"h": 18
+}
+},
+"iso_obj_warehouse_sign_g2": {
+"frame": {
+"x": 462,
+"y": 3018,
+"w": 34,
+"h": 16
+},
+"rotated": false,
+"trimmed": false,
+"spriteSourceSize": {
+"x": 0,
+"y": 0,
+"w": 34,
+"h": 16
+},
+"sourceSize": {
+"w": 34,
+"h": 16
+}
+},
 "fx_coin_0": {
 "frame": {
-"x": 282,
+"x": 497,
 "y": 3018,
 "w": 16,
 "h": 16
@@ -9762,7 +9862,7 @@
 },
 "fx_coin_1": {
 "frame": {
-"x": 299,
+"x": 514,
 "y": 3018,
 "w": 16,
 "h": 16
@@ -9782,7 +9882,7 @@
 },
 "fx_coin_2": {
 "frame": {
-"x": 316,
+"x": 531,
 "y": 3018,
 "w": 16,
 "h": 16
@@ -9802,7 +9902,7 @@
 },
 "fx_coin_3": {
 "frame": {
-"x": 333,
+"x": 548,
 "y": 3018,
 "w": 16,
 "h": 16
@@ -9822,7 +9922,7 @@
 },
 "fx_sparkle_0": {
 "frame": {
-"x": 350,
+"x": 565,
 "y": 3018,
 "w": 16,
 "h": 16
@@ -9842,7 +9942,7 @@
 },
 "fx_sparkle_1": {
 "frame": {
-"x": 367,
+"x": 582,
 "y": 3018,
 "w": 16,
 "h": 16
@@ -9862,7 +9962,7 @@
 },
 "fx_sparkle_2": {
 "frame": {
-"x": 384,
+"x": 599,
 "y": 3018,
 "w": 16,
 "h": 16
@@ -9882,7 +9982,7 @@
 },
 "fx_sparkle_3": {
 "frame": {
-"x": 401,
+"x": 616,
 "y": 3018,
 "w": 16,
 "h": 16
@@ -9902,7 +10002,7 @@
 },
 "icon_autumn": {
 "frame": {
-"x": 418,
+"x": 633,
 "y": 3018,
 "w": 16,
 "h": 16
@@ -9922,7 +10022,7 @@
 },
 "icon_book": {
 "frame": {
-"x": 435,
+"x": 650,
 "y": 3018,
 "w": 16,
 "h": 16
@@ -9942,7 +10042,7 @@
 },
 "icon_box": {
 "frame": {
-"x": 452,
+"x": 667,
 "y": 3018,
 "w": 16,
 "h": 16
@@ -9962,7 +10062,7 @@
 },
 "icon_build": {
 "frame": {
-"x": 469,
+"x": 684,
 "y": 3018,
 "w": 16,
 "h": 16
@@ -9982,7 +10082,7 @@
 },
 "icon_bulb": {
 "frame": {
-"x": 486,
+"x": 701,
 "y": 3018,
 "w": 16,
 "h": 16
@@ -10002,7 +10102,7 @@
 },
 "icon_bus": {
 "frame": {
-"x": 503,
+"x": 718,
 "y": 3018,
 "w": 16,
 "h": 16
@@ -10022,7 +10122,7 @@
 },
 "icon_cake": {
 "frame": {
-"x": 520,
+"x": 735,
 "y": 3018,
 "w": 16,
 "h": 16
@@ -10042,7 +10142,7 @@
 },
 "icon_calendar": {
 "frame": {
-"x": 537,
+"x": 752,
 "y": 3018,
 "w": 16,
 "h": 16
@@ -10062,7 +10162,7 @@
 },
 "icon_car": {
 "frame": {
-"x": 554,
+"x": 769,
 "y": 3018,
 "w": 16,
 "h": 16
@@ -10082,7 +10182,7 @@
 },
 "icon_chair": {
 "frame": {
-"x": 571,
+"x": 786,
 "y": 3018,
 "w": 16,
 "h": 16
@@ -10102,7 +10202,7 @@
 },
 "icon_check": {
 "frame": {
-"x": 588,
+"x": 803,
 "y": 3018,
 "w": 16,
 "h": 16
@@ -10122,7 +10222,7 @@
 },
 "icon_clock": {
 "frame": {
-"x": 605,
+"x": 820,
 "y": 3018,
 "w": 16,
 "h": 16
@@ -10142,7 +10242,7 @@
 },
 "icon_close": {
 "frame": {
-"x": 622,
+"x": 837,
 "y": 3018,
 "w": 16,
 "h": 16
@@ -10162,7 +10262,7 @@
 },
 "icon_cocktail": {
 "frame": {
-"x": 639,
+"x": 854,
 "y": 3018,
 "w": 16,
 "h": 16
@@ -10182,7 +10282,7 @@
 },
 "icon_coffee": {
 "frame": {
-"x": 656,
+"x": 871,
 "y": 3018,
 "w": 16,
 "h": 16
@@ -10202,7 +10302,7 @@
 },
 "icon_door": {
 "frame": {
-"x": 673,
+"x": 888,
 "y": 3018,
 "w": 16,
 "h": 16
@@ -10222,7 +10322,7 @@
 },
 "icon_draw": {
 "frame": {
-"x": 690,
+"x": 905,
 "y": 3018,
 "w": 16,
 "h": 16
@@ -10242,7 +10342,7 @@
 },
 "icon_fire": {
 "frame": {
-"x": 707,
+"x": 922,
 "y": 3018,
 "w": 16,
 "h": 16
@@ -10262,7 +10362,7 @@
 },
 "icon_fish": {
 "frame": {
-"x": 724,
+"x": 939,
 "y": 3018,
 "w": 16,
 "h": 16
@@ -10282,7 +10382,7 @@
 },
 "icon_flag": {
 "frame": {
-"x": 741,
+"x": 956,
 "y": 3018,
 "w": 16,
 "h": 16
@@ -10302,7 +10402,7 @@
 },
 "icon_floor2": {
 "frame": {
-"x": 758,
+"x": 973,
 "y": 3018,
 "w": 16,
 "h": 16
@@ -10322,7 +10422,7 @@
 },
 "icon_gift": {
 "frame": {
-"x": 775,
+"x": 990,
 "y": 3018,
 "w": 16,
 "h": 16
@@ -10342,7 +10442,7 @@
 },
 "icon_guest": {
 "frame": {
-"x": 792,
+"x": 1007,
 "y": 3018,
 "w": 16,
 "h": 16
@@ -10362,246 +10462,6 @@
 },
 "icon_hand": {
 "frame": {
-"x": 809,
-"y": 3018,
-"w": 16,
-"h": 16
-},
-"rotated": false,
-"trimmed": false,
-"spriteSourceSize": {
-"x": 0,
-"y": 0,
-"w": 16,
-"h": 16
-},
-"sourceSize": {
-"w": 16,
-"h": 16
-}
-},
-"icon_harvest": {
-"frame": {
-"x": 826,
-"y": 3018,
-"w": 16,
-"h": 16
-},
-"rotated": false,
-"trimmed": false,
-"spriteSourceSize": {
-"x": 0,
-"y": 0,
-"w": 16,
-"h": 16
-},
-"sourceSize": {
-"w": 16,
-"h": 16
-}
-},
-"icon_heart": {
-"frame": {
-"x": 843,
-"y": 3018,
-"w": 16,
-"h": 16
-},
-"rotated": false,
-"trimmed": false,
-"spriteSourceSize": {
-"x": 0,
-"y": 0,
-"w": 16,
-"h": 16
-},
-"sourceSize": {
-"w": 16,
-"h": 16
-}
-},
-"icon_hire": {
-"frame": {
-"x": 860,
-"y": 3018,
-"w": 16,
-"h": 16
-},
-"rotated": false,
-"trimmed": false,
-"spriteSourceSize": {
-"x": 0,
-"y": 0,
-"w": 16,
-"h": 16
-},
-"sourceSize": {
-"w": 16,
-"h": 16
-}
-},
-"icon_home": {
-"frame": {
-"x": 877,
-"y": 3018,
-"w": 16,
-"h": 16
-},
-"rotated": false,
-"trimmed": false,
-"spriteSourceSize": {
-"x": 0,
-"y": 0,
-"w": 16,
-"h": 16
-},
-"sourceSize": {
-"w": 16,
-"h": 16
-}
-},
-"icon_kitchen": {
-"frame": {
-"x": 894,
-"y": 3018,
-"w": 16,
-"h": 16
-},
-"rotated": false,
-"trimmed": false,
-"spriteSourceSize": {
-"x": 0,
-"y": 0,
-"w": 16,
-"h": 16
-},
-"sourceSize": {
-"w": 16,
-"h": 16
-}
-},
-"icon_local": {
-"frame": {
-"x": 911,
-"y": 3018,
-"w": 16,
-"h": 16
-},
-"rotated": false,
-"trimmed": false,
-"spriteSourceSize": {
-"x": 0,
-"y": 0,
-"w": 16,
-"h": 16
-},
-"sourceSize": {
-"w": 16,
-"h": 16
-}
-},
-"icon_lock": {
-"frame": {
-"x": 928,
-"y": 3018,
-"w": 16,
-"h": 16
-},
-"rotated": false,
-"trimmed": false,
-"spriteSourceSize": {
-"x": 0,
-"y": 0,
-"w": 16,
-"h": 16
-},
-"sourceSize": {
-"w": 16,
-"h": 16
-}
-},
-"icon_look": {
-"frame": {
-"x": 945,
-"y": 3018,
-"w": 16,
-"h": 16
-},
-"rotated": false,
-"trimmed": false,
-"spriteSourceSize": {
-"x": 0,
-"y": 0,
-"w": 16,
-"h": 16
-},
-"sourceSize": {
-"w": 16,
-"h": 16
-}
-},
-"icon_mail": {
-"frame": {
-"x": 962,
-"y": 3018,
-"w": 16,
-"h": 16
-},
-"rotated": false,
-"trimmed": false,
-"spriteSourceSize": {
-"x": 0,
-"y": 0,
-"w": 16,
-"h": 16
-},
-"sourceSize": {
-"w": 16,
-"h": 16
-}
-},
-"icon_map": {
-"frame": {
-"x": 979,
-"y": 3018,
-"w": 16,
-"h": 16
-},
-"rotated": false,
-"trimmed": false,
-"spriteSourceSize": {
-"x": 0,
-"y": 0,
-"w": 16,
-"h": 16
-},
-"sourceSize": {
-"w": 16,
-"h": 16
-}
-},
-"icon_meal": {
-"frame": {
-"x": 996,
-"y": 3018,
-"w": 16,
-"h": 16
-},
-"rotated": false,
-"trimmed": false,
-"spriteSourceSize": {
-"x": 0,
-"y": 0,
-"w": 16,
-"h": 16
-},
-"sourceSize": {
-"w": 16,
-"h": 16
-}
-},
-"icon_medal": {
-"frame": {
 "x": 0,
 "y": 3051,
 "w": 16,
@@ -10620,7 +10480,7 @@
 "h": 16
 }
 },
-"icon_menu": {
+"icon_harvest": {
 "frame": {
 "x": 17,
 "y": 3051,
@@ -10640,7 +10500,7 @@
 "h": 16
 }
 },
-"icon_money": {
+"icon_heart": {
 "frame": {
 "x": 34,
 "y": 3051,
@@ -10660,7 +10520,7 @@
 "h": 16
 }
 },
-"icon_mood_angry": {
+"icon_hire": {
 "frame": {
 "x": 51,
 "y": 3051,
@@ -10680,7 +10540,7 @@
 "h": 16
 }
 },
-"icon_mood_happy": {
+"icon_home": {
 "frame": {
 "x": 68,
 "y": 3051,
@@ -10700,7 +10560,7 @@
 "h": 16
 }
 },
-"icon_mood_meh": {
+"icon_kitchen": {
 "frame": {
 "x": 85,
 "y": 3051,
@@ -10720,7 +10580,7 @@
 "h": 16
 }
 },
-"icon_move": {
+"icon_local": {
 "frame": {
 "x": 102,
 "y": 3051,
@@ -10740,7 +10600,7 @@
 "h": 16
 }
 },
-"icon_note": {
+"icon_lock": {
 "frame": {
 "x": 119,
 "y": 3051,
@@ -10760,7 +10620,7 @@
 "h": 16
 }
 },
-"icon_party": {
+"icon_look": {
 "frame": {
 "x": 136,
 "y": 3051,
@@ -10780,7 +10640,7 @@
 "h": 16
 }
 },
-"icon_pencil": {
+"icon_mail": {
 "frame": {
 "x": 153,
 "y": 3051,
@@ -10800,7 +10660,7 @@
 "h": 16
 }
 },
-"icon_piano": {
+"icon_map": {
 "frame": {
 "x": 170,
 "y": 3051,
@@ -10820,7 +10680,7 @@
 "h": 16
 }
 },
-"icon_plane": {
+"icon_meal": {
 "frame": {
 "x": 187,
 "y": 3051,
@@ -10840,7 +10700,7 @@
 "h": 16
 }
 },
-"icon_plant": {
+"icon_medal": {
 "frame": {
 "x": 204,
 "y": 3051,
@@ -10860,7 +10720,7 @@
 "h": 16
 }
 },
-"icon_play": {
+"icon_menu": {
 "frame": {
 "x": 221,
 "y": 3051,
@@ -10880,7 +10740,7 @@
 "h": 16
 }
 },
-"icon_plus": {
+"icon_money": {
 "frame": {
 "x": 238,
 "y": 3051,
@@ -10900,7 +10760,7 @@
 "h": 16
 }
 },
-"icon_popup": {
+"icon_mood_angry": {
 "frame": {
 "x": 255,
 "y": 3051,
@@ -10920,7 +10780,7 @@
 "h": 16
 }
 },
-"icon_promo": {
+"icon_mood_happy": {
 "frame": {
 "x": 272,
 "y": 3051,
@@ -10940,7 +10800,7 @@
 "h": 16
 }
 },
-"icon_quest": {
+"icon_mood_meh": {
 "frame": {
 "x": 289,
 "y": 3051,
@@ -10960,7 +10820,7 @@
 "h": 16
 }
 },
-"icon_remove": {
+"icon_mountain": {
 "frame": {
 "x": 306,
 "y": 3051,
@@ -10980,7 +10840,7 @@
 "h": 16
 }
 },
-"icon_report": {
+"icon_move": {
 "frame": {
 "x": 323,
 "y": 3051,
@@ -11000,7 +10860,7 @@
 "h": 16
 }
 },
-"icon_research": {
+"icon_note": {
 "frame": {
 "x": 340,
 "y": 3051,
@@ -11020,7 +10880,7 @@
 "h": 16
 }
 },
-"icon_ribbon": {
+"icon_party": {
 "frame": {
 "x": 357,
 "y": 3051,
@@ -11040,7 +10900,7 @@
 "h": 16
 }
 },
-"icon_rival": {
+"icon_pencil": {
 "frame": {
 "x": 374,
 "y": 3051,
@@ -11060,7 +10920,7 @@
 "h": 16
 }
 },
-"icon_roadside": {
+"icon_piano": {
 "frame": {
 "x": 391,
 "y": 3051,
@@ -11080,7 +10940,7 @@
 "h": 16
 }
 },
-"icon_save": {
+"icon_plane": {
 "frame": {
 "x": 408,
 "y": 3051,
@@ -11100,7 +10960,7 @@
 "h": 16
 }
 },
-"icon_settings": {
+"icon_plant": {
 "frame": {
 "x": 425,
 "y": 3051,
@@ -11120,7 +10980,7 @@
 "h": 16
 }
 },
-"icon_shade": {
+"icon_play": {
 "frame": {
 "x": 442,
 "y": 3051,
@@ -11140,7 +11000,7 @@
 "h": 16
 }
 },
-"icon_ship": {
+"icon_plus": {
 "frame": {
 "x": 459,
 "y": 3051,
@@ -11160,7 +11020,7 @@
 "h": 16
 }
 },
-"icon_shop": {
+"icon_popup": {
 "frame": {
 "x": 476,
 "y": 3051,
@@ -11180,7 +11040,7 @@
 "h": 16
 }
 },
-"icon_slot": {
+"icon_promo": {
 "frame": {
 "x": 493,
 "y": 3051,
@@ -11200,7 +11060,7 @@
 "h": 16
 }
 },
-"icon_sound_off": {
+"icon_quest": {
 "frame": {
 "x": 510,
 "y": 3051,
@@ -11220,7 +11080,7 @@
 "h": 16
 }
 },
-"icon_sound_on": {
+"icon_remove": {
 "frame": {
 "x": 527,
 "y": 3051,
@@ -11240,7 +11100,7 @@
 "h": 16
 }
 },
-"icon_sparkle": {
+"icon_report": {
 "frame": {
 "x": 544,
 "y": 3051,
@@ -11260,7 +11120,7 @@
 "h": 16
 }
 },
-"icon_speed_1": {
+"icon_research": {
 "frame": {
 "x": 561,
 "y": 3051,
@@ -11280,7 +11140,7 @@
 "h": 16
 }
 },
-"icon_speed_2": {
+"icon_ribbon": {
 "frame": {
 "x": 578,
 "y": 3051,
@@ -11300,7 +11160,7 @@
 "h": 16
 }
 },
-"icon_speed_3": {
+"icon_rival": {
 "frame": {
 "x": 595,
 "y": 3051,
@@ -11320,7 +11180,7 @@
 "h": 16
 }
 },
-"icon_speed_pause": {
+"icon_roadside": {
 "frame": {
 "x": 612,
 "y": 3051,
@@ -11340,7 +11200,7 @@
 "h": 16
 }
 },
-"icon_spring": {
+"icon_save": {
 "frame": {
 "x": 629,
 "y": 3051,
@@ -11360,7 +11220,7 @@
 "h": 16
 }
 },
-"icon_staff": {
+"icon_settings": {
 "frame": {
 "x": 646,
 "y": 3051,
@@ -11380,7 +11240,7 @@
 "h": 16
 }
 },
-"icon_star": {
+"icon_shade": {
 "frame": {
 "x": 663,
 "y": 3051,
@@ -11400,7 +11260,7 @@
 "h": 16
 }
 },
-"icon_summer": {
+"icon_ship": {
 "frame": {
 "x": 680,
 "y": 3051,
@@ -11420,7 +11280,7 @@
 "h": 16
 }
 },
-"icon_target": {
+"icon_shop": {
 "frame": {
 "x": 697,
 "y": 3051,
@@ -11440,7 +11300,7 @@
 "h": 16
 }
 },
-"icon_thread": {
+"icon_slot": {
 "frame": {
 "x": 714,
 "y": 3051,
@@ -11460,7 +11320,7 @@
 "h": 16
 }
 },
-"icon_thumb": {
+"icon_sound_off": {
 "frame": {
 "x": 731,
 "y": 3051,
@@ -11480,7 +11340,7 @@
 "h": 16
 }
 },
-"icon_ticket": {
+"icon_sound_on": {
 "frame": {
 "x": 748,
 "y": 3051,
@@ -11500,7 +11360,7 @@
 "h": 16
 }
 },
-"icon_tie": {
+"icon_sparkle": {
 "frame": {
 "x": 765,
 "y": 3051,
@@ -11520,7 +11380,7 @@
 "h": 16
 }
 },
-"icon_tired": {
+"icon_speed_1": {
 "frame": {
 "x": 782,
 "y": 3051,
@@ -11540,7 +11400,7 @@
 "h": 16
 }
 },
-"icon_tourist": {
+"icon_speed_2": {
 "frame": {
 "x": 799,
 "y": 3051,
@@ -11560,7 +11420,7 @@
 "h": 16
 }
 },
-"icon_toy": {
+"icon_speed_3": {
 "frame": {
 "x": 816,
 "y": 3051,
@@ -11580,7 +11440,7 @@
 "h": 16
 }
 },
-"icon_trophy": {
+"icon_speed_pause": {
 "frame": {
 "x": 833,
 "y": 3051,
@@ -11600,7 +11460,7 @@
 "h": 16
 }
 },
-"icon_truck": {
+"icon_spring": {
 "frame": {
 "x": 850,
 "y": 3051,
@@ -11620,7 +11480,7 @@
 "h": 16
 }
 },
-"icon_undo": {
+"icon_staff": {
 "frame": {
 "x": 867,
 "y": 3051,
@@ -11640,7 +11500,7 @@
 "h": 16
 }
 },
-"icon_unlock": {
+"icon_star": {
 "frame": {
 "x": 884,
 "y": 3051,
@@ -11660,7 +11520,7 @@
 "h": 16
 }
 },
-"icon_view": {
+"icon_summer": {
 "frame": {
 "x": 901,
 "y": 3051,
@@ -11680,7 +11540,7 @@
 "h": 16
 }
 },
-"icon_warn": {
+"icon_target": {
 "frame": {
 "x": 918,
 "y": 3051,
@@ -11700,7 +11560,7 @@
 "h": 16
 }
 },
-"icon_wave": {
+"icon_thread": {
 "frame": {
 "x": 935,
 "y": 3051,
@@ -11720,7 +11580,7 @@
 "h": 16
 }
 },
-"icon_wind": {
+"icon_thumb": {
 "frame": {
 "x": 952,
 "y": 3051,
@@ -11740,7 +11600,7 @@
 "h": 16
 }
 },
-"icon_winter": {
+"icon_ticket": {
 "frame": {
 "x": 969,
 "y": 3051,
@@ -11760,10 +11620,310 @@
 "h": 16
 }
 },
-"ui_coin_0": {
+"icon_tie": {
 "frame": {
 "x": 986,
 "y": 3051,
+"w": 16,
+"h": 16
+},
+"rotated": false,
+"trimmed": false,
+"spriteSourceSize": {
+"x": 0,
+"y": 0,
+"w": 16,
+"h": 16
+},
+"sourceSize": {
+"w": 16,
+"h": 16
+}
+},
+"icon_tired": {
+"frame": {
+"x": 1003,
+"y": 3051,
+"w": 16,
+"h": 16
+},
+"rotated": false,
+"trimmed": false,
+"spriteSourceSize": {
+"x": 0,
+"y": 0,
+"w": 16,
+"h": 16
+},
+"sourceSize": {
+"w": 16,
+"h": 16
+}
+},
+"icon_tourist": {
+"frame": {
+"x": 0,
+"y": 3068,
+"w": 16,
+"h": 16
+},
+"rotated": false,
+"trimmed": false,
+"spriteSourceSize": {
+"x": 0,
+"y": 0,
+"w": 16,
+"h": 16
+},
+"sourceSize": {
+"w": 16,
+"h": 16
+}
+},
+"icon_toy": {
+"frame": {
+"x": 17,
+"y": 3068,
+"w": 16,
+"h": 16
+},
+"rotated": false,
+"trimmed": false,
+"spriteSourceSize": {
+"x": 0,
+"y": 0,
+"w": 16,
+"h": 16
+},
+"sourceSize": {
+"w": 16,
+"h": 16
+}
+},
+"icon_tree": {
+"frame": {
+"x": 34,
+"y": 3068,
+"w": 16,
+"h": 16
+},
+"rotated": false,
+"trimmed": false,
+"spriteSourceSize": {
+"x": 0,
+"y": 0,
+"w": 16,
+"h": 16
+},
+"sourceSize": {
+"w": 16,
+"h": 16
+}
+},
+"icon_trophy": {
+"frame": {
+"x": 51,
+"y": 3068,
+"w": 16,
+"h": 16
+},
+"rotated": false,
+"trimmed": false,
+"spriteSourceSize": {
+"x": 0,
+"y": 0,
+"w": 16,
+"h": 16
+},
+"sourceSize": {
+"w": 16,
+"h": 16
+}
+},
+"icon_truck": {
+"frame": {
+"x": 68,
+"y": 3068,
+"w": 16,
+"h": 16
+},
+"rotated": false,
+"trimmed": false,
+"spriteSourceSize": {
+"x": 0,
+"y": 0,
+"w": 16,
+"h": 16
+},
+"sourceSize": {
+"w": 16,
+"h": 16
+}
+},
+"icon_undo": {
+"frame": {
+"x": 85,
+"y": 3068,
+"w": 16,
+"h": 16
+},
+"rotated": false,
+"trimmed": false,
+"spriteSourceSize": {
+"x": 0,
+"y": 0,
+"w": 16,
+"h": 16
+},
+"sourceSize": {
+"w": 16,
+"h": 16
+}
+},
+"icon_unlock": {
+"frame": {
+"x": 102,
+"y": 3068,
+"w": 16,
+"h": 16
+},
+"rotated": false,
+"trimmed": false,
+"spriteSourceSize": {
+"x": 0,
+"y": 0,
+"w": 16,
+"h": 16
+},
+"sourceSize": {
+"w": 16,
+"h": 16
+}
+},
+"icon_view": {
+"frame": {
+"x": 119,
+"y": 3068,
+"w": 16,
+"h": 16
+},
+"rotated": false,
+"trimmed": false,
+"spriteSourceSize": {
+"x": 0,
+"y": 0,
+"w": 16,
+"h": 16
+},
+"sourceSize": {
+"w": 16,
+"h": 16
+}
+},
+"icon_warn": {
+"frame": {
+"x": 136,
+"y": 3068,
+"w": 16,
+"h": 16
+},
+"rotated": false,
+"trimmed": false,
+"spriteSourceSize": {
+"x": 0,
+"y": 0,
+"w": 16,
+"h": 16
+},
+"sourceSize": {
+"w": 16,
+"h": 16
+}
+},
+"icon_wave": {
+"frame": {
+"x": 153,
+"y": 3068,
+"w": 16,
+"h": 16
+},
+"rotated": false,
+"trimmed": false,
+"spriteSourceSize": {
+"x": 0,
+"y": 0,
+"w": 16,
+"h": 16
+},
+"sourceSize": {
+"w": 16,
+"h": 16
+}
+},
+"icon_well": {
+"frame": {
+"x": 170,
+"y": 3068,
+"w": 16,
+"h": 16
+},
+"rotated": false,
+"trimmed": false,
+"spriteSourceSize": {
+"x": 0,
+"y": 0,
+"w": 16,
+"h": 16
+},
+"sourceSize": {
+"w": 16,
+"h": 16
+}
+},
+"icon_wind": {
+"frame": {
+"x": 187,
+"y": 3068,
+"w": 16,
+"h": 16
+},
+"rotated": false,
+"trimmed": false,
+"spriteSourceSize": {
+"x": 0,
+"y": 0,
+"w": 16,
+"h": 16
+},
+"sourceSize": {
+"w": 16,
+"h": 16
+}
+},
+"icon_winter": {
+"frame": {
+"x": 204,
+"y": 3068,
+"w": 16,
+"h": 16
+},
+"rotated": false,
+"trimmed": false,
+"spriteSourceSize": {
+"x": 0,
+"y": 0,
+"w": 16,
+"h": 16
+},
+"sourceSize": {
+"w": 16,
+"h": 16
+}
+},
+"ui_coin_0": {
+"frame": {
+"x": 221,
+"y": 3068,
 "w": 12,
 "h": 12
 },
@@ -11782,8 +11942,8 @@
 },
 "ui_coin_1": {
 "frame": {
-"x": 999,
-"y": 3051,
+"x": 234,
+"y": 3068,
 "w": 12,
 "h": 12
 },
@@ -11802,7 +11962,7 @@
 },
 "ui_coin_2": {
 "frame": {
-"x": 0,
+"x": 247,
 "y": 3068,
 "w": 12,
 "h": 12
@@ -11822,7 +11982,7 @@
 },
 "ui_coin_3": {
 "frame": {
-"x": 13,
+"x": 260,
 "y": 3068,
 "w": 12,
 "h": 12
@@ -11842,7 +12002,7 @@
 },
 "fx_alert": {
 "frame": {
-"x": 26,
+"x": 273,
 "y": 3068,
 "w": 8,
 "h": 10
@@ -11862,7 +12022,7 @@
 },
 "fx_cup": {
 "frame": {
-"x": 35,
+"x": 282,
 "y": 3068,
 "w": 8,
 "h": 8
@@ -11882,7 +12042,7 @@
 },
 "ui_sparkle_0": {
 "frame": {
-"x": 44,
+"x": 291,
 "y": 3068,
 "w": 8,
 "h": 8
@@ -11902,7 +12062,7 @@
 },
 "ui_sparkle_1": {
 "frame": {
-"x": 53,
+"x": 300,
 "y": 3068,
 "w": 8,
 "h": 8
@@ -11922,7 +12082,7 @@
 },
 "ui_sparkle_2": {
 "frame": {
-"x": 62,
+"x": 309,
 "y": 3068,
 "w": 8,
 "h": 8
@@ -11946,7 +12106,7 @@
 "format": "RGBA8888",
 "size": {
 "w": 1024,
-"h": 3080
+"h": 3084
 },
 "scale": "1"
 }

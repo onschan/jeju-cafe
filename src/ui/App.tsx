@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { wonText, label } from '../data/labels.ts';
 import { GameView, RECT_COLOR_LINE, type GhostSpec, type RangeHint } from '../render/GameView';
 import { startLoop, dispatch, getState, useGame, setViewReset, autosaveNow, hasAnySave, loadSlot, setMonthCardHook, setSceneHook, showMessage, pauseGame, isSpeedLocked, setSpeedLocked } from './store';
-import { unlockAudio, bgm, isMuted, setMuted, getBgmVolume, getSfxVolume, setBgmVolume, setSfxVolume, sfx } from './audio';
+import { unlockAudio, bgm, isMuted, setMuted, getBgmVolume, getSfxVolume, setBgmVolume, setSfxVolume, sfx, setBgmLayer } from './audio';
+import { gradeOf, GRADE_BGM_LAYER_FROM } from '../sim/index.ts'; // fun-rank
 import { seasonOf, canPlace, objectAt, footprint, sizeOf, mainBuilding, parcelAt, placeCost, isLineType, lineCells, planLine, canAutoConnectPath, type LineOrder, type Pt, PROTECTED_TYPES, ROTATABLE_TYPES, goalForMenu, featureOpen, canUndo, demolishRefund, canDisturb, routeAtCell, tutorialDone, canBuildMain, recommendedMainCells, cellAt, doorFrontOf, MAIN_TYPE, MAIN_BUILD_COST, type GameState } from '../sim/index.ts';
 import { RoutesSection } from './RouteCard'; // 트랙 H
 import { objectDef } from '../data/index.ts';
@@ -304,6 +305,7 @@ function Game({ onExit }: { onExit: () => void }) {
 
   // 첫 터치에서 오디오를 열고 현재 계절 BGM을 시작한다 (이후 호출은 no-op)
   const onPointerDown = () => { unlockAudio(); void bgm(seasonOf(getState().clock.month)); };
+  useEffect(() => { setBgmLayer(gradeOf(s) >= GRADE_BGM_LAYER_FROM); }, [s.grade]); // fun-rank: 등급 3부터 타악 레이어
   const setGhost = (g: BuildGhost | null) => { ghostRef.current = g; setGhostState(g); };
   const setMoving = (m: Moving | null) => { movingRef.current = m; setMovingState(m); };
   const setRect = (r: Rect | null) => { rectRef.current = r; setRectState(r); viewRef.current?.setRectCells(r ? rectCells(r) : []); };
