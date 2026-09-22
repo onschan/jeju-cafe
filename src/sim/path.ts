@@ -1,6 +1,6 @@
 import type { GameState, Pt, PlacedObject } from './types.ts';
 import { objectDef } from '../data/index.ts';
-import { layoutCached } from './layoutRev.ts';
+import { layoutCached, layoutSig } from './layoutRev.ts';
 import { inBounds, cellAt, objectAt, isRoomFloor, doorOf, doorFrontOf } from './grid.ts';
 
 const WALKABLE_KINDS = new Set(['path', 'gate', 'busstop']);
@@ -46,7 +46,20 @@ export const cellKey = (state: GameState, p: Pt) => p.y * state.grid.w + p.x;
 /** from에서 닿는 모든 걷기 칸까지의 거리와 직전 칸. 한 번 계산해 여러 목적지에 재사용. */
 export interface Reach { from: Pt; dist: Map<number, number>; prev: Map<number, number> }
 
+/** solver: 배치 서명(layoutRev.ts)이 같으면 같은 출발점의 BFS를 다시 하지 않는다 — 시간마다 스폰이 정류장 BFS를 새로 돌려 하루 tick의 1/4을 먹었다. 결과는 읽기 전용. */
+const REACH_CACHE = new WeakMap<GameState, { key: string; byFrom: Map<number, Reach> }>();
 export function reachMap(state: GameState, from: Pt): Reach {
+  const key = layoutSig(state);
+  let c = REACH_CACHE.get(state);
+  if (!c || c.key !== key) { c = { key, byFrom: new Map() }; REACH_CACHE.set(state, c); }
+  const fk = cellKey(state, from);
+  const hit = c.byFrom.get(fk);
+  if (hit) return hit;
+  const r = computeReach(state, from);
+  c.byFrom.set(fk, r);
+  return r;
+}
+function computeReach(state: GameState, from: Pt): Reach {
   const dist = new Map<number, number>();
   const prev = new Map<number, number>();
   const queue: Pt[] = [from];
