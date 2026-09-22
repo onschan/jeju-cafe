@@ -195,11 +195,11 @@ const money = (amount: number): GoalReward => ({ type: 'money', amount });
 const none = () => [] as Pt[];
 
 export const STEPS: TutorialStepDef[] = [
-  { id: 1, key: 'seat', done: (s) => seats(s).length >= 1, reward: [money(200_000)], targets: ['nav:build', 'tab:rest', 'build:table_out'], cells: seatCells },
+  { id: 1, key: 'seat', done: (s) => seats(s).length >= 1, reward: [money(200_000)], targets: ['nav:build', 'tile:seat', 'tab:rest', 'build:table_out', 'build-go'], cells: seatCells }, // fun: 짓기 6타일 「자리」 → 야외 테이블 카드 → 짓기
   { id: 2, key: 'menu', done: (s) => s.menuSlots.includes('americano'), reward: [money(100_000)], targets: ['nav:cafe', 'tab:menu', 'menu-put'], cells: none },
   { id: 3, key: 'greet', done: greetedGuest, reward: [{ type: 'tickets', n: 1 }], targets: ['guest-row', 'greet'], cells: guestCells },
   { id: 4, key: 'hire', done: (s) => s.staff.length >= 1, reward: [money(300_000)], targets: ['nav:people', 'tab:candidates', 'hire'], cells: none },
-  { id: 5, key: 'corner', done: cornerMade, reward: [money(300_000)], targets: (s) => ['nav:build', 'tab:corner', `corner-next:${TUTORIAL_CORNER_ID}`, `build:${cornerMissingType(s)}`], cells: cornerCells },
+  { id: 5, key: 'corner', done: cornerMade, reward: [money(300_000)], targets: (s) => ['nav:build', 'tile:charm', 'tab:corner', `corner-next:${TUTORIAL_CORNER_ID}`, `build:${cornerMissingType(s)}`, 'build-go'], cells: cornerCells }, // fun: 「매력」 타일 → 코너 탭 → 꽃길 「놓기」
   { id: 6, key: 'goals', done: (s) => seen(s, 'goalWindow'), reward: [], targets: ['goal-bar'], cells: none },
   { id: 7, key: 'graduate', done: () => true, reward: [{ type: 'title', id: 'halmang_pupil', name: '할망의 제자' }, money(500_000), { type: 'tickets', n: 3 }], targets: [], cells: none },
 ];

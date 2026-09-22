@@ -183,7 +183,7 @@ export const BUILD_TILES: BuildTile[] = [
   { id: 'charm', name: '매력', icon: 'plant', purpose: '경관이 오르면 관광객이 온다', base: 'flower_bed' },
   { id: 'inflow', name: '유입', icon: 'car', purpose: '손님이 들어오는 문', base: 'parking_lot' },
   { id: 'building', name: '실내·건물', icon: 'home', purpose: '비 오는 날도 자리가 있다', base: null },
-  { id: 'all', name: '전체 목록', icon: 'note', purpose: '150여 종을 탭별로', base: null },
+  { id: 'all', name: '전체 목록', icon: 'book', purpose: '150여 종을 탭별로', base: null },
 ];
 /** 타일별 하위 목록에 넣을 종류 (기본 시설·트리 단계·서비스 시설·유입 시설) — 전체 목록은 탭이 맡는다 */
 export const TILE_TYPES: Record<Exclude<BuildTileId, 'all' | 'building'>, string[]> = {

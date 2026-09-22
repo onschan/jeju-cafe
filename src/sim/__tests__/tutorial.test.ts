@@ -107,7 +107,7 @@ describe('손으로 하는 튜토리얼 「할망의 가르침」 7단계 (fun-s
     let realMs = 0;
     // 1: 테이블 — 입지 최고 칸 1개 글로우, 짓기 → 쉼 → 야외 테이블
     seeDialogue(s);
-    expect(stepTargets(STEPS[0]!, s)).toEqual(['nav:build', 'tab:rest', 'build:table_out']);
+    expect(stepTargets(STEPS[0]!, s)).toEqual(['nav:build', 'tile:seat', 'tab:rest', 'build:table_out', 'build-go']);
     const glow = STEPS[0]!.cells(s);
     expect(glow).toEqual(bestSeatCells(s, 1));
     expect(glow).toHaveLength(1);
@@ -151,7 +151,7 @@ describe('손으로 하는 튜토리얼 「할망의 가르침」 7단계 (fun-s
     const [flower, bench, lamp] = CORNER_PIECE_TYPES as [string, string, string];
     for (const t of [flower, bench, lamp]) expect(s.unlocked.objects).toContain(t);
     expect(cornerMissingType(s)).toBe(flower);
-    expect(stepTargets(STEPS[4]!, s)).toEqual(['nav:build', 'tab:corner', `corner-next:${TUTORIAL_CORNER_ID}`, `build:${flower}`]);
+    expect(stepTargets(STEPS[4]!, s)).toEqual(['nav:build', 'tile:charm', 'tab:corner', `corner-next:${TUTORIAL_CORNER_ID}`, `build:${flower}`, 'build-go']);
     const f = cornerCells(s);
     expect(f).toHaveLength(1);
     expect(Math.max(Math.abs(f[0]!.x - glow[0]!.x), Math.abs(f[0]!.y - glow[0]!.y))).toBeLessThanOrEqual(CORNER_RADIUS); // 테이블 옆
@@ -159,7 +159,7 @@ describe('손으로 하는 튜토리얼 「할망의 가르침」 7단계 (fun-s
     expect(apply(s, { type: 'place', objectType: flower, ...f[0]! }).ok).toBe(true);
     expect(s.tutorial.step).toBe(4);
     expect(cornerMissingType(s)).toBe(bench);
-    expect(stepTargets(STEPS[4]!, s)).toEqual(['nav:build', 'tab:corner', `corner-next:${TUTORIAL_CORNER_ID}`, `build:${bench}`]);
+    expect(stepTargets(STEPS[4]!, s)).toEqual(['nav:build', 'tile:charm', 'tab:corner', `corner-next:${TUTORIAL_CORNER_ID}`, `build:${bench}`, 'build-go']);
     const b = cornerCells(s);
     expect(b).toHaveLength(1);
     expect(Math.max(Math.abs(b[0]!.x - f[0]!.x), Math.abs(b[0]!.y - f[0]!.y))).toBeLessThanOrEqual(CORNER_RADIUS); // 꽃밭 옆

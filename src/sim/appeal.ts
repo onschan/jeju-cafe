@@ -9,11 +9,17 @@
 import type { GameState } from './types.ts';
 import { objectDef } from '../data/index.ts';
 import { sceneryScore, objectScenery, itemScenery, SCENERY_RADIUS } from './grid.ts';
+import { facilityPopularitySum } from './guests.ts';
 import { isSeat } from './cafe.ts';
 import { filterMatches } from './effects.ts';
 import { seasonOf } from './clock.ts';
 import { layoutSig } from './layoutRev.ts';
 
+/** 인기 막대가 가득 차는 시설 인기 합 (3년차 봇 175, 5년차 444) · 이보다 낮으면 병목 */
+export const POPULARITY_FULL = 300;
+export const POPULARITY_LOW = 40;
+/** 자리 이용률이 이 이상이면 병목 */
+export const SEAT_USE_HIGH = 0.9;
 /** 관광객 스폰 배수 = clamp(SCENERY_MULT_BASE + SCENERY_MULT_PER × 평균 경치, MIN, MAX): 경치 3.5(1년차) ≈ ×0.99, 5 ≈ ×1.05, 8 ≈ ×1.17, 10+ = ×1.25 */
 export const SCENERY_MULT_BASE = 0.85;
 export const SCENERY_MULT_PER = 0.04;
@@ -88,11 +94,11 @@ export function appealOf(state: GameState, seatUse: number): Appeal {
   const d = state.dayStats;
   const satisfaction = d.total > 0 ? d.satisfied / d.total : state.stats.satisfiedTotal > 0 && state.totalGuests > 0 ? state.stats.satisfiedTotal / state.totalGuests : 0;
   const staffN = state.staff.length;
-  const pop = Math.round(state.popularity);
+  const pop = Math.round(facilityPopularitySum(state)); // 시설 인기 합 (state.popularity는 동네↔관광객 축이라 다른 값)
   const rows: AppealRow[] = [
     {
-      key: 'popularity', label: '인기', value: pop, max: 100, unit: '', howTo: ['시설을 놓으면 인기가 쌓인다', '전단·홍보로 동네에 알린다'],
-      bottleneck: pop < 30 ? '인기가 낮아 동네 손님이 적다' : seatUse >= 0.9 ? '자리가 모자라 손님이 돌아간다' : '',
+      key: 'popularity', label: '인기', value: pop, max: POPULARITY_FULL, unit: '', howTo: ['시설을 놓으면 인기가 쌓인다', '전단·홍보로 동네에 알린다'],
+      bottleneck: pop < POPULARITY_LOW ? '인기가 낮아 손님이 적다' : seatUse >= SEAT_USE_HIGH ? '자리가 모자라 손님이 돌아간다' : '',
     },
     {
       key: 'scenery', label: '경관', value: Math.round(scenery * 10) / 10, max: 15, unit: '', howTo: ['자리 옆에 정원·코너를 둔다', '전망 좋은 땅(오름·바다)을 산다'],

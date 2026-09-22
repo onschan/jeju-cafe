@@ -10,6 +10,7 @@ import { loadSheet, drawFrame, type Sheet } from '../sheetCanvas';
 import { PALETTE, brownBtn, brownBtnOff } from '../frame';
 import { useWindowState, body, TabBar, soft, Empty, type WindowProps } from './shared.tsx';
 import { SiteToggle } from '../SiteToggle.tsx';
+import { showFirstTip } from '../firstTip';
 import { CornerTab } from './CornerTab.tsx'; // fun-corner 「코너」 탭
 
 export type BuildTab = 'building' | 'corner' | 'indoor' | 'rest' | 'convenience' | 'food' | 'fun' | 'farm' | 'scenery' | 'path' | 'wall';
@@ -99,7 +100,7 @@ export function BuildWindow(props: BuildWindowProps) {
   const setTab = (t: BuildTab) => { lastTab = t; lastScrollTop = 0; setTabState(t); };
   // fun: 첫 화면은 6타일 — 여는 쪽이 탭을 지정했거나(본관 카드 「실내 꾸미기」·코너 탭 글로우) 맨땅(건물 탭)이면 바로 전체 목록
   const [view, setView] = useState<BuildView>(() => (props.initialTab || requestedTabWas || !mainBuilding(s) ? { kind: 'all' } : (lastView ?? { kind: 'tiles' })));
-  const goView = (v: BuildView) => { lastView = v; lastScrollTop = 0; setView(v); setPicked(null); };
+  const goView = (v: BuildView) => { lastView = v.kind === 'all' ? v : null; lastScrollTop = 0; setView(v); setPicked(null); showFirstTip(null); }; // 창을 다시 열면 늘 6타일 첫 화면 (전체 목록만 기억) · 팁이 아래 「짓기」 줄을 가리지 않게 내린다
   const rootRef = useRef<HTMLDivElement>(null);
   // 스크롤 위치 기억: 셸의 스크롤 컨테이너(window-body)에 붙여, 열 때 되돌리고 닫힐 때 저장 (ease)
   useEffect(() => {
@@ -119,7 +120,7 @@ export function BuildWindow(props: BuildWindowProps) {
   const unlocked = new Set(s.unlocked.objects);
   const tileMode = view.kind === 'tile' && view.tile !== 'building' && view.tile !== 'all' ? view.tile : null;
   const items = tileMode
-    ? TILE_TYPES[tileMode].map((id) => objectDef(id)).filter((d) => unlocked.has(d.id) || treeOf(d.id)).map((def) => ({ def, locked: !unlocked.has(def.id) && (treeOf(def.id)?.index ?? 0) > 0 }))
+    ? TILE_TYPES[tileMode].map((id) => objectDef(id)).filter((d) => unlocked.has(d.id) || treeOf(d.id)).map((def) => ({ def, locked: (treeOf(def.id)?.index ?? 0) > 0 || !unlocked.has(def.id) })) // 트리 2단계부터는 짓지 않고 「업그레이드 ▲」로만
     : activeTab === 'building'
     ? (noMain ? [{ def: objectDef(MAIN_TYPE), locked: false }] : [])
     : activeTab === 'corner' ? [] // fun-corner: 코너 탭은 카드가 아니라 CornerTab
@@ -155,7 +156,7 @@ export function BuildWindow(props: BuildWindowProps) {
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
         <button data-testid="build-back" style={{ ...brownBtn, margin: 0, padding: '0 10px', fontSize: 14, minHeight: 40 }} onClick={() => goView({ kind: 'tiles' })}>◀ 짓기</button>
         {tileDef && <span style={{ fontSize: 15, fontWeight: 700 }}><Icon name={tileDef.icon} size={16} /> {tileDef.name} <span style={{ ...soft, fontWeight: 400 }}>{tileDef.purpose}</span></span>}
-        {tileMode === 'charm' && <button data-testid="build-corner-tab" style={{ ...brownBtn, margin: 0, padding: '0 10px', fontSize: 14, minHeight: 40 }} onClick={() => { goView({ kind: 'all' }); setTab('corner'); }}><Icon name="sparkle" size={14} /> 코너</button>}
+        {tileMode === 'charm' && <button data-testid="build-corner-tab" data-tut="tab:corner" style={{ ...brownBtn, margin: 0, padding: '0 10px', fontSize: 14, minHeight: 40 }} onClick={() => { goView({ kind: 'all' }); setTab('corner'); }}><Icon name="sparkle" size={14} /> 코너</button>}
       </div>
       {!tileMode && <TabBar tabs={tabs.map((t) => ({ ...t, badge: undefined }))} active={activeTab} onPick={(k) => { setTab(k); setPicked(null); }} testId="build-tab" />}
       {recent.length > 0 && (
@@ -185,7 +186,7 @@ export function BuildWindow(props: BuildWindowProps) {
           const on = picked === def.id;
           return (
             <button key={def.id} data-testid={`build-card-${def.id}`} data-tut={`build:${def.id}`} aria-pressed={on} aria-disabled={locked || undefined}
-              onClick={() => setPicked(on ? null : def.id)}
+              onClick={() => { setPicked(on ? null : def.id); if (!on) showFirstTip(null); }}
               style={{ ...cardBase, opacity: locked ? 0.5 : 1, boxShadow: on ? `0 0 0 3px ${PALETTE.btnOn}` : undefined }}>
               <SpriteBox sheet={sheet} id={def.id} kind={def.kind} />
               <div style={{ fontSize: 15, fontWeight: 700, lineHeight: 1.2 }}>{locked ? <><Icon name="lock" size={14} /> </> : ''}{def.name}{def.indoor ? <> <Icon name="home" size={14} /></> : ''}</div>
@@ -248,6 +249,7 @@ export function lockedText(def: ObjectDef): string {
 }
 
 function PickedDetail({ s: def, locked, state, onPick }: { s: ObjectDef; locked: boolean; state: GameState; onPick?: (id: string) => void }) {
+  useEffect(() => { showFirstTip(null); }, [def.id]); // 고른 카드의 「짓기」 줄이 팁에 가리지 않게
   const cost = locked ? def.cost : placeCost(state, def.id);
   const start = locked ? { ok: false, reason: lockedText(def) } : canStartBuild(state, def.id);
   const poor = !locked && state.money < cost;
@@ -269,7 +271,7 @@ function PickedDetail({ s: def, locked, state, onPick }: { s: ObjectDef; locked:
       <div style={{ fontSize: 14, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{def.desc ?? def.name}</div>
       <div style={{ ...soft, marginBottom: 6 }}>{facts}</div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <button style={{ ...(ok ? brownBtn : brownBtnOff), margin: 0, flex: '0 0 auto' }} disabled={!ok} onClick={() => onPick?.(def.id)} data-testid="build-go"><Icon name="build" /> 짓기</button>
+        <button style={{ ...(ok ? brownBtn : brownBtnOff), margin: 0, flex: '0 0 auto' }} disabled={!ok} onClick={() => onPick?.(def.id)} data-testid="build-go" data-tut="build-go"><Icon name="build" /> 짓기</button>
         <span style={{ ...soft, color: ok ? PALETTE.inkSoft : PALETTE.bad }}>
           {locked ? lockedText(def) : poor ? '돈이 모자라요' : !start.ok ? start.reason : '누르면 맵에 놓을 자리를 골라요'}
         </span>

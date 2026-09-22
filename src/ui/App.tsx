@@ -15,7 +15,7 @@ import { MiniCard, MainCard, type CardTarget, type CardActions } from './MiniCar
 import { DialogueHost } from './Dialogue.tsx';
 import { checkTutorial, setTutorialDispatch, useTutorialNote } from './tutorialDialogue';
 import { startSolverLoop } from './solverClient';
-import { useTutorialHighlight, useSpotlightPref, setSpotlightOn } from './tutorialHighlight';
+import { useTutorialHighlight, useSpotlightPref, setSpotlightOn, tutorialTargets } from './tutorialHighlight';
 import { FirstTipBubble, useFirstTip, tipKeyFor, showFirstTip } from './firstTip'; // fun-start: 창·탭·모드 첫 열기 팁 한 줄
 import { SiteOverlayChip } from './SiteToggle';
 import { RewardPopup } from './RewardPopup';
@@ -482,7 +482,7 @@ function Game({ onExit }: { onExit: () => void }) {
       });
       if (disposed) { v.destroy(); return; } // init 중 언마운트(Fast Refresh 등)
       // 개발 중 브라우저 자동화가 셀 → 화면 좌표를 계산할 수 있도록 (프로덕션 빌드에는 포함되지 않음)
-      if (import.meta.env.DEV) (window as unknown as { __view: unknown }).__view = v;
+      if (import.meta.env.DEV) { (window as unknown as { __view: unknown }).__view = v; (window as unknown as { __tut: unknown }).__tut = () => tutorialTargets(getState()); } // 자동화: 튜토리얼 글로우 칸
       setViewReset(() => v.reset());
       v.setGauges(gaugesPref());
       stop = startLoop((st) => v.render(st));
