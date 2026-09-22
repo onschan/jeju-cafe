@@ -23,6 +23,11 @@ DECOR: list[tuple[str, str, int, int, str, int]] = [
     ('deco_wood_bench', '나무 벤치', 1, 1, 'any', 1),
     ('deco_flower_pots', '꽃 화분들', 1, 1, 'any', 2),
     ('deco_umbrella_stand', '우산꽂이', 1, 1, 'any', 1),
+    # fun-corner 코너 조각 장식 4종 (objects.json)
+    ('railing', '난간', 1, 1, 'out', 1),
+    ('shell_deco', '소라 장식', 1, 1, 'any', 1),
+    ('telescope', '망원경', 1, 1, 'out', 1),
+    ('cherry_tree', '벚나무', 1, 1, 'out', 3),
 ]
 
 DECOR_IDS = [d[0] for d in DECOR]

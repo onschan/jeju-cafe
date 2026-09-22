@@ -275,6 +275,80 @@ def deco_umbrella_stand() -> IsoCanvas:
     return c
 
 
+# ================================================================ 코너(fun-corner) 장식 4종 + 코너 팻말·카메라 플래시 fx
+def railing() -> IsoCanvas:
+    """바다 쪽 나무 난간: 기둥 2 + 가로대 2 (1×1, 셀 가운데를 가로질러)."""
+    c = cv(16, shadow=0.3)
+    fence(c, [(0.1, 0.5), (0.9, 0.5)], h=12, pal=WOOD, rails=(5, 10), post_w=2)
+    c.outline()
+    return c
+
+
+def shell_deco() -> IsoCanvas:
+    """소라 장식: 현무암 받침 위 큰 소라 껍데기 2개."""
+    c = cv(16, shadow=0.34)
+    c.disc(0.5, 0.5, 0.26, 3, BASALT)
+    sx, sy = c.spx(0.42, 0.55, 3)
+    c.shade_ellipse(sx, sy - 4, 6, 4.5, (hexc('b06a4a'), hexc('e0956a'), hexc('ffd2b0')))
+    c.rect(sx - 6, sy - 3, 3, 2, hexc('ffd2b0')); c.put(sx + 3, sy - 6, hexc('b06a4a')); c.put(sx + 4, sy - 5, hexc('b06a4a'))
+    sx2, sy2 = c.spx(0.7, 0.35, 3)
+    c.shade_ellipse(sx2, sy2 - 3, 4, 3, (hexc('9a5a9a'), hexc('c98ac9'), hexc('f0cff0')))
+    c.put(sx2 - 3, sy2 - 2, hexc('f0cff0'))
+    c.outline()
+    return c
+
+
+def telescope() -> IsoCanvas:
+    """전망대 망원경: 검은 삼각대 + 위로 기운 노란 경통."""
+    c = cv(34, shadow=0.26)
+    for x, y in ((0.32, 0.68), (0.68, 0.68), (0.5, 0.28)):
+        c.line((x, y, 0), (0.5, 0.5, 18), BLACK[1])
+    c.pillar(0.5, 0.5, 2, 6, BLACK, z0=18)
+    sx, sy = c.spx(0.5, 0.5, 24)
+    for i in range(10):
+        x, y = sx - 6 + i, sy - i // 2
+        c.rect(x, y - 3, 1, 5, YELLOW[1]); c.put(x, y - 3, YELLOW[2]); c.put(x, y + 1, YELLOW[0])
+    c.rect(sx + 3, sy - 9, 3, 6, BLACK[1]); c.put(sx + 4, sy - 8, WHITE[2])
+    c.outline()
+    return c
+
+
+def cherry_tree() -> IsoCanvas:
+    """벚나무: 갈색 줄기 + 분홍 꽃구름 캐노피 + 떨어지는 꽃잎."""
+    from sprites_objects import trunk
+    from sprites_iso_env import blob_canopy
+    s = Canvas(32, 42)
+    trunk(s, 15, 27, 41, 3)
+    blob_canopy(s, 16, 14, 13, 11, [(7, 10, 6), (24, 11, 6), (16, 4, 6)], (hexc('c96a9a'), hexc('f0a0c8'), hexc('ffd6ea')))
+    for x, y in ((5, 8), (12, 6), (22, 5), (27, 12), (10, 18), (20, 20), (3, 30), (28, 33)):
+        s.put(x, y, hexc('ffd6ea')); s.put(x + 1, y, hexc('f0a0c8'))
+    return billboard(s, 0.42)
+
+
+def corner_sign() -> Canvas:
+    """코너 이름표 팻말(갈색 판 + 기둥, 글자는 렌더가 라벨로 얹는다). 40×22."""
+    s = Canvas(40, 22)
+    s.rect(18, 14, 4, 8, WOOD[0]); s.vline(18, 14, 21, WOOD[1])
+    s.shade_rect(1, 1, 38, 14, (WOOD[0], hexc('8a5a2e'), hexc('a8743e')))
+    s.hline(2, 37, 2, hexc('c48f55')); s.vline(2, 2, 13, hexc('c48f55'))
+    for x, y in ((3, 3), (36, 3), (3, 12), (36, 12)):
+        s.put(x, y, hexc('e8c890'))
+    s.outline()
+    return s
+
+
+def flash(frame: int) -> Canvas:
+    """카메라 플래시 3프레임: 흰 원이 터졌다가 노란 테두리로 잦아든다."""
+    s = Canvas(24, 24)
+    r = (5, 10, 7)[frame]
+    s.ellipse(11.5, 11.5, r, r, WHITE[2] if frame < 2 else YELLOW[2])
+    if frame == 1:
+        for dx, dy in ((0, -11), (0, 11), (-11, 0), (11, 0)):
+            s.put(11 + dx, 11 + dy, YELLOW[2]); s.put(12 + dx, 11 + dy, YELLOW[2])
+    s.ellipse(11.5, 11.5, max(1, r - 3), max(1, r - 3), WHITE[2])
+    return s
+
+
 # ================================================================ 실내 바닥
 def floor_wood() -> Canvas:
     dk, md, lt = PALEWOOD
@@ -370,9 +444,13 @@ def sprites() -> dict[str, Canvas]:
         'deco_cat': deco_cat, 'deco_mailbox': deco_mailbox, 'deco_wind_chime': deco_wind_chime,
         'deco_tangerine_crates': deco_tangerine_crates, 'deco_wood_bench': deco_wood_bench,
         'deco_flower_pots': deco_flower_pots, 'deco_umbrella_stand': deco_umbrella_stand,
+        'railing': railing, 'shell_deco': shell_deco, 'telescope': telescope, 'cherry_tree': cherry_tree,  # fun-corner 코너 장식
     }
     assert set(fns) == set(DECOR_IDS), set(fns) ^ set(DECOR_IDS)
     s: dict[str, Canvas] = {f'iso_obj_{k}': fn() for k, fn in fns.items()}
     s['iso_tile_floor_wood'] = floor_wood(); s['iso_tile_floor_tile'] = floor_tile(); s['iso_tile_floor_stone'] = floor_stone()
     s['iso_obj_counter_bar'] = counter_bar(); s['iso_obj_menu_board'] = menu_board()
+    s['fx_corner_sign'] = corner_sign()   # fun-corner: 코너 이름표 팻말 (글자는 렌더 라벨)
+    for i in range(3):
+        s[f'fx_flash_{i}'] = flash(i)      # fun-corner: 손님 사진 카메라 플래시
     return s
