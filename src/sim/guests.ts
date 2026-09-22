@@ -34,6 +34,7 @@ import { fmtNum } from './format.ts';
 import { josa } from './josa.ts';
 import { siteBonus } from './site.ts';
 import { spawnRouteWeights, routeArrivals, routeSpawnPos, routeTagMult, routeWalletMult, routeStayMult, routeGuestMult, routeHome, noteRouteGuest, noteRouteIncome, foreignPhotoChance, foreignMenuMult, chargePortFee } from './entry.ts'; // 트랙 H 유입 경로
+import { hashOf } from './say.ts';
 import { assignGuestName, regularsDue, dressAsRegular, regularTip, thankIfDone, maybeRequest, addRegularGauge, requestDef, GAUGE_HAPPY_VISIT } from './interact.ts'; // fun-guest (트랙 G): 이름·단골·요청·게이지
 
 export { moveAlong, GUEST_SPEED_CELLS_PER_S }; // 하위 호환 재수출 (본체는 path.ts)
@@ -260,10 +261,12 @@ export function hourlyRegulars(state: GameState): number {
   if (noGuestsToday(state)) return 0;
   let n = 0;
   for (const def of regularsDueNow(state)) if (spawnNamedGuest(state, def.id)) n++;
-  // fun-guest: 게이지로 등록된 단골(state.regulars)도 정한 요일·시각에 온다 — 이름·얼굴 고정, "OO 왔다!"
+  // fun-guest: 게이지로 등록된 단골(state.regulars)도 정한 요일·시각에 온다 — 이름·얼굴 고정, "OO 왔다!".
+  // 단골은 그날 손님 수 안에서 온다(spawnAcc −1): 손님층마다 한 명씩 매주 오는 단골이 하루 손님 위에 얹히면 3년차 손님·랭크·자금이 밴드(§4.6)를 넘는다.
   for (const r of regularsDue(state)) {
     if (!isUnlocked(state, r.guestType) || spawnGuests(state, 1, r.guestType) === 0) continue;
     dressAsRegular(state, state.guests[state.guests.length - 1]!, r);
+    state.spawnAcc -= 1;
     n++;
   }
   return n;
@@ -393,7 +396,7 @@ function maybeSay(state: GameState, g: Guest): void {
   if (g.requestId) { g.say = requestDef(g.requestId).text; return; } // fun-guest: 요청 대사 우선
   const d = guestDialogue(g.type);
   const pool = g.mood === 'happy' ? d.happy : g.moodReason && g.moodReason !== 'price' ? d.meh[g.moodReason] : [];
-  g.say = pickWeighted(state, pool, () => 1);
+  g.say = pool.length > 0 ? pool[hashOf(g.id) % pool.length]! : null; // fun-guest: 문장은 id 해시로 — 확률(SAY_CHANCE)을 바꿔도 rng 스트림(밸런스)이 안 흔들린다
 }
 
 /** 좌석 인기(상성·아이템·세트 반영)가 경치 점수에 주는 보정 */

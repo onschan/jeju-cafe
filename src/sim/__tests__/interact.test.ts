@@ -285,6 +285,7 @@ describe('단골 게이지·등록', () => {
     expect(s.notices).toContain(`${r.name} 왔다!`);
     expect(s.fx.some((e) => e.kind === 'react' && e.guestId === g!.id && e.icon === 'wave')).toBe(true);
     expect(regularsDue(s)).toEqual([]); // 와 있는 동안은 또 안 온다
+    expect(s.spawnAcc).toBeLessThan(1); // 단골은 그날 손님 수 안에서 온다 (spawnAcc −1)
     // 팁: 매출(재료 자동 구매는 빼고)이 낸 돈 + 20%
     const income = s.totalIncome;
     updateGuests(s, (12 / GUEST_SPEED_CELLS_PER_S) * 1000);
