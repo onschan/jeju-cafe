@@ -366,7 +366,7 @@ export function bestMoves(s0: GameState, opts: Partial<SolverOptions> = {}): Sol
   return { key: solverKey(s0), moves, horizon: H, rollouts, ms: now() - t0 };
 }
 
-/** 동기 실행 + 캐시 저장 (헤드리스·테스트). 캐시된 결과가 이미 이 상태 것이면 다시 돌리지 않는다. */
+/** 동기 실행 + 캐시 저장 (헤드리스·테스트). 렌더 경로에서 부르지 말 것 — UI는 ui/solverClient.ts(워커). */
 export function solveSync(s: GameState, opts: Partial<SolverOptions> = {}): SolverResult {
   const r = bestMoves(s, opts);
   setSolverResult(r);
