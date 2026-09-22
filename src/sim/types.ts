@@ -1,3 +1,4 @@
+import type { VoiceLine } from './voice.ts';
 /** 지형: 흙(짓는 칸)·마을 길. 바위·덤불 시스템은 ease에서 없앴다 — 옛 세이브의 바위 칸은 로드 때 흙으로 채운다(save.ts). */
 export type Terrain = 'soil' | 'road';
 export type ObjectKind = 'tree' | 'seat' | 'wall' | 'path' | 'building' | 'deco' | 'busstop' | 'gate' | 'landmark' | 'facility';
@@ -825,6 +826,7 @@ export interface GameState {
   complaints: Complaint[];                    // 최근 30일 불만
   reviews: Review[];                          // 월말 후기 (최대 8)
   monthComplaints: Partial<Record<ComplaintReason, number>>; // 이달 사유별 불만 수 (카드 TOP3)
+  voices?: VoiceLine[];                       // trim: 손님 목소리 피드 (voice.ts, 하루 8줄)
   monthReputationDelta: number;               // 이달 평판 변화 누적 (카드)
   dayStats: { satisfied: number; complained: number; total: number }; // 오늘 만족·불만·총손님 (밤에 평판 계산 후 리셋)
   dayPhotos?: number;                          // fun: 오늘 손님이 찍은 사진 수 (밤에 평판 +0.05/장, 상한 0.5 — appeal.ts)

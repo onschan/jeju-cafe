@@ -17,6 +17,7 @@ import { pushNotice } from './staff.ts';
 import { pushFx } from './fx.ts';
 import { nextRandom, pickWeighted } from './rng.ts';
 import { regularList, forgetRegular } from './interact.ts';
+import { pushVoice, busiestSeat, dirtiestObject } from './voice.ts';
 
 export const REPUTATION_START = 50;
 export const REPUTATION_MAX = 100;
@@ -67,6 +68,16 @@ export function addComplaint(state: GameState, reason: ComplaintReason, guest: G
   state.complaints.push(c);
   state.monthComplaints[reason] = (state.monthComplaints[reason] ?? 0) + 1;
   state.dayStats.complained++;
+  noteVoice(state, reason, detail); // trim: 손님 목소리 피드 — 월말 카드와 같은 데이터
+}
+/** 불만 한 건 → 목소리 한 줄 (원인 칸을 같이 담는다) */
+function noteVoice(state: GameState, reason: ComplaintReason, detail?: string): void {
+  switch (reason) {
+    case 'no_seat': pushVoice(state, 'no_seat', undefined, busiestSeat(state)); return;
+    case 'wait_long': pushVoice(state, 'wait_long'); return;
+    case 'expensive': pushVoice(state, 'expensive', detail); return;
+    case 'dirty': { const d = dirtiestObject(state); pushVoice(state, 'dirty', d?.name ?? detail, d?.cell); return; }
+  }
 }
 /** 오늘 온 손님(주문 시점) */
 export function noteGuest(state: GameState): void {

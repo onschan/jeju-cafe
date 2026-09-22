@@ -11,6 +11,7 @@ import { objectDef } from '../data/index.ts';
 import { TopShell, BottomBar, PlaceBar, SHELL_BOTTOM, SHELL_TOP, BOTTOM_BAR_H, type WindowKind, type PlaceBarProps } from './Shell';
 import { Window, type IconGridItem } from './Window';
 import { MessageLine } from './MessageLine';
+import { VoiceFeed } from './VoiceFeed'; // trim: 손님 목소리 피드
 import { MiniCard, MainCard, type CardTarget, type CardActions } from './MiniCard';
 import { DialogueHost } from './Dialogue.tsx';
 import { checkTutorial, setTutorialDispatch, useTutorialNote } from './tutorialDialogue';
@@ -22,7 +23,7 @@ import { RewardPopup } from './RewardPopup';
 import { OutcomePopup } from './OutcomePopup'; // staff-luck: 대박/중박/쪽박 룰렛
 import { checkAlerts } from './alertDialogue.ts';
 import { guestSay, staffSay } from './simBridge';
-import { BuildWindow } from './windows/BuildWindow.tsx';
+import { BuildWindow, requestBuildTab } from './windows/BuildWindow.tsx';
 import { MenuWindow } from './windows/MenuWindow.tsx';
 import { StaffWindow } from './windows/StaffWindow.tsx';
 import { GoalWindow } from './windows/GoalWindow.tsx';
@@ -774,6 +775,16 @@ function Game({ onExit }: { onExit: () => void }) {
           style={{ position: 'absolute', left: 8, bottom: `calc(${SHELL_BOTTOM + 8}px + env(safe-area-inset-bottom))`, width: 56, height: 56, borderRadius: 28, border: `3px solid ${PALETTE.wood}`, background: PALETTE.paper, fontSize: 20, zIndex: 11, padding: 0, boxShadow: '0 2px 0 #0004', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Icon name="home_cafe" size={48} /></button>
       )}
       {place && ghostCell && <GhostButtons view={view} cell={ghostCell} ok={place.ok} canRotate={place.canRotate} onConfirm={place.onConfirm} onRotate={place.onRotate} />}
+      {!place && !cardTarget && !win && (
+        <VoiceFeed bottom={BOTTOM_BAR_H + 26}
+          onFocus={(x, y) => viewRef.current?.focusCell(x, y, 1, 1, 1.6)}
+          onFix={(fix) => {
+            if (fix === 'seat') { requestBuildTab('rest'); setWin({ kind: 'build' }); }
+            else if (fix === 'staff') setWin({ kind: 'people', tab: 'staff' });
+            else if (fix === 'menu') setWin({ kind: 'cafe', tab: 'menu' });
+            else if (fix === 'clean') { setMode({ kind: 'idle' }); showMessage('낡은 시설을 골라 고쳐 보세요'); }
+          }} />
+      )}
       <MessageLine bottom={BOTTOM_BAR_H} />
       {place ? <PlaceBar {...place} /> : <BottomBar onOpen={openWindow} />}
       {cardTarget && !place && <MiniCard target={cardTarget} actions={cardActions} onClose={() => openCard(null)} />}

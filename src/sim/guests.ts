@@ -10,7 +10,10 @@ import { effectivePopularity, youtuberMultiplier } from './promotions.ts';
 import { START_HOUR, END_HOUR, seasonOf } from './clock.ts';
 import { parcelBonusAt, parcelSpawnMult, parcelFeeMult, parcelAt } from './parcels.ts';
 import { objectStats, popularityFor, guestPickMult, cornerSatisfaction, BASE_POPULARITY } from './compat.ts';
-import { cornerVisitTargets, cornerOfPiece, visitCorner, CORNER_VISIT_WEIGHT } from './corners.ts';
+import { cornerVisitTargets, cornerOfPiece, visitCorner, cornerDef, CORNER_VISIT_WEIGHT } from './corners.ts';
+import { pushVoice } from './voice.ts';
+/** trim: 이 전망 이상인 자리에 앉은 만족 손님은 「바다 보이는 자리 최고예요」 */
+const VOICE_VIEW_MIN = 3;
 import { cleanSatisfaction, CLEAN_LOW } from './cleanliness.ts';
 import { isUnlocked, unlockedTypeIds, regularFreqMult, walletOf, onHappyVisit, addSatisfaction, VISIT_BONUS_CAP, targetSpawnMult, stagedFull } from './segments.ts';
 import { addComplaint, noteGuest, noteSatisfied, reputationGuestMult, reputationTypeMult, reputationTipMult } from './reputation.ts';
@@ -32,7 +35,7 @@ import { namedLikes, NAMED_MIN_SCENERY } from './named.ts';
 import { eventGuestMult, eventTagMult, eventFeeMult, isSpecialGuest, specialGuestTip } from './events.ts';
 import { fmtNum } from './format.ts';
 import { josa } from './josa.ts';
-import { siteBonus } from './site.ts';
+import { siteBonus, siteOf } from './site.ts';
 import { spawnRouteWeights, routeArrivals, routeSpawnPos, routeTagMult, routeWalletMult, routeStayMult, routeGuestMult, routeHome, noteRouteGuest, noteRouteIncome, foreignPhotoChance, foreignMenuMult, routeState, CAR_GUESTS_MIN, CAR_GUESTS_MAX, PARKING_FLUSH_HOUR } from './entry.ts'; // 트랙 H 유입 경로
 import { hashOf } from './say.ts';
 import { streetFeeMult } from './tree.ts'; // fun: 같은 트리 3연속 「거리」 요금 +10%
@@ -476,6 +479,7 @@ function resolveMood(state: GameState, g: Guest): void {
       return;
     }
     state.popularity = Math.max(-100, Math.min(100, state.popularity + type.popularityShift));
+    if (siteOf(state, seat.x, seat.y).view >= VOICE_VIEW_MIN) pushVoice(state, 'view', undefined, { x: seat.x, y: seat.y }); // trim: 좋은 말도 피드에
     onHappyVisit(state, g, (tasteMatch ? 2 : 1) * skillSatMult(state, g));
     addRegularGauge(state, g.type, GAUGE_HAPPY_VISIT); // fun-guest: 만족 방문 → 단골 게이지 +0.2
     const photo = foreignPhotoChance(g.type, photoChance(state, g.type, g.menuId)) * (1 + titleBonus(state, 'photo')); // 트랙 H: 외국인 ×2 · staff-luck 칭호
@@ -636,7 +640,7 @@ export function updateGuests(state: GameState, dtMs: number): void {
       if (g.path.length > 0) {
         if (!moveAlong(g, walkMs)) continue;
         const obj = g.visitId ? state.objects[g.visitId] : undefined;
-        if (obj) { if (isVisitable(obj.type)) useFacility(state, g, obj); if (cornerOfPiece(state, obj.id)) visitCorner(state, g, obj); } // fun-corner: 코너 조각이면 사진(장식이면 요금 없음)
+        if (obj) { if (isVisitable(obj.type)) useFacility(state, g, obj); const c = cornerOfPiece(state, obj.id); if (c) { visitCorner(state, g, obj); pushVoice(state, 'corner', cornerDef(c.id).name, { x: obj.x, y: obj.y }); } } // fun-corner: 코너 조각이면 사진(장식이면 요금 없음)
         g.approachCell = { x: Math.round(g.x), y: Math.round(g.y) };
       }
       g.timerMs -= dtMs;
