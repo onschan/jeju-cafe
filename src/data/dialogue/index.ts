@@ -5,6 +5,7 @@ import eventsJson from './events.json' with { type: 'json' };
 import samchunJson from './samchun.json' with { type: 'json' };
 import failureJson from './failure.json' with { type: 'json' };
 import endingJson from './ending.json' with { type: 'json' }; // z-ending: 엔딩·100주년·마을 반상회
+import introJson from './intro.json' with { type: 'json' }; // intro: 프롤로그 6컷(서울 야근 → 제주 카페)
 
 /** 화자 키 = public/assets/icons/portrait_<key>.png. pro = 「프로 삼춘」(pro-guide 튜토리얼 화자: 카이로 게임 100시간 한 동네 청년, 초록 후드·헤드폰) */
 export type Speaker = 'halmang' | 'samchun' | 'hero' | 'haenyeo' | 'jangnim' | 'pro';
@@ -37,6 +38,10 @@ export interface EndingDialogues {
 }
 export const ENDING_DIALOGUES: EndingDialogues = endingJson as EndingDialogues;
 export const villageReviewLine = (grade: number): VillageReviewLine => ENDING_DIALOGUES.village.review.find((r) => r.grade === grade) ?? ENDING_DIALOGUES.village.review[0]!;
+
+/** intro: 프롤로그 컷 — caption은 그림 위 작은 라벨, speaker가 null이면 독백(이름 없이), lines는 한 줄 ≤ 22자 */
+export interface IntroCut { id: number; caption: string; speaker: Speaker | null; lines: string[] }
+export const INTRO_CUTS: IntroCut[] = (introJson as { cuts: IntroCut[] }).cuts;
 
 const GOAL_LINE = new Map(GOAL_LINES.map((g) => [g.id, g]));
 const EVENT_DIALOGUE = new Map(EVENT_DIALOGUES.map((e) => [e.id, e]));

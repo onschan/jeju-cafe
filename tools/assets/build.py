@@ -39,7 +39,9 @@ def main():
     iso = {n: c for n, c in sprites.items() if n.startswith('iso_')}
     if iso:
         contact_sheet(iso, cols=8, scale=2).save(os.path.join(REVIEW_DIR, 'contact_iso.png'))
-    print(f'{len(sprites)} sprites ({len(iso)} iso) → sheet {sheet.w}x{sheet.h}')
+    import sprites_intro   # 프롤로그 컷 7장 → public/assets/intro/ (시트 밖, <img>로 읽는다)
+    n_intro = sprites_intro.build(os.path.join(OUT_DIR, 'intro'), REVIEW_DIR)
+    print(f'{len(sprites)} sprites ({len(iso)} iso) → sheet {sheet.w}x{sheet.h}, {n_intro} intro cuts')
 
 if __name__ == '__main__':
     main()

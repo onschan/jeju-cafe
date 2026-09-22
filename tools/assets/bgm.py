@@ -152,7 +152,29 @@ TITLE = dict(
     ],
 )
 
-SONGS = {'spring': SPRING, 'summer': SUMMER, 'autumn': AUTUMN, 'winter': WINTER, 'title': TITLE}
+# 프롤로그 1~3컷(서울 야근·지하철·사직서): 잔잔한 단조 8마디, 드럼 없음, 로우패스 더 세게
+INTRO = dict(
+    bpm=76, bars=8, arp=ARP_WIDE, swing=(0.5, 0.5),
+    drums=([], [], False), soften=(0.22, 3),
+    chords=[
+        ('A2', ['A3', 'E4', 'A4', 'C5']), ('F2', ['F3', 'C4', 'F4', 'A4']),
+        ('C3', ['C4', 'G4', 'C5', 'E5']), ('E2', ['E3', 'B3', 'E4', 'G#4']),
+        ('A2', ['A3', 'E4', 'A4', 'C5']), ('D3', ['D4', 'A4', 'D5', 'F5']),
+        ('E2', ['E3', 'B3', 'E4', 'G#4']), ('A2', ['A3', 'E4', 'A4', 'C5']),
+    ],
+    melody=[
+        ('E5', 2), ('C5', 1), ('B4', 1),
+        ('A4', 3), ('R', 1),
+        ('G4', 1), ('E5', 1), ('D5', 1), ('C5', 1),
+        ('B4', 3), ('R', 1),
+        ('A4', 1), ('C5', 1), ('E5', 2),
+        ('F5', 1), ('D5', 1), ('A4', 2),
+        ('G#4', 2), ('B4', 1), ('D5', 1),
+        ('A4', 3), ('R', 1),
+    ],
+)
+
+SONGS = {'spring': SPRING, 'summer': SUMMER, 'autumn': AUTUMN, 'winter': WINTER, 'title': TITLE, 'intro': INTRO}
 
 
 # ---------------------------------------------------------------- 렌더
@@ -208,7 +230,7 @@ def render(name, song):
     n = int(round(SR * total_beats * beat))
     buf = (buf + [0.0] * n)[:n]
     peak = max(abs(v) for v in buf)
-    buf = soften(buf, 0.35, 2)
+    buf = soften(buf, *song.get('soften', (0.35, 2)))
     peak = max(abs(v) for v in buf) or 1.0
     buf = [v * PEAK / peak for v in buf]
     return buf, n / SR
