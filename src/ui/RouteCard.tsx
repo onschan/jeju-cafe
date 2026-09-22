@@ -17,6 +17,13 @@ import { brownBtnOn, brownBtnOff, dangerBtn, PALETTE, card } from './frame';
 
 /** 경로별 픽셀 아이콘 이름 (sim의 def.icon 이모지 대신) */
 const ROUTE_ICON: Record<string, string> = { bus: 'bus', parking: 'car', shuttle: 'plane', cruise: 'ship', olle: 'ribbon' };
+/** 잠긴 경로 한 줄: 무엇을 하면 누가 오는지 (트랙 E 진입점 미리 보기 — 맵 팻말과 같은 방향의 말) */
+const LOCK_HINT: Record<string, string> = {
+  parking: '좌석 6개면 렌터카 손님이 와요',
+  shuttle: '남쪽 샘터 땅을 사면 셔틀이 와요',
+  cruise: '북쪽 곶자왈 땅 + ★3이면 배가 와요',
+  olle: '서쪽 밭담 땅을 사면 올레꾼이 와요',
+};
 
 const small: CSSProperties = { fontSize: 13, color: PALETTE.inkSoft };
 const btnOn: CSSProperties = { ...brownBtnOn, margin: 0, padding: '0 10px', fontSize: 15 };
@@ -53,7 +60,7 @@ export function RouteCard({ s, route, objectId }: { s: GameState; route: RouteId
   const expand = lot ? canExpandParking(s, lot.id) : { ok: false, reason: '' };
   const doExpand = () => { if (!lot) return; Confirm(`${josa(objectDef(PARKING_EXPAND_FROM).name, '을/를')} ${objectDef(PARKING_EXPAND_TO).name}(6칸)으로 넓힐까요? 차액 ${won(parkingExpandCost())} · 공사 ${objectDef(PARKING_EXPAND_TO).buildDays ?? 0}일`, () => { dispatch({ type: 'expandParking', objectId: lot.id }); }, { title: '주차장 넓히기' }); };
   const building = Object.values(s.objects).find((o) => o.build && def.facilities.includes(o.type));
-  const status = !st.unlocked ? `잠김 — ${def.unlockText}` : building ? `${objectDef(building.type).name} 짓는 중 · ${buildDaysLeft(s, building)}일` : !facility ? `${facilityName}을 지어요` : def.needsContract && !st.contract ? '계약이 필요해요' : connected ? '손님이 와요' : '길이 끊겼어요';
+  const status = !st.unlocked ? (LOCK_HINT[route] ?? `잠김 — ${def.unlockText}`) : building ? `${objectDef(building.type).name} 짓는 중 · ${buildDaysLeft(s, building)}일` : !facility ? `${facilityName}을 지어요` : def.needsContract && !st.contract ? '계약이 필요해요' : connected ? '손님이 와요' : '길이 끊겼어요';
   return (
     <div data-testid="card-route" data-route={route}>
       <div style={{ fontSize: 14, lineHeight: 1.5 }}>

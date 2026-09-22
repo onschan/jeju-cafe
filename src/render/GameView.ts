@@ -1,6 +1,6 @@
 import { Application, Container, Sprite, Graphics, Texture, Text } from 'pixi.js';
 import type { GameState, PlacedObject, Guest, Staff, Season, RoleId, Pt, RouteId } from '../sim/index.ts';
-import { seasonOf, LOW_ENERGY, parcelPrice, footprint, roomAt, doorFrontOf, WALL_COLORS, dayIndex, menuOf, sizeOf, MAIN_SIZE, LIGHT_RADIUS } from '../sim/index.ts';
+import { seasonOf, LOW_ENERGY, parcelPrice, footprint, roomAt, doorFrontOf, WALL_COLORS, dayIndex, menuOf, sizeOf, MAIN_SIZE, LIGHT_RADIUS, objectAt, cellAt } from '../sim/index.ts';
 import type { Parcel } from '../sim/index.ts';
 import { objectDef } from '../data/index.ts';
 import { isoTerrainTexture, isoObjectTexture, glowTexture, label, clearTextureCache, loadLabelFont } from './textures';
@@ -15,8 +15,10 @@ import { guestTypeDef, namedGuestDef } from '../data/index.ts';
 import { Background } from './Background';
 import { siteOf, siteBadgeTextPlain, siteTone, layoutKey } from '../sim/site.ts';
 import { objectStats, activeCombos } from '../sim/compat.ts';
-import { entryPoints, ROUTE_IDS } from '../sim/entry.ts'; // 트랙 H 진입점 표지
+import { entryPoints, ROUTE_IDS, ENTRY_ROUTES } from '../sim/entry.ts'; // 트랙 H 진입점 표지
 import { isSiteOverlayOn, setSiteOverlayOn, siteOverlayKey, drawSiteOverlay, GHOST_GOOD, GHOST_WARN } from './siteOverlay';
+import { parcelScenery, parcelSignLines, wallEdges, ROUTE_PREVIEW, busPose, BUS_PERIOD_MS, BUS_DROP_AT_MS, type SceneryProp } from './scenery'; // 트랙 E 제주 풍경
+import { VILLAGE_ROAD_Y } from '../sim/layout.ts';
 
 /** 주문 말풍선: 메뉴 분류별 픽셀 아이콘(icon_*) — MenuWindow의 CAT_ICON과 같은 이름 */
 const MENU_BUBBLE_ICON: Record<string, string> = { drink: 'coffee', dessert: 'cake', meal: 'meal', signature: 'sparkle' };
@@ -55,12 +57,37 @@ const CHAR_Z = 1e4;
 const ROUTE_MARKER_SPRITE: Record<RouteId, string> = { bus: 'route_bus', parking: 'route_car', shuttle: 'route_plane', cruise: 'route_ship', olle: 'route_ribbon' };
 const ROUTE_LOCKED_TINT = 0x8a8a8a;
 
-/** 미소유 필지 노드: 덮개 타일(tiles)과 가격 라벨(overlay)을 같이 지운다 */
-function destroyLocked(node?: Container) {
-  if (!node) return;
-  (node as Container & { parcelLabel?: Container }).parcelLabel?.destroy({ children: true });
-  node.destroy({ children: true });
+/** 미소유 필지 풍경 노드(트랙 E): 풍경 타일(tiles)·소품(actors, 깊이 정렬)·이름 팻말(overlay)을 한데 묶는다. 사면 1초 페이드 뒤 지운다(keep 소품은 남는다). */
+interface SceneryEntry { tiles: Container; props: { node: Container; keep: boolean; cells: { x: number; y: number }[] }[]; sign: Container; text: string; fadeFrom: number | null }
+function destroyScenery(e: SceneryEntry, keepLandmarks: boolean) {
+  e.tiles.destroy({ children: true });
+  e.sign.destroy({ children: true });
+  for (const p of e.props) if (!(keepLandmarks && p.keep) && !p.node.destroyed) p.node.destroy({ children: true });
 }
+/** 사면 풍경이 걷히는 시간 */
+const SCENERY_FADE_MS = 1000;
+/** 팻말 배율: 월드 배율이 이 값보다 작으면 그만큼 키워 화면 글자 크기를 지킨다(최대 ×1.8 — 더 키우면 줌아웃 때 팻말끼리 겹친다) */
+const SIGN_MIN_WORLD_SCALE = 1.2;
+const SIGN_MAX_SCALE = 1.8;
+function signScale(worldScale: number): number {
+  return Math.min(SIGN_MAX_SCALE, Math.max(1, SIGN_MIN_WORLD_SCALE / Math.max(0.01, worldScale)));
+}
+/** 맵 안 칸의 지형(밖이면 null) · 시설 유무 · 경로 진입점 칸인가 — 풍경 소품 자리 검사용 */
+function cellTerrain(state: GameState, x: number, y: number): string | null {
+  return x >= 0 && y >= 0 && x < state.grid.w && y < state.grid.h ? cellAt(state, x, y).terrain : null;
+}
+function objectAtCell(state: GameState, x: number, y: number): boolean {
+  return objectAt(state, x, y) !== null;
+}
+function isEntryCell(x: number, y: number): boolean {
+  return ROUTE_IDS.some((r) => ENTRY_ROUTES[r].entry.x === x && ENTRY_ROUTES[r].entry.y === y);
+}
+/** 마을 버스 프레임 간격(달릴 때) */
+const BUS_FRAME_MS = 150;
+/** 진입점 미리 보기 팻말·필지 팻말 색 (갈색 나무판 + 크림 글자) */
+const SIGN_FILL = 0x6b3d1e;
+const SIGN_EDGE = 0x3b1f0e;
+const SIGN_TEXT = 0xfff3d6;
 
 const GHOST_OK = 0x88ff88;
 const GHOST_BAD = 0xff7777;
@@ -140,7 +167,7 @@ const GLOW_BRIGHT = 1.4;
 const ROOM_LIGHT_COLOR = 0xffc46a;
 const ROOM_LIGHT_ALPHA = 0.28;
 /** 맵 경계 위쪽 여유(키 큰 오브젝트와 지평선 배경 띠가 보이도록) */
-const BOUNDS_TOP_PAD = 180;
+const BOUNDS_TOP_PAD = 260;
 
 interface ObjEntry {
   node: Container;
@@ -262,7 +289,19 @@ export class GameView {
   private tileSprites: Sprite[] = [];
   private tilesBuilt = false;
   /** 미소유 필지 덮개 + 가격 라벨. 키는 필지 id, 라벨 문구가 바뀌면(신구간 할인) 다시 만든다. */
-  private lockedNodes = new Map<string, { node: Container; text: string }>();
+  private lockedNodes = new Map<string, SceneryEntry>();
+  /** 사서 걷히는 중인 풍경(1초 페이드) */
+  private fadingScenery: SceneryEntry[] = [];
+  /** 필지 경계 돌담선(내 땅 범위·미소유 경계). 소유·배치가 바뀔 때만 다시 만든다. */
+  private wallNodes: Container[] = [];
+  private wallKey = '';
+  /** 잠긴 경로 진입점 위 미리 보기 팻말 */
+  private entryLabels = new Map<RouteId, Container>();
+  /** 마을 버스(장식 애니): 서쪽에서 들어와 정류장에 5초 서고 동쪽으로 나간다 */
+  private bus: Sprite | null = null;
+  private busStop: { x: number; y: number } | null = null;
+  private busStopKey = '';
+  private busDropCycle = -1;
   /** 트랙 H: 진입점 표지 (경로 id → 노드·상태 키). 배치·해금이 바뀔 때만 다시 만든다. */
   private entryMarkers = new Map<RouteId, { node: Container; key: string }>();
   private entryKey = '';
@@ -377,11 +416,23 @@ export class GameView {
     for (const sp of this.speech.values()) sp.node.destroy({ children: true });
     this.speech.clear();
     this.greeted.clear();
-    for (const e of this.lockedNodes.values()) destroyLocked(e.node); // overlay에 있는 가격 라벨까지 같이 지운다
+    for (const e of this.lockedNodes.values()) destroyScenery(e, false); // overlay에 있는 팻말·actors의 소품까지 같이 지운다
     this.lockedNodes.clear();
+    for (const e of this.fadingScenery) destroyScenery(e, false);
+    this.fadingScenery = [];
+    for (const n of this.wallNodes) n.destroy({ children: true });
+    this.wallNodes = [];
+    this.wallKey = '';
     for (const e of this.entryMarkers.values()) e.node.destroy({ children: true });
     this.entryMarkers.clear();
+    for (const l of this.entryLabels.values()) l.destroy({ children: true });
+    this.entryLabels.clear();
     this.entryKey = '';
+    this.bus?.destroy({ children: true });
+    this.bus = null;
+    this.busStop = null;
+    this.busStopKey = '';
+    this.busDropCycle = -1;
     this.tiles.removeChildren().forEach((c) => c.destroy());
     this.tileSprites = [];
     this.terrainKeys = [];
@@ -639,8 +690,11 @@ export class GameView {
     }
     this.syncTerrain(state, season);
     this.background.sync(state);
-    this.syncLocked(state);
     const now = performance.now();
+    this.background.tick(now);
+    this.syncLocked(state, now);
+    this.syncWalls(state);
+    this.syncBus(state, now);
     // 시계에 hour가 있는 브랜치(2B-1)와 없는 브랜치 모두에서 동작하도록 정오를 기본값으로
     this.nightAlpha = nightAlpha((state.clock as { hour?: number }).hour ?? 12);
     this.syncObjects(state, now);
@@ -716,60 +770,178 @@ export class GameView {
     this.world.position.set(width / 2 - centerX * s, WORLD_OFFSET_Y - top * s);
   }
 
-  /** 미소유 필지: 어두운 덮개 타일 + 가운데 가격 라벨. 사면 걷힌다. */
-  private syncLocked(state: GameState) {
+  /** 미소유 필지(트랙 E): 어두운 덮개 대신 제주 풍경(필지 특징에 맞는 밭 타일 + 소품) + 이름 팻말. 사면 1초에 걷히고 랜드마크만 남는다. */
+  private syncLocked(state: GameState, now: number) {
     const alive = new Set<string>();
     for (const p of state.parcels) {
       if (p.owned) continue;
       alive.add(p.id);
-      const text = `₩${parcelPrice(state, p).toLocaleString()} · 탭해서 구매`;
+      const sc = parcelScenery(p.id);
+      const [l1, l2] = parcelSignLines(p.name, parcelPrice(state, p), sc?.feature ?? '');
+      const text = `${l1}|${l2}`; // 미소유 필지엔 시설을 못 놓으니 배치 서명은 키에 안 넣는다(매 프레임 재생성 방지)
       const cur = this.lockedNodes.get(p.id);
       if (cur?.text === text) continue;
-      destroyLocked(cur?.node);
-      this.lockedNodes.set(p.id, { node: this.makeLockedNode(p, text), text });
+      if (cur) destroyScenery(cur, false);
+      this.lockedNodes.set(p.id, this.makeSceneryNode(state, p, [l1, l2], text));
     }
     for (const [id, entry] of this.lockedNodes) {
       if (alive.has(id)) continue;
-      destroyLocked(entry.node);
+      // 샀다: 페이드 시작 (팻말은 바로 치운다)
+      entry.sign.destroy({ children: true });
+      entry.fadeFrom = now;
+      this.fadingScenery.push(entry);
       this.lockedNodes.delete(id);
+    }
+    if (this.fadingScenery.length) {
+      this.fadingScenery = this.fadingScenery.filter((e) => {
+        const k = (now - (e.fadeFrom ?? now)) / SCENERY_FADE_MS;
+        if (k >= 1) { destroyScenery(e, true); return false; }
+        e.tiles.alpha = 1 - k;
+        for (const p of e.props) if (!p.keep) p.node.alpha = 1 - k;
+        return true;
+      });
+    }
+    // 남은 랜드마크: 그 칸에 시설이 놓이면 사라진다
+    for (const e of this.fadingScenery) this.hideCoveredLandmarks(state, e);
+    for (const e of this.lockedNodes.values()) this.hideCoveredLandmarks(state, e);
+    // 팻말은 줌아웃해도 읽히게 화면 크기를 유지한다(월드 배율 1.4 아래에서 키움)
+    const k = signScale(this.world.scale.x);
+    for (const e of this.lockedNodes.values()) e.sign.scale.set(k);
+    for (const l of this.entryLabels.values()) l.scale.set(k);
+  }
+
+  private hideCoveredLandmarks(state: GameState, e: SceneryEntry) {
+    for (const p of e.props) {
+      if (!p.keep || p.node.destroyed) continue;
+      p.node.visible = !p.cells.some((c) => objectAtCell(state, c.x, c.y));
     }
   }
 
-  private makeLockedNode(p: Parcel, text: string): Container {
+  /** 팻말(갈색 나무판 + 크림 글자, 1~2줄). 원점은 판 아래 중앙. */
+  private signNode(lines: string[], size = 10): Container {
     const c = new Container();
-    const lockedTex = hasAssets() ? peekTex('iso_tile_locked') : null;
-    const g = lockedTex ? null : new Graphics();
+    const texts = lines.map((t, i) => { const l = label(t, i === 0 ? size + 1 : size); l.anchor.set(0.5, 0); l.tint = SIGN_TEXT; return l; });
+    const w = Math.max(...texts.map((t) => t.width)) + 12;
+    const h = texts.reduce((a, t) => a + t.height, 0) + 8;
+    const bg = new Graphics().roundRect(-w / 2, -h, w, h, 3).fill({ color: SIGN_FILL }).stroke({ color: SIGN_EDGE, width: 2 })
+      .rect(-1, 0, 3, 6).fill(SIGN_EDGE); // 말뚝
+    c.addChild(bg);
+    let y = -h + 4;
+    for (const t of texts) { t.position.set(0, y); y += t.height; c.addChild(t); }
+    return c;
+  }
+
+  private makeSceneryNode(state: GameState, p: Parcel, lines: string[], text: string): SceneryEntry {
+    const sc = parcelScenery(p.id);
+    const tiles = new Container();
+    const fillTex = sc && hasAssets() ? peekTex(`iso_tile_field_${sc.fill}`) : null;
+    const g = fillTex ? null : new Graphics();
     for (let y = p.y; y < p.y + p.h; y++) {
       for (let x = p.x; x < p.x + p.w; x++) {
+        if (cellTerrain(state, x, y) === 'road') continue; // 마을 길은 그대로 보인다
         const { sx, sy } = cellToScreen(x, y);
-        if (lockedTex) {
-          const sp = new Sprite(lockedTex);
+        if (fillTex) {
+          const sp = new Sprite(fillTex);
           sp.anchor.set(0.5, 0);
           sp.position.set(sx, sy);
-          c.addChild(sp);
+          tiles.addChild(sp);
         } else {
           g!.poly([sx, sy, sx + ISO_W / 2, sy + ISO_H / 2, sx, sy + ISO_H, sx - ISO_W / 2, sy + ISO_H / 2]).fill({ color: LOCKED_COLOR, alpha: LOCKED_ALPHA });
         }
       }
     }
-    if (g) c.addChild(g);
+    if (g) tiles.addChild(g);
+    this.tiles.addChild(tiles);
+    // 소품: 길·진입점·시작부터 놓인 시설과 겹치는 것은 뺀다. actors에 두어 손님·시설과 깊이 정렬.
+    const props: SceneryEntry['props'] = [];
+    for (const pr of sc?.props ?? []) {
+      const w = pr.w ?? 1, h = pr.h ?? 1;
+      const cells: { x: number; y: number }[] = [];
+      for (let dy = 0; dy < h; dy++) for (let dx = 0; dx < w; dx++) cells.push({ x: p.x + pr.x + dx, y: p.y + pr.y + dy });
+      if (cells.some((c) => c.x >= p.x + p.w || c.y >= p.y + p.h || cellTerrain(state, c.x, c.y) !== 'soil' || objectAtCell(state, c.x, c.y) || isEntryCell(c.x, c.y))) continue;
+      const node = this.sceneryPropNode(pr, p.x + pr.x, p.y + pr.y, w, h);
+      if (!node) continue;
+      this.actors.addChild(node);
+      props.push({ node, keep: !!pr.keep, cells });
+    }
+    // 이름 팻말: 필지 가운데, overlay(시설·캐릭터 위)
     const center = cellCenter(p.x + (p.w - 1) / 2, p.y + (p.h - 1) / 2);
-    const name = label(p.name, 11);
-    const price = label(text, 10);
-    name.anchor.set(0.5, 1);
-    price.anchor.set(0.5, 0);
-    name.position.set(center.sx, center.sy - 1);
-    price.position.set(center.sx, center.sy + 1);
-    const w = Math.max(name.width, price.width) + 12;
-    const bg = new Graphics().roundRect(center.sx - w / 2, center.sy - name.height - 4, w, name.height + price.height + 8, 4).fill({ color: 0x000000, alpha: 0.6 });
-    // 어두운 덮개 타일은 tiles 안(오브젝트 아래), 가격 라벨은 overlay(오브젝트·캐릭터 위) — 시설에 가려지지 않게
-    this.tiles.addChild(c);
-    const lbl = new Container();
-    lbl.label = 'parcel-label';
-    lbl.addChild(bg, name, price);
-    this.overlay.addChild(lbl);
-    (c as Container & { parcelLabel?: Container }).parcelLabel = lbl;
+    const sign = this.signNode(lines);
+    sign.label = 'parcel-label';
+    sign.position.set(center.sx, center.sy - 2);
+    this.overlay.addChild(sign);
+    return { tiles, props, sign, text, fadeFrom: null };
+  }
+
+  private sceneryPropNode(pr: SceneryProp, x: number, y: number, w: number, h: number): Container | null {
+    const t = hasAssets() ? peekTex(spriteName.isoObject(SPRITE_ALIAS[pr.type] ?? pr.type)) : null;
+    if (!t) return null;
+    const c = new Container();
+    c.label = `scenery-${pr.type}`;
+    const { sx, sy } = footAnchor(x, y, w, h);
+    c.position.set(sx, sy);
+    c.zIndex = depth(x, y, w, h) + 1e-3;
+    const sp = new Sprite(t);
+    sp.anchor.set(0.5, 1);
+    c.addChild(sp);
     return c;
+  }
+
+  /** 필지 경계 낮은 돌담선(장식, 통행 무관): 내 땅 범위와 미소유 필지 경계가 보인다. 소유·길이 바뀔 때만 다시 만든다. */
+  private syncWalls(state: GameState) {
+    const key = `${state.parcels.map((p) => (p.owned ? 1 : 0)).join('')}|${layoutKey(state)}|${hasAssets() ? 1 : 0}`;
+    if (key === this.wallKey) return;
+    this.wallKey = key;
+    for (const n of this.wallNodes) n.destroy({ children: true });
+    this.wallNodes = [];
+    const ne = hasAssets() ? peekTex(spriteName.isoObject('wall_ne')) : null;
+    const nw = hasAssets() ? peekTex(spriteName.isoObject('wall_nw')) : null;
+    if (!ne || !nw) return;
+    const edges = wallEdges(state.grid.w, state.grid.h, state.parcels, (x, y) => cellTerrain(state, x, y) === 'road');
+    for (const e of edges) {
+      const sp = new Sprite(e.axis === 'ne' ? ne : nw);
+      sp.anchor.set(0.5, 1);
+      const { sx, sy } = footAnchor(e.x, e.y, 1, 1);
+      sp.position.set(sx, sy);
+      sp.zIndex = e.x + e.y - 0.5; // 뒤 칸 내용 뒤, 이 칸 내용 앞
+      sp.label = 'wall';
+      this.actors.addChild(sp);
+      this.wallNodes.push(sp);
+    }
+  }
+
+  /** 마을 버스 애니(렌더 전용): 마을 길을 따라 서쪽 링에서 들어와 정류장에 5초 서고(손님 내리는 반짝임) 동쪽으로 나간다. */
+  private syncBus(state: GameState, now: number) {
+    const lk = layoutKey(state);
+    if (lk !== this.busStopKey) {
+      this.busStopKey = lk;
+      const stop = Object.values(state.objects).find((o) => o.type === 'busstop');
+      this.busStop = stop ? { x: stop.x, y: stop.y } : null;
+    }
+    if (!this.busStop) { if (this.bus) this.bus.visible = false; return; }
+    if (!this.bus) {
+      const t = hasAssets() ? peekTex(spriteName.isoObject('bus_0')) : null;
+      if (!t) return;
+      this.bus = new Sprite(t);
+      this.bus.anchor.set(0.5, 1);
+      this.bus.label = 'bus';
+      this.actors.addChild(this.bus);
+    }
+    const y = VILLAGE_ROAD_Y;
+    const pose = busPose(now, this.busStop.x - 1, state.grid.w); // 2칸 버스의 앞이 정류장 칸에 닿게
+    this.bus.visible = pose.visible;
+    if (!pose.visible) return;
+    const { sx, sy } = footAnchor(pose.x, y, 2, 1);
+    this.bus.position.set(sx, sy);
+    this.bus.zIndex = depth(pose.x, y, 2, 1) + 0.4;
+    const frame = pose.moving ? Math.floor(now / BUS_FRAME_MS) % 2 : 0;
+    const t = peekTex(spriteName.isoObject(`bus_${frame}`));
+    if (t && this.bus.texture !== t) this.bus.texture = t;
+    const cycle = Math.floor(now / BUS_PERIOD_MS);
+    if (!pose.moving && cycle !== this.busDropCycle && now % BUS_PERIOD_MS >= BUS_DROP_AT_MS) {
+      this.busDropCycle = cycle;
+      this.spawnSparkle(this.busStop.x, this.busStop.y, now);
+    }
   }
 
   private tileTexture(state: GameState, i: number, season: Season): Texture {
@@ -1004,6 +1176,18 @@ export class GameView {
       }
       this.actors.addChild(c);
       this.entryMarkers.set(e.route, { node: c, key: k });
+      // 잠긴 경로: 표지 위 미리 보기 팻말("주차장 자리 — 좌석 6개면 열려요"). 열리면 치운다.
+      this.entryLabels.get(e.route)?.destroy({ children: true });
+      this.entryLabels.delete(e.route);
+      const preview = ROUTE_PREVIEW[e.route];
+      if (!e.unlocked && preview) {
+        const sign = this.signNode(preview, 9);
+        sign.label = `entry-label-${e.route}`;
+        sign.alpha = 0.85;
+        sign.position.set(sx, sy - ISO_H - 26);
+        this.overlay.addChild(sign);
+        this.entryLabels.set(e.route, sign);
+      }
     }
   }
 
