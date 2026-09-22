@@ -1,6 +1,9 @@
 /**
- * 프로 삼춘의 정석 (pro-guide): 튜토리얼 글로우 칸·「지금 추천 행동」을 실제 수치로 고른다 — 고정 좌표 없음.
+ * 프로 삼춘의 정석 (pro-guide → solver): 튜토리얼 글로우 칸·「지금 추천 행동」을 실제 수치로 고른다 — 고정 좌표 없음.
  * 모든 함수는 sim 상태만 읽고 결정적이다(rng·Date 없음). 튜토리얼(tutorial.ts cells)·공략 노트(TutorialWindow)·무행동 힌트(hints.ts)가 부른다.
+ *
+ * solver: `bestSeatCells` 같은 공개 함수는 휴리스틱(`*Heuristic`)으로 후보를 뽑은 뒤, 같은 상태의 롤아웃 결과(solverCache — 워커 또는 solveSync가 채운다)가
+ * 있으면 그 점수순으로 다시 세운다. 결과가 없으면 휴리스틱 순서 그대로(동기·렌더 경로에서 롤아웃을 돌리지 않는다). nextMove도 결과가 있으면 solver 1위 수를 낸다.
  *
  * - bestMainCell     본관 원점: 바람 최소 → 정낭(정류장)과 문 앞 거리 최소 (tutorial.recommendedMainCells와 같은 순서)
  * - bestSeatCells    야외 테이블: 정류장에서 걸어 닿는 길 옆 빈 칸 중 seatScore(입지 0~10) 최고 → 문 앞과 가까운 순
@@ -24,6 +27,7 @@ import { parkingSites, PARKING_EXPAND_FROM, ENTRY_ROUTES } from './entry.ts';
 import { spotUnlocked, nextSpotLevel, spotRequirements, tagPopularity } from './spots.ts';
 import { staffInRole } from './staff.ts';
 import { offeredChallenges } from './challenges.ts';
+import { rankCellsByCache, cachedMoves, type SolverMove } from './solverCache.ts';
 
 export const SEAT_TYPE = 'table_out';
 export const WALL_TYPE = 'stonewall';
@@ -93,7 +97,7 @@ function seatReachable(s: GameState, reach: ReturnType<typeof reachMap>, x: numb
   return walkableNeighborsOf(s, x, y).some((nb) => reach.dist.has(cellKey(s, nb)));
 }
 /** 야외 테이블 최적 칸 n개 (좋은 순): 걸어 닿는 빈 흙 칸 중 seatScore 최고 → 문 앞(없으면 정류장)과 가까운 순. 닿는 칸이 없으면(길이 아직 없다) 길·마을 길 옆 빈 칸으로 대신한다. */
-export function bestSeatCells(s: GameState, n = 3, type = SEAT_TYPE): Pt[] {
+export function bestSeatCellsHeuristic(s: GameState, n = 3, type = SEAT_TYPE): Pt[] {
   const reach = reachMap(s, busStopPos(s));
   const anchor = doorFront(s) ?? busStopPos(s);
   const scored: { p: Pt; score: number; d: number }[] = [];
@@ -103,6 +107,13 @@ export function bestSeatCells(s: GameState, n = 3, type = SEAT_TYPE): Pt[] {
   }
   scored.sort((a, b) => b.score - a.score || a.d - b.d || byPos(a.p, b.p));
   return scored.slice(0, n).map((o) => o.p);
+}
+/** solver 후보 칸 수 (solver.ts candidateActions와 같은 k: 좌석 5·그 밖 3) */
+export const SOLVER_SEAT_K = 5;
+export const SOLVER_CELL_K = 3;
+/** 야외 테이블 최적 칸 n개: 휴리스틱 상위 후보를 solver 롤아웃 점수(캐시)로 다시 세운 것. 캐시가 없으면 휴리스틱 순서. */
+export function bestSeatCells(s: GameState, n = 3, type = SEAT_TYPE): Pt[] {
+  return rankCellsByCache(s, type, bestSeatCellsHeuristic(s, Math.max(n, SOLVER_SEAT_K), type)).slice(0, n);
 }
 export function bestSeatCell(s: GameState): Pt | null {
   return bestSeatCells(s, 1)[0] ?? null;
@@ -116,7 +127,7 @@ function inWindWedge(seat: Pt, x: number, y: number): boolean {
   return dx >= 1 && dx <= 3 && dy >= 1 && dy <= 3 && Math.abs(dx - dy) <= 1;
 }
 /** 돌담 최적 칸 n개: 야외 테이블 북서 쐐기의 빈 흙 칸 중 가리는 테이블 수 최다 → (특정 테이블이면 그) 테이블과 가까운 순. 테이블이 없으면 []. */
-export function bestWallCells(s: GameState, n = 3, seat?: Pt): Pt[] {
+export function bestWallCellsHeuristic(s: GameState, n = 3, seat?: Pt): Pt[] {
   const seats = seat ? [seat] : outdoorSeats(s).map((o) => ({ x: o.x, y: o.y }));
   if (seats.length === 0) return [];
   const all = outdoorSeats(s).map((o) => ({ x: o.x, y: o.y }));
@@ -133,6 +144,9 @@ export function bestWallCells(s: GameState, n = 3, seat?: Pt): Pt[] {
     }
   }
   return [...cand.values()].sort((a, b) => b.covers - a.covers || a.d - b.d || byPos(a.p, b.p)).slice(0, n).map((o) => o.p);
+}
+export function bestWallCells(s: GameState, n = 3, seat?: Pt): Pt[] {
+  return rankCellsByCache(s, WALL_TYPE, bestWallCellsHeuristic(s, Math.max(n, SOLVER_CELL_K), seat)).slice(0, n);
 }
 export function bestWallCell(s: GameState, seat?: Pt): Pt | null {
   return bestWallCells(s, 1, seat)[0] ?? null;
@@ -171,7 +185,7 @@ export function combosIfPlaced(s: GameState, type: string, x: number, y: number)
   return n;
 }
 /** 콤보 최적 칸 n개: 빈 흙 칸 중 combosIfPlaced 최다(1 이상) → 야외 테이블과 가까운 순. 콤보가 나는 칸이 없으면 테이블 옆 빈 칸. */
-export function bestComboCells(s: GameState, type = TREE_TYPE, n = 3): Pt[] {
+export function bestComboCellsHeuristic(s: GameState, type = TREE_TYPE, n = 3): Pt[] {
   const seats = outdoorSeats(s);
   const near = (p: Pt) => (seats.length ? Math.min(...seats.map((t) => cheb(t, p))) : 0);
   const scored: { p: Pt; n: number; d: number }[] = [];
@@ -185,6 +199,9 @@ export function bestComboCells(s: GameState, type = TREE_TYPE, n = 3): Pt[] {
   if (best.n > 0) return scored.filter((o) => o.n === best.n).slice(0, n).map((o) => o.p);
   return scored.filter((o) => o.d <= 1).slice(0, n).map((o) => o.p);
 }
+export function bestComboCells(s: GameState, type = TREE_TYPE, n = 3): Pt[] {
+  return rankCellsByCache(s, type, bestComboCellsHeuristic(s, type, Math.max(n, SOLVER_CELL_K))).slice(0, n);
+}
 export function bestComboCell(s: GameState, type = TREE_TYPE): Pt | null {
   return bestComboCells(s, type, 1)[0] ?? null;
 }
@@ -192,7 +209,7 @@ export function bestComboCell(s: GameState, type = TREE_TYPE): Pt | null {
 // ---------- 실내 ----------
 
 /** 실내 테이블 최적 칸 n개: 본관 빈 바닥 중 벽에 붙은 창가(북쪽 벽 = 바다 방향 우선) → 입지 점수 → 위·왼쪽. 공사 중이면 []. */
-export function bestIndoorSeats(s: GameState, n = 3): Pt[] {
+export function bestIndoorSeatsHeuristic(s: GameState, n = 3): Pt[] {
   const m = mainBuilding(s);
   if (!m || s.main.work) return [];
   const w = m.w ?? objectDef(m.type).w, h = m.h ?? objectDef(m.type).h;
@@ -204,6 +221,9 @@ export function bestIndoorSeats(s: GameState, n = 3): Pt[] {
     .sort((a, b) => b.wall - a.wall || b.score - a.score || byPos(a.p, b.p))
     .slice(0, n).map((o) => o.p);
 }
+export function bestIndoorSeats(s: GameState, n = 3): Pt[] {
+  return rankCellsByCache(s, INDOOR_SEAT_TYPE, bestIndoorSeatsHeuristic(s, Math.max(n, SOLVER_SEAT_K))).slice(0, n);
+}
 export function bestIndoorSeat(s: GameState): Pt | null {
   return bestIndoorSeats(s, 1)[0] ?? null;
 }
@@ -211,7 +231,7 @@ export function bestIndoorSeat(s: GameState): Pt | null {
 // ---------- 주차장 ----------
 
 /** 주차장 원점 n개: 마을 길에 접한 자리 중 놓을 수 있는 것, 본관 문 앞(없으면 정류장)과 가까운 순. 이미 주차장이 있으면 []. */
-export function bestParkingCells(s: GameState, n = 3): Pt[] {
+export function bestParkingCellsHeuristic(s: GameState, n = 3): Pt[] {
   if (hasParking(s)) return [];
   const anchor = doorFront(s) ?? busStopPos(s);
   const def = objectDef(PARKING_EXPAND_FROM);
@@ -225,6 +245,9 @@ export function bestParkingCells(s: GameState, n = 3): Pt[] {
 export function hasParking(s: GameState): boolean {
   const types = ENTRY_ROUTES.parking.facilities;
   return Object.values(s.objects).some((o) => types.includes(o.type));
+}
+export function bestParkingCells(s: GameState, n = 3): Pt[] {
+  return rankCellsByCache(s, PARKING_EXPAND_FROM, bestParkingCellsHeuristic(s, Math.max(n, SOLVER_CELL_K))).slice(0, n);
 }
 export function bestParkingCell(s: GameState): Pt | null {
   return bestParkingCells(s, 1)[0] ?? null;
@@ -265,12 +288,23 @@ export function openingBuild(): BuildPlanRow[] {
 
 // ---------- 지금 추천 행동 ----------
 
-export interface NextMove { text: string; cells: Pt[] }
+export interface NextMove { text: string; cells: Pt[]; /** solver 결과에서 온 수면 그 수 (UI 글로우 타깃·예상 이득) */ move?: SolverMove }
+/** solver 캐시의 1위 수를 NextMove로 (저축보다 나은 수가 있을 때만). 없으면 null. */
+export function solverNextMove(s: GameState): NextMove | null {
+  const m = cachedMoves(s, (x) => x.score > 0)[0];
+  return m ? { text: `${m.label} — ${m.why}`, cells: m.cells, move: m } : null;
+}
 function hasRole(s: GameState, ...roles: RoleId[]): boolean {
   return roles.some((r) => staffInRole(s, r).length > 0);
 }
 /** 현재 상태에서 정석의 다음 수 한 줄 (+ 글로우 칸). 튜토리얼 33단계 순서와 같은 우선순위. 할 게 없으면 null. */
 export function nextMove(s: GameState): NextMove | null {
+  const sv = solverNextMove(s);
+  if (sv) return sv;
+  return heuristicNextMove(s);
+}
+/** 정석 표(튜토리얼 33단계 순서)의 다음 수 — solver 결과가 없을 때의 대체 */
+export function heuristicNextMove(s: GameState): NextMove | null {
   const m = mainBuilding(s);
   if (!m) { const p = bestMainCell(s); return { text: '본관부터. 빛나는 칸(바람 최소)에 짓기', cells: p ? [p] : [] }; }
   if (!isDoorReachable(s, m)) { const f = doorFrontOf(m); return { text: '마을 길 → 문 앞 올렛길 잇기. 길 없으면 손님 0', cells: [f] }; }
@@ -313,7 +347,14 @@ export function wallSheltered(s: GameState): boolean {
 
 // ---------- 대사 토큰 ----------
 
-/** 튜토리얼 대사 `{토큰}`에 넣을 실제 수치. 계산이 안 되는 상황(본관 없음 등)엔 정석 기본값. 키에 밑줄을 쓰지 않는다(noIdLeak). */
+/** solver 캐시에서 조건에 맞는 최고 수의 근거 한 줄 ("시뮬 14일 굴려 보니 자금 +₩42만 · 평판 +1" — 2위 비교는 뺀다). 결과가 없으면 ''. */
+export function solverDeltaText(s: GameState, pick: (m: SolverMove) => boolean): string {
+  const m = cachedMoves(s, pick)[0];
+  return m ? `시뮬 ${m.why.split(',')[0]}` : '';
+}
+const placing = (type: string) => (m: SolverMove) => m.action.type === 'place' && m.action.objectType === type;
+/** 튜토리얼 대사 `{토큰}`에 넣을 실제 수치. 계산이 안 되는 상황(본관 없음 등)엔 정석 기본값. 키에 밑줄을 쓰지 않는다(noIdLeak).
+ *  solver 토큰(`seatDelta`·`wallDelta`·`treeDelta`·`indoorDelta`·`parkingDelta`·`solverDelta`)은 롤아웃 결과가 캐시에 있을 때만 채워지고 없으면 '' — ui/tutorialDialogue.ts가 단계 key별로 골라 「→ 지금:」 줄 앞에 끼운다. */
 export function strategyVars(s: GameState): Record<string, string> {
   const m = mainBuilding(s);
   const main = m ? doorFrontOf(m) : bestMainCell(s); // 본관이 있으면(다시 보기) 문 앞 칸의 바람
@@ -337,6 +378,12 @@ export function strategyVars(s: GameState): Record<string, string> {
     spotName: spot?.name ?? '유채꽃밭',
     expandLeft: String(Math.max(0, Math.ceil((MAIN_EXPAND_COST[2]! - cur) / 10_000))),
     seats: String(outdoorSeats(s).length),
+    seatDelta: solverDeltaText(s, placing(SEAT_TYPE)),
+    wallDelta: solverDeltaText(s, placing(WALL_TYPE)),
+    treeDelta: solverDeltaText(s, placing(TREE_TYPE)),
+    indoorDelta: solverDeltaText(s, placing(INDOOR_SEAT_TYPE)),
+    parkingDelta: solverDeltaText(s, placing(PARKING_EXPAND_FROM)),
+    solverDelta: solverDeltaText(s, () => true),
   };
 }
 /** `{키}`를 vars로 치환. 모르는 키는 그대로 둔다. */
