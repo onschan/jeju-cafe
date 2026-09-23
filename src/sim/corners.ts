@@ -35,7 +35,7 @@ export interface CornerDef {
 /** 완성된 명당: 닻 오브젝트와 조각 id */
 export interface CompletedCorner { id: string; anchorId: string; x: number; y: number; pieceIds: string[] }
 /** 명당 진행 상황 (짓기 「명당」 탭·도감): 조각별 필요/보유 */
-export interface CornerProgress { def: CornerDef; done: boolean; anchor: PlacedObject | null; pieces: { type: string; need: number; have: number }[]; missing: CornerPiece[] }
+export interface CornerProgress { def: CornerDef; done: boolean; /** 조각은 다 모였는데 공사가 아직 안 끝났다 (안내·진행 표시는 이것도 「다 했다」로 본다) */ building: boolean; anchor: PlacedObject | null; pieces: { type: string; need: number; have: number }[]; missing: CornerPiece[] }
 
 const TARGETS = new Set<ComboTarget>(['all', 'female', 'male', 'youth', 'adult', 'senior', 'group']);
 export const CORNERS: CornerDef[] = (cornersJson as CornerDef[]).map((c) => ({
@@ -151,8 +151,23 @@ export function cornerProgress(state: GameState): CornerProgress[] {
       }
     }
     const pieces = def.pieces.map((p, i) => ({ type: p.type, need: p.count, have: best.have[i] ?? 0 }));
-    return { def, done: !!d, anchor: best.anchor, pieces, missing: pieces.filter((p) => p.have < p.need).map((p) => ({ type: p.type, count: p.need - p.have })) };
+    const missing = pieces.filter((p) => p.have < p.need).map((p) => ({ type: p.type, count: p.need - p.have }));
+    return { def, done: !!d, building: !d && missing.length === 0, anchor: best.anchor, pieces, missing };
   });
+}
+
+/** 공사 중인 조각까지 쳐서 「다 모았다」로 보는 진행도 — 튜토리얼 단계 판정·「오늘 할 일」·진단·짓기 창 안내가 이걸 쓴다.
+ *  효과(요금·인기·사진)와 도감 등록은 완공 뒤 그대로다. 안내만 같은 말을 되풀이하지 않게 하는 것이다. */
+export function cornerProgressIncludingWork(state: GameState): CornerProgress[] {
+  return cornerProgress(state).map((p) => (p.building ? { ...p, done: true } : p));
+}
+/** 조각은 다 모였는데 공사가 안 끝난 명당 수 (목표 줄·진단 「짓는 중 n」) */
+export function cornersBuilding(state: GameState): number {
+  return cornerProgress(state).filter((p) => p.building).length;
+}
+/** 완성 + 짓는 중을 합친 명당 수 (튜토리얼 5단계는 마지막 조각을 놓는 순간 통과한다) */
+export function cornersDoneIncludingWork(state: GameState): number {
+  return cornerProgress(state).filter((p) => p.done || p.building).length;
 }
 
 /** 이 종류를 (x, y)에 놓으면 완성되는 명당 (짓기 고스트 배지 "이걸 놓으면 꽃길 완성"). 공사 중인 조각도 센다(완공되면 완성). 이미 완성된 명당은 뺀다. */

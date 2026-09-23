@@ -25,7 +25,7 @@ import { MENU_SLOT_MAX } from './state.ts'; // stakes: 메뉴판 칸 상한 6
 import { fmtNum } from './format.ts';
 import { josa } from './josa.ts';
 import { setLevels } from './compat.ts';
-import { cornersMade } from './corners.ts';
+import { cornersMade, cornersBuilding } from './corners.ts';
 import { effectivePopularity } from './promotions.ts';
 import { seatsOf } from './cafe.ts';
 import { monthIndex } from './clock.ts';
@@ -140,7 +140,7 @@ export const conditionCheckers: CheckerMap = {
   menuSold: (s, c) => n(s.menuSold[c.menuId] ?? 0, c.n),
   money: (s, c) => n(s.money, c.n),
   staff: (s, c) => n(s.staff.length, c.n),
-  facilities: (s, c) => n(c.category ? countCategory(s, c.category) : facilityCount(s), c.n),
+  facilities: (s, c) => n(c.category ? countCategory(s, c.category, true) : facilityCount(s, true), c.n), // 보상은 완공 기준 (진행 표시는 buildingNote가 「짓는 중 n」으로 따로 알린다)
   satisfied: (s, c) => n(s.stats.satisfiedTotal, c.n),
   parcels: (s, c) => n(ownedParcels(s).length, c.n),
   rank: (s, c) => flag(bestRank(s) <= c.n),
@@ -185,7 +185,7 @@ export const conditionCheckers: CheckerMap = {
   selfSupply: (s, c) => n(selfSupplyPct(s), c.pct), // 이달 재료 자급률 = 농원 절감액 ÷ (절감액 + 재료비)
   training: (s, c) => n(s.stats.trainings, c.n),
   // ---- 도전·월간 ----
-  seats: (s, c) => n(seatObjectsOf(s).length, c.n),
+  seats: (s, c) => n(seatObjectsOf(s).filter((o) => !o.build).length, c.n), // 보상은 완공 기준
   noLossMonth: (s, c) => n(s.stats.profitMonths, c.n),
   monthGuests: (s, c) => n(s.monthGuests, c.n),
   monthSales: (s, c) => n(s.monthIncome, c.n),
@@ -224,6 +224,15 @@ export function customMet(state: GameState, id: string): boolean {
     case 'noParking': return !Object.values(state.objects).some((o) => PARKING_SLOTS[o.type] !== undefined); // 렌터카 대란 (§4.5) — 트랙 H 주차장 4종 전부
     default: return false;
   }
+}
+
+/** 진행 표시에 붙이는 「짓는 중 n」 — 공사 중이라 아직 안 센 것. 보상은 완공 기준이지만 안내가 같은 말을 되풀이하지 않게 한 칸 붙인다. 없으면 ''. */
+export function buildingNote(state: GameState, c: GoalCondition): string {
+  let n = 0;
+  if (c.type === 'corners') n = cornersBuilding(state);
+  else if (c.type === 'seats') n = seatObjectsOf(state).filter((o) => o.build).length;
+  else if (c.type === 'facilities') n = c.category ? countCategory(state, c.category) - countCategory(state, c.category, true) : facilityCount(state) - facilityCount(state, true);
+  return n > 0 ? `짓는 중 ${n}` : '';
 }
 
 /** 조건 진행도 { cur, max } */

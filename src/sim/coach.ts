@@ -18,6 +18,7 @@ import { CLEAN_LOW } from './cleanliness.ts';
 import { staffInRole } from './staff.ts';
 import { roleNeeds, type RoleNeed } from './staffPlan.ts'; // 통합: 직원 병목은 채용 화면과 같은 판정(roleHeads 인분)을 그대로 쓴다
 import { unreachableCount } from './reach.ts';
+import { cornersBuilding, cornersDoneIncludingWork } from './corners.ts'; // 공사 중 명당까지 쳐서 같은 안내를 되풀이하지 않는다
 import { josa } from './josa.ts';
 
 /** 진단이 새로 나오는 날 (매월 1·8·15·22일) */
@@ -124,7 +125,7 @@ function roleBackupMove(s: GameState, need: RoleNeed): string {
 }
 
 /** 가장 큰 병목 1개 + 다음 수 2개 */
-function bottleneckOf(s: GameState, m: { seatUse: number; left: number; pop: number; scenery: number; staffN: number; menuLeft: number; clean: number; net: number; unreachable: number; needs: RoleNeed[] }): { key: BottleneckKey; text: string; moves: [string, string] } {
+function bottleneckOf(s: GameState, m: { seatUse: number; left: number; pop: number; scenery: number; staffN: number; menuLeft: number; clean: number; net: number; unreachable: number; cornerWork: number; needs: RoleNeed[] }): { key: BottleneckKey; text: string; moves: [string, string] } {
   const top = topComplaints(s, 1)[0];
   // midgame: 「자리 몇 개?」를 수요에서 역산한다 — 대기 이탈이 있으면 이탈 인원분, 없으면 오늘 손님 기준 모자란 수
   const seatNeed = seatsNeeded(s);
@@ -148,6 +149,8 @@ function bottleneckOf(s: GameState, m: { seatUse: number; left: number; pop: num
   if (m.pop < POPULARITY_LOW && hasUnlocked(s)) return { key: 'popularity', text: `가게를 아는 사람이 적어요 (인기 ${m.pop})`, moves: [`${popName(s)} 1개`, '전단 홍보 1회'] };
   if (m.scenery < SCENERY_BOTTLENECK) return { key: 'scenery', text: `관광객 눈에 띌 게 없어요 (경관 ${Math.round(m.scenery * 10) / 10})`, moves: [`${sceneryName(s)} 1개`, '자리 옆으로 옮기기'] };
   if (m.net < 0) return { key: 'money', text: '버는 것보다 나간 게 많아요', moves: ['쉬는 직원 정리', '유지비 큰 시설 정리'] };
+  // 명당을 짓는 중이면 「명당 한 곳 더」를 또 말하지 않는다 (꽃밭·벤치는 공사 1일이라 같은 줄이 이틀 뜬다)
+  if (m.cornerWork > 0) return { key: 'none', text: `명당 ${m.cornerWork}곳을 짓는 중이에요`, moves: ['자리 한 단계 올리기', '메뉴 한 종 더'] };
   return { key: 'none', text: '지금은 크게 막힌 데가 없어요', moves: ['명당 한 곳 더', '자리 한 단계 올리기'] };
 }
 
@@ -166,7 +169,8 @@ export function diagnose(s: GameState, input: CoachInput = {}): Diagnosis {
   const staffN = s.staff.length;
   const unreachable = unreachableCount(s);
   const needs = roleNeeds(s); // 통합: 채용 화면과 같은 병목 판정
-  const b = bottleneckOf(s, { seatUse, left, pop, scenery, staffN, menuLeft, clean, net, unreachable, needs });
+  const cornerWork = cornersBuilding(s); // 조각은 다 모였고 공사만 남은 명당
+  const b = bottleneckOf(s, { seatUse, left, pop, scenery, staffN, menuLeft, clean, net, unreachable, cornerWork, needs });
   const route = routeOf(s, scenery);
 
   // 3줄 평가: 규모 · 잘 되는 것 · 살림. 걸리는 것은 아래 「가장 큰 걸림돌」 칸이 따로 맡는다 (같은 말을 두 번 안 한다)
@@ -189,6 +193,7 @@ export function diagnose(s: GameState, input: CoachInput = {}): Diagnosis {
     { label: '직원', value: roles.length > 0 ? roles.map((x) => `${ROLE_NAME[x.r]} ${x.n}`).join(' · ') : '없음' },
     { label: '메뉴', value: `${s.menuSlots.length - menuLeft}/${s.menuSlots.length}칸` },
     { label: '모자란 직종', value: needs.length > 0 ? needs.map((n) => ROLE_NAME[n.role]).join(' · ') : '없음' }, // 통합: 채용 화면과 같은 판정
+    { label: '명당', value: `${cornersDoneIncludingWork(s) - cornerWork}곳${cornerWork > 0 ? ` · 짓는 중 ${cornerWork}` : ''}` },
   ];
   if (input.layout !== undefined && input.layout !== null) evidence.push({ label: '배치 점수', value: `${input.layout}점` });
   if (input.topMove) evidence.push({ label: '추천 한 수', value: input.topMove });

@@ -150,7 +150,7 @@ export function ContestWindow() {
             </div>
           )}
 
-          <button style={{ ...(can.ok ? brownBtn : brownBtnOff), width: '100%', marginRight: 0 }} disabled={!can.ok} onClick={enter} data-testid="contest-enter">
+          <button style={{ ...(can.ok ? brownBtn : brownBtnOff), width: '100%', marginRight: 0 }} disabled={!can.ok} onClick={enter} data-testid="contest-enter" data-tut="contest-enter">
             {open ? `접수하기 ${wonText(def.fee)}` : `접수는 대회 ${SIGNUP_DAYS}일 전부터`}
           </button>
           {!can.ok && can.reason && <div style={{ ...small, color: PALETTE.bad }}>{can.reason}</div>}

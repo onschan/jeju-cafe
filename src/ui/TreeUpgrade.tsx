@@ -53,7 +53,7 @@ export function TreeUpgradeRow({ s, o }: { s: GameState; o: PlacedObject }) {
     <div data-testid="tree-upgrade" style={{ marginTop: 6 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
         {nextDef
-          ? <button style={can.ok ? btnOn : btnOff} disabled={!can.ok} title={can.ok ? undefined : can.reason} onClick={go} data-testid="tree-upgrade-btn"><Icon name="plus" /> 업그레이드 ▲ {nextDef.name} ({cost > 0 ? wonText(cost) : '무료'})</button>
+          ? <button style={can.ok ? btnOn : btnOff} disabled={!can.ok} title={can.ok ? undefined : can.reason} onClick={go} data-testid="tree-upgrade-btn" data-tut="tree-up"><Icon name="plus" /> 업그레이드 ▲ {nextDef.name} ({cost > 0 ? wonText(cost) : '무료'})</button>
           : <span style={{ ...small, color: PALETTE.ok }}><Icon name="check" size={13} /> {t.tree.name} 최고 단계</span>}
         <span style={{ ...small, color: can.ok ? PALETTE.ink : PALETTE.inkSoft }}>
           {nextDef && can.ok && gain !== null ? `이 자리에서 올리면 ${gainText(gain)}` : nextDef && !can.ok ? can.reason : ''}

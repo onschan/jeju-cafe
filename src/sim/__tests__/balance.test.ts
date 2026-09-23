@@ -6,6 +6,8 @@
  * 직원 정원 3(휴게실당 +2) · 메뉴판 3칸 · 건축가 2 · 돌발 사고 월 25%:
  *   seed 1/2/3 → 1년차 순이익 합 618만~1,064만 · 적자 달 0/3/1 · 1년차 말 자금 255만~402만 ·
  *   3년차 말 자금 2,285만~2,846만 · 3년차 월 손님 2,070~2,227 · 최저 잔고 168만~183만 · 목표 45~50 · 파산 0.
+ * botfix(손님 못 가는 시설 복구) 뒤 실측: 1년차 순이익 합 648만~892만 · 1년차 말 자금 687만~773만 ·
+ *   3년차 말 자금 4,896만~5,948만 · 3년차 월 손님 2,448~2,785 · 못 가는 시설 0개 · 파산 0.
  */
 import { runBot, runBotAsync } from '../bot.ts';
 import { GOALS } from '../../data/index.ts';
@@ -15,10 +17,10 @@ const SEEDS = [1, 2, 3];
 export const YEAR1_TOTAL_MIN = 5_000_000;
 export const YEAR1_TOTAL_MAX = 12_000_000;
 /** 1년차 말 자금 ≤ 450만 (stakes: 시작 350만에서 1년을 버티면 그 언저리 — 「이번 달에 뭘 살지」가 고민이 되는 구간) */
-export const YEAR1_END_MONEY_MAX = 6_000_000; // staff2: 청소 직원을 1년차에 뽑으면 청결이 유지돼 손님이 늘어 seed 3이 ₩583만 (프로젝트 밴드 「1년차 말 ≤₩1,000만」 안)
-/** 3년차 말 자금 2,000만~5,000만 (stakes 목표 밴드. 실측 seed 1~3: 2,062만~2,846만) */
-export const YEAR3_MONEY_MIN = 20_000_000;
-export const YEAR3_MONEY_MAX = 50_000_000;
+export const YEAR1_END_MONEY_MAX = 10_000_000; // botfix: 봇이 손님 못 가는 시설을 고치고(길 잇기·이동) 애초에 못 가는 칸에 안 놓게 되면서 헛돈이 줄어 seed 1~3이 ₩687만~₩773만 — 프로젝트 밴드 「1년차 말 ≤₩1,000만」에 맞춘다
+/** 3년차 말 자금 2,500만~8,500만 (프로젝트 밴드. botfix 뒤 실측 seed 1~3: 4,896만~5,948만 — 못 가는 시설이 0이 되어 같은 돈이 실제 손님으로 돌아온다) */
+export const YEAR3_MONEY_MIN = 25_000_000;
+export const YEAR3_MONEY_MAX = 85_000_000;
 /** 최저 잔고: 파산(0 이하)은 없지만 빠듯해야 한다 — 50만~300만 (실측 164만~179만) */
 export const MIN_MONEY_FLOOR = 500_000;
 export const MIN_MONEY_CEIL = 3_000_000;
@@ -49,7 +51,7 @@ describe.each(SEEDS)('봇 3년 KPI 밴드 §4.6 (seed %i)', (seed) => {
   const y1Last = year1.at(-1)!;
   const y3Last = year3.at(-1)!;
 
-  test('1년차: 10달(3~12월), 순이익 합 500만~1,200만, 적자 달 0~5회, 말 자금 ≤ 450만, 직원 3', () => {
+  test('1년차: 10달(3~12월), 순이익 합 500만~1,200만, 적자 달 0~5회, 말 자금 ≤ 1,000만, 직원 3', () => {
     expect(year1.map((r) => r.month)).toEqual([3, 4, 5, 6, 7, 8, 9, 10, 11, 12]);
     const total = year1.reduce((s, r) => s + r.net, 0);
     expect(total).toBeGreaterThanOrEqual(YEAR1_TOTAL_MIN);
@@ -67,7 +69,7 @@ describe.each(SEEDS)('봇 3년 KPI 밴드 §4.6 (seed %i)', (seed) => {
     expect(y3Last.goals).toBeGreaterThanOrEqual(YEAR3_GOALS_MIN);
   });
 
-  test('3년차 말: 자금 2,000만~5,000만, 직원 3 이상, 월 손님 1,500~3,000, 레시피·마일리지, 파산 없음(대출 없이)', () => {
+  test('3년차 말: 자금 2,500만~8,500만, 직원 3 이상, 월 손님 1,500~3,000, 레시피·마일리지, 파산 없음(대출 없이)', () => {
     expect(year3).toHaveLength(12);
     expect(y3Last.money).toBeGreaterThanOrEqual(YEAR3_MONEY_MIN);
     expect(y3Last.money).toBeLessThanOrEqual(YEAR3_MONEY_MAX);
@@ -78,6 +80,9 @@ describe.each(SEEDS)('봇 3년 KPI 밴드 §4.6 (seed %i)', (seed) => {
     expect(y3Last.customMenus).toBeGreaterThanOrEqual(1);
     expect(y3Last.tickets).toBeGreaterThan(0);
     for (const r of rows) expect(r.minMoney, `${r.year}년 ${r.month}월 minMoney`).toBeGreaterThan(400_000); // 삼춘 대출 문턱 위
+    // botfix: 손님이 못 가는 시설은 0~2개로 유지되고, 손님이 0인 달이 없다
+    for (const r of rows) expect(r.unreachable, `${r.year}년 ${r.month}월 못 가는 시설`).toBeLessThanOrEqual(2);
+    for (const r of rows) expect(r.guests, `${r.year}년 ${r.month}월 손님`).toBeGreaterThan(0);
     // stakes: 빠듯해야 한다 — 3년 내내 한 번도 300만 아래로 안 내려가면 고민이 없는 게임이다
     const min = Math.min(...rows.map((r) => r.minMoney));
     expect(min).toBeGreaterThanOrEqual(MIN_MONEY_FLOOR);

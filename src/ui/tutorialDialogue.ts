@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { type GameState, type Action, tutorialDone, dialogueSeen, strategyVars, fillTemplate, type TutorialNoteKey } from '../sim/index.ts';
+import { type GameState, type Action, type TutorialActDef, tutorialDone, dialogueSeen, strategyVars, fillTemplate, actOfStep, currentTutorialStep, type TutorialNoteKey } from '../sim/index.ts';
 import { TUTORIAL_STEPS as STEP_DATA, SPEAKER_NAME, type TutorialStep } from '../data/dialogue/index.ts';
 import { showDialogue, getDialogue } from './dialogue.ts';
 import { confirm } from './Popup';
@@ -14,6 +14,8 @@ export const TUTORIAL_DIALOGUES: TutorialStep[] = STEP_DATA;
 
 /** 마지막으로 대사를 띄운 단계 번호 (state.tutorial.step 기준, −1 = 아직). 새 게임이면 resetTutorial. */
 let shownFor = -1;
+/** 예고를 띄운 막 번호 (−1 = 아직) */
+let leadShownFor = -1;
 /** sim 액션 보내기·상태 읽기 (App이 store.dispatch·getState를 넣는다 — store↔여기 순환 import를 피한다) */
 let dispatchFn: ((a: Action) => unknown) | null = null;
 let stateFn: (() => GameState) | null = null;
@@ -27,12 +29,22 @@ function note(key: string): void {
 
 export function tutorialShown(): number { return shownFor + 1; }
 /** 새 게임을 시작할 때 처음부터 */
-export function resetTutorial(): void { shownFor = -1; }
+export function resetTutorial(): void { shownFor = -1; leadShownFor = -1; }
+
+/** 막이 열릴 때 할망 한 줄 예고. 닫으면 `act:<n>` 표식을 남겨 다시 안 뜬다. */
+export function showActLead(act: TutorialActDef): void {
+  showDialogue({
+    speaker: { name: SPEAKER_NAME.halmang, portrait: 'halmang' },
+    lines: [`${act.id}막 「${act.name}」`, act.lead],
+    choices: [{ label: '알겠수다', onPick: () => note(`act:${act.id}`) }],
+  });
+}
 
 /** 현재 단계(state.tutorial.step)의 대사 (토큰을 실제 수치로 채운 것). 끝났으면 null. */
 export function currentTutorialDialogue(s: GameState): TutorialStep | null {
-  if (tutorialDone(s)) return null;
-  const st = TUTORIAL_DIALOGUES[s.tutorial.step];
+  const cur = currentTutorialStep(s); // 막이 안 열렸거나 앞 단계를 끝낸 지 하루가 안 됐으면 null
+  if (!cur) return null;
+  const st = TUTORIAL_DIALOGUES[cur.id - 1];
   return st ? fillTutorialStep(st, s) : null;
 }
 /** 대사·제목의 `{seatWhy}` 같은 토큰을 지금 상태의 실제 수치·이유로 채운다 (입지 배지와 같은 숫자). */
@@ -53,6 +65,7 @@ export function useTutorialNote(key: TutorialNoteKey | null, on = true): void {
 export function skipCurrentChapter(): void {
   dispatchFn?.({ type: 'skipTutorialChapter' });
   shownFor = -1;
+  leadShownFor = -1; // 막을 건너뛰면 다음 막 예고를 새로 띄운다
 }
 /** 「이미 알아요」: 이 단계만 보상 없이 통과 (해금만). 다음 단계 대사가 바로 뜬다. */
 export function skipCurrentStep(): void {
@@ -60,7 +73,7 @@ export function skipCurrentStep(): void {
   shownFor = -1;
 }
 
-export const SKIP_TEXT = '남은 가르침을 건너뛸까요? 단계 보상은 못 받아요.';
+export const SKIP_TEXT = '이 막의 남은 단계를 건너뛸까요? 막 보상은 못 받아요.';
 /** 단계 대사를 띄운다 (다시 보기 포함). 닫으면 dlg:<id> 표식. 왼쪽 아래 「이미 알아요」(이 단계만 보상 없이 통과)와 「건너뛰기」(남은 전부)는 항상. */
 export function showTutorialStep(step0: TutorialStep, opts: { skip?: boolean; skipStep?: boolean } = {}): void {
   const s0 = stateFn?.();
@@ -79,7 +92,16 @@ export function showTutorialStep(step0: TutorialStep, opts: { skip?: boolean; sk
 export function checkTutorial(s: GameState): boolean {
   if (tutorialDone(s) || s.alerts.length > 0 || getDialogue()) return false;
   const step = currentTutorialDialogue(s);
-  if (!step || shownFor === s.tutorial.step) return false;
+  if (!step) return false;
+  // 막이 열리면 할망 한 줄 예고를 먼저 (막마다 한 번)
+  const act = actOfStep(step.id);
+  if (!s.tutorial.seen?.includes(`act:${act.id}`)) {
+    if (leadShownFor === act.id) return false;
+    leadShownFor = act.id;
+    showActLead(act);
+    return true;
+  }
+  if (shownFor === s.tutorial.step) return false;
   shownFor = s.tutorial.step;
   if (dialogueSeen(s, step.id)) return false; // 저장을 불러와 이미 본 대사면 다시 안 띄운다 (튜토리얼 창에서 다시 볼 수 있다)
   showTutorialStep(step);

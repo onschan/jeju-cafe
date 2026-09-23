@@ -62,7 +62,7 @@ function ParcelDetail({ p, onDone }: { p: Parcel; onDone: () => void }) {
         ? <div style={{ color: PALETTE.ok }}>우리 땅이다. {josa(f.landmark, '이/가')} 마당에 보인다</div>
         : <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
             <span style={{ flex: 1, color: can.ok ? PALETTE.ink : PALETTE.inkSoft }}>{wonText(price)}{!can.ok && can.reason ? ` · ${can.reason}` : ''}</span>
-            <button data-testid="parcel-buy" style={{ ...(can.ok ? brownBtnOn : brownBtnOff), margin: 0, padding: '0 14px' }} disabled={!can.ok} onClick={buy}><Icon name="money" /> 사기</button>
+            <button data-testid="parcel-buy" data-tut="parcel-buy" style={{ ...(can.ok ? brownBtnOn : brownBtnOff), margin: 0, padding: '0 14px' }} disabled={!can.ok} onClick={buy}><Icon name="money" /> 사기</button>
           </div>}
     </div>
   );

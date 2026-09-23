@@ -4,12 +4,13 @@
 import type { GameState, Candidate, RoleId, Stats, Staff } from './types.ts';
 import { roleDef } from '../data/index.ts';
 import { wonText } from '../data/labels.ts';
+import { josa } from './josa.ts';
 import {
-  roleHeads, roleHeadsWith, staffInRole, salaryOf, salaryDue, staffCapacity, HEAD_STAT, HEAD_MAX, DIMINISH_FROM,
+  roleHeads, roleHeadsWith, staffInRole, salaryOf, salaryDue, staffCapacity, canHire, HEAD_STAT, HEAD_MAX, DIMINISH_FROM,
 } from './staff.ts';
 import {
   PREP_MS, PREP_CUT_PER_HEAD, MAX_PREP_CUT, SERVICE_PER_HEAD, SERVICE_MAX, WAIT_PER_HALL_HEAD, WAIT_EXTRA_MAX, WAIT_MAX,
-  OWNER_DRINKS_PER_DAY, DRINKS_PER_BARISTA, FOOD_PER_COOK, ordersToday, servingCapacity, waitCapOf, serviceBonus, dailyGuestCount,
+  OWNER_DRINKS_PER_DAY, DRINKS_PER_BARISTA, FOOD_PER_COOK, ordersToday, servingCapacity, waitCapOf, serviceBonus, dailyGuestCount, totalSeats,
 } from './guests.ts';
 import { seatDirt, dailyCleanRecovery, CLEAN_LOW, CLEAN_FREE_SEATS } from './cleanliness.ts';
 
@@ -29,6 +30,16 @@ export function roleEffectText(state: GameState, role: RoleId): string {
 }
 
 export interface RoleNeed { role: RoleId; why: string; urgency: number }
+
+/** 초반 가중치 (staff2 추천): 직원이 이 수 이하면 홀 점수 ×EARLY_HALL_MULT.
+ *  근거 — 초반 매출을 가장 크게 가르는 것은 서빙 속도와 줄이 차서 돌아가는 손님(대기 이탈)이다.
+ *  요리사 「없음」은 urgency 3으로 잡히는데, 손님이 하루 열 명 남짓인 때에 디저트를 내려고 요리사를 먼저 뽑으면 월급만 나간다.
+ *  그래서 아주 초반(직원 ≤ EARLY_HALL_STAFF명·좌석 ≤ EARLY_HALL_SEATS개)엔 홀을 맨 앞에 둔다. 직원이 셋을 넘으면 실제 병목(음료 대기·청결·접시)이 이긴다. */
+export const EARLY_STAFF_MAX = 2;
+export const EARLY_HALL_MULT = 1.5;
+export const EARLY_HALL_STAFF = 1;
+export const EARLY_HALL_SEATS = 6;
+export const EARLY_HALL_WHY = '자리는 있는데 서빙이 밀려요';
 /** 지금 모자란 직종 — 매력도 패널의 서비스 항목과 같은 데이터(주문 적체·줄·청결)를 본다. 급한 순. */
 export function roleNeeds(state: GameState): RoleNeed[] {
   const out: RoleNeed[] = [];
@@ -52,6 +63,14 @@ export function roleNeeds(state: GameState): RoleNeed[] {
   if (state.clean.value < CLEAN_LOW) out.push({ role: 'clean', why: `청결 ${Math.round(state.clean.value)} — 손님이 줄고 있어요`, urgency: 3 });
   else if (dirt > dailyCleanRecovery(state)) out.push({ role: 'clean', why: `자리가 ${CLEAN_FREE_SEATS}개를 넘어 매일 더러워져요`, urgency: 1.5 });
 
+  // 초반 가중치 (위 상수 주석)
+  if (state.staff.length <= EARLY_STAFF_MAX) for (const nd of out) if (nd.role === 'hall') nd.urgency *= EARLY_HALL_MULT;
+  if (state.staff.length <= EARLY_HALL_STAFF && totalSeats(state) <= EARLY_HALL_SEATS && roleHeads(state, 'hall') < 1) {
+    const top = Math.max(0, ...out.map((nd) => nd.urgency));
+    const hall = out.find((nd) => nd.role === 'hall');
+    if (hall) hall.urgency = Math.max(hall.urgency, top + 0.1);
+    else out.push({ role: 'hall', why: EARLY_HALL_WHY, urgency: top + 0.1 });
+  }
   return out.sort((a, b) => b.urgency - a.urgency);
 }
 /** 그 직종이 지금 필요한가 (후보 카드 「지금 필요해요」 칩) */
@@ -122,6 +141,34 @@ export function suggestRole(state: GameState, open: RoleId[]): RoleId | null {
   const needs = roleNeeds(state);
   for (const n of needs) if (open.includes(n.role)) return n.role;
   return ROLE_ORDER.find((r) => open.includes(r)) ?? open[0]!;
+}
+
+/** 채용 탭 추천 (staff2): 지금 병목 직종에서 예상 이득이 가장 큰 후보 1명 */
+export interface HireSuggestion { candidateId: string; role: RoleId; why: string }
+/** 이 직종이 왜 지금 필요한지 한 줄 (추천 근거) */
+export function recommendWhy(state: GameState, role: RoleId): string {
+  return needOf(state, role)?.why ?? roleEffectText(state, role);
+}
+/** 지금 뽑으면 가장 이득인 후보 (병목 직종 중 그 직종에서 몫이 가장 큰 사람, 같으면 월급이 싼 사람).
+ *  뽑을 수 있는 후보나 빈 자리가 없으면 null. 순수·결정적. */
+export function recommendedHire(state: GameState, cands: Candidate[], open: RoleId[]): HireSuggestion | null {
+  const role = suggestRole(state, open);
+  if (!role || cands.length === 0) return null;
+  // 지금 뽑을 수 있는 사람이 먼저다. 돈이 모자라 아무도 못 뽑으면 그래도 가장 잘 맞는 사람을 가리킨다(버튼은 이유와 함께 꺼져 있다).
+  let best: { c: Candidate; heads: number; ok: boolean } | null = null;
+  for (const c of cands) {
+    const ok = canHire(state, c.id, role).ok;
+    const heads = headsOfCandidate(c, role);
+    const better = !best || (ok !== best.ok ? ok : heads > best.heads || (heads === best.heads && c.salary < best.c.salary));
+    if (better) best = { c, heads, ok };
+  }
+  return best ? { candidateId: best.c.id, role, why: recommendWhy(state, role) } : null;
+}
+/** 공고 카드 위 한 줄: 지금 어느 직종이 필요한지 (공고 전에 방향이 보이게) */
+export function postJobHint(state: GameState, open: RoleId[]): string {
+  const role = suggestRole(state, open);
+  if (!role) return '자리가 다 찼어요';
+  return `지금은 ${josa(roleDef(role).name, '이/가')} 필요해요`;
 }
 
 /** 정원·인건비 한 줄 (채용 탭 머리) */

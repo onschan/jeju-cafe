@@ -24,7 +24,7 @@ export function cornerEffectText(p: CornerProgress): string {
 /** 미완성 한 줄: "벤치 하나만 더" / "돌담 2개, 올렛길 하나 더" */
 export function cornerMissingText(p: CornerProgress): string {
   if (p.done) return '완성! 손님이 사진 찍으러 와요';
-  if (p.missing.length === 0) return '짓는 중 — 완공되면 완성';
+  if (p.building) return '조각은 다 모였다 — 내일이면 완성';
   const parts = p.missing.map((m) => `${objectDef(m.type).name} ${m.count === 1 ? '하나' : `${m.count}개`}`);
   return parts.length === 1 ? `${parts[0]}만 더` : `${parts.join(', ')} 더`;
 }
@@ -34,11 +34,12 @@ export function CornerTab({ s, onPickBuild }: { s: GameState; onPickBuild?: (id:
   const unlocked = new Set(s.unlocked.objects);
   const list = cornerProgress(s);
   const doneN = list.filter((p) => p.done).length;
-  // 완성 가까운 것(모자란 조각 적은 순) → 완성된 것은 뒤로
-  const sorted = [...list].sort((a, b) => Number(a.done) - Number(b.done) || a.missing.length - b.missing.length);
+  const workN = list.filter((p) => p.building).length; // 조각은 다 모였고 공사만 남은 것
+  // 완성 가까운 것(모자란 조각 적은 순) → 완성·짓는 중은 뒤로
+  const sorted = [...list].sort((a, b) => Number(a.done || a.building) - Number(b.done || b.building) || a.missing.length - b.missing.length);
   return (
     <div data-testid="corner-tab">
-      <div style={{ ...soft, marginBottom: 6 }}><Icon name="sparkle" size={14} /> 명당 {doneN}/{list.length} · 서로 다른 시설을 2칸 안에 모으면 이름이 붙어요</div>
+      <div style={{ ...soft, marginBottom: 6 }}><Icon name="sparkle" size={14} /> 명당 {doneN}/{list.length}{workN > 0 ? ` · 짓는 중 ${workN}` : ''} · 서로 다른 시설을 2칸 안에 모으면 이름이 붙어요</div>
       {sorted.map((p) => {
         const next = p.missing[0];
         const nextDef = next ? objectDef(next.type) : null;
@@ -47,9 +48,9 @@ export function CornerTab({ s, onPickBuild }: { s: GameState; onPickBuild?: (id:
         const start = nextDef && !nextLocked ? canStartBuild(s, nextDef.id) : { ok: false, reason: '' };
         const ok = !!nextDef && !nextLocked && start.ok && s.money >= cost && !!onPickBuild;
         return (
-          <div key={p.def.id} data-testid={`corner-card-${p.def.id}`} style={{ ...rowCard, opacity: p.done ? 0.85 : 1 }}>
+          <div key={p.def.id} data-testid={`corner-card-${p.def.id}`} style={{ ...rowCard, opacity: p.done || p.building ? 0.85 : 1 }}>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, flexWrap: 'wrap' }}>
-              <span style={{ fontSize: 15, fontWeight: 700 }}>{p.done ? <Icon name="check" size={14} /> : <Icon name="sparkle" size={14} />} {p.def.name}</span>
+              <span style={{ fontSize: 15, fontWeight: 700 }}>{p.done || p.building ? <Icon name="check" size={14} /> : <Icon name="sparkle" size={14} />} {p.def.name}</span>
               <span style={{ ...soft, fontSize: 13 }}>{cornerEffectText(p)}</span>
             </div>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', margin: '4px 0' }}>
@@ -70,11 +71,11 @@ export function CornerTab({ s, onPickBuild }: { s: GameState; onPickBuild?: (id:
                   <Icon name="build" size={14} /> {nextDef.name} 놓기 {cost > 0 ? wonText(cost) : ''}
                 </button>
               )}
-              <span style={{ ...soft, color: p.done ? PALETTE.ok : nextLocked ? PALETTE.inkSoft : PALETTE.ink }}>
-                {p.done ? cornerMissingText(p) : nextLocked && nextDef ? `${nextDef.name}: ${lockedText(nextDef)}` : cornerMissingText(p)}
+              <span style={{ ...soft, color: p.done || p.building ? PALETTE.ok : nextLocked ? PALETTE.inkSoft : PALETTE.ink }}>
+                {p.done || p.building ? cornerMissingText(p) : nextLocked && nextDef ? `${nextDef.name}: ${lockedText(nextDef)}` : cornerMissingText(p)}
               </span>
             </div>
-            {!p.done && <div style={{ ...soft, fontSize: 13, marginTop: 2 }}>{p.def.hint}</div>}
+            {!p.done && !p.building && <div style={{ ...soft, fontSize: 13, marginTop: 2 }}>{p.def.hint}</div>}
           </div>
         );
       })}

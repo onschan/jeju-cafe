@@ -319,6 +319,7 @@ function clearDoorFront(state: GameState, room: PlacedObject): string | null {
   if (!o || o.id === room.id) return null;
   const def = objectDef(o.type);
   if (def.kind === 'path' || DOOR_FRONT_KEEP.has(o.type)) return null;
+  for (const g of state.guests) if (g.seatId === o.id) { g.seatId = null; g.phase = 'leaving'; g.path = []; } // botfix 훅: 치우는 자리에 매인 손님은 돌려보낸다 (빈 seatId가 남으면 다음 스텝에 터진다)
   removeObject(state, o.id);
   state.money += def.cost;
   pushNotice(state, `문 앞에 있던 ${josa(o.name ?? def.name, '을/를')} 치우고 값을 돌려줬어요`);
