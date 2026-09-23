@@ -30,6 +30,7 @@ import { dailyRooms, accumulateSeatUse, MS_PER_HOUR } from './rooms.ts'; // y-in
 import { endingMonthly } from './ending.ts'; // z-ending: 10년차 엔딩·100주년
 import { dailyIdleHint } from './hints.ts'; // game-feel: 3일 무행동이면 삼춘 힌트
 import { closeDay } from './daylog.ts'; // 성장: 하루 요약 카드·30일 그래프
+import { runPending } from './pending.ts'; // seatfix: 자리가 빈 예약(이동·철거·증축)을 바로 실행
 
 export const STEP_MS = 100;        // 고정 스텝 (게임 ms)
 const MAX_STEPS_PER_TICK = 600;    // 백그라운드 복귀 등 폭주 방지 (60초 게임 시간)
@@ -114,6 +115,7 @@ export function step(state: GameState): void {
   for (let i = 0; i < days; i++) onNewDay(state);
   for (let i = 0; i < hours; i++) onNewHour(state);
   updateGuests(state, STEP_MS);
+  runPending(state); // seatfix: 손님이 다 떠난 예약은 그 즉시 실행된다
   moveStaff(state, STEP_MS);
   checkLoan(state);
   state.tick++;

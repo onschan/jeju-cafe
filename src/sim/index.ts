@@ -7,6 +7,7 @@ export { addComplaint, addReputation, complaintCounts, topComplaints, reputation
 export { hasLoan, loanRewardMult, canTakeLoan, takeLoan, checkLoan, repayLoan, LOAN_AMOUNT, LOAN_MAX, LOAN_THRESHOLD, LOAN_REPAY_RATIO, LOAN_REWARD_MULT, WARN_DEFICIT_MONTHS, LOAN_DEFICIT_MONTHS, CRISIS_MONEY, CRISIS_MONTHS } from './failure.ts';
 export { apply, PROTECTED_TYPES, ROTATABLE_TYPES, demolishRefund, canDisturb } from './actions.ts';
 export { canUndo } from './undo.ts';
+export { guestBlock, seatedGuests, vacateWarning, runPending, WORK_NAME, VACATE_SATISFACTION } from './pending.ts'; // seatfix: 예약 실행 (손님이 앉은 시설 이동·철거·증축)
 export { DAY_MS, seasonOf, monthIndex, DAYS_PER_MONTH } from './clock.ts';
 // ---- stakes: 긴장감·트레이드오프·변수 ----
 export { RISKS, riskDef, riskDayOf, resolveRisk, hasPendingRisk, dailyRisk, monthlyRisk, breakdownTarget, breakdownRepairCost, absentStaffId, isStopped, stoppedCount, riskDaysLeft, RISK_CHANCE, GROUP_SEATS, GROUP_REWARD, GROUP_FAIL_REPUTATION, BREAKDOWN_STOP_DAYS, BREAKDOWN_REPAIR_PCT, type RiskId, type RiskDef } from './risk.ts';

@@ -26,6 +26,14 @@ export function rememberMove(state: GameState, obj: PlacedObject, fromX: number,
   state.undo = { kind: 'move', day: dayIndex(state.clock), objectId: obj.id, fromX, fromY };
 }
 
+/** 되돌리기가 건드리는 시설 (seatfix): 앉은 손님은 되돌리기 직전에 비켜 준다 — 손님 때문에 되돌리기가 막히지 않게 */
+export function undoTargets(state: GameState): PlacedObject[] {
+  const u = state.undo;
+  if (!u) return [];
+  const ids = u.kind === 'place' || u.kind === 'move' ? [u.objectId] : u.kind === 'placeMany' ? u.objectIds : [];
+  return ids.map((id) => state.objects[id]).filter((o): o is PlacedObject => !!o);
+}
+
 export function canUndo(state: GameState): ApplyResult {
   const u = state.undo;
   if (!u) return { ok: false, reason: '되돌릴 게 없어요' };
@@ -34,13 +42,11 @@ export function canUndo(state: GameState): ApplyResult {
     case 'place': {
       const o = state.objects[u.objectId];
       if (!o) return { ok: false, reason: '이미 없어진 시설이에요' };
-      if (state.guests.some((g) => g.seatId === o.id)) return { ok: false, reason: '손님이 앉아 있어요' };
       return { ok: true };
     }
     case 'placeMany': {
       const objs = u.objectIds.map((id) => state.objects[id]);
       if (objs.some((o) => !o)) return { ok: false, reason: '이미 없어진 시설이에요' };
-      if (objs.some((o) => state.guests.some((g) => g.seatId === o!.id))) return { ok: false, reason: '손님이 앉아 있어요' };
       return { ok: true };
     }
     case 'remove': {
@@ -51,7 +57,6 @@ export function canUndo(state: GameState): ApplyResult {
     case 'move': {
       const o = state.objects[u.objectId];
       if (!o) return { ok: false, reason: '이미 없어진 시설이에요' };
-      if (state.guests.some((g) => g.seatId === o.id)) return { ok: false, reason: '손님이 앉아 있어요' };
       return canPlace(state, o.type, u.fromX, u.fromY, o.id);
     }
   }

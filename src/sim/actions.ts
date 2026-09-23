@@ -1,7 +1,7 @@
 import type { GameState, Action, ApplyResult, PlacedObject } from './types.ts';
 import { bumpLayoutRev } from './layoutRev.ts';
 import { objectDef } from '../data/index.ts';
-import { canPlace, placeObject, removeObject, footprintOf, relocateObject, objectsInRoom } from './grid.ts';
+import { canPlace, placeObject, removeObject, relocateObject, objectsInRoom } from './grid.ts';
 import { canBuildMain, placeMain, canExpandMain, expandMain, canBuildSecondFloor, buildSecondFloor, canMoveMain, moveMain, canUndoMoveMain, undoMoveMain, canAutoConnectPath, autoConnectPath, MAIN_TYPE } from './rooms.ts'; // y-indoor
 import { canBuyParcel, buyParcel } from './parcels.ts';
 import { canSetSlot, setSlot } from './menu.ts';
@@ -21,18 +21,19 @@ import { canRenameCafe, renameCafe, canExpand, expand, canSetCosmetic, setCosmet
 import { canDevelop, develop, canAddTopping, addTopping, canRemoveTopping, removeTopping, canLevelUpMenu, levelUpMenu } from './craft.ts';
 import { canStartBuild, startBuild } from './build.ts';
 import { canDrawTicket, drawTicket, canSetUniform, setUniform, canUseGuestItem, useGuestItem } from './shop.ts';
-import { canUpgrade, upgrade } from './upgrade.ts';
+import { canUpgrade, upgrade, isUpgradable } from './upgrade.ts';
 import { canRepair, repair } from './cleanliness.ts';
-import { canTreeUpgrade, treeUpgrade } from './tree.ts'; // fun 업그레이드 트리
+import { canTreeUpgrade, treeUpgrade, nextStep } from './tree.ts'; // fun 업그레이드 트리
 import { canExpandParking, parkingExpandCost, PARKING_EXPAND_TO, unlockRouteFacilities, installRouteForParcel, canAutoLinkRoute, autoLinkRoute } from './entry.ts';
 import { objectStats } from './compat.ts';
-import { rememberPlace, rememberPlaceMany, rememberRemove, rememberMove, canUndo, undoLast } from './undo.ts';
+import { rememberPlace, rememberPlaceMany, rememberRemove, rememberMove, canUndo, undoLast, undoTargets } from './undo.ts';
 import { planLine, isLineType } from './line.ts';
 import { canSetTargets, setTargets } from './segments.ts';
 import { canContinueEnding, continueEnding, canSetSpeed } from './ending.ts'; // z-ending
 import { resolveRisk } from './risk.ts'; // stakes: 돌발 사고 선택지
 import { resolveEventChoice } from './events.ts'; // stakes: 빅 이벤트 선택지
 import { canEnterContest, enterContest, canCancelContest, cancelContest, canPlaceTrophy, contestState } from './contest.ts'; // 대회
+import { guestBlock, setPending, clearPending, doNow, vacate, WORK_NAME } from './pending.ts'; // seatfix: 손님이 앉아 있어도 예약해 두는 이동·철거·증축
 
 /** 못 옮기고 못 없애는 것 (정류장·본관·샘). 정낭은 w-free부터 일반 시설 — 옮기고 없애고 더 놓을 수 있다. */
 export const PROTECTED_TYPES = new Set(['busstop', 'warehouse', 'spring']);
@@ -69,14 +70,12 @@ export function demolishRefund(objs: PlacedObject[]): number {
   return d;
 }
 
-/** 치우거나 옮길 수 있나: 보호 오브젝트·앉은 손님·지나가는 손님 (UI가 고르기 전·배치 바에서 미리 보여 준다) */
+/** 지금 당장 치우거나 옮길 수 있나: 보호 오브젝트·앉은 손님·지나가는 손님.
+ *  seatfix: 손님 때문에 막혔을 때 UI는 이걸로 버튼을 끄지 않는다 — 예약(reserveWork)이나 「지금 바로」(doWorkNow)를 고르게 한다. */
 export function canDisturb(state: GameState, obj: PlacedObject): ApplyResult {
   if (PROTECTED_TYPES.has(obj.type)) return { ok: false, reason: '이건 못 없애요' };
-  if (state.guests.some((g) => g.seatId === obj.id)) return { ok: false, reason: '손님이 앉아 있어요' };
-  const cells = new Set(footprintOf(obj).map((p) => `${p.x},${p.y}`));
-  const guestCells = state.guests.flatMap((g) => [`${Math.round(g.x)},${Math.round(g.y)}`, ...(g.approachCell ? [`${g.approachCell.x},${g.approachCell.y}`] : []), ...g.path.map((p) => `${p.x},${p.y}`)]);
-  if (guestCells.some((c) => cells.has(c))) return { ok: false, reason: '손님이 지나가는 중이에요' };
-  return { ok: true };
+  const blocked = guestBlock(state, obj);
+  return blocked ? { ok: false, reason: blocked } : { ok: true };
 }
 
 function applyInner(state: GameState, a: Action): ApplyResult {
@@ -157,18 +156,18 @@ function applyInner(state: GameState, a: Action): ApplyResult {
       return { ok: true };
     }
     case 'demolishMany': {
-      // 드래그 사각형 일괄 철거: 보호·방 안 가구 있는 방은 건너뛰고, 하나라도 못 치우면 그 이유로 거부
+      // 드래그 사각형 일괄 철거: 보호·방 안 가구 있는 방은 건너뛰고, 손님이 앉은 시설은 예약해 둔다 (seatfix — 하나 때문에 전체가 막히지 않게)
       const objs: PlacedObject[] = [];
+      let reserved = 0;
       for (const id of a.objectIds) {
         const obj = state.objects[id];
         if (!obj || PROTECTED_TYPES.has(obj.type)) continue;
         if (objs.some((o) => o.id === obj.id)) continue;
-        const c = canDisturb(state, obj);
-        if (!c.ok) return c;
         if (objectDef(obj.type).room && objectsInRoom(state, obj.id).some((r) => !a.objectIds.includes(r.id))) return { ok: false, reason: '안에 가구가 있어요' };
+        if (guestBlock(state, obj)) { setPending(state, obj, { kind: 'remove' }); reserved++; continue; }
         objs.push(obj);
       }
-      if (objs.length === 0) return { ok: false, reason: '치울 게 없어요' };
+      if (objs.length === 0) return reserved > 0 ? { ok: true } : { ok: false, reason: '치울 게 없어요' };
       const delta = demolishRefund(objs);
       if (state.money + delta < 0) return { ok: false, reason: '돈이 모자라요' };
       state.money += delta;
@@ -180,6 +179,7 @@ function applyInner(state: GameState, a: Action): ApplyResult {
     case 'undoLast': {
       const c = canUndo(state);
       if (!c.ok) return c;
+      for (const o of undoTargets(state)) vacate(state, o); // seatfix: 앉은 손님은 다른 자리로 비켜 준다 (자리가 없으면 돌아간다)
       undoLast(state);
       return { ok: true };
     }
@@ -249,6 +249,32 @@ function applyInner(state: GameState, a: Action): ApplyResult {
       if (!c.ok) return c;
       repair(state, a.objectId);
       return { ok: true };
+    }
+    // ---- seatfix: 손님이 앉아 있어도 눌러 두는 예약 ----
+    case 'reserveWork': {
+      const obj = state.objects[a.objectId];
+      if (!obj) return { ok: false, reason: '없는 오브젝트' };
+      if (PROTECTED_TYPES.has(obj.type) || obj.type === MAIN_TYPE) return { ok: false, reason: '이건 예약 못 해요' }; // 본관은 기존 이사 규칙(월 1회·공사 일수)을 그대로 쓴다
+      if (a.work === 'move' && (a.x === undefined || a.y === undefined)) return { ok: false, reason: '옮길 자리를 골라 주세요' };
+      if (a.work === 'upgrade' && !isUpgradable(objectDef(obj.type))) return { ok: false, reason: '증축할 수 없는 거예요' };
+      if (a.work === 'treeUpgrade' && !nextStep(obj.type)) return { ok: false, reason: '최고 단계예요' };
+      setPending(state, obj, a.work === 'move' ? { kind: 'move', to: { x: a.x!, y: a.y! } } : { kind: a.work });
+      return { ok: true };
+    }
+    case 'cancelWork': {
+      const obj = state.objects[a.objectId];
+      if (!obj) return { ok: false, reason: '없는 오브젝트' };
+      if (!obj.pending) return { ok: false, reason: '예약이 없어요' };
+      clearPending(obj);
+      return { ok: true };
+    }
+    case 'doWorkNow': {
+      const obj = state.objects[a.objectId];
+      if (!obj) return { ok: false, reason: '없는 오브젝트' };
+      if (!obj.pending) return { ok: false, reason: '예약이 없어요' };
+      const name = WORK_NAME[obj.pending.kind];
+      doNow(state, obj);
+      return { ok: true, reason: name };
     }
     case 'buyParcel': {
       const c = canBuyParcel(state, a.id);
