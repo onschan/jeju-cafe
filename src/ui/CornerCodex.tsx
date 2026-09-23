@@ -20,7 +20,7 @@ export function CornerCodex() {
             <span style={{ width: 18, textAlign: 'center' }}>{done ? <Icon name="check" size={12} /> : ' '}</span>
             <span style={{ fontWeight: done ? 700 : 400 }}>{c.name}</span>
             <span style={{ fontSize: 12, color: PALETTE.inkSoft }}>
-              {done ? `요금 +${c.effect.feePct}% · 인기 +${c.effect.popularity}${now.has(c.id) ? '' : ' · 지금은 흩어짐'}` : c.hint}
+              {done ? `요금 +${c.effect.feePct}% · 입소문 +${c.effect.popularity}${now.has(c.id) ? '' : ' · 지금은 흩어짐'}` : c.hint}
             </span>
           </div>
         );

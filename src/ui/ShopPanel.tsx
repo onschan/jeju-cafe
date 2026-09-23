@@ -24,7 +24,7 @@ const price: CSSProperties = { fontWeight: 700, whiteSpace: 'nowrap' };
 const small: CSSProperties = { fontSize: 13, color: PALETTE.inkSoft };
 
 function statLabel(stat: 'popularity' | 'feePct' | 'scenery'): string {
-  return stat === 'popularity' ? '인기' : stat === 'feePct' ? '요금' : '경관';
+  return stat === 'popularity' ? '입소문' : stat === 'feePct' ? '요금' : '경관';
 }
 const TAG_LABEL: Record<string, string> = { female: '여성', male: '남성', youth: '청년', adult: '어른', senior: '시니어', group: '단체' };
 
@@ -57,7 +57,7 @@ function ItemCodex() {
           </div>
         </div>
       ))}
-      {section(`손님 선물 ${GIFTS.length}`, '손님 카드 「선물하기」 — 인기 +3 · 만족 +20, 잘 맞으면 ×2, 하루 1회')}
+      {section(`손님 선물 ${GIFTS.length}`, '손님 카드 「선물하기」 — 인지도 +3 · 만족 +20, 잘 맞으면 ×2, 하루 1회')}
       {GIFTS.map((g) => {
         const craft = g.source.type === 'craft' ? g.source : null;
         const can = craft ? canCraftGift(s, g.id) : null;
@@ -134,7 +134,7 @@ function Inventory() {
           <div key={id} style={row}>
             <div style={{ flex: 1 }}>
               <div><b>{it.name}</b> ×{n}</div>
-              <div style={small}>{gift ? `손님 선물 — 손님 카드에서 「선물하기」 (${TAG_LABEL[giftDef(id).fitTag] ?? ''} 손님이면 ×2)` : usable ? id === POPULARITY_FRUIT ? '손님 1종 인기 +10' : `${statLabel(it.stat)} +${it.value}${it.stat === 'feePct' ? '%' : ''} (잘 맞는 시설 ×2)` : SPECIAL_ITEM_EFFECT[id] || it.sourceText || '특별한 아이템'}</div>
+              <div style={small}>{gift ? `손님 선물 — 손님 카드에서 「선물하기」 (${TAG_LABEL[giftDef(id).fitTag] ?? ''} 손님이면 ×2)` : usable ? id === POPULARITY_FRUIT ? '손님 1종 인지도 +10' : `${statLabel(it.stat)} +${it.value}${it.stat === 'feePct' ? '%' : ''} (잘 맞는 시설 ×2)` : SPECIAL_ITEM_EFFECT[id] || it.sourceText || '특별한 아이템'}</div>
             </div>
             {usable && <button style={{ ...brownBtn, marginBottom: 0, marginRight: 0 }} data-testid={`use-${id}`} onClick={() => setPicking(id)}>사용</button>}
           </div>
@@ -177,7 +177,7 @@ function GuestPicker({ itemId, onClose }: { itemId: string; onClose: () => void 
       {ids.map((id) => (
         <button key={id} style={{ ...brownBtn, width: '100%', marginRight: 0, textAlign: 'left' }} data-testid={`guest-${id}`}
           onClick={() => { onClose(); dispatch({ type: 'useGuestItem', itemId, guestId: id }); }}>
-          {guestTypeDef(id).name} · 인기 {Math.floor(s.segmentPopularity[id] ?? 0)} → +10
+          {guestTypeDef(id).name} · 인지도 {Math.floor(s.segmentPopularity[id] ?? 0)} · +10
         </button>
       ))}
     </Popup>

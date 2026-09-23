@@ -172,7 +172,7 @@ function SettingsPanel({ onExit, gauges, onGauges }: { onExit: () => void; gauge
       {slider('효과음', sfxVol, (n) => { setSfxVolume(n); setSfxVol(n); sfx('tap'); })}
       <button style={{ ...brownBtn, marginRight: 0, marginBottom: 0 }} onClick={toggleMute}>{muted ? <><Icon name="sound_on" /> 소리 켜기</> : <><Icon name="sound_off" /> 소리 끄기</>}</button>
       <OnOff label="속도 잠금 (창을 열어도 안 멈춤)" on={isSpeedLocked()} onChange={setSpeedLocked} testId="setting-speed-lock" />
-      <OnOff label="시설 위 인기 바 표시" on={gauges} onChange={onGauges} testId="setting-gauges" />
+      <OnOff label="시설 위 입소문 바 표시" on={gauges} onChange={onGauges} testId="setting-gauges" />
       {!tutorialDone(s) && <OnOff label="튜토리얼 스포트라이트 (빛나는 것 빼고 어둡게)" on={spotlight} onChange={setSpotlightOn} testId="setting-spotlight" />}{/* w-free */}
       <button style={{ ...brownBtn, marginRight: 0, marginBottom: 0 }} onClick={() => setSlots(true)}><Icon name="save" /> 슬롯에 저장</button>
       <button style={{ ...dangerBtn, marginRight: 0, marginBottom: 0 }} onClick={() => Confirm('자동 저장하고 타이틀로 나갈까요?', onExit, { title: '타이틀로' })}><Icon name="door" /> 타이틀로</button>
@@ -216,7 +216,7 @@ function StatusPanel() {
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 14 }}>
             <Icon name="local" size={18} alt="동네 손님" /> 동네
             <meter min={-100} max={100} value={s.popularity} style={{ flex: 1 }} />
-            인기 <Icon name="tourist" size={18} alt="관광객" />
+            손님 색깔 <Icon name="tourist" size={18} alt="관광객" />
           </div>
         </>
       )}

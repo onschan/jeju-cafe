@@ -67,7 +67,7 @@ describe('해금 문구', () => {
     expect(unlockText({ unlockText: '랭크 3' })).toBe('카페가 더 알려지면 열려요');
     expect(unlockText({ unlock: { type: 'star', star: 3 } })).toBe('★3이면 열려요');
     expect(unlockText({ unlock: { type: 'count', objectId: 'table_out', count: 2 } })).toBe('야외 테이블 2개면 열려요');
-    expect(unlockText({ unlock: { type: 'segmentPop', guestId: 'olle_walker', popularity: 30 } })).toContain('손님 인기 30');
+    expect(unlockText({ unlock: { type: 'segmentPop', guestId: 'olle_walker', popularity: 30 } })).toContain('손님 인지도 30');
     expect(unlockText({ unlock: { type: 'start' } })).toBe('처음부터 열려 있어요');
     expect(unlockText({})).toBe('목표를 이루면 열려요');
     expect(unlockCondText({ type: 'all', conditions: [] })).toBe('아직 열 수 없음');

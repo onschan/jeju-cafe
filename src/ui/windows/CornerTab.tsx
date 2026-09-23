@@ -15,11 +15,11 @@ import { lockedText } from './BuildWindow.tsx';
 
 const TARGET_TEXT: Record<string, string> = { all: '모든 손님', female: '여성 손님', male: '남성 손님', youth: '젊은 손님', adult: '어른 손님', senior: '삼춘', group: '단체 손님' };
 
-/** 효과 한 줄: "요금 +5% · 인기 +5 · 여성 손님이 더 온다" */
+/** 효과 한 줄: "요금 +5% · 입소문 +5 · 여성 손님이 더 온다" */
 export function cornerEffectText(p: CornerProgress): string {
   const e = p.def.effect;
   const who = e.target === 'all' ? '손님이 더 온다' : `${josa(TARGET_TEXT[e.target] ?? '손님', '이/가')} 더 온다`;
-  return `요금 +${e.feePct}% · 인기 +${e.popularity} · ${who}`;
+  return `요금 +${e.feePct}% · 입소문 +${e.popularity} · ${who}`;
 }
 /** 미완성 한 줄: "벤치 하나만 더" / "돌담 2개, 올렛길 하나 더" */
 export function cornerMissingText(p: CornerProgress): string {

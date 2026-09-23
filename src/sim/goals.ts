@@ -304,7 +304,7 @@ export function goalConditionText(c: GoalCondition): string {
     case 'spotLevel': return `${name.spot(c.spotId)} Lv${c.lv}`;
     case 'spotAny': return `Lv${c.lv} 명소 ${c.n}곳`;
     case 'visitorsTotal': return `명소 방문객 ${fmtNum(c.n)}명`;
-    case 'guestType': return `${name.guest(c.guestId)} 인기 ${c.n}`;
+    case 'guestType': return `${name.guest(c.guestId)} 인지도 ${c.n}`;
     case 'guidebookRank': return `${name.book(c.bookId)} ${c.n}위 안`;
     case 'guidebookWins': return `가이드북 1위 ${c.n}회`;
     case 'cleanliness': return `청결 ${c.n} 한 달 유지`;

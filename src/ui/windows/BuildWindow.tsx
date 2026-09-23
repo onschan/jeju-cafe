@@ -1,4 +1,4 @@
-/** 짓기 창 (스펙 §4.2). 카테고리 탭(쉼·편의·먹거리·즐길거리·농원·경관·길·담) → 2열 카드(아이소 스프라이트·이름·가격·인기/경관).
+/** 짓기 창 (스펙 §4.2). 카테고리 탭(쉼·편의·먹거리·즐길거리·농원·경관·길·담) → 2열 카드(아이소 스프라이트·이름·가격·입소문/경관).
  *  카드 탭 → 아래 설명 2줄 + `짓기`(onPickBuild). 잠긴 것은 반투명 + 조건 한글. 철거·이동은 미니카드(트랙 C) 몫. */
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { Icon } from '../Icon';
@@ -257,7 +257,7 @@ function PickedDetail({ s: def, locked, state, onPick }: { s: ObjectDef; locked:
   const ok = !locked && start.ok && !poor && !!onPick;
   const days = def.buildDays ?? 0;
   const facts = [
-    def.id === MAIN_TYPE ? '카운터·주방·실내 자리' : def.kind === 'seat' ? `좌석 ${def.seats ?? 2}` : `인기 ${def.popularity ?? 10}`,
+    def.id === MAIN_TYPE ? '카운터·주방·실내 자리' : def.kind === 'seat' ? `좌석 ${def.seats ?? 2}` : `입소문 ${def.popularity ?? 10}`,
     def.id === MAIN_TYPE ? '문은 앞쪽 왼쪽' : `경관 ${def.scenery}`,
     def.upkeep > 0 ? `유지비 ${wonText(def.upkeep)}/월` : null,
     days > 0 ? `공사 ${days}일` : '바로 완성',

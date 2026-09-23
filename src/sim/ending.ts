@@ -184,7 +184,7 @@ export function carryText(c: CarryOver): string[] {
   out.push(`유니폼 ${c.uniforms.length}벌`);
   out.push(`돌하르방 ${c.dolhareubang}개`);
   out.push(`응모권 ${c.tickets}장`);
-  out.push(`손님 인기 ${Object.keys(c.guestPopularity).length}층 (20%)`);
+  out.push(`손님 인지도 ${Object.keys(c.guestPopularity).length}층 (20%)`);
   if (c.millennium) out.push('폭낭 그늘');
   return out;
 }

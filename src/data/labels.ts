@@ -117,7 +117,7 @@ export function unlockCondText(c: UnlockCond): string {
     case 'date': return `${c.year}년 ${c.month}월`;
     case 'count': return `${label('facility', c.objectId)} ${c.count}개`;
     case 'category': return `${label('category', c.category)} 시설 ${c.count}개`;
-    case 'segmentPop': return `${label('guest', c.guestId)} 손님 인기 ${c.popularity}`;
+    case 'segmentPop': return `${label('guest', c.guestId)} 손님 인지도 ${c.popularity}`;
     case 'goal': return '목표 보상';
     case 'all': return c.conditions.length > 0 ? c.conditions.map(unlockCondText).join(' + ') : '아직 열 수 없음';
     case 'any': return c.conditions.length > 0 ? c.conditions.map(unlockCondText).join(' 또는 ') : '아직 열 수 없음';
@@ -184,7 +184,7 @@ export function conditionText(c: LooseCondition): string {
     case 'menuOn': case 'menuSlot': return `${label('menu', str(c, 'menuId', 'menu'))} 메뉴판에 올리기`;
     case 'objectPlaced': return `${label('facility', str(c, 'objectId', 'facility', 'object'))} ${n()}개 놓기`;
     case 'spotLevel': return `${label('spot', str(c, 'spotId', 'spot'))} ${num(c, 'level')}단계까지 투자하기`;
-    case 'segmentPopularity': return `${label('guest', str(c, 'guestId', 'guest'))} 손님 인기 ${num(c, 'popularity', 'n')}`;
+    case 'segmentPopularity': return `${label('guest', str(c, 'guestId', 'guest'))} 손님 인지도 ${num(c, 'popularity', 'n')}`;
     case 'item': return `${label('item', str(c, 'itemId', 'item'))} ${n()}개 모으기`;
     case 'guests': return `손님 ${n()}명 맞이하기`;
     case 'money': return `자금 ${wonText(n())} 모으기`;

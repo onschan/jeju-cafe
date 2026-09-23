@@ -34,13 +34,13 @@ describe('명당 UI (fun-corner)', () => {
     for (const c of CORNERS) { expect(c.guestLine.length).toBeLessThanOrEqual(12); expect(c.name.length).toBeLessThanOrEqual(10); }
     for (const t of texts) expect(t).not.toMatch(/→|정석|시뮬/);
   });
-  it('미완성 한 줄: "가로등 하나만 더" / 완성이면 "완성!"; 효과 한 줄에 요금·인기·손님층', () => {
+  it('미완성 한 줄: "가로등 하나만 더" / 완성이면 "완성!"; 효과 한 줄에 요금·입소문·손님층', () => {
     const s = bareState(1);
     place(s, 'flower_bed', 0, 0);
     place(s, 'deco_wood_bench', 1, 0);
     let p = cornerProgress(s).find((x) => x.def.id === 'corner_flower_path')!;
     expect(cornerMissingText(p)).toBe('가로등 하나만 더');
-    expect(cornerEffectText(p)).toBe('요금 +5% · 인기 +5 · 여성 손님이 더 온다');
+    expect(cornerEffectText(p)).toBe('요금 +5% · 입소문 +5 · 여성 손님이 더 온다'); // 용어 정리: 시설 지표는 「입소문」, 「인기」는 매력도 패널 전용
     place(s, 'streetlight', 0, 1);
     p = cornerProgress(s).find((x) => x.def.id === 'corner_flower_path')!;
     expect(cornerMissingText(p)).toContain('완성');

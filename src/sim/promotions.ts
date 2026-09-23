@@ -115,7 +115,7 @@ export function promote(state: GameState, staffId: string, promotionId: string):
     for (const t of Object.keys(delta)) delta[t] = Math.round(delta[t]! * mult * 10) / 10;
     if (def.months > 0) state.activePromotions.push({ promotionId, remainingMonths: def.months, delta });
     else for (const [t, d] of Object.entries(delta)) state.segmentPopularity[t] = clampPop((state.segmentPopularity[t] ?? 0) + d);
-    lines.push(`손님층 인기 효과 ×${mult}`);
+    lines.push(`손님층 인지도 효과 ×${mult}`);
   }
   if (outcome === 'great') {
     state.tickets += GREAT_TICKETS;

@@ -81,7 +81,7 @@ export function useGuestItem(state: GameState, itemId: string, guestId: string):
   const id = canonicalGuestId(guestId);
   state.inventory[itemId] = (state.inventory[itemId] ?? 0) - 1;
   state.segmentPopularity[id] = Math.min(MAX_SEGMENT_POPULARITY, (state.segmentPopularity[id] ?? 0) + POPULARITY_FRUIT_DELTA);
-  pushNotice(state, `${guestTypeDef(id).name} 인기 +${POPULARITY_FRUIT_DELTA}`);
+  pushNotice(state, `${guestTypeDef(id).name} 인지도 +${POPULARITY_FRUIT_DELTA}`);
 }
 
 // ---------- 응모권 추첨 (인형뽑기) ----------

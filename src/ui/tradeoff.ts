@@ -18,7 +18,7 @@ export function tradeoffOf(s: GameState, type: string, x: number, y: number): Tr
   const seats = Object.values(s.objects).filter((o) => !o.build && isSeat(s, o));
   const near = seats.filter((o) => Math.max(Math.abs(o.x - x), Math.abs(o.y - y)) <= RADIUS && !(o.x === x && o.y === y)).length;
   if (def.kind === 'seat') gains.push(`+좌석 ${def.seats ?? 2}`);
-  else if ((def.popularity ?? 0) > 0 && def.kind === 'facility') gains.push(`+인기 ${def.popularity}`);
+  else if ((def.popularity ?? 0) > 0 && def.kind === 'facility') gains.push(`+입소문 ${def.popularity}`);
   if (def.fee) gains.push(`요금 ${wonText(def.fee)}`);
   const sc = objectScenery(def, seasonOf(s.clock.month), itemScenery(s, type)) - def.noise;
   if (sc > 0) {
