@@ -132,6 +132,14 @@ export function bestSeatCell(s: GameState): Pt | null {
   return bestSeatCells(s, 1)[0] ?? null;
 }
 
+/** 튜토리얼 첫 테이블 추천 칸 — 사용자가 직접 고른 자리. 못 놓는 자리면(막혔거나 이미 있으면) 계산 1위로 돌아간다. */
+export const TUTORIAL_SEAT_CELL: Pt = { x: 15, y: 11 };
+/** 1단계(첫 테이블)에서 실제로 빛낼 칸. 1단계를 끝낸 뒤에는 늘 계산 1위(bestSeatCell)다. */
+export function recommendedSeatCell(s: GameState): Pt | null {
+  if (s.tutorial.step < 1 && canPlace(s, SEAT_TYPE, TUTORIAL_SEAT_CELL.x, TUTORIAL_SEAT_CELL.y).ok) return TUTORIAL_SEAT_CELL;
+  return bestSeatCell(s);
+}
+
 // ---------- 돌담 ----------
 
 /** 북서 쐐기(반경 3, |dx−dy| ≤ 1) — site.ts windOf·grid.ts windShelter와 같은 띠 */
@@ -380,7 +388,7 @@ export function strengthWhy(s: GameState, cell: Pt, k: SeatStrength): string {
 /** 추천 테이블 칸이 왜 좋은지 한 줄 (튜토리얼 1단계 `{seatWhy}`·다음 수 문구). 근거가 없으면 담백하게. */
 export function seatWhy(s: GameState): string {
   const cands = bestSeatCellsHeuristic(s, SOLVER_SEAT_K);
-  const seat = bestSeatCells(s, 1)[0] ?? cands[0];
+  const seat = recommendedSeatCell(s) ?? cands[0]; // 튜토리얼 1단계는 사용자가 고른 칸 기준으로 이유를 말한다
   if (!seat) return '지금 가진 칸 중 제일 낫다';
   const k = seatStrengths(s, seat, cands)[0];
   return k ? strengthWhy(s, seat, k) : '지금 가진 칸 중 제일 낫다';

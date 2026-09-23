@@ -620,8 +620,9 @@ export interface MonthlyState {
   status: 'active' | 'done' | 'failed';
 }
 /** 손으로 하는 튜토리얼 (§7.2): step = 끝낸 단계 수 (0~9). 9면 끝. skipped면 완성 시작 상태로 채웠다. */
-/** step = 끝낸 단계 수(0~30), skipped = 장을 건너뛴 적 있음, seen = 조건 판정용 표식(성공한 액션 타입·UI 표식·본 대사 dlg:<id>) — sim/tutorial.ts */
-export interface TutorialState { step: number; skipped: boolean; seen: string[] }
+/** step = 끝낸 단계 수, skipped = 막을 건너뛴 적 있음, seen = 조건 판정용 표식(성공한 액션 타입·UI 표식·본 대사 dlg:<id>),
+ *  lastDay = 마지막으로 단계를 끝낸 날(dayIndex) — 단계 사이 최소 한 게임일(연타 금지). 옛 저장엔 없다(save.ts backfill). — sim/tutorial.ts */
+export interface TutorialState { step: number; skipped: boolean; seen: string[]; lastDay?: number }
 
 // ---------- 제주 빅 이벤트 (v3 A5) ----------
 /** 손님 태그 배수의 키: 인구 태그 + 외국인·학생·1인·가족 */

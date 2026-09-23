@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { useGame } from './store';
 import { Icon } from './Icon';
 import { fmtNum } from '../sim/format.ts';
-import { TUTORIAL_STEPS, tutorialDone, mainBuilding, shrinkingWarning, TREND_NAME } from '../sim/index.ts';
+import { TUTORIAL_ACTS, actsDone, tutorialDone, mainBuilding, shrinkingWarning, TREND_NAME } from '../sim/index.ts';
 import { currentGoal, urgentChallenge } from './simBridge';
 import { PALETTE } from './frame';
 import { TutorialWindow } from './TutorialWindow';
@@ -15,7 +15,7 @@ export const GOAL_BAR_H = GOAL_LINE_H + CHALLENGE_LINE_H;
 /** 튜토리얼 배지 너비 (목표 줄 왼쪽 한 칸) */
 export const TUT_BADGE_W = 60;
 
-/** 목표 줄 왼쪽 「📖 n/7」 배지 (fun-start): 탭하면 튜토리얼 창(현재 단계 대사 다시 보기·7단계 목록·건너뛰기).
+/** 목표 줄 왼쪽 「📖 막 n/5」 배지 (fun-start): 탭하면 튜토리얼 창(현재 단계 대사 다시 보기·5막 진행도·막 건너뛰기).
  *  튜토리얼이 끝나면 「📖 할 일」 — 할망의 추천 탭은 다 배운 뒤에도 남는 코치라 배지도 남긴다.
  *  (맨 위 「오늘 할 일」 한 줄은 TodoLine.tsx가 따로 그린다 — 배지는 그 줄이 아니라 추천 창을 연다)
  *  창은 #root에 포털로 띄운다 (목표 줄이 absolute라 그 안에 두면 갇힌다). */
@@ -26,9 +26,9 @@ function TutorialBadge() {
   const root = typeof document !== 'undefined' ? document.getElementById('root') : null;
   return (
     <>
-      <button data-testid="tutorial-badge" aria-label={done ? '할망의 추천' : `할망의 가르침 ${s.tutorial.step}/${TUTORIAL_STEPS}`} onClick={() => setOpen(true)}
+      <button data-testid="tutorial-badge" aria-label={done ? '할망의 추천' : `할망의 가르침 ${actsDone(s) + 1}막`} onClick={() => setOpen(true)}
         style={{ position: 'absolute', left: 0, top: 0, width: TUT_BADGE_W, height: GOAL_LINE_H, padding: 0, border: 0, borderRight: `2px solid ${PALETTE.wood}`, background: PALETTE.btnOn, color: PALETTE.btnOnText, fontFamily: 'inherit', fontSize: 13, fontWeight: 700, zIndex: 11, whiteSpace: 'nowrap' }}>
-        📖 {done ? '할 일' : `${s.tutorial.step}/${TUTORIAL_STEPS}`}
+        📖 {done ? '할 일' : `막 ${Math.min(actsDone(s) + 1, TUTORIAL_ACTS.length)}/${TUTORIAL_ACTS.length}`}
       </button>
       {open && root && createPortal(<TutorialWindow onClose={() => setOpen(false)} />, root)}
     </>

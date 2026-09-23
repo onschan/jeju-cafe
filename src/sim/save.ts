@@ -147,6 +147,7 @@ function backfill(state: GameState): void {
     if (!PENDING_KINDS.includes(o.pending.kind) || (o.pending.kind === 'move' && !o.pending.to)) delete o.pending;
     else o.pending.at ??= 0;
   }
+  if (state.tutorial.lastDay !== undefined && typeof state.tutorial.lastDay !== 'number') delete state.tutorial.lastDay; // 5막 재구성: 없으면 첫 단계가 바로 뜬다
   if (state.tutorial.seen === undefined) { // z-tutorial: 30단계 판정 표식이 없는 옛 9단계 저장 — 건너뛴 것은 계속 끝난 상태(30), 손으로 한 것은 10단계부터 이어 간다
     state.tutorial.seen = [];
     if (state.tutorial.skipped && state.tutorial.step < TUTORIAL_STEPS) state.tutorial.step = TUTORIAL_STEPS;

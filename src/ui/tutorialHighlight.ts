@@ -72,6 +72,8 @@ export const CELL_LABEL: Record<string, string> = {
   seat: '이 자리가 좋아 보인다',
   greet: '손님이다, 탭해서 인사',
   corner: '여기 놓으면 명당이 된다',
+  cornerSeat: '명당 곁이라 값이 오른다',
+  combo: '붙여 놓으면 인기가 붙는다',
 };
 export const CELL_LABEL_DEFAULT = '여기가 좋아 보인다';
 
