@@ -24,7 +24,7 @@ import { gradeOf, REVEAL_GRADE } from './grade.ts';
 import { dayIndex } from './effects.ts';
 import { isWorking } from './titles.ts';
 import { fmtNum } from './format.ts';
-import { contestOpponents } from './rival.ts'; // 대회 상대 3곳은 동네 경쟁 카페 5곳에서 뽑는다
+import { contestOpponents, acquiredRivals } from './rival.ts'; // 대회 상대 3곳은 동네 경쟁 카페 5곳에서 뽑는다
 
 export { contestDef, CONTESTS };
 
@@ -238,14 +238,18 @@ export function rivalScores(seed: number, year: number, month: number, event: Co
   return out.sort((a, b) => b - a);
 }
 /** 이 회차 상대 이름 3곳 — 랜덤 이름이 아니라 **동네 경쟁 카페**다 (rival.ts). 점수 내림차순과 짝을 맞춘다. */
-export function rivalNames(seed: number, year: number, month: number, event: ContestEvent): string[] {
+export function rivalNames(seed: number, year: number, month: number, event: ContestEvent, exclude: readonly string[] = []): string[] {
   const ei = Math.max(0, CONTESTS.findIndex((c) => c.id === event));
-  return contestOpponents(seed, year, month, ei).map((d) => d.name);
+  return contestOpponents(seed, year, month, ei, exclude).map((d) => d.name);
+}
+/** 인수해서 우리 것이 된 카페 id — 대회 상대에서 뺀다 */
+function acquiredIds(state: GameState): string[] {
+  return state.rivals ? acquiredRivals(state).map((d) => d.id) : [];
 }
 /** 이번 회차 상대 이름 (접수 창·결과 연출이 같은 이름을 쓴다) */
 export function currentRivalNames(state: GameState, event: ContestEvent): string[] {
   const next = nextContest(state);
-  return rivalNames(state.seed, next.year, next.month, event);
+  return rivalNames(state.seed, next.year, next.month, event, acquiredIds(state));
 }
 
 /** 이번 회차 상대 (접수 창·개최 둘 다 이걸 쓴다) */
@@ -420,7 +424,7 @@ export function runContest(state: GameState): ContestResult | null {
   try { menuName = menuOf(state, entry.menuId).name; } catch { try { menuName = menuDef(entry.menuId).name; } catch { /* 없어진 메뉴 */ } }
   const result: ContestResult = {
     year: state.clock.year, month: state.clock.month, event: entry.event,
-    scores, base, myScore, rivals, rivalNames: rivalNames(state.seed, state.clock.year, state.clock.month, entry.event), rank, outcome, chances, best, prize, tickets,
+    scores, base, myScore, rivals, rivalNames: rivalNames(state.seed, state.clock.year, state.clock.month, entry.event, acquiredIds(state)), rank, outcome, chances, best, prize, tickets,
     staffId: entry.staffId, staffName: staff?.name ?? '우리 카페', menuName, trophy,
   };
   c.history.unshift(result);

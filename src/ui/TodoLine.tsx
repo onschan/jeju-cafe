@@ -6,8 +6,6 @@
  * 로직은 새로 만들지 않는다 — `hints.ts idleHint`가 쓰는 `cachedMoves`·`nextMove`를 상시 노출로 바꾼 것뿐이다.
  * 항목을 탭하면 그 수의 타깃(`SolverMove.targets`·`cells`)을 글로우한다 (tutorialHighlight.setGuideFocus).
  */
-import { useState } from 'react';
-import { createPortal } from 'react-dom';
 import type { GameState, Pt } from '../sim/index.ts';
 import { cachedMoves, solverKey, heuristicNextMove, REP_LOW, WARN_DEFICIT_MONTHS, LOAN_THRESHOLD, activeSteal, stealTitle, rivalsState, scoreboard, rankGap, RIVAL_COUNTER_COST } from '../sim/index.ts';
 import { wonText } from '../data/labels.ts';
@@ -15,7 +13,7 @@ import { useGame } from './store';
 import { currentGoal, urgentChallenge } from './simBridge';
 import { setGuideFocus } from './tutorialHighlight';
 import { Icon } from './Icon';
-import { PALETTE, brownBtn } from './frame';
+import { PALETTE } from './frame';
 
 /** 오늘 할 일 줄 높이 */
 export const TODO_LINE_H = 24;
@@ -100,46 +98,32 @@ export function todoItems(s: GameState): TodoItem[] {
 
 const KIND_ICON: Record<TodoKind, string> = { warn: 'warn', move: 'bulb', goal: 'target', rival: 'rival' };
 
-/** 맨 위 1줄 + 탭하면 3줄 시트. 할 일이 없으면 아무것도 그리지 않는다 (빈 UI를 남기지 않는다). */
+/** 맨 위 1줄: **지금 할 것 하나**만. 전체 목록은 「할 일」 창이 맡는다 (역할이 겹치지 않게 — 통합 §3).
+ *  줄을 누르면 그 하나를 바로 한다(타깃 글로우·창 열기), 오른쪽 「할 일」을 누르면 전체 목록이 열린다.
+ *  할 일이 없으면 아무것도 그리지 않는다 (빈 UI를 남기지 않는다). */
 export function TodoLine({ top, onOpenGoal }: { top: number; onOpenGoal: () => void }) {
   const s = useGame();
-  const [open, setOpen] = useState(false);
   const items = todoItems(s);
   const head = items[0];
-  const root = typeof document !== 'undefined' ? document.getElementById('root') : null;
   if (!head) return null;
   const rest = items.length - 1;
   const doItem = (it: TodoItem) => {
-    setOpen(false);
     if (it.opens === 'goal') { onOpenGoal(); return; }
     setGuideFocus({ key: solverKey(s), targets: it.targets, cells: it.cells, label: it.text });
   };
   return (
-    <>
-      <button data-testid="todo-line" onClick={() => setOpen((v) => !v)} aria-label={`오늘 할 일: ${head.text}`} aria-expanded={open}
-        style={{ position: 'absolute', top, left: 0, right: 0, height: TODO_LINE_H, zIndex: 10, padding: '0 8px', border: 0, borderBottom: `2px solid ${PALETTE.wood}`, background: head.kind === 'warn' ? '#f7d9d9' : PALETTE.paper, color: PALETTE.ink, fontFamily: 'inherit', fontSize: 13, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 5, textAlign: 'left', whiteSpace: 'nowrap', overflow: 'hidden', boxSizing: 'border-box' }}>
+    <div style={{ position: 'absolute', top, left: 0, right: 0, height: TODO_LINE_H, zIndex: 10, display: 'flex', alignItems: 'stretch', borderBottom: `2px solid ${PALETTE.wood}`, background: head.kind === 'warn' ? '#f7d9d9' : PALETTE.paper, boxSizing: 'border-box' }}>
+      <button data-testid="todo-line" onClick={() => doItem(head)} aria-label={`오늘 할 일: ${head.text}`}
+        style={{ flex: 1, minWidth: 0, padding: '0 8px', border: 0, background: 'none', color: PALETTE.ink, fontFamily: 'inherit', fontSize: 13, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 5, textAlign: 'left', whiteSpace: 'nowrap', overflow: 'hidden' }}>
         <span style={{ flex: 'none', color: PALETTE.title, display: 'flex' }}><Icon name={KIND_ICON[head.kind]} size={14} /></span>
         <span style={{ flex: 'none', color: PALETTE.inkSoft }}>오늘 할 일</span>
         <span data-testid="todo-head" style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>{head.text}</span>
         {head.gain && <span data-testid="todo-gain" style={{ flex: 'none', color: PALETTE.ok }}>{head.gain}</span>}
-        {rest > 0 && <span data-testid="todo-rest" style={{ flex: 'none', minWidth: 20, textAlign: 'center', background: PALETTE.paperDark, border: `1px solid ${PALETTE.woodLight}`, borderRadius: 9, fontSize: 12, padding: '0 5px' }}>{rest}</span>}
       </button>
-      {open && root && createPortal(
-        <div data-testid="todo-sheet" role="dialog" aria-label="오늘 할 일" onClick={() => setOpen(false)}
-          style={{ position: 'fixed', inset: 0, zIndex: 46, background: '#0006', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', paddingTop: top + TODO_LINE_H + 6 }}>
-          <div onClick={(e) => e.stopPropagation()} style={{ width: 'min(94vw, 420px)', background: PALETTE.paper, border: `4px solid ${PALETTE.wood}`, borderRadius: 8, padding: 8, boxSizing: 'border-box' }}>
-            <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 6 }}><Icon name="bulb" size={16} /> 오늘 할 일</div>
-            {items.map((it) => (
-              <div key={it.key} data-testid="todo-item" style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 0', borderTop: `1px solid ${PALETTE.woodLight}` }}>
-                <span style={{ flex: 'none', color: it.kind === 'warn' ? PALETTE.bad : PALETTE.title, display: 'flex' }}><Icon name={KIND_ICON[it.kind]} size={14} /></span>
-                <span style={{ flex: 1, minWidth: 0, fontSize: 14, fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis' }}>{it.text}</span>
-                {it.gain && <span style={{ flex: 'none', fontSize: 13, color: PALETTE.ok }}>{it.gain}</span>}
-                <button style={{ ...brownBtn, flex: 'none', margin: 0, minWidth: 56, height: 44, padding: '0 10px', fontSize: 14 }} onClick={() => doItem(it)}>{it.opens === 'goal' ? '보기' : '하기'}</button>
-              </div>
-            ))}
-            <button style={{ ...brownBtn, width: '100%', margin: '6px 0 0', height: 44, fontSize: 14 }} onClick={() => setOpen(false)}>닫기</button>
-          </div>
-        </div>, root)}
-    </>
+      <button data-testid="todo-all" onClick={onOpenGoal} aria-label="할 일 창 열기"
+        style={{ flex: 'none', padding: '0 8px', border: 0, borderLeft: `1px solid ${PALETTE.woodLight}`, background: 'none', color: PALETTE.title, fontFamily: 'inherit', fontSize: 13, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 4 }}>
+        할 일{rest > 0 && <span data-testid="todo-rest" style={{ minWidth: 18, textAlign: 'center', background: PALETTE.paperDark, border: `1px solid ${PALETTE.woodLight}`, borderRadius: 9, fontSize: 12, padding: '0 4px' }}>{rest}</span>}
+      </button>
+    </div>
   );
 }

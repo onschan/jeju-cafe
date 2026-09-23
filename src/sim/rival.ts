@@ -451,12 +451,16 @@ export function dealCost(state: GameState): number {
 
 // ---------- 대회 상대 연결 ----------
 
-/** 대회 상대 3곳 — 랜덤이 아니라 **동네 카페 5곳 중에서** 회차 해시로 고른다 (이름·강점이 이어진다) */
-export function contestOpponents(seed: number, year: number, month: number, eventIndex: number): RivalDef[] {
-  const n = RIVALS.length;
+/** 대회 상대 3곳 — 랜덤이 아니라 **동네 카페 5곳 중에서** 회차 해시로 고른다 (이름·강점이 이어진다).
+ *  all: 인수한 카페는 빼고 고른다 — 우리 것이 된 곳이 대회에서 우리와 겨루면 말이 안 된다.
+ *  남은 곳이 셋보다 적으면(넷을 인수) 그때는 다섯 곳 전부에서 고른다 — 상대 수는 언제나 셋이다. */
+export function contestOpponents(seed: number, year: number, month: number, eventIndex: number, exclude: readonly string[] = []): RivalDef[] {
+  const pool = exclude.length > 0 ? RIVALS.filter((d) => !exclude.includes(d.id)) : RIVALS;
+  const from = pool.length >= 3 ? pool : RIVALS;
+  const n = from.length;
   const start = hash32(seed, year, month, eventIndex + 1) % n;
   const out: RivalDef[] = [];
-  for (let i = 0; i < Math.min(3, n); i++) out.push(RIVALS[(start + i) % n]!);
+  for (let i = 0; i < Math.min(3, n); i++) out.push(from[(start + i) % n]!);
   return out;
 }
 

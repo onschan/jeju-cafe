@@ -16,8 +16,9 @@ export const GOAL_BAR_H = GOAL_LINE_H + CHALLENGE_LINE_H;
 export const TUT_BADGE_W = 60;
 
 /** 목표 줄 왼쪽 「📖 막 n/5」 배지 (fun-start): 탭하면 튜토리얼 창(현재 단계 대사 다시 보기·5막 진행도·막 건너뛰기).
- *  튜토리얼이 끝나면 「📖 할 일」 — 할망의 추천 탭은 다 배운 뒤에도 남는 코치라 배지도 남긴다.
- *  (맨 위 「오늘 할 일」 한 줄은 TodoLine.tsx가 따로 그린다 — 배지는 그 줄이 아니라 추천 창을 연다)
+ *  튜토리얼이 끝나면 「📖 할망」 — 할망의 추천은 다 배운 뒤에도 남는 코치라 배지도 남긴다.
+ *  통합 §3: 창 이름이 셋으로 갈린다 — 📖는 **배우는 중인 막**, 맨 위 한 줄(TodoLine)은 **지금 할 것 하나**,
+ *  「할 일」 창(GoalWindow)은 **전체 목록**. 배지가 「할 일」이면 창 이름과 겹쳐 같은 것으로 읽힌다.
  *  창은 #root에 포털로 띄운다 (목표 줄이 absolute라 그 안에 두면 갇힌다). */
 function TutorialBadge() {
   const s = useGame();
@@ -28,14 +29,14 @@ function TutorialBadge() {
     <>
       <button data-testid="tutorial-badge" aria-label={done ? '할망의 추천' : `할망의 가르침 ${actsDone(s) + 1}막`} onClick={() => setOpen(true)}
         style={{ position: 'absolute', left: 0, top: 0, width: TUT_BADGE_W, height: GOAL_LINE_H, padding: 0, border: 0, borderRight: `2px solid ${PALETTE.wood}`, background: PALETTE.btnOn, color: PALETTE.btnOnText, fontFamily: 'inherit', fontSize: 13, fontWeight: 700, zIndex: 11, whiteSpace: 'nowrap' }}>
-        📖 {done ? '할 일' : `막 ${Math.min(actsDone(s) + 1, TUTORIAL_ACTS.length)}/${TUTORIAL_ACTS.length}`}
+        📖 {done ? '할망' : `막 ${Math.min(actsDone(s) + 1, TUTORIAL_ACTS.length)}/${TUTORIAL_ACTS.length}`}
       </button>
       {open && root && createPortal(<TutorialWindow onClose={() => setOpen(false)} />, root)}
     </>
   );
 }
 
-/** 상단 바 아래 목표 줄: [📖 n/7] ▶ 목표: {제목} {cur}/{max} + 얇은 진행 바. 아래 도전 줄: 가장 급한 도전(또는 이달의 과제) 진행·남은 날.
+/** 상단 바 아래 목표 줄: [📖 막 n/5] ▶ 목표: {제목} {cur}/{max} + 얇은 진행 바. 아래 도전 줄: 가장 급한 도전(또는 이달의 과제) 진행·남은 날.
  *  탭하면 목표 창. 다 채우면 반짝인다. data-tut="goal-bar"(튜토리얼 8단계 글로우). */
 export function GoalBar({ top, onOpen }: { top: number; onOpen: () => void }) {
   const s = useGame();
