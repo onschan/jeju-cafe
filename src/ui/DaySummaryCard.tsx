@@ -46,7 +46,9 @@ export function DaySummaryCard({ bottom }: { bottom: number }) {
     return () => clearTimeout(t);
   }, [day, shownDay]);
 
-  if (!open || !sum) return null;
+  // big 통합: 월말 결산·가이드북 발표·대회 결과 연출이 떠 있으면 하루 요약은 미룬다
+  // (셋 다 화면을 덮는 카드라 아래쪽에 하루 요약이 같이 비치면 「한 번에 하나」가 깨진다)
+  if (!open || !sum || s.lastMonthCard || s.lastAnnouncement || s.contest?.pending) return null;
   const rows = summaryParts(sum.today, sum.prev);
   return (
     <div data-testid="day-summary" aria-live="polite"

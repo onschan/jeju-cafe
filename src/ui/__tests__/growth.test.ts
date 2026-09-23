@@ -1,5 +1,7 @@
 /** 성장 체감 3종: 오늘의 성장 요약 카드 문구 · 30일 그래프의 승급 세로선 · 「오늘 할 일」 한 줄. */
 import { describe, it, expect } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { bareState } from '../../sim/__tests__/helpers.ts';
 import { closeDay, DAY_LOG_CAP } from '../../sim/index.ts';
 import type { DayLogRow } from '../../sim/index.ts';
@@ -62,5 +64,14 @@ describe('오늘 할 일 줄', () => {
   it('할 일 줄은 목표 줄과 따로 — 한 화면에 「오늘 할 일」은 하나뿐', () => {
     expect(GOAL_BAR_H).toBe(GOAL_LINE_H + CHALLENGE_LINE_H); // 목표 줄 안에는 할 일 줄이 없다
     expect(TODO_LINE_H).toBeGreaterThanOrEqual(20);
+  });
+});
+
+describe('big 통합: 화면을 덮는 카드는 한 번에 하나', () => {
+  it('월말 결산·가이드북 발표·대회 결과가 떠 있으면 하루 요약 카드는 안 뜬다', () => {
+    const src = readFileSync(resolve(__dirname, '../DaySummaryCard.tsx'), 'utf8');
+    for (const guard of ['s.lastMonthCard', 's.lastAnnouncement', 's.contest?.pending']) {
+      expect(src, `DaySummaryCard가 ${guard}를 안 본다`).toContain(guard);
+    }
   });
 });
