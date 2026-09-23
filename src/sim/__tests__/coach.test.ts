@@ -3,6 +3,8 @@
 import { bareState, X, Y } from './helpers.ts';
 import { placeObject } from '../grid.ts';
 import { diagnose, isCheckupDay, lastCheckupDay, checkupKey, CHECKUP_DAYS } from '../coach.ts';
+import { roleNeeds } from '../staffPlan.ts';
+import { apply } from '../actions.ts';
 import { objectReachable, spotReachable, unreachableCount, unreachableObjects } from '../reach.ts';
 import { hasIdToken } from '../../data/labels.ts';
 
@@ -75,4 +77,24 @@ test('고스트 자리 판정: 길 옆은 되고, 떨어진 칸은 안 된다. �
   expect(spotReachable(s, 'table_out', X(4), Y(5))).toBe(true);  // 정낭 위
   expect(spotReachable(s, 'table_out', X(8), Y(2))).toBe(false); // 끊긴 곳
   expect(spotReachable(s, 'path', X(8), Y(2))).toBe(true);       // 길은 손님이 갈 일이 없다
+});
+
+test('통합: 진단의 직원 병목은 채용 화면의 「지금 필요해요」와 같은 판정을 인용한다', () => {
+  const s = bareState(1);
+  // 문 앞까지 올렛길 + 자리 + 메뉴 한 칸 (도달 불가·자리 없음 병목을 걷어내 직원 병목이 1순위가 되게)
+  for (const [x, y] of [[3, 3], [4, 3], [4, 4], [4, 5]] as const) placeObject(s, 'path', X(x), Y(y));
+  placeObject(s, 'table_out', X(5), Y(3));
+  s.menuSlots[0] = 'americano';
+  apply(s, { type: 'postJob', tier: 'flyer' });
+  expect(apply(s, { type: 'hire', candidateId: s.candidates[0]!.id, role: 'hall' }).ok).toBe(true);
+
+  const needs = roleNeeds(s);
+  expect(needs.length).toBeGreaterThan(0); // 요리사가 없으니 적어도 한 직종은 모자라다
+  const d = diagnose(s);
+  expect(d.bottleneck.text).toBe(needs[0]!.why);                                  // 같은 말을 쓴다
+  expect(['service', 'clean']).toContain(d.bottleneck.key);
+  expect(d.moves[0]).toContain('1명');                                            // 다음 수는 그 직종을 뽑는 것
+  // 근거 줄 「모자란 직종」도 같은 판정을 센다
+  const row = d.evidence.find((e) => e.label === '모자란 직종')!;
+  expect(row.value.split(' · ').length).toBe(needs.length);
 });

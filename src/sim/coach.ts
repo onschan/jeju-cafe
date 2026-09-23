@@ -4,6 +4,8 @@
  * 새 시뮬을 돌리지 않는다 — 이미 있는 자산만 조합한다:
  *   매력도 3지표(appealOf) · 좌석 이용률(seatUseRate) · 대기 이탈(monthGuestsLeft) · 불만 TOP(topComplaints)
  *   · 직원 구성(staff) · 청결(clean) · 메뉴 슬롯 · 지난달 순이익(lastMonthCard) · 배치 점수(호출자가 넣어 준다)
+ * 직원 병목은 채용 화면(StaffWindow)과 같은 함수 staffPlan.roleNeeds(roleHeads 인분 환산)를 그대로 인용한다 —
+ * 진단과 「지금 필요해요」가 다른 직종을 가리키면 안 된다.
  * 결정적: rng·Date를 안 쓴다. 상태를 바꾸지 않는다(순수 함수).
  */
 import type { GameState, ObjectDef, RoleId } from './types.ts';
@@ -14,6 +16,7 @@ import { totalSeats, GUESTS_PER_SEAT } from './guests.ts';
 import { topComplaints } from './reputation.ts';
 import { CLEAN_LOW } from './cleanliness.ts';
 import { staffInRole } from './staff.ts';
+import { roleNeeds, type RoleNeed } from './staffPlan.ts'; // 통합: 직원 병목은 채용 화면과 같은 판정(roleHeads 인분)을 그대로 쓴다
 import { unreachableCount } from './reach.ts';
 import { josa } from './josa.ts';
 
@@ -77,6 +80,8 @@ const ROUTE_NEXT: Record<CoachRouteId, string> = {
   none: '경관·단골·대회 중 하나',
 };
 const ROLE_NAME: Record<RoleId, string> = { barista: '바리스타', cook: '조리', hall: '홀', clean: '청소' };
+/** 진단 「다음 수」에 쓰는 직종 이름 (채용 화면과 같은 말) */
+const ROLE_HIRE: Record<RoleId, string> = { barista: '바리스타 1명', cook: '요리사 1명', hall: '홀 직원 1명', clean: '청소 직원 1명' };
 
 /** 열려 있는 것 중 가장 싼 시설 이름 (없으면 기본 문구) */
 function cheapestName(s: GameState, pick: (d: ObjectDef) => boolean, fallback: string): string {
@@ -110,19 +115,33 @@ function routeOf(s: GameState, scenery: number): CoachRouteId {
   return best === contest ? 'contest' : best === regular ? 'regular' : 'tourist';
 }
 
+/** 직원 병목이 하나뿐일 때 두 번째로 권할 수 (직종마다 그 직종이 막힌 이유를 푸는 수) */
+function roleBackupMove(s: GameState, need: RoleNeed): string {
+  if (need.role === 'barista') return '메뉴 올리기';
+  if (need.role === 'cook') return '주방 넓히기';
+  if (need.role === 'hall') return `${seatName(s)} 1개`;
+  return '낡은 시설 수리';
+}
+
 /** 가장 큰 병목 1개 + 다음 수 2개 */
-function bottleneckOf(s: GameState, m: { seatUse: number; left: number; pop: number; scenery: number; staffN: number; menuLeft: number; clean: number; net: number; unreachable: number }): { key: BottleneckKey; text: string; moves: [string, string] } {
+function bottleneckOf(s: GameState, m: { seatUse: number; left: number; pop: number; scenery: number; staffN: number; menuLeft: number; clean: number; net: number; unreachable: number; needs: RoleNeed[] }): { key: BottleneckKey; text: string; moves: [string, string] } {
   const top = topComplaints(s, 1)[0];
   const seats = Math.max(1, Math.ceil(m.left / GUESTS_PER_SEAT));
   // 아무리 좋은 시설도 손님이 못 가면 0이다 — 가장 먼저 본다
   if (m.unreachable > 0) return { key: 'unreachable', text: `손님이 못 가는 시설이 ${m.unreachable}개 있어요`, moves: ['올렛길 잇기', '끊긴 시설 옮기기'] };
   if (m.left > 0 || m.seatUse >= SEAT_USE_BOTTLENECK) {
     const text = m.left > 0 ? `손님은 오는데 자리가 모자라요 (대기 이탈 ${m.left}명)` : '자리가 거의 꽉 차 있어요';
-    return { key: 'seat', text, moves: [`${seatName(s)} ${Math.min(4, seats)}개`, '홀 직원 1명'] };
+    return { key: 'seat', text, moves: [`${seatName(s)} ${Math.min(4, seats)}개`, ROLE_HIRE.hall] };
   }
-  if (m.staffN === 0) return { key: 'service', text: '직원이 없어 서빙이 안 돼요', moves: ['홀 직원 1명', '바리스타 1명'] };
-  if (top?.reason === 'wait_long') return { key: 'service', text: `주문이 밀려 손님이 기다려요 (불만 ${top.count}건)`, moves: ['홀 직원 1명', '주방 넓히기'] };
-  if (m.clean < CLEAN_LOW) return { key: 'clean', text: `가게가 지저분해요 (청결 ${Math.round(m.clean)})`, moves: ['청소 직원 1명', '낡은 시설 수리'] };
+  if (m.staffN === 0) return { key: 'service', text: '직원이 없어 서빙이 안 돼요', moves: [ROLE_HIRE.hall, ROLE_HIRE.barista] };
+  // 통합: 직원 병목은 채용 화면의 「지금 필요해요」와 같은 판정을 인용한다 (roleHeads 인분 환산 — 말이 갈리지 않게)
+  const need = m.needs[0];
+  if (need) {
+    const second = m.needs[1] ? ROLE_HIRE[m.needs[1]!.role] : roleBackupMove(s, need);
+    return { key: need.role === 'clean' ? 'clean' : 'service', text: need.why, moves: [ROLE_HIRE[need.role], second] };
+  }
+  if (top?.reason === 'wait_long') return { key: 'service', text: `주문이 밀려 손님이 기다려요 (불만 ${top.count}건)`, moves: [ROLE_HIRE.hall, '주방 넓히기'] };
+  if (m.clean < CLEAN_LOW) return { key: 'clean', text: `가게가 지저분해요 (청결 ${Math.round(m.clean)})`, moves: [ROLE_HIRE.clean, '낡은 시설 수리'] };
   if (m.menuLeft > 0) return { key: 'menu', text: `메뉴판 빈 칸이 ${m.menuLeft}개 있어요`, moves: ['메뉴 올리기', '디저트 한 종'] };
   if (m.pop < POPULARITY_LOW && hasUnlocked(s)) return { key: 'popularity', text: `가게를 아는 사람이 적어요 (인기 ${m.pop})`, moves: [`${popName(s)} 1개`, '전단 홍보 1회'] };
   if (m.scenery < SCENERY_BOTTLENECK) return { key: 'scenery', text: `관광객 눈에 띌 게 없어요 (경관 ${Math.round(m.scenery * 10) / 10})`, moves: [`${sceneryName(s)} 1개`, '자리 옆으로 옮기기'] };
@@ -144,7 +163,8 @@ export function diagnose(s: GameState, input: CoachInput = {}): Diagnosis {
   const net = s.lastMonthCard?.net ?? 0;
   const staffN = s.staff.length;
   const unreachable = unreachableCount(s);
-  const b = bottleneckOf(s, { seatUse, left, pop, scenery, staffN, menuLeft, clean, net, unreachable });
+  const needs = roleNeeds(s); // 통합: 채용 화면과 같은 병목 판정
+  const b = bottleneckOf(s, { seatUse, left, pop, scenery, staffN, menuLeft, clean, net, unreachable, needs });
   const route = routeOf(s, scenery);
 
   // 3줄 평가: 규모 · 잘 되는 것 · 살림. 걸리는 것은 아래 「가장 큰 걸림돌」 칸이 따로 맡는다 (같은 말을 두 번 안 한다)
@@ -165,6 +185,7 @@ export function diagnose(s: GameState, input: CoachInput = {}): Diagnosis {
     { label: '불만 1위', value: topComplaints(s, 1)[0] ? `${topComplaints(s, 1)[0]!.count}건` : '없음' },
     { label: '직원', value: roles.length > 0 ? roles.map((x) => `${ROLE_NAME[x.r]} ${x.n}`).join(' · ') : '없음' },
     { label: '메뉴', value: `${s.menuSlots.length - menuLeft}/${s.menuSlots.length}칸` },
+    { label: '모자란 직종', value: needs.length > 0 ? needs.map((n) => ROLE_NAME[n.role]).join(' · ') : '없음' }, // 통합: 채용 화면과 같은 판정
   ];
   if (input.layout !== undefined && input.layout !== null) evidence.push({ label: '배치 점수', value: `${input.layout}점` });
   if (input.topMove) evidence.push({ label: '추천 한 수', value: input.topMove });
