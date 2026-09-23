@@ -412,8 +412,7 @@ function UnreachableRow({ s, o, a }: { s: GameState; o: PlacedObject; a: CardAct
       <Row>
         {c.ok && <button style={btnOn} data-testid="card-autopath" onClick={() => a.onAutoPath()}>길 잇기 ({cells}칸 · {wonText(c.route?.cost ?? 0)})</button>}
         {canPath && <button style={c.ok ? btn : btnOn} data-testid="card-lay-path" onClick={() => a.onBuildSame('path', o.x, o.y)}><Icon name="build" /> 길 놓기</button>}
-        {!PROTECTED_TYPES.has(o.type) && <button style={btn} onClick={() => a.onMove(o.id)}>이동</button>}
-      </Row>
+      </Row>{/* 통합: 「이동」은 바로 아래 버튼 줄에 이미 있다 — 좁은 화면에서 같은 버튼이 두 번 보이지 않게 */}
     </div>
   );
 }
