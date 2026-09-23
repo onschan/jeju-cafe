@@ -125,6 +125,9 @@ function backfill(state: GameState): void {
   state.carry ??= null; // z-ending: 이월 묶음
   state.codex.titles ??= []; // staff-luck: 만난 칭호 도감
   state.codex.corners ??= []; // fun-corner: 만든 명당 도감
+  state.unlocked.recruits ??= []; // midgame: 목표로 여는 채용 방법
+  state.staffCapBonus ??= 0;      // midgame: 목표 보상 직원 정원
+  state.ticketHints ??= 0;        // midgame: 응모권 안내 횟수
   state.lastOutcome ??= null;
   state.contest ??= initContest(); // 대회 (v21 세이브엔 없다 — 등급 3이면 다음 6·12월부터 접수할 수 있다)
   state.monthCosts.contest ??= 0; // 대회 참가비 줄 (월말 카드 비용 합계)

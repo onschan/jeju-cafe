@@ -34,9 +34,9 @@ export function staffRoomCount(state: GameState): number {
   for (const o of Object.values(state.objects)) if (o.type === STAFF_ROOM_TYPE && !o.build) n++;
   return Math.min(MAX_STAFF_ROOMS, n);
 }
-/** 전체 직원 정원 = 3 + 휴게실 × 2 (직종별 자리 state.slots는 그 안에서 따로 센다) */
+/** 전체 직원 정원 = 3 + 휴게실 × 2 + 목표 보상(midgame staffCapBonus) (직종별 자리 state.slots는 그 안에서 따로 센다) */
 export function staffCapacity(state: GameState): number {
-  return BASE_STAFF_SLOTS + SLOTS_PER_STAFF_ROOM * staffRoomCount(state);
+  return BASE_STAFF_SLOTS + SLOTS_PER_STAFF_ROOM * staffRoomCount(state) + (state.staffCapBonus ?? 0);
 }
 
 // ---------- 공식 ----------
@@ -336,11 +336,12 @@ export function tierUnlocked(state: GameState, tier: JobTier): boolean {
   if (!u) return true;
   if (u.star !== undefined && state.star < u.star) return false;
   if (u.rank !== undefined && state.rank < u.rank) return false;
+  if (u.goal && !(state.unlocked.recruits ?? []).includes(tier)) return false; // midgame: 목표 보상으로 여는 채용 방법
   return true;
 }
 export function canPostJob(state: GameState, tier: JobTier): ApplyResult {
   if (!TIERS[tier]) return { ok: false, reason: '없는 채용 방법이에요' };
-  if (!tierUnlocked(state, tier)) return { ok: false, reason: `★${TIERS[tier].unlock?.star ?? ''}부터 할 수 있어요` };
+  if (!tierUnlocked(state, tier)) return { ok: false, reason: TIERS[tier].unlock?.goal ? '목표를 이루면 열려요' : `★${TIERS[tier].unlock?.star ?? ''}부터 할 수 있어요` };
   if (availablePool(state, TIERS[tier].tier).length === 0) return { ok: false, reason: '이 방법으로 올 사람은 다 왔어요' };
   if (state.money < postJobCost(state, tier)) return { ok: false, reason: '돈이 모자라요' };
   return { ok: true };

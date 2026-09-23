@@ -9,6 +9,7 @@ import { RouteCard } from './RouteCard';
 import { TreeUpgradeRow } from './TreeUpgrade'; // fun: 같은 자리 업그레이드 트리
 import { treeOf } from '../sim/index.ts';
 import { objectReachable, UNREACHABLE_TEXT } from '../sim/index.ts'; // ui3: 손님이 못 가는 시설
+import { seatsNeeded, isSeat } from '../sim/index.ts'; // midgame: 「자리 4/6」 — 지금 손님에 필요한 자리
 import type { RouteId } from '../sim/index.ts';
 import { mainSummary, canAutoConnectPath, canExpandMain, expandCost, nextMainLevel, canBuildSecondFloor, canStartMoveMain, canUndoMoveMain, canMoveThisMonth, moveDays, isRoomCut, isAnnex, roomSeats, roomSeatsUsed, MAIN_EXPAND_DAYS, FLOOR2_COST, FLOOR2_DAYS, MOVE_COST, ANNEX_CUT_TEXT, DOOR_PATH_WARN, BGM_LABEL, LIGHT_LABEL } from '../sim/index.ts'; // y-indoor
 import { ButtonGroup } from './ButtonGroup';
@@ -368,6 +369,7 @@ function ObjectCard({ s, id, a, onClose, guestId }: { s: GameState; id: string; 
             </span>
           )}
         </div>
+        <SeatNeedRow s={s} o={o} />{/* midgame: 자리 시설이면 「자리 4/6」 */}
         <Details id={`object:${o.type}`}>
           <div style={small}>입소문 <b style={{ color: PALETTE.ink }}>{st.popularity}</b> · 경관 <b style={{ color: PALETTE.ink }}>{st.scenery > 0 ? '+' : ''}{st.scenery}</b> · 요금 <b style={{ color: PALETTE.ink }}>{st.feePct}%</b>{st.upkeep > 0 && ` · 유지비 ${wonText(st.upkeep)}/달`}{(o.uses ?? 0) > 0 && ` · 이용 ${o.uses}회`}</div>
           <div style={small}>주변 시너지: {st.corner.pop > 0 || st.corner.feePct > 0 ? `명당 입소문 +${st.corner.pop} · 요금 +${st.corner.feePct}%` : '없음'}{st.sets.length > 0 && ` · 세트 ${st.sets.map((x) => x.name).join(', ')}`}</div>
@@ -394,6 +396,18 @@ function ObjectCard({ s, id, a, onClose, guestId }: { s: GameState; id: string; 
         ? <PendingRow s={s} o={o} onClose={onClose} />
         : blocked && !protectedType && <div style={{ ...small, marginTop: 4 }} data-testid="busy-line">{blocked} · 눌러 두면 일어날 때 해 드려요</div>}
       {renaming && <RenamePopup objectId={o.id} current={o.name ?? ''} onClose={() => setRenaming(false)} />}
+    </div>
+  );
+}
+
+/** midgame: 자리 시설 카드에 「자리 4/6 · 홍보 중엔 9」 — 몇 개가 더 필요한지가 수치로 보이게. */
+function SeatNeedRow({ s, o }: { s: GameState; o: PlacedObject }) {
+  if (!isSeat(s, o)) return null;
+  const n = seatsNeeded(s);
+  const short = n.short > 0;
+  return (
+    <div data-testid="seat-need" style={{ ...small, color: short ? PALETTE.bad : PALETTE.inkSoft, fontWeight: short ? 700 : 400 }}>
+      <Icon name="look" size={13} /> 자리 {n.have}/{n.now}{short ? ` · ${n.short}개 더` : ''} · 홍보 중엔 {n.promo}개
     </div>
   );
 }

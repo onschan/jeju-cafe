@@ -2,7 +2,7 @@
  *  각각 "올리는 법 2줄" + "지금 병목" 한 줄. 잔지표는 경영 현황의 「자세히」 접힘 안. */
 import { useState, useEffect, type CSSProperties } from 'react';
 import { useGame } from './store';
-import { appealOf, seatUseRate, totalSeats, touristPctText, cachedMoves, josa, type AppealRow, type GameState } from '../sim/index.ts';
+import { appealOf, seatUseRate, totalSeats, seatsNeeded, touristPctText, cachedMoves, josa, type AppealRow, type GameState } from '../sim/index.ts';
 import { Icon } from './Icon';
 import { Bar } from './Bars';
 import { card, PALETTE } from './frame';
@@ -54,6 +54,20 @@ function LayoutScoreLine({ s }: { s: GameState }) {
   );
 }
 
+/** midgame: 「지금 손님엔 자리 6개면 충분 · 홍보 중엔 9개」 — 테이블을 몇 개 놓아야 하는지 한 줄로. */
+function SeatNeedLine({ s }: { s: GameState }) {
+  const n = seatsNeeded(s);
+  const short = n.short > 0;
+  return (
+    <div data-testid="seat-need-line" style={{ fontSize: 14, lineHeight: 1.4, marginBottom: 6, padding: '4px 6px', borderRadius: 6, background: PALETTE.paperDark, border: `2px solid ${short ? PALETTE.bad : PALETTE.woodLight}` }}>
+      <div style={{ fontWeight: 700, color: short ? PALETTE.bad : PALETTE.ink }}>
+        <Icon name="look" size={14} /> {short ? `자리 ${n.short}개가 모자라요` : `지금 손님엔 자리 ${n.now}개면 충분`}
+      </div>
+      <div style={small}>지금 {n.have}개 · 홍보 중엔 {n.promo}개</div>
+    </div>
+  );
+}
+
 export function AppealPanel() {
   const s = useGame();
   const a = appealOf(s, seatUseRate(s, totalSeats(s)));
@@ -62,6 +76,7 @@ export function AppealPanel() {
   return (
     <div data-testid="appeal-panel" style={{ ...card, padding: 8 }}>
       <LayoutScoreLine s={s} />
+      <SeatNeedLine s={s} />{/* midgame: 「자리 몇 개 필요한가」 */}
       <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 6 }}><Icon name="sparkle" size={16} /> 카페 매력도</div>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 6 }}>
         {a.rows.map((r) => {

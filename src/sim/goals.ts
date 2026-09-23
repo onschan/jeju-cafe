@@ -12,13 +12,13 @@
  * | parcel     | g11       | buyParcel                                            |
  */
 import type { GameState, GoalDef, GoalCondition, GoalReward, FeatureId, Action, ApplyResult, RewardSource, GoalSpeaker, Alert, PlacedObject } from './types.ts';
-import { GOALS, goalDef, objectDef, menuDef, roleDef, ROLES, OBJECTS, MENUS, spotDef, guestTypeDef, guidebookDef, itemDef, ITEMS } from '../data/index.ts';
+import { GOALS, goalDef, objectDef, menuDef, roleDef, ROLES, OBJECTS, MENUS, RECRUIT_TIERS, spotDef, guestTypeDef, guidebookDef, itemDef, ITEMS } from '../data/index.ts';
 import { facilityCount, rankScore, RANK_THRESHOLDS } from './rank.ts';
 import { countCategory } from './segments.ts';
 import { ownedParcels } from './parcels.ts';
 import { regularCount } from './interact.ts';
 import { metCount } from './named.ts';
-import { pushNotice } from './staff.ts';
+import { pushNotice, staffCapacity } from './staff.ts';
 import { addTickets } from './mileage.ts';
 import { MAX_BUILDERS } from './build.ts';
 import { MENU_SLOT_MAX } from './state.ts'; // stakes: 메뉴판 칸 상한 6
@@ -368,7 +368,14 @@ export function goalRewardText(r: GoalReward): string {
     case 'title': return `칭호 「${r.name}」`;
     case 'feeBonus': return `요금 +${r.pct}%`;
     case 'menuSlot': return `메뉴판 칸 +${r.n}`;
+    case 'staffCap': return `직원 정원 +${r.n}`;
+    case 'jobTier': return `채용 ${recruitTierName(r.id)}`;
   }
+}
+
+/** 채용 방법 한글 이름 (id가 화면에 새지 않게) */
+function recruitTierName(id: string): string {
+  return RECRUIT_TIERS.find((t) => t.id === id)?.name ?? id;
 }
 
 /** 이 시설을 여는 목표 (잠긴 카드 "🔒 손님 50명 맞이하면 열려요") */
@@ -435,6 +442,16 @@ export function grantReward(state: GameState, r: GoalReward): void {
       const add = Math.max(0, Math.min(r.n, max - state.menuSlots.length));
       for (let i = 0; i < add; i++) state.menuSlots.push(null);
       if (add > 0) pushNotice(state, `메뉴판 칸이 ${state.menuSlots.length}개가 됐어요`);
+      break;
+    }
+    case 'staffCap': { // midgame: 전체 직원 정원 +n (휴게실 없이도 한 명 더)
+      state.staffCapBonus = (state.staffCapBonus ?? 0) + r.n;
+      pushNotice(state, `직원 정원이 ${staffCapacity(state)}명이 됐어요`);
+      break;
+    }
+    case 'jobTier': { // midgame: 채용 방법 해금
+      const list = (state.unlocked.recruits ??= []);
+      if (!list.includes(r.id)) { list.push(r.id); pushNotice(state, `새 채용 방법: ${recruitTierName(r.id)}`); }
       break;
     }
   }

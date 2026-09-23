@@ -1,7 +1,7 @@
 [
   {"id": "flyer", "name": "전단 붙이기", "tier": 1, "cost": 500000, "count": 3, "desc": "동네 게시판에 전단을 붙여요"},
-  {"id": "site", "name": "구인 사이트", "tier": 2, "cost": 5000000, "count": 3, "desc": "구인 사이트에 공고를 올려요"},
-  {"id": "magazine", "name": "잡지 광고", "tier": 3, "cost": 8000000, "count": 3, "desc": "제주 생활 잡지에 광고를 실어요"},
+  {"id": "site", "name": "구인 사이트", "tier": 2, "cost": 5000000, "count": 3, "desc": "목표를 이루면 열려요. 구인 사이트에 공고를 올려요", "unlock": {"goal": true}},
+  {"id": "magazine", "name": "잡지 광고", "tier": 3, "cost": 8000000, "count": 3, "desc": "목표를 이루면 열려요. 제주 생활 잡지에 광고를 실어요", "unlock": {"goal": true}},
   {"id": "intern", "name": "인턴 모집", "tier": 4, "cost": 20000000, "count": 3, "unlock": {"star": 3}, "desc": "★3부터. 육지 대학의 인턴을 받아요"},
   {"id": "college", "name": "대학 설명회", "tier": 5, "cost": 50000000, "count": 3, "unlock": {"star": 4}, "desc": "★4부터. 대학 취업 설명회를 열어요"}
 ]

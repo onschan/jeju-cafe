@@ -41,10 +41,12 @@ function rewardIcon(r: GoalReward): string {
     case 'item': case 'seed': return 'plant';
     case 'tickets': case 'title': case 'feeBonus': return 'look';
     case 'menuSlot': return 'menu'; // stakes: 메뉴판 칸
+    case 'staffCap': return 'local'; // midgame: 직원 정원
+    case 'jobTier': return 'hire';   // midgame: 채용 방법
   }
 }
 function isUnlock(r: GoalReward): boolean {
-  return r.type.startsWith('unlock') || r.type === 'title';
+  return r.type.startsWith('unlock') || r.type === 'title' || r.type === 'jobTier'; // midgame: 채용 방법도 해금 연출
 }
 function unlockName(r: GoalReward): string {
   switch (r.type) {

@@ -1,8 +1,8 @@
 import { useEffect, useState, type CSSProperties } from 'react';
 import { ButtonGroup } from './ButtonGroup';
 import { useGame, dispatch } from './store';
-import { canDrawTicket, canUseItem, canUseGuestItem, canCraftGift, hasFreeDraw, hasUniform, itemEffect, constructions, unlockedTypeIds, MAX_BUILDERS, josa } from '../sim/index.ts';
-import { UNIFORMS, DRAW_PRIZES, ITEMS, GIFTS, SPECIAL_ITEM_IDS, SPECIAL_ITEM_EFFECT, itemDef, objectDef, uniformDef, guestTypeDef, giftDef, isGiftId, ingredientDef, POPULARITY_FRUIT } from '../data/index.ts';
+import { canDrawTicket, canUseItem, canUseGuestItem, canCraftGift, hasFreeDraw, hasUniform, itemEffect, constructions, unlockedTypeIds, drawPreview, MAX_BUILDERS, josa } from '../sim/index.ts';
+import { UNIFORMS, ITEMS, GIFTS, SPECIAL_ITEM_IDS, SPECIAL_ITEM_EFFECT, itemDef, objectDef, uniformDef, guestTypeDef, giftDef, isGiftId, ingredientDef, POPULARITY_FRUIT } from '../data/index.ts';
 import { label } from '../data/labels.ts';
 import { Popup, Confirm } from './Popup';
 import { Icon } from './Icon';
@@ -97,21 +97,42 @@ export function ShopPanel({ initialTab = 'draw' }: { initialTab?: Tab } = {}) {
   );
 }
 
-/** 인형뽑기: 버튼 → sim이 결과를 정하고(lastDraw) → 집게 애니메이션 2초 → 결과 팝업 */
+/** 인형뽑기: 큰 뽑기 버튼 + 「지금 나올 수 있는 것」 미리 보기 3개 + 이번 회차 상품 전부(확률). 버튼 → sim이 결과를 정하고(lastDraw) → 집게 2초 → 결과 팝업 */
 function DrawMachine() {
   const s = useGame();
   const can = canDrawTicket(s);
   const free = hasFreeDraw(s);
+  const [all, setAll] = useState(false);
+  const prizes = drawPreview(s);
+  const top = prizes.slice(0, 3);
   return (
     <div>
-      <div style={{ ...small, marginBottom: 6 }}>응모권 1장으로 한 번! 매달 첫 뽑기는 무료예요.</div>
-      <div style={{ ...card, display: 'flex', flexWrap: 'wrap', gap: 4, fontSize: 13 }}>
-        {DRAW_PRIZES.map((p) => <span key={p.kind} style={{ background: PALETTE.paperDark, borderRadius: 4, padding: '2px 6px' }}>{p.label} {p.pct}%</span>)}
-      </div>
-      <button style={{ ...(can.ok ? brownBtnOn : brownBtnOff), fontSize: 18, width: '100%', marginRight: 0 }} data-testid="draw-btn" data-tut="draw"
+      <div style={{ ...small, marginBottom: 6 }}>응모권 1장이 뽑기 1회예요. 매달 첫 뽑기는 무료.</div>
+      {/* 큰 뽑기 버튼을 먼저 — 무엇을 하는 화면인지가 첫눈에 */}
+      <button style={{ ...(can.ok ? brownBtnOn : brownBtnOff), fontSize: 20, width: '100%', minHeight: 56, marginRight: 0 }} data-testid="draw-btn" data-tut="draw"
         onClick={() => dispatch({ type: 'drawTicket' })} disabled={s.lastDraw !== null}>
-        <Icon name="draw" size={20} /> 뽑기 {free ? '(무료!)' : '(응모권 1장)'}
+        <Icon name="draw" size={24} /> 뽑기 {free ? '(무료!)' : `(응모권 ${s.tickets}장 중 1장)`}
       </button>
+      {!can.ok && <div style={{ ...small, color: PALETTE.bad }}>{can.reason} · 목표·도감·이달 손님으로 모여요</div>}
+      <div data-testid="draw-preview" style={{ ...card, marginTop: 6 }}>
+        <div style={{ fontWeight: 700, marginBottom: 4 }}>지금 나올 수 있는 것</div>
+        {top.map((p) => (
+          <div key={p.kind} style={{ display: 'flex', gap: 6, fontSize: 14, lineHeight: 1.5 }}>
+            <span style={{ flex: 1, minWidth: 0 }}><b>{p.label}</b> · {p.what}</span>
+            <span style={{ flex: 'none', color: PALETTE.inkSoft }}>{p.pct}%</span>
+          </div>
+        ))}
+        <button data-testid="draw-all" aria-expanded={all} onClick={() => setAll(!all)}
+          style={{ width: '100%', minHeight: 44, marginTop: 4, background: 'transparent', border: `2px dashed ${PALETTE.woodLight}`, borderRadius: 6, color: PALETTE.inkSoft, fontFamily: 'inherit', fontSize: 14 }}>
+          {all ? '▲ 접기' : `▼ 이번 회차 상품 ${prizes.length}가지`}
+        </button>
+        {all && prizes.map((p) => (
+          <div key={`all-${p.kind}`} style={{ display: 'flex', gap: 6, fontSize: 14, lineHeight: 1.5 }}>
+            <span style={{ flex: 1, minWidth: 0 }}>{p.label} · {p.what}</span>
+            <span style={{ flex: 'none', color: PALETTE.inkSoft }}>{p.pct}%</span>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

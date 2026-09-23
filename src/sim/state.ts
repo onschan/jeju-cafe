@@ -204,6 +204,7 @@ export function createInitialState(seed: number, playerId = 'local', createdAt =
       objects: [...new Set([...INITIAL_UNLOCKED.objects, ...FACILITY_START_IDS])],
       menus: [...INITIAL_UNLOCKED.menus],
       roles: ROLES.filter((r) => r.unlockedAtStart).map((r) => r.id),
+      recruits: [], // midgame: 목표로 여는 채용 방법 (구인 사이트·잡지 광고)
     },
     goals: { index: 0, claimed: [] },
     features: initFeatures(),
@@ -241,6 +242,8 @@ export function createInitialState(seed: number, playerId = 'local', createdAt =
     lastDraw: null,
     freeRecruits: 0,
     codexTickets: 0,
+    staffCapBonus: 0, // midgame: 목표 보상으로 늘린 직원 정원
+    ticketHints: 0,   // midgame: 응모권 쓰는 곳 안내 횟수
     guidebooks: initGuidebooks(),
     lastAnnouncement: null,
     board: { quests: {}, events: [] },

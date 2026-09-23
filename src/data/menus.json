@@ -210,5 +210,32 @@
     "requires": {
       "role": "cook"
     }
+  },
+  {
+    "id": "hallabong_honey_tea",
+    "name": "한라봉 꿀차",
+    "category": "drink",
+    "price": 4500,
+    "ingredients": {
+      "hallabong": 1,
+      "honey": 1
+    },
+    "requires": {
+      "role": "barista"
+    }
+  },
+  {
+    "id": "cinnamon_latte",
+    "name": "계피 라떼",
+    "category": "drink",
+    "price": 4600,
+    "ingredients": {
+      "beans": 1,
+      "milk": 1,
+      "cinnamon": 1
+    },
+    "requires": {
+      "role": "barista"
+    }
   }
 ]
