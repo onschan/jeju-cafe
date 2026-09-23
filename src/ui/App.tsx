@@ -929,7 +929,7 @@ function Game({ onExit }: { onExit: () => void }) {
     { key: 'spots', label: '명소', icon: 'map' },
     { key: 'shop', label: '상점', icon: 'shop' },
     { key: 'tickets', label: '응모권', icon: 'ticket', badge: s.tickets },
-    { key: 'rank', label: '평가', icon: 'trophy' },
+    { key: 'rank', label: '평가', icon: 'trophy', badge: s.rivals?.pending ? 1 : 0 }, // 동네 순위 발표를 아직 안 봤으면 배지
     { key: 'contest', label: '대회', icon: 'medal', badge: signupOpen(s) && !s.contest?.entry ? 1 : 0 },
     { key: 'settings', label: '설정', icon: 'settings' },
   ];
