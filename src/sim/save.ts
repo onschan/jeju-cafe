@@ -8,6 +8,7 @@ import { josa } from './josa.ts';
 import { initMain } from './rooms.ts';
 import { initEnding } from './ending.ts'; // z-ending
 import { initContest } from './contest.ts'; // 대회
+import { initRivals } from './rival.ts'; // 동네 경쟁 카페
 import type { FinalScore } from './types.ts';
 import { TUTORIAL_STEPS } from './tutorial.ts';
 import { ROUTE_IDS } from './entry.ts';
@@ -127,6 +128,9 @@ function backfill(state: GameState): void {
   state.codex.corners ??= []; // fun-corner: 만든 명당 도감
   state.lastOutcome ??= null;
   state.contest ??= initContest(); // 대회 (v21 세이브엔 없다 — 등급 3이면 다음 6·12월부터 접수할 수 있다)
+  state.rivals ??= initRivals(); // 동네 경쟁 카페 (옛 세이브는 다음 5일 발표부터 순위가 잡힌다)
+  state.monthCosts.deal ??= 0; // 제휴 월 고정비 줄
+  if (state.lastMonthCard) state.lastMonthCard.costs.deal ??= 0;
   state.monthCosts.contest ??= 0; // 대회 참가비 줄 (월말 카드 비용 합계)
   if (state.lastMonthCard) state.lastMonthCard.costs.contest ??= 0;
   if (state.loan.balance > 0) state.loan.dueMonthIndex ??= monthIndex(state.clock) + LOAN_DUE_MONTHS; // stakes: 빌린 기록만 있는 옛 세이브에 기한을 준다 (overdueCount는 넘긴 뒤에 생긴다 — 새 상태에 없는 키를 만들지 않는다)

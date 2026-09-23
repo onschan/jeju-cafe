@@ -93,6 +93,7 @@ const ACTION_SFX: Record<Action['type'], SfxName> = {
   acceptQuest: 'tap', respondEvent: 'tap', investSpot: 'unlock', giveGift: 'tap', craftGift: 'unlock',
   develop: 'unlock', dismissDevelop: 'tap', addTopping: 'tap', removeTopping: 'tap', levelUpMenu: 'unlock',
   drawTicket: 'tap', dismissDraw: 'tap', setUniform: 'tap', useGuestItem: 'unlock', dismissAnnouncement: 'tap',
+  answerRival: 'tap', dismissRivalBoard: 'tap', allyRival: 'unlock', endAllyRival: 'tap', acquireRival: 'unlock', // 동네 경쟁 카페
   dismissOutcome: 'tap', skipTutorial: 'tap', skipTutorialChapter: 'tap', tutorialNote: 'tap',
   enterContest: 'unlock', cancelContest: 'tap', dismissContest: 'tap',
   expandParking: 'place', // 트랙 H

@@ -2,11 +2,12 @@ import type { GameState } from './types.ts';
 import { advanceClock, END_HOUR, START_HOUR } from './clock.ts';
 import { monthlyHarvest } from './orchard.ts';
 import { dailyContest, monthlyContest } from './contest.ts'; // 대회: 6·12월 1일 개최, 이레 전 예고
+import { dailyRivals } from './rival.ts'; // 동네 경쟁 카페: 5일 순위 발표·12일 뺏기 이벤트
 import { checkGoals } from './goals.ts';
 import { monthlyBigEvents, dailyBigEvents, hourlyBigEvents, rollTrend, resolvePendingEventChoice } from './events.ts';
 import { monthlyRisk, dailyRisk } from './risk.ts'; // stakes: 돌발 사고
 import { hourlySpawn, hourlyRegulars, updateGuests } from './guests.ts';
-import { upkeep, closeMonth, annualRaise, incomeTax, TAX_MONTH, rent, loanDue } from './economy.ts';
+import { upkeep, closeMonth, annualRaise, incomeTax, TAX_MONTH, rent, dealFee, loanDue } from './economy.ts';
 import { checkLoan, monthlyFailure } from './failure.ts';
 import { resetWaiting } from './guests.ts';
 import { nightlyReputation, monthlyReputation } from './reputation.ts';
@@ -69,6 +70,7 @@ function onNewDay(state: GameState): void {
   dailyRooms(state); // y-indoor: 본관 증축·이동·2층 완공, 어제 이용률, 난로 자동 ON
   evaluateUnlocks(state); // game-feel: 손님층·시설 해금·랭크업을 월초가 아니라 조건을 채운 날에 (월초 몰림 방지)
   checkGoals(state);
+  dailyRivals(state); // 동네 순위 발표(5일)·경쟁 카페 뺏기 이벤트(12일) — 월초 1일 몰림을 피해 날짜를 나눴다
   dailyShop(state); // game-feel: 보름 응모권
   dailyIdleHint(state);
 }
@@ -81,6 +83,7 @@ function onNewMonth(state: GameState, prevMonth: number, prevYear: number): void
   expirePromotions(state);
   upkeep(state);
   rent(state); // stakes: 소유 필지 월 임대료 (마을 관리비)
+  dealFee(state); // 동네 경쟁 카페 제휴 월 고정비 (rival.ts)
   loanDue(state); // stakes: 삼춘 대출 상환 기한 (넘기면 평판 −5)
   if (newYear) incomeTax(state);
   monthlyRoutes(state); // 트랙 H: 경로 월 리셋·셔틀 계약비
