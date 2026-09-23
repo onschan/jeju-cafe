@@ -14,7 +14,7 @@ export function hasBatchim(word: string): boolean {
   return (code - 0xac00) % 28 !== 0;
 }
 
-export type JosaPair = '이/가' | '을/를' | '은/는' | '으로/로' | '과/와';
+export type JosaPair = '이/가' | '을/를' | '은/는' | '으로/로' | '과/와' | '이에요/예요';
 
 /** word + 조사. 예: josa('이장님', '이/가') → '이장님이', josa('파라솔', '을/를') → '파라솔을'.
  *  '으로/로'는 ㄹ 받침이면 '로' (예: 서울로). */
@@ -25,6 +25,7 @@ export function josa(word: string, pair: JosaPair): string {
     case '을/를': return word + (batchim ? '을' : '를');
     case '은/는': return word + (batchim ? '은' : '는');
     case '과/와': return word + (batchim ? '과' : '와');
+    case '이에요/예요': return word + (batchim ? '이에요' : '예요');
     case '으로/로': {
       const ch = word.trim().slice(-1);
       const code = ch.charCodeAt(0);

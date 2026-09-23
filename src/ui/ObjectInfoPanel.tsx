@@ -35,14 +35,14 @@ export function ObjectInfoPanel({ objectId }: { objectId: string }) {
   const useIt = (itemId: string) => {
     const it = itemDef(itemId);
     const eff = itemEffect(it, d);
-    Confirm(`${josa(it.name, '을/를')} 써서 모든 ${d.name}의 ${it.stat === 'popularity' ? '인기' : it.stat === 'scenery' ? '경관' : '요금'}을 +${eff}${it.stat === 'feePct' ? '%' : ''} 올릴까요? (아이템 1개를 써요)`, () => dispatch({ type: 'useItem', itemId, objectType: o.type }), { title: '아이템 사용' });
+    Confirm(`${josa(it.name, '을/를')} 써서 모든 ${d.name}의 ${josa(it.stat === 'popularity' ? '인기' : it.stat === 'scenery' ? '경관' : '요금', '을/를')} +${eff}${it.stat === 'feePct' ? '%' : ''} 올릴까요? (아이템 1개를 써요)`, () => dispatch({ type: 'useItem', itemId, objectType: o.type }), { title: '아이템 사용' });
   };
   return (
     <div>
       <div style={{ marginBottom: 2 }}>
         <b>{d.name}</b> <span style={{ fontSize: 13, color: PALETTE.inkSoft }}>· {KIND_LABEL[d.kind]}</span>
       </div>
-      <div style={{ fontSize: 13, color: PALETTE.inkSoft, marginBottom: 4 }}>{d.desc ?? d.effectText ?? `${d.name}이에요`}</div>
+      <div style={{ fontSize: 13, color: PALETTE.inkSoft, marginBottom: 4 }}>{d.desc ?? d.effectText ?? josa(d.name, '이에요/예요')}</div>
       {o.build && <div style={{ fontSize: 14, color: PALETTE.title, marginBottom: 4 }} data-testid="building"><Icon name="build" size={14} /> 짓는 중 — 완공까지 {buildDaysLeft(s, o)}일 (일꾼 삼춘이 일하고 있어요)</div>}
       <div style={{ fontSize: 14, marginBottom: 4, lineHeight: 1.7 }}>
         <Stat icon="tourist" label="인기" value={`${st.popularity}`} good={st.popularity > 10 ? true : st.popularity < 10 ? false : undefined} />

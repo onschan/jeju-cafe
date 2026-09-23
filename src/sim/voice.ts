@@ -12,6 +12,7 @@ import { dayIndex } from './effects.ts';
 import { objectDef } from '../data/index.ts';
 import { wearOf } from './cleanliness.ts';
 import { siteOf } from './site.ts';
+import { josa } from './josa.ts';
 
 export type VoiceReason = 'no_seat' | 'wait_long' | 'expensive' | 'dirty' | 'view' | 'corner';
 /** 해결 버튼이 여는 것 */
@@ -45,8 +46,8 @@ export function voiceText(v: VoiceLine): string {
   switch (v.reason) {
     case 'no_seat': return n > 1 ? `${n}명이 자리가 없어 돌아갔어요` : '자리가 없어서 그냥 갔어요';
     case 'wait_long': return n > 1 ? `${n}명이 오래 기다렸어요` : '5분 기다렸어요';
-    case 'expensive': return v.detail ? `${v.detail}이 비싸요` : '비싸요';
-    case 'dirty': return v.detail ? `${v.detail}이 낡고 지저분해요` : '카페가 지저분해요';
+    case 'expensive': return v.detail ? `${josa(v.detail, '이/가')} 비싸요` : '비싸요';
+    case 'dirty': return v.detail ? `${josa(v.detail, '이/가')} 낡고 지저분해요` : '카페가 지저분해요';
     case 'view': return '바다 보이는 자리 최고예요';
     case 'corner': return v.detail ? `${v.detail}에서 사진 찍었어요` : '사진 찍을 데가 많아요';
   }

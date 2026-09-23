@@ -8,6 +8,7 @@ import { OBJECTS, objectDef } from '../../data/index.ts';
 import { unlockText, wonText } from '../../data/labels.ts';
 import { loadSheet, drawFrame, type Sheet } from '../sheetCanvas';
 import { PALETTE, brownBtn, brownBtnOff } from '../frame';
+import { josa } from '../../sim/josa.ts';
 import { useWindowState, body, TabBar, soft, Empty, type WindowProps } from './shared.tsx';
 import { SiteToggle } from '../SiteToggle.tsx';
 import { showFirstTip } from '../firstTip';
@@ -241,7 +242,7 @@ function activeTabIsList(tab: BuildTab, noMain: boolean): boolean {
 /** 잠긴 카드 문구: 여는 목표가 있으면 "「제목」 목표를 이루면 열려요", 아니면 해금 조건(labels.unlockText) */
 export function lockedText(def: ObjectDef): string {
   const t = treeOf(def.id);
-  if (t && t.index > 0) return `${objectDef(t.tree.steps[t.index - 1]!.type).name}를 놓고 「업그레이드 ▲」로 올려요`; // fun: 트리 단계는 짓지 않고 올린다
+  if (t && t.index > 0) return `${josa(objectDef(t.tree.steps[t.index - 1]!.type).name, '을/를')} 놓고 「업그레이드 ▲」로 올려요`; // fun: 트리 단계는 짓지 않고 올린다
   const g = goalForFacility(def.id);
   if (g) return `「${g.title}」 목표를 이루면 열려요`;
   if (def.unlock?.type === 'all' && def.unlock.conditions.length === 0 && def.unlockText) return `${def.unlockText}면 열려요`; // 카운터 확장: 본관 Lv2 증축이 연다 (y-indoor)

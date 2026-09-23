@@ -9,6 +9,7 @@ import { objectDef } from '../../data/index.ts';
 import { wonText } from '../../data/labels.ts';
 import { Icon } from '../Icon';
 import { PALETTE } from '../frame';
+import { josa } from '../../sim/josa.ts';
 import { rowCard, rowBtn, rowBtnOff, soft } from './shared.tsx';
 import { lockedText } from './BuildWindow.tsx';
 
@@ -17,7 +18,7 @@ const TARGET_TEXT: Record<string, string> = { all: '모든 손님', female: '여
 /** 효과 한 줄: "요금 +5% · 인기 +5 · 여성 손님이 더 온다" */
 export function cornerEffectText(p: CornerProgress): string {
   const e = p.def.effect;
-  const who = e.target === 'all' ? '손님이 더 온다' : `${TARGET_TEXT[e.target]}이 더 온다`;
+  const who = e.target === 'all' ? '손님이 더 온다' : `${josa(TARGET_TEXT[e.target] ?? '손님', '이/가')} 더 온다`;
   return `요금 +${e.feePct}% · 인기 +${e.popularity} · ${who}`;
 }
 /** 미완성 한 줄: "벤치 하나만 더" / "돌담 2개, 올렛길 하나 더" */
