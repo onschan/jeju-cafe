@@ -12,7 +12,7 @@ import { START_MONEY } from '../state.ts';
 describe('v3 시작 상태 (§5)', () => {
   it('본관 + 테이블 2 + 파라솔 1 + 올렛길로 정류장에서 자리에 닿고, 메뉴 3종이 올라가 있고, 후보 2명이 기다린다', () => {
     const s = createInitialState(1);
-    expect(SAVE_VERSION).toBe(22); // big 통합 (대규모 패치 5트랙)
+    expect(SAVE_VERSION).toBe(23); // mix 통합 (재미 4트랙)
     expect(s.money).toBe(START_MONEY); // stakes: 시작 자금 350만
     expect(hasReachableSeat(s)).toBe(true);
     const seats = Object.values(s.objects).filter((o) => objectDef(o.type).kind === 'seat');
