@@ -22,6 +22,8 @@ export interface CameraOptions {
   onDragEnd?: () => void;
   /** 손가락을 움직이지 않고 400ms 누르고 있으면 (보기 모드에서 오브젝트 들어 올리기). true를 돌려주면 그 뒤 드래그를 가져간다. */
   onLongPress?: (cellX: number, cellY: number) => boolean;
+  /** ui3 숏컷: 같은 칸을 DOUBLE_TAP_MS 안에 두 번 탭. true를 돌려주면 그 탭은 onTap으로 안 간다. */
+  onDoubleTap?: (cellX: number, cellY: number) => boolean;
   minScale?: number;
   maxScale?: number;
 }
@@ -29,6 +31,8 @@ export interface CameraOptions {
 const TAP_THRESHOLD_PX = 10;
 /** 길게 누르기 판정 시간 */
 export const LONG_PRESS_MS = 400;
+/** ui3: 같은 칸 두 번 탭을 더블 탭으로 보는 간격 */
+export const DOUBLE_TAP_MS = 320;
 /** 관성 감쇠(프레임당) · 정지 임계(px/프레임) */
 const MOMENTUM_DECAY = 0.92;
 const MOMENTUM_STOP = 0.1;
@@ -42,7 +46,9 @@ const VELOCITY_WINDOW_MS = 100;
 /** 드래그 이동(관성)·핀치 줌·탭(셀 좌표)·경계 고무줄. 이동 거리가 짧으면 탭으로 본다. */
 export function attachCamera(stage: Container, opts: CameraOptions): () => void {
   // 30×24 맵 전체(1,728px)를 폰에서 한눈에 보려면 ×0.4까지 줄일 수 있어야 한다
-  const { world, canvas, ticker, viewport, bounds, onTap, dragCapture, onDragCell, onDragEnd, onLongPress, minScale = 0.4, maxScale = 3 } = opts;
+  const { world, canvas, ticker, viewport, bounds, onTap, dragCapture, onDragCell, onDragEnd, onLongPress, onDoubleTap, minScale = 0.4, maxScale = 3 } = opts;
+  /** ui3 더블 탭: 마지막 탭의 칸·시각 */
+  let lastTap: { x: number; y: number; t: number } | null = null;
   let pressTimer = 0;
   const clearPress = () => { if (pressTimer) { window.clearTimeout(pressTimer); pressTimer = 0; } };
   const pointers = new Map<number, { x: number; y: number }>();
@@ -160,7 +166,10 @@ export function attachCamera(stage: Container, opts: CameraOptions): () => void 
         const lx = (e.globalX - world.x) / world.scale.x;
         const ly = (e.globalY - world.y) / world.scale.y;
         const c = screenToCell(lx, ly);
-        onTap(c.x, c.y);
+        const now = performance.now();
+        const twice = !!lastTap && lastTap.x === c.x && lastTap.y === c.y && now - lastTap.t < DOUBLE_TAP_MS;
+        lastTap = twice ? null : { x: c.x, y: c.y, t: now }; // 세 번째 탭이 또 더블이 되지 않게
+        if (!(twice && onDoubleTap?.(c.x, c.y))) onTap(c.x, c.y);
       } else if (moved && samples.length >= 2) {
         // 마지막 이동 창의 평균 속도(px/ms) → px/프레임(60fps 기준)
         const first = samples[0]!;

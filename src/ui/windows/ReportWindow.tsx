@@ -34,6 +34,7 @@ export interface ReportCard {
   grade?: MonthGrade;                // S/A/B/C 도장
   prevGrade?: MonthGrade | null;     // 지난달 등급 (화살표)
   gradeSummary?: string;             // 한 줄 총평
+  coachLine?: string;                // ui3: 진단 총평 한 줄 (노선 + 다음 수) — 등급 총평과 겹치면 호출자가 안 넘긴다
   guestsDelta?: number;              // 지난달 대비 손님 증감
   trendName?: string;                // 이달 유행 분류 이름
 }
@@ -47,7 +48,7 @@ const GRADE_STYLE: Record<MonthGrade, { bg: string; ink: string; glow: string }>
 };
 const GRADE_ORDER: MonthGrade[] = ['C', 'B', 'A', 'S'];
 
-function GradeStamp({ grade, prev, summary }: { grade: MonthGrade; prev?: MonthGrade | null; summary?: string }) {
+function GradeStamp({ grade, prev, summary, coach }: { grade: MonthGrade; prev?: MonthGrade | null; summary?: string; coach?: string }) {
   const st = GRADE_STYLE[grade];
   const arrow = prev ? (GRADE_ORDER.indexOf(grade) > GRADE_ORDER.indexOf(prev) ? '▲' : GRADE_ORDER.indexOf(grade) < GRADE_ORDER.indexOf(prev) ? '▼' : '—') : null;
   return (
@@ -65,6 +66,7 @@ function GradeStamp({ grade, prev, summary }: { grade: MonthGrade; prev?: MonthG
           이달 평가 {grade}{arrow && <span style={{ marginLeft: 6, color: arrow === '▲' ? PALETTE.ok : arrow === '▼' ? PALETTE.bad : PALETTE.inkSoft }}>{arrow} 지난달 {prev}</span>}
         </span>
         {summary && <span style={{ display: 'block', fontSize: 14, lineHeight: 1.5 }}>{summary}</span>}
+        {coach && <span data-testid="report-coach" style={{ display: 'block', fontSize: 14, lineHeight: 1.5, color: PALETTE.title, fontWeight: 700 }}>{coach}</span>}
       </span>
     </div>
   );
@@ -99,7 +101,7 @@ export function ReportWindow({ card: c, star, prevStar, starProgress, monthRecor
   const highlights = (c.highlights ?? []).filter(Boolean).slice(0, 3);
   return (
     <div style={body} data-testid="report-window">
-      {c.grade && <GradeStamp grade={c.grade} prev={c.prevGrade} summary={c.gradeSummary} />}
+      {c.grade && <GradeStamp grade={c.grade} prev={c.prevGrade} summary={c.gradeSummary} coach={c.coachLine} />}
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
         <b style={{ fontSize: 20 }}>{c.year}년 {c.month}월</b>
         <span style={{ fontSize: 15 }}>손님 {c.guests}명
