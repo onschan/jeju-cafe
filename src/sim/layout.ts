@@ -20,3 +20,10 @@ export const GRID_H = PARCEL_H * PARCEL_ROWS;
 export const VILLAGE_ROAD_Y = START_ORIGIN.y + PARCEL_H - 1;
 /** 창고 앞 (문 (ox+3, oy+2) 바로 아래 칸). 직원 대기 위치. */
 export const WAREHOUSE_FRONT = { x: START_ORIGIN.x + 3, y: START_ORIGIN.y + 3 } as const;
+/** 손님이 맵으로 들어오는 칸 (entry.ts ENTRY_ROUTES.entry와 같은 값).
+ *  path.ts가 entry.ts를 import하면 순환이라 좌표만 잎 모듈에 둔다. */
+export const ENTRY_CELLS = {
+  bus: { x: 0, y: VILLAGE_ROAD_Y },
+  parking: { x: GRID_W - 1, y: VILLAGE_ROAD_Y },
+  olle: { x: 0, y: PARCEL_LAYOUT.parcel4!.row * PARCEL_H + 3 },
+} as const;

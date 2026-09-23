@@ -30,7 +30,14 @@ describe('데이터', () => {
     for (const id of rowIds) expect(objectDef(id).id).toBe(id);
     expect(FACILITIES.filter((f) => FACILITY_X_IDS.has(f.id)).length).toBe(5);
     expect(new Set(OBJECTS.map((o) => o.id)).size).toBe(OBJECTS.length);
-    expect(OBJECTS.filter((o) => o.kind !== 'landmark').length).toBeLessThanOrEqual(60);
+    // 밀도 가드: 「짓기 창에서 돈 주고 고르는 종류」가 60을 넘지 않는다 (big 통합).
+    // 맵에 처음부터 있는 것(정류장·본관·용천수)과 보상으로만 받는 트로피는 사는 카드가 아니라 빼고 센다.
+    const MAP_FIXED = new Set(['busstop', 'warehouse', 'spring']); // BuildWindow HIDDEN_IDS
+    const REWARD_ONLY = new Set(['trophy']);                       // 대회 우승으로만 얻는다 (cost 0)
+    const buyable = OBJECTS.filter((o) => o.kind !== 'landmark' && !MAP_FIXED.has(o.id) && !REWARD_ONLY.has(o.id));
+    expect(buyable.length).toBeLessThanOrEqual(60);
+    // 총량도 묶어 둔다 — 보상·고정물이라도 무한정 늘지 않게
+    expect(OBJECTS.filter((o) => o.kind !== 'landmark').length).toBeLessThanOrEqual(62);
   });
   it('확장 시설(trim 5종): 요금 있는 쉼 시설은 순회 시설(facility), 카테고리·건설일이 짓기 탭에 맞는다', () => {
     expect(objectDef('cauldron_footbath').kind).toBe('facility');

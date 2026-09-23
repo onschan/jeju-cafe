@@ -13,10 +13,13 @@ import { TUTORIAL_STEPS } from './tutorial.ts';
 import { ROUTE_IDS } from './entry.ts';
 import { OBJECTS, SPOTS, ROLES, GOALS, MENUS } from '../data/index.ts';
 import { SPOT_MAX_LEVEL } from './spots.ts';
+import { LOAN_DUE_MONTHS } from './economy.ts'; // stakes: 대출 상환 기한
 import { fmtNum } from './format.ts';
 
-/** trim에서 없어진 것들이 들어 있는 v20 세이브를 v21로 올린다 */
+/** trim에서 없어진 것들이 들어 있는 v20 세이브를 올린다 (환불·치환) */
 export const MIGRATE_FROM = 20;
+/** big 통합에서 붙은 필드는 전부 optional이라 backfill만으로 v21 → v22가 된다 (덜어낼 것도 없다) */
+export const BACKFILL_FROM = [20, 21];
 
 export function serialize(state: GameState): string {
   return JSON.stringify(state);
@@ -26,6 +29,7 @@ export function deserialize(json: string): GameState {
   const obj = JSON.parse(json) as GameState;
   if (!obj || typeof obj !== 'object') throw new Error('save: not an object');
   if (obj.version === MIGRATE_FROM) migrateTrim(obj);
+  if (BACKFILL_FROM.includes(obj.version)) obj.version = SAVE_VERSION; // backfill()이 새 필드를 채운다
   if (obj.version !== SAVE_VERSION) throw new Error(`save version mismatch: ${obj.version} (expected ${SAVE_VERSION})`);
   backfill(obj);
   rebuildCellOwnership(obj);
@@ -112,6 +116,9 @@ function backfill(state: GameState): void {
   state.codex.corners ??= []; // fun-corner: 만든 명당 도감
   state.lastOutcome ??= null;
   state.contest ??= initContest(); // 대회 (v21 세이브엔 없다 — 등급 3이면 다음 6·12월부터 접수할 수 있다)
+  state.monthCosts.contest ??= 0; // 대회 참가비 줄 (월말 카드 비용 합계)
+  if (state.lastMonthCard) state.lastMonthCard.costs.contest ??= 0;
+  if (state.loan.balance > 0) state.loan.dueMonthIndex ??= monthIndex(state.clock) + LOAN_DUE_MONTHS; // stakes: 빌린 기록만 있는 옛 세이브에 기한을 준다 (overdueCount는 넘긴 뒤에 생긴다 — 새 상태에 없는 키를 만들지 않는다)
   state.luckSeq ??= 0;
   state.monthGreatServes ??= 0;
   state.voices ??= []; // trim: 손님 목소리 피드

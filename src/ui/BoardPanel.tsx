@@ -63,7 +63,7 @@ function QuestCard({ q }: { q: QuestState }) {
         <span style={{ fontSize: 12, color: q.status === 'active' ? PALETTE.ok : q.status === 'failed' ? PALETTE.bad : PALETTE.inkSoft }}>{STATUS_TEXT[q.status]}{q.status === 'active' && left !== null ? (left > 0 ? ` · ${left}달 남음` : ' · 이달까지') : ''}</span>
       </div>
       <div style={{ fontSize: 13, fontStyle: 'italic', color: PALETTE.inkSoft, margin: '4px 0' }}>“{guest.line}”</div>
-      <div style={{ fontSize: 13 }}>{conditionText(def.condition)} → <b>{questRewardText(def)}</b>{def.unlockGuestId ? ` · ${safeName(() => guestTypeDef(def.unlockGuestId!).name, '')} 방문` : ''}</div>
+      <div style={{ fontSize: 13 }}>{conditionText(def.condition)} · 보상 <b>{questRewardText(def)}</b>{def.unlockGuestId ? ` · ${safeName(() => guestTypeDef(def.unlockGuestId!).name, '')} 방문` : ''}</div>
       {q.status === 'active' && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4, fontSize: 13 }}>
           <Bar value={p.now} max={p.goal} width={120} color={PALETTE.ok} /> {Math.min(p.now, p.goal)}/{p.goal}
@@ -158,7 +158,7 @@ function SpotCard({ id }: { id: string }) {
   const prize = VISITOR_PRIZES[s.spotPrizes[id] ?? 0];
   const invest = () => {
     if (!next) return;
-    Confirm(`${def.name} Lv${next.level}에 ${josa(wonText(next.cost), '을/를')} 투자합니다. 매력도 ${appeal} → ${next.appeal}`, () => dispatch({ type: 'investSpot', id }), { title: '관광지 투자' });
+    Confirm(`${def.name} Lv${next.level}에 ${josa(wonText(next.cost), '을/를')} 투자합니다. 매력도 ${appeal}, 올리면 ${next.appeal}`, () => dispatch({ type: 'investSpot', id }), { title: '관광지 투자' });
   };
   return (
     <div style={{ ...card, opacity: unlocked ? 1 : 0.55 }} data-testid={`spot-${id}`}>
@@ -235,7 +235,7 @@ export function BoardPanel({ tabs = ['quests', 'events', 'spots'], onContest }: 
 
       {tab === 'spots' && (
         <div>
-          <div style={{ fontSize: 13, color: PALETTE.inkSoft, marginBottom: 4 }}>매력도 합 {spotAppeal(s)} · 방문객 하루 {fmtNum(totalDailyVisitors(s))}명(누적 {fmtNum(totalSpotVisitors(s))}) → 하루 손님 +{spotGuestBonus(s)} · 응모권 {s.tickets}</div>
+          <div style={{ fontSize: 13, color: PALETTE.inkSoft, marginBottom: 4 }}>매력도 합 {spotAppeal(s)} · 방문객 하루 {fmtNum(totalDailyVisitors(s))}명(누적 {fmtNum(totalSpotVisitors(s))}) · 하루 손님 +{spotGuestBonus(s)} · 응모권 {s.tickets}</div>
               <div style={{ display: 'flex', flexWrap: 'wrap', marginBottom: 4 }}>
             {SPOT_TABS.map((t) => (
               <button key={t.id} style={{ ...(cat === t.id ? brownBtnOn : brownBtn), padding: '0 8px', fontSize: 13 }} onClick={() => setCat(t.id)}>{t.label}</button>

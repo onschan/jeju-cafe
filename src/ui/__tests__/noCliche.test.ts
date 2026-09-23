@@ -70,4 +70,10 @@ describe('문구 규칙 §6: 지시문·화살표·정석·시뮬 없음', () =>
   it('소스 파일의 문자열 리터럴(주석 제외): hints.ts·strategy.ts·solver.ts·TutorialWindow·tutorialHighlight·tutorialDialogue·firstTip', () => {
     for (const f of ['sim/hints.ts', 'sim/strategy.ts', 'sim/solver.ts', 'ui/TutorialWindow.tsx', 'ui/tutorialHighlight.ts', 'ui/tutorialDialogue.ts', 'ui/firstTip.ts', 'ui/GoalBar.tsx']) expectClean(stringLiterals(f), f);
   });
+  it('알림판: JSX 사이에 낀 화살표도 없다 (문자열이 아니라 화면에 그대로 보인다)', () => {
+    // big 통합: BoardPanel의 「조건 → 보상」 줄이 문자열 리터럴이 아니라 JSX 텍스트라 위 검사를 빠져나갔다.
+    const code = readFileSync(resolve(SRC, 'ui/BoardPanel.tsx'), 'utf8')
+      .replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+    expect(code.includes('\u2192'), 'BoardPanel.tsx에 화살표가 남아 있다').toBe(false);
+  });
 });

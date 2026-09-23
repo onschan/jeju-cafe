@@ -8,7 +8,7 @@
  */
 import type { GameState, Guest, PlacedObject, Pt, RouteId, RouteState, ApplyResult } from './types.ts';
 import { objectDef, guestTags, MENUS } from '../data/index.ts';
-import { GRID_W, GRID_H, VILLAGE_ROAD_Y, PARCEL_LAYOUT, PARCEL_W, PARCEL_H } from './layout.ts';
+import { GRID_W, GRID_H, VILLAGE_ROAD_Y, PARCEL_LAYOUT, PARCEL_W, PARCEL_H, ENTRY_CELLS } from './layout.ts';
 import { footprint, cellAt, objectAt, inBounds, canPlace, placeObject, removeObject } from './grid.ts';
 import { josa } from './josa.ts';
 import { reachMap, cellKey, isWalkable, walkableNeighborsOf, busStopPos } from './path.ts';
@@ -46,9 +46,9 @@ export interface RouteDef {
 /** 진입점 좌표 (§3.4). 서 (0,15) 버스 · 서 (0,11) 올레 · 동 (29,15) 렌터카 */
 const P4 = PARCEL_LAYOUT.parcel4!;
 export const ENTRY_ROUTES: Record<RouteId, RouteDef> = {
-  bus: { id: 'bus', name: '정류장', icon: '🚌', entry: { x: 0, y: VILLAGE_ROAD_Y }, facilities: ['busstop'], parcelId: null, tagMult: {}, walletMult: 1, stayMult: 1, hours: [], groupSize: [1, 1], dailyCap: null, weight: 1, cost: 0, unlockText: '시작' },
-  parking: { id: 'parking', name: '주차장', icon: '🚗', entry: { x: GRID_W - 1, y: VILLAGE_ROAD_Y }, facilities: ['parking_lot', 'parking_big'], parcelId: null, tagMult: { family: 2, couple: 1.6 }, walletMult: 1.2, stayMult: 1.2, hours: [[9, 21]], groupSize: [2, 4], dailyCap: null, weight: 0.15, cost: 1_200_000, unlockText: '처음부터' }, // fun P0: 렌터카는 9~20시 (30~45% 비중이 하루 손님에서 보이게)
-  olle: { id: 'olle', name: '올레길', icon: '🎗️', entry: { x: 0, y: P4.row * PARCEL_H + 3 }, facilities: ['olle_sign'], parcelId: 'parcel4', tagMult: { solo: 2, youth: 1.5, senior: 1.3 }, walletMult: 0.8, stayMult: 1, hours: [[8, 12], [16, 19]], groupSize: [1, 2], dailyCap: null, weight: 0.15, cost: 200_000, unlockText: '밭담 골짜기' },
+  bus: { id: 'bus', name: '정류장', icon: '🚌', entry: ENTRY_CELLS.bus, facilities: ['busstop'], parcelId: null, tagMult: {}, walletMult: 1, stayMult: 1, hours: [], groupSize: [1, 1], dailyCap: null, weight: 1, cost: 0, unlockText: '시작' },
+  parking: { id: 'parking', name: '주차장', icon: '🚗', entry: ENTRY_CELLS.parking, facilities: ['parking_lot', 'parking_big'], parcelId: null, tagMult: { family: 2, couple: 1.6 }, walletMult: 1.2, stayMult: 1.2, hours: [[9, 21]], groupSize: [2, 4], dailyCap: null, weight: 0.15, cost: 1_200_000, unlockText: '처음부터' }, // fun P0: 렌터카는 9~20시 (30~45% 비중이 하루 손님에서 보이게)
+  olle: { id: 'olle', name: '올레길', icon: '🎗️', entry: ENTRY_CELLS.olle, facilities: ['olle_sign'], parcelId: 'parcel4', tagMult: { solo: 2, youth: 1.5, senior: 1.3 }, walletMult: 0.8, stayMult: 1, hours: [[8, 12], [16, 19]], groupSize: [1, 2], dailyCap: null, weight: 0.15, cost: 200_000, unlockText: '밭담 골짜기' },
 };
 
 /** 주차 칸 수 (시설 타입별). 렌터카 1대 = 2~4명, 칸 × 3대/일 → 하루 상한 = 칸 × PARKING_GUESTS_PER_SLOT */
@@ -219,8 +219,7 @@ export function routeUnlockMet(state: GameState, route: RouteId): boolean {
   switch (route) {
     case 'bus': return true;
     case 'parking': return true; // fun P0: 주차장은 처음부터 (해금 조건 없음)
-    case 'olle': return true;    // 밭담 골짜기 땅을 사면
-    case 'olle': return true;
+    case 'olle': return true;    // 밭담 골짜기 땅을 사면 (위 parcelId 검사가 땅을 본다)
   }
 }
 /** 해금됐고, 시설이 있고, 길이 이어졌고, (셔틀은) 계약 중 — 손님이 실제로 오는 상태 */

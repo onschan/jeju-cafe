@@ -1,7 +1,9 @@
 import { bareState } from './helpers.ts';
 import { X, Y } from './helpers.ts';
-import { placeObject } from '../grid.ts';
-import { isWalkable, findPath, walkableNeighborsOf, busStopPos, reachMap, pathFromReach, cellKey } from '../path.ts';
+import { placeObject, doorFrontOf } from '../grid.ts';
+import { mainBuilding } from '../rooms.ts';
+import { ENTRY_CELLS } from '../layout.ts';
+import { isWalkable, findPath, walkableNeighborsOf, busStopPos, reachMap, pathFromReach, cellKey, isDoorReachable, entryPoints } from '../path.ts';
 
 test('도로·올렛길·정낭·정류장은 걷기 가능, 흙·당근밭·건물은 불가', () => {
   const s = bareState(1);
@@ -48,4 +50,26 @@ test('reachMap은 거리와 경로를 한 번에 준다', () => {
   expect(p[p.length - 1]).toEqual({ x: X(4), y: Y(5) });
   expect(p.length).toBe(7);
   expect(pathFromReach(s, r, { x: X(8), y: Y(2) })).toBeNull();
+});
+
+test('올레길로만 이어진 카페도 「문 앞까지 닿는다」 (정류장만 보던 false negative)', () => {
+  const s = bareState(1);
+  const main = mainBuilding(s)!;
+  const f = doorFrontOf(main);
+  // 마을 길(정류장)로는 아직 길이 없다 — 예전엔 여기서 끝나 「손님이 못 온다」가 떴다
+  expect(isDoorReachable(s, main)).toBe(false);
+  // 올레 진입 칸에서 문 앞까지만 올렛길을 깐다 (마을 길에는 닿지 않는다)
+  const e = ENTRY_CELLS.olle;
+  expect(e.y).toBe(f.y); // 같은 줄이라 한 줄로 이을 수 있다
+  for (let x = e.x; x <= f.x; x++) if (!isWalkable(s, x, e.y)) placeObject(s, 'path', x, e.y);
+  expect(isWalkable(s, e.x, e.y)).toBe(true);
+  expect(entryPoints(s).some((p) => p.x === e.x && p.y === e.y)).toBe(true);
+  expect(isDoorReachable(s, main)).toBe(true);
+});
+
+test('진입 칸은 걷기 칸일 때만 센다 — 정류장은 늘 맨 앞', () => {
+  const s = bareState(1);
+  const pts = entryPoints(s);
+  expect(pts[0]).toEqual(busStopPos(s));
+  expect(pts.some((p) => p.x === ENTRY_CELLS.olle.x && p.y === ENTRY_CELLS.olle.y)).toBe(false); // 흙이라 아직 아니다
 });
