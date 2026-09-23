@@ -22,7 +22,7 @@ import { initEnding, applyCarry } from './ending.ts'; // z-ending
 import { initContest } from './contest.ts'; // 대회
 
 export { PARCEL_W, PARCEL_H, START_ORIGIN, GRID_W, GRID_H, VILLAGE_ROAD_Y };
-export const SAVE_VERSION = 22; // 22: 대규모 패치 통합(big) — 프롤로그 11컷·「명당」 용어·「인기」 4갈래(매력도 인기/시설 입소문/손님층 인지도)·랭크 숫자 비노출·성장 체감(dayLog)·시작 자금 350만·월 임대료(monthCosts.rent)·월말 등급 도장·유행(trend)·돌발 사고(pendingRisk)·빅 이벤트 선택(pendingEventChoice)·대출 기한(loan.dueMonthIndex)·배치 추천·배치 점수·오늘 할 일 1줄·대회 9단계(contest·monthCosts.contest·트로피). v21 세이브는 전부 optional 필드라 backfill만으로 이어진다 (migrateTrim은 v20 전용). 21: 덜어내기(trim) — 콤보·명당·도전·라이벌·팝업 원정·지역 손님·투어·마을제·100주년 삭제, 입지 5요소 → 자리 점수, 명소 24 → 8(Lv3), 경로 5 → 3, 불만 9 → 4, 손님 목소리 피드(voices). v20 세이브는 migrateTrim이 환불·치환 + 알림 한 줄. 20: 재미 리셋 통합(fun) — 시작 3분 튜토리얼 7단계·손님 상호작용(regulars·requests)·명당(codex.corners)·등급(grade)·제주 배경 (optional 필드 + backfill, 19 세이브는 백업 후 새 게임). 19: z 통합 — 엔딩·마을·이월·튜토리얼 30단계 seen (마이그레이션 없음). 18: y 통합 — 되돌리기(undo)·개체 이름(name)·유입 경로(routes·손님 route/foreign)·본관(main·객체 w/h/mode/careDay) (마이그레이션 없음, 17 세이브는 백업 후 새 게임). 17: 컨텐츠 확장 통합 — 경제(삼춘 대출·세금·대기열·★ 유지 심사)·시설 44·증축·청결·명소 방문객·투어·선물·직원 8직종·입지·목표 108·도전·튜토리얼 (마이그레이션 없음). 15: v3 대격변. 14: 라이벌 카페
+export const SAVE_VERSION = 23; // 23: 4트랙 통합(mix) — 추천 칸 검증(탭은 고스트만)·예약 작업(PlacedObject.pending, 손님이 앉아 있어도 이동·철거·증축을 눌러 둔다)·직종별 고유 역할(Staff.zone/night·dayOrders)·진단과 숏컷·손님이 못 가는 시설 표시. 새 필드가 전부 optional이라 v22 세이브는 backfill만으로 이어진다. 22: 대규모 패치 통합(big) — 프롤로그 11컷·「명당」 용어·「인기」 4갈래(매력도 인기/시설 입소문/손님층 인지도)·랭크 숫자 비노출·성장 체감(dayLog)·시작 자금 350만·월 임대료(monthCosts.rent)·월말 등급 도장·유행(trend)·돌발 사고(pendingRisk)·빅 이벤트 선택(pendingEventChoice)·대출 기한(loan.dueMonthIndex)·배치 추천·배치 점수·오늘 할 일 1줄·대회 9단계(contest·monthCosts.contest·트로피). v21 세이브는 전부 optional 필드라 backfill만으로 이어진다 (migrateTrim은 v20 전용). 21: 덜어내기(trim) — 콤보·명당·도전·라이벌·팝업 원정·지역 손님·투어·마을제·100주년 삭제, 입지 5요소 → 자리 점수, 명소 24 → 8(Lv3), 경로 5 → 3, 불만 9 → 4, 손님 목소리 피드(voices). v20 세이브는 migrateTrim이 환불·치환 + 알림 한 줄. 20: 재미 리셋 통합(fun) — 시작 3분 튜토리얼 7단계·손님 상호작용(regulars·requests)·명당(codex.corners)·등급(grade)·제주 배경 (optional 필드 + backfill, 19 세이브는 백업 후 새 게임). 19: z 통합 — 엔딩·마을·이월·튜토리얼 30단계 seen (마이그레이션 없음). 18: y 통합 — 되돌리기(undo)·개체 이름(name)·유입 경로(routes·손님 route/foreign)·본관(main·객체 w/h/mode/careDay) (마이그레이션 없음, 17 세이브는 백업 후 새 게임). 17: 컨텐츠 확장 통합 — 경제(삼춘 대출·세금·대기열·★ 유지 심사)·시설 44·증축·청결·명소 방문객·투어·선물·직원 8직종·입지·목표 108·도전·튜토리얼 (마이그레이션 없음). 15: v3 대격변. 14: 라이벌 카페
 /** 시작 자금 350만 (stakes: 500만 → 350만). 좌석·시설 값은 그대로 두고 월 고정비(임대료·급여)를 얹어
  *  1년차 내내 「이번 달에 뭘 살지」가 고민이 되게. 정착지원금은 삼춘 대출(failure.ts)로 바뀌었다 — 확장 스펙 §4.2 #8 */
 export const START_MONEY = 3_500_000;
@@ -184,6 +184,7 @@ export function createInitialState(seed: number, playerId = 'local', createdAt =
     voices: [], // trim: 손님 목소리 피드
     monthReputationDelta: 0,
     dayStats: { satisfied: 0, complained: 0, total: 0 },
+    dayOrders: { drink: 0, dessert: 0, meal: 0, signature: 0 }, // staff2
     dayLog: [], // 성장: 최근 30일 하루치 (daylog.ts)
     dayLogMark: { income: 0, regulars: 0 },
     reputationWarned: false,

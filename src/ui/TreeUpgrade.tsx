@@ -1,11 +1,11 @@
 /** 시설 카드 「업그레이드 ▲」 (fun 통합, 부루마블처럼 같은 자리에서 다음 단계): 다음 단계 이름·차액·조건("★2면 열려요")·거리 보너스 줄·
  *  "이 자리에서 …로 올리면 +₩n/일"(solver evaluate 14일 롤아웃의 자금 차이 ÷ 14 — 탭했을 때 한 번 계산). */
 import { useMemo, type CSSProperties } from 'react';
-import { dispatch } from './store';
+import { dispatch, showMessage } from './store';
 import { wonText } from '../data/labels.ts';
 import { josa } from '../sim/josa.ts';
 import { objectDef } from '../data/index.ts';
-import { treeOf, nextStep, canTreeUpgrade, treeUpgradeCost, streetText, evaluate, type GameState, type PlacedObject } from '../sim/index.ts';
+import { treeOf, nextStep, canTreeUpgrade, treeUpgradeCost, streetText, evaluate, guestBlock, type GameState, type PlacedObject } from '../sim/index.ts';
 import { layoutSig } from '../sim/layoutRev.ts';
 import { Icon } from './Icon';
 import { Confirm } from './Popup';
@@ -42,7 +42,12 @@ export function TreeUpgradeRow({ s, o }: { s: GameState; o: PlacedObject }) {
   const nextDef = next ? objectDef(next.type) : null;
   const go = () => {
     if (!nextDef) return;
-    Confirm(`${josa(objectDef(o.type).name, '을/를')} 같은 자리에서 ${josa(nextDef.name, '으로/로')} 올릴까요? ${cost > 0 ? wonText(cost) : '무료'}${(nextDef.buildDays ?? 0) > 0 ? ` · 공사 ${nextDef.buildDays}일` : ''}`, () => { dispatch({ type: 'treeUpgrade', objectId: o.id }); }, { title: '업그레이드' });
+    // seatfix: 손님이 앉아 있으면 예약해 둔다 — 일어나는 즉시 올라간다
+    const blocked = guestBlock(s, o);
+    Confirm(`${josa(objectDef(o.type).name, '을/를')} 같은 자리에서 ${josa(nextDef.name, '으로/로')} 올릴까요? ${cost > 0 ? wonText(cost) : '무료'}${(nextDef.buildDays ?? 0) > 0 ? ` · 공사 ${nextDef.buildDays}일` : ''}${blocked ? ` · ${blocked}` : ''}`, () => {
+      if (blocked && dispatch({ type: 'reserveWork', objectId: o.id, work: 'treeUpgrade' }).ok) { showMessage('손님이 일어나면 올릴게요'); return; }
+      dispatch({ type: 'treeUpgrade', objectId: o.id });
+    }, { title: '업그레이드' });
   };
   return (
     <div data-testid="tree-upgrade" style={{ marginTop: 6 }}>

@@ -7,7 +7,7 @@ import { serialize } from '../save.ts';
 import { STEPS, recommendedMainCells, currentTutorialStep, TUTORIAL_STEPS } from '../tutorial.ts';
 import { cloneState, candidateActions, pickDiverse, candidateGroup, evaluate, bestMoves, solveSync, metricsOf, scoreOf, rolloutDays, SOLVER_WEIGHTS, DEFAULT_SOLVER_OPTIONS } from '../solver.ts';
 import { solverKey, solverResult, setSolverResult, rankCellsByCache, cachedMoves } from '../solverCache.ts';
-import { bestSeatCells, bestSeatCellsHeuristic, nextMove, strategyVars, heuristicNextMove } from '../strategy.ts';
+import { bestSeatCells, bestSeatCellsHeuristic, nextMove, strategyVars, heuristicNextMove, SOLVER_SEAT_K } from '../strategy.ts';
 import { idleHint } from '../hints.ts';
 import { seatScore } from '../site.ts';
 import { canPlace } from '../grid.ts';
@@ -64,11 +64,11 @@ describe('solver: 후보 행동', () => {
     expect(c0.map((c) => c.cells[0])).toEqual(recommendedMainCells(bare));
   });
 
-  it('좌석 후보 칸은 휴리스틱 상위 5칸(bestSeatCellsHeuristic)과 같고 놓을 수 있는 칸이다', () => {
+  it('좌석 후보 칸은 휴리스틱 상위 SOLVER_SEAT_K칸과 같고 놓을 수 있는 칸이다 (verify: 창이 좁으면 롤아웃이 좋은 칸을 못 본다)', () => {
     const s = starter();
     const seats = candidateActions(s).filter((c) => c.action.type === 'place' && c.action.objectType === 'table_out').map((c) => c.cells[0]!);
     const key = (p: Pt) => `${p.x},${p.y}`;
-    expect(seats.map(key).sort()).toEqual(bestSeatCellsHeuristic(s, 5).map(key).sort());
+    expect(seats.map(key).sort()).toEqual(bestSeatCellsHeuristic(s, SOLVER_SEAT_K).map(key).sort());
     for (const p of seats) expect(canPlace(s, 'table_out', p.x, p.y).ok).toBe(true);
   });
 });
@@ -111,11 +111,12 @@ describe('solver: 평가', () => {
     const s = yardWithPath(); // 자리 0 + 메뉴 2 → 닿는 자리를 놓아야 영업이 시작된다
     apply(s, { type: 'setSlot', slot: 0, menuId: 'americano' }); apply(s, { type: 'setSlot', slot: 1, menuId: 'tangerine_juice' });
     const good = bestSeatCellsHeuristic(s, 1)[0]!;
-    // 나쁜 자리: 놓을 수는 있지만 정류장에서 걸어 닿지 않아 손님이 앉지 못하는 칸 (입지 점수도 낮다)
+    // 나쁜 자리: 놓을 수는 있지만 정류장에서 걸어 닿지 않아 손님이 앉지 못하는 칸 (= 휴리스틱 후보에 아예 안 드는 칸)
+    const all = bestSeatCellsHeuristic(s, 999);
     let bad: Pt | null = null;
     outer: for (let y = 0; y < s.grid.h; y++) for (let x = 0; x < s.grid.w; x++) {
       if (!canPlace(s, 'table_out', x, y).ok) continue;
-      if (!bestSeatCellsHeuristic(s, 999).some((p) => p.x === x && p.y === y) && seatScore(s, x, y) < seatScore(s, good.x, good.y)) { bad = { x, y }; break outer; }
+      if (!all.some((p) => p.x === x && p.y === y)) { bad = { x, y }; break outer; }
     }
     expect(bad).not.toBeNull();
     const H = 14;

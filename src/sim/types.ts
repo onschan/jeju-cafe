@@ -394,6 +394,8 @@ export interface Staff {
   training: StaffTraining | null; // 연수 중이면 자리를 비운다
   title?: string;         // 칭호 id (titles.json, staff-luck) — 없으면 일반
   role: RoleId | null;
+  zone?: 'indoor' | 'outdoor';  // staff2: 홀 직원 담당 구역 (없으면 전체) — 맡은 구역 만족 +2, 다른 구역 −1
+  night?: boolean;              // staff2: 저녁(18시 이후)까지 근무 — 저녁 손님 만족 +2, 그 직원 하루 기력 −10
   unpaidMonths: number;
   energy: number; // 0~100
   lastParttimeMonthIndex: number; // 아르바이트는 직원당 한 달에 한 번 (−1 = 아직)
@@ -687,7 +689,11 @@ export interface PlacedObject {
   mode?: string;       // 실내 요소 설정 (rooms.ts §4.3): 난로 on/off · 피아노 lunch/evening/none · 바 저녁 세트 on/off
   careDay?: number;    // 실내 요소 마지막 손질 일 인덱스 (수족관 먹이·키즈 장난감 보충·책장 신간)
   stopped?: number;    // stakes: 설비 고장으로 멈춘 시설 — 이 일 인덱스까지 인기 0 (risk.ts). 없으면 정상
+  pending?: PendingWork; // 예약된 작업 (pending.ts): 손님이 앉아 있어도 눌러 두면 자리가 비는 즉시 실행된다. 없으면 예약 없음
 }
+
+/** 예약 작업 (pending.ts). to = 옮길 칸(kind 'move'만), at = 예약한 절대 일 인덱스 */
+export interface PendingWork { kind: 'move' | 'remove' | 'upgrade' | 'treeUpgrade'; to?: Pt; at: number }
 
 /** 되돌리기 1회 스냅샷 (undo.ts). day = 절대 일 인덱스 — 같은 날에만 되돌린다 */
 export type UndoEntry =
@@ -889,6 +895,7 @@ export interface GameState {
   voices?: VoiceLine[];                       // trim: 손님 목소리 피드 (voice.ts, 하루 8줄)
   monthReputationDelta: number;               // 이달 평판 변화 누적 (카드)
   dayStats: { satisfied: number; complained: number; total: number }; // 오늘 만족·불만·총손님 (밤에 평판 계산 후 리셋)
+  dayOrders?: Record<MenuCategory, number>; // staff2: 오늘 분류별로 낸 주문 수 (새 날 0부터 — 조리 담당이 감당하는 양과 견준다)
   dayPhotos?: number;                          // fun: 오늘 손님이 찍은 사진 수 (밤에 평판 +0.05/장, 상한 0.5 — appeal.ts)
   dayLog?: DayLogRow[];                        // 성장: 최근 30일 하루치 손님·매출·새 단골·등급 (daylog.ts)
   dayLogMark?: { income: number; regulars: number }; // 하루 차이를 내려고 들고 있는 어제 마감값 (daylog.ts)
@@ -1030,6 +1037,9 @@ export type Action =
   | { type: 'upgradeObject'; objectId: string }   // 증축 Lv+1 (upgrade.ts)
   | { type: 'treeUpgrade'; objectId: string }     // fun: 같은 자리 업그레이드 트리 다음 단계 (tree.ts — 테이블 → 파라솔 → 테라스 → 전망 테라스)
   | { type: 'repairObject'; objectId: string }    // 노후 수리 (cleanliness.ts)
+  | { type: 'reserveWork'; objectId: string; work: PendingWork['kind']; x?: number; y?: number } // 손님이 있어도 예약 (pending.ts) — 자리가 비면 자동 실행. move면 x·y가 옮길 칸
+  | { type: 'cancelWork'; objectId: string }      // 예약 취소 (pending.ts)
+  | { type: 'doWorkNow'; objectId: string }       // 「지금 바로」: 앉은 손님을 빈 자리로 옮기고(없으면 만족 −5로 퇴장) 예약을 실행한다
   | { type: 'buyParcel'; id: string }
   | { type: 'renameCafe'; name: string }
   | { type: 'expand'; id: string }
@@ -1056,6 +1066,8 @@ export type Action =
   | { type: 'hire'; candidateId: string; role: RoleId }
   | { type: 'fire'; staffId: string }
   | { type: 'assign'; staffId: string; role: RoleId | null }
+  | { type: 'setStaffZone'; staffId: string; zone: 'all' | 'indoor' | 'outdoor' } // staff2: 홀 직원 담당 구역
+  | { type: 'setStaffNight'; staffId: string; on: boolean }                       // staff2: 저녁 근무 토글
   | { type: 'levelUp'; staffId: string }
   | { type: 'train'; staffId: string; trainingId: string }
   | { type: 'promote'; staffId: string; promotionId: string }

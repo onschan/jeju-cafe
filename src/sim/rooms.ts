@@ -308,6 +308,25 @@ export function autoConnectPath(state: GameState): PlacedObject[] {
   state.money -= r.cost;
   return placed;
 }
+/** 증축·이사 직후: 문 앞 한 칸을 비운다 (mix 통합).
+ *  본관이 커지면 문이 옮겨 가고, 그 자리에 있던 야외 시설이 문을 막아 버린다 — 그러면 올렛길을 이을 수도 없고,
+ *  겨울처럼 실내 자리만 쓰는 날엔 손님이 0이 된다. 발자국 아래 올렛길을 걷어내듯(clearPaths) 문 앞 시설도 치우고 값을 돌려준다.
+ *  정류장·본관·샘과 길은 건드리지 않는다. 치운 게 있으면 그 이름. */
+function clearDoorFront(state: GameState, room: PlacedObject): string | null {
+  const f = doorFrontOf(room);
+  if (!inBounds(state, f.x, f.y)) return null;
+  const o = objectAt(state, f.x, f.y);
+  if (!o || o.id === room.id) return null;
+  const def = objectDef(o.type);
+  if (def.kind === 'path' || DOOR_FRONT_KEEP.has(o.type)) return null;
+  removeObject(state, o.id);
+  state.money += def.cost;
+  pushNotice(state, `문 앞에 있던 ${josa(o.name ?? def.name, '을/를')} 치우고 값을 돌려줬어요`);
+  return o.name ?? def.name;
+}
+/** 문 앞에서도 못 치우는 것 (정류장·본관·샘) */
+const DOOR_FRONT_KEEP = new Set(['busstop', 'warehouse', 'spring']);
+
 /** 증축·이사 직후: 자동 연결 결과를 알림 한 줄로 */
 function noticeAutoConnect(state: GameState, r: ReturnType<typeof autoConnectDoor>): string {
   if (r.laid > 0) { pushNotice(state, `문 앞까지 올렛길 ${r.laid}칸을 자동으로 이었어요 (₩${fmtNum(r.cost)})`); return ''; }
@@ -332,6 +351,7 @@ export function expandMain(state: GameState): void {
   state.main.level = next as MainState['level'];
   state.main.work = { kind: 'expand', doneDay: dayIndex(state.clock) + MAIN_EXPAND_DAYS, days: MAIN_EXPAND_DAYS, toLevel: next };
   if (next >= 2) for (const id of LV2_UNLOCK_IDS) if (!state.unlocked.objects.includes(id)) { state.unlocked.objects.push(id); pushNotice(state, `새 시설: ${objectDef(id).name}`); }
+  clearDoorFront(state, m); // 통합: 커진 본관의 새 문 앞을 막은 시설은 치운다 (막히면 올렛길도 못 잇는다)
   const warn = noticeAutoConnect(state, autoConnectDoor(state, m));
   pushNotice(state, `본관 증축 Lv${next} 공사 시작 (${MAIN_EXPAND_DAYS}일·₩${fmtNum(MAIN_EXPAND_COST[next]!)})${warn}`);
 }
@@ -424,6 +444,7 @@ export function moveMain(state: GameState, x: number, y: number): void {
   state.main.undo = { x: prev.x, y: prev.y, day: today, cost: MOVE_COST, prevMovedMonth: state.main.movedMonth };
   state.main.movedMonth = monthIndex(state.clock);
   state.main.work = { kind: 'move', doneDay: today + days, days };
+  clearDoorFront(state, m); // 통합: 옮긴 본관의 새 문 앞을 막은 시설은 치운다 (막히면 올렛길도 못 잇는다)
   const warn = noticeAutoConnect(state, autoConnectDoor(state, m));
   pushNotice(state, `본관 옮기기 공사 시작 (${days}일·₩${fmtNum(MOVE_COST)})${warn}`);
 }

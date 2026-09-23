@@ -7,7 +7,7 @@ import { solveSync } from '../../sim/solver.ts';
 import { setSolverResult, solverKey } from '../../sim/solverCache.ts';
 import { objectDef } from '../../data/index.ts';
 import type { GameState } from '../../sim/types.ts';
-import { placementPicks, pickAt, pickLabel, wanLabel, moveGain, betterSpot, PICK_COUNT, BETTER_SPOT_MIN, REP_WORTH } from '../PlacementHints.tsx';
+import { placementPicks, pickAt, pickLabel, pickStrengths, wanLabel, moveGain, betterSpot, PICK_COUNT, BETTER_SPOT_MIN, REP_WORTH } from '../PlacementHints.tsx';
 import { layoutScore, seatPart, flowPart, cornerPart, roomPart, weakestPart, noteLayoutScore, resetLayoutSnapshot, PART_MAX, SCORE_MAX, LEFT_FULL } from '../layoutScore.ts';
 
 const SEAT = 'table_out';
@@ -48,10 +48,20 @@ describe('배치 추천 칸 (§3.2.1)', () => {
     }
   });
 
-  it('추천 칸 탭 판정: 그 칸이면 찾고 아니면 null', () => {
+  it('추천 칸 판정: 그 칸이면 찾고 아니면 null (탭은 고스트만 옮긴다 — 짓기는 ✓ 확정뿐)', () => {
     const picks = [{ x: 3, y: 4, rank: 1, label: '+42만' }, { x: 5, y: 6, rank: 2, label: null }];
     expect(pickAt(picks, 3, 4)).toBe(picks[0]);
     expect(pickAt(picks, 9, 9)).toBeNull();
+  });
+
+  it('세 칸은 서로 다른 강점을 단다 (verify: 같은 이유 세 개는 고를 거리가 아니다)', () => {
+    const s = starter();
+    const r = placementPicks(s, SEAT);
+    const lines = pickStrengths(s, SEAT, r.picks);
+    expect(lines).toHaveLength(r.picks.length);
+    const names = lines.map((l) => l.replace(/^[①②③\d]\s*/, ''));
+    expect(new Set(names).size).toBe(names.length); // 강점이 겹치지 않는다
+    for (const l of lines) expect(l.length).toBeLessThanOrEqual(12);
   });
 
   it('빈 마당(시설 0)에서도 NaN·예외 없이 칸을 낸다', () => {

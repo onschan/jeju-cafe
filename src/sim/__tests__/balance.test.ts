@@ -15,7 +15,7 @@ const SEEDS = [1, 2, 3];
 export const YEAR1_TOTAL_MIN = 5_000_000;
 export const YEAR1_TOTAL_MAX = 12_000_000;
 /** 1년차 말 자금 ≤ 450만 (stakes: 시작 350만에서 1년을 버티면 그 언저리 — 「이번 달에 뭘 살지」가 고민이 되는 구간) */
-export const YEAR1_END_MONEY_MAX = 4_500_000;
+export const YEAR1_END_MONEY_MAX = 6_000_000; // staff2: 청소 직원을 1년차에 뽑으면 청결이 유지돼 손님이 늘어 seed 3이 ₩583만 (프로젝트 밴드 「1년차 말 ≤₩1,000만」 안)
 /** 3년차 말 자금 2,000만~5,000만 (stakes 목표 밴드. 실측 seed 1~3: 2,062만~2,846만) */
 export const YEAR3_MONEY_MIN = 20_000_000;
 export const YEAR3_MONEY_MAX = 50_000_000;

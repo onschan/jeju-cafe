@@ -7,7 +7,10 @@ import { Icon } from './Icon';
 import { GoalBar, GOAL_BAR_H } from './GoalBar';
 import { TodoLine, TODO_LINE_H } from './TodoLine'; // video-patch §3.4: 오늘 할 일 1줄
 import { MESSAGE_LINE_H } from './MessageLine';
-import { SpeedBar } from './SpeedBar';
+import { SpeedBar, SPEEDS } from './SpeedBar';
+import { useShortcutsPref } from './shortcuts'; // ui3 숏컷
+import { setUserSpeed, userSpeed, showMessage } from './store';
+import { FAST_SPEED, type Speed } from '../sim/index.ts';
 import { brownBtn, brownBtnOn, brownBtnOff, dangerBtn, PALETTE } from './frame';
 
 /** 상단 바 28px + 목표 줄 44px(목표 24 + 도전 20, §7.3) + 오늘 할 일 24px. 기본 상태에서 맵을 가리는 건 이것과 하단 바 48px뿐. */
@@ -29,6 +32,32 @@ const MAIN_TABS: { kind: WindowKind; icon: string; label: string }[] = [
   { kind: 'ledger', icon: 'money', label: '장부' },
 ];
 
+/** ui3 숏컷: 상단 바를 좌우로 스와이프하면 속도 한 단계 (버튼은 그대로 있다 — 보조 조작).
+ *  왼쪽으로 밀면 느리게, 오른쪽으로 밀면 빠르게. 스와이프한 뒤의 탭(click)은 삼킨다. */
+const SWIPE_PX = 44;
+function useSpeedSwipe(enabled: boolean, speeds: readonly number[]) {
+  const startX = useRef<number | null>(null);
+  const swiped = useRef(false);
+  const onPointerDown = (e: React.PointerEvent) => { startX.current = enabled ? e.clientX : null; swiped.current = false; };
+  const onPointerUp = (e: React.PointerEvent) => {
+    const x0 = startX.current;
+    startX.current = null;
+    if (x0 === null) return;
+    const dx = e.clientX - x0;
+    if (Math.abs(dx) < SWIPE_PX) return;
+    swiped.current = true;
+    const cur = userSpeed();
+    const i = speeds.indexOf(cur);
+    const next = speeds[Math.max(0, Math.min(speeds.length - 1, (i < 0 ? 1 : i) + (dx > 0 ? 1 : -1)))];
+    if (next === undefined || next === cur) return;
+    setUserSpeed(next as Speed);
+    showMessage(next === 0 ? '잠시 멈췄어요' : `${next}배속`);
+  };
+  /** 스와이프 직후의 클릭이면 true (창을 안 연다) */
+  const tookTap = () => { const v = swiped.current; swiped.current = false; return v; };
+  return { onPointerDown, onPointerUp, onPointerCancel: () => { startX.current = null; }, tookTap };
+}
+
 /** 상단 바: 날짜 · 계절 · 자금 · 평판 · ★ (탭하면 경영 현황 창) + 오른쪽 끝 카페 등급 이름 (fun-rank: 탭하면 등급 창 — 조건 진행·「5년 뒤 우리 카페」 미리보기). */
 export function TopBar({ onOpen }: { onOpen: () => void }) {
   const s = useGame();
@@ -36,10 +65,14 @@ export function TopBar({ onOpen }: { onOpen: () => void }) {
   const bump = useMoneyBump(s.money);
   const [gradeOpen, setGradeOpen] = useState(false);
   const grade = gradeOf(s);
+  const shortcuts = useShortcutsPref();
+  const speeds = SPEEDS.filter((sp) => sp < FAST_SPEED || s.ending?.fastMode);
+  const swipe = useSpeedSwipe(shortcuts, speeds);
   return (
     <>
-      <div data-testid="top-bar-row" style={{ position: 'absolute', top: 0, left: 0, right: 0, height: TOP_BAR_H, borderBottom: `2px solid ${PALETTE.wood}`, background: PALETTE.paper, display: 'flex', alignItems: 'stretch', zIndex: 10 }}>
-        <button data-testid="top-bar" onClick={onOpen} aria-label="경영 현황"
+      <div data-testid="top-bar-row" style={{ position: 'absolute', top: 0, left: 0, right: 0, height: TOP_BAR_H, borderBottom: `2px solid ${PALETTE.wood}`, background: PALETTE.paper, display: 'flex', alignItems: 'stretch', zIndex: 10, touchAction: 'pan-y' }}>
+        <button data-testid="top-bar" onClick={() => { if (!swipe.tookTap()) onOpen(); }} aria-label="경영 현황"
+          onPointerDown={swipe.onPointerDown} onPointerUp={swipe.onPointerUp} onPointerCancel={swipe.onPointerCancel}
           style={{ flex: 1, minWidth: 0, height: TOP_BAR_H, padding: '0 4px 0 6px', border: 0, background: 'transparent', color: PALETTE.ink, fontFamily: 'inherit', fontSize: 13, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 3, whiteSpace: 'nowrap', overflow: 'hidden' }}>
           <span>{s.clock.year}년 {s.clock.month}월 {s.clock.day}일</span>
           <span aria-label={SEASON_LABEL[season]} title={SEASON_LABEL[season]}><Icon name={SEASON_ICON[season]} size={16} /></span>
@@ -89,14 +122,29 @@ const barStyle: CSSProperties = {
   boxSizing: 'border-box', background: PALETTE.paper, borderTop: `2px solid ${PALETTE.wood}`, display: 'flex', alignItems: 'center', gap: 4, padding: '0 4px', zIndex: 10,
 };
 
+/** ui3 숏컷: 하단 바 버튼을 길게 누르면 바로 가기 (짓기=최근 시설 퀵바 · 카페=메뉴판 · 사람=채용) */
+export const BAR_PRESS_MS = 500;
+
 /** 하단 바 48px: 짓기·카페·사람·장부 4버튼 + 오른쪽 속도. */
-export function BottomBar({ onOpen }: { onOpen: (kind: WindowKind) => void }) {
+export function BottomBar({ onOpen, onLongOpen }: { onOpen: (kind: WindowKind) => void; onLongOpen?: (kind: WindowKind) => void }) {
   const s = useGame();
   const badge = boardBadge(s);
+  const shortcuts = useShortcutsPref();
+  const timer = useRef(0);
+  const fired = useRef(false);
+  const down = (kind: WindowKind) => {
+    if (!shortcuts || !onLongOpen) return;
+    fired.current = false;
+    window.clearTimeout(timer.current);
+    timer.current = window.setTimeout(() => { fired.current = true; onLongOpen(kind); }, BAR_PRESS_MS);
+  };
+  const up = () => window.clearTimeout(timer.current);
   return (
     <div data-testid="bottom-bar" style={barStyle}>
       {MAIN_TABS.map((t) => (
-        <button key={t.kind} data-tab={t.label} data-tut={`nav:${t.kind}`} aria-label={t.label} onClick={() => onOpen(t.kind)}
+        <button key={t.kind} data-tab={t.label} data-tut={`nav:${t.kind}`} aria-label={t.label}
+          onClick={() => { if (fired.current) { fired.current = false; return; } onOpen(t.kind); }}
+          onPointerDown={() => down(t.kind)} onPointerUp={up} onPointerLeave={up} onPointerCancel={up} onContextMenu={(e) => e.preventDefault()}
           style={{ ...brownBtn, flex: 1, minWidth: 0, margin: 0, padding: 0, fontSize: 14, lineHeight: 1, height: 44, display: 'inline-flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2, whiteSpace: 'nowrap', position: 'relative' }}>
           <Icon name={t.icon} size={16} /><span>{t.label}</span>
           {t.kind === 'people' && badge > 0 && <span data-testid="board-badge" style={{ position: 'absolute', top: -6, right: -4, minWidth: 18, height: 18, borderRadius: 9, background: PALETTE.bad, color: '#fff', fontSize: 11, lineHeight: '18px', textAlign: 'center', padding: '0 4px' }}>{badge}</span>}

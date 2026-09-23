@@ -1,15 +1,17 @@
 /**
  * 배치 안내 (video-patch §3.2): solver가 이미 낸 답을 배치 화면으로 끌어올린다.
  *
+ * - `pickStrengths`   세 칸에 **서로 다른 강점**을 하나씩 (「① 전망 ② 길 옆 ③ 주방 곁」) — 같은 이유 세 개는 선택지가 아니다.
  * - `placementPicks`  고스트가 떠 있는 동안 그 시설의 **상위 3칸** — 1위 금색, 2·3위 연금색, 칸 위에 `+42만` 한 줄.
  *                     캐시가 있으면 `cachedMoves`의 `delta`로 숫자까지, 없으면 휴리스틱 순서로 **숫자 없는 회색 3칸**.
+ *                     추천 칸은 보여 주기만 한다 — 탭하면 고스트가 그 칸으로 갈 뿐이고, 짓는 것은 ✓ 확정 버튼이다.
  *                     워커가 아직 안 끝났으면 `state: 'busy'` — 화면엔 「자리 보는 중…」 한 줄만 두고 절대 비우지 않는다.
  * - `betterSpot`      이미 놓은 시설에 「여기보다 좋은 자리 있음 · +38만」. 이득이 BETTER_SPOT_MIN 미만이면 **줄 자체를 안 그린다**.
  *
  * solver.ts·solverCache.ts는 읽기만 한다 — 여기서 조합만 한다.
  */
 import type { GameState, Pt, SolverMove } from '../sim/index.ts';
-import { cachedMoves, solverResult, canPlace, seatScore, isLineType, bestSeatCells, bestIndoorSeats, bestCornerCells, parcelAt, cellAt, PROTECTED_TYPES } from '../sim/index.ts';
+import { cachedMoves, solverResult, canPlace, seatScore, isLineType, bestSeatCells, bestIndoorSeats, bestCornerCells, parcelAt, cellAt, PROTECTED_TYPES, seatStrengths, STRENGTH_LABEL, type SeatStrength } from '../sim/index.ts';
 import { objectDef } from '../data/index.ts';
 import { solverBusy } from './solverClient';
 import { PALETTE } from './frame';
@@ -73,7 +75,7 @@ export function placementPicks(s: GameState, type: string, n = PICK_COUNT): Plac
   return { picks: cells.map((p, i) => ({ x: p.x, y: p.y, rank: i + 1, label: null })), state: busy ? 'busy' : 'fallback' };
 }
 
-/** 추천 칸이면 그 칸 (아니면 null) — 탭하면 바로 그 자리에 놓는다 */
+/** 추천 칸이면 그 칸 (아니면 null). 탭은 **고스트만 옮긴다** — 짓기는 ✓ 확정뿐이라 실수로 지어지는 길이 없다. */
 export function pickAt(picks: PlacePick[], x: number, y: number): PlacePick | null {
   return picks.find((p) => p.x === x && p.y === y) ?? null;
 }
@@ -111,12 +113,30 @@ export function betterSpot(s: GameState, objectId: string): BetterSpot | null {
 
 // ---------- 화면 ----------
 
-/** 배치 바 위 한 줄: 추천 칸이 몇 개인지 / 워커를 기다리는 중인지. 빈 화면을 남기지 않는다. */
-export function PlacementHintLine({ picks, bottom }: { picks: PlacePicks; bottom: number }) {
+/** 순위 칩 (①②③) */
+const RANK_CHIP = ['①', '②', '③'] as const;
+/**
+ * 세 칸에 서로 다른 강점을 하나씩 (「① 전망 ② 길 옆 ③ 주방 곁」). 앞 칸이 가져간 강점은 뒤 칸이 다시 쓰지 않는다 —
+ * 세 칸에 같은 이유를 달면 고를 거리가 없다(video-patch §2.4.4). 근거가 하나도 없는 칸은 순위만 남긴다.
+ */
+export function pickStrengths(s: GameState, type: string, picks: PlacePick[]): string[] {
+  const cells = picks.map((p) => ({ x: p.x, y: p.y }));
+  const used = new Set<SeatStrength>();
+  const out: string[] = [];
+  picks.forEach((p, i) => {
+    const k = seatStrengths(s, { x: p.x, y: p.y }, cells, type).find((x) => !used.has(x));
+    if (k) used.add(k);
+    out.push(`${RANK_CHIP[i] ?? `${i + 1}`} ${k ? STRENGTH_LABEL[k] : '다음 자리'}`);
+  });
+  return out;
+}
+
+/** 배치 바 위 한 줄: 세 칸의 서로 다른 강점 / 워커를 기다리는 중인지. 빈 화면을 남기지 않는다. */
+export function PlacementHintLine({ picks, bottom, state: s, type }: { picks: PlacePicks; bottom: number; state?: GameState; type?: string }) {
+  const strengths = s && type && picks.picks.length > 0 ? pickStrengths(s, type, picks.picks).join(' ') : '';
   const text = picks.state === 'busy' ? PICK_BUSY_TEXT
     : picks.picks.length === 0 ? '놓을 만한 빈 칸이 없어요'
-      : picks.state === 'cache' ? `빛나는 칸 ${picks.picks.length}곳이 제일 낫다 · 탭하면 거기에 놓아요`
-        : `빛나는 칸 ${picks.picks.length}곳이 좋아 보여요 · 탭하면 거기에 놓아요`;
+      : strengths || (picks.state === 'cache' ? `빛나는 칸 ${picks.picks.length}곳이 제일 낫다` : `빛나는 칸 ${picks.picks.length}곳이 좋아 보여요`);
   return (
     <div data-testid="placement-hint" style={{ position: 'absolute', left: 6, right: 6, bottom: `calc(${bottom}px + env(safe-area-inset-bottom))`, zIndex: 12, pointerEvents: 'none', background: PALETTE.paper, border: `2px solid ${PALETTE.wood}`, borderRadius: 6, padding: '2px 8px', fontSize: 13, fontWeight: 700, color: PALETTE.ink, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
       {text}

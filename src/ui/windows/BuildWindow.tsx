@@ -91,6 +91,27 @@ function SpriteBox({ sheet, id, kind, w = 64, h = 48 }: { sheet: Sheet | null; i
 }
 
 const cardBase: CSSProperties = { background: '#fffaf0', border: `2px solid ${PALETTE.woodLight}`, borderRadius: 6, padding: 6, textAlign: 'center', fontFamily: 'inherit', color: PALETTE.ink, minHeight: 44 };
+/** ui3 정돈: 한 줄로 자르는 설명 */
+const oneLine: CSSProperties = { whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' };
+
+/** ui3 정돈: 짓기 하위 목록 카드 — 그림·이름·설명 한 줄·값·수치 한 줄로 통일(카드 높이 고정) */
+function BuildCard({ s, def, locked, sheet, tileMode, on, onPick }: { s: GameState; def: ObjectDef; locked: boolean; sheet: Sheet | null; tileMode: boolean; on: boolean; onPick: () => void }) {
+  const cost = locked ? def.cost : placeCost(s, def.id);
+  const t = tileMode ? treeOf(def.id) : null;
+  const desc = locked ? lockedText(def) : t ? `${t.tree.name} ${t.index + 1}단계${t.index > 0 ? ' · 업그레이드로' : ' · 기본'}` : (def.desc ?? def.name);
+  return (
+    <button data-testid={`build-card-${def.id}`} data-tut={`build:${def.id}`} aria-pressed={on} aria-disabled={locked || undefined} onClick={onPick}
+      style={{ ...cardBase, minHeight: 132, opacity: locked ? 0.6 : 1, boxShadow: on ? `0 0 0 3px ${PALETTE.btnOn}` : undefined, display: 'flex', flexDirection: 'column', gap: 2 }}>
+      <SpriteBox sheet={sheet} id={def.id} kind={def.kind} h={52} />
+      <div style={{ ...oneLine, fontSize: 15, fontWeight: 700, lineHeight: 1.2 }}>{locked ? <><Icon name="lock" size={14} /> </> : ''}{def.name}{def.indoor ? <> <Icon name="home" size={14} /></> : ''}</div>
+      <div style={{ ...soft, ...oneLine, fontSize: 12 }}>{desc}</div>
+      <div style={{ ...oneLine, fontSize: 14, marginTop: 'auto' }}>{cost > 0 ? wonText(cost) : '무료'}{def.fee !== undefined && def.fee > 0 ? ` · 요금 ${wonText(def.fee)}` : ''}</div>
+      <div style={{ ...soft, ...oneLine, fontSize: 13 }}>
+        {def.id === MAIN_TYPE ? <><Icon name="home" size={13} /> {def.w}×{def.h}칸 · 1회</> : <>{def.kind === 'seat' ? <><Icon name="chair" size={13} /> {def.seats ?? 2}</> : <><Icon name="thumb" size={13} /> {def.popularity ?? 10}</>} · <Icon name="plant" size={13} /> {def.scenery}</>}
+      </div>
+    </button>
+  );
+}
 
 export interface BuildWindowProps extends WindowProps { initialTab?: BuildTab }
 
@@ -98,6 +119,7 @@ export function BuildWindow(props: BuildWindowProps) {
   const { s } = useWindowState(props);
   const noMain = !mainBuilding(s); // w-start: 맨땅이면 「건물」 탭(카페 본관 카드)이 맨 앞에, 본관을 지으면 사라진다
   const [picked, setPicked] = useState<string | null>(null);
+  const [showLocked, setShowLocked] = useState(false); // ui3 정돈: 잠긴 카드는 접어 둔다
   const [tab, setTabState] = useState<BuildTab>(() => props.initialTab ?? takeRequestedTab() ?? (mainBuilding(s) ? (lastTab ?? 'rest') : 'building'));
   const setTab = (t: BuildTab) => { lastTab = t; lastScrollTop = 0; setTabState(t); };
   // fun: 첫 화면은 6타일 — 여는 쪽이 탭을 지정했거나(본관 카드 「실내 꾸미기」·명당 탭 글로우) 맨땅(건물 탭)이면 바로 전체 목록
@@ -133,6 +155,8 @@ export function BuildWindow(props: BuildWindowProps) {
   for (const d of OBJECTS) if (!HIDDEN_IDS.has(d.id) && unlocked.has(d.id)) counts[buildTabOf(d)] = (counts[buildTabOf(d)] ?? 0) + 1;
   const busy = constructions(s).length;
   const sel = picked ? items.find((i) => i.def.id === picked) : undefined;
+  const openItems = items.filter((i) => !i.locked);
+  const lockedItems = items.filter((i) => i.locked);
 
   if (view.kind === 'tiles') {
     return (
@@ -182,25 +206,23 @@ export function BuildWindow(props: BuildWindowProps) {
       {!tileMode && activeTab === 'corner' && <CornerTab s={s} onPickBuild={props.onPickBuild} />}
       {tileMode && <div style={{ ...soft, marginBottom: 6 }}><Icon name="bulb" size={14} /> 기본을 놓고, 시설 카드에서 같은 자리 「업그레이드 ▲」로 키워요{tileMode === 'seat' ? ` · 파라솔 이상 3개를 이으면 테라스 거리 +${STREET_BONUS_PCT}%` : ''}</div>}
       {(tileMode || activeTab !== 'corner') && items.length === 0 && <Empty>아직 여기엔 지을 게 없어요</Empty>}
+      {/* ui3 정돈: 열린 것만 2열로 크게, 설명은 한 줄로 통일. 잠긴 것은 접어 둔다 (섞여 있으면 목록이 길어진다) */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
-        {items.map(({ def, locked }) => {
-          const cost = locked ? def.cost : placeCost(s, def.id);
-          const on = picked === def.id;
-          return (
-            <button key={def.id} data-testid={`build-card-${def.id}`} data-tut={`build:${def.id}`} aria-pressed={on} aria-disabled={locked || undefined}
-              onClick={() => { setPicked(on ? null : def.id); if (!on) showFirstTip(null); }}
-              style={{ ...cardBase, opacity: locked ? 0.5 : 1, boxShadow: on ? `0 0 0 3px ${PALETTE.btnOn}` : undefined }}>
-              <SpriteBox sheet={sheet} id={def.id} kind={def.kind} />
-              <div style={{ fontSize: 15, fontWeight: 700, lineHeight: 1.2 }}>{locked ? <><Icon name="lock" size={14} /> </> : ''}{def.name}{def.indoor ? <> <Icon name="home" size={14} /></> : ''}</div>
-              {tileMode && treeOf(def.id) && <div style={{ ...soft, fontSize: 12 }}>{treeOf(def.id)!.tree.name} {treeOf(def.id)!.index + 1}단계{treeOf(def.id)!.index > 0 ? ' · 업그레이드로' : ' · 기본'}</div>}
-              <div style={{ fontSize: 14 }}>{cost > 0 ? wonText(cost) : '무료'}{def.fee !== undefined && def.fee > 0 ? ` · 요금 ${wonText(def.fee)}` : ''}</div>
-              <div style={{ ...soft, fontSize: 13 }}>
-                {def.id === MAIN_TYPE ? <><Icon name="home" size={13} /> {def.w}×{def.h}칸 · 1회</> : <>{def.kind === 'seat' ? <><Icon name="chair" size={13} /> {def.seats ?? 2}</> : <><Icon name="thumb" size={13} /> {def.popularity ?? 10}</>} · <Icon name="plant" size={13} /> {def.scenery}</>}
-              </div>
-            </button>
-          );
-        })}
+        {openItems.map(({ def, locked }) => <BuildCard key={def.id} s={s} def={def} locked={locked} sheet={sheet} tileMode={!!tileMode} on={picked === def.id} onPick={() => { setPicked(picked === def.id ? null : def.id); if (picked !== def.id) showFirstTip(null); }} />)}
       </div>
+      {lockedItems.length > 0 && (
+        <>
+          <button data-testid="build-locked-toggle" aria-expanded={showLocked} onClick={() => setShowLocked(!showLocked)}
+            style={{ ...brownBtn, width: '100%', margin: '8px 0 6px', minHeight: 44, fontSize: 14 }}>
+            <Icon name="lock" size={14} /> 잠긴 것 {lockedItems.length}개 {showLocked ? '▲' : '▼'}
+          </button>
+          {showLocked && (
+            <div data-testid="build-locked" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+              {lockedItems.map(({ def, locked }) => <BuildCard key={def.id} s={s} def={def} locked={locked} sheet={sheet} tileMode={!!tileMode} on={picked === def.id} onPick={() => { setPicked(picked === def.id ? null : def.id); if (picked !== def.id) showFirstTip(null); }} />)}
+            </div>
+          )}
+        </>
+      )}
       {sel && <PickedDetail s={sel.def} locked={sel.locked} state={s} onPick={props.onPickBuild} />}
     </div>
   );

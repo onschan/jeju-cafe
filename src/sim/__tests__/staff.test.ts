@@ -5,6 +5,11 @@ import { apply } from '../actions.ts';
 import { placeObject } from '../grid.ts';
 import { salaryOf, salaryDue, roleEffect, ingredientDiscount, canHire, moveStaff, staffAnchor, drawCandidates, availablePool, addPoolCandidate, staffCapacity, capOf, expNeeded, levelUpCost, addRoleExp, dailyWorkExp, cleanPowerOf, gardenBonusOf, gardenDecayOf, promoBonusOf, promoEnergyFactorOf, checkRoleUnlocks, farmCount, skillTotal, TIERS } from '../staff.ts';
 import { trainingCost, canTrain, trainingMultOf, TRAINING_RANK } from '../training.ts';
+import { roleHeads, cleanPowerOf as _cp, zoneOf, isNightShift, nightlyRecovery, NIGHT_ENERGY_COST } from '../staff.ts'; // staff2
+import { prepCut, servingCapacity, waitPenalty, waitCapOf, serviceBonus, nightShiftSatisfaction, OWNER_DRINKS_PER_DAY, DRINKS_PER_BARISTA, MAX_PREP_CUT, SERVICE_PER_HEAD, SERVICE_MAX, WAIT_PER_HALL_HEAD, WAIT_MAX } from '../guests.ts'; // staff2
+import { seatDirt, dailyCleanRecovery } from '../cleanliness.ts'; // staff2
+import { hireForecast, roleNeeds } from '../staffPlan.ts'; // staff2
+import { NIGHT_BONUS } from '../staff.ts'; // staff2
 import { OUTCOME_MULT } from '../luck.ts';
 import { ingredientCost } from '../economy.ts';
 import { expectedHarvest } from '../orchard.ts';
@@ -473,7 +478,7 @@ function cafe() {
   return s;
 }
 
-test('조리 시간: 직원 없으면 PREP_MS, 바리스타(감각 50)면 그 70% 이하', () => {
+test('조리 시간: 직원 없으면 PREP_MS, 조리 담당 1인분당 −15%(최대 −45%) · 빠른 손 스킬은 더 줄인다 (staff2)', () => {
   const s = cafe();
   spawnGuests(s, 1); updateGuests(s, 6000);
   const g = s.guests[0]!;
@@ -488,10 +493,10 @@ test('조리 시간: 직원 없으면 PREP_MS, 바리스타(감각 50)면 그 70
   expect(s2.guests[0]!.waitMs).toBeLessThanOrEqual(3000);
   updateGuests(s2, 3000);
   expect(s2.guests[0]!.mood).not.toBeNull();
-  // 디저트는 요리사, 빠른 손 스킬은 더 줄인다
+  // 디저트는 요리사, 빠른 손 스킬은 더 줄인다. 기술 50 = 1.25인분 → 대기 −18.75%, 빠른 손 −20%
   const s3 = cafe(); setSlot(s3, 0, 'scone'); s3.staff.push(staffWith({ skill: 50 }, 'cook', 'quick_hands'));
   spawnGuests(s3, 1); s3.guests[0]!.type = 'student'; updateGuests(s3, 6000);
-  expect(s3.guests[0]!.waitMs).toBe(PREP_MS * 0.5 * 0.8);
+  expect(s3.guests[0]!.waitMs).toBeCloseTo(PREP_MS * (1 - 0.15 * 1.25) * 0.8, 5);
 });
 
 test('홀 직원 서비스는 만족 기준을 낮춘다', () => {
@@ -503,4 +508,99 @@ test('홀 직원 서비스는 만족 기준을 낮춘다', () => {
   spawnGuests(s2, 1); s2.guests[0]!.type = 'student'; delete s2.guests[0]!.gates; updateGuests(s2, 6000); updateGuests(s2, PREP_MS);
   expect(s2.guests[0]!.mood).toBe('happy');
   expect(s2.guests[0]!.moodReason).toBeNull();
+});
+
+// ---------- 직종 전략성 (staff2) ----------
+
+test('인원 환산: 주 스탯 40이 한 사람 몫, 최대 1.5인분, 같은 직종 세 번째부터 절반', () => {
+  const s = bareState(1);
+  expect(roleHeads(s, 'hall')).toBe(0);
+  s.staff.push(staffWith({ smile: 40 }, 'hall'));
+  expect(roleHeads(s, 'hall')).toBe(1);
+  s.staff.push(staffWith({ smile: 80 }, 'hall'));
+  expect(roleHeads(s, 'hall')).toBe(2.5); // 80이어도 1.5인분까지
+  s.staff.push(staffWith({ smile: 40, stamina: 1 }, 'hall'));
+  expect(roleHeads(s, 'hall')).toBe(3); // 세 번째는 절반만
+  s.staff[0]!.energy = 10;
+  expect(roleHeads(s, 'hall')).toBe(2.75); // 기력 30 미만이면 그 사람 몫이 절반
+});
+
+test('직종 효과: 바리스타는 대기·감당량, 홀은 만족·줄, 청소는 자리 오염을 감당한다', () => {
+  const s = bareState(1);
+  expect(prepCut(s, 'barista')).toBe(0);
+  expect(servingCapacity(s, 'drink')).toBe(OWNER_DRINKS_PER_DAY); // 주인 몫
+  expect(servingCapacity(s, 'dessert')).toBe(0); // 요리사가 없으면 음식은 못 낸다
+  s.staff.push(staffWith({ skill: 40 }, 'barista'));
+  expect(prepCut(s, 'barista')).toBeCloseTo(0.15, 5);
+  expect(servingCapacity(s, 'drink')).toBe(OWNER_DRINKS_PER_DAY + DRINKS_PER_BARISTA);
+  for (let i = 0; i < 5; i++) s.staff.push(staffWith({ skill: 40 }, 'barista'));
+  expect(prepCut(s, 'barista')).toBe(MAX_PREP_CUT); // 상한 −45%
+
+  const h = bareState(1);
+  expect(serviceBonus(h)).toBe(0);
+  expect(waitCapOf(h)).toBe(WAIT_MAX);
+  h.staff.push(staffWith({ smile: 40 }, 'hall'));
+  expect(serviceBonus(h)).toBe(SERVICE_PER_HEAD);
+  expect(waitCapOf(h)).toBe(WAIT_MAX + WAIT_PER_HALL_HEAD); // 줄이 늘어 덜 돌아간다
+  for (let i = 0; i < 5; i++) h.staff.push(staffWith({ smile: 40 }, 'hall'));
+  expect(serviceBonus(h)).toBe(SERVICE_MAX);
+});
+
+test('조리 적체: 감당하는 양을 50% 넘길 때마다 만족 −1, 최대 −2', () => {
+  const s = bareState(1);
+  s.staff.push(staffWith({ skill: 40 }, 'barista'));
+  const cap = servingCapacity(s, 'drink'); // 20 + 40 = 60
+  s.dayOrders = { drink: cap, dessert: 0, meal: 0, signature: 0 };
+  expect(waitPenalty(s, 'drink')).toBe(0);
+  s.dayOrders.drink = Math.ceil(cap * 1.6);
+  expect(waitPenalty(s, 'drink')).toBe(1);
+  s.dayOrders.drink = cap * 3;
+  expect(waitPenalty(s, 'drink')).toBe(2); // 상한
+});
+
+test('자리 오염: 12석까지는 0, 넘는 자리 하나당 0.15 — 청소 직원이 오면 나머지 직원도 계속 거든다', () => {
+  const s = bareState(1);
+  const before = seatDirt(s);
+  const general = dailyCleanRecovery(s);
+  s.staff.push(staffWith({ skill: 40, strength: 40 }, 'hall'));
+  expect(dailyCleanRecovery(s)).toBeGreaterThan(general); // 홀 직원도 틈틈이 치운다
+  const withHall = dailyCleanRecovery(s);
+  s.staff.push(staffWith({ skill: 40, strength: 40 }, 'clean'));
+  expect(dailyCleanRecovery(s)).toBeGreaterThan(withHall); // 청소 직원이 와도 홀이 손을 놓지 않는다
+  expect(cleanPowerOf(s)).toBeCloseTo(40 / 5 + 40 / 10, 5);
+  expect(before).toBe(seatDirt(s)); // 직원은 오염과 무관
+});
+
+test('배치: 홀 직원이 맡은 구역 만족 +2, 다른 구역 −1. 저녁 근무는 저녁 손님 만족 +2에 기력 −10', () => {
+  const s = bareState(1);
+  s.staff.push(staffWith({ smile: 40 }, 'hall'));
+  const st = s.staff[0]!;
+  expect(zoneOf(st)).toBe('all');
+  expect(apply(s, { type: 'setStaffZone', staffId: st.id, zone: 'outdoor' }).ok).toBe(true);
+  expect(zoneOf(st)).toBe('outdoor');
+  expect(apply(s, { type: 'setStaffNight', staffId: st.id, on: true }).ok).toBe(true);
+  expect(isNightShift(st)).toBe(true);
+  s.clock.hour = 20;
+  expect(nightShiftSatisfaction(s)).toBe(NIGHT_BONUS);
+  s.clock.hour = 10;
+  expect(nightShiftSatisfaction(s)).toBe(0);
+  st.energy = 50;
+  nightlyRecovery(s);
+  expect(st.energy).toBe(50 + 40 - NIGHT_ENERGY_COST);
+  // 쉬는 직원은 구역을 못 맡는다
+  apply(s, { type: 'assign', staffId: st.id, role: null });
+  expect(apply(s, { type: 'setStaffZone', staffId: st.id, zone: 'indoor' }).ok).toBe(false);
+});
+
+test('채용 미리보기: 「우리 카페에 오면」 3줄과 지금 필요한 직종', () => {
+  const s = bareState(1);
+  const who = { stats: { stamina: 40, strength: 40, skill: 40, smile: 40 }, baseSalary: 400_000, level: 1 };
+  const f = hireForecast(s, who, 'barista');
+  expect(f.lines.length).toBe(3);
+  expect(f.lines[0]).toContain('음료 대기');
+  expect(f.lines[2]).toContain('월급');
+  expect(f.salary).toBeGreaterThan(0);
+  expect(hireForecast(s, who, 'cook').lines[0]).toContain('디저트'); // 요리사가 없으면 분류가 통째로 막혀 있다
+  expect(roleNeeds(s).some((n) => n.role === 'cook')).toBe(true);
+  for (const l of [...f.lines, ...roleNeeds(s).map((n) => n.why)]) expect(l.length).toBeLessThanOrEqual(30);
 });

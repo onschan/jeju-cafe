@@ -18,8 +18,8 @@ import { fmtNum } from './format.ts';
 
 /** trim에서 없어진 것들이 들어 있는 v20 세이브를 올린다 (환불·치환) */
 export const MIGRATE_FROM = 20;
-/** big 통합에서 붙은 필드는 전부 optional이라 backfill만으로 v21 → v22가 된다 (덜어낼 것도 없다) */
-export const BACKFILL_FROM = [20, 21];
+/** big·mix 통합에서 붙은 필드는 전부 optional이라 backfill만으로 v21 → v22 → v23이 된다 (덜어낼 것도 없다) */
+export const BACKFILL_FROM = [20, 21, 22];
 /** 이어서 열 수 있는 가장 낮은 세이브 버전 (이보다 낮으면 백업 뒤 새 게임) */
 export const OLDEST_LOADABLE = Math.min(...BACKFILL_FROM);
 
@@ -92,10 +92,19 @@ function migrateTrim(state: GameState): void {
   state.version = SAVE_VERSION;
 }
 
+/** seatfix: PlacedObject.pending에 들어올 수 있는 종류 */
+const PENDING_KINDS = ['move', 'remove', 'upgrade', 'treeUpgrade'];
+
 /** 같은 SAVE_VERSION 안에서 뒤에 추가된 필드를 기본값으로 채운다 (버전을 올리지 않고 붙인 필드). */
 function backfill(state: GameState): void {
   state.lastMonthIncome ??= state.lastMonthCard?.income ?? 0;
   state.researchAcc ??= 0;
+  state.dayOrders ??= { drink: 0, dessert: 0, meal: 0, signature: 0 }; // staff2: 오늘 분류별 주문 수 (v23)
+  // staff2: 담당 구역·저녁 근무도 v23에 붙은 optional 필드 — 옛 세이브엔 없고, 알 수 없는 구역 값은 「전체」로 되돌린다
+  for (const st of state.staff) {
+    if (st.zone !== undefined && st.zone !== 'indoor' && st.zone !== 'outdoor') delete st.zone;
+    if (st.night !== undefined && typeof st.night !== 'boolean') delete st.night;
+  }
   // ---- stakes: 긴장감·트레이드오프·변수 ----
   state.monthCosts.rent ??= 0;
   if (state.lastMonthCard) state.lastMonthCard.costs.rent ??= 0;
@@ -132,6 +141,12 @@ function backfill(state: GameState): void {
   // ease: 옛 저장(v19)의 바위·큰 바위 칸은 흙으로, 곶자왈 덤불 오브젝트는 지운다 (지형·오브젝트 정의가 없어졌다)
   for (const c of state.grid.cells) if ((c.terrain as string) !== 'soil' && (c.terrain as string) !== 'road') c.terrain = 'soil';
   for (const o of Object.values(state.objects)) if (o.type === 'bush_wild') delete state.objects[o.id];
+  // seatfix: 예약 작업(pending)은 v23에 붙은 optional 필드 — 옛 세이브엔 없고, 알 수 없는 종류는 지운다
+  for (const o of Object.values(state.objects)) {
+    if (!o.pending) continue;
+    if (!PENDING_KINDS.includes(o.pending.kind) || (o.pending.kind === 'move' && !o.pending.to)) delete o.pending;
+    else o.pending.at ??= 0;
+  }
   if (state.tutorial.seen === undefined) { // z-tutorial: 30단계 판정 표식이 없는 옛 9단계 저장 — 건너뛴 것은 계속 끝난 상태(30), 손으로 한 것은 10단계부터 이어 간다
     state.tutorial.seen = [];
     if (state.tutorial.skipped && state.tutorial.step < TUTORIAL_STEPS) state.tutorial.step = TUTORIAL_STEPS;

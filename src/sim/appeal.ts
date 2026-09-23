@@ -92,7 +92,8 @@ export interface Appeal { rows: AppealRow[]; scenery: number; seatUse: number; s
 export function appealOf(state: GameState, seatUse: number): Appeal {
   const scenery = cafeScenery(state);
   const d = state.dayStats;
-  const satisfaction = d.total > 0 ? d.satisfied / d.total : state.stats.satisfiedTotal > 0 && state.totalGuests > 0 ? state.stats.satisfiedTotal / state.totalGuests : 0;
+  // 0~1로 자른다 — 하루 통계가 아직 덜 찬 아침엔 satisfied/total이 1을 넘어 「서비스 200%」가 나왔다 (ui3)
+  const satisfaction = Math.max(0, Math.min(1, d.total > 0 ? d.satisfied / d.total : state.stats.satisfiedTotal > 0 && state.totalGuests > 0 ? state.stats.satisfiedTotal / state.totalGuests : 0));
   const staffN = state.staff.length;
   const pop = Math.round(facilityPopularitySum(state)); // 시설 인기 합 (state.popularity는 동네↔관광객 축이라 다른 값)
   const rows: AppealRow[] = [

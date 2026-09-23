@@ -4,6 +4,7 @@ import { goalDef, goalRewardText, currentGoal, goalConditionText, menuOf, TREND_
 import { label } from '../data/labels.ts';
 import { Window } from './Window';
 import { ReportWindow } from './windows/ReportWindow.tsx';
+import { diagnosisOf } from './StrategyCard'; // ui3: 진단 총평 한 줄
 
 /** 월말 결산 (스펙 §2.1): sim의 lastMonthCard를 ReportWindow(트랙 B)로. 하이라이트 3줄 = 최다 판매 · 최고 만족 손님층 · 이달 새로 열린 것, 팁 = 현재 목표. */
 export function MonthCard() {
@@ -31,13 +32,16 @@ export function MonthCard() {
   if (opened.current.length > 0) highlights.push(`새로 열림: ${opened.current.join(' · ')}`);
   if ((c.greatServes ?? 0) > 0) highlights.push(`서빙 대박 ${c.greatServes}번 — 손님이 「최고!」라며 팁을 남겼어요`); // staff-luck
 
+  // ui3: 결산 도장 아래 진단 총평 한 줄 (등급 총평과 같은 말이면 안 붙인다)
+  const summary = diagnosisOf(s).summary;
+  const coachLine = summary && summary !== c.gradeSummary ? summary : undefined;
   const g = currentGoal(s);
   const tip = g ? `다음 목표는 「${g.title}」 — ${g.desc || goalConditionText(g.condition)}` : '목표를 다 이뤘어요. 마음껏 카페를 키워 보세요.';
   const harvested = Object.values(c.harvested ?? {}).reduce((a, b) => a + b, 0);
   return (
     <Window title={`${c.year}년 ${c.month}월 결산`} onClose={close} testId="window-report">
       <ReportWindow
-        card={{ ...c, harvested, ingredientSaved: c.ingredientSaved, highlights, tip, trendName: c.trendCategory ? TREND_NAME[c.trendCategory] : undefined }}
+        card={{ ...c, harvested, ingredientSaved: c.ingredientSaved, highlights, tip, trendName: c.trendCategory ? TREND_NAME[c.trendCategory] : undefined, coachLine }}
         star={s.star}
         onClose={close}
       />

@@ -16,6 +16,8 @@ import { guestTypeDef, namedGuestDef } from '../data/index.ts';
 import { Background } from './Background';
 import { siteOf, siteBadgeText, siteTone, layoutKey } from '../sim/site.ts';
 import { objectStats } from '../sim/compat.ts';
+import { isStopped } from '../sim/effects.ts'; // ui3: 맵 위 「고장」 표시
+import { unreachableIds } from '../sim/reach.ts'; // ui3: 손님이 못 가는 시설 ✕
 import { entryPoints, ROUTE_IDS, ENTRY_ROUTES } from '../sim/entry.ts'; // 트랙 H 진입점 표지
 import { completedCorners, cornerDef } from '../sim/corners.ts'; // fun-corner 명당 팻말
 import { isSiteOverlayOn, setSiteOverlayOn, siteOverlayKey, drawSiteOverlay, GHOST_GOOD, GHOST_WARN } from './siteOverlay';
@@ -28,13 +30,13 @@ const MENU_BUBBLE_ICON: Record<string, string> = { drink: 'coffee', dessert: 'ca
 /** 전용 스프라이트가 있는 손님 타입 (guest_local·guest_tourist 시트) */
 const GUEST_SPRITE_KEY: Record<string, string> = { local_auntie: 'local', student: 'tourist' };
 
-export interface GameViewOptions extends Pick<CameraOptions, 'onTap' | 'dragCapture' | 'onDragCell' | 'onDragEnd' | 'onLongPress'> {
+export interface GameViewOptions extends Pick<CameraOptions, 'onTap' | 'dragCapture' | 'onDragCell' | 'onDragEnd' | 'onLongPress' | 'onDoubleTap'> {
   /** 손님이 나갈 때 20%로 띄우는 대사 (없으면 기분 아이콘만) */
   guestSay?: (state: GameState, g: Guest) => string | null;
 }
 
 /** 배치 모드 고스트: 손가락 아래 반투명 오브젝트. ok면 초록, 아니면 빨강. text는 비용 라벨. */
-export interface GhostSpec { type: string; x: number; y: number; rot?: number; ok: boolean; text: string; w?: number; h?: number; /** 문 앞 칸 미리보기 (w-start 본관 짓기: 파란 마름모 + 「문 앞」) */ door?: { x: number; y: number } }
+export interface GhostSpec { type: string; x: number; y: number; rot?: number; ok: boolean; /** ui3: 놓을 수는 있지만 손님이 걸어 올 수 없는 자리 (주황) */ warn?: boolean; text: string; w?: number; h?: number; /** 문 앞 칸 미리보기 (w-start 본관 짓기: 파란 마름모 + 「문 앞」) */ door?: { x: number; y: number } }
 /** 효과 범위 힌트 (UX §5.3): 중심 시설 발자국 + 반경(칸) 타원, 콤보가 성립하는 상대 시설 발자국 위 ◎ */
 export interface RangeHint { x: number; y: number; w: number; h: number; radius: number; marks: { x: number; y: number; w: number; h: number }[]; /** fun-corner: 명당 배지 ("이걸 놓으면 꽃길 완성") */ badge?: string }
 /** 배치 추천 칸 (video-patch §3.2.1): 1위 금색 · 2·3위 연금색 · 캐시가 없으면 회색. label이 있으면 칸 위에 `+42만` 한 줄, 1위엔 `1` 칩. */
@@ -173,6 +175,8 @@ const ROLE_ICON_Y = -(CHAR_H - 10);
 const TIRED_ALPHA = 0.6;
 /** 건설 중인 시설: 반투명 + 망치 라벨 */
 const BUILDING_ALPHA = 0.5;
+/** ui3: 손님이 못 가는 시설 — 살짝 어둡게 (빨간 ✕와 함께) */
+const UNREACHABLE_ALPHA = 0.66;
 /** 방(본관 등) 문 앞 칸 표식: 손님 출입구라 올렛길을 이어야 한다 */
 const DOOR_MARK_COLOR = 0xffd166;
 /** 글로우 라벨을 다는 칸 수 상한 (칸이 많으면 앞 몇 개만) */
@@ -375,6 +379,10 @@ export class GameView {
   private gaugesOn = false;
   private gaugeAt = 0;
   private gaugeKey = '';
+  /** ui3: 맵 위 표시 최소화 (문제 표시만) */
+  private mapMinimal = false;
+  /** ui3: 손님이 못 가는 시설 id (진입점 BFS — sim/reach.ts가 배치 서명으로 캐시한다) */
+  private unreachIds: Set<string> = new Set();
   private hostWidth = 0;
   private bounds: CameraBounds | null = null;
   private nightAlpha = 0;
@@ -498,7 +506,7 @@ export class GameView {
 
   /** 배치 고스트를 놓거나(null이면) 치운다. 같은 내용이면 다시 만들지 않는다. */
   setGhost(g: GhostSpec | null) {
-    const key = g ? `${g.type}:${g.x},${g.y}:${g.rot ?? ''}:${g.ok}:${g.text}:${g.door ? `${g.door.x},${g.door.y}` : ''}` : '';
+    const key = g ? `${g.type}:${g.x},${g.y}:${g.rot ?? ''}:${g.ok}:${g.warn ? 'w' : ''}:${g.text}:${g.door ? `${g.door.x},${g.door.y}` : ''}` : '';
     if (key === this.ghostKey) return;
     this.ghostKey = key;
     this.ghost?.destroy({ children: true });
@@ -519,7 +527,7 @@ export class GameView {
     for (const p of footprint(g.type, g.x, g.y, gw, gh)) {
       const t = cellToScreen(p.x, p.y);
       fp.poly([t.sx - sx, t.sy - sy, t.sx - sx + ISO_W / 2, t.sy - sy + ISO_H / 2, t.sx - sx, t.sy - sy + ISO_H, t.sx - sx - ISO_W / 2, t.sy - sy + ISO_H / 2])
-        .fill({ color: g.ok ? GHOST_OK : GHOST_BAD, alpha: 0.5 });
+        .fill({ color: !g.ok ? GHOST_BAD : g.warn ? GHOST_WARN : GHOST_OK, alpha: 0.5 }); // ui3: 놓을 수는 있지만 손님이 못 오는 자리는 주황
     }
     c.addChild(fp);
     if (g.door) { // 문 앞 칸 미리보기 — 손님이 드나드는 칸 (w-start 본관 고스트)
@@ -537,7 +545,7 @@ export class GameView {
     const sp = new Sprite(t?.texture ?? isoObjectTexture(this.app.renderer, def.kind, gw, gh));
     sp.anchor.set(0.5, 1);
     if (t && !t.iso) sp.position.y = -gh * (ISO_H / 2);
-    sp.tint = g.ok ? GHOST_OK : GHOST_BAD;
+    sp.tint = !g.ok ? GHOST_BAD : g.warn ? GHOST_WARN : GHOST_OK;
     sp.label = 'ghostSprite';
     c.addChild(sp);
     const l = label(g.text, 10);
@@ -745,6 +753,14 @@ export class GameView {
     if (!on && !this.gaugeGfx.destroyed) { this.gaugeGfx.clear(); this.gaugeKey = ''; }
   }
 
+  /** ui3 「맵 위 표시 최소화」: 인기 바·Lv 배지를 숨기고 문제 표시(공사·고장·낡음)만 남긴다 */
+  setMapMinimal(on: boolean) {
+    if (this.mapMinimal === on) return;
+    this.mapMinimal = on;
+    if (!this.gaugeGfx.destroyed) { this.gaugeGfx.clear(); this.gaugeKey = ''; }
+    for (const entry of this.objNodes.values()) entry.node.getChildByLabel('lv')?.destroy({ children: true });
+  }
+
   /** 셀 → 브라우저 클라이언트 좌표 (발자국 앞 꼭짓점). 고스트 밑 ✓↻ DOM 버튼 위치용 */
   cellToClient(x: number, y: number, w = 1, h = 1): { left: number; top: number } {
     const rect = this.app.canvas.getBoundingClientRect();
@@ -761,27 +777,54 @@ export class GameView {
     this.world.position.set(width / 2 - c.sx * scale, height / 2 - c.sy * scale);
   }
 
+  /** ui3 정보 밀도: 시설 하나에는 상시 표시를 하나만.
+   *  우선순위는 손님이 못 감(빨간 ✕) > 공사(머리 위 ⏳ 배지) > 고장 > 낡음 > 인기 바.
+   *  「맵 위 표시 최소화」면 인기 바를 빼고 문제 표시만 남긴다. */
   private syncGauges(state: GameState, now: number) {
-    if (!this.gaugesOn || this.gaugeGfx.destroyed) return;
+    if (this.gaugeGfx.destroyed) return;
     if (now - this.gaugeAt < 1000) return;
     this.gaugeAt = now;
     const ids = Object.keys(state.objects);
-    const key = `${state.tick >> 6}:${ids.length}:${layoutKey(state)}`;
+    const key = `${state.tick >> 6}:${ids.length}:${layoutKey(state)}:${this.gaugesOn ? 'g' : ''}${this.mapMinimal ? 'm' : ''}:u${this.unreachIds.size}`;
     if (key === this.gaugeKey) return;
     this.gaugeKey = key;
     this.gaugeGfx.clear();
     for (const o of Object.values(state.objects)) {
       const def = objectDef(o.type);
-      if (o.build || (def.kind !== 'seat' && def.kind !== 'facility')) continue;
+      const blocked = this.unreachIds.has(o.id);
+      if (blocked) {
+        // 손님이 못 가는 시설: 머리 위 빨간 원 + 흰 ✕ (다른 표시는 전부 접는다)
+        const size = sizeOf(o);
+        const fa = footAnchor(o.x, o.y, size.w, size.h);
+        const gc = this.footCenter(o, size.w, size.h);
+        const cy = fa.sy - Math.min(48, this.objNodes.get(o.id)?.sprite?.height ?? 40) - 12;
+        this.gaugeGfx.circle(gc.sx, cy, 9).fill({ color: 0xd63a52 }).stroke({ color: 0xffffff, width: 2 });
+        this.gaugeGfx.moveTo(gc.sx - 4, cy - 4).lineTo(gc.sx + 4, cy + 4).moveTo(gc.sx + 4, cy - 4).lineTo(gc.sx - 4, cy + 4).stroke({ color: 0xffffff, width: 2 });
+        continue;
+      }
+      if (o.build || (def.kind !== 'seat' && def.kind !== 'facility')) continue; // 공사 배지가 다음 — 게이지를 겹치지 않는다
       const st = objectStats(state, o.id);
+      const broken = isStopped(state, o);
+      const worn = !broken && st.wear > 0;
+      if (!broken && !worn && (this.mapMinimal || !this.gaugesOn)) continue;
       const gc = this.footCenter(o, def.w, def.h);
       // 스프라이트 위 (발자국 앞 꼭짓점 − 스프라이트 높이)
       const fa = footAnchor(o.x, o.y, def.w, def.h);
       const y = fa.sy - Math.min(48, this.objNodes.get(o.id)?.sprite?.height ?? 40) - 10; // 키 큰 스프라이트(파라솔)는 중간 높이에
       const W = 24;
-      const pct = Math.max(0, Math.min(1, st.popularity / GAUGE_MAX));
       this.gaugeGfx.roundRect(gc.sx - W / 2 - 2, y - 2, W + 4, 10, 2).fill({ color: 0x3b1f0e, alpha: 0.85 }).stroke({ color: 0xf6e7c6, width: 1, alpha: 0.9 });
-      this.gaugeGfx.rect(gc.sx - W / 2, y, Math.max(1, W * pct), 6).fill({ color: pct >= 0.66 ? 0x6fd43a : pct >= 0.33 ? 0xffc85c : 0xff5a7a });
+      if (broken) {
+        // 고장: 빨간 칸 + 흰 ✕
+        this.gaugeGfx.rect(gc.sx - W / 2, y, W, 6).fill({ color: 0xff5a7a });
+        this.gaugeGfx.moveTo(gc.sx - 4, y + 1).lineTo(gc.sx + 4, y + 5).moveTo(gc.sx + 4, y + 1).lineTo(gc.sx - 4, y + 5).stroke({ color: 0xffffff, width: 2 });
+      } else if (worn) {
+        // 낡음: 주황 칸 + 빗금 두 줄
+        this.gaugeGfx.rect(gc.sx - W / 2, y, W, 6).fill({ color: 0xffa23a });
+        this.gaugeGfx.moveTo(gc.sx - 6, y + 6).lineTo(gc.sx - 1, y).moveTo(gc.sx + 1, y + 6).lineTo(gc.sx + 6, y).stroke({ color: 0x5a3a06, width: 2 });
+      } else {
+        const pct = Math.max(0, Math.min(1, st.popularity / GAUGE_MAX));
+        this.gaugeGfx.rect(gc.sx - W / 2, y, Math.max(1, W * pct), 6).fill({ color: pct >= 0.66 ? 0x6fd43a : pct >= 0.33 ? 0xffc85c : 0xff5a7a });
+      }
     }
   }
 
@@ -1198,26 +1241,30 @@ export class GameView {
     return { node: c, type: o.type, sprite: null, glow, posKey: `${o.x},${o.y}:${w}x${h}` };
   }
 
-  /** 건설 중: 반투명 + 머리 위 망치 아이콘과 "N일" 배지 (오버레이 레이어 — 본관 같은 큰 이웃 뒤에 숨지 않게). 남은 날이 바뀔 때만 다시 그린다. */
+  /** 건설 중: 반투명 + 머리 위 망치 아이콘과 "N일" 배지 (오버레이 레이어 — 본관 같은 큰 이웃 뒤에 숨지 않게). 남은 날이 바뀔 때만 다시 그린다.
+   *  seatfix: 공사 중이 아니어도 예약(pending)이 걸려 있으면 같은 자리에 시계 아이콘 + "예약" 배지를 띄운다. */
   private syncBuilding(entry: ObjEntry, o: PlacedObject, state: GameState) {
     const left = o.build ? Math.max(0, o.build.doneDay - dayIndex(state.clock)) : 0;
-    const key = o.build ? `b${left}:${o.x},${o.y}` : '';
+    // 상시 표시는 하나만 (ui3 우선순위): 손님이 못 감 ✕ > 공사 「N일」 > 예약 「예약」
+    const blocked = this.unreachIds.has(o.id); // ui3: 손님이 못 가는 시설은 살짝 어둡게, 머리 위 배지는 ✕에 양보한다
+    const mark = o.build ? `b${left}` : o.pending ? `p${o.pending.kind}` : ''; // seatfix: 예약도 같은 자리에 배지를 낸다
+    const key = mark ? `${mark}:${o.x},${o.y}${blocked ? ':x' : ''}` : blocked ? 'x' : '';
     if (entry.buildKey === key) return;
     entry.buildKey = key;
     entry.badge?.destroy({ children: true });
     entry.badge = null;
-    entry.node.alpha = o.build ? BUILDING_ALPHA : 1;
-    if (!o.build) return;
+    entry.node.alpha = o.build ? BUILDING_ALPHA : blocked ? UNREACHABLE_ALPHA : 1;
+    if (!mark || blocked) return;
     const size = sizeOf(o);
     const gc = this.footCenter(o, size.w, size.h);
     const top = gc.sy - (entry.sprite?.height ?? 40) * 0.6 - 4; // 스프라이트 위쪽 언저리
     const c = new Container();
-    const l = label(`${left}일`, 10);
+    const l = label(o.build ? `${left}일` : '예약', 10);
     l.anchor.set(0, 0.5);
-    const iconTex = hasAssets() ? tex(spriteName.icon('build')) : null;
+    const iconTex = hasAssets() ? tex(spriteName.icon(o.build ? 'build' : 'clock')) : null;
     const iconW = iconTex ? 16 : 0;
     const w = iconW + l.width + 12;
-    c.addChild(new Graphics().roundRect(-w / 2, -18, w, 18, 4).fill({ color: 0x6b3d1e, alpha: 0.9 }));
+    c.addChild(new Graphics().roundRect(-w / 2, -18, w, 18, 4).fill({ color: o.build ? 0x6b3d1e : 0xb8862a, alpha: 0.9 }));
     if (iconTex) {
       const icon = new Sprite(iconTex);
       icon.anchor.set(0, 0.5);
@@ -1233,10 +1280,11 @@ export class GameView {
     entry.badge = c;
   }
 
-  /** 증축 Lv 배지 (트랙 A): Lv2·3이면 스프라이트 오른쪽 위에 작은 "Lv2" 라벨. Lv가 바뀔 때만 다시 그린다. */
+  /** 증축 Lv 배지 (트랙 A): Lv2·3이면 스프라이트 오른쪽 위에 작은 "Lv2" 라벨. Lv가 바뀔 때만 다시 그린다.
+   *  ui3: 공사 중이거나 「맵 위 표시 최소화」면 안 붙인다 — 한 시설 위에는 표시 하나만. */
   private syncLevelBadge(entry: ObjEntry, o: PlacedObject) {
     const lv = o.level ?? 1;
-    const key = lv >= 2 ? `lv${lv}` : '';
+    const key = lv >= 2 && !o.build && !this.mapMinimal && !this.unreachIds.has(o.id) ? `lv${lv}` : '';
     const prev = entry.node.getChildByLabel('lv');
     if ((prev?.label ?? '') === 'lv' && (prev as Container & { lvKey?: string }).lvKey === key) return;
     prev?.destroy({ children: true });
@@ -1357,6 +1405,7 @@ export class GameView {
   }
 
   private syncObjects(state: GameState, now: number) {
+    this.unreachIds = unreachableIds(state); // ui3: 배치 서명 캐시라 배치가 바뀔 때만 다시 센다
     for (const [id, entry] of this.objNodes) {
       const o = state.objects[id];
       // 없어졌거나, 불러오기·리셋 뒤 id가 재사용돼 타입이 달라진 노드는 버린다
