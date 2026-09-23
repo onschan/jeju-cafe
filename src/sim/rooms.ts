@@ -444,7 +444,7 @@ export function moveMain(state: GameState, x: number, y: number): void {
   state.main.undo = { x: prev.x, y: prev.y, day: today, cost: MOVE_COST, prevMovedMonth: state.main.movedMonth };
   state.main.movedMonth = monthIndex(state.clock);
   state.main.work = { kind: 'move', doneDay: today + days, days };
-  clearDoorFront(state, m); // 통합: 커진 본관의 새 문 앞을 막은 시설은 치운다 (막히면 올렛길도 못 잇는다)
+  clearDoorFront(state, m); // 통합: 옮긴 본관의 새 문 앞을 막은 시설은 치운다 (막히면 올렛길도 못 잇는다)
   const warn = noticeAutoConnect(state, autoConnectDoor(state, m));
   pushNotice(state, `본관 옮기기 공사 시작 (${days}일·₩${fmtNum(MOVE_COST)})${warn}`);
 }
