@@ -6,6 +6,7 @@ import { Icon } from './Icon';
 import { Confirm } from './Popup';
 import { RecipeCodex } from './CraftPanel';
 import { TitleCodex } from './TitleCodex'; // staff-luck 칭호 도감
+import { ContestCodex } from './windows/ContestWindow';
 import { CornerCodex } from './CornerCodex';
 import { brownBtn, brownBtnOn, brownBtnOff, dangerBtn, card, PALETTE } from './frame';
 
@@ -111,6 +112,7 @@ export function CodexPanel() {
           <span style={{ fontSize: 12, color: PALETTE.inkSoft }}>{x.requires.map((r) => `${nameOf(r.objectId)} ${r.count}`).join(' · ')} → {TARGET_LABEL[x.target]}</span>
         </div>
       ))}
+      <ContestCodex />{/* 대회: 트로피·우승 이력 */}
       <CornerCodex />
       <RecipeCodex />
       <TitleCodex />

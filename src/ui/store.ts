@@ -93,6 +93,7 @@ const ACTION_SFX: Record<Action['type'], SfxName> = {
   develop: 'unlock', dismissDevelop: 'tap', addTopping: 'tap', removeTopping: 'tap', levelUpMenu: 'unlock',
   drawTicket: 'tap', dismissDraw: 'tap', setUniform: 'tap', useGuestItem: 'unlock', dismissAnnouncement: 'tap',
   dismissOutcome: 'tap', skipTutorial: 'tap', skipTutorialChapter: 'tap', tutorialNote: 'tap',
+  enterContest: 'unlock', cancelContest: 'tap', dismissContest: 'tap',
   expandParking: 'place', // 트랙 H
   placeMain: 'fanfare', expandMain: 'unlock', buildSecondFloor: 'unlock', moveMain: 'place', undoMoveMain: 'tap', setBgm: 'tap', setLighting: 'tap', // y-indoor
   continueEnding: 'fanfare', // z-ending

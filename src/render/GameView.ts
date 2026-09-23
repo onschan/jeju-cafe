@@ -1,6 +1,6 @@
 import { Application, Container, Sprite, Graphics, Texture, Text } from 'pixi.js';
 import type { GameState, PlacedObject, Guest, Staff, Season, RoleId, Pt, RouteId, FxEvent } from '../sim/index.ts';
-import { seasonOf, LOW_ENERGY, parcelPrice, footprint, roomAt, doorFrontOf, WALL_COLORS, dayIndex, menuOf, sizeOf, MAIN_SIZE, LIGHT_RADIUS, gradeOf, objectAt, cellAt } from '../sim/index.ts';
+import { seasonOf, LOW_ENERGY, parcelPrice, footprint, roomAt, doorFrontOf, WALL_COLORS, dayIndex, menuOf, sizeOf, MAIN_SIZE, LIGHT_RADIUS, gradeOf, objectAt, cellAt, contestBadge } from '../sim/index.ts';
 import type { Parcel } from '../sim/index.ts';
 import { objectDef } from '../data/index.ts';
 import { isoTerrainTexture, isoObjectTexture, glowTexture, label, clearTextureCache, loadLabelFont } from './textures';
@@ -1224,6 +1224,21 @@ export class GameView {
       f2.tint = entry.sprite?.tint ?? 0xffffff;
       entry.node.addChild(f2);
     }
+    // 대회 입상 배지: 등급 간판 위 금별 리본 (contest.ts badge — 1위 6개월·입상 3개월, 지나면 사라진다)
+    entry.node.getChildByLabel('contestbadge')?.destroy({ children: true });
+    const badge = contestBadge(state);
+    if (badge) {
+      const mlv = state.main?.level ?? 1;
+      const size = MAIN_SIZE[mlv] ?? { w: 3, h: 2 };
+      const c = new Container();
+      c.label = 'contestbadge';
+      const l = label(`★ ${badge}`, 9);
+      l.anchor.set(0.5, 1);
+      l.position.set(0, -(size.w + size.h) * (ISO_H / 2) - (MAIN_WALL_TOP[mlv] ?? 36) - 16);
+      const bg = new Graphics().roundRect(l.x - l.width / 2 - 4, l.y - l.height - 1, l.width + 8, l.height + 2, 3).fill({ color: 0xd4a13c, alpha: 0.95 });
+      c.addChild(bg, l);
+      entry.node.addChild(c);
+    }
     entry.node.getChildByLabel('sign')?.destroy({ children: true });
     const text = state.cosmetics?.sign;
     if (!text) return;
@@ -1323,7 +1338,7 @@ export class GameView {
         // 시트 모드: 변형(심음·어린 나무·증축)이 바뀔 때만 텍스처를 갱신. 수확은 자동이라 링 대신 반짝임(syncFx).
         const isCafe = o.type === 'warehouse';
         const mainLv = state.main?.level ?? 1;
-        const key = `${objectVariant(o, mainLv) ?? ''}:${o.rot ?? ''}${isCafe ? `:${state.cosmetics?.wallColor ?? 0}:${state.cosmetics?.sign ?? ''}:${state.main?.floor2 ? 'F2' : ''}:g${gradeOf(state)}` : ''}`; // fun-rank: 등급이 바뀌면 간판·외벽 갱신
+        const key = `${objectVariant(o, mainLv) ?? ''}:${o.rot ?? ''}${isCafe ? `:${state.cosmetics?.wallColor ?? 0}:${state.cosmetics?.sign ?? ''}:${state.main?.floor2 ? 'F2' : ''}:g${gradeOf(state)}:${contestBadge(state) ?? ''}` : ''}`; // fun-rank: 등급이 바뀌면 간판·외벽 갱신 · 대회 배지가 붙거나 떨어지면 다시
         if (this.badgeKeys.get(o.id) === key) continue;
         this.badgeKeys.set(o.id, key);
         const t = objectTex(o, mainLv);
