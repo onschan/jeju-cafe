@@ -12,7 +12,7 @@ import type { GameState, ObjectDef, RoleId } from './types.ts';
 import { OBJECTS, objectDef } from '../data/index.ts';
 import { appealOf, cafeScenery, POPULARITY_LOW } from './appeal.ts';
 import { seatUseRate, SEAT_USE_BOTTLENECK, SCENERY_BOTTLENECK } from './tree.ts';
-import { totalSeats, GUESTS_PER_SEAT } from './guests.ts';
+import { totalSeats, seatsNeeded, GUESTS_PER_SEAT } from './guests.ts';
 import { topComplaints } from './reputation.ts';
 import { CLEAN_LOW } from './cleanliness.ts';
 import { staffInRole } from './staff.ts';
@@ -126,12 +126,14 @@ function roleBackupMove(s: GameState, need: RoleNeed): string {
 /** 가장 큰 병목 1개 + 다음 수 2개 */
 function bottleneckOf(s: GameState, m: { seatUse: number; left: number; pop: number; scenery: number; staffN: number; menuLeft: number; clean: number; net: number; unreachable: number; needs: RoleNeed[] }): { key: BottleneckKey; text: string; moves: [string, string] } {
   const top = topComplaints(s, 1)[0];
-  const seats = Math.max(1, Math.ceil(m.left / GUESTS_PER_SEAT));
+  // midgame: 「자리 몇 개?」를 수요에서 역산한다 — 대기 이탈이 있으면 이탈 인원분, 없으면 오늘 손님 기준 모자란 수
+  const seatNeed = seatsNeeded(s);
+  const add = Math.max(seatNeed.short, Math.ceil(m.left / GUESTS_PER_SEAT));
   // 아무리 좋은 시설도 손님이 못 가면 0이다 — 가장 먼저 본다
   if (m.unreachable > 0) return { key: 'unreachable', text: `손님이 못 가는 시설이 ${m.unreachable}개 있어요`, moves: ['올렛길 잇기', '끊긴 시설 옮기기'] };
   if (m.left > 0 || m.seatUse >= SEAT_USE_BOTTLENECK) {
-    const text = m.left > 0 ? `손님은 오는데 자리가 모자라요 (대기 이탈 ${m.left}명)` : '자리가 거의 꽉 차 있어요';
-    return { key: 'seat', text, moves: [`${seatName(s)} ${Math.min(4, seats)}개`, ROLE_HIRE.hall] };
+    const text = m.left > 0 ? `자리 ${Math.max(1, add)}개가 모자라요 (대기 이탈 ${m.left}명)` : `자리가 거의 꽉 찼어요 (지금 손님엔 ${seatNeed.now}개)`;
+    return { key: 'seat', text, moves: [`${seatName(s)} ${Math.min(4, Math.max(1, add))}개`, ROLE_HIRE.hall] };
   }
   if (m.staffN === 0) return { key: 'service', text: '직원이 없어 서빙이 안 돼요', moves: [ROLE_HIRE.hall, ROLE_HIRE.barista] };
   // 통합: 직원 병목은 채용 화면의 「지금 필요해요」와 같은 판정을 인용한다 (roleHeads 인분 환산 — 말이 갈리지 않게)
@@ -170,7 +172,7 @@ export function diagnose(s: GameState, input: CoachInput = {}): Diagnosis {
   // 3줄 평가: 규모 · 잘 되는 것 · 살림. 걸리는 것은 아래 「가장 큰 걸림돌」 칸이 따로 맡는다 (같은 말을 두 번 안 한다)
   const best = [...appeal.rows].sort((a, b2) => b2.value / b2.max - a.value / a.max)[0]!;
   const lines: [string, string, string] = [
-    `이번 달 손님 ${s.monthGuests}명 · 자리 ${seats}개`,
+    `이번 달 손님 ${s.monthGuests}명 · 자리 ${seats}/${seatsNeeded(s).now}개`,
     `${josa(best.label, '이/가')} 제일 좋아요 (${best.value}${best.unit})`,
     `직원 ${staffN}명 · 메뉴 ${s.menuSlots.length - menuLeft}/${s.menuSlots.length}칸 · 청결 ${Math.round(clean)}`,
   ];
@@ -181,6 +183,7 @@ export function diagnose(s: GameState, input: CoachInput = {}): Diagnosis {
     { label: '경관', value: `${Math.round(scenery * 10) / 10}` },
     { label: '서비스', value: `${service}%` },
     { label: '자리 이용률', value: `${Math.round(seatUse * 100)}%` },
+    { label: '필요한 자리', value: `지금 ${seatsNeeded(s).now}개 · 홍보 중 ${seatsNeeded(s).promo}개` }, // midgame: 「몇 개 필요한가」를 수치로
     { label: '대기 이탈', value: `${left}명` },
     { label: '불만 1위', value: topComplaints(s, 1)[0] ? `${topComplaints(s, 1)[0]!.count}건` : '없음' },
     { label: '직원', value: roles.length > 0 ? roles.map((x) => `${ROLE_NAME[x.r]} ${x.n}`).join(' · ') : '없음' },

@@ -6,7 +6,7 @@ import { sceneryScore, objectAt, sizeOf } from './grid.ts';
 import { availableMenus, consumeIngredients, isMenuAvailable } from './menu.ts';
 import { busStopPos, findPath, walkableNeighborsOf, reachMap, pathFromReach, cellKey, moveAlong, walkSpeedMult, GUEST_SPEED_CELLS_PER_S } from './path.ts';
 import { roleEffect, skillTotal, pushNotice, staffInRole, addRoleExp, LOW_ENERGY, roleHeads, zoneOf, isNightShift, ZONE_ROLE, ZONE_FOCUS_BONUS, ZONE_OTHER_PENALTY, ZONE_SATISFACTION_MIN, ZONE_SATISFACTION_MAX, NIGHT_BONUS } from './staff.ts'; // staff2: 인원 환산·담당 구역·저녁 근무
-import { effectivePopularity, youtuberMultiplier } from './promotions.ts';
+import { effectivePopularity, youtuberMultiplier, MAX_ACTIVE_PROMOTIONS } from './promotions.ts';
 import { START_HOUR, END_HOUR, seasonOf } from './clock.ts';
 import { parcelBonusAt, parcelSpawnMult, parcelFeeMult, parcelAt } from './parcels.ts';
 import { objectStats, popularityFor, guestPickMult, cornerSatisfaction, BASE_POPULARITY } from './compat.ts';
@@ -216,12 +216,39 @@ export function spotDailyGuests(state: GameState): number {
 export function popularityGuestBase(state: GameState): number {
   return BASE_DAILY_GUESTS + Math.floor(popularitySum(state) / POP_SUM_PER_GUEST) + Math.floor(facilityPopularitySum(state) / FACILITY_POP_PER_GUEST) + spotDailyGuests(state);
 }
+/** 자리 상한을 빼고 본 하루 손님 수. popBonus를 주면 인기 합이 그만큼 더 있다고 치고 센다 (홍보를 걸었을 때의 수요 — seatsNeeded). */
+export function uncappedDailyGuests(state: GameState, popBonus = 0): number {
+  const base = BASE_DAILY_GUESTS + Math.floor((popularitySum(state) + popBonus) / POP_SUM_PER_GUEST)
+    + Math.floor(facilityPopularitySum(state) / FACILITY_POP_PER_GUEST) + spotDailyGuests(state);
+  const n = base * effectMult(state, 'spawnMult') * eventGuestMult(state) * (1 + dignityPct(state) / 100)
+    * seasonGuestMult(state.clock.month) * reputationGuestMult(state) * routeGuestMult(state) * contestGuestMult(state); // 트랙 H 올레길 +15% · 청결 배수(트랙 A)는 dailyCleanliness가 거는 하루짜리 spawnMult 효과로 effectMult에 들어 있다
+  return Math.max(MIN_DAILY_GUESTS, Math.min(MAX_DAILY_GUESTS, Math.round(n)));
+}
+
 /** 하루 손님 수 = min(좌석 × 6, 기반값 × 이벤트 전체 배수 × 빅 이벤트 배수 × 메뉴 품격(+%) × 계절 × 라이벌(−5%/곳) × 청결 × 평판(0.5 + 평판/100)), 2~300 */
 export function dailyGuestCount(state: GameState): number {
-  const n = popularityGuestBase(state) * effectMult(state, 'spawnMult') * eventGuestMult(state) * (1 + dignityPct(state) / 100)
-    * seasonGuestMult(state.clock.month) * reputationGuestMult(state) * routeGuestMult(state) * contestGuestMult(state); // 트랙 H 올레길 +15% · 청결 배수(트랙 A)는 dailyCleanliness가 거는 하루짜리 spawnMult 효과로 effectMult에 들어 있다
   const cap = totalSeats(state) * GUESTS_PER_SEAT;
-  return Math.max(MIN_DAILY_GUESTS, Math.min(MAX_DAILY_GUESTS, cap, Math.round(n)));
+  return Math.max(MIN_DAILY_GUESTS, Math.min(cap, uncappedDailyGuests(state)));
+}
+
+// ---------- midgame: 「자리가 몇 개 필요한가」 ----------
+
+/** 기간형 홍보 한 칸이 인기 합에 얹어 주는 몫 (대표 홍보 allDelta 5 × 상위 12종) */
+export const PROMO_POP_PER_SLOT = 60;
+export interface SeatsNeed {
+  now: number;    // 지금 손님을 다 앉히려면 필요한 자리
+  promo: number;  // 홍보를 꽉 채워 걸었을 때 필요한 자리
+  have: number;   // 지금 자리
+  short: number;  // 모자란 자리 (지금 기준)
+}
+/** 인기·명소·경로·홍보 상태를 그대로 두고 필요한 자리 수를 역산한다. 자리 하나가 하루 GUESTS_PER_SEAT명을 받는다. */
+export function seatsNeeded(state: GameState, opts: { promoSlots?: number } = {}): SeatsNeed {
+  const free = Math.max(0, (opts.promoSlots ?? MAX_ACTIVE_PROMOTIONS) - (state.activePromotions?.length ?? 0));
+  const per = GUESTS_PER_SEAT;
+  const now = Math.max(1, Math.ceil(uncappedDailyGuests(state) / per));
+  const promo = Math.max(now, Math.ceil(uncappedDailyGuests(state, PROMO_POP_PER_SLOT * free) / per));
+  const have = totalSeats(state);
+  return { now, promo, have, short: Math.max(0, now - have) };
 }
 
 /** 새 날: 어제 대기열은 사라지고, 오늘 낸 주문 수(staff2)도 0부터 센다 */
