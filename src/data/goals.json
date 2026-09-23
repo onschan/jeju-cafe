@@ -964,11 +964,11 @@
   },
   {
     "id": "g48",
-    "title": "시설 40개",
-    "desc": "마당에 시설 40개",
+    "title": "본관 Lv3",
+    "desc": "본관을 Lv3로 증축",
     "condition": {
-      "type": "facilities",
-      "n": 40
+      "type": "mainLevel",
+      "lv": 3
     },
     "reward": [
       {
@@ -977,7 +977,7 @@
       }
     ],
     "speaker": "samchun",
-    "line": "40개나 지었어? 손님이 둘러볼 데가 많아졌져."
+    "line": "본관이 커졌다. 비 오는 날도 자리가 남아."
   },
   {
     "id": "g49",
@@ -998,11 +998,11 @@
   },
   {
     "id": "g50",
-    "title": "4년차 맞이하기",
-    "desc": "4년차 맞이하기",
+    "title": "직원 7명",
+    "desc": "직원 7명 고용",
     "condition": {
-      "type": "year",
-      "n": 4
+      "type": "staff",
+      "n": 7
     },
     "reward": [
       {
@@ -1022,8 +1022,8 @@
         "id": "lighthouse"
       }
     ],
-    "speaker": "hero",
-    "line": "4년차 시작이에요. 올해도 잘 부탁해요."
+    "speaker": "halmang",
+    "line": "일곱이 움직이니 마당이 저절로 돌아간다."
   },
   {
     "id": "g51",
@@ -1075,11 +1075,11 @@
   },
   {
     "id": "g53",
-    "title": "본관 Lv3",
-    "desc": "본관을 Lv3로 증축",
+    "title": "대회 첫 출전",
+    "desc": "연 2회 열리는 대회에 한 번 나가 보자 (6월·12월, 접수는 이레 전부터)",
     "condition": {
-      "type": "mainLevel",
-      "lv": 3
+      "type": "custom",
+      "id": "contestEntered"
     },
     "reward": [
       {
@@ -1088,7 +1088,7 @@
       }
     ],
     "speaker": "samchun",
-    "line": "본관이 커졌다. 비 오는 날도 자리가 남아."
+    "line": "대회에 나갔구나. 무대에 서 본 사람은 눈이 달라진다."
   },
   {
     "id": "g54",
@@ -1146,11 +1146,11 @@
   },
   {
     "id": "g56",
-    "title": "직원 7명",
-    "desc": "직원 7명 고용",
+    "title": "대회 3위 안에",
+    "desc": "대회에서 3위 안에 들자. 연수·칭호·개발 메뉴가 점수를 올려요",
     "condition": {
-      "type": "staff",
-      "n": 7
+      "type": "custom",
+      "id": "contestTop3"
     },
     "reward": [
       {
@@ -1170,16 +1170,16 @@
         "id": "table_in"
       }
     ],
-    "speaker": "halmang",
-    "line": "일곱이 움직이니 마당이 저절로 돌아간다."
+    "speaker": "hero",
+    "line": "단상에 올라갔어요. 손이 아직 떨려요."
   },
   {
     "id": "g57",
-    "title": "평판 80",
-    "desc": "평판 80 이상",
+    "title": "대회 우승",
+    "desc": "대회에서 1위를 하고 트로피를 받자",
     "condition": {
-      "type": "reputation",
-      "n": 80
+      "type": "custom",
+      "id": "contestWin"
     },
     "reward": [
       {
@@ -1208,7 +1208,7 @@
       }
     ],
     "speaker": "halmang",
-    "line": "평판 80. 처음 온 손님도 믿고 앉아요."
+    "line": "우승이여. 저 트로피는 우리 실내에 놓자."
   },
   {
     "id": "g58",
