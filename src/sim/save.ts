@@ -96,6 +96,7 @@ function migrateTrim(state: GameState): void {
 function backfill(state: GameState): void {
   state.lastMonthIncome ??= state.lastMonthCard?.income ?? 0;
   state.researchAcc ??= 0;
+  state.dayOrders ??= { drink: 0, dessert: 0, meal: 0, signature: 0 }; // staff2: 오늘 분류별 주문 수
   // ---- stakes: 긴장감·트레이드오프·변수 ----
   state.monthCosts.rent ??= 0;
   if (state.lastMonthCard) state.lastMonthCard.costs.rent ??= 0;

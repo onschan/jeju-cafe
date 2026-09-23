@@ -394,6 +394,8 @@ export interface Staff {
   training: StaffTraining | null; // 연수 중이면 자리를 비운다
   title?: string;         // 칭호 id (titles.json, staff-luck) — 없으면 일반
   role: RoleId | null;
+  zone?: 'indoor' | 'outdoor';  // staff2: 홀 직원 담당 구역 (없으면 전체) — 맡은 구역 만족 +2, 다른 구역 −1
+  night?: boolean;              // staff2: 저녁(18시 이후)까지 근무 — 저녁 손님 만족 +2, 그 직원 하루 기력 −10
   unpaidMonths: number;
   energy: number; // 0~100
   lastParttimeMonthIndex: number; // 아르바이트는 직원당 한 달에 한 번 (−1 = 아직)
@@ -889,6 +891,7 @@ export interface GameState {
   voices?: VoiceLine[];                       // trim: 손님 목소리 피드 (voice.ts, 하루 8줄)
   monthReputationDelta: number;               // 이달 평판 변화 누적 (카드)
   dayStats: { satisfied: number; complained: number; total: number }; // 오늘 만족·불만·총손님 (밤에 평판 계산 후 리셋)
+  dayOrders?: Record<MenuCategory, number>; // staff2: 오늘 분류별로 낸 주문 수 (새 날 0부터 — 조리 담당이 감당하는 양과 견준다)
   dayPhotos?: number;                          // fun: 오늘 손님이 찍은 사진 수 (밤에 평판 +0.05/장, 상한 0.5 — appeal.ts)
   dayLog?: DayLogRow[];                        // 성장: 최근 30일 하루치 손님·매출·새 단골·등급 (daylog.ts)
   dayLogMark?: { income: number; regulars: number }; // 하루 차이를 내려고 들고 있는 어제 마감값 (daylog.ts)
@@ -1056,6 +1059,8 @@ export type Action =
   | { type: 'hire'; candidateId: string; role: RoleId }
   | { type: 'fire'; staffId: string }
   | { type: 'assign'; staffId: string; role: RoleId | null }
+  | { type: 'setStaffZone'; staffId: string; zone: 'all' | 'indoor' | 'outdoor' } // staff2: 홀 직원 담당 구역
+  | { type: 'setStaffNight'; staffId: string; on: boolean }                       // staff2: 저녁 근무 토글
   | { type: 'levelUp'; staffId: string }
   | { type: 'train'; staffId: string; trainingId: string }
   | { type: 'promote'; staffId: string; promotionId: string }

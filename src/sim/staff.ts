@@ -140,11 +140,86 @@ export function ingredientDiscount(state: GameState): number {
   return Math.min(0.3, roleEffect(state, 'cook') / 500 + skillTotal(state, 'ingredientDiscount') + titleBonus(state, 'discount')); // staff-luck 칭호
 }
 
+// ---------- 직종 인원 환산 (staff2) ----------
+/** 주 스탯이 이만큼이면 한 사람 몫 */
+export const HEAD_STAT = 40;
+/** 아무리 뛰어나도 한 사람은 1.5인분까지 */
+export const HEAD_MAX = 1.5;
+/** 같은 직종 세 번째 사람부터 몫이 절반 — 한 직종만 몰아 뽑는 게 최적이 안 되게 */
+export const DIMINISH_FROM = 2;
+export const DIMINISH_FACTOR = 0.5;
+
+/** 직원 한 명의 몫 (주 스탯 ÷ 40, 최대 1.5, 기력 30 미만이면 절반) */
+export function headValue(staff: Staff, stat: StatKey): number {
+  return Math.min(HEAD_MAX, staff.stats[stat] / HEAD_STAT) * energyFactor(staff);
+}
+/** 몫이 큰 사람부터 세되 세 번째부터 절반 */
+function diminished(values: number[]): number {
+  return [...values].sort((a, b) => b - a).reduce((sum, v, i) => sum + v * (i >= DIMINISH_FROM ? DIMINISH_FACTOR : 1), 0);
+}
+/** 그 직종의 환산 인원. 1 = 스탯 40짜리 한 사람 몫. 세 번째 사람부터 절반만 센다. */
+export function roleHeads(state: GameState, role: RoleId): number {
+  const key = roleDef(role).stat;
+  return diminished(staffInRole(state, role).map((st) => headValue(st, key)));
+}
+/** 그 직종에 한 명 더 붙였을 때의 환산 인원 (채용 미리보기용) */
+export function roleHeadsWith(state: GameState, role: RoleId, stats: Stats): number {
+  const key = roleDef(role).stat;
+  return diminished([...staffInRole(state, role).map((st) => headValue(st, key)), Math.min(HEAD_MAX, stats[key] / HEAD_STAT)]);
+}
+
+// ---------- 배치 (staff2): 담당 구역·야간 근무 ----------
+export type StaffZone = 'all' | 'indoor' | 'outdoor';
+export const STAFF_ZONES: StaffZone[] = ['all', 'indoor', 'outdoor'];
+export const ZONE_NAME: Record<StaffZone, string> = { all: '전체', indoor: '실내', outdoor: '야외' };
+/** 맡은 구역 손님 만족 +2, 맡지 않은 구역 −1 */
+export const ZONE_FOCUS_BONUS = 2;
+export const ZONE_OTHER_PENALTY = -1;
+export const ZONE_SATISFACTION_MIN = -2;
+export const ZONE_SATISFACTION_MAX = 4;
+/** 구역을 고르는 직종 (홀이 손님을 맞는다) */
+export const ZONE_ROLE: RoleId = 'hall';
+export function zoneOf(staff: Staff): StaffZone {
+  return staff.zone ?? 'all';
+}
+export function canSetZone(state: GameState, staffId: string, zone: StaffZone): ApplyResult {
+  const st = findStaff(state, staffId);
+  if (!st) return { ok: false, reason: '없는 직원이에요' };
+  if (st.role !== ZONE_ROLE) return { ok: false, reason: '홀 직원만 구역을 맡아요' };
+  if (!STAFF_ZONES.includes(zone)) return { ok: false, reason: '없는 구역이에요' };
+  return { ok: true };
+}
+export function setZone(state: GameState, staffId: string, zone: StaffZone): void {
+  const st = findStaff(state, staffId)!;
+  if (zone === 'all') delete st.zone; else st.zone = zone;
+}
+/** 저녁 근무: 그 직원은 하루 기력 −10, 저녁 손님 만족 +2 */
+export const NIGHT_BONUS = 2;
+export const NIGHT_ENERGY_COST = 10;
+export function isNightShift(staff: Staff): boolean {
+  return staff.night === true;
+}
+export function canSetNight(state: GameState, staffId: string, on: boolean): ApplyResult {
+  const st = findStaff(state, staffId);
+  if (!st) return { ok: false, reason: '없는 직원이에요' };
+  if (st.training) return { ok: false, reason: '연수 중이에요' };
+  if (on && st.role === null) return { ok: false, reason: '쉬는 직원은 못 맡아요' };
+  return { ok: true };
+}
+export function setNight(state: GameState, staffId: string, on: boolean): void {
+  const st = findStaff(state, staffId)!;
+  if (on) st.night = true; else delete st.night;
+}
+/** 저녁에 일하는 직원이 한 명이라도 있나 */
+export function hasNightShift(state: GameState): boolean {
+  return state.staff.some((st) => st.role !== null && !st.training && isNightShift(st));
+}
+
 // ---------- 신설 직종 효과 훅 (§3.6.1) — A(청결)·농원 수확·홍보가 곱한다 ----------
 
-/** 청소 직원의 하루 청결 회복량 = Σ(기술÷5 + 힘÷10) × 기력 계수 × (1 + 청소 달인). 청소 직원이 없으면 0. */
+/** 청소 직원의 하루 청결 회복량 = Σ(기술÷5 + 힘÷10) × 기력 계수 × (1 + 청소 달인). 세 번째 청소 직원부터 절반. 청소 직원이 없으면 0. */
 export function cleanPowerOf(state: GameState): number {
-  const base = staffInRole(state, 'clean').reduce((s, st) => s + (st.stats.skill / 5 + st.stats.strength / 10) * energyFactor(st), 0);
+  const base = diminished(staffInRole(state, 'clean').map((st) => (st.stats.skill / 5 + st.stats.strength / 10) * energyFactor(st)));
   return base * (1 + skillTotal(state, 'cleanBonus', 'clean') + titleBonus(state, 'clean')); // staff-luck 칭호(청소의 신…)
 }
 export const GARDEN_BONUS_PER_STAFF = 0.5;
@@ -414,9 +489,12 @@ export function hourlyEnergy(state: GameState): void {
   }
 }
 
-/** 밤: 기력 +40 */
+/** 밤: 기력 +40. 저녁까지 일하기로 한 직원은 −10만큼 덜 쉰다 (staff2) */
 export function nightlyRecovery(state: GameState): void {
-  for (const st of state.staff) st.energy = Math.min(100, st.energy + NIGHT_ENERGY_RECOVERY);
+  for (const st of state.staff) {
+    const night = st.role !== null && !st.training && isNightShift(st) ? NIGHT_ENERGY_COST : 0;
+    st.energy = Math.max(0, Math.min(100, st.energy + NIGHT_ENERGY_RECOVERY - night));
+  }
 }
 
 // ---------- 이동 ----------

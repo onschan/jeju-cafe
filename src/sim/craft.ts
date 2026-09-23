@@ -12,7 +12,7 @@ import { menuDef, ingredientDef, toppingDef, INGREDIENT_COMBOS, HIDDEN_RECIPES, 
 import { randInt, nextRandom } from './rng.ts';
 import { rollOutcome as rollLuck, outcomeChances, luckSkill, LUCK_SKILL_GREAT, type Chances } from './luck.ts'; // staff-luck
 import { staffTitleEffect } from './titles.ts';
-import { findStaff, ingredientDiscount, pushNotice } from './staff.ts';
+import { findStaff, ingredientDiscount, pushNotice, roleHeads } from './staff.ts'; // staff2: 주방이 두터우면 시그니처가 잘 나온다
 import { dayIndex } from './effects.ts';
 import { josa } from './josa.ts';
 import { takeIngredient } from './warehouse.ts';
@@ -342,10 +342,16 @@ export function uniqueMenuName(state: GameState, base: string): string {
   if (!taken.has(base)) return base;
   for (let n = 2; ; n++) { const name = `${base} ${n}`; if (!taken.has(name)) return name; }
 }
+/** staff2: 요리사 1인분당 시그니처 성공률 +5% (최대 +15%). 다른 분류엔 없다. */
+export const COOK_DEVELOP_PER_HEAD = 0.05;
+export const COOK_DEVELOP_MAX = 0.15;
+export function cookDevelopBonus(state: GameState, base: MenuBase): number {
+  return base === 'signature' ? Math.min(COOK_DEVELOP_MAX, COOK_DEVELOP_PER_HEAD * roleHeads(state, 'cook')) : 0;
+}
 /** 개발 확률 (0~1): 대성공 10% × (1 + 칭호 develop, 미슐랑 셰프 = 2배) + 칭호 대박 + 행운아, 성공 = successRate, 나머지 실패. 청결·평판 수정치는 outcomeChances가 더한다 (staff-luck). */
 export function developChances(state: GameState, base: MenuBase, params: BrewParams, staff: Staff | undefined): Chances {
   const great = (P_GREAT / 100) * (1 + staffTitleEffect(staff, 'develop')) + staffTitleEffect(staff, 'great') + luckSkill(staff) * LUCK_SKILL_GREAT;
-  const success = Math.min(1 - great, successRate(base, params, developStaffStat(staff, base)) / 100);
+  const success = Math.min(1 - great, successRate(base, params, developStaffStat(staff, base)) / 100 + cookDevelopBonus(state, base));
   return outcomeChances(state, 'develop', null, { base: { great: great * 100, success: success * 100, fail: (1 - great - success) * 100 } });
 }
 function rollOutcome(state: GameState, dev: Developing, staff: Staff | undefined): DevelopOutcome {

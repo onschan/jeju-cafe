@@ -7,7 +7,7 @@ import { objectDef } from '../data/index.ts';
 import { monthIndex } from './clock.ts';
 import { addEffect } from './effects.ts';
 import { parcelAt } from './parcels.ts';
-import { placeCost } from './cafe.ts';
+import { placeCost, isSeat, seatsOf } from './cafe.ts'; // staff2: 자리 수에서 오는 오염
 import { pushNotice, cleanPowerOf } from './staff.ts';
 import { levelOf, LEVEL_UPKEEP_MULT } from './upgrade.ts';
 
@@ -44,8 +44,11 @@ export function dirtyForDays(state: GameState, n: number, days: number): boolean
 }
 /** 청소 직종 id (트랙 D의 staff_roles.json에 있으면 그 직원, 없으면 홀 직원이 절반 효과) */
 export const CLEAN_ROLE = 'clean';
-/** 청소 직원이 없을 때: 일하는 직원 전원이 틈틈이 치운다 — 청소 직원 힘(기술 ÷ 5 + 힘 ÷ 10)의 ¼ */
-export const GENERAL_CLEAN_FACTOR = 0.25;
+/** 청소 직원이 없을 때: 일하는 직원 전원이 틈틈이 치운다 — 청소 직원 힘(기술 ÷ 5 + 힘 ÷ 10)의 15% (staff2: ¼ → 0.15, 겸업으로는 넓은 카페를 못 따라간다) */
+export const GENERAL_CLEAN_FACTOR = 0.15;
+/** staff2: 자리가 12개를 넘으면 그만큼 더 더러워진다 — 좌석 하나당 하루 0.5 */
+export const CLEAN_FREE_SEATS = 12;
+export const CLEAN_PER_SEAT = 0.5;
 
 export const WEAR_START_MONTHS = 24;
 export const WEAR_STEP_MONTHS = 6;
@@ -68,6 +71,12 @@ export function cleanReduceMult(state: GameState): number {
   return (1 - Math.min(CLEAN_REDUCE_CAP, n * CLEAN_REDUCE_PER_FACILITY)) * charm;
 }
 
+/** staff2: 자리 수에서 오는 하루 오염 — 12석까지는 0, 넘는 자리 하나당 0.5 */
+export function seatDirt(state: GameState): number {
+  let seats = 0;
+  for (const o of Object.values(state.objects)) if (isSeat(state, o)) seats += seatsOf(state, o);
+  return Math.max(0, seats - CLEAN_FREE_SEATS) * CLEAN_PER_SEAT;
+}
 /** 하루 회복량: 청소 직원 힘(트랙 D cleanPowerOf: 기술 ÷ 5 + 힘 ÷ 10, 기력·특기 반영) × (청소 도구실 1.5). 청소 직원이 없으면 일하는 직원 전원(연수 중 제외)이 같은 공식의 ¼만큼 틈틈이 치운다. */
 export function dailyCleanRecovery(state: GameState): number {
   const cleaners = state.staff.filter((s) => s.role === CLEAN_ROLE);
@@ -82,7 +91,7 @@ export function dailyCleanliness(state: GameState): void {
   const c = state.clean;
   const guests = Math.max(0, state.totalGuests - c.lastGuests);
   c.lastGuests = state.totalGuests;
-  const decay = (guests / CLEAN_GUEST_DIV) * cleanReduceMult(state);
+  const decay = (guests / CLEAN_GUEST_DIV + seatDirt(state)) * cleanReduceMult(state); // staff2: 넓은 카페는 손님 수와 별개로 더러워진다
   const before = c.value;
   c.value = Math.max(0, Math.min(CLEAN_MAX, c.value - decay + dailyCleanRecovery(state)));
   c.history.push(Math.round(c.value));

@@ -5,7 +5,7 @@ import { pickWeighted, nextRandom, randInt } from './rng.ts';
 import { sceneryScore, objectAt, sizeOf } from './grid.ts';
 import { availableMenus, consumeIngredients, isMenuAvailable } from './menu.ts';
 import { busStopPos, findPath, walkableNeighborsOf, reachMap, pathFromReach, cellKey, moveAlong, walkSpeedMult, GUEST_SPEED_CELLS_PER_S } from './path.ts';
-import { roleEffect, skillTotal, pushNotice, staffInRole, addRoleExp, LOW_ENERGY } from './staff.ts';
+import { roleEffect, skillTotal, pushNotice, staffInRole, addRoleExp, LOW_ENERGY, roleHeads, zoneOf, isNightShift, ZONE_ROLE, ZONE_FOCUS_BONUS, ZONE_OTHER_PENALTY, ZONE_SATISFACTION_MIN, ZONE_SATISFACTION_MAX, NIGHT_BONUS } from './staff.ts'; // staff2: 인원 환산·담당 구역·저녁 근무
 import { effectivePopularity, youtuberMultiplier } from './promotions.ts';
 import { START_HOUR, END_HOUR, seasonOf } from './clock.ts';
 import { parcelBonusAt, parcelSpawnMult, parcelFeeMult, parcelAt } from './parcels.ts';
@@ -25,7 +25,7 @@ import { contestGuestMult } from './contest.ts'; // 대회 입상 뒤 손님 유
 import { spotGuestBonus, spotSpawnMult } from './spots.ts';
 import type { ParcelBonus } from './types.ts';
 import { seatsOf, isSeat } from './cafe.ts';
-import { filterSeatsForWeather, stayMs, browseChance, indoorSpawnMult } from './rooms.ts';
+import { filterSeatsForWeather, stayMs, browseChance, indoorSpawnMult, isIndoorSeat } from './rooms.ts';
 import { nightSatisfaction } from './lighting.ts'; // fix-indoor: 밤 조명 — 가로등 +2·어두운 야외 자리 −2 // y-indoor 훅: 실내 우선·체류·둘러보기·만족·유입·바 요금
 import { pushFx } from './fx.ts';
 import { guestCap } from './grade.ts'; // fun-rank 훅: 마당 동시 손님 상한 = 등급별 (30 + 10/등급)
@@ -46,9 +46,22 @@ import { assignGuestName, regularsDue, dressAsRegular, regularTip, thankIfDone, 
 export { moveAlong, GUEST_SPEED_CELLS_PER_S }; // 하위 호환 재수출 (본체는 path.ts)
 export const SEAT_MS = 3000;       // 기분이 정해진 뒤 앉아 있는 시간 (≈1.5시간)
 export const PREP_MS = 3000;       // 직원 없을 때 조리 시간 (≈1.5시간)
-export const MAX_PREP_CUT = 0.6;   // 직원 효과로 줄일 수 있는 최대 비율
+export const MAX_PREP_CUT = 0.45;  // staff2: 조리 담당 1인분당 −15%, 최대 −45%
+export const PREP_CUT_PER_HEAD = 0.15;
 export const MAX_SPEED_SKILL = 0.5;
-export const SERVICE_PER_SCENERY = 30; // 홀 서비스 30당 경치 기준 −1
+export const SERVICE_PER_SCENERY = 30; // 홀 서비스 30당 경치 기준 −1 (옛 공식 — 지금은 serviceBonus가 인원 환산을 쓴다)
+// staff2: 홀 1인분당 만족 +2, 최대 +6
+export const SERVICE_PER_HEAD = 2;
+export const SERVICE_MAX = 6;
+// staff2: 하루에 감당하는 주문 — 주인 혼자 음료 12잔, 바리스타 1인분당 +30잔, 요리사 1인분당 20접시.
+// 넘긴 만큼 음료·음식이 늦게 나와 만족이 깎이고 「오래 기다렸다」 불만이 는다.
+export const OWNER_DRINKS_PER_DAY = 12;
+export const DRINKS_PER_BARISTA = 30;
+export const FOOD_PER_COOK = 20;
+export const WAIT_PENALTY_MAX = 3;
+/** staff2: 바리스타 2인분마다 음료 만족 +1 (최대 +2) */
+export const DRINK_QUALITY_PER_HEAD = 0.5;
+export const DRINK_QUALITY_MAX = 2;
 export const POP_PER_SCENERY = 3;      // 좌석 인기가 기본(10)에서 3 벗어날 때마다 경치 ±1
 export const SAY_CHANCE = 0.35;    // §19 손님 대사 확률 (fun-guest: 20→35%, 요청·인사 대사 우선)
 export const MAX_GUESTS = 60; // 상한 표(등급 4)와 같은 값 — 실제 상한은 grade.ts guestCap(state)
@@ -207,9 +220,10 @@ export function dailyGuestCount(state: GameState): number {
   return Math.max(MIN_DAILY_GUESTS, Math.min(MAX_DAILY_GUESTS, cap, Math.round(n)));
 }
 
-/** 새 날: 어제 대기열은 사라진다 */
+/** 새 날: 어제 대기열은 사라지고, 오늘 낸 주문 수(staff2)도 0부터 센다 */
 export function resetWaiting(state: GameState): void {
   state.waiting = [];
+  state.dayOrders = { drink: 0, dessert: 0, meal: 0, signature: 0 };
 }
 /** 대기열이 찼을 때 돌아가는 손님: 이달 이탈 수 +1, 그 손님층 만족 −10 */
 function walkAway(state: GameState, typeId: string): void {
@@ -363,7 +377,7 @@ export function spawnGuests(state: GameState, n: number, forceType?: string, ent
       // 자리가 없으면 줄을 서고, 줄이 3명이면 돌아간다
       const t = pickType('none');
       if (!t) break;
-      if (state.waiting.length < WAIT_MAX) state.waiting.push(t);
+      if (state.waiting.length < waitCapOf(state)) state.waiting.push(t); // staff2: 홀 직원이 줄을 봐 주면 덜 돌아간다
       else walkAway(state, t);
       continue;
     }
@@ -396,17 +410,49 @@ function profileOf(state: GameState, g: Guest): GuestProfile {
   return { likes: t.likes, likesStats: t.likesStats, wallet: Math.round(walletOf(state, g.type) * routeWalletMult(g)), minScenery: t.minScenery }; // 트랙 H: 경로·외국인 지갑 배수
 }
 
-/** 조리 시간 = 5초 × (1 − min(0.6, 담당 역할 효과/100)) × (1 − 속도 스킬) */
+/** staff2: 조리 담당 1인분당 −15%, 최대 −45% */
+export function prepCut(state: GameState, role: RoleId): number {
+  return Math.min(MAX_PREP_CUT, PREP_CUT_PER_HEAD * roleHeads(state, role));
+}
+/** 조리 시간 = 3초 × (1 − 담당 직종 인원 환산 × 15%, 최대 45%) × (1 − 속도 스킬) */
 export function prepTimeMs(state: GameState, category: MenuCategory): number {
   const role = prepRole(category);
-  const cut = Math.min(MAX_PREP_CUT, roleEffect(state, role) / 100);
   const speed = Math.min(MAX_SPEED_SKILL, skillTotal(state, 'speed', role) + titleBonus(state, 'speed', role)); // staff-luck 칭호
-  return PREP_MS * (1 - cut) * (1 - speed);
+  return PREP_MS * (1 - prepCut(state, role)) * (1 - speed);
 }
 
-/** 홀 서비스가 경치 기준을 낮춘다 */
+/** staff2: 이 분류를 하루에 몇 개까지 제때 낼 수 있나. 음료는 주인 몫 12잔이 깔려 있고, 음식은 요리사가 있어야 난다. */
+export function servingCapacity(state: GameState, category: MenuCategory): number {
+  return category === 'drink'
+    ? OWNER_DRINKS_PER_DAY + DRINKS_PER_BARISTA * roleHeads(state, 'barista')
+    : FOOD_PER_COOK * roleHeads(state, 'cook');
+}
+/** 오늘 이 분류를 몇 개 냈나 */
+export function ordersToday(state: GameState, category: MenuCategory): number {
+  return state.dayOrders?.[category] ?? 0;
+}
+/** staff2: 감당하는 양을 넘긴 만큼 만족이 깎인다 (경치 단위 0~3). 0이면 제때 나온 것. */
+export function waitPenalty(state: GameState, category: MenuCategory): number {
+  const cap = servingCapacity(state, category);
+  const done = ordersToday(state, category);
+  if (cap <= 0) return done > 0 ? WAIT_PENALTY_MAX : 0;
+  return Math.min(WAIT_PENALTY_MAX, Math.ceil(Math.max(0, done / cap - 1) * 2));
+}
+/** staff2: 바리스타가 많으면 음료가 더 맛있다 (2인분마다 만족 +1, 최대 +2) */
+export function drinkQualityBonus(state: GameState): number {
+  return Math.min(DRINK_QUALITY_MAX, Math.floor(roleHeads(state, 'barista') * DRINK_QUALITY_PER_HEAD));
+}
+
+/** 홀 서비스가 경치 기준을 낮춘다 — staff2: 1인분당 +2, 최대 +6 */
 export function serviceBonus(state: GameState): number {
-  return Math.floor(roleEffect(state, 'hall') / SERVICE_PER_SCENERY);
+  return Math.min(SERVICE_MAX, Math.round(SERVICE_PER_HEAD * roleHeads(state, 'hall')));
+}
+
+/** staff2: 홀 직원이 줄을 봐 줘서 돌아가는 손님이 준다 — 1인분당 줄 +3칸(최대 +6) */
+export const WAIT_PER_HALL_HEAD = 3;
+export const WAIT_EXTRA_MAX = 6;
+export function waitCapOf(state: GameState): number {
+  return WAIT_MAX + Math.min(WAIT_EXTRA_MAX, Math.round(WAIT_PER_HALL_HEAD * roleHeads(state, 'hall')));
 }
 
 function maybeSay(state: GameState, g: Guest): void {
@@ -434,9 +480,29 @@ export function countGatesOn(state: GameState, path: Pt[]): number {
   for (const p of path) if (objectAt(state, p.x, p.y)?.type === 'gate') n++;
   return n;
 }
-/** 만족 판정 가산(경치 단위): 콤보(손님층 +5·전체 +3)·청결(80 이상 +3, 50 미만 −5)은 10으로 나눠 경치 단위로 (트랙 A) + 정낭 인상(w-free) */
+/** staff2: 홀 직원이 맡은 구역이면 +2, 맡지 않은 구역이면 −1 (합쳐서 −2~+4). 전체를 맡으면 어느 쪽도 아니다. */
+export function zoneSatisfaction(state: GameState, seat: PlacedObject): number {
+  let v = 0;
+  for (const st of staffInRole(state, ZONE_ROLE)) {
+    const z = zoneOf(st);
+    if (z === 'all') continue;
+    v += z === (isIndoorSeat(state, seat) ? 'indoor' : 'outdoor') ? ZONE_FOCUS_BONUS : ZONE_OTHER_PENALTY;
+  }
+  return Math.max(ZONE_SATISFACTION_MIN, Math.min(ZONE_SATISFACTION_MAX, v));
+}
+/** staff2: 저녁(18시 이후)까지 일하는 직원이 있으면 그 시간 손님 만족 +2 */
+export function nightShiftSatisfaction(state: GameState): number {
+  if (state.clock.hour < NIGHT_HOUR) return 0;
+  return state.staff.some((st) => st.role !== null && !st.training && isNightShift(st)) ? NIGHT_BONUS : 0;
+}
+/** 만족 판정 가산(경치 단위): 콤보(손님층 +5·전체 +3)·청결(80 이상 +3, 50 미만 −5)은 10으로 나눠 경치 단위로 (트랙 A) + 정낭 인상(w-free)
+ *  + staff2: 조리 대기(−0~3)·음료 품질(바리스타 2인분당 +1)·담당 구역(±)·저녁 근무(+2) */
 export function extraSatisfaction(state: GameState, g: Guest, seat: PlacedObject): number {
-  return (cornerSatisfaction(state, seat.id, g.type) + cleanSatisfaction(state) + titleBonus(state, 'satisfaction')) / 10 + gateSatisfaction(g) + nightSatisfaction(state, seat); // staff-luck 칭호 만족 // y-indoor: 소파 +2·난로 겨울 +3 · fix-indoor: 밤 조명
+  const cat = g.menuId ? menuOf(state, g.menuId).category : null;
+  const wait = cat ? waitPenalty(state, cat) : 0;
+  const quality = cat === 'drink' ? drinkQualityBonus(state) : 0;
+  return (cornerSatisfaction(state, seat.id, g.type) + cleanSatisfaction(state) + titleBonus(state, 'satisfaction')) / 10 + gateSatisfaction(g) + nightSatisfaction(state, seat) // staff-luck 칭호 만족 // y-indoor: 소파 +2·난로 겨울 +3 · fix-indoor: 밤 조명
+    + quality - wait + zoneSatisfaction(state, seat) + nightShiftSatisfaction(state); // staff2
 }
 /** 저녁 손님 기준 시각 (특기 night_owl) */
 export const NIGHT_HOUR = 18;
@@ -486,14 +552,15 @@ function resolveMood(state: GameState, g: Guest): void {
   } else {
     g.mood = 'meh';
     g.moodReason = 'scenery';
-    const why = g.luck === 'fail' ? { reason: 'wait_long' as const } : mehCause(state, seat); // staff-luck 쪽박 = 오래 기다림
+    const why = g.luck === 'fail' ? { reason: 'wait_long' as const } : mehCause(state, seat, g.menuId ? menuOf(state, g.menuId).category : null); // staff-luck 쪽박 = 오래 기다림 // staff2: 조리 대기
     if (why) addComplaint(state, why.reason, g, why.detail);
   }
   if (!g.namedId) maybeSay(state, g);
 }
 
 /** 불만 원인 추정 (경치 미달로 meh일 때, trim 4사유): 지친 홀 직원 → wait_long, 낡은 자리·청결 < 50 → dirty. 없으면 null(불만 아님). */
-export function mehCause(state: GameState, seat: PlacedObject): { reason: ComplaintReason; detail?: string } | null {
+export function mehCause(state: GameState, seat: PlacedObject, category: MenuCategory | null = null): { reason: ComplaintReason; detail?: string } | null {
+  if (category && waitPenalty(state, category) > 0) return { reason: 'wait_long' }; // staff2: 조리 담당이 모자라 늦게 나왔다
   const hall = staffInRole(state, 'hall');
   if (hall.length > 0 && hall.every((st) => st.energy < LOW_ENERGY)) return { reason: 'wait_long' };
   if (isAged(state, seat)) return { reason: 'dirty', detail: objectDef(seat.type).name };
@@ -552,6 +619,7 @@ function order(state: GameState, g: Guest): void {
   const menuId = pickWeighted(state, candidates, (id) => menuOrderWeight(state, id) * foreignMenuMult(state, g.type, id) * trendMenuMult(state, id))!; // stakes: 이번 달 유행 ×1.5 // 트랙 H: 외국인 감귤 메뉴 선호
   const menu = menuOf(state, menuId);
   consumeIngredients(state, menuId);
+  (state.dayOrders ??= { drink: 0, dessert: 0, meal: 0, signature: 0 })[menu.category]++; // staff2: 오늘 이 분류를 몇 개 냈나 (조리 담당이 감당하는 양과 견준다)
   const seat = state.objects[g.seatId!]!;
   recordUse(seat); // 트랙 A: 증축 조건(누적 이용)
   const price = Math.round(priceOf(state, menuId) * parcelFeeMult(parcelBonusAt(state, seat.x, seat.y)) * (objectStats(state, seat.id).feePct / 100) * eventFeeMult(state) * siteBonus(state, seat).feeMult * (1 + titleBonus(state, 'fee')) * streetFeeMult(state, seat)); // 트랙 F 입지 요금 · y-indoor 바 저녁 세트 · staff-luck 칭호 요금 · fun 거리 보너스

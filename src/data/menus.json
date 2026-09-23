@@ -70,6 +70,9 @@
     "ingredients": {
       "flour": 1,
       "butter": 1
+    },
+    "requires": {
+      "role": "cook"
     }
   },
   {
@@ -108,6 +111,9 @@
     "ingredients": {
       "flour": 1,
       "sugar": 1
+    },
+    "requires": {
+      "role": "cook"
     }
   },
   {
