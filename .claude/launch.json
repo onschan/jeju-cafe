@@ -1,1 +1,1 @@
-{ "version": "0.0.1", "configurations": [ { "name": "dev", "runtimeExecutable": "pnpm", "runtimeArgs": ["dev", "--port", "5571", "--strictPort"], "port": 5571 } ] }
+{ "version": "0.0.1", "configurations": [ { "name": "contest", "runtimeExecutable": "pnpm", "runtimeArgs": ["dev", "--port", "5581", "--strictPort"], "port": 5581 } ] }

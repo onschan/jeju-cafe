@@ -101,7 +101,7 @@ test('월말 카드에 수입·재료비·월급·광고·유지비·순이익�
   expect(c.costs.ingredients).toBeGreaterThan(0);
   expect(c.costs.upkeep).toBeGreaterThan(0);
   expect(c.net).toBe(c.income - c.costs.ingredients - c.costs.salary - c.costs.ads - c.costs.upkeep - c.costs.recruit - c.costs.tax - c.costs.loanRepay - c.costs.shuttle);
-  expect(s.monthCosts).toEqual({ ingredients: 0, salary: 0, ads: 0, upkeep: 0, recruit: 0, tax: 0, loanRepay: 0, shuttle: 0 });
+  expect(s.monthCosts).toEqual({ ingredients: 0, salary: 0, ads: 0, upkeep: 0, recruit: 0, tax: 0, loanRepay: 0, shuttle: 0, contest: 0 });
 });
 
 test('공고비·퇴직금은 카드의 recruit에 잡히고 순이익에서 빠진다', () => {
