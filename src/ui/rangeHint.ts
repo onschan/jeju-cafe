@@ -1,5 +1,5 @@
-/** 효과 범위 힌트 계산 (UX §5.3): 시설 종류·자리가 주어지면 반경 안에서 같은 코너의 다른 조각이 될 시설 발자국을 고른다.
- *  sim의 코너 판정(corners.ts)과 같은 규칙(체비쇼프 거리)을 UI에서 가볍게 다시 계산한다 — 성립 "가능성" 표시용. */
+/** 효과 범위 힌트 계산 (UX §5.3): 시설 종류·자리가 주어지면 반경 안에서 같은 테마의 다른 조각이 될 시설 발자국을 고른다.
+ *  sim의 테마 판정(corners.ts)과 같은 규칙(체비쇼프 거리)을 UI에서 가볍게 다시 계산한다 — 성립 "가능성" 표시용. */
 import type { GameState, PlacedObject } from '../sim/index.ts';
 import { objectDef } from '../data/index.ts';
 import type { RangeHint } from '../render/GameView';
@@ -13,7 +13,7 @@ function cheb(ax: number, ay: number, aw: number, ah: number, b: PlacedObject, b
   return Math.max(dx, dy);
 }
 
-/** 이 종류를 (x, y)에 두면 같은 코너의 조각이 되는 시설들 */
+/** 이 종류를 (x, y)에 두면 같은 테마의 조각이 되는 시설들 */
 export function cornerPartners(s: GameState, type: string, x: number, y: number, ignoreId?: string): PlacedObject[] {
   const def = objectDef(type);
   const defs = cornersWithPiece(type);
@@ -33,7 +33,7 @@ export function rangeHintFor(s: GameState, type: string, x: number, y: number, i
   return { x, y, w: def.w, h: def.h, radius: HINT_RADIUS, marks: cornerPartners(s, type, x, y, ignoreId).map((o) => { const d = objectDef(o.type); return { x: o.x, y: o.y, w: d.w, h: d.h }; }), badge: cornerBadge(s, type, x, y, ignoreId) };
 }
 
-/** 고스트가 코너 조각이면 배지 — 여기 놓으면 완성되는 코너가 있으면 "이걸 놓으면 꽃길 완성", 아니면 코너 이름만("꽃길 조각") */
+/** 고스트가 테마 조각이면 배지 — 여기 놓으면 완성되는 테마가 있으면 "이걸 놓으면 꽃길 완성", 아니면 테마 이름만("꽃길 조각") */
 export function cornerBadge(s: GameState, type: string, x: number, y: number, ignoreId?: string): string | undefined {
   const done = cornerIfPlaced(s, type, x, y, ignoreId);
   if (done) return `이걸 놓으면 ${done.name} 완성`;

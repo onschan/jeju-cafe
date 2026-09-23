@@ -58,7 +58,7 @@ test('더러움은 가장 낡은 시설을 가리킨다', () => {
   expect(voiceText(s.voices![0]!)).toContain('낡고 지저분');
 });
 
-test('좋은 말도 쌓인다: 전망 자리·코너 사진은 피드에 좋은 줄로', () => {
+test('좋은 말도 쌓인다: 전망 자리·테마 사진은 피드에 좋은 줄로', () => {
   const s = bareState(1);
   placeObject(s, 'table_out', 12, 1); // 북쪽 = 바다
   expect(bestViewSeat(s)).toEqual({ x: 12, y: 1 });

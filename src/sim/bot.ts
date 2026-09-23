@@ -34,7 +34,7 @@ import { canBuyParcel, ownedParcels, parcelAt } from './parcels.ts';
 import { isWorn, canRepair } from './cleanliness.ts';
 import { complaintCounts } from './reputation.ts';
 import { canAcceptQuest } from './board.ts';
-import { cornerProgress } from './corners.ts'; // fun-corner: 코너 만들기 (목표 g21·g35·g59·g77·g93)
+import { cornerProgress } from './corners.ts'; // fun-corner: 테마 만들기 (목표 g21·g35·g59·g77·g93)
 import { canLevelUp } from './staff.ts';
 import { canTrain } from './training.ts';
 import { bestStaffFor } from './luck.ts'; // staff-luck: 대박 기대값이 가장 높은 직원에게 시킨다
@@ -175,7 +175,7 @@ export const BOT_EXTRA_CELLS: { x: number; y: number }[] = [
   ...[10, 11, 12, 13, 14, 15, 16, 17, 18, 19].flatMap((x) => [{ x, y: 6 }, { x, y: 7 }]),
   ...[8, 9].flatMap((x) => [8, 9, 10, 11, 12, 13, 14, 15].map((y) => ({ x, y }))),
 ];
-/** 코너 조각 자리(fun 통합): 위 칸들 + 산 필지(3번 위쪽 3줄·4번 왼쪽 열·8번 돌담 언덕·9번 옛 감귤밭 안쪽) — 경로 시설 자리(올레 표식 (3,11)·선착장 (14,0)·셔틀 (15,20))와 그 길 줄은 뺀다. 안 산 필지는 canPlace가 거른다. */
+/** 테마 조각 자리(fun 통합): 위 칸들 + 산 필지(3번 위쪽 3줄·4번 왼쪽 열·8번 돌담 언덕·9번 옛 감귤밭 안쪽) — 경로 시설 자리(올레 표식 (3,11)·선착장 (14,0)·셔틀 (15,20))와 그 길 줄은 뺀다. 안 산 필지는 canPlace가 거른다. */
 export const BOT_CORNER_CELLS: { x: number; y: number }[] = [
   ...[10, 11, 12, 13, 15, 16, 17, 18, 19].flatMap((x) => [2, 3, 4].map((y) => ({ x, y }))),
   ...[1, 2, 4, 5, 6, 7].flatMap((x) => [9, 10, 13, 14].map((y) => ({ x, y }))),
@@ -375,7 +375,7 @@ function upgradeOne(s: GameState): void {
   }
 }
 
-/** 코너 만들기 (fun-corner, 목표 g21·g35·g59·g77·g93 corners(n)): 아직 안 만든 코너 중 조각이 다 열려 있는 것 하나 — 닻(첫 조각) 후보마다 반경 안에 모자란 조각을 다 놓을 자리가 있는지 보고,
+/** 테마 만들기 (fun-corner, 목표 g21·g35·g59·g77·g93 corners(n)): 아직 안 만든 테마 중 조각이 다 열려 있는 것 하나 — 닻(첫 조각) 후보마다 반경 안에 모자란 조각을 다 놓을 자리가 있는지 보고,
  *  자리가 있는 닻에 모자란 조각을 하나 놓는다. 그런 닻이 없으면 빈 자리가 넉넉한 곳에 닻을 새로 놓는다(닻은 종류당 3개까지). 한 달 하나. */
 function placeForCorner(s: GameState): void {
   if (s.clock.year < BOT_CORNER_YEAR || s.money < BOT_BUILD_MIN_MONEY) return;
@@ -407,7 +407,7 @@ function placeForCorner(s: GameState): void {
     if (roomy && place(s, anchorType, roomy.x, roomy.y)) return;
   }
 }
-/** 코너 닻(첫 조각)을 종류당 몇 개까지 새로 놓나 */
+/** 테마 닻(첫 조각)을 종류당 몇 개까지 새로 놓나 */
 const BOT_CORNER_ANCHORS_MAX = 3;
 /** 세트 만들기 (목표 g48·g76·g94): 아직 안 켜진 세트 중 필요한 시설이 다 열려 있으면 모자란 것을 첫 시설 반경 안에 놓는다 (한 달 하나) */
 function placeForSet(s: GameState): void {

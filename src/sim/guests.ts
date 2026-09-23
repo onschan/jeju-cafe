@@ -570,7 +570,7 @@ function order(state: GameState, g: Guest): void {
 /** 자리에서 일어난 손님이 들를 시설을 고른다: 좋아하는 종류이고 걸어서 닿는 것 중 하나 (40%). 없으면 null. */
 export function pickVisit(state: GameState, g: Guest, from: Pt): { obj: PlacedObject; path: Pt[] } | null {
   const facilities = Object.values(state.objects).filter((o) => !o.build && isVisitable(o.type) && likesFacility(g.type, o.type));
-  const corners = cornerVisitTargets(state, g.type).filter((o) => !facilities.includes(o)); // fun-corner: 완성 코너의 닻도 시설처럼 찾아간다 (가중치 ×3, 하루 상한)
+  const corners = cornerVisitTargets(state, g.type).filter((o) => !facilities.includes(o)); // fun-corner: 완성 테마의 닻도 시설처럼 찾아간다 (가중치 ×3, 하루 상한)
   const candidates = [...facilities, ...corners];
   if (candidates.length === 0 || nextRandom(state) >= browseChance(state, VISIT_CHANCE)) return null; // y-indoor P1-12: 시설 3개 초과 시 둘러보기 확률 상승
   const reach = reachMap(state, from);
@@ -583,7 +583,7 @@ export function pickVisit(state: GameState, g: Guest, from: Pt): { obj: PlacedOb
     }
     if (best) reachable.push({ obj, target: best.target });
   }
-  const pick = pickWeighted(state, reachable, (r) => (corners.includes(r.obj) ? CORNER_VISIT_WEIGHT : guestPickMult(state, r.obj.id, g.type))); // 코너 태그 배수(최대 ×2) · 코너 방문 ×3
+  const pick = pickWeighted(state, reachable, (r) => (corners.includes(r.obj) ? CORNER_VISIT_WEIGHT : guestPickMult(state, r.obj.id, g.type))); // 테마 태그 배수(최대 ×2) · 테마 방문 ×3
   if (!pick) return null;
   return { obj: pick.obj, path: pathFromReach(state, reach, pick.target)! };
 }
@@ -637,7 +637,7 @@ export function updateGuests(state: GameState, dtMs: number): void {
       if (g.path.length > 0) {
         if (!moveAlong(g, walkMs)) continue;
         const obj = g.visitId ? state.objects[g.visitId] : undefined;
-        if (obj) { if (isVisitable(obj.type)) useFacility(state, g, obj); const c = cornerOfPiece(state, obj.id); if (c) { visitCorner(state, g, obj); pushVoice(state, 'corner', cornerDef(c.id).name, { x: obj.x, y: obj.y }); } } // fun-corner: 코너 조각이면 사진(장식이면 요금 없음)
+        if (obj) { if (isVisitable(obj.type)) useFacility(state, g, obj); const c = cornerOfPiece(state, obj.id); if (c) { visitCorner(state, g, obj); pushVoice(state, 'corner', cornerDef(c.id).name, { x: obj.x, y: obj.y }); } } // fun-corner: 테마 조각이면 사진(장식이면 요금 없음)
         g.approachCell = { x: Math.round(g.x), y: Math.round(g.y) };
       }
       g.timerMs -= dtMs;

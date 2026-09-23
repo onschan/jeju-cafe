@@ -1,9 +1,9 @@
 /**
  * 카페 등급 5단계 (fun-rank, 재미 리셋 스펙 §5): 「올레길 노점」→「동네 카페」→「소문난 카페」→「제주 명소」→「전설의 카페」.
- * 조건 = 누적 손님·코너 수·평판·★ 네 가지를 모두 채우면 승급 (내려가지 않는다). 랭크(rank.ts)·★(guidebook.ts)와 달리
+ * 조건 = 누적 손님·테마 수·평판·★ 네 가지를 모두 채우면 승급 (내려가지 않는다). 랭크(rank.ts)·★(guidebook.ts)와 달리
  * 겉모습이 바뀌는 등급이다: 간판 스프라이트(팻말 → 나무 간판 → 네온)·외벽 색·마당 동시 손님 상한·BGM 타악 레이어·승급 컷·보상 상자.
  * 판정은 rank.ts updateRank(evaluateUnlocks가 매일 부른다) 훅에서 checkGrade로 돈다.
- * 코너 수는 트랙 C의 completedCorners가 들어오면 그걸로 바꾼다 — 지금은 활성 콤보 수(compat.activeCombos).
+ * 테마 수는 트랙 C의 completedCorners가 들어오면 그걸로 바꾼다 — 지금은 활성 콤보 수(compat.activeCombos).
  */
 import type { GameState, GoalReward } from './types.ts';
 import { completedCorners } from './corners.ts';
@@ -23,7 +23,7 @@ export const GRADE_CAPTION: Record<number, string> = {
   5: '제주에 오면 꼭 들르는 곳',
 };
 export interface GradeReq { guests: number; corners: number; reputation: number; star: number }
-/** 등급 g가 되려면 (누적 손님·코너·평판·★) 전부 ≥ GRADE_REQS[g] */
+/** 등급 g가 되려면 (누적 손님·테마·평판·★) 전부 ≥ GRADE_REQS[g] */
 export const GRADE_REQS: Record<number, GradeReq> = {
   2: { guests: 200, corners: 1, reputation: 40, star: 1 },
   3: { guests: 1_500, corners: 3, reputation: 55, star: 2 },
@@ -48,7 +48,7 @@ export function gradeName(grade: number): string {
   return GRADE_NAMES[Math.max(1, Math.min(MAX_GRADE, grade)) - 1]!;
 }
 
-/** 완성한 코너 수 — 트랙 C completedCorners(지금 마당에 완성돼 있는 코너). */
+/** 완성한 테마 수 — 트랙 C completedCorners(지금 마당에 완성돼 있는 테마). */
 export function cornerCount(state: GameState): number {
   return completedCorners(state).length;
 }
@@ -59,7 +59,7 @@ export function gradeProgress(state: GameState, grade = gradeOf(state) + 1): Gra
   const req = GRADE_REQS[grade];
   if (!req) return null;
   const cur: Record<keyof GradeReq, number> = { guests: state.totalGuests, corners: cornerCount(state), reputation: Math.round(state.reputation), star: state.star };
-  const label: Record<keyof GradeReq, string> = { guests: '손님', corners: '코너', reputation: '평판', star: '★' };
+  const label: Record<keyof GradeReq, string> = { guests: '손님', corners: '테마', reputation: '평판', star: '★' };
   return (Object.keys(req) as (keyof GradeReq)[]).map((key) => ({ key, label: label[key], cur: cur[key], need: req[key], met: cur[key] >= req[key] }));
 }
 export function gradeMet(state: GameState, grade: number): boolean {

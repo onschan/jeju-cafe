@@ -145,7 +145,7 @@ describe('손으로 하는 튜토리얼 「할망의 가르침」 7단계 (fun-s
     expect(s.tutorial.step).toBe(4);
     expect(lastReward(s)).toMatchObject({ refId: '4' });
     clearAlerts(s);
-    // 5: 첫 코너 「꽃길」 — 꽃밭 → 벤치 → 가로등, 글로우는 빠진 조각 하나씩·코너 탭·꽃길 「놓기」 버튼·짓기 카드
+    // 5: 첫 테마 「꽃길」 — 꽃밭 → 벤치 → 가로등, 글로우는 빠진 조각 하나씩·테마 탭·꽃길 「놓기」 버튼·짓기 카드
     seeDialogue(s);
     expect(cornerMade(s)).toBe(false);
     const [flower, bench, lamp] = CORNER_PIECE_TYPES as [string, string, string];
@@ -155,7 +155,7 @@ describe('손으로 하는 튜토리얼 「할망의 가르침」 7단계 (fun-s
     const f = cornerCells(s);
     expect(f).toHaveLength(1);
     expect(Math.max(Math.abs(f[0]!.x - glow[0]!.x), Math.abs(f[0]!.y - glow[0]!.y))).toBeLessThanOrEqual(CORNER_RADIUS); // 테이블 옆
-    expect(walkableNeighborsOf(s, f[0]!.x, f[0]!.y).length).toBeGreaterThan(0); // 길 옆 — 손님이 코너를 찾아올 수 있게
+    expect(walkableNeighborsOf(s, f[0]!.x, f[0]!.y).length).toBeGreaterThan(0); // 길 옆 — 손님이 테마를 찾아올 수 있게
     expect(apply(s, { type: 'place', objectType: flower, ...f[0]! }).ok).toBe(true);
     expect(s.tutorial.step).toBe(4);
     expect(cornerMissingType(s)).toBe(bench);
@@ -196,7 +196,7 @@ describe('손으로 하는 튜토리얼 「할망의 가르침」 7단계 (fun-s
     expect(currentTutorialStep(s)).toBeNull();
   });
 
-  it('트랙 C 코너: 완성 코너가 하나라도 있으면 5단계가 찬다; 꽃밭·벤치가 멀면(반경 2 밖) 안 차고 빠진 조각은 벤치', () => {
+  it('트랙 C 테마: 완성 테마가 하나라도 있으면 5단계가 찬다; 꽃밭·벤치가 멀면(반경 2 밖) 안 차고 빠진 조각은 벤치', () => {
     const t = tutorialState();
     const [flower, bench] = CORNER_PIECE_TYPES as [string, string, string];
     expect(cornerMade(t)).toBe(false);

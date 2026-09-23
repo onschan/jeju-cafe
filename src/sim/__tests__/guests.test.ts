@@ -245,7 +245,7 @@ test('하루 손님 수 = min(좌석×6, (4 + 인기 합/21 + 시설 인기 합/
   placeObject(s, 'table_out', X(5), Y(5)); // 4석 → 상한 24
   const base240 = BASE_DAILY_GUESTS + Math.floor(240 / POP_SUM_PER_GUEST);
   expect(dailyGuestCount(s)).toBe(base240);
-  placeObject(s, 'tangerine_tree', X(8), Y(1)); placeObject(s, 'tangerine_tree', X(9), Y(1)); // 시설 인기 10×2 → 합 20 → +1 (테이블과 떨어뜨려 코너 제외)
+  placeObject(s, 'tangerine_tree', X(8), Y(1)); placeObject(s, 'tangerine_tree', X(9), Y(1)); // 시설 인기 10×2 → 합 20 → +1 (테이블과 떨어뜨려 테마 제외)
   expect(facilityPopularitySum(s)).toBe(20);
   const b2 = base240 + Math.floor(20 / FACILITY_POP_PER_GUEST);
   expect(popularityGuestBase(s)).toBe(b2);

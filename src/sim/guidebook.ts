@@ -31,7 +31,7 @@ export const MAX_STAR = 5;
 export const STAR_UP_REWARDS: GoalReward[] = [{ type: 'tickets', n: 2 }, { type: 'tickets', n: 1 }];
 export const JUDGE_KEYS: JudgeKey[] = ['smile', 'scenery', 'menu', 'fun', 'group', 'rest', 'clean', 'price', 'reputation', 'overall'];
 export const JUDGE_LABEL: Record<JudgeKey, string> = { smile: '미소', scenery: '경관', menu: '메뉴', fun: '체험', group: '단체', rest: '쉼', clean: '청결', price: '가성비', reputation: '평판', overall: '종합' };
-/** 종합 = 8항목(평판 제외) 평균 + 카페 랭크 × 3 + 코너 수 × 1 */
+/** 종합 = 8항목(평판 제외) 평균 + 카페 랭크 × 3 + 테마 수 × 1 */
 export const OVERALL_PER_RANK = 3;
 export const OVERALL_PER_CORNER = 1;
 /** 라이벌 곡선: i번째(0~8) 라이벌 = top − 6i ± 4 */
@@ -65,7 +65,7 @@ const NO_STAFF_SMILE = 5;
 
 // ---------- ★ 조건 ----------
 
-/** 도감 항목 총수 (코너·세트·히든 레시피·재료 콤보) */
+/** 도감 항목 총수 (테마·세트·히든 레시피·재료 콤보) */
 export function codexTotal(): number {
   return CORNERS.length + SETS.length + HIDDEN_RECIPES.length + INGREDIENT_COMBOS.length;
 }

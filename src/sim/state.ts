@@ -21,7 +21,7 @@ import { initMain, MAIN_TYPE, MAIN_SIZE } from './rooms.ts';
 import { initEnding, applyCarry } from './ending.ts'; // z-ending
 
 export { PARCEL_W, PARCEL_H, START_ORIGIN, GRID_W, GRID_H, VILLAGE_ROAD_Y };
-export const SAVE_VERSION = 21; // 21: 덜어내기(trim) — 콤보·명당·도전·라이벌·팝업 원정·지역 손님·투어·마을제·100주년 삭제, 입지 5요소 → 자리 점수, 명소 24 → 8(Lv3), 경로 5 → 3, 불만 9 → 4, 손님 목소리 피드(voices). v20 세이브는 migrateTrim이 환불·치환 + 알림 한 줄. 20: 재미 리셋 통합(fun) — 시작 3분 튜토리얼 7단계·손님 상호작용(regulars·requests)·코너(codex.corners)·등급(grade)·제주 배경 (optional 필드 + backfill, 19 세이브는 백업 후 새 게임). 19: z 통합 — 엔딩·마을·이월·튜토리얼 30단계 seen (마이그레이션 없음). 18: y 통합 — 되돌리기(undo)·개체 이름(name)·유입 경로(routes·손님 route/foreign)·본관(main·객체 w/h/mode/careDay) (마이그레이션 없음, 17 세이브는 백업 후 새 게임). 17: 컨텐츠 확장 통합 — 경제(삼춘 대출·세금·대기열·★ 유지 심사)·시설 44·증축·청결·명소 방문객·투어·선물·직원 8직종·입지·목표 108·도전·튜토리얼 (마이그레이션 없음). 15: v3 대격변. 14: 라이벌 카페
+export const SAVE_VERSION = 21; // 21: 덜어내기(trim) — 콤보·명당·도전·라이벌·팝업 원정·지역 손님·투어·마을제·100주년 삭제, 입지 5요소 → 자리 점수, 명소 24 → 8(Lv3), 경로 5 → 3, 불만 9 → 4, 손님 목소리 피드(voices). v20 세이브는 migrateTrim이 환불·치환 + 알림 한 줄. 20: 재미 리셋 통합(fun) — 시작 3분 튜토리얼 7단계·손님 상호작용(regulars·requests)·테마(codex.corners)·등급(grade)·제주 배경 (optional 필드 + backfill, 19 세이브는 백업 후 새 게임). 19: z 통합 — 엔딩·마을·이월·튜토리얼 30단계 seen (마이그레이션 없음). 18: y 통합 — 되돌리기(undo)·개체 이름(name)·유입 경로(routes·손님 route/foreign)·본관(main·객체 w/h/mode/careDay) (마이그레이션 없음, 17 세이브는 백업 후 새 게임). 17: 컨텐츠 확장 통합 — 경제(삼춘 대출·세금·대기열·★ 유지 심사)·시설 44·증축·청결·명소 방문객·투어·선물·직원 8직종·입지·목표 108·도전·튜토리얼 (마이그레이션 없음). 15: v3 대격변. 14: 라이벌 카페
 /** 시작 자금 500만. 정착지원금은 삼춘 대출(failure.ts: 잔고 < 40만 → 300만, 최대 3회)로 바뀌었다 — 확장 스펙 §4.2 #8 */
 export const START_MONEY = 5_000_000;
 export const START_MONTH = 3;
@@ -231,7 +231,7 @@ export function createInitialState(seed: number, playerId = 'local', createdAt =
     effects: [],
     menuSold: {},
     monthMenuSold: {},
-    codex: { sets: [], recipes: [], ingredientCombos: [], titles: [], corners: [] }, // titles: 만난 직원 칭호 · corners: 만든 코너
+    codex: { sets: [], recipes: [], ingredientCombos: [], titles: [], corners: [] }, // titles: 만난 직원 칭호 · corners: 만든 테마
     clean: { value: 100, lastGuests: 0, history: [] },
     customMenus: [],
     menuMods: {},

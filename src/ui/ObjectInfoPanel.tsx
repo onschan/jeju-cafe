@@ -55,7 +55,7 @@ export function ObjectInfoPanel({ objectId }: { objectId: string }) {
 
       {(st.corner.pop > 0 || st.corner.feePct > 0) && (
         <div style={{ ...card, padding: 6, marginBottom: 6 }}>
-          <div style={{ fontSize: 13, color: PALETTE.inkSoft }}>가까운 코너 덕</div>
+          <div style={{ fontSize: 13, color: PALETTE.inkSoft }}>가까운 테마 덕</div>
           <div style={{ fontSize: 14 }}><b style={{ color: PALETTE.ok }}>인기 +{st.corner.pop}</b> · 요금 +{st.corner.feePct}%</div>
         </div>
       )}
@@ -95,7 +95,7 @@ function nameOf(objectId: string): string {
   try { return objectDef(objectId).name; } catch { return objectId; }
 }
 
-/** 세트·코너·레시피 도감 */
+/** 세트·테마·레시피 도감 */
 export function CodexPanel() {
   const s = useGame();
   const doneSets = new Set(s.codex.sets);

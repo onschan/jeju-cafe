@@ -98,7 +98,7 @@
   },
   {
     "id": "req_rest_corner",
-    "text": "편히 쉴 코너 없나?",
+    "text": "편히 쉴 데 없나?",
     "want": {
       "tagCorner": "rest",
       "facility": "toenmaru"

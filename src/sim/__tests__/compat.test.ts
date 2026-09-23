@@ -19,7 +19,7 @@ test('objectStats: 상성 없이 기본 인기 10·요금 100%', () => {
   expect(base.feePct).toBe(100);
   expect(base.upkeep).toBe(objectDef('table_out').upkeep);
   expect(base.corner).toEqual({ pop: 0, feePct: 0 });
-  // 곁에 나무를 놓아도 콤보는 없다 (trim: 코너만 남았다)
+  // 곁에 나무를 놓아도 콤보는 없다 (trim: 테마만 남았다)
   placeObject(s, 'tangerine_tree', X(7), Y(4));
   expect(objectStats(s, t.id).popularity).toBe(BASE_POPULARITY);
 });

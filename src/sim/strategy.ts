@@ -8,7 +8,7 @@
  * - bestMainCell     본관 원점: 바람 최소 → 정낭(정류장)과 문 앞 거리 최소 (tutorial.recommendedMainCells와 같은 순서)
  * - bestSeatCells    야외 테이블: 정류장에서 걸어 닿는 길 옆 빈 칸 중 seatScore(입지 0~10) 최고 → 문 앞과 가까운 순
  * - bestWallCells    돌담: 테이블 북서 쐐기(site.ts windOf와 같은 띠) 빈 칸 중 가리는 테이블 수 최다 → 테이블과 가까운 순
- * - bestCornerCells  감귤나무 등: 놓으면 코너(corners.ts) 조각이 가장 많이 모이는 빈 칸 (완성되면 크게 친다)
+ * - bestCornerCells  감귤나무 등: 놓으면 테마(corners.ts) 조각이 가장 많이 모이는 빈 칸 (완성되면 크게 친다)
  * - bestIndoorSeats  실내 테이블: 본관 빈 바닥 중 벽에 붙은 창가(북쪽 벽 우선) → 입지 점수 순
  * - bestParkingCells 주차장: 마을 길에 접한 자리(entry.ts parkingSites) 중 본관 문 앞과 가까운 순
  * - bestSpotToInvest 명소: 지금 투자할 수 있는 것 중 그 태그 손님층 인기(spots.ts tagPopularity) 최고 → 싼 순
@@ -161,7 +161,7 @@ function distToCell(o: PlacedObject, x: number, y: number): number {
   const w = o.w ?? objectDef(o.type).w ?? 1, h = o.h ?? objectDef(o.type).h ?? 1;
   return Math.max(Math.max(0, o.x - x, x - (o.x + w - 1)), Math.max(0, o.y - y, y - (o.y + h - 1)));
 }
-/** type을 (x,y)에 놓았을 때의 코너 점수: 완성되면 +10, 아니면 그 자리에서 반경 안에 모이는 다른 조각 종류 수. */
+/** type을 (x,y)에 놓았을 때의 테마 점수: 완성되면 +10, 아니면 그 자리에서 반경 안에 모이는 다른 조각 종류 수. */
 export function cornerScoreIfPlaced(s: GameState, type: string, x: number, y: number): number {
   if (cornerIfPlaced(s, type, x, y)) return 10;
   const objs = Object.values(s.objects);
@@ -174,7 +174,7 @@ export function cornerScoreIfPlaced(s: GameState, type: string, x: number, y: nu
   }
   return best;
 }
-/** 코너 최적 칸 n개: 빈 흙 칸 중 코너 점수 최다(1 이상) → 야외 테이블과 가까운 순. 점수가 나는 칸이 없으면 테이블 옆 빈 칸. */
+/** 테마 최적 칸 n개: 빈 흙 칸 중 테마 점수 최다(1 이상) → 야외 테이블과 가까운 순. 점수가 나는 칸이 없으면 테이블 옆 빈 칸. */
 export function bestCornerCellsHeuristic(s: GameState, type = TREE_TYPE, n = 3): Pt[] {
   const seats = outdoorSeats(s);
   const near = (p: Pt) => (seats.length ? Math.min(...seats.map((t) => cheb(t, p))) : 0);
@@ -195,10 +195,10 @@ export function bestCornerCells(s: GameState, type = TREE_TYPE, n = 3): Pt[] {
 export function bestCornerCell(s: GameState, type = TREE_TYPE): Pt | null {
   return bestCornerCells(s, type, 1)[0] ?? null;
 }
-/** 아직 못 만든 코너 중 이 시설이 조각인 것 하나 (추천 문구용) */
+/** 아직 못 만든 테마 중 이 시설이 조각인 것 하나 (추천 문구용) */
 export function cornerNameForPiece(s: GameState, type: string): string {
   const done = new Set(s.codex.corners ?? []);
-  return (CORNERS.find((c) => !done.has(c.id) && c.pieces.some((p) => p.type === type))?.name) ?? '코너';
+  return (CORNERS.find((c) => !done.has(c.id) && c.pieces.some((p) => p.type === type))?.name) ?? '테마';
 }
 
 // ---------- 실내 ----------
@@ -292,7 +292,7 @@ export function heuristicNextMove(s: GameState): NextMove | null {
   if (seats < 1) return { text: `야외 테이블 하나 — ${seatWhy(s)}`, cells: bestSeatCells(s, 1) };
   if (menus < 2) return { text: '메뉴판에 아메리카노·감귤주스 — 둘이면 문을 열 수 있다', cells: [] };
   if (s.staff.length < 1) return { text: '홀 직원 한 명 — 서빙 기다리는 시간이 반으로 준다', cells: [] };
-  if (!wallSheltered(s)) return { text: '돌담 하나를 테이블 곁에 — 밭담 코너 조각이 된다', cells: bestWallCells(s, 1) };
+  if (!wallSheltered(s)) return { text: '돌담 하나를 테이블 곁에 — 밭담 테마 조각이 된다', cells: bestWallCells(s, 1) };
   if (s.stats.promotionsDone < 1) return { text: '전단 홍보 한 번 — 타깃 손님층이면 1.5배로 온다', cells: [] };
   if (unlocked(s, TREE_TYPE) && objectsOf(s, TREE_TYPE).length < 1) { const c = bestCornerCells(s, TREE_TYPE, 1); if (c.length) return { text: `감귤나무 한 그루 — 빛나는 칸이면 ${cornerNameForPiece(s, TREE_TYPE)} 조각이 모인다`, cells: c }; }
   if (seats < OPENING_SEATS) return { text: `야외 테이블 ${seats}/${OPENING_SEATS} — 4개면 자리가 없어 돌아가는 손님이 없다`, cells: bestSeatCells(s, 1) };

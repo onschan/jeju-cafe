@@ -55,7 +55,7 @@ export function rankUpRewards(rank: number): GoalReward[] {
 
 /** 점수로 랭크를 올린다 (내려가지 않는다). 올랐으면 true. */
 export function updateRank(state: GameState): boolean {
-  checkGrade(state); // fun-rank: 등급(누적 손님·코너·평판·★)은 랭크와 같은 주기로 본다
+  checkGrade(state); // fun-rank: 등급(누적 손님·테마·평판·★)은 랭크와 같은 주기로 본다
   const r = Math.max(state.rank, rankForScore(rankScore(state)));
   if (r === state.rank) return false;
   state.rank = r;

@@ -42,7 +42,7 @@ function flowerPath(s: GameState, ox = 0, oy = 0) {
   return bed;
 }
 
-describe('코너 데이터 (corners.json)', () => {
+describe('테마 데이터 (corners.json)', () => {
   it('24종, id 중복 없음, 조각은 서로 다른 시설 3~4종(돌담길만 2종), 반경 2, 기존 시설 id만', () => {
     expect(CORNERS.length).toBe(24);
     expect(new Set(CORNERS.map((c) => c.id)).size).toBe(24);
@@ -64,12 +64,12 @@ describe('코너 데이터 (corners.json)', () => {
     expect(cornerDef('corner_flower_path').pieces.map((p) => p.type)).toEqual(['flower_bed', 'deco_wood_bench', 'streetlight']);
     expect(cornersWithPiece('deco_wood_bench').length).toBeGreaterThanOrEqual(5);
   });
-  it('첫 코너(꽃길) 조각은 시작부터 열려 있다 (튜토리얼 ⑤ 꽃밭+벤치)', () => {
+  it('첫 테마(꽃길) 조각은 시작부터 열려 있다 (튜토리얼 ⑤ 꽃밭+벤치)', () => {
     for (const t of ['flower_bed', 'deco_wood_bench', 'streetlight']) expect(START_OBJECT_IDS).toContain(t);
   });
 });
 
-describe('코너 판정', () => {
+describe('테마 판정', () => {
   it('꽃밭+벤치+가로등이 반경 2 안에 모이면 꽃길 완성. 하나가 멀면 미완성, 조각 수와 "다음에 놓을 것"이 보인다', () => {
     const s = bareState(1);
     expect(completedCorners(s)).toEqual([]);
@@ -91,7 +91,7 @@ describe('코너 판정', () => {
     expect(p.done).toBe(true);
     expect(p.missing).toEqual([]);
   });
-  it('같은 시설을 더 놓아도 코너는 1회 (완성 목록에 코너당 하나), 조각 count(돌담 4)는 서로 다른 개체로 센다', () => {
+  it('같은 시설을 더 놓아도 테마는 1회 (완성 목록에 테마당 하나), 조각 count(돌담 4)는 서로 다른 개체로 센다', () => {
     const s = bareState(1);
     flowerPath(s, 0, 0);
     flowerPath(s, 7, 4);
@@ -126,7 +126,7 @@ describe('코너 판정', () => {
     expect(completedCorners(s)).not.toBe(a);
     expect(completedCorners(s)).toEqual(a);
   });
-  it('cornerIfPlaced: 마지막 조각을 놓을 자리면 그 코너, 이미 완성됐거나 조각이 아니면 null', () => {
+  it('cornerIfPlaced: 마지막 조각을 놓을 자리면 그 테마, 이미 완성됐거나 조각이 아니면 null', () => {
     const s = bareState(1);
     place(s, 'flower_bed', 0, 0);
     place(s, 'deco_wood_bench', 1, 0);
@@ -138,7 +138,7 @@ describe('코너 판정', () => {
   });
 });
 
-describe('코너 효과', () => {
+describe('테마 효과', () => {
   it('반경 안 시설에 인기 +5·요금 +5%가 objectStats에 더해지고, 밖은 그대로. 합산은 CORNER_CAP까지', () => {
     const s = bareState(1);
     const near = place(s, 'table_out', 1, 1);
@@ -164,8 +164,8 @@ describe('코너 효과', () => {
   });
 });
 
-describe('코너 완성 연출·도감·손님', () => {
-  it('처음 완성하면 도감(codex.corners)·메시지 줄·장면 창(scene)·팻말 반짝(corner fx)·첫 코너 마일리지 +1. 두 번째 완성은 안 한다', () => {
+describe('테마 완성 연출·도감·손님', () => {
+  it('처음 완성하면 도감(codex.corners)·메시지 줄·장면 창(scene)·팻말 반짝(corner fx)·첫 테마 마일리지 +1. 두 번째 완성은 안 한다', () => {
     const s = bareState(1);
     const m0 = s.tickets;
     flowerPath(s);
@@ -183,7 +183,7 @@ describe('코너 완성 연출·도감·손님', () => {
     expect(s.fx.filter((f) => f.kind === 'corner').length).toBe(1);
     expect(s.fx.length).toBeGreaterThanOrEqual(n);
   });
-  it('철거해도 도감엔 남고(만든 코너), 완성 목록에선 빠진다', () => {
+  it('철거해도 도감엔 남고(만든 테마), 완성 목록에선 빠진다', () => {
     const s = bareState(1);
     const bed = flowerPath(s);
     expect(apply(s, { type: 'remove', objectId: bed.id }).ok).toBe(true);
@@ -197,7 +197,7 @@ describe('코너 완성 연출·도감·손님', () => {
     expect(goalMet(s, { type: 'corners', n: 1 })).toBe(true);
     expect(goalMet(s, { type: 'corners', n: 2 })).toBe(false);
   });
-  it('손님 방문: 완성 코너의 닻이 방문 후보에 들고(태그 맞는 손님만), 하루 상한이 차면 빠진다. 도착하면 말풍선·사진 fx·누적 수', () => {
+  it('손님 방문: 완성 테마의 닻이 방문 후보에 들고(태그 맞는 손님만), 하루 상한이 차면 빠진다. 도착하면 말풍선·사진 fx·누적 수', () => {
     const s = bareState(1);
     const bed = flowerPath(s);
     expect(cornerVisitTargets(s, FEMALE)).toEqual([]); // 붙은 길이 없으면 못 간다
@@ -221,7 +221,7 @@ describe('코너 완성 연출·도감·손님', () => {
     tick(s, DAY_MS);
     expect(cornerVisitTargets(s, FEMALE).map((o) => o.id)).toEqual([light.id]); // 새 날
   });
-  it('pickVisit: 코너 닻이 시설처럼 뽑힌다 (시설이 없어도), 닻은 걷는 칸이 아니라 옆 칸으로 간다', () => {
+  it('pickVisit: 테마 닻이 시설처럼 뽑힌다 (시설이 없어도), 닻은 걷는 칸이 아니라 옆 칸으로 간다', () => {
     const s = bareState(1);
     const bed = place(s, 'flower_bed', 0, 0);
     place(s, 'deco_wood_bench', 1, 0);

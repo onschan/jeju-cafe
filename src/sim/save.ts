@@ -96,7 +96,7 @@ function backfill(state: GameState): void {
   state.ending ??= initEnding(); // z-ending: 엔딩·빠른 모드 (v18 세이브엔 없다)
   state.carry ??= null; // z-ending: 이월 묶음
   state.codex.titles ??= []; // staff-luck: 만난 칭호 도감
-  state.codex.corners ??= []; // fun-corner: 만든 코너 도감
+  state.codex.corners ??= []; // fun-corner: 만든 테마 도감
   state.lastOutcome ??= null;
   state.luckSeq ??= 0;
   state.monthGreatServes ??= 0;
