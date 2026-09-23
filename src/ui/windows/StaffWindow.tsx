@@ -7,6 +7,8 @@ import { josa } from '../../sim/josa.ts';
 import type { GameState, Staff, Candidate, RoleId, StatKey, JobTier, Face } from '../../sim/index.ts';
 import { gradeOf, REVEAL_GRADE } from '../../sim/index.ts'; // fun 점진 공개
 import { TIERS, LOW_ENERGY, STAT_KEYS, levelUpCost, expNeeded, mainStatOf, canHire, canLevelUp, canPostJob, staffInRole, postJobCost, tierUnlocked, availablePool, staffCapacity, staffRoomCount, capOf, capBonus, skillsOf, salaryDue, trainingOptions, trainingUnlocked, TRAINING_RANK, titleChances, titleDef, TITLE_GRADES, candidateDaysLeft, dayIndex, outcomeChances, chanceText, trainingChances, isWorking } from '../../sim/index.ts';
+// staff2: 직종 전략성 — 「지금 필요해요」·「우리 카페에 오면」·후보 비교표·배치
+import { roleNeeds, needOf, hireForecast, suggestRole, roleEffectText, roleHeads, headsOfCandidate, zoneOf, isNightShift, STAFF_ZONES, ZONE_NAME, ZONE_ROLE, type StaffZone, type RoleNeed } from '../../sim/index.ts';
 import { TitleRibbon } from '../TitleBadge'; // staff-luck 칭호 리본
 import { ROLES, RECRUIT_TIERS, skillDef, trainingDef, staffPoolDef } from '../../data/index.ts';
 import { label, wonText } from '../../data/labels.ts';
@@ -122,6 +124,74 @@ function TrainingPanel({ st, s, dispatch, onDone }: { st: Staff; s: GameState; d
   );
 }
 
+
+/** staff2: 「지금 필요해요」 칩 — 매력도 패널의 서비스 항목과 같은 데이터(주문 적체·줄·청결)를 본다 */
+function NeedChip({ need }: { need: RoleNeed }) {
+  return (
+    <span data-testid={`need-${need.role}`} title={need.why} style={{ fontSize: 13, fontWeight: 700, padding: '1px 7px', borderRadius: 9, border: `1px solid ${PALETTE.bad}`, background: PALETTE.paperDark, color: PALETTE.bad, whiteSpace: 'nowrap' }}>
+      지금 필요해요
+    </span>
+  );
+}
+
+/** staff2: 「우리 카페에 오면」 3줄 */
+function ForecastLines({ s, who, role, testId }: { s: GameState; who: { stats: Staff['stats']; baseSalary: number; level: number; title?: string }; role: RoleId; testId: string }) {
+  const f = hireForecast(s, who, role);
+  return (
+    <div data-testid={testId} style={{ marginTop: 6, padding: '6px 8px', background: PALETTE.paperDark, borderRadius: 6, fontSize: 14, lineHeight: 1.5 }}>
+      <div style={{ fontWeight: 700, marginBottom: 2 }}>우리 카페에 오면</div>
+      {f.lines.map((l, i) => <div key={i}>{l}</div>)}
+      {f.diminished && <div style={{ ...soft, fontSize: 13 }}>같은 직종 세 번째부터 몫이 절반이에요</div>}
+    </div>
+  );
+}
+
+/** staff2: 후보를 나란히 견주는 표 — 스탯(주 스탯)·칭호·급여·예상 이득 */
+function CompareTable({ s, cands, role }: { s: GameState; cands: Candidate[]; role: RoleId }) {
+  const cell: React.CSSProperties = { padding: '3px 5px', fontSize: 13, textAlign: 'left', borderBottom: `1px solid ${PALETTE.wood}` };
+  return (
+    <div style={{ overflowX: 'auto', marginBottom: 10 }} data-testid="candidate-compare">
+      <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 2 }}>{josa(label('role', role), '으로/로')} 뽑는다면</div>
+      <table style={{ borderCollapse: 'collapse', width: '100%', minWidth: 300 }}>
+        <thead><tr>{['후보', '몫', '칭호', '월급', '이 자리에 오면'].map((h) => <th key={h} style={{ ...cell, fontWeight: 700 }}>{h}</th>)}</tr></thead>
+        <tbody>
+          {cands.map((c) => {
+            const f = hireForecast(s, c, role);
+            return (
+              <tr key={c.id} data-testid={`compare-${c.id}`}>
+                <td style={cell}>{c.name}</td>
+                <td style={cell}>{headsOfCandidate(c, role).toFixed(1)}인분</td>
+                <td style={cell}>{c.title ? titleDef(c.title).name : '—'}</td>
+                <td style={cell}>{wonText(f.salary, true)}</td>
+                <td style={cell}>{f.gain}</td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+/** staff2: 직원 카드의 배치 — 홀은 담당 구역 3택, 모두 저녁 근무 토글 */
+function PlacementRow({ st, s, dispatch }: { st: Staff; s: GameState; dispatch: Dispatch }) {
+  if (st.role === null || st.training) return null;
+  const night = isNightShift(st);
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginTop: 4 }} data-testid={`place-${st.id}`}>
+      {st.role === ZONE_ROLE && (
+        <ButtonGroup testId="zone" label="담당 구역" value={zoneOf(st)} onPick={(z) => dispatch({ type: 'setStaffZone', staffId: st.id, zone: z as StaffZone })} style={{ flex: '1 1 100%' }}
+          options={STAFF_ZONES.map((z) => ({ value: z, label: ZONE_NAME[z] }))} />
+      )}
+      {st.role === ZONE_ROLE && <div style={{ ...soft, fontSize: 13, flex: '1 1 100%' }}>{zoneOf(st) === 'all' ? '어느 쪽도 특별히 챙기지 않아요' : `${ZONE_NAME[zoneOf(st)]} 손님 만족 +2, 반대쪽 −1`}</div>}
+      <button style={night ? rowBtnOn : rowBtn} onClick={() => dispatch({ type: 'setStaffNight', staffId: st.id, on: !night })} aria-label={`${st.name} 저녁 근무`} data-testid={`night-${st.id}`}>
+        저녁 근무 {night ? '함' : '안 함'}
+      </button>
+      <span style={{ ...soft, fontSize: 13 }}>{night ? '저녁 손님 만족 +2 · 기력이 하루 10 덜 차요' : '저녁까지 있으면 저녁 손님이 더 좋아해요'}</span>
+    </div>
+  );
+}
+
 function StaffCard({ st, s, dispatch }: { st: Staff; s: GameState; dispatch: Dispatch }) {
   const [training, setTraining] = useState(false);
   const [firing, setFiring] = useState(false);
@@ -161,6 +231,7 @@ function StaffCard({ st, s, dispatch }: { st: Staff; s: GameState; dispatch: Dis
         {gradeOf(s) >= REVEAL_GRADE && <button data-tut="train" style={away ? rowBtnOff : training ? rowBtnOn : rowBtn} disabled={!!away} onClick={() => { setTraining(!training); setFiring(false); }} aria-label={`${st.name} 연수`}>연수</button>}{/* fun 점진 공개: 연수는 등급 3부터 */}
         <button style={away ? rowBtnOff : rowBtnDanger} disabled={!!away} onClick={() => { setFiring(!firing); setTraining(false); }} aria-label={`${st.name} 해고`}>해고</button>
       </div>
+      <PlacementRow st={st} s={s} dispatch={dispatch} />{/* staff2: 담당 구역·저녁 근무 */}
       {training && !away && <TrainingPanel st={st} s={s} dispatch={dispatch} onDone={() => setTraining(false)} />}
       {firing && <ConfirmRow text={`${st.name} 씨를 내보낼까요? 퇴직금 ${josa(wonText(st.salary), '이/가')} 나가요.`} yes="내보내기" onYes={() => dispatch({ type: 'fire', staffId: st.id })} onNo={() => setFiring(false)} />}
     </div>
@@ -169,8 +240,9 @@ function StaffCard({ st, s, dispatch }: { st: Staff; s: GameState; dispatch: Dis
 
 function CandidateCard({ c, s, dispatch }: { c: Candidate; s: GameState; dispatch: Dispatch }) {
   const roles = openRoles(s);
-  const [role, setRole] = useState<RoleId | ''>(roles[0] ?? '');
-  const chosen = (role && roles.includes(role) ? role : roles[0]) ?? '';
+  const [role, setRole] = useState<RoleId | ''>(suggestRole(s, roles) ?? ''); // staff2: 지금 병목인 직종을 먼저 보여 준다
+  const chosen = (role && roles.includes(role) ? role : suggestRole(s, roles) ?? roles[0]) ?? '';
+  const need = chosen ? needOf(s, chosen) : null;
   const check = chosen !== '' ? canHire(s, c.id, chosen) : { ok: false, reason: '자리 없음' };
   const bio = staffPoolDef(c.poolId).bio;
   const daysLeft = candidateDaysLeft(c, dayIndex(s.clock)); // staff-luck: 프로·전설 후보는 3일
@@ -182,6 +254,7 @@ function CandidateCard({ c, s, dispatch }: { c: Candidate; s: GameState; dispatc
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
             <b style={{ fontSize: 16 }}>{c.name}</b>
             <span style={{ fontSize: 14 }}>최대 Lv.{c.maxLevel}</span>
+            {need && <NeedChip need={need} />}{/* staff2 */}
           </div>
           <div style={soft}>월급 {wonText(c.salary)}{c.title ? ` (칭호 ×${TITLE_GRADES[titleDef(c.title).grade].salaryMult})` : ''} · <SkillBadges who={c} /></div>
           {c.title && <div style={{ marginTop: 2, display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}><TitleRibbon titleId={c.title} />{daysLeft !== null && <span style={{ fontSize: 13, color: PALETTE.bad, fontWeight: 700 }} data-testid={`candidate-days-${c.id}`}>{daysLeft > 0 ? `${daysLeft}일 남음` : '오늘까지'}</span>}</div>}
@@ -190,16 +263,14 @@ function CandidateCard({ c, s, dispatch }: { c: Candidate; s: GameState; dispatc
         </div>
       </div>
       <StatRows s={s} who={c} />
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+      {chosen && <ForecastLines s={s} who={c} role={chosen} testId={`forecast-${c.id}`} />}{/* staff2 */}
+      {need && <div style={{ ...soft, fontSize: 13, marginTop: 2 }}>{need.why}</div>}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginTop: 4 }}>
         <ButtonGroup label="직종" value={chosen} onPick={(r) => setRole(r)} style={{ flex: '1 1 100%' }}
           options={roles.length === 0 ? [{ value: '' as RoleId, label: '자리 없음', disabled: true }] : roles.map((r) => ({ value: r, label: label('role', r) }))} />
         <button data-tut="hire" style={check.ok ? rowBtnOn : rowBtnOff} disabled={!check.ok} title={check.reason} onClick={() => { if (chosen) dispatch({ type: 'hire', candidateId: c.id, role: chosen }); }} aria-label={`${c.name} 채용`}>
           채용 · 월급 {wonText(c.salary)}
         </button>
-      </div>
-      {/* video-patch §2.4: 판단에 필요한 숫자는 결정 창 안에 — 창을 옮겨 다니지 않게 */}
-      <div style={{ ...soft, fontSize: 13, marginTop: 2 }} data-testid={`candidate-basis-${c.id}`}>
-        지금 정원 {s.staff.length}/{staffCapacity(s)}명 · 급여 합계 {wonText(s.staff.reduce((n, st) => n + st.salary, 0) + c.salary)}
       </div>
       {!check.ok && check.reason && <div style={{ ...soft, fontSize: 13, marginTop: 4 }}>{check.reason}</div>}
     </div>
@@ -225,17 +296,42 @@ export function StaffWindow(props: StaffWindowProps) {
   const [tab, setTab] = useState<Tab>(props.initialTab ?? (s.staff.length === 0 && s.candidates.length > 0 ? 'candidates' : 'ours'));
   const [sort, setSortState] = useState<StaffSort>(rememberedStaffSort);
   const setSort = (k: StaffSort) => { rememberedStaffSort = k; setSortState(k); };
-  const slots = ROLES.filter((r) => !HIDDEN_ROLES.has(r.id) && s.unlocked.roles.includes(r.id)).map((r) => `${r.name} ${staffInRole(s, r.id).length}/${s.slots[r.id] ?? 0}`).join(' · ');
   const cap = staffCapacity(s);
   const rooms = staffRoomCount(s);
   const bonus = capBonus(s);
+  // staff2: 정원·인건비는 늘 카드 위에 고정, 직종별 자리는 「몇 인분인지」와 함께
+  const payroll = s.staff.reduce((n, st) => n + salaryDue(st), 0);
+  const needs = roleNeeds(s);
+  const shownRoles = ROLES.filter((r) => !HIDDEN_ROLES.has(r.id) && s.unlocked.roles.includes(r.id));
+  const compareRole = suggestRole(s, openRoles(s));
+  const Head = (
+    <div style={{ marginBottom: 6, padding: '6px 8px', background: PALETTE.paperDark, borderRadius: 6 }} data-testid="staff-budget">
+      <div style={{ fontSize: 14, fontWeight: 700 }}>직원 {s.staff.length}/{cap}명 · 이달 인건비 {wonText(payroll)}</div>
+      <div style={{ ...soft, fontSize: 13 }}>{rooms > 0 ? `휴게실 ${rooms}개로 정원 +${rooms * 2}` : '휴게실을 지으면 정원이 늘어요'}{bonus > 0 ? ` · 유니폼 상한 +${bonus}` : ''}</div>
+    </div>
+  );
+  const RoleRows = (
+    <div style={{ display: 'grid', gap: 3, marginBottom: 8 }} data-testid="role-rows">
+      {shownRoles.map((r) => {
+        const need = needs.find((n) => n.role === r.id);
+        return (
+          <div key={r.id} style={{ display: 'flex', alignItems: 'baseline', gap: 6, flexWrap: 'wrap', fontSize: 14 }}>
+            <b style={{ minWidth: 58 }}>{r.name}</b>
+            <span>{staffInRole(s, r.id).length}/{s.slots[r.id] ?? 0}명 · {roleHeads(s, r.id).toFixed(1)}인분</span>
+            {need && <NeedChip need={need} />}
+            <span style={{ ...soft, fontSize: 13, flex: '1 1 100%' }}>{need ? need.why : roleEffectText(s, r.id)}</span>
+          </div>
+        );
+      })}
+    </div>
+  );
   return (
     <div style={body} data-testid="staff-window">
       <TabBar tabs={[{ key: 'ours', label: `직원 ${s.staff.length}/${cap}` }, { key: 'candidates', label: '채용', badge: s.candidates.length }]} active={tab} onPick={setTab} testId="staff-tab" />
       {tab === 'ours' && (
         <>
-          <div style={{ ...soft, marginBottom: 2 }}>정원 {s.staff.length}/{cap}명{rooms > 0 ? ` (휴게실 ${rooms})` : ' · 휴게실을 지으면 +3명'}{bonus > 0 ? ` · 유니폼 상한 +${bonus}` : ''}</div>
-          <div style={{ ...soft, marginBottom: 6 }}>자리: {slots}</div>
+          {Head}
+          {RoleRows}
           {s.staff.length > 1 && <SortChips chips={STAFF_SORTS} active={sort} onPick={setSort} testId="staff-sort" />}
           {s.staff.length === 0 && <Empty>아직 직원이 없어요. 채용 후보 탭에서 공고를 내 보세요.</Empty>}
           {sortStaff(s.staff, sort).map((st) => <StaffCard key={st.id} st={st} s={s} dispatch={dispatch} />)}
@@ -243,6 +339,8 @@ export function StaffWindow(props: StaffWindowProps) {
       )}
       {tab === 'candidates' && (
         <>
+          {Head}
+          {RoleRows}
           <div style={{ marginBottom: 4 }}><b>공고 내기</b> <span style={soft}>돈을 내면 그 방법으로 올 사람이 후보로 와요{s.freeRecruits > 0 ? ` · 스카우트권 ${s.freeRecruits}장 (쓰면 프로 이상 보장)` : ''}</span></div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(104px, 1fr))', gap: 6, marginBottom: 10 }}>
             {TIER_ORDER.map((t) => {
@@ -259,6 +357,7 @@ export function StaffWindow(props: StaffWindowProps) {
             })}
           </div>
           {s.candidates.length === 0 && <Empty>후보가 없어요. 공고를 내면 이번 달 안에 뽑을 수 있어요.</Empty>}
+          {s.candidates.length > 1 && compareRole && <CompareTable s={s} cands={s.candidates.slice(0, 3)} role={compareRole} />}{/* staff2: 나란히 견주기 */}
           {s.candidates.map((c) => <CandidateCard key={c.id} c={c} s={s} dispatch={dispatch} />)}
         </>
       )}

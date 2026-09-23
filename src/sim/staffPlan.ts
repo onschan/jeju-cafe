@@ -19,11 +19,12 @@ const pct = (v: number) => `${Math.round(v * 100)}%`;
 /** 한 직종을 한 줄로: 지금 몇 인분인지 + 그 직종이 지금 카페에서 하는 일 */
 export function roleEffectText(state: GameState, role: RoleId): string {
   const h = roleHeads(state, role);
+  const one = (v: number) => Math.round(v * 10) / 10;
   switch (role) {
-    case 'barista': return `음료 대기 −${pct(Math.min(MAX_PREP_CUT, PREP_CUT_PER_HEAD * h))} · 하루 ${Math.round(OWNER_DRINKS_PER_DAY + DRINKS_PER_BARISTA * h)}잔까지 제때`;
-    case 'cook': return `하루 ${Math.round(FOOD_PER_COOK * h)}접시까지 제때 · 재료비 절약`;
-    case 'hall': return `손님 만족 +${serviceBonus(state)} · 줄 ${waitCapOf(state)}자리`;
-    default: return `하루 청결 +${Math.round(dailyCleanRecovery(state) * 10) / 10} (자리에서 −${Math.round(seatDirt(state) * 10) / 10})`;
+    case 'barista': return h <= 0 ? `주인이 하루 ${OWNER_DRINKS_PER_DAY}잔까지 혼자 내요` : `음료 대기 −${pct(Math.min(MAX_PREP_CUT, PREP_CUT_PER_HEAD * h))} · 하루 ${Math.round(OWNER_DRINKS_PER_DAY + DRINKS_PER_BARISTA * h)}잔`;
+    case 'cook': return h <= 0 ? '디저트·식사는 요리사가 있어야 나가요' : `하루 ${Math.round(FOOD_PER_COOK * h)}접시까지 제때 · 재료비 절약`;
+    case 'hall': return h <= 0 ? '줄이 3자리뿐이라 손님이 돌아가요' : `손님 만족 +${serviceBonus(state)} · 줄 ${waitCapOf(state)}자리`;
+    default: return seatDirt(state) <= 0 ? `자리가 ${CLEAN_FREE_SEATS}개를 넘으면 필요해요` : `하루 청결 +${one(dailyCleanRecovery(state))} · 자리에서 −${one(seatDirt(state))}`;
   }
 }
 
