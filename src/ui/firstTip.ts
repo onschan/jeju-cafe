@@ -7,6 +7,7 @@
 import { createElement, useEffect, useSyncExternalStore, type CSSProperties } from 'react';
 import { FIRST_TIPS } from '../data/dialogue/index.ts';
 import { PALETTE } from './frame';
+import { getDialogue } from './dialogue.ts';
 
 export const TIPS: Record<string, string> = FIRST_TIPS;
 const STORE_KEY = 'jeju-cafe:tips';
@@ -34,6 +35,7 @@ export function showFirstTip(key: string | null): boolean {
   if (key === null) return false;
   const text = tipText(key);
   if (!text || seenTips.has(key)) return false;
+  if (getDialogue()) return false; // 튜토리얼 대화와 같은 화면에서 겹치지 않게 — 본 것으로 치지 않으니 다음에 다시 뜬다
   seenTips.add(key);
   save();
   current = key;

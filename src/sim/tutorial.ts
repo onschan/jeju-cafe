@@ -10,38 +10,40 @@
  * 단계를 끝내면 applyRewards(보상 상자) → step++. 건너뛰기는 언제나(skipTutorialChapter = 남은 단계 전부, 해금 보상만 조용히 적용).
  * 대사는 data/dialogue/tutorial.json(key로 짝). 하이라이트(data-tut·맵 칸)는 ui/tutorialHighlight.ts.
  *
- * | 단계 | 조건 | 하이라이트(data-tut / 맵 칸) | 보상 |
- * | 1 seat    | 야외 테이블 1개 | nav:build·tab:rest·build:table_out · 입지 최고 칸 1 | ₩20만 |
- * | 2 menu    | 메뉴판에 아메리카노 | nav:cafe·tab:menu·menu-put | ₩10만 |
- * | 3 greet   | 첫 손님에게 인사(greetGuest — 트랙 G) 또는 손님 카드 열기 | 정류장(손님이 오면 그 손님 칸) | 응모권 1 |
- * | 4 hire    | 직원 1명 채용(홀 권장) | nav:people·tab:candidates·hire | ₩30만 |
- * | 5 corner  | 첫 명당 「꽃길」: 꽃밭+벤치+가로등 (트랙 C completedCorners ≥1) | nav:build·tab:corner·corner-next:꽃길·build:<빠진 조각> · 테이블 옆 길가 칸 | ₩30만 |
- * | 6 goals   | 목표 창 열어 보기(seen goalWindow) | goal-bar | — |
- * | 7 graduate| 대사 닫기 | — | 칭호 「할망의 제자」·₩50만·응모권 3 |
+ * 5막 — 막마다 「그 시스템이 실제로 필요해지는 순간」에 열린다. 막이 열리기 전엔 그 막의 단계가 하나도 안 뜨고, 한 막 안에서도 단계 사이에 최소 한 게임일을 둔다.
+ * | 막 | 열리는 때 | 단계 | 막 보상 |
+ * | 1 카페를 연다      | 새 게임 바로                     | 자리·메뉴·첫 손님 인사            | ₩30만 · 응모권 1 |
+ * | 2 자리와 명당      | 좌석 2개 + 첫 결제               | 자리 점수 보기·첫 명당·명당 곁 자리 | ₩30만 |
+ * | 3 한 단계 올린다   | 자금 ₩80만 + 좌석 3개            | 트리 올리기·붙여 놓기·직원 채용     | ₩30만 · 응모권 1 |
+ * | 4 넓히고 다시 놓는다| 자금 ₩300만 또는 자리 이용률 80% | 필지 사기·다른 길 열기·옮기기       | ₩50만 |
+ * | 5 우리 카페의 색   | 등급 2 또는 2년차                | 진단 읽기·대회 접수                | 칭호 「할망의 제자」·₩50만·응모권 3 |
  */
 import type { GameState, GoalReward, Pt, FeatureId, PlacedObject } from './types.ts';
 import { objectDef } from '../data/index.ts';
 import { isDoorReachable, busStopPos, walkableNeighborsOf } from './path.ts';
-import { CORNERS, completedCorners } from './corners.ts';
+import { CORNERS, cornersDoneIncludingWork, cornerProgressIncludingWork, cornerPieceDefault } from './corners.ts';
+import { ownedParcels } from './parcels.ts';
+import { dayIndex } from './effects.ts';
+import { customMet } from './goals.ts';
 import { doorFrontOf, cellAt, canPlace } from './grid.ts';
 import { applyRewards } from './goals.ts';
 import { parcelAt } from './parcels.ts';
 import { MAIN_RECOMMEND_N } from './rooms.ts';
 import { TUTORIAL_STEPS as TUTORIAL_STEP_TEXTS } from '../data/dialogue/index.ts';
-import { bestMainCells, bestSeatCells } from './strategy.ts';
+import { bestMainCells, recommendedSeatCell } from './strategy.ts';
 
 /** 보상 상자 제목: 단계 이름 (dialogue/tutorial.json title) */
 export function tutorialStepTitle(id: number): string {
   return TUTORIAL_STEP_TEXTS.find((t) => t.id === id)?.title ?? `튜토리얼 ${id}단계`;
 }
 
-export const TUTORIAL_STEPS = 7;
 
 export interface TutorialStepDef {
   id: number;
+  /** 속한 막 (1~5) */
+  act: number;
   key: string;
   done: (s: GameState) => boolean;
-  reward: GoalReward[];
   /** 하이라이트할 DOM 타깃(data-tut 값, 열린 창에 따라 있는 것만 빛난다). 상태에 따라 다르면 함수. */
   targets: string[] | ((s: GameState) => string[]);
   /** 하이라이트할 맵 칸 */
@@ -55,9 +57,10 @@ export function stepTargets(step: TutorialStepDef, s: GameState): string[] {
 /** apply가 성공하면 state.tutorial.seen에 타입을 남기는 액션 (조건 판정용). 문자열 집합 — `greetGuest`는 트랙 G(손님 인사)가 만드는 액션이라 아직 Action 타입에 없어도 미리 둔다. */
 export const TRACKED_ACTIONS: ReadonlySet<string> = new Set<string>([
   'greetGuest', 'undoLast', 'train', 'develop', 'drawTicket', 'buyMileage', 'buyTicket', 'giveGift', 'respondEvent', 'investSpot',
+  'treeUpgrade', 'move', 'buyParcel', 'enterContest',
 ]);
 /** UI가 tutorialNote로 남기는 키. `look:<id>`는 미니 카드 「이게 뭐예요」 힌트(정낭·정류장·마을 길·본관), goalWindow는 목표 창을 열었다(6단계). */
-export type TutorialNoteKey = 'siteView' | 'guestCard' | 'storage' | 'goalWindow' | `look:${LookId}`;
+export type TutorialNoteKey = 'siteView' | 'guestCard' | 'storage' | 'goalWindow' | 'checkup' | `look:${LookId}`;
 /** 처음부터 놓여 있는 것의 카드 힌트 id (MiniCard Hint) */
 export type LookId = 'gate' | 'busstop' | 'road' | 'main';
 /** 카드 위 한 줄 설명 (초중생 어휘, MiniCard Hint) */
@@ -119,12 +122,13 @@ function objectsOfTypes(s: GameState, types: readonly string[]): PlacedObject[] 
 /** 튜토리얼 첫 명당 */
 export const TUTORIAL_CORNER_ID = 'corner_flower_path';
 /** 꽃길 조각 순서 (corners.json 그대로: 꽃밭 → 벤치 → 가로등) */
-export const CORNER_PIECE_TYPES: readonly string[] = (CORNERS.find((c) => c.id === TUTORIAL_CORNER_ID)?.pieces.map((p) => p.type) ?? ['flower_bed', 'deco_wood_bench', 'streetlight']);
+export const CORNER_PIECE_TYPES: readonly string[] = (CORNERS.find((c) => c.id === TUTORIAL_CORNER_ID)?.pieces.map((p) => cornerPieceDefault(p.type)) ?? ['flower_bed', 'deco_wood_bench', 'streetlight']); // spot2: 조각은 종류 — 튜토리얼이 가리킬 시설 하나로 바꾼다
 /** 조각끼리 서로 반경 CORNER_RADIUS 안 (corners.json radius) */
 export const CORNER_RADIUS = CORNERS.find((c) => c.id === TUTORIAL_CORNER_ID)?.radius ?? 2;
-/** 첫 명당이 생겼나: 트랙 C 명당 목록에 1개 이상 */
+/** 첫 명당이 생겼나: 마지막 조각을 놓는 순간 통과한다 (꽃밭·벤치·가로등은 공사 1일이라 완공을 기다리면 같은 안내가 하루 더 되풀이된다).
+ *  효과·도감 등록은 완공 뒤 그대로다 — 여기선 단계 판정만 앞당긴다. */
 export function cornerMade(s: GameState): boolean {
-  return completedCorners(s).length >= 1;
+  return cornersDoneIncludingWork(s) >= 1;
 }
 /** 꽃길 닻(첫 조각) — 내 필지 위 완공·공사 중 꽃밭 중 첫 것 */
 function cornerAnchor(s: GameState): PlacedObject | null {
@@ -166,10 +170,10 @@ export function cornerCells(s: GameState): Pt[] {
 export function recommendedMainCells(s: GameState, n = MAIN_RECOMMEND_N): Pt[] {
   return bestMainCells(s, n);
 }
-/** 1단계 테이블 글로우: 입지 최고 칸 1개(strategy.bestSeatCells — 걸어 닿는 칸 중 seatScore 최고). 닿는 칸이 없으면 길 옆 빈 칸. */
+/** 1단계 테이블 글로우: 사용자가 고른 칸(strategy.TUTORIAL_SEAT_CELL = 15,11)을 먼저 — 못 놓으면 입지 최고 칸(bestSeatCells). 닿는 칸이 없으면 길 옆 빈 칸. */
 function seatCells(s: GameState): Pt[] {
-  const best = bestSeatCells(s, 1);
-  if (best.length > 0) return best;
+  const best = recommendedSeatCell(s);
+  if (best) return [best];
   const out: Pt[] = [];
   for (const p of Object.values(s.objects).filter((o) => o.type === 'path')) {
     for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as const) {
@@ -194,15 +198,179 @@ export function greetedGuest(s: GameState): boolean {
 const money = (amount: number): GoalReward => ({ type: 'money', amount });
 const none = () => [] as Pt[];
 
-export const STEPS: TutorialStepDef[] = [
-  { id: 1, key: 'seat', done: (s) => seats(s).length >= 1, reward: [money(200_000)], targets: ['nav:build', 'tile:seat', 'tab:rest', 'build:table_out', 'build-go'], cells: seatCells }, // fun: 짓기 6타일 「자리」 → 야외 테이블 카드 → 짓기
-  { id: 2, key: 'menu', done: (s) => s.menuSlots.includes('americano'), reward: [money(100_000)], targets: ['nav:cafe', 'tab:menu', 'menu-put'], cells: none },
-  { id: 3, key: 'greet', done: greetedGuest, reward: [{ type: 'tickets', n: 1 }], targets: ['guest-row', 'greet'], cells: guestCells },
-  { id: 4, key: 'hire', done: (s) => s.staff.length >= 1, reward: [money(300_000)], targets: ['nav:people', 'tab:candidates', 'hire'], cells: none },
-  { id: 5, key: 'corner', done: cornerMade, reward: [money(300_000)], targets: (s) => ['nav:build', 'tile:charm', 'tab:corner', `corner-next:${TUTORIAL_CORNER_ID}`, `build:${cornerMissingType(s)}`, 'build-go'], cells: cornerCells }, // fun: 「매력」 타일 → 명당 탭 → 꽃길 「놓기」
-  { id: 6, key: 'goals', done: (s) => seen(s, 'goalWindow'), reward: [], targets: ['goal-bar'], cells: none },
-  { id: 7, key: 'graduate', done: () => true, reward: [{ type: 'title', id: 'halmang_pupil', name: '할망의 제자' }, money(500_000), { type: 'tickets', n: 3 }], targets: [], cells: none },
+// ---------- 5막 (막마다 「그 시스템이 실제로 필요해지는 순간」에 열린다) ----------
+
+/** 단계 사이 최소 간격 (게임일) — 한 막 안에서도 대사가 연달아 터지지 않게 */
+export const TUTORIAL_STEP_GAP_DAYS = 1;
+/** 2막이 열리는 좌석 수 / 3막 자금·좌석 / 4막 자금·좌석 이용률 / 5막 등급·연차 */
+export const ACT2_SEATS = 2;
+export const ACT3_MONEY = 800_000;
+export const ACT3_SEATS = 3;
+export const ACT4_MONEY = 3_000_000;
+export const ACT4_SEAT_USE = 0.8;
+export const ACT5_GRADE = 2;
+export const ACT5_YEAR = 2;
+
+export interface TutorialActDef {
+  id: number;
+  name: string;
+  /** 막이 열릴 때 할망 한 줄 예고 (≤22자) */
+  lead: string;
+  /** 아직 안 열린 막을 창에 한 줄로 ("좌석 2개와 첫 결제") */
+  when: string;
+  /** 트리거 — 이 막의 단계는 이게 참이 되기 전엔 하나도 안 뜬다 */
+  open: (s: GameState) => boolean;
+  /** 막을 끝내면 열리는 작은 보상 상자 (단계마다 주지 않는다 — 막마다 한 번) */
+  reward: GoalReward[];
+}
+
+function seatCount(s: GameState): number {
+  return Object.values(s.objects).filter((o) => objectDef(o.type).kind === 'seat').length;
+}
+function soldAny(s: GameState): boolean {
+  return Object.values(s.menuSold).some((n) => n > 0);
+}
+/** 자리가 얼마나 차 있나 (0~1) — 4막은 「땅이 좁다」가 몸으로 느껴질 때 연다 */
+function seatUse(s: GameState): number {
+  const seats = seatCount(s);
+  if (seats <= 0) return 0;
+  return Math.min(1, s.guests.filter((g) => g.seatId).length / seats);
+}
+
+export const TUTORIAL_ACTS: TutorialActDef[] = [
+  { id: 1, name: '카페를 연다', lead: '창고는 손봐 뒀다. 시작하라.', when: '새 게임 바로', open: () => true, reward: [money(300_000), { type: 'tickets', n: 1 }] },
+  { id: 2, name: '자리와 명당', lead: '자리마다 값이 다르다.', when: `좌석 ${ACT2_SEATS}개와 첫 결제`, open: (s) => seatCount(s) >= ACT2_SEATS && soldAny(s), reward: [money(300_000)] },
+  { id: 3, name: '한 단계 올린다', lead: '늘리기보다 올리는 게 싸다.', when: `자금 ₩80만·좌석 ${ACT3_SEATS}개`, open: (s) => s.money >= ACT3_MONEY && seatCount(s) >= ACT3_SEATS, reward: [money(300_000), { type: 'tickets', n: 1 }] },
+  { id: 4, name: '넓히고 다시 놓는다', lead: '땅이 좁아졌구나.', when: '자금 ₩300만 또는 자리가 꽉 참', open: (s) => s.money >= ACT4_MONEY || seatUse(s) >= ACT4_SEAT_USE, reward: [money(500_000)] },
+  { id: 5, name: '우리 카페의 색', lead: '이제 색을 골라야 한다.', when: `등급 ${ACT5_GRADE} 또는 ${ACT5_YEAR}년차`, open: (s) => (s.grade ?? 1) >= ACT5_GRADE || s.clock.year >= ACT5_YEAR, reward: [{ type: 'title', id: 'halmang_pupil', name: '할망의 제자' }, money(500_000), { type: 'tickets', n: 3 }] },
 ];
+const ACT = new Map(TUTORIAL_ACTS.map((a) => [a.id, a]));
+export function tutorialActDef(id: number): TutorialActDef {
+  const a = ACT.get(id);
+  if (!a) throw new Error(`unknown tutorial act: ${id}`);
+  return a;
+}
+
+// ---------- 단계 판정 도우미 ----------
+
+/** 명당(완공·짓는 중) 반경 안에 좌석이 있나 — 「명당 옆 자리가 좋아진다」를 손으로 확인하는 단계 */
+function seatBesideCorner(s: GameState): boolean {
+  const seats = Object.values(s.objects).filter((o) => objectDef(o.type).kind === 'seat');
+  if (seats.length === 0) return false;
+  for (const p of cornerProgressIncludingWork(s)) {
+    if (!p.done || !p.anchor) continue;
+    if (seats.some((o) => distToCell(p.anchor!, o.x, o.y) <= p.def.radius)) return true;
+  }
+  return false;
+}
+/** 좌석 하나 곁(반경 2)에 시설·장식이 둘 이상 — 「가까이 놓으면 좋아진다」(거리 보너스) */
+export const TUTORIAL_COMBO_RADIUS = 2;
+export const TUTORIAL_COMBO_COUNT = 2;
+function comboBeside(s: GameState): boolean {
+  const all = Object.values(s.objects);
+  const seats = all.filter((o) => objectDef(o.type).kind === 'seat');
+  const near = ['facility', 'deco', 'landmark'];
+  return seats.some((seat) => all.filter((o) => o.id !== seat.id && near.includes(objectDef(o.type).kind) && distToCell(seat, o.x, o.y) <= TUTORIAL_COMBO_RADIUS).length >= TUTORIAL_COMBO_COUNT);
+}
+/** 버스 말고 다른 길이 하나라도 열렸나 (주차장·올레 — 공사 중도 친다) */
+function routeOpened(s: GameState): boolean {
+  return Object.values(s.objects).some((o) => ROUTE_FACILITY_TYPES.has(o.type));
+}
+/** 트랙 H 경로 시설 (주차장·올레 표식·선착장·셔틀) */
+const ROUTE_FACILITY_TYPES = new Set(['parking_lot', 'parking_lot_big', 'parking_lot_bus', 'parking_lot_wide', 'olle_sign', 'pier', 'shuttle_stop']);
+
+/** 6단계 글로우: 명당 반경 안 빈 칸 (명당 곁에 자리를 두면 요금·인기가 오른다) */
+function cornerSeatCells(s: GameState): Pt[] {
+  for (const p of cornerProgressIncludingWork(s)) {
+    if (!p.done || !p.anchor) continue;
+    const a = p.anchor;
+    let best: Pt | null = null, bd = Infinity;
+    for (let dy = -p.def.radius; dy <= p.def.radius; dy++) for (let dx = -p.def.radius; dx <= p.def.radius; dx++) {
+      const x = a.x + dx, y = a.y + dy;
+      if (!emptySoil(s, x, y) || !canPlace(s, 'table_out', x, y).ok) continue;
+      const d = Math.max(Math.abs(dx), Math.abs(dy)) + (Math.abs(dx) + Math.abs(dy)) / 100;
+      if (d < bd) { bd = d; best = { x, y }; }
+    }
+    if (best) return [best];
+  }
+  return [];
+}
+/** 8단계 글로우: 첫 좌석 곁(반경 2) 빈 칸 — 붙여 놓으면 거리 보너스가 붙는다 */
+function comboCells(s: GameState): Pt[] {
+  const seat = seats(s)[0] ?? Object.values(s.objects).find((o) => objectDef(o.type).kind === 'seat');
+  if (!seat) return [];
+  let best: Pt | null = null, bd = Infinity;
+  for (let dy = -TUTORIAL_COMBO_RADIUS; dy <= TUTORIAL_COMBO_RADIUS; dy++) for (let dx = -TUTORIAL_COMBO_RADIUS; dx <= TUTORIAL_COMBO_RADIUS; dx++) {
+    const x = seat.x + dx, y = seat.y + dy;
+    if (!emptySoil(s, x, y)) continue;
+    const d = Math.max(Math.abs(dx), Math.abs(dy)) + (Math.abs(dx) + Math.abs(dy)) / 100;
+    if (d < bd) { bd = d; best = { x, y }; }
+  }
+  return best ? [best] : [];
+}
+/** 대회에 한 번이라도 접수했나 (goals.customMet과 같은 판정) */
+function contestEntered(s: GameState): boolean {
+  return customMet(s, 'contestEntered') || seen(s, 'enterContest');
+}
+
+export const STEPS: TutorialStepDef[] = [
+  // 1막 개념 — 자리 하나, 메뉴 하나, 첫 손님
+  { id: 1, act: 1, key: 'seat', done: (s) => seats(s).length >= 1, targets: ['nav:build', 'tile:seat', 'tab:rest', 'build:table_out', 'build-go'], cells: seatCells },
+  { id: 2, act: 1, key: 'menu', done: (s) => s.menuSlots.includes('americano'), targets: ['nav:cafe', 'tab:menu', 'menu-put'], cells: none },
+  { id: 3, act: 1, key: 'greet', done: greetedGuest, targets: ['guest-row', 'greet'], cells: guestCells },
+  // 2막 배치·명당 — 자리 점수를 보고, 첫 명당을 만들고, 명당 곁에 자리를 둔다
+  { id: 4, act: 2, key: 'site', done: (s) => seen(s, 'siteView'), targets: ['site-toggle'], cells: none },
+  { id: 5, act: 2, key: 'corner', done: cornerMade, targets: (s) => ['nav:build', 'tile:charm', 'tab:corner', `corner-next:${TUTORIAL_CORNER_ID}`, `build:${cornerMissingType(s)}`, 'build-go'], cells: cornerCells },
+  { id: 6, act: 2, key: 'cornerSeat', done: seatBesideCorner, targets: ['nav:build', 'tile:seat', 'tab:rest', 'build:table_out', 'build-go'], cells: cornerSeatCells },
+  // 3막 업그레이드 — 같은 자리에서 올리고, 붙여 놓고, 추천 후보를 뽑는다
+  { id: 7, act: 3, key: 'tree', done: (s) => seen(s, 'treeUpgrade'), targets: ['tree-up'], cells: none },
+  { id: 8, act: 3, key: 'combo', done: comboBeside, targets: ['nav:build', 'tile:charm', 'build-go'], cells: comboCells },
+  { id: 9, act: 3, key: 'hire', done: (s) => s.staff.length >= 1, targets: ['nav:people', 'tab:candidates', 'hire'], cells: none },
+  // 4막 확장·재배치 — 땅을 사고, 다른 길을 열고, 옮겨 본다
+  { id: 10, act: 4, key: 'parcel', done: (s) => ownedParcels(s).length >= 2, targets: ['nav:ledger', 'tab:invest', 'parcel-buy'], cells: none },
+  { id: 11, act: 4, key: 'route', done: routeOpened, targets: ['nav:build', 'tile:inflow', 'build:parking_lot', 'build-go'], cells: none },
+  { id: 12, act: 4, key: 'rearrange', done: (s) => seen(s, 'move'), targets: ['tool:move', 'tool:undo'], cells: none },
+  // 5막 전략 — 진단을 읽고, 대회에 나가 본다
+  { id: 13, act: 5, key: 'checkup', done: (s) => seen(s, 'checkup'), targets: ['nav:ledger', 'strategy-card'], cells: none },
+  { id: 14, act: 5, key: 'contest', done: (s) => contestEntered(s), targets: ['nav:ledger', 'tab:contest', 'contest-enter'], cells: none },
+];
+export const TUTORIAL_STEPS = STEPS.length;
+/** 그 막의 마지막 단계 id */
+function lastStepOfAct(act: number): number {
+  return Math.max(...STEPS.filter((st) => st.act === act).map((st) => st.id));
+}
+/** 이 단계가 속한 막 */
+export function actOfStep(id: number): TutorialActDef {
+  return tutorialActDef(STEPS.find((st) => st.id === id)?.act ?? 1);
+}
+/** 막이 열렸나 (트리거 충족). 앞 막을 다 끝냈어야 한다 — 막은 순서대로 열린다. */
+export function actOpen(s: GameState, act: number): boolean {
+  const def = ACT.get(act);
+  return !!def && def.open(s);
+}
+/** 다 끝낸 막인가 */
+export function actDone(s: GameState, act: number): boolean {
+  return s.tutorial.step >= lastStepOfAct(act);
+}
+/** 지금 하고 있는 막 (끝났으면 null) */
+export function currentAct(s: GameState): TutorialActDef | null {
+  const st = STEPS[s.tutorial.step];
+  return st ? tutorialActDef(st.act) : null;
+}
+/** 끝낸 막 수 (배지 「📖 막 n/5」) */
+export function actsDone(s: GameState): number {
+  return TUTORIAL_ACTS.filter((a) => actDone(s, a.id)).length;
+}
+/** 단계 사이 최소 한 게임일을 지났나 (연타 금지) */
+export function stepGapPassed(s: GameState): boolean {
+  const last = s.tutorial.lastDay;
+  return last === undefined || dayIndex(s.clock) >= last + TUTORIAL_STEP_GAP_DAYS;
+}
+/** 막이 아직이라 기다리는 중인가 (창의 「다음 막은 언제」 한 줄) */
+export function waitingForAct(s: GameState): TutorialActDef | null {
+  const act = currentAct(s);
+  return act && !actOpen(s, act.id) ? act : null;
+}
 
 export function initTutorial(skipped = false): GameState['tutorial'] {
   return { step: skipped ? TUTORIAL_STEPS : 0, skipped, seen: [] };
@@ -212,9 +380,9 @@ export const STARTER_FEATURE_IDS: FeatureId[] = [];
 export function tutorialFeatureIds(): FeatureId[] {
   return STARTER_FEATURE_IDS;
 }
-/** 모든 단계 보상에 들어 있는 기능 (정합 검사용) */
+/** 모든 막 보상에 들어 있는 기능 (정합 검사용) */
 export function allTutorialFeatureIds(): FeatureId[] {
-  return STEPS.flatMap((st) => st.reward.filter((r): r is Extract<GoalReward, { type: 'unlockFeature' }> => r.type === 'unlockFeature').map((r) => r.id));
+  return TUTORIAL_ACTS.flatMap((a) => a.reward.filter((r): r is Extract<GoalReward, { type: 'unlockFeature' }> => r.type === 'unlockFeature').map((r) => r.id));
 }
 export function unlockTutorialFeatures(state: GameState): void {
   for (const id of tutorialFeatureIds()) state.features[id] = true;
@@ -222,8 +390,15 @@ export function unlockTutorialFeatures(state: GameState): void {
 export function tutorialDone(state: GameState): boolean {
   return state.tutorial.step >= TUTORIAL_STEPS;
 }
-/** 지금 하고 있는 단계 (끝났으면 null) */
+/** 지금 하고 있는 단계 (끝났으면 null). 막이 아직 안 열렸거나 앞 단계를 끝낸 지 하루가 안 됐으면 null — 가이드는 몰아 뜨지 않는다. */
 export function currentTutorialStep(state: GameState): TutorialStepDef | null {
+  if (tutorialDone(state)) return null;
+  const st = STEPS[state.tutorial.step];
+  if (!st || !actOpen(state, st.act) || !stepGapPassed(state)) return null;
+  return st;
+}
+/** 막·간격을 보지 않은 「다음 차례 단계」 (창 목록·건너뛰기가 쓴다) */
+export function nextTutorialStep(state: GameState): TutorialStepDef | null {
   return tutorialDone(state) ? null : STEPS[state.tutorial.step] ?? null;
 }
 /** 단계 id가 끝났나 */
@@ -231,17 +406,19 @@ export function tutorialStepDone(state: GameState, id: number): boolean {
   return state.tutorial.step >= id;
 }
 
-/** 현재 단계의 대사를 봤고 조건이 찼으면 보상(보상 상자 알림)을 주고 step++. 한 번에 한 단계. 끝낸 단계 id 또는 null. */
+/** 현재 단계의 대사를 봤고 조건이 찼으면 step++. 보상 상자는 막을 끝낼 때 한 번. 끝낸 단계 id 또는 null. */
 export function checkTutorial(state: GameState): number | null {
   const step = currentTutorialStep(state);
   if (!step || !dialogueSeen(state, step.id) || !step.done(state)) return null;
   state.tutorial.step++;
-  if (step.reward.length > 0) applyRewards(state, step.reward, { source: 'tutorial', refId: String(step.id), title: tutorialStepTitle(step.id) }); // 보상 없는 단계는 빈 상자를 안 띄운다
+  state.tutorial.lastDay = dayIndex(state.clock); // 다음 단계는 내일부터 (연타 금지)
+  const act = tutorialActDef(step.act);
+  if (lastStepOfAct(act.id) === step.id) applyRewards(state, act.reward, { source: 'tutorial', refId: `act${act.id}`, title: `${act.id}막 ${act.name}` });
   return step.id;
 }
 
-function applyUnlockRewards(state: GameState, st: TutorialStepDef): void {
-  for (const r of st.reward) {
+function applyUnlockRewards(state: GameState, act: TutorialActDef): void {
+  for (const r of act.reward) {
     if (r.type === 'unlockFeature') state.features[r.id] = true;
     else if (r.type === 'unlockFacility' && !state.unlocked.objects.includes(r.id)) state.unlocked.objects.push(r.id);
   }
@@ -249,19 +426,21 @@ function applyUnlockRewards(state: GameState, st: TutorialStepDef): void {
 
 /** 현재 단계 하나만 건너뛴다 (「이미 알아요」): 그 단계의 해금 보상(기능·시설)만 조용히 적용하고 step++. 돈·응모권 등은 안 준다. 건너뛴 단계 id 또는 null. */
 export function skipTutorialStep(state: GameState): number | null {
-  const st = currentTutorialStep(state);
+  const st = nextTutorialStep(state);
   if (!st) return null;
-  applyUnlockRewards(state, st);
   state.tutorial.step++;
+  if (lastStepOfAct(st.act) === st.id) applyUnlockRewards(state, tutorialActDef(st.act)); // 막 보상의 해금만 조용히
   return st.id;
 }
 
-/** 남은 단계를 통째로 건너뛴다(「건너뛰기」): 남은 단계의 해금 보상(기능·시설)만 조용히 적용하고 step을 끝으로. 돈·응모권·칭호는 안 준다. 건너뛴 단계 수. */
+/** 건너뛰기는 막 단위: 지금 막의 남은 단계만 넘긴다 (해금 보상만 조용히, 돈·응모권·칭호는 안 준다). 건너뛴 단계 수. */
 export function skipTutorialChapter(state: GameState): number {
   const from = state.tutorial.step;
-  if (from >= TUTORIAL_STEPS) return 0;
-  for (const st of STEPS) if (st.id > from) applyUnlockRewards(state, st);
-  state.tutorial.step = TUTORIAL_STEPS;
+  const cur = nextTutorialStep(state);
+  if (!cur) return 0;
+  const last = lastStepOfAct(cur.act);
+  applyUnlockRewards(state, tutorialActDef(cur.act));
+  state.tutorial.step = last;
   state.tutorial.skipped = true;
-  return TUTORIAL_STEPS - from;
+  return last - from;
 }

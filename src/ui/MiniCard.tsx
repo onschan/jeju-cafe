@@ -8,7 +8,11 @@ import { guestBlock, vacateWarning, WORK_NAME } from '../sim/index.ts'; // seatf
 import { RouteCard } from './RouteCard';
 import { TreeUpgradeRow } from './TreeUpgrade'; // fun: 같은 자리 업그레이드 트리
 import { treeOf } from '../sim/index.ts';
+import { cornerSeatLine, cornerAnchorLine, cornerBreakWarning } from '../sim/corners.ts'; // spot2: 명당 효과·경고를 카드에서 보이게
+import { seatFeeQuote, FEE_MULT_CAP } from '../sim/fee.ts'; // spot2: 요금 내역 (기본 → 자리·명당·거리 → 실제로 받는 값)
+import { isCornerTarget } from '../sim/corners.ts';
 import { objectReachable, UNREACHABLE_TEXT } from '../sim/index.ts'; // ui3: 손님이 못 가는 시설
+import { seatsNeeded, isSeat } from '../sim/index.ts'; // midgame: 「자리 4/6」 — 지금 손님에 필요한 자리
 import type { RouteId } from '../sim/index.ts';
 import { mainSummary, canAutoConnectPath, canExpandMain, expandCost, nextMainLevel, canBuildSecondFloor, canStartMoveMain, canUndoMoveMain, canMoveThisMonth, moveDays, isRoomCut, isAnnex, roomSeats, roomSeatsUsed, MAIN_EXPAND_DAYS, FLOOR2_COST, FLOOR2_DAYS, MOVE_COST, ANNEX_CUT_TEXT, DOOR_PATH_WARN, BGM_LABEL, LIGHT_LABEL } from '../sim/index.ts'; // y-indoor
 import { ButtonGroup } from './ButtonGroup';
@@ -352,6 +356,7 @@ function ObjectCard({ s, id, a, onClose, guestId }: { s: GameState; id: string; 
   const doUpgrade = () => Confirm(`${josa(d.name, '을/를')} Lv${st.level + 1}로 증축할까요? ${wonText(upCost)}${(d.buildDays ?? 0) > 0 ? ` · 공사 ${d.buildDays}일(이용 불가)` : ''}`, () => { if (blocked && reserve('upgrade')) return; dispatch({ type: 'upgradeObject', objectId: o.id }); }, { title: '증축' });
   const rep = canRepair(s, o.id);
   const clean = Math.round(s.clean.value);
+  const breakWarn = cornerBreakWarning(s, o.id); // spot2: 치우거나 옮기면 명당이 깨지는 조각
   return (
     <div data-testid="card-object">
       {guestId && s.guests.some((g) => g.id === guestId) && <SeatChips on="object" objectId={o.id} guestId={guestId} a={a} />}
@@ -368,6 +373,7 @@ function ObjectCard({ s, id, a, onClose, guestId }: { s: GameState; id: string; 
             </span>
           )}
         </div>
+        <SeatNeedRow s={s} o={o} />{/* midgame: 자리 시설이면 「자리 4/6」 */}
         <Details id={`object:${o.type}`}>
           <div style={small}>입소문 <b style={{ color: PALETTE.ink }}>{st.popularity}</b> · 경관 <b style={{ color: PALETTE.ink }}>{st.scenery > 0 ? '+' : ''}{st.scenery}</b> · 요금 <b style={{ color: PALETTE.ink }}>{st.feePct}%</b>{st.upkeep > 0 && ` · 유지비 ${wonText(st.upkeep)}/달`}{(o.uses ?? 0) > 0 && ` · 이용 ${o.uses}회`}</div>
           <div style={small}>주변 시너지: {st.corner.pop > 0 || st.corner.feePct > 0 ? `명당 입소문 +${st.corner.pop} · 요금 +${st.corner.feePct}%` : '없음'}{st.sets.length > 0 && ` · 세트 ${st.sets.map((x) => x.name).join(', ')}`}</div>
@@ -377,8 +383,11 @@ function ObjectCard({ s, id, a, onClose, guestId }: { s: GameState; id: string; 
           <div style={{ ...small, whiteSpace: 'nowrap' }} data-testid="clean-bar">카페 청결 <Bar value={clean} max={100} width={80} /> {clean}{clean < CLEAN_LOW && <span style={{ color: PALETTE.bad }}> 지저분해요</span>}</div>
         </Details>
       </div>
+      <FeeLines s={s} o={o} />{/* spot2: 「기본 ₩3,000 · 자리 +28% · 명당 +12% → ₩4,300」 */}
+      <CornerLines s={s} o={o} />{/* spot2: 자리엔 「명당 꽃길 옆 · 요금 +5%」, 조각엔 「돌봐 주는 자리 n곳」 */}
       <UnreachableRow s={s} o={o} a={a} />{/* ui3: 손님이 못 가는 시설이면 이유 한 줄 + 「길 잇기」 */}
       {treeOf(o.type) && <TreeUpgradeRow s={s} o={o} />}{/* fun: 「업그레이드 ▲」는 카드 맨 위(버튼 줄 위) — 아래에 두면 잘린다 */}
+      {!protectedType && breakWarn && <div style={{ ...small, marginTop: 4, color: PALETTE.bad, fontWeight: 700 }} data-testid="corner-break-warn">{breakWarn} · 업그레이드는 괜찮아요</div>}
       <Row>
         {upgradable && <button style={up.ok ? btnOn : btnOff} disabled={!up.ok} title={up.ok ? undefined : up.reason} onClick={doUpgrade} data-testid="upgrade-btn">증축 Lv{st.level + 1} ({wonText(upCost)})</button>}
         {st.wear > 0 && <button style={rep.ok ? btnOn : btnOff} disabled={!rep.ok} onClick={() => dispatch({ type: 'repairObject', objectId: o.id })} data-testid="repair-btn">수리 ({wonText(repairCost(s, o))})</button>}
@@ -395,6 +404,57 @@ function ObjectCard({ s, id, a, onClose, guestId }: { s: GameState; id: string; 
         : blocked && !protectedType && <div style={{ ...small, marginTop: 4 }} data-testid="busy-line">{blocked} · 눌러 두면 일어날 때 해 드려요</div>}
       {renaming && <RenamePopup objectId={o.id} current={o.name ?? ''} onClose={() => setRenaming(false)} />}
     </div>
+  );
+}
+
+/** midgame: 자리 시설 카드에 「자리 4/6 · 홍보 중엔 9」 — 몇 개가 더 필요한지가 수치로 보이게. */
+function SeatNeedRow({ s, o }: { s: GameState; o: PlacedObject }) {
+  if (!isSeat(s, o)) return null;
+  const n = seatsNeeded(s);
+  const short = n.short > 0;
+  return (
+    <div data-testid="seat-need" style={{ ...small, color: short ? PALETTE.bad : PALETTE.inkSoft, fontWeight: short ? 700 : 400 }}>
+      <Icon name="look" size={13} /> 자리 {n.have}/{n.now}{short ? ` · ${n.short}개 더` : ''} · 홍보 중엔 {n.promo}개
+    </div>
+  );
+}
+
+/** spot2 요금 내역 (사용자 피드백 "잘 꾸밀수록 받는 요금이 더 좋아지면"): 자리 카드에 세 줄 —
+ *  ① 기본 메뉴 값 → 실제로 받는 값 ② 무엇이 얼마나 얹었나 ③ 상한(×2.0)에 닿았으면 그 말.
+ *  요금 배수는 sim의 fee.ts가 실제 결제에 쓰는 그 값이다 — 카드 숫자와 받는 값이 갈라지지 않는다. */
+function FeeLines({ s, o }: { s: GameState; o: PlacedObject }) {
+  const d = objectDef(o.type);
+  if (!isCornerTarget(d) || o.build) return null;
+  const q = seatFeeQuote(s, o);
+  if (q.base <= 0) return null;
+  const up = Math.round((q.mult - 1) * 100);
+  return (
+    <div style={{ marginTop: 4 }} data-testid="fee-lines">
+      <div style={{ fontSize: 14, fontWeight: 700 }}>
+        기본 {wonText(q.base)} → <span style={{ color: PALETTE.title }}>{wonText(q.price)}</span>{up !== 0 && <span style={{ ...small, color: up > 0 ? PALETTE.ok : PALETTE.bad }}> ({up > 0 ? '+' : ''}{up}%)</span>}
+      </div>
+      <div style={small}>{q.parts.length > 0 ? q.parts.map((x) => `${x.label} ${x.pct > 0 ? '+' : ''}${x.pct}%`).join(' · ') : '아직 얹은 게 없어요 — 자리를 꾸미면 올라가요'}</div>
+      {q.capped && <div style={{ ...small, color: PALETTE.title }}>요금은 메뉴 값의 {FEE_MULT_CAP}배까지예요</div>}
+    </div>
+  );
+}
+
+/** spot2: 명당이 이 시설에 무슨 일을 하는지 카드에서 보이게.
+ *  - 자리(좌석·요금 시설): "명당 꽃길 옆 · 요금 +5% · 만족 +5"
+ *  - 명당 조각(팻말을 탭했을 때): "꽃길이 돌봐 주는 자리 3곳 · 오늘 이 자리들 매출 ₩12만" */
+function CornerLines({ s, o }: { s: GameState; o: PlacedObject }) {
+  const seat = cornerSeatLine(s, o);
+  const anchor = cornerAnchorLine(s, o.id);
+  if (!seat && !anchor) return null;
+  return (
+    <>
+      {seat && <div style={{ ...small, color: PALETTE.ok, fontWeight: 700 }} data-testid="corner-seat-line">{seat}</div>}
+      {anchor && (
+        <div style={small} data-testid="corner-anchor-line">
+          {josa(anchor.name, '이/가')} 돌봐 주는 자리 {anchor.seats}곳{anchor.seats > 0 ? ` · 오늘 이 자리들 매출 ${wonText(anchor.sales)}` : ' — 옆에 자리를 놓아 보세요'}
+        </div>
+      )}
+    </>
   );
 }
 

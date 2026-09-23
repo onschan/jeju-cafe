@@ -8,7 +8,7 @@ import { bareState, at } from '../../sim/__tests__/helpers.ts';
 import { CORNERS, cornerProgress } from '../../sim/corners.ts';
 import { hasIdToken } from '../../data/labels.ts';
 import { BUILD_TABS } from '../windows/BuildWindow.tsx';
-import { cornerEffectText, cornerMissingText } from '../windows/CornerTab.tsx';
+import { cornerEffectText, cornerMissingText, cornerServeText } from '../windows/CornerTab.tsx';
 import { cornerBadge, rangeHintFor } from '../rangeHint.ts';
 import { goalConditionText } from '../../sim/index.ts';
 
@@ -34,18 +34,28 @@ describe('명당 UI (fun-corner)', () => {
     for (const c of CORNERS) { expect(c.guestLine.length).toBeLessThanOrEqual(12); expect(c.name.length).toBeLessThanOrEqual(10); }
     for (const t of texts) expect(t).not.toMatch(/→|정석|시뮬/);
   });
-  it('미완성 한 줄: "가로등 하나만 더" / 완성이면 "완성!"; 효과 한 줄에 요금·입소문·손님층', () => {
+  it('미완성 한 줄은 조각 「종류」 이름으로: "불빛 하나만 더"; 효과 한 줄은 무엇이 좋아지는지부터', () => {
     const s = bareState(1);
     place(s, 'flower_bed', 0, 0);
     place(s, 'deco_wood_bench', 1, 0);
     let p = cornerProgress(s).find((x) => x.def.id === 'corner_flower_path')!;
-    expect(cornerMissingText(p)).toBe('가로등 하나만 더');
-    expect(cornerEffectText(p)).toBe('요금 +5% · 입소문 +5 · 여성 손님이 더 온다'); // 용어 정리: 시설 지표는 「입소문」, 「인기」는 매력도 패널 전용
+    expect(cornerMissingText(p)).toBe('불빛 하나만 더');
+    expect(cornerEffectText(p)).toBe('옆 2칸 자리에 요금 +12% · 입소문 +5 · 여성 손님이 더 온다'); // 용어 정리: 시설 지표는 「입소문」, 「인기」는 매력도 패널 전용
     place(s, 'streetlight', 0, 1);
+    place(s, 'table_out', 1, 1);
     p = cornerProgress(s).find((x) => x.def.id === 'corner_flower_path')!;
     expect(cornerMissingText(p)).toContain('완성');
+    expect(cornerServeText(s, p)).toBe('돌봐 주는 자리 1곳 · 오늘 ₩0');
     const road = cornerProgress(s).find((x) => x.def.id === 'corner_stonewall_road')!;
-    expect(cornerMissingText(road)).toBe('돌담 4개, 올렛길 하나 더');
+    expect(cornerMissingText(road)).toBe('돌담 4개, 올렛길 하나 더'); // 트리 밖 시설은 시설 이름 그대로
+  });
+  it('업그레이드해도 조각이 유지된다 — 파라솔로 올린 자리도 「자리」 조각으로 센다', () => {
+    const s = bareState(1);
+    place(s, 'table_parasol', 0, 0); // 자리 트리 2단계
+    place(s, 'railing', 1, 0);
+    const p = cornerProgress(s).find((x) => x.def.id === 'corner_sea_terrace')!;
+    expect(p.pieces.find((x) => x.type === 'seat')!.have).toBe(1);
+    expect(cornerMissingText(p)).toBe('큰 화분 하나만 더');
   });
   it('고스트 배지: 마지막 조각 자리면 "이걸 놓으면 꽃길 완성", 조각이면 "꽃길 조각", 조각이 아니면 없음 — rangeHintFor에 실린다', () => {
     const s = bareState(1);
@@ -55,6 +65,24 @@ describe('명당 UI (fun-corner)', () => {
     expect(cornerBadge(s, 'streetlight', at(9, 6).x, at(9, 6).y)).toBe('꽃길 조각');
     expect(cornerBadge(s, 'gate', at(2, 2).x, at(2, 2).y)).toBeUndefined();
     expect(rangeHintFor(s, 'streetlight', at(2, 2).x, at(2, 2).y).badge).toBe('이걸 놓으면 꽃길 완성');
+  });
+  it('완성 예고엔 좋아지는 자리 수가 붙고, 완성된 명당 옆에 자리를 놓으면 요금이 미리 보인다', () => {
+    const s = bareState(1);
+    place(s, 'flower_bed', 0, 0);
+    place(s, 'deco_wood_bench', 1, 0);
+    place(s, 'table_out', 1, 1);
+    expect(cornerBadge(s, 'streetlight', at(0, 1).x, at(0, 1).y)).toBe('이걸 놓으면 꽃길 완성 · 자리 1곳이 좋아져요');
+    place(s, 'streetlight', 0, 1);
+    expect(cornerBadge(s, 'table_out', at(2, 1).x, at(2, 1).y)).toMatch(/^꽃길 옆이라 요금 \+\d+%$/);
+  });
+  it('돌담 고스트: 북서쪽에 두면 겨울 바람을 막아 주는 자리를 칸으로 보여 준다', () => {
+    const s = bareState(1);
+    place(s, 'table_out', 3, 4);
+    place(s, 'stonewall', 2, 3); // 쐐기 안 — 돌담 하나로는 모자라다(wind 2 < 3)
+    const h = rangeHintFor(s, 'stonewall', at(2, 2).x, at(2, 2).y);
+    expect(h.radius).toBe(3);
+    expect(h.marks.length).toBe(1);
+    expect(h.badge).toBe('자리 1곳 겨울 바람을 막아요 (만족 +8)');
   });
 });
 

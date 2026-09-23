@@ -8,6 +8,7 @@ import { josa } from './josa.ts';
 import { initMain } from './rooms.ts';
 import { initEnding } from './ending.ts'; // z-ending
 import { initContest } from './contest.ts'; // 대회
+import { initRivals } from './rival.ts'; // 동네 경쟁 카페
 import type { FinalScore } from './types.ts';
 import { TUTORIAL_STEPS } from './tutorial.ts';
 import { ROUTE_IDS } from './entry.ts';
@@ -18,8 +19,8 @@ import { fmtNum } from './format.ts';
 
 /** trim에서 없어진 것들이 들어 있는 v20 세이브를 올린다 (환불·치환) */
 export const MIGRATE_FROM = 20;
-/** big·mix 통합에서 붙은 필드는 전부 optional이라 backfill만으로 v21 → v22 → v23이 된다 (덜어낼 것도 없다) */
-export const BACKFILL_FROM = [20, 21, 22];
+/** big·mix·all 통합에서 붙은 필드는 전부 optional이라 backfill만으로 v21 → v22 → v23 → v24가 된다 (덜어낼 것도 없다) */
+export const BACKFILL_FROM = [20, 21, 22, 23];
 /** 이어서 열 수 있는 가장 낮은 세이브 버전 (이보다 낮으면 백업 뒤 새 게임) */
 export const OLDEST_LOADABLE = Math.min(...BACKFILL_FROM);
 
@@ -125,8 +126,14 @@ function backfill(state: GameState): void {
   state.carry ??= null; // z-ending: 이월 묶음
   state.codex.titles ??= []; // staff-luck: 만난 칭호 도감
   state.codex.corners ??= []; // fun-corner: 만든 명당 도감
+  state.unlocked.recruits ??= []; // midgame: 목표로 여는 채용 방법
+  state.staffCapBonus ??= 0;      // midgame: 목표 보상 직원 정원
+  state.ticketHints ??= 0;        // midgame: 응모권 안내 횟수
   state.lastOutcome ??= null;
   state.contest ??= initContest(); // 대회 (v21 세이브엔 없다 — 등급 3이면 다음 6·12월부터 접수할 수 있다)
+  state.rivals ??= initRivals(); // 동네 경쟁 카페 (옛 세이브는 다음 5일 발표부터 순위가 잡힌다)
+  state.monthCosts.deal ??= 0; // 제휴 월 고정비 줄
+  if (state.lastMonthCard) state.lastMonthCard.costs.deal ??= 0;
   state.monthCosts.contest ??= 0; // 대회 참가비 줄 (월말 카드 비용 합계)
   if (state.lastMonthCard) state.lastMonthCard.costs.contest ??= 0;
   if (state.loan.balance > 0) state.loan.dueMonthIndex ??= monthIndex(state.clock) + LOAN_DUE_MONTHS; // stakes: 빌린 기록만 있는 옛 세이브에 기한을 준다 (overdueCount는 넘긴 뒤에 생긴다 — 새 상태에 없는 키를 만들지 않는다)
@@ -147,6 +154,7 @@ function backfill(state: GameState): void {
     if (!PENDING_KINDS.includes(o.pending.kind) || (o.pending.kind === 'move' && !o.pending.to)) delete o.pending;
     else o.pending.at ??= 0;
   }
+  if (state.tutorial.lastDay !== undefined && typeof state.tutorial.lastDay !== 'number') delete state.tutorial.lastDay; // 5막 재구성: 없으면 첫 단계가 바로 뜬다
   if (state.tutorial.seen === undefined) { // z-tutorial: 30단계 판정 표식이 없는 옛 9단계 저장 — 건너뛴 것은 계속 끝난 상태(30), 손으로 한 것은 10단계부터 이어 간다
     state.tutorial.seen = [];
     if (state.tutorial.skipped && state.tutorial.step < TUTORIAL_STEPS) state.tutorial.step = TUTORIAL_STEPS;

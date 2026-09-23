@@ -1,7 +1,7 @@
 import type { GameState, ApplyResult, Candidate, Staff, Stats, StatKey, RoleId, JobTier, SkillEffect, Pt, StaffPoolDef, RecruitTierDef } from './types.ts';
 import { RECRUIT_TIERS, STAFF_POOL, SKILLS, roleDef, objectDef, staffPoolDef, recruitTierDef, ROLES } from '../data/index.ts';
 import { randInt, pickWeighted } from './rng.ts';
-import { monthIndex } from './clock.ts';
+import { monthIndex, HOUR_MS } from './clock.ts';
 import { isWalkable, findPath, walkableNeighborsOf, moveAlong, walkSpeedMult } from './path.ts';
 import { WAREHOUSE_FRONT } from './layout.ts';
 import { doorFrontOf } from './grid.ts';
@@ -26,6 +26,11 @@ export const STAT_NAME: Record<StatKey, string> = { stamina: '체력', strength:
 export const BASE_STAFF_SLOTS = 3;
 export const SLOTS_PER_STAFF_ROOM = 2; // stakes: 3 → 2 (채용·급여·정원이 서로 밀리게)
 export const MAX_STAFF_ROOMS = 3;
+/** 직원이 한 자리에 머무는 시간 = 게임 시간 0.5~1.5시간. 1/2000시간 눈금으로 뽑아 HOUR_MS로 환산한다
+ *  (pace: 시계 속도를 바꿔도 서성이는 리듬과 난수 흐름이 그대로다). */
+export const WANDER_TICKS_PER_HOUR = 2000;
+export const WANDER_WAIT_MIN_TICKS = 1000; // 0.5시간
+export const WANDER_WAIT_MAX_TICKS = 3000; // 1.5시간
 export const STAFF_ROOM_TYPE = 'cleaning_room'; // 직원 휴게 효과를 내는 시설 id. 없으면 0개.
 
 /** 다 지어진 휴게실 수 (최대 3) */
@@ -34,9 +39,9 @@ export function staffRoomCount(state: GameState): number {
   for (const o of Object.values(state.objects)) if (o.type === STAFF_ROOM_TYPE && !o.build) n++;
   return Math.min(MAX_STAFF_ROOMS, n);
 }
-/** 전체 직원 정원 = 3 + 휴게실 × 2 (직종별 자리 state.slots는 그 안에서 따로 센다) */
+/** 전체 직원 정원 = 3 + 휴게실 × 2 + 목표 보상(midgame staffCapBonus) (직종별 자리 state.slots는 그 안에서 따로 센다) */
 export function staffCapacity(state: GameState): number {
-  return BASE_STAFF_SLOTS + SLOTS_PER_STAFF_ROOM * staffRoomCount(state);
+  return BASE_STAFF_SLOTS + SLOTS_PER_STAFF_ROOM * staffRoomCount(state) + (state.staffCapBonus ?? 0);
 }
 
 // ---------- 공식 ----------
@@ -336,11 +341,12 @@ export function tierUnlocked(state: GameState, tier: JobTier): boolean {
   if (!u) return true;
   if (u.star !== undefined && state.star < u.star) return false;
   if (u.rank !== undefined && state.rank < u.rank) return false;
+  if (u.goal && !(state.unlocked.recruits ?? []).includes(tier)) return false; // midgame: 목표 보상으로 여는 채용 방법
   return true;
 }
 export function canPostJob(state: GameState, tier: JobTier): ApplyResult {
   if (!TIERS[tier]) return { ok: false, reason: '없는 채용 방법이에요' };
-  if (!tierUnlocked(state, tier)) return { ok: false, reason: `★${TIERS[tier].unlock?.star ?? ''}부터 할 수 있어요` };
+  if (!tierUnlocked(state, tier)) return { ok: false, reason: TIERS[tier].unlock?.goal ? '목표를 이루면 열려요' : `★${TIERS[tier].unlock?.star ?? ''}부터 할 수 있어요` };
   if (availablePool(state, TIERS[tier].tier).length === 0) return { ok: false, reason: '이 방법으로 올 사람은 다 왔어요' };
   if (state.money < postJobCost(state, tier)) return { ok: false, reason: '돈이 모자라요' };
   return { ok: true };
@@ -583,6 +589,6 @@ export function moveStaff(state: GameState, dtMs: number): void {
     const cells = wanderCells(state, st.anchor);
     const dest = pickWeighted(state, cells, () => 1);
     if (dest) goTo(state, st, dest);
-    st.waitMs = randInt(state, 1000, 3000);
+    st.waitMs = (randInt(state, WANDER_WAIT_MIN_TICKS, WANDER_WAIT_MAX_TICKS) * HOUR_MS) / WANDER_TICKS_PER_HOUR;
   }
 }

@@ -195,7 +195,7 @@ export function TitleScreen({ onEnter, onNewGame, onReplayIntro }: { onEnter: ()
       {sound && <SoundPopup onClose={() => setSound(false)} onReplayIntro={() => { setSound(false); onReplayIntro(); }} />}
       {best && (
         <Popup title="최고 점수" onBackdrop={() => setBest(false)} buttons={<button style={{ ...brownBtn, marginRight: 0, marginBottom: 0 }} onClick={() => setBest(false)}>닫기</button>}>
-          {be ? <ScoreCard score={be.score} cafeName={be.cafeName} /> : <div style={{ fontSize: 13, color: PALETTE.inkSoft, marginBottom: 8 }}>10년차 결산 점수는 아직 없어요.</div>}
+          {be ? <ScoreCard score={be.score} cafeName={be.cafeName} /> : <div style={{ fontSize: 13, color: PALETTE.inkSoft, marginBottom: 8 }}>5년차 결산 점수는 아직 없어요.</div>}
           <div style={{ ...frameTitleRow, marginTop: 10, borderTop: `1px dashed ${PALETTE.woodLight}`, paddingTop: 8 }}><span>연 매출 최고</span><b>{b.yearScore > 0 ? wonText(b.yearScore) : '아직 없음'}</b></div>
           {b.at && <div style={{ fontSize: 13, color: PALETTE.inkSoft }}>{b.at.year}년차 기록</div>}
           <div style={{ ...frameTitleRow, marginTop: 8 }}><span>월 매출 최고</span><b>{b.monthIncome > 0 ? wonText(b.monthIncome) : '아직 없음'}</b></div>

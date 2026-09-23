@@ -33,6 +33,13 @@ export function cellReachable(state: GameState, x: number, y: number): boolean {
   return walkableNeighborsOf(state, x, y).some((n) => set.has(cellKey(state, n)));
 }
 
+/** 이 칸이 손님이 실제로 밟는 걷기 칸인가 (진입점 BFS에 든 칸). 길을 이어 붙일 자리를 고를 때 쓴다 —
+ *  cellReachable은 「옆에 설 수 있나」라서 방 바닥·시설 칸에도 true가 된다(방 안은 문으로만 들어간다). */
+export function walkCellReached(state: GameState, x: number, y: number): boolean {
+  if (!inBounds(state, x, y) || !isWalkable(state, x, y)) return false;
+  return reachedCells(state).has(cellKey(state, { x, y }));
+}
+
 /** 놓으려는 자리(발자국)에 손님이 올 수 있나 — 배치 고스트 경고용. 아직 없는 시설이라 발자국 둘레만 본다. */
 export function spotReachable(state: GameState, type: string, x: number, y: number): boolean {
   const def = objectDef(type);

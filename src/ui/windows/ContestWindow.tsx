@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { useGame, dispatch } from '../store';
 import {
   contestUnlocked, signupOpen, nextContest, daysToContest, contestTitle, contestMenus, contestStaff, contestOdds, canEnterContest, canCancelContest,
-  judgeScore, menuOf, chanceText, trainingNameFor, contestHistory, trophyOwned, trophyPlaced,
+  judgeScore, menuOf, chanceText, trainingNameFor, contestHistory, trophyOwned, trophyPlaced, contestCurrentRivalNames,
   CONTESTS, CONTEST_JUDGE_KEYS, CONTEST_JUDGE_LABEL, CONTEST_GRADE, SIGNUP_DAYS, PRIZE_MULT, CONTEST_TICKETS, TROPHY_TYPE,
   type ContestEvent, type ContestJudge, type ContestResult,
 } from '../../sim/index.ts';
@@ -143,14 +143,14 @@ export function ContestWindow() {
               })}
               <div style={{ borderTop: `1px dashed ${PALETTE.woodLight}`, margin: '6px 0' }} />
               <div style={{ fontSize: 15 }}>내 예상 점수 <b>{odds.base}</b> <span style={small}>(쪽박 {odds.low} ~ 대박 {odds.high})</span></div>
-              <div style={{ fontSize: 14 }}>상대 3명 {odds.rivals.join(' · ')}</div>
+              <div style={{ fontSize: 14 }} data-testid="contest-rivals">상대 {contestCurrentRivalNames(s, event).map((n, i) => `${n} ${odds.rivals[i] ?? '-'}`).join(' · ')}</div>
               <div style={{ fontSize: 15 }}>예상 순위 <b style={{ color: odds.rank === 1 ? '#b8860b' : PALETTE.ink }}>{odds.rank}위</b> <span style={small}>(잘 되면 {odds.bestRank}위 · 나쁘면 {odds.worstRank}위)</span></div>
               <div style={{ fontSize: 14 }}>{chanceText(odds.chances)} · 우승 확률 <b>{odds.winPct}%</b></div>
               <div style={small}>1위 상금 {wonText(def.fee * PRIZE_MULT[0]!)} · 2위 {wonText(def.fee * PRIZE_MULT[1]!)} · 3위 {wonText(def.fee * PRIZE_MULT[2]!)} · 4위는 참가상 응모권 {CONTEST_TICKETS[3]}</div>
             </div>
           )}
 
-          <button style={{ ...(can.ok ? brownBtn : brownBtnOff), width: '100%', marginRight: 0 }} disabled={!can.ok} onClick={enter} data-testid="contest-enter">
+          <button style={{ ...(can.ok ? brownBtn : brownBtnOff), width: '100%', marginRight: 0 }} disabled={!can.ok} onClick={enter} data-testid="contest-enter" data-tut="contest-enter">
             {open ? `접수하기 ${wonText(def.fee)}` : `접수는 대회 ${SIGNUP_DAYS}일 전부터`}
           </button>
           {!can.ok && can.reason && <div style={{ ...small, color: PALETTE.bad }}>{can.reason}</div>}

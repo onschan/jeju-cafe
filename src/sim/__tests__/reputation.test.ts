@@ -2,7 +2,7 @@ import { bareState, X, Y } from './helpers.ts';
 import { WEAR_START_MONTHS } from '../cleanliness.ts';
 import { createInitialState } from '../state.ts';
 import { apply } from '../actions.ts';
-import { tick } from '../tick.ts';
+import { tick, STEP_MS } from '../tick.ts';
 import { DAY_MS } from '../clock.ts';
 import { placeObject } from '../grid.ts';
 import { spawnGuests, dailyGuestCount, typeWeight, mehCause } from '../guests.ts';
@@ -109,7 +109,7 @@ test('손님 판정 훅: 자리 없으면 no_seat, 줄 섰다 앉으면 wait_lon
   placeObject(t, 'table_out', X(4), Y(5));
   apply(t, { type: 'setSlot', slot: 0, menuId: 'latte' });
   spawnGuests(t, 1);
-  for (let i = 0; i < 40; i++) tick(t, 100);
+  for (let i = 0; i < 40; i++) tick(t, STEP_MS); // 게임 시간 2시간
   const g = t.guests[0]!;
   expect(g.phase).toBe('seated');
   expect(g.moodReason).toBe('no_menu');

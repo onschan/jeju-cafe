@@ -120,8 +120,9 @@ describe('대화 데이터 (src/data/dialogue)', () => {
     ...SAMCHUN.flatMap((s) => [s.name, s.job, s.intro, s.rewardText, ...s.chain.flatMap((c) => [c.ask, ...c.lines, c.doneLine])]),
   ];
 
-  it('튜토리얼 7단계(fun-start §2), 단계당 2~3줄·한 줄 ≤ 22자, 화자는 전부 할망, 단계마다 done 조건 문구', () => {
-    expect(TUTORIAL_STEPS.map((t) => t.id)).toEqual(Array.from({ length: 7 }, (_, i) => i + 1));
+  it('튜토리얼 5막 14단계, 단계당 2~3줄·한 줄 ≤ 22자, 화자는 전부 할망, 단계마다 done 조건 문구와 막 번호', () => {
+    expect(TUTORIAL_STEPS.map((t) => t.id)).toEqual(Array.from({ length: 14 }, (_, i) => i + 1));
+    expect([...new Set(TUTORIAL_STEPS.map((t) => t.act))]).toEqual([1, 2, 3, 4, 5]);
     for (const t of TUTORIAL_STEPS) {
       expect(t.lines.length).toBeGreaterThanOrEqual(2);
       expect(t.lines.length).toBeLessThanOrEqual(3);

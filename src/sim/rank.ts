@@ -19,9 +19,10 @@ export const MAX_RANK = RANK_THRESHOLDS.length;
 /** 점수에 세는 시설: 길·돌담·정류장·정낭·본관·처음부터 있던 것은 제외 */
 const NOT_FACILITY = new Set(['path', 'stonewall', 'busstop', 'gate', 'warehouse', 'spring']);
 
-export function facilityCount(state: GameState): number {
+export function facilityCount(state: GameState, builtOnly = false): number {
   let n = 0;
   for (const o of Object.values(state.objects)) {
+    if (builtOnly && o.build) continue; // 목표·과제 보상은 완공 기준 (알려진 정도는 그대로 공사 중도 센다)
     if (NOT_FACILITY.has(o.type) || objectDef(o.type).kind === 'path' || objectDef(o.type).kind === 'wall') continue;
     if (parcelAt(state, o.x, o.y)?.owned) n++;
   }

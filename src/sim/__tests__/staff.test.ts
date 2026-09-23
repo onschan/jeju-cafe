@@ -76,6 +76,9 @@ test('공고: 그 단계 풀에서 3명이 오고, 공고비는 채용비로 잡
 test('같은 단계를 다시 내면 남은 사람만 오고, 다 오면 더 못 낸다. 같은 seed면 같은 후보', () => {
   const a = bareState(3), b = bareState(3);
   a.money = b.money = 1e8;
+  // midgame: 구인 사이트·잡지 광고는 목표 보상으로 열린다
+  a.unlocked.recruits = b.unlocked.recruits = ['site', 'magazine'];
+  expect(apply(bareState(3), { type: 'postJob', tier: 'site' }).ok).toBe(false); // 아직 안 열렸다
   apply(a, { type: 'postJob', tier: 'site' }); apply(b, { type: 'postJob', tier: 'site' });
   expect(a.candidates.length).toBe(3);
   expect(JSON.stringify(a.candidates)).toBe(JSON.stringify(b.candidates));
@@ -91,6 +94,7 @@ test('같은 단계를 다시 내면 남은 사람만 오고, 다 오면 더 못
 test('특수 직원(조랑말·돌하르방)은 공고로 안 오고 addPoolCandidate로만 온다', () => {
   const s = bareState(1);
   s.money = 1e9; s.star = 5;
+  s.unlocked.recruits = ['site', 'magazine']; // midgame: 목표로 여는 채용 방법
   for (const t of RECRUIT_TIERS) { apply(s, { type: 'postJob', tier: t.id }); apply(s, { type: 'postJob', tier: t.id }); }
   expect(s.candidates.length).toBe(25);
   expect(s.candidates.some((c) => c.poolId === 'st_pony_special')).toBe(false);

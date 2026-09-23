@@ -4,6 +4,7 @@ import { apply } from '../actions.ts';
 import { tick } from '../tick.ts';
 import { DAY_MS } from '../clock.ts';
 import { serialize } from '../save.ts';
+import { TUTORIAL_SEAT_CELL } from '../strategy.ts';
 import { STEPS, recommendedMainCells, currentTutorialStep, TUTORIAL_STEPS } from '../tutorial.ts';
 import { cloneState, candidateActions, pickDiverse, candidateGroup, evaluate, bestMoves, solveSync, metricsOf, scoreOf, rolloutDays, SOLVER_WEIGHTS, DEFAULT_SOLVER_OPTIONS } from '../solver.ts';
 import { solverKey, solverResult, setSolverResult, rankCellsByCache, cachedMoves } from '../solverCache.ts';
@@ -195,7 +196,7 @@ describe('solver: 빔 서치', () => {
 });
 
 describe('solver: 튜토리얼 글로우·워커', () => {
-  it('튜토리얼 1단계 글로우 칸이 solver 점수 최고 칸이고(후보 5칸 중), 그 칸에 놓으면 단계가 통과된다 — 7단계 정의 전부 cells가 solver 캐시가 있어도 안전', () => {
+  it('튜토리얼 1단계 글로우는 사용자가 고른 칸(15,11)이고 solver 캐시가 있어도 흔들리지 않는다 — 14단계 정의 전부 cells가 안전', () => {
     setSolverResult(null);
     const s = yardWithPath();
     apply(s, { type: 'tutorialNote', key: 'dlg:1' });
@@ -204,12 +205,13 @@ describe('solver: 튜토리얼 글로우·워커', () => {
     const seatMoves = r.moves.filter((m) => m.action.type === 'place' && m.action.objectType === 'table_out');
     const glow = STEPS[0]!.cells(s);
     expect(glow).toHaveLength(1);
-    if (seatMoves.length > 0) expect(glow[0]).toEqual(seatMoves[0]!.cells[0]); // solver 1위 좌석 칸
-    expect(bestSeatCellsHeuristic(s, 5)).toContainEqual(glow[0]);
+    expect(glow[0]).toEqual(TUTORIAL_SEAT_CELL); // 사용자가 직접 고른 자리 — solver 1위와 같을 필요는 없다
+    expect(canPlace(s, 'table_out', glow[0]!.x, glow[0]!.y).ok).toBe(true);
+    expect(seatMoves.length).toBeGreaterThanOrEqual(0);
     expect(apply(s, { type: 'place', objectType: 'table_out', ...glow[0]! }).ok).toBe(true);
     expect(s.tutorial.step).toBe(1);
     for (const st of STEPS) { const cells = st.cells(s); for (const p of cells) expect(p.x >= 0 && p.y >= 0).toBe(true); }
-    expect(TUTORIAL_STEPS).toBe(7);
+    expect(TUTORIAL_STEPS).toBe(14);
     setSolverResult(null);
   });
 

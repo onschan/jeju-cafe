@@ -1,12 +1,13 @@
 import type { GameState } from './types.ts';
-import { advanceClock, END_HOUR, START_HOUR } from './clock.ts';
+import { advanceClock, END_HOUR, START_HOUR, HOUR_MS } from './clock.ts';
 import { monthlyHarvest } from './orchard.ts';
 import { dailyContest, monthlyContest } from './contest.ts'; // 대회: 6·12월 1일 개최, 이레 전 예고
+import { dailyRivals } from './rival.ts'; // 동네 경쟁 카페: 5일 순위 발표·12일 뺏기 이벤트
 import { checkGoals } from './goals.ts';
 import { monthlyBigEvents, dailyBigEvents, hourlyBigEvents, rollTrend, resolvePendingEventChoice } from './events.ts';
 import { monthlyRisk, dailyRisk } from './risk.ts'; // stakes: 돌발 사고
 import { hourlySpawn, hourlyRegulars, updateGuests } from './guests.ts';
-import { upkeep, closeMonth, annualRaise, incomeTax, TAX_MONTH, rent, loanDue } from './economy.ts';
+import { upkeep, closeMonth, annualRaise, incomeTax, TAX_MONTH, rent, dealFee, loanDue } from './economy.ts';
 import { checkLoan, monthlyFailure } from './failure.ts';
 import { resetWaiting } from './guests.ts';
 import { nightlyReputation, monthlyReputation } from './reputation.ts';
@@ -27,13 +28,15 @@ import { fmtNum } from './format.ts';
 import { dailyCleanliness } from './cleanliness.ts';
 import { dailyRoutes, monthlyRoutes } from './entry.ts';
 import { dailyRooms, accumulateSeatUse, MS_PER_HOUR } from './rooms.ts'; // y-indoor: 본관 공사·좌석 이용률
-import { endingMonthly } from './ending.ts'; // z-ending: 10년차 엔딩·100주년
+import { endingMonthly } from './ending.ts'; // z-ending: 5년차 엔딩 (pace)
 import { dailyIdleHint } from './hints.ts'; // game-feel: 3일 무행동이면 삼춘 힌트
 import { closeDay } from './daylog.ts'; // 성장: 하루 요약 카드·30일 그래프
 import { runPending } from './pending.ts'; // seatfix: 자리가 빈 예약(이동·철거·증축)을 바로 실행
 
-export const STEP_MS = 100;        // 고정 스텝 (게임 ms)
-const MAX_STEPS_PER_TICK = 600;    // 백그라운드 복귀 등 폭주 방지 (60초 게임 시간)
+/** 고정 스텝 (게임 ms) = 게임 시간 3분. pace: HOUR_MS에 묶어 둔다 — 시계를 빠르게 해도 한 시간에 도는 스텝 수(20)가 같아야
+ *  조리 대기·체류·걸음이 같은 눈금으로 끊기고, 하루 매출과 난수 흐름이 그대로 유지된다. */
+export const STEP_MS = HOUR_MS / 20;
+const MAX_STEPS_PER_TICK = 600;    // 백그라운드 복귀 등 폭주 방지 (게임 시간 30시간)
 const HOURS_PER_DAY = END_HOUR - START_HOUR;
 
 /** 시간이 한 칸 지날 때마다 (새 시각 = state.clock.hour) */
@@ -69,6 +72,7 @@ function onNewDay(state: GameState): void {
   dailyRooms(state); // y-indoor: 본관 증축·이동·2층 완공, 어제 이용률, 난로 자동 ON
   evaluateUnlocks(state); // game-feel: 손님층·시설 해금·랭크업을 월초가 아니라 조건을 채운 날에 (월초 몰림 방지)
   checkGoals(state);
+  dailyRivals(state); // 동네 순위 발표(5일)·경쟁 카페 뺏기 이벤트(12일) — 월초 1일 몰림을 피해 날짜를 나눴다
   dailyShop(state); // game-feel: 보름 응모권
   dailyIdleHint(state);
 }
@@ -81,6 +85,7 @@ function onNewMonth(state: GameState, prevMonth: number, prevYear: number): void
   expirePromotions(state);
   upkeep(state);
   rent(state); // stakes: 소유 필지 월 임대료 (마을 관리비)
+  dealFee(state); // 동네 경쟁 카페 제휴 월 고정비 (rival.ts)
   loanDue(state); // stakes: 삼춘 대출 상환 기한 (넘기면 평판 −5)
   if (newYear) incomeTax(state);
   monthlyRoutes(state); // 트랙 H: 경로 월 리셋·셔틀 계약비
@@ -99,7 +104,7 @@ function onNewMonth(state: GameState, prevMonth: number, prevYear: number): void
   monthlyBigEvents(state); // 판정은 1일, 발동은 달 안에 퍼진다 (game-feel)
   rollTrend(state); // stakes: 이번 달 유행 분류 (×1.5 손님 선호)
   monthlyRisk(state); // stakes: 이달 돌발 사고 예약 (25%)
-  endingMonthly(state); // z-ending: 10년차 3월 1일 엔딩 (결산 카드 뒤) · 20년차 11월 100주년
+  endingMonthly(state); // z-ending: 5년차 3월 1일 엔딩 (결산 카드 뒤)
 }
 
 /** 고정 스텝 하나. 결정적. 리플레이는 이 함수만 호출한다. */
@@ -109,7 +114,7 @@ export function step(state: GameState): void {
   const prevHour = state.clock.hour;
   const days = advanceClock(state, STEP_MS);
   const hours = days * HOURS_PER_DAY + (state.clock.hour - prevHour);
-  // 스텝(100ms) < 시간(2000ms)이라 한 스텝에 시간은 최대 한 칸 지난다.
+  // 스텝(HOUR_MS/20) < 시간(HOUR_MS)이라 한 스텝에 시간은 최대 한 칸 지난다.
   // 24시→6시 경계에서는 큰 단위부터: 월(월급·정산·농원 수확) → 날(밤 회복·게시판·목표) → 시간(6시 기력 소모·스폰).
   if (state.clock.month !== prevMonth) onNewMonth(state, prevMonth, prevYear);
   for (let i = 0; i < days; i++) onNewDay(state);

@@ -3,7 +3,7 @@
 import { useSyncExternalStore, type CSSProperties, type ReactNode } from 'react';
 import type { GameState, Action, ApplyResult } from '../../sim/index.ts';
 import { getState, getVersion, subscribe, dispatch as storeDispatch } from '../store';
-import { PALETTE, brownBtn, brownBtnOn, brownBtnOff } from '../frame';
+import { PALETTE, brownBtn, brownBtnOn, brownBtnOff, NO_SCROLLBAR } from '../frame';
 import { IconGrid } from '../IconGrid';
 
 export type Dispatch = (a: Action) => ApplyResult;
@@ -34,7 +34,7 @@ export function TabBar<K extends string>({ tabs, active, onPick, testId }: { tab
     return <IconGrid items={tabs.map((t) => ({ key: t.key, label: t.label, icon: t.icon ?? TAB_ICON[t.key] ?? 'menu', badge: t.badge, locked: t.locked }))} active={active} onPick={onPick} cols={tabs.length} testId={testId} />;
   }
   return (
-    <div data-testid={testId} style={{ display: 'flex', gap: 4, overflowX: 'auto', paddingBottom: 6, marginBottom: 6, borderBottom: `2px solid ${PALETTE.woodLight}`, scrollbarWidth: 'none' }}>
+    <div data-testid={testId} className={NO_SCROLLBAR} style={{ display: 'flex', gap: 4, overflowX: 'auto', paddingBottom: 6, marginBottom: 6, borderBottom: `2px solid ${PALETTE.woodLight}`, scrollbarWidth: 'none' }}>
       {tabs.map((t) => (
         <button key={t.key} onClick={() => onPick(t.key)} aria-pressed={t.key === active} data-testid={testId ? `${testId}-${t.key}` : undefined} data-tut={`tab:${t.key}`}
           style={{ ...(t.key === active ? brownBtnOn : brownBtn), margin: 0, padding: '0 10px', fontSize: 14, whiteSpace: 'nowrap', flex: '0 0 auto', position: 'relative' }}>
@@ -49,7 +49,7 @@ export function TabBar<K extends string>({ tabs, active, onPick, testId }: { tab
 /** 작은 필터 칩 (카테고리) — 36px, 스크롤 줄 */
 export function Chips<K extends string>({ chips, active, onPick }: { chips: { key: K; label: string }[]; active: K; onPick: (k: K) => void }) {
   return (
-    <div style={{ display: 'flex', gap: 4, overflowX: 'auto', marginBottom: 8, scrollbarWidth: 'none' }}>
+    <div className={NO_SCROLLBAR} style={{ display: 'flex', gap: 4, overflowX: 'auto', marginBottom: 8, scrollbarWidth: 'none' }}>
       {chips.map((c) => (
         <button key={c.key} onClick={() => onPick(c.key)} aria-pressed={c.key === active}
           style={{ ...(c.key === active ? brownBtnOn : brownBtn), minHeight: 44, margin: 0, padding: '0 10px', fontSize: 14, whiteSpace: 'nowrap', flex: '0 0 auto' }}>
@@ -92,6 +92,9 @@ export const rowBtnOff: CSSProperties = { ...rowBtn, ...brownBtnOff, margin: 0 }
 export const rowBtnDanger: CSSProperties = { ...rowBtn, background: '#8a2a2a' };
 
 export const soft: CSSProperties = { color: PALETTE.inkSoft, fontSize: 14 };
+
+/** ui-bar: 한 줄로 자르는 글 (카드 설명·하단 고정 바) */
+export const oneLine: CSSProperties = { whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' };
 
 /** 비어 있을 때 안내 */
 export function Empty({ children }: { children: ReactNode }) {

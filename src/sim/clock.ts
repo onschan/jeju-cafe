@@ -1,10 +1,14 @@
 import type { Clock, GameState, Season } from './types.ts';
 
-export const HOUR_MS = 2000;     // 게임 시간 1시간 (하루 36초, 한 달 ≈ 18분)
-export const DAY_MS = 18 * HOUR_MS; // 1일 = 18시간(6시~24시) = 36000ms
 export const DAYS_PER_MONTH = 30;
 export const START_HOUR = 6;
 export const END_HOUR = 24;
+/** 게임 시간 1시간이 흐르는 데 걸리는 시간(1배속 ms).
+ *  pace: 2000 → 1200 — 하루 21.6초 · 한 달 10.8분 · 1년 2시간 10분. 엔딩(5년차 3월)까지 1배속 8.6시간 / 3배속 2.9시간.
+ *  이 값은 시계 속도만 바꾼다. 손님이 앉아 있는 시간·조리 시간·걷는 속도는 모두 HOUR_MS로 환산해 두어(guests.SEAT_MS·PREP_MS·VISIT_MS,
+ *  rooms.MS_PER_HOUR, path.GUEST_SPEED_CELLS_PER_S) **게임 시간 기준 흐름은 그대로다** — 하루 매출·월 순이익 곡선이 바뀌지 않는다. */
+export const HOUR_MS = 1200;
+export const DAY_MS = (END_HOUR - START_HOUR) * HOUR_MS; // 1일 = 18시간(6시~24시) = 21,600ms
 
 export function seasonOf(month: number): Season {
   if (month >= 3 && month <= 5) return 'spring';

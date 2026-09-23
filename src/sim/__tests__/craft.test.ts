@@ -19,6 +19,9 @@ import { menuDef, ingredientDef, toppingDef, MENUS, INGREDIENTS, HIDDEN_RECIPES,
 import { staffWith } from './staff.test.ts';
 import { X, Y } from './helpers.ts';
 import type { GameState } from '../types.ts';
+import menusJson from '../../data/menus.json' with { type: 'json' };
+/** 메뉴 기본 값은 밸런스로 바뀐다 — 숫자를 박지 말고 데이터에서 읽는다 (spot2) */
+const menuPrice = (id: string): number => (menusJson as { id: string; price: number }[]).find((m) => m.id === id)!.price;
 
 function withStaff(s: GameState) {
   const st = staffWith({ skill: 50 }, 'barista');
@@ -36,8 +39,8 @@ test('재료 32종에 스탯·분류가 있고, 기존 13종의 원가(§4.2 #4)
   expect(ingredientDef('tea_jeju').kind).toBe('farm');
 });
 
-test('기본 메뉴 18의 스탯은 재료 합으로 계산된다 (아메리카노 = 원두, 라떼 = 원두 + 우유)', () => {
-  expect(MENUS.length).toBe(18);
+test('기본 메뉴 20의 스탯은 재료 합으로 계산된다 (아메리카노 = 원두, 라떼 = 원두 + 우유)', () => {
+  expect(MENUS.length).toBe(20); // midgame: 한라봉 꿀차·계피 라떼 (2년차 구간 신메뉴)
   expect(menuDef('americano').stats).toEqual(ingredientDef('beans').stats);
   expect(menuDef('latte').stats).toEqual(ingredientStats({ beans: 1, milk: 1 }));
   expect(menuDef('egg_sandwich').stats.volume).toBe(ingredientDef('egg').stats.volume * 2 + ingredientDef('flour').stats.volume);
@@ -111,8 +114,8 @@ test('토핑 스킬이 티어 효과로: 금박(희귀함 3·품격 2) → 판�
   const e = skillEffects(s, 'americano');
   expect(e.pricePct).toBe(8);
   expect(e.dignityPct).toBe(4);
-  // 판매가 = (3,200 + 금박 보기 5 × 115) × 1.08
-  expect(priceOf(s, 'americano')).toBe(Math.round((3200 + 5 * PRICE_PER_STAT) * 1.08));
+  // 판매가 = (아메리카노 기본 + 금박 보기 5 × 115) × 1.08
+  expect(priceOf(s, 'americano')).toBe(Math.round((menuPrice('americano') + 5 * PRICE_PER_STAT) * 1.08));
   expect(menuStatsOf(s, 'americano').look).toBe(2 + 5);
   // 메뉴판에 있어야 품격이 손님 수에 붙는다
   expect(dignityPct(s)).toBe(0);
@@ -328,7 +331,7 @@ test('메뉴 레벨업: 재료 5인분 + 돈 → 판매가 +10%/레벨, 5레벨�
   expect(apply(s, { type: 'levelUpMenu', menuId: 'americano' }).ok).toBe(true);
   expect(s.money).toBe(10_000_000 - cost.money);
   expect(s.menuMods['americano']!.level).toBe(2);
-  expect(priceOf(s, 'americano')).toBe(Math.round(3200 * 1.1));
+  expect(priceOf(s, 'americano')).toBe(Math.round(menuPrice('americano') * 1.1));
   expect(levelUpMenuCost(s, 'americano').money).toBe(40_000 + 1500 * 5);
   // farm 재료 5개: 창고에 있으면 창고에서 빠지고, 없으면 원가(당근 500)를 돈으로 낸다
   s.unlocked.menus.push('carrot_juice');

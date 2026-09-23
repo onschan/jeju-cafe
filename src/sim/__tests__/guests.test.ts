@@ -4,11 +4,14 @@ import { createInitialState } from '../state.ts';
 import { placeObject, objectAt } from '../grid.ts';
 import { apply } from '../actions.ts';
 import { setSlot } from '../menu.ts';
-import { spawnGuests, updateGuests, gateSatisfaction, countGatesOn, GATE_SATISFACTION_MAX, freeSeats, hasReachableSeat, dailyGuestCount, popularityGuestBase, popularitySum, facilityPopularitySum, resetWaiting, totalSeats, hourShare, typeWeight, GUEST_SPEED_CELLS_PER_S, SEAT_MS, PREP_MS, MAX_GUESTS, MIN_DAILY_GUESTS, MAX_DAILY_GUESTS, GUESTS_PER_SEAT, BASE_DAILY_GUESTS, POP_SUM_PER_GUEST, FACILITY_POP_PER_GUEST, WAIT_MAX, SEASON_GUEST_MULT } from '../guests.ts';
+import { spawnGuests, updateGuests, gateSatisfaction, countGatesOn, GATE_SATISFACTION_MAX, freeSeats, hasReachableSeat, dailyGuestCount, popularityGuestBase, popularitySum, facilityPopularitySum, resetWaiting, totalSeats, hourShare, typeWeight, GUEST_SPEED_CELLS_PER_S, SEAT_MS, PREP_MS, MAX_GUESTS, MIN_DAILY_GUESTS, MAX_DAILY_GUESTS, GUESTS_PER_SEAT, BASE_DAILY_GUESTS, POP_SUM_PER_GUEST, FACILITY_POP_PER_GUEST, WAIT_MAX, SEASON_GUEST_MULT, seatsNeeded, uncappedDailyGuests, PROMO_POP_PER_SLOT } from '../guests.ts';
 import { moveAlong } from '../path.ts';
-import { tick } from '../tick.ts';
+import { tick, STEP_MS } from '../tick.ts';
 import { HOUR_MS, START_HOUR, END_HOUR } from '../clock.ts';
 import { guestDialogue } from '../../data/index.ts';
+import menusJson from '../../data/menus.json' with { type: 'json' };
+/** 메뉴 기본 값은 밸런스로 바뀐다 — 숫자를 박지 말고 데이터에서 읽는다 (spot2) */
+const menuPrice = (id: string): number => (menusJson as { id: string; price: number }[]).find((m) => m.id === id)!.price;
 
 /** 정낭(4,6) 바로 위 (4,5)에 테이블 → 정낭이 테이블의 걷기 이웃 */
 function cafe() {
@@ -50,7 +53,7 @@ test('걸어가서 앉고, 주문하고, 돈과 연구가 오른다', () => {
   expect(g.phase).toBe('seated');
   expect(g.menuId).toBe('carrot_juice');
   expect(g.mood).toBeNull(); // 조리 중
-  expect(s.money).toBe(money0 + 4000); // 당근주스 4000
+  expect(s.money).toBe(money0 + menuPrice('carrot_juice')); // 당근주스 값 그대로
   expect(s.storage['carrot']).toBe(9);
   expect(s.monthGuests).toBe(1); // 도착 시 센다
   updateGuests(s, PREP_MS);
@@ -113,9 +116,10 @@ test('moveAlong은 path.ts에 살고 guests.ts는 재수출한다', async () => 
   const guests = await import('../guests.ts');
   expect(guests.moveAlong).toBe(moveAlong);
   const g = { x: X(0), y: Y(0), path: [{ x: X(1), y: Y(0) }, { x: X(1), y: Y(1) }] };
-  expect(moveAlong(g, 500)).toBe(false); // 1.5칸
+  const ms15 = 1500 / GUEST_SPEED_CELLS_PER_S; // 1.5칸을 걷는 시간 (속도는 HOUR_MS에 묶여 있다)
+  expect(moveAlong(g, ms15)).toBe(false); // 1.5칸
   expect(g).toMatchObject({ x: X(1), y: Y(0) + 0.5 });
-  expect(moveAlong(g, 500)).toBe(true);
+  expect(moveAlong(g, ms15)).toBe(true);
   expect(g.path).toEqual([]);
 });
 
@@ -131,13 +135,13 @@ test('happy이면 연구 진행 +1(5명마다 연구 1), 게이지가 타입 방
   expect(s.popularity).toBe(-2);
 });
 
-test('100ms 스텝으로도 17스텝째에 정확히 자리에 도착한다', () => {
+test('고정 스텝으로도 17스텝째에 정확히 자리에 도착한다', () => {
   const { s, seat } = cafe();
   spawnGuests(s, 1);
   const g = s.guests[0]!;
-  for (let i = 0; i < 16; i++) updateGuests(s, 100);
+  for (let i = 0; i < 16; i++) updateGuests(s, STEP_MS);
   expect(g.phase).toBe('walking');
-  updateGuests(s, 100);
+  updateGuests(s, STEP_MS);
   expect(g.phase).toBe('seated');
   expect(g.approachCell).toEqual({ x: X(4), y: Y(6) });
   expect([Math.round(g.x), Math.round(g.y)]).toEqual([seat.x, seat.y]);
@@ -324,4 +328,30 @@ test('hasReachableSeat: 좌석 없음 → false, 정낭 옆 좌석 → true, 길
   const s2 = bareState(1);
   placeObject(s2, 'table_out', X(8), Y(2)); // 사방이 흙이라 정류장에서 못 닿음
   expect(hasReachableSeat(s2)).toBe(false);
+});
+
+test('midgame seatsNeeded: 좌석 상한을 뺀 수요에서 필요한 자리를 역산한다', () => {
+  const s = createInitialState(1);
+  const need = seatsNeeded(s);
+  expect(need.have).toBe(totalSeats(s));
+  expect(need.now).toBe(Math.max(1, Math.ceil(uncappedDailyGuests(s) / GUESTS_PER_SEAT)));
+  expect(need.short).toBe(Math.max(0, need.now - need.have));
+  // 홍보 칸이 비어 있으면 「홍보 중」 쪽이 더 크거나 같다
+  expect(need.promo).toBeGreaterThanOrEqual(need.now);
+  // 인기가 올라가면 필요한 자리도 는다 (좌석 상한에 걸리지 않는다)
+  const more = uncappedDailyGuests(s, PROMO_POP_PER_SLOT * 4);
+  expect(more).toBeGreaterThanOrEqual(uncappedDailyGuests(s));
+  // 자리를 더 놓으면 have가 늘고 short가 준다
+  for (const t of Object.values(s.objects)) void t;
+  placeObject(s, 'table_out', s.parcels[0]!.x + 1, s.parcels[0]!.y + 1);
+  const after = seatsNeeded(s);
+  expect(after.have).toBeGreaterThan(need.have);
+  expect(after.short).toBeLessThanOrEqual(need.short);
+});
+
+test('midgame seatsNeeded: 자리가 모자라면 dailyGuestCount가 상한에 걸린다', () => {
+  const s = createInitialState(1);
+  const need = seatsNeeded(s);
+  if (need.short > 0) expect(dailyGuestCount(s)).toBe(totalSeats(s) * GUESTS_PER_SEAT);
+  else expect(dailyGuestCount(s)).toBeLessThanOrEqual(totalSeats(s) * GUESTS_PER_SEAT);
 });

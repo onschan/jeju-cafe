@@ -49,7 +49,8 @@ function Row({ name, score, you, rank }: { name: string; score: number; you?: bo
 function Board({ r, upto }: { r: ContestResult; upto?: number }) {
   const rows = [
     { name: r.staffName, score: upto === undefined ? r.myScore : upto, you: true },
-    ...r.rivals.map((v, i) => ({ name: `${['한라', '서귀', '성산'][i] ?? '이웃'} 카페`, score: v, you: false })),
+    // 상대 이름은 동네 경쟁 카페 (rival.ts) — 접수 창에서 본 이름 그대로 나온다. 옛 세이브엔 이름이 없다.
+    ...r.rivals.map((v, i) => ({ name: r.rivalNames?.[i] ?? `이웃 카페 ${i + 1}`, score: v, you: false })),
   ].sort((a, b) => b.score - a.score);
   return <div>{rows.map((x, i) => <Row key={i} name={x.name} score={x.score} you={x.you} rank={i + 1} />)}</div>;
 }

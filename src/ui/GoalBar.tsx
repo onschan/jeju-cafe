@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { useGame } from './store';
 import { Icon } from './Icon';
 import { fmtNum } from '../sim/format.ts';
-import { TUTORIAL_STEPS, tutorialDone, mainBuilding, shrinkingWarning, TREND_NAME } from '../sim/index.ts';
+import { TUTORIAL_ACTS, actsDone, tutorialDone, mainBuilding, shrinkingWarning, TREND_NAME } from '../sim/index.ts';
 import { currentGoal, urgentChallenge } from './simBridge';
 import { PALETTE } from './frame';
 import { TutorialWindow } from './TutorialWindow';
@@ -15,9 +15,10 @@ export const GOAL_BAR_H = GOAL_LINE_H + CHALLENGE_LINE_H;
 /** 튜토리얼 배지 너비 (목표 줄 왼쪽 한 칸) */
 export const TUT_BADGE_W = 60;
 
-/** 목표 줄 왼쪽 「📖 n/7」 배지 (fun-start): 탭하면 튜토리얼 창(현재 단계 대사 다시 보기·7단계 목록·건너뛰기).
- *  튜토리얼이 끝나면 「📖 할 일」 — 할망의 추천 탭은 다 배운 뒤에도 남는 코치라 배지도 남긴다.
- *  (맨 위 「오늘 할 일」 한 줄은 TodoLine.tsx가 따로 그린다 — 배지는 그 줄이 아니라 추천 창을 연다)
+/** 목표 줄 왼쪽 「📖 막 n/5」 배지 (fun-start): 탭하면 튜토리얼 창(현재 단계 대사 다시 보기·5막 진행도·막 건너뛰기).
+ *  튜토리얼이 끝나면 「📖 할망」 — 할망의 추천은 다 배운 뒤에도 남는 코치라 배지도 남긴다.
+ *  통합 §3: 창 이름이 셋으로 갈린다 — 📖는 **배우는 중인 막**, 맨 위 한 줄(TodoLine)은 **지금 할 것 하나**,
+ *  「할 일」 창(GoalWindow)은 **전체 목록**. 배지가 「할 일」이면 창 이름과 겹쳐 같은 것으로 읽힌다.
  *  창은 #root에 포털로 띄운다 (목표 줄이 absolute라 그 안에 두면 갇힌다). */
 function TutorialBadge() {
   const s = useGame();
@@ -26,16 +27,16 @@ function TutorialBadge() {
   const root = typeof document !== 'undefined' ? document.getElementById('root') : null;
   return (
     <>
-      <button data-testid="tutorial-badge" aria-label={done ? '할망의 추천' : `할망의 가르침 ${s.tutorial.step}/${TUTORIAL_STEPS}`} onClick={() => setOpen(true)}
+      <button data-testid="tutorial-badge" aria-label={done ? '할망의 추천' : `할망의 가르침 ${actsDone(s) + 1}막`} onClick={() => setOpen(true)}
         style={{ position: 'absolute', left: 0, top: 0, width: TUT_BADGE_W, height: GOAL_LINE_H, padding: 0, border: 0, borderRight: `2px solid ${PALETTE.wood}`, background: PALETTE.btnOn, color: PALETTE.btnOnText, fontFamily: 'inherit', fontSize: 13, fontWeight: 700, zIndex: 11, whiteSpace: 'nowrap' }}>
-        📖 {done ? '할 일' : `${s.tutorial.step}/${TUTORIAL_STEPS}`}
+        📖 {done ? '할망' : `막 ${Math.min(actsDone(s) + 1, TUTORIAL_ACTS.length)}/${TUTORIAL_ACTS.length}`}
       </button>
       {open && root && createPortal(<TutorialWindow onClose={() => setOpen(false)} />, root)}
     </>
   );
 }
 
-/** 상단 바 아래 목표 줄: [📖 n/7] ▶ 목표: {제목} {cur}/{max} + 얇은 진행 바. 아래 도전 줄: 가장 급한 도전(또는 이달의 과제) 진행·남은 날.
+/** 상단 바 아래 목표 줄: [📖 막 n/5] ▶ 목표: {제목} {cur}/{max} + 얇은 진행 바. 아래 도전 줄: 가장 급한 도전(또는 이달의 과제) 진행·남은 날.
  *  탭하면 목표 창. 다 채우면 반짝인다. data-tut="goal-bar"(튜토리얼 8단계 글로우). */
 export function GoalBar({ top, onOpen }: { top: number; onOpen: () => void }) {
   const s = useGame();
@@ -65,6 +66,7 @@ export function GoalBar({ top, onOpen }: { top: number; onOpen: () => void }) {
             <>
               <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis' }}>목표: {g.title}</span>
               <span style={{ flex: 'none', color: done ? PALETTE.ink : PALETTE.inkSoft }}>{num(g.cur, g.max)}/{num(g.max, g.max)}</span>
+              {g.note && <span data-testid="goal-note" style={{ flex: 'none', color: PALETTE.title, fontSize: 13 }}>{g.note}</span>}{/* 공사 중이라 아직 안 센 것 */}
               <span key={`${g.id}:${milestone}`} data-testid="goal-progress" data-milestone={milestone} aria-hidden style={{ flex: 'none', width: 48, height: 6, background: '#fff8', border: `1px solid ${PALETTE.wood}`, borderRadius: 3, overflow: 'hidden', animation: milestone > 0 ? 'goal-flash 0.9s ease-out 2' : undefined }}>
                 <span style={{ display: 'block', width: `${pct}%`, height: '100%', background: done ? PALETTE.ok : PALETTE.bar }} />
               </span>
@@ -79,12 +81,12 @@ export function GoalBar({ top, onOpen }: { top: number; onOpen: () => void }) {
           ) : c ? (
             <>
               <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.kind === 'monthly' ? '이달' : '도전'}: {c.title}</span>
-              <span style={{ flex: 'none', color: PALETTE.inkSoft }}>{num(c.cur, c.max)}/{num(c.max, c.max)} · {c.daysLeft}일</span>
+              <span style={{ flex: 'none', color: PALETTE.inkSoft }}>{num(c.cur, c.max)}/{num(c.max, c.max)}{c.note ? ` · ${c.note}` : ''} · {c.daysLeft}일</span>
               <span aria-hidden style={{ flex: 'none', width: 36, height: 5, background: '#fff8', border: `1px solid ${PALETTE.wood}`, borderRadius: 3, overflow: 'hidden' }}>
                 <span style={{ display: 'block', width: `${cpct}%`, height: '100%', background: PALETTE.bar }} />
               </span>
             </>
-          ) : <span style={{ flex: 1, color: PALETTE.inkSoft }}>도전: 목표 창에서 골라 받아요</span>}
+          ) : <span style={{ flex: 1, color: PALETTE.inkSoft }}>도전: 할 일 창에 모아 뒀어요</span>}
         </span>
       </button>
     </div>

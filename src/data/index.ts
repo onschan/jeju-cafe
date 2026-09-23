@@ -1,4 +1,4 @@
-import type { ObjectDef, MenuDef, GuestTypeDef, IngredientDef, FarmYield, GoalDef, BigEventDef, RoleDef, SkillDef, PromotionDef, GuestTags, ComboTarget, SetDef, ItemDef, ItemSlot, Season, MenuCategory, GuestEffect, GuestWant, UnlockCond, QuestDef, QuestCondition, QuestReward, SpotDef, SpotCategory, SpotSpecial, SpotTag, GiftDef, EventDef, MenuStats, MenuStatKey, IngredientCategory, IngredientComboDef, ToppingDef, HiddenRecipeDef, FacilityCategory, UniformDef, GuidebookDef, DrawPrizeDef, DrawPrizeKind, JudgeKey, NamedGuestDef, StaffPoolDef, RecruitTierDef, TrainingDef, TitleDef, ContestDef } from '../sim/types.ts';
+import type { ObjectDef, MenuDef, GuestTypeDef, IngredientDef, FarmYield, GoalDef, BigEventDef, RoleDef, SkillDef, PromotionDef, GuestTags, ComboTarget, SetDef, ItemDef, ItemSlot, Season, MenuCategory, GuestEffect, GuestWant, UnlockCond, QuestDef, QuestCondition, QuestReward, SpotDef, SpotCategory, SpotSpecial, SpotTag, GiftDef, EventDef, MenuStats, MenuStatKey, IngredientCategory, IngredientComboDef, ToppingDef, HiddenRecipeDef, FacilityCategory, UniformDef, GuidebookDef, DrawPrizeDef, DrawPrizeKind, JudgeKey, NamedGuestDef, StaffPoolDef, RecruitTierDef, TrainingDef, TitleDef, ContestDef, RivalDef } from '../sim/types.ts';
 import objectsJson from './objects.json' with { type: 'json' };
 import menusJson from './menus.json' with { type: 'json' };
 import guestsJson from './generated/v2/guests.json' with { type: 'json' };
@@ -17,6 +17,7 @@ import recruitTiersJson from './recruit_tiers.json' with { type: 'json' };
 import trainingsJson from './trainings.json' with { type: 'json' };
 import titlesJson from './titles.json' with { type: 'json' };
 import contestsJson from './contests.json' with { type: 'json' };
+import rivalsJson from './rivals2.json' with { type: 'json' };
 import namesJson from './names.json' with { type: 'json' };
 import promotionsJson from './promotions.json' with { type: 'json' };
 import dialogueJson from './dialogue.json' with { type: 'json' };
@@ -452,6 +453,7 @@ export const RECRUIT_TIERS = recruitTiersJson as RecruitTierDef[];
 export const TRAININGS = trainingsJson as TrainingDef[];
 export const TITLES = titlesJson as TitleDef[]; // 직원 칭호 30 (staff-luck)
 export const CONTESTS = contestsJson as unknown as ContestDef[]; // 대회 종목 3종 (contest.ts)
+export const RIVALS = rivalsJson as unknown as RivalDef[]; // 동네 경쟁 카페 5곳 (rival.ts)
 export const NAMES = namesJson as { names: string[]; surnames: string[]; given: string[]; hair: number; skin: number; top: number }; // fun-guest: 성·이름 풀 추가
 export const PROMOTIONS = promotionsJson as unknown as PromotionDef[];
 export const DIALOGUE = dialogueJson as {

@@ -27,7 +27,7 @@ const CHEST_PX = 128;
 
 const ui = (name: string) => assetUrl(`assets/icons/${name}.png`);
 
-const SOURCE_TITLE: Record<Extract<Alert, { type: 'reward' }>['source'], string> = { goal: '목표 달성!', monthly: '이달의 과제 달성!', tutorial: '잘했다!', rank: '새 시설이 열렸다!', star: '★ 승급!', unlock: '새 손님!', milestone: '반쯤 왔다!', bundle: '한꺼번에!', grade: '카페가 자랐다!' }; // grade: fun-rank 등급 승급
+const SOURCE_TITLE: Record<Extract<Alert, { type: 'reward' }>['source'], string> = { goal: '목표 달성!', monthly: '이달의 과제 달성!', tutorial: '잘했다!', rank: '새 시설이 열렸다!', star: '★ 승급!', unlock: '새 손님!', milestone: '반쯤 왔다!', bundle: '한꺼번에!', grade: '카페가 자랐다!', rival: '동네 순위가 올랐다!' }; // grade: fun-rank 등급 승급
 
 function rewardIcon(r: GoalReward): string {
   switch (r.type) {
@@ -41,10 +41,12 @@ function rewardIcon(r: GoalReward): string {
     case 'item': case 'seed': return 'plant';
     case 'tickets': case 'title': case 'feeBonus': return 'look';
     case 'menuSlot': return 'menu'; // stakes: 메뉴판 칸
+    case 'staffCap': return 'local'; // midgame: 직원 정원
+    case 'jobTier': return 'hire';   // midgame: 채용 방법
   }
 }
 function isUnlock(r: GoalReward): boolean {
-  return r.type.startsWith('unlock') || r.type === 'title';
+  return r.type.startsWith('unlock') || r.type === 'title' || r.type === 'jobTier'; // midgame: 채용 방법도 해금 연출
 }
 function unlockName(r: GoalReward): string {
   switch (r.type) {

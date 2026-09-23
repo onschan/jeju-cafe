@@ -36,7 +36,7 @@ test('모든 메뉴 재료는 존재하는 재료다', () => {
 });
 
 test('목표 보상 ref는 존재하는 정의다 (시설·메뉴·직종)', () => {
-  expect(GOALS.length).toBe(60);
+  expect(GOALS.length).toBe(68);
   // 다른 트랙(x-facility 시설 44·x-staff 직종 clean)이 만드는 id는 통합 때 scripts/validate-goals.ts(strict)가 잡는다. 여기서는 v3에 있던 id만 본다.
   for (const g of GOALS.slice(0, 20)) for (const r of g.reward) {
     if (r.type === 'unlockFacility') expect(OBJECTS.some((d) => d.id === r.id)).toBe(true);

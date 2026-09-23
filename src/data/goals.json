@@ -491,6 +491,176 @@
     "line": "한 달 내내 반짝반짝! 손님 눈이 제일 무섭다."
   },
   {
+    "id": "g61",
+    "title": "손님 7,000명 맞이",
+    "desc": "손님이 다녀간 수 7,000명",
+    "condition": {
+      "type": "guests",
+      "n": 7000
+    },
+    "reward": [
+      {
+        "type": "menuSlot",
+        "n": 1
+      },
+      {
+        "type": "unlockMenu",
+        "id": "hallabong_honey_tea"
+      }
+    ],
+    "speaker": "halmang",
+    "line": "칠천 명이나 왔구나."
+  },
+  {
+    "id": "g62",
+    "title": "단골 16명 만들기",
+    "desc": "단골로 등록된 손님 16명",
+    "condition": {
+      "type": "regulars",
+      "n": 16
+    },
+    "reward": [
+      {
+        "type": "unlockFacility",
+        "id": "window_seat"
+      },
+      {
+        "type": "tickets",
+        "n": 2
+      }
+    ],
+    "speaker": "samchun",
+    "line": "단골들 앉을 창가가 필요해."
+  },
+  {
+    "id": "g63",
+    "title": "홍보 18번 하기",
+    "desc": "홍보를 18번 실행",
+    "condition": {
+      "type": "promotions",
+      "n": 18
+    },
+    "reward": [
+      {
+        "type": "unlockMenu",
+        "id": "cinnamon_latte"
+      },
+      {
+        "type": "unlockFacility",
+        "id": "fire_pit"
+      }
+    ],
+    "speaker": "samchun",
+    "line": "소문 났으니 저녁 손님도 받자."
+  },
+  {
+    "id": "g64",
+    "title": "손님 12,000명 맞이",
+    "desc": "손님이 다녀간 수 12,000명",
+    "condition": {
+      "type": "guests",
+      "n": 12000
+    },
+    "reward": [
+      {
+        "type": "staffCap",
+        "n": 1
+      },
+      {
+        "type": "jobTier",
+        "id": "site"
+      }
+    ],
+    "speaker": "halmang",
+    "line": "이젠 사람을 더 둬도 되겠다."
+  },
+  {
+    "id": "g67",
+    "title": "연구 8,000 모으기",
+    "desc": "연구 포인트 8,000",
+    "condition": {
+      "type": "research",
+      "n": 8000
+    },
+    "reward": [
+      {
+        "type": "unlockFacility",
+        "id": "hydrangea"
+      },
+      {
+        "type": "tickets",
+        "n": 2
+      }
+    ],
+    "speaker": "halmang",
+    "line": "연구가 쌓였네. 수국도 심어 보라."
+  },
+  {
+    "id": "g65",
+    "title": "랭크 5 오르기",
+    "desc": "카페 랭크 5",
+    "condition": {
+      "type": "cafeRank",
+      "n": 5
+    },
+    "reward": [
+      {
+        "type": "unlockFacility",
+        "id": "palm"
+      },
+      {
+        "type": "tickets",
+        "n": 2
+      }
+    ],
+    "speaker": "halmang",
+    "line": "마당에 야자수 하나 어떠니."
+  },
+  {
+    "id": "g68",
+    "title": "손님 15,000명 맞이",
+    "desc": "손님이 다녀간 수 15,000명",
+    "condition": {
+      "type": "guests",
+      "n": 15000
+    },
+    "reward": [
+      {
+        "type": "unlockFacility",
+        "id": "water_jar"
+      },
+      {
+        "type": "staffSlot",
+        "role": "barista",
+        "n": 1
+      }
+    ],
+    "speaker": "samchun",
+    "line": "물허벅 놓으면 삼춘들이 좋아해."
+  },
+  {
+    "id": "g66",
+    "title": "손님 18,000명 맞이",
+    "desc": "손님이 다녀간 수 18,000명",
+    "condition": {
+      "type": "guests",
+      "n": 18000
+    },
+    "reward": [
+      {
+        "type": "jobTier",
+        "id": "magazine"
+      },
+      {
+        "type": "staffSlot",
+        "role": "hall",
+        "n": 1
+      }
+    ],
+    "speaker": "samchun",
+    "line": "잡지에 사람 구한다고 내 보라."
+  },
+  {
     "id": "g27",
     "title": "자금 1,200만",
     "desc": "자금 ₩12,000,000 이상",
@@ -502,10 +672,6 @@
       {
         "type": "unlockFacility",
         "id": "omegi_stall"
-      },
-      {
-        "type": "menuSlot",
-        "n": 1
       }
     ],
     "speaker": "hero",
@@ -855,11 +1021,11 @@
   },
   {
     "id": "g44",
-    "title": "3년차 맞이하기",
-    "desc": "3년차가 되자",
+    "title": "2년차 맞이하기",
+    "desc": "2년차가 되자",
     "condition": {
       "type": "year",
-      "n": 3
+      "n": 2
     },
     "reward": [
       {
@@ -1271,11 +1437,11 @@
   },
   {
     "id": "g60",
-    "title": "10년차 결산",
-    "desc": "10년차 맞이하기",
+    "title": "5년차 결산",
+    "desc": "5년차 맞이하기",
     "condition": {
       "type": "year",
-      "n": 10
+      "n": 5
     },
     "reward": [
       {

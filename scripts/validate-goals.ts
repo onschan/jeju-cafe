@@ -51,6 +51,7 @@ function checkRefs(kind: string, g: Goal) {
       case 'unlockGuest': if (!guests.has(r.id!)) warn(`${tag}: 보상 손님 '${r.id}' 없음`); break;
       case 'unlockGuidebook': if (!guidebooks.has(r.id!)) warn(`${tag}: 보상 가이드북 '${r.id}' 없음`); break;
       case 'unlockRecruit': if (!recruits.has(r.id!)) warn(`${tag}: 보상 채용 등급 '${r.id}' 없음`); break;
+      case 'jobTier': if (!recruits.has(r.id!)) warn(`${tag}: 보상 채용 방법 '${r.id}' 없음`); break; // midgame
     }
   }
 }

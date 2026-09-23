@@ -30,7 +30,7 @@ import { ComplaintsCard } from './ComplaintsCard';
 import { RequestsCard } from './RequestsCard'; // fun-guest: 손님 요청 카드
 import { Hearts } from './MiniCard';
 import { regularHearts } from '../sim/index.ts';
-import { card, brownBtn, brownBtnOn, PALETTE } from './frame';
+import { card, brownBtn, brownBtnOn, PALETTE, NO_SCROLLBAR } from './frame';
 
 type Sub = 'now' | 'quests' | 'codex' | 'rivals';
 const SUBS: { id: Sub; label: string }[] = [{ id: 'now', label: '지금 온 손님' }, { id: 'quests', label: '부탁' }, { id: 'codex', label: '손님 도감' }, { id: 'rivals', label: '라이벌' }];
@@ -52,7 +52,7 @@ export function sortGuests(s: GameState, guests: Guest[], sort: GuestSort): Gues
 /** 정렬 칩 줄 — 직원 목록도 같은 모양으로 쓴다 */
 export function SortChips<K extends string>({ chips, active, onPick, testId }: { chips: { key: K; label: string; icon?: string }[]; active: K; onPick: (k: K) => void; testId?: string }) {
   return (
-    <div role="radiogroup" aria-label="정렬" data-testid={testId} style={{ display: 'flex', gap: 4, marginBottom: 6, overflowX: 'auto', scrollbarWidth: 'none' }}>
+    <div role="radiogroup" aria-label="정렬" data-testid={testId} className={NO_SCROLLBAR} style={{ display: 'flex', gap: 4, marginBottom: 6, overflowX: 'auto', scrollbarWidth: 'none' }}>
       {chips.map((c) => (
         <button key={c.key} aria-pressed={c.key === active} onClick={() => onPick(c.key)}
           style={{ ...(c.key === active ? brownBtnOn : brownBtn), margin: 0, minHeight: 44, padding: '0 10px', fontSize: 14, whiteSpace: 'nowrap', flex: '0 0 auto' }}>{c.icon && <Icon name={c.icon} />}{c.icon ? ' ' : ''}{c.label}</button>

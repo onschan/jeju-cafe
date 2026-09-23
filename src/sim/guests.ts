@@ -6,11 +6,11 @@ import { sceneryScore, objectAt, sizeOf } from './grid.ts';
 import { availableMenus, consumeIngredients, isMenuAvailable } from './menu.ts';
 import { busStopPos, findPath, walkableNeighborsOf, reachMap, pathFromReach, cellKey, moveAlong, walkSpeedMult, GUEST_SPEED_CELLS_PER_S } from './path.ts';
 import { roleEffect, skillTotal, pushNotice, staffInRole, addRoleExp, LOW_ENERGY, roleHeads, zoneOf, isNightShift, ZONE_ROLE, ZONE_FOCUS_BONUS, ZONE_OTHER_PENALTY, ZONE_SATISFACTION_MIN, ZONE_SATISFACTION_MAX, NIGHT_BONUS } from './staff.ts'; // staff2: 인원 환산·담당 구역·저녁 근무
-import { effectivePopularity, youtuberMultiplier } from './promotions.ts';
-import { START_HOUR, END_HOUR, seasonOf } from './clock.ts';
+import { effectivePopularity, youtuberMultiplier, MAX_ACTIVE_PROMOTIONS } from './promotions.ts';
+import { START_HOUR, END_HOUR, HOUR_MS, seasonOf } from './clock.ts';
 import { parcelBonusAt, parcelSpawnMult, parcelFeeMult, parcelAt } from './parcels.ts';
 import { objectStats, popularityFor, guestPickMult, cornerSatisfaction, BASE_POPULARITY } from './compat.ts';
-import { cornerVisitTargets, cornerOfPiece, visitCorner, cornerDef, CORNER_VISIT_WEIGHT } from './corners.ts';
+import { cornerVisitTargets, cornerOfPiece, visitCorner, cornerDef, noteSales, CORNER_VISIT_WEIGHT } from './corners.ts';
 import { pushVoice } from './voice.ts';
 /** trim: 이 전망 이상인 자리에 앉은 만족 손님은 「바다 보이는 자리 최고예요」 */
 const VOICE_VIEW_MIN = 3;
@@ -19,9 +19,11 @@ import { isUnlocked, unlockedTypeIds, regularFreqMult, walletOf, onHappyVisit, a
 import { addComplaint, noteGuest, noteSatisfied, reputationGuestMult, reputationTypeMult, reputationTipMult } from './reputation.ts';
 import { isAged } from './economy.ts';
 import { recordUse, facilityFee } from './upgrade.ts'; // 트랙 A 훅: 이용 횟수·Lv 요금
+import { seatFeeQuote } from './fee.ts'; // spot2: 요금 배수 한곳
 import { addResearchProgress, TASTE_MATCH_WEIGHT } from './progress.ts';
 import { effectMult, noGuestsToday, filterMatches } from './effects.ts';
 import { contestGuestMult } from './contest.ts'; // 대회 입상 뒤 손님 유입 배수 (60일 ×1.25 …)
+import { rivalGuestMult } from './rival.ts'; // 동네 경쟁: 1위 +10% · 유행 겹침 −n% · 뺏기 이벤트 −10% (2년차부터)
 import { spotGuestBonus, spotSpawnMult } from './spots.ts';
 import type { ParcelBonus } from './types.ts';
 import { seatsOf, isSeat } from './cafe.ts';
@@ -44,8 +46,11 @@ import { sceneryTouristMult, notePhoto } from './appeal.ts'; // fun: 경관 → 
 import { assignGuestName, regularsDue, dressAsRegular, regularTip, thankIfDone, maybeRequest, addRegularGauge, requestDef, GAUGE_HAPPY_VISIT } from './interact.ts'; // fun-guest (트랙 G): 이름·단골·요청·게이지
 
 export { moveAlong, GUEST_SPEED_CELLS_PER_S }; // 하위 호환 재수출 (본체는 path.ts)
-export const SEAT_MS = 3000;       // 기분이 정해진 뒤 앉아 있는 시간 (≈1.5시간)
-export const PREP_MS = 3000;       // 직원 없을 때 조리 시간 (≈1.5시간)
+// pace: 체류·조리 시간은 게임 시간(시)으로 적는다 — HOUR_MS를 줄여 시계를 빠르게 해도 「몇 시간 앉아 있나」가 그대로라 하루 매출이 안 바뀐다.
+export const SEAT_HOURS = 1.5;     // 기분이 정해진 뒤 앉아 있는 시간
+export const PREP_HOURS = 1.5;     // 직원 없을 때 조리 시간
+export const SEAT_MS = SEAT_HOURS * HOUR_MS;
+export const PREP_MS = PREP_HOURS * HOUR_MS;
 export const MAX_PREP_CUT = 0.45;  // staff2: 조리 담당 1인분당 −15%, 최대 −45%
 export const PREP_CUT_PER_HEAD = 0.15;
 export const MAX_SPEED_SKILL = 0.5;
@@ -83,7 +88,8 @@ export const WAIT_LEAVE_SATISFACTION = 10;
 export const SEASON_GUEST_MULT: Record<number, number> = { 1: 0.7, 2: 0.7, 3: 0.95, 5: 1.1, 7: 1.15, 8: 1.15, 10: 1.1, 11: 0.95, 12: 0.7 };
 /** 시설 순회: 앉았다 일어난 손님 40%가 시설 하나(포토존·기념품·자판기·서가·갤러리·공방…)에 들러 이용료를 내고 간다 */
 export const VISIT_CHANCE = 0.4;
-export const VISIT_MS = 1500;
+export const VISIT_HOURS = 0.75;   // 시설 한 곳에 머무는 시간
+export const VISIT_MS = VISIT_HOURS * HOUR_MS;
 /** 순회 대상: fee가 있는 시설 + 서가 */
 export function isVisitable(type: string): boolean {
   const d = objectDef(type);
@@ -216,12 +222,39 @@ export function spotDailyGuests(state: GameState): number {
 export function popularityGuestBase(state: GameState): number {
   return BASE_DAILY_GUESTS + Math.floor(popularitySum(state) / POP_SUM_PER_GUEST) + Math.floor(facilityPopularitySum(state) / FACILITY_POP_PER_GUEST) + spotDailyGuests(state);
 }
+/** 자리 상한을 빼고 본 하루 손님 수. popBonus를 주면 인기 합이 그만큼 더 있다고 치고 센다 (홍보를 걸었을 때의 수요 — seatsNeeded). */
+export function uncappedDailyGuests(state: GameState, popBonus = 0): number {
+  const base = BASE_DAILY_GUESTS + Math.floor((popularitySum(state) + popBonus) / POP_SUM_PER_GUEST)
+    + Math.floor(facilityPopularitySum(state) / FACILITY_POP_PER_GUEST) + spotDailyGuests(state);
+  const n = base * effectMult(state, 'spawnMult') * eventGuestMult(state) * (1 + dignityPct(state) / 100)
+    * seasonGuestMult(state.clock.month) * reputationGuestMult(state) * routeGuestMult(state) * contestGuestMult(state) * rivalGuestMult(state); // 트랙 H 올레길 +15% · rival2 동네 경쟁 · 청결 배수(트랙 A)는 dailyCleanliness가 거는 하루짜리 spawnMult 효과로 effectMult에 들어 있다
+  return Math.max(MIN_DAILY_GUESTS, Math.min(MAX_DAILY_GUESTS, Math.round(n)));
+}
+
 /** 하루 손님 수 = min(좌석 × 6, 기반값 × 이벤트 전체 배수 × 빅 이벤트 배수 × 메뉴 품격(+%) × 계절 × 라이벌(−5%/곳) × 청결 × 평판(0.5 + 평판/100)), 2~300 */
 export function dailyGuestCount(state: GameState): number {
-  const n = popularityGuestBase(state) * effectMult(state, 'spawnMult') * eventGuestMult(state) * (1 + dignityPct(state) / 100)
-    * seasonGuestMult(state.clock.month) * reputationGuestMult(state) * routeGuestMult(state) * contestGuestMult(state); // 트랙 H 올레길 +15% · 청결 배수(트랙 A)는 dailyCleanliness가 거는 하루짜리 spawnMult 효과로 effectMult에 들어 있다
   const cap = totalSeats(state) * GUESTS_PER_SEAT;
-  return Math.max(MIN_DAILY_GUESTS, Math.min(MAX_DAILY_GUESTS, cap, Math.round(n)));
+  return Math.max(MIN_DAILY_GUESTS, Math.min(cap, uncappedDailyGuests(state)));
+}
+
+// ---------- midgame: 「자리가 몇 개 필요한가」 ----------
+
+/** 기간형 홍보 한 칸이 인기 합에 얹어 주는 몫 (대표 홍보 allDelta 5 × 상위 12종) */
+export const PROMO_POP_PER_SLOT = 60;
+export interface SeatsNeed {
+  now: number;    // 지금 손님을 다 앉히려면 필요한 자리
+  promo: number;  // 홍보를 꽉 채워 걸었을 때 필요한 자리
+  have: number;   // 지금 자리
+  short: number;  // 모자란 자리 (지금 기준)
+}
+/** 인기·명소·경로·홍보 상태를 그대로 두고 필요한 자리 수를 역산한다. 자리 하나가 하루 GUESTS_PER_SEAT명을 받는다. */
+export function seatsNeeded(state: GameState, opts: { promoSlots?: number } = {}): SeatsNeed {
+  const free = Math.max(0, (opts.promoSlots ?? MAX_ACTIVE_PROMOTIONS) - (state.activePromotions?.length ?? 0));
+  const per = GUESTS_PER_SEAT;
+  const now = Math.max(1, Math.ceil(uncappedDailyGuests(state) / per));
+  const promo = Math.max(now, Math.ceil(uncappedDailyGuests(state, PROMO_POP_PER_SLOT * free) / per));
+  const have = totalSeats(state);
+  return { now, promo, have, short: Math.max(0, now - have) };
 }
 
 /** 새 날: 어제 대기열은 사라지고, 오늘 낸 주문 수(staff2)도 0부터 센다 */
@@ -626,8 +659,9 @@ function order(state: GameState, g: Guest): void {
   (state.dayOrders ??= { drink: 0, dessert: 0, meal: 0, signature: 0 })[menu.category]++; // staff2: 오늘 이 분류를 몇 개 냈나 (조리 담당이 감당하는 양과 견준다)
   const seat = state.objects[g.seatId!]!;
   recordUse(seat); // 트랙 A: 증축 조건(누적 이용)
-  const price = Math.round(priceOf(state, menuId) * parcelFeeMult(parcelBonusAt(state, seat.x, seat.y)) * (objectStats(state, seat.id).feePct / 100) * eventFeeMult(state) * siteBonus(state, seat).feeMult * (1 + titleBonus(state, 'fee')) * streetFeeMult(state, seat)); // 트랙 F 입지 요금 · y-indoor 바 저녁 세트 · staff-luck 칭호 요금 · fun 거리 보너스
+  const price = seatFeeQuote(state, seat, priceOf(state, menuId)).price; // spot2: 자리·명당·거리·시설·필지·행사·칭호 배수는 fee.ts 한곳에서 (총 배수 상한 ×2.0)
   const tip = regularTip(g, price); // fun-guest: 단골 팁 +20%
+  noteSales(state, seat, price + tip); // spot2: 명당 팻말 카드 「오늘 이 자리들 매출」
   state.money += price + tip;
   state.monthIncome += price + tip;
   state.totalIncome += price + tip;
@@ -666,6 +700,7 @@ export function pickVisit(state: GameState, g: Guest, from: Pt): { obj: PlacedOb
 function useFacility(state: GameState, g: Guest, obj: PlacedObject): void {
   const fee = Math.round(facilityFee(state, obj) * siteBonus(state, obj).feeMult * streetFeeMult(state, obj)); // 트랙 A: Lv 요금 +10%/+20% · 자리 전망 · fun 거리 보너스
   recordUse(obj);
+  noteSales(state, obj, fee); // spot2: 명당 팻말 카드 「오늘 이 자리들 매출」
   state.money += fee;
   state.monthIncome += fee;
   state.totalIncome += fee;
@@ -701,7 +736,8 @@ export function updateGuests(state: GameState, dtMs: number): void {
       if (moveAlong(g, walkMs)) {
         g.phase = 'seated';
         g.approachCell = { x: Math.round(g.x), y: Math.round(g.y) };
-        const seat = state.objects[g.seatId!]!;
+        const seat = g.seatId ? state.objects[g.seatId] : undefined;
+        if (!seat) { g.phase = 'leaving'; g.seatId = null; continue; } // spot2: 걸어가는 사이에 자리가 없어졌으면(문 앞 정리 등) 그냥 돌아간다
         const pos = seatSlotPos(seat, g.seatSlot, seatsOf(state, seat));
         g.x = pos.x;
         g.y = pos.y;

@@ -12,12 +12,12 @@
  * - 팝업이 열리면 주말마다 돈이 500만 넘을 때 활기가 가장 높은 지역에 팝업.
  * - 목표 달성·이벤트 대화창(alerts)은 바로 닫는다.
  */
-import type { GameState, MonthCard } from './types.ts';
+import type { GameState, MonthCard, PlacedObject, Pt } from './types.ts';
 import { createInitialState } from './state.ts';
 import { tick } from './tick.ts';
 import { apply } from './actions.ts';
 import { DAY_MS } from './clock.ts';
-import { canPlace, objectAt, cellAt, footprint, doorFrontOf } from './grid.ts';
+import { canPlace, objectAt, cellAt, footprint, doorFrontOf, blocksDoorFront, inBounds, sizeOf } from './grid.ts';
 import { START_ORIGIN } from './layout.ts';
 import { objectDef, SETS, questDef, INDOOR_IDS } from '../data/index.ts';
 import { DEVELOP_RESEARCH, menuOf } from './craft.ts';
@@ -35,9 +35,11 @@ import { seatScore } from './site.ts';
 import { bestSeatCellsHeuristic } from './strategy.ts'; // fun-rank: 증축으로 치운 테이블을 산 필지 어디든 다시
 import { canBuyParcel, ownedParcels, parcelAt } from './parcels.ts';
 import { isWorn, canRepair } from './cleanliness.ts';
+import { unreachableCount, unreachableObjects, objectReachable, walkCellReached, spotReachable } from './reach.ts';
+import { walkableNeighborsOf } from './path.ts'; // botfix: 방 바닥은 문으로만 — canStep까지 본다 // botfix: 손님이 못 가는 시설 복구·계측
 import { complaintCounts } from './reputation.ts';
 import { canAcceptQuest } from './board.ts';
-import { cornerProgress } from './corners.ts'; // fun-corner: 명당 만들기 (목표 g21·g35·g59·g77·g93)
+import { cornerProgress, cornerBuildType, pieceMatches } from './corners.ts'; // fun-corner: 명당 만들기 (목표 g21·g35·g59·g77·g93) · spot2: 조각은 종류
 import { canLevelUp } from './staff.ts';
 import { canTrain } from './training.ts';
 import { bestStaffFor } from './luck.ts'; // staff-luck: 대박 기대값이 가장 높은 직원에게 시킨다
@@ -45,18 +47,21 @@ import { signupOpen, contestState, contestStaff, contestMenus, contestOdds, canE
 import { staffCapacity, STAFF_ROOM_TYPE, staffInRole } from './staff.ts';
 import { seatDirt, dailyCleanRecovery, CLEAN_LOW } from './cleanliness.ts'; // staff2: 청소가 필요한지 본다
 import { canUpgrade, upgradeCost, isUpgradable } from './upgrade.ts';
+import { gradeOf, cornerCount } from './grade.ts'; // all: 5년 안에 등급 조건에 닿는지 보려고
 import { objectStats, setLevels } from './compat.ts';
 import { canInvestSpot, spotLevel } from './spots.ts';
 import { canonicalGuestId } from '../data/index.ts';
 import { SPOTS } from '../data/index.ts';
 import { canHire, canPostJob, postJobCost, TIERS } from './staff.ts';
-import { canBuildSecondFloor, FLOOR2_COST } from './rooms.ts'; // fun-rank: 2층
+import { canBuildSecondFloor, FLOOR2_COST, canAutoConnectPath } from './rooms.ts';
+import { isWalkable } from './path.ts'; // botfix: 길이 붙을 수 있는 칸인가 // fun-rank: 2층 · botfix: 문 앞까지 자동 올렛길
 import { isSeat } from './cafe.ts';
 import type { JobTier } from './types.ts';
 import { parkingSites, routePathCells, routeFacility, ENTRY_ROUTES, PARKING_EXPAND_FROM, PARKING_SLOTS } from './entry.ts'; // 트랙 H
 import { mainBuilding, freeFloorCells, nextMainLevel, expandCost, expandCells, canExpandMain, isAnnex, indoorSeats } from './rooms.ts'; // y-indoor
 import type { Candidate, RoleId, StatKey, QuestDef } from './types.ts';
 import { bestMoves, BOT_SOLVER_OPTIONS, type SolverOptions } from './solver.ts'; // solver 정책
+import { activeSteal, RIVAL_COUNTER_COST, endgameOpen, activeRivals, RIVAL_ACQUIRE_COST } from './rival.ts'; // rival2: 뺏기 이벤트 대응 · all: 5년차 인수
 
 /** 봇 정책: heuristic = 아래 v3 정석(밸런스 밴드 기준), solver = 며칠마다 solver.bestMoves 1위 수 하나만 실행(집안일 빼고 아무 정석도 모른다) */
 export type BotPolicy = 'heuristic' | 'solver';
@@ -81,6 +86,11 @@ export interface BotRow {
   tickets: number;
   goals: number;      // 달성한 목표 수
   events: number;     // 그달 말 활성 빅 이벤트 수
+  unreachable: number; // 그달 말 손님이 못 가는 시설 수 (reach.ts)
+  grade: number;      // all: 카페 등급 1~5 (grade.ts) — 5년 안에 어디까지 닿는지 보려고
+  corners: number;    // all: 완성한 명당 수 (등급 조건)
+  reputation: number; // all: 평판 0~100 (등급 조건)
+  totalGuests: number; // all: 누적 손님 (등급 조건)
   ending: { total: number; title: string } | null; // z-ending: 엔딩 뒤 최종 점수 (10년차 3월부터)
 }
 
@@ -245,8 +255,19 @@ function place(s: GameState, type: string, x: number, y: number): boolean {
 
 /** 정낭(4,6)에서 위로 올렛길을 깔아 창고 옆(4,3)까지 연결하고, y=4에 가로 올렛길 (시작 필지 상대) */
 function ensurePath(s: GameState): void {
-  for (let y = 5; y >= 3; y--) { const p = at(4, y); if (!objectAt(s, p.x, p.y)) apply(s, { type: 'place', objectType: 'path', ...p }); }
-  for (let x = 0; x < 10; x++) { const p = at(x, 4); if (!objectAt(s, p.x, p.y)) apply(s, { type: 'place', objectType: 'path', ...p }); }
+  for (let y = 5; y >= 3; y--) layPathCell(s, at(4, y));
+  for (let x = 0; x < 10; x++) layPathCell(s, at(x, 4));
+}
+/** botfix: 올렛길 줄 한 칸. 길이 아닌 시설이 올라앉아 있으면(테이블을 길 위에 놓아 줄이 갈라졌다) 치우고 길을 깐다. */
+function layPathCell(s: GameState, p: { x: number; y: number }): void {
+  const o = objectAt(s, p.x, p.y);
+  if (o) {
+    if (objectDef(o.type).kind === 'path' || BOT_FIX_KEEP.has(o.type) || o.pending) return;
+    const to = fixMoveTarget(s, o);
+    if (!(to ? moveOrReserve(s, o, to) : removeOrReserve(s, o))) return;
+    if (objectAt(s, p.x, p.y)) return; // 예약만 걸렸으면 다음 달에 깐다
+  }
+  apply(s, { type: 'place', objectType: 'path', ...p });
 }
 
 function bestBy(cands: Candidate[], stat: StatKey): Candidate | undefined {
@@ -304,7 +325,7 @@ function placeDecos(s: GameState): void {
     if (placed >= BOT_DECOS_PER_MONTH) return;
     if (!s.unlocked.objects.includes(type)) continue;
     if (!canSpend(s, objectDef(type).cost)) return;
-    const cell = (s.clock.year >= BOT_EXTRA_TABLE_YEAR ? cells : [...BOT_DECO_CELLS, ...BOT_EXTRA_CELLS]).find((c) => !objectAt(s, c.x, c.y) && canPlace(s, type, c.x, c.y).ok); // 발자국이 맞는 첫 빈 칸 (장식 칸이 차면 산 필지 — 부탁·명당 시설이 늘어 휴게실(직원 정원 +3) 자리가 없던 시드가 있었다)
+    const cell = (s.clock.year >= BOT_EXTRA_TABLE_YEAR ? cells : [...BOT_DECO_CELLS, ...BOT_EXTRA_CELLS]).find((c) => !objectAt(s, c.x, c.y) && canPlace(s, type, c.x, c.y).ok && spotReachable(s, type, c.x, c.y)); // 발자국이 맞는 첫 빈 칸 (장식 칸이 차면 산 필지 — 부탁·명당 시설이 늘어 휴게실(직원 정원 +3) 자리가 없던 시드가 있었다)
     if (!cell || !place(s, type, cell.x, cell.y)) return;
     have.set(type, (have.get(type) ?? 0) + 1);
     placed++;
@@ -404,16 +425,18 @@ function placeForCorner(s: GameState): void {
   const freeNear = (type: string, near: { x: number; y: number }, r: number) => cells.filter((c) => dist(c, near) <= r && !objectAt(s, c.x, c.y) && canPlace(s, type, c.x, c.y).ok);
   for (const p of cornerProgress(s)) {
     if (p.done || s.codex.corners?.includes(p.def.id)) continue;
-    if (!p.def.pieces.every((pc) => s.unlocked.objects.includes(pc.type))) continue;
-    const anchorType = p.def.pieces[0]!.type;
-    const anchors = Object.values(s.objects).filter((o) => o.type === anchorType && parcelAt(s, o.x, o.y)?.owned);
+    const types = p.def.pieces.map((pc) => cornerBuildType(s, pc.type)); // spot2: 조각 종류 → 지을 시설 하나
+    if (!types.every((t) => !!t && s.unlocked.objects.includes(t))) continue;
+    const anchorType = types[0]!;
+    const anchors = Object.values(s.objects).filter((o) => pieceMatches(p.def.pieces[0]!.type, o.type) && parcelAt(s, o.x, o.y)?.owned);
     // 닻마다: 반경 안에 이미 있는 조각을 빼고 모자란 조각 수 · 그만큼 빈 칸이 있나
     for (const anchor of anchors) {
       const missing: string[] = [];
-      for (const pc of p.def.pieces.slice(1)) {
-        const have = Object.values(s.objects).filter((o) => o.type === pc.type && o.id !== anchor.id && dist(o, anchor) <= p.def.radius).length;
-        for (let i = have; i < pc.count; i++) missing.push(pc.type);
-      }
+      p.def.pieces.forEach((pc, pi) => {
+        if (pi === 0) return;
+        const have = Object.values(s.objects).filter((o) => pieceMatches(pc.type, o.type) && o.id !== anchor.id && dist(o, anchor) <= p.def.radius).length;
+        for (let i = have; i < pc.count; i++) missing.push(types[pi]!);
+      });
       if (missing.length === 0) continue; // 완공 대기 중
       const want = missing[0]!;
       const room = freeNear(want, anchor, p.def.radius);
@@ -493,7 +516,7 @@ function placeLuxury(s: GameState): void {
   if ((s.staff.length >= staffCapacity(s) - 1 || seatDirt(s) > dailyCleanRecovery(s)) && s.unlocked.objects.includes(STAFF_ROOM_TYPE) && canSpend(s, objectDef(STAFF_ROOM_TYPE).cost)) {
     for (const p of ownedParcels(s)) for (let ly = 0; ly < p.h; ly++) for (let lx = 0; lx < p.w; lx++) {
       const x = p.x + lx, y = p.y + ly;
-      if (!objectAt(s, x, y) && canPlace(s, STAFF_ROOM_TYPE, x, y).ok && place(s, STAFF_ROOM_TYPE, x, y)) return;
+      if (!objectAt(s, x, y) && canPlace(s, STAFF_ROOM_TYPE, x, y).ok && spotReachable(s, STAFF_ROOM_TYPE, x, y) && place(s, STAFF_ROOM_TYPE, x, y)) return; // botfix: 손님이 못 가는 칸에는 안 놓는다
     }
   }
   const have = new Set(Object.values(s.objects).map((o) => o.type));
@@ -502,7 +525,7 @@ function placeLuxury(s: GameState): void {
     if (!canSpend(s, d.cost + BOT_LUXURY_RESERVE)) return;
     for (const p of ownedParcels(s)) for (let ly = 0; ly < p.h; ly++) for (let lx = 0; lx < p.w; lx++) {
       const x = p.x + lx, y = p.y + ly;
-      if (!objectAt(s, x, y) && canPlace(s, d.id, x, y).ok && place(s, d.id, x, y)) return;
+      if (!objectAt(s, x, y) && canPlace(s, d.id, x, y).ok && spotReachable(s, d.id, x, y) && place(s, d.id, x, y)) return; // botfix: 손님이 못 가는 칸에는 안 놓는다
     }
   }
 }
@@ -525,7 +548,7 @@ function placeLandmark(s: GameState): void {
     if (d.kind !== 'landmark' || Object.values(s.objects).some((o) => o.type === id) || !canSpend(s, d.cost)) continue;
     for (const p of ownedParcels(s)) for (let ly = 0; ly < p.h; ly++) for (let lx = 0; lx < p.w; lx++) {
       const x = p.x + lx, y = p.y + ly;
-      if (!objectAt(s, x, y) && canPlace(s, id, x, y).ok && place(s, id, x, y)) return;
+      if (!objectAt(s, x, y) && canPlace(s, id, x, y).ok && spotReachable(s, id, x, y) && place(s, id, x, y)) return; // botfix: 손님이 못 가는 칸에는 안 놓는다
     }
   }
 }
@@ -549,7 +572,7 @@ function placeForQuest(s: GameState): void {
     let placed = 0;
     while (Object.values(s.objects).filter((o) => o.type === objectId).length < count && placed < BOT_QUEST_PLACES_PER_MONTH) { // 싼 시설(꽃·등)은 한 달에 몇 개씩
       if (!canSpend(s, objectDef(objectId).cost)) return;
-      const cell = cells.find((c) => !objectAt(s, c.x, c.y) && canPlace(s, objectId, c.x, c.y).ok);
+      const cell = cells.find((c) => !objectAt(s, c.x, c.y) && canPlace(s, objectId, c.x, c.y).ok && spotReachable(s, objectId, c.x, c.y));
       if (!cell || !place(s, objectId, cell.x, cell.y)) return;
       placed++;
     }
@@ -754,6 +777,136 @@ function placeTrophies(s: GameState): void {
     if (place(s, TROPHY_TYPE, p.x, p.y)) left--;
   }
 }
+
+// ---------- botfix: 손님이 못 가는 시설 고치기 ----------
+
+/** 하루에 고치는 최대 건수 (길 잇기·옮기기·철거 합쳐서). 마당이 하루아침에 뒤집히지 않게 둘까지. */
+export const BOT_FIX_PER_DAY = 2;
+/** 올렛길을 이만큼까지만 새로 깐다 (더 멀면 옮기는 게 낫다) */
+export const BOT_FIX_PATH_MAX = 16;
+/** 고치지 않는 종류 (정류장·본관·샘 — actions.PROTECTED_TYPES와 같다) */
+const BOT_FIX_KEEP = new Set(['busstop', 'warehouse', 'spring']);
+/** 길로 이을 때 쓰는 종류 */
+const BOT_FIX_PATH = 'path';
+
+/** 복구에 쓸 수 있는 돈: 여유분(BOT_SPOT_RESERVE)만 남기면 된다 — 목표 저축·3년차 예비비(botReserve)까지 지키면 길 한 줄도 못 깐다 */
+function canSpendFix(s: GameState, cost: number): boolean {
+  return s.money - cost >= BOT_SPOT_RESERVE;
+}
+/** 올렛길을 놓을 수 있는 빈 흙 칸인가. anyCell이면 그것만, 아니면 걸어 닿는 칸에 붙은 칸만 (거기까지 깔면 줄이 이어진다). */
+function bridgeCell(s: GameState, x: number, y: number, anyCell: boolean): boolean {
+  if (!inBounds(s, x, y) || objectAt(s, x, y) || !parcelAt(s, x, y)?.owned) return false;
+  if (!canPlace(s, BOT_FIX_PATH, x, y).ok) return false;
+  if (anyCell) return true;
+  // 붙어야 하는 것은 「걸어서 실제로 닿는 칸」이다 — 옆에 설 수만 있는 칸(테이블)이나 문으로만 드나드는 방 바닥에 길을 붙여도 이어지지 않는다
+  return walkableNeighborsOf(s, x, y).some((n) => walkCellReached(s, n.x, n.y));
+}
+/** 이 시설을 살리려면 올렛길을 놓아야 하는 칸들 (건물은 문 앞 한 칸, 그 밖은 발자국 둘레) */
+function bridgeCandidates(s: GameState, o: PlacedObject): Pt[] {
+  const def = objectDef(o.type);
+  const size = sizeOf(o);
+  if (def.kind === 'building') return [doorFrontOf({ type: o.type, x: o.x, y: o.y, w: size.w, h: size.h })];
+  const out: Pt[] = [];
+  for (const p of footprint(o.type, o.x, o.y, size.w, size.h)) {
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as const) {
+      const q = { x: p.x + dx, y: p.y + dy };
+      if (!out.some((r) => r.x === q.x && r.y === q.y)) out.push(q);
+    }
+  }
+  return out;
+}
+/** ① 올렛길로 잇는다: 시설 둘레에서 걸어 닿는 칸까지 빈 흙 칸만 밟는 최단 줄(BOT_FIX_PATH_MAX칸까지)을 깐다. 깔았으면 true.
+ *  스캔 순서가 정해져 있어 결정적이다 (둘레 → 상하좌우 BFS). */
+function fixByPath(s: GameState, o: PlacedObject): boolean {
+  if (!s.unlocked.objects.includes(BOT_FIX_PATH)) return false;
+  const start = bridgeCandidates(s, o).filter((p) => bridgeCell(s, p.x, p.y, true));
+  if (start.length === 0) return false;
+  const seen = new Map<string, { p: Pt; prev: string | null; depth: number }>();
+  const queue: { p: Pt; prev: string | null; depth: number }[] = start.map((p) => ({ p, prev: null, depth: 1 }));
+  for (const q of queue) seen.set(`${q.p.x},${q.p.y}`, q);
+  let goal: string | null = null;
+  for (let head = 0; head < queue.length && goal === null; head++) {
+    const cur = queue[head]!;
+    const key = `${cur.p.x},${cur.p.y}`;
+    if (bridgeCell(s, cur.p.x, cur.p.y, false)) { goal = key; break; }
+    if (cur.depth >= BOT_FIX_PATH_MAX) continue;
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as const) {
+      const q = { x: cur.p.x + dx, y: cur.p.y + dy };
+      const qk = `${q.x},${q.y}`;
+      if (seen.has(qk) || !bridgeCell(s, q.x, q.y, true)) continue;
+      const node = { p: q, prev: key, depth: cur.depth + 1 };
+      seen.set(qk, node);
+      queue.push(node);
+    }
+  }
+  if (goal === null) return false;
+  const route: Pt[] = [];
+  for (let k: string | null = goal; k; k = seen.get(k)!.prev) route.push(seen.get(k)!.p);
+  if (!canSpendFix(s, objectDef(BOT_FIX_PATH).cost * route.length)) return false;
+  for (const p of route) if (!place(s, BOT_FIX_PATH, p.x, p.y)) return false;
+  return true;
+}
+/** ② 옮길 자리: 걸어 닿는 칸 중 지금 자리에서 가장 가까운 곳 (같은 거리면 위·왼쪽). 없으면 null. */
+function fixMoveTarget(s: GameState, o: PlacedObject): Pt | null {
+  let best: Pt | null = null, bd = Infinity;
+  for (let y = 0; y < s.grid.h; y++) for (let x = 0; x < s.grid.w; x++) {
+    const d = Math.max(Math.abs(o.x - x), Math.abs(o.y - y));
+    if (d === 0 || d >= bd) continue;
+    if (!parcelAt(s, x, y)?.owned || !canPlace(s, o.type, x, y, o.id).ok) continue;
+    if (!spotReachable(s, o.type, x, y)) continue;
+    bd = d; best = { x, y };
+  }
+  return best;
+}
+/** 손님이 있어 지금 못 건드리면 예약해 둔다 (자리가 비는 즉시 pending.runPending이 한다) */
+function moveOrReserve(s: GameState, o: PlacedObject, to: Pt): boolean {
+  if (apply(s, { type: 'move', objectId: o.id, x: to.x, y: to.y }).ok) return true;
+  return apply(s, { type: 'reserveWork', objectId: o.id, work: 'move', x: to.x, y: to.y }).ok;
+}
+function removeOrReserve(s: GameState, o: PlacedObject): boolean {
+  if (apply(s, { type: 'remove', objectId: o.id }).ok) return true;
+  return apply(s, { type: 'reserveWork', objectId: o.id, work: 'remove' }).ok;
+}
+/** 한 시설을 고친다: ① 길로 잇기 → ② 걸어 닿는 칸으로 옮기기 → ③ 철거(환불). 고쳤으면 true. */
+function fixOne(s: GameState, o: PlacedObject): boolean {
+  if (BOT_FIX_KEEP.has(o.type) || o.pending || o.build) return false; // 공사 중·예약 중인 것은 기다린다
+  if (fixByPath(s, o) && objectReachable(s, o)) return true; // 길을 깔고도 안 닿으면 옮기기로 넘어간다
+  const to = fixMoveTarget(s, o);
+  if (to && moveOrReserve(s, o, to)) return true;
+  return removeOrReserve(s, o);
+}
+/** 문 앞을 막고 선 시설을 즉시 치운다 (옮길 곳이 있으면 옮기고, 없으면 철거). 치운 건수. */
+function clearDoorFronts(s: GameState, budget: number): number {
+  let done = 0;
+  for (const room of Object.values(s.objects)) {
+    if (done >= budget) break;
+    if (!objectDef(room.type).room) continue;
+    const size = sizeOf(room);
+    const f = doorFrontOf({ type: room.type, x: room.x, y: room.y, w: size.w, h: size.h });
+    if (!inBounds(s, f.x, f.y)) continue;
+    const front = objectAt(s, f.x, f.y);
+    if (!front || front.id === room.id || !blocksDoorFront(objectDef(front.type))) continue;
+    if (BOT_FIX_KEEP.has(front.type) || front.pending) continue;
+    const to = fixMoveTarget(s, front);
+    if (to ? moveOrReserve(s, front, to) : removeOrReserve(s, front)) done++;
+  }
+  return done;
+}
+/** 매일 아침: 손님이 못 가는 시설을 하루 BOT_FIX_PER_DAY건까지 고친다 (문 앞을 막은 것부터). 순수·결정적 — 오브젝트 등록 순서를 그대로 돈다. */
+export function fixUnreachable(s: GameState): void {
+  let left = BOT_FIX_PER_DAY;
+  left -= clearDoorFronts(s, left);
+  if (left <= 0) return;
+  // 본관 문 앞이 끊겼으면 한 번에 마당 전체가 살아난다 — 개별 시설보다 먼저
+  const auto = canAutoConnectPath(s);
+  if (auto.ok && auto.route && canSpendFix(s, auto.route.cost) && apply(s, { type: 'autoConnectPath' }).ok) left--;
+  for (const o of [...unreachableObjects(s)]) {
+    if (left <= 0) return;
+    if (!s.objects[o.id] || objectReachable(s, o)) continue; // 앞의 수가 이미 살렸으면 건너뛴다
+    if (fixOne(s, o)) left--;
+  }
+}
+
 /** 매일 아침 */
 export function dailyPlan(s: GameState): void {
   answerChoices(s); // stakes: 돌발 사고·빅 이벤트 선택지 먼저 (알림을 닫아도 답은 따로 간다)
@@ -782,8 +935,37 @@ export function dailyPlan(s: GameState): void {
   const custom = s.customMenus[0];
   if (custom && !s.menuSlots.includes(custom.id)) apply(s, { type: 'setSlot', slot: 3, menuId: custom.id });
   if (s.lastDevelop) apply(s, { type: 'dismissDevelop' });
+  answerRivalIfAny(s); // 동네 경쟁: 뺏기 이벤트가 오면 돈이 되면 맞불, 아니면 메뉴로 받는다 (rival2 트랙 훅 한 줄)
+  acquireRivalIfCan(s); // all: 5년차에 열리는 인수 — 봇이 안 하면 마지막 해 돈 쓸 곳이 없어 자금 밴드가 깨진다
   enterContestIfCan(s); // 대회: 접수 창(개최 이레 전~당일)에 이길 수 있는 판이면 낸다
+  fixUnreachable(s); // botfix: 손님이 못 가는 시설을 하루 2건까지 고친다
 
+}
+
+/** rival2: 경쟁 카페가 손님을 뺏는 달이면 그냥 두지 않는다 — 여유가 있으면 맞불 홍보, 없으면 메뉴 개발로 반만 막는다. */
+function answerRivalIfAny(s: GameState): void {
+  const st = activeSteal(s);
+  if (!st || st.answer !== 'none') return;
+  const rich = s.money > RIVAL_COUNTER_COST + BOT_COUNTER_RESERVE;
+  if (rich && apply(s, { type: 'answerRival', choice: 'counter' }).ok) return;
+  apply(s, { type: 'answerRival', choice: 'develop' });
+}
+/** 맞불 홍보를 하고도 남겨 둘 돈 */
+export const BOT_COUNTER_RESERVE = 2_000_000;
+
+/**
+ * all: 5년차 인수(₩3,000만/곳)는 마지막 해의 가장 큰 돈 쓸 곳이다.
+ * 봇이 이걸 안 쓰면 4~5년차에 살 것이 떨어져 잔고만 불어난다 — seed 2가 ₩3억을 넘었다.
+ * 인수하고도 이만큼은 남겨 둔다(월 고정비·수리·홍보).
+ */
+export const BOT_ACQUIRE_RESERVE = 60_000_000;
+/** 한 달에 한 곳만, 그달 살림이 끝난 뒤(10일)에 — 연달아 사면 월말 정산에서 잔고가 마이너스로 내려간다 */
+export const BOT_ACQUIRE_DAY = 10;
+function acquireRivalIfCan(s: GameState): void {
+  if (s.clock.day !== BOT_ACQUIRE_DAY || !endgameOpen(s)) return;
+  if (s.money < RIVAL_ACQUIRE_COST + BOT_ACQUIRE_RESERVE) return;
+  const target = activeRivals(s)[0]; // 순위표 위부터 (센 곳을 먼저 데려온다)
+  if (target) apply(s, { type: 'acquireRival', id: target.id });
 }
 
 /** 봇 진행 커서 (한 상태를 이어서 돌릴 때 — 세이브 왕복 테스트 등) */
@@ -861,6 +1043,8 @@ function* botDays(years: number, seed: number, policy: BotPolicy = 'heuristic', 
         year: card.year, month: card.month, money: s.money, minMoney, research: s.research, popularity: s.popularity,
         net: card.net, staff: s.staff.length, promos: s.activePromotions.length, guests: card.guests, customMenus: s.customMenus.length,
         rank: s.rank, star: s.star, tickets: s.tickets, goals: s.goals.claimed.length, events: s.events.length,
+        unreachable: unreachableCount(s),
+        grade: gradeOf(s), corners: cornerCount(s), reputation: Math.round(s.reputation), totalGuests: s.totalGuests,
         ending: s.ending.score ? { total: s.ending.score.total, title: s.ending.score.title } : null,
       });
       minMoney = s.money;

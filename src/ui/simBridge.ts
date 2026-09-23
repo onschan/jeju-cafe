@@ -1,5 +1,5 @@
 import type { GameState, GoalDef, Alert } from '../sim/index.ts';
-import { currentGoal as simCurrentGoal, activeGoals as simActiveGoals, goalClaimed, goalProgress, goalConditionText, goalRewardText as simRewardText, monthlyProgress } from '../sim/index.ts';
+import { currentGoal as simCurrentGoal, activeGoals as simActiveGoals, goalClaimed, goalProgress, goalConditionText, goalRewardText as simRewardText, monthlyProgress, buildingNote } from '../sim/index.ts';
 import { GOALS } from '../data/index.ts';
 import { dayIndex } from '../sim/effects.ts';
 import { DAYS_PER_MONTH } from '../sim/clock.ts';
@@ -13,6 +13,8 @@ export interface Goal {
   cur: number;
   max: number;
   rewardText: string;
+  /** 「짓는 중 1」 — 공사 중이라 아직 안 센 것 (보상은 완공 기준). 없으면 '' */
+  note: string;
 }
 
 /** GoalDef → UI 목표 (진행도는 상태에서). 지난 목표는 cur=max로 채운다. */
@@ -25,6 +27,7 @@ export function toGoal(s: GameState, g: GoalDef, done: boolean): Goal {
     cur: done ? p.max : p.cur,
     max: p.max,
     rewardText: g.reward.length > 0 ? g.reward.map(simRewardText).join(' · ') : '없음',
+    note: done ? '' : buildingNote(s, g.condition),
   };
 }
 
@@ -49,13 +52,13 @@ export function goalsAchieved(s: GameState): number {
 }
 
 /** 목표 줄 두 번째 줄: 이달의 과제 */
-export interface UrgentTask { kind: 'monthly'; id: string; title: string; cur: number; max: number; daysLeft: number }
+export interface UrgentTask { kind: 'monthly'; id: string; title: string; cur: number; max: number; daysLeft: number; note: string }
 export function urgentChallenge(s: GameState): UrgentTask | null {
   const m = s.monthly;
   if (m && m.status === 'active') {
     const p = monthlyProgress(s);
     const daysLeft = Math.max(0, (m.monthIndex + 1) * DAYS_PER_MONTH - dayIndex(s.clock));
-    return { kind: 'monthly', id: m.id, title: m.title, cur: p.cur, max: p.max, daysLeft };
+    return { kind: 'monthly', id: m.id, title: m.title, cur: p.cur, max: p.max, daysLeft, note: buildingNote(s, m.condition) };
   }
   return null;
 }

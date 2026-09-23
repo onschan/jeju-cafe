@@ -14,7 +14,7 @@ import { botDay, newBotCursor } from '../src/sim/bot.ts';
 import { apply } from '../src/sim/actions.ts';
 import { canRespondEvent } from '../src/sim/board.ts';
 import { canDrawTicket, hasFreeDraw } from '../src/sim/shop.ts';
-import { monthIndex } from '../src/sim/clock.ts';
+import { monthIndex, DAY_MS } from '../src/sim/clock.ts';
 import { dayIndex } from '../src/sim/effects.ts';
 import { bigEventDef } from '../src/data/index.ts';
 
@@ -24,7 +24,8 @@ export type EventKind =
   | '랭크업' | '★승급' | '손님·첫등장' | '손님·특별' | '이벤트·빅' | '이벤트·주간' | '이벤트·게시판' | '부탁완료'
   | '랭크업보상' | '★승급보상' | '손님층보상' | '마일스톤' | '보름응모권'
   | '레시피' | '히든레시피' | '코너첫완성' | '세트첫발견' | '재료콤보'
-  | '뽑기당첨' | '뽑기꽝' | '가이드북1위' | '신기록' | '명소Lv' | '방문객상품' | '칭호' | '완공';
+  | '뽑기당첨' | '뽑기꽝' | '가이드북1위' | '신기록' | '명소Lv' | '방문객상품' | '칭호' | '완공'
+  | '동네순위' | '경쟁이벤트'; // rival2: 매월 5일 순위 발표 · 12일 경쟁 카페 뺏기 이벤트
 export type NegKind = '실패알림' | '★강등' | '악평' | '이벤트종료';
 
 /** 사건 간 공백을 셀 때 빼는 것(플레이어가 직접 시킨 일의 완료·꽝) */
@@ -107,6 +108,7 @@ export function runDopamine(years: number, seed: number, player = false): Dopami
       else if (f.kind === 'scene') {
         if (f.title === '완공') push('완공', f.text.slice(0, 30));
         else if (f.title === '가이드북 1위') push('가이드북1위', f.text.slice(0, 30));
+        else if (f.title.startsWith('동네 ')) push('동네순위', f.title); // rival2: 월간 동네 순위 발표 (5일)
         else if (f.title === '악평') neg('악평', f.text.slice(0, 30));
         // 랭크 업·★ 승급은 아래 diff로 (중복 방지)
       }
@@ -197,7 +199,9 @@ export function runDopamine(years: number, seed: number, player = false): Dopami
   const maxGap = gaps[0]?.days ?? 0;
   const maxGapYear1 = Math.max(0, ...gaps.filter((g) => g.from < 360).map((g) => Math.min(g.to, 360) - g.from));
   const count = (from: number, to: number) => major.filter((e) => e.day >= from && e.day < to).length;
-  const windows = { '1일': count(0, 1), '6일': count(0, 6), '10분(3배속 50일)': count(0, 50), '1개월': count(0, 30), '1년': count(0, 360), '3년': count(0, 1080), [`${years}년`]: count(0, totalDays) };
+  // 「10분」은 실시간 10분 × 3배속이 몇 게임 날인가 — DAY_MS(=HOUR_MS × 18)에서 뽑는다 (pace: HOUR_MS가 바뀌면 같이 바뀐다)
+  const daysIn10min3x = Math.round((10 * 60 * 1000 * 3) / DAY_MS);
+  const windows = { '1일': count(0, 1), '6일': count(0, 6), [`10분(3배속 ${daysIn10min3x}일)`]: count(0, daysIn10min3x), '1개월': count(0, 30), '1년': count(0, 360), '3년': count(0, 1080), [`${years}년`]: count(0, totalDays) };
   const byKind: Partial<Record<EventKind, number>> = {};
   for (const e of events) byKind[e.kind] = (byKind[e.kind] ?? 0) + 1;
   const byNeg: Partial<Record<NegKind, number>> = {};

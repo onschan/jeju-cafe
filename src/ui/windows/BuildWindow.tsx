@@ -1,5 +1,5 @@
 /** 짓기 창 (스펙 §4.2). 카테고리 탭(쉼·편의·먹거리·즐길거리·농원·경관·길·담) → 2열 카드(아이소 스프라이트·이름·가격·입소문/경관).
- *  카드 탭 → 아래 설명 2줄 + `짓기`(onPickBuild). 잠긴 것은 반투명 + 조건 한글. 철거·이동은 미니카드(트랙 C) 몫. */
+ *  카드 탭 → **창 하단 고정 바**(이름·가격·요약 한 줄 + `짓기`, 긴 설명은 「자세히」로 접기). 잠긴 것은 반투명 + 조건 한글. 철거·이동은 미니카드(트랙 C) 몫. */
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { Icon } from '../Icon';
 import type { GameState, ObjectDef } from '../../sim/index.ts';
@@ -10,9 +10,10 @@ import { loadSheet, drawFrame, type Sheet } from '../sheetCanvas';
 import { opportunityCost } from '../tradeoff'; // stakes: 기회비용 한 줄
 import { PALETTE, brownBtn, brownBtnOff } from '../frame';
 import { josa } from '../../sim/josa.ts';
-import { useWindowState, body, TabBar, soft, Empty, type WindowProps } from './shared.tsx';
+import { useWindowState, body, TabBar, soft, oneLine, Empty, type WindowProps } from './shared.tsx';
 import { SiteToggle } from '../SiteToggle.tsx';
 import { showFirstTip } from '../firstTip';
+import { WindowBar } from '../Window';
 import { CornerTab } from './CornerTab.tsx'; // fun-corner 「명당」 탭
 
 export type BuildTab = 'building' | 'corner' | 'indoor' | 'rest' | 'convenience' | 'food' | 'fun' | 'farm' | 'scenery' | 'path' | 'wall';
@@ -91,8 +92,6 @@ function SpriteBox({ sheet, id, kind, w = 64, h = 48 }: { sheet: Sheet | null; i
 }
 
 const cardBase: CSSProperties = { background: '#fffaf0', border: `2px solid ${PALETTE.woodLight}`, borderRadius: 6, padding: 6, textAlign: 'center', fontFamily: 'inherit', color: PALETTE.ink, minHeight: 44 };
-/** ui3 정돈: 한 줄로 자르는 설명 */
-const oneLine: CSSProperties = { whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' };
 
 /** ui3 정돈: 짓기 하위 목록 카드 — 그림·이름·설명 한 줄·값·수치 한 줄로 통일(카드 높이 고정) */
 function BuildCard({ s, def, locked, sheet, tileMode, on, onPick }: { s: GameState; def: ObjectDef; locked: boolean; sheet: Sheet | null; tileMode: boolean; on: boolean; onPick: () => void }) {
@@ -179,9 +178,9 @@ export function BuildWindow(props: BuildWindowProps) {
   const tileDef = tileMode ? BUILD_TILES.find((t) => t.id === tileMode) : null;
   return (
     <div ref={rootRef} style={body} data-testid="build-window">
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6, flexWrap: 'wrap' }}>
         <button data-testid="build-back" style={{ ...brownBtn, margin: 0, padding: '0 10px', fontSize: 14, minHeight: 40 }} onClick={() => goView({ kind: 'tiles' })}>◀ 짓기</button>
-        {tileDef && <span style={{ fontSize: 15, fontWeight: 700 }}><Icon name={tileDef.icon} size={16} /> {tileDef.name} <span style={{ ...soft, fontWeight: 400 }}>{tileDef.purpose}</span></span>}
+        {tileDef && <span style={{ fontSize: 15, fontWeight: 700, flex: '1 1 0', minWidth: 0, ...oneLine }}><Icon name={tileDef.icon} size={16} /> {tileDef.name} <span style={{ ...soft, fontWeight: 400 }}>{tileDef.purpose}</span></span>}
         {tileMode === 'charm' && <button data-testid="build-corner-tab" data-tut="tab:corner" style={{ ...brownBtn, margin: 0, padding: '0 10px', fontSize: 14, minHeight: 40 }} onClick={() => { goView({ kind: 'all' }); setTab('corner'); }}><Icon name="sparkle" size={14} /> 명당</button>}
       </div>
       {!tileMode && <TabBar tabs={tabs.map((t) => ({ ...t, badge: undefined }))} active={activeTab} onPick={(k) => { setTab(k); setPicked(null); }} testId="build-tab" />}
@@ -207,7 +206,7 @@ export function BuildWindow(props: BuildWindowProps) {
       {tileMode && <div style={{ ...soft, marginBottom: 6 }}><Icon name="bulb" size={14} /> 기본을 놓고, 시설 카드에서 같은 자리 「업그레이드 ▲」로 키워요{tileMode === 'seat' ? ` · 파라솔 이상 3개를 이으면 테라스 거리 +${STREET_BONUS_PCT}%` : ''}</div>}
       {(tileMode || activeTab !== 'corner') && items.length === 0 && <Empty>아직 여기엔 지을 게 없어요</Empty>}
       {/* ui3 정돈: 열린 것만 2열로 크게, 설명은 한 줄로 통일. 잠긴 것은 접어 둔다 (섞여 있으면 목록이 길어진다) */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 6 }}>
         {openItems.map(({ def, locked }) => <BuildCard key={def.id} s={s} def={def} locked={locked} sheet={sheet} tileMode={!!tileMode} on={picked === def.id} onPick={() => { setPicked(picked === def.id ? null : def.id); if (picked !== def.id) showFirstTip(null); }} />)}
       </div>
       {lockedItems.length > 0 && (
@@ -217,7 +216,7 @@ export function BuildWindow(props: BuildWindowProps) {
             <Icon name="lock" size={14} /> 잠긴 것 {lockedItems.length}개 {showLocked ? '▲' : '▼'}
           </button>
           {showLocked && (
-            <div data-testid="build-locked" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+            <div data-testid="build-locked" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 6 }}>
               {lockedItems.map(({ def, locked }) => <BuildCard key={def.id} s={s} def={def} locked={locked} sheet={sheet} tileMode={!!tileMode} on={picked === def.id} onPick={() => { setPicked(picked === def.id ? null : def.id); if (picked !== def.id) showFirstTip(null); }} />)}
             </div>
           )}
@@ -238,7 +237,7 @@ export function TilesScreen({ s, onTile }: { s: GameState; onTile: (t: BuildTile
   const grade = gradeOf(s);
   const tiles = BUILD_TILES.filter((t) => t.id !== 'building' || grade >= BUILDING_TILE_GRADE || !mainBuilding(s));
   return (
-    <div data-testid="build-tiles" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+    <div data-testid="build-tiles" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 8 }}>
       {tiles.map((t) => {
         const badge = badges.find((b) => b.tile === t.id);
         return (
@@ -272,36 +271,54 @@ export function lockedText(def: ObjectDef): string {
   return unlockText(def);
 }
 
+/** ui-bar: 고른 시설은 본문 흐름이 아니라 **창 하단 고정 바**에 — 이름·가격·요약 한 줄 + 오른쪽 「짓기」.
+ *  긴 설명은 「자세히」로 접어 둔다 (펼쳐도 최대 3줄: 기회비용 / 입소문·경관·유지비 / 공사·크기·트리 단계). */
 function PickedDetail({ s: def, locked, state, onPick }: { s: ObjectDef; locked: boolean; state: GameState; onPick?: (id: string) => void }) {
-  useEffect(() => { showFirstTip(null); }, [def.id]); // 고른 카드의 「짓기」 줄이 팁에 가리지 않게
+  const [open, setOpen] = useState(false);
+  useEffect(() => { showFirstTip(null); setOpen(false); }, [def.id]); // 고른 카드의 「짓기」 줄이 팁에 가리지 않게 · 카드를 바꾸면 접는다
   const cost = locked ? def.cost : placeCost(state, def.id);
   const start = locked ? { ok: false, reason: lockedText(def) } : canStartBuild(state, def.id);
   const poor = !locked && state.money < cost;
   const ok = !locked && start.ok && !poor && !!onPick;
   const days = def.buildDays ?? 0;
   const opportunity = locked ? null : opportunityCost(state, def.id); // stakes: 기회비용 한 줄
-  const facts = [
+  const tree = treeOf(def.id);
+  // 자세히 2줄 (기회비용까지 최대 3줄)
+  const gain = [
     def.id === MAIN_TYPE ? '카운터·주방·실내 자리' : def.kind === 'seat' ? `좌석 ${def.seats ?? 2}` : `입소문 ${def.popularity ?? 10}`,
     def.id === MAIN_TYPE ? '문은 앞쪽 왼쪽' : `경관 ${def.scenery}`,
     def.upkeep > 0 ? `유지비 ${wonText(def.upkeep)}/월` : null,
+    def.scenery !== 0 && !def.indoor ? sceneryGainText(state, def.id, -99, -99).replace(' · 자리 옆이면 관광객이 는다', '') : null, // fun: 「관광객 +n%/일」
+  ].filter(Boolean).join(' · ');
+  const shape = [
     days > 0 ? `공사 ${days}일` : '바로 완성',
     `${def.w}×${def.h}칸`,
     def.indoor ? '실내(본관·별관 안)' : null,
-    treeOf(def.id) ? `${treeOf(def.id)!.tree.name} 트리 ${treeOf(def.id)!.index + 1}/${treeOf(def.id)!.tree.steps.length}단계` : isUpgradable(def) ? `증축 Lv1~3 (${{ small: '소', medium: '중', large: '대' }[tierOf(def)]}형)` : null,
-    def.scenery !== 0 && !def.indoor ? sceneryGainText(state, def.id, -99, -99).replace(' · 자리 옆이면 관광객이 는다', '') : null, // fun: 경관 시설 「관광객 +n%/일」은 놓을 자리에서 (고스트 배지)
+    tree ? `${tree.tree.name} 트리 ${tree.index + 1}/${tree.tree.steps.length}단계` : isUpgradable(def) ? `증축 Lv1~3 (${{ small: '소', medium: '중', large: '대' }[tierOf(def)]}형)` : null,
   ].filter(Boolean).join(' · ');
   return (
-    <div data-testid="build-detail" style={{ position: 'sticky', bottom: 0, marginTop: 8, background: PALETTE.paper, borderTop: `3px solid ${PALETTE.wood}`, padding: '8px 0 4px' }}>
-      <div style={{ fontSize: 16, fontWeight: 700 }}>{def.name} <span style={{ fontWeight: 400, fontSize: 14 }}>{cost > 0 ? wonText(cost) : '무료'}</span></div>
-      <div style={{ fontSize: 14, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{def.desc ?? def.name}</div>
-      <div style={{ ...soft, marginBottom: 6 }}>{facts}</div>
-      {!locked && opportunity && <div data-testid="build-cost" style={{ fontSize: 13, fontWeight: 700, color: PALETTE.title, marginBottom: 6 }}>{opportunity}</div>}
+    <WindowBar testId="build-detail">
+      {open && (
+        <div data-testid="build-detail-more" style={{ ...soft, fontSize: 13, lineHeight: 1.4, marginBottom: 4, borderBottom: `1px solid ${PALETTE.woodLight}`, paddingBottom: 4 }}>
+          {opportunity && <div data-testid="build-cost" style={{ ...oneLine, fontWeight: 700, color: PALETTE.title }}>{opportunity}</div>}
+          <div style={oneLine}>{gain}</div>
+          <div style={oneLine}>{shape}</div>
+        </div>
+      )}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <button style={{ ...(ok ? brownBtn : brownBtnOff), margin: 0, flex: '0 0 auto' }} disabled={!ok} onClick={() => onPick?.(def.id)} data-testid="build-go" data-tut="build-go"><Icon name="build" /> 짓기</button>
-        <span style={{ ...soft, color: ok ? PALETTE.inkSoft : PALETTE.bad }}>
-          {locked ? lockedText(def) : poor ? '돈이 모자라요' : !start.ok ? start.reason : '누르면 맵에 놓을 자리를 골라요'}
-        </span>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ ...oneLine, fontSize: 16, fontWeight: 700 }}>{def.name} <span style={{ fontWeight: 400, fontSize: 14 }}>{cost > 0 ? wonText(cost) : '무료'}</span></div>
+          <div style={{ ...soft, ...oneLine, fontSize: 13 }}>{def.desc ?? def.name}</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0, marginTop: 2 }}>
+            <button data-testid="build-detail-toggle" aria-expanded={open} onClick={() => setOpen(!open)}
+              style={{ ...brownBtn, margin: 0, padding: '0 8px', minHeight: 44, fontSize: 13, flex: '0 0 auto' }}>자세히 {open ? '▲' : '▼'}</button>
+            <span style={{ ...soft, ...oneLine, fontSize: 13, color: ok ? PALETTE.inkSoft : PALETTE.bad }}>
+              {locked ? lockedText(def) : poor ? '돈이 모자라요' : !start.ok ? start.reason : '누르면 놓을 자리를 골라요'}
+            </span>
+          </div>
+        </div>
+        <button style={{ ...(ok ? brownBtn : brownBtnOff), margin: 0, minHeight: 44, flex: '0 0 auto' }} disabled={!ok} onClick={() => onPick?.(def.id)} data-testid="build-go" data-tut="build-go"><Icon name="build" /> 짓기</button>
       </div>
-    </div>
+    </WindowBar>
   );
 }

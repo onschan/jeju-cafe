@@ -12,7 +12,7 @@ import tipsJson from './tips.json' with { type: 'json' }; // fun-start: 창·탭
 export type Speaker = 'halmang' | 'samchun' | 'hero' | 'haenyeo' | 'jangnim';
 export const SPEAKER_NAME: Record<Speaker, string> = { halmang: '할망', samchun: '삼춘', hero: '나', haenyeo: '해녀 삼춘', jangnim: '이장님' };
 
-export interface TutorialStep { id: number; key: string; title: string; speaker: Speaker; lines: string[]; done: string | null; button: string }
+export interface TutorialStep { id: number; key: string; act: number; title: string; speaker: Speaker; lines: string[]; done: string | null; button: string }
 export interface GoalLine { id: string; speaker: Speaker; line: string }
 export interface EventDialogue { id: string; title: string; speaker: Speaker; season: 'spring' | 'summer' | 'autumn' | 'winter' | 'any'; lines: string[]; endLine: string }
 export interface SamchunStep { step: number; ask: string; lines: string[]; doneLine: string }

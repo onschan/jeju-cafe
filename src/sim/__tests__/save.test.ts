@@ -116,7 +116,7 @@ test('v21 세이브: 5트랙이 붙인 필드가 전부 기본값으로 채워�
 
   const back = deserialize(JSON.stringify(obj));
   expect(back.version).toBe(SAVE_VERSION);
-  expect(SAVE_VERSION).toBe(23);
+  expect(SAVE_VERSION).toBe(24);
   // stakes
   expect(back.monthCosts.rent).toBe(0);
   expect(back.trend).toBeTruthy();
@@ -131,6 +131,35 @@ test('v21 세이브: 5트랙이 붙인 필드가 전부 기본값으로 채워�
   expect(back.dayLog).toEqual([]);
   expect(back.voices).toEqual([]);
   expect(back.grade).toBe(1);
+  // 한 번 더 왕복해도 같다
+  expect(JSON.parse(serialize(deserialize(serialize(back))))).toEqual(JSON.parse(serialize(back)));
+});
+
+// ---------- all 통합: v23 → v24 (여섯 트랙이 붙인 optional 필드) ----------
+
+test('v23 세이브: 여섯 트랙이 붙인 필드가 전부 기본값으로 채워지고 버전이 24가 된다', () => {
+  const s = bareState(1);
+  const obj = JSON.parse(serialize(s)) as Record<string, unknown>;
+  obj.version = 23;
+  // v23엔 없던 필드를 지워 옛 세이브를 흉내 낸다
+  for (const k of ['rivals', 'cornerSoon', 'staffCapBonus', 'ticketHints']) delete obj[k];
+  delete (obj.monthCosts as Record<string, unknown>).deal;
+  delete (obj.unlocked as Record<string, unknown>).recruits;
+  delete (obj.tutorial as Record<string, unknown>).lastDay;
+
+  const back = deserialize(JSON.stringify(obj));
+  expect(back.version).toBe(SAVE_VERSION);
+  // rival2 — 동네 경쟁 카페·제휴 고정비 줄
+  expect(back.rivals).toBeTruthy();
+  expect(back.monthCosts.deal).toBe(0);
+  // econ2 — 채용 방법·직원 정원·응모권 안내
+  expect(back.unlocked.recruits).toEqual([]);
+  expect(back.staffCapBonus).toBe(0);
+  expect(back.ticketHints).toBe(0);
+  // botfix 5막 — lastDay가 없으면 첫 단계가 바로 뜬다
+  expect(back.tutorial.lastDay).toBeUndefined();
+  // spot2 — 곧 완성될 명당 기억은 비어 있어도 읽힌다
+  expect(back.cornerSoon ?? []).toEqual([]);
   // 한 번 더 왕복해도 같다
   expect(JSON.parse(serialize(deserialize(serialize(back))))).toEqual(JSON.parse(serialize(back)));
 });

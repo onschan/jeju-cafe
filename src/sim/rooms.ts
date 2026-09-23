@@ -10,7 +10,7 @@ import type { GameState, PlacedObject, ApplyResult, MainState, MainWork, Guest, 
 import { objectDef, ANNEX_IDS } from '../data/index.ts';
 import { cellAt, objectAt, roomAt, doorFrontOf, doorOf, footprint, footprintOf, sizeOf, canPlaceMain, canPlace, placeObject, objectsInRoom, removeObject, occupy, vacate, inBounds, fixedCellsOf, isFixedCell } from './grid.ts';
 import { isDoorReachable, isWalkable, reachMap, busStopPos, cellKey } from './path.ts';
-import { seasonOf, monthIndex } from './clock.ts';
+import { seasonOf, monthIndex, HOUR_MS } from './clock.ts';
 import { dayIndex } from './effects.ts';
 import { activeEvents } from './events.ts';
 import { pushNotice } from './staff.ts';
@@ -58,8 +58,9 @@ export const WARM_EVENING_STAY = 0.1;
 export const BGM_MULT = 1.05;
 export const LIGHT_YOUTH_MULT = 1.05;
 export const EVENING_HOUR = 18;
-/** 체류: 좌석 기본(guests.ts SEAT_MS ≈ 1.5시간 = 3000ms → 1시간 2000ms) + 순회 시설당 +8분, 시설 3개 초과 시 둘러보기 확률 상승 */
-export const MS_PER_HOUR = 2000;
+/** 체류: 좌석 기본(guests.ts SEAT_MS = 1.5시간) + 순회 시설당 +8분, 시설 3개 초과 시 둘러보기 확률 상승.
+ *  pace: 1시간의 ms는 clock.HOUR_MS 하나만 본다 — 시계 속도를 바꿔도 「+8분」이 8분인 채로 남는다. */
+export const MS_PER_HOUR = HOUR_MS;
 export const STAY_PER_FACILITY_MS = Math.round((8 / 60) * MS_PER_HOUR);
 export const STAY_FACILITY_CAP = 6;
 export const BROWSE_FACILITIES = 3;
@@ -319,6 +320,7 @@ function clearDoorFront(state: GameState, room: PlacedObject): string | null {
   if (!o || o.id === room.id) return null;
   const def = objectDef(o.type);
   if (def.kind === 'path' || DOOR_FRONT_KEEP.has(o.type)) return null;
+  for (const g of state.guests) if (g.seatId === o.id) { g.seatId = null; g.phase = 'leaving'; g.path = []; } // botfix 훅: 치우는 자리에 매인 손님은 돌려보낸다 (빈 seatId가 남으면 다음 스텝에 터진다)
   removeObject(state, o.id);
   state.money += def.cost;
   pushNotice(state, `문 앞에 있던 ${josa(o.name ?? def.name, '을/를')} 치우고 값을 돌려줬어요`);

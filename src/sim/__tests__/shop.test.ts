@@ -7,8 +7,8 @@ import { placeObject } from '../grid.ts';
 import { objectStats } from '../compat.ts';
 import { sceneryScore } from '../grid.ts';
 import { grantItem, itemEffect, ITEM_SCENERY_CAP } from '../items.ts';
-import { rollPrize, hasFreeDraw, canDrawTicket, DRAW_MONEY_PER_YEAR, UNIFORM_PIECES_PER_SET, MONTHLY_FREE_TICKETS, MID_MONTH_TICKET_DAY } from '../shop.ts';
-import { addTickets, checkCodexTickets, monthlyTickets, CODEX_PER_TICKET } from '../mileage.ts';
+import { rollPrize, hasFreeDraw, canDrawTicket, DRAW_MONEY_PER_YEAR, UNIFORM_PIECES_PER_SET, MONTHLY_FREE_TICKETS, MID_MONTH_TICKET_DAY, drawPreview } from '../shop.ts';
+import { addTickets, checkCodexTickets, monthlyTickets, CODEX_PER_TICKET, TICKET_HINT, TICKET_HINTS } from '../mileage.ts';
 import { UNIFORMS, DRAW_PRIZES, ITEMS, itemDef, objectDef, POPULARITY_FRUIT, POPULARITY_FRUIT_DELTA } from '../../data/index.ts';
 
 test('데이터: 유니폼 5 · 인형뽑기 8칸 합 100% · 강화 아이템 20 + 특수 (trim: 마일리지·응모권 상점 삭제)', () => {
@@ -117,7 +117,12 @@ test('응모권: 월말 손님 600명마다 +1 (closeMonth 전에 준다)', () =
   s.monthGuests = 1300;
   expect(monthlyTickets(s)).toBe(2);
   expect(s.tickets).toBe(2);
-  expect(s.notices.at(-1)).toBe('이달 손님 1300명 — 응모권 +2');
+  // midgame: 처음 세 번은 쓰는 곳을 같이 알려 준다
+  expect(s.notices.at(-1)).toBe(`이달 손님 1300명 — 응모권 +2 · ${TICKET_HINT}`);
+  s.ticketHints = TICKET_HINTS;
+  s.monthGuests = 600;
+  monthlyTickets(s);
+  expect(s.notices.at(-1)).toBe('이달 손님 600명 — 응모권 +1');
 });
 
 test('응모권: 도감 10개마다 +1 (한 단계는 한 번만)', () => {
@@ -129,4 +134,15 @@ test('응모권: 도감 10개마다 +1 (한 단계는 한 번만)', () => {
   expect(s.tickets).toBe(2);
   addTickets(s, 0);
   expect(s.tickets).toBe(2);
+});
+
+test('midgame 뽑기 미리 보기: 상품마다 지금 받을 것이 한 줄로 나오고, 확률 합은 100', () => {
+  const s = bareState(1);
+  const rows = drawPreview(s);
+  expect(rows.length).toBe(DRAW_PRIZES.length);
+  expect(rows.reduce((n, r) => n + r.pct, 0)).toBe(100);
+  expect(rows[0]!.pct).toBeGreaterThanOrEqual(rows[rows.length - 1]!.pct); // 확률 높은 순
+  for (const r of rows) expect(r.what.length).toBeGreaterThan(0);
+  // 농원이 없으면 씨앗 자리는 재료 상자를 알려 준다 (심을 데가 없는 상품을 안 보여 준다)
+  expect(rows.find((r) => r.kind === 'seed')!.what).toContain('재료');
 });

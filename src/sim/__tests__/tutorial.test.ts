@@ -4,13 +4,14 @@ import { apply } from '../actions.ts';
 import { tick, STEP_MS } from '../tick.ts';
 import { DAY_MS } from '../clock.ts';
 import {
-  STEPS, TUTORIAL_STEPS, TRACKED_ACTIONS, STARTER_FEATURE_IDS, LOOK_TEXT, currentTutorialStep, checkTutorial, tutorialDone, pathConnected, noteTutorial, dialogueSeen,
+  STEPS, TUTORIAL_STEPS, TUTORIAL_ACTS, TUTORIAL_STEP_GAP_DAYS, TRACKED_ACTIONS, STARTER_FEATURE_IDS, LOOK_TEXT, currentTutorialStep, nextTutorialStep, checkTutorial, tutorialDone, pathConnected, noteTutorial, dialogueSeen,
   skipTutorialChapter, skipTutorialStep, stepTargets, cornerMade, cornerMissingType, cornerCells, CORNER_PIECE_TYPES, CORNER_RADIUS, TUTORIAL_CORNER_ID, greetedGuest, recommendedMainCells,
+  actOpen, actDone, actsDone, currentAct, waitingForAct, ACT2_SEATS,
 } from '../tutorial.ts';
 import { canOpen } from '../goals.ts';
 import { mainBuilding } from '../rooms.ts';
 import { doorFrontOf, objectAt } from '../grid.ts';
-import { bestSeatCells, strategyVars, fillTemplate } from '../strategy.ts';
+import { bestSeatCells, strategyVars, fillTemplate, TUTORIAL_SEAT_CELL } from '../strategy.ts';
 import { serialize, deserialize } from '../save.ts';
 import type { GameState } from '../types.ts';
 import { at, X, Y } from './helpers.ts';
@@ -45,12 +46,16 @@ function untilGuest(s: GameState, maxMs = 60_000): number {
 }
 const FORBIDDEN = /→ 지금|정석|시뮬|공략|굴려 보니/;
 
-describe('손으로 하는 튜토리얼 「할망의 가르침」 7단계 (fun-start 시작 3분)', () => {
-  it('데이터: sim STEPS 7개와 dialogue/tutorial.json 7개가 key로 1:1, 대사는 2~3줄·22자 이하·금지어 없음, 완성 시작 상태(starter)는 끝난 채', () => {
-    expect(TUTORIAL_STEPS).toBe(7);
-    expect(STEPS.map((s) => s.id)).toEqual([1, 2, 3, 4, 5, 6, 7]);
-    expect(STEPS.map((s) => s.key)).toEqual(['seat', 'menu', 'greet', 'hire', 'corner', 'goals', 'graduate']);
-    expect(DIALOGUE.map((d) => [d.id, d.key])).toEqual(STEPS.map((s) => [s.id, s.key]));
+describe('손으로 하는 튜토리얼 「할망의 가르침」 5막 14단계 (fun-start + 단계 나눔)', () => {
+  it('데이터: sim STEPS 14개와 dialogue/tutorial.json 14개가 key·막으로 1:1, 5막에 3·3·3·3·2단계, 대사는 2~3줄·22자 이하·금지어 없음, 완성 시작 상태(starter)는 끝난 채', () => {
+    expect(TUTORIAL_STEPS).toBe(14);
+    expect(STEPS.map((s) => s.id)).toEqual(Array.from({ length: 14 }, (_, i) => i + 1));
+    expect(STEPS.map((s) => s.key)).toEqual(['seat', 'menu', 'greet', 'site', 'corner', 'cornerSeat', 'tree', 'combo', 'hire', 'parcel', 'route', 'rearrange', 'checkup', 'contest']);
+    expect(TUTORIAL_ACTS.map((a) => a.id)).toEqual([1, 2, 3, 4, 5]);
+    expect(TUTORIAL_ACTS.map((a) => STEPS.filter((st) => st.act === a.id).length)).toEqual([3, 3, 3, 3, 2]);
+    expect(DIALOGUE.map((d) => [d.id, d.key, d.act])).toEqual(STEPS.map((s) => [s.id, s.key, s.act]));
+    // 막 예고 한 줄도 22자 이하·금지어 없음
+    for (const a of TUTORIAL_ACTS) { expect(a.lead.length, a.lead).toBeLessThanOrEqual(22); expect(a.lead).not.toMatch(FORBIDDEN); expect(a.when.length).toBeGreaterThan(0); }
     const vars = strategyVars(tutorialState());
     for (const d of DIALOGUE) {
       expect(d.speaker).toBe('halmang');
@@ -68,7 +73,10 @@ describe('손으로 하는 튜토리얼 「할망의 가르침」 7단계 (fun-s
     expect(STARTER_FEATURE_IDS).toEqual([]);
     expect(createInitialState(1).tutorial).toEqual({ step: TUTORIAL_STEPS, skipped: true, seen: [] });
     expect(TRACKED_ACTIONS.has('greetGuest')).toBe(true); // 트랙 G 손님 인사 액션 훅
-    expect(STEPS[6]!.reward).toContainEqual({ type: 'title', id: 'halmang_pupil', name: '할망의 제자' });
+    expect(TRACKED_ACTIONS.has('treeUpgrade')).toBe(true); // 3막 트리 올리기
+    expect(TRACKED_ACTIONS.has('move')).toBe(true); // 4막 옮기기
+    // 보상은 단계가 아니라 막마다 한 번 — 마지막 막이 칭호를 준다
+    expect(TUTORIAL_ACTS[4]!.reward).toContainEqual({ type: 'title', id: 'halmang_pupil', name: '할망의 제자' });
   });
 
   it('시작 상태(fun-start): 본관이 기본 자리에 서 있고 마을 길→문 앞 올렛길이 이어져 있다. 정낭·좌석·메뉴 없음, 자금 500만, 후보 2, 정류장 있음', () => {
@@ -101,33 +109,32 @@ describe('손으로 하는 튜토리얼 「할망의 가르침」 7단계 (fun-s
     expect(pathConnected(st)).toBe(true);
   });
 
-  it('1~7단계를 순서대로 손으로 하면 단계마다 보상 상자가 뜨고 step이 오른다 — 첫 손님은 테이블·메뉴 뒤 30초 안(1배속), 전체 3분 안', () => {
+  it('1막 3단계를 손으로 하면 막 끝에 보상 상자 하나가 뜬다 — 단계 사이에 하루씩, 2막은 좌석 2개·첫 결제 전엔 안 뜬다', () => {
     const s = tutorialState();
     const money0 = s.money;
-    let realMs = 0;
-    // 1: 테이블 — 입지 최고 칸 1개 글로우, 짓기 → 쉼 → 야외 테이블
+    // 1: 테이블 — 사용자가 고른 칸 (15,11) 글로우, 짓기 → 쉼 → 야외 테이블
     seeDialogue(s);
     expect(stepTargets(STEPS[0]!, s)).toEqual(['nav:build', 'tile:seat', 'tab:rest', 'build:table_out', 'build-go']);
     const glow = STEPS[0]!.cells(s);
-    expect(glow).toEqual(bestSeatCells(s, 1));
-    expect(glow).toHaveLength(1);
+    expect(glow).toEqual([TUTORIAL_SEAT_CELL]);
     expect(apply(s, { type: 'place', objectType: 'table_out', ...glow[0]! }).ok).toBe(true);
     expect(s.tutorial.step).toBe(1);
-    expect(lastReward(s)).toMatchObject({ refId: '1', items: [{ type: 'money', amount: 200_000 }] });
-    expect(s.money).toBe(money0 - 50_000 + 200_000); // 야외 테이블 ₩5만 + 보상 ₩20만
-    clearAlerts(s);
+    expect(lastReward(s)).toBeUndefined(); // 보상은 막을 끝낼 때 한 번
+    // 연타 금지: 오늘은 다음 단계가 안 뜬다
+    expect(currentTutorialStep(s)).toBeNull();
+    expect(nextTutorialStep(s)!.key).toBe('menu');
+    tick(s, DAY_MS * TUTORIAL_STEP_GAP_DAYS);
+    expect(currentTutorialStep(s)!.key).toBe('menu');
     // 2: 메뉴판에 아메리카노
     seeDialogue(s);
     expect(canOpen(s)).toBe(false);
     expect(apply(s, { type: 'setSlot', slot: 0, menuId: 'americano' }).ok).toBe(true);
     expect(s.tutorial.step).toBe(2);
     expect(canOpen(s)).toBe(true);
-    clearAlerts(s);
-    // 3: 첫 손님 — 정류장 글로우 → 손님이 오면 그 손님 칸, 탭해서 인사(트랙 G greetGuest) 또는 손님 카드
+    tick(s, DAY_MS * TUTORIAL_STEP_GAP_DAYS);
+    // 3: 첫 손님 — 손님이 오면 그 손님 칸, 탭해서 인사(트랙 G greetGuest) 또는 손님 카드
     seeDialogue(s);
-    expect(STEPS[2]!.cells(s)).toEqual([{ x: X(0), y: Y(7) }]); // 정류장
     const wait = untilGuest(s);
-    realMs += wait;
     expect(s.guests.length).toBeGreaterThan(0);
     expect(wait).toBeLessThanOrEqual(30_000); // 1배속 30초 안에 첫 손님
     const g = s.guests[0]!;
@@ -136,64 +143,41 @@ describe('손으로 하는 튜토리얼 「할망의 가르침」 7단계 (fun-s
     expect(checkTutorial(s)).toBeNull();
     expect(apply(s, { type: 'tutorialNote', key: 'guestCard' }).ok).toBe(true);
     expect(s.tutorial.step).toBe(3);
-    expect(lastReward(s)).toMatchObject({ refId: '3', items: [{ type: 'tickets', n: 1 }] });
+    // 1막 끝 — 보상 상자 하나 (₩30만 · 응모권 1)
+    expect(lastReward(s)).toMatchObject({ refId: 'act1' });
+    expect(s.money).toBeGreaterThan(money0 - 50_000);
+    expect(actDone(s, 1)).toBe(true);
+    expect(actsDone(s)).toBe(1);
     clearAlerts(s);
-    // 4: 직원 채용 (홀 권장, 아무 직종이나 1명이면 통과)
-    seeDialogue(s);
-    const c = s.candidates[0]!;
-    expect(apply(s, { type: 'hire', candidateId: c.id, role: 'hall' }).ok).toBe(true);
-    expect(s.tutorial.step).toBe(4);
-    expect(lastReward(s)).toMatchObject({ refId: '4' });
-    clearAlerts(s);
-    // 5: 첫 명당 「꽃길」 — 꽃밭 → 벤치 → 가로등, 글로우는 빠진 조각 하나씩·명당 탭·꽃길 「놓기」 버튼·짓기 카드
-    seeDialogue(s);
-    expect(cornerMade(s)).toBe(false);
-    const [flower, bench, lamp] = CORNER_PIECE_TYPES as [string, string, string];
-    for (const t of [flower, bench, lamp]) expect(s.unlocked.objects).toContain(t);
-    expect(cornerMissingType(s)).toBe(flower);
-    expect(stepTargets(STEPS[4]!, s)).toEqual(['nav:build', 'tile:charm', 'tab:corner', `corner-next:${TUTORIAL_CORNER_ID}`, `build:${flower}`, 'build-go']);
-    const f = cornerCells(s);
-    expect(f).toHaveLength(1);
-    expect(Math.max(Math.abs(f[0]!.x - glow[0]!.x), Math.abs(f[0]!.y - glow[0]!.y))).toBeLessThanOrEqual(CORNER_RADIUS); // 테이블 옆
-    expect(walkableNeighborsOf(s, f[0]!.x, f[0]!.y).length).toBeGreaterThan(0); // 길 옆 — 손님이 명당을 찾아올 수 있게
-    expect(apply(s, { type: 'place', objectType: flower, ...f[0]! }).ok).toBe(true);
-    expect(s.tutorial.step).toBe(4);
-    expect(cornerMissingType(s)).toBe(bench);
-    expect(stepTargets(STEPS[4]!, s)).toEqual(['nav:build', 'tile:charm', 'tab:corner', `corner-next:${TUTORIAL_CORNER_ID}`, `build:${bench}`, 'build-go']);
-    const b = cornerCells(s);
-    expect(b).toHaveLength(1);
-    expect(Math.max(Math.abs(b[0]!.x - f[0]!.x), Math.abs(b[0]!.y - f[0]!.y))).toBeLessThanOrEqual(CORNER_RADIUS); // 꽃밭 옆
-    expect(apply(s, { type: 'place', objectType: bench, ...b[0]! }).ok).toBe(true);
-    expect(cornerMade(s)).toBe(false);
-    expect(cornerMissingType(s)).toBe(lamp);
-    const l = cornerCells(s);
-    expect(l).toHaveLength(1);
-    expect(Math.max(Math.abs(l[0]!.x - f[0]!.x), Math.abs(l[0]!.y - f[0]!.y))).toBeLessThanOrEqual(CORNER_RADIUS);
-    expect(apply(s, { type: 'place', objectType: lamp, ...l[0]! }).ok).toBe(true);
-    realMs += finishBuilds(s); // 벤치·가로등 공사 1일 — 다음 날 아침 완공까지 (1배속 36초 안)
-    expect(cornerMade(s)).toBe(true);
-    expect(completedCorners(s).map((c) => c.id)).toContain(TUTORIAL_CORNER_ID);
-    expect(s.tutorial.step).toBe(5);
-    expect(lastReward(s)).toMatchObject({ refId: '5' });
-    clearAlerts(s);
-    // 6: 목표 창 열어 보기 — 목표 줄 글로우, 보상 없음
-    seeDialogue(s);
-    expect(stepTargets(STEPS[5]!, s)).toEqual(['goal-bar']);
-    expect(checkTutorial(s)).toBeNull();
-    expect(apply(s, { type: 'tutorialNote', key: 'goalWindow' }).ok).toBe(true);
-    expect(s.tutorial.step).toBe(6);
-    expect(lastReward(s)).toBeUndefined(); // 6단계 상자 없음
-    // 7: 끝 — 대사만 닫으면 칭호 「할망의 제자」
-    seeDialogue(s);
-    expect(s.tutorial.step).toBe(7);
-    expect(tutorialDone(s)).toBe(true);
-    expect(s.titles).toContain('halmang_pupil');
-    expect(lastReward(s)).toMatchObject({ refId: '7' });
-    // 전체: 기다린 시간은 첫 손님뿐 — 3분(180초) 안
-    expect(realMs).toBeLessThan(180_000);
-    // 끝난 뒤엔 표식을 안 남기고, 스포트라이트 칸도 없다
-    expect(noteTutorial(s, 'guestCard')).toBe(false);
+    // 2막은 좌석 2개 + 첫 결제 전엔 아예 안 뜬다
+    tick(s, DAY_MS * TUTORIAL_STEP_GAP_DAYS);
+    expect(currentAct(s)!.id).toBe(2);
+    expect(actOpen(s, 2)).toBe(false);
     expect(currentTutorialStep(s)).toBeNull();
+    expect(waitingForAct(s)!.id).toBe(2);
+    // 좌석을 하나 더 놓고 한 잔이 팔리면 열린다
+    const more = bestSeatCells(s, 1)[0]!;
+    expect(apply(s, { type: 'place', objectType: 'table_out', x: more.x, y: more.y }).ok).toBe(true);
+    let ms = 0;
+    while (!actOpen(s, 2) && ms < 5 * DAY_MS) { tick(s, STEP_MS); ms += STEP_MS; }
+    expect(actOpen(s, 2)).toBe(true);
+    expect(currentTutorialStep(s)!.key).toBe('site');
+  });
+
+  it('3막은 자금 ₩80만·좌석 3개에서 열린다 (그 전엔 단계가 하나도 안 뜬다)', () => {
+    const s = tutorialState();
+    s.tutorial.step = 6; // 1~2막을 끝낸 모습
+    s.money = 500_000;
+    expect(actOpen(s, 3)).toBe(false);
+    expect(currentTutorialStep(s)).toBeNull();
+    s.money = 800_000;
+    for (let i = 0; i < 3 && Object.values(s.objects).filter((o) => o.type === 'table_out').length < 3; i++) {
+      const c = bestSeatCells(s, 1)[0]!;
+      apply(s, { type: 'place', objectType: 'table_out', x: c.x, y: c.y });
+      s.money = 800_000;
+    }
+    expect(actOpen(s, 3)).toBe(true);
+    expect(currentTutorialStep(s)!.key).toBe('tree');
   });
 
   it('트랙 C 명당: 완성 명당이 하나라도 있으면 5단계가 찬다; 꽃밭·벤치가 멀면(반경 2 밖) 안 차고 빠진 조각은 벤치', () => {
@@ -238,7 +222,7 @@ describe('손으로 하는 튜토리얼 「할망의 가르침」 7단계 (fun-s
     expect(Object.values(s.objects).filter((o) => o.type === 'warehouse')).toHaveLength(1);
   });
 
-  it('건너뛰기(skipTutorialChapter): 어느 단계에서든 남은 단계 전부 — 해금만 조용히, 돈·응모권·칭호 없음. 「이미 알아요」(skipTutorialStep)는 한 단계만', () => {
+  it('건너뛰기는 막 단위(skipTutorialChapter): 지금 막의 남은 단계만 — 해금만 조용히, 돈·응모권·칭호 없음. 「이미 알아요」(skipTutorialStep)는 한 단계만', () => {
     const s = tutorialState();
     seeDialogue(s);
     expect(apply(s, { type: 'place', objectType: 'table_out', ...at(3, 4) }).ok).toBe(true);
@@ -248,20 +232,26 @@ describe('손으로 하는 튜토리얼 「할망의 가르침」 7단계 (fun-s
     expect(skipTutorialStep(s)).toBe(2);
     expect(s.tutorial.step).toBe(2);
     expect(s.tutorial.skipped).toBe(false);
+    // 1막의 남은 단계(3단계)만 넘어간다 — 2막은 그대로 남는다
     expect(apply(s, { type: 'skipTutorialChapter' }).ok).toBe(true);
-    expect(s.tutorial.step).toBe(TUTORIAL_STEPS);
+    expect(s.tutorial.step).toBe(3);
+    expect(actDone(s, 1)).toBe(true);
+    expect(actDone(s, 2)).toBe(false);
     expect(s.tutorial.skipped).toBe(true);
     expect(s.money).toBe(money);
     expect(s.tickets).toBe(tickets);
     expect(s.titles).not.toContain('halmang_pupil');
     expect(s.alerts.filter((a) => a.type === 'reward')).toHaveLength(0);
+    // 막을 다 넘기면 더 넘길 게 없다
+    for (let i = 0; i < TUTORIAL_ACTS.length; i++) apply(s, { type: 'skipTutorialChapter' });
+    expect(tutorialDone(s)).toBe(true);
     expect(skipTutorialChapter(s)).toBe(0);
     expect(apply(s, { type: 'skipTutorialChapter' }).ok).toBe(false);
     // 0단계에서 건너뛰면 완성 시작 상태로 채워 바로 영업
     const u = tutorialState();
     expect(apply(u, { type: 'skipTutorialChapter' }).ok).toBe(true);
     expect(canOpen(u)).toBe(true);
-    expect(tutorialDone(u)).toBe(true);
+    expect(actDone(u, 1)).toBe(true);
   });
 
   it('저장: 표식(seen)·진행이 저장되고 불러온 뒤 이어 간다; 결정적(같은 시드·같은 행동 → 같은 상태)', () => {
@@ -272,10 +262,11 @@ describe('손으로 하는 튜토리얼 「할망의 가르침」 7단계 (fun-s
     const r = deserialize(serialize(s));
     expect(r.tutorial).toEqual(s.tutorial);
     expect(r.tutorial.seen).toContain('dlg:1');
+    tick(r, DAY_MS); // 단계 사이 하루
     expect(apply(r, { type: 'setSlot', slot: 0, menuId: 'americano' }).ok).toBe(true);
     expect(r.tutorial.step).toBe(2);
     const a = tutorialState(5), b = tutorialState(5);
-    for (const x of [a, b]) { seeDialogue(x); apply(x, { type: 'place', objectType: 'table_out', ...at(3, 4) }); seeDialogue(x); apply(x, { type: 'setSlot', slot: 0, menuId: 'americano' }); seeDialogue(x); tick(x, DAY_MS); }
+    for (const x of [a, b]) { seeDialogue(x); apply(x, { type: 'place', objectType: 'table_out', ...at(3, 4) }); tick(x, DAY_MS); seeDialogue(x); apply(x, { type: 'setSlot', slot: 0, menuId: 'americano' }); tick(x, DAY_MS); seeDialogue(x); }
     expect(serialize(a)).toBe(serialize(b));
     expect(doorFrontOf(mainBuilding(a)!)).toEqual(at(3, 3));
   });

@@ -73,9 +73,9 @@ export function countObjects(state: GameState, objectId: string): number {
 }
 
 /** 소유 필지에 놓인 v2 분류별 시설 개수 (건설 중 포함) */
-export function countCategory(state: GameState, category: string): number {
+export function countCategory(state: GameState, category: string, builtOnly = false): number {
   let n = 0;
-  for (const o of Object.values(state.objects)) if (objectDef(o.type).category === category && parcelAt(state, o.x, o.y)?.owned) n++;
+  for (const o of Object.values(state.objects)) if (objectDef(o.type).category === category && (!builtOnly || !o.build) && parcelAt(state, o.x, o.y)?.owned) n++;
   return n;
 }
 

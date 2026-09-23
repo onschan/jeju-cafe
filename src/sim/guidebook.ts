@@ -1,7 +1,7 @@
 /**
  * ★ 등급·가이드북 11종 (2B-2 Task 7, 마스터 GDD §7, 확장 스펙 §3.7)
  * - ★1~5: ranks.json 조건 문구를 해석해 월초에 검사. 승급 → 알림·장면·시설 해금.
- *   유지 심사(§3.7.4): ★3 이상은 승급 2년 뒤부터 2년마다 3월에 조건을 다시 본다. 미달이면 경고 → 9월에도 미달이면 ★ −1 (rank_shield 1회 면제).
+ *   유지 심사(§3.7.4): ★3 이상은 승급 1년 뒤부터 1년마다 3월에 조건을 다시 본다. 미달이면 경고 → 9월에도 미달이면 ★ −1 (rank_shield 1회 면제).
  * - 가이드북: 해금 조건(unlockCondMet) → 3월·9월 발표(월간 추천은 매월). 심사 항목 9종(미소·경관·메뉴·체험·단체·쉼·청결·가성비·종합)을
  *   상태에서 계산해 가중 합(guidebooks.json weights) → 경쟁 카페 9곳(§3.7.3 성장 곡선 top_b(y) − 6(i−1) ± 4, seed 결정적)과 비교해 순위 → 1위 상금·연구·씨앗·마일리지.
  *   플레이어가 1위 하면 그 가이드북 라이벌은 다음 해 +3(boost), 라이벌 카페 등장 중이면 +5.
@@ -39,9 +39,10 @@ export const RIVAL_STEP = 6;
 export const RIVAL_NOISE = 4;
 /** 플레이어 1위 → 다음 해 경쟁 점수 +3 */
 export const RIVAL_WIN_BOOST = 3;
-/** ★ 유지 심사: ★3 이상, 승급 2년 뒤부터 2년마다 3월, 9월 재심사 */
+/** ★ 유지 심사: ★3 이상, 승급 1년 뒤부터 1년마다 3월, 9월 재심사.
+ *  pace: 한 판이 4년(1년차 3월~5년차 3월)이라 2년 주기면 심사가 많아야 한 번 — 「잃을 것」이 안 생긴다. 1년 주기로 당긴다. */
 export const REVIEW_MIN_STAR = 3;
-export const REVIEW_EVERY_YEARS = 2;
+export const REVIEW_EVERY_YEARS = 1;
 export const REVIEW_MONTH = 3;
 export const REVIEW_RETRY_MONTH = 9;
 export const RANK_SHIELD_ITEM = 'rank_shield';
@@ -119,7 +120,7 @@ export function starConditionsHeld(state: GameState, star = state.star): boolean
   const def = STARS.find((s) => s.star === star);
   return !def || def.conditions.every((c) => starConditionMet(state, c));
 }
-/** 유지 심사가 도는 달인가: ★3 이상, 승급 +2년부터, 마지막 심사 +2년, 3월 */
+/** 유지 심사가 도는 달인가: ★3 이상, 승급 +1년부터, 마지막 심사 +1년, 3월 */
 export function isReviewDue(state: GameState): boolean {
   const r = state.starReview;
   const y = state.clock.year;

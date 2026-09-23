@@ -3,7 +3,7 @@
     "id": "americano",
     "name": "아메리카노",
     "category": "drink",
-    "price": 3200,
+    "price": 3000,
     "ingredients": {
       "beans": 1
     }
@@ -12,7 +12,7 @@
     "id": "latte",
     "name": "카페라떼",
     "category": "drink",
-    "price": 4000,
+    "price": 3800,
     "ingredients": {
       "beans": 1,
       "milk": 1
@@ -25,7 +25,7 @@
     "id": "green_tea",
     "name": "녹차",
     "category": "drink",
-    "price": 3500,
+    "price": 3300,
     "ingredients": {
       "tea": 1
     }
@@ -34,7 +34,7 @@
     "id": "yuja_tea",
     "name": "유자차",
     "category": "drink",
-    "price": 4000,
+    "price": 3800,
     "ingredients": {
       "yuja": 1
     }
@@ -43,7 +43,7 @@
     "id": "iced_tea",
     "name": "아이스티",
     "category": "drink",
-    "price": 3500,
+    "price": 3300,
     "ingredients": {
       "tea": 1,
       "ice": 1
@@ -53,7 +53,7 @@
     "id": "hot_choco",
     "name": "핫초코",
     "category": "drink",
-    "price": 4000,
+    "price": 3800,
     "ingredients": {
       "cocoa": 1,
       "milk": 1
@@ -66,7 +66,7 @@
     "id": "toast",
     "name": "토스트",
     "category": "dessert",
-    "price": 3000,
+    "price": 3200,
     "ingredients": {
       "flour": 1,
       "butter": 1
@@ -79,7 +79,7 @@
     "id": "scone",
     "name": "스콘",
     "category": "dessert",
-    "price": 3500,
+    "price": 3700,
     "ingredients": {
       "flour": 1,
       "butter": 1,
@@ -93,7 +93,7 @@
     "id": "cheesecake",
     "name": "치즈케이크",
     "category": "dessert",
-    "price": 5500,
+    "price": 5800,
     "ingredients": {
       "cheese": 1,
       "flour": 1,
@@ -107,7 +107,7 @@
     "id": "cookie",
     "name": "쿠키",
     "category": "dessert",
-    "price": 2500,
+    "price": 2700,
     "ingredients": {
       "flour": 1,
       "sugar": 1
@@ -120,7 +120,7 @@
     "id": "egg_sandwich",
     "name": "계란 샌드위치",
     "category": "meal",
-    "price": 5000,
+    "price": 5300,
     "ingredients": {
       "egg": 2,
       "flour": 1
@@ -133,7 +133,7 @@
     "id": "croissant",
     "name": "크루아상",
     "category": "meal",
-    "price": 4500,
+    "price": 4800,
     "ingredients": {
       "flour": 1,
       "butter": 2
@@ -146,7 +146,7 @@
     "id": "carrot_juice",
     "name": "당근주스",
     "category": "drink",
-    "price": 4000,
+    "price": 3800,
     "ingredients": {
       "carrot": 1
     }
@@ -155,7 +155,7 @@
     "id": "tangerine_juice",
     "name": "감귤주스",
     "category": "drink",
-    "price": 4500,
+    "price": 4200,
     "ingredients": {
       "tangerine": 1
     }
@@ -164,7 +164,7 @@
     "id": "carrot_cake",
     "name": "당근케이크",
     "category": "dessert",
-    "price": 6000,
+    "price": 6400,
     "ingredients": {
       "carrot": 2,
       "flour": 1,
@@ -178,7 +178,7 @@
     "id": "tangerine_scone",
     "name": "감귤 스콘",
     "category": "dessert",
-    "price": 5000,
+    "price": 5300,
     "ingredients": {
       "tangerine": 1,
       "flour": 1,
@@ -192,7 +192,7 @@
     "id": "tangerine_ade",
     "name": "감귤 에이드",
     "category": "drink",
-    "price": 5000,
+    "price": 4700,
     "ingredients": {
       "tangerine": 2,
       "ice": 1
@@ -202,13 +202,40 @@
     "id": "carrot_soup",
     "name": "당근 수프",
     "category": "meal",
-    "price": 6500,
+    "price": 6900,
     "ingredients": {
       "carrot": 2,
       "milk": 1
     },
     "requires": {
       "role": "cook"
+    }
+  },
+  {
+    "id": "hallabong_honey_tea",
+    "name": "한라봉 꿀차",
+    "category": "drink",
+    "price": 4500,
+    "ingredients": {
+      "hallabong": 1,
+      "honey": 1
+    },
+    "requires": {
+      "role": "barista"
+    }
+  },
+  {
+    "id": "cinnamon_latte",
+    "name": "계피 라떼",
+    "category": "drink",
+    "price": 4600,
+    "ingredients": {
+      "beans": 1,
+      "milk": 1,
+      "cinnamon": 1
+    },
+    "requires": {
+      "role": "barista"
     }
   }
 ]

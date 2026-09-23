@@ -1,103 +1,208 @@
 {
-  "_": "손으로 하는 튜토리얼 「할망의 가르침」 7단계 (fun-start §2 시작 3분). 화자는 전부 할망(초상 portrait_halmang). 한 줄 ≤ 22자·2~3줄, 지시문·화살표 없이 이유가 있는 문장(§6). `{seatWhy}`는 sim/strategy.ts strategyVars가 실제 입지로 채운다(ui/tutorialDialogue.ts fillTutorialStep). 조건 판정·보상은 sim/tutorial.ts(key로 짝), 글로우 칸은 strategy.ts 최적 칸, 하이라이트는 ui/tutorialHighlight.ts. 그 밖의 시스템은 창을 처음 열 때 한 줄 팁(tips.json).",
-  "speakers": {
-    "halmang": "할망",
-    "samchun": "삼춘",
-    "hero": "나",
-    "haenyeo": "해녀 삼춘",
-    "jangnim": "이장님"
+ "_": "손으로 하는 튜토리얼 「할망의 가르침」 5막 14단계 (fun-start §2 + 단계 나눔). 화자는 전부 할망(초상 portrait_halmang). 한 줄 ≤ 22자·2~3줄, 지시문·화살표 없이 이유가 있는 문장(§6). `{seatWhy}`는 sim/strategy.ts strategyVars가 실제 입지로 채운다(ui/tutorialDialogue.ts fillTutorialStep). 막 트리거·조건 판정·막 보상은 sim/tutorial.ts(key로 짝), 글로우 칸은 strategy.ts 최적 칸, 하이라이트는 ui/tutorialHighlight.ts. 그 밖의 시스템은 창을 처음 열 때 한 줄 팁(tips.json).",
+ "speakers": {
+  "halmang": "할망",
+  "samchun": "삼춘",
+  "hero": "나",
+  "haenyeo": "해녀 삼춘",
+  "jangnim": "이장님"
+ },
+ "steps": [
+  {
+   "id": 1,
+   "key": "seat",
+   "act": 1,
+   "title": "테이블 하나부터",
+   "speaker": "halmang",
+   "lines": [
+    "어서 오라. 창고는 손봐 뒀다.",
+    "테이블 하나면 장사가 된다.",
+    "빛나는 칸은 {seatWhy}"
+   ],
+   "done": "야외 테이블 1개를 놓았다",
+   "button": "놓아 볼게요"
   },
-  "steps": [
-    {
-      "id": 1,
-      "key": "seat",
-      "title": "테이블 하나부터",
-      "speaker": "halmang",
-      "lines": [
-        "어서 오라. 창고는 손봐 뒀다.",
-        "테이블 하나면 장사가 된다.",
-        "빛나는 칸은 {seatWhy}"
-      ],
-      "done": "야외 테이블 1개를 놓았다",
-      "button": "놓아 볼게요"
-    },
-    {
-      "id": 2,
-      "key": "menu",
-      "title": "메뉴판에 아메리카노",
-      "speaker": "halmang",
-      "lines": [
-        "메뉴판이 비어 있다.",
-        "아메리카노 하나면 손님이 온다.",
-        "재료 걱정은 나중에 하라."
-      ],
-      "done": "메뉴판에 아메리카노를 올렸다",
-      "button": "올릴게요"
-    },
-    {
-      "id": 3,
-      "key": "greet",
-      "title": "첫 손님이 온다",
-      "speaker": "halmang",
-      "lines": [
-        "정류장 봐라, 버스가 온다.",
-        "손님을 탭해서 인사해 보라.",
-        "인사 받은 손님은 또 온다."
-      ],
-      "done": "첫 손님에게 인사했다",
-      "button": "인사할게요"
-    },
-    {
-      "id": 4,
-      "key": "hire",
-      "title": "혼자선 힘들다",
-      "speaker": "halmang",
-      "lines": [
-        "손님이 늘면 혼자선 못 한다.",
-        "홀 직원 하나 뽑아라.",
-        "서빙이 빨라야 안 떠난다."
-      ],
-      "done": "직원 1명을 채용했다",
-      "button": "뽑을게요"
-    },
-    {
-      "id": 5,
-      "key": "corner",
-      "title": "첫 명당 「꽃길」",
-      "speaker": "halmang",
-      "lines": [
-        "꽃밭 옆에 벤치, 그 옆에 가로등.",
-        "셋이 모이면 「꽃길」 명당이다.",
-        "팻말이 서고 사진 찍으러 온다."
-      ],
-      "done": "꽃길 명당을 만들었다",
-      "button": "꾸며 볼게요"
-    },
-    {
-      "id": 6,
-      "key": "goals",
-      "title": "목표 줄과 책 배지",
-      "speaker": "halmang",
-      "lines": [
-        "위에 목표 줄이 보이지?",
-        "탭하면 다음에 할 일이 있다.",
-        "왼쪽 책 배지는 내 추천이다."
-      ],
-      "done": "목표 창을 열어 봤다",
-      "button": "열어 볼게요"
-    },
-    {
-      "id": 7,
-      "key": "graduate",
-      "title": "이제 네 카페다",
-      "speaker": "halmang",
-      "lines": [
-        "가르칠 건 다 가르쳤다.",
-        "창마다 팁을 한 줄씩 붙여 뒀다.",
-        "이제 네 카페다. 잘해 보라."
-      ],
-      "done": "할망의 가르침을 마쳤다",
-      "button": "고마워요"
-    }
-  ]
+  {
+   "id": 2,
+   "key": "menu",
+   "act": 1,
+   "title": "메뉴판에 아메리카노",
+   "speaker": "halmang",
+   "lines": [
+    "메뉴판이 비어 있다.",
+    "아메리카노 하나면 손님이 온다.",
+    "재료 걱정은 나중에 하라."
+   ],
+   "done": "메뉴판에 아메리카노를 올렸다",
+   "button": "올릴게요"
+  },
+  {
+   "id": 3,
+   "key": "greet",
+   "act": 1,
+   "title": "첫 손님이 온다",
+   "speaker": "halmang",
+   "lines": [
+    "정류장 봐라, 버스가 온다.",
+    "손님을 탭해서 인사해 보라.",
+    "인사 받은 손님은 또 온다."
+   ],
+   "done": "첫 손님에게 인사했다",
+   "button": "인사할게요"
+  },
+  {
+   "id": 4,
+   "key": "site",
+   "act": 2,
+   "title": "자리마다 값이 다르다",
+   "speaker": "halmang",
+   "lines": [
+    "자리 값은 칸마다 다르다.",
+    "입지 보기를 켜면 숫자가 뜬다.",
+    "{seatWhy}"
+   ],
+   "done": "입지 보기를 켜 봤다",
+   "button": "켜 볼게요"
+  },
+  {
+   "id": 5,
+   "key": "corner",
+   "act": 2,
+   "title": "첫 명당 「꽃길」",
+   "speaker": "halmang",
+   "lines": [
+    "꽃밭 옆에 벤치, 그 옆에 가로등.",
+    "셋이 모이면 「꽃길」 명당이다.",
+    "팻말이 서고 사진 찍으러 온다."
+   ],
+   "done": "내일이면 꽃길이 완성된다",
+   "button": "꾸며 볼게요"
+  },
+  {
+   "id": 6,
+   "key": "cornerSeat",
+   "act": 2,
+   "title": "명당 곁에 자리를",
+   "speaker": "halmang",
+   "lines": [
+    "명당 둘레 두 칸이 값이 오른다.",
+    "그 안에 자리를 하나 두라.",
+    "같은 커피가 더 비싸게 팔린다."
+   ],
+   "done": "명당 둘레에 자리를 놓았다",
+   "button": "놓아 볼게요"
+  },
+  {
+   "id": 7,
+   "key": "tree",
+   "act": 3,
+   "title": "늘리지 말고 올려라",
+   "speaker": "halmang",
+   "lines": [
+    "자리를 늘리면 청소가 는다.",
+    "같은 칸에서 한 단계 올려 보라.",
+    "파라솔이 되면 손님이 더 낸다."
+   ],
+   "done": "시설을 한 단계 올렸다",
+   "button": "올릴게요"
+  },
+  {
+   "id": 8,
+   "key": "combo",
+   "act": 3,
+   "title": "가까이 두면 는다",
+   "speaker": "halmang",
+   "lines": [
+    "떨어져 있으면 제값만 받는다.",
+    "자리 곁 두 칸에 둘을 붙여라.",
+    "붙은 만큼 인기가 붙는다."
+   ],
+   "done": "자리 곁에 시설 둘을 붙였다",
+   "button": "붙여 볼게요"
+  },
+  {
+   "id": 9,
+   "key": "hire",
+   "act": 3,
+   "title": "혼자선 힘들다",
+   "speaker": "halmang",
+   "lines": [
+    "손님이 늘면 혼자선 못 한다.",
+    "⭐ 추천이 붙은 사람을 보라.",
+    "서빙이 빨라야 안 떠난다."
+   ],
+   "done": "직원 1명을 채용했다",
+   "button": "뽑을게요"
+  },
+  {
+   "id": 10,
+   "key": "parcel",
+   "act": 4,
+   "title": "땅을 넓힌다",
+   "speaker": "halmang",
+   "lines": [
+    "자리가 꽉 차면 땅이 답이다.",
+    "옆 필지를 하나 사 보라.",
+    "넓어지면 배치를 다시 짠다."
+   ],
+   "done": "필지를 하나 샀다",
+   "button": "사 볼게요"
+  },
+  {
+   "id": 11,
+   "key": "route",
+   "act": 4,
+   "title": "길을 하나 더",
+   "speaker": "halmang",
+   "lines": [
+    "버스만으로는 한계가 있다.",
+    "마을 길 옆에 주차장을 내라.",
+    "차로 온 손님은 더 쓴다."
+   ],
+   "done": "다른 길을 하나 열었다",
+   "button": "내 볼게요"
+  },
+  {
+   "id": 12,
+   "key": "rearrange",
+   "act": 4,
+   "title": "옮기고 되돌린다",
+   "speaker": "halmang",
+   "lines": [
+    "새로 짓지 말고 옮겨라.",
+    "값은 그대로, 자리만 바뀐다.",
+    "마음에 안 들면 되돌리라."
+   ],
+   "done": "시설을 한 번 옮겨 봤다",
+   "button": "옮겨 볼게요"
+  },
+  {
+   "id": 13,
+   "key": "checkup",
+   "act": 5,
+   "title": "진단을 읽는다",
+   "speaker": "halmang",
+   "lines": [
+    "장부에 진단 한 장이 있다.",
+    "걸림돌 하나와 다음 수 둘.",
+    "우리 카페 색도 거기 적힌다."
+   ],
+   "done": "우리 카페 진단을 열어 봤다",
+   "button": "읽어 볼게요"
+  },
+  {
+   "id": 14,
+   "key": "contest",
+   "act": 5,
+   "title": "대회에 나가 본다",
+   "speaker": "halmang",
+   "lines": [
+    "이름은 대회에서 붙는다.",
+    "이길 만한 판에 한 번 내라.",
+    "3위 안이면 참가비는 남는다."
+   ],
+   "done": "대회에 접수했다",
+   "button": "내 볼게요"
+  }
+ ]
 }

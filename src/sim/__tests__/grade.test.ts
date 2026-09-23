@@ -135,7 +135,7 @@ test('목표 사다리 새 조건: 등급·명당·단골·2층·평판·전설 
   expect(goalConditionText({ type: 'legendStaff', n: 1 })).toBe('전설 직원 채용');
   expect(goalConditionText({ type: 'routesOpen', n: 4 })).toBe('손님 오는 길 4종');
   // 사다리: 후반 목표(g45~)에 자금 목표가 없고, 등급 3·4·5·본관 Lv3/4·2층·직원이 들어 있다 (trim: 목표 60)
-  const late = GOALS.slice(44).map((g) => g.condition);
+  const late = GOALS.slice(52).map((g) => g.condition); // midgame: 2년차 구간 목표 8개가 앞에 끼어 44 → 52
   expect(late.some((c) => c.type === 'money')).toBe(false);
   expect(late.filter((c) => c.type === 'grade').map((c) => (c as { n: number }).n).sort()).toEqual([3, 4, 5]);
   expect(late.filter((c) => c.type === 'mainLevel').map((c) => (c as { lv: number }).lv).sort()).toEqual([3, 4]);

@@ -7,7 +7,8 @@
 import type { GameState, ApplyResult, DrawResult, DrawPrizeDef } from './types.ts';
 import { OBJECTS, UNIFORMS, DRAW_PRIZES, ITEMS, FARM_INGREDIENT_IDS, ingredientDef, GUEST_TYPES, POPULARITY_FRUIT, POPULARITY_FRUIT_DELTA, canonicalGuestId, guestTypeDef, itemDef } from '../data/index.ts';
 import { grantItem, openGiftBox } from './items.ts';
-import { pushNotice } from './staff.ts';
+import { ticketHint, TICKET_HINT } from './mileage.ts'; // midgame: 응모권 쓰는 곳 안내
+import { pushNotice, farmCount } from './staff.ts';
 import { nextRandom, pickWeighted, randInt } from './rng.ts';
 import { monthIndex } from './clock.ts';
 import { MAX_BUILDERS } from './build.ts';
@@ -33,6 +34,8 @@ export const DRAW_GUARDIAN = 'little_guardian';
 /** 곰 삼춘의 망치 최대 보유 (§3.3.4) */
 export const HAMMER_MAX = 10;
 const WORKER_RE = /^ms_worker_(\d)$/;
+/** 씨앗이 쓸모없을 때 대신 주는 상품의 이름 (재료 상자) */
+const DRAW_LABEL_INGREDIENT = '재료 상자';
 
 /** 설계도류(objectId): 시설을 짓기 목록에 연다. 아직 objects.json에 없는 시설이면 false. */
 export function unlockObjectByShop(state: GameState, objectId: string): boolean {
@@ -129,6 +132,8 @@ function applyPrize(state: GameState, prize: DrawPrizeDef): string {
       return `${josa(item.name, '을/를')} 뽑았어요!`;
     }
     case 'seed': {
+      // midgame: 심을 데가 없으면 씨앗은 그 자리에서 죽은 상품이다 — 농원이 하나도 없으면 재료 상자로 바꿔 준다
+      if (farmCount(state) === 0) return applyPrize(state, { kind: 'ingredient_box', label: DRAW_LABEL_INGREDIENT, pct: 0 });
       const id = nextRandom(state) < 0.5 ? 'tangerine_seed' : 'hallabong_seed';
       grantItem(state, id);
       return id === 'tangerine_seed' ? '감귤 씨앗을 뽑았어요' : '한라봉 씨앗을 뽑았어요';
@@ -145,6 +150,26 @@ function applyPrize(state: GameState, prize: DrawPrizeDef): string {
     }
     case 'miss': return '꽝… 다음에 또 해요';
   }
+}
+
+/** midgame: 「지금 나올 수 있는 것」 — 상품마다 지금 상태에서 실제로 무엇을 받는지 한 줄 + 확률. 확률 높은 순. */
+export interface DrawPreviewRow { kind: DrawPrizeDef['kind']; label: string; what: string; pct: number }
+export function drawPreview(state: GameState): DrawPreviewRow[] {
+  const what = (kind: DrawPrizeDef['kind']): string => {
+    switch (kind) {
+      case 'money': return `₩${fmtNum(DRAW_MONEY_PER_YEAR * state.clock.year)}`;
+      case 'research': return `연구 +${DRAW_RESEARCH}`;
+      case 'ticket': return `응모권 +${DRAW_TICKET}`;
+      case 'ingredient_box': return `재료 ${DRAW_INGREDIENTS}개`;
+      case 'item': return '시설 강화 아이템 1개';
+      case 'seed': return farmCount(state) > 0 ? '감귤·한라봉 씨앗 1개' : `재료 ${DRAW_INGREDIENTS}개`;
+      case 'uniform_piece': return `유니폼 조각 (${state.uniformPieces}/${UNIFORM_PIECES_PER_SET})`;
+      case 'miss': return '아무것도 없어요';
+    }
+  };
+  // 씨앗은 농원이 없으면 재료 상자로 바뀐다 — 이름도 바뀐 쪽을 쓴다 (받는 것과 이름이 어긋나지 않게)
+  const label = (p: DrawPrizeDef): string => (p.kind === 'seed' && farmCount(state) === 0 ? DRAW_LABEL_INGREDIENT : p.label);
+  return [...DRAW_PRIZES].sort((a, b) => b.pct - a.pct).map((p) => ({ kind: p.kind, label: label(p), what: what(p.kind), pct: p.pct }));
 }
 
 /** 응모권 1장(또는 무료 1회) → 상품. 호출 전 canDrawTicket. */
@@ -170,5 +195,5 @@ export const MID_MONTH_TICKET_DAY = 15;
 export function dailyShop(state: GameState): void {
   if (state.clock.day !== MID_MONTH_TICKET_DAY) return;
   state.tickets += MONTHLY_FREE_TICKETS;
-  pushNotice(state, '보름 응모권 1장이 왔어요! 장부 → 상점에서 뽑아 봐요');
+  pushNotice(state, `보름 응모권 1장이 왔어요!${ticketHint(state) || ` · ${TICKET_HINT}`}`);
 }

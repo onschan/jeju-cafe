@@ -14,10 +14,21 @@ export function monthlyTickets(state: GameState): number {
   return n;
 }
 
+/** midgame: 응모권을 처음 받을 때만 쓰는 곳을 같이 알려 준다 (이 횟수까지) */
+export const TICKET_HINTS = 3;
+export const TICKET_HINT = '장부 › 응모권에서 뽑아요';
+
+/** 응모권을 받았다는 줄에 붙일 안내 — 처음 TICKET_HINTS번만. 부른 쪽이 줄에 이어 붙인다. */
+export function ticketHint(state: GameState): string {
+  if ((state.ticketHints ?? 0) >= TICKET_HINTS) return '';
+  state.ticketHints = (state.ticketHints ?? 0) + 1;
+  return ` · ${TICKET_HINT}`;
+}
+
 export function addTickets(state: GameState, n: number, reason?: string): void {
   if (n <= 0) return;
   state.tickets += n;
-  if (reason) pushNotice(state, `${reason} — 응모권 +${n}`);
+  if (reason) pushNotice(state, `${reason} — 응모권 +${n}${ticketHint(state)}`);
 }
 
 export function codexCount(state: GameState): number {

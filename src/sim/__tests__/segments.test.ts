@@ -14,6 +14,9 @@ import {
 import { objectStats, BASE_POPULARITY } from '../compat.ts';
 import { GUEST_TYPES, GUEST_CHAINS, guestTypeDef, guestTags, canonicalGuestId, QUESTS, HEAD_RANK_GATE, CHAIN_SAT_2, chainPosition } from '../../data/index.ts';
 import type { Guest } from '../types.ts';
+import menusJson from '../../data/menus.json' with { type: 'json' };
+/** 메뉴 기본 값은 밸런스로 바뀐다 — 숫자를 박지 말고 데이터에서 읽는다 (spot2) */
+const menuPrice = (id: string): number => (menusJson as { id: string; price: number }[]).find((m) => m.id === id)!.price;
 
 function cafe(seed = 1) {
   const s = bareState(seed);
@@ -201,10 +204,10 @@ test('효과 6종: 자금(팁 20%)·연구 진행(+2)·홍보(같은 태그 +1)�
   unlockGuestType(s, 'team_leader');
   const money0 = s.money;
   const g = seated(s, 'team_leader');
-  expect(g.paid).toBe(4000);
+  expect(g.paid).toBe(menuPrice('carrot_juice'));
   updateGuests(s, PREP_MS);
   expect(g.mood).toBe('happy'); // adult minScenery 1, 정낭 경치 1
-  expect(s.money - money0).toBe(4000 + Math.round(4000 * TIP_RATE));
+  expect(s.money - money0).toBe(menuPrice('carrot_juice') + Math.round(menuPrice('carrot_juice') * TIP_RATE));
   // research: 은퇴 선생님(시니어, 경치 0) → 연구 진행 기본 1 + 효과 1 = 2명 몫
   unlockGuestType(s, 'retired_teacher');
   s.researchAcc = 0;

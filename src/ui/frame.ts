@@ -66,6 +66,19 @@ export const brownBtnOn: CSSProperties = { ...brownBtn, background: PALETTE.btnO
 export const brownBtnOff: CSSProperties = { ...brownBtn, opacity: 0.45 };
 export const dangerBtn: CSSProperties = { ...brownBtn, background: '#8a2a2a' };
 
+/** 스크롤바를 숨기는 클래스 — 스크롤은 그대로 된다. 창 본문·카드 목록·가로 칩 줄에 붙인다.
+ *  `::-webkit-scrollbar`는 인라인 style로 못 써서 여기서 <style>을 한 번만 넣는다. */
+export const NO_SCROLLBAR = 'no-scrollbar';
+const NO_SCROLLBAR_STYLE_ID = 'no-scrollbar-style';
+const NO_SCROLLBAR_CSS = `.${NO_SCROLLBAR} { scrollbar-width: none; -ms-overflow-style: none; }
+.${NO_SCROLLBAR}::-webkit-scrollbar { width: 0; height: 0; display: none; }`;
+if (typeof document !== 'undefined' && !document.getElementById(NO_SCROLLBAR_STYLE_ID)) {
+  const el = document.createElement('style');
+  el.id = NO_SCROLLBAR_STYLE_ID;
+  el.textContent = NO_SCROLLBAR_CSS;
+  document.head.appendChild(el);
+}
+
 /** 텍스트 입력 상자 (카페 이름·간판). 셀렉트 박스는 쓰지 않는다 — 버튼 그룹으로. */
 export const brownInput: CSSProperties = {
   minHeight: 44,

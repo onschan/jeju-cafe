@@ -2,6 +2,7 @@
  *  장부 › 경영 현황 맨 위에 늘 최신 한 장. 3줄 평가 + 가장 큰 걸림돌 1개 + 다음 수 2개 + 노선 한 줄.
  *  탭하면 근거 수치가 펼쳐진다. 계산은 sim/coach.ts(diagnose)가 하고, 여기서는 배치 점수·추천 한 수만 넣어 준다. */
 import { useState } from 'react';
+import { useTutorialNote } from './tutorialDialogue';
 import { useGame } from './store';
 import { Icon } from './Icon';
 import { diagnose, cachedMoves, unreachableObjects, type Diagnosis } from '../sim/index.ts';
@@ -22,11 +23,12 @@ const ROUTE_ICON: Record<string, string> = { tourist: 'tourist', regular: 'local
 export function StrategyCard({ onFocus }: { onFocus?: (x: number, y: number) => void } = {}) {
   const s = useGame();
   const [open, setOpen] = useState(false);
+  useTutorialNote('checkup'); // 5막: 진단을 열어 봤다
   const d = diagnosisOf(s);
   const blocked = unreachableObjects(s);
   const first = blocked[0];
   return (
-    <div style={{ ...card, borderColor: PALETTE.wood }} data-testid="strategy-card">
+    <div style={{ ...card, borderColor: PALETTE.wood }} data-testid="strategy-card" data-tut="strategy-card">
       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8 }}>
         <b style={{ fontSize: 16 }}><Icon name="report" size={16} /> 우리 카페 진단</b>
         <span style={{ fontSize: 13, color: PALETTE.inkSoft }}>{d.dateText}</span>
@@ -53,6 +55,12 @@ export function StrategyCard({ onFocus }: { onFocus?: (x: number, y: number) => 
           ))}
         </div>
       </div>
+
+      {d.rival && (
+        <div data-testid="strategy-rival" style={{ marginTop: 6, fontSize: 14, lineHeight: 1.5 }}>
+          <Icon name="rival" size={14} /> {d.rival.text}
+        </div>
+      )}
 
       <div data-testid="strategy-route" style={{ marginTop: 6, fontSize: 14, lineHeight: 1.5 }}>
         <Icon name={ROUTE_ICON[d.route.id] ?? 'bulb'} size={14} /> {d.route.id === 'none' ? d.route.line : <><b>{d.route.name}</b> · {d.route.line}</>}
