@@ -4,7 +4,7 @@ import { GameView, RECT_COLOR_LINE, type GhostSpec, type RangeHint } from '../re
 import { startLoop, dispatch, getState, useGame, setViewReset, autosaveNow, hasAnySave, loadSlot, setMonthCardHook, setSceneHook, showMessage, pauseGame, isSpeedLocked, setSpeedLocked } from './store';
 import { unlockAudio, bgm, isMuted, setMuted, getBgmVolume, getSfxVolume, setBgmVolume, setSfxVolume, sfx, setBgmLayer } from './audio';
 import { gradeOf, gradeName, GRADE_BGM_LAYER_FROM, REVEAL_GRADE, contestUnlocked, signupOpen } from '../sim/index.ts'; // fun-rank · fun 점진 공개 · 대회
-import { seasonOf, canPlace, objectAt, footprint, sizeOf, mainBuilding, parcelAt, placeCost, isLineType, lineCells, planLine, canAutoConnectPath, type LineOrder, type Pt, PROTECTED_TYPES, ROTATABLE_TYPES, goalForMenu, featureOpen, canUndo, demolishRefund, guestBlock, routeAtCell, tutorialDone, canBuildMain, recommendedMainCells, cellAt, doorFrontOf, MAIN_TYPE, MAIN_BUILD_COST, type GameState } from '../sim/index.ts';
+import { seasonOf, canPlace, objectAt, footprint, sizeOf, mainBuilding, parcelAt, placeCost, isLineType, lineCells, planLine, canAutoConnectPath, type LineOrder, type Pt, PROTECTED_TYPES, ROTATABLE_TYPES, goalForMenu, featureOpen, canUndo, demolishRefund, guestBlock, routeAtCell, tutorialDone, canBuildMain, recommendedMainCells, cellAt, doorFrontOf, MAIN_TYPE, MAIN_BUILD_COST, type GameState, type PlacedObject } from '../sim/index.ts';
 import { RoutesSection } from './RouteCard'; // 트랙 H
 import { objectDef } from '../data/index.ts';
 // render/·ui/는 Vite 전용이라 확장자 없는 import 허용. sim/·data/만 .ts 확장자 규칙.
@@ -495,22 +495,37 @@ function Game({ onExit }: { onExit: () => void }) {
     const o = st.objects[id];
     if (!o) return;
     const d = objectDef(o.type);
-    const go = () => { const r = dispatch({ type: 'remove', objectId: id }); showMessage(r.ok ? `${josa(d.name, '을/를')} 치웠어요 (↶ 되돌리기 가능)` : (r.reason ?? '지금은 못 치워요')); };
+    const go = () => {
+      if (reserveIfBusy(o, 'remove', '손님이 일어나면 치울게요')) return; // 통합: 숏컷 철거도 카드와 같은 예약 규칙
+      const r = dispatch({ type: 'remove', objectId: id }); showMessage(r.ok ? `${josa(d.name, '을/를')} 치웠어요 (↶ 되돌리기 가능)` : (r.reason ?? '지금은 못 치워요'));
+    };
     if ((d.removeCost ?? 0) >= 1_000_000) Confirm(`${josa(d.name, '을/를')} ${wonText(d.removeCost!)} 들여 치울까요?`, go, { title: '철거' });
     else go();
   };
-  /** 한 번에 업그레이드: 트리가 있으면 다음 단계, 없으면 증축 Lv. 확인 팝업 한 번. */
+  /** 통합 규칙: 손님이 앉았거나 지나가는 중이면 숏컷도 카드와 똑같이 예약으로 넘어간다 (걸었으면 true) */
+  const reserveIfBusy = (o: PlacedObject, work: 'remove' | 'upgrade' | 'treeUpgrade', msg: string): boolean => {
+    if (!guestBlock(getState(), o)) return false;
+    if (!dispatch({ type: 'reserveWork', objectId: o.id, work }).ok) return false;
+    showMessage(msg);
+    return true;
+  };
+  /** 한 번에 업그레이드: 트리가 있으면 다음 단계, 없으면 증축 Lv. 확인 팝업 한 번.
+   *  통합: 점유 좌석이면 확인 팝업이 이유를 붙이고, 확정은 예약으로 간다. */
   const quickUpgrade = (id: string) => {
     const st = getState();
     const o = st.objects[id];
     if (!o) return;
     const d = objectDef(o.type);
+    const busy = guestBlock(st, o);
     if (treeOf(o.type)) {
       const can = canTreeUpgrade(st, id);
       if (!can.ok || !can.next) { showMessage(can.reason ?? '지금은 못 올려요'); return; }
       const cost = treeUpgradeCost(st, o);
       const nd = objectDef(can.next.type);
-      Confirm(`${josa(d.name, '을/를')} ${josa(nd.name, '으로/로')} 올릴까요? ${cost > 0 ? wonText(cost) : '무료'}`, () => { dispatch({ type: 'treeUpgrade', objectId: id }); }, { title: '업그레이드' });
+      Confirm(`${josa(d.name, '을/를')} ${josa(nd.name, '으로/로')} 올릴까요? ${cost > 0 ? wonText(cost) : '무료'}${busy ? ` · ${busy}` : ''}`, () => {
+        if (reserveIfBusy(o, 'treeUpgrade', '손님이 일어나면 올릴게요')) return;
+        dispatch({ type: 'treeUpgrade', objectId: id });
+      }, { title: '업그레이드' });
       return;
     }
     const stats = objectStats(st, id);
@@ -518,7 +533,10 @@ function Game({ onExit }: { onExit: () => void }) {
     const can = canUpgrade(st, id, stats.popularity);
     if (!can.ok) { showMessage(can.reason ?? '지금은 못 올려요'); return; }
     const cost = upgradeCost(st, o);
-    Confirm(`${josa(d.name, '을/를')} Lv${stats.level + 1}로 증축할까요? ${wonText(cost)}`, () => { dispatch({ type: 'upgradeObject', objectId: id }); }, { title: '증축' });
+    Confirm(`${josa(d.name, '을/를')} Lv${stats.level + 1}로 증축할까요? ${wonText(cost)}${busy ? ` · ${busy}` : ''}`, () => {
+      if (reserveIfBusy(o, 'upgrade', '손님이 일어나면 증축할게요')) return;
+      dispatch({ type: 'upgradeObject', objectId: id });
+    }, { title: '증축' });
   };
   const canQuickUpgrade = (st: GameState, id: string): boolean => {
     const o = st.objects[id];
