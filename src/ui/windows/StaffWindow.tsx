@@ -104,7 +104,7 @@ function TrainingPanel({ st, s, dispatch, onDone }: { st: Staff; s: GameState; d
     <div style={{ marginTop: 6, padding: 8, background: PALETTE.paperDark, borderRadius: 6 }} data-testid={`training-${st.id}`}>
       <div style={{ fontSize: 14, marginBottom: 4 }}>어떤 연수를 보낼까? <span style={soft}>{st.trainingCount > 0 ? `${st.trainingCount + 1}번째라 비용 +${st.trainingCount * 20}%` : '그동안 자리를 비워요'}</span></div>
       <div style={{ ...soft, fontSize: 13, marginBottom: 4 }} data-testid={`training-chance-${st.id}`}>돌아올 때 판정: {chanceText(trainingChances(s, st.id))} (대박이면 효과 2배, 쪽박이면 절반)</div>
-      {!unlocked && <div style={{ ...soft, marginBottom: 4 }}>카페 랭크 {TRAINING_RANK}부터 보낼 수 있어요</div>}
+      {!unlocked && <div style={{ ...soft, marginBottom: 4 }}>카페가 더 알려지면 보낼 수 있어요</div>}
       <div style={{ display: 'grid', gap: 4 }}>
         {opts.map(({ def, cost, ok, reason }) => (
           <div key={def.id} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>

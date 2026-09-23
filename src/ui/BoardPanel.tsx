@@ -41,7 +41,7 @@ function conditionText(c: QuestCondition): string {
 }
 
 function lockText(u: UnlockCond): string {
-  if (u.type === 'rank') return `카페 랭크 ${u.rank} 필요`;
+  if (u.type === 'rank') return '카페가 더 알려지면 열려요';
   if (u.type === 'spot') return `${safeName(() => spotDef(u.spotId).name, u.spotId)} Lv${u.level} 필요`;
   return '잠김';
 }

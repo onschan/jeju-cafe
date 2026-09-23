@@ -59,8 +59,9 @@ export function updateRank(state: GameState): boolean {
   const r = Math.max(state.rank, rankForScore(rankScore(state)));
   if (r === state.rank) return false;
   state.rank = r;
-  pushNotice(state, `카페 랭크 ${r}!`);
-  pushFx(state, { kind: 'scene', title: '랭크 업', text: `카페 랭크 ${r}! 더 많은 손님과 시설이 열려요`, tick: state.tick });
-  applyRewards(state, rankUpRewards(r), { source: 'rank', refId: `rank${r}`, title: `카페 랭크 ${r}` });
+  // 용어 정리: 랭크(1~10) 숫자는 플레이어에게 안 보인다 — 진척 지표는 등급과 ★ 둘뿐. 알림은 「무엇이 열렸는지」로 말한다.
+  pushNotice(state, '새 시설이 열렸어요');
+  pushFx(state, { kind: 'scene', title: '새 시설이 열렸다', text: '카페가 알려졌어요. 새 손님과 시설이 열려요', tick: state.tick });
+  applyRewards(state, rankUpRewards(r), { source: 'rank', refId: `rank${r}`, title: '새로 열린 것' });
   return true;
 }

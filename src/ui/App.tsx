@@ -3,7 +3,7 @@ import { wonText, label } from '../data/labels.ts';
 import { GameView, RECT_COLOR_LINE, type GhostSpec, type RangeHint } from '../render/GameView';
 import { startLoop, dispatch, getState, useGame, setViewReset, autosaveNow, hasAnySave, loadSlot, setMonthCardHook, setSceneHook, showMessage, pauseGame, isSpeedLocked, setSpeedLocked } from './store';
 import { unlockAudio, bgm, isMuted, setMuted, getBgmVolume, getSfxVolume, setBgmVolume, setSfxVolume, sfx, setBgmLayer } from './audio';
-import { gradeOf, GRADE_BGM_LAYER_FROM, REVEAL_GRADE } from '../sim/index.ts'; // fun-rank · fun 점진 공개
+import { gradeOf, gradeName, GRADE_BGM_LAYER_FROM, REVEAL_GRADE } from '../sim/index.ts'; // fun-rank · fun 점진 공개
 import { seasonOf, canPlace, objectAt, footprint, sizeOf, mainBuilding, parcelAt, placeCost, isLineType, lineCells, planLine, canAutoConnectPath, type LineOrder, type Pt, PROTECTED_TYPES, ROTATABLE_TYPES, goalForMenu, featureOpen, canUndo, demolishRefund, canDisturb, routeAtCell, tutorialDone, canBuildMain, recommendedMainCells, cellAt, doorFrontOf, MAIN_TYPE, MAIN_BUILD_COST, type GameState } from '../sim/index.ts';
 import { RoutesSection } from './RouteCard'; // 트랙 H
 import { objectDef } from '../data/index.ts';
@@ -181,7 +181,7 @@ function SettingsPanel({ onExit, gauges, onGauges }: { onExit: () => void; gauge
   );
 }
 
-/** 상단 바를 누르면: 경영 현황 (§5.1: 저장 · 이달 요약 · 손님 경로 자리 · 랭크) */
+/** 상단 바를 누르면: 경영 현황 (§5.1: 저장 · 이달 요약 · 손님 경로 자리 · 성장 그래프) */
 function StatusPanel() {
   const s = useGame();
   const [saved, setSaved] = useState(false);
@@ -190,7 +190,7 @@ function StatusPanel() {
     ['날짜', `${s.clock.year}년 ${s.clock.month}월 ${s.clock.day}일`],
     ['자금', wonText(s.money)],
     ['연구 포인트', compactNumber(s.research)],
-    ['★ 등급', `${s.star} · 랭크 ${s.rank}위`],
+    ['★ 등급', `★${s.star} · ${gradeName(gradeOf(s))}`],
     ['이번 달 손님', `${s.monthGuests}명 · 수입 ${wonText(s.monthIncome)}`],
     ['누적 손님', `${s.totalGuests}명 · 누적 판매 ${wonText(s.totalIncome)}`],
     ['직원', `${s.staff.length}명 · 후보 ${s.candidates.length}명`],
@@ -699,7 +699,7 @@ function Game({ onExit }: { onExit: () => void }) {
     { key: 'spots', label: '명소', icon: 'map' },
     { key: 'shop', label: '상점', icon: 'shop' },
     { key: 'tickets', label: '응모권', icon: 'ticket', badge: s.tickets },
-    { key: 'rank', label: '랭킹', icon: 'trophy' },
+    { key: 'rank', label: '평가', icon: 'trophy' },
     { key: 'settings', label: '설정', icon: 'settings' },
   ];
 

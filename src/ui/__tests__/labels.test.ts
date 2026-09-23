@@ -63,7 +63,8 @@ describe('해금 문구', () => {
     }
   });
   it('조건 종류별 문장', () => {
-    expect(unlockText({ unlock: { type: 'rank', rank: 2 } })).toBe('랭크 2면 열려요');
+    expect(unlockText({ unlock: { type: 'rank', rank: 2 } })).toBe('카페가 더 알려지면 열려요'); // 랭크 숫자는 안 보여 준다
+    expect(unlockText({ unlockText: '랭크 3' })).toBe('카페가 더 알려지면 열려요');
     expect(unlockText({ unlock: { type: 'star', star: 3 } })).toBe('★3이면 열려요');
     expect(unlockText({ unlock: { type: 'count', objectId: 'table_out', count: 2 } })).toBe('야외 테이블 2개면 열려요');
     expect(unlockText({ unlock: { type: 'segmentPop', guestId: 'olle_walker', popularity: 30 } })).toContain('손님 인기 30');
