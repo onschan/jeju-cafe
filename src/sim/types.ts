@@ -315,7 +315,7 @@ export interface StaffPoolDef {
   bio?: string;
 }
 /** 채용 방법(recruit_tiers.json, §3.6.6): 비용을 내면 그 단계 풀에서 아직 없는 사람이 후보로 온다. */
-export interface RecruitTierDef { id: JobTier; name: string; tier: number; cost: number; count: number; unlock?: { star?: number; rank?: number }; desc?: string }
+export interface RecruitTierDef { id: JobTier; name: string; tier: number; cost: number; count: number; unlock?: { star?: number; rank?: number; goal?: boolean }; desc?: string }
 /** 연수(trainings.json, §3.6.4) */
 export interface TrainingDef { id: string; name: string; cost: number; days: number; stats: Partial<Stats>; grantSkill?: boolean; requires?: { star?: number; level?: number }; desc?: string }
 export interface StaffTraining { id: string; daysLeft: number }
@@ -562,7 +562,9 @@ export type GoalReward =
   | { type: 'seed'; kind: string; n: number }        // 씨앗 아이템 n개 (kind = 아이템 id)
   | { type: 'title'; id: string; name: string }      // 칭호 (state.titles)
   | { type: 'feeBonus'; pct: number }                // 요금 +pct% (state.feeBonusPct)
-  | { type: 'menuSlot'; n: number };                 // stakes: 메뉴판 칸 +n (3칸에서 시작, 최대 6)
+  | { type: 'menuSlot'; n: number }                  // stakes: 메뉴판 칸 +n (3칸에서 시작, 최대 6)
+  | { type: 'staffCap'; n: number }                  // midgame: 전체 직원 정원 +n (휴게실과 별개, state.staffCapBonus)
+  | { type: 'jobTier'; id: string };                 // midgame: 채용 방법 해금 (recruit_tiers.json unlock.goal)
 export type GoalSpeaker = 'halmang' | 'samchun' | 'hero';
 export interface GoalDef {
   id: string;
@@ -904,7 +906,7 @@ export interface GameState {
   objects: Record<string, PlacedObject>; // 키는 'o123' 형태(비정수 문자열)라 삽입 순서가 보존됨 → 결정적 순회
   storage: Record<string, number>; // 창고: ingredientId → 개수 (농원 수확·재료 상자). 메뉴를 만들 때 먼저 쓰고, 없으면 자동 구매
   menuSlots: (string | null)[];
-  unlocked: { objects: string[]; menus: string[]; roles: RoleId[] };
+  unlocked: { objects: string[]; menus: string[]; roles: RoleId[]; recruits?: string[] }; // recruits = 목표로 연 채용 방법 (midgame)
   goals: GoalsState;                          // 목표 체인 (v3 §2)
   features: Record<FeatureId, boolean>;       // 목표 보상으로 열리는 기능 (goals.ts 표)
   stats: GameStats;                           // 목표 판정용 누적 카운터
@@ -940,6 +942,8 @@ export interface GameState {
   lastDraw: DrawResult | null;                // 마지막 인형뽑기 결과 (UI 연출, dismissDraw로 닫는다)
   freeRecruits: number;                       // 직원 스카우트권: 다음 공고비 무료 횟수
   codexTickets: number;                       // 도감 10개마다 준 응모권 단계
+  staffCapBonus?: number;                     // midgame: 목표 보상으로 늘린 전체 직원 정원 (휴게실과 별개)
+  ticketHints?: number;                       // midgame: 「상점에서 써요」 안내를 붙인 횟수 (처음 TICKET_HINTS번만)
   guidebooks: Record<string, GuidebookState>; // 가이드북 11종 진행
   lastAnnouncement: Announcement | null;      // 마지막 랭킹 발표 (UI 팝업, dismissAnnouncement로 닫는다)
   board: BoardState;
