@@ -9,7 +9,7 @@ import { dayIndex } from './effects.ts';
 import { hashOf } from './say.ts';
 import { regularVisitEveryOtherWeek } from './reputation.ts'; // stakes: 평판 < 50이면 단골이 2주에 한 번
 import { addSatisfaction } from './segments.ts';
-import { pushNotice } from './staff.ts';
+import { pushNotice, roleHeads } from './staff.ts'; // staff2: 홀 직원이 많을수록 손님 부탁을 더 잘 듣는다
 import { pushFx } from './fx.ts';
 import { parcelAt } from './parcels.ts';
 import { completedCorners, cornerTags } from './corners.ts'; // 트랙 C 명당 판정
@@ -30,6 +30,11 @@ export const RECOMMEND_DAY_MAX = 10;
 export const RECOMMEND_TIP_RATE = 0.2;
 /** 요청: 앉은 손님 20%(id 해시), 하루 3건, 진행 중 5건까지, 60일 지나면 잊는다. 들어주면 단골 게이지 +2, 첫 3회는 응모권 1 */
 export const REQUEST_CHANCE_DIV = 5;
+/** staff2: 홀 직원이 손님 말을 듣는다 — 1인분당 나누는 수 −1 (5 → 4 → 3 = 20% → 25% → 33%) */
+export const REQUEST_DIV_MIN = 3;
+export function requestChanceDiv(state: GameState): number {
+  return Math.max(REQUEST_DIV_MIN, REQUEST_CHANCE_DIV - Math.floor(roleHeads(state, 'hall')));
+}
 export const REQUEST_DAY_MAX = 3;
 export const REQUEST_PENDING_MAX = 5;
 export const REQUEST_EXPIRE_DAYS = 60;
@@ -215,7 +220,7 @@ function pruneRequests(state: GameState): void {
 export function maybeRequest(state: GameState, g: Guest): GuestRequestDef | null {
   if (g.namedId || g.regularId || g.type === NAMED_TYPE) return null;
   const h = hashOf(`req:${g.id}`);
-  if (h % REQUEST_CHANCE_DIV !== 0) return null;
+  if (h % requestChanceDiv(state) !== 0) return null; // staff2: 홀 직원이 많으면 더 자주 듣는다
   pruneRequests(state);
   const d = today(state);
   const pending = pendingRequests(state);

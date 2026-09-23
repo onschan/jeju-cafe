@@ -184,6 +184,7 @@ export function createInitialState(seed: number, playerId = 'local', createdAt =
     voices: [], // trim: 손님 목소리 피드
     monthReputationDelta: 0,
     dayStats: { satisfied: 0, complained: 0, total: 0 },
+    dayOrders: { drink: 0, dessert: 0, meal: 0, signature: 0 }, // staff2
     dayLog: [], // 성장: 최근 30일 하루치 (daylog.ts)
     dayLogMark: { income: 0, regulars: 0 },
     reputationWarned: false,
