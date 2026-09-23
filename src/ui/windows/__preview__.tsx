@@ -32,14 +32,14 @@ function Preview() {
     return r;
   };
   const day = () => { s.clock.speed = 1; tick(s, DAY_MS); bump(); };
-  const card = s.lastMonthCard ?? { income: 1_830_000, guests: 96, month: s.clock.month, year: s.clock.year, costs: { ingredients: 310_000, salary: 600_000, upkeep: 82_500, ads: 0, recruit: 0, tax: 0, loanRepay: 0, shuttle: 0 }, net: 837_500 };
+  const card = s.lastMonthCard ?? { income: 1_830_000, guests: 96, month: s.clock.month, year: s.clock.year, costs: { ingredients: 310_000, salary: 600_000, upkeep: 82_500, ads: 0, recruit: 0, tax: 0, loanRepay: 0, shuttle: 0, rent: 160_000 }, net: 677_500 };
   const win = (state: GameState) => {
     switch (w) {
       case 'menu': return <MenuWindow state={state} dispatch={dispatch} onClose={() => {}} />;
       case 'build': return <BuildWindow state={state} dispatch={dispatch} onClose={() => {}} onPickBuild={(id) => setLog((l) => [`짓기 → ${id}`, ...l].slice(0, 4))} />;
       case 'staff': return <StaffWindow state={state} dispatch={dispatch} onClose={() => {}} />;
       case 'goal': return <GoalWindow state={state} dispatch={dispatch} onClose={() => {}} />;
-      case 'report': return <ReportWindow card={{ ...card, harvested: 12, ingredientSaved: 42_000, highlights: ['최다 판매: 아메리카노 41잔', '가장 만족한 손님: 대학생', '새로 열림: 감귤주스'], tip: '손님 20명을 맞이하면 감귤주스가 열려요' }} star={state.star} prevStar={state.star} starProgress={0.4} monthRecord onClose={() => setW('menu')} />;
+      case 'report': return <ReportWindow card={{ ...card, harvested: 12, ingredientSaved: 42_000, highlights: ['최다 판매: 아메리카노 41잔', '가장 만족한 손님: 대학생', '새로 열림: 감귤주스'], tip: '손님 20명을 맞이하면 감귤주스가 열려요', grade: 'A' as const, prevGrade: 'B' as const, gradeSummary: '자리가 모자라 손님을 놓쳤어요', guestsDelta: 18, trendName: '커피' }} star={state.star} prevStar={state.star} starProgress={0.4} monthRecord onClose={() => setW('menu')} />;
     }
   };
   return (

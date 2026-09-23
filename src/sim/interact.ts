@@ -7,6 +7,7 @@ import requestsJson from '../data/requests.json' with { type: 'json' };
 import { NAMES, guestTypeDef, namedGuestDef, guestTags, objectDef, menuDef, NAMED_TYPE } from '../data/index.ts';
 import { dayIndex } from './effects.ts';
 import { hashOf } from './say.ts';
+import { regularVisitEveryOtherWeek } from './reputation.ts'; // stakes: 평판 < 50이면 단골이 2주에 한 번
 import { addSatisfaction } from './segments.ts';
 import { pushNotice } from './staff.ts';
 import { pushFx } from './fx.ts';
@@ -307,8 +308,11 @@ export function regularVisitSlot(r: Regular): { weekday: number; hour: number } 
 /** 지금 시각에 와야 하는 단골 (아직 안 와 있는) */
 export function regularsDue(state: GameState): Regular[] {
   const present = new Set(state.guests.map((g) => g.regularId).filter((x): x is string => !!x));
+  const slow = regularVisitEveryOtherWeek(state); // stakes: 평판 < 50이면 2주에 한 번
+  const week = Math.floor(dayIndex(state.clock) / 7);
   return regularList(state).filter((r) => {
     const slot = regularVisitSlot(r);
+    if (slow && week % 2 !== hashOf(`week:${r.id}`) % 2) return false;
     return state.clock.day % 7 === slot.weekday && state.clock.hour === slot.hour && !present.has(r.id);
   });
 }

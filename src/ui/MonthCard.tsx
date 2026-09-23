@@ -1,6 +1,6 @@
 import { useRef } from 'react';
 import { useGame, dispatch } from './store';
-import { goalDef, goalRewardText, currentGoal, goalConditionText, menuOf, type MonthCard as MonthCardData } from '../sim/index.ts';
+import { goalDef, goalRewardText, currentGoal, goalConditionText, menuOf, TREND_NAME, type MonthCard as MonthCardData } from '../sim/index.ts';
 import { label } from '../data/labels.ts';
 import { Window } from './Window';
 import { ReportWindow } from './windows/ReportWindow.tsx';
@@ -37,7 +37,7 @@ export function MonthCard() {
   return (
     <Window title={`${c.year}년 ${c.month}월 결산`} onClose={close} testId="window-report">
       <ReportWindow
-        card={{ ...c, harvested, ingredientSaved: c.ingredientSaved, highlights, tip }}
+        card={{ ...c, harvested, ingredientSaved: c.ingredientSaved, highlights, tip, trendName: c.trendCategory ? TREND_NAME[c.trendCategory] : undefined }}
         star={s.star}
         onClose={close}
       />

@@ -7,6 +7,7 @@ import { hire } from '../staff.ts';
 import { customMet } from '../goals.ts';
 import { bareState, at } from './helpers.ts';
 import { createInitialState } from '../state.ts';
+import { resolveEventChoice } from '../events.ts';
 
 /** §4.5 이벤트 페널티 보정 + 신설 4 (노루·까치, 렌터카 대란, 악플; 급여 인상·세금은 x-economy) */
 describe('§4.5 이벤트 보정', () => {
@@ -26,8 +27,18 @@ describe('§4.5 이벤트 보정', () => {
     delete s.inventory['wind_charm']; delete s.inventory['storm_ready'];
     const money = s.money;
     startEvent(s, 'ev_typhoon_aug');
+    // stakes: 태풍에는 선택지가 붙었다 — 「그냥 버틴다」(1번)를 골라야 지금까지처럼 수리비가 나간다
+    expect(s.pendingEventChoice?.id).toBe('ev_typhoon_aug');
+    resolveEventChoice(s, 1);
     expect(s.money).toBe(money - 500_000);
     expect(s.notices.some((n) => n.includes('수리비'))).toBe(true);
+    // 「미리 대비」(0번)는 ₩30만을 내고 피해를 30%로 줄인다
+    const ready = bareState(1);
+    placeObject(ready, 'table_out', ...Object.values(at(1, 2)) as [number, number]);
+    const m0 = ready.money;
+    startEvent(ready, 'ev_typhoon_aug');
+    resolveEventChoice(ready, 0);
+    expect(m0 - ready.money).toBeLessThan(500_000);
     // 상한: 건설비 합이 10억이면 3% = 3,000만 → 2,000만
     const big = bareState(2);
     for (let i = 0; i < 5; i++) placeObject(big, 'table_out', ...Object.values(at(1 + i, 2)) as [number, number]);
@@ -42,13 +53,20 @@ describe('§4.5 이벤트 보정', () => {
     for (const d of defs) expect(d.chance).toBe(0.25);
     const s = bareState(1);
     startEvent(s, 'ev_deer_raid');
+    resolveEventChoice(s, 1); // stakes: 「그냥 둔다」
     expect(effectMult(s, 'harvestMult')).toBeCloseTo(0.5);
     const t = bareState(1);
     t.candidates = createInitialState(1).candidates;
     const st = hire(t, t.candidates[0]!.id, 'cook');
     st.stats.strength = 40;
     startEvent(t, 'ev_deer_raid');
+    resolveEventChoice(t, 1);
     expect(effectMult(t, 'harvestMult')).toBeCloseTo(0.8);
+    // 「울타리를 친다」(0번)면 밭이 무사하다
+    const fence = bareState(1);
+    startEvent(fence, 'ev_deer_raid');
+    resolveEventChoice(fence, 0);
+    expect(effectMult(fence, 'harvestMult')).toBe(1);
     const u = bareState(1);
     expect(eventChance(u, bigEventDef('ev_deer_raid'))).toBe(0.25);
     u.inventory['deer_bell'] = 1;

@@ -7,17 +7,18 @@ import { guestSay, staffSay } from '../say.ts';
 import { INITIAL_UNLOCKED, START_OBJECT_IDS, objectDef } from '../../data/index.ts';
 import { hire } from '../staff.ts';
 import { serialize, deserialize } from '../save.ts';
+import { START_MONEY } from '../state.ts';
 
 describe('v3 시작 상태 (§5)', () => {
   it('본관 + 테이블 2 + 파라솔 1 + 올렛길로 정류장에서 자리에 닿고, 메뉴 3종이 올라가 있고, 후보 2명이 기다린다', () => {
     const s = createInitialState(1);
     expect(SAVE_VERSION).toBe(21); // trim
-    expect(s.money).toBe(5_000_000);
+    expect(s.money).toBe(START_MONEY); // stakes: 시작 자금 350만
     expect(hasReachableSeat(s)).toBe(true);
     const seats = Object.values(s.objects).filter((o) => objectDef(o.type).kind === 'seat');
     expect(seats.map((o) => o.type).sort()).toEqual(START_SEATS.map((x) => x.type).sort());
     expect(totalSeats(s)).toBe(6);
-    expect(s.menuSlots).toEqual([...START_MENUS, null]);
+    expect(s.menuSlots).toEqual([...START_MENUS]); // stakes: 메뉴판 3칸에서 시작 — 시작 메뉴 3종으로 꽉 찬다
     expect(s.candidates).toHaveLength(START_CANDIDATES);
     expect(s.unlocked.objects.sort()).toEqual([...new Set(START_OBJECT_IDS)].sort());
     expect(s.unlocked.menus).toEqual(INITIAL_UNLOCKED.menus);

@@ -9,6 +9,7 @@ import { PROTECTED_TYPES, canDisturb } from '../actions.ts';
 import { objectAt } from '../grid.ts';
 import { routeConnected } from '../entry.ts';
 import { objectDef } from '../../data/index.ts';
+import { START_MONEY } from '../state.ts';
 
 test('정낭(w-free): 보호 시설이 아니라 옮기고·없애고·더 놓을 수 있다 (길·담 탭 ₩5만, 시작부터 열림, 회전 유지). 없애도 손님 동선(마을 길 → 문 앞)은 길만 이으면 된다', () => {
   const s = bareState(1);
@@ -47,7 +48,7 @@ test('정낭(w-free): 보호 시설이 아니라 옮기고·없애고·더 놓�
 test('place: 돈이 있어야 하고, 깎이고, 로그에 남는다', () => {
   const s = bareState(1);
   expect(apply(s, { type: 'place', objectType: 'stonewall', x: X(0), y: Y(0) }).ok).toBe(true);
-  expect(s.money).toBe(5_000_000 - 20_000);
+  expect(s.money).toBe(START_MONEY - 20_000);
   expect(Object.values(s.objects).some((o) => o.type === 'stonewall')).toBe(true);
   expect(s.actionLog).toEqual([{ tick: 0, action: { type: 'place', objectType: 'stonewall', x: X(0), y: Y(0) } }]);
 });
@@ -79,7 +80,7 @@ test('remove: 시작 오브젝트(정류장·창고)는 못 없앤다, 나머지
   apply(s, { type: 'place', objectType: 'stonewall', x: X(0), y: Y(0) });
   const f = Object.values(s.objects).find((o) => o.type === 'stonewall')!;
   expect(apply(s, { type: 'remove', objectId: f.id }).ok).toBe(true);
-  expect(s.money).toBe(5_000_000);
+  expect(s.money).toBe(START_MONEY);
 });
 
 test('remove: 손님이 지나갈 올렛길은 못 없앤다', () => {

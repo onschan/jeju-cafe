@@ -30,6 +30,8 @@ import { rememberPlace, rememberPlaceMany, rememberRemove, rememberMove, canUndo
 import { planLine, isLineType } from './line.ts';
 import { canSetTargets, setTargets } from './segments.ts';
 import { canContinueEnding, continueEnding, canSetSpeed } from './ending.ts'; // z-ending
+import { resolveRisk } from './risk.ts'; // stakes: 돌발 사고 선택지
+import { resolveEventChoice } from './events.ts'; // stakes: 빅 이벤트 선택지
 
 /** 못 옮기고 못 없애는 것 (정류장·본관·샘). 정낭은 w-free부터 일반 시설 — 옮기고 없애고 더 놓을 수 있다. */
 export const PROTECTED_TYPES = new Set(['busstop', 'warehouse', 'spring']);
@@ -340,6 +342,10 @@ function applyInner(state: GameState, a: Action): ApplyResult {
     case 'dismissAlert':
       state.alerts.shift();
       return { ok: true };
+    case 'resolveRisk': // stakes: 돌발 사고 — 고른 것이 바로 결과
+      return resolveRisk(state, a.choice) ? { ok: true } : { ok: false, reason: '답할 사고가 없어요' };
+    case 'resolveEventChoice': // stakes: 빅 이벤트 선택지
+      return resolveEventChoice(state, a.choice) ? { ok: true } : { ok: false, reason: '답할 사건이 없어요' };
     case 'skipTutorial': {
       // §7.2 건너뛰기(첫 단계에서만): 빈 마당을 완성 시작 상태로 채우고 튜토리얼을 끝낸다
       if (state.tutorial.step > 0) return { ok: false, reason: '이미 튜토리얼을 시작했어요' };

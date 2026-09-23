@@ -109,7 +109,7 @@ export function BottomBar({ onOpen }: { onOpen: (kind: WindowKind) => void }) {
 export interface PlaceBarProps {
   text: string;
   /** fun: 트레이드오프 두 줄 — 얻는 것(초록)·잃는 것(빨강) */
-  tradeoff?: { gain: string; loss: string };
+  tradeoff?: { gain: string; loss: string; cost?: string }; // cost = stakes 기회비용 한 줄
   ok: boolean;
   canRotate: boolean;
   /** 회전 버튼 라벨 (기본 「회전」, 길·담 ㄱ자는 「방향」 — ease) */
@@ -136,6 +136,9 @@ export function PlaceBar({ text, tradeoff, ok, canRotate, rotateLabel = '회전'
             {tradeoff!.gain && <span style={{ color: PALETTE.ok, overflow: 'hidden', textOverflow: 'ellipsis' }}>{tradeoff!.gain}</span>}
             {tradeoff!.loss && <span style={{ color: PALETTE.bad, overflow: 'hidden', textOverflow: 'ellipsis' }}>{tradeoff!.loss}</span>}
           </div>
+        )}
+        {tradeoff?.cost && (
+          <div data-testid="place-cost" style={{ fontSize: 12, fontWeight: 700, marginTop: 2, color: PALETTE.title, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{tradeoff.cost}</div>
         )}
       </div>
       {onUndo !== undefined && <button aria-label="되돌리기" disabled={!onUndo} style={{ ...(onUndo ? brownBtn : brownBtnOff), margin: 0, flex: 1, minWidth: 0, fontSize: 15, padding: 0 }} onClick={() => onUndo?.()}><Icon name="undo" /> 되돌리기</button>}

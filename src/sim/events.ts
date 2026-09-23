@@ -7,7 +7,7 @@
  * 즉시 효과: moneyBonus·popularity·repairCost(시설당). specialGuest는 이름 있는 손님 흐름(spawnNamedGuest)으로 1회 방문 — 만족하면 tip.
  * 실명은 쓰지 않는다 (백중원·이요리·이장순·유아이·'돈돈').
  */
-import type { GameState, BigEventDef, BigEventTag, ActiveBigEvent } from './types.ts';
+import type { GameState, BigEventDef, BigEventTag, ActiveBigEvent, TrendCategory } from './types.ts';
 import { BIG_EVENTS, bigEventDef, guestTypeDef, canonicalGuestId, SPECIAL_REGION, specialGuestId } from '../data/index.ts';
 import { nextRandom } from './rng.ts';
 import { dayIndex } from './effects.ts';
@@ -23,6 +23,8 @@ import { spawnNamedGuest } from './guests.ts';
 import { namedGuestState } from './named.ts';
 import { fmtNum } from './format.ts';
 import { josa } from './josa.ts';
+import { menuOf } from './craft.ts';
+import { addReputation } from './reputation.ts';
 
 /** 동시에 진행되는 빅 이벤트 상한 */
 export const MAX_ACTIVE_EVENTS = 2;
@@ -154,24 +156,32 @@ export function startEvent(state: GameState, id: string, delay = 0): ActiveBigEv
   return e;
 }
 
-/** 발동 당일: 즉시 효과 + 알림·대화창 */
+/** 발동 당일: 즉시 효과 + 알림·대화창.
+ *  stakes: 선택지가 붙은 이벤트(EVENT_CHOICES)는 먼저 대화창으로 물어보고, 고른 뒤에 여기로 다시 온다
+ *  (답이 없으면 다음 날 아침 0번으로 확정 — resolvePendingEventChoice). */
 function applyEventStart(state: GameState, e: ActiveBigEvent): void {
   const id = e.id;
   const def = bigEventDef(id);
   const fx = def.effects;
+  if (e.choice === undefined && eventChoiceDef(id) && !state.pendingEventChoice) {
+    state.pendingEventChoice = { id, day: dayIndex(state.clock) };
+    state.alerts.push({ type: 'eventChoice', id });
+    return;
+  }
   if (fx.moneyBonus) state.money += fx.moneyBonus;
   if (fx.popularity) state.popularity = Math.max(-100, Math.min(100, state.popularity + fx.popularity));
   if (fx.repairCost || fx.repairPct) {
-    const cost = fx.repairPct ? typhoonRepairCost(state, def) : (fx.repairCost ?? 0) * facilityCount(state);
+    const rm = eventRepairMult(e); // stakes: 「미리 대비」를 골랐으면 피해가 준다
+    const cost = Math.round((fx.repairPct ? typhoonRepairCost(state, def) : (fx.repairCost ?? 0) * facilityCount(state)) * rm);
     state.money -= cost;
     state.monthCosts.upkeep += cost;
     if (cost > 0) pushNotice(state, `${def.title}: 시설 수리비 ₩${fmtNum(cost)}`);
     // fx.damagePct: 야외 시설이 그 확률로 파손 → 트랙 A 노후 1단계(인기 −1·유지비 ×1.5)로 표시, 시설 카드 「수리」로 고친다
-    if (fx.damagePct) {
+    if (fx.damagePct && rm > 0) {
       let hit = 0;
       for (const o of Object.values(state.objects)) {
         if (o.build || !isOutdoorFacility(o.type) || !parcelAt(state, o.x, o.y)?.owned || isWorn(state, o)) continue;
-        if (nextRandom(state) * 100 < fx.damagePct) { o.wearMonth = monthIndex(state.clock) - WEAR_START_MONTHS; hit++; }
+        if (nextRandom(state) * 100 < fx.damagePct * rm) { o.wearMonth = monthIndex(state.clock) - WEAR_START_MONTHS; hit++; }
       }
       if (hit > 0) pushNotice(state, `${def.title}: 야외 시설 ${hit}개가 낡았어요 — 시설 카드에서 수리하세요`);
     }
@@ -278,4 +288,136 @@ export function specialGuestTip(namedId: string): number {
 /** 도감: 만난 특별 손님 id 목록 */
 export function specialGuestsMet(state: GameState): string[] {
   return Object.entries(state.namedGuests).filter(([id, st]) => isSpecialGuest(id) && st.met).map(([id]) => id);
+}
+
+
+// ---------- 이번 달 유행 (stakes: 「변수가 없다」 — 메뉴판을 바꾸게 만든다) ----------
+
+/** 유행 분류 4종. 메뉴 분류(drink/dessert/meal)를 재료로 갈라 커피·주스를 나눈다. */
+export const TREND_CATEGORIES: TrendCategory[] = ['coffee', 'dessert', 'meal', 'juice'];
+export const TREND_NAME: Record<TrendCategory, string> = { coffee: '커피', dessert: '디저트', meal: '식사', juice: '주스' };
+/** 유행 분류 손님 선호 배수 */
+export const TREND_MULT = 1.5;
+/** 커피로 치는 재료 (없으면 음료는 주스) */
+const COFFEE_INGREDIENTS = new Set(['beans', 'coffee_beans', 'espresso']);
+
+/** 메뉴 하나의 유행 분류 */
+export function trendCategoryOf(state: GameState, menuId: string): TrendCategory {
+  const m = menuOf(state, menuId);
+  if (m.category === 'dessert') return 'dessert';
+  if (m.category === 'meal') return 'meal';
+  return Object.keys(m.ingredients).some((id) => COFFEE_INGREDIENTS.has(id)) ? 'coffee' : 'juice';
+}
+/** 이번 달 유행 분류 (없으면 null) */
+export function trendOf(state: GameState): TrendCategory | null {
+  return state.trend?.category ?? null;
+}
+/** 주문 가중치 배수 — guests.ts order()가 곱한다 */
+export function trendMenuMult(state: GameState, menuId: string): number {
+  const t = trendOf(state);
+  return t !== null && trendCategoryOf(state, menuId) === t ? TREND_MULT : 1;
+}
+/** 매월 1일: 이번 달 유행을 정한다 (rng 한 번). 정한 분류. */
+export function rollTrend(state: GameState): TrendCategory {
+  const mi = monthIndex(state.clock);
+  const r = nextRandom(state);
+  const category = TREND_CATEGORIES[Math.floor(r * TREND_CATEGORIES.length) % TREND_CATEGORIES.length]!;
+  state.trend = { monthIndex: mi, category };
+  pushNotice(state, `이번 달은 ${josa(TREND_NAME[category], '이/가')} 유행이에요 — 손님이 더 찾아요`);
+  return category;
+}
+
+// ---------- 빅 이벤트 선택지 (stakes: 「사건은 있으나 대응할 게 없다」) ----------
+
+/** 고른 것이 바로 결과 — rollOutcome 없이 확정. skip이면 그 이벤트는 아예 안 일어난다. */
+export interface EventChoiceOption {
+  label: string;          // 버튼 (≤ 22자)
+  cost?: number;          // 즉시 지출
+  repairMult?: number;    // 태풍 수리비·파손 배수 (0이면 피해 없음)
+  reputation?: number;    // 즉시 평판
+  closedDays?: number;    // 그날부터 며칠 영업 정지
+  skip?: boolean;         // 이벤트를 안 받는다
+  result: string;         // 알림 한 줄
+}
+export interface EventChoiceDef { lines: string[]; options: [EventChoiceOption, EventChoiceOption] }
+
+/** 빅 이벤트 id → 선택지. 여기 없는 이벤트는 지금까지처럼 그냥 발동한다. */
+export const EVENT_CHOICES: Record<string, EventChoiceDef> = {
+  ev_typhoon_aug: {
+    lines: ['큰 태풍이 올라온대요.', '미리 묶어 두면 피해가 줄어요.'],
+    options: [
+      { label: '미리 대비한다 (₩30만)', cost: 300_000, repairMult: 0.3, result: '미리 묶어 둬서 피해가 적었어요' },
+      { label: '그냥 버틴다', repairMult: 1, result: '태풍이 마당을 훑고 갔어요' },
+    ],
+  },
+  ev_baek_shooting: {
+    lines: ['촬영 팀이 와도 되냐고 물어요.', '그날은 손님을 못 받아요.'],
+    options: [
+      { label: '수락한다 (그날 영업 정지)', closedDays: 1, reputation: 10, result: '촬영을 했어요 — 평판 +10' },
+      { label: '거절한다', skip: true, result: '촬영은 다음 기회로 미뤘어요' },
+    ],
+  },
+  ev_iu_guest: {
+    lines: ['가수가 게스트로 온대요.', '경호 때문에 반나절 문을 닫아요.'],
+    options: [
+      { label: '수락한다 (그날 영업 정지)', closedDays: 1, reputation: 10, result: '온 마을이 들썩였어요 — 평판 +10' },
+      { label: '거절한다', skip: true, result: '조용한 하루를 골랐어요' },
+    ],
+  },
+  ev_deer_raid: {
+    lines: ['노루가 밭을 노린대요.', '울타리를 치면 막을 수 있어요.'],
+    options: [
+      { label: '울타리를 친다 (₩20만)', cost: 200_000, skip: true, result: '울타리 덕에 밭을 지켰어요' },
+      { label: '그냥 둔다', result: '노루가 밭을 헤집었어요' },
+    ],
+  },
+  ev_bad_review: {
+    lines: ['나쁜 후기가 퍼지고 있어요.', '사과문을 올릴까요?'],
+    options: [
+      { label: '사과문을 올린다 (₩10만)', cost: 100_000, reputation: 5, skip: true, result: '사과문으로 불길을 잡았어요' },
+      { label: '대꾸하지 않는다', result: '악평이 한동안 돌아요' },
+    ],
+  },
+};
+
+export function eventChoiceDef(id: string): EventChoiceDef | null {
+  return EVENT_CHOICES[id] ?? null;
+}
+/** 지금 답을 기다리는 빅 이벤트 선택지가 있나 */
+export function hasPendingEventChoice(state: GameState): boolean {
+  return !!state.pendingEventChoice;
+}
+
+/** 선택지 하나를 확정한다. 답할 것이 없으면 false. */
+export function resolveEventChoice(state: GameState, choice: number): boolean {
+  const p = state.pendingEventChoice;
+  if (!p) return false;
+  const def = eventChoiceDef(p.id);
+  state.pendingEventChoice = null;
+  const e = state.events.find((x) => x.id === p.id);
+  if (!def || !e) return true;
+  const opt = def.options[choice === 1 ? 1 : 0]!;
+  if (opt.cost) { state.money -= opt.cost; state.monthCosts.upkeep += opt.cost; }
+  if (opt.reputation) addReputation(state, opt.reputation);
+  if (opt.closedDays) addEffect(state, { kind: 'noGuests', mult: 0, days: opt.closedDays, source: `event:${p.id}` });
+  if (opt.closedDays) addEffect(state, { kind: 'spawnMult', mult: 0, days: opt.closedDays, source: `event:${p.id}` });
+  pushNotice(state, opt.result);
+  if (opt.skip) {
+    state.events = state.events.filter((x) => x !== e);
+    return true;
+  }
+  e.choice = choice === 1 ? 1 : 0;
+  applyEventStart(state, e);
+  return true;
+}
+/** 답을 안 하고 날이 바뀌면 0번으로 확정한다 (tick.ts가 부른다) */
+export function resolvePendingEventChoice(state: GameState): void {
+  const p = state.pendingEventChoice;
+  if (p && p.day < dayIndex(state.clock)) resolveEventChoice(state, 0);
+}
+/** 고른 선택지의 수리비 배수 (안 골랐으면 1) */
+export function eventRepairMult(e: ActiveBigEvent): number {
+  const def = eventChoiceDef(e.id);
+  if (!def || e.choice === undefined) return 1;
+  return def.options[e.choice === 1 ? 1 : 0]!.repairMult ?? 1;
 }

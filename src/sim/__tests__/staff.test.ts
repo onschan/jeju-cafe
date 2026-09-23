@@ -13,6 +13,9 @@ import { LOAN_MAX } from '../failure.ts';
 import { DAY_MS, HOUR_MS } from '../clock.ts';
 import { STAFF_POOL, RECRUIT_TIERS, TRAININGS, SKILLS, ROLES } from '../../data/index.ts';
 import type { GameState, Staff, Stats, RoleId } from '../types.ts';
+import { START_MONEY } from '../state.ts';
+import { SLOTS_PER_STAFF_ROOM } from '../staff.ts';
+import { rentOf } from '../economy.ts';
 
 export function staffWith(partial: Partial<Stats>, role: RoleId | null, skill = 'coffee_lover'): Staff {
   const stats: Stats = { stamina: 10, strength: 10, skill: 10, smile: 10, ...partial };
@@ -53,7 +56,7 @@ test('공고: 그 단계 풀에서 3명이 오고, 공고비는 채용비로 잡
   const s = bareState(7);
   expect(apply(s, { type: 'postJob', tier: 'flyer' }).ok).toBe(true);
   expect(s.candidates.length).toBe(3);
-  expect(s.money).toBe(5_000_000 - 500_000);
+  expect(s.money).toBe(START_MONEY - 500_000);
   expect(s.monthCosts.recruit).toBe(500_000);
   for (const c of s.candidates) { expect(STAFF_POOL.find((p) => p.id === c.poolId)!.tier).toBe(1); expect(c.stats).toEqual(STAFF_POOL.find((p) => p.id === c.poolId)!.stats); }
   expect(new Set(s.candidates.map((c) => c.poolId)).size).toBe(3);
@@ -151,10 +154,10 @@ test('직원 정원 = 3 + 휴게실(청소도구실) × 3 (휴게실 최대 3)',
   expect(r.ok).toBe(false); expect(r.reason).toContain('3명');
   // 휴게실은 A가 만든다 — 여기서는 objects에 직접 흉내 낸다
   s.objects['room1'] = { id: 'room1', type: 'cleaning_room', x: 0, y: 0, rot: 0, placedMonth: 0, build: null } as never;
-  expect(staffCapacity(s)).toBe(6);
+  expect(staffCapacity(s)).toBe(3 + SLOTS_PER_STAFF_ROOM); // stakes: 휴게실 1개당 +2
   expect(apply(s, { type: 'hire', candidateId: s.candidates[0]!.id, role: 'hall' }).ok).toBe(true);
   for (let i = 2; i <= 5; i++) s.objects[`room${i}`] = { id: `room${i}`, type: 'cleaning_room', x: 0, y: i, rot: 0, placedMonth: 0, build: null } as never;
-  expect(staffCapacity(s)).toBe(12);
+  expect(staffCapacity(s)).toBe(3 + 3 * SLOTS_PER_STAFF_ROOM); // 휴게실 최대 3개
 });
 
 test('후보는 다음 달 초에 사라진다', () => {
@@ -182,7 +185,7 @@ test('달 말에 낸 공고도 다음 달 1일에 사라진다 (같은 달 안�
 test('월말 월급 차감, 못 주면 unpaidMonths, 2달이면 퇴사', () => {
   const { s, st } = hired();
   const sal = st.salary;
-  s.money = sal + 100;
+  s.money = sal + 100 + rentOf(s); // stakes: 월급 말고 마을 관리비도 나간다
   s.loan.count = LOAN_MAX; // 잔고가 40만 아래로 떨어져도 삼춘 대출이 안 들어오게
   for (let i = 0; i < 30; i++) tick(s, DAY_MS);
   expect(s.lastMonthCard!.costs.salary).toBe(sal);

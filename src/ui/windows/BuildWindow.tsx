@@ -7,6 +7,7 @@ import { placeCost, constructions, canStartBuild, goalForFacility, isUpgradable,
 import { OBJECTS, objectDef } from '../../data/index.ts';
 import { unlockText, wonText } from '../../data/labels.ts';
 import { loadSheet, drawFrame, type Sheet } from '../sheetCanvas';
+import { opportunityCost } from '../tradeoff'; // stakes: 기회비용 한 줄
 import { PALETTE, brownBtn, brownBtnOff } from '../frame';
 import { josa } from '../../sim/josa.ts';
 import { useWindowState, body, TabBar, soft, Empty, type WindowProps } from './shared.tsx';
@@ -256,6 +257,7 @@ function PickedDetail({ s: def, locked, state, onPick }: { s: ObjectDef; locked:
   const poor = !locked && state.money < cost;
   const ok = !locked && start.ok && !poor && !!onPick;
   const days = def.buildDays ?? 0;
+  const opportunity = locked ? null : opportunityCost(state, def.id); // stakes: 기회비용 한 줄
   const facts = [
     def.id === MAIN_TYPE ? '카운터·주방·실내 자리' : def.kind === 'seat' ? `좌석 ${def.seats ?? 2}` : `입소문 ${def.popularity ?? 10}`,
     def.id === MAIN_TYPE ? '문은 앞쪽 왼쪽' : `경관 ${def.scenery}`,
@@ -271,6 +273,7 @@ function PickedDetail({ s: def, locked, state, onPick }: { s: ObjectDef; locked:
       <div style={{ fontSize: 16, fontWeight: 700 }}>{def.name} <span style={{ fontWeight: 400, fontSize: 14 }}>{cost > 0 ? wonText(cost) : '무료'}</span></div>
       <div style={{ fontSize: 14, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{def.desc ?? def.name}</div>
       <div style={{ ...soft, marginBottom: 6 }}>{facts}</div>
+      {!locked && opportunity && <div data-testid="build-cost" style={{ fontSize: 13, fontWeight: 700, color: PALETTE.title, marginBottom: 6 }}>{opportunity}</div>}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
         <button style={{ ...(ok ? brownBtn : brownBtnOff), margin: 0, flex: '0 0 auto' }} disabled={!ok} onClick={() => onPick?.(def.id)} data-testid="build-go" data-tut="build-go"><Icon name="build" /> 짓기</button>
         <span style={{ ...soft, color: ok ? PALETTE.inkSoft : PALETTE.bad }}>

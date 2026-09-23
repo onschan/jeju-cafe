@@ -14,6 +14,7 @@ import { pushNotice } from './staff.ts';
 import { pushFx } from './fx.ts';
 import { levelOf, LEVEL_POPULARITY, LEVEL_SCENERY, LEVEL_FEE_PCT, LEVEL_MENU_PCT } from './upgrade.ts';
 import { wearOf, upkeepMultOf } from './cleanliness.ts';
+import { isStopped } from './effects.ts'; // stakes: 설비 고장으로 멈춘 시설은 인기 0
 import { spotFeePct } from './spots.ts';
 import { cornerBonusAt, cornerPickMult, cornerSatisfactionAt, discoverCorners } from './corners.ts';
 
@@ -109,6 +110,7 @@ function rawStats(state: GameState, obj: PlacedObject): { pop: number; feePct: n
 }
 /** 상한(40) 뒤에 더하는 인기: 증축 Lv(+4/+8) − 노후(−1~−6). 0 아래로는 안 간다. */
 function finalPop(state: GameState, obj: PlacedObject, capped: number): number {
+  if (isStopped(state, obj)) return 0; // stakes: 고장 나 멈춘 시설은 손님을 안 부른다
   return Math.max(0, capped + (LEVEL_POPULARITY[levelOf(obj)] ?? 0) - wearOf(state, obj));
 }
 

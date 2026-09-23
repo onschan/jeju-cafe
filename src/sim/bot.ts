@@ -26,6 +26,9 @@ import { effectivePopularity } from './promotions.ts';
 import { isUnlocked } from './segments.ts';
 import { POPULARITY_FRUIT } from '../data/index.ts';
 import { MAX_BUILDERS } from './build.ts';
+import { riskDef, breakdownRepairCost, GROUP_SEATS } from './risk.ts'; // stakes: 돌발 사고 대응
+import { totalSeats } from './guests.ts';
+import { eventChoiceDef } from './events.ts'; // stakes: 빅 이벤트 선택지
 import { canUseItem } from './items.ts';
 import { featureOpen, goalClaimed, currentGoal, activeGoals } from './goals.ts';
 import { seatScore } from './site.ts';
@@ -200,8 +203,9 @@ export const BOT_TRAIN_MAX = 4;
 /** 증축: 돈 여유가 있으면 한 달에 하나 (목표 g41·g63·g95). fun-rank: 3년차부터 한 달 셋 */
 export const BOT_UPGRADE_MIN_MONEY = 4_000_000;
 export const BOT_UPGRADES_PER_MONTH_LATE = 3;
-/** 관광지 투자: 돈이 다음 레벨 비용 + 여유분을 넘으면 (§4.6 투자 규칙) */
-export const BOT_SPOT_RESERVE = 3_000_000;
+/** 관광지 투자: 돈이 다음 레벨 비용 + 여유분을 넘으면 (§4.6 투자 규칙).
+ *  stakes: 시작 자금이 500만 → 350만이 되어 300만을 남기면 1년차 내내 아무것도 못 산다 — 시작 자금에 맞춰 150만. */
+export const BOT_SPOT_RESERVE = 2_000_000;
 /** 평판이 이 아래면 사과 이벤트 */
 export const BOT_APOLOGY_REPUTATION = 40;
 export const BOT_APOLOGY_MIN_MONEY = 1_000_000;
@@ -214,7 +218,7 @@ export const BOT_COUPLE_SPOT_CHAIN = ['canola_field', 'sangumburi', 'camellia_hi
 /** 체인이 초반 캡(Lv3)을 넘겨 투자할 때는 이만큼 더 남긴다 (3년차 말 자금 밴드 3,000만 유지) */
 export const BOT_COUPLE_CHAIN_RESERVE = 10_000_000;
 /** 3년차부터는 2,000만을 남기고 투자한다 (3년차 말 자금 3,000만~4,500만 밴드 §4.6) */
-export const BOT_RESERVE_YEAR3 = 20_000_000;
+export const BOT_RESERVE_YEAR3 = 25_000_000;
 /** 4년차 전엔 관광지 Lv3까지만 (Lv4·5는 350만~1,300만/회). 4년차부터는 2,000만 여유분을 남기고 Lv5까지 올린다 */
 export const BOT_SPOT_MAX_LEVEL_EARLY = 3;
 export const BOT_SPOT_FULL_YEAR = 4;
@@ -469,7 +473,7 @@ function buildSecondFloorIfCan(s: GameState): void {
 /** fun-rank: 열린 큰 시설(₩300만 이상, 방·랜드마크·주차장·실내 가구 제외)을 아직 없는 종류부터 하나 — 산 필지 전체를 훑어 놓는다 (목표 보상 시설이 돈 쓸 곳이 되게). 한 달 하나. */
 function placeLuxury(s: GameState): void {
   if (s.clock.year < BOT_LUXURY_YEAR) return;
-  // 직원 정원이 찼으면 청소도구실(+3)을 산 필지 어디든 먼저 (장식 칸이 차서 2개째를 못 놓던 시드)
+  // 직원 정원이 찼으면 청소도구실(+2)을 산 필지 어디든 먼저 (장식 칸이 차서 2개째를 못 놓던 시드)
   if (s.staff.length >= staffCapacity(s) - 1 && s.unlocked.objects.includes(STAFF_ROOM_TYPE) && canSpend(s, objectDef(STAFF_ROOM_TYPE).cost)) {
     for (const p of ownedParcels(s)) for (let ly = 0; ly < p.h; ly++) for (let lx = 0; lx < p.w; lx++) {
       const x = p.x + lx, y = p.y + ly;
@@ -674,8 +678,34 @@ export function monthlyPlan(s: GameState, monthsPlayed: number): void {
 
 /** fun-guest: 봇이 하루에 인사하는 손님 수 */
 const BOT_GREETS_PER_DAY = 3;
+
+/** stakes: 돌발 사고·빅 이벤트 선택지 대응 규칙 (사람이 하듯 — 손해가 지출보다 크면 돈을 낸다).
+ *  답을 안 하면 다음 날 아침 0번(손해 보는 쪽)으로 확정되므로, 알림을 닫기 전에 먼저 고른다. */
+function answerChoices(s: GameState): void {
+  if (s.pendingRisk) apply(s, { type: 'resolveRisk', choice: botRiskChoice(s) });
+  if (s.pendingEventChoice) apply(s, { type: 'resolveEventChoice', choice: botEventChoice(s) });
+}
+/** 돌발 사고: 낼 돈이 있으면 막고(정전·재료·결근·고장), 단체 예약은 자리가 되면 받는다 */
+export function botRiskChoice(s: GameState): number {
+  const id = s.pendingRisk?.id;
+  if (id === 'group_booking') return totalSeats(s) >= GROUP_SEATS ? 0 : 1; // 자리가 모자라면 사양 (평판 −5를 피한다)
+  if (id === 'breakdown') return canSpend(s, breakdownRepairCost(s)) ? 1 : 0;
+  const def = id ? riskDef(id) : null;
+  const cost = def?.choices[1]?.cost ?? 0;
+  return cost > 0 && canSpend(s, cost) ? 1 : 0;
+}
+/** 빅 이벤트: 돈으로 막을 수 있으면 막고, 「그날 영업 정지」는 평판을 받는 쪽으로 (손님이 많은 성수기엔 거절) */
+export function botEventChoice(s: GameState): number {
+  const def = s.pendingEventChoice ? eventChoiceDef(s.pendingEventChoice.id) : null;
+  if (!def) return 0;
+  const first = def.options[0];
+  if (first.closedDays) return s.reputation < 70 ? 0 : 1; // 평판이 낮을 때만 하루를 내준다
+  return first.cost && canSpend(s, first.cost) ? 0 : 1;
+}
+
 /** 매일 아침 */
 export function dailyPlan(s: GameState): void {
+  answerChoices(s); // stakes: 돌발 사고·빅 이벤트 선택지 먼저 (알림을 닫아도 답은 따로 간다)
   while (s.alerts.length > 0) apply(s, s.alerts[0]!.type === 'ending' ? { type: 'continueEnding' } : { type: 'dismissAlert' }); // z-ending: 엔딩은 「계속하기」
   // 게시판 부탁은 지금 할 수 있는 것(시설·메뉴 열림·아이템 있음)만 받는다 (랜드마크·손님 해금이 부탁 보상)
   if (s.clock.year >= BOT_QUEST_YEAR) for (const q of Object.values(s.board.quests)) if (Object.values(s.board.quests).filter((x) => x.status === 'active').length < BOT_QUEST_ACTIVE_MAX && q.status === 'offered' && botCanDoQuest(s, questDef(q.id)) && canAcceptQuest(s, q.id).ok) apply(s, { type: 'acceptQuest', id: q.id });
@@ -739,6 +769,7 @@ export async function runBotAsync(years: number, seed: number, yieldEveryDays = 
 
 /** solver 정책의 집안일: 알림·카드·결과 창 닫기만 (정석 지식 없음) */
 function solverChores(s: GameState): void {
+  answerChoices(s); // stakes: solver 정책도 선택지에 답한다 (안 하면 다음 날 0번으로 확정)
   while (s.alerts.length > 0) apply(s, s.alerts[0]!.type === 'ending' ? { type: 'continueEnding' } : { type: 'dismissAlert' });
   if (s.lastDraw) apply(s, { type: 'dismissDraw' });
   if (s.lastDevelop) apply(s, { type: 'dismissDevelop' });

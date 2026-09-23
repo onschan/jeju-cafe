@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { useGame } from './store';
 import { Icon } from './Icon';
 import { fmtNum } from '../sim/format.ts';
-import { TUTORIAL_STEPS, tutorialDone, mainBuilding, nextMove, solverNextMove, solverKey } from '../sim/index.ts';
+import { TUTORIAL_STEPS, tutorialDone, mainBuilding, nextMove, solverNextMove, solverKey, shrinkingWarning, TREND_NAME } from '../sim/index.ts';
 import { setGuideFocus } from './tutorialHighlight';
 import { currentGoal, urgentChallenge } from './simBridge';
 import { PALETTE } from './frame';
@@ -74,6 +74,8 @@ export function GoalBar({ top, onOpen }: { top: number; onOpen: () => void }) {
   const cpct = c && c.max > 0 ? Math.min(100, Math.round((c.cur / c.max) * 100)) : 0;
   const milestone = g ? (s.goals.milestones?.[g.id] ?? 0) : 0; // game-feel P1: 자금 목표 25/50/75% 마일스톤 — 단계가 바뀌면 key가 바뀌어 반짝임이 다시 돈다
   const badge = true; // 배지는 튜토리얼 뒤에도 남는다 (추천 탭)
+  const warn = shrinkingWarning(s); // stakes: 평판 탓에 손님이 줄고 있으면 도전 줄 대신 경고
+  const trend = s.trend ? TREND_NAME[s.trend.category] : null; // stakes: 이번 달 유행
   const noMain = !tutorialDone(s) && !mainBuilding(s); // 옛 맨땅 저장: 본관을 짓기 전엔 첫 목표(아메리카노)를 이룰 수 없다 → 문구로 안내
   return (
     <div style={{ position: 'absolute', top, left: 0, right: 0, height: GOAL_BAR_H, zIndex: 10 }}>
@@ -94,10 +96,13 @@ export function GoalBar({ top, onOpen }: { top: number; onOpen: () => void }) {
               </span>
             </>
           ) : <span style={{ flex: 1, color: PALETTE.inkSoft }}>목표: 모두 달성!</span>}
+          {trend && <span data-testid="goal-trend" title={`이번 달 유행: ${trend}`} style={{ flex: 'none', display: 'flex', alignItems: 'center', gap: 2, color: PALETTE.title, fontSize: 12 }}><Icon name="look" size={13} />{trend}</span>}
         </span>
         <span data-testid="challenge-line" style={{ height: CHALLENGE_LINE_H, padding: '0 10px', display: 'flex', alignItems: 'center', gap: 6, width: '100%', boxSizing: 'border-box', fontSize: 13, fontWeight: 700, background: '#0000000c' }}>
-          <span style={{ color: PALETTE.title, display: 'flex' }}><Icon name={c?.kind === 'monthly' ? 'calendar' : 'target'} size={14} /></span>
-          {c ? (
+          <span style={{ color: warn ? PALETTE.bad : PALETTE.title, display: 'flex' }}><Icon name={warn ? 'warn' : c?.kind === 'monthly' ? 'calendar' : 'target'} size={14} /></span>
+          {warn ? (
+            <span data-testid="shrinking-warning" style={{ flex: 1, color: PALETTE.bad, overflow: 'hidden', textOverflow: 'ellipsis' }}>{warn}</span>
+          ) : c ? (
             <>
               <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.kind === 'monthly' ? '이달' : '도전'}: {c.title}</span>
               <span style={{ flex: 'none', color: PALETTE.inkSoft }}>{num(c.cur, c.max)}/{num(c.max, c.max)} · {c.daysLeft}일</span>

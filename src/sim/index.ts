@@ -8,6 +8,11 @@ export { hasLoan, loanRewardMult, canTakeLoan, takeLoan, checkLoan, repayLoan, L
 export { apply, PROTECTED_TYPES, ROTATABLE_TYPES, demolishRefund, canDisturb } from './actions.ts';
 export { canUndo } from './undo.ts';
 export { DAY_MS, seasonOf, monthIndex, DAYS_PER_MONTH } from './clock.ts';
+// ---- stakes: 긴장감·트레이드오프·변수 ----
+export { RISKS, riskDef, riskDayOf, resolveRisk, hasPendingRisk, dailyRisk, monthlyRisk, breakdownTarget, breakdownRepairCost, absentStaffId, isStopped, stoppedCount, riskDaysLeft, RISK_CHANCE, GROUP_SEATS, GROUP_REWARD, GROUP_FAIL_REPUTATION, BREAKDOWN_STOP_DAYS, BREAKDOWN_REPAIR_PCT, type RiskId, type RiskDef } from './risk.ts';
+export { RENT_PER_PARCEL, rentOf, rent, loanDue, LOAN_DUE_MONTHS, LOAN_OVERDUE_REPUTATION, gradeMonth, gradeOfScore, coachAdvice, GRADE_S, GRADE_A, GRADE_B, GRADE_ITEM_MAX, COACH_BAD_MONTHS, type GradeResult, type GradeItem } from './economy.ts';
+export { TREND_CATEGORIES, TREND_NAME, TREND_MULT, trendCategoryOf, trendOf, trendMenuMult, rollTrend, EVENT_CHOICES, eventChoiceDef, hasPendingEventChoice, resolveEventChoice, resolvePendingEventChoice, type EventChoiceDef, type EventChoiceOption } from './events.ts';
+export { REP_REGULAR_SLOW, regularVisitEveryOtherWeek, shrinkingWarning } from './reputation.ts';
 export { cellAt, objectAt, canPlace, footprint, parcelHasLandmark, isSheltered, sceneryScore, objectScenery, windShelter, SHELTER_THRESHOLD, SCENERY_CAP, doorOf, doorFrontOf, roomAt, isRoomFloor, objectsInRoom } from './grid.ts';
 export { FX_CAP } from './fx.ts';
 export { isFarmObject, monthlyYieldOf, expectedHarvest, emptyMonthHarvest } from './orchard.ts';

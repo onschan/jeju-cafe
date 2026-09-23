@@ -1,6 +1,7 @@
 import type { GameState } from './types.ts';
 import { initRoutes } from './entry.ts';
-import { SAVE_VERSION } from './state.ts';
+import { SAVE_VERSION, MENU_SLOT_MAX, trendFor } from './state.ts';
+import { monthIndex } from './clock.ts';
 import { footprintOf, fixedCellsOf } from './grid.ts';
 import { objectDef } from '../data/index.ts';
 import { josa } from './josa.ts';
@@ -88,6 +89,17 @@ function migrateTrim(state: GameState): void {
 function backfill(state: GameState): void {
   state.lastMonthIncome ??= state.lastMonthCard?.income ?? 0;
   state.researchAcc ??= 0;
+  // ---- stakes: 긴장감·트레이드오프·변수 ----
+  state.monthCosts.rent ??= 0;
+  if (state.lastMonthCard) state.lastMonthCard.costs.rent ??= 0;
+  state.trend ??= trendFor(state.seed, monthIndex(state.clock)); // stakes: 옛 세이브도 이번 달 유행을 갖는다
+  state.riskDay ??= 0;
+  state.riskId ??= null;
+  state.pendingRisk ??= null;
+  state.pendingEventChoice ??= null;
+  state.lastGrade ??= null;
+  state.badGradeMonths ??= 0;
+  state.menuSlotMax ??= MENU_SLOT_MAX;
   state.undo ??= null;
   state.eventsFired ??= {};
   state.monthMenuSold ??= {};
