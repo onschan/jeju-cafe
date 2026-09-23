@@ -12,6 +12,9 @@ import { objectDef } from '../../data/index.ts';
 import { siteBonus } from '../site.ts';
 import { STAY_PER_FACILITY_MS } from '../rooms.ts';
 import type { GameState } from '../types.ts';
+import menusJson from '../../data/menus.json' with { type: 'json' };
+/** 메뉴 기본 값은 밸런스로 바뀐다 — 숫자를 박지 말고 데이터에서 읽는다 (spot2) */
+const menuPrice = (id: string): number => (menusJson as { id: string; price: number }[]).find((m) => m.id === id)!.price;
 
 function cafe() {
   const s = bareState(1);
@@ -43,7 +46,7 @@ test('카페 레벨: 누적 매출 구간 1~5, 손님 주문·시설 이용료�
   const { s: s2 } = cafe();
   spawnGuests(s2, 1);
   updateGuests(s2, 5000);
-  expect(s2.totalIncome).toBe(4000); // 당근주스
+  expect(s2.totalIncome).toBe(menuPrice('carrot_juice')); // 당근주스
 });
 
 test('증축: 주방(요리 슬롯 +1)·테라스(야외 좌석 −20%), 한 번씩, 돈이 있어야. 2층은 본관 카드(rooms.ts buildSecondFloor, y-indoor)로 옮겨 갔다', () => {

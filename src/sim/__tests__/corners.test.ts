@@ -5,8 +5,11 @@ import { DAY_MS } from '../clock.ts';
 import { objectDef, START_OBJECT_IDS, GUEST_TYPES, guestTags } from '../../data/index.ts';
 import {
   CORNERS, cornerDef, completedCorners, cornerProgress, cornerIfPlaced, cornerBonusAt, cornerPickMult, cornerVisitTargets, visitCorner,
-  discoverCorners, cornersMade, CORNER_CAP, CORNER_VISITS_PER_DAY, cornersWithPiece,
+  discoverCorners, cornersMade, CORNER_CAP, CORNER_VISITS_PER_DAY, cornersWithPiece, pendingCorners, cornerBreakWarning,
+  cornerSeatLine, cornerAnchorLine, cornerServes, cornerPieceDefault, pieceName, pieceMatches, CORNER_TIER_PCT, CORNER_TIER_FEE_PP,
 } from '../corners.ts';
+import { cornerKindOf, cornerKindTypes, isCornerKind, CORNER_KIND_IDS } from '../cornerKinds.ts';
+import { treeUpgrade, canTreeUpgrade } from '../tree.ts';
 import { objectStats, guestPickMult } from '../compat.ts';
 import { monthlyYieldOf, expectedHarvest, ORCHARD_FULL_TREES } from '../orchard.ts';
 import { goalMet } from '../goals.ts';
@@ -43,16 +46,21 @@ function flowerPath(s: GameState, ox = 0, oy = 0) {
 }
 
 describe('명당 데이터 (corners.json)', () => {
-  it('24종, id 중복 없음, 조각은 서로 다른 시설 3~4종(돌담길만 2종), 반경 2, 기존 시설 id만', () => {
+  it('24종, id 중복 없음, 조각은 서로 다른 종류 2~4가지, 반경 2, 있는 종류·시설만', () => {
     expect(CORNERS.length).toBe(24);
     expect(new Set(CORNERS.map((c) => c.id)).size).toBe(24);
+    const sigs = new Set<string>();
     for (const c of CORNERS) {
       const types = c.pieces.map((p) => p.type);
       expect(new Set(types).size, c.id).toBe(types.length);
       expect(types.length, c.id).toBeGreaterThanOrEqual(2);
       expect(types.length, c.id).toBeLessThanOrEqual(4);
       expect(c.radius).toBe(2);
-      for (const t of types) expect(objectDef(t), `${c.id}: ${t}`).toBeDefined();
+      for (const t of types) { if (!isCornerKind(t)) expect(objectDef(t), `${c.id}: ${t}`).toBeDefined(); }
+      // 조각 구성이 똑같은 명당이 둘 있으면 하나를 만들 때 둘이 같이 완성돼 버린다
+      const sig = c.pieces.map((p) => `${p.type}${p.count}`).sort().join('+');
+      expect(sigs.has(sig), `${c.id}: 조각 구성이 겹친다`).toBe(false);
+      sigs.add(sig);
       expect(c.effect.feePct).toBeGreaterThan(0);
       expect(c.effect.popularity).toBeGreaterThan(0);
       expect(c.effect.tagMult).toBeGreaterThanOrEqual(1);
@@ -61,11 +69,25 @@ describe('명당 데이터 (corners.json)', () => {
       expect(c.guestLine.length).toBeLessThanOrEqual(12);
       expect(c.hint.length).toBeLessThanOrEqual(30);
     }
-    expect(cornerDef('corner_flower_path').pieces.map((p) => p.type)).toEqual(['flower_bed', 'deco_wood_bench', 'streetlight']);
+    expect(cornerDef('corner_flower_path').pieces.map((p) => p.type)).toEqual(['garden', 'fun', 'light']);
     expect(cornersWithPiece('deco_wood_bench').length).toBeGreaterThanOrEqual(5);
   });
+  it('조각 종류는 업그레이드 트리 그대로다 — 트리 안 시설은 어느 단계든 같은 조각, 트리 밖 시설은 시설 그대로', () => {
+    for (const k of CORNER_KIND_IDS) {
+      const types = cornerKindTypes(k);
+      expect(types.length).toBeGreaterThanOrEqual(2);
+      for (const t of types) expect(cornerKindOf(t)).toBe(k); // 종류는 서로 안 겹친다
+    }
+    for (const t of ['table_out', 'table_parasol', 'terrace_seat', 'oreum_bench']) expect(cornerKindOf(t)).toBe('seat');
+    expect(cornerKindOf('stonewall')).toBeNull(); // 트리 밖 — 업그레이드로 안 바뀐다
+    expect(pieceMatches('seat', 'table_parasol')).toBe(true);
+    expect(pieceMatches('stonewall', 'stonewall')).toBe(true);
+    expect(pieceMatches('seat', 'stonewall')).toBe(false);
+    expect(pieceName('garden')).toBe('꽃');
+    expect(pieceName('stonewall')).toBe('돌담');
+  });
   it('첫 명당(꽃길) 조각은 시작부터 열려 있다 (튜토리얼 ⑤ 꽃밭+벤치)', () => {
-    for (const t of ['flower_bed', 'deco_wood_bench', 'streetlight']) expect(START_OBJECT_IDS).toContain(t);
+    for (const p of cornerDef('corner_flower_path').pieces) expect(START_OBJECT_IDS).toContain(cornerPieceDefault(p.type));
   });
 });
 
@@ -78,8 +100,8 @@ describe('명당 판정', () => {
     let p = cornerProgress(s).find((x) => x.def.id === 'corner_flower_path')!;
     expect(p.done).toBe(false);
     expect(p.anchor?.id).toBe(bed.id);
-    expect(p.pieces.map((x) => `${x.type}:${x.have}/${x.need}`)).toEqual(['flower_bed:1/1', 'deco_wood_bench:1/1', 'streetlight:0/1']);
-    expect(p.missing).toEqual([{ type: 'streetlight', count: 1 }]);
+    expect(p.pieces.map((x) => `${x.type}:${x.have}/${x.need}`)).toEqual(['garden:1/1', 'fun:1/1', 'light:0/1']);
+    expect(p.missing).toEqual([{ type: 'light', count: 1 }]);
     place(s, 'streetlight', 9, 6); // 멀다
     expect(completedCorners(s)).toEqual([]);
     place(s, 'streetlight', 2, 2); // 체비쇼프 2
@@ -132,14 +154,14 @@ describe('명당 판정', () => {
     place(s, 'deco_wood_bench', 1, 0);
     expect(cornerIfPlaced(s, 'streetlight', at(2, 2).x, at(2, 2).y)?.id).toBe('corner_flower_path');
     expect(cornerIfPlaced(s, 'streetlight', at(9, 6).x, at(9, 6).y)).toBeNull();
-    expect(cornerIfPlaced(s, 'table_out', at(2, 2).x, at(2, 2).y)).toBeNull();
+    expect(cornerIfPlaced(s, 'gate', at(2, 2).x, at(2, 2).y)).toBeNull();
     place(s, 'streetlight', 2, 2);
     expect(cornerIfPlaced(s, 'streetlight', at(0, 1).x, at(0, 1).y)).toBeNull();
   });
 });
 
 describe('명당 효과', () => {
-  it('반경 안 시설에 인기 +5·요금 +5%가 objectStats에 더해지고, 밖은 그대로. 합산은 CORNER_CAP까지', () => {
+  it('반경 안 자리에 명당 인기·요금이 objectStats에 더해지고, 밖은 그대로. 합산은 CORNER_CAP까지', () => {
     const s = bareState(1);
     const near = place(s, 'table_out', 1, 1);
     const far = place(s, 'table_out', 9, 6);
@@ -147,12 +169,14 @@ describe('명당 효과', () => {
     flowerPath(s, 0, 0);
     const after = objectStats(s, near.id);
     const eff = cornerDef('corner_flower_path').effect;
-    expect(cornerBonusAt(s, near)).toEqual({ pop: eff.popularity, feePct: eff.feePct });
-    expect(after.popularity - before.popularity).toBe(eff.popularity);
-    expect(after.feePct - before.feePct).toBe(eff.feePct);
+    // 가로등은 조명 트리 2단계라 단계 보너스(요금 +3%p · 입소문 +10%)가 붙는다
+    const pop = Math.round(eff.popularity * 1.1), feePct = eff.feePct + CORNER_TIER_FEE_PP;
+    expect(cornerBonusAt(s, near)).toEqual({ pop, feePct });
+    expect(after.popularity - before.popularity).toBe(pop);
+    expect(after.feePct - before.feePct).toBe(feePct);
     expect(cornerBonusAt(s, far)).toEqual({ pop: 0, feePct: 0 });
     expect(CORNER_CAP.pop).toBeLessThanOrEqual(12);
-    expect(CORNER_CAP.feePct).toBeLessThanOrEqual(20);
+    expect(CORNER_CAP.feePct).toBeLessThanOrEqual(30); // spot2: 명당 둘이 겹치면 요금 +30%까지 (총 배수 상한은 fee.ts ×2.0)
   });
   it('대상 태그 손님이 반경 안 시설을 고를 확률 ×tagMult (guestPickMult 훅), 다른 태그는 ×1', () => {
     const s = bareState(1);
@@ -258,5 +282,94 @@ describe('감귤 3그루 상한 (orchard)', () => {
     expect(trees.slice(0, ORCHARD_FULL_TREES).map((t) => monthlyYieldOf(s, t))).toEqual([6, 6, 6]);
     expect(monthlyYieldOf(s, trees[3]!)).toBe(2);
     expect(expectedHarvest(s)).toEqual({ tangerine: 20 });
+  });
+});
+
+describe('spot2: 업그레이드해도 명당이 안 깨진다', () => {
+  it('꽃길의 벤치를 해먹으로, 자리를 파라솔로 올려도 조각 종류가 같아 명당이 그대로다', () => {
+    const s = bareState(1);
+    flowerPath(s, 0, 0);
+    expect(completedCorners(s).map((c) => c.id)).toContain('corner_flower_path');
+    const bench = Object.values(s.objects).find((o) => o.type === 'deco_wood_bench')!;
+    s.money = 1e9;
+    s.unlocked.objects.push('hammock');
+    const up = canTreeUpgrade(s, bench.id);
+    expect(up.ok, up.reason).toBe(true);
+    treeUpgrade(s, bench.id);
+    for (let i = 0; i < 10 && bench.build; i++) tick(s, DAY_MS);
+    expect(bench.type).toBe('hammock');
+    expect(completedCorners(s).map((c) => c.id)).toContain('corner_flower_path'); // 「벤치」는 어느 단계든 벤치
+  });
+  it('상위 단계 조각이면 명당 효과가 단계마다 +10% (합산 상한까지)', () => {
+    const s = bareState(1);
+    const seat = place(s, 'table_out', 1, 1);
+    // 정원등(조명 1단계)으로 꽃길 — 단계 합 0이라 보너스 없음
+    place(s, 'flower_bed', 0, 0);
+    place(s, 'deco_wood_bench', 1, 0);
+    const lamp = place(s, 'garden_lamp', 0, 1);
+    const eff = cornerDef('corner_flower_path').effect;
+    expect(completedCorners(s)[0]!.tierSteps).toBe(0);
+    expect(cornerBonusAt(s, seat)).toEqual({ pop: eff.popularity, feePct: eff.feePct });
+    // 정원등 → 가로등(2단계)으로 올리면 요금 +3%p · 입소문 +10%
+    s.money = 1e9;
+    treeUpgrade(s, lamp.id);
+    for (let i = 0; i < 10 && lamp.build; i++) tick(s, DAY_MS);
+    expect(completedCorners(s)[0]!.tierSteps).toBe(1);
+    expect(cornerBonusAt(s, seat).feePct).toBe(eff.feePct + CORNER_TIER_FEE_PP);
+    expect(cornerBonusAt(s, seat).pop).toBe(Math.round(eff.popularity * (1 + CORNER_TIER_PCT / 100)));
+  });
+});
+
+describe('spot2: 효과가 어디에 닿나', () => {
+  it('요금은 반경 2 안의 자리·요금 시설만 받는다 (꽃·담 같은 장식은 요금 0, 입소문은 둘레가 같이 받는다)', () => {
+    const s = bareState(1);
+    const seat = place(s, 'table_out', 1, 1);
+    const wall = place(s, 'stonewall', 2, 1);
+    flowerPath(s, 0, 0);
+    expect(cornerBonusAt(s, seat).feePct).toBeGreaterThan(0);
+    expect(cornerBonusAt(s, wall).feePct).toBe(0);
+    expect(cornerBonusAt(s, wall).pop).toBeGreaterThan(0);
+  });
+  it('명당이 돌봐 주는 자리 목록·카드 한 줄 (자리 카드 「명당 꽃길 옆」, 조각 카드 「돌봐 주는 자리 n곳」)', () => {
+    const s = bareState(1);
+    const seat = place(s, 'table_out', 1, 1);
+    const bed = flowerPath(s, 0, 0);
+    const c = completedCorners(s)[0]!;
+    expect(cornerServes(s, c).map((o) => o.id)).toEqual([seat.id]);
+    expect(cornerSeatLine(s, seat)).toContain('꽃길');
+    expect(cornerSeatLine(s, seat)).toContain('요금 +');
+    expect(cornerSeatLine(s, bed)).toBeNull(); // 꽃밭은 자리가 아니다
+    expect(cornerAnchorLine(s, bed.id)).toEqual({ name: '꽃길', seats: 1, sales: 0 });
+  });
+});
+
+describe('spot2: 즉시 피드백·경고', () => {
+  it('마지막 조각이 공사 중이면 곧 완성될 명당으로 잡히고 미리 알림이 한 번만 뜬다', () => {
+    const s = bareState(1);
+    place(s, 'flower_bed', 0, 0);
+    place(s, 'streetlight', 0, 1);
+    s.goals.index = 999; s.money = 1e9;
+    expect(apply(s, { type: 'place', objectType: 'deco_wood_bench', ...at(1, 0) }).ok).toBe(true);
+    const bench = Object.values(s.objects).find((o) => o.type === 'deco_wood_bench')!;
+    expect(bench.build).toBeDefined();
+    expect(pendingCorners(s).map((c) => c.id)).toEqual(['corner_flower_path']);
+    expect(completedCorners(s)).toEqual([]);
+    const soon = s.notices.filter((n) => n.includes('공사가 끝나면') && n.includes('꽃길')).length;
+    expect(soon).toBe(1);
+    discoverCorners(s);
+    expect(s.notices.filter((n) => n.includes('공사가 끝나면') && n.includes('꽃길')).length).toBe(1); // 두 번 안 뜬다
+    for (let i = 0; i < 10 && bench.build; i++) tick(s, DAY_MS);
+    expect(pendingCorners(s)).toEqual([]);
+    expect(completedCorners(s).map((c) => c.id)).toEqual(['corner_flower_path']);
+  });
+  it('조각을 치우면 명당이 깨진다고 경고한다 — 대신 설 조각이 있으면 경고 없음', () => {
+    const s = bareState(1);
+    const bed = flowerPath(s, 0, 0);
+    const bench = Object.values(s.objects).find((o) => o.type === 'deco_wood_bench')!;
+    expect(cornerBreakWarning(s, bench.id)).toBe('치우면 꽃길이 깨져요');
+    expect(cornerBreakWarning(s, place(s, 'table_out', 8, 5).id)).toBeNull(); // 조각이 아니다
+    place(s, 'deco_wood_bench', 1, 1); // 대신 설 벤치
+    expect(cornerBreakWarning(s, bench.id)).toBeNull();
+    expect(cornerBreakWarning(s, bed.id)).toBe('치우면 꽃길이 깨져요'); // 꽃은 하나뿐
   });
 });

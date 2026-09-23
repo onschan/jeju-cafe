@@ -4,7 +4,7 @@ import { placeObject, removeObject } from '../grid.ts';
 import type { GameState, PlacedObject } from '../types.ts';
 import {
   siteOf, seatScore, siteScore, siteTone, scoredType, scoreOf, siteBonus, siteSay, siteBadgeText, siteLineText, layoutKey,
-  SITE_SAY, FEE_PER_VIEW, SITE_MAX, SAT_SHADE_SUMMER,
+  SITE_SAY, FEE_PER_SITE_POINT, SITE_FEE_MAX, siteFeeMult, SITE_MAX, SAT_SHADE_SUMMER, windCoveredSeats, WIND_SHELTER_SAT, WIND_WEDGE_MAX,
 } from '../site.ts';
 
 /** 본관(13,9 3×2, 문 앞 (13,11))에서 동쪽으로 올렛길 y=11 (x 13~22) + 남쪽으로 (13,12~14) → 마을 길(y=15)·정류장(10,15)과 이어진다 */
@@ -65,7 +65,7 @@ test('같은 테이블을 다른 자리에 놓으면 요금·만족이 갈린다
   const sea = table(s, 12, 1);
   const near = table(s, 14, 12);
   // 요금: 전망 +4%/점
-  expect(siteBonus(s, sea).feeMult).toBeCloseTo(1 + FEE_PER_VIEW * siteOf(s, 12, 1).view);
+  expect(siteBonus(s, sea).feeMult).toBeCloseTo(siteFeeMult(scoreOf(siteOf(s, 12, 1))));
   expect(siteBonus(s, sea).feeMult).toBeGreaterThan(siteBonus(s, near).feeMult);
   expect(siteBonus(s, near).feeMult).toBe(1);
   expect(siteBonus(s, near).satisfaction).toBe(0);
@@ -101,7 +101,7 @@ test('점수가 붙는 종류: 좌석·이용료 시설만. 장식은 null', () 
   expect(siteScore(s, 'vending', 16, 4)).toBe(seatScore(s, 16, 4));
   expect(siteTone(s, 'vending', 16, 14)).toBe('bad');
   const v = placeObject(s, 'vending', 16, 4);
-  expect(siteBonus(s, v).feeMult).toBeCloseTo(1 + FEE_PER_VIEW * siteOf(s, 16, 4).view);
+  expect(siteBonus(s, v).feeMult).toBeCloseTo(siteFeeMult(scoreOf(siteOf(s, 16, 4))));
 });
 
 test('결정적: 같은 배치면 같은 값, 오브젝트가 바뀌면 캐시가 풀린다', () => {
@@ -137,4 +137,33 @@ test('대사: 여름 그늘 "시원하다", 바닷가 "바다가 보인다!"', (
   const st = siteOf(s, 12, 1);
   expect(siteBadgeText(st)).toBe(`자리 ${scoreOf(st)}`);
   expect(siteLineText(st)).toBe(`자리 ${scoreOf(st)} (전망 ${st.view} · 그늘 ${st.shade})`);
+});
+
+/** spot2 돌담의 쓸모 (사용자 피드백 "돌담 생긴 것 때문에 뭐 어쩌라는 건지 모르겠다"):
+ *  자리 북서쪽 쐐기에 돌담 둘을 이으면 겨울 바람이 막혀 그 자리 만족이 오른다. 여름엔 아무 일도 없다. */
+test('돌담: 북서쪽 둘이면 겨울 자리 만족 +8, 하나로는 모자라고 여름엔 그대로', () => {
+  const s = yard(1); // 겨울
+  const seat = table(s, 12, 1); // 바다 전망 자리
+  const before = siteBonus(s, seat).satisfaction;
+  placeObject(s, 'stonewall', 11, 0);
+  expect(siteBonus(s, seat).satisfaction).toBe(before); // 돌담 하나(바람 2)로는 문턱(3)에 못 미친다
+  // 고스트 안내: 하나 더 놓으면 막힌다고 이 자리를 짚어 준다
+  expect(windCoveredSeats(s, 'stonewall', 10, 0).map((o) => o.id)).toEqual([seat.id]);
+  expect(windCoveredSeats(s, 'flower_bed', 10, 0)).toEqual([]); // 바람을 안 막는 시설
+  placeObject(s, 'stonewall', 10, 0);
+  expect(siteBonus(s, seat).satisfaction).toBeGreaterThan(before);
+  expect(windCoveredSeats(s, 'stonewall', 9, 1)).toEqual([]); // 이미 막힌 자리는 다시 안 짚는다
+  s.clock.month = 7; // 여름엔 바람막이 보정이 없다
+  expect(siteBonus(s, seat).satisfaction).toBe(before);
+  expect(WIND_SHELTER_SAT).toBe(8);
+  expect(WIND_WEDGE_MAX).toBe(3);
+});
+
+/** spot2 요금 보상 곡선: 자리 점수 1점당 +4%, 10점이면 +40%에서 멈춘다 */
+test('요금 배수는 자리 점수를 따라간다 — 1점당 +4%, 상한 +40%', () => {
+  expect(FEE_PER_SITE_POINT).toBe(0.04);
+  expect(siteFeeMult(0)).toBe(1);
+  expect(siteFeeMult(8)).toBeCloseTo(1.32);
+  expect(siteFeeMult(10)).toBeCloseTo(1 + SITE_FEE_MAX);
+  expect(siteFeeMult(99)).toBeCloseTo(1 + SITE_FEE_MAX); // 상한
 });

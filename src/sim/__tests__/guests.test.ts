@@ -9,6 +9,9 @@ import { moveAlong } from '../path.ts';
 import { tick } from '../tick.ts';
 import { HOUR_MS, START_HOUR, END_HOUR } from '../clock.ts';
 import { guestDialogue } from '../../data/index.ts';
+import menusJson from '../../data/menus.json' with { type: 'json' };
+/** 메뉴 기본 값은 밸런스로 바뀐다 — 숫자를 박지 말고 데이터에서 읽는다 (spot2) */
+const menuPrice = (id: string): number => (menusJson as { id: string; price: number }[]).find((m) => m.id === id)!.price;
 
 /** 정낭(4,6) 바로 위 (4,5)에 테이블 → 정낭이 테이블의 걷기 이웃 */
 function cafe() {
@@ -50,7 +53,7 @@ test('걸어가서 앉고, 주문하고, 돈과 연구가 오른다', () => {
   expect(g.phase).toBe('seated');
   expect(g.menuId).toBe('carrot_juice');
   expect(g.mood).toBeNull(); // 조리 중
-  expect(s.money).toBe(money0 + 4000); // 당근주스 4000
+  expect(s.money).toBe(money0 + menuPrice('carrot_juice')); // 당근주스 값 그대로
   expect(s.storage['carrot']).toBe(9);
   expect(s.monthGuests).toBe(1); // 도착 시 센다
   updateGuests(s, PREP_MS);

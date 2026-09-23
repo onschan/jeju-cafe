@@ -99,6 +99,9 @@ import { spawnGuests, updateGuests, popularityBonus, POP_PER_SCENERY } from '../
 import { setSlot } from '../menu.ts';
 import { upkeep, UPKEEP_RATE, DATA_UPKEEP_RATE } from '../economy.ts';
 import { PREP_MS } from '../guests.ts';
+import menusJson from '../../data/menus.json' with { type: 'json' };
+/** 메뉴 기본 값은 밸런스로 바뀐다 — 숫자를 박지 말고 데이터에서 읽는다 (spot2) */
+const menuPrice = (id: string): number => (menusJson as { id: string; price: number }[]).find((m) => m.id === id)!.price;
 
 test('좌석 요금 배수: 기본 100%면 메뉴 가격 그대로 받는다', () => {
   const s = bareState(1);
@@ -109,7 +112,7 @@ test('좌석 요금 배수: 기본 100%면 메뉴 가격 그대로 받는다', (
   const m0 = s.money;
   updateGuests(s, 30_000);
   expect(s.guests[0]!.phase).toBe('seated');
-  expect(s.money).toBe(m0 + 4000);
+  expect(s.money).toBe(m0 + menuPrice('carrot_juice'));
 });
 
 test('만족: 인기 보너스는 기본 10에서 3마다 경치 1점', () => {
