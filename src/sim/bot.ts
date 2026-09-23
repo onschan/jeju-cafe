@@ -37,7 +37,7 @@ import { canBuyParcel, ownedParcels, parcelAt } from './parcels.ts';
 import { isWorn, canRepair } from './cleanliness.ts';
 import { complaintCounts } from './reputation.ts';
 import { canAcceptQuest } from './board.ts';
-import { cornerProgress } from './corners.ts'; // fun-corner: 명당 만들기 (목표 g21·g35·g59·g77·g93)
+import { cornerProgress, cornerBuildType, pieceMatches } from './corners.ts'; // fun-corner: 명당 만들기 (목표 g21·g35·g59·g77·g93) · spot2: 조각은 종류
 import { canLevelUp } from './staff.ts';
 import { canTrain } from './training.ts';
 import { bestStaffFor } from './luck.ts'; // staff-luck: 대박 기대값이 가장 높은 직원에게 시킨다
@@ -404,16 +404,18 @@ function placeForCorner(s: GameState): void {
   const freeNear = (type: string, near: { x: number; y: number }, r: number) => cells.filter((c) => dist(c, near) <= r && !objectAt(s, c.x, c.y) && canPlace(s, type, c.x, c.y).ok);
   for (const p of cornerProgress(s)) {
     if (p.done || s.codex.corners?.includes(p.def.id)) continue;
-    if (!p.def.pieces.every((pc) => s.unlocked.objects.includes(pc.type))) continue;
-    const anchorType = p.def.pieces[0]!.type;
-    const anchors = Object.values(s.objects).filter((o) => o.type === anchorType && parcelAt(s, o.x, o.y)?.owned);
+    const types = p.def.pieces.map((pc) => cornerBuildType(s, pc.type)); // spot2: 조각 종류 → 지을 시설 하나
+    if (!types.every((t) => !!t && s.unlocked.objects.includes(t))) continue;
+    const anchorType = types[0]!;
+    const anchors = Object.values(s.objects).filter((o) => pieceMatches(p.def.pieces[0]!.type, o.type) && parcelAt(s, o.x, o.y)?.owned);
     // 닻마다: 반경 안에 이미 있는 조각을 빼고 모자란 조각 수 · 그만큼 빈 칸이 있나
     for (const anchor of anchors) {
       const missing: string[] = [];
-      for (const pc of p.def.pieces.slice(1)) {
-        const have = Object.values(s.objects).filter((o) => o.type === pc.type && o.id !== anchor.id && dist(o, anchor) <= p.def.radius).length;
-        for (let i = have; i < pc.count; i++) missing.push(pc.type);
-      }
+      p.def.pieces.forEach((pc, pi) => {
+        if (pi === 0) return;
+        const have = Object.values(s.objects).filter((o) => pieceMatches(pc.type, o.type) && o.id !== anchor.id && dist(o, anchor) <= p.def.radius).length;
+        for (let i = have; i < pc.count; i++) missing.push(types[pi]!);
+      });
       if (missing.length === 0) continue; // 완공 대기 중
       const want = missing[0]!;
       const room = freeNear(want, anchor, p.def.radius);

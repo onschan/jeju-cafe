@@ -690,6 +690,7 @@ export interface PlacedObject {
   careDay?: number;    // 실내 요소 마지막 손질 일 인덱스 (수족관 먹이·키즈 장난감 보충·책장 신간)
   stopped?: number;    // stakes: 설비 고장으로 멈춘 시설 — 이 일 인덱스까지 인기 0 (risk.ts). 없으면 정상
   pending?: PendingWork; // 예약된 작업 (pending.ts): 손님이 앉아 있어도 눌러 두면 자리가 비는 즉시 실행된다. 없으면 예약 없음
+  sales?: { day: number; won: number }; // spot2: 오늘 이 자리가 번 돈 (명당 팻말 카드 「오늘 이 자리들 매출」). 날이 바뀌면 corners.ts가 0부터 다시 센다
 }
 
 /** 예약 작업 (pending.ts). to = 옮길 칸(kind 'move'만), at = 예약한 절대 일 인덱스 */
@@ -971,6 +972,7 @@ export interface GameState {
   contest?: ContestState;                     // 대회 (contest.ts) — 연 2회 6·12월 1일, 등급 3부터
   monthGreatServes?: number;                  // 이달 서빙 대박 횟수 (월말 카드 하이라이트, staff-luck)
   cornerVisits?: { day: number; counts: Record<string, number> }; // fun-corner: 오늘 명당별 손님 방문 수 (하루 상한, 날이 바뀌면 corners.ts가 초기화)
+  cornerSoon?: string[];   // spot2: 마지막 조각이 공사 중이라 곧 완성될 명당 — 미리 알림을 한 번만 띄우려고 기억한다
   undo: UndoEntry | null;                     // 직전 배치·철거·이동 되돌리기 스냅샷 (undo.ts)
   main: MainState;                            // 본관 증축·2층·이동·분위기 (rooms.ts, y-indoor)
   guests: Guest[];

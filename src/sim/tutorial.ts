@@ -22,7 +22,7 @@
 import type { GameState, GoalReward, Pt, FeatureId, PlacedObject } from './types.ts';
 import { objectDef } from '../data/index.ts';
 import { isDoorReachable, busStopPos, walkableNeighborsOf } from './path.ts';
-import { CORNERS, completedCorners } from './corners.ts';
+import { CORNERS, completedCorners, cornerPieceDefault } from './corners.ts';
 import { doorFrontOf, cellAt, canPlace } from './grid.ts';
 import { applyRewards } from './goals.ts';
 import { parcelAt } from './parcels.ts';
@@ -119,7 +119,7 @@ function objectsOfTypes(s: GameState, types: readonly string[]): PlacedObject[] 
 /** 튜토리얼 첫 명당 */
 export const TUTORIAL_CORNER_ID = 'corner_flower_path';
 /** 꽃길 조각 순서 (corners.json 그대로: 꽃밭 → 벤치 → 가로등) */
-export const CORNER_PIECE_TYPES: readonly string[] = (CORNERS.find((c) => c.id === TUTORIAL_CORNER_ID)?.pieces.map((p) => p.type) ?? ['flower_bed', 'deco_wood_bench', 'streetlight']);
+export const CORNER_PIECE_TYPES: readonly string[] = (CORNERS.find((c) => c.id === TUTORIAL_CORNER_ID)?.pieces.map((p) => cornerPieceDefault(p.type)) ?? ['flower_bed', 'deco_wood_bench', 'streetlight']); // spot2: 조각은 종류 — 튜토리얼이 가리킬 시설 하나로 바꾼다
 /** 조각끼리 서로 반경 CORNER_RADIUS 안 (corners.json radius) */
 export const CORNER_RADIUS = CORNERS.find((c) => c.id === TUTORIAL_CORNER_ID)?.radius ?? 2;
 /** 첫 명당이 생겼나: 트랙 C 명당 목록에 1개 이상 */
