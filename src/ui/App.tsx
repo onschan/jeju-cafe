@@ -339,7 +339,7 @@ function Game({ onExit }: { onExit: () => void }) {
   // sim 알림(목표 달성·빅 이벤트) → 대화창(보상 상자는 RewardPopup), 그 다음 손으로 하는 튜토리얼 9단계. 알림은 한 번에 하나씩 순서대로.
   // 다음 단계 대사가 뜨면 연속 배치·이동·철거 모드를 끝낸다 — 배치 바가 하단 바를 덮어 「아래 카페를 눌러」를 못 따라가는 걸 막는다.
   useEffect(() => {
-    checkAlerts(s, () => dispatch({ type: 'dismissAlert' }));
+    checkAlerts(s, () => dispatch({ type: 'dismissAlert' }), (x) => dispatch(x)); // stakes: 선택지는 sim 액션으로
     if (checkTutorial(s) && modeRef.current.kind !== 'idle') setMode({ kind: 'idle' });
   });
   const openCard = (t: CardTarget | null) => {

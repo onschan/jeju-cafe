@@ -192,6 +192,10 @@
       {
         "type": "money",
         "amount": 300000
+      },
+      {
+        "type": "menuSlot",
+        "n": 1
       }
     ],
     "speaker": "halmang",
@@ -498,6 +502,10 @@
       {
         "type": "unlockFacility",
         "id": "omegi_stall"
+      },
+      {
+        "type": "menuSlot",
+        "n": 1
       }
     ],
     "speaker": "hero",
@@ -780,6 +788,10 @@
       {
         "type": "unlockFacility",
         "id": "streetlight"
+      },
+      {
+        "type": "menuSlot",
+        "n": 1
       }
     ],
     "speaker": "samchun",

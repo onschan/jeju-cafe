@@ -385,7 +385,8 @@ export interface Pt { x: number; y: number }
 
 /** 월 비용 항목. recruit = 공고비 + 퇴직금 */
 /** 월 비용 항목. tax = 소득세(매년 3월 1일, 전년 순이익 ×10%), loanRepay = 삼춘 대출 자동 상환(흑자 달 순이익 30%), shuttle = 공항 셔틀 월 고정비 */
-export interface MonthCosts { ingredients: number; salary: number; ads: number; upkeep: number; recruit: number; tax: number; loanRepay: number; shuttle: number }
+/** rent = 소유 필지 월 임대료(stakes: 필지당 ₩8만/월, 마을 관리비 명목) */
+export interface MonthCosts { ingredients: number; salary: number; ads: number; upkeep: number; recruit: number; tax: number; loanRepay: number; shuttle: number; rent?: number }
 /** 농원: harvested = 이달 1일 창고에 들어온 재료, ingredientSaved = 창고 재료를 써서 안 산 재료비 */
 export interface MonthHarvest { harvested: Record<string, number>; ingredientSaved: number }
 /** 월말 정산 카드 */
@@ -407,7 +408,24 @@ export interface MonthCard {
   reputationDelta: number;           // 그달 평판 변화
   topComplaints: { reason: ComplaintReason; count: number }[]; // 그달 불만 TOP3
   greatServes?: number;              // 그달 서빙 대박 횟수 (staff-luck)
+  // ---- stakes: 월말 평가 등급 (economy.ts gradeMonth) ----
+  grade?: MonthGrade;                // S/A/B/C
+  gradeScore?: number;               // 0~100 (순이익·손님 증감·평판·불만 4항목 합)
+  prevGrade?: MonthGrade | null;     // 지난달 등급 (화살표)
+  gradeSummary?: string;             // 한 줄 총평
+  guestsDelta?: number;              // 지난달 대비 손님 증감
+  trendCategory?: TrendCategory;     // 그달 유행 분류
 }
+/** stakes: 월말 평가 등급 */
+export type MonthGrade = 'S' | 'A' | 'B' | 'C';
+/** stakes: 이번 달 유행 분류 (커피·디저트·식사·주스) */
+export type TrendCategory = 'coffee' | 'dessert' | 'meal' | 'juice';
+/** stakes: 이번 달 유행 (매월 1일, events.ts rollTrend) */
+export interface TrendState { monthIndex: number; category: TrendCategory }
+/** stakes: 답을 기다리는 돌발 사고 (risk.ts). 답이 없으면 다음 날 아침 0번(손해 보는 쪽)으로 확정된다. */
+export interface PendingRisk { id: string; day: number; targetId?: string; targetName?: string }
+/** stakes: 답을 기다리는 빅 이벤트 선택지 (events.ts EVENT_CHOICES) */
+export interface PendingEventChoice { id: string; day: number }
 
 // ---------- 목표 체인 (v3 §2 → 확장 §3.5·§7) ----------
 /** 목표·도전 조건. 판정은 goals.ts의 conditionCheckers 레지스트리 (타입 → { cur, max }). 아직 없는 시스템은 스텁. */
@@ -492,7 +510,8 @@ export type GoalReward =
   | { type: 'unlockGuidebook'; id: string }          // 가이드북 해금
   | { type: 'seed'; kind: string; n: number }        // 씨앗 아이템 n개 (kind = 아이템 id)
   | { type: 'title'; id: string; name: string }      // 칭호 (state.titles)
-  | { type: 'feeBonus'; pct: number };               // 요금 +pct% (state.feeBonusPct)
+  | { type: 'feeBonus'; pct: number }                // 요금 +pct% (state.feeBonusPct)
+  | { type: 'menuSlot'; n: number };                 // stakes: 메뉴판 칸 +n (3칸에서 시작, 최대 6)
 export type GoalSpeaker = 'halmang' | 'samchun' | 'hero';
 export interface GoalDef {
   id: string;
@@ -532,7 +551,11 @@ export type Alert =
   | { type: 'reputation'; text: string } // 평판 20 미만 삼춘 경고 (reputation.ts)
   // ---- z-ending ----
   | { type: 'ending' }                                        // 10년차 엔딩 (EndingScreen — 대화창이 아니다)
-  | { type: 'grade'; grade: number };                         // fun-rank: 카페 등급 승급 (할망 축하 대사, 보상 상자 뒤)
+  | { type: 'grade'; grade: number }                          // fun-rank: 카페 등급 승급 (할망 축하 대사, 보상 상자 뒤)
+  // ---- stakes (긴장감·트레이드오프·변수) ----
+  | { type: 'risk'; id: string }                              // 돌발 사고 — 선택지 2개 (risk.ts)
+  | { type: 'eventChoice'; id: string }                       // 빅 이벤트 선택지 (events.ts EVENT_CHOICES)
+  | { type: 'coach' };                                        // 3달 연속 C — 삼춘이 찾아와 구체 제안 1개
 
 // ---------- 월간 과제 ----------
 /** 월간 과제 (매월 1일 자동 1개, 그달 안). 난이도는 현재 수치 기준 자동. */
@@ -590,7 +613,7 @@ export interface BigEventDef {
   endDialogue?: string;
 }
 /** endsDay = 끝나는 절대 일 인덱스(포함 안 함, effects.dayIndex 기준) */
-export interface ActiveBigEvent { id: string; startDay: number; endsDay: number; specialVisited: boolean }
+export interface ActiveBigEvent { id: string; startDay: number; endsDay: number; specialVisited: boolean; choice?: number /* stakes: 고른 선택지 (events.ts EVENT_CHOICES) */ }
 
 export interface Cell {
   terrain: Terrain;
@@ -614,6 +637,7 @@ export interface PlacedObject {
   h?: number;
   mode?: string;       // 실내 요소 설정 (rooms.ts §4.3): 난로 on/off · 피아노 lunch/evening/none · 바 저녁 세트 on/off
   careDay?: number;    // 실내 요소 마지막 손질 일 인덱스 (수족관 먹이·키즈 장난감 보충·책장 신간)
+  stopped?: number;    // stakes: 설비 고장으로 멈춘 시설 — 이 일 인덱스까지 인기 0 (risk.ts). 없으면 정상
 }
 
 /** 되돌리기 1회 스냅샷 (undo.ts). day = 절대 일 인덱스 — 같은 날에만 되돌린다 */
@@ -782,7 +806,8 @@ export interface Complaint { day: number; reason: ComplaintReason; guestType: st
 /** 월말 후기 (최대 8개, 최신이 앞) */
 export interface Review { month: number; score: number; text: string; reason?: ComplaintReason }
 /** 삼춘 대출: count = 받은 횟수(최대 3), balance = 남은 원금, lastMonthIndex = 마지막 대출 달(한 달 1회) */
-export interface LoanState { count: number; balance: number; lastMonthIndex: number }
+/** dueMonthIndex = 상환 기한(stakes: 빌린 달 + 12). 기한을 넘기면 평판 −5 + 목표 보상 50%가 그대로 유지된다. */
+export interface LoanState { count: number; balance: number; lastMonthIndex: number; dueMonthIndex?: number; overdueCount?: number }
 /** ★ 유지 심사: promotedYear = 마지막 승급 년차, lastReviewYear = 마지막 심사 년차(2년마다 3월), warned = 3월 경고 뒤 9월 재심사 대기 */
 export interface StarReview { promotedYear: number; lastReviewYear: number; warned: boolean }
 export interface GameState {
@@ -907,6 +932,15 @@ export interface GameState {
   monthIncome: number;
   monthGuests: number;
   monthCosts: MonthCosts;
+  // ---- stakes (긴장감·트레이드오프·변수) ----
+  trend?: TrendState | null;                  // 이번 달 유행 분류 (events.ts rollTrend)
+  riskDay?: number;                           // 이달 돌발 사고 예정일 (0이면 이달은 없음) — risk.ts
+  riskId?: string | null;                     // 이달 돌발 사고 종류
+  pendingRisk?: PendingRisk | null;           // 답을 기다리는 돌발 사고
+  pendingEventChoice?: PendingEventChoice | null; // 답을 기다리는 빅 이벤트 선택지
+  lastGrade?: MonthGrade | null;              // 지난달 평가 등급
+  badGradeMonths?: number;                    // 연속 C 달 수 (3이면 삼춘 조언)
+  menuSlotMax?: number;                       // 메뉴판 칸 상한 (기본 6)
   lastMonthIncome: number; // 지난달 매출 (★ 조건 "월 매출"용 — lastMonthCard는 닫으면 null이 된다)
   lastMonthCard: MonthCard | null;
   tick: number; // 고정 스텝 카운터
@@ -959,6 +993,8 @@ export type Action =
   | { type: 'setSlot'; slot: number; menuId: string | null }
   | { type: 'setSpeed'; speed: Speed }
   | { type: 'dismissAlert' }
+  | { type: 'resolveRisk'; choice: number }                    // stakes: 돌발 사고 선택지 (risk.ts)
+  | { type: 'resolveEventChoice'; choice: number }             // stakes: 빅 이벤트 선택지 (events.ts)
   | { type: 'skipTutorial' }
   | { type: 'skipTutorialChapter' }               // 현재 장 통째로 건너뛰기 (해금 보상만, sim/tutorial.ts)
   | { type: 'tutorialNote'; key: string }

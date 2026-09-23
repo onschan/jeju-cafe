@@ -2,9 +2,10 @@ import type { GameState } from './types.ts';
 import { advanceClock, END_HOUR, START_HOUR } from './clock.ts';
 import { monthlyHarvest } from './orchard.ts';
 import { checkGoals } from './goals.ts';
-import { monthlyBigEvents, dailyBigEvents, hourlyBigEvents } from './events.ts';
+import { monthlyBigEvents, dailyBigEvents, hourlyBigEvents, rollTrend, resolvePendingEventChoice } from './events.ts';
+import { monthlyRisk, dailyRisk } from './risk.ts'; // stakes: 돌발 사고
 import { hourlySpawn, hourlyRegulars, updateGuests } from './guests.ts';
-import { upkeep, closeMonth, annualRaise, incomeTax, TAX_MONTH } from './economy.ts';
+import { upkeep, closeMonth, annualRaise, incomeTax, TAX_MONTH, rent, loanDue } from './economy.ts';
 import { checkLoan, monthlyFailure } from './failure.ts';
 import { resetWaiting } from './guests.ts';
 import { nightlyReputation, monthlyReputation } from './reputation.ts';
@@ -48,7 +49,9 @@ function onNewDay(state: GameState): void {
   resetWaiting(state);
   pruneEffects(state);
   dailyCleanliness(state); // 트랙 A: 청결 일일 변화 (spawnMult 효과 갱신)
+  resolvePendingEventChoice(state); // stakes: 어제 안 고른 빅 이벤트 선택지는 0번으로 확정
   dailyBigEvents(state); // 예약일이 된 빅 이벤트 발동 + 끝난 것 정리
+  dailyRisk(state); // stakes: 어제 안 고른 돌발 사고를 확정하고, 오늘이 예정일이면 새 사고
   nightlyRecovery(state);
   dailyWorkExp(state);
   dailyTraining(state);
@@ -73,6 +76,8 @@ function onNewMonth(state: GameState, prevMonth: number, prevYear: number): void
   payroll(state);
   expirePromotions(state);
   upkeep(state);
+  rent(state); // stakes: 소유 필지 월 임대료 (마을 관리비)
+  loanDue(state); // stakes: 삼춘 대출 상환 기한 (넘기면 평판 −5)
   if (newYear) incomeTax(state);
   monthlyRoutes(state); // 트랙 H: 경로 월 리셋·셔틀 계약비
   monthlyGifts(state);
@@ -87,6 +92,8 @@ function onNewMonth(state: GameState, prevMonth: number, prevYear: number): void
   monthlyShop(state);
   monthlyRank(state);
   monthlyBigEvents(state); // 판정은 1일, 발동은 달 안에 퍼진다 (game-feel)
+  rollTrend(state); // stakes: 이번 달 유행 분류 (×1.5 손님 선호)
+  monthlyRisk(state); // stakes: 이달 돌발 사고 예약 (25%)
   endingMonthly(state); // z-ending: 10년차 3월 1일 엔딩 (결산 카드 뒤) · 20년차 11월 100주년
 }
 

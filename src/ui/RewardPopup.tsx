@@ -40,6 +40,7 @@ function rewardIcon(r: GoalReward): string {
     case 'staffSlot': return 'local';
     case 'item': case 'seed': return 'plant';
     case 'tickets': case 'title': case 'feeBonus': return 'look';
+    case 'menuSlot': return 'menu'; // stakes: 메뉴판 칸
   }
 }
 function isUnlock(r: GoalReward): boolean {

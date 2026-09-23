@@ -1,4 +1,4 @@
-import type { GameState, Cell, PlacedObject, Parcel, Terrain, CarryOver } from './types.ts';
+import type { GameState, Cell, PlacedObject, Parcel, Terrain, CarryOver, TrendCategory } from './types.ts';
 import { INITIAL_UNLOCKED, ROLES, FACILITY_START_IDS, objectDef } from '../data/index.ts';
 import { START_HOUR } from './clock.ts';
 import { makeParcels } from './parcels.ts';
@@ -22,10 +22,19 @@ import { initEnding, applyCarry } from './ending.ts'; // z-ending
 
 export { PARCEL_W, PARCEL_H, START_ORIGIN, GRID_W, GRID_H, VILLAGE_ROAD_Y };
 export const SAVE_VERSION = 21; // 21: 덜어내기(trim) — 콤보·명당·도전·라이벌·팝업 원정·지역 손님·투어·마을제·100주년 삭제, 입지 5요소 → 자리 점수, 명소 24 → 8(Lv3), 경로 5 → 3, 불만 9 → 4, 손님 목소리 피드(voices). v20 세이브는 migrateTrim이 환불·치환 + 알림 한 줄. 20: 재미 리셋 통합(fun) — 시작 3분 튜토리얼 7단계·손님 상호작용(regulars·requests)·코너(codex.corners)·등급(grade)·제주 배경 (optional 필드 + backfill, 19 세이브는 백업 후 새 게임). 19: z 통합 — 엔딩·마을·이월·튜토리얼 30단계 seen (마이그레이션 없음). 18: y 통합 — 되돌리기(undo)·개체 이름(name)·유입 경로(routes·손님 route/foreign)·본관(main·객체 w/h/mode/careDay) (마이그레이션 없음, 17 세이브는 백업 후 새 게임). 17: 컨텐츠 확장 통합 — 경제(삼춘 대출·세금·대기열·★ 유지 심사)·시설 44·증축·청결·명소 방문객·투어·선물·직원 8직종·입지·목표 108·도전·튜토리얼 (마이그레이션 없음). 15: v3 대격변. 14: 라이벌 카페
-/** 시작 자금 500만. 정착지원금은 삼춘 대출(failure.ts: 잔고 < 40만 → 300만, 최대 3회)로 바뀌었다 — 확장 스펙 §4.2 #8 */
-export const START_MONEY = 5_000_000;
+/** 시작 자금 350만 (stakes: 500만 → 350만). 좌석·시설 값은 그대로 두고 월 고정비(임대료·급여)를 얹어
+ *  1년차 내내 「이번 달에 뭘 살지」가 고민이 되게. 정착지원금은 삼춘 대출(failure.ts)로 바뀌었다 — 확장 스펙 §4.2 #8 */
+export const START_MONEY = 3_500_000;
 export const START_MONTH = 3;
-export const MENU_SLOT_COUNT = 4;
+/** 메뉴판 칸: 3칸에서 시작해 목표 보상(menuSlot)으로 최대 6칸까지 (stakes: 무엇을 내릴지 고민하게) */
+export const MENU_SLOT_COUNT = 3;
+export const MENU_SLOT_MAX = 6;
+/** 첫 달 유행 (rng 없이 seed로 — 새 게임 1년 3월에도, 옛 세이브를 불러와도 상단 줄에 유행이 보이게) */
+export const START_TREND: TrendCategory[] = ['coffee', 'dessert', 'meal', 'juice'];
+/** seed와 달로 고르는 유행 (rng를 안 쓴다) */
+export function trendFor(seed: number, mi: number): { monthIndex: number; category: TrendCategory } {
+  return { monthIndex: mi, category: START_TREND[(seed + mi) % START_TREND.length]! };
+}
 /** 시작 메뉴판 (§5: 아메리카노·카페라떼·감귤주스가 이미 올라가 있다) */
 export const START_MENUS = ['americano', 'latte', 'tangerine_juice'];
 /** 시작 직원 후보 수 (§5: 후보 2명 대기) */
@@ -179,6 +188,14 @@ export function createInitialState(seed: number, playerId = 'local', createdAt =
     objects: {},
     storage: {},
     menuSlots: Array(MENU_SLOT_COUNT).fill(null),
+    menuSlotMax: MENU_SLOT_MAX,
+    trend: trendFor(seed, 0), // stakes: 첫 달에도 유행이 있다 (rng를 안 쓴다 — seed로 고른다)
+    riskDay: 0,
+    riskId: null,
+    pendingRisk: null,
+    pendingEventChoice: null,
+    lastGrade: null,
+    badGradeMonths: 0,
     unlocked: {
       objects: [...new Set([...INITIAL_UNLOCKED.objects, ...FACILITY_START_IDS])],
       menus: [...INITIAL_UNLOCKED.menus],

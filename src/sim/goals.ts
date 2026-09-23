@@ -21,6 +21,7 @@ import { metCount } from './named.ts';
 import { pushNotice } from './staff.ts';
 import { addTickets } from './mileage.ts';
 import { MAX_BUILDERS } from './build.ts';
+import { MENU_SLOT_MAX } from './state.ts'; // stakes: 메뉴판 칸 상한 6
 import { fmtNum } from './format.ts';
 import { josa } from './josa.ts';
 import { setLevels } from './compat.ts';
@@ -353,6 +354,7 @@ export function goalRewardText(r: GoalReward): string {
     case 'seed': return `${name.item(r.kind)} ${r.n}개`;
     case 'title': return `칭호 「${r.name}」`;
     case 'feeBonus': return `요금 +${r.pct}%`;
+    case 'menuSlot': return `메뉴판 칸 +${r.n}`;
   }
 }
 
@@ -415,6 +417,13 @@ export function grantReward(state: GameState, r: GoalReward): void {
     }
     case 'title': if (!state.titles.includes(r.id)) { state.titles.push(r.id); pushNotice(state, `칭호 「${r.name}」`); } break;
     case 'feeBonus': state.feeBonusPct += r.pct; break;
+    case 'menuSlot': { // stakes: 메뉴판 칸 +n (최대 menuSlotMax)
+      const max = state.menuSlotMax ?? MENU_SLOT_MAX;
+      const add = Math.max(0, Math.min(r.n, max - state.menuSlots.length));
+      for (let i = 0; i < add; i++) state.menuSlots.push(null);
+      if (add > 0) pushNotice(state, `메뉴판 칸이 ${state.menuSlots.length}개가 됐어요`);
+      break;
+    }
   }
 }
 
