@@ -43,7 +43,7 @@ import { compactNumber } from './HUD';
 import { Icon } from './Icon';
 import { TitleScreen } from './TitleScreen';
 import { EndingScreen } from './EndingScreen'; // z-ending
-import { IntroScreen } from './IntroScreen'; // intro: 새 게임 프롤로그 6컷
+import { IntroScreen } from './IntroScreen'; // intro: 새 게임 프롤로그 11컷
 import { SaveSlots } from './SaveSlots';
 import { showScene, SceneHost, type SceneChar } from './SceneWindow';
 import { staffParts } from '../render/character';

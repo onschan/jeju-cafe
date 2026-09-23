@@ -1,11 +1,13 @@
-"""프롤로그 컷신 일러스트 6장 (서울 야근 → 사직서 → 비행기 → 제주 폐창고 → 카페 개업).
+"""프롤로그 컷신 일러스트 11장 (서울 야근 → 반복 → 메시지 → 새벽 약봉지 → 지하철 → 제주 회상 → 결심 → 사직서 → 비행기 → 폐창고 → 개업).
+
+사직서는 갑자기 나오지 않는다. 지치는 과정(②③④)과 그 바다를 다시 떠올리는 이유(⑤⑥)와 결심(⑦)을 쌓은 뒤에 ⑧이 온다.
 
 160×90 바탕에 그려 ×2로 저장한다(320×180, 화면엔 640×360 = 4배). 픽셀 격자를 한 가지로 맞추려고
 배경도 인물도 같은 해상도에서 그린다 — 인물은 sprites_chars의 치비(32×48)를 그대로 써서 게임 안 얼굴(점 눈·홍조)과 같다.
-글자(사직서·제주 카페)는 8×9 한글 ART 글리프.
+글자(사직서·카페?·제주?·제주 카페)는 8~9×9 한글 ART 글리프.
 
-출력: public/assets/intro/cut1.png … cut6.png, cut6_on.png(간판 불 켜진 프레임), tools/assets/out/intro_contact.png(검토용).
-시트에는 넣지 않는다(320×180 7장이면 시트가 크게 늘어난다). IntroScreen.tsx가 <img>로 읽는다."""
+출력: public/assets/intro/cut1.png … cut11.png, cut11_on.png(간판 불 켜진 프레임), tools/assets/out/intro_contact.png(검토용).
+시트에는 넣지 않는다(320×180 12장이면 시트가 크게 늘어난다). IntroScreen.tsx가 <img>로 읽는다."""
 from __future__ import annotations
 import math, os
 from px import Canvas, PAL, OUT, hexc, Color, CLEAR
@@ -36,6 +38,8 @@ TRUCK = hexc('4a90d9'); TRUCK_DK = hexc('2f6fb5'); TIRE = hexc('2a2a2e')
 YEL_DK, YEL_MD, YEL_LT = PAL['yellow']; RED = PAL['red'][1]; PINK = PAL['pink'][1]
 DAWN_TOP = hexc('8ec1f0'); DAWN_MID = hexc('ffd3a6'); DAWN_LT = hexc('fff0b3')
 SILHOUETTE = hexc('2f3d63')
+CHAT_BG = hexc('e9edf4'); CHAT_BAR = hexc('3f5a8a'); CHAT_BAR_LT = hexc('9fb6d8')
+AWNING = PAL['red'][1]
 
 
 # ---------------------------------------------------------------- 도우미
@@ -128,6 +132,11 @@ G_KA = [
 '......#.', '####..#.', '...#..#.', '####..##', '...#..#.', '...#..#.', '......#.', '......#.', '......#.']
 G_PE = [
 '......#.#', '......#.#', '####..#.#', '.#.#..#.#', '.#.#.##.#', '.#.#..#.#', '####..#.#', '......#.#', '......#.#']
+G_Q = [    # 물음표 (메모지 「카페?」 「제주?」)
+'.####...', '#....#..', '.....#..', '....##..', '...##...', '...#....', '........', '...#....', '...#....']
+# 숫자 3×5 (메신저 알림 숫자)
+D_1 = ['.#.', '##.', '.#.', '.#.', '###']
+D_2 = ['###', '..#', '###', '#..', '###']
 
 # 인물 (게임 초상·파츠와 같은 조합)
 def hero(direction: str, frame: int = 1, accs: tuple[str, ...] = ()) -> Canvas:
@@ -157,6 +166,49 @@ def tie(c: Canvas) -> Canvas:
     """정면 흰 셔츠에 빨간 넥타이."""
     out = c.copy()
     out.vline(15, 30, 33, RED); out.put(16, 30, RED); out.put(15, 34, PAL['red'][0])
+    return out
+
+
+def bow(c: Canvas) -> Canvas:
+    """고개를 숙인 모습: 머리(y 16~31)를 2px 내려 목이 잠기게."""
+    out = c.copy()
+    for y in range(HEAD_Y + 17, HEAD_Y + 1, -1):
+        for x in range(c.w):
+            p = c.px[y - 2][x]
+            if p[3] == 255:
+                out.px[y][x] = p
+    for y in (HEAD_Y, HEAD_Y + 1):
+        for x in range(c.w):
+            out.px[y][x] = CLEAR
+    return out
+
+
+def hand_on_chest(c: Canvas) -> Canvas:
+    """정면 치비 가슴에 손을 얹는다 (답답함)."""
+    out = c.copy()
+    sk_d, sk_m, sk_l = PAL['skin']
+    out.rect(13, 31, 6, 5, sk_m); out.hline(13, 18, 31, sk_l); out.hline(13, 18, 35, sk_d)
+    out.vline(15, 32, 34, sk_d); out.vline(17, 32, 34, sk_d)
+    for x in range(13, 19):
+        out.put(x, 30, OUT); out.put(x, 36, OUT)
+    for y in range(30, 37):
+        out.put(12, y, OUT); out.put(19, y, OUT)
+    return out
+
+
+def warmer(c: Canvas, sat: float = 0.22, tint: int = 7) -> Canvas:
+    """회상 컷: 채도만 조금 올리고 아주 살짝 따뜻하게 (세피아 아님 — 색은 그대로 두고 진하게)."""
+    out = c.copy()
+    for y in range(c.h):
+        for x in range(c.w):
+            r, g, b, a = c.px[y][x]
+            if not a:
+                continue
+            lum = (r * 299 + g * 587 + b * 114) // 1000
+            nr = min(255, max(0, int(lum + (r - lum) * (1 + sat)) + tint))
+            ng = min(255, max(0, int(lum + (g - lum) * (1 + sat)) + tint // 2))
+            nb = min(255, max(0, int(lum + (b - lum) * (1 + sat)) - tint // 2))
+            out.px[y][x] = (nr, ng, nb, a)
     return out
 
 
@@ -198,8 +250,8 @@ def chibi_at(c: Canvas, ch: Canvas, foot_x: int, foot_y: int) -> None:
     c.blit(ch, foot_x - 16, foot_y - 42)
 
 
-# ---------------------------------------------------------------- 1. 밤 11시 사무실
-def cut1() -> Canvas:
+# ---------------------------------------------------------------- 1. 서울, 밤 11시 사무실
+def cut_office() -> Canvas:
     c = Canvas(W, H)
     c.rect(0, 0, W, H, WALL_NIGHT)
     # 형광등 + 아래로 번지는 빛
@@ -259,8 +311,143 @@ def cut1() -> Canvas:
     return c
 
 
-# ---------------------------------------------------------------- 2. 만원 지하철
-def cut2() -> Canvas:
+# ---------------------------------------------------------------- 2. 반복되는 하루 (아침·낮·밤 3분할)
+PANEL_WALL = (hexc('5f5a55'), hexc('7b766d'), WALL_NIGHT)
+PANEL_SKY = ([DAWN_TOP, DAWN_MID, DAWN_LT], [SKY_MD, SKY_LT, CLOUD_DK], [NIGHT, NIGHT_LT])
+
+
+def _repeat_panel(c: Canvas, x0: int, w: int, phase: int) -> None:
+    """같은 책상·같은 자세, 창 색과 달력 X만 다르다. phase 0=아침 1=낮 2=밤"""
+    c.rect(x0, 0, w, H, PANEL_WALL[phase])
+    # 창 (자막 라벨에 가리지 않게 한 칸 아래)
+    outline_rect(c, x0 + 16, 14, w - 20, 24, SKY_LT, STEEL_DK)
+    vgrad(c, x0 + 17, 15, w - 22, 22, PANEL_SKY[phase])
+    if phase == 0:
+        c.circle(x0 + 24, 32, 4, SUN); c.circle(x0 + 24, 32, 3, SUN_LT)
+    elif phase == 1:
+        c.circle(x0 + 42, 20, 3, SUN_LT)
+        c.ellipse(x0 + 26, 23, 6, 3, CLOUD_DK); c.ellipse(x0 + 25, 22, 5, 2, CLOUD)
+    else:
+        c.circle(x0 + 42, 20, 3, PAPER_LT); c.circle(x0 + 44, 19, 2, NIGHT)
+        for (dx, dy) in ((22, 29), (30, 21), (36, 32), (26, 35)):
+            c.put(x0 + dx, dy, PAPER_LT)
+    c.vline(x0 + 16 + (w - 20) // 2, 14, 37, STEEL_DK); c.hline(x0 + 17, x0 + w - 5, 26, STEEL_DK)
+    # 달력: 지워진 날이 한 줄씩 늘어난다
+    outline_rect(c, x0 + 2, 16, 13, 16, PAPER, INK)
+    c.rect(x0 + 3, 17, 11, 3, RED)
+    for i in range(4 + phase * 4):
+        gx, gy = x0 + 3 + (i % 4) * 3, 22 + (i // 4) * 3
+        c.rect(gx, gy, 2, 2, INK)
+    # 주인공 뒷모습 (세 칸 모두 같은 자세)
+    chibi_at(c, no_shadow(hero('up')), x0 + 18, 78)
+    # 책상
+    c.rect(x0 + 1, 70, w - 2, 4, DESK_LT); c.rect(x0 + 1, 74, w - 2, 6, DESK_MD)
+    c.hline(x0 + 1, x0 + w - 2, 69, INK); c.hline(x0 + 1, x0 + w - 2, 80, INK)
+    c.rect(x0 + 1, 80, w - 2, 10, DESK_DK); c.rect(x0 + 3, 82, w - 6, 4, DESK_MD)
+    # 모니터 (늘 켜져 있다)
+    outline_rect(c, x0 + w - 22, 52, 18, 16, GREY_DK, INK)
+    c.rect(x0 + w - 20, 54, 14, 12, SCREEN_DK); c.hline(x0 + w - 19, x0 + w - 10, 57, SCREEN)
+    c.hline(x0 + w - 19, x0 + w - 13, 60, SCREEN); c.hline(x0 + w - 19, x0 + w - 8, 63, SCREEN)
+    c.rect(x0 + w - 15, 68, 4, 2, GREY_LT)
+    # 식은 커피
+    outline_rect(c, x0 + 4, 64, 6, 6, PAPER, INK); c.rect(x0 + 5, 65, 4, 2, DESK_DK)
+
+
+def cut_repeat() -> Canvas:
+    c = Canvas(W, H)
+    for i, x0 in enumerate((0, 54, 108)):
+        _repeat_panel(c, x0, 52, i)
+    for gx in (52, 53, 106, 107):
+        c.vline(gx, 0, H - 1, INK)
+    return c
+
+
+# ---------------------------------------------------------------- 3. 쌓이는 메시지
+def cut_messages() -> Canvas:
+    c = Canvas(W, H)
+    c.rect(0, 0, W, H, WALL_NIGHT)
+    c.dither(0, 0, W, 12, NIGHT, WALL_NIGHT)
+    # 모니터 가득한 메신저 창
+    outline_rect(c, 26, 4, 108, 60, GREY_DK, INK)
+    c.rect(28, 6, 104, 56, CHAT_BG)
+    c.rect(28, 6, 104, 7, CHAT_BAR); c.rect(30, 8, 26, 3, CHAT_BAR_LT)
+    for bx in (122, 127):
+        c.rect(bx, 8, 3, 3, CHAT_BAR_LT)
+    # 말풍선: 상대는 길고 여러 개, 내 대답은 짧다
+    rng = Rng(303)
+    y = 16
+    for i in range(5):
+        if i % 3 == 2:
+            outline_rect(c, 100, y, 28, 8, SKY_LT, INK); c.hline(103, 124, y + 3, SKY_MD); c.hline(103, 118, y + 5, SKY_MD)
+        else:
+            bw = rng.between(44, 64)
+            outline_rect(c, 32, y, bw, 8, PAPER_LT, INK)
+            c.hline(35, 30 + bw, y + 3, GREY_MD); c.hline(35, 25 + bw, y + 5, GREY_LT)
+        y += 9
+    # 읽지 않은 수
+    c.circle(130, 6, 8, INK); c.circle(130, 6, 7, RED)
+    text(c, [D_1, D_2], 126, 4, PAPER_LT)
+    # 옆으로 쌓이는 알림 카드
+    for i in range(3):
+        ny = 12 + i * 15
+        outline_rect(c, 132, ny, 26, 13, PAPER, INK)
+        c.hline(134, 150, ny + 3, GREY_MD); c.hline(134, 145, ny + 6, GREY_LT); c.hline(134, 153, ny + 9, GREY_LT)
+        c.circle(156, ny + 1, 3, INK); c.circle(156, ny + 1, 2, RED)
+    # 책상
+    c.rect(0, 66, W, 4, DESK_LT); c.rect(0, 70, W, 6, DESK_MD)
+    c.hline(0, W - 1, 65, INK); c.hline(0, W - 1, 76, INK); c.rect(0, 76, W, 14, DESK_DK)
+    # 고개 숙인 주인공: 화면 바로 앞, 어깨까지만 보이는 뒷모습
+    chibi_at(c, bow(no_shadow(hero('up'))), 78, 96)
+    for (dx, dy) in ((58, 70), (62, 70), (66, 70)):
+        c.put(dx, dy, PAPER_LT)
+    return c
+
+
+# ---------------------------------------------------------------- 4. 새벽, 약봉지
+def cut_clinic() -> Canvas:
+    c = Canvas(W, H)
+    c.rect(0, 0, W, H, WALL_NIGHT_LT)
+    c.dither(0, 0, W, 14, WALL_NIGHT, WALL_NIGHT_LT)
+    # 창밖 새벽 (밤이 걷히고 지평선만 밝다)
+    outline_rect(c, 96, 8, 58, 44, SKY_LT, STEEL_DK)
+    vgrad(c, 97, 9, 56, 42, [NIGHT, NIGHT_LT, DAWN_TOP, DAWN_MID, DAWN_LT])
+    rng = Rng(414)
+    for (sx, sy) in ((104, 13), (118, 17), (140, 12), (148, 20)):
+        c.put(sx, sy, PAPER_LT)
+    bx = 97
+    while bx < 152:
+        bw, bh = rng.between(5, 10), rng.between(6, 16)
+        c.rect(bx, 51 - bh, min(bw, 153 - bx), bh, NIGHT)
+        for yy in range(53 - bh, 50, 5):
+            if rng.next() < 0.45:
+                c.put(bx + 2, yy, YEL_MD)
+        bx += bw + 1
+    c.vline(124, 8, 51, STEEL_DK); c.hline(96, 153, 30, STEEL_DK)
+    # 모니터 (밤새 켜둔 채)
+    outline_rect(c, 4, 38, 22, 20, GREY_DK, INK); c.rect(6, 40, 18, 16, SCREEN_DK)
+    c.hline(7, 18, 43, SCREEN); c.hline(7, 14, 47, SCREEN); c.hline(7, 20, 51, SCREEN)
+    c.rect(12, 58, 6, 3, GREY_LT)
+    # 의자 + 주인공 (가슴에 손, 고개 살짝)
+    outline_rect(c, 26, 32, 28, 32, GREY_DK, INK); c.rect(28, 34, 24, 28, GREY_MD)
+    me = hand_on_chest(tired(tie(hero('down')), 'down'))
+    chibi_at(c, no_shadow(me), 40, 66)
+    for (px_, py_) in ((30, 52), (30, 54), (52, 52), (52, 54)):
+        c.put(px_, py_, RED)
+    # 약봉지 (알약이 비친다) + 물컵
+    outline_rect(c, 66, 46, 28, 16, PAPER_LT, INK)
+    c.hline(67, 92, 48, PAPER); c.hline(67, 92, 50, GREY_LT)
+    for px_ in range(71, 92, 6):
+        c.circle(px_, 56, 2, PAPER_DK); c.put(px_, 56, RED if px_ % 12 else SKY_MD)
+    outline_rect(c, 98, 52, 9, 10, SKY_LT, INK); c.rect(99, 56, 7, 5, SEA_LT); c.hline(99, 105, 56, FOAM)
+    # 책상
+    c.rect(0, 62, W, 4, DESK_LT); c.rect(0, 66, W, 6, DESK_MD)
+    c.hline(0, W - 1, 61, INK); c.hline(0, W - 1, 72, INK); c.rect(0, 72, W, 18, DESK_DK)
+    c.rect(4, 74, 100, 6, DESK_MD)
+    return c
+
+
+# ---------------------------------------------------------------- 5. 만원 지하철
+def cut_subway() -> Canvas:
     c = Canvas(W, H)
     c.rect(0, 0, W, H, SUBWAY_WALL)
     c.rect(0, 0, W, 12, SUBWAY_WALL_DK); c.hline(0, W - 1, 12, INK)
@@ -308,8 +495,104 @@ def cut2() -> Canvas:
     return c
 
 
-# ---------------------------------------------------------------- 3. 사직서
-def cut3() -> Canvas:
+# ---------------------------------------------------------------- 6. 작년, 제주 여행 (회상)
+def small_cafe(c: Canvas, x: int, base: int) -> None:
+    """돌담 옆 작은 카페: 흰 벽·주황 지붕·줄무늬 차양 (간판 글자는 없다 — 남의 가게다)."""
+    w, h = 46, 24
+    c.rect(x, base - h, w, h, NEW_WALL)
+    c.vline(x, base - h, base - 1, INK); c.vline(x + w - 1, base - h, base - 1, INK); c.hline(x, x + w - 1, base - 1, INK)
+    c.rect(x + 1, base - 5, w - 2, 4, NEW_WALL_DK)
+    rh = 10
+    for i in range(rh):
+        span = int((w + 6) * (i + 1) / rh / 2)
+        c.hline(x + w // 2 - span, x + w // 2 + span, base - h - rh + i, OR_LT if i % 3 == 0 else OR_MD)
+        c.put(x + w // 2 - span, base - h - rh + i, INK); c.put(x + w // 2 + span, base - h - rh + i, INK)
+    c.hline(x - 3, x + w + 2, base - h, OR_DK); c.hline(x - 3, x + w + 2, base - h - 1, INK)
+    # 문
+    outline_rect(c, x + 5, base - 17, 13, 17, TRIM, INK); c.rect(x + 7, base - 15, 9, 7, SKY_LT); c.put(x + 15, base - 6, YEL_MD)
+    # 창 + 차양
+    outline_rect(c, x + 24, base - 17, 16, 11, SKY_LT, INK); c.vline(x + 32, base - 17, base - 7, INK)
+    c.rect(x + 25, base - 16, 6, 9, PINK); c.rect(x + 34, base - 16, 5, 9, PINK)
+    for i in range(18):
+        c.vline(x + 23 + i, base - 21, base - 19, AWNING if i % 2 else PAPER_LT)
+    c.hline(x + 23, x + 40, base - 22, INK); c.hline(x + 23, x + 40, base - 18, INK)
+
+
+def cut_memory() -> Canvas:
+    c = Canvas(W, H)
+    vgrad(c, 0, 0, W, 26, [SKY_MD, SKY_LT, CLOUD_DK])
+    for (ex, ey, r) in ((24, 8, 8), (36, 6, 5), (112, 9, 7), (126, 7, 5)):
+        c.ellipse(ex, ey, r, r * 0.5, CLOUD_DK); c.ellipse(ex - 1, ey - 1, r - 1, r * 0.45, CLOUD)
+    # 바다 → 파도 → 모래 → 잔디
+    c.rect(0, 26, W, 13, SEA_DEEP); c.dither(0, 30, W, 5, SEA_DEEP, SEA_MID); c.rect(0, 35, W, 4, SEA_MID)
+    for x in range(0, W, 11):
+        c.hline(x + 2, x + 6, 32 + (x // 11) % 3 * 2, SEA_LT)
+    c.rect(0, 39, W, 4, SAND); c.hline(0, W - 1, 39, FOAM)
+    c.rect(0, 43, W, 47, GRASS_MD)
+    rng = Rng(606)
+    for _ in range(110):
+        c.put(rng.between(0, W - 1), rng.between(46, H - 1), GRASS_DK if rng.next() < 0.6 else GRASS_LT)
+    # 돌담길 (감귤나무 앞을 지난다)
+    tangerine_tree(c, 14, 56, 10); tangerine_tree(c, 148, 58, 7)
+    stonewall(c, 0, 160, 54)
+    small_cafe(c, 98, 78)
+    # 야외 테이블: 커피 한 잔
+    chibi_at(c, no_shadow(hero('right')), 48, 88)
+    chibi_at(c, halmang('left'), 80, 88)
+    outline_rect(c, 34, 74, 30, 5, PAL['wood'][2], INK); c.rect(36, 79, 2, 9, PAL['wood'][0]); c.rect(60, 79, 2, 9, PAL['wood'][0])
+    outline_rect(c, 44, 68, 8, 7, PAPER_LT, INK); c.rect(45, 69, 6, 2, DESK_DK); c.put(52, 70, INK); c.put(52, 71, INK); c.put(53, 70, INK)
+    for (sx, sy) in ((45, 65), (48, 63), (46, 61)):
+        c.put(sx, sy, PAPER_LT)
+    # 인사 (할망 손 + 반짝)
+    c.rect(72, 60, 3, 2, PAL['skin'][1]); c.put(71, 60, OUT); c.put(71, 61, OUT); c.put(75, 60, OUT); c.put(75, 61, OUT); c.put(72, 59, OUT); c.put(73, 59, OUT); c.put(74, 59, OUT)
+    sparkle(c, 68, 54, PAPER_LT); sparkle(c, 90, 58, PAPER_LT)
+    return warmer(c)
+
+
+# ---------------------------------------------------------------- 7. 결심한 밤
+def cut_decide() -> Canvas:
+    c = Canvas(W, H)
+    c.rect(0, 0, W, H, NIGHT_LT)
+    c.dither(0, 0, W, 16, NIGHT, NIGHT_LT)
+    # 창밖 도시 불빛
+    outline_rect(c, 106, 6, 50, 44, NIGHT, STEEL_DK)
+    rng = Rng(707)
+    bx = 108
+    while bx < 154:
+        bw, bh = rng.between(4, 9), rng.between(12, 36)
+        c.rect(bx, 49 - bh, min(bw, 155 - bx), bh, NIGHT_LT)
+        for yy in range(51 - bh, 48, 3):
+            for xx in range(bx + 1, min(bx + bw - 1, 154), 2):
+                if rng.next() < 0.5:
+                    c.put(xx, yy, YEL_MD if rng.next() < 0.7 else SCREEN)
+        bx += bw + 1
+    c.vline(130, 6, 49, STEEL_DK); c.hline(106, 155, 28, STEEL_DK)
+    # 스탠드 불빛이 책상 위에 번진다
+    c.dither(30, 20, 76, 42, WALL_NIGHT_LT, NIGHT_LT)
+    # 노트북 (열린 채 켜져 있다)
+    outline_rect(c, 6, 30, 38, 28, GREY_DK, INK); c.rect(8, 32, 34, 24, SCREEN)
+    for i, yy in enumerate(range(36, 54, 4)):
+        c.hline(11, 11 + rng.between(10, 26), yy, SCREEN_DK)
+    c.rect(4, 58, 42, 3, GREY_LT); c.hline(3, 46, 61, INK)
+    # 메모지: 「카페?」 「제주?」 + 컵 낙서 (책상에 놓여 있다)
+    outline_rect(c, 54, 26, 46, 38, PAPER_LT, INK)
+    c.hline(55, 98, 27, PAPER); c.hline(55, 98, 62, PAPER_DK)
+    text(c, [G_KA, G_PE, G_Q], 57, 30, INK)
+    text(c, [G_JE, G_JU, G_Q], 57, 42, INK)
+    outline_rect(c, 84, 53, 9, 7, PAPER_LT, INK); c.put(93, 55, INK); c.put(93, 56, INK); c.put(94, 55, INK)
+    c.put(86, 51, GREY_LT); c.put(89, 50, GREY_LT)
+    # 머그컵 (메모 옆)
+    outline_rect(c, 102, 55, 9, 9, PAPER, INK); c.rect(103, 56, 7, 2, DESK_DK); c.put(111, 58, INK); c.put(111, 59, INK); c.put(112, 58, INK)
+    # 연필 (책상 위)
+    c.hline(16, 38, 66, YEL_MD); c.hline(16, 38, 67, YEL_DK); c.put(39, 66, PAL['skin'][0]); c.put(39, 67, PAL['skin'][0]); c.put(40, 66, INK); c.put(15, 66, GREY_LT)
+    # 책상
+    c.rect(0, 64, W, 4, DESK_LT); c.rect(0, 68, W, 8, DESK_MD)
+    c.hline(0, W - 1, 63, INK); c.hline(0, W - 1, 76, INK); c.rect(0, 76, W, 14, DESK_DK)
+    return c
+
+
+# ---------------------------------------------------------------- 8. 사직서
+def cut_resign() -> Canvas:
     c = Canvas(W, H)
     c.rect(0, 0, W, H, CREAM)
     # 창 + 아침 햇살
@@ -351,8 +634,8 @@ def cut3() -> Canvas:
     return c
 
 
-# ---------------------------------------------------------------- 4. 비행기 창
-def cut4() -> Canvas:
+# ---------------------------------------------------------------- 9. 비행기 창
+def cut_plane() -> Canvas:
     c = Canvas(W, H)
     c.rect(0, 0, W, H, CABIN)
     c.dither(0, 0, W, 6, CABIN_DK, CABIN); c.hline(0, W - 1, 6, CABIN_DK)
@@ -427,7 +710,7 @@ def cut4() -> Canvas:
     return c
 
 
-# ---------------------------------------------------------------- 5·6 공용: 돌담·감귤나무·오름 배경
+# ---------------------------------------------------------------- 10·11 공용: 돌담·감귤나무·오름 배경
 def outdoors(c: Canvas, dawn: bool) -> None:
     if dawn:
         vgrad(c, 0, 0, W, 46, [DAWN_TOP, SKY_LT, DAWN_MID, DAWN_LT])
@@ -563,7 +846,7 @@ def truck(c: Canvas, x: int, base: int) -> None:
         c.put(bx, base - 14, OR_MD)
 
 
-def cut5() -> Canvas:
+def cut_key() -> Canvas:
     c = Canvas(W, H)
     outdoors(c, dawn=False)
     warehouse(c, 60, 78, renovated=False)
@@ -585,7 +868,7 @@ def cut5() -> Canvas:
     return c
 
 
-def cut6(sign_on: bool) -> Canvas:
+def cut_sign(sign_on: bool) -> Canvas:
     c = Canvas(W, H)
     outdoors(c, dawn=True)
     warehouse(c, 60, 80, renovated=True, sign_on=sign_on)
@@ -615,7 +898,11 @@ def cut6(sign_on: bool) -> Canvas:
 
 # ---------------------------------------------------------------- 출력
 def cuts() -> dict[str, Canvas]:
-    return {'cut1': cut1(), 'cut2': cut2(), 'cut3': cut3(), 'cut4': cut4(), 'cut5': cut5(), 'cut6': cut6(False), 'cut6_on': cut6(True)}
+    return {
+        'cut1': cut_office(), 'cut2': cut_repeat(), 'cut3': cut_messages(), 'cut4': cut_clinic(),
+        'cut5': cut_subway(), 'cut6': cut_memory(), 'cut7': cut_decide(), 'cut8': cut_resign(),
+        'cut9': cut_plane(), 'cut10': cut_key(), 'cut11': cut_sign(False), 'cut11_on': cut_sign(True),
+    }
 
 
 def build(out_dir: str, review_dir: str) -> int:
@@ -623,7 +910,7 @@ def build(out_dir: str, review_dir: str) -> int:
     cs = cuts()
     for name, c in cs.items():
         c.save(os.path.join(out_dir, f'{name}.png'), scale=2)
-    # 검토용: 6컷(+불 켜진 6컷) 2열, 2배
+    # 검토용: 11컷(+불 켜진 마지막 컷) 2열, 2배
     cols = 2
     names = list(cs)
     rows = (len(names) + cols - 1) // cols
