@@ -62,10 +62,14 @@ export function GoalWindow(props: GoalWindowProps) {
           <div style={{ marginTop: 10 }}>
             <div style={{ fontWeight: 700, marginBottom: 4 }}>지난 목표</div>
             {shown.map((g) => (
-              <div key={g.id} style={{ display: 'flex', alignItems: 'baseline', gap: 6, padding: '4px 0', borderBottom: `1px solid ${PALETTE.paperDark}`, fontSize: 14 }}>
-                <span style={{ color: PALETTE.ok, flex: '0 0 auto' }}><Icon name="check" size={14} /></span>
-                <span style={{ flex: 1, textDecoration: 'line-through', color: PALETTE.inkSoft }}>{g.title}</span>
-                <span style={{ ...soft, fontSize: 13, flex: '0 0 auto' }}>{g.rewardText}</span>
+              // 375px: 제목·보상을 한 줄에 나란히 두면 좁은 제목 칸이 min-content(한 글자)까지 줄어 글자가 세로로 쏟아진다.
+              // 제목은 한 줄 말줄임(minWidth 0), 보상은 아래 작은 줄로 내린다.
+              <div key={g.id} data-testid="goal-past" style={{ padding: '5px 0', borderBottom: `1px solid ${PALETTE.paperDark}`, fontSize: 14 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ color: PALETTE.ok, flex: '0 0 auto', display: 'flex' }}><Icon name="check" size={14} /></span>
+                  <span data-testid="goal-past-title" style={{ flex: 1, minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', textDecoration: 'line-through', color: PALETTE.inkSoft }}>{g.title}</span>
+                </div>
+                <div data-testid="goal-past-reward" style={{ ...soft, fontSize: 12, paddingLeft: 20, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{g.rewardText}</div>
               </div>
             ))}
             {past.length > shown.length && <div style={{ ...soft, fontSize: 13, marginTop: 4 }}>… 그 전 {past.length - shown.length}개</div>}

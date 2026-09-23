@@ -71,7 +71,7 @@ export function useSpotlightPref(): boolean {
 export const CELL_LABEL: Record<string, string> = {
   seat: '이 자리가 좋아 보인다',
   greet: '손님이다, 탭해서 인사',
-  corner: '여기 놓으면 코너가 된다',
+  corner: '여기 놓으면 명당이 된다',
 };
 export const CELL_LABEL_DEFAULT = '여기가 좋아 보인다';
 

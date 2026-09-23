@@ -45,7 +45,7 @@ export const SCORE_ITEMS: { key: ScoreKey; label: string; per: number; cap: numb
   { key: 'rank', label: '카페 랭크', per: 10, cap: 100 },              // 랭크 1 = 10점
   { key: 'reputation', label: '평판', per: 0.5, cap: 50 },             // 평판 2 = 1점
   { key: 'goals', label: '달성 목표', per: 1, cap: 108 },              // 목표 1 = 1점
-  { key: 'corners', label: '코너 도감', per: 1, cap: 24 },             // 코너 1 = 1점 (24종)
+  { key: 'corners', label: '명당 도감', per: 1, cap: 24 },             // 명당 1 = 1점 (24종)
   { key: 'spots', label: '명소 Lv 합', per: 0.5, cap: 60 },            // Lv 2 = 1점 (24곳 × Lv5)
   { key: 'regulars', label: '단골', per: 1, cap: 56 },                 // 단골 1 = 1점
 ];
@@ -179,12 +179,12 @@ export function applyCarry(state: GameState, carry: CarryOver): void {
 /** 이월 묶음 요약 문구 (EndingScreen·TitleScreen) */
 export function carryText(c: CarryOver): string[] {
   const out: string[] = [];
-  out.push(`코너 도감 ${c.corners.length}개`);
+  out.push(`명당 도감 ${c.corners.length}개`);
   out.push(`명소 Lv 합 ${Object.values(c.spots).reduce((s, v) => s + v, 0)}`);
   out.push(`유니폼 ${c.uniforms.length}벌`);
   out.push(`돌하르방 ${c.dolhareubang}개`);
   out.push(`응모권 ${c.tickets}장`);
-  out.push(`손님 인기 ${Object.keys(c.guestPopularity).length}층 (20%)`);
+  out.push(`손님 인지도 ${Object.keys(c.guestPopularity).length}층 (20%)`);
   if (c.millennium) out.push('폭낭 그늘');
   return out;
 }

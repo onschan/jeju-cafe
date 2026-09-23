@@ -48,7 +48,7 @@ export function RouteCard({ s, route, objectId }: { s: GameState; route: RouteId
   const autoLink = facility && st.unlocked && !linked ? canAutoLinkRoute(s, route) : null;
   const doAutoLink = () => { if (!autoLink?.route) return; Confirm(`${josa(facilityName, '을/를')} 정류장 길까지 올렛길 ${autoLink.route.empty.length}칸(${won(autoLink.route.cost)})으로 이을까요?`, () => { dispatch({ type: 'autoLinkRoute', route }); }, { title: '자동 잇기' }); };
   const share = route === 'bus' || route === 'parking' || route === 'olle' ? routeShare(s, route, route === 'parking' ? 12 : s.clock.hour) : 0;
-  const status = !st.unlocked ? (LOCK_HINT[route] ?? `잠김 — ${def.unlockText}`) : building ? `${objectDef(building.type).name} 짓는 중 · ${buildDaysLeft(s, building)}일` : !facility ? `${facilityName}을 지어요` : connected ? '손님이 와요' : '길이 끊겼어요';
+  const status = !st.unlocked ? (LOCK_HINT[route] ?? `잠김 — ${def.unlockText}`) : building ? `${objectDef(building.type).name} 짓는 중 · ${buildDaysLeft(s, building)}일` : !facility ? `${josa(facilityName, '을/를')} 지어요` : connected ? '손님이 와요' : '길이 끊겼어요';
   return (
     <div data-testid="card-route" data-route={route}>
       <div style={{ fontSize: 14, lineHeight: 1.5 }}>

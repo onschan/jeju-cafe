@@ -1,7 +1,7 @@
 import { useEffect, useState, type CSSProperties } from 'react';
 import { wonText } from '../data/labels.ts';
 import { useGame, dispatch } from './store';
-import { rankScore, nextRankThreshold, nextStarConditions, judgeScores, guidebookScore, monthlyTarget, MAX_STAR, JUDGE_LABEL, ANNOUNCE_MONTHS } from '../sim/index.ts';
+import { nextStarConditions, judgeScores, guidebookScore, monthlyTarget, gradeOf, gradeName, MAX_STAR, JUDGE_LABEL, ANNOUNCE_MONTHS } from '../sim/index.ts';
 import type { AnnouncementEntry, JudgeKey } from '../sim/index.ts';
 import { GUIDEBOOKS } from '../data/index.ts';
 import { Popup } from './Popup';
@@ -31,11 +31,10 @@ function Gauge({ label, value, max = 100, on, color = PALETTE.bar }: { label: st
   );
 }
 
-/** 랭킹 탭: 카페 랭크·★ + 다음 조건, 가이드북 11종 목록 */
+/** 「평가」 탭: 카페 등급·★ + 다음 ★ 조건, 가이드북 11종 목록.
+ *  용어 정리: 랭크(1~10) 숫자·점수는 안 보여 준다 — 진척 지표는 등급(1~5)과 ★ 둘뿐. 랭크는 해금 계산에만 쓴다. */
 export function RankPanel() {
   const s = useGame();
-  const score = rankScore(s);
-  const next = nextRankThreshold(s);
   const star = nextStarConditions(s);
   const scores = judgeScores(s);
   const month = s.clock.month;
@@ -44,11 +43,9 @@ export function RankPanel() {
     <div data-testid="rank-panel">
       <div style={card}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-          <span><Icon name="unlock" /> 카페 랭크 <b style={{ fontSize: 20 }}>{s.rank}</b></span>
+          <span><Icon name="home_cafe" /> 카페 등급 <b style={{ fontSize: 18 }}>{gradeName(gradeOf(s))}</b></span>
           <span style={{ color: '#d4a13c', fontSize: 18 }} data-testid="star-text">{stars(s.star)}</span>
         </div>
-        <Gauge label={next ? `랭크 점수 ${score} / ${next}` : `랭크 점수 ${score} (최고!)`} value={score} max={next ?? Math.max(1, score)} on />
-        <div style={small}>점수 = 누적 손님 50명당 1 + 시설 1개당 2 + 온 적 있는 손님층 1종당 5</div>
         {star ? (
           <div style={{ marginTop: 6 }}>
             <div style={{ fontWeight: 700 }}>★{star.star} 조건 <span style={small}>(월초에 검사해요)</span></div>

@@ -23,6 +23,7 @@ import { activeGoals, conditionProgress, checkFeature } from './goals.ts';
 import { canHire, canPostJob, canAssign, canLevelUp, staffCapacity, salaryDue } from './staff.ts';
 import { upkeepOf } from './economy.ts';
 import { canTrain } from './training.ts';
+import { josa } from './josa.ts';
 import { canPromote } from './promotions.ts';
 import { canInvestSpot, nextSpotLevel, tagPopularity } from './spots.ts';
 import { canBuyParcel } from './parcels.ts';
@@ -174,12 +175,12 @@ export function candidateActions(s: GameState, k = 3): SolverCandidate[] {
   let hires = 0;
   for (const c of s.candidates) for (const role of roles) {
     if (hires >= k + 1 || !canHire(s, c.id, role).ok) continue;
-    add({ action: { type: 'hire', candidateId: c.id, role }, label: `${c.name} ${roleDef(role).name}로 채용`, cells: [], targets: ['nav:people', 'tab:candidates', 'hire'], prio: 70 });
+    add({ action: { type: 'hire', candidateId: c.id, role }, label: `${c.name} ${josa(roleDef(role).name, '으로/로')} 채용`, cells: [], targets: ['nav:people', 'tab:candidates', 'hire'], prio: 70 });
     hires++;
   }
   if (s.candidates.length === 0 && s.staff.length < staffCapacity(s) && canPostJob(s, 'flyer').ok) add({ action: { type: 'postJob', tier: 'flyer' }, label: '전단 공고 (후보 모으기)', cells: [], targets: ['nav:people', 'tab:candidates'], prio: 40 });
   for (const st of s.staff) {
-    if (st.role === null) for (const role of roles) if (canAssign(s, st.id, role).ok) { add({ action: { type: 'assign', staffId: st.id, role }, label: `${st.name} ${roleDef(role).name}로 배치`, cells: [], targets: ['nav:people', 'tab:staff', 'assign'], prio: 68 }); break; }
+    if (st.role === null) for (const role of roles) if (canAssign(s, st.id, role).ok) { add({ action: { type: 'assign', staffId: st.id, role }, label: `${st.name} ${josa(roleDef(role).name, '으로/로')} 배치`, cells: [], targets: ['nav:people', 'tab:staff', 'assign'], prio: 68 }); break; }
     if (canLevelUp(s, st.id).ok) add({ action: { type: 'levelUp', staffId: st.id }, label: `${st.name} 승급`, cells: [], targets: ['nav:people', 'tab:staff'], prio: 32 });
   }
   let trains = 0;

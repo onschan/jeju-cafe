@@ -9,6 +9,7 @@ import { dayIndex } from './effects.ts';
 import { canStartBuild, buildDaysOf } from './build.ts';
 import { pushNotice } from './staff.ts';
 import { pushFx } from './fx.ts';
+import { josa } from './josa.ts';
 
 export const MAX_OBJECT_LEVEL = 3;
 /** 인덱스 = Lv (0은 안 쓴다) */
@@ -69,7 +70,7 @@ export function recordUse(obj: PlacedObject): void {
 /** 다음 Lv 조건 문구 (카드용) */
 export function upgradeConditionText(obj: PlacedObject, def: ObjectDef): string {
   const next = levelOf(obj) + 1;
-  if (next === 2) return `이용 ${UPGRADE_USES[2]}회 또는 인기 ${UPGRADE_POP_ALT}`;
+  if (next === 2) return `이용 ${UPGRADE_USES[2]}회 또는 입소문 ${UPGRADE_POP_ALT}`;
   if (next === 3) return `이용 ${UPGRADE_USES[3]}회 · ★${STAR_BY_TIER[tierOf(def)]}`;
   return '최고 단계';
 }
@@ -84,7 +85,7 @@ export function canUpgrade(state: GameState, objId: string, popularity: number):
   if (next > MAX_OBJECT_LEVEL) return { ok: false, reason: '이미 최고 단계예요' };
   if (obj.build) return { ok: false, reason: '공사 중이에요' };
   const uses = usesOf(obj);
-  if (next === 2 && uses < UPGRADE_USES[2]! && popularity < UPGRADE_POP_ALT) return { ok: false, reason: `이용 ${UPGRADE_USES[2]}회 또는 인기 ${UPGRADE_POP_ALT}이 필요해요 (지금 ${uses}회 · ${popularity})` };
+  if (next === 2 && uses < UPGRADE_USES[2]! && popularity < UPGRADE_POP_ALT) return { ok: false, reason: `이용 ${UPGRADE_USES[2]}회 또는 입소문 ${josa(String(UPGRADE_POP_ALT), '이/가')} 필요해요 (지금 ${uses}회 · ${popularity})` };
   if (next === 3) {
     if (uses < UPGRADE_USES[3]!) return { ok: false, reason: `이용 ${UPGRADE_USES[3]}회가 필요해요 (지금 ${uses}회)` };
     const star = STAR_BY_TIER[tierOf(def)];

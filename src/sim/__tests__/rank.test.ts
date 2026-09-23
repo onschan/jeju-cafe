@@ -52,8 +52,10 @@ test('랭크 점수·문턱: 누적 손님/50 + 시설×2 + 해금 손님층×5,
   expect(updateRank(s)).toBe(true);
   expect(s.rank).toBe(MAX_RANK);
   expect(nextRankThreshold(s)).toBeNull();
-  expect(s.notices.at(-1)).toContain(`랭크 ${MAX_RANK}`);
-  expect(s.fx.some((f) => f.kind === 'scene' && f.title === '랭크 업')).toBe(true);
+  // 용어 정리: 랭크 숫자는 플레이어에게 안 보인다 — 알림은 「무엇이 열렸는지」로 말한다
+  expect(s.notices.at(-1)).toBe('새 시설이 열렸어요');
+  expect(s.notices.join(' ')).not.toMatch(/랭크/);
+  expect(s.fx.some((f) => f.kind === 'scene' && f.title === '새 시설이 열렸다')).toBe(true);
 });
 
 test('랭크 2에 오르면 랭크 해금 시설(실내 테이블·알전구 줄)과 손님(렌터카 가족)이 열린다', () => {

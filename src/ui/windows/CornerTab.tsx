@@ -1,5 +1,5 @@
-/** 짓기 창 「코너」 탭 (fun-corner, 스펙 §3): 코너 카드(이름·효과 한 줄·조각 ✓/✗) + 「다음에 놓을 것」 버튼 → 그 시설 고스트(onPickBuild).
- *  완성된 코너는 체크, 미완성은 "벤치 하나만 더"처럼 모자란 것 한 줄. 조각이 아직 안 열렸으면 자물쇠 + 여는 조건. */
+/** 짓기 창 「명당」 탭 (fun-corner, 스펙 §3): 명당 카드(이름·효과 한 줄·조각 ✓/✗) + 「다음에 놓을 것」 버튼 → 그 시설 고스트(onPickBuild).
+ *  완성된 명당은 체크, 미완성은 "벤치 하나만 더"처럼 모자란 것 한 줄. 조각이 아직 안 열렸으면 자물쇠 + 여는 조건. */
 import { useEffect } from 'react';
 import type { GameState } from '../../sim/index.ts';
 import { canStartBuild, placeCost } from '../../sim/index.ts';
@@ -9,16 +9,17 @@ import { objectDef } from '../../data/index.ts';
 import { wonText } from '../../data/labels.ts';
 import { Icon } from '../Icon';
 import { PALETTE } from '../frame';
+import { josa } from '../../sim/josa.ts';
 import { rowCard, rowBtn, rowBtnOff, soft } from './shared.tsx';
 import { lockedText } from './BuildWindow.tsx';
 
 const TARGET_TEXT: Record<string, string> = { all: '모든 손님', female: '여성 손님', male: '남성 손님', youth: '젊은 손님', adult: '어른 손님', senior: '삼춘', group: '단체 손님' };
 
-/** 효과 한 줄: "요금 +5% · 인기 +5 · 여성 손님이 더 온다" */
+/** 효과 한 줄: "요금 +5% · 입소문 +5 · 여성 손님이 더 온다" */
 export function cornerEffectText(p: CornerProgress): string {
   const e = p.def.effect;
-  const who = e.target === 'all' ? '손님이 더 온다' : `${TARGET_TEXT[e.target]}이 더 온다`;
-  return `요금 +${e.feePct}% · 인기 +${e.popularity} · ${who}`;
+  const who = e.target === 'all' ? '손님이 더 온다' : `${josa(TARGET_TEXT[e.target] ?? '손님', '이/가')} 더 온다`;
+  return `요금 +${e.feePct}% · 입소문 +${e.popularity} · ${who}`;
 }
 /** 미완성 한 줄: "벤치 하나만 더" / "돌담 2개, 올렛길 하나 더" */
 export function cornerMissingText(p: CornerProgress): string {
@@ -37,7 +38,7 @@ export function CornerTab({ s, onPickBuild }: { s: GameState; onPickBuild?: (id:
   const sorted = [...list].sort((a, b) => Number(a.done) - Number(b.done) || a.missing.length - b.missing.length);
   return (
     <div data-testid="corner-tab">
-      <div style={{ ...soft, marginBottom: 6 }}><Icon name="sparkle" size={14} /> 코너 {doneN}/{list.length} · 서로 다른 시설을 2칸 안에 모으면 이름이 붙어요</div>
+      <div style={{ ...soft, marginBottom: 6 }}><Icon name="sparkle" size={14} /> 명당 {doneN}/{list.length} · 서로 다른 시설을 2칸 안에 모으면 이름이 붙어요</div>
       {sorted.map((p) => {
         const next = p.missing[0];
         const nextDef = next ? objectDef(next.type) : null;

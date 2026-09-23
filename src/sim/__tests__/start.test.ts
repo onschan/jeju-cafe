@@ -21,7 +21,7 @@ describe('v3 시작 상태 (§5)', () => {
     expect(s.candidates).toHaveLength(START_CANDIDATES);
     expect(s.unlocked.objects.sort()).toEqual([...new Set(START_OBJECT_IDS)].sort());
     expect(s.unlocked.menus).toEqual(INITIAL_UNLOCKED.menus);
-    expect(s.unlocked.objects).toHaveLength(18); // trim: 소라 장식·망원경을 빼고 물허벅을 넣어 18종 (주차장·오메기떡 매대·코너 조각 장식 포함)
+    expect(s.unlocked.objects).toHaveLength(18); // trim: 소라 장식·망원경을 빼고 물허벅을 넣어 18종 (주차장·오메기떡 매대·명당 조각 장식 포함)
     expect(s.unlocked.menus).toHaveLength(3);
     expect(s.slots).toEqual({ barista: 1, cook: 1, hall: 2, clean: 2 });
     expect(s.storage).toEqual({});

@@ -3,15 +3,17 @@ import { wonText, label } from '../data/labels.ts';
 import { GameView, RECT_COLOR_LINE, type GhostSpec, type RangeHint } from '../render/GameView';
 import { startLoop, dispatch, getState, useGame, setViewReset, autosaveNow, hasAnySave, loadSlot, setMonthCardHook, setSceneHook, showMessage, pauseGame, isSpeedLocked, setSpeedLocked } from './store';
 import { unlockAudio, bgm, isMuted, setMuted, getBgmVolume, getSfxVolume, setBgmVolume, setSfxVolume, sfx, setBgmLayer } from './audio';
-import { gradeOf, GRADE_BGM_LAYER_FROM, REVEAL_GRADE } from '../sim/index.ts'; // fun-rank · fun 점진 공개
+import { gradeOf, gradeName, GRADE_BGM_LAYER_FROM, REVEAL_GRADE } from '../sim/index.ts'; // fun-rank · fun 점진 공개
 import { seasonOf, canPlace, objectAt, footprint, sizeOf, mainBuilding, parcelAt, placeCost, isLineType, lineCells, planLine, canAutoConnectPath, type LineOrder, type Pt, PROTECTED_TYPES, ROTATABLE_TYPES, goalForMenu, featureOpen, canUndo, demolishRefund, canDisturb, routeAtCell, tutorialDone, canBuildMain, recommendedMainCells, cellAt, doorFrontOf, MAIN_TYPE, MAIN_BUILD_COST, type GameState } from '../sim/index.ts';
 import { RoutesSection } from './RouteCard'; // 트랙 H
 import { objectDef } from '../data/index.ts';
 // render/·ui/는 Vite 전용이라 확장자 없는 import 허용. sim/·data/만 .ts 확장자 규칙.
 import { TopShell, BottomBar, PlaceBar, SHELL_BOTTOM, SHELL_TOP, BOTTOM_BAR_H, type WindowKind, type PlaceBarProps } from './Shell';
 import { Window, type IconGridItem } from './Window';
-import { MessageLine } from './MessageLine';
-import { VoiceFeed } from './VoiceFeed'; // trim: 손님 목소리 피드
+import { MessageLine, MESSAGE_LINE_H } from './MessageLine';
+import { VoiceFeed, VOICE_FEED_MAX, VOICE_ROW_H } from './VoiceFeed'; // trim: 손님 목소리 피드
+import { DaySummaryCard } from './DaySummaryCard'; // 성장: 오늘의 성장 요약 3초 카드
+import { GrowthChart } from './GrowthChart'; // 성장: 최근 30일 손님·매출 막대
 import { MiniCard, MainCard, type CardTarget, type CardActions } from './MiniCard';
 import { DialogueHost } from './Dialogue.tsx';
 import { checkTutorial, setTutorialDispatch, useTutorialNote } from './tutorialDialogue';
@@ -170,7 +172,7 @@ function SettingsPanel({ onExit, gauges, onGauges }: { onExit: () => void; gauge
       {slider('효과음', sfxVol, (n) => { setSfxVolume(n); setSfxVol(n); sfx('tap'); })}
       <button style={{ ...brownBtn, marginRight: 0, marginBottom: 0 }} onClick={toggleMute}>{muted ? <><Icon name="sound_on" /> 소리 켜기</> : <><Icon name="sound_off" /> 소리 끄기</>}</button>
       <OnOff label="속도 잠금 (창을 열어도 안 멈춤)" on={isSpeedLocked()} onChange={setSpeedLocked} testId="setting-speed-lock" />
-      <OnOff label="시설 위 인기 바 표시" on={gauges} onChange={onGauges} testId="setting-gauges" />
+      <OnOff label="시설 위 입소문 바 표시" on={gauges} onChange={onGauges} testId="setting-gauges" />
       {!tutorialDone(s) && <OnOff label="튜토리얼 스포트라이트 (빛나는 것 빼고 어둡게)" on={spotlight} onChange={setSpotlightOn} testId="setting-spotlight" />}{/* w-free */}
       <button style={{ ...brownBtn, marginRight: 0, marginBottom: 0 }} onClick={() => setSlots(true)}><Icon name="save" /> 슬롯에 저장</button>
       <button style={{ ...dangerBtn, marginRight: 0, marginBottom: 0 }} onClick={() => Confirm('자동 저장하고 타이틀로 나갈까요?', onExit, { title: '타이틀로' })}><Icon name="door" /> 타이틀로</button>
@@ -179,7 +181,7 @@ function SettingsPanel({ onExit, gauges, onGauges }: { onExit: () => void; gauge
   );
 }
 
-/** 상단 바를 누르면: 경영 현황 (§5.1: 저장 · 이달 요약 · 손님 경로 자리 · 랭크) */
+/** 상단 바를 누르면: 경영 현황 (§5.1: 저장 · 이달 요약 · 손님 경로 자리 · 성장 그래프) */
 function StatusPanel() {
   const s = useGame();
   const [saved, setSaved] = useState(false);
@@ -188,7 +190,7 @@ function StatusPanel() {
     ['날짜', `${s.clock.year}년 ${s.clock.month}월 ${s.clock.day}일`],
     ['자금', wonText(s.money)],
     ['연구 포인트', compactNumber(s.research)],
-    ['★ 등급', `${s.star} · 랭크 ${s.rank}위`],
+    ['★ 등급', `★${s.star} · ${gradeName(gradeOf(s))}`],
     ['이번 달 손님', `${s.monthGuests}명 · 수입 ${wonText(s.monthIncome)}`],
     ['누적 손님', `${s.totalGuests}명 · 누적 판매 ${wonText(s.totalIncome)}`],
     ['직원', `${s.staff.length}명 · 후보 ${s.candidates.length}명`],
@@ -210,10 +212,11 @@ function StatusPanel() {
           <div style={{ ...card, display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '4px 12px', fontSize: 15 }}>
             {rows.slice(3).map(([k, v]) => <span key={k} style={{ display: 'contents' }}><span style={{ color: PALETTE.inkSoft }}>{k}</span><b>{v}</b></span>)}
           </div>
+          <GrowthChart />{/* 성장: 최근 30일 손님·매출 + 승급 세로선 */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 14 }}>
             <Icon name="local" size={18} alt="동네 손님" /> 동네
             <meter min={-100} max={100} value={s.popularity} style={{ flex: 1 }} />
-            인기 <Icon name="tourist" size={18} alt="관광객" />
+            손님 색깔 <Icon name="tourist" size={18} alt="관광객" />
           </div>
         </>
       )}
@@ -696,7 +699,7 @@ function Game({ onExit }: { onExit: () => void }) {
     { key: 'spots', label: '명소', icon: 'map' },
     { key: 'shop', label: '상점', icon: 'shop' },
     { key: 'tickets', label: '응모권', icon: 'ticket', badge: s.tickets },
-    { key: 'rank', label: '랭킹', icon: 'trophy' },
+    { key: 'rank', label: '평가', icon: 'trophy' },
     { key: 'settings', label: '설정', icon: 'settings' },
   ];
 
@@ -785,6 +788,7 @@ function Game({ onExit }: { onExit: () => void }) {
             else if (fix === 'clean') { setMode({ kind: 'idle' }); showMessage('낡은 시설을 골라 고쳐 보세요'); }
           }} />
       )}
+      {!win && <DaySummaryCard bottom={BOTTOM_BAR_H + 26 + VOICE_FEED_MAX * (VOICE_ROW_H + 2) + 4} />}{/* 손님 목소리 피드 위 */}
       <MessageLine bottom={BOTTOM_BAR_H} />
       {place ? <PlaceBar {...place} /> : <BottomBar onOpen={openWindow} />}
       {cardTarget && !place && <MiniCard target={cardTarget} actions={cardActions} onClose={() => openCard(null)} />}

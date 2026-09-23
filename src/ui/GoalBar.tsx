@@ -1,17 +1,19 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useGame } from './store';
 import { Icon } from './Icon';
 import { fmtNum } from '../sim/format.ts';
-import { TUTORIAL_STEPS, tutorialDone, mainBuilding } from '../sim/index.ts';
+import { TUTORIAL_STEPS, tutorialDone, mainBuilding, nextMove, solverNextMove, solverKey } from '../sim/index.ts';
+import { setGuideFocus } from './tutorialHighlight';
 import { currentGoal, urgentChallenge } from './simBridge';
 import { PALETTE } from './frame';
 import { TutorialWindow } from './TutorialWindow';
 
-/** 목표 줄 24px + 도전 줄 20px (§7.3: 셸 높이 +20px) */
+/** 목표 줄 24px + 도전 줄 20px (§7.3) + 「오늘 할 일」 줄 22px (성장 체감) */
 export const GOAL_LINE_H = 24;
 export const CHALLENGE_LINE_H = 20;
-export const GOAL_BAR_H = GOAL_LINE_H + CHALLENGE_LINE_H;
+export const TODO_LINE_H = 22;
+export const GOAL_BAR_H = GOAL_LINE_H + CHALLENGE_LINE_H + TODO_LINE_H;
 /** 튜토리얼 배지 너비 (목표 줄 왼쪽 한 칸) */
 export const TUT_BADGE_W = 60;
 
@@ -27,10 +29,35 @@ function TutorialBadge() {
     <>
       <button data-testid="tutorial-badge" aria-label={done ? '할망의 추천' : `할망의 가르침 ${s.tutorial.step}/${TUTORIAL_STEPS}`} onClick={() => setOpen(true)}
         style={{ position: 'absolute', left: 0, top: 0, width: TUT_BADGE_W, height: GOAL_LINE_H, padding: 0, border: 0, borderRight: `2px solid ${PALETTE.wood}`, background: PALETTE.btnOn, color: PALETTE.btnOnText, fontFamily: 'inherit', fontSize: 13, fontWeight: 700, zIndex: 11, whiteSpace: 'nowrap' }}>
-        📖 {done ? '추천' : `${s.tutorial.step}/${TUTORIAL_STEPS}`}
+        📖 {done ? '할 일' : `${s.tutorial.step}/${TUTORIAL_STEPS}`}
       </button>
       {open && root && createPortal(<TutorialWindow onClose={() => setOpen(false)} />, root)}
     </>
+  );
+}
+
+/** 「오늘 할 일」 줄 (성장 체감): 지금 가장 이득인 행동 한 줄을 늘 보이게 둔다 — solver 1위 수(예상 이득 숫자 포함),
+ *  solver 답이 아직 없으면 휴리스틱 다음 수. 탭하면 그 행동의 타깃·칸이 글로우(setGuideFocus) 한다. */
+export const TODO_EMPTY_TEXT = '할 건 다 했다. 마음껏 꾸며 보라';
+export function TodoLine() {
+  const s = useGame();
+  // solver가 다시 셈하는 동안(상태 키가 바뀔 때마다) 직전 답을 그대로 둔다 —
+  // 그때만 쓰는 휴리스틱은 1년차 순서라 다 자란 카페에서 엉뚱한 줄("올렛길부터")을 내놓는다.
+  const kept = useRef<ReturnType<typeof nextMove>>(null);
+  const solved = solverNextMove(s);
+  if (solved) kept.current = solved;
+  const move = solved ?? kept.current ?? nextMove(s);
+  const text = move ? move.text : TODO_EMPTY_TEXT;
+  const focus = () => {
+    if (!move) return;
+    setGuideFocus({ key: solverKey(s), targets: move.move?.targets ?? [], cells: move.cells, label: move.text });
+  };
+  return (
+    <button data-testid="todo-line" onClick={focus} aria-label={`오늘 할 일: ${text}`} disabled={!move}
+      style={{ position: 'absolute', left: 0, right: 0, top: GOAL_LINE_H + CHALLENGE_LINE_H, height: TODO_LINE_H, padding: '0 8px', border: 0, borderBottom: `2px solid ${PALETTE.wood}`, background: PALETTE.paper, color: PALETTE.ink, fontFamily: 'inherit', fontSize: 13, fontWeight: 700, textAlign: 'left', display: 'flex', alignItems: 'center', gap: 5, width: '100%', boxSizing: 'border-box', whiteSpace: 'nowrap', overflow: 'hidden' }}>
+      <span style={{ flex: 'none', color: PALETTE.title }}>할 일</span>
+      <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', fontWeight: 400 }}>{text}</span>
+    </button>
   );
 }
 
@@ -52,7 +79,7 @@ export function GoalBar({ top, onOpen }: { top: number; onOpen: () => void }) {
     <div style={{ position: 'absolute', top, left: 0, right: 0, height: GOAL_BAR_H, zIndex: 10 }}>
       <TutorialBadge />
       <button data-testid="goal-bar" data-tut="goal-bar" onClick={onOpen} aria-label="목표"
-        style={{ position: 'absolute', inset: 0, height: GOAL_BAR_H, padding: 0, border: 0, borderBottom: `2px solid ${PALETTE.wood}`, background: done ? PALETTE.btnOn : PALETTE.paperDark, color: PALETTE.ink, fontFamily: 'inherit', fontSize: 14, fontWeight: 700, textAlign: 'left', display: 'flex', flexDirection: 'column', whiteSpace: 'nowrap', overflow: 'hidden', animation: done ? 'goal-blink 1s ease-in-out infinite' : undefined }}>
+        style={{ position: 'absolute', top: 0, left: 0, right: 0, height: GOAL_LINE_H + CHALLENGE_LINE_H, padding: 0, border: 0, background: done ? PALETTE.btnOn : PALETTE.paperDark, color: PALETTE.ink, fontFamily: 'inherit', fontSize: 14, fontWeight: 700, textAlign: 'left', display: 'flex', flexDirection: 'column', whiteSpace: 'nowrap', overflow: 'hidden', animation: done ? 'goal-blink 1s ease-in-out infinite' : undefined }}>
         <style>{'@keyframes goal-blink { 0%, 100% { filter: brightness(1); } 50% { filter: brightness(1.25); } } @keyframes goal-flash { 0%, 100% { box-shadow: 0 0 0 0 #ffd54a00; } 50% { box-shadow: 0 0 6px 3px #ffd54a; } }'}</style>
         <span style={{ height: GOAL_LINE_H, padding: '0 10px', paddingLeft: badge ? TUT_BADGE_W + 8 : 10, display: 'flex', alignItems: 'center', gap: 6, width: '100%', boxSizing: 'border-box' }}>
           <span style={{ color: PALETTE.title }}>▶</span>
@@ -81,6 +108,7 @@ export function GoalBar({ top, onOpen }: { top: number; onOpen: () => void }) {
           ) : <span style={{ flex: 1, color: PALETTE.inkSoft }}>도전: 목표 창에서 골라 받아요</span>}
         </span>
       </button>
+      <TodoLine />
     </div>
   );
 }

@@ -9,7 +9,7 @@ import { conditionProgress, applyRewards, type Progress } from './goals.ts';
 import { pushNotice } from './staff.ts';
 
 type MonthlyKind = 'guests' | 'sales' | 'satisfied' | 'seats' | 'corner' | 'hidden';
-/** 종류 순환. 코너·숨은 레시피는 2년차부터 끼어든다 — 그 전엔 손님·매출로 대신 */
+/** 종류 순환. 명당·숨은 레시피는 2년차부터 끼어든다 — 그 전엔 손님·매출로 대신 */
 const MONTHLY_KINDS: MonthlyKind[] = ['guests', 'sales', 'satisfied', 'seats', 'corner', 'guests', 'sales', 'hidden'];
 export const MONTHLY_CODEX_YEAR = 2;
 
@@ -46,7 +46,7 @@ export function makeMonthly(state: GameState): MonthlyState {
       break;
     }
     case 'corner': {
-      condition = { type: 'corners', n: 1 }; base = state.codex.corners?.length ?? 0; title = '코너 하나 더'; reward = [{ type: 'tickets', n: 3 }, { type: 'tickets', n: 1 }];
+      condition = { type: 'corners', n: 1 }; base = state.codex.corners?.length ?? 0; title = '명당 하나 더'; reward = [{ type: 'tickets', n: 3 }, { type: 'tickets', n: 1 }];
       break;
     }
     case 'hidden': {

@@ -367,7 +367,7 @@ export function dailyRoutes(state: GameState): void {
     st.todayGuests = 0;
     if (!st.unlocked && routeUnlockMet(state, route)) {
       st.unlocked = true;
-      if (route !== 'bus') pushNotice(state, `${ENTRY_ROUTES[route].icon} ${ENTRY_ROUTES[route].name} 경로가 열렸어요 — ${objectDef(ENTRY_ROUTES[route].facilities[0]!).name}을 지어요`);
+      if (route !== 'bus') pushNotice(state, `${ENTRY_ROUTES[route].icon} ${ENTRY_ROUTES[route].name} 경로가 열렸어요 — ${josa(objectDef(ENTRY_ROUTES[route].facilities[0]!).name, '을/를')} 지어요`);
     }
     // 길 끊김: 시설은 있는데 진입점에서 닿지 않으면 한 번 알린다
     const broken = st.unlocked && routeFacility(state, route) !== null && !routeConnected(state, route);
@@ -429,7 +429,7 @@ export function installRouteForParcel(state: GameState, parcelId: string): boole
     if (objectAt(state, c.x, c.y) || isWalkable(state, c.x, c.y) || !canPlace(state, 'path', c.x, c.y).ok) continue;
     placeObject(state, 'path', c.x, c.y);
   }
-  pushNotice(state, `${ENTRY_ROUTES[route].icon} ${objectDef(type).name}이 생겼어요 — ${ROUTE_OPEN_LINE[route]}`);
+  pushNotice(state, `${ENTRY_ROUTES[route].icon} ${josa(objectDef(type).name, '이/가')} 생겼어요 — ${ROUTE_OPEN_LINE[route]}`);
   pushFx(state, { kind: 'scene', title: `${ENTRY_ROUTES[route].name} 열림`, text: `${ROUTE_OPEN_LINE[route]}. 자리까지 길만 이으면 돼요.`, tick: state.tick });
   return true;
 }

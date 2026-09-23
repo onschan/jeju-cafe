@@ -11,13 +11,13 @@ import { serialize, deserialize } from '../save.ts';
 import { GOALS } from '../../data/index.ts';
 import type { GameState } from '../types.ts';
 
-/** 코너 1개(꽃길) — 트랙 C corners.json: 꽃밭 + 벤치 + 가로등 반경 2 */
+/** 명당 1개(꽃길) — 트랙 C corners.json: 꽃밭 + 벤치 + 가로등 반경 2 */
 function flowerPath(s: GameState) {
   placeObject(s, 'flower_bed', X(2), Y(2));
   placeObject(s, 'deco_wood_bench', X(3), Y(2));
   placeObject(s, 'streetlight', X(2), Y(3));
 }
-/** 등급 g 조건을 딱 맞게 채운다 (코너는 활성 콤보 — 감귤나무+돌담 「돌담 수확」류가 없어도 되게 cornerCount를 넘기지 않고 조건에서 0으로 둔다) */
+/** 등급 g 조건을 딱 맞게 채운다 (명당은 활성 콤보 — 감귤나무+돌담 「돌담 수확」류가 없어도 되게 cornerCount를 넘기지 않고 조건에서 0으로 둔다) */
 function meet(s: GameState, g: number): void {
   const r = GRADE_REQS[g]!;
   s.totalGuests = r.guests;
@@ -42,7 +42,7 @@ test('새 게임은 등급 1, 진행 4줄, 조건이 하나라도 모자라면 �
   expect(rows.every((r) => r.need === GRADE_REQS[2]![r.key])).toBe(true);
   meet(s, 2);
   expect(cornerCount(s)).toBe(0);
-  expect(gradeMet(s, 2)).toBe(false); // 코너 0/1
+  expect(gradeMet(s, 2)).toBe(false); // 명당 0/1
   expect(checkGrade(s)).toBeNull();
   expect(gradeOf(s)).toBe(1);
 });
@@ -50,7 +50,7 @@ test('새 게임은 등급 1, 진행 4줄, 조건이 하나라도 모자라면 �
 test('조건을 다 채우면 하루 한 단계 승급: 등급·알림·장면·박수 fx·보상 상자(응모권), rank.ts 훅으로도 돈다', () => {
   const s = bareState(1);
   meet(s, 2);
-  // 코너 1: 꽃길 (트랙 C completedCorners — 꽃밭+벤치+가로등)
+  // 명당 1: 꽃길 (트랙 C completedCorners — 꽃밭+벤치+가로등)
   flowerPath(s);
   expect(cornerCount(s)).toBe(1);
   const tickets = s.tickets, mileage = s.tickets;
@@ -116,11 +116,11 @@ test('필지 특징: 9장 전부 아이콘·특징·"사면 생기는 것"(≤22
   expect(s.fx.some((f) => f.kind === 'scene' && f.title === '오름 자락')).toBe(true);
 });
 
-test('목표 사다리 새 조건: 등급·코너·단골·2층·평판·전설 직원·경로 수 판정과 문구', () => {
+test('목표 사다리 새 조건: 등급·명당·단골·2층·평판·전설 직원·경로 수 판정과 문구', () => {
   const s = bareState(1);
   s.grade = 3;
   expect(conditionProgress(s, { type: 'grade', n: 4 })).toEqual({ cur: 3, max: 4 });
-  expect(conditionProgress(s, { type: 'corners', n: 5 }).cur).toBe(0); // 목표 corners는 코너 도감(codex.corners, 트랙 C)
+  expect(conditionProgress(s, { type: 'corners', n: 5 }).cur).toBe(0); // 목표 corners는 명당 도감(codex.corners, 트랙 C)
   expect(conditionProgress(s, { type: 'secondFloor' })).toEqual({ cur: 0, max: 1 });
   s.main.floor2 = true;
   expect(conditionProgress(s, { type: 'secondFloor' })).toEqual({ cur: 1, max: 1 });
@@ -130,7 +130,7 @@ test('목표 사다리 새 조건: 등급·코너·단골·2층·평판·전설 
   expect(conditionProgress(s, { type: 'routesOpen', n: 4 })).toEqual({ cur: 1, max: 4 }); // fun P0: 주차장은 처음부터 열린 경로
   expect(conditionProgress(s, { type: 'regulars', n: 30 }).max).toBe(30);
   expect(goalConditionText({ type: 'grade', n: 4 })).toBe('등급 「제주 명소」');
-  expect(goalConditionText({ type: 'corners', n: 5 })).toBe('코너 5개');
+  expect(goalConditionText({ type: 'corners', n: 5 })).toBe('명당 5개');
   expect(goalConditionText({ type: 'secondFloor' })).toBe('본관 2층 올리기');
   expect(goalConditionText({ type: 'legendStaff', n: 1 })).toBe('전설 직원 채용');
   expect(goalConditionText({ type: 'routesOpen', n: 4 })).toBe('손님 오는 길 4종');

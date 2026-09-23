@@ -15,7 +15,7 @@ test('불만 4사유가 목소리 한 줄로 오고, 문구에 영문 id가 없�
   expect(s.voices!.map((v) => v.reason)).toEqual(['no_seat', 'wait_long', 'expensive']);
   const texts = s.voices!.map(voiceText);
   expect(texts[0]).toBe('자리가 없어서 그냥 갔어요');
-  expect(texts[2]).toBe('감귤주스이 비싸요');
+  expect(texts[2]).toBe('감귤주스가 비싸요'); // 조사: 받침 없음 → 「가」
   for (const t of texts) expect(hasIdToken(t), t).toBe(false);
   // 자리 없음은 가장 붐비는 좌석을 가리킨다 (해결 버튼은 「자리 늘리기」)
   expect(s.voices![0]!.cell).toEqual({ x: X(4), y: Y(5) });
@@ -58,7 +58,7 @@ test('더러움은 가장 낡은 시설을 가리킨다', () => {
   expect(voiceText(s.voices![0]!)).toContain('낡고 지저분');
 });
 
-test('좋은 말도 쌓인다: 전망 자리·코너 사진은 피드에 좋은 줄로', () => {
+test('좋은 말도 쌓인다: 전망 자리·명당 사진은 피드에 좋은 줄로', () => {
   const s = bareState(1);
   placeObject(s, 'table_out', 12, 1); // 북쪽 = 바다
   expect(bestViewSeat(s)).toEqual({ x: 12, y: 1 });
@@ -68,4 +68,14 @@ test('좋은 말도 쌓인다: 전망 자리·코너 사진은 피드에 좋은 
   expect(voiceText(s.voices![1]!)).toBe('꽃길에서 사진 찍었어요');
   expect(recentVoices(s, 3)).toHaveLength(2);
   expect(recentVoices(s, 1)[0]!.reason).toBe('corner'); // 최근 것부터
+});
+
+/** 조사 버그(「아메리카노이 비싸요」) 회귀: 이름+조사는 josa()로 — 받침 있는 이름 3·없는 이름 3 */
+test('후기 조사: 받침 있으면 「이」, 없으면 「가」', () => {
+  const line = (detail: string, reason: 'expensive' | 'dirty' = 'expensive') => voiceText({ id: 'v1', reason, count: 1, day: 0, tick: 0, detail });
+  for (const name of ['감귤빵', '흑돼지 덮밥', '한라봉청']) expect(line(name)).toBe(`${name}이 비싸요`);
+  for (const name of ['아메리카노', '감귤주스', '우도 땅콩 라떼']) expect(line(name)).toBe(`${name}가 비싸요`);
+  expect(line('평상', 'dirty')).toBe('평상이 낡고 지저분해요');
+  expect(line('파라솔 테이블', 'dirty')).toBe('파라솔 테이블이 낡고 지저분해요');
+  expect(line('의자', 'dirty')).toBe('의자가 낡고 지저분해요');
 });

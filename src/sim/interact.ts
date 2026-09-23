@@ -11,7 +11,7 @@ import { addSatisfaction } from './segments.ts';
 import { pushNotice } from './staff.ts';
 import { pushFx } from './fx.ts';
 import { parcelAt } from './parcels.ts';
-import { completedCorners, cornerTags } from './corners.ts'; // 트랙 C 코너 판정
+import { completedCorners, cornerTags } from './corners.ts'; // 트랙 C 명당 판정
 import { availableMenus } from './menu.ts';
 import { menuOf, statsMatchCount, guestLikesCategory } from './craft.ts';
 import { namedLikes } from './named.ts';
@@ -184,7 +184,7 @@ function hasFacility(state: GameState, type: string): boolean {
   for (const o of Object.values(state.objects)) if (o.type === type && !o.build && parcelAt(state, o.x, o.y)?.owned) return true;
   return false;
 }
-/** 요청을 들어줬나: 메뉴 → 메뉴판에 있다, 코너 → 트랙 C completedCorners(코너가 있으면 코너 우선, 없으면 대체 시설), 시설 → 소유 필지에 완공 */
+/** 요청을 들어줬나: 메뉴 → 메뉴판에 있다, 명당 → 트랙 C completedCorners(명당이 있으면 명당 우선, 없으면 대체 시설), 시설 → 소유 필지에 완공 */
 export function isRequestMet(state: GameState, def: GuestRequestDef): boolean {
   const w = def.want;
   if (w.menu) return state.menuSlots.includes(w.menu);
@@ -197,7 +197,7 @@ export function isRequestMet(state: GameState, def: GuestRequestDef): boolean {
 export function requestHint(def: GuestRequestDef): string {
   const w = def.want;
   if (w.menu) { try { return `메뉴판에 ${menuDef(w.menu).name}`; } catch { return '메뉴판에 올리면 돼요'; } }
-  if (w.corner || w.tagCorner) return '짓기 창 코너 탭에 있어요';
+  if (w.corner || w.tagCorner) return '짓기 창 명당 탭에 있어요';
   if (w.facility) { try { return `짓기 창에 ${objectDef(w.facility).name}`; } catch { return '짓기 창에 있어요'; } }
   return '';
 }

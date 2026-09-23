@@ -34,14 +34,14 @@ function conditionText(c: QuestCondition): string {
       return `${name} ${c.params.count}개 배치`;
     }
     case 'spotLevel': return `${safeName(() => spotDef(c.params.spotId).name, c.params.spotId)} Lv${c.params.level}`;
-    case 'segmentPopularity': return `${safeName(() => guestTypeDef(c.params.guestId).name, c.params.guestId)} 인기 ${c.params.popularity}`;
+    case 'segmentPopularity': return `${safeName(() => guestTypeDef(c.params.guestId).name, c.params.guestId)} 인지도 ${c.params.popularity}`;
     case 'item': return `${safeName(() => itemDef(c.params.itemId).name, c.params.itemId)} ${c.params.count}개`;
     case 'none': return '바로 완료';
   }
 }
 
 function lockText(u: UnlockCond): string {
-  if (u.type === 'rank') return `카페 랭크 ${u.rank} 필요`;
+  if (u.type === 'rank') return '카페가 더 알려지면 열려요';
   if (u.type === 'spot') return `${safeName(() => spotDef(u.spotId).name, u.spotId)} Lv${u.level} 필요`;
   return '잠김';
 }
