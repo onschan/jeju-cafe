@@ -60,6 +60,7 @@ import { parkingSites, routePathCells, routeFacility, ENTRY_ROUTES, PARKING_EXPA
 import { mainBuilding, freeFloorCells, nextMainLevel, expandCost, expandCells, canExpandMain, isAnnex, indoorSeats } from './rooms.ts'; // y-indoor
 import type { Candidate, RoleId, StatKey, QuestDef } from './types.ts';
 import { bestMoves, BOT_SOLVER_OPTIONS, type SolverOptions } from './solver.ts'; // solver 정책
+import { activeSteal, RIVAL_COUNTER_COST } from './rival.ts'; // rival2: 뺏기 이벤트 대응 한 줄
 
 /** 봇 정책: heuristic = 아래 v3 정석(밸런스 밴드 기준), solver = 며칠마다 solver.bestMoves 1위 수 하나만 실행(집안일 빼고 아무 정석도 모른다) */
 export type BotPolicy = 'heuristic' | 'solver';
@@ -929,10 +930,22 @@ export function dailyPlan(s: GameState): void {
   const custom = s.customMenus[0];
   if (custom && !s.menuSlots.includes(custom.id)) apply(s, { type: 'setSlot', slot: 3, menuId: custom.id });
   if (s.lastDevelop) apply(s, { type: 'dismissDevelop' });
+  answerRivalIfAny(s); // 동네 경쟁: 뺏기 이벤트가 오면 돈이 되면 맞불, 아니면 메뉴로 받는다 (rival2 트랙 훅 한 줄)
   enterContestIfCan(s); // 대회: 접수 창(개최 이레 전~당일)에 이길 수 있는 판이면 낸다
   fixUnreachable(s); // botfix: 손님이 못 가는 시설을 하루 2건까지 고친다
 
 }
+
+/** rival2: 경쟁 카페가 손님을 뺏는 달이면 그냥 두지 않는다 — 여유가 있으면 맞불 홍보, 없으면 메뉴 개발로 반만 막는다. */
+function answerRivalIfAny(s: GameState): void {
+  const st = activeSteal(s);
+  if (!st || st.answer !== 'none') return;
+  const rich = s.money > RIVAL_COUNTER_COST + BOT_COUNTER_RESERVE;
+  if (rich && apply(s, { type: 'answerRival', choice: 'counter' }).ok) return;
+  apply(s, { type: 'answerRival', choice: 'develop' });
+}
+/** 맞불 홍보를 하고도 남겨 둘 돈 */
+export const BOT_COUNTER_RESERVE = 2_000_000;
 
 /** 봇 진행 커서 (한 상태를 이어서 돌릴 때 — 세이브 왕복 테스트 등) */
 export interface BotCursor { lastMonth: number; monthsPlayed: number }

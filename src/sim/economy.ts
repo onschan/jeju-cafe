@@ -9,6 +9,7 @@ import type { GameState, MonthCosts, PlacedObject, Stats } from './types.ts';
 import { ingredientDef } from '../data/index.ts';
 import { menuOf, toppingCost, costMult } from './craft.ts';
 import { parcelAt, ownedParcels } from './parcels.ts';
+import { dealCost } from './rival.ts'; // 동네 경쟁 카페 제휴 월 고정비
 import { objectStats } from './compat.ts';
 import { isWorn } from './cleanliness.ts';
 import { effectMult } from './effects.ts';
@@ -40,10 +41,10 @@ export function ingredientCost(state: GameState, menuId: string): number {
 }
 
 export function emptyMonthCosts(): MonthCosts {
-  return { ingredients: 0, salary: 0, ads: 0, upkeep: 0, recruit: 0, tax: 0, loanRepay: 0, shuttle: 0, rent: 0, contest: 0 };
+  return { ingredients: 0, salary: 0, ads: 0, upkeep: 0, recruit: 0, tax: 0, loanRepay: 0, shuttle: 0, rent: 0, contest: 0, deal: 0 };
 }
 export function totalCosts(c: MonthCosts): number {
-  return c.ingredients + c.salary + c.ads + c.upkeep + c.recruit + c.tax + c.loanRepay + c.shuttle + (c.rent ?? 0) + (c.contest ?? 0);
+  return c.ingredients + c.salary + c.ads + c.upkeep + c.recruit + c.tax + c.loanRepay + c.shuttle + (c.rent ?? 0) + (c.contest ?? 0) + (c.deal ?? 0);
 }
 
 // ---------- 임대료 (stakes) ----------
@@ -60,6 +61,15 @@ export function rent(state: GameState): number {
   if (sum <= 0) return 0;
   state.money -= sum;
   state.monthCosts.rent = (state.monthCosts.rent ?? 0) + sum;
+  return sum;
+}
+
+/** 동네 경쟁 카페 제휴 월 고정비 (rival.ts dealCost). rent와 같은 자리에서 월초에 뺀다. */
+export function dealFee(state: GameState): number {
+  const sum = dealCost(state);
+  if (sum <= 0) return 0;
+  state.money -= sum;
+  state.monthCosts.deal = (state.monthCosts.deal ?? 0) + sum;
   return sum;
 }
 

@@ -20,6 +20,7 @@ import { roleNeeds, type RoleNeed } from './staffPlan.ts'; // 통합: 직원 병
 import { unreachableCount } from './reach.ts';
 import { cornersBuilding, cornersDoneIncludingWork } from './corners.ts'; // 공사 중 명당까지 쳐서 같은 안내를 되풀이하지 않는다
 import { josa } from './josa.ts';
+import { scoreboard, rankGap } from './rival.ts'; // 동네 경쟁 순위 한 줄
 
 /** 진단이 새로 나오는 날 (매월 1·8·15·22일) */
 export const CHECKUP_DAYS = [1, 8, 15, 22] as const;
@@ -58,6 +59,8 @@ export interface Diagnosis {
   evidence: { label: string; value: string }[];
   /** 월말 결산용 총평 한 줄 (등급 총평과 겹치지 않게 노선+다음 수로 만든다) */
   summary: string;
+  /** 동네 경쟁 카페 순위 한 줄 (rival.ts). 발표 전이면 없다. */
+  rival?: { rank: number; of: number; gap: number; text: string };
 }
 
 export interface CoachInput {
@@ -172,6 +175,14 @@ export function diagnose(s: GameState, input: CoachInput = {}): Diagnosis {
   const cornerWork = cornersBuilding(s); // 조각은 다 모였고 공사만 남은 명당
   const b = bottleneckOf(s, { seatUse, left, pop, scenery, staffN, menuLeft, clean, net, unreachable, cornerWork, needs });
   const route = routeOf(s, scenery);
+  // 동네 경쟁: 몇 위인가와 한 계단 위와의 격차 — 진단이 「우리 밖」도 본다
+  const board = scoreboard(s);
+  const meRow = board.find((r) => r.me)!;
+  const { above, gap } = rankGap(board);
+  const rival = {
+    rank: meRow.rank, of: board.length, gap,
+    text: above ? `동네 ${meRow.rank}위 · ${above.name}와 ${gap}점 차` : `동네 1위 · 뒤와 ${Math.round((meRow.total - (board[1]?.total ?? 0)) * 10) / 10}점 차`,
+  };
 
   // 3줄 평가: 규모 · 잘 되는 것 · 살림. 걸리는 것은 아래 「가장 큰 걸림돌」 칸이 따로 맡는다 (같은 말을 두 번 안 한다)
   const best = [...appeal.rows].sort((a, b2) => b2.value / b2.max - a.value / a.max)[0]!;
@@ -195,6 +206,7 @@ export function diagnose(s: GameState, input: CoachInput = {}): Diagnosis {
     { label: '모자란 직종', value: needs.length > 0 ? needs.map((n) => ROLE_NAME[n.role]).join(' · ') : '없음' }, // 통합: 채용 화면과 같은 판정
     { label: '명당', value: `${cornersDoneIncludingWork(s) - cornerWork}곳${cornerWork > 0 ? ` · 짓는 중 ${cornerWork}` : ''}` },
   ];
+  evidence.push({ label: '동네 순위', value: `${rival.rank}/${rival.of}위` });
   if (input.layout !== undefined && input.layout !== null) evidence.push({ label: '배치 점수', value: `${input.layout}점` });
   if (input.topMove) evidence.push({ label: '추천 한 수', value: input.topMove });
 
@@ -206,6 +218,7 @@ export function diagnose(s: GameState, input: CoachInput = {}): Diagnosis {
     unreachable,
     route: { id: route, name: ROUTE_NAME[route], line: ROUTE_LINE[route], next: ROUTE_NEXT[route] },
     evidence,
+    rival,
     summary: route === 'none' ? `아직 색이 없어요 · 다음은 ${b.moves[0]}` : `${ROUTE_NAME[route]} 카페예요 · 다음은 ${b.moves[0]}`,
   };
 }

@@ -23,6 +23,7 @@ import { seatFeeQuote } from './fee.ts'; // spot2: 요금 배수 한곳
 import { addResearchProgress, TASTE_MATCH_WEIGHT } from './progress.ts';
 import { effectMult, noGuestsToday, filterMatches } from './effects.ts';
 import { contestGuestMult } from './contest.ts'; // 대회 입상 뒤 손님 유입 배수 (60일 ×1.25 …)
+import { rivalGuestMult } from './rival.ts'; // 동네 경쟁: 1위 +10% · 유행 겹침 −n% · 뺏기 이벤트 −10% (2년차부터)
 import { spotGuestBonus, spotSpawnMult } from './spots.ts';
 import type { ParcelBonus } from './types.ts';
 import { seatsOf, isSeat } from './cafe.ts';
@@ -226,7 +227,7 @@ export function uncappedDailyGuests(state: GameState, popBonus = 0): number {
   const base = BASE_DAILY_GUESTS + Math.floor((popularitySum(state) + popBonus) / POP_SUM_PER_GUEST)
     + Math.floor(facilityPopularitySum(state) / FACILITY_POP_PER_GUEST) + spotDailyGuests(state);
   const n = base * effectMult(state, 'spawnMult') * eventGuestMult(state) * (1 + dignityPct(state) / 100)
-    * seasonGuestMult(state.clock.month) * reputationGuestMult(state) * routeGuestMult(state) * contestGuestMult(state); // 트랙 H 올레길 +15% · 청결 배수(트랙 A)는 dailyCleanliness가 거는 하루짜리 spawnMult 효과로 effectMult에 들어 있다
+    * seasonGuestMult(state.clock.month) * reputationGuestMult(state) * routeGuestMult(state) * contestGuestMult(state) * rivalGuestMult(state); // 트랙 H 올레길 +15% · rival2 동네 경쟁 · 청결 배수(트랙 A)는 dailyCleanliness가 거는 하루짜리 spawnMult 효과로 effectMult에 들어 있다
   return Math.max(MIN_DAILY_GUESTS, Math.min(MAX_DAILY_GUESTS, Math.round(n)));
 }
 

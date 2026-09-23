@@ -33,6 +33,7 @@ import { canContinueEnding, continueEnding, canSetSpeed } from './ending.ts'; //
 import { resolveRisk } from './risk.ts'; // stakes: 돌발 사고 선택지
 import { resolveEventChoice } from './events.ts'; // stakes: 빅 이벤트 선택지
 import { canEnterContest, enterContest, canCancelContest, cancelContest, canPlaceTrophy, contestState } from './contest.ts'; // 대회
+import { rivalsState, canAnswerRival, answerRival, canAllyRival, allyRival, endAllyRival, canAcquireRival, acquireRival } from './rival.ts'; // 동네 경쟁 카페
 import { guestBlock, setPending, clearPending, doNow, vacate, WORK_NAME } from './pending.ts'; // seatfix: 손님이 앉아 있어도 예약해 두는 이동·철거·증축
 
 /** 못 옮기고 못 없애는 것 (정류장·본관·샘). 정낭은 w-free부터 일반 시설 — 옮기고 없애고 더 놓을 수 있다. */
@@ -41,7 +42,7 @@ export const PROTECTED_TYPES = new Set(['busstop', 'warehouse', 'spring']);
 export const ROTATABLE_TYPES = new Set(['gate', 'counter']);
 const ACTION_LOG_CAP = 1000;
 
-const CLIENT_ONLY = new Set<Action['type']>(['setSpeed', 'dismissMonthCard', 'dismissDevelop', 'dismissDraw', 'dismissAnnouncement', 'dismissAlert', 'dismissOutcome', 'dismissContest', 'continueEnding']);
+const CLIENT_ONLY = new Set<Action['type']>(['setSpeed', 'dismissMonthCard', 'dismissDevelop', 'dismissDraw', 'dismissAnnouncement', 'dismissAlert', 'dismissOutcome', 'dismissContest', 'dismissRivalBoard', 'continueEnding']);
 
 function log(state: GameState, a: Action) {
   if (CLIENT_ONLY.has(a.type)) return;
@@ -582,6 +583,31 @@ function applyInner(state: GameState, a: Action): ApplyResult {
     case 'dismissContest':
       contestState(state).pending = null;
       return { ok: true };
+    // ---- 동네 경쟁 카페 (rival.ts) ----
+    case 'answerRival': {
+      const c = canAnswerRival(state, a.choice);
+      if (!c.ok) return c;
+      answerRival(state, a.choice);
+      return { ok: true };
+    }
+    case 'dismissRivalBoard':
+      rivalsState(state).pending = false;
+      return { ok: true };
+    case 'allyRival': {
+      const c = canAllyRival(state, a.id);
+      if (!c.ok) return c;
+      allyRival(state, a.id);
+      return { ok: true };
+    }
+    case 'endAllyRival':
+      endAllyRival(state, a.id);
+      return { ok: true };
+    case 'acquireRival': {
+      const c = canAcquireRival(state, a.id);
+      if (!c.ok) return c;
+      acquireRival(state, a.id);
+      return { ok: true };
+    }
     default:
       return { ok: false, reason: '아직 구현 안 됨' };
   }

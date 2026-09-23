@@ -56,6 +56,12 @@ export function StrategyCard({ onFocus }: { onFocus?: (x: number, y: number) => 
         </div>
       </div>
 
+      {d.rival && (
+        <div data-testid="strategy-rival" style={{ marginTop: 6, fontSize: 14, lineHeight: 1.5 }}>
+          <Icon name="rival" size={14} /> {d.rival.text}
+        </div>
+      )}
+
       <div data-testid="strategy-route" style={{ marginTop: 6, fontSize: 14, lineHeight: 1.5 }}>
         <Icon name={ROUTE_ICON[d.route.id] ?? 'bulb'} size={14} /> {d.route.id === 'none' ? d.route.line : <><b>{d.route.name}</b> · {d.route.line}</>}
         <div style={{ color: PALETTE.inkSoft }}>이 노선이면 다음은 {d.route.next}</div>

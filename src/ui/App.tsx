@@ -937,7 +937,7 @@ function Game({ onExit }: { onExit: () => void }) {
     { key: 'invest', label: '투자', icon: 'money', badge: s.board.events.filter((e) => e.status === 'pending').length },
     { key: 'spots', label: '명소', icon: 'map' },
     { key: 'tickets', label: '응모권', icon: 'ticket', badge: s.tickets }, // midgame: 「상점」 탭이 같은 화면이라 하나로 합쳤다
-    { key: 'rank', label: '평가', icon: 'trophy' },
+    { key: 'rank', label: '평가', icon: 'trophy', badge: s.rivals?.pending ? 1 : 0 }, // 동네 순위 발표를 아직 안 봤으면 배지
     { key: 'contest', label: '대회', icon: 'medal', badge: signupOpen(s) && !s.contest?.entry ? 1 : 0 },
     { key: 'settings', label: '설정', icon: 'settings' },
   ];
@@ -999,7 +999,7 @@ function Game({ onExit }: { onExit: () => void }) {
       case 'status':
         return <Window title="경영 현황" onClose={closeWin} testId="window-status"><StatusPanel onFocus={focusAndClose} /></Window>;
       case 'goal':
-        return <Window title="목표" onClose={closeWin} testId="window-goal"><GoalWindow onClose={closeWin} /></Window>;
+        return <Window title="할 일" onClose={closeWin} testId="window-goal"><GoalWindow onClose={closeWin} /></Window>;
       case 'object': {
         const o = s.objects[win.id];
         return <Window title={o ? (o.name ?? objectDef(o.type).name) : '시설'} onClose={closeWin} testId="window-object">{o ? <ObjectInfoPanel objectId={o.id} onFocus={(x, y) => viewRef.current?.focusCell(x, y, 1, 1, 1.6)} /> : <div>없어진 시설이에요</div>}</Window>;

@@ -108,6 +108,24 @@ export {
   RIVAL_BASE, RIVAL_PER_GRADE, RIVAL_PER_ROUND, RIVAL_STEP, RIVAL_NOISE, RIVAL_COUNT as CONTEST_RIVAL_COUNT,
   type ContestOdds,
 } from './contest.ts';
+// ---------- 동네 경쟁 카페 (rival.ts) — 월간 순위표·유행 겹침·뺏기 이벤트·인수/제휴 ----------
+export {
+  RIVALS, initRivals, rivalsState, rivalDef, activeRivals, acquiredRivals, elapsedMonths, rivalAxes, totalOf,
+  myPopScore, myViewScore, myAxes, myTotal, scoreboard, rankGap, boardLine, boardDue, runBoard,
+  stealDue, rollSteal, activeSteal, stealTitle, canAnswerRival, answerRival, stealMult, STEAL_TEXT,
+  pushingTrend, trendCompetitors, trendShareMult, rivalGuestMult,
+  endgameOpen, endgameReason, canAllyRival, allyRival, endAllyRival, canAcquireRival, acquireRival, dealCost,
+  contestOpponents, dailyRivals,
+  RIVAL_AXES, RIVAL_AXIS_LABEL, RIVAL_WEIGHT, RIVAL_POP_TOP, RIVAL_VIEW_PER, RIVAL_SALES_PER_POINT,
+  RIVAL_BOARD_DAY, RIVAL_STEAL_DAY, RIVAL_STEAL_CHANCE, RIVAL_EFFECT_YEAR, RIVAL_RANK_BONUS, RIVAL_LEAD_BONUS, RIVAL_STEAL_PENALTY,
+  RIVAL_SERVICE_REP, RIVAL_SERVICE_PER_STAFF, myServiceScore,
+  RIVAL_SHARE_MAX, RIVAL_ACQUIRE_BONUS, RIVAL_COUNTER_COST, RIVAL_DEVELOP_RESEARCH, RIVAL_DEVELOP_PENALTY,
+  RIVAL_DEAL_ENDGAME_YEAR, RIVAL_DEAL_GRADE, RIVAL_DEAL_LEAD_MONTHS, RIVAL_ACQUIRE_COST, RIVAL_DEAL_MONTHLY, RIVAL_DEAL_AXIS_PCT,
+  RIVAL_UP_TICKETS, RIVAL_UP_TICKETS_MAX,
+} from './rival.ts';
+// ---------- 「할 일」 줄 모음 (todo.ts) — 도전거리를 숨기지 않는다 ----------
+export { todoRows, goalRows, gradeRow, monthlyRow, rivalRows, upcomingGoals, weakestAxis, type TodoRow, type TodoKind, type UpcomingRow } from './todo.ts';
+export { rivalNames as contestRivalNames, currentRivalNames as contestCurrentRivalNames } from './contest.ts';
 export { pushVoice, recentVoices, voiceText, voicesToday, busiestSeat, dirtiestObject, bestViewSeat, VOICE_DAY_MAX, VOICE_CAP, VOICE_FIX, VOICE_FIX_LABEL, type VoiceLine, type VoiceReason, type VoiceFix } from './voice.ts'; // trim: 손님 목소리 피드
 export { closeDay, recentDays, daySummary, DAY_LOG_CAP, type DaySummary } from './daylog.ts'; // 성장: 하루 요약·30일 그래프
 export type { DayLogRow } from './types.ts';

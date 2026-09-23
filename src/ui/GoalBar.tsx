@@ -85,7 +85,7 @@ export function GoalBar({ top, onOpen }: { top: number; onOpen: () => void }) {
                 <span style={{ display: 'block', width: `${cpct}%`, height: '100%', background: PALETTE.bar }} />
               </span>
             </>
-          ) : <span style={{ flex: 1, color: PALETTE.inkSoft }}>도전: 목표 창에서 골라 받아요</span>}
+          ) : <span style={{ flex: 1, color: PALETTE.inkSoft }}>도전: 할 일 창에 모아 뒀어요</span>}
         </span>
       </button>
     </div>

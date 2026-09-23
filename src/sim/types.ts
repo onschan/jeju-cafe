@@ -354,6 +354,7 @@ export interface ContestResult {
   base: number;                         // 운 판정 전 점수
   myScore: number;                      // 운 판정 뒤 최종 점수
   rivals: number[];                     // 상대 3명 점수 (내림차순)
+  rivalNames?: string[];                // 상대 3명 이름 — 동네 경쟁 카페 (rival.ts). 옛 세이브엔 없다
   rank: number;                         // 1~4
   outcome: Outcome;
   chances: { great: number; success: number; fail: number };
@@ -373,6 +374,59 @@ export interface ContestState {
   badge: { text: string; untilDay: number } | null; // 간판 배지
   trophies: Record<string, number>;     // 트로피 오브젝트 id → 받은 개수 (놓을 수 있는 최대)
   pending: ContestResult | null;        // 연출 대기 결과 (dismissContest로 닫는다)
+}
+
+// ---------- 동네 경쟁 카페 (rival.ts · rivals2.json) ----------
+
+/** 순위표가 보는 네 항목 — 나와 경쟁 카페가 같은 잣대로 매겨진다 */
+export type RivalAxis = 'pop' | 'view' | 'service' | 'sales';
+export type RivalAxes = Record<RivalAxis, number>;
+/** rivals2.json 한 줄 */
+export interface RivalDef {
+  id: string;
+  name: string;
+  concept: string;
+  strength: RivalAxis;              // 강점 항목 (제휴하면 이 항목이 오른다)
+  line: string;                     // 순위표 한 줄
+  category: TrendCategory;          // 이 카페가 미는 분류 — 유행이 겹치면 손님을 나눠 갖는다
+  gift: string;                     // 인수하면 딸려 오는 시설 id
+  base: RivalAxes;                  // 1년 3월 점수
+  growth: RivalAxes;                // 달마다 오르는 폭
+}
+/** 순위표 한 줄 (나도 한 줄) */
+export interface RivalRow {
+  id: string;                       // 나는 'me'
+  name: string;
+  axes: RivalAxes;
+  total: number;                    // 가중 합 0~100
+  rank: number;                     // 1~6
+  prevRank: number | null;
+  me: boolean;
+  deal: boolean;                    // 제휴 중
+}
+/** 경쟁 카페가 손님을 뺏는 이벤트 (그달 −10%, 답하면 달라진다) */
+export interface RivalSteal {
+  rivalId: string;
+  monthIndex: number;
+  kind: 'newmenu' | 'sale';         // 신메뉴 출시 · 할인 행사
+  answer: 'none' | 'counter' | 'develop' | 'ignore';
+}
+export interface RivalCafeState {
+  rank: number | null;
+  deal: boolean;                    // 제휴 중 (월 고정비, 강점 항목 +10%)
+  acquired: boolean;                // 인수함 — 순위표에서 빠지고 손님이 넘어온다
+}
+export interface RivalsState {
+  cafes: Record<string, RivalCafeState>;
+  myRank: number | null;
+  prevRank: number | null;
+  myScore: number;                  // 마지막 발표 때 내 점수 (달 중엔 이 값으로 손님을 나눈다)
+  leadMonths: number;               // 1위를 이어 온 달 수
+  lastMonthIndex: number;           // 마지막 발표 monthIndex (−1이면 아직)
+  rows: RivalRow[];                 // 마지막 발표 순위표
+  line: string;                     // 발표 한 줄
+  steal: RivalSteal | null;
+  pending: boolean;                 // 발표 연출 대기 (dismissRivalBoard로 닫는다)
 }
 
 export interface Staff {
@@ -437,7 +491,7 @@ export interface Pt { x: number; y: number }
 export interface DayLogRow { day: number; guests: number; income: number; regulars: number; grade: number }
 
 /** rent = 소유 필지 월 임대료(stakes: 필지당 ₩8만/월, 마을 관리비 명목), contest = 그달 낸 대회 참가비 */
-export interface MonthCosts { ingredients: number; salary: number; ads: number; upkeep: number; recruit: number; tax: number; loanRepay: number; shuttle: number; rent?: number; contest?: number }
+export interface MonthCosts { ingredients: number; salary: number; ads: number; upkeep: number; recruit: number; tax: number; loanRepay: number; shuttle: number; rent?: number; contest?: number; deal?: number }
 /** 농원: harvested = 이달 1일 창고에 들어온 재료, ingredientSaved = 창고 재료를 써서 안 산 재료비 */
 export interface MonthHarvest { harvested: Record<string, number>; ingredientSaved: number }
 /** 월말 정산 카드 */
@@ -592,7 +646,7 @@ export interface GameStats {
   cornerVisits?: number;   // 손님이 명당을 찾아온 누적 횟수 (fun-corner)
 }
 /** 보상 상자에 담기는 보상 알림의 출처 */
-export type RewardSource = 'goal' | 'monthly' | 'tutorial' | 'rank' | 'star' | 'unlock' | 'milestone' | 'bundle' | 'grade'; // rank·star = 승급 보상, unlock = 손님층 해금, milestone = 자금 목표 25/50/75%, bundle = 같은 큐의 상자 3개 이상을 하나로 묶은 것, grade = 카페 등급 승급 (fun-rank)
+export type RewardSource = 'goal' | 'monthly' | 'tutorial' | 'rank' | 'star' | 'unlock' | 'milestone' | 'bundle' | 'grade' | 'rival'; // rank·star = 승급 보상, unlock = 손님층 해금, milestone = 자금 목표 25/50/75%, bundle = 같은 큐의 상자 3개 이상을 하나로 묶은 것, grade = 카페 등급 승급 (fun-rank)
 /** UI 대화창·팝업 큐 항목 */
 export type Alert =
   | { type: 'goal'; goalId: string }
@@ -975,6 +1029,7 @@ export interface GameState {
   namedGuests: Record<string, NamedGuestState>; // 빅 이벤트 특별 손님을 만난 적이 있는지
   lastOutcome?: OutcomeResult | null;         // 마지막 작업 판정 대박/중박/쪽박 (UI 룰렛 팝업, staff-luck)
   contest?: ContestState;                     // 대회 (contest.ts) — 연 2회 6·12월 1일, 등급 3부터
+  rivals?: RivalsState;                       // 동네 경쟁 카페 5곳 (rival.ts) — 월간 순위표·유행 겹침·뺏기 이벤트·인수/제휴
   monthGreatServes?: number;                  // 이달 서빙 대박 횟수 (월말 카드 하이라이트, staff-luck)
   cornerVisits?: { day: number; counts: Record<string, number> }; // fun-corner: 오늘 명당별 손님 방문 수 (하루 상한, 날이 바뀌면 corners.ts가 초기화)
   cornerSoon?: string[];   // spot2: 마지막 조각이 공사 중이라 곧 완성될 명당 — 미리 알림을 한 번만 띄우려고 기억한다
@@ -1103,6 +1158,12 @@ export type Action =
   | { type: 'enterContest'; event: ContestEvent; staffId: string; menuId: string } // 접수 (개최 7일 전 ~ 당일 아침)
   | { type: 'cancelContest' }                       // 접수 취소 (참가비 환불)
   | { type: 'dismissContest' }                      // 결과 연출 닫기
+  // ---- 동네 경쟁 카페 (rival.ts) ----
+  | { type: 'answerRival'; choice: 'counter' | 'develop' | 'ignore' } // 뺏기 이벤트 대응 — 맞불 홍보 / 메뉴 개발 / 무시
+  | { type: 'dismissRivalBoard' }                   // 동네 순위 발표 연출 닫기
+  | { type: 'allyRival'; id: string }               // 제휴 (월 고정비, 그 카페 강점 항목 +10%)
+  | { type: 'endAllyRival'; id: string }            // 제휴 끝내기
+  | { type: 'acquireRival'; id: string }            // 인수 (손님 흡수 + 시설 1개)
   // ---- z-ending ----
   | { type: 'continueEnding' }                      // 엔딩 뒤 「계속하기」: 알림 닫고 빠른 모드(4배속) 해금
 

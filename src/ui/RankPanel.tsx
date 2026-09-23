@@ -8,6 +8,7 @@ import { Popup } from './Popup';
 import { Icon } from './Icon';
 import { sfx } from './audio';
 import { card, brownBtn, PALETTE } from './frame';
+import { RivalBoard } from './RivalBoard'; // 동네 경쟁 카페 순위표 (맨 위)
 
 const small: CSSProperties = { fontSize: 13, color: PALETTE.inkSoft };
 const stars = (n: number) => '★'.repeat(n) + '☆'.repeat(Math.max(0, MAX_STAR - n));
@@ -31,7 +32,7 @@ function Gauge({ label, value, max = 100, on, color = PALETTE.bar }: { label: st
   );
 }
 
-/** 「평가」 탭: 카페 등급·★ + 다음 ★ 조건, 가이드북 11종 목록.
+/** 「평가」 탭: **동네 순위표**(경쟁 카페 5곳) + 카페 등급·★ + 다음 ★ 조건, 가이드북 11종 목록.
  *  용어 정리: 랭크(1~10) 숫자·점수는 안 보여 준다 — 진척 지표는 등급(1~5)과 ★ 둘뿐. 랭크는 해금 계산에만 쓴다. */
 export function RankPanel() {
   const s = useGame();
@@ -41,6 +42,7 @@ export function RankPanel() {
   const nextAnnounce = ANNOUNCE_MONTHS.find((m) => m > month) ?? ANNOUNCE_MONTHS[0]!;
   return (
     <div data-testid="rank-panel">
+      <RivalBoard />{/* 동네 순위 · 뺏기 이벤트 대응 · 인수/제휴 */}
       <div style={card}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
           <span><Icon name="home_cafe" /> 카페 등급 <b style={{ fontSize: 18 }}>{gradeName(gradeOf(s))}</b></span>

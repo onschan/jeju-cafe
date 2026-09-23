@@ -27,7 +27,7 @@ const CHEST_PX = 128;
 
 const ui = (name: string) => assetUrl(`assets/icons/${name}.png`);
 
-const SOURCE_TITLE: Record<Extract<Alert, { type: 'reward' }>['source'], string> = { goal: '목표 달성!', monthly: '이달의 과제 달성!', tutorial: '잘했다!', rank: '새 시설이 열렸다!', star: '★ 승급!', unlock: '새 손님!', milestone: '반쯤 왔다!', bundle: '한꺼번에!', grade: '카페가 자랐다!' }; // grade: fun-rank 등급 승급
+const SOURCE_TITLE: Record<Extract<Alert, { type: 'reward' }>['source'], string> = { goal: '목표 달성!', monthly: '이달의 과제 달성!', tutorial: '잘했다!', rank: '새 시설이 열렸다!', star: '★ 승급!', unlock: '새 손님!', milestone: '반쯤 왔다!', bundle: '한꺼번에!', grade: '카페가 자랐다!', rival: '동네 순위가 올랐다!' }; // grade: fun-rank 등급 승급
 
 function rewardIcon(r: GoalReward): string {
   switch (r.type) {
