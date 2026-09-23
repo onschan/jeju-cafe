@@ -3,14 +3,14 @@ import { createInitialState, START_ORIGIN } from '../state.ts';
 import { apply } from '../actions.ts';
 import { tick, step } from '../tick.ts';
 import { serialize, deserialize } from '../save.ts';
-import { DAY_MS } from '../clock.ts';
+import { DAY_MS, HOUR_MS } from '../clock.ts';
 import { objectAt } from '../grid.ts';
 import {
   computeScore, scoreTier, endingDue, endingMonthly, makeCarry, applyCarry, carryText, carryDolhareubangCells, canSetSpeed,
   SCORE_TITLES, SCORE_ITEMS, ENDING_YEAR, ENDING_MONTH, MILLENNIUM_TREE, CARRY_RATIO, FAST_SPEED,
 } from '../ending.ts';
 
-/** 10년차 3월 1일 직전(2월 30일 23시)으로 시계를 맞춘다 */
+/** 엔딩(5년차 3월 1일) 직전(2월 30일 23시)으로 시계를 맞춘다 */
 function beforeEnding(s: ReturnType<typeof bareState>) {
   s.clock.year = ENDING_YEAR; s.clock.month = ENDING_MONTH - 1; s.clock.day = 30; s.clock.hour = 23; s.clock.accMs = 0;
 }
@@ -23,15 +23,15 @@ describe('최종 점수', () => {
     const sc = computeScore(s);
     expect(sc.items.map((i) => i.key)).toEqual(SCORE_ITEMS.map((i) => i.key));
     const pt = Object.fromEntries(sc.items.map((i) => [i.key, i.points]));
-    expect(pt).toMatchObject({ money: 50, guests: 123, star: 60, rank: 60, reputation: 35, goals: 60, corners: 3, spots: 4, regulars: 0 });
-    expect(sc.total).toBe(50 + 123 + 60 + 60 + 35 + 60 + 3 + 4);
+    expect(pt).toMatchObject({ money: 100, guests: 17, star: 75, rank: 60, reputation: 35, goals: 90, corners: 12, spots: 24, regulars: 0 });
+    expect(sc.total).toBe(100 + 17 + 75 + 60 + 35 + 90 + 12 + 24);
     expect(sc.tier).toBe(scoreTier(sc.total));
     expect(sc.title).toBe(SCORE_TITLES[sc.tier - 1]!.title);
-    // 상한: 자금 3억 → 300점, 그 이상도 300 · 명당 24
+    // 상한: 자금 ₩7,500만 → 150점, 그 이상도 150 · 명당 24종 → 96
     s.money = 9_000_000_000;
     s.codex.corners = Array.from({ length: 30 }, (_, i) => `c${i}`);
-    expect(computeScore(s).items.find((i) => i.key === 'corners')!.points).toBe(24);
-    expect(computeScore(s).items.find((i) => i.key === 'money')!.points).toBe(300);
+    expect(computeScore(s).items.find((i) => i.key === 'corners')!.points).toBe(96);
+    expect(computeScore(s).items.find((i) => i.key === 'money')!.points).toBe(150);
     // 칭호 문턱
     expect(scoreTier(0)).toBe(1); expect(scoreTier(199)).toBe(1); expect(scoreTier(200)).toBe(2); expect(scoreTier(800)).toBe(5);
     expect(SCORE_TITLES[0]!.title).toBe('올레길 커피 노점'); expect(SCORE_TITLES[4]!.title).toBe('제주의 전설 카페');
@@ -39,13 +39,13 @@ describe('최종 점수', () => {
 
 });
 
-describe('10년차 엔딩', () => {
-  test('10년차 3월 1일 결산 카드 뒤 alerts에 ending 1회, 점수 저장, 그 뒤로도 게임은 이어진다', () => {
+describe('5년차 엔딩', () => {
+  test('5년차 3월 1일 결산 카드 뒤 alerts에 ending 1회, 점수 저장, 그 뒤로도 게임은 이어진다', () => {
     const s = bareState(2);
     expect(endingDue(s)).toBe(false);
     beforeEnding(s);
     expect(s.ending.reached).toBe(false);
-    tick(s, 2000 * 2); // 2월 30일 23시 → 3월 1일 6시
+    tick(s, HOUR_MS * 2); // 2월 30일 23시 → 3월 1일 6시
     expect(s.clock.year).toBe(ENDING_YEAR); expect(s.clock.month).toBe(ENDING_MONTH); expect(s.clock.day).toBe(1);
     expect(s.lastMonthCard).not.toBeNull(); // 결산 카드가 먼저
     expect(s.ending.reached).toBe(true);
@@ -72,7 +72,7 @@ describe('10년차 엔딩', () => {
   test('저장 왕복: ending·carry 유지, v18 세이브(필드 없음)는 backfill', () => {
     const s = bareState(3);
     beforeEnding(s);
-    tick(s, 4000);
+    tick(s, HOUR_MS * 2);
     const back = deserialize(serialize(s));
     expect(back.ending).toEqual(s.ending);
     const obj = JSON.parse(serialize(bareState(3))) as Record<string, unknown>;
@@ -91,7 +91,7 @@ describe('10년차 엔딩', () => {
 });
 
 describe('이월', () => {
-  test('makeCarry: 명당 도감·명소 Lv·유니폼·돌하르방(최대 2)·응모권 20%·손님 인기 20%', () => {
+  test('makeCarry: 명당 도감·명소 Lv·유니폼·돌하르방(최대 2)·응모권 30%·손님 인기 30%', () => {
     const s = bareState(4);
     s.codex.corners = ['cb1', 'cb2']; s.spots = { a: 3, b: 0 }; s.uniforms = ['uf_galot']; s.tickets = 57; s.segmentPopularity = { student: 40, local_auntie: 7, x: 0 };
     s.unlocked.objects.push('dolhareubang'); s.builders = 3; // 동시 건설 3
@@ -102,7 +102,7 @@ describe('이월', () => {
     expect(c.uniforms).toEqual(['uf_galot']);
     expect(c.dolhareubang).toBe(2);
     expect(c.tickets).toBe(Math.floor(57 * CARRY_RATIO));
-    expect(c.guestPopularity).toEqual({ student: 8, local_auntie: 1 });
+    expect(c.guestPopularity).toEqual({ student: Math.floor(40 * CARRY_RATIO), local_auntie: Math.floor(7 * CARRY_RATIO) });
     expect(c.millennium).toBe(false);
     expect(carryText(c).length).toBeGreaterThanOrEqual(6);
   });
@@ -119,7 +119,7 @@ describe('이월', () => {
     expect(s.codex.corners).toContain('cb1');
     expect(s.spots.a).toBe(2);
     expect(s.uniforms).toContain('uf_galot');
-    expect(s.tickets).toBe(createInitialState(7, 'local', 0, 'tutorial').tickets + 20);
+    expect(s.tickets).toBe(createInitialState(7, 'local', 0, 'tutorial').tickets + Math.floor(100 * CARRY_RATIO));
     expect(s.segmentPopularity.student).toBeGreaterThanOrEqual(10);
     expect(s.unlocked.objects).toContain('dolhareubang');
     expect(s.unlocked.objects).toContain(MILLENNIUM_TREE);

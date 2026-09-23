@@ -8,6 +8,7 @@ import { currentGoal, activeGoals, claimableGoals, GOAL_LOOKAHEAD, goalProgress,
 import type { GoalCondition, GoalReward } from '../types.ts';
 import { tutorialFeatureIds } from '../tutorial.ts';
 import { bareState, at } from './helpers.ts';
+import { ENDING_YEAR } from '../ending.ts';
 
 describe('goals.json 데이터', () => {
   it('순차 목표(§3.5), id 유일, 제목 14자 이내, 문구가 있고, v3 시절 id(앞 20개·메뉴)는 전부 존재한다', () => {
@@ -31,7 +32,7 @@ describe('goals.json 데이터', () => {
       for (const r of g.reward) expect(goalRewardText(r).length).toBeGreaterThan(0);
     }
     expect(goalDef('g01').id).toBe('g01');
-    expect(goalDef('g60').condition).toEqual({ type: 'year', n: 10 });
+    expect(goalDef('g60').condition).toEqual({ type: 'year', n: ENDING_YEAR }); // pace: 마지막 목표는 엔딩 연차
   });
 
   it('조건 타입 전부(기존 19 + 신설 14 + 전략 + 도전·월간)에 판정기가 있고 goals.json 108개 조건이 전부 판정된다 (스텁 포함)', () => {

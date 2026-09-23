@@ -7,7 +7,7 @@ import { availableMenus, consumeIngredients, isMenuAvailable } from './menu.ts';
 import { busStopPos, findPath, walkableNeighborsOf, reachMap, pathFromReach, cellKey, moveAlong, walkSpeedMult, GUEST_SPEED_CELLS_PER_S } from './path.ts';
 import { roleEffect, skillTotal, pushNotice, staffInRole, addRoleExp, LOW_ENERGY, roleHeads, zoneOf, isNightShift, ZONE_ROLE, ZONE_FOCUS_BONUS, ZONE_OTHER_PENALTY, ZONE_SATISFACTION_MIN, ZONE_SATISFACTION_MAX, NIGHT_BONUS } from './staff.ts'; // staff2: 인원 환산·담당 구역·저녁 근무
 import { effectivePopularity, youtuberMultiplier } from './promotions.ts';
-import { START_HOUR, END_HOUR, seasonOf } from './clock.ts';
+import { START_HOUR, END_HOUR, HOUR_MS, seasonOf } from './clock.ts';
 import { parcelBonusAt, parcelSpawnMult, parcelFeeMult, parcelAt } from './parcels.ts';
 import { objectStats, popularityFor, guestPickMult, cornerSatisfaction, BASE_POPULARITY } from './compat.ts';
 import { cornerVisitTargets, cornerOfPiece, visitCorner, cornerDef, CORNER_VISIT_WEIGHT } from './corners.ts';
@@ -44,8 +44,11 @@ import { sceneryTouristMult, notePhoto } from './appeal.ts'; // fun: 경관 → 
 import { assignGuestName, regularsDue, dressAsRegular, regularTip, thankIfDone, maybeRequest, addRegularGauge, requestDef, GAUGE_HAPPY_VISIT } from './interact.ts'; // fun-guest (트랙 G): 이름·단골·요청·게이지
 
 export { moveAlong, GUEST_SPEED_CELLS_PER_S }; // 하위 호환 재수출 (본체는 path.ts)
-export const SEAT_MS = 3000;       // 기분이 정해진 뒤 앉아 있는 시간 (≈1.5시간)
-export const PREP_MS = 3000;       // 직원 없을 때 조리 시간 (≈1.5시간)
+// pace: 체류·조리 시간은 게임 시간(시)으로 적는다 — HOUR_MS를 줄여 시계를 빠르게 해도 「몇 시간 앉아 있나」가 그대로라 하루 매출이 안 바뀐다.
+export const SEAT_HOURS = 1.5;     // 기분이 정해진 뒤 앉아 있는 시간
+export const PREP_HOURS = 1.5;     // 직원 없을 때 조리 시간
+export const SEAT_MS = SEAT_HOURS * HOUR_MS;
+export const PREP_MS = PREP_HOURS * HOUR_MS;
 export const MAX_PREP_CUT = 0.45;  // staff2: 조리 담당 1인분당 −15%, 최대 −45%
 export const PREP_CUT_PER_HEAD = 0.15;
 export const MAX_SPEED_SKILL = 0.5;
@@ -83,7 +86,8 @@ export const WAIT_LEAVE_SATISFACTION = 10;
 export const SEASON_GUEST_MULT: Record<number, number> = { 1: 0.7, 2: 0.7, 3: 0.95, 5: 1.1, 7: 1.15, 8: 1.15, 10: 1.1, 11: 0.95, 12: 0.7 };
 /** 시설 순회: 앉았다 일어난 손님 40%가 시설 하나(포토존·기념품·자판기·서가·갤러리·공방…)에 들러 이용료를 내고 간다 */
 export const VISIT_CHANCE = 0.4;
-export const VISIT_MS = 1500;
+export const VISIT_HOURS = 0.75;   // 시설 한 곳에 머무는 시간
+export const VISIT_MS = VISIT_HOURS * HOUR_MS;
 /** 순회 대상: fee가 있는 시설 + 서가 */
 export function isVisitable(type: string): boolean {
   const d = objectDef(type);

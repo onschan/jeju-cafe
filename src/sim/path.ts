@@ -3,6 +3,7 @@ import { objectDef } from '../data/index.ts';
 import { layoutCached, layoutSig } from './layoutRev.ts';
 import { inBounds, cellAt, objectAt, isRoomFloor, doorOf, doorFrontOf } from './grid.ts';
 import { ENTRY_CELLS } from './layout.ts';
+import { HOUR_MS } from './clock.ts';
 
 const WALKABLE_KINDS = new Set(['path', 'gate', 'busstop']);
 
@@ -119,7 +120,10 @@ export function findPath(state: GameState, from: Pt, to: Pt): Pt[] | null {
   return pathFromReach(state, reachMap(state, from), to);
 }
 
-export const GUEST_SPEED_CELLS_PER_S = 3;
+/** 걷는 속도. pace: 「게임 시간 1시간에 몇 칸」으로 적는다 — 시계가 빨라져도 손님이 한 시간에 가는 거리가 같아야
+ *  자리 회전율(=하루 매출)이 안 바뀐다. 6칸/시 = HOUR_MS 2000일 때의 3칸/초. */
+export const GUEST_CELLS_PER_HOUR = 6;
+export const GUEST_SPEED_CELLS_PER_S = (GUEST_CELLS_PER_HOUR * 1000) / HOUR_MS;
 
 /** 경로를 따라 걷는다. 손님·직원 공용. 목적지에 닿으면 true. */
 /** 활력 화분(walkSpeedPct) 합산 이동 속도 배수 (최대 +30%). 손님·직원 moveAlong의 dtMs에 곱한다. */

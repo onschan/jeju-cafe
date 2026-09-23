@@ -1,7 +1,7 @@
 import type { GameState, ApplyResult, Candidate, Staff, Stats, StatKey, RoleId, JobTier, SkillEffect, Pt, StaffPoolDef, RecruitTierDef } from './types.ts';
 import { RECRUIT_TIERS, STAFF_POOL, SKILLS, roleDef, objectDef, staffPoolDef, recruitTierDef, ROLES } from '../data/index.ts';
 import { randInt, pickWeighted } from './rng.ts';
-import { monthIndex } from './clock.ts';
+import { monthIndex, HOUR_MS } from './clock.ts';
 import { isWalkable, findPath, walkableNeighborsOf, moveAlong, walkSpeedMult } from './path.ts';
 import { WAREHOUSE_FRONT } from './layout.ts';
 import { doorFrontOf } from './grid.ts';
@@ -26,6 +26,11 @@ export const STAT_NAME: Record<StatKey, string> = { stamina: '체력', strength:
 export const BASE_STAFF_SLOTS = 3;
 export const SLOTS_PER_STAFF_ROOM = 2; // stakes: 3 → 2 (채용·급여·정원이 서로 밀리게)
 export const MAX_STAFF_ROOMS = 3;
+/** 직원이 한 자리에 머무는 시간 = 게임 시간 0.5~1.5시간. 1/2000시간 눈금으로 뽑아 HOUR_MS로 환산한다
+ *  (pace: 시계 속도를 바꿔도 서성이는 리듬과 난수 흐름이 그대로다). */
+export const WANDER_TICKS_PER_HOUR = 2000;
+export const WANDER_WAIT_MIN_TICKS = 1000; // 0.5시간
+export const WANDER_WAIT_MAX_TICKS = 3000; // 1.5시간
 export const STAFF_ROOM_TYPE = 'cleaning_room'; // 직원 휴게 효과를 내는 시설 id. 없으면 0개.
 
 /** 다 지어진 휴게실 수 (최대 3) */
@@ -583,6 +588,6 @@ export function moveStaff(state: GameState, dtMs: number): void {
     const cells = wanderCells(state, st.anchor);
     const dest = pickWeighted(state, cells, () => 1);
     if (dest) goTo(state, st, dest);
-    st.waitMs = randInt(state, 1000, 3000);
+    st.waitMs = (randInt(state, WANDER_WAIT_MIN_TICKS, WANDER_WAIT_MAX_TICKS) * HOUR_MS) / WANDER_TICKS_PER_HOUR;
   }
 }

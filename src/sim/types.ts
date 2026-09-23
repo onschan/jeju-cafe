@@ -983,7 +983,7 @@ export interface GameState {
   regularsGauge?: Record<string, number>;     // 손님층 → 단골 게이지 0~5
   regulars?: Regular[];                       // 단골 등록 손님
   routes: Record<RouteId, RouteState>;        // 손님 유입 경로 3종 (트랙 H entry.ts)
-  ending: EndingState;                        // 10년차 엔딩·빠른 모드·100주년 (ending.ts, z-ending)
+  ending: EndingState;                        // 5년차 엔딩·빠른 모드 (ending.ts, z-ending · pace)
   carry: CarryOver | null;                    // 이월해서 시작한 게임이면 그 내용 (기록용)
   spawnAcc: number; // 시간대별 스폰 소수 누적
   researchAcc: number; // 만족 손님 누적 (5마다 연구 +1)

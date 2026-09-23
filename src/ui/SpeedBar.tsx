@@ -4,7 +4,7 @@ import { Icon } from './Icon';
 import { PALETTE } from './frame';
 import { FAST_SPEED } from '../sim/index.ts';
 
-/** 4배속(빠른 모드)은 10년차 엔딩 뒤 「계속하기」로 열린다 (ending.ts) — 해금 전엔 버튼이 없다 */
+/** 4배속(빠른 모드)은 5년차 엔딩 뒤 「계속하기」로 열린다 (ending.ts) — 해금 전엔 버튼이 없다 */
 export const SPEEDS = [0, 1, 2, 3, 4] as const;
 const SPEED_ICON: Record<(typeof SPEEDS)[number], string> = { 0: 'speed_pause', 1: 'speed_1', 2: 'speed_2', 3: 'speed_3', 4: 'speed_3' };
 const SPEED_LABEL: Record<(typeof SPEEDS)[number], string> = { 0: '일시정지', 1: '1배속', 2: '2배속', 3: '3배속', 4: '4배속' };
