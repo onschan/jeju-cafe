@@ -927,8 +927,7 @@ function Game({ onExit }: { onExit: () => void }) {
     { key: 'report', label: '경영', icon: 'report' },
     { key: 'invest', label: '투자', icon: 'money', badge: s.board.events.filter((e) => e.status === 'pending').length },
     { key: 'spots', label: '명소', icon: 'map' },
-    { key: 'shop', label: '상점', icon: 'shop' },
-    { key: 'tickets', label: '응모권', icon: 'ticket', badge: s.tickets },
+    { key: 'tickets', label: '응모권', icon: 'ticket', badge: s.tickets }, // midgame: 「상점」 탭이 같은 화면이라 하나로 합쳤다
     { key: 'rank', label: '평가', icon: 'trophy' },
     { key: 'contest', label: '대회', icon: 'medal', badge: signupOpen(s) && !s.contest?.entry ? 1 : 0 },
     { key: 'settings', label: '설정', icon: 'settings' },
@@ -982,8 +981,7 @@ function Game({ onExit }: { onExit: () => void }) {
             {win.tab === 'report' && <StatusPanel onFocus={focusAndClose} />}
             {win.tab === 'invest' && <BoardPanel tabs={['events']} onContest={() => setWin({ kind: 'ledger', tab: 'contest' })} />}
             {win.tab === 'spots' && <BoardPanel tabs={['spots']} />}
-            {win.tab === 'shop' && <ShopPanel />}
-            {win.tab === 'tickets' && <ShopPanel initialTab="draw" />}
+            {(win.tab === 'tickets' || win.tab === 'shop') && <ShopPanel initialTab="draw" />}{/* 옛 세이브·숏컷이 'shop'으로 올 수 있다 */}
             {win.tab === 'rank' && <RankPanel />}
             {win.tab === 'contest' && <ContestWindow />}
             {win.tab === 'settings' && <SettingsPanel onExit={onExit} gauges={gauges} onGauges={setGauges} />}
@@ -1005,7 +1003,7 @@ function Game({ onExit }: { onExit: () => void }) {
       <div ref={hostRef} style={{ position: 'absolute', inset: 0, touchAction: 'none' }} />
       <SiteOverlayChip />
       {win ? <FirstTipBubble bottom={76} /> : <FirstTipBubble top={SHELL_TOP + 10} />}
-      <TopShell onStatus={() => setWin({ kind: 'status' })} onGoal={() => setWin({ kind: 'goal' })} />
+      <TopShell onStatus={() => setWin({ kind: 'status' })} onGoal={() => setWin({ kind: 'goal' })} onTickets={() => setWin({ kind: 'ledger', tab: 'tickets' })} />
       {!place && !cardTarget && (
         <button data-testid="home-btn" aria-label="본관으로" onClick={goHome}
           style={{ position: 'absolute', left: 8, bottom: `calc(${SHELL_BOTTOM + 8}px + env(safe-area-inset-bottom))`, width: 56, height: 56, borderRadius: 28, border: `3px solid ${PALETTE.wood}`, background: PALETTE.paper, fontSize: 20, zIndex: 11, padding: 0, boxShadow: '0 2px 0 #0004', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Icon name="home_cafe" size={48} /></button>
