@@ -11,7 +11,7 @@ import { objectDef } from '../data/index.ts';
 import { TopShell, BottomBar, PlaceBar, SHELL_BOTTOM, SHELL_TOP, BOTTOM_BAR_H, type WindowKind, type PlaceBarProps } from './Shell';
 import { Window, type IconGridItem } from './Window';
 import { MessageLine, MESSAGE_LINE_H } from './MessageLine';
-import { VoiceFeed } from './VoiceFeed'; // trim: 손님 목소리 피드
+import { VoiceFeed, VOICE_FEED_MAX, VOICE_ROW_H } from './VoiceFeed'; // trim: 손님 목소리 피드
 import { DaySummaryCard } from './DaySummaryCard'; // 성장: 오늘의 성장 요약 3초 카드
 import { GrowthChart } from './GrowthChart'; // 성장: 최근 30일 손님·매출 막대
 import { MiniCard, MainCard, type CardTarget, type CardActions } from './MiniCard';
@@ -788,7 +788,7 @@ function Game({ onExit }: { onExit: () => void }) {
             else if (fix === 'clean') { setMode({ kind: 'idle' }); showMessage('낡은 시설을 골라 고쳐 보세요'); }
           }} />
       )}
-      {!win && <DaySummaryCard bottom={BOTTOM_BAR_H + MESSAGE_LINE_H + 6} />}
+      {!win && <DaySummaryCard bottom={BOTTOM_BAR_H + 26 + VOICE_FEED_MAX * (VOICE_ROW_H + 2) + 4} />}{/* 손님 목소리 피드 위 */}
       <MessageLine bottom={BOTTOM_BAR_H} />
       {place ? <PlaceBar {...place} /> : <BottomBar onOpen={openWindow} />}
       {cardTarget && !place && <MiniCard target={cardTarget} actions={cardActions} onClose={() => openCard(null)} />}

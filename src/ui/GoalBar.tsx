@@ -1,9 +1,9 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useGame } from './store';
 import { Icon } from './Icon';
 import { fmtNum } from '../sim/format.ts';
-import { TUTORIAL_STEPS, tutorialDone, mainBuilding, nextMove, solverKey } from '../sim/index.ts';
+import { TUTORIAL_STEPS, tutorialDone, mainBuilding, nextMove, solverNextMove, solverKey } from '../sim/index.ts';
 import { setGuideFocus } from './tutorialHighlight';
 import { currentGoal, urgentChallenge } from './simBridge';
 import { PALETTE } from './frame';
@@ -41,7 +41,12 @@ function TutorialBadge() {
 export const TODO_EMPTY_TEXT = '할 건 다 했다. 마음껏 꾸며 보라';
 export function TodoLine() {
   const s = useGame();
-  const move = nextMove(s);
+  // solver가 다시 셈하는 동안(상태 키가 바뀔 때마다) 직전 답을 그대로 둔다 —
+  // 그때만 쓰는 휴리스틱은 1년차 순서라 다 자란 카페에서 엉뚱한 줄("올렛길부터")을 내놓는다.
+  const kept = useRef<ReturnType<typeof nextMove>>(null);
+  const solved = solverNextMove(s);
+  if (solved) kept.current = solved;
+  const move = solved ?? kept.current ?? nextMove(s);
   const text = move ? move.text : TODO_EMPTY_TEXT;
   const focus = () => {
     if (!move) return;

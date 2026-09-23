@@ -34,7 +34,8 @@ export function DaySummaryCard({ bottom }: { bottom: number }) {
   const s = useGame();
   const sum = daySummary(s);
   const day = sum?.today.day ?? null;
-  const [shownDay, setShownDay] = useState<number | null>(null);
+  // 처음 그릴 때의 날은 「이미 본 것」으로 둔다 — 세이브를 이어서 열자마자 어제 요약이 튀어나오지 않게
+  const [shownDay, setShownDay] = useState<number | null>(day);
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
