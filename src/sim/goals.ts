@@ -13,7 +13,7 @@
  */
 import type { GameState, GoalDef, GoalCondition, GoalReward, FeatureId, Action, ApplyResult, RewardSource, GoalSpeaker, Alert, PlacedObject } from './types.ts';
 import { GOALS, goalDef, objectDef, menuDef, roleDef, ROLES, OBJECTS, MENUS, spotDef, guestTypeDef, guidebookDef, itemDef, ITEMS } from '../data/index.ts';
-import { facilityCount } from './rank.ts';
+import { facilityCount, rankScore, RANK_THRESHOLDS } from './rank.ts';
 import { countCategory } from './segments.ts';
 import { ownedParcels } from './parcels.ts';
 import { regularCount } from './interact.ts';
@@ -144,7 +144,9 @@ export const conditionCheckers: CheckerMap = {
   satisfied: (s, c) => n(s.stats.satisfiedTotal, c.n),
   parcels: (s, c) => n(ownedParcels(s).length, c.n),
   rank: (s, c) => flag(bestRank(s) <= c.n),
-  cafeRank: (s, c) => n(s.rank, c.n),
+  // 용어 정리(quick): 랭크(1~10) 숫자는 플레이어에게 안 보인다 — 진행 막대도 랭크가 아니라
+  // 「알려진 정도」 점수(누적 손님·시설·손님층)로 보여 준다. 달성 판정은 그대로 랭크다.
+  cafeRank: (s, c) => { const need = RANK_THRESHOLDS[c.n - 1] ?? 0; return s.rank >= c.n ? n(need, need) : n(Math.min(rankScore(s), need), need); },
   stars: (s, c) => n(s.star, c.n),
   regular: (s, c) => n(regularCount(s), c.n),
   research: (s, c) => n(s.research, c.n),
@@ -295,7 +297,7 @@ export function goalConditionText(c: GoalCondition): string {
     case 'satisfied': return `만족 손님 ${fmtNum(c.n)}명`;
     case 'parcels': return `필지 ${c.n}개`;
     case 'rank': return `가이드북 ${c.n}위 안`;
-    case 'cafeRank': return `카페 랭크 ${c.n}`;
+    case 'cafeRank': return `알려진 정도 ${RANK_THRESHOLDS[c.n - 1] ?? 0}`;
     case 'stars': return `★${c.n}`;
     case 'regular': return `단골 ${c.n}명`;
     case 'research': return `연구 ${c.n}`;
