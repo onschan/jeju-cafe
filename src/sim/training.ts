@@ -59,6 +59,7 @@ export function train(state: GameState, staffId: string, trainingId: string): vo
   state.money -= cost;
   state.monthCosts.recruit += cost;
   st.trainingCount++;
+  st.trainingLog = { ...(st.trainingLog ?? {}), [trainingId]: (st.trainingLog?.[trainingId] ?? 0) + 1 }; // 대회 심사 연수 보정 (contest.ts)
   st.training = { id: trainingId, daysLeft: trainingDef(trainingId).days };
   st.path = [];
   st.anchor = staffAnchor(state, st);

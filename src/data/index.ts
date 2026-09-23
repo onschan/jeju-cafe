@@ -1,4 +1,4 @@
-import type { ObjectDef, MenuDef, GuestTypeDef, IngredientDef, FarmYield, GoalDef, BigEventDef, RoleDef, SkillDef, PromotionDef, GuestTags, ComboTarget, SetDef, ItemDef, ItemSlot, Season, MenuCategory, GuestEffect, GuestWant, UnlockCond, QuestDef, QuestCondition, QuestReward, SpotDef, SpotCategory, SpotSpecial, SpotTag, GiftDef, EventDef, MenuStats, MenuStatKey, IngredientCategory, IngredientComboDef, ToppingDef, HiddenRecipeDef, FacilityCategory, UniformDef, GuidebookDef, DrawPrizeDef, DrawPrizeKind, JudgeKey, NamedGuestDef, StaffPoolDef, RecruitTierDef, TrainingDef, TitleDef } from '../sim/types.ts';
+import type { ObjectDef, MenuDef, GuestTypeDef, IngredientDef, FarmYield, GoalDef, BigEventDef, RoleDef, SkillDef, PromotionDef, GuestTags, ComboTarget, SetDef, ItemDef, ItemSlot, Season, MenuCategory, GuestEffect, GuestWant, UnlockCond, QuestDef, QuestCondition, QuestReward, SpotDef, SpotCategory, SpotSpecial, SpotTag, GiftDef, EventDef, MenuStats, MenuStatKey, IngredientCategory, IngredientComboDef, ToppingDef, HiddenRecipeDef, FacilityCategory, UniformDef, GuidebookDef, DrawPrizeDef, DrawPrizeKind, JudgeKey, NamedGuestDef, StaffPoolDef, RecruitTierDef, TrainingDef, TitleDef, ContestDef } from '../sim/types.ts';
 import objectsJson from './objects.json' with { type: 'json' };
 import menusJson from './menus.json' with { type: 'json' };
 import guestsJson from './generated/v2/guests.json' with { type: 'json' };
@@ -16,6 +16,7 @@ import staffPoolJson from './staff_pool.json' with { type: 'json' };
 import recruitTiersJson from './recruit_tiers.json' with { type: 'json' };
 import trainingsJson from './trainings.json' with { type: 'json' };
 import titlesJson from './titles.json' with { type: 'json' };
+import contestsJson from './contests.json' with { type: 'json' };
 import namesJson from './names.json' with { type: 'json' };
 import promotionsJson from './promotions.json' with { type: 'json' };
 import dialogueJson from './dialogue.json' with { type: 'json' };
@@ -450,6 +451,7 @@ export const STAFF_POOL = staffPoolJson as StaffPoolDef[];
 export const RECRUIT_TIERS = recruitTiersJson as RecruitTierDef[];
 export const TRAININGS = trainingsJson as TrainingDef[];
 export const TITLES = titlesJson as TitleDef[]; // 직원 칭호 30 (staff-luck)
+export const CONTESTS = contestsJson as unknown as ContestDef[]; // 대회 종목 3종 (contest.ts)
 export const NAMES = namesJson as { names: string[]; surnames: string[]; given: string[]; hair: number; skin: number; top: number }; // fun-guest: 성·이름 풀 추가
 export const PROMOTIONS = promotionsJson as unknown as PromotionDef[];
 export const DIALOGUE = dialogueJson as {
@@ -639,6 +641,7 @@ const STAFF_POOL_BY_ID = indexBy(STAFF_POOL);
 const RECRUIT_TIER = indexBy(RECRUIT_TIERS);
 const TRAINING = indexBy(TRAININGS);
 const TITLE = indexBy(TITLES);
+const CONTEST = indexBy(CONTESTS);
 const PROMOTION = indexBy(PROMOTIONS);
 const SET = indexBy(SETS);
 const ITEM = indexBy(ITEMS);
@@ -662,6 +665,7 @@ export const staffPoolDef = (id: string) => must(STAFF_POOL_BY_ID, id, 'staffPoo
 export const recruitTierDef = (id: string) => must(RECRUIT_TIER, id, 'recruitTier');
 export const trainingDef = (id: string) => must(TRAINING, id, 'training');
 export const titleDef = (id: string) => must(TITLE, id, 'title');
+export const contestDef = (id: string) => must(CONTEST, id, 'contest');
 export const promotionDef = (id: string) => must(PROMOTION, id, 'promotion');
 const UNIFORM = indexBy(UNIFORMS);
 const GUIDEBOOK = indexBy(GUIDEBOOKS);

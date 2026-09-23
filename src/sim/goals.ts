@@ -32,6 +32,7 @@ import { monthIndex } from './clock.ts';
 import { dayIndex } from './effects.ts';
 import { reachMap, busStopPos, cellKey, walkableNeighborsOf } from './path.ts';
 import { checkMonthly } from './monthly.ts';
+import { contestHistory, contestWins, contestBestRank } from './contest.ts'; // 대회 목표 3개
 import { checkTutorial, TUTORIAL_STEPS } from './tutorial.ts';
 import { hasLoan, loanRewardMult } from './failure.ts';
 import { levelOf } from './upgrade.ts';
@@ -204,9 +205,19 @@ function goalLevelOf(o: PlacedObject): number {
   return Math.max(levelOf(o), (treeOf(o.type)?.index ?? 0) + 1);
 }
 
+/** 코드 판정 조건의 조건 문구 (목표 창·잠김 토스트) */
+export const CUSTOM_TEXT: Record<string, string> = {
+  contestEntered: '대회 한 번 나가기',
+  contestTop3: '대회 3위 안',
+  contestWin: '대회 우승',
+};
+
 /** 코드 판정 조건 */
 export function customMet(state: GameState, id: string): boolean {
   switch (id) {
+    case 'contestEntered': return contestHistory(state).length > 0 || !!state.contest?.entry; // 대회: 접수만 해도 「나가 봤다」
+    case 'contestTop3': return (contestBestRank(state) ?? 9) <= 3;
+    case 'contestWin': return contestWins(state) > 0;
     case 'dirty30': return dirtyForDays(state, CLEAN_LOW, CLEAN_HISTORY_DAYS); // 트랙 A: 청결 < 50 상태 30일 (§4.3 악플 이벤트 조건)
     case 'noParking': return !Object.values(state.objects).some((o) => PARKING_SLOTS[o.type] !== undefined); // 렌터카 대란 (§4.5) — 트랙 H 주차장 4종 전부
     default: return false;
@@ -312,7 +323,7 @@ export function goalConditionText(c: GoalCondition): string {
     case 'profitMonths': return `${c.n}개월 연속 흑자`;
     case 'itemsUsed': return `강화 아이템 ${c.n}개 사용`;
     case 'uniforms': return `유니폼 ${c.n}단계`;
-    case 'custom': return '특별 조건';
+    case 'custom': return CUSTOM_TEXT[c.id] ?? '특별 조건';
     case 'siteSeats': return `전망 ${c.view} 이상 좌석 ${c.n}개`;
     case 'corners': return `명당 ${c.n}개`;
     case 'clean': return `청결 ${c.avg} 이상 ${c.days}일`;

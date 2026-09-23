@@ -41,6 +41,7 @@ import { cornerProgress } from './corners.ts'; // fun-corner: 명당 만들기 (
 import { canLevelUp } from './staff.ts';
 import { canTrain } from './training.ts';
 import { bestStaffFor } from './luck.ts'; // staff-luck: 대박 기대값이 가장 높은 직원에게 시킨다
+import { signupOpen, contestState, contestStaff, contestMenus, contestOdds, canEnterContest, CONTESTS, TROPHY_TYPE, trophyOwned, trophyPlaced } from './contest.ts'; // 대회
 import { staffCapacity, STAFF_ROOM_TYPE } from './staff.ts';
 import { canUpgrade, upgradeCost, isUpgradable } from './upgrade.ts';
 import { objectStats, setLevels } from './compat.ts';
@@ -672,6 +673,7 @@ export function monthlyPlan(s: GameState, monthsPlayed: number): void {
   if (s.clock.year >= BOT_LEVELUP_YEAR && s.money >= BOT_LEVELUP_MIN_MONEY && (s.customMenus.length >= BOT_RECIPES || s.research >= DEVELOP_RESEARCH * 2)) for (const st of s.staff) if (canLevelUp(s, st.id).ok && apply(s, { type: 'levelUp', staffId: st.id }).ok) break; // 연구 포인트는 레시피 개발이 먼저
   buyParcelIfAny(s);
   investSpotIfAny(s);
+  placeTrophies(s); // 대회 상패를 실내에
   planRoutes(s); // 트랙 H
   // z-ending: 돈이 넉넉하면 마을 기부(정착 등급 「기부」 항목, 누적 상한까지), 10월엔 마을제 (g82·g90)
 }
@@ -703,6 +705,40 @@ export function botEventChoice(s: GameState): number {
   return first.cost && canSpend(s, first.cost) ? 0 : 1;
 }
 
+/** 대회: 참가비를 내고도 이만큼은 남아 있어야 접수한다 (밴드가 참가비로 흔들리지 않게) */
+export const BOT_CONTEST_RESERVE = 10_000_000;
+/** 대회: 중박 기준 이 순위 안에 들 것 같을 때만 낸다 (3위 = 참가비 ×2라 본전 위) */
+export const BOT_CONTEST_RANK = 3;
+
+/** 대회 접수 (접수 창이 열린 날). 예상 점수가 가장 높은 〈종목·직원·메뉴〉 조합 하나를 고른다 — 결정적. */
+function enterContestIfCan(s: GameState): void {
+  const c = contestState(s);
+  if (c.pending) apply(s, { type: 'dismissContest' }); // 결과 연출은 바로 닫는다
+  if (c.entry || !signupOpen(s)) return;
+  let best: { event: typeof CONTESTS[number]['id']; staffId: string; menuId: string; score: number } | null = null;
+  for (const def of CONTESTS) {
+    if (s.money - def.fee < BOT_CONTEST_RESERVE) continue;
+    const menus = contestMenus(s, def.id);
+    for (const st of contestStaff(s, def.id)) for (const menuId of menus) {
+      if (!canEnterContest(s, def.id, st.id, menuId).ok) continue;
+      const odds = contestOdds(s, def.id, st.id, menuId);
+      if (!odds || odds.rank > BOT_CONTEST_RANK) continue; // 3위 안이면 상금(참가비 ×2 이상)이 참가비보다 크다
+      if (!best || odds.base > best.score) best = { event: def.id, staffId: st.id, menuId, score: odds.base };
+    }
+  }
+  if (best) apply(s, { type: 'enterContest', event: best.event, staffId: best.staffId, menuId: best.menuId });
+}
+/** 받은 트로피를 실내 빈 칸에 놓는다 (경관 +3 · 인기 +2) */
+function placeTrophies(s: GameState): void {
+  let left = trophyOwned(s, TROPHY_TYPE) - trophyPlaced(s, TROPHY_TYPE);
+  if (left <= 0) return;
+  const main = mainBuilding(s);
+  if (!main) return;
+  for (const p of freeFloorCells(s, main)) {
+    if (left <= 0) break;
+    if (place(s, TROPHY_TYPE, p.x, p.y)) left--;
+  }
+}
 /** 매일 아침 */
 export function dailyPlan(s: GameState): void {
   answerChoices(s); // stakes: 돌발 사고·빅 이벤트 선택지 먼저 (알림을 닫아도 답은 따로 간다)
@@ -731,6 +767,7 @@ export function dailyPlan(s: GameState): void {
   const custom = s.customMenus[0];
   if (custom && !s.menuSlots.includes(custom.id)) apply(s, { type: 'setSlot', slot: 3, menuId: custom.id });
   if (s.lastDevelop) apply(s, { type: 'dismissDevelop' });
+  enterContestIfCan(s); // 대회: 접수 창(개최 이레 전~당일)에 이길 수 있는 판이면 낸다
 
 }
 

@@ -19,6 +19,7 @@ import { emptyMonthCosts } from './economy.ts';
 import { REPUTATION_START } from './reputation.ts';
 import { initMain, MAIN_TYPE, MAIN_SIZE } from './rooms.ts';
 import { initEnding, applyCarry } from './ending.ts'; // z-ending
+import { initContest } from './contest.ts'; // 대회
 
 export { PARCEL_W, PARCEL_H, START_ORIGIN, GRID_W, GRID_H, VILLAGE_ROAD_Y };
 export const SAVE_VERSION = 21; // 21: 덜어내기(trim) — 콤보·명당·도전·라이벌·팝업 원정·지역 손님·투어·마을제·100주년 삭제, 입지 5요소 → 자리 점수, 명소 24 → 8(Lv3), 경로 5 → 3, 불만 9 → 4, 손님 목소리 피드(voices). v20 세이브는 migrateTrim이 환불·치환 + 알림 한 줄. 20: 재미 리셋 통합(fun) — 시작 3분 튜토리얼 7단계·손님 상호작용(regulars·requests)·명당(codex.corners)·등급(grade)·제주 배경 (optional 필드 + backfill, 19 세이브는 백업 후 새 게임). 19: z 통합 — 엔딩·마을·이월·튜토리얼 30단계 seen (마이그레이션 없음). 18: y 통합 — 되돌리기(undo)·개체 이름(name)·유입 경로(routes·손님 route/foreign)·본관(main·객체 w/h/mode/careDay) (마이그레이션 없음, 17 세이브는 백업 후 새 게임). 17: 컨텐츠 확장 통합 — 경제(삼춘 대출·세금·대기열·★ 유지 심사)·시설 44·증축·청결·명소 방문객·투어·선물·직원 8직종·입지·목표 108·도전·튜토리얼 (마이그레이션 없음). 15: v3 대격변. 14: 라이벌 카페
@@ -267,6 +268,7 @@ export function createInitialState(seed: number, playerId = 'local', createdAt =
     praised: {},
     namedGuests: initNamedGuests(),
     lastOutcome: null,   // staff-luck 대박/중박/쪽박 팝업
+    contest: initContest(), // 대회 (연 2회 6·12월, 등급 3부터)
     luckSeq: 0,
     monthGreatServes: 0,
     main: initMain(),

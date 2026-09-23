@@ -7,6 +7,7 @@ import { objectDef } from '../data/index.ts';
 import { josa } from './josa.ts';
 import { initMain } from './rooms.ts';
 import { initEnding } from './ending.ts'; // z-ending
+import { initContest } from './contest.ts'; // 대회
 import type { FinalScore } from './types.ts';
 import { TUTORIAL_STEPS } from './tutorial.ts';
 import { ROUTE_IDS } from './entry.ts';
@@ -110,6 +111,7 @@ function backfill(state: GameState): void {
   state.codex.titles ??= []; // staff-luck: 만난 칭호 도감
   state.codex.corners ??= []; // fun-corner: 만든 명당 도감
   state.lastOutcome ??= null;
+  state.contest ??= initContest(); // 대회 (v21 세이브엔 없다 — 등급 3이면 다음 6·12월부터 접수할 수 있다)
   state.luckSeq ??= 0;
   state.monthGreatServes ??= 0;
   state.voices ??= []; // trim: 손님 목소리 피드

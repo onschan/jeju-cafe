@@ -8,6 +8,7 @@ import { Icon } from './Icon';
 import { Confirm } from './Popup';
 import { RecipeCodex } from './CraftPanel';
 import { TitleCodex } from './TitleCodex'; // staff-luck 칭호 도감
+import { ContestCodex } from './windows/ContestWindow';
 import { CornerCodex } from './CornerCodex';
 import { brownBtn, brownBtnOn, brownBtnOff, dangerBtn, card, PALETTE } from './frame';
 
@@ -154,6 +155,7 @@ export function CodexPanel() {
           {allSets ? '접기' : `나머지 ${ordered.length - CODEX_TOP}개 더 보기`}
         </button>
       )}
+      <ContestCodex />{/* 대회: 트로피·우승 이력 */}
       <CornerCodex />
       <RecipeCodex />
       <TitleCodex />

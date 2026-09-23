@@ -32,6 +32,7 @@ import { canSetTargets, setTargets } from './segments.ts';
 import { canContinueEnding, continueEnding, canSetSpeed } from './ending.ts'; // z-ending
 import { resolveRisk } from './risk.ts'; // stakes: 돌발 사고 선택지
 import { resolveEventChoice } from './events.ts'; // stakes: 빅 이벤트 선택지
+import { canEnterContest, enterContest, canCancelContest, cancelContest, canPlaceTrophy, contestState } from './contest.ts'; // 대회
 
 /** 못 옮기고 못 없애는 것 (정류장·본관·샘). 정낭은 w-free부터 일반 시설 — 옮기고 없애고 더 놓을 수 있다. */
 export const PROTECTED_TYPES = new Set(['busstop', 'warehouse', 'spring']);
@@ -39,7 +40,7 @@ export const PROTECTED_TYPES = new Set(['busstop', 'warehouse', 'spring']);
 export const ROTATABLE_TYPES = new Set(['gate', 'counter']);
 const ACTION_LOG_CAP = 1000;
 
-const CLIENT_ONLY = new Set<Action['type']>(['setSpeed', 'dismissMonthCard', 'dismissDevelop', 'dismissDraw', 'dismissAnnouncement', 'dismissAlert', 'dismissOutcome', 'continueEnding']);
+const CLIENT_ONLY = new Set<Action['type']>(['setSpeed', 'dismissMonthCard', 'dismissDevelop', 'dismissDraw', 'dismissAnnouncement', 'dismissAlert', 'dismissOutcome', 'dismissContest', 'continueEnding']);
 
 function log(state: GameState, a: Action) {
   if (CLIENT_ONLY.has(a.type)) return;
@@ -83,6 +84,7 @@ function applyInner(state: GameState, a: Action): ApplyResult {
     case 'place': {
       if (a.objectType === MAIN_TYPE) return applyInner(state, { type: 'placeMain', x: a.x, y: a.y }); // 본관은 짓기 창 「건물」 탭 카드 → placeMain (w-start)
       if (!state.unlocked.objects.includes(a.objectType)) return { ok: false, reason: '아직 못 짓는 것' };
+      { const t = canPlaceTrophy(state, a.objectType); if (!t.ok) return t; } // 대회 트로피는 받은 개수만큼만
       const cost = placeCost(state, a.objectType);
       if (state.money < cost) return { ok: false, reason: '돈이 모자라요' };
       const c = canPlace(state, a.objectType, a.x, a.y);
@@ -535,6 +537,22 @@ function applyInner(state: GameState, a: Action): ApplyResult {
       return { ok: true };
     case 'dismissOutcome': // staff-luck 룰렛 팝업
       state.lastOutcome = null;
+      return { ok: true };
+    // ---- 대회 (contest.ts) ----
+    case 'enterContest': {
+      const c = canEnterContest(state, a.event, a.staffId, a.menuId);
+      if (!c.ok) return c;
+      enterContest(state, a.event, a.staffId, a.menuId);
+      return { ok: true };
+    }
+    case 'cancelContest': {
+      const c = canCancelContest(state);
+      if (!c.ok) return c;
+      cancelContest(state);
+      return { ok: true };
+    }
+    case 'dismissContest':
+      contestState(state).pending = null;
       return { ok: true };
     default:
       return { ok: false, reason: '아직 구현 안 됨' };

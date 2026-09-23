@@ -1,6 +1,7 @@
 import type { GameState } from './types.ts';
 import { advanceClock, END_HOUR, START_HOUR } from './clock.ts';
 import { monthlyHarvest } from './orchard.ts';
+import { dailyContest, monthlyContest } from './contest.ts'; // 대회: 6·12월 1일 개최, 이레 전 예고
 import { checkGoals } from './goals.ts';
 import { monthlyBigEvents, dailyBigEvents, hourlyBigEvents, rollTrend, resolvePendingEventChoice } from './events.ts';
 import { monthlyRisk, dailyRisk } from './risk.ts'; // stakes: 돌발 사고
@@ -93,6 +94,7 @@ function onNewMonth(state: GameState, prevMonth: number, prevYear: number): void
   monthlyBoard(state);
   monthlyShop(state);
   monthlyRank(state);
+  monthlyContest(state); // 대회 (6·12월 1일 아침): 접수한 종목을 치른다
   monthlyBigEvents(state); // 판정은 1일, 발동은 달 안에 퍼진다 (game-feel)
   rollTrend(state); // stakes: 이번 달 유행 분류 (×1.5 손님 선호)
   monthlyRisk(state); // stakes: 이달 돌발 사고 예약 (25%)

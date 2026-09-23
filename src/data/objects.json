@@ -319,5 +319,24 @@
       "soil"
     ],
     "desc": "봄에 분홍 꽃이 피는 나무. 그늘 아래 벤치를 두면 벚꽃 그늘."
+  },
+  {
+    "id": "trophy",
+    "name": "대회 트로피",
+    "kind": "deco",
+    "category": "scenery",
+    "w": 1,
+    "h": 1,
+    "cost": 0,
+    "scenery": 3,
+    "noise": 0,
+    "wind": 0,
+    "upkeep": 0,
+    "popularity": 2,
+    "terrain": [
+      "soil"
+    ],
+    "indoor": true,
+    "desc": "대회에서 받은 상패. 받은 개수만큼 실내에 놓을 수 있어요. 경관 +3 · 인기 +2."
   }
 ]

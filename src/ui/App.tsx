@@ -3,7 +3,7 @@ import { wonText, label } from '../data/labels.ts';
 import { GameView, RECT_COLOR_LINE, type GhostSpec, type RangeHint } from '../render/GameView';
 import { startLoop, dispatch, getState, useGame, setViewReset, autosaveNow, hasAnySave, loadSlot, setMonthCardHook, setSceneHook, showMessage, pauseGame, isSpeedLocked, setSpeedLocked } from './store';
 import { unlockAudio, bgm, isMuted, setMuted, getBgmVolume, getSfxVolume, setBgmVolume, setSfxVolume, sfx, setBgmLayer } from './audio';
-import { gradeOf, gradeName, GRADE_BGM_LAYER_FROM, REVEAL_GRADE } from '../sim/index.ts'; // fun-rank · fun 점진 공개
+import { gradeOf, gradeName, GRADE_BGM_LAYER_FROM, REVEAL_GRADE, contestUnlocked, signupOpen } from '../sim/index.ts'; // fun-rank · fun 점진 공개 · 대회
 import { seasonOf, canPlace, objectAt, footprint, sizeOf, mainBuilding, parcelAt, placeCost, isLineType, lineCells, planLine, canAutoConnectPath, type LineOrder, type Pt, PROTECTED_TYPES, ROTATABLE_TYPES, goalForMenu, featureOpen, canUndo, demolishRefund, canDisturb, routeAtCell, tutorialDone, canBuildMain, recommendedMainCells, cellAt, doorFrontOf, MAIN_TYPE, MAIN_BUILD_COST, type GameState } from '../sim/index.ts';
 import { RoutesSection } from './RouteCard'; // 트랙 H
 import { objectDef } from '../data/index.ts';
@@ -23,6 +23,8 @@ import { FirstTipBubble, useFirstTip, tipKeyFor, showFirstTip } from './firstTip
 import { SiteOverlayChip } from './SiteToggle';
 import { RewardPopup } from './RewardPopup';
 import { OutcomePopup } from './OutcomePopup'; // staff-luck: 대박/중박/쪽박 룰렛
+import { ContestShow } from './ContestShow'; // 대회 결과 연출 (연 2회 6·12월)
+import { ContestWindow } from './windows/ContestWindow';
 import { checkAlerts } from './alertDialogue.ts';
 import { guestSay, staffSay } from './simBridge';
 import { BuildWindow, requestBuildTab } from './windows/BuildWindow.tsx';
@@ -73,7 +75,7 @@ type Mode =
 /** 전체 화면 창과 그 아이콘 그리드 항목 (§5.1) */
 type CafeTab = 'menu' | 'ingredients' | 'craft' | 'promo' | 'building' | 'indoor';
 type PeopleTab = 'staff' | 'candidates' | 'guests' | 'codex' | 'quests';
-type LedgerTab = 'report' | 'invest' | 'spots' | 'shop' | 'tickets' | 'rank' | 'settings';
+type LedgerTab = 'report' | 'invest' | 'spots' | 'shop' | 'tickets' | 'rank' | 'contest' | 'settings';
 type Win =
   | { kind: 'build'; origin?: { x: number; y: number } }
   | { kind: 'cafe'; tab: CafeTab | null }
@@ -724,12 +726,13 @@ function Game({ onExit }: { onExit: () => void }) {
     { key: 'shop', label: '상점', icon: 'shop' },
     { key: 'tickets', label: '응모권', icon: 'ticket', badge: s.tickets },
     { key: 'rank', label: '평가', icon: 'trophy' },
+    { key: 'contest', label: '대회', icon: 'medal', badge: signupOpen(s) && !s.contest?.entry ? 1 : 0 },
     { key: 'settings', label: '설정', icon: 'settings' },
   ];
 
   const cafeMenu = revealed ? CAFE_MENU : CAFE_MENU.filter((t) => t.key !== 'building' && t.key !== 'indoor');
   const peopleMenu = PEOPLE_MENU;
-  const ledgerMenu = revealed ? LEDGER_MENU : LEDGER_MENU.filter((t) => t.key !== 'spots');
+  const ledgerMenu = LEDGER_MENU.filter((t) => (revealed || t.key !== 'spots') && (contestUnlocked(s) || t.key !== 'contest')); // 대회는 등급 3부터 (fun 점진 공개)
   const renderWindow = () => {
     if (!win) return null;
     switch (win.kind) {
@@ -772,11 +775,12 @@ function Game({ onExit }: { onExit: () => void }) {
         return (
           <Window title="장부" menu={ledgerMenu} tab={win.tab} onTab={(t) => setWin({ kind: 'ledger', tab: t })} onClose={closeWin} testId="window-ledger">
             {win.tab === 'report' && <StatusPanel />}
-            {win.tab === 'invest' && <BoardPanel tabs={['events']} />}
+            {win.tab === 'invest' && <BoardPanel tabs={['events']} onContest={() => setWin({ kind: 'ledger', tab: 'contest' })} />}
             {win.tab === 'spots' && <BoardPanel tabs={['spots']} />}
             {win.tab === 'shop' && <ShopPanel />}
             {win.tab === 'tickets' && <ShopPanel initialTab="draw" />}
             {win.tab === 'rank' && <RankPanel />}
+            {win.tab === 'contest' && <ContestWindow />}
             {win.tab === 'settings' && <SettingsPanel onExit={onExit} gauges={gauges} onGauges={setGauges} />}
           </Window>
         );
@@ -825,6 +829,7 @@ function Game({ onExit }: { onExit: () => void }) {
       {renderWindow()}
       <RewardPopup />
       <OutcomePopup />
+      <ContestShow />
       <EndingScreen onExit={onExit} />
       <DialogueHost />
     </div>

@@ -40,10 +40,10 @@ export function ingredientCost(state: GameState, menuId: string): number {
 }
 
 export function emptyMonthCosts(): MonthCosts {
-  return { ingredients: 0, salary: 0, ads: 0, upkeep: 0, recruit: 0, tax: 0, loanRepay: 0, shuttle: 0, rent: 0 };
+  return { ingredients: 0, salary: 0, ads: 0, upkeep: 0, recruit: 0, tax: 0, loanRepay: 0, shuttle: 0, rent: 0, contest: 0 };
 }
 export function totalCosts(c: MonthCosts): number {
-  return c.ingredients + c.salary + c.ads + c.upkeep + c.recruit + c.tax + c.loanRepay + c.shuttle + (c.rent ?? 0);
+  return c.ingredients + c.salary + c.ads + c.upkeep + c.recruit + c.tax + c.loanRepay + c.shuttle + (c.rent ?? 0) + (c.contest ?? 0);
 }
 
 // ---------- 임대료 (stakes) ----------
