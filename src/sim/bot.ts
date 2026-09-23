@@ -47,6 +47,7 @@ import { signupOpen, contestState, contestStaff, contestMenus, contestOdds, canE
 import { staffCapacity, STAFF_ROOM_TYPE, staffInRole } from './staff.ts';
 import { seatDirt, dailyCleanRecovery, CLEAN_LOW } from './cleanliness.ts'; // staff2: 청소가 필요한지 본다
 import { canUpgrade, upgradeCost, isUpgradable } from './upgrade.ts';
+import { gradeOf, cornerCount } from './grade.ts'; // all: 5년 안에 등급 조건에 닿는지 보려고
 import { objectStats, setLevels } from './compat.ts';
 import { canInvestSpot, spotLevel } from './spots.ts';
 import { canonicalGuestId } from '../data/index.ts';
@@ -60,7 +61,7 @@ import { parkingSites, routePathCells, routeFacility, ENTRY_ROUTES, PARKING_EXPA
 import { mainBuilding, freeFloorCells, nextMainLevel, expandCost, expandCells, canExpandMain, isAnnex, indoorSeats } from './rooms.ts'; // y-indoor
 import type { Candidate, RoleId, StatKey, QuestDef } from './types.ts';
 import { bestMoves, BOT_SOLVER_OPTIONS, type SolverOptions } from './solver.ts'; // solver 정책
-import { activeSteal, RIVAL_COUNTER_COST } from './rival.ts'; // rival2: 뺏기 이벤트 대응 한 줄
+import { activeSteal, RIVAL_COUNTER_COST, endgameOpen, activeRivals, RIVAL_ACQUIRE_COST } from './rival.ts'; // rival2: 뺏기 이벤트 대응 · all: 5년차 인수
 
 /** 봇 정책: heuristic = 아래 v3 정석(밸런스 밴드 기준), solver = 며칠마다 solver.bestMoves 1위 수 하나만 실행(집안일 빼고 아무 정석도 모른다) */
 export type BotPolicy = 'heuristic' | 'solver';
@@ -86,6 +87,10 @@ export interface BotRow {
   goals: number;      // 달성한 목표 수
   events: number;     // 그달 말 활성 빅 이벤트 수
   unreachable: number; // 그달 말 손님이 못 가는 시설 수 (reach.ts)
+  grade: number;      // all: 카페 등급 1~5 (grade.ts) — 5년 안에 어디까지 닿는지 보려고
+  corners: number;    // all: 완성한 명당 수 (등급 조건)
+  reputation: number; // all: 평판 0~100 (등급 조건)
+  totalGuests: number; // all: 누적 손님 (등급 조건)
   ending: { total: number; title: string } | null; // z-ending: 엔딩 뒤 최종 점수 (10년차 3월부터)
 }
 
@@ -931,6 +936,7 @@ export function dailyPlan(s: GameState): void {
   if (custom && !s.menuSlots.includes(custom.id)) apply(s, { type: 'setSlot', slot: 3, menuId: custom.id });
   if (s.lastDevelop) apply(s, { type: 'dismissDevelop' });
   answerRivalIfAny(s); // 동네 경쟁: 뺏기 이벤트가 오면 돈이 되면 맞불, 아니면 메뉴로 받는다 (rival2 트랙 훅 한 줄)
+  acquireRivalIfCan(s); // all: 5년차에 열리는 인수 — 봇이 안 하면 마지막 해 돈 쓸 곳이 없어 자금 밴드가 깨진다
   enterContestIfCan(s); // 대회: 접수 창(개최 이레 전~당일)에 이길 수 있는 판이면 낸다
   fixUnreachable(s); // botfix: 손님이 못 가는 시설을 하루 2건까지 고친다
 
@@ -946,6 +952,21 @@ function answerRivalIfAny(s: GameState): void {
 }
 /** 맞불 홍보를 하고도 남겨 둘 돈 */
 export const BOT_COUNTER_RESERVE = 2_000_000;
+
+/**
+ * all: 5년차 인수(₩3,000만/곳)는 마지막 해의 가장 큰 돈 쓸 곳이다.
+ * 봇이 이걸 안 쓰면 4~5년차에 살 것이 떨어져 잔고만 불어난다 — seed 2가 ₩3억을 넘었다.
+ * 인수하고도 이만큼은 남겨 둔다(월 고정비·수리·홍보).
+ */
+export const BOT_ACQUIRE_RESERVE = 60_000_000;
+/** 한 달에 한 곳만, 그달 살림이 끝난 뒤(10일)에 — 연달아 사면 월말 정산에서 잔고가 마이너스로 내려간다 */
+export const BOT_ACQUIRE_DAY = 10;
+function acquireRivalIfCan(s: GameState): void {
+  if (s.clock.day !== BOT_ACQUIRE_DAY || !endgameOpen(s)) return;
+  if (s.money < RIVAL_ACQUIRE_COST + BOT_ACQUIRE_RESERVE) return;
+  const target = activeRivals(s)[0]; // 순위표 위부터 (센 곳을 먼저 데려온다)
+  if (target) apply(s, { type: 'acquireRival', id: target.id });
+}
 
 /** 봇 진행 커서 (한 상태를 이어서 돌릴 때 — 세이브 왕복 테스트 등) */
 export interface BotCursor { lastMonth: number; monthsPlayed: number }
@@ -1023,6 +1044,7 @@ function* botDays(years: number, seed: number, policy: BotPolicy = 'heuristic', 
         net: card.net, staff: s.staff.length, promos: s.activePromotions.length, guests: card.guests, customMenus: s.customMenus.length,
         rank: s.rank, star: s.star, tickets: s.tickets, goals: s.goals.claimed.length, events: s.events.length,
         unreachable: unreachableCount(s),
+        grade: gradeOf(s), corners: cornerCount(s), reputation: Math.round(s.reputation), totalGuests: s.totalGuests,
         ending: s.ending.score ? { total: s.ending.score.total, title: s.ending.score.title } : null,
       });
       minMoney = s.money;
