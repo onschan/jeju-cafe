@@ -83,4 +83,18 @@ export { NIGHT_HOUR, LIGHT_RADIUS, STREETLIGHT_SAT, DARK_SAT, DARK_TEXT, isNight
 // ---------- z-ending ----------
 export { computeScore, scoreTier, spotLevelSum, endingDue, endingMonthly, canContinueEnding, canSetSpeed, makeCarry, applyCarry, carryText, dolhareubangCount, initEnding, ENDING_YEAR, ENDING_MONTH, MILLENNIUM_TREE, FAST_SPEED, CARRY_RATIO, SCORE_ITEMS, SCORE_TITLES } from './ending.ts';
 export { greetedToday, greetsLeftToday, canGreet, greetGuest, greetLine, canRecommend, recommendMenu, recommendFits, guestNameFor, regularFace, REQUESTS, requestDef, isRequestMet, requestHint, pendingRequests, doneRequests, regularGauge, regularHearts, regularOf, regularById, regularsDue, regularCount, regularList, forgetRegular, GREET_DAY_MAX, RECOMMEND_DAY_MAX, RECOMMEND_TIP_RATE, GAUGE_MAX, REGULAR_TIP_RATE, REQUEST_DAY_MAX } from './interact.ts'; // fun-guest (트랙 G)
+// ---------- 대회 (contest.ts) — 연 2회 6·12월, 등급 3부터 ----------
+export {
+  initContest, contestState, contestUnlocked, nextContest, daysToContest, signupOpen, isContestDay, contestTitle, roundIndex,
+  judgeScore, judgeScores as contestJudgeScores, baseScore, rivalScores as contestRivals, currentRivals, rankAmong as contestRankAmong,
+  contestOdds, contestMenus, contestStaff, canEnterContest, enterContest, canCancelContest, cancelContest, runContest,
+  dailyContest, monthlyContest, contestGuestMult, contestBadge, trophyOwned, trophyPlaced, canPlaceTrophy,
+  contestHistory, contestWins, contestBestRank, trophyKinds, hasSignature, trainingNameFor, titleBonusFor, trainingBonusFor, supplyBonus,
+  contestDef, CONTESTS, CONTEST_MONTHS, CONTEST_DAY, SIGNUP_DAYS, CONTEST_GRADE, CONTEST_HISTORY_CAP,
+  JUDGE_KEYS as CONTEST_JUDGE_KEYS, JUDGE_LABEL as CONTEST_JUDGE_LABEL, JUDGE_STAT as CONTEST_JUDGE_STAT, SCORE_MULT as CONTEST_SCORE_MULT,
+  PRIZE_MULT, RANK_TICKETS as CONTEST_TICKETS, RANK_EXP as CONTEST_EXP, RANK_BOOST, BADGE_MONTHS, TROPHIES, TROPHY_IDS, TROPHY_TYPE,
+  TITLE_JUDGE, TITLE_TRAINING, MENU_SCALE, STAFF_BONUS_MAX, TITLE_BONUS_PER, TITLE_BONUS_MAX, TRAINING_BONUS_PER, TRAINING_BONUS_MAX, SUPPLY_BONUS_MAX,
+  RIVAL_BASE, RIVAL_PER_GRADE, RIVAL_PER_ROUND, RIVAL_STEP, RIVAL_NOISE, RIVAL_COUNT as CONTEST_RIVAL_COUNT,
+  type ContestOdds,
+} from './contest.ts';
 export { pushVoice, recentVoices, voiceText, voicesToday, busiestSeat, dirtiestObject, bestViewSeat, VOICE_DAY_MAX, VOICE_CAP, VOICE_FIX, VOICE_FIX_LABEL, type VoiceLine, type VoiceReason, type VoiceFix } from './voice.ts'; // trim: 손님 목소리 피드

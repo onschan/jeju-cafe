@@ -1,6 +1,7 @@
 import type { GameState } from './types.ts';
 import { advanceClock, END_HOUR, START_HOUR } from './clock.ts';
 import { monthlyHarvest } from './orchard.ts';
+import { dailyContest, monthlyContest } from './contest.ts'; // 대회: 6·12월 1일 개최, 이레 전 예고
 import { checkGoals } from './goals.ts';
 import { monthlyBigEvents, dailyBigEvents, hourlyBigEvents } from './events.ts';
 import { hourlySpawn, hourlyRegulars, updateGuests } from './guests.ts';
@@ -86,6 +87,7 @@ function onNewMonth(state: GameState, prevMonth: number, prevYear: number): void
   monthlyBoard(state);
   monthlyShop(state);
   monthlyRank(state);
+  monthlyContest(state); // 대회 (6·12월 1일 아침): 접수한 종목을 치른다
   monthlyBigEvents(state); // 판정은 1일, 발동은 달 안에 퍼진다 (game-feel)
   endingMonthly(state); // z-ending: 10년차 3월 1일 엔딩 (결산 카드 뒤) · 20년차 11월 100주년
 }
