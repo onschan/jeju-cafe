@@ -12,7 +12,7 @@ import { roleNeeds, needOf, hireForecast, suggestRole, roleEffectText, roleHeads
 import { TitleRibbon } from '../TitleBadge'; // staff-luck 칭호 리본
 import { ROLES, RECRUIT_TIERS, skillDef, trainingDef, staffPoolDef } from '../../data/index.ts';
 import { label, wonText } from '../../data/labels.ts';
-import { PALETTE, brownBtn, brownBtnOff } from '../frame';
+import { PALETTE, brownBtn, brownBtnOff, NO_SCROLLBAR } from '../frame';
 import { drawPortrait, PORTRAIT_SIZE } from '../../render/portrait';
 import { partsOfFace, staffParts, HAIR_RGB, SKIN_RGB, TOP_RGB } from '../../render/character';
 import { SortChips } from '../GuestsPanel';
@@ -150,7 +150,7 @@ function ForecastLines({ s, who, role, testId }: { s: GameState; who: { stats: S
 function CompareTable({ s, cands, role }: { s: GameState; cands: Candidate[]; role: RoleId }) {
   const cell: React.CSSProperties = { padding: '3px 5px', fontSize: 13, textAlign: 'left', borderBottom: `1px solid ${PALETTE.wood}` };
   return (
-    <div style={{ overflowX: 'auto', marginBottom: 10 }} data-testid="candidate-compare">
+    <div className={NO_SCROLLBAR} style={{ overflowX: 'auto', marginBottom: 10 }} data-testid="candidate-compare">
       <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 2 }}>{josa(label('role', role), '으로/로')} 뽑는다면</div>
       <table style={{ borderCollapse: 'collapse', width: '100%', minWidth: 300 }}>
         <thead><tr>{['후보', '몫', '칭호', '월급', '이 자리에 오면'].map((h) => <th key={h} style={{ ...cell, fontWeight: 700 }}>{h}</th>)}</tr></thead>
