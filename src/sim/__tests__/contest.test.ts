@@ -313,7 +313,7 @@ describe('순위 보상 4행', () => {
     const tickets = s.tickets;
     const r = runContest(s)!;
     expect(r.rank).toBe(rank);
-    expect(r.prize).toBe(CONTESTS[0]!.fee * PRIZE_MULT[rank - 1]!);
+    expect(r.prize).toBe(Math.round(CONTESTS[0]!.fee * PRIZE_MULT[rank - 1]!));
     expect(s.money).toBe(money + r.prize);
     expect(s.tickets).toBe(tickets + RANK_TICKETS[rank - 1]!);
     expect(r.tickets).toBe(RANK_TICKETS[rank - 1]!);

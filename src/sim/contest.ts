@@ -81,6 +81,10 @@ export const TITLE_TRAINING: Record<ContestJudge, string[]> = {
  *  contest 트랙 단독 측정에서 ×4/×2.5/×1.5로 내렸는데, big 통합(stakes 수입·비용까지 들어간 상태)에서 다시 재면
  *  봇 5년차 자금이 2억 275만이라 밴드 상한 2억을 넘었다 → 한 칸 더 내린다. 1위는 여전히 참가비의 세 배 남짓. */
 export const PRIZE_MULT = [3.4, 2.1, 1.3, 0];
+/** 순위별 상금 (원 단위로 반올림 — 배율이 소수라 그냥 곱하면 ₩5,099,999.999가 나온다) */
+export function prizeOf(fee: number, rank: number): number {
+  return Math.round(fee * (PRIZE_MULT[rank - 1] ?? 0));
+}
 /** 순위별 응모권 — 4위도 참가상을 받는다 (져도 빈손이 아니게) */
 export const RANK_TICKETS = [5, 3, 2, 1];
 /** 순위별 출전 직원 경험치 */
@@ -278,7 +282,7 @@ export function contestOdds(state: GameState, event: ContestEvent, staffId: stri
   return {
     scores, base, low, high, rivals, rank,
     bestRank: rankAmong(high, rivals), worstRank: rankAmong(low, rivals),
-    chances, winPct, fee: def.fee, prize: def.fee * (PRIZE_MULT[rank - 1] ?? 0),
+    chances, winPct, fee: def.fee, prize: prizeOf(def.fee, rank),
   };
 }
 
@@ -348,7 +352,7 @@ export function cancelContest(state: GameState): void {
 function applyRewards(state: GameState, def: ContestDef, rank: number, staff: Staff | undefined, month: number): { prize: number; tickets: number; trophy: string | null } {
   const c = contestState(state);
   const i = rank - 1;
-  const prize = def.fee * (PRIZE_MULT[i] ?? 0);
+  const prize = prizeOf(def.fee, i + 1);
   const tickets = RANK_TICKETS[i] ?? 0;
   const trophy = TROPHIES[i] ?? null;
   if (prize > 0) { state.money += prize; state.monthIncome += prize; }
