@@ -111,4 +111,4 @@ export {
 export { pushVoice, recentVoices, voiceText, voicesToday, busiestSeat, dirtiestObject, bestViewSeat, VOICE_DAY_MAX, VOICE_CAP, VOICE_FIX, VOICE_FIX_LABEL, type VoiceLine, type VoiceReason, type VoiceFix } from './voice.ts'; // trim: 손님 목소리 피드
 export { closeDay, recentDays, daySummary, DAY_LOG_CAP, type DaySummary } from './daylog.ts'; // 성장: 하루 요약·30일 그래프
 export type { DayLogRow } from './types.ts';
-export { roleEffectText, roleNeeds, needOf, hireForecast, suggestRole, staffBudget, headsOfCandidate, headsOfStaff, type RoleNeed, type HireForecast, type StaffBudget } from './staffPlan.ts'; // staff2: 채용 판단 자료
+export { roleEffectText, roleNeeds, needOf, hireForecast, suggestRole, staffBudget, headsOfCandidate, headsOfStaff, recommendedHire, recommendWhy, postJobHint, EARLY_HALL_MULT, EARLY_HALL_STAFF, EARLY_HALL_SEATS, EARLY_HALL_WHY, EARLY_STAFF_MAX, type RoleNeed, type HireForecast, type StaffBudget, type HireSuggestion } from './staffPlan.ts'; // staff2: 채용 판단 자료
