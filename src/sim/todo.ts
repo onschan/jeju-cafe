@@ -110,7 +110,7 @@ export function rivalRows(state: GameState): TodoRow[] {
   out.push({
     key: 'rival:rank',
     kind: 'rival',
-    title: above ? `이번 달 ${me.rank}위 → ${me.rank - 1}위로` : `동네 1위 지키기`,
+    title: above ? `이번 달 ${me.rank}위에서 ${me.rank - 1}위로` : '동네 1위 지키기',
     // 순위는 「위에서부터 몇 계단 올랐나」로 센다 (6위 → 0, 1위 → 5)
     cur: total - me.rank,
     max: total - 1,

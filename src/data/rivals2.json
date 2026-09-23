@@ -57,9 +57,9 @@
     },
     "growth": {
       "pop": 0.7,
-      "view": 0.4,
-      "service": 0.5,
-      "sales": 0.55
+      "view": 0.5,
+      "service": 0.56,
+      "sales": 0.6
     }
   },
   {
