@@ -125,7 +125,7 @@ export function questRewardText(q: QuestDef): string {
       case 'money': return `자금 ₩${fmtNum(r.amount)}`;
       case 'research': return `연구 ${r.amount}`;
       case 'ticket': return `응모권 ${r.amount}`;
-      case 'ad': return `${guestTypeDef(q.guestId).name} 인기 +${r.amount}`;
+      case 'ad': return `${guestTypeDef(q.guestId).name} 인지도 +${r.amount}`;
       case 'item': { let name = r.itemId; try { name = itemDef(r.itemId).name; } catch { /* 표에만 있는 아이템 */ } return `아이템 ${name}`; }
     }
   });

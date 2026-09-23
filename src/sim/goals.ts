@@ -1,7 +1,7 @@
 /**
  * 목표 체인 (v3 §2 → 확장 §3.5·§7): goals.json 108개. 메인 목표는 **2개 동시 진행**(index와 그 다음 안 이룬 것 둘 다 판정·표시).
  * 달성하면 applyRewards로 보상을 주고 alerts에 { type: 'reward' }(보상 상자) → { type: 'goal' }(축하 대화)를 남긴다.
- * 조건 판정은 conditionCheckers 레지스트리(타입 → { cur, max }). 다른 트랙(시설 증축·청결·명당·연수·명소 방문객·입지)이 아직 없는 조건은
+ * 조건 판정은 conditionCheckers 레지스트리(타입 → { cur, max }). 다른 트랙(시설 증축·청결·자리 보너스·연수·명소 방문객·입지)이 아직 없는 조건은
  * `// TODO(x-<트랙>)` 스텁으로 { cur: 0 }을 돌려 두고 통합 때 한 줄씩 연결한다.
  * 도전 과제·월간 과제·튜토리얼 판정도 checkGoals에서 같이 돈다 (tick·액션 훅은 그대로 한 곳).
  *
@@ -13,7 +13,7 @@
  */
 import type { GameState, GoalDef, GoalCondition, GoalReward, FeatureId, Action, ApplyResult, RewardSource, GoalSpeaker, Alert, PlacedObject } from './types.ts';
 import { GOALS, goalDef, objectDef, menuDef, roleDef, ROLES, OBJECTS, MENUS, spotDef, guestTypeDef, guidebookDef, itemDef, ITEMS } from '../data/index.ts';
-import { facilityCount } from './rank.ts';
+import { facilityCount, rankScore, RANK_THRESHOLDS } from './rank.ts';
 import { countCategory } from './segments.ts';
 import { ownedParcels } from './parcels.ts';
 import { regularCount } from './interact.ts';
@@ -21,6 +21,7 @@ import { metCount } from './named.ts';
 import { pushNotice } from './staff.ts';
 import { addTickets } from './mileage.ts';
 import { MAX_BUILDERS } from './build.ts';
+import { MENU_SLOT_MAX } from './state.ts'; // stakes: 메뉴판 칸 상한 6
 import { fmtNum } from './format.ts';
 import { josa } from './josa.ts';
 import { setLevels } from './compat.ts';
@@ -31,6 +32,7 @@ import { monthIndex } from './clock.ts';
 import { dayIndex } from './effects.ts';
 import { reachMap, busStopPos, cellKey, walkableNeighborsOf } from './path.ts';
 import { checkMonthly } from './monthly.ts';
+import { contestHistory, contestWins, contestBestRank } from './contest.ts'; // 대회 목표 3개
 import { checkTutorial, TUTORIAL_STEPS } from './tutorial.ts';
 import { hasLoan, loanRewardMult } from './failure.ts';
 import { levelOf } from './upgrade.ts';
@@ -142,7 +144,9 @@ export const conditionCheckers: CheckerMap = {
   satisfied: (s, c) => n(s.stats.satisfiedTotal, c.n),
   parcels: (s, c) => n(ownedParcels(s).length, c.n),
   rank: (s, c) => flag(bestRank(s) <= c.n),
-  cafeRank: (s, c) => n(s.rank, c.n),
+  // 용어 정리(quick): 랭크(1~10) 숫자는 플레이어에게 안 보인다 — 진행 막대도 랭크가 아니라
+  // 「알려진 정도」 점수(누적 손님·시설·손님층)로 보여 준다. 달성 판정은 그대로 랭크다.
+  cafeRank: (s, c) => { const need = RANK_THRESHOLDS[c.n - 1] ?? 0; return s.rank >= c.n ? n(need, need) : n(Math.min(rankScore(s), need), need); },
   stars: (s, c) => n(s.star, c.n),
   regular: (s, c) => n(regularCount(s), c.n),
   research: (s, c) => n(s.research, c.n),
@@ -173,7 +177,7 @@ export const conditionCheckers: CheckerMap = {
   custom: (s, c) => flag(customMet(s, c.id)),
   // ---- §7.5 전략 조건 ----
   siteSeats: (s, c) => n(seatObjectsOf(s).filter((o) => siteOf(s, o.x, o.y).view >= c.view).length, c.n), // 자리 전망
-  corners: (s, c) => n(cornersMade(s), c.n), // fun-corner: 만든 코너 수 (도감)
+  corners: (s, c) => n(cornersMade(s), c.n), // fun-corner: 만든 명당 수 (도감)
   hiddenRecipes: (s, c) => n(s.codex.recipes.length, c.n), // 도감에 오른 숨은 레시피 수
   upgraded: (s, c) => n(Object.values(s.objects).filter((o) => !o.build && goalLevelOf(o) >= c.lv).length, c.n), // 트랙 A 증축 · fun 트리 단계
   clean: (s, c) => flag(cleanAvgDays(s, c.days) >= c.avg), // 트랙 A: 최근 days일 평균 청결 ≥ avg
@@ -203,9 +207,19 @@ function goalLevelOf(o: PlacedObject): number {
   return Math.max(levelOf(o), (treeOf(o.type)?.index ?? 0) + 1);
 }
 
+/** 코드 판정 조건의 조건 문구 (목표 창·잠김 토스트) */
+export const CUSTOM_TEXT: Record<string, string> = {
+  contestEntered: '대회 한 번 나가기',
+  contestTop3: '대회 3위 안',
+  contestWin: '대회 우승',
+};
+
 /** 코드 판정 조건 */
 export function customMet(state: GameState, id: string): boolean {
   switch (id) {
+    case 'contestEntered': return contestHistory(state).length > 0 || !!state.contest?.entry; // 대회: 접수만 해도 「나가 봤다」
+    case 'contestTop3': return (contestBestRank(state) ?? 9) <= 3;
+    case 'contestWin': return contestWins(state) > 0;
     case 'dirty30': return dirtyForDays(state, CLEAN_LOW, CLEAN_HISTORY_DAYS); // 트랙 A: 청결 < 50 상태 30일 (§4.3 악플 이벤트 조건)
     case 'noParking': return !Object.values(state.objects).some((o) => PARKING_SLOTS[o.type] !== undefined); // 렌터카 대란 (§4.5) — 트랙 H 주차장 4종 전부
     default: return false;
@@ -283,7 +297,7 @@ export function goalConditionText(c: GoalCondition): string {
     case 'satisfied': return `만족 손님 ${fmtNum(c.n)}명`;
     case 'parcels': return `필지 ${c.n}개`;
     case 'rank': return `가이드북 ${c.n}위 안`;
-    case 'cafeRank': return `카페 랭크 ${c.n}`;
+    case 'cafeRank': return `알려진 정도 ${RANK_THRESHOLDS[c.n - 1] ?? 0}`;
     case 'stars': return `★${c.n}`;
     case 'regular': return `단골 ${c.n}명`;
     case 'research': return `연구 ${c.n}`;
@@ -304,16 +318,16 @@ export function goalConditionText(c: GoalCondition): string {
     case 'spotLevel': return `${name.spot(c.spotId)} Lv${c.lv}`;
     case 'spotAny': return `Lv${c.lv} 명소 ${c.n}곳`;
     case 'visitorsTotal': return `명소 방문객 ${fmtNum(c.n)}명`;
-    case 'guestType': return `${name.guest(c.guestId)} 인기 ${c.n}`;
+    case 'guestType': return `${name.guest(c.guestId)} 인지도 ${c.n}`;
     case 'guidebookRank': return `${name.book(c.bookId)} ${c.n}위 안`;
     case 'guidebookWins': return `가이드북 1위 ${c.n}회`;
     case 'cleanliness': return `청결 ${c.n} 한 달 유지`;
     case 'profitMonths': return `${c.n}개월 연속 흑자`;
     case 'itemsUsed': return `강화 아이템 ${c.n}개 사용`;
     case 'uniforms': return `유니폼 ${c.n}단계`;
-    case 'custom': return '특별 조건';
+    case 'custom': return CUSTOM_TEXT[c.id] ?? '특별 조건';
     case 'siteSeats': return `전망 ${c.view} 이상 좌석 ${c.n}개`;
-    case 'corners': return `코너 ${c.n}개`;
+    case 'corners': return `명당 ${c.n}개`;
     case 'clean': return `청결 ${c.avg} 이상 ${c.days}일`;
     case 'skills': return `특기 직원 ${c.n}명`;
     case 'selfSupply': return `재료 자급률 ${c.pct}%`;
@@ -353,6 +367,7 @@ export function goalRewardText(r: GoalReward): string {
     case 'seed': return `${name.item(r.kind)} ${r.n}개`;
     case 'title': return `칭호 「${r.name}」`;
     case 'feeBonus': return `요금 +${r.pct}%`;
+    case 'menuSlot': return `메뉴판 칸 +${r.n}`;
   }
 }
 
@@ -415,6 +430,13 @@ export function grantReward(state: GameState, r: GoalReward): void {
     }
     case 'title': if (!state.titles.includes(r.id)) { state.titles.push(r.id); pushNotice(state, `칭호 「${r.name}」`); } break;
     case 'feeBonus': state.feeBonusPct += r.pct; break;
+    case 'menuSlot': { // stakes: 메뉴판 칸 +n (최대 menuSlotMax)
+      const max = state.menuSlotMax ?? MENU_SLOT_MAX;
+      const add = Math.max(0, Math.min(r.n, max - state.menuSlots.length));
+      for (let i = 0; i < add; i++) state.menuSlots.push(null);
+      if (add > 0) pushNotice(state, `메뉴판 칸이 ${state.menuSlots.length}개가 됐어요`);
+      break;
+    }
   }
 }
 

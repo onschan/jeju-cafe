@@ -22,9 +22,9 @@ export { WAREHOUSE_FRONT };
 export const STAT_KEYS: StatKey[] = ['stamina', 'strength', 'skill', 'smile'];
 export const STAT_NAME: Record<StatKey, string> = { stamina: '체력', strength: '힘', skill: '기술', smile: '미소' };
 
-// ---------- 슬롯 (§3.6.1: 기본 3 + 휴게실 1개당 +3, 휴게실 최대 3) ----------
+// ---------- 슬롯 (§3.6.1 + stakes: 기본 3 + 휴게실 1개당 +2, 휴게실 최대 3) ----------
 export const BASE_STAFF_SLOTS = 3;
-export const SLOTS_PER_STAFF_ROOM = 3;
+export const SLOTS_PER_STAFF_ROOM = 2; // stakes: 3 → 2 (채용·급여·정원이 서로 밀리게)
 export const MAX_STAFF_ROOMS = 3;
 export const STAFF_ROOM_TYPE = 'cleaning_room'; // 직원 휴게 효과를 내는 시설 id. 없으면 0개.
 
@@ -34,7 +34,7 @@ export function staffRoomCount(state: GameState): number {
   for (const o of Object.values(state.objects)) if (o.type === STAFF_ROOM_TYPE && !o.build) n++;
   return Math.min(MAX_STAFF_ROOMS, n);
 }
-/** 전체 직원 정원 = 3 + 휴게실 × 3 (직종별 자리 state.slots는 그 안에서 따로 센다) */
+/** 전체 직원 정원 = 3 + 휴게실 × 2 (직종별 자리 state.slots는 그 안에서 따로 센다) */
 export function staffCapacity(state: GameState): number {
   return BASE_STAFF_SLOTS + SLOTS_PER_STAFF_ROOM * staffRoomCount(state);
 }
@@ -305,7 +305,7 @@ function roleOpen(state: GameState, role: RoleId): ApplyResult {
 
 export function canHire(state: GameState, candidateId: string, role: RoleId): ApplyResult {
   if (!state.candidates.some((c) => c.id === candidateId)) return { ok: false, reason: '없는 후보예요' };
-  if (state.staff.length >= staffCapacity(state)) return { ok: false, reason: `직원은 ${staffCapacity(state)}명까지 (휴게실을 지으면 +3)` };
+  if (state.staff.length >= staffCapacity(state)) return { ok: false, reason: `직원은 ${staffCapacity(state)}명까지 (휴게실을 지으면 +${SLOTS_PER_STAFF_ROOM})` };
   return roleOpen(state, role);
 }
 

@@ -1,6 +1,7 @@
 import { bareState } from './helpers.ts';
 import { START_ORIGIN, GRID_W, GRID_H, VILLAGE_ROAD_Y } from '../state.ts';
 import { advanceClock, seasonOf, DAY_MS, HOUR_MS, monthIndex } from '../clock.ts';
+import { START_MONEY } from '../state.ts';
 
 test('초기 상태: 1년 3월 1일 6시, 30×24 격자(필지 9장), 시작 오브젝트는 가운데 필지에', () => {
   const s = bareState(1);
@@ -17,7 +18,7 @@ test('초기 상태: 1년 3월 1일 6시, 30×24 격자(필지 9장), 시작 오
   expect(types).toEqual(['busstop', 'gate', 'warehouse']);
   const bus = Object.values(s.objects).find((o) => o.type === 'busstop')!;
   expect([bus.x, bus.y]).toEqual([10, 15]); // 가운데 필지 남쪽 변 마을 길
-  expect(s.money).toBe(5_000_000);
+  expect(s.money).toBe(START_MONEY); // stakes: 시작 자금 350만
   expect(s.slots).toEqual({ barista: 1, cook: 1, hall: 2, clean: 2 }); // v3: 밭 직종 없음, 직종 8 (x-staff)
   const gate = Object.values(s.objects).find((o) => o.type === 'gate')!;
   expect(s.grid.cells[gate.y * 30 + gate.x]!.objectId).toBe(gate.id);

@@ -87,12 +87,14 @@ export function clearMessages(): void { messages = []; }
 const ACTION_SFX: Record<Action['type'], SfxName> = {
   place: 'place', placeLine: 'place', autoConnectPath: 'place', autoLinkRoute: 'place', remove: 'remove', skipTutorialStep: 'tap',
   setSlot: 'tap', setSpeed: 'tap', dismissAlert: 'tap', dismissMonthCard: 'tap',
+  resolveRisk: 'tap', resolveEventChoice: 'tap', // stakes: 돌발 사고·빅 이벤트 선택지
   postJob: 'tap', hire: 'tap', fire: 'tap', assign: 'tap', levelUp: 'tap', train: 'unlock', promote: 'tap', setTarget: 'tap',
   move: 'place', rotate: 'tap', demolishMany: 'remove', undoLast: 'tap', renameObject: 'tap', setTargets: 'tap', upgradeObject: 'unlock', treeUpgrade: 'unlock', repairObject: 'place', buyParcel: 'unlock', useItem: 'unlock', renameCafe: 'tap', expand: 'unlock', setCosmetic: 'tap', praise: 'happy',
   acceptQuest: 'tap', respondEvent: 'tap', investSpot: 'unlock', giveGift: 'tap', craftGift: 'unlock',
   develop: 'unlock', dismissDevelop: 'tap', addTopping: 'tap', removeTopping: 'tap', levelUpMenu: 'unlock',
   drawTicket: 'tap', dismissDraw: 'tap', setUniform: 'tap', useGuestItem: 'unlock', dismissAnnouncement: 'tap',
   dismissOutcome: 'tap', skipTutorial: 'tap', skipTutorialChapter: 'tap', tutorialNote: 'tap',
+  enterContest: 'unlock', cancelContest: 'tap', dismissContest: 'tap',
   expandParking: 'place', // 트랙 H
   placeMain: 'fanfare', expandMain: 'unlock', buildSecondFloor: 'unlock', moveMain: 'place', undoMoveMain: 'tap', setBgm: 'tap', setLighting: 'tap', // y-indoor
   continueEnding: 'fanfare', // z-ending

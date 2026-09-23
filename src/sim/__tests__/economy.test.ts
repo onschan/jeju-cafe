@@ -2,7 +2,7 @@ import { bareState } from './helpers.ts';
 import { X, Y } from './helpers.ts';
 import { apply } from '../actions.ts';
 import { isMenuAvailable, consumeIngredients, purchaseCost } from '../menu.ts';
-import { ingredientCost, upkeep, upkeepOf, closeMonth, incomeTaxOf, salaryOf, annualRaise, ANNUAL_RAISE_PCT } from '../economy.ts';
+import { ingredientCost, upkeep, upkeepOf, closeMonth, incomeTaxOf, salaryOf, annualRaise, ANNUAL_RAISE_PCT, totalCosts, emptyMonthCosts } from '../economy.ts';
 import { WEAR_START_MONTHS } from '../cleanliness.ts';
 import { LOAN_MAX } from '../failure.ts';
 import { typeWeight } from '../guests.ts';
@@ -100,8 +100,8 @@ test('월말 카드에 수입·재료비·월급·광고·유지비·순이익�
   expect(c.income).toBeGreaterThan(0);
   expect(c.costs.ingredients).toBeGreaterThan(0);
   expect(c.costs.upkeep).toBeGreaterThan(0);
-  expect(c.net).toBe(c.income - c.costs.ingredients - c.costs.salary - c.costs.ads - c.costs.upkeep - c.costs.recruit - c.costs.tax - c.costs.loanRepay - c.costs.shuttle);
-  expect(s.monthCosts).toEqual({ ingredients: 0, salary: 0, ads: 0, upkeep: 0, recruit: 0, tax: 0, loanRepay: 0, shuttle: 0 });
+  expect(c.net).toBe(c.income - totalCosts(c.costs));
+  expect(s.monthCosts).toEqual(emptyMonthCosts());
 });
 
 test('공고비·퇴직금은 카드의 recruit에 잡히고 순이익에서 빠진다', () => {
@@ -113,7 +113,7 @@ test('공고비·퇴직금은 카드의 recruit에 잡히고 순이익에서 빠
   for (let i = 0; i < 30; i++) tick(s, DAY_MS);
   const c = s.lastMonthCard!;
   expect(c.costs.recruit).toBe(500_000 + severance);
-  expect(c.net).toBe(c.income - c.costs.ingredients - c.costs.salary - c.costs.ads - c.costs.upkeep - 500_000 - severance);
+  expect(c.net).toBe(c.income - totalCosts({ ...c.costs, recruit: 500_000 + severance }));
   expect(s.monthCosts.recruit).toBe(0);
 });
 
@@ -133,7 +133,7 @@ test('소득세: 매년 3월 1일 전년 순이익 × 10% (적자면 0), 2월 �
   const c = s.lastMonthCard!;
   expect(c.month).toBe(2);
   expect(c.costs.tax).toBe(500_000);
-  expect(c.net).toBe(c.income - c.costs.ingredients - c.costs.salary - c.costs.ads - c.costs.upkeep - c.costs.recruit - 500_000 - c.costs.loanRepay - c.costs.shuttle);
+  expect(c.net).toBe(c.income - totalCosts({ ...c.costs, tax: 500_000 }));
   expect(before - s.money).toBeGreaterThanOrEqual(500_000);
   expect(s.notices.some((n) => n.includes('소득세'))).toBe(true);
   // 1년차 3월(2년차 전)엔 세금이 없다

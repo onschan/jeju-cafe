@@ -5,13 +5,14 @@ import { seasonOf, boardBadge, gradeOf, gradeName, type Season } from '../sim/in
 import { GradeWindow } from './GradeWindow';
 import { Icon } from './Icon';
 import { GoalBar, GOAL_BAR_H } from './GoalBar';
+import { TodoLine, TODO_LINE_H } from './TodoLine'; // video-patch §3.4: 오늘 할 일 1줄
 import { MESSAGE_LINE_H } from './MessageLine';
 import { SpeedBar } from './SpeedBar';
 import { brownBtn, brownBtnOn, brownBtnOff, dangerBtn, PALETTE } from './frame';
 
-/** 상단 바 28px + 목표 줄 44px(목표 24 + 도전 20, §7.3). 기본 상태에서 맵을 가리는 건 이것과 하단 바 48px뿐. */
+/** 상단 바 28px + 목표 줄 44px(목표 24 + 도전 20, §7.3) + 오늘 할 일 24px. 기본 상태에서 맵을 가리는 건 이것과 하단 바 48px뿐. */
 export const TOP_BAR_H = 28;
-export const SHELL_TOP = TOP_BAR_H + GOAL_BAR_H;
+export const SHELL_TOP = TOP_BAR_H + GOAL_BAR_H + TODO_LINE_H;
 export const BOTTOM_BAR_H = 48;
 /** 하단 바 48 + 메시지 줄 24 (§5.5). 미니카드·고스트 버튼은 이 위에 놓는다 */
 export const SHELL_BOTTOM = BOTTOM_BAR_H + MESSAGE_LINE_H;
@@ -72,12 +73,13 @@ function useMoneyBump(money: number): boolean {
   return bump;
 }
 
-/** 상단 바 + 목표 줄 묶음 */
+/** 상단 바 + 목표 줄 + 오늘 할 일 묶음 (video-patch §3.4: 지금 가장 이득인 한 수가 늘 화면에 있다) */
 export function TopShell({ onStatus, onGoal }: { onStatus: () => void; onGoal: () => void }) {
   return (
     <>
       <TopBar onOpen={onStatus} />
       <GoalBar top={TOP_BAR_H} onOpen={onGoal} />
+      <TodoLine top={TOP_BAR_H + GOAL_BAR_H} onOpenGoal={onGoal} />
     </>
   );
 }
@@ -109,7 +111,7 @@ export function BottomBar({ onOpen }: { onOpen: (kind: WindowKind) => void }) {
 export interface PlaceBarProps {
   text: string;
   /** fun: 트레이드오프 두 줄 — 얻는 것(초록)·잃는 것(빨강) */
-  tradeoff?: { gain: string; loss: string };
+  tradeoff?: { gain: string; loss: string; cost?: string }; // cost = stakes 기회비용 한 줄
   ok: boolean;
   canRotate: boolean;
   /** 회전 버튼 라벨 (기본 「회전」, 길·담 ㄱ자는 「방향」 — ease) */
@@ -136,6 +138,9 @@ export function PlaceBar({ text, tradeoff, ok, canRotate, rotateLabel = '회전'
             {tradeoff!.gain && <span style={{ color: PALETTE.ok, overflow: 'hidden', textOverflow: 'ellipsis' }}>{tradeoff!.gain}</span>}
             {tradeoff!.loss && <span style={{ color: PALETTE.bad, overflow: 'hidden', textOverflow: 'ellipsis' }}>{tradeoff!.loss}</span>}
           </div>
+        )}
+        {tradeoff?.cost && (
+          <div data-testid="place-cost" style={{ fontSize: 12, fontWeight: 700, marginTop: 2, color: PALETTE.title, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{tradeoff.cost}</div>
         )}
       </div>
       {onUndo !== undefined && <button aria-label="되돌리기" disabled={!onUndo} style={{ ...(onUndo ? brownBtn : brownBtnOff), margin: 0, flex: 1, minWidth: 0, fontSize: 15, padding: 0 }} onClick={() => onUndo?.()}><Icon name="undo" /> 되돌리기</button>}

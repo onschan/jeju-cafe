@@ -1,6 +1,6 @@
 /** 월말 결산 창 (스펙 §2.1). 순수 컴포넌트 — 수입/비용 표(항목 한글), 이달의 하이라이트 3줄, 다음 달 팁 1줄, ★ 게이지.
  *  card는 기존 state.lastMonthCard 형태 + 선택 필드. 하이라이트·팁은 호출자(통합)가 sim 상태로 만들어 넘긴다 — 없으면 카드만. */
-import type { MonthCosts, ComplaintReason } from '../../sim/index.ts';
+import type { MonthCosts, ComplaintReason, MonthGrade } from '../../sim/index.ts';
 import { Icon } from '../Icon';
 import { wonText } from '../../data/labels.ts';
 import { COMPLAINT_LABEL } from '../../sim/index.ts';
@@ -30,6 +30,44 @@ export interface ReportCard {
   reputation?: number;               // 월말 평판
   reputationDelta?: number;          // 그달 평판 변화
   topComplaints?: { reason: ComplaintReason; count: number }[];
+  // ---- stakes: 월말 평가 등급 ----
+  grade?: MonthGrade;                // S/A/B/C 도장
+  prevGrade?: MonthGrade | null;     // 지난달 등급 (화살표)
+  gradeSummary?: string;             // 한 줄 총평
+  guestsDelta?: number;              // 지난달 대비 손님 증감
+  trendName?: string;                // 이달 유행 분류 이름
+}
+
+/** stakes: 등급 도장 — S는 금색 반짝, C는 회색 */
+const GRADE_STYLE: Record<MonthGrade, { bg: string; ink: string; glow: string }> = {
+  S: { bg: '#f6c343', ink: '#5a3a06', glow: '0 0 0 3px #fff3c4, 0 0 14px #f6c34399' },
+  A: { bg: '#e2703a', ink: '#fff6ec', glow: 'none' },
+  B: { bg: '#8fae6a', ink: '#23300f', glow: 'none' },
+  C: { bg: '#b9b2a6', ink: '#3b3730', glow: 'none' },
+};
+const GRADE_ORDER: MonthGrade[] = ['C', 'B', 'A', 'S'];
+
+function GradeStamp({ grade, prev, summary }: { grade: MonthGrade; prev?: MonthGrade | null; summary?: string }) {
+  const st = GRADE_STYLE[grade];
+  const arrow = prev ? (GRADE_ORDER.indexOf(grade) > GRADE_ORDER.indexOf(prev) ? '▲' : GRADE_ORDER.indexOf(grade) < GRADE_ORDER.indexOf(prev) ? '▼' : '—') : null;
+  return (
+    <div style={{ ...rowCard, display: 'flex', alignItems: 'center', gap: 12 }} data-testid="report-grade">
+      <span
+        aria-label={`이달 평가 ${grade}`}
+        style={{
+          flex: 'none', width: 60, height: 60, borderRadius: '50%', background: st.bg, color: st.ink,
+          border: `3px solid ${PALETTE.wood}`, boxShadow: st.glow, display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: 32, fontWeight: 700, lineHeight: 1,
+        }}
+      >{grade}</span>
+      <span style={{ flex: 1, minWidth: 0 }}>
+        <span style={{ display: 'block', fontWeight: 700, fontSize: 15 }}>
+          이달 평가 {grade}{arrow && <span style={{ marginLeft: 6, color: arrow === '▲' ? PALETTE.ok : arrow === '▼' ? PALETTE.bad : PALETTE.inkSoft }}>{arrow} 지난달 {prev}</span>}
+        </span>
+        {summary && <span style={{ display: 'block', fontSize: 14, lineHeight: 1.5 }}>{summary}</span>}
+      </span>
+    </div>
+  );
 }
 
 export interface ReportWindowProps {
@@ -55,15 +93,21 @@ function Row({ label, value, color, bold, indent }: { label: string; value: stri
 
 export function ReportWindow({ card: c, star, prevStar, starProgress, monthRecord, onClose }: ReportWindowProps) {
   const cost = c.costs;
-  const totalCost = cost.ingredients + cost.salary + cost.upkeep + cost.ads + (cost.recruit ?? 0) + (cost.tax ?? 0) + (cost.loanRepay ?? 0) + (cost.shuttle ?? 0);
+  const totalCost = cost.ingredients + cost.salary + cost.upkeep + cost.ads + (cost.recruit ?? 0) + (cost.tax ?? 0) + (cost.loanRepay ?? 0) + (cost.shuttle ?? 0) + (cost.rent ?? 0) + (cost.contest ?? 0);
   const complaints = (c.topComplaints ?? []).slice(0, 3);
   const up = star !== undefined && prevStar !== undefined && star > prevStar;
   const highlights = (c.highlights ?? []).filter(Boolean).slice(0, 3);
   return (
     <div style={body} data-testid="report-window">
+      {c.grade && <GradeStamp grade={c.grade} prev={c.prevGrade} summary={c.gradeSummary} />}
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
         <b style={{ fontSize: 20 }}>{c.year}년 {c.month}월</b>
-        <span style={{ fontSize: 15 }}>손님 {c.guests}명</span>
+        <span style={{ fontSize: 15 }}>손님 {c.guests}명
+          {c.guestsDelta !== undefined && c.guestsDelta !== 0 && (
+            <span style={{ marginLeft: 4, color: c.guestsDelta > 0 ? PALETTE.ok : PALETTE.bad }}>{c.guestsDelta > 0 ? '▲' : '▼'}{Math.abs(c.guestsDelta)}</span>
+          )}
+        </span>
+        {c.trendName && <span style={{ fontSize: 14, color: PALETTE.inkSoft }}>이달 유행 {c.trendName}</span>}
         {monthRecord && <span style={{ color: PALETTE.bad, fontWeight: 700 }}><Icon name="party" /> 월 매출 신기록</span>}
       </div>
 
@@ -77,8 +121,10 @@ export function ReportWindow({ card: c, star, prevStar, starProgress, monthRecor
         <Row label="재료비" value={`-${wonText(cost.ingredients)}`} indent />
         <Row label="월급" value={`-${wonText(cost.salary)}`} indent />
         <Row label="유지비" value={`-${wonText(cost.upkeep)}`} indent />
+        {(cost.rent ?? 0) > 0 && <Row label="마을 관리비" value={`-${wonText(cost.rent ?? 0)}`} indent />}
         <Row label="홍보" value={`-${wonText(cost.ads)}`} indent />
         {(cost.recruit ?? 0) > 0 && <Row label="채용·퇴직금·연수" value={`-${wonText(cost.recruit)}`} indent />}
+        {(cost.contest ?? 0) > 0 && <Row label="대회 참가비" value={`-${wonText(cost.contest ?? 0)}`} indent />}
         {(cost.tax ?? 0) > 0 && <Row label="소득세" value={`-${wonText(cost.tax)}`} indent />}
         {(cost.shuttle ?? 0) > 0 && <Row label="공항 셔틀" value={`-${wonText(cost.shuttle)}`} indent />}
         {(cost.loanRepay ?? 0) > 0 && <Row label="삼춘 대출 상환" value={`-${wonText(cost.loanRepay)}`} indent />}

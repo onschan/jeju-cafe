@@ -2,7 +2,7 @@ import type { GameState } from './types.ts';
 import { pushNotice } from './staff.ts';
 
 /** trim: 마일리지를 없애고 재화를 응모권 하나로 합쳤다 (마일리지 10 = 응모권 1 환산). */
-/** 도감(코너·세트·히든 레시피·재료 콤보) 10개마다 응모권 1 */
+/** 도감(명당·세트·히든 레시피·재료 콤보) 10개마다 응모권 1 */
 export const CODEX_PER_TICKET = 10;
 /** 월 결산 손님 600명마다 응모권 1 */
 export const GUESTS_PER_TICKET = 600;

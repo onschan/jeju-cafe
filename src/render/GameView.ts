@@ -1,6 +1,6 @@
 import { Application, Container, Sprite, Graphics, Texture, Text } from 'pixi.js';
 import type { GameState, PlacedObject, Guest, Staff, Season, RoleId, Pt, RouteId, FxEvent } from '../sim/index.ts';
-import { seasonOf, LOW_ENERGY, parcelPrice, footprint, roomAt, doorFrontOf, WALL_COLORS, dayIndex, menuOf, sizeOf, MAIN_SIZE, LIGHT_RADIUS, gradeOf, objectAt, cellAt } from '../sim/index.ts';
+import { seasonOf, LOW_ENERGY, parcelPrice, footprint, roomAt, doorFrontOf, WALL_COLORS, dayIndex, menuOf, sizeOf, MAIN_SIZE, LIGHT_RADIUS, gradeOf, objectAt, cellAt, contestBadge } from '../sim/index.ts';
 import type { Parcel } from '../sim/index.ts';
 import { objectDef } from '../data/index.ts';
 import { isoTerrainTexture, isoObjectTexture, glowTexture, label, clearTextureCache, loadLabelFont } from './textures';
@@ -17,7 +17,7 @@ import { Background } from './Background';
 import { siteOf, siteBadgeText, siteTone, layoutKey } from '../sim/site.ts';
 import { objectStats } from '../sim/compat.ts';
 import { entryPoints, ROUTE_IDS, ENTRY_ROUTES } from '../sim/entry.ts'; // 트랙 H 진입점 표지
-import { completedCorners, cornerDef } from '../sim/corners.ts'; // fun-corner 코너 팻말
+import { completedCorners, cornerDef } from '../sim/corners.ts'; // fun-corner 명당 팻말
 import { isSiteOverlayOn, setSiteOverlayOn, siteOverlayKey, drawSiteOverlay, GHOST_GOOD, GHOST_WARN } from './siteOverlay';
 import { parcelScenery, parcelSignLines, wallEdges, ROUTE_PREVIEW, busPose, BUS_PERIOD_MS, BUS_DROP_AT_MS, type SceneryProp } from './scenery'; // 트랙 E 제주 풍경
 import { VILLAGE_ROAD_Y } from '../sim/layout.ts';
@@ -36,7 +36,14 @@ export interface GameViewOptions extends Pick<CameraOptions, 'onTap' | 'dragCapt
 /** 배치 모드 고스트: 손가락 아래 반투명 오브젝트. ok면 초록, 아니면 빨강. text는 비용 라벨. */
 export interface GhostSpec { type: string; x: number; y: number; rot?: number; ok: boolean; text: string; w?: number; h?: number; /** 문 앞 칸 미리보기 (w-start 본관 짓기: 파란 마름모 + 「문 앞」) */ door?: { x: number; y: number } }
 /** 효과 범위 힌트 (UX §5.3): 중심 시설 발자국 + 반경(칸) 타원, 콤보가 성립하는 상대 시설 발자국 위 ◎ */
-export interface RangeHint { x: number; y: number; w: number; h: number; radius: number; marks: { x: number; y: number; w: number; h: number }[]; /** fun-corner: 코너 배지 ("이걸 놓으면 꽃길 완성") */ badge?: string }
+export interface RangeHint { x: number; y: number; w: number; h: number; radius: number; marks: { x: number; y: number; w: number; h: number }[]; /** fun-corner: 명당 배지 ("이걸 놓으면 꽃길 완성") */ badge?: string }
+/** 배치 추천 칸 (video-patch §3.2.1): 1위 금색 · 2·3위 연금색 · 캐시가 없으면 회색. label이 있으면 칸 위에 `+42만` 한 줄, 1위엔 `1` 칩. */
+export interface PlacePickMark { x: number; y: number; rank: number; label: string | null }
+/** 추천 칸 색: 금 · 연금 · 회색(숫자 없는 휴리스틱) */
+export const PICK_COLOR_TOP = 0xffc400;
+export const PICK_COLOR_SUB = 0xffe08a;
+export const PICK_COLOR_DIM = 0xb9a98f;
+
 /** 선택 칸 색: 철거 빨강 · 라인 미리보기 파랑 (ease 두 번 탭) */
 export const RECT_COLOR_REMOVE = 0xc9184a;
 export const RECT_COLOR_LINE = 0x2f7fd9;
@@ -328,7 +335,7 @@ export class GameView {
   /** 트랙 H: 진입점 표지 (경로 id → 노드·상태 키). 배치·해금이 바뀔 때만 다시 만든다. */
   private entryMarkers = new Map<RouteId, { node: Container; key: string }>();
   private entryKey = '';
-  /** fun-corner: 완성 코너 팻말(코너 id → 노드). 배치가 바뀔 때만 다시 만든다. */
+  /** fun-corner: 완성 명당 팻말(명당 id → 노드). 배치가 바뀔 때만 다시 만든다. */
   private cornerSigns = new Map<string, Container>();
   private cornerKey = '';
   private rangeBadge: Container | null = null;
@@ -350,6 +357,10 @@ export class GameView {
   /** 글로우 칸 위 작은 말풍선 라벨 (fix-indoor: 빛나는 칸엔 반드시 왜 빛나는지 적는다) */
   private highlightLabels = new Container();
   private highlightKey = '';
+  /** 배치 추천 칸 (video-patch §3.2.1): 금·연금 마름모 + 칸 위 예상 이득 라벨 + 1위 `1` 칩 */
+  private picks = new Graphics();
+  private pickLabels = new Container();
+  private pickKey = '';
   /** 튜토리얼 스포트라이트(w-free): 맵 전체 반투명 검정 + 타깃 칸 구멍. 오브젝트·손님(actors) 위, 글로우·말풍선 아래 */
   private spot = new Graphics();
   private spotKey = '';
@@ -396,9 +407,12 @@ export class GameView {
     this.overlay.addChild(this.selection);
     this.spot.eventMode = 'none';
     this.overlay.addChild(this.spot);
+    this.overlay.addChild(this.picks);
     this.overlay.addChild(this.highlight);
     this.highlightLabels.zIndex = 1e6 - 3;
     this.overlay.addChild(this.highlightLabels);
+    this.pickLabels.zIndex = 1e6 - 3;
+    this.overlay.addChild(this.pickLabels);
     this.rangeMarks.zIndex = 1e6 - 1;
     this.gaugeGfx.zIndex = 1e6 - 2;
     this.overlay.addChild(this.rangeMarks, this.gaugeGfx);
@@ -479,6 +493,7 @@ export class GameView {
     this.siteGfx.clear();
     this.siteKey = '';
     this.setGhost(null);
+    this.setPlacementPicks([]);
   }
 
   /** 배치 고스트를 놓거나(null이면) 치운다. 같은 내용이면 다시 만들지 않는다. */
@@ -590,6 +605,48 @@ export class GameView {
       const { sx, sy } = cellToScreen(cell.x, cell.y);
       this.highlightLabels.addChild(this.speechLabel(text, sx, sy - 6));
     }
+  }
+
+  /** 배치 추천 칸 (video-patch §3.2.1): 1위 금색·2·3위 연금색 테두리 2px, label이 있으면 칸 위에 `+42만` 한 줄, 1위엔 작은 `1` 칩.
+   *  label이 전부 null이면(캐시 미스) 숫자 없이 회색 칸만 — 절대 빈 화면을 남기지 않는다. 같은 내용이면 다시 그리지 않는다. */
+  setPlacementPicks(picks: PlacePickMark[]) {
+    if (!this.picks || this.picks.destroyed || this.pickLabels.destroyed) return;
+    const key = picks.map((p) => `${p.x},${p.y},${p.rank},${p.label ?? ''}`).join('|');
+    if (key === this.pickKey) return;
+    this.pickKey = key;
+    this.picks.clear();
+    this.pickLabels.removeChildren().forEach((c) => c.destroy({ children: true }));
+    for (const p of picks) {
+      const { sx, sy } = cellToScreen(p.x, p.y);
+      const color = p.label === null ? PICK_COLOR_DIM : p.rank === 1 ? PICK_COLOR_TOP : PICK_COLOR_SUB;
+      this.picks
+        .poly([sx, sy, sx + ISO_W / 2, sy + ISO_H / 2, sx, sy + ISO_H, sx - ISO_W / 2, sy + ISO_H / 2])
+        .fill({ color, alpha: p.rank === 1 ? 0.42 : 0.28 })
+        .stroke({ color, width: 2, alpha: 0.95 });
+      if (p.label) this.pickLabels.addChild(this.pickLabel(p.label, p.rank === 1, sx, sy - 4));
+    }
+  }
+
+  /** 추천 칸 위 예상 이득 칩 (1위는 금 바탕에 `1` 칩을 붙인다) */
+  private pickLabel(text: string, top: boolean, sx: number, sy: number): Container {
+    const c = new Container();
+    const l = label(text, 11);
+    l.style.fill = 0x3b2a1a;
+    const w = Math.ceil(l.width) + 10, h = Math.ceil(l.height) + 5;
+    const rank = top ? label('1', 10) : null;
+    const rw = rank ? Math.ceil(rank.width) + 8 : 0;
+    const bg = new Graphics()
+      .roundRect(-w / 2, -h - 4, w, h, 4).fill({ color: top ? 0xffe9a8 : 0xfff8e6, alpha: 0.96 }).stroke({ color: top ? 0xd08a00 : 0x6b3d1e, width: 2 });
+    l.position.set(-w / 2 + 5, -h - 2);
+    c.addChild(bg, l);
+    if (rank) {
+      rank.style.fill = 0x3b2a1a;
+      const chip = new Graphics().roundRect(-w / 2 - rw - 3, -h - 4, rw, h, 4).fill({ color: PICK_COLOR_TOP }).stroke({ color: 0xd08a00, width: 2 });
+      rank.position.set(-w / 2 - rw - 3 + 4, -h - 2);
+      c.addChild(chip, rank);
+    }
+    c.position.set(sx, sy);
+    return c;
   }
 
   /** 칸 위 작은 말풍선(흰 바탕·갈색 테두리·아래 꼬리). (sx, sy)는 꼬리 끝. */
@@ -1224,6 +1281,21 @@ export class GameView {
       f2.tint = entry.sprite?.tint ?? 0xffffff;
       entry.node.addChild(f2);
     }
+    // 대회 입상 배지: 등급 간판 위 금별 리본 (contest.ts badge — 1위 6개월·입상 3개월, 지나면 사라진다)
+    entry.node.getChildByLabel('contestbadge')?.destroy({ children: true });
+    const badge = contestBadge(state);
+    if (badge) {
+      const mlv = state.main?.level ?? 1;
+      const size = MAIN_SIZE[mlv] ?? { w: 3, h: 2 };
+      const c = new Container();
+      c.label = 'contestbadge';
+      const l = label(`★ ${badge}`, 9);
+      l.anchor.set(0.5, 1);
+      l.position.set(0, -(size.w + size.h) * (ISO_H / 2) - (MAIN_WALL_TOP[mlv] ?? 36) - 16);
+      const bg = new Graphics().roundRect(l.x - l.width / 2 - 4, l.y - l.height - 1, l.width + 8, l.height + 2, 3).fill({ color: 0xd4a13c, alpha: 0.95 });
+      c.addChild(bg, l);
+      entry.node.addChild(c);
+    }
     entry.node.getChildByLabel('sign')?.destroy({ children: true });
     const text = state.cosmetics?.sign;
     if (!text) return;
@@ -1323,7 +1395,7 @@ export class GameView {
         // 시트 모드: 변형(심음·어린 나무·증축)이 바뀔 때만 텍스처를 갱신. 수확은 자동이라 링 대신 반짝임(syncFx).
         const isCafe = o.type === 'warehouse';
         const mainLv = state.main?.level ?? 1;
-        const key = `${objectVariant(o, mainLv) ?? ''}:${o.rot ?? ''}${isCafe ? `:${state.cosmetics?.wallColor ?? 0}:${state.cosmetics?.sign ?? ''}:${state.main?.floor2 ? 'F2' : ''}:g${gradeOf(state)}` : ''}`; // fun-rank: 등급이 바뀌면 간판·외벽 갱신
+        const key = `${objectVariant(o, mainLv) ?? ''}:${o.rot ?? ''}${isCafe ? `:${state.cosmetics?.wallColor ?? 0}:${state.cosmetics?.sign ?? ''}:${state.main?.floor2 ? 'F2' : ''}:g${gradeOf(state)}:${contestBadge(state) ?? ''}` : ''}`; // fun-rank: 등급이 바뀌면 간판·외벽 갱신 · 대회 배지가 붙거나 떨어지면 다시
         if (this.badgeKeys.get(o.id) === key) continue;
         this.badgeKeys.set(o.id, key);
         const t = objectTex(o, mainLv);
@@ -1657,7 +1729,7 @@ export class GameView {
     }
   }
 
-  /** fun-corner 연출 하나: 코너 완성(팻말 자리 반짝 3개) · 손님 사진(카메라 플래시 + "사진 찍자!" 말풍선) */
+  /** fun-corner 연출 하나: 명당 완성(팻말 자리 반짝 3개) · 손님 사진(카메라 플래시 + "사진 찍자!" 말풍선) */
   private spawnCornerFx(e: Extract<FxEvent, { kind: 'corner' | 'flash' }>, now: number) {
     if (e.kind === 'corner') {
       for (const [dx, dy] of [[0, 0], [1, 0], [0, 1]] as const) this.spawnSparkle(e.x + dx, e.y + dy, now);
@@ -1676,7 +1748,7 @@ export class GameView {
     this.showBubble(e.guestId, { text: e.text }, CORNER_SAY_MS);
   }
 
-  /** fun-corner: 완성 코너마다 닻 칸 위에 갈색 팻말 스프라이트 + 코너 이름 라벨. 배치 서명이 바뀔 때만 다시 만든다. */
+  /** fun-corner: 완성 명당마다 닻 칸 위에 갈색 팻말 스프라이트 + 명당 이름 라벨. 배치 서명이 바뀔 때만 다시 만든다. */
   private syncCornerSigns(state: GameState) {
     const key = layoutKey(state);
     if (key === this.cornerKey) return;

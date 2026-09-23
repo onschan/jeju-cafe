@@ -21,6 +21,7 @@ import { isAged } from './economy.ts';
 import { recordUse, facilityFee } from './upgrade.ts'; // 트랙 A 훅: 이용 횟수·Lv 요금
 import { addResearchProgress, TASTE_MATCH_WEIGHT } from './progress.ts';
 import { effectMult, noGuestsToday, filterMatches } from './effects.ts';
+import { contestGuestMult } from './contest.ts'; // 대회 입상 뒤 손님 유입 배수 (60일 ×1.25 …)
 import { spotGuestBonus, spotSpawnMult } from './spots.ts';
 import type { ParcelBonus } from './types.ts';
 import { seatsOf, isSeat } from './cafe.ts';
@@ -32,7 +33,7 @@ import { rollOutcome, bestStaffFor } from './luck.ts'; // staff-luck: 서빙 대
 import { titleBonus, isWorking } from './titles.ts'; // staff-luck: 칭호 요금·만족·속도·손님·사진
 import { menuOf, priceOf, likesStatsMatch, statsMatchCount, guestEvalBonus, guestLikesCategory, seatTimeMult, dignityPct, photoChance, menuOrderWeight, LIKE_BONUS_CAP } from './craft.ts';
 import { namedLikes, NAMED_MIN_SCENERY } from './named.ts';
-import { eventGuestMult, eventTagMult, eventFeeMult, isSpecialGuest, specialGuestTip } from './events.ts';
+import { eventGuestMult, eventTagMult, eventFeeMult, isSpecialGuest, specialGuestTip, trendMenuMult } from './events.ts';
 import { fmtNum } from './format.ts';
 import { josa } from './josa.ts';
 import { siteBonus, siteOf } from './site.ts';
@@ -64,7 +65,8 @@ export const FACILITY_POP_PER_GUEST = 18; // fun 통합: 콤보 68→12 축소(f
 export const WAIT_MAX = 3;
 export const WAIT_LEAVE_SATISFACTION = 10;
 /** 계절 배수: 1·2월 비수기 0.8, 12월 0.9, 3·11월 0.95, 7·8월 성수기 1.15, 5·10월 1.1 */
-export const SEASON_GUEST_MULT: Record<number, number> = { 1: 0.8, 2: 0.8, 3: 0.95, 5: 1.1, 7: 1.15, 8: 1.15, 10: 1.1, 11: 0.95, 12: 0.9 };
+/** stakes: 비수기(12~2월) ×0.7 — 이 구간에 고정비(임대료·급여)가 그대로 나가 적자가 나게. 가을에 미리 대비하라는 신호. */
+export const SEASON_GUEST_MULT: Record<number, number> = { 1: 0.7, 2: 0.7, 3: 0.95, 5: 1.1, 7: 1.15, 8: 1.15, 10: 1.1, 11: 0.95, 12: 0.7 };
 /** 시설 순회: 앉았다 일어난 손님 40%가 시설 하나(포토존·기념품·자판기·서가·갤러리·공방…)에 들러 이용료를 내고 간다 */
 export const VISIT_CHANCE = 0.4;
 export const VISIT_MS = 1500;
@@ -200,7 +202,7 @@ export function popularityGuestBase(state: GameState): number {
 /** 하루 손님 수 = min(좌석 × 6, 기반값 × 이벤트 전체 배수 × 빅 이벤트 배수 × 메뉴 품격(+%) × 계절 × 라이벌(−5%/곳) × 청결 × 평판(0.5 + 평판/100)), 2~300 */
 export function dailyGuestCount(state: GameState): number {
   const n = popularityGuestBase(state) * effectMult(state, 'spawnMult') * eventGuestMult(state) * (1 + dignityPct(state) / 100)
-    * seasonGuestMult(state.clock.month) * reputationGuestMult(state) * routeGuestMult(state); // 트랙 H 올레길 +15% · 청결 배수(트랙 A)는 dailyCleanliness가 거는 하루짜리 spawnMult 효과로 effectMult에 들어 있다
+    * seasonGuestMult(state.clock.month) * reputationGuestMult(state) * routeGuestMult(state) * contestGuestMult(state); // 트랙 H 올레길 +15% · 청결 배수(트랙 A)는 dailyCleanliness가 거는 하루짜리 spawnMult 효과로 effectMult에 들어 있다
   const cap = totalSeats(state) * GUESTS_PER_SEAT;
   return Math.max(MIN_DAILY_GUESTS, Math.min(MAX_DAILY_GUESTS, cap, Math.round(n)));
 }
@@ -547,7 +549,7 @@ function order(state: GameState, g: Guest): void {
     maybeSay(state, g);
     return;
   }
-  const menuId = pickWeighted(state, candidates, (id) => menuOrderWeight(state, id) * foreignMenuMult(state, g.type, id))!; // 트랙 H: 외국인 감귤 메뉴 선호
+  const menuId = pickWeighted(state, candidates, (id) => menuOrderWeight(state, id) * foreignMenuMult(state, g.type, id) * trendMenuMult(state, id))!; // stakes: 이번 달 유행 ×1.5 // 트랙 H: 외국인 감귤 메뉴 선호
   const menu = menuOf(state, menuId);
   consumeIngredients(state, menuId);
   const seat = state.objects[g.seatId!]!;
@@ -570,7 +572,7 @@ function order(state: GameState, g: Guest): void {
 /** 자리에서 일어난 손님이 들를 시설을 고른다: 좋아하는 종류이고 걸어서 닿는 것 중 하나 (40%). 없으면 null. */
 export function pickVisit(state: GameState, g: Guest, from: Pt): { obj: PlacedObject; path: Pt[] } | null {
   const facilities = Object.values(state.objects).filter((o) => !o.build && isVisitable(o.type) && likesFacility(g.type, o.type));
-  const corners = cornerVisitTargets(state, g.type).filter((o) => !facilities.includes(o)); // fun-corner: 완성 코너의 닻도 시설처럼 찾아간다 (가중치 ×3, 하루 상한)
+  const corners = cornerVisitTargets(state, g.type).filter((o) => !facilities.includes(o)); // fun-corner: 완성 명당의 닻도 시설처럼 찾아간다 (가중치 ×3, 하루 상한)
   const candidates = [...facilities, ...corners];
   if (candidates.length === 0 || nextRandom(state) >= browseChance(state, VISIT_CHANCE)) return null; // y-indoor P1-12: 시설 3개 초과 시 둘러보기 확률 상승
   const reach = reachMap(state, from);
@@ -583,7 +585,7 @@ export function pickVisit(state: GameState, g: Guest, from: Pt): { obj: PlacedOb
     }
     if (best) reachable.push({ obj, target: best.target });
   }
-  const pick = pickWeighted(state, reachable, (r) => (corners.includes(r.obj) ? CORNER_VISIT_WEIGHT : guestPickMult(state, r.obj.id, g.type))); // 코너 태그 배수(최대 ×2) · 코너 방문 ×3
+  const pick = pickWeighted(state, reachable, (r) => (corners.includes(r.obj) ? CORNER_VISIT_WEIGHT : guestPickMult(state, r.obj.id, g.type))); // 명당 태그 배수(최대 ×2) · 명당 방문 ×3
   if (!pick) return null;
   return { obj: pick.obj, path: pathFromReach(state, reach, pick.target)! };
 }
@@ -637,7 +639,7 @@ export function updateGuests(state: GameState, dtMs: number): void {
       if (g.path.length > 0) {
         if (!moveAlong(g, walkMs)) continue;
         const obj = g.visitId ? state.objects[g.visitId] : undefined;
-        if (obj) { if (isVisitable(obj.type)) useFacility(state, g, obj); const c = cornerOfPiece(state, obj.id); if (c) { visitCorner(state, g, obj); pushVoice(state, 'corner', cornerDef(c.id).name, { x: obj.x, y: obj.y }); } } // fun-corner: 코너 조각이면 사진(장식이면 요금 없음)
+        if (obj) { if (isVisitable(obj.type)) useFacility(state, g, obj); const c = cornerOfPiece(state, obj.id); if (c) { visitCorner(state, g, obj); pushVoice(state, 'corner', cornerDef(c.id).name, { x: obj.x, y: obj.y }); } } // fun-corner: 명당 조각이면 사진(장식이면 요금 없음)
         g.approachCell = { x: Math.round(g.x), y: Math.round(g.y) };
       }
       g.timerMs -= dtMs;

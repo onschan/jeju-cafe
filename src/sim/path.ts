@@ -2,6 +2,7 @@ import type { GameState, Pt, PlacedObject } from './types.ts';
 import { objectDef } from '../data/index.ts';
 import { layoutCached, layoutSig } from './layoutRev.ts';
 import { inBounds, cellAt, objectAt, isRoomFloor, doorOf, doorFrontOf } from './grid.ts';
+import { ENTRY_CELLS } from './layout.ts';
 
 const WALKABLE_KINDS = new Set(['path', 'gate', 'busstop']);
 
@@ -91,11 +92,26 @@ export function pathFromReach(state: GameState, reach: Reach, to: Pt): Pt[] | nu
   return out;
 }
 
-/** 정류장에서 걸어서 방 문 앞까지 닿나 (문 앞 칸이 올렛길로 이어졌는지). 실내 좌석 안내용. */
+/** 손님이 들어올 수 있는 칸: 정류장(놓인 자리) + 걷기 칸이 된 주차장·올레 진입 칸.
+ *  정류장을 맨 앞에 둔다 — 거의 모든 경우 첫 칸에서 끝나 캐시된 BFS 하나만 쓴다. */
+export function entryPoints(state: GameState): Pt[] {
+  const out: Pt[] = [];
+  const bus = Object.values(state.objects).find((o) => o.type === 'busstop');
+  if (bus) out.push({ x: bus.x, y: bus.y });
+  for (const e of Object.values(ENTRY_CELLS)) {
+    if (bus && bus.x === e.x && bus.y === e.y) continue;
+    if (isWalkable(state, e.x, e.y)) out.push({ x: e.x, y: e.y });
+  }
+  return out;
+}
+
+/** 걸어서 방 문 앞까지 닿나 (문 앞 칸이 올렛길로 이어졌는지). 실내 좌석 안내용.
+ *  정류장만 보면 주차장·올레로만 이어진 카페를 「손님이 못 온다」고 잘못 말했다 — 열린 진입 칸을 다 본다. */
 export function isDoorReachable(state: GameState, room: PlacedObject): boolean {
   const f = doorFrontOf(room);
   if (!isWalkable(state, f.x, f.y)) return false;
-  return reachMap(state, busStopPos(state)).dist.has(cellKey(state, f));
+  const k = cellKey(state, f);
+  return entryPoints(state).some((p) => reachMap(state, p).dist.has(k));
 }
 
 /** 단발 경로. 스폰처럼 목적지가 여러 개면 reachMap + pathFromReach를 쓸 것. */

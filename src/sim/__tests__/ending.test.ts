@@ -19,7 +19,7 @@ describe('최종 점수', () => {
   test('항목 9·가중치·상한·칭호 5단계', () => {
     const s = bareState(1);
     s.money = 50_000_000; s.totalGuests = 12_345; s.star = 3; s.rank = 6; s.reputation = 70; s.goals.claimed = Array.from({ length: 60 }, (_, i) => `g${i}`);
-    s.codex.corners = ['a', 'b', 'c']; s.spots = { x: 5, y: 3 }; // fun-corner: 콤보 도감 → 코너 도감(24종, 상한 24)
+    s.codex.corners = ['a', 'b', 'c']; s.spots = { x: 5, y: 3 }; // fun-corner: 콤보 도감 → 명당 도감(24종, 상한 24)
     const sc = computeScore(s);
     expect(sc.items.map((i) => i.key)).toEqual(SCORE_ITEMS.map((i) => i.key));
     const pt = Object.fromEntries(sc.items.map((i) => [i.key, i.points]));
@@ -27,7 +27,7 @@ describe('최종 점수', () => {
     expect(sc.total).toBe(50 + 123 + 60 + 60 + 35 + 60 + 3 + 4);
     expect(sc.tier).toBe(scoreTier(sc.total));
     expect(sc.title).toBe(SCORE_TITLES[sc.tier - 1]!.title);
-    // 상한: 자금 3억 → 300점, 그 이상도 300 · 코너 24
+    // 상한: 자금 3억 → 300점, 그 이상도 300 · 명당 24
     s.money = 9_000_000_000;
     s.codex.corners = Array.from({ length: 30 }, (_, i) => `c${i}`);
     expect(computeScore(s).items.find((i) => i.key === 'corners')!.points).toBe(24);
@@ -91,7 +91,7 @@ describe('10년차 엔딩', () => {
 });
 
 describe('이월', () => {
-  test('makeCarry: 코너 도감·명소 Lv·유니폼·돌하르방(최대 2)·응모권 20%·손님 인기 20%', () => {
+  test('makeCarry: 명당 도감·명소 Lv·유니폼·돌하르방(최대 2)·응모권 20%·손님 인기 20%', () => {
     const s = bareState(4);
     s.codex.corners = ['cb1', 'cb2']; s.spots = { a: 3, b: 0 }; s.uniforms = ['uf_galot']; s.tickets = 57; s.segmentPopularity = { student: 40, local_auntie: 7, x: 0 };
     s.unlocked.objects.push('dolhareubang'); s.builders = 3; // 동시 건설 3

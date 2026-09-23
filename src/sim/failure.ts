@@ -12,6 +12,7 @@ import { pushNotice } from './staff.ts';
 import { fmtNum } from './format.ts';
 import { josa } from './josa.ts';
 import { monthIndex } from './clock.ts';
+import { LOAN_DUE_MONTHS } from './economy.ts'; // stakes: 상환 기한 12개월
 import { removeObject } from './grid.ts';
 import { ownedParcels, parcelAt } from './parcels.ts';
 import { pickWeighted } from './rng.ts';
@@ -48,9 +49,10 @@ export function takeLoan(state: GameState, reason: string): boolean {
   state.loan.count++;
   state.loan.balance += LOAN_AMOUNT;
   state.loan.lastMonthIndex = monthIndex(state.clock);
+  state.loan.dueMonthIndex = monthIndex(state.clock) + LOAN_DUE_MONTHS; // stakes: 12개월 안에 갚아야 한다
   state.money += LOAN_AMOUNT;
   state.monthLoan += LOAN_AMOUNT;
-  pushNotice(state, `삼춘이 ${josa(`₩${fmtNum(LOAN_AMOUNT)}`, '을/를')} 빌려줬어요 (${reason}, ${state.loan.count}/${LOAN_MAX}회) — 흑자 달마다 순이익 30%로 갚아요`);
+  pushNotice(state, `삼춘이 ${josa(`₩${fmtNum(LOAN_AMOUNT)}`, '을/를')} 빌려줬어요 (${reason}, ${state.loan.count}/${LOAN_MAX}회) — ${LOAN_DUE_MONTHS}개월 안에 갚아야 해요 (흑자 달 순이익 30% 자동)`);
   state.alerts.push({ type: 'failure', stage: 'loan' }); // 트랙 B 대화(data/dialogue/failure.json)
   return true;
 }
@@ -67,6 +69,7 @@ export function repayLoan(state: GameState, card: MonthCard): number {
   const repay = Math.min(state.loan.balance, Math.round(card.net * LOAN_REPAY_RATIO));
   if (repay <= 0) return 0;
   state.loan.balance -= repay;
+  if (state.loan.balance === 0) state.loan.dueMonthIndex = undefined; // stakes: 다 갚으면 기한도 없어진다
   state.money -= repay;
   card.costs.loanRepay += repay;
   card.net -= repay;

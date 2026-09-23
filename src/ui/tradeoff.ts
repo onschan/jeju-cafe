@@ -5,11 +5,41 @@ import type { GameState } from '../sim/index.ts';
 import { objectDef } from '../data/index.ts';
 import { objectScenery, seasonOf, isSeat, streetIfPlaced, treeOf, sceneryMultOf, cafeScenery, STREET_MIN, STREET_BONUS_PCT } from '../sim/index.ts';
 import { itemScenery } from '../sim/grid.ts';
+import { constructions, buildDaysLeft, salaryDue, rentOf, upkeepOf, parcelAt } from '../sim/index.ts';
+import { fmtNum } from '../sim/format.ts';
 import { wonText } from '../data/labels.ts';
 
 const RADIUS = 2;
 
-export interface Tradeoff { gain: string; loss: string }
+export interface Tradeoff { gain: string; loss: string; cost?: string }
+
+/** stakes: 기회비용 한 줄 — 「이걸 사면 뭘 못 하는가」. 돈이 빠듯하면 급여, 건축가가 차면 다음 공사까지 남은 날.
+ *  네 자원(돈·땅·건축가·직원 정원) 중 이 배치로 가장 먼저 막히는 것 하나만 말한다. */
+export const OPPORTUNITY_SHARE = 0.4;
+export function opportunityCost(s: GameState, type: string): string | null {
+  const price = objectDef(type).cost;
+  const busy = constructions(s).length;
+  if (busy >= s.builders) {
+    const days = Math.min(...constructions(s).map((o) => buildDaysLeft(s, o)));
+    return `일꾼 ${busy}/${s.builders} — 다음 공사는 ${Math.max(1, days)}일 뒤`;
+  }
+  const fixed = s.staff.reduce((n, st) => n + salaryDue(st), 0) + monthlyFixedCost(s);
+  const left = s.money - price;
+  if (left < 0) return null; // 「돈이 모자라요」는 아래 줄이 따로 말한다
+  if (left < fixed) return '이걸 사면 이번 달 월급이 빠듯해요';
+  if (left < fixed * 2) return `사고 나면 한 달 고정비만 남아요`;
+  if (price > s.money * OPPORTUNITY_SHARE) return `사고 나면 ${manWon(left)} 남아요`;
+  if (busy === s.builders - 1) return `일꾼이 한 명 남아요 (${busy + 1}/${s.builders})`;
+  return null;
+}
+/** 만 단위로 줄인 금액 (한 줄 ≤ 22자) */
+function manWon(n: number): string {
+  return n >= 10_000 ? `₩${fmtNum(Math.round(n / 10_000))}만` : `₩${fmtNum(n)}`;
+}
+/** 월급 말고 매달 그냥 나가는 돈 (임대료 + 유지비) */
+function monthlyFixedCost(s: GameState): number {
+  return rentOf(s) + Object.values(s.objects).reduce((n, o) => n + (parcelAt(s, o.x, o.y)?.owned ? upkeepOf(s, o) : 0), 0);
+}
 
 export function tradeoffOf(s: GameState, type: string, x: number, y: number): Tradeoff {
   const def = objectDef(type);
@@ -18,7 +48,7 @@ export function tradeoffOf(s: GameState, type: string, x: number, y: number): Tr
   const seats = Object.values(s.objects).filter((o) => !o.build && isSeat(s, o));
   const near = seats.filter((o) => Math.max(Math.abs(o.x - x), Math.abs(o.y - y)) <= RADIUS && !(o.x === x && o.y === y)).length;
   if (def.kind === 'seat') gains.push(`+좌석 ${def.seats ?? 2}`);
-  else if ((def.popularity ?? 0) > 0 && def.kind === 'facility') gains.push(`+인기 ${def.popularity}`);
+  else if ((def.popularity ?? 0) > 0 && def.kind === 'facility') gains.push(`+입소문 ${def.popularity}`);
   if (def.fee) gains.push(`요금 ${wonText(def.fee)}`);
   const sc = objectScenery(def, seasonOf(s.clock.month), itemScenery(s, type)) - def.noise;
   if (sc > 0) {
@@ -37,5 +67,6 @@ export function tradeoffOf(s: GameState, type: string, x: number, y: number): Tr
   if (def.kind === 'seat' && !def.indoor) losses.push('비 오는 날 빈다');
   if (def.indoor) losses.push('실내는 값이 세다');
   if (def.noise > 0 && sc >= 0) losses.push(`소음 ${def.noise}`);
-  return { gain: gains.join(' · '), loss: losses.join(' · ') };
+  const cost = opportunityCost(s, type); // stakes: 기회비용 한 줄
+  return { gain: gains.join(' · '), loss: losses.join(' · '), ...(cost ? { cost } : {}) };
 }

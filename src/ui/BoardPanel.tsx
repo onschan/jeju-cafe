@@ -15,6 +15,7 @@ import { Face, Bar } from './Bars';
 import { card, brownBtn, brownBtnOn, brownBtnOff, dangerBtn, PALETTE } from './frame';
 import { fmtNum } from '../sim/format.ts';
 import { ParcelMap } from './ParcelMap'; // fun-rank: 장부 › 투자 맨 위 필지 3×3 지도
+import { contestUnlocked, signupOpen, nextContest, daysToContest, contestOdds, contestStaff, contestMenus, CONTESTS, SIGNUP_DAYS } from '../sim/index.ts'; // 대회 접수 카드
 
 export type BoardTab = 'quests' | 'events' | 'spots';
 const TABS: { id: BoardTab; label: string }[] = [{ id: 'quests', label: '부탁' }, { id: 'events', label: '이벤트' }, { id: 'spots', label: '투자' }];
@@ -34,14 +35,14 @@ function conditionText(c: QuestCondition): string {
       return `${name} ${c.params.count}개 배치`;
     }
     case 'spotLevel': return `${safeName(() => spotDef(c.params.spotId).name, c.params.spotId)} Lv${c.params.level}`;
-    case 'segmentPopularity': return `${safeName(() => guestTypeDef(c.params.guestId).name, c.params.guestId)} 인기 ${c.params.popularity}`;
+    case 'segmentPopularity': return `${safeName(() => guestTypeDef(c.params.guestId).name, c.params.guestId)} 인지도 ${c.params.popularity}`;
     case 'item': return `${safeName(() => itemDef(c.params.itemId).name, c.params.itemId)} ${c.params.count}개`;
     case 'none': return '바로 완료';
   }
 }
 
 function lockText(u: UnlockCond): string {
-  if (u.type === 'rank') return `카페 랭크 ${u.rank} 필요`;
+  if (u.type === 'rank') return '카페가 더 알려지면 열려요';
   if (u.type === 'spot') return `${safeName(() => spotDef(u.spotId).name, u.spotId)} Lv${u.level} 필요`;
   return '잠김';
 }
@@ -62,7 +63,7 @@ function QuestCard({ q }: { q: QuestState }) {
         <span style={{ fontSize: 12, color: q.status === 'active' ? PALETTE.ok : q.status === 'failed' ? PALETTE.bad : PALETTE.inkSoft }}>{STATUS_TEXT[q.status]}{q.status === 'active' && left !== null ? (left > 0 ? ` · ${left}달 남음` : ' · 이달까지') : ''}</span>
       </div>
       <div style={{ fontSize: 13, fontStyle: 'italic', color: PALETTE.inkSoft, margin: '4px 0' }}>“{guest.line}”</div>
-      <div style={{ fontSize: 13 }}>{conditionText(def.condition)} → <b>{questRewardText(def)}</b>{def.unlockGuestId ? ` · ${safeName(() => guestTypeDef(def.unlockGuestId!).name, '')} 방문` : ''}</div>
+      <div style={{ fontSize: 13 }}>{conditionText(def.condition)} · 보상 <b>{questRewardText(def)}</b>{def.unlockGuestId ? ` · ${safeName(() => guestTypeDef(def.unlockGuestId!).name, '')} 방문` : ''}</div>
       {q.status === 'active' && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4, fontSize: 13 }}>
           <Bar value={p.now} max={p.goal} width={120} color={PALETTE.ok} /> {Math.min(p.now, p.goal)}/{p.goal}
@@ -73,6 +74,37 @@ function QuestCard({ q }: { q: QuestState }) {
           도전하기 (기한 {QUEST_MONTHS}달)
         </button>
       )}
+    </div>
+  );
+}
+
+/** 대회 접수 카드 (게시판 맨 위, 접수 창이 열린 동안). 탭하면 장부 › 대회로 간다. */
+function ContestCard({ onOpen }: { onOpen?: () => void }) {
+  const s = useGame();
+  if (!contestUnlocked(s)) return null;
+  const left = daysToContest(s);
+  const next = nextContest(s);
+  const entered = !!s.contest?.entry;
+  if (!signupOpen(s) && !entered) return null;
+  // 지금 낼 수 있는 조합 중 예상 순위가 가장 좋은 것 한 줄만 (판단 숫자를 카드에 접어 둔다)
+  let hint = '';
+  if (!entered) {
+    let best: { name: string; rank: number; win: number } | null = null;
+    for (const d of CONTESTS) for (const st of contestStaff(s, d.id)) for (const m of contestMenus(s, d.id)) {
+      const o = contestOdds(s, d.id, st.id, m);
+      if (o && (!best || o.rank < best.rank || (o.rank === best.rank && o.winPct > best.win))) best = { name: d.name, rank: o.rank, win: o.winPct };
+    }
+    hint = best ? `${best.name}에 내면 ${best.rank}위쯤 · 우승 ${best.win}%` : '낼 직원과 메뉴가 아직 없어요';
+  }
+  return (
+    <div style={{ ...card, borderColor: PALETTE.bad }} data-testid="board-contest">
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        <Icon name="medal" />
+        <b style={{ flex: 1 }}>{next.month === 6 ? '제주 바리스타 대회' : '제주 카페 경연'}</b>
+        <span style={{ fontSize: 12, color: PALETTE.bad }}>{left === 0 ? '오늘' : `${left}일 남음`}</span>
+      </div>
+      <div style={{ fontSize: 13 }}>{entered ? '접수를 마쳤어요. 대회 날 아침에 결과가 나와요.' : `접수는 ${SIGNUP_DAYS}일 전부터 당일 아침까지 · ${hint}`}</div>
+      {onOpen && <button style={{ ...brownBtn, marginTop: 6, marginBottom: 0 }} onClick={onOpen}>대회 창 열기</button>}
     </div>
   );
 }
@@ -126,7 +158,7 @@ function SpotCard({ id }: { id: string }) {
   const prize = VISITOR_PRIZES[s.spotPrizes[id] ?? 0];
   const invest = () => {
     if (!next) return;
-    Confirm(`${def.name} Lv${next.level}에 ${josa(wonText(next.cost), '을/를')} 투자합니다. 매력도 ${appeal} → ${next.appeal}`, () => dispatch({ type: 'investSpot', id }), { title: '관광지 투자' });
+    Confirm(`${def.name} Lv${next.level}에 ${josa(wonText(next.cost), '을/를')} 투자합니다. 매력도 ${appeal}, 올리면 ${next.appeal}`, () => dispatch({ type: 'investSpot', id }), { title: '관광지 투자' });
   };
   return (
     <div style={{ ...card, opacity: unlocked ? 1 : 0.55 }} data-testid={`spot-${id}`}>
@@ -163,7 +195,7 @@ function SpotCard({ id }: { id: string }) {
 
 
 /** tabs로 보여 줄 소탭을 고른다 (손님 탭 = 부탁, 투자 탭 = 투자·이벤트). 하나뿐이면 소탭 줄을 숨긴다. */
-export function BoardPanel({ tabs = ['quests', 'events', 'spots'] }: { tabs?: BoardTab[] }) {
+export function BoardPanel({ tabs = ['quests', 'events', 'spots'], onContest }: { tabs?: BoardTab[]; onContest?: () => void }) {
   const s = useGame();
   const [tab, setTab] = useState<BoardTab>(tabs[0] ?? 'quests');
   const [cat, setCat] = useState<SpotCategory>('sight');
@@ -193,6 +225,7 @@ export function BoardPanel({ tabs = ['quests', 'events', 'spots'] }: { tabs?: Bo
 
       {tab === 'events' && (
         <div>
+          <ContestCard onOpen={onContest} />{/* 대회 접수 D-7 */}
           <ParcelMap />{/* fun-rank */}
           {events.length === 0 && <div style={{ fontSize: 13, color: PALETTE.inkSoft }}>이번 달 소식이 없어요. 매월 1일에 투자·행사 제안이 와요.</div>}
           {events.map((ev, i) => <EventCard key={`${ev.id}-${ev.monthIndex}-${i}`} ev={ev} />)}
@@ -202,7 +235,7 @@ export function BoardPanel({ tabs = ['quests', 'events', 'spots'] }: { tabs?: Bo
 
       {tab === 'spots' && (
         <div>
-          <div style={{ fontSize: 13, color: PALETTE.inkSoft, marginBottom: 4 }}>매력도 합 {spotAppeal(s)} · 방문객 하루 {fmtNum(totalDailyVisitors(s))}명(누적 {fmtNum(totalSpotVisitors(s))}) → 하루 손님 +{spotGuestBonus(s)} · 응모권 {s.tickets}</div>
+          <div style={{ fontSize: 13, color: PALETTE.inkSoft, marginBottom: 4 }}>매력도 합 {spotAppeal(s)} · 방문객 하루 {fmtNum(totalDailyVisitors(s))}명(누적 {fmtNum(totalSpotVisitors(s))}) · 하루 손님 +{spotGuestBonus(s)} · 응모권 {s.tickets}</div>
               <div style={{ display: 'flex', flexWrap: 'wrap', marginBottom: 4 }}>
             {SPOT_TABS.map((t) => (
               <button key={t.id} style={{ ...(cat === t.id ? brownBtnOn : brownBtn), padding: '0 8px', fontSize: 13 }} onClick={() => setCat(t.id)}>{t.label}</button>

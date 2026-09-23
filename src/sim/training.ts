@@ -42,7 +42,7 @@ export function canTrain(state: GameState, staffId: string, trainingId: string):
   const st = findStaff(state, staffId);
   if (!st) return { ok: false, reason: '없는 직원이에요' };
   if (!TRAININGS.some((t) => t.id === trainingId)) return { ok: false, reason: '없는 연수예요' };
-  if (!trainingUnlocked(state)) return { ok: false, reason: `카페 랭크 ${TRAINING_RANK}부터 보낼 수 있어요` };
+  if (!trainingUnlocked(state)) return { ok: false, reason: '카페가 더 알려지면 보낼 수 있어요' };
   if (st.training) return { ok: false, reason: '이미 연수 중이에요' };
   if (state.developing?.staffId === staffId) return { ok: false, reason: '메뉴 개발 중이에요' };
   const req = trainingRequirementMet(state, st, trainingDef(trainingId));
@@ -59,6 +59,7 @@ export function train(state: GameState, staffId: string, trainingId: string): vo
   state.money -= cost;
   state.monthCosts.recruit += cost;
   st.trainingCount++;
+  st.trainingLog = { ...(st.trainingLog ?? {}), [trainingId]: (st.trainingLog?.[trainingId] ?? 0) + 1 }; // 대회 심사 연수 보정 (contest.ts)
   st.training = { id: trainingId, daysLeft: trainingDef(trainingId).days };
   st.path = [];
   st.anchor = staffAnchor(state, st);

@@ -1,6 +1,6 @@
 /** 타이틀 화면 「옛 세이브는 백업됐어요」 판정 (z-polish) */
 import { hasOldSave, VERSION_TEXT } from '../TitleScreen';
-import { SAVE_VERSION } from '../../sim/index.ts';
+import { SAVE_VERSION, OLDEST_LOADABLE, BACKFILL_FROM } from '../../sim/index.ts';
 
 function storageOf(entries: Record<string, string>) {
   const keys = Object.keys(entries);
@@ -10,7 +10,9 @@ function storageOf(entries: Record<string, string>) {
 test('백업 키가 있거나 슬롯 version이 지금보다 낮으면 true', () => {
   expect(hasOldSave(storageOf({}))).toBe(false);
   expect(hasOldSave(storageOf({ 'jeju-cafe:slot:1': JSON.stringify({ version: SAVE_VERSION }) }))).toBe(false);
-  expect(hasOldSave(storageOf({ 'jeju-cafe:slot:1': JSON.stringify({ version: SAVE_VERSION - 1 }) }))).toBe(true);
+  // big 통합: backfill로 이어지는 버전(v20·v21)은 「새 게임으로」가 아니다
+  for (const v of BACKFILL_FROM) expect(hasOldSave(storageOf({ 'jeju-cafe:slot:1': JSON.stringify({ version: v }) })), `v${v}`).toBe(false);
+  expect(hasOldSave(storageOf({ 'jeju-cafe:slot:1': JSON.stringify({ version: OLDEST_LOADABLE - 1 }) }))).toBe(true);
   expect(hasOldSave(storageOf({ 'jeju-cafe:slot:backup:2': '{}' }))).toBe(true);
   expect(hasOldSave(storageOf({ 'jeju-cafe:slot:3': 'not json', 'other': 'x' }))).toBe(false);
   expect(hasOldSave(null)).toBe(false);

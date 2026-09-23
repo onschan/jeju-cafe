@@ -434,6 +434,25 @@ def menu_board() -> IsoCanvas:
     return c
 
 
+def trophy() -> IsoCanvas:
+    """대회 상패 (실내 1×1). 나무 받침 위 금빛 컵 + 손잡이 두 개."""
+    c = cv(26, shadow=0.26)
+    GOLD = (hexc('9a6f16'), hexc('e0ad2e'), hexc('ffe89a'))
+    c.box(5, DARKWOOD, (0.3, 0.3, 0.7, 0.7))                 # 받침
+    c.box(3, GOLD, (0.38, 0.38, 0.62, 0.62), z0=5)            # 명판
+    c.pillar(0.5, 0.5, 2, 5, GOLD, z0=8)                      # 기둥
+    c.disc(0.5, 0.5, 0.2, 8, GOLD, z0=13)                     # 컵
+    sx, sy = c.spx(0.5, 0.5, 21)
+    c.ellipse(sx, sy, 6, 3, GOLD[2])                          # 컵 입구
+    c.ellipse(sx, sy, 4, 2, GOLD[0])
+    for sgn in (-1, 1):                                       # 손잡이 (컵 밖으로 나오게)
+        for dx, dy in ((7, 1), (9, 2), (10, 4), (9, 6), (7, 7)):
+            c.put(sx + sgn * dx, sy + dy, GOLD[1]); c.put(sx + sgn * dx, sy + dy + 1, GOLD[0])
+    c.put(sx - 2, sy - 1, WHITE[2])                           # 반짝
+    c.outline()
+    return c
+
+
 def sprites() -> dict[str, Canvas]:
     fns = {
         'deco_planter': deco_planter, 'deco_lamp_post': deco_lamp_post, 'deco_string_lights': deco_string_lights,
@@ -450,6 +469,7 @@ def sprites() -> dict[str, Canvas]:
     s: dict[str, Canvas] = {f'iso_obj_{k}': fn() for k, fn in fns.items()}
     s['iso_tile_floor_wood'] = floor_wood(); s['iso_tile_floor_tile'] = floor_tile(); s['iso_tile_floor_stone'] = floor_stone()
     s['iso_obj_counter_bar'] = counter_bar(); s['iso_obj_menu_board'] = menu_board()
+    s['iso_obj_trophy'] = trophy()   # 대회 상패 (contest.ts)
     s['fx_corner_sign'] = corner_sign()   # fun-corner: 코너 이름표 팻말 (글자는 렌더 라벨)
     for i in range(3):
         s[f'fx_flash_{i}'] = flash(i)      # fun-corner: 손님 사진 카메라 플래시

@@ -21,7 +21,7 @@ function effectText(d: PromotionDef): string {
     if (t) parts.push(`${t.name} +${v}`);
   }
   if (d.allDelta) parts.push(`모든 손님 +${d.allDelta}`);
-  if (d.popularityShift) parts.push(`인기 카페 쪽으로 ${d.popularityShift}`);
+  if (d.popularityShift) parts.push(`손님 색깔이 관광객 쪽으로 ${d.popularityShift}`);
   const when = d.months > 0 ? `${d.months}달 동안 ` : '';
   return `${when}${parts.join(' · ')}`;
 }
@@ -50,8 +50,8 @@ export function PromoPanel() {
 
   return (
     <div>
-      {/* 손님층 인기 */}
-      <div style={{ marginBottom: 4 }}><b>손님층 인기</b> <span style={{ fontSize: 13, color: PALETTE.inkSoft }}>타깃(최대 3)을 정하면 홍보 효과 1.5배·만족 +3</span></div>
+      {/* 손님층 인지도 */}
+      <div style={{ marginBottom: 4 }}><b>손님층 인지도</b> <span style={{ fontSize: 13, color: PALETTE.inkSoft }}>타깃(최대 3)을 정하면 홍보 효과 1.5배·만족 +3</span></div>
       <div style={card}>
         {GUEST_TYPES.filter((t) => s.guestTypes[t.id]?.unlocked).map((t) => {
           const v = effectivePopularity(s, t.id);

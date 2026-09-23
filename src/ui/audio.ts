@@ -1,7 +1,7 @@
 import { assetUrl } from './assetUrl';
 
 export type SfxName = 'tap' | 'place' | 'remove' | 'plant' | 'harvest' | 'coin' | 'happy' | 'meh' | 'unlock' | 'month' | 'fanfare' | 'error' | 'bus' | 'drumroll'; // drumroll: 대박/중박/쪽박 룰렛 긴장음 (staff-luck)
-export type BgmName = 'spring' | 'summer' | 'autumn' | 'winter' | 'title' | 'intro'; // intro: 프롤로그 1~3컷 잔잔한 단조
+export type BgmName = 'spring' | 'summer' | 'autumn' | 'winter' | 'title' | 'intro' | 'intro_warm'; // intro: 프롤로그 1~5컷 잔잔한 단조, intro_warm: 6컷(제주 회상)부터 같은 곡이 장조로
 
 const MUTE_KEY = 'jeju-cafe:muted';
 let ctx: AudioContext | null = null;

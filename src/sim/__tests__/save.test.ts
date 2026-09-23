@@ -99,3 +99,38 @@ test('v20 세이브: 없어진 시설·명소·직종·경로를 환불·치환�
   expect(back.money).toBeGreaterThan(s.money); // 환불
   expect(back.notices.some((n) => n.includes('환불'))).toBe(true);
 });
+
+// ---------- big 통합: v21 → v22 (optional 필드 backfill만) ----------
+
+test('v21 세이브: 5트랙이 붙인 필드가 전부 기본값으로 채워지고 버전이 22가 된다', () => {
+  const s = bareState(1);
+  s.loan.balance = 3_000_000;
+  const obj = JSON.parse(serialize(s)) as Record<string, unknown>;
+  obj.version = 21;
+  // v21엔 없던 필드를 지워 옛 세이브를 흉내 낸다
+  for (const k of ['trend', 'riskDay', 'riskId', 'pendingRisk', 'pendingEventChoice', 'lastGrade', 'badGradeMonths', 'contest', 'dayLog', 'dayLogMark', 'voices', 'grade']) delete obj[k];
+  delete (obj.monthCosts as Record<string, unknown>).rent;
+  delete (obj.monthCosts as Record<string, unknown>).contest;
+  delete (obj.loan as Record<string, unknown>).dueMonthIndex;
+  delete (obj.loan as Record<string, unknown>).overdueCount;
+
+  const back = deserialize(JSON.stringify(obj));
+  expect(back.version).toBe(SAVE_VERSION);
+  expect(SAVE_VERSION).toBe(22);
+  // stakes
+  expect(back.monthCosts.rent).toBe(0);
+  expect(back.trend).toBeTruthy();
+  expect(back.pendingRisk).toBeNull();
+  expect(back.pendingEventChoice).toBeNull();
+  expect(back.loan.dueMonthIndex).toBeGreaterThan(0); // 빚이 남은 옛 세이브에 기한을 준다
+  expect(back.loan.overdueCount ?? 0).toBe(0);
+  // contest
+  expect(back.monthCosts.contest).toBe(0);
+  expect(back.contest).toBeTruthy();
+  // quick(성장 체감)·fun-rank
+  expect(back.dayLog).toEqual([]);
+  expect(back.voices).toEqual([]);
+  expect(back.grade).toBe(1);
+  // 한 번 더 왕복해도 같다
+  expect(JSON.parse(serialize(deserialize(serialize(back))))).toEqual(JSON.parse(serialize(back)));
+});

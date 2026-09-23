@@ -104,7 +104,7 @@ function TrainingPanel({ st, s, dispatch, onDone }: { st: Staff; s: GameState; d
     <div style={{ marginTop: 6, padding: 8, background: PALETTE.paperDark, borderRadius: 6 }} data-testid={`training-${st.id}`}>
       <div style={{ fontSize: 14, marginBottom: 4 }}>어떤 연수를 보낼까? <span style={soft}>{st.trainingCount > 0 ? `${st.trainingCount + 1}번째라 비용 +${st.trainingCount * 20}%` : '그동안 자리를 비워요'}</span></div>
       <div style={{ ...soft, fontSize: 13, marginBottom: 4 }} data-testid={`training-chance-${st.id}`}>돌아올 때 판정: {chanceText(trainingChances(s, st.id))} (대박이면 효과 2배, 쪽박이면 절반)</div>
-      {!unlocked && <div style={{ ...soft, marginBottom: 4 }}>카페 랭크 {TRAINING_RANK}부터 보낼 수 있어요</div>}
+      {!unlocked && <div style={{ ...soft, marginBottom: 4 }}>카페가 더 알려지면 보낼 수 있어요</div>}
       <div style={{ display: 'grid', gap: 4 }}>
         {opts.map(({ def, cost, ok, reason }) => (
           <div key={def.id} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -196,6 +196,10 @@ function CandidateCard({ c, s, dispatch }: { c: Candidate; s: GameState; dispatc
         <button data-tut="hire" style={check.ok ? rowBtnOn : rowBtnOff} disabled={!check.ok} title={check.reason} onClick={() => { if (chosen) dispatch({ type: 'hire', candidateId: c.id, role: chosen }); }} aria-label={`${c.name} 채용`}>
           채용 · 월급 {wonText(c.salary)}
         </button>
+      </div>
+      {/* video-patch §2.4: 판단에 필요한 숫자는 결정 창 안에 — 창을 옮겨 다니지 않게 */}
+      <div style={{ ...soft, fontSize: 13, marginTop: 2 }} data-testid={`candidate-basis-${c.id}`}>
+        지금 정원 {s.staff.length}/{staffCapacity(s)}명 · 급여 합계 {wonText(s.staff.reduce((n, st) => n + st.salary, 0) + c.salary)}
       </div>
       {!check.ok && check.reason && <div style={{ ...soft, fontSize: 13, marginTop: 4 }}>{check.reason}</div>}
     </div>

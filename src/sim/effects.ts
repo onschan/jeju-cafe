@@ -1,4 +1,4 @@
-import type { GameState, ActiveEffect, EventFilter, Clock } from './types.ts';
+import type { GameState, ActiveEffect, EventFilter, Clock, PlacedObject } from './types.ts';
 import { guestTypeDef, canonicalGuestId } from '../data/index.ts';
 import { monthIndex, DAYS_PER_MONTH } from './clock.ts';
 
@@ -54,4 +54,14 @@ export function effectMult(state: GameState, kind: ActiveEffect['kind'], typeId?
 /** 오늘 손님이 0인가 (정전·결빙 등) */
 export function noGuestsToday(state: GameState): boolean {
   return active(state).some((e) => e.kind === 'noGuests');
+}
+
+/** stakes: 설비 고장으로 멈춘 시설인가 (risk.ts가 obj.stopped에 복구일을 넣는다). 인기·좌석에서 빠진다.
+ *  risk.ts가 아니라 여기 두는 이유 — guests.ts·compat.ts가 써야 하는데 risk.ts는 그 둘을 import한다(순환 방지). */
+export function isStopped(state: GameState, obj: PlacedObject): boolean {
+  return obj.stopped !== undefined && obj.stopped > dayIndex(state.clock);
+}
+/** 지금 멈춰 있는 시설 수 (경고 줄) */
+export function stoppedCount(state: GameState): number {
+  return Object.values(state.objects).filter((o) => isStopped(state, o)).length;
 }

@@ -1,20 +1,27 @@
 import type { GameState } from './types.ts';
 import { initRoutes } from './entry.ts';
-import { SAVE_VERSION } from './state.ts';
+import { SAVE_VERSION, MENU_SLOT_MAX, trendFor } from './state.ts';
+import { monthIndex } from './clock.ts';
 import { footprintOf, fixedCellsOf } from './grid.ts';
 import { objectDef } from '../data/index.ts';
 import { josa } from './josa.ts';
 import { initMain } from './rooms.ts';
 import { initEnding } from './ending.ts'; // z-ending
+import { initContest } from './contest.ts'; // 대회
 import type { FinalScore } from './types.ts';
 import { TUTORIAL_STEPS } from './tutorial.ts';
 import { ROUTE_IDS } from './entry.ts';
 import { OBJECTS, SPOTS, ROLES, GOALS, MENUS } from '../data/index.ts';
 import { SPOT_MAX_LEVEL } from './spots.ts';
+import { LOAN_DUE_MONTHS } from './economy.ts'; // stakes: 대출 상환 기한
 import { fmtNum } from './format.ts';
 
-/** trim에서 없어진 것들이 들어 있는 v20 세이브를 v21로 올린다 */
+/** trim에서 없어진 것들이 들어 있는 v20 세이브를 올린다 (환불·치환) */
 export const MIGRATE_FROM = 20;
+/** big 통합에서 붙은 필드는 전부 optional이라 backfill만으로 v21 → v22가 된다 (덜어낼 것도 없다) */
+export const BACKFILL_FROM = [20, 21];
+/** 이어서 열 수 있는 가장 낮은 세이브 버전 (이보다 낮으면 백업 뒤 새 게임) */
+export const OLDEST_LOADABLE = Math.min(...BACKFILL_FROM);
 
 export function serialize(state: GameState): string {
   return JSON.stringify(state);
@@ -24,6 +31,7 @@ export function deserialize(json: string): GameState {
   const obj = JSON.parse(json) as GameState;
   if (!obj || typeof obj !== 'object') throw new Error('save: not an object');
   if (obj.version === MIGRATE_FROM) migrateTrim(obj);
+  if (BACKFILL_FROM.includes(obj.version)) obj.version = SAVE_VERSION; // backfill()이 새 필드를 채운다
   if (obj.version !== SAVE_VERSION) throw new Error(`save version mismatch: ${obj.version} (expected ${SAVE_VERSION})`);
   backfill(obj);
   rebuildCellOwnership(obj);
@@ -88,6 +96,17 @@ function migrateTrim(state: GameState): void {
 function backfill(state: GameState): void {
   state.lastMonthIncome ??= state.lastMonthCard?.income ?? 0;
   state.researchAcc ??= 0;
+  // ---- stakes: 긴장감·트레이드오프·변수 ----
+  state.monthCosts.rent ??= 0;
+  if (state.lastMonthCard) state.lastMonthCard.costs.rent ??= 0;
+  state.trend ??= trendFor(state.seed, monthIndex(state.clock)); // stakes: 옛 세이브도 이번 달 유행을 갖는다
+  state.riskDay ??= 0;
+  state.riskId ??= null;
+  state.pendingRisk ??= null;
+  state.pendingEventChoice ??= null;
+  state.lastGrade ??= null;
+  state.badGradeMonths ??= 0;
+  state.menuSlotMax ??= MENU_SLOT_MAX;
   state.undo ??= null;
   state.eventsFired ??= {};
   state.monthMenuSold ??= {};
@@ -96,11 +115,17 @@ function backfill(state: GameState): void {
   state.ending ??= initEnding(); // z-ending: 엔딩·빠른 모드 (v18 세이브엔 없다)
   state.carry ??= null; // z-ending: 이월 묶음
   state.codex.titles ??= []; // staff-luck: 만난 칭호 도감
-  state.codex.corners ??= []; // fun-corner: 만든 코너 도감
+  state.codex.corners ??= []; // fun-corner: 만든 명당 도감
   state.lastOutcome ??= null;
+  state.contest ??= initContest(); // 대회 (v21 세이브엔 없다 — 등급 3이면 다음 6·12월부터 접수할 수 있다)
+  state.monthCosts.contest ??= 0; // 대회 참가비 줄 (월말 카드 비용 합계)
+  if (state.lastMonthCard) state.lastMonthCard.costs.contest ??= 0;
+  if (state.loan.balance > 0) state.loan.dueMonthIndex ??= monthIndex(state.clock) + LOAN_DUE_MONTHS; // stakes: 빌린 기록만 있는 옛 세이브에 기한을 준다 (overdueCount는 넘긴 뒤에 생긴다 — 새 상태에 없는 키를 만들지 않는다)
   state.luckSeq ??= 0;
   state.monthGreatServes ??= 0;
   state.voices ??= []; // trim: 손님 목소리 피드
+  state.dayLog ??= []; // 성장: 하루 기록 (옛 세이브는 오늘부터 쌓인다)
+  state.dayLogMark ??= { income: state.monthIncome, regulars: state.regulars?.length ?? 0 };
   state.grade ??= 1; // fun-rank: 카페 등급 (옛 세이브는 「올레길 노점」에서 시작 — 조건이 차 있으면 다음 날 판정에서 오른다)
   for (const k of ['clearRock', 'promote', 'craft', 'siteView', 'comboCodex', 'spotMap']) delete (state.features as Record<string, boolean>)[k]; // ease: 바위 삭제·처음부터 열린 기능 — 옛 저장의 기능 키는 지운다
   delete (state.stats as unknown as Record<string, number>)['rocksCleared'];

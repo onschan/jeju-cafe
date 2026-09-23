@@ -11,7 +11,7 @@ import { ScoreCard } from './EndingScreen'; // z-ending: 엔딩 최종 점수 �
 import { getBest } from './best';
 import { unlockAudio, bgm, sfx, isMuted, setMuted, setBgmVolume, setSfxVolume, getBgmVolume, getSfxVolume } from './audio';
 import { Icon } from './Icon';
-import { SAVE_VERSION } from '../sim/index.ts';
+import { SAVE_VERSION, OLDEST_LOADABLE } from '../sim/index.ts';
 
 /** 버전 표기: package.json version + 빌드 날짜 (vite define). 테스트 환경엔 define이 없으니 안전하게 */
 const APP_VERSION: string = typeof __APP_VERSION__ === 'string' ? __APP_VERSION__ : 'dev';
@@ -20,7 +20,8 @@ export const VERSION_TEXT = `v${APP_VERSION}${BUILD_DATE ? ` · ${BUILD_DATE}` :
 
 /** 세이브 슬롯 키 (store.ts SLOT_PREFIX와 같음). 백업 키는 `${prefix}backup:<slot>` */
 const SLOT_PREFIX = 'jeju-cafe:slot:';
-/** 지금 버전보다 옛 세이브(역직렬화 실패로 백업된 것 포함)가 localStorage에 남아 있나 — 타이틀에 「옛 세이브는 백업됐어요」 한 줄 */
+/** 이어서 못 여는 옛 세이브(역직렬화 실패로 백업된 것 포함)가 localStorage에 남아 있나 — 타이틀에 「옛 세이브는 백업됐어요」 한 줄.
+ *  big 통합: v20·v21은 backfill로 그대로 이어진다(save.ts BACKFILL_FROM) — 그 버전까지는 「새 게임으로」라고 겁주지 않는다. */
 export function hasOldSave(storage: Pick<Storage, 'length' | 'key' | 'getItem'> | null = typeof localStorage === 'undefined' ? null : localStorage): boolean {
   if (!storage) return false;
   for (let i = 0; i < storage.length; i++) {
@@ -29,7 +30,7 @@ export function hasOldSave(storage: Pick<Storage, 'length' | 'key' | 'getItem'> 
     if (k.startsWith(`${SLOT_PREFIX}backup:`)) return true;
     try {
       const v = (JSON.parse(storage.getItem(k) ?? 'null') as { version?: unknown } | null)?.version;
-      if (typeof v === 'number' && v < SAVE_VERSION) return true;
+      if (typeof v === 'number' && v < OLDEST_LOADABLE) return true;
     } catch { /* 깨진 값은 무시 */ }
   }
   return false;
@@ -186,7 +187,7 @@ export function TitleScreen({ onEnter, onNewGame, onReplayIntro }: { onEnter: ()
           <button style={canContinue ? titleBtn : { ...brownBtnOff, ...titleBtn, opacity: 0.45 }} disabled={!canContinue} onClick={() => setSlots(true)}><Icon name="play" size={20} /> 이어하기</button>
           <button style={titleBtn} onClick={() => setBest(true)}><Icon name="trophy" size={20} /> 최고 점수</button>
           <button style={titleBtn} onClick={() => setSound(true)} data-testid="title-settings"><Icon name="settings" size={20} /> 설정</button>
-          {oldSave && <div data-testid="old-save-note" style={{ fontSize: 13, color: PALETTE.inkSoft, textAlign: 'center' }}>옛 세이브는 백업됐어요 (v{SAVE_VERSION} 이전 세이브는 새 게임으로)</div>}
+          {oldSave && <div data-testid="old-save-note" style={{ fontSize: 13, color: PALETTE.inkSoft, textAlign: 'center' }}>옛 세이브는 백업됐어요 (v{OLDEST_LOADABLE} 이전 세이브는 새 게임으로)</div>}
           <div data-testid="title-version" style={{ fontSize: 12, color: PALETTE.inkSoft, textAlign: 'center' }}>{VERSION_TEXT}</div>
         </div>
       </div>

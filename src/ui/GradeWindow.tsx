@@ -11,7 +11,7 @@ import { brownBtn, brownBtnOn, PALETTE } from './frame';
 
 /** 등급 창 (fun-rank, 스펙 §5): 상단 바 등급 이름을 탭하면 열린다.
  *  위: 「5년 뒤 우리 카페」 미리보기 — 등급별 카페 외관 일러스트 5장(public/assets/grade/grade{n}.png, 인트로 컷 스타일 320×180)을 등급 버튼으로 넘겨 본다.
- *  아래: 다음 등급 조건 4줄(다녀간 손님·완성한 코너·평판·★) 진행 막대 + 등급이 오르면 생기는 것. */
+ *  아래: 다음 등급 조건 4줄(다녀간 손님·완성한 명당·평판·★) 진행 막대 + 등급이 오르면 생기는 것. */
 export function GradeWindow({ onClose }: { onClose: () => void }) {
   const s = useGame();
   const cur = gradeOf(s);
@@ -64,7 +64,7 @@ export function GradeWindow({ onClose }: { onClose: () => void }) {
         </div>
       )}
       <div style={{ fontSize: 13, color: PALETTE.inkSoft, marginTop: 8, lineHeight: 1.4 }}>
-        등급 조건: {Object.entries(GRADE_REQS).map(([g, r]) => `${gradeName(Number(g))} 손님 ${fmtNum(r.guests)}·코너 ${r.corners}·평판 ${r.reputation}·★${r.star}`).join(' / ')}
+        등급 조건: {Object.entries(GRADE_REQS).map(([g, r]) => `${gradeName(Number(g))} 손님 ${fmtNum(r.guests)}·명당 ${r.corners}·평판 ${r.reputation}·★${r.star}`).join(' / ')}
       </div>
     </Window>
   );

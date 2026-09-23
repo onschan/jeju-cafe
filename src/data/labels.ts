@@ -109,7 +109,7 @@ export function ingredientsText(menu: Pick<MenuDef, 'ingredients'>): string {
 export function unlockCondText(c: UnlockCond): string {
   switch (c.type) {
     case 'start': return '처음부터';
-    case 'rank': return `랭크 ${c.rank}`;
+    case 'rank': return RANK_CLAUSE; // 랭크(1~10) 숫자는 UI에 안 쓴다
     case 'star': return `★${c.star}`;
     case 'segment': return `${label('guest', c.guestId)} 손님 만족 ${c.satisfaction}`;
     case 'quest': return `${label('quest', c.questId)} 완료`;
@@ -117,7 +117,7 @@ export function unlockCondText(c: UnlockCond): string {
     case 'date': return `${c.year}년 ${c.month}월`;
     case 'count': return `${label('facility', c.objectId)} ${c.count}개`;
     case 'category': return `${label('category', c.category)} 시설 ${c.count}개`;
-    case 'segmentPop': return `${label('guest', c.guestId)} 손님 인기 ${c.popularity}`;
+    case 'segmentPop': return `${label('guest', c.guestId)} 손님 인지도 ${c.popularity}`;
     case 'goal': return '목표 보상';
     case 'all': return c.conditions.length > 0 ? c.conditions.map(unlockCondText).join(' + ') : '아직 열 수 없음';
     case 'any': return c.conditions.length > 0 ? c.conditions.map(unlockCondText).join(' 또는 ') : '아직 열 수 없음';
@@ -125,15 +125,24 @@ export function unlockCondText(c: UnlockCond): string {
 }
 
 /** 잠긴 시설·메뉴 카드용 문장: "손님 50명 맞이하면 열려요". 조건이 없으면 목표(트랙 A)가 여는 것으로 안내한다. */
+/** 랭크(1~10) 숫자는 플레이어에게 안 보인다 — 진척 지표는 등급과 ★ 둘뿐. 생성 데이터의 「랭크 n」 문구도 같은 말로 바꾼다. */
+export const RANK_CLAUSE = '카페가 더 알려지면';
+export function scrubRank(text: string): string {
+  return text.replace(/랭크\s*\d+\s*(위|단계)?/g, RANK_CLAUSE).trim();
+}
 export function unlockText(def: Pick<ObjectDef, 'unlock' | 'unlockText'> | { unlock?: UnlockCond; unlockText?: string }): string {
   const c = def.unlock;
   if (c && c.type !== 'start') {
     if (c.type === 'goal') return '목표를 이루면 열려요';
+    if (c.type === 'rank') return `${RANK_CLAUSE} 열려요`; // 랭크 숫자는 안 보여 준다
     if (c.type === 'all' && c.conditions.length === 0) return '아직 열 수 없어요';
     return `${ifClause(unlockCondText(c))} 열려요`;
   }
   if (c?.type === 'start') return '처음부터 열려 있어요';
-  if (def.unlockText && !hasIdToken(def.unlockText)) return `${ifClause(def.unlockText)} 열려요`;
+  if (def.unlockText && !hasIdToken(def.unlockText)) {
+    const scrubbed = scrubRank(def.unlockText);
+    return scrubbed === def.unlockText ? `${ifClause(def.unlockText)} 열려요` : `${scrubbed} 열려요`;
+  }
   return '목표를 이루면 열려요';
 }
 
@@ -175,7 +184,7 @@ export function conditionText(c: LooseCondition): string {
     case 'menuOn': case 'menuSlot': return `${label('menu', str(c, 'menuId', 'menu'))} 메뉴판에 올리기`;
     case 'objectPlaced': return `${label('facility', str(c, 'objectId', 'facility', 'object'))} ${n()}개 놓기`;
     case 'spotLevel': return `${label('spot', str(c, 'spotId', 'spot'))} ${num(c, 'level')}단계까지 투자하기`;
-    case 'segmentPopularity': return `${label('guest', str(c, 'guestId', 'guest'))} 손님 인기 ${num(c, 'popularity', 'n')}`;
+    case 'segmentPopularity': return `${label('guest', str(c, 'guestId', 'guest'))} 손님 인지도 ${num(c, 'popularity', 'n')}`;
     case 'item': return `${label('item', str(c, 'itemId', 'item'))} ${n()}개 모으기`;
     case 'guests': return `손님 ${n()}명 맞이하기`;
     case 'money': return `자금 ${wonText(n())} 모으기`;

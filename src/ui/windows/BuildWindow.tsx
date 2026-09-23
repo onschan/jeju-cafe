@@ -1,4 +1,4 @@
-/** 짓기 창 (스펙 §4.2). 카테고리 탭(쉼·편의·먹거리·즐길거리·농원·경관·길·담) → 2열 카드(아이소 스프라이트·이름·가격·인기/경관).
+/** 짓기 창 (스펙 §4.2). 카테고리 탭(쉼·편의·먹거리·즐길거리·농원·경관·길·담) → 2열 카드(아이소 스프라이트·이름·가격·입소문/경관).
  *  카드 탭 → 아래 설명 2줄 + `짓기`(onPickBuild). 잠긴 것은 반투명 + 조건 한글. 철거·이동은 미니카드(트랙 C) 몫. */
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { Icon } from '../Icon';
@@ -7,18 +7,20 @@ import { placeCost, constructions, canStartBuild, goalForFacility, isUpgradable,
 import { OBJECTS, objectDef } from '../../data/index.ts';
 import { unlockText, wonText } from '../../data/labels.ts';
 import { loadSheet, drawFrame, type Sheet } from '../sheetCanvas';
+import { opportunityCost } from '../tradeoff'; // stakes: 기회비용 한 줄
 import { PALETTE, brownBtn, brownBtnOff } from '../frame';
+import { josa } from '../../sim/josa.ts';
 import { useWindowState, body, TabBar, soft, Empty, type WindowProps } from './shared.tsx';
 import { SiteToggle } from '../SiteToggle.tsx';
 import { showFirstTip } from '../firstTip';
-import { CornerTab } from './CornerTab.tsx'; // fun-corner 「코너」 탭
+import { CornerTab } from './CornerTab.tsx'; // fun-corner 「명당」 탭
 
 export type BuildTab = 'building' | 'corner' | 'indoor' | 'rest' | 'convenience' | 'food' | 'fun' | 'farm' | 'scenery' | 'path' | 'wall';
 /** fun: 짓기 창 첫 화면(6타일) · 타일 하위 목록 · 전체 목록(탭) */
 export type BuildView = { kind: 'tiles' } | { kind: 'tile'; tile: BuildTileId } | { kind: 'all' };
-/** 탭 순서 (§8.4): [건물 — 본관이 없을 때만(w-start)] · 코너(fun-corner) · 실내 · 쉼 · 편의 · 먹거리 · 즐길거리 · 농원 · 경관 · 길 · 담 */
+/** 탭 순서 (§8.4): [건물 — 본관이 없을 때만(w-start)] · 명당(fun-corner) · 실내 · 쉼 · 편의 · 먹거리 · 즐길거리 · 농원 · 경관 · 길 · 담 */
 export const BUILD_TABS: { key: BuildTab; label: string }[] = [
-  { key: 'building', label: '건물' }, { key: 'corner', label: '코너' }, { key: 'indoor', label: '실내' }, { key: 'rest', label: '쉼' }, { key: 'convenience', label: '편의' }, { key: 'food', label: '먹거리' }, { key: 'fun', label: '즐길거리' },
+  { key: 'building', label: '건물' }, { key: 'corner', label: '명당' }, { key: 'indoor', label: '실내' }, { key: 'rest', label: '쉼' }, { key: 'convenience', label: '편의' }, { key: 'food', label: '먹거리' }, { key: 'fun', label: '즐길거리' },
   { key: 'farm', label: '농원' }, { key: 'scenery', label: '경관' }, { key: 'path', label: '길' }, { key: 'wall', label: '담' },
 ];
 /** 본관 카드 「실내 꾸미기」처럼 창을 여는 쪽이 첫 탭을 지정한다 (App 창 매핑을 안 건드리고 — y-indoor). 한 번 읽으면 지워진다. */
@@ -98,7 +100,7 @@ export function BuildWindow(props: BuildWindowProps) {
   const [picked, setPicked] = useState<string | null>(null);
   const [tab, setTabState] = useState<BuildTab>(() => props.initialTab ?? takeRequestedTab() ?? (mainBuilding(s) ? (lastTab ?? 'rest') : 'building'));
   const setTab = (t: BuildTab) => { lastTab = t; lastScrollTop = 0; setTabState(t); };
-  // fun: 첫 화면은 6타일 — 여는 쪽이 탭을 지정했거나(본관 카드 「실내 꾸미기」·코너 탭 글로우) 맨땅(건물 탭)이면 바로 전체 목록
+  // fun: 첫 화면은 6타일 — 여는 쪽이 탭을 지정했거나(본관 카드 「실내 꾸미기」·명당 탭 글로우) 맨땅(건물 탭)이면 바로 전체 목록
   const [view, setView] = useState<BuildView>(() => (props.initialTab || requestedTabWas || !mainBuilding(s) ? { kind: 'all' } : (lastView ?? { kind: 'tiles' })));
   const goView = (v: BuildView) => { lastView = v.kind === 'all' ? v : null; lastScrollTop = 0; setView(v); setPicked(null); showFirstTip(null); }; // 창을 다시 열면 늘 6타일 첫 화면 (전체 목록만 기억) · 팁이 아래 「짓기」 줄을 가리지 않게 내린다
   const rootRef = useRef<HTMLDivElement>(null);
@@ -123,7 +125,7 @@ export function BuildWindow(props: BuildWindowProps) {
     ? TILE_TYPES[tileMode].map((id) => objectDef(id)).filter((d) => unlocked.has(d.id) || treeOf(d.id)).map((def) => ({ def, locked: (treeOf(def.id)?.index ?? 0) > 0 || !unlocked.has(def.id) })) // 트리 2단계부터는 짓지 않고 「업그레이드 ▲」로만
     : activeTab === 'building'
     ? (noMain ? [{ def: objectDef(MAIN_TYPE), locked: false }] : [])
-    : activeTab === 'corner' ? [] // fun-corner: 코너 탭은 카드가 아니라 CornerTab
+    : activeTab === 'corner' ? [] // fun-corner: 명당 탭은 카드가 아니라 CornerTab
     : OBJECTS.filter((d) => !HIDDEN_IDS.has(d.id) && buildTabOf(d) === activeTab)
       .map((def) => ({ def, locked: !unlocked.has(def.id) }))
       .sort((a, b) => Number(a.locked) - Number(b.locked) || a.def.cost - b.def.cost);
@@ -156,7 +158,7 @@ export function BuildWindow(props: BuildWindowProps) {
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
         <button data-testid="build-back" style={{ ...brownBtn, margin: 0, padding: '0 10px', fontSize: 14, minHeight: 40 }} onClick={() => goView({ kind: 'tiles' })}>◀ 짓기</button>
         {tileDef && <span style={{ fontSize: 15, fontWeight: 700 }}><Icon name={tileDef.icon} size={16} /> {tileDef.name} <span style={{ ...soft, fontWeight: 400 }}>{tileDef.purpose}</span></span>}
-        {tileMode === 'charm' && <button data-testid="build-corner-tab" data-tut="tab:corner" style={{ ...brownBtn, margin: 0, padding: '0 10px', fontSize: 14, minHeight: 40 }} onClick={() => { goView({ kind: 'all' }); setTab('corner'); }}><Icon name="sparkle" size={14} /> 코너</button>}
+        {tileMode === 'charm' && <button data-testid="build-corner-tab" data-tut="tab:corner" style={{ ...brownBtn, margin: 0, padding: '0 10px', fontSize: 14, minHeight: 40 }} onClick={() => { goView({ kind: 'all' }); setTab('corner'); }}><Icon name="sparkle" size={14} /> 명당</button>}
       </div>
       {!tileMode && <TabBar tabs={tabs.map((t) => ({ ...t, badge: undefined }))} active={activeTab} onPick={(k) => { setTab(k); setPicked(null); }} testId="build-tab" />}
       {recent.length > 0 && (
@@ -241,7 +243,7 @@ function activeTabIsList(tab: BuildTab, noMain: boolean): boolean {
 /** 잠긴 카드 문구: 여는 목표가 있으면 "「제목」 목표를 이루면 열려요", 아니면 해금 조건(labels.unlockText) */
 export function lockedText(def: ObjectDef): string {
   const t = treeOf(def.id);
-  if (t && t.index > 0) return `${objectDef(t.tree.steps[t.index - 1]!.type).name}를 놓고 「업그레이드 ▲」로 올려요`; // fun: 트리 단계는 짓지 않고 올린다
+  if (t && t.index > 0) return `${josa(objectDef(t.tree.steps[t.index - 1]!.type).name, '을/를')} 놓고 「업그레이드 ▲」로 올려요`; // fun: 트리 단계는 짓지 않고 올린다
   const g = goalForFacility(def.id);
   if (g) return `「${g.title}」 목표를 이루면 열려요`;
   if (def.unlock?.type === 'all' && def.unlock.conditions.length === 0 && def.unlockText) return `${def.unlockText}면 열려요`; // 카운터 확장: 본관 Lv2 증축이 연다 (y-indoor)
@@ -255,8 +257,9 @@ function PickedDetail({ s: def, locked, state, onPick }: { s: ObjectDef; locked:
   const poor = !locked && state.money < cost;
   const ok = !locked && start.ok && !poor && !!onPick;
   const days = def.buildDays ?? 0;
+  const opportunity = locked ? null : opportunityCost(state, def.id); // stakes: 기회비용 한 줄
   const facts = [
-    def.id === MAIN_TYPE ? '카운터·주방·실내 자리' : def.kind === 'seat' ? `좌석 ${def.seats ?? 2}` : `인기 ${def.popularity ?? 10}`,
+    def.id === MAIN_TYPE ? '카운터·주방·실내 자리' : def.kind === 'seat' ? `좌석 ${def.seats ?? 2}` : `입소문 ${def.popularity ?? 10}`,
     def.id === MAIN_TYPE ? '문은 앞쪽 왼쪽' : `경관 ${def.scenery}`,
     def.upkeep > 0 ? `유지비 ${wonText(def.upkeep)}/월` : null,
     days > 0 ? `공사 ${days}일` : '바로 완성',
@@ -270,6 +273,7 @@ function PickedDetail({ s: def, locked, state, onPick }: { s: ObjectDef; locked:
       <div style={{ fontSize: 16, fontWeight: 700 }}>{def.name} <span style={{ fontWeight: 400, fontSize: 14 }}>{cost > 0 ? wonText(cost) : '무료'}</span></div>
       <div style={{ fontSize: 14, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{def.desc ?? def.name}</div>
       <div style={{ ...soft, marginBottom: 6 }}>{facts}</div>
+      {!locked && opportunity && <div data-testid="build-cost" style={{ fontSize: 13, fontWeight: 700, color: PALETTE.title, marginBottom: 6 }}>{opportunity}</div>}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
         <button style={{ ...(ok ? brownBtn : brownBtnOff), margin: 0, flex: '0 0 auto' }} disabled={!ok} onClick={() => onPick?.(def.id)} data-testid="build-go" data-tut="build-go"><Icon name="build" /> 짓기</button>
         <span style={{ ...soft, color: ok ? PALETTE.inkSoft : PALETTE.bad }}>

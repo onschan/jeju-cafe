@@ -26,6 +26,9 @@ import { effectivePopularity } from './promotions.ts';
 import { isUnlocked } from './segments.ts';
 import { POPULARITY_FRUIT } from '../data/index.ts';
 import { MAX_BUILDERS } from './build.ts';
+import { riskDef, breakdownRepairCost, GROUP_SEATS } from './risk.ts'; // stakes: 돌발 사고 대응
+import { totalSeats } from './guests.ts';
+import { eventChoiceDef } from './events.ts'; // stakes: 빅 이벤트 선택지
 import { canUseItem } from './items.ts';
 import { featureOpen, goalClaimed, currentGoal, activeGoals } from './goals.ts';
 import { seatScore } from './site.ts';
@@ -34,10 +37,11 @@ import { canBuyParcel, ownedParcels, parcelAt } from './parcels.ts';
 import { isWorn, canRepair } from './cleanliness.ts';
 import { complaintCounts } from './reputation.ts';
 import { canAcceptQuest } from './board.ts';
-import { cornerProgress } from './corners.ts'; // fun-corner: 코너 만들기 (목표 g21·g35·g59·g77·g93)
+import { cornerProgress } from './corners.ts'; // fun-corner: 명당 만들기 (목표 g21·g35·g59·g77·g93)
 import { canLevelUp } from './staff.ts';
 import { canTrain } from './training.ts';
 import { bestStaffFor } from './luck.ts'; // staff-luck: 대박 기대값이 가장 높은 직원에게 시킨다
+import { signupOpen, contestState, contestStaff, contestMenus, contestOdds, canEnterContest, CONTESTS, TROPHY_TYPE, trophyOwned, trophyPlaced } from './contest.ts'; // 대회
 import { staffCapacity, STAFF_ROOM_TYPE } from './staff.ts';
 import { canUpgrade, upgradeCost, isUpgradable } from './upgrade.ts';
 import { objectStats, setLevels } from './compat.ts';
@@ -175,7 +179,7 @@ export const BOT_EXTRA_CELLS: { x: number; y: number }[] = [
   ...[10, 11, 12, 13, 14, 15, 16, 17, 18, 19].flatMap((x) => [{ x, y: 6 }, { x, y: 7 }]),
   ...[8, 9].flatMap((x) => [8, 9, 10, 11, 12, 13, 14, 15].map((y) => ({ x, y }))),
 ];
-/** 코너 조각 자리(fun 통합): 위 칸들 + 산 필지(3번 위쪽 3줄·4번 왼쪽 열·8번 돌담 언덕·9번 옛 감귤밭 안쪽) — 경로 시설 자리(올레 표식 (3,11)·선착장 (14,0)·셔틀 (15,20))와 그 길 줄은 뺀다. 안 산 필지는 canPlace가 거른다. */
+/** 명당 조각 자리(fun 통합): 위 칸들 + 산 필지(3번 위쪽 3줄·4번 왼쪽 열·8번 돌담 언덕·9번 옛 감귤밭 안쪽) — 경로 시설 자리(올레 표식 (3,11)·선착장 (14,0)·셔틀 (15,20))와 그 길 줄은 뺀다. 안 산 필지는 canPlace가 거른다. */
 export const BOT_CORNER_CELLS: { x: number; y: number }[] = [
   ...[10, 11, 12, 13, 15, 16, 17, 18, 19].flatMap((x) => [2, 3, 4].map((y) => ({ x, y }))),
   ...[1, 2, 4, 5, 6, 7].flatMap((x) => [9, 10, 13, 14].map((y) => ({ x, y }))),
@@ -200,8 +204,9 @@ export const BOT_TRAIN_MAX = 4;
 /** 증축: 돈 여유가 있으면 한 달에 하나 (목표 g41·g63·g95). fun-rank: 3년차부터 한 달 셋 */
 export const BOT_UPGRADE_MIN_MONEY = 4_000_000;
 export const BOT_UPGRADES_PER_MONTH_LATE = 3;
-/** 관광지 투자: 돈이 다음 레벨 비용 + 여유분을 넘으면 (§4.6 투자 규칙) */
-export const BOT_SPOT_RESERVE = 3_000_000;
+/** 관광지 투자: 돈이 다음 레벨 비용 + 여유분을 넘으면 (§4.6 투자 규칙).
+ *  stakes: 시작 자금이 500만 → 350만이 되어 300만을 남기면 1년차 내내 아무것도 못 산다 — 시작 자금에 맞춰 150만. */
+export const BOT_SPOT_RESERVE = 2_000_000;
 /** 평판이 이 아래면 사과 이벤트 */
 export const BOT_APOLOGY_REPUTATION = 40;
 export const BOT_APOLOGY_MIN_MONEY = 1_000_000;
@@ -214,7 +219,7 @@ export const BOT_COUPLE_SPOT_CHAIN = ['canola_field', 'sangumburi', 'camellia_hi
 /** 체인이 초반 캡(Lv3)을 넘겨 투자할 때는 이만큼 더 남긴다 (3년차 말 자금 밴드 3,000만 유지) */
 export const BOT_COUPLE_CHAIN_RESERVE = 10_000_000;
 /** 3년차부터는 2,000만을 남기고 투자한다 (3년차 말 자금 3,000만~4,500만 밴드 §4.6) */
-export const BOT_RESERVE_YEAR3 = 20_000_000;
+export const BOT_RESERVE_YEAR3 = 25_000_000;
 /** 4년차 전엔 관광지 Lv3까지만 (Lv4·5는 350만~1,300만/회). 4년차부터는 2,000만 여유분을 남기고 Lv5까지 올린다 */
 export const BOT_SPOT_MAX_LEVEL_EARLY = 3;
 export const BOT_SPOT_FULL_YEAR = 4;
@@ -375,7 +380,7 @@ function upgradeOne(s: GameState): void {
   }
 }
 
-/** 코너 만들기 (fun-corner, 목표 g21·g35·g59·g77·g93 corners(n)): 아직 안 만든 코너 중 조각이 다 열려 있는 것 하나 — 닻(첫 조각) 후보마다 반경 안에 모자란 조각을 다 놓을 자리가 있는지 보고,
+/** 명당 만들기 (fun-corner, 목표 g21·g35·g59·g77·g93 corners(n)): 아직 안 만든 명당 중 조각이 다 열려 있는 것 하나 — 닻(첫 조각) 후보마다 반경 안에 모자란 조각을 다 놓을 자리가 있는지 보고,
  *  자리가 있는 닻에 모자란 조각을 하나 놓는다. 그런 닻이 없으면 빈 자리가 넉넉한 곳에 닻을 새로 놓는다(닻은 종류당 3개까지). 한 달 하나. */
 function placeForCorner(s: GameState): void {
   if (s.clock.year < BOT_CORNER_YEAR || s.money < BOT_BUILD_MIN_MONEY) return;
@@ -407,7 +412,7 @@ function placeForCorner(s: GameState): void {
     if (roomy && place(s, anchorType, roomy.x, roomy.y)) return;
   }
 }
-/** 코너 닻(첫 조각)을 종류당 몇 개까지 새로 놓나 */
+/** 명당 닻(첫 조각)을 종류당 몇 개까지 새로 놓나 */
 const BOT_CORNER_ANCHORS_MAX = 3;
 /** 세트 만들기 (목표 g48·g76·g94): 아직 안 켜진 세트 중 필요한 시설이 다 열려 있으면 모자란 것을 첫 시설 반경 안에 놓는다 (한 달 하나) */
 function placeForSet(s: GameState): void {
@@ -469,7 +474,7 @@ function buildSecondFloorIfCan(s: GameState): void {
 /** fun-rank: 열린 큰 시설(₩300만 이상, 방·랜드마크·주차장·실내 가구 제외)을 아직 없는 종류부터 하나 — 산 필지 전체를 훑어 놓는다 (목표 보상 시설이 돈 쓸 곳이 되게). 한 달 하나. */
 function placeLuxury(s: GameState): void {
   if (s.clock.year < BOT_LUXURY_YEAR) return;
-  // 직원 정원이 찼으면 청소도구실(+3)을 산 필지 어디든 먼저 (장식 칸이 차서 2개째를 못 놓던 시드)
+  // 직원 정원이 찼으면 청소도구실(+2)을 산 필지 어디든 먼저 (장식 칸이 차서 2개째를 못 놓던 시드)
   if (s.staff.length >= staffCapacity(s) - 1 && s.unlocked.objects.includes(STAFF_ROOM_TYPE) && canSpend(s, objectDef(STAFF_ROOM_TYPE).cost)) {
     for (const p of ownedParcels(s)) for (let ly = 0; ly < p.h; ly++) for (let lx = 0; lx < p.w; lx++) {
       const x = p.x + lx, y = p.y + ly;
@@ -668,14 +673,75 @@ export function monthlyPlan(s: GameState, monthsPlayed: number): void {
   if (s.clock.year >= BOT_LEVELUP_YEAR && s.money >= BOT_LEVELUP_MIN_MONEY && (s.customMenus.length >= BOT_RECIPES || s.research >= DEVELOP_RESEARCH * 2)) for (const st of s.staff) if (canLevelUp(s, st.id).ok && apply(s, { type: 'levelUp', staffId: st.id }).ok) break; // 연구 포인트는 레시피 개발이 먼저
   buyParcelIfAny(s);
   investSpotIfAny(s);
+  placeTrophies(s); // 대회 상패를 실내에
   planRoutes(s); // 트랙 H
   // z-ending: 돈이 넉넉하면 마을 기부(정착 등급 「기부」 항목, 누적 상한까지), 10월엔 마을제 (g82·g90)
 }
 
 /** fun-guest: 봇이 하루에 인사하는 손님 수 */
 const BOT_GREETS_PER_DAY = 3;
+
+/** stakes: 돌발 사고·빅 이벤트 선택지 대응 규칙 (사람이 하듯 — 손해가 지출보다 크면 돈을 낸다).
+ *  답을 안 하면 다음 날 아침 0번(손해 보는 쪽)으로 확정되므로, 알림을 닫기 전에 먼저 고른다. */
+function answerChoices(s: GameState): void {
+  if (s.pendingRisk) apply(s, { type: 'resolveRisk', choice: botRiskChoice(s) });
+  if (s.pendingEventChoice) apply(s, { type: 'resolveEventChoice', choice: botEventChoice(s) });
+}
+/** 돌발 사고: 낼 돈이 있으면 막고(정전·재료·결근·고장), 단체 예약은 자리가 되면 받는다 */
+export function botRiskChoice(s: GameState): number {
+  const id = s.pendingRisk?.id;
+  if (id === 'group_booking') return totalSeats(s) >= GROUP_SEATS ? 0 : 1; // 자리가 모자라면 사양 (평판 −5를 피한다)
+  if (id === 'breakdown') return canSpend(s, breakdownRepairCost(s)) ? 1 : 0;
+  const def = id ? riskDef(id) : null;
+  const cost = def?.choices[1]?.cost ?? 0;
+  return cost > 0 && canSpend(s, cost) ? 1 : 0;
+}
+/** 빅 이벤트: 돈으로 막을 수 있으면 막고, 「그날 영업 정지」는 평판을 받는 쪽으로 (손님이 많은 성수기엔 거절) */
+export function botEventChoice(s: GameState): number {
+  const def = s.pendingEventChoice ? eventChoiceDef(s.pendingEventChoice.id) : null;
+  if (!def) return 0;
+  const first = def.options[0];
+  if (first.closedDays) return s.reputation < 70 ? 0 : 1; // 평판이 낮을 때만 하루를 내준다
+  return first.cost && canSpend(s, first.cost) ? 0 : 1;
+}
+
+/** 대회: 참가비를 내고도 이만큼은 남아 있어야 접수한다 (밴드가 참가비로 흔들리지 않게) */
+export const BOT_CONTEST_RESERVE = 10_000_000;
+/** 대회: 중박 기준 이 순위 안에 들 것 같을 때만 낸다 (3위 = 참가비 ×2라 본전 위) */
+export const BOT_CONTEST_RANK = 3;
+
+/** 대회 접수 (접수 창이 열린 날). 예상 점수가 가장 높은 〈종목·직원·메뉴〉 조합 하나를 고른다 — 결정적. */
+function enterContestIfCan(s: GameState): void {
+  const c = contestState(s);
+  if (c.pending) apply(s, { type: 'dismissContest' }); // 결과 연출은 바로 닫는다
+  if (c.entry || !signupOpen(s)) return;
+  let best: { event: typeof CONTESTS[number]['id']; staffId: string; menuId: string; score: number } | null = null;
+  for (const def of CONTESTS) {
+    if (s.money - def.fee < BOT_CONTEST_RESERVE) continue;
+    const menus = contestMenus(s, def.id);
+    for (const st of contestStaff(s, def.id)) for (const menuId of menus) {
+      if (!canEnterContest(s, def.id, st.id, menuId).ok) continue;
+      const odds = contestOdds(s, def.id, st.id, menuId);
+      if (!odds || odds.rank > BOT_CONTEST_RANK) continue; // 3위 안이면 상금(참가비 ×2 이상)이 참가비보다 크다
+      if (!best || odds.base > best.score) best = { event: def.id, staffId: st.id, menuId, score: odds.base };
+    }
+  }
+  if (best) apply(s, { type: 'enterContest', event: best.event, staffId: best.staffId, menuId: best.menuId });
+}
+/** 받은 트로피를 실내 빈 칸에 놓는다 (경관 +3 · 인기 +2) */
+function placeTrophies(s: GameState): void {
+  let left = trophyOwned(s, TROPHY_TYPE) - trophyPlaced(s, TROPHY_TYPE);
+  if (left <= 0) return;
+  const main = mainBuilding(s);
+  if (!main) return;
+  for (const p of freeFloorCells(s, main)) {
+    if (left <= 0) break;
+    if (place(s, TROPHY_TYPE, p.x, p.y)) left--;
+  }
+}
 /** 매일 아침 */
 export function dailyPlan(s: GameState): void {
+  answerChoices(s); // stakes: 돌발 사고·빅 이벤트 선택지 먼저 (알림을 닫아도 답은 따로 간다)
   while (s.alerts.length > 0) apply(s, s.alerts[0]!.type === 'ending' ? { type: 'continueEnding' } : { type: 'dismissAlert' }); // z-ending: 엔딩은 「계속하기」
   // 게시판 부탁은 지금 할 수 있는 것(시설·메뉴 열림·아이템 있음)만 받는다 (랜드마크·손님 해금이 부탁 보상)
   if (s.clock.year >= BOT_QUEST_YEAR) for (const q of Object.values(s.board.quests)) if (Object.values(s.board.quests).filter((x) => x.status === 'active').length < BOT_QUEST_ACTIVE_MAX && q.status === 'offered' && botCanDoQuest(s, questDef(q.id)) && canAcceptQuest(s, q.id).ok) apply(s, { type: 'acceptQuest', id: q.id });
@@ -701,6 +767,7 @@ export function dailyPlan(s: GameState): void {
   const custom = s.customMenus[0];
   if (custom && !s.menuSlots.includes(custom.id)) apply(s, { type: 'setSlot', slot: 3, menuId: custom.id });
   if (s.lastDevelop) apply(s, { type: 'dismissDevelop' });
+  enterContestIfCan(s); // 대회: 접수 창(개최 이레 전~당일)에 이길 수 있는 판이면 낸다
 
 }
 
@@ -739,6 +806,7 @@ export async function runBotAsync(years: number, seed: number, yieldEveryDays = 
 
 /** solver 정책의 집안일: 알림·카드·결과 창 닫기만 (정석 지식 없음) */
 function solverChores(s: GameState): void {
+  answerChoices(s); // stakes: solver 정책도 선택지에 답한다 (안 하면 다음 날 0번으로 확정)
   while (s.alerts.length > 0) apply(s, s.alerts[0]!.type === 'ending' ? { type: 'continueEnding' } : { type: 'dismissAlert' });
   if (s.lastDraw) apply(s, { type: 'dismissDraw' });
   if (s.lastDevelop) apply(s, { type: 'dismissDevelop' });

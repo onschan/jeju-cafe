@@ -5,7 +5,7 @@ import eventsJson from './events.json' with { type: 'json' };
 import samchunJson from './samchun.json' with { type: 'json' };
 import failureJson from './failure.json' with { type: 'json' };
 import endingJson from './ending.json' with { type: 'json' }; // z-ending: 엔딩·100주년·마을 반상회
-import introJson from './intro.json' with { type: 'json' }; // intro: 프롤로그 6컷(서울 야근 → 제주 카페)
+import introJson from './intro.json' with { type: 'json' }; // intro: 프롤로그 11컷(서울 야근 → 지침 → 제주 회상 → 결심 → 사직서 → 제주 카페)
 import tipsJson from './tips.json' with { type: 'json' }; // fun-start: 창·탭·모드 첫 열기 팁 한 줄 (ui/firstTip.ts)
 
 /** 화자 키 = public/assets/icons/portrait_<key>.png. 튜토리얼 화자는 할망 */

@@ -32,6 +32,8 @@ export const REP_WORN_COUNT = 3;
 export const REP_WORN_PENALTY = 0.3;
 /** 효과 문턱 */
 export const REP_LOW = 30;
+/** stakes: 평판이 이 아래면 단골이 주 1회 → 2주 1회로 뜸해진다 (평판 하락이 손님 수로 바로 느껴지게) */
+export const REP_REGULAR_SLOW = 50;
 export const REP_HIGH = 80;
 export const REP_ALERT = 20;
 export const LOW_REP_TOURIST_MULT = 0.5;
@@ -117,6 +119,16 @@ export function reputationGuestMult(state: GameState): number {
 /** 평판 < 30이면 관광객(육지 손님) 스폰 ×0.5 */
 export function reputationTypeMult(state: GameState, typeId: string): number {
   return state.reputation < REP_LOW && typeId !== NAMED_TYPE && filterMatches('tourist', canonicalGuestId(typeId)) ? LOW_REP_TOURIST_MULT : 1;
+}
+/** stakes: 평판 < 50이면 단골이 2주에 한 번만 온다 (interact.ts regularsDue) */
+export function regularVisitEveryOtherWeek(state: GameState): boolean {
+  return state.reputation < REP_REGULAR_SLOW;
+}
+/** stakes: 화면 경고 줄 — 평판 탓에 손님이 줄고 있으면 한 줄, 아니면 null */
+export function shrinkingWarning(state: GameState): string | null {
+  if (state.reputation < REP_LOW) return '손님이 줄고 있어요 — 관광객이 발길을 돌려요';
+  if (state.reputation < REP_REGULAR_SLOW) return '손님이 줄고 있어요 — 단골 발길이 뜸해요';
+  return null;
 }
 /** 평판 ≥ 80이면 팁 +10% */
 export function reputationTipMult(state: GameState): number {

@@ -237,7 +237,7 @@ export interface GiftDef {
 export interface BoardState { quests: Record<string, QuestState>; events: EventState[] }
 
 // ---------- 세트·아이템 (2B-2) ----------
-/** 코너·세트의 대상 손님층 (v2 표의 target) */
+/** 명당·세트의 대상 손님층 (v2 표의 target) */
 export type ComboTarget = 'all' | 'female' | 'male' | 'youth' | 'adult' | 'senior' | 'group';
 export interface SetDef {
   id: string;
@@ -267,7 +267,7 @@ export interface ObjectStats {
   noise: number;
   upkeep: number;
   sets: ActiveSet[];
-  corner: { pop: number; feePct: number };  // 반경 안 완성 코너 합산 (corners.ts)
+  corner: { pop: number; feePct: number };  // 반경 안 완성 명당 합산 (corners.ts)
   level: number;                        // 증축 Lv 1~3 (upgrade.ts)
   wear: number;                         // 노후 단계 0~6 (cleanliness.ts, 인기 −wear)
 }
@@ -326,9 +326,54 @@ export interface TitleEffect { type: TitleEffectType; value: number }
 export interface TitleDef { id: string; name: string; grade: TitleGrade; roles: RoleId[]; desc: string; effects: TitleEffect[] }
 /** 작업 확률 결과 (luck.ts): 대박 / 중박 / 쪽박 */
 export type Outcome = 'great' | 'success' | 'fail';
-export type LuckTask = 'promo' | 'develop' | 'training' | 'gift' | 'serve';
+export type LuckTask = 'promo' | 'develop' | 'training' | 'gift' | 'serve' | 'contest';
 /** 마지막 작업 판정 (UI 룰렛 팝업, dismissOutcome으로 닫는다) */
 export interface OutcomeResult { task: LuckTask; outcome: Outcome; staffId: string | null; title: string; chances: { great: number; success: number; fail: number }; lines: string[]; day: number }
+
+// ---------- 대회 (contest.ts, contests.json) ----------
+/** 대회 종목 3종 — 에스프레소·라떼아트·시그니처 */
+export type ContestEvent = 'espresso' | 'latteart' | 'signature';
+/** 심사 4항목. 새 데이터 축을 만들지 않고 MenuStats에 직결한다 (taste·aroma·look·jeju). */
+export type ContestJudge = 'taste' | 'aroma' | 'look' | 'story';
+export interface ContestDef {
+  id: ContestEvent;
+  name: string;
+  roles: RoleId[];                      // 출전할 수 있는 직종
+  fee: number;                          // 참가비
+  categories: MenuCategory[];           // 제출할 수 있는 메뉴 종류 (앞에서부터 찾는다)
+  weights: Record<ContestJudge, number>; // 심사 가중치 (합 1)
+  desc: string;
+}
+/** 접수한 출전 (개최일 아침에 runContest가 소비한다) */
+export interface ContestEntry { event: ContestEvent; staffId: string; menuId: string; day: number }
+export interface ContestResult {
+  year: number;
+  month: number;
+  event: ContestEvent;
+  scores: Record<ContestJudge, number>; // 항목 점수 0~100
+  base: number;                         // 운 판정 전 점수
+  myScore: number;                      // 운 판정 뒤 최종 점수
+  rivals: number[];                     // 상대 3명 점수 (내림차순)
+  rank: number;                         // 1~4
+  outcome: Outcome;
+  chances: { great: number; success: number; fail: number };
+  best: boolean;                        // 신기록인가
+  prize: number;
+  tickets: number;
+  staffId: string;
+  staffName: string;
+  menuName: string;
+  trophy: string | null;                // 받은 트로피 오브젝트 id
+}
+export interface ContestState {
+  entry: ContestEntry | null;
+  history: ContestResult[];             // 최근 CONTEST_HISTORY_CAP회
+  bestScore: number;
+  boost: { mult: number; untilDay: number } | null; // 손님 유입 배수 (dailyGuestCount)
+  badge: { text: string; untilDay: number } | null; // 간판 배지
+  trophies: Record<string, number>;     // 트로피 오브젝트 id → 받은 개수 (놓을 수 있는 최대)
+  pending: ContestResult | null;        // 연출 대기 결과 (dismissContest로 닫는다)
+}
 
 export interface Staff {
   id: string;
@@ -345,6 +390,7 @@ export interface Staff {
   salary: number;
   exp: number;            // 승급 경험치 (근무일 1 + 서빙·조리 0.2)
   trainingCount: number;  // 다녀온 연수 횟수 (비용 증가)
+  trainingLog?: Record<string, number>; // 연수 id → 다녀온 횟수 (대회 심사 연수 보정, contest.ts) — 없으면 {}
   training: StaffTraining | null; // 연수 중이면 자리를 비운다
   title?: string;         // 칭호 id (titles.json, staff-luck) — 없으면 일반
   role: RoleId | null;
@@ -385,7 +431,11 @@ export interface Pt { x: number; y: number }
 
 /** 월 비용 항목. recruit = 공고비 + 퇴직금 */
 /** 월 비용 항목. tax = 소득세(매년 3월 1일, 전년 순이익 ×10%), loanRepay = 삼춘 대출 자동 상환(흑자 달 순이익 30%), shuttle = 공항 셔틀 월 고정비 */
-export interface MonthCosts { ingredients: number; salary: number; ads: number; upkeep: number; recruit: number; tax: number; loanRepay: number; shuttle: number }
+/** 하루 성장 기록 한 줄 (daylog.ts) */
+export interface DayLogRow { day: number; guests: number; income: number; regulars: number; grade: number }
+
+/** rent = 소유 필지 월 임대료(stakes: 필지당 ₩8만/월, 마을 관리비 명목), contest = 그달 낸 대회 참가비 */
+export interface MonthCosts { ingredients: number; salary: number; ads: number; upkeep: number; recruit: number; tax: number; loanRepay: number; shuttle: number; rent?: number; contest?: number }
 /** 농원: harvested = 이달 1일 창고에 들어온 재료, ingredientSaved = 창고 재료를 써서 안 산 재료비 */
 export interface MonthHarvest { harvested: Record<string, number>; ingredientSaved: number }
 /** 월말 정산 카드 */
@@ -407,7 +457,24 @@ export interface MonthCard {
   reputationDelta: number;           // 그달 평판 변화
   topComplaints: { reason: ComplaintReason; count: number }[]; // 그달 불만 TOP3
   greatServes?: number;              // 그달 서빙 대박 횟수 (staff-luck)
+  // ---- stakes: 월말 평가 등급 (economy.ts gradeMonth) ----
+  grade?: MonthGrade;                // S/A/B/C
+  gradeScore?: number;               // 0~100 (순이익·손님 증감·평판·불만 4항목 합)
+  prevGrade?: MonthGrade | null;     // 지난달 등급 (화살표)
+  gradeSummary?: string;             // 한 줄 총평
+  guestsDelta?: number;              // 지난달 대비 손님 증감
+  trendCategory?: TrendCategory;     // 그달 유행 분류
 }
+/** stakes: 월말 평가 등급 */
+export type MonthGrade = 'S' | 'A' | 'B' | 'C';
+/** stakes: 이번 달 유행 분류 (커피·디저트·식사·주스) */
+export type TrendCategory = 'coffee' | 'dessert' | 'meal' | 'juice';
+/** stakes: 이번 달 유행 (매월 1일, events.ts rollTrend) */
+export interface TrendState { monthIndex: number; category: TrendCategory }
+/** stakes: 답을 기다리는 돌발 사고 (risk.ts). 답이 없으면 다음 날 아침 0번(손해 보는 쪽)으로 확정된다. */
+export interface PendingRisk { id: string; day: number; targetId?: string; targetName?: string }
+/** stakes: 답을 기다리는 빅 이벤트 선택지 (events.ts EVENT_CHOICES) */
+export interface PendingEventChoice { id: string; day: number }
 
 // ---------- 목표 체인 (v3 §2 → 확장 §3.5·§7) ----------
 /** 목표·도전 조건. 판정은 goals.ts의 conditionCheckers 레지스트리 (타입 → { cur, max }). 아직 없는 시스템은 스텁. */
@@ -448,7 +515,7 @@ export type GoalCondition =
   | { type: 'custom'; id: string; n?: number }    // 코드 판정
   // ---- §7.5 전략 조건 ----
   | { type: 'siteSeats'; view: number; n: number } // 전망 view 이상 좌석 n개 (x-site)
-  | { type: 'corners'; n: number }                // 만든 코너 수 (fun-corner, corners.ts 도감)
+  | { type: 'corners'; n: number }                // 만든 명당 수 (fun-corner, corners.ts 도감)
   | { type: 'hiddenRecipes'; n: number }          // 도감에 오른 숨은 레시피 수 (game-feel: 도전 「숨은 레시피 찾기」)
   | { type: 'upgraded'; lv: number; n: number }   // 증축 Lv 이상 시설 n개 (x-facility)
   | { type: 'clean'; avg: number; days: number }  // 청결 avg 이상 days일 (x-facility)
@@ -492,7 +559,8 @@ export type GoalReward =
   | { type: 'unlockGuidebook'; id: string }          // 가이드북 해금
   | { type: 'seed'; kind: string; n: number }        // 씨앗 아이템 n개 (kind = 아이템 id)
   | { type: 'title'; id: string; name: string }      // 칭호 (state.titles)
-  | { type: 'feeBonus'; pct: number };               // 요금 +pct% (state.feeBonusPct)
+  | { type: 'feeBonus'; pct: number }                // 요금 +pct% (state.feeBonusPct)
+  | { type: 'menuSlot'; n: number };                 // stakes: 메뉴판 칸 +n (3칸에서 시작, 최대 6)
 export type GoalSpeaker = 'halmang' | 'samchun' | 'hero';
 export interface GoalDef {
   id: string;
@@ -517,7 +585,7 @@ export interface GameStats {
   trainings: number;       // 연수 완료 횟수 (x-staff가 올린다)
   seenMonth: number;       // 월말 관찰용 monthIndex (goals.ts observeMonth)
   seenAnnouncement: number; // 마지막으로 센 가이드북 발표 monthIndex
-  cornerVisits?: number;   // 손님이 코너를 찾아온 누적 횟수 (fun-corner)
+  cornerVisits?: number;   // 손님이 명당을 찾아온 누적 횟수 (fun-corner)
 }
 /** 보상 상자에 담기는 보상 알림의 출처 */
 export type RewardSource = 'goal' | 'monthly' | 'tutorial' | 'rank' | 'star' | 'unlock' | 'milestone' | 'bundle' | 'grade'; // rank·star = 승급 보상, unlock = 손님층 해금, milestone = 자금 목표 25/50/75%, bundle = 같은 큐의 상자 3개 이상을 하나로 묶은 것, grade = 카페 등급 승급 (fun-rank)
@@ -532,7 +600,11 @@ export type Alert =
   | { type: 'reputation'; text: string } // 평판 20 미만 삼춘 경고 (reputation.ts)
   // ---- z-ending ----
   | { type: 'ending' }                                        // 10년차 엔딩 (EndingScreen — 대화창이 아니다)
-  | { type: 'grade'; grade: number };                         // fun-rank: 카페 등급 승급 (할망 축하 대사, 보상 상자 뒤)
+  | { type: 'grade'; grade: number }                          // fun-rank: 카페 등급 승급 (할망 축하 대사, 보상 상자 뒤)
+  // ---- stakes (긴장감·트레이드오프·변수) ----
+  | { type: 'risk'; id: string }                              // 돌발 사고 — 선택지 2개 (risk.ts)
+  | { type: 'eventChoice'; id: string }                       // 빅 이벤트 선택지 (events.ts EVENT_CHOICES)
+  | { type: 'coach' };                                        // 3달 연속 C — 삼춘이 찾아와 구체 제안 1개
 
 // ---------- 월간 과제 ----------
 /** 월간 과제 (매월 1일 자동 1개, 그달 안). 난이도는 현재 수치 기준 자동. */
@@ -590,7 +662,7 @@ export interface BigEventDef {
   endDialogue?: string;
 }
 /** endsDay = 끝나는 절대 일 인덱스(포함 안 함, effects.dayIndex 기준) */
-export interface ActiveBigEvent { id: string; startDay: number; endsDay: number; specialVisited: boolean }
+export interface ActiveBigEvent { id: string; startDay: number; endsDay: number; specialVisited: boolean; choice?: number /* stakes: 고른 선택지 (events.ts EVENT_CHOICES) */ }
 
 export interface Cell {
   terrain: Terrain;
@@ -614,6 +686,7 @@ export interface PlacedObject {
   h?: number;
   mode?: string;       // 실내 요소 설정 (rooms.ts §4.3): 난로 on/off · 피아노 lunch/evening/none · 바 저녁 세트 on/off
   careDay?: number;    // 실내 요소 마지막 손질 일 인덱스 (수족관 먹이·키즈 장난감 보충·책장 신간)
+  stopped?: number;    // stakes: 설비 고장으로 멈춘 시설 — 이 일 인덱스까지 인기 0 (risk.ts). 없으면 정상
 }
 
 /** 되돌리기 1회 스냅샷 (undo.ts). day = 절대 일 인덱스 — 같은 날에만 되돌린다 */
@@ -660,8 +733,8 @@ export type FxEvent =
   | { kind: 'complete'; x: number; y: number; tick: number } // 시설 완공 반짝임
   | { kind: 'scene'; title: string; text: string; tick: number } // UI 장면 창(완공·★ 승급·랭크 업). 렌더는 무시한다
   | { kind: 'react'; guestId: string; text: string; icon?: 'heart' | 'sweat' | 'wave' | 'question' | 'thumb'; tick: number } // 트랙 G: 손님 반응 — 말풍선 + 머리 위 아이콘(하트·땀·손 흔들기·?)
-  | { kind: 'corner'; id: string; x: number; y: number; tick: number } // fun-corner: 코너 완성 — 팻말 자리 반짝
-  | { kind: 'flash'; x: number; y: number; guestId: string; text: string; tick: number } // fun-corner: 손님이 코너에서 사진 (카메라 플래시 + 말풍선)
+  | { kind: 'corner'; id: string; x: number; y: number; tick: number } // fun-corner: 명당 완성 — 팻말 자리 반짝
+  | { kind: 'flash'; x: number; y: number; guestId: string; text: string; tick: number } // fun-corner: 손님이 명당에서 사진 (카메라 플래시 + 말풍선)
   | { kind: 'applause'; tick: number } // fun-rank: 등급 승급 — 마당 손님 전원 박수(하트·반짝)
   | { kind: 'parcel'; id: string; tick: number } // fun-rank: 필지 구매 — 덮개 안개 걷힘 + 랜드마크 등장 반짝
   | { kind: 'arrive'; route: RouteId; x: number; y: number; n: number; tick: number }; // fun P0: 경로 도착 — 렌터카가 서고 손님 n명이 내린다 (올레는 걸어옴), 작은 문구
@@ -757,7 +830,7 @@ export interface Guest {
   recommended?: boolean; // 메뉴를 추천했다 (손님당 1회)
 }
 
-/** 손님 요청 (트랙 G requests.json): 앉은 손님 20%가 코너·시설·메뉴를 바란다. 들어주면 다음 그 손님층 방문에 "고마워요" + 단골 게이지 +2. */
+/** 손님 요청 (트랙 G requests.json): 앉은 손님 20%가 명당·시설·메뉴를 바란다. 들어주면 다음 그 손님층 방문에 "고마워요" + 단골 게이지 +2. */
 export interface GuestRequestDef { id: string; text: string; want: { corner?: string; facility?: string; menu?: string; tagCorner?: string }; thanks: string }
 export interface GuestRequest { id: string; guestType: string; day: number; done: boolean }
 /** 단골 등록 손님 (트랙 G): 손님층 게이지가 5면 그 손님층에서 이름·얼굴이 고정된 한 명. 매주 방문·팁 +20%. */
@@ -782,7 +855,8 @@ export interface Complaint { day: number; reason: ComplaintReason; guestType: st
 /** 월말 후기 (최대 8개, 최신이 앞) */
 export interface Review { month: number; score: number; text: string; reason?: ComplaintReason }
 /** 삼춘 대출: count = 받은 횟수(최대 3), balance = 남은 원금, lastMonthIndex = 마지막 대출 달(한 달 1회) */
-export interface LoanState { count: number; balance: number; lastMonthIndex: number }
+/** dueMonthIndex = 상환 기한(stakes: 빌린 달 + 12). 기한을 넘기면 평판 −5 + 목표 보상 50%가 그대로 유지된다. */
+export interface LoanState { count: number; balance: number; lastMonthIndex: number; dueMonthIndex?: number; overdueCount?: number }
 /** ★ 유지 심사: promotedYear = 마지막 승급 년차, lastReviewYear = 마지막 심사 년차(2년마다 3월), warned = 3월 경고 뒤 9월 재심사 대기 */
 export interface StarReview { promotedYear: number; lastReviewYear: number; warned: boolean }
 export interface GameState {
@@ -816,6 +890,8 @@ export interface GameState {
   monthReputationDelta: number;               // 이달 평판 변화 누적 (카드)
   dayStats: { satisfied: number; complained: number; total: number }; // 오늘 만족·불만·총손님 (밤에 평판 계산 후 리셋)
   dayPhotos?: number;                          // fun: 오늘 손님이 찍은 사진 수 (밤에 평판 +0.05/장, 상한 0.5 — appeal.ts)
+  dayLog?: DayLogRow[];                        // 성장: 최근 30일 하루치 손님·매출·새 단골·등급 (daylog.ts)
+  dayLogMark?: { income: number; regulars: number }; // 하루 차이를 내려고 들고 있는 어제 마감값 (daylog.ts)
   reputationWarned: boolean;                  // 평판 20 미만 경고를 띄웠나 (30 이상 회복하면 리셋)
   lastApologyMonthIndex: number;              // 사과 이벤트는 월 1회 (−1 = 아직)
   objects: Record<string, PlacedObject>; // 키는 'o123' 형태(비정수 문자열)라 삽입 순서가 보존됨 → 결정적 순회
@@ -868,7 +944,7 @@ export interface GameState {
   effects: ActiveEffect[];                    // 이벤트 효과 (기간형)
   menuSold: Record<string, number>;           // menuId → 누적 판매 수 (부탁 진행: 수락 시점 값과의 차, 목표 menuSold)
   monthMenuSold: Record<string, number>;      // 이달 판매 수 (월말 카드 최다 판매 메뉴)
-  codex: { sets: string[]; recipes: string[]; ingredientCombos: string[]; titles?: string[]; corners?: string[] }; // 완성한 세트·히든 레시피·재료 콤보·코너 id (도감) + 만난 직원 칭호
+  codex: { sets: string[]; recipes: string[]; ingredientCombos: string[]; titles?: string[]; corners?: string[] }; // 완성한 세트·히든 레시피·재료 콤보·명당 id (도감) + 만난 직원 칭호
   clean: { value: number; lastGuests: number; history: number[] }; // 카페 청결 0~100 (cleanliness.ts) + 어제까지의 누적 손님 수 + 최근 30일 값(목표 판정용, 새 날마다 push)
   customMenus: MenuDef[];                     // 개발한 메뉴 (id m_custom_N). menuOf(state, id)가 기본 메뉴보다 먼저 찾는다
   menuMods: Record<string, MenuMod>;          // menuId → 토핑·레벨 (없으면 토핑 없음·레벨 1)
@@ -885,8 +961,9 @@ export interface GameState {
   praised: Record<string, number>;            // staffId → 마지막으로 칭찬한 일 인덱스
   namedGuests: Record<string, NamedGuestState>; // 빅 이벤트 특별 손님을 만난 적이 있는지
   lastOutcome?: OutcomeResult | null;         // 마지막 작업 판정 대박/중박/쪽박 (UI 룰렛 팝업, staff-luck)
+  contest?: ContestState;                     // 대회 (contest.ts) — 연 2회 6·12월 1일, 등급 3부터
   monthGreatServes?: number;                  // 이달 서빙 대박 횟수 (월말 카드 하이라이트, staff-luck)
-  cornerVisits?: { day: number; counts: Record<string, number> }; // fun-corner: 오늘 코너별 손님 방문 수 (하루 상한, 날이 바뀌면 corners.ts가 초기화)
+  cornerVisits?: { day: number; counts: Record<string, number> }; // fun-corner: 오늘 명당별 손님 방문 수 (하루 상한, 날이 바뀌면 corners.ts가 초기화)
   undo: UndoEntry | null;                     // 직전 배치·철거·이동 되돌리기 스냅샷 (undo.ts)
   main: MainState;                            // 본관 증축·2층·이동·분위기 (rooms.ts, y-indoor)
   guests: Guest[];
@@ -907,6 +984,15 @@ export interface GameState {
   monthIncome: number;
   monthGuests: number;
   monthCosts: MonthCosts;
+  // ---- stakes (긴장감·트레이드오프·변수) ----
+  trend?: TrendState | null;                  // 이번 달 유행 분류 (events.ts rollTrend)
+  riskDay?: number;                           // 이달 돌발 사고 예정일 (0이면 이달은 없음) — risk.ts
+  riskId?: string | null;                     // 이달 돌발 사고 종류
+  pendingRisk?: PendingRisk | null;           // 답을 기다리는 돌발 사고
+  pendingEventChoice?: PendingEventChoice | null; // 답을 기다리는 빅 이벤트 선택지
+  lastGrade?: MonthGrade | null;              // 지난달 평가 등급
+  badGradeMonths?: number;                    // 연속 C 달 수 (3이면 삼춘 조언)
+  menuSlotMax?: number;                       // 메뉴판 칸 상한 (기본 6)
   lastMonthIncome: number; // 지난달 매출 (★ 조건 "월 매출"용 — lastMonthCard는 닫으면 null이 된다)
   lastMonthCard: MonthCard | null;
   tick: number; // 고정 스텝 카운터
@@ -959,6 +1045,8 @@ export type Action =
   | { type: 'setSlot'; slot: number; menuId: string | null }
   | { type: 'setSpeed'; speed: Speed }
   | { type: 'dismissAlert' }
+  | { type: 'resolveRisk'; choice: number }                    // stakes: 돌발 사고 선택지 (risk.ts)
+  | { type: 'resolveEventChoice'; choice: number }             // stakes: 빅 이벤트 선택지 (events.ts)
   | { type: 'skipTutorial' }
   | { type: 'skipTutorialChapter' }               // 현재 장 통째로 건너뛰기 (해금 보상만, sim/tutorial.ts)
   | { type: 'tutorialNote'; key: string }
@@ -992,6 +1080,10 @@ export type Action =
   | { type: 'useGuestItem'; itemId: string; guestId: string }
   | { type: 'dismissAnnouncement' }
   | { type: 'dismissOutcome' }                      // staff-luck: 대박/중박/쪽박 룰렛 팝업 닫기
+  // ---- 대회 (contest.ts) ----
+  | { type: 'enterContest'; event: ContestEvent; staffId: string; menuId: string } // 접수 (개최 7일 전 ~ 당일 아침)
+  | { type: 'cancelContest' }                       // 접수 취소 (참가비 환불)
+  | { type: 'dismissContest' }                      // 결과 연출 닫기
   // ---- z-ending ----
   | { type: 'continueEnding' }                      // 엔딩 뒤 「계속하기」: 알림 닫고 빠른 모드(4배속) 해금
 

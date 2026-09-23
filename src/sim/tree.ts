@@ -1,7 +1,7 @@
 /**
  * 슬롯형 시설 + 같은 자리 업그레이드 트리 (fun 통합, 사용자 피드백 「종류가 너무 많아 어지럽다 — 부루마블처럼 테라스 업그레이드」).
  * - 트리 5종(data/upgrade_tree.json): 자리·놀거리·매대·정원·조명. steps[0]이 짓기 타일이 놓는 기본 시설, 다음 단계는 놓인 시설 카드 「업그레이드 ▲」로
- *   같은 원점에서 종류가 바뀐다(부루마블 집→빌라→호텔). 비용 = 건설비 차액, 공사 기간은 새 단계 것. 단계마다 조건(등급·★·코너).
+ *   같은 원점에서 종류가 바뀐다(부루마블 집→빌라→호텔). 비용 = 건설비 차액, 공사 기간은 새 단계 것. 단계마다 조건(등급·★·명당).
  * - 트리 단계는 unlocked.objects 해금과 무관하게 조건만 맞으면 올릴 수 있다(선택지 대신 업그레이드). 기존 증축 Lv1~3(upgrade.ts)은 트리에 없는 시설에만 보인다.
  * - 「거리」 보너스: 같은 트리의 2단계 이상 시설이 가로·세로로 3개 이상 이어지면(발자국 변 맞댐) 그 줄 전부 요금·이용료 +STREET_BONUS_PCT% (부루마블 같은 색 독점).
  * - 「이 자리에서 올리면 +₩n/일」: solver.evaluate(14일 롤아웃)의 자금 차이를 하루로 나눈 값 (upgradeGain).
@@ -62,7 +62,7 @@ export function stepNeedText(state: GameState, step: TreeStep): string {
   const parts: string[] = [];
   if (n.grade && gradeOf(state) < n.grade) parts.push(`등급 「${gradeName(n.grade)}」`);
   if (n.star && state.star < n.star) parts.push(`★${n.star}`);
-  if (n.corners && completedCorners(state).length < n.corners) parts.push(`코너 ${n.corners}개`);
+  if (n.corners && completedCorners(state).length < n.corners) parts.push(`명당 ${n.corners}개`);
   return parts.length ? `${parts.join(' · ')}면 열려요` : '';
 }
 export function stepNeedMet(state: GameState, step: TreeStep): boolean {

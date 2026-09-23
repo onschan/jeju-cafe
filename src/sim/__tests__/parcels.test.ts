@@ -11,6 +11,7 @@ import { checkLoan } from '../failure.ts';
 import { setSlot } from '../menu.ts';
 import { objectDef } from '../../data/index.ts';
 import type { GameState } from '../types.ts';
+import { LOAN_DUE_MONTHS } from '../economy.ts';
 
 function own(s: GameState, ...nos: number[]) {
   for (const p of s.parcels) if (nos.includes(p.no)) p.owned = true;
@@ -211,7 +212,8 @@ test('삼춘 대출(옛 정착지원금): 잔고가 40만 아래면 300만, 한 
   s.money = LOAN_THRESHOLD - 1;
   expect(checkLoan(s)).toBe(true);
   expect(s.money).toBe(LOAN_THRESHOLD - 1 + LOAN_AMOUNT);
-  expect(s.loan).toEqual({ count: 1, balance: LOAN_AMOUNT, lastMonthIndex: expect.any(Number) });
+  expect(s.loan).toMatchObject({ count: 1, balance: LOAN_AMOUNT, lastMonthIndex: expect.any(Number) });
+  expect(s.loan.dueMonthIndex).toBe(monthIndex(s.clock) + LOAN_DUE_MONTHS); // stakes: 12개월 안에 갚아야 한다
   expect(s.notices.at(-1)).toContain('삼춘');
   s.money = 0;
   expect(checkLoan(s)).toBe(false); // 같은 달엔 한 번만

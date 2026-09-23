@@ -34,7 +34,7 @@ function seatOne(s = cafe()): { s: ReturnType<typeof cafe>; g: Guest } {
 }
 
 describe('데이터: 요청 30개', () => {
-  test('id 고유·문구 ≤22자·want는 코너/시설/메뉴/태그 중 하나 이상·힌트가 있다', () => {
+  test('id 고유·문구 ≤22자·want는 명당/시설/메뉴/태그 중 하나 이상·힌트가 있다', () => {
     expect(REQUESTS.length).toBe(30);
     expect(new Set(REQUESTS.map((r) => r.id)).size).toBe(30);
     for (const r of REQUESTS) {
@@ -44,7 +44,7 @@ describe('데이터: 요청 30개', () => {
       expect(requestHint(r).length, r.id).toBeGreaterThan(0);
       expect(requestHint(r).length, r.id).toBeLessThanOrEqual(22);
       expect(hasIdToken(r.text) || hasIdToken(r.thanks) || hasIdToken(requestHint(r)), r.id).toBe(false);
-      // 코너·태그 요청은 코너 데이터가 없는 동안(통합 전) 시설로 판정할 수 있어야 한다
+      // 명당·태그 요청은 명당 데이터가 없는 동안(통합 전) 시설로 판정할 수 있어야 한다
       if (r.want.corner || r.want.tagCorner) expect(r.want.facility, r.id).toBeTruthy();
     }
     expect(requestDef('req_photo').want.facility).toBe('signboard');
@@ -231,7 +231,7 @@ describe('요청', () => {
     expect(thankIfDone(s, g)).not.toBeNull();
     expect(s.tickets).toBe(t2);
   });
-  test('코너 요청: 코너가 완성돼 있으면 코너로, 아니면 대체 시설로 판정; tagCorner(photo)는 코너 태그로', () => {
+  test('명당 요청: 명당이 완성돼 있으면 명당으로, 아니면 대체 시설로 판정; tagCorner(photo)는 명당 태그로', () => {
     const s = cafe();
     const def = requestDef('req_flower_path');
     expect(def.want.corner).toBe('corner_flower_path'); // corners.json 실제 id
@@ -243,7 +243,7 @@ describe('요청', () => {
     placeObject(t, 'deco_wood_bench', X(3), Y(2));
     placeObject(t, 'streetlight', X(2), Y(3));
     expect(completedCorners(t).map((c) => c.id)).toContain('corner_flower_path');
-    expect(isRequestMet(t, def)).toBe(true); // 코너 우선
+    expect(isRequestMet(t, def)).toBe(true); // 명당 우선
     expect(isRequestMet(t, requestDef('req_photo'))).toBe(true); // 꽃길은 photo 태그(사진 확률 0.6)
     expect(cornerTags('corner_flower_path')).toContain('photo');
     expect(cornerTags('corner_haenyeo_rest')).toContain('rest');

@@ -8,6 +8,11 @@ export { hasLoan, loanRewardMult, canTakeLoan, takeLoan, checkLoan, repayLoan, L
 export { apply, PROTECTED_TYPES, ROTATABLE_TYPES, demolishRefund, canDisturb } from './actions.ts';
 export { canUndo } from './undo.ts';
 export { DAY_MS, seasonOf, monthIndex, DAYS_PER_MONTH } from './clock.ts';
+// ---- stakes: 긴장감·트레이드오프·변수 ----
+export { RISKS, riskDef, riskDayOf, resolveRisk, hasPendingRisk, dailyRisk, monthlyRisk, breakdownTarget, breakdownRepairCost, absentStaffId, isStopped, stoppedCount, riskDaysLeft, RISK_CHANCE, GROUP_SEATS, GROUP_REWARD, GROUP_FAIL_REPUTATION, BREAKDOWN_STOP_DAYS, BREAKDOWN_REPAIR_PCT, type RiskId, type RiskDef } from './risk.ts';
+export { RENT_PER_PARCEL, rentOf, rent, loanDue, LOAN_DUE_MONTHS, LOAN_OVERDUE_REPUTATION, gradeMonth, gradeOfScore, coachAdvice, GRADE_S, GRADE_A, GRADE_B, GRADE_ITEM_MAX, COACH_BAD_MONTHS, type GradeResult, type GradeItem } from './economy.ts';
+export { TREND_CATEGORIES, TREND_NAME, TREND_MULT, trendCategoryOf, trendOf, trendMenuMult, rollTrend, EVENT_CHOICES, eventChoiceDef, hasPendingEventChoice, resolveEventChoice, resolvePendingEventChoice, type EventChoiceDef, type EventChoiceOption } from './events.ts';
+export { REP_REGULAR_SLOW, regularVisitEveryOtherWeek, shrinkingWarning } from './reputation.ts';
 export { cellAt, objectAt, canPlace, footprint, parcelHasLandmark, isSheltered, sceneryScore, objectScenery, windShelter, SHELTER_THRESHOLD, SCENERY_CAP, doorOf, doorFrontOf, roomAt, isRoomFloor, objectsInRoom } from './grid.ts';
 export { FX_CAP } from './fx.ts';
 export { isFarmObject, monthlyYieldOf, expectedHarvest, emptyMonthHarvest } from './orchard.ts';
@@ -25,6 +30,7 @@ export { ENTRY_ROUTES, ROUTE_IDS, routeDef, entryPoints, routeStats, routeState,
 export { isMenuAvailable, availableMenus, canSetSlot, hasMenuStaff, menuRequirementText, menuOf, purchaseCost, ingredientCost } from './menu.ts';
 export { menuMod, menuStatsOf, menuSkills, skillEffects, skillTier, skillTierValue, priceOf, priceFromStats, toppingCost, costMult, activeIngredientCombos, comboBonus, matchHiddenRecipe, normalizeParams, paramDeviation, successRate, bonusWidth, developStaffStat, developCost, canDevelop, developDaysLeft, autoMenuName, canAddTopping, canRemoveTopping, canLevelUpMenu, levelUpMenuCost, maxSlots, isStaffBusy, isCustomMenu, qualityOf, countIngredients, DEVELOP_DAYS, DEVELOP_RESEARCH, BASE_NAME, BASE_MIN, PARAM_AXES, PARAM_LABEL, PARAM_DEFAULT, BASE_STAT, MENU_SKILLS, SKILL_TIER_VALUES, SKILL_DESC, TIER_NAMES, MAX_TOPPINGS, MAX_MENU_LEVEL, SIGNATURE_STAR, P_GREAT, type MenuSkill, type SkillEffects } from './craft.ts';
 export { isWalkable, busStopPos, isDoorReachable } from './path.ts';
+export { OLDEST_LOADABLE, BACKFILL_FROM } from './save.ts';
 export { addResearchProgress, HAPPY_PER_RESEARCH, TASTE_MATCH_WEIGHT } from './progress.ts';
 export { serialize, deserialize, MemorySaveStore, LocalSaveStore, type SaveStore, type BestRecord } from './save.ts';
 export { freeSeats, hasReachableSeat, seatSlotPos, dailyGuestCount, gateSatisfaction, countGatesOn, GATE_SATISFACTION_MAX, popularityGuestBase, popularitySum, facilityPopularitySum, spotDailyGuests, seasonGuestMult, spawnMultiplier, prepTimeMs, serviceBonus, isVisitable, likesFacility, spawnNamedGuest, hourlyRegulars, totalSeats, GUEST_SPEED_CELLS_PER_S, SEAT_MS, PREP_MS, VISIT_CHANCE, GUESTS_PER_SEAT, BASE_DAILY_GUESTS, POP_SUM_PER_GUEST, FACILITY_POP_PER_GUEST, WAIT_MAX, SEASON_GUEST_MULT } from './guests.ts';
@@ -83,4 +89,20 @@ export { NIGHT_HOUR, LIGHT_RADIUS, STREETLIGHT_SAT, DARK_SAT, DARK_TEXT, isNight
 // ---------- z-ending ----------
 export { computeScore, scoreTier, spotLevelSum, endingDue, endingMonthly, canContinueEnding, canSetSpeed, makeCarry, applyCarry, carryText, dolhareubangCount, initEnding, ENDING_YEAR, ENDING_MONTH, MILLENNIUM_TREE, FAST_SPEED, CARRY_RATIO, SCORE_ITEMS, SCORE_TITLES } from './ending.ts';
 export { greetedToday, greetsLeftToday, canGreet, greetGuest, greetLine, canRecommend, recommendMenu, recommendFits, guestNameFor, regularFace, REQUESTS, requestDef, isRequestMet, requestHint, pendingRequests, doneRequests, regularGauge, regularHearts, regularOf, regularById, regularsDue, regularCount, regularList, forgetRegular, GREET_DAY_MAX, RECOMMEND_DAY_MAX, RECOMMEND_TIP_RATE, GAUGE_MAX, REGULAR_TIP_RATE, REQUEST_DAY_MAX } from './interact.ts'; // fun-guest (트랙 G)
+// ---------- 대회 (contest.ts) — 연 2회 6·12월, 등급 3부터 ----------
+export {
+  initContest, contestState, contestUnlocked, nextContest, daysToContest, signupOpen, isContestDay, contestTitle, roundIndex,
+  judgeScore, judgeScores as contestJudgeScores, baseScore, rivalScores as contestRivals, currentRivals, rankAmong as contestRankAmong,
+  contestOdds, contestMenus, contestStaff, canEnterContest, enterContest, canCancelContest, cancelContest, runContest,
+  dailyContest, monthlyContest, contestGuestMult, contestBadge, trophyOwned, trophyPlaced, canPlaceTrophy,
+  contestHistory, contestWins, contestBestRank, trophyKinds, hasSignature, trainingNameFor, titleBonusFor, trainingBonusFor, supplyBonus,
+  contestDef, CONTESTS, CONTEST_MONTHS, CONTEST_DAY, SIGNUP_DAYS, CONTEST_GRADE, CONTEST_HISTORY_CAP,
+  JUDGE_KEYS as CONTEST_JUDGE_KEYS, JUDGE_LABEL as CONTEST_JUDGE_LABEL, JUDGE_STAT as CONTEST_JUDGE_STAT, SCORE_MULT as CONTEST_SCORE_MULT,
+  PRIZE_MULT, RANK_TICKETS as CONTEST_TICKETS, RANK_EXP as CONTEST_EXP, RANK_BOOST, BADGE_MONTHS, TROPHIES, TROPHY_IDS, TROPHY_TYPE,
+  TITLE_JUDGE, TITLE_TRAINING, MENU_SCALE, STAFF_BONUS_MAX, TITLE_BONUS_PER, TITLE_BONUS_MAX, TRAINING_BONUS_PER, TRAINING_BONUS_MAX, SUPPLY_BONUS_MAX,
+  RIVAL_BASE, RIVAL_PER_GRADE, RIVAL_PER_ROUND, RIVAL_STEP, RIVAL_NOISE, RIVAL_COUNT as CONTEST_RIVAL_COUNT,
+  type ContestOdds,
+} from './contest.ts';
 export { pushVoice, recentVoices, voiceText, voicesToday, busiestSeat, dirtiestObject, bestViewSeat, VOICE_DAY_MAX, VOICE_CAP, VOICE_FIX, VOICE_FIX_LABEL, type VoiceLine, type VoiceReason, type VoiceFix } from './voice.ts'; // trim: 손님 목소리 피드
+export { closeDay, recentDays, daySummary, DAY_LOG_CAP, type DaySummary } from './daylog.ts'; // 성장: 하루 요약·30일 그래프
+export type { DayLogRow } from './types.ts';
