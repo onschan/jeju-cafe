@@ -8,6 +8,7 @@ import { guestBlock, vacateWarning, WORK_NAME } from '../sim/index.ts'; // seatf
 import { RouteCard } from './RouteCard';
 import { TreeUpgradeRow } from './TreeUpgrade'; // fun: 같은 자리 업그레이드 트리
 import { treeOf } from '../sim/index.ts';
+import { objectReachable, UNREACHABLE_TEXT } from '../sim/index.ts'; // ui3: 손님이 못 가는 시설
 import type { RouteId } from '../sim/index.ts';
 import { mainSummary, canAutoConnectPath, canExpandMain, expandCost, nextMainLevel, canBuildSecondFloor, canStartMoveMain, canUndoMoveMain, canMoveThisMonth, moveDays, isRoomCut, isAnnex, roomSeats, roomSeatsUsed, MAIN_EXPAND_DAYS, FLOOR2_COST, FLOOR2_DAYS, MOVE_COST, ANNEX_CUT_TEXT, DOOR_PATH_WARN, BGM_LABEL, LIGHT_LABEL } from '../sim/index.ts'; // y-indoor
 import { ButtonGroup } from './ButtonGroup';
@@ -376,6 +377,7 @@ function ObjectCard({ s, id, a, onClose, guestId }: { s: GameState; id: string; 
           <div style={{ ...small, whiteSpace: 'nowrap' }} data-testid="clean-bar">카페 청결 <Bar value={clean} max={100} width={80} /> {clean}{clean < CLEAN_LOW && <span style={{ color: PALETTE.bad }}> 지저분해요</span>}</div>
         </Details>
       </div>
+      <UnreachableRow s={s} o={o} a={a} />{/* ui3: 손님이 못 가는 시설이면 이유 한 줄 + 「길 잇기」 */}
       {treeOf(o.type) && <TreeUpgradeRow s={s} o={o} />}{/* fun: 「업그레이드 ▲」는 카드 맨 위(버튼 줄 위) — 아래에 두면 잘린다 */}
       <Row>
         {upgradable && <button style={up.ok ? btnOn : btnOff} disabled={!up.ok} title={up.ok ? undefined : up.reason} onClick={doUpgrade} data-testid="upgrade-btn">증축 Lv{st.level + 1} ({wonText(upCost)})</button>}
@@ -392,6 +394,26 @@ function ObjectCard({ s, id, a, onClose, guestId }: { s: GameState; id: string; 
         ? <PendingRow s={s} o={o} onClose={onClose} />
         : blocked && !protectedType && <div style={{ ...small, marginTop: 4 }} data-testid="busy-line">{blocked} · 눌러 두면 일어날 때 해 드려요</div>}
       {renaming && <RenamePopup objectId={o.id} current={o.name ?? ''} onClose={() => setRenaming(false)} />}
+    </div>
+  );
+}
+
+/** ui3: 손님이 걸어서 못 오는 시설이면 왜 그런지 한 줄 + 할 수 있는 수.
+ *  본관 문 앞이 끊겼을 때만 「길 잇기」(autoConnectPath)가 통한다 — 외딴 시설은 옆에 길을 놓거나 옮겨야 한다. */
+function UnreachableRow({ s, o, a }: { s: GameState; o: PlacedObject; a: CardActions }) {
+  if (objectReachable(s, o)) return null;
+  const c = canAutoConnectPath(s);
+  const cells = c.route?.empty.length ?? 0;
+  const canPath = s.unlocked.objects.includes('path');
+  return (
+    <div data-testid="card-unreachable" style={{ marginTop: 4, padding: '4px 6px', border: `2px solid ${PALETTE.bad}`, borderRadius: 6, background: PALETTE.paper }}>
+      <div style={{ fontSize: 14, fontWeight: 700, color: PALETTE.bad, lineHeight: 1.4 }}>{UNREACHABLE_TEXT}</div>
+      <div style={small}>올렛길이 이 자리까지 닿아야 손님이 앉아요</div>
+      <Row>
+        {c.ok && <button style={btnOn} data-testid="card-autopath" onClick={() => a.onAutoPath()}>길 잇기 ({cells}칸 · {wonText(c.route?.cost ?? 0)})</button>}
+        {canPath && <button style={c.ok ? btn : btnOn} data-testid="card-lay-path" onClick={() => a.onBuildSame('path', o.x, o.y)}><Icon name="build" /> 길 놓기</button>}
+        {!PROTECTED_TYPES.has(o.type) && <button style={btn} onClick={() => a.onMove(o.id)}>이동</button>}
+      </Row>
     </div>
   );
 }

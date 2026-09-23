@@ -58,6 +58,13 @@ import { rectCells, demolishTargets, reservedCount, nextGhostAfterPlace, type Re
 import { placementPicks, PlacementHintLine, type PlacePicks } from './PlacementHints'; // video-patch §3.2: 추천 칸 3곳
 import { usePlaceHintsPref, setPlaceHintsOn } from './layoutScore';
 import { TodoLine } from './TodoLine'; // video-patch §3.4: 오늘 할 일
+// ---- ui3: 전략 피드백 · 숏컷 · 화면 정돈 ----
+import { StrategyCard } from './StrategyCard';
+import { RadialMenu, type RadialItem } from './RadialMenu';
+import { useShortcutsPref, setShortcutsOn, shortcutsOn, useMapMinimalPref, setMapMinimalOn } from './shortcuts';
+import { checkupKey, canStartBuild, isUpgradable, canUpgrade, upgradeCost, objectStats, treeOf, canTreeUpgrade, treeUpgradeCost, MAX_OBJECT_LEVEL, LIGHT_RADIUS, spotReachable, UNREACHABLE_GHOST_TEXT } from '../sim/index.ts';
+import { recentBuildTypes } from './windows/BuildWindow.tsx';
+import { josa } from '../sim/josa.ts';
 
 /** 길·담 두 번 탭 라인 배치 상태 (ease, sim/line.ts): 탭 1 시작 칸 → 탭 2 끝 칸 → 파란 미리보기 → ✓ 확정. 드래그는 언제나 카메라. */
 interface Line { from: Pt; to: Pt | null; order: LineOrder }
@@ -89,6 +96,45 @@ const DEFAULT_WIN: Record<WindowKind, Win> = { build: { kind: 'build' }, cafe: {
 
 /** 이동 모드: 고른 오브젝트와 옮길 자리 */
 interface Moving { objectId: string; x: number; y: number }
+
+/** ui3 숏컷: 길게 누르기 방사형 메뉴가 떠 있는 자리 (화면 좌표 + 대상) */
+type RadialState =
+  | { left: number; top: number; kind: 'object'; id: string }
+  | { left: number; top: number; kind: 'empty'; x: number; y: number };
+
+/** ui3 숏컷: 하단 「짓기」를 길게 누르면 뜨는 최근 시설 퀵바 (창을 안 열고 바로 고스트로) */
+function QuickBar({ onPick, onMore, onClose }: { onPick: (type: string) => void; onMore: () => void; onClose: () => void }) {
+  const s = useGame();
+  const recent = recentBuildTypes(s);
+  return (
+    <div data-testid="quick-bar" style={{ position: 'absolute', left: 8, right: 8, bottom: `calc(${SHELL_BOTTOM + 8}px + env(safe-area-inset-bottom))`, zIndex: 14, display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', background: PALETTE.paper, border: `3px solid ${PALETTE.wood}`, borderRadius: 8, padding: 6 }}>
+      <span style={{ fontSize: 13, color: PALETTE.inkSoft, whiteSpace: 'nowrap' }}><Icon name="undo" size={13} /> 최근</span>
+      {recent.map((id) => {
+        const cost = placeCost(s, id);
+        const ok = canStartBuild(s, id).ok && s.money >= cost;
+        return (
+          <button key={id} data-testid={`quick-${id}`} disabled={!ok} style={{ ...(ok ? brownBtn : brownBtnOff), margin: 0, minHeight: 44, padding: '0 10px', fontSize: 14 }} onClick={() => onPick(id)}>
+            {objectDef(id).name} <span style={{ fontWeight: 400 }}>{cost > 0 ? wonText(cost) : '무료'}</span>
+          </button>
+        );
+      })}
+      <button style={{ ...brownBtn, margin: 0, minHeight: 44, padding: '0 10px', fontSize: 14 }} onClick={onMore}><Icon name="build" size={14} /> 짓기 창</button>
+      <button aria-label="닫기" style={{ ...dangerBtn, margin: 0, minHeight: 44, padding: '0 10px', fontSize: 14, marginLeft: 'auto' }} onClick={onClose}><Icon name="close" size={14} /></button>
+    </div>
+  );
+}
+
+/** 열린 시설 중 조건에 맞는 가장 싼 것의 id (없으면 null) — 빈 칸 방사형 메뉴 [자리][정원][조명][길] */
+function cheapestUnlocked(s: GameState, pick: (d: ReturnType<typeof objectDef>) => boolean): string | null {
+  let best: { id: string; cost: number } | null = null;
+  for (const id of s.unlocked.objects) {
+    let d;
+    try { d = objectDef(id); } catch { continue; }
+    if (!pick(d)) continue;
+    if (!best || d.cost < best.cost) best = { id, cost: d.cost };
+  }
+  return best?.id ?? null;
+}
 
 /** 장면 창에 세울 직원(최대 3명). 없으면 SceneWindow가 기본 인물을 세운다. */
 function staffChars(s: GameState): SceneChar[] {
@@ -171,6 +217,8 @@ function SettingsPanel({ onExit, gauges, onGauges }: { onExit: () => void; gauge
   const s = useGame();
   const spotlight = useSpotlightPref();
   const placeHints = usePlaceHintsPref(); // video-patch §3.2.1
+  const shortcuts = useShortcutsPref(); // ui3 숏컷
+  const mapMinimal = useMapMinimalPref(); // ui3 맵 위 표시 최소화
   const slider = (text: string, v: number, set: (n: number) => void) => (
     <label style={{ display: 'grid', gridTemplateColumns: '64px 1fr 40px', alignItems: 'center', gap: 8, fontSize: 14, minHeight: 44 }}>
       <span>{text}</span>
@@ -186,6 +234,8 @@ function SettingsPanel({ onExit, gauges, onGauges }: { onExit: () => void; gauge
       <OnOff label="속도 잠금 (창을 열어도 안 멈춤)" on={isSpeedLocked()} onChange={setSpeedLocked} testId="setting-speed-lock" />
       <OnOff label="시설 위 입소문 바 표시" on={gauges} onChange={onGauges} testId="setting-gauges" />
       <OnOff label="자리 추천 보기 (놓을 때 빛나는 칸)" on={placeHints} onChange={setPlaceHintsOn} testId="setting-place-hints" />{/* video-patch §3.2.1 */}
+      <OnOff label="숏컷 (길게 누르기·두 번 탭)" on={shortcuts} onChange={setShortcutsOn} testId="setting-shortcuts" />{/* ui3 */}
+      <OnOff label="맵 위 표시 최소화" on={mapMinimal} onChange={setMapMinimalOn} testId="setting-map-minimal" />{/* ui3 */}
       {!tutorialDone(s) && <OnOff label="튜토리얼 스포트라이트 (빛나는 것 빼고 어둡게)" on={spotlight} onChange={setSpotlightOn} testId="setting-spotlight" />}{/* w-free */}
       <button style={{ ...brownBtn, marginRight: 0, marginBottom: 0 }} onClick={() => setSlots(true)}><Icon name="save" /> 슬롯에 저장</button>
       <button style={{ ...dangerBtn, marginRight: 0, marginBottom: 0 }} onClick={() => Confirm('자동 저장하고 타이틀로 나갈까요?', onExit, { title: '타이틀로' })}><Icon name="door" /> 타이틀로</button>
@@ -195,7 +245,7 @@ function SettingsPanel({ onExit, gauges, onGauges }: { onExit: () => void; gauge
 }
 
 /** 상단 바를 누르면: 경영 현황 (§5.1: 저장 · 이달 요약 · 손님 경로 자리 · 성장 그래프) */
-function StatusPanel() {
+function StatusPanel({ onFocus }: { onFocus?: (x: number, y: number) => void } = {}) {
   const s = useGame();
   const [saved, setSaved] = useState(false);
   const rows: [string, string][] = [
@@ -214,6 +264,7 @@ function StatusPanel() {
   const [detail, setDetail] = useState(false); // fun: 잔지표는 「자세히」 접힘
   return (
     <div data-testid="status">
+      <StrategyCard onFocus={onFocus} />{/* ui3: 우리 카페 진단 — 3줄 평가·걸림돌 1개·다음 수 2개 (맨 위) */}
       <AppealPanel />{/* fun: 카페 매력도 — 인기·경관·서비스 */}
       <div style={{ ...card, display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '4px 12px', fontSize: 15 }}>
         {rows.slice(0, 3).map(([k, v]) => <span key={k} style={{ display: 'contents' }}><span style={{ color: PALETTE.inkSoft }}>{k}</span><b>{v}</b></span>)}
@@ -419,6 +470,127 @@ function Game({ onExit }: { onExit: () => void }) {
   };
   const undo = () => { if (dispatch({ type: 'undoLast' }).ok) { showMessage('되돌렸어요'); showFirstTip('undo'); } };
 
+  // ---------- ui3 숏컷: 길게 누르기 방사형 메뉴 · 더블 탭 · 하단 바 길게 누르기 · 맵 위 표시 최소화 ----------
+  const shortcutsPref = useShortcutsPref();
+  const mapMinimalPref = useMapMinimalPref();
+  useEffect(() => { viewRef.current?.setMapMinimal(mapMinimalPref); }, [view, mapMinimalPref]);
+  const [radial, setRadial] = useState<RadialState | null>(null);
+  const [quickBar, setQuickBar] = useState(false);
+  // ui3: 주 1회(1·8·15·22일) 새 진단이 나오면 메시지 한 줄 — 알림 링버퍼는 안 건드린다
+  const checkup = checkupKey(s);
+  const lastCheckup = useRef<string | null>(null);
+  useEffect(() => {
+    if (lastCheckup.current !== null && lastCheckup.current !== checkup) showMessage('우리 카페 진단이 새로 나왔어요');
+    lastCheckup.current = checkup;
+  }, [checkup]);
+  /** 맵 셀 → 이 컴포넌트 안 좌표 (방사형 메뉴 중심) */
+  const cellPoint = (x: number, y: number): { left: number; top: number } => {
+    const p = viewRef.current?.cellToClient(x, y);
+    const r = hostRef.current?.getBoundingClientRect();
+    return { left: (p?.left ?? 0) - (r?.left ?? 0), top: (p?.top ?? 0) - (r?.top ?? 0) };
+  };
+  /** 시설 철거 (미니 카드와 같은 규칙: 비싼 철거만 확인) */
+  const removeObject = (id: string) => {
+    const st = getState();
+    const o = st.objects[id];
+    if (!o) return;
+    const d = objectDef(o.type);
+    const go = () => { const r = dispatch({ type: 'remove', objectId: id }); showMessage(r.ok ? `${josa(d.name, '을/를')} 치웠어요 (↶ 되돌리기 가능)` : (r.reason ?? '지금은 못 치워요')); };
+    if ((d.removeCost ?? 0) >= 1_000_000) Confirm(`${josa(d.name, '을/를')} ${wonText(d.removeCost!)} 들여 치울까요?`, go, { title: '철거' });
+    else go();
+  };
+  /** 한 번에 업그레이드: 트리가 있으면 다음 단계, 없으면 증축 Lv. 확인 팝업 한 번. */
+  const quickUpgrade = (id: string) => {
+    const st = getState();
+    const o = st.objects[id];
+    if (!o) return;
+    const d = objectDef(o.type);
+    if (treeOf(o.type)) {
+      const can = canTreeUpgrade(st, id);
+      if (!can.ok || !can.next) { showMessage(can.reason ?? '지금은 못 올려요'); return; }
+      const cost = treeUpgradeCost(st, o);
+      const nd = objectDef(can.next.type);
+      Confirm(`${josa(d.name, '을/를')} ${josa(nd.name, '으로/로')} 올릴까요? ${cost > 0 ? wonText(cost) : '무료'}`, () => { dispatch({ type: 'treeUpgrade', objectId: id }); }, { title: '업그레이드' });
+      return;
+    }
+    const stats = objectStats(st, id);
+    if (!isUpgradable(d) || stats.level >= MAX_OBJECT_LEVEL) { showMessage('더 올릴 수 없어요'); return; }
+    const can = canUpgrade(st, id, stats.popularity);
+    if (!can.ok) { showMessage(can.reason ?? '지금은 못 올려요'); return; }
+    const cost = upgradeCost(st, o);
+    Confirm(`${josa(d.name, '을/를')} Lv${stats.level + 1}로 증축할까요? ${wonText(cost)}`, () => { dispatch({ type: 'upgradeObject', objectId: id }); }, { title: '증축' });
+  };
+  const canQuickUpgrade = (st: GameState, id: string): boolean => {
+    const o = st.objects[id];
+    if (!o) return false;
+    const d = objectDef(o.type);
+    if (treeOf(o.type)) return canTreeUpgrade(st, id).ok;
+    const stats = objectStats(st, id);
+    return isUpgradable(d) && stats.level < MAX_OBJECT_LEVEL && canUpgrade(st, id, stats.popularity).ok;
+  };
+  const radialItems = (r: RadialState): RadialItem[] => {
+    const st = getState();
+    if (r.kind === 'object') {
+      const o = st.objects[r.id];
+      if (!o) return [];
+      const d = objectDef(o.type);
+      const prot = PROTECTED_TYPES.has(o.type);
+      return [
+        { label: '올리기', aria: '업그레이드', icon: 'plus', disabled: !canQuickUpgrade(st, o.id), onPick: () => quickUpgrade(o.id) },
+        { label: '이동', icon: 'move', disabled: prot, onPick: () => startMove(o.id) },
+        { label: '철거', icon: 'remove', disabled: prot, onPick: () => removeObject(o.id) },
+        { label: '더', aria: '같은 것 더', icon: 'build', disabled: prot || !st.unlocked.objects.includes(o.type), onPick: () => pickBuild(o.type, { x: o.x + d.w, y: o.y }) },
+      ];
+    }
+    const at = { x: r.x, y: r.y };
+    const seat = cheapestUnlocked(st, (d) => d.kind === 'seat' && !d.indoor);
+    const garden = cheapestUnlocked(st, (d) => !d.indoor && d.scenery > 0 && (d.kind === 'deco' || d.kind === 'tree') && !LIGHT_RADIUS[d.id]);
+    const lamp = cheapestUnlocked(st, (d) => !!LIGHT_RADIUS[d.id] && !d.indoor);
+    const road = cheapestUnlocked(st, (d) => d.kind === 'path');
+    return [
+      { label: '자리', icon: 'chair', disabled: !seat, onPick: () => seat && pickBuild(seat, at) },
+      { label: '정원', icon: 'plant', disabled: !garden, onPick: () => garden && pickBuild(garden, at) },
+      { label: '조명', icon: 'bulb', disabled: !lamp, onPick: () => lamp && pickBuild(lamp, at) },
+      { label: '길', icon: 'roadside', disabled: !road, onPick: () => road && pickBuild(road, at) },
+    ];
+  };
+  /** 길게 누르기: 숏컷이 켜져 있고 보기 모드면 방사형 메뉴. 꺼져 있으면 예전처럼 들어 올리기. */
+  const longPressMenu = (x: number, y: number): boolean => {
+    if (!shortcutsOn() || modeRef.current.kind !== 'idle') return false;
+    const st = getState();
+    const o = objectAt(st, x, y);
+    const open = (r: RadialState) => { openCard(null); setRadial(r); showFirstTip('radial'); };
+    if (o && !PROTECTED_TYPES.has(o.type)) { open({ ...cellPoint(o.x, o.y), kind: 'object', id: o.id }); return true; }
+    if (!o) {
+      const p = parcelAt(st, x, y);
+      if (p?.owned && cellAt(st, x, y).terrain !== 'road') { open({ ...cellPoint(x, y), kind: 'empty', x, y }); return true; }
+    }
+    return false;
+  };
+  /** 더블 탭: 시설이면 업그레이드 바로, 빈 칸이면 최근에 지은 시설 고스트 */
+  const onDoubleTap = (x: number, y: number): boolean => {
+    if (!shortcutsOn() || modeRef.current.kind !== 'idle') return false;
+    const st = getState();
+    const o = objectAt(st, x, y);
+    if (o && !PROTECTED_TYPES.has(o.type)) { openCard(null); quickUpgrade(o.id); showFirstTip('doubleTap'); return true; }
+    if (!o) {
+      const p = parcelAt(st, x, y);
+      const recent = recentBuildTypes(st, 1)[0];
+      if (p?.owned && recent) { openCard(null); pickBuild(recent, { x, y }); showFirstTip('doubleTap'); return true; }
+    }
+    return false;
+  };
+  /** 하단 바 길게 누르기: 짓기=최근 시설 퀵바 · 카페=메뉴판 · 사람=채용 · 장부=경영 현황 */
+  const onBarLongPress = (kind: WindowKind) => {
+    setMode({ kind: 'idle' });
+    openCard(null);
+    if (kind === 'build') { const st = getState(); if (recentBuildTypes(st).length === 0) { setWin({ kind: 'build' }); return; } setQuickBar(true); return; }
+    if (kind === 'cafe') setWin({ kind: 'cafe', tab: 'menu' });
+    else if (kind === 'people') setWin({ kind: 'people', tab: 'candidates' });
+    else setWin({ kind: 'ledger', tab: 'report' });
+    showFirstTip('barLongPress');
+  };
+
   useEffect(() => {
     const host = hostRef.current!;
     const v = new GameView();
@@ -470,8 +642,12 @@ function Game({ onExit }: { onExit: () => void }) {
             if (mv && o && inFootprint(o.type, mv.x, mv.y, x, y, sizeOf(o).w, sizeOf(o).h)) { dragOffset.current = { dx: x - mv.x, dy: y - mv.y }; return true; }
             return false;
           }
+          // ui3 숏컷: 보기 모드에서 길게 누르면 방사형 4버튼. 들어 올리기는 그 안 [이동]으로 흡수됐다 (숏컷을 끄면 예전처럼 바로 들어 올린다)
+          // true를 돌려줘 그 뒤 드래그를 가져간다 — 손을 뗄 때 탭으로 미니 카드가 같이 열리지 않게 (보기 모드의 onDragCell은 아무것도 안 한다)
+          if (longPressMenu(x, y)) return true;
           return liftObject(x, y);
         },
+        onDoubleTap,
         dragCapture: (x, y) => {
           const m = modeRef.current;
           if (m.kind === 'remove') {
@@ -578,7 +754,9 @@ function Game({ onExit }: { onExit: () => void }) {
     } else if (ghost) {
       const can = canPlace(s, mode.objectType, ghost.x, ghost.y);
       const ok = can.ok && s.money >= cost;
-      ghostSpec = { type: mode.objectType, x: ghost.x, y: ghost.y, rot: ROTATABLE_TYPES.has(mode.objectType) ? ghost.rot : undefined, ok, text: `${def.name} ${wonText(cost)}` };
+      // ui3: 놓을 수는 있지만 손님이 걸어 올 수 없는 자리면 고스트가 주황이 되고 배치 바가 경고한다
+      const unreach = ok && !spotReachable(s, mode.objectType, ghost.x, ghost.y);
+      ghostSpec = { type: mode.objectType, x: ghost.x, y: ghost.y, rot: ROTATABLE_TYPES.has(mode.objectType) ? ghost.rot : undefined, ok, warn: unreach, text: `${def.name} ${wonText(cost)}` };
       rangeHint = rangeHintFor(s, mode.objectType, ghost.x, ghost.y);
       ghostCell = { x: ghost.x, y: ghost.y, w: def.w, h: def.h };
       const confirmAt = (x: number, y: number) => {
@@ -595,7 +773,7 @@ function Game({ onExit }: { onExit: () => void }) {
       const confirm = () => confirmAt(ghost.x, ghost.y);
       if (hintsOn) picks = placementPicks(s, mode.objectType);
       place = {
-        text: `${def.name} · ${wonText(cost)} · ${ok ? (mode.count > 0 ? `${mode.count}개 놓음 · 계속 놓을 수 있어요` : '여기에 지을 수 있어요 · 칸을 누르면 옮겨요') : (can.reason ?? '돈이 모자라요')}`,
+        text: `${def.name} · ${wonText(cost)} · ${unreach ? UNREACHABLE_GHOST_TEXT : ok ? (mode.count > 0 ? `${mode.count}개 놓음 · 계속 놓을 수 있어요` : '여기에 지을 수 있어요 · 칸을 누르면 옮겨요') : (can.reason ?? '돈이 모자라요')}`,
         tradeoff: tradeoffOf(s, mode.objectType, ghost.x, ghost.y), // fun: 얻는 것/잃는 것 두 줄
         ok,
         canRotate: ROTATABLE_TYPES.has(mode.objectType),
@@ -614,11 +792,13 @@ function Game({ onExit }: { onExit: () => void }) {
       const can = canPlace(s, o.type, moving.x, moving.y, o.id);
       // seatfix: 손님이 앉았거나 지나가는 중이어도 확정할 수 있다 — 그 자리로 옮기는 예약이 걸리고, 손님이 일어나면 sim이 옮긴다 (본관은 기존 이사 규칙 그대로)
       const busy = o.type === 'warehouse' ? null : guestBlock(s, o);
-      ghostSpec = { type: o.type, x: moving.x, y: moving.y, rot: o.rot, ok: can.ok, text: `${def.name} 옮기기`, w: size.w, h: size.h };
+      const moveUnreach = can.ok && !spotReachable(s, o.type, moving.x, moving.y); // ui3: 옮긴 자리에 손님이 못 오면 주황
+      ghostSpec = { type: o.type, x: moving.x, y: moving.y, rot: o.rot, ok: can.ok, warn: moveUnreach, text: `${def.name} 옮기기`, w: size.w, h: size.h };
       rangeHint = rangeHintFor(s, o.type, moving.x, moving.y, o.id);
       ghostCell = { x: moving.x, y: moving.y, w: size.w, h: size.h };
       place = {
-        text: `${def.name} · ${!can.ok ? (can.reason ?? '여기엔 못 옮겨요') : busy ? `${busy} · 일어나면 옮길게요` : '여기로 옮길 수 있어요'}`,
+        // 한 줄 우선순위: 못 옮기는 이유 > 손님이 못 오는 자리 > 예약 안내 > 옮길 수 있어요
+        text: `${def.name} · ${!can.ok ? (can.reason ?? '여기엔 못 옮겨요') : moveUnreach ? UNREACHABLE_GHOST_TEXT : busy ? `${busy} · 일어나면 옮길게요` : '여기로 옮길 수 있어요'}`,
         ok: can.ok,
         canRotate: ROTATABLE_TYPES.has(o.type),
         onUndo: undoOk ? undo : null,
@@ -702,6 +882,8 @@ function Game({ onExit }: { onExit: () => void }) {
     onSelect: (t) => openCard(t),
   };
   const closeWin = () => setWin(null);
+  /** ui3: 창 안 줄(손님이 못 가는 시설)에서 그 자리로 — 창을 닫고 카메라를 옮긴다 */
+  const focusAndClose = (x: number, y: number) => { setWin(null); openCard(null); viewRef.current?.focusCell(x, y, 1, 1, 1.4); };
   // 튜토리얼 하이라이트 (data-tut 글로우 + 맵 칸)
   useTutorialHighlight(view);
   useFirstTip(tipKeyFor(win, mode, !!guestPopup)); // fun-start: 창·탭·모드를 처음 열면 팁 한 줄
@@ -743,10 +925,11 @@ function Game({ onExit }: { onExit: () => void }) {
       case 'build':
         return (
           <Window title="짓기" onClose={closeWin} testId="window-build">
-            <div data-testid="build-tools" role="toolbar" aria-label="도구" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 6, marginBottom: 8 }}>
-              <button data-tut="tool:move" style={{ ...brownBtn, margin: 0, padding: '0 6px', fontSize: 15 }} onClick={() => { closeWin(); setMode({ kind: 'move' }); }}><Icon name="move" /> 이동</button>
-              <button data-tut="tool:remove" style={{ ...dangerBtn, margin: 0, padding: '0 6px', fontSize: 15 }} onClick={() => { closeWin(); setMode({ kind: 'remove' }); }}><Icon name="remove" /> 철거</button>
-              <button data-testid="tool-undo" data-tut="tool:undo" disabled={!undoOk} title={undoOk ? undefined : canUndo(s).reason} style={{ ...(undoOk ? brownBtn : brownBtnOff), margin: 0, padding: '0 6px', fontSize: 15 }} onClick={undo}><Icon name="undo" /> 되돌리기</button>
+            {/* ui3 정돈: 도구 줄은 아이콘만 (읽어 주는 이름은 남긴다) · 줄이 차지하는 높이 −8px */}
+            <div data-testid="build-tools" role="toolbar" aria-label="도구" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 6, marginBottom: 0, marginTop: -4 }}>
+              <button data-tut="tool:move" aria-label="이동" title="이동" style={{ ...brownBtn, margin: 0, padding: 0, height: 44, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => { closeWin(); setMode({ kind: 'move' }); }}><Icon name="move" size={20} /></button>
+              <button data-tut="tool:remove" aria-label="철거" title="철거" style={{ ...dangerBtn, margin: 0, padding: 0, height: 44, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => { closeWin(); setMode({ kind: 'remove' }); }}><Icon name="remove" size={20} /></button>
+              <button data-testid="tool-undo" data-tut="tool:undo" aria-label="되돌리기" disabled={!undoOk} title={undoOk ? '되돌리기' : canUndo(s).reason} style={{ ...(undoOk ? brownBtn : brownBtnOff), margin: 0, padding: 0, height: 44, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }} onClick={undo}><Icon name="undo" size={20} /></button>
             </div>
             <BuildWindow onClose={closeWin} onPickBuild={(t) => pickBuild(t, win.origin)} />
           </Window>
@@ -778,7 +961,7 @@ function Game({ onExit }: { onExit: () => void }) {
       case 'ledger':
         return (
           <Window title="장부" menu={ledgerMenu} tab={win.tab} onTab={(t) => setWin({ kind: 'ledger', tab: t })} onClose={closeWin} testId="window-ledger">
-            {win.tab === 'report' && <StatusPanel />}
+            {win.tab === 'report' && <StatusPanel onFocus={focusAndClose} />}
             {win.tab === 'invest' && <BoardPanel tabs={['events']} onContest={() => setWin({ kind: 'ledger', tab: 'contest' })} />}
             {win.tab === 'spots' && <BoardPanel tabs={['spots']} />}
             {win.tab === 'shop' && <ShopPanel />}
@@ -789,7 +972,7 @@ function Game({ onExit }: { onExit: () => void }) {
           </Window>
         );
       case 'status':
-        return <Window title="경영 현황" onClose={closeWin} testId="window-status"><StatusPanel /></Window>;
+        return <Window title="경영 현황" onClose={closeWin} testId="window-status"><StatusPanel onFocus={focusAndClose} /></Window>;
       case 'goal':
         return <Window title="목표" onClose={closeWin} testId="window-goal"><GoalWindow onClose={closeWin} /></Window>;
       case 'object': {
@@ -823,7 +1006,9 @@ function Game({ onExit }: { onExit: () => void }) {
       )}
       {!win && <DaySummaryCard bottom={BOTTOM_BAR_H + 26 + VOICE_FEED_MAX * (VOICE_ROW_H + 2) + 4} />}{/* 손님 목소리 피드 위 */}
       <MessageLine bottom={BOTTOM_BAR_H} />
-      {place ? <PlaceBar {...place} /> : <BottomBar onOpen={openWindow} />}
+      {quickBar && !place && <QuickBar onPick={(t) => { setQuickBar(false); pickBuild(t); }} onMore={() => { setQuickBar(false); setWin({ kind: 'build' }); }} onClose={() => setQuickBar(false)} />}
+      {place ? <PlaceBar {...place} /> : <BottomBar onOpen={openWindow} onLongOpen={onBarLongPress} />}
+      {radial && <RadialMenu left={radial.left} top={radial.top} items={radialItems(radial)} onClose={() => setRadial(null)} />}
       {cardTarget && !place && <MiniCard target={cardTarget} actions={cardActions} onClose={() => openCard(null)} />}
       <MonthCard />
       <DevelopResultPopup />

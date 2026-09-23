@@ -1,10 +1,27 @@
-import { useEffect, type ReactNode } from 'react';
+import { useEffect, useRef, type ReactNode } from 'react';
 import { Icon } from './Icon';
 import { pauseGame } from './store';
 import { brownBtn, PALETTE } from './frame';
 import { IconGrid, type IconGridItem } from './IconGrid';
 
 export type { IconGridItem } from './IconGrid';
+
+/** ui3 창 공통: 창·탭마다 스크롤 위치를 기억한다 (세션). 다시 열면 보던 자리로. */
+const SCROLL_MEMORY = new Map<string, number>();
+export function resetWindowScrollMemory(): void { SCROLL_MEMORY.clear(); }
+function useScrollMemory(key: string) {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const saved = SCROLL_MEMORY.get(key);
+    if (saved) el.scrollTop = saved;
+    const onScroll = () => SCROLL_MEMORY.set(key, el.scrollTop);
+    el.addEventListener('scroll', onScroll, { passive: true });
+    return () => el.removeEventListener('scroll', onScroll);
+  }, [key]);
+  return ref;
+}
 
 /** 카이로식 전체 화면 창 (UX §5.1): 제목 띠 + 오른쪽 위 닫기 아이콘(44px) + 본문 + 하단 오른쪽 `닫기` 48px(§5.6 한 손 조작).
  *  `menu`(아이콘 그리드 항목)를 주면 tab이 없을 때 2열 아이콘 그리드를 본문에 그리고, tab이 있으면 제목이 `창 › 항목`이 되며 ◀로 그리드로 돌아간다.
@@ -23,6 +40,7 @@ export function Window<K extends string>({ title, menu, tab, onTab, onClose, chi
   useEffect(() => pauseGame('window'), []);
   const item = menu && tab ? menu.find((m) => m.key === tab) : undefined;
   const showGrid = !!menu && !tab;
+  const bodyRef = useScrollMemory(`${testId ?? title}:${tab ?? ''}`);
   return (
     <div data-testid={testId ?? 'window'} role="dialog" aria-label={item ? `${title} ${item.label}` : title}
       style={{ position: 'absolute', inset: 0, zIndex: 30, background: PALETTE.paper, color: PALETTE.ink, display: 'flex', flexDirection: 'column', fontSize: 16 }}>
@@ -35,7 +53,7 @@ export function Window<K extends string>({ title, menu, tab, onTab, onClose, chi
         <button aria-label="닫기" data-testid="window-close" onClick={onClose}
           style={{ width: 44, height: 44, border: 0, background: 'transparent', color: PALETTE.titleText, fontSize: 22, fontWeight: 700, fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Icon name="close" size={20} /></button>
       </div>
-      <div data-testid="window-body" style={{ flex: 1, overflowY: 'auto', padding: '10px 12px 12px', WebkitOverflowScrolling: 'touch' }}>
+      <div ref={bodyRef} data-testid="window-body" style={{ flex: 1, overflowY: 'auto', padding: '10px 12px 12px', WebkitOverflowScrolling: 'touch' }}>
         {showGrid ? <IconGrid items={menu!} onPick={(k) => onTab?.(k)} testId={testId ? `${testId}-grid` : 'window-grid'} /> : children}
       </div>
       <div data-testid="window-footer" style={{ flex: 'none', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 6, padding: '6px 8px calc(6px + env(safe-area-inset-bottom))', borderTop: `2px solid ${PALETTE.woodLight}`, background: PALETTE.paperDark }}>

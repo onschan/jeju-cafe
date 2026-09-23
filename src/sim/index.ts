@@ -48,6 +48,10 @@ export { serveStaff, SERVE_TIP_RATE } from './guests.ts';
 export { objectStats, popularityFor, setLevels, guestPickMult, cornerSatisfaction, discoverPlacement, BASE_POPULARITY, POPULARITY_CAP, PICK_MULT_CAP } from './compat.ts';
 // ---------- fun: 카페 매력도 (경관 → 관광객, 사진 → 평판) ----------
 export { cafeScenery, sceneryMultOf, sceneryTouristMult, touristPctText, sceneryGainText, appealOf, POPULARITY_FULL, POPULARITY_LOW, SEAT_USE_HIGH, SCENERY_MULT_MIN, SCENERY_MULT_MAX, PHOTO_REPUTATION, PHOTO_REPUTATION_DAY_CAP, type Appeal, type AppealRow } from './appeal.ts';
+// ---------- ui3: 우리 카페 진단 (주 1회 전략 피드백) ----------
+export { diagnose, isCheckupDay, lastCheckupDay, checkupKey, CHECKUP_DAYS, ROUTE_MIN, type Diagnosis, type CoachInput, type BottleneckKey, type CoachRouteId } from './coach.ts';
+// ---------- ui3: 손님이 못 가는 시설 (진입점 BFS 재사용) ----------
+export { cellReachable, spotReachable, objectReachable, unreachableObjects, unreachableIds, unreachableCount, UNREACHABLE_TEXT, UNREACHABLE_GHOST_TEXT } from './reach.ts';
 // ---------- fun: 슬롯형 시설·업그레이드 트리·거리 보너스·짓기 타일 ----------
 export { TREES, treeDef, treeOf, treeBase, nextStep, stepNeedText, stepNeedMet, treeUpgradeCost, canTreeUpgrade, treeUpgrade, streetLength, streetFeeMult, streetText, streetIfPlaced, BUILD_TILES, TILE_TYPES, tileBadges, seatUseRate, STREET_MIN, STREET_BONUS_PCT, SEAT_USE_BOTTLENECK, SCENERY_BOTTLENECK, type TreeId, type TreeDef, type TreeStep, type BuildTileId, type BuildTile, type TileBadge } from './tree.ts';
 export { levelOf, tierOf, isUpgradable, upgradeCost, usesOf, recordUse, upgradeConditionText, canUpgrade, seatBonusOf, facilityFee, yieldMultOf, MAX_OBJECT_LEVEL, LEVEL_COST_MULT, LEVEL_POPULARITY, LEVEL_SCENERY, LEVEL_FEE_PCT, LEVEL_MENU_PCT, LEVEL_UPKEEP_MULT, LEVEL_COMBO_MULT, LEVEL_SEATS, LEVEL_YIELD_MULT, UPGRADE_USES, UPGRADE_POP_ALT, STAR_BY_TIER, type Tier } from './upgrade.ts';
