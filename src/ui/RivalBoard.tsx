@@ -15,6 +15,7 @@ import { Icon } from './Icon';
 import { Confirm } from './Popup';
 import { card, brownBtn, brownBtnOff, dangerBtn, PALETTE } from './frame';
 import { wonText } from '../data/labels.ts';
+import { josa } from '../sim/josa.ts';
 
 const small = { fontSize: 13, color: PALETTE.inkSoft } as const;
 
@@ -95,14 +96,14 @@ function EndgameCard() {
         <b style={{ flex: 1 }}>인수 · 제휴</b>
       </div>
       {!open && <div style={{ fontSize: 13, color: PALETTE.bad }}>{endgameReason(s)}</div>}
-      <div style={small}>인수 {wonText(RIVAL_ACQUIRE_COST)} — 그 카페 손님이 넘어오고 시설 하나가 딸려 와요 · 제휴 월 {wonText(RIVAL_DEAL_MONTHLY)} — 그 집이 잘하는 항목이 {Math.round(RIVAL_DEAL_AXIS_PCT * 100)}% 올라요</div>
+      <div style={small}>인수 {wonText(RIVAL_ACQUIRE_COST)} · 그 카페 손님이 넘어오고 시설 하나가 딸려 와요<br />제휴 월 {wonText(RIVAL_DEAL_MONTHLY)} · 그 집이 잘하는 항목이 {Math.round(RIVAL_DEAL_AXIS_PCT * 100)}% 올라요</div>
       {activeRivals(s).map((d) => {
         const deal = rivalsState(s).cafes[d.id]?.deal ?? false;
         const ally = canAllyRival(s, d.id);
         const acq = canAcquireRival(s, d.id);
         return (
           <div key={d.id} style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', padding: '4px 0', borderTop: `1px solid ${PALETTE.paperDark}` }}>
-            <span style={{ flex: '1 1 100%', fontSize: 14 }}><b>{d.name}</b> <span style={small}>{d.concept} · {RIVAL_AXIS_LABEL[d.strength]}가 강해요</span></span>
+            <span style={{ flex: '1 1 100%', fontSize: 14 }}><b>{d.name}</b> <span style={small}>{d.concept} · {josa(RIVAL_AXIS_LABEL[d.strength], '이/가')} 강해요</span></span>
             {deal ? (
               <button style={{ ...dangerBtn, margin: 0, flex: 1 }} onClick={() => dispatch({ type: 'endAllyRival', id: d.id })}>제휴 끝내기</button>
             ) : (

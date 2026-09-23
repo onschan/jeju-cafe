@@ -992,7 +992,7 @@ function Game({ onExit }: { onExit: () => void }) {
       case 'status':
         return <Window title="경영 현황" onClose={closeWin} testId="window-status"><StatusPanel onFocus={focusAndClose} /></Window>;
       case 'goal':
-        return <Window title="목표" onClose={closeWin} testId="window-goal"><GoalWindow onClose={closeWin} /></Window>;
+        return <Window title="할 일" onClose={closeWin} testId="window-goal"><GoalWindow onClose={closeWin} /></Window>;
       case 'object': {
         const o = s.objects[win.id];
         return <Window title={o ? (o.name ?? objectDef(o.type).name) : '시설'} onClose={closeWin} testId="window-object">{o ? <ObjectInfoPanel objectId={o.id} onFocus={(x, y) => viewRef.current?.focusCell(x, y, 1, 1, 1.6)} /> : <div>없어진 시설이에요</div>}</Window>;

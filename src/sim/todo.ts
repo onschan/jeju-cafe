@@ -18,6 +18,7 @@ import { monthlyProgress } from './monthly.ts';
 import { rivalsState, scoreboard, rankGap, activeSteal, stealTitle, myAxes, RIVAL_AXES, RIVAL_AXIS_LABEL, RIVAL_COUNTER_COST, RIVAL_BOARD_DAY, endgameOpen, RIVAL_DEAL_LEAD_MONTHS } from './rival.ts';
 import { contestUnlocked, signupOpen, daysToContest, nextContest } from './contest.ts';
 import { fmtNum } from './format.ts';
+import { josa } from './josa.ts';
 import { GOALS } from '../data/index.ts';
 
 export type TodoKind = 'goal' | 'grade' | 'monthly' | 'rival' | 'contest';
@@ -189,7 +190,7 @@ function weakestAxisLabel(state: GameState): string {
   return RIVAL_AXIS_LABEL[weakestAxis(state)];
 }
 function weakestText(state: GameState): string {
-  return `우리는 ${weakestAxisLabel(state)}가 제일 약해요`;
+  return `우리는 ${josa(weakestAxisLabel(state), '이/가')} 제일 약해요`;
 }
 
 /** 지금 할 일 전부 (5~7줄). 아직 안 이룬 것부터, 다 채운 줄은 뒤로. */
