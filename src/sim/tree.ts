@@ -34,7 +34,7 @@ for (const t of TREES) t.steps.forEach((st, i) => STEP_OF.set(st.type, { tree: t
 
 /** 「거리」 보너스: 같은 트리의 2단계 이상(파라솔 테이블부터 — 기본 야외 테이블 줄은 안 센다, 1년차 밴드) 시설이 한 줄로 STREET_MIN개 이상이면 요금 +STREET_BONUS_PCT% */
 export const STREET_MIN = 3;
-export const STREET_BONUS_PCT = 5; // 10%면 5년차 자금이 3억(KPI 2억 초과)이라 5%
+export const STREET_BONUS_PCT = 8; // spot2: 잘 이어 붙인 거리가 보람 있게 5 → 8 (총 요금 배수는 fee.ts FEE_MULT_CAP이 잡는다)
 export const STREET_MIN_STEP = 1;
 
 export function treeDef(id: TreeId): TreeDef {

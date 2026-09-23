@@ -19,7 +19,7 @@ import { objectStats } from '../sim/compat.ts';
 import { isStopped } from '../sim/effects.ts'; // ui3: 맵 위 「고장」 표시
 import { unreachableIds } from '../sim/reach.ts'; // ui3: 손님이 못 가는 시설 ✕
 import { entryPoints, ROUTE_IDS, ENTRY_ROUTES } from '../sim/entry.ts'; // 트랙 H 진입점 표지
-import { completedCorners, cornerDef } from '../sim/corners.ts'; // fun-corner 명당 팻말
+import { completedCorners, pendingCorners, cornerDef } from '../sim/corners.ts'; // fun-corner 명당 팻말 · spot2 공사 중 반투명 팻말
 import { isSiteOverlayOn, setSiteOverlayOn, siteOverlayKey, drawSiteOverlay, GHOST_GOOD, GHOST_WARN } from './siteOverlay';
 import { parcelScenery, parcelSignLines, wallEdges, ROUTE_PREVIEW, busPose, BUS_PERIOD_MS, BUS_DROP_AT_MS, type SceneryProp } from './scenery'; // 트랙 E 제주 풍경
 import { VILLAGE_ROAD_Y } from '../sim/layout.ts';
@@ -1802,7 +1802,10 @@ export class GameView {
     const key = layoutKey(state);
     if (key === this.cornerKey) return;
     this.cornerKey = key;
-    const done = completedCorners(state);
+    // spot2: 마지막 조각이 공사 중이면 팻말을 반투명으로 미리 세운다 — "내가 방금 뭘 했는지"가 그 자리에서 보이게
+    const soon = pendingCorners(state);
+    const done = [...completedCorners(state), ...soon];
+    const pending = new Set(soon.map((c) => c.id));
     const keep = new Set(done.map((c) => c.id));
     for (const [id, node] of this.cornerSigns) if (!keep.has(id)) { node.destroy({ children: true }); this.cornerSigns.delete(id); }
     for (const c of done) {
@@ -1833,6 +1836,7 @@ export class GameView {
         this.cornerSigns.set(c.id, node);
       }
       node.position.set(sx, sy - ISO_H / 2);
+      node.alpha = pending.has(c.id) ? 0.45 : 1; // 공사 중이면 반투명
       node.zIndex = 1e6 - 3;
     }
   }

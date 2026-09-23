@@ -52,6 +52,8 @@ import { SaveSlots } from './SaveSlots';
 import { showScene, SceneHost, type SceneChar } from './SceneWindow';
 import { staffParts } from '../render/character';
 import { rangeHintFor } from './rangeHint';
+import { cornerMoveWarning } from '../sim/corners.ts'; // spot2: 옮기면 명당이 깨질 때 배치 바 경고
+import { windCoveredSeatsBy, WIND_WEDGE_MAX } from '../sim/site.ts'; // spot2: 돌담 줄이 막아 주는 자리
 import { AppealPanel } from './AppealPanel'; // fun: 카페 매력도
 import { tradeoffOf } from './tradeoff'; // fun: 배치 트레이드오프
 import { rectCells, demolishTargets, reservedCount, nextGhostAfterPlace, type Rect, type BuildGhost } from './placing';
@@ -751,8 +753,14 @@ function Game({ onExit }: { onExit: () => void }) {
         const skip = plan.skipped.length > 0 ? ` · 있는 칸 ${plan.skipped.length} 건너뜀` : '';
         const blocked = plan.ok && plan.blocked.length > plan.skipped.length ? ` · 못 놓는 칸 ${plan.blocked.length - plan.skipped.length}` : '';
         ghostCell = { x: line.to.x, y: line.to.y, w: 1, h: 1 };
+        // spot2 돌담의 쓸모: 이 줄이 북서쪽에서 가려 주는 야외 자리를 칸으로 보여 주고 한 줄로 알린다
+        const shelter = plan.ok ? windCoveredSeatsBy(s, def.id, plan.cells) : [];
+        if (shelter.length > 0) {
+          rangeHint = { x: line.to.x, y: line.to.y, w: 1, h: 1, radius: WIND_WEDGE_MAX, marks: shelter.map((o) => ({ x: o.x, y: o.y, w: objectDef(o.type).w, h: objectDef(o.type).h })) };
+        }
+        const wind = shelter.length > 0 ? ` · 자리 ${shelter.length}곳 겨울 바람을 막아요` : '';
         place = {
-          text: plan.ok ? `${def.name} ${plan.cells.length}칸 · ${wonText(plan.cost)}${skip}${blocked} · ✓ 확정` : `${def.name} · ${plan.reason ?? '여기엔 못 놓아요'}${skip}`,
+          text: plan.ok ? `${def.name} ${plan.cells.length}칸 · ${wonText(plan.cost)}${skip}${blocked}${wind} · ✓ 확정` : `${def.name} · ${plan.reason ?? '여기엔 못 놓아요'}${skip}`,
           ok: plan.ok,
           canRotate: bent,
           rotateLabel: '방향',
@@ -811,12 +819,13 @@ function Game({ onExit }: { onExit: () => void }) {
       // seatfix: 손님이 앉았거나 지나가는 중이어도 확정할 수 있다 — 그 자리로 옮기는 예약이 걸리고, 손님이 일어나면 sim이 옮긴다 (본관은 기존 이사 규칙 그대로)
       const busy = o.type === 'warehouse' ? null : guestBlock(s, o);
       const moveUnreach = can.ok && !spotReachable(s, o.type, moving.x, moving.y); // ui3: 옮긴 자리에 손님이 못 오면 주황
+      const cornerBreak = can.ok && !moveUnreach ? cornerMoveWarning(s, o.id, moving.x, moving.y) : null; // spot2: 명당 조각을 빼내면 명당이 깨진다
       ghostSpec = { type: o.type, x: moving.x, y: moving.y, rot: o.rot, ok: can.ok, warn: moveUnreach, text: `${def.name} 옮기기`, w: size.w, h: size.h };
       rangeHint = rangeHintFor(s, o.type, moving.x, moving.y, o.id);
       ghostCell = { x: moving.x, y: moving.y, w: size.w, h: size.h };
       place = {
         // 한 줄 우선순위: 못 옮기는 이유 > 손님이 못 오는 자리 > 예약 안내 > 옮길 수 있어요
-        text: `${def.name} · ${!can.ok ? (can.reason ?? '여기엔 못 옮겨요') : moveUnreach ? UNREACHABLE_GHOST_TEXT : busy ? `${busy} · 일어나면 옮길게요` : '여기로 옮길 수 있어요'}`,
+        text: `${def.name} · ${!can.ok ? (can.reason ?? '여기엔 못 옮겨요') : moveUnreach ? UNREACHABLE_GHOST_TEXT : cornerBreak ? cornerBreak : busy ? `${busy} · 일어나면 옮길게요` : '여기로 옮길 수 있어요'}`,
         ok: can.ok,
         canRotate: ROTATABLE_TYPES.has(o.type),
         onUndo: undoOk ? undo : null,

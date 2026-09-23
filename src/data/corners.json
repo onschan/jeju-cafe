@@ -4,21 +4,21 @@
     "name": "꽃길",
     "pieces": [
       {
-        "type": "flower_bed",
+        "type": "garden",
         "count": 1
       },
       {
-        "type": "deco_wood_bench",
+        "type": "fun",
         "count": 1
       },
       {
-        "type": "streetlight",
+        "type": "light",
         "count": 1
       }
     ],
     "radius": 2,
     "effect": {
-      "feePct": 5,
+      "feePct": 12,
       "popularity": 5,
       "target": "female",
       "tagMult": 1.3,
@@ -26,7 +26,7 @@
     },
     "line": "꽃길이 생겼다! 꽃 옆 벤치에 불빛까지. 손님이 사진을 찍으러 온다.",
     "guestLine": "사진 찍자!",
-    "hint": "꽃밭 옆에 벤치와 가로등"
+    "hint": "꽃 옆에 벤치와 불빛"
   },
   {
     "id": "corner_photo_zone",
@@ -47,7 +47,7 @@
     ],
     "radius": 2,
     "effect": {
-      "feePct": 5,
+      "feePct": 12,
       "popularity": 5,
       "target": "female",
       "tagMult": 1.3,
@@ -62,7 +62,7 @@
     "name": "바다 테라스",
     "pieces": [
       {
-        "type": "table_parasol",
+        "type": "seat",
         "count": 1
       },
       {
@@ -76,7 +76,7 @@
     ],
     "radius": 2,
     "effect": {
-      "feePct": 8,
+      "feePct": 18,
       "popularity": 5,
       "target": "adult",
       "tagMult": 1.3,
@@ -84,7 +84,7 @@
     },
     "line": "바다 테라스가 생겼다! 난간 너머로 바다. 손님이 커피값을 더 낸다.",
     "guestLine": "바다 보인다!",
-    "hint": "파라솔 테이블 옆에 난간과 큰 화분"
+    "hint": "자리 옆에 난간과 큰 화분"
   },
   {
     "id": "corner_tangerine_garden",
@@ -105,7 +105,7 @@
     ],
     "radius": 2,
     "effect": {
-      "feePct": 5,
+      "feePct": 12,
       "popularity": 5,
       "target": "senior",
       "tagMult": 1.3,
@@ -113,7 +113,7 @@
     },
     "line": "감귤 정원이 생겼다! 돌담 안 감귤나무와 물허벅. 삼춘들이 좋아한다.",
     "guestLine": "귤 향이 나네",
-    "hint": "감귤나무 옆에 돌담과 물허벅"
+    "hint": "감귤나무를 돌담이 두르고 물허벅"
   },
   {
     "id": "corner_stonewall_road",
@@ -130,7 +130,7 @@
     ],
     "radius": 2,
     "effect": {
-      "feePct": 5,
+      "feePct": 12,
       "popularity": 5,
       "target": "all",
       "tagMult": 1.2,
@@ -138,18 +138,18 @@
     },
     "line": "돌담길이 생겼다! 돌담을 따라 올렛길이 이어진다. 걷고 싶은 길.",
     "guestLine": "돌담 따라 걷자",
-    "hint": "돌담 4개를 올렛길 옆에"
+    "hint": "돌담 넷이 올렛길을 따라 이어짐"
   },
   {
     "id": "corner_kids_playground",
     "name": "아이 놀이터",
     "pieces": [
       {
-        "type": "hammock",
+        "type": "fun",
         "count": 1
       },
       {
-        "type": "table_out",
+        "type": "seat",
         "count": 1
       },
       {
@@ -159,7 +159,7 @@
     ],
     "radius": 2,
     "effect": {
-      "feePct": 5,
+      "feePct": 12,
       "popularity": 5,
       "target": "group",
       "tagMult": 1.3,
@@ -167,28 +167,28 @@
     },
     "line": "아이 놀이터가 생겼다! 아이 테이블 옆 벤치와 꽃밭. 가족 손님이 오래 논다.",
     "guestLine": "여기서 놀자!",
-    "hint": "해먹 옆에 테이블과 꽃 화분"
+    "hint": "벤치와 자리 옆에 꽃 화분들"
   },
   {
     "id": "corner_night_market",
     "name": "야시장 골목",
     "pieces": [
       {
-        "type": "omegi_stall",
+        "type": "shop",
         "count": 1
       },
       {
-        "type": "garden_lamp",
+        "type": "light",
         "count": 1
       },
       {
-        "type": "deco_wood_bench",
+        "type": "fun",
         "count": 1
       }
     ],
     "radius": 2,
     "effect": {
-      "feePct": 8,
+      "feePct": 18,
       "popularity": 5,
       "target": "youth",
       "tagMult": 1.3,
@@ -196,7 +196,7 @@
     },
     "line": "야시장 골목이 생겼다! 초롱 불빛 아래 매대. 젊은 손님이 구경 온다.",
     "guestLine": "뭐 팔아요?",
-    "hint": "기념품 매대 옆에 초롱과 벤치"
+    "hint": "매대 옆에 불빛과 벤치"
   },
   {
     "id": "corner_reading_garden",
@@ -207,7 +207,7 @@
         "count": 1
       },
       {
-        "type": "garden_lamp",
+        "type": "light",
         "count": 1
       },
       {
@@ -217,7 +217,7 @@
     ],
     "radius": 2,
     "effect": {
-      "feePct": 8,
+      "feePct": 18,
       "popularity": 5,
       "target": "adult",
       "tagMult": 1.3,
@@ -225,7 +225,7 @@
     },
     "line": "독서 정원이 생겼다! 난로 옆 소파에서 책 한 권. 어른 손님이 오래 앉는다.",
     "guestLine": "책 읽고 갈래",
-    "hint": "툇마루 옆에 정원등과 수국"
+    "hint": "툇마루 옆에 불빛과 수국"
   },
   {
     "id": "corner_haenyeo_rest",
@@ -246,7 +246,7 @@
     ],
     "radius": 2,
     "effect": {
-      "feePct": 5,
+      "feePct": 12,
       "popularity": 5,
       "target": "senior",
       "tagMult": 1.3,
@@ -254,28 +254,24 @@
     },
     "line": "해녀 쉼터가 생겼다! 물허벅과 소라 옆 벤치. 삼춘들이 쉬어 간다.",
     "guestLine": "옛날 생각 나네",
-    "hint": "물허벅 옆에 툇마루와 현무암"
+    "hint": "물허벅 옆에 툇마루와 현무암 돌"
   },
   {
     "id": "corner_night_cafe",
     "name": "밤 카페",
     "pieces": [
       {
-        "type": "streetlight",
-        "count": 2
+        "type": "light",
+        "count": 3
       },
       {
-        "type": "garden_lamp",
-        "count": 1
-      },
-      {
-        "type": "table_parasol",
+        "type": "seat",
         "count": 1
       }
     ],
     "radius": 2,
     "effect": {
-      "feePct": 8,
+      "feePct": 18,
       "popularity": 5,
       "target": "adult",
       "tagMult": 1.3,
@@ -283,7 +279,7 @@
     },
     "line": "밤 카페가 생겼다! 가로등 둘과 초롱 아래 테이블. 저녁 손님이 안 떠난다.",
     "guestLine": "밤에도 예쁘다",
-    "hint": "가로등 2개 사이에 초롱과 파라솔 테이블"
+    "hint": "불빛 셋이 자리를 둘러쌈"
   },
   {
     "id": "corner_cedar_walk",
@@ -298,13 +294,13 @@
         "count": 1
       },
       {
-        "type": "deco_wood_bench",
+        "type": "fun",
         "count": 1
       }
     ],
     "radius": 2,
     "effect": {
-      "feePct": 5,
+      "feePct": 12,
       "popularity": 5,
       "target": "all",
       "tagMult": 1.2,
@@ -312,7 +308,7 @@
     },
     "line": "삼나무 산책길이 생겼다! 삼나무 사이 올렛길과 벤치. 걷다 쉬기 좋다.",
     "guestLine": "숲 냄새 난다",
-    "hint": "삼나무 2그루 사이에 올렛길과 벤치"
+    "hint": "삼나무 둘 사이 올렛길과 벤치"
   },
   {
     "id": "corner_oreum_deck",
@@ -333,7 +329,7 @@
     ],
     "radius": 2,
     "effect": {
-      "feePct": 10,
+      "feePct": 24,
       "popularity": 8,
       "target": "all",
       "tagMult": 1.3,
@@ -341,7 +337,7 @@
     },
     "line": "오름 전망대가 완성됐다! 망원경으로 오름을 본다. 다들 사진을 찍는다.",
     "guestLine": "오름이 다 보여!",
-    "hint": "오름 벤치 옆에 난간과 현무암"
+    "hint": "오름 뷰 벤치 옆에 난간과 돌"
   },
   {
     "id": "corner_cherry_shade",
@@ -352,17 +348,17 @@
         "count": 1
       },
       {
-        "type": "deco_wood_bench",
+        "type": "fun",
         "count": 1
       },
       {
-        "type": "table_parasol",
+        "type": "seat",
         "count": 1
       }
     ],
     "radius": 2,
     "effect": {
-      "feePct": 5,
+      "feePct": 12,
       "popularity": 5,
       "target": "female",
       "tagMult": 1.3,
@@ -370,7 +366,7 @@
     },
     "line": "벚꽃 그늘이 생겼다! 벚나무 아래 벤치와 테이블. 꽃잎이 떨어진다.",
     "guestLine": "꽃잎 떨어진다",
-    "hint": "벚나무 아래 벤치와 파라솔"
+    "hint": "벚나무 그늘에 벤치와 자리"
   },
   {
     "id": "corner_canola_field",
@@ -385,13 +381,13 @@
         "count": 1
       },
       {
-        "type": "table_out",
+        "type": "seat",
         "count": 1
       }
     ],
     "radius": 2,
     "effect": {
-      "feePct": 5,
+      "feePct": 12,
       "popularity": 5,
       "target": "female",
       "tagMult": 1.3,
@@ -399,14 +395,14 @@
     },
     "line": "유채꽃 밭이 생겼다! 노란 꽃 사이 표지판과 테이블. 봄 사진 명소.",
     "guestLine": "노란 게 예쁘다",
-    "hint": "유채 3개 옆에 표지판과 야외 테이블"
+    "hint": "유채 셋 옆에 표지판과 자리"
   },
   {
     "id": "corner_camellia_road",
     "name": "동백 길",
     "pieces": [
       {
-        "type": "camellia",
+        "type": "garden",
         "count": 2
       },
       {
@@ -414,13 +410,13 @@
         "count": 1
       },
       {
-        "type": "garden_lamp",
+        "type": "light",
         "count": 1
       }
     ],
     "radius": 2,
     "effect": {
-      "feePct": 5,
+      "feePct": 12,
       "popularity": 5,
       "target": "female",
       "tagMult": 1.3,
@@ -428,7 +424,7 @@
     },
     "line": "동백 길이 생겼다! 붉은 동백 사이 올렛길과 정원등. 겨울에도 붉다.",
     "guestLine": "동백 떨어졌다",
-    "hint": "동백 2그루 사이에 올렛길과 정원등"
+    "hint": "꽃 둘이 올렛길 따라 불빛까지"
   },
   {
     "id": "corner_pampas_hill",
@@ -439,7 +435,7 @@
         "count": 3
       },
       {
-        "type": "deco_wood_bench",
+        "type": "fun",
         "count": 1
       },
       {
@@ -449,7 +445,7 @@
     ],
     "radius": 2,
     "effect": {
-      "feePct": 5,
+      "feePct": 12,
       "popularity": 5,
       "target": "adult",
       "tagMult": 1.3,
@@ -457,7 +453,7 @@
     },
     "line": "억새 언덕이 생겼다! 억새 사이 바위와 벤치. 가을 바람이 분다.",
     "guestLine": "바람 좋다",
-    "hint": "억새 3개 옆에 벤치와 현무암 돌"
+    "hint": "억새 셋 옆에 벤치와 현무암 돌"
   },
   {
     "id": "corner_spring_rest",
@@ -472,13 +468,13 @@
         "count": 1
       },
       {
-        "type": "deco_wood_bench",
+        "type": "fun",
         "count": 1
       }
     ],
     "radius": 2,
     "effect": {
-      "feePct": 5,
+      "feePct": 12,
       "popularity": 5,
       "target": "senior",
       "tagMult": 1.3,
@@ -486,7 +482,7 @@
     },
     "line": "용천수 쉼터가 생겼다! 샘 옆 바위와 벤치. 물소리에 발을 담근다.",
     "guestLine": "물이 차다!",
-    "hint": "연못 옆에 현무암과 벤치"
+    "hint": "연못 옆에 현무암 돌과 벤치"
   },
   {
     "id": "corner_tangerine_storage",
@@ -507,7 +503,7 @@
     ],
     "radius": 2,
     "effect": {
-      "feePct": 5,
+      "feePct": 12,
       "popularity": 5,
       "target": "group",
       "tagMult": 1.3,
@@ -515,7 +511,7 @@
     },
     "line": "감귤 창고 앞이 생겼다! 감귤 상자와 물허벅 옆 나무. 단체 손님이 구경한다.",
     "guestLine": "귤 한 상자 사자",
-    "hint": "감귤나무 둘에 화분과 올렛길"
+    "hint": "감귤나무 둘 옆에 화분과 올렛길"
   },
   {
     "id": "corner_haenyeo_photo",
@@ -536,7 +532,7 @@
     ],
     "radius": 2,
     "effect": {
-      "feePct": 8,
+      "feePct": 18,
       "popularity": 8,
       "target": "female",
       "tagMult": 1.3,
@@ -544,7 +540,7 @@
     },
     "line": "해녀 포토존이 생겼다! 불턱 앞 소라와 표지판. 관광객이 줄을 선다.",
     "guestLine": "해녀 삼춘 멋져!",
-    "hint": "해녀 불턱 옆에 소라 장식과 표지판"
+    "hint": "툇마루 옆에 물허벅과 표지판"
   },
   {
     "id": "corner_star_seat",
@@ -559,13 +555,13 @@
         "count": 1
       },
       {
-        "type": "garden_lamp",
+        "type": "light",
         "count": 1
       }
     ],
     "radius": 2,
     "effect": {
-      "feePct": 8,
+      "feePct": 18,
       "popularity": 5,
       "target": "youth",
       "tagMult": 1.3,
@@ -573,7 +569,7 @@
     },
     "line": "별 보는 자리가 생겼다! 화로 옆 망원경. 밤 손님이 별을 센다.",
     "guestLine": "별 진짜 많다",
-    "hint": "망원경 옆에 불멍 화로와 정원등"
+    "hint": "도대불 아래 불멍 화로와 불빛"
   },
   {
     "id": "corner_rainy_eaves",
@@ -594,7 +590,7 @@
     ],
     "radius": 2,
     "effect": {
-      "feePct": 5,
+      "feePct": 12,
       "popularity": 5,
       "target": "senior",
       "tagMult": 1.3,
@@ -609,11 +605,11 @@
     "name": "땅콩 아이스크림",
     "pieces": [
       {
-        "type": "omegi_stall",
+        "type": "shop",
         "count": 1
       },
       {
-        "type": "table_parasol",
+        "type": "seat",
         "count": 1
       },
       {
@@ -623,7 +619,7 @@
     ],
     "radius": 2,
     "effect": {
-      "feePct": 8,
+      "feePct": 18,
       "popularity": 5,
       "target": "youth",
       "tagMult": 1.3,
@@ -631,7 +627,7 @@
     },
     "line": "땅콩 아이스크림이 생겼다! 파라솔 아래 시원한 한 입. 여름 손님이 몰린다.",
     "guestLine": "아이스크림!",
-    "hint": "땅콩 아이스크림 옆에 파라솔 테이블과 꽃 화분"
+    "hint": "매대 옆에 자리와 꽃 화분들"
   },
   {
     "id": "corner_hydrangea_garden",
@@ -642,7 +638,7 @@
         "count": 3
       },
       {
-        "type": "deco_wood_bench",
+        "type": "fun",
         "count": 1
       },
       {
@@ -652,7 +648,7 @@
     ],
     "radius": 2,
     "effect": {
-      "feePct": 5,
+      "feePct": 12,
       "popularity": 5,
       "target": "female",
       "tagMult": 1.3,
@@ -660,7 +656,7 @@
     },
     "line": "수국 정원이 생겼다! 파란 수국 사이 벤치와 올렛길. 6월 사진 명소.",
     "guestLine": "수국 색 예뻐",
-    "hint": "수국 3개 옆에 벤치와 올렛길"
+    "hint": "수국 셋 옆에 벤치와 올렛길"
   },
   {
     "id": "corner_hackberry_shade",
@@ -681,7 +677,7 @@
     ],
     "radius": 2,
     "effect": {
-      "feePct": 8,
+      "feePct": 18,
       "popularity": 8,
       "target": "senior",
       "tagMult": 1.3,
@@ -689,6 +685,6 @@
     },
     "line": "폭낭 그늘이 생겼다! 큰 나무 아래 평상과 물허벅. 마을 삼춘들 사랑방.",
     "guestLine": "그늘이 시원하다",
-    "hint": "삼나무 옆에 돌담 벤치와 현무암"
+    "hint": "삼나무 그늘에 평상과 현무암 돌"
   }
 ]

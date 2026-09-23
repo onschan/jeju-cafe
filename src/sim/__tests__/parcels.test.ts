@@ -12,6 +12,9 @@ import { setSlot } from '../menu.ts';
 import { objectDef } from '../../data/index.ts';
 import type { GameState } from '../types.ts';
 import { LOAN_DUE_MONTHS } from '../economy.ts';
+import menusJson from '../../data/menus.json' with { type: 'json' };
+/** 메뉴 기본 값은 밸런스로 바뀐다 — 숫자를 박지 말고 데이터에서 읽는다 (spot2) */
+const menuPrice = (id: string): number => (menusJson as { id: string; price: number }[]).find((m) => m.id === id)!.price;
 
 function own(s: GameState, ...nos: number[]) {
   for (const p of s.parcels) if (nos.includes(p.no)) p.owned = true;
@@ -139,7 +142,7 @@ test('구역 보너스: 해안은 관광객 가중 ×1.3, 요금 ×1.1', () => {
   const m0 = s.money;
   updateGuests(s, 30_000);
   expect(s.guests[0]!.phase).toBe('seated');
-  expect(s.money).toBe(m0 + Math.round(4000 * COAST_FEE_MULT));
+  expect(s.money).toBe(m0 + Math.round(menuPrice('carrot_juice') * COAST_FEE_MULT));
 });
 
 test('구역 보너스: 오름은 경치 +2, 돌담 언덕 +1, 밭담 골짜기는 방풍, 시작 필지는 그대로', () => {

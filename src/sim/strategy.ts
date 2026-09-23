@@ -19,8 +19,8 @@
  */
 import type { GameState, Pt, PlacedObject, RoleId } from './types.ts';
 import { objectDef, SPOTS } from '../data/index.ts';
-import { CORNERS, cornersWithPiece, cornerIfPlaced } from './corners.ts';
-import { siteOf, seatScore, FEE_PER_VIEW, SAT_SHADE_SUMMER } from './site.ts';
+import { CORNERS, cornersWithPiece, cornerIfPlaced, pieceMatches } from './corners.ts';
+import { siteOf, seatScore, scoreOf, siteFeeMult, SAT_SHADE_SUMMER } from './site.ts';
 import { seasonOf } from './clock.ts';
 import { canPlace, cellAt, objectAt, doorFrontOf, footprint } from './grid.ts';
 import { parcelAt } from './parcels.ts';
@@ -191,7 +191,7 @@ export function cornerScoreIfPlaced(s: GameState, type: string, x: number, y: nu
   for (const def of cornersWithPiece(type)) {
     if (s.codex.corners?.includes(def.id)) continue;
     let n = 0;
-    for (const p of def.pieces) if (p.type !== type && objs.some((o) => o.type === p.type && distToCell(o, x, y) <= def.radius)) n++;
+    for (const p of def.pieces) if (!pieceMatches(p.type, type) && objs.some((o) => pieceMatches(p.type, o.type) && distToCell(o, x, y) <= def.radius)) n++; // spot2: 조각은 종류로 센다
     best = Math.max(best, n);
   }
   return best;
@@ -222,7 +222,7 @@ export function bestCornerCell(s: GameState, type = TREE_TYPE): Pt | null {
 /** 아직 못 만든 명당 중 이 시설이 조각인 것 하나 (추천 문구용) */
 export function cornerNameForPiece(s: GameState, type: string): string {
   const done = new Set(s.codex.corners ?? []);
-  return (CORNERS.find((c) => !done.has(c.id) && c.pieces.some((p) => p.type === type))?.name) ?? '명당';
+  return (CORNERS.find((c) => !done.has(c.id) && c.pieces.some((p) => pieceMatches(p.type, type)))?.name) ?? '명당';
 }
 
 // ---------- 실내 ----------
@@ -378,7 +378,7 @@ export function seatStrengths(s: GameState, cell: Pt, cands: Pt[] = [], type = S
 export function strengthWhy(s: GameState, cell: Pt, k: SeatStrength): string {
   const site = siteOf(s, cell.x, cell.y);
   switch (k) {
-    case 'view': return `바다가 보여 요금 +${Math.round(site.view * FEE_PER_VIEW * 100)}%`;
+    case 'view': return `바다가 보여 요금 +${Math.round((siteFeeMult(scoreOf(site)) - 1) * 100)}%`;
     case 'shade': return `그늘이라 여름 만족 +${SAT_SHADE_SUMMER}`;
     case 'near': return '길에서 가까워 빨리 앉는다';
     case 'door': return '주방이 가까워 서빙이 빠르다';
@@ -410,7 +410,7 @@ export function strategyVars(s: GameState): Record<string, string> {
     mainScore: String(mainScore),
     seatScore: seatSite ? String(seatScore(s, seat!.x, seat!.y)) : '5',
     seatView: seatSite ? String(seatSite.view) : '0',
-    seatFee: seatSite ? String(Math.round(seatSite.view * FEE_PER_VIEW * 100)) : '0',
+    seatFee: seatSite ? String(Math.round((siteFeeMult(scoreOf(seatSite)) - 1) * 100)) : '0',
     seatWhy: seatWhy(s),
     cornerN: String(cornerN),
     cornerName: cornerNameForPiece(s, TREE_TYPE),

@@ -1,15 +1,18 @@
 /**
- * 명당 (fun-reset 스펙 §3, fun-corner): 서로 다른 시설 3~4종이 반경 2 안에 모이면 이름 있는 명당이 된다.
+ * 명당 (fun-reset 스펙 §3, fun-corner): 서로 다른 것 3~4가지가 반경 2 안에 모이면 이름 있는 명당이 된다.
  *
+ * - 조각은 시설 id가 아니라 **종류**(cornerKinds.ts)다 — 야외 테이블을 파라솔로 올려도 「자리」는 자리라 명당이 안 깨진다.
+ *   오히려 상위 단계 조각이면 명당 효과가 단계마다 +CORNER_TIER_PCT%(상한 CORNER_TIER_MAX_PCT).
  * - 판정: corners.json의 pieces[0] 종류 오브젝트를 "닻"으로 삼고, 나머지 조각이 닻 발자국에서 체비쇼프 거리 radius 안에
  *   count개 이상(서로 다른 개체) 있으면 완성. 같은 명당은 한 번만(맨 처음 만족한 닻) — 같은 시설을 더 놓아도 효과는 1회.
- * - 효과: 명당 중심(닻)에서 radius 안의 시설에 요금 +feePct%·인기 +popularity (합산 상한 CORNER_CAP),
- *   대상 태그 손님이 그 시설을 고를 확률 ×tagMult (compat.guestPickMult 훅), 손님이 명당을 찾아와 사진(photo 확률).
+ * - 효과가 닿는 것: 반경 안의 **자리**(손님이 앉아 주문하는 좌석)와 요금 받는 시설뿐이다(isCornerTarget). 꽃·담 같은 장식은
+ *   명당을 만들 뿐 자기가 효과를 받지는 않는다 — "명당 옆에 자리를 놓으면 좋다"가 보이게.
  * - 결정적: state.rng만 쓰고, 판정은 배치 서명(layoutRev.ts)으로 캐시한다.
  */
-import type { GameState, PlacedObject, ComboTarget, Guest } from './types.ts';
+import type { GameState, PlacedObject, ObjectDef, ComboTarget, Guest } from './types.ts';
 import cornersJson from '../data/corners.json' with { type: 'json' };
-import { guestTags, targetMatches } from '../data/index.ts';
+import { guestTags, targetMatches, objectDef, START_OBJECT_IDS } from '../data/index.ts';
+import { cornerKindOf, cornerKindTypes, cornerKindName, isCornerKind, stepIndexOf } from './cornerKinds.ts';
 import { sizeOf } from './grid.ts';
 import { parcelAt } from './parcels.ts';
 import { walkableNeighborsOf } from './path.ts';
@@ -19,21 +22,22 @@ import { pushNotice } from './staff.ts';
 import { pushFx } from './fx.ts';
 import { nextRandom } from './rng.ts';
 import { addTickets } from './mileage.ts';
+import { josa } from './josa.ts';
 
 export interface CornerPiece { type: string; count: number }
 export interface CornerEffect { feePct: number; popularity: number; target: ComboTarget; tagMult: number; photo: number }
 export interface CornerDef {
   id: string;
   name: string;
-  pieces: CornerPiece[];   // 서로 다른 시설 종류 (pieces[0] = 닻)
+  pieces: CornerPiece[];   // 서로 다른 조각 종류 (pieces[0] = 닻)
   radius: number;          // 체비쇼프 (기본 2)
   effect: CornerEffect;
   line: string;            // 완성 장면 대사
   guestLine: string;       // 손님 말풍선
-  hint: string;            // 도감 미완성 힌트 ("돌담 근처에 감귤나무")
+  hint: string;            // 도감 미완성 힌트 ("꽃 옆에 벤치와 불빛")
 }
-/** 완성된 명당: 닻 오브젝트와 조각 id */
-export interface CompletedCorner { id: string; anchorId: string; x: number; y: number; pieceIds: string[] }
+/** 완성된 명당: 닻 오브젝트와 조각 id. tierSteps = 조각들의 업그레이드 단계 합 (올릴수록 효과가 세진다) */
+export interface CompletedCorner { id: string; anchorId: string; x: number; y: number; pieceIds: string[]; tierSteps: number }
 /** 명당 진행 상황 (짓기 「명당」 탭·도감): 조각별 필요/보유 */
 export interface CornerProgress { def: CornerDef; done: boolean; /** 조각은 다 모였는데 공사가 아직 안 끝났다 (안내·진행 표시는 이것도 「다 했다」로 본다) */ building: boolean; anchor: PlacedObject | null; pieces: { type: string; need: number; have: number }[]; missing: CornerPiece[] }
 
@@ -49,13 +53,47 @@ export function cornerDef(id: string): CornerDef {
   if (!c) throw new Error(`unknown corner: ${id}`);
   return c;
 }
-/** 이 시설 종류가 조각인 명당들 */
+
+// ---------- 조각 종류 ----------
+
+/** 조각(종류 키 또는 시설 id)이 이 시설에 맞나 */
+export function pieceMatches(pieceType: string, objectType: string): boolean {
+  return pieceType === objectType || cornerKindOf(objectType) === pieceType;
+}
+/** 조각 이름 (카드·힌트): 종류면 「자리」, 시설 id면 그 시설 이름 */
+export function pieceName(pieceType: string): string {
+  return isCornerKind(pieceType) ? cornerKindName(pieceType) : objectDef(pieceType).name;
+}
+/** 이 조각으로 지을 수 있는 시설 하나 — 열린 것 중 가장 싼 것(없으면 종류에서 가장 싼 것). 짓기 버튼·봇용 */
+export function cornerBuildType(state: GameState, pieceType: string): string | null {
+  if (!isCornerKind(pieceType)) return pieceType;
+  const all = cornerKindTypes(pieceType);
+  const open = all.filter((t) => state.unlocked.objects.includes(t));
+  const pick = (list: string[]) => [...list].sort((a, b) => objectDef(a).cost - objectDef(b).cost || (a < b ? -1 : 1))[0] ?? null;
+  return pick(open) ?? pick(all);
+}
+/** 상태 없이 고르는 조각 대표 시설 (튜토리얼·데이터 검사): 처음부터 열려 있는 것 중 가장 싼 것, 없으면 종류에서 가장 싼 것 */
+export function cornerPieceDefault(pieceType: string): string {
+  if (!isCornerKind(pieceType)) return pieceType;
+  const all = cornerKindTypes(pieceType);
+  const cheapest = (list: string[]) => [...list].sort((a, b) => objectDef(a).cost - objectDef(b).cost || (a < b ? -1 : 1))[0];
+  return cheapest(all.filter((t) => START_OBJECT_IDS.includes(t))) ?? cheapest(all) ?? pieceType;
+}
+/** 이 시설이 조각인 명당들 */
 export function cornersWithPiece(type: string): CornerDef[] {
-  return CORNERS.filter((c) => c.pieces.some((p) => p.type === type));
+  return CORNERS.filter((c) => c.pieces.some((p) => pieceMatches(p.type, type)));
 }
 
-/** 시설 하나가 받는 명당 효과 합산 상한 (trim: 콤보·옛 자리 보너스를 걷어낸 만큼 명당이 그 몫을 받는다) */
-export const CORNER_CAP = { pop: 10, feePct: 14 };
+/** 시설 하나가 받는 명당 효과 합산 상한. 요금은 명당 두 개가 겹쳐도 +30%까지 (총 요금 배수 상한은 fee.ts FEE_MULT_CAP) */
+export const CORNER_CAP = { pop: 10, feePct: 30 };
+/** 조각을 한 단계 올릴 때마다: 요금 +3%p · 입소문 +10%(상한 +50%) — 파라솔·테라스로 올리면 명당이 더 좋아진다 */
+export const CORNER_TIER_FEE_PP = 3;
+export const CORNER_TIER_PCT = 10;
+export const CORNER_TIER_MAX_PCT = 50;
+/** 조각 단계 합 → 입소문 보너스 % */
+export function tierPopPct(steps: number): number {
+  return Math.min(CORNER_TIER_MAX_PCT, steps * CORNER_TIER_PCT);
+}
 /** 명당 만족 가산: 태그가 맞는 명당이 반경 안에 있으면 +5, 전체 대상 명당은 +3 (가장 큰 것 하나) */
 export const CORNER_SATISFACTION = 5;
 export const CORNER_SATISFACTION_ALL = 3;
@@ -64,6 +102,11 @@ export const CORNER_VISIT_WEIGHT = 3;
 export const CORNER_VISITS_PER_DAY = 8;
 /** 명당 완성 보상: 첫 명당 마일리지 +1 */
 export const FIRST_CORNER_TICKETS = 1;
+
+/** 명당 효과가 닿는 것: 손님이 앉아 주문하는 자리와 요금을 받는 시설. 꽃·담 같은 장식은 안 받는다. */
+export function isCornerTarget(def: ObjectDef): boolean {
+  return def.kind === 'seat' || def.fee !== undefined;
+}
 
 // ---------- 거리 ----------
 interface Foot { x: number; y: number; w: number; h: number }
@@ -82,10 +125,15 @@ export function footDist(a: Foot, b: Foot): number {
 function isPiece(state: GameState, o: PlacedObject, building = false): boolean {
   return (building || !o.build) && !!parcelAt(state, o.x, o.y)?.owned;
 }
-/** 조각 후보를 종류별로 (판정 한 번당 한 번 만든다) */
+/** 조각 후보를 종류별·시설별로 (판정 한 번당 한 번 만든다). 시설 하나는 자기 id 칸과 자기 종류 칸에 같이 들어간다. */
 function byType(state: GameState, ignoreId?: string, extra?: PlacedObject, building = false): Map<string, PlacedObject[]> {
   const by = new Map<string, PlacedObject[]>();
-  const add = (o: PlacedObject) => { const arr = by.get(o.type); if (arr) arr.push(o); else by.set(o.type, [o]); };
+  const push = (key: string, o: PlacedObject) => { const arr = by.get(key); if (arr) arr.push(o); else by.set(key, [o]); };
+  const add = (o: PlacedObject) => {
+    push(o.type, o);
+    const kind = cornerKindOf(o.type);
+    if (kind && kind !== o.type) push(kind, o);
+  };
   for (const o of Object.values(state.objects)) if (o.id !== ignoreId && isPiece(state, o, building)) add(o);
   if (extra) add(extra);
   return by;
@@ -109,12 +157,21 @@ function piecesAround(def: CornerDef, anchor: PlacedObject, by: Map<string, Plac
 function isComplete(def: CornerDef, have: number[]): boolean {
   return def.pieces.every((p, i) => (have[i] ?? 0) >= p.count);
 }
+/** 조각들의 업그레이드 단계 합 (야외 테이블 0 · 파라솔 1 · 테라스 2 · 오름 뷰 3) */
+function tierStepsOf(state: GameState, pieceIds: string[], extra?: PlacedObject): number {
+  let steps = 0;
+  for (const id of pieceIds) {
+    const o = state.objects[id] ?? (extra && extra.id === id ? extra : null);
+    if (o) steps += stepIndexOf(o.type);
+  }
+  return steps;
+}
 
 /** 이 명당의 닻 후보 중 처음 완성되는 것 (오브젝트 등록 순 — 결정적) */
-function completedOf(def: CornerDef, by: Map<string, PlacedObject[]>): CompletedCorner | null {
+function completedOf(state: GameState, def: CornerDef, by: Map<string, PlacedObject[]>, extra?: PlacedObject): CompletedCorner | null {
   for (const anchor of by.get(def.pieces[0]!.type) ?? []) {
     const r = piecesAround(def, anchor, by);
-    if (isComplete(def, r.have)) return { id: def.id, anchorId: anchor.id, x: anchor.x, y: anchor.y, pieceIds: r.ids };
+    if (isComplete(def, r.have)) return { id: def.id, anchorId: anchor.id, x: anchor.x, y: anchor.y, pieceIds: r.ids, tierSteps: tierStepsOf(state, r.ids, extra) };
   }
   return null;
 }
@@ -125,7 +182,22 @@ export function completedCorners(state: GameState): CompletedCorner[] {
   return layoutCached(state, CACHE, () => {
     const by = byType(state);
     const out: CompletedCorner[] = [];
-    for (const def of CORNERS) { const c = completedOf(def, by); if (c) out.push(c); }
+    for (const def of CORNERS) { const c = completedOf(state, def, by); if (c) out.push(c); }
+    return out;
+  });
+}
+const SOON_CACHE = new WeakMap<GameState, { key: string; value: CompletedCorner[] }>();
+/** 마지막 조각이 아직 공사 중이라 곧 완성될 명당 (즉시 피드백 — 「내일이면 꽃길 완성」·반투명 팻말) */
+export function pendingCorners(state: GameState): CompletedCorner[] {
+  return layoutCached(state, SOON_CACHE, () => {
+    const done = new Set(completedCorners(state).map((c) => c.id));
+    const by = byType(state, undefined, undefined, true);
+    const out: CompletedCorner[] = [];
+    for (const def of CORNERS) {
+      if (done.has(def.id)) continue;
+      const c = completedOf(state, def, by);
+      if (c) out.push(c);
+    }
     return out;
   });
 }
@@ -177,23 +249,51 @@ export function cornerIfPlaced(state: GameState, type: string, x: number, y: num
   const by = byType(state, ignoreId, ghost, true);
   for (const def of cornersWithPiece(type)) {
     if (done.has(def.id)) continue;
-    const c = completedOf(def, by);
+    const c = completedOf(state, def, by, ghost);
     if (c && c.pieceIds.includes('__ghost')) return def;
   }
   return null;
 }
 
 // ---------- 효과 훅 ----------
+
+/** 조각 단계 보너스를 얹은 이 명당의 효과 (요금은 단계마다 +3%p, 입소문은 단계마다 +10%) */
+export function cornerEffectOf(c: CompletedCorner): { pop: number; feePct: number } {
+  const e = cornerDef(c.id).effect;
+  return {
+    pop: Math.round(e.popularity * (1 + tierPopPct(c.tierSteps) / 100)),
+    feePct: e.feePct + CORNER_TIER_FEE_PP * c.tierSteps,
+  };
+}
+/** 반경 안에 있는 완성 명당들 (입소문은 둘레 전체가 받는다 — 명당이 있는 마당 자체가 소문난다) */
+export function cornersInRange(state: GameState, obj: PlacedObject): CompletedCorner[] {
+  const foot = footOf(obj);
+  return completedCorners(state).filter((c) => {
+    const anchor = state.objects[c.anchorId];
+    return !!anchor && footDist(foot, footOf(anchor)) <= cornerDef(c.id).radius;
+  });
+}
+/** 요금·만족이 닿는 완성 명당들 — 자리·요금 시설만 (장식은 요금을 받지 않으니 0) */
+export function cornersServing(state: GameState, obj: PlacedObject): CompletedCorner[] {
+  return isCornerTarget(objectDef(obj.type)) ? cornersInRange(state, obj) : [];
+}
+/** 이 명당이 돌봐 주는 자리·요금 시설 (카드 「돌봐 주는 자리 n곳」) */
+export function cornerServes(state: GameState, c: CompletedCorner): PlacedObject[] {
+  const anchor = state.objects[c.anchorId];
+  if (!anchor) return [];
+  const foot = footOf(anchor);
+  const r = cornerDef(c.id).radius;
+  return Object.values(state.objects).filter((o) => !o.build && isCornerTarget(objectDef(o.type)) && footDist(foot, footOf(o)) <= r);
+}
+
 /** 시설 하나가 받는 명당 인기·요금 (반경 안 완성 명당 합산, 상한) — compat.rawStats 훅 */
 export function cornerBonusAt(state: GameState, obj: PlacedObject): { pop: number; feePct: number } {
   let pop = 0, feePct = 0;
-  const foot = footOf(obj);
-  for (const c of completedCorners(state)) {
-    const def = cornerDef(c.id);
-    const anchor = state.objects[c.anchorId];
-    if (!anchor || footDist(foot, footOf(anchor)) > def.radius) continue;
-    pop += def.effect.popularity;
-    feePct += def.effect.feePct;
+  const target = isCornerTarget(objectDef(obj.type)); // 요금은 자리·요금 시설만 받는다
+  for (const c of cornersInRange(state, obj)) {
+    const e = cornerEffectOf(c);
+    pop += e.pop;
+    if (target) feePct += e.feePct;
   }
   return { pop: Math.min(CORNER_CAP.pop, pop), feePct: Math.min(CORNER_CAP.feePct, feePct) };
 }
@@ -225,10 +325,28 @@ export function cornerSatisfactionAt(state: GameState, obj: PlacedObject, typeId
   return best;
 }
 
-// ---------- 손님 방문 ----------
+// ---------- 오늘 매출 (명당 팻말 카드) ----------
+
 function todayIndex(state: GameState): number {
   return monthIndex(state.clock) * DAYS_PER_MONTH + (state.clock.day - 1);
 }
+/** 자리·시설이 오늘 번 돈 (guests.ts 주문·이용료 훅). 날이 바뀌면 0부터. */
+export function noteSales(state: GameState, obj: PlacedObject, won: number): void {
+  const day = todayIndex(state);
+  if (!obj.sales || obj.sales.day !== day) obj.sales = { day, won: 0 };
+  obj.sales.won += won;
+}
+export function salesToday(state: GameState, obj: PlacedObject): number {
+  const day = todayIndex(state);
+  return obj.sales && obj.sales.day === day ? obj.sales.won : 0;
+}
+/** 이 명당이 돌봐 주는 자리들이 오늘 번 돈 */
+export function cornerSalesToday(state: GameState, c: CompletedCorner): number {
+  return cornerServes(state, c).reduce((n, o) => n + salesToday(state, o), 0);
+}
+
+// ---------- 손님 방문 ----------
+
 function visitsToday(state: GameState): Record<string, number> {
   const day = todayIndex(state);
   if (!state.cornerVisits || state.cornerVisits.day !== day) state.cornerVisits = { day, counts: {} };
@@ -268,7 +386,9 @@ export function visitCorner(state: GameState, g: Guest, piece: PlacedObject): vo
 }
 
 // ---------- 완성 발견 (도감·연출) ----------
-/** 배치·완공 뒤 (compat.discoverPlacement에서 부른다): 처음 완성한 명당을 도감에 올리고 장면 창·팻말 반짝·메시지 줄. */
+
+/** 배치·완공 뒤 (compat.discoverPlacement에서 부른다): 처음 완성한 명당을 도감에 올리고 장면 창·팻말 반짝·메시지 줄.
+ *  마지막 조각을 놓는 순간(아직 공사 중)엔 「공사가 끝나면 꽃길 완성」 미리 알림을 한 번만 띄운다. */
 export function discoverCorners(state: GameState): void {
   const codex = (state.codex.corners ??= []);
   for (const c of completedCorners(state)) {
@@ -280,8 +400,48 @@ export function discoverCorners(state: GameState): void {
     pushFx(state, { kind: 'corner', id: c.id, x: c.x, y: c.y, tick: state.tick });
     if (codex.length === 1) addTickets(state, FIRST_CORNER_TICKETS, '첫 명당');
   }
+  const seen = new Set(state.cornerSoon ?? []);
+  const soon = pendingCorners(state);
+  for (const c of soon) if (!seen.has(c.id)) pushNotice(state, `공사가 끝나면 ${cornerDef(c.id).name} 완성`);
+  state.cornerSoon = soon.map((c) => c.id);
 }
-/** 도감에 오른(한 번이라도 만든) 명당 수 — 목표·도전 corners(n) */
+
+// ---------- 카드 문구 ----------
+
+/** 자리 카드 한 줄: "명당 꽃길 옆 · 요금 +5% · 만족 +5". 효과가 안 닿으면 null. */
+export function cornerSeatLine(state: GameState, obj: PlacedObject): string | null {
+  const serving = cornersServing(state, obj);
+  if (serving.length === 0) return null;
+  const bonus = cornerBonusAt(state, obj);
+  const sat = Math.max(...serving.map((c) => (cornerDef(c.id).effect.target === 'all' ? CORNER_SATISFACTION_ALL : CORNER_SATISFACTION)));
+  const names = serving.map((c) => cornerDef(c.id).name).join('·');
+  return `명당 ${names} 옆 · 요금 +${bonus.feePct}% · 만족 +${sat}`;
+}
+/** 명당 조각 카드 한 줄: "이 명당이 돌봐 주는 자리 3곳 · 오늘 이 자리들 매출 ₩12만" */
+export function cornerAnchorLine(state: GameState, objId: string): { name: string; seats: number; sales: number } | null {
+  const c = cornerOfPiece(state, objId);
+  if (!c) return null;
+  return { name: cornerDef(c.id).name, seats: cornerServes(state, c).length, sales: cornerSalesToday(state, c) };
+}
+/** (x, y)로 옮기면 명당이 깨지나 — 배치 바 경고 한 줄 */
+export function cornerMoveWarning(state: GameState, objId: string, x: number, y: number): string | null {
+  const c = cornerOfPiece(state, objId);
+  if (!c) return null;
+  const obj = state.objects[objId];
+  if (!obj || (obj.x === x && obj.y === y)) return null;
+  const moved: PlacedObject = { ...obj, x, y };
+  const def = cornerDef(c.id);
+  return completedOf(state, def, byType(state, objId, moved), moved) ? null : `옮기면 ${josa(def.name, '이/가')} 깨져요`;
+}
+/** 치우거나 옮기면 명당이 깨지나 — 깨지면 경고 한 줄, 아니면 null */
+export function cornerBreakWarning(state: GameState, objId: string): string | null {
+  const c = cornerOfPiece(state, objId);
+  if (!c) return null;
+  const def = cornerDef(c.id);
+  if (completedOf(state, def, byType(state, objId))) return null; // 다른 조각이 대신 선다
+  return `치우면 ${josa(def.name, '이/가')} 깨져요`;
+}
+
 /** 손님 요청(트랙 G tagCorner)용 명당 태그: photo = 사진 확률 ≥ 0.6, rest = 쉬는 명당 */
 const REST_CORNERS = new Set(['corner_haenyeo_rest', 'corner_spring_rest', 'corner_rainy_eaves', 'corner_hackberry_shade', 'corner_cedar_walk', 'corner_reading_garden']);
 export function cornerTags(id: string): string[] {
@@ -293,6 +453,7 @@ export function cornerTags(id: string): string[] {
   return tags;
 }
 
+/** 도감에 오른(한 번이라도 만든) 명당 수 — 목표·도전 corners(n) */
 export function cornersMade(state: GameState): number {
   return state.codex.corners?.length ?? 0;
 }
