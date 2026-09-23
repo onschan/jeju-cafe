@@ -236,6 +236,8 @@ export function BoardPanel({ tabs = ['quests', 'events', 'spots'], onContest }: 
       {tab === 'spots' && (
         <div>
           <div style={{ fontSize: 13, color: PALETTE.inkSoft, marginBottom: 4 }}>매력도 합 {spotAppeal(s)} · 방문객 하루 {fmtNum(totalDailyVisitors(s))}명(누적 {fmtNum(totalSpotVisitors(s))}) · 하루 손님 +{spotGuestBonus(s)} · 응모권 {s.tickets}</div>
+          {/* ui3: 명소는 마당 밖이라 올렛길 연결과 무관하다 — 맵 위 시설과 헷갈리지 않게 한 줄 */}
+          <div data-testid="spots-note" style={{ fontSize: 13, color: PALETTE.inkSoft, marginBottom: 6 }}><Icon name="map" size={13} /> 명소는 마을 밖이라 올렛길과 상관없어요 — 투자만 해도 손님이 늘어요</div>
               <div style={{ display: 'flex', flexWrap: 'wrap', marginBottom: 4 }}>
             {SPOT_TABS.map((t) => (
               <button key={t.id} style={{ ...(cat === t.id ? brownBtnOn : brownBtn), padding: '0 8px', fontSize: 13 }} onClick={() => setCat(t.id)}>{t.label}</button>
