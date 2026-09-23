@@ -3,7 +3,7 @@ import { X, Y } from './helpers.ts';
 import { createInitialState } from '../state.ts';
 import { apply } from '../actions.ts';
 import { setSlot } from '../menu.ts';
-import { tick } from '../tick.ts';
+import { tick, STEP_MS } from '../tick.ts';
 import { LOAN_MAX } from '../failure.ts';
 import { DAY_MS } from '../clock.ts';
 import { dailyGuestCount } from '../guests.ts';
@@ -62,7 +62,7 @@ test('speed 3이면 같은 실시간에 3배 스텝', () => {
   const s = cafe();
   apply(s, { type: 'setSpeed', speed: 3 });
   tick(s, 1000);
-  expect(s.tick).toBe(30);
+  expect(s.tick).toBe((1000 * 3) / STEP_MS); // STEP_MS는 HOUR_MS에 묶여 있다 (게임 시간 3분)
 });
 
 test('speed 0이면 손님도 안 움직인다', () => {

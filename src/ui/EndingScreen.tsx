@@ -11,7 +11,7 @@ import { HAIR_RGB, TOP_RGB, staffParts, type CharacterParts } from '../render/ch
 import { sfx } from './audio';
 import { assetUrl } from './assetUrl';
 
-/** 엔딩 장면: state.alerts 맨 앞이 { type: 'ending' }(10년차 3월 1일)이면 전체 화면.
+/** 엔딩 장면: state.alerts 맨 앞이 { type: 'ending' }(5년차 3월 1일)이면 전체 화면.
  *  ① 컷: 카페 스프라이트 + 직원 파츠 캐릭터 줄지어 + 할망·삼춘·나 대사 3줄(탭해서 넘김) → ② 최종 점수 카드(항목 9·총점·칭호·최고 점수 갱신) →
  *  버튼 「계속하기」(그대로 이어서, 4배속 해금) / 「이월해서 새로 시작」(이월 6종) / 「타이틀로」.
  *  결산 카드(lastMonthCard)·가이드북 발표가 떠 있는 동안은 미룬다 (결산 → 발표 → 엔딩). */

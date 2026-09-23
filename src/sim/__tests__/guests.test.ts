@@ -6,7 +6,7 @@ import { apply } from '../actions.ts';
 import { setSlot } from '../menu.ts';
 import { spawnGuests, updateGuests, gateSatisfaction, countGatesOn, GATE_SATISFACTION_MAX, freeSeats, hasReachableSeat, dailyGuestCount, popularityGuestBase, popularitySum, facilityPopularitySum, resetWaiting, totalSeats, hourShare, typeWeight, GUEST_SPEED_CELLS_PER_S, SEAT_MS, PREP_MS, MAX_GUESTS, MIN_DAILY_GUESTS, MAX_DAILY_GUESTS, GUESTS_PER_SEAT, BASE_DAILY_GUESTS, POP_SUM_PER_GUEST, FACILITY_POP_PER_GUEST, WAIT_MAX, SEASON_GUEST_MULT, seatsNeeded, uncappedDailyGuests, PROMO_POP_PER_SLOT } from '../guests.ts';
 import { moveAlong } from '../path.ts';
-import { tick } from '../tick.ts';
+import { tick, STEP_MS } from '../tick.ts';
 import { HOUR_MS, START_HOUR, END_HOUR } from '../clock.ts';
 import { guestDialogue } from '../../data/index.ts';
 import menusJson from '../../data/menus.json' with { type: 'json' };
@@ -116,9 +116,10 @@ test('moveAlong은 path.ts에 살고 guests.ts는 재수출한다', async () => 
   const guests = await import('../guests.ts');
   expect(guests.moveAlong).toBe(moveAlong);
   const g = { x: X(0), y: Y(0), path: [{ x: X(1), y: Y(0) }, { x: X(1), y: Y(1) }] };
-  expect(moveAlong(g, 500)).toBe(false); // 1.5칸
+  const ms15 = 1500 / GUEST_SPEED_CELLS_PER_S; // 1.5칸을 걷는 시간 (속도는 HOUR_MS에 묶여 있다)
+  expect(moveAlong(g, ms15)).toBe(false); // 1.5칸
   expect(g).toMatchObject({ x: X(1), y: Y(0) + 0.5 });
-  expect(moveAlong(g, 500)).toBe(true);
+  expect(moveAlong(g, ms15)).toBe(true);
   expect(g.path).toEqual([]);
 });
 
@@ -134,13 +135,13 @@ test('happy이면 연구 진행 +1(5명마다 연구 1), 게이지가 타입 방
   expect(s.popularity).toBe(-2);
 });
 
-test('100ms 스텝으로도 17스텝째에 정확히 자리에 도착한다', () => {
+test('고정 스텝으로도 17스텝째에 정확히 자리에 도착한다', () => {
   const { s, seat } = cafe();
   spawnGuests(s, 1);
   const g = s.guests[0]!;
-  for (let i = 0; i < 16; i++) updateGuests(s, 100);
+  for (let i = 0; i < 16; i++) updateGuests(s, STEP_MS);
   expect(g.phase).toBe('walking');
-  updateGuests(s, 100);
+  updateGuests(s, STEP_MS);
   expect(g.phase).toBe('seated');
   expect(g.approachCell).toEqual({ x: X(4), y: Y(6) });
   expect([Math.round(g.x), Math.round(g.y)]).toEqual([seat.x, seat.y]);

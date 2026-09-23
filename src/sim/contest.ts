@@ -37,7 +37,7 @@ export const CONTEST_DAY = 1;
 export const SIGNUP_DAYS = 7;
 /** 해금 등급 — 그 전엔 대회 창이 보이지 않는다 */
 export const CONTEST_GRADE = REVEAL_GRADE;
-/** 기록 보관 회차 (6년치) */
+/** 기록 보관 회차 (한 판 8회차 + 계속하기 몫) */
 export const CONTEST_HISTORY_CAP = 12;
 
 export const JUDGE_KEYS: ContestJudge[] = ['taste', 'aroma', 'look', 'story'];
@@ -108,10 +108,10 @@ export const LOSE_ENERGY = 15;
 
 /** 상대 3명: 기준 점수 = 32 + 등급×5 + 회차수×1.5, 2·3번째는 −12·−24, 각각 ±6.
  *  수치는 video-patch §3.1의 「50 + 등급×8 + 회차×2」를 우리 점수 눈금에 맞춰 다시 잰 값이다(문서도 미검증 추정이라 적어 뒀다).
- *  목표: 등급 3 첫 회차에 **연수·칭호·자급 없이 나간 카페는 2~3위**, **키워서 나간 카페는 1위**. 등급 5 후반엔 상대 1위가 80대라 계속 겨룬다. */
+ *  목표: 등급 3 첫 회차에 **연수·칭호·자급 없이 나간 카페는 2~3위**, **키워서 나간 카페는 1위**. 등급 5 후반(5년차)엔 상대 1위가 80대라 계속 겨룬다. */
 export const RIVAL_BASE = 32;
 export const RIVAL_PER_GRADE = 5;
-export const RIVAL_PER_ROUND = 1.5;
+export const RIVAL_PER_ROUND = 3.5; // pace: 한 판이 8회차(옛 20회차)라 1.5면 끝까지 상대가 약하다 — 5년차 마지막 회차에 옛 10년차와 같은 80대가 되게
 export const RIVAL_STEP = 12;
 export const RIVAL_NOISE = 6;
 export const RIVAL_COUNT = 3;
