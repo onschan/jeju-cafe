@@ -15,7 +15,8 @@ export function rectCells(r: Rect): { x: number; y: number }[] {
   return out;
 }
 
-/** 사각형에 발자국이 걸치는 철거 가능한 시설 id (본관·정류장·진입점 제외, 손님이 앉았거나 지나가는 시설도 제외 — 하나 때문에 일괄 철거가 통째로 막히지 않게) */
+/** 사각형에 발자국이 걸치는 철거 가능한 시설 id (본관·정류장·진입점 제외).
+ *  seatfix: 손님이 앉았거나 지나가는 시설도 고른다 — 지금 못 치우는 것은 철거 예약이 걸려 자리가 비면 자동으로 치워진다. */
 export function demolishTargets(s: GameState, r: Rect): string[] {
   const cells = new Set(rectCells(r).map((c) => `${c.x},${c.y}`));
   const ids: string[] = [];
@@ -23,10 +24,14 @@ export function demolishTargets(s: GameState, r: Rect): string[] {
     const d = objectDef(o.type);
     if (PROTECTED_TYPES.has(o.type) || NO_DEMOLISH_KINDS.has(d.kind)) continue;
     if (!footprint(o.type, o.x, o.y).some((p) => cells.has(`${p.x},${p.y}`))) continue;
-    if (!canDisturb(s, o).ok) continue;
     ids.push(o.id);
   }
   return ids;
+}
+
+/** 그중 지금 당장은 못 치워 예약만 걸리는 시설 수 (배치 바 안내용) */
+export function reservedCount(s: GameState, ids: string[]): number {
+  return ids.filter((id) => { const o = s.objects[id]; return !!o && !canDisturb(s, o).ok; }).length;
 }
 
 /** 연속 배치: 한 개를 놓은 뒤 다음 고스트. 돈이 모자라면 종료(reason), 옆 칸이 비어 있으면 그리로, 아니면 제자리(빨간 고스트로 남아 끌어서 옮긴다). */

@@ -3,7 +3,8 @@ import { wonText } from '../data/labels.ts';
 import { josa } from '../sim/josa.ts';
 import { useGame, dispatch, showMessage } from './store';
 import { parcelFeature } from '../sim/index.ts'; // fun-rank: 필지 특징·"사면 생기는 것"
-import { nightSeatLine, objectStats, siteOf, siteLineText, cellAt, walletOf, guestFace, namedGuestFace, canAcceptQuest, parcelPrice, canBuyParcel, canGiveGift, giftFits, giftCount, giftedToday, PROTECTED_TYPES, ROTATABLE_TYPES, LOW_ENERGY, STAT_KEYS, STAT_NAME, staffInRole, canLevelUp, capOf, skillsOf, expNeeded, isUpgradable, canUpgrade, upgradeCost, upgradeConditionText, MAX_OBJECT_LEVEL, canRepair, repairCost, CLEAN_LOW, type GameState, type Guest, type RoleId, type StatKey } from '../sim/index.ts';
+import { nightSeatLine, objectStats, siteOf, siteLineText, cellAt, walletOf, guestFace, namedGuestFace, canAcceptQuest, parcelPrice, canBuyParcel, canGiveGift, giftFits, giftCount, giftedToday, PROTECTED_TYPES, ROTATABLE_TYPES, LOW_ENERGY, STAT_KEYS, STAT_NAME, staffInRole, canLevelUp, capOf, skillsOf, expNeeded, isUpgradable, canUpgrade, upgradeCost, upgradeConditionText, MAX_OBJECT_LEVEL, canRepair, repairCost, CLEAN_LOW, type GameState, type Guest, type PlacedObject, type RoleId, type StatKey } from '../sim/index.ts';
+import { guestBlock, vacateWarning, WORK_NAME } from '../sim/index.ts'; // seatfix: 손님이 앉은 시설 예약·「지금 바로」
 import { RouteCard } from './RouteCard';
 import { TreeUpgradeRow } from './TreeUpgrade'; // fun: 같은 자리 업그레이드 트리
 import { treeOf } from '../sim/index.ts';
@@ -29,9 +30,9 @@ import { LOOK_TEXT, type LookId } from '../sim/index.ts';
 
 /** 맵에서 탭한 대상. 스펙 §1.2 표. */
 export type CardTarget =
-  | { kind: 'guest'; id: string }
+  | { kind: 'guest'; id: string; objectId?: string }   // seatfix: 손님이 앉아 있는 시설 — 카드 위 칩으로 오간다
   | { kind: 'staff'; id: string }
-  | { kind: 'object'; id: string }
+  | { kind: 'object'; id: string; guestId?: string }   // seatfix: 이 시설 위에 있는 손님
   | { kind: 'empty'; x: number; y: number }
   | { kind: 'parcel'; id: string }
   | { kind: 'busstop'; id: string }
@@ -121,6 +122,43 @@ function Row({ children }: { children: ReactNode }) {
   return <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>{children}</div>;
 }
 
+/** seatfix: 손님이 앉은 시설을 탭하면 「시설 / 손님」 두 칩으로 같은 자리에서 둘 다 본다 (더블탭은 모바일에서 느려 안 쓴다) */
+const chip: CSSProperties = { ...brownBtn, margin: 0, padding: '0 10px', fontSize: 14, minHeight: 36, flex: 1 };
+const chipOn: CSSProperties = { ...brownBtnOn, margin: 0, padding: '0 10px', fontSize: 14, minHeight: 36, flex: 1 };
+function SeatChips({ on, objectId, guestId, a }: { on: 'object' | 'guest'; objectId: string; guestId: string; a: CardActions }) {
+  return (
+    <div data-testid="seat-chips" style={{ display: 'flex', gap: 6, marginBottom: 6 }}>
+      <button style={on === 'object' ? chipOn : chip} aria-pressed={on === 'object'} data-testid="chip-object"
+        onClick={() => a.onSelect({ kind: 'object', id: objectId, guestId })}><Icon name="chair" /> 시설</button>
+      <button style={on === 'guest' ? chipOn : chip} aria-pressed={on === 'guest'} data-testid="chip-guest"
+        onClick={() => a.onSelect({ kind: 'guest', id: guestId, objectId })}><Icon name="guest" /> 손님</button>
+    </div>
+  );
+}
+
+/** seatfix: 예약 줄 — 「예약됨 · 지금 바로 · 취소」. 손님이 다 떠나면 sim이 알아서 실행한다. */
+function PendingRow({ s, o, onClose }: { s: GameState; o: PlacedObject; onClose: () => void }) {
+  const p = o.pending!;
+  const warn = vacateWarning(s, o);
+  const gone = p.kind === 'remove';
+  const now = () => {
+    const r = dispatch({ type: 'doWorkNow', objectId: o.id });
+    if (!r.ok) { showMessage(r.reason ?? '지금은 못 해요'); return; }
+    showMessage(warn ? '손님이 돌아갔어요' : '손님을 다른 자리로 옮겼어요');
+    if (gone) onClose();
+  };
+  return (
+    <div data-testid="pending-row" style={{ marginTop: 6 }}>
+      <div style={{ fontSize: 14, fontWeight: 700, color: PALETTE.title }}><Icon name="clock" size={14} /> 예약됨 · {WORK_NAME[p.kind]}</div>
+      <div style={small}>손님이 일어나면 바로 해요{warn ? ` · ${warn}` : ''}</div>
+      <Row>
+        <button style={btnOn} data-testid="pending-now" onClick={now}>지금 바로</button>
+        <button style={btn} data-testid="pending-cancel" onClick={() => dispatch({ type: 'cancelWork', objectId: o.id })}>취소</button>
+      </Row>
+    </div>
+  );
+}
+
 /** 손님 카드 반응 표정(놀람·웃음)이 평소 얼굴로 돌아가는 시간 */
 const REACT_EXPR_MS = 3000;
 /** 단골 게이지 하트 5칸 (fun-guest §4): 찬 칸은 진하게, 빈 칸은 흐리게 */
@@ -133,7 +171,7 @@ export function Hearts({ n, max = GAUGE_MAX }: { n: number; max?: number }) {
 }
 
 /** 손님 카드 (fun-guest §4): 큰 얼굴 96px + 이름, 선택지 3개(인사·추천·선물)를 누르면 바로 말풍선·표정·하트/땀. 요청 줄 + 들어주기 힌트, 단골 하트 5칸. */
-function GuestCard({ s, id, a }: { s: GameState; id: string; a: CardActions }) {
+function GuestCard({ s, id, a, objectId }: { s: GameState; id: string; a: CardActions; objectId?: string }) {
   const [picking, setPicking] = useState(false);
   const [recommending, setRecommending] = useState(false);
   const [expr, setExpr] = useState<'normal' | 'happy' | 'surprised'>('normal');
@@ -172,6 +210,7 @@ function GuestCard({ s, id, a }: { s: GameState; id: string; a: CardActions }) {
   const cycle = (dir: -1 | 1) => { const n = all[(idx + dir + all.length) % all.length]; if (n) a.onSelect({ kind: 'guest', id: n.id }); };
   return (
     <div data-testid="card-guest">
+      {objectId && s.objects[objectId] && <SeatChips on="guest" objectId={objectId} guestId={g.id} a={a} />}
       <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
         <Portrait parts={parts} face={nd ? namedGuestFace(nd) : face} size={96} expr={portraitExpr} />
         <div style={{ flex: 1, minWidth: 0, fontSize: 14, lineHeight: 1.5 }}>
@@ -277,7 +316,7 @@ function StaffCard({ s, id, a }: { s: GameState; id: string; a: CardActions }) {
   );
 }
 
-function ObjectCard({ s, id, a, onClose }: { s: GameState; id: string; a: CardActions; onClose: () => void }) {
+function ObjectCard({ s, id, a, onClose, guestId }: { s: GameState; id: string; a: CardActions; onClose: () => void; guestId?: string }) {
   const [renaming, setRenaming] = useState(false);
   const o = s.objects[id];
   if (!o) return <div style={small}>없어진 시설이에요</div>;
@@ -289,9 +328,19 @@ function ObjectCard({ s, id, a, onClose }: { s: GameState; id: string; a: CardAc
   const canBuildSame = s.unlocked.objects.includes(o.type) && !PROTECTED_TYPES.has(o.type);
   const st = objectStats(s, o.id);
   const protectedType = PROTECTED_TYPES.has(o.type);
+  // seatfix: 손님이 앉았거나 지나가는 중이면 버튼을 끄지 않고 예약을 건다 (자리가 비면 sim이 그 즉시 실행)
+  const blocked = guestBlock(s, o);
+  const reserve = (work: 'remove' | 'upgrade') => {
+    if (!dispatch({ type: 'reserveWork', objectId: o.id, work }).ok) return false;
+    showMessage(work === 'remove' ? '손님이 일어나면 치울게요' : '손님이 일어나면 증축할게요');
+    return true;
+  };
   /** ease: 철거는 확인 팝업 없이 바로 — 되돌리기 1회가 보호한다 (₩100만 이상 철거 비용이 드는 것만 확인) */
   const remove = () => {
-    const go = () => { const r = dispatch({ type: 'remove', objectId: o.id }); if (r.ok) { showMessage(`${josa(d.name, '을/를')} 치웠어요${d.removeCost ? '' : ` · ${wonText(d.cost)} 돌려받음`} (↶ 되돌리기 가능)`); onClose(); } else showMessage(r.reason ?? '지금은 못 치워요'); };
+    const go = () => {
+      if (blocked && reserve('remove')) return;
+      const r = dispatch({ type: 'remove', objectId: o.id }); if (r.ok) { showMessage(`${josa(d.name, '을/를')} 치웠어요${d.removeCost ? '' : ` · ${wonText(d.cost)} 돌려받음`} (↶ 되돌리기 가능)`); onClose(); } else showMessage(r.reason ?? '지금은 못 치워요');
+    };
     if ((d.removeCost ?? 0) >= CONFIRM_MIN_COST) Confirm(`${josa(d.name, '을/를')} ${wonText(d.removeCost!)} 들여 치울까요?`, go, { title: '철거' });
     else go();
   };
@@ -299,11 +348,12 @@ function ObjectCard({ s, id, a, onClose }: { s: GameState; id: string; a: CardAc
   const upgradable = isUpgradable(d) && st.level < MAX_OBJECT_LEVEL && !treeOf(o.type); // fun: 트리에 있는 시설은 「업그레이드 ▲」가 대신한다
   const up = upgradable ? canUpgrade(s, o.id, st.popularity) : { ok: false, reason: '' };
   const upCost = upgradable ? upgradeCost(s, o) : 0;
-  const doUpgrade = () => Confirm(`${josa(d.name, '을/를')} Lv${st.level + 1}로 증축할까요? ${wonText(upCost)}${(d.buildDays ?? 0) > 0 ? ` · 공사 ${d.buildDays}일(이용 불가)` : ''}`, () => { dispatch({ type: 'upgradeObject', objectId: o.id }); }, { title: '증축' });
+  const doUpgrade = () => Confirm(`${josa(d.name, '을/를')} Lv${st.level + 1}로 증축할까요? ${wonText(upCost)}${(d.buildDays ?? 0) > 0 ? ` · 공사 ${d.buildDays}일(이용 불가)` : ''}`, () => { if (blocked && reserve('upgrade')) return; dispatch({ type: 'upgradeObject', objectId: o.id }); }, { title: '증축' });
   const rep = canRepair(s, o.id);
   const clean = Math.round(s.clean.value);
   return (
     <div data-testid="card-object">
+      {guestId && s.guests.some((g) => g.id === guestId) && <SeatChips on="object" objectId={o.id} guestId={guestId} a={a} />}
       {o.type === 'spring' && <Hint id="spring" />}
       {o.type === 'gate' && <Hint id="gate" />}{/* w-free: 정낭은 일반 시설 카드(이동·회전·철거·같은 것 더) + 둘러보기 힌트 */}
       <div style={{ fontSize: 14, lineHeight: 1.5 }}>
@@ -338,6 +388,9 @@ function ObjectCard({ s, id, a, onClose }: { s: GameState; id: string; a: CardAc
         <button style={btn} onClick={() => a.onObjectDetail(o.id)}>자세히</button>
       </Row>
       {upgradable && !up.ok && up.reason && <div style={{ ...small, marginTop: 4 }}>증축 조건: {upgradeConditionText(o, d)}</div>}
+      {o.pending
+        ? <PendingRow s={s} o={o} onClose={onClose} />
+        : blocked && !protectedType && <div style={{ ...small, marginTop: 4 }} data-testid="busy-line">{blocked} · 눌러 두면 일어날 때 해 드려요</div>}
       {renaming && <RenamePopup objectId={o.id} current={o.name ?? ''} onClose={() => setRenaming(false)} />}
     </div>
   );
@@ -481,9 +534,9 @@ export function MiniCard({ target, actions, onClose }: { target: CardTarget; act
   const s = useGame();
   let body: ReactNode;
   switch (target.kind) {
-    case 'guest': body = <GuestCard s={s} id={target.id} a={actions} />; break;
+    case 'guest': body = <GuestCard s={s} id={target.id} a={actions} objectId={target.objectId} />; break;
     case 'staff': body = <StaffCard s={s} id={target.id} a={actions} />; break;
-    case 'object': body = <ObjectCard s={s} id={target.id} a={actions} onClose={onClose} />; break;
+    case 'object': body = <ObjectCard s={s} id={target.id} a={actions} onClose={onClose} guestId={target.guestId} />; break;
     case 'empty': body = <EmptyCard s={s} x={target.x} y={target.y} a={actions} />; break;
     case 'parcel': body = <ParcelCard s={s} id={target.id} onClose={onClose} />; break;
     case 'busstop': body = <BusStopCard s={s} id={target.id} />; break;
