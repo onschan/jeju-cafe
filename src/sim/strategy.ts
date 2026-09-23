@@ -6,7 +6,9 @@
  * 있으면 그 점수순으로 다시 세운다. 결과가 없으면 휴리스틱 순서 그대로(동기·렌더 경로에서 롤아웃을 돌리지 않는다). nextMove도 결과가 있으면 solver 1위 수를 낸다.
  *
  * - bestMainCell     본관 원점: 바람 최소 → 정낭(정류장)과 문 앞 거리 최소 (tutorial.recommendedMainCells와 같은 순서)
- * - bestSeatCells    야외 테이블: 정류장에서 걸어 닿는 길 옆 빈 칸 중 seatScore(입지 0~10) 최고 → 문 앞과 가까운 순
+ * - bestSeatCells    야외 테이블: 정류장에서 **걷는 칸 수**가 적은 순 (자리 점수 1점 = 걷는 칸 SEAT_SCORE_CELLS칸으로 상계) → 문 앞과 가까운 순.
+ *                    verify(2026-09-24): 시작 필지는 전망·그늘이 거의 없어 자리 점수가 0~1뿐이고, 30일 롤아웃 1위와 꼴찌를 가르는 것은 동선이었다
+ *                    (평판 −1 vs −32 · 30일 매출 ₩712,000 vs ₩560,000). 옛 순서(자리 점수 우선)는 꼴찌 칸을 1위로 내놓았다.
  * - bestWallCells    돌담: 테이블 북서 쐐기(site.ts windOf와 같은 띠) 빈 칸 중 가리는 테이블 수 최다 → 테이블과 가까운 순
  * - bestCornerCells  감귤나무 등: 놓으면 명당(corners.ts) 조각이 가장 많이 모이는 빈 칸 (완성되면 크게 친다)
  * - bestIndoorSeats  실내 테이블: 본관 빈 바닥 중 벽에 붙은 창가(북쪽 벽 우선) → 입지 점수 순
@@ -19,6 +21,7 @@ import type { GameState, Pt, PlacedObject, RoleId } from './types.ts';
 import { objectDef, SPOTS } from '../data/index.ts';
 import { CORNERS, cornersWithPiece, cornerIfPlaced } from './corners.ts';
 import { siteOf, seatScore, FEE_PER_VIEW, SAT_SHADE_SUMMER } from './site.ts';
+import { seasonOf } from './clock.ts';
 import { canPlace, cellAt, objectAt, doorFrontOf, footprint } from './grid.ts';
 import { parcelAt } from './parcels.ts';
 import { reachMap, busStopPos, cellKey, walkableNeighborsOf, isDoorReachable } from './path.ts';
@@ -91,25 +94,36 @@ export function bestMainCell(s: GameState): Pt | null {
 
 // ---------- 야외 테이블 ----------
 
-/** 손님이 앉을 수 있는 칸인가: 4방향 이웃 중 정류장에서 걸어 닿는 걷기 칸이 있다 (guests.ts와 같은 규칙) */
-function seatReachable(s: GameState, reach: ReturnType<typeof reachMap>, x: number, y: number): boolean {
-  return walkableNeighborsOf(s, x, y).some((nb) => reach.dist.has(cellKey(s, nb)));
+/** 손님이 들어오는 칸(정류장)에서 이 칸까지 걸어야 하는 칸 수. 걸어 닿지 않으면 Infinity (= 손님이 못 앉는 칸). */
+export function walkFromEntry(s: GameState, reach: ReturnType<typeof reachMap>, x: number, y: number): number {
+  let best = Infinity;
+  for (const nb of walkableNeighborsOf(s, x, y)) {
+    const d = reach.dist.get(cellKey(s, nb));
+    if (d !== undefined && d < best) best = d;
+  }
+  return best;
 }
-/** 야외 테이블 최적 칸 n개 (좋은 순): 걸어 닿는 빈 흙 칸 중 seatScore 최고 → 문 앞(없으면 정류장)과 가까운 순. 닿는 칸이 없으면(길이 아직 없다) 길·마을 길 옆 빈 칸으로 대신한다. */
+/** 자리 점수 1점을 걷는 칸 몇 칸어치로 보나. 전망 1점 = 요금 +4%, 걷는 칸 1칸 ≈ 그만큼의 회전율 — verify 표에서 둘이 비슷했다. */
+export const SEAT_SCORE_CELLS = 1;
+/** 야외 테이블 후보 칸 n개 (좋아 보이는 순): 걸어 닿는 빈 흙 칸 중 「걷는 칸 − 자리 점수」가 작은 순 → 자리 점수 → 문 앞과 가까운 순.
+ *  순위를 확정하는 것은 롤아웃(bestSeatCells)이고 이 함수는 롤아웃이 볼 후보를 고르는 데 쓴다. */
 export function bestSeatCellsHeuristic(s: GameState, n = 3, type = SEAT_TYPE): Pt[] {
   const reach = reachMap(s, busStopPos(s));
   const anchor = doorFront(s) ?? busStopPos(s);
-  const scored: { p: Pt; score: number; d: number }[] = [];
+  const scored: { p: Pt; cost: number; score: number; d: number }[] = [];
   for (const p of ownedEmptyCells(s)) {
-    if (!canPlace(s, type, p.x, p.y).ok || !seatReachable(s, reach, p.x, p.y)) continue;
-    scored.push({ p, score: seatScore(s, p.x, p.y), d: cheb(p, anchor) });
+    if (!canPlace(s, type, p.x, p.y).ok) continue;
+    const walk = walkFromEntry(s, reach, p.x, p.y);
+    if (!Number.isFinite(walk)) continue; // 손님이 걸어 닿지 않는 칸은 자리가 아니다
+    const score = seatScore(s, p.x, p.y);
+    scored.push({ p, cost: walk - score * SEAT_SCORE_CELLS, score, d: cheb(p, anchor) });
   }
-  scored.sort((a, b) => b.score - a.score || a.d - b.d || byPos(a.p, b.p));
+  scored.sort((a, b) => a.cost - b.cost || b.score - a.score || a.d - b.d || byPos(a.p, b.p));
   return scored.slice(0, n).map((o) => o.p);
 }
-/** solver 후보 칸 수 (solver.ts candidateActions와 같은 k: 좌석 5·그 밖 3) */
-export const SOLVER_SEAT_K = 5;
-export const SOLVER_CELL_K = 3;
+/** solver 후보 칸 수 (solver.ts candidateActions와 같은 k). verify(2026-09-24): 좌석 5칸만 보면 롤아웃이 좋은 칸을 아예 못 본다 — 창을 넓혔다. */
+export const SOLVER_SEAT_K = 10;
+export const SOLVER_CELL_K = 6;
 /** 야외 테이블 최적 칸 n개: 휴리스틱 상위 후보를 solver 롤아웃 점수(캐시)로 다시 세운 것. 캐시가 없으면 휴리스틱 순서. */
 export function bestSeatCells(s: GameState, n = 3, type = SEAT_TYPE): Pt[] {
   return rankCellsByCache(s, type, bestSeatCellsHeuristic(s, Math.max(n, SOLVER_SEAT_K), type)).slice(0, n);
@@ -174,20 +188,22 @@ export function cornerScoreIfPlaced(s: GameState, type: string, x: number, y: nu
   }
   return best;
 }
-/** 명당 최적 칸 n개: 빈 흙 칸 중 명당 점수 최다(1 이상) → 야외 테이블과 가까운 순. 점수가 나는 칸이 없으면 테이블 옆 빈 칸. */
+/** 명당 후보 칸 n개: 빈 흙 칸 중 명당 점수 최다(1 이상) → 야외 테이블과 가까운 순.
+ *  조각이 하나도 안 모이는 상태(=명당 점수 0뿐)면 **자리 점수가 높은 칸**을 넓게 준다 — verify(2026-09-24): 「테이블 옆 한 칸」으로 좁히면
+ *  30일 롤아웃 1위 칸(자리 점수 1)이 후보에 아예 안 들어와 추천이 14위였다. */
 export function bestCornerCellsHeuristic(s: GameState, type = TREE_TYPE, n = 3): Pt[] {
   const seats = outdoorSeats(s);
   const near = (p: Pt) => (seats.length ? Math.min(...seats.map((t) => cheb(t, p))) : 0);
-  const scored: { p: Pt; n: number; d: number }[] = [];
+  const scored: { p: Pt; n: number; d: number; site: number }[] = [];
   for (const p of ownedEmptyCells(s)) {
     if (!canPlace(s, type, p.x, p.y).ok) continue;
-    scored.push({ p, n: cornerScoreIfPlaced(s, type, p.x, p.y), d: near(p) });
+    scored.push({ p, n: cornerScoreIfPlaced(s, type, p.x, p.y), d: near(p), site: seatScore(s, p.x, p.y) });
   }
   scored.sort((a, b) => b.n - a.n || a.d - b.d || byPos(a.p, b.p));
   const best = scored[0];
   if (!best) return [];
   if (best.n > 0) return scored.filter((o) => o.n === best.n).slice(0, n).map((o) => o.p);
-  return scored.filter((o) => o.d <= 1).slice(0, n).map((o) => o.p);
+  return [...scored].sort((a, b) => b.site - a.site || a.d - b.d || byPos(a.p, b.p)).slice(0, n).map((o) => o.p);
 }
 export function bestCornerCells(s: GameState, type = TREE_TYPE, n = 3): Pt[] {
   return rankCellsByCache(s, type, bestCornerCellsHeuristic(s, type, Math.max(n, SOLVER_CELL_K))).slice(0, n);
@@ -292,7 +308,7 @@ export function heuristicNextMove(s: GameState): NextMove | null {
   if (seats < 1) return { text: `야외 테이블 하나 — ${seatWhy(s)}`, cells: bestSeatCells(s, 1) };
   if (menus < 2) return { text: '메뉴판에 아메리카노·감귤주스 — 둘이면 문을 열 수 있다', cells: [] };
   if (s.staff.length < 1) return { text: '홀 직원 한 명 — 서빙 기다리는 시간이 반으로 준다', cells: [] };
-  if (!wallSheltered(s)) return { text: '돌담 하나를 테이블 곁에 — 밭담 명당 조각이 된다', cells: bestWallCells(s, 1) };
+  if (!wallSheltered(s)) { const w = bestWallCells(s, 1); if (w.length) return { text: '돌담 하나를 테이블 곁에 — 밭담 명당 조각이 된다', cells: w }; } // 쐐기가 내 필지 밖이면 놓을 칸이 없다 — 같은 줄을 영영 되풀이하지 않는다
   if (s.stats.promotionsDone < 1) return { text: '전단 홍보 한 번 — 타깃 손님층이면 1.5배로 온다', cells: [] };
   if (unlocked(s, TREE_TYPE) && objectsOf(s, TREE_TYPE).length < 1) { const c = bestCornerCells(s, TREE_TYPE, 1); if (c.length) return { text: `감귤나무 한 그루 — 빛나는 칸이면 ${cornerNameForPiece(s, TREE_TYPE)} 조각이 모인다`, cells: c }; }
   if (seats < OPENING_SEATS) return { text: `야외 테이블 ${seats}/${OPENING_SEATS} — 4개면 자리가 없어 돌아가는 손님이 없다`, cells: bestSeatCells(s, 1) };
@@ -330,14 +346,44 @@ export function solverDeltaText(s: GameState, pick: (m: SolverMove) => boolean):
   const m = cachedMoves(s, pick)[0];
   return m ? m.why.split(',')[0]! : '';
 }
-/** 추천 테이블 칸이 왜 좋은지 한 줄 (≤ 14자, 튜토리얼 1단계 `{seatWhy}`·다음 수 문구): 전망 → 요금, 그늘 → 여름, 아니면 길 옆. */
+/** 추천 칸의 강점 한 가지 (서로 다른 강점을 세 칸에 나눠 달 때 쓴다). 근거가 없으면 null. */
+export type SeatStrength = 'view' | 'shade' | 'near' | 'door' | 'corner';
+/** 강점 이름 한 마디 (배치 화면 「① 전망 ② 길 옆 ③ 주방 곁」) */
+export const STRENGTH_LABEL: Record<SeatStrength, string> = { view: '전망', shade: '그늘', near: '길 옆', door: '주방 곁', corner: '명당' };
+
+/** 이 칸의 강점을 센 순서대로 (근거 있는 것만). 전망·그늘은 실제 계수, 길 옆·주방 곁은 걷는 칸 수가 후보 중 최소일 때만. */
+export function seatStrengths(s: GameState, cell: Pt, cands: Pt[] = [], type = SEAT_TYPE): SeatStrength[] {
+  const out: SeatStrength[] = [];
+  const site = siteOf(s, cell.x, cell.y);
+  if (site.view >= 1) out.push('view');
+  if (site.shade >= 1 && seasonOf(s.clock.month) === 'summer') out.push('shade'); // 봄·가을엔 그늘이 만족을 안 바꾼다(site.ts siteBonus)
+  const reach = reachMap(s, busStopPos(s));
+  const walk = (p: Pt) => walkFromEntry(s, reach, p.x, p.y);
+  const pool = cands.length ? cands : [cell];
+  if (walk(cell) <= Math.min(...pool.map(walk))) out.push('near');
+  const anchor = doorFront(s);
+  if (anchor && cheb(cell, anchor) <= Math.min(...pool.map((p) => cheb(p, anchor)))) out.push('door');
+  if (cornerScoreIfPlaced(s, type, cell.x, cell.y) > 0) out.push('corner');
+  return out;
+}
+/** 한 강점의 이유 한 줄 (≤ 22자, §6: 지시문·화살표 없음). 수치는 실제 계수에서 온다. */
+export function strengthWhy(s: GameState, cell: Pt, k: SeatStrength): string {
+  const site = siteOf(s, cell.x, cell.y);
+  switch (k) {
+    case 'view': return `바다가 보여 요금 +${Math.round(site.view * FEE_PER_VIEW * 100)}%`;
+    case 'shade': return `그늘이라 여름 만족 +${SAT_SHADE_SUMMER}`;
+    case 'near': return '길에서 가까워 빨리 앉는다';
+    case 'door': return '주방이 가까워 서빙이 빠르다';
+    case 'corner': return `${cornerNameForPiece(s, SEAT_TYPE)} 조각이 모인다`;
+  }
+}
+/** 추천 테이블 칸이 왜 좋은지 한 줄 (튜토리얼 1단계 `{seatWhy}`·다음 수 문구). 근거가 없으면 담백하게. */
 export function seatWhy(s: GameState): string {
-  const seat = bestSeatCell(s);
-  if (!seat) return '길 옆이라 손님이 잘 앉는다';
-  const site = siteOf(s, seat.x, seat.y);
-  if (site.view >= 1) return `바다가 보여 요금 +${Math.round(site.view * FEE_PER_VIEW * 100)}%`;
-  if (site.shade >= 1) return `그늘이라 여름 만족 +${SAT_SHADE_SUMMER}`;
-  return '길 옆이라 손님이 잘 앉는다';
+  const cands = bestSeatCellsHeuristic(s, SOLVER_SEAT_K);
+  const seat = bestSeatCells(s, 1)[0] ?? cands[0];
+  if (!seat) return '지금 가진 칸 중 제일 낫다';
+  const k = seatStrengths(s, seat, cands)[0];
+  return k ? strengthWhy(s, seat, k) : '지금 가진 칸 중 제일 낫다';
 }
 const placing = (type: string) => (m: SolverMove) => m.action.type === 'place' && m.action.objectType === type;
 /** 튜토리얼 대사 `{토큰}`에 넣을 실제 수치·이유. 계산이 안 되는 상황(본관 없음 등)엔 기본값. 키에 밑줄을 쓰지 않는다(noIdLeak).

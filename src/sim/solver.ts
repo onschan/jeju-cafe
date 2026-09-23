@@ -34,7 +34,7 @@ import { mainBuilding, freeFloorCells, canExpandMain, canBuildSecondFloor, canAu
 import { canExpandParking, PARKING_EXPAND_FROM, PARKING_SLOTS } from './entry.ts';
 import { seatScore } from './site.ts';
 import { dailyGuestCount } from './guests.ts';
-import { bestMainCells, bestSeatCellsHeuristic, bestWallCellsHeuristic, bestCornerCellsHeuristic, bestIndoorSeatsHeuristic, bestParkingCellsHeuristic } from './strategy.ts';
+import { bestMainCells, bestSeatCellsHeuristic, bestWallCellsHeuristic, bestCornerCellsHeuristic, bestIndoorSeatsHeuristic, bestParkingCellsHeuristic, SOLVER_SEAT_K, SOLVER_CELL_K } from './strategy.ts';
 import { setSolverResult, solverKey, type SolverMove, type SolverResult } from './solverCache.ts';
 
 // ---------- 가중치 ----------
@@ -157,7 +157,8 @@ export function candidateActions(s: GameState, k = 3): SolverCandidate[] {
     const def = objectDef(type);
     const cost = placeCost(s, type);
     if (cost <= 0 || s.money < cost) continue;
-    for (const p of cellsFor(s, def, def.kind === 'seat' ? k + 2 : k)) {
+    // verify(2026-09-24): 자리마다 30일 결과가 크게 달라(평판 −1 vs −32) 휴리스틱 상위 몇 칸만 보면 좋은 칸을 놓친다 — 창을 넓혀 롤아웃이 고르게 한다
+    for (const p of cellsFor(s, def, def.kind === 'seat' ? Math.max(k + 2, SOLVER_SEAT_K) : Math.max(k, SOLVER_CELL_K))) {
       if (!canPlace(s, type, p.x, p.y).ok) continue;
       add({ action: { type: 'place', objectType: type, x: p.x, y: p.y }, label: `${def.name} ${cellLabel(p)}`, cells: [p], targets: buildTargets(def), prio: placePrio(s, def, p) });
     }
@@ -230,13 +231,21 @@ export function candidateActions(s: GameState, k = 3): SolverCandidate[] {
 export function candidateGroup(c: SolverCandidate): string {
   return c.action.type === 'place' ? `place:${objectDef(c.action.objectType).kind}` : c.action.type;
 }
-/** 상위 n개를 유형별로 돌아가며 뽑는다 (우선순위 순 유형 → 각 유형에서 하나씩, 다음 바퀴). 좌석 후보 열 개가 채용·홍보를 밀어내지 않게. */
+/** 한 바퀴에 좌석 그룹이 가져가는 몫 (verify: 자리마다 결과가 크게 갈려 좌석은 여러 칸을 같이 재야 한다) */
+export const SEAT_ROUND_SHARE = 3;
+/** 상위 n개를 유형별로 돌아가며 뽑는다 (우선순위 순 유형 → 각 유형에서 하나씩, 다음 바퀴). 좌석 후보 열 개가 채용·홍보를 밀어내지 않게.
+ *  좌석(place:seat)만 한 바퀴에 SEAT_ROUND_SHARE개 — 칸마다 결과가 갈리는 유일한 유형이라 롤아웃이 여러 칸을 봐야 한다. */
 export function pickDiverse(cands: SolverCandidate[], n: number): SolverCandidate[] {
   const groups = new Map<string, SolverCandidate[]>();
   for (const c of cands) { const g = candidateGroup(c); const arr = groups.get(g); if (arr) arr.push(c); else groups.set(g, [c]); }
-  const queues = [...groups.values()];
+  const queues = [...groups.entries()].map(([g, arr]) => ({ share: g === 'place:seat' ? SEAT_ROUND_SHARE : 1, arr, at: 0 }));
   const out: SolverCandidate[] = [];
-  for (let round = 0; out.length < n && queues.some((q) => q.length > round); round++) for (const q of queues) { if (out.length >= n) break; const c = q[round]; if (c) out.push(c); }
+  for (let guard = 0; out.length < n && queues.some((q) => q.at < q.arr.length) && guard < n + queues.length; guard++) {
+    for (const q of queues) {
+      for (let i = 0; i < q.share && out.length < n; i++) { const c = q.arr[q.at]; if (!c) break; q.at++; out.push(c); }
+      if (out.length >= n) break;
+    }
+  }
   return out;
 }
 

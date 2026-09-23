@@ -8,8 +8,8 @@ import { mainBuilding } from '../rooms.ts';
 import { reachMap, busStopPos, walkableNeighborsOf, cellKey, isDoorReachable } from '../path.ts';
 import { parkingSites } from '../entry.ts';
 import {
-  bestMainCells, bestSeatCells, bestWallCell, bestCornerCells, cornerScoreIfPlaced, bestIndoorSeats, bestParkingCells, bestSpotToInvest,
-  nextMove, strategyVars, fillTemplate, wallSheltered, TREE_TYPE,
+  bestMainCells, bestSeatCells, bestSeatCellsHeuristic, bestWallCell, bestCornerCells, cornerScoreIfPlaced, bestIndoorSeats, bestParkingCells, bestSpotToInvest,
+  nextMove, strategyVars, fillTemplate, wallSheltered, walkFromEntry, SEAT_SCORE_CELLS, TREE_TYPE,
 } from '../strategy.ts';
 import type { GameState, Pt } from '../types.ts';
 
@@ -47,17 +47,19 @@ describe('할망의 정석 (strategy.ts): 글로우 칸은 실제 수치로 고�
     expect(bestMainCells(s)).toEqual([]);
   });
 
-  it('bestSeatCells: 정류장에서 걸어 닿는 칸 중 seatScore 최고 — 놓을 수 있는 모든 칸을 훑어도 더 높은 점수는 없다', () => {
+  it('bestSeatCells: 걸어 닿는 칸 중 「걷는 칸 − 자리 점수」가 가장 작은 칸 — verify(2026-09-24)에서 동선이 자리 점수보다 결과를 갈랐다', () => {
     const s = yardWithPath();
     const best = bestSeatCells(s, 1)[0]!;
     const reach = reachMap(s, busStopPos(s));
     const reachable = (p: Pt) => walkableNeighborsOf(s, p.x, p.y).some((nb) => reach.dist.has(cellKey(s, nb)));
     expect(reachable(best)).toBe(true);
-    const top = seatScore(s, best.x, best.y);
-    for (const p of allEmptyOwned(s, 'table_out')) if (reachable(p)) expect(seatScore(s, p.x, p.y)).toBeLessThanOrEqual(top);
-    // 놓고 나면 다음 최적 칸으로 옮겨 가고, 좋은 순서다
+    const cost = (p: Pt) => walkFromEntry(s, reach, p.x, p.y) - seatScore(s, p.x, p.y) * SEAT_SCORE_CELLS;
+    const top = cost(best);
+    for (const p of allEmptyOwned(s, 'table_out')) if (reachable(p)) expect(cost(p)).toBeGreaterThanOrEqual(top);
+    // 좋은 순서다 (앞 칸이 뒤 칸보다 싸다)
     const three = bestSeatCells(s, 3);
-    expect(seatScore(s, three[0]!.x, three[0]!.y)).toBeGreaterThanOrEqual(seatScore(s, three[2]!.x, three[2]!.y));
+    expect(cost(three[0]!)).toBeLessThanOrEqual(cost(three[2]!));
+    // 놓고 나면 다음 최적 칸으로 옮겨 간다
     apply(s, { type: 'place', objectType: 'table_out', ...best });
     expect(bestSeatCells(s, 1)[0]).not.toEqual(best);
   });
@@ -65,7 +67,9 @@ describe('할망의 정석 (strategy.ts): 글로우 칸은 실제 수치로 고�
   it('bestWallCell: 테이블 북서 쐐기의 칸 — 돌담을 놓으면 wallSheltered. 테이블이 없으면 null', () => {
     const s = yardWithPath();
     expect(bestWallCell(s)).toBeNull();
-    const seat = bestSeatCells(s, 1)[0]!;
+    // 북서 쐐기가 내 필지 안에 있는 테이블을 고른다 (마당 서쪽 끝 칸은 쐐기가 필지 밖이라 돌담 자리가 없다)
+    const seat = bestSeatCellsHeuristic(s, 99).find((p) => { const t = yardWithPath(); apply(t, { type: 'place', objectType: 'table_out', ...p }); return bestWallCell(t) !== null; })!;
+    expect(seat).toBeDefined();
     apply(s, { type: 'place', objectType: 'table_out', ...seat });
     const w = bestWallCell(s)!;
     expect(w).not.toBeNull();
