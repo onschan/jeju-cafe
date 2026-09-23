@@ -55,7 +55,7 @@ import { rangeHintFor } from './rangeHint';
 import { AppealPanel } from './AppealPanel'; // fun: 카페 매력도
 import { tradeoffOf } from './tradeoff'; // fun: 배치 트레이드오프
 import { rectCells, demolishTargets, nextGhostAfterPlace, type Rect, type BuildGhost } from './placing';
-import { placementPicks, pickAt, PlacementHintLine, type PlacePick, type PlacePicks } from './PlacementHints'; // video-patch §3.2: 추천 칸 3곳
+import { placementPicks, PlacementHintLine, type PlacePicks } from './PlacementHints'; // video-patch §3.2: 추천 칸 3곳
 import { usePlaceHintsPref, setPlaceHintsOn } from './layoutScore';
 import { TodoLine } from './TodoLine'; // video-patch §3.4: 오늘 할 일
 
@@ -322,10 +322,8 @@ function Game({ onExit }: { onExit: () => void }) {
   const [gauges, setGaugesState] = useState(gaugesPref);
   const setGauges = (v: boolean) => { setGaugesState(v); try { localStorage.setItem(GAUGES_KEY, v ? '1' : '0'); } catch { /* noop */ } };
   useEffect(() => { view?.setGauges(gauges); }, [view, gauges]);
-  // video-patch §3.2.1: 고스트가 떠 있는 동안 추천 칸 3곳. 탭하면 그 자리에 바로 놓는다 (picksRef·placeAtRef는 onTap이 읽는다).
+  // video-patch §3.2.1: 고스트가 떠 있는 동안 추천 칸 3곳 — 보여 주기만 한다. 탭하면 고스트가 그 칸으로 갈 뿐, 짓기는 ✓ 확정뿐이다.
   const hintsOn = usePlaceHintsPref();
-  const picksRef = useRef<PlacePick[]>([]);
-  const placeAtRef = useRef<((x: number, y: number) => void) | null>(null);
 
   // 첫 터치에서 오디오를 열고 현재 계절 BGM을 시작한다 (이후 호출은 no-op)
   const onPointerDown = () => { unlockAudio(); void bgm(seasonOf(getState().clock.month)); };
@@ -436,9 +434,7 @@ function Game({ onExit }: { onExit: () => void }) {
               const l = lineRef.current;
               if (!l || l.to) setLine({ from: { x, y }, to: null, order: l?.order ?? 'xy' });
               else setLine({ ...l, to: { x, y } });
-            } else if (pickAt(picksRef.current, x, y) && placeAtRef.current) {
-              placeAtRef.current(x, y); // video-patch §3.2.1: 추천 칸을 탭하면 바로 그 자리에 확정
-            } else setGhost({ x, y, rot: ghostRef.current?.rot ?? 0 }); // 고스트는 탭으로 옮긴다 (끌기는 길게 누른 뒤에만)
+            } else setGhost({ x, y, rot: ghostRef.current?.rot ?? 0 }); // 추천 칸이든 빈 칸이든 탭은 고스트만 옮긴다 — 짓기는 ✓ 확정뿐 (끌기는 길게 누른 뒤에만)
           } else if (m.kind === 'move') {
             const mv = movingRef.current;
             if (mv) setMoving({ ...mv, x, y });
@@ -517,7 +513,6 @@ function Game({ onExit }: { onExit: () => void }) {
   let place: PlaceBarProps | null = null;
   /** video-patch §3.2.1: 지금 고스트가 떠 있는 시설의 추천 칸 3곳 (설정에서 끄면 없음) */
   let picks: PlacePicks | null = null;
-  let placeAt: ((x: number, y: number) => void) | null = null;
   if (mode.kind === 'build' && mode.objectType === MAIN_TYPE) {
     // w-start: 첫 본관 고스트 — 무료·1회, 문 앞 칸 미리보기(파란 마름모), 입지 배지는 주방 —(GameView), 확정하면 placeMain
     const def = objectDef(MAIN_TYPE);
@@ -594,7 +589,6 @@ function Game({ onExit }: { onExit: () => void }) {
         setMode({ kind: 'build', objectType: mode.objectType, count: mode.count + 1 });
       };
       const confirm = () => confirmAt(ghost.x, ghost.y);
-      placeAt = confirmAt;
       if (hintsOn) picks = placementPicks(s, mode.objectType);
       place = {
         text: `${def.name} · ${wonText(cost)} · ${ok ? (mode.count > 0 ? `${mode.count}개 놓음 · 계속 놓을 수 있어요` : '여기에 지을 수 있어요 · 칸을 누르면 옮겨요') : (can.reason ?? '돈이 모자라요')}`,
@@ -674,13 +668,9 @@ function Game({ onExit }: { onExit: () => void }) {
     if (o) rangeHint = rangeHintFor(s, o.type, o.x, o.y, o.id);
   }
   useEffect(() => { viewRef.current?.setGhost(ghostSpec); viewRef.current?.setRangeHint(rangeHint); });
-  // video-patch §3.2.1: 추천 칸을 맵에 그리고, onTap이 읽을 수 있게 ref에 남긴다 (고스트 칸은 이미 고스트가 덮으므로 뺀다)
+  // video-patch §3.2.1: 추천 칸을 맵에 그린다 (고스트 칸은 이미 고스트가 덮으므로 뺀다)
   const pickMarks = picks ? picks.picks.filter((p) => !(ghost && p.x === ghost.x && p.y === ghost.y)) : [];
-  useEffect(() => {
-    picksRef.current = pickMarks;
-    placeAtRef.current = placeAt;
-    viewRef.current?.setPlacementPicks(pickMarks);
-  });
+  useEffect(() => { viewRef.current?.setPlacementPicks(pickMarks); });
   // 자동 잇기 미리보기 칸 (상태가 바뀌면 다시 계산)
   useEffect(() => { if (mode.kind !== 'autopath') return; const r = canAutoConnectPath(s).route; viewRef.current?.setRectCells(r?.empty ?? [], RECT_COLOR_LINE); }, [mode.kind, s]);
 
@@ -806,7 +796,7 @@ function Game({ onExit }: { onExit: () => void }) {
           style={{ position: 'absolute', left: 8, bottom: `calc(${SHELL_BOTTOM + 8}px + env(safe-area-inset-bottom))`, width: 56, height: 56, borderRadius: 28, border: `3px solid ${PALETTE.wood}`, background: PALETTE.paper, fontSize: 20, zIndex: 11, padding: 0, boxShadow: '0 2px 0 #0004', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Icon name="home_cafe" size={48} /></button>
       )}
       {place && ghostCell && <GhostButtons view={view} cell={ghostCell} ok={place.ok} canRotate={place.canRotate} onConfirm={place.onConfirm} onRotate={place.onRotate} />}
-      {picks && <PlacementHintLine picks={picks} bottom={SHELL_BOTTOM + 44} />}{/* video-patch §3.2.1: 워커 대기 중에도 한 줄은 남는다 */}
+      {picks && <PlacementHintLine picks={picks} bottom={SHELL_BOTTOM + 44} state={s} type={mode.kind === 'build' ? mode.objectType : undefined} />}{/* video-patch §3.2.1: 워커 대기 중에도 한 줄은 남는다 */}
       {!place && !cardTarget && !win && (
         <VoiceFeed bottom={BOTTOM_BAR_H + 26}
           onFocus={(x, y) => viewRef.current?.focusCell(x, y, 1, 1, 1.6)}
