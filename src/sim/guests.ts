@@ -53,12 +53,13 @@ export const SERVICE_PER_SCENERY = 30; // 홀 서비스 30당 경치 기준 −1
 // staff2: 홀 1인분당 만족 +2, 최대 +6
 export const SERVICE_PER_HEAD = 2;
 export const SERVICE_MAX = 6;
-// staff2: 하루에 감당하는 주문 — 주인 혼자 음료 12잔, 바리스타 1인분당 +30잔, 요리사 1인분당 20접시.
+// staff2: 하루에 감당하는 주문 — 주인 혼자 음료 20잔, 바리스타 1인분당 +40잔, 요리사 1인분당 30접시.
 // 넘긴 만큼 음료·음식이 늦게 나와 만족이 깎이고 「오래 기다렸다」 불만이 는다.
-export const OWNER_DRINKS_PER_DAY = 12;
-export const DRINKS_PER_BARISTA = 30;
-export const FOOD_PER_COOK = 20;
-export const WAIT_PENALTY_MAX = 3;
+export const OWNER_DRINKS_PER_DAY = 20;
+export const DRINKS_PER_BARISTA = 40;
+export const FOOD_PER_COOK = 30;
+export const WAIT_PENALTY_MAX = 2;
+export const WAIT_PENALTY_STEP = 0.5; // 감당하는 양을 50% 넘길 때마다 만족 −1
 /** staff2: 바리스타 2인분마다 음료 만족 +1 (최대 +2) */
 export const DRINK_QUALITY_PER_HEAD = 0.5;
 export const DRINK_QUALITY_MAX = 2;
@@ -436,7 +437,7 @@ export function waitPenalty(state: GameState, category: MenuCategory): number {
   const cap = servingCapacity(state, category);
   const done = ordersToday(state, category);
   if (cap <= 0) return done > 0 ? WAIT_PENALTY_MAX : 0;
-  return Math.min(WAIT_PENALTY_MAX, Math.ceil(Math.max(0, done / cap - 1) * 2));
+  return Math.min(WAIT_PENALTY_MAX, Math.floor(Math.max(0, done / cap - 1) / WAIT_PENALTY_STEP)); // 감당하는 양을 50% 넘길 때마다 −1
 }
 /** staff2: 바리스타가 많으면 음료가 더 맛있다 (2인분마다 만족 +1, 최대 +2) */
 export function drinkQualityBonus(state: GameState): number {

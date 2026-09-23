@@ -42,7 +42,8 @@ import { canLevelUp } from './staff.ts';
 import { canTrain } from './training.ts';
 import { bestStaffFor } from './luck.ts'; // staff-luck: 대박 기대값이 가장 높은 직원에게 시킨다
 import { signupOpen, contestState, contestStaff, contestMenus, contestOdds, canEnterContest, CONTESTS, TROPHY_TYPE, trophyOwned, trophyPlaced } from './contest.ts'; // 대회
-import { staffCapacity, STAFF_ROOM_TYPE } from './staff.ts';
+import { staffCapacity, STAFF_ROOM_TYPE, staffInRole } from './staff.ts';
+import { seatDirt, dailyCleanRecovery, CLEAN_LOW } from './cleanliness.ts'; // staff2: 청소가 필요한지 본다
 import { canUpgrade, upgradeCost, isUpgradable } from './upgrade.ts';
 import { objectStats, setLevels } from './compat.ts';
 import { canInvestSpot, spotLevel } from './spots.ts';
@@ -259,6 +260,18 @@ function hireBest(s: GameState, stat: StatKey, role: RoleId): boolean {
 
 function hasRole(s: GameState, role: RoleId): boolean {
   return s.staff.some((st) => st.role === role);
+}
+
+/** staff2: 자리가 늘어 지금 인원으로 못 따라가면(또는 이미 지저분하면) 청소 직원을 먼저 뽑는다. 자리가 남는 한 두 번째도 뽑는다. */
+export const BOT_CLEAN_MIN_MONEY = 2_000_000;
+function hireCleanerIfDirty(s: GameState): boolean {
+  if (!s.unlocked.roles.includes('clean')) return false;
+  if (s.staff.length >= staffCapacity(s) || staffInRole(s, 'clean').length >= (s.slots.clean ?? 0)) return false;
+  if (seatDirt(s) <= dailyCleanRecovery(s) && s.clean.value >= CLEAN_LOW) return false;
+  if (s.money < BOT_CLEAN_MIN_MONEY) return false;
+  if (s.candidates.length === 0 && !apply(s, { type: 'postJob', tier: 'flyer' }).ok) return false;
+  const c = s.candidates.find((x) => canHire(s, x.id, 'clean').ok);
+  return !!c && apply(s, { type: 'hire', candidateId: c.id, role: 'clean' }).ok;
 }
 
 function setMenuIfEmpty(s: GameState, slot: number, menuId: string): void {
@@ -629,7 +642,7 @@ export function monthlyPlan(s: GameState, monthsPlayed: number): void {
   if (monthsPlayed === 1 && !hasRole(s, 'barista') && apply(s, { type: 'postJob', tier: 'flyer' }).ok) hireBest(s, 'skill', 'barista');
   // 1년차 7월: 요리사까지 3명, 2년차부터 빈 슬롯을 채운다 (§4.6: 3년차 5명)
   if (monthsPlayed >= BOT_COOK_MONTHS && !hasRole(s, 'cook') && s.staff.length === 2 && s.money >= BOT_HIRE_MIN_MONEY && apply(s, { type: 'postJob', tier: 'flyer' }).ok) hireBest(s, 'skill', 'cook');
-  else hireForFreeSlot(s);
+  else if (!hireCleanerIfDirty(s)) hireForFreeSlot(s); // staff2: 자리를 늘려 더러워지기 시작하면 청소부터 뽑는다
 
   // 홍보: 매달 전단 (돈 100만 넘고 기력 60 넘는 직원), 돈 400만 넘으면 SNS도 — 인기가 손님 수를 정하므로 (§4.2 #1) 꾸준히
   if (s.money > FLYER_MIN_MONEY) {

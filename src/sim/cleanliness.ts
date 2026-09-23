@@ -44,11 +44,11 @@ export function dirtyForDays(state: GameState, n: number, days: number): boolean
 }
 /** 청소 직종 id (트랙 D의 staff_roles.json에 있으면 그 직원, 없으면 홀 직원이 절반 효과) */
 export const CLEAN_ROLE = 'clean';
-/** 청소 직원이 없을 때: 일하는 직원 전원이 틈틈이 치운다 — 청소 직원 힘(기술 ÷ 5 + 힘 ÷ 10)의 15% (staff2: ¼ → 0.15, 겸업으로는 넓은 카페를 못 따라간다) */
-export const GENERAL_CLEAN_FACTOR = 0.15;
-/** staff2: 자리가 12개를 넘으면 그만큼 더 더러워진다 — 좌석 하나당 하루 0.5 */
+/** 청소 직원이 없을 때: 일하는 직원 전원이 틈틈이 치운다 — 청소 직원 힘(기술 ÷ 5 + 힘 ÷ 10)의 15%  */
+export const GENERAL_CLEAN_FACTOR = 0.25;
+/** staff2: 자리가 12개를 넘으면 그만큼 더 더러워진다 — 좌석 하나당 하루 0.15 — 겸업 청소로는 스무 자리쯤이 한계다 */
 export const CLEAN_FREE_SEATS = 12;
-export const CLEAN_PER_SEAT = 0.5;
+export const CLEAN_PER_SEAT = 0.15;
 
 export const WEAR_START_MONTHS = 24;
 export const WEAR_STEP_MONTHS = 6;
@@ -77,13 +77,12 @@ export function seatDirt(state: GameState): number {
   for (const o of Object.values(state.objects)) if (isSeat(state, o)) seats += seatsOf(state, o);
   return Math.max(0, seats - CLEAN_FREE_SEATS) * CLEAN_PER_SEAT;
 }
-/** 하루 회복량: 청소 직원 힘(트랙 D cleanPowerOf: 기술 ÷ 5 + 힘 ÷ 10, 기력·특기 반영) × (청소 도구실 1.5). 청소 직원이 없으면 일하는 직원 전원(연수 중 제외)이 같은 공식의 ¼만큼 틈틈이 치운다. */
+/** 하루 회복량: 청소 직원 힘(트랙 D cleanPowerOf: 기술 ÷ 5 + 힘 ÷ 10, 기력·특기 반영) × (청소 도구실 1.5). 청소 직원 말고도 일하는 직원 전원(연수 중 제외)이 같은 공식의 ¼만큼 틈틈이 거든다. */
 export function dailyCleanRecovery(state: GameState): number {
-  const cleaners = state.staff.filter((s) => s.role === CLEAN_ROLE);
-  const sum = cleaners.length > 0
-    ? cleanPowerOf(state)
-    : state.staff.filter((s) => s.role !== null && !s.training).reduce((n, s) => n + s.stats.skill / CLEAN_STAFF_DIV + s.stats.strength / 10, 0) * GENERAL_CLEAN_FACTOR;
-  return sum * (hasBuilt(state, 'cleaning_room') ? CLEAN_ROOM_MULT : 1);
+  // staff2: 청소 직원이 본격적으로 치우고, 나머지 일하는 직원도 틈틈이 거든다 (예전엔 청소 직원이 오면 나머지가 손을 놨다)
+  const general = state.staff.filter((s) => s.role !== null && s.role !== CLEAN_ROLE && !s.training)
+    .reduce((n, s) => n + s.stats.skill / CLEAN_STAFF_DIV + s.stats.strength / 10, 0) * GENERAL_CLEAN_FACTOR;
+  return (cleanPowerOf(state) + general) * (hasBuilt(state, 'cleaning_room') ? CLEAN_ROOM_MULT : 1);
 }
 
 /** 매일 (새 날): 어제 손님만큼 더러워지고 청소 직원만큼 회복. 손님 수 배수는 하루짜리 효과로 갱신. */
