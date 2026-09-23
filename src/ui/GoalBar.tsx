@@ -65,6 +65,7 @@ export function GoalBar({ top, onOpen }: { top: number; onOpen: () => void }) {
             <>
               <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis' }}>목표: {g.title}</span>
               <span style={{ flex: 'none', color: done ? PALETTE.ink : PALETTE.inkSoft }}>{num(g.cur, g.max)}/{num(g.max, g.max)}</span>
+              {g.note && <span data-testid="goal-note" style={{ flex: 'none', color: PALETTE.title, fontSize: 13 }}>{g.note}</span>}{/* 공사 중이라 아직 안 센 것 */}
               <span key={`${g.id}:${milestone}`} data-testid="goal-progress" data-milestone={milestone} aria-hidden style={{ flex: 'none', width: 48, height: 6, background: '#fff8', border: `1px solid ${PALETTE.wood}`, borderRadius: 3, overflow: 'hidden', animation: milestone > 0 ? 'goal-flash 0.9s ease-out 2' : undefined }}>
                 <span style={{ display: 'block', width: `${pct}%`, height: '100%', background: done ? PALETTE.ok : PALETTE.bar }} />
               </span>
@@ -79,7 +80,7 @@ export function GoalBar({ top, onOpen }: { top: number; onOpen: () => void }) {
           ) : c ? (
             <>
               <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.kind === 'monthly' ? '이달' : '도전'}: {c.title}</span>
-              <span style={{ flex: 'none', color: PALETTE.inkSoft }}>{num(c.cur, c.max)}/{num(c.max, c.max)} · {c.daysLeft}일</span>
+              <span style={{ flex: 'none', color: PALETTE.inkSoft }}>{num(c.cur, c.max)}/{num(c.max, c.max)}{c.note ? ` · ${c.note}` : ''} · {c.daysLeft}일</span>
               <span aria-hidden style={{ flex: 'none', width: 36, height: 5, background: '#fff8', border: `1px solid ${PALETTE.wood}`, borderRadius: 3, overflow: 'hidden' }}>
                 <span style={{ display: 'block', width: `${cpct}%`, height: '100%', background: PALETTE.bar }} />
               </span>

@@ -15,14 +15,14 @@
  * | 2 menu    | 메뉴판에 아메리카노 | nav:cafe·tab:menu·menu-put | ₩10만 |
  * | 3 greet   | 첫 손님에게 인사(greetGuest — 트랙 G) 또는 손님 카드 열기 | 정류장(손님이 오면 그 손님 칸) | 응모권 1 |
  * | 4 hire    | 직원 1명 채용(홀 권장) | nav:people·tab:candidates·hire | ₩30만 |
- * | 5 corner  | 첫 명당 「꽃길」: 꽃밭+벤치+가로등 (트랙 C completedCorners ≥1) | nav:build·tab:corner·corner-next:꽃길·build:<빠진 조각> · 테이블 옆 길가 칸 | ₩30만 |
+ * | 5 corner  | 첫 명당 「꽃길」: 꽃밭+벤치+가로등 (마지막 조각을 놓는 순간 통과 — 공사 중 포함) | nav:build·tab:corner·corner-next:꽃길·build:<빠진 조각> · 테이블 옆 길가 칸 | ₩30만 |
  * | 6 goals   | 목표 창 열어 보기(seen goalWindow) | goal-bar | — |
  * | 7 graduate| 대사 닫기 | — | 칭호 「할망의 제자」·₩50만·응모권 3 |
  */
 import type { GameState, GoalReward, Pt, FeatureId, PlacedObject } from './types.ts';
 import { objectDef } from '../data/index.ts';
 import { isDoorReachable, busStopPos, walkableNeighborsOf } from './path.ts';
-import { CORNERS, completedCorners } from './corners.ts';
+import { CORNERS, cornersDoneIncludingWork } from './corners.ts';
 import { doorFrontOf, cellAt, canPlace } from './grid.ts';
 import { applyRewards } from './goals.ts';
 import { parcelAt } from './parcels.ts';
@@ -122,9 +122,10 @@ export const TUTORIAL_CORNER_ID = 'corner_flower_path';
 export const CORNER_PIECE_TYPES: readonly string[] = (CORNERS.find((c) => c.id === TUTORIAL_CORNER_ID)?.pieces.map((p) => p.type) ?? ['flower_bed', 'deco_wood_bench', 'streetlight']);
 /** 조각끼리 서로 반경 CORNER_RADIUS 안 (corners.json radius) */
 export const CORNER_RADIUS = CORNERS.find((c) => c.id === TUTORIAL_CORNER_ID)?.radius ?? 2;
-/** 첫 명당이 생겼나: 트랙 C 명당 목록에 1개 이상 */
+/** 첫 명당이 생겼나: 마지막 조각을 놓는 순간 통과한다 (꽃밭·벤치·가로등은 공사 1일이라 완공을 기다리면 같은 안내가 하루 더 되풀이된다).
+ *  효과·도감 등록은 완공 뒤 그대로다 — 여기선 단계 판정만 앞당긴다. */
 export function cornerMade(s: GameState): boolean {
-  return completedCorners(s).length >= 1;
+  return cornersDoneIncludingWork(s) >= 1;
 }
 /** 꽃길 닻(첫 조각) — 내 필지 위 완공·공사 중 꽃밭 중 첫 것 */
 function cornerAnchor(s: GameState): PlacedObject | null {

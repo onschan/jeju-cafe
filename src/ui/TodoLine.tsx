@@ -58,7 +58,8 @@ function goalOf(s: GameState): TodoItem | null {
   const pick = m && g ? ((m.cur / Math.max(1, m.max)) >= (g.cur / Math.max(1, g.max)) ? m : g) : (m ?? g);
   if (!pick) return null;
   const left = Math.max(0, pick.max - pick.cur);
-  return { key: `goal:${pick.id}`, kind: 'goal', text: `「${pick.title}」 ${left} 남았다`, gain: '', targets: ['goal-bar'], cells: [], opens: 'goal' };
+  const note = pick.note ? ` (${pick.note})` : ''; // 공사 중인 것은 「짓는 중 1」로 알려 같은 줄이 되풀이돼 보이지 않게
+  return { key: `goal:${pick.id}`, kind: 'goal', text: `「${pick.title}」 ${left} 남았다${note}`, gain: '', targets: ['goal-bar'], cells: [], opens: 'goal' };
 }
 
 /** 오늘 할 일 (최대 3줄, 우선순위 순). 할 게 없으면 빈 배열. */
