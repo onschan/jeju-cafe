@@ -9,7 +9,7 @@
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { GameState, Pt } from '../sim/index.ts';
-import { cachedMoves, solverKey, heuristicNextMove, REP_LOW, WARN_DEFICIT_MONTHS, LOAN_THRESHOLD } from '../sim/index.ts';
+import { cachedMoves, solverKey, heuristicNextMove, REP_LOW, WARN_DEFICIT_MONTHS, LOAN_THRESHOLD, activeSteal, stealTitle, rivalsState, scoreboard, rankGap, RIVAL_COUNTER_COST } from '../sim/index.ts';
 import { wonText } from '../data/labels.ts';
 import { useGame } from './store';
 import { currentGoal, urgentChallenge } from './simBridge';
@@ -22,7 +22,7 @@ export const TODO_LINE_H = 24;
 /** 시트에 보여 주는 줄 수 상한 */
 export const TODO_MAX = 3;
 
-export type TodoKind = 'warn' | 'move' | 'goal';
+export type TodoKind = 'warn' | 'move' | 'goal' | 'rival';
 export interface TodoItem {
   key: string;
   kind: TodoKind;
@@ -33,8 +33,8 @@ export interface TodoItem {
   /** 탭하면 빛낼 UI 타깃·맵 칸 */
   targets: string[];
   cells: Pt[];
-  /** 목표 줄은 목표 창을 연다 */
-  opens?: 'goal';
+  /** 목표 줄은 할 일 창을, 경쟁 줄은 장부 › 평가를 연다 */
+  opens?: 'goal' | 'rival';
 }
 
 /** 지금 급한 경고 (없으면 null) — 잃을 것이 먼저다 */
@@ -61,6 +61,20 @@ function goalOf(s: GameState): TodoItem | null {
   return { key: `goal:${pick.id}`, kind: 'goal', text: `「${pick.title}」 ${left} 남았다`, gain: '', targets: ['goal-bar'], cells: [], opens: 'goal' };
 }
 
+/** 동네 경쟁 한 줄 — 답을 기다리는 뺏기 이벤트가 먼저, 없으면 「몇 위 → 몇 위로」 */
+function rivalOf(s: GameState): TodoItem | null {
+  const steal = activeSteal(s);
+  if (steal && steal.answer === 'none') {
+    return { key: `rival:steal:${steal.monthIndex}`, kind: 'rival', text: `${stealTitle(s)} — 맞불 ${Math.round(RIVAL_COUNTER_COST / 10_000)}만`, gain: '', targets: ['nav:ledger'], cells: [], opens: 'rival' };
+  }
+  const st = rivalsState(s);
+  if (st.myRank === null || st.myRank === 1) return null;
+  const board = scoreboard(s);
+  const { above, gap } = rankGap(board);
+  if (!above) return null;
+  return { key: `rival:rank:${st.myRank}`, kind: 'rival', text: `동네 ${st.myRank}위 — ${above.name}와 ${gap}점 차`, gain: '', targets: ['nav:ledger'], cells: [], opens: 'rival' };
+}
+
 /** 오늘 할 일 (최대 3줄, 우선순위 순). 할 게 없으면 빈 배열. */
 export function todoItems(s: GameState): TodoItem[] {
   const out: TodoItem[] = [];
@@ -77,11 +91,13 @@ export function todoItems(s: GameState): TodoItem[] {
   }
   const goal = goalOf(s);
   if (goal) out.push(goal);
+  const rival = rivalOf(s); // 경쟁은 목표 다음 — 답을 기다리는 뺏기 이벤트면 목표보다 급하다
+  if (rival) out.splice(rival.key.startsWith('rival:steal') ? 1 : out.length, 0, rival);
   if (moves.length > 1) out.push(asMove(moves[1]!, 1));
   return out.slice(0, TODO_MAX);
 }
 
-const KIND_ICON: Record<TodoKind, string> = { warn: 'warn', move: 'bulb', goal: 'target' };
+const KIND_ICON: Record<TodoKind, string> = { warn: 'warn', move: 'bulb', goal: 'target', rival: 'rival' };
 
 /** 맨 위 1줄 + 탭하면 3줄 시트. 할 일이 없으면 아무것도 그리지 않는다 (빈 UI를 남기지 않는다). */
 export function TodoLine({ top, onOpenGoal }: { top: number; onOpenGoal: () => void }) {
