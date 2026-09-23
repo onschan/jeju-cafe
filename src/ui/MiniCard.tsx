@@ -319,7 +319,7 @@ function ObjectCard({ s, id, a, onClose }: { s: GameState; id: string; a: CardAc
         </div>
         <Details id={`object:${o.type}`}>
           <div style={small}>인기 <b style={{ color: PALETTE.ink }}>{st.popularity}</b> · 경관 <b style={{ color: PALETTE.ink }}>{st.scenery > 0 ? '+' : ''}{st.scenery}</b> · 요금 <b style={{ color: PALETTE.ink }}>{st.feePct}%</b>{st.upkeep > 0 && ` · 유지비 ${wonText(st.upkeep)}/달`}{(o.uses ?? 0) > 0 && ` · 이용 ${o.uses}회`}</div>
-          <div style={small}>주변 시너지: {st.corner.pop > 0 || st.corner.feePct > 0 ? `테마 인기 +${st.corner.pop} · 요금 +${st.corner.feePct}%` : '없음'}{st.sets.length > 0 && ` · 세트 ${st.sets.map((x) => x.name).join(', ')}`}</div>
+          <div style={small}>주변 시너지: {st.corner.pop > 0 || st.corner.feePct > 0 ? `명당 인기 +${st.corner.pop} · 요금 +${st.corner.feePct}%` : '없음'}{st.sets.length > 0 && ` · 세트 ${st.sets.map((x) => x.name).join(', ')}`}</div>
           <SiteLine s={s} o={o} />
           {(() => { const nl = nightSeatLine(s, o); return nl ? <div style={{ ...small, ...(nl.bad ? { color: PALETTE.bad } : {}) }} data-testid="night-line">🌙 {nl.text}</div> : null; })()}
           {isAnnex(o) && <div style={small}>실내 {roomSeatsUsed(s, o)}/{roomSeats(s, o)}석{isRoomCut(s, o) && <span style={{ color: PALETTE.bad, fontWeight: 700 }} data-testid="annex-cut"> · {ANNEX_CUT_TEXT} — {DOOR_PATH_WARN}</span>}</div>}

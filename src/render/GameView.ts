@@ -17,7 +17,7 @@ import { Background } from './Background';
 import { siteOf, siteBadgeText, siteTone, layoutKey } from '../sim/site.ts';
 import { objectStats } from '../sim/compat.ts';
 import { entryPoints, ROUTE_IDS, ENTRY_ROUTES } from '../sim/entry.ts'; // 트랙 H 진입점 표지
-import { completedCorners, cornerDef } from '../sim/corners.ts'; // fun-corner 테마 팻말
+import { completedCorners, cornerDef } from '../sim/corners.ts'; // fun-corner 명당 팻말
 import { isSiteOverlayOn, setSiteOverlayOn, siteOverlayKey, drawSiteOverlay, GHOST_GOOD, GHOST_WARN } from './siteOverlay';
 import { parcelScenery, parcelSignLines, wallEdges, ROUTE_PREVIEW, busPose, BUS_PERIOD_MS, BUS_DROP_AT_MS, type SceneryProp } from './scenery'; // 트랙 E 제주 풍경
 import { VILLAGE_ROAD_Y } from '../sim/layout.ts';
@@ -36,7 +36,7 @@ export interface GameViewOptions extends Pick<CameraOptions, 'onTap' | 'dragCapt
 /** 배치 모드 고스트: 손가락 아래 반투명 오브젝트. ok면 초록, 아니면 빨강. text는 비용 라벨. */
 export interface GhostSpec { type: string; x: number; y: number; rot?: number; ok: boolean; text: string; w?: number; h?: number; /** 문 앞 칸 미리보기 (w-start 본관 짓기: 파란 마름모 + 「문 앞」) */ door?: { x: number; y: number } }
 /** 효과 범위 힌트 (UX §5.3): 중심 시설 발자국 + 반경(칸) 타원, 콤보가 성립하는 상대 시설 발자국 위 ◎ */
-export interface RangeHint { x: number; y: number; w: number; h: number; radius: number; marks: { x: number; y: number; w: number; h: number }[]; /** fun-corner: 테마 배지 ("이걸 놓으면 꽃길 완성") */ badge?: string }
+export interface RangeHint { x: number; y: number; w: number; h: number; radius: number; marks: { x: number; y: number; w: number; h: number }[]; /** fun-corner: 명당 배지 ("이걸 놓으면 꽃길 완성") */ badge?: string }
 /** 선택 칸 색: 철거 빨강 · 라인 미리보기 파랑 (ease 두 번 탭) */
 export const RECT_COLOR_REMOVE = 0xc9184a;
 export const RECT_COLOR_LINE = 0x2f7fd9;
@@ -328,7 +328,7 @@ export class GameView {
   /** 트랙 H: 진입점 표지 (경로 id → 노드·상태 키). 배치·해금이 바뀔 때만 다시 만든다. */
   private entryMarkers = new Map<RouteId, { node: Container; key: string }>();
   private entryKey = '';
-  /** fun-corner: 완성 테마 팻말(테마 id → 노드). 배치가 바뀔 때만 다시 만든다. */
+  /** fun-corner: 완성 명당 팻말(명당 id → 노드). 배치가 바뀔 때만 다시 만든다. */
   private cornerSigns = new Map<string, Container>();
   private cornerKey = '';
   private rangeBadge: Container | null = null;
@@ -1657,7 +1657,7 @@ export class GameView {
     }
   }
 
-  /** fun-corner 연출 하나: 테마 완성(팻말 자리 반짝 3개) · 손님 사진(카메라 플래시 + "사진 찍자!" 말풍선) */
+  /** fun-corner 연출 하나: 명당 완성(팻말 자리 반짝 3개) · 손님 사진(카메라 플래시 + "사진 찍자!" 말풍선) */
   private spawnCornerFx(e: Extract<FxEvent, { kind: 'corner' | 'flash' }>, now: number) {
     if (e.kind === 'corner') {
       for (const [dx, dy] of [[0, 0], [1, 0], [0, 1]] as const) this.spawnSparkle(e.x + dx, e.y + dy, now);
@@ -1676,7 +1676,7 @@ export class GameView {
     this.showBubble(e.guestId, { text: e.text }, CORNER_SAY_MS);
   }
 
-  /** fun-corner: 완성 테마마다 닻 칸 위에 갈색 팻말 스프라이트 + 테마 이름 라벨. 배치 서명이 바뀔 때만 다시 만든다. */
+  /** fun-corner: 완성 명당마다 닻 칸 위에 갈색 팻말 스프라이트 + 명당 이름 라벨. 배치 서명이 바뀔 때만 다시 만든다. */
   private syncCornerSigns(state: GameState) {
     const key = layoutKey(state);
     if (key === this.cornerKey) return;

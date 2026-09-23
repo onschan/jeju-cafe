@@ -15,7 +15,7 @@
  * | 2 menu    | 메뉴판에 아메리카노 | nav:cafe·tab:menu·menu-put | ₩10만 |
  * | 3 greet   | 첫 손님에게 인사(greetGuest — 트랙 G) 또는 손님 카드 열기 | 정류장(손님이 오면 그 손님 칸) | 응모권 1 |
  * | 4 hire    | 직원 1명 채용(홀 권장) | nav:people·tab:candidates·hire | ₩30만 |
- * | 5 corner  | 첫 테마 「꽃길」: 꽃밭+벤치+가로등 (트랙 C completedCorners ≥1) | nav:build·tab:corner·corner-next:꽃길·build:<빠진 조각> · 테이블 옆 길가 칸 | ₩30만 |
+ * | 5 corner  | 첫 명당 「꽃길」: 꽃밭+벤치+가로등 (트랙 C completedCorners ≥1) | nav:build·tab:corner·corner-next:꽃길·build:<빠진 조각> · 테이블 옆 길가 칸 | ₩30만 |
  * | 6 goals   | 목표 창 열어 보기(seen goalWindow) | goal-bar | — |
  * | 7 graduate| 대사 닫기 | — | 칭호 「할망의 제자」·₩50만·응모권 3 |
  */
@@ -114,15 +114,15 @@ function objectsOfTypes(s: GameState, types: readonly string[]): PlacedObject[] 
   return Object.values(s.objects).filter((o) => types.includes(o.type));
 }
 
-// ---------- 5단계 첫 테마 「꽃길」 (트랙 C corners: 꽃밭 + 벤치 + 가로등) ----------
+// ---------- 5단계 첫 명당 「꽃길」 (트랙 C corners: 꽃밭 + 벤치 + 가로등) ----------
 
-/** 튜토리얼 첫 테마 */
+/** 튜토리얼 첫 명당 */
 export const TUTORIAL_CORNER_ID = 'corner_flower_path';
 /** 꽃길 조각 순서 (corners.json 그대로: 꽃밭 → 벤치 → 가로등) */
 export const CORNER_PIECE_TYPES: readonly string[] = (CORNERS.find((c) => c.id === TUTORIAL_CORNER_ID)?.pieces.map((p) => p.type) ?? ['flower_bed', 'deco_wood_bench', 'streetlight']);
 /** 조각끼리 서로 반경 CORNER_RADIUS 안 (corners.json radius) */
 export const CORNER_RADIUS = CORNERS.find((c) => c.id === TUTORIAL_CORNER_ID)?.radius ?? 2;
-/** 첫 테마가 생겼나: 트랙 C 테마 목록에 1개 이상 */
+/** 첫 명당이 생겼나: 트랙 C 명당 목록에 1개 이상 */
 export function cornerMade(s: GameState): boolean {
   return completedCorners(s).length >= 1;
 }
@@ -140,7 +140,7 @@ export function cornerMissingType(s: GameState): string {
   }
   return CORNER_PIECE_TYPES[CORNER_PIECE_TYPES.length - 1]!;
 }
-/** 칸이 길 옆인가 (손님이 테마를 찾아가려면 조각 하나가 길에 붙어 있어야 한다) */
+/** 칸이 길 옆인가 (손님이 명당을 찾아가려면 조각 하나가 길에 붙어 있어야 한다) */
 function besidePath(s: GameState, x: number, y: number): boolean {
   return walkableNeighborsOf(s, x, y).length > 0;
 }
@@ -155,7 +155,7 @@ export function cornerCells(s: GameState): Pt[] {
   for (let dy = -CORNER_RADIUS; dy <= CORNER_RADIUS; dy++) for (let dx = -CORNER_RADIUS; dx <= CORNER_RADIUS; dx++) {
     const x = anchor.x + dx, y = anchor.y + dy;
     if (!emptySoil(s, x, y) || (front && front.x === x && front.y === y) || !canPlace(s, type, x, y).ok) continue;
-    // 꽃밭(닻)은 길 옆을 우선 (길 옆이 아니면 +10) — 테마 완성 뒤 손님이 찾아올 수 있게
+    // 꽃밭(닻)은 길 옆을 우선 (길 옆이 아니면 +10) — 명당 완성 뒤 손님이 찾아올 수 있게
     const d = Math.max(Math.abs(dx), Math.abs(dy)) + (Math.abs(dx) + Math.abs(dy)) / 100 + (type === CORNER_PIECE_TYPES[0] && !besidePath(s, x, y) ? 10 : 0);
     if (d < bd) { bd = d; best = { x, y }; }
   }
@@ -199,7 +199,7 @@ export const STEPS: TutorialStepDef[] = [
   { id: 2, key: 'menu', done: (s) => s.menuSlots.includes('americano'), reward: [money(100_000)], targets: ['nav:cafe', 'tab:menu', 'menu-put'], cells: none },
   { id: 3, key: 'greet', done: greetedGuest, reward: [{ type: 'tickets', n: 1 }], targets: ['guest-row', 'greet'], cells: guestCells },
   { id: 4, key: 'hire', done: (s) => s.staff.length >= 1, reward: [money(300_000)], targets: ['nav:people', 'tab:candidates', 'hire'], cells: none },
-  { id: 5, key: 'corner', done: cornerMade, reward: [money(300_000)], targets: (s) => ['nav:build', 'tile:charm', 'tab:corner', `corner-next:${TUTORIAL_CORNER_ID}`, `build:${cornerMissingType(s)}`, 'build-go'], cells: cornerCells }, // fun: 「매력」 타일 → 테마 탭 → 꽃길 「놓기」
+  { id: 5, key: 'corner', done: cornerMade, reward: [money(300_000)], targets: (s) => ['nav:build', 'tile:charm', 'tab:corner', `corner-next:${TUTORIAL_CORNER_ID}`, `build:${cornerMissingType(s)}`, 'build-go'], cells: cornerCells }, // fun: 「매력」 타일 → 명당 탭 → 꽃길 「놓기」
   { id: 6, key: 'goals', done: (s) => seen(s, 'goalWindow'), reward: [], targets: ['goal-bar'], cells: none },
   { id: 7, key: 'graduate', done: () => true, reward: [{ type: 'title', id: 'halmang_pupil', name: '할망의 제자' }, money(500_000), { type: 'tickets', n: 3 }], targets: [], cells: none },
 ];

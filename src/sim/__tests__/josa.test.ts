@@ -50,7 +50,7 @@ test('이에요/예요: 받침 있으면 「이에요」, 없으면 「예요」
   for (const w of ['의자', '벤치', '감귤나무']) expect(josa(w, '이에요/예요')).toBe(`${w}예요`);
 });
 
-test('테마 효과 한 줄: 손님층 이름 + 이/가 («젊은 손님이 더 온다» / «삼춘이 더 온다»)', () => {
+test('명당 효과 한 줄: 손님층 이름 + 이/가 («젊은 손님이 더 온다» / «삼춘이 더 온다»)', () => {
   const s = bareState(1);
   const texts = cornerProgress(s).map(cornerEffectText);
   expect(texts.length).toBe(CORNERS.length);

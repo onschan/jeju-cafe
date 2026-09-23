@@ -237,7 +237,7 @@ export interface GiftDef {
 export interface BoardState { quests: Record<string, QuestState>; events: EventState[] }
 
 // ---------- 세트·아이템 (2B-2) ----------
-/** 테마·세트의 대상 손님층 (v2 표의 target) */
+/** 명당·세트의 대상 손님층 (v2 표의 target) */
 export type ComboTarget = 'all' | 'female' | 'male' | 'youth' | 'adult' | 'senior' | 'group';
 export interface SetDef {
   id: string;
@@ -267,7 +267,7 @@ export interface ObjectStats {
   noise: number;
   upkeep: number;
   sets: ActiveSet[];
-  corner: { pop: number; feePct: number };  // 반경 안 완성 테마 합산 (corners.ts)
+  corner: { pop: number; feePct: number };  // 반경 안 완성 명당 합산 (corners.ts)
   level: number;                        // 증축 Lv 1~3 (upgrade.ts)
   wear: number;                         // 노후 단계 0~6 (cleanliness.ts, 인기 −wear)
 }
@@ -385,6 +385,9 @@ export interface Pt { x: number; y: number }
 
 /** 월 비용 항목. recruit = 공고비 + 퇴직금 */
 /** 월 비용 항목. tax = 소득세(매년 3월 1일, 전년 순이익 ×10%), loanRepay = 삼춘 대출 자동 상환(흑자 달 순이익 30%), shuttle = 공항 셔틀 월 고정비 */
+/** 하루 성장 기록 한 줄 (daylog.ts) */
+export interface DayLogRow { day: number; guests: number; income: number; regulars: number; grade: number }
+
 export interface MonthCosts { ingredients: number; salary: number; ads: number; upkeep: number; recruit: number; tax: number; loanRepay: number; shuttle: number }
 /** 농원: harvested = 이달 1일 창고에 들어온 재료, ingredientSaved = 창고 재료를 써서 안 산 재료비 */
 export interface MonthHarvest { harvested: Record<string, number>; ingredientSaved: number }
@@ -448,7 +451,7 @@ export type GoalCondition =
   | { type: 'custom'; id: string; n?: number }    // 코드 판정
   // ---- §7.5 전략 조건 ----
   | { type: 'siteSeats'; view: number; n: number } // 전망 view 이상 좌석 n개 (x-site)
-  | { type: 'corners'; n: number }                // 만든 테마 수 (fun-corner, corners.ts 도감)
+  | { type: 'corners'; n: number }                // 만든 명당 수 (fun-corner, corners.ts 도감)
   | { type: 'hiddenRecipes'; n: number }          // 도감에 오른 숨은 레시피 수 (game-feel: 도전 「숨은 레시피 찾기」)
   | { type: 'upgraded'; lv: number; n: number }   // 증축 Lv 이상 시설 n개 (x-facility)
   | { type: 'clean'; avg: number; days: number }  // 청결 avg 이상 days일 (x-facility)
@@ -517,7 +520,7 @@ export interface GameStats {
   trainings: number;       // 연수 완료 횟수 (x-staff가 올린다)
   seenMonth: number;       // 월말 관찰용 monthIndex (goals.ts observeMonth)
   seenAnnouncement: number; // 마지막으로 센 가이드북 발표 monthIndex
-  cornerVisits?: number;   // 손님이 테마를 찾아온 누적 횟수 (fun-corner)
+  cornerVisits?: number;   // 손님이 명당을 찾아온 누적 횟수 (fun-corner)
 }
 /** 보상 상자에 담기는 보상 알림의 출처 */
 export type RewardSource = 'goal' | 'monthly' | 'tutorial' | 'rank' | 'star' | 'unlock' | 'milestone' | 'bundle' | 'grade'; // rank·star = 승급 보상, unlock = 손님층 해금, milestone = 자금 목표 25/50/75%, bundle = 같은 큐의 상자 3개 이상을 하나로 묶은 것, grade = 카페 등급 승급 (fun-rank)
@@ -660,8 +663,8 @@ export type FxEvent =
   | { kind: 'complete'; x: number; y: number; tick: number } // 시설 완공 반짝임
   | { kind: 'scene'; title: string; text: string; tick: number } // UI 장면 창(완공·★ 승급·랭크 업). 렌더는 무시한다
   | { kind: 'react'; guestId: string; text: string; icon?: 'heart' | 'sweat' | 'wave' | 'question' | 'thumb'; tick: number } // 트랙 G: 손님 반응 — 말풍선 + 머리 위 아이콘(하트·땀·손 흔들기·?)
-  | { kind: 'corner'; id: string; x: number; y: number; tick: number } // fun-corner: 테마 완성 — 팻말 자리 반짝
-  | { kind: 'flash'; x: number; y: number; guestId: string; text: string; tick: number } // fun-corner: 손님이 테마에서 사진 (카메라 플래시 + 말풍선)
+  | { kind: 'corner'; id: string; x: number; y: number; tick: number } // fun-corner: 명당 완성 — 팻말 자리 반짝
+  | { kind: 'flash'; x: number; y: number; guestId: string; text: string; tick: number } // fun-corner: 손님이 명당에서 사진 (카메라 플래시 + 말풍선)
   | { kind: 'applause'; tick: number } // fun-rank: 등급 승급 — 마당 손님 전원 박수(하트·반짝)
   | { kind: 'parcel'; id: string; tick: number } // fun-rank: 필지 구매 — 덮개 안개 걷힘 + 랜드마크 등장 반짝
   | { kind: 'arrive'; route: RouteId; x: number; y: number; n: number; tick: number }; // fun P0: 경로 도착 — 렌터카가 서고 손님 n명이 내린다 (올레는 걸어옴), 작은 문구
@@ -757,7 +760,7 @@ export interface Guest {
   recommended?: boolean; // 메뉴를 추천했다 (손님당 1회)
 }
 
-/** 손님 요청 (트랙 G requests.json): 앉은 손님 20%가 테마·시설·메뉴를 바란다. 들어주면 다음 그 손님층 방문에 "고마워요" + 단골 게이지 +2. */
+/** 손님 요청 (트랙 G requests.json): 앉은 손님 20%가 명당·시설·메뉴를 바란다. 들어주면 다음 그 손님층 방문에 "고마워요" + 단골 게이지 +2. */
 export interface GuestRequestDef { id: string; text: string; want: { corner?: string; facility?: string; menu?: string; tagCorner?: string }; thanks: string }
 export interface GuestRequest { id: string; guestType: string; day: number; done: boolean }
 /** 단골 등록 손님 (트랙 G): 손님층 게이지가 5면 그 손님층에서 이름·얼굴이 고정된 한 명. 매주 방문·팁 +20%. */
@@ -816,6 +819,8 @@ export interface GameState {
   monthReputationDelta: number;               // 이달 평판 변화 누적 (카드)
   dayStats: { satisfied: number; complained: number; total: number }; // 오늘 만족·불만·총손님 (밤에 평판 계산 후 리셋)
   dayPhotos?: number;                          // fun: 오늘 손님이 찍은 사진 수 (밤에 평판 +0.05/장, 상한 0.5 — appeal.ts)
+  dayLog?: DayLogRow[];                        // 성장: 최근 30일 하루치 손님·매출·새 단골·등급 (daylog.ts)
+  dayLogMark?: { income: number; regulars: number }; // 하루 차이를 내려고 들고 있는 어제 마감값 (daylog.ts)
   reputationWarned: boolean;                  // 평판 20 미만 경고를 띄웠나 (30 이상 회복하면 리셋)
   lastApologyMonthIndex: number;              // 사과 이벤트는 월 1회 (−1 = 아직)
   objects: Record<string, PlacedObject>; // 키는 'o123' 형태(비정수 문자열)라 삽입 순서가 보존됨 → 결정적 순회
@@ -868,7 +873,7 @@ export interface GameState {
   effects: ActiveEffect[];                    // 이벤트 효과 (기간형)
   menuSold: Record<string, number>;           // menuId → 누적 판매 수 (부탁 진행: 수락 시점 값과의 차, 목표 menuSold)
   monthMenuSold: Record<string, number>;      // 이달 판매 수 (월말 카드 최다 판매 메뉴)
-  codex: { sets: string[]; recipes: string[]; ingredientCombos: string[]; titles?: string[]; corners?: string[] }; // 완성한 세트·히든 레시피·재료 콤보·테마 id (도감) + 만난 직원 칭호
+  codex: { sets: string[]; recipes: string[]; ingredientCombos: string[]; titles?: string[]; corners?: string[] }; // 완성한 세트·히든 레시피·재료 콤보·명당 id (도감) + 만난 직원 칭호
   clean: { value: number; lastGuests: number; history: number[] }; // 카페 청결 0~100 (cleanliness.ts) + 어제까지의 누적 손님 수 + 최근 30일 값(목표 판정용, 새 날마다 push)
   customMenus: MenuDef[];                     // 개발한 메뉴 (id m_custom_N). menuOf(state, id)가 기본 메뉴보다 먼저 찾는다
   menuMods: Record<string, MenuMod>;          // menuId → 토핑·레벨 (없으면 토핑 없음·레벨 1)
@@ -886,7 +891,7 @@ export interface GameState {
   namedGuests: Record<string, NamedGuestState>; // 빅 이벤트 특별 손님을 만난 적이 있는지
   lastOutcome?: OutcomeResult | null;         // 마지막 작업 판정 대박/중박/쪽박 (UI 룰렛 팝업, staff-luck)
   monthGreatServes?: number;                  // 이달 서빙 대박 횟수 (월말 카드 하이라이트, staff-luck)
-  cornerVisits?: { day: number; counts: Record<string, number> }; // fun-corner: 오늘 테마별 손님 방문 수 (하루 상한, 날이 바뀌면 corners.ts가 초기화)
+  cornerVisits?: { day: number; counts: Record<string, number> }; // fun-corner: 오늘 명당별 손님 방문 수 (하루 상한, 날이 바뀌면 corners.ts가 초기화)
   undo: UndoEntry | null;                     // 직전 배치·철거·이동 되돌리기 스냅샷 (undo.ts)
   main: MainState;                            // 본관 증축·2층·이동·분위기 (rooms.ts, y-indoor)
   guests: Guest[];

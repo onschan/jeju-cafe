@@ -12,14 +12,14 @@ import { josa } from '../../sim/josa.ts';
 import { useWindowState, body, TabBar, soft, Empty, type WindowProps } from './shared.tsx';
 import { SiteToggle } from '../SiteToggle.tsx';
 import { showFirstTip } from '../firstTip';
-import { CornerTab } from './CornerTab.tsx'; // fun-corner 「테마」 탭
+import { CornerTab } from './CornerTab.tsx'; // fun-corner 「명당」 탭
 
 export type BuildTab = 'building' | 'corner' | 'indoor' | 'rest' | 'convenience' | 'food' | 'fun' | 'farm' | 'scenery' | 'path' | 'wall';
 /** fun: 짓기 창 첫 화면(6타일) · 타일 하위 목록 · 전체 목록(탭) */
 export type BuildView = { kind: 'tiles' } | { kind: 'tile'; tile: BuildTileId } | { kind: 'all' };
-/** 탭 순서 (§8.4): [건물 — 본관이 없을 때만(w-start)] · 테마(fun-corner) · 실내 · 쉼 · 편의 · 먹거리 · 즐길거리 · 농원 · 경관 · 길 · 담 */
+/** 탭 순서 (§8.4): [건물 — 본관이 없을 때만(w-start)] · 명당(fun-corner) · 실내 · 쉼 · 편의 · 먹거리 · 즐길거리 · 농원 · 경관 · 길 · 담 */
 export const BUILD_TABS: { key: BuildTab; label: string }[] = [
-  { key: 'building', label: '건물' }, { key: 'corner', label: '테마' }, { key: 'indoor', label: '실내' }, { key: 'rest', label: '쉼' }, { key: 'convenience', label: '편의' }, { key: 'food', label: '먹거리' }, { key: 'fun', label: '즐길거리' },
+  { key: 'building', label: '건물' }, { key: 'corner', label: '명당' }, { key: 'indoor', label: '실내' }, { key: 'rest', label: '쉼' }, { key: 'convenience', label: '편의' }, { key: 'food', label: '먹거리' }, { key: 'fun', label: '즐길거리' },
   { key: 'farm', label: '농원' }, { key: 'scenery', label: '경관' }, { key: 'path', label: '길' }, { key: 'wall', label: '담' },
 ];
 /** 본관 카드 「실내 꾸미기」처럼 창을 여는 쪽이 첫 탭을 지정한다 (App 창 매핑을 안 건드리고 — y-indoor). 한 번 읽으면 지워진다. */
@@ -99,7 +99,7 @@ export function BuildWindow(props: BuildWindowProps) {
   const [picked, setPicked] = useState<string | null>(null);
   const [tab, setTabState] = useState<BuildTab>(() => props.initialTab ?? takeRequestedTab() ?? (mainBuilding(s) ? (lastTab ?? 'rest') : 'building'));
   const setTab = (t: BuildTab) => { lastTab = t; lastScrollTop = 0; setTabState(t); };
-  // fun: 첫 화면은 6타일 — 여는 쪽이 탭을 지정했거나(본관 카드 「실내 꾸미기」·테마 탭 글로우) 맨땅(건물 탭)이면 바로 전체 목록
+  // fun: 첫 화면은 6타일 — 여는 쪽이 탭을 지정했거나(본관 카드 「실내 꾸미기」·명당 탭 글로우) 맨땅(건물 탭)이면 바로 전체 목록
   const [view, setView] = useState<BuildView>(() => (props.initialTab || requestedTabWas || !mainBuilding(s) ? { kind: 'all' } : (lastView ?? { kind: 'tiles' })));
   const goView = (v: BuildView) => { lastView = v.kind === 'all' ? v : null; lastScrollTop = 0; setView(v); setPicked(null); showFirstTip(null); }; // 창을 다시 열면 늘 6타일 첫 화면 (전체 목록만 기억) · 팁이 아래 「짓기」 줄을 가리지 않게 내린다
   const rootRef = useRef<HTMLDivElement>(null);
@@ -124,7 +124,7 @@ export function BuildWindow(props: BuildWindowProps) {
     ? TILE_TYPES[tileMode].map((id) => objectDef(id)).filter((d) => unlocked.has(d.id) || treeOf(d.id)).map((def) => ({ def, locked: (treeOf(def.id)?.index ?? 0) > 0 || !unlocked.has(def.id) })) // 트리 2단계부터는 짓지 않고 「업그레이드 ▲」로만
     : activeTab === 'building'
     ? (noMain ? [{ def: objectDef(MAIN_TYPE), locked: false }] : [])
-    : activeTab === 'corner' ? [] // fun-corner: 테마 탭은 카드가 아니라 CornerTab
+    : activeTab === 'corner' ? [] // fun-corner: 명당 탭은 카드가 아니라 CornerTab
     : OBJECTS.filter((d) => !HIDDEN_IDS.has(d.id) && buildTabOf(d) === activeTab)
       .map((def) => ({ def, locked: !unlocked.has(def.id) }))
       .sort((a, b) => Number(a.locked) - Number(b.locked) || a.def.cost - b.def.cost);
@@ -157,7 +157,7 @@ export function BuildWindow(props: BuildWindowProps) {
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
         <button data-testid="build-back" style={{ ...brownBtn, margin: 0, padding: '0 10px', fontSize: 14, minHeight: 40 }} onClick={() => goView({ kind: 'tiles' })}>◀ 짓기</button>
         {tileDef && <span style={{ fontSize: 15, fontWeight: 700 }}><Icon name={tileDef.icon} size={16} /> {tileDef.name} <span style={{ ...soft, fontWeight: 400 }}>{tileDef.purpose}</span></span>}
-        {tileMode === 'charm' && <button data-testid="build-corner-tab" data-tut="tab:corner" style={{ ...brownBtn, margin: 0, padding: '0 10px', fontSize: 14, minHeight: 40 }} onClick={() => { goView({ kind: 'all' }); setTab('corner'); }}><Icon name="sparkle" size={14} /> 테마</button>}
+        {tileMode === 'charm' && <button data-testid="build-corner-tab" data-tut="tab:corner" style={{ ...brownBtn, margin: 0, padding: '0 10px', fontSize: 14, minHeight: 40 }} onClick={() => { goView({ kind: 'all' }); setTab('corner'); }}><Icon name="sparkle" size={14} /> 명당</button>}
       </div>
       {!tileMode && <TabBar tabs={tabs.map((t) => ({ ...t, badge: undefined }))} active={activeTab} onPick={(k) => { setTab(k); setPicked(null); }} testId="build-tab" />}
       {recent.length > 0 && (

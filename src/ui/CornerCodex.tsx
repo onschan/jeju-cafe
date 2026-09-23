@@ -1,4 +1,4 @@
-/** 테마 도감 (fun-corner, 스펙 §3): 만든 테마는 이름·효과, 미완성은 힌트("돌담 근처에 감귤나무")만. 도감 탭(CodexPanel) 한 줄로 붙는다. */
+/** 명당 도감 (fun-corner, 스펙 §3): 만든 명당은 이름·효과, 미완성은 힌트("돌담 근처에 감귤나무")만. 도감 탭(CodexPanel) 한 줄로 붙는다. */
 import { useGame } from './store';
 import { PALETTE } from './frame';
 import { Icon } from './Icon';
@@ -11,7 +11,7 @@ export function CornerCodex() {
   return (
     <div data-testid="corner-codex" style={{ fontSize: 14 }}>
       <div style={{ fontSize: 13, color: PALETTE.inkSoft, margin: '8px 0 4px' }}>
-        테마 도감 {made.size}/{CORNERS.length} · 서로 다른 시설을 2칸 안에 모으면 이름이 붙어요
+        명당 도감 {made.size}/{CORNERS.length} · 서로 다른 시설을 2칸 안에 모으면 이름이 붙어요
       </div>
       {CORNERS.map((c) => {
         const done = made.has(c.id);

@@ -76,14 +76,14 @@ describe('할망의 정석 (strategy.ts): 글로우 칸은 실제 수치로 고�
     expect(wallSheltered(s)).toBe(true);
   });
 
-  it('bestCornerCells: 감귤나무를 놓으면 테마 조각이 가장 많이 모이는 칸 — 다른 어떤 칸도 더 높지 않다', () => {
+  it('bestCornerCells: 감귤나무를 놓으면 명당 조각이 가장 많이 모이는 칸 — 다른 어떤 칸도 더 높지 않다', () => {
     const s = bareYardWithPath();
     const seat = bestSeatCells(s, 1)[0]!;
     apply(s, { type: 'place', objectType: 'table_out', ...seat });
     apply(s, { type: 'place', objectType: 'stonewall', ...bestWallCell(s)! });
     const best = bestCornerCells(s, TREE_TYPE, 1)[0]!;
     const n = cornerScoreIfPlaced(s, TREE_TYPE, best.x, best.y);
-    expect(n).toBeGreaterThanOrEqual(1); // 돌담이 곁에 있으면 밭담 테마 조각
+    expect(n).toBeGreaterThanOrEqual(1); // 돌담이 곁에 있으면 밭담 명당 조각
     for (const p of allEmptyOwned(s, TREE_TYPE)) expect(cornerScoreIfPlaced(s, TREE_TYPE, p.x, p.y)).toBeLessThanOrEqual(n);
     const r = apply(s, { type: 'place', objectType: TREE_TYPE, ...best });
     expect(r.ok).toBe(true);

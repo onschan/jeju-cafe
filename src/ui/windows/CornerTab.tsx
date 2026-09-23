@@ -1,5 +1,5 @@
-/** 짓기 창 「테마」 탭 (fun-corner, 스펙 §3): 테마 카드(이름·효과 한 줄·조각 ✓/✗) + 「다음에 놓을 것」 버튼 → 그 시설 고스트(onPickBuild).
- *  완성된 테마는 체크, 미완성은 "벤치 하나만 더"처럼 모자란 것 한 줄. 조각이 아직 안 열렸으면 자물쇠 + 여는 조건. */
+/** 짓기 창 「명당」 탭 (fun-corner, 스펙 §3): 명당 카드(이름·효과 한 줄·조각 ✓/✗) + 「다음에 놓을 것」 버튼 → 그 시설 고스트(onPickBuild).
+ *  완성된 명당은 체크, 미완성은 "벤치 하나만 더"처럼 모자란 것 한 줄. 조각이 아직 안 열렸으면 자물쇠 + 여는 조건. */
 import { useEffect } from 'react';
 import type { GameState } from '../../sim/index.ts';
 import { canStartBuild, placeCost } from '../../sim/index.ts';
@@ -38,7 +38,7 @@ export function CornerTab({ s, onPickBuild }: { s: GameState; onPickBuild?: (id:
   const sorted = [...list].sort((a, b) => Number(a.done) - Number(b.done) || a.missing.length - b.missing.length);
   return (
     <div data-testid="corner-tab">
-      <div style={{ ...soft, marginBottom: 6 }}><Icon name="sparkle" size={14} /> 테마 {doneN}/{list.length} · 서로 다른 시설을 2칸 안에 모으면 이름이 붙어요</div>
+      <div style={{ ...soft, marginBottom: 6 }}><Icon name="sparkle" size={14} /> 명당 {doneN}/{list.length} · 서로 다른 시설을 2칸 안에 모으면 이름이 붙어요</div>
       {sorted.map((p) => {
         const next = p.missing[0];
         const nextDef = next ? objectDef(next.type) : null;

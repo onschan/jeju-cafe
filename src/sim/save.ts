@@ -96,11 +96,13 @@ function backfill(state: GameState): void {
   state.ending ??= initEnding(); // z-ending: 엔딩·빠른 모드 (v18 세이브엔 없다)
   state.carry ??= null; // z-ending: 이월 묶음
   state.codex.titles ??= []; // staff-luck: 만난 칭호 도감
-  state.codex.corners ??= []; // fun-corner: 만든 테마 도감
+  state.codex.corners ??= []; // fun-corner: 만든 명당 도감
   state.lastOutcome ??= null;
   state.luckSeq ??= 0;
   state.monthGreatServes ??= 0;
   state.voices ??= []; // trim: 손님 목소리 피드
+  state.dayLog ??= []; // 성장: 하루 기록 (옛 세이브는 오늘부터 쌓인다)
+  state.dayLogMark ??= { income: state.monthIncome, regulars: state.regulars?.length ?? 0 };
   state.grade ??= 1; // fun-rank: 카페 등급 (옛 세이브는 「올레길 노점」에서 시작 — 조건이 차 있으면 다음 날 판정에서 오른다)
   for (const k of ['clearRock', 'promote', 'craft', 'siteView', 'comboCodex', 'spotMap']) delete (state.features as Record<string, boolean>)[k]; // ease: 바위 삭제·처음부터 열린 기능 — 옛 저장의 기능 키는 지운다
   delete (state.stats as unknown as Record<string, number>)['rocksCleared'];

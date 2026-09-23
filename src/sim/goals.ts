@@ -1,7 +1,7 @@
 /**
  * 목표 체인 (v3 §2 → 확장 §3.5·§7): goals.json 108개. 메인 목표는 **2개 동시 진행**(index와 그 다음 안 이룬 것 둘 다 판정·표시).
  * 달성하면 applyRewards로 보상을 주고 alerts에 { type: 'reward' }(보상 상자) → { type: 'goal' }(축하 대화)를 남긴다.
- * 조건 판정은 conditionCheckers 레지스트리(타입 → { cur, max }). 다른 트랙(시설 증축·청결·명당·연수·명소 방문객·입지)이 아직 없는 조건은
+ * 조건 판정은 conditionCheckers 레지스트리(타입 → { cur, max }). 다른 트랙(시설 증축·청결·자리 보너스·연수·명소 방문객·입지)이 아직 없는 조건은
  * `// TODO(x-<트랙>)` 스텁으로 { cur: 0 }을 돌려 두고 통합 때 한 줄씩 연결한다.
  * 도전 과제·월간 과제·튜토리얼 판정도 checkGoals에서 같이 돈다 (tick·액션 훅은 그대로 한 곳).
  *
@@ -173,7 +173,7 @@ export const conditionCheckers: CheckerMap = {
   custom: (s, c) => flag(customMet(s, c.id)),
   // ---- §7.5 전략 조건 ----
   siteSeats: (s, c) => n(seatObjectsOf(s).filter((o) => siteOf(s, o.x, o.y).view >= c.view).length, c.n), // 자리 전망
-  corners: (s, c) => n(cornersMade(s), c.n), // fun-corner: 만든 테마 수 (도감)
+  corners: (s, c) => n(cornersMade(s), c.n), // fun-corner: 만든 명당 수 (도감)
   hiddenRecipes: (s, c) => n(s.codex.recipes.length, c.n), // 도감에 오른 숨은 레시피 수
   upgraded: (s, c) => n(Object.values(s.objects).filter((o) => !o.build && goalLevelOf(o) >= c.lv).length, c.n), // 트랙 A 증축 · fun 트리 단계
   clean: (s, c) => flag(cleanAvgDays(s, c.days) >= c.avg), // 트랙 A: 최근 days일 평균 청결 ≥ avg
@@ -313,7 +313,7 @@ export function goalConditionText(c: GoalCondition): string {
     case 'uniforms': return `유니폼 ${c.n}단계`;
     case 'custom': return '특별 조건';
     case 'siteSeats': return `전망 ${c.view} 이상 좌석 ${c.n}개`;
-    case 'corners': return `테마 ${c.n}개`;
+    case 'corners': return `명당 ${c.n}개`;
     case 'clean': return `청결 ${c.avg} 이상 ${c.days}일`;
     case 'skills': return `특기 직원 ${c.n}명`;
     case 'selfSupply': return `재료 자급률 ${c.pct}%`;

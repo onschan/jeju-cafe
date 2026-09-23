@@ -1,6 +1,6 @@
 /**
  * 카페 매력도 (fun 통합, 사용자 피드백 「경관이 뭘 위해 있는지 부족하다 — 전략 시뮬로서의 재미」).
- * 지표 3개: 인기(동네 손님 ← 시설·홍보) / 경관(관광객 ← 정원·테마·전망) / 서비스(만족·단골 ← 직원·주방·자리 점수).
+ * 지표 3개: 인기(동네 손님 ← 시설·홍보) / 경관(관광객 ← 정원·명당·전망) / 서비스(만족·단골 ← 직원·주방·자리 점수).
  * - 경관의 목적을 sim에 명시: 자리 평균 경치(cafeScenery)가 관광객 태그 손님의 스폰 배수(sceneryTouristMult, ×0.85~×1.25)이고,
  *   손님이 사진을 찍으면(photo fx) 그날 밤 평판 +0.02/장(하루 +0.15 상한) — 입소문 → 평판 → 이름 있는 손님·단골.
  * - 경관 시설 카드에 "관광객 +n%/일": sceneryGainText.
@@ -101,7 +101,7 @@ export function appealOf(state: GameState, seatUse: number): Appeal {
       bottleneck: pop < POPULARITY_LOW ? '인기가 낮아 손님이 적다' : seatUse >= SEAT_USE_HIGH ? '자리가 모자라 손님이 돌아간다' : '',
     },
     {
-      key: 'scenery', label: '경관', value: Math.round(scenery * 10) / 10, max: 15, unit: '', howTo: ['자리 옆에 정원·테마를 둔다', '전망 좋은 땅(오름·바다)을 산다'],
+      key: 'scenery', label: '경관', value: Math.round(scenery * 10) / 10, max: 15, unit: '', howTo: ['자리 옆에 정원·명당을 둔다', '전망 좋은 땅(오름·바다)을 산다'],
       bottleneck: scenery < 4 ? `경관 ${Math.round(scenery)} — 관광객이 안 온다` : '',
     },
     {

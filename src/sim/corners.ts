@@ -1,10 +1,10 @@
 /**
- * 테마 (fun-reset 스펙 §3, fun-corner): 서로 다른 시설 3~4종이 반경 2 안에 모이면 이름 있는 테마가 된다.
+ * 명당 (fun-reset 스펙 §3, fun-corner): 서로 다른 시설 3~4종이 반경 2 안에 모이면 이름 있는 명당이 된다.
  *
  * - 판정: corners.json의 pieces[0] 종류 오브젝트를 "닻"으로 삼고, 나머지 조각이 닻 발자국에서 체비쇼프 거리 radius 안에
- *   count개 이상(서로 다른 개체) 있으면 완성. 같은 테마는 한 번만(맨 처음 만족한 닻) — 같은 시설을 더 놓아도 효과는 1회.
- * - 효과: 테마 중심(닻)에서 radius 안의 시설에 요금 +feePct%·인기 +popularity (합산 상한 CORNER_CAP),
- *   대상 태그 손님이 그 시설을 고를 확률 ×tagMult (compat.guestPickMult 훅), 손님이 테마를 찾아와 사진(photo 확률).
+ *   count개 이상(서로 다른 개체) 있으면 완성. 같은 명당은 한 번만(맨 처음 만족한 닻) — 같은 시설을 더 놓아도 효과는 1회.
+ * - 효과: 명당 중심(닻)에서 radius 안의 시설에 요금 +feePct%·인기 +popularity (합산 상한 CORNER_CAP),
+ *   대상 태그 손님이 그 시설을 고를 확률 ×tagMult (compat.guestPickMult 훅), 손님이 명당을 찾아와 사진(photo 확률).
  * - 결정적: state.rng만 쓰고, 판정은 배치 서명(layoutRev.ts)으로 캐시한다.
  */
 import type { GameState, PlacedObject, ComboTarget, Guest } from './types.ts';
@@ -32,9 +32,9 @@ export interface CornerDef {
   guestLine: string;       // 손님 말풍선
   hint: string;            // 도감 미완성 힌트 ("돌담 근처에 감귤나무")
 }
-/** 완성된 테마: 닻 오브젝트와 조각 id */
+/** 완성된 명당: 닻 오브젝트와 조각 id */
 export interface CompletedCorner { id: string; anchorId: string; x: number; y: number; pieceIds: string[] }
-/** 테마 진행 상황 (짓기 「테마」 탭·도감): 조각별 필요/보유 */
+/** 명당 진행 상황 (짓기 「명당」 탭·도감): 조각별 필요/보유 */
 export interface CornerProgress { def: CornerDef; done: boolean; anchor: PlacedObject | null; pieces: { type: string; need: number; have: number }[]; missing: CornerPiece[] }
 
 const TARGETS = new Set<ComboTarget>(['all', 'female', 'male', 'youth', 'adult', 'senior', 'group']);
@@ -49,20 +49,20 @@ export function cornerDef(id: string): CornerDef {
   if (!c) throw new Error(`unknown corner: ${id}`);
   return c;
 }
-/** 이 시설 종류가 조각인 테마들 */
+/** 이 시설 종류가 조각인 명당들 */
 export function cornersWithPiece(type: string): CornerDef[] {
   return CORNERS.filter((c) => c.pieces.some((p) => p.type === type));
 }
 
-/** 시설 하나가 받는 테마 효과 합산 상한 (trim: 콤보·명당을 걷어낸 만큼 테마가 그 자리를 받는다) */
+/** 시설 하나가 받는 명당 효과 합산 상한 (trim: 콤보·옛 자리 보너스를 걷어낸 만큼 명당이 그 몫을 받는다) */
 export const CORNER_CAP = { pop: 10, feePct: 14 };
-/** 테마 만족 가산: 태그가 맞는 테마가 반경 안에 있으면 +5, 전체 대상 테마는 +3 (가장 큰 것 하나) */
+/** 명당 만족 가산: 태그가 맞는 명당이 반경 안에 있으면 +5, 전체 대상 명당은 +3 (가장 큰 것 하나) */
 export const CORNER_SATISFACTION = 5;
 export const CORNER_SATISFACTION_ALL = 3;
-/** 손님이 테마를 찾아갈 가중치 (시설 대비 ×3) · 테마별 하루 방문 상한 */
+/** 손님이 명당을 찾아갈 가중치 (시설 대비 ×3) · 명당별 하루 방문 상한 */
 export const CORNER_VISIT_WEIGHT = 3;
 export const CORNER_VISITS_PER_DAY = 8;
-/** 테마 완성 보상: 첫 테마 마일리지 +1 */
+/** 명당 완성 보상: 첫 명당 마일리지 +1 */
 export const FIRST_CORNER_TICKETS = 1;
 
 // ---------- 거리 ----------
@@ -78,7 +78,7 @@ export function footDist(a: Foot, b: Foot): number {
   return Math.max(dx, dy);
 }
 
-/** 테마 조각이 될 수 있는 오브젝트: 공사가 끝났고 내 필지 위 (안 산 필지의 옛 밭담·감귤밭은 안 센다). building=true면 공사 중도 센다(진행 표시용). */
+/** 명당 조각이 될 수 있는 오브젝트: 공사가 끝났고 내 필지 위 (안 산 필지의 옛 밭담·감귤밭은 안 센다). building=true면 공사 중도 센다(진행 표시용). */
 function isPiece(state: GameState, o: PlacedObject, building = false): boolean {
   return (building || !o.build) && !!parcelAt(state, o.x, o.y)?.owned;
 }
@@ -110,7 +110,7 @@ function isComplete(def: CornerDef, have: number[]): boolean {
   return def.pieces.every((p, i) => (have[i] ?? 0) >= p.count);
 }
 
-/** 이 테마의 닻 후보 중 처음 완성되는 것 (오브젝트 등록 순 — 결정적) */
+/** 이 명당의 닻 후보 중 처음 완성되는 것 (오브젝트 등록 순 — 결정적) */
 function completedOf(def: CornerDef, by: Map<string, PlacedObject[]>): CompletedCorner | null {
   for (const anchor of by.get(def.pieces[0]!.type) ?? []) {
     const r = piecesAround(def, anchor, by);
@@ -120,7 +120,7 @@ function completedOf(def: CornerDef, by: Map<string, PlacedObject[]>): Completed
 }
 
 const CACHE = new WeakMap<GameState, { key: string; value: CompletedCorner[] }>();
-/** 지금 완성된 테마 목록 (테마당 최대 1개). 배치가 바뀔 때만 다시 센다. */
+/** 지금 완성된 명당 목록 (명당당 최대 1개). 배치가 바뀔 때만 다시 센다. */
 export function completedCorners(state: GameState): CompletedCorner[] {
   return layoutCached(state, CACHE, () => {
     const by = byType(state);
@@ -129,12 +129,12 @@ export function completedCorners(state: GameState): CompletedCorner[] {
     return out;
   });
 }
-/** 이 오브젝트가 조각인 완성 테마 (없으면 null) */
+/** 이 오브젝트가 조각인 완성 명당 (없으면 null) */
 export function cornerOfPiece(state: GameState, objId: string): CompletedCorner | null {
   return completedCorners(state).find((c) => c.pieceIds.includes(objId)) ?? null;
 }
 
-/** 테마 진행 상황 전부 (짓기 탭·도감). 미완성은 조각을 가장 많이 모은 닻 기준. 공사 중인 조각도 "있는 것"으로 센다(짓는 중이면 done=false·missing=[]). */
+/** 명당 진행 상황 전부 (짓기 탭·도감). 미완성은 조각을 가장 많이 모은 닻 기준. 공사 중인 조각도 "있는 것"으로 센다(짓는 중이면 done=false·missing=[]). */
 export function cornerProgress(state: GameState): CornerProgress[] {
   const by = byType(state, undefined, undefined, true);
   const done = new Map(completedCorners(state).map((c) => [c.id, c]));
@@ -155,7 +155,7 @@ export function cornerProgress(state: GameState): CornerProgress[] {
   });
 }
 
-/** 이 종류를 (x, y)에 놓으면 완성되는 테마 (짓기 고스트 배지 "이걸 놓으면 꽃길 완성"). 공사 중인 조각도 센다(완공되면 완성). 이미 완성된 테마는 뺀다. */
+/** 이 종류를 (x, y)에 놓으면 완성되는 명당 (짓기 고스트 배지 "이걸 놓으면 꽃길 완성"). 공사 중인 조각도 센다(완공되면 완성). 이미 완성된 명당은 뺀다. */
 export function cornerIfPlaced(state: GameState, type: string, x: number, y: number, ignoreId?: string): CornerDef | null {
   const done = new Set(completedCorners(state).map((c) => c.id));
   const ghost: PlacedObject = { id: '__ghost', type, x, y, placedMonth: 0 };
@@ -169,7 +169,7 @@ export function cornerIfPlaced(state: GameState, type: string, x: number, y: num
 }
 
 // ---------- 효과 훅 ----------
-/** 시설 하나가 받는 테마 인기·요금 (반경 안 완성 테마 합산, 상한) — compat.rawStats 훅 */
+/** 시설 하나가 받는 명당 인기·요금 (반경 안 완성 명당 합산, 상한) — compat.rawStats 훅 */
 export function cornerBonusAt(state: GameState, obj: PlacedObject): { pop: number; feePct: number } {
   let pop = 0, feePct = 0;
   const foot = footOf(obj);
@@ -182,7 +182,7 @@ export function cornerBonusAt(state: GameState, obj: PlacedObject): { pop: numbe
   }
   return { pop: Math.min(CORNER_CAP.pop, pop), feePct: Math.min(CORNER_CAP.feePct, feePct) };
 }
-/** 손님층이 이 시설을 고를 확률 배수: 반경 안 테마 중 태그가 맞는 것마다 ×tagMult — compat.guestPickMult 훅 */
+/** 손님층이 이 시설을 고를 확률 배수: 반경 안 명당 중 태그가 맞는 것마다 ×tagMult — compat.guestPickMult 훅 */
 export function cornerPickMult(state: GameState, obj: PlacedObject, typeId: string): number {
   const tags = guestTags(typeId);
   const foot = footOf(obj);
@@ -195,7 +195,7 @@ export function cornerPickMult(state: GameState, obj: PlacedObject, typeId: stri
   }
   return m;
 }
-/** 테마 만족 가산: 반경 안 완성 테마 중 태그가 맞으면 +5, 전체 대상이면 +3 (가장 큰 것 하나) — compat.cornerSatisfaction 훅 */
+/** 명당 만족 가산: 반경 안 완성 명당 중 태그가 맞으면 +5, 전체 대상이면 +3 (가장 큰 것 하나) — compat.cornerSatisfaction 훅 */
 export function cornerSatisfactionAt(state: GameState, obj: PlacedObject, typeId: string): number {
   const tags = guestTags(typeId);
   const foot = footOf(obj);
@@ -219,7 +219,7 @@ function visitsToday(state: GameState): Record<string, number> {
   if (!state.cornerVisits || state.cornerVisits.day !== day) state.cornerVisits = { day, counts: {} };
   return state.cornerVisits.counts;
 }
-/** 오늘 아직 상한이 안 찬 테마마다 손님이 찾아갈 조각 하나 — 걷는 칸(올렛길·마을 길)이 옆에 붙은 첫 조각 (guests.pickVisit 후보에 섞는다, 가중치 ×3). 붙은 길이 없는 테마는 못 간다. */
+/** 오늘 아직 상한이 안 찬 명당마다 손님이 찾아갈 조각 하나 — 걷는 칸(올렛길·마을 길)이 옆에 붙은 첫 조각 (guests.pickVisit 후보에 섞는다, 가중치 ×3). 붙은 길이 없는 명당은 못 간다. */
 export function cornerVisitTargets(state: GameState, typeId: string): PlacedObject[] {
   const done = completedCorners(state);
   if (done.length === 0) return [];
@@ -240,7 +240,7 @@ function reachableSide(state: GameState, o: PlacedObject): boolean {
   for (let dx = 0; dx < w; dx++) for (let dy = 0; dy < h; dy++) if (walkableNeighborsOf(state, o.x + dx, o.y + dy).length > 0) return true;
   return false;
 }
-/** 손님이 테마 조각에 도착: 방문 수 +1, photo 확률로 카메라 플래시 fx + 말풍선. 요금은 없다(장식). */
+/** 손님이 명당 조각에 도착: 방문 수 +1, photo 확률로 카메라 플래시 fx + 말풍선. 요금은 없다(장식). */
 export function visitCorner(state: GameState, g: Guest, piece: PlacedObject): void {
   const c = cornerOfPiece(state, piece.id);
   if (!c) return;
@@ -253,7 +253,7 @@ export function visitCorner(state: GameState, g: Guest, piece: PlacedObject): vo
 }
 
 // ---------- 완성 발견 (도감·연출) ----------
-/** 배치·완공 뒤 (compat.discoverPlacement에서 부른다): 처음 완성한 테마를 도감에 올리고 장면 창·팻말 반짝·메시지 줄. */
+/** 배치·완공 뒤 (compat.discoverPlacement에서 부른다): 처음 완성한 명당을 도감에 올리고 장면 창·팻말 반짝·메시지 줄. */
 export function discoverCorners(state: GameState): void {
   const codex = (state.codex.corners ??= []);
   for (const c of completedCorners(state)) {
@@ -263,11 +263,11 @@ export function discoverCorners(state: GameState): void {
     pushNotice(state, `${def.name} 완성! 손님이 사진 찍으러 와요`);
     pushFx(state, { kind: 'scene', title: `${def.name} 완성`, text: def.line, tick: state.tick });
     pushFx(state, { kind: 'corner', id: c.id, x: c.x, y: c.y, tick: state.tick });
-    if (codex.length === 1) addTickets(state, FIRST_CORNER_TICKETS, '첫 테마');
+    if (codex.length === 1) addTickets(state, FIRST_CORNER_TICKETS, '첫 명당');
   }
 }
-/** 도감에 오른(한 번이라도 만든) 테마 수 — 목표·도전 corners(n) */
-/** 손님 요청(트랙 G tagCorner)용 테마 태그: photo = 사진 확률 ≥ 0.6, rest = 쉬는 테마 */
+/** 도감에 오른(한 번이라도 만든) 명당 수 — 목표·도전 corners(n) */
+/** 손님 요청(트랙 G tagCorner)용 명당 태그: photo = 사진 확률 ≥ 0.6, rest = 쉬는 명당 */
 const REST_CORNERS = new Set(['corner_haenyeo_rest', 'corner_spring_rest', 'corner_rainy_eaves', 'corner_hackberry_shade', 'corner_cedar_walk', 'corner_reading_garden']);
 export function cornerTags(id: string): string[] {
   const def = CORNERS.find((c) => c.id === id);

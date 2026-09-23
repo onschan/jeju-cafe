@@ -47,7 +47,7 @@ describe('goals.json 데이터', () => {
     for (const t of Object.keys(conditionCheckers)) expect(goalConditionText({ ...({ type: t, n: 1, lv: 1, view: 1, avg: 1, days: 1, pct: 1, id: 'centennial', menuId: 'americano', spotId: 'canola_field', guestId: 'couple', bookId: 'gb_kind_cafe' } as object) } as GoalCondition).length, t).toBeGreaterThan(0);
   });
 
-  it('신설 조건 판정: 월 매출·Lv 직원·테마·명소·손님 타입·가이드북·흑자 달·아이템·유니폼·특기·좌석·이달 손님/매출', () => {
+  it('신설 조건 판정: 월 매출·Lv 직원·명당·명소·손님 타입·가이드북·흑자 달·아이템·유니폼·특기·좌석·이달 손님/매출', () => {
     const s = bareState(1);
     s.lastMonthIncome = 20_000_000;
     expect(goalMet(s, { type: 'monthIncome', n: 20_000_000 })).toBe(true);
