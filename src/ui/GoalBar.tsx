@@ -16,18 +16,17 @@ export const GOAL_BAR_H = GOAL_LINE_H + CHALLENGE_LINE_H;
 export const TUT_BADGE_W = 60;
 
 /** 목표 줄 왼쪽 「📖 n/7」 배지 (fun-start): 탭하면 튜토리얼 창(현재 단계 대사 다시 보기·7단계 목록·건너뛰기).
- *  튜토리얼이 끝나면 「📖 추천」 — 추천 탭(「할망의 추천」)은 다 배운 뒤에도 남는 코치라 배지도 남긴다.
+ *  video-patch §3.4: 튜토리얼이 끝나면 배지를 걷는다 — 다 배운 뒤에 남는 코치는 「오늘 할 일」 줄(TodoLine)이 대신한다.
  *  창은 #root에 포털로 띄운다 (목표 줄이 absolute라 그 안에 두면 갇힌다). */
 function TutorialBadge() {
   const s = useGame();
   const [open, setOpen] = useState(false);
-  const done = tutorialDone(s);
   const root = typeof document !== 'undefined' ? document.getElementById('root') : null;
   return (
     <>
-      <button data-testid="tutorial-badge" aria-label={done ? '할망의 추천' : `할망의 가르침 ${s.tutorial.step}/${TUTORIAL_STEPS}`} onClick={() => setOpen(true)}
+      <button data-testid="tutorial-badge" aria-label={`할망의 가르침 ${s.tutorial.step}/${TUTORIAL_STEPS}`} onClick={() => setOpen(true)}
         style={{ position: 'absolute', left: 0, top: 0, width: TUT_BADGE_W, height: GOAL_LINE_H, padding: 0, border: 0, borderRight: `2px solid ${PALETTE.wood}`, background: PALETTE.btnOn, color: PALETTE.btnOnText, fontFamily: 'inherit', fontSize: 13, fontWeight: 700, zIndex: 11, whiteSpace: 'nowrap' }}>
-        📖 {done ? '추천' : `${s.tutorial.step}/${TUTORIAL_STEPS}`}
+        📖 {s.tutorial.step}/{TUTORIAL_STEPS}
       </button>
       {open && root && createPortal(<TutorialWindow onClose={() => setOpen(false)} />, root)}
     </>
@@ -46,11 +45,11 @@ export function GoalBar({ top, onOpen }: { top: number; onOpen: () => void }) {
   const pct = g && g.max > 0 ? Math.min(100, Math.round((g.cur / g.max) * 100)) : 0;
   const cpct = c && c.max > 0 ? Math.min(100, Math.round((c.cur / c.max) * 100)) : 0;
   const milestone = g ? (s.goals.milestones?.[g.id] ?? 0) : 0; // game-feel P1: 자금 목표 25/50/75% 마일스톤 — 단계가 바뀌면 key가 바뀌어 반짝임이 다시 돈다
-  const badge = true; // 배지는 튜토리얼 뒤에도 남는다 (추천 탭)
+  const badge = !tutorialDone(s); // video-patch §3.4: 다 배우면 배지를 걷고 「오늘 할 일」 줄이 코치를 잇는다
   const noMain = !tutorialDone(s) && !mainBuilding(s); // 옛 맨땅 저장: 본관을 짓기 전엔 첫 목표(아메리카노)를 이룰 수 없다 → 문구로 안내
   return (
     <div style={{ position: 'absolute', top, left: 0, right: 0, height: GOAL_BAR_H, zIndex: 10 }}>
-      <TutorialBadge />
+      {badge && <TutorialBadge />}
       <button data-testid="goal-bar" data-tut="goal-bar" onClick={onOpen} aria-label="목표"
         style={{ position: 'absolute', inset: 0, height: GOAL_BAR_H, padding: 0, border: 0, borderBottom: `2px solid ${PALETTE.wood}`, background: done ? PALETTE.btnOn : PALETTE.paperDark, color: PALETTE.ink, fontFamily: 'inherit', fontSize: 14, fontWeight: 700, textAlign: 'left', display: 'flex', flexDirection: 'column', whiteSpace: 'nowrap', overflow: 'hidden', animation: done ? 'goal-blink 1s ease-in-out infinite' : undefined }}>
         <style>{'@keyframes goal-blink { 0%, 100% { filter: brightness(1); } 50% { filter: brightness(1.25); } } @keyframes goal-flash { 0%, 100% { box-shadow: 0 0 0 0 #ffd54a00; } 50% { box-shadow: 0 0 6px 3px #ffd54a; } }'}</style>

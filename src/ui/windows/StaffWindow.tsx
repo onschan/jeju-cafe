@@ -197,6 +197,10 @@ function CandidateCard({ c, s, dispatch }: { c: Candidate; s: GameState; dispatc
           채용 · 월급 {wonText(c.salary)}
         </button>
       </div>
+      {/* video-patch §2.4: 판단에 필요한 숫자는 결정 창 안에 — 창을 옮겨 다니지 않게 */}
+      <div style={{ ...soft, fontSize: 13, marginTop: 2 }} data-testid={`candidate-basis-${c.id}`}>
+        지금 정원 {s.staff.length}/{staffCapacity(s)}명 · 급여 합계 {wonText(s.staff.reduce((n, st) => n + st.salary, 0) + c.salary)}
+      </div>
       {!check.ok && check.reason && <div style={{ ...soft, fontSize: 13, marginTop: 4 }}>{check.reason}</div>}
     </div>
   );
