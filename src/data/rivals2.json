@@ -1,0 +1,107 @@
+[
+  {
+    "id": "sea_view",
+    "name": "바다뷰 카페",
+    "concept": "창 전체가 바다",
+    "strength": "view",
+    "line": "창가 자리가 늘 먼저 찬다",
+    "category": "coffee",
+    "gift": "window_seat",
+    "base": {
+      "pop": 46,
+      "view": 84,
+      "service": 48,
+      "sales": 42
+    },
+    "growth": {
+      "pop": 0.55,
+      "view": 0.45,
+      "service": 0.45,
+      "sales": 0.5
+    }
+  },
+  {
+    "id": "tangerine_bakery",
+    "name": "감귤 베이커리",
+    "concept": "매일 굽는 감귤 타르트",
+    "strength": "sales",
+    "line": "굽는 냄새가 길까지 퍼진다",
+    "category": "dessert",
+    "gift": "tart_bakery",
+    "base": {
+      "pop": 52,
+      "view": 34,
+      "service": 48,
+      "sales": 66
+    },
+    "growth": {
+      "pop": 0.52,
+      "view": 0.26,
+      "service": 0.42,
+      "sales": 0.58
+    }
+  },
+  {
+    "id": "roastery_haru",
+    "name": "로스터리 하루",
+    "concept": "직접 볶는 원두",
+    "strength": "pop",
+    "line": "원두를 사러 오는 손님이 많다",
+    "category": "coffee",
+    "gift": "counter",
+    "base": {
+      "pop": 76,
+      "view": 38,
+      "service": 56,
+      "sales": 50
+    },
+    "growth": {
+      "pop": 0.7,
+      "view": 0.4,
+      "service": 0.5,
+      "sales": 0.55
+    }
+  },
+  {
+    "id": "guesthouse_cafe",
+    "name": "게스트하우스 카페",
+    "concept": "묵어 가는 단골",
+    "strength": "service",
+    "line": "묵던 손님이 아침마다 들른다",
+    "category": "meal",
+    "gift": "toenmaru",
+    "base": {
+      "pop": 36,
+      "view": 42,
+      "service": 58,
+      "sales": 30
+    },
+    "growth": {
+      "pop": 0.44,
+      "view": 0.34,
+      "service": 0.5,
+      "sales": 0.42
+    }
+  },
+  {
+    "id": "franchise_star",
+    "name": "프랜차이즈 별다방",
+    "concept": "어디에나 있는 큰 매장",
+    "strength": "sales",
+    "line": "자리 수로 밀어붙인다",
+    "category": "juice",
+    "gift": "vending",
+    "base": {
+      "pop": 44,
+      "view": 20,
+      "service": 26,
+      "sales": 58
+    },
+    "growth": {
+      "pop": 0.48,
+      "view": 0.2,
+      "service": 0.28,
+      "sales": 0.62
+    }
+  }
+]
