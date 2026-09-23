@@ -8,13 +8,17 @@ import { currentGoal, activeGoals, claimableGoals, GOAL_LOOKAHEAD, goalProgress,
 import type { GoalCondition, GoalReward } from '../types.ts';
 import { tutorialFeatureIds } from '../tutorial.ts';
 import { bareState, at } from './helpers.ts';
+import { staffCapacity, tierUnlocked } from '../staff.ts'; // midgame
+import { MENU_SLOT_COUNT, MENU_SLOT_MAX } from '../state.ts'; // midgame
 
 describe('goals.json 데이터', () => {
   it('순차 목표(§3.5), id 유일, 제목 14자 이내, 문구가 있고, v3 시절 id(앞 20개·메뉴)는 전부 존재한다', () => {
-    expect(GOALS.length).toBe(60);
+    expect(GOALS.length).toBe(68);
     expect(new Set(GOALS.map((g) => g.id)).size).toBe(GOALS.length);
     for (const [i, g] of GOALS.entries()) {
-      expect(g.id).toBe(`g${String(i + 1).padStart(2, '0')}`);
+      // midgame: 사다리 중간(2년차 구간)에 목표를 끼워 넣어도 id는 그대로 둔다 — 세이브의 claimed·다른 트랙 참조(bot BOT_COUPLE_GOAL 등)가 id로 걸려 있다.
+      expect(g.id, `${i}`).toMatch(/^g\d\d$/);
+      if (i < 26) expect(g.id).toBe(`g${String(i + 1).padStart(2, '0')}`); // 앞 26개는 순번과 같다
       expect(g.title.length, g.id).toBeLessThanOrEqual(14);
       expect(g.desc.length).toBeGreaterThan(0);
       expect(g.reward.length).toBeGreaterThan(0);
@@ -321,5 +325,31 @@ describe('game-feel P1 리듬', () => {
     expect(checkMoneyMilestones(s).map((m) => m.stage)).toEqual([2, 3]);
     expect(s.tickets).toBe(t0 + MILESTONE_TICKETS * 3);
     expect(s.notices.at(-1)).toContain('75%');
+  });
+});
+
+describe('midgame 보상: 직원 정원 +1 · 채용 방법 해금', () => {
+  it('staffCap은 휴게실과 따로 정원을 올리고, jobTier는 잠긴 채용 방법을 연다', () => {
+    const s = createInitialState(1);
+    const before = staffCapacity(s);
+    grantReward(s, { type: 'staffCap', n: 1 });
+    expect(s.staffCapBonus).toBe(1);
+    expect(staffCapacity(s)).toBe(before + 1);
+
+    expect(tierUnlocked(s, 'site')).toBe(false);
+    grantReward(s, { type: 'jobTier', id: 'site' });
+    expect(tierUnlocked(s, 'site')).toBe(true);
+    grantReward(s, { type: 'jobTier', id: 'site' }); // 두 번 줘도 한 번만 들어간다
+    expect(s.unlocked.recruits).toEqual(['site']);
+    // 문구에 영문 id가 새지 않는다
+    expect(goalRewardText({ type: 'staffCap', n: 1 })).toBe('직원 정원 +1');
+    expect(goalRewardText({ type: 'jobTier', id: 'site' })).toBe('채용 구인 사이트');
+  });
+
+  it('2년차 구간 목표 8개가 사다리 가운데에 있고, 메뉴판 칸 합은 상한 6을 넘지 않는다', () => {
+    const band = GOALS.slice(26, 34).map((g) => g.id);
+    expect(band).toEqual(['g61', 'g62', 'g63', 'g64', 'g67', 'g65', 'g68', 'g66']);
+    const slots = GOALS.flatMap((g) => g.reward).filter((r) => r.type === 'menuSlot').reduce((n, r) => n + (r as { n: number }).n, 0);
+    expect(MENU_SLOT_COUNT + slots).toBe(MENU_SLOT_MAX);
   });
 });

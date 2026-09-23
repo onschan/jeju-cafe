@@ -36,8 +36,8 @@ test('재료 32종에 스탯·분류가 있고, 기존 13종의 원가(§4.2 #4)
   expect(ingredientDef('tea_jeju').kind).toBe('farm');
 });
 
-test('기본 메뉴 18의 스탯은 재료 합으로 계산된다 (아메리카노 = 원두, 라떼 = 원두 + 우유)', () => {
-  expect(MENUS.length).toBe(18);
+test('기본 메뉴 20의 스탯은 재료 합으로 계산된다 (아메리카노 = 원두, 라떼 = 원두 + 우유)', () => {
+  expect(MENUS.length).toBe(20); // midgame: 한라봉 꿀차·계피 라떼 (2년차 구간 신메뉴)
   expect(menuDef('americano').stats).toEqual(ingredientDef('beans').stats);
   expect(menuDef('latte').stats).toEqual(ingredientStats({ beans: 1, milk: 1 }));
   expect(menuDef('egg_sandwich').stats.volume).toBe(ingredientDef('egg').stats.volume * 2 + ingredientDef('flour').stats.volume);
