@@ -14,7 +14,7 @@ import { botDay, newBotCursor } from '../src/sim/bot.ts';
 import { apply } from '../src/sim/actions.ts';
 import { canRespondEvent } from '../src/sim/board.ts';
 import { canDrawTicket, hasFreeDraw } from '../src/sim/shop.ts';
-import { monthIndex } from '../src/sim/clock.ts';
+import { monthIndex, DAY_MS } from '../src/sim/clock.ts';
 import { dayIndex } from '../src/sim/effects.ts';
 import { bigEventDef } from '../src/data/index.ts';
 
@@ -197,7 +197,9 @@ export function runDopamine(years: number, seed: number, player = false): Dopami
   const maxGap = gaps[0]?.days ?? 0;
   const maxGapYear1 = Math.max(0, ...gaps.filter((g) => g.from < 360).map((g) => Math.min(g.to, 360) - g.from));
   const count = (from: number, to: number) => major.filter((e) => e.day >= from && e.day < to).length;
-  const windows = { '1일': count(0, 1), '6일': count(0, 6), '10분(3배속 50일)': count(0, 50), '1개월': count(0, 30), '1년': count(0, 360), '3년': count(0, 1080), [`${years}년`]: count(0, totalDays) };
+  // 「10분」은 실시간 10분 × 3배속이 몇 게임 날인가 — DAY_MS(=HOUR_MS × 18)에서 뽑는다 (pace: HOUR_MS가 바뀌면 같이 바뀐다)
+  const daysIn10min3x = Math.round((10 * 60 * 1000 * 3) / DAY_MS);
+  const windows = { '1일': count(0, 1), '6일': count(0, 6), [`10분(3배속 ${daysIn10min3x}일)`]: count(0, daysIn10min3x), '1개월': count(0, 30), '1년': count(0, 360), '3년': count(0, 1080), [`${years}년`]: count(0, totalDays) };
   const byKind: Partial<Record<EventKind, number>> = {};
   for (const e of events) byKind[e.kind] = (byKind[e.kind] ?? 0) + 1;
   const byNeg: Partial<Record<NegKind, number>> = {};
