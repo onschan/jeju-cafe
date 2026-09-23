@@ -80,6 +80,9 @@ describe.each(SEEDS)('봇 3년 KPI 밴드 §4.6 (seed %i)', (seed) => {
     expect(y3Last.customMenus).toBeGreaterThanOrEqual(1);
     expect(y3Last.tickets).toBeGreaterThan(0);
     for (const r of rows) expect(r.minMoney, `${r.year}년 ${r.month}월 minMoney`).toBeGreaterThan(400_000); // 삼춘 대출 문턱 위
+    // botfix: 손님이 못 가는 시설은 0~2개로 유지되고, 손님이 0인 달이 없다
+    for (const r of rows) expect(r.unreachable, `${r.year}년 ${r.month}월 못 가는 시설`).toBeLessThanOrEqual(2);
+    for (const r of rows) expect(r.guests, `${r.year}년 ${r.month}월 손님`).toBeGreaterThan(0);
     // stakes: 빠듯해야 한다 — 3년 내내 한 번도 300만 아래로 안 내려가면 고민이 없는 게임이다
     const min = Math.min(...rows.map((r) => r.minMoney));
     expect(min).toBeGreaterThanOrEqual(MIN_MONEY_FLOOR);
