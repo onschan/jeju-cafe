@@ -1,7 +1,9 @@
-import { useGame, dispatch } from './store';
+import { useState } from 'react';
+import { useGame, dispatch, showMessage } from './store';
 import { wonText } from '../data/labels.ts';
 import { objectStats, sceneryScore, canUseItem, itemEffect, PROTECTED_TYPES, type ObjectKind, buildDaysLeft, josa } from '../sim/index.ts';
 import { objectDef, itemDef, SETS } from '../data/index.ts';
+import { betterSpot } from './PlacementHints'; // video-patch §3.2.2
 import { Icon } from './Icon';
 import { Confirm } from './Popup';
 import { RecipeCodex } from './CraftPanel';
@@ -23,8 +25,29 @@ function Stat({ icon, label, value, good }: { icon?: string; label: string; valu
   );
 }
 
+/** 「여기보다 좋은 자리 있음 · +38만」 한 줄 (video-patch §3.2.2). 이득이 문턱 아래면 **줄 자체를 안 그린다** — 항상 뜨는 잔소리를 만들지 않는다. */
+function BetterSpotLine({ objectId, onFocus }: { objectId: string; onFocus?: (x: number, y: number) => void }) {
+  const s = useGame();
+  const spot = betterSpot(s, objectId);
+  if (!spot) return null;
+  const go = () => {
+    const r = dispatch({ type: 'move', objectId, x: spot.x, y: spot.y });
+    if (!r.ok) { showMessage(r.reason ?? '여기엔 못 옮겨요'); return; }
+    onFocus?.(spot.x, spot.y);
+    showMessage('더 좋은 자리로 옮겼어요 (↶ 되돌리기 가능)');
+  };
+  return (
+    <div data-testid="better-spot" style={{ ...card, padding: 6, marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
+      <span style={{ flex: 1, minWidth: 0, fontSize: 13, fontWeight: 700, lineHeight: 1.3 }}>
+        <Icon name="bulb" size={13} /> 여기보다 좋은 자리 있음 · <b style={{ color: PALETTE.ok, whiteSpace: 'nowrap' }}>+{Math.round(spot.gain / 10_000)}만</b>
+      </span>
+      <button data-testid="better-spot-move" style={{ ...brownBtnOn, flex: 'none', margin: 0, height: 44, padding: '0 8px', fontSize: 14, whiteSpace: 'nowrap' }} onClick={go}><Icon name="move" /> 옮기기</button>
+    </div>
+  );
+}
+
 /** 칸을 눌렀을 때 보이는 오브젝트 정보: 입소문·경치·요금·유지비·계열·설명·상성·세트·아이템 사용·심기/치우기 (수확은 자동) */
-export function ObjectInfoPanel({ objectId }: { objectId: string }) {
+export function ObjectInfoPanel({ objectId, onFocus }: { objectId: string; onFocus?: (x: number, y: number) => void }) {
   const s = useGame();
   const o = s.objects[objectId];
   if (!o) return null;
@@ -53,6 +76,7 @@ export function ObjectInfoPanel({ objectId }: { objectId: string }) {
         {st.noise > 0 && <Stat label="소음" value={`${st.noise}`} good={false} />}
       </div>
 
+      <BetterSpotLine objectId={o.id} onFocus={onFocus} />
       {(st.corner.pop > 0 || st.corner.feePct > 0) && (
         <div style={{ ...card, padding: 6, marginBottom: 6 }}>
           <div style={{ fontSize: 13, color: PALETTE.inkSoft }}>가까운 명당 덕</div>
@@ -62,9 +86,16 @@ export function ObjectInfoPanel({ objectId }: { objectId: string }) {
       {st.sets.length > 0 && (
         <div style={{ ...card, padding: 6, marginBottom: 6 }}>
           <div style={{ fontSize: 13, color: PALETTE.inkSoft }}>세트 효과</div>
-          {st.sets.map((x) => (
-            <div key={x.id} style={{ fontSize: 14 }}>★ {x.name} <b>Lv{x.level}</b> <span style={{ fontSize: 12, color: PALETTE.inkSoft }}>· {TARGET_LABEL[x.target]} 입소문 ×{x.mult}</span></div>
-          ))}
+          {st.sets.map((x) => {
+            const max = SETS.find((d) => d.id === x.id)?.levelMult.length ?? x.level;
+            return (
+              <div key={x.id} style={{ fontSize: 14 }}>
+                ★ {x.name} <b>Lv{x.level}</b>
+                {x.level >= max && <b data-testid="set-max" style={{ marginLeft: 4, padding: '0 4px', borderRadius: 3, background: PALETTE.btnOn, color: PALETTE.btnOnText, fontSize: 11 }}>MAX</b>}{/* §2.4: 더 못 키우는 것은 뱃지로 한눈에 */}
+                <span style={{ fontSize: 12, color: PALETTE.inkSoft }}> · {TARGET_LABEL[x.target]} 입소문 ×{x.mult}</span>
+              </div>
+            );
+          })}
         </div>
       )}
       {s.itemBonus[o.type] && (s.itemBonus[o.type]!.popularity > 0 || s.itemBonus[o.type]!.feePct > 0) && (
@@ -90,6 +121,9 @@ export function ObjectInfoPanel({ objectId }: { objectId: string }) {
   );
 }
 
+/** 목록은 먼저 TOP N만 보여 주고 나머지는 접는다 (§2.4 정보 밀도) */
+export const CODEX_TOP = 4;
+
 /** 이름을 모르는 오브젝트 id도 안전하게 (v2 표에는 아직 없는 시설이 섞일 수 있다) */
 function nameOf(objectId: string): string {
   try { return objectDef(objectId).name; } catch { return objectId; }
@@ -99,18 +133,27 @@ function nameOf(objectId: string): string {
 export function CodexPanel() {
   const s = useGame();
   const doneSets = new Set(s.codex.sets);
+  const [allSets, setAllSets] = useState(false);
+  // §2.4 정보 밀도: 이룬 것을 앞으로 모아 TOP4만 펼치고 나머지는 접는다
+  const ordered = [...SETS].sort((a, b) => Number(doneSets.has(b.id)) - Number(doneSets.has(a.id)));
+  const shown = allSets ? ordered : ordered.slice(0, CODEX_TOP);
   return (
     <div style={{ fontSize: 14 }}>
       <div style={{ fontSize: 13, color: PALETTE.inkSoft, margin: '0 0 4px' }}>
         세트 도감 {doneSets.size}/{SETS.length} · 반경 3칸 안에 다 모으면 완성, 2배·3배면 레벨 업
       </div>
-      {SETS.map((x) => (
+      {shown.map((x) => (
         <div key={x.id} style={{ display: 'flex', gap: 6, alignItems: 'baseline' }}>
           <span style={{ width: 18, textAlign: 'center' }}>{doneSets.has(x.id) ? '★' : ' '}</span>
           <span>{x.name}</span>
           <span style={{ fontSize: 12, color: PALETTE.inkSoft }}>{x.requires.map((r) => `${nameOf(r.objectId)} ${r.count}`).join(' · ')} → {TARGET_LABEL[x.target]}</span>
         </div>
       ))}
+      {ordered.length > CODEX_TOP && (
+        <button data-testid="codex-sets-more" style={{ ...brownBtn, margin: '4px 0 6px', height: 44, fontSize: 14 }} onClick={() => setAllSets((v) => !v)}>
+          {allSets ? '접기' : `나머지 ${ordered.length - CODEX_TOP}개 더 보기`}
+        </button>
+      )}
       <CornerCodex />
       <RecipeCodex />
       <TitleCodex />

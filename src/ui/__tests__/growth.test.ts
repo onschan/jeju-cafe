@@ -1,12 +1,12 @@
 /** 성장 체감 3종: 오늘의 성장 요약 카드 문구 · 30일 그래프의 승급 세로선 · 「오늘 할 일」 한 줄. */
 import { describe, it, expect } from 'vitest';
 import { bareState } from '../../sim/__tests__/helpers.ts';
-import { closeDay, nextMove, DAY_LOG_CAP } from '../../sim/index.ts';
+import { closeDay, DAY_LOG_CAP } from '../../sim/index.ts';
 import type { DayLogRow } from '../../sim/index.ts';
 import { deltaText, summaryParts, DAY_CARD_MS } from '../DaySummaryCard.tsx';
 import { gradeUps } from '../GrowthChart.tsx';
-import { TODO_EMPTY_TEXT } from '../GoalBar.tsx';
-import { GOAL_BAR_H, GOAL_LINE_H, CHALLENGE_LINE_H, TODO_LINE_H } from '../GoalBar.tsx';
+import { GOAL_BAR_H, GOAL_LINE_H, CHALLENGE_LINE_H } from '../GoalBar.tsx';
+import { todoItems, TODO_LINE_H } from '../TodoLine.tsx';
 import { hasIdToken } from '../../data/labels.ts';
 
 const row = (o: Partial<DayLogRow>): DayLogRow => ({ day: 0, guests: 0, income: 0, regulars: 0, grade: 1, ...o });
@@ -51,15 +51,16 @@ describe('성장 그래프', () => {
 describe('오늘 할 일 줄', () => {
   it('한 줄이 늘 있다 — 시작 상태에서는 다음 수, 문구에 영문 id·상투구 없음', () => {
     const s = bareState(1);
-    const m = nextMove(s);
-    const text = m ? m.text : TODO_EMPTY_TEXT;
-    expect(text.length).toBeGreaterThan(0);
-    expect(hasIdToken(text)).toBe(false);
-    expect(text).not.toMatch(/→|정석|시뮬|공략|굴려 보니/);
-    expect(TODO_EMPTY_TEXT).not.toMatch(/→|정석|시뮬/);
+    const items = todoItems(s);
+    expect(items.length).toBeGreaterThan(0);
+    for (const it of items) {
+      expect(it.text.length).toBeGreaterThan(0);
+      expect(hasIdToken(it.text)).toBe(false);
+      expect(it.text).not.toMatch(/→|정석|시뮬|공략|굴려 보니/);
+    }
   });
-  it('목표 줄 높이에 할 일 줄이 더해졌다', () => {
-    expect(GOAL_BAR_H).toBe(GOAL_LINE_H + CHALLENGE_LINE_H + TODO_LINE_H);
+  it('할 일 줄은 목표 줄과 따로 — 한 화면에 「오늘 할 일」은 하나뿐', () => {
+    expect(GOAL_BAR_H).toBe(GOAL_LINE_H + CHALLENGE_LINE_H); // 목표 줄 안에는 할 일 줄이 없다
     expect(TODO_LINE_H).toBeGreaterThanOrEqual(20);
   });
 });

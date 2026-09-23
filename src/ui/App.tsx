@@ -53,6 +53,9 @@ import { rangeHintFor } from './rangeHint';
 import { AppealPanel } from './AppealPanel'; // fun: 카페 매력도
 import { tradeoffOf } from './tradeoff'; // fun: 배치 트레이드오프
 import { rectCells, demolishTargets, nextGhostAfterPlace, type Rect, type BuildGhost } from './placing';
+import { placementPicks, pickAt, PlacementHintLine, type PlacePick, type PlacePicks } from './PlacementHints'; // video-patch §3.2: 추천 칸 3곳
+import { usePlaceHintsPref, setPlaceHintsOn } from './layoutScore';
+import { TodoLine } from './TodoLine'; // video-patch §3.4: 오늘 할 일
 
 /** 길·담 두 번 탭 라인 배치 상태 (ease, sim/line.ts): 탭 1 시작 칸 → 탭 2 끝 칸 → 파란 미리보기 → ✓ 확정. 드래그는 언제나 카메라. */
 interface Line { from: Pt; to: Pt | null; order: LineOrder }
@@ -159,6 +162,7 @@ function SettingsPanel({ onExit, gauges, onGauges }: { onExit: () => void; gauge
   const [sfxVol, setSfxVol] = useState(getSfxVolume());
   const s = useGame();
   const spotlight = useSpotlightPref();
+  const placeHints = usePlaceHintsPref(); // video-patch §3.2.1
   const slider = (text: string, v: number, set: (n: number) => void) => (
     <label style={{ display: 'grid', gridTemplateColumns: '64px 1fr 40px', alignItems: 'center', gap: 8, fontSize: 14, minHeight: 44 }}>
       <span>{text}</span>
@@ -173,6 +177,7 @@ function SettingsPanel({ onExit, gauges, onGauges }: { onExit: () => void; gauge
       <button style={{ ...brownBtn, marginRight: 0, marginBottom: 0 }} onClick={toggleMute}>{muted ? <><Icon name="sound_on" /> 소리 켜기</> : <><Icon name="sound_off" /> 소리 끄기</>}</button>
       <OnOff label="속도 잠금 (창을 열어도 안 멈춤)" on={isSpeedLocked()} onChange={setSpeedLocked} testId="setting-speed-lock" />
       <OnOff label="시설 위 입소문 바 표시" on={gauges} onChange={onGauges} testId="setting-gauges" />
+      <OnOff label="자리 추천 보기 (놓을 때 빛나는 칸)" on={placeHints} onChange={setPlaceHintsOn} testId="setting-place-hints" />{/* video-patch §3.2.1 */}
       {!tutorialDone(s) && <OnOff label="튜토리얼 스포트라이트 (빛나는 것 빼고 어둡게)" on={spotlight} onChange={setSpotlightOn} testId="setting-spotlight" />}{/* w-free */}
       <button style={{ ...brownBtn, marginRight: 0, marginBottom: 0 }} onClick={() => setSlots(true)}><Icon name="save" /> 슬롯에 저장</button>
       <button style={{ ...dangerBtn, marginRight: 0, marginBottom: 0 }} onClick={() => Confirm('자동 저장하고 타이틀로 나갈까요?', onExit, { title: '타이틀로' })}><Icon name="door" /> 타이틀로</button>
@@ -315,6 +320,10 @@ function Game({ onExit }: { onExit: () => void }) {
   const [gauges, setGaugesState] = useState(gaugesPref);
   const setGauges = (v: boolean) => { setGaugesState(v); try { localStorage.setItem(GAUGES_KEY, v ? '1' : '0'); } catch { /* noop */ } };
   useEffect(() => { view?.setGauges(gauges); }, [view, gauges]);
+  // video-patch §3.2.1: 고스트가 떠 있는 동안 추천 칸 3곳. 탭하면 그 자리에 바로 놓는다 (picksRef·placeAtRef는 onTap이 읽는다).
+  const hintsOn = usePlaceHintsPref();
+  const picksRef = useRef<PlacePick[]>([]);
+  const placeAtRef = useRef<((x: number, y: number) => void) | null>(null);
 
   // 첫 터치에서 오디오를 열고 현재 계절 BGM을 시작한다 (이후 호출은 no-op)
   const onPointerDown = () => { unlockAudio(); void bgm(seasonOf(getState().clock.month)); };
@@ -425,6 +434,8 @@ function Game({ onExit }: { onExit: () => void }) {
               const l = lineRef.current;
               if (!l || l.to) setLine({ from: { x, y }, to: null, order: l?.order ?? 'xy' });
               else setLine({ ...l, to: { x, y } });
+            } else if (pickAt(picksRef.current, x, y) && placeAtRef.current) {
+              placeAtRef.current(x, y); // video-patch §3.2.1: 추천 칸을 탭하면 바로 그 자리에 확정
             } else setGhost({ x, y, rot: ghostRef.current?.rot ?? 0 }); // 고스트는 탭으로 옮긴다 (끌기는 길게 누른 뒤에만)
           } else if (m.kind === 'move') {
             const mv = movingRef.current;
@@ -502,6 +513,9 @@ function Game({ onExit }: { onExit: () => void }) {
   let rangeHint: RangeHint | null = null;
   let ghostCell: { x: number; y: number; w: number; h: number } | null = null;
   let place: PlaceBarProps | null = null;
+  /** video-patch §3.2.1: 지금 고스트가 떠 있는 시설의 추천 칸 3곳 (설정에서 끄면 없음) */
+  let picks: PlacePicks | null = null;
+  let placeAt: ((x: number, y: number) => void) | null = null;
   if (mode.kind === 'build' && mode.objectType === MAIN_TYPE) {
     // w-start: 첫 본관 고스트 — 무료·1회, 문 앞 칸 미리보기(파란 마름모), 입지 배지는 주방 —(GameView), 확정하면 placeMain
     const def = objectDef(MAIN_TYPE);
@@ -566,17 +580,20 @@ function Game({ onExit }: { onExit: () => void }) {
       ghostSpec = { type: mode.objectType, x: ghost.x, y: ghost.y, rot: ROTATABLE_TYPES.has(mode.objectType) ? ghost.rot : undefined, ok, text: `${def.name} ${wonText(cost)}` };
       rangeHint = rangeHintFor(s, mode.objectType, ghost.x, ghost.y);
       ghostCell = { x: ghost.x, y: ghost.y, w: def.w, h: def.h };
-      const confirm = () => {
-        const r = dispatch({ type: 'place', objectType: mode.objectType, x: ghost.x, y: ghost.y, rot: ghost.rot });
+      const confirmAt = (x: number, y: number) => {
+        const r = dispatch({ type: 'place', objectType: mode.objectType, x, y, rot: ghost.rot });
         if (!r.ok) { showMessage(r.reason ?? '여기엔 못 놓아요'); return; }
         // 튜토리얼 중엔 연속 배치를 끈다 — 배치 바가 하단 바를 덮어 다음 단계 버튼을 못 누른다 (y 통합 미해결 a)
         if (!tutorialDone(getState())) { setMode({ kind: 'idle' }); return; }
         // 연속 배치(§5.3): 고스트를 옆 칸으로 옮겨 남긴다. 돈이 모자라면 자동 종료
-        const nx = nextGhostAfterPlace(getState(), mode.objectType, ghost);
+        const nx = nextGhostAfterPlace(getState(), mode.objectType, { ...ghost, x, y });
         if (nx.done) { setMode({ kind: 'idle' }); showMessage(nx.reason); return; }
         setGhost(nx.ghost);
         setMode({ kind: 'build', objectType: mode.objectType, count: mode.count + 1 });
       };
+      const confirm = () => confirmAt(ghost.x, ghost.y);
+      placeAt = confirmAt;
+      if (hintsOn) picks = placementPicks(s, mode.objectType);
       place = {
         text: `${def.name} · ${wonText(cost)} · ${ok ? (mode.count > 0 ? `${mode.count}개 놓음 · 계속 놓을 수 있어요` : '여기에 지을 수 있어요 · 칸을 누르면 옮겨요') : (can.reason ?? '돈이 모자라요')}`,
         tradeoff: tradeoffOf(s, mode.objectType, ghost.x, ghost.y), // fun: 얻는 것/잃는 것 두 줄
@@ -655,6 +672,13 @@ function Game({ onExit }: { onExit: () => void }) {
     if (o) rangeHint = rangeHintFor(s, o.type, o.x, o.y, o.id);
   }
   useEffect(() => { viewRef.current?.setGhost(ghostSpec); viewRef.current?.setRangeHint(rangeHint); });
+  // video-patch §3.2.1: 추천 칸을 맵에 그리고, onTap이 읽을 수 있게 ref에 남긴다 (고스트 칸은 이미 고스트가 덮으므로 뺀다)
+  const pickMarks = picks ? picks.picks.filter((p) => !(ghost && p.x === ghost.x && p.y === ghost.y)) : [];
+  useEffect(() => {
+    picksRef.current = pickMarks;
+    placeAtRef.current = placeAt;
+    viewRef.current?.setPlacementPicks(pickMarks);
+  });
   // 자동 잇기 미리보기 칸 (상태가 바뀌면 다시 계산)
   useEffect(() => { if (mode.kind !== 'autopath') return; const r = canAutoConnectPath(s).route; viewRef.current?.setRectCells(r?.empty ?? [], RECT_COLOR_LINE); }, [mode.kind, s]);
 
@@ -762,7 +786,7 @@ function Game({ onExit }: { onExit: () => void }) {
         return <Window title="목표" onClose={closeWin} testId="window-goal"><GoalWindow onClose={closeWin} /></Window>;
       case 'object': {
         const o = s.objects[win.id];
-        return <Window title={o ? (o.name ?? objectDef(o.type).name) : '시설'} onClose={closeWin} testId="window-object">{o ? <ObjectInfoPanel objectId={o.id} /> : <div>없어진 시설이에요</div>}</Window>;
+        return <Window title={o ? (o.name ?? objectDef(o.type).name) : '시설'} onClose={closeWin} testId="window-object">{o ? <ObjectInfoPanel objectId={o.id} onFocus={(x, y) => viewRef.current?.focusCell(x, y, 1, 1, 1.6)} /> : <div>없어진 시설이에요</div>}</Window>;
       }
     }
   };
@@ -778,6 +802,7 @@ function Game({ onExit }: { onExit: () => void }) {
           style={{ position: 'absolute', left: 8, bottom: `calc(${SHELL_BOTTOM + 8}px + env(safe-area-inset-bottom))`, width: 56, height: 56, borderRadius: 28, border: `3px solid ${PALETTE.wood}`, background: PALETTE.paper, fontSize: 20, zIndex: 11, padding: 0, boxShadow: '0 2px 0 #0004', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Icon name="home_cafe" size={48} /></button>
       )}
       {place && ghostCell && <GhostButtons view={view} cell={ghostCell} ok={place.ok} canRotate={place.canRotate} onConfirm={place.onConfirm} onRotate={place.onRotate} />}
+      {picks && <PlacementHintLine picks={picks} bottom={SHELL_BOTTOM + 44} />}{/* video-patch §3.2.1: 워커 대기 중에도 한 줄은 남는다 */}
       {!place && !cardTarget && !win && (
         <VoiceFeed bottom={BOTTOM_BAR_H + 26}
           onFocus={(x, y) => viewRef.current?.focusCell(x, y, 1, 1, 1.6)}
