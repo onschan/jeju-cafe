@@ -7,7 +7,7 @@
  */
 import type { GameState, PlacedObject, Guest, ObjectDef, Pt } from './types.ts';
 import { objectDef } from '../data/index.ts';
-import { inBounds, cellAt, objectAt } from './grid.ts';
+import { inBounds, cellAt, objectAt, windShelter, SHELTER_THRESHOLD } from './grid.ts';
 import { cellKey } from './path.ts';
 import { seasonOf } from './clock.ts';
 import { FLOOR2_VIEW } from './rooms.ts'; // y-indoor
@@ -33,11 +33,18 @@ export const OREUM_SCENERY = 4;
 export const OREUM_ANCHOR = (state: GameState): Pt => ({ x: state.grid.w, y: state.grid.h });
 export const VIEW_BLOCK_PENALTY = 2;
 
-/** 자리 값이 수치로 가는 계수 */
-export const FEE_PER_VIEW = 0.04;
+/** 자리 값이 수치로 가는 계수.
+ *  spot2: 요금은 전망만이 아니라 **자리 점수(0~10)** 1점당 +FEE_PER_SITE_POINT (상한 SITE_FEE_MAX) —
+ *  잘 꾸민 자리(8점)면 +32%가 눈에 보이게 (사용자 피드백 "자리 수준이 좋을수록 요금이 더 좋아지면"). */
+export const FEE_PER_SITE_POINT = 0.04;
+export const SITE_FEE_MAX = 0.40;
 export const SAT_PER_VIEW = 3;
 export const SAT_SHADE_SUMMER = 6;
 export const SAT_SHADE_WINTER = -4;
+/** spot2 돌담의 쓸모: 북서쪽을 막아 주면 겨울 야외 자리 만족 +8 (사용자 피드백 "돌담 생긴 것 때문에 뭐 어쩌라는 건지 모르겠다") */
+export const WIND_SHELTER_SAT = 8;
+/** 바람 쐐기: 자리에서 북서쪽으로 1~3칸, |dx−dy| ≤ 1 (grid.ts windShelter와 같은 띠) */
+export const WIND_WEDGE_MAX = 3;
 /** 파라솔은 자기 자리에 그늘 +1 */
 export const PARASOL_TYPE = 'table_parasol';
 /** 만족 점수(±3·±6…)를 guests.ts의 경치 기준(손님 minScenery 0~3) 단위로 바꾸는 나눗셈 */
@@ -209,8 +216,13 @@ export function siteLineText(site: Site): string {
 
 // ---------- 수치 연결 ----------
 
+/** 자리 점수 → 요금 배수 (1점당 +4%, 상한 +40%) */
+export function siteFeeMult(score: number): number {
+  return 1 + Math.min(SITE_FEE_MAX, FEE_PER_SITE_POINT * score);
+}
+
 export interface SiteBonus {
-  feeMult: number;      // 1 + 0.04×전망
+  feeMult: number;      // 1 + 0.04×자리 점수 (상한 +40%)
   satisfaction: number; // 경치 기준 단위 (점수 / 10, 소수점 버림). 야외 좌석만 계절 그늘 반영
   score: number;        // 자리 점수 0~10
   site: Site;
@@ -226,7 +238,7 @@ export function siteBonus(state: GameState, seat: PlacedObject): SiteBonus {
   const d = objectDef(seat.type);
   const score = scoreOf(site);
   if (!isSeatDef(d)) {
-    return { feeMult: d.fee !== undefined ? 1 + FEE_PER_VIEW * site.view : 1, satisfaction: 0, score, site };
+    return { feeMult: d.fee !== undefined ? siteFeeMult(score) : 1, satisfaction: 0, score, site };
   }
   const season = seasonOf(state.clock.month);
   const outdoor = isOutdoorSeat(state, seat);
@@ -234,15 +246,44 @@ export function siteBonus(state: GameState, seat: PlacedObject): SiteBonus {
   const shade = Math.min(SITE_MAX.shade, site.shade + (seat.type === PARASOL_TYPE ? 1 : 0));
   let pts = SAT_PER_VIEW * site.view;
   if (outdoor) {
-    if (season === 'winter') pts += SAT_SHADE_WINTER * shade;
-    else if (season === 'summer') pts += SAT_SHADE_SUMMER * shade;
+    if (season === 'winter') {
+      pts += SAT_SHADE_WINTER * shade;
+      if (windShelter(state, seat.x, seat.y) >= SHELTER_THRESHOLD) pts += WIND_SHELTER_SAT; // spot2: 북서쪽 돌담이 겨울 바람을 막아 준다
+    } else if (season === 'summer') pts += SAT_SHADE_SUMMER * shade;
   }
   return {
-    feeMult: 1 + FEE_PER_VIEW * site.view,
+    feeMult: siteFeeMult(score),
     satisfaction: Math.trunc(pts / SITE_SAT_PER_SCENERY) || 0,
     score,
     site,
   };
+}
+
+/** spot2: (x, y)에 이 바람막이를 놓으면 겨울 바람이 **막히게 되는** 야외 자리들 (배치 고스트 반경 표시).
+ *  자리에서 북서쪽 쐐기(1~3칸, |dx−dy| ≤ 1) 안이고, 지금은 모자라지만 이걸 더하면 SHELTER_THRESHOLD를 넘는 자리만.
+ *  돌담(wind 2) 하나로는 모자라고 둘이면 막힌다 — 고스트가 그 순간을 알려 준다. */
+export function windCoveredSeats(state: GameState, type: string, x: number, y: number, ignoreId?: string): PlacedObject[] {
+  return windCoveredSeatsBy(state, type, [{ x, y }], ignoreId);
+}
+/** 돌담을 줄로 놓을 때(placeLine 미리보기)처럼 여러 칸을 한꺼번에 놓는 경우 — 칸마다 바람을 더해서 센다 */
+export function windCoveredSeatsBy(state: GameState, type: string, cells: Pt[], ignoreId?: string): PlacedObject[] {
+  const wind = objectDef(type).wind;
+  if (wind <= 0 || cells.length === 0) return [];
+  const inWedge = (seat: PlacedObject, c: Pt) => {
+    const dx = seat.x - c.x, dy = seat.y - c.y;
+    return dx >= 1 && dx <= WIND_WEDGE_MAX && dy >= 1 && dy <= WIND_WEDGE_MAX && Math.abs(dx - dy) <= 1;
+  };
+  const out: PlacedObject[] = [];
+  for (const o of Object.values(state.objects)) {
+    if (o.id === ignoreId || o.build) continue;
+    if (!isSeatDef(objectDef(o.type)) || !isOutdoorSeat(state, o)) continue;
+    const n = cells.filter((c) => inWedge(o, c)).length;
+    if (n === 0) continue;
+    const now = windShelter(state, o.x, o.y);
+    if (now >= SHELTER_THRESHOLD || now + wind * n < SHELTER_THRESHOLD) continue; // 이미 막혔거나, 이걸 놓아도 아직 모자라다
+    out.push(o);
+  }
+  return out;
 }
 
 // ---------- 손님 대사 ----------

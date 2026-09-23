@@ -8,6 +8,7 @@ import { itemScenery } from '../sim/grid.ts';
 import { constructions, buildDaysLeft, salaryDue, rentOf, upkeepOf, parcelAt } from '../sim/index.ts';
 import { fmtNum } from '../sim/format.ts';
 import { wonText } from '../data/labels.ts';
+import { feeQuoteIfPlaced } from '../sim/fee.ts'; // spot2: 여기에 놓으면 얼마를 받나
 
 const RADIUS = 2;
 
@@ -48,6 +49,12 @@ export function tradeoffOf(s: GameState, type: string, x: number, y: number): Tr
   const seats = Object.values(s.objects).filter((o) => !o.build && isSeat(s, o));
   const near = seats.filter((o) => Math.max(Math.abs(o.x - x), Math.abs(o.y - y)) <= RADIUS && !(o.x === x && o.y === y)).length;
   if (def.kind === 'seat') gains.push(`+좌석 ${def.seats ?? 2}`);
+  // spot2: 자리·요금 시설이면 이 칸에서 실제로 받게 될 값을 ₩로 먼저 보여 준다 (사용자 피드백 "잘 꾸밀수록 요금이 좋아지는 게 보이게")
+  const q = feeQuoteIfPlaced(s, type, x, y);
+  if (q && q.base > 0) {
+    const up = Math.round((q.mult - 1) * 100);
+    gains.unshift(up > 0 ? `${wonText(q.price)} (기본 ${wonText(q.base)} +${up}%)` : `${wonText(q.price)}`);
+  }
   else if ((def.popularity ?? 0) > 0 && def.kind === 'facility') gains.push(`+입소문 ${def.popularity}`);
   if (def.fee) gains.push(`요금 ${wonText(def.fee)}`);
   const sc = objectScenery(def, seasonOf(s.clock.month), itemScenery(s, type)) - def.noise;
