@@ -65,6 +65,7 @@ export function useTutorialNote(key: TutorialNoteKey | null, on = true): void {
 export function skipCurrentChapter(): void {
   dispatchFn?.({ type: 'skipTutorialChapter' });
   shownFor = -1;
+  leadShownFor = -1; // 막을 건너뛰면 다음 막 예고를 새로 띄운다
 }
 /** 「이미 알아요」: 이 단계만 보상 없이 통과 (해금만). 다음 단계 대사가 바로 뜬다. */
 export function skipCurrentStep(): void {
@@ -72,7 +73,7 @@ export function skipCurrentStep(): void {
   shownFor = -1;
 }
 
-export const SKIP_TEXT = '남은 가르침을 건너뛸까요? 단계 보상은 못 받아요.';
+export const SKIP_TEXT = '이 막의 남은 단계를 건너뛸까요? 막 보상은 못 받아요.';
 /** 단계 대사를 띄운다 (다시 보기 포함). 닫으면 dlg:<id> 표식. 왼쪽 아래 「이미 알아요」(이 단계만 보상 없이 통과)와 「건너뛰기」(남은 전부)는 항상. */
 export function showTutorialStep(step0: TutorialStep, opts: { skip?: boolean; skipStep?: boolean } = {}): void {
   const s0 = stateFn?.();
