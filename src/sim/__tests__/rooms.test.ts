@@ -51,6 +51,20 @@ describe('데이터 (§8.2·8.3)', () => {
 });
 
 describe('본관 증축 (§8.1)', () => {
+  test('통합: 커진 본관의 새 문 앞을 막은 야외 시설은 치우고 값을 돌려준다 — 막히면 올렛길도 못 이어 겨울에 손님이 0이 된다', () => {
+    const s = cafe();
+    const m = main(s);
+    // Lv2가 되면 문 앞이 (3,3) → (3,4)로 내려간다. 그 자리에 야외 테이블을 놓아 문을 막는다.
+    const blocker = placeObject(s, 'table_out', X(3), Y(4));
+    expect(objectAt(s, X(3), Y(4))?.id).toBe(blocker.id);
+    expect(apply(s, { type: 'expandMain' }).ok).toBe(true);
+    expect(doorFrontOf(m)).toEqual({ x: X(3), y: Y(4) });
+    expect(s.objects[blocker.id]).toBeUndefined();          // 치웠다
+    expect(objectAt(s, X(3), Y(4))?.type).toBe('path');     // 그 뒤 올렛길이 이어졌다
+    expect(isDoorReachable(s, m)).toBe(true);               // 손님이 문까지 걸어올 수 있다
+    expect(s.notices.some((n) => n.includes('문 앞에 있던'))).toBe(true);
+  });
+
   test('Lv1 3×2 → Lv2 4×3: 비용 300만·7일·영업 정지, 원점 고정·남동으로 자람, 발자국 안 올렛길은 철거·환불, 기존 가구는 그대로', () => {
     const s = cafe();
     const m = main(s);
