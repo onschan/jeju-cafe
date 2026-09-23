@@ -43,10 +43,10 @@ describe('문구 규칙 §6: 지시문·화살표·정석·시뮬 없음', () =>
     for (const [k, v] of Object.entries(FIRST_TIPS)) { expect(v.length, k).toBeLessThanOrEqual(22); expect(v.length, k).toBeGreaterThan(0); }
     for (const k of ['build', 'cafe:menu', 'people:staff', 'ledger:spots', 'goal', 'siteView', 'build:parking_lot']) expect(TIPS[k], k).toBeTruthy();
   });
-  it('인트로 6컷 자막: 1인칭 상황, 금지어 없음', () => {
+  it('인트로 11컷 자막: 1인칭 상황, 금지어 없음', () => {
     expectClean(INTRO_CUTS.flatMap((c) => [c.caption, ...c.lines]), '인트로');
-    expect(INTRO_CUTS[4]!.speaker).toBe('halmang');
-    expect(INTRO_CUTS[4]!.lines.join(' ')).toContain('창고');
+    expect(INTRO_CUTS[9]!.speaker).toBe('halmang');
+    expect(INTRO_CUTS[9]!.lines.join(' ')).toContain('창고');
   });
   it('목표 title/desc 문구', () => {
     expectClean(GOALS.flatMap((g) => [g.title, g.desc, g.line ?? '']), '목표');
