@@ -270,7 +270,7 @@ function hireCleanerIfDirty(s: GameState): boolean {
   if (seatDirt(s) <= dailyCleanRecovery(s) && s.clean.value >= CLEAN_LOW) return false;
   if (s.money < BOT_CLEAN_MIN_MONEY) return false;
   if (s.candidates.length === 0 && !apply(s, { type: 'postJob', tier: 'flyer' }).ok) return false;
-  const c = s.candidates.find((x) => canHire(s, x.id, 'clean').ok);
+  const c = bestBy(s.candidates.filter((x) => canHire(s, x.id, 'clean').ok), 'skill'); // 청소는 기술이 곧 회복량
   return !!c && apply(s, { type: 'hire', candidateId: c.id, role: 'clean' }).ok;
 }
 
@@ -486,9 +486,9 @@ function buildSecondFloorIfCan(s: GameState): void {
 }
 /** fun-rank: 열린 큰 시설(₩300만 이상, 방·랜드마크·주차장·실내 가구 제외)을 아직 없는 종류부터 하나 — 산 필지 전체를 훑어 놓는다 (목표 보상 시설이 돈 쓸 곳이 되게). 한 달 하나. */
 function placeLuxury(s: GameState): void {
-  if (s.clock.year < BOT_LUXURY_YEAR) return;
-  // 직원 정원이 찼으면 청소도구실(+2)을 산 필지 어디든 먼저 (장식 칸이 차서 2개째를 못 놓던 시드)
-  if (s.staff.length >= staffCapacity(s) - 1 && s.unlocked.objects.includes(STAFF_ROOM_TYPE) && canSpend(s, objectDef(STAFF_ROOM_TYPE).cost)) {
+  if (s.clock.year < BOT_LUXURY_YEAR && seatDirt(s) <= dailyCleanRecovery(s)) return; // staff2: 청소가 밀리면 1년차에도 청소도구실은 짓는다
+  // 직원 정원이 찼거나(청소도구실 +2) 청소가 밀리면(회복 ×1.5) 청소도구실을 산 필지 어디든 먼저
+  if ((s.staff.length >= staffCapacity(s) - 1 || seatDirt(s) > dailyCleanRecovery(s)) && s.unlocked.objects.includes(STAFF_ROOM_TYPE) && canSpend(s, objectDef(STAFF_ROOM_TYPE).cost)) {
     for (const p of ownedParcels(s)) for (let ly = 0; ly < p.h; ly++) for (let lx = 0; lx < p.w; lx++) {
       const x = p.x + lx, y = p.y + ly;
       if (!objectAt(s, x, y) && canPlace(s, STAFF_ROOM_TYPE, x, y).ok && place(s, STAFF_ROOM_TYPE, x, y)) return;
@@ -641,7 +641,7 @@ export function monthlyPlan(s: GameState, monthsPlayed: number): void {
   if (monthsPlayed === 0 && s.staff.length === 0) hireBest(s, 'smile', 'hall');
   if (monthsPlayed === 1 && !hasRole(s, 'barista') && apply(s, { type: 'postJob', tier: 'flyer' }).ok) hireBest(s, 'skill', 'barista');
   // 1년차 7월: 요리사까지 3명, 2년차부터 빈 슬롯을 채운다 (§4.6: 3년차 5명)
-  if (monthsPlayed >= BOT_COOK_MONTHS && !hasRole(s, 'cook') && s.staff.length === 2 && s.money >= BOT_HIRE_MIN_MONEY && apply(s, { type: 'postJob', tier: 'flyer' }).ok) hireBest(s, 'skill', 'cook');
+  if (monthsPlayed >= BOT_COOK_MONTHS && !hasRole(s, 'cook') && s.staff.length < staffCapacity(s) && (s.slots.cook ?? 0) > 0 && s.money >= BOT_HIRE_MIN_MONEY && (s.candidates.length > 0 || apply(s, { type: 'postJob', tier: 'flyer' }).ok)) hireBest(s, 'skill', 'cook'); // staff2: 청소를 먼저 뽑아 3명이 돼도 요리사를 놓치지 않게 (요리사가 없으면 디저트·식사·시그니처가 통째로 막힌다)
   else if (!hireCleanerIfDirty(s)) hireForFreeSlot(s); // staff2: 자리를 늘려 더러워지기 시작하면 청소부터 뽑는다
 
   // 홍보: 매달 전단 (돈 100만 넘고 기력 60 넘는 직원), 돈 400만 넘으면 SNS도 — 인기가 손님 수를 정하므로 (§4.2 #1) 꾸준히
