@@ -687,7 +687,11 @@ export interface PlacedObject {
   mode?: string;       // 실내 요소 설정 (rooms.ts §4.3): 난로 on/off · 피아노 lunch/evening/none · 바 저녁 세트 on/off
   careDay?: number;    // 실내 요소 마지막 손질 일 인덱스 (수족관 먹이·키즈 장난감 보충·책장 신간)
   stopped?: number;    // stakes: 설비 고장으로 멈춘 시설 — 이 일 인덱스까지 인기 0 (risk.ts). 없으면 정상
+  pending?: PendingWork; // 예약된 작업 (pending.ts): 손님이 앉아 있어도 눌러 두면 자리가 비는 즉시 실행된다. 없으면 예약 없음
 }
+
+/** 예약 작업 (pending.ts). to = 옮길 칸(kind 'move'만), at = 예약한 절대 일 인덱스 */
+export interface PendingWork { kind: 'move' | 'remove' | 'upgrade' | 'treeUpgrade'; to?: Pt; at: number }
 
 /** 되돌리기 1회 스냅샷 (undo.ts). day = 절대 일 인덱스 — 같은 날에만 되돌린다 */
 export type UndoEntry =
@@ -1030,6 +1034,9 @@ export type Action =
   | { type: 'upgradeObject'; objectId: string }   // 증축 Lv+1 (upgrade.ts)
   | { type: 'treeUpgrade'; objectId: string }     // fun: 같은 자리 업그레이드 트리 다음 단계 (tree.ts — 테이블 → 파라솔 → 테라스 → 전망 테라스)
   | { type: 'repairObject'; objectId: string }    // 노후 수리 (cleanliness.ts)
+  | { type: 'reserveWork'; objectId: string; work: PendingWork['kind']; x?: number; y?: number } // 손님이 있어도 예약 (pending.ts) — 자리가 비면 자동 실행. move면 x·y가 옮길 칸
+  | { type: 'cancelWork'; objectId: string }      // 예약 취소 (pending.ts)
+  | { type: 'doWorkNow'; objectId: string }       // 「지금 바로」: 앉은 손님을 빈 자리로 옮기고(없으면 만족 −5로 퇴장) 예약을 실행한다
   | { type: 'buyParcel'; id: string }
   | { type: 'renameCafe'; name: string }
   | { type: 'expand'; id: string }

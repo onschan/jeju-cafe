@@ -1198,26 +1198,27 @@ export class GameView {
     return { node: c, type: o.type, sprite: null, glow, posKey: `${o.x},${o.y}:${w}x${h}` };
   }
 
-  /** 건설 중: 반투명 + 머리 위 망치 아이콘과 "N일" 배지 (오버레이 레이어 — 본관 같은 큰 이웃 뒤에 숨지 않게). 남은 날이 바뀔 때만 다시 그린다. */
+  /** 건설 중: 반투명 + 머리 위 망치 아이콘과 "N일" 배지 (오버레이 레이어 — 본관 같은 큰 이웃 뒤에 숨지 않게). 남은 날이 바뀔 때만 다시 그린다.
+   *  seatfix: 공사 중이 아니어도 예약(pending)이 걸려 있으면 같은 자리에 시계 아이콘 + "예약" 배지를 띄운다. */
   private syncBuilding(entry: ObjEntry, o: PlacedObject, state: GameState) {
     const left = o.build ? Math.max(0, o.build.doneDay - dayIndex(state.clock)) : 0;
-    const key = o.build ? `b${left}:${o.x},${o.y}` : '';
+    const key = o.build ? `b${left}:${o.x},${o.y}` : o.pending ? `p${o.pending.kind}:${o.x},${o.y}` : '';
     if (entry.buildKey === key) return;
     entry.buildKey = key;
     entry.badge?.destroy({ children: true });
     entry.badge = null;
     entry.node.alpha = o.build ? BUILDING_ALPHA : 1;
-    if (!o.build) return;
+    if (!o.build && !o.pending) return;
     const size = sizeOf(o);
     const gc = this.footCenter(o, size.w, size.h);
     const top = gc.sy - (entry.sprite?.height ?? 40) * 0.6 - 4; // 스프라이트 위쪽 언저리
     const c = new Container();
-    const l = label(`${left}일`, 10);
+    const l = label(o.build ? `${left}일` : '예약', 10);
     l.anchor.set(0, 0.5);
-    const iconTex = hasAssets() ? tex(spriteName.icon('build')) : null;
+    const iconTex = hasAssets() ? tex(spriteName.icon(o.build ? 'build' : 'clock')) : null;
     const iconW = iconTex ? 16 : 0;
     const w = iconW + l.width + 12;
-    c.addChild(new Graphics().roundRect(-w / 2, -18, w, 18, 4).fill({ color: 0x6b3d1e, alpha: 0.9 }));
+    c.addChild(new Graphics().roundRect(-w / 2, -18, w, 18, 4).fill({ color: o.build ? 0x6b3d1e : 0xb8862a, alpha: 0.9 }));
     if (iconTex) {
       const icon = new Sprite(iconTex);
       icon.anchor.set(0, 0.5);

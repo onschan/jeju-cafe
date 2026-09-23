@@ -376,7 +376,9 @@ function upgradeOne(s: GameState): void {
     if (n >= max) return;
     if (s.clock.year >= BOT_LUXURY_YEAR && isSeat(s, o)) continue; // fun-rank: 3년차부터 좌석 증축(Lv3 +2석)은 안 한다 — 좌석이 곧 매출이라 5년차 자금이 4억을 넘는다
     if (!isUpgradable(objectDef(o.type)) || !canUpgrade(s, o.id, objectStats(s, o.id).popularity).ok) continue;
-    if (canSpend(s, upgradeCost(s, o)) && apply(s, { type: 'upgradeObject', objectId: o.id }).ok) n++;
+    if (!canSpend(s, upgradeCost(s, o))) continue;
+    if (apply(s, { type: 'upgradeObject', objectId: o.id }).ok) n++;
+    else if (isSeat(s, o) && apply(s, { type: 'reserveWork', objectId: o.id, work: 'upgrade' }).ok) n++; // seatfix: 손님이 앉은 좌석은 예약해 두면 일어날 때 증축된다
   }
 }
 

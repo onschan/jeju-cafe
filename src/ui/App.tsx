@@ -4,7 +4,7 @@ import { GameView, RECT_COLOR_LINE, type GhostSpec, type RangeHint } from '../re
 import { startLoop, dispatch, getState, useGame, setViewReset, autosaveNow, hasAnySave, loadSlot, setMonthCardHook, setSceneHook, showMessage, pauseGame, isSpeedLocked, setSpeedLocked } from './store';
 import { unlockAudio, bgm, isMuted, setMuted, getBgmVolume, getSfxVolume, setBgmVolume, setSfxVolume, sfx, setBgmLayer } from './audio';
 import { gradeOf, gradeName, GRADE_BGM_LAYER_FROM, REVEAL_GRADE, contestUnlocked, signupOpen } from '../sim/index.ts'; // fun-rank · fun 점진 공개 · 대회
-import { seasonOf, canPlace, objectAt, footprint, sizeOf, mainBuilding, parcelAt, placeCost, isLineType, lineCells, planLine, canAutoConnectPath, type LineOrder, type Pt, PROTECTED_TYPES, ROTATABLE_TYPES, goalForMenu, featureOpen, canUndo, demolishRefund, canDisturb, routeAtCell, tutorialDone, canBuildMain, recommendedMainCells, cellAt, doorFrontOf, MAIN_TYPE, MAIN_BUILD_COST, type GameState } from '../sim/index.ts';
+import { seasonOf, canPlace, objectAt, footprint, sizeOf, mainBuilding, parcelAt, placeCost, isLineType, lineCells, planLine, canAutoConnectPath, type LineOrder, type Pt, PROTECTED_TYPES, ROTATABLE_TYPES, goalForMenu, featureOpen, canUndo, demolishRefund, guestBlock, routeAtCell, tutorialDone, canBuildMain, recommendedMainCells, cellAt, doorFrontOf, MAIN_TYPE, MAIN_BUILD_COST, type GameState } from '../sim/index.ts';
 import { RoutesSection } from './RouteCard'; // 트랙 H
 import { objectDef } from '../data/index.ts';
 // render/·ui/는 Vite 전용이라 확장자 없는 import 허용. sim/·data/만 .ts 확장자 규칙.
@@ -54,7 +54,7 @@ import { staffParts } from '../render/character';
 import { rangeHintFor } from './rangeHint';
 import { AppealPanel } from './AppealPanel'; // fun: 카페 매력도
 import { tradeoffOf } from './tradeoff'; // fun: 배치 트레이드오프
-import { rectCells, demolishTargets, nextGhostAfterPlace, type Rect, type BuildGhost } from './placing';
+import { rectCells, demolishTargets, reservedCount, nextGhostAfterPlace, type Rect, type BuildGhost } from './placing';
 import { placementPicks, PlacementHintLine, type PlacePicks } from './PlacementHints'; // video-patch §3.2: 추천 칸 3곳
 import { usePlaceHintsPref, setPlaceHintsOn } from './layoutScore';
 import { TodoLine } from './TodoLine'; // video-patch §3.4: 오늘 할 일
@@ -100,10 +100,16 @@ function inFootprint(type: string, ox: number, oy: number, x: number, y: number,
   return footprint(type, ox, oy, w, h).some((p) => p.x === x && p.y === y);
 }
 
-/** 보기 모드에서 칸을 눌렀을 때 카드 대상. 손님 → 직원 → 필지(미소유) → 오브젝트 → 마을 길 → 빈 땅. */
+/** 보기 모드에서 칸을 눌렀을 때 카드 대상. 손님 → 직원 → 필지(미소유) → 오브젝트 → 마을 길 → 빈 땅.
+ *  seatfix: 손님이 시설 위에 있으면 시설 카드를 먼저 띄운다 — 손님이 앉은 테이블도 탭해서 옮기고 치울 수 있어야 한다.
+ *  카드 위 칩 두 개로 손님 카드와 오간다 (guestId·objectId로 서로를 가리킨다). */
 function targetAt(s: GameState, x: number, y: number): CardTarget | null {
   const guest = s.guests.find((g) => Math.round(g.x) === x && Math.round(g.y) === y);
-  if (guest) return { kind: 'guest', id: guest.id };
+  if (guest) {
+    const under = objectAt(s, x, y);
+    if (under && !PROTECTED_TYPES.has(under.type) && objectDef(under.type).kind !== 'busstop' && !routeAtCell(s, x, y)) return { kind: 'object', id: under.id, guestId: guest.id };
+    return { kind: 'guest', id: guest.id };
+  }
   const staff = s.staff.find((st) => Math.round(st.x) === x && Math.round(st.y) === y);
   if (staff) return { kind: 'staff', id: staff.id };
   const rt = routeAtCell(s, x, y); if (rt) return { kind: 'route', route: rt, id: objectAt(s, x, y)?.id }; // 트랙 H: 진입점·경로 시설(정류장 포함) → 경로 카드
@@ -375,8 +381,7 @@ function Game({ onExit }: { onExit: () => void }) {
     const st = getState();
     const o = objectAt(st, x, y);
     if (!o || PROTECTED_TYPES.has(o.type)) return false;
-    const c = canDisturb(st, o);
-    if (!c.ok) { showMessage(c.reason ?? '지금은 못 옮겨요'); return false; }
+    // seatfix: 손님이 앉아 있어도 들어 올린다 — 확정할 때 예약으로 넘어간다
     setMode({ kind: 'move' });
     liftedRef.current = true;
     setMoving({ objectId: o.id, x: o.x, y: o.y });
@@ -388,8 +393,7 @@ function Game({ onExit }: { onExit: () => void }) {
     const st = getState();
     const o = st.objects[objectId];
     if (!o) return;
-    if (o.type !== 'warehouse') { const c = canDisturb(st, o); if (!c.ok) { showMessage(c.reason ?? '지금은 못 옮겨요'); return; } }
-    setMode({ kind: 'move' });
+    setMode({ kind: 'move' }); // seatfix: 손님이 앉아 있어도 고를 수 있다 — 확정하면 예약된다
     liftedRef.current = true;
     setMoving({ objectId: o.id, x: o.x, y: o.y });
     dragOffset.current = { dx: 0, dy: 0 };
@@ -442,13 +446,13 @@ function Game({ onExit }: { onExit: () => void }) {
               const o = objectAt(st, x, y);
               if (!o) showMessage('옮길 것을 골라 주세요');
               else if (PROTECTED_TYPES.has(o.type)) showMessage('이건 못 옮겨요');
-              else { const c = canDisturb(st, o); if (!c.ok) showMessage(c.reason ?? '지금은 못 옮겨요'); else setMoving({ objectId: o.id, x: o.x, y: o.y }); }
+              else setMoving({ objectId: o.id, x: o.x, y: o.y }); // seatfix: 손님이 앉아 있어도 고른다
             }
           } else if (m.kind === 'remove') {
             // 탭 = 한 칸 사각형. 이미 고른 게 있으면 새로 고른다
             const o = objectAt(st, x, y);
             if (!o) { setRect(null); showMessage('치울 것을 골라 주세요'); }
-            else if (demolishTargets(st, { x0: x, y0: y, x1: x, y1: y }).length === 0) { setRect(null); const c = canDisturb(st, o); showMessage(!c.ok && !PROTECTED_TYPES.has(o.type) ? (c.reason ?? '지금은 못 치워요') : '이건 못 치워요'); }
+            else if (demolishTargets(st, { x0: x, y0: y, x1: x, y1: y }).length === 0) { setRect(null); showMessage('이건 못 치워요'); }
             else setRect({ x0: x, y0: y, x1: x, y1: y });
           } else inspect(st, x, y);
         },
@@ -607,20 +611,29 @@ function Game({ onExit }: { onExit: () => void }) {
     if (moving && o) {
       const def = objectDef(o.type);
       const size = sizeOf(o); // 본관 증축 Lv2+는 정의 크기와 다르다 (y-indoor)
-      const can0 = canPlace(s, o.type, moving.x, moving.y, o.id);
-      const can = can0.ok && o.type !== 'warehouse' ? canDisturb(s, o) : can0; // 고른 뒤 손님이 앉거나 지나가면 확정이 조용히 실패하지 않게 이유를 보여 준다
+      const can = canPlace(s, o.type, moving.x, moving.y, o.id);
+      // seatfix: 손님이 앉았거나 지나가는 중이어도 확정할 수 있다 — 그 자리로 옮기는 예약이 걸리고, 손님이 일어나면 sim이 옮긴다 (본관은 기존 이사 규칙 그대로)
+      const busy = o.type === 'warehouse' ? null : guestBlock(s, o);
       ghostSpec = { type: o.type, x: moving.x, y: moving.y, rot: o.rot, ok: can.ok, text: `${def.name} 옮기기`, w: size.w, h: size.h };
       rangeHint = rangeHintFor(s, o.type, moving.x, moving.y, o.id);
       ghostCell = { x: moving.x, y: moving.y, w: size.w, h: size.h };
       place = {
-        text: `${def.name} · ${can.ok ? '여기로 옮길 수 있어요' : (can.reason ?? '여기엔 못 옮겨요')}`,
+        text: `${def.name} · ${!can.ok ? (can.reason ?? '여기엔 못 옮겨요') : busy ? `${busy} · 일어나면 옮길게요` : '여기로 옮길 수 있어요'}`,
         ok: can.ok,
         canRotate: ROTATABLE_TYPES.has(o.type),
         onUndo: undoOk ? undo : null,
         onConfirm: () => {
+          const done = () => { if (liftedRef.current) { liftedRef.current = false; setMode({ kind: 'idle' }); } else setMoving(null); };
+          if (busy) {
+            const p = dispatch({ type: 'reserveWork', objectId: o.id, work: 'move', x: moving.x, y: moving.y });
+            if (!p.ok) { showMessage(p.reason ?? '여기엔 못 옮겨요'); return; }
+            showMessage('손님이 일어나면 옮길게요');
+            done();
+            return;
+          }
           const r = dispatch({ type: 'move', objectId: o.id, x: moving.x, y: moving.y });
           if (!r.ok) { showMessage(r.reason ?? '여기엔 못 옮겨요'); return; }
-          if (liftedRef.current) { liftedRef.current = false; setMode({ kind: 'idle' }); } else setMoving(null);
+          done();
         },
         onRotate: () => dispatch({ type: 'rotate', objectId: o.id, rot: ((o.rot ?? 0) + 1) % 4 }),
         onCancel: () => { if (liftedRef.current) { liftedRef.current = false; setMode({ kind: 'idle' }); } else setMoving(null); },
@@ -633,12 +646,13 @@ function Game({ onExit }: { onExit: () => void }) {
     if (rect && ids.length > 0) {
       const objs = ids.map((id) => s.objects[id]!);
       const delta = demolishRefund(objs);
+      const later = reservedCount(s, ids); // seatfix: 손님이 있는 것은 예약만 걸린다
       place = {
-        text: `${ids.length}개 철거 · ${delta >= 0 ? `환불 ${wonText(delta)}` : `비용 ${wonText(-delta)}`}`,
+        text: `${ids.length}개 철거 · ${delta >= 0 ? `환불 ${wonText(delta)}` : `비용 ${wonText(-delta)}`}${later > 0 ? ` · ${later}개는 손님이 일어나면` : ''}`,
         ok: true, canRotate: false, onUndo: undoOk ? undo : null,
         onConfirm: () => {
           const r = dispatch({ type: 'demolishMany', objectIds: ids });
-          if (r.ok) { setRect(null); showMessage(`${ids.length}개 치웠어요 (↶ 되돌리기 가능)`); }
+          if (r.ok) { setRect(null); showMessage(later > 0 ? `${ids.length - later}개 치우고 ${later}개는 예약했어요` : `${ids.length}개 치웠어요 (↶ 되돌리기 가능)`); }
           else showMessage(r.reason ?? '지금은 못 치워요');
         },
         onRotate: () => {},

@@ -96,6 +96,7 @@ const ACTION_SFX: Record<Action['type'], SfxName> = {
   dismissOutcome: 'tap', skipTutorial: 'tap', skipTutorialChapter: 'tap', tutorialNote: 'tap',
   enterContest: 'unlock', cancelContest: 'tap', dismissContest: 'tap',
   expandParking: 'place', // 트랙 H
+  reserveWork: 'tap', cancelWork: 'tap', doWorkNow: 'place', // seatfix: 손님이 앉은 시설 예약·취소·지금 바로
   placeMain: 'fanfare', expandMain: 'unlock', buildSecondFloor: 'unlock', moveMain: 'place', undoMoveMain: 'tap', setBgm: 'tap', setLighting: 'tap', // y-indoor
   continueEnding: 'fanfare', // z-ending
   greetGuest: 'happy', recommendMenu: 'tap', // fun-guest (트랙 G) 훅 한 줄

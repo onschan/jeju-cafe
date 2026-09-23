@@ -95,7 +95,7 @@ function usedSlots(state: GameState, seatId: string): Set<number> {
   return used;
 }
 
-function firstFreeSlot(state: GameState, seat: PlacedObject): number {
+export function firstFreeSlot(state: GameState, seat: PlacedObject): number {
   const used = usedSlots(state, seat.id);
   const n = seatsOf(state, seat);
   for (let i = 0; i < n; i++) if (!used.has(i)) return i;
@@ -108,11 +108,14 @@ export function seatSlotPos(seat: PlacedObject, slot: number, n = objectDef(seat
   return { x: seat.x + ((slot + 0.5) / n) * def.w - def.w / 2 + (def.w - 1) / 2, y: seat.y + (def.h - 1) / 2 };
 }
 
-/** 아직 손님이 배정되지 않은 좌석 오브젝트 */
+/** 아직 손님이 배정되지 않은 좌석 오브젝트. 예약된 좌석(pending)은 새 손님이 안 고른다 — 그래야 자리가 비어 예약이 실행된다.
+ *  남은 자리가 예약된 것뿐이면 그냥 앉힌다(손님을 돌려보내지 않는다). 예약은 그대로 남아 다음에 비면 실행된다. */
 export function freeSeats(state: GameState): PlacedObject[] {
   const taken = new Map<string, number>();
   for (const g of state.guests) if (g.seatId && g.phase !== 'leaving') taken.set(g.seatId, (taken.get(g.seatId) ?? 0) + 1);
-  return filterSeatsForWeather(state, seatObjects(state).filter((o) => (taken.get(o.id) ?? 0) < seatsOf(state, o))); // y-indoor: 겨울·비·태풍엔 실내 우선
+  const open = filterSeatsForWeather(state, seatObjects(state).filter((o) => (taken.get(o.id) ?? 0) < seatsOf(state, o))); // y-indoor: 겨울·비·태풍엔 실내 우선
+  const notReserved = open.filter((o) => !o.pending);
+  return notReserved.length > 0 ? notReserved : open;
 }
 
 /** 정류장에서 걸어서 닿는 좌석이 하나라도 있나. 점유 여부는 보지 않는다 (길이 이어졌는지 판정하는 안내용). */

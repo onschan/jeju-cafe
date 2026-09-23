@@ -38,6 +38,17 @@ export function introImageUrl(cut: number, signOn = false): string {
   return assetUrl(`assets/intro/cut${cut + 1}${cut === LAST && signOn ? '_on' : ''}.png`);
 }
 
+/** 타자 진행 상태 — 몇 번째 컷의 몇 글자까지 찍혔나 */
+export interface Typed { cut: number; n: number; done: boolean }
+/** 지금 화면에 보일 글자 수. 컷이 바뀐 직후엔 이전 컷 값을 안 쓰고 0 — 다음 자막이 완성된 채 한 프레임 보이던 깜빡임을 막는다. */
+export function shownCount(typed: Typed, cut: number): number {
+  return typed.cut === cut ? typed.n : 0;
+}
+/** 지금 컷의 자막이 다 찍혔나 (컷이 바뀐 직후엔 false — 이전 컷의 완료 상태를 물려받지 않는다) */
+export function typedDoneOf(typed: Typed, cut: number): boolean {
+  return typed.cut === cut && typed.done;
+}
+
 /** 그림 위 작은 라벨 (장소·시간) */
 const captionStyle: CSSProperties = {
   position: 'absolute', left: 6, top: 6, padding: '2px 8px', fontSize: 13, fontWeight: 700,
@@ -50,8 +61,12 @@ const skipStyle: CSSProperties = {
 
 export function IntroScreen({ onDone, replay = false }: { onDone: () => void; replay?: boolean }) {
   const [cut, setCut] = useState(0);
-  const [typedN, setTypedN] = useState(0);
-  const [typedDone, setTypedDone] = useState(false);
+  // 타자 진행은 "몇 번째 컷의" 몇 글자인지까지 같이 들고 있는다.
+  // 글자 수만 들고 있으면 cut이 바뀐 직후 렌더에 이전 컷의 전체 길이가 남아 다음 자막이 완성된 채 한 프레임 번쩍였다 (리셋은 effect라 렌더보다 늦다).
+  const [typed, setTyped] = useState<Typed>({ cut: 0, n: 0, done: false });
+  const typedN = shownCount(typed, cut);
+  const typedDone = typedDoneOf(typed, cut);
+  const typing = useRef<number | null>(null);      // 진행 중인 타자 타이머 (탭으로 건너뛸 때 끈다)
   const [dark, setDark] = useState(true);          // 검정 오버레이 (페이드)
   const [signOn, setSignOn] = useState(false);
   const [signDone, setSignDone] = useState(false);
@@ -72,16 +87,19 @@ export function IntroScreen({ onDone, replay = false }: { onDone: () => void; re
   // 컷이 넘어갈 때마다 그 구간의 BGM (다시 보기는 타이틀 BGM이 이미 흐른다)
   useEffect(() => { if (!replay) void bgm(cutBgm(cut)); }, [cut, replay]);
 
-  // 타자 효과 (②~④는 느리게)
+  // 타자 효과 (②~④는 느리게). 컷이 바뀌면 0글자부터 — 자막 박스는 페이드와 함께 비어 있다가 다시 찍힌다
   useEffect(() => {
-    setTypedN(0); setTypedDone(false); setHeld(false);
+    setTyped({ cut, n: 0, done: full.length === 0 });
+    setHeld(false);
+    if (full.length === 0) return;
     let i = 0;
     const id = window.setInterval(() => {
       i++;
-      setTypedN(i);
-      if (i >= full.length) { window.clearInterval(id); setTypedDone(true); }
+      setTyped({ cut, n: i, done: i >= full.length });
+      if (i >= full.length) { window.clearInterval(id); typing.current = null; }
     }, SLOW_CUTS.has(cut) ? SLOW_TYPE_MS : TYPE_MS);
-    return () => window.clearInterval(id);
+    typing.current = id;
+    return () => { window.clearInterval(id); typing.current = null; };
   }, [full, cut]);
 
   // ⑦ 결심한 밤: 자막이 끝나면 1초 멈춘다
@@ -108,7 +126,12 @@ export function IntroScreen({ onDone, replay = false }: { onDone: () => void; re
   const waiting = cut === HOLD_CUT && typedDone && !held;
   const next = () => {
     if (busy.current) return;
-    if (!typedDone) { setTypedN(full.length); setTypedDone(true); return; }
+    // 탭 한 번은 「즉시 전부 보이기」 — 돌던 타자 타이머를 끄고 한 번에 채운다 (안 끄면 다음 틱이 글자 수를 되돌린다)
+    if (!typedDone) {
+      if (typing.current !== null) { window.clearInterval(typing.current); typing.current = null; }
+      setTyped({ cut, n: full.length, done: true });
+      return;
+    }
     if (waiting) return;
     if (isLast) { if (signDone) finish(); return; }
     busy.current = true;
