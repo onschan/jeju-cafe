@@ -21,7 +21,7 @@ export function ButtonGroup<T extends string>({ value, options, onPick, label, d
         const off = disabled || o.disabled;
         return (
           <button key={o.value} type="button" aria-pressed={on} disabled={off} onClick={() => { if (!off && !on) onPick(o.value); }}
-            style={{ ...(off ? brownBtnOff : on ? brownBtnOn : brownBtn), minHeight: 36, padding: '0 10px', margin: 0, fontSize: 14, whiteSpace: 'nowrap' }}>
+            style={{ ...(off ? brownBtnOff : on ? brownBtnOn : brownBtn), minHeight: 44, padding: '0 10px', margin: 0, fontSize: 14, whiteSpace: 'nowrap' }}>
             {o.label}
           </button>
         );

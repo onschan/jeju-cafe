@@ -290,30 +290,43 @@ def _chest_lid(c: Canvas, dx: int = 0, lift: int = 0) -> None:
 
 
 def _chest_open_lid(c: Canvas) -> None:
-    """뒤로 젖혀진 뚜껑: 위쪽에 안쪽 면(어두운 나무)이 보인다. x 6~57, y 4~18."""
+    """뒤로 젖혀진 뚜껑: 위쪽에 안쪽 면(어두운 나무)이 보인다. x 6~57, y 4~18.
+    아래 변(y 18)은 _chest_inside()의 뒷벽 위 변과 맞닿는다 — 여기가 벌어지면 뚜껑이 공중에 뜬다."""
     wdk, wmd, wlt = WOOD
     idk, imd, ilt = CHEST_IRON
-    c.rect(6, 4, 52, 14, wdk); c.rect(8, 6, 48, 10, hexc('4a2c14'))
+    c.rect(6, 4, 52, 15, wdk); c.rect(8, 6, 48, 10, hexc('4a2c14'))
     c.hline(6, 57, 4, wmd); c.hline(6, 57, 17, wmd)
     for bx in (14, 46):
-        c.rect(bx, 4, 4, 14, imd); c.vline(bx, 5, 16, ilt); c.vline(bx + 3, 5, 16, idk)
+        c.rect(bx, 4, 4, 15, imd); c.vline(bx, 5, 17, ilt); c.vline(bx + 3, 5, 17, idk)
     c.rect(28, 13, 8, 4, imd); c.rect(29, 14, 6, 2, ilt)
+
+
+def _chest_inside(c: Canvas) -> None:
+    """열린 상자의 안쪽 뒷벽·옆널 x 8~55, y 17~34.
+    젖혀진 뚜껑(y 4~18)과 몸통 앞면(y 32~58)을 잇는 부분이다. 이게 없으면 뚜껑이 몸통에서 떨어져 떠 보인다."""
+    wdk, wmd, wlt = WOOD
+    idk, imd, ilt = CHEST_IRON
+    c.rect(8, 17, 48, 17, wdk)                                   # 옆널(바깥 나무)
+    c.rect(11, 17, 42, 16, hexc('3a2210'))                       # 안쪽 그늘
+    c.vline(8, 17, 33, wmd); c.vline(9, 17, 33, wmd)             # 왼쪽 옆널에 드는 빛
+    for bx in (14, 46):                                          # 경첩 쇠 테 — 뚜껑에서 몸통까지 한 줄로 이어진다
+        c.rect(bx, 17, 4, 17, imd); c.vline(bx, 17, 33, ilt); c.vline(bx + 3, 17, 33, idk)
 
 
 def _chest_glow(c: Canvas, strength: int) -> None:
     """열린 상자 속 금빛 + 위로 뻗는 빛줄기. strength 0~2."""
     gdk, gmd, glt = CHEST_GOLD
-    c.rect(10, 18, 44, 14, gmd); c.rect(12, 18, 40, 6, glt)                      # 상자 입구 금빛
-    for x in range(12, 52, 6):                                                  # 금화 무더기
-        c.rect(x, 26, 5, 3, gdk); c.rect(x + 1, 25, 3, 1, gmd)
+    c.rect(12, 22, 40, 11, gmd); c.rect(14, 22, 36, 5, glt)                      # 상자 속 금빛(뒷벽 위 4줄은 그늘로 남긴다 — 깊이)
+    for x in range(13, 51, 6):                                                  # 금화 무더기
+        c.rect(x, 29, 5, 3, gdk); c.rect(x + 1, 28, 3, 1, gmd)
     if strength <= 0:
         return
     # 빛줄기: 위로 갈수록 가늘어지는 기둥 (가운데가 길고 바깥은 짧고 비스듬)
     rays = ((12, 6, -1), (22, 1, 0), (32, 0, 0), (42, 1, 0), (52, 6, 1)) if strength == 2 else ((17, 4, -1), (32, 2, 0), (47, 4, 1))
     for rx, top, slant in rays:
-        for y in range(top, 18):
-            x = rx + slant * (17 - y) // 4
-            w = 1 if y < top + 6 else 2 if y < 14 else 3
+        for y in range(top, 22):
+            x = rx + slant * (21 - y) // 4
+            w = 1 if y < top + 6 else 2 if y < 18 else 3
             c.hline(x - w // 2, x - w // 2 + w - 1, y, glt)
             if w == 3:
                 c.put(x - 1, y, gmd)
@@ -338,14 +351,17 @@ def chest(frame: int) -> Canvas:
         return c
     if frame == 3:
         _chest_body(c)
-        c.rect(10, 28, 44, 4, CHEST_GOLD[2])                                     # 틈으로 새는 빛
+        c.rect(8, 27, 48, 6, CHEST_GOLD[2])                                      # 틈으로 새는 빛 (몸통 폭 그대로 — 옆이 벌어지지 않게)
         _chest_lid(c, 0, 5)
         c.outline()
-        c.rect(12, 30, 40, 2, CHEST_GOLD[1])
+        c.rect(11, 29, 42, 2, CHEST_GOLD[1])
         return c
+    # 열린 상자: 몸통·안쪽 뒷벽·젖혀진 뚜껑을 한 캔버스에 겹쳐 그린 뒤 **한 번만** 윤곽을 두른다.
+    # (뚜껑만 따로 윤곽을 두르면 몸통과 잘린 두 덩어리로 보여 공중에 뜬다)
+    _chest_inside(c)
+    _chest_open_lid(c)
     _chest_body(c)
     c.outline()
-    lid = Canvas(64, 64); _chest_open_lid(lid); lid.outline(); c.blit(lid, 0, 0)
     _chest_glow(c, {4: 2, 5: 1, 6: 2, 7: 0}[frame])                             # 빛줄기는 젖혀진 뚜껑 앞으로
     if frame in (5, 6):
         for (sx, sy, sz) in (((3, 14, 2), (60, 10, 1), (8, 44, 1), (57, 36, 2)) if frame == 5 else ((6, 8, 1), (58, 18, 2), (4, 38, 2), (60, 46, 1))):
@@ -431,6 +447,38 @@ def icon_home_cafe() -> Canvas:
     return c
 
 
+def icon_home_cafe_big() -> Canvas:
+    """48×48 본관 아이콘 (uifix): 지름 56 원형 「본관으로」 버튼 안에 들어가게 **네 귀퉁이를 비워** 그린다.
+    24px짜리를 48px로 늘리면 1px 선이 2px로 뭉쳐 흐려 보이고, 원형 버튼이 네 귀퉁이(간판·벽 끝)를 잘라 먹는다."""
+    c = Canvas(48, 48)
+    wdk, wmd, wlt = WHITE
+    bdk, bmd, blt = BASALT
+    tdk, tmd, tlt = WOOD
+    # 흰 벽 (x 7~40, y 13~41 — 원 안에 넉넉히 들어온다)
+    c.rect(7, 13, 34, 29, wmd)
+    c.rect(8, 14, 32, 3, wlt); c.rect(8, 14, 3, 26, wlt)
+    # 평지붕 난간
+    c.rect(6, 9, 36, 4, bmd); c.hline(6, 41, 9, blt); c.hline(6, 41, 12, bdk)
+    # 돌담 밑단
+    c.rect(7, 35, 34, 7, bmd); c.dither(8, 36, 32, 5, bdk, bmd)
+    # 창 (왼쪽): 하늘빛 유리 + 나무 카운터 + 컵 둘
+    c.rect(11, 18, 16, 15, SKY[2]); c.rect(12, 19, 14, 4, WHITE[2])
+    c.rect(11, 27, 16, 6, tmd); c.hline(11, 26, 27, tlt)
+    c.rect(14, 23, 4, 4, wlt); c.rect(20, 23, 4, 4, wlt)
+    c.put(15, 22, WHITE[2]); c.put(21, 22, WHITE[2])
+    c.vline(19, 18, 26, SKY[1])                                   # 창틀 세로
+    # 나무 문 (오른쪽)
+    c.rect(30, 20, 9, 15, tmd); c.vline(30, 20, 34, tlt); c.hline(30, 38, 20, tlt)
+    c.rect(32, 22, 5, 5, SKY[2]); c.put(36, 29, YELLOW[1])        # 문 창·손잡이
+    # 감귤 간판 (벽 위, 귀퉁이를 넘지 않게 가운데 가까이)
+    c.rect(17, 4, 14, 8, wlt); c.rect(18, 5, 12, 6, WHITE[2])
+    c.rect(21, 6, 6, 5, ORANGE[1]); c.put(21, 6, CLEAR); c.put(26, 6, CLEAR); c.put(21, 10, CLEAR); c.put(26, 10, CLEAR)
+    c.rect(22, 7, 2, 2, ORANGE[2]); c.put(25, 4, LEAF[1]); c.put(24, 3, LEAF[1])
+    c.outline()
+    c.put(25, 4, LEAF[1]); c.put(24, 3, LEAF[1]); c.rect(22, 7, 2, 2, ORANGE[2])
+    return c
+
+
 # ---------------------------------------------------------------- 장면 창 배경 160×90 (로비: 회벽 + 카운터 + 창문)
 def scene_lobby() -> Canvas:
     c = Canvas(160, 90)
@@ -513,4 +561,5 @@ def sprites() -> dict[str, Canvas]:
         s[f'ui_coin_{i}'] = ui_coin(i)
     s['ui_ribbon_banner'] = ui_ribbon_banner()
     s['icon_home_cafe'] = icon_home_cafe()
+    s['icon_home_cafe_big'] = icon_home_cafe_big()
     return s

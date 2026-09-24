@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Icon } from './Icon';
 import { useTutorialNote } from './tutorialDialogue';
 import { wonText } from '../data/labels.ts';
@@ -19,9 +19,20 @@ const REASON_TEXT: Record<string, string> = { no_menu: '먹을 게 없어요', s
 /** 파츠 초상(캔버스, 48 원본 → size로 픽셀 확대; 기본 96). 시트가 없으면 색 사각형 얼굴로. */
 export function Portrait({ parts, size = PORTRAIT_DISPLAY, face, expr = 'normal' }: { parts: CharacterParts; size?: number; face: FaceParts; expr?: PortraitExpr }) {
   const ref = useRef<HTMLCanvasElement>(null);
-  const okRef = useRef(true);
+  const [ok, setOk] = useState(true);
+  const okRef = { current: ok };
+  // uifix: 시트가 아직 안 왔으면 한 번 실패하고 그대로 빈 칸이었다 → 올 때까지 다시 그린다
   useEffect(() => {
-    if (ref.current) okRef.current = drawPortrait(ref.current, parts, expr);
+    let alive = true;
+    let tries = 0;
+    const tick = () => {
+      if (!alive || !ref.current) return;
+      if (drawPortrait(ref.current, parts, expr)) { setOk(true); return; }
+      setOk(false);
+      if (tries++ < 20) setTimeout(tick, 150);
+    };
+    tick();
+    return () => { alive = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [parts.skin, parts.hairStyle, parts.hairColor, parts.top, parts.accs.join(','), parts.portrait, expr]);
   return (

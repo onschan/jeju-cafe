@@ -26,7 +26,7 @@ function LayoutScoreLine({ s }: { s: GameState }) {
   return (
     <div data-testid="layout-score" style={{ marginBottom: 6 }}>
       <button aria-expanded={open} aria-label={`배치 점수 ${score.total}점`} onClick={() => setOpen((v) => !v)}
-        style={{ width: '100%', minHeight: 30, padding: '2px 6px', border: `2px solid ${PALETTE.woodLight}`, borderRadius: 6, background: '#fffaf0', color: PALETTE.ink, fontFamily: 'inherit', fontSize: 14, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6, textAlign: 'left', boxSizing: 'border-box' }}>
+        style={{ width: '100%', minHeight: 44, padding: '2px 6px', border: `2px solid ${PALETTE.woodLight}`, borderRadius: 6, background: '#fffaf0', color: PALETTE.ink, fontFamily: 'inherit', fontSize: 14, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6, textAlign: 'left', boxSizing: 'border-box' }}>
         <Icon name="build" size={15} />
         <span style={{ flex: 'none' }}>배치 점수</span>
         <span data-testid="layout-score-total" style={{ flex: 1, fontSize: 18 }}>{score.total} <span style={{ fontSize: 13, color: PALETTE.inkSoft }}>/ {SCORE_MAX}</span></span>

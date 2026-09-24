@@ -7,8 +7,8 @@ import { closeDay, DAY_LOG_CAP } from '../../sim/index.ts';
 import type { DayLogRow } from '../../sim/index.ts';
 import { deltaText, summaryParts, DAY_CARD_MS } from '../DaySummaryCard.tsx';
 import { gradeUps } from '../GrowthChart.tsx';
-import { GOAL_BAR_H, GOAL_LINE_H, CHALLENGE_LINE_H } from '../GoalBar.tsx';
 import { todoItems, TODO_LINE_H } from '../TodoLine.tsx';
+import { TOP_BAR_H, SHELL_TOP, BOTTOM_BAR_H } from '../Shell.tsx';
 import { hasIdToken } from '../../data/labels.ts';
 
 const row = (o: Partial<DayLogRow>): DayLogRow => ({ day: 0, guests: 0, income: 0, regulars: 0, grade: 1, ...o });
@@ -61,9 +61,11 @@ describe('오늘 할 일 줄', () => {
       expect(it.text).not.toMatch(/→|정석|시뮬|공략|굴려 보니/);
     }
   });
-  it('할 일 줄은 목표 줄과 따로 — 한 화면에 「오늘 할 일」은 하나뿐', () => {
-    expect(GOAL_BAR_H).toBe(GOAL_LINE_H + CHALLENGE_LINE_H); // 목표 줄 안에는 할 일 줄이 없다
-    expect(TODO_LINE_H).toBeGreaterThanOrEqual(20);
+  it('uifix: 상시 표시는 상단 2줄(≤56px)과 하단 1줄뿐 — 목표·이달 줄은 「할 일」 창으로 갔다', () => {
+    expect(SHELL_TOP).toBe(TOP_BAR_H + TODO_LINE_H); // 상단에 다른 줄이 끼어들지 않는다
+    expect(SHELL_TOP).toBeLessThanOrEqual(56);
+    expect(TODO_LINE_H).toBeGreaterThanOrEqual(24); // 글자 13px이 위아래로 안 눌리게
+    expect(BOTTOM_BAR_H).toBe(48);
   });
 });
 

@@ -69,7 +69,9 @@ const ROUTE_MARKER_SPRITE: Record<RouteId, string> = { bus: 'route_bus', parking
 const ROUTE_LOCKED_TINT = 0x8a8a8a;
 
 /** 미소유 필지 풍경 노드(트랙 E): 풍경 타일(tiles)·소품(actors, 깊이 정렬)·이름 팻말(overlay)을 한데 묶는다. 사면 1초 페이드 뒤 지운다(keep 소품은 남는다). */
-interface SceneryEntry { tiles: Container; props: { node: Container; keep: boolean; cells: { x: number; y: number }[] }[]; sign: Container; text: string; fadeFrom: number | null; center?: { sx: number; sy: number } }
+interface SceneryEntry { tiles: Container; props: { node: Container; keep: boolean; cells: { x: number; y: number }[] }[]; sign: Container; text: string; fadeFrom: number | null; center?: { sx: number; sy: number };
+  /** 필지가 차지한 월드 좌표 상자 — 팻말이 제 필지를 벗어나지 않게 붙잡는 범위 */
+  box?: { x0: number; y0: number; x1: number; y1: number } }
 function destroyScenery(e: SceneryEntry, keepLandmarks: boolean) {
   e.tiles.destroy({ children: true });
   e.sign.destroy({ children: true });
@@ -307,6 +309,13 @@ export class GameView {
   /** 오브젝트·손님을 한 컨테이너에 두고 아이소 깊이(x+y)로 정렬한다 */
   private actors = new Container();
   private overlay = new Container();
+  /** uifix: 맵 팻말(미소유 필지 이름·진입점 미리 보기)만 담는 레이어.
+   *  상단 2줄·하단 바가 차지한 화면 밖으로는 나가지 않게 화면 좌표로 잘라 낸다 — 팻말이 UI 위로 떠다니지 않게. */
+  private signs = new Container();
+  private signMask = new Graphics();
+  private signMaskRect = '';
+  /** 맵이 쓸 수 있는 화면 띠 (상단 셸·하단 셸 높이). App이 넣어 준다. */
+  private mapInsets = { top: 0, bottom: 0 };
   /** 카메라 영향을 받지 않는 화면 고정 레이어(밤 오버레이) */
   private ui = new Container();
   private night = new Graphics();
@@ -409,7 +418,7 @@ export class GameView {
     await Promise.all([loadAssets(), loadLabelFont()]);
     parent.appendChild(this.app.canvas);
     this.actors.sortableChildren = true;
-    this.world.addChild(this.background.node, this.tiles, this.siteLayer, this.actors, this.overlay);
+    this.world.addChild(this.background.node, this.tiles, this.siteLayer, this.actors, this.overlay, this.signs);
     this.siteLayer.addChild(this.siteGfx);
     this.siteLayer.addChild(this.rangeGfx, this.rectGfx);
     this.overlay.addChild(this.selection);
@@ -428,7 +437,9 @@ export class GameView {
     this.ui.eventMode = 'none';
     this.roomLight.blendMode = 'add';
     this.lights.addChild(this.roomLight);
-    this.ui.addChild(this.night, this.lights);
+    this.signMask.eventMode = 'none';
+    this.signs.mask = this.signMask;
+    this.ui.addChild(this.night, this.lights, this.signMask);
     this.app.stage.addChild(this.world, this.ui);
     this.detachCamera = attachCamera(this.app.stage, {
       world: this.world,
@@ -947,7 +958,7 @@ export class GameView {
         cur.sign.destroy({ children: true });
         cur.sign = this.parcelSign(zoomOut ? [l1] : [l1, l2], zoomOut);
         cur.sign.position.copyFrom(pos);
-        this.overlay.addChild(cur.sign);
+        this.signs.addChild(cur.sign);
         cur.text = text;
         continue;
       }
@@ -979,10 +990,55 @@ export class GameView {
     // 남은 랜드마크: 그 칸에 시설이 놓이면 사라진다
     for (const e of this.fadingScenery) this.hideCoveredLandmarks(state, e);
     for (const e of this.lockedNodes.values()) this.hideCoveredLandmarks(state, e);
+    this.syncSignMask();
     // 팻말은 줌아웃해도 읽히게 화면 크기를 유지한다(월드 배율 1.4 아래에서 키움)
     const k = signScale(this.world.scale.x);
     for (const e of this.lockedNodes.values()) e.sign.scale.set(k);
     for (const l of this.entryLabels.values()) l.scale.set(k);
+    for (const e of this.lockedNodes.values()) this.keepSignOnParcel(e);
+  }
+
+  /** 팻말을 **제 필지 안 · 보이는 맵 띠 안**에 붙잡아 둔다.
+   *  필지가 화면 밖으로 밀리면 팻말도 같이 나간다 — 화면 가장자리에 걸쳐 떠 있는 것처럼 보이지 않게. */
+  private keepSignOnParcel(e: SceneryEntry) {
+    const box = e.box;
+    if (!box || e.sign.destroyed) return;
+    const sc = this.world.scale.x;
+    const w = this.app.screen.width || this.hostWidth;
+    const h = this.app.screen.height;
+    if (!w || !h || sc <= 0) return;
+    // 보이는 맵 띠를 월드 좌표로
+    const pad = 6 / sc;
+    const visL = (0 - this.world.x) / sc + pad;
+    const visR = (w - this.world.x) / sc - pad;
+    const visT = (this.mapInsets.top - this.world.y) / sc + pad;
+    const visB = (h - this.mapInsets.bottom - this.world.y) / sc - pad;
+    const halfW = e.sign.width / 2;
+    const tall = e.sign.height;
+    const clamp = (v: number, lo: number, hi: number) => (lo > hi ? v : Math.min(hi, Math.max(lo, v)));
+    e.sign.position.set(
+      clamp(e.center!.sx, Math.max(box.x0, visL + halfW), Math.min(box.x1, visR - halfW)),
+      clamp(e.center!.sy - 2, Math.max(box.y0, visT + tall), Math.min(box.y1, visB)),
+    );
+  }
+
+  /** 상단 2줄·하단 바가 가리지 않는 맵 띠를 App이 알려 준다 (팻말 잘라내기용). */
+  setMapInsets(top: number, bottom: number) {
+    this.mapInsets = { top, bottom };
+    this.syncSignMask();
+  }
+
+  /** 팻말 레이어를 맵 띠(화면 좌표)로 자른다. 크기가 그대로면 다시 그리지 않는다. */
+  private syncSignMask() {
+    const w = this.app.screen.width || this.hostWidth;
+    const h = this.app.screen.height;
+    if (!w || !h) return;
+    const top = this.mapInsets.top;
+    const height = Math.max(0, h - top - this.mapInsets.bottom);
+    const key = `${w}:${top}:${height}`;
+    if (this.signMaskRect === key) return;
+    this.signMaskRect = key;
+    this.signMask.clear().rect(0, top, w, height).fill(0xffffff);
   }
 
   private hideCoveredLandmarks(state: GameState, e: SceneryEntry) {
@@ -997,8 +1053,10 @@ export class GameView {
     const texts = lines.map((t, i) => { const l = label(t, i === 0 ? size + 1 : size); l.anchor.set(0.5, 0); l.tint = SIGN_TEXT; return l; });
     const w = Math.max(...texts.map((t) => t.width)) + 12;
     const h = texts.reduce((a, t) => a + t.height, 0) + 8;
-    const bg = new Graphics().roundRect(-w / 2, -h, w, h, 3).fill({ color: SIGN_FILL }).stroke({ color: SIGN_EDGE, width: 2 })
-      .rect(-1, 0, 3, 6).fill(SIGN_EDGE); // 말뚝
+    // uifix: 땅에 박힌 말뚝과 그림자를 또렷하게 — 팻말이 화면에 떠 있는 UI가 아니라 맵에 꽂힌 것으로 읽히게
+    const bg = new Graphics().ellipse(0, 11, 9, 3).fill({ color: 0x000000, alpha: 0.22 })
+      .rect(-2, -2, 4, 13).fill(SIGN_EDGE)
+      .roundRect(-w / 2, -h, w, h, 3).fill({ color: SIGN_FILL }).stroke({ color: SIGN_EDGE, width: 2 });
     c.addChild(bg);
     let y = -h + 4;
     for (const t of texts) { t.position.set(0, y); y += t.height; c.addChild(t); }
@@ -1044,12 +1102,15 @@ export class GameView {
       this.actors.addChild(node);
       props.push({ node, keep: !!pr.keep, cells });
     }
-    // 이름 팻말: 필지 가운데, overlay(시설·캐릭터 위)
+    // 이름 팻말: 필지 가운데, signs 레이어(시설·캐릭터 위 · 화면 밖은 잘린다)
     const center = cellCenter(p.x + (p.w - 1) / 2, p.y + (p.h - 1) / 2);
     const sign = this.parcelSign(lines, small);
     sign.position.set(center.sx, center.sy - 2);
-    this.overlay.addChild(sign);
-    return { tiles, props, sign, text, fadeFrom: null, center };
+    this.signs.addChild(sign);
+    // 필지 네 꼭짓점의 월드 좌표 → 팻말이 돌아다녀도 되는 상자
+    const cs = [cellCenter(p.x, p.y), cellCenter(p.x + p.w - 1, p.y), cellCenter(p.x, p.y + p.h - 1), cellCenter(p.x + p.w - 1, p.y + p.h - 1)];
+    const box = { x0: Math.min(...cs.map((v) => v.sx)), x1: Math.max(...cs.map((v) => v.sx)), y0: Math.min(...cs.map((v) => v.sy)), y1: Math.max(...cs.map((v) => v.sy)) };
+    return { tiles, props, sign, text, fadeFrom: null, center, box };
   }
 
   private sceneryPropNode(pr: SceneryProp, x: number, y: number, w: number, h: number): Container | null {
@@ -1398,7 +1459,7 @@ export class GameView {
         sign.label = `entry-label-${e.route}`;
         sign.alpha = 0.85;
         sign.position.set(sx, sy - ISO_H - 26);
-        this.overlay.addChild(sign);
+        this.signs.addChild(sign);
         this.entryLabels.set(e.route, sign);
       }
     }

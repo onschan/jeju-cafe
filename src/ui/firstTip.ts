@@ -83,7 +83,7 @@ export function tipKeyFor(win: { kind: string; tab?: string | null } | null, mod
 const bubble: CSSProperties = {
   position: 'absolute', left: 12, right: 12, zIndex: 35, // 창(30) 위, 대화창(40) 아래
   background: PALETTE.paper, color: PALETTE.ink, border: `3px solid ${PALETTE.wood}`, boxShadow: `inset 0 0 0 2px ${PALETTE.woodLight}, 0 3px 0 #0003`,
-  borderRadius: 10, padding: '8px 12px', minHeight: 44, display: 'flex', alignItems: 'center', gap: 8, fontSize: 15, fontWeight: 700, lineHeight: 1.35, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
+  borderRadius: 10, padding: '8px 12px', minHeight: 44, display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 15, fontWeight: 700, lineHeight: 1.35, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
 };
 const tailUp: CSSProperties = { position: 'absolute', left: 22, top: -12, width: 0, height: 0, borderLeft: '9px solid transparent', borderRight: '9px solid transparent', borderBottom: `12px solid ${PALETTE.wood}` };
 const tailDown: CSSProperties = { ...tailUp, top: undefined, bottom: -12, borderBottom: undefined, borderTop: `12px solid ${PALETTE.wood}` };
@@ -93,10 +93,13 @@ export function FirstTipBubble({ top, bottom }: { top?: number; bottom?: number 
   const key = useCurrentTip();
   const text = tipText(key);
   if (!key || !text) return null;
+  // uifix: 「탭해서 닫기」가 같은 줄에서 글 칸을 밀어 「오른/다」처럼 한 글자가 다음 줄로 떨어졌다 → 아래 줄로 내린다
   return createElement('button', { 'data-testid': 'first-tip', 'data-tip': key, 'aria-label': `팁: ${text}`, onClick: dismissTip, style: { ...bubble, top, bottom } },
     createElement('span', { style: bottom !== undefined ? tailDown : tailUp }),
-    createElement('span', { 'aria-hidden': true, style: { fontSize: 18 } }, '💡'),
-    createElement('span', { style: { flex: 1 } }, `할망: ${text}`),
-    createElement('span', { style: { color: PALETTE.inkSoft, fontSize: 13, fontWeight: 400 } }, '탭해서 닫기'),
+    createElement('span', { 'aria-hidden': true, style: { fontSize: 18, flex: 'none' } }, '💡'),
+    createElement('span', { style: { flex: 1, minWidth: 0 } },
+      createElement('span', null, `할망: ${text}`),
+      createElement('span', { style: { display: 'block', textAlign: 'right', color: PALETTE.inkSoft, fontSize: 13, fontWeight: 400 } }, '탭해서 닫기'),
+    ),
   );
 }

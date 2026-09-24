@@ -7,6 +7,7 @@ import { namedGuestDef } from '../data/index.ts';
 import { staffParts } from '../render/character';
 import { Portrait, guestPortraitParts, namedPortraitParts } from './GuestPopup';
 import { brownBtn, brownBtnOn, PALETTE } from './frame';
+import { SHELL_BOTTOM } from './Shell';
 
 /** 타자 효과: 글자당 ms */
 export const TYPE_MS = 20;
@@ -20,10 +21,10 @@ function Speaker({ portrait }: { portrait: string }) {
     return <img className="px" src={assetUrl(`assets/icons/portrait_${portrait}.png`)} width={PORTRAIT_PX} height={PORTRAIT_PX} alt="" style={{ flex: 'none', imageRendering: 'pixelated', border: `2px solid ${PALETTE.woodLight}`, borderRadius: 6, background: PALETTE.paperDark }} />;
   }
   const st = s.staff.find((x) => x.id === portrait) ?? s.candidates.find((x) => x.id === portrait);
-  if (st) return <Portrait parts={staffParts(st.face, 'role' in st ? st.role : null, s.uniform ?? null)} face={st.face} />;
+  if (st) return <Portrait size={PORTRAIT_PX} parts={staffParts(st.face, 'role' in st ? st.role : null, s.uniform ?? null)} face={st.face} />;
   const g = s.guests.find((x) => x.id === portrait);
-  if (g?.namedId) { const nd = namedGuestDef(g.namedId); return <Portrait parts={namedPortraitParts(nd.id)} face={namedGuestFace(nd)} />; }
-  if (g) return <Portrait parts={guestPortraitParts(g.type)} face={guestFace(g.type)} />;
+  if (g?.namedId) { const nd = namedGuestDef(g.namedId); return <Portrait size={PORTRAIT_PX} parts={namedPortraitParts(nd.id)} face={namedGuestFace(nd)} />; }
+  if (g) return <Portrait size={PORTRAIT_PX} parts={guestPortraitParts(g.type)} face={guestFace(g.type)} />;
   return <img className="px" src={assetUrl('assets/icons/portrait_halmang.png')} width={PORTRAIT_PX} height={PORTRAIT_PX} alt="" style={{ flex: 'none', imageRendering: 'pixelated' }} />;
 }
 
@@ -66,15 +67,16 @@ function DialogueBox({ req, page }: { req: DialogueReq; page: number }) {
   const choices = req.choices && req.choices.length > 0 ? req.choices : null;
   return (
     <div data-testid="dialogue" data-page={page} style={{ position: 'absolute', inset: 0, zIndex: 40, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', background: '#0004' }} onClick={tap}>
-      <div style={{ margin: '0 8px calc(8px + env(safe-area-inset-bottom))', minHeight: '30vh', background: PALETTE.paper, color: PALETTE.ink, border: `4px solid ${PALETTE.wood}`, boxShadow: `inset 0 0 0 2px ${PALETTE.woodLight}`, borderRadius: 10, padding: 10, display: 'flex', flexDirection: 'column', gap: 8 }} onClick={(e) => e.stopPropagation()}>
-        <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start', flex: 1 }} onClick={tap}>
+      {/* uifix: 대화창은 화면 33%를 넘지 않고, 하단 바·메시지 줄 위에 앉는다 (「알겠다」가 하단 바를 가리지 않게) */}
+      <div data-testid="dialogue-box" style={{ margin: '0 8px', marginBottom: `calc(${SHELL_BOTTOM + 8}px + env(safe-area-inset-bottom))`, maxHeight: '33vh', boxSizing: 'border-box', background: PALETTE.paper, color: PALETTE.ink, border: `4px solid ${PALETTE.wood}`, boxShadow: `inset 0 0 0 2px ${PALETTE.woodLight}`, borderRadius: 10, padding: 10, display: 'flex', flexDirection: 'column', gap: 8 }} onClick={(e) => e.stopPropagation()}>
+        <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start', flex: 1, minHeight: 0, overflow: 'hidden' }} onClick={tap}>
           <Speaker portrait={req.speaker.portrait} />
-          <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ flex: 1, minWidth: 0, minHeight: 0, overflowY: 'auto' }}>
             <div style={{ fontWeight: 700, color: PALETTE.title, marginBottom: 4, fontSize: 15 }}>{req.speaker.name}{pages > 1 && <span style={{ color: PALETTE.inkSoft, fontWeight: 400, fontSize: 13 }}> {page + 1}/{pages}</span>}</div>
             <TypedLines lines={pageLines(req, page)} done={typed} onDone={() => setTyped(true)} />
           </div>
         </div>
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6, flexWrap: 'wrap', minHeight: 44 }}>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6, flexWrap: 'wrap', minHeight: 44, flex: 'none' }}>
           {(req.onSkipStep || (page === 0 && req.onSkip)) && (
             <span style={{ display: 'flex', gap: 6, marginRight: 'auto' }}>
               {req.onSkipStep && <button aria-label="이미 알아요" data-testid="tutorial-skip-step" style={{ ...brownBtn, margin: 0, background: '#fffaf0', color: PALETTE.inkSoft }} onClick={() => { const skip = req.onSkipStep!; closeDialogue(); skip(); }}>이미 알아요</button>}

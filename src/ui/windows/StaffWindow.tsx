@@ -31,10 +31,26 @@ const css = (rgb: number) => `#${rgb.toString(16).padStart(6, '0')}`;
 type Tab = 'ours' | 'candidates';
 
 /** 파츠 초상 96px(48 원본 2배). 시트가 아직 없으면(Pixi 미로드) 머리·피부·상의 색 상자로 대신한다. */
+/** 시트가 늦게 올 때 초상을 다시 그리는 횟수·간격 */
+const PORTRAIT_RETRIES = 20;
+const PORTRAIT_RETRY_MS = 150;
+
 export function Portrait({ face, role, size = 96 }: { face: Face; role: RoleId | null; size?: number }) {
   const ref = useRef<HTMLCanvasElement>(null);
   const [ok, setOk] = useState(false);
-  useEffect(() => { if (ref.current) setOk(drawPortrait(ref.current, staffParts(face, role))); }, [face.hair, face.skin, face.top, role]);
+  // uifix: 시트가 아직 안 왔을 때 한 번 실패하면 색 띠 세 줄로 남았다 (홍보 결과 팝업이 로딩보다 먼저 뜨면 그랬다) → 올 때까지 다시 그린다
+  useEffect(() => {
+    let alive = true;
+    let tries = 0;
+    const tick = () => {
+      if (!alive || !ref.current) return;
+      if (drawPortrait(ref.current, staffParts(face, role))) { setOk(true); return; }
+      setOk(false);
+      if (tries++ < PORTRAIT_RETRIES) setTimeout(tick, PORTRAIT_RETRY_MS);
+    };
+    tick();
+    return () => { alive = false; };
+  }, [face.hair, face.skin, face.top, role]);
   const p = partsOfFace(face);
   return (
     <span style={{ position: 'relative', display: 'inline-block', width: size, height: size, flex: '0 0 auto', border: `2px solid ${PALETTE.wood}`, borderRadius: 6, background: PALETTE.paperDark, overflow: 'hidden' }} aria-label="초상">

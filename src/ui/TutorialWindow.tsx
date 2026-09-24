@@ -1,7 +1,7 @@
 /** 튜토리얼 창 「할망의 가르침」: 5막 진행도(막 이름·완료 ✓·지금 ▶·아직 ○ + 그 막 단계 목록)와 현재 단계 카드(대사 첫 줄·할 일),
  *  아직 안 열린 막은 「언제 열리나」 한 줄, 대사 다시 보기, 이 막 건너뛰기(보상 없음), 스포트라이트 켜기/끄기.
  *  trim: 「추천」 탭과 1년차 월별 표는 없앴다 — 할망의 추천은 목표 창의 한 줄(HalmangLine)로만 나온다.
- *  목표 줄 왼쪽 「📖 막 n/5」 배지에서 연다 (GoalBar.tsx). 진행은 sim 상태(state.tutorial)에서 읽는다. 장(章)은 없다(fun-start). */
+ *  오늘 할 일 줄 왼쪽 📖 배지에서 연다 (TodoLine.tsx). 진행은 sim 상태(state.tutorial)에서 읽는다. 장(章)은 없다(fun-start). */
 import { useState } from 'react';
 import { useGame } from './store';
 import { Popup, confirm } from './Popup';
