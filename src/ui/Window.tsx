@@ -71,7 +71,7 @@ export function Window<K extends string>({ title, menu, tab, onTab, onClose, chi
       </div>
       <div ref={bodyRef} data-testid="window-body" className={NO_SCROLLBAR} style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', padding: '10px 12px 12px', WebkitOverflowScrolling: 'touch' }}>
         <BAR_SLOT.Provider value={barHost}>
-          {showGrid ? <IconGrid items={menu!} onPick={(k) => onTab?.(k)} testId={testId ? `${testId}-grid` : 'window-grid'} /> : children}
+          {showGrid ? <IconGrid fill items={menu!} onPick={(k) => onTab?.(k)} testId={testId ? `${testId}-grid` : 'window-grid'} /> : children}
         </BAR_SLOT.Provider>
       </div>
       <div ref={setBarHost} data-testid="window-bar-slot" style={{ flex: 'none' }} />

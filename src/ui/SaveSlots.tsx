@@ -5,7 +5,7 @@ import { Popup, Confirm } from './Popup';
 import { card, brownBtn, brownBtnOff, dangerBtn, PALETTE } from './frame';
 import { slotSummaries, loadSlot, saveSlot, deleteSlot, AUTO_SLOT, SLOT_COUNT, type SlotSummary } from './store';
 
-const smallBtn = { ...brownBtn, minHeight: 36, fontSize: 14, padding: '0 10px', marginBottom: 0 } as const;
+const smallBtn = { ...brownBtn, minHeight: 44, fontSize: 14, padding: '0 10px', marginBottom: 0 } as const;
 
 function slotName(n: number) { return n === AUTO_SLOT ? '자동 저장' : `슬롯 ${n}`; }
 

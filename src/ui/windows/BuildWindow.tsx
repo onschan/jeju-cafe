@@ -204,9 +204,9 @@ export function BuildWindow(props: BuildWindowProps) {
   return (
     <div ref={rootRef} style={body} data-testid="build-window">
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6, flexWrap: 'wrap' }}>
-        <button data-testid="build-back" style={{ ...brownBtn, margin: 0, padding: '0 10px', fontSize: 14, minHeight: 40 }} onClick={() => goView({ kind: 'tiles' })}>◀ 짓기</button>
+        <button data-testid="build-back" style={{ ...brownBtn, margin: 0, padding: '0 10px', fontSize: 14, minHeight: 44 }} onClick={() => goView({ kind: 'tiles' })}>◀ 짓기</button>
         {tileDef && <span style={{ fontSize: 15, fontWeight: 700, flex: '1 1 0', minWidth: 0, ...oneLine }}><Icon name={tileDef.icon} size={16} /> {tileDef.name} <span style={{ ...soft, fontWeight: 400 }}>{tileDef.purpose}</span></span>}
-        {tileMode === 'charm' && <button data-testid="build-corner-tab" data-tut="tab:corner" style={{ ...brownBtn, margin: 0, padding: '0 10px', fontSize: 14, minHeight: 40 }} onClick={() => { goView({ kind: 'all' }); setTab('corner'); }}><Icon name="sparkle" size={14} /> 명당</button>}
+        {tileMode === 'charm' && <button data-testid="build-corner-tab" data-tut="tab:corner" style={{ ...brownBtn, margin: 0, padding: '0 10px', fontSize: 14, minHeight: 44 }} onClick={() => { goView({ kind: 'all' }); setTab('corner'); }}><Icon name="sparkle" size={14} /> 명당</button>}
       </div>
       {!tileMode && <TabBar tabs={tabs.map((t) => ({ ...t, badge: undefined }))} active={activeTab} onPick={(k) => { setTab(k); setPicked(null); }} testId="build-tab" />}
       {recent.length > 0 && (
@@ -216,7 +216,7 @@ export function BuildWindow(props: BuildWindowProps) {
             const def = objectDef(id);
             const cost = placeCost(s, id);
             const ok = canStartBuild(s, id).ok && s.money >= cost && !!props.onPickBuild;
-            return <button key={id} data-testid={`build-recent-${id}`} style={{ ...(ok ? brownBtn : brownBtnOff), margin: 0, padding: '0 8px', fontSize: 14, minHeight: 40 }} disabled={!ok} onClick={() => props.onPickBuild?.(id)}>{def.name} <span style={{ fontWeight: 400 }}>{cost > 0 ? wonText(cost) : '무료'}</span></button>;
+            return <button key={id} data-testid={`build-recent-${id}`} style={{ ...(ok ? brownBtn : brownBtnOff), margin: 0, padding: '0 8px', fontSize: 14, minHeight: 44 }} disabled={!ok} onClick={() => props.onPickBuild?.(id)}>{def.name} <span style={{ fontWeight: 400 }}>{cost > 0 ? wonText(cost) : '무료'}</span></button>;
           })}
         </div>
       )}

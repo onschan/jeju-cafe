@@ -55,7 +55,7 @@ export function VoiceFeed({ bottom, onFocus, onFix }: VoiceFeedProps) {
             </button>
             {open && fix !== 'none' && (
               <button data-testid="voice-fix" data-fix={fix} onClick={() => { onFix(fix); setOpenId(null); }}
-                style={{ ...row, marginTop: 2, height: 32, background: PALETTE.btn, color: PALETTE.ink, fontWeight: 700, border: `2px solid ${PALETTE.wood}` }}>
+                style={{ ...row, marginTop: 2, height: 44, background: PALETTE.btn, color: PALETTE.ink, fontWeight: 700, border: `2px solid ${PALETTE.wood}` }}>
                 <Icon name="check" size={14} /> {VOICE_FIX_LABEL[fix]}
               </button>
             )}

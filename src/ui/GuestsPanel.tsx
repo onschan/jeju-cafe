@@ -74,7 +74,7 @@ function TargetSlots({ s }: { s: GameState }) {
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 14 }}>
         <b><Icon name="target" /> 타깃 손님층</b><span style={{ fontSize: 12, color: PALETTE.inkSoft }}>스폰 ×1.3 · 만족 +</span>
         <span style={{ flex: 1 }} />
-        <button style={{ ...(picking ? brownBtnOn : brownBtn), margin: 0, minHeight: 36, padding: '0 10px', fontSize: 13 }} aria-expanded={picking} onClick={() => setPicking((v) => !v)}>{picking ? '닫기' : '고르기'}</button>
+        <button style={{ ...(picking ? brownBtnOn : brownBtn), margin: 0, minHeight: 44, padding: '0 10px', fontSize: 13 }} aria-expanded={picking} onClick={() => setPicking((v) => !v)}>{picking ? '닫기' : '고르기'}</button>
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6, marginTop: 6 }}>
         {Array.from({ length: MAX_TARGETS }, (_, i) => {
@@ -94,7 +94,7 @@ function TargetSlots({ s }: { s: GameState }) {
             const full = !on && s.targets.length >= MAX_TARGETS;
             return (
               <button key={id} data-tut={ui === 0 ? 'target-pick' : undefined} aria-pressed={on} disabled={full} onClick={() => toggle(id)}
-                style={{ ...(on ? brownBtnOn : brownBtn), margin: 0, minHeight: 40, padding: '0 8px', fontSize: 13, opacity: full ? 0.5 : 1, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                style={{ ...(on ? brownBtnOn : brownBtn), margin: 0, minHeight: 44, padding: '0 8px', fontSize: 13, opacity: full ? 0.5 : 1, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
                 <Portrait parts={guestPortraitParts(id)} face={guestFace(id)} size={24} />{guestTypeDef(id).name}
               </button>
             );

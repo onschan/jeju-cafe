@@ -113,7 +113,7 @@ export function CraftPanel() {
           const stock = i.kind === 'farm' ? ` 창고 ${s.storage[i.id] ?? 0}` : ` ${wonText(i.cost)}`;
           return (
             <button key={i.id} data-tut="craft-ingredient" aria-label={`재료 ${i.name}`} disabled={disabled} title={statText(i.stats)}
-              style={{ ...(disabled ? brownBtnOff : brownBtn), fontSize: 13, padding: '0 8px', minHeight: 36, marginRight: 4, marginBottom: 4 }} onClick={() => addIngredient(i.id)}>
+              style={{ ...(disabled ? brownBtnOff : brownBtn), fontSize: 13, padding: '0 8px', minHeight: 44, marginRight: 4, marginBottom: 4 }} onClick={() => addIngredient(i.id)}>
               {i.name} <span style={{ fontSize: 11, opacity: 0.85 }}>{INGREDIENT_CATEGORY_NAME[i.category]}{stock}</span>
             </button>
           );
@@ -139,7 +139,7 @@ export function CraftPanel() {
           <span style={{ width: 52, fontSize: 13 }}>{PARAM_LABEL[ax].name}</span>
           {PARAM_LABEL[ax].levels.map((label, lv) => (
             <button key={lv} aria-label={`${PARAM_LABEL[ax].name} ${label}`} onClick={() => setParams({ ...params, [ax]: lv })}
-              style={{ ...((norm[ax] ?? PARAM_DEFAULT) === lv ? brownBtnOn : brownBtn), minHeight: 36, padding: '0 10px', marginBottom: 0, marginRight: 4, fontSize: 13, outline: lv === PARAM_DEFAULT ? `2px dashed ${PALETTE.woodLight}` : undefined }}>
+              style={{ ...((norm[ax] ?? PARAM_DEFAULT) === lv ? brownBtnOn : brownBtn), minHeight: 44, padding: '0 10px', marginBottom: 0, marginRight: 4, fontSize: 13, outline: lv === PARAM_DEFAULT ? `2px dashed ${PALETTE.woodLight}` : undefined }}>
               {label}
             </button>
           ))}
@@ -221,7 +221,7 @@ export function MenuDetail({ menuId }: { menuId: string }) {
       <div style={{ marginTop: 6, fontSize: 13 }}><b>토핑</b> {mod.toppings.length}/{MAX_TOPPINGS} <span style={{ color: PALETTE.inkSoft }}>원가는 팔 때마다 재료비에 더해져요</span></div>
       <div style={{ display: 'flex', flexWrap: 'wrap' }}>
         {mod.toppings.map((t) => (
-          <button key={t} aria-label={`토핑 빼기 ${toppingDef(t).name}`} style={{ ...dangerBtn, minHeight: 36, fontSize: 13, padding: '0 8px' }} disabled={!canRemoveTopping(s, menuId, t).ok}
+          <button key={t} aria-label={`토핑 빼기 ${toppingDef(t).name}`} style={{ ...dangerBtn, minHeight: 44, fontSize: 13, padding: '0 8px' }} disabled={!canRemoveTopping(s, menuId, t).ok}
             onClick={() => dispatch({ type: 'removeTopping', menuId, toppingId: t })}><Icon name="close" size={12} /> {toppingDef(t).name}</button>
         ))}
       </div>
@@ -230,7 +230,7 @@ export function MenuDetail({ menuId }: { menuId: string }) {
           const ok = canAddTopping(s, menuId, t.id).ok;
           return (
             <button key={t.id} aria-label={`토핑 추가 ${t.name}`} disabled={!ok} title={`${statText(t.stats)} · ${t.skillText}`}
-              style={{ ...(ok ? brownBtn : brownBtnOff), minHeight: 36, fontSize: 13, padding: '0 8px', marginRight: 4, marginBottom: 4 }}
+              style={{ ...(ok ? brownBtn : brownBtnOff), minHeight: 44, fontSize: 13, padding: '0 8px', marginRight: 4, marginBottom: 4 }}
               onClick={() => dispatch({ type: 'addTopping', menuId, toppingId: t.id })}>
               + {t.name} <span style={{ fontSize: 11, opacity: 0.85 }}>{t.cost > 0 ? wonText(t.cost) : '밭'} · {t.skillText}</span>
             </button>

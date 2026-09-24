@@ -128,8 +128,8 @@ function Row({ children }: { children: ReactNode }) {
 }
 
 /** seatfix: 손님이 앉은 시설을 탭하면 「시설 / 손님」 두 칩으로 같은 자리에서 둘 다 본다 (더블탭은 모바일에서 느려 안 쓴다) */
-const chip: CSSProperties = { ...brownBtn, margin: 0, padding: '0 10px', fontSize: 14, minHeight: 36, flex: 1 };
-const chipOn: CSSProperties = { ...brownBtnOn, margin: 0, padding: '0 10px', fontSize: 14, minHeight: 36, flex: 1 };
+const chip: CSSProperties = { ...brownBtn, margin: 0, padding: '0 10px', fontSize: 14, minHeight: 44, flex: 1 };
+const chipOn: CSSProperties = { ...brownBtnOn, margin: 0, padding: '0 10px', fontSize: 14, minHeight: 44, flex: 1 };
 function SeatChips({ on, objectId, guestId, a }: { on: 'object' | 'guest'; objectId: string; guestId: string; a: CardActions }) {
   return (
     <div data-testid="seat-chips" style={{ display: 'flex', gap: 6, marginBottom: 6 }}>
@@ -222,8 +222,8 @@ function GuestCard({ s, id, a, objectId }: { s: GameState; id: string; a: CardAc
           <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
             <span style={{ fontSize: 17, fontWeight: 700, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} data-testid="guest-name">{nd ? nd.name : (g.name ?? guestName(g))}{quest && <span style={{ color: PALETTE.bad }}> !</span>}</span>
             {all.length > 1 && <>
-              <button aria-label="이전 손님" onClick={() => cycle(-1)} style={{ ...btn, minHeight: 36, minWidth: 36, padding: 0, fontSize: 14 }}>◀</button>
-              <button aria-label="다음 손님" onClick={() => cycle(1)} style={{ ...btn, minHeight: 36, minWidth: 36, padding: 0, fontSize: 14 }}>▶</button>
+              <button aria-label="이전 손님" onClick={() => cycle(-1)} style={{ ...btn, minHeight: 44, minWidth: 44, padding: 0, fontSize: 14 }}>◀</button>
+              <button aria-label="다음 손님" onClick={() => cycle(1)} style={{ ...btn, minHeight: 44, minWidth: 44, padding: 0, fontSize: 14 }}>▶</button>
             </>}
           </div>
           <div style={small}>{regular && <b style={{ color: PALETTE.btn }}>♥ 단골 · </b>}{nd ? nd.job : def.name} · {state}</div>
@@ -367,9 +367,9 @@ function ObjectCard({ s, id, a, onClose, guestId }: { s: GameState; id: string; 
           <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}><Icon name={KIND_ICON[d.kind] ?? 'build'} size={18} /> <b>{o.name ?? d.name}</b>{o.name && <span style={small}> ({d.name})</span>}{st.level >= 2 && <b style={{ color: PALETTE.title }}> Lv{st.level}</b>}{o.build && <span style={{ color: PALETTE.title }}> · 짓는 중</span>}{st.wear > 0 && <span style={{ color: PALETTE.bad }}> · 낡았어요 (입소문 −{st.wear})</span>}</span>
           {sameKind.length > 1 && (
             <span data-testid="card-cycle" style={{ flex: 'none', display: 'inline-flex', gap: 2, alignItems: 'center', fontSize: 12, color: PALETTE.inkSoft }}>
-              <button aria-label="이전 같은 시설" onClick={() => cycle(-1)} style={{ ...btn, minHeight: 36, minWidth: 36, padding: 0, fontSize: 14 }}>◀</button>
+              <button aria-label="이전 같은 시설" onClick={() => cycle(-1)} style={{ ...btn, minHeight: 44, minWidth: 44, padding: 0, fontSize: 14 }}>◀</button>
               {idx + 1}/{sameKind.length}
-              <button aria-label="다음 같은 시설" onClick={() => cycle(1)} style={{ ...btn, minHeight: 36, minWidth: 36, padding: 0, fontSize: 14 }}>▶</button>
+              <button aria-label="다음 같은 시설" onClick={() => cycle(1)} style={{ ...btn, minHeight: 44, minWidth: 44, padding: 0, fontSize: 14 }}>▶</button>
             </span>
           )}
         </div>

@@ -917,30 +917,30 @@ function Game({ onExit }: { onExit: () => void }) {
   useFirstTip(tipKeyFor(win, mode, !!guestPopup)); // fun-start: 창·탭·모드를 처음 열면 팁 한 줄
 
   const CAFE_MENU: IconGridItem<CafeTab>[] = [
-    { key: 'menu', label: '메뉴판', icon: 'coffee' },
-    { key: 'ingredients', label: '재료', icon: 'harvest' },
-    { key: 'craft', label: '연구', icon: 'research' }, // ease: 연구·홍보는 처음부터 열려 있다
-    { key: 'promo', label: '홍보', icon: 'promo' },
-    { key: 'building', label: '본관', icon: 'home' },
-    { key: 'indoor', label: '실내', icon: 'chair' },
+    { key: 'menu', label: '메뉴판', icon: 'coffee', desc: '무엇을 파나' },
+    { key: 'ingredients', label: '재료', icon: 'harvest', desc: '쟁여 둔 것' },
+    { key: 'craft', label: '연구', icon: 'research', desc: '새 메뉴' }, // ease: 연구·홍보는 처음부터 열려 있다
+    { key: 'promo', label: '홍보', icon: 'promo', desc: '손님 부르기' },
+    { key: 'building', label: '본관', icon: 'home', desc: '건물 키우기' },
+    { key: 'indoor', label: '실내', icon: 'chair', desc: '안 꾸미기' },
   ];
   const offered = Object.values(s.board.quests).filter((q) => q.status === 'offered').length;
   const PEOPLE_MENU: IconGridItem<PeopleTab>[] = [
-    { key: 'staff', label: '직원', icon: 'staff', badge: s.staff.filter((st) => st.energy < 20).length },
-    { key: 'candidates', label: '채용', icon: 'hire', badge: s.candidates.length },
-    { key: 'guests', label: '손님', icon: 'guest', badge: s.guests.length },
-    { key: 'codex', label: '도감', icon: 'book' },
-    { key: 'quests', label: '부탁', icon: 'quest', badge: offered },
+    { key: 'staff', label: '직원', icon: 'staff', desc: '일하는 사람', badge: s.staff.filter((st) => st.energy < 20).length },
+    { key: 'candidates', label: '채용', icon: 'hire', desc: '뽑을 사람', badge: s.candidates.length },
+    { key: 'guests', label: '손님', icon: 'guest', desc: '지금 온 손님', badge: s.guests.length },
+    { key: 'codex', label: '도감', icon: 'book', desc: '만난 손님' },
+    { key: 'quests', label: '부탁', icon: 'quest', desc: '들어온 부탁', badge: offered },
   ];
   const revealed = gradeOf(s) >= REVEAL_GRADE; // fun 점진 공개: 등급 3부터 실내·본관·명소·지역이 나타난다 (잠금 표시 대신 아예 안 보임)
   const LEDGER_MENU: IconGridItem<LedgerTab>[] = [
-    { key: 'report', label: '경영', icon: 'report' },
-    { key: 'invest', label: '투자', icon: 'money', badge: s.board.events.filter((e) => e.status === 'pending').length },
-    { key: 'spots', label: '명소', icon: 'map' },
-    { key: 'tickets', label: '응모권', icon: 'ticket', badge: s.tickets }, // midgame: 「상점」 탭이 같은 화면이라 하나로 합쳤다
-    { key: 'rank', label: '평가', icon: 'trophy', badge: s.rivals?.pending ? 1 : 0 }, // 동네 순위 발표를 아직 안 봤으면 배지
-    { key: 'contest', label: '대회', icon: 'medal', badge: signupOpen(s) && !s.contest?.entry ? 1 : 0 },
-    { key: 'settings', label: '설정', icon: 'settings' },
+    { key: 'report', label: '경영', icon: 'report', desc: '돈의 흐름' },
+    { key: 'invest', label: '투자', icon: 'money', desc: '땅과 대출', badge: s.board.events.filter((e) => e.status === 'pending').length },
+    { key: 'spots', label: '명소', icon: 'map', desc: '동네 명소' },
+    { key: 'tickets', label: '응모권', icon: 'ticket', desc: '뽑기와 상점', badge: s.tickets }, // midgame: 「상점」 탭이 같은 화면이라 하나로 합쳤다
+    { key: 'rank', label: '평가', icon: 'trophy', desc: '동네 순위', badge: s.rivals?.pending ? 1 : 0 }, // 동네 순위 발표를 아직 안 봤으면 배지
+    { key: 'contest', label: '대회', icon: 'medal', desc: '카페 대회', badge: signupOpen(s) && !s.contest?.entry ? 1 : 0 },
+    { key: 'settings', label: '설정', icon: 'settings', desc: '소리와 저장' },
   ];
 
   const cafeMenu = revealed ? CAFE_MENU : CAFE_MENU.filter((t) => t.key !== 'building' && t.key !== 'indoor');
