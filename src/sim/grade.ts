@@ -6,7 +6,7 @@
  * 명당 수는 트랙 C의 completedCorners가 들어오면 그걸로 바꾼다 — 지금은 활성 콤보 수(compat.activeCombos).
  */
 import type { GameState, GoalReward } from './types.ts';
-import { completedCorners } from './corners.ts';
+import { completedCorners, cornersBuilding } from './corners.ts';
 import { pushNotice } from './staff.ts';
 import { pushFx } from './fx.ts';
 import { applyRewards } from './goals.ts';
@@ -53,14 +53,16 @@ export function cornerCount(state: GameState): number {
   return completedCorners(state).length;
 }
 
-export interface GradeProgressRow { key: keyof GradeReq; label: string; cur: number; need: number; met: boolean }
+/** building = 조각은 다 모였고 공사만 남은 수. 승급(보상)은 완공 기준 그대로고, 문구에만 「짓는 중 n」으로 붙인다. */
+export interface GradeProgressRow { key: keyof GradeReq; label: string; cur: number; need: number; met: boolean; building: number }
 /** 다음 등급 조건 진행 (최고 등급이면 null). 등급 창·문구용. */
 export function gradeProgress(state: GameState, grade = gradeOf(state) + 1): GradeProgressRow[] | null {
   const req = GRADE_REQS[grade];
   if (!req) return null;
   const cur: Record<keyof GradeReq, number> = { guests: state.totalGuests, corners: cornerCount(state), reputation: Math.round(state.reputation), star: state.star };
   const label: Record<keyof GradeReq, string> = { guests: '손님', corners: '명당', reputation: '평판', star: '★' };
-  return (Object.keys(req) as (keyof GradeReq)[]).map((key) => ({ key, label: label[key], cur: cur[key], need: req[key], met: cur[key] >= req[key] }));
+  const building: Record<keyof GradeReq, number> = { guests: 0, corners: cornersBuilding(state), reputation: 0, star: 0 };
+  return (Object.keys(req) as (keyof GradeReq)[]).map((key) => ({ key, label: label[key], cur: cur[key], need: req[key], met: cur[key] >= req[key], building: building[key] }));
 }
 export function gradeMet(state: GameState, grade: number): boolean {
   const rows = gradeProgress(state, grade);
