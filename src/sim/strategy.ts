@@ -310,30 +310,30 @@ export function nextMove(s: GameState): NextMove | null {
 /** 1년차 표 순서의 다음 수 — solver 결과가 없을 때의 대체. 문구는 「무엇 — 왜」 한 줄. */
 export function heuristicNextMove(s: GameState): NextMove | null {
   const m = mainBuilding(s);
-  if (!m) { const p = bestMainCell(s); return { text: '본관이 먼저다 — 빛나는 칸이 자리 점수가 제일 높다', cells: p ? [p] : [] }; }
-  if (!isDoorReachable(s, m)) { const f = doorFrontOf(m); return { text: '마을 길에서 문 앞까지 올렛길 — 길이 없으면 손님이 못 온다', cells: [f] }; }
+  if (!m) { const p = bestMainCell(s); return { text: '본관이 먼저여 — 빛나는 칸이 자리 점수가 제일 높아', cells: p ? [p] : [] }; }
+  if (!isDoorReachable(s, m)) { const f = doorFrontOf(m); return { text: '마을 길에서 문 앞까지 올렛길 — 길이 없으면 손님이 못 와', cells: [f] }; }
   const seats = outdoorSeats(s).length;
   const menus = s.menuSlots.filter((x) => x !== null).length;
   if (seats < 1) return { text: `야외 테이블 하나 — ${seatWhy(s)}`, cells: bestSeatCells(s, 1) };
-  if (menus < 2) return { text: '메뉴판에 아메리카노·감귤주스 — 둘이면 문을 열 수 있다', cells: [] };
-  if (s.staff.length < 1) return { text: '홀 직원 한 명 — 서빙 기다리는 시간이 반으로 준다', cells: [] };
-  if (!wallSheltered(s)) { const w = bestWallCells(s, 1); if (w.length) return { text: '돌담 하나를 테이블 곁에 — 밭담 명당 조각이 된다', cells: w }; } // 쐐기가 내 필지 밖이면 놓을 칸이 없다 — 같은 줄을 영영 되풀이하지 않는다
-  if (s.stats.promotionsDone < 1) return { text: '전단 홍보 한 번 — 타깃 손님층이면 1.5배로 온다', cells: [] };
-  if (unlocked(s, TREE_TYPE) && objectsOf(s, TREE_TYPE).length < 1) { const c = bestCornerCells(s, TREE_TYPE, 1); if (c.length) return { text: `감귤나무 한 그루 — 빛나는 칸이면 ${cornerNameForPiece(s, TREE_TYPE)} 조각이 모인다`, cells: c }; }
-  if (seats < OPENING_SEATS) return { text: `야외 테이블 ${seats}/${OPENING_SEATS} — 4개면 자리가 없어 돌아가는 손님이 없다`, cells: bestSeatCells(s, 1) };
-  if (!hasRole(s, 'hall', 'clean')) return { text: '홀이나 청소 직원 배치 — 청결이 별점을 가른다', cells: [] };
+  if (menus < 2) return { text: '메뉴판에 아메리카노·감귤주스 — 둘이면 문을 열 수 있어', cells: [] };
+  if (s.staff.length < 1) return { text: '홀 직원 한 명 — 서빙 기다리는 시간이 반으로 줄어', cells: [] };
+  if (!wallSheltered(s)) { const w = bestWallCells(s, 1); if (w.length) return { text: '돌담 하나를 테이블 곁에 — 밭담 명당 조각이 돼', cells: w }; } // 쐐기가 내 필지 밖이면 놓을 칸이 없다 — 같은 줄을 영영 되풀이하지 않는다
+  if (s.stats.promotionsDone < 1) return { text: '전단 홍보 한 번 — 타깃 손님층이면 1.5배로 와', cells: [] };
+  if (unlocked(s, TREE_TYPE) && objectsOf(s, TREE_TYPE).length < 1) { const c = bestCornerCells(s, TREE_TYPE, 1); if (c.length) return { text: `감귤나무 한 그루 — 빛나는 칸이면 ${cornerNameForPiece(s, TREE_TYPE)} 조각이 모여`, cells: c }; }
+  if (seats < OPENING_SEATS) return { text: `야외 테이블 ${seats}/${OPENING_SEATS} — 4개면 자리가 없어 돌아가는 손님이 없어`, cells: bestSeatCells(s, 1) };
+  if (!hasRole(s, 'hall', 'clean')) return { text: '홀이나 청소 직원 배치 — 청결이 별점을 갈라', cells: [] };
   if (s.main.level < 2 && !s.main.work) {
     const cost = MAIN_EXPAND_COST[2]!;
     return s.money >= cost
-      ? { text: `본관 증축(₩${cost / 10_000}만) — 실내 자리가 생긴다`, cells: [] }
-      : { text: `증축까지 ₩${Math.ceil((cost - s.money) / 10_000)}만 — 지금 쓰면 그만큼 늦어진다`, cells: [] };
+      ? { text: `본관 증축(₩${cost / 10_000}만) — 실내 자리가 생겨`, cells: [] }
+      : { text: `증축까지 ₩${Math.ceil((cost - s.money) / 10_000)}만 — 지금 쓰면 그만큼 늦어져`, cells: [] };
   }
-  if (s.main.level >= 2 && !s.main.work && indoorSeats(s).length < 2) return { text: `실내 테이블 ${indoorSeats(s).length}/2 — 창가 자리가 만족이 높다`, cells: bestIndoorSeats(s, 1) };
-  if (seats < SUMMER_SEATS) return { text: `야외 테이블 ${seats}/${SUMMER_SEATS} — 6개면 주차장이 열린다`, cells: bestSeatCells(s, 1) };
-  if (unlocked(s, PARKING_EXPAND_FROM) && !hasParking(s)) return { text: '렌터카 주차장을 마을 길 옆에 — 차로 온 손님은 더 쓴다', cells: bestParkingCells(s, 1) };
+  if (s.main.level >= 2 && !s.main.work && indoorSeats(s).length < 2) return { text: `실내 테이블 ${indoorSeats(s).length}/2 — 창가 자리가 만족이 높아`, cells: bestIndoorSeats(s, 1) };
+  if (seats < SUMMER_SEATS) return { text: `야외 테이블 ${seats}/${SUMMER_SEATS} — 6개면 주차장이 열려`, cells: bestSeatCells(s, 1) };
+  if (unlocked(s, PARKING_EXPAND_FROM) && !hasParking(s)) return { text: '렌터카 주차장을 마을 길 옆에 — 차로 온 손님은 더 써', cells: bestParkingCells(s, 1) };
   const spot = bestSpotToInvest(s);
-  if (spot && s.money >= spot.cost) return { text: `명소 「${spot.name}」 투자(₩${spot.cost / 10_000}만) — 요즘 잘 오는 손님층이 좋아한다`, cells: [] };
-  if (s.main.level < 3 && !s.main.work) return { text: `다음은 본관 3층(₩${MAIN_EXPAND_COST[3]! / 10_000}만) — 모아 두면 된다`, cells: [] };
+  if (spot && s.money >= spot.cost) return { text: `명소 「${spot.name}」 투자(₩${spot.cost / 10_000}만) — 요즘 잘 오는 손님층이 좋아해`, cells: [] };
+  if (s.main.level < 3 && !s.main.work) return { text: `다음은 본관 3층(₩${MAIN_EXPAND_COST[3]! / 10_000}만) — 모아 두면 돼`, cells: [] };
   return null;
 }
 /** 야외 테이블 북서 쐐기에 돌담(또는 방풍 시설)이 하나라도 있나 — 첫 돌담 판정 */
@@ -375,28 +375,43 @@ export function seatStrengths(s: GameState, cell: Pt, cands: Pt[] = [], type = S
   if (cornerScoreIfPlaced(s, type, cell.x, cell.y) > 0) out.push('corner');
   return out;
 }
-/** 한 강점의 이유 한 줄 (≤ 22자, §6: 지시문·화살표 없음). 수치는 실제 계수에서 온다. */
+/** 한 강점의 이유 한 줄 (≤ 22자, §6: 지시문·화살표 없음). 수치는 실제 계수에서 온다. 할망 말투라 어미는 반말(lines). */
 export function strengthWhy(s: GameState, cell: Pt, k: SeatStrength): string {
   const site = siteOf(s, cell.x, cell.y);
   switch (k) {
     case 'view': return `바다가 보여 요금 +${Math.round((siteFeeMult(scoreOf(site)) - 1) * 100)}%`;
     case 'shade': return `그늘이라 여름 만족 +${SAT_SHADE_SUMMER}`;
-    case 'near': return '길에서 가까워 빨리 앉는다';
-    case 'door': return '주방이 가까워 서빙이 빠르다';
-    case 'corner': return `${cornerNameForPiece(s, SEAT_TYPE)} 조각이 모인다`;
+    case 'near': return '길에서 가까워 빨리 앉아';
+    case 'door': return '주방이 가까워 서빙이 빨라';
+    case 'corner': return `${cornerNameForPiece(s, SEAT_TYPE)} 조각이 모여`;
   }
 }
-/** 추천 테이블 칸이 왜 좋은지 한 줄 (튜토리얼 1단계 `{seatWhy}`·다음 수 문구). 근거가 없으면 담백하게. */
-export function seatWhy(s: GameState): string {
+/** 대사 가운데 넣는 짧은 관형절 (「{seatWhyPhrase} 칸이 빛나고 있져」) — 토큰이 문장 끝에 붙어 말이 끊기지 않게. */
+const STRENGTH_PHRASE: Record<SeatStrength, string> = { view: '바다가 보이는', shade: '그늘이 지는', near: '길에서 가까운', door: '주방이 가까운', corner: '명당이 될' };
+/** 근거가 없을 때 쓰는 무난한 관형절 — 이 값이 나오면 튜토리얼은 대체 문장(linesIfNoWhy)을 쓴다. */
+export const SEAT_WHY_FLAT = '지금 제일 나은';
+/** 추천 테이블 칸의 가장 큰 강점 (근거가 없으면 null — 대사가 대체 문장을 고를 때 볼 것) */
+export function seatWhyKind(s: GameState): SeatStrength | null {
   const cands = bestSeatCellsHeuristic(s, SOLVER_SEAT_K);
   const seat = recommendedSeatCell(s) ?? cands[0]; // 튜토리얼 1단계는 사용자가 고른 칸 기준으로 이유를 말한다
-  if (!seat) return '지금 가진 칸 중 제일 낫다';
-  const k = seatStrengths(s, seat, cands)[0];
-  return k ? strengthWhy(s, seat, k) : '지금 가진 칸 중 제일 낫다';
+  if (!seat) return null;
+  return seatStrengths(s, seat, cands)[0] ?? null;
+}
+/** 추천 테이블 칸이 왜 좋은지 한 줄 (「할망의 추천」 다음 수 문구). 근거가 없으면 담백하게. */
+export function seatWhy(s: GameState): string {
+  const cands = bestSeatCellsHeuristic(s, SOLVER_SEAT_K);
+  const seat = recommendedSeatCell(s) ?? cands[0];
+  const k = seat ? seatStrengths(s, seat, cands)[0] : undefined;
+  return k && seat ? strengthWhy(s, seat, k) : '지금 가진 칸 중엔 제일 좋아';
+}
+/** 대사 토큰 `{seatWhyPhrase}` — 칸을 꾸미는 관형절. 근거가 없으면 SEAT_WHY_FLAT. */
+export function seatWhyPhrase(s: GameState): string {
+  const k = seatWhyKind(s);
+  return k ? STRENGTH_PHRASE[k] : SEAT_WHY_FLAT;
 }
 const placing = (type: string) => (m: SolverMove) => m.action.type === 'place' && m.action.objectType === type;
 /** 튜토리얼 대사 `{토큰}`에 넣을 실제 수치·이유. 계산이 안 되는 상황(본관 없음 등)엔 기본값. 키에 밑줄을 쓰지 않는다(noIdLeak).
- *  `seatWhy`는 1단계 「빛나는 칸은 {seatWhy}」. solver 토큰(`seatDelta` 등)은 롤아웃 결과가 캐시에 있을 때만 채워지고 없으면 ''. */
+ *  `seatWhyPhrase`는 1·4단계 대사 가운데에 들어가는 관형절(「{seatWhyPhrase} 칸이 빛나고 있져」), `seatWhy`는 「할망의 추천」 한 줄. solver 토큰(`seatDelta` 등)은 롤아웃 결과가 캐시에 있을 때만 채워지고 없으면 ''. */
 export function strategyVars(s: GameState): Record<string, string> {
   const m = mainBuilding(s);
   const main = m ? doorFrontOf(m) : bestMainCell(s); // 본관이 있으면(다시 보기) 문 앞 칸의 자리 점수
@@ -413,6 +428,7 @@ export function strategyVars(s: GameState): Record<string, string> {
     seatView: seatSite ? String(seatSite.view) : '0',
     seatFee: seatSite ? String(Math.round((siteFeeMult(scoreOf(seatSite)) - 1) * 100)) : '0',
     seatWhy: seatWhy(s),
+    seatWhyPhrase: seatWhyPhrase(s),
     cornerN: String(cornerN),
     cornerName: cornerNameForPiece(s, TREE_TYPE),
     spotName: spot?.name ?? '유채꽃밭',

@@ -1,10 +1,10 @@
 import { useEffect } from 'react';
-import { type GameState, type Action, type TutorialActDef, tutorialDone, dialogueSeen, strategyVars, fillTemplate, actOfStep, currentTutorialStep, type TutorialNoteKey } from '../sim/index.ts';
+import { type GameState, type Action, type TutorialActDef, tutorialDone, dialogueSeen, strategyVars, fillTemplate, seatWhyKind, actOfStep, currentTutorialStep, type TutorialNoteKey } from '../sim/index.ts';
 import { TUTORIAL_STEPS as STEP_DATA, SPEAKER_NAME, type TutorialStep } from '../data/dialogue/index.ts';
 import { showDialogue, getDialogue } from './dialogue.ts';
 import { confirm } from './Popup';
 
-/** 손으로 하는 튜토리얼 「할망의 가르침」 7단계 대화 (fun-start §2). 대사는 data/dialogue/tutorial.json, `{토큰}`(seatWhy 등)은 sim/strategy.ts strategyVars로 채운다.
+/** 손으로 하는 튜토리얼 「할망의 가르침」 7단계 대화 (fun-start §2). 대사는 data/dialogue/tutorial.json, `{토큰}`(seatWhyPhrase 등)은 sim/strategy.ts strategyVars로 채운다.
  *  진행(끝낸 단계 수)은 sim 상태 state.tutorial.step — 조건 판정·보상은 sim/tutorial.ts가 한다. 여기서는 "현재 단계의 대사를 한 번 띄우는" 일만 한다.
  *  대사를 닫으면 `tutorialNote dlg:<id>`를 보내 sim이 그 단계를 끝낼 수 있게 한다(이미 충족된 단계는 대사만 뜨고 바로 통과).
  *  보상 상자(alerts)가 떠 있는 동안은 기다렸다가, 닫히면 다음 단계 대사를 띄운다. 「건너뛰기」는 언제나(남은 단계 전부, 보상 없음). */
@@ -47,10 +47,12 @@ export function currentTutorialDialogue(s: GameState): TutorialStep | null {
   const st = TUTORIAL_DIALOGUES[cur.id - 1];
   return st ? fillTutorialStep(st, s) : null;
 }
-/** 대사·제목의 `{seatWhy}` 같은 토큰을 지금 상태의 실제 수치·이유로 채운다 (입지 배지와 같은 숫자). */
+/** 대사·제목의 `{seatWhyPhrase}` 같은 토큰을 지금 상태의 실제 이유로 채운다 (입지 배지와 같은 근거).
+ *  그 칸을 고른 근거가 없으면(seatWhyKind가 null) 토큰 줄이 「지금 제일 나은 칸이…」로 밋밋해지므로 대체 문장(linesIfNoWhy)을 쓴다. */
 export function fillTutorialStep(step: TutorialStep, s: GameState): TutorialStep {
   const vars = strategyVars(s);
-  return { ...step, title: fillTemplate(step.title, vars), lines: step.lines.map((l) => fillTemplate(l, vars)) };
+  const lines = !seatWhyKind(s) && step.linesIfNoWhy?.length ? step.linesIfNoWhy : step.lines;
+  return { ...step, title: fillTemplate(step.title, vars), lines: lines.map((l) => fillTemplate(l, vars)) };
 }
 
 /** UI 사건 표식 — sim 조건 판정용 (손님 카드 봄·목표 창 봄·창고 봄·입지 보기 켬·카드 힌트 look:<id>). 튜토리얼이 끝났거나 이미 남겼으면 sim이 무시한다. */
