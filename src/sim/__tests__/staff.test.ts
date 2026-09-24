@@ -50,7 +50,7 @@ test('직원 풀 27명: 단계 1~5 각 5명 + 특수 2명, 상한 ≥ 초기치,
     expect(SKILLS.some((s) => s.id === p.skill)).toBe(true);
   }
   expect(RECRUIT_TIERS.map((t) => t.cost)).toEqual([500_000, 5_000_000, 8_000_000, 20_000_000, 50_000_000]);
-  expect(TRAININGS.length).toBe(2);
+  expect(TRAININGS.length).toBe(3); // rush3: 러시 연수(두 번째 재주)가 붙었다
   expect(SKILLS.length).toBe(10);
   expect(ROLES.map((r) => r.id)).toEqual(['barista', 'cook', 'hall', 'clean']);
 });
@@ -309,7 +309,7 @@ test('연수 2종 효과: 기술 +6 · 미소 +6 (trim)', () => {
   const expected: Record<string, Partial<Stats>> = {
     tr_barista: { skill: 6 }, tr_service: { smile: 6 },
   };
-  for (const def of TRAININGS) {
+  for (const def of TRAININGS.filter((t) => expected[t.id])) { // rush3: 러시 연수는 아래 따로 본다
     const { s, st } = trainee();
     st.stats = { stamina: 10, strength: 10, skill: 10, smile: 10 };
     expect(apply(s, { type: 'train', staffId: st.id, trainingId: def.id }).ok).toBe(true);
