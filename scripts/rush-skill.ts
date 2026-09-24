@@ -18,8 +18,9 @@ import { cloneState } from '../src/sim/solver.ts';
 import { freeSeats, totalSeats } from '../src/sim/guests.ts';
 import {
   rushState, isRushDay, rushDoneThisWeek, startRushNow, stepRush, resolveRushAuto, rushSeatFits,
-  canUseStaffSkill, canRushPriority, rushGradeOf, RUSH_READY_HOUR,
+  canRushPriority, rushGradeOf, RUSH_READY_HOUR,
 } from '../src/sim/rush.ts';
+import { canUseSkill } from '../src/sim/skillActive.ts';
 
 const wanted = Number(process.argv[2] ?? 8);
 const seed = Number(process.argv[3] ?? 1);
@@ -30,7 +31,7 @@ function playIdeal(s: GameState) {
   let guard = 4000;
   while (r.phase === 'run' && guard-- > 0) {
     // 1) 직원 스킬: 줄이 두 명 이상 밀렸을 때 쿨다운이 돌아온 직원부터
-    if (r.queue.length >= 2) for (const st of s.staff) if (canUseStaffSkill(s, st.id).ok) apply(s, { type: 'useStaffSkill', staffId: st.id });
+    if (r.queue.length >= 2) for (const st of s.staff) if (canUseSkill(s, st.id).ok) apply(s, { type: 'useStaffSkill', staffId: st.id });
     // 2) 자리 배정: 줄 앞부터, 취향·명당·전망이 맞는 빈 자리를 우선
     for (const g of [...r.queue]) {
       const open = freeSeats(s);

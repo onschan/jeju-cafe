@@ -1,6 +1,8 @@
 import { describe, test, expect } from 'vitest';
 import { placeObject } from '../grid.ts';
 import { bestSeatCells } from '../strategy.ts';
+import { canUseSkill, skillOfRole } from '../skillActive.ts';
+import { ACTIVE_SKILLS } from '../../data/index.ts';
 import { apply } from '../actions.ts';
 import { tick, STEP_MS } from '../tick.ts';
 import { HOUR_MS, DAY_MS } from '../clock.ts';
@@ -15,7 +17,7 @@ import {
   rushState, rushPhase, isRushDay, isRushRunning, rushDoneThisWeek, weekdayOf, weekIndexOf, weekCycleSeconds, rushSeconds,
   rushArrivals, rushCapacity, rushExpectedScore, rushGradeOf, rushGradeCount, rushGrades, rushQueueCap, rushPatienceMult,
   rushTimeScale, rushMsOfSeconds, rushSeatFits, resolveRushAuto, startRushNow, stepRush, updateRush, daysToRush,
-  canSeatFromQueue, canUseStaffSkill, canRushPriority, rushSkillOfRole, RUSH_SKILLS,
+  canSeatFromQueue, canRushPriority,
   RUSH_WEEKDAY, RUSH_NOTICE_WEEKDAY, RUSH_READY_HOUR, RUSH_START_HOUR, RUSH_RUN_HOURS, RUSH_READY_MS, RUSH_RUN_MS,
   RUSH_SPAWN_MULT, RUSH_QUEUE_BASE, RUSH_QUEUE_MAX, RUSH_PATIENCE_MIN_S, RUSH_PATIENCE_MAX_S, RUSH_COMBO_N, RUSH_COMBO_MULT,
   RUSH_AUTO_COEF, RUSH_SCORE_PER_GUEST, RUSH_LEFT_PENALTY, RUSH_FIT_BONUS, RUSH_REWARDS, RUSH_GRADE_A, RUSH_GRADE_B,
@@ -276,23 +278,23 @@ describe('점수·등급 (§2)', () => {
 });
 
 describe('직원 스킬·밀린 주문 (§2·§3)', () => {
-  test('기본 4종은 직종마다 하나씩, 러시 중에만·쿨다운', () => {
-    expect(RUSH_SKILLS.map((x) => x.role).sort()).toEqual(['barista', 'clean', 'cook', 'hall']);
-    expect(rushSkillOfRole('hall')?.effect).toBe('seat');
-    expect(rushSkillOfRole(null)).toBeNull();
+  test('직종 스킬은 직종마다 하나씩, 러시 중에만·쿨다운', () => {
+    expect(ACTIVE_SKILLS.filter((x) => x.slot === 1).map((x) => x.role).sort()).toEqual(['barista', 'clean', 'cook', 'hall']);
+    expect(skillOfRole('hall', 1)?.effect.type).toBe('seatFront');
     const s = cafe(6);
     s.staff.push({ id: 'st1', name: '홀삼춘', role: 'hall', level: 1, exp: 0, energy: 100, stats: { skill: 10, service: 10, stamina: 10 }, salary: 0, hiredMonth: 0, training: null, skill: 'none' } as never);
-    expect(canUseStaffSkill(s, 'st1').ok).toBe(false); // 러시 밖
+    expect(canUseSkill(s, 'st1').ok).toBe(false); // 러시 밖
     toRushDay(s);
     startRushNow(s);
     const r = rushState(s);
     for (let i = 0; i < 60 && r.queue.length < 2; i++) stepRush(s);
     expect(r.queue.length).toBeGreaterThanOrEqual(2);
-    expect(canUseStaffSkill(s, 'st1').ok).toBe(true);
+    expect(canUseSkill(s, 'st1').ok).toBe(true);
     const served = r.served;
     expect(apply(s, { type: 'useStaffSkill', staffId: 'st1' }).ok).toBe(true);
+    stepRush(s); // 즉발 효과는 다음 스텝에 러시가 받아 먹는다 (consumeInstant)
     expect(r.served).toBeGreaterThan(served); // 능숙한 안내: 앞의 세 분을 바로 앉힌다
-    expect(canUseStaffSkill(s, 'st1').ok).toBe(false); // 쿨다운
+    expect(canUseSkill(s, 'st1').ok).toBe(false); // 쿨다운
   });
   test('밀린 주문 우선 처리: 조리를 앞당기고 점수 +5, 자리마다 한 번', () => {
     const s = cafe(4);

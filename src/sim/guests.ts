@@ -45,6 +45,7 @@ import { streetFeeMult } from './tree.ts'; // fun: 같은 트리 3연속 「거�
 import { sceneryTouristMult, notePhoto } from './appeal.ts'; // fun: 경관 → 관광객, 사진 → 평판
 import { assignGuestName, regularsDue, dressAsRegular, regularTip, thankIfDone, maybeRequest, addRegularGauge, requestDef, GAUGE_HAPPY_VISIT } from './interact.ts'; // fun-guest (트랙 G): 이름·단골·요청·게이지
 import { isRushRunning } from './rush.ts'; // 러시 중엔 평소 스폰을 멈추고 rush.ts가 문 앞에 줄을 세운다 (3배)
+import { activePrepCut, activeTipMult, activeSatisfaction } from './skillActive.ts'; // rush3: 러시 액티브 스킬 (러시가 아니면 늘 중립값)
 
 export { moveAlong, GUEST_SPEED_CELLS_PER_S }; // 하위 호환 재수출 (본체는 path.ts)
 // pace: 체류·조리 시간은 게임 시간(시)으로 적는다 — HOUR_MS를 줄여 시계를 빠르게 해도 「몇 시간 앉아 있나」가 그대로라 하루 매출이 안 바뀐다.
@@ -493,7 +494,7 @@ export function prepCut(state: GameState, role: RoleId): number {
 export function prepTimeMs(state: GameState, category: MenuCategory): number {
   const role = prepRole(category);
   const speed = Math.min(MAX_SPEED_SKILL, skillTotal(state, 'speed', role) + titleBonus(state, 'speed', role)); // staff-luck 칭호
-  return PREP_MS * (1 - prepCut(state, role)) * (1 - speed);
+  return PREP_MS * (1 - prepCut(state, role)) * (1 - speed) * (1 - activePrepCut(state, role)); // rush3: 러시 중 「속사 커피」 (평상시엔 0)
 }
 
 /** staff2: 이 분류를 하루에 몇 개까지 제때 낼 수 있나. 음료는 주인 몫 12잔이 깔려 있고, 음식은 요리사가 있어야 난다. */
@@ -577,7 +578,8 @@ export function extraSatisfaction(state: GameState, g: Guest, seat: PlacedObject
   const wait = cat ? waitPenalty(state, cat) : 0;
   const quality = cat === 'drink' ? drinkQualityBonus(state) : 0;
   return (cornerSatisfaction(state, seat.id, g.type) + cleanSatisfaction(state) + titleBonus(state, 'satisfaction')) / 10 + gateSatisfaction(g) + nightSatisfaction(state, seat) // staff-luck 칭호 만족 // y-indoor: 소파 +2·난로 겨울 +3 · fix-indoor: 밤 조명
-    + quality - wait + zoneSatisfaction(state, seat) + nightShiftSatisfaction(state); // staff2
+    + quality - wait + zoneSatisfaction(state, seat) + nightShiftSatisfaction(state) // staff2
+    + activeSatisfaction(state); // rush3: 러시 중 「번개 청소·한 모금 서비스」 (평상시엔 0)
 }
 /** 저녁 손님 기준 시각 (특기 night_owl) */
 export const NIGHT_HOUR = 18;
@@ -664,7 +666,7 @@ function serveLuck(state: GameState, g: Guest, seat: PlacedObject, price: number
   if (outcome === 'success') return;
   g.luck = outcome;
   if (outcome === 'fail') return;
-  const tip = Math.round(price * SERVE_TIP_RATE * (1 + titleBonus(state, 'tip')) * reputationTipMult(state));
+  const tip = Math.round(price * SERVE_TIP_RATE * (1 + titleBonus(state, 'tip')) * reputationTipMult(state) * activeTipMult(state)); // rush3: 러시 중 「오늘의 특선」 팁 ×2 (평상시엔 ×1)
   state.money += tip;
   state.monthIncome += tip;
   state.totalIncome += tip;

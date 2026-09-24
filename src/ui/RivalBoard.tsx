@@ -5,6 +5,8 @@
 import { useEffect } from 'react';
 import { useGame, dispatch } from './store';
 import {
+  battlePreview, battleRecord, battleRecordText, myBattleRecord, battleOpen, activeBattle, battleDay, battleState, battleResultLine,
+  BATTLE_FROM_YEAR, BATTLE_SURRENDER_STREAK,
   scoreboard, rivalsState, rivalDef, activeSteal, stealTitle, canAnswerRival, rankGap,
   endgameOpen, endgameReason, canAllyRival, canAcquireRival, activeRivals, acquiredRivals,
   RIVAL_AXES, RIVAL_AXIS_LABEL, RIVAL_COUNTER_COST, RIVAL_DEVELOP_RESEARCH, RIVAL_DEVELOP_PENALTY,
@@ -16,6 +18,7 @@ import { Confirm } from './Popup';
 import { card, brownBtn, brownBtnOff, dangerBtn, PALETTE } from './frame';
 import { wonText } from '../data/labels.ts';
 import { josa } from '../sim/josa.ts';
+import { BattleBar } from './BattleBar';
 
 const small = { fontSize: 13, color: PALETTE.inkSoft } as const;
 
@@ -31,10 +34,10 @@ function Arrow({ r }: { r: RivalRow }) {
   );
 }
 
-function BoardRow({ r, gapText }: { r: RivalRow; gapText: string }) {
+function BoardRow({ r, gapText, record }: { r: RivalRow; gapText: string; record?: string }) {
   return (
     <div data-testid={r.me ? 'rival-row-me' : 'rival-row'} style={{
-      display: 'grid', gridTemplateColumns: 'auto auto 1fr auto', gap: 6, alignItems: 'center',
+      display: 'grid', gridTemplateColumns: 'auto auto 1fr auto auto', gap: 6, alignItems: 'center',
       padding: '5px 6px', borderRadius: 4,
       background: r.me ? '#fff3dc' : 'transparent', border: `2px solid ${r.me ? PALETTE.wood : 'transparent'}`, marginBottom: 2,
     }}>
@@ -46,6 +49,7 @@ function BoardRow({ r, gapText }: { r: RivalRow; gapText: string }) {
         </span>
         {gapText && <span style={{ ...small, fontSize: 12 }}>{gapText}</span>}
       </span>
+      <span data-testid={r.me ? 'battle-record-me' : 'battle-record'} style={{ ...small, minWidth: 54, textAlign: 'right', whiteSpace: 'nowrap' }}>{record ?? ''}</span>
       <b style={{ fontSize: 15, whiteSpace: 'nowrap' }}>{r.total}</b>
     </div>
   );
@@ -119,6 +123,71 @@ function EndgameCard() {
   );
 }
 
+
+/** 동네 대항전 — 예고(상대·전적·예상 승률) · 진행 중 비교 바 · 지난 결과 */
+function BattleCard() {
+  const s = useGame();
+  const st = battleState(s);
+  const round = activeBattle(s);
+  const last = st.last;
+  if (!battleOpen(s)) {
+    return (
+      <div style={{ ...card, opacity: 0.75 }} data-testid="battle-card">
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Icon name="rival" /><b style={{ flex: 1 }}>동네 대항전</b></div>
+        <div style={small}>{BATTLE_FROM_YEAR}년차부터 매월 마지막 주 토요일에 한 곳과 붙어요</div>
+      </div>
+    );
+  }
+  const p = battlePreview(s);
+  return (
+    <div style={card} data-testid="battle-card">
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        <Icon name="rival" />
+        <b style={{ flex: 1 }}>동네 대항전</b>
+        <span style={small}>매월 {battleDay()}일</span>
+      </div>
+      {round ? (
+        <>
+          <div style={{ fontSize: 14, margin: '4px 0' }}>{josa(rivalDef(round.rivalId).name, '과/와')} 붙는 중이에요</div>
+          <BattleBar />
+        </>
+      ) : p ? (
+        <div data-testid="battle-preview">
+          <div style={{ fontSize: 15, marginTop: 2 }}><b>{p.def.name}</b> <span style={small}>{p.def.concept}</span></div>
+          <div style={{ fontSize: 14, marginTop: 2 }}>
+            {p.daysLeft === 0 ? '오늘 붙어요' : `${p.daysLeft}일 뒤에 붙어요`} · 전적 {battleRecordText(p.record)}
+          </div>
+          <div style={{ fontSize: 14 }}>예상 승률 {p.chancePct}% <span style={small}>({p.myScore} 대 {p.theirScore})</span></div>
+          <div style={small}>{BATTLE_SURRENDER_STREAK}연승이면 그 집이 손을 들어요</div>
+        </div>
+      ) : (
+        <div style={small}>더 붙을 곳이 없어요 — 동네가 우리 차지예요</div>
+      )}
+      {last && <BattleResultRow />}
+    </div>
+  );
+}
+
+/** 결과 한 줄: 승패·점수·오간 단골 이름·순위 변동 */
+function BattleResultRow() {
+  const s = useGame();
+  const r = battleState(s).last;
+  if (!r) return null;
+  const rankMoved = r.rankBefore !== null && r.rankAfter !== null && r.rankBefore !== r.rankAfter;
+  return (
+    <div data-testid="battle-result" style={{ marginTop: 6, paddingTop: 6, borderTop: `1px solid ${PALETTE.paperDark}` }}>
+      <div style={{ fontSize: 15, fontWeight: 700, color: r.won ? PALETTE.ok : PALETTE.bad }}>{battleResultLine(r)}</div>
+      {r.moved.length > 0 && (
+        <div style={{ fontSize: 14 }}>
+          {r.moved[0]!.to === 'us' ? '우리 쪽으로 온 단골' : '그 집으로 간 단골'}: {r.moved.map((m) => `${m.name}(${m.typeName})`).join(' · ')}
+        </div>
+      )}
+      {r.prize > 0 && <div style={small}>상금 {wonText(r.prize)}</div>}
+      {rankMoved && <div style={small}>동네 {r.rankBefore}위에서 {r.rankAfter}위로</div>}
+    </div>
+  );
+}
+
 /** 동네 순위표 한 장 */
 export function RivalBoard() {
   const s = useGame();
@@ -140,7 +209,7 @@ export function RivalBoard() {
         {st.line && <div data-testid="rival-line" style={{ fontSize: 14, margin: '4px 0' }}>{st.line}</div>}
         <div style={{ marginTop: 4 }}>
           {rows.map((r) => (
-            <BoardRow key={r.id} r={r}
+            <BoardRow key={r.id} r={r} record={battleRecordText(r.me ? myBattleRecord(s) : battleRecord(s, r.id))}
               gapText={r.me ? (above ? `${above.name}와 ${gap}점 차` : '동네에서 제일 잘 나가요') : ''} />
           ))}
         </div>
@@ -152,6 +221,7 @@ export function RivalBoard() {
           보는 항목: {RIVAL_AXES.map((a) => `${RIVAL_AXIS_LABEL[a]} ${Math.round(me.axes[a])}`).join(' · ')}
         </div>
       </div>
+      <BattleCard />
       <StealCard />
       <EndgameCard />
     </div>

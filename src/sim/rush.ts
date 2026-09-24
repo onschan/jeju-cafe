@@ -37,6 +37,7 @@ import { cornerOfPiece } from './corners.ts';
 import { popularityFor, BASE_POPULARITY } from './compat.ts';
 import { CLEAN_MAX } from './cleanliness.ts';
 import { dailyGuestCount, hourShare, freeSeats, totalSeats, seatGuestFromQueue, typeWeight, updateGuests } from './guests.ts';
+import { activeTipMult, instantOf, clearInstant } from './skillActive.ts'; // 직원 액티브 스킬 본체는 skillActive.ts — 러시는 즉발 효과(착석·인내)만 받아 먹는다
 import { spawnRouteWeights, routeTagMult } from './entry.ts'; // 러시 줄도 경로 비중(정류장·주차장·올레)을 그대로 따른다
 
 // ---------- 주·요일 ----------
@@ -178,46 +179,9 @@ export const RUSH_LEFT_REPUTATION = 1;
 export const RUSH_LEFT_REPUTATION_MAX = 3;
 export const RUSH_LEFT_COMPLAINT_MAX = 2;
 
-// ---------- 직원 액티브 스킬 (§3 — 효과 본체는 rush3가 채운다) ----------
-/** 러시 중에만 쓰는 직종별 스킬. id·효과 인터페이스만 여기서 정하고, 레벨·칭호 강화는 rush3(staff.ts·titles.ts)가 얹는다. */
-export interface RushSkillDef {
-  id: string;
-  role: RoleId;
-  name: string;
-  /** 지속 시간(3배속 실시간 초). 0이면 즉시 발동형 */
-  seconds: number;
-  /** 쿨다운(3배속 실시간 초) */
-  cooldown: number;
-  /** 효과 종류 — rush.ts가 기본 4종을 해석한다 */
-  effect: 'prep' | 'tip' | 'seat' | 'clean';
-  /** 효과 크기 (prep: 조리 시간 감소율, tip: 팁 배수, seat: 즉시 배정 인원, clean: 청결 가산) */
-  power: number;
-  text: string;
-}
-export const RUSH_SKILLS: RushSkillDef[] = [
-  { id: 'fast_brew', role: 'barista', name: '속사 커피', seconds: 12, cooldown: 30, effect: 'prep', power: 0.6, text: '음료가 훨씬 빨리 나와요' },
-  { id: 'today_special', role: 'cook', name: '오늘의 특선', seconds: 10, cooldown: 35, effect: 'tip', power: 2, text: '주문마다 팁이 두 배예요' },
-  { id: 'smooth_guide', role: 'hall', name: '능숙한 안내', seconds: 0, cooldown: 25, effect: 'seat', power: 3, text: '앞의 세 분을 바로 앉혀요' },
-  { id: 'flash_clean', role: 'clean', name: '번개 청소', seconds: 8, cooldown: 40, effect: 'clean', power: 15, text: '자리가 금세 말끔해져요' },
-];
-const SKILL_BY_ID = new Map(RUSH_SKILLS.map((s) => [s.id, s]));
-export function rushSkillDef(id: string): RushSkillDef | null {
-  return SKILL_BY_ID.get(id) ?? null;
-}
-/** 직종의 기본 스킬 (rush3가 두 번째 스킬을 얹으면 여기서 고르게 된다) */
-export function rushSkillOfRole(role: RoleId | null): RushSkillDef | null {
-  return role ? RUSH_SKILLS.find((s) => s.role === role) ?? null : null;
-}
-/** 이 직원이 러시에서 쓸 수 있는 스킬 */
-export function rushSkillOf(state: GameState, staffId: string): RushSkillDef | null {
-  const st = state.staff.find((x) => x.id === staffId);
-  if (!st || st.role === null || st.training) return null;
-  return rushSkillOfRole(st.role);
-}
-
 // ---------- 상태 ----------
 export function initRush(): RushState {
-  return { phase: 'idle', startTick: 0, endTick: 0, queue: [], score: 0, combo: 0, served: 0, left: 0, arrived: 0, grade: null, week: -1, notified: -1, elapsedMs: 0, spawnAcc: 0, streak: 0, tips: 0, bonus: 0, manual: 0, autoAtMs: RUSH_AUTO_PERIOD_MS, buffs: [], cooldowns: {}, done: [] };
+  return { phase: 'idle', startTick: 0, endTick: 0, queue: [], score: 0, combo: 0, served: 0, left: 0, arrived: 0, grade: null, week: -1, notified: -1, elapsedMs: 0, spawnAcc: 0, streak: 0, tips: 0, bonus: 0, manual: 0, autoAtMs: RUSH_AUTO_PERIOD_MS, done: [] };
 }
 export function rushState(state: GameState): RushState {
   return (state.rush ??= initRush());
@@ -340,7 +304,7 @@ function runRush(state: GameState, r: RushState, dtMs: number): void {
   arriveGuests(state, r, dtMs);
   tickPatience(state, r, dtMs);
   autoSeat(state, r);
-  pruneBuffs(r);
+  consumeInstant(state, r);
   if (r.elapsedMs >= RUSH_RUN_MS) finishRush(state, r);
 }
 
@@ -394,7 +358,6 @@ function seatOne(state: GameState, r: RushState, g: RushGuest, seat: PlacedObjec
   const i = r.queue.indexOf(g);
   if (i >= 0) r.queue.splice(i, 1);
   const obj = guest.seatId ? state.objects[guest.seatId] : undefined;
-  applyPrepBuff(state, r, guest.id);
   scoreServe(state, r, g.type, obj ?? null, manual);
   return true;
 }
@@ -409,7 +372,7 @@ export function rushSeatFits(state: GameState, seat: PlacedObject | null, typeId
 
 function scoreServe(state: GameState, r: RushState, typeId: string, seat: PlacedObject | null, manual: boolean): void {
   const fit = rushSeatFits(state, seat, typeId);
-  const tip = Math.min(RUSH_TIP_MAX, Math.floor(walletOf(state, typeId) / RUSH_TIP_PER_POINT)) * tipMult(r);
+  const tip = Math.min(RUSH_TIP_MAX, Math.floor(walletOf(state, typeId) / RUSH_TIP_PER_POINT)) * activeTipMult(state); // 「오늘의 특선」 팁 배수 (skillActive)
   let gain = RUSH_SCORE_PER_GUEST + tip + (fit ? RUSH_FIT_BONUS : 0);
   r.streak++;
   if (r.streak >= RUSH_COMBO_N) {
@@ -428,27 +391,24 @@ function scoreServe(state: GameState, r: RushState, typeId: string, seat: Placed
   state.spawnAcc = Math.max(-restOfDayGuests(state), state.spawnAcc - RUSH_SPAWN_REFUND);
 }
 
-// ---------- 스킬 버프 ----------
-function pruneBuffs(r: RushState): void {
-  r.buffs = r.buffs.filter((b) => b.untilMs > r.elapsedMs);
-}
-function hasBuff(r: RushState, effect: RushSkillDef['effect']): RushSkillDef | null {
-  for (const b of r.buffs) {
-    if (b.untilMs <= r.elapsedMs) continue;
-    const def = rushSkillDef(b.id);
-    if (def && def.effect === effect) return def;
+// ---------- 액티브 스킬 즉발 효과 ----------
+/** skillActive.ts가 적어 둔 「방금 쓴 즉발 스킬」을 러시가 받아 먹는다 (같은 것을 두 번 먹지 않게 표식을 지운다).
+ *  능숙한 안내(seatFront) = 맨 앞 n명 즉시 착석, 여유 한 마디(patience) = 줄 선 모두의 인내 +n초. */
+function consumeInstant(state: GameState, r: RushState): void {
+  const seatN = Math.round(instantOf(state, 'seatFront'));
+  if (seatN > 0) {
+    clearInstant(state, 'seatFront');
+    for (let i = 0; i < seatN; i++) {
+      const g = r.queue[0];
+      if (!g || !seatOne(state, r, g, null, true)) break;
+    }
   }
-  return null;
-}
-function tipMult(r: RushState): number {
-  return hasBuff(r, 'tip')?.power ?? 1;
-}
-/** 속사 커피: 버프 동안 앉은 손님의 조리 대기를 깎는다 */
-function applyPrepBuff(state: GameState, r: RushState, guestId: string): void {
-  const def = hasBuff(r, 'prep');
-  if (!def) return;
-  const g = state.guests.find((x) => x.id === guestId);
-  if (g) g.waitMs = Math.round(g.waitMs * (1 - def.power));
+  const patSec = instantOf(state, 'patience');
+  if (patSec > 0) {
+    clearInstant(state, 'patience');
+    const add = rushMsOfSeconds(patSec);
+    for (const g of r.queue) g.patienceMs += add;
+  }
 }
 
 // ---------- 마무리·정산 ----------
@@ -502,34 +462,6 @@ export function seatFromQueue(state: GameState, guestId: string, objectId: strin
   const seat = state.objects[objectId];
   if (!g || !seat) return false;
   return seatOne(state, r, g, seat, true);
-}
-
-/** 직원 스킬 — 러시 중·쿨다운이 돌아왔을 때만 */
-export function canUseStaffSkill(state: GameState, staffId: string): ApplyResult {
-  if (!isRushRunning(state)) return { ok: false, reason: '러시 때만 돼요' };
-  const def = rushSkillOf(state, staffId);
-  if (!def) return { ok: false, reason: '쓸 수 있는 게 없어요' };
-  const r = rushState(state);
-  if ((r.cooldowns[staffId] ?? 0) > r.elapsedMs) return { ok: false, reason: '아직 숨을 고르고 있어요' };
-  return { ok: true };
-}
-/** 호출 전 canUseStaffSkill. 기본 4종(속사 커피·오늘의 특선·능숙한 안내·번개 청소)을 여기서 해석한다 —
- *  레벨·칭호 강화와 두 번째 스킬은 rush3가 RushSkillDef를 늘려 얹는다. */
-export function useStaffSkill(state: GameState, staffId: string): RushSkillDef | null {
-  const def = rushSkillOf(state, staffId);
-  if (!def) return null;
-  const r = rushState(state);
-  r.cooldowns[staffId] = r.elapsedMs + rushMsOfSeconds(def.cooldown);
-  if (def.seconds > 0) r.buffs.push({ id: def.id, staffId, untilMs: r.elapsedMs + rushMsOfSeconds(def.seconds) });
-  if (def.effect === 'seat') {
-    for (let i = 0; i < def.power; i++) {
-      const g = r.queue[0];
-      if (!g || !seatOne(state, r, g, null, true)) break;
-    }
-  }
-  if (def.effect === 'clean') state.clean.value = Math.min(CLEAN_MAX, state.clean.value + def.power);
-  pushFx(state, { kind: 'greet', staffId, tick: state.tick });
-  return def;
 }
 
 /** 밀린 주문 우선 처리: 그 자리의 조리를 앞당기고, 가장 가까운 직원을 그 자리로 보낸다 (자리마다 한 번) */
