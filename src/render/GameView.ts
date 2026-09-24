@@ -1,6 +1,6 @@
 import { Application, Container, Sprite, Graphics, Texture, Text } from 'pixi.js';
 import type { GameState, PlacedObject, Guest, Staff, Season, RoleId, Pt, RouteId, FxEvent } from '../sim/index.ts';
-import { seasonOf, LOW_ENERGY, parcelPrice, footprint, roomAt, doorFrontOf, WALL_COLORS, dayIndex, menuOf, sizeOf, MAIN_SIZE, LIGHT_RADIUS, gradeOf, objectAt, cellAt, contestBadge } from '../sim/index.ts';
+import { seasonOf, LOW_ENERGY, parcelPrice, footprint, roomAt, doorFrontOf, WALL_COLORS, dayIndex, menuOf, sizeOf, mainBuilding, MAIN_SIZE, LIGHT_RADIUS, gradeOf, objectAt, cellAt, contestBadge } from '../sim/index.ts';
 import type { Parcel } from '../sim/index.ts';
 import { objectDef } from '../data/index.ts';
 import { isoTerrainTexture, isoObjectTexture, glowTexture, label, clearTextureCache, loadLabelFont } from './textures';
@@ -929,11 +929,20 @@ export class GameView {
     c.addChild(badge);
   }
 
-  /** 첫 렌더: 폰에서 ×2 근처 줌, 시작 필지(1번, 정중앙)를 가로 가운데·HUD 아래에 놓는다. */
+  /** 첫 렌더: 폰에서 ×2 근처 줌, 카페 본관(없으면 시작 필지)을 화면 가운데 조금 위에 놓는다 — 시작하자마자 가게가 보이게. */
   private fitCamera(state: GameState) {
     const width = this.app.screen.width || this.hostWidth;
+    const height = this.app.screen.height || 640;
     const s = Math.min(3, Math.max(1.5, width / 480));
     this.world.scale.set(s);
+    const main = mainBuilding(state);
+    if (main) {
+      // 본관 발자국 한가운데 + 문 앞 마당이 같이 보이게 조금 위로 (화면 세로 42% 지점)
+      const size = sizeOf(main);
+      const c = cellCenter(main.x + (size.w - 1) / 2, main.y + (size.h - 1) / 2);
+      this.world.position.set(width / 2 - c.sx * s, height * 0.42 - c.sy * s);
+      return;
+    }
     const home = state.parcels.find((p) => p.no === 1) ?? { x: 0, y: 0, w: state.grid.w, h: state.grid.h };
     const centerX = ((home.x + home.w / 2) - (home.y + home.h / 2)) * (ISO_W / 2); // 필지 바운딩 박스 가로 중심(월드)
     const top = cellToScreen(home.x, home.y).sy;
