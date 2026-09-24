@@ -24,6 +24,7 @@ import { TitleRibbon } from './TitleBadge'; // staff-luck 칭호 리본
 import { Portrait, namedPortraitParts, guestName } from './GuestPopup';
 import { guestParts } from '../render/character';
 import { canGreet, canRecommend, recommendFits, regularHearts, regularById, requestDef, requestHint, regularFace, GAUGE_MAX, availableMenus, menuOf } from '../sim/index.ts'; // fun-guest
+import { skillsOfStaff, skillLine } from '../sim/index.ts'; // rush3: 러시 액티브 스킬 줄
 import { Bar, EnergyBar } from './Bars';
 import { Confirm, Popup } from './Popup';
 import { Icon } from './Icon';
@@ -310,6 +311,9 @@ function StaffCard({ s, id, a }: { s: GameState; id: string; a: CardActions }) {
             {STAT_KEYS.map((k) => <span key={k} style={{ display: 'contents' }}><span>{STAT_NAME[k as StatKey]}</span><Bar value={st.stats[k as StatKey]} max={Math.max(100, capOf(s, st, k as StatKey))} width={56} /></span>)}
           </div>
           <div style={{ fontSize: 13 }}><EnergyBar energy={st.energy} />{st.energy < LOW_ENERGY && <span style={{ color: PALETTE.bad }}> 지침</span>} · 월급 {wonText(st.salary)}</div>
+          {skillsOfStaff(s, st).map((def) => (
+            <div key={def.id} data-testid={`card-skill-${def.id}`} style={{ fontSize: 12, color: PALETTE.inkSoft, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>재주 {skillLine(st, def)}</div>
+          ))}{/* rush3: 러시 재주 줄 */}
         </div>
       </div>
       <Row>
