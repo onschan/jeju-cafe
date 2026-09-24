@@ -16,7 +16,8 @@ import { useTutorialNote } from '../tutorialDialogue';
 import { HalmangLine } from '../TutorialWindow';
 
 export type GoalTab = 'now' | 'next' | 'done';
-const TABS: { key: GoalTab; label: string }[] = [{ key: 'now', label: '지금 할 일' }, { key: 'next', label: '앞으로' }, { key: 'done', label: '지난' }];
+// uifix: 아이콘이 없어 「앞으로」·「지난」이 같은 그림으로 보였다 — 탭마다 다른 아이콘
+const TABS: { key: GoalTab; label: string; icon: string }[] = [{ key: 'now', label: '지금 할 일', icon: 'target' }, { key: 'next', label: '앞으로', icon: 'unlock' }, { key: 'done', label: '지난', icon: 'check' }];
 
 /** 줄 종류별 머리 아이콘·꼬리표 */
 const KIND_ICON: Record<TodoKind, string> = { goal: 'target', grade: 'home_cafe', monthly: 'calendar', rival: 'trophy', contest: 'medal' };

@@ -23,7 +23,7 @@ export function GradeWindow({ onClose }: { onClose: () => void }) {
     <Window title={`등급 「${gradeName(cur)}」`} onClose={onClose} testId="window-grade">
       <div data-testid="grade-preview" style={{ marginBottom: 8 }}>
         <div style={{ fontSize: 14, color: PALETTE.inkSoft, marginBottom: 4 }}>5년 뒤 우리 카페</div>
-        <div style={{ position: 'relative', width: '100%', aspectRatio: '16 / 9', background: PALETTE.paperDark, border: `3px solid ${PALETTE.wood}`, borderRadius: 6, overflow: 'hidden' }}>
+        <div style={{ position: 'relative', width: '100%', boxSizing: 'border-box', aspectRatio: '16 / 9', background: PALETTE.paperDark, border: `3px solid ${PALETTE.wood}`, borderRadius: 6, overflow: 'hidden' }}>{/* uifix: box-sizing이 없어 테두리 3px만큼 가로로 6px 넘쳤다 */}
           <img className="px" src={assetUrl(`assets/grade/grade${shown}.png`)} alt={`${gradeName(shown)} 모습`} style={{ width: '100%', height: '100%', objectFit: 'cover', imageRendering: 'pixelated', display: 'block', filter: shown > cur ? 'grayscale(0.35) brightness(0.9)' : 'none' }} />
           <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, padding: '4px 8px', background: 'rgba(43,33,24,0.75)', color: '#fff', fontSize: 14, lineHeight: 1.3 }}>
             <b>{shown}. {gradeName(shown)}</b>{shown === cur ? ' · 지금' : shown < cur ? ' · 지나왔다' : ''}<br />
