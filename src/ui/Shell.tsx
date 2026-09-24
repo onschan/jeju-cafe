@@ -131,7 +131,8 @@ export function TopBar({ onOpen, onTickets }: { onOpen: () => void; onTickets?: 
         {showTickets && (
           <button data-testid="top-tickets" onClick={onTickets} aria-label={`응모권 ${s.tickets}장${hasFreeDraw(s) ? ' · 무료 뽑기 1회' : ''}`} title={`응모권 — 뽑기 1회 = 1장${hasFreeDraw(s) ? ' · 이달 무료 뽑기 1회' : ''}`}
             style={{ flex: 'none', height: TOP_BAR_H, padding: '0 5px', border: 0, borderLeft: `2px solid ${PALETTE.woodLight}`, background: hasFreeDraw(s) ? '#fff6dc' : PALETTE.paper, color: PALETTE.ink, fontFamily: 'inherit', fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', gap: 2 }}>
-            <Icon name="ticket" size={14} />{s.tickets}{hasFreeDraw(s) && <span style={{ color: PALETTE.btn }}>!</span>}
+            {/* uifix: 응모권이 0장인데 무료 뽑기가 있으면 「0!」로 읽혀 헷갈렸다 — 0장이면 숫자를 빼고 ! 만 */}
+            <Icon name="ticket" size={14} />{s.tickets > 0 && s.tickets}{hasFreeDraw(s) && <span style={{ color: PALETTE.btn }}>!</span>}
           </button>
         )}
         <button data-testid="top-grade" data-tut="nav:grade" onClick={() => setGradeOpen(true)} aria-label={`카페 등급 ${gradeName(grade)}`} title={`카페 등급 — ${gradeName(grade)}`}
