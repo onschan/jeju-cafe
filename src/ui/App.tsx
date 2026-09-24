@@ -272,7 +272,6 @@ function StatusPanel({ onFocus }: { onFocus?: (x: number, y: number) => void } =
   const [detail, setDetail] = useState(false); // fun: 잔지표는 「자세히」 접힘
   return (
     <div data-testid="status">
-      <StrategyCard onFocus={onFocus} />{/* ui3: 우리 카페 진단 — 3줄 평가·걸림돌 1개·다음 수 2개 (맨 위) */}
       <AppealPanel />{/* fun: 카페 매력도 — 인기·경관·서비스 */}
       <div style={{ ...card, display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '4px 12px', fontSize: 15 }}>
         {rows.slice(0, 3).map(([k, v]) => <span key={k} style={{ display: 'contents' }}><span style={{ color: PALETTE.inkSoft }}>{k}</span><b>{v}</b></span>)}
@@ -284,7 +283,6 @@ function StatusPanel({ onFocus }: { onFocus?: (x: number, y: number) => void } =
           <div style={{ ...card, display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '4px 12px', fontSize: 15 }}>
             {rows.slice(3).map(([k, v]) => <span key={k} style={{ display: 'contents' }}><span style={{ color: PALETTE.inkSoft }}>{k}</span><b>{v}</b></span>)}
           </div>
-          <GrowthChart />{/* 성장: 최근 30일 손님·매출 + 승급 세로선 */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 14 }}>
             <Icon name="local" size={18} alt="동네 손님" /> 동네
             <meter min={-100} max={100} value={s.popularity} style={{ flex: 1 }} />
@@ -421,7 +419,7 @@ function Game({ onExit }: { onExit: () => void }) {
   useEffect(() => {
     if (rushRunning(s)) return; // rush: 러시 한 판이 도는 동안은 알림·대사를 미룬다 (대사가 뜨면 게임이 멈춰 러시가 얼어붙는다)
     checkAlerts(s, () => dispatch({ type: 'dismissAlert' }), (x) => dispatch(x)); // stakes: 선택지는 sim 액션으로
-    if (checkTutorial(s) && modeRef.current.kind !== 'idle') setMode({ kind: 'idle' });
+    // [코어만] 튜토리얼 정지 — 바로 놓고 바로 장사한다
   });
   const openCard = (t: CardTarget | null) => {
     setCardTarget(t);
@@ -1105,16 +1103,10 @@ function Game({ onExit }: { onExit: () => void }) {
       {radial && <RadialMenu left={radial.left} top={radial.top} items={radialItems(radial)} onClose={() => setRadial(null)} />}
       {cardTarget && !place && <MiniCard target={cardTarget} actions={cardActions} onClose={() => openCard(null)} />}
       <MonthCard />
-      <DevelopResultPopup />
-      <DrawPopup />
-      <AnnouncementPopup />
       {guestPopup && <GuestPopup guestId={guestPopup} onClose={() => setGuestPopup(null)} onQuest={(id) => { dispatch({ type: 'acceptQuest', id }); setWin({ kind: 'people', tab: 'quests' }); }} />}
       {renderWindow()}
-      <RushHud />
-      <RushShow />
       {!rushOn && <RewardPopup />}{/* rush: 보상 상자도 러시가 끝난 뒤에 */}
       <OutcomePopup />
-      <ContestShow />
       <EndingScreen onExit={onExit} />
       <DialogueHost />
     </div>

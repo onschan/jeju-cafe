@@ -1,6 +1,6 @@
 import { Application, Container, Sprite, Graphics, Texture, Text } from 'pixi.js';
 import type { GameState, PlacedObject, Guest, Staff, Season, RoleId, Pt, RouteId, FxEvent } from '../sim/index.ts';
-import { seasonOf, LOW_ENERGY, parcelPrice, footprint, roomAt, doorFrontOf, WALL_COLORS, dayIndex, menuOf, sizeOf, mainBuilding, MAIN_SIZE, LIGHT_RADIUS, gradeOf, objectAt, cellAt, contestBadge } from '../sim/index.ts';
+import { seasonOf, LOW_ENERGY, parcelPrice, canBuyParcel, footprint, roomAt, doorFrontOf, WALL_COLORS, dayIndex, menuOf, sizeOf, mainBuilding, MAIN_SIZE, LIGHT_RADIUS, gradeOf, objectAt, cellAt, contestBadge } from '../sim/index.ts';
 import type { Parcel } from '../sim/index.ts';
 import { objectDef } from '../data/index.ts';
 import { isoTerrainTexture, isoObjectTexture, glowTexture, label, clearTextureCache, loadLabelFont } from './textures';
@@ -985,7 +985,7 @@ export class GameView {
   private fitCamera(state: GameState) {
     const width = this.app.screen.width || this.hostWidth;
     const height = this.app.screen.height || 640;
-    const s = Math.min(3, Math.max(1.5, width / 480));
+    const s = Math.min(3, Math.max(2.2, width / 360)); // [코어만] 폰에서 카페가 콩알만 하게 보이던 것 — 기본 줌을 올린다
     this.world.scale.set(s);
     const main = mainBuilding(state);
     if (main) {
@@ -1008,7 +1008,9 @@ export class GameView {
       if (p.owned) continue;
       alive.add(p.id);
       const sc = parcelScenery(p.id);
-      const [l1, l2] = parcelSignLines(p.name, parcelPrice(state, p), sc?.feature ?? '');
+      // [코어만] 팻말은 「지금 살 수 있는 땅」에만 — 다섯 개가 한꺼번에 떠서 제 카페를 가렸다. 풍경 타일은 그대로 둔다.
+      const buyable = canBuyParcel(state, p.id).ok;
+      const [l1, l2] = buyable ? parcelSignLines(p.name, parcelPrice(state, p), sc?.feature ?? '') : ['', ''];
       const zoomOut = this.world.scale.x <= SIGN_MIN_WORLD_SCALE; // 줌아웃: 이름 한 줄만·작게(팻말끼리 안 겹치게), 줌인: 2줄
       const text = `${l1}|${l2}|${zoomOut ? 'z' : ''}`; // 미소유 필지엔 시설을 못 놓으니 배치 서명은 키에 안 넣는다(매 프레임 재생성 방지)
       const cur = this.lockedNodes.get(p.id);
@@ -1017,14 +1019,14 @@ export class GameView {
         // 줌 모드만 바뀜: 팻말만 갈아 끼운다 (풍경 타일·소품은 그대로)
         const pos = cur.sign.position.clone();
         cur.sign.destroy({ children: true });
-        cur.sign = this.parcelSign(zoomOut ? [l1] : [l1, l2], zoomOut);
+        cur.sign = this.parcelSign(l1 ? (zoomOut ? [l1] : [l1, l2]) : [], zoomOut);
         cur.sign.position.copyFrom(pos);
         this.signs.addChild(cur.sign);
         cur.text = text;
         continue;
       }
       if (cur) destroyScenery(cur, false);
-      this.lockedNodes.set(p.id, this.makeSceneryNode(state, p, zoomOut ? [l1] : [l1, l2], text, zoomOut));
+      this.lockedNodes.set(p.id, this.makeSceneryNode(state, p, l1 ? (zoomOut ? [l1] : [l1, l2]) : [], text, zoomOut));
     }
     for (const [id, entry] of this.lockedNodes) {
       if (alive.has(id)) continue;

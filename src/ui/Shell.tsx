@@ -166,7 +166,6 @@ export function TopShell({ onStatus, onGoal, onTickets }: { onStatus: () => void
   return (
     <>
       <TopBar onOpen={onStatus} onTickets={onTickets} />
-      <TodoLine top={TOP_BAR_H} onOpenGoal={onGoal} />
     </>
   );
 }

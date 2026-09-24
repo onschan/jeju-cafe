@@ -227,7 +227,7 @@ export function autosaveNow(): void { save(); }
 
 /** carry: 엔딩 뒤 「이월해서 새로 시작」(ending.ts makeCarry). 없으면 맨 처음부터. */
 export function newGame(carry: CarryOver | null = null) {
-  setState(createInitialState(Date.now() % 1_000_000, getOrCreatePlayerId(), Date.now(), 'tutorial', carry)); // §7.1 빈 마당 + 손으로 하는 튜토리얼
+  setState(createInitialState(Date.now() % 1_000_000, getOrCreatePlayerId(), Date.now(), 'starter', carry)); // §7.1 빈 마당 + 손으로 하는 튜토리얼
   viewReset?.();
   resetTutorial();
   clearDialogues();
