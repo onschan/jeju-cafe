@@ -101,6 +101,7 @@ const ACTION_SFX: Record<Action['type'], SfxName> = {
   placeMain: 'fanfare', expandMain: 'unlock', buildSecondFloor: 'unlock', moveMain: 'place', undoMoveMain: 'tap', setBgm: 'tap', setLighting: 'tap', // y-indoor
   continueEnding: 'fanfare', // z-ending
   greetGuest: 'happy', recommendMenu: 'tap', // fun-guest (트랙 G) 훅 한 줄
+  useStaffSkill: 'unlock', dismissBattle: 'tap', // rush3: 러시 직원 재주·대항전 결과
 }; // 홍보·투어·대결·선물은 룰렛 팝업(OutcomePopup)이 drumroll → fanfare/coin/error를 낸다 (staff-luck)
 
 export function dispatch(a: Action): ApplyResult {
