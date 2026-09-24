@@ -114,7 +114,7 @@ describe('대화 데이터 (src/data/dialogue)', () => {
   // pro-guide: 튜토리얼 대사의 {seatScore} 같은 토큰은 표시 때 strategyVars로 채워지므로 채운 뒤 검사한다 (안 채워진 {템플릿}은 BANNED에 걸린다)
   const VARS = strategyVars(createInitialState(1, 'local', 0, 'tutorial'));
   const allTexts = (): string[] => [
-    ...TUTORIAL_STEPS.flatMap((t) => [t.title, ...t.lines, t.button, t.done ?? ''].map((l) => fillTemplate(l, VARS))),
+    ...TUTORIAL_STEPS.flatMap((t) => [t.title, ...t.lines, ...(t.linesIfNoWhy ?? []), t.button, t.done ?? ''].map((l) => fillTemplate(l, VARS))),
     ...GOAL_LINES.map((g) => g.line),
     ...EVENT_DIALOGUES.flatMap((e) => [e.title, ...e.lines, e.endLine]),
     ...SAMCHUN.flatMap((s) => [s.name, s.job, s.intro, s.rewardText, ...s.chain.flatMap((c) => [c.ask, ...c.lines, c.doneLine])]),
@@ -126,7 +126,7 @@ describe('대화 데이터 (src/data/dialogue)', () => {
     for (const t of TUTORIAL_STEPS) {
       expect(t.lines.length).toBeGreaterThanOrEqual(2);
       expect(t.lines.length).toBeLessThanOrEqual(3);
-      for (const l of t.lines) expect(fillTemplate(l, VARS).length, l).toBeLessThanOrEqual(22);
+      for (const l of [...t.lines, ...(t.linesIfNoWhy ?? [])]) expect(fillTemplate(l, VARS).length, l).toBeLessThanOrEqual(22);
       expect(t.speaker).toBe('halmang');
       expect(t.button.length).toBeGreaterThan(0);
       expect(t.done).not.toBeNull();

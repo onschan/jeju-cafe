@@ -12,7 +12,9 @@ import tipsJson from './tips.json' with { type: 'json' }; // fun-start: 창·탭
 export type Speaker = 'halmang' | 'samchun' | 'hero' | 'haenyeo' | 'jangnim';
 export const SPEAKER_NAME: Record<Speaker, string> = { halmang: '할망', samchun: '삼춘', hero: '나', haenyeo: '해녀 삼춘', jangnim: '이장님' };
 
-export interface TutorialStep { id: number; key: string; act: number; title: string; speaker: Speaker; lines: string[]; done: string | null; button: string }
+/** 튜토리얼 한 단계. `lines`의 `{seatWhyPhrase}`는 표시 때 실제 입지로 채워지는 관형절이고,
+ *  근거가 없어 값이 밋밋할 때(SEAT_WHY_FLAT)는 `linesIfNoWhy`를 대신 띄운다 (ui/tutorialDialogue.ts fillTutorialStep). */
+export interface TutorialStep { id: number; key: string; act: number; title: string; speaker: Speaker; lines: string[]; linesIfNoWhy?: string[]; done: string | null; button: string }
 export interface GoalLine { id: string; speaker: Speaker; line: string }
 export interface EventDialogue { id: string; title: string; speaker: Speaker; season: 'spring' | 'summer' | 'autumn' | 'winter' | 'any'; lines: string[]; endLine: string }
 export interface SamchunStep { step: number; ask: string; lines: string[]; doneLine: string }
