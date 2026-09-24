@@ -54,9 +54,10 @@ export function stepTargets(step: TutorialStepDef, s: GameState): string[] {
   return typeof step.targets === 'function' ? step.targets(s) : step.targets;
 }
 
-/** apply가 성공하면 state.tutorial.seen에 타입을 남기는 액션 (조건 판정용). 문자열 집합 — `greetGuest`는 트랙 G(손님 인사)가 만드는 액션이라 아직 Action 타입에 없어도 미리 둔다. */
+/** apply가 성공하면 state.tutorial.seen에 타입을 남기는 액션 (조건 판정용). 문자열 집합.
+ *  rush-battle §6: 인사(greetGuest)는 삭제했다 — 3단계는 손님 카드 열기로만 통과하고, 러시 조작으로 바꾸는 건 rush2 몫이다. */
 export const TRACKED_ACTIONS: ReadonlySet<string> = new Set<string>([
-  'greetGuest', 'undoLast', 'train', 'develop', 'drawTicket', 'buyMileage', 'buyTicket', 'giveGift', 'respondEvent', 'investSpot',
+  'seatFromQueue', 'undoLast', 'train', 'develop', 'drawTicket', 'buyMileage', 'buyTicket', 'giveGift', 'respondEvent', 'investSpot',
   'treeUpgrade', 'move', 'buyParcel', 'enterContest',
 ]);
 /** UI가 tutorialNote로 남기는 키. `look:<id>`는 미니 카드 「이게 뭐예요」 힌트(정낭·정류장·마을 길·본관), goalWindow는 목표 창을 열었다(6단계). */
@@ -203,9 +204,9 @@ function guestCells(s: GameState): Pt[] {
   const g = s.guests[0];
   return g ? [{ x: Math.round(g.x), y: Math.round(g.y) }] : [busStopPos(s)];
 }
-/** 첫 손님에게 인사했나: 트랙 G의 greetGuest 액션(TRACKED_ACTIONS) 또는 손님 카드 열기 */
+/** 첫 손님을 들여다봤나: 손님 카드 열기 (인사 액션은 rush-battle §6에서 삭제 — 러시 조작으로 바꾸는 건 rush2 몫) */
 export function greetedGuest(s: GameState): boolean {
-  return seen(s, 'greetGuest') || seen(s, 'guestCard');
+  return seen(s, 'guestCard') || seen(s, 'seatFromQueue');
 }
 
 const money = (amount: number): GoalReward => ({ type: 'money', amount });
