@@ -147,7 +147,7 @@ export function CodexPanel() {
         <div key={x.id} style={{ display: 'flex', gap: 6, alignItems: 'baseline' }}>
           <span style={{ width: 18, textAlign: 'center' }}>{doneSets.has(x.id) ? '★' : ' '}</span>
           <span>{x.name}</span>
-          <span style={{ fontSize: 12, color: PALETTE.inkSoft }}>{x.requires.map((r) => `${nameOf(r.objectId)} ${r.count}`).join(' · ')} → {TARGET_LABEL[x.target]}</span>
+          <span style={{ fontSize: 12, color: PALETTE.inkSoft }}>{x.requires.map((r) => `${nameOf(r.objectId)} ${r.count}`).join(' · ')} 모으면 {TARGET_LABEL[x.target]}</span>
         </div>
       ))}
       {ordered.length > CODEX_TOP && (

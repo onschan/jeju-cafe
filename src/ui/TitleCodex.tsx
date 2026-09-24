@@ -12,7 +12,7 @@ export function TitleCodex() {
   return (
     <div data-testid="title-codex">
       <div style={{ fontSize: 13, color: PALETTE.inkSoft, margin: '8px 0 4px' }}>
-        칭호 도감 {met.size}/{TITLES.length} · 공고를 내면 확률로 칭호 있는 사람이 와요 (숙련 → 프로 → 전설, 높은 단계 공고·★3부터 전설)
+        칭호 도감 {met.size}/{TITLES.length} · 공고를 내면 확률로 칭호 있는 사람이 와요 (숙련·프로·전설 차례, 높은 단계 공고·★3부터 전설)
       </div>
       {GRADE_ORDER.map((g: TitleGrade) => (
         <div key={g} style={{ marginBottom: 6 }}>

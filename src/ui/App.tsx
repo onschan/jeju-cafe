@@ -745,7 +745,7 @@ function Game({ onExit }: { onExit: () => void }) {
       // ease 두 번 탭: 시작 칸 → 끝 칸 → 미리보기(파란 칸 + 비용 합계) → ✓ 확정 / ↻ 방향(ㄱ자 꺾는 순서) / ✕ 취소. 확정 전엔 돈이 안 나간다
       const done = mode.count > 0 ? `${mode.count}줄 놓음 · ` : '';
       if (!line) {
-        place = { text: `${def.name} · ${wonText(cost)}/칸 · ${done}시작 칸을 누르세요 → 끝 칸을 누르세요`, ok: true, canRotate: false, paint: true, onUndo: undoOk ? undo : null, onConfirm: () => {}, onRotate: () => {}, onCancel: () => setMode({ kind: 'idle' }) };
+        place = { text: `${def.name} · ${wonText(cost)}/칸 · ${done}시작 칸을 누르고 끝 칸을 누르면 이어져요`, ok: true, canRotate: false, paint: true, onUndo: undoOk ? undo : null, onConfirm: () => {}, onRotate: () => {}, onCancel: () => setMode({ kind: 'idle' }) };
       } else if (!line.to) {
         place = { text: `${def.name} · ${wonText(cost)}/칸 · 끝 칸을 누르세요 (한 칸이면 같은 칸을 다시)`, ok: true, canRotate: false, paint: true, onUndo: undoOk ? undo : null, onConfirm: () => {}, onRotate: () => {}, onCancel: () => setMode({ kind: 'idle' }) };
       } else {

@@ -129,7 +129,7 @@ export function AnnouncementPopup() {
         )}
         {done && (
           <div style={{ marginTop: 6, textAlign: 'center', color: '#d4a13c', fontSize: 18 }} data-testid="announce-star">
-            {a.starAfter > a.starBefore ? `${stars(a.starBefore)} → ${stars(a.starAfter)} 승급!` : stars(s.star)}
+            {a.starAfter > a.starBefore ? `${stars(a.starBefore)}에서 ${stars(a.starAfter)}로 승급!` : stars(s.star)}
           </div>
         )}
       </div>

@@ -273,7 +273,7 @@ export function RecipeCodex() {
         <div key={c.id} style={{ display: 'flex', gap: 6, alignItems: 'baseline' }}>
           <span style={{ width: 18, textAlign: 'center' }}>{combos.has(c.id) ? <Icon name="check" size={12} /> : ' '}</span>
           <span>{c.name}</span>
-          <span style={{ fontSize: 12, color: PALETTE.inkSoft }}>{c.pairText} → {c.bonusText}</span>
+          <span style={{ fontSize: 12, color: PALETTE.inkSoft }}>{c.pairText} · {c.bonusText}</span>
         </div>
       ))}
     </div>

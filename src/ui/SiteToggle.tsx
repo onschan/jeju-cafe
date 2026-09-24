@@ -16,7 +16,7 @@ export function SiteToggle() {
   return (
     <button data-testid="site-toggle" data-tut="site-toggle" aria-pressed={on} onClick={() => { setSiteOverlayOn(!on); if (!on) { noteTutorial('siteView'); showFirstTip('siteView'); } }}
       style={{ ...(on ? brownBtnOn : brownBtn), margin: 0, padding: '0 10px', fontSize: 14, whiteSpace: 'nowrap', flex: '0 0 auto' }}
-      title="맵에 좌석 적합도(빨강→초록)를 겹쳐 보여요">
+      title="맵에 좌석 적합도를 빨강에서 초록으로 겹쳐 보여요">
       <Icon name="map" /> 입지 보기{on ? <> <Icon name="check" size={12} /></> : ''}
     </button>
   );
@@ -30,7 +30,7 @@ export function SiteOverlayChip() {
     <button data-testid="site-chip" onClick={() => setSiteOverlayOn(false)} aria-label="입지 보기 끄기"
       style={{ position: 'absolute', left: '50%', transform: 'translateX(-50%)', top: SHELL_TOP + 6, zIndex: 11, minHeight: 44, padding: '0 12px', borderRadius: 22,
         border: `2px solid ${PALETTE.wood}`, background: 'rgba(255,248,230,0.95)', color: PALETTE.ink, fontSize: 14, whiteSpace: 'nowrap', boxShadow: '0 2px 0 #0004', display: 'flex', alignItems: 'center', gap: 6 }}>
-      <Icon name="map" size={16} /> 입지 보기 켬 — 빨강→초록이 자리 점수 · 탭해서 끄기
+      <Icon name="map" size={16} /> 입지 보기 켬 — 빨강에서 초록이 자리 점수 · 탭해서 끄기
     </button>
   );
 }

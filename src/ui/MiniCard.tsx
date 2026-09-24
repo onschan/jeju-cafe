@@ -431,7 +431,7 @@ function FeeLines({ s, o }: { s: GameState; o: PlacedObject }) {
   return (
     <div style={{ marginTop: 4 }} data-testid="fee-lines">
       <div style={{ fontSize: 14, fontWeight: 700 }}>
-        기본 {wonText(q.base)} → <span style={{ color: PALETTE.title }}>{wonText(q.price)}</span>{up !== 0 && <span style={{ ...small, color: up > 0 ? PALETTE.ok : PALETTE.bad }}> ({up > 0 ? '+' : ''}{up}%)</span>}
+        기본 {wonText(q.base)} · 받는 값 <span style={{ color: PALETTE.title }}>{wonText(q.price)}</span>{up !== 0 && <span style={{ ...small, color: up > 0 ? PALETTE.ok : PALETTE.bad }}> ({up > 0 ? '+' : ''}{up}%)</span>}
       </div>
       <div style={small}>{q.parts.length > 0 ? q.parts.map((x) => `${x.label} ${x.pct > 0 ? '+' : ''}${x.pct}%`).join(' · ') : '아직 얹은 게 없어요 — 자리를 꾸미면 올라가요'}</div>
       {q.capped && <div style={{ ...small, color: PALETTE.title }}>요금은 메뉴 값의 {FEE_MULT_CAP}배까지예요</div>}
