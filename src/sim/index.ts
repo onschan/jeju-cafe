@@ -45,7 +45,7 @@ export { promoChances } from './promotions.ts';
 export { giftChances } from './items.ts';
 export { developChances } from './craft.ts';
 export { serveStaff, SERVE_TIP_RATE } from './guests.ts';
-export { objectStats, popularityFor, setLevels, guestPickMult, cornerSatisfaction, discoverPlacement, BASE_POPULARITY, POPULARITY_CAP, PICK_MULT_CAP } from './compat.ts';
+export { objectStats, popularityFor, setLevels, guestPickMult, cornerSatisfaction, discoverPlacement, BASE_POPULARITY, BASE_FEE_PCT, POPULARITY_CAP, PICK_MULT_CAP } from './compat.ts';
 // ---------- fun: 카페 매력도 (경관 → 관광객, 사진 → 평판) ----------
 export { cafeScenery, sceneryMultOf, sceneryTouristMult, touristPctText, sceneryGainText, appealOf, POPULARITY_FULL, POPULARITY_LOW, SEAT_USE_HIGH, SCENERY_MULT_MIN, SCENERY_MULT_MAX, PHOTO_REPUTATION, PHOTO_REPUTATION_DAY_CAP, type Appeal, type AppealRow } from './appeal.ts';
 // ---------- ui3: 우리 카페 진단 (주 1회 전략 피드백) ----------
@@ -138,7 +138,7 @@ export {
 // ---------- 「할 일」 줄 모음 (todo.ts) — 도전거리를 숨기지 않는다 ----------
 export { todoRows, goalRows, gradeRow, monthlyRow, rivalRows, upcomingGoals, weakestAxis, type TodoRow, type TodoKind, type UpcomingRow } from './todo.ts';
 export { rivalNames as contestRivalNames, currentRivalNames as contestCurrentRivalNames } from './contest.ts';
-export { pushVoice, recentVoices, voiceText, voicesToday, busiestSeat, dirtiestObject, bestViewSeat, VOICE_DAY_MAX, VOICE_CAP, VOICE_FIX, VOICE_FIX_LABEL, type VoiceLine, type VoiceReason, type VoiceFix } from './voice.ts'; // trim: 손님 목소리 피드
+export { pushVoice, recentVoices, voiceText, voicesToday, busiestSeat, dirtiestObject, bestViewSeat, pushReceipt, receiptText, RECEIPT_MS, VOICE_DAY_MAX, VOICE_CAP, VOICE_FIX, VOICE_FIX_LABEL, type VoiceLine, type VoiceReason, type VoiceFix, type Receipt } from './voice.ts'; // trim: 손님 목소리 피드 · video P0-5: 영수증 한 줄
 export { closeDay, recentDays, daySummary, DAY_LOG_CAP, type DaySummary } from './daylog.ts'; // 성장: 하루 요약·30일 그래프
 export type { DayLogRow } from './types.ts';
 export { roleEffectText, roleNeeds, needOf, hireForecast, suggestRole, staffBudget, headsOfCandidate, headsOfStaff, recommendedHire, recommendWhy, postJobHint, EARLY_HALL_MULT, EARLY_HALL_STAFF, EARLY_HALL_SEATS, EARLY_HALL_WHY, EARLY_STAFF_MAX, type RoleNeed, type HireForecast, type StaffBudget, type HireSuggestion } from './staffPlan.ts'; // staff2: 채용 판단 자료

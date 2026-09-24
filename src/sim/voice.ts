@@ -9,7 +9,8 @@
  */
 import type { GameState, Pt } from './types.ts';
 import { dayIndex } from './effects.ts';
-import { objectDef } from '../data/index.ts';
+import { objectDef, guestTypeDef } from '../data/index.ts';
+import { fmtNum } from './format.ts';
 import { wearOf } from './cleanliness.ts';
 import { siteOf } from './site.ts';
 import { josa } from './josa.ts';
@@ -92,6 +93,36 @@ export function recentVoices(state: GameState, n = 3): VoiceLine[] {
     if (out.length >= n) break;
   }
   return out;
+}
+
+// ---------- 손님 영수증 한 줄 (video P0-5) ----------
+
+/** 손님 하나가 나갈 때 남는 한 줄: 〈얼굴 · 손님층 · 인기 +N · ₩N〉.
+ *  한 칸짜리 슬롯이라 다음 손님이 오면 바로 교체된다 — 알림 링버퍼(NOTICE_CAP)는 안 건드린다. */
+export interface Receipt {
+  /** 바뀐 걸 UI가 알아채는 번호 (오브젝트 id와 무관하게 1씩) */
+  id: number;
+  typeId: string;
+  /** 인기 게이지 변화 (음수면 동네 쪽) */
+  rep: number;
+  /** 이 손님이 낸 돈 */
+  paid: number;
+}
+
+/** 영수증 한 줄이 화면에 머무는 시간 */
+export const RECEIPT_MS = 2000;
+
+/** 영수증 한 줄을 남긴다 (돈을 낸 손님만). 러시 중에는 부르지 않는다 — HUD가 이미 꽉 찼다. */
+export function pushReceipt(state: GameState, typeId: string, rep: number, paid: number): void {
+  if (paid <= 0) return;
+  state.receipt = { id: (state.receipt?.id ?? 0) + 1, typeId, rep, paid };
+}
+
+/** 영수증 한 줄 문구 — 「대학생 · 인기 +2 · ₩4,500」. 얼굴은 UI가 앞에 붙인다. */
+export function receiptText(r: Receipt): string {
+  const name = guestTypeDef(r.typeId).name;
+  const rep = r.rep === 0 ? '' : ` · 인기 ${r.rep > 0 ? '+' : '−'}${Math.abs(r.rep)}`;
+  return `${name}${rep} · ₩${fmtNum(r.paid)}`;
 }
 
 // ---------- 원인 칸 찾기 ----------

@@ -2,7 +2,10 @@
 import { bareState, X, Y } from './helpers.ts';
 import { placeObject } from '../grid.ts';
 import { addComplaint } from '../reputation.ts';
-import { pushVoice, recentVoices, voiceText, voicesToday, bestViewSeat, dirtiestObject, VOICE_DAY_MAX, VOICE_FIX, VOICE_FIX_LABEL } from '../voice.ts';
+import { pushVoice, pushReceipt, receiptText, recentVoices, voiceText, voicesToday, bestViewSeat, dirtiestObject, VOICE_DAY_MAX, VOICE_FIX, VOICE_FIX_LABEL } from '../voice.ts';
+import { spawnGuests, updateGuests, PREP_MS, SEAT_MS } from '../guests.ts';
+import { setSlot } from '../menu.ts';
+import { guestTypeDef } from '../../data/index.ts';
 import { WEAR_START_MONTHS } from '../cleanliness.ts';
 import { hasIdToken } from '../../data/labels.ts';
 
@@ -78,4 +81,52 @@ test('후기 조사: 받침 있으면 「이」, 없으면 「가」', () => {
   expect(line('평상', 'dirty')).toBe('평상이 낡고 지저분해요');
   expect(line('파라솔 테이블', 'dirty')).toBe('파라솔 테이블이 낡고 지저분해요');
   expect(line('의자', 'dirty')).toBe('의자가 낡고 지저분해요');
+});
+
+// ---------- video P0-5: 손님 영수증 한 줄 ----------
+
+test('pushReceipt: 돈을 안 낸 손님은 줄을 안 남기고, 새 손님이 오면 번호가 올라 앞 줄을 교체한다', () => {
+  const s = bareState(1);
+  pushReceipt(s, 'student', 2, 0);
+  expect(s.receipt).toBeUndefined(); // 주문을 안 한 손님은 영수증이 없다
+  pushReceipt(s, 'student', 2, 4500);
+  expect(s.receipt!.id).toBe(1);
+  expect(receiptText(s.receipt!)).toBe('대학생 · 인기 +2 · ₩4,500');
+  pushReceipt(s, 'student', -1, 3000);
+  expect(s.receipt!.id).toBe(2); // 한 칸짜리 슬롯 — 알림 링버퍼는 안 건드린다
+  expect(receiptText(s.receipt!)).toBe('대학생 · 인기 −1 · ₩3,000');
+  pushReceipt(s, 'student', 0, 3000);
+  expect(receiptText(s.receipt!)).toBe('대학생 · ₩3,000'); // 게이지가 안 움직이면 인기 줄을 빼고 말한다
+  expect(hasIdToken(receiptText(s.receipt!))).toBe(false);
+});
+
+test('손님이 나가면 영수증이 남는다 (낸 돈·손님층), 러시 중엔 안 남는다', () => {
+  const build = () => {
+    const s = bareState(1);
+    placeObject(s, 'table_out', X(4), Y(5));
+    setSlot(s, 0, 'carrot_juice');
+    s.storage['carrot'] = 10;
+    spawnGuests(s, 1);
+    updateGuests(s, 6000);
+    return s;
+  };
+  const s = build();
+  const g = s.guests[0]!;
+  expect(g.paid).toBeGreaterThan(0);
+  expect(s.receipt).toBeUndefined(); // 아직 앉아 있다
+  updateGuests(s, PREP_MS);
+  updateGuests(s, SEAT_MS);
+  updateGuests(s, 10_000);
+  expect(s.guests.length).toBe(0);
+  expect(s.receipt!.typeId).toBe(g.type);
+  expect(s.receipt!.paid).toBe(g.paid);
+  expect(receiptText(s.receipt!)).toContain(guestTypeDef(g.type).name);
+  // 러시 중엔 HUD가 이미 꽉 찼다 — 영수증을 안 남긴다
+  const r = build();
+  r.rush!.phase = 'run';
+  updateGuests(r, PREP_MS);
+  updateGuests(r, SEAT_MS);
+  updateGuests(r, 10_000);
+  expect(r.guests.length).toBe(0);
+  expect(r.receipt).toBeUndefined();
 });

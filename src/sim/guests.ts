@@ -11,7 +11,7 @@ import { START_HOUR, END_HOUR, HOUR_MS, seasonOf } from './clock.ts';
 import { parcelBonusAt, parcelSpawnMult, parcelFeeMult, parcelAt } from './parcels.ts';
 import { objectStats, popularityFor, guestPickMult, cornerSatisfaction, BASE_POPULARITY } from './compat.ts';
 import { cornerVisitTargets, cornerOfPiece, visitCorner, cornerDef, noteSales, CORNER_VISIT_WEIGHT } from './corners.ts';
-import { pushVoice } from './voice.ts';
+import { pushVoice, pushReceipt } from './voice.ts';
 /** trim: 이 전망 이상인 자리에 앉은 만족 손님은 「바다 보이는 자리 최고예요」 */
 const VOICE_VIEW_MIN = 3;
 import { cleanSatisfaction, CLEAN_LOW } from './cleanliness.ts';
@@ -815,5 +815,14 @@ export function updateGuests(state: GameState, dtMs: number): void {
       moveAlong(g, walkMs);
     }
   }
-  state.guests = state.guests.filter((g) => !(g.phase === 'leaving' && g.path.length === 0));
+  // video P0-5: 나가는 손님마다 하단에 영수증 한 줄. 러시 중엔 안 띄운다 — HUD가 이미 꽉 찼다
+  const gone = state.guests.filter((g) => g.phase === 'leaving' && g.path.length === 0);
+  state.guests = state.guests.filter((g) => !gone.includes(g));
+  if (!isRushRunning(state)) {
+    for (const g of gone) {
+      if (g.paid <= 0) continue;
+      const rep = !g.namedId && g.mood === 'happy' ? guestTypeDef(canonicalGuestId(g.type)).popularityShift : 0;
+      pushReceipt(state, canonicalGuestId(g.type), rep, g.paid);
+    }
+  }
 }
