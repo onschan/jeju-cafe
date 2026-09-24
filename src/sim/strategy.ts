@@ -19,7 +19,7 @@
  */
 import type { GameState, Pt, PlacedObject, RoleId } from './types.ts';
 import { objectDef, SPOTS } from '../data/index.ts';
-import { CORNERS, cornersWithPiece, cornerIfPlaced, pieceMatches } from './corners.ts';
+import { CORNERS, cornersWithPiece, cornerIfPlaced, pieceMatches, cornerIdsDoneIncludingWork } from './corners.ts';
 import { siteOf, seatScore, scoreOf, siteFeeMult, SAT_SHADE_SUMMER } from './site.ts';
 import { seasonOf } from './clock.ts';
 import { canPlace, cellAt, objectAt, doorFrontOf, footprint } from './grid.ts';
@@ -188,8 +188,9 @@ export function cornerScoreIfPlaced(s: GameState, type: string, x: number, y: nu
   if (cornerIfPlaced(s, type, x, y)) return 10;
   const objs = Object.values(s.objects);
   let best = 0;
+  const made = cornerIdsDoneIncludingWork(s); // 공사만 남은 명당도 「이미 만든 것」 — 조각을 또 권하지 않는다
   for (const def of cornersWithPiece(type)) {
-    if (s.codex.corners?.includes(def.id)) continue;
+    if (made.has(def.id)) continue;
     let n = 0;
     for (const p of def.pieces) if (!pieceMatches(p.type, type) && objs.some((o) => pieceMatches(p.type, o.type) && distToCell(o, x, y) <= def.radius)) n++; // spot2: 조각은 종류로 센다
     best = Math.max(best, n);
@@ -219,9 +220,9 @@ export function bestCornerCells(s: GameState, type = TREE_TYPE, n = 3): Pt[] {
 export function bestCornerCell(s: GameState, type = TREE_TYPE): Pt | null {
   return bestCornerCells(s, type, 1)[0] ?? null;
 }
-/** 아직 못 만든 명당 중 이 시설이 조각인 것 하나 (추천 문구용) */
+/** 아직 못 만든 명당 중 이 시설이 조각인 것 하나 (추천 문구용). 공사만 남은 명당은 「만든 것」으로 친다. */
 export function cornerNameForPiece(s: GameState, type: string): string {
-  const done = new Set(s.codex.corners ?? []);
+  const done = cornerIdsDoneIncludingWork(s);
   return (CORNERS.find((c) => !done.has(c.id) && c.pieces.some((p) => pieceMatches(p.type, type)))?.name) ?? '명당';
 }
 

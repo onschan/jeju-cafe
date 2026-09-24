@@ -18,6 +18,7 @@ import { parcelAt } from './parcels.ts';
 import { walkableNeighborsOf } from './path.ts';
 import { layoutCached } from './layoutRev.ts';
 import { monthIndex, DAYS_PER_MONTH } from './clock.ts';
+import { dayIndex } from './effects.ts';
 import { pushNotice } from './staff.ts';
 import { pushFx } from './fx.ts';
 import { nextRandom } from './rng.ts';
@@ -241,10 +242,15 @@ export function cornersBuilding(state: GameState): number {
 export function cornersDoneIncludingWork(state: GameState): number {
   return cornerProgress(state).filter((p) => p.done || p.building).length;
 }
+/** 이미 만든 명당 id (완성 + 공사만 남은 것) — 추천·안내가 「다 모은 명당」을 또 권하지 않게 */
+export function cornerIdsDoneIncludingWork(state: GameState): Set<string> {
+  return new Set(cornerProgress(state).filter((p) => p.done || p.building).map((p) => p.def.id));
+}
 
-/** 이 종류를 (x, y)에 놓으면 완성되는 명당 (짓기 고스트 배지 "이걸 놓으면 꽃길 완성"). 공사 중인 조각도 센다(완공되면 완성). 이미 완성된 명당은 뺀다. */
+/** 이 종류를 (x, y)에 놓으면 완성되는 명당 (짓기 고스트 배지 "이걸 놓으면 꽃길 완성"). 공사 중인 조각도 센다(완공되면 완성).
+ *  이미 완성된 명당과 **조각을 다 모아 공사만 남은 명당**은 뺀다 — 다 모은 명당을 또 만들라고 되풀이하지 않게. */
 export function cornerIfPlaced(state: GameState, type: string, x: number, y: number, ignoreId?: string): CornerDef | null {
-  const done = new Set(completedCorners(state).map((c) => c.id));
+  const done = new Set([...completedCorners(state), ...pendingCorners(state)].map((c) => c.id));
   const ghost: PlacedObject = { id: '__ghost', type, x, y, placedMonth: 0 };
   const by = byType(state, ignoreId, ghost, true);
   for (const def of cornersWithPiece(type)) {
@@ -387,6 +393,18 @@ export function visitCorner(state: GameState, g: Guest, piece: PlacedObject): vo
 
 // ---------- 완성 발견 (도감·연출) ----------
 
+/** 남은 공사가 하루면 「내일이면」, 더 걸리면 「n일 뒤」 (며칠인지 모르면 「공사가 끝나면」) */
+function daysLeftText(state: GameState, c: CompletedCorner): string {
+  const today = dayIndex(state.clock);
+  let left = 0;
+  for (const id of c.pieceIds) {
+    const b = state.objects[id]?.build;
+    if (b) left = Math.max(left, b.doneDay - today);
+  }
+  if (left <= 0) return '공사가 끝나면';
+  return left === 1 ? '내일이면' : `${left}일 뒤`;
+}
+
 /** 배치·완공 뒤 (compat.discoverPlacement에서 부른다): 처음 완성한 명당을 도감에 올리고 장면 창·팻말 반짝·메시지 줄.
  *  마지막 조각을 놓는 순간(아직 공사 중)엔 「공사가 끝나면 꽃길 완성」 미리 알림을 한 번만 띄운다. */
 export function discoverCorners(state: GameState): void {
@@ -402,7 +420,7 @@ export function discoverCorners(state: GameState): void {
   }
   const seen = new Set(state.cornerSoon ?? []);
   const soon = pendingCorners(state);
-  for (const c of soon) if (!seen.has(c.id)) pushNotice(state, `공사가 끝나면 ${cornerDef(c.id).name} 완성`);
+  for (const c of soon) if (!seen.has(c.id)) pushNotice(state, `${daysLeftText(state, c)} ${cornerDef(c.id).name} 완성`);
   state.cornerSoon = soon.map((c) => c.id);
 }
 
