@@ -21,7 +21,7 @@
 import type { GameState, GoalReward, Pt, FeatureId, PlacedObject } from './types.ts';
 import { objectDef } from '../data/index.ts';
 import { isDoorReachable, busStopPos, walkableNeighborsOf } from './path.ts';
-import { CORNERS, cornersDoneIncludingWork, cornerProgressIncludingWork, cornerPieceDefault } from './corners.ts';
+import { CORNERS, cornersDoneIncludingWork, cornerProgressIncludingWork, cornerPieceDefault, cornerBuildType, pieceMatches } from './corners.ts';
 import { ownedParcels } from './parcels.ts';
 import { dayIndex } from './effects.ts';
 import { customMet } from './goals.ts';
@@ -113,16 +113,16 @@ function distToCell(o: PlacedObject, x: number, y: number): number {
   const dy = Math.max(0, o.y - y, y - (o.y + h - 1));
   return Math.max(dx, dy);
 }
-function objectsOfTypes(s: GameState, types: readonly string[]): PlacedObject[] {
-  return Object.values(s.objects).filter((o) => types.includes(o.type));
-}
 
 // ---------- 5단계 첫 명당 「꽃길」 (트랙 C corners: 꽃밭 + 벤치 + 가로등) ----------
 
 /** 튜토리얼 첫 명당 */
 export const TUTORIAL_CORNER_ID = 'corner_flower_path';
-/** 꽃길 조각 순서 (corners.json 그대로: 꽃밭 → 벤치 → 가로등) */
-export const CORNER_PIECE_TYPES: readonly string[] = (CORNERS.find((c) => c.id === TUTORIAL_CORNER_ID)?.pieces.map((p) => cornerPieceDefault(p.type)) ?? ['flower_bed', 'deco_wood_bench', 'streetlight']); // spot2: 조각은 종류 — 튜토리얼이 가리킬 시설 하나로 바꾼다
+/** 꽃길 조각 「종류」 순서 (corners.json 그대로: 꽃 → 벤치 → 불빛).
+ *  종류로 봐야 정원등 대신 가로등을 놓아도 같은 조각으로 센다 — 시설 id로 보면 이미 다 모은 조각을 또 놓으라고 되풀이한다. */
+export const CORNER_PIECE_KINDS: readonly string[] = (CORNERS.find((c) => c.id === TUTORIAL_CORNER_ID)?.pieces.map((p) => p.type) ?? ['garden', 'fun', 'light']);
+/** 꽃길 조각 순서를 시설 하나로 (대사·글로우가 가리킬 기본 시설) */
+export const CORNER_PIECE_TYPES: readonly string[] = CORNER_PIECE_KINDS.map((k) => cornerPieceDefault(k)); // spot2: 조각은 종류 — 튜토리얼이 가리킬 시설 하나로 바꾼다
 /** 조각끼리 서로 반경 CORNER_RADIUS 안 (corners.json radius) */
 export const CORNER_RADIUS = CORNERS.find((c) => c.id === TUTORIAL_CORNER_ID)?.radius ?? 2;
 /** 첫 명당이 생겼나: 마지막 조각을 놓는 순간 통과한다 (꽃밭·벤치·가로등은 공사 1일이라 완공을 기다리면 같은 안내가 하루 더 되풀이된다).
@@ -130,29 +130,42 @@ export const CORNER_RADIUS = CORNERS.find((c) => c.id === TUTORIAL_CORNER_ID)?.r
 export function cornerMade(s: GameState): boolean {
   return cornersDoneIncludingWork(s) >= 1;
 }
-/** 꽃길 닻(첫 조각) — 내 필지 위 완공·공사 중 꽃밭 중 첫 것 */
-function cornerAnchor(s: GameState): PlacedObject | null {
-  return objectsOfTypes(s, [CORNER_PIECE_TYPES[0]!]).find((o) => parcelAt(s, o.x, o.y)?.owned) ?? null;
+/** 이 종류의 조각인 시설들 (공사 중도 센다 — 안내는 놓은 순간부터 「있는 것」으로 본다) */
+function piecesOfKind(s: GameState, kind: string): PlacedObject[] {
+  return Object.values(s.objects).filter((o) => pieceMatches(kind, o.type) && !!parcelAt(s, o.x, o.y)?.owned);
 }
-/** 5단계에서 아직 빠진 조각: 닻(꽃밭)이 없으면 꽃밭, 있으면 닻 반경 안에 없는 첫 조각 (벤치 → 가로등) */
-export function cornerMissingType(s: GameState): string {
+/** 꽃길 닻(첫 조각) — 내 필지 위 완공·공사 중 「꽃」 조각 중 첫 것 */
+function cornerAnchor(s: GameState): PlacedObject | null {
+  return piecesOfKind(s, CORNER_PIECE_KINDS[0]!)[0] ?? null;
+}
+/** 5단계에서 아직 빠진 조각 「종류」: 닻(꽃)이 없으면 꽃, 있으면 닻 반경 안에 없는 첫 종류. 다 모였으면 null. */
+export function cornerMissingKind(s: GameState): string | null {
   const anchor = cornerAnchor(s);
-  if (!anchor) return CORNER_PIECE_TYPES[0]!;
-  for (const type of CORNER_PIECE_TYPES.slice(1)) {
-    const near = objectsOfTypes(s, [type]).some((o) => distToCell(anchor, o.x, o.y) <= CORNER_RADIUS);
-    if (!near) return type;
+  if (!anchor) return CORNER_PIECE_KINDS[0]!;
+  for (const kind of CORNER_PIECE_KINDS.slice(1)) {
+    const near = piecesOfKind(s, kind).some((o) => distToCell(anchor, o.x, o.y) <= CORNER_RADIUS);
+    if (!near) return kind;
   }
-  return CORNER_PIECE_TYPES[CORNER_PIECE_TYPES.length - 1]!;
+  return null;
+}
+/** 빠진 조각으로 지을 시설 하나 (글로우·짓기 타깃). 다 모였으면 마지막 조각 시설 — 버튼이 사라지지는 않게. */
+export function cornerMissingType(s: GameState): string {
+  const kind = cornerMissingKind(s);
+  if (kind === null) return CORNER_PIECE_TYPES[CORNER_PIECE_TYPES.length - 1]!;
+  return cornerBuildType(s, kind) ?? CORNER_PIECE_TYPES[CORNER_PIECE_KINDS.indexOf(kind)] ?? CORNER_PIECE_TYPES[0]!;
 }
 /** 칸이 길 옆인가 (손님이 명당을 찾아가려면 조각 하나가 길에 붙어 있어야 한다) */
 function besidePath(s: GameState, x: number, y: number): boolean {
   return walkableNeighborsOf(s, x, y).length > 0;
 }
-/** 5단계 글로우: 빠진 조각을 놓을 칸 1개 — 꽃밭이면 첫 테이블 옆(반경 2)에서 길 옆 빈 칸, 벤치·가로등이면 꽃밭 옆(반경 2) 빈 칸. 테이블(꽃밭)과 가까운 순. */
+/** 5단계 글로우: 빠진 조각을 놓을 칸 1개 — 꽃이면 첫 테이블 옆(반경 2)에서 길 옆 빈 칸, 벤치·불빛이면 꽃 옆(반경 2) 빈 칸. 테이블(꽃)과 가까운 순.
+ *  조각을 다 모았으면(공사 중이어도) 빈 배열 — 「여기 놓으면 명당이 된다」가 하루 더 남아 같은 말을 되풀이하지 않게. */
 export function cornerCells(s: GameState): Pt[] {
+  const kind = cornerMissingKind(s);
+  if (kind === null) return [];
   const type = cornerMissingType(s);
   const anchorObj = cornerAnchor(s);
-  const anchor = type === CORNER_PIECE_TYPES[0] || !anchorObj ? seats(s)[0] : anchorObj;
+  const anchor = kind === CORNER_PIECE_KINDS[0] || !anchorObj ? seats(s)[0] : anchorObj;
   if (!anchor) return [];
   const front = mainBuilding(s) ? doorFrontOf(mainBuilding(s)!) : null;
   let best: Pt | null = null, bd = Infinity;
@@ -160,7 +173,7 @@ export function cornerCells(s: GameState): Pt[] {
     const x = anchor.x + dx, y = anchor.y + dy;
     if (!emptySoil(s, x, y) || (front && front.x === x && front.y === y) || !canPlace(s, type, x, y).ok) continue;
     // 꽃밭(닻)은 길 옆을 우선 (길 옆이 아니면 +10) — 명당 완성 뒤 손님이 찾아올 수 있게
-    const d = Math.max(Math.abs(dx), Math.abs(dy)) + (Math.abs(dx) + Math.abs(dy)) / 100 + (type === CORNER_PIECE_TYPES[0] && !besidePath(s, x, y) ? 10 : 0);
+    const d = Math.max(Math.abs(dx), Math.abs(dy)) + (Math.abs(dx) + Math.abs(dy)) / 100 + (kind === CORNER_PIECE_KINDS[0] && !besidePath(s, x, y) ? 10 : 0);
     if (d < bd) { bd = d; best = { x, y }; }
   }
   return best ? [best] : [];

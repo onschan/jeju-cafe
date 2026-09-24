@@ -12,7 +12,7 @@
  * 결정적·순수 — 상태를 바꾸지 않는다.
  */
 import type { GameState, GoalReward, RivalAxis } from './types.ts';
-import { activeGoals, goalProgress, goalRewardText, goalConditionText } from './goals.ts';
+import { activeGoals, goalProgress, goalRewardText, goalConditionText, buildingNote } from './goals.ts';
 import { gradeOf, gradeName, gradeProgress, gradeUpRewards, MAX_GRADE } from './grade.ts';
 import { monthlyProgress } from './monthly.ts';
 import { rivalsState, scoreboard, rankGap, activeSteal, stealTitle, myAxes, RIVAL_AXES, RIVAL_AXIS_LABEL, RIVAL_COUNTER_COST, RIVAL_BOARD_DAY, endgameOpen, RIVAL_DEAL_LEAD_MONTHS } from './rival.ts';
@@ -40,6 +40,8 @@ export interface TodoRow {
 
 const pct = (cur: number, max: number) => (max <= 0 ? 0 : Math.min(1, cur / max));
 const rewardsText = (rs: GoalReward[]) => rs.map(goalRewardText).join(' · ');
+/** 보상이 걸린 줄(목표·이달의 과제·승급)은 완공 기준이라, 공사 중인 것은 「짓는 중 n」으로 덧붙여 「아직 안 했다」로 읽히지 않게 한다. */
+const withNote = (text: string, note: string) => (note ? `${text} · ${note}` : text);
 
 /** 메인 목표 2줄 (지금·다음) */
 export function goalRows(state: GameState): TodoRow[] {
@@ -53,7 +55,7 @@ export function goalRows(state: GameState): TodoRow[] {
       max: p.max,
       valueText: `${fmtNum(Math.min(p.cur, p.max))}/${fmtNum(p.max)}`,
       rewardText: rewardsText(g.reward),
-      how: g.desc || goalConditionText(g.condition),
+      how: withNote(g.desc || goalConditionText(g.condition), buildingNote(state, g.condition)),
       done: p.max > 0 && p.cur >= p.max,
     };
   });
@@ -76,7 +78,7 @@ export function gradeRow(state: GameState): TodoRow | null {
     valueText: `${met}/${rows.length}`,
     rewardText: rewardsText(gradeUpRewards(next)),
     how: worst
-      ? `${worst.label} ${fmtNum(Math.min(worst.cur, worst.need))}/${fmtNum(worst.need)} — 여기가 제일 모자라요`
+      ? withNote(`${worst.label} ${fmtNum(Math.min(worst.cur, worst.need))}/${fmtNum(worst.need)} — 여기가 제일 모자라요`, worst.building > 0 ? `짓는 중 ${worst.building}` : '')
       : '조건을 다 채웠어요. 내일 아침에 올라요',
     done: met >= rows.length,
   };
@@ -95,7 +97,7 @@ export function monthlyRow(state: GameState): TodoRow | null {
     max: p.max,
     valueText: `${fmtNum(p.cur)}/${fmtNum(p.max)}`,
     rewardText: rewardsText(m.reward),
-    how: m.status === 'failed' ? '이번 달은 놓쳤어요. 다음 달 과제를 기다려요' : `${goalConditionText(m.condition)} — 난이도는 지난달 기준이에요`,
+    how: m.status === 'failed' ? '이번 달은 놓쳤어요. 다음 달 과제를 기다려요' : withNote(`${goalConditionText(m.condition)} — 난이도는 지난달 기준이에요`, buildingNote(state, m.condition)),
     done: m.status === 'done',
   };
 }

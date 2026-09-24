@@ -1,19 +1,20 @@
 /**
  * 배치 점수 (video-patch §3.2.3): 「지금 마당이 얼마나 잘 짜여 있나」를 0~100 한 줄로.
- * 새 시뮬을 돌리지 않는다 — 이미 있는 sim 함수(seatScore·reachMap·cornerCount·monthGuestsLeft)만 조합한다.
+ * 새 시뮬을 돌리지 않는다 — 이미 있는 sim 함수(seatScore·reachMap·cornersDoneIncludingWork·monthGuestsLeft)만 조합한다.
  *
  * | 성분 | 비중 | 출처 |
  * |---|---|---|
  * | 자리   | 40 | 좌석 시설들의 seatScore 평균 (SEAT_SCORE_FULL이 만점) |
  * | 동선   | 20 | 손님이 가서 쓰는 시설 중 정류장에서 걸어 닿는 비율 |
- * | 명당   | 20 | 완성한 명당 수 / CORNER_FULL |
+ * | 명당   | 20 | 명당 수(공사 중 포함) / CORNER_FULL |
  * | 여유   | 20 | 이달 자리가 없어 돌아간 손님 (0명 = 20, LEFT_FULL명 = 0) |
  *
  * 전월 대비 화살표는 localStorage에 달마다 한 칸씩 밀어 두는 스냅샷으로 낸다 (세이브 스키마를 건드리지 않는다).
  */
 import { useSyncExternalStore } from 'react';
 import type { GameState } from '../sim/index.ts';
-import { seatScore, cornerCount, busStopPos, footprint, SITE_GOOD } from '../sim/index.ts';
+import { seatScore, busStopPos, footprint, SITE_GOOD } from '../sim/index.ts';
+import { cornersDoneIncludingWork } from '../sim/corners.ts'; // 안내는 공사 중 명당도 센다 (보상은 완공 기준 — grade.ts cornerCount)
 import { objectDef } from '../data/index.ts';
 import { reachMap, walkableNeighborsOf, cellKey } from '../sim/path.ts';
 
@@ -66,9 +67,9 @@ export function flowPart(s: GameState): number {
   return clamp((ok / objs.length) * PART_MAX.flow, 0, PART_MAX.flow);
 }
 
-/** 완성한 명당 수 */
+/** 명당 수 — 배치 점수는 「지금 마당이 어떻게 짜였나」를 읽어 주는 안내라 공사 중인 명당도 센다 (보상은 여기 안 걸려 있다) */
 export function cornerPart(s: GameState): number {
-  return clamp((cornerCount(s) / CORNER_FULL) * PART_MAX.corner, 0, PART_MAX.corner);
+  return clamp((cornersDoneIncludingWork(s) / CORNER_FULL) * PART_MAX.corner, 0, PART_MAX.corner);
 }
 
 /** 자리가 없어 돌아간 손님이 적을수록 높다 */

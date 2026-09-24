@@ -19,7 +19,7 @@ import { pushNotice } from './staff.ts';
 import { pushFx } from './fx.ts';
 import { bumpLayoutRev } from './layoutRev.ts';
 import { gradeOf, gradeName } from './grade.ts';
-import { completedCorners } from './corners.ts';
+import { completedCorners, cornersBuilding } from './corners.ts';
 import { fmtNum } from './format.ts';
 
 export type TreeId = 'seat' | 'fun' | 'shop' | 'garden' | 'light';
@@ -62,7 +62,10 @@ export function stepNeedText(state: GameState, step: TreeStep): string {
   const parts: string[] = [];
   if (n.grade && gradeOf(state) < n.grade) parts.push(`등급 「${gradeName(n.grade)}」`);
   if (n.star && state.star < n.star) parts.push(`★${n.star}`);
-  if (n.corners && completedCorners(state).length < n.corners) parts.push(`명당 ${n.corners}개`);
+  if (n.corners && completedCorners(state).length < n.corners) {
+    const work = cornersBuilding(state); // 해금은 완공 기준이지만, 짓는 중인 것을 알려 같은 조건이 안 움직이는 것처럼 보이지 않게
+    parts.push(`명당 ${n.corners}개${work > 0 ? ` (짓는 중 ${work})` : ''}`);
+  }
   return parts.length ? `${parts.join(' · ')}면 열려요` : '';
 }
 export function stepNeedMet(state: GameState, step: TreeStep): boolean {
