@@ -47,7 +47,7 @@ function TypedLines({ lines, done, onDone }: { lines: string[]; done: boolean; o
   }, [full, done]);
   const shown = full.slice(0, n);
   return (
-    <div data-testid="dialogue-text" style={{ whiteSpace: 'pre-wrap', minHeight: '2.9em', lineHeight: 1.45, fontSize: 16 }}>
+    <div data-testid="dialogue-text" style={{ whiteSpace: 'pre-wrap', wordBreak: 'keep-all', overflowWrap: 'break-word', minHeight: '2.9em', lineHeight: 1.45, fontSize: 16 }}>
       {shown}
     </div>
   );

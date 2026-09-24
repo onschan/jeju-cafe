@@ -13,9 +13,9 @@ import { useSpotlightPref, setSpotlightOn, setGuideFocus } from './tutorialHighl
 import { solverBusy } from './solverClient';
 
 export const GRADUATE_TITLE = '할망의 제자';
-export const NO_MOVE_TEXT = '할 건 다 했다. 네 방식대로 해 보라';
+export const NO_MOVE_TEXT = '할 건 다 했져. 이제 네 방식대로 해 보라';
 export const SOLVER_BUSY_TEXT = '셈하는 중…';
-export const SOLVER_SAVE_TEXT = '지금은 모으는 게 낫다. 돈이 있어야 다음이 있다';
+export const SOLVER_SAVE_TEXT = '지금은 모으는 게 나아. 돈이 있어야 다음이 있져';
 export const RECOMMEND_TITLE = '할망의 추천';
 
 /** 할망의 추천 한 줄 (trim: 추천 탭·공략 노트 표 대신). solver 1위 수가 있으면 그것, 없으면 휴리스틱 다음 수. 탭하면 그 행동의 타깃이 글로우. */
@@ -61,7 +61,7 @@ export function TutorialWindow({ onClose }: { onClose: () => void }) {
       <div data-testid="tutorial-window" style={{ fontSize: 14 }}>
         {done ? (
           <div style={{ ...card, marginBottom: 8 }}>
-            <b>다 배웠다!</b> 할망의 가르침을 마쳤어요.{s.titles.includes('halmang_pupil') && <> 칭호 「{GRADUATE_TITLE}」</>}
+            <b>이제 다 가르쳤져.</b> 남은 건 네 카페여 — 네 손으로 키워 보라.{s.titles.includes('halmang_pupil') && <> 칭호 「{GRADUATE_TITLE}」</>}
           </div>
         ) : waiting ? (
           <div data-testid="tutorial-waiting" style={{ ...card, marginBottom: 8, borderColor: PALETTE.title }}>
