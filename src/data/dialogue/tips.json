@@ -1,20 +1,20 @@
 {
-  "_": "첫 열기 팁 15 (trim·ui3): 창·탭·모드를 처음 열 때 갈색 말풍선 한 줄, 한 번만(localStorage, ui/firstTip.ts). 한 줄 ≤ 22자, 지시문 없이 쓸모가 있는 문장(§6).",
+  "_": "첫 열기 팁 15 (trim·ui3): 창·탭·모드를 처음 열 때 갈색 말풍선 한 줄, 한 번만(localStorage, ui/firstTip.ts). 말하는 이는 할망이라 튜토리얼과 같은 다정한 반말(~져/~여/~아·어)로 쓴다. 한 줄 ≤ 22자, 지시문 없이 쓸모가 있는 문장(§6).",
   "tips": {
-    "build": "놓은 건 나중에 옮길 수 있다",
-    "build:corner": "조각 셋이 모이면 팻말이 선다",
-    "build:tangerine_tree": "나무 3그루까지 수확이 는다",
-    "build:parking_lot": "렌터카 손님이 동쪽에서 온다",
-    "cafe:menu": "메뉴는 4칸. 앞줄이 잘 팔린다",
-    "cafe:craft": "재료를 섞으면 새 메뉴가 난다",
-    "people:staff": "연수하면 손재주가 오른다",
-    "people:guests": "손님을 탭하면 인사할 수 있다",
-    "ledger:report": "지난달 장부. 불만 1위부터 고친다",
-    "ledger:spots": "명소에 투자하면 관광객이 온다",
-    "siteView": "자리마다 전망·그늘이 다르다",
-    "goal": "막히면 할망의 추천 한 줄을 본다",
-    "radial": "길게 누르면 버튼 넷이 뜬다",
-    "doubleTap": "두 번 탭하면 바로 올라간다",
-    "barLongPress": "아래 버튼은 길게도 눌린다"
+    "build": "놓은 건 나중에 옮길 수 있져",
+    "build:corner": "조각 셋이 모이면 팻말이 서는 거여",
+    "build:tangerine_tree": "나무는 3그루까지만 수확이 늘어",
+    "build:parking_lot": "렌터카 손님은 동쪽에서 와",
+    "cafe:menu": "앞줄에 올린 메뉴가 잘 팔려",
+    "cafe:craft": "재료를 섞으면 새 메뉴가 나와",
+    "people:staff": "연수를 보내면 손재주가 올라",
+    "people:guests": "손님을 탭하면 인사할 수 있져",
+    "ledger:report": "지난달 장부여. 불만 1위부터 고쳐",
+    "ledger:spots": "명소에 투자하면 관광객이 와",
+    "siteView": "자리마다 전망·그늘이 달라",
+    "goal": "막히면 내 추천 한 줄을 봐 보라",
+    "radial": "길게 누르면 버튼 넷이 떠",
+    "doubleTap": "두 번 탭하면 바로 올라가",
+    "barLongPress": "아래 버튼은 길게도 눌려"
   }
 }

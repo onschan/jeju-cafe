@@ -27,7 +27,7 @@ export function idleHint(state: GameState): string | null {
   const move = nextMove(state);
   if (move) return `할망: ${move.text}`;
   const unbuilt = state.unlocked.objects.filter((t) => objectDef(t).cost > 0 && !Object.values(state.objects).some((o) => o.type === t));
-  if (unbuilt.length >= 3 && state.money >= 2_000_000) return `할망: 새로 열린 시설이 ${unbuilt.length}개나 된다. 돈도 있으니 마당을 꾸며 보라`;
+  if (unbuilt.length >= 3 && state.money >= 2_000_000) return `할망: 새로 열린 시설이 ${unbuilt.length}개나 됐져. 돈도 있으니 마당을 꾸며 보라`;
   const g = currentGoal(state);
   if (g) return `할망: 다음 목표는 「${g.title}」 — ${g.desc}`;
   return null;
