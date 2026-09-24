@@ -2,7 +2,7 @@
  * 손으로 하는 튜토리얼 「할망의 가르침」 7단계 (fun-start §2 — 시작 3분).
  * 새 게임은 할망이 준 폐창고(본관)가 이미 서 있고 마을 길에서 문 앞까지 올렛길이 이어진 채 시작한다(state.ts 'tutorial'). 테이블 1개·메뉴 1개면 첫 손님이 온다.
  * 화자는 전부 할망. 장(章) 개념은 없다 — 배지는 「📖 n/7」. 그 밖의 시스템(증축·연수·명소·주차장·선물·추천…)은 창을 처음 열 때 한 줄 팁(ui/firstTip.ts)으로.
- * 글로우 칸은 고정 좌표가 아니라 strategy.ts가 실제 입지로 고른 칸(테이블 = seatScore 최고). 대사의 `{토큰}`은 strategyVars로 채운다(`{seatWhy}` = 왜 그 칸인지 한 줄).
+ * 글로우 칸은 고정 좌표가 아니라 strategy.ts가 실제 입지로 고른 칸(테이블 = seatScore 최고). 대사의 `{토큰}`은 strategyVars로 채운다(`{seatWhyPhrase}` = 그 칸을 꾸미는 관형절).
  * 진행은 sim 상태(state.tutorial.step = 끝낸 단계 수)에 있어 저장·복원되고 결정적이다.
  * 각 단계의 done 조건은 sim 상태만 본다. 창을 열었다 같은 UI 사건은 UI가 `tutorialNote` 액션으로 state.tutorial.seen에 남긴다(손님 카드 봄·목표 창 봄…).
  * 액션으로 하는 것(손님 인사 등)은 apply가 성공한 액션 타입을 seen에 넣는다(TRACKED_ACTIONS).
@@ -12,10 +12,10 @@
  *
  * 5막 — 막마다 「그 시스템이 실제로 필요해지는 순간」에 열린다. 막이 열리기 전엔 그 막의 단계가 하나도 안 뜨고, 한 막 안에서도 단계 사이에 최소 한 게임일을 둔다.
  * | 막 | 열리는 때 | 단계 | 막 보상 |
- * | 1 카페를 연다      | 새 게임 바로                     | 자리·메뉴·첫 손님 인사            | ₩30만 · 응모권 1 |
+ * | 1 카페 문 열기     | 새 게임 바로                     | 자리·메뉴·첫 손님 인사            | ₩30만 · 응모권 1 |
  * | 2 자리와 명당      | 좌석 2개 + 첫 결제               | 자리 점수 보기·첫 명당·명당 곁 자리 | ₩30만 |
- * | 3 한 단계 올린다   | 자금 ₩80만 + 좌석 3개            | 트리 올리기·붙여 놓기·직원 채용     | ₩30만 · 응모권 1 |
- * | 4 넓히고 다시 놓는다| 자금 ₩300만 또는 자리 이용률 80% | 필지 사기·다른 길 열기·옮기기       | ₩50만 |
+ * | 3 한 단계 올리기   | 자금 ₩80만 + 좌석 3개            | 트리 올리기·붙여 놓기·직원 채용     | ₩30만 · 응모권 1 |
+ * | 4 넓히고 다시 놓기 | 자금 ₩300만 또는 자리 이용률 80% | 필지 사기·다른 길 열기·옮기기       | ₩50만 |
  * | 5 우리 카페의 색   | 등급 2 또는 2년차                | 진단 읽기·대회 접수                | 칭호 「할망의 제자」·₩50만·응모권 3 |
  */
 import type { GameState, GoalReward, Pt, FeatureId, PlacedObject } from './types.ts';
@@ -251,11 +251,11 @@ function seatUse(s: GameState): number {
 }
 
 export const TUTORIAL_ACTS: TutorialActDef[] = [
-  { id: 1, name: '카페를 연다', lead: '창고는 손봐 뒀다. 시작하라.', when: '새 게임 바로', open: () => true, reward: [money(300_000), { type: 'tickets', n: 1 }] },
-  { id: 2, name: '자리와 명당', lead: '자리마다 값이 다르다.', when: `좌석 ${ACT2_SEATS}개와 첫 결제`, open: (s) => seatCount(s) >= ACT2_SEATS && soldAny(s), reward: [money(300_000)] },
-  { id: 3, name: '한 단계 올린다', lead: '늘리기보다 올리는 게 싸다.', when: `자금 ₩80만·좌석 ${ACT3_SEATS}개`, open: (s) => s.money >= ACT3_MONEY && seatCount(s) >= ACT3_SEATS, reward: [money(300_000), { type: 'tickets', n: 1 }] },
-  { id: 4, name: '넓히고 다시 놓는다', lead: '땅이 좁아졌구나.', when: '자금 ₩300만 또는 자리가 꽉 참', open: (s) => s.money >= ACT4_MONEY || seatUse(s) >= ACT4_SEAT_USE, reward: [money(500_000)] },
-  { id: 5, name: '우리 카페의 색', lead: '이제 색을 골라야 한다.', when: `등급 ${ACT5_GRADE} 또는 ${ACT5_YEAR}년차`, open: (s) => (s.grade ?? 1) >= ACT5_GRADE || s.clock.year >= ACT5_YEAR, reward: [{ type: 'title', id: 'halmang_pupil', name: '할망의 제자' }, money(500_000), { type: 'tickets', n: 3 }] },
+  { id: 1, name: '카페 문 열기', lead: '이 창고가 이제 네 카페여.', when: '새 게임 바로', open: () => true, reward: [money(300_000), { type: 'tickets', n: 1 }] },
+  { id: 2, name: '자리와 명당', lead: '자리 보는 법을 알려 주마.', when: `좌석 ${ACT2_SEATS}개와 첫 결제`, open: (s) => seatCount(s) >= ACT2_SEATS && soldAny(s), reward: [money(300_000)] },
+  { id: 3, name: '한 단계 올리기', lead: '이번엔 올리는 법을 배우자.', when: `자금 ₩80만·좌석 ${ACT3_SEATS}개`, open: (s) => s.money >= ACT3_MONEY && seatCount(s) >= ACT3_SEATS, reward: [money(300_000), { type: 'tickets', n: 1 }] },
+  { id: 4, name: '넓히고 다시 놓기', lead: '넓히는 법을 알려 주마.', when: '자금 ₩300만 또는 자리가 꽉 참', open: (s) => s.money >= ACT4_MONEY || seatUse(s) >= ACT4_SEAT_USE, reward: [money(500_000)] },
+  { id: 5, name: '우리 카페의 색', lead: '마지막은 우리 카페 색이여.', when: `등급 ${ACT5_GRADE} 또는 ${ACT5_YEAR}년차`, open: (s) => (s.grade ?? 1) >= ACT5_GRADE || s.clock.year >= ACT5_YEAR, reward: [{ type: 'title', id: 'halmang_pupil', name: '할망의 제자' }, money(500_000), { type: 'tickets', n: 3 }] },
 ];
 const ACT = new Map(TUTORIAL_ACTS.map((a) => [a.id, a]));
 export function tutorialActDef(id: number): TutorialActDef {
