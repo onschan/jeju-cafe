@@ -62,7 +62,7 @@ export const TRACKED_ACTIONS: ReadonlySet<string> = new Set<string>([
 ]);
 /** UI가 tutorialNote로 남기는 키. `look:<id>`는 미니 카드 「이게 뭐예요」 힌트(정낭·정류장·마을 길·본관), goalWindow는 목표 창을 열었다(6단계). */
 export type TutorialNoteKey = 'siteView' | 'guestCard' | 'storage' | 'goalWindow' | 'checkup'
-  | 'rushSeat1' | 'rushSeat2' | 'rushSkill' // rush-battle §3: 인사 대신 러시 조작이 손으로 배우는 것이 됐다
+  | 'rushSeat1' | 'rushSeat2' // rush-battle §3: 인사 대신 러시 조작이 손으로 배우는 것이 됐다
   | `look:${LookId}`;
 /** 처음부터 놓여 있는 것의 카드 힌트 id (MiniCard Hint) */
 export type LookId = 'gate' | 'busstop' | 'road' | 'main';
@@ -210,11 +210,6 @@ function rushCells(s: GameState): Pt[] {
 export function rushSeated(s: GameState): boolean {
   return seen(s, 'rushSeat2');
 }
-/** 러시 중 직원 스킬을 한 번 써 봤나 */
-export function rushSkillUsed(s: GameState): boolean {
-  return seen(s, 'rushSkill');
-}
-
 const money = (amount: number): GoalReward => ({ type: 'money', amount });
 const none = () => [] as Pt[];
 
@@ -338,22 +333,21 @@ export const STEPS: TutorialStepDef[] = [
   { id: 1, act: 1, key: 'seat', done: (s) => seats(s).length >= 1, targets: ['nav:build', 'tile:seat', 'tab:rest', 'build:table_out', 'build-go'], cells: seatCells },
   { id: 2, act: 1, key: 'menu', done: (s) => s.menuSlots.includes('americano'), targets: ['nav:cafe', 'tab:menu', 'menu-put'], cells: none },
   { id: 3, act: 1, key: 'rushSeat', done: rushSeated, targets: ['rush-queue-first'], cells: rushCells },
-  // 2막 자리와 사람 — 자리 점수를 보고, 명당을 만들고, 사람을 뽑아 러시 스킬을 써 본다
+  // 2막 자리와 사람 — 자리 점수를 보고, 명당을 만들고, 사람을 뽑는다 (teardown §3: 러시 스킬 단계는 걷어냈다)
   { id: 4, act: 2, key: 'site', done: (s) => seen(s, 'siteView'), targets: ['site-toggle'], cells: none },
   { id: 5, act: 2, key: 'corner', done: cornerMade, targets: (s) => ['nav:build', 'tile:charm', 'tab:corner', `corner-next:${TUTORIAL_CORNER_ID}`, `build:${cornerMissingType(s)}`, 'build-go'], cells: cornerCells },
   { id: 6, act: 2, key: 'cornerSeat', done: seatBesideCorner, targets: ['nav:build', 'tile:seat', 'tab:rest', 'build:table_out', 'build-go'], cells: cornerSeatCells },
   { id: 7, act: 2, key: 'hire', done: (s) => s.staff.length >= 1, targets: ['nav:people', 'tab:candidates', 'hire'], cells: none },
-  { id: 8, act: 2, key: 'rushSkill', done: rushSkillUsed, targets: ['rush-skill', 'nav:people'], cells: none },
   // 3막 업그레이드 — 같은 자리에서 올리고, 붙여 놓는다
-  { id: 9, act: 3, key: 'tree', done: (s) => seen(s, 'treeUpgrade'), targets: ['tree-up'], cells: none },
-  { id: 10, act: 3, key: 'combo', done: comboBeside, targets: ['nav:build', 'tile:charm', 'build-go'], cells: comboCells },
+  { id: 8, act: 3, key: 'tree', done: (s) => seen(s, 'treeUpgrade'), targets: ['tree-up'], cells: none },
+  { id: 9, act: 3, key: 'combo', done: comboBeside, targets: ['nav:build', 'tile:charm', 'build-go'], cells: comboCells },
   // 4막 확장·재배치 — 땅을 사고, 다른 길을 열고, 옮겨 본다
-  { id: 11, act: 4, key: 'parcel', done: (s) => ownedParcels(s).length >= 2, targets: ['nav:ledger', 'tab:invest', 'parcel-buy'], cells: none },
-  { id: 12, act: 4, key: 'route', done: routeOpened, targets: ['nav:build', 'tile:inflow', 'build:parking_lot', 'build-go'], cells: none },
-  { id: 13, act: 4, key: 'rearrange', done: (s) => seen(s, 'move'), targets: ['tool:move', 'tool:undo'], cells: none },
+  { id: 10, act: 4, key: 'parcel', done: (s) => ownedParcels(s).length >= 2, targets: ['nav:ledger', 'tab:invest', 'parcel-buy'], cells: none },
+  { id: 11, act: 4, key: 'route', done: routeOpened, targets: ['nav:build', 'tile:inflow', 'build:parking_lot', 'build-go'], cells: none },
+  { id: 12, act: 4, key: 'rearrange', done: (s) => seen(s, 'move'), targets: ['tool:move', 'tool:undo'], cells: none },
   // 5막 전략 — 진단을 읽고, 대회에 나가 본다
-  { id: 14, act: 5, key: 'checkup', done: (s) => seen(s, 'checkup'), targets: ['nav:ledger', 'strategy-card'], cells: none },
-  { id: 15, act: 5, key: 'contest', done: (s) => contestEntered(s), targets: ['nav:ledger', 'tab:contest', 'contest-enter'], cells: none },
+  { id: 13, act: 5, key: 'checkup', done: (s) => seen(s, 'checkup'), targets: ['nav:ledger', 'strategy-card'], cells: none },
+  { id: 14, act: 5, key: 'contest', done: (s) => contestEntered(s), targets: ['nav:ledger', 'tab:contest', 'contest-enter'], cells: none },
 ];
 export const TUTORIAL_STEPS = STEPS.length;
 /** 그 막의 마지막 단계 id */
