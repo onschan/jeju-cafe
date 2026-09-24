@@ -694,6 +694,7 @@ function Game({ onExit }: { onExit: () => void }) {
       if (import.meta.env.DEV) { (window as unknown as { __view: unknown }).__view = v; (window as unknown as { __tut: unknown }).__tut = () => tutorialTargets(getState()); } // 자동화: 튜토리얼 글로우 칸
       setViewReset(() => v.reset());
       v.setGauges(gaugesPref());
+      v.setMapInsets(SHELL_TOP, SHELL_BOTTOM); // uifix: 맵 팻말이 상단 2줄·하단 바 위로 떠다니지 않게 그 띠 안에서만 그린다
       stop = startLoop((st) => v.render(st));
       setView(v);
     })();
@@ -1015,7 +1016,7 @@ function Game({ onExit }: { onExit: () => void }) {
       <TopShell onStatus={() => setWin({ kind: 'status' })} onGoal={() => setWin({ kind: 'goal' })} onTickets={() => setWin({ kind: 'ledger', tab: 'tickets' })} />
       {!place && !cardTarget && (
         <button data-testid="home-btn" aria-label="본관으로" onClick={goHome}
-          style={{ position: 'absolute', left: 8, bottom: `calc(${SHELL_BOTTOM + 8}px + env(safe-area-inset-bottom))`, width: 56, height: 56, borderRadius: 28, border: `3px solid ${PALETTE.wood}`, background: PALETTE.paper, fontSize: 20, zIndex: 11, padding: 0, boxShadow: '0 2px 0 #0004', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Icon name="home_cafe" size={48} /></button>
+          style={{ position: 'absolute', left: 8, bottom: `calc(${SHELL_BOTTOM + 8}px + env(safe-area-inset-bottom))`, width: 56, height: 56, borderRadius: 28, border: `3px solid ${PALETTE.wood}`, background: PALETTE.paper, fontSize: 20, zIndex: 11, padding: 0, boxShadow: '0 2px 0 #0004', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Icon name="home_cafe_big" size={48} /></button>
       )}
       {place && ghostCell && <GhostButtons view={view} cell={ghostCell} ok={place.ok} canRotate={place.canRotate} onConfirm={place.onConfirm} onRotate={place.onRotate} />}
       {picks && <PlacementHintLine picks={picks} bottom={SHELL_BOTTOM + 44} state={s} type={mode.kind === 'build' ? mode.objectType : undefined} />}{/* video-patch §3.2.1: 워커 대기 중에도 한 줄은 남는다 */}
