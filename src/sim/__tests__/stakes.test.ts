@@ -21,7 +21,6 @@ import { START_BUILDERS, MAX_BUILDERS } from '../build.ts';
 import { grantReward } from '../goals.ts';
 import { noGuestsToday } from '../effects.ts';
 import { GOALS } from '../../data/index.ts';
-import { runBot } from '../bot.ts';
 
 function fresh() {
   return createInitialState(1);
@@ -381,10 +380,8 @@ describe('결정성', () => {
     expect(run()).toEqual(run());
   }, 60_000);
 
-  it('봇 3년: 파산 없음 (최저 잔고 0 위)', () => {
-    const rows = runBot(3, 1);
-    expect(Math.min(...rows.map((r) => r.minMoney))).toBeGreaterThan(0);
-  }, 60_000);
+  // 「봇 3년 파산 없음」은 balance.test.ts가 seed 1·2·3의 매달 minMoney > 40만으로 더 세게 본다.
+  // 여기서 한 번 더 돌리면 같은 3년 봇이 22초를 더 먹어 CI가 타임아웃에 걸린다 — 중복이라 지웠다.
 });
 
 // ---------- 도우미 ----------
