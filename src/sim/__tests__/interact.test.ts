@@ -5,7 +5,8 @@ import { setSlot } from '../menu.ts';
 import { spawnGuests, updateGuests, GUEST_SPEED_CELLS_PER_S, PREP_MS } from '../guests.ts';
 import { tick } from '../tick.ts';
 import { DAY_MS, HOUR_MS } from '../clock.ts';
-import { greetedToday, greetsLeftToday, canGreet, greetGuest, greetLine, canRecommend, recommendMenu, recommendFits, guestNameFor, regularFace, REQUESTS, requestDef, isRequestMet, requestHint, maybeRequest, thankIfDone, pendingRequests, doneRequests, regularGauge, regularHearts, regularOf, regularsDue, regularVisitSlot, addRegularGauge, registerRegular, GREET_DAY_MAX, RECOMMEND_TIP_RATE, GAUGE_MAX, REGULAR_TIP_RATE, REQUEST_DAY_MAX, REQUEST_TICKET_COUNT, GREET_SATISFACTION, GAUGE_HAPPY_VISIT } from '../interact.ts';
+import { guestNameFor, regularFace, REQUESTS, requestDef, isRequestMet, requestHint, maybeRequest, thankIfDone, pendingRequests, doneRequests, regularGauge, regularHearts, regularOf, regularsDue, regularVisitSlot, addRegularGauge, registerRegular, GAUGE_MAX, REGULAR_TIP_RATE, REQUEST_DAY_MAX, REQUEST_TICKET_COUNT, GAUGE_HAPPY_VISIT } from '../interact.ts';
+import { rushPhase } from '../rush.ts';
 import { hashOf } from '../say.ts';
 import { guestSay } from '../say.ts';
 import { hasIdToken } from '../../data/labels.ts';
@@ -74,97 +75,6 @@ describe('이름·얼굴', () => {
       expect(f.skin).toBeLessThan(3); expect(f.top).toBeLessThan(8);
     }
     expect(regularFace(7)).toEqual(regularFace(7));
-  });
-});
-
-describe('인사', () => {
-  test('손님당 1회, 만족 +1·게이지 +1, 대사 6종 로테이션, 하트 fx', () => {
-    const { s, g } = seatOne();
-    const sat = s.guestTypes[g.type]!.satisfaction;
-    expect(greetedToday(s)).toBe(false);
-    expect(canGreet(s, g.id).ok).toBe(true);
-    expect(apply(s, { type: 'greetGuest', guestId: g.id }).ok).toBe(true);
-    expect(greetedToday(s)).toBe(true);
-    expect(s.guestTypes[g.type]!.satisfaction).toBe(sat + GREET_SATISFACTION);
-    expect(regularGauge(s, g.type)).toBe(1);
-    expect(g.greeted).toBe(true);
-    expect(g.say).toBe(greetLine(s, g, 0));
-    expect(s.fx.at(-1)).toMatchObject({ kind: 'react', guestId: g.id, icon: 'heart' });
-    expect(apply(s, { type: 'greetGuest', guestId: g.id }).ok).toBe(false); // 두 번은 안 된다
-    expect(apply(s, { type: 'greetGuest', guestId: 'g999' }).ok).toBe(false);
-    // 로테이션: 6번째 뒤 처음으로
-    const lines = new Set<string>();
-    for (let i = 0; i < 6; i++) lines.add(greetLine(s, g, i));
-    expect(lines.size).toBe(6);
-    expect(greetLine(s, g, 6)).toBe(greetLine(s, g, 0));
-  });
-  test('하루 10회 상한, 새 날에 다시 열린다', () => {
-    const s = cafe();
-    let ok = 0;
-    for (let round = 0; round < 7; round++) {
-      s.guests = [];
-      expect(spawnGuests(s, 2)).toBe(2);
-      for (const g of s.guests) if (apply(s, { type: 'greetGuest', guestId: g.id }).ok) ok++;
-    }
-    expect(ok).toBe(GREET_DAY_MAX);
-    expect(greetsLeftToday(s)).toBe(0);
-    const rest = s.guests.find((g) => !g.greeted)!;
-    expect(canGreet(s, rest.id).reason).toBe('오늘 인사는 여기까지');
-    s.clock.day += 1;
-    expect(greetsLeftToday(s)).toBe(GREET_DAY_MAX);
-    expect(greetedToday(s)).toBe(false);
-  });
-  test('그저 그렇던 손님은 인사하면 기분이 풀린다, 가는 손님은 안 된다', () => {
-    const { s, g } = seatOne();
-    g.mood = 'meh'; g.moodReason = 'scenery';
-    greetGuest(s, g.id);
-    expect(g.mood).toBe('happy');
-    const { s: s2, g: g2 } = seatOne();
-    g2.phase = 'leaving';
-    expect(canGreet(s2, g2.id).ok).toBe(false);
-  });
-});
-
-describe('추천', () => {
-  test('주문을 기다릴 때만, 취향이 맞으면 주문이 바뀌고 팁 20%·"오 이거!"', () => {
-    const { s, g } = seatOne();
-    expect(g.menuId).toBeTruthy();
-    expect(g.mood).toBeNull();
-    const other = g.menuId === 'carrot_juice' ? 'americano' : 'carrot_juice';
-    const fits = recommendFits(s, g, other);
-    const paid = g.paid;
-    expect(canRecommend(s, g.id, g.menuId!).ok).toBe(false); // 이미 시킨 것
-    expect(canRecommend(s, g.id, 'latte').ok).toBe(false); // 메뉴판에 없다
-    expect(canRecommend(s, g.id, other).ok).toBe(true);
-    const money = s.money; // apply는 목표 판정(보상금)까지 하므로 돈은 직접 호출로 본다
-    expect(recommendMenu(s, g.id, other).match).toBe(fits);
-    expect(g.recommended).toBe(true);
-    if (fits) {
-      expect(g.menuId).toBe(other);
-      expect(s.money).toBe(money + Math.round(paid * RECOMMEND_TIP_RATE));
-      expect(g.say).toBe('오 이거!');
-    } else {
-      expect(g.menuId).not.toBe(other);
-      expect(s.money).toBe(money);
-      expect(g.say).toBe('음…');
-      expect(s.fx.at(-1)).toMatchObject({ kind: 'react', icon: 'sweat' });
-    }
-    expect(apply(s, { type: 'recommendMenu', guestId: g.id, menuId: other }).ok).toBe(false); // 손님당 1회
-  });
-  test('맞는 경우와 틀린 경우가 둘 다 있다 (스탯 취향 판정)', () => {
-    const { s, g } = seatOne();
-    const fits = ['carrot_juice', 'americano'].map((m) => recommendFits(s, g, m));
-    // 당근주스는 건강 스탯, 아메리카노는 향 — 손님층에 따라 갈린다. 판정 함수가 결정적이면 된다
-    expect(fits).toEqual(['carrot_juice', 'americano'].map((m) => recommendFits(s, g, m)));
-    // 기분이 정해진 뒤엔 안 된다
-    updateGuests(s, PREP_MS);
-    expect(g.mood).not.toBeNull();
-    expect(canRecommend(s, g.id).ok).toBe(false);
-    // 직접 호출: 틀린 추천은 만족을 깎지 않는다
-    const { s: s2, g: g2 } = seatOne();
-    const sat = s2.guestTypes[g2.type]!.satisfaction;
-    const r = recommendMenu(s2, g2.id, recommendFits(s2, g2, 'americano') ? 'carrot_juice' : 'americano');
-    if (!r.match) expect(s2.guestTypes[g2.type]!.satisfaction).toBe(sat);
   });
 });
 
@@ -320,7 +230,7 @@ describe('결정성·저장·봇', () => {
     expect(back.requests).toEqual(u.requests);
     expect(back.guests[0]!.name).toBe(u.guests[0]!.name);
   }, 30_000);
-  test('봇 반년: 인사·요청·단골이 자금을 흔들지 않고(파산 없음) 요청·게이지가 실제로 쌓인다 (1년차 밴드는 headless로)', () => {
+  test('봇 반년: 요청·단골·러시가 자금을 흔들지 않고(파산 없음) 요청·게이지가 실제로 쌓인다 (1년차 밴드는 headless로)', () => {
     const rows = runBot(0.5, 1);
     const last = rows.at(-1)!;
     expect(last.money).toBeLessThanOrEqual(12_000_000); // trim: 반년 시점 여유선 (1년차 말 ≤1,000만은 headless가 본다 — 없어진 돈 쓸 곳만큼 반년 잔고가 조금 올랐다)
@@ -334,9 +244,9 @@ describe('결정성·저장·봇', () => {
   }, 60_000);
   test('옛 저장(필드 없음)도 그대로 돈다', () => {
     const s = cafe();
-    delete s.requests; delete s.regularsGauge; delete s.regulars; delete s.greetDay;
+    delete s.requests; delete s.regularsGauge; delete s.regulars; delete s.rush; delete s.rushGrades;
     tick(s, DAY_MS);
-    expect(greetedToday(s)).toBe(false);
     expect(regularHearts(s, 'local_auntie')).toBeGreaterThanOrEqual(0);
+    expect(rushPhase(s)).toBe('idle');
   });
 });

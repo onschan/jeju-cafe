@@ -73,7 +73,8 @@ describe('손으로 하는 튜토리얼 「할망의 가르침」 5막 14단계 
     expect(LOOK_TEXT.gate).toContain('장식');
     expect(STARTER_FEATURE_IDS).toEqual([]);
     expect(createInitialState(1).tutorial).toEqual({ step: TUTORIAL_STEPS, skipped: true, seen: [] });
-    expect(TRACKED_ACTIONS.has('greetGuest')).toBe(true); // 트랙 G 손님 인사 액션 훅
+    expect(TRACKED_ACTIONS.has('greetGuest')).toBe(false); // rush-battle §6: 인사 삭제 — 3단계는 손님 카드로 통과 (러시 조작 대체는 rush2)
+    expect(TRACKED_ACTIONS.has('seatFromQueue')).toBe(true); // 러시 자리 배정 액션 훅
     expect(TRACKED_ACTIONS.has('treeUpgrade')).toBe(true); // 3막 트리 올리기
     expect(TRACKED_ACTIONS.has('move')).toBe(true); // 4막 옮기기
     // 보상은 단계가 아니라 막마다 한 번 — 마지막 막이 칭호를 준다
