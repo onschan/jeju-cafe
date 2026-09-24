@@ -46,6 +46,7 @@ import { GRADE_NAMES } from './grade.ts'; // fun-rank: 등급 조건
 import { treeOf } from './tree.ts'; // fun: 트리 단계를 Lv로
 import { titleGradeOf } from './titles.ts';
 import { ROUTE_IDS } from './entry.ts';
+import { rushGradeCount } from './rush.ts'; // 러시 등급 누적 (§5 해금 조건)
 /** 경로 손님 부르는 말 (목표 문구) */
 const ROUTE_GUEST_NAME: Record<string, string> = { bus: '버스', parking: '렌터카', olle: '올레꾼' };
 
@@ -200,6 +201,8 @@ export const conditionCheckers: CheckerMap = {
   reputation: (s, c) => n(Math.round(s.reputation), c.n),
   legendStaff: (s, c) => n(s.staff.filter((st) => titleGradeOf(st.title) === 'legend').length, c.n),
   routesOpen: (s, c) => n(ROUTE_IDS.filter((r) => r !== 'bus' && routeOpened(s, r)).length, c.n),
+  // ---- 러시 타임 (rush.ts §5): 중반 해금을 돈이 아니라 실력(등급)에 건다 ----
+  rushGrade: (s, c) => n(rushGradeCount(s, c.grade), c.n),
 };
 
 /** 목표용 시설 단계: 증축 Lv와 업그레이드 트리 단계(index+1) 중 큰 것 (fun: 트리 시설은 증축 대신 트리로 올린다) */
@@ -354,6 +357,7 @@ export function goalConditionText(c: GoalCondition): string {
     case 'reputation': return `평판 ${c.n}`;
     case 'legendStaff': return c.n === 1 ? '전설 직원 채용' : `전설 직원 ${c.n}명`;
     case 'routesOpen': return `손님 오는 길 ${c.n}종`;
+    case 'rushGrade': return c.n === 1 ? `러시 ${c.grade}등급 받기` : `러시 ${c.grade}등급 ${c.n}번`;
   }
 }
 

@@ -665,8 +665,9 @@
     "title": "자금 1,200만",
     "desc": "자금 ₩12,000,000 이상",
     "condition": {
-      "type": "money",
-      "n": 12000000
+      "type": "rushGrade",
+      "n": 1,
+      "grade": "B"
     },
     "reward": [
       {
@@ -746,8 +747,9 @@
     "title": "직원 연수 1회 보내기",
     "desc": "직원 연수 1회 완료",
     "condition": {
-      "type": "trainings",
-      "n": 1
+      "type": "rushGrade",
+      "n": 3,
+      "grade": "B"
     },
     "reward": [
       {
@@ -830,9 +832,9 @@
     "title": "명소 2곳 Lv2",
     "desc": "Lv2 이상 명소 2곳",
     "condition": {
-      "type": "spotAny",
-      "lv": 2,
-      "n": 2
+      "type": "rushGrade",
+      "n": 6,
+      "grade": "B"
     },
     "reward": [
       {
@@ -895,9 +897,9 @@
     "title": "커플 손님 인기 30",
     "desc": "커플 손님 인기 30 이상",
     "condition": {
-      "type": "guestType",
-      "guestId": "couple",
-      "n": 30
+      "type": "rushGrade",
+      "n": 10,
+      "grade": "B"
     },
     "reward": [
       {
@@ -930,8 +932,9 @@
     "title": "만족 손님 500명",
     "desc": "만족하고 간 손님 500명",
     "condition": {
-      "type": "satisfied",
-      "n": 500
+      "type": "rushGrade",
+      "n": 15,
+      "grade": "B"
     },
     "reward": [
       {
@@ -947,8 +950,9 @@
     "title": "자금 2,500만",
     "desc": "자금 ₩25,000,000 이상",
     "condition": {
-      "type": "money",
-      "n": 25000000
+      "type": "rushGrade",
+      "n": 20,
+      "grade": "B"
     },
     "reward": [
       {
@@ -1002,8 +1006,9 @@
     "title": "6개월 연속 흑자",
     "desc": "6개월 연속 흑자",
     "condition": {
-      "type": "profitMonths",
-      "n": 6
+      "type": "rushGrade",
+      "n": 1,
+      "grade": "A"
     },
     "reward": [
       {
