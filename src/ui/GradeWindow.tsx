@@ -51,7 +51,8 @@ export function GradeWindow({ onClose }: { onClose: () => void }) {
             <div key={r.key} style={{ display: 'grid', gridTemplateColumns: '4.2em 1fr auto', gap: 8, alignItems: 'center', marginBottom: 6, fontSize: 14 }}>
               <span style={{ color: r.met ? PALETTE.ok : PALETTE.ink, whiteSpace: 'nowrap' }}>{r.met ? <Icon name="check" size={12} /> : null} {r.label}</span>
               <Bar value={r.cur} max={r.need} height={12} color={r.met ? PALETTE.ok : PALETTE.bar} />
-              <b style={{ whiteSpace: 'nowrap' }}>{r.key === 'star' ? `★${r.cur}/★${r.need}` : `${fmtNum(Math.min(r.cur, r.need))}/${fmtNum(r.need)}`}</b>
+              {/* cfix: 승급은 완공 기준이라 공사 중인 명당은 0으로 보인다 — 「짓는 중 1」을 옆에 붙여 안 움직이는 것처럼 보이지 않게 */}
+              <b style={{ whiteSpace: 'nowrap' }}>{r.key === 'star' ? `★${r.cur}/★${r.need}` : `${fmtNum(Math.min(r.cur, r.need))}/${fmtNum(r.need)}`}{r.building > 0 && !r.met ? <span style={{ fontWeight: 400, color: PALETTE.inkSoft }}> · 짓는 중 {r.building}</span> : null}</b>
             </div>
           ))}
           <div style={{ fontSize: 14, color: PALETTE.inkSoft, lineHeight: 1.4, marginTop: 4 }}>
