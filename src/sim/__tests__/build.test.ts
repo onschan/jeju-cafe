@@ -10,8 +10,8 @@ import { seatsOf } from '../cafe.ts';
 import { freeSeats } from '../guests.ts';
 import { FACILITIES, objectDef, BUILD_DAYS_BY_TIER } from '../../data/index.ts';
 
-/** 건설 기간이 있는 야외 좌석 v2 시설 (테라스 좌석 등). v3에선 목표 보상으로 열리므로 테스트에서 직접 해금한다 */
-const BUILT = FACILITIES.find((f) => (f.buildDays ?? 0) > 0 && f.kind === 'seat' && !f.indoor)!;
+/** 건설 기간이 있는 좌석 v2 시설 (테라스 좌석 등). v3에선 목표 보상으로 열리므로 테스트에서 직접 해금한다 */
+const BUILT = FACILITIES.find((f) => (f.buildDays ?? 0) > 0 && f.kind === 'seat')!;
 
 test('데이터: v2 시설은 소/중/대 → 1/3/7일, 기본 오브젝트(당근밭·길·야외 테이블)는 즉시', () => {
   expect(BUILD_DAYS_BY_TIER).toEqual({ small: 1, medium: 3, large: 7 });

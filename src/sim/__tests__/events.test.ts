@@ -165,7 +165,7 @@ describe('빅 이벤트 판정·효과', () => {
 describe('주간 미니 사건 (weekly)', () => {
   it('weekly 4종은 매월 판정에서 빠지고 동시 상한에 안 센다; 토요일 아침 40%로 하나 발동(하루), 끝나도 eventEnd 알림이 없다', () => {
     const weekly = BIG_EVENTS.filter((e) => e.weekly);
-    expect(weekly.map((e) => e.id).sort()).toEqual(['ev_group_booking', 'ev_influencer_visit', 'ev_rainy_indoor', 'ev_weekend_rush']);
+    expect(weekly.map((e) => e.id).sort()).toEqual(['ev_group_booking', 'ev_influencer_visit', 'ev_rainy_shelter', 'ev_weekend_rush']);
     const s = createInitialState(1);
     for (const e of weekly) expect(eventEligible(s, e)).toBe(false);
     // 토요일(6일)로 맞추고 rng를 여러 번 돌려 한 번은 발동

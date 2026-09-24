@@ -61,41 +61,20 @@ test('증축: 주방(요리 슬롯 +1)·테라스(야외 좌석 −20%), 한 번
   expect(s.money).toBe(15_000_000);
   expect(apply(s, { type: 'expand', id: 'kitchen' }).reason).toBe('이미 증축했어요');
   expect(s.notices.at(-1)).toContain('주방 증축');
-  // 테라스: 야외 테이블 40,000, 실내 테이블은 그대로
+  // 테라스: 좌석 40,000
   expect(placeCost(s, 'table_out')).toBe(50_000);
   expect(apply(s, { type: 'expand', id: 'terrace' }).ok).toBe(true);
   expect(placeCost(s, 'table_out')).toBe(40_000);
-  expect(placeCost(s, 'table_in')).toBe(800_000);
-  expect(placeCost(s, 'carrot_field')).toBe(60_000); // 야외 좌석이 아닌 것은 그대로
+  expect(placeCost(s, 'carrot_field')).toBe(60_000); // 좌석이 아닌 것은 그대로
   const m0 = s.money;
   expect(apply(s, { type: 'place', objectType: 'table_out', x: X(0), y: Y(0) }).ok).toBe(true);
   expect(s.money).toBe(m0 - 40_000);
-  // 2층: 본관이 6석짜리 좌석이 된다 (state.main.floor2 — rooms.ts)
+  // 본관은 주방·카운터뿐 — 앉을 자리가 없다 (야외 중심 개편)
   const wh = Object.values(s.objects).find((o) => o.type === 'warehouse')!;
   expect(seatsOf(s, wh)).toBe(0);
   expect(totalSeats(s)).toBe(2);
-  expect(apply(s, { type: 'expand', id: 'floor2' }).ok).toBe(false); // 옛 경로는 닫혔다
-  s.main.floor2 = true;
-  expect(seatsOf(s, wh)).toBe(6);
-  expect(totalSeats(s)).toBe(8);
-  expect(freeSeats(s).some((o) => o.id === wh.id)).toBe(true);
+  expect(freeSeats(s).some((o) => o.id === wh.id)).toBe(false);
   expect(s.expansions).toEqual(['kitchen', 'terrace']);
-});
-
-test('2층 손님: 문 앞에 길이 있으면 본관으로 걸어가 앉는다', () => {
-  const s = bareState(1);
-  s.money = 1e9;
-  s.main.floor2 = true;
-  for (let y = 3; y <= 5; y++) placeObject(s, 'path', X(4), Y(y));
-  placeObject(s, 'path', X(3), Y(3));
-  setSlot(s, 0, 'carrot_juice');
-  s.storage['carrot'] = 10;
-  expect(spawnGuests(s, 1)).toBe(1);
-  const wh = Object.values(s.objects).find((o) => o.type === 'warehouse')!;
-  expect(s.guests[0]!.seatId).toBe(wh.id);
-  updateGuests(s, 20_000);
-  expect(s.guests[0]!.phase).toBe('seated');
-  expect(Math.round(s.guests[0]!.y)).toBe(wh.y + 1); // 본관 발자국(2×3) 가운데 줄 = 2층
 });
 
 test('인테리어: 외벽 색 0~2, 간판 10자', () => {
@@ -125,8 +104,8 @@ test('칭찬하기: 기력 +10, 직원당 하루 한 번', () => {
 
 test('시설 순회: 앉았다 일어난 손님이 40%로 닿는 시설에 들러 이용료를 내고 인기 +1, 숫자 팝업 fx', () => {
   const { s } = cafe();
-  // 자판기는 실내 전용 → 폐창고 안 (5,1); 문 앞 (3,3)→(4,3)→(4,4)→(4,5)는 정낭 위 테이블이라 (3,3),(3,4),(3,5),(3,6)? 정낭(4,6) 옆 (3,6)에 길
-  placeObject(s, 'vending', X(5), Y(1));
+  // 자판기는 이제 마당에 놓는다 (야외 중심 개편)
+  placeObject(s, 'vending', X(2), Y(3));
   for (const [x, y] of [[3, 3], [3, 4], [3, 5], [3, 6]] as const) placeObject(s, 'path', X(x), Y(y));
   expect(isVisitable('vending')).toBe(true);
   expect(isVisitable('table_out')).toBe(false);
@@ -154,7 +133,7 @@ test('시설 순회: 앉았다 일어난 손님이 40%로 닿는 시설에 들�
       updateGuests(snap, 20_000); // 걸어가서 이용
       expect(snap.money).toBe(m0 + Math.round(objectDef('vending').fee! * siteBonus(snap, Object.values(snap.objects).find((o) => o.type === 'vending')!).feeMult)); // 입지(길가) 배수 (트랙 F)
       expect(snap.visitBonus['vending']).toBe(1);
-      expect(snap.fx.at(-1)).toMatchObject({ kind: 'pop', x: X(5), y: Y(1), n: 1 });
+      expect(snap.fx.at(-1)).toMatchObject({ kind: 'pop', x: X(2), y: Y(3), n: 1 });
       updateGuests(snap, VISIT_MS + 1);
       expect(snap.guests[0]?.phase ?? 'gone').toMatch(/leaving|gone/);
     } else {

@@ -58,14 +58,14 @@ test('랭크 점수·문턱: 누적 손님/50 + 시설×2 + 해금 손님층×5,
   expect(s.fx.some((f) => f.kind === 'scene' && f.title === '새 시설이 열렸다')).toBe(true);
 });
 
-test('랭크 2에 오르면 랭크 해금 시설(실내 테이블·알전구 줄)과 손님(렌터카 가족)이 열린다', () => {
+test('랭크 2에 오르면 랭크 해금 시설(알전구 줄·풍경 종)과 손님(렌터카 가족)이 열린다', () => {
   const s = bareState(1);
   s.totalGuests = RANK_THRESHOLDS[1]! * GUESTS_PER_POINT;
   tick(s, DAY_MS); // 월초 evaluateUnlocks는 다음 달이지만 place 뒤에도 돈다
   placeObject(s, 'table_out', X(6), Y(4));
   apply(s, { type: 'place', objectType: 'path', x: X(4), y: Y(5) });
   expect(s.rank).toBe(2);
-  expect(s.unlocked.objects).toContain('table_in');
+  expect(s.unlocked.objects).toContain('deco_wind_chime');
   expect(s.unlocked.objects).toContain('deco_string_lights');
   expect(s.guestTypes['rentcar_family']!.unlocked).toBe(true);
 });
@@ -108,7 +108,7 @@ test('★ 조건 문구 해석: 월 매출·메뉴·직원·손님층 만족·�
   expect(starConditionMet(s, '천하제일')).toBe(false);
 });
 
-test('★ 승급: 다음 ★ 조건을 다 채우면 월초 검사에서 한 단계 오르고 알림·장면·★ 해금 시설(카운터·주방 증축)', () => {
+test('★ 승급: 다음 ★ 조건을 다 채우면 월초 검사에서 한 단계 오르고 알림·장면·★ 해금 시설(우산꽂이·주방 증축)', () => {
   const s = richState();
   expect(nextStarConditions(s)!.star).toBe(2);
   expect(nextStarConditions(s)!.conditions.map((c) => c.text)).toEqual(['월 매출 ₩300,000', '메뉴 15', '손님층 4 만족 30']);
@@ -120,7 +120,7 @@ test('★ 승급: 다음 ★ 조건을 다 채우면 월초 검사에서 한 단
   expect(s.star).toBe(2);
   expect(s.notices.some((n) => n.includes('★2 승급'))).toBe(true);
   expect(s.fx.some((f) => f.kind === 'scene' && f.title === '★2 승급')).toBe(true);
-  expect(s.unlocked.objects).toContain('counter');
+  expect(s.unlocked.objects).toContain('deco_umbrella_stand');
   expect(s.unlocked.objects).toContain('kitchen_ext');
   // ★3: 월 매출 80만·시그니처 1·직원 4 — 아직
   expect(checkStar(s)).toBeNull();

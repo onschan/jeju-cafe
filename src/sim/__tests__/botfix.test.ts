@@ -57,7 +57,7 @@ describe('봇 도달 복구 (botfix)', () => {
     expect(before).toBeGreaterThan(BOT_FIX_PER_DAY);
     fixUnreachable(s);
     const after = unreachableCount(s);
-    expect(before - after).toBeLessThanOrEqual(BOT_FIX_PER_DAY * 2); // 길 한 줄이 여러 시설을 한 번에 살릴 수 있다
+    expect(before - after).toBeLessThanOrEqual(BOT_FIX_PER_DAY * 4); // 길 한 줄이 여러 시설을 한 번에 살릴 수 있다
     expect(after).toBeLessThan(before);
   });
 

@@ -12,7 +12,7 @@ import { START_MONEY } from '../state.ts';
 describe('v3 시작 상태 (§5)', () => {
   it('본관 + 테이블 2 + 파라솔 1 + 올렛길로 정류장에서 자리에 닿고, 메뉴 3종이 올라가 있고, 후보 2명이 기다린다', () => {
     const s = createInitialState(1);
-    expect(SAVE_VERSION).toBe(26); // teardown §3: 동네 대항전·직원 액티브 스킬을 걷어냈다
+    expect(SAVE_VERSION).toBe(27); // 야외 중심 개편: 실내·증축·2층·별관을 걷어냈다
     expect(s.money).toBe(START_MONEY); // stakes: 시작 자금 350만
     expect(hasReachableSeat(s)).toBe(true);
     const seats = Object.values(s.objects).filter((o) => objectDef(o.type).kind === 'seat');
@@ -22,7 +22,7 @@ describe('v3 시작 상태 (§5)', () => {
     expect(s.candidates).toHaveLength(START_CANDIDATES);
     expect(s.unlocked.objects.sort()).toEqual([...new Set(START_OBJECT_IDS)].sort());
     expect(s.unlocked.menus).toEqual(INITIAL_UNLOCKED.menus);
-    expect(s.unlocked.objects).toHaveLength(18); // trim: 소라 장식·망원경을 빼고 물허벅을 넣어 18종 (주차장·오메기떡 매대·명당 조각 장식 포함)
+    expect(s.unlocked.objects).toHaveLength(17); // 야외 중심 개편: 실내 테이블을 빼 // trim: 소라 장식·망원경을 빼고 물허벅을 넣어 18종 (주차장·오메기떡 매대·명당 조각 장식 포함)
     expect(s.unlocked.menus).toHaveLength(3);
     expect(s.slots).toEqual({ barista: 1, cook: 1, hall: 2, clean: 2 });
     expect(s.storage).toEqual({});

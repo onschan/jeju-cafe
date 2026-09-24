@@ -116,7 +116,7 @@ test('v21 세이브: 5트랙이 붙인 필드가 전부 기본값으로 채워�
 
   const back = deserialize(JSON.stringify(obj));
   expect(back.version).toBe(SAVE_VERSION);
-  expect(SAVE_VERSION).toBe(26);
+  expect(SAVE_VERSION).toBe(27);
   // stakes
   expect(back.monthCosts.rent).toBe(0);
   expect(back.trend).toBeTruthy();
@@ -213,4 +213,55 @@ test('v25 세이브: 없어진 대항전·액티브 스킬 필드를 지우고 �
   expect(back.rivals).toBeTruthy();
   // 한 번 더 왕복해도 같다
   expect(JSON.parse(serialize(deserialize(serialize(back))))).toEqual(JSON.parse(serialize(back)));
+});
+
+// ---------- 야외 중심 개편: v26 → v27 (증축·2층·별관·실내 좌석 환불·치환) ----------
+
+test('v26 세이브: 본관 증축 Lv·2층 값을 돌려주고, 없어진 실내 시설·별관은 치우고, 본관은 3×2로 되돌아온다', () => {
+  const s = bareState(1);
+  s.money = 1_000_000;
+  const obj = JSON.parse(serialize(s)) as Record<string, unknown>;
+  obj.version = 26;
+  // v26 상태 흉내: 본관 Lv3(4×3 아닌 5×3) + 2층, 안에 실내 테이블 하나, 마당에 별관 하나
+  const objects = obj.objects as Record<string, Record<string, unknown>>;
+  const cells = (obj.grid as { w: number; cells: Record<string, unknown>[] });
+  const wh = Object.values(objects).find((o) => o.type === 'warehouse')!;
+  wh.w = 5; wh.h = 3;
+  (obj.main as Record<string, unknown>) = { level: 3, floor2: true, work: null, movedMonth: -1, undo: null, bgm: null, lighting: 'warm', seatLog: [], usedSeatMs: 0, openMs: 0 };
+  const wx = wh.x as number, wy = wh.y as number;
+  for (let dy = 0; dy < 3; dy++) for (let dx = 0; dx < 5; dx++) {
+    const c = cells.cells[(wy + dy) * cells.w + (wx + dx)] as Record<string, unknown>;
+    c.roomId = wh.id; c.objectId = wh.id;
+  }
+  objects['oIn'] = { id: 'oIn', type: 'table_in', x: wx + 2, y: wy + 1, placedMonth: 0 };
+  const inner = cells.cells[(wy + 1) * cells.w + (wx + 2)] as Record<string, unknown>;
+  inner.objectId = 'oIn';
+  objects['oAnnex'] = { id: 'oAnnex', type: 'annex_cafe', x: 0, y: 0, placedMonth: 0 };
+
+  const back = deserialize(JSON.stringify(obj));
+  expect(back.version).toBe(SAVE_VERSION);
+  // 없어진 시설은 사라지고, 본관은 3×2로 돌아온다
+  expect(back.objects['oIn']).toBeUndefined();
+  expect(back.objects['oAnnex']).toBeUndefined();
+  const main = Object.values(back.objects).find((o) => o.type === 'warehouse')!;
+  expect([main.w, main.h]).toEqual([3, 2]);
+  // 증축 Lv3(누적 ₩1,100만) + 2층(₩1,500만) + 없어진 시설값이 돌아온다
+  expect(back.money).toBeGreaterThanOrEqual(1_000_000 + 26_000_000);
+  expect(back.notices.some((n) => n.includes('마당에 앉아요'))).toBe(true);
+  // 없어진 본관 필드는 지워진다
+  expect((back.main as unknown as Record<string, unknown>).level).toBeUndefined();
+  expect((back.main as unknown as Record<string, unknown>).floor2).toBeUndefined();
+  // 방 바닥은 3×2만 남는다 (증축으로 커졌던 칸은 마당으로)
+  expect(back.grid.cells[(main.y + 2) * back.grid.w + main.x]!.roomId).toBeNull();
+  // 한 번 더 왕복해도 같다
+  expect(JSON.parse(serialize(deserialize(serialize(back))))).toEqual(JSON.parse(serialize(back)));
+});
+
+test('v26 세이브: 옛 실내/야외 담당 구역은 「전체」로 되돌아온다', () => {
+  const s = bareState(1);
+  const obj = JSON.parse(serialize(s)) as Record<string, unknown>;
+  obj.version = 26;
+  (obj.staff as Record<string, unknown>[]).push({ id: 'st1', name: '삼춘', role: 'hall', zone: 'indoor', level: 1, energy: 100, exp: 0, stats: { smile: 10, speed: 10, craft: 10, stamina: 10 }, skill: 'none', title: null, training: null, hiredMonth: 0, roleExp: {} } as never);
+  const back = deserialize(JSON.stringify(obj));
+  expect(back.staff.at(-1)!.zone).toBeUndefined();
 });

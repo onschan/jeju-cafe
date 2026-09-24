@@ -116,14 +116,11 @@ test('필지 특징: 9장 전부 아이콘·특징·"사면 생기는 것"(≤22
   expect(s.fx.some((f) => f.kind === 'scene' && f.title === '오름 자락')).toBe(true);
 });
 
-test('목표 사다리 새 조건: 등급·명당·단골·2층·평판·전설 직원·경로 수 판정과 문구', () => {
+test('목표 사다리 새 조건: 등급·명당·단골·평판·전설 직원·경로 수 판정과 문구', () => {
   const s = bareState(1);
   s.grade = 3;
   expect(conditionProgress(s, { type: 'grade', n: 4 })).toEqual({ cur: 3, max: 4 });
   expect(conditionProgress(s, { type: 'corners', n: 5 }).cur).toBe(0); // 목표 corners는 명당 도감(codex.corners, 트랙 C)
-  expect(conditionProgress(s, { type: 'secondFloor' })).toEqual({ cur: 0, max: 1 });
-  s.main.floor2 = true;
-  expect(conditionProgress(s, { type: 'secondFloor' })).toEqual({ cur: 1, max: 1 });
   s.reputation = 81.4;
   expect(conditionProgress(s, { type: 'reputation', n: 80 })).toEqual({ cur: 81, max: 80 });
   expect(conditionProgress(s, { type: 'legendStaff', n: 1 })).toEqual({ cur: 0, max: 1 });
@@ -131,15 +128,14 @@ test('목표 사다리 새 조건: 등급·명당·단골·2층·평판·전설 
   expect(conditionProgress(s, { type: 'regulars', n: 30 }).max).toBe(30);
   expect(goalConditionText({ type: 'grade', n: 4 })).toBe('등급 「제주 명소」');
   expect(goalConditionText({ type: 'corners', n: 5 })).toBe('명당 5개');
-  expect(goalConditionText({ type: 'secondFloor' })).toBe('본관 2층 올리기');
   expect(goalConditionText({ type: 'legendStaff', n: 1 })).toBe('전설 직원 채용');
   expect(goalConditionText({ type: 'routesOpen', n: 4 })).toBe('손님 오는 길 4종');
-  // 사다리: 후반 목표(g45~)에 자금 목표가 없고, 등급 3·4·5·본관 Lv3/4·2층·직원이 들어 있다 (trim: 목표 60)
+  // 사다리: 후반 목표(g45~)에 자금 목표가 없고, 등급 3·4·5·필지·전망 좌석·직원이 들어 있다
   const late = GOALS.slice(52).map((g) => g.condition); // midgame: 2년차 구간 목표 8개가 앞에 끼어 44 → 52
   expect(late.some((c) => c.type === 'money')).toBe(false);
   expect(late.filter((c) => c.type === 'grade').map((c) => (c as { n: number }).n).sort()).toEqual([3, 4, 5]);
-  expect(late.filter((c) => c.type === 'mainLevel').map((c) => (c as { lv: number }).lv).sort()).toEqual([3, 4]);
-  expect(late.some((c) => c.type === 'secondFloor')).toBe(true);
+  expect(late.filter((c) => c.type === 'parcels').map((c) => (c as { n: number }).n).sort()).toEqual([6, 7, 9]);
+  expect(late.some((c) => c.type === 'siteSeats')).toBe(true);
   expect(late.some((c) => c.type === 'staff')).toBe(true);
   // 조건 문구는 전부 있다 (switch 누락 방지)
   for (const g of GOALS) expect(goalConditionText(g.condition).length, g.id).toBeGreaterThan(0);

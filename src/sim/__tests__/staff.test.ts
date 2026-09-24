@@ -580,8 +580,8 @@ test('배치: 홀 직원이 맡은 구역 만족 +2, 다른 구역 −1. 저녁 
   s.staff.push(staffWith({ smile: 40 }, 'hall'));
   const st = s.staff[0]!;
   expect(zoneOf(st)).toBe('all');
-  expect(apply(s, { type: 'setStaffZone', staffId: st.id, zone: 'outdoor' }).ok).toBe(true);
-  expect(zoneOf(st)).toBe('outdoor');
+  expect(apply(s, { type: 'setStaffZone', staffId: st.id, zone: 'yard' }).ok).toBe(true);
+  expect(zoneOf(st)).toBe('yard');
   expect(apply(s, { type: 'setStaffNight', staffId: st.id, on: true }).ok).toBe(true);
   expect(isNightShift(st)).toBe(true);
   s.clock.hour = 20;
@@ -593,7 +593,7 @@ test('배치: 홀 직원이 맡은 구역 만족 +2, 다른 구역 −1. 저녁 
   expect(st.energy).toBe(50 + 40 - NIGHT_ENERGY_COST);
   // 쉬는 직원은 구역을 못 맡는다
   apply(s, { type: 'assign', staffId: st.id, role: null });
-  expect(apply(s, { type: 'setStaffZone', staffId: st.id, zone: 'indoor' }).ok).toBe(false);
+  expect(apply(s, { type: 'setStaffZone', staffId: st.id, zone: 'corner' }).ok).toBe(false);
 });
 
 test('채용 미리보기: 「우리 카페에 오면」 3줄과 지금 필요한 직종', () => {

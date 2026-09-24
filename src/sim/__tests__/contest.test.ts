@@ -357,9 +357,8 @@ describe('순위 보상 4행', () => {
 // ---------- 트로피 ----------
 
 describe('트로피', () => {
-  test('실내 1×1 · 받은 개수만큼만 놓는다', () => {
+  test('마당 1×1 · 받은 개수만큼만 놓는다', () => {
     const def = objectDef(TROPHY_TYPE);
-    expect(def.indoor).toBe(true);
     expect([def.w, def.h]).toEqual([1, 1]);
     expect(def.cost).toBe(0);
     const s = bareState();

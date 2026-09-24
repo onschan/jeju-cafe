@@ -40,12 +40,11 @@ describe('밤 밝기·만족', () => {
     expect(lightAt(s, X(8), Y(1)).lit).toBe(false);
   });
 
-  test('18시부터 야외 자리: 가로등 +2 · 정원등 0 · 조명 없음 −2 (경치 단위 /10), 낮·실내 자리는 0', () => {
+  test('18시부터 마당 자리: 가로등 +2 · 정원등 0 · 조명 없음 −2 (경치 단위 /10), 낮엔 0', () => {
     const s = bareState(1);
     const dark = placeObject(s, 'table_out', X(0), Y(5));
     const lit = placeObject(s, 'table_out', X(1), Y(1));
     const soft = placeObject(s, 'table_out', X(7), Y(7));
-    const indoor = placeObject(s, 'table_in', X(4), Y(2));
     placeObject(s, 'streetlight', X(0), Y(0));
     placeObject(s, 'garden_lamp', X(6), Y(6));
     s.clock.hour = NIGHT_HOUR - 1;
@@ -54,7 +53,6 @@ describe('밤 밝기·만족', () => {
     expect(nightSeatPoints(s, dark)).toBe(DARK_SAT);
     expect(nightSeatPoints(s, lit)).toBe(STREETLIGHT_SAT);
     expect(nightSeatPoints(s, soft)).toBe(0);
-    expect(nightSeatPoints(s, indoor)).toBe(0);
     expect(nightSatisfaction(s, dark)).toBeCloseTo(DARK_SAT / 10);
     // 손님 만족 훅에 들어간다
     const g = { type: 'tourist', mood: null } as unknown as Guest;
@@ -64,7 +62,6 @@ describe('밤 밝기·만족', () => {
     expect(nightSeatLine(s, lit)).toMatchObject({ bad: false });
     expect(nightSeatLine(s, lit)!.text).toContain('가로등');
     expect(nightSeatLine(s, soft)).toMatchObject({ bad: false });
-    expect(nightSeatLine(s, indoor)).toBeNull();
     expect(nightSeatLine(s, Object.values(s.objects).find((o) => o.type === 'streetlight')!)).toBeNull();
   });
 });

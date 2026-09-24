@@ -11,7 +11,7 @@ test('도로·올렛길·정낭·정류장은 걷기 가능, 흙·당근밭·건
   expect(isWalkable(s, X(0), Y(7))).toBe(true);  // 정류장
   expect(isWalkable(s, X(4), Y(6))).toBe(true);  // 정낭
   expect(isWalkable(s, X(5), Y(5))).toBe(false); // 흙
-  expect(isWalkable(s, X(3), Y(1))).toBe(true);  // 폐창고 바닥(실내, 가구 없음)은 걷는다
+  expect(isWalkable(s, X(3), Y(1))).toBe(false); // 본관 안은 주방·카운터라 손님이 안 들어간다
   placeObject(s, 'carrot_field', X(0), Y(0));
   expect(isWalkable(s, X(0), Y(0))).toBe(false); // 당근밭
   placeObject(s, 'path', X(5), Y(5));

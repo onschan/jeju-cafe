@@ -11,7 +11,7 @@ import { dailyCleanliness, cleanGuestMult, cleanSatisfaction, wearOf, repairCost
 import { seatsOf } from '../cafe.ts';
 import { monthlyYieldOf } from '../orchard.ts';
 import { effectMult } from '../effects.ts';
-import { OBJECTS, MENUS, FACILITIES, FACILITY_X_IDS, FACILITY_X_GOAL_REFS, ITEMS, ITEM_FIT_EXTRA, objectDef, buildGroupOf } from '../../data/index.ts';
+import { OBJECTS, MENUS, FACILITIES, FACILITY_X_IDS, FACILITY_X_GOAL_REFS, ITEMS, ITEM_FIT_EXTRA, REMOVED_FACILITY_IDS, objectDef, buildGroupOf } from '../../data/index.ts';
 import type { GameState } from '../types.ts';
 import facilitiesJson from '../../data/generated/v2/facilities.json' with { type: 'json' };
 import facilitiesXJson from '../../data/facilities_x.json' with { type: 'json' };
@@ -27,7 +27,7 @@ describe('데이터', () => {
     expect(FACILITY_X_IDS.size).toBe(5);
     const rowIds = new Set([...facilitiesJson, ...facilitiesXJson].map((f) => f.id));
     expect(rowIds.size).toBe(facilitiesJson.length + facilitiesXJson.length);
-    for (const id of rowIds) expect(objectDef(id).id).toBe(id);
+    for (const id of rowIds) { if (REMOVED_FACILITY_IDS.has(id)) continue; expect(objectDef(id).id).toBe(id); }
     expect(FACILITIES.filter((f) => FACILITY_X_IDS.has(f.id)).length).toBe(5);
     expect(new Set(OBJECTS.map((o) => o.id)).size).toBe(OBJECTS.length);
     // 밀도 가드: 「짓기 창에서 돈 주고 고르는 종류」가 60을 넘지 않는다 (big 통합).

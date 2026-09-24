@@ -19,7 +19,7 @@ test('데이터: 아이템 12+ 종, 방석은 좌석에 잘 맞고 농원(당근
   // v1 분류가 없는 v2 아이템(안경)은 잘 맞는 시설(서가·갤러리)에만 ×2, 당근밭·야외 테이블엔 0 (QA 1차 P2 #24)
   const glasses = itemDef('glasses');
   expect(glasses.fitSlots).toBeUndefined();
-  expect(itemEffect(glasses, objectDef('table_in'))).toBe(glasses.value * 2);
+  expect(itemEffect(glasses, objectDef('window_seat'))).toBe(glasses.value * 2);
   expect(itemEffect(glasses, objectDef('carrot_field'))).toBe(0);
   expect(itemEffect(glasses, objectDef('table_out'))).toBe(0);
   // 씨앗(잘 맞는 시설 목록 없음)은 어디에나

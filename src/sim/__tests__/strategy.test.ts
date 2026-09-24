@@ -8,7 +8,7 @@ import { mainBuilding } from '../rooms.ts';
 import { reachMap, busStopPos, walkableNeighborsOf, cellKey, isDoorReachable } from '../path.ts';
 import { parkingSites } from '../entry.ts';
 import {
-  bestMainCells, bestSeatCells, bestSeatCellsHeuristic, bestWallCell, bestCornerCells, cornerScoreIfPlaced, bestIndoorSeats, bestParkingCells, bestSpotToInvest,
+  bestMainCells, bestSeatCells, bestSeatCellsHeuristic, bestWallCell, bestCornerCells, cornerScoreIfPlaced, bestParkingCells, bestSpotToInvest,
   nextMove, strategyVars, fillTemplate, wallSheltered, walkFromEntry, SEAT_SCORE_CELLS, TREE_TYPE,
 } from '../strategy.ts';
 import type { GameState, Pt } from '../types.ts';
@@ -93,20 +93,6 @@ describe('할망의 정석 (strategy.ts): 글로우 칸은 실제 수치로 고�
     expect(r.ok).toBe(true);
     const tree = Object.values(s.objects).find((o) => o.type === TREE_TYPE)!;
     expect(tree.type).toBe(TREE_TYPE);
-  });
-
-  it('bestIndoorSeats: 본관 빈 바닥 중 벽에 붙은 칸(북쪽 벽 우선)', () => {
-    const s = yardWithPath();
-    const m = mainBuilding(s)!;
-    const cells = bestIndoorSeats(s, 3);
-    expect(cells.length).toBeGreaterThan(0);
-    expect(cells[0]!.y).toBe(m.y); // 북쪽 벽 = 바다 방향
-    // fix-indoor 뒤 통로·고정 설비 검사로 벽 칸이 모자랄 수 있다 — 벽 칸이 앞에 오고(내림차순), 첫 칸은 벽
-    const onWall = (p: { x: number; y: number }) => p.x === m.x || p.y === m.y || p.x === m.x + m.w! - 1 || p.y === m.y + m.h! - 1;
-    expect(onWall(cells[0]!)).toBe(true);
-    for (let i = 1; i < cells.length; i++) expect(Number(onWall(cells[i]!))).toBeLessThanOrEqual(Number(onWall(cells[i - 1]!)));
-    s.main.work = { kind: 'expand', to: 2, days: 3 } as never;
-    expect(bestIndoorSeats(s, 3)).toEqual([]);
   });
 
   it('bestParkingCells: 마을 길에 접한 놓을 수 있는 자리 중 문 앞과 가장 가까운 것', () => {

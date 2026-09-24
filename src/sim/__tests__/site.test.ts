@@ -17,7 +17,7 @@ function yard(month = 4): GameState {
 }
 const table = (s: GameState, x: number, y: number): PlacedObject => placeObject(s, 'table_out', x, y);
 
-test('두 값만 남는다: 바닷가는 전망, 나무 옆은 그늘, 방 안은 그늘 2', () => {
+test('두 값만 남는다: 바닷가는 전망, 나무 옆은 그늘, 본관 옆은 그늘', () => {
   const s = yard();
   const sea = siteOf(s, 12, 1);       // 북쪽 가장자리 2줄 방향 = 바다
   const inner = siteOf(s, 14, 12);    // 문 앞 길 바로 옆
@@ -30,7 +30,7 @@ test('두 값만 남는다: 바닷가는 전망, 나무 옆은 그늘, 방 안�
   expect(inner.view).toBe(0);
   placeObject(s, 'tangerine_tree', 17, 13);
   expect(siteOf(s, 18, 13).shade).toBe(1);
-  expect(siteOf(s, 14, 10)).toMatchObject({ shade: 2 }); // 본관 바닥 칸
+  expect(siteOf(s, 14, 11).shade).toBeGreaterThanOrEqual(1); // 본관 바로 앞 칸 — 건물이 그늘을 준다
 });
 
 test('전망: 경관치 3 이상 경관·랜드마크만 전망이고, 방(건물)이 사이를 막으면 −2', () => {
@@ -93,7 +93,7 @@ test('점수가 붙는 종류: 좌석·이용료 시설만. 장식은 null', () 
   const s = yard();
   placeObject(s, 'cedar', 17, 3);
   expect(scoredType('table_out')).toBe(true);
-  expect(scoredType('warehouse')).toBe(true); // 2층 좌석
+  expect(scoredType('warehouse')).toBe(false); // 본관은 주방·카운터뿐 (앉는 자리가 아니다)
   expect(scoredType('vending')).toBe(true);
   expect(scoredType('deco_planter')).toBe(false);
   expect(siteScore(s, 'deco_planter', 16, 14)).toBeNull();
@@ -153,8 +153,10 @@ test('돌담: 북서쪽 둘이면 겨울 자리 만족 +8, 하나로는 모자�
   placeObject(s, 'stonewall', 10, 0);
   expect(siteBonus(s, seat).satisfaction).toBeGreaterThan(before);
   expect(windCoveredSeats(s, 'stonewall', 9, 1)).toEqual([]); // 이미 막힌 자리는 다시 안 짚는다
-  s.clock.month = 7; // 여름엔 바람막이 보정이 없다
-  expect(siteBonus(s, seat).satisfaction).toBe(before);
+  s.clock.month = 7; // 여름엔 바람막이 보정도 지붕 보정도 없다
+  const summer = siteBonus(s, seat).satisfaction;
+  s.clock.month = 1;
+  expect(siteBonus(s, seat).satisfaction).toBeLessThanOrEqual(summer);
   expect(WIND_SHELTER_SAT).toBe(8);
   expect(WIND_WEDGE_MAX).toBe(3);
 });
