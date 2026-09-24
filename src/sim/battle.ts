@@ -28,10 +28,10 @@ import { pushFx } from './fx.ts';
 import { josa } from './josa.ts';
 import { fmtNum } from './format.ts';
 import { applyRewards } from './goals.ts';
-import { RIVALS, activeRivals, rivalDef, rivalAxes, totalOf, elapsedMonths, scoreboard, rivalsState } from './rival.ts';
+import { RIVALS, activeRivals, rivalDef, rivalAxes, myAxes, totalOf, elapsedMonths, scoreboard, rivalsState } from './rival.ts';
 import { registerRegular, regularList, forgetRegular } from './interact.ts';
 import { guestTypeDef } from '../data/index.ts';
-import { RUSH_WEEKDAY, weekdayOf } from './rush.ts'; // 대항전은 그달 마지막 러시 날(마지막 주 토요일)에 붙는다
+import { RUSH_WEEKDAY, weekdayOf, rushExpectedScore, rushArrivals, RUSH_GRADE_B } from './rush.ts'; // 대항전은 그달 마지막 러시 날(마지막 주 토요일)에 붙는다
 
 // ---------- 일정 ----------
 
@@ -132,38 +132,36 @@ function hash32(...xs: number[]): number {
   return h >>> 0;
 }
 
-/** 상대 점수: 성장 곡선 × 배수 + 해시 난수 + 우리 등급 보정 */
-export const BATTLE_SCORE_PER = 3.4;      // 네 항목 총점 1점 = 대항전 3.4점 (네 항목 100점 만점 = 340점, 우리 상한과 같은 자리)
+/** 상대 점수는 **우리 러시 기준 점수(par)에 붙여 잰다**.
+ *  대항전 점수가 곧 그날 러시 점수이므로, 상대를 절대 점수로 두면 카페가 커질수록 저절로 이긴다 —
+ *  그러면 「조작이 결과를 가른다」(§7-2)가 아니라 「규모가 결과를 가른다」가 된다.
+ *  그래서 상대는 「우리가 줄을 다 받았을 때 점수」의 몇 할로 잡고, 그 할을 상대의 네 항목 세력으로 흔든다.
+ *  대등한 상대(세력이 우리와 같음)는 par의 BATTLE_RIVAL_PAR — 무조작(B 언저리)으로는 지고, A 이상이면 이긴다. */
+export const BATTLE_RIVAL_PAR = 0.9;     // 대등한 상대가 받는 par 비율 (B 문턱 0.7 < 0.95 < A 문턱 1.0)
+export const BATTLE_SCORE_PER = 3.4;      // (예전 절대 점수 환산 — 예고 카드의 세력 표시에만 남는다)
 export const BATTLE_NOISE = 41;           // 난수 폭 ±20
-export const BATTLE_GRADE_ADJ = 12;       // 우리 등급이 한 칸 오를 때마다 상대도 이만큼 세진다
+export const BATTLE_GRADE_ADJ = 0.04;     // 우리 등급이 한 칸 오를 때마다 상대 몫이 이만큼 는다
+/** 상대 세력 ÷ (상대 + 우리). 0.5면 대등, 크면 상대가 세다. */
+export function rivalStrength(state: GameState, def: RivalDef): number {
+  const months = elapsedMonths(state);
+  const theirs = Math.max(1, totalOf(rivalAxes(state.seed, def, months)));
+  const mine = Math.max(1, totalOf(myAxes(state)));
+  return theirs / (theirs + mine);
+}
 export function rivalBattleScore(state: GameState, def: RivalDef): number {
   const months = elapsedMonths(state);
-  const curve = totalOf(rivalAxes(state.seed, def, months)) * BATTLE_SCORE_PER;
+  const par = rushExpectedScore(state, rushArrivals(state));
+  const share = BATTLE_RIVAL_PAR * (rivalStrength(state, def) * 2) + BATTLE_GRADE_ADJ * Math.max(0, gradeOf(state) - 1);
   const noise = (hash32(state.seed, months, def.name.length, 131) % BATTLE_NOISE) - (BATTLE_NOISE - 1) / 2;
-  const grade = BATTLE_GRADE_ADJ * Math.max(0, gradeOf(state) - 1);
-  return Math.max(0, Math.round(curve + noise + grade));
+  return Math.max(0, Math.round(par * share + noise));
 }
 
 /** 무조작 자동 해결 점수 (§2 「봇·헤드리스는 자동 해결」).
- *  §2의 점수식(받은 손님 수 × 10 + 팁 + 자리 보너스)을 스탯으로 옮긴 것이다.
- *  **받은 손님 수는 줄 길이·빈 자리·서빙 손이 함께 정한다** — 자리만 늘려도, 직원만 늘려도 점수가 안 오른다.
- *  조작(자리 배정·스킬·밀린 주문)은 러시가 이 위에 얹는다 (§7-2: 조작이 20% 이상 바꾼다). */
-export const BATTLE_LINE = 20;            // 줄은 최대 20명 (§2 난이도 곡선)
-export const BATTLE_OWNER_GUESTS = 4;     // 주인 혼자 받는 몫
-export const BATTLE_HALL_GUESTS = 4;      // 홀 한 몫이 더 받는 손님
-export const BATTLE_KITCHEN_GUESTS = 3;   // 조리 한 몫이 더 받는 손님
-export const BATTLE_PER_GUEST = 10;       // 받은 손님 한 명 = 10점 (§2)
-export const BATTLE_TIP_PER_REP = 0.6;    // 평판이 팁으로
-export const BATTLE_CLEAN_PER = 0.3;      // 깨끗하면 자리 보너스
+ *  러시를 손대지 않고 흘려보내면 자동 착석(계수 0.6)만 일어나 대개 B 언저리에 머문다 —
+ *  그 자리를 그대로 점수로 옮긴다. 러시가 실제로 돌면 tick.ts가 러시 점수로 덮어쓴다. */
+export const BATTLE_AUTO_RATIO = RUSH_GRADE_B; // 무조작은 B 문턱 언저리
 export function autoBattleScore(state: GameState): number {
-  const hands = BATTLE_OWNER_GUESTS + roleHeads(state, 'hall') * BATTLE_HALL_GUESTS
-    + (roleHeads(state, 'barista') + roleHeads(state, 'cook')) * BATTLE_KITCHEN_GUESTS;
-  const served = Math.min(BATTLE_LINE, totalSeats(state), hands);
-  return Math.max(0, Math.round(
-    served * BATTLE_PER_GUEST
-    + state.reputation * BATTLE_TIP_PER_REP
-    + cleanValue(state) * BATTLE_CLEAN_PER,
-  ));
+  return Math.max(0, Math.round(rushExpectedScore(state, rushArrivals(state)) * BATTLE_AUTO_RATIO));
 }
 
 /** 예상 승률 % (예고 카드). 점수 차를 완만한 계단으로 바꾼다. */

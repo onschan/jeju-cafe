@@ -5,7 +5,7 @@ import { tick, STEP_MS } from '../tick.ts';
 import { DAY_MS } from '../clock.ts';
 import {
   STEPS, TUTORIAL_STEPS, TUTORIAL_ACTS, TUTORIAL_STEP_GAP_DAYS, TRACKED_ACTIONS, STARTER_FEATURE_IDS, LOOK_TEXT, currentTutorialStep, nextTutorialStep, checkTutorial, tutorialDone, pathConnected, noteTutorial, dialogueSeen,
-  skipTutorialChapter, skipTutorialStep, stepTargets, cornerMade, cornerMissingType, cornerCells, CORNER_PIECE_TYPES, CORNER_RADIUS, TUTORIAL_CORNER_ID, greetedGuest, recommendedMainCells,
+  skipTutorialChapter, skipTutorialStep, stepTargets, cornerMade, cornerMissingType, cornerCells, CORNER_PIECE_TYPES, CORNER_RADIUS, TUTORIAL_CORNER_ID, rushSeated, rushSkillUsed, recommendedMainCells,
   actOpen, actDone, actsDone, currentAct, waitingForAct, ACT2_SEATS,
 } from '../tutorial.ts';
 import { canOpen } from '../goals.ts';
@@ -46,13 +46,15 @@ function untilGuest(s: GameState, maxMs = 60_000): number {
 }
 const FORBIDDEN = /→ 지금|정석|시뮬|공략|굴려 보니/;
 
-describe('손으로 하는 튜토리얼 「할망의 가르침」 5막 14단계 (fun-start + 단계 나눔)', () => {
-  it('데이터: sim STEPS 14개와 dialogue/tutorial.json 14개가 key·막으로 1:1, 5막에 3·3·3·3·2단계, 대사는 2~3줄·22자 이하·금지어 없음, 완성 시작 상태(starter)는 끝난 채', () => {
-    expect(TUTORIAL_STEPS).toBe(14);
-    expect(STEPS.map((s) => s.id)).toEqual(Array.from({ length: 14 }, (_, i) => i + 1));
-    expect(STEPS.map((s) => s.key)).toEqual(['seat', 'menu', 'greet', 'site', 'corner', 'cornerSeat', 'tree', 'combo', 'hire', 'parcel', 'route', 'rearrange', 'checkup', 'contest']);
+describe('손으로 하는 튜토리얼 「할망의 가르침」 5막 15단계 (fun-start + rush-battle §3 러시 단계)', () => {
+  it('데이터: sim STEPS 15개와 dialogue/tutorial.json 15개가 key·막으로 1:1, 5막에 3·5·2·3·2단계, 대사는 2~3줄·22자 이하·금지어 없음, 완성 시작 상태(starter)는 끝난 채', () => {
+    expect(TUTORIAL_STEPS).toBe(15);
+    expect(STEPS.map((s) => s.id)).toEqual(Array.from({ length: 15 }, (_, i) => i + 1));
+    // rush-battle §3: 인사(greet)는 빠지고 「첫 러시」·「직원 스킬」이 들어왔다
+    expect(STEPS.map((s) => s.key)).toEqual(['seat', 'menu', 'rushSeat', 'site', 'corner', 'cornerSeat', 'hire', 'rushSkill', 'tree', 'combo', 'parcel', 'route', 'rearrange', 'checkup', 'contest']);
+    expect(STEPS.some((s) => s.key === 'greet')).toBe(false);
     expect(TUTORIAL_ACTS.map((a) => a.id)).toEqual([1, 2, 3, 4, 5]);
-    expect(TUTORIAL_ACTS.map((a) => STEPS.filter((st) => st.act === a.id).length)).toEqual([3, 3, 3, 3, 2]);
+    expect(TUTORIAL_ACTS.map((a) => STEPS.filter((st) => st.act === a.id).length)).toEqual([3, 5, 2, 3, 2]);
     expect(DIALOGUE.map((d) => [d.id, d.key, d.act])).toEqual(STEPS.map((s) => [s.id, s.key, s.act]));
     // 막 예고 한 줄도 22자 이하·금지어 없음
     for (const a of TUTORIAL_ACTS) { expect(a.lead.length, a.lead).toBeLessThanOrEqual(22); expect(a.lead).not.toMatch(FORBIDDEN); expect(a.when.length).toBeGreaterThan(0); }
@@ -73,7 +75,7 @@ describe('손으로 하는 튜토리얼 「할망의 가르침」 5막 14단계 
     expect(LOOK_TEXT.gate).toContain('장식');
     expect(STARTER_FEATURE_IDS).toEqual([]);
     expect(createInitialState(1).tutorial).toEqual({ step: TUTORIAL_STEPS, skipped: true, seen: [] });
-    expect(TRACKED_ACTIONS.has('greetGuest')).toBe(false); // rush-battle §6: 인사 삭제 — 3단계는 손님 카드로 통과 (러시 조작 대체는 rush2)
+    expect(TRACKED_ACTIONS.has('greetGuest')).toBe(false); // rush-battle §3·§6: 인사 액션은 삭제됐다
     expect(TRACKED_ACTIONS.has('seatFromQueue')).toBe(true); // 러시 자리 배정 액션 훅
     expect(TRACKED_ACTIONS.has('treeUpgrade')).toBe(true); // 3막 트리 올리기
     expect(TRACKED_ACTIONS.has('move')).toBe(true); // 4막 옮기기
@@ -169,16 +171,19 @@ describe('손으로 하는 튜토리얼 「할망의 가르침」 5막 14단계 
     expect(s.tutorial.step).toBe(2);
     expect(canOpen(s)).toBe(true);
     tick(s, DAY_MS * TUTORIAL_STEP_GAP_DAYS);
-    // 3: 첫 손님 — 손님이 오면 그 손님 칸, 탭해서 인사(트랙 G greetGuest) 또는 손님 카드
+    // 3: 첫 러시 — 줄에서 손님 둘을 앉힌다 (UI가 rushSeat1·rushSeat2 표식을 남긴다). 글로우는 첫 자리 칸
     seeDialogue(s);
     const wait = untilGuest(s);
     expect(s.guests.length).toBeGreaterThan(0);
     expect(wait).toBeLessThanOrEqual(30_000); // 1배속 30초 안에 첫 손님
-    const g = s.guests[0]!;
-    expect(STEPS[2]!.cells(s)).toEqual([{ x: Math.round(g.x), y: Math.round(g.y) }]);
-    expect(greetedGuest(s)).toBe(false);
+    expect(STEPS[2]!.cells(s)).toEqual([TUTORIAL_SEAT_CELL]);
+    expect(rushSeated(s)).toBe(false);
     expect(checkTutorial(s)).toBeNull();
-    expect(apply(s, { type: 'tutorialNote', key: 'guestCard' }).ok).toBe(true);
+    expect(apply(s, { type: 'tutorialNote', key: 'rushSeat1' }).ok).toBe(true);
+    expect(rushSeated(s)).toBe(false); // 한 명으로는 아직
+    expect(checkTutorial(s)).toBeNull();
+    expect(apply(s, { type: 'tutorialNote', key: 'rushSeat2' }).ok).toBe(true);
+    expect(rushSeated(s)).toBe(true);
     expect(s.tutorial.step).toBe(3);
     // 1막 끝 — 보상 상자 하나 (₩30만 · 응모권 1)
     expect(lastReward(s)).toMatchObject({ refId: 'act1' });
@@ -203,7 +208,7 @@ describe('손으로 하는 튜토리얼 「할망의 가르침」 5막 14단계 
 
   it('3막은 자금 ₩80만·좌석 3개에서 열린다 (그 전엔 단계가 하나도 안 뜬다)', () => {
     const s = tutorialState();
-    s.tutorial.step = 6; // 1~2막을 끝낸 모습
+    s.tutorial.step = 8; // 1~2막을 끝낸 모습 (2막은 5단계)
     s.money = 500_000;
     expect(actOpen(s, 3)).toBe(false);
     expect(currentTutorialStep(s)).toBeNull();

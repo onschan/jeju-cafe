@@ -21,8 +21,8 @@ import { fmtNum } from './format.ts';
 
 /** trim에서 없어진 것들이 들어 있는 v20 세이브를 올린다 (환불·치환) */
 export const MIGRATE_FROM = 20;
-/** big·mix·all 통합에서 붙은 필드는 전부 optional이라 backfill만으로 v21 → v22 → v23 → v24가 된다 (덜어낼 것도 없다) */
-export const BACKFILL_FROM = [20, 21, 22, 23];
+/** big·mix·all·rushall 통합에서 붙은 필드는 전부 optional이라 backfill만으로 v21 → … → v25가 된다 (덜어낼 것도 없다) */
+export const BACKFILL_FROM = [20, 21, 22, 23, 24];
 /** 이어서 열 수 있는 가장 낮은 세이브 버전 (이보다 낮으면 백업 뒤 새 게임) */
 export const OLDEST_LOADABLE = Math.min(...BACKFILL_FROM);
 

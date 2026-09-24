@@ -18,6 +18,7 @@ import { setGuideFocus } from './tutorialHighlight';
 import { Icon } from './Icon';
 import { PALETTE } from './frame';
 import { TutorialWindow } from './TutorialWindow';
+import { inRushWeek, rushPrepTodo } from './rushPrep'; // rush-battle §6: 러시 준비가 오늘 할 일의 앞
 
 /** 오늘 할 일 줄 높이 (상단 2줄 중 아래 한 줄) */
 export const TODO_LINE_H = 28;
@@ -26,7 +27,7 @@ export const TODO_MAX = 3;
 /** 📖 배지 너비 (아이콘만 — 375px에서 글자를 넣으면 할 일 문구가 잘린다) */
 export const TUT_BADGE_W = 30;
 
-export type TodoKind = 'warn' | 'move' | 'goal' | 'rival';
+export type TodoKind = 'warn' | 'move' | 'goal' | 'rival' | 'rush';
 export interface TodoItem {
   key: string;
   kind: TodoKind;
@@ -88,6 +89,10 @@ export function todoItems(s: GameState): TodoItem[] {
   const out: TodoItem[] = [];
   const warn = warnOf(s);
   if (warn) out.push(warn);
+  // rush-battle §6: 러시 주(목요일부터)엔 준비 항목이 앞선다 — 토요일 점심이 한 주의 고비다
+  if (inRushWeek(s)) {
+    for (const p of rushPrepTodo(s).slice(0, 2)) out.push({ key: `rush:${p.key}`, kind: 'rush', text: p.text, gain: '', targets: p.targets, cells: [] });
+  }
   const moves = cachedMoves(s, (m) => m.score > 0).slice(0, 2);
   const asMove = (m: (typeof moves)[number], i: number): TodoItem => ({
     key: `move:${i}:${m.label}`, kind: 'move', text: m.label, gain: gainText(m.delta.money), targets: m.targets, cells: m.cells,
@@ -105,7 +110,7 @@ export function todoItems(s: GameState): TodoItem[] {
   return out.slice(0, TODO_MAX);
 }
 
-const KIND_ICON: Record<TodoKind, string> = { warn: 'warn', move: 'bulb', goal: 'target', rival: 'rival' };
+const KIND_ICON: Record<TodoKind, string> = { warn: 'warn', move: 'bulb', goal: 'target', rival: 'rival', rush: 'clock' };
 
 /** 📖 배지 (fun-start): 탭하면 튜토리얼 창(현재 단계 대사 다시 보기·5막 진행도·막 건너뛰기).
  *  튜토리얼이 끝나도 남는다 — 할망의 추천은 다 배운 뒤에도 쓰는 코치다.

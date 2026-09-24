@@ -64,6 +64,8 @@ function save() {
 }
 
 export function getState() { return state; }
+/** 테스트용: 스토어의 상태를 통째로 갈아 끼운다 (UI 다리들이 getState를 쓰므로 sim 상태를 심어 준다) */
+export function replaceStateForTest(s: GameState): void { setState(s); emit(); }
 export function getVersion() { return version; }
 /** 바깥 사건(solver 워커 결과 등)으로 React를 깨운다 (solverClient) */
 export function bumpVersion(): void { emit(); }

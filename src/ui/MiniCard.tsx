@@ -23,7 +23,7 @@ import { staffParts } from '../render/character';
 import { TitleRibbon } from './TitleBadge'; // staff-luck 칭호 리본
 import { Portrait, namedPortraitParts, guestName } from './GuestPopup';
 import { guestParts } from '../render/character';
-import { regularHearts, regularById, requestDef, requestHint, regularFace, GAUGE_MAX } from '../sim/index.ts'; // fun-guest (인사·추천은 rush-battle §6에서 삭제 — 러시 조작 UI는 rush2)
+import { regularHearts, regularById, requestDef, requestHint, regularFace, GAUGE_MAX } from '../sim/index.ts'; // fun-guest (인사·추천은 rush-battle §3·§6에서 삭제)
 import { skillsOfStaff, skillLine } from '../sim/index.ts'; // rush3: 러시 액티브 스킬 줄
 import { Bar, EnergyBar } from './Bars';
 import { Confirm, Popup } from './Popup';
@@ -231,6 +231,7 @@ function GuestCard({ s, id, a, objectId }: { s: GameState; id: string; a: CardAc
           <div style={small}><Icon name="bulb" size={14} /> {requestHint(request)}</div>
         </div>
       )}
+      {/* rush-battle §3: 인사·추천은 없어졌다 — 손님과의 상호작용은 러시 중 자리 배정·주문 처리다 */}
       <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
         <button data-tut="gift" data-testid="btn-gift" style={giftOk ? tri : { ...tri, ...btnOff }} disabled={!giftOk} onClick={() => setPicking(true)} aria-label="선물하기"
           title={gifts.length === 0 ? '선물이 없어요' : giftedToday(s) ? '선물은 하루 한 번' : undefined}><Icon name="gift" /> 선물</button>

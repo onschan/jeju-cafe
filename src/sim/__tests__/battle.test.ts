@@ -12,12 +12,13 @@ import {
   battleGuestMult, battleDue, startBattle, activeBattle, battleHud, setBattleScore, resolveBattle,
   resultLine, dailyBattle, dismissBattle,
   BATTLE_FROM_YEAR, BATTLE_NOTICE_DAYS, BATTLE_SURRENDER_STREAK, BATTLE_SURRENDER_GUESTS,
-  BATTLE_PRIZE_PER_GRADE, BATTLE_RANK_POINT, BATTLE_KEEP_REGULARS, BATTLE_LINE,
+  BATTLE_PRIZE_PER_GRADE, BATTLE_RANK_POINT, BATTLE_KEEP_REGULARS, BATTLE_RIVAL_PAR, BATTLE_AUTO_RATIO,
 } from '../battle.ts';
 import { RUSH_WEEKDAY, weekdayOf } from '../rush.ts';
 import { scoreboard, myAxes, rivalGuestMult, RIVAL_EFFECT_YEAR } from '../rival.ts';
 import { registerRegular, regularList } from '../interact.ts';
 import { gradeOf } from '../grade.ts';
+import { rushExpectedScore, rushArrivals } from '../rush.ts';
 import { DAYS_PER_MONTH } from '../clock.ts';
 
 /** 2년차 대항전 날 아침의 상태 */
@@ -91,7 +92,7 @@ describe('상대 선정', () => {
 });
 
 describe('점수', () => {
-  test('상대 점수는 성장 곡선 + 해시 난수 + 우리 등급 보정 — 같은 세이브·같은 달이면 늘 같다', () => {
+  test('상대 점수는 우리 러시 기준 점수에 붙어 움직인다 — 같은 세이브·같은 달이면 늘 같다', () => {
     const s = s2();
     const def = RIVALS[0]!;
     const a = rivalBattleScore(s, def);
@@ -101,16 +102,15 @@ describe('점수', () => {
     expect(rivalBattleScore(s, def)).toBeGreaterThan(a); // 우리가 올라가면 상대도 세진다
   });
 
-  test('자동 해결 점수는 자리·홀·조리·평판·청결이 함께 정한다 (한 쪽만 늘려도 안 오른다)', () => {
+  test('무조작 점수는 러시 B 문턱 언저리 — 대등한 상대(par의 0.95)에게는 진다', () => {
     const s = s2();
-    const before = autoBattleScore(s);
-    s.reputation = Math.min(100, s.reputation + 20);
-    expect(autoBattleScore(s)).toBeGreaterThan(before);
-    // 받은 손님 수는 줄 길이를 못 넘는다
-    for (const st of s.staff) st.stats = { stamina: 100, strength: 100, skill: 100, smile: 100 };
-    s.reputation = 100;
-    s.clean.value = 100;
-    expect(autoBattleScore(s)).toBeLessThanOrEqual(BATTLE_LINE * 10 + 100 * 0.6 + 100 * 0.3 + 1);
+    const auto = autoBattleScore(s);
+    const par = rushExpectedScore(s, rushArrivals(s));
+    expect(auto).toBe(Math.round(par * BATTLE_AUTO_RATIO));
+    expect(BATTLE_AUTO_RATIO).toBeLessThan(BATTLE_RIVAL_PAR); // 손을 놓으면 대등한 상대에게 진다
+    // 규모가 커지면 우리 기준 점수도 상대도 같이 커진다 — 규모만으로는 못 이긴다
+    const grew = autoBattleScore(s);
+    expect(grew).toBeGreaterThan(0);
   });
 
   test('예상 승률은 5~95% 사이, 점수가 높을수록 커진다', () => {

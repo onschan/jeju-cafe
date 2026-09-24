@@ -383,6 +383,12 @@ export class GameView {
   private rangeKey = '';
   /** 일괄 철거 드래그 사각형 (§5.3) */
   private rectGfx = new Graphics();
+  /** 러시 타임(rush-battle §2): 앉힐 수 있는 자리 초록 · 못 앉히는 자리 회색 · 주문이 밀린 자리 빨강(깜빡임) */
+  private rushGfx = new Graphics();
+  /** 주문이 밀린 자리(빨강)만 따로 — render 루프에서 알파가 깜빡인다 */
+  private rushUrgentGfx = new Graphics();
+  private rushKey = '';
+  private rushUrgent = false;
   /** 시설 위 인기 미니 바·◎ 콤보 마크 (§5.4, 설정 토글). 1초에 한 번만 다시 계산한다 */
   private gaugeGfx = new Graphics();
   private gaugesOn = false;
@@ -422,6 +428,10 @@ export class GameView {
     this.siteLayer.addChild(this.siteGfx);
     this.siteLayer.addChild(this.rangeGfx, this.rectGfx);
     this.overlay.addChild(this.selection);
+    // 러시 자리 표시는 오브젝트 **위**에 — 테이블 스프라이트가 칸을 덮어 버리면 초록·빨강이 안 보인다
+    this.rushGfx.eventMode = 'none';
+    this.rushUrgentGfx.eventMode = 'none';
+    this.overlay.addChild(this.rushGfx, this.rushUrgentGfx);
     this.spot.eventMode = 'none';
     this.overlay.addChild(this.spot);
     this.overlay.addChild(this.picks);
@@ -758,6 +768,49 @@ export class GameView {
     }
   }
 
+  /** 러시 타임 자리 표시 (rush-battle §2 조작): `ok` 초록 = 여기 앉힐 수 있다 · `no` 회색 = 못 앉힌다 · `urgent` 빨강 = 주문이 밀렸다.
+   *  빨간 칸은 render 루프에서 깜빡인다. 빈 배열이면 지운다. 같은 내용이면 다시 그리지 않는다. */
+  setRushMarks(marks: { x: number; y: number; w: number; h: number; kind: 'ok' | 'no' | 'urgent' }[]) {
+    if (this.rushGfx.destroyed || this.rushUrgentGfx.destroyed) return;
+    const key = marks.map((m) => `${m.x},${m.y},${m.w},${m.h},${m.kind}`).join('|');
+    if (key === this.rushKey) return;
+    this.rushKey = key;
+    this.rushGfx.clear();
+    this.rushUrgentGfx.clear();
+    this.rushUrgent = false;
+    for (const m of marks) {
+      const urgent = m.kind === 'urgent';
+      const g = urgent ? this.rushUrgentGfx : this.rushGfx;
+      const color = m.kind === 'ok' ? 0x4c9a2a : urgent ? 0xc9184a : 0x8b8378;
+      const alpha = m.kind === 'no' ? 0.2 : 0.4;
+      for (let dy = 0; dy < Math.max(1, m.h); dy++) for (let dx = 0; dx < Math.max(1, m.w); dx++) {
+        const { sx, sy } = cellToScreen(m.x + dx, m.y + dy);
+        g.poly([sx, sy, sx + ISO_W / 2, sy + ISO_H / 2, sx, sy + ISO_H, sx - ISO_W / 2, sy + ISO_H / 2])
+          .fill({ color, alpha })
+          .stroke({ color, width: m.kind === 'no' ? 2 : 3 });
+      }
+      if (urgent) this.rushUrgent = true;
+    }
+    if (!this.rushUrgent) this.rushUrgentGfx.alpha = 1;
+  }
+
+  /** 러시 fx: 칸 위로 떠오르는 짧은 문구(`+12`·「콤보!」). 점수·콤보처럼 손맛을 알리는 데만 쓴다. */
+  popText(cellX: number, cellY: number, text: string, color = 0xffe066) {
+    if (this.overlay.destroyed) return;
+    const now = performance.now();
+    const c = new Container();
+    const l = label(text, 13);
+    l.anchor.set(0.5, 1);
+    l.style.fill = color;
+    const bg = new Graphics().roundRect(-l.width / 2 - 4, -l.height - 2, l.width + 8, l.height + 4, 4).fill({ color: 0x000000, alpha: 0.55 });
+    c.addChild(bg, l);
+    const { sx, sy } = cellCenter(cellX, cellY);
+    c.position.set(sx, sy - 30);
+    c.zIndex = 1e6;
+    this.overlay.addChild(c);
+    this.pops.push({ node: c, born: now, y0: sy - 30 });
+  }
+
   /** 시설 위 인기 미니 바(6px)·◎ 콤보 마크 켜기/끄기 (§5.4 설정 토글) */
   setGauges(on: boolean) {
     this.gaugesOn = on;
@@ -877,6 +930,8 @@ export class GameView {
     this.syncSiteOverlay(state);
     this.syncGhostSite(state);
     this.syncGauges(state, now);
+    // 러시: 주문이 밀린 자리(빨강)는 0.6초 주기로 숨을 쉰다 — 「지금 저기를 눌러라」가 한눈에
+    if (this.rushUrgent && !this.rushUrgentGfx.destroyed) this.rushUrgentGfx.alpha = 0.55 + 0.45 * Math.abs(Math.sin((now / 600) * Math.PI));
   }
 
   // ---------- 입지 (트랙 F, 스펙 §6.2) ----------
