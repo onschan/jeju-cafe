@@ -1,6 +1,6 @@
 import { Application, Container, Sprite, Graphics, Texture, Text } from 'pixi.js';
 import type { GameState, PlacedObject, Guest, Staff, Season, RoleId, Pt, RouteId, FxEvent } from '../sim/index.ts';
-import { seasonOf, LOW_ENERGY, parcelPrice, canBuyParcel, footprint, roomAt, doorFrontOf, WALL_COLORS, dayIndex, menuOf, sizeOf, mainBuilding, MAIN_SIZE, LIGHT_RADIUS, gradeOf, objectAt, cellAt, contestBadge } from '../sim/index.ts';
+import { seasonOf, LOW_ENERGY, parcelPrice, canBuyParcel, parcelAt, footprint, roomAt, doorFrontOf, WALL_COLORS, dayIndex, menuOf, sizeOf, mainBuilding, MAIN_SIZE, LIGHT_RADIUS, gradeOf, objectAt, cellAt, contestBadge } from '../sim/index.ts';
 import type { Parcel } from '../sim/index.ts';
 import { objectDef } from '../data/index.ts';
 import { isoTerrainTexture, isoObjectTexture, glowTexture, label, clearTextureCache, loadLabelFont } from './textures';
@@ -987,12 +987,25 @@ export class GameView {
     const height = this.app.screen.height || 640;
     const s = Math.min(3, Math.max(2.2, width / 360)); // [코어만] 폰에서 카페가 콩알만 하게 보이던 것 — 기본 줌을 올린다
     this.world.scale.set(s);
+    // [코어만] 본관 한가운데가 아니라 **카페 전체(본관 + 손님이 쓰는 시설)의 한가운데**에 맞춘다 —
+    // 본관만 보면 그 아래 깔린 테이블이 화면 왼쪽 밖으로 잘려 나갔다.
     const main = mainBuilding(state);
     if (main) {
-      // 본관 발자국 한가운데 + 문 앞 마당이 같이 보이게 조금 위로 (화면 세로 42% 지점)
-      const size = sizeOf(main);
-      const c = cellCenter(main.x + (size.w - 1) / 2, main.y + (size.h - 1) / 2);
-      this.world.position.set(width / 2 - c.sx * s, height * 0.42 - c.sy * s);
+      let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+      const grow = (ox: number, oy: number, w: number, h: number) => {
+        x0 = Math.min(x0, ox); y0 = Math.min(y0, oy);
+        x1 = Math.max(x1, ox + w - 1); y1 = Math.max(y1, oy + h - 1);
+      };
+      const ms = sizeOf(main);
+      grow(main.x, main.y, ms.w, ms.h);
+      for (const o of Object.values(state.objects)) {
+        if (o.id === main.id || o.type === 'stonewall' || o.type === 'busstop') continue;
+        if (!parcelAt(state, o.x, o.y)?.owned) continue; // 내 땅 위의 것만 — 남의 필지 나무·샘까지 세면 빈 들판을 비춘다
+        const sz = sizeOf(o);
+        grow(o.x, o.y, sz.w, sz.h);
+      }
+      const c = cellCenter((x0 + x1) / 2, (y0 + y1) / 2);
+      this.world.position.set(width / 2 - c.sx * s, height * 0.46 - c.sy * s);
       return;
     }
     const home = state.parcels.find((p) => p.no === 1) ?? { x: 0, y: 0, w: state.grid.w, h: state.grid.h };
@@ -1011,7 +1024,7 @@ export class GameView {
       // [코어만] 팻말은 「지금 살 수 있는 땅」에만 — 다섯 개가 한꺼번에 떠서 제 카페를 가렸다. 풍경 타일은 그대로 둔다.
       const buyable = canBuyParcel(state, p.id).ok;
       const [l1, l2] = buyable ? parcelSignLines(p.name, parcelPrice(state, p), sc?.feature ?? '') : ['', ''];
-      const zoomOut = this.world.scale.x <= SIGN_MIN_WORLD_SCALE; // 줌아웃: 이름 한 줄만·작게(팻말끼리 안 겹치게), 줌인: 2줄
+      const zoomOut = true; // [코어만] 팻말은 늘 한 줄·작게 — 두 줄짜리가 제 카페 본관을 덮었다
       const text = `${l1}|${l2}|${zoomOut ? 'z' : ''}`; // 미소유 필지엔 시설을 못 놓으니 배치 서명은 키에 안 넣는다(매 프레임 재생성 방지)
       const cur = this.lockedNodes.get(p.id);
       if (cur?.text === text) continue;

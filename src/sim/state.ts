@@ -53,6 +53,16 @@ export const START_PATH: { lx: number; ly: number }[] = [{ lx: 3, ly: 3 }, { lx:
 export const START_SEATS: { type: string; lx: number; ly: number }[] = [
   { type: 'table_out', lx: 3, ly: 4 }, { type: 'table_out', lx: 5, ly: 4 }, { type: 'table_parasol', lx: 5, ly: 5 },
 ];
+/** [코어만] 시작 마당 소품 — 80칸짜리 맨 흙에 테이블 3개만 있으니 카페가 아니라 주차장으로 보였다.
+ *  값은 안 받는다(처음부터 깔려 있는 것). 손님 동선(올렛길 4,3~4,5)은 비워 둔다. */
+export const START_DECOR: { type: string; lx: number; ly: number }[] = [
+  { type: 'signboard', lx: 2, ly: 3 },      // 문 옆 간판
+  { type: 'flower_bed', lx: 2, ly: 4 },     // 길 왼쪽 꽃밭
+  { type: 'flower_bed', lx: 6, ly: 5 },     // 파라솔 옆 꽃밭
+  { type: 'garden_lamp', lx: 6, ly: 3 },    // 마당 오른쪽 정원등
+  { type: 'table_out', lx: 3, ly: 5 },      // 네 번째 자리 — 마당이 차 보이게
+];
+
 /** 올렛길 마지막 칸 (4,6): 정낭이 없는 마당(fun-start 새 게임)에서 마을 길(4,7)까지 잇는다. 정낭이 그 칸에 있으면(starter) 정낭 칸이 걷기 칸이라 안 놓는다. */
 export const START_PATH_ROAD_LINK = { lx: 4, ly: 6 } as const;
 
@@ -141,6 +151,7 @@ export function fillStarterLayout(state: GameState): void {
   const { x: ox, y: oy } = START_ORIGIN;
   stampMainAndPath(state);
   for (const st of START_SEATS) stamp(state, st.type, ox + st.lx, oy + st.ly);
+  for (const d of START_DECOR) stamp(state, d.type, ox + d.lx, oy + d.ly);
   for (const m of START_MENUS) {
     if (state.menuSlots.includes(m)) continue;
     const slot = state.menuSlots.indexOf(null);
