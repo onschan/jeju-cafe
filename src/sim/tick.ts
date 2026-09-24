@@ -27,7 +27,7 @@ import { monthlyGifts } from './items.ts';
 import { fmtNum } from './format.ts';
 import { dailyCleanliness } from './cleanliness.ts';
 import { dailyRoutes, monthlyRoutes } from './entry.ts';
-import { dailyRooms, accumulateSeatUse, MS_PER_HOUR } from './rooms.ts'; // y-indoor: 본관 공사·좌석 이용률
+import { dailyRooms, accumulateSeatUse, MS_PER_HOUR } from './rooms.ts'; // 좌석 이용률
 import { endingMonthly } from './ending.ts'; // z-ending: 5년차 엔딩 (pace)
 import { dailyIdleHint } from './hints.ts'; // game-feel: 3일 무행동이면 삼춘 힌트
 import { closeDay } from './daylog.ts'; // 성장: 하루 요약 카드·30일 그래프
@@ -43,7 +43,7 @@ const HOURS_PER_DAY = END_HOUR - START_HOUR;
 /** 시간이 한 칸 지날 때마다 (새 시각 = state.clock.hour) */
 function onNewHour(state: GameState): void {
   hourlyEnergy(state);
-  accumulateSeatUse(state, MS_PER_HOUR); // y-indoor: 지난 한 시간 좌석 이용 (이용률)
+  accumulateSeatUse(state, MS_PER_HOUR); // 지난 한 시간 좌석 이용 (이용률)
   hourlyRegulars(state); // 단골★·특별 손님이 일반 손님(대기열)보다 먼저 자리를 잡는다
   hourlyBigEvents(state);
   hourlySpawn(state);
@@ -70,7 +70,7 @@ function onNewDay(state: GameState): void {
   resolveDevelop(state);
   advanceConstruction(state);
   dailyRoutes(state); // 트랙 H: 경로 해금·길 끊김·오늘 손님 리셋
-  dailyRooms(state); // y-indoor: 본관 증축·이동·2층 완공, 어제 이용률, 난로 자동 ON
+  dailyRooms(state); // 어제 좌석 이용률 기록
   evaluateUnlocks(state); // game-feel: 손님층·시설 해금·랭크업을 월초가 아니라 조건을 채운 날에 (월초 몰림 방지)
   checkGoals(state);
   dailyRivals(state); // 동네 순위 발표(5일)·경쟁 카페 뺏기 이벤트(12일) — 월초 1일 몰림을 피해 날짜를 나눴다

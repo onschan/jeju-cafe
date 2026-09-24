@@ -179,19 +179,19 @@ export function streetIfPlaced(state: GameState, type: string, x: number, y: num
 
 export type BuildTileId = 'seat' | 'service' | 'charm' | 'inflow' | 'building' | 'all';
 export interface BuildTile { id: BuildTileId; name: string; icon: string; purpose: string; base: string | null }
-/** 짓기 창 첫 화면 6타일: ① 자리 ② 서비스 ③ 매력 ④ 유입 ⑤ 실내·건물 ⑥ 전체 목록. base = 타일을 누르면 바로 놓는 기본 시설 (없으면 하위 목록) */
+/** 짓기 창 첫 화면 6타일: ① 자리 ② 서비스 ③ 매력 ④ 유입 ⑤ 건물 ⑥ 전체 목록. base = 타일을 누르면 바로 놓는 기본 시설 (없으면 하위 목록) */
 export const BUILD_TILES: BuildTile[] = [
   { id: 'seat', name: '자리', icon: 'chair', purpose: '손님이 앉아야 돈이 된다', base: 'table_out' },
   { id: 'service', name: '서비스', icon: 'kitchen', purpose: '서빙이 빨라지고 만족이 오른다', base: null },
   { id: 'charm', name: '매력', icon: 'plant', purpose: '경관이 오르면 관광객이 온다', base: 'flower_bed' },
   { id: 'inflow', name: '유입', icon: 'car', purpose: '손님이 들어오는 문', base: 'parking_lot' },
-  { id: 'building', name: '실내·건물', icon: 'home', purpose: '비 오는 날도 자리가 있다', base: null },
+  { id: 'building', name: '건물', icon: 'home', purpose: '주방·화장실이 일을 돕는다', base: null },
   { id: 'all', name: '전체 목록', icon: 'book', purpose: '모든 시설을 탭별로', base: null },
 ];
 /** 타일별 하위 목록에 넣을 종류 (기본 시설·트리 단계·서비스 시설·유입 시설) — 전체 목록은 탭이 맡는다 */
 export const TILE_TYPES: Record<Exclude<BuildTileId, 'all' | 'building'>, string[]> = {
   seat: ['table_out', 'table_parasol', 'terrace_seat', 'oreum_bench', 'window_seat', 'toenmaru'],
-  service: ['omegi_stall', 'tart_bakery', 'brunch_house', 'fine_dining', 'restroom', 'cleaning_room', 'kitchen_ext', 'counter', 'counter_ext', 'vending'],
+  service: ['omegi_stall', 'tart_bakery', 'brunch_house', 'fine_dining', 'restroom', 'cleaning_room', 'kitchen_ext', 'vending'],
   charm: ['flower_bed', 'camellia', 'palm', 'pond', 'deco_wood_bench', 'hammock', 'cauldron_footbath', 'open_air_footbath', 'stonewall', 'signboard', 'cherry_tree'],
   inflow: ['parking_lot', 'path', 'gate', 'garden_lamp', 'streetlight', 'deco_string_lights', 'lighthouse', 'olle_sign'],
 };

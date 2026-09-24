@@ -1,8 +1,8 @@
 import type { GameState, Action, ApplyResult, PlacedObject } from './types.ts';
 import { bumpLayoutRev } from './layoutRev.ts';
 import { objectDef } from '../data/index.ts';
-import { canPlace, placeObject, removeObject, relocateObject, objectsInRoom } from './grid.ts';
-import { canBuildMain, placeMain, canExpandMain, expandMain, canBuildSecondFloor, buildSecondFloor, canMoveMain, moveMain, canUndoMoveMain, undoMoveMain, canAutoConnectPath, autoConnectPath, MAIN_TYPE } from './rooms.ts'; // y-indoor
+import { canPlace, placeObject, removeObject, relocateObject } from './grid.ts';
+import { canBuildMain, placeMain, canAutoConnectPath, autoConnectPath, MAIN_TYPE } from './rooms.ts';
 import { canBuyParcel, buyParcel } from './parcels.ts';
 import { canSetSlot, setSlot } from './menu.ts';
 import { checkFeature, checkGoals } from './goals.ts';
@@ -145,7 +145,6 @@ function applyInner(state: GameState, a: Action): ApplyResult {
       const c = canDisturb(state, obj);
       if (!c.ok) return c;
       const def = objectDef(obj.type);
-      if (def.room && objectsInRoom(state, obj.id).length > 0) return { ok: false, reason: '안에 가구가 있어요' };
       if (def.removeCost) {
         if (state.money < def.removeCost) return { ok: false, reason: '돈이 모자라요' };
         state.money -= def.removeCost;
@@ -164,7 +163,6 @@ function applyInner(state: GameState, a: Action): ApplyResult {
         const obj = state.objects[id];
         if (!obj || PROTECTED_TYPES.has(obj.type)) continue;
         if (objs.some((o) => o.id === obj.id)) continue;
-        if (objectDef(obj.type).room && objectsInRoom(state, obj.id).some((r) => !a.objectIds.includes(r.id))) return { ok: false, reason: '안에 가구가 있어요' };
         if (guestBlock(state, obj)) { setPending(state, obj, { kind: 'remove' }); reserved++; continue; }
         objs.push(obj);
       }
@@ -200,16 +198,9 @@ function applyInner(state: GameState, a: Action): ApplyResult {
     case 'move': {
       const obj = state.objects[a.objectId];
       if (!obj) return { ok: false, reason: '없는 오브젝트' };
-      if (obj.type === MAIN_TYPE) { // 본관은 PROTECTED_TYPES 예외 경로 — moveMain (§4.1)
-        const m = canMoveMain(state, a.x, a.y);
-        if (!m.ok) return m;
-        moveMain(state, a.x, a.y);
-        discoverPlacement(state);
-        return { ok: true };
-      }
+      if (obj.type === MAIN_TYPE) return { ok: false, reason: '본관은 못 옮겨요' }; // 본관은 처음 고른 자리에 고정
       const c = canDisturb(state, obj);
       if (!c.ok) return c;
-      if (objectDef(obj.type).room && objectsInRoom(state, obj.id).length > 0) return { ok: false, reason: '안에 가구가 있어요' };
       const p = canPlace(state, obj.type, a.x, a.y, obj.id);
       if (!p.ok) return p;
       // 돈은 그대로: 치우기 환불 + 다시 짓기 비용이 상쇄된다. 방향·놓은 달은 유지.
@@ -304,34 +295,7 @@ function applyInner(state: GameState, a: Action): ApplyResult {
       discoverPlacement(state);
       return { ok: true };
     }
-    // ---- y-indoor: 본관 증축·2층·이동·실내 요소 (rooms.ts) ----
-    case 'expandMain': {
-      const c = canExpandMain(state);
-      if (!c.ok) return c;
-      expandMain(state);
-      discoverPlacement(state);
-      return { ok: true };
-    }
-    case 'buildSecondFloor': {
-      const c = canBuildSecondFloor(state);
-      if (!c.ok) return c;
-      buildSecondFloor(state);
-      return { ok: true };
-    }
-    case 'moveMain': {
-      const c = canMoveMain(state, a.x, a.y);
-      if (!c.ok) return c;
-      moveMain(state, a.x, a.y);
-      discoverPlacement(state);
-      return { ok: true };
-    }
-    case 'undoMoveMain': {
-      const c = canUndoMoveMain(state);
-      if (!c.ok) return c;
-      undoMoveMain(state);
-      discoverPlacement(state);
-      return { ok: true };
-    }
+    // ---- 카페 분위기 (rooms.ts) ----
     case 'setBgm':
       state.main.bgm = a.bgm;
       return { ok: true };
@@ -386,7 +350,7 @@ function applyInner(state: GameState, a: Action): ApplyResult {
     case 'skipTutorialChapter': {
       // 장 단위 건너뛰기: 남은 단계의 해금 보상만 적용. 맨 처음(1장 0단계)이면 빈 마당을 완성 시작 상태로 채워 바로 영업할 수 있게 한다
       if (state.tutorial.step >= TUTORIAL_STEPS) return { ok: false, reason: '튜토리얼이 끝났어요' };
-      if (state.tutorial.step === 0) fillStarterLayout(state); // 본관 안은 비워 둔다 — 24단계(실내 테이블)를 손으로 한다
+      if (state.tutorial.step === 0) fillStarterLayout(state);
       skipTutorialChapter(state);
       return { ok: true };
     }

@@ -11,7 +11,7 @@
  * solver.ts·solverCache.ts는 읽기만 한다 — 여기서 조합만 한다.
  */
 import type { GameState, Pt, SolverMove } from '../sim/index.ts';
-import { cachedMoves, solverResult, canPlace, seatScore, isLineType, bestSeatCells, bestIndoorSeats, bestCornerCells, parcelAt, cellAt, PROTECTED_TYPES, seatStrengths, STRENGTH_LABEL, type SeatStrength } from '../sim/index.ts';
+import { cachedMoves, solverResult, canPlace, seatScore, isLineType, bestSeatCells, bestCornerCells, parcelAt, cellAt, PROTECTED_TYPES, seatStrengths, STRENGTH_LABEL, type SeatStrength } from '../sim/index.ts';
 import { objectDef } from '../data/index.ts';
 import { solverBusy } from './solverClient';
 import { PALETTE } from './frame';
@@ -44,7 +44,7 @@ export function pickLabel(d: SolverMove['delta']): string | null {
 /** 캐시가 없을 때의 휴리스틱 칸 — 좌석·명당 조각은 전용 휴리스틱, 나머지는 자리 점수 순 빈 칸 */
 function heuristicCells(s: GameState, type: string, n: number): Pt[] {
   const d = objectDef(type);
-  if (d.kind === 'seat') return d.indoor ? bestIndoorSeats(s, n) : bestSeatCells(s, n, type);
+  if (d.kind === 'seat') return bestSeatCells(s, n, type);
   const corner = bestCornerCells(s, type, n);
   if (corner.length > 0) return corner;
   const out: { p: Pt; sc: number }[] = [];

@@ -72,10 +72,10 @@ export function doorFrontOf(room: Sized & Pick<PlacedObject, 'x' | 'y'>): Pt {
   return { x: d.x, y: d.y + 1 };
 }
 
-/** 문 앞에 놓으면 출입을 막는 종류 (길·정낭·정류장은 걷기 칸이라 괜찮다; 실내 오브젝트는 방 안에만 놓인다) */
+/** 문 앞에 놓으면 출입을 막는 종류 (길·정낭·정류장은 걷기 칸이라 괜찮다) */
 const DOOR_FRONT_FREE_KINDS = new Set(['path', 'gate', 'busstop']);
 export function blocksDoorFront(def: ObjectDef): boolean {
-  return !def.indoor && !DOOR_FRONT_FREE_KINDS.has(def.kind);
+  return !DOOR_FRONT_FREE_KINDS.has(def.kind);
 }
 
 /** 이 칸이 어떤 방의 문 앞 칸이면 그 방 */
@@ -95,78 +95,7 @@ export function roomAt(state: GameState, x: number, y: number): PlacedObject | n
   return id ? state.objects[id] ?? null : null;
 }
 
-// ---------- 고정 설비 칸 (fix-indoor) ----------
-
-/** 카운터+주방 블록이 박힌 방: 뒷벽(y = room.y) 줄 중 문 기둥(x = room.x)을 뺀 칸이 고정 설비 — 배치 불가·걷기 불가.
- *  스프라이트(sprites_iso_rooms.py)의 카운터도 같은 칸에 그린다. 증축으로 발자국이 넓어져도 고정 칸은 오른쪽으로만 늘어난다(가구가 깔리지 않는다). */
-const FIXED_ROOM_IDS = new Set(['warehouse', 'annex_cafe', 'greenhouse_cafe']);
-/** 방의 고정 설비 칸 (카운터+주방). 고정 설비가 없는 방(갤러리 등)은 빈 배열. */
-export function fixedCellsOf(room: Sized & Pick<PlacedObject, 'x' | 'y'>): Pt[] {
-  if (!FIXED_ROOM_IDS.has(room.type)) return [];
-  const { w } = sizeOf(room);
-  const out: Pt[] = [];
-  for (let dx = 1; dx < w; dx++) out.push({ x: room.x + dx, y: room.y });
-  return out;
-}
-/** 이 칸이 어떤 방의 고정 설비 칸인가 */
-export function isFixedCell(state: GameState, x: number, y: number): boolean {
-  if (!inBounds(state, x, y)) return false;
-  const id = cellAt(state, x, y).roomId;
-  if (!id) return false;
-  const room = state.objects[id];
-  return !!room && FIXED_ROOM_IDS.has(room.type) && y === room.y && x > room.x;
-}
-const DIRS4: Pt[] = [{ x: 1, y: 0 }, { x: -1, y: 0 }, { x: 0, y: 1 }, { x: 0, y: -1 }];
-/** 카운터 앞 칸(고정 설비 칸에 4방향으로 붙은 칸) — 손님이 주문하는 자리 */
-function touchesFixed(state: GameState, p: Pt): boolean {
-  return DIRS4.some((d) => isFixedCell(state, p.x + d.x, p.y + d.y));
-}
-
-/** 실내 오브젝트가 없는 방 바닥 칸인가 (걸을 수 있다). 고정 설비 칸은 아니다. */
-export function isRoomFloor(state: GameState, x: number, y: number): boolean {
-  if (!inBounds(state, x, y)) return false;
-  const c = cellAt(state, x, y);
-  return c.roomId !== null && c.objectId === c.roomId && !isFixedCell(state, x, y);
-}
-
-/** 실내 가구를 놓은 뒤에도 문 → 카운터 앞 통로와 모든 실내 좌석의 접근 칸이 남는지 (fix-indoor).
- *  문 칸에서 빈 바닥(고정 설비·가구·새 발자국 제외)으로 BFS: 카운터 앞 칸에 닿아야 하고, 방 안 좌석마다 닿는 이웃 칸이 하나는 있어야 한다. */
-export function indoorRouteCheck(state: GameState, room: PlacedObject, newCells: Pt[], newIsSeat: boolean, ignoreId?: string): ApplyResult {
-  const { w, h } = sizeOf(room);
-  const blocked = new Set(newCells.map((p) => `${p.x},${p.y}`));
-  const free = (p: Pt) => {
-    if (p.x < room.x || p.y < room.y || p.x >= room.x + w || p.y >= room.y + h) return false;
-    if (blocked.has(`${p.x},${p.y}`) || isFixedCell(state, p.x, p.y)) return false;
-    const c = cellAt(state, p.x, p.y);
-    return c.objectId === room.id || c.objectId === ignoreId;
-  };
-  const door = doorOf(room);
-  if (!free(door)) return { ok: false, reason: '문 앞은 비워 둬요' };
-  const seen = new Set<string>([`${door.x},${door.y}`]);
-  const queue: Pt[] = [door];
-  let counter = false;
-  for (let i = 0; i < queue.length; i++) {
-    const p = queue[i]!;
-    if (touchesFixed(state, p)) counter = true;
-    for (const d of DIRS4) {
-      const n = { x: p.x + d.x, y: p.y + d.y };
-      const k = `${n.x},${n.y}`;
-      if (seen.has(k) || !free(n)) continue;
-      seen.add(k);
-      queue.push(n);
-    }
-  }
-  if (fixedCellsOf(room).length > 0 && !counter) return { ok: false, reason: '손님이 카운터까지 갈 길이 없어요' };
-  const reachable = (cells: Pt[]) => cells.some((p) => DIRS4.some((d) => seen.has(`${p.x + d.x},${p.y + d.y}`)));
-  if (newIsSeat && !reachable(newCells)) return { ok: false, reason: '손님이 자리까지 갈 길이 없어요' };
-  for (const o of objectsInRoom(state, room.id)) {
-    if (o.id === ignoreId || objectDef(o.type).kind !== 'seat') continue;
-    if (!reachable(footprintOf(o))) return { ok: false, reason: `${objectDef(o.type).name} 자리로 가는 길이 막혀요` };
-  }
-  return { ok: true };
-}
-
-/** 오브젝트가 발자국 칸을 차지한다. 방이면 roomId도 새긴다. 실내 오브젝트는 objectId만 덮어쓴다(roomId 유지). */
+/** 오브젝트가 발자국 칸을 차지한다. 방이면 roomId도 새긴다. */
 export function occupy(state: GameState, obj: PlacedObject): void {
   bumpLayoutRev(state);
   const def = objectDef(obj.type);
@@ -177,7 +106,7 @@ export function occupy(state: GameState, obj: PlacedObject): void {
   }
 }
 
-/** 발자국 칸을 비운다. 실내 오브젝트였으면 그 칸은 다시 방 바닥(objectId = roomId)이 된다. */
+/** 발자국 칸을 비운다. */
 export function vacate(state: GameState, obj: PlacedObject): void {
   bumpLayoutRev(state);
   const def = objectDef(obj.type);
@@ -186,11 +115,6 @@ export function vacate(state: GameState, obj: PlacedObject): void {
     if (def.room) c.roomId = null;
     c.objectId = def.room ? null : c.roomId;
   }
-}
-
-/** 방 안에 놓인 실내 오브젝트들 */
-export function objectsInRoom(state: GameState, roomId: string): PlacedObject[] {
-  return Object.values(state.objects).filter((o) => o.id !== roomId && roomAt(state, o.x, o.y)?.id === roomId);
 }
 
 /** 필지 안에 랜드마크가 이미 있나 (필지당 1) */
@@ -206,35 +130,16 @@ export function canPlace(state: GameState, type: string, x: number, y: number, i
   const size = moving && moving.type === type ? sizeOf(moving) : { w: def.w, h: def.h };
   if (type === 'warehouse') return canPlaceMain(state, x, y, size.w, size.h, ignoreId);
   const parcelIds = new Set<string>();
-  const roomIds = new Set<string | null>();
   for (const p of footprint(type, x, y, size.w, size.h)) {
     if (!inBounds(state, p.x, p.y)) return { ok: false, reason: '격자 밖이에요' };
     const parcel = parcelAt(state, p.x, p.y);
     if (!parcel?.owned) return { ok: false, reason: '아직 내 땅이 아니에요' };
     parcelIds.add(parcel.id);
     const cell = cellAt(state, p.x, p.y);
-    if (def.indoor) {
-      // 실내 오브젝트: 방 바닥(비어 있는) 위에만, 문 칸은 비워 둔다
-      const room = cell.roomId ? state.objects[cell.roomId] : null;
-      if (!room) return { ok: false, reason: '실내 가구는 건물 안에만 놓아요' };
-      if (cell.objectId !== cell.roomId && cell.objectId !== ignoreId) return { ok: false, reason: '이미 뭔가 있어요' };
-      if (isFixedCell(state, p.x, p.y)) return { ok: false, reason: '카운터·주방 자리예요' };
-      const door = doorOf(room);
-      if (door.x === p.x && door.y === p.y) return { ok: false, reason: '문 앞은 비워 둬요' };
-      roomIds.add(cell.roomId);
-      continue;
-    }
     if (cell.objectId && cell.objectId !== ignoreId) return { ok: false, reason: '이미 뭔가 있어요' };
     if (!def.terrain.includes(cell.terrain)) return { ok: false, reason: cell.terrain === 'road' ? '마을 길 위엔 못 놓아요' : '여기엔 못 놓아요' };
     // 방의 문 앞 칸은 손님 출입구라 길·정낭만 놓는다
     if (blocksDoorFront(def) && roomWithDoorFrontAt(state, p.x, p.y, ignoreId)) return { ok: false, reason: '문 앞은 비워 둬요' };
-  }
-  if (def.indoor && roomIds.size > 1) return { ok: false, reason: '한 방 안에 놓아요' };
-  if (def.indoor) {
-    // 문 → 카운터 통로와 좌석 접근 칸은 항상 남긴다 (fix-indoor)
-    const room = state.objects[[...roomIds][0] as string]!;
-    const rc = indoorRouteCheck(state, room, footprint(type, x, y, size.w, size.h), def.kind === 'seat', ignoreId);
-    if (!rc.ok) return rc;
   }
   if (def.room) {
     // 새 방의 문 앞 칸이 막혀 있으면(다른 오브젝트·격자 밖) 손님이 못 들어온다

@@ -10,7 +10,7 @@ import { objectDef } from '../data/index.ts';
 import { inBounds, cellAt, objectAt, windShelter, SHELTER_THRESHOLD } from './grid.ts';
 import { cellKey } from './path.ts';
 import { seasonOf } from './clock.ts';
-import { FLOOR2_VIEW } from './rooms.ts'; // y-indoor
+import { activeEvents } from './events.ts';
 import { layoutSig } from './layoutRev.ts';
 
 /** 칸의 자리 값 (전망·그늘) */
@@ -40,7 +40,20 @@ export const FEE_PER_SITE_POINT = 0.04;
 export const SITE_FEE_MAX = 0.40;
 export const SAT_PER_VIEW = 3;
 export const SAT_SHADE_SUMMER = 6;
-export const SAT_SHADE_WINTER = -4;
+/** 추운 날(겨울·비·태풍) 지붕 한 단계당 만족. 기준선은 「파라솔·처마」(1) —
+ *  지붕이 없으면 −2, 반쯤이면 0, 완전히 덮이면 +2. 전망·그늘 같은 「스펙 점수」가 아니라
+ *  만족 단위로 바로 더한다 — 스펙 점수는 10으로 나눠 버려서(SITE_SAT_PER_SCENERY) 눈금이 뭉개진다.
+ *  기준선을 2가 아니라 1로 둔 이유: 2로 두면 지금 놓을 수 있는 좌석은 전부 감점이라
+ *  「파라솔을 깐다」는 선택이 아니라 벌칙이 된다. 겨울 대비는 1을 까는 것으로 끝나야 한다. */
+export const SHELTER_PENALTY = 2;
+export const SHELTER_BASE = 1;
+export const SHELTER_MAX = 2;
+/** 지붕이 막아 주는 날씨 (눈·비·태풍·장마) */
+const BAD_WEATHER = /typhoon|snow|monsoon|rain/;
+/** 오늘이 「추운 날」인가 — 겨울(12~2월)이거나 악천후 */
+export function coldDay(state: GameState): boolean {
+  return seasonOf(state.clock.month) === 'winter' || activeEvents(state).some((e) => BAD_WEATHER.test(e.id));
+}
 /** spot2 돌담의 쓸모: 북서쪽을 막아 주면 겨울 야외 자리 만족 +8 (사용자 피드백 "돌담 생긴 것 때문에 뭐 어쩌라는 건지 모르겠다") */
 export const WIND_SHELTER_SAT = 8;
 /** 바람 쐐기: 자리에서 북서쪽으로 1~3칸, |dx−dy| ≤ 1 (grid.ts windShelter와 같은 띠) */
@@ -53,10 +66,10 @@ export const SITE_SAT_PER_SCENERY = 10;
 /** 그늘을 주는 시설 (나무·지붕·파라솔 외 명시 목록) */
 const SHADE_IDS = new Set(['table_parasol', 'palm', 'cedar', 'hackberry', 'deco_umbrella_stand']);
 
-/** 전망이 되는 경관: 실외의 경관치 3 이상 경관·랜드마크·나무(연못·삼나무·수국·돌하르방…). 화분·귤나무 같은 소품은 전망이 아니다. */
+/** 전망이 되는 경관: 경관치 3 이상 경관·랜드마크·나무(연못·삼나무·수국·돌하르방…). 화분·귤나무 같은 소품은 전망이 아니다. */
 export const VIEW_MIN_SCENERY = 3;
 function isViewSource(d: ObjectDef): boolean {
-  return !d.indoor && d.scenery >= VIEW_MIN_SCENERY && (d.category === 'scenery' || d.category === 'landmark' || d.kind === 'tree' || d.kind === 'landmark');
+  return d.scenery >= VIEW_MIN_SCENERY && (d.category === 'scenery' || d.category === 'landmark' || d.kind === 'tree' || d.kind === 'landmark');
 }
 function isShade(d: ObjectDef): boolean {
   return d.kind === 'tree' || d.kind === 'building' || d.room === true || SHADE_IDS.has(d.id);
@@ -70,7 +83,7 @@ const CACHE = new WeakMap<GameState, Cache>();
 
 /** 오브젝트 배치 서명. 배치·제거·이동·완공이 바뀌면 달라진다. */
 export function layoutKey(state: GameState): string {
-  const parts: string[] = [state.main?.floor2 ? 'F2' : ''];
+  const parts: string[] = [];
   for (const o of Object.values(state.objects)) parts.push(`${o.id}:${o.x},${o.y}${o.w ? `x${o.w}x${o.h}` : ''}${o.build ? 'b' : ''}`);
   return parts.join(';');
 }
@@ -83,22 +96,13 @@ function cacheOf(state: GameState): Cache {
   return c;
 }
 
-/** y-indoor 실내 규칙: 온실 카페 안 전망 +2 고정, 창가석은 벽(방 가장자리)에 붙으면 +2·바다 방향(북쪽 벽) +3, 본관 2층 +1 */
-const GREENHOUSE_VIEW = 2;
-const WINDOW_WALL_VIEW = 2;
-const WINDOW_SEA_VIEW = 3;
-function indoorAdjust(state: GameState, x: number, y: number, site: Site): void {
+/** 전망 데크석(옛 창가석)은 바다가 보이는 칸에서 전망 +2 — 「바깥을 가꿔서 값을 올린다」의 좌석판 */
+export const DECK_TYPE = 'window_seat';
+export const DECK_SEA_VIEW = 2;
+function deckAdjust(state: GameState, x: number, y: number, site: Site): void {
   const cell = cellAt(state, x, y);
-  const room = cell.roomId ? state.objects[cell.roomId] : null;
-  if (!room) return;
-  if (room.type === 'greenhouse_cafe') site.view = clamp(site.view + GREENHOUSE_VIEW, 0, SITE_MAX.view);
   const o = cell.objectId ? state.objects[cell.objectId] : null;
-  if (o && o.type === 'window_seat') {
-    const w = room.w ?? objectDef(room.type).w, h = room.h ?? objectDef(room.type).h;
-    const onWall = x === room.x || y === room.y || x === room.x + w - 1 || y === room.y + h - 1;
-    if (onWall) site.view = clamp(site.view + (y === room.y && seaInRange(state, x, y) ? WINDOW_SEA_VIEW : WINDOW_WALL_VIEW), 0, SITE_MAX.view);
-  }
-  if (room.type === 'warehouse' && state.main?.floor2) site.view = clamp(site.view + FLOOR2_VIEW, 0, SITE_MAX.view);
+  if (o && o.type === DECK_TYPE && seaInRange(state, x, y)) site.view = clamp(site.view + DECK_SEA_VIEW, 0, SITE_MAX.view);
 }
 
 // ---------- 전망·그늘 ----------
@@ -164,12 +168,11 @@ export function siteOf(state: GameState, x: number, y: number): Site {
   if (hit) return hit;
   const cell = cellAt(state, x, y);
   const selfId = cell.objectId ?? undefined;
-  const indoor = cell.roomId !== null;
   const site: Site = {
     view: viewOf(state, x, y, selfId),
-    shade: indoor ? SITE_MAX.shade : shadeOf(state, x, y, selfId),
+    shade: shadeOf(state, x, y, selfId),
   };
-  indoorAdjust(state, x, y, site); // y-indoor
+  deckAdjust(state, x, y, site);
   c.sites.set(key, site);
   return site;
 }
@@ -183,7 +186,7 @@ export function scoreOf(site: Site): number {
   return clamp(Math.round(site.view * VIEW_WEIGHT + site.shade * SHADE_WEIGHT), 0, 10);
 }
 function isSeatDef(d: ObjectDef): boolean {
-  return d.kind === 'seat' || d.id === 'warehouse';
+  return d.kind === 'seat';
 }
 /** 자리 점수가 성과를 가르는 종류인가 (좌석·이용료 시설). 장식·나머지는 아니다. */
 export function scoredType(type: string): boolean {
@@ -227,10 +230,9 @@ export interface SiteBonus {
   score: number;        // 자리 점수 0~10
   site: Site;
 }
-/** 야외 자리인가 (실내 오브젝트·본관 2층·방 안 칸은 아니다) */
-export function isOutdoorSeat(state: GameState, seat: PlacedObject): boolean {
-  const d = objectDef(seat.type);
-  return !d.indoor && !d.room && seat.type !== 'warehouse' && cellAt(state, seat.x, seat.y).roomId === null;
+/** 좌석의 지붕 값 (0~2). 야외 중심 개편: 「실내/야외」 대신 이 숫자 하나가 추위·비를 가른다. */
+export function shelterOf(seat: PlacedObject): number {
+  return objectDef(seat.type).shelter ?? 0;
 }
 /** 좌석·매대의 자리 보정. 계절(여름·겨울 그늘) 반영. */
 export function siteBonus(state: GameState, seat: PlacedObject): SiteBonus {
@@ -241,19 +243,18 @@ export function siteBonus(state: GameState, seat: PlacedObject): SiteBonus {
     return { feeMult: d.fee !== undefined ? siteFeeMult(score) : 1, satisfaction: 0, score, site };
   }
   const season = seasonOf(state.clock.month);
-  const outdoor = isOutdoorSeat(state, seat);
   // 파라솔 자리: 자기 파라솔 그늘 +1
   const shade = Math.min(SITE_MAX.shade, site.shade + (seat.type === PARASOL_TYPE ? 1 : 0));
   let pts = SAT_PER_VIEW * site.view;
-  if (outdoor) {
-    if (season === 'winter') {
-      pts += SAT_SHADE_WINTER * shade;
-      if (windShelter(state, seat.x, seat.y) >= SHELTER_THRESHOLD) pts += WIND_SHELTER_SAT; // spot2: 북서쪽 돌담이 겨울 바람을 막아 준다
-    } else if (season === 'summer') pts += SAT_SHADE_SUMMER * shade;
-  }
+  let shelterSat = 0;
+  if (coldDay(state)) {
+    // 추위·비는 지붕이 막는다 (겨울이라고 좌석을 끄지 않는다 — 지붕 없는 자리만 만족이 깎인다)
+    shelterSat = (shelterOf(seat) - SHELTER_BASE) * SHELTER_PENALTY;
+    if (windShelter(state, seat.x, seat.y) >= SHELTER_THRESHOLD) pts += WIND_SHELTER_SAT; // spot2: 북서쪽 돌담이 바람을 막아 준다
+  } else if (season === 'summer') pts += SAT_SHADE_SUMMER * shade;
   return {
     feeMult: siteFeeMult(score),
-    satisfaction: Math.trunc(pts / SITE_SAT_PER_SCENERY) || 0,
+    satisfaction: (Math.trunc(pts / SITE_SAT_PER_SCENERY) || 0) + shelterSat,
     score,
     site,
   };
@@ -276,7 +277,7 @@ export function windCoveredSeatsBy(state: GameState, type: string, cells: Pt[], 
   const out: PlacedObject[] = [];
   for (const o of Object.values(state.objects)) {
     if (o.id === ignoreId || o.build) continue;
-    if (!isSeatDef(objectDef(o.type)) || !isOutdoorSeat(state, o)) continue;
+    if (!isSeatDef(objectDef(o.type))) continue;
     const n = cells.filter((c) => inWedge(o, c)).length;
     if (n === 0) continue;
     const now = windShelter(state, o.x, o.y);
@@ -302,9 +303,8 @@ export function siteSay(state: GameState, guest: Guest): string | null {
   if (!seat) return null;
   const site = siteOf(state, seat.x, seat.y);
   const season = seasonOf(state.clock.month);
-  const outdoor = isOutdoorSeat(state, seat);
-  if (outdoor && season === 'summer' && site.shade >= 1) return SITE_SAY.cool;
-  if (outdoor && season === 'summer' && site.shade === 0) return SITE_SAY.hot;
+  if (season === 'summer' && site.shade >= 1) return SITE_SAY.cool;
+  if (season === 'summer' && site.shade === 0) return SITE_SAY.hot;
   if (site.view >= 2 && seaInRange(state, seat.x, seat.y)) return SITE_SAY.sea;
   if (site.view >= 3) return SITE_SAY.view;
   return null;

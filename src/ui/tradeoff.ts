@@ -71,8 +71,7 @@ export function tradeoffOf(s: GameState, type: string, x: number, y: number): Tr
   if (t && street >= STREET_MIN) gains.push(`${t.tree.street} ${street}칸 +${STREET_BONUS_PCT}%`);
   else if (t && t.index > 0 && street === STREET_MIN - 1) gains.push(`하나 더면 ${t.tree.street}`);
   if (def.upkeep > 0) losses.push(`유지비 ${wonText(def.upkeep)}/월`);
-  if (def.kind === 'seat' && !def.indoor) losses.push('비 오는 날 빈다');
-  if (def.indoor) losses.push('실내는 값이 세다');
+  if (def.kind === 'seat' && (def.shelter ?? 0) === 0) losses.push('지붕이 없어 겨울·비에 만족이 깎인다');
   if (def.noise > 0 && sc >= 0) losses.push(`소음 ${def.noise}`);
   const cost = opportunityCost(s, type); // stakes: 기회비용 한 줄
   return { gain: gains.join(' · '), loss: losses.join(' · '), ...(cost ? { cost } : {}) };

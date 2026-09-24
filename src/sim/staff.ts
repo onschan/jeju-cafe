@@ -175,9 +175,10 @@ export function roleHeadsWith(state: GameState, role: RoleId, stats: Stats): num
 }
 
 // ---------- 배치 (staff2): 담당 구역·야간 근무 ----------
-export type StaffZone = 'all' | 'indoor' | 'outdoor';
-export const STAFF_ZONES: StaffZone[] = ['all', 'indoor', 'outdoor'];
-export const ZONE_NAME: Record<StaffZone, string> = { all: '전체', indoor: '실내', outdoor: '야외' };
+/** 홀 직원 담당 구역 (야외 중심 개편: 실내/야외 → 명당 자리 / 그 밖 마당) */
+export type StaffZone = 'all' | 'corner' | 'yard';
+export const STAFF_ZONES: StaffZone[] = ['all', 'corner', 'yard'];
+export const ZONE_NAME: Record<StaffZone, string> = { all: '전체', corner: '명당 자리', yard: '그 밖 마당' };
 /** 맡은 구역 손님 만족 +2, 맡지 않은 구역 −1 */
 export const ZONE_FOCUS_BONUS = 2;
 export const ZONE_OTHER_PENALTY = -1;
@@ -529,7 +530,7 @@ export function warehouseFront(state: GameState): Pt {
   const hit = FRONT_CACHE.get(state);
   if (hit && hit.key === key) return { ...hit.pt };
   const wh = Object.values(state.objects).find((o) => o.type === 'warehouse');
-  const front = wh ? doorFrontOf(wh) : WAREHOUSE_FRONT; // y-indoor: 본관을 옮기거나 증축하면 문 앞이 바뀐다
+  const front = wh ? doorFrontOf(wh) : WAREHOUSE_FRONT; // 본관 문 앞이 직원 대기·주방 거리의 원점
   const pt = isWalkable(state, front.x, front.y) ? { ...front } : nearestWalkable(state, front);
   FRONT_CACHE.set(state, { key, pt });
   return { ...pt };

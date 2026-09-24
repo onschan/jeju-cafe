@@ -411,10 +411,11 @@
   },
   {
     "id": "g23",
-    "title": "실내 좌석 6석",
-    "desc": "본관 안에 실내 테이블·소파를 놓아 실내 자리를 6석 만들자",
+    "title": "전망 좋은 자리 6석",
+    "desc": "바다나 오름이 보이는 칸(전망 3 이상)에 자리를 6개 놓자",
     "condition": {
-      "type": "indoorSeats",
+      "type": "siteSeats",
+      "view": 3,
       "n": 6
     },
     "reward": [
@@ -424,7 +425,7 @@
       }
     ],
     "speaker": "samchun",
-    "line": "비 오는 날엔 안에 앉을 자리가 있어야지. 겨울 손님이 좋아할 거여."
+    "line": "바다가 보이는 자리에 앉으면 손님이 오래 머물러. 그런 칸을 찾아보라."
   },
   {
     "id": "g24",
@@ -851,11 +852,12 @@
   },
   {
     "id": "g36",
-    "title": "본관 Lv2 증축",
-    "desc": "본관 카드에서 증축해 실내를 넓히자 (₩300만·7일)",
+    "title": "바다 전망 자리 4석",
+    "desc": "전망 4 이상인 좋은 칸에 자리를 4개 놓자",
     "condition": {
-      "type": "mainLevel",
-      "lv": 2
+      "type": "siteSeats",
+      "view": 4,
+      "n": 4
     },
     "reward": [
       {
@@ -864,7 +866,7 @@
       }
     ],
     "speaker": "samchun",
-    "line": "창고가 카페다워졌구나. 안이 넓어지니 손님이 더 들어오겠다."
+    "line": "마당이 카페다워졌구나. 경치 좋은 자리가 늘수록 요금도 올라간다."
   },
   {
     "id": "g37",
@@ -912,11 +914,11 @@
   },
   {
     "id": "g39",
-    "title": "별관 짓기",
-    "desc": "카페 별관이나 온실 카페를 짓고 본관과 올렛길로 잇자",
+    "title": "명당 3개 만들기",
+    "desc": "서로 어울리는 시설을 모아 이름 붙은 명당을 3개 만들자",
     "condition": {
-      "type": "annex",
-      "n": 1
+      "type": "corners",
+      "n": 3
     },
     "reward": [
       {
@@ -925,7 +927,7 @@
       }
     ],
     "speaker": "hero",
-    "line": "별관까지 생겼네. 길을 안 이으면 손님이 못 가니 잘 봐라."
+    "line": "명당이 셋이나 생겼네. 손님들이 사진을 찍고 간다."
   },
   {
     "id": "g40",
@@ -1147,11 +1149,11 @@
   },
   {
     "id": "g48",
-    "title": "본관 Lv3",
-    "desc": "본관을 Lv3로 증축",
+    "title": "필지 7개",
+    "desc": "땅을 사서 마당을 넓히자 (넓어지는 길은 필지뿐)",
     "condition": {
-      "type": "mainLevel",
-      "lv": 3
+      "type": "parcels",
+      "n": 7
     },
     "reward": [
       {
@@ -1160,15 +1162,16 @@
       }
     ],
     "speaker": "samchun",
-    "line": "본관이 커졌다. 비 오는 날도 자리가 남아."
+    "line": "마당이 넓어졌다. 비 오는 날도 자리가 남아."
   },
   {
     "id": "g49",
-    "title": "본관 Lv4",
-    "desc": "본관을 Lv4까지 증축",
+    "title": "바다 전망 자리 8석",
+    "desc": "전망 4 이상인 자리를 8개까지 늘리자",
     "condition": {
-      "type": "mainLevel",
-      "lv": 4
+      "type": "siteSeats",
+      "view": 4,
+      "n": 8
     },
     "reward": [
       {
@@ -1177,7 +1180,7 @@
       }
     ],
     "speaker": "hero",
-    "line": "본관이 네 층이 됐구나."
+    "line": "바다가 한눈에 들어오는 자리가 넷이구나."
   },
   {
     "id": "g50",
@@ -1249,8 +1252,8 @@
     },
     "reward": [
       {
-        "type": "unlockFacility",
-        "id": "table_in"
+        "type": "tickets",
+        "n": 3
       }
     ],
     "speaker": "halmang",
@@ -1275,10 +1278,11 @@
   },
   {
     "id": "g54",
-    "title": "2층 올리기",
-    "desc": "본관 2층을 짓자",
+    "title": "필지 9개",
+    "desc": "마지막 땅까지 사 모으자",
     "condition": {
-      "type": "secondFloor"
+      "type": "parcels",
+      "n": 9
     },
     "reward": [
       {
@@ -1300,7 +1304,7 @@
       }
     ],
     "speaker": "samchun",
-    "line": "2층에서 보면 바다가 더 넓어요."
+    "line": "이 동네 땅을 거의 다 샀구나."
   },
   {
     "id": "g55",
@@ -1347,10 +1351,6 @@
       {
         "type": "unlockFacility",
         "id": "omegi_stall"
-      },
-      {
-        "type": "unlockFacility",
-        "id": "table_in"
       }
     ],
     "speaker": "hero",
@@ -1391,7 +1391,7 @@
       }
     ],
     "speaker": "halmang",
-    "line": "우승이여. 저 트로피는 우리 실내에 놓자."
+    "line": "우승이여. 저 트로피는 마당 잘 보이는 데 놓자."
   },
   {
     "id": "g58",

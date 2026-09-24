@@ -36,7 +36,7 @@ import { contestHistory, contestWins, contestBestRank } from './contest.ts'; // 
 import { checkTutorial, TUTORIAL_STEPS } from './tutorial.ts';
 import { hasLoan, loanRewardMult } from './failure.ts';
 import { levelOf } from './upgrade.ts';
-import { indoorSeats, mainLevel, annexCount, isMainClosed, mainBuilding } from './rooms.ts'; // y-indoor
+import { mainBuilding } from './rooms.ts';
 import { grantItem } from './items.ts';
 import { totalSpotVisitors } from './spots.ts';
 import { cleanStreakDays, cleanAvgDays, dirtyForDays, CLEAN_HISTORY_DAYS, CLEAN_LOW } from './cleanliness.ts';
@@ -97,7 +97,7 @@ export function checkFeature(state: GameState, actionType: Action['type']): Appl
 
 // ---------- 열림 조건 (§7.1: 좌석·길·메뉴가 갖춰질 때까지 손님 0) ----------
 
-/** 좌석 오브젝트 (guests.ts isSeat와 같은 규칙: kind seat + 2층 증축한 본관). guests.ts는 goals.ts를 import하므로 여기서 다시 쓴다. */
+/** 좌석 오브젝트 (guests.ts isSeat와 같은 규칙). guests.ts는 goals.ts를 import하므로 여기서 다시 쓴다. */
 function seatObjectsOf(state: GameState) {
   return Object.values(state.objects).filter((o) => objectDef(o.type).kind === 'seat' || seatsOf(state, o) > 0);
 }
@@ -107,7 +107,6 @@ function seatObjectsOf(state: GameState) {
 export function canOpen(state: GameState): boolean {
   if (state.tutorial.step < TUTORIAL_STEPS && !state.menuSlots.some((m) => m !== null)) return false;
   if (!mainBuilding(state)) return false; // w-start: 맨땅(본관 없음)엔 손님이 안 온다 — 튜토리얼 2단계에서 본관을 짓는다
-  if (isMainClosed(state)) return false; // y-indoor: 본관 공사(증축·이동·2층) 중 영업 정지
   const seats = seatObjectsOf(state);
   if (seats.length === 0) return false;
   const reach = reachMap(state, busStopPos(state));
@@ -161,9 +160,6 @@ export const conditionCheckers: CheckerMap = {
   staffLevel: (s, c) => n(s.staff.filter((st) => st.level >= c.lv).length, c.n),
   trainings: (s, c) => n(s.stats.trainings, c.n), // x-staff가 stats.trainings를 올린다
   facilityLv: (s, c) => n(Object.values(s.objects).filter((o) => !o.build && goalLevelOf(o) >= c.lv).length, c.n), // 트랙 A 증축 Lv · fun 트리 단계(파라솔 = Lv2, 테라스 = Lv3)도 센다
-  indoorSeats: (s, c) => n(indoorSeats(s), c.n), // y-indoor 실내 좌석 정원
-  mainLevel: (s, c) => n(mainLevel(s), c.lv),    // y-indoor 본관 증축 Lv
-  annex: (s, c) => n(annexCount(s), c.n),        // y-indoor 완공된 별관
   setCount: (s, c) => n(activeSetIds(s).size, c.n),
   spotLevel: (s, c) => n(s.spots[c.spotId] ?? 0, c.lv),
   spotAny: (s, c) => n(Object.values(s.spots).filter((lv) => lv >= c.lv).length, c.n),
@@ -197,7 +193,6 @@ export const conditionCheckers: CheckerMap = {
   // ---- fun-rank 눈에 보이는 성장 (grade.ts) ----
   grade: (s, c) => n(s.grade ?? 1, c.n),
   regulars: (s, c) => n(s.regulars?.length ?? 0, c.n), // 트랙 G 단골 등록 손님 수(state.regulars)
-  secondFloor: (s) => flag(!!s.main?.floor2),
   reputation: (s, c) => n(Math.round(s.reputation), c.n),
   legendStaff: (s, c) => n(s.staff.filter((st) => titleGradeOf(st.title) === 'legend').length, c.n),
   routesOpen: (s, c) => n(ROUTE_IDS.filter((r) => r !== 'bus' && routeOpened(s, r)).length, c.n),
@@ -322,9 +317,6 @@ export function goalConditionText(c: GoalCondition): string {
     case 'staffLevel': return `Lv${c.lv} 직원 ${c.n}명`;
     case 'trainings': case 'training': return `연수 ${c.n}회`;
     case 'facilityLv': case 'upgraded': return `Lv${c.lv}(${c.lv}단계) 시설 ${c.n}개`;
-    case 'indoorSeats': return `실내 좌석 ${c.n}석`;
-    case 'mainLevel': return `본관 Lv${c.lv}`;
-    case 'annex': return `별관 ${c.n}동`;
     case 'setCount': return `세트 효과 ${c.n}개`;
     case 'hiddenRecipes': return `숨은 레시피 ${c.n}개`;
     case 'spotLevel': return `${name.spot(c.spotId)} Lv${c.lv}`;
@@ -353,7 +345,6 @@ export function goalConditionText(c: GoalCondition): string {
     // ---- fun-rank ----
     case 'grade': return `등급 「${GRADE_NAMES[c.n - 1] ?? c.n}」`;
     case 'regulars': return `단골 ${c.n}명`;
-    case 'secondFloor': return '본관 2층 올리기';
     case 'reputation': return `평판 ${c.n}`;
     case 'legendStaff': return c.n === 1 ? '전설 직원 채용' : `전설 직원 ${c.n}명`;
     case 'routesOpen': return `손님 오는 길 ${c.n}종`;

@@ -116,8 +116,8 @@ const LOCKED_ALPHA = 0.45;
 /** fun-rank: 등급별 본관 외벽 tint (플레이어가 외벽 색을 고르지 않았을 때(0) — 등급이 오르면 벽이 산뜻해진다: 회벽 → 크림 → 연노랑 → 연분홍 → 연보라) */
 const GRADE_WALL_TINT = [0xffffff, 0xe6e0d4, 0xfff4dc, 0xfff8c8, 0xffe0e8, 0xe8d8ff];
 /** fun-rank: 본관 뒤 모서리(두 벽이 만나는 꼭대기) 높이 = 기단 10 + 벽 높이(sprites_iso_rooms.py warehouse/MAIN_WALL_H) */
-const MAIN_WALL_TOP: Record<number, number> = { 1: 36, 2: 38, 3: 44, 4: 50 };
-const FLOOR2_BAND_H = 22;
+/** 본관 벽 높이 (3×2 고정) */
+const MAIN_WALL_TOP = 36;
 
 /** 상단 바(28px) + 목표 줄(24px) 아래에 맵 위 꼭짓점이 오도록 하는 기본 세로 오프셋 */
 const WORLD_OFFSET_Y = 76;
@@ -186,7 +186,7 @@ const HIGHLIGHT_LABEL_MAX = 3;
 /** 밤 오버레이 색·최대 알파 (fix-indoor: 0.55 → 0.38, 남색 유지. DOM NightOverlay는 없앴다 — 둘이 겹쳐 너무 어두웠다) */
 const NIGHT_COLOR = 0x0b1a3a;
 const NIGHT_MAX_ALPHA = 0.38;
-/** 밤에 빛나는 오브젝트: 조명 시설(sim/lighting LIGHT_RADIUS) + 정류장. 방(본관·별관)은 실내 전체에 따뜻한 빛을 깐다(syncRoomLights). */
+/** 밤에 빛나는 오브젝트: 조명 시설(sim/lighting LIGHT_RADIUS) + 정류장. 건물은 발자국 전체에 따뜻한 빛을 깐다(syncRoomLights). */
 const GLOW_EXTRA_TYPES = new Set(['busstop']);
 function glowScale(type: string, w: number, h: number): number {
   const r = LIGHT_RADIUS[type];
@@ -258,18 +258,18 @@ const FLASH_FRAME_MS = 90;
 const FLASH_FRAMES = 3;
 const CORNER_SAY_MS = 1800;
 
-/** 오브젝트 상태별 스프라이트 변형 이름. 본관은 증축 Lv(state.main.level)에 따라 lv2·lv3·lv4 (y-indoor §8.1 — SPRITE_ALIAS가 아니라 level로 고른다). */
-function objectVariant(o: Pick<PlacedObject, 'type'>, mainLevel = 1): string | undefined {
-  if (o.type === 'warehouse') return mainLevel >= 2 ? `lv${Math.min(4, mainLevel)}` : undefined;
+/** 오브젝트 상태별 스프라이트 변형 이름. 본관은 3×2 고정이라 변형이 없다. */
+function objectVariant(o: Pick<PlacedObject, 'type'>): string | undefined {
+  if (o.type === 'warehouse') return undefined;
   if (o.type === 'gate') return '0'; // 2B에서 영업 토글 연동
   return undefined;
 }
 
 /** 아이소 스프라이트(회전 _r{n} → 변형 → 기본) → 탑다운 스프라이트(변형 → 기본) 순으로 찾는다. 다 없으면 null. */
-function objectTex(o: Pick<PlacedObject, 'type' | 'rot'>, mainLevel = 1): { texture: Texture; iso: boolean } | null {
+function objectTex(o: Pick<PlacedObject, 'type' | 'rot'>): { texture: Texture; iso: boolean } | null {
   if (!hasAssets()) return null;
   const name = SPRITE_ALIAS[o.type] ?? o.type;
-  const variant = objectVariant(o, mainLevel);
+  const variant = objectVariant(o);
   const rotated = o.rot !== undefined ? peekTex(spriteName.isoObject(name, `r${o.rot}`)) : null;
   const iso = rotated ?? peekTex(spriteName.isoObject(name, variant)) ?? (variant ? peekTex(spriteName.isoObject(name)) : null);
   if (iso) return { texture: iso, iso: true };
@@ -321,7 +321,7 @@ export class GameView {
   private night = new Graphics();
   /** 밤 오버레이 위에 그리는 additive 글로우. 매 프레임 world와 같은 변환을 따른다. */
   private lights = new Container();
-  /** 방(본관·별관) 실내 전체를 밤에도 밝히는 따뜻한 빛 (add 블렌드). 배치가 바뀔 때만 다시 그린다 (fix-indoor) */
+  /** 건물 발자국 전체를 밤에도 밝히는 따뜻한 빛 (add 블렌드). 배치가 바뀔 때만 다시 그린다 */
   private roomLight = new Graphics();
   private roomLightKey = '';
   private objNodes = new Map<string, ObjEntry>();
@@ -355,7 +355,6 @@ export class GameView {
   private ghost: Container | null = null;
   private ghostKey = '';
   /** 마지막 render의 본관 Lv (고스트 크기·텍스처용) */
-  private lastMainLevel = 1;
   /** 입지(트랙 F): 고스트 배지·색 갱신용 스펙과 마지막 키 */
   private ghostSpec: GhostSpec | null = null;
   private ghostSiteKey = '';
@@ -536,9 +535,7 @@ export class GameView {
     this.ghostSiteKey = '';
     if (!g) return;
     const def = objectDef(g.type);
-    // 본관 옮기기 고스트는 현재 Lv 크기 (y-indoor §4.1)
-    const mainLv = this.lastMainLevel;
-    const gw = g.w ?? (g.type === 'warehouse' ? MAIN_SIZE[mainLv]!.w : def.w), gh = g.h ?? (g.type === 'warehouse' ? MAIN_SIZE[mainLv]!.h : def.h);
+    const gw = g.w ?? (g.type === 'warehouse' ? MAIN_SIZE.w : def.w), gh = g.h ?? (g.type === 'warehouse' ? MAIN_SIZE.h : def.h);
     const c = new Container();
     const { sx, sy } = footAnchor(g.x, g.y, gw, gh);
     c.position.set(sx, sy);
@@ -562,7 +559,7 @@ export class GameView {
       dg.label = 'ghostDoor';
       c.addChild(dg, dl);
     }
-    const t = objectTex({ type: g.type, rot: g.rot }, mainLv);
+    const t = objectTex({ type: g.type, rot: g.rot });
     const sp = new Sprite(t?.texture ?? isoObjectTexture(this.app.renderer, def.kind, gw, gh));
     sp.anchor.set(0.5, 1);
     if (t && !t.iso) sp.position.y = -gh * (ISO_H / 2);
@@ -904,7 +901,6 @@ export class GameView {
 
   render(state: GameState) {
     const season = seasonOf(state.clock.month);
-    this.lastMainLevel = state.main?.level ?? 1;
     if (!this.tilesBuilt) {
       this.buildTiles(state, season);
       this.fitCamera(state);
@@ -1326,7 +1322,7 @@ export class GameView {
 
   private makeObjectNode(state: GameState, o: PlacedObject): ObjEntry {
     const def = objectDef(o.type);
-    const { w, h } = sizeOf(o); // y-indoor: 본관 증축 크기
+    const { w, h } = sizeOf(o);
     const c = new Container();
     const { sx, sy } = footAnchor(o.x, o.y, w, h);
     c.position.set(sx, sy);
@@ -1343,7 +1339,7 @@ export class GameView {
       glow.alpha = 0;
       this.lights.addChild(glow);
     }
-    const t = objectTex(o, state.main?.level ?? 1);
+    const t = objectTex(o);
     if (t) {
       const sp = new Sprite(t.texture);
       // 탑다운 스프라이트 폴백은 발자국 중심 쪽으로 올려 대충 맞춘다
@@ -1435,37 +1431,24 @@ export class GameView {
     entry.node.getChildByLabel('gradesign')?.destroy({ children: true });
     const signTex = peekTex(spriteName.isoObject('warehouse', `sign_g${grade}`));
     if (signTex) {
-      const lv = state.main?.level ?? 1;
-      const { w, h } = MAIN_SIZE[lv] ?? { w: 3, h: 2 };
+      const { w, h } = MAIN_SIZE;
       const gs = new Sprite(signTex);
       gs.label = 'gradesign';
       gs.anchor.set(0.5, 1);
       // 노드 원점 = 발자국 앞 꼭짓점. 뒤 꼭짓점은 x=(h−w)·32, y=−(w+h)·16, 그 위로 벽 높이(+2층 띠)만큼
-      gs.position.set((h - w) * (ISO_W / 2), -(w + h) * (ISO_H / 2) - (MAIN_WALL_TOP[lv] ?? 36) - (state.main?.floor2 && lv >= 3 ? FLOOR2_BAND_H : 0) + 2);
+      gs.position.set((h - w) * (ISO_W / 2), -(w + h) * (ISO_H / 2) - MAIN_WALL_TOP + 2);
       entry.node.addChild(gs);
-    }
-    // y-indoor §8.2: 2층은 본관 벽 위에 2층 창문 띠 오버레이 (같은 발자국 스프라이트라 하단 중앙 앵커가 맞는다)
-    entry.node.getChildByLabel('floor2')?.destroy({ children: true });
-    const lv = state.main?.level ?? 1;
-    const band = state.main?.floor2 && lv >= 3 ? peekTex(spriteName.isoObject('warehouse', `floor2_lv${Math.min(4, lv)}`)) : null;
-    if (band) {
-      const f2 = new Sprite(band);
-      f2.label = 'floor2';
-      f2.anchor.set(0.5, 1);
-      f2.tint = entry.sprite?.tint ?? 0xffffff;
-      entry.node.addChild(f2);
     }
     // 대회 입상 배지: 등급 간판 위 금별 리본 (contest.ts badge — 1위 6개월·입상 3개월, 지나면 사라진다)
     entry.node.getChildByLabel('contestbadge')?.destroy({ children: true });
     const badge = contestBadge(state);
     if (badge) {
-      const mlv = state.main?.level ?? 1;
-      const size = MAIN_SIZE[mlv] ?? { w: 3, h: 2 };
+      const size = MAIN_SIZE;
       const c = new Container();
       c.label = 'contestbadge';
       const l = label(`★ ${badge}`, 9);
       l.anchor.set(0.5, 1);
-      l.position.set(0, -(size.w + size.h) * (ISO_H / 2) - (MAIN_WALL_TOP[mlv] ?? 36) - 16);
+      l.position.set(0, -(size.w + size.h) * (ISO_H / 2) - MAIN_WALL_TOP - 16);
       const bg = new Graphics().roundRect(l.x - l.width / 2 - 4, l.y - l.height - 1, l.width + 8, l.height + 2, 3).fill({ color: 0xd4a13c, alpha: 0.95 });
       c.addChild(bg, l);
       entry.node.addChild(c);
@@ -1569,11 +1552,10 @@ export class GameView {
       if (entry.sprite) {
         // 시트 모드: 변형(심음·어린 나무·증축)이 바뀔 때만 텍스처를 갱신. 수확은 자동이라 링 대신 반짝임(syncFx).
         const isCafe = o.type === 'warehouse';
-        const mainLv = state.main?.level ?? 1;
-        const key = `${objectVariant(o, mainLv) ?? ''}:${o.rot ?? ''}${isCafe ? `:${state.cosmetics?.wallColor ?? 0}:${state.cosmetics?.sign ?? ''}:${state.main?.floor2 ? 'F2' : ''}:g${gradeOf(state)}:${contestBadge(state) ?? ''}` : ''}`; // fun-rank: 등급이 바뀌면 간판·외벽 갱신 · 대회 배지가 붙거나 떨어지면 다시
+        const key = `${objectVariant(o) ?? ''}:${o.rot ?? ''}${isCafe ? `:${state.cosmetics?.wallColor ?? 0}:${state.cosmetics?.sign ?? ''}:g${gradeOf(state)}:${contestBadge(state) ?? ''}` : ''}`; // fun-rank: 등급이 바뀌면 간판·외벽 갱신 · 대회 배지가 붙거나 떨어지면 다시
         if (this.badgeKeys.get(o.id) === key) continue;
         this.badgeKeys.set(o.id, key);
-        const t = objectTex(o, mainLv);
+        const t = objectTex(o);
         if (t) entry.sprite.texture = t.texture;
         if (isCafe) this.decorateCafe(entry, state);
         continue;
@@ -1989,7 +1971,7 @@ export class GameView {
     this.pops.push({ node: c, born: now, y0: target.y - GUEST_H + 6 });
   }
 
-  /** 방(본관·별관, 공사 중 제외) 발자국 전체에 따뜻한 빛 다이아몬드 — 실내는 밤에도 밝다 (fix-indoor). 배치 서명이 바뀔 때만 다시 그린다. */
+  /** 건물(공사 중 제외) 발자국 전체에 따뜻한 빛 다이아몬드 — 창이 밤에도 밝다. 배치 서명이 바뀔 때만 다시 그린다. */
   private syncRoomLights(state: GameState, glowAlpha: number) {
     if (this.roomLight.destroyed) return;
     this.roomLight.alpha = glowAlpha;

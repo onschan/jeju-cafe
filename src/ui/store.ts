@@ -100,7 +100,7 @@ const ACTION_SFX: Record<Action['type'], SfxName> = {
   enterContest: 'unlock', cancelContest: 'tap', dismissContest: 'tap',
   expandParking: 'place', // 트랙 H
   reserveWork: 'tap', cancelWork: 'tap', doWorkNow: 'place', // seatfix: 손님이 앉은 시설 예약·취소·지금 바로
-  placeMain: 'fanfare', expandMain: 'unlock', buildSecondFloor: 'unlock', moveMain: 'place', undoMoveMain: 'tap', setBgm: 'tap', setLighting: 'tap', // y-indoor
+  placeMain: 'fanfare', setBgm: 'tap', setLighting: 'tap',
   continueEnding: 'fanfare', // z-ending
   seatFromQueue: 'happy', rushPriority: 'tap', // 러시 타임 훅 한 줄 (인사·추천은 삭제)
 }; // 홍보·투어·대결·선물은 룰렛 팝업(OutcomePopup)이 drumroll → fanfare/coin/error를 낸다 (staff-luck)

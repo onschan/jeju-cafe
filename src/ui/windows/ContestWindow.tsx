@@ -95,7 +95,7 @@ export function ContestWindow() {
           <span style={{ fontSize: 13, color: open ? PALETTE.bad : PALETTE.inkSoft }}>{left === 0 ? '오늘 열려요' : `${next.year}년 ${next.month}월 1일 · ${left}일 남음`}</span>
         </div>
         <div style={small}>연 2회 6월·12월에 열려요. 접수는 이레 전부터 당일 아침까지.</div>
-        {trophies > 0 && <div style={{ fontSize: 13, marginTop: 4 }}>받은 상패 {trophies}개 (실내에 놓은 것 {trophyPlaced(s, TROPHY_TYPE)}개)</div>}
+        {trophies > 0 && <div style={{ fontSize: 13, marginTop: 4 }}>받은 상패 {trophies}개 (마당에 놓은 것 {trophyPlaced(s, TROPHY_TYPE)}개)</div>}
       </div>
 
       {c?.entry ? (

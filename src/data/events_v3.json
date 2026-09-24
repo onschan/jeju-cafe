@@ -249,14 +249,15 @@
     "endDialogue": "주말 러시가 지나갔어요."
   },
   {
-    "id": "ev_rainy_indoor",
-    "title": "비 오는 날 실내 러시",
+    "id": "ev_rainy_shelter",
+    "title": "비 오는 날 지붕 자리",
     "weekly": true,
     "chance": 0,
     "durationDays": 1,
     "condition": {
-      "type": "indoorSeats",
-      "n": 2
+      "type": "facilities",
+      "category": "rest",
+      "n": 4
     },
     "effects": {
       "guestMult": 1.3
@@ -264,7 +265,7 @@
     "dialogue": {
       "speaker": "halmang",
       "lines": [
-        "비가 오난 다들 실내로 들어오멘. 오늘은 실내 자리가 효자여."
+        "비가 오난 파라솔이랑 화로 밑으로 다들 몰리멘. 지붕 있는 자리가 효자여."
       ]
     },
     "endDialogue": "비가 그쳤어요."

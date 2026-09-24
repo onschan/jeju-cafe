@@ -19,7 +19,7 @@ import { apply } from './actions.ts';
 import { DAY_MS } from './clock.ts';
 import { canPlace, objectAt, cellAt, footprint, doorFrontOf, blocksDoorFront, inBounds, sizeOf } from './grid.ts';
 import { START_ORIGIN } from './layout.ts';
-import { objectDef, SETS, questDef, INDOOR_IDS } from '../data/index.ts';
+import { objectDef, hasObjectDef, SETS, questDef } from '../data/index.ts';
 import { DEVELOP_RESEARCH, menuOf } from './craft.ts';
 import { canDrawTicket, hasFreeDraw, canUseGuestItem, MID_MONTH_TICKET_DAY } from './shop.ts';
 import { effectivePopularity } from './promotions.ts';
@@ -53,12 +53,12 @@ import { canInvestSpot, spotLevel } from './spots.ts';
 import { canonicalGuestId } from '../data/index.ts';
 import { SPOTS } from '../data/index.ts';
 import { canHire, canPostJob, postJobCost, TIERS } from './staff.ts';
-import { canBuildSecondFloor, FLOOR2_COST, canAutoConnectPath } from './rooms.ts';
+import { canAutoConnectPath } from './rooms.ts';
 import { isWalkable } from './path.ts'; // botfix: 길이 붙을 수 있는 칸인가 // fun-rank: 2층 · botfix: 문 앞까지 자동 올렛길
 import { isSeat } from './cafe.ts';
 import type { JobTier } from './types.ts';
 import { parkingSites, routePathCells, routeFacility, ENTRY_ROUTES, PARKING_EXPAND_FROM, PARKING_SLOTS } from './entry.ts'; // 트랙 H
-import { mainBuilding, freeFloorCells, nextMainLevel, expandCost, expandCells, canExpandMain, isAnnex, indoorSeats } from './rooms.ts'; // y-indoor
+import { mainBuilding } from './rooms.ts';
 import type { Candidate, RoleId, StatKey, QuestDef } from './types.ts';
 import { bestMoves, BOT_SOLVER_OPTIONS, type SolverOptions } from './solver.ts'; // solver 정책
 import { activeSteal, RIVAL_COUNTER_COST, endgameOpen, activeRivals, RIVAL_ACQUIRE_COST } from './rival.ts'; // rival2: 뺏기 이벤트 대응 · all: 5년차 인수
@@ -116,6 +116,8 @@ export const SNS_MIN_MONEY = 4_000_000;
 export const FLYER_MIN_ENERGY = 60;
 export const PARTTIME_MAX_MONEY = 2_000_000;
 export const BOT_PARCEL_MIN_MONEY = 8_000_000;
+/** 야외 중심 개편: 증축·2층·별관에 쓰던 돈이 갈 곳 — 필지를 한 달에 둘까지 (마당이 넓어져야 자리를 더 놓는다) */
+export const BOT_PARCELS_PER_MONTH = 2;
 export const BOT_DEVELOP_INGREDIENTS = ['beans', 'milk'];
 export const BOT_SIGNATURE_INGREDIENTS = ['beans', 'milk', 'tangerine', 'sugar'];
 /** 시그니처(★3 조건)는 3년차부터 — 그 전엔 §4.6 3년 밴드의 봇 그대로 */
@@ -155,22 +157,6 @@ export const BOT_EXTRA_TABLES_PER_MONTH = 2;
 export const BOT_EXTRA_TABLE_YEAR = 4;
 /** fun-rank: 야외 테이블 상한 (시작 3 + 테이블 줄 16 + 확장 칸 몫) */
 export const BOT_OUTDOOR_MAX = 32;
-/** y-indoor: 실내 테이블(80만)은 방 안 짝수 줄(ly 0·2)에만 놓아 홀수 줄이 통로가 되게 (문은 항상 비움). 한 달 3개.
- *  목표 g23 「실내 좌석 6석」이 진행 중이거나, 2년차부터 돈 여유(800만)가 있을 때만 — 1년차 자금 목표(700만)를 늦추지 않게 */
-export const BOT_INDOOR_PER_MONTH = 3;
-export const BOT_INDOOR_GOAL = 'g23';
-export const BOT_INDOOR_YEAR = 2;
-export const BOT_INDOOR_MIN_MONEY = 12_000_000;
-/** 실내 좌석은 이만큼까지만 (야외 테이블 5만 vs 실내 80만 — 자금 KPI) */
-export const BOT_INDOOR_MAX_SEATS = 14;
-/** fun-rank: 본관 Lv4 뒤엔 실내 20석까지 (Lv4 증축이 손님을 확 늘려 자리 불만(no_seat)이 평판을 깎는다) */
-export const BOT_INDOOR_MAX_SEATS_LV4 = 20;
-/** y-indoor: 본관 증축은 2년차부터 Lv2까지(Lv3 800만 + 7일 휴업은 3년차 KPI 밴드를 깎는다), 비용 + 여유 400만 (목표 g41 「본관 Lv2」). 늘어나는 칸의 테이블·장식은 치운다.
- *  fun-rank: Lv3은 3년차, Lv4는 4년차부터 (목표 g77·g89 — 3년차 이후 돈 쓸 곳). 2층은 Lv3 뒤 3년차부터 (g80). */
-export const BOT_EXPAND_YEAR = 2;
-export const BOT_EXPAND_MAX_LEVEL = 2;
-export const BOT_EXPAND_LEVEL_YEAR: Record<number, number> = { 2: 2, 3: 3, 4: 4 };
-export const BOT_FLOOR2_YEAR = 3;
 /** fun-rank: 3년차부터 열린 큰 시설(₩300만 이상 — 라운지·파인다이닝·볼링장…)을 한 달 하나, 여유 1,000만을 남기고 짓는다 (목표 보상이 돈 쓸 곳이 되게) */
 export const BOT_LUXURY_YEAR = 3;
 export const BOT_LUXURY_MIN_COST = 3_000_000;
@@ -180,11 +166,6 @@ export const BOT_JOB_TIERS: JobTier[] = ['flyer', 'site', 'magazine', 'intern', 
 /** fun-rank: 명소 투자는 3년차부터 Lv4, 4년차부터 Lv5까지, 4년차부터 한 달 최대 3곳 (24곳 Lv5 = ₩8억이 5년차 자금 ≤2억의 주된 씀씀이) */
 export const BOT_SPOT_PER_MONTH_LATE = 3;
 export const BOT_SPOT_LV4_YEAR = 3;
-/** y-indoor: 별관(카페 별관 4×3)은 서쪽 필지(parcel4) 위쪽 (−7,0)에 — 밭담 돌담이 겹치면 치운다. 문 앞 (−7,3)에서 y=4 올렛길을 동쪽으로 이어 시작 필지 가로 길에 붙인다 (목표 g45 「별관 짓기」) */
-export const BOT_ANNEX_TYPE = 'annex_cafe';
-export const BOT_ANNEX_AT = at(-7, 0);
-export const BOT_ANNEX_PATH: { x: number; y: number }[] = [at(-7, 3), ...[-7, -6, -5, -4, -3, -2, -1].map((x) => at(x, 4))];
-export const BOT_ANNEX_RESERVE = 4_000_000;
 /** 산 필지의 확장 칸 (격자 절대 좌표): 3번 필지(위) 아래 두 줄, 4번 필지(왼쪽) 오른쪽 두 열. 안 산 필지는 canPlace가 거른다. */
 export const BOT_EXTRA_CELLS: { x: number; y: number }[] = [
   ...[10, 11, 12, 13, 14, 15, 16, 17, 18, 19].flatMap((x) => [{ x, y: 6 }, { x, y: 7 }]),
@@ -472,43 +453,6 @@ function placeForSet(s: GameState): void {
     }
   }
 }
-/** y-indoor: 본관·별관 바닥 짝수 줄에 실내 테이블 (통로 줄은 비운다) */
-function placeIndoorSeats(s: GameState): void {
-  const goalActive = activeGoals(s).some((g) => g.id === BOT_INDOOR_GOAL);
-  const maxSeats = (s.main?.level ?? 1) >= 4 ? BOT_INDOOR_MAX_SEATS_LV4 : BOT_INDOOR_MAX_SEATS;
-  if (!goalActive && (s.clock.year < BOT_INDOOR_YEAR || indoorSeats(s) >= maxSeats || !canSpend(s, objectDef('table_in').cost + BOT_INDOOR_MIN_MONEY))) return;
-  let n = 0;
-  for (const room of Object.values(s.objects).filter((o) => o.type === 'warehouse' || isAnnex(o))) {
-    if (room.build) continue;
-    for (const p of freeFloorCells(s, room)) {
-      if (n >= BOT_INDOOR_PER_MONTH) return;
-      if ((p.y - room.y) % 2 !== 0) continue;
-      if (place(s, 'table_in', p.x, p.y)) n++;
-    }
-  }
-}
-/** y-indoor: 본관 증축 — 늘어나는 칸의 좌석·장식을 치우고 expandMain */
-function expandMainIfCan(s: GameState): void {
-  if (s.clock.year < BOT_EXPAND_YEAR || !mainBuilding(s)) return;
-  const next = nextMainLevel(s);
-  if (!next || s.clock.year < (BOT_EXPAND_LEVEL_YEAR[next] ?? Infinity) || s.money < expandCost(s) + BOT_UPGRADE_MIN_MONEY) return; // 목표 g41(본관 Lv2)이 체인을 막지 않게 별관처럼 3년차 여유분(2,000만)은 안 본다 (y 통합: 주차장 자리 좌석 철거로 3년차 초 자금이 2,700만에 못 미치는 시드가 있다). fun-rank: Lv3 3년차·Lv4 4년차
-  if (next > BOT_EXPAND_MAX_LEVEL && !canSpend(s, expandCost(s))) return; // Lv3·4는 여유분(2,000만)을 남기고
-  for (const p of expandCells(s)) {
-    const o = objectAt(s, p.x, p.y);
-    if (o && !objectDef(o.type).room && objectDef(o.type).kind !== 'path') apply(s, { type: 'remove', objectId: o.id });
-  }
-  if (!canExpandMain(s).ok || !apply(s, { type: 'expandMain' }).ok) return;
-  // 문이 아래로 내려오므로 새 문 앞 칸을 비우고 올렛길로 잇는다 (시작 테이블 (3,4)가 막는다)
-  const f = doorFrontOf(mainBuilding(s)!);
-  const blocker = objectAt(s, f.x, f.y);
-  if (blocker && objectDef(blocker.type).kind !== 'path') apply(s, { type: 'remove', objectId: blocker.id });
-  if (!objectAt(s, f.x, f.y)) place(s, 'path', f.x, f.y);
-}
-/** fun-rank: 본관 Lv3 뒤 2층 올리기 (₩1,500만, 목표 g80) — 3년차부터, 여유분을 남기고 */
-function buildSecondFloorIfCan(s: GameState): void {
-  if (s.clock.year < BOT_FLOOR2_YEAR || !canBuildSecondFloor(s).ok || !canSpend(s, FLOOR2_COST)) return;
-  apply(s, { type: 'buildSecondFloor' });
-}
 /** fun-rank: 열린 큰 시설(₩300만 이상, 방·랜드마크·주차장·실내 가구 제외)을 아직 없는 종류부터 하나 — 산 필지 전체를 훑어 놓는다 (목표 보상 시설이 돈 쓸 곳이 되게). 한 달 하나. */
 function placeLuxury(s: GameState): void {
   if (s.clock.year < BOT_LUXURY_YEAR && seatDirt(s) <= dailyCleanRecovery(s)) return; // staff2: 청소가 밀리면 1년차에도 청소도구실은 짓는다
@@ -520,7 +464,7 @@ function placeLuxury(s: GameState): void {
     }
   }
   const have = new Set(Object.values(s.objects).map((o) => o.type));
-  const cands = s.unlocked.objects.map((id) => objectDef(id)).filter((d) => d.cost >= BOT_LUXURY_MIN_COST && !have.has(d.id) && !d.room && d.kind !== 'landmark' && PARKING_SLOTS[d.id] === undefined && !INDOOR_IDS.has(d.id)).sort((a, b) => a.cost - b.cost);
+  const cands = s.unlocked.objects.map((id) => objectDef(id)).filter((d) => d.cost >= BOT_LUXURY_MIN_COST && !have.has(d.id) && !d.room && d.kind !== 'landmark' && PARKING_SLOTS[d.id] === undefined).sort((a, b) => a.cost - b.cost);
   for (const d of cands) {
     if (!canSpend(s, d.cost + BOT_LUXURY_RESERVE)) return;
     for (const p of ownedParcels(s)) for (let ly = 0; ly < p.h; ly++) for (let lx = 0; lx < p.w; lx++) {
@@ -528,17 +472,6 @@ function placeLuxury(s: GameState): void {
       if (!objectAt(s, x, y) && canPlace(s, d.id, x, y).ok && spotReachable(s, d.id, x, y) && place(s, d.id, x, y)) return; // botfix: 손님이 못 가는 칸에는 안 놓는다
     }
   }
-}
-/** y-indoor: 서쪽 필지를 사면 별관 자리까지 올렛길을 먼저 깔고, 별관이 열리고 돈이 되면 짓는다 */
-function placeAnnex(s: GameState): void {
-  const p0 = BOT_ANNEX_AT;
-  if (!parcelAt(s, p0.x, p0.y)?.owned) return;
-  for (const p of BOT_ANNEX_PATH) if (!objectAt(s, p.x, p.y)) place(s, 'path', p.x, p.y);
-  if (Object.values(s.objects).some((o) => isAnnex(o))) return;
-  if (!s.unlocked.objects.includes(BOT_ANNEX_TYPE) || s.money < objectDef(BOT_ANNEX_TYPE).cost + BOT_ANNEX_RESERVE) return; // 목표 g45가 체인을 막지 않게 3년차 여유분(2,000만)은 안 본다
-  const d = objectDef(BOT_ANNEX_TYPE);
-  for (let dy = 0; dy < d.h; dy++) for (let dx = 0; dx < d.w; dx++) { const o = objectAt(s, p0.x + dx, p0.y + dy); if (o && o.type === 'stonewall') apply(s, { type: 'remove', objectId: o.id }); }
-  place(s, BOT_ANNEX_TYPE, p0.x, p0.y);
 }
 /** 열린 랜드마크를 아직 없는 필지에 하나씩 (★4 조건 「랜드마크 2」). 필지 전체 칸을 훑는다. */
 function placeLandmark(s: GameState): void {
@@ -583,7 +516,7 @@ function placeForQuest(s: GameState): void {
 export function botCanDoQuest(s: GameState, q: QuestDef): boolean {
   const c = q.condition;
   switch (c.type) {
-    case 'objectPlaced': { const d = objectDef(c.params.objectId); return s.unlocked.objects.includes(d.id) && d.cost <= BOT_QUEST_CHEAP && !d.room && d.kind !== 'landmark' && PARKING_SLOTS[d.id] === undefined && !INDOOR_IDS.has(d.id); }
+    case 'objectPlaced': { if (!hasObjectDef(c.params.objectId)) return false; const d = objectDef(c.params.objectId); return s.unlocked.objects.includes(d.id) && d.cost <= BOT_QUEST_CHEAP && !d.room && d.kind !== 'landmark' && PARKING_SLOTS[d.id] === undefined; }
     case 'menuSold': return s.menuSlots.includes(c.params.menuId);
     case 'item': return (s.inventory[c.params.itemId] ?? 0) >= c.params.count;
     case 'none': return true;
@@ -598,7 +531,12 @@ function botCraftOpen(s: GameState): boolean {
 }
 function buyParcelIfAny(s: GameState): void {
   if (!featureOpen(s, 'parcel') || s.money < BOT_PARCEL_MIN_MONEY) return;
-  for (const p of s.parcels) if (!p.owned && canBuyParcel(s, p.id).ok && canSpend(s, p.price) && apply(s, { type: 'buyParcel', id: p.id }).ok) return;
+  // 야외 중심 개편: 증축·2층·별관이 없어져 필지가 유일한 확장 축이다 — 돈이 되면 한 달에 둘까지 산다
+  let n = 0;
+  for (const p of s.parcels) {
+    if (n >= BOT_PARCELS_PER_MONTH) return;
+    if (!p.owned && canBuyParcel(s, p.id).ok && canSpend(s, p.price) && apply(s, { type: 'buyParcel', id: p.id }).ok) n++;
+  }
 }
 
 /** 트랙 H 유입 경로: 주차장(마을 길 옆 첫 자리) → 올레 표식·셔틀 정류장·선착장 + 진입점까지 올렛길 → 셔틀 계약 */
@@ -697,10 +635,6 @@ export function monthlyPlan(s: GameState, monthsPlayed: number): void {
   repairWorn(s);
   trainOne(s);
   upgradeOne(s);
-  expandMainIfCan(s); // y-indoor
-  buildSecondFloorIfCan(s); // fun-rank
-  placeIndoorSeats(s);
-  placeAnnex(s);
   placeForCorner(s); // fun-corner
   placeForSet(s);
   placeForQuest(s);
@@ -711,7 +645,7 @@ export function monthlyPlan(s: GameState, monthsPlayed: number): void {
   if (s.clock.year >= BOT_LEVELUP_YEAR && s.money >= BOT_LEVELUP_MIN_MONEY && (s.customMenus.length >= BOT_RECIPES || s.research >= DEVELOP_RESEARCH * 2)) for (const st of s.staff) if (canLevelUp(s, st.id).ok && apply(s, { type: 'levelUp', staffId: st.id }).ok) break; // 연구 포인트는 레시피 개발이 먼저
   buyParcelIfAny(s);
   investSpotIfAny(s);
-  placeTrophies(s); // 대회 상패를 실내에
+  placeTrophies(s); // 대회 상패를 마당에
   planRoutes(s); // 트랙 H
   // z-ending: 돈이 넉넉하면 마을 기부(정착 등급 「기부」 항목, 누적 상한까지), 10월엔 마을제 (g82·g90)
 }
@@ -763,15 +697,13 @@ function enterContestIfCan(s: GameState): void {
   }
   if (best) apply(s, { type: 'enterContest', event: best.event, staffId: best.staffId, menuId: best.menuId });
 }
-/** 받은 트로피를 실내 빈 칸에 놓는다 (경관 +3 · 인기 +2) */
+/** 받은 트로피를 마당 빈 칸에 놓는다 (경관 +3 · 인기 +2) */
 function placeTrophies(s: GameState): void {
   let left = trophyOwned(s, TROPHY_TYPE) - trophyPlaced(s, TROPHY_TYPE);
   if (left <= 0) return;
-  const main = mainBuilding(s);
-  if (!main) return;
-  for (const p of freeFloorCells(s, main)) {
+  for (const p of [...BOT_DECO_CELLS, ...BOT_EXTRA_CELLS]) {
     if (left <= 0) break;
-    if (place(s, TROPHY_TYPE, p.x, p.y)) left--;
+    if (!objectAt(s, p.x, p.y) && place(s, TROPHY_TYPE, p.x, p.y)) left--;
   }
 }
 

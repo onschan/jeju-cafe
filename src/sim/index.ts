@@ -14,13 +14,13 @@ export { RISKS, riskDef, riskDayOf, resolveRisk, hasPendingRisk, dailyRisk, mont
 export { RENT_PER_PARCEL, rentOf, rent, loanDue, LOAN_DUE_MONTHS, LOAN_OVERDUE_REPUTATION, gradeMonth, gradeOfScore, coachAdvice, GRADE_S, GRADE_A, GRADE_B, GRADE_ITEM_MAX, COACH_BAD_MONTHS, type GradeResult, type GradeItem } from './economy.ts';
 export { TREND_CATEGORIES, TREND_NAME, TREND_MULT, trendCategoryOf, trendOf, trendMenuMult, rollTrend, EVENT_CHOICES, eventChoiceDef, hasPendingEventChoice, resolveEventChoice, resolvePendingEventChoice, type EventChoiceDef, type EventChoiceOption } from './events.ts';
 export { REP_REGULAR_SLOW, regularVisitEveryOtherWeek, shrinkingWarning } from './reputation.ts';
-export { cellAt, objectAt, canPlace, footprint, parcelHasLandmark, isSheltered, sceneryScore, objectScenery, windShelter, SHELTER_THRESHOLD, SCENERY_CAP, doorOf, doorFrontOf, roomAt, isRoomFloor, objectsInRoom } from './grid.ts';
+export { cellAt, objectAt, canPlace, footprint, parcelHasLandmark, isSheltered, sceneryScore, objectScenery, windShelter, SHELTER_THRESHOLD, SCENERY_CAP, doorOf, doorFrontOf, roomAt } from './grid.ts';
 export { FX_CAP } from './fx.ts';
 export { isFarmObject, monthlyYieldOf, expectedHarvest, emptyMonthHarvest } from './orchard.ts';
 export { stockOf } from './warehouse.ts';
 export { currentGoal, activeGoals, goalClaimed, goalProgress, goalValue, goalMet, conditionProgress, conditionCheckers, goalConditionText, goalRewardText, goalForFacility, goalForMenu, goalForFeature, buildingNote, featureOpen, checkFeature, canOpen, applyRewards, grantReward, scaleReward, underLoan, FEATURE_IDS, ACTION_FEATURE_IDS, FEATURE_NAME, FEATURE_OF_ACTION, CONCURRENT_GOALS, goalDef, type Progress } from './goals.ts';
 export { monthlyProgress, makeMonthly, checkMonthly, MONTHLY_TARGET_RATIO } from './monthly.ts';
-export { bestMainCell, bestMainCells, bestSeatCell, bestSeatCells, recommendedSeatCell, TUTORIAL_SEAT_CELL, bestWallCell, bestWallCells, bestCornerCell, bestCornerCells, cornerScoreIfPlaced, cornerNameForPiece, bestIndoorSeat, bestIndoorSeats, bestParkingCell, bestParkingCells, bestSpotToInvest, nextMove, heuristicNextMove, solverNextMove, solverDeltaText, strategyVars, fillTemplate, wallSheltered, seatWhy, seatWhyPhrase, seatWhyKind, SEAT_WHY_FLAT, seatStrengths, strengthWhy, walkFromEntry, bestSeatCellsHeuristic, bestCornerCellsHeuristic, bestIndoorSeatsHeuristic, STRENGTH_LABEL, SEAT_SCORE_CELLS, OPENING_SEATS, SUMMER_SEATS, SOLVER_SEAT_K, SOLVER_CELL_K, type NextMove, type SeatStrength } from './strategy.ts'; // pro-guide
+export { bestMainCell, bestMainCells, bestSeatCell, bestSeatCells, recommendedSeatCell, TUTORIAL_SEAT_CELL, bestWallCell, bestWallCells, bestCornerCell, bestCornerCells, cornerScoreIfPlaced, cornerNameForPiece, bestParkingCell, bestParkingCells, bestSpotToInvest, nextMove, heuristicNextMove, solverNextMove, solverDeltaText, strategyVars, fillTemplate, wallSheltered, seatWhy, seatWhyPhrase, seatWhyKind, SEAT_WHY_FLAT, seatStrengths, strengthWhy, walkFromEntry, bestSeatCellsHeuristic, bestCornerCellsHeuristic, STRENGTH_LABEL, SEAT_SCORE_CELLS, OPENING_SEATS, SUMMER_SEATS, SOLVER_SEAT_K, SOLVER_CELL_K, type NextMove, type SeatStrength } from './strategy.ts'; // pro-guide
 // ---------- solver: 롤아웃 탐색 (최적해 가이드) ----------
 export { cloneState, candidateActions, pickDiverse, candidateGroup, evaluate, rolloutDays, metricsOf, scoreOf, bestMoves, solveSync, buildTabOf, SOLVER_WEIGHTS, SEAT_ROUND_SHARE, LOW_REPUTATION, DEFAULT_SOLVER_OPTIONS, UI_SOLVER_OPTIONS, BOT_SOLVER_OPTIONS, type SolverOptions, type SolverCandidate, type Metrics, type Evaluation } from './solver.ts';
 export { solverKey, moneyBucket, setSolverResult, solverResult, lastSolverResult, onSolverResult, cachedMoves, rankCellsByCache, type SolverMove, type SolverResult } from './solverCache.ts';
@@ -79,17 +79,15 @@ export { effectMult, noGuestsToday, dayIndex } from './effects.ts';
 export { cafeLevel, nextCafeLevelIncome, hasExpansion, canRenameCafe, canExpand, placeCost, seatsOf, isSeat, canSetCosmetic, canPraise, EXPANSIONS, CAFE_LEVEL_INCOME, CAFE_NAME_MAX, WALL_COLORS, SIGN_MAX, PRAISE_ENERGY, DEFAULT_CAFE_NAME, type ExpansionId, type ExpansionDef } from './cafe.ts';
 export { josa, hasBatchim } from './josa.ts';
 export { namedLikes, namedGuestFace, namedGuestState, metCount, NAMED_MIN_SCENERY } from './named.ts';
-export { siteOf, seatScore, siteScore, siteTone, scoredType, scoreOf as siteScoreOf, siteBonus, siteSay, siteBadgeText, siteLineText, layoutKey, isOutdoorSeat, seaInRange, SITE_KEYS, SITE_LABEL, SITE_ICON, SITE_MAX, SITE_GOOD, SITE_SAY, type Site, type SiteKey, type SiteBonus } from './site.ts';
-export { sizeOf, footprintOf, canPlaceMain, fixedCellsOf, isFixedCell, indoorRouteCheck } from './grid.ts';
+export { siteOf, seatScore, siteScore, siteTone, scoredType, scoreOf as siteScoreOf, siteBonus, siteSay, siteBadgeText, siteLineText, layoutKey, shelterOf, coldDay, seaInRange, SHELTER_PENALTY, SHELTER_MAX, DECK_TYPE, DECK_SEA_VIEW, SITE_KEYS, SITE_LABEL, SITE_ICON, SITE_MAX, SITE_GOOD, SITE_SAY, type Site, type SiteKey, type SiteBonus } from './site.ts';
+export { sizeOf, footprintOf, canPlaceMain } from './grid.ts';
 export {
-  mainBuilding, mainLevel, mainSize, mainDoorFront, isMainClosed, mainWorkDaysLeft, isIndoorCell, isIndoorSeat, roomSeats, indoorSeats, roomSeatsUsed, freeFloorCells, fixedCells,
-  canBuildMain, MAIN_BUILD_COST, isAnnex, annexCount, isRoomCut, cutRooms, nextMainLevel, expandCost, expandCells, canExpandMain, canBuildSecondFloor, moveDays, canMoveThisMonth, canStartMoveMain, canMoveMain, canUndoMoveMain,
-  seatsShort, seatUsePct, preferIndoor, stayMs, browseChance, indoorSpawnMult, mainSummary, initMain,
-  MAIN_TYPE, MAIN_MAX_LEVEL, MAIN_SIZE, MAIN_EXPAND_COST, MAIN_EXPAND_DAYS, FLOOR2_COST, FLOOR2_MIN_LEVEL, FLOOR2_DAYS, FLOOR2_VIEW, MOVE_COST, MOVE_DAYS,
-  SEAT_FULL_PCT, SEAT_FULL_DAYS, SEAT_FULL_TEXT, DOOR_PATH_WARN, ANNEX_CUT_TEXT, BGM_LABEL, LIGHT_LABEL, STAY_PER_FACILITY_MS,
+  mainBuilding, mainSize, mainDoorFront, canBuildMain, MAIN_BUILD_COST, isRoomCut, cutRooms,
+  seatsShort, seatUsePct, stayMs, browseChance, cafeMoodSpawnMult, mainSummary, initMain,
+  MAIN_TYPE, MAIN_SIZE, SEAT_FULL_PCT, SEAT_FULL_DAYS, SEAT_FULL_TEXT, DOOR_PATH_WARN, CUT_TEXT, BGM_LABEL, LIGHT_LABEL, STAY_PER_FACILITY_MS,
   autoConnectRoute, canAutoConnectPath, type AutoRoute,
 } from './rooms.ts';
-// ---------- fix-indoor: 밤 조명 ----------
+// ---------- 밤 조명 ----------
 export { NIGHT_HOUR, LIGHT_RADIUS, STREETLIGHT_SAT, DARK_SAT, DARK_TEXT, isNight, isLightType, lights, lightAt, litCellsOf, nightSeatPoints, nightSatisfaction, nightSeatLine } from './lighting.ts';
 // ---------- z-ending ----------
 export { computeScore, scoreTier, spotLevelSum, endingDue, endingMonthly, canContinueEnding, canSetSpeed, makeCarry, applyCarry, carryText, dolhareubangCount, initEnding, ENDING_YEAR, ENDING_MONTH, MILLENNIUM_TREE, FAST_SPEED, CARRY_RATIO, SCORE_ITEMS, SCORE_TITLES } from './ending.ts';

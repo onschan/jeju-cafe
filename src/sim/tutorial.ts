@@ -1,7 +1,7 @@
 /**
  * 손으로 하는 튜토리얼 「할망의 가르침」 15단계 (fun-start §2 + rush-battle §3 — 인사 단계는 러시 단계로 바뀌었다).
  * 새 게임은 할망이 준 폐창고(본관)가 이미 서 있고 마을 길에서 문 앞까지 올렛길이 이어진 채 시작한다(state.ts 'tutorial'). 테이블 1개·메뉴 1개면 첫 손님이 온다.
- * 화자는 전부 할망. 장(章) 개념은 없다 — 배지는 「📖 n/7」. 그 밖의 시스템(증축·연수·명소·주차장·선물·추천…)은 창을 처음 열 때 한 줄 팁(ui/firstTip.ts)으로.
+ * 화자는 전부 할망. 장(章) 개념은 없다 — 배지는 「📖 n/7」. 그 밖의 시스템(연수·명소·주차장·선물·추천…)은 창을 처음 열 때 한 줄 팁(ui/firstTip.ts)으로.
  * 글로우 칸은 고정 좌표가 아니라 strategy.ts가 실제 입지로 고른 칸(테이블 = seatScore 최고). 대사의 `{토큰}`은 strategyVars로 채운다(`{seatWhyPhrase}` = 그 칸을 꾸미는 관형절).
  * 진행은 sim 상태(state.tutorial.step = 끝낸 단계 수)에 있어 저장·복원되고 결정적이다.
  * 각 단계의 done 조건은 sim 상태만 본다. 창을 열었다 같은 UI 사건은 UI가 `tutorialNote` 액션으로 state.tutorial.seen에 남긴다(손님 카드 봄·목표 창 봄…).
@@ -71,7 +71,7 @@ export const LOOK_TEXT: Record<LookId, string> = {
   gate: '정낭: 제주식 대문 장식. 관광객이 좋아한다',
   busstop: '정류장: 버스가 손님을 내려 준다',
   road: '마을 길: 버스가 다니는 길. 올렛길이 여기서 시작한다',
-  main: '카페 본관: 카운터·주방·실내 자리가 다 여기 있다',
+  main: '카페 본관: 카운터와 주방이 다 여기 있다 (손님 자리는 마당에)',
 };
 
 function seen(s: GameState, key: string): boolean {
@@ -94,7 +94,7 @@ function mainBuilding(s: GameState) {
   return Object.values(s.objects).find((o) => o.type === 'warehouse') ?? null;
 }
 function seats(s: GameState) {
-  return Object.values(s.objects).filter((o) => objectDef(o.type).kind === 'seat' && !objectDef(o.type).indoor);
+  return Object.values(s.objects).filter((o) => objectDef(o.type).kind === 'seat');
 }
 /** 마을 길(정류장)에서 본관 문 앞까지 올렛길이 이어졌나 (path/road/gate 걷기 BFS) */
 export function pathConnected(s: GameState): boolean {

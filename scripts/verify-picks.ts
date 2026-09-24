@@ -14,9 +14,9 @@
  *
  * 결정적: rng·Date를 쓰지 않는다. 같은 인자면 같은 표가 나온다(벽시계 예산 budgetMs를 쓰지 않는다).
  */
-import { createInitialState, evaluate, metricsOf, canPlace, cellAt, parcelAt, objectAt, doorFrontOf, freeFloorCells, mainBuilding, parkingSites, solveSync, setSolverResult, bestSeatCells, bestWallCells, bestCornerCells, bestIndoorSeats, bestParkingCells, seatScore, siteOf, PARKING_EXPAND_FROM, DEFAULT_SOLVER_OPTIONS, TUTORIAL_STEP_DEFS, type GameState, type Pt, type Action, tick, apply, DAY_MS } from '../src/sim/index.ts';
+import { createInitialState, evaluate, metricsOf, canPlace, cellAt, parcelAt, objectAt, doorFrontOf, mainBuilding, parkingSites, solveSync, setSolverResult, bestSeatCells, bestWallCells, bestCornerCells, bestParkingCells, seatScore, siteOf, PARKING_EXPAND_FROM, DEFAULT_SOLVER_OPTIONS, TUTORIAL_STEP_DEFS, type GameState, type Pt, type Action, tick, apply, DAY_MS } from '../src/sim/index.ts';
 import { reachMap, busStopPos, cellKey, walkableNeighborsOf } from '../src/sim/path.ts';
-import { bestSeatCellsHeuristic, bestWallCellsHeuristic, bestCornerCellsHeuristic, bestIndoorSeatsHeuristic, bestParkingCellsHeuristic } from '../src/sim/strategy.ts';
+import { bestSeatCellsHeuristic, bestWallCellsHeuristic, bestCornerCellsHeuristic, bestParkingCellsHeuristic } from '../src/sim/strategy.ts';
 import { monthlyPlan, dailyPlan } from '../src/sim/bot.ts';
 import { objectDef } from '../src/data/index.ts';
 import { writeFileSync } from 'node:fs';
@@ -80,8 +80,6 @@ function allCells(s: GameState, type: string): { cells: Pt[]; total: number } {
   let out: Pt[] = [];
   if (type === PARKING_EXPAND_FROM) {
     out = parkingSites(s).filter((p) => canPlace(s, type, p.x, p.y).ok);
-  } else if (def.indoor) {
-    out = m && !s.main.work ? freeFloorCells(s, m).filter((p) => canPlace(s, type, p.x, p.y).ok) : [];
   } else {
     const reach = reachMap(s, busStopPos(s));
     const needReach = def.kind === 'seat';
@@ -164,7 +162,6 @@ const TARGETS: Target[] = [
   { type: 'table_out', label: '야외 테이블', heuristic: (s, n) => bestSeatCellsHeuristic(s, n), cached: (s, n) => bestSeatCells(s, n) },
   { type: 'stonewall', label: '돌담(바람)', heuristic: (s, n) => bestWallCellsHeuristic(s, n), cached: (s, n) => bestWallCells(s, n) },
   { type: 'flower_bed', label: '꽃밭(명당)', heuristic: (s, n) => bestCornerCellsHeuristic(s, 'flower_bed', n), cached: (s, n) => bestCornerCells(s, 'flower_bed', n) },
-  { type: 'table_in', label: '실내 테이블', heuristic: (s, n) => bestIndoorSeatsHeuristic(s, n), cached: (s, n) => bestIndoorSeats(s, n) },
   { type: PARKING_EXPAND_FROM, label: '주차장', heuristic: (s, n) => bestParkingCellsHeuristic(s, n), cached: (s, n) => bestParkingCells(s, n) },
 ];
 

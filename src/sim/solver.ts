@@ -30,11 +30,11 @@ import { canBuyParcel } from './parcels.ts';
 import { canSetSlot, availableMenus, menuOf } from './menu.ts';
 import { canAcceptQuest } from './board.ts';
 import { canGiveGift } from './items.ts';
-import { mainBuilding, freeFloorCells, canExpandMain, canBuildSecondFloor, canAutoConnectPath, MAIN_TYPE } from './rooms.ts';
+import { mainBuilding, canAutoConnectPath, MAIN_TYPE } from './rooms.ts';
 import { canExpandParking, PARKING_EXPAND_FROM, PARKING_SLOTS } from './entry.ts';
 import { seatScore } from './site.ts';
 import { dailyGuestCount } from './guests.ts';
-import { bestMainCells, bestSeatCellsHeuristic, bestWallCellsHeuristic, bestCornerCellsHeuristic, bestIndoorSeatsHeuristic, bestParkingCellsHeuristic, SOLVER_SEAT_K, SOLVER_CELL_K } from './strategy.ts';
+import { bestMainCells, bestSeatCellsHeuristic, bestWallCellsHeuristic, bestCornerCellsHeuristic, bestParkingCellsHeuristic, SOLVER_SEAT_K, SOLVER_CELL_K } from './strategy.ts';
 import { setSolverResult, solverKey, type SolverMove, type SolverResult } from './solverCache.ts';
 
 // ---------- 가중치 ----------
@@ -104,7 +104,6 @@ export interface SolverCandidate { action: Action; label: string; cells: Pt[]; t
 
 /** 시설이 짓기 창 어느 탭에 있나 (ui/windows/BuildWindow.tsx buildTabOf와 같은 규칙 — 글로우 타깃용) */
 export function buildTabOf(def: ObjectDef): string {
-  if (def.indoor) return 'indoor';
   if (def.kind === 'path') return 'path';
   if (def.kind === 'wall' || def.kind === 'gate') return 'wall';
   if (def.kind === 'tree' || def.yield || def.category === 'farm') return 'farm';
@@ -119,20 +118,13 @@ const cellLabel = (p: Pt) => `(${p.x},${p.y})`;
 function cellsFor(s: GameState, def: ObjectDef, k: number): Pt[] {
   if (def.kind === 'path' || def.kind === 'gate' || def.kind === 'busstop' || def.room || def.kind === 'building') return [];
   if (PARKING_SLOTS[def.id] !== undefined) return def.id === PARKING_EXPAND_FROM ? bestParkingCellsHeuristic(s, k) : [];
-  if (def.indoor) return def.kind === 'seat' ? bestIndoorSeatsHeuristic(s, k) : indoorCells(s, def.id, k);
   if (def.kind === 'seat') return bestSeatCellsHeuristic(s, k, def.id);
   if (def.kind === 'wall') return bestWallCellsHeuristic(s, k);
   return bestCornerCellsHeuristic(s, def.id, k);
 }
-function indoorCells(s: GameState, type: string, k: number): Pt[] {
-  const m = mainBuilding(s);
-  if (!m || s.main.work) return [];
-  return freeFloorCells(s, m).filter((p) => canPlace(s, type, p.x, p.y).ok).slice(0, k);
-}
 /** 유형별 우선순위 (anytime 잘림·후보 상한에 쓴다). 큰 것부터. */
 function placePrio(s: GameState, def: ObjectDef, p: Pt): number {
-  if (def.kind === 'seat' && !def.indoor) return 80 + seatScore(s, p.x, p.y) / 10;
-  if (def.kind === 'seat') return 62;
+  if (def.kind === 'seat') return 80 + seatScore(s, p.x, p.y) / 10;
   if (def.kind === 'wall') return 60;
   if (def.kind === 'tree') return 50;
   if (PARKING_SLOTS[def.id] !== undefined) return 45;
@@ -200,10 +192,6 @@ export function candidateActions(s: GameState, k = 3): SolverCandidate[] {
   // 도전·부탁 수락
   let q = 0;
   for (const qs of Object.values(s.board.quests).sort((a, b) => a.id.localeCompare(b.id))) { if (q >= k || qs.status !== 'offered' || !canAcceptQuest(s, qs.id).ok) continue; add({ action: { type: 'acceptQuest', id: qs.id }, label: `부탁 「${questDef(qs.id).description}」 수락`, cells: [], targets: ['nav:ledger', 'tab:invest'], prio: 35 }); q++; }
-
-  // 본관 증축·2층
-  if (canExpandMain(s).ok) add({ action: { type: 'expandMain' }, label: `본관 Lv${s.main.level + 1} 증축`, cells: [], targets: ['main-expand'], prio: 42 });
-  if (canBuildSecondFloor(s).ok) add({ action: { type: 'buildSecondFloor' }, label: '본관 2층 올리기', cells: [], targets: ['main-expand'], prio: 36 });
 
   // 명소 투자 (손님층 인기 순 k개)
   const spots = SPOTS.filter((d) => canInvestSpot(s, d.id).ok).map((d) => ({ d, pop: tagPopularity(s, d.tag), cost: nextSpotLevel(s, d.id)?.cost ?? Infinity })).sort((a, b) => b.pop - a.pop || a.cost - b.cost || a.d.id.localeCompare(b.d.id)).slice(0, k);

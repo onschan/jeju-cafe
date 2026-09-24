@@ -109,10 +109,10 @@ export function eventEligible(state: GameState, def: BigEventDef): boolean {
   return true;
 }
 
-/** 야외 시설 (§4.5 태풍 수리비 대상): 경관·농원·야외 좌석·카트 — 실내 오브젝트·건물·길·정낭·정류장·돌담은 제외 */
+/** 야외 시설 (§4.5 태풍 수리비 대상): 경관·농원·좌석·카트 — 건물·길·정낭·정류장·돌담은 제외 */
 export function isOutdoorFacility(type: string): boolean {
   const d = objectDef(type);
-  if (d.indoor || d.room) return false;
+  if (d.room) return false;
   return d.kind === 'seat' || d.kind === 'deco' || d.kind === 'tree' || d.kind === 'facility' || d.kind === 'landmark';
 }
 /** 소유 필지 안 야외 시설 건설비 합 */

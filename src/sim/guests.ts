@@ -27,8 +27,8 @@ import { rivalGuestMult } from './rival.ts'; // 동네 경쟁: 1위 +10% · 유�
 import { spotGuestBonus, spotSpawnMult } from './spots.ts';
 import type { ParcelBonus } from './types.ts';
 import { seatsOf, isSeat } from './cafe.ts';
-import { filterSeatsForWeather, stayMs, browseChance, indoorSpawnMult, isIndoorSeat } from './rooms.ts';
-import { nightSatisfaction } from './lighting.ts'; // fix-indoor: 밤 조명 — 가로등 +2·어두운 야외 자리 −2 // y-indoor 훅: 실내 우선·체류·둘러보기·만족·유입·바 요금
+import { stayMs, browseChance, cafeMoodSpawnMult } from './rooms.ts';
+import { nightSatisfaction } from './lighting.ts'; // 밤 조명 — 가로등 +2·어두운 자리 −2
 import { pushFx } from './fx.ts';
 import { guestCap } from './grade.ts'; // fun-rank 훅: 마당 동시 손님 상한 = 등급별 (30 + 10/등급)
 import { rollOutcome, bestStaffFor } from './luck.ts'; // staff-luck: 서빙 대박/쪽박
@@ -97,7 +97,7 @@ export function isVisitable(type: string): boolean {
   return d.kind === 'facility' && d.fee !== undefined;
 }
 /** 손님이 바라는 것과 맞는 시설인가 (fun → 즐길거리·포토존, convenience → 편의, scenery → 포토존). 바라는 게 없으면 다 좋다. */
-const VISIT_WANTS: Record<string, GuestWant[]> = { signboard: ['fun', 'scenery'], omegi_stall: ['fun'], vending: ['convenience'], table_in: ['rest', 'fun'] };
+const VISIT_WANTS: Record<string, GuestWant[]> = { signboard: ['fun', 'scenery'], omegi_stall: ['fun'], vending: ['convenience'] };
 export function likesFacility(typeId: string, objectType: string): boolean {
   const wants = guestTypeDef(typeId).wants;
   const need = VISIT_WANTS[objectType] ?? ['fun', 'food', 'convenience'];
@@ -125,7 +125,7 @@ export function firstFreeSlot(state: GameState, seat: PlacedObject): number {
 
 /** 자리 번호 → 좌석 오브젝트 위 좌표. 가로로 n등분 (table_out 2석: x−0.25, x+0.25). */
 export function seatSlotPos(seat: PlacedObject, slot: number, n = objectDef(seat.type).seats ?? 1): Pt {
-  const def = sizeOf(seat); // y-indoor: 본관 증축 크기
+  const def = sizeOf(seat);
   return { x: seat.x + ((slot + 0.5) / n) * def.w - def.w / 2 + (def.w - 1) / 2, y: seat.y + (def.h - 1) / 2 };
 }
 
@@ -134,7 +134,7 @@ export function seatSlotPos(seat: PlacedObject, slot: number, n = objectDef(seat
 export function freeSeats(state: GameState): PlacedObject[] {
   const taken = new Map<string, number>();
   for (const g of state.guests) if (g.seatId && g.phase !== 'leaving') taken.set(g.seatId, (taken.get(g.seatId) ?? 0) + 1);
-  const open = filterSeatsForWeather(state, seatObjects(state).filter((o) => (taken.get(o.id) ?? 0) < seatsOf(state, o))); // y-indoor: 겨울·비·태풍엔 실내 우선
+  const open = seatObjects(state).filter((o) => (taken.get(o.id) ?? 0) < seatsOf(state, o)); // 겨울·비에도 좌석을 걸러내지 않는다 — 지붕(shelter)이 만족으로만 갈린다 (site.ts)
   const notReserved = open.filter((o) => !o.pending);
   return notReserved.length > 0 ? notReserved : open;
 }
@@ -153,7 +153,7 @@ export function totalSeats(state: GameState): number {
 
 /** 손님층 유입 배수 = (1 + 유효 인기/50) × 유튜버 부스트 × (1 + 인기쟁이 스킬). 유효 인기 = 기본 + 활성 기간형 홍보. */
 export function spawnMultiplier(state: GameState, typeId: string): number {
-  return (1 + effectivePopularity(state, typeId) / 50) * youtuberMultiplier(state, typeId) * (1 + skillTotal(state, 'spawnBonus') + titleBonus(state, 'spawn')) * spotSpawnMult(state, typeId) * indoorSpawnMult(state, typeId); // 트랙 C: 명소 태그 배수·투어 버스 · y-indoor: 피아노·키즈·BGM·조명
+  return (1 + effectivePopularity(state, typeId) / 50) * youtuberMultiplier(state, typeId) * (1 + skillTotal(state, 'spawnBonus') + titleBonus(state, 'spawn')) * spotSpawnMult(state, typeId) * cafeMoodSpawnMult(state, typeId); // 트랙 C: 명소 태그 배수·투어 버스 · BGM·조명
 }
 
 /** 시간대별 손님층 가중: 아침(6~9) 시니어(삼춘) 2배, 낮(11~17) 청년(관광객) 2배 */
@@ -555,13 +555,15 @@ export function countGatesOn(state: GameState, path: Pt[]): number {
   for (const p of path) if (objectAt(state, p.x, p.y)?.type === 'gate') n++;
   return n;
 }
-/** staff2: 홀 직원이 맡은 구역이면 +2, 맡지 않은 구역이면 −1 (합쳐서 −2~+4). 전체를 맡으면 어느 쪽도 아니다. */
+/** staff2: 홀 직원이 맡은 구역이면 +2, 맡지 않은 구역이면 −1 (합쳐서 −2~+4). 전체를 맡으면 어느 쪽도 아니다.
+ *  구역은 이제 실내/야외가 아니라 「명당에 속한 자리 / 그 밖 마당」으로 가른다 (야외 중심 개편). */
 export function zoneSatisfaction(state: GameState, seat: PlacedObject): number {
   let v = 0;
+  const inCorner = cornerOfPiece(state, seat.id) !== null;
   for (const st of staffInRole(state, ZONE_ROLE)) {
     const z = zoneOf(st);
     if (z === 'all') continue;
-    v += z === (isIndoorSeat(state, seat) ? 'indoor' : 'outdoor') ? ZONE_FOCUS_BONUS : ZONE_OTHER_PENALTY;
+    v += z === (inCorner ? 'corner' : 'yard') ? ZONE_FOCUS_BONUS : ZONE_OTHER_PENALTY;
   }
   return Math.max(ZONE_SATISFACTION_MIN, Math.min(ZONE_SATISFACTION_MAX, v));
 }

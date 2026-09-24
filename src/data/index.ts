@@ -35,7 +35,7 @@ import ranksJson from './generated/ranks.json' with { type: 'json' };
 import facilitiesJson from './generated/v2/facilities.json' with { type: 'json' };
 import facilitiesXJson from './facilities_x.json' with { type: 'json' };
 import facilitiesShopJson from './facilities_shop.json' with { type: 'json' }; // 상점 설계도·황금 감귤 시설 4종 (트랙 C 참조, 통합 때 추가)
-import facilitiesIndoorJson from './facilities_indoor.json' with { type: 'json' }; // 실내 가구 7 + 별관 2 (트랙 G §8.2·8.3, y-indoor)
+import facilitiesIndoorJson from './facilities_indoor.json' with { type: 'json' }; // 야외 중심 개편으로 비었다 (실내 가구·별관 삭제)
 import ingredientsV1Json from './generated/ingredients.json' with { type: 'json' };
 import ingredientCombosJson from './generated/ingredient_combos.json' with { type: 'json' };
 import toppingsJson from './generated/toppings.json' with { type: 'json' };
@@ -250,14 +250,19 @@ export const GUEST_CHAINS: GuestChainDef[] = (chainsJson as GuestChainDef[]).map
 }));
 
 // ---------- v2 시설 87 → ObjectDef (objects.json에 없는 것만) ----------
-/** 실내 바닥이 있는 건물(방): 발자국 위에 indoor 오브젝트를 놓고 손님이 문(정면 왼쪽)으로 드나든다 */
-export const ROOM_IDS = new Set(['warehouse', 'kitchen_ext', 'restroom', 'cleaning_room', 'annex_cafe', 'greenhouse_cafe']);
-/** 별관(§8.2): 본관이 아닌 손님용 방 — 올렛길로 이어져야 손님이 간다. 목표 「별관 짓기」·길 끊김 경고 대상. */
-export const ANNEX_IDS = new Set(['annex_cafe', 'greenhouse_cafe']);
-/** 실내 전용 오브젝트 (방 바닥 위에만) */
-export const INDOOR_IDS = new Set([
-  'table_in', 'counter', 'counter_ext', 'vending', 'window_seat', 'deco_umbrella_stand',
-]);
+/** 바닥이 있는 건물(방): 손님이 문(정면 왼쪽)으로 드나든다. 본관은 주방·카운터만 있는 3×2 상자로 고정 — 안에는 아무것도 못 놓는다. */
+export const ROOM_IDS = new Set(['warehouse', 'kitchen_ext', 'restroom', 'cleaning_room']);
+/** 지붕·바람막이 (야외 중심 개편): 0 없음 · 1 반쯤(파라솔·차양·처마·화로) · 2 완전히 덮임.
+ *  값을 이렇게 정한 이유 —
+ *  · 1은 「비를 반쯤 가리거나 몸을 덥히는 것」: 파라솔(차양)·테라스(차양)·툇마루(처마 밑)·불멍 화로(장작불)·우산꽂이.
+ *  · 2는 「사방이 막힌 것」: 지금 놓을 수 있는 것 중에는 카페 본관뿐이다. 좌석에는 2가 없다 —
+ *    겨울에 완전히 안전한 자리를 주면 다시 「실내로 도망」이 되기 때문이다. 겨울 대비는 1을 여러 개 까는 쪽으로 푼다.
+ *  · 적지 않은 것은 전부 0. */
+export const SHELTER: Record<string, 0 | 1 | 2> = {
+  warehouse: 2,
+  table_parasol: 1, terrace_seat: 1, toenmaru: 1, fire_pit: 1,
+  deco_umbrella_stand: 1,
+};
 /** 좌석 수: 소형 2, 중형 4, 대형 6 */
 const SEATS_BY_TIER: Record<string, number> = { small: 2, medium: 4, large: 6 };
 /** 건설 기간: 소 1일·중 3일·대 7일 (표에 buildDays가 있으면 그것) */
@@ -270,8 +275,14 @@ type RawFacility = {
   walkSpeedPct?: number; // 활력 화분: 손님·직원 이동 속도 +% (facilities_shop.json)
   seats?: number; // 좌석 정원 덮어쓰기 (facilities_indoor.json 소파석·바 3석) — 없으면 tier 표
 };
-/** v3: 밭은 없다. v2 표의 field 행은 버린다. */
-const REMOVED_FACILITY_IDS = new Set(['field']);
+/** v3: 밭은 없다. v2 표의 field 행은 버린다.
+ *  야외 중심 개편: 실내 좌석(실내 테이블·카운터석)과 별관(카페 별관·온실 카페)·카운터 확장도 버린다 —
+ *  손님이 앉는 곳은 전부 마당이고, 본관은 주방·카운터만 있는 3×2 상자로 고정한다. */
+export const REMOVED_FACILITY_IDS = new Set(['field', 'table_in', 'counter', 'counter_ext', 'annex_cafe', 'greenhouse_cafe']);
+/** 야외로 이사한 시설: 창가석 → 전망 데크석 (마당에 놓는 좌석, 바다가 보이면 전망 +2 — site.ts DECK_SEA_VIEW) */
+const MOVED_OUTDOOR: Record<string, { name: string; desc: string }> = {
+  window_seat: { name: '전망 데크석', desc: '바다 쪽으로 낸 나무 데크 자리. 바다가 보이는 칸에 놓으면 전망이 확 좋아져요.' },
+};
 /** 농원 시설의 월 수확 (v2 표에 없는 열 — 어댑터에서 덧씌운다). objects.json에 같은 id가 있으면 그쪽 yield가 우선. */
 export const FARM_YIELDS: Record<string, FarmYield> = {
   tangerine_tree: { ingredientId: 'tangerine', perMonth: 6 },
@@ -279,7 +290,7 @@ export const FARM_YIELDS: Record<string, FarmYield> = {
   tea_field: { ingredientId: 'tea', perMonth: 4 },
 };
 /** v3 시작 시 열려 있는 시설 8종 (§2 해금 리듬). v2 표에서 unlock이 start인 나머지는 목표 보상으로만 열린다({ type: 'goal' }). */
-export const START_OBJECT_IDS = ['table_out', 'table_in', 'table_parasol', 'deco_planter', 'deco_wood_bench', 'stonewall', 'path', 'tangerine_tree', 'gate', 'streetlight', 'garden_lamp', 'flower_bed', 'signboard', 'railing', 'water_jar', 'cherry_tree', 'parking_lot', 'omegi_stall']; // fun P0: 주차장은 처음부터 (₩120만) — 렌터카 손님이 동쪽에서 온다 · fun 트리: 매대 기본(오메기떡 매대)도 처음부터 // fix-indoor: 가로등·정원등은 처음부터 (밤 조명) // w-free: 정낭은 길·담 탭의 일반 시설(₩5만, 이동·철거·추가 가능)
+export const START_OBJECT_IDS = ['table_out', 'table_parasol','deco_planter', 'deco_wood_bench', 'stonewall', 'path', 'tangerine_tree', 'gate', 'streetlight', 'garden_lamp', 'flower_bed', 'signboard', 'railing', 'water_jar', 'cherry_tree', 'parking_lot', 'omegi_stall']; // fun P0: 주차장은 처음부터 (₩120만) — 렌터카 손님이 동쪽에서 온다 · fun 트리: 매대 기본(오메기떡 매대)도 처음부터 // fix-indoor: 가로등·정원등은 처음부터 (밤 조명) // w-free: 정낭은 길·담 탭의 일반 시설(₩5만, 이동·철거·추가 가능)
 /** v2 시설 표 → ObjectDef. 쉼 → seat, 편의·먹거리·즐길거리·농사 → facility, 경관 → deco, 랜드마크 → landmark. 방은 building. 농원은 경관(deco)+yield. */
 export function adaptFacility(r: RawFacility): ObjectDef {
   const room = ROOM_IDS.has(r.id);
@@ -297,7 +308,8 @@ export function adaptFacility(r: RawFacility): ObjectDef {
   if (typeof r.fee === 'number') def.fee = r.fee;
   if (Object.keys(season).length > 0) def.seasonScenery = season;
   if (room) def.room = true;
-  if (INDOOR_IDS.has(r.id)) def.indoor = true;
+  const moved = MOVED_OUTDOOR[r.id];
+  if (moved) { def.name = moved.name; def.desc = moved.desc; }
   if (typeof r.unlockText === 'string') def.unlockText = def.unlock?.type === 'goal' ? '목표 보상' : r.unlockText;
   if (FARM_YIELDS[r.id]) def.yield = FARM_YIELDS[r.id];
   if (typeof r.walkSpeedPct === 'number') def.walkSpeedPct = r.walkSpeedPct;
@@ -315,7 +327,7 @@ export const FACILITY_X_GOAL_REFS: Record<string, string> = Object.fromEntries((
 export const FACILITIES: ObjectDef[] = FACILITY_ROWS.filter((r) => !BASE_IDS.has(r.id) && !REMOVED_FACILITY_IDS.has(r.id)).map(adaptFacility);
 /** 시작부터 열려 있는 v2 시설 (v3: START_OBJECT_IDS 중 v2 표에만 있는 것) */
 export const FACILITY_START_IDS: string[] = FACILITIES.filter((f) => f.unlock?.type === 'start').map((f) => f.id);
-export const OBJECTS: ObjectDef[] = [...BASE_OBJECTS, ...FACILITIES];
+export const OBJECTS: ObjectDef[] = [...BASE_OBJECTS, ...FACILITIES].map((o) => (SHELTER[o.id] ? { ...o, shelter: SHELTER[o.id] } : o));
 
 // ---------- 짓기 탭 카테고리 (v1·v2 오브젝트를 한 목록에서 묶어 보여준다) ----------
 /** id → v2 시설 카테고리. v1과 id가 겹치는 것(table_out 등)도 v2 표엔 카테고리가 있어서 여기서 찾을 수 있다. */
@@ -323,17 +335,16 @@ const FACILITY_CATEGORY_BY_ID: Record<string, FacilityCategory> = {};
 for (const r of FACILITY_ROWS) {
   if (FACILITY_CATEGORIES.has(r.category as FacilityCategory)) FACILITY_CATEGORY_BY_ID[r.id] = r.category as FacilityCategory;
 }
-/** 짓기 탭 하위 탭 7종 */
-export type BuildGroup = 'indoor' | 'rest' | 'convenience' | 'food' | 'fun' | 'farm' | 'sceneryDeco' | 'pathWall';
+/** 짓기 탭 하위 탭 7종 (야외 중심 개편: 「실내」 탭을 뺐다 — 마당에 다 놓는다) */
+export type BuildGroup = 'rest' | 'convenience' | 'food' | 'fun' | 'farm' | 'sceneryDeco' | 'pathWall';
 export const BUILD_GROUPS: { key: BuildGroup; label: string }[] = [
-  { key: 'indoor', label: '실내' }, { key: 'rest', label: '쉼' }, { key: 'convenience', label: '편의' }, { key: 'food', label: '먹거리' },
+  { key: 'rest', label: '쉼' }, { key: 'convenience', label: '편의' }, { key: 'food', label: '먹거리' },
   { key: 'fun', label: '즐길거리' }, { key: 'farm', label: '농원' }, { key: 'sceneryDeco', label: '경관·장식' }, { key: 'pathWall', label: '길·담' },
 ];
 /** 오브젝트 하나가 짓기 탭 어느 하위 탭에 속하는지. 길·담 타일은 카테고리가 없어 kind로 가른다. 경관·랜드마크·미분류는 경관·장식으로 묶는다. */
 export function buildGroupOf(id: string): BuildGroup {
   const def = objectDef(id);
   if (def.kind === 'path' || def.kind === 'wall' || def.kind === 'gate' || id === 'streetlight') return 'pathWall'; // 가로등은 길·담 탭 (fix-indoor)
-  if (def.indoor) return 'indoor'; // 트랙 G: 실내 가구는 「실내」 탭
   const cat = FACILITY_CATEGORY_BY_ID[id] ?? def.category;
   if (cat === 'rest' || cat === 'convenience' || cat === 'food' || cat === 'fun' || cat === 'farm') return cat;
   return 'sceneryDeco';
@@ -547,7 +558,7 @@ const V1_BY_ID = new Map(ITEMS_V1.map((i) => [i.id, i] as const));
 /** 강화 아이템 "잘 맞는 시설" 확장 매핑 (스펙 §3.2.1 끝): 새 시설 44종을 기존 20종에 편입. 해초 비료의 field는 밭 폐지로 뺀다. */
 export const ITEM_FIT_EXTRA: Record<string, string[]> = {
   jeju_salt: ['open_air_footbath', 'cauldron_footbath'], bean_sample: ['tea_field'], conch_shell: ['open_air_footbath'], galot_cushion: ['toenmaru', 'hammock'],
-  comic_book: ['table_in'], lp_record: ['table_in'], sneakers: ['oreum_bench'], glasses: ['table_in'],
+  comic_book: ['toenmaru'], lp_record: ['window_seat'], sneakers: ['oreum_bench'], glasses: ['window_seat'],
   folk_scroll: ['fine_dining'], tv: ['brunch_house'], pottery_jar: ['water_jar'], gold_leaf: ['fine_dining'],
   jeju_tea_set: ['tea_field'], honey: ['tart_bakery'], flower_poster: ['flower_bed'], lantern: ['garden_lamp'],
 };
@@ -654,6 +665,8 @@ function must<T>(map: Record<string, T>, id: string, what: string): T {
   return v;
 }
 export const objectDef = (id: string) => must(OBJ, id, 'object');
+/** 정의가 남아 있는 종류인가 (덜어낸 시설을 가리키는 옛 부탁·아이템 데이터를 걸러낸다) */
+export const hasObjectDef = (id: string) => OBJ[id] !== undefined;
 export const setDef = (id: string) => must(SET, id, 'set');
 export const itemDef = (id: string) => must(ITEM, id, 'item');
 export const menuDef = (id: string) => must(MENU, id, 'menu');

@@ -93,7 +93,7 @@ function cheapestName(s: GameState, pick: (d: ObjectDef) => boolean, fallback: s
   for (const id of s.unlocked.objects) {
     let d: ObjectDef;
     try { d = objectDef(id); } catch { continue; }
-    if (!pick(d) || d.indoor) continue;
+    if (!pick(d)) continue;
     if (!best || d.cost < best.cost) best = d;
   }
   return best?.name ?? fallback;

@@ -48,7 +48,7 @@
     "strength": "pop",
     "line": "원두를 사러 오는 손님이 많다",
     "category": "coffee",
-    "gift": "counter",
+    "gift": "fire_pit",
     "base": {
       "pop": 76,
       "view": 38,

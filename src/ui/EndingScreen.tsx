@@ -21,11 +21,9 @@ export const SCENE_H = 150;
 const FEET_Y = 142;
 const MAX_CHARS = 6;
 
-/** 본관 스프라이트 이름 (증축 Lv·2층 반영, GameView와 같은 규칙) */
-function mainSprite(s: GameState): string {
-  const lv = s.main?.level ?? 1;
-  if (lv <= 1) return 'iso_obj_warehouse';
-  return s.main?.floor2 && lv >= 3 ? `iso_obj_warehouse_floor2_lv${Math.min(4, lv)}` : `iso_obj_warehouse_lv${lv}`;
+/** 본관 스프라이트 이름 (본관은 3×2 고정) */
+function mainSprite(_s: GameState): string {
+  return 'iso_obj_warehouse';
 }
 
 export function drawEnding(canvas: HTMLCanvasElement, sheet: Sheet | null, s: GameState) {

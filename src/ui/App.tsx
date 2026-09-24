@@ -86,7 +86,7 @@ type Mode =
   | { kind: 'autopath' }; // ease: 「마을 길까지 자동 잇기」 파란 미리보기 → ✓
 
 /** 전체 화면 창과 그 아이콘 그리드 항목 (§5.1) */
-type CafeTab = 'menu' | 'ingredients' | 'craft' | 'promo' | 'building' | 'indoor';
+type CafeTab = 'menu' | 'ingredients' | 'craft' | 'promo' | 'building';
 type PeopleTab = 'staff' | 'candidates' | 'guests' | 'codex' | 'quests';
 type LedgerTab = 'report' | 'invest' | 'spots' | 'shop' | 'tickets' | 'rank' | 'contest' | 'settings';
 type Win =
@@ -147,7 +147,7 @@ function staffChars(s: GameState): SceneChar[] {
   return s.staff.slice(0, 3).map((st) => ({ parts: staffParts(st.face, st.role, s.uniform ?? null) }));
 }
 
-/** (ox,oy)에 놓인 발자국 안에 (x,y)가 있나. w/h를 주면 그 크기(본관 증축 Lv2+ 옮기기 — sizeOf). */
+/** (ox,oy)에 놓인 발자국 안에 (x,y)가 있나. w/h를 주면 그 크기(sizeOf). */
 function inFootprint(type: string, ox: number, oy: number, x: number, y: number, w?: number, h?: number): boolean {
   return footprint(type, ox, oy, w, h).some((p) => p.x === x && p.y === y);
 }
@@ -584,9 +584,9 @@ function Game({ onExit }: { onExit: () => void }) {
       ];
     }
     const at = { x: r.x, y: r.y };
-    const seat = cheapestUnlocked(st, (d) => d.kind === 'seat' && !d.indoor);
-    const garden = cheapestUnlocked(st, (d) => !d.indoor && d.scenery > 0 && (d.kind === 'deco' || d.kind === 'tree') && !LIGHT_RADIUS[d.id]);
-    const lamp = cheapestUnlocked(st, (d) => !!LIGHT_RADIUS[d.id] && !d.indoor);
+    const seat = cheapestUnlocked(st, (d) => d.kind === 'seat');
+    const garden = cheapestUnlocked(st, (d) => d.scenery > 0 && (d.kind === 'deco' || d.kind === 'tree') && !LIGHT_RADIUS[d.id]);
+    const lamp = cheapestUnlocked(st, (d) => !!LIGHT_RADIUS[d.id]);
     const road = cheapestUnlocked(st, (d) => d.kind === 'path');
     return [
       { label: '자리', icon: 'chair', disabled: !seat, onPick: () => seat && pickBuild(seat, at) },
@@ -839,7 +839,7 @@ function Game({ onExit }: { onExit: () => void }) {
     const o = moving ? s.objects[moving.objectId] : null;
     if (moving && o) {
       const def = objectDef(o.type);
-      const size = sizeOf(o); // 본관 증축 Lv2+는 정의 크기와 다르다 (y-indoor)
+      const size = sizeOf(o);
       const can = canPlace(s, o.type, moving.x, moving.y, o.id);
       // seatfix: 손님이 앉았거나 지나가는 중이어도 확정할 수 있다 — 그 자리로 옮기는 예약이 걸리고, 손님이 일어나면 sim이 옮긴다 (본관은 기존 이사 규칙 그대로)
       const busy = o.type === 'warehouse' ? null : guestBlock(s, o);
@@ -951,7 +951,6 @@ function Game({ onExit }: { onExit: () => void }) {
     { key: 'craft', label: '연구', icon: 'research', desc: '새 메뉴' }, // ease: 연구·홍보는 처음부터 열려 있다
     { key: 'promo', label: '홍보', icon: 'promo', desc: '손님 부르기' },
     { key: 'building', label: '본관', icon: 'home', desc: '건물 키우기' },
-    { key: 'indoor', label: '실내', icon: 'chair', desc: '안 꾸미기' },
   ];
   const offered = Object.values(s.board.quests).filter((q) => q.status === 'offered').length;
   const PEOPLE_MENU: IconGridItem<PeopleTab>[] = [
@@ -961,7 +960,7 @@ function Game({ onExit }: { onExit: () => void }) {
     { key: 'codex', label: '도감', icon: 'book', desc: '만난 손님' },
     { key: 'quests', label: '부탁', icon: 'quest', desc: '들어온 부탁', badge: offered },
   ];
-  const revealed = gradeOf(s) >= REVEAL_GRADE; // fun 점진 공개: 등급 3부터 실내·본관·명소·지역이 나타난다 (잠금 표시 대신 아예 안 보임)
+  const revealed = gradeOf(s) >= REVEAL_GRADE; // fun 점진 공개: 등급 3부터 본관·명소·지역이 나타난다 (잠금 표시 대신 아예 안 보임)
   const LEDGER_MENU: IconGridItem<LedgerTab>[] = [
     { key: 'report', label: '경영', icon: 'report', desc: '돈의 흐름' },
     { key: 'invest', label: '투자', icon: 'money', desc: '땅과 대출', badge: s.board.events.filter((e) => e.status === 'pending').length },
@@ -972,7 +971,7 @@ function Game({ onExit }: { onExit: () => void }) {
     { key: 'settings', label: '설정', icon: 'settings', desc: '소리와 저장' },
   ];
 
-  const cafeMenu = revealed ? CAFE_MENU : CAFE_MENU.filter((t) => t.key !== 'building' && t.key !== 'indoor');
+  const cafeMenu = revealed ? CAFE_MENU : CAFE_MENU.filter((t) => t.key !== 'building');
   const peopleMenu = PEOPLE_MENU;
   const ledgerMenu = LEDGER_MENU.filter((t) => (revealed || t.key !== 'spots') && (contestUnlocked(s) || t.key !== 'contest')); // 대회는 등급 3부터 (fun 점진 공개)
   const renderWindow = () => {
@@ -998,10 +997,9 @@ function Game({ onExit }: { onExit: () => void }) {
             {win.tab === 'craft' && <CraftPanel />}
             {win.tab === 'promo' && <PromoPanel />}
             {win.tab === 'building' && (<>
-              {mainBuilding(s) && <MainCard s={s} id={mainBuilding(s)!.id} a={{ ...cardActions, onCafe: () => setWin({ kind: 'cafe', tab: 'menu' }) }} />}{/* y-indoor 본관 카드 본문 (창 안) */}
+              {mainBuilding(s) && <MainCard s={s} id={mainBuilding(s)!.id} a={{ ...cardActions, onCafe: () => setWin({ kind: 'cafe', tab: 'menu' }) }} />}{/* 본관 카드 본문 (창 안) */}
               <CafePanel onMenu={() => setWin({ kind: 'cafe', tab: 'menu' })} />
             </>)}
-            {win.tab === 'indoor' && <BuildWindow onClose={closeWin} onPickBuild={(t) => pickBuild(t)} initialTab="indoor" />}{/* y-indoor 「실내」 탭 */}
           </Window>
         );
       case 'people':

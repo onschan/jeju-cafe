@@ -2,7 +2,7 @@ import type { GameState } from './types.ts';
 import { initRoutes } from './entry.ts';
 import { SAVE_VERSION, MENU_SLOT_MAX, trendFor } from './state.ts';
 import { monthIndex } from './clock.ts';
-import { footprintOf, fixedCellsOf } from './grid.ts';
+import { footprintOf } from './grid.ts';
 import { objectDef } from '../data/index.ts';
 import { josa } from './josa.ts';
 import { initMain } from './rooms.ts';
@@ -20,9 +20,10 @@ import { fmtNum } from './format.ts';
 
 /** trim에서 없어진 것들이 들어 있는 v20 세이브를 올린다 (환불·치환) */
 export const MIGRATE_FROM = 20;
-/** big·mix·all·rushall 통합에서 붙은 필드는 전부 optional이라 backfill만으로 v21 → … → v26이 된다.
- *  v25 → v26은 덜어내기라 backfill이 없어진 필드(battle·activeSkills·activeSkillSlots·titleChanceBonus)를 지운다. */
-export const BACKFILL_FROM = [20, 21, 22, 23, 24, 25];
+/** big·mix·all·rushall 통합에서 붙은 필드는 전부 optional이라 backfill만으로 v21 → … → v27이 된다.
+ *  v25 → v26은 덜어내기라 backfill이 없어진 필드(battle·activeSkills·activeSkillSlots·titleChanceBonus)를 지운다.
+ *  v26 → v27도 덜어내기 — 야외 중심 개편. migrateOutdoor가 증축 Lv·2층·별관·실내 좌석을 환불·치환한다. */
+export const BACKFILL_FROM = [20, 21, 22, 23, 24, 25, 26];
 /** 이어서 열 수 있는 가장 낮은 세이브 버전 (이보다 낮으면 백업 뒤 새 게임) */
 export const OLDEST_LOADABLE = Math.min(...BACKFILL_FROM);
 
@@ -34,27 +35,62 @@ export function deserialize(json: string): GameState {
   const obj = JSON.parse(json) as GameState;
   if (!obj || typeof obj !== 'object') throw new Error('save: not an object');
   if (obj.version === MIGRATE_FROM) migrateTrim(obj);
+  const outdoor = obj.version <= 26;
   if (BACKFILL_FROM.includes(obj.version)) obj.version = SAVE_VERSION; // backfill()이 새 필드를 채운다
   if (obj.version !== SAVE_VERSION) throw new Error(`save version mismatch: ${obj.version} (expected ${SAVE_VERSION})`);
+  if (outdoor) migrateOutdoor(obj);
   backfill(obj);
   rebuildCellOwnership(obj);
-  evictFixedCellFurniture(obj);
   return obj;
 }
 
-/** fix-indoor: 옛 저장에서 카운터·주방 고정 칸(뒷벽 줄) 위에 놓여 있던 실내 가구는 걷어내고 값을 돌려준다 (그 칸은 이제 배치 불가). */
-function evictFixedCellFurniture(state: GameState): void {
-  const fixed = new Set<string>();
-  for (const o of Object.values(state.objects)) for (const p of fixedCellsOf(o)) fixed.add(`${p.x},${p.y}`);
-  if (fixed.size === 0) return;
-  for (const o of Object.values(state.objects)) {
-    const def = objectDef(o.type);
-    if (!def.indoor || !footprintOf(o).some((p) => fixed.has(`${p.x},${p.y}`))) continue;
-    for (const p of footprintOf(o)) { const c = state.grid.cells[p.y * state.grid.w + p.x]; if (c) c.objectId = c.roomId; }
-    delete state.objects[o.id];
-    state.money += def.cost;
-    state.notices.push(`${josa(def.name, '이/가')} 카운터 자리에 있어 치우고 값을 돌려줬어요`);
+/** v26 → v27 (야외 중심 개편): 손님이 앉는 곳이 전부 마당이 됐다.
+ *  - 본관은 3×2 고정 — 증축 Lv2~4로 넓어졌던 발자국을 되돌리고, 증축·2층에 쓴 값을 돌려준다.
+ *  - 별관(카페 별관·온실 카페)·실내 좌석(실내 테이블·카운터석)·카운터 확장은 없어졌다 — 치우고 값을 돌려준다.
+ *  - 창가석은 야외 「전망 데크석」으로 이사했다 — 방 안에 있던 것은 자리가 없으니 함께 환불한다.
+ *  알림은 한 줄로 합친다. */
+const MAIN_EXPAND_REFUND: Record<number, number> = { 2: 3_000_000, 3: 11_000_000, 4: 31_000_000 }; // 누적(300만 / +800만 / +2,000만)
+const FLOOR2_REFUND = 15_000_000;
+function migrateOutdoor(state: GameState): void {
+  const main = state.main as unknown as { level?: number; floor2?: boolean; work?: unknown } | undefined;
+  let refund = 0;
+  if (main) {
+    refund += MAIN_EXPAND_REFUND[main.level ?? 1] ?? 0;
+    if (main.floor2) refund += FLOOR2_REFUND;
+    delete main.level; delete main.floor2; delete main.work;
+    delete (main as { movedMonth?: number }).movedMonth;
+    delete (main as { undo?: unknown }).undo;
   }
+  // 정의가 없어진 시설(별관·실내 좌석·카운터 확장)과 본관 발자국 되돌리기
+  const known = new Set(OBJECTS.map((o) => o.id));
+  let removed = 0;
+  for (const o of Object.values(state.objects)) {
+    if (o.type === 'warehouse') { o.w = 3; o.h = 2; continue; }
+    if (known.has(o.type)) {
+      // 방 안(roomId가 있는 칸)에 남은 것은 갈 곳이 없다 — 치우고 값을 돌려준다 (전망 데크석 포함)
+      const c = state.grid.cells[o.y * state.grid.w + o.x];
+      if (!c || c.roomId === null || c.roomId === o.id) continue;
+    }
+    refund += objectDef2(o.type);
+    delete state.objects[o.id];
+    removed++;
+  }
+  // 방 바닥 표시는 남은 건물에서 다시 새긴다 (증축으로 커졌던 칸을 비운다)
+  for (const c of state.grid.cells) c.roomId = null;
+  for (const o of Object.values(state.objects)) {
+    if (objectDef(o.type).room !== true) continue;
+    for (const p of footprintOf(o)) { const c = state.grid.cells[p.y * state.grid.w + p.x]; if (c) c.roomId = o.id; }
+  }
+  state.unlocked.objects = state.unlocked.objects.filter((id) => known.has(id));
+  state.goals.claimed = state.goals.claimed.filter((id) => GOALS.some((g) => g.id === id));
+  if (refund > 0) state.money += refund;
+  if (removed > 0 || refund > 0) {
+    state.notices.push(`이제 손님은 모두 마당에 앉아요 — 실내 자리·증축 ${removed}개를 정리하고 ₩${fmtNum(refund)}을 돌려줬어요`);
+  }
+}
+/** 정의가 없어졌을 수도 있는 종류의 건설비 (없으면 0) */
+function objectDef2(type: string): number {
+  try { return objectDef(type).cost; } catch { return 0; }
 }
 
 /** v20 → v21 (trim): 없어진 시설·직종·경로·명소·목표·메뉴를 환불하거나 치환하고 알림 한 줄을 남긴다. */
@@ -105,7 +141,7 @@ function backfill(state: GameState): void {
   state.dayOrders ??= { drink: 0, dessert: 0, meal: 0, signature: 0 }; // staff2: 오늘 분류별 주문 수 (v23)
   // staff2: 담당 구역·저녁 근무도 v23에 붙은 optional 필드 — 옛 세이브엔 없고, 알 수 없는 구역 값은 「전체」로 되돌린다
   for (const st of state.staff) {
-    if (st.zone !== undefined && st.zone !== 'indoor' && st.zone !== 'outdoor') delete st.zone;
+    if (st.zone !== undefined && st.zone !== 'corner' && st.zone !== 'yard') delete st.zone; // 옛 실내/야외 구역은 「전체」로 되돌린다
     if (st.night !== undefined && typeof st.night !== 'boolean') delete st.night;
   }
   // ---- stakes: 긴장감·트레이드오프·변수 ----

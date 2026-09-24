@@ -4,7 +4,7 @@
  *  actions.ts의 canDisturb는 "지금 당장 되나"만 판정하고, 막혔을 때 예약할지 지금 할지는 UI가 고른다. */
 import type { GameState, PlacedObject, PendingWork, Guest } from './types.ts';
 import { objectDef } from '../data/index.ts';
-import { footprintOf, canPlace, removeObject, relocateObject, objectsInRoom } from './grid.ts';
+import { footprintOf, canPlace, removeObject, relocateObject } from './grid.ts';
 import { dayIndex } from './effects.ts';
 import { bumpLayoutRev } from './layoutRev.ts';
 import { discoverPlacement } from './compat.ts';
@@ -58,7 +58,6 @@ function execPending(state: GameState, obj: PlacedObject): void {
   clearPending(obj);
   const give = (reason: string) => pushNotice(state, `${josa(obj.name ?? def.name, '은/는')} ${reason} 예약을 못 했어요`);
   if (work.kind === 'remove') {
-    if (def.room && objectsInRoom(state, obj.id).length > 0) return give('안에 가구가 있어');
     if (def.removeCost) {
       if (state.money < def.removeCost) return give('돈이 모자라');
       state.money -= def.removeCost;
@@ -69,7 +68,6 @@ function execPending(state: GameState, obj: PlacedObject): void {
   } else if (work.kind === 'move') {
     const to = work.to;
     if (!to) return;
-    if (def.room && objectsInRoom(state, obj.id).length > 0) return give('안에 가구가 있어');
     const p = canPlace(state, obj.type, to.x, to.y, obj.id);
     if (!p.ok) return give(`${p.reason ?? '자리가 막혀'}`);
     rememberMove(state, obj, obj.x, obj.y);

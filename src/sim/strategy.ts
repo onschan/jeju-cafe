@@ -11,7 +11,6 @@
  *                    (평판 −1 vs −32 · 30일 매출 ₩712,000 vs ₩560,000). 옛 순서(자리 점수 우선)는 꼴찌 칸을 1위로 내놓았다.
  * - bestWallCells    돌담: 테이블 북서 쐐기(site.ts windOf와 같은 띠) 빈 칸 중 가리는 테이블 수 최다 → 테이블과 가까운 순
  * - bestCornerCells  감귤나무 등: 놓으면 명당(corners.ts) 조각이 가장 많이 모이는 빈 칸 (완성되면 크게 친다)
- * - bestIndoorSeats  실내 테이블: 본관 빈 바닥 중 벽에 붙은 창가(북쪽 벽 우선) → 입지 점수 순
  * - bestParkingCells 주차장: 마을 길에 접한 자리(entry.ts parkingSites) 중 본관 문 앞과 가까운 순
  * - bestSpotToInvest 명소: 지금 투자할 수 있는 것 중 그 태그 손님층 인기(spots.ts tagPopularity) 최고 → 싼 순
  * - nextMove         현재 상태에서 다음 수 한 줄 (+ 글로우 칸) — 튜토리얼이 끝난 뒤에도 남는 코치. 문구는 이유가 있는 한 줄(§6: 지시문·화살표 없음)
@@ -25,7 +24,7 @@ import { seasonOf } from './clock.ts';
 import { canPlace, cellAt, objectAt, doorFrontOf, footprint } from './grid.ts';
 import { parcelAt } from './parcels.ts';
 import { reachMap, busStopPos, cellKey, walkableNeighborsOf, isDoorReachable } from './path.ts';
-import { mainBuilding, freeFloorCells, MAIN_TYPE, MAIN_SIZE, MAIN_EXPAND_COST, canBuildMain, MAIN_RECOMMEND_GATE_DIST } from './rooms.ts';
+import { mainBuilding, MAIN_TYPE, MAIN_SIZE, canBuildMain, MAIN_RECOMMEND_GATE_DIST } from './rooms.ts';
 import { parkingSites, PARKING_EXPAND_FROM, ENTRY_ROUTES } from './entry.ts';
 import { spotUnlocked, nextSpotLevel, spotRequirements, tagPopularity } from './spots.ts';
 import { staffInRole } from './staff.ts';
@@ -34,7 +33,6 @@ import { rankCellsByCache, cachedMoves, type SolverMove } from './solverCache.ts
 export const SEAT_TYPE = 'table_out';
 export const WALL_TYPE = 'stonewall';
 export const TREE_TYPE = 'tangerine_tree';
-export const INDOOR_SEAT_TYPE = 'table_in';
 /** 주차장 해금 조건(entry.ts routeFacilityUnlockMet)과 같은 쉼 시설 수 */
 export const PARKING_REST_COUNT = 6;
 /** 권장 야외 좌석 수 (3월 4 → 여름 6) */
@@ -56,10 +54,7 @@ function objectsOf(s: GameState, type: string): PlacedObject[] {
   return Object.values(s.objects).filter((o) => o.type === type);
 }
 function outdoorSeats(s: GameState): PlacedObject[] {
-  return Object.values(s.objects).filter((o) => { const d = objectDef(o.type); return d.kind === 'seat' && !d.indoor; });
-}
-function indoorSeats(s: GameState): PlacedObject[] {
-  return Object.values(s.objects).filter((o) => { const d = objectDef(o.type); return d.kind === 'seat' && d.indoor; });
+  return Object.values(s.objects).filter((o) => objectDef(o.type).kind === 'seat');
 }
 function doorFront(s: GameState): Pt | null {
   const m = mainBuilding(s);
@@ -76,7 +71,7 @@ export function bestMainCells(s: GameState, n = 3): Pt[] {
   if (mainBuilding(s)) return [];
   const g0 = objectsOf(s, 'gate')[0];
   const g = g0 ? { x: g0.x, y: g0.y } : busStopPos(s);
-  const size = MAIN_SIZE[1]!;
+  const size = MAIN_SIZE;
   const out: { p: Pt; score: number; dist: number }[] = [];
   for (let y = 0; y < s.grid.h; y++) for (let x = 0; x < s.grid.w; x++) {
     if (!canBuildMain(s, x, y).ok) continue;
@@ -226,28 +221,6 @@ export function cornerNameForPiece(s: GameState, type: string): string {
   return (CORNERS.find((c) => !done.has(c.id) && c.pieces.some((p) => pieceMatches(p.type, type)))?.name) ?? '명당';
 }
 
-// ---------- 실내 ----------
-
-/** 실내 테이블 최적 칸 n개: 본관 빈 바닥 중 벽에 붙은 창가(북쪽 벽 = 바다 방향 우선) → 입지 점수 → 위·왼쪽. 공사 중이면 []. */
-export function bestIndoorSeatsHeuristic(s: GameState, n = 3): Pt[] {
-  const m = mainBuilding(s);
-  if (!m || s.main.work) return [];
-  const w = m.w ?? objectDef(m.type).w, h = m.h ?? objectDef(m.type).h;
-  const onWall = (p: Pt) => p.x === m.x || p.y === m.y || p.x === m.x + w - 1 || p.y === m.y + h - 1;
-  const rank = (p: Pt) => (p.y === m.y ? 2 : onWall(p) ? 1 : 0);
-  return freeFloorCells(s, m)
-    .filter((p) => canPlace(s, 'table_in', p.x, p.y).ok) // fix-indoor: 고정 설비·통로 검사 통과 칸만
-    .map((p) => ({ p, wall: rank(p), score: seatScore(s, p.x, p.y) }))
-    .sort((a, b) => b.wall - a.wall || b.score - a.score || byPos(a.p, b.p))
-    .slice(0, n).map((o) => o.p);
-}
-export function bestIndoorSeats(s: GameState, n = 3): Pt[] {
-  return rankCellsByCache(s, INDOOR_SEAT_TYPE, bestIndoorSeatsHeuristic(s, Math.max(n, SOLVER_SEAT_K))).slice(0, n);
-}
-export function bestIndoorSeat(s: GameState): Pt | null {
-  return bestIndoorSeats(s, 1)[0] ?? null;
-}
-
 // ---------- 주차장 ----------
 
 /** 주차장 원점 n개: 마을 길에 접한 자리 중 놓을 수 있는 것, 본관 문 앞(없으면 정류장)과 가까운 순. 이미 주차장이 있으면 []. */
@@ -322,18 +295,12 @@ export function heuristicNextMove(s: GameState): NextMove | null {
   if (unlocked(s, TREE_TYPE) && objectsOf(s, TREE_TYPE).length < 1) { const c = bestCornerCells(s, TREE_TYPE, 1); if (c.length) return { text: `감귤나무 한 그루 — 빛나는 칸이면 ${cornerNameForPiece(s, TREE_TYPE)} 조각이 모여`, cells: c }; }
   if (seats < OPENING_SEATS) return { text: `야외 테이블 ${seats}/${OPENING_SEATS} — 4개면 자리가 없어 돌아가는 손님이 없어`, cells: bestSeatCells(s, 1) };
   if (!hasRole(s, 'hall', 'clean')) return { text: '홀이나 청소 직원 배치 — 청결이 별점을 갈라', cells: [] };
-  if (s.main.level < 2 && !s.main.work) {
-    const cost = MAIN_EXPAND_COST[2]!;
-    return s.money >= cost
-      ? { text: `본관 증축(₩${cost / 10_000}만) — 실내 자리가 생겨`, cells: [] }
-      : { text: `증축까지 ₩${Math.ceil((cost - s.money) / 10_000)}만 — 지금 쓰면 그만큼 늦어져`, cells: [] };
-  }
-  if (s.main.level >= 2 && !s.main.work && indoorSeats(s).length < 2) return { text: `실내 테이블 ${indoorSeats(s).length}/2 — 창가 자리가 만족이 높아`, cells: bestIndoorSeats(s, 1) };
   if (seats < SUMMER_SEATS) return { text: `야외 테이블 ${seats}/${SUMMER_SEATS} — 6개면 주차장이 열려`, cells: bestSeatCells(s, 1) };
   if (unlocked(s, PARKING_EXPAND_FROM) && !hasParking(s)) return { text: '렌터카 주차장을 마을 길 옆에 — 차로 온 손님은 더 써', cells: bestParkingCells(s, 1) };
   const spot = bestSpotToInvest(s);
   if (spot && s.money >= spot.cost) return { text: `명소 「${spot.name}」 투자(₩${spot.cost / 10_000}만) — 요즘 잘 오는 손님층이 좋아해`, cells: [] };
-  if (s.main.level < 3 && !s.main.work) return { text: `다음은 본관 3층(₩${MAIN_EXPAND_COST[3]! / 10_000}만) — 모아 두면 돼`, cells: [] };
+  const buyable = s.parcels.find((p) => !p.owned && s.money >= p.price);
+  if (buyable) return { text: `필지 「${buyable.name}」 사기 — 넓어지는 길은 이제 이것뿐이여`, cells: [{ x: buyable.x, y: buyable.y }] };
   return null;
 }
 /** 야외 테이블 북서 쐐기에 돌담(또는 방풍 시설)이 하나라도 있나 — 첫 돌담 판정 */
@@ -432,12 +399,10 @@ export function strategyVars(s: GameState): Record<string, string> {
     cornerN: String(cornerN),
     cornerName: cornerNameForPiece(s, TREE_TYPE),
     spotName: spot?.name ?? '유채꽃밭',
-    expandLeft: String(Math.max(0, Math.ceil((MAIN_EXPAND_COST[2]! - cur) / 10_000))),
     seats: String(outdoorSeats(s).length),
     seatDelta: solverDeltaText(s, placing(SEAT_TYPE)),
     wallDelta: solverDeltaText(s, placing(WALL_TYPE)),
     treeDelta: solverDeltaText(s, placing(TREE_TYPE)),
-    indoorDelta: solverDeltaText(s, placing(INDOOR_SEAT_TYPE)),
     parkingDelta: solverDeltaText(s, placing(PARKING_EXPAND_FROM)),
     solverDelta: solverDeltaText(s, () => true),
   };

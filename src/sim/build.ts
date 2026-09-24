@@ -4,18 +4,15 @@ import { dayIndex } from './effects.ts';
 import { bumpLayoutRev } from './layoutRev.ts';
 import { pushNotice } from './staff.ts';
 import { pushFx } from './fx.ts';
-import { roomAt } from './grid.ts';
 import { isDoorReachable } from './path.ts';
 import { discoverPlacement } from './compat.ts';
 import { josa } from './josa.ts';
 
 export const DOOR_PATH_HINT = '문 앞까지 올렛길을 이어 주세요';
 
-/** 완공된 것이 방이거나 실내 오브젝트인데 그 방 문 앞이 정류장과 안 이어졌으면 true (손님이 못 들어온다) */
+/** 완공된 것이 방인데 문 앞이 정류장과 안 이어졌으면 true (직원·손님 동선이 끊긴다) */
 export function needsDoorPath(state: GameState, obj: PlacedObject): boolean {
-  const def = objectDef(obj.type);
-  const room = def.room ? obj : def.indoor ? roomAt(state, obj.x, obj.y) : null;
-  return !!room && !isDoorReachable(state, room);
+  return objectDef(obj.type).room === true && !isDoorReachable(state, obj);
 }
 
 /** 시작 일꾼 삼춘 수 = 동시에 지을 수 있는 시설 수 (마일리지 상점에서 3·4·5번째를 고용한다) */

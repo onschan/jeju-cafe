@@ -10,7 +10,7 @@ import { card, brownBtn, brownBtnOn, brownBtnOff, brownInput, PALETTE } from './
 const css = (rgb: number) => `#${rgb.toString(16).padStart(6, '0')}`;
 const WALL_NAMES = ['흰 벽', '귤빛 벽', '하늘빛 벽'];
 
-/** 본관(폐창고)을 누르거나 카페 탭: 이름·레벨·증축·인테리어·메뉴판 바로가기 */
+/** 본관을 누르거나 카페 탭: 이름·레벨·주방 증축·인테리어·메뉴판 바로가기 */
 export function CafePanel({ onMenu }: { onMenu: () => void }) {
   const s = useGame();
   const [name, setName] = useState(s.cafeName);
@@ -43,7 +43,7 @@ export function CafePanel({ onMenu }: { onMenu: () => void }) {
         ) : <div style={{ fontSize: 13, marginTop: 2, color: PALETTE.ok }}>최고 레벨이에요!</div>}
       </div>
 
-      <div style={{ marginBottom: 4 }}><b>증축</b> <span style={{ fontSize: 13, color: PALETTE.inkSoft }}>본관이 넓어져요</span></div>
+      <div style={{ marginBottom: 4 }}><b>증축</b> <span style={{ fontSize: 13, color: PALETTE.inkSoft }}>주방과 마당이 좋아져요</span></div>
       {EXPANSIONS.map((e) => {
         const done = s.expansions.includes(e.id);
         const can = canExpand(s, e.id);

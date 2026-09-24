@@ -14,7 +14,7 @@ import { isCornerTarget } from '../sim/corners.ts';
 import { objectReachable, UNREACHABLE_TEXT } from '../sim/index.ts'; // ui3: 손님이 못 가는 시설
 import { seatsNeeded, isSeat } from '../sim/index.ts'; // midgame: 「자리 4/6」 — 지금 손님에 필요한 자리
 import type { RouteId } from '../sim/index.ts';
-import { mainSummary, canAutoConnectPath, canExpandMain, expandCost, nextMainLevel, canBuildSecondFloor, canStartMoveMain, canUndoMoveMain, canMoveThisMonth, moveDays, isRoomCut, isAnnex, roomSeats, roomSeatsUsed, MAIN_EXPAND_DAYS, FLOOR2_COST, FLOOR2_DAYS, MOVE_COST, ANNEX_CUT_TEXT, DOOR_PATH_WARN, BGM_LABEL, LIGHT_LABEL } from '../sim/index.ts'; // y-indoor
+import { mainSummary, canAutoConnectPath, CUT_TEXT, DOOR_PATH_WARN, BGM_LABEL, LIGHT_LABEL } from '../sim/index.ts';
 import { ButtonGroup } from './ButtonGroup';
 import { requestBuildTab } from './windows/BuildWindow';
 import { label as labelOf } from '../data/labels.ts';
@@ -353,7 +353,6 @@ function ObjectCard({ s, id, a, onClose, guestId }: { s: GameState; id: string; 
           <div style={small}>주변 시너지: {st.corner.pop > 0 || st.corner.feePct > 0 ? `명당 입소문 +${st.corner.pop} · 요금 +${st.corner.feePct}%` : '없음'}{st.sets.length > 0 && ` · 세트 ${st.sets.map((x) => x.name).join(', ')}`}</div>
           <SiteLine s={s} o={o} />
           {(() => { const nl = nightSeatLine(s, o); return nl ? <div style={{ ...small, ...(nl.bad ? { color: PALETTE.bad } : {}) }} data-testid="night-line">🌙 {nl.text}</div> : null; })()}
-          {isAnnex(o) && <div style={small}>실내 {roomSeatsUsed(s, o)}/{roomSeats(s, o)}석{isRoomCut(s, o) && <span style={{ color: PALETTE.bad, fontWeight: 700 }} data-testid="annex-cut"> · {ANNEX_CUT_TEXT} — {DOOR_PATH_WARN}</span>}</div>}
           <div style={{ ...small, whiteSpace: 'nowrap' }} data-testid="clean-bar">카페 청결 <Bar value={clean} max={100} width={80} /> {clean}{clean < CLEAN_LOW && <span style={{ color: PALETTE.bad }}> 지저분해요</span>}</div>
         </Details>
       </div>
@@ -511,10 +510,9 @@ function BusStopCard({ s, id }: { s: GameState; id: string }) {
   );
 }
 
-/** 본관 카드 (UX 참고 §4.2, y-indoor): 3줄(이름·Lv·실내 좌석 / 주방·재고 / 매출·직원·이용률) + 버튼 2줄(메뉴판·실내 꾸미기·카페 창 / 증축·2층·옮기기) + ▸ 자세히(재고·청결·난로/피아노/BGM/조명) */
+/** 본관 카드: 3줄(이름 / 주방·재고 / 매출·직원·이용률) + 버튼(메뉴판·자세히) + ▸ 자세히(재고·청결·BGM·조명).
+ *  본관은 주방·카운터만 있는 3×2 상자로 고정이다 — 증축·2층·옮기기는 없앴다(야외 중심 개편). */
 const LOW_STOCK = 3;
-/** ₩300만 식 짧은 돈 표기 (본관 카드 버튼) */
-const manWon = (n: number) => (n % 10_000 === 0 ? `₩${(n / 10_000).toLocaleString()}만` : wonText(n));
 const mbtn: CSSProperties = { ...btn, padding: '0 8px' };
 const mbtnOn: CSSProperties = { ...btnOn, padding: '0 8px' };
 const mbtnOff: CSSProperties = { ...btnOff, padding: '0 8px' };
@@ -535,39 +533,22 @@ export function MainCard({ s, id, a }: { s: GameState; id: string; a: CardAction
   const waiting = s.guests.filter((g) => g.phase === 'walking').length + s.waiting.length;
   const low = Object.entries(s.storage).filter(([, n]) => n > 0 && n <= LOW_STOCK).slice(0, 2);
   const working = s.staff.filter((st) => st.role !== null && !st.training).length;
-  const next = nextMainLevel(s);
-  const exp = canExpandMain(s);
-  const f2 = canBuildSecondFloor(s);
-  const mv = canStartMoveMain(s);
-  const undo = canUndoMoveMain(s);
-  const workText = m.work ? `${m.work.kind === 'expand' ? `증축 Lv${m.work.toLevel}` : m.work.kind === 'floor2' ? '2층' : '이사'} 공사 중 · ${m.daysLeft}일` : null;
-  const doExpand = () => Confirm(`본관을 Lv${next}로 증축할까요? ${manWon(expandCost(s))} · 공사 ${MAIN_EXPAND_DAYS}일(영업 정지)`, () => { dispatch({ type: 'expandMain' }); }, { title: '본관 증축' });
-  const doFloor2 = () => Confirm(`2층을 올릴까요? ${manWon(FLOOR2_COST)} · 공사 ${FLOOR2_DAYS}일(영업 정지) · 실내 자리 +6`, () => { dispatch({ type: 'buildSecondFloor' }); }, { title: '2층 올리기' });
-  const reason = m.work ? null : !exp.ok && next ? `증축: ${exp.reason}` : s.main.floor2 || !f2.ok && s.main.level >= 3 ? (!f2.ok && !s.main.floor2 ? `2층: ${f2.reason}` : null) : null;
   const stock = Object.entries(s.storage).filter(([, n]) => n > 0);
   return (
     <div data-testid="card-main">
       <Hint id="main" />
       <div style={{ fontSize: 14, lineHeight: 1.5 }}>
-        <div><Icon name="home" /> <b>{s.cafeName || '우리 카페'} Lv{m.level}</b>{s.main.floor2 && ' · 2층'} · 실내 {m.seatsUsed}/{m.seats}석{workText && <span style={{ color: PALETTE.title }}> · {workText}</span>}</div>
+        <div><Icon name="home" /> <b>{s.cafeName || '우리 카페'}</b> · 주방·카운터</div>
         <div style={small}><Icon name="kitchen" size={14} /> 주문 대기 {waiting} · 조리 중 {cooking} · 메뉴 {menus}개{low.length > 0 && <span style={{ color: PALETTE.bad }}> · <Icon name="warn" size={14} /> {low.map(([k, n]) => `${labelOf('ingredient', k)} ${n}개 남음`).join(' · ')}</span>}</div>
         <div style={small}>{wonText(s.monthIncome)} · 직원 {working} · 이용률 {m.usePct === null ? '—' : `${m.usePct}%`}{m.short && <span style={{ color: PALETTE.bad }}> · 자리가 모자라요</span>}</div>
-        {m.cut && <div style={{ color: PALETTE.bad, fontWeight: 700 }} data-testid="main-cut">{ANNEX_CUT_TEXT} — {DOOR_PATH_WARN}</div>}
+        {m.cut && <div style={{ color: PALETTE.bad, fontWeight: 700 }} data-testid="main-cut">{CUT_TEXT} — {DOOR_PATH_WARN}</div>}
       </div>
       <Row><AutoPathButton s={s} onAutoPath={a.onAutoPath} /></Row>
       <Row>
         <button style={mbtn} onClick={a.onCafe}><Icon name="coffee" /> 메뉴판</button>
-        <button style={mbtn} onClick={() => { if (o) { requestBuildTab('indoor'); a.onBuild(o.x, o.y); } }} data-testid="main-indoor-btn"><Icon name="chair" /> 실내 꾸미기</button>
+        <button style={mbtn} onClick={() => { if (o) a.onBuild(o.x, o.y); }} data-testid="main-build-btn"><Icon name="chair" /> 마당 꾸미기</button>
         <button style={mbtn} onClick={() => setMore(!more)} aria-expanded={more}>{more ? '▾ 접기' : '▸ 자세히'}</button>
       </Row>
-      <Row>
-        {next && <button style={exp.ok ? mbtnOn : mbtnOff} disabled={!exp.ok} title={exp.ok ? undefined : exp.reason} onClick={doExpand} data-testid="main-expand-btn" data-tut="main-expand"><Icon name="build" /> 증축 Lv{next} ({manWon(expandCost(s))}·{MAIN_EXPAND_DAYS}일)</button>}
-        {!s.main.floor2 && <button style={f2.ok ? mbtnOn : mbtnOff} disabled={!f2.ok} title={f2.ok ? undefined : f2.reason} onClick={doFloor2} data-testid="main-floor2-btn"><Icon name="floor2" /> 2층</button>}
-        {undo.ok
-          ? <button style={mbtn} onClick={() => dispatch({ type: 'undoMoveMain' })} data-testid="main-undo-btn">↩ 되돌리기</button>
-          : <button style={mv.ok ? mbtn : mbtnOff} disabled={!mv.ok} title={mv.ok ? undefined : mv.reason} onClick={() => o && a.onMove(o.id)} data-testid="main-move-btn"><Icon name="truck" /> 옮기기 ({manWon(MOVE_COST)}·{moveDays(s)}일)</button>}
-      </Row>
-      <div style={{ ...small, marginTop: 4 }}>이달 이동 {canMoveThisMonth(s) ? '가능 ○' : '끝 ×'}{reason && ` · ${reason}`}{!mv.ok && canMoveThisMonth(s) && !m.work && ` · 옮기기: ${mv.reason}`}</div>
       {more && (
         <div style={{ ...small, marginTop: 6, borderTop: `1px solid ${PALETTE.woodLight}`, paddingTop: 6 }} data-testid="main-detail">
           <div>재고: {stock.length > 0 ? stock.map(([k, n]) => `${labelOf('ingredient', k)} ${n}`).join(' · ') : '없음'}</div>
@@ -595,7 +576,7 @@ export function MiniCard({ target, actions, onClose }: { target: CardTarget; act
     case 'empty': body = <EmptyCard s={s} x={target.x} y={target.y} a={actions} />; break;
     case 'parcel': body = <ParcelCard s={s} id={target.id} onClose={onClose} />; break;
     case 'busstop': body = <BusStopCard s={s} id={target.id} />; break;
-    case 'counter': body = <MainCard s={s} id={target.id} a={actions} />; break; // y-indoor
+    case 'counter': body = <MainCard s={s} id={target.id} a={actions} />; break;
     case 'road': body = <RoadCard s={s} x={target.x} y={target.y} />; break; // w-start
     case 'route': body = <>{target.route === 'bus' && <Hint id="busstop" />}<RouteCard s={s} route={target.route} objectId={target.id} />{target.route === 'bus' && <Row><AutoPathButton s={s} onAutoPath={actions.onAutoPath} /></Row>}</>; break; // 트랙 H (정류장은 둘러보기 힌트·자동 잇기 포함)
   }

@@ -173,7 +173,7 @@ export function ContestShow() {
               <div data-testid="contest-reward" style={{ textAlign: 'left', marginTop: 8, fontSize: 14 }}>
                 <b style={{ fontSize: 16 }}>{r.rank === 1 ? '우승!' : r.rank <= 3 ? '입상!' : '참가상'}</b>
                 {r.prize > 0 && <div>상금 {wonText(r.prize)}</div>}
-                {r.trophy === TROPHY_TYPE && <div>상패 1개 — 실내에 놓을 수 있어요</div>}
+                {r.trophy === TROPHY_TYPE && <div>상패 1개 — 마당에 놓을 수 있어요</div>}
                 <div>응모권 +{r.tickets}{r.rank >= 4 ? ' (참가상)' : ''}</div>
                 {r.rank >= 4 && <div style={small}>“다음엔 꼭…” 하고 {r.staffName} 씨가 웃었어요</div>}
                 {r.rank <= 3 && <div style={small}>간판에 배지가 붙고 손님이 늘어요</div>}

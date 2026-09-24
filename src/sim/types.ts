@@ -33,8 +33,8 @@ export interface ObjectDef {
   feePct?: number;     // 기본 요금 % (없으면 100)
   desc?: string;       // 정보 패널 설명 (없으면 이름)
   seasonScenery?: Partial<Record<Season, number>>; // 계절 경치 보너스 (없으면 SEASON_SCENERY 표)
-  room?: true;         // 실내 바닥이 있는 건물: 발자국 칸 위에 indoor 오브젝트를 놓고 손님이 걸어 들어간다 (문 = 정면 왼쪽 칸)
-  indoor?: true;       // 실내 전용 오브젝트: room 발자국 칸 위에만 놓는다
+  room?: true;         // 바닥이 있는 건물: 손님이 문(정면 왼쪽 칸)으로 드나든다. 안에는 아무것도 못 놓는다
+  shelter?: 0 | 1 | 2; // 지붕·바람막이 (야외 중심 개편): 0 없음 · 1 반쯤(파라솔·차양·처마·화로) · 2 완전. 겨울·비 만족 보정 (site.ts SHELTER_PENALTY)
   fee?: number;        // 시설 이용료 (손님이 순회하며 낸다)
   unlock?: UnlockCond; // v2 시설 해금 조건 (없으면 해금 트리·시작 목록으로만 열린다)
   unlockText?: string; // 해금 조건 표시 문구 (짓기 탭에서 잠긴 카드에 보여준다)
@@ -448,7 +448,7 @@ export interface Staff {
   training: StaffTraining | null; // 연수 중이면 자리를 비운다
   title?: string;         // 칭호 id (titles.json, staff-luck) — 없으면 일반
   role: RoleId | null;
-  zone?: 'indoor' | 'outdoor';  // staff2: 홀 직원 담당 구역 (없으면 전체) — 맡은 구역 만족 +2, 다른 구역 −1
+  zone?: 'corner' | 'yard';     // staff2: 홀 직원 담당 구역 (없으면 전체) — 맡은 구역 만족 +2, 다른 구역 −1
   night?: boolean;              // staff2: 저녁(18시 이후)까지 근무 — 저녁 손님 만족 +2, 그 직원 하루 기력 −10
   unpaidMonths: number;
   energy: number; // 0~100
@@ -578,9 +578,6 @@ export type GoalCondition =
   | { type: 'skills'; n: number }                 // 특기 보유 직원 n명
   | { type: 'selfSupply'; pct: number }           // 재료 자급률 % (x-spots/farm)
   | { type: 'training'; n: number }               // 연수 완료 (x-staff, trainings 별칭)
-  | { type: 'indoorSeats'; n: number }            // 실내 좌석 정원 n석 (y-indoor rooms.ts indoorSeats)
-  | { type: 'mainLevel'; lv: number }             // 본관 증축 Lv 이상 (y-indoor)
-  | { type: 'annex'; n: number }                  // 완공된 별관 n동 (y-indoor)
   // ---- 도전·월간 과제 전용 ----
   | { type: 'seats'; n: number }                  // 좌석 시설 수
   | { type: 'noLossMonth'; n: number }            // 적자 없이 n달 (연속 흑자, 수락 시점 대비)
@@ -593,7 +590,6 @@ export type GoalCondition =
   // ---- fun-rank 눈에 보이는 성장 (grade.ts) ----
   | { type: 'grade'; n: number }                  // 카페 등급 ≥ n (1 올레길 노점 ~ 5 전설의 카페)
   | { type: 'regulars'; n: number }               // 단골 수 (트랙 G regulars — 없으면 기존 regular 판정)
-  | { type: 'secondFloor' }                       // 본관 2층 완공
   | { type: 'reputation'; n: number }             // 평판 ≥ n
   | { type: 'legendStaff'; n: number }            // 전설 칭호 직원 n명
   | { type: 'routesOpen'; n: number }             // 열린 유입 경로 n종 (정류장 제외)
@@ -1072,7 +1068,7 @@ export interface GameState {
   cornerVisits?: { day: number; counts: Record<string, number> }; // fun-corner: 오늘 명당별 손님 방문 수 (하루 상한, 날이 바뀌면 corners.ts가 초기화)
   cornerSoon?: string[];   // spot2: 마지막 조각이 공사 중이라 곧 완성될 명당 — 미리 알림을 한 번만 띄우려고 기억한다
   undo: UndoEntry | null;                     // 직전 배치·철거·이동 되돌리기 스냅샷 (undo.ts)
-  main: MainState;                            // 본관 증축·2층·이동·분위기 (rooms.ts, y-indoor)
+  main: MainState;                            // 본관 분위기·좌석 이용률 (rooms.ts)
   guests: Guest[];
   // ---- fun-guest (트랙 G) — 전부 optional, interact.ts가 처음 쓸 때 채운다 ----
   requests?: GuestRequest[];                  // 손님 요청 (진행 중·들어준 것)
@@ -1108,14 +1104,8 @@ export interface GameState {
   actionLog: { tick: number; action: Action }[];
 }
 
-/** 본관 상태 (rooms.ts): 증축 Lv1~4·2층·이동·분위기. 결정적 — 공사는 doneDay(일 인덱스)로 끝난다. */
-export interface MainWork { kind: 'expand' | 'move' | 'floor2'; doneDay: number; days: number; toLevel?: number }
+/** 본관 상태 (rooms.ts): 분위기·좌석 이용률. 본관은 3×2 고정 — 증축·2층·이사·별관은 없앴다(야외 중심 개편). */
 export interface MainState {
-  level: 1 | 2 | 3 | 4;              // 증축 단계 (footprint: 3×2 → 4×3 → 5×3 → 6×4)
-  floor2: boolean;                   // 2층 (실내 좌석 정원 +6, 전망 +1)
-  work: MainWork | null;             // 진행 중 공사 (증축·이동·2층). 공사 중엔 본관 영업 정지
-  movedMonth: number;                // 마지막으로 옮긴 달(monthIndex), 월 1회 제한. -1이면 없음
-  undo: { x: number; y: number; day: number; cost: number; prevMovedMonth: number } | null; // 같은 날 되돌리기 1회
   bgm: 'calm' | 'jazz' | 'folk' | null;      // BGM 버튼 그룹 (§4.3)
   lighting: 'warm' | 'bright';               // 저녁 조명
   seatLog: number[];                         // 최근 좌석 이용률 %(일별, 최대 7일) — "자리가 모자라요" (P1-7)
@@ -1146,10 +1136,6 @@ export type Action =
   | { type: 'renameCafe'; name: string }
   | { type: 'expand'; id: string }
   | { type: 'placeMain'; x: number; y: number }    // 첫 본관 짓기 (w-start 맨땅 튜토리얼: 무료·즉시·1회, rooms.ts placeMain)
-  | { type: 'expandMain' }                         // 본관 증축 Lv+1 (rooms.ts)
-  | { type: 'buildSecondFloor' }                   // 본관 2층 (Lv3 이상)
-  | { type: 'moveMain'; x: number; y: number }     // 본관 옮기기 (월 1회·₩200만·3일)
-  | { type: 'undoMoveMain' }                       // 같은 날 되돌리기 1회
   | { type: 'setBgm'; bgm: 'calm' | 'jazz' | 'folk' | null }
   | { type: 'setLighting'; lighting: 'warm' | 'bright' }
   | { type: 'setCosmetic'; wallColor?: number; sign?: string }
@@ -1168,7 +1154,7 @@ export type Action =
   | { type: 'hire'; candidateId: string; role: RoleId }
   | { type: 'fire'; staffId: string }
   | { type: 'assign'; staffId: string; role: RoleId | null }
-  | { type: 'setStaffZone'; staffId: string; zone: 'all' | 'indoor' | 'outdoor' } // staff2: 홀 직원 담당 구역
+  | { type: 'setStaffZone'; staffId: string; zone: 'all' | 'corner' | 'yard' } // staff2: 홀 직원 담당 구역 (명당 자리 / 그 밖 마당)
   | { type: 'setStaffNight'; staffId: string; on: boolean }                       // staff2: 저녁 근무 토글
   | { type: 'levelUp'; staffId: string }
   | { type: 'train'; staffId: string; trainingId: string }

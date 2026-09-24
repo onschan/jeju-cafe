@@ -30,7 +30,7 @@ export const PICK_MULT_CAP = 2.0;
 interface Entry { o: PlacedObject; w: number; h: number }
 type ByType = Map<string, Entry[]>;
 function entryOf(o: PlacedObject): Entry {
-  const { w, h } = sizeOf(o); // 본관 증축 w/h (y-indoor)
+  const { w, h } = sizeOf(o);
   return { o, w, h };
 }
 /** 두 오브젝트 발자국 사이의 체비쇼프 거리 (가장 가까운 칸끼리). 겹치면 0. */
