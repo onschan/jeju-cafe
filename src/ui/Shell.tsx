@@ -233,7 +233,7 @@ export function PlaceBar({ text, tradeoff, ok, canRotate, rotateLabel = '회전'
   return (
     <div data-testid="place-bar" style={barStyle}>
       <div data-testid="place-text" style={{ position: 'absolute', left: 8, right: 8, bottom: `calc(100% + ${MESSAGE_LINE_H + 4}px)`, background: PALETTE.paper, color: ok ? PALETTE.ok : PALETTE.bad, border: `2px solid ${PALETTE.wood}`, borderRadius: 6, padding: '4px 8px', fontSize: 13, fontWeight: 700, pointerEvents: 'none' }}>
-        <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{text}</div>
+        <div style={{ overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', lineHeight: 1.35 }}>{text}</div>{/* [코어만] 폰에서 한 줄로 자르면 「여기에 지을 …」처럼 끝이 날아간다 — 두 줄까지 접는다 */}
         {hasTrade && (
           <div data-testid="place-tradeoff" style={{ display: 'flex', gap: 8, fontSize: 12, fontWeight: 700, marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden' }}>
             {tradeoff!.gain && <span style={{ color: PALETTE.ok, overflow: 'hidden', textOverflow: 'ellipsis' }}>{tradeoff!.gain}</span>}
@@ -241,7 +241,7 @@ export function PlaceBar({ text, tradeoff, ok, canRotate, rotateLabel = '회전'
           </div>
         )}
         {tradeoff?.cost && (
-          <div data-testid="place-cost" style={{ fontSize: 12, fontWeight: 700, marginTop: 2, color: PALETTE.title, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{tradeoff.cost}</div>
+          <div data-testid="place-cost" style={{ fontSize: 12, fontWeight: 700, marginTop: 2, color: PALETTE.title, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', lineHeight: 1.3 }}>{tradeoff.cost}</div>
         )}
       </div>
       {onUndo !== undefined && <button aria-label="되돌리기" disabled={!onUndo} style={{ ...(onUndo ? brownBtn : brownBtnOff), margin: 0, flex: 1, minWidth: 0, fontSize: 15, padding: 0 }} onClick={() => onUndo?.()}><Icon name="undo" /> 되돌리기</button>}

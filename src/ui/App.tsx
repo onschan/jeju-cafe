@@ -21,6 +21,7 @@ import { startSolverLoop } from './solverClient';
 import { useTutorialHighlight, useSpotlightPref, setSpotlightOn, tutorialTargets } from './tutorialHighlight';
 import { FirstTipBubble, useFirstTip, tipKeyFor, showFirstTip } from './firstTip'; // fun-start: 창·탭·모드 첫 열기 팁 한 줄
 import { SiteOverlayChip } from './SiteToggle';
+import { setSiteOverlayOn } from '../render/siteOverlay'; // [코어만] 자리를 고를 때 입지 보기를 자동으로 켠다
 import { RewardPopup } from './RewardPopup';
 import { OutcomePopup } from './OutcomePopup'; // staff-luck: 대박/중박/쪽박 룰렛
 import { ContestShow } from './ContestShow'; // 대회 결과 연출 (연 2회 6·12월)
@@ -492,6 +493,9 @@ function Game({ onExit }: { onExit: () => void }) {
   const pickBuild = (objectType: string, origin?: { x: number; y: number }) => {
     setWin(null);
     setMode({ kind: 'build', objectType, count: 0 });
+    // [코어만] 자리를 고르는 순간 입지 보기를 켠다 — 「왜 더 좋은 자리를 놓고 싶은가」는
+    // 결정하는 바로 그때 화면에 보여야 한다. 지금까지는 짓기 창의 토글 뒤에 숨어 있어 아무도 안 켰다.
+    if (objectDef(objectType).kind === 'seat') setSiteOverlayOn(true);
     if (isLineType(objectType)) { if (origin) setLine({ from: origin, to: null, order: 'xy' }); return; }
     const st = getState();
     const home = st.parcels.find((p) => p.no === 1);

@@ -65,7 +65,10 @@ export function rangeHintFor(s: GameState, type: string, x: number, y: number, i
     : windSeats.length > 0 ? `자리 ${windSeats.length}곳 겨울 바람을 막아요 (만족 +${WIND_SHELTER_SAT})`
     : def.wind > 0 && !corner ? '자리 북서쪽에 두면 바람을 막아요'
     : corner;
-  return { x, y, w: def.w, h: def.h, radius: windSeats.length > 0 ? WIND_WEDGE_MAX : HINT_RADIUS, marks, badge };
+  // [코어만] 맵 위 떠 있는 배지는 끈다 — 필지 팻말·고스트 라벨과 겹쳐 넷이 쌓여 아무것도 안 읽혔다.
+  // 같은 내용은 하단 배치 줄에 이미 나온다. (명당을 되살릴 때 여기부터 다시 켠다)
+  void badge;
+  return { x, y, w: def.w, h: def.h, radius: windSeats.length > 0 ? WIND_WEDGE_MAX : HINT_RADIUS, marks, badge: '' };
 }
 
 /** 고스트가 명당과 얽히면 배지 한 줄.
