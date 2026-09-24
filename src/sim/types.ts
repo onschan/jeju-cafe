@@ -298,6 +298,28 @@ export type SkillEffect =
   | { type: 'cleanBonus'; value: number };         // 청소 달인: 청결 회복 ×(1+v)
 export interface SkillDef { id: string; name: string; desc: string; effect: SkillEffect }
 
+/** 러시 액티브 스킬 (staff_skills_active.json, 스펙 §3) — 패시브 특기(SkillDef)는 평상시, 이쪽은 **러시 중에만** 쓴다.
+ *  cooldownSec·durationSec은 「3배속 기준 초」 — 러시 길이(60~90초)와 같은 잣대다 (skillActive.ts가 게임 시간 ms로 환산). */
+export type ActiveSkillEffect =
+  | { type: 'prepCut'; value: number }                 // 조리 시간 −value (0~1)
+  | { type: 'tipMult'; value: number }                 // 팁 배수
+  | { type: 'seatFront'; value: number }               // 줄 맨 앞 n명 즉시 착석 (즉발)
+  | { type: 'cleanBurst'; value: number; sat: number }  // 청결 +value (즉발) · 지속 동안 만족 +sat
+  | { type: 'satBoost'; value: number }                // 지속 동안 만족 +value
+  | { type: 'patience'; value: number };               // 줄 선 손님 인내 +value초 (즉발)
+export interface ActiveSkillDef {
+  id: string;
+  role: RoleId;
+  slot: 1 | 2;          // 2번째 스킬은 중반 해금(activeSkillSlots) + 러시 연수를 마친 직원만
+  name: string;
+  desc: string;
+  cooldownSec: number;  // 25~40
+  durationSec: number;  // 0이면 즉발
+  effect: ActiveSkillEffect;
+}
+/** 직원 한 명의 스킬 사용 기록 (게임 시간 ms 절대 시각 — 따로 감소시키지 않아 결정적) */
+export interface ActiveSkillUse { skillId: string; usedAt: number; readyAt: number; until: number; power: number; sat: number }
+
 export interface Stats { stamina: number; strength: number; skill: number; smile: number }
 export interface Face { hair: number; skin: number; top: number } // 파츠 인덱스
 
@@ -317,7 +339,7 @@ export interface StaffPoolDef {
 /** 채용 방법(recruit_tiers.json, §3.6.6): 비용을 내면 그 단계 풀에서 아직 없는 사람이 후보로 온다. */
 export interface RecruitTierDef { id: JobTier; name: string; tier: number; cost: number; count: number; unlock?: { star?: number; rank?: number; goal?: boolean }; desc?: string }
 /** 연수(trainings.json, §3.6.4) */
-export interface TrainingDef { id: string; name: string; cost: number; days: number; stats: Partial<Stats>; grantSkill?: boolean; requires?: { star?: number; level?: number }; desc?: string }
+export interface TrainingDef { id: string; name: string; cost: number; days: number; stats: Partial<Stats>; grantSkill?: boolean; grantActiveSlot?: boolean; requires?: { star?: number; level?: number; activeSlot?: number }; desc?: string }
 export interface StaffTraining { id: string; daysLeft: number }
 /** 직원 칭호(titles.json, staff-luck): 등급 숙련/프로/전설. roles = 잘 맞는 직종(빈 배열 = 아무 직종). 효과는 titleBonus가 소비처마다 더한다. */
 export type TitleGrade = 'skilled' | 'pro' | 'legend';
@@ -427,6 +449,36 @@ export interface RivalsState {
   line: string;                     // 발표 한 줄
   steal: RivalSteal | null;
   pending: boolean;                 // 발표 연출 대기 (dismissRivalBoard로 닫는다)
+}
+
+// ---------- 동네 대항전 (battle.ts, 스펙 §4) ----------
+/** 그 카페와의 전적. streak = 지금 이어 가는 연승, surrendered = 3연승으로 항복받았다. */
+export interface BattleRecord { wins: number; losses: number; streak: number; surrendered: boolean }
+/** 오간 단골 한 명 (결과 화면에 이름으로 보인다) */
+export interface BattleMove { name: string; typeName: string; to: 'us' | 'them' }
+export interface BattleResult {
+  rivalId: string;
+  rivalName: string;
+  monthIndex: number;
+  myScore: number;
+  theirScore: number;
+  won: boolean;
+  prize: number;
+  moved: BattleMove[];
+  surrender: boolean;               // 이번 승리로 그 카페가 항복했다
+  rankBefore: number | null;
+  rankAfter: number | null;
+}
+/** 진행 중인 대항전 한 판 */
+export interface BattleRound { rivalId: string; monthIndex: number; theirScore: number; myScore: number; done: boolean }
+export interface BattleState {
+  records: Record<string, BattleRecord>;
+  round: BattleRound | null;        // 오늘 붙는 판 (끝나면 done)
+  last: BattleResult | null;
+  pending: boolean;                 // 결과 연출 대기 (dismissBattle로 닫는다)
+  rankPoints: number;               // 승리로 쌓인 「영업」 점수 (동네 순위 서비스 항목에 더한다)
+  champion: boolean;                // 5곳 전부 항복 — 동네 1위 고정
+  lastMonthIndex: number;           // 마지막으로 판을 연 monthIndex (−1이면 아직)
 }
 
 export interface Staff {
@@ -618,7 +670,9 @@ export type GoalReward =
   | { type: 'feeBonus'; pct: number }                // 요금 +pct% (state.feeBonusPct)
   | { type: 'menuSlot'; n: number }                  // stakes: 메뉴판 칸 +n (3칸에서 시작, 최대 6)
   | { type: 'staffCap'; n: number }                  // midgame: 전체 직원 정원 +n (휴게실과 별개, state.staffCapBonus)
-  | { type: 'jobTier'; id: string };                 // midgame: 채용 방법 해금 (recruit_tiers.json unlock.goal)
+  | { type: 'jobTier'; id: string }                  // midgame: 채용 방법 해금 (recruit_tiers.json unlock.goal)
+  | { type: 'activeSkillSlot'; n: number }           // 러시: 직원 2번째 액티브 스킬 칸 (러시 연수를 마친 직원이 쓴다)
+  | { type: 'titleChance'; pct: number };            // 러시: 칭호 붙을 확률 +pct% (숙련·프로·전설 모두)
 export type GoalSpeaker = 'halmang' | 'samchun' | 'hero';
 export interface GoalDef {
   id: string;
@@ -799,6 +853,7 @@ export type FxEvent =
   | { kind: 'react'; guestId: string; text: string; icon?: 'heart' | 'sweat' | 'wave' | 'question' | 'thumb'; tick: number } // 트랙 G: 손님 반응 — 말풍선 + 머리 위 아이콘(하트·땀·손 흔들기·?)
   | { kind: 'corner'; id: string; x: number; y: number; tick: number } // fun-corner: 명당 완성 — 팻말 자리 반짝
   | { kind: 'flash'; x: number; y: number; guestId: string; text: string; tick: number } // fun-corner: 손님이 명당에서 사진 (카메라 플래시 + 말풍선)
+  | { kind: 'skill'; staffId: string; text: string; tick: number } // 러시: 직원 액티브 스킬 발동 — 머리 위에 재주 이름
   | { kind: 'applause'; tick: number } // fun-rank: 등급 승급 — 마당 손님 전원 박수(하트·반짝)
   | { kind: 'parcel'; id: string; tick: number } // fun-rank: 필지 구매 — 덮개 안개 걷힘 + 랜드마크 등장 반짝
   | { kind: 'arrive'; route: RouteId; x: number; y: number; n: number; tick: number }; // fun P0: 경로 도착 — 렌터카가 서고 손님 n명이 내린다 (올레는 걸어옴), 작은 문구
@@ -1062,6 +1117,11 @@ export interface GameState {
   lastGrade?: MonthGrade | null;              // 지난달 평가 등급
   badGradeMonths?: number;                    // 연속 C 달 수 (3이면 삼춘 조언)
   menuSlotMax?: number;                       // 메뉴판 칸 상한 (기본 6)
+  // ---- 러시 액티브 스킬·동네 대항전 (skillActive.ts · battle.ts) ----
+  activeSkills?: Record<string, ActiveSkillUse>; // 직원 id → 마지막 스킬 사용 (쿨다운·지속)
+  activeSkillSlots?: number;                  // 열린 스킬 칸 수 1~2 (중반 해금 보상 activeSkillSlot)
+  titleChanceBonus?: number;                  // 칭호 획득 확률 +n% (중반 해금 보상 titleChance)
+  battle?: BattleState;                       // 동네 대항전 전적·진행·결과
   lastMonthIncome: number; // 지난달 매출 (★ 조건 "월 매출"용 — lastMonthCard는 닫으면 null이 된다)
   lastMonthCard: MonthCard | null;
   tick: number; // 고정 스텝 카운터
@@ -1164,6 +1224,9 @@ export type Action =
   | { type: 'allyRival'; id: string }               // 제휴 (월 고정비, 그 카페 강점 항목 +10%)
   | { type: 'endAllyRival'; id: string }            // 제휴 끝내기
   | { type: 'acquireRival'; id: string }            // 인수 (손님 흡수 + 시설 1개)
+  // ---- 러시 액티브 스킬 · 동네 대항전 ----
+  | { type: 'useStaffSkill'; staffId: string }      // 러시 중 직원 카드 탭 — 액티브 스킬 발동 (skillActive.ts)
+  | { type: 'dismissBattle' }                       // 대항전 결과 연출 닫기
   // ---- z-ending ----
   | { type: 'continueEnding' }                      // 엔딩 뒤 「계속하기」: 알림 닫고 빠른 모드(4배속) 해금
 

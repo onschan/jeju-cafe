@@ -18,5 +18,20 @@
       "smile": 6
     },
     "desc": "3일 자리를 비우고 미소 +6"
+  },
+  {
+    "id": "tr_rush",
+    "name": "러시 연수",
+    "cost": 1500000,
+    "days": 3,
+    "stats": {
+      "skill": 2,
+      "smile": 2
+    },
+    "grantActiveSlot": true,
+    "requires": {
+      "activeSlot": 2
+    },
+    "desc": "3일 배우고 두 번째 재주를 얻어요"
   }
 ]
