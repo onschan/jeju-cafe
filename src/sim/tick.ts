@@ -3,6 +3,7 @@ import { advanceClock, END_HOUR, START_HOUR, HOUR_MS } from './clock.ts';
 import { monthlyHarvest } from './orchard.ts';
 import { dailyContest, monthlyContest } from './contest.ts'; // 대회: 6·12월 1일 개최, 이레 전 예고
 import { dailyRivals } from './rival.ts'; // 동네 경쟁 카페: 5일 순위 발표·12일 뺏기 이벤트
+import { dailyBattle, activeBattle, setBattleScore, resolveBattle } from './battle.ts'; // 동네 대항전: 매월 마지막 주 토요일 1:1 (rush3)
 import { checkGoals } from './goals.ts';
 import { monthlyBigEvents, dailyBigEvents, hourlyBigEvents, rollTrend, resolvePendingEventChoice } from './events.ts';
 import { monthlyRisk, dailyRisk } from './risk.ts'; // stakes: 돌발 사고
@@ -32,6 +33,7 @@ import { endingMonthly } from './ending.ts'; // z-ending: 5년차 엔딩 (pace)
 import { dailyIdleHint } from './hints.ts'; // game-feel: 3일 무행동이면 삼춘 힌트
 import { closeDay } from './daylog.ts'; // 성장: 하루 요약 카드·30일 그래프
 import { runPending } from './pending.ts'; // seatfix: 자리가 빈 예약(이동·철거·증축)을 바로 실행
+import { updateRush, rushNotice, rushTimeScale, rushPhase, rushState, rushDoneThisWeek } from './rush.ts'; // 러시 타임: 금요일 예고 → 토요일 11시 카운트다운 → 12~15시 러시 → 정산
 
 /** 고정 스텝 (게임 ms) = 게임 시간 3분. pace: HOUR_MS에 묶어 둔다 — 시계를 빠르게 해도 한 시간에 도는 스텝 수(20)가 같아야
  *  조리 대기·체류·걸음이 같은 눈금으로 끊기고, 하루 매출과 난수 흐름이 그대로 유지된다. */
@@ -73,8 +75,10 @@ function onNewDay(state: GameState): void {
   evaluateUnlocks(state); // game-feel: 손님층·시설 해금·랭크업을 월초가 아니라 조건을 채운 날에 (월초 몰림 방지)
   checkGoals(state);
   dailyRivals(state); // 동네 순위 발표(5일)·경쟁 카페 뺏기 이벤트(12일) — 월초 1일 몰림을 피해 날짜를 나눴다
+  dailyBattle(state); // 동네 대항전 예고(3일 전)·마지막 주 토요일 한 판 (battle.ts)
   dailyShop(state); // game-feel: 보름 응모권
   dailyIdleHint(state);
+  rushNotice(state); // 러시 타임: 하루 전(금요일) 아침 예고 한 줄
 }
 
 /** 월 바뀜 (1일의 날 처리보다 먼저): (3월) 급여 인상 → 월급 → 홍보 만료·인기 감소 → 유지비 → 투어 버스 → (3월) 소득세 → 명소 월 정산·선물 → 손님 수 마일리지 → 정산 → 실패 상태(경고·대출·상환·위기) → 평판 후기 → 농원 수확 → 후보 만료 → 손님 해금 → 게시판 → 응모권·무료 추첨 → ★·가이드북 발표 → 라이벌 → 빅 이벤트 판정(예약) */
@@ -119,6 +123,8 @@ export function step(state: GameState): void {
   if (state.clock.month !== prevMonth) onNewMonth(state, prevMonth, prevYear);
   for (let i = 0; i < days; i++) onNewDay(state);
   for (let i = 0; i < hours; i++) onNewHour(state);
+  updateRush(state, STEP_MS); // 러시 타임 상태기계 (줄·인내·자동 착석·정산)
+  syncBattle(state);           // 대항전이 열린 날이면 러시 점수가 곧 대항전 점수 (러시가 끝나면 승패를 가른다)
   updateGuests(state, STEP_MS);
   runPending(state); // seatfix: 손님이 다 떠난 예약은 그 즉시 실행된다
   moveStaff(state, STEP_MS);
@@ -126,10 +132,13 @@ export function step(state: GameState): void {
   state.tick++;
 }
 
-/** 실시간 dtMs를 speed로 환산해 STEP_MS 단위로 step을 돌린다. 잔여는 clock.carryMs에 보관. */
+/** 실시간 dtMs를 speed로 환산해 STEP_MS 단위로 step을 돌린다. 잔여는 clock.carryMs에 보관.
+ *  러시 중에는 rushTimeScale이 환산을 늦춘다 — 게임 시계로 4시간뿐인 러시가 3배속에서 60~90초 걸리게 (§7-1).
+ *  시뮬레이션(고정 스텝 수·난수 흐름)은 그대로라 밸런스는 안 바뀐다. 봇·테스트처럼 하루치·한 시간치를 한 번에 넣는 호출은
+ *  프레임(≤RUSH_REALTIME_DT_MAX)이 아니므로 감속이 걸리지 않는다. */
 export function tick(state: GameState, dtMs: number): GameState {
   const c = state.clock;
-  c.carryMs += dtMs * c.speed;
+  c.carryMs += dtMs * c.speed * rushTimeScale(state, dtMs);
   let steps = 0;
   while (c.carryMs >= STEP_MS && steps < MAX_STEPS_PER_TICK) {
     c.carryMs -= STEP_MS;
@@ -138,4 +147,19 @@ export function tick(state: GameState, dtMs: number): GameState {
   }
   if (steps === MAX_STEPS_PER_TICK) c.carryMs = 0;
   return state;
+}
+
+/** 러시 ↔ 동네 대항전 다리 (rushall 통합).
+ *  대항전 날은 그달 마지막 토요일 = 러시 날이라, 그날 러시에서 올린 점수가 그대로 우리 점수가 된다.
+ *  러시가 끝나는(phase 'done') 첫 스텝에 승패를 가른다 — resolveBattle이 round.done을 올리므로 두 번 불리지 않는다. */
+function syncBattle(state: GameState): void {
+  if (!activeBattle(state)) return;
+  // 지난주 성적표가 그대로 남아 있으므로 「이번 주에 열린 러시」일 때만 잇는다 —
+  // 안 그러면 대항전 날 아침에 지난주 점수로 승패가 나 버린다.
+  if (!rushDoneThisWeek(state)) return;
+  const phase = rushPhase(state);
+  if (phase !== 'run' && phase !== 'done') return;
+  const score = rushState(state).score;
+  setBattleScore(state, score);
+  if (phase === 'done') resolveBattle(state, score);
 }

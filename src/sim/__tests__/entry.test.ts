@@ -257,7 +257,7 @@ test('fun P0 비중: 주차장이 이어지면 10~17시 손님의 30%(4칸)가 �
   const total = st.reduce((a, r) => a + r.totalGuests, 0);
   const parking = st.find((r) => r.route === 'parking')!;
   expect(total).toBeGreaterThan(40);
-  expect(parking.totalGuests / total).toBeGreaterThan(0.2);
+  expect(parking.totalGuests / total).toBeGreaterThan(0.19); // 러시 타임이 12~15시 스폰을 줄로 돌리면서 비중이 조금 더 내려간다 (rush.ts)
   expect(parking.totalGuests / total).toBeLessThan(0.5);
   expect(st.find((r) => r.route === 'olle')!.totalGuests).toBeGreaterThan(0);
 });

@@ -41,11 +41,14 @@ import { grantItem } from './items.ts';
 import { totalSpotVisitors } from './spots.ts';
 import { cleanStreakDays, cleanAvgDays, dirtyForDays, CLEAN_HISTORY_DAYS, CLEAN_LOW } from './cleanliness.ts';
 import { siteOf } from './site.ts';
+import { skillSlots, noteSkillSlot, MAX_SKILL_SLOTS } from './skillActive.ts'; // 러시: 두 번째 재주 칸
+import { TITLE_CHANCE_BONUS_MAX } from './titles.ts';
 import { routeState, routeOpened, ENTRY_ROUTES, PARKING_SLOTS, PARKING_EXPAND_FROM } from './entry.ts'; // 트랙 H
 import { GRADE_NAMES } from './grade.ts'; // fun-rank: 등급 조건
 import { treeOf } from './tree.ts'; // fun: 트리 단계를 Lv로
 import { titleGradeOf } from './titles.ts';
 import { ROUTE_IDS } from './entry.ts';
+import { rushGradeCount } from './rush.ts'; // 러시 등급 누적 (§5 해금 조건)
 /** 경로 손님 부르는 말 (목표 문구) */
 const ROUTE_GUEST_NAME: Record<string, string> = { bus: '버스', parking: '렌터카', olle: '올레꾼' };
 
@@ -200,6 +203,8 @@ export const conditionCheckers: CheckerMap = {
   reputation: (s, c) => n(Math.round(s.reputation), c.n),
   legendStaff: (s, c) => n(s.staff.filter((st) => titleGradeOf(st.title) === 'legend').length, c.n),
   routesOpen: (s, c) => n(ROUTE_IDS.filter((r) => r !== 'bus' && routeOpened(s, r)).length, c.n),
+  // ---- 러시 타임 (rush.ts §5): 중반 해금을 돈이 아니라 실력(등급)에 건다 ----
+  rushGrade: (s, c) => n(rushGradeCount(s, c.grade), c.n),
 };
 
 /** 목표용 시설 단계: 증축 Lv와 업그레이드 트리 단계(index+1) 중 큰 것 (fun: 트리 시설은 증축 대신 트리로 올린다) */
@@ -354,6 +359,7 @@ export function goalConditionText(c: GoalCondition): string {
     case 'reputation': return `평판 ${c.n}`;
     case 'legendStaff': return c.n === 1 ? '전설 직원 채용' : `전설 직원 ${c.n}명`;
     case 'routesOpen': return `손님 오는 길 ${c.n}종`;
+    case 'rushGrade': return c.n === 1 ? `러시 ${c.grade}등급 받기` : `러시 ${c.grade}등급 ${c.n}번`;
   }
 }
 
@@ -379,6 +385,8 @@ export function goalRewardText(r: GoalReward): string {
     case 'menuSlot': return `메뉴판 칸 +${r.n}`;
     case 'staffCap': return `직원 정원 +${r.n}`;
     case 'jobTier': return `채용 ${recruitTierName(r.id)}`;
+    case 'activeSkillSlot': return r.n >= 1 ? '직원 두 번째 재주' : '직원 재주 칸';
+    case 'titleChance': return `좋은 직원이 올 확률 +${r.pct}%`;
   }
 }
 
@@ -461,6 +469,17 @@ export function grantReward(state: GameState, r: GoalReward): void {
     case 'jobTier': { // midgame: 채용 방법 해금
       const list = (state.unlocked.recruits ??= []);
       if (!list.includes(r.id)) { list.push(r.id); pushNotice(state, `새 채용 방법: ${recruitTierName(r.id)}`); }
+      break;
+    }
+    case 'activeSkillSlot': { // 러시: 직원 두 번째 액티브 스킬 칸 (skillActive.ts — 실제로 쓰려면 그 직원이 러시 연수를 마쳐야 한다)
+      const before = skillSlots(state);
+      state.activeSkillSlots = Math.min(MAX_SKILL_SLOTS, before + r.n);
+      if (state.activeSkillSlots > before) noteSkillSlot(state);
+      break;
+    }
+    case 'titleChance': { // 러시: 칭호 붙을 확률 +pct%
+      state.titleChanceBonus = Math.min(TITLE_CHANCE_BONUS_MAX * 100, (state.titleChanceBonus ?? 0) + r.pct);
+      pushNotice(state, `좋은 직원이 올 확률이 ${state.titleChanceBonus}% 올랐어요`);
       break;
     }
   }

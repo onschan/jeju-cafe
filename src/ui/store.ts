@@ -64,6 +64,8 @@ function save() {
 }
 
 export function getState() { return state; }
+/** 테스트용: 스토어의 상태를 통째로 갈아 끼운다 (UI 다리들이 getState를 쓰므로 sim 상태를 심어 준다) */
+export function replaceStateForTest(s: GameState): void { setState(s); emit(); }
 export function getVersion() { return version; }
 /** 바깥 사건(solver 워커 결과 등)으로 React를 깨운다 (solverClient) */
 export function bumpVersion(): void { emit(); }
@@ -100,7 +102,8 @@ const ACTION_SFX: Record<Action['type'], SfxName> = {
   reserveWork: 'tap', cancelWork: 'tap', doWorkNow: 'place', // seatfix: 손님이 앉은 시설 예약·취소·지금 바로
   placeMain: 'fanfare', expandMain: 'unlock', buildSecondFloor: 'unlock', moveMain: 'place', undoMoveMain: 'tap', setBgm: 'tap', setLighting: 'tap', // y-indoor
   continueEnding: 'fanfare', // z-ending
-  greetGuest: 'happy', recommendMenu: 'tap', // fun-guest (트랙 G) 훅 한 줄
+  seatFromQueue: 'happy', useStaffSkill: 'unlock', rushPriority: 'tap', // 러시 타임 훅 한 줄 (인사·추천은 삭제)
+  dismissBattle: 'tap', // rush3: 동네 대항전 결과
 }; // 홍보·투어·대결·선물은 룰렛 팝업(OutcomePopup)이 drumroll → fanfare/coin/error를 낸다 (staff-luck)
 
 export function dispatch(a: Action): ApplyResult {

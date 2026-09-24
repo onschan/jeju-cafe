@@ -716,9 +716,6 @@ export function monthlyPlan(s: GameState, monthsPlayed: number): void {
   // z-ending: 돈이 넉넉하면 마을 기부(정착 등급 「기부」 항목, 누적 상한까지), 10월엔 마을제 (g82·g90)
 }
 
-/** fun-guest: 봇이 하루에 인사하는 손님 수 */
-const BOT_GREETS_PER_DAY = 3;
-
 /** stakes: 돌발 사고·빅 이벤트 선택지 대응 규칙 (사람이 하듯 — 손해가 지출보다 크면 돈을 낸다).
  *  답을 안 하면 다음 날 아침 0번(손해 보는 쪽)으로 확정되므로, 알림을 닫기 전에 먼저 고른다. */
 function answerChoices(s: GameState): void {
@@ -913,7 +910,6 @@ export function dailyPlan(s: GameState): void {
   while (s.alerts.length > 0) apply(s, s.alerts[0]!.type === 'ending' ? { type: 'continueEnding' } : { type: 'dismissAlert' }); // z-ending: 엔딩은 「계속하기」
   // 게시판 부탁은 지금 할 수 있는 것(시설·메뉴 열림·아이템 있음)만 받는다 (랜드마크·손님 해금이 부탁 보상)
   if (s.clock.year >= BOT_QUEST_YEAR) for (const q of Object.values(s.board.quests)) if (Object.values(s.board.quests).filter((x) => x.status === 'active').length < BOT_QUEST_ACTIVE_MAX && q.status === 'offered' && botCanDoQuest(s, questDef(q.id)) && canAcceptQuest(s, q.id).ok) apply(s, { type: 'acceptQuest', id: q.id });
-  for (const g of s.guests.filter((x) => x.phase !== 'leaving').slice(0, BOT_GREETS_PER_DAY)) apply(s, { type: 'greetGuest', guestId: g.id }); // fun-guest: 아침에 와 있는 손님 3명에게 인사 (결정적)
   // 보름 응모권: 15일에 한 장
   if (BOT_DRAW_TICKETS && s.clock.day === MID_MONTH_TICKET_DAY && !hasFreeDraw(s) && s.tickets >= 1 && canDrawTicket(s).ok && apply(s, { type: 'drawTicket' }).ok) apply(s, { type: 'dismissDraw' });
 

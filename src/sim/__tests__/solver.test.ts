@@ -196,7 +196,7 @@ describe('solver: 빔 서치', () => {
 });
 
 describe('solver: 튜토리얼 글로우·워커', () => {
-  it('튜토리얼 1단계 글로우는 사용자가 고른 칸(15,11)이고 solver 캐시가 있어도 흔들리지 않는다 — 14단계 정의 전부 cells가 안전', () => {
+  it('튜토리얼 1단계 글로우는 사용자가 고른 칸(15,11)이고 solver 캐시가 있어도 흔들리지 않는다 — 15단계 정의 전부 cells가 안전', () => {
     setSolverResult(null);
     const s = yardWithPath();
     apply(s, { type: 'tutorialNote', key: 'dlg:1' });
@@ -211,7 +211,7 @@ describe('solver: 튜토리얼 글로우·워커', () => {
     expect(apply(s, { type: 'place', objectType: 'table_out', ...glow[0]! }).ok).toBe(true);
     expect(s.tutorial.step).toBe(1);
     for (const st of STEPS) { const cells = st.cells(s); for (const p of cells) expect(p.x >= 0 && p.y >= 0).toBe(true); }
-    expect(TUTORIAL_STEPS).toBe(14);
+    expect(TUTORIAL_STEPS).toBe(15);
     setSolverResult(null);
   });
 

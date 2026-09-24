@@ -662,11 +662,12 @@
   },
   {
     "id": "g27",
-    "title": "자금 1,200만",
-    "desc": "자금 ₩12,000,000 이상",
+    "title": "러시 B등급 한 번",
+    "desc": "러시 타임에서 B등급 이상 1번",
     "condition": {
-      "type": "money",
-      "n": 12000000
+      "type": "rushGrade",
+      "n": 1,
+      "grade": "B"
     },
     "reward": [
       {
@@ -675,7 +676,7 @@
       }
     ],
     "speaker": "hero",
-    "line": "자금 ₩12,000,000. 이 돈으로 뭘 할지 벌써 설레요."
+    "line": "첫 러시를 B로 넘겼어요. 손이 붙기 시작해요."
   },
   {
     "id": "g28",
@@ -743,11 +744,12 @@
   },
   {
     "id": "g31",
-    "title": "직원 연수 1회 보내기",
-    "desc": "직원 연수 1회 완료",
+    "title": "러시 B등급 세 번",
+    "desc": "러시 타임에서 B등급 이상 3번",
     "condition": {
-      "type": "trainings",
-      "n": 1
+      "type": "rushGrade",
+      "n": 3,
+      "grade": "B"
     },
     "reward": [
       {
@@ -760,7 +762,7 @@
       }
     ],
     "speaker": "hero",
-    "line": "연수 1회 완료. 배워 온 걸 손님에게 쓸 차례예요."
+    "line": "세 번이나 B. 토요일이 기다려지기 시작했어요."
   },
   {
     "id": "g32",
@@ -827,12 +829,12 @@
   },
   {
     "id": "g35",
-    "title": "명소 2곳 Lv2",
-    "desc": "Lv2 이상 명소 2곳",
+    "title": "러시 B등급 여섯 번",
+    "desc": "러시 타임에서 B등급 이상 6번",
     "condition": {
-      "type": "spotAny",
-      "lv": 2,
-      "n": 2
+      "type": "rushGrade",
+      "n": 6,
+      "grade": "B"
     },
     "reward": [
       {
@@ -845,7 +847,7 @@
       }
     ],
     "speaker": "halmang",
-    "line": "Lv2 명소가 2곳. 제주가 우리 편이여."
+    "line": "여섯 번째 B여. 이 집 토요일은 이제 소문났져."
   },
   {
     "id": "g36",
@@ -892,12 +894,12 @@
   },
   {
     "id": "g38",
-    "title": "커플 손님 인기 30",
-    "desc": "커플 손님 인기 30 이상",
+    "title": "러시 B등급 열 번",
+    "desc": "러시 타임에서 B등급 이상 10번",
     "condition": {
-      "type": "guestType",
-      "guestId": "couple",
-      "n": 30
+      "type": "rushGrade",
+      "n": 10,
+      "grade": "B"
     },
     "reward": [
       {
@@ -906,7 +908,7 @@
       }
     ],
     "speaker": "samchun",
-    "line": "커플 인기 30! 그 손님층은 이제 우리 편이여."
+    "line": "열 번 채웠져! 줄이 길어도 안 무섭겠여."
   },
   {
     "id": "g39",
@@ -927,11 +929,12 @@
   },
   {
     "id": "g40",
-    "title": "만족 손님 500명",
-    "desc": "만족하고 간 손님 500명",
+    "title": "러시 B등급 열다섯 번",
+    "desc": "러시 타임에서 B등급 이상 15번",
     "condition": {
-      "type": "satisfied",
-      "n": 500
+      "type": "rushGrade",
+      "n": 15,
+      "grade": "B"
     },
     "reward": [
       {
@@ -940,15 +943,16 @@
       }
     ],
     "speaker": "halmang",
-    "line": "웃으며 나간 손님이 500명. 그게 진짜 장사여."
+    "line": "열다섯 번. 손이 눈보다 빨라졌여."
   },
   {
     "id": "g41",
-    "title": "자금 2,500만",
-    "desc": "자금 ₩25,000,000 이상",
+    "title": "러시 B등급 스무 번",
+    "desc": "러시 타임에서 B등급 이상 20번",
     "condition": {
-      "type": "money",
-      "n": 25000000
+      "type": "rushGrade",
+      "n": 20,
+      "grade": "B"
     },
     "reward": [
       {
@@ -961,7 +965,7 @@
       }
     ],
     "speaker": "samchun",
-    "line": "₩25,000,000 모았어? 이제 큰 그림을 그릴 때여."
+    "line": "스무 번이여. 이 동네 토요일은 다 우리 거여."
   },
   {
     "id": "g42",
@@ -999,11 +1003,12 @@
   },
   {
     "id": "g43",
-    "title": "6개월 연속 흑자",
-    "desc": "6개월 연속 흑자",
+    "title": "러시 A등급 한 번",
+    "desc": "러시 타임에서 A등급 이상 1번",
     "condition": {
-      "type": "profitMonths",
-      "n": 6
+      "type": "rushGrade",
+      "n": 1,
+      "grade": "A"
     },
     "reward": [
       {
@@ -1017,7 +1022,7 @@
       }
     ],
     "speaker": "samchun",
-    "line": "6달 흑자! 농협 대출은 안 받아도 되겠져."
+    "line": "A라니! 한 명도 안 놓친 날이 오는구나."
   },
   {
     "id": "g44",

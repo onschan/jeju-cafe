@@ -43,6 +43,8 @@ function rewardIcon(r: GoalReward): string {
     case 'menuSlot': return 'menu'; // stakes: 메뉴판 칸
     case 'staffCap': return 'local'; // midgame: 직원 정원
     case 'jobTier': return 'hire';   // midgame: 채용 방법
+    case 'activeSkillSlot': return 'local'; // 러시: 직원 두 번째 재주
+    case 'titleChance': return 'hire';      // 러시: 좋은 직원이 올 확률
   }
 }
 function isUnlock(r: GoalReward): boolean {
@@ -82,7 +84,7 @@ function UnlockSprite({ sheet, r }: { sheet: Sheet | null; r: GoalReward }) {
 }
 
 /** 보물 상자 스프라이트: phase에 따라 프레임 시퀀스를 80ms 간격으로 넘긴다. 열리면 반짝·동전 파티클(위치는 렌더 측 난수). */
-function Chest({ phase }: { phase: 'shake' | 'open' }) {
+export function Chest({ phase }: { phase: 'shake' | 'open' }) {
   const [tick, setTick] = useState(0);
   useEffect(() => {
     setTick(0);
@@ -112,7 +114,7 @@ function Chest({ phase }: { phase: 'shake' | 'open' }) {
 }
 
 /** 제목 리본 배너 (ui_ribbon_banner 240×40 → 2배) */
-function Ribbon({ text }: { text: string }) {
+export function Ribbon({ text }: { text: string }) {
   return (
     <div style={{ position: 'relative', width: 240, height: 40, margin: '-26px auto 0' }}>
       <img className="px" src={ui('ui_ribbon_banner')} width={240} height={40} alt="" style={{ position: 'absolute', inset: 0, imageRendering: 'pixelated' }} />

@@ -60,6 +60,10 @@ import { rectCells, demolishTargets, reservedCount, nextGhostAfterPlace, type Re
 import { placementPicks, PlacementHintLine, type PlacePicks } from './PlacementHints'; // video-patch §3.2: 추천 칸 3곳
 import { usePlaceHintsPref, setPlaceHintsOn } from './layoutScore';
 import { TodoLine } from './TodoLine'; // video-patch §3.4: 오늘 할 일
+// ---- rush: 러시 타임 HUD·연출·조작 (rush-battle §2) ----
+import { RushHud } from './RushHud';
+import { RushShow } from './RushShow';
+import { noteRushSeat, rushMarks, rushRunning, seatFront, setRushAutoOn, urgentAt, useRushAutoPref } from './rushBridge';
 // ---- ui3: 전략 피드백 · 숏컷 · 화면 정돈 ----
 import { StrategyCard } from './StrategyCard';
 import { RadialMenu, type RadialItem } from './RadialMenu';
@@ -221,6 +225,7 @@ function SettingsPanel({ onExit, gauges, onGauges }: { onExit: () => void; gauge
   const placeHints = usePlaceHintsPref(); // video-patch §3.2.1
   const shortcuts = useShortcutsPref(); // ui3 숏컷
   const mapMinimal = useMapMinimalPref(); // ui3 맵 위 표시 최소화
+  const rushAuto = useRushAutoPref(); // rush: 러시 자동 진행
   const slider = (text: string, v: number, set: (n: number) => void) => (
     <label style={{ display: 'grid', gridTemplateColumns: '64px 1fr 40px', alignItems: 'center', gap: 8, fontSize: 14, minHeight: 44 }}>
       <span>{text}</span>
@@ -238,6 +243,7 @@ function SettingsPanel({ onExit, gauges, onGauges }: { onExit: () => void; gauge
       <OnOff label="자리 추천 보기 (놓을 때 빛나는 칸)" on={placeHints} onChange={setPlaceHintsOn} testId="setting-place-hints" />{/* video-patch §3.2.1 */}
       <OnOff label="숏컷 (길게 누르기·두 번 탭)" on={shortcuts} onChange={setShortcutsOn} testId="setting-shortcuts" />{/* ui3 */}
       <OnOff label="맵 위 표시 최소화" on={mapMinimal} onChange={setMapMinimalOn} testId="setting-map-minimal" />{/* ui3 */}
+      <OnOff label="러시 자동 진행 (점수는 절반)" on={rushAuto} onChange={setRushAutoOn} testId="setting-rush-auto" />{/* rush §6 */}
       {!tutorialDone(s) && <OnOff label="튜토리얼 스포트라이트 (빛나는 것 빼고 어둡게)" on={spotlight} onChange={setSpotlightOn} testId="setting-spotlight" />}{/* w-free */}
       <button style={{ ...brownBtn, marginRight: 0, marginBottom: 0 }} onClick={() => setSlots(true)}><Icon name="save" /> 슬롯에 저장</button>
       <button style={{ ...dangerBtn, marginRight: 0, marginBottom: 0 }} onClick={() => Confirm('자동 저장하고 타이틀로 나갈까요?', onExit, { title: '타이틀로' })}><Icon name="door" /> 타이틀로</button>
@@ -410,6 +416,7 @@ function Game({ onExit }: { onExit: () => void }) {
   // sim 알림(목표 달성·빅 이벤트) → 대화창(보상 상자는 RewardPopup), 그 다음 손으로 하는 튜토리얼 9단계. 알림은 한 번에 하나씩 순서대로.
   // 다음 단계 대사가 뜨면 연속 배치·이동·철거 모드를 끝낸다 — 배치 바가 하단 바를 덮어 「아래 카페를 눌러」를 못 따라가는 걸 막는다.
   useEffect(() => {
+    if (rushRunning(s)) return; // rush: 러시 한 판이 도는 동안은 알림·대사를 미룬다 (대사가 뜨면 게임이 멈춰 러시가 얼어붙는다)
     checkAlerts(s, () => dispatch({ type: 'dismissAlert' }), (x) => dispatch(x)); // stakes: 선택지는 sim 액션으로
     if (checkTutorial(s) && modeRef.current.kind !== 'idle') setMode({ kind: 'idle' });
   });
@@ -427,6 +434,20 @@ function Game({ onExit }: { onExit: () => void }) {
     if (t.kind === 'guest') { const g = st.guests.find((g) => g.id === t.id); const line = g && guestSay(st, g); if (line) viewRef.current?.showBubble(t.id, { text: line }); }
     else if (t.kind === 'staff') { const w = st.staff.find((w) => w.id === t.id); const line = w && staffSay(st, w); if (line) viewRef.current?.showBubble(t.id, { text: line }); }
     openCard(t);
+  };
+  /** 러시 중 맵 탭 (rush-battle §2 조작): 빨개진 자리면 긴급 처리, 아니면 줄 맨 앞 손님을 그 자리에 앉힌다.
+   *  자리를 먼저 눌러도 맨 앞 손님이 앉는다 — 손님을 고르는 단계가 없다. 성공하면 칸 위로 +점수가 뜬다. */
+  const rushTap = (st: GameState, x: number, y: number) => {
+    const o = objectAt(st, x, y);
+    if (!o) { showMessage('자리를 눌러 손님을 앉혀요'); return; }
+    const mark = rushMarks(st).find((m) => m.id === o.id);
+    if (!mark) { showMessage('여기엔 손님을 못 앉혀요'); return; }
+    const out = mark.kind === 'urgent' ? urgentAt(st, o.id) : seatFront(st, o.id);
+    if (!out.ok) { sfx('error'); showMessage(out.reason ?? '지금은 못 앉혀요'); return; }
+    sfx(mark.kind === 'urgent' ? 'happy' : 'coin');
+    viewRef.current?.popText(o.x, o.y, `+${out.gained}`);
+    if (out.combo >= 3) { viewRef.current?.popText(o.x, o.y - 1, `${out.combo}연속!`, 0xffb300); sfx('unlock'); }
+    if (mark.kind !== 'urgent') noteRushSeat();
   };
   /** 길게 누르면 오브젝트를 들어 올린다 (보기 모드). 이동 모드로 바뀌고 손가락을 따라 고스트가 움직인다. */
   const liftObject = (x: number, y: number): boolean => {
@@ -615,6 +636,8 @@ function Game({ onExit }: { onExit: () => void }) {
     const host = hostRef.current!;
     const v = new GameView();
     viewRef.current = v;
+    // 개발 자동화(손 플레이 검증)에서 칸 ↔ 화면 좌표를 물어보기 위한 훅. 프로덕션 빌드엔 빠진다
+    if (import.meta.env.DEV && typeof window !== 'undefined') (window as unknown as { __view: GameView }).__view = v;
     let stop: (() => void) | null = null;
     let disposed = false;
     (async () => {
@@ -624,6 +647,7 @@ function Game({ onExit }: { onExit: () => void }) {
           const m = modeRef.current;
           const st = getState();
           if (x < 0 || y < 0 || x >= st.grid.w || y >= st.grid.h) { if (m.kind === 'idle') openCard(null); return; }
+          if (rushRunning(st)) { rushTap(st, x, y); return; } // 러시 중엔 맵 탭이 곧 조작이다
           if (m.kind === 'build') {
             if (isLineType(m.objectType)) {
               // 두 번 탭: 시작 칸 → 끝 칸(같은 칸이면 1칸). 미리보기가 떠 있는데 또 누르면 새 시작 칸
@@ -890,6 +914,11 @@ function Game({ onExit }: { onExit: () => void }) {
     if (o) rangeHint = rangeHintFor(s, o.type, o.x, o.y, o.id);
   }
   useEffect(() => { viewRef.current?.setGhost(ghostSpec); viewRef.current?.setRangeHint(rangeHint); });
+  // rush: 러시 중 자리 색칠 (초록 앉힐 수 있다 · 회색 못 앉힌다 · 빨강 주문이 밀렸다)
+  const rushOn = rushRunning(s);
+  useEffect(() => { viewRef.current?.setRushMarks(rushOn ? rushMarks(s) : []); });
+  // 러시가 시작되면 짓기·이동·철거 모드를 끝낸다 — 배치 바가 스킬 카드를 덮지 않게
+  useEffect(() => { if (rushOn) { setMode({ kind: 'idle' }); openCard(null); setWin(null); } /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [rushOn]);
   // video-patch §3.2.1: 추천 칸을 맵에 그린다 (고스트 칸은 이미 고스트가 덮으므로 뺀다)
   const pickMarks = picks ? picks.picks.filter((p) => !(ghost && p.x === ghost.x && p.y === ghost.y)) : [];
   useEffect(() => { viewRef.current?.setPlacementPicks(pickMarks); });
@@ -1014,13 +1043,13 @@ function Game({ onExit }: { onExit: () => void }) {
       <SiteOverlayChip />
       {win ? <FirstTipBubble bottom={76} /> : <FirstTipBubble top={SHELL_TOP + 10} />}
       <TopShell onStatus={() => setWin({ kind: 'status' })} onGoal={() => setWin({ kind: 'goal' })} onTickets={() => setWin({ kind: 'ledger', tab: 'tickets' })} />
-      {!place && !cardTarget && (
+      {!place && !cardTarget && !rushOn && (
         <button data-testid="home-btn" aria-label="본관으로" onClick={goHome}
           style={{ position: 'absolute', left: 8, bottom: `calc(${SHELL_BOTTOM + 8}px + env(safe-area-inset-bottom))`, width: 56, height: 56, borderRadius: 28, border: `3px solid ${PALETTE.wood}`, background: PALETTE.paper, fontSize: 20, zIndex: 11, padding: 0, boxShadow: '0 2px 0 #0004', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Icon name="home_cafe_big" size={48} /></button>
       )}
       {place && ghostCell && <GhostButtons view={view} cell={ghostCell} ok={place.ok} canRotate={place.canRotate} onConfirm={place.onConfirm} onRotate={place.onRotate} />}
       {picks && <PlacementHintLine picks={picks} bottom={SHELL_BOTTOM + 44} state={s} type={mode.kind === 'build' ? mode.objectType : undefined} />}{/* video-patch §3.2.1: 워커 대기 중에도 한 줄은 남는다 */}
-      {!place && !cardTarget && !win && (
+      {!place && !cardTarget && !win && !rushOn && (
         <VoiceFeed bottom={BOTTOM_BAR_H + 26}
           onFocus={(x, y) => viewRef.current?.focusCell(x, y, 1, 1, 1.6)}
           onFix={(fix) => {
@@ -1030,7 +1059,7 @@ function Game({ onExit }: { onExit: () => void }) {
             else if (fix === 'clean') { setMode({ kind: 'idle' }); showMessage('낡은 시설을 골라 고쳐 보세요'); }
           }} />
       )}
-      {!win && <DaySummaryCard bottom={BOTTOM_BAR_H + 26 + VOICE_FEED_MAX * (VOICE_ROW_H + 2) + 4} />}{/* 손님 목소리 피드 위 */}
+      {!win && !rushOn && <DaySummaryCard bottom={BOTTOM_BAR_H + 26 + VOICE_FEED_MAX * (VOICE_ROW_H + 2) + 4} />}{/* 손님 목소리 피드 위 */}
       <MessageLine bottom={BOTTOM_BAR_H} />
       {quickBar && !place && <QuickBar onPick={(t) => { setQuickBar(false); pickBuild(t); }} onMore={() => { setQuickBar(false); setWin({ kind: 'build' }); }} onClose={() => setQuickBar(false)} />}
       {place ? <PlaceBar {...place} /> : <BottomBar onOpen={openWindow} onLongOpen={onBarLongPress} />}
@@ -1042,7 +1071,9 @@ function Game({ onExit }: { onExit: () => void }) {
       <AnnouncementPopup />
       {guestPopup && <GuestPopup guestId={guestPopup} onClose={() => setGuestPopup(null)} onQuest={(id) => { dispatch({ type: 'acceptQuest', id }); setWin({ kind: 'people', tab: 'quests' }); }} />}
       {renderWindow()}
-      <RewardPopup />
+      <RushHud />
+      <RushShow />
+      {!rushOn && <RewardPopup />}{/* rush: 보상 상자도 러시가 끝난 뒤에 */}
       <OutcomePopup />
       <ContestShow />
       <EndingScreen onExit={onExit} />

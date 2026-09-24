@@ -1,20 +1,20 @@
 /**
- * 손으로 하는 튜토리얼 「할망의 가르침」 7단계 (fun-start §2 — 시작 3분).
+ * 손으로 하는 튜토리얼 「할망의 가르침」 15단계 (fun-start §2 + rush-battle §3 — 인사 단계는 러시 단계로 바뀌었다).
  * 새 게임은 할망이 준 폐창고(본관)가 이미 서 있고 마을 길에서 문 앞까지 올렛길이 이어진 채 시작한다(state.ts 'tutorial'). 테이블 1개·메뉴 1개면 첫 손님이 온다.
  * 화자는 전부 할망. 장(章) 개념은 없다 — 배지는 「📖 n/7」. 그 밖의 시스템(증축·연수·명소·주차장·선물·추천…)은 창을 처음 열 때 한 줄 팁(ui/firstTip.ts)으로.
  * 글로우 칸은 고정 좌표가 아니라 strategy.ts가 실제 입지로 고른 칸(테이블 = seatScore 최고). 대사의 `{토큰}`은 strategyVars로 채운다(`{seatWhyPhrase}` = 그 칸을 꾸미는 관형절).
  * 진행은 sim 상태(state.tutorial.step = 끝낸 단계 수)에 있어 저장·복원되고 결정적이다.
  * 각 단계의 done 조건은 sim 상태만 본다. 창을 열었다 같은 UI 사건은 UI가 `tutorialNote` 액션으로 state.tutorial.seen에 남긴다(손님 카드 봄·목표 창 봄…).
- * 액션으로 하는 것(손님 인사 등)은 apply가 성공한 액션 타입을 seen에 넣는다(TRACKED_ACTIONS).
+ * 액션으로 하는 것(옮기기·연수 등)은 apply가 성공한 액션 타입을 seen에 넣는다(TRACKED_ACTIONS).
  * 대사 게이트: UI가 현재 단계 대사를 닫으면 `dlg:<id>`를 seen에 넣고, 그 뒤에야 단계가 끝난다 — 이미 충족된 단계도 대사는 한 번 보고 바로 통과한다.
  * 단계를 끝내면 applyRewards(보상 상자) → step++. 건너뛰기는 언제나(skipTutorialChapter = 남은 단계 전부, 해금 보상만 조용히 적용).
  * 대사는 data/dialogue/tutorial.json(key로 짝). 하이라이트(data-tut·맵 칸)는 ui/tutorialHighlight.ts.
  *
  * 5막 — 막마다 「그 시스템이 실제로 필요해지는 순간」에 열린다. 막이 열리기 전엔 그 막의 단계가 하나도 안 뜨고, 한 막 안에서도 단계 사이에 최소 한 게임일을 둔다.
  * | 막 | 열리는 때 | 단계 | 막 보상 |
- * | 1 카페 문 열기     | 새 게임 바로                     | 자리·메뉴·첫 손님 인사            | ₩30만 · 응모권 1 |
- * | 2 자리와 명당      | 좌석 2개 + 첫 결제               | 자리 점수 보기·첫 명당·명당 곁 자리 | ₩30만 |
- * | 3 한 단계 올리기   | 자금 ₩80만 + 좌석 3개            | 트리 올리기·붙여 놓기·직원 채용     | ₩30만 · 응모권 1 |
+ * | 1 카페 문 열기     | 새 게임 바로                     | 자리·메뉴·첫 러시                 | ₩30만 · 응모권 1 |
+ * | 2 자리와 사람      | 좌석 2개 + 첫 결제               | 자리 점수·첫 명당·명당 곁 자리·채용·러시 스킬 | ₩30만 |
+ * | 3 한 단계 올리기   | 자금 ₩80만 + 좌석 3개            | 트리 올리기·붙여 놓기              | ₩30만 · 응모권 1 |
  * | 4 넓히고 다시 놓기 | 자금 ₩300만 또는 자리 이용률 80% | 필지 사기·다른 길 열기·옮기기       | ₩50만 |
  * | 5 우리 카페의 색   | 등급 2 또는 2년차                | 진단 읽기·대회 접수                | 칭호 「할망의 제자」·₩50만·응모권 3 |
  */
@@ -54,13 +54,16 @@ export function stepTargets(step: TutorialStepDef, s: GameState): string[] {
   return typeof step.targets === 'function' ? step.targets(s) : step.targets;
 }
 
-/** apply가 성공하면 state.tutorial.seen에 타입을 남기는 액션 (조건 판정용). 문자열 집합 — `greetGuest`는 트랙 G(손님 인사)가 만드는 액션이라 아직 Action 타입에 없어도 미리 둔다. */
+/** apply가 성공하면 state.tutorial.seen에 타입을 남기는 액션 (조건 판정용). 문자열 집합.
+ *  인사(greetGuest)는 rush-battle §3·§6에서 사라졌다 — 손님과의 상호작용은 러시 중 자리 배정·주문 처리다. */
 export const TRACKED_ACTIONS: ReadonlySet<string> = new Set<string>([
-  'greetGuest', 'undoLast', 'train', 'develop', 'drawTicket', 'buyMileage', 'buyTicket', 'giveGift', 'respondEvent', 'investSpot',
+  'seatFromQueue', 'undoLast', 'train', 'develop', 'drawTicket', 'buyMileage', 'buyTicket', 'giveGift', 'respondEvent', 'investSpot',
   'treeUpgrade', 'move', 'buyParcel', 'enterContest',
 ]);
 /** UI가 tutorialNote로 남기는 키. `look:<id>`는 미니 카드 「이게 뭐예요」 힌트(정낭·정류장·마을 길·본관), goalWindow는 목표 창을 열었다(6단계). */
-export type TutorialNoteKey = 'siteView' | 'guestCard' | 'storage' | 'goalWindow' | 'checkup' | `look:${LookId}`;
+export type TutorialNoteKey = 'siteView' | 'guestCard' | 'storage' | 'goalWindow' | 'checkup'
+  | 'rushSeat1' | 'rushSeat2' | 'rushSkill' // rush-battle §3: 인사 대신 러시 조작이 손으로 배우는 것이 됐다
+  | `look:${LookId}`;
 /** 처음부터 놓여 있는 것의 카드 힌트 id (MiniCard Hint) */
 export type LookId = 'gate' | 'busstop' | 'road' | 'main';
 /** 카드 위 한 줄 설명 (초중생 어휘, MiniCard Hint) */
@@ -198,14 +201,18 @@ function seatCells(s: GameState): Pt[] {
   }
   return out;
 }
-/** 3단계 글로우: 손님이 있으면 그 손님 칸(탭해서 인사), 없으면 정류장 */
-function guestCells(s: GameState): Pt[] {
-  const g = s.guests[0];
-  return g ? [{ x: Math.round(g.x), y: Math.round(g.y) }] : [busStopPos(s)];
+/** 러시 단계 글로우: 자리가 있으면 첫 자리 칸(거기 앉힌다), 없으면 정류장 */
+function rushCells(s: GameState): Pt[] {
+  const seat = seats(s)[0] ?? Object.values(s.objects).find((o) => objectDef(o.type).kind === 'seat');
+  return seat ? [{ x: seat.x, y: seat.y }] : [busStopPos(s)];
 }
-/** 첫 손님에게 인사했나: 트랙 G의 greetGuest 액션(TRACKED_ACTIONS) 또는 손님 카드 열기 */
-export function greetedGuest(s: GameState): boolean {
-  return seen(s, 'greetGuest') || seen(s, 'guestCard');
+/** 첫 러시에서 줄에 선 손님을 둘 앉혔나 (UI가 rushSeat1·rushSeat2 표식을 남긴다 — 러시 상태에 기대지 않는다) */
+export function rushSeated(s: GameState): boolean {
+  return seen(s, 'rushSeat2');
+}
+/** 러시 중 직원 스킬을 한 번 써 봤나 */
+export function rushSkillUsed(s: GameState): boolean {
+  return seen(s, 'rushSkill');
 }
 
 const money = (amount: number): GoalReward => ({ type: 'money', amount });
@@ -252,7 +259,7 @@ function seatUse(s: GameState): number {
 
 export const TUTORIAL_ACTS: TutorialActDef[] = [
   { id: 1, name: '카페 문 열기', lead: '이 창고가 이제 네 카페여.', when: '새 게임 바로', open: () => true, reward: [money(300_000), { type: 'tickets', n: 1 }] },
-  { id: 2, name: '자리와 명당', lead: '자리 보는 법을 알려 주마.', when: `좌석 ${ACT2_SEATS}개와 첫 결제`, open: (s) => seatCount(s) >= ACT2_SEATS && soldAny(s), reward: [money(300_000)] },
+  { id: 2, name: '자리와 사람', lead: '자리하고 사람 보는 법이여.', when: `좌석 ${ACT2_SEATS}개와 첫 결제`, open: (s) => seatCount(s) >= ACT2_SEATS && soldAny(s), reward: [money(300_000)] },
   { id: 3, name: '한 단계 올리기', lead: '이번엔 올리는 법을 배우자.', when: `자금 ₩80만·좌석 ${ACT3_SEATS}개`, open: (s) => s.money >= ACT3_MONEY && seatCount(s) >= ACT3_SEATS, reward: [money(300_000), { type: 'tickets', n: 1 }] },
   { id: 4, name: '넓히고 다시 놓기', lead: '넓히는 법을 알려 주마.', when: '자금 ₩300만 또는 자리가 꽉 참', open: (s) => s.money >= ACT4_MONEY || seatUse(s) >= ACT4_SEAT_USE, reward: [money(500_000)] },
   { id: 5, name: '우리 카페의 색', lead: '마지막은 우리 카페 색이여.', when: `등급 ${ACT5_GRADE} 또는 ${ACT5_YEAR}년차`, open: (s) => (s.grade ?? 1) >= ACT5_GRADE || s.clock.year >= ACT5_YEAR, reward: [{ type: 'title', id: 'halmang_pupil', name: '할망의 제자' }, money(500_000), { type: 'tickets', n: 3 }] },
@@ -327,25 +334,26 @@ function contestEntered(s: GameState): boolean {
 }
 
 export const STEPS: TutorialStepDef[] = [
-  // 1막 개념 — 자리 하나, 메뉴 하나, 첫 손님
+  // 1막 개념 — 자리 하나, 메뉴 하나, 첫 러시 (rush-battle §3: 인사 단계가 러시 단계로 바뀌었다)
   { id: 1, act: 1, key: 'seat', done: (s) => seats(s).length >= 1, targets: ['nav:build', 'tile:seat', 'tab:rest', 'build:table_out', 'build-go'], cells: seatCells },
   { id: 2, act: 1, key: 'menu', done: (s) => s.menuSlots.includes('americano'), targets: ['nav:cafe', 'tab:menu', 'menu-put'], cells: none },
-  { id: 3, act: 1, key: 'greet', done: greetedGuest, targets: ['guest-row', 'greet'], cells: guestCells },
-  // 2막 배치·명당 — 자리 점수를 보고, 첫 명당을 만들고, 명당 곁에 자리를 둔다
+  { id: 3, act: 1, key: 'rushSeat', done: rushSeated, targets: ['rush-queue-first'], cells: rushCells },
+  // 2막 자리와 사람 — 자리 점수를 보고, 명당을 만들고, 사람을 뽑아 러시 스킬을 써 본다
   { id: 4, act: 2, key: 'site', done: (s) => seen(s, 'siteView'), targets: ['site-toggle'], cells: none },
   { id: 5, act: 2, key: 'corner', done: cornerMade, targets: (s) => ['nav:build', 'tile:charm', 'tab:corner', `corner-next:${TUTORIAL_CORNER_ID}`, `build:${cornerMissingType(s)}`, 'build-go'], cells: cornerCells },
   { id: 6, act: 2, key: 'cornerSeat', done: seatBesideCorner, targets: ['nav:build', 'tile:seat', 'tab:rest', 'build:table_out', 'build-go'], cells: cornerSeatCells },
-  // 3막 업그레이드 — 같은 자리에서 올리고, 붙여 놓고, 추천 후보를 뽑는다
-  { id: 7, act: 3, key: 'tree', done: (s) => seen(s, 'treeUpgrade'), targets: ['tree-up'], cells: none },
-  { id: 8, act: 3, key: 'combo', done: comboBeside, targets: ['nav:build', 'tile:charm', 'build-go'], cells: comboCells },
-  { id: 9, act: 3, key: 'hire', done: (s) => s.staff.length >= 1, targets: ['nav:people', 'tab:candidates', 'hire'], cells: none },
+  { id: 7, act: 2, key: 'hire', done: (s) => s.staff.length >= 1, targets: ['nav:people', 'tab:candidates', 'hire'], cells: none },
+  { id: 8, act: 2, key: 'rushSkill', done: rushSkillUsed, targets: ['rush-skill', 'nav:people'], cells: none },
+  // 3막 업그레이드 — 같은 자리에서 올리고, 붙여 놓는다
+  { id: 9, act: 3, key: 'tree', done: (s) => seen(s, 'treeUpgrade'), targets: ['tree-up'], cells: none },
+  { id: 10, act: 3, key: 'combo', done: comboBeside, targets: ['nav:build', 'tile:charm', 'build-go'], cells: comboCells },
   // 4막 확장·재배치 — 땅을 사고, 다른 길을 열고, 옮겨 본다
-  { id: 10, act: 4, key: 'parcel', done: (s) => ownedParcels(s).length >= 2, targets: ['nav:ledger', 'tab:invest', 'parcel-buy'], cells: none },
-  { id: 11, act: 4, key: 'route', done: routeOpened, targets: ['nav:build', 'tile:inflow', 'build:parking_lot', 'build-go'], cells: none },
-  { id: 12, act: 4, key: 'rearrange', done: (s) => seen(s, 'move'), targets: ['tool:move', 'tool:undo'], cells: none },
+  { id: 11, act: 4, key: 'parcel', done: (s) => ownedParcels(s).length >= 2, targets: ['nav:ledger', 'tab:invest', 'parcel-buy'], cells: none },
+  { id: 12, act: 4, key: 'route', done: routeOpened, targets: ['nav:build', 'tile:inflow', 'build:parking_lot', 'build-go'], cells: none },
+  { id: 13, act: 4, key: 'rearrange', done: (s) => seen(s, 'move'), targets: ['tool:move', 'tool:undo'], cells: none },
   // 5막 전략 — 진단을 읽고, 대회에 나가 본다
-  { id: 13, act: 5, key: 'checkup', done: (s) => seen(s, 'checkup'), targets: ['nav:ledger', 'strategy-card'], cells: none },
-  { id: 14, act: 5, key: 'contest', done: (s) => contestEntered(s), targets: ['nav:ledger', 'tab:contest', 'contest-enter'], cells: none },
+  { id: 14, act: 5, key: 'checkup', done: (s) => seen(s, 'checkup'), targets: ['nav:ledger', 'strategy-card'], cells: none },
+  { id: 15, act: 5, key: 'contest', done: (s) => contestEntered(s), targets: ['nav:ledger', 'tab:contest', 'contest-enter'], cells: none },
 ];
 export const TUTORIAL_STEPS = STEPS.length;
 /** 그 막의 마지막 단계 id */

@@ -23,7 +23,8 @@ import { staffParts } from '../render/character';
 import { TitleRibbon } from './TitleBadge'; // staff-luck 칭호 리본
 import { Portrait, namedPortraitParts, guestName } from './GuestPopup';
 import { guestParts } from '../render/character';
-import { canGreet, canRecommend, recommendFits, regularHearts, regularById, requestDef, requestHint, regularFace, GAUGE_MAX, availableMenus, menuOf } from '../sim/index.ts'; // fun-guest
+import { regularHearts, regularById, requestDef, requestHint, regularFace, GAUGE_MAX } from '../sim/index.ts'; // fun-guest (인사·추천은 rush-battle §3·§6에서 삭제)
+import { skillsOfStaff, skillLine } from '../sim/index.ts'; // rush3: 러시 액티브 스킬 줄
 import { Bar, EnergyBar } from './Bars';
 import { Confirm, Popup } from './Popup';
 import { Icon } from './Icon';
@@ -175,10 +176,10 @@ export function Hearts({ n, max = GAUGE_MAX }: { n: number; max?: number }) {
   );
 }
 
-/** 손님 카드 (fun-guest §4): 큰 얼굴 96px + 이름, 선택지 3개(인사·추천·선물)를 누르면 바로 말풍선·표정·하트/땀. 요청 줄 + 들어주기 힌트, 단골 하트 5칸. */
+/** 손님 카드 (fun-guest §4): 큰 얼굴 96px + 이름, 선물을 누르면 바로 말풍선·표정·하트. 요청 줄 + 들어주기 힌트, 단골 하트 5칸.
+ *  인사·추천 버튼은 rush-battle §6에서 없앴다 — 손님과의 상호작용은 러시 중 자리 배정·주문 처리로 간다(UI는 rush2). */
 function GuestCard({ s, id, a, objectId }: { s: GameState; id: string; a: CardActions; objectId?: string }) {
   const [picking, setPicking] = useState(false);
-  const [recommending, setRecommending] = useState(false);
   const [expr, setExpr] = useState<'normal' | 'happy' | 'surprised'>('normal');
   useTutorialNote('guestCard'); // 튜토리얼 「손님 카드 보기」
   // 반응 표정은 다른 손님으로 넘어가면, 또 3초 뒤엔 평소 얼굴로
@@ -194,20 +195,11 @@ function GuestCard({ s, id, a, objectId }: { s: GameState; id: string; a: CardAc
   const wants = def.wants.slice(0, 2).map((w) => WANT_LABEL[w] ?? w);
   const gifts = GIFTS.filter((x) => (s.inventory[x.id] ?? 0) > 0);
   const giftOk = gifts.length > 0 && !giftedToday(s) && g.phase !== 'leaving';
-  const greet = canGreet(s, g.id);
-  const recommend = canRecommend(s, g.id);
-  const menus = availableMenus(s).filter((m) => m !== g.menuId);
   const regular = g.regularId ? regularById(s, g.regularId) : null;
   const request = g.requestId ? requestDef(g.requestId) : null;
   const face = g.faceSeed !== undefined ? regularFace(g.faceSeed) : guestFace(g.type);
   const parts = nd ? namedPortraitParts(nd.id) : guestParts(face, def.tags, def.wants);
   const portraitExpr = expr !== 'normal' ? expr : g.mood === 'happy' ? 'happy' : 'normal';
-  const pressGreet = () => { if (dispatch({ type: 'greetGuest', guestId: g.id }).ok) setExpr('happy'); };
-  const pressRecommend = (menuId: string) => {
-    setRecommending(false);
-    const fits = recommendFits(s, g, menuId);
-    if (dispatch({ type: 'recommendMenu', guestId: g.id, menuId }).ok) setExpr(fits ? 'happy' : 'surprised');
-  };
   const tri: CSSProperties = { ...brownBtn, flex: 1, minWidth: 0, margin: 0, padding: '0 2px', fontSize: 14, minHeight: 44, whiteSpace: 'nowrap' };
   // ◀ ▶ 지금 온 손님 순회 — 같은 자리에 둘이 앉으면 탭으로는 한 명만 잡히므로 (§1.3)
   const all = s.guests.filter((x) => x.phase !== 'leaving');
@@ -239,32 +231,15 @@ function GuestCard({ s, id, a, objectId }: { s: GameState; id: string; a: CardAc
           <div style={small}><Icon name="bulb" size={14} /> {requestHint(request)}</div>
         </div>
       )}
+      {/* rush-battle §3: 인사·추천은 없어졌다 — 손님과의 상호작용은 러시 중 자리 배정·주문 처리다 */}
       <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
-        <button data-tut="greet" data-testid="btn-greet" style={greet.ok ? tri : { ...tri, ...btnOff }} disabled={!greet.ok} onClick={pressGreet} aria-label="인사"
-          title={greet.reason}><Icon name="wave" /> {g.greeted ? '인사 ✓' : '인사'}</button>
-        <button data-testid="btn-recommend" style={recommend.ok && menus.length > 0 ? tri : { ...tri, ...btnOff }} disabled={!recommend.ok || menus.length === 0} onClick={() => setRecommending(true)} aria-label="추천"
-          title={recommend.reason}><Icon name="menu" /> {g.recommended ? '추천 ✓' : '추천'}</button>
         <button data-tut="gift" data-testid="btn-gift" style={giftOk ? tri : { ...tri, ...btnOff }} disabled={!giftOk} onClick={() => setPicking(true)} aria-label="선물하기"
           title={gifts.length === 0 ? '선물이 없어요' : giftedToday(s) ? '선물은 하루 한 번' : undefined}><Icon name="gift" /> 선물</button>
       </div>
-      {!greet.ok && greet.reason && <div style={{ ...small, marginTop: 4 }}>{greet.reason}</div>}
       <Row>
         <button style={btn} onClick={() => a.onGuestDetail(g.id)}>자세히</button>
         {quest && <button style={canAcceptQuest(s, quest).ok ? btnOn : btnOff} disabled={!canAcceptQuest(s, quest).ok} onClick={() => a.onQuest(quest)}>! 부탁 듣기</button>}
       </Row>
-      {recommending && (
-        <Popup title={`${g.name ?? guestName(g)}에게 추천`} onBackdrop={() => setRecommending(false)} buttons={<button style={brownBtn} onClick={() => setRecommending(false)}>닫기</button>}>
-          <div style={{ ...small, marginBottom: 6 }}>취향에 맞으면 주문을 바꾸고 팁을 더 내요</div>
-          {menus.map((m) => {
-            const fits = recommendFits(s, g, m);
-            return (
-              <button key={m} style={{ ...brownBtn, width: '100%', marginRight: 0, textAlign: 'left' }} data-testid={`recommend-${m}`} onClick={() => pressRecommend(m)}>
-                {menuOf(s, m).name}{fits ? ' ★ 좋아할 듯' : ''}
-              </button>
-            );
-          })}
-        </Popup>
-      )}
       {picking && (
         <Popup title={`${g.name ?? guestName(g)}에게 선물`} onBackdrop={() => setPicking(false)} buttons={<button style={brownBtn} onClick={() => setPicking(false)}>닫기</button>}>
           {gifts.map((x) => {
@@ -310,6 +285,9 @@ function StaffCard({ s, id, a }: { s: GameState; id: string; a: CardActions }) {
             {STAT_KEYS.map((k) => <span key={k} style={{ display: 'contents' }}><span>{STAT_NAME[k as StatKey]}</span><Bar value={st.stats[k as StatKey]} max={Math.max(100, capOf(s, st, k as StatKey))} width={56} /></span>)}
           </div>
           <div style={{ fontSize: 13 }}><EnergyBar energy={st.energy} />{st.energy < LOW_ENERGY && <span style={{ color: PALETTE.bad }}> 지침</span>} · 월급 {wonText(st.salary)}</div>
+          {skillsOfStaff(s, st).map((def) => (
+            <div key={def.id} data-testid={`card-skill-${def.id}`} style={{ fontSize: 12, color: PALETTE.inkSoft, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>재주 {skillLine(st, def)}</div>
+          ))}{/* rush3: 러시 재주 줄 */}
         </div>
       </div>
       <Row>
