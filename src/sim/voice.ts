@@ -78,9 +78,20 @@ export function pushVoice(state: GameState, reason: VoiceReason, detail?: string
   while (arr.length > VOICE_CAP) arr.shift();
 }
 
-/** 피드에 보여 줄 줄 (최근 것부터 n개) */
+/** 피드에 보여 줄 줄 (최근 것부터 n개).
+ *  uifix: 날짜만 다른 같은 말(같은 사유·같은 대상)은 한 줄로 — 세 줄이 「감귤 창고 앞에서 사진 찍었어요」로
+ *  똑같이 보이던 것을 막는다. 가장 최근 줄만 남긴다(수도 그날 것). 상태는 건드리지 않는다. */
 export function recentVoices(state: GameState, n = 3): VoiceLine[] {
-  return list(state).slice(-n).reverse();
+  const out: VoiceLine[] = [];
+  const seen = new Set<string>();
+  for (const v of [...list(state)].reverse()) {
+    const key = `${v.reason}|${v.detail ?? ''}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(v);
+    if (out.length >= n) break;
+  }
+  return out;
 }
 
 // ---------- 원인 칸 찾기 ----------

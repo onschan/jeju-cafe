@@ -1,6 +1,6 @@
 /** 짓기 창 (스펙 §4.2). 카테고리 탭(쉼·편의·먹거리·즐길거리·농원·경관·길·담) → 2열 카드(아이소 스프라이트·이름·가격·입소문/경관).
  *  카드 탭 → **창 하단 고정 바**(이름·가격·요약 한 줄 + `짓기`, 긴 설명은 「자세히」로 접기). 잠긴 것은 반투명 + 조건 한글. 철거·이동은 미니카드(트랙 C) 몫. */
-import { useEffect, useRef, useState, type CSSProperties } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
 import { Icon } from '../Icon';
 import type { GameState, ObjectDef } from '../../sim/index.ts';
 import { placeCost, constructions, canStartBuild, goalForFacility, isUpgradable, tierOf, mainBuilding, MAIN_TYPE, BUILD_TILES, TILE_TYPES, tileBadges, seatUseRate, STREET_BONUS_PCT, totalSeats, cafeScenery, treeOf, sceneryGainText, routeTakesGuests, ROUTE_IDS, gradeOf, type BuildTileId } from '../../sim/index.ts';
@@ -54,6 +54,29 @@ export function recentBuildTypes(s: GameState, n = RECENT_N): string[] {
 const HIDDEN_IDS = new Set(['busstop', 'warehouse', 'spring']);
 /** 「건물」 탭 안내 (w-start 맨땅 튜토리얼 2단계) */
 export const MAIN_CARD_HINT = '첫 본관은 무료·바로 완성 · 문은 앞쪽 왼쪽에 생겨요';
+
+/** uifix: 창 본문에서 이 요소 아래로 남는 높이를 잰다.
+ *  짓기 첫 화면 타일이 5장뿐이라 아래쪽 300px이 빈 칸으로 남던 것을 채우려고 쓴다.
+ *  창 본문은 블록 흐름이라 flex로는 남은 높이를 못 받는다(위에 도구 줄이 있다). */
+function useFillHeight(ref: React.RefObject<HTMLDivElement | null>): number | null {
+  const [h, setH] = useState<number | null>(null);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    const parent = el?.parentElement;
+    if (!el || !parent) return;
+    const calc = () => {
+      const pad = parseFloat(getComputedStyle(parent).paddingBottom) || 0;
+      const next = Math.max(0, Math.round(parent.getBoundingClientRect().bottom - pad - el.getBoundingClientRect().top));
+      setH((prev) => (prev !== null && Math.abs(prev - next) < 2 ? prev : next));
+    };
+    calc();
+    if (typeof ResizeObserver === 'undefined') return;
+    const ro = new ResizeObserver(calc);
+    ro.observe(parent);
+    return () => ro.disconnect();
+  });
+  return h;
+}
 
 /** 오브젝트가 어느 탭에 속하나. 길·담·정낭은 kind로, 나무·농사 시설은 농원, 좌석은 쉼, 나머지는 시설 분류. */
 export function buildTabOf(def: ObjectDef): BuildTab {
@@ -125,6 +148,7 @@ export function BuildWindow(props: BuildWindowProps) {
   const [view, setView] = useState<BuildView>(() => (props.initialTab || requestedTabWas || !mainBuilding(s) ? { kind: 'all' } : (lastView ?? { kind: 'tiles' })));
   const goView = (v: BuildView) => { lastView = v.kind === 'all' ? v : null; lastScrollTop = 0; setView(v); setPicked(null); showFirstTip(null); }; // 창을 다시 열면 늘 6타일 첫 화면 (전체 목록만 기억) · 팁이 아래 「짓기」 줄을 가리지 않게 내린다
   const rootRef = useRef<HTMLDivElement>(null);
+  const fillH = useFillHeight(rootRef);
   // 스크롤 위치 기억: 셸의 스크롤 컨테이너(window-body)에 붙여, 열 때 되돌리고 닫힐 때 저장 (ease)
   useEffect(() => {
     const el = rootRef.current?.closest<HTMLElement>('[data-testid="window-body"]');
@@ -159,15 +183,16 @@ export function BuildWindow(props: BuildWindowProps) {
 
   if (view.kind === 'tiles') {
     return (
-      <div ref={rootRef} style={body} data-testid="build-window">
-        <TilesScreen s={s} onTile={(t) => {
+      // uifix: 타일이 5장뿐이라 창 아래쪽 300px이 빈 칸으로 남았다 — 타일이 남은 높이를 채우고 아래 줄은 바닥에 붙인다
+      <div ref={rootRef} style={{ ...body, height: fillH ?? undefined, display: 'flex', flexDirection: 'column' }} data-testid="build-window">
+        <TilesScreen s={s} fill onTile={(t) => {
           const tile = BUILD_TILES.find((x) => x.id === t)!;
           if (t === 'all') { goView({ kind: 'all' }); return; }
           if (t === 'building') { goView({ kind: 'all' }); setTab(noMain ? 'building' : 'indoor'); return; }
           goView({ kind: 'tile', tile: t });
           if (tile.base) setPicked(tile.base);
         }} />
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0 8px', marginTop: 6 }}>
+        <div style={{ flex: 'none', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0 8px', marginTop: 8 }}>
           <span style={soft}>자금 {wonText(s.money)}</span>
           <span style={{ ...soft, color: busy >= s.builders ? PALETTE.bad : PALETTE.inkSoft }} data-testid="builders">건축가 {busy}/{s.builders} 작업 중</span>
           <SiteToggle />
@@ -229,7 +254,7 @@ export function BuildWindow(props: BuildWindowProps) {
 
 /** fun: 짓기 첫 화면 6타일 (중요도 순: 자리 → 서비스 → 매력 → 유입 → 실내·건물 → 전체 목록). 타일마다 "무엇에 좋은가" 한 줄 + 지금 병목 배지.
  *  등급 1~2에선 실내·건물 타일이 안 보인다(점진 공개 — 본관이 없으면 보인다). */
-export function TilesScreen({ s, onTile }: { s: GameState; onTile: (t: BuildTileId) => void }) {
+export function TilesScreen({ s, onTile, fill }: { s: GameState; onTile: (t: BuildTileId) => void; fill?: boolean }) {
   const seatUse = seatUseRate(s, totalSeats(s));
   const scenery = cafeScenery(s);
   const routesN = ROUTE_IDS.filter((r) => routeTakesGuests(s, r, 12)).length;
@@ -237,7 +262,7 @@ export function TilesScreen({ s, onTile }: { s: GameState; onTile: (t: BuildTile
   const grade = gradeOf(s);
   const tiles = BUILD_TILES.filter((t) => t.id !== 'building' || grade >= BUILDING_TILE_GRADE || !mainBuilding(s));
   return (
-    <div data-testid="build-tiles" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 8 }}>
+    <div data-testid="build-tiles" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 8, ...(fill ? { flex: 1, minHeight: 0, gridAutoRows: 'minmax(96px, 1fr)' } : null) }}>
       {tiles.map((t) => {
         const badge = badges.find((b) => b.tile === t.id);
         return (
