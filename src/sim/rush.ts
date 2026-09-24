@@ -37,7 +37,6 @@ import { cornerOfPiece } from './corners.ts';
 import { popularityFor, BASE_POPULARITY } from './compat.ts';
 import { CLEAN_MAX } from './cleanliness.ts';
 import { dailyGuestCount, hourShare, freeSeats, totalSeats, seatGuestFromQueue, typeWeight, updateGuests } from './guests.ts';
-import { activeTipMult, instantOf, clearInstant } from './skillActive.ts'; // 직원 액티브 스킬 본체는 skillActive.ts — 러시는 즉발 효과(착석·인내)만 받아 먹는다
 import { spawnRouteWeights, routeTagMult } from './entry.ts'; // 러시 줄도 경로 비중(정류장·주차장·올레)을 그대로 따른다
 
 // ---------- 주·요일 ----------
@@ -171,8 +170,10 @@ export const RUSH_REWARDS: Record<RushGrade, RushReward> = {
 /** S 보상 「다음 주 손님 +10%」가 가는 날 수 */
 export const RUSH_BOOST_DAYS = WEEK_DAYS;
 export const RUSH_EFFECT_SOURCE = '러시 S등급';
-/** 단골 게이지 (인사 삭제 대체 — 러시 성적·요청 해결로만 찬다) */
-export const RUSH_GAUGE_PER_SERVE = 0.2;
+/** 단골 게이지 (인사 삭제 대체 — 러시 성적·요청 해결로만 찬다).
+ *  teardown §3: 동네 대항전이 이길 때마다 거저 주던 단골이 없어졌다 — 그만큼 러시가 메운다.
+ *  한 손님층을 스무 번 내주면 단골 한 명(GAUGE_MAX 5 ÷ 0.25). */
+export const RUSH_GAUGE_PER_SERVE = 0.25;
 export const RUSH_GAUGE_GRADE: Record<RushGrade, number> = { S: 2, A: 1, B: 0.5, C: 0 };
 /** 떠난 손님 평판 −1, 한 판에 이만큼까지만 (작은 카페가 첫 러시에 평판을 잃고 무너지지 않게) */
 export const RUSH_LEFT_REPUTATION = 1;
@@ -323,7 +324,6 @@ function runRush(state: GameState, r: RushState, dtMs: number): void {
   arriveGuests(state, r, dtMs);
   tickPatience(state, r, dtMs);
   autoSeat(state, r);
-  consumeInstant(state, r);
   if (r.elapsedMs >= RUSH_RUN_MS) finishRush(state, r);
 }
 
@@ -410,7 +410,7 @@ export function rushSeatFits(state: GameState, seat: PlacedObject | null, typeId
 
 function scoreServe(state: GameState, r: RushState, typeId: string, seat: PlacedObject | null, manual: boolean): void {
   const fit = rushSeatFits(state, seat, typeId);
-  const tip = Math.min(RUSH_TIP_MAX, Math.floor(walletOf(state, typeId) / RUSH_TIP_PER_POINT)) * activeTipMult(state); // 「오늘의 특선」 팁 배수 (skillActive)
+  const tip = Math.min(RUSH_TIP_MAX, Math.floor(walletOf(state, typeId) / RUSH_TIP_PER_POINT));
   let gain = RUSH_SCORE_PER_GUEST + tip + (fit ? RUSH_FIT_BONUS : 0);
   r.streak++;
   if (r.streak >= RUSH_COMBO_N) {
@@ -424,26 +424,6 @@ function scoreServe(state: GameState, r: RushState, typeId: string, seat: Placed
   r.served++;
   r.done.push(typeId);
   addRegularGauge(state, typeId, RUSH_GAUGE_PER_SERVE); // 인사 삭제 대체: 게이지는 러시 성적·요청 해결로만 찬다
-}
-
-// ---------- 액티브 스킬 즉발 효과 ----------
-/** skillActive.ts가 적어 둔 「방금 쓴 즉발 스킬」을 러시가 받아 먹는다 (같은 것을 두 번 먹지 않게 표식을 지운다).
- *  능숙한 안내(seatFront) = 맨 앞 n명 즉시 착석, 여유 한 마디(patience) = 줄 선 모두의 인내 +n초. */
-function consumeInstant(state: GameState, r: RushState): void {
-  const seatN = Math.round(instantOf(state, 'seatFront'));
-  if (seatN > 0) {
-    clearInstant(state, 'seatFront');
-    for (let i = 0; i < seatN; i++) {
-      const g = r.queue[0];
-      if (!g || !seatOne(state, r, g, null, true)) break;
-    }
-  }
-  const patSec = instantOf(state, 'patience');
-  if (patSec > 0) {
-    clearInstant(state, 'patience');
-    const add = rushMsOfSeconds(patSec);
-    for (const g of r.queue) g.patienceMs += add;
-  }
 }
 
 // ---------- 마무리·정산 ----------

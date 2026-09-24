@@ -41,7 +41,7 @@ function hired(seed = 1, role: RoleId = 'hall'): { s: GameState; st: Staff } {
 
 // ---------- 데이터 (§3.6) ----------
 
-test('직원 풀 27명: 단계 1~5 각 5명 + 특수 2명, 상한 ≥ 초기치, 채용 5단계·연수 5종·특기 30·직종 8', () => {
+test('직원 풀 27명: 단계 1~5 각 5명 + 특수 2명, 상한 ≥ 초기치, 채용 5단계·연수 2종·특기 30·직종 8', () => {
   expect(STAFF_POOL.length).toBe(27);
   for (let t = 1; t <= 5; t++) expect(STAFF_POOL.filter((p) => p.tier === t).length).toBe(5);
   expect(STAFF_POOL.filter((p) => p.tier === 0).length).toBe(2);
@@ -50,7 +50,7 @@ test('직원 풀 27명: 단계 1~5 각 5명 + 특수 2명, 상한 ≥ 초기치,
     expect(SKILLS.some((s) => s.id === p.skill)).toBe(true);
   }
   expect(RECRUIT_TIERS.map((t) => t.cost)).toEqual([500_000, 5_000_000, 8_000_000, 20_000_000, 50_000_000]);
-  expect(TRAININGS.length).toBe(3); // rush3: 러시 연수(두 번째 재주)가 붙었다
+  expect(TRAININGS.length).toBe(2); // teardown §3: 러시 연수(두 번째 재주)는 액티브 스킬과 함께 걷어냈다
   expect(SKILLS.length).toBe(10);
   expect(ROLES.map((r) => r.id)).toEqual(['barista', 'cook', 'hall', 'clean']);
 });
@@ -278,7 +278,7 @@ function trainee(): { s: GameState; st: Staff } {
   return { s, st };
 }
 
-test('연수 5종: 랭크 3부터, 비용을 내고 n일 자리를 비운 뒤 스탯이 오른다 (상한 내)', () => {
+test('연수 2종: 랭크 3부터, 비용을 내고 n일 자리를 비운 뒤 스탯이 오른다 (상한 내)', () => {
   const { s, st } = hired();
   s.money = 1e8;
   expect(apply(s, { type: 'train', staffId: st.id, trainingId: 'tr_barista' }).ok).toBe(false); // 랭크

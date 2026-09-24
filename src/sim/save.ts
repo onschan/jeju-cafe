@@ -10,7 +10,6 @@ import { initEnding } from './ending.ts'; // z-ending
 import { initContest } from './contest.ts'; // 대회
 import { initRivals } from './rival.ts'; // 동네 경쟁 카페
 import { initRush } from './rush.ts'; // 러시 타임
-import { initBattle } from './battle.ts'; // 동네 대항전
 import type { FinalScore } from './types.ts';
 import { TUTORIAL_STEPS } from './tutorial.ts';
 import { ROUTE_IDS } from './entry.ts';
@@ -21,8 +20,9 @@ import { fmtNum } from './format.ts';
 
 /** trim에서 없어진 것들이 들어 있는 v20 세이브를 올린다 (환불·치환) */
 export const MIGRATE_FROM = 20;
-/** big·mix·all·rushall 통합에서 붙은 필드는 전부 optional이라 backfill만으로 v21 → … → v25가 된다 (덜어낼 것도 없다) */
-export const BACKFILL_FROM = [20, 21, 22, 23, 24];
+/** big·mix·all·rushall 통합에서 붙은 필드는 전부 optional이라 backfill만으로 v21 → … → v26이 된다.
+ *  v25 → v26은 덜어내기라 backfill이 없어진 필드(battle·activeSkills·activeSkillSlots·titleChanceBonus)를 지운다. */
+export const BACKFILL_FROM = [20, 21, 22, 23, 24, 25];
 /** 이어서 열 수 있는 가장 낮은 세이브 버전 (이보다 낮으면 백업 뒤 새 게임) */
 export const OLDEST_LOADABLE = Math.min(...BACKFILL_FROM);
 
@@ -143,10 +143,11 @@ function backfill(state: GameState): void {
   delete (state as { greetDay?: number }).greetDay;
   delete (state as { greetCount?: number }).greetCount;
   delete (state as { recommendCount?: number }).recommendCount;
-  state.battle ??= initBattle(); // 동네 대항전 (옛 세이브는 다음 마지막 주 토요일부터 — 2년차부터 열린다)
-  state.activeSkills ??= {};     // 러시 액티브 스킬 쿨다운 (옛 세이브는 아무도 안 쓴 상태)
-  state.activeSkillSlots ??= 1;  // 스킬 칸 1개 (2번째는 러시 등급 누적 해금)
-  state.titleChanceBonus ??= 0;  // 칭호 확률 보너스
+  // teardown §3: 동네 대항전·직원 액티브 스킬은 없어졌다 — 옛 세이브(v25)에 남은 필드를 지운다
+  delete (state as { battle?: unknown }).battle;
+  delete (state as { activeSkills?: unknown }).activeSkills;
+  delete (state as { activeSkillSlots?: number }).activeSkillSlots;
+  delete (state as { titleChanceBonus?: number }).titleChanceBonus;
   state.monthCosts.deal ??= 0; // 제휴 월 고정비 줄
   if (state.lastMonthCard) state.lastMonthCard.costs.deal ??= 0;
   state.monthCosts.contest ??= 0; // 대회 참가비 줄 (월말 카드 비용 합계)

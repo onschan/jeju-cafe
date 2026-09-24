@@ -116,7 +116,7 @@ test('v21 세이브: 5트랙이 붙인 필드가 전부 기본값으로 채워�
 
   const back = deserialize(JSON.stringify(obj));
   expect(back.version).toBe(SAVE_VERSION);
-  expect(SAVE_VERSION).toBe(25);
+  expect(SAVE_VERSION).toBe(26);
   // stakes
   expect(back.monthCosts.rent).toBe(0);
   expect(back.trend).toBeTruthy();
@@ -164,14 +164,14 @@ test('v23 세이브: 여섯 트랙이 붙인 필드가 전부 기본값으로 �
   expect(JSON.parse(serialize(deserialize(serialize(back))))).toEqual(JSON.parse(serialize(back)));
 });
 
-// ---------- rushall 통합: v24 → v25 (러시·직원 재주·동네 대항전) ----------
+// ---------- rushall 통합: v24 → v26 (러시) ----------
 
-test('v24 세이브: 러시·직원 재주·대항전이 기본값으로 채워지고, 인사 기록은 지워진다', () => {
+test('v24 세이브: 러시가 기본값으로 채워지고, 인사 기록은 지워진다', () => {
   const s = bareState(1);
   const obj = JSON.parse(serialize(s)) as Record<string, unknown>;
   obj.version = 24;
   // v24엔 없던 필드를 지우고, v24에 있던 인사·추천 기록을 흉내 낸다
-  for (const k of ['rush', 'rushGrades', 'battle', 'activeSkills', 'activeSkillSlots', 'titleChanceBonus']) delete obj[k];
+  for (const k of ['rush', 'rushGrades']) delete obj[k];
   obj.greetDay = 3;
   obj.greetCount = 7;
   obj.recommendCount = 2;
@@ -181,17 +181,36 @@ test('v24 세이브: 러시·직원 재주·대항전이 기본값으로 채워�
   // 러시 — 다음 토요일부터 줄이 선다
   expect(back.rush?.phase).toBe('idle');
   expect(back.rushGrades).toEqual({ S: 0, A: 0, B: 0, C: 0 });
-  // 직원 재주 — 아무도 안 쓴 상태, 칸 1개
-  expect(back.activeSkills).toEqual({});
-  expect(back.activeSkillSlots).toBe(1);
-  expect(back.titleChanceBonus).toBe(0);
-  // 동네 대항전 — 2년차 마지막 토요일부터
-  expect(back.battle).toBeTruthy();
-  expect(back.battle?.round).toBeNull();
   // 인사·추천은 삭제된 기능이라 기록도 지운다
   expect((back as unknown as Record<string, unknown>).greetDay).toBeUndefined();
   expect((back as unknown as Record<string, unknown>).greetCount).toBeUndefined();
   expect((back as unknown as Record<string, unknown>).recommendCount).toBeUndefined();
+  // 한 번 더 왕복해도 같다
+  expect(JSON.parse(serialize(deserialize(serialize(back))))).toEqual(JSON.parse(serialize(back)));
+});
+
+// ---------- 덜어내기(teardown §3): v25 → v26 (동네 대항전·직원 액티브 스킬 삭제) ----------
+
+test('v25 세이브: 없어진 대항전·액티브 스킬 필드를 지우고 이어 연다', () => {
+  const s = bareState(1);
+  const obj = JSON.parse(serialize(s)) as Record<string, unknown>;
+  obj.version = 25;
+  // v25에 있던 대항전·액티브 스킬 상태를 흉내 낸다
+  obj.battle = { records: { rv_bakery: { wins: 2, losses: 1, streak: 2, surrendered: false } }, round: null, last: null, pending: true, rankPoints: 4, champion: false, lastMonthIndex: 7 };
+  obj.activeSkills = { st1: { skillId: 'as_fast_coffee', usedAt: 1, readyAt: 2, until: 3, power: 0.2, sat: 0 } };
+  obj.activeSkillSlots = 2;
+  obj.titleChanceBonus = 30;
+
+  const back = deserialize(JSON.stringify(obj));
+  expect(back.version).toBe(SAVE_VERSION);
+  const raw = back as unknown as Record<string, unknown>;
+  expect(raw.battle).toBeUndefined();
+  expect(raw.activeSkills).toBeUndefined();
+  expect(raw.activeSkillSlots).toBeUndefined();
+  expect(raw.titleChanceBonus).toBeUndefined();
+  // 남겨야 하는 것 — 러시·동네 경쟁 카페 순위표는 그대로
+  expect(back.rush?.phase).toBe('idle');
+  expect(back.rivals).toBeTruthy();
   // 한 번 더 왕복해도 같다
   expect(JSON.parse(serialize(deserialize(serialize(back))))).toEqual(JSON.parse(serialize(back)));
 });

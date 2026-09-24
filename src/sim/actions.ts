@@ -13,7 +13,7 @@ import { canTrain, train } from './training.ts';
 import { canPromote, promote, canSetTarget, setTarget } from './promotions.ts';
 import { discoverPlacement } from './compat.ts';
 import { canUseItem, useItem, canGiveGift, giveGift, canCraftGift, craftGift } from './items.ts';
-import { canSeatFromQueue, seatFromQueue, canRushPriority, rushPriority } from './rush.ts'; // 러시 타임: 자리 배정·밀린 주문 (직원 스킬은 skillActive.ts)
+import { canSeatFromQueue, seatFromQueue, canRushPriority, rushPriority } from './rush.ts'; // 러시 타임: 자리 배정·밀린 주문
 import { evaluateUnlocks } from './segments.ts';
 import { canAcceptQuest, acceptQuest, canRespondEvent, respondEvent, afterInvest, checkQuests } from './board.ts';
 import { canInvestSpot, investSpot } from './spots.ts';
@@ -34,8 +34,6 @@ import { resolveRisk } from './risk.ts'; // stakes: 돌발 사고 선택지
 import { resolveEventChoice } from './events.ts'; // stakes: 빅 이벤트 선택지
 import { canEnterContest, enterContest, canCancelContest, cancelContest, canPlaceTrophy, contestState } from './contest.ts'; // 대회
 import { rivalsState, canAnswerRival, answerRival, canAllyRival, allyRival, endAllyRival, canAcquireRival, acquireRival } from './rival.ts'; // 동네 경쟁 카페
-import { canUseSkill, useStaffSkill } from './skillActive.ts'; // 러시 직원 액티브 스킬
-import { dismissBattle } from './battle.ts'; // 동네 대항전 결과 연출
 import { guestBlock, setPending, clearPending, doNow, vacate, WORK_NAME } from './pending.ts'; // seatfix: 손님이 앉아 있어도 예약해 두는 이동·철거·증축
 
 /** 못 옮기고 못 없애는 것 (정류장·본관·샘). 정낭은 w-free부터 일반 시설 — 옮기고 없애고 더 놓을 수 있다. */
@@ -44,7 +42,7 @@ export const PROTECTED_TYPES = new Set(['busstop', 'warehouse', 'spring']);
 export const ROTATABLE_TYPES = new Set(['gate', 'counter']);
 const ACTION_LOG_CAP = 1000;
 
-const CLIENT_ONLY = new Set<Action['type']>(['setSpeed', 'dismissMonthCard', 'dismissDevelop', 'dismissDraw', 'dismissAnnouncement', 'dismissAlert', 'dismissOutcome', 'dismissContest', 'dismissRivalBoard', 'dismissBattle', 'continueEnding']);
+const CLIENT_ONLY = new Set<Action['type']>(['setSpeed', 'dismissMonthCard', 'dismissDevelop', 'dismissDraw', 'dismissAnnouncement', 'dismissAlert', 'dismissOutcome', 'dismissContest', 'dismissRivalBoard', 'continueEnding']);
 
 function log(state: GameState, a: Action) {
   if (CLIENT_ONLY.has(a.type)) return;
@@ -594,16 +592,6 @@ function applyInner(state: GameState, a: Action): ApplyResult {
     }
     case 'dismissRivalBoard':
       rivalsState(state).pending = false;
-      return { ok: true };
-    // ---- 러시 액티브 스킬 · 동네 대항전 (rush3) ----
-    case 'useStaffSkill': {
-      const c = canUseSkill(state, a.staffId, a.skillId);
-      if (!c.ok) return c;
-      useStaffSkill(state, a.staffId, a.skillId);
-      return { ok: true };
-    }
-    case 'dismissBattle':
-      dismissBattle(state);
       return { ok: true };
     case 'allyRival': {
       const c = canAllyRival(state, a.id);

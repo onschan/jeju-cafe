@@ -24,7 +24,7 @@ export { bestMainCell, bestMainCells, bestSeatCell, bestSeatCells, recommendedSe
 // ---------- solver: 롤아웃 탐색 (최적해 가이드) ----------
 export { cloneState, candidateActions, pickDiverse, candidateGroup, evaluate, rolloutDays, metricsOf, scoreOf, bestMoves, solveSync, buildTabOf, SOLVER_WEIGHTS, SEAT_ROUND_SHARE, LOW_REPUTATION, DEFAULT_SOLVER_OPTIONS, UI_SOLVER_OPTIONS, BOT_SOLVER_OPTIONS, type SolverOptions, type SolverCandidate, type Metrics, type Evaluation } from './solver.ts';
 export { solverKey, moneyBucket, setSolverResult, solverResult, lastSolverResult, onSolverResult, cachedMoves, rankCellsByCache, type SolverMove, type SolverResult } from './solverCache.ts';
-export { STEPS as TUTORIAL_STEP_DEFS, TUTORIAL_STEPS, TUTORIAL_ACTS, tutorialActDef, actOpen, actDone, actsDone, currentAct, nextTutorialStep, waitingForAct, stepGapPassed, actOfStep, currentTutorialStep, stepTargets, tutorialStepDone, tutorialDone, dialogueSeen, pathConnected, recommendedMainCells, cornerMade, cornerMissingType, cornerMissingKind, cornerCells, rushSeated, rushSkillUsed, LOOK_TEXT, TUTORIAL_STEP_GAP_DAYS, type TutorialStepDef, type TutorialActDef, type TutorialNoteKey, type LookId } from './tutorial.ts';
+export { STEPS as TUTORIAL_STEP_DEFS, TUTORIAL_STEPS, TUTORIAL_ACTS, tutorialActDef, actOpen, actDone, actsDone, currentAct, nextTutorialStep, waitingForAct, stepGapPassed, actOfStep, currentTutorialStep, stepTargets, tutorialStepDone, tutorialDone, dialogueSeen, pathConnected, recommendedMainCells, cornerMade, cornerMissingType, cornerMissingKind, cornerCells, rushSeated, LOOK_TEXT, TUTORIAL_STEP_GAP_DAYS, type TutorialStepDef, type TutorialActDef, type TutorialNoteKey, type LookId } from './tutorial.ts';
 export { activeEvents, isEventActive, eventDaysLeft, eventGuestMult, eventTagMult, eventFeeMult, eventEligible, guestHasTag, isSpecialGuest, specialGuestTip, specialGuestsMet, MAX_ACTIVE_EVENTS, SPECIAL_GUEST_HOUR } from './events.ts';
 export { guestSay, staffSay } from './say.ts';
 export { ENTRY_ROUTES, ROUTE_IDS, routeDef, entryPoints, routeStats, routeState, routeActive, routeOpened, routeConnected, routeLinked, routeShare, routeTakesGuests, canAutoLinkRoute, installRouteForParcel, parkingTodayText, PARCEL_ROUTE, ROUTE_AUTO_SITES, ROUTE_OPEN_LINE, PARKING_SHARE_MIN, PARKING_SHARE_MAX, OLLE_SHARE, CAR_GUESTS_MIN, CAR_GUESTS_MAX, PARKING_FLUSH_HOUR, routeFacility, routeTarget, routeSpawnPos, routeHome, routeAtCell, routeOfFacility, routeDailyCap, routeCapLeft, nextArrivalText, parkingSlots, parkingSites, routePathCells, canExpandParking, parkingExpandCost, spawnRouteWeights, routeArrivals, routeTagMult, hasRouteTag, isForeign, routeUnlockMet, routeFacilityUnlockMet, PARKING_SLOTS, PARKING_GUESTS_PER_SLOT, PARKING_EXPAND_FROM, PARKING_EXPAND_TO, OLLE_GUEST_MULT, FOREIGN_WALLET_MULT, type RouteDef, type RouteTag, type EntryPoint, type RouteStat } from './entry.ts'; // 트랙 H
@@ -144,26 +144,3 @@ export { pushVoice, recentVoices, voiceText, voicesToday, busiestSeat, dirtiestO
 export { closeDay, recentDays, daySummary, DAY_LOG_CAP, type DaySummary } from './daylog.ts'; // 성장: 하루 요약·30일 그래프
 export type { DayLogRow } from './types.ts';
 export { roleEffectText, roleNeeds, needOf, hireForecast, suggestRole, staffBudget, headsOfCandidate, headsOfStaff, recommendedHire, recommendWhy, postJobHint, EARLY_HALL_MULT, EARLY_HALL_STAFF, EARLY_HALL_SEATS, EARLY_HALL_WHY, EARLY_STAFF_MAX, type RoleNeed, type HireForecast, type StaffBudget, type HireSuggestion } from './staffPlan.ts'; // staff2: 채용 판단 자료
-// ---------- 러시 직원 액티브 스킬 (skillActive.ts, 스펙 §3) ----------
-export {
-  ACTIVE_SKILLS, activeSkillDef, gameMs, skillSlots, rushTrained, skillOfRole, skillsOfStaff, skillPreview,
-  cooldownMs, durationMs, skillPower, skillSat, skillEffectText, skillLine,
-  skillUse, cooldownLeft, skillOn, activeUses, rushActive, canUseSkill, useStaffSkill,
-  instantOf, clearInstant, activePrepCut, activeTipMult, activeSatisfaction, skillCards, noteSkillSlot,
-  RUSH_SPEED_REF, secToMs, SKILL_LEVEL_STEPS, SKILL_COOLDOWN_CUT, RUSH_TRAINING, MAX_SKILL_SLOTS, PREP_CUT_CAP, ACTIVE_SAT_MAX, INSTANT_WINDOW_MS,
-  type SkillCard,
-} from './skillActive.ts';
-export { titleChanceBonus, TITLE_CHANCE_BONUS_MAX, TITLE_CHANCE_CAP } from './titles.ts';
-// ---------- 동네 대항전 (battle.ts, 스펙 §4) — 매월 마지막 주 토요일 1:1 ----------
-export {
-  initBattle, battleState, battleRecord, recordText as battleRecordText, surrenderedCount,
-  battleDay, isBattleDay, daysToBattle, battleDaysLeft, battleSettled, battleOpen, battleRivals, battleOpponent, myRecord as myBattleRecord,
-  rivalBattleScore, autoBattleScore, winChancePct, battlePreview,
-  battleGuestMult, battleDue, startBattle, activeBattle, battleHud, setBattleScore, resolveBattle,
-  resultLine as battleResultLine, sceneText as battleSceneText, dailyBattle, dismissBattle,
-  BATTLE_FROM_YEAR, BATTLE_NOTICE_DAYS, BATTLE_SCORE_PER, BATTLE_NOISE, BATTLE_GRADE_ADJ,
-  BATTLE_RIVAL_PAR, BATTLE_AUTO_RATIO, rivalStrength,
-  BATTLE_ODDS_SPREAD, BATTLE_PRIZE_PER_GRADE, BATTLE_WIN_REGULARS, BATTLE_RANK_POINT, BATTLE_RANK_POINT_MAX,
-  BATTLE_SURRENDER_STREAK, BATTLE_SURRENDER_GUESTS, BATTLE_KEEP_REGULARS,
-  type BattlePreview,
-} from './battle.ts';
