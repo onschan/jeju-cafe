@@ -5,7 +5,6 @@ import { TRAININGS, SKILLS, trainingDef } from '../data/index.ts';
 import { pickWeighted } from './rng.ts';
 import { findStaff, addStat, skillsOf, salaryOf, pushNotice, STAT_KEYS, STAT_NAME, staffAnchor } from './staff.ts';
 import { rollOutcome, recordOutcome, outcomeChances, OUTCOME_MULT, FAIL_ENERGY, OUTCOME_NAME, type Chances } from './luck.ts'; // staff-luck
-import { skillSlots, rushTrained, skillOfRole } from './skillActive.ts'; // 러시 연수 = 두 번째 액티브 스킬
 
 export const TRAINING_RANK = 3;          // 연수 해금 랭크
 export const TRAINING_COST_STEP = 0.2;   // 회당 비용 증가
@@ -36,9 +35,6 @@ export function trainingRequirementMet(state: GameState, staff: Staff, def: Trai
   const r = def.requires;
   if (r?.star !== undefined && state.star < r.star) return { ok: false, reason: `★${r.star}부터 갈 수 있어요` };
   if (r?.level !== undefined && staff.level < r.level) return { ok: false, reason: `Lv.${r.level}부터 갈 수 있어요` };
-  // 러시 연수: 두 번째 재주 칸이 열려야 갈 수 있다 (skillActive.ts — 러시 등급 누적 해금)
-  if (r?.activeSlot !== undefined && skillSlots(state) < r.activeSlot) return { ok: false, reason: '손님이 몰릴 때를 더 겪어 봐야 해요' };
-  if (r?.activeSlot !== undefined && rushTrained(staff)) return { ok: false, reason: '이미 두 번째 재주를 배웠어요' };
   return { ok: true };
 }
 
@@ -89,10 +85,6 @@ export function finishTraining(state: GameState, st: Staff): string {
   }
   if (outcome === 'fail') { st.energy = Math.max(0, st.energy - FAIL_ENERGY); parts.push(`기력 −${FAIL_ENERGY}`); }
   recordOutcome(state, { task: 'training', outcome, staffId: st.id, title: def.name, chances, lines: [`${OUTCOME_NAME[outcome]}: 효과 ×${OUTCOME_MULT[outcome]}`] });
-  if (def.grantActiveSlot) { // 러시 연수: trainingLog['tr_rush']가 두 번째 재주를 연다 (skillActive.rushTrained)
-    const second = st.role ? skillOfRole(st.role, 2) : null;
-    if (second) parts.push(`재주 ${second.name}`);
-  }
   if (def.grantSkill) {
     const have = new Set(skillsOf(st));
     const pool = SKILLS.filter((s) => !have.has(s.id));

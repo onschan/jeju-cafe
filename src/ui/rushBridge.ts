@@ -1,7 +1,7 @@
 /**
  * 러시 타임 다리 (rush-battle §2·§3) — **UI가 sim을 읽고 액션만 보내는 얇은 층**.
  *
- * 러시 본체는 `src/sim/rush.ts`(줄·인내·점수·등급·보상)와 `src/sim/skillActive.ts`(직원 재주)에 있다.
+ * 러시 본체는 `src/sim/rush.ts`(줄·인내·점수·등급·보상)에 있다.
  * 여기서는 화면이 쓰기 좋은 모양으로 바꿔 주고(남은 시간 초, 인내 비율, 스킬 카드), 탭을 액션으로 보낸다.
  * **상태를 따로 들고 있지 않는다** — 점수·평판·응모권은 모두 sim이 세이브에 적는다.
  *
@@ -12,11 +12,11 @@ import type { GameState, PlacedObject } from '../sim/index.ts';
 import {
   isSeat, seatsOf, objectReachable, objectStats, totalSeats,
   rushState, rushPhase, rushGradeOf, rushArrivals, rushExpectedScore, rushSeatFits, rushQueueCap,
-  canSeatFromQueue, canRushPriority, canUseSkill, skillCards, cooldownLeft, secToMs,
+  canSeatFromQueue, canRushPriority,
   weekdayOf as simWeekdayOf, startRushNow, lastRushGrade,
   RUSH_WEEKDAY as SIM_RUSH_WEEKDAY, RUSH_NOTICE_WEEKDAY, RUSH_START_HOUR, RUSH_RUN_MS, RUSH_RUN_SECONDS,
   RUSH_SCORE_PER_GUEST, RUSH_LEFT_PENALTY, RUSH_PRIORITY_SCORE, RUSH_COMBO_N, RUSH_COMBO_MULT,
-  RUSH_REWARDS, rushMsOfSeconds, type SkillCard,
+  RUSH_REWARDS, rushMsOfSeconds,
 } from '../sim/index.ts';
 import { dispatch, getState, subscribe, isPausedByUi } from './store';
 import { noteTutorial } from './tutorialDialogue';
@@ -260,36 +260,6 @@ export function urgentAt(s: GameState, objectId: string): SeatOutcome {
   return { ok: true, gained: Math.max(0, (now?.score ?? before) - before), combo: now?.combo ?? 0, fit: false };
 }
 
-// ---------- 직원 재주 (§3) ----------
-
-export type RushRole = 'barista' | 'cook' | 'hall' | 'clean';
-/** 직종별 카드 아이콘 (ActiveSkillDef에는 그림이 없다 — 화면 쪽 표) */
-const ROLE_ICON: Record<string, string> = { barista: 'coffee', cook: 'meal', hall: 'guest', clean: 'sparkle' };
-export function roleIcon(role: string | null): string { return (role && ROLE_ICON[role]) || 'staff'; }
-/** 이 직종이 러시에서 쓸 재주가 있나 (준비 체크리스트) */
-export function hasRushSkill(role: string | null): boolean { return !!role && role in ROLE_ICON; }
-/** 하단 카드에 올릴 직원 재주 (일하는 직원 × 열린 칸, 최대 6장) */
-export function rushSkillCards(s: GameState): SkillCard[] {
-  return skillCards(s).slice(0, 6);
-}
-/** 남은 쿨다운 — 화면이 쓰는 3배속 실시간 ms */
-export function skillCooldownMs(s: GameState, staffId: string): number {
-  return Math.round((cooldownLeft(s, staffId) / secToMs(1)) * 1000);
-}
-
-export interface SkillOutcome { ok: boolean; reason?: string; text: string; seated: number }
-
-/** 재주 발동 */
-export function fireSkill(s: GameState, staffId: string, skillId?: string): SkillOutcome {
-  const can = canUseSkill(s, staffId, skillId);
-  if (!can.ok) return { ok: false, reason: can.reason, text: '', seated: 0 };
-  const card = rushSkillCards(s).find((c) => c.staffId === staffId && (!skillId || c.def.id === skillId));
-  const before = s.rush?.served ?? 0;
-  const r = dispatch({ type: 'useStaffSkill', staffId, skillId });
-  if (!r.ok) return { ok: false, reason: r.reason, text: '', seated: 0 };
-  return { ok: true, text: card?.def.desc ?? '', seated: Math.max(0, (getState().rush?.served ?? before) - before) };
-}
-
 // ---------- 셀렉터 ----------
 
 /** 지금 러시 상태 (sim 상태를 화면 모양으로) */
@@ -347,9 +317,6 @@ export function noteRushSeat(): void {
   const seen = getState().tutorial.seen ?? [];
   noteTutorial(seen.includes('rushSeat1') ? 'rushSeat2' : 'rushSeat1');
 }
-/** 직원 재주를 한 번 써 봤다 */
-export function noteRushSkill(): void { noteTutorial('rushSkill'); }
-
 /** 창·대화로 멈춰 있으면 러시도 멈춘다 (§2: 일시정지는 가능) */
 export function rushPaused(s: GameState): boolean {
   return isPausedByUi() || s.clock.speed === 0;

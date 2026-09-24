@@ -48,20 +48,15 @@ export function titleSalaryMult(titleId: string | undefined | null): number {
 /** 공고 단계별 칭호 등장 확률 (0~1). 전설은 조건을 못 채우면 0. */
 export function titleChances(state: GameState, tier: JobTier): Record<TitleGrade, number> {
   const t = recruitTierDef(tier).tier;
-  const boost = 1 + titleChanceBonus(state); // 러시 중반 해금 보상 titleChance: 세 등급 모두 그만큼 오른다
-  const skilled = TITLE_GRADES.skilled.chance * (1 + SKILLED_PER_TIER * (t - TITLE_BASE_TIER)) * boost;
-  const pro = (TITLE_GRADES.pro.chance * (1 + PRO_PER_TIER * (t - TITLE_BASE_TIER)) + PRO_PER_RANK * Math.max(0, state.rank - 1)) * boost;
+  const skilled = TITLE_GRADES.skilled.chance * (1 + SKILLED_PER_TIER * (t - TITLE_BASE_TIER));
+  const pro = TITLE_GRADES.pro.chance * (1 + PRO_PER_TIER * (t - TITLE_BASE_TIER)) + PRO_PER_RANK * Math.max(0, state.rank - 1);
   const legend = t >= LEGEND_MIN_TIER && state.star >= LEGEND_MIN_STAR
-    ? (TITLE_GRADES.legend.chance + LEGEND_PER_TIER * (t - LEGEND_MIN_TIER) + LEGEND_PER_REPUTATION * Math.max(0, Math.min(100, state.reputation)) / 100) * boost
+    ? TITLE_GRADES.legend.chance + LEGEND_PER_TIER * (t - LEGEND_MIN_TIER) + LEGEND_PER_REPUTATION * Math.max(0, Math.min(100, state.reputation)) / 100
     : 0;
   return { skilled: round4(Math.min(TITLE_CHANCE_CAP, skilled)), pro: round4(Math.min(TITLE_CHANCE_CAP, pro)), legend: round4(Math.min(TITLE_CHANCE_CAP, legend)) };
 }
-/** 칭호 확률 보너스 (0.15 = +15%). 러시 등급 누적 해금 보상(titleChance)이 쌓인다. 상한 100%p. */
-export const TITLE_CHANCE_BONUS_MAX = 1;
+/** 칭호 등급 하나의 확률 상한 */
 export const TITLE_CHANCE_CAP = 0.6;
-export function titleChanceBonus(state: GameState): number {
-  return Math.max(0, Math.min(TITLE_CHANCE_BONUS_MAX, (state.titleChanceBonus ?? 0) / 100));
-}
 const round4 = (v: number) => Math.round(v * 10000) / 10000;
 
 /** 등급 하나를 굴린다 (보조 스트림 sideRandom — 주 rng 순서를 안 바꾼다). guaranteePro면 프로 미만은 프로로 올린다. */

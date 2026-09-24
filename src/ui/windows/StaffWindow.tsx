@@ -10,7 +10,6 @@ import { TIERS, LOW_ENERGY, STAT_KEYS, levelUpCost, expNeeded, mainStatOf, canHi
 // staff2: 직종 전략성 — 「지금 필요해요」·「우리 카페에 오면」·후보 비교표·배치
 import { roleNeeds, needOf, hireForecast, suggestRole, roleEffectText, roleHeads, headsOfCandidate, recommendedHire, postJobHint, zoneOf, isNightShift, STAFF_ZONES, ZONE_NAME, ZONE_ROLE, type StaffZone, type RoleNeed, type HireSuggestion } from '../../sim/index.ts';
 import { TitleRibbon } from '../TitleBadge'; // staff-luck 칭호 리본
-import { skillsOfStaff, skillPreview, skillLine, skillEffectText, cooldownMs, secToMs, skillSlots, rushTrained, MAX_SKILL_SLOTS } from '../../sim/index.ts'; // rush3: 러시 액티브 스킬
 import { ROLES, RECRUIT_TIERS, skillDef, trainingDef, staffPoolDef } from '../../data/index.ts';
 import { label, wonText } from '../../data/labels.ts';
 import { PALETTE, brownBtn, brownBtnOff, NO_SCROLLBAR } from '../frame';
@@ -111,23 +110,6 @@ export function SkillBadges({ who }: { who: { skill: string; extraSkills?: strin
   );
 }
 
-/** rush3: 러시 때 쓰는 재주 줄 (이름·효과·쿨다운) — 뽑을 때·키울 때 이게 보여야 육성이 목적이 된다 */
-export function ActiveSkillLines({ s, st }: { s: GameState; st: Staff }) {
-  const list = skillsOfStaff(s, st);
-  if (list.length === 0) return null;
-  const locked = skillSlots(s) >= MAX_SKILL_SLOTS && !rushTrained(st) && list.length < MAX_SKILL_SLOTS;
-  return (
-    <div data-testid={`skill-active-${st.id}`} style={{ marginTop: 3, fontSize: 13, lineHeight: 1.5 }}>
-      {list.map((def) => (
-        <div key={def.id}>
-          <span style={{ padding: '0 5px', borderRadius: 8, border: `1px solid ${PALETTE.wood}`, background: PALETTE.btnOn }}>재주</span> {skillLine(st, def)}
-        </div>
-      ))}
-      {locked && <div style={{ ...soft, fontSize: 13 }}>러시 연수를 다녀오면 재주를 하나 더 써요</div>}
-    </div>
-  );
-}
-
 /** 열려 있고 자리가 남은 직종 (지금 맡은 직종은 항상 포함) */
 function openRoles(s: GameState, keep: RoleId | null = null): RoleId[] {
   return ROLES.map((r) => r.id).filter((id) => !HIDDEN_ROLES.has(id) && s.unlocked.roles.includes(id) && (id === keep || staffInRole(s, id).length < (s.slots[id] ?? 0)));
@@ -189,13 +171,6 @@ function ForecastLines({ s, who, role, testId }: { s: GameState; who: { stats: S
   );
 }
 
-/** rush3: 후보가 이 직종으로 오면 러시에서 쓸 재주 (이름 · 효과 · 쿨다운) */
-export function candidateSkillText(c: { level: number; title?: string }, role: RoleId): string {
-  const def = skillPreview(role);
-  if (!def) return '—';
-  return `${def.name} · ${skillEffectText(c, def)} · 쿨 ${Math.round(cooldownMs(c, def) / secToMs(1))}초`;
-}
-
 /** staff2: 후보를 나란히 견주는 표 — 스탯(주 스탯)·칭호·급여·예상 이득 */
 function CompareTable({ s, cands, role, recId }: { s: GameState; cands: Candidate[]; role: RoleId; recId?: string | null }) {
   const cell: React.CSSProperties = { padding: '3px 5px', fontSize: 13, textAlign: 'left', borderBottom: `1px solid ${PALETTE.wood}` };
@@ -203,7 +178,7 @@ function CompareTable({ s, cands, role, recId }: { s: GameState; cands: Candidat
     <div className={NO_SCROLLBAR} style={{ overflowX: 'auto', marginBottom: 10 }} data-testid="candidate-compare">
       <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 2 }}>{josa(label('role', role), '으로/로')} 뽑는다면</div>
       <table style={{ borderCollapse: 'collapse', width: '100%', minWidth: 300 }}>
-        <thead><tr>{['후보', '몫', '칭호', '재주', '월급', '이 자리에 오면'].map((h) => <th key={h} style={{ ...cell, fontWeight: 700 }}>{h}</th>)}</tr></thead>
+        <thead><tr>{['후보', '몫', '칭호', '월급', '이 자리에 오면'].map((h) => <th key={h} style={{ ...cell, fontWeight: 700 }}>{h}</th>)}</tr></thead>
         <tbody>
           {cands.map((c) => {
             const f = hireForecast(s, c, role);
@@ -212,7 +187,6 @@ function CompareTable({ s, cands, role, recId }: { s: GameState; cands: Candidat
                 <td style={cell}>{c.id === recId ? '⭐ ' : ''}{c.name}</td>
                 <td style={cell}>{headsOfCandidate(c, role).toFixed(1)}인분</td>
                 <td style={cell}>{c.title ? titleDef(c.title).name : '—'}</td>
-                <td style={cell} data-testid={`compare-skill-${c.id}`}>{candidateSkillText(c, role)}</td>
                 <td style={cell}>{wonText(f.salary, true)}</td>
                 <td style={cell}>{f.gain}</td>
               </tr>
@@ -265,7 +239,6 @@ function StaffCard({ st, s, dispatch }: { st: Staff; s: GameState; dispatch: Dis
           <div style={soft}>월급 {wonText(due)}{due < st.salary ? ' (쉬는 중 50%)' : ''}{st.unpaidMonths > 0 && <span style={{ color: PALETTE.bad }}> · 월급 밀림 {st.unpaidMonths}달</span>}</div>
           <div style={{ marginTop: 2, display: 'flex', gap: 4, flexWrap: 'wrap', alignItems: 'center' }}><TitleRibbon titleId={st.title} /><SkillBadges who={st} /></div>
           {st.title && <div style={{ ...soft, fontSize: 13 }}>{titleDef(st.title).desc}</div>}
-          <ActiveSkillLines s={s} st={st} />{/* rush3: 러시 재주 줄 */}
           {isWorking(s, st) && <div style={{ ...soft, fontSize: 13 }} data-testid={`luck-${st.id}`}>이 직원에게 시키면: 홍보 대박 {Math.round(outcomeChances(s, 'promo', st).great * 100)}% · 쪽박 {Math.round(outcomeChances(s, 'promo', st).fail * 100)}%</div>}
         </div>
       </div>
@@ -313,7 +286,6 @@ function CandidateCard({ c, s, dispatch, rec }: { c: Candidate; s: GameState; di
           <div style={soft}>월급 {wonText(c.salary)}{c.title ? ` (칭호 ×${TITLE_GRADES[titleDef(c.title).grade].salaryMult})` : ''} · <SkillBadges who={c} /></div>
           {c.title && <div style={{ marginTop: 2, display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}><TitleRibbon titleId={c.title} />{daysLeft !== null && <span style={{ fontSize: 13, color: PALETTE.bad, fontWeight: 700 }} data-testid={`candidate-days-${c.id}`}>{daysLeft > 0 ? `${daysLeft}일 남음` : '오늘까지'}</span>}</div>}
           {c.title && <div style={{ ...soft, fontSize: 13 }}>{titleDef(c.title).desc}</div>}
-          {chosen && <div data-testid={`candidate-skill-${c.id}`} style={{ ...soft, fontSize: 13 }}>재주 {candidateSkillText(c, chosen)}</div>}{/* rush3: 뽑을 때 러시 재주가 보인다 */}
           {bio && <div style={{ ...soft, fontSize: 13 }}>{bio}</div>}
         </div>
       </div>

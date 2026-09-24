@@ -7,7 +7,7 @@
  */
 import type { GameState } from '../sim/index.ts';
 import { availableMenus, freeSeats, totalSeats } from '../sim/index.ts';
-import { lastRushResult, queueSizeFor, hasRushSkill, weekdayOf, type RushResult } from './rushBridge';
+import { lastRushResult, queueSizeFor, weekdayOf, type RushResult } from './rushBridge';
 
 export interface PrepItem {
   key: 'seat' | 'staff' | 'ingredient';
@@ -23,21 +23,21 @@ export interface PrepItem {
 export function seatsWanted(s: GameState): number {
   return Math.max(2, Math.ceil(queueSizeFor(s) / 2));
 }
-/** 스킬을 쓸 수 있는 직원 수 */
-export function skillStaffCount(s: GameState): number {
-  return s.staff.filter((w) => !w.training && hasRushSkill(w.role)).length;
+/** 러시 날 일할 수 있는 직원 수 (연수 간 직원은 빠진다) */
+export function workingStaffCount(s: GameState): number {
+  return s.staff.filter((w) => !w.training).length;
 }
 
 /** 준비 체크리스트 3줄 */
 export function rushPrepItems(s: GameState): PrepItem[] {
   const free = freeSeats(s).length;
   const want = seatsWanted(s);
-  const staff = skillStaffCount(s);
+  const staff = workingStaffCount(s);
   const menus = s.menuSlots.filter((m) => m !== null).length;
   const ready = availableMenus(s).length;
   return [
     { key: 'seat', text: `빈 자리 ${free}개 · ${want}개는 있어야 해요`, ok: free >= want, targets: ['nav:build'] },
-    { key: 'staff', text: staff > 0 ? `스킬 쓸 직원 ${staff}명` : '스킬 쓸 직원이 없어요', ok: staff > 0, targets: ['nav:people'] },
+    { key: 'staff', text: staff > 0 ? `일할 직원 ${staff}명` : '일할 직원이 없어요', ok: staff > 0, targets: ['nav:people'] },
     { key: 'ingredient', text: ready >= menus && menus > 0 ? `메뉴 ${ready}개 다 나가요` : `재료가 떨어진 메뉴 ${Math.max(0, menus - ready)}개`, ok: ready >= menus && menus > 0, targets: ['nav:cafe'] },
   ];
 }
@@ -88,7 +88,7 @@ export function rushDiagnosis(s: GameState): RushDiagnosis {
     fixes.push('홀 직원 한 명 더');
   } else if (r.missKey === 'slow') {
     fixes.push('맨 앞 손님부터 앉히기');
-    fixes.push(skillStaffCount(s) > 0 ? '직원 스킬을 아껴 두지 않기' : '스킬 쓸 직원 뽑기');
+    fixes.push(workingStaffCount(s) > 0 ? '밀린 주문부터 먼저 내주기' : '직원 한 명 뽑기');
   } else {
     fixes.push(totalSeats(s) < queueSizeFor(s) ? '자리를 더 놓으면 줄이 는다' : '더 좋은 자리로 올리기');
     fixes.push('콤보를 끊지 않기');

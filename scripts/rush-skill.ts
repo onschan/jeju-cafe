@@ -3,8 +3,9 @@
  *
  * 같은 세이브(봇이 n주를 돌린 상태)를 두 벌 복제해서
  *   A. 무조작  — resolveRushAuto (기존 착석 로직, 점수 계수 0.6)
- *   B. 이상적 조작 — 줄이 서는 즉시 취향·명당에 맞는 빈 자리로 배정, 직원 스킬 적시 발동, 밀린 주문 우선 처리
+ *   B. 이상적 조작 — 줄이 서는 즉시 취향·명당에 맞는 빈 자리로 배정, 밀린 주문 우선 처리
  * 를 돌려 점수·등급·받은 손님·놓친 손님을 견준다.
+ * teardown §3: 직원 액티브 스킬은 없어졌다 — 조작은 「자리 배정」과 「밀린 주문」 둘뿐이다.
  *
  * 사용: pnpm tsx scripts/rush-skill.ts [rushes=8] [seed=1]
  */
@@ -20,26 +21,23 @@ import {
   rushState, isRushDay, rushDoneThisWeek, startRushNow, stepRush, resolveRushAuto, rushSeatFits,
   canRushPriority, rushGradeOf, RUSH_READY_HOUR,
 } from '../src/sim/rush.ts';
-import { canUseSkill } from '../src/sim/skillActive.ts';
 
 const wanted = Number(process.argv[2] ?? 8);
 const seed = Number(process.argv[3] ?? 1);
 
-/** 이상적 조작: 스킬 → 배정 → 밀린 주문. 러시가 끝날 때까지. */
+/** 이상적 조작: 배정 → 밀린 주문. 러시가 끝날 때까지. */
 function playIdeal(s: GameState) {
   const r = startRushNow(s);
   let guard = 4000;
   while (r.phase === 'run' && guard-- > 0) {
-    // 1) 직원 스킬: 줄이 두 명 이상 밀렸을 때 쿨다운이 돌아온 직원부터
-    if (r.queue.length >= 2) for (const st of s.staff) if (canUseSkill(s, st.id).ok) apply(s, { type: 'useStaffSkill', staffId: st.id });
-    // 2) 자리 배정: 줄 앞부터, 취향·명당·전망이 맞는 빈 자리를 우선
+    // 1) 자리 배정: 줄 앞부터, 취향·명당·전망이 맞는 빈 자리를 우선
     for (const g of [...r.queue]) {
       const open = freeSeats(s);
       if (open.length === 0) break;
       const seat = open.find((o) => rushSeatFits(s, o, g.type)) ?? open[0]!;
       apply(s, { type: 'seatFromQueue', guestId: g.id, objectId: seat.id });
     }
-    // 3) 밀린 주문 우선 처리 (자리마다 한 번)
+    // 2) 밀린 주문 우선 처리 (자리마다 한 번)
     for (const gg of s.guests) if (gg.seatId && canRushPriority(s, gg.seatId).ok) apply(s, { type: 'rushPriority', objectId: gg.seatId });
     stepRush(s);
   }

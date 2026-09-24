@@ -43,8 +43,6 @@ function rewardIcon(r: GoalReward): string {
     case 'menuSlot': return 'menu'; // stakes: 메뉴판 칸
     case 'staffCap': return 'local'; // midgame: 직원 정원
     case 'jobTier': return 'hire';   // midgame: 채용 방법
-    case 'activeSkillSlot': return 'local'; // 러시: 직원 두 번째 재주
-    case 'titleChance': return 'hire';      // 러시: 좋은 직원이 올 확률
   }
 }
 function isUnlock(r: GoalReward): boolean {
