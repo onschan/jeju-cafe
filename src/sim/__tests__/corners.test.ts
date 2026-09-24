@@ -354,10 +354,11 @@ describe('spot2: 즉시 피드백·경고', () => {
     expect(bench.build).toBeDefined();
     expect(pendingCorners(s).map((c) => c.id)).toEqual(['corner_flower_path']);
     expect(completedCorners(s)).toEqual([]);
-    const soon = s.notices.filter((n) => n.includes('공사가 끝나면') && n.includes('꽃길')).length;
-    expect(soon).toBe(1);
+    // cfix: 미리 알림 문구는 남은 날에 따라 「내일이면」/「n일 뒤」/「공사가 끝나면」
+    const soonNote = (n: string) => n.includes('꽃길') && (n.includes('내일이면') || n.includes('일 뒤') || n.includes('공사가 끝나면'));
+    expect(s.notices.filter(soonNote).length).toBe(1);
     discoverCorners(s);
-    expect(s.notices.filter((n) => n.includes('공사가 끝나면') && n.includes('꽃길')).length).toBe(1); // 두 번 안 뜬다
+    expect(s.notices.filter(soonNote).length).toBe(1); // 두 번 안 뜬다
     for (let i = 0; i < 10 && bench.build; i++) tick(s, DAY_MS);
     expect(pendingCorners(s)).toEqual([]);
     expect(completedCorners(s).map((c) => c.id)).toEqual(['corner_flower_path']);
