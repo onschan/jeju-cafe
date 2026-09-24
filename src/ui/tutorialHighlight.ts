@@ -112,7 +112,7 @@ export function tutorialTargets(s: GameState): { targets: string[]; cells: Pt[];
 /** 창 안(전체 화면 창·대화창·팝업)에 있으면 어둠을 안 깐다 — 창이 밝고 타깃만 글로우 */
 const IN_WINDOW = '[role="dialog"], [data-testid="dialogue"]';
 /** 스포트라이트 중 클릭을 막는 셸 (타깃·항상 허용 요소는 예외) */
-const SHELL = '[data-testid="top-bar"], [data-testid="goal-bar"], [data-testid="todo-line"], [data-testid="bottom-bar"], [data-testid="place-bar"], [data-testid="home-btn"], [data-testid="message-line"]';
+const SHELL = '[data-testid="top-bar"], [data-testid="todo-line"], [data-testid="todo-all"], [data-testid="bottom-bar"], [data-testid="place-bar"], [data-testid="home-btn"], [data-testid="message-line"]';
 /** 항상 눌러도 되는 것: ✕/닫기·건너뛰기·튜토리얼 배지·대화창·창·팝업 */
 const ALWAYS = `${IN_WINDOW}, [data-testid="tutorial-badge"], [data-testid="window-close"], [data-testid="window-close-bottom"], [aria-label="닫기"], [aria-label="건너뛰기"], [data-testid="tutorial-skip-chapter"]`;
 

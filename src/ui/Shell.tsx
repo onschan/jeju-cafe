@@ -1,10 +1,9 @@
-import { useEffect, useRef, useState, type CSSProperties } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
 import { wonText } from '../data/labels.ts';
 import { useGame } from './store';
 import { seasonOf, boardBadge, gradeOf, gradeName, hasFreeDraw, type Season } from '../sim/index.ts';
 import { GradeWindow } from './GradeWindow';
 import { Icon } from './Icon';
-import { GoalBar, GOAL_BAR_H } from './GoalBar';
 import { TodoLine, TODO_LINE_H } from './TodoLine'; // video-patch §3.4: 오늘 할 일 1줄
 import { MESSAGE_LINE_H } from './MessageLine';
 import { SpeedBar, SPEEDS } from './SpeedBar';
@@ -13,9 +12,11 @@ import { setUserSpeed, userSpeed, showMessage } from './store';
 import { FAST_SPEED, type Speed } from '../sim/index.ts';
 import { brownBtn, brownBtnOn, brownBtnOff, dangerBtn, PALETTE } from './frame';
 
-/** 상단 바 28px + 목표 줄 44px(목표 24 + 도전 20, §7.3) + 오늘 할 일 24px. 기본 상태에서 맵을 가리는 건 이것과 하단 바 48px뿐. */
+/** uifix: 상시 표시는 **상단 2줄(28+28=56px)** 과 하단 1줄(48px)뿐.
+ *  1줄 — 날짜·자금·평판·★ (응모권·등급은 아이콘 칸). 2줄 — 오늘 할 일 + 「할 일 n」 칩(목표·이달·경쟁을 여기 모았다).
+ *  옛 목표 줄(24)·도전 줄(20)은 걷어 「할 일」 창으로 옮겼다 — 같은 것이 세 줄에 겹쳐 있던 것을 한 줄로. */
 export const TOP_BAR_H = 28;
-export const SHELL_TOP = TOP_BAR_H + GOAL_BAR_H + TODO_LINE_H;
+export const SHELL_TOP = TOP_BAR_H + TODO_LINE_H;
 export const BOTTOM_BAR_H = 48;
 /** 하단 바 48 + 메시지 줄 24 (§5.5). 미니카드·고스트 버튼은 이 위에 놓는다 */
 export const SHELL_BOTTOM = BOTTOM_BAR_H + MESSAGE_LINE_H;
@@ -58,7 +59,47 @@ function useSpeedSwipe(enabled: boolean, speeds: readonly number[]) {
   return { onPointerDown, onPointerUp, onPointerCancel: () => { startX.current = null; }, tookTap };
 }
 
-/** 상단 바: 날짜 · 계절 · 자금 · 평판 · ★ (탭하면 경영 현황 창) + 오른쪽 끝 카페 등급 이름 (fun-rank: 탭하면 등급 창 — 조건 진행·「5년 뒤 우리 카페」 미리보기). */
+/** uifix: 375px에서 글자가 서로 붙거나 잘리지 않게, **우선순위가 낮은 칸부터 통째로 숨긴다**.
+ *  keys는 지킬 순서(앞이 높다). 잰 너비는 칸이 보일 때마다 새로 잰다 — 숨은 칸은 마지막에 잰 너비를 쓴다. */
+function usePriorityFit(keys: string[], gap: number) {
+  const ref = useRef<HTMLSpanElement>(null);
+  const [hidden, setHidden] = useState<string[]>([]);
+  const widths = useRef(new Map<string, number>());
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const fit = () => {
+      for (const k of keys) {
+        const kid = el.querySelector<HTMLElement>(`[data-fit="${k}"]`);
+        if (kid && kid.offsetWidth > 0) widths.current.set(k, kid.offsetWidth);
+      }
+      const avail = el.clientWidth;
+      const next: string[] = [];
+      let used = 0;
+      let shown = 0;
+      for (const k of keys) {
+        const w = widths.current.get(k) ?? 0;
+        const add = w + (shown > 0 ? gap : 0);
+        if (used + add <= avail) { used += add; shown++; } else next.push(k);
+      }
+      setHidden((prev) => (prev.length === next.length && prev.every((v, i) => v === next[i]) ? prev : next));
+    };
+    fit();
+    if (typeof ResizeObserver === 'undefined') return;
+    const ro = new ResizeObserver(fit);
+    ro.observe(el);
+    return () => ro.disconnect();
+  });
+  return { ref, hidden: new Set(hidden) };
+}
+
+/** 칸 사이 최소 간격 (글자끼리 붙지 않게) */
+const TOP_GAP = 6;
+/** 지킬 순서: 자금 → 날짜 → ★ → 평판 → 계절. 폭이 모자라면 뒤에서부터 사라진다. */
+const TOP_KEYS = ['money', 'date', 'star', 'rep', 'season'];
+
+/** 상단 1줄: 날짜 · (계절) · 자금 · ♥평판 · ★ — 탭하면 경영 현황 창.
+ *  오른쪽 끝에 응모권 칸(있을 때만)과 카페 등급 아이콘(탭하면 등급 창). 등급 이름은 잘리느니 창에서 읽게 뒀다. */
 export function TopBar({ onOpen, onTickets }: { onOpen: () => void; onTickets?: () => void }) {
   const s = useGame();
   const season = seasonOf(s.clock.month);
@@ -69,29 +110,33 @@ export function TopBar({ onOpen, onTickets }: { onOpen: () => void; onTickets?: 
   const speeds = SPEEDS.filter((sp) => sp < FAST_SPEED || s.ending?.fastMode);
   const swipe = useSpeedSwipe(shortcuts, speeds);
   const showTickets = !!onTickets && (s.tickets > 0 || hasFreeDraw(s)); // midgame: 응모권이 있을 때만 상단에 칸을 내준다
+  const fit = usePriorityFit(TOP_KEYS, TOP_GAP);
+  const cell = (key: string): CSSProperties => ({ display: fit.hidden.has(key) ? 'none' : 'inline-flex', alignItems: 'center', gap: 2, flex: 'none', whiteSpace: 'nowrap' });
+  const star = Math.max(1, Math.min(5, s.star));
   return (
     <>
       <div data-testid="top-bar-row" style={{ position: 'absolute', top: 0, left: 0, right: 0, height: TOP_BAR_H, borderBottom: `2px solid ${PALETTE.wood}`, background: PALETTE.paper, display: 'flex', alignItems: 'stretch', zIndex: 10, touchAction: 'pan-y' }}>
         <button data-testid="top-bar" onClick={() => { if (!swipe.tookTap()) onOpen(); }} aria-label="경영 현황"
           onPointerDown={swipe.onPointerDown} onPointerUp={swipe.onPointerUp} onPointerCancel={swipe.onPointerCancel}
-          style={{ flex: 1, minWidth: 0, height: TOP_BAR_H, padding: '0 2px 0 5px', border: 0, background: 'transparent', color: PALETTE.ink, fontFamily: 'inherit', fontSize: 13, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2, whiteSpace: 'nowrap', overflow: 'hidden' }}>{/* midgame: 오른쪽에 응모권 칸이 붙어 여백·간격을 1~2px 줄였다 (★ 다섯 칸이 잘리지 않게) */}
-          <span>{s.clock.year}년 {s.clock.month}월 {s.clock.day}일</span>
-          {/* midgame: 응모권 칸이 붙으면 계절 아이콘은 뺀다 — 계절은 바로 왼쪽 「3월」이 이미 말해 준다 (375px에서 ★ 다섯 칸을 지킨다) */}
-          {!showTickets && <span aria-label={SEASON_LABEL[season]} title={SEASON_LABEL[season]}><Icon name={SEASON_ICON[season]} size={16} /></span>}
-          <span title={wonText(s.money)} style={{ display: 'inline-block', transition: 'transform 0.12s ease-out', transform: bump ? 'scale(1.18)' : 'scale(1)', color: bump ? PALETTE.btn : undefined }}><Icon name="money" size={16} alt="돈" /> {wonText(s.money, true)}</span>
-          <span aria-label={`평판 ${Math.round(s.reputation)}`} title="평판"><Icon name="heart" size={14} />{Math.round(s.reputation)}</span>
-          <span aria-label={`별 ${s.star}`} style={{ letterSpacing: -1 }}>{'★'.repeat(Math.max(1, Math.min(5, s.star)))}<span style={{ color: PALETTE.inkSoft }}>{'☆'.repeat(5 - Math.max(1, Math.min(5, s.star)))}</span></span>
+          style={{ flex: 1, minWidth: 0, height: TOP_BAR_H, padding: '0 6px', border: 0, background: 'transparent', color: PALETTE.ink, fontFamily: 'inherit', fontSize: 13, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 0, whiteSpace: 'nowrap', overflow: 'hidden' }}>
+          <span ref={fit.ref} style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: TOP_GAP, overflow: 'hidden' }}>
+            <span data-fit="date" style={cell('date')}>{s.clock.year}년 {s.clock.month}월 {s.clock.day}일</span>
+            <span data-fit="season" style={cell('season')} aria-label={SEASON_LABEL[season]} title={SEASON_LABEL[season]}><Icon name={SEASON_ICON[season]} size={16} /></span>
+            <span data-fit="money" style={{ ...cell('money'), transition: 'transform 0.12s ease-out', transform: bump ? 'scale(1.18)' : 'scale(1)', color: bump ? PALETTE.btn : undefined }} title={wonText(s.money)}><Icon name="money" size={16} alt="돈" /> {wonText(s.money, true)}</span>
+            <span data-fit="rep" style={cell('rep')} aria-label={`평판 ${Math.round(s.reputation)}`} title="평판"><Icon name="heart" size={14} />{Math.round(s.reputation)}</span>
+            <span data-fit="star" style={{ ...cell('star'), letterSpacing: -1 }} aria-label={`별 ${s.star}`}>{'★'.repeat(star)}<span style={{ color: PALETTE.inkSoft }}>{'☆'.repeat(5 - star)}</span></span>
+          </span>
         </button>
         {/* midgame: 응모권이 있으면 상단에 칸을 내준다 — 탭하면 뽑는 곳으로 (「이게 뭐 하는 건지」가 한 번에 보이게) */}
         {showTickets && (
           <button data-testid="top-tickets" onClick={onTickets} aria-label={`응모권 ${s.tickets}장${hasFreeDraw(s) ? ' · 무료 뽑기 1회' : ''}`} title={`응모권 — 뽑기 1회 = 1장${hasFreeDraw(s) ? ' · 이달 무료 뽑기 1회' : ''}`}
-            style={{ flex: 'none', height: TOP_BAR_H, padding: '0 3px', border: 0, borderLeft: `2px solid ${PALETTE.woodLight}`, background: hasFreeDraw(s) ? '#fff6dc' : PALETTE.paper, color: PALETTE.ink, fontFamily: 'inherit', fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', gap: 1 }}>
-            <Icon name="ticket" size={12} />{s.tickets}{hasFreeDraw(s) && <span style={{ color: PALETTE.btn }}>!</span>}
+            style={{ flex: 'none', height: TOP_BAR_H, padding: '0 5px', border: 0, borderLeft: `2px solid ${PALETTE.woodLight}`, background: hasFreeDraw(s) ? '#fff6dc' : PALETTE.paper, color: PALETTE.ink, fontFamily: 'inherit', fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', gap: 2 }}>
+            <Icon name="ticket" size={14} />{s.tickets}{hasFreeDraw(s) && <span style={{ color: PALETTE.btn }}>!</span>}
           </button>
         )}
-        <button data-testid="top-grade" data-tut="nav:grade" onClick={() => setGradeOpen(true)} aria-label={`카페 등급 ${gradeName(grade)}`} title="카페 등급"
-          style={{ flex: 'none', height: TOP_BAR_H, padding: '0 6px 0 5px', border: 0, borderLeft: `2px solid ${PALETTE.woodLight}`, background: PALETTE.paperDark, color: PALETTE.ink, fontFamily: 'inherit', fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', gap: 2 }}>
-          <Icon name="home_cafe" size={12} alt="" />{gradeName(grade).replace(' ', '')}
+        <button data-testid="top-grade" data-tut="nav:grade" onClick={() => setGradeOpen(true)} aria-label={`카페 등급 ${gradeName(grade)}`} title={`카페 등급 — ${gradeName(grade)}`}
+          style={{ flex: 'none', width: 30, height: TOP_BAR_H, padding: 0, border: 0, borderLeft: `2px solid ${PALETTE.woodLight}`, background: PALETTE.paperDark, color: PALETTE.ink, fontFamily: 'inherit', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+          <Icon name="home_cafe" size={20} alt="" />
         </button>
       </div>
       {gradeOpen && <GradeWindow onClose={() => setGradeOpen(false)} />}
@@ -115,13 +160,12 @@ function useMoneyBump(money: number): boolean {
   return bump;
 }
 
-/** 상단 바 + 목표 줄 + 오늘 할 일 묶음 (video-patch §3.4: 지금 가장 이득인 한 수가 늘 화면에 있다) */
+/** 상단 2줄 묶음 (uifix): 1줄 상태 · 2줄 오늘 할 일. 합쳐 56px을 넘지 않는다. */
 export function TopShell({ onStatus, onGoal, onTickets }: { onStatus: () => void; onGoal: () => void; onTickets?: () => void }) {
   return (
     <>
       <TopBar onOpen={onStatus} onTickets={onTickets} />
-      <GoalBar top={TOP_BAR_H} onOpen={onGoal} />
-      <TodoLine top={TOP_BAR_H + GOAL_BAR_H} onOpenGoal={onGoal} />
+      <TodoLine top={TOP_BAR_H} onOpenGoal={onGoal} />
     </>
   );
 }

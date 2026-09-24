@@ -10,7 +10,7 @@ import { Icon } from '../Icon';
 import { PALETTE } from '../frame';
 import { body, Bar, rowCard, soft, Empty, TabBar, useWindowState, type WindowProps } from './shared.tsx';
 import { pastGoals } from '../simBridge';
-import { todoRows, upcomingGoals, type TodoRow, type TodoKind } from '../../sim/index.ts';
+import { todoRows, upcomingGoals, TREND_NAME, type TodoRow, type TodoKind } from '../../sim/index.ts';
 import { GOALS } from '../../data/index.ts';
 import { useTutorialNote } from '../tutorialDialogue';
 import { HalmangLine } from '../TutorialWindow';
@@ -61,6 +61,8 @@ export function GoalWindow(props: GoalWindowProps) {
       <>
         <HalmangLine onFocus={props.onClose} />
         <div data-testid="todo-count" style={{ ...soft, marginBottom: 6 }}>지금 할 일 {rows.length}가지 — 아무 줄이나 먼저 채워도 돼요</div>
+        {/* uifix: 상단 줄에서 내려온 이번 달 유행 — 한 달짜리 정보라 상시 줄이 아니라 이 창에 둔다 */}
+        {s.trend && <div data-testid="trend-line" style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 6, fontSize: 13, fontWeight: 700, color: PALETTE.title }}><Icon name="look" size={14} />이번 달 유행 — {TREND_NAME[s.trend.category]}가 잘 나가요</div>}
         {rows.length === 0 && <Empty>지금은 할 일이 없어요. 마음껏 카페를 키워 보세요.</Empty>}
         {rows.map((r, i) => <Row key={r.key} r={r} big={i < 2} />)}
       </>
