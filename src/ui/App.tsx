@@ -378,6 +378,9 @@ function Game({ onExit }: { onExit: () => void }) {
   const [rect, setRectState] = useState<Rect | null>(null);
   const lineRef = useRef<Line | null>(null);
   const [line, setLineState] = useState<Line | null>(null);
+  /** video P0-1: 길·담을 끌어서 한 줄 — 누른 칸(from)·칸을 옮겼나(moved)·끌기 전 미리보기(prev). 안 움직였으면 예전 두 번 탭으로 돌아간다 */
+  const lineDragRef = useRef<{ from: Pt; moved: boolean; prev: Line | null } | null>(null);
+  const [lineDragging, setLineDragging] = useState(false);
   /** 드래그 시작 칸과 고스트 원점의 차이 (여러 칸 오브젝트를 잡은 칸 기준으로 끌기) */
   const dragOffset = useRef({ dx: 0, dy: 0 });
   /** 손님 프로필 팝업 */
@@ -472,7 +475,22 @@ function Game({ onExit }: { onExit: () => void }) {
     setMoving({ objectId: o.id, x: o.x, y: o.y });
     dragOffset.current = { dx: 0, dy: 0 };
   };
-  /** 짓기 창에서 시설을 고르면: 창을 닫고 맵에 고스트 (origin이 있으면 그 칸, 없으면 시작 필지 가운데). 길·담은 고스트 없이 두 번 탭(origin이 있으면 그 칸이 시작 칸). */
+  /** 길·담 한 줄을 실제로 깐다 (끌어서 놓기 · ✓ 확정 공통).
+   *  놓을 수 없는 칸은 그 칸만 건너뛴다 — planLine이 이미 그렇게 센다. 되돌리기는 그 줄 전체가 한 번이다. */
+  const placeLineNow = (from: Pt, to: Pt, order: LineOrder): boolean => {
+    const m = modeRef.current;
+    if (m.kind !== 'build') return false;
+    const plan = planLine(getState(), m.objectType, from, to, order);
+    if (!plan.ok) { sfx('error'); showMessage(plan.reason ?? '여기엔 못 놓아요'); return false; }
+    const r = dispatch({ type: 'placeLine', objectType: m.objectType, from, to, order });
+    if (!r.ok) { sfx('error'); showMessage(r.reason ?? '여기엔 못 놓아요'); return false; }
+    showMessage(`${objectDef(m.objectType).name} ${plan.cells.length}칸을 놓았어요 (↶ 되돌리기 가능)`);
+    setLine(null);
+    if (!tutorialDone(getState())) { setMode({ kind: 'idle' }); return true; } // 튜토리얼 중엔 배치 바가 하단 바를 덮지 않게
+    setMode({ kind: 'build', objectType: m.objectType, count: m.count + 1 }); // P0-2: 배치 모드가 안 꺼진다
+    return true;
+  };
+  /** 짓기 창에서 시설을 고르면: 창을 닫고 맵에 고스트 (origin이 있으면 그 칸, 없으면 시작 필지 가운데). 길·담은 고스트 없이 끌기/두 번 탭(origin이 있으면 그 칸이 시작 칸). */
   const pickBuild = (objectType: string, origin?: { x: number; y: number }) => {
     setWin(null);
     setMode({ kind: 'build', objectType, count: 0 });
@@ -650,7 +668,8 @@ function Game({ onExit }: { onExit: () => void }) {
           if (rushRunning(st)) { rushTap(st, x, y); return; } // 러시 중엔 맵 탭이 곧 조작이다
           if (m.kind === 'build') {
             if (isLineType(m.objectType)) {
-              // 두 번 탭: 시작 칸 → 끝 칸(같은 칸이면 1칸). 미리보기가 떠 있는데 또 누르면 새 시작 칸
+              // 두 번 탭: 시작 칸 → 끝 칸(같은 칸이면 1칸). 미리보기가 떠 있는데 또 누르면 새 시작 칸.
+              // 평소엔 dragCapture가 먼저 가져가 onDragEnd에서 같은 일을 한다 — 여기는 그게 안 걸렸을 때의 대비다
               const l = lineRef.current;
               if (!l || l.to) setLine({ from: { x, y }, to: null, order: l?.order ?? 'xy' });
               else setLine({ ...l, to: { x, y } });
@@ -694,13 +713,31 @@ function Game({ onExit }: { onExit: () => void }) {
         onDoubleTap,
         dragCapture: (x, y) => {
           const m = modeRef.current;
+          const st = getState();
+          if (x < 0 || y < 0 || x >= st.grid.w || y >= st.grid.h) return false;
+          // video P0-1: 길·담 배치 중엔 맵 끌기가 곧 줄 긋기다. 누른 칸이 시작, 떼는 칸이 끝 (러시 중엔 맵 탭이 조작이라 안 가져간다)
+          if (m.kind === 'build' && isLineType(m.objectType) && !rushRunning(st)) {
+            lineDragRef.current = { from: { x, y }, moved: false, prev: lineRef.current };
+            return true;
+          }
           if (m.kind === 'remove') {
-            const st = getState();
-            if (x < 0 || y < 0 || x >= st.grid.w || y >= st.grid.h) return false;
             setRect({ x0: x, y0: y, x1: x, y1: y });
             return true;
           }
           return false;
+        },
+        // 끌기가 끝났을 때 (길·담은 여기서 한 줄이 깔린다)
+        onDragEnd: () => {
+          const d = lineDragRef.current;
+          lineDragRef.current = null;
+          setLineDragging(false);
+          const m = modeRef.current;
+          if (!d || m.kind !== 'build' || !isLineType(m.objectType)) return;
+          if (d.moved) { placeLineNow(d.from, lineRef.current?.to ?? d.from, lineRef.current?.order ?? 'xy'); return; }
+          // 손가락을 안 옮겼으면 그냥 탭 — 예전 두 번 탭 흐름 그대로
+          const prev = d.prev;
+          if (!prev || prev.to) setLine({ from: d.from, to: null, order: prev?.order ?? 'xy' });
+          else setLine({ ...prev, to: d.from });
         },
         onDragCell: (x, y) => {
           const m = modeRef.current;
@@ -708,7 +745,12 @@ function Game({ onExit }: { onExit: () => void }) {
           if (x < 0 || y < 0 || x >= st.grid.w || y >= st.grid.h) return;
           const { dx, dy } = dragOffset.current;
           if (m.kind === 'build') {
-            if (!isLineType(m.objectType) && ghostRef.current) setGhost({ ...ghostRef.current, x: x - dx, y: y - dy });
+            const d = lineDragRef.current;
+            if (isLineType(m.objectType) && d) {
+              // video P0-1: 끄는 동안 미리보기와 값이 실시간으로 바뀐다 (ㄱ자 순서는 ↻ 방향 그대로)
+              if (x !== d.from.x || y !== d.from.y) { if (!d.moved) { d.moved = true; setLineDragging(true); } }
+              setLine({ from: d.from, to: { x, y }, order: lineRef.current?.order ?? d.prev?.order ?? 'xy' });
+            } else if (!isLineType(m.objectType) && ghostRef.current) setGhost({ ...ghostRef.current, x: x - dx, y: y - dy });
           } else if (m.kind === 'move' && movingRef.current) setMoving({ ...movingRef.current, x: x - dx, y: y - dy });
           else if (m.kind === 'remove' && rectRef.current) setRect({ ...rectRef.current, x1: x, y1: y });
         },
@@ -769,7 +811,7 @@ function Game({ onExit }: { onExit: () => void }) {
       // ease 두 번 탭: 시작 칸 → 끝 칸 → 미리보기(파란 칸 + 비용 합계) → ✓ 확정 / ↻ 방향(ㄱ자 꺾는 순서) / ✕ 취소. 확정 전엔 돈이 안 나간다
       const done = mode.count > 0 ? `${mode.count}줄 놓음 · ` : '';
       if (!line) {
-        place = { text: `${def.name} · ${wonText(cost)}/칸 · ${done}시작 칸을 누르고 끝 칸을 누르면 이어져요`, ok: true, canRotate: false, paint: true, onUndo: undoOk ? undo : null, onConfirm: () => {}, onRotate: () => {}, onCancel: () => setMode({ kind: 'idle' }) };
+        place = { text: `${def.name} · ${wonText(cost)}/칸 · ${done}끌어서 한 줄로 깔아요 (탭 두 번도 돼요)`, ok: true, canRotate: false, paint: true, onUndo: undoOk ? undo : null, onConfirm: () => {}, onRotate: () => {}, onCancel: () => setMode({ kind: 'idle' }) };
       } else if (!line.to) {
         place = { text: `${def.name} · ${wonText(cost)}/칸 · 끝 칸을 누르세요 (한 칸이면 같은 칸을 다시)`, ok: true, canRotate: false, paint: true, onUndo: undoOk ? undo : null, onConfirm: () => {}, onRotate: () => {}, onCancel: () => setMode({ kind: 'idle' }) };
       } else {
@@ -784,20 +826,17 @@ function Game({ onExit }: { onExit: () => void }) {
           rangeHint = { x: line.to.x, y: line.to.y, w: 1, h: 1, radius: WIND_WEDGE_MAX, marks: shelter.map((o) => ({ x: o.x, y: o.y, w: objectDef(o.type).w, h: objectDef(o.type).h })) };
         }
         const wind = shelter.length > 0 ? ` · 자리 ${shelter.length}곳 겨울 바람을 막아요` : '';
+        // video P0-1: 끄는 동안은 「어디까지 놓을까요? · ₩N만」이 실시간으로 — 돈이 모자라면 빨개지고 안 놓인다 (영상 0:45)
+        const asking = lineDragging
+          ? `어디까지 놓을까요? · ${wonText(plan.cost)}${plan.ok ? ` · ${plan.cells.length}칸${skip}` : ` · ${plan.reason ?? '여기엔 못 놓아요'}`}`
+          : null;
         place = {
-          text: plan.ok ? `${def.name} ${plan.cells.length}칸 · ${wonText(plan.cost)}${skip}${blocked}${wind} · ✓ 확정` : `${def.name} · ${plan.reason ?? '여기엔 못 놓아요'}${skip}`,
+          text: asking ?? (plan.ok ? `${def.name} ${plan.cells.length}칸 · ${wonText(plan.cost)}${skip}${blocked}${wind} · ✓ 확정` : `${def.name} · ${plan.reason ?? '여기엔 못 놓아요'}${skip}`),
           ok: plan.ok,
           canRotate: bent,
           rotateLabel: '방향',
           onUndo: undoOk ? undo : null,
-          onConfirm: () => {
-            const r = dispatch({ type: 'placeLine', objectType: def.id, from: line.from, to: line.to!, order: line.order });
-            if (!r.ok) { showMessage(r.reason ?? '여기엔 못 놓아요'); return; }
-            showMessage(`${def.name} ${plan.cells.length}칸을 놓았어요 (↶ 되돌리기 가능)`);
-            setLine(null);
-            if (!tutorialDone(getState())) { setMode({ kind: 'idle' }); return; } // 튜토리얼 중엔 배치 바가 하단 바를 덮지 않게
-            setMode({ kind: 'build', objectType: def.id, count: mode.count + 1 });
-          },
+          onConfirm: () => { placeLineNow(line.from, line.to!, line.order); },
           onRotate: () => setLine({ ...line, order: line.order === 'xy' ? 'yx' : 'xy' }),
           onCancel: () => setLine(null),
         };
@@ -815,16 +854,18 @@ function Game({ onExit }: { onExit: () => void }) {
         if (!r.ok) { showMessage(r.reason ?? '여기엔 못 놓아요'); return; }
         // 튜토리얼 중엔 연속 배치를 끈다 — 배치 바가 하단 바를 덮어 다음 단계 버튼을 못 누른다 (y 통합 미해결 a)
         if (!tutorialDone(getState())) { setMode({ kind: 'idle' }); return; }
-        // 연속 배치(§5.3): 고스트를 옆 칸으로 옮겨 남긴다. 돈이 모자라면 자동 종료
+        // 연속 배치(§5.3 · video P0-2): 고스트를 옆 칸으로 옮겨 남긴다. 돈이 모자라도 모드는 안 꺼진다 — 하단 한 줄로만 알린다
         const nx = nextGhostAfterPlace(getState(), mode.objectType, { ...ghost, x, y });
-        if (nx.done) { setMode({ kind: 'idle' }); showMessage(nx.reason); return; }
-        setGhost(nx.ghost);
+        setGhost(nx.done ? { ...ghost, x, y } : nx.ghost);
         setMode({ kind: 'build', objectType: mode.objectType, count: mode.count + 1 });
+        if (nx.done) showMessage(nx.reason);
       };
       const confirm = () => confirmAt(ghost.x, ghost.y);
       if (hintsOn) picks = placementPicks(s, mode.objectType);
       place = {
-        text: `${def.name} · ${wonText(cost)} · ${unreach ? UNREACHABLE_GHOST_TEXT : ok ? (mode.count > 0 ? `${mode.count}개 놓음 · 계속 놓을 수 있어요` : '여기에 지을 수 있어요 · 칸을 누르면 옮겨요') : (can.reason ?? '돈이 모자라요')}`,
+        // video P0-2: 하단 바는 〈이름 · 위치 · 값〉 세 정보로 고정하고, 그 뒤에 지금 상태 한 마디.
+        // 돈이 떨어져도 모달을 안 띄운다 — 이 줄이 빨개지고 고스트도 빨개진다 (영상 2:15)
+        text: `${def.name} · 위치(${ghost.x},${ghost.y}) · ${wonText(cost)} · ${unreach ? UNREACHABLE_GHOST_TEXT : ok ? (mode.count > 0 ? `${mode.count}개 놓음 · 계속 놓을 수 있어요` : '여기에 지을 수 있어요 · 칸을 누르면 옮겨요') : s.money < cost ? `돈이 모자라요 — ${wonText(cost, true)} 필요` : (can.reason ?? '여기엔 못 놓아요')}`,
         tradeoff: tradeoffOf(s, mode.objectType, ghost.x, ghost.y), // fun: 얻는 것/잃는 것 두 줄
         ok,
         canRotate: ROTATABLE_TYPES.has(mode.objectType),

@@ -1,6 +1,7 @@
 /** 배치 편의 순수 로직 (UX §5.3) — App.tsx가 쓰고 테스트가 직접 검증한다. */
 import { canPlace, placeCost, footprint, PROTECTED_TYPES, canDisturb, type GameState } from '../sim/index.ts';
 import { objectDef } from '../data/index.ts';
+import { wonText } from '../data/labels.ts';
 
 /** 일괄 철거에서 빼는 종류 (§5.3): 본관·정류장·진입점 시설 (정낭은 w-free부터 일반 시설) */
 export const NO_DEMOLISH_KINDS = new Set(['busstop', 'building']);
@@ -34,9 +35,11 @@ export function reservedCount(s: GameState, ids: string[]): number {
   return ids.filter((id) => { const o = s.objects[id]; return !!o && !canDisturb(s, o).ok; }).length;
 }
 
-/** 연속 배치: 한 개를 놓은 뒤 다음 고스트. 돈이 모자라면 종료(reason), 옆 칸이 비어 있으면 그리로, 아니면 제자리(빨간 고스트로 남아 끌어서 옮긴다). */
+/** 연속 배치: 한 개를 놓은 뒤 다음 고스트. 돈이 모자라면 done(reason) — video P0-2에서 배치 모드는 그대로 두고
+ *  하단 한 줄로만 알린다(모달 금지). 옆 칸이 비어 있으면 그리로, 아니면 제자리(빨간 고스트로 남아 끌어서 옮긴다). */
 export function nextGhostAfterPlace(s: GameState, type: string, ghost: BuildGhost): { done: true; reason: string } | { done: false; ghost: BuildGhost } {
-  if (s.money < placeCost(s, type)) return { done: true, reason: '돈이 모자라 배치를 마쳤어요' };
+  const cost = placeCost(s, type);
+  if (s.money < cost) return { done: true, reason: `돈이 모자라요 — ${wonText(cost, true)} 필요` };
   const d = objectDef(type);
   const candidates = [{ x: ghost.x + d.w, y: ghost.y }, { x: ghost.x, y: ghost.y + d.h }, { x: ghost.x - d.w, y: ghost.y }, { x: ghost.x, y: ghost.y - d.h }];
   for (const c of candidates) {
