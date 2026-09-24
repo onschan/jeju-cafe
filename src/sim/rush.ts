@@ -223,6 +223,21 @@ export function rushTimeScale(state: GameState, dtMs = 0): number {
   return 1;
 }
 
+/** 러시 중 걸음 배수 — **「살아 보이는 것」과 「이동이 공짜가 아닌 것」 사이의 타협값.**
+ *
+ *  러시는 3 게임시간(12~15시)을 45초에 걸쳐 보여 주려고 시계를 1/RUSH_RUN_SCALE(≈37.5)배 느리게 감는다.
+ *  그런데 손님·직원 걸음은 게임 시간 기준(6칸/시간)이라 시계를 늦추면 걸음도 같이 늦어진다 —
+ *  한 칸에 2.5초가 걸려 러시 내내 아무도 안 움직이는 것처럼 보였다.
+ *
+ *  그렇다고 감속분을 그대로(37.5배) 되돌리면 러시 동안 이동이 공짜가 되어 처리량이 확 올라간다
+ *  (5년차 자금 2,700만 → 2.6억, 밴드 2억 초과). 그래서 「한 칸에 0.3초쯤」 걸리도록 중간값을 쓴다:
+ *  눈으로는 종종걸음으로 보이고, 자리를 멀리 두면 여전히 손해다.
+ *  봇·헤드리스에도 똑같이 걸려 결정성이 유지된다. */
+export const RUSH_WALK_MULT = 6;
+export function rushWalkMult(state: GameState): number {
+  return rushPhase(state) === 'run' ? RUSH_WALK_MULT : 1;
+}
+
 /** 오늘이 러시 날인가 */
 export function isRushDay(state: GameState): boolean {
   return weekdayOf(state.clock.day) === RUSH_WEEKDAY;

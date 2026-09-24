@@ -9,6 +9,7 @@ import { salaryOf as economySalaryOf } from './economy.ts';
 import { rollTitle, titleSalaryMult, isRare, noteTitleMet, titleBonus, staffTitleEffect, RARE_STAY_DAYS, TITLE_GRADES } from './titles.ts'; // staff-luck 칭호
 import { dayIndex } from './effects.ts';
 import { pushFx } from './fx.ts';
+import { rushWalkMult } from './rush.ts'; // 러시 중에는 직원도 종종걸음 (시계 감속과 짝)
 
 /** 채용 방법 5단계 (recruit_tiers.json, §3.6.6). id → 정의 */
 export const TIERS: Record<JobTier, RecruitTierDef> = Object.fromEntries(RECRUIT_TIERS.map((t) => [t.id, t])) as Record<JobTier, RecruitTierDef>;
@@ -575,7 +576,7 @@ function goTo(state: GameState, st: Staff, to: Pt): void {
 
 /** 직원 걷기. 배치된 직원은 앵커 반경 2의 걷기 칸을 1~3초마다 골라 산책. 미배치·기력 0·연수 중이면 창고 앞에 선다. */
 export function moveStaff(state: GameState, dtMs: number): void {
-  const walkMs = dtMs * walkSpeedMult(state); // 활력 화분 이동 속도
+  const walkMs = dtMs * walkSpeedMult(state) * rushWalkMult(state); // 활력 화분 이동 속도 · 러시 중 종종걸음
   for (const st of state.staff) {
     if (st.path.length) { moveAlong(st, walkMs); continue; }
     if (st.role === null || st.energy <= 0 || st.training) {

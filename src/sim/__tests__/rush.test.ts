@@ -11,12 +11,13 @@ import { serialize, deserialize } from '../save.ts';
 import { cloneState } from '../solver.ts';
 import { conditionProgress, goalConditionText } from '../goals.ts';
 import { freeSeats, totalSeats, hourlySpawn, dailyGuestCount } from '../guests.ts';
+import { GUEST_SPEED_CELLS_PER_S } from '../path.ts';
 import GOALS from '../../data/goals.json' with { type: 'json' };
 import type { GameState, GoalCondition } from '../types.ts';
 import {
   rushState, rushPhase, isRushDay, isRushRunning, rushDoneThisWeek, weekdayOf, weekIndexOf, weekCycleSeconds, rushSeconds,
   rushArrivals, rushCapacity, rushExpectedScore, rushGradeOf, rushGradeCount, rushGrades, rushQueueCap, rushPatienceMult,
-  rushTimeScale, rushMsOfSeconds, rushSeatFits, resolveRushAuto, startRushNow, stepRush, updateRush, daysToRush,
+  rushTimeScale, rushMsOfSeconds, rushSeatFits, rushWalkMult, RUSH_WALK_MULT, RUSH_RUN_SCALE, resolveRushAuto, startRushNow, stepRush, updateRush, daysToRush,
   canSeatFromQueue, canRushPriority,
   RUSH_WEEKDAY, RUSH_NOTICE_WEEKDAY, RUSH_READY_HOUR, RUSH_START_HOUR, RUSH_RUN_HOURS, RUSH_READY_MS, RUSH_RUN_MS,
   RUSH_SPAWN_MULT, RUSH_QUEUE_BASE, RUSH_QUEUE_MAX, RUSH_PATIENCE_MIN_S, RUSH_PATIENCE_MAX_S, RUSH_COMBO_N, RUSH_COMBO_MULT,
@@ -432,5 +433,40 @@ describe('규모가 커져도 러시가 하루 손님을 늘리지 않는다 (§
     expect(s.spawnAcc).toBeLessThan(0); // 받은 만큼 빚이 남아 저녁 스폰이 줄어든다
     expect(s.spawnAcc).toBeGreaterThanOrEqual(-r.served); // 받은 수보다 더는 안 뺀다
     expect(totalSeats(s)).toBeGreaterThan(0);
+  });
+});
+
+describe('러시 중 걸음 (§7-1 시간 축의 짝)', () => {
+  /** 3배속에서 한 칸 옮기는 데 걸리는 실시간(ms) */
+  const realMsPerCell = (scale: number, mult: number) => 1000 / (GUEST_SPEED_CELLS_PER_S * 3 * scale * mult);
+  /** 사람이 「걷고 있다」고 읽는 상한 — 이보다 느리면 멈춘 것처럼 보인다 */
+  const ALIVE_MS_PER_CELL = 500;
+
+  test('고치기 전에는 한 칸에 2초가 넘게 걸렸다 (러시 내내 멈춘 듯 보이던 원인)', () => {
+    const broken = realMsPerCell(RUSH_RUN_SCALE, 1); // 걸음 배수 없이 시계만 늦춘 상태
+    expect(broken).toBeGreaterThan(2000);
+  });
+
+  test('걸음 배수를 걸면 한 칸이 0.5초 안에 끝난다 — 눈으로 걷는 게 보인다', () => {
+    expect(realMsPerCell(RUSH_RUN_SCALE, RUSH_WALK_MULT)).toBeLessThanOrEqual(ALIVE_MS_PER_CELL);
+  });
+
+  test('그래도 이동이 공짜는 아니다 — 러시 밖보다는 느리다 (먼 자리에 앉히면 손해)', () => {
+    // 감속분(≈37.5배)을 그대로 되돌리면 이동이 공짜가 되어 처리량이 튄다 (5년차 자금 2.6억, 밴드 2억 초과).
+    // 그래서 배수는 감속분보다 작아야 한다.
+    expect(RUSH_WALK_MULT).toBeLessThan(1 / RUSH_RUN_SCALE);
+    expect(realMsPerCell(RUSH_RUN_SCALE, RUSH_WALK_MULT)).toBeGreaterThan(realMsPerCell(1, 1));
+  });
+
+  test('걸음 배수는 러시 본편에만 걸린다 (준비·평소는 1배)', () => {
+    const s = cafe(4);
+    expect(rushWalkMult(s)).toBe(1);
+    toRushDay(s);
+    s.clock.hour = RUSH_READY_HOUR;
+    updateRush(s, HOUR_MS / 20); // 11시 → 카운트다운
+    expect(rushPhase(s)).toBe('ready');
+    expect(rushWalkMult(s)).toBe(1); // 카운트다운 동안은 시계만 늦고 아무도 안 걷는다
+    startRushNow(s);
+    expect(rushWalkMult(s)).toBe(RUSH_WALK_MULT);
   });
 });

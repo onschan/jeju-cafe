@@ -44,7 +44,7 @@ import { hashOf } from './say.ts';
 import { streetFeeMult } from './tree.ts'; // fun: 같은 트리 3연속 「거리」 요금 +10%
 import { sceneryTouristMult, notePhoto } from './appeal.ts'; // fun: 경관 → 관광객, 사진 → 평판
 import { assignGuestName, regularsDue, dressAsRegular, regularTip, thankIfDone, maybeRequest, addRegularGauge, requestDef, GAUGE_HAPPY_VISIT } from './interact.ts'; // fun-guest (트랙 G): 이름·단골·요청·게이지
-import { isRushRunning } from './rush.ts'; // 러시 중엔 평소 스폰을 멈추고 rush.ts가 문 앞에 줄을 세운다 (3배)
+import { isRushRunning, rushWalkMult } from './rush.ts'; // 러시 중엔 평소 스폰을 멈추고 rush.ts가 문 앞에 줄을 세운다 (3배)
 import { activePrepCut, activeTipMult, activeSatisfaction } from './skillActive.ts'; // rush3: 러시 액티브 스킬 (러시가 아니면 늘 중립값)
 
 export { moveAlong, GUEST_SPEED_CELLS_PER_S }; // 하위 호환 재수출 (본체는 path.ts)
@@ -770,7 +770,7 @@ function leaveSeat(state: GameState, g: Guest, bus: Pt): void {
 
 export function updateGuests(state: GameState, dtMs: number): void {
   const bus = busStopPos(state);
-  const walkMs = dtMs * walkSpeedMult(state); // 활력 화분 이동 속도
+  const walkMs = dtMs * walkSpeedMult(state) * rushWalkMult(state); // 활력 화분 이동 속도 · 러시 중 종종걸음
   for (const g of state.guests) {
     if (g.phase === 'walking') {
       if (moveAlong(g, walkMs)) {
