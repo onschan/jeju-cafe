@@ -31,10 +31,10 @@ describe('문구 규칙 §6: 지시문·화살표·정석·시뮬 없음', () =>
   const s = createInitialState(1, 'local', 0, 'tutorial');
   const vars = strategyVars(s);
 
-  it('튜토리얼 7단계 대사·제목·버튼·할 일 (토큰을 채운 뒤), 한 줄 ≤ 22자', () => {
-    const texts = TUTORIAL_STEPS.flatMap((t) => [t.title, ...t.lines, t.button, t.done ?? ''].map((l) => fillTemplate(l, vars)));
+  it('튜토리얼 14단계 대사·대체 문장·제목·버튼·할 일 (토큰을 채운 뒤), 한 줄 ≤ 22자', () => {
+    const texts = TUTORIAL_STEPS.flatMap((t) => [t.title, ...t.lines, ...(t.linesIfNoWhy ?? []), t.button, t.done ?? ''].map((l) => fillTemplate(l, vars)));
     expectClean(texts, '튜토리얼');
-    for (const t of TUTORIAL_STEPS) for (const l of t.lines) expect(fillTemplate(l, vars).length, l).toBeLessThanOrEqual(22);
+    for (const t of TUTORIAL_STEPS) for (const l of [...t.lines, ...(t.linesIfNoWhy ?? [])]) expect(fillTemplate(l, vars).length, l).toBeLessThanOrEqual(22);
   });
   it('첫 열기 팁 15, 한 줄 ≤ 22자, 창·탭 키가 실제 창 이름을 따른다', () => {
     const keys = Object.keys(FIRST_TIPS);

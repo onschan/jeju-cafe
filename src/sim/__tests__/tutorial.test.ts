@@ -61,11 +61,12 @@ describe('손으로 하는 튜토리얼 「할망의 가르침」 5막 14단계 
       expect(d.speaker).toBe('halmang');
       expect(d.lines.length).toBeGreaterThanOrEqual(2);
       expect(d.lines.length).toBeLessThanOrEqual(3);
-      for (const l of [d.title, ...d.lines, d.button, d.done ?? '']) {
+      expect(d.linesIfNoWhy?.length ?? d.lines.length, `${d.id}: 대체 문장은 줄 수가 같아야 한다`).toBe(d.lines.length);
+      for (const l of [d.title, ...d.lines, ...(d.linesIfNoWhy ?? []), d.button, d.done ?? '']) {
         const f = fillTemplate(l, vars);
         expect(f, l).not.toMatch(FORBIDDEN);
         expect(f, l).not.toMatch(/\{[a-zA-Z]+\}/);
-        if (d.lines.includes(l)) expect(f.length, f).toBeLessThanOrEqual(22);
+        if (d.lines.includes(l) || d.linesIfNoWhy?.includes(l)) expect(f.length, f).toBeLessThanOrEqual(22);
       }
     }
     for (const t of Object.values(LOOK_TEXT)) expect(t).not.toMatch(FORBIDDEN);
@@ -77,6 +78,41 @@ describe('손으로 하는 튜토리얼 「할망의 가르침」 5막 14단계 
     expect(TRACKED_ACTIONS.has('move')).toBe(true); // 4막 옮기기
     // 보상은 단계가 아니라 막마다 한 번 — 마지막 막이 칭호를 준다
     expect(TUTORIAL_ACTS[4]!.reward).toContainEqual({ type: 'title', id: 'halmang_pupil', name: '할망의 제자' });
+  });
+
+  it('말투: 할망의 다정한 반말 하나로 통일 — 「~한다」 설명문·「~하라」 명령조가 없고, 막 예고·단계 대사가 같은 어미를 쓴다', () => {
+    // lines: 사용자 피드백(2026-09-25) 「튜토리얼 대사가 어색하다」 — 했다체·~하라·토막 문장이 섞여 있던 것을 한 말투로 묶었다.
+    const PLAIN = /다[.!?]?$/;   // 「자리 값은 칸마다 다르다」 같은 설명문 종결
+    const ORDER = /[하해]라[.!?]?$/; // 「재료 걱정은 나중에 하라」 같은 명령조 (「~해 보라」는 권유라 괜찮다)
+    const vars = strategyVars(tutorialState());
+    const spoken: string[] = [];
+    for (const d of DIALOGUE) spoken.push(...d.lines, ...(d.linesIfNoWhy ?? []));
+    for (const a of TUTORIAL_ACTS) spoken.push(a.lead);
+    for (const l of spoken) {
+      const f = fillTemplate(l, vars);
+      expect(f, `설명문 종결: ${f}`).not.toMatch(PLAIN);
+      expect(f, `명령조: ${f}`).not.toMatch(ORDER);
+    }
+    // 막 예고는 5막 구조를 말로 드러낸다 (무엇을 가르칠 막인지)
+    expect(TUTORIAL_ACTS[1]!.lead).toContain('자리');
+    expect(TUTORIAL_ACTS[4]!.lead).toContain('색');
+  });
+
+  it('토큰 줄: `{seatWhyPhrase}`가 문장 끝에 붙어 말이 끊기지 않고, 근거가 없을 때 쓸 대체 문장이 데이터에 있다', () => {
+    const withToken = DIALOGUE.filter((d) => d.lines.some((l) => l.includes('{')));
+    expect(withToken.length).toBeGreaterThan(0);
+    for (const d of withToken) {
+      for (const l of d.lines) {
+        if (!l.includes('{')) continue;
+        expect(l.trimEnd().endsWith('}'), `${d.id}: 토큰이 줄 끝에 있다 — ${l}`).toBe(false);
+        expect(l, `${d.id}: 토큰 줄은 문장으로 끝나야 한다`).toMatch(/[.!?]$/);
+      }
+      // 토큰이 있는 단계는 근거가 없을 때 쓸 대체 문장을 가진다 (토큰 값이 밋밋해도 말이 살게)
+      expect(d.linesIfNoWhy, `${d.id}: linesIfNoWhy`).toBeTruthy();
+      for (const l of d.linesIfNoWhy!) expect(l).not.toContain('{');
+    }
+    // 대체 문장이 없는 단계는 토큰도 없다
+    for (const d of DIALOGUE) if (!d.lines.some((l) => l.includes('{'))) expect(d.linesIfNoWhy).toBeUndefined();
   });
 
   it('시작 상태(fun-start): 본관이 기본 자리에 서 있고 마을 길→문 앞 올렛길이 이어져 있다. 정낭·좌석·메뉴 없음, 자금 500만, 후보 2, 정류장 있음', () => {
