@@ -33,7 +33,7 @@ import { endingMonthly } from './ending.ts'; // z-ending: 5년차 엔딩 (pace)
 import { dailyIdleHint } from './hints.ts'; // game-feel: 3일 무행동이면 삼춘 힌트
 import { closeDay } from './daylog.ts'; // 성장: 하루 요약 카드·30일 그래프
 import { runPending } from './pending.ts'; // seatfix: 자리가 빈 예약(이동·철거·증축)을 바로 실행
-import { updateRush, rushNotice, rushTimeScale, rushPhase, rushState } from './rush.ts'; // 러시 타임: 금요일 예고 → 토요일 11시 카운트다운 → 12~15시 러시 → 정산
+import { updateRush, rushNotice, rushTimeScale, rushPhase, rushState, rushDoneThisWeek } from './rush.ts'; // 러시 타임: 금요일 예고 → 토요일 11시 카운트다운 → 12~15시 러시 → 정산
 
 /** 고정 스텝 (게임 ms) = 게임 시간 3분. pace: HOUR_MS에 묶어 둔다 — 시계를 빠르게 해도 한 시간에 도는 스텝 수(20)가 같아야
  *  조리 대기·체류·걸음이 같은 눈금으로 끊기고, 하루 매출과 난수 흐름이 그대로 유지된다. */
@@ -154,6 +154,9 @@ export function tick(state: GameState, dtMs: number): GameState {
  *  러시가 끝나는(phase 'done') 첫 스텝에 승패를 가른다 — resolveBattle이 round.done을 올리므로 두 번 불리지 않는다. */
 function syncBattle(state: GameState): void {
   if (!activeBattle(state)) return;
+  // 지난주 성적표가 그대로 남아 있으므로 「이번 주에 열린 러시」일 때만 잇는다 —
+  // 안 그러면 대항전 날 아침에 지난주 점수로 승패가 나 버린다.
+  if (!rushDoneThisWeek(state)) return;
   const phase = rushPhase(state);
   if (phase !== 'run' && phase !== 'done') return;
   const score = rushState(state).score;

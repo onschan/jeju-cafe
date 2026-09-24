@@ -514,7 +514,7 @@ export function stepRush(state: GameState): void {
 /** 카운트다운을 건너뛰고 바로 러시를 시작한다 (측정·테스트용) */
 export function startRushNow(state: GameState): RushState {
   const r = rushState(state);
-  if (r.phase !== 'run') { r.phase = 'run'; r.elapsedMs = 0; r.autoAtMs = RUSH_AUTO_PERIOD_MS; r.startTick = state.tick; }
+  if (r.phase !== 'run') { r.phase = 'run'; r.elapsedMs = 0; r.autoAtMs = RUSH_AUTO_PERIOD_MS; r.startTick = state.tick; r.week = weekIndexOf(state); }
   return r;
 }
 /** 조작 없이 러시를 끝까지 돌려 점수를 낸다 (결정적, UI 없음). 시계는 건드리지 않는다 — 러시 타이머만 감는다.

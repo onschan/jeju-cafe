@@ -88,9 +88,12 @@ export function RushShow() {
   // 러시가 끝나면 결과 카드
   const resultSeen = useRef<string | null>(null);
   useEffect(() => subscribeRush(() => {
-    const r = rushOf(getState());
-    if (r?.phase !== 'done') return;
-    const k = weekKeyOf(getState());
+    const st = getState();
+    const r = rushOf(st);
+    // 러시가 끝난 상태는 다음 주까지 남아 있다 — 세이브를 며칠 뒤에 열었을 때 지난주 결과가 다시 뜨지 않게
+    // 「오늘이 러시 날이고 러시 시각이 지났을 때」만 결과 카드를 띄운다.
+    if (r?.phase !== 'done' || !isRushTime(st)) return;
+    const k = weekKeyOf(st);
     if (resultSeen.current === k) return;
     resultSeen.current = k;
     setPhase('result');

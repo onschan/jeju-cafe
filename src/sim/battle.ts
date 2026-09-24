@@ -351,9 +351,10 @@ export function dailyBattle(state: GameState): void {
     const p = battlePreview(state);
     if (p) pushNotice(state, `${BATTLE_NOTICE_DAYS}일 뒤 ${josa(p.def.name, '과/와')} 붙어요`);
   }
-  // 어제 판이 열렸는데 러시를 못 치른 경우(러시 시간대가 지난 뒤 연 세이브)는 오늘 아침에 자동으로 매듭짓는다
+  // 판은 대항전 날 아침에만 열린다 — 오늘이 그날이 아닌데 안 끝난 판이 남아 있으면 러시를 못 치른 것이다
+  // (러시 시간대가 지난 뒤 세이브를 연 경우). 그 판은 오늘 아침에 자동으로 매듭짓는다.
   const stale = state.battle?.round;
-  if (stale && !stale.done && stale.monthIndex !== monthIndex(state.clock)) resolveBattle(state);
+  if (stale && !stale.done && !isBattleDay(state)) resolveBattle(state);
   if (!battleDue(state)) return;
   startBattle(state);
   if (!rushWillResolve(state)) resolveBattle(state);
