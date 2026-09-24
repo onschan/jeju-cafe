@@ -29,6 +29,7 @@ import { applyRewards } from './goals.ts';
 import { fmtNum } from './format.ts';
 import { josa } from './josa.ts';
 import { START_MONTH } from './state.ts';
+import { BATTLE_SURRENDER_GUESTS } from './battle.ts'; // 대항전 항복 카페 손님 이관 (값만 — 함수 고리는 만들지 않는다)
 
 export { RIVALS };
 
@@ -188,6 +189,9 @@ export function myAxes(state: GameState): RivalAxes {
   };
   const r = rivalsState(state);
   for (const d of RIVALS) if (r.cafes[d.id]!.deal) axes[d.strength] = clamp100(round1(axes[d.strength] * (1 + RIVAL_DEAL_AXIS_PCT)));
+  // 대항전(battle.ts): 이긴 만큼 「영업 실력」이 서비스 항목에 얹힌다 — import 고리를 만들지 않으려고 상태만 읽는다
+  const bp = state.battle?.rankPoints ?? 0;
+  if (bp > 0) axes.service = clamp100(round1(axes.service + bp));
   return axes;
 }
 export function myTotal(state: GameState): number {
@@ -209,6 +213,10 @@ export function scoreboard(state: GameState): RivalRow[] {
   ];
   // 동점이면 나를 앞에 (id 순으로 결정적)
   rows.sort((a, b) => b.total - a.total || (a.me ? -1 : b.me ? 1 : a.id.localeCompare(b.id)));
+  if (state.battle?.champion) { // 대항전으로 다섯 곳을 다 이기면 동네 1위 고정 (battle.ts)
+    const i = rows.findIndex((r) => r.me);
+    if (i > 0) rows.unshift(...rows.splice(i, 1));
+  }
   rows.forEach((r, i) => { r.rank = i + 1; });
   return rows;
 }
@@ -383,6 +391,7 @@ export function rivalGuestMult(state: GameState): number {
   m *= stealMult(state);
   m *= trendShareMult(state);
   m *= 1 + RIVAL_ACQUIRE_BONUS * acquiredRivals(state).length;
+  m *= 1 + BATTLE_SURRENDER_GUESTS * RIVALS.filter((d) => st.cafes[d.id] && state.battle?.records[d.id]?.surrendered).length; // 대항전 항복 (battle.ts)
   return m;
 }
 

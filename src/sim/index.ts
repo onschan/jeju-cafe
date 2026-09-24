@@ -130,3 +130,26 @@ export { pushVoice, recentVoices, voiceText, voicesToday, busiestSeat, dirtiestO
 export { closeDay, recentDays, daySummary, DAY_LOG_CAP, type DaySummary } from './daylog.ts'; // 성장: 하루 요약·30일 그래프
 export type { DayLogRow } from './types.ts';
 export { roleEffectText, roleNeeds, needOf, hireForecast, suggestRole, staffBudget, headsOfCandidate, headsOfStaff, recommendedHire, recommendWhy, postJobHint, EARLY_HALL_MULT, EARLY_HALL_STAFF, EARLY_HALL_SEATS, EARLY_HALL_WHY, EARLY_STAFF_MAX, type RoleNeed, type HireForecast, type StaffBudget, type HireSuggestion } from './staffPlan.ts'; // staff2: 채용 판단 자료
+// ---------- 러시 직원 액티브 스킬 (skillActive.ts, 스펙 §3) ----------
+export {
+  ACTIVE_SKILLS, activeSkillDef, gameMs, skillSlots, rushTrained, skillOfRole, skillsOfStaff, skillPreview,
+  cooldownMs, durationMs, skillPower, skillSat, skillEffectText, skillLine,
+  skillUse, cooldownLeft, skillOn, activeUses, rushActive, canUseSkill, useStaffSkill,
+  instantOf, clearInstant, activePrepCut, activeTipMult, activeSatisfaction, skillCards, noteSkillSlot,
+  RUSH_SPEED_REF, secToMs, SKILL_LEVEL_STEPS, SKILL_COOLDOWN_CUT, RUSH_TRAINING, MAX_SKILL_SLOTS, PREP_CUT_CAP, ACTIVE_SAT_MAX, INSTANT_WINDOW_MS,
+  type SkillCard,
+} from './skillActive.ts';
+export { titleChanceBonus, TITLE_CHANCE_BONUS_MAX, TITLE_CHANCE_CAP } from './titles.ts';
+// ---------- 동네 대항전 (battle.ts, 스펙 §4) — 매월 마지막 주 토요일 1:1 ----------
+export {
+  initBattle, battleState, battleRecord, recordText as battleRecordText, surrenderedCount,
+  battleDay, isBattleDay, daysToBattle, battleDaysLeft, battleSettled, battleOpen, battleRivals, battleOpponent, myRecord as myBattleRecord,
+  rivalBattleScore, autoBattleScore, winChancePct, battlePreview,
+  battleGuestMult, battleDue, startBattle, activeBattle, battleHud, setBattleScore, resolveBattle,
+  resultLine as battleResultLine, sceneText as battleSceneText, dailyBattle, dismissBattle,
+  RUSH_WEEKDAY, BATTLE_FROM_YEAR, BATTLE_NOTICE_DAYS, BATTLE_SCORE_PER, BATTLE_NOISE, BATTLE_GRADE_ADJ,
+  BATTLE_LINE, BATTLE_OWNER_GUESTS, BATTLE_HALL_GUESTS, BATTLE_KITCHEN_GUESTS, BATTLE_PER_GUEST, BATTLE_TIP_PER_REP, BATTLE_CLEAN_PER,
+  BATTLE_ODDS_SPREAD, BATTLE_PRIZE_PER_GRADE, BATTLE_WIN_REGULARS, BATTLE_RANK_POINT, BATTLE_RANK_POINT_MAX,
+  BATTLE_SURRENDER_STREAK, BATTLE_SURRENDER_GUESTS, BATTLE_KEEP_REGULARS,
+  type BattlePreview,
+} from './battle.ts';

@@ -3,6 +3,7 @@ import { advanceClock, END_HOUR, START_HOUR, HOUR_MS } from './clock.ts';
 import { monthlyHarvest } from './orchard.ts';
 import { dailyContest, monthlyContest } from './contest.ts'; // 대회: 6·12월 1일 개최, 이레 전 예고
 import { dailyRivals } from './rival.ts'; // 동네 경쟁 카페: 5일 순위 발표·12일 뺏기 이벤트
+import { dailyBattle } from './battle.ts'; // 동네 대항전: 매월 마지막 주 토요일 1:1 (rush3)
 import { checkGoals } from './goals.ts';
 import { monthlyBigEvents, dailyBigEvents, hourlyBigEvents, rollTrend, resolvePendingEventChoice } from './events.ts';
 import { monthlyRisk, dailyRisk } from './risk.ts'; // stakes: 돌발 사고
@@ -73,6 +74,7 @@ function onNewDay(state: GameState): void {
   evaluateUnlocks(state); // game-feel: 손님층·시설 해금·랭크업을 월초가 아니라 조건을 채운 날에 (월초 몰림 방지)
   checkGoals(state);
   dailyRivals(state); // 동네 순위 발표(5일)·경쟁 카페 뺏기 이벤트(12일) — 월초 1일 몰림을 피해 날짜를 나눴다
+  dailyBattle(state); // 동네 대항전 예고(3일 전)·마지막 주 토요일 한 판 (battle.ts)
   dailyShop(state); // game-feel: 보름 응모권
   dailyIdleHint(state);
 }

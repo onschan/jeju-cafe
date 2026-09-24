@@ -9,6 +9,7 @@ import { initMain } from './rooms.ts';
 import { initEnding } from './ending.ts'; // z-ending
 import { initContest } from './contest.ts'; // 대회
 import { initRivals } from './rival.ts'; // 동네 경쟁 카페
+import { initBattle } from './battle.ts'; // 동네 대항전
 import type { FinalScore } from './types.ts';
 import { TUTORIAL_STEPS } from './tutorial.ts';
 import { ROUTE_IDS } from './entry.ts';
@@ -132,6 +133,10 @@ function backfill(state: GameState): void {
   state.lastOutcome ??= null;
   state.contest ??= initContest(); // 대회 (v21 세이브엔 없다 — 등급 3이면 다음 6·12월부터 접수할 수 있다)
   state.rivals ??= initRivals(); // 동네 경쟁 카페 (옛 세이브는 다음 5일 발표부터 순위가 잡힌다)
+  state.battle ??= initBattle(); // 동네 대항전 (옛 세이브는 다음 마지막 주 토요일부터 — 2년차부터 열린다)
+  state.activeSkills ??= {};     // 러시 액티브 스킬 쿨다운 (옛 세이브는 아무도 안 쓴 상태)
+  state.activeSkillSlots ??= 1;  // 스킬 칸 1개 (2번째는 러시 등급 누적 해금)
+  state.titleChanceBonus ??= 0;  // 칭호 확률 보너스
   state.monthCosts.deal ??= 0; // 제휴 월 고정비 줄
   if (state.lastMonthCard) state.lastMonthCard.costs.deal ??= 0;
   state.monthCosts.contest ??= 0; // 대회 참가비 줄 (월말 카드 비용 합계)
