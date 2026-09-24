@@ -204,15 +204,23 @@ function isUrgentSeat(s: GameState, o: PlacedObject): boolean {
   return canRushPriority(s, o.id).ok;
 }
 
-/** 러시 중 초록·회색·빨강으로 칠할 칸 */
-export interface RushMark { x: number; y: number; w: number; h: number; kind: 'ok' | 'no' | 'urgent'; id: string }
+/** 러시 중 칠할 칸.
+ *  `fit` 금색 = **줄 맨 앞 손님한테 잘 맞는 자리**(+8점) · `ok` 초록 = 앉힐 수는 있다 ·
+ *  `no` 회색 = 못 앉힌다 · `urgent` 빨강 = 주문이 밀렸다.
+ *  금색이 따로 없으면 어느 칸이 제일 나은지 알 길이 없어 「제일 가까운 초록 누르기」가 최적 플레이가 된다. */
+export interface RushMark { x: number; y: number; w: number; h: number; kind: 'ok' | 'no' | 'urgent' | 'fit'; id: string }
 export function rushMarks(s: GameState): RushMark[] {
   if (rushPhase(s) !== 'run') return [];
+  const front = frontGuest(s);
   const out: RushMark[] = [];
   for (const o of Object.values(s.objects)) {
     if (!isSeat(s, o)) continue;
     const can = canSeatHere(s, o);
-    out.push({ x: o.x, y: o.y, w: o.w ?? 1, h: o.h ?? 1, id: o.id, kind: isUrgentSeat(s, o) ? 'urgent' : can.ok ? 'ok' : 'no' });
+    const kind = isUrgentSeat(s, o) ? 'urgent'
+      : !can.ok ? 'no'
+      : front && rushSeatFits(s, o, front.type) ? 'fit'
+      : 'ok';
+    out.push({ x: o.x, y: o.y, w: o.w ?? 1, h: o.h ?? 1, id: o.id, kind });
   }
   return out;
 }

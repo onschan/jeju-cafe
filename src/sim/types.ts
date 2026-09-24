@@ -1134,7 +1134,9 @@ export interface GameState {
   regularsGauge?: Record<string, number>;     // 손님층 → 단골 게이지 0~5
   regulars?: Regular[];                       // 단골 등록 손님
   // ---- 러시 타임 (rush.ts) — optional, save.ts backfill이 채운다 ----
-  rush?: RushState;                           // 이번 주 러시 상태기계
+  rush?: RushState;                             // 이번 주 러시 상태기계
+  /** 러시 「자동 진행」 — 켜면 줄 전체를 자동으로 앉힌다 (점수 계수 0.6이 붙어 등급은 안 오른다). 기본 꺼짐 */
+  rushAuto?: boolean;
   rushGrades?: Record<RushGrade, number>;     // 누적 등급 수 (§5 해금 조건 rushGrade)
   routes: Record<RouteId, RouteState>;        // 손님 유입 경로 3종 (트랙 H entry.ts)
   ending: EndingState;                        // 5년차 엔딩·빠른 모드 (ending.ts, z-ending · pace)

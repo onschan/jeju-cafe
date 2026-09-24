@@ -768,9 +768,10 @@ export class GameView {
     }
   }
 
-  /** 러시 타임 자리 표시 (rush-battle §2 조작): `ok` 초록 = 여기 앉힐 수 있다 · `no` 회색 = 못 앉힌다 · `urgent` 빨강 = 주문이 밀렸다.
-   *  빨간 칸은 render 루프에서 깜빡인다. 빈 배열이면 지운다. 같은 내용이면 다시 그리지 않는다. */
-  setRushMarks(marks: { x: number; y: number; w: number; h: number; kind: 'ok' | 'no' | 'urgent' }[]) {
+  /** 러시 타임 자리 표시 (rush-battle §2 조작): `fit` 금색 = 맨 앞 손님한테 잘 맞는 자리(+8점) ·
+   *  `ok` 초록 = 앉힐 수는 있다 · `no` 회색 = 못 앉힌다 · `urgent` 빨강 = 주문이 밀렸다.
+   *  빨간 칸·금색 칸은 render 루프에서 깜빡인다. 빈 배열이면 지운다. 같은 내용이면 다시 그리지 않는다. */
+  setRushMarks(marks: { x: number; y: number; w: number; h: number; kind: 'ok' | 'no' | 'urgent' | 'fit' }[]) {
     if (this.rushGfx.destroyed || this.rushUrgentGfx.destroyed) return;
     const key = marks.map((m) => `${m.x},${m.y},${m.w},${m.h},${m.kind}`).join('|');
     if (key === this.rushKey) return;
@@ -780,16 +781,16 @@ export class GameView {
     this.rushUrgent = false;
     for (const m of marks) {
       const urgent = m.kind === 'urgent';
-      const g = urgent ? this.rushUrgentGfx : this.rushGfx;
-      const color = m.kind === 'ok' ? 0x4c9a2a : urgent ? 0xc9184a : 0x8b8378;
-      const alpha = m.kind === 'no' ? 0.2 : 0.4;
+      const g = urgent || m.kind === 'fit' ? this.rushUrgentGfx : this.rushGfx; // 금색도 깜빡여서 눈에 먼저 들어오게
+      const color = m.kind === 'fit' ? 0xf2b134 : m.kind === 'ok' ? 0x4c9a2a : urgent ? 0xc9184a : 0x8b8378;
+      const alpha = m.kind === 'no' ? 0.2 : m.kind === 'fit' ? 0.55 : 0.4;
       for (let dy = 0; dy < Math.max(1, m.h); dy++) for (let dx = 0; dx < Math.max(1, m.w); dx++) {
         const { sx, sy } = cellToScreen(m.x + dx, m.y + dy);
         g.poly([sx, sy, sx + ISO_W / 2, sy + ISO_H / 2, sx, sy + ISO_H, sx - ISO_W / 2, sy + ISO_H / 2])
           .fill({ color, alpha })
-          .stroke({ color, width: m.kind === 'no' ? 2 : 3 });
+          .stroke({ color, width: m.kind === 'no' ? 2 : m.kind === 'fit' ? 4 : 3 });
       }
-      if (urgent) this.rushUrgent = true;
+      if (urgent || m.kind === 'fit') this.rushUrgent = true;
     }
     if (!this.rushUrgent) this.rushUrgentGfx.alpha = 1;
   }

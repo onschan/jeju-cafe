@@ -270,6 +270,10 @@ function rushHourShare(): number {
   for (let h = RUSH_START_HOUR; h < RUSH_START_HOUR + RUSH_RUN_HOURS; h++) s += hourShare(h);
   return s;
 }
+/** 문을 여는 순간 이미 서 있는 몫. 나머지는 45초에 걸쳐 들어온다.
+ *  예전에는 전부 고르게 들어와서, 초반(도착 4명)엔 45초 중 절반이 빈 화면이었다 —
+ *  「점심에 몰린다」가 아니라 「가끔 한 명씩 온다」로 보였다. 총 도착 수는 그대로라 밸런스는 안 바뀐다. */
+export const RUSH_OPEN_SHARE = 0.5;
 /** 러시 한 판에 문 앞에 설 손님 수 — 평소 그 시간대의 RUSH_SPAWN_MULT배, 다만 지금 규모로 받을 수 있는 양의 RUSH_ARRIVAL_OVER배까지.
  *  (자리 여섯 개짜리 카페에 스무 명이 몰려 전부 돌아가는 일은 재미가 아니라 벌이다) */
 export function rushArrivals(state: GameState): number {
@@ -325,17 +329,24 @@ function runRush(state: GameState, r: RushState, dtMs: number): void {
 
 /** 줄 세우기: 러시 전체 도착 수를 구간 길이로 나눠 소수 누적 */
 function arriveGuests(state: GameState, r: RushState, dtMs: number): void {
-  r.spawnAcc += (rushArrivals(state) * dtMs) / RUSH_RUN_MS;
-  let n = Math.floor(r.spawnAcc + 1e-9);
-  r.spawnAcc -= n;
+  void dtMs; // 시간은 r.elapsedMs가 이미 들고 있다 (runRush가 먼저 더한다)
+  const total = rushArrivals(state);
+  const target = Math.floor(total * arrivalCurve(Math.min(1, r.elapsedMs / RUSH_RUN_MS)));
   const cap = rushQueueCap(state);
-  while (n-- > 0) {
-    if (r.queue.length >= cap) continue; // 줄이 꽉 차면 그냥 지나간다 (불만 없음)
+  while (r.arrived < target) {
+    if (r.queue.length >= cap) return; // 줄이 꽉 차면 나머지는 그냥 지나간다 (불만 없음)
     const g = newRushGuest(state);
     if (!g) return;
     r.queue.push(g);
     r.arrived++;
+    // 러시는 하루 손님을 **늘리는** 게 아니라 **몰아치게** 하는 사건이다 — 줄에 서는 만큼 그날 남은 몫에서 뺀다
+    state.spawnAcc = Math.max(-restOfDayGuests(state), state.spawnAcc - RUSH_SPAWN_REFUND);
   }
+}
+/** 도착 누적 곡선 (0~1 → 0~1). 문 여는 순간 RUSH_OPEN_SHARE만큼이 이미 서 있고 나머지가 고르게 들어온다.
+ *  적분값이 1이라 **총 도착 수는 안 바뀐다** — 빈 화면만 없앤다. */
+function arrivalCurve(t: number): number {
+  return RUSH_OPEN_SHARE + (1 - RUSH_OPEN_SHARE) * t;
 }
 
 /** 인내 게이지 — 0이면 화내고 떠난다 */
@@ -354,11 +365,23 @@ function tickPatience(state: GameState, r: RushState, dtMs: number): void {
   r.queue = stay;
 }
 
-/** 자동 해결: 한 시간에 한 번(기존 착석 로직과 같은 박자) 줄 앞에서부터 빈 자리에 앉힌다 (점수 계수 0.6) */
+/** 자동 착석은 **구조가 아니라 구조대**다.
+ *
+ *  예전에는 한 번 돌 때 줄을 통째로 비웠다. 러시가 45초인데 주기가 한 시간(=3번)이라
+ *  **아무것도 안 눌러도 줄이 세 번 싹 비워졌고**, 4년차 무조작이 B등급 599점 · 놓친 손님 3명,
+ *  손으로 28번 눌러도 놓친 손님은 똑같이 3명이었다 — 조작이 결과를 전혀 안 바꿨다.
+ *
+ *  이제는 한 주기에 **맨 앞 한 명만** 건진다. 나머지는 플레이어가 앉히지 않으면 인내가 다 되어 떠난다.
+ *  「자동 진행」을 켠 사람(rushAuto)만 예전처럼 줄 전체를 맡긴다 — 대신 점수 계수 0.6이 그대로 붙어
+ *  등급이 안 오른다. 미니게임을 하기 싫은 사람을 위한 문이지 기본값이 아니다. */
+export const RUSH_RESCUE_PER_PERIOD = 1;
+export function rushAutoOn(state: GameState): boolean {
+  return state.rushAuto === true;
+}
 function autoSeat(state: GameState, r: RushState): void {
   if (r.elapsedMs < r.autoAtMs) return;
   r.autoAtMs += RUSH_AUTO_PERIOD_MS;
-  let guard = RUSH_QUEUE_MAX;
+  let guard = rushAutoOn(state) ? RUSH_QUEUE_MAX : RUSH_RESCUE_PER_PERIOD;
   while (guard-- > 0) {
     const g = r.queue[0];
     if (!g) return;
@@ -401,9 +424,6 @@ function scoreServe(state: GameState, r: RushState, typeId: string, seat: Placed
   r.served++;
   r.done.push(typeId);
   addRegularGauge(state, typeId, RUSH_GAUGE_PER_SERVE); // 인사 삭제 대체: 게이지는 러시 성적·요청 해결로만 찬다
-  // 러시는 하루 손님을 **늘리는** 게 아니라 **몰아치게** 하는 사건이다 — 받은 만큼 그날 남은 스폰 몫에서 뺀다
-  // (hourlyRegulars가 단골을 그날 손님 수 안에서 받는 것과 같은 방식). 안 그러면 좌석 회전율이 올라 3년차 자금 밴드(§4.6)가 깨진다.
-  state.spawnAcc = Math.max(-restOfDayGuests(state), state.spawnAcc - RUSH_SPAWN_REFUND);
 }
 
 // ---------- 액티브 스킬 즉발 효과 ----------
@@ -439,7 +459,9 @@ function finishRush(state: GameState, r: RushState): void {
   rushGrades(state)[grade]++;
   const rw = RUSH_REWARDS[grade];
   if (rw.tickets > 0) addTickets(state, rw.tickets, `러시 ${grade}등급`);
-  if (rw.reputation !== 0) addReputation(state, rw.reputation);
+  // 첫 판은 벌점 면제 — 규칙을 배우는 판에서 평판을 깎으면 「뭔지도 모르고 손해만 봤다」가 된다
+  const first = rushGradeCount(state, 'C') <= 1; // 이 판까지 쳐서 1번째면 첫 판
+  if (rw.reputation !== 0 && !(first && rw.reputation < 0)) addReputation(state, rw.reputation);
   state.effects = state.effects.filter((e) => e.source !== RUSH_EFFECT_SOURCE); // 지난주 보너스는 겹치지 않게 갈아 끼운다
   if (rw.guestPct > 0) addEffect(state, { kind: 'spawnMult', mult: 1 + rw.guestPct / 100, days: RUSH_BOOST_DAYS, source: RUSH_EFFECT_SOURCE });
   const gauge = RUSH_GAUGE_GRADE[grade];
@@ -529,7 +551,9 @@ export function stepRush(state: GameState): void {
 /** 카운트다운을 건너뛰고 바로 러시를 시작한다 (측정·테스트용) */
 export function startRushNow(state: GameState): RushState {
   const r = rushState(state);
-  if (r.phase !== 'run') { r.phase = 'run'; r.elapsedMs = 0; r.autoAtMs = RUSH_AUTO_PERIOD_MS; r.startTick = state.tick; r.week = weekIndexOf(state); }
+  if (r.phase !== 'run') {
+    r.phase = 'run'; r.elapsedMs = 0; r.autoAtMs = RUSH_AUTO_PERIOD_MS; r.startTick = state.tick; r.week = weekIndexOf(state);
+  }
   return r;
 }
 /** 조작 없이 러시를 끝까지 돌려 점수를 낸다 (결정적, UI 없음). 시계는 건드리지 않는다 — 러시 타이머만 감는다.

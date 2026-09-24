@@ -136,6 +136,7 @@ function backfill(state: GameState): void {
   state.rivals ??= initRivals(); // 동네 경쟁 카페 (옛 세이브는 다음 5일 발표부터 순위가 잡힌다)
   state.rush ??= initRush(); // 러시 타임 (옛 세이브는 다음 토요일부터 줄이 선다)
   state.rushGrades ??= { S: 0, A: 0, B: 0, C: 0 };
+  state.rushAuto ??= false; // 러시는 손으로 하는 게 기본 (옛 세이브도 꺼진 채로 연다)
   // 러시는 저장 시점의 카운트다운·진행 상태를 이어 받지 않는다 — 불러오면 그 주 러시는 지나간 것으로 본다 (조작형 사건이라 중간 복원은 무의미)
   if (state.rush.phase === 'ready' || state.rush.phase === 'run') { state.rush.phase = 'idle'; state.rush.queue = []; }
   for (const g of state.guests) { delete (g as { greeted?: boolean }).greeted; delete (g as { recommended?: boolean }).recommended; } // rush-battle §6: 인사·추천 삭제

@@ -427,15 +427,30 @@ export function tutorialStepDone(state: GameState, id: number): boolean {
   return state.tutorial.step >= id;
 }
 
-/** 현재 단계의 대사를 봤고 조건이 찼으면 step++. 보상 상자는 막을 끝낼 때 한 번. 끝낸 단계 id 또는 null. */
+/** 대사를 봤고 조건이 찼으면 step++. 보상 상자는 막을 끝낼 때 한 번. 끝낸 단계 id 또는 null.
+ *
+ *  단계를 끝낸 뒤, **차례가 된 순간 이미 조건이 차 있는 다음 단계들은 대사 없이 조용히 넘긴다.**
+ *  예전에는 그런 단계도 대사부터 띄워서, 3분 전에 올려 둔 아메리카노를 두고 다음 날 아침에
+ *  「메뉴판이 비었구나 · 아메리카노부터 올려 보라」가 뜨며 게임이 40초 멈췄다. 가르칠 게 없으면 가르치지 않는다.
+ *  반대로 **지금 차례인 단계는 그대로 대사를 기다린다** — 안 그러면 빨리 누르는 사람이 안내를 아예 못 본다. */
 export function checkTutorial(state: GameState): number | null {
   const step = currentTutorialStep(state);
   if (!step || !dialogueSeen(state, step.id) || !step.done(state)) return null;
+  advanceTutorialStep(state, step, false);
+  // 이어지는 단계가 「차례가 되기도 전에」 이미 차 있으면 줄줄이 조용히 넘긴다
+  for (let guard = TUTORIAL_STEPS; guard-- > 0;) {
+    const next = STEPS[state.tutorial.step];
+    if (!next || !actOpen(state, next.act) || dialogueSeen(state, next.id) || !next.done(state)) break;
+    advanceTutorialStep(state, next, true);
+  }
+  return step.id;
+}
+/** step++ · 막 보상. silent면 하루 간격을 안 잡는다 (조용히 넘긴 단계가 다음 안내를 미루지 않게). */
+function advanceTutorialStep(state: GameState, step: TutorialStepDef, silent: boolean): void {
   state.tutorial.step++;
-  state.tutorial.lastDay = dayIndex(state.clock); // 다음 단계는 내일부터 (연타 금지)
+  if (!silent) state.tutorial.lastDay = dayIndex(state.clock); // 다음 단계는 내일부터 (연타 금지)
   const act = tutorialActDef(step.act);
   if (lastStepOfAct(act.id) === step.id) applyRewards(state, act.reward, { source: 'tutorial', refId: `act${act.id}`, title: `${act.id}막 ${act.name}` });
-  return step.id;
 }
 
 function applyUnlockRewards(state: GameState, act: TutorialActDef): void {

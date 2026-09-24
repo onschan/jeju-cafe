@@ -349,8 +349,25 @@ describe('자동 해결 (§2 · §7-2)', () => {
       }
       stepRush(skilled);
     }
-    expect(ra.score).toBeGreaterThan(0);
-    expect(rs.score / ra.score).toBeGreaterThanOrEqual(1.2);
+    // 손을 놓으면 구조대(주기당 한 명)만 돌아 대부분 떠난다 — 점수는 0까지 깎이고 등급은 C
+    expect(ra.grade).toBe('C');
+    expect(ra.left).toBeGreaterThan(rs.left); // 놓친 손님이 조작 쪽보다 확실히 많다
+    expect(rs.served).toBeGreaterThan(ra.served);
+    expect(rs.score).toBeGreaterThan(ra.score * 1.2);
+  });
+
+  test('「자동 진행」을 켜면 줄은 다 앉지만 계수 0.6이 붙어 등급이 안 오른다 (미니게임을 피하는 문)', () => {
+    const base = cafe(8, 5);
+    toRushDay(base);
+    startRushNow(base);
+    const hands = cloneState(base);
+    const autoOn = cloneState(base);
+    autoOn.rushAuto = true;
+    const rh = resolveRushAuto(hands)!;
+    const rz = resolveRushAuto(autoOn)!;
+    expect(rz.served).toBeGreaterThan(rh.served); // 켜면 훨씬 많이 받는다
+    expect(rz.left).toBeLessThan(rh.left);
+    expect(['C', 'B']).toContain(rz.grade);      // 그래도 등급은 C~B에 머문다
   });
 });
 
@@ -421,7 +438,7 @@ describe('삭제: 인사·추천 (§3·§6)', () => {
 });
 
 describe('규모가 커져도 러시가 하루 손님을 늘리지 않는다 (§7-3)', () => {
-  test('러시에서 받은 만큼 그날 남은 스폰 몫에서 뺀다', () => {
+  test('줄에 선 만큼 그날 남은 스폰 몫에서 뺀다 (받은 수가 아니라 온 수가 기준 — 실력이 하루 손님을 늘리면 안 된다)', () => {
     const s = cafe(8);
     toRushDay(s);
     s.clock.hour = RUSH_START_HOUR;
@@ -429,9 +446,9 @@ describe('규모가 커져도 러시가 하루 손님을 늘리지 않는다 (§
     startRushNow(s);
     const r = rushState(s);
     for (let i = 0; i < RUSH_RUN_MS / STEP_MS + 2; i++) stepRush(s);
-    expect(r.served).toBeGreaterThan(0);
-    expect(s.spawnAcc).toBeLessThan(0); // 받은 만큼 빚이 남아 저녁 스폰이 줄어든다
-    expect(s.spawnAcc).toBeGreaterThanOrEqual(-r.served); // 받은 수보다 더는 안 뺀다
+    expect(r.arrived).toBeGreaterThan(0);
+    expect(s.spawnAcc).toBeLessThan(0); // 줄에 선 만큼 빚이 남아 저녁 스폰이 줄어든다
+    expect(s.spawnAcc).toBeGreaterThanOrEqual(-r.arrived); // 온 수보다 더는 안 뺀다
     expect(totalSeats(s)).toBeGreaterThan(0);
   });
 });

@@ -906,6 +906,10 @@ export function fixUnreachable(s: GameState): void {
 
 /** 매일 아침 */
 export function dailyPlan(s: GameState): void {
+  // 봇은 러시 미니게임을 손으로 못 한다(하루를 한 번에 민다). 그래서 「자동 진행을 켠 플레이어」를 대변한다 —
+  // 줄은 다 앉히되 점수 계수 0.6이 붙어 등급은 C~B에 머문다. 직접 하는 플레이어는 A·S를 노릴 수 있고,
+  // 그만큼 해금이 빨라진다. 즉 KPI 밴드는 **가장 게으른 플레이**의 바닥값이다.
+  s.rushAuto = true;
   answerChoices(s); // stakes: 돌발 사고·빅 이벤트 선택지 먼저 (알림을 닫아도 답은 따로 간다)
   while (s.alerts.length > 0) apply(s, s.alerts[0]!.type === 'ending' ? { type: 'continueEnding' } : { type: 'dismissAlert' }); // z-ending: 엔딩은 「계속하기」
   // 게시판 부탁은 지금 할 수 있는 것(시설·메뉴 열림·아이템 있음)만 받는다 (랜드마크·손님 해금이 부탁 보상)

@@ -286,6 +286,7 @@ export function createInitialState(seed: number, playerId = 'local', createdAt =
     main: initMain(),
     guests: [],
     rush: initRush(), // 러시 타임 (주 1회 토요일 점심)
+    rushAuto: false,  // 러시는 손으로 하는 게 기본 — 켜면 줄이 자동으로 앉지만 점수 계수 0.6이라 등급이 안 오른다
     rushGrades: { S: 0, A: 0, B: 0, C: 0 },
     routes: initRoutes(), // 트랙 H 손님 유입 경로 5종
     ending: initEnding(), // z-ending

@@ -246,6 +246,19 @@ describe('손으로 하는 튜토리얼 「할망의 가르침」 5막 15단계 
     expect(checkTutorial(s)).toBeNull(); // 2단계 대사를 아직 안 봤다
   });
 
+  it('차례가 되기도 전에 이미 해 둔 단계는 대사 없이 조용히 넘어간다 (고친 버그: 3분 전에 한 일을 다시 시키며 게임을 멈췄다)', () => {
+    const s = tutorialState();
+    // 1단계(자리 놓기)를 하기도 전에 2단계 조건(메뉴 올리기)까지 미리 해 둔다
+    const before = s.tutorial.step;
+    expect(apply(s, { type: 'place', objectType: 'table_out', ...at(3, 4) }).ok).toBe(true);
+    expect(s.tutorial.step).toBe(before); // 1단계 대사를 아직 안 봤다 — 지금 차례인 단계는 그대로 기다린다
+    noteTutorial(s, 'dlg:1');
+    const done = checkTutorial(s);
+    expect(done).toBe(1);
+    // 미리 해 둔 뒷단계가 있으면 그만큼 대사 없이 함께 넘어가 있어야 한다 (최소한 1단계는 넘었다)
+    expect(s.tutorial.step).toBeGreaterThanOrEqual(before + 1);
+  });
+
   it('전체 건너뛰기(첫 단계에서만): 완성 시작 상태(테이블 2·파라솔·메뉴 3종)로 채우고 step=7. 이미 시작했으면 거부. 정낭은 안 생긴다', () => {
     const s = tutorialState();
     expect(apply(s, { type: 'skipTutorial' }).ok).toBe(true);
