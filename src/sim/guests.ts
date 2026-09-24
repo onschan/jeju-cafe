@@ -44,6 +44,7 @@ import { hashOf } from './say.ts';
 import { streetFeeMult } from './tree.ts'; // fun: 같은 트리 3연속 「거리」 요금 +10%
 import { sceneryTouristMult, notePhoto } from './appeal.ts'; // fun: 경관 → 관광객, 사진 → 평판
 import { assignGuestName, regularsDue, dressAsRegular, regularTip, thankIfDone, maybeRequest, addRegularGauge, requestDef, GAUGE_HAPPY_VISIT } from './interact.ts'; // fun-guest (트랙 G): 이름·단골·요청·게이지
+import { isRushRunning } from './rush.ts'; // 러시 중엔 평소 스폰을 멈추고 rush.ts가 문 앞에 줄을 세운다 (3배)
 
 export { moveAlong, GUEST_SPEED_CELLS_PER_S }; // 하위 호환 재수출 (본체는 path.ts)
 // pace: 체류·조리 시간은 게임 시간(시)으로 적는다 — HOUR_MS를 줄여 시계를 빠르게 해도 「몇 시간 앉아 있나」가 그대로라 하루 매출이 안 바뀐다.
@@ -272,6 +273,7 @@ function walkAway(state: GameState, typeId: string): void {
 /** 매 시간: 하루 손님 수를 시간대 비중으로 나눠 소수 누적, 정수만큼 스폰. 손님 0 이벤트 날은 안 온다. 일요일 11시엔 투어 버스. */
 export function hourlySpawn(state: GameState): number {
   if (noGuestsToday(state)) return 0;
+  if (isRushRunning(state)) return 0; // 러시 중: 손님은 rush.ts가 문 앞 줄(3배)로만 들인다 — 끝나면 이 경로로 원복
   state.spawnAcc += dailyGuestCount(state) * hourShare(state.clock.hour);
   const n = Math.floor(state.spawnAcc + 1e-9);
   state.spawnAcc -= n;
@@ -423,6 +425,42 @@ export function spawnGuests(state: GameState, n: number, forceType?: string, ent
     seatGuest(best, typeId);
   }
   return spawned;
+}
+
+/** 러시: 문 앞 줄에 선 손님(typeId)을 자리에 앉힌다. seat을 주면 그 자리, 없으면 진입점에서 가장 가까운 빈 자리.
+ *  route를 주면 그 경로(주차장·올레…) 입구에서 걸어온다 — 러시 때도 경로별 손님 비중(트랙 H)이 그대로 유지된다.
+ *  앉으면 평소와 똑같은 Guest가 되어 걸어가 주문하고 돈을 낸다 — 경제·만족 경로는 그대로다. 못 앉히면 null. */
+export function seatGuestFromQueue(state: GameState, typeId: string, seat: PlacedObject | null, route: RouteId = 'bus'): Guest | null {
+  if (!canOpen(state) || state.guests.length >= guestCap(state)) return null;
+  const open = freeSeats(state);
+  const pick = seat ? open.find((o) => o.id === seat.id) ?? null : null;
+  if (seat && !pick) return null;
+  const entry = route === 'bus' ? null : routeSpawnPos(state, route);
+  const from: RouteId = entry ? route : 'bus';
+  const start = entry ?? busStopPos(state);
+  const reach = reachMap(state, start);
+  let best: { seat: PlacedObject; target: Pt; dist: number } | null = null;
+  for (const o of pick ? [pick] : open) {
+    for (const nb of walkableNeighborsOf(state, o.x, o.y)) {
+      const d = reach.dist.get(cellKey(state, nb));
+      if (d === undefined) continue;
+      if (!best || d < best.dist) best = { seat: o, target: nb, dist: d };
+    }
+  }
+  if (!best) return null;
+  const path = pathFromReach(state, reach, best.target)!.slice(1);
+  const gates = countGatesOn(state, path);
+  const g: Guest = {
+    id: `g${state.nextId++}`, type: typeId, phase: 'walking', x: start.x, y: start.y, path,
+    seatId: best.seat.id, seatSlot: firstFreeSlot(state, best.seat), approachCell: null,
+    menuId: null, mood: null, moodReason: null, say: null, visitId: null, timerMs: 0, waitMs: 0, paid: 0,
+    ...(from === 'bus' ? {} : { route: from }),
+    ...(gates > 0 ? { gates } : {}),
+  };
+  state.guests.push(g);
+  assignGuestName(g);
+  noteRouteGuest(state, from);
+  return g;
 }
 
 // ---------- 주문·기분 ----------

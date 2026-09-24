@@ -9,6 +9,7 @@ import { initMain } from './rooms.ts';
 import { initEnding } from './ending.ts'; // z-ending
 import { initContest } from './contest.ts'; // 대회
 import { initRivals } from './rival.ts'; // 동네 경쟁 카페
+import { initRush } from './rush.ts'; // 러시 타임
 import type { FinalScore } from './types.ts';
 import { TUTORIAL_STEPS } from './tutorial.ts';
 import { ROUTE_IDS } from './entry.ts';
@@ -132,6 +133,14 @@ function backfill(state: GameState): void {
   state.lastOutcome ??= null;
   state.contest ??= initContest(); // 대회 (v21 세이브엔 없다 — 등급 3이면 다음 6·12월부터 접수할 수 있다)
   state.rivals ??= initRivals(); // 동네 경쟁 카페 (옛 세이브는 다음 5일 발표부터 순위가 잡힌다)
+  state.rush ??= initRush(); // 러시 타임 (옛 세이브는 다음 토요일부터 줄이 선다)
+  state.rushGrades ??= { S: 0, A: 0, B: 0, C: 0 };
+  // 러시는 저장 시점의 카운트다운·진행 상태를 이어 받지 않는다 — 불러오면 그 주 러시는 지나간 것으로 본다 (조작형 사건이라 중간 복원은 무의미)
+  if (state.rush.phase === 'ready' || state.rush.phase === 'run') { state.rush.phase = 'idle'; state.rush.queue = []; }
+  for (const g of state.guests) { delete (g as { greeted?: boolean }).greeted; delete (g as { recommended?: boolean }).recommended; } // rush-battle §6: 인사·추천 삭제
+  delete (state as { greetDay?: number }).greetDay;
+  delete (state as { greetCount?: number }).greetCount;
+  delete (state as { recommendCount?: number }).recommendCount;
   state.monthCosts.deal ??= 0; // 제휴 월 고정비 줄
   if (state.lastMonthCard) state.lastMonthCard.costs.deal ??= 0;
   state.monthCosts.contest ??= 0; // 대회 참가비 줄 (월말 카드 비용 합계)

@@ -13,7 +13,7 @@ import { canTrain, train } from './training.ts';
 import { canPromote, promote, canSetTarget, setTarget } from './promotions.ts';
 import { discoverPlacement } from './compat.ts';
 import { canUseItem, useItem, canGiveGift, giveGift, canCraftGift, craftGift } from './items.ts';
-import { canGreet, greetGuest, canRecommend, recommendMenu } from './interact.ts'; // fun-guest: 인사·추천
+import { canSeatFromQueue, seatFromQueue, canUseStaffSkill, useStaffSkill, canRushPriority, rushPriority } from './rush.ts'; // 러시 타임: 자리 배정·직원 스킬·밀린 주문
 import { evaluateUnlocks } from './segments.ts';
 import { canAcceptQuest, acceptQuest, canRespondEvent, respondEvent, afterInvest, checkQuests } from './board.ts';
 import { canInvestSpot, investSpot } from './spots.ts';
@@ -495,16 +495,22 @@ function applyInner(state: GameState, a: Action): ApplyResult {
       giveGift(state, a.guestId, a.itemId);
       return { ok: true };
     }
-    case 'greetGuest': { // fun-guest
-      const c = canGreet(state, a.guestId);
+    // ---- 러시 타임 (rush.ts §2 직접 조작 3가지) ----
+    case 'seatFromQueue': {
+      const c = canSeatFromQueue(state, a.guestId, a.objectId);
       if (!c.ok) return c;
-      greetGuest(state, a.guestId);
+      return seatFromQueue(state, a.guestId, a.objectId) ? { ok: true } : { ok: false, reason: '거기까진 못 가요' };
+    }
+    case 'useStaffSkill': {
+      const c = canUseStaffSkill(state, a.staffId);
+      if (!c.ok) return c;
+      useStaffSkill(state, a.staffId);
       return { ok: true };
     }
-    case 'recommendMenu': { // fun-guest
-      const c = canRecommend(state, a.guestId, a.menuId);
+    case 'rushPriority': {
+      const c = canRushPriority(state, a.objectId);
       if (!c.ok) return c;
-      recommendMenu(state, a.guestId, a.menuId);
+      rushPriority(state, a.objectId);
       return { ok: true };
     }
     case 'craftGift': {

@@ -596,7 +596,9 @@ export type GoalCondition =
   | { type: 'secondFloor' }                       // 본관 2층 완공
   | { type: 'reputation'; n: number }             // 평판 ≥ n
   | { type: 'legendStaff'; n: number }            // 전설 칭호 직원 n명
-  | { type: 'routesOpen'; n: number };            // 열린 유입 경로 n종 (정류장 제외)
+  | { type: 'routesOpen'; n: number }             // 열린 유입 경로 n종 (정류장 제외)
+  // ---- 러시 타임 (rush.ts §5: 돈이 아니라 실력이 중반 해금을 연다) ----
+  | { type: 'rushGrade'; n: number; grade: RushGrade }; // 러시에서 grade 이상을 n번
 /** 목표 뒤에 남는 기능 잠금 (ease): 팝업 스토어·카페 대결·필지 구매만. 홍보·연구·입지 보기·콤보 도감·명소 지도는 처음부터 열려 있다(튜토리얼이 순서를 안내). */
 export type FeatureId = 'parcel';
 export type GoalReward =
@@ -890,8 +892,6 @@ export interface Guest {
   faceSeed?: number;    // 단골(regulars) 고정 얼굴 seed. 없으면 손님층 얼굴(guestFace)
   regularId?: string;   // 단골(state.regulars)로 온 손님이면 그 id — 팁 +20%·"OO 왔다!"
   requestId?: string;   // 지금 하고 있는 요청(requests.json id) — 말풍선 "?"·카드 요청 줄
-  greeted?: boolean;    // 오늘 인사했다 (손님당 1회)
-  recommended?: boolean; // 메뉴를 추천했다 (손님당 1회)
 }
 
 /** 손님 요청 (트랙 G requests.json): 앉은 손님 20%가 명당·시설·메뉴를 바란다. 들어주면 다음 그 손님층 방문에 "고마워요" + 단골 게이지 +2. */
@@ -899,6 +899,47 @@ export interface GuestRequestDef { id: string; text: string; want: { corner?: st
 export interface GuestRequest { id: string; guestType: string; day: number; done: boolean }
 /** 단골 등록 손님 (트랙 G): 손님층 게이지가 5면 그 손님층에서 이름·얼굴이 고정된 한 명. 매주 방문·팁 +20%. */
 export interface Regular { id: string; guestType: string; name: string; seed: number; day: number }
+
+// ---------- 러시 타임 (rush.ts, rush-battle §2) ----------
+/** 러시 상태기계: 대기 → 예고·카운트다운 → 진행 → 정산 */
+export type RushPhase = 'idle' | 'ready' | 'run' | 'done';
+export type RushGrade = 'S' | 'A' | 'B' | 'C';
+/** 문 앞에 줄을 선 손님. 자리에 앉으면 진짜 Guest가 되어 줄에서 빠진다. */
+export interface RushGuest {
+  id: string;
+  type: string;        // GuestTypeDef.id
+  patienceMs: number;  // 남은 인내 (게임 ms) — 0이면 화내고 떠난다
+  waitedMs: number;    // 줄에서 기다린 시간 (자동 착석 판정)
+  route?: RouteId;     // 어느 진입점에서 왔나 (트랙 H 경로 비중 유지). 없으면 정류장
+}
+/** 러시 중 걸려 있는 직원 스킬 버프 (rush.ts RUSH_SKILLS) */
+export interface RushBuff { id: string; staffId: string; untilMs: number }
+export interface RushState {
+  phase: RushPhase;
+  startTick: number;
+  endTick: number;
+  queue: RushGuest[];
+  score: number;
+  combo: number;      // 3연속을 채운 횟수
+  served: number;     // 받은 손님
+  left: number;       // 기다리다 떠난 손님
+  arrived: number;    // 이번 러시에 문 앞에 선 손님 수 (등급 기준)
+  grade: RushGrade | null;
+  week: number;       // 이 러시가 열린 주 번호 (같은 주 재발동 방지). −1 = 아직
+  notified: number;   // 예고한 주 번호
+  elapsedMs: number;  // 지금 단계에서 흐른 게임 ms
+  spawnAcc: number;   // 줄 세우기 소수 누적
+  autoAtMs: number;   // 다음 자동 착석 시각 (러시 안 elapsedMs)
+  streak: number;     // 지금 연속 무사 처리 수
+  tips: number;       // 팁 점수 합 (정산 카드)
+  bonus: number;      // 자리 보너스 합
+  manual: number;     // 플레이어가 직접 처리한 수 (진단)
+  buffs: RushBuff[];
+  cooldowns: Record<string, number>; // staffId → 다시 쓸 수 있는 elapsedMs
+  done: string[];     // 받은 손님의 손님층 (정산 때 단골 게이지)
+  priority?: { objectId: string; staffId: string | null }; // 마지막 밀린 주문 우선 처리 (UI 연출)
+  priorityDone?: string[]; // 이번 러시에 이미 우선 처리한 자리 (자리마다 한 번)
+}
 
 /** 속도 4(빠른 모드)는 엔딩 뒤 「계속하기」로만 열린다 (ending.ts) */
 export type Speed = 0 | 1 | 2 | 3 | 4;
@@ -1037,13 +1078,13 @@ export interface GameState {
   main: MainState;                            // 본관 증축·2층·이동·분위기 (rooms.ts, y-indoor)
   guests: Guest[];
   // ---- fun-guest (트랙 G) — 전부 optional, interact.ts가 처음 쓸 때 채운다 ----
-  greetDay?: number;                          // 인사·추천 횟수를 센 절대 일 인덱스
-  greetCount?: number;                        // 오늘 인사 횟수 (하루 GREET_DAY_MAX)
-  recommendCount?: number;                    // 오늘 추천 횟수
   requests?: GuestRequest[];                  // 손님 요청 (진행 중·들어준 것)
   requestThanks?: number;                     // 고마워요를 받은 횟수 (첫 REQUEST_TICKET_COUNT회 응모권)
   regularsGauge?: Record<string, number>;     // 손님층 → 단골 게이지 0~5
   regulars?: Regular[];                       // 단골 등록 손님
+  // ---- 러시 타임 (rush.ts) — optional, save.ts backfill이 채운다 ----
+  rush?: RushState;                           // 이번 주 러시 상태기계
+  rushGrades?: Record<RushGrade, number>;     // 누적 등급 수 (§5 해금 조건 rushGrade)
   routes: Record<RouteId, RouteState>;        // 손님 유입 경로 3종 (트랙 H entry.ts)
   ending: EndingState;                        // 5년차 엔딩·빠른 모드 (ending.ts, z-ending · pace)
   carry: CarryOver | null;                    // 이월해서 시작한 게임이면 그 내용 (기록용)
@@ -1140,8 +1181,10 @@ export type Action =
   | { type: 'investSpot'; id: string }
   | { type: 'expandParking'; objectId: string }               // 주차장 2×2 → 3×2 교체 (트랙 H)
   | { type: 'giveGift'; guestId: string; itemId: string }
-  | { type: 'greetGuest'; guestId: string }                   // 트랙 G: 인사 (손님당 1회·하루 10회)
-  | { type: 'recommendMenu'; guestId: string; menuId: string } // 트랙 G: 메뉴 추천 (손님당 1회)
+  // ---- 러시 타임 (rush.ts) — 러시 중에만 되는 직접 조작 3가지 ----
+  | { type: 'seatFromQueue'; guestId: string; objectId: string } // 줄 맨 앞 손님 → 빈 자리
+  | { type: 'useStaffSkill'; staffId: string }                   // 직원 액티브 스킬 (쿨다운)
+  | { type: 'rushPriority'; objectId: string }                   // 밀린 주문 우선 처리
   | { type: 'craftGift'; itemId: string }
   | { type: 'develop'; base: MenuBase; ingredients: string[]; params?: BrewParams; staffId: string }
   | { type: 'dismissDevelop' }

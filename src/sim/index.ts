@@ -34,7 +34,7 @@ export { isWalkable, busStopPos, isDoorReachable } from './path.ts';
 export { OLDEST_LOADABLE, BACKFILL_FROM } from './save.ts';
 export { addResearchProgress, HAPPY_PER_RESEARCH, TASTE_MATCH_WEIGHT } from './progress.ts';
 export { serialize, deserialize, MemorySaveStore, LocalSaveStore, type SaveStore, type BestRecord } from './save.ts';
-export { freeSeats, hasReachableSeat, seatSlotPos, dailyGuestCount, seatsNeeded, uncappedDailyGuests, PROMO_POP_PER_SLOT, type SeatsNeed, gateSatisfaction, countGatesOn, GATE_SATISFACTION_MAX, popularityGuestBase, popularitySum, facilityPopularitySum, spotDailyGuests, seasonGuestMult, spawnMultiplier, prepTimeMs, serviceBonus, isVisitable, likesFacility, spawnNamedGuest, hourlyRegulars, totalSeats, GUEST_SPEED_CELLS_PER_S, SEAT_MS, PREP_MS, VISIT_CHANCE, GUESTS_PER_SEAT, BASE_DAILY_GUESTS, POP_SUM_PER_GUEST, FACILITY_POP_PER_GUEST, WAIT_MAX, SEASON_GUEST_MULT, servingCapacity, waitPenalty, waitCapOf, drinkQualityBonus, prepCut, ordersToday, zoneSatisfaction, nightShiftSatisfaction, OWNER_DRINKS_PER_DAY, DRINKS_PER_BARISTA, FOOD_PER_COOK, SERVICE_PER_HEAD, SERVICE_MAX, PREP_CUT_PER_HEAD, MAX_PREP_CUT, WAIT_PER_HALL_HEAD } from './guests.ts'; // staff2
+export { freeSeats, hasReachableSeat, seatSlotPos, dailyGuestCount, seatsNeeded, uncappedDailyGuests, seatGuestFromQueue, hourShare, PROMO_POP_PER_SLOT, type SeatsNeed, gateSatisfaction, countGatesOn, GATE_SATISFACTION_MAX, popularityGuestBase, popularitySum, facilityPopularitySum, spotDailyGuests, seasonGuestMult, spawnMultiplier, prepTimeMs, serviceBonus, isVisitable, likesFacility, spawnNamedGuest, hourlyRegulars, totalSeats, GUEST_SPEED_CELLS_PER_S, SEAT_MS, PREP_MS, VISIT_CHANCE, GUESTS_PER_SEAT, BASE_DAILY_GUESTS, POP_SUM_PER_GUEST, FACILITY_POP_PER_GUEST, WAIT_MAX, SEASON_GUEST_MULT, servingCapacity, waitPenalty, waitCapOf, drinkQualityBonus, prepCut, ordersToday, zoneSatisfaction, nightShiftSatisfaction, OWNER_DRINKS_PER_DAY, DRINKS_PER_BARISTA, FOOD_PER_COOK, SERVICE_PER_HEAD, SERVICE_MAX, PREP_CUT_PER_HEAD, MAX_PREP_CUT, WAIT_PER_HALL_HEAD } from './guests.ts'; // staff2
 export { canPromote, effectivePopularity, MAX_ACTIVE_PROMOTIONS, PARTTIME_MONEY } from './promotions.ts';
 export { TIERS, MAX_LEVEL, MAX_STAT, LOW_ENERGY, STAT_KEYS, STAT_NAME, salaryOf, salaryDue, SALARY_PER_STAT, UNASSIGNED_SALARY_RATIO, levelUpCost, expNeeded, mainStatOf, addRoleExp, EXP_PER_SERVE, EXP_PER_WORKDAY, roleEffect, ingredientDiscount, staffInRole, canHire, canLevelUp, canPostJob, postJobCost, tierUnlocked, availablePool, addPoolCandidate, staffCapacity, staffRoomCount, capOf, capBonus, skillsOf, hasSkill, skillTotal, cleanPowerOf, gardenBonusOf, gardenDecayOf, promoBonusOf, promoEnergyFactorOf, farmCount, roleUnlockMet, BASE_STAFF_SLOTS, SLOTS_PER_STAFF_ROOM, STAFF_ROOM_TYPE, roleHeads, roleHeadsWith, headValue, HEAD_STAT, HEAD_MAX, DIMINISH_FROM, DIMINISH_FACTOR, zoneOf, setZone, canSetZone, isNightShift, canSetNight, setNight, hasNightShift, STAFF_ZONES, ZONE_NAME, ZONE_ROLE, NIGHT_BONUS, NIGHT_ENERGY_COST, type StaffZone } from './staff.ts';
 export { canTrain, trainingCost, trainingOptions, trainingUnlocked, trainingMultOf, trainingChances, TRAINING_RANK, TRAINING_COST_STEP } from './training.ts';
@@ -93,7 +93,21 @@ export {
 export { NIGHT_HOUR, LIGHT_RADIUS, STREETLIGHT_SAT, DARK_SAT, DARK_TEXT, isNight, isLightType, lights, lightAt, litCellsOf, nightSeatPoints, nightSatisfaction, nightSeatLine } from './lighting.ts';
 // ---------- z-ending ----------
 export { computeScore, scoreTier, spotLevelSum, endingDue, endingMonthly, canContinueEnding, canSetSpeed, makeCarry, applyCarry, carryText, dolhareubangCount, initEnding, ENDING_YEAR, ENDING_MONTH, MILLENNIUM_TREE, FAST_SPEED, CARRY_RATIO, SCORE_ITEMS, SCORE_TITLES } from './ending.ts';
-export { greetedToday, greetsLeftToday, canGreet, greetGuest, greetLine, canRecommend, recommendMenu, recommendFits, guestNameFor, regularFace, REQUESTS, requestDef, isRequestMet, requestHint, pendingRequests, doneRequests, regularGauge, regularHearts, regularOf, regularById, regularsDue, regularCount, regularList, forgetRegular, GREET_DAY_MAX, RECOMMEND_DAY_MAX, RECOMMEND_TIP_RATE, GAUGE_MAX, REGULAR_TIP_RATE, REQUEST_DAY_MAX } from './interact.ts'; // fun-guest (트랙 G)
+export { guestNameFor, regularFace, REQUESTS, requestDef, isRequestMet, requestHint, pendingRequests, doneRequests, regularGauge, regularHearts, regularOf, regularById, regularsDue, regularCount, regularList, forgetRegular, addRegularGauge, GAUGE_MAX, REGULAR_TIP_RATE, REQUEST_DAY_MAX, REQUEST_GAUGE } from './interact.ts'; // fun-guest (트랙 G) — 인사·추천은 rush-battle §6에서 삭제
+// ---------- 러시 타임 (rush.ts) — 주간 리듬의 코어 ----------
+export {
+  initRush, rushState, rushPhase, isRushRunning, isRushReady, inRush, isRushDay, rushDoneThisWeek, daysToRush, lastRushGrade,
+  rushGrades, rushGradeCount, rushTimeScale, rushQueueCap, rushPatienceMult, rushCapacity, rushExpectedScore, rushGradeOf, rushSeatFits, rushArrivals,
+  canSeatFromQueue, seatFromQueue, canUseStaffSkill, useStaffSkill, canRushPriority, rushPriority, nearestStaff, resolveRushAuto, stepRush, startRushNow,
+  rushSkillDef, rushSkillOf, rushSkillOfRole, weekdayOf, weekIndexOf, weekCycleSeconds, rushSeconds, rushMsOfSeconds,
+  RUSH_SKILLS, RUSH_GRADES, RUSH_REWARDS, RUSH_WEEKDAY, RUSH_NOTICE_WEEKDAY, RUSH_READY_HOUR, RUSH_START_HOUR, RUSH_RUN_HOURS,
+  RUSH_READY_MS, RUSH_RUN_MS, RUSH_READY_SECONDS, RUSH_RUN_SECONDS, RUSH_READY_SCALE, RUSH_RUN_SCALE, RUSH_TARGET_SPEED,
+  RUSH_SPAWN_MULT, RUSH_ARRIVAL_OVER, RUSH_REALTIME_DT_MAX, RUSH_QUEUE_BASE, RUSH_QUEUE_MAX, RUSH_PATIENCE_MIN_S, RUSH_PATIENCE_MAX_S, RUSH_AUTO_PERIOD_MS,
+  RUSH_SCORE_PER_GUEST, RUSH_LEFT_PENALTY, RUSH_FIT_BONUS, RUSH_COMBO_N, RUSH_COMBO_MULT, RUSH_AUTO_COEF,
+  RUSH_EXPECT_PER_GUEST, RUSH_SEAT_TURNOVER, RUSH_STAFF_SERVES, RUSH_GRADE_S, RUSH_GRADE_A, RUSH_GRADE_B,
+  RUSH_GAUGE_PER_SERVE, RUSH_GAUGE_GRADE, RUSH_LEFT_REPUTATION, RUSH_PRIORITY_CUT, RUSH_PRIORITY_SCORE, WEEK_DAYS,
+  type RushSkillDef, type RushReward,
+} from './rush.ts';
 // ---------- 대회 (contest.ts) — 연 2회 6·12월, 등급 3부터 ----------
 export {
   initContest, contestState, contestUnlocked, nextContest, daysToContest, signupOpen, isContestDay, contestTitle, roundIndex,
