@@ -46,6 +46,10 @@ const RUBBER_EASE = 0.15;
 const BOUNDS_MARGIN = 200;
 /** 속도 추정에 쓰는 최근 이동 창(ms) */
 const VELOCITY_WINDOW_MS = 100;
+/** 손을 뗀 신호(pointerup·pointercancel)를 놓친 포인터를 버리는 시간.
+ *  이게 없으면 놓친 포인터 하나가 영원히 남아 다음 누름이 전부 「핀치」로 먹히고 — 탭이 통째로 죽는다.
+ *  러시에서 「눌러도 아무 일도 안 난다」의 정체 중 하나. 되살아나는 데 새로고침이 필요했다. */
+const STALE_POINTER_MS = 2000;
 
 /** 드래그 이동(관성)·핀치 줌·탭(셀 좌표)·경계 고무줄. 이동 거리가 짧으면 탭으로 본다. */
 export function attachCamera(stage: Container, opts: CameraOptions): () => void {
@@ -55,7 +59,7 @@ export function attachCamera(stage: Container, opts: CameraOptions): () => void 
   let lastTap: { x: number; y: number; t: number } | null = null;
   let pressTimer = 0;
   const clearPress = () => { if (pressTimer) { window.clearTimeout(pressTimer); pressTimer = 0; } };
-  const pointers = new Map<number, { x: number; y: number }>();
+  const pointers = new Map<number, { x: number; y: number; t: number }>();
   let dragStart: { x: number; y: number; wx: number; wy: number } | null = null;
   let moved = false;
   let firedFast = false; // 러시 연타: 누를 때 이미 onTap을 쳤나
@@ -99,8 +103,14 @@ export function attachCamera(stage: Container, opts: CameraOptions): () => void 
     while (samples.length > 1 && t - samples[0]!.t > VELOCITY_WINDOW_MS) samples.shift();
   };
 
+  /** 손 뗀 신호를 놓친 포인터를 버린다 (브라우저가 pointercancel조차 안 줄 때의 마지막 보루) */
+  const dropStale = (now: number) => {
+    for (const [id, p] of pointers) if (now - p.t > STALE_POINTER_MS) pointers.delete(id);
+  };
   const down = (e: FederatedPointerEvent) => {
-    pointers.set(e.pointerId, { x: e.globalX, y: e.globalY });
+    const now = performance.now();
+    dropStale(now);
+    pointers.set(e.pointerId, { x: e.globalX, y: e.globalY, t: now });
     vx = vy = 0;
     if (pointers.size === 1) {
       dragStart = { x: e.globalX, y: e.globalY, wx: world.x, wy: world.y };
@@ -108,6 +118,7 @@ export function attachCamera(stage: Container, opts: CameraOptions): () => void 
       samples = [];
       pushSample(e.globalX, e.globalY);
       const c = cellOf(e.globalX, e.globalY);
+      firedFast = false; // 앞 누름의 떼기를 놓쳤어도 이번 누름은 살아 있다 (안 지우면 다음 탭 하나가 통째로 씹힌다)
       if (fastTap?.()) { firedFast = true; onTap(c.x, c.y); return; } // 누르는 즉시 — 떼기를 기다리지 않는다
       if (dragCapture?.(c.x, c.y)) {
         captured = c;
@@ -133,7 +144,7 @@ export function attachCamera(stage: Container, opts: CameraOptions): () => void 
   };
   const move = (e: FederatedPointerEvent) => {
     if (!pointers.has(e.pointerId)) return;
-    pointers.set(e.pointerId, { x: e.globalX, y: e.globalY });
+    pointers.set(e.pointerId, { x: e.globalX, y: e.globalY, t: performance.now() });
     if (pointers.size === 1 && captured) {
       const c = cellOf(e.globalX, e.globalY);
       if (c.x !== captured.x || c.y !== captured.y) { captured = c; onDragCell?.(c.x, c.y); }
@@ -228,13 +239,14 @@ export function attachCamera(stage: Container, opts: CameraOptions): () => void 
 
   stage.eventMode = 'static';
   stage.hitArea = { contains: () => true };
-  stage.on('pointerdown', down).on('pointermove', move).on('pointerup', up).on('pointerupoutside', up);
+  // pointercancel도 「손을 뗐다」로 친다 — 안 받으면 그 포인터가 map에 남아 다음 탭부터 전부 핀치로 먹힌다
+  stage.on('pointerdown', down).on('pointermove', move).on('pointerup', up).on('pointerupoutside', up).on('pointercancel', up);
   canvas.addEventListener('wheel', wheel, { passive: false });
   ticker.add(tick);
   return () => {
     clearPress();
     ticker.remove(tick);
-    stage.off('pointerdown', down).off('pointermove', move).off('pointerup', up).off('pointerupoutside', up);
+    stage.off('pointerdown', down).off('pointermove', move).off('pointerup', up).off('pointerupoutside', up).off('pointercancel', up);
     canvas.removeEventListener('wheel', wheel);
   };
 }
