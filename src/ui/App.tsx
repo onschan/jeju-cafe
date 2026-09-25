@@ -64,7 +64,7 @@ import { TodoLine } from './TodoLine'; // video-patch §3.4: 오늘 할 일
 // ---- rush: 러시 타임 HUD·연출·조작 (rush-battle §2) ----
 import { RushHud } from './RushHud';
 import { RushShow } from './RushShow';
-import { noteRushSeat, rushMarks, rushRunning, seatFront, setRushAutoOn, urgentAt, useRushAutoPref } from './rushBridge';
+import { noteRushSeat, rushMarks, rushRunning, rushResultOpen, seatFront, setRushAutoOn, urgentAt, useRushAutoPref } from './rushBridge';
 // ---- ui3: 전략 피드백 · 숏컷 · 화면 정돈 ----
 import { StrategyCard } from './StrategyCard';
 import { RadialMenu, type RadialItem } from './RadialMenu';
@@ -1109,10 +1109,12 @@ function Game({ onExit }: { onExit: () => void }) {
       <MonthCard />
       {guestPopup && <GuestPopup guestId={guestPopup} onClose={() => setGuestPopup(null)} onQuest={(id) => { dispatch({ type: 'acceptQuest', id }); setWin({ kind: 'people', tab: 'quests' }); }} />}
       {renderWindow()}
-      {!rushOn && <RewardPopup />}{/* rush: 보상 상자도 러시가 끝난 뒤에 */}
+      <RushHud />
+      <RushShow />
+      {!rushOn && !rushResultOpen(s) && <RewardPopup />}{/* rush: 보상 상자도 러시가 끝난 뒤에 */}
       <OutcomePopup />
       <EndingScreen onExit={onExit} />
-      <DialogueHost />
+      {!rushResultOpen(s) && <DialogueHost />}
     </div>
   );
 }

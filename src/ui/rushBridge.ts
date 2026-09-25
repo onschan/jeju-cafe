@@ -293,6 +293,11 @@ export function rushTimeLeftMs(s: GameState): number {
 export function rushGradeNow(s: GameState): RushGrade {
   return rushOf(s)?.grade ?? lastRushGrade(s) ?? 'C';
 }
+/** 러시 결과 카드가 떠 있을 만한 때인가 — 그동안 보상 상자·알림 대화는 미뤄 둔다.
+ *  안 그러면 결과 카드 위에 「한꺼번에! 보상 6개」와 「단골이 생겼다」가 쌓여 셋이 겹친다. */
+export function rushResultOpen(s: GameState): boolean {
+  return s.rush?.phase === 'done' && isRushTime(s);
+}
 /** 러시가 굴러가는 중인가 (HUD를 띄울 때) */
 export function rushRunning(s: GameState): boolean {
   return rushPhase(s) === 'run';

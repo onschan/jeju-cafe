@@ -83,8 +83,8 @@ export function rushMsOfSeconds(sec: number): number {
 }
 
 // ---------- 줄·인내 ----------
-/** 러시 중 손님 스폰 배수 (평소의 3배) */
-export const RUSH_SPAWN_MULT = 3;
+/** 러시 중 손님 스폰 배수 (평소의 4배) — 「몰아친다」가 눈에 보여야 한다 */
+export const RUSH_SPAWN_MULT = 4;
 /** 러시에서 한 명을 받을 때마다 그날 남은 스폰 몫에서 빼는 양 (0이면 러시가 손님 수를 늘린다 — 밴드가 깨진다) */
 export const RUSH_SPAWN_REFUND = 1;
 export const RUSH_QUEUE_BASE = 12;   // 문 앞 줄 기본 상한
@@ -122,17 +122,20 @@ export const RUSH_TIP_MAX = 8;
 export const RUSH_COMBO_N = 3;          // 연속 3명부터
 export const RUSH_COMBO_MULT = 1.5;
 /** 자동으로 앉은 손님의 점수 계수 (§2 「자동 처리는 C~B」) */
-export const RUSH_AUTO_COEF = 0.6;
+export const RUSH_AUTO_COEF = 0.35; // 기대치를 실제 처리량(12점/명)으로 낮추자 0.6으로는 자동이 A까지 갔다 — 자동은 C~B에 머물러야 미니게임이 뜻을 가진다
 /** 밀린 주문 우선 처리: 조리 남은 시간을 이만큼 깎고 점수 +5 (자리마다 한 번) */
 export const RUSH_PRIORITY_CUT = 0.6;
 export const RUSH_PRIORITY_SCORE = 5;
 
 // ---------- 등급 (규모 보정 상대 평가) ----------
 /** 「제대로 받았을 때」 한 명당 점수 — 자동(계수 0.6)이면 이 아래, 잘 고르고 스킬을 쓰면 이 위가 된다.
- *  자동 한 명 ≈ (10 + 팁 + 자리) × 콤보 1.5 × 0.6 ≈ 20점, 손으로 고르면 ≈ 33점. 그 사이에 둔다. */
-export const RUSH_EXPECT_PER_GUEST = 27;
-/** 러시 3시간 동안 자리 하나가 받는 손님 (좌석 규모 보정) */
-export const RUSH_SEAT_TURNOVER = 0.5;
+ *  실측(초반, 손으로): 여섯 명 받고 58점 ≈ 한 명당 9.7점. 27로 잡혀 있어 잘해도 늘 C가 나왔다.
+ *  팁·자리 보너스·콤보는 카페가 커져야 붙는 값이라 초반 기대치에 넣으면 안 된다. */
+export const RUSH_EXPECT_PER_GUEST = 12;
+/** 러시 3시간 동안 자리 하나가 받는 손님 (좌석 규모 보정).
+ *  러시 구간이 3 게임시간이고 손님이 앉아 있는 시간이 1.5시간(SEAT_HOURS)이니 실제 회전은 **2명**이다.
+ *  0.5로 잡혀 있어서 자리 8석짜리 카페에 손님이 다섯 명만 왔다 — 「러시」가 아니라 그냥 점심이었다. */
+export const RUSH_SEAT_TURNOVER = 2;
 /** 일하는 직원 한 명이 더 받게 해 주는 손님 (직원 규모 보정) */
 export const RUSH_STAFF_SERVES = 2;
 export const RUSH_GRADE_S = 1.3;
@@ -141,7 +144,16 @@ export const RUSH_GRADE_B = 0.7;
 export const RUSH_GRADES: RushGrade[] = ['S', 'A', 'B', 'C'];
 const GRADE_RANK: Record<RushGrade, number> = { S: 4, A: 3, B: 2, C: 1 };
 
-/** 지금 규모로 받을 수 있는 손님 수 — 좌석 회전 + 일하는 직원 */
+/** 한 판에 **실제로 받아 낼 수 있는** 손님 수 — 등급의 분모.
+ *  줄 길이(rushCapacity)와 갈라 둔다: 줄은 길어야 긴장이 생기고, 등급은 손이 닿는 만큼으로 재야 공정하다.
+ *  실측(자리 8석·직원 0, 손으로 다섯 번 탭): 도착 12 · 받은 6. 좌석당 0.75가 실제 회전이다.
+ *  이걸 좌석×2로 잡아 두었더니 아무리 잘해도 C가 나왔다. */
+export const RUSH_SERVE_PER_SEAT = 0.75;
+export function rushServable(state: GameState): number {
+  const staff = state.staff.filter((st) => st.role !== null && !st.training).length;
+  return Math.max(1, Math.round(totalSeats(state) * RUSH_SERVE_PER_SEAT + staff * RUSH_STAFF_SERVES));
+}
+/** 줄이 얼마나 길게 설 수 있나 (도착 수 상한) — 좌석 회전 + 일하는 직원 */
 export function rushCapacity(state: GameState): number {
   const staff = state.staff.filter((st) => st.role !== null && !st.training).length;
   return Math.max(1, Math.round(totalSeats(state) * RUSH_SEAT_TURNOVER + staff * RUSH_STAFF_SERVES));
@@ -149,7 +161,7 @@ export function rushCapacity(state: GameState): number {
 /** 지금 규모·이번 줄 길이로 기대되는 점수. 온 손님보다 자리가 적으면 자리가, 자리가 남으면 온 손님이 기준 —
  *  그래서 같은 규모·같은 줄이면 **조작 실력만** 등급을 가른다. */
 export function rushExpectedScore(state: GameState, arrived: number): number {
-  return RUSH_EXPECT_PER_GUEST * Math.max(1, Math.min(Math.max(1, arrived), rushCapacity(state)));
+  return RUSH_EXPECT_PER_GUEST * Math.max(1, Math.min(Math.max(1, arrived), rushServable(state)));
 }
 export function rushGradeOf(state: GameState, score: number, arrived: number): RushGrade {
   const ratio = score / rushExpectedScore(state, arrived);
@@ -182,7 +194,7 @@ export const RUSH_LEFT_COMPLAINT_MAX = 2;
 
 // ---------- 상태 ----------
 export function initRush(): RushState {
-  return { phase: 'idle', startTick: 0, endTick: 0, queue: [], score: 0, combo: 0, served: 0, left: 0, arrived: 0, grade: null, week: -1, notified: -1, elapsedMs: 0, spawnAcc: 0, streak: 0, tips: 0, bonus: 0, manual: 0, autoAtMs: RUSH_AUTO_PERIOD_MS, done: [] };
+  return { phase: 'idle', startTick: 0, endTick: 0, queue: [], score: 0, combo: 0, served: 0, left: 0, arrived: 0, grade: null, week: -1, notified: -1, elapsedMs: 0, spawnAcc: 0, streak: 0, tips: 0, bonus: 0, manual: 0, autoAtMs: RUSH_AUTO_PERIOD_MS, missed: 0, done: [] };
 }
 export function rushState(state: GameState): RushState {
   return (state.rush ??= initRush());
@@ -316,7 +328,7 @@ function maybeStartRush(state: GameState, r: RushState): void {
   if (state.clock.hour >= RUSH_START_HOUR + RUSH_RUN_HOURS) return; // 지나간 시간대엔 안 연다 (세이브를 늦게 열었을 때)
   const week = weekIndexOf(state);
   Object.assign(r, initRush(), { phase: 'ready' as RushPhase, week, notified: r.notified, startTick: state.tick, elapsedMs: 0 });
-  pushFx(state, { kind: 'scene', title: '러시 타임', text: '열두 시, 곧 줄이 서요', tick: state.tick });
+  // 시작 안내는 RushShow의 카운트다운이 한다 — 장면 창을 같이 띄우면 러시가 도는 동안 화면을 덮어 시간을 먹었다
 }
 
 function runRush(state: GameState, r: RushState, dtMs: number): void {
@@ -358,6 +370,10 @@ function tickPatience(state: GameState, r: RushState, dtMs: number): void {
     if (g.patienceMs > 0) { stay.push(g); continue; }
     r.left++;
     r.streak = 0;
+    // 점수 벌점은 **내 잘못으로 놓친 사람**에게만 — 그 순간 빈 자리가 있었다면 내가 늦은 것이고,
+    // 자리가 꽉 차 있었다면 가게가 작은 것이다. 둘을 같이 깎으면 열심히 눌러도 0점이 나와
+    // (실측: 47점을 내고 못 받은 6명 × 15 = −90 → 최종 0점·C) 조작이 결과를 안 바꾸는 것처럼 느껴진다.
+    if (freeSeats(state).length > 0) r.missed = (r.missed ?? 0) + 1;
     if (r.left <= RUSH_LEFT_REPUTATION_MAX) addReputation(state, -RUSH_LEFT_REPUTATION);
     if (r.left <= RUSH_LEFT_COMPLAINT_MAX) addComplaint(state, 'no_seat', g.type);
     pushFx(state, { kind: 'react', guestId: g.id, text: '너무 오래 걸려요', icon: 'sweat', tick: state.tick });
@@ -429,11 +445,11 @@ function scoreServe(state: GameState, r: RushState, typeId: string, seat: Placed
 // ---------- 마무리·정산 ----------
 function finishRush(state: GameState, r: RushState): void {
   // 남은 줄은 그대로 돌아간다 (이미 인내가 남아 있어도 러시가 끝나면 집에 간다 — 벌점은 없다)
-  r.left += r.queue.length; // 문을 닫을 때까지 못 앉은 사람도 놓친 손님
+  r.left += r.queue.length; // 문을 닫을 때까지 못 앉은 사람도 놓친 손님 (벌점은 빈 자리가 있었을 때만 — r.missed)
   r.queue = [];
   r.phase = 'done';
   r.endTick = state.tick;
-  r.score = Math.max(0, r.score - r.left * RUSH_LEFT_PENALTY);
+  r.score = Math.max(0, r.score - (r.missed ?? 0) * RUSH_LEFT_PENALTY); // 빈 자리를 두고 놓친 사람만 벌점
   const grade = rushGradeOf(state, r.score, r.arrived);
   r.grade = grade;
   rushGrades(state)[grade]++;

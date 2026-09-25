@@ -76,7 +76,7 @@ function onNewDay(state: GameState): void {
   // [코어만] dailyRivals(state); // 동네 순위 발표(5일)·경쟁 카페 뺏기 이벤트(12일) — 월초 1일 몰림을 피해 날짜를 나눴다
   // [코어만] dailyShop(state); // game-feel: 보름 응모권
   // [코어만] dailyIdleHint(state);
-  // [코어만] rushNotice(state); // 러시 타임: 하루 전(금요일) 아침 예고 한 줄
+  rushNotice(state); // 러시 타임: 하루 전(금요일) 아침 예고 한 줄
 }
 
 /** 월 바뀜 (1일의 날 처리보다 먼저): (3월) 급여 인상 → 월급 → 홍보 만료·인기 감소 → 유지비 → 투어 버스 → (3월) 소득세 → 명소 월 정산·선물 → 손님 수 마일리지 → 정산 → 실패 상태(경고·대출·상환·위기) → 평판 후기 → 농원 수확 → 후보 만료 → 손님 해금 → 게시판 → 응모권·무료 추첨 → ★·가이드북 발표 → 라이벌 → 빅 이벤트 판정(예약) */
@@ -121,7 +121,7 @@ export function step(state: GameState): void {
   if (state.clock.month !== prevMonth) onNewMonth(state, prevMonth, prevYear);
   for (let i = 0; i < days; i++) onNewDay(state);
   for (let i = 0; i < hours; i++) onNewHour(state);
-  // [코어만] updateRush(state, STEP_MS); // 러시 타임 상태기계 (줄·인내·자동 착석·정산)
+  updateRush(state, STEP_MS); // 러시 타임 상태기계 (줄·인내·자동 착석·정산)
   updateGuests(state, STEP_MS);
   runPending(state); // seatfix: 손님이 다 떠난 예약은 그 즉시 실행된다
   moveStaff(state, STEP_MS);
