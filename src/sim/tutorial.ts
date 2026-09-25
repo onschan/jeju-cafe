@@ -21,6 +21,8 @@
 import type { GameState, GoalReward, Pt, FeatureId, PlacedObject } from './types.ts';
 import { objectDef } from '../data/index.ts';
 import { isDoorReachable, busStopPos, walkableNeighborsOf } from './path.ts';
+import { rushPhase } from './rush.ts';
+import { freeSeats } from './guests.ts';
 import { CORNERS, cornersDoneIncludingWork, cornerProgressIncludingWork, cornerPieceDefault, cornerBuildType, pieceMatches } from './corners.ts';
 import { ownedParcels } from './parcels.ts';
 import { dayIndex } from './effects.ts';
@@ -202,10 +204,16 @@ function seatCells(s: GameState): Pt[] {
   return out;
 }
 /** 러시 단계 글로우: 자리가 있으면 첫 자리 칸(거기 앉힌다), 없으면 정류장 */
+/** 러시 단계 글로우 — **러시가 도는 동안만** 빈 자리를 빛낸다.
+ *  예전엔 단계가 차례이기만 하면 늘 자리 하나를 빛내서, 테이블을 놓은 순간부터 다음 토요일까지
+ *  며칠 내내 「여기 앉히면 된다」가 맵에 붙어 있었다. 줄도 손님도 없는데 앉히라고 하는 셈이다.
+ *  기다리는 동안 무엇을 하는지는 안내 줄(「줄에서 손님 둘 앉히기」)이 말한다. */
 function rushCells(s: GameState): Pt[] {
-  const seat = seats(s)[0] ?? Object.values(s.objects).find((o) => objectDef(o.type).kind === 'seat');
-  return seat ? [{ x: seat.x, y: seat.y }] : [busStopPos(s)];
+  if (rushPhase(s) !== 'run') return [];
+  return freeSeats(s).slice(0, TUTORIAL_RUSH_GLOW).map((o) => ({ x: o.x, y: o.y }));
 }
+/** 러시 중에 빛낼 빈 자리 수 (다 빛내면 맵이 온통 노랗다) */
+export const TUTORIAL_RUSH_GLOW = 3;
 /** 첫 러시에서 줄에 선 손님을 둘 앉혔나 (UI가 rushSeat1·rushSeat2 표식을 남긴다 — 러시 상태에 기대지 않는다) */
 export function rushSeated(s: GameState): boolean {
   return seen(s, 'rushSeat2');

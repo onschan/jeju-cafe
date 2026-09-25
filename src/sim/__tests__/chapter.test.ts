@@ -10,6 +10,8 @@ import { rushState, rushSeatFits, rushGrades, rushExpectedScore, chapterBoost, R
 import { createInitialState } from '../state.ts';
 import { botDay, newBotCursor } from '../bot.ts';
 import { unlockGuestType } from '../segments.ts';
+import { STEPS } from '../tutorial.ts';
+import { startRushNow, weekdayOf, RUSH_WEEKDAY, RUSH_READY_HOUR } from '../rush.ts';
 import type { GameState, RushState } from '../types.ts';
 
 /** 이번 막에 누적 hits명을 쌓아 둔 상태 (막 진행은 이제 판별이 아니라 누적이다) */
@@ -135,6 +137,19 @@ describe('막 (chapter)', () => {
     for (let i = 0; i < 8; i++) placeObject(big, 'table_out', X(1 + (i % 4) * 2), Y(1 + Math.floor(i / 4) * 2));
     // 받은 손님이 같으면 작은 카페든 큰 카페든 기준이 같다 (예전엔 좌석 수로 커져 「키울수록 등급이 떨어졌다」)
     expect(rushExpectedScore(big, 30, 12)).toBe(rushExpectedScore(s, 30, 12));
+  });
+
+  it('러시 단계 글로우는 러시가 도는 동안만 — 며칠 내내 「여기 앉히면 된다」가 붙어 있지 않게', () => {
+    const s = createInitialState(1, 'local', 0, 'open');
+    placeObject(s, 'table_parasol', X(3), Y(4));
+    s.tutorial.step = 2; // 3단계(첫 러시) 차례
+    const step = STEPS[2]!;
+    expect(step.key).toBe('rushSeat');
+    expect(step.cells(s)).toEqual([]); // 러시가 아니면 빛낼 칸이 없다
+    while (weekdayOf(s.clock.day) !== RUSH_WEEKDAY) { s.clock.day++; if (s.clock.day > 30) { s.clock.day = 1; s.clock.month++; } }
+    s.clock.hour = RUSH_READY_HOUR - 1;
+    startRushNow(s);
+    expect(step.cells(s).length).toBeGreaterThan(0); // 러시 중엔 빈 자리를 빛낸다
   });
 
   it('귤밭·먹거리·즐길거리는 서로 다른 시설을 본다 — 막마다 배치 과제가 달라야 한다', () => {
