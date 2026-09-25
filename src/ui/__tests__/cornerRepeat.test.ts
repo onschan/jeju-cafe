@@ -27,7 +27,7 @@ import { cornerMissingText } from '../windows/CornerTab.tsx';
 import { cornerPart, CORNER_FULL, PART_MAX } from '../layoutScore.ts';
 import type { GameState } from '../../sim/types.ts';
 
-/** 2막 5단계(첫 명당)를 하고 있는 상태 — 4단계까지 끝냈고 대사도 봤다 */
+/** 4단계(첫 명당)를 하고 있는 상태 — 3단계까지 끝냈고 대사도 봤다 (teardown §3: 1막 5단계) */
 function step5State(): GameState {
   const s = createInitialState(1, 'local', 0, 'tutorial');
   s.money = 1e8;
@@ -35,8 +35,8 @@ function step5State(): GameState {
   expect(apply(s, { type: 'place', objectType: 'table_out', ...at(2, 4) }).ok).toBe(true);
   expect(apply(s, { type: 'place', objectType: 'table_out', ...at(2, 5) }).ok).toBe(true);
   s.menuSold.americano = 1;
-  s.tutorial.step = 4; // 1~4단계 끝
-  s.tutorial.seen = ['act:1', 'dlg:1', 'dlg:2', 'dlg:3', 'guestCard', 'act:2', 'siteView', 'dlg:4', 'dlg:5'];
+  s.tutorial.step = 3; // 1~3단계 끝
+  s.tutorial.seen = ['act:1', 'dlg:1', 'dlg:2', 'dlg:3', 'guestCard', 'dlg:4'];
   s.tutorial.lastDay = -5; // 단계 사이 하루 간격은 지난 것으로
   return s;
 }
@@ -57,9 +57,9 @@ const allText = (s: GameState): string[] => [
 ];
 
 describe('명당 튜토리얼 반복 (cfix)', () => {
-  it('마지막 조각이 공사 중이어도 5단계는 done이고, 대사를 본 뒤엔 바로 통과한다', () => {
+  it('마지막 조각이 공사 중이어도 명당 단계는 done이고, 대사를 본 뒤엔 바로 통과한다', () => {
     const s = step5State();
-    expect(currentTutorialStep(s)?.id).toBe(5);
+    expect(currentTutorialStep(s)?.id).toBe(4);
     expect(cornerMade(s)).toBe(false);
     placeFlowerPath(s);
     // 아직 완공 전이다 — 그래도 「다 모았다」로 본다
@@ -67,22 +67,22 @@ describe('명당 튜토리얼 반복 (cfix)', () => {
     expect(cornersBuilding(s)).toBe(1);
     expect(cornersDoneIncludingWork(s)).toBe(1);
     expect(cornerMade(s)).toBe(true);
-    // 조건 + 대사(dlg:5)가 다 찼으니 마지막 조각을 놓은 그 액션에서 바로 끝난다 (apply → checkGoals → checkTutorial)
-    expect(s.tutorial.step).toBe(5);
-    expect(nextTutorialStep(s)?.id).toBe(6);
-    expect(simCheckTutorial(s)).toBeNull(); // 더 끝낼 단계가 없다 (6단계는 하루 뒤)
+    // 조건 + 대사(dlg:4)가 다 찼으니 마지막 조각을 놓은 그 액션에서 바로 끝난다 (apply → checkGoals → checkTutorial)
+    expect(s.tutorial.step).toBe(4);
+    expect(nextTutorialStep(s)?.id).toBe(5);
+    expect(simCheckTutorial(s)).toBeNull(); // 더 끝낼 단계가 없다 (5단계는 직원을 세워야 한다)
   });
 
-  it('5단계가 끝난 뒤 같은 대사가 다시 차례에 오르지 않는다 (공사가 끝나도)', () => {
+  it('명당 단계가 끝난 뒤 같은 대사가 다시 차례에 오르지 않는다 (공사가 끝나도)', () => {
     const s = step5State();
     placeFlowerPath(s);
-    expect(s.tutorial.step).toBe(5);
+    expect(s.tutorial.step).toBe(4);
     // 공사가 끝날 때까지 돌려도 5단계가 다시 현재 단계가 되지 않는다
     let ms = 0;
     while (Object.values(s.objects).some((o) => o.build) && ms < 3 * DAY_MS) { tick(s, STEP_MS); ms += STEP_MS; }
     expect(completedCorners(s).map((c) => c.id)).toContain('corner_flower_path');
-    expect(nextTutorialStep(s)?.id).not.toBe(5);
-    expect(simCheckTutorial(s)).not.toBe(5);
+    expect(nextTutorialStep(s)?.id).not.toBe(4);
+    expect(simCheckTutorial(s)).not.toBe(4);
   });
 
   it('조각을 다 모으면 글로우·짓기 타깃이 「하나 더」를 가리키지 않는다', () => {

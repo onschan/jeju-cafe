@@ -128,7 +128,7 @@ function stampParcelObjects(state: GameState, p: Parcel): void {
 export type StartLayout = 'starter' | 'tutorial' | 'bare' | 'open';
 /** 'open' — **직접 깔고 시작한다.** 본관과 마을 길까지의 올렛길, 메뉴판만 채워 두고 마당은 비운다.
  *  손님이 앉을 자리를 처음부터 내가 놓는 게 이 게임의 첫 재미다 (다 깔아 두면 그 재미가 통째로 없어진다).
- *  튜토리얼 대사는 안 뜨지만 「끝난 것」으로 표시해 둔다 — 연속 배치 같은 기능이 튜토리얼 중엔 막혀 있다. */
+ *  1막 5단계 튜토리얼(자리 → 메뉴 → 첫 러시 → 첫 명당 → 직원 세우기)이 그 위에서 돈다. */
 
 /** 완성 시작 상태의 본관을 새긴다 (w-start: 맨땅 튜토리얼은 플레이어가 placeMain으로 직접 짓는다). 이미 본관이 있으면 그대로.
  *  기본 자리(3,1)가 막혀 있으면(둘러보기 중에 뭔가 놓았을 때) 시작 필지 안에서 놓을 수 있는 첫 자리를 찾는다. */
@@ -316,7 +316,10 @@ export function createInitialState(seed: number, playerId = 'local', createdAt =
   else if (layout === 'open') {
     stampMainAndPath(state);
     for (const m of START_MENUS) { const i = state.menuSlots.indexOf(null); if (i >= 0) state.menuSlots[i] = m; }
-    state.tutorial = initTutorial(true); // 대사는 안 띄우되 「끝난 것」으로 — 배치 기능이 안 막히게
+    // teardown §3: 튜토리얼을 1막 5단계로 줄이고(첫 주에 끝난다) 다시 켠다.
+    // 러시 착석·명당·직원 근무 자리는 지금 「막」을 넘는 조건인데, 안 가르치면 아무도 못 찾는다.
+    // 끄고 있었던 이유(연속 배치가 막힌다·대사가 게임을 멈춘다)는 각각 P0-5에서 고쳤다.
+    state.tutorial = initTutorial(false);
     unlockTutorialFeatures(state);
   }
   else if (layout === 'tutorial') stampMainAndPath(state);

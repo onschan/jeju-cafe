@@ -216,7 +216,8 @@ const none = () => [] as Pt[];
 // ---------- 5막 (막마다 「그 시스템이 실제로 필요해지는 순간」에 열린다) ----------
 
 /** 단계 사이 최소 간격 (게임일) — 한 막 안에서도 대사가 연달아 터지지 않게 */
-export const TUTORIAL_STEP_GAP_DAYS = 1;
+/** teardown §3: 단계 사이 하루를 두니 5단계가 닷새에 걸쳐 끌렸다. 코어만 남은 지금은 한 자리에서 이어 배운다. */
+export const TUTORIAL_STEP_GAP_DAYS = 0;
 /** 2막이 열리는 좌석 수 / 3막 자금·좌석 / 4막 자금·좌석 이용률 / 5막 등급·연차 */
 export const ACT2_SEATS = 2;
 export const ACT3_MONEY = 800_000;
@@ -253,12 +254,13 @@ function seatUse(s: GameState): number {
 }
 
 export const TUTORIAL_ACTS: TutorialActDef[] = [
-  { id: 1, name: '카페 문 열기', lead: '이 창고가 이제 네 카페여.', when: '새 게임 바로', open: () => true, reward: [money(300_000), { type: 'tickets', n: 1 }] },
-  { id: 2, name: '자리와 사람', lead: '자리하고 사람 보는 법이여.', when: `좌석 ${ACT2_SEATS}개와 첫 결제`, open: (s) => seatCount(s) >= ACT2_SEATS && soldAny(s), reward: [money(300_000)] },
-  { id: 3, name: '한 단계 올리기', lead: '이번엔 올리는 법을 배우자.', when: `자금 ₩80만·좌석 ${ACT3_SEATS}개`, open: (s) => s.money >= ACT3_MONEY && seatCount(s) >= ACT3_SEATS, reward: [money(300_000), { type: 'tickets', n: 1 }] },
-  { id: 4, name: '넓히고 다시 놓기', lead: '넓히는 법을 알려 주마.', when: '자금 ₩300만 또는 자리가 꽉 참', open: (s) => s.money >= ACT4_MONEY || seatUse(s) >= ACT4_SEAT_USE, reward: [money(500_000)] },
-  { id: 5, name: '우리 카페의 색', lead: '마지막은 우리 카페 색이여.', when: `등급 ${ACT5_GRADE} 또는 ${ACT5_YEAR}년차`, open: (s) => (s.grade ?? 1) >= ACT5_GRADE || s.clock.year >= ACT5_YEAR, reward: [{ type: 'title', id: 'halmang_pupil', name: '할망의 제자' }, money(500_000), { type: 'tickets', n: 3 }] },
+  // teardown §3: 5막 15단계 → **1막 5단계**. 막마다 자금·등급 문턱을 두니 가르침이 몇 년에 걸쳐 끌렸고,
+  // 마지막 막의 「대항전·대회」 단계는 코어만 남긴 지금 아예 닿을 수 없어 튜토리얼이 영영 안 끝났다
+  // (안 끝나면 연속 배치가 매번 꺼지는 등 조용히 손해만 났다). 한 막에 다섯 걸음, 첫 주에 끝난다.
+  { id: 1, name: '카페 문 열기', lead: '이 창고가 이제 네 카페여.', when: '새 게임 바로', open: () => true,
+    reward: [money(500_000), { type: 'tickets', n: 3 }, { type: 'title', id: 'halmang_pupil', name: '할망의 제자' }] },
 ];
+
 const ACT = new Map(TUTORIAL_ACTS.map((a) => [a.id, a]));
 export function tutorialActDef(id: number): TutorialActDef {
   const a = ACT.get(id);
@@ -277,6 +279,10 @@ function seatBesideCorner(s: GameState): boolean {
     if (seats.some((o) => distToCell(p.anchor!, o.x, o.y) <= p.def.radius)) return true;
   }
   return false;
+}
+/** staffpost: 배치된 직원이 **마당의 칸에 직접 세워져** 있나 (뽑기만 한 것은 아직이다) */
+function staffPosted(s: GameState): boolean {
+  return s.staff.some((st) => st.role !== null && !st.training && st.post !== undefined);
 }
 /** 좌석 하나 곁(반경 2)에 시설·장식이 둘 이상 — 「가까이 놓으면 좋아진다」(거리 보너스) */
 export const TUTORIAL_COMBO_RADIUS = 2;
@@ -329,26 +335,16 @@ function contestEntered(s: GameState): boolean {
 }
 
 export const STEPS: TutorialStepDef[] = [
-  // 1막 개념 — 자리 하나, 메뉴 하나, 첫 러시 (rush-battle §3: 인사 단계가 러시 단계로 바뀌었다)
+  // 한 막 다섯 걸음: 자리 → 메뉴 → 첫 러시 → 첫 명당 → 직원을 세운다.
+  // 코어가 된 것만 가르친다 — 입지 보기·업그레이드·필지·경로·진단·대회 단계는 걷어냈다(teardown §3).
   { id: 1, act: 1, key: 'seat', done: (s) => seats(s).length >= 1, targets: ['nav:build', 'tile:seat', 'tab:rest', 'build:table_out', 'build-go'], cells: seatCells },
   { id: 2, act: 1, key: 'menu', done: (s) => s.menuSlots.includes('americano'), targets: ['nav:cafe', 'tab:menu', 'menu-put'], cells: none },
   { id: 3, act: 1, key: 'rushSeat', done: rushSeated, targets: ['rush-queue-first'], cells: rushCells },
-  // 2막 자리와 사람 — 자리 점수를 보고, 명당을 만들고, 사람을 뽑는다 (teardown §3: 러시 스킬 단계는 걷어냈다)
-  { id: 4, act: 2, key: 'site', done: (s) => seen(s, 'siteView'), targets: ['site-toggle'], cells: none },
-  { id: 5, act: 2, key: 'corner', done: cornerMade, targets: (s) => ['nav:build', 'tile:charm', 'tab:corner', `corner-next:${TUTORIAL_CORNER_ID}`, `build:${cornerMissingType(s)}`, 'build-go'], cells: cornerCells },
-  { id: 6, act: 2, key: 'cornerSeat', done: seatBesideCorner, targets: ['nav:build', 'tile:seat', 'tab:rest', 'build:table_out', 'build-go'], cells: cornerSeatCells },
-  { id: 7, act: 2, key: 'hire', done: (s) => s.staff.length >= 1, targets: ['nav:people', 'tab:candidates', 'hire'], cells: none },
-  // 3막 업그레이드 — 같은 자리에서 올리고, 붙여 놓는다
-  { id: 8, act: 3, key: 'tree', done: (s) => seen(s, 'treeUpgrade'), targets: ['tree-up'], cells: none },
-  { id: 9, act: 3, key: 'combo', done: comboBeside, targets: ['nav:build', 'tile:charm', 'build-go'], cells: comboCells },
-  // 4막 확장·재배치 — 땅을 사고, 다른 길을 열고, 옮겨 본다
-  { id: 10, act: 4, key: 'parcel', done: (s) => ownedParcels(s).length >= 2, targets: ['nav:ledger', 'tab:invest', 'parcel-buy'], cells: none },
-  { id: 11, act: 4, key: 'route', done: routeOpened, targets: ['nav:build', 'tile:inflow', 'build:parking_lot', 'build-go'], cells: none },
-  { id: 12, act: 4, key: 'rearrange', done: (s) => seen(s, 'move'), targets: ['tool:move', 'tool:undo'], cells: none },
-  // 5막 전략 — 진단을 읽고, 대회에 나가 본다
-  { id: 13, act: 5, key: 'checkup', done: (s) => seen(s, 'checkup'), targets: ['nav:ledger', 'strategy-card'], cells: none },
-  { id: 14, act: 5, key: 'contest', done: (s) => contestEntered(s), targets: ['nav:ledger', 'tab:contest', 'contest-enter'], cells: none },
+  { id: 4, act: 1, key: 'corner', done: cornerMade, targets: (s) => ['nav:build', 'tile:charm', 'tab:corner', `corner-next:${TUTORIAL_CORNER_ID}`, `build:${cornerMissingType(s)}`, 'build-go'], cells: cornerCells },
+  // staffpost: 뽑는 것으로는 안 끝난다 — 마당의 칸에 세워 봐야 「직원은 선 자리 둘레를 챙긴다」가 손에 남는다
+  { id: 5, act: 1, key: 'staffPost', done: staffPosted, targets: ['nav:people', 'tab:candidates', 'hire', 'tab:staff'], cells: none },
 ];
+
 export const TUTORIAL_STEPS = STEPS.length;
 /** 그 막의 마지막 단계 id */
 function lastStepOfAct(act: number): number {

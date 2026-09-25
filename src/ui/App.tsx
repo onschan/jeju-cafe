@@ -61,7 +61,7 @@ import { tradeoffOf } from './tradeoff'; // fun: 배치 트레이드오프
 import { rectCells, demolishTargets, reservedCount, nextGhostAfterPlace, type Rect, type BuildGhost } from './placing';
 import { placementPicks, PlacementHintLine, type PlacePicks } from './PlacementHints'; // video-patch §3.2: 추천 칸 3곳
 import { usePlaceHintsPref, setPlaceHintsOn } from './layoutScore';
-import { TodoLine } from './TodoLine'; // video-patch §3.4: 오늘 할 일
+import { GuideLine } from './GuideLine'; // teardown §3: 안내 한 줄 (튜토리얼 > 문 열기 막힘 > 이번 막)
 // ---- rush: 러시 타임 HUD·연출·조작 (rush-battle §2) ----
 import { RushHud } from './RushHud';
 import { RushShow } from './RushShow';
@@ -70,7 +70,7 @@ import { noteRushSeat, rushMarks, rushRunning, rushResultOpen, seatFront, setRus
 import { StrategyCard } from './StrategyCard';
 import { RadialMenu, type RadialItem } from './RadialMenu';
 import { useShortcutsPref, setShortcutsOn, shortcutsOn, useMapMinimalPref, setMapMinimalOn } from './shortcuts';
-import { chapterLine, openBlocker, checkupKey, canStartBuild, isUpgradable, canUpgrade, upgradeCost, objectStats, treeOf, canTreeUpgrade, treeUpgradeCost, MAX_OBJECT_LEVEL, LIGHT_RADIUS, spotReachable, UNREACHABLE_GHOST_TEXT } from '../sim/index.ts';
+import { checkupKey, canStartBuild, isUpgradable, canUpgrade, upgradeCost, objectStats, treeOf, canTreeUpgrade, treeUpgradeCost, MAX_OBJECT_LEVEL, LIGHT_RADIUS, spotReachable, UNREACHABLE_GHOST_TEXT } from '../sim/index.ts';
 import { recentBuildTypes } from './windows/BuildWindow.tsx';
 import { josa } from '../sim/josa.ts';
 
@@ -422,7 +422,9 @@ function Game({ onExit }: { onExit: () => void }) {
   useEffect(() => {
     if (rushRunning(s)) return; // rush: 러시 한 판이 도는 동안은 알림·대사를 미룬다 (대사가 뜨면 게임이 멈춰 러시가 얼어붙는다)
     checkAlerts(s, () => dispatch({ type: 'dismissAlert' }), (x) => dispatch(x)); // stakes: 선택지는 sim 액션으로
-    // [코어만] 튜토리얼 정지 — 바로 놓고 바로 장사한다
+    // teardown §3: 1막 5단계로 줄인 튜토리얼을 다시 켠다. 대사를 안 띄우면 dialogueSeen이 영영 안 차서
+    // 단계가 하나도 안 넘어가고, 안내 줄이 첫 줄에서 얼어붙는다 (직접 해 보다 밟았다).
+    if (checkTutorial(s)) setMode({ kind: 'idle' }); // 대사가 뜨면 배치 바를 접는다 — 하단 바를 덮어 「아래 짓기를 눌러」를 못 따라간다
   });
   const openCard = (t: CardTarget | null) => {
     setCardTarget(t);
@@ -1136,35 +1138,8 @@ function Game({ onExit }: { onExit: () => void }) {
           }} />
       )}
       {!win && !rushOn && <DaySummaryCard bottom={BOTTOM_BAR_H + 26 + VOICE_FEED_MAX * (VOICE_ROW_H + 2) + 4} />}{/* 손님 목소리 피드 위 */}
-      {/* chapter: 「이번 막」 한 줄 — 이 판에 무엇을 하려는지가 늘 화면에 있어야 한다.
-          문 열 준비(openBlocker)가 먼저고, 그게 끝나면 이 줄이 그 자리를 이어받는다. */}
-      {!win && !place && !rushOn && !openBlocker(s) && chapterLine(s) && (
-        <div data-testid="chapter-line" style={{
-          position: 'absolute', left: 8, right: 8, bottom: `calc(${BOTTOM_BAR_H + 26}px + env(safe-area-inset-bottom))`, zIndex: 12,
-          background: PALETTE.paper, border: `3px solid ${PALETTE.wood}`, borderRadius: 8, padding: '6px 10px',
-          fontSize: 13, fontWeight: 700, color: PALETTE.ink, lineHeight: 1.35, pointerEvents: 'none',
-          display: 'flex', alignItems: 'center', gap: 6,
-        }}>
-          <Icon name="flag" size={14} />
-          <span style={{ flex: 1, minWidth: 0 }}>
-            <span style={{ color: PALETTE.title }}>{chapterLine(s)!.name}</span>
-            <br />{chapterLine(s)!.todo}
-          </span>
-          <span style={{ flex: 'none', color: PALETTE.inkSoft, fontSize: 13 }}>
-            {chapterLine(s)!.need > 0 ? `${chapterLine(s)!.have}/${chapterLine(s)!.need}` : chapterLine(s)!.grade}
-          </span>
-        </div>
-      )}
-      {/* 빈 마당에서 시작하니 「무엇부터」가 화면에 있어야 한다. 손님이 올 수 있게 되면 저절로 사라진다. */}
-      {!win && !place && !rushOn && openBlocker(s) && (
-        <div data-testid="open-blocker" style={{
-          position: 'absolute', left: 8, right: 8, bottom: `calc(${BOTTOM_BAR_H + 26}px + env(safe-area-inset-bottom))`, zIndex: 12,
-          background: PALETTE.paper, border: `3px solid ${PALETTE.btnOn}`, borderRadius: 8, padding: '7px 10px',
-          fontSize: 14, fontWeight: 700, color: PALETTE.ink, lineHeight: 1.4, pointerEvents: 'none',
-        }}>
-          <Icon name="bulb" size={14} /> {openBlocker(s)}
-        </div>
-      )}
+      {/* teardown §3: 안내는 **한 줄**로 합쳤다 — 튜토리얼 > 문 열기 막힘 > 이번 막 (GuideLine.tsx) */}
+      {!win && !place && !rushOn && <GuideLine s={s} bottom={BOTTOM_BAR_H + 26} />}
       <MessageLine bottom={BOTTOM_BAR_H} />
       {quickBar && !place && <QuickBar onPick={(t) => { setQuickBar(false); pickBuild(t); }} onMore={() => { setQuickBar(false); setWin({ kind: 'build' }); }} onClose={() => setQuickBar(false)} />}
       {place ? <PlaceBar {...place} /> : <BottomBar onOpen={openWindow} onLongOpen={onBarLongPress} />}
