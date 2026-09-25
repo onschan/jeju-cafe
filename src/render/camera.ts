@@ -22,6 +22,10 @@ export interface CameraOptions {
   onDragEnd?: () => void;
   /** 손가락을 움직이지 않고 400ms 누르고 있으면 (보기 모드에서 오브젝트 들어 올리기). true를 돌려주면 그 뒤 드래그를 가져간다. */
   onLongPress?: (cellX: number, cellY: number) => boolean;
+  /** 러시처럼 **빠르게 연타하는 구간**인가. true면 누르는 즉시 onTap을 치고 길게 누르기·더블탭을 끈다.
+   *  (러시에서 같은 자리를 연달아 누르면 더블탭으로 먹히고, 조금만 오래 누르면 「들어 올리기」가 돼
+   *   탭이 씹혔다 — 45초짜리 미니게임에서 손가락이 안 먹는 느낌의 정체다.) */
+  fastTap?: () => boolean;
   /** ui3 숏컷: 같은 칸을 DOUBLE_TAP_MS 안에 두 번 탭. true를 돌려주면 그 탭은 onTap으로 안 간다. */
   onDoubleTap?: (cellX: number, cellY: number) => boolean;
   minScale?: number;
@@ -46,7 +50,7 @@ const VELOCITY_WINDOW_MS = 100;
 /** 드래그 이동(관성)·핀치 줌·탭(셀 좌표)·경계 고무줄. 이동 거리가 짧으면 탭으로 본다. */
 export function attachCamera(stage: Container, opts: CameraOptions): () => void {
   // 30×24 맵 전체(1,728px)를 폰에서 한눈에 보려면 ×0.4까지 줄일 수 있어야 한다
-  const { world, canvas, ticker, viewport, bounds, onTap, dragCapture, onDragCell, onDragEnd, onLongPress, onDoubleTap, minScale = 0.4, maxScale = 3 } = opts;
+  const { world, canvas, ticker, viewport, bounds, onTap, fastTap, dragCapture, onDragCell, onDragEnd, onLongPress, onDoubleTap, minScale = 0.4, maxScale = 3 } = opts;
   /** ui3 더블 탭: 마지막 탭의 칸·시각 */
   let lastTap: { x: number; y: number; t: number } | null = null;
   let pressTimer = 0;
@@ -54,6 +58,7 @@ export function attachCamera(stage: Container, opts: CameraOptions): () => void 
   const pointers = new Map<number, { x: number; y: number }>();
   let dragStart: { x: number; y: number; wx: number; wy: number } | null = null;
   let moved = false;
+  let firedFast = false; // 러시 연타: 누를 때 이미 onTap을 쳤나
   /** 카메라 대신 앱이 가져간 드래그: 마지막으로 알린 칸 */
   let captured: { x: number; y: number } | null = null;
   const cellOf = (gx: number, gy: number) => screenToCell((gx - world.x) / world.scale.x, (gy - world.y) / world.scale.y);
@@ -103,6 +108,7 @@ export function attachCamera(stage: Container, opts: CameraOptions): () => void 
       samples = [];
       pushSample(e.globalX, e.globalY);
       const c = cellOf(e.globalX, e.globalY);
+      if (fastTap?.()) { firedFast = true; onTap(c.x, c.y); return; } // 누르는 즉시 — 떼기를 기다리지 않는다
       if (dragCapture?.(c.x, c.y)) {
         captured = c;
         onDragCell?.(c.x, c.y);
@@ -162,6 +168,8 @@ export function attachCamera(stage: Container, opts: CameraOptions): () => void 
       if (captured) {
         captured = null;
         onDragEnd?.();
+      } else if (firedFast) {
+        firedFast = false; // 이미 누를 때 쳤다
       } else if (!moved && dragStart) {
         const lx = (e.globalX - world.x) / world.scale.x;
         const ly = (e.globalY - world.y) / world.scale.y;

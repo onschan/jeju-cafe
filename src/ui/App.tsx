@@ -663,6 +663,8 @@ function Game({ onExit }: { onExit: () => void }) {
     (async () => {
       await v.init(host, {
         guestSay,
+        // 러시 중엔 누르는 즉시 반응한다 — 떼기를 기다리지도, 더블탭·길게 누르기를 재지도 않는다
+        fastTap: () => rushRunning(getState()),
         onTap: (x, y) => {
           const m = modeRef.current;
           const st = getState();
@@ -1124,7 +1126,7 @@ function Game({ onExit }: { onExit: () => void }) {
       {!rushOn && !rushResultOpen(s) && <RewardPopup />}{/* rush: 보상 상자도 러시가 끝난 뒤에 */}
       <OutcomePopup />
       <EndingScreen onExit={onExit} />
-      {!rushResultOpen(s) && <DialogueHost />}
+      {!rushOn && !rushResultOpen(s) && <DialogueHost />}{/* 러시 중엔 대화·알림 창을 띄우지 않는다 — 45초를 덮어 조작을 먹는다 */}
     </div>
   );
 }

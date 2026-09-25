@@ -30,7 +30,7 @@ const MENU_BUBBLE_ICON: Record<string, string> = { drink: 'coffee', dessert: 'ca
 /** 전용 스프라이트가 있는 손님 타입 (guest_local·guest_tourist 시트) */
 const GUEST_SPRITE_KEY: Record<string, string> = { local_auntie: 'local', student: 'tourist' };
 
-export interface GameViewOptions extends Pick<CameraOptions, 'onTap' | 'dragCapture' | 'onDragCell' | 'onDragEnd' | 'onLongPress' | 'onDoubleTap'> {
+export interface GameViewOptions extends Pick<CameraOptions, 'onTap' | 'fastTap' | 'dragCapture' | 'onDragCell' | 'onDragEnd' | 'onLongPress' | 'onDoubleTap'> {
   /** 손님이 나갈 때 20%로 띄우는 대사 (없으면 기분 아이콘만) */
   guestSay?: (state: GameState, g: Guest) => string | null;
 }

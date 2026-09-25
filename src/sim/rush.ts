@@ -267,8 +267,9 @@ export function rushNotice(state: GameState): void {
   const week = weekIndexOf(state);
   if (weekdayOf(state.clock.day) !== RUSH_NOTICE_WEEKDAY || r.notified === week) return;
   r.notified = week;
-  pushNotice(state, '내일 점심엔 손님이 몰려요');
-  pushFx(state, { kind: 'scene', title: '러시 예고', text: '내일 낮 열두 시, 문 앞에 줄이 서요', tick: state.tick });
+  // 알림 줄 한 줄이면 된다. 전면 창을 띄우면 대기열에 밀렸다가 **다음 날 러시가 도는 중에** 떠서
+  // 화면을 덮고 조작을 먹는다 (실측: 39초 남은 러시 위에 「내일 낮 열두 시」가 떴다).
+  pushNotice(state, '내일 점심엔 손님이 몰려요 — 자리를 늘려 두세요');
 }
 
 // ---------- 줄 세우기 ----------
