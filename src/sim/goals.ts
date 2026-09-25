@@ -113,6 +113,19 @@ export function canOpen(state: GameState): boolean {
   return seats.some((s) => walkableNeighborsOf(state, s.x, s.y).some((nb) => reach.dist.has(cellKey(state, nb))));
 }
 
+/** 손님이 왜 안 오나 — 한 줄로. 빈 마당에서 시작하므로 「무엇부터 해야 하나」의 답이 화면에 있어야 한다.
+ *  손님이 올 수 있으면 null. */
+export function openBlocker(state: GameState): string | null {
+  if (!mainBuilding(state)) return '본관이 없어요 — 짓기에서 카페 본관부터';
+  const seats = seatObjectsOf(state);
+  if (seats.length === 0) return '앉을 자리가 없어요 — 짓기 ▸ 자리에서 테이블을 놓아 보세요';
+  if (!state.menuSlots.some((m) => m !== null)) return '메뉴판이 비었어요 — 카페 ▸ 메뉴에서 올려 보세요';
+  const reach = reachMap(state, busStopPos(state));
+  const ok = seats.some((s) => walkableNeighborsOf(state, s.x, s.y).some((nb) => reach.dist.has(cellKey(state, nb))));
+  if (!ok) return '정류장에서 자리까지 길이 안 이어졌어요 — 올렛길을 끌어서 깔아 보세요';
+  return null;
+}
+
 // ---------- 조건 판정 레지스트리 ----------
 
 export interface Progress { cur: number; max: number }

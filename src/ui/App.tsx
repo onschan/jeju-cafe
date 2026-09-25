@@ -69,7 +69,7 @@ import { noteRushSeat, rushMarks, rushRunning, rushResultOpen, seatFront, setRus
 import { StrategyCard } from './StrategyCard';
 import { RadialMenu, type RadialItem } from './RadialMenu';
 import { useShortcutsPref, setShortcutsOn, shortcutsOn, useMapMinimalPref, setMapMinimalOn } from './shortcuts';
-import { checkupKey, canStartBuild, isUpgradable, canUpgrade, upgradeCost, objectStats, treeOf, canTreeUpgrade, treeUpgradeCost, MAX_OBJECT_LEVEL, LIGHT_RADIUS, spotReachable, UNREACHABLE_GHOST_TEXT } from '../sim/index.ts';
+import { openBlocker, checkupKey, canStartBuild, isUpgradable, canUpgrade, upgradeCost, objectStats, treeOf, canTreeUpgrade, treeUpgradeCost, MAX_OBJECT_LEVEL, LIGHT_RADIUS, spotReachable, UNREACHABLE_GHOST_TEXT } from '../sim/index.ts';
 import { recentBuildTypes } from './windows/BuildWindow.tsx';
 import { josa } from '../sim/josa.ts';
 
@@ -1101,6 +1101,16 @@ function Game({ onExit }: { onExit: () => void }) {
           }} />
       )}
       {!win && !rushOn && <DaySummaryCard bottom={BOTTOM_BAR_H + 26 + VOICE_FEED_MAX * (VOICE_ROW_H + 2) + 4} />}{/* 손님 목소리 피드 위 */}
+      {/* 빈 마당에서 시작하니 「무엇부터」가 화면에 있어야 한다. 손님이 올 수 있게 되면 저절로 사라진다. */}
+      {!win && !place && !rushOn && openBlocker(s) && (
+        <div data-testid="open-blocker" style={{
+          position: 'absolute', left: 8, right: 8, bottom: `calc(${BOTTOM_BAR_H + 26}px + env(safe-area-inset-bottom))`, zIndex: 12,
+          background: PALETTE.paper, border: `3px solid ${PALETTE.btnOn}`, borderRadius: 8, padding: '7px 10px',
+          fontSize: 14, fontWeight: 700, color: PALETTE.ink, lineHeight: 1.4, pointerEvents: 'none',
+        }}>
+          <Icon name="bulb" size={14} /> {openBlocker(s)}
+        </div>
+      )}
       <MessageLine bottom={BOTTOM_BAR_H} />
       {quickBar && !place && <QuickBar onPick={(t) => { setQuickBar(false); pickBuild(t); }} onMore={() => { setQuickBar(false); setWin({ kind: 'build' }); }} onClose={() => setQuickBar(false)} />}
       {place ? <PlaceBar {...place} /> : <BottomBar onOpen={openWindow} onLongOpen={onBarLongPress} />}

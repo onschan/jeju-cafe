@@ -247,8 +247,8 @@ describe('점수·등급 (§2)', () => {
     expect(rushGradeOf(small, score, arrived)).not.toBe(rushGradeOf(big, score, arrived));
     // 문턱 자체
     const exp = rushExpectedScore(small, arrived);
-    expect(rushGradeOf(small, Math.round(exp * RUSH_GRADE_A), arrived)).toBe('A');
-    expect(rushGradeOf(small, Math.round(exp * RUSH_GRADE_B), arrived)).toBe('B');
+    expect(rushGradeOf(small, Math.ceil(exp * RUSH_GRADE_A), arrived)).toBe('A');
+    expect(rushGradeOf(small, Math.ceil(exp * RUSH_GRADE_B), arrived)).toBe('B'); // 반올림이 문턱 아래로 떨어지지 않게
     expect(rushGradeOf(small, 0, arrived)).toBe('C');
     expect(rushGradeOf(small, exp * 2, arrived)).toBe('S');
   });

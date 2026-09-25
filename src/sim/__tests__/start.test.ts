@@ -16,8 +16,7 @@ describe('v3 시작 상태 (§5)', () => {
     expect(s.money).toBe(START_MONEY); // stakes: 시작 자금 350만
     expect(hasReachableSeat(s)).toBe(true);
     const seats = Object.values(s.objects).filter((o) => objectDef(o.type).kind === 'seat');
-    // [코어만] 시작 마당에 소품과 네 번째 자리를 깔았다 (주차장처럼 보이던 것) — 좌석은 START_SEATS + START_DECOR 중 좌석
-    const wantSeats = [...START_SEATS, ...START_DECOR.filter((d) => objectDef(d.type).kind === 'seat')].map((x) => x.type).sort();
+    const wantSeats = START_SEATS.map((x) => x.type).sort();
     expect(seats.map((o) => o.type).sort()).toEqual(wantSeats);
     expect(totalSeats(s)).toBe(wantSeats.length * 2); // 자리마다 2석
     expect(s.menuSlots).toEqual([...START_MENUS]); // stakes: 메뉴판 3칸에서 시작 — 시작 메뉴 3종으로 꽉 찬다

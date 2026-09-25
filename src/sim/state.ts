@@ -125,7 +125,10 @@ function stampParcelObjects(state: GameState, p: Parcel): void {
  *  - 'tutorial' = fun-start 새 게임: 할망이 준 폐창고(본관)가 이미 서 있고 마을 길에서 문 앞까지 올렛길이 이어져 있다. 정낭·좌석·메뉴 없음, 자금 500만, 후보 2.
  *                 7단계 튜토리얼이 테이블 1개부터 시작한다 (첫 손님이 3분 안에 온다).
  *  - 'bare'     = 옛 w-start 맨땅(본관도 없다 — 정낭·정류장·지형만). placeMain·본관 추천 자리 테스트용. */
-export type StartLayout = 'starter' | 'tutorial' | 'bare';
+export type StartLayout = 'starter' | 'tutorial' | 'bare' | 'open';
+/** 'open' — **직접 깔고 시작한다.** 본관과 마을 길까지의 올렛길, 메뉴판만 채워 두고 마당은 비운다.
+ *  손님이 앉을 자리를 처음부터 내가 놓는 게 이 게임의 첫 재미다 (다 깔아 두면 그 재미가 통째로 없어진다).
+ *  튜토리얼 대사는 안 뜨지만 「끝난 것」으로 표시해 둔다 — 연속 배치 같은 기능이 튜토리얼 중엔 막혀 있다. */
 
 /** 완성 시작 상태의 본관을 새긴다 (w-start: 맨땅 튜토리얼은 플레이어가 placeMain으로 직접 짓는다). 이미 본관이 있으면 그대로.
  *  기본 자리(3,1)가 막혀 있으면(둘러보기 중에 뭔가 놓았을 때) 시작 필지 안에서 놓을 수 있는 첫 자리를 찾는다. */
@@ -151,7 +154,6 @@ export function fillStarterLayout(state: GameState): void {
   const { x: ox, y: oy } = START_ORIGIN;
   stampMainAndPath(state);
   for (const st of START_SEATS) stamp(state, st.type, ox + st.lx, oy + st.ly);
-  for (const d of START_DECOR) stamp(state, d.type, ox + d.lx, oy + d.ly);
   for (const m of START_MENUS) {
     if (state.menuSlots.includes(m)) continue;
     const slot = state.menuSlots.indexOf(null);
@@ -310,6 +312,12 @@ export function createInitialState(seed: number, playerId = 'local', createdAt =
   // §5 완성 시작 상태(본관 + 올렛길 + 테이블 2 + 파라솔 1 + 메뉴 3종)는 'starter'일 때만.
   // 'tutorial'은 본관 + 올렛길만 — 손님은 테이블·메뉴가 생기면 바로 온다(canOpen). 'bare'는 맨땅 — 본관은 placeMain으로 직접 짓는다.
   if (layout === 'starter') { fillStarterLayout(state); unlockTutorialFeatures(state); }
+  else if (layout === 'open') {
+    stampMainAndPath(state);
+    for (const m of START_MENUS) { const i = state.menuSlots.indexOf(null); if (i >= 0) state.menuSlots[i] = m; }
+    state.tutorial = initTutorial(true); // 대사는 안 띄우되 「끝난 것」으로 — 배치 기능이 안 막히게
+    unlockTutorialFeatures(state);
+  }
   else if (layout === 'tutorial') stampMainAndPath(state);
   for (const p of parcels) stampParcelObjects(state, p);
   // §5 직원 후보 2명 대기 (전단 등급)

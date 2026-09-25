@@ -235,9 +235,9 @@ export function PlaceBar({ text, tradeoff, ok, canRotate, rotateLabel = '회전'
       <div data-testid="place-text" style={{ position: 'absolute', left: 8, right: 8, bottom: `calc(100% + ${MESSAGE_LINE_H + 4}px)`, background: PALETTE.paper, color: ok ? PALETTE.ok : PALETTE.bad, border: `2px solid ${PALETTE.wood}`, borderRadius: 6, padding: '4px 8px', fontSize: 13, fontWeight: 700, pointerEvents: 'none' }}>
         <div style={{ overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', lineHeight: 1.35 }}>{text}</div>{/* [코어만] 폰에서 한 줄로 자르면 「여기에 지을 …」처럼 끝이 날아간다 — 두 줄까지 접는다 */}
         {hasTrade && (
-          <div data-testid="place-tradeoff" style={{ display: 'flex', gap: 8, fontSize: 12, fontWeight: 700, marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden' }}>
-            {tradeoff!.gain && <span style={{ color: PALETTE.ok, overflow: 'hidden', textOverflow: 'ellipsis' }}>{tradeoff!.gain}</span>}
-            {tradeoff!.loss && <span style={{ color: PALETTE.bad, overflow: 'hidden', textOverflow: 'ellipsis' }}>{tradeoff!.loss}</span>}
+          <div data-testid="place-tradeoff" style={{ display: 'flex', flexWrap: 'wrap', gap: '0 8px', fontSize: 12, fontWeight: 700, marginTop: 2, lineHeight: 1.35 }}>
+            {tradeoff!.gain && <span style={{ color: PALETTE.ok }}>{tradeoff!.gain}</span>}
+            {tradeoff!.loss && <span style={{ color: PALETTE.bad }}>{tradeoff!.loss}</span>}
           </div>
         )}
         {tradeoff?.cost && (

@@ -566,12 +566,8 @@ export class GameView {
     sp.tint = !g.ok ? GHOST_BAD : g.warn ? GHOST_WARN : GHOST_OK;
     sp.label = 'ghostSprite';
     c.addChild(sp);
-    const l = label(g.text, 10);
-    l.label = 'ghostCost';
-    l.anchor.set(0.5, 1);
-    l.position.set(0, -sp.height - 4);
-    const bg = new Graphics().roundRect(l.x - l.width / 2 - 3, l.y - l.height - 1, l.width + 6, l.height + 2, 3).fill({ color: 0x000000, alpha: 0.6 });
-    c.addChild(bg, l);
+    // 고스트 위 이름·값 팻말은 안 띄운다 — 같은 내용이 하단 배치 줄에 있고, 맵에서는 입지 점수·추천 칸
+    // 팻말과 겹쳐 네 겹으로 쌓여 아무것도 안 읽혔다. (g.text는 하단 줄이 쓴다)
     c.zIndex = 1e6;
     this.overlay.addChild(c);
     this.ghost = c;
