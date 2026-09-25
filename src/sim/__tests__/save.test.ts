@@ -117,7 +117,7 @@ test('v21 세이브: 5트랙이 붙인 필드가 전부 기본값으로 채워�
 
   const back = deserialize(JSON.stringify(obj));
   expect(back.version).toBe(SAVE_VERSION);
-  expect(SAVE_VERSION).toBe(28);
+  expect(SAVE_VERSION).toBe(29);
   // stakes
   expect(back.monthCosts.rent).toBe(0);
   expect(back.trend).toBeTruthy();

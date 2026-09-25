@@ -159,6 +159,13 @@ function shadeOf(state: GameState, x: number, y: number, selfId: string | undefi
   return clamp(n, 0, SITE_MAX.shade);
 }
 
+/** 이 좌석이 실제로 받는 그늘. siteOf는 그 칸의 오브젝트 **자신**을 빼고 재므로 파라솔 테이블의
+ *  그늘이 자기 자리에는 안 잡힌다 — 만족 계산은 그래서 +1을 따로 얹는다. 러시의 「그늘 자리인가」
+ *  판정도 같은 값을 봐야 한다. 안 그러면 파라솔을 깔아 놓고도 「조용한 자리가 없다」가 된다. */
+export function seatShade(state: GameState, seat: PlacedObject): number {
+  return Math.min(SITE_MAX.shade, siteOf(state, seat.x, seat.y).shade + (seat.type === PARASOL_TYPE ? 1 : 0));
+}
+
 /** 칸의 자리 값. 그 칸에 있는 오브젝트 자신은 빼고 본다(고스트·미니 카드가 같은 값을 본다). 방 안 칸은 그늘 2. */
 export function siteOf(state: GameState, x: number, y: number): Site {
   if (!inBounds(state, x, y)) return { view: 0, shade: 0 };
@@ -243,8 +250,7 @@ export function siteBonus(state: GameState, seat: PlacedObject): SiteBonus {
     return { feeMult: d.fee !== undefined ? siteFeeMult(score) : 1, satisfaction: 0, score, site };
   }
   const season = seasonOf(state.clock.month);
-  // 파라솔 자리: 자기 파라솔 그늘 +1
-  const shade = Math.min(SITE_MAX.shade, site.shade + (seat.type === PARASOL_TYPE ? 1 : 0));
+  const shade = seatShade(state, seat);
   let pts = SAT_PER_VIEW * site.view;
   let shelterSat = 0;
   if (coldDay(state)) {

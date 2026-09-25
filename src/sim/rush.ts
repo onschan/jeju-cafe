@@ -21,7 +21,7 @@
  *
  * 결정적: state.rng만 쓴다 (Math.random·Date 없음). 상태는 전부 optional 필드라 옛 저장은 backfill로 채운다.
  */
-import type { GameState, PlacedObject, RoleId, RouteId, RushState, RushGuest, RushGrade, RushPhase, ApplyResult } from './types.ts';
+import type { GameState, PlacedObject, RoleId, RouteId, RushState, RushGuest, RushGrade, RushPhase, ApplyResult, FacilityCategory } from './types.ts';
 import { DAY_MS, HOUR_MS, END_HOUR } from './clock.ts';
 import { dayIndex } from './effects.ts';
 import { pickWeighted, randInt } from './rng.ts';
@@ -31,14 +31,15 @@ import { addReputation, addComplaint, REPUTATION_START } from './reputation.ts';
 import { addTickets } from './mileage.ts';
 import { addEffect } from './effects.ts';
 import { unlockedTypeIds, walletOf } from './segments.ts';
-import { guestTypeDef } from '../data/index.ts';
+import { guestTypeDef, objectDef } from '../data/index.ts';
 import { addRegularGauge } from './interact.ts';
-import { siteOf } from './site.ts';
+import { siteOf, seatShade } from './site.ts';
 import { cornerOfPiece } from './corners.ts';
 import { isCared } from './staffPost.ts'; // staffpost: 직원이 돌보는 자리
 import { popularityFor, BASE_POPULARITY } from './compat.ts';
 import { CLEAN_MAX } from './cleanliness.ts';
 import { dailyGuestCount, hourShare, freeSeats, totalSeats, seatGuestFromQueue, typeWeight, updateGuests } from './guests.ts';
+import { checkChapter, countsForChapter } from './chapter.ts'; // chapter: 막 진행
 import { spawnRouteWeights, routeTagMult } from './entry.ts'; // 러시 줄도 경로 비중(정류장·주차장·올레)을 그대로 따른다
 
 // ---------- 주·요일 ----------
@@ -145,7 +146,7 @@ export const RUSH_GRADE_S = 1.3;
 export const RUSH_GRADE_A = 1.0;
 export const RUSH_GRADE_B = 0.7;
 export const RUSH_GRADES: RushGrade[] = ['S', 'A', 'B', 'C'];
-const GRADE_RANK: Record<RushGrade, number> = { S: 4, A: 3, B: 2, C: 1 };
+export const GRADE_RANK: Record<RushGrade, number> = { S: 4, A: 3, B: 2, C: 1 };
 
 /** 한 판에 **실제로 받아 낼 수 있는** 손님 수 — 등급의 분모.
  *  줄 길이(rushCapacity)와 갈라 둔다: 줄은 길어야 긴장이 생기고, 등급은 손이 닿는 만큼으로 재야 공정하다.
@@ -429,10 +430,24 @@ export function rushSeatFits(state: GameState, seat: PlacedObject | null, typeId
   const site = siteOf(state, seat.x, seat.y);
   switch (wantOf(typeId)) {
     case 'scenery': return site.view >= RUSH_FIT_VIEW;                 // 바다·오름이 보이는 자리
-    case 'rest': return site.shade >= 1 && site.view < RUSH_FIT_VIEW;  // 그늘지고 조용한 구석
+    case 'rest': return seatShade(state, seat) >= 1 && site.view < RUSH_FIT_VIEW;  // 그늘지고 조용한 구석 (파라솔은 제 그늘을 친다)
     case 'convenience': return nearDoor(state, seat);                  // 문에서 가까운 자리
-    default: return popularityFor(state, seat.id, typeId) > BASE_POPULARITY; // 즐길거리·먹거리·귤밭은 주변 시설이 정한다
+    // chapter: 귤밭·먹거리·즐길거리는 「주변 인기」 같은 뭉뚱그린 값이 아니라 **그 분류 시설이 곁에 있나**로 가른다.
+    // 셋이 같은 판정이면 막이 서로 다른 배치 과제가 되지 못한다 (감귤나무 곁 ≠ 브런치 식당 곁).
+    case 'farm': return nearCategory(state, seat, 'farm');
+    case 'food': return nearCategory(state, seat, 'food');
+    case 'fun': return nearCategory(state, seat, 'fun');
+    default: return popularityFor(state, seat.id, typeId) > BASE_POPULARITY;
   }
+}
+/** 이 분류 시설이 자리에서 RUSH_FIT_RADIUS 칸 안에 완공돼 있나 (감귤나무 곁 「귤밭 자리」) */
+export const RUSH_FIT_RADIUS = 3;
+function nearCategory(state: GameState, seat: PlacedObject, category: FacilityCategory): boolean {
+  for (const o of Object.values(state.objects)) {
+    if (o.build || o.id === seat.id || objectDef(o.type).category !== category) continue;
+    if (Math.max(Math.abs(o.x - seat.x), Math.abs(o.y - seat.y)) <= RUSH_FIT_RADIUS) return true;
+  }
+  return false;
 }
 /** 문 앞에서 두 칸 안 */
 const NEAR_DOOR = 2;
@@ -453,6 +468,7 @@ function scoreServe(state: GameState, r: RushState, typeId: string, seat: Placed
     if (r.streak % RUSH_COMBO_N === 0) r.combo++;
   }
   if (!manual) gain *= RUSH_AUTO_COEF; else r.manual++;
+  if (countsForChapter(state, wantOf(typeId), manual, fit)) r.chapterHits = (r.chapterHits ?? 0) + 1; // chapter: 이번 막의 손님을 직접·제자리에
   r.tips += tip;
   if (fit) r.bonus += RUSH_FIT_BONUS;
   if (cared) r.bonus += RUSH_CARE_BONUS;
@@ -500,6 +516,7 @@ function finishRush(state: GameState, r: RushState): void {
   const top = topServedType(r);
   if (gauge > 0 && top) addRegularGauge(state, top, gauge);
   pushNotice(state, `러시 ${grade}등급 — 받은 손님 ${r.served}명 · 놓친 손님 ${r.left}명`);
+  r.chapterCleared = checkChapter(state, r, grade); // chapter: 이번 판으로 막을 넘었나 (결과 카드가 읽는다)
   // 결과는 RushShow의 결과 카드가 보여 준다 — 장면 창까지 띄우면 카드 위에 겹쳐 두 겹이 된다
 }
 

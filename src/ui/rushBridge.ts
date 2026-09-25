@@ -18,6 +18,7 @@ import {
   RUSH_SCORE_PER_GUEST, RUSH_LEFT_PENALTY, RUSH_PRIORITY_SCORE, RUSH_COMBO_N, RUSH_COMBO_MULT,
   RUSH_REWARDS, rushMsOfSeconds, wantOf, wantShortfallLine, WANT_LABEL, WANT_ICON,
 } from '../sim/index.ts';
+import { chapterResultLine } from '../sim/chapter.ts'; // chapter: 결과 카드의 막 한 줄
 import { dispatch, getState, subscribe, isPausedByUi } from './store';
 import { noteTutorial } from './tutorialDialogue';
 
@@ -135,6 +136,10 @@ export interface RushResult {
   missKey: 'queue' | 'slow' | 'none';
   /** 무엇이 모자랐나 — 놓친 손님들이 보던 것 중 제일 많았던 하나 */
   shortfall: string | null;
+  /** chapter: 이번 판으로 막을 넘었나 */
+  chapterCleared: boolean;
+  /** chapter: 「2막 — 귤밭을 보는 손님을 제자리에 1/3명」 */
+  chapterLine: string | null;
   auto: boolean;
 }
 /** 마지막 러시 성적 — sim의 state.rush가 곧 성적표다 (저장·불러오기가 그대로 따라온다) */
@@ -152,6 +157,8 @@ export function lastRushResult(s: GameState = getState()): RushResult | null {
     bestCombo: r.combo,
     missKey: r.left === 0 ? 'none' : freeSeatIds(s).length === 0 ? 'queue' : 'slow',
     shortfall: wantShortfallLine(r), // 「경치 자리가 모자라 6명을 놓쳤어요」 — 다음 주 과제
+    chapterCleared: r.chapterCleared === true,
+    chapterLine: chapterResultLine(s, r, r.grade, r.chapterCleared === true),
     auto: r.manual === 0,
   };
 }

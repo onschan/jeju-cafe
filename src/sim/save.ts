@@ -139,6 +139,8 @@ function backfill(state: GameState): void {
   state.lastMonthIncome ??= state.lastMonthCard?.income ?? 0;
   state.researchAcc ??= 0;
   state.dayOrders ??= { drink: 0, dessert: 0, meal: 0, signature: 0 }; // staff2: 오늘 분류별 주문 수 (v23)
+  state.chapter ??= { idx: 0 }; // chapter(v29): 옛 세이브는 1막부터 — 이미 지나온 판이라도 막은 새로 센다
+  if (typeof state.chapter.idx !== 'number' || state.chapter.idx < 0) state.chapter = { idx: 0 };
   // staffpost(v28): 창 안의 「담당 구역」 드롭다운을 걷어내고 마당의 근무 자리로 바꿨다 — 옛 zone 값은 지운다(근무 자리는 자동부터).
   for (const st of state.staff) {
     delete (st as { zone?: unknown }).zone;

@@ -185,6 +185,13 @@ export function RushShow() {
           <Icon name="bulb" size={15} /> {missLine(r)}
           {r.shortfall && <div style={{ fontSize: 13, color: PALETTE.inkSoft, marginTop: 3 }}>다음 주엔 그 자리를 늘려 보세요</div>}
         </div>
+        {/* chapter: 이번 판이 「이번 막」에 무엇을 했나 — 놓친 까닭 바로 밑이 이 판의 뜻이다 */}
+        {r.chapterLine && (
+          <div data-testid="rush-chapter" style={{ marginTop: 6, padding: '6px 8px', borderRadius: 6, fontSize: 14, fontWeight: 700, textAlign: 'left', lineHeight: 1.4,
+            background: r.chapterCleared ? PALETTE.ok : PALETTE.paperDark, color: r.chapterCleared ? PALETTE.btnText : PALETTE.ink, border: `2px solid ${PALETTE.wood}` }}>
+            <Icon name={r.chapterCleared ? 'flag' : 'target'} size={14} /> {r.chapterLine}
+          </div>
+        )}
         {r.auto && <div style={{ fontSize: 13, color: PALETTE.inkSoft, marginTop: 4 }}>자동 진행이라 점수가 절반이에요</div>}
         <div style={{ fontSize: 14, marginTop: 6, color: PALETTE.title, fontWeight: 700 }}>{GRADE_REWARD_TEXT[r.grade]}</div>
         <button data-testid="rush-result-ok" style={{ ...brownBtnOn, width: '100%', marginTop: 10, marginRight: 0 }} onClick={() => { setPhase('reward'); sfx('unlock'); }}>보상 열기</button>

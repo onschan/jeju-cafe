@@ -70,7 +70,7 @@ import { noteRushSeat, rushMarks, rushRunning, rushResultOpen, seatFront, setRus
 import { StrategyCard } from './StrategyCard';
 import { RadialMenu, type RadialItem } from './RadialMenu';
 import { useShortcutsPref, setShortcutsOn, shortcutsOn, useMapMinimalPref, setMapMinimalOn } from './shortcuts';
-import { openBlocker, checkupKey, canStartBuild, isUpgradable, canUpgrade, upgradeCost, objectStats, treeOf, canTreeUpgrade, treeUpgradeCost, MAX_OBJECT_LEVEL, LIGHT_RADIUS, spotReachable, UNREACHABLE_GHOST_TEXT } from '../sim/index.ts';
+import { chapterLine, openBlocker, checkupKey, canStartBuild, isUpgradable, canUpgrade, upgradeCost, objectStats, treeOf, canTreeUpgrade, treeUpgradeCost, MAX_OBJECT_LEVEL, LIGHT_RADIUS, spotReachable, UNREACHABLE_GHOST_TEXT } from '../sim/index.ts';
 import { recentBuildTypes } from './windows/BuildWindow.tsx';
 import { josa } from '../sim/josa.ts';
 
@@ -1136,6 +1136,25 @@ function Game({ onExit }: { onExit: () => void }) {
           }} />
       )}
       {!win && !rushOn && <DaySummaryCard bottom={BOTTOM_BAR_H + 26 + VOICE_FEED_MAX * (VOICE_ROW_H + 2) + 4} />}{/* 손님 목소리 피드 위 */}
+      {/* chapter: 「이번 막」 한 줄 — 이 판에 무엇을 하려는지가 늘 화면에 있어야 한다.
+          문 열 준비(openBlocker)가 먼저고, 그게 끝나면 이 줄이 그 자리를 이어받는다. */}
+      {!win && !place && !rushOn && !openBlocker(s) && chapterLine(s) && (
+        <div data-testid="chapter-line" style={{
+          position: 'absolute', left: 8, right: 8, bottom: `calc(${BOTTOM_BAR_H + 26}px + env(safe-area-inset-bottom))`, zIndex: 12,
+          background: PALETTE.paper, border: `3px solid ${PALETTE.wood}`, borderRadius: 8, padding: '6px 10px',
+          fontSize: 13, fontWeight: 700, color: PALETTE.ink, lineHeight: 1.35, pointerEvents: 'none',
+          display: 'flex', alignItems: 'center', gap: 6,
+        }}>
+          <Icon name="flag" size={14} />
+          <span style={{ flex: 1, minWidth: 0 }}>
+            <span style={{ color: PALETTE.title }}>{chapterLine(s)!.name}</span>
+            <br />{chapterLine(s)!.todo}
+          </span>
+          <span style={{ flex: 'none', color: PALETTE.inkSoft, fontSize: 13 }}>
+            {chapterLine(s)!.need > 0 ? `${chapterLine(s)!.have}/${chapterLine(s)!.need}` : chapterLine(s)!.grade}
+          </span>
+        </div>
+      )}
       {/* 빈 마당에서 시작하니 「무엇부터」가 화면에 있어야 한다. 손님이 올 수 있게 되면 저절로 사라진다. */}
       {!win && !place && !rushOn && openBlocker(s) && (
         <div data-testid="open-blocker" style={{

@@ -934,6 +934,8 @@ export interface RushState {
   done: string[];     // 받은 손님의 손님층 (정산 때 단골 게이지)
   priority?: { objectId: string; staffId: string | null }; // 마지막 밀린 주문 우선 처리 (UI 연출)
   priorityDone?: string[]; // 이번 러시에 이미 우선 처리한 자리 (자리마다 한 번)
+  chapterHits?: number; // chapter: 이번 막의 손님을 직접·제자리에 앉힌 수 (막을 넘는 조건)
+  chapterCleared?: boolean; // chapter: 이번 판으로 막을 넘었다 (결과 카드)
 }
 
 /** 속도 4(빠른 모드)는 엔딩 뒤 「계속하기」로만 열린다 (ending.ts) */
@@ -1083,6 +1085,7 @@ export interface GameState {
   /** 러시 「자동 진행」 — 켜면 줄 전체를 자동으로 앉힌다 (점수 계수 0.6이 붙어 등급은 안 오른다). 기본 꺼짐 */
   rushAuto?: boolean;
   rushGrades?: Record<RushGrade, number>;     // 누적 등급 수 (§5 해금 조건 rushGrade)
+  chapter?: { idx: number };                  // chapter: 지금 몇 막인가 (0~5, 5 = 다 끝냄) — chapter.ts
   routes: Record<RouteId, RouteState>;        // 손님 유입 경로 3종 (트랙 H entry.ts)
   ending: EndingState;                        // 5년차 엔딩·빠른 모드 (ending.ts, z-ending · pace)
   carry: CarryOver | null;                    // 이월해서 시작한 게임이면 그 내용 (기록용)

@@ -10,7 +10,7 @@
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { GameState, Pt } from '../sim/index.ts';
-import { cachedMoves, solverKey, heuristicNextMove, REP_LOW, WARN_DEFICIT_MONTHS, LOAN_THRESHOLD, activeSteal, stealTitle, rivalsState, scoreboard, rankGap, RIVAL_COUNTER_COST, shrinkingWarning, mainBuilding, tutorialDone, actsDone, TUTORIAL_ACTS, todoRows } from '../sim/index.ts';
+import { cachedMoves, solverKey, heuristicNextMove, REP_LOW, WARN_DEFICIT_MONTHS, LOAN_THRESHOLD, activeSteal, stealTitle, rivalsState, scoreboard, rankGap, RIVAL_COUNTER_COST, shrinkingWarning, mainBuilding, tutorialDone, actsDone, TUTORIAL_ACTS, todoRows, chapterLine } from '../sim/index.ts';
 import { wonText } from '../data/labels.ts';
 import { useGame } from './store';
 import { currentGoal, urgentChallenge } from './simBridge';
@@ -27,7 +27,7 @@ export const TODO_MAX = 3;
 /** 📖 배지 너비 (아이콘만 — 375px에서 글자를 넣으면 할 일 문구가 잘린다) */
 export const TUT_BADGE_W = 30;
 
-export type TodoKind = 'warn' | 'move' | 'goal' | 'rival' | 'rush';
+export type TodoKind = 'warn' | 'move' | 'goal' | 'rival' | 'rush' | 'chapter';
 export interface TodoItem {
   key: string;
   kind: TodoKind;
@@ -102,6 +102,9 @@ export function todoItems(s: GameState): TodoItem[] {
     const h = heuristicNextMove(s);
     if (h) out.push({ key: 'move:h', kind: 'move', text: h.text, gain: '', targets: [], cells: h.cells });
   }
+  // chapter: 「이번 막」은 한 판 전체의 과제 — 지금 가장 이득인 수 바로 뒤, 낱개 목표보다 앞
+  const ch = chapterLine(s);
+  if (ch) out.push({ key: `chapter:${ch.name}`, kind: 'chapter', text: ch.todo, gain: ch.need > 0 ? `${ch.have}/${ch.need}` : ch.grade, targets: ['nav:build'], cells: [] });
   const goal = goalOf(s);
   if (goal) out.push(goal);
   const rival = rivalOf(s); // 경쟁은 목표 다음 — 답을 기다리는 뺏기 이벤트면 목표보다 급하다
@@ -110,7 +113,7 @@ export function todoItems(s: GameState): TodoItem[] {
   return out.slice(0, TODO_MAX);
 }
 
-const KIND_ICON: Record<TodoKind, string> = { warn: 'warn', move: 'bulb', goal: 'target', rival: 'rival', rush: 'clock' };
+const KIND_ICON: Record<TodoKind, string> = { warn: 'warn', move: 'bulb', goal: 'target', rival: 'rival', rush: 'clock', chapter: 'flag' };
 
 /** 📖 배지 (fun-start): 탭하면 튜토리얼 창(현재 단계 대사 다시 보기·5막 진행도·막 건너뛰기).
  *  튜토리얼이 끝나도 남는다 — 할망의 추천은 다 배운 뒤에도 쓰는 코치다.
