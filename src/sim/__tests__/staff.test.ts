@@ -5,7 +5,10 @@ import { apply } from '../actions.ts';
 import { placeObject } from '../grid.ts';
 import { salaryOf, salaryDue, roleEffect, ingredientDiscount, canHire, moveStaff, staffAnchor, drawCandidates, availablePool, addPoolCandidate, staffCapacity, capOf, expNeeded, levelUpCost, addRoleExp, dailyWorkExp, cleanPowerOf, gardenBonusOf, gardenDecayOf, promoBonusOf, promoEnergyFactorOf, checkRoleUnlocks, farmCount, skillTotal, TIERS } from '../staff.ts';
 import { trainingCost, canTrain, trainingMultOf, TRAINING_RANK } from '../training.ts';
-import { roleHeads, cleanPowerOf as _cp, zoneOf, isNightShift, nightlyRecovery, NIGHT_ENERGY_COST } from '../staff.ts'; // staff2
+import { roleHeads, cleanPowerOf as _cp, isNightShift, nightlyRecovery, NIGHT_ENERGY_COST } from '../staff.ts'; // staff2
+import { hasPost, postOf, careSatisfaction, caredSeatsOf, careValueOf, CARE_BASE, CARE_NONE_PENALTY, CARE_CORNER } from '../staffPost.ts'; // staffpost
+import { completedCorners } from '../corners.ts';
+import { walkableNeighborsOf } from '../path.ts';
 import { prepCut, servingCapacity, waitPenalty, waitCapOf, serviceBonus, nightShiftSatisfaction, OWNER_DRINKS_PER_DAY, DRINKS_PER_BARISTA, MAX_PREP_CUT, SERVICE_PER_HEAD, SERVICE_MAX, WAIT_PER_HALL_HEAD, WAIT_MAX } from '../guests.ts'; // staff2
 import { seatDirt, dailyCleanRecovery } from '../cleanliness.ts'; // staff2
 import { hireForecast, roleNeeds } from '../staffPlan.ts'; // staff2
@@ -578,13 +581,26 @@ test('자리 오염: 12석까지는 0, 넘는 자리 하나당 0.15 — 청소 �
   expect(before).toBe(seatDirt(s)); // 직원은 오염과 무관
 });
 
-test('배치: 홀 직원이 맡은 구역 만족 +2, 다른 구역 −1. 저녁 근무는 저녁 손님 만족 +2에 기력 −10', () => {
+test('staffpost 근무 자리: 세운 칸 둘레 2칸 자리는 돌봄 +, 벗어난 자리는 0. 저녁 근무는 저녁 손님 만족 +2에 기력 −10', () => {
   const s = bareState(1);
   s.staff.push(staffWith({ smile: 40 }, 'hall'));
   const st = s.staff[0]!;
-  expect(zoneOf(st)).toBe('all');
-  expect(apply(s, { type: 'setStaffZone', staffId: st.id, zone: 'yard' }).ok).toBe(true);
-  expect(zoneOf(st)).toBe('yard');
+  expect(hasPost(st)).toBe(false); // 처음엔 자동
+  const near = placeObject(s, 'table_parasol', X(1), Y(1))!;
+  const far = placeObject(s, 'table_parasol', X(9), Y(9))!;
+  // 가까운 자리 옆 걷기 칸에 세운다
+  placeObject(s, 'path', X(2), Y(1)); // 직원이 설 걷기 칸 (bareState는 올렛길을 걷어낸 빈 마당이다)
+  const cell = walkableNeighborsOf(s, near.x, near.y)[0]!;
+  expect(apply(s, { type: 'setStaffPost', staffId: st.id, x: cell.x, y: cell.y }).ok).toBe(true);
+  expect(hasPost(st)).toBe(true);
+  expect(postOf(s, st)).toEqual({ x: cell.x, y: cell.y });
+  expect(careSatisfaction(s, near)).toBeGreaterThanOrEqual(CARE_BASE); // 돌보는 자리
+  expect(careSatisfaction(s, far)).toBe(CARE_NONE_PENALTY);            // 돌봄이 안 닿는 자리는 0 (벌점 아님)
+  expect(caredSeatsOf(s, st).map((o) => o.id)).toContain(near.id);
+  // 자동으로 되돌리기
+  expect(apply(s, { type: 'clearStaffPost', staffId: st.id }).ok).toBe(true);
+  expect(hasPost(st)).toBe(false);
+
   expect(apply(s, { type: 'setStaffNight', staffId: st.id, on: true }).ok).toBe(true);
   expect(isNightShift(st)).toBe(true);
   s.clock.hour = 20;
@@ -594,9 +610,25 @@ test('배치: 홀 직원이 맡은 구역 만족 +2, 다른 구역 −1. 저녁 
   st.energy = 50;
   nightlyRecovery(s);
   expect(st.energy).toBe(50 + 40 - NIGHT_ENERGY_COST);
-  // 쉬는 직원은 구역을 못 맡는다
+  // 쉬는 직원은 자리를 못 맡는다
   apply(s, { type: 'assign', staffId: st.id, role: null });
-  expect(apply(s, { type: 'setStaffZone', staffId: st.id, zone: 'corner' }).ok).toBe(false);
+  expect(apply(s, { type: 'setStaffPost', staffId: st.id, x: cell.x, y: cell.y }).ok).toBe(false);
+});
+
+
+test('staffpost 명당 위에 세우면 돌봄이 는다 — 「명당을 만들고 거기에 직원을 세운다」가 한 수가 된다', () => {
+  const s = bareState(1);
+  s.staff.push(staffWith({ smile: 0 }, 'hall'));
+  const st = s.staff[0]!;
+  placeObject(s, 'path', X(2), Y(3));
+  const bare = careValueOf(s, st); // 아직 명당이 없다
+  // 꽃길 (꽃밭 + 벤치 + 가로등이 반경 2 안)
+  placeObject(s, 'flower_bed', X(2), Y(2));
+  placeObject(s, 'deco_wood_bench', X(3), Y(2));
+  placeObject(s, 'streetlight', X(1), Y(2));
+  expect(completedCorners(s).length).toBe(1);
+  apply(s, { type: 'setStaffPost', staffId: st.id, x: X(2), y: Y(3) });
+  expect(careValueOf(s, st)).toBe(bare + CARE_CORNER);
 });
 
 test('채용 미리보기: 「우리 카페에 오면」 3줄과 지금 필요한 직종', () => {

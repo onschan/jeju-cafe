@@ -8,7 +8,7 @@ import type { GameState, Staff, Candidate, RoleId, StatKey, JobTier, Face } from
 import { gradeOf, REVEAL_GRADE } from '../../sim/index.ts'; // fun 점진 공개
 import { TIERS, LOW_ENERGY, STAT_KEYS, levelUpCost, expNeeded, mainStatOf, canHire, canLevelUp, canPostJob, staffInRole, postJobCost, tierUnlocked, availablePool, staffCapacity, staffRoomCount, capOf, capBonus, skillsOf, salaryDue, trainingOptions, trainingUnlocked, TRAINING_RANK, titleChances, titleDef, TITLE_GRADES, candidateDaysLeft, dayIndex, outcomeChances, chanceText, trainingChances, isWorking } from '../../sim/index.ts';
 // staff2: 직종 전략성 — 「지금 필요해요」·「우리 카페에 오면」·후보 비교표·배치
-import { roleNeeds, needOf, hireForecast, suggestRole, roleEffectText, roleHeads, headsOfCandidate, recommendedHire, postJobHint, zoneOf, isNightShift, STAFF_ZONES, ZONE_NAME, ZONE_ROLE, type StaffZone, type RoleNeed, type HireSuggestion } from '../../sim/index.ts';
+import { roleNeeds, needOf, hireForecast, suggestRole, roleEffectText, roleHeads, headsOfCandidate, recommendedHire, postJobHint, isNightShift, ZONE_ROLE, hasPost, postOf, caredSeatsOf, careValueOf, CARE_RADIUS, type RoleNeed, type HireSuggestion } from '../../sim/index.ts';
 import { TitleRibbon } from '../TitleBadge'; // staff-luck 칭호 리본
 import { ROLES, RECRUIT_TIERS, skillDef, trainingDef, staffPoolDef } from '../../data/index.ts';
 import { label, wonText } from '../../data/labels.ts';
@@ -198,17 +198,31 @@ function CompareTable({ s, cands, role, recId }: { s: GameState; cands: Candidat
   );
 }
 
-/** staff2: 직원 카드의 배치 — 홀은 담당 구역 3택, 모두 저녁 근무 토글 */
-function PlacementRow({ st, s, dispatch }: { st: Staff; s: GameState; dispatch: Dispatch }) {
+/** staffpost: 직원 카드의 배치 — 근무 자리(마당의 칸)와 저녁 근무.
+ *  홀 직원은 근무 자리 반경 2 안의 좌석을 돌본다(만족 +). 나머지 직종도 자리는 정할 수 있지만 돌봄은 없다. */
+function PlacementRow({ st, s, dispatch, onPickStaffPost }: { st: Staff; s: GameState; dispatch: Dispatch; onPickStaffPost?: (staffId: string) => void }) {
   if (st.role === null || st.training) return null;
   const night = isNightShift(st);
+  const cares = st.role === ZONE_ROLE;
+  const post = postOf(s, st);
+  const seats = cares ? caredSeatsOf(s, st).length : 0;
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginTop: 4 }} data-testid={`place-${st.id}`}>
-      {st.role === ZONE_ROLE && (
-        <ButtonGroup testId="zone" label="담당 구역" value={zoneOf(st)} onPick={(z) => dispatch({ type: 'setStaffZone', staffId: st.id, zone: z as StaffZone })} style={{ flex: '1 1 100%' }}
-          options={STAFF_ZONES.map((z) => ({ value: z, label: ZONE_NAME[z] }))} />
+      {onPickStaffPost && (
+        <button style={hasPost(st) ? rowBtnOn : rowBtn} onClick={() => onPickStaffPost(st.id)} aria-label={`${st.name} 근무 자리 정하기`} data-testid={`post-pick-${st.id}`}>
+          근무 자리 {hasPost(st) ? `${post.x},${post.y}` : '자동'}
+        </button>
       )}
-      {st.role === ZONE_ROLE && <div style={{ ...soft, fontSize: 13, flex: '1 1 100%' }}>{zoneOf(st) === 'all' ? '어느 쪽도 특별히 챙기지 않아요' : `${ZONE_NAME[zoneOf(st)]} 손님 만족 +2, 반대쪽 −1`}</div>}
+      {hasPost(st) && (
+        <button style={rowBtn} onClick={() => dispatch({ type: 'clearStaffPost', staffId: st.id })} aria-label={`${st.name} 근무 자리 자동으로`} data-testid={`post-clear-${st.id}`}>자동으로</button>
+      )}
+      <span style={{ ...soft, fontSize: 13, flex: '1 1 100%' }} data-testid={`care-${st.id}`}>
+        {cares
+          ? seats > 0
+            ? `둘레 ${CARE_RADIUS}칸 자리 ${seats}곳을 돌봐요 · 그 자리 손님 만족 +${careValueOf(s, st)}`
+            : `둘레 ${CARE_RADIUS}칸에 자리가 없어요 — 자리 곁으로 옮겨 세워요`
+          : '홀 직원만 자리를 돌봐요'}
+      </span>
       <button style={night ? rowBtnOn : rowBtn} onClick={() => dispatch({ type: 'setStaffNight', staffId: st.id, on: !night })} aria-label={`${st.name} 저녁 근무`} data-testid={`night-${st.id}`}>
         저녁 근무 {night ? '함' : '안 함'}
       </button>
@@ -217,7 +231,7 @@ function PlacementRow({ st, s, dispatch }: { st: Staff; s: GameState; dispatch: 
   );
 }
 
-function StaffCard({ st, s, dispatch }: { st: Staff; s: GameState; dispatch: Dispatch }) {
+function StaffCard({ st, s, dispatch, onPickStaffPost }: { st: Staff; s: GameState; dispatch: Dispatch; onPickStaffPost?: (staffId: string) => void }) {
   const [training, setTraining] = useState(false);
   const [firing, setFiring] = useState(false);
   const roles = openRoles(s, st.role);
@@ -256,7 +270,7 @@ function StaffCard({ st, s, dispatch }: { st: Staff; s: GameState; dispatch: Dis
         {gradeOf(s) >= REVEAL_GRADE && <button data-tut="train" style={away ? rowBtnOff : training ? rowBtnOn : rowBtn} disabled={!!away} onClick={() => { setTraining(!training); setFiring(false); }} aria-label={`${st.name} 연수`}>연수</button>}{/* fun 점진 공개: 연수는 등급 3부터 */}
         <button style={away ? rowBtnOff : rowBtnDanger} disabled={!!away} onClick={() => { setFiring(!firing); setTraining(false); }} aria-label={`${st.name} 해고`}>해고</button>
       </div>
-      <PlacementRow st={st} s={s} dispatch={dispatch} />{/* staff2: 담당 구역·저녁 근무 */}
+      <PlacementRow st={st} s={s} dispatch={dispatch} onPickStaffPost={onPickStaffPost} />{/* staffpost: 근무 자리·저녁 근무 */}
       {training && !away && <TrainingPanel st={st} s={s} dispatch={dispatch} onDone={() => setTraining(false)} />}
       {firing && <ConfirmRow text={`${st.name} 씨를 내보낼까요? 퇴직금 ${josa(wonText(st.salary), '이/가')} 나가요.`} yes="내보내기" onYes={() => dispatch({ type: 'fire', staffId: st.id })} onNo={() => setFiring(false)} />}
     </div>
@@ -367,7 +381,7 @@ export function StaffWindow(props: StaffWindowProps) {
           {RoleRows}
           {s.staff.length > 1 && <SortChips chips={STAFF_SORTS} active={sort} onPick={setSort} testId="staff-sort" />}
           {s.staff.length === 0 && <Empty>아직 직원이 없어요. 채용 후보 탭에서 공고를 내 보세요.</Empty>}
-          {sortStaff(s.staff, sort).map((st) => <StaffCard key={st.id} st={st} s={s} dispatch={dispatch} />)}
+          {sortStaff(s.staff, sort).map((st) => <StaffCard key={st.id} st={st} s={s} dispatch={dispatch} onPickStaffPost={props.onPickStaffPost} />)}
         </>
       )}
       {tab === 'candidates' && (

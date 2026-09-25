@@ -139,9 +139,10 @@ function backfill(state: GameState): void {
   state.lastMonthIncome ??= state.lastMonthCard?.income ?? 0;
   state.researchAcc ??= 0;
   state.dayOrders ??= { drink: 0, dessert: 0, meal: 0, signature: 0 }; // staff2: 오늘 분류별 주문 수 (v23)
-  // staff2: 담당 구역·저녁 근무도 v23에 붙은 optional 필드 — 옛 세이브엔 없고, 알 수 없는 구역 값은 「전체」로 되돌린다
+  // staffpost(v28): 창 안의 「담당 구역」 드롭다운을 걷어내고 마당의 근무 자리로 바꿨다 — 옛 zone 값은 지운다(근무 자리는 자동부터).
   for (const st of state.staff) {
-    if (st.zone !== undefined && st.zone !== 'corner' && st.zone !== 'yard') delete st.zone; // 옛 실내/야외 구역은 「전체」로 되돌린다
+    delete (st as { zone?: unknown }).zone;
+    if (st.post !== undefined && (typeof st.post?.x !== 'number' || typeof st.post?.y !== 'number')) delete st.post;
     if (st.night !== undefined && typeof st.night !== 'boolean') delete st.night;
   }
   // ---- stakes: 긴장감·트레이드오프·변수 ----

@@ -35,6 +35,7 @@ import { guestTypeDef } from '../data/index.ts';
 import { addRegularGauge } from './interact.ts';
 import { siteOf } from './site.ts';
 import { cornerOfPiece } from './corners.ts';
+import { isCared } from './staffPost.ts'; // staffpost: 직원이 돌보는 자리
 import { popularityFor, BASE_POPULARITY } from './compat.ts';
 import { CLEAN_MAX } from './cleanliness.ts';
 import { dailyGuestCount, hourShare, freeSeats, totalSeats, seatGuestFromQueue, typeWeight, updateGuests } from './guests.ts';
@@ -117,6 +118,7 @@ export function rushPatienceMult(state: GameState): number {
 export const RUSH_SCORE_PER_GUEST = 10;
 export const RUSH_LEFT_PENALTY = 15;
 export const RUSH_FIT_BONUS = 8;        // 취향·명당·전망이 맞는 자리
+export const RUSH_CARE_BONUS = 5;       // staffpost: 직원이 돌보는 자리에 앉히면 — 러시 중에도 「직원을 어디 세웠나」가 손에 잡히게
 export const RUSH_FIT_VIEW = 2;         // 이 전망부터 「좋은 자리」
 export const RUSH_TIP_PER_POINT = 2000; // 지갑 2,000원당 팁 1점
 export const RUSH_TIP_MAX = 8;
@@ -442,8 +444,9 @@ function nearDoor(state: GameState, seat: PlacedObject): boolean {
 
 function scoreServe(state: GameState, r: RushState, typeId: string, seat: PlacedObject | null, manual: boolean): void {
   const fit = rushSeatFits(state, seat, typeId);
+  const cared = !!seat && isCared(state, seat); // staffpost: 직원이 돌보는 자리면 가산
   const tip = Math.min(RUSH_TIP_MAX, Math.floor(walletOf(state, typeId) / RUSH_TIP_PER_POINT));
-  let gain = RUSH_SCORE_PER_GUEST + tip + (fit ? RUSH_FIT_BONUS : 0);
+  let gain = RUSH_SCORE_PER_GUEST + tip + (fit ? RUSH_FIT_BONUS : 0) + (cared ? RUSH_CARE_BONUS : 0);
   r.streak++;
   if (r.streak >= RUSH_COMBO_N) {
     gain *= RUSH_COMBO_MULT;
@@ -452,6 +455,7 @@ function scoreServe(state: GameState, r: RushState, typeId: string, seat: Placed
   if (!manual) gain *= RUSH_AUTO_COEF; else r.manual++;
   r.tips += tip;
   if (fit) r.bonus += RUSH_FIT_BONUS;
+  if (cared) r.bonus += RUSH_CARE_BONUS;
   r.score += Math.round(gain);
   r.served++;
   r.done.push(typeId);

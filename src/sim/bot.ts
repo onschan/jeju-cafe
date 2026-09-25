@@ -46,6 +46,9 @@ import { bestStaffFor } from './luck.ts'; // staff-luck: 대박 기대값이 가
 import { signupOpen, contestState, contestStaff, contestMenus, contestOdds, canEnterContest, CONTESTS, TROPHY_TYPE, trophyOwned, trophyPlaced } from './contest.ts'; // 대회
 import { staffCapacity, STAFF_ROOM_TYPE, staffInRole } from './staff.ts';
 import { seatDirt, dailyCleanRecovery, CLEAN_LOW } from './cleanliness.ts'; // staff2: 청소가 필요한지 본다
+import { seatsAroundCell, canSetPost, postOf } from './staffPost.ts'; // staffpost: 홀 직원을 자리가 많이 모인 칸에 세운다
+import { cornersCoveringCell } from './corners.ts';
+import { ZONE_ROLE } from './staff.ts';
 import { canUpgrade, upgradeCost, isUpgradable } from './upgrade.ts';
 import { gradeOf, cornerCount } from './grade.ts'; // all: 5년 안에 등급 조건에 닿는지 보려고
 import { objectStats, setLevels } from './compat.ts';
@@ -585,6 +588,27 @@ function planRoutes(s: GameState): void {
 }
 
 /** 매달 1일 */
+
+/** staffpost: 홀 직원을 「돌볼 자리가 가장 많은 걷기 칸」에 세운다. 같은 수면 명당 안이 이긴다(돌봄 +1).
+ *  직원끼리는 겹치지 않게 — 두 명을 같은 칸에 세워도 만족은 센 쪽 하나만 쳐서 낭비다. */
+function placeStaff(s: GameState): void {
+  const taken: { x: number; y: number }[] = [];
+  for (const st of s.staff) {
+    if (st.role !== ZONE_ROLE || st.training) continue;
+    let best: { x: number; y: number; score: number } | null = null;
+    for (let y = 0; y < s.grid.h; y++) for (let x = 0; x < s.grid.w; x++) {
+      if (!canSetPost(s, st.id, x, y).ok) continue;
+      if (taken.some((t) => Math.max(Math.abs(t.x - x), Math.abs(t.y - y)) <= 1)) continue; // 다른 직원 바로 옆은 피한다
+      const seats = seatsAroundCell(s, x, y).filter((o) => !taken.some((t) => Math.max(Math.abs(t.x - o.x), Math.abs(t.y - o.y)) <= 2)).length;
+      if (seats === 0) continue;
+      const score = seats * 10 + (cornersCoveringCell(s, x, y).length > 0 ? 1 : 0);
+      if (!best || score > best.score) best = { x, y, score };
+    }
+    if (best) { apply(s, { type: 'setStaffPost', staffId: st.id, x: best.x, y: best.y }); taken.push({ x: best.x, y: best.y }); }
+    else taken.push(postOf(s, st));
+  }
+}
+
 export function monthlyPlan(s: GameState, monthsPlayed: number): void {
   ensurePath(s);
   // 테이블은 한 달에 4개씩 늘린다 (사람처럼): 시작 3석 + 16
@@ -597,6 +621,7 @@ export function monthlyPlan(s: GameState, monthsPlayed: number): void {
     // fun-rank: 확장 칸이 다 찼으면(본관 Lv3·4 증축이 테이블 줄을 삼킨다) 산 필지 어디든 닿는 자리 중 점수 높은 칸에 — 야외 테이블 BOT_OUTDOOR_MAX개까지 (좌석이 곧 매출이라 무한정 늘리면 5년차 자금이 9억을 넘는다)
     for (const p of bestSeatCellsHeuristic(s, BOT_TABLES_PER_MONTH)) { if (extra >= BOT_TABLES_PER_MONTH || countType(s, 'table_out') >= BOT_OUTDOOR_MAX) break; if (place(s, 'table_out', p.x, p.y)) extra++; }
   }
+  placeStaff(s); // staffpost: 자리를 늘렸으면 홀 직원이 서는 칸도 다시 고른다
   setMenuIfEmpty(s, 3, 'green_tea');
   pickDessert(s);
 

@@ -448,7 +448,7 @@ export interface Staff {
   training: StaffTraining | null; // 연수 중이면 자리를 비운다
   title?: string;         // 칭호 id (titles.json, staff-luck) — 없으면 일반
   role: RoleId | null;
-  zone?: 'corner' | 'yard';     // staff2: 홀 직원 담당 구역 (없으면 전체) — 맡은 구역 만족 +2, 다른 구역 −1
+  post?: Pt;                    // staffpost: 플레이어가 마당에서 고른 근무 자리 (없으면 역할 기본 위치) — 반경 2 안 좌석을 돌본다
   night?: boolean;              // staff2: 저녁(18시 이후)까지 근무 — 저녁 손님 만족 +2, 그 직원 하루 기력 −10
   unpaidMonths: number;
   energy: number; // 0~100
@@ -1157,7 +1157,8 @@ export type Action =
   | { type: 'hire'; candidateId: string; role: RoleId }
   | { type: 'fire'; staffId: string }
   | { type: 'assign'; staffId: string; role: RoleId | null }
-  | { type: 'setStaffZone'; staffId: string; zone: 'all' | 'corner' | 'yard' } // staff2: 홀 직원 담당 구역 (명당 자리 / 그 밖 마당)
+  | { type: 'setStaffPost'; staffId: string; x: number; y: number } // staffpost: 직원을 마당의 이 칸에 세운다 (반경 2 안 좌석을 돌본다)
+  | { type: 'clearStaffPost'; staffId: string }                    // staffpost: 근무 자리를 자동(본관 앞·좌석 옆)으로 되돌린다
   | { type: 'setStaffNight'; staffId: string; on: boolean }                       // staff2: 저녁 근무 토글
   | { type: 'levelUp'; staffId: string }
   | { type: 'train'; staffId: string; trainingId: string }

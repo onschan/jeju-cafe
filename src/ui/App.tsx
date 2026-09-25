@@ -53,6 +53,7 @@ import { SaveSlots } from './SaveSlots';
 import { showScene, SceneHost, type SceneChar } from './SceneWindow';
 import { staffParts } from '../render/character';
 import { rangeHintFor } from './rangeHint';
+import { postOf, canSetPost, seatsAroundCell, CARE_RADIUS, ZONE_ROLE } from '../sim/index.ts'; // staffpost: 직원 근무 자리
 import { cornerMoveWarning } from '../sim/corners.ts'; // spot2: 옮기면 명당이 깨질 때 배치 바 경고
 import { windCoveredSeatsBy, WIND_WEDGE_MAX } from '../sim/site.ts'; // spot2: 돌담 줄이 막아 주는 자리
 import { AppealPanel } from './AppealPanel'; // fun: 카페 매력도
@@ -84,6 +85,7 @@ type Mode =
   | { kind: 'build'; objectType: string; count: number }
   | { kind: 'move' }
   | { kind: 'remove' }
+  | { kind: 'staffPost'; staffId: string; x: number; y: number } // staffpost: 직원을 마당의 어느 칸에 세울지 고르는 중
   | { kind: 'autopath' }; // ease: 「마을 길까지 자동 잇기」 파란 미리보기 → ✓
 
 /** 전체 화면 창과 그 아이콘 그리드 항목 (§5.1) */
@@ -489,6 +491,15 @@ function Game({ onExit }: { onExit: () => void }) {
     setMode({ kind: 'build', objectType: m.objectType, count: m.count + 1 }); // P0-2: 배치 모드가 안 꺼진다
     return true;
   };
+  /** staffpost: 직원 창에서 「근무 자리」를 누르면 창을 닫고 맵에서 칸을 고른다. 첫 미리보기 칸은 지금 서 있는 자리. */
+  const pickStaffPost = (staffId: string) => {
+    const st = getState().staff.find((x) => x.id === staffId);
+    if (!st) return;
+    const at = postOf(getState(), st);
+    setWin(null);
+    setMode({ kind: 'staffPost', staffId, x: at.x, y: at.y });
+    showMessage('직원을 세울 칸을 누르세요 — 둘레 2칸 자리를 돌봐요');
+  };
   /** 짓기 창에서 시설을 고르면: 창을 닫고 맵에 고스트 (origin이 있으면 그 칸, 없으면 시작 필지 가운데). 길·담은 고스트 없이 끌기/두 번 탭(origin이 있으면 그 칸이 시작 칸). */
   const pickBuild = (objectType: string, origin?: { x: number; y: number }) => {
     setWin(null);
@@ -687,6 +698,8 @@ function Game({ onExit }: { onExit: () => void }) {
               else if (PROTECTED_TYPES.has(o.type)) showMessage('이건 못 옮겨요');
               else setMoving({ objectId: o.id, x: o.x, y: o.y }); // seatfix: 손님이 앉아 있어도 고른다
             }
+          } else if (m.kind === 'staffPost') {
+            setMode({ ...m, x, y }); // staffpost: 탭은 「여기 세울까」 미리보기만 — 확정은 ✓
           } else if (m.kind === 'remove') {
             // 탭 = 한 칸 사각형. 이미 고른 게 있으면 새로 고른다
             const o = objectAt(st, x, y);
@@ -918,6 +931,26 @@ function Game({ onExit }: { onExit: () => void }) {
     } else {
       place = { text: '옮길 시설을 누르세요 (돈은 안 들어요)', ok: true, canRotate: false, paint: true, onUndo: undoOk ? undo : null, onConfirm: () => {}, onRotate: () => {}, onCancel: () => setMode({ kind: 'idle' }) };
     }
+  } else if (mode.kind === 'staffPost') {
+    // staffpost: 직원을 세울 칸 고르기. 반경 표시로 「어느 자리를 돌보게 되는지」가 확정 전에 보인다.
+    const st = s.staff.find((x) => x.id === mode.staffId);
+    const can = canSetPost(s, mode.staffId, mode.x, mode.y);
+    const seats = can.ok ? seatsAroundCell(s, mode.x, mode.y) : [];
+    const cares = st?.role === ZONE_ROLE;
+    ghostCell = { x: mode.x, y: mode.y, w: 1, h: 1 };
+    rangeHint = { x: mode.x, y: mode.y, w: 1, h: 1, radius: CARE_RADIUS, marks: seats.map((o) => ({ x: o.x, y: o.y, w: sizeOf(o).w, h: sizeOf(o).h })), badge: can.ok && cares ? (seats.length > 0 ? `자리 ${seats.length}곳을 돌봐요` : '둘레에 자리가 없어요') : undefined };
+    place = {
+      text: `${st?.name ?? '직원'} 근무 자리 · ${!can.ok ? (can.reason ?? '여기엔 못 세워요') : cares ? (seats.length > 0 ? `둘레 자리 ${seats.length}곳을 돌봐요` : '둘레에 자리가 없어요 — 자리 곁으로') : '여기 세울 수 있어요'}`,
+      ok: can.ok, canRotate: false, onUndo: null,
+      onConfirm: () => {
+        const r = dispatch({ type: 'setStaffPost', staffId: mode.staffId, x: mode.x, y: mode.y });
+        if (!r.ok) { showMessage(r.reason ?? '여기엔 못 세워요'); return; }
+        showMessage(`${st?.name ?? '직원'} 씨가 여기서 일해요`);
+        setMode({ kind: 'idle' });
+      },
+      onRotate: () => {},
+      onCancel: () => setMode({ kind: 'idle' }),
+    };
   } else if (mode.kind === 'remove') {
     const ids = rect ? demolishTargets(s, rect) : [];
     if (rect && ids.length > 0) {
@@ -1050,8 +1083,8 @@ function Game({ onExit }: { onExit: () => void }) {
       case 'people':
         return (
           <Window title="사람" menu={peopleMenu} tab={win.tab} onTab={(t) => setWin({ kind: 'people', tab: t })} onClose={closeWin} testId="window-people">
-            {win.tab === 'staff' && <StaffWindow onClose={closeWin} focusId={win.focusId ?? null} initialTab="ours" />}
-            {win.tab === 'candidates' && <StaffWindow onClose={closeWin} focusId={null} initialTab="candidates" />}
+            {win.tab === 'staff' && <StaffWindow onClose={closeWin} focusId={win.focusId ?? null} initialTab="ours" onPickStaffPost={pickStaffPost} />}
+            {win.tab === 'candidates' && <StaffWindow onClose={closeWin} focusId={null} initialTab="candidates" onPickStaffPost={pickStaffPost} />}
             {win.tab === 'guests' && <GuestsPanel onGuest={setGuestPopup} sub="now" />}
             {win.tab === 'codex' && <><GuestsPanel onGuest={setGuestPopup} sub="codex" /><CodexPanel /></>}
             {win.tab === 'quests' && <BoardPanel tabs={['quests']} />}

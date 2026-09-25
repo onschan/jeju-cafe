@@ -5,7 +5,8 @@ import { pickWeighted, nextRandom, randInt } from './rng.ts';
 import { sceneryScore, objectAt, sizeOf } from './grid.ts';
 import { availableMenus, consumeIngredients, isMenuAvailable } from './menu.ts';
 import { busStopPos, findPath, walkableNeighborsOf, reachMap, pathFromReach, cellKey, moveAlong, walkSpeedMult, GUEST_SPEED_CELLS_PER_S } from './path.ts';
-import { roleEffect, skillTotal, pushNotice, staffInRole, addRoleExp, LOW_ENERGY, roleHeads, zoneOf, isNightShift, ZONE_ROLE, ZONE_FOCUS_BONUS, ZONE_OTHER_PENALTY, ZONE_SATISFACTION_MIN, ZONE_SATISFACTION_MAX, NIGHT_BONUS } from './staff.ts'; // staff2: 인원 환산·담당 구역·저녁 근무
+import { roleEffect, skillTotal, pushNotice, staffInRole, addRoleExp, LOW_ENERGY, roleHeads, isNightShift, NIGHT_BONUS } from './staff.ts'; // staff2: 인원 환산·저녁 근무
+import { careSatisfaction } from './staffPost.ts'; // staffpost: 직원이 서 있는 칸 반경 2 안의 자리는 돌봄을 받는다
 import { effectivePopularity, youtuberMultiplier, MAX_ACTIVE_PROMOTIONS } from './promotions.ts';
 import { START_HOUR, END_HOUR, HOUR_MS, seasonOf } from './clock.ts';
 import { parcelBonusAt, parcelSpawnMult, parcelFeeMult, parcelAt } from './parcels.ts';
@@ -555,18 +556,7 @@ export function countGatesOn(state: GameState, path: Pt[]): number {
   for (const p of path) if (objectAt(state, p.x, p.y)?.type === 'gate') n++;
   return n;
 }
-/** staff2: 홀 직원이 맡은 구역이면 +2, 맡지 않은 구역이면 −1 (합쳐서 −2~+4). 전체를 맡으면 어느 쪽도 아니다.
- *  구역은 이제 실내/야외가 아니라 「명당에 속한 자리 / 그 밖 마당」으로 가른다 (야외 중심 개편). */
-export function zoneSatisfaction(state: GameState, seat: PlacedObject): number {
-  let v = 0;
-  const inCorner = cornerOfPiece(state, seat.id) !== null;
-  for (const st of staffInRole(state, ZONE_ROLE)) {
-    const z = zoneOf(st);
-    if (z === 'all') continue;
-    v += z === (inCorner ? 'corner' : 'yard') ? ZONE_FOCUS_BONUS : ZONE_OTHER_PENALTY;
-  }
-  return Math.max(ZONE_SATISFACTION_MIN, Math.min(ZONE_SATISFACTION_MAX, v));
-}
+
 /** staff2: 저녁(18시 이후)까지 일하는 직원이 있으면 그 시간 손님 만족 +2 */
 export function nightShiftSatisfaction(state: GameState): number {
   if (state.clock.hour < NIGHT_HOUR) return 0;
@@ -579,7 +569,7 @@ export function extraSatisfaction(state: GameState, g: Guest, seat: PlacedObject
   const wait = cat ? waitPenalty(state, cat) : 0;
   const quality = cat === 'drink' ? drinkQualityBonus(state) : 0;
   return (cornerSatisfaction(state, seat.id, g.type) + cleanSatisfaction(state) + titleBonus(state, 'satisfaction')) / 10 + gateSatisfaction(g) + nightSatisfaction(state, seat) // staff-luck 칭호 만족 // y-indoor: 소파 +2·난로 겨울 +3 · fix-indoor: 밤 조명
-    + quality - wait + zoneSatisfaction(state, seat) + nightShiftSatisfaction(state); // staff2
+    + quality - wait + careSatisfaction(state, seat) + nightShiftSatisfaction(state); // staffpost 돌봄 · staff2 저녁 근무
 }
 /** 저녁 손님 기준 시각 (특기 night_owl) */
 export const NIGHT_HOUR = 18;

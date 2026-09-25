@@ -14,6 +14,8 @@ export interface WindowProps {
   dispatch?: Dispatch;
   onClose(): void;
   onPickBuild?(objectType: string): void;
+  /** staffpost: 창을 닫고 「이 직원을 어디 세울까」 지도 고르기 모드로 (App이 넘긴다) */
+  onPickStaffPost?(staffId: string): void;
 }
 
 /** props.state가 있으면 그것, 없으면 store. 훅 순서를 지키려고 항상 구독한다. */

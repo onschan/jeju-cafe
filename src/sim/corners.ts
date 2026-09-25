@@ -475,3 +475,12 @@ export function cornerTags(id: string): string[] {
 export function cornersMade(state: GameState): number {
   return state.codex.corners?.length ?? 0;
 }
+
+/** 이 칸을 품는 완성 명당들 (직원 근무 자리 판정 — staffPost.ts). 칸 하나를 1×1 발자국으로 보고 반경 안인지 본다. */
+export function cornersCoveringCell(state: GameState, x: number, y: number): CompletedCorner[] {
+  const cell = { x, y, w: 1, h: 1 };
+  return completedCorners(state).filter((c) => {
+    const anchor = state.objects[c.anchorId];
+    return !!anchor && footDist(cell, footOf(anchor)) <= cornerDef(c.id).radius;
+  });
+}

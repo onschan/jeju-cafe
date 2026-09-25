@@ -174,32 +174,10 @@ export function roleHeadsWith(state: GameState, role: RoleId, stats: Stats): num
   return diminished([...staffInRole(state, role).map((st) => headValue(st, key)), Math.min(HEAD_MAX, stats[key] / HEAD_STAT)]);
 }
 
-// ---------- 배치 (staff2): 담당 구역·야간 근무 ----------
-/** 홀 직원 담당 구역 (야외 중심 개편: 실내/야외 → 명당 자리 / 그 밖 마당) */
-export type StaffZone = 'all' | 'corner' | 'yard';
-export const STAFF_ZONES: StaffZone[] = ['all', 'corner', 'yard'];
-export const ZONE_NAME: Record<StaffZone, string> = { all: '전체', corner: '명당 자리', yard: '그 밖 마당' };
-/** 맡은 구역 손님 만족 +2, 맡지 않은 구역 −1 */
-export const ZONE_FOCUS_BONUS = 2;
-export const ZONE_OTHER_PENALTY = -1;
-export const ZONE_SATISFACTION_MIN = -2;
-export const ZONE_SATISFACTION_MAX = 4;
-/** 구역을 고르는 직종 (홀이 손님을 맞는다) */
+// ---------- 배치 (staffpost): 근무 자리·야간 근무 ----------
+/** 손님을 돌보는 직종 — 홀. 근무 자리(staffPost.ts)는 이 직종에게만 만족을 준다. */
 export const ZONE_ROLE: RoleId = 'hall';
-export function zoneOf(staff: Staff): StaffZone {
-  return staff.zone ?? 'all';
-}
-export function canSetZone(state: GameState, staffId: string, zone: StaffZone): ApplyResult {
-  const st = findStaff(state, staffId);
-  if (!st) return { ok: false, reason: '없는 직원이에요' };
-  if (st.role !== ZONE_ROLE) return { ok: false, reason: '홀 직원만 구역을 맡아요' };
-  if (!STAFF_ZONES.includes(zone)) return { ok: false, reason: '없는 구역이에요' };
-  return { ok: true };
-}
-export function setZone(state: GameState, staffId: string, zone: StaffZone): void {
-  const st = findStaff(state, staffId)!;
-  if (zone === 'all') delete st.zone; else st.zone = zone;
-}
+
 /** 저녁 근무: 그 직원은 하루 기력 −10, 저녁 손님 만족 +2 */
 export const NIGHT_BONUS = 2;
 export const NIGHT_ENERGY_COST = 10;
@@ -545,7 +523,8 @@ function adjacentWalkableTo(state: GameState, kind: string): Pt | null {
   return null;
 }
 
-/** 역할별 근무 위치. hall → 좌석 옆, 나머지 → 창고 앞. */
+/** 역할별 기본 근무 위치 (플레이어가 근무 자리를 안 정했을 때). hall → 좌석 옆, 나머지 → 창고 앞.
+ *  staffpost: 플레이어가 정한 칸은 staffPost.postOf가 우선한다 — 여기서 st.post를 보면 순환 참조가 된다. */
 export function staffAnchor(state: GameState, staff: Staff): Pt {
   const front = warehouseFront(state);
   if (staff.role === 'hall') return adjacentWalkableTo(state, 'seat') ?? front;
@@ -587,7 +566,7 @@ export function moveStaff(state: GameState, dtMs: number): void {
     }
     st.waitMs -= dtMs;
     if (st.waitMs > 0) continue;
-    st.anchor = staffAnchor(state, st);
+    st.anchor = st.post && isWalkable(state, st.post.x, st.post.y) ? { x: st.post.x, y: st.post.y } : staffAnchor(state, st); // staffpost: 플레이어가 세운 칸이 우선
     const cells = wanderCells(state, st.anchor);
     const dest = pickWeighted(state, cells, () => 1);
     if (dest) goTo(state, st, dest);

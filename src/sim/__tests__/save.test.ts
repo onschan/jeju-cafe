@@ -117,7 +117,7 @@ test('v21 세이브: 5트랙이 붙인 필드가 전부 기본값으로 채워�
 
   const back = deserialize(JSON.stringify(obj));
   expect(back.version).toBe(SAVE_VERSION);
-  expect(SAVE_VERSION).toBe(27);
+  expect(SAVE_VERSION).toBe(28);
   // stakes
   expect(back.monthCosts.rent).toBe(0);
   expect(back.trend).toBeTruthy();
@@ -258,11 +258,12 @@ test('v26 세이브: 본관 증축 Lv·2층 값을 돌려주고, 없어진 실�
   expect(JSON.parse(serialize(deserialize(serialize(back))))).toEqual(JSON.parse(serialize(back)));
 });
 
-test('v26 세이브: 옛 실내/야외 담당 구역은 「전체」로 되돌아온다', () => {
+test('v26 세이브: 옛 담당 구역 값은 지워지고 근무 자리는 자동부터', () => {
   const s = bareState(1);
   const obj = JSON.parse(serialize(s)) as Record<string, unknown>;
   obj.version = 26;
   (obj.staff as Record<string, unknown>[]).push({ id: 'st1', name: '삼춘', role: 'hall', zone: 'indoor', level: 1, energy: 100, exp: 0, stats: { smile: 10, speed: 10, craft: 10, stamina: 10 }, skill: 'none', title: null, training: null, hiredMonth: 0, roleExp: {} } as never);
   const back = deserialize(JSON.stringify(obj));
-  expect(back.staff.at(-1)!.zone).toBeUndefined();
+  expect((back.staff.at(-1)! as { zone?: unknown }).zone).toBeUndefined();
+  expect(back.staff.at(-1)!.post).toBeUndefined();
 });

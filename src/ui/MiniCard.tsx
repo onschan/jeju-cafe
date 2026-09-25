@@ -8,7 +8,8 @@ import { guestBlock, vacateWarning, WORK_NAME } from '../sim/index.ts'; // seatf
 import { RouteCard } from './RouteCard';
 import { TreeUpgradeRow } from './TreeUpgrade'; // fun: 같은 자리 업그레이드 트리
 import { treeOf } from '../sim/index.ts';
-import { cornerSeatLine, cornerAnchorLine, cornerBreakWarning } from '../sim/corners.ts'; // spot2: 명당 효과·경고를 카드에서 보이게
+import { cornerSeatLine, cornerAnchorLine, cornerBreakWarning } from '../sim/corners.ts';
+import { caringStaffOf, careStaff, careValueOf } from '../sim/staffPost.ts'; // staffpost: 이 자리를 돌보는 직원 // spot2: 명당 효과·경고를 카드에서 보이게
 import { seatFeeQuote, FEE_MULT_CAP } from '../sim/fee.ts'; // spot2: 요금 내역 (기본 → 자리·명당·거리 → 실제로 받는 값)
 import { isCornerTarget } from '../sim/corners.ts';
 import { objectReachable, UNREACHABLE_TEXT } from '../sim/index.ts'; // ui3: 손님이 못 가는 시설
@@ -358,6 +359,7 @@ function ObjectCard({ s, id, a, onClose, guestId }: { s: GameState; id: string; 
       </div>
       <FeeLines s={s} o={o} />{/* spot2: 「기본 ₩3,000 · 자리 +28% · 명당 +12% → ₩4,300」 */}
       <CornerLines s={s} o={o} />{/* spot2: 자리엔 「명당 꽃길 옆 · 요금 +5%」, 조각엔 「돌봐 주는 자리 n곳」 */}
+      <CareLine s={s} o={o} />{/* staffpost: 「삼춘이 돌보는 자리 · 만족 +3」 / 「돌보는 직원이 없어요」 */}
       <UnreachableRow s={s} o={o} a={a} />{/* ui3: 손님이 못 가는 시설이면 이유 한 줄 + 「길 잇기」 */}
       {treeOf(o.type) && <TreeUpgradeRow s={s} o={o} />}{/* fun: 「업그레이드 ▲」는 카드 맨 위(버튼 줄 위) — 아래에 두면 잘린다 */}
       {!protectedType && breakWarn && <div style={{ ...small, marginTop: 4, color: PALETTE.bad, fontWeight: 700 }} data-testid="corner-break-warn">{breakWarn} · 업그레이드는 괜찮아요</div>}
@@ -410,6 +412,18 @@ function FeeLines({ s, o }: { s: GameState; o: PlacedObject }) {
       {q.capped && <div style={{ ...small, color: PALETTE.title }}>요금은 메뉴 값의 {FEE_MULT_CAP}배까지예요</div>}
     </div>
   );
+}
+
+/** staffpost: 이 자리를 어느 직원이 돌보는지 한 줄. 직원을 어디 세웠는지가 자리 카드에서 바로 보여야
+ *  「자리 옆에 직원을 세운다」가 조작으로 이어진다. */
+function CareLine({ s, o }: { s: GameState; o: PlacedObject }) {
+  if (objectDef(o.type).kind !== 'seat') return null;
+  const who = caringStaffOf(s, o);
+  const anyHall = careStaff(s).length > 0;
+  if (!anyHall) return null;
+  return who.length > 0
+    ? <div style={{ ...small, color: PALETTE.ok }} data-testid="care-line">{who[0]!.name} 씨가 돌보는 자리 · 손님 만족 +{careValueOf(s, who[0]!)}</div>
+    : <div style={small} data-testid="care-line">돌보는 직원이 없어요 — 직원 창에서 근무 자리를 이 곁으로</div>;
 }
 
 /** spot2: 명당이 이 시설에 무슨 일을 하는지 카드에서 보이게.

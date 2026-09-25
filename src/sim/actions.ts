@@ -8,7 +8,8 @@ import { canSetSlot, setSlot } from './menu.ts';
 import { checkFeature, checkGoals } from './goals.ts';
 import { fillStarterLayout } from './state.ts';
 import { TUTORIAL_STEPS, unlockTutorialFeatures, skipTutorialChapter, skipTutorialStep, noteTutorial, TRACKED_ACTIONS } from './tutorial.ts';
-import { canPostJob, postJob, canHire, hire, canFire, fire, canAssign, assign, canLevelUp, levelUp, canSetZone, setZone, canSetNight, setNight } from './staff.ts'; // staff2 훅: 담당 구역·저녁 근무
+import { canPostJob, postJob, canHire, hire, canFire, fire, canAssign, assign, canLevelUp, levelUp, canSetNight, setNight } from './staff.ts'; // staff2 훅: 저녁 근무
+import { canSetPost, setPost, clearPost } from './staffPost.ts'; // staffpost 훅: 마당의 근무 자리
 import { canTrain, train } from './training.ts';
 import { canPromote, promote, canSetTarget, setTarget } from './promotions.ts';
 import { discoverPlacement } from './compat.ts';
@@ -390,7 +391,8 @@ function applyInner(state: GameState, a: Action): ApplyResult {
       assign(state, a.staffId, a.role);
       return { ok: true };
     }
-    case 'setStaffZone': { const c = canSetZone(state, a.staffId, a.zone); if (c.ok) setZone(state, a.staffId, a.zone); return c; } // staff2 훅
+    case 'setStaffPost': { const c = canSetPost(state, a.staffId, a.x, a.y); if (c.ok) setPost(state, a.staffId, a.x, a.y); return c; } // staffpost 훅
+    case 'clearStaffPost': { clearPost(state, a.staffId); return { ok: true }; } // staffpost 훅
     case 'setStaffNight': { const c = canSetNight(state, a.staffId, a.on); if (c.ok) setNight(state, a.staffId, a.on); return c; } // staff2 훅
     case 'levelUp': {
       const c = canLevelUp(state, a.staffId);
