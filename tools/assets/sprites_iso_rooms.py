@@ -61,8 +61,34 @@ def warehouse(level: int = 1) -> IsoCanvas:
             c.line((0.2, 0.2, z - 1), (0.2, 1.95, z - 1), WOOD[0]); c.line((0.2, 0.2, z - 1), (2.95, 0.2, z - 1), WOOD[0])
     # 실내(fix-indoor): 고정 설비는 뒷벽 줄의 카운터+주방 칸(x=1..2, y=0 — rooms.ts fixedCells)뿐. 나머지 바닥은 비워 둔다 — 플레이어가 실내 가구를 놓는 자리.
     counter_kitchen(c, r.z, 1, 3, level)
+    if level == 1:
+        back_room(c, r.z)   # 야외 중심 개편: 앞줄 빈 바닥을 창고로 채운다 (아래 설명)
     c.outline()
     return c
+
+
+def back_room(c: IsoCanvas, z: int) -> None:
+    """본관 앞줄(y≈1)을 재료 창고로 채운다.
+
+    카페 본관은 **손님이 앉는 곳이 아니라 주방·카운터**다(야외 중심 개편, specs/2026-09-25-video-flow.md §3-0).
+    그런데 그림이 「빈 나무 바닥이 깔린 방」이라, 그 위에 파라솔 테이블을 놓으면 실내에 놓은 것처럼 보였다 —
+    규칙은 야외 전용인데 그림이 반대로 말하고 있었다. 앞줄을 원두 자루·감귤 상자·선반으로 채워
+    **앉을 자리가 아니라는 게 한눈에 보이게** 한다."""
+    # 원두 자루 두 개 (왼쪽 앞)
+    for x, y in ((0.28, 1.15), (0.28, 1.6)):
+        c.box(7, WOOD, (x, y, x + 0.3, y + 0.3), z0=z)
+        sx, sy = c.spx(x + 0.15, y + 0.15, z + 7)
+        c.rect(sx - 3, sy - 3, 6, 3, hexc('6b4a2f')); c.hline(sx - 3, sx + 2, sy - 3, hexc('8a6440'))
+    # 감귤 상자 3단 (가운데 앞)
+    for i, zz in enumerate((z, z + 6, z + 12)):
+        c.box(6, WOOD, (1.05 + i * 0.02, 1.2, 1.45 + i * 0.02, 1.62), z0=zz)
+    sx, sy = c.spx(1.25, 1.4, z + 18)
+    for dx, dy in ((-3, -2), (0, -3), (3, -2), (-1, -1), (2, 0)):
+        tangerine(c, sx + dx, sy + dy)
+    # 선반 (오른쪽 앞) — 컵·병
+    c.box(16, DARKWOOD, (2.05, 1.18, 2.7, 1.42), z0=z)
+    for i, col in enumerate((WHITE[1], YELLOW[1], RED[1], SKY[2])):
+        cup(c, 2.15 + i * 0.14, 1.3, z + 16, col)
 
 
 def counter_kitchen(c: IsoCanvas, z: int, x0: int, x1: int, level: int) -> None:
