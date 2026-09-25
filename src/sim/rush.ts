@@ -39,7 +39,7 @@ import { isCared } from './staffPost.ts'; // staffpost: 직원이 돌보는 자�
 import { popularityFor, BASE_POPULARITY } from './compat.ts';
 import { CLEAN_MAX } from './cleanliness.ts';
 import { dailyGuestCount, hourShare, freeSeats, totalSeats, seatGuestFromQueue, typeWeight, updateGuests } from './guests.ts';
-import { checkChapter, countsForChapter } from './chapter.ts'; // chapter: 막 진행
+import { addChapterHit, checkChapter, countsForChapter, currentChapter } from './chapter.ts'; // chapter: 막 진행
 import { spawnRouteWeights, routeTagMult } from './entry.ts'; // 러시 줄도 경로 비중(정류장·주차장·올레)을 그대로 따른다
 
 // ---------- 주·요일 ----------
@@ -135,14 +135,20 @@ export const RUSH_PRIORITY_SCORE = 5;
 /** 「제대로 받았을 때」 한 명당 점수 — 자동(계수 0.6)이면 이 아래, 잘 고르고 스킬을 쓰면 이 위가 된다.
  *  실측(초반, 손으로): 여섯 명 받고 58점 ≈ 한 명당 9.7점. 27로 잡혀 있어 잘해도 늘 C가 나왔다.
  *  팁·자리 보너스·콤보는 카페가 커져야 붙는 값이라 초반 기대치에 넣으면 안 된다. */
-export const RUSH_EXPECT_PER_GUEST = 12;
+/** 손님 하나당 기대 점수 — 등급의 기준선이다.
+ *  실측(러시를 손으로 하는 봇, scripts/chapters.ts 5년 240판): 맞는 자리에 앉히면 손님 하나당 **33점 안팎**,
+ *  아무 자리면 ~22점, 자동 착석은 ~8점. 낮게 두면 손으로 하는 순간 전판 S가 나와 등급이 뜻을 잃는다
+ *  (실제로 240판 중 S 240판·228판이 나왔다). 33이면 자동 C · 아무 데나 B · 제자리 A · 마당까지 맞으면 S가 된다. */
+export const RUSH_EXPECT_PER_GUEST = 29;
 /** 러시 3시간 동안 자리 하나가 받는 손님 (좌석 규모 보정).
  *  러시 구간이 3 게임시간이고 손님이 앉아 있는 시간이 1.5시간(SEAT_HOURS)이니 실제 회전은 **2명**이다.
  *  0.5로 잡혀 있어서 자리 8석짜리 카페에 손님이 다섯 명만 왔다 — 「러시」가 아니라 그냥 점심이었다. */
 export const RUSH_SEAT_TURNOVER = 2;
 /** 일하는 직원 한 명이 더 받게 해 주는 손님 (직원 규모 보정) */
 export const RUSH_STAFF_SERVES = 2;
-export const RUSH_GRADE_S = 1.3;
+/** 실측 분포(러시를 손으로 하는 봇 240판): 중앙값 1.00 · 90% 1.18 · 최고 1.48.
+ *  1.3으로 두면 S가 사실상 안 나오고, 1.2면 잘한 판의 한 할쯤이 S가 된다 — 5막이 닿는 목표가 된다. */
+export const RUSH_GRADE_S = 1.15;
 export const RUSH_GRADE_A = 1.0;
 export const RUSH_GRADE_B = 0.7;
 export const RUSH_GRADES: RushGrade[] = ['S', 'A', 'B', 'C'];
@@ -164,11 +170,21 @@ export function rushCapacity(state: GameState): number {
 }
 /** 지금 규모·이번 줄 길이로 기대되는 점수. 온 손님보다 자리가 적으면 자리가, 자리가 남으면 온 손님이 기준 —
  *  그래서 같은 규모·같은 줄이면 **조작 실력만** 등급을 가른다. */
-export function rushExpectedScore(state: GameState, arrived: number): number {
-  return RUSH_EXPECT_PER_GUEST * Math.max(1, Math.min(Math.max(1, arrived), rushServable(state)));
+/** 적게 받고 잘한 척하지 못하게 하는 바닥 — 받을 수 있었던 양의 이만큼은 기준에 깔린다 */
+export const RUSH_EXPECT_FLOOR = 0.6;
+/** 지금 규모·이번 줄에서 기대되는 점수.
+ *
+ *  **받은 손님** 기준이다. 예전엔 「온 손님」이었는데, 러시는 45초짜리 실시간 판이라 자리를 늘려도
+ *  한 판에 손이 닿는 수는 안 늘어난다 — 그래서 카페를 키울수록 기준만 올라가 **키울수록 등급이 떨어졌다**
+ *  (실측 scripts/chapters.ts: 1년차 A 32판이 5년차에 A 5·C 12판). 받은 손님으로 재면
+ *  「온 사람을 얼마나 잘 치렀나」가 그대로 남고(놓친 손님은 이미 점수에서 깎인다) 해마다 눈금이 같다.
+ *  바닥(RUSH_EXPECT_FLOOR)을 둬서 「둘만 받고 S」는 안 된다. */
+export function rushExpectedScore(state: GameState, arrived: number, served = arrived): number {
+  const could = Math.max(1, Math.min(Math.max(1, arrived), rushServable(state)));
+  return RUSH_EXPECT_PER_GUEST * Math.max(1, Math.max(served, could * RUSH_EXPECT_FLOOR));
 }
-export function rushGradeOf(state: GameState, score: number, arrived: number): RushGrade {
-  const ratio = score / rushExpectedScore(state, arrived);
+export function rushGradeOf(state: GameState, score: number, arrived: number, served = arrived): RushGrade {
+  const ratio = score / rushExpectedScore(state, arrived, served);
   if (ratio >= RUSH_GRADE_S) return 'S';
   if (ratio >= RUSH_GRADE_A) return 'A';
   if (ratio >= RUSH_GRADE_B) return 'B';
@@ -178,10 +194,12 @@ export function rushGradeOf(state: GameState, score: number, arrived: number): R
 /** 등급 보상 (§2) */
 export interface RushReward { tickets: number; reputation: number; guestPct: number }
 export const RUSH_REWARDS: Record<RushGrade, RushReward> = {
-  S: { tickets: 3, reputation: 5, guestPct: 10 },
-  A: { tickets: 2, reputation: 3, guestPct: 0 },
-  B: { tickets: 1, reputation: 0, guestPct: 0 },
-  C: { tickets: 0, reputation: -2, guestPct: 0 },
+  S: { tickets: 4, reputation: 5, guestPct: 10 },
+  A: { tickets: 3, reputation: 3, guestPct: 0 },
+  B: { tickets: 2, reputation: 1, guestPct: 0 },
+  // 무조작은 C다(P0-4). 그래도 응모권 한 장은 준다 — 등급을 제대로 매기고 나니 봇이 144판 전부 C가 되면서
+  // 응모권이 통째로 끊겨 6판 중 2판이 파산했다. **평판·손님 보너스·막 진행**은 그대로 A·S에만 걸려 있다.
+  C: { tickets: 1, reputation: 0, guestPct: 0 },
 };
 /** S 보상 「다음 주 손님 +10%」가 가는 날 수 */
 export const RUSH_BOOST_DAYS = WEEK_DAYS;
@@ -303,10 +321,30 @@ function pickRushRoute(state: GameState): RouteId {
   const w = spawnRouteWeights(state);
   return (w.length <= 1 ? w[0]?.route : pickWeighted(state, w, (x) => x.weight)?.route) ?? 'bus';
 }
-function pickRushType(state: GameState, route: RouteId): string | null {
-  return pickWeighted(state, unlockedTypeIds(state), (id) => typeWeight(state, id, RUSH_START_HOUR) * (route === 'bus' ? 1 : routeTagMult(route, id))) ?? null;
+/** chapter: 이번 막이 잡는 손님을 줄에 더 세운다 — 다만 **드문 손님만**.
+ *
+ *  해금된 손님층은 고르지 않다(30종 중 rest 16 · farm 1). 그대로 두면 막 난이도를 플레이어가 아니라
+ *  손님 뽑기가 정한다. 그렇다고 전부 똑같이 올리면 안 된다 — 이미 절반이 넘는 rest를 6배로 올렸더니
+ *  러시가 **가장 지갑이 얇은 동네 손님으로 도배**돼 매출이 깎였고, 무조작 봇 6판 중 2판이 파산했다.
+ *  그래서 「이번 막 손님이 줄의 RUSH_CHAPTER_SHARE쯤 되게」만 끌어올린다. 이미 그만큼 흔하면 그대로 둔다. */
+export const RUSH_CHAPTER_SHARE = 0.35;
+export const RUSH_CHAPTER_WEIGHT_MAX = 6;
+export function chapterBoost(state: GameState, want: RushWant | null): number {
+  if (want === null) return 1;
+  const ids = unlockedTypeIds(state);
+  const n = ids.filter((id) => wantOf(id) === want).length;
+  if (n === 0 || ids.length === 0) return 1;
+  const share = n / ids.length;
+  return share >= RUSH_CHAPTER_SHARE ? 1 : Math.min(RUSH_CHAPTER_WEIGHT_MAX, RUSH_CHAPTER_SHARE / share);
 }
-function newRushGuest(state: GameState): RushGuest | null {
+function pickRushType(state: GameState, route: RouteId): string | null {
+  const want = currentChapter(state)?.want ?? null;
+  const boost = chapterBoost(state, want);
+  return pickWeighted(state, unlockedTypeIds(state), (id) =>
+    typeWeight(state, id, RUSH_START_HOUR)
+    * (route === 'bus' ? 1 : routeTagMult(route, id))
+    * (want !== null && wantOf(id) === want ? boost : 1)) ?? null;
+}function newRushGuest(state: GameState): RushGuest | null {
   const route = pickRushRoute(state);
   const typeId = pickRushType(state, route);
   if (!typeId) return null;
@@ -427,8 +465,12 @@ function seatOne(state: GameState, r: RushState, g: RushGuest, seat: PlacedObjec
  *  (예전엔 전망·명당·인기 중 아무거나 하나면 통과라 모든 손님에게 같은 자리가 좋았다.) */
 export function rushSeatFits(state: GameState, seat: PlacedObject | null, typeId: string): boolean {
   if (!seat) return false;
+  return seatFitsWant(state, seat, wantOf(typeId), typeId);
+}
+/** 이 자리가 그 「보는 것」에 맞나 — 손님 없이 자리만으로 묻는다 (chapter.ts가 「그런 자리가 아예 없다」를 말할 때 쓴다) */
+export function seatFitsWant(state: GameState, seat: PlacedObject, want: RushWant, typeId?: string): boolean {
   const site = siteOf(state, seat.x, seat.y);
-  switch (wantOf(typeId)) {
+  switch (want) {
     case 'scenery': return site.view >= RUSH_FIT_VIEW;                 // 바다·오름이 보이는 자리
     case 'rest': return seatShade(state, seat) >= 1 && site.view < RUSH_FIT_VIEW;  // 그늘지고 조용한 구석 (파라솔은 제 그늘을 친다)
     case 'convenience': return nearDoor(state, seat);                  // 문에서 가까운 자리
@@ -437,7 +479,7 @@ export function rushSeatFits(state: GameState, seat: PlacedObject | null, typeId
     case 'farm': return nearCategory(state, seat, 'farm');
     case 'food': return nearCategory(state, seat, 'food');
     case 'fun': return nearCategory(state, seat, 'fun');
-    default: return popularityFor(state, seat.id, typeId) > BASE_POPULARITY;
+    default: return typeId === undefined || popularityFor(state, seat.id, typeId) > BASE_POPULARITY;
   }
 }
 /** 이 분류 시설이 자리에서 RUSH_FIT_RADIUS 칸 안에 완공돼 있나 (감귤나무 곁 「귤밭 자리」) */
@@ -468,7 +510,7 @@ function scoreServe(state: GameState, r: RushState, typeId: string, seat: Placed
     if (r.streak % RUSH_COMBO_N === 0) r.combo++;
   }
   if (!manual) gain *= RUSH_AUTO_COEF; else r.manual++;
-  if (countsForChapter(state, wantOf(typeId), manual, fit)) r.chapterHits = (r.chapterHits ?? 0) + 1; // chapter: 이번 막의 손님을 직접·제자리에
+  if (countsForChapter(state, wantOf(typeId), manual, fit)) { r.chapterHits = (r.chapterHits ?? 0) + 1; addChapterHit(state); } // chapter: 이번 막의 손님을 직접·제자리에 (판별·누적 둘 다)
   r.tips += tip;
   if (fit) r.bonus += RUSH_FIT_BONUS;
   if (cared) r.bonus += RUSH_CARE_BONUS;
@@ -502,7 +544,7 @@ function finishRush(state: GameState, r: RushState): void {
   r.phase = 'done';
   r.endTick = state.tick;
   r.score = Math.max(0, r.score - (r.missed ?? 0) * RUSH_LEFT_PENALTY); // 빈 자리를 두고 놓친 사람만 벌점
-  const grade = rushGradeOf(state, r.score, r.arrived);
+  const grade = rushGradeOf(state, r.score, r.arrived, r.served);
   r.grade = grade;
   rushGrades(state)[grade]++;
   const rw = RUSH_REWARDS[grade];

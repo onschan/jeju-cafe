@@ -236,21 +236,21 @@ describe('점수·등급 (§2)', () => {
     expect(r.streak).toBeGreaterThanOrEqual(RUSH_COMBO_N);
     expect(RUSH_COMBO_MULT).toBe(1.5);
   });
-  test('등급 문턱은 좌석·직원 규모에 맞춘 상대 평가 — 같은 점수라도 큰 카페는 낮은 등급', () => {
+  test('등급은 「받은 손님 하나당 얼마나 잘했나」 — 많이 받을수록 기준도 같이 오른다', () => {
     const small = cafe(2);
+    const arrived = 30;
+    // 같은 카페에서 더 많이 받으면 기준도 오른다 (적게 받고 S 받는 길을 막는다)
+    expect(rushExpectedScore(small, arrived, 20)).toBeGreaterThan(rushExpectedScore(small, arrived, 5));
+    // 카페를 키워도 「받은 손님이 같으면」 기준은 같다 — 키울수록 등급이 떨어지지 않는다
     const big = cafe(12);
     expect(rushCapacity(big)).toBeGreaterThan(rushCapacity(small));
-    const arrived = 30;
-    expect(rushExpectedScore(big, arrived)).toBeGreaterThan(rushExpectedScore(small, arrived));
-    // 같은 점수라도 큰 카페는 기대치가 높아 등급이 낮다 (자리 회전 2를 반영한 뒤로 둘 다 C가 되지 않게 점수를 키운다)
-    const score = Math.round(rushExpectedScore(small, arrived) * RUSH_GRADE_A); // 작은 카페엔 딱 A인 점수
-    expect(rushGradeOf(small, score, arrived)).not.toBe(rushGradeOf(big, score, arrived));
+    expect(rushExpectedScore(big, arrived, 20)).toBe(rushExpectedScore(small, arrived, 20));
     // 문턱 자체
-    const exp = rushExpectedScore(small, arrived);
-    expect(rushGradeOf(small, Math.ceil(exp * RUSH_GRADE_A), arrived)).toBe('A');
-    expect(rushGradeOf(small, Math.ceil(exp * RUSH_GRADE_B), arrived)).toBe('B'); // 반올림이 문턱 아래로 떨어지지 않게
-    expect(rushGradeOf(small, 0, arrived)).toBe('C');
-    expect(rushGradeOf(small, exp * 2, arrived)).toBe('S');
+    const exp = rushExpectedScore(small, arrived, 20);
+    expect(rushGradeOf(small, Math.ceil(exp * RUSH_GRADE_A), arrived, 20)).toBe('A');
+    expect(rushGradeOf(small, Math.ceil(exp * RUSH_GRADE_B), arrived, 20)).toBe('B'); // 반올림이 문턱 아래로 떨어지지 않게
+    expect(rushGradeOf(small, 0, arrived, 20)).toBe('C');
+    expect(rushGradeOf(small, exp * 2, arrived, 20)).toBe('S');
   });
   test('떠난 손님은 15점씩 깎는다 (0 아래로는 안 내려간다)', () => {
     const s = cafe(4);
@@ -269,11 +269,12 @@ describe('점수·등급 (§2)', () => {
     expect(r.score).toBe(Math.max(0, r.score));
     expect(r.score).toBeGreaterThanOrEqual(0);
   });
-  test('등급 보상 (§2): S 응모권 3·평판 +5·다음 주 손님 +10%, C 평판 −2', () => {
-    expect(RUSH_REWARDS.S).toEqual({ tickets: 3, reputation: 5, guestPct: 10 });
-    expect(RUSH_REWARDS.A).toEqual({ tickets: 2, reputation: 3, guestPct: 0 });
-    expect(RUSH_REWARDS.B.tickets).toBe(1);
-    expect(RUSH_REWARDS.C.reputation).toBe(-2);
+  test('등급 보상 (§2): S 응모권 4·평판 +5·다음 주 손님 +10%, 평판은 A·S에만', () => {
+    expect(RUSH_REWARDS.S).toEqual({ tickets: 4, reputation: 5, guestPct: 10 });
+    expect(RUSH_REWARDS.A).toEqual({ tickets: 3, reputation: 3, guestPct: 0 });
+    expect(RUSH_REWARDS.B.tickets).toBe(2);
+    // 평판·손님 보너스는 A·S에만. C도 응모권 한 장은 받는다 (무조작이 파산으로 이어지지 않게)
+    expect(RUSH_REWARDS.C).toEqual({ tickets: 1, reputation: 0, guestPct: 0 });
   });
 });
 

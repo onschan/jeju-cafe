@@ -12,7 +12,7 @@
  * 셋 다 없으면 줄도 없다 — 할 말이 없으면 안 띄운다.
  */
 import type { GameState } from '../sim/index.ts';
-import { chapterLine, currentTutorialStep, openBlocker } from '../sim/index.ts';
+import { chapterBlocker, chapterLine, currentTutorialStep, openBlocker } from '../sim/index.ts';
 import { TUTORIAL_STEPS as STEP_TEXTS } from '../data/dialogue/index.ts';
 import { PALETTE } from './frame';
 import { Icon } from './Icon';
@@ -39,7 +39,11 @@ export function guideOf(s: GameState): Guide | null {
   const blocked = openBlocker(s);
   if (blocked) return { kind: 'blocker', icon: 'bulb', text: blocked, urgent: true };
   const ch = chapterLine(s);
-  if (ch) return { kind: 'chapter', icon: 'flag', title: ch.name, text: ch.todo, tail: ch.need > 0 ? `${ch.have}/${ch.need}` : ch.grade };
+  if (!ch) return null;
+  // 막이 막혔으면(그 손님을 앉힐 자리가 아예 없으면) 할 일 대신 그 까닭을 — 숫자만 안 오르는 절벽을 막는다
+  const stuck = chapterBlocker(s);
+  const tail = ch.need > 0 ? `${ch.have}/${ch.need}` : `${ch.gradesHave}/${ch.gradesNeed}`;
+  return { kind: 'chapter', icon: 'flag', title: ch.name, text: stuck ?? ch.todo, tail, urgent: !!stuck };
   return null;
 }
 

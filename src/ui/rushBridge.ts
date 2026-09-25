@@ -112,7 +112,8 @@ function rewardText(g: RushGrade): string {
 /** 이번 판 기준 점수 (지금 규모로 「줄을 다 받았을 때」) */
 export function rushPar(s: GameState = getState()): number {
   const r = s.rush;
-  return Math.round(rushExpectedScore(s, r && r.arrived > 0 ? r.arrived : rushArrivals(s)));
+  const arrived = r && r.arrived > 0 ? r.arrived : rushArrivals(s);
+  return Math.round(rushExpectedScore(s, arrived, r && r.phase === 'done' ? r.served : arrived));
 }
 /** 기준 점수 대비 등급 */
 export function gradeFor(score: number, par: number): RushGrade {
@@ -293,7 +294,7 @@ export function rushOf(s: GameState): RushState | null {
     combo: r.combo,
     served: r.served,
     left: r.left,
-    grade: r.grade ?? rushGradeOf(s, Math.max(0, r.score), Math.max(1, r.arrived)),
+    grade: r.grade ?? rushGradeOf(s, Math.max(0, r.score), Math.max(1, r.arrived), Math.max(1, r.served)),
     endTick: r.endTick,
   };
 }

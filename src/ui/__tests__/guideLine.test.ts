@@ -5,6 +5,7 @@ import { apply } from '../../sim/actions.ts';
 import { placeObject } from '../../sim/grid.ts';
 import { X, Y } from '../../sim/__tests__/helpers.ts';
 import { TUTORIAL_STEPS } from '../../sim/tutorial.ts';
+import { CHAPTERS } from '../../sim/chapter.ts';
 import { guideOf } from '../GuideLine.tsx';
 import type { GameState } from '../../sim/types.ts';
 
@@ -37,7 +38,7 @@ describe('안내 한 줄', () => {
     const g = guideOf(s)!;
     expect(g.kind).toBe('chapter');
     expect(g.title).toContain('1막');
-    expect(g.tail).toBe('0/2');
+    expect(g.tail).toBe(`0/${CHAPTERS[0]!.need}`);
   });
 
   it('할 말이 없으면 줄도 없다', () => {

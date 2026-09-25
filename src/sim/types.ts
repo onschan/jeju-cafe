@@ -1085,7 +1085,7 @@ export interface GameState {
   /** 러시 「자동 진행」 — 켜면 줄 전체를 자동으로 앉힌다 (점수 계수 0.6이 붙어 등급은 안 오른다). 기본 꺼짐 */
   rushAuto?: boolean;
   rushGrades?: Record<RushGrade, number>;     // 누적 등급 수 (§5 해금 조건 rushGrade)
-  chapter?: { idx: number };                  // chapter: 지금 몇 막인가 (0~5, 5 = 다 끝냄) — chapter.ts
+  chapter?: { idx: number; hits?: number; grades?: number }; // chapter: 지금 몇 막인가(0~5, 5 = 다 끝냄)와 그 막에서 쌓은 것 — chapter.ts
   routes: Record<RouteId, RouteState>;        // 손님 유입 경로 3종 (트랙 H entry.ts)
   ending: EndingState;                        // 5년차 엔딩·빠른 모드 (ending.ts, z-ending · pace)
   carry: CarryOver | null;                    // 이월해서 시작한 게임이면 그 내용 (기록용)
