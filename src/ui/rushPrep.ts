@@ -104,5 +104,6 @@ export function rushDiagnosis(s: GameState): RushDiagnosis {
 /** 결과 카드의 「이래서 놓쳤어요」 한 줄 */
 export function missLine(r: RushResult): string {
   if (r.left === 0) return '한 명도 안 놓쳤어요';
-  return `${MISS_WHY[r.missKey]} (${r.left}명)`;
+  // 무엇이 모자랐는지가 먼저다 — 이 한 줄이 다음 주에 무엇을 지을지를 정한다
+  return r.shortfall ?? `${MISS_WHY[r.missKey]} (${r.left}명)`;
 }

@@ -919,6 +919,7 @@ export interface RushState {
   served: number;     // 받은 손님
   left: number;       // 기다리다 떠난 손님
   missed?: number;    // 그중 **빈 자리가 있었는데도** 놓친 사람 — 점수 벌점은 이쪽만 본다
+  leftWants?: string[]; // 놓친 손님들이 보던 것 — 「무엇이 모자랐나」 한 줄의 재료
   arrived: number;    // 이번 러시에 문 앞에 선 손님 수 (등급 기준)
   grade: RushGrade | null;
   week: number;       // 이 러시가 열린 주 번호 (같은 주 재발동 방지). −1 = 아직

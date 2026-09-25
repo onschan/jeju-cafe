@@ -181,8 +181,9 @@ export function RushShow() {
           <span style={{ color: PALETTE.inkSoft }}>팁</span><b>{r.tip}</b>
           <span style={{ color: PALETTE.inkSoft }}>최고 콤보</span><b>{Math.max(r.bestCombo, tally.bestCombo)}</b>
         </div>
-        <div data-testid="rush-miss" style={{ marginTop: 8, padding: '6px 8px', background: PALETTE.paperDark, border: `2px solid ${PALETTE.woodLight}`, borderRadius: 6, fontSize: 14, fontWeight: 700, textAlign: 'left', color: r.left > 0 ? PALETTE.bad : PALETTE.ok }}>
-          <Icon name="bulb" size={14} /> {missLine(r)}
+        <div data-testid="rush-miss" style={{ marginTop: 8, padding: '8px', background: PALETTE.paperDark, border: `3px solid ${r.left > 0 ? PALETTE.bad : PALETTE.ok}`, borderRadius: 6, fontSize: 15, fontWeight: 700, textAlign: 'left', color: r.left > 0 ? PALETTE.bad : PALETTE.ok, lineHeight: 1.4 }}>
+          <Icon name="bulb" size={15} /> {missLine(r)}
+          {r.shortfall && <div style={{ fontSize: 13, color: PALETTE.inkSoft, marginTop: 3 }}>다음 주엔 그 자리를 늘려 보세요</div>}
         </div>
         {r.auto && <div style={{ fontSize: 13, color: PALETTE.inkSoft, marginTop: 4 }}>자동 진행이라 점수가 절반이에요</div>}
         <div style={{ fontSize: 14, marginTop: 6, color: PALETTE.title, fontWeight: 700 }}>{GRADE_REWARD_TEXT[r.grade]}</div>

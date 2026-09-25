@@ -16,7 +16,7 @@ import {
   weekdayOf as simWeekdayOf, startRushNow, lastRushGrade,
   RUSH_WEEKDAY as SIM_RUSH_WEEKDAY, RUSH_NOTICE_WEEKDAY, RUSH_START_HOUR, RUSH_RUN_MS, RUSH_RUN_SECONDS,
   RUSH_SCORE_PER_GUEST, RUSH_LEFT_PENALTY, RUSH_PRIORITY_SCORE, RUSH_COMBO_N, RUSH_COMBO_MULT,
-  RUSH_REWARDS, rushMsOfSeconds,
+  RUSH_REWARDS, rushMsOfSeconds, wantOf, wantShortfallLine, WANT_LABEL, WANT_ICON,
 } from '../sim/index.ts';
 import { dispatch, getState, subscribe, isPausedByUi } from './store';
 import { noteTutorial } from './tutorialDialogue';
@@ -133,6 +133,8 @@ export interface RushResult {
   bestCombo: number;
   /** 가장 큰 놓친 까닭 */
   missKey: 'queue' | 'slow' | 'none';
+  /** 무엇이 모자랐나 — 놓친 손님들이 보던 것 중 제일 많았던 하나 */
+  shortfall: string | null;
   auto: boolean;
 }
 /** 마지막 러시 성적 — sim의 state.rush가 곧 성적표다 (저장·불러오기가 그대로 따라온다) */
@@ -149,6 +151,7 @@ export function lastRushResult(s: GameState = getState()): RushResult | null {
     tip: r.tips,
     bestCombo: r.combo,
     missKey: r.left === 0 ? 'none' : freeSeatIds(s).length === 0 ? 'queue' : 'slow',
+    shortfall: wantShortfallLine(r), // 「경치 자리가 모자라 6명을 놓쳤어요」 — 다음 주 과제
     auto: r.manual === 0,
   };
 }
@@ -181,6 +184,11 @@ export function rushTick(_dtMs: number): void { /* noop: sim tick이 굴린다 *
 /** 주문이 이만큼 밀리면 말풍선이 빨개진다 (게임 ms) */
 export const ORDER_URGENT_MS = rushMsOfSeconds(9);
 
+/** 이 손님이 보는 것 — 줄 얼굴 아이콘과 상단 한 줄에 같이 쓴다 */
+export function guestWant(typeId: string): { key: string; label: string; icon: string } {
+  const k = wantOf(typeId);
+  return { key: k, label: WANT_LABEL[k], icon: WANT_ICON[k] };
+}
 /** 줄 맨 앞 손님 (없으면 null) */
 export function frontGuest(s: GameState): RushQueueGuest | null {
   return rushOf(s)?.queue[0] ?? null;

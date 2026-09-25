@@ -31,6 +31,7 @@ import { addReputation, addComplaint, REPUTATION_START } from './reputation.ts';
 import { addTickets } from './mileage.ts';
 import { addEffect } from './effects.ts';
 import { unlockedTypeIds, walletOf } from './segments.ts';
+import { guestTypeDef } from '../data/index.ts';
 import { addRegularGauge } from './interact.ts';
 import { siteOf } from './site.ts';
 import { cornerOfPiece } from './corners.ts';
@@ -194,7 +195,7 @@ export const RUSH_LEFT_COMPLAINT_MAX = 2;
 
 // ---------- 상태 ----------
 export function initRush(): RushState {
-  return { phase: 'idle', startTick: 0, endTick: 0, queue: [], score: 0, combo: 0, served: 0, left: 0, arrived: 0, grade: null, week: -1, notified: -1, elapsedMs: 0, spawnAcc: 0, streak: 0, tips: 0, bonus: 0, manual: 0, autoAtMs: RUSH_AUTO_PERIOD_MS, missed: 0, done: [] };
+  return { phase: 'idle', startTick: 0, endTick: 0, queue: [], score: 0, combo: 0, served: 0, left: 0, arrived: 0, grade: null, week: -1, notified: -1, elapsedMs: 0, spawnAcc: 0, streak: 0, tips: 0, bonus: 0, manual: 0, autoAtMs: RUSH_AUTO_PERIOD_MS, missed: 0, leftWants: [], done: [] };
 }
 export function rushState(state: GameState): RushState {
   return (state.rush ??= initRush());
@@ -374,6 +375,7 @@ function tickPatience(state: GameState, r: RushState, dtMs: number): void {
     // 자리가 꽉 차 있었다면 가게가 작은 것이다. 둘을 같이 깎으면 열심히 눌러도 0점이 나와
     // (실측: 47점을 내고 못 받은 6명 × 15 = −90 → 최종 0점·C) 조작이 결과를 안 바꾸는 것처럼 느껴진다.
     if (freeSeats(state).length > 0) r.missed = (r.missed ?? 0) + 1;
+    (r.leftWants ??= []).push(wantOf(g.type)); // 무엇을 보던 손님을 놓쳤나 — 다음 주 과제
     if (r.left <= RUSH_LEFT_REPUTATION_MAX) addReputation(state, -RUSH_LEFT_REPUTATION);
     if (r.left <= RUSH_LEFT_COMPLAINT_MAX) addComplaint(state, 'no_seat', g.type);
     pushFx(state, { kind: 'react', guestId: g.id, text: '너무 오래 걸려요', icon: 'sweat', tick: state.tick });
@@ -417,11 +419,24 @@ function seatOne(state: GameState, r: RushState, g: RushGuest, seat: PlacedObjec
 }
 
 /** 자리가 손님에게 맞나 (전망·명당·상성) */
+/** 이 자리가 **그 손님이 보는 것**을 채워 주나. 손님마다 기준이 다르다 — 그래서 자리 고르기가 판단이 된다.
+ *  (예전엔 전망·명당·인기 중 아무거나 하나면 통과라 모든 손님에게 같은 자리가 좋았다.) */
 export function rushSeatFits(state: GameState, seat: PlacedObject | null, typeId: string): boolean {
   if (!seat) return false;
-  if (siteOf(state, seat.x, seat.y).view >= RUSH_FIT_VIEW) return true;
-  if (cornerOfPiece(state, seat.id)) return true;
-  return popularityFor(state, seat.id, typeId) > BASE_POPULARITY;
+  const site = siteOf(state, seat.x, seat.y);
+  switch (wantOf(typeId)) {
+    case 'scenery': return site.view >= RUSH_FIT_VIEW;                 // 바다·오름이 보이는 자리
+    case 'rest': return site.shade >= 1 && site.view < RUSH_FIT_VIEW;  // 그늘지고 조용한 구석
+    case 'convenience': return nearDoor(state, seat);                  // 문에서 가까운 자리
+    default: return popularityFor(state, seat.id, typeId) > BASE_POPULARITY; // 즐길거리·먹거리·귤밭은 주변 시설이 정한다
+  }
+}
+/** 문 앞에서 두 칸 안 */
+const NEAR_DOOR = 2;
+function nearDoor(state: GameState, seat: PlacedObject): boolean {
+  const main = Object.values(state.objects).find((o) => o.type === 'warehouse');
+  if (!main) return false;
+  return Math.abs(seat.x - main.x) + Math.abs(seat.y - main.y) <= NEAR_DOOR + 2;
 }
 
 function scoreServe(state: GameState, r: RushState, typeId: string, seat: PlacedObject | null, manual: boolean): void {
@@ -443,8 +458,24 @@ function scoreServe(state: GameState, r: RushState, typeId: string, seat: Placed
 }
 
 // ---------- 마무리·정산 ----------
+/** 놓친 손님들이 보던 것 중 제일 많았던 하나 — 「바다 자리가 모자라 6명을 놓쳤어요」의 재료.
+ *  이 한 줄이 다음 주 준비의 과제가 된다 (코어 루프 10분 층). */
+export function rushShortfall(r: RushState): { want: RushWant; n: number } | null {
+  const count = new Map<RushWant, number>();
+  for (const t of (r.leftWants ?? []) as RushWant[]) count.set(t, (count.get(t) ?? 0) + 1);
+  let best: { want: RushWant; n: number } | null = null;
+  for (const [want, n] of count) if (!best || n > best.n) best = { want, n };
+  return best;
+}
+export function wantShortfallLine(r: RushState): string | null {
+  const s = rushShortfall(r);
+  if (!s) return null;
+  return `${WANT_LABEL[s.want]} 자리가 모자라 ${s.n}명을 놓쳤어요`;
+}
+
 function finishRush(state: GameState, r: RushState): void {
   // 남은 줄은 그대로 돌아간다 (이미 인내가 남아 있어도 러시가 끝나면 집에 간다 — 벌점은 없다)
+  for (const g of r.queue) (r.leftWants ??= []).push(wantOf(g.type));
   r.left += r.queue.length; // 문을 닫을 때까지 못 앉은 사람도 놓친 손님 (벌점은 빈 자리가 있었을 때만 — r.missed)
   r.queue = [];
   r.phase = 'done';
@@ -464,7 +495,7 @@ function finishRush(state: GameState, r: RushState): void {
   const top = topServedType(r);
   if (gauge > 0 && top) addRegularGauge(state, top, gauge);
   pushNotice(state, `러시 ${grade}등급 — 받은 손님 ${r.served}명 · 놓친 손님 ${r.left}명`);
-  pushFx(state, { kind: 'scene', title: `러시 ${grade}등급`, text: `${r.served}명을 받았어요 · ${r.score}점`, tick: state.tick });
+  // 결과는 RushShow의 결과 카드가 보여 준다 — 장면 창까지 띄우면 카드 위에 겹쳐 두 겹이 된다
 }
 
 function topServedType(r: RushState): string | null {
@@ -574,4 +605,32 @@ export function daysToRush(state: GameState): number {
 /** 마지막 러시 결과 (UI·진단) */
 export function lastRushGrade(state: GameState): RushGrade | null {
   return state.rush?.grade ?? null;
+}
+
+// ---------- 손님이 원하는 것 (코어 루프 1분 층) ----------
+/**
+ * 「이 손님은 뭘 보고 자리를 고르나」를 **한 단어로** 내놓는다.
+ *
+ * 손님층 103종은 이미 rest·food·fun·scenery·convenience·farm 중 둘을 좋아하게 데이터가 있고,
+ * 자리별 적합도(popularityFor)도 돌고 있었다. 그런데 **화면에는 초록/금색 두 가지로만 나왔다** —
+ * 왜 그 자리가 좋은지 알 수 없으니 「제일 가까운 초록 누르기」가 최적이 되고, 1분에 열 번 판단할 거리가 없었다.
+ * 여기서 그 까닭을 말로 만들어 줄·자리·결과에 같이 쓴다.
+ */
+export type RushWant = 'scenery' | 'rest' | 'fun' | 'convenience' | 'food' | 'farm';
+export const WANT_LABEL: Record<RushWant, string> = {
+  scenery: '경치', rest: '조용함', fun: '즐길거리', convenience: '가까운 자리', food: '먹거리', farm: '귤밭',
+};
+export const WANT_ICON: Record<RushWant, string> = {
+  scenery: 'view', rest: 'shade', fun: 'party', convenience: 'door', food: 'meal', farm: 'harvest',
+};
+/** 이 손님층이 제일 보는 것 (likes 첫 번째). 없으면 경치. */
+export function wantOf(typeId: string): RushWant {
+  try {
+    const w = guestTypeDef(typeId).wants?.[0];
+    return (w && w in WANT_LABEL ? w : 'scenery') as RushWant;
+  } catch { return 'scenery'; }
+}
+/** 「바다가 보이는 자리를 좋아해요」 같은 한 줄 */
+export function wantLine(typeId: string): string {
+  return `${WANT_LABEL[wantOf(typeId)]}을 보는 손님`;
 }

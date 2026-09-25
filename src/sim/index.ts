@@ -95,7 +95,7 @@ export { guestNameFor, regularFace, REQUESTS, requestDef, isRequestMet, requestH
 // ---------- 러시 타임 (rush.ts) — 주간 리듬의 코어 ----------
 export {
   initRush, rushState, rushPhase, isRushRunning, isRushReady, inRush, isRushDay, rushDoneThisWeek, daysToRush, lastRushGrade,
-  rushGrades, rushGradeCount, rushTimeScale, rushQueueCap, rushPatienceMult, rushCapacity, rushExpectedScore, rushGradeOf, rushSeatFits, rushArrivals,
+  rushGrades, rushGradeCount, rushTimeScale, rushQueueCap, rushPatienceMult, rushCapacity, rushExpectedScore, rushGradeOf, rushSeatFits, rushArrivals, rushServable, wantOf, wantLine, wantShortfallLine, rushShortfall, WANT_LABEL, WANT_ICON,
   canSeatFromQueue, seatFromQueue, canRushPriority, rushPriority, nearestStaff, resolveRushAuto, stepRush, startRushNow,
   weekdayOf, weekIndexOf, weekCycleSeconds, rushSeconds, rushMsOfSeconds,
   RUSH_GRADES, RUSH_REWARDS, RUSH_WEEKDAY, RUSH_NOTICE_WEEKDAY, RUSH_READY_HOUR, RUSH_START_HOUR, RUSH_RUN_HOURS,
@@ -104,7 +104,7 @@ export {
   RUSH_SCORE_PER_GUEST, RUSH_LEFT_PENALTY, RUSH_FIT_BONUS, RUSH_COMBO_N, RUSH_COMBO_MULT, RUSH_AUTO_COEF,
   RUSH_EXPECT_PER_GUEST, RUSH_SEAT_TURNOVER, RUSH_STAFF_SERVES, RUSH_GRADE_S, RUSH_GRADE_A, RUSH_GRADE_B,
   RUSH_GAUGE_PER_SERVE, RUSH_GAUGE_GRADE, RUSH_LEFT_REPUTATION, RUSH_PRIORITY_CUT, RUSH_PRIORITY_SCORE, WEEK_DAYS,
-  type RushReward,
+  type RushReward, type RushWant,
 } from './rush.ts';
 // ---------- 대회 (contest.ts) — 연 2회 6·12월, 등급 3부터 ----------
 export {

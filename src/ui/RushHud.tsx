@@ -16,7 +16,7 @@ import { Icon } from './Icon';
 import { PALETTE } from './frame';
 import { SHELL_TOP } from './Shell';
 import {
-  RUSH_LEN_MS, rushOf, rushPaused, rushRunning,
+  RUSH_LEN_MS, guestWant, rushOf, rushPaused, rushRunning,
   rushTick, rushTimeLeftMs, subscribeRush, useRushAutoPref, type RushQueueGuest,
 } from './rushBridge';
 
@@ -45,12 +45,18 @@ function QueueFace({ g, first, onPick }: { g: RushQueueGuest; first: boolean; on
   const ratio = Math.max(0, Math.min(1, g.patienceLeft / Math.max(1, g.patience)));
   return (
     <button data-testid={first ? 'rush-queue-first' : 'rush-queue-face'} data-tut={first ? 'rush-queue-first' : undefined} onClick={onPick}
-      aria-label={`${def.name}${first ? ' · 맨 앞' : ''} · 인내 ${Math.round(ratio * 100)}%`}
+      aria-label={`${def.name}${first ? ' · 맨 앞' : ''} · ${guestWant(g.type).label}을 봐요 · 인내 ${Math.round(ratio * 100)}%`}
       style={{
         width: RUSH_QUEUE_W - 6, minHeight: 50, padding: 0, margin: 0, border: `3px solid ${first ? PALETTE.btnOn : PALETTE.wood}`,
         borderRadius: 8, background: PALETTE.paper, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1, overflow: 'hidden',
       }}>
-      <Portrait parts={guestParts(face, def.tags, def.wants)} face={face} size={RUSH_QUEUE_W - 14} expr={ratio > 0.25 ? 'normal' : 'surprised'} />
+      <span style={{ position: 'relative', display: 'block' }}>
+        <Portrait parts={guestParts(face, def.tags, def.wants)} face={face} size={RUSH_QUEUE_W - 14} expr={ratio > 0.25 ? 'normal' : 'surprised'} />
+        {/* 이 손님이 보는 것 — 무엇을 맞춰 줘야 하는지가 줄에서 바로 보여야 판단이 생긴다 */}
+        <span aria-hidden style={{ position: 'absolute', right: -2, bottom: -2, width: 18, height: 18, borderRadius: 9, background: PALETTE.paper, border: `2px solid ${PALETTE.wood}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <Icon name={guestWant(g.type).icon} size={11} />
+        </span>
+      </span>
       <span aria-hidden style={{ width: '100%', height: 6, background: PALETTE.paperDark, display: 'block' }}>
         <span data-testid="rush-patience" data-pct={Math.round(ratio * 100)} style={{ display: 'block', height: '100%', width: `${ratio * 100}%`, background: patienceColor(ratio), transition: 'width 0.2s linear' }} />
       </span>
@@ -107,9 +113,21 @@ export function RushHud() {
         </button>
       </div>
 
+      {/* 맨 앞 손님이 무엇을 보고 자리를 고르는지 — 이게 없으면 초록 아무 데나 누르는 게 최적이 된다 */}
+      {r.queue[0] && (
+        <div data-testid="rush-want" style={{
+          position: 'absolute', top: SHELL_TOP + RUSH_TOP_H + 2, left: RUSH_QUEUE_W + 8, right: 6, zIndex: 11,
+          background: PALETTE.paper, border: `2px solid ${PALETTE.wood}`, borderRadius: 6, padding: '3px 8px',
+          fontSize: 13, fontWeight: 700, color: PALETTE.ink, display: 'flex', alignItems: 'center', gap: 5, pointerEvents: 'none',
+        }}>
+          <Icon name={guestWant(r.queue[0]!.type).icon} size={14} />
+          <span>{guestTypeDef(r.queue[0]!.type).name} — <b style={{ color: PALETTE.title }}>{guestWant(r.queue[0]!.type).label}</b>을 봐요</span>
+        </div>
+      )}
+
       {/* 왼쪽 세로 줄 */}
       <div data-testid="rush-queue" aria-label={`문 앞에 선 손님 ${r.queue.length}명`} style={{
-        position: 'absolute', top: SHELL_TOP + RUSH_TOP_H + 6, left: 4, width: RUSH_QUEUE_W, zIndex: 11,
+        position: 'absolute', top: SHELL_TOP + RUSH_TOP_H + 28, left: 4, width: RUSH_QUEUE_W, zIndex: 11,
         display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'center', pointerEvents: 'auto',
       }}>
         {shown.map((g, i) => <QueueFace key={g.id} g={g} first={i === 0} onPick={pickFront} />)}
