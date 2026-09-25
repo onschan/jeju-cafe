@@ -94,7 +94,7 @@ export function guestSay(state: GameState, guest: Guest): string | null {
   }
 }
 
-const REST_LINES = ['오늘은 쉬는 날이에요.', '쉬는 중…', '내일 봐요.'];
+export const REST_LINES = ['오늘은 쉬는 날이에요.', '쉬는 중…', '내일 봐요.'];
 const TIRED_LINES = ['쉬고 싶어요…', 'zzz', '기력이 없어요…'];
 const BUSY_LINES = ['개발 중이에요!', '레시피 연구 중…', '집중!'];
 const WORK_LINES: Record<string, string[]> = {

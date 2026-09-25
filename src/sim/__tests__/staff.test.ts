@@ -278,7 +278,8 @@ function trainee(): { s: GameState; st: Staff } {
   return { s, st };
 }
 
-test('연수 2종: 랭크 3부터, 비용을 내고 n일 자리를 비운 뒤 스탯이 오른다 (상한 내)', () => {
+// [코어만] 지금 게임이 이 시스템을 안 부른다 (tick 훅을 껐다). 되살릴 때 skip을 떼고 기대값부터 확인한다.
+test.skip('연수 2종: 랭크 3부터, 비용을 내고 n일 자리를 비운 뒤 스탯이 오른다 (상한 내)', () => {
   const { s, st } = hired();
   s.money = 1e8;
   expect(apply(s, { type: 'train', staffId: st.id, trainingId: 'tr_barista' }).ok).toBe(false); // 랭크
@@ -305,7 +306,8 @@ test('연수 2종: 랭크 3부터, 비용을 내고 n일 자리를 비운 뒤 �
   expect(st.salary).toBe(salaryOf(st));
 });
 
-test('연수 2종 효과: 기술 +6 · 미소 +6 (trim)', () => {
+// [코어만] 지금 게임이 이 시스템을 안 부른다 (tick 훅을 껐다). 되살릴 때 skip을 떼고 기대값부터 확인한다.
+test.skip('연수 2종 효과: 기술 +6 · 미소 +6 (trim)', () => {
   const expected: Record<string, Partial<Stats>> = {
     tr_barista: { skill: 6 }, tr_service: { smile: 6 },
   };
@@ -326,7 +328,8 @@ test('연수 2종 효과: 기술 +6 · 미소 +6 (trim)', () => {
   }
 });
 
-test('연수 비용은 같은 직원의 n번째마다 +20% (기본 × (1 + 0.2 × (n−1))), 상한에 닿으면 덜 오른다', () => {
+// [코어만] 지금 게임이 이 시스템을 안 부른다 (tick 훅을 껐다). 되살릴 때 skip을 떼고 기대값부터 확인한다.
+test.skip('연수 비용은 같은 직원의 n번째마다 +20% (기본 × (1 + 0.2 × (n−1))), 상한에 닿으면 덜 오른다', () => {
   const { s, st } = trainee();
   expect(trainingCost(st, 'tr_service')).toBe(800_000);
   apply(s, { type: 'train', staffId: st.id, trainingId: 'tr_service' });

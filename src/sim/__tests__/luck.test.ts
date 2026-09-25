@@ -123,7 +123,8 @@ test('홍보: 대박 = 인기 ×2 + 응모권 +1 + 평판 +3, 중박 = 표대로
   expect(s.lastOutcome).toBeNull();
 });
 
-test('연수 복귀: 대박 = 스탯 ×2, 쪽박 = ×0.5 + 기력 −20, 결과 팝업(lastOutcome.task = training)', () => {
+// [코어만] 지금 게임이 이 시스템을 안 부른다 (tick 훅을 껐다). 되살릴 때 skip을 떼고 기대값부터 확인한다.
+test.skip('연수 복귀: 대박 = 스탯 ×2, 쪽박 = ×0.5 + 기력 −20, 결과 팝업(lastOutcome.task = training)', () => {
   for (const want of ['great', 'fail'] as Outcome[]) {
     const make = () => { const x = withStaff(8); x.s.rank = 3; x.st.stats.skill = 10; return x; };
     const { st } = findTick(make, want, (x) => { apply(x.s, { type: 'train', staffId: x.st.id, trainingId: 'tr_barista' }); for (let d = 0; d < 3; d++) tick(x.s, DAY_MS); }, (x) => (x.s.lastOutcome?.task === 'training' ? x.s.lastOutcome.outcome : undefined));

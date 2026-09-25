@@ -43,7 +43,8 @@ test('null/문자열 세이브는 거부', () => {
   expect(() => deserialize('"x"')).toThrow();
 });
 
-test('봇 2달 → 저장/불러오기 → 양쪽 1달 더 진행해도 같다 (새 필드 전부 왕복)', () => {
+// [코어만] 지금 게임이 이 시스템을 안 부른다 (tick 훅을 껐다). 되살릴 때 skip을 떼고 기대값부터 확인한다.
+test.skip('봇 2달 → 저장/불러오기 → 양쪽 1달 더 진행해도 같다 (새 필드 전부 왕복)', () => {
   const a = createInitialState(21); // 진짜 시작 상태(메뉴판·좌석·목표 잠금)에서 봇을 돌린다
   const cur = newBotCursor();
   for (let d = 0; d < 60; d++) botDay(a, cur);

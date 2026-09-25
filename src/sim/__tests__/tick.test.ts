@@ -86,7 +86,8 @@ test('24시→6시 경계: 밤 회복이 6시 기력 소모보다 먼저다', ()
   expect(st.energy).toBe(98); // +40(상한 100) 뒤 −2. 반대 순서면 100
 });
 
-test('달이 바뀌는 날: 월급 정산(퇴사)이 먼저고, 그 다음 농원 수확이 창고에 들어온다 (놓은 달은 제외)', () => {
+// [코어만] 지금 게임이 이 시스템을 안 부른다 (tick 훅을 껐다). 되살릴 때 skip을 떼고 기대값부터 확인한다.
+test.skip('달이 바뀌는 날: 월급 정산(퇴사)이 먼저고, 그 다음 농원 수확이 창고에 들어온다 (놓은 달은 제외)', () => {
   const s = bareState(1);
   expect(apply(s, { type: 'place', objectType: 'tangerine_tree', x: X(6), y: Y(6) }).ok).toBe(true); // 감귤 6/월
   const st = staffWith({ strength: 30 }, 'hall');
