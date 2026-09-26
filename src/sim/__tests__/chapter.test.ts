@@ -71,12 +71,12 @@ describe('막 (chapter)', () => {
     expect(u.fx.some((f) => f.kind === 'scene')).toBe(true); // 막이 넘어가는 장면
   });
 
-  it('5막은 손님층이 아니라 S — 다 넘기면 막이 끝난다', () => {
+  it('5막은 잡을 손님층이 없다 (등급만 본다) — 다 넘기면 막이 끝난다', () => {
     const s = bareState(1);
     for (let i = 0; i < 4; i++) expect(clearChapter(s, i)).toBe(true);
     const last = currentChapter(s)!;
     expect(last.want).toBeNull();
-    for (let i = 0; i < last.grades; i++) expect(checkChapter(s, rushState(s), 'A')).toBe(false); // A로는 안 쌓인다
+    expect(last.need).toBe(0); // 앉힐 수는 없고 등급만
     expect(clearChapter(s, 4)).toBe(true);
     expect(allChaptersDone(s)).toBe(true);
     expect(currentChapter(s)).toBeNull();

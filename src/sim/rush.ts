@@ -139,7 +139,7 @@ export const RUSH_PRIORITY_SCORE = 5;
  *  실측(러시를 손으로 하는 봇, scripts/chapters.ts 5년 240판): 맞는 자리에 앉히면 손님 하나당 **33점 안팎**,
  *  아무 자리면 ~22점, 자동 착석은 ~8점. 낮게 두면 손으로 하는 순간 전판 S가 나와 등급이 뜻을 잃는다
  *  (실제로 240판 중 S 240판·228판이 나왔다). 33이면 자동 C · 아무 데나 B · 제자리 A · 마당까지 맞으면 S가 된다. */
-export const RUSH_EXPECT_PER_GUEST = 29;
+export const RUSH_EXPECT_PER_GUEST = 31;
 /** 러시 3시간 동안 자리 하나가 받는 손님 (좌석 규모 보정).
  *  러시 구간이 3 게임시간이고 손님이 앉아 있는 시간이 1.5시간(SEAT_HOURS)이니 실제 회전은 **2명**이다.
  *  0.5로 잡혀 있어서 자리 8석짜리 카페에 손님이 다섯 명만 왔다 — 「러시」가 아니라 그냥 점심이었다. */
@@ -353,6 +353,27 @@ function pickRushType(state: GameState, route: RouteId): string | null {
   return { id: `q${state.nextId++}`, type: typeId, patienceMs, waitedMs: 0, route };
 }
 
+/** 러시 중 조리·체류 배수. 러시는 3시간인데 평소 한 자리는 조리 1.5h + 체류 1.5h = **딱 3시간**을 먹는다.
+ *  그래서 장부상 회전율(RUSH_SEAT_TURNOVER 2)이 실제로는 1도 안 됐다 — 실측: 테이블 한 개짜리 카페의
+ *  러시는 빈자리가 처음부터 끝까지 0이라 **한 명도 못 받는다**. 러시 때만 절반으로 줄여 회전을 두 번 낸다.
+ *  (점심 러시에 커피 한 잔 마시고 일어나는 것은 그림으로도 맞다.) */
+export const RUSH_DWELL_MULT = 0.5;
+/** 지금 앉는 손님의 조리·체류 배수 (러시 중이면 절반) — guests.ts가 부른다 */
+export function rushDwellMult(state: GameState): number {
+  return isRushRunning(state) ? RUSH_DWELL_MULT : 1;
+}
+/** 문을 열 때(카운트다운 → 러시) 이미 앉아 있던 손님이 일어나기까지 남겨 두는 시간.
+ *  러시 시작에 자리가 다 차 있으면 줄이 선 채로 45초가 지나간다 — 11시 손님은 점심 러시 전에 자리를 비운다. */
+export const RUSH_CLEAR_MS = RUSH_RUN_MS * 0.08;
+/** 러시를 여는 순간 홀을 정리한다: 이미 앉은 손님은 곧 일어나고, 조리 대기도 그만큼 당겨진다 */
+function clearSeatsForRush(state: GameState): void {
+  for (const g of state.guests) {
+    if (g.phase !== 'seated') continue;
+    if (g.mood === null) g.waitMs = Math.min(g.waitMs, RUSH_CLEAR_MS);
+    else g.timerMs = Math.min(g.timerMs, RUSH_CLEAR_MS);
+  }
+}
+
 // ---------- 상태기계 ----------
 /** 고정 스텝마다 (tick.step). dtMs는 게임 ms. */
 export function updateRush(state: GameState, dtMs: number): void {
@@ -360,7 +381,7 @@ export function updateRush(state: GameState, dtMs: number): void {
   if (r.phase === 'idle' || r.phase === 'done') { maybeStartRush(state, r); return; }
   if (r.phase === 'ready') {
     r.elapsedMs += dtMs;
-    if (r.elapsedMs >= RUSH_READY_MS) { r.phase = 'run'; r.elapsedMs = 0; r.autoAtMs = RUSH_AUTO_PERIOD_MS; r.startTick = state.tick; pushNotice(state, '오늘 점심 손님이 몰린다!'); }
+    if (r.elapsedMs >= RUSH_READY_MS) { r.phase = 'run'; r.elapsedMs = 0; r.autoAtMs = RUSH_AUTO_PERIOD_MS; r.startTick = state.tick; clearSeatsForRush(state); pushNotice(state, '오늘 점심 손님이 몰린다!'); }
     return;
   }
   runRush(state, r, dtMs);
@@ -643,7 +664,7 @@ export function stepRush(state: GameState): void {
 export function startRushNow(state: GameState): RushState {
   const r = rushState(state);
   if (r.phase !== 'run') {
-    r.phase = 'run'; r.elapsedMs = 0; r.autoAtMs = RUSH_AUTO_PERIOD_MS; r.startTick = state.tick; r.week = weekIndexOf(state);
+    r.phase = 'run'; r.elapsedMs = 0; r.autoAtMs = RUSH_AUTO_PERIOD_MS; r.startTick = state.tick; r.week = weekIndexOf(state); clearSeatsForRush(state);
   }
   return r;
 }

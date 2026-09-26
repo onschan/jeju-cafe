@@ -45,7 +45,7 @@ import { hashOf } from './say.ts';
 import { streetFeeMult } from './tree.ts'; // fun: 같은 트리 3연속 「거리」 요금 +10%
 import { sceneryTouristMult, notePhoto } from './appeal.ts'; // fun: 경관 → 관광객, 사진 → 평판
 import { assignGuestName, regularsDue, dressAsRegular, regularTip, thankIfDone, maybeRequest, addRegularGauge, requestDef, GAUGE_HAPPY_VISIT } from './interact.ts'; // fun-guest (트랙 G): 이름·단골·요청·게이지
-import { isRushRunning, rushWalkMult } from './rush.ts'; // 러시 중엔 평소 스폰을 멈추고 rush.ts가 문 앞에 줄을 세운다 (3배)
+import { rushDwellMult, isRushRunning, rushWalkMult } from './rush.ts'; // 러시 중엔 평소 스폰을 멈추고 rush.ts가 문 앞에 줄을 세운다 (3배)
 
 export { moveAlong, GUEST_SPEED_CELLS_PER_S }; // 하위 호환 재수출 (본체는 path.ts)
 // pace: 체류·조리 시간은 게임 시간(시)으로 적는다 — HOUR_MS를 줄여 시계를 빠르게 해도 「몇 시간 앉아 있나」가 그대로라 하루 매출이 안 바뀐다.
@@ -795,7 +795,7 @@ export function updateGuests(state: GameState, dtMs: number): void {
         if (g.waitMs <= 0) {
           g.waitMs = 0;
           resolveMood(state, g);
-          g.timerMs = stayMs(state, g, SEAT_MS * seatTimeMult(state, g.menuId)) * routeStayMult(g); // y-indoor P1-12: 시설당 +8분·소파·책장·조명 × 트랙 H: 주차장 ×1.2·크루즈 ×0.7
+          g.timerMs = stayMs(state, g, SEAT_MS * seatTimeMult(state, g.menuId)) * routeStayMult(g) * rushDwellMult(state); // y-indoor P1-12: 시설당 +8분·소파·책장·조명 × 트랙 H: 주차장 ×1.2·크루즈 ×0.7 × 러시 회전
         }
         continue;
       }

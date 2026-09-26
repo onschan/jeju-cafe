@@ -214,9 +214,14 @@ function rushCells(s: GameState): Pt[] {
 }
 /** 러시 중에 빛낼 빈 자리 수 (다 빛내면 맵이 온통 노랗다) */
 export const TUTORIAL_RUSH_GLOW = 3;
-/** 첫 러시에서 줄에 선 손님을 둘 앉혔나 (UI가 rushSeat1·rushSeat2 표식을 남긴다 — 러시 상태에 기대지 않는다) */
+/** 첫 러시에서 줄에 선 손님을 앉혀 봤나 (UI가 rushSeat1·rushSeat2 표식을 남긴다 — 러시 상태에 기대지 않는다).
+ *
+ *  **한 명**이다. 둘로 뒀더니 1단계가 시킨 대로 테이블 하나만 지은 마당에서는 실측 최대가 딱 2명이라
+ *  한 번만 놓쳐도 다음 주까지 7일을 기다려야 했다(그 전에는 아예 0명이라 불가능한 단계였다 — rush.ts
+ *  RUSH_DWELL_MULT 주석 참고). 이 단계가 가르치는 건 「줄 맨 앞을 빈 자리에 앉힌다」는 손놀림 하나고,
+ *  양은 막(chapter.ts)이 맡는다. */
 export function rushSeated(s: GameState): boolean {
-  return seen(s, 'rushSeat2');
+  return seen(s, 'rushSeat1');
 }
 const money = (amount: number): GoalReward => ({ type: 'money', amount });
 const none = () => [] as Pt[];

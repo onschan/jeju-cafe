@@ -56,6 +56,6 @@ describe('안내 한 줄', () => {
     const g = guideOf(s)!;
     expect(g.kind).toBe('tutorial');
     // 2단계(아메리카노 올리기)는 이미 참이라 대사 없이 넘어간다 — 3분 전에 한 일을 다시 시키지 않는다
-    expect(g.text).toBe('줄에서 손님 둘 앉히기');
+    expect(g.text).toBe('줄에서 손님 한 명 앉히기');
   });
 });
