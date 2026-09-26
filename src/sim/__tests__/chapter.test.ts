@@ -2,7 +2,7 @@
 import { describe, it, expect } from 'vitest';
 import { bareState, X, Y } from './helpers.ts';
 import { placeObject } from '../grid.ts';
-import { CHAPTERS, CHAPTER_TICKETS, chapterProgress, currentChapter, chaptersCleared, allChaptersDone, noteChapterSeat, checkChapter, chapterLine, chapterBlocker, chapterBoost, CHAPTER_BOOST_MAX } from '../chapter.ts';
+import { CHAPTERS, CHAPTER_MONEY, chapterProgress, currentChapter, chaptersCleared, allChaptersDone, noteChapterSeat, checkChapter, chapterLine, chapterBlocker, chapterBoost, CHAPTER_BOOST_MAX } from '../chapter.ts';
 import { spawnGuests } from '../guests.ts';
 import { seatFitsWant, seatFitsGuest, FIT_RADIUS } from '../wants.ts';
 import { createInitialState } from '../state.ts';
@@ -43,13 +43,13 @@ describe('막 (chapter)', () => {
     const s = bareState(1);
     seatMany(s, CHAPTERS[0]!.need - 1);
     expect(checkChapter(s)).toBe(false);
-    const tickets = s.tickets;
+    const money = s.money;
     seatMany(s, 1);
     expect(checkChapter(s)).toBe(true);
     expect(chapterProgress(s).idx).toBe(1);
     expect(chapterProgress(s).hits).toBe(0);
     expect(chaptersCleared(s)).toBe(1);
-    expect(s.tickets).toBe(tickets + CHAPTER_TICKETS);
+    expect(s.money).toBe(money + CHAPTER_MONEY);
     expect(s.fx.some((f) => f.kind === 'scene')).toBe(true); // 막이 넘어가는 장면
   });
 

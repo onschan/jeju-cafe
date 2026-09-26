@@ -90,7 +90,7 @@ describe('겨울·비는 좌석을 끄지 않고 만족만 깎는다 (P0-3)', ()
     expect(spawnGuests(s, 2)).toBe(2);
     expect(s.guests.every((g) => g.seatId !== null)).toBe(true);
   });
-  test('태풍·비도 추운 날로 치고, 지붕이 있을수록 만족 감점이 작다', () => {
+  test('추운 날이어도 지붕은 만족을 가르지 않는다 — 실내/실외·지붕 개념을 없앴다 (카이로 방향)', () => {
     const s = cafe();
     const bare = placeObject(s, 'table_out', X(5), Y(4));
     const roof = placeObject(s, 'table_parasol', X(6), Y(4));
@@ -99,8 +99,8 @@ describe('겨울·비는 좌석을 끄지 않고 만족만 깎는다 (P0-3)', ()
     expect(coldDay(s)).toBe(true);
     expect(shelterOf(bare)).toBe(0);
     expect(shelterOf(roof)).toBe(1);
-    expect(siteBonus(s, roof).satisfaction - siteBonus(s, bare).satisfaction).toBe(SHELTER_PENALTY);
-    expect(SHELTER_PENALTY).toBe(2); // 지붕 한 단계 = 만족 ±2
+    expect(SHELTER_PENALTY).toBe(0); // 겨울은 손님 수(계절 배수)로만 온다 — 자리마다 지붕을 따지지 않는다
+    expect(siteBonus(s, roof).satisfaction - siteBonus(s, bare).satisfaction).toBe(0);
   });
 });
 

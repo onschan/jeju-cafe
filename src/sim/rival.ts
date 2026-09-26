@@ -467,6 +467,10 @@ export function contestOpponents(seed: number, year: number, month: number, even
 // ---------- 훅 ----------
 
 /** 매일 아침 (tick.ts onNewDay): 5일 발표 · 12일 뺏기 이벤트 */
+/** 순위 발표만 (5일). 뺏기 이벤트·선택지는 코어 정리 때 끈 채로 둔다 — 「라이벌 정보가 확실했으면」은 순위표가 살아 움직이면 된다. */
+export function dailyRivalBoard(state: GameState): void {
+  if (boardDue(state)) runBoard(state);
+}
 export function dailyRivals(state: GameState): void {
   if (boardDue(state)) runBoard(state);
   if (stealDue(state)) rollSteal(state);

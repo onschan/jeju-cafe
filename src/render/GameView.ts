@@ -201,6 +201,8 @@ const GLOW_BRIGHT = 1.4;
 const ROOM_LIGHT_COLOR = 0xffc46a;
 const ROOM_LIGHT_ALPHA = 0.28;
 /** 맵 경계 위쪽 여유(키 큰 오브젝트와 지평선 배경 띠가 보이도록) */
+/** 산 땅 둘레로 카메라가 더 갈 수 있는 칸 수 */
+const BOUNDS_OWNED_MARGIN = 2;
 const BOUNDS_TOP_PAD = 260;
 
 interface ObjEntry {
@@ -909,6 +911,7 @@ export class GameView {
     this.background.sync(state);
     const now = performance.now();
     this.background.tick(now);
+    if (this.ownedKey !== state.parcels.filter((p) => p.owned).map((p) => p.id).join(',')) this.updateBounds(state); // 땅을 사면 카메라 범위가 그만큼 열린다
     this.syncLocked(state, now);
     this.syncWalls(state);
     this.syncBus(state, now);
@@ -1283,10 +1286,31 @@ export class GameView {
         this.tileSprites.push(sp);
       }
     }
-    const { w, h } = state.grid;
-    this.bounds = { x: -h * (ISO_W / 2), y: -BOUNDS_TOP_PAD, w: (w + h) * (ISO_W / 2), h: (w + h) * (ISO_H / 2) + BOUNDS_TOP_PAD };
+    this.updateBounds(state);
     this.tilesBuilt = true;
     this.lastSeason = season;
+  }
+
+  /** 카메라가 갈 수 있는 범위 = **산 땅**(+마을 길 한 줄)에 여유 한 칸.
+   *  격자는 3×3 필지(30×24)인데 시작 땅은 그중 한 칸이다. 격자 전체를 경계로 두니 화면이 빈 흙에 잠겨
+   *  「맵이 너무 넓고 쓸데없다」가 됐다. 산 땅만 보이게 조이면 마당이 꽉 차 보이고, 땅을 사면 그만큼 열린다
+   *  (영상: 화면 가장자리 노란 화살표 — 밖에 더 있다). */
+  private ownedKey = '';
+  private updateBounds(state: GameState) {
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    for (let y = 0; y < state.grid.h; y++) for (let x = 0; x < state.grid.w; x++) {
+      if (!parcelAt(state, x, y)?.owned) continue;
+      x0 = Math.min(x0, x); y0 = Math.min(y0, y); x1 = Math.max(x1, x); y1 = Math.max(y1, y);
+    }
+    if (!Number.isFinite(x0)) { x0 = 0; y0 = 0; x1 = state.grid.w - 1; y1 = state.grid.h - 1; }
+    const m = BOUNDS_OWNED_MARGIN;
+    x0 = Math.max(0, x0 - m); y0 = Math.max(0, y0 - m); x1 = Math.min(state.grid.w - 1, x1 + m); y1 = Math.min(state.grid.h - 1, y1 + m);
+    // 아이소 화면 좌표의 바운딩 박스: 네 모서리 칸을 화면으로 옮겨 감싼다
+    const corners = [cellToScreen(x0, y0), cellToScreen(x1 + 1, y0), cellToScreen(x0, y1 + 1), cellToScreen(x1 + 1, y1 + 1)];
+    const sx0 = Math.min(...corners.map((c) => c.sx)), sx1 = Math.max(...corners.map((c) => c.sx));
+    const sy0 = Math.min(...corners.map((c) => c.sy)), sy1 = Math.max(...corners.map((c) => c.sy));
+    this.bounds = { x: sx0, y: sy0 - BOUNDS_TOP_PAD, w: sx1 - sx0, h: sy1 - sy0 + BOUNDS_TOP_PAD };
+    this.ownedKey = state.parcels.filter((p) => p.owned).map((p) => p.id).join(',');
   }
 
   /** 계절이 바뀌면 타일 텍스처만 교체한다 */

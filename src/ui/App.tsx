@@ -33,7 +33,6 @@ import { MenuWindow } from './windows/MenuWindow.tsx';
 import { StaffWindow } from './windows/StaffWindow.tsx';
 import { GoalWindow } from './windows/GoalWindow.tsx';
 import { GuestPopup } from './GuestPopup';
-import { DrawPopup, ShopPanel } from './ShopPanel';
 import { AnnouncementPopup, RankPanel } from './RankPanel';
 import { MonthCard } from './MonthCard';
 import { DevelopResultPopup, CraftPanel } from './CraftPanel';
@@ -87,7 +86,7 @@ type Mode =
 /** 전체 화면 창과 그 아이콘 그리드 항목 (§5.1) */
 type CafeTab = 'menu' | 'ingredients' | 'craft' | 'promo' | 'building';
 type PeopleTab = 'staff' | 'candidates' | 'guests' | 'codex' | 'quests';
-type LedgerTab = 'report' | 'invest' | 'spots' | 'shop' | 'tickets' | 'rank' | 'contest' | 'settings';
+type LedgerTab = 'report' | 'invest' | 'spots' | 'rank' | 'contest' | 'settings';
 type Win =
   | { kind: 'build'; origin?: { x: number; y: number } }
   | { kind: 'cafe'; tab: CafeTab | null }
@@ -1019,7 +1018,6 @@ function Game({ onExit }: { onExit: () => void }) {
     { key: 'report', label: '경영', icon: 'report', desc: '돈의 흐름' },
     { key: 'invest', label: '투자', icon: 'money', desc: '땅과 대출', badge: s.board.events.filter((e) => e.status === 'pending').length },
     { key: 'spots', label: '명소', icon: 'map', desc: '동네 명소' },
-    { key: 'tickets', label: '응모권', icon: 'ticket', desc: '뽑기와 상점', badge: s.tickets }, // midgame: 「상점」 탭이 같은 화면이라 하나로 합쳤다
     { key: 'rank', label: '평가', icon: 'trophy', desc: '동네 순위', badge: s.rivals?.pending ? 1 : 0 }, // 동네 순위 발표를 아직 안 봤으면 배지
     { key: 'contest', label: '대회', icon: 'medal', desc: '카페 대회', badge: signupOpen(s) && !s.contest?.entry ? 1 : 0 },
     { key: 'settings', label: '설정', icon: 'settings', desc: '소리와 저장' },
@@ -1072,7 +1070,6 @@ function Game({ onExit }: { onExit: () => void }) {
             {win.tab === 'report' && <StatusPanel onFocus={focusAndClose} />}
             {win.tab === 'invest' && <BoardPanel tabs={['events']} onContest={() => setWin({ kind: 'ledger', tab: 'contest' })} />}
             {win.tab === 'spots' && <BoardPanel tabs={['spots']} />}
-            {(win.tab === 'tickets' || win.tab === 'shop') && <ShopPanel initialTab="draw" />}{/* 옛 세이브·숏컷이 'shop'으로 올 수 있다 */}
             {win.tab === 'rank' && <RankPanel />}
             {win.tab === 'contest' && <ContestWindow />}
             {win.tab === 'settings' && <SettingsPanel onExit={onExit} gauges={gauges} onGauges={setGauges} />}
@@ -1094,7 +1091,7 @@ function Game({ onExit }: { onExit: () => void }) {
       <div ref={hostRef} style={{ position: 'absolute', inset: 0, touchAction: 'none' }} />
       <SiteOverlayChip />
       {win ? <FirstTipBubble bottom={76} /> : <FirstTipBubble top={SHELL_TOP + 10} />}
-      <TopShell onStatus={() => setWin({ kind: 'status' })} onGoal={() => setWin({ kind: 'goal' })} onTickets={() => setWin({ kind: 'ledger', tab: 'tickets' })} />
+      <TopShell onStatus={() => setWin({ kind: 'status' })} onGoal={() => setWin({ kind: 'goal' })} />
       {!place && !cardTarget && (
         <button data-testid="home-btn" aria-label="본관으로" onClick={goHome}
           style={{ position: 'absolute', left: 8, bottom: `calc(${SHELL_BOTTOM + 8}px + env(safe-area-inset-bottom))`, width: 56, height: 56, borderRadius: 28, border: `3px solid ${PALETTE.wood}`, background: PALETTE.paper, fontSize: 20, zIndex: 11, padding: 0, boxShadow: '0 2px 0 #0004', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Icon name="home_cafe_big" size={48} /></button>

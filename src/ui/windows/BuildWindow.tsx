@@ -19,10 +19,11 @@ import { CornerTab } from './CornerTab.tsx'; // fun-corner 「명당」 탭
 export type BuildTab = 'building' | 'corner' | 'rest' | 'convenience' | 'food' | 'fun' | 'farm' | 'scenery' | 'path' | 'wall';
 /** fun: 짓기 창 첫 화면(6타일) · 타일 하위 목록 · 전체 목록(탭) */
 export type BuildView = { kind: 'tiles' } | { kind: 'tile'; tile: BuildTileId } | { kind: 'all' };
-/** 탭 순서 (§8.4): [건물 — 본관이 없을 때만(w-start)] · 명당(fun-corner) · 쉼 · 편의 · 먹거리 · 즐길거리 · 농원 · 경관 · 길 · 담 */
+/** 탭 순서: [건물 — 본관이 없을 때만] · 명당 · 자리 · 마당(나무·꽃·밭·등) · 시설(주차장·족욕·식당) · 길·담.
+ *  카이로 방향 덜어내기: 열 탭(쉼·편의·먹거리·즐길거리·농원·경관·길·담)이 스무 개 남짓을 나눠 담고 있었다 — 탭마다 두세 개.
+ *  영상의 카탈로그는 〈환경 / 시설 / 가게〉 셋이다. */
 export const BUILD_TABS: { key: BuildTab; label: string }[] = [
-  { key: 'building', label: '건물' }, { key: 'corner', label: '명당' }, { key: 'rest', label: '쉼' }, { key: 'convenience', label: '편의' }, { key: 'food', label: '먹거리' }, { key: 'fun', label: '즐길거리' },
-  { key: 'farm', label: '농원' }, { key: 'scenery', label: '경관' }, { key: 'path', label: '길' }, { key: 'wall', label: '담' },
+  { key: 'building', label: '건물' }, { key: 'corner', label: '명당' }, { key: 'rest', label: '자리' }, { key: 'scenery', label: '마당' }, { key: 'convenience', label: '시설' }, { key: 'path', label: '길·담' },
 ];
 /** 창을 여는 쪽이 첫 탭을 지정한다 (App 창 매핑을 안 건드리고). 한 번 읽으면 지워진다. */
 let requestedTab: BuildTab | null = null;
@@ -51,7 +52,9 @@ export function recentBuildTypes(s: GameState, n = RECENT_N): string[] {
   return out;
 }
 /** 처음부터 맵에 있는 것·지형 — 짓기 목록에 안 나온다 (본관은 「건물」 탭에서 따로, 없을 때만) */
-const HIDDEN_IDS = new Set(['busstop', 'warehouse', 'spring']);
+const HIDDEN_IDS = new Set(['busstop', 'warehouse', 'spring',
+  // 카이로 방향 덜어내기: 지을 게 너무 많았다(25종). 비슷한 것·꺼진 시스템 것은 목록에서 뺀다 — 정의는 남겨 옛 세이브의 것은 그대로 선다
+  'garden_lamp', 'signboard', 'railing', 'trophy', 'olle_sign', 'parking_big']);
 /** 「건물」 탭 안내 (w-start 맨땅 튜토리얼 2단계) */
 export const MAIN_CARD_HINT = '첫 본관은 무료·바로 완성 · 문은 앞쪽 왼쪽에 생겨요';
 
@@ -80,12 +83,10 @@ function useFillHeight(ref: React.RefObject<HTMLDivElement | null>): number | nu
 
 /** 오브젝트가 어느 탭에 속하나. 길·담·정낭은 kind로, 나무·농사 시설은 농원, 좌석은 쉼, 나머지는 시설 분류. */
 export function buildTabOf(def: ObjectDef): BuildTab {
-  if (def.kind === 'path') return 'path';
-  if (def.kind === 'wall' || def.kind === 'gate') return 'wall';
-  if (def.kind === 'tree' || def.yield || def.category === 'farm') return 'farm';
-  if (def.category === 'rest' || def.category === 'convenience' || def.category === 'food' || def.category === 'fun') return def.category;
-  if (def.kind === 'seat') return 'rest';
-  return 'scenery';
+  if (def.kind === 'path' || def.kind === 'wall' || def.kind === 'gate') return 'path';   // 길·담
+  if (def.kind === 'seat') return 'rest';                                                  // 자리
+  if (def.category === 'convenience' || def.category === 'food' || def.category === 'fun') return 'convenience'; // 시설
+  return 'scenery';                                                                        // 마당: 나무·꽃·밭·등·장식
 }
 
 /** 아이소 스프라이트를 2D 캔버스에. 시트가 없거나 프레임이 없으면 색 상자. */
@@ -315,7 +316,6 @@ function PickedDetail({ s: def, locked, state, onPick }: { s: ObjectDef; locked:
   const shape = [
     days > 0 ? `공사 ${days}일` : '바로 완성',
     `${def.w}×${def.h}칸`,
-    def.shelter ? `지붕 ${def.shelter === 2 ? '완전' : '반쯤'}` : null,
     tree ? `${tree.tree.name} 트리 ${tree.index + 1}/${tree.tree.steps.length}단계` : isUpgradable(def) ? `증축 Lv1~3 (${{ small: '소', medium: '중', large: '대' }[tierOf(def)]}형)` : null,
   ].filter(Boolean).join(' · ');
   return (

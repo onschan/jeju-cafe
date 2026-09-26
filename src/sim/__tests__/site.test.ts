@@ -153,10 +153,10 @@ test('돌담: 북서쪽 둘이면 겨울 자리 만족 +8, 하나로는 모자�
   placeObject(s, 'stonewall', 10, 0);
   expect(siteBonus(s, seat).satisfaction).toBeGreaterThan(before);
   expect(windCoveredSeats(s, 'stonewall', 9, 1)).toEqual([]); // 이미 막힌 자리는 다시 안 짚는다
-  s.clock.month = 7; // 여름엔 바람막이 보정도 지붕 보정도 없다
-  const summer = siteBonus(s, seat).satisfaction;
+  s.clock.month = 7; // 여름엔 바람막이 보정이 없다 — 돌담을 둘러도 여름 값은 돌담 전과 같다
+  const summerNoWall = (() => { const t = yard(1); t.clock.month = 7; return siteBonus(t, table(t, 12, 1)).satisfaction; })();
+  expect(siteBonus(s, seat).satisfaction).toBe(summerNoWall);
   s.clock.month = 1;
-  expect(siteBonus(s, seat).satisfaction).toBeLessThanOrEqual(summer);
   expect(WIND_SHELTER_SAT).toBe(8);
   expect(WIND_WEDGE_MAX).toBe(3);
 });

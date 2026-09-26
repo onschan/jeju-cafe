@@ -15,7 +15,7 @@ import type { GameState, GoalReward, RivalAxis } from './types.ts';
 import { activeGoals, goalProgress, goalRewardText, goalConditionText, buildingNote } from './goals.ts';
 import { gradeOf, gradeName, gradeProgress, gradeUpRewards, MAX_GRADE } from './grade.ts';
 import { monthlyProgress } from './monthly.ts';
-import { rivalsState, scoreboard, rankGap, activeSteal, stealTitle, myAxes, RIVAL_AXES, RIVAL_AXIS_LABEL, RIVAL_COUNTER_COST, RIVAL_BOARD_DAY, endgameOpen, RIVAL_DEAL_LEAD_MONTHS } from './rival.ts';
+import { rivalsState, scoreboard, rankGap, activeSteal, stealTitle, myAxes, RIVAL_AXES, RIVAL_AXIS_LABEL, RIVAL_COUNTER_COST, RIVAL_BOARD_DAY, RIVAL_RANK_BONUS, endgameOpen, RIVAL_DEAL_LEAD_MONTHS } from './rival.ts';
 import { contestUnlocked, signupOpen, daysToContest, nextContest } from './contest.ts';
 import { fmtNum } from './format.ts';
 import { josa } from './josa.ts';
@@ -39,7 +39,7 @@ export interface TodoRow {
 }
 
 const pct = (cur: number, max: number) => (max <= 0 ? 0 : Math.min(1, cur / max));
-const rewardsText = (rs: GoalReward[]) => rs.map(goalRewardText).join(' · ');
+const rewardsText = (rs: GoalReward[]) => rs.length === 0 ? '없음' : rs.map(goalRewardText).join(' · ');
 /** 보상이 걸린 줄(목표·이달의 과제·승급)은 완공 기준이라, 공사 중인 것은 「짓는 중 n」으로 덧붙여 「아직 안 했다」로 읽히지 않게 한다. */
 const withNote = (text: string, note: string) => (note ? `${text} · ${note}` : text);
 
@@ -118,7 +118,7 @@ export function rivalRows(state: GameState): TodoRow[] {
     cur: total - me.rank,
     max: total - 1,
     valueText: `${me.rank}/${total}위`,
-    rewardText: above ? '응모권' : '손님 +10%',
+    rewardText: above ? `손님 +${Math.round((RIVAL_RANK_BONUS[me.rank - 2] ?? 0) * 100)}%` : '손님 +10%', // 순위 보너스(RIVAL_RANK_BONUS) 그대로 — 응모권은 없앴다
     how: above
       ? `${above.name}와 ${gap}점 차 · ${weakestText(state)}`
       : `${RIVAL_BOARD_DAY}일 발표까지 1위면 손님이 10% 늘어요`,

@@ -60,12 +60,7 @@
       "type": "staff",
       "n": 1
     },
-    "reward": [
-      {
-        "type": "tickets",
-        "n": 1
-      }
-    ],
+    "reward": [],
     "speaker": "halmang",
     "line": "혼자선 힘들주. 같이 할 사람이 생겼구나."
   },
@@ -116,10 +111,6 @@
       {
         "type": "research",
         "n": 10
-      },
-      {
-        "type": "tickets",
-        "n": 1
       }
     ],
     "speaker": "hero",
@@ -209,12 +200,7 @@
       "type": "parcels",
       "n": 2
     },
-    "reward": [
-      {
-        "type": "tickets",
-        "n": 2
-      }
-    ],
+    "reward": [],
     "speaker": "samchun",
     "line": "땅이 넓어졌네. 이제 마음껏 지어 보라."
   },
@@ -324,16 +310,7 @@
       "type": "cafeRank",
       "n": 2
     },
-    "reward": [
-      {
-        "type": "tickets",
-        "n": 2
-      },
-      {
-        "type": "tickets",
-        "n": 1
-      }
-    ],
+    "reward": [],
     "speaker": "samchun",
     "line": "이름이 났져. 손님이 손님을 데려온다."
   },
@@ -345,12 +322,7 @@
       "type": "regular",
       "n": 1
     },
-    "reward": [
-      {
-        "type": "tickets",
-        "n": 3
-      }
-    ],
+    "reward": [],
     "speaker": "halmang",
     "line": "단골이 생겼구나. 카페는 단골로 크는 거여."
   },
@@ -366,10 +338,6 @@
       {
         "type": "unlockFacility",
         "id": "omegi_stall"
-      },
-      {
-        "type": "tickets",
-        "n": 1
       }
     ],
     "speaker": "hero",
@@ -459,10 +427,6 @@
         "id": "toenmaru"
       },
       {
-        "type": "tickets",
-        "n": 2
-      },
-      {
         "type": "unlockFacility",
         "id": "pampas"
       }
@@ -524,10 +488,6 @@
       {
         "type": "unlockFacility",
         "id": "window_seat"
-      },
-      {
-        "type": "tickets",
-        "n": 2
       }
     ],
     "speaker": "samchun",
@@ -587,10 +547,6 @@
       {
         "type": "unlockFacility",
         "id": "hydrangea"
-      },
-      {
-        "type": "tickets",
-        "n": 2
       }
     ],
     "speaker": "halmang",
@@ -608,10 +564,6 @@
       {
         "type": "unlockFacility",
         "id": "palm"
-      },
-      {
-        "type": "tickets",
-        "n": 2
       }
     ],
     "speaker": "halmang",
@@ -793,10 +745,6 @@
       "id": "parking_lot"
     },
     "reward": [
-      {
-        "type": "tickets",
-        "n": 2
-      },
       {
         "type": "money",
         "amount": 1000000
@@ -1009,11 +957,6 @@
       {
         "type": "unlockFacility",
         "id": "vending"
-      },
-      {
-        "type": "item",
-        "id": "clean_charm",
-        "n": 1
       }
     ],
     "speaker": "samchun",
@@ -1031,10 +974,6 @@
       {
         "type": "unlockFacility",
         "id": "signboard"
-      },
-      {
-        "type": "tickets",
-        "n": 5
       },
       {
         "type": "unlockFacility",
@@ -1166,12 +1105,7 @@
       "view": 4,
       "n": 8
     },
-    "reward": [
-      {
-        "type": "tickets",
-        "n": 2
-      }
-    ],
+    "reward": [],
     "speaker": "hero",
     "line": "바다가 한눈에 들어오는 자리가 넷이구나."
   },
@@ -1184,10 +1118,6 @@
       "n": 7
     },
     "reward": [
-      {
-        "type": "tickets",
-        "n": 5
-      },
       {
         "type": "unlockFacility",
         "id": "hammock"
@@ -1243,12 +1173,7 @@
       "type": "grade",
       "n": 3
     },
-    "reward": [
-      {
-        "type": "tickets",
-        "n": 3
-      }
-    ],
+    "reward": [],
     "speaker": "halmang",
     "line": "소문난 카페예요. 사진 찍으러 일부러 와요."
   },
@@ -1359,10 +1284,6 @@
     },
     "reward": [
       {
-        "type": "tickets",
-        "n": 5
-      },
-      {
         "type": "unlockFacility",
         "id": "omegi_stall"
       },
@@ -1395,10 +1316,6 @@
       "n": 5
     },
     "reward": [
-      {
-        "type": "tickets",
-        "n": 5
-      },
       {
         "type": "unlockFacility",
         "id": "hammock"
@@ -1441,21 +1358,7 @@
       "type": "year",
       "n": 5
     },
-    "reward": [
-      {
-        "type": "tickets",
-        "n": 20
-      },
-      {
-        "type": "tickets",
-        "n": 5
-      },
-      {
-        "type": "item",
-        "id": "millennium_seed",
-        "n": 1
-      }
-    ],
+    "reward": [],
     "speaker": "samchun",
     "line": "벌써 10년째여. 처음 온 날이 어제 같은데."
   }

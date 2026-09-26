@@ -142,7 +142,7 @@ export function thankIfDone(state: GameState, g: Guest): GuestRequestDef | null 
   if (ticket) state.tickets += 1;
   g.say = def.thanks;
   pushFx(state, { kind: 'react', guestId: g.id, text: def.thanks, icon: 'heart', tick: state.tick });
-  pushNotice(state, `${g.name ?? guestTypeDef(g.type).name}: 「${def.thanks}」${ticket ? ' 응모권 +1' : ''}`);
+  pushNotice(state, `${g.name ?? guestTypeDef(g.type).name}: 「${def.thanks}」`);
   pruneRequests(state);
   return def;
 }

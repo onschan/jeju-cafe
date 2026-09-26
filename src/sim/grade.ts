@@ -33,9 +33,9 @@ export const GRADE_REQS: Record<number, GradeReq> = {
 /** 마당 동시 손님 상한 = GRADE_GUEST_CAP_BASE + 등급당 +10 (등급 4에서 예전 상한 60과 같다 — 상한이 늘 묶여 있어 그냥 더하면 3년 자금 밴드가 깨진다) */
 export const GRADE_GUEST_CAP_BASE = 30;
 export const GRADE_GUEST_CAP_STEP = 10;
-/** 승급 보상: 응모권 5 + 마일리지 10×(등급−1) */
-export const GRADE_UP_TICKETS = 5;
-export const GRADE_UP_TICKETS_PER = 1;
+/** 승급 보상: 돈 (응모권·마일리지는 없앴다 — 뭐에 쓰는지 아무도 몰랐다). 등급이 오를수록 조금 더. */
+export const GRADE_UP_MONEY = 500_000;
+export const GRADE_UP_MONEY_PER = 100_000;
 /** fun 점진 공개: 이 등급부터 실내·본관·명소·투어·팝업·대결·연수·경로 계약 창이 나타난다 (아래 등급에선 아예 안 보인다) */
 export const REVEAL_GRADE = 3;
 /** 타악 BGM 레이어가 켜지는 등급 */
@@ -70,7 +70,7 @@ export function gradeMet(state: GameState, grade: number): boolean {
 }
 
 export function gradeUpRewards(grade: number): GoalReward[] {
-  return [{ type: 'tickets', n: GRADE_UP_TICKETS + GRADE_UP_TICKETS_PER * (grade - 1) }];
+  return [{ type: 'money', amount: GRADE_UP_MONEY + GRADE_UP_MONEY_PER * (grade - 1) }];
 }
 
 /** 마당에 동시에 있을 수 있는 손님 수 (guests.ts 스폰 상한 훅) */

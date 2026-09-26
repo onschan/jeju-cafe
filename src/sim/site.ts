@@ -45,7 +45,7 @@ export const SAT_SHADE_SUMMER = 6;
  *  만족 단위로 바로 더한다 — 스펙 점수는 10으로 나눠 버려서(SITE_SAT_PER_SCENERY) 눈금이 뭉개진다.
  *  기준선을 2가 아니라 1로 둔 이유: 2로 두면 지금 놓을 수 있는 좌석은 전부 감점이라
  *  「파라솔을 깐다」는 선택이 아니라 벌칙이 된다. 겨울 대비는 1을 까는 것으로 끝나야 한다. */
-export const SHELTER_PENALTY = 2;
+export const SHELTER_PENALTY = 0; // 카이로 방향: 실내/실외·지붕 개념을 없앴다 — 겨울은 손님 수(계절 배수)로만 온다
 export const SHELTER_BASE = 1;
 export const SHELTER_MAX = 2;
 /** 지붕이 막아 주는 날씨 (눈·비·태풍·장마) */

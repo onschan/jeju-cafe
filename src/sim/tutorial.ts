@@ -258,7 +258,7 @@ export const TUTORIAL_ACTS: TutorialActDef[] = [
   // 마지막 막의 「대항전·대회」 단계는 코어만 남긴 지금 아예 닿을 수 없어 튜토리얼이 영영 안 끝났다
   // (안 끝나면 연속 배치가 매번 꺼지는 등 조용히 손해만 났다). 한 막에 다섯 걸음, 첫 주에 끝난다.
   { id: 1, name: '카페 문 열기', lead: '이 마당이 이제 네 카페여.', when: '새 게임 바로', open: () => true,
-    reward: [money(500_000), { type: 'tickets', n: 3 }, { type: 'title', id: 'halmang_pupil', name: '할망의 제자' }] },
+    reward: [money(500_000), { type: 'title', id: 'halmang_pupil', name: '할망의 제자' }] },
 ];
 
 const ACT = new Map(TUTORIAL_ACTS.map((a) => [a.id, a]));

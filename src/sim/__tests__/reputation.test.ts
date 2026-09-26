@@ -136,7 +136,7 @@ test('meh 원인 추정: 지친 홀 직원 → wait_long, 낡은 자리·청결 
   expect(mehCause(s, seat)).toEqual({ reason: 'wait_long' });
   s.staff[0]!.energy = 100;
   seat.wearMonth = seat.placedMonth - WEAR_START_MONTHS;
-  expect(mehCause(s, seat)).toEqual({ reason: 'dirty', detail: '야외 테이블' });
+  expect(mehCause(s, seat)).toEqual({ reason: 'dirty', detail: '테이블' });
   seat.wearMonth = seat.placedMonth;
   (s as unknown as { clean: { value: number } }).clean = { value: 40 };
   expect(mehCause(s, seat)).toEqual({ reason: 'dirty' });

@@ -109,7 +109,8 @@ export function TopBar({ onOpen, onTickets }: { onOpen: () => void; onTickets?: 
   const shortcuts = useShortcutsPref();
   const speeds = SPEEDS.filter((sp) => sp < FAST_SPEED || s.ending?.fastMode);
   const swipe = useSpeedSwipe(shortcuts, speeds);
-  const showTickets = !!onTickets && (s.tickets > 0 || hasFreeDraw(s)); // midgame: 응모권이 있을 때만 상단에 칸을 내준다
+  const showTickets = false; // 응모권·뽑기는 없앴다 (뭐에 쓰는지 아무도 몰랐다) — 보상은 전부 돈으로. 옛 세이브의 장수는 남아 있어도 안 보여 준다
+  void onTickets;
   const fit = usePriorityFit(TOP_KEYS, TOP_GAP);
   const cell = (key: string): CSSProperties => ({ display: fit.hidden.has(key) ? 'none' : 'inline-flex', alignItems: 'center', gap: 2, flex: 'none', whiteSpace: 'nowrap' });
   const star = Math.max(1, Math.min(5, s.star));

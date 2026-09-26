@@ -23,7 +23,6 @@ import { seatFitsWant, wantOf, WANT_LABEL, type Want } from './wants.ts';
 import { unlockedTypeIds } from './segments.ts';
 import { pushNotice } from './staff.ts';
 import { pushFx } from './fx.ts';
-import { addTickets } from './mileage.ts';
 
 /** 막 하나. want가 null이면 손님층을 가리지 않는다 (5막 — 온갖 손님이 제자리에). */
 export interface ChapterDef {
@@ -54,8 +53,8 @@ export const CHAPTERS: ChapterDef[] = [
     todo: '이제 온갖 손님이 와요 — 그늘·귤밭·문 앞·전망을 고루 갖춰요', done: '이 카페는 이제 단골들의 자리예요' },
 ];
 
-/** 막을 넘을 때마다 주는 응모권 */
-export const CHAPTER_TICKETS = 3;
+/** 막을 넘을 때마다 주는 돈 (응모권·아이템은 없앴다 — 뭐에 쓰는지 아무도 몰랐다) */
+export const CHAPTER_MONEY = 500_000;
 
 /** 지금 막과 그 막에서 쌓은 것 (막이 넘어가면 0부터 다시). grades는 러시 시절 잔재 — 안 쓴다. */
 export interface ChapterProgress { idx: number; hits?: number; grades?: number }
@@ -117,7 +116,7 @@ export function checkChapter(state: GameState): boolean {
   p.idx++;
   p.hits = 0;
   delete p.grades;
-  addTickets(state, CHAPTER_TICKETS, ch.name);
+  state.money += CHAPTER_MONEY;
   pushNotice(state, `${ch.name} 끝 — ${ch.done}`);
   const next = currentChapter(state);
   pushFx(state, { kind: 'scene', title: ch.name, text: next ? `${ch.done}\n다음은 「${next.name}」 — ${next.todo}` : `${ch.done}\n다섯 막을 다 지났어요.`, tick: state.tick });

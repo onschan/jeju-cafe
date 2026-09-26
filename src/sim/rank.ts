@@ -48,10 +48,12 @@ export function nextRankThreshold(state: GameState): number | null {
   return state.rank >= MAX_RANK ? null : RANK_THRESHOLDS[state.rank]!;
 }
 
-/** 랭크 업 보상: 응모권 2장(랭크 5부터 3장) — 장면 창 뒤에 보상 상자 */
-export const RANK_UP_TICKETS_HIGH_FROM = 5;
+/** 랭크 업 보상: 돈 (응모권은 없앴다 — 뭐에 쓰는지 아무도 몰랐다). 랭크 5부터 더 준다. */
+export const RANK_UP_MONEY = 200_000;
+export const RANK_UP_MONEY_HIGH = 300_000;
+export const RANK_UP_MONEY_HIGH_FROM = 5;
 export function rankUpRewards(rank: number): GoalReward[] {
-  return [{ type: 'tickets', n: rank >= RANK_UP_TICKETS_HIGH_FROM ? 3 : 2 }];
+  return [{ type: 'money', amount: rank >= RANK_UP_MONEY_HIGH_FROM ? RANK_UP_MONEY_HIGH : RANK_UP_MONEY }];
 }
 
 /** 점수로 랭크를 올린다 (내려가지 않는다). 올랐으면 true. */
