@@ -593,8 +593,8 @@ export type GoalCondition =
   | { type: 'reputation'; n: number }             // 평판 ≥ n
   | { type: 'legendStaff'; n: number }            // 전설 칭호 직원 n명
   | { type: 'routesOpen'; n: number }             // 열린 유입 경로 n종 (정류장 제외)
-  // ---- 러시 타임 (rush.ts §5: 돈이 아니라 실력이 중반 해금을 연다) ----
-  | { type: 'rushGrade'; n: number; grade: RushGrade }; // 러시에서 grade 이상을 n번
+  // ---- 카이로 방향: 돈이 아니라 배치 실력이 중반 해금을 연다 ----
+  | { type: 'fitGuests'; n: number }; // 손님이 자기 취향 자리에 앉은 누적 수 (stats.fitGuests)
 /** 목표 뒤에 남는 기능 잠금 (ease): 팝업 스토어·카페 대결·필지 구매만. 홍보·연구·입지 보기·콤보 도감·명소 지도는 처음부터 열려 있다(튜토리얼이 순서를 안내). */
 export type FeatureId = 'parcel';
 export type GoalReward =
@@ -641,6 +641,7 @@ export interface GameStats {
   trainings: number;       // 연수 완료 횟수 (x-staff가 올린다)
   seenMonth: number;       // 월말 관찰용 monthIndex (goals.ts observeMonth)
   seenAnnouncement: number; // 마지막으로 센 가이드북 발표 monthIndex
+  fitGuests?: number;       // 카이로 방향: 손님이 자기 취향 자리에 앉은 누적 수 (chapter.ts noteChapterSeat) — 목표 해금 조건
   cornerVisits?: number;   // 손님이 명당을 찾아온 누적 횟수 (fun-corner)
 }
 /** 보상 상자에 담기는 보상 알림의 출처 */
@@ -897,46 +898,6 @@ export interface GuestRequest { id: string; guestType: string; day: number; done
 /** 단골 등록 손님 (트랙 G): 손님층 게이지가 5면 그 손님층에서 이름·얼굴이 고정된 한 명. 매주 방문·팁 +20%. */
 export interface Regular { id: string; guestType: string; name: string; seed: number; day: number }
 
-// ---------- 러시 타임 (rush.ts, rush-battle §2) ----------
-/** 러시 상태기계: 대기 → 예고·카운트다운 → 진행 → 정산 */
-export type RushPhase = 'idle' | 'ready' | 'run' | 'done';
-export type RushGrade = 'S' | 'A' | 'B' | 'C';
-/** 문 앞에 줄을 선 손님. 자리에 앉으면 진짜 Guest가 되어 줄에서 빠진다. */
-export interface RushGuest {
-  id: string;
-  type: string;        // GuestTypeDef.id
-  patienceMs: number;  // 남은 인내 (게임 ms) — 0이면 화내고 떠난다
-  waitedMs: number;    // 줄에서 기다린 시간 (자동 착석 판정)
-  route?: RouteId;     // 어느 진입점에서 왔나 (트랙 H 경로 비중 유지). 없으면 정류장
-}
-export interface RushState {
-  phase: RushPhase;
-  startTick: number;
-  endTick: number;
-  queue: RushGuest[];
-  score: number;
-  combo: number;      // 3연속을 채운 횟수
-  served: number;     // 받은 손님
-  left: number;       // 기다리다 떠난 손님
-  missed?: number;    // 그중 **빈 자리가 있었는데도** 놓친 사람 — 점수 벌점은 이쪽만 본다
-  leftWants?: string[]; // 놓친 손님들이 보던 것 — 「무엇이 모자랐나」 한 줄의 재료
-  arrived: number;    // 이번 러시에 문 앞에 선 손님 수 (등급 기준)
-  grade: RushGrade | null;
-  week: number;       // 이 러시가 열린 주 번호 (같은 주 재발동 방지). −1 = 아직
-  notified: number;   // 예고한 주 번호
-  elapsedMs: number;  // 지금 단계에서 흐른 게임 ms
-  spawnAcc: number;   // 줄 세우기 소수 누적
-  autoAtMs: number;   // 다음 자동 착석 시각 (러시 안 elapsedMs)
-  streak: number;     // 지금 연속 무사 처리 수
-  tips: number;       // 팁 점수 합 (정산 카드)
-  bonus: number;      // 자리 보너스 합
-  manual: number;     // 플레이어가 직접 처리한 수 (진단)
-  done: string[];     // 받은 손님의 손님층 (정산 때 단골 게이지)
-  priority?: { objectId: string; staffId: string | null }; // 마지막 밀린 주문 우선 처리 (UI 연출)
-  priorityDone?: string[]; // 이번 러시에 이미 우선 처리한 자리 (자리마다 한 번)
-  chapterHits?: number; // chapter: 이번 막의 손님을 직접·제자리에 앉힌 수 (막을 넘는 조건)
-  chapterCleared?: boolean; // chapter: 이번 판으로 막을 넘었다 (결과 카드)
-}
 
 /** 속도 4(빠른 모드)는 엔딩 뒤 「계속하기」로만 열린다 (ending.ts) */
 export type Speed = 0 | 1 | 2 | 3 | 4;
@@ -1080,12 +1041,7 @@ export interface GameState {
   requestThanks?: number;                     // 고마워요를 받은 횟수 (첫 REQUEST_TICKET_COUNT회 응모권)
   regularsGauge?: Record<string, number>;     // 손님층 → 단골 게이지 0~5
   regulars?: Regular[];                       // 단골 등록 손님
-  // ---- 러시 타임 (rush.ts) — optional, save.ts backfill이 채운다 ----
-  rush?: RushState;                             // 이번 주 러시 상태기계
-  /** 러시 「자동 진행」 — 켜면 줄 전체를 자동으로 앉힌다 (점수 계수 0.6이 붙어 등급은 안 오른다). 기본 꺼짐 */
-  rushAuto?: boolean;
-  rushGrades?: Record<RushGrade, number>;     // 누적 등급 수 (§5 해금 조건 rushGrade)
-  chapter?: { idx: number; hits?: number; grades?: number }; // chapter: 지금 몇 막인가(0~5, 5 = 다 끝냄)와 그 막에서 쌓은 것 — chapter.ts
+  chapter?: { idx: number; hits?: number; grades?: number }; // chapter: 지금 몇 막인가(0~5, 5 = 다 끝냄)와 그 막에서 제자리에 앉은 수 — chapter.ts (grades는 러시 시절 잔재, v30부터 안 쓴다)
   routes: Record<RouteId, RouteState>;        // 손님 유입 경로 3종 (트랙 H entry.ts)
   ending: EndingState;                        // 5년차 엔딩·빠른 모드 (ending.ts, z-ending · pace)
   carry: CarryOver | null;                    // 이월해서 시작한 게임이면 그 내용 (기록용)
@@ -1173,9 +1129,6 @@ export type Action =
   | { type: 'investSpot'; id: string }
   | { type: 'expandParking'; objectId: string }               // 주차장 2×2 → 3×2 교체 (트랙 H)
   | { type: 'giveGift'; guestId: string; itemId: string }
-  // ---- 러시 타임 (rush.ts) — 러시 중에만 되는 직접 조작 3가지 ----
-  | { type: 'seatFromQueue'; guestId: string; objectId: string } // 줄 맨 앞 손님 → 빈 자리
-  | { type: 'rushPriority'; objectId: string }                   // 밀린 주문 우선 처리
   | { type: 'craftGift'; itemId: string }
   | { type: 'develop'; base: MenuBase; ingredients: string[]; params?: BrewParams; staffId: string }
   | { type: 'dismissDevelop' }

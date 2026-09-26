@@ -1,5 +1,5 @@
 /**
- * 손으로 하는 튜토리얼 「할망의 가르침」 15단계 (fun-start §2 + rush-battle §3 — 인사 단계는 러시 단계로 바뀌었다).
+ * 손으로 하는 튜토리얼 「할망의 가르침」 1막 5단계 (teardown §3). 자리 → 메뉴 → 첫 손님 → 명당 → 직원.
  * 새 게임은 할망이 준 폐창고(본관)가 이미 서 있고 마을 길에서 문 앞까지 올렛길이 이어진 채 시작한다(state.ts 'tutorial'). 테이블 1개·메뉴 1개면 첫 손님이 온다.
  * 화자는 전부 할망. 장(章) 개념은 없다 — 배지는 「📖 n/7」. 그 밖의 시스템(연수·명소·주차장·선물·추천…)은 창을 처음 열 때 한 줄 팁(ui/firstTip.ts)으로.
  * 글로우 칸은 고정 좌표가 아니라 strategy.ts가 실제 입지로 고른 칸(테이블 = seatScore 최고). 대사의 `{토큰}`은 strategyVars로 채운다(`{seatWhyPhrase}` = 그 칸을 꾸미는 관형절).
@@ -21,8 +21,6 @@
 import type { GameState, GoalReward, Pt, FeatureId, PlacedObject } from './types.ts';
 import { objectDef } from '../data/index.ts';
 import { isDoorReachable, busStopPos, walkableNeighborsOf } from './path.ts';
-import { rushPhase } from './rush.ts';
-import { freeSeats } from './guests.ts';
 import { CORNERS, cornersDoneIncludingWork, cornerProgressIncludingWork, cornerPieceDefault, cornerBuildType, pieceMatches } from './corners.ts';
 import { ownedParcels } from './parcels.ts';
 import { dayIndex } from './effects.ts';
@@ -61,14 +59,13 @@ export function stepTargets(step: TutorialStepDef, s: GameState): string[] {
 }
 
 /** apply가 성공하면 state.tutorial.seen에 타입을 남기는 액션 (조건 판정용). 문자열 집합.
- *  인사(greetGuest)는 rush-battle §3·§6에서 사라졌다 — 손님과의 상호작용은 러시 중 자리 배정·주문 처리다. */
+ */
 export const TRACKED_ACTIONS: ReadonlySet<string> = new Set<string>([
   'seatFromQueue', 'undoLast', 'train', 'develop', 'drawTicket', 'buyMileage', 'buyTicket', 'giveGift', 'respondEvent', 'investSpot',
   'treeUpgrade', 'move', 'buyParcel', 'enterContest',
 ]);
 /** UI가 tutorialNote로 남기는 키. `look:<id>`는 미니 카드 「이게 뭐예요」 힌트(정낭·정류장·마을 길·본관), goalWindow는 목표 창을 열었다(6단계). */
 export type TutorialNoteKey = 'siteView' | 'guestCard' | 'storage' | 'goalWindow' | 'checkup'
-  | 'rushSeat1' | 'rushSeat2' // rush-battle §3: 인사 대신 러시 조작이 손으로 배우는 것이 됐다
   | `look:${LookId}`;
 /** 처음부터 놓여 있는 것의 카드 힌트 id (MiniCard Hint) */
 export type LookId = 'gate' | 'busstop' | 'road' | 'main';
@@ -208,24 +205,10 @@ function seatCells(s: GameState): Pt[] {
   return out;
 }
 /** 러시 단계 글로우: 자리가 있으면 첫 자리 칸(거기 앉힌다), 없으면 정류장 */
-/** 러시 단계 글로우 — **러시가 도는 동안만** 빈 자리를 빛낸다.
- *  예전엔 단계가 차례이기만 하면 늘 자리 하나를 빛내서, 테이블을 놓은 순간부터 다음 토요일까지
- *  며칠 내내 「여기 앉히면 된다」가 맵에 붙어 있었다. 줄도 손님도 없는데 앉히라고 하는 셈이다.
- *  기다리는 동안 무엇을 하는지는 안내 줄(「줄에서 손님 둘 앉히기」)이 말한다. */
-function rushCells(s: GameState): Pt[] {
-  if (rushPhase(s) !== 'run') return [];
-  return freeSeats(s).slice(0, TUTORIAL_RUSH_GLOW).map((o) => ({ x: o.x, y: o.y }));
-}
-/** 러시 중에 빛낼 빈 자리 수 (다 빛내면 맵이 온통 노랗다) */
-export const TUTORIAL_RUSH_GLOW = 3;
-/** 첫 러시에서 줄에 선 손님을 앉혀 봤나 (UI가 rushSeat1·rushSeat2 표식을 남긴다 — 러시 상태에 기대지 않는다).
- *
- *  **한 명**이다. 둘로 뒀더니 1단계가 시킨 대로 테이블 하나만 지은 마당에서는 실측 최대가 딱 2명이라
- *  한 번만 놓쳐도 다음 주까지 7일을 기다려야 했다(그 전에는 아예 0명이라 불가능한 단계였다 — rush.ts
- *  RUSH_DWELL_MULT 주석 참고). 이 단계가 가르치는 건 「줄 맨 앞을 빈 자리에 앉힌다」는 손놀림 하나고,
- *  양은 막(chapter.ts)이 맡는다. */
-export function rushSeated(s: GameState): boolean {
-  return seen(s, 'rushSeat1');
+
+/** 첫 손님이 돈을 내고 갔나 — 카이로처럼 손님은 알아서 온다. 배치를 마치고 **기다려 보는** 단계다. */
+export function firstSale(s: GameState): boolean {
+  return soldAny(s);
 }
 const money = (amount: number): GoalReward => ({ type: 'money', amount });
 const none = () => [] as Pt[];
@@ -357,7 +340,7 @@ export const STEPS: TutorialStepDef[] = [
   { id: 1, act: 1, key: 'seat', done: (s) => seats(s).length >= 1, targets: ['nav:build', 'tile:seat', 'tab:rest', 'build:table_out', 'build-go'], cells: seatCells },
   // 메뉴는 **세 칸 다**. 한 칸만 시키면 나머지 둘을 비워 둔 채로 장사하다가 손님이 왜 안 오는지 모른다
   { id: 2, act: 1, key: 'menu', done: (s) => s.menuSlots.every((m) => m !== null), targets: ['nav:cafe', 'tab:menu', 'menu-put'], cells: none },
-  { id: 3, act: 1, key: 'rushSeat', done: rushSeated, targets: ['rush-queue-first'], cells: rushCells, ready: (s) => rushPhase(s) === 'run' },
+  { id: 3, act: 1, key: 'firstGuest', done: firstSale, targets: [], cells: none },
   { id: 4, act: 1, key: 'corner', done: cornerMade, targets: (s) => ['nav:build', 'tile:charm', 'tab:corner', `corner-next:${TUTORIAL_CORNER_ID}`, `build:${cornerMissingType(s)}`, 'build-go'], cells: cornerCells },
   // staffpost: 뽑는 것으로는 안 끝난다 — 마당의 칸에 세워 봐야 「직원은 선 자리 둘레를 챙긴다」가 손에 남는다
   { id: 5, act: 1, key: 'staffPost', done: staffPosted, targets: ['nav:people', 'tab:candidates', 'hire', 'tab:staff'], cells: none },

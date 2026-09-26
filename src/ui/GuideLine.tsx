@@ -45,7 +45,7 @@ export function guideOf(s: GameState): Guide | null {
   if (!ch) return null;
   // 막이 막혔으면(그 손님을 앉힐 자리가 아예 없으면) 할 일 대신 그 까닭을 — 숫자만 안 오르는 절벽을 막는다
   const stuck = chapterBlocker(s);
-  const tail = ch.need > 0 ? `${ch.have}/${ch.need}` : `${ch.gradesHave}/${ch.gradesNeed}`;
+  const tail = `${ch.have}/${ch.need}`;
   return { kind: 'chapter', icon: 'flag', title: ch.name, text: stuck ?? ch.todo, tail, urgent: !!stuck };
   return null;
 }

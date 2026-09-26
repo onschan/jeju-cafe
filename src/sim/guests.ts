@@ -45,7 +45,8 @@ import { hashOf } from './say.ts';
 import { streetFeeMult } from './tree.ts'; // fun: 같은 트리 3연속 「거리」 요금 +10%
 import { sceneryTouristMult, notePhoto } from './appeal.ts'; // fun: 경관 → 관광객, 사진 → 평판
 import { assignGuestName, regularsDue, dressAsRegular, regularTip, thankIfDone, maybeRequest, addRegularGauge, requestDef, GAUGE_HAPPY_VISIT } from './interact.ts'; // fun-guest (트랙 G): 이름·단골·요청·게이지
-import { rushDwellMult, isRushRunning, rushWalkMult } from './rush.ts'; // 러시 중엔 평소 스폰을 멈추고 rush.ts가 문 앞에 줄을 세운다 (3배)
+import { seatFitsGuest } from './wants.ts'; // 카이로 방향: 손님은 자기 취향 자리를 골라 앉는다
+import { noteChapterSeat } from './chapter.ts'; // chapter: 제자리에 앉은 손님을 센다
 
 export { moveAlong, GUEST_SPEED_CELLS_PER_S }; // 하위 호환 재수출 (본체는 path.ts)
 // pace: 체류·조리 시간은 게임 시간(시)으로 적는다 — HOUR_MS를 줄여 시계를 빠르게 해도 「몇 시간 앉아 있나」가 그대로라 하루 매출이 안 바뀐다.
@@ -274,7 +275,6 @@ function walkAway(state: GameState, typeId: string): void {
 /** 매 시간: 하루 손님 수를 시간대 비중으로 나눠 소수 누적, 정수만큼 스폰. 손님 0 이벤트 날은 안 온다. 일요일 11시엔 투어 버스. */
 export function hourlySpawn(state: GameState): number {
   if (noGuestsToday(state)) return 0;
-  if (isRushRunning(state)) return 0; // 러시 중: 손님은 rush.ts가 문 앞 줄(3배)로만 들인다 — 끝나면 이 경로로 원복
   state.spawnAcc += dailyGuestCount(state) * hourShare(state.clock.hour);
   const n = Math.floor(state.spawnAcc + 1e-9);
   state.spawnAcc -= n;
@@ -362,16 +362,22 @@ export function spawnGuests(state: GameState, n: number, forceType?: string, ent
   const start = entry?.pos ?? busStopPos(state);
   const reach = reachMap(state, start); // 걷기 지형은 스폰 중 안 바뀌므로 한 번만
   const pickType = (bonus: ParcelBonus, force?: string) => force ? (force === NAMED_TYPE ? NAMED_TYPE : canonicalGuestId(force)) : pickWeighted(state, unlockedTypeIds(state), (id) => typeWeight(state, id, state.clock.hour, bonus) * (entry ? routeTagMult(route, id) : 1));
-  const findSeat = (): { seat: PlacedObject; target: Pt; dist: number } | null => {
+  /** 빈 자리 중 가장 가까운 것. typeId를 주면 **그 손님에게 맞는 자리**(취향 — wants.ts)를 먼저 찾고, 없을 때만 아무 자리.
+   *  카이로 방향: 손님은 자기 취향 자리를 골라 앉는다. 그래야 「조용한 자리를 만들었더니 조용함을 보는 손님이 거기 앉는다」가
+   *  마당에서 눈에 보이고, 배치가 곧 전략이 된다. 예전엔 무조건 가까운 자리라 취향이 배치와 아무 상관이 없었다. */
+  const findSeat = (typeId?: string): { seat: PlacedObject; target: Pt; dist: number } | null => {
     let best: { seat: PlacedObject; target: Pt; dist: number } | null = null;
+    let fit: { seat: PlacedObject; target: Pt; dist: number } | null = null;
     for (const seat of freeSeats(state)) {
+      const fits = typeId !== undefined && seatFitsGuest(state, seat, typeId);
       for (const nb of walkableNeighborsOf(state, seat.x, seat.y)) {
         const d = reach.dist.get(cellKey(state, nb));
         if (d === undefined) continue;
         if (!best || d < best.dist) best = { seat, target: nb, dist: d };
+        if (fits && (!fit || d < fit.dist)) fit = { seat, target: nb, dist: d };
       }
     }
-    return best;
+    return fit ?? best;
   };
   const seatGuest = (best: { seat: PlacedObject; target: Pt }, typeId: string) => {
     const path = pathFromReach(state, reach, best.target)!.slice(1);
@@ -404,25 +410,25 @@ export function spawnGuests(state: GameState, n: number, forceType?: string, ent
   // 대기열부터 (n과 별도로 앉힌다). 단골★·투어 버스(forceType)는 줄과 상관없이 바로 자리를 찾는다.
   const cap = guestCap(state); // fun-rank: 등급별 상한
   while (!forceType && state.waiting.length > 0 && state.guests.length < cap) {
-    const best = findSeat();
+    const t = state.waiting[0]!;
+    const best = findSeat(t);
     if (!best) break;
-    const t = state.waiting.shift()!;
+    state.waiting.shift();
     seatGuest(best, t);
     addComplaint(state, 'wait_long', t); // 줄을 섰다 앉은 손님은 오래 기다렸다고 한다
   }
   for (let i = 0; i < n && state.guests.length < cap; i++) {
-    const best = findSeat();
+    // 누가 왔는지를 먼저 정하고, 그 손님에게 맞는 자리를 찾는다 (취향 자리가 없으면 가까운 자리)
+    const typeId = pickType('none', forceType);
+    if (!typeId) break;
+    const best = findSeat(typeId);
     if (!best) {
       if (forceType) break; // 투어 버스·단골★은 줄을 서지 않는다
       // 자리가 없으면 줄을 서고, 줄이 3명이면 돌아간다
-      const t = pickType('none');
-      if (!t) break;
-      if (state.waiting.length < waitCapOf(state)) state.waiting.push(t); // staff2: 홀 직원이 줄을 봐 주면 덜 돌아간다
-      else walkAway(state, t);
+      if (state.waiting.length < waitCapOf(state)) state.waiting.push(typeId); // staff2: 홀 직원이 줄을 봐 주면 덜 돌아간다
+      else walkAway(state, typeId);
       continue;
     }
-    const typeId = pickType(parcelBonusAt(state, best.seat.x, best.seat.y), forceType);
-    if (!typeId) break;
     seatGuest(best, typeId);
   }
   return spawned;
@@ -760,7 +766,7 @@ function leaveSeat(state: GameState, g: Guest, bus: Pt): void {
 
 export function updateGuests(state: GameState, dtMs: number): void {
   const bus = busStopPos(state);
-  const walkMs = dtMs * walkSpeedMult(state) * rushWalkMult(state); // 활력 화분 이동 속도 · 러시 중 종종걸음
+  const walkMs = dtMs * walkSpeedMult(state); // 활력 화분 이동 속도
   for (const g of state.guests) {
     if (g.phase === 'walking') {
       if (moveAlong(g, walkMs)) {
@@ -771,6 +777,7 @@ export function updateGuests(state: GameState, dtMs: number): void {
         const pos = seatSlotPos(seat, g.seatSlot, seatsOf(state, seat));
         g.x = pos.x;
         g.y = pos.y;
+        noteChapterSeat(state, g.type, seatFitsGuest(state, seat, g.type)); // chapter: 제자리에 앉았으면 이번 막에 센다
         order(state, g);
       }
     } else if (g.phase === 'visiting') {
@@ -795,7 +802,7 @@ export function updateGuests(state: GameState, dtMs: number): void {
         if (g.waitMs <= 0) {
           g.waitMs = 0;
           resolveMood(state, g);
-          g.timerMs = stayMs(state, g, SEAT_MS * seatTimeMult(state, g.menuId)) * routeStayMult(g) * rushDwellMult(state); // y-indoor P1-12: 시설당 +8분·소파·책장·조명 × 트랙 H: 주차장 ×1.2·크루즈 ×0.7 × 러시 회전
+          g.timerMs = stayMs(state, g, SEAT_MS * seatTimeMult(state, g.menuId)) * routeStayMult(g); // y-indoor P1-12: 시설당 +8분·소파·책장·조명 × 트랙 H: 주차장 ×1.2·크루즈 ×0.7
         }
         continue;
       }
@@ -805,14 +812,12 @@ export function updateGuests(state: GameState, dtMs: number): void {
       moveAlong(g, walkMs);
     }
   }
-  // video P0-5: 나가는 손님마다 하단에 영수증 한 줄. 러시 중엔 안 띄운다 — HUD가 이미 꽉 찼다
+  // video P0-5: 나가는 손님마다 하단에 영수증 한 줄
   const gone = state.guests.filter((g) => g.phase === 'leaving' && g.path.length === 0);
   state.guests = state.guests.filter((g) => !gone.includes(g));
-  if (!isRushRunning(state)) {
-    for (const g of gone) {
-      if (g.paid <= 0) continue;
-      const rep = !g.namedId && g.mood === 'happy' ? guestTypeDef(canonicalGuestId(g.type)).popularityShift : 0;
-      pushReceipt(state, canonicalGuestId(g.type), rep, g.paid);
-    }
+  for (const g of gone) {
+    if (g.paid <= 0) continue;
+    const rep = !g.namedId && g.mood === 'happy' ? guestTypeDef(canonicalGuestId(g.type)).popularityShift : 0;
+    pushReceipt(state, canonicalGuestId(g.type), rep, g.paid);
   }
 }

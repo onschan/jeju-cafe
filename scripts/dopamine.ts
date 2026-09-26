@@ -26,7 +26,7 @@ export type EventKind =
   | '레시피' | '히든레시피' | '코너첫완성' | '세트첫발견' | '재료콤보'
   | '뽑기당첨' | '뽑기꽝' | '가이드북1위' | '신기록' | '명소Lv' | '방문객상품' | '칭호' | '완공'
   | '동네순위' | '경쟁이벤트' // rival2: 매월 5일 순위 발표 · 12일 경쟁 카페 뺏기 이벤트
-  | '러시'; // rush: 주 1회 토요일 점심 러시 타임 정산 (등급)
+;
 export type NegKind = '실패알림' | '★강등' | '악평' | '이벤트종료';
 
 /** 사건 간 공백을 셀 때 빼는 것(플레이어가 직접 시킨 일의 완료·꽝) */
@@ -136,7 +136,6 @@ export function runDopamine(years: number, seed: number, player = false): Dopami
     recipes: s.stats.recipesMade, hidden: s.codex.recipes.length,
     corners: s.codex.corners?.length ?? 0, sets: s.codex.sets.length, ingCombos: s.codex.ingredientCombos.length,
     titles: s.titles.length,
-    rushes: Object.values(s.rushGrades ?? {}).reduce((a, b) => a + b, 0), // rush: 치른 러시 수
     spots: { ...s.spots }, prizes: Object.values(s.spotPrizes).reduce((a, b) => a + b, 0),
     income: s.lastMonthCard?.income ?? 0,
   });
@@ -173,7 +172,6 @@ export function runDopamine(years: number, seed: number, player = false): Dopami
     if (after.sets > before.sets) push('세트첫발견', s.codex.sets.slice(before.sets).join(','));
     if (after.ingCombos > before.ingCombos) push('재료콤보', s.codex.ingredientCombos.slice(before.ingCombos).join(','));
     if (after.titles > before.titles) push('칭호', s.titles.slice(before.titles).join(','));
-    if (after.rushes > before.rushes) push('러시', `${s.rush?.grade ?? '?'}등급 · 받은 손님 ${s.rush?.served ?? 0}명`); // rush: 주 1회 사건
     for (const [id, lv] of Object.entries(after.spots)) if (lv > (before.spots[id] ?? 0)) push('명소Lv', `${id} Lv${lv}`);
     if (after.prizes > before.prizes) push('방문객상품', `+${after.prizes - before.prizes}`);
     before = after;

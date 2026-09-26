@@ -32,7 +32,7 @@ import { endingMonthly } from './ending.ts'; // z-ending: 5년차 엔딩 (pace)
 import { dailyIdleHint } from './hints.ts'; // game-feel: 3일 무행동이면 삼춘 힌트
 import { closeDay } from './daylog.ts'; // 성장: 하루 요약 카드·30일 그래프
 import { runPending } from './pending.ts'; // seatfix: 자리가 빈 예약(이동·철거·증축)을 바로 실행
-import { updateRush, rushNotice, rushTimeScale, rushPhase, rushState, rushDoneThisWeek } from './rush.ts'; // 러시 타임: 금요일 예고 → 토요일 11시 카운트다운 → 12~15시 러시 → 정산
+import { checkChapter } from './chapter.ts'; // chapter: 한 판 = 다섯 막
 
 /** 고정 스텝 (게임 ms) = 게임 시간 3분. pace: HOUR_MS에 묶어 둔다 — 시계를 빠르게 해도 한 시간에 도는 스텝 수(20)가 같아야
  *  조리 대기·체류·걸음이 같은 눈금으로 끊기고, 하루 매출과 난수 흐름이 그대로 유지된다. */
@@ -76,7 +76,7 @@ function onNewDay(state: GameState): void {
   // [코어만] dailyRivals(state); // 동네 순위 발표(5일)·경쟁 카페 뺏기 이벤트(12일) — 월초 1일 몰림을 피해 날짜를 나눴다
   // [코어만] dailyShop(state); // game-feel: 보름 응모권
   // [코어만] dailyIdleHint(state);
-  rushNotice(state); // 러시 타임: 하루 전(금요일) 아침 예고 한 줄
+  checkChapter(state); // chapter: 어제까지 쌓인 것으로 막을 넘었나 (카이로 방향: 러시 없이, 손님이 제자리에 앉은 수로)
 }
 
 /** 월 바뀜 (1일의 날 처리보다 먼저): (3월) 급여 인상 → 월급 → 홍보 만료·인기 감소 → 유지비 → 투어 버스 → (3월) 소득세 → 명소 월 정산·선물 → 손님 수 마일리지 → 정산 → 실패 상태(경고·대출·상환·위기) → 평판 후기 → 농원 수확 → 후보 만료 → 손님 해금 → 게시판 → 응모권·무료 추첨 → ★·가이드북 발표 → 라이벌 → 빅 이벤트 판정(예약) */
@@ -121,7 +121,6 @@ export function step(state: GameState): void {
   if (state.clock.month !== prevMonth) onNewMonth(state, prevMonth, prevYear);
   for (let i = 0; i < days; i++) onNewDay(state);
   for (let i = 0; i < hours; i++) onNewHour(state);
-  updateRush(state, STEP_MS); // 러시 타임 상태기계 (줄·인내·자동 착석·정산)
   updateGuests(state, STEP_MS);
   runPending(state); // seatfix: 손님이 다 떠난 예약은 그 즉시 실행된다
   moveStaff(state, STEP_MS);
@@ -130,12 +129,10 @@ export function step(state: GameState): void {
 }
 
 /** 실시간 dtMs를 speed로 환산해 STEP_MS 단위로 step을 돌린다. 잔여는 clock.carryMs에 보관.
- *  러시 중에는 rushTimeScale이 환산을 늦춘다 — 게임 시계로 4시간뿐인 러시가 3배속에서 60~90초 걸리게 (§7-1).
- *  시뮬레이션(고정 스텝 수·난수 흐름)은 그대로라 밸런스는 안 바뀐다. 봇·테스트처럼 하루치·한 시간치를 한 번에 넣는 호출은
- *  프레임(≤RUSH_REALTIME_DT_MAX)이 아니므로 감속이 걸리지 않는다. */
+ *  시뮬레이션(고정 스텝 수·난수 흐름)은 실시간 dt와 무관하다. */
 export function tick(state: GameState, dtMs: number): GameState {
   const c = state.clock;
-  c.carryMs += dtMs * c.speed * rushTimeScale(state, dtMs);
+  c.carryMs += dtMs * c.speed;
   let steps = 0;
   while (c.carryMs >= STEP_MS && steps < MAX_STEPS_PER_TICK) {
     c.carryMs -= STEP_MS;

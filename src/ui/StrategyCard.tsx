@@ -8,8 +8,6 @@ import { Icon } from './Icon';
 import { diagnose, cachedMoves, unreachableObjects, type Diagnosis } from '../sim/index.ts';
 import { layoutScore } from './layoutScore';
 import { card, PALETTE } from './frame';
-import { rushDiagnosis } from './rushPrep'; // rush-battle §6: 진단은 러시 성적 분석이 된다
-import { useLastRushResult } from './rushBridge';
 
 /** 지금 상태 진단 (배치 점수·solver 1위 수를 함께 넣는다) */
 export function diagnosisOf(s: Parameters<typeof diagnose>[0]): Diagnosis {
@@ -29,24 +27,11 @@ export function StrategyCard({ onFocus }: { onFocus?: (x: number, y: number) => 
   const d = diagnosisOf(s);
   const blocked = unreachableObjects(s);
   const first = blocked[0];
-  useLastRushResult(); // 러시가 끝나면 이 카드가 바로 새 성적을 읽는다
-  const rush = rushDiagnosis(s);
   return (
     <div style={{ ...card, borderColor: PALETTE.wood }} data-testid="strategy-card" data-tut="strategy-card">
       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8 }}>
         <b style={{ fontSize: 16 }}><Icon name="report" size={16} /> 우리 카페 진단</b>
         <span style={{ fontSize: 13, color: PALETTE.inkSoft }}>{d.dateText}</span>
-      </div>
-      {/* rush-battle §6: 맨 위는 지난 러시 성적 — 「줄이 길어 3명 놓쳤어요」와 그래서 무엇을 */}
-      <div data-testid="strategy-rush" style={{ marginTop: 6, padding: '6px 8px', background: PALETTE.paper, border: `2px solid ${PALETTE.wood}`, borderRadius: 6 }}>
-        <div style={{ fontSize: 13, color: PALETTE.inkSoft }}>지난 러시</div>
-        <div data-testid="rush-headline" style={{ fontSize: 15, fontWeight: 700, lineHeight: 1.4 }}>{rush.headline}</div>
-        <div data-testid="rush-why" style={{ fontSize: 14, lineHeight: 1.4, color: rush.result && rush.result.left > 0 ? PALETTE.bad : PALETTE.ok }}>{rush.why}</div>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 4 }}>
-          {rush.fixes.map((f, i) => (
-            <span key={i} data-testid="rush-fix" style={{ fontSize: 14, fontWeight: 700, background: PALETTE.paperDark, border: `2px solid ${PALETTE.woodLight}`, borderRadius: 6, padding: '3px 8px' }}>{f}</span>
-          ))}
-        </div>
       </div>
 
       <div style={{ marginTop: 4 }}>

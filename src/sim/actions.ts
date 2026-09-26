@@ -14,7 +14,6 @@ import { canTrain, train } from './training.ts';
 import { canPromote, promote, canSetTarget, setTarget } from './promotions.ts';
 import { discoverPlacement } from './compat.ts';
 import { canUseItem, useItem, canGiveGift, giveGift, canCraftGift, craftGift } from './items.ts';
-import { canSeatFromQueue, seatFromQueue, canRushPriority, rushPriority } from './rush.ts'; // 러시 타임: 자리 배정·밀린 주문
 import { evaluateUnlocks } from './segments.ts';
 import { canAcceptQuest, acceptQuest, canRespondEvent, respondEvent, afterInvest, checkQuests } from './board.ts';
 import { canInvestSpot, investSpot } from './spots.ts';
@@ -459,18 +458,6 @@ function applyInner(state: GameState, a: Action): ApplyResult {
       const c = canGiveGift(state, a.guestId, a.itemId);
       if (!c.ok) return c;
       giveGift(state, a.guestId, a.itemId);
-      return { ok: true };
-    }
-    // ---- 러시 타임 (rush.ts §2 직접 조작 3가지) ----
-    case 'seatFromQueue': {
-      const c = canSeatFromQueue(state, a.guestId, a.objectId);
-      if (!c.ok) return c;
-      return seatFromQueue(state, a.guestId, a.objectId) ? { ok: true } : { ok: false, reason: '거기까진 못 가요' };
-    }
-    case 'rushPriority': {
-      const c = canRushPriority(state, a.objectId);
-      if (!c.ok) return c;
-      rushPriority(state, a.objectId);
       return { ok: true };
     }
     case 'craftGift': {

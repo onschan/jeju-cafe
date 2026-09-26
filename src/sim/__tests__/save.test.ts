@@ -117,7 +117,7 @@ test('v21 세이브: 5트랙이 붙인 필드가 전부 기본값으로 채워�
 
   const back = deserialize(JSON.stringify(obj));
   expect(back.version).toBe(SAVE_VERSION);
-  expect(SAVE_VERSION).toBe(29);
+  expect(SAVE_VERSION).toBe(30);
   // stakes
   expect(back.monthCosts.rent).toBe(0);
   expect(back.trend).toBeTruthy();
@@ -179,9 +179,9 @@ test('v24 세이브: 러시가 기본값으로 채워지고, 인사 기록은 �
 
   const back = deserialize(JSON.stringify(obj));
   expect(back.version).toBe(SAVE_VERSION);
-  // 러시 — 다음 토요일부터 줄이 선다
-  expect(back.rush?.phase).toBe('idle');
-  expect(back.rushGrades).toEqual({ S: 0, A: 0, B: 0, C: 0 });
+  // v30: 러시는 없어졌다 — 옛 러시 필드는 지워진다
+  expect((back as unknown as Record<string, unknown>).rush).toBeUndefined();
+  expect((back as unknown as Record<string, unknown>).rushGrades).toBeUndefined();
   // 인사·추천은 삭제된 기능이라 기록도 지운다
   expect((back as unknown as Record<string, unknown>).greetDay).toBeUndefined();
   expect((back as unknown as Record<string, unknown>).greetCount).toBeUndefined();
@@ -209,8 +209,7 @@ test('v25 세이브: 없어진 대항전·액티브 스킬 필드를 지우고 �
   expect(raw.activeSkills).toBeUndefined();
   expect(raw.activeSkillSlots).toBeUndefined();
   expect(raw.titleChanceBonus).toBeUndefined();
-  // 남겨야 하는 것 — 러시·동네 경쟁 카페 순위표는 그대로
-  expect(back.rush?.phase).toBe('idle');
+  // 남겨야 하는 것 — 동네 경쟁 카페 순위표는 그대로 (러시는 v30에서 없어졌다)
   expect(back.rivals).toBeTruthy();
   // 한 번 더 왕복해도 같다
   expect(JSON.parse(serialize(deserialize(serialize(back))))).toEqual(JSON.parse(serialize(back)));

@@ -62,14 +62,14 @@ describe('안내 한 줄', () => {
     s.tutorial.seen.push('dlg:1'); // 1단계 대사를 봤다
     expect(apply(s, { type: 'place', objectType: 'table_out', x: X(3), y: Y(4) }).ok).toBe(true);
     // 2단계(메뉴판 채우기)는 이미 참이라 대사 없이 넘어간다 — 3분 전에 한 일을 다시 시키지 않는다
-    expect(s.tutorial.step).toBe(2); // 0-based: 3단계(첫 러시)가 차례
+    expect(s.tutorial.step).toBe(2); // 0-based: 3단계(첫 손님)가 차례
   });
 
-  it('러시가 안 도는 동안엔 「줄에서 앉히기」를 안 띄운다 — 줄이 없는데 줄 얘기를 하면 안 된다', () => {
+  it('3단계는 손님을 기다리는 단계 — 줄 얘기가 아니라 「첫 손님 받기」', () => {
     const s = openable(fresh());
-    s.tutorial.step = 2; // 3단계(첫 러시) 차례
-    expect(s.rush?.phase ?? 'idle').not.toBe('run');
-    const g = guideOf(s);
-    expect(g?.kind).not.toBe('tutorial'); // 지금 할 수 있는 다음 일로 줄을 넘긴다
+    s.tutorial.step = 2;
+    const g = guideOf(s)!;
+    expect(g.kind).toBe('tutorial');
+    expect(g.text).toBe('첫 손님 받기');
   });
 });
