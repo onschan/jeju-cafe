@@ -233,7 +233,7 @@
   },
   {
     "id": "ev_weekend_rush",
-    "title": "주말 손님 러시",
+    "title": "주말 손님 몰림",
     "weekly": true,
     "chance": 0,
     "durationDays": 1,
@@ -246,7 +246,7 @@
         "오늘 마을 길에 차가 줄을 섰져. 주말 손님이 몰려온댄 — 자리 잘 챙기라!"
       ]
     },
-    "endDialogue": "주말 러시가 지나갔어요."
+    "endDialogue": "주말 손님 몰림이 지나갔어요."
   },
   {
     "id": "ev_rainy_shelter",

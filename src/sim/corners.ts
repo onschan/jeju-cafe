@@ -23,6 +23,7 @@ import { pushNotice } from './staff.ts';
 import { pushFx } from './fx.ts';
 import { nextRandom } from './rng.ts';
 import { addTickets } from './mileage.ts';
+import { addReputation } from './reputation.ts';
 import { josa } from './josa.ts';
 
 export interface CornerPiece { type: string; count: number }
@@ -85,10 +86,13 @@ export function cornersWithPiece(type: string): CornerDef[] {
   return CORNERS.filter((c) => c.pieces.some((p) => pieceMatches(p.type, type)));
 }
 
-/** 시설 하나가 받는 명당 효과 합산 상한. 요금은 명당 두 개가 겹쳐도 +30%까지 (총 요금 배수 상한은 fee.ts FEE_MULT_CAP) */
-export const CORNER_CAP = { pop: 10, feePct: 30 };
-/** 조각을 한 단계 올릴 때마다: 요금 +3%p · 입소문 +10%(상한 +50%) — 파라솔·테라스로 올리면 명당이 더 좋아진다 */
-export const CORNER_TIER_FEE_PP = 3;
+/** 시설 하나가 받는 명당 효과 합산 상한. **명당은 돈을 더 받지 않는다** (사용자 판정: 「명당으로 돈 더 받지 말고 홍보·명성만」) — 요금 몫은 0.
+ *  명당은 둘레 시설의 입소문(홍보)을 올리고, 완성할 때 카페 명성(평판)이 오른다(CORNER_REPUTATION). */
+export const CORNER_CAP = { pop: 10, feePct: 0 };
+/** 명당을 완성하면 명성(평판) +5 */
+export const CORNER_REPUTATION = 5;
+/** 조각을 한 단계 올릴 때마다: 입소문 +10%(상한 +50%) — 파라솔·테라스로 올리면 명당이 더 소문난다. 요금은 안 오른다. */
+export const CORNER_TIER_FEE_PP = 0;
 export const CORNER_TIER_PCT = 10;
 export const CORNER_TIER_MAX_PCT = 50;
 /** 조각 단계 합 → 입소문 보너스 % */
@@ -264,12 +268,12 @@ export function cornerIfPlaced(state: GameState, type: string, x: number, y: num
 
 // ---------- 효과 훅 ----------
 
-/** 조각 단계 보너스를 얹은 이 명당의 효과 (요금은 단계마다 +3%p, 입소문은 단계마다 +10%) */
+/** 조각 단계 보너스를 얹은 이 명당의 효과 (입소문은 단계마다 +10%). 요금은 늘 0 — 명당은 홍보·명성용이다. */
 export function cornerEffectOf(c: CompletedCorner): { pop: number; feePct: number } {
   const e = cornerDef(c.id).effect;
   return {
     pop: Math.round(e.popularity * (1 + tierPopPct(c.tierSteps) / 100)),
-    feePct: e.feePct + CORNER_TIER_FEE_PP * c.tierSteps,
+    feePct: 0,
   };
 }
 /** 반경 안에 있는 완성 명당들 (입소문은 둘레 전체가 받는다 — 명당이 있는 마당 자체가 소문난다) */
@@ -414,7 +418,8 @@ export function discoverCorners(state: GameState): void {
     if (codex.includes(c.id)) continue;
     codex.push(c.id);
     const def = cornerDef(c.id);
-    pushNotice(state, `${def.name} 완성! 손님이 사진 찍으러 와요`);
+    addReputation(state, CORNER_REPUTATION); // 명당 = 명성 (돈이 아니라)
+    pushNotice(state, `${def.name} 완성! 명성 +${CORNER_REPUTATION} · 손님이 사진 찍으러 와요`);
     pushFx(state, { kind: 'scene', title: `${def.name} 완성`, text: def.line, tick: state.tick });
     pushFx(state, { kind: 'corner', id: c.id, x: c.x, y: c.y, tick: state.tick });
     if (codex.length === 1) addTickets(state, FIRST_CORNER_TICKETS, '첫 명당');
@@ -427,14 +432,14 @@ export function discoverCorners(state: GameState): void {
 
 // ---------- 카드 문구 ----------
 
-/** 자리 카드 한 줄: "명당 꽃길 옆 · 요금 +5% · 만족 +5". 효과가 안 닿으면 null. */
+/** 자리 카드 한 줄: "명당 꽃길 옆 · 입소문 +5 · 만족 +5". 효과가 안 닿으면 null. */
 export function cornerSeatLine(state: GameState, obj: PlacedObject): string | null {
   const serving = cornersServing(state, obj);
   if (serving.length === 0) return null;
   const bonus = cornerBonusAt(state, obj);
   const sat = Math.max(...serving.map((c) => (cornerDef(c.id).effect.target === 'all' ? CORNER_SATISFACTION_ALL : CORNER_SATISFACTION)));
   const names = serving.map((c) => cornerDef(c.id).name).join('·');
-  return `명당 ${names} 옆 · 요금 +${bonus.feePct}% · 만족 +${sat}`;
+  return `명당 ${names} 옆 · 입소문 +${bonus.pop} · 만족 +${sat}`;
 }
 /** 명당 조각 카드 한 줄: "이 명당이 돌봐 주는 자리 3곳 · 오늘 이 자리들 매출 ₩12만" */
 export function cornerAnchorLine(state: GameState, objId: string): { name: string; seats: number; sales: number } | null {

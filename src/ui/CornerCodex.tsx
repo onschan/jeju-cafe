@@ -2,7 +2,7 @@
 import { useGame } from './store';
 import { PALETTE } from './frame';
 import { Icon } from './Icon';
-import { CORNERS, completedCorners } from '../sim/corners.ts';
+import { CORNERS, completedCorners, CORNER_REPUTATION } from '../sim/corners.ts';
 
 export function CornerCodex() {
   const s = useGame();
@@ -20,7 +20,7 @@ export function CornerCodex() {
             <span style={{ width: 18, textAlign: 'center' }}>{done ? <Icon name="check" size={12} /> : ' '}</span>
             <span style={{ fontWeight: done ? 700 : 400 }}>{c.name}</span>
             <span style={{ fontSize: 12, color: PALETTE.inkSoft }}>
-              {done ? `요금 +${c.effect.feePct}% · 입소문 +${c.effect.popularity}${now.has(c.id) ? '' : ' · 지금은 흩어짐'}` : c.hint}
+              {done ? `입소문 +${c.effect.popularity} · 완성 때 명성 +${CORNER_REPUTATION}${now.has(c.id) ? '' : ' · 지금은 흩어짐'}` : c.hint}
             </span>
           </div>
         );

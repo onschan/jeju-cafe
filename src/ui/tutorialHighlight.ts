@@ -70,7 +70,6 @@ export function useSpotlightPref(): boolean {
 /** 맵 글로우 칸 위 말풍선 문구 (단계 key별). 빛나는 칸엔 반드시 왜 빛나는지 적는다 (fix-indoor). 표에 없는 단계는 기본 문구. */
 export const CELL_LABEL: Record<string, string> = {
   seat: '이 자리가 좋아 보인다',
-  rushSeat: '여기 앉히면 된다',
   corner: '여기 놓으면 명당이 된다',
   cornerSeat: '명당 곁이라 값이 오른다',
   combo: '붙여 놓으면 인기가 붙는다',

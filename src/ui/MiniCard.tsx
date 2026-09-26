@@ -354,7 +354,7 @@ function ObjectCard({ s, id, a, onClose, guestId }: { s: GameState; id: string; 
         <SeatNeedRow s={s} o={o} />{/* midgame: 자리 시설이면 「자리 4/6」 */}
         <Details id={`object:${o.type}`}>
           <div style={small}>입소문 <b style={{ color: PALETTE.ink }}>{st.popularity}</b> · 경관 <b style={{ color: PALETTE.ink }}>{st.scenery > 0 ? '+' : ''}{st.scenery}</b> · 요금 <b style={{ color: PALETTE.ink }}>{st.feePct}%</b>{st.upkeep > 0 && ` · 유지비 ${wonText(st.upkeep)}/달`}{(o.uses ?? 0) > 0 && ` · 이용 ${o.uses}회`}</div>
-          <div style={small}>주변 시너지: {st.corner.pop > 0 || st.corner.feePct > 0 ? `명당 입소문 +${st.corner.pop} · 요금 +${st.corner.feePct}%` : '없음'}{st.sets.length > 0 && ` · 세트 ${st.sets.map((x) => x.name).join(', ')}`}</div>
+          <div style={small}>주변 시너지: {st.corner.pop > 0 ? `명당 입소문 +${st.corner.pop}` : '없음'}{st.sets.length > 0 && ` · 세트 ${st.sets.map((x) => x.name).join(', ')}`}</div>
           {d.kind === 'seat' && <SeatSumLine s={s} o={o} />}{/* video-flow §2-1 D: 자리 하나의 손익 — 「맞는 손님 · 오늘 매출」 */}
           <SiteLine s={s} o={o} />
           {(() => { const nl = nightSeatLine(s, o); return nl ? <div style={{ ...small, ...(nl.bad ? { color: PALETTE.bad } : {}) }} data-testid="night-line">🌙 {nl.text}</div> : null; })()}

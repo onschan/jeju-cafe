@@ -154,10 +154,10 @@ export function ObjectInfoPanel({ objectId, onFocus }: { objectId: string; onFoc
       )}
 
       <BetterSpotLine objectId={o.id} onFocus={onFocus} />
-      {(st.corner.pop > 0 || st.corner.feePct > 0) && (
+      {st.corner.pop > 0 && (
         <div style={{ ...card, padding: 6, marginBottom: 6 }}>
           <div style={{ fontSize: 13, color: PALETTE.inkSoft }}>가까운 명당 덕</div>
-          <div style={{ fontSize: 14 }}><b style={{ color: PALETTE.ok }}>입소문 +{st.corner.pop}</b> · 요금 +{st.corner.feePct}%</div>
+          <div style={{ fontSize: 14 }}><b style={{ color: PALETTE.ok }}>입소문 +{st.corner.pop}</b> · 명당은 돈이 아니라 소문을 낸다</div>
         </div>
       )}
       {st.sets.length > 0 && (

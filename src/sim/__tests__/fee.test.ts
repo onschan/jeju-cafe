@@ -7,7 +7,7 @@ import { DAY_MS } from '../clock.ts';
 import { bareState, at } from './helpers.ts';
 import { seatFeeQuote, feeQuoteText, feeQuoteIfPlaced, FEE_MULT_CAP, representativePrice } from '../fee.ts';
 import { siteFeeMult, SITE_FEE_MAX, FEE_PER_SITE_POINT, siteOf, scoreOf } from '../site.ts';
-import { CORNER_CAP, CORNER_TIER_FEE_PP, cornerDef } from '../corners.ts';
+import { CORNER_CAP, CORNER_TIER_FEE_PP, CORNER_REPUTATION, cornerDef, cornerBonusAt } from '../corners.ts';
 import { STREET_BONUS_PCT } from '../tree.ts';
 import type { GameState } from '../types.ts';
 
@@ -27,10 +27,11 @@ describe('요금 보상 곡선', () => {
     expect(SITE_FEE_MAX).toBe(0.40);
     expect(siteFeeMult(8)).toBeCloseTo(1.32);
   });
-  it('명당은 반경 안 자리에 +12%부터, 조각을 올릴 때마다 +3%p, 합산 상한 +30%', () => {
-    expect(cornerDef('corner_flower_path').effect.feePct).toBe(12);
-    expect(CORNER_TIER_FEE_PP).toBe(3);
-    expect(CORNER_CAP.feePct).toBe(30);
+  it('명당은 돈을 더 받지 않는다 — 요금 몫 0, 대신 입소문·완성 때 명성 (사용자 판정)', () => {
+    expect(cornerDef('corner_flower_path').effect.feePct).toBe(0);
+    expect(CORNER_TIER_FEE_PP).toBe(0);
+    expect(CORNER_CAP.feePct).toBe(0);
+    expect(CORNER_REPUTATION).toBe(5);
   });
   it('거리 보너스는 +8%', () => {
     expect(STREET_BONUS_PCT).toBe(8);
@@ -48,18 +49,20 @@ describe('요금 보상 곡선', () => {
     expect([...q.parts].sort((a, b) => b.pct - a.pct)).toEqual(q.parts);
     expect(feeQuoteText(q)).toContain('기본');
   });
-  it('명당 옆 자리는 그냥 자리보다 더 받는다 (꾸민 보람)', () => {
+  it('명당 옆 자리도 값은 그대로 — 명당은 입소문(주변 시설 인기)과 명성을 올릴 뿐 요금 내역에 안 나온다', () => {
     const s = bareState(1);
-    const far = place(s, 'table_out', 9, 6);
     const near = place(s, 'table_out', 1, 1);
     const before = seatFeeQuote(s, near, 3000).price;
+    const rep = s.reputation;
     place(s, 'flower_bed', 0, 0);
     place(s, 'deco_wood_bench', 1, 0);
     place(s, 'streetlight', 0, 1);
     const after = seatFeeQuote(s, near, 3000);
-    expect(after.price).toBeGreaterThan(before);
-    expect(after.parts.some((p) => p.key === 'corner')).toBe(true);
-    expect(seatFeeQuote(s, far, 3000).parts.some((p) => p.key === 'corner')).toBe(false);
+    expect(after.parts.some((p) => p.key === 'corner')).toBe(false);
+    expect(after.price).toBe(before + Math.round(3000 * (after.mult - seatFeeQuote(s, near, 3000).mult))); // 명당 몫 없음 (같은 값)
+    expect(cornerBonusAt(s, near).feePct).toBe(0);
+    expect(cornerBonusAt(s, near).pop).toBeGreaterThan(0);
+    expect(s.reputation).toBe(Math.min(100, rep + CORNER_REPUTATION)); // 완성 때 명성
   });
   it('자리 점수가 높은 칸이 낮은 칸보다 더 받는다 — 고스트도 같은 값을 미리 보여 준다', () => {
     const s = bareState(1);

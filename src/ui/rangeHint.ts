@@ -31,8 +31,8 @@ export function cornerPartners(s: GameState, type: string, x: number, y: number,
   return out;
 }
 
-/** 이 자리를 감싸는 완성 명당들 (자리·요금 시설을 놓을 때 "꽃길 옆이라 요금 +5%") */
-function cornersAround(s: GameState, type: string, x: number, y: number): { names: string; feePct: number } | null {
+/** 이 자리를 감싸는 완성 명당들 (자리·요금 시설을 놓을 때 "꽃길 옆이라 입소문 +5") */
+function cornersAround(s: GameState, type: string, x: number, y: number): { names: string; pop: number } | null {
   if (!isCornerTarget(objectDef(type))) return null;
   const def = objectDef(type);
   const hit = completedCorners(s).filter((c) => {
@@ -42,8 +42,8 @@ function cornersAround(s: GameState, type: string, x: number, y: number): { name
     return cheb(x, y, def.w, def.h, anchor, anchor.w ?? ad.w, anchor.h ?? ad.h) <= cornerDef(c.id).radius;
   });
   if (hit.length === 0) return null;
-  const feePct = Math.min(CORNER_CAP.feePct, hit.reduce((n, c) => n + cornerEffectOf(c).feePct, 0));
-  return { names: hit.map((c) => cornerDef(c.id).name).join('·'), feePct };
+  const pop = Math.min(CORNER_CAP.pop, hit.reduce((n, c) => n + cornerEffectOf(c).pop, 0));
+  return { names: hit.map((c) => cornerDef(c.id).name).join('·'), pop };
 }
 
 /** 발자국 → 표시용 사각형 */
@@ -82,7 +82,7 @@ export function cornerBadge(s: GameState, type: string, x: number, y: number, ig
     return seats > 0 ? `이걸 놓으면 ${done.name} 완성 · 자리 ${seats}곳이 좋아져요` : `이걸 놓으면 ${done.name} 완성`;
   }
   const near = cornersAround(s, type, x, y);
-  if (near) return `${near.names} 옆이라 요금 +${near.feePct}%`;
+  if (near) return `${near.names} 옆이라 입소문 +${near.pop}`;
   const c = cornersWithPiece(type)[0];
   return c ? `${c.name} 조각` : undefined;
 }
