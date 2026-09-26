@@ -50,6 +50,10 @@ export interface TutorialStepDef {
   targets: string[] | ((s: GameState) => string[]);
   /** 하이라이트할 맵 칸 */
   cells: (s: GameState) => Pt[];
+  /** 지금 이 단계를 **할 수 있나**. 없으면 늘 할 수 있는 것으로 본다.
+   *  러시 착석처럼 주에 한 번 열리는 단계는 나머지 엿새 동안 할 수가 없는데, 그때도 안내 줄이
+   *  「줄에서 손님 앉히기」를 붙들고 있으면 줄도 없는 마당을 보며 그 말을 읽게 된다. */
+  ready?: (s: GameState) => boolean;
 }
 /** 단계의 DOM 타깃 (정적 배열·함수 둘 다) */
 export function stepTargets(step: TutorialStepDef, s: GameState): string[] {
@@ -351,8 +355,9 @@ export const STEPS: TutorialStepDef[] = [
   // 한 막 다섯 걸음: 자리 → 메뉴 → 첫 러시 → 첫 명당 → 직원을 세운다.
   // 코어가 된 것만 가르친다 — 입지 보기·업그레이드·필지·경로·진단·대회 단계는 걷어냈다(teardown §3).
   { id: 1, act: 1, key: 'seat', done: (s) => seats(s).length >= 1, targets: ['nav:build', 'tile:seat', 'tab:rest', 'build:table_out', 'build-go'], cells: seatCells },
-  { id: 2, act: 1, key: 'menu', done: (s) => s.menuSlots.includes('americano'), targets: ['nav:cafe', 'tab:menu', 'menu-put'], cells: none },
-  { id: 3, act: 1, key: 'rushSeat', done: rushSeated, targets: ['rush-queue-first'], cells: rushCells },
+  // 메뉴는 **세 칸 다**. 한 칸만 시키면 나머지 둘을 비워 둔 채로 장사하다가 손님이 왜 안 오는지 모른다
+  { id: 2, act: 1, key: 'menu', done: (s) => s.menuSlots.every((m) => m !== null), targets: ['nav:cafe', 'tab:menu', 'menu-put'], cells: none },
+  { id: 3, act: 1, key: 'rushSeat', done: rushSeated, targets: ['rush-queue-first'], cells: rushCells, ready: (s) => rushPhase(s) === 'run' },
   { id: 4, act: 1, key: 'corner', done: cornerMade, targets: (s) => ['nav:build', 'tile:charm', 'tab:corner', `corner-next:${TUTORIAL_CORNER_ID}`, `build:${cornerMissingType(s)}`, 'build-go'], cells: cornerCells },
   // staffpost: 뽑는 것으로는 안 끝난다 — 마당의 칸에 세워 봐야 「직원은 선 자리 둘레를 챙긴다」가 손에 남는다
   { id: 5, act: 1, key: 'staffPost', done: staffPosted, targets: ['nav:people', 'tab:candidates', 'hire', 'tab:staff'], cells: none },
@@ -413,6 +418,11 @@ export function unlockTutorialFeatures(state: GameState): void {
 }
 export function tutorialDone(state: GameState): boolean {
   return state.tutorial.step >= TUTORIAL_STEPS;
+}
+/** 지금 **손으로 해 볼 수 있는** 단계인가 (안내 줄이 쓴다). 러시 착석은 러시가 도는 동안만 참이다. */
+export function tutorialStepReady(state: GameState): boolean {
+  const st = currentTutorialStep(state);
+  return !!st && (st.ready?.(state) ?? true);
 }
 /** 지금 하고 있는 단계 (끝났으면 null). 막이 아직 안 열렸거나 앞 단계를 끝낸 지 하루가 안 됐으면 null — 가이드는 몰아 뜨지 않는다. */
 export function currentTutorialStep(state: GameState): TutorialStepDef | null {

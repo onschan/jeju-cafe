@@ -77,6 +77,25 @@ function cellLabel(s: GameState, type: string, x: number, y: number, delta?: Sol
   return seatPctLabel(s, type, x, y) ?? (delta ? pickLabel(delta) : null);
 }
 
+/** 추천 칸은 **고스트가 떠 있는 동안 얼어 있어야 한다.**
+ *
+ *  예전엔 렌더마다 다시 골랐다. solverKey에 자금·배치 서명이 들어 있어서 돈이 조금 들어오거나
+ *  손님이 앉기만 해도 캐시가 어긋나 휴리스틱 칸으로 떨어졌다가, 워커가 끝나면 다시 solver 칸으로
+ *  돌아온다 — 그래서 추천 칸이 정류장 앞이었다가 길이었다가 몇 초마다 튀었다.
+ *  같은 시설을 고르고 있는 동안에는 처음 고른 칸을 그대로 쓴다. 다시 고르는 때는 딱 둘:
+ *  시설 종류가 바뀌었거나(다른 걸 짓는다), 하나를 놓았거나(count가 오른다).
+ *  「자리 보는 중…」이던 판만 워커가 끝나면 한 번 갱신한다. */
+let frozen: { key: string; picks: PlacePicks } | null = null;
+export function frozenPicks(s: GameState, type: string, key: string, n = PICK_COUNT): PlacePicks {
+  const stale = frozen?.picks.state === 'busy' && !!solverResult(s);
+  if (frozen && frozen.key === key && !stale) return frozen.picks;
+  const picks = placementPicks(s, type, n);
+  frozen = { key, picks };
+  return picks;
+}
+/** 배치 모드를 나가면 얼린 것을 버린다 */
+export function clearFrozenPicks(): void { frozen = null; }
+
 /** 이 시설을 놓을 추천 칸 3개. 자리는 늘 요금 %, 그 밖은 캐시가 맞으면 숫자까지. */
 export function placementPicks(s: GameState, type: string, n = PICK_COUNT): PlacePicks {
   const moves = cachedMoves(s, (m) => m.action.type === 'place' && m.action.objectType === type);

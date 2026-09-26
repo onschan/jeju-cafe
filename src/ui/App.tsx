@@ -59,7 +59,7 @@ import { windCoveredSeatsBy, WIND_WEDGE_MAX } from '../sim/site.ts'; // spot2: �
 import { AppealPanel } from './AppealPanel'; // fun: 카페 매력도
 import { tradeoffOf } from './tradeoff'; // fun: 배치 트레이드오프
 import { rectCells, demolishTargets, reservedCount, nextGhostAfterPlace, type Rect, type BuildGhost } from './placing';
-import { placementPicks, PlacementHintLine, type PlacePicks } from './PlacementHints'; // video-patch §3.2: 추천 칸 3곳
+import { frozenPicks, clearFrozenPicks, PlacementHintLine, type PlacePicks } from './PlacementHints'; // video-patch §3.2: 추천 칸 3곳 (고르는 동안 얼려 둔다)
 import { usePlaceHintsPref, setPlaceHintsOn } from './layoutScore';
 import { GuideLine } from './GuideLine'; // teardown §3: 안내 한 줄 (튜토리얼 > 문 열기 막힘 > 이번 막)
 // ---- rush: 러시 타임 HUD·연출·조작 (rush-battle §2) ----
@@ -409,6 +409,7 @@ function Game({ onExit }: { onExit: () => void }) {
     viewRef.current?.setRectCells(cells, RECT_COLOR_LINE, l?.from ?? null);
   };
   const setMode = (m: Mode) => {
+    if (m.kind !== 'build' || modeRef.current.kind !== 'build' || modeRef.current.objectType !== m.objectType) clearFrozenPicks(); // 다른 걸 짓거나 배치를 끝내면 추천 칸을 다시 고른다
     modeRef.current = m;
     setModeState(m);
     if (m.kind !== 'idle') { setCardTarget(null); viewRef.current?.setSelection(null); }
@@ -880,7 +881,8 @@ function Game({ onExit }: { onExit: () => void }) {
         if (nx.done) showMessage(nx.reason);
       };
       const confirm = () => confirmAt(ghost.x, ghost.y);
-      if (hintsOn) picks = placementPicks(s, mode.objectType);
+      // 추천 칸은 고르는 동안 얼려 둔다 — 렌더마다 다시 고르면 몇 초마다 칸이 튄다 (PlacementHints.frozenPicks)
+      if (hintsOn) picks = frozenPicks(s, mode.objectType, `${mode.objectType}:${mode.count}`);
       place = {
         // video P0-2: 하단 바는 〈이름 · 위치 · 값〉 세 정보로 고정하고, 그 뒤에 지금 상태 한 마디.
         // 돈이 떨어져도 모달을 안 띄운다 — 이 줄이 빨개지고 고스트도 빨개진다 (영상 2:15)

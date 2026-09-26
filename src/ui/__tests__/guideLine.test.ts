@@ -18,6 +18,12 @@ function noTutorial(s: GameState): GameState {
   s.tutorial.step = TUTORIAL_STEPS;
   return s;
 }
+/** 문을 열 수 있게: 자리 하나 + 메뉴판 세 칸 (시작 메뉴판은 비어 있다 — 메뉴도 직접 올린다) */
+function openable(s: GameState): GameState {
+  placeObject(s, 'table_parasol', X(3), Y(4));
+  s.menuSlots = ['americano', 'latte', 'tangerine_juice'];
+  return s;
+}
 
 describe('안내 한 줄', () => {
   it('튜토리얼이 돌고 있으면 그 줄이 먼저다 — 문 열기 막힘·막이 같이 뜨지 않는다', () => {
@@ -33,8 +39,7 @@ describe('안내 한 줄', () => {
   });
 
   it('문이 열리면 이번 막 — 진행도까지 한 줄에', () => {
-    const s = noTutorial(fresh());
-    placeObject(s, 'table_parasol', X(3), Y(4));
+    const s = openable(noTutorial(fresh()));
     const g = guideOf(s)!;
     expect(g.kind).toBe('chapter');
     expect(g.title).toContain('1막');
@@ -42,20 +47,29 @@ describe('안내 한 줄', () => {
   });
 
   it('할 말이 없으면 줄도 없다', () => {
-    const s = noTutorial(fresh());
-    placeObject(s, 'table_parasol', X(3), Y(4));
+    const s = openable(noTutorial(fresh()));
     s.chapter = { idx: 5 }; // 다섯 막을 다 지났다
     expect(guideOf(s)).toBeNull();
   });
 
-  it('이미 해 둔 단계는 대사 없이 조용히 넘어간다 (P0-5) — 자리를 놓으면 메뉴 단계를 건너뛰고 러시로', () => {
+  it('메뉴판은 비어 있다 — 자리처럼 메뉴도 직접 올린다', () => {
+    expect(fresh().menuSlots.every((m) => m === null)).toBe(true);
+  });
+
+  it('이미 해 둔 단계는 대사 없이 조용히 넘어간다 (P0-5) — 메뉴를 먼저 채워 두면 그 단계는 안 시킨다', () => {
     const s = fresh();
-    expect(s.menuSlots).toContain('americano'); // 시작 메뉴판에 이미 올라가 있다
+    s.menuSlots = ['americano', 'latte', 'tangerine_juice']; // 시키기 전에 벌써 채워 뒀다
     s.tutorial.seen.push('dlg:1'); // 1단계 대사를 봤다
     expect(apply(s, { type: 'place', objectType: 'table_out', x: X(3), y: Y(4) }).ok).toBe(true);
-    const g = guideOf(s)!;
-    expect(g.kind).toBe('tutorial');
-    // 2단계(아메리카노 올리기)는 이미 참이라 대사 없이 넘어간다 — 3분 전에 한 일을 다시 시키지 않는다
-    expect(g.text).toBe('줄에서 손님 한 명 앉히기');
+    // 2단계(메뉴판 채우기)는 이미 참이라 대사 없이 넘어간다 — 3분 전에 한 일을 다시 시키지 않는다
+    expect(s.tutorial.step).toBe(2); // 0-based: 3단계(첫 러시)가 차례
+  });
+
+  it('러시가 안 도는 동안엔 「줄에서 앉히기」를 안 띄운다 — 줄이 없는데 줄 얘기를 하면 안 된다', () => {
+    const s = openable(fresh());
+    s.tutorial.step = 2; // 3단계(첫 러시) 차례
+    expect(s.rush?.phase ?? 'idle').not.toBe('run');
+    const g = guideOf(s);
+    expect(g?.kind).not.toBe('tutorial'); // 지금 할 수 있는 다음 일로 줄을 넘긴다
   });
 });

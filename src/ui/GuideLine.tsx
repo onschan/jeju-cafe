@@ -12,7 +12,7 @@
  * 셋 다 없으면 줄도 없다 — 할 말이 없으면 안 띄운다.
  */
 import type { GameState } from '../sim/index.ts';
-import { chapterBlocker, chapterLine, currentTutorialStep, openBlocker } from '../sim/index.ts';
+import { chapterBlocker, chapterLine, currentTutorialStep, tutorialStepReady, openBlocker } from '../sim/index.ts';
 import { TUTORIAL_STEPS as STEP_TEXTS } from '../data/dialogue/index.ts';
 import { PALETTE } from './frame';
 import { Icon } from './Icon';
@@ -31,7 +31,10 @@ export interface Guide {
 
 /** 지금 이 줄이 무엇을 말해야 하나. 없으면 null. */
 export function guideOf(s: GameState): Guide | null {
-  const step = currentTutorialStep(s);
+  // 튜토리얼은 **지금 해 볼 수 있는 단계일 때만** 이 줄을 쓴다.
+  // 러시 착석 단계는 토요일 낮 45초 말고는 할 수가 없는데, 그때도 「줄에서 손님 앉히기」를 띄우면
+  // 줄도 없는 마당을 보며 엿새 내내 그 말을 읽게 된다 — 그 동안은 다음 할 일에 줄을 넘긴다.
+  const step = tutorialStepReady(s) ? currentTutorialStep(s) : null;
   if (step) {
     const text = STEP_TEXTS.find((t) => t.id === step.id);
     if (text?.done) return { kind: 'tutorial', icon: 'book', title: '할망의 가르침', text: text.done, urgent: true };

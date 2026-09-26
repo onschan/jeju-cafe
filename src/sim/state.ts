@@ -315,7 +315,8 @@ export function createInitialState(seed: number, playerId = 'local', createdAt =
   if (layout === 'starter') { fillStarterLayout(state); unlockTutorialFeatures(state); }
   else if (layout === 'open') {
     stampMainAndPath(state);
-    for (const m of START_MENUS) { const i = state.menuSlots.indexOf(null); if (i >= 0) state.menuSlots[i] = m; }
+    // 메뉴판은 비워 둔다 — 자리처럼 메뉴도 직접 올린다. 미리 채워 두면 튜토리얼 2단계가
+    // 「이미 해 둔 일」이라 조용히 넘어가 버려서, 메뉴 넣는 법을 아무도 못 배운다.
     // teardown §3: 튜토리얼을 1막 5단계로 줄이고(첫 주에 끝난다) 다시 켠다.
     // 러시 착석·명당·직원 근무 자리는 지금 「막」을 넘는 조건인데, 안 가르치면 아무도 못 찾는다.
     // 끄고 있었던 이유(연속 배치가 막힌다·대사가 게임을 멈춘다)는 각각 P0-5에서 고쳤다.
