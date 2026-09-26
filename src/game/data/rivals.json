@@ -1,0 +1,7 @@
+[
+  {"id": "sea_view", "name": "바다뷰 카페", "base": 90, "growth": 45},
+  {"id": "tangerine_bakery", "name": "감귤 베이커리", "base": 70, "growth": 40},
+  {"id": "roastery_haru", "name": "로스터리 하루", "base": 120, "growth": 55},
+  {"id": "guesthouse_cafe", "name": "게스트하우스 카페", "base": 50, "growth": 30},
+  {"id": "franchise_star", "name": "프랜차이즈 별다방", "base": 150, "growth": 70}
+]

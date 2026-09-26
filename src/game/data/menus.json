@@ -1,0 +1,44 @@
+[
+  {
+    "id": "americano",
+    "name": "아메리카노",
+    "price": 3500,
+    "unlock": 0
+  },
+  {
+    "id": "tangerine_juice",
+    "name": "감귤주스",
+    "price": 4500,
+    "unlock": 0
+  },
+  {
+    "id": "latte",
+    "name": "카페라떼",
+    "price": 4500,
+    "unlock": 100
+  },
+  {
+    "id": "green_tea",
+    "name": "녹차",
+    "price": 4000,
+    "unlock": 250
+  },
+  {
+    "id": "omegi",
+    "name": "오메기떡 세트",
+    "price": 6000,
+    "unlock": 550
+  },
+  {
+    "id": "cheesecake",
+    "name": "치즈케이크",
+    "price": 6500,
+    "unlock": 850
+  },
+  {
+    "id": "hallabong_ade",
+    "name": "한라봉 에이드",
+    "price": 5500,
+    "unlock": 1200
+  }
+]

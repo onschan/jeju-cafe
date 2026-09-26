@@ -1,0 +1,93 @@
+[
+  {
+    "id": "student",
+    "name": "대학생",
+    "wallet": 9000,
+    "expect": 12,
+    "weight": 30,
+    "unlock": 0,
+    "menu": [
+      "americano",
+      "tangerine_juice",
+      "latte"
+    ]
+  },
+  {
+    "id": "housewife",
+    "name": "주부",
+    "wallet": 11000,
+    "expect": 16,
+    "weight": 22,
+    "unlock": 0,
+    "menu": [
+      "latte",
+      "green_tea",
+      "cheesecake"
+    ]
+  },
+  {
+    "id": "senior",
+    "name": "삼춘",
+    "wallet": 7000,
+    "expect": 10,
+    "weight": 20,
+    "unlock": 0,
+    "menu": [
+      "americano",
+      "green_tea",
+      "omegi"
+    ]
+  },
+  {
+    "id": "worker",
+    "name": "회사원",
+    "wallet": 14000,
+    "expect": 18,
+    "weight": 0,
+    "unlock": 200,
+    "menu": [
+      "americano",
+      "latte",
+      "cheesecake"
+    ]
+  },
+  {
+    "id": "tourist",
+    "name": "관광객",
+    "wallet": 20000,
+    "expect": 22,
+    "weight": 0,
+    "unlock": 400,
+    "menu": [
+      "tangerine_juice",
+      "hallabong_ade",
+      "cheesecake"
+    ]
+  },
+  {
+    "id": "couple",
+    "name": "커플",
+    "wallet": 26000,
+    "expect": 26,
+    "weight": 0,
+    "unlock": 700,
+    "menu": [
+      "latte",
+      "hallabong_ade",
+      "cheesecake"
+    ]
+  },
+  {
+    "id": "family",
+    "name": "가족",
+    "wallet": 32000,
+    "expect": 24,
+    "weight": 0,
+    "unlock": 1000,
+    "menu": [
+      "tangerine_juice",
+      "green_tea",
+      "omegi"
+    ]
+  }
+]

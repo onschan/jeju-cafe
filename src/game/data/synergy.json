@@ -1,0 +1,11 @@
+[
+  {"id": "sy_night_bench", "name": "밤 벤치", "a": ["deco_wood_bench", "bench_stonewall", "toenmaru"], "b": ["garden_lamp", "streetlight"]},
+  {"id": "sy_tangerine_seat", "name": "귤밭 자리", "a": ["table_out", "table_parasol", "terrace_seat", "table_big"], "b": ["tangerine_tree"]},
+  {"id": "sy_flower_table", "name": "꽃길 테이블", "a": ["table_out", "table_parasol", "terrace_seat"], "b": ["flower_bed", "hydrangea", "deco_flower_pots"]},
+  {"id": "sy_rock_garden", "name": "바위 정원", "a": ["basalt_rock"], "b": ["pampas", "cedar", "pond"]},
+  {"id": "sy_stonewall_road", "name": "돌담길", "a": ["stonewall"], "b": ["path", "water_jar"]},
+  {"id": "sy_shade_seat", "name": "그늘 자리", "a": ["hammock", "toenmaru", "deco_wood_bench"], "b": ["cedar", "cherry_tree", "palm"]},
+  {"id": "sy_snack_seat", "name": "간식 자리", "a": ["vending", "omegi_stall", "lemonade_cart", "tart_bakery"], "b": ["table_out", "table_parasol", "table_big", "sofa_seat"]},
+  {"id": "sy_photo_view", "name": "사진 명당", "a": ["photo_spot"], "b": ["dolhareubang", "cherry_tree", "palm", "pond"]},
+  {"id": "sy_footbath_jar", "name": "족욕 마당", "a": ["cauldron_footbath"], "b": ["water_jar", "basalt_rock", "stonewall"]}
+]
