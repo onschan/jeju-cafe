@@ -389,7 +389,7 @@ function repairWorn(s: GameState): void {
   }
 }
 /** zero-base: 카페 증축 — 2년차 Lv2(₩300만)·3년차 Lv3(₩800만), 비용 + 여유(BOT_UPGRADE_MIN_MONEY)가 있을 때. 늘어나는 칸의 자리·장식은 치운다(환불). */
-export const BOT_EXPAND_LEVEL_YEAR: Record<number, number> = { 2: 2, 3: 3 };
+export const BOT_EXPAND_LEVEL_YEAR: Record<number, number> = { 2: 1, 3: 2, 4: 3, 5: 4 };
 function expandMainIfCan(s: GameState): void {
   const next = nextMainLevel(s);
   if (!next || s.clock.year < (BOT_EXPAND_LEVEL_YEAR[next] ?? Infinity) || !canSpend(s, expandCost(s) + BOT_UPGRADE_MIN_MONEY)) return;

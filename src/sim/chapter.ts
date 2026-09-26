@@ -40,16 +40,16 @@ export interface ChapterDef {
 }
 
 export const CHAPTERS: ChapterDef[] = [
-  { id: 'ch_rest', name: '1막 · 조용히 쉬러 온 사람', want: 'rest', need: 250,
+  { id: 'ch_rest', name: '1막 · 조용히 쉬러 온 사람', want: 'rest', need: 400,
     todo: '그늘지고 조용한 자리를 만들어요 — 파라솔이나 나무 곁', done: '쉬러 온 사람들이 여기를 기억했어요' },
-  { id: 'ch_farm', name: '2막 · 귤밭을 보러 온 사람', want: 'farm', need: 450,
+  { id: 'ch_farm', name: '2막 · 귤밭을 보러 온 사람', want: 'farm', need: 700,
     todo: '감귤나무나 당근밭 곁에 자리를 놓아요', done: '귤밭 곁 자리가 소문났어요' },
-  { id: 'ch_convenience', name: '3막 · 차를 몰고 온 사람', want: 'convenience', need: 650,
+  { id: 'ch_convenience', name: '3막 · 차를 몰고 온 사람', want: 'convenience', need: 1000,
     todo: '문에서 가까운 자리를 늘려요', done: '차를 세우고 바로 앉는 카페가 됐어요' },
-  { id: 'ch_scenery', name: '4막 · 바다를 보러 온 사람', want: 'scenery', need: 850,
+  { id: 'ch_scenery', name: '4막 · 바다를 보러 온 사람', want: 'scenery', need: 1300,
     todo: '벚나무 같은 큰 경관을 자리 곁에 모아요 — 전망 2 이상', done: '전망 자리를 보러 사람들이 와요' },
   // 5막엔 잡을 손님층이 없다 — 온갖 손님이 각자 제자리에 앉아야 한다. 한 층에 맞춘 마당은 여기서 밑천이 드러난다.
-  { id: 'ch_regular', name: '5막 · 다시 찾아온 단골', want: null, need: 1500,
+  { id: 'ch_regular', name: '5막 · 다시 찾아온 단골', want: null, need: 2000,
     todo: '이제 온갖 손님이 와요 — 그늘·귤밭·문 앞·전망을 고루 갖춰요', done: '이 카페는 이제 단골들의 자리예요' },
 ];
 

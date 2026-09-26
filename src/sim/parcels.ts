@@ -1,5 +1,6 @@
 import type { GameState, Parcel, ParcelBonus, ApplyResult } from './types.ts';
 import { PARCELS, guestTags } from '../data/index.ts';
+import { rivalMovedOut } from './rival.ts';
 import { pushNotice } from './staff.ts';
 import { PARCEL_COLS, PARCEL_ROWS, PARCEL_W, PARCEL_H, START_ORIGIN, PARCEL_LAYOUT as LAYOUT } from './layout.ts';
 import { fmtNum } from './format.ts';
@@ -124,6 +125,7 @@ export function buyParcel(state: GameState, id: string): void {
   state.money -= price;
   p.owned = true;
   pushNotice(state, `${p.name} 필지를 샀어요 (₩${fmtNum(price)})`);
+  { const moved = rivalMovedOut(state, p.id); if (moved) pushNotice(state, `${josa(moved, '이/가')} 옆 마을로 옮겨 갔어요 — 동네 순위표엔 그대로 있어요`); } // zero-base: 미소유 땅의 경쟁 카페
   pushFx(state, { kind: 'parcel', id: p.id, tick: state.tick }); // fun-rank: 덮개 안개 걷힘 + 랜드마크 등장
   pushFx(state, { kind: 'scene', title: p.name, text: `안개가 걷히고 ${josa(parcelFeature(p).landmark, '이/가')} 보인다. ${parcelFeature(p).gain}`, tick: state.tick });
 }

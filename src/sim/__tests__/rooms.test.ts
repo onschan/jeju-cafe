@@ -30,13 +30,13 @@ function cafe(seed = 1): GameState {
 const main = (s: GameState) => mainBuilding(s)!;
 
 describe('데이터', () => {
-  test('본관은 4×3 「카페」, 방은 본관·주방 확장·화장실·청소도구실', () => {
+  test('본관은 5×4 「카페」, 증축 5단계, 방은 본관·주방 확장·화장실·청소도구실', () => {
     expect(objectDef('warehouse').name).toBe('카페');
-    expect(objectDef('warehouse').w).toBe(4);
-    expect(objectDef('warehouse').h).toBe(3);
-    expect(MAIN_SIZE).toEqual({ w: 4, h: 3 });
-    expect(MAIN_SIZES).toEqual({ 1: { w: 4, h: 3 }, 2: { w: 5, h: 3 }, 3: { w: 6, h: 4 } });
-    expect(MAIN_MAX_LEVEL).toBe(3);
+    expect(objectDef('warehouse').w).toBe(5);
+    expect(objectDef('warehouse').h).toBe(4);
+    expect(MAIN_SIZE).toEqual({ w: 5, h: 4 });
+    expect(MAIN_SIZES).toEqual({ 1: { w: 5, h: 4 }, 2: { w: 6, h: 4 }, 3: { w: 7, h: 5 }, 4: { w: 8, h: 5 }, 5: { w: 8, h: 6 } });
+    expect(MAIN_MAX_LEVEL).toBe(5);
     expect([...ROOM_IDS]).toEqual(['warehouse', 'kitchen_ext', 'restroom', 'cleaning_room']);
     expect(BUILD_GROUPS.map((g) => g.key)).toEqual(['rest', 'convenience', 'food', 'fun', 'farm', 'sceneryDeco', 'pathWall']);
     expect(SHELTER['warehouse']).toBe(2);
@@ -47,12 +47,14 @@ describe('실내: 본관 안에도 자리를 놓는다', () => {
   test('문·문 앞·바닥·카운터 칸: 뒷벽 줄(x > room.x)은 카운터, 나머지는 빈 바닥, 문은 정면 왼쪽', () => {
     const s = cafe();
     const m = main(s);
-    expect([m.x, m.y]).toEqual([X(4), Y(1)]);
+    expect([m.x, m.y]).toEqual([X(4), Y(0)]);
     expect(doorOf(m)).toEqual({ x: X(4), y: Y(3) });
     expect(doorFrontOf(m)).toEqual({ x: X(4), y: Y(4) });
     for (const dx of [1, 2, 3]) expect(isFixedCell(s, m.x + dx, m.y)).toBe(true);
     expect(isFixedCell(s, m.x, m.y)).toBe(false); // 문 기둥 열은 바닥
-    expect(freeFloorCells(s, m).map((p) => `${p.x - m.x},${p.y - m.y}`).sort()).toEqual(['0,0', '0,1', '1,1', '1,2', '2,1', '2,2', '3,1', '3,2'].sort());
+    expect(freeFloorCells(s, m).length).toBe(15); // 5×4 = 20 − 카운터 4 − 문 1
+    expect(freeFloorCells(s, m).map((p) => `${p.x - m.x},${p.y - m.y}`)).toContain('0,0');
+    expect(freeFloorCells(s, m).map((p) => `${p.x - m.x},${p.y - m.y}`)).not.toContain('0,3'); // 문
     expect(isRoomFloor(s, m.x + 1, m.y + 1)).toBe(true);
     expect(isRoomFloor(s, m.x + 1, m.y)).toBe(false);
   });
@@ -62,7 +64,7 @@ describe('실내: 본관 안에도 자리를 놓는다', () => {
     expect(isWalkable(s, m.x + 1, m.y + 1)).toBe(true);
     expect(isWalkable(s, m.x + 1, m.y)).toBe(false);
     expect(canStep(s, doorFrontOf(m), doorOf(m))).toBe(true);
-    expect(canStep(s, { x: m.x + 1, y: m.y + 3 }, { x: m.x + 1, y: m.y + 2 })).toBe(false); // 벽을 뚫고는 못 들어간다
+    expect(canStep(s, { x: m.x + 1, y: m.y + 4 }, { x: m.x + 1, y: m.y + 3 })).toBe(false); // 벽을 뚫고는 못 들어간다
     expect(canStep(s, { x: m.x + 1, y: m.y + 1 }, { x: m.x + 2, y: m.y + 1 })).toBe(true); // 안에서는 자유
     expect(isDoorReachable(s, m)).toBe(true);
   });
@@ -73,11 +75,11 @@ describe('실내: 본관 안에도 자리를 놓는다', () => {
     expect(canPlace(s, 'deco_planter', m.x + 2, m.y + 2).ok).toBe(true);
     expect(canPlace(s, 'tangerine_tree', m.x + 1, m.y + 1)).toEqual({ ok: false, reason: '안에는 자리·장식만 놓아요' });
     expect(canPlace(s, 'table_out', m.x + 1, m.y)).toEqual({ ok: false, reason: '카운터·주방 자리예요' });
-    expect(canPlace(s, 'table_out', m.x, m.y + 2)).toEqual({ ok: false, reason: '문 앞은 비워 둬요' });
-    // (1,2)를 채워도 문 (0,2) → (0,1) → (1,1) 통로로 카운터 앞에 닿는다. 거기서 (0,1)까지 막으면 문이 봉해진다
-    expect(apply(s, { type: 'place', objectType: 'table_out', x: m.x + 1, y: m.y + 2 }).ok).toBe(true); // (1,2)
-    expect(canPlace(s, 'table_out', m.x, m.y + 1).ok).toBe(false); // (0,1)까지 막으면 카운터 앞으로 가는 길이 없다
-    expect(canPlace(s, 'table_out', m.x + 3, m.y + 2).ok).toBe(true); // (3,2)는 (0,1)→(1,1)→(2,1)→(3,1)로 닿는다
+    expect(canPlace(s, 'table_out', m.x, m.y + 3)).toEqual({ ok: false, reason: '문 앞은 비워 둬요' });
+    // 문 (0,3) 옆 (1,3)을 채워도 (0,2) → (1,2) 통로로 카운터 앞에 닿는다. 거기서 (0,2)까지 막으면 문이 봉해진다
+    expect(apply(s, { type: 'place', objectType: 'table_out', x: m.x + 1, y: m.y + 3 }).ok).toBe(true); // (1,3)
+    expect(canPlace(s, 'table_out', m.x, m.y + 2).ok).toBe(false); // (0,2)까지 막으면 카운터 앞으로 가는 길이 없다
+    expect(canPlace(s, 'table_out', m.x + 4, m.y + 3).ok).toBe(true); // (4,3)은 (0,2)→(1,2)→…→(4,2)로 닿는다
   });
   test('실내 자리는 그늘 최대·바람 없음 → 「조용함」 손님 자리, 손님이 문으로 들어가 앉는다', () => {
     const s = cafe();
@@ -102,14 +104,14 @@ describe('증축: 4×3 → 5×3 → 6×4', () => {
     expect(mainLevel(s)).toBe(1);
     expect(nextMainLevel(s)).toBe(2);
     expect(expandCost(s)).toBe(MAIN_EXPAND_COST[2]);
-    expect(expandCells(s).map((p) => `${p.x - X(4)},${p.y - Y(1)}`)).toEqual(['4,0', '4,1', '4,2']);
+    expect(expandCells(s).map((p) => `${p.x - X(4)},${p.y - Y(0)}`)).toEqual(['5,0', '5,1', '5,2', '5,3']);
     s.money = 0;
     expect(canExpandMain(s)).toEqual({ ok: false, reason: '돈이 모자라요' });
     s.money = 100_000_000;
-    placeObject(s, 'stonewall', X(8), Y(2)); // 늘어날 칸에 시설
+    placeObject(s, 'stonewall', X(9), Y(2)); // 늘어날 칸에 시설
     expect(canExpandMain(s).ok).toBe(false);
   });
-  test('expandMain: 돈을 내고 발자국이 커지며 공사 중엔 안에 못 들어간다, 끝나면 실내가 넓어진다 — Lv3에서 문 앞이 한 칸 내려가 올렛길을 잇는다', () => {
+  test('expandMain: 돈을 내고 발자국이 커지며 공사 중엔 안에 못 들어간다, 끝나면 실내가 넓어진다 — Lv3·Lv5에서 문 앞이 한 칸 내려가 올렛길을 잇는다', () => {
     const s = cafe();
     const m = main(s);
     const inside = placeObject(s, 'table_out', m.x + 1, m.y + 1);
@@ -117,7 +119,7 @@ describe('증축: 4×3 → 5×3 → 6×4', () => {
     expect(apply(s, { type: 'expandMain' }).ok).toBe(true);
     expect(s.money).toBe(money - MAIN_EXPAND_COST[2]!);
     expect(mainLevel(s)).toBe(2);
-    expect(mainSize(s)).toEqual({ w: 5, h: 3 });
+    expect(mainSize(s)).toEqual({ w: 6, h: 4 });
     expect(m.build).toBeDefined();
     expect(isMainClosed(s)).toBe(true);
     expect(isWalkable(s, m.x + 1, m.y + 2)).toBe(false); // 공사 중
@@ -126,15 +128,24 @@ describe('증축: 4×3 → 5×3 → 6×4', () => {
     expect(canExpandMain(s)).toEqual({ ok: false, reason: '공사 중이에요' });
     for (let i = 0; i < MAIN_EXPAND_DAYS + 1; i++) tick(s, DAY_MS);
     expect(m.build).toBeUndefined();
-    expect(freeFloorCells(s, m).length).toBe(9); // 5×3 = 15 − 카운터 4 − 문 1 − 테이블 1 = 9
+    expect(freeFloorCells(s, m).length).toBe(17); // 6×4 = 24 − 카운터 5 − 문 1 − 테이블 1 = 17
     s.guests = []; // 공사가 끝나자마자 온 손님은 치우고 본다
     expect(freeSeats(s).map((o) => o.id)).toEqual([inside.id]);
-    // Lv3: 6×4 — 아래로 한 줄 커져 문 앞이 (4,5)로 내려간다. 옛 문 앞 길은 걷어내고 새 문 앞까지 이어져 있다
+    // Lv3: 7×5 — 아래로 한 줄 커져 문 앞이 (4,5)로 내려간다. 옛 문 앞 길은 걷어내고 새 문 앞까지 이어져 있다
     expect(apply(s, { type: 'expandMain' }).ok).toBe(true);
-    expect(mainSize(s)).toEqual({ w: 6, h: 4 });
+    expect(mainSize(s)).toEqual({ w: 7, h: 5 });
     expect(doorFrontOf(m)).toEqual({ x: X(4), y: Y(5) });
     for (let i = 0; i < MAIN_EXPAND_DAYS + 1; i++) tick(s, DAY_MS);
     expect(isDoorReachable(s, m)).toBe(true);
+    // Lv4 8×5 → Lv5 8×6 (문 앞 (4,6)) — 그 다음은 없다
+    expect(apply(s, { type: 'expandMain' }).ok).toBe(true);
+    for (let i = 0; i < MAIN_EXPAND_DAYS + 1; i++) tick(s, DAY_MS);
+    expect(apply(s, { type: 'expandMain' }).ok).toBe(true);
+    expect(mainSize(s)).toEqual({ w: 8, h: 6 });
+    expect(doorFrontOf(m)).toEqual({ x: X(4), y: Y(6) });
+    for (let i = 0; i < MAIN_EXPAND_DAYS + 1; i++) tick(s, DAY_MS);
+    expect(isDoorReachable(s, m)).toBe(true);
+    expect(freeFloorCells(s, m).length).toBe(39); // 8×6 = 48 − 카운터 7 − 문 1 − 테이블 1
     expect(nextMainLevel(s)).toBeNull();
     expect(canExpandMain(s).ok).toBe(false);
   });

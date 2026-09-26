@@ -21,7 +21,7 @@ test('초기 상태: 1년 3월 1일 6시, 36×30 격자(필지 9장, 12×10), �
   expect(s.money).toBe(START_MONEY); // stakes: 시작 자금 350만
   expect(s.slots).toEqual({ barista: 1, cook: 1, hall: 2, clean: 2 }); // v3: 밭 직종 없음, 직종 8 (x-staff)
   const wh = Object.values(s.objects).find((o) => o.type === 'warehouse')!;
-  expect([wh.x, wh.y]).toEqual([16, 11]); // 4×3 카페 (4..7, 1..3)
+  expect([wh.x, wh.y]).toEqual([16, 10]); // 5×4 카페 (4..8, 0..3)
   expect(s.grid.cells[(wh.y + 1) * 36 + (wh.x + 2)]!.objectId).toBe(wh.id);
   expect(s.grid.cells[(wh.y + 1) * 36 + (wh.x + 2)]!.terrain).toBe('soil'); // ease: 바위 지형 없음
 });

@@ -122,9 +122,10 @@ export function footDist(a: Foot, b: Foot): number {
   return Math.max(dx, dy);
 }
 
-/** 명당 조각이 될 수 있는 오브젝트: 공사가 끝났고 내 필지 위 (안 산 필지의 옛 밭담·감귤밭은 안 센다). building=true면 공사 중도 센다(진행 표시용). */
+/** 명당 조각이 될 수 있는 오브젝트: 공사가 끝났고 내 필지 위 (안 산 필지의 옛 밭담·감귤밭은 안 센다). building=true면 공사 중도 센다(진행 표시용).
+ *  업그레이드 공사(build.upgrade)는 같은 종류가 그 자리에 그대로라 조각으로 계속 센다 — 사용자 피드백 「콤보는 업그레이드로 깨지지 않게」. */
 function isPiece(state: GameState, o: PlacedObject, building = false): boolean {
-  return (building || !o.build) && !!parcelAt(state, o.x, o.y)?.owned;
+  return (building || !o.build || !!o.build.upgrade) && !!parcelAt(state, o.x, o.y)?.owned;
 }
 /** 조각 후보를 종류별·시설별로 (판정 한 번당 한 번 만든다). 시설 하나는 자기 id 칸과 자기 종류 칸에 같이 들어간다. */
 function byType(state: GameState, ignoreId?: string, extra?: PlacedObject, building = false): Map<string, PlacedObject[]> {

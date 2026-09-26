@@ -45,9 +45,9 @@ export const START_CANDIDATES = 2;
 export const START_SPAWN_ACC = 0.6;
 /** 옛 감귤밭의 감귤나무 위치 (필지 상대) */
 const ORCHARD_TREES = [{ lx: 2, ly: 2 }, { lx: 6, ly: 2 }, { lx: 2, ly: 5 }, { lx: 6, ly: 5 }];
-/** 본관 자리 (필지 상대, Lv1 4×3): 발자국 (4..7, 1..3), 문 = 정면 왼쪽 (4,3), 그 앞 (4,4)이 문 앞 (layout.ts WAREHOUSE_FRONT).
- *  zero-base(specs/2026-09-26-zero-base-start.md): 시작 배치는 본관·올렛길·정류장뿐이다. */
-export const START_MAIN = { lx: 4, ly: 1 } as const;
+/** 본관 자리 (필지 상대, Lv1 5×4): 발자국 (4..8, 0..3), 문 = 정면 왼쪽 (4,3), 그 앞 (4,4)이 문 앞 (layout.ts WAREHOUSE_FRONT).
+ *  zero-base(specs/2026-09-26-zero-base-start.md): 시작 배치는 본관·올렛길·정류장뿐이다. 필지 맨 윗줄부터 앉혀 Lv5(8×6)까지 아래로 커질 자리를 남긴다. */
+export const START_MAIN = { lx: 4, ly: 0 } as const;
 /** 문 앞(4,4)에서 마을 길(4,9) 바로 위(4,8)까지 올렛길 */
 export const START_PATH: { lx: number; ly: number }[] = [4, 5, 6, 7, 8].map((ly) => ({ lx: 4, ly }));
 /** 'starter'(봇·테스트 완성 시작 상태)의 자리: 본관 안 테이블 2 + 마당 파라솔 1 */

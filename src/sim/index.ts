@@ -96,6 +96,7 @@ export { computeScore, scoreTier, spotLevelSum, endingDue, endingMonthly, canCon
 export { guestNameFor, regularFace, REQUESTS, requestDef, isRequestMet, requestHint, pendingRequests, doneRequests, regularGauge, regularHearts, regularOf, regularById, regularsDue, regularCount, regularList, forgetRegular, addRegularGauge, GAUGE_MAX, REGULAR_TIP_RATE, REQUEST_DAY_MAX, REQUEST_GAUGE } from './interact.ts'; // fun-guest (트랙 G) — 인사·추천은 rush-battle §6에서 삭제
 // ---------- 러시 타임 (rush.ts) — 주간 리듬의 코어 ----------
 export { WANT_LABEL, WANT_ICON, wantOf, wantLine, seatFitsWant, seatFitsGuest, FIT_VIEW, FIT_RADIUS, type Want } from './wants.ts';
+export { rivalOnParcel, rivalWhere, rivalMovedOut } from './rival.ts'; // zero-base: 미소유 필지의 경쟁 카페
 export { SEAT_GRADES, GRADE_MIN_PCT, GRADE_COLOR, gradeOfPct, gradeOfMult, pctToNextGrade, seatGrade, gradeIfPlaced, gradeCounts, gradeCountsText, scoreGrade, type SeatGrade, type SeatGradeInfo } from './seatGrade.ts'; // 자리 등급 A~D (요금 배수를 네 칸으로) // 카이로 방향: 손님이 보는 것과 「그 자리가 맞나」
 // ---------- 대회 (contest.ts) — 연 2회 6·12월, 등급 3부터 ----------
 export {

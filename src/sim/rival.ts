@@ -122,6 +122,26 @@ export function rivalDef(id: string): RivalDef {
   if (!d) throw new Error(`rival: unknown id ${id}`);
   return d;
 }
+/** 이 필지에 서 있는 경쟁 카페 (미소유 필지에만 서 있다 — 사면 옆 마을로 옮겨 간다, 인수한 곳은 없다) */
+export function rivalOnParcel(state: GameState, parcelId: string): RivalDef | null {
+  const p = state.parcels.find((x) => x.id === parcelId);
+  if (!p || p.owned) return null;
+  const d = RIVALS.find((r) => r.parcelId === parcelId);
+  return d && !rivalsState(state).cafes[d.id]?.acquired ? d : null;
+}
+/** 순위표·팻말 한 줄: 「바다가 보이는 땅」 / 「옆 마을」(그 땅을 샀다) / 「인수함」 */
+export function rivalWhere(state: GameState, id: string): string {
+  const d = RIVALS.find((r) => r.id === id);
+  if (!d) return '';
+  if (rivalsState(state).cafes[id]?.acquired) return '인수함';
+  const p = state.parcels.find((x) => x.id === d.parcelId);
+  return !p || p.owned ? '옆 마을' : p.name;
+}
+/** 땅을 산 직후: 그 땅에 있던 경쟁 카페는 옆 마을로 옮겨 간다 (순위표엔 그대로) */
+export function rivalMovedOut(state: GameState, parcelId: string): string | null {
+  const d = RIVALS.find((r) => r.parcelId === parcelId);
+  return d && !rivalsState(state).cafes[d.id]?.acquired ? d.name : null;
+}
 /** 아직 동네에 남아 있는 경쟁 카페 (인수한 곳은 빠진다) */
 export function activeRivals(state: GameState): RivalDef[] {
   const r = rivalsState(state);

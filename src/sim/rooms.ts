@@ -2,7 +2,7 @@
  * 본관(카페 건물)과 마당 잇기.
  * zero-base(specs/2026-09-26-zero-base-start.md): 본관(`warehouse`)은 **지붕 없는 진짜 카페**다 — 타일 바닥·뒷벽 카운터·창.
  * - 안에도 자리를 놓는다 (grid.ts indoorPlaceable·indoorRouteCheck). 실내는 바닥 재질일 뿐 규칙은 마당과 같다(fee.ts → 등급).
- * - 증축 Lv1 4×3 → Lv2 5×3 → Lv3 6×4 (MAIN_SIZES). 5일 공사, 그동안 실내는 못 쓴다. 발자국은 오른쪽·아래로 커진다 —
+ * - 증축 Lv1 5×4 → 6×4 → 7×5 → 8×5 → Lv5 8×6 (MAIN_SIZES). 5일 공사, 그동안 실내는 못 쓴다. 발자국은 오른쪽·아래로 커진다 —
  *   새 문 앞을 막은 것은 치우고 올렛길을 자동으로 잇는다.
  * - 2층·별관·본관 이사는 없다.
  * 결정적: rng·Date를 쓰지 않는다.
@@ -25,13 +25,13 @@ import { parcelAt } from './parcels.ts';
 // ---------- 상수 ----------
 
 export const MAIN_TYPE = 'warehouse';
-export const MAIN_MAX_LEVEL = 3;
-/** 증축 단계별 발자국 (스프라이트 iso_obj_warehouse · _lv2 · _lv3) */
-export const MAIN_SIZES: Record<number, { w: number; h: number }> = { 1: { w: 4, h: 3 }, 2: { w: 5, h: 3 }, 3: { w: 6, h: 4 } };
+export const MAIN_MAX_LEVEL = 5;
+/** 증축 단계별 발자국 (스프라이트 iso_obj_warehouse · _lv2 ~ _lv5). 「실내가 훨씬 넓게 · 계속 확장」 — Lv1부터 바닥 15칸, Lv5는 40칸 */
+export const MAIN_SIZES: Record<number, { w: number; h: number }> = { 1: { w: 5, h: 4 }, 2: { w: 6, h: 4 }, 3: { w: 7, h: 5 }, 4: { w: 8, h: 5 }, 5: { w: 8, h: 6 } };
 /** Lv1 발자국 — 새 본관을 지을 때·시작 배치 */
 export const MAIN_SIZE: { w: number; h: number } = MAIN_SIZES[1]!;
 /** 증축 비용 (다음 Lv 기준) · 공사 일수 */
-export const MAIN_EXPAND_COST: Record<number, number> = { 2: 3_000_000, 3: 8_000_000 };
+export const MAIN_EXPAND_COST: Record<number, number> = { 2: 3_000_000, 3: 8_000_000, 4: 15_000_000, 5: 25_000_000 };
 export const MAIN_EXPAND_DAYS = 5;
 /** 첫 본관은 무료·즉시 완공 (w-start 맨땅 튜토리얼 2단계) */
 export const MAIN_BUILD_COST = 0;

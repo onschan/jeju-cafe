@@ -35,9 +35,9 @@ describe('밤 밝기·만족', () => {
     expect(lightAt(s, X(8), Y(6))).toEqual({ lit: false, streetlight: false });
     expect(lightAt(s, X(4), Y(2)).lit).toBe(true); // 본관 안
     // 공사 중(build)인 조명은 아직 안 밝는다
-    const b = placeObject(s, 'streetlight', X(8), Y(1));
+    const b = placeObject(s, 'streetlight', X(10), Y(1)); // (8,1)은 이제 본관 안 (5×4)
     b.build = { doneDay: 99, days: 1 } as typeof b.build;
-    expect(lightAt(s, X(8), Y(1)).lit).toBe(false);
+    expect(lightAt(s, X(10), Y(1)).lit).toBe(false);
   });
 
   test('18시부터 마당 자리: 가로등 +2 · 정원등 0 · 조명 없음 −2 (경치 단위 /10), 낮엔 0', () => {

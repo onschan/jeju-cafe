@@ -18,7 +18,8 @@
       "view": 0.45,
       "service": 0.45,
       "sales": 0.5
-    }
+    },
+    "parcelId": "parcel5"
   },
   {
     "id": "tangerine_bakery",
@@ -39,7 +40,8 @@
       "view": 0.26,
       "service": 0.42,
       "sales": 0.58
-    }
+    },
+    "parcelId": "orchard"
   },
   {
     "id": "roastery_haru",
@@ -60,7 +62,8 @@
       "view": 0.5,
       "service": 0.56,
       "sales": 0.6
-    }
+    },
+    "parcelId": "village_edge"
   },
   {
     "id": "guesthouse_cafe",
@@ -81,7 +84,8 @@
       "view": 0.34,
       "service": 0.5,
       "sales": 0.42
-    }
+    },
+    "parcelId": "parcel6"
   },
   {
     "id": "franchise_star",
@@ -102,6 +106,7 @@
       "view": 0.2,
       "service": 0.28,
       "sales": 0.62
-    }
+    },
+    "parcelId": "parcel3"
   }
 ]

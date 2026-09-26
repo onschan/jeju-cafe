@@ -74,8 +74,8 @@ test('소유하지 않은 필지엔 못 짓는다', () => {
   s.unlocked.objects.push('warehouse');
   const bush = objectAt(s, 20, 6); // 문 앞 칸(20,6)에 뭔가 있으면 치우고 본다
   if (bush) removeObject(s, bush.id);
-  expect(canPlace(s, 'warehouse', 20, 3).ok).toBe(true);  // 4×3: (20..23, 3..5) 전부 3번 필지
-  expect(canPlace(s, 'warehouse', 21, 3).ok).toBe(false); // (24,3)은 8번 필지
+  expect(canPlace(s, 'warehouse', 19, 3).ok).toBe(true);  // 5×4: (19..23, 3..6) 전부 3번 필지
+  expect(canPlace(s, 'warehouse', 20, 3).ok).toBe(false); // (24,3)은 8번 필지
 });
 
 test('buyParcel: 붙어 있어야 하고, 돈이 있어야 하고, 사면 소유·차감·알림', () => {
@@ -186,7 +186,7 @@ test('move: 돈은 그대로, 칸이 옮겨지고, 막힌 곳이면 실패', () 
   const f = objectAt(s, X(0), Y(0))!; // 9번 필지의 시작 감귤나무와 섞이지 않게 칸으로 찾는다
   const pm = f.placedMonth;
   const m0 = s.money;
-  expect(apply(s, { type: 'move', objectId: f.id, x: X(5), y: Y(1) }).ok).toBe(false); // 본관 카운터 칸
+  expect(apply(s, { type: 'move', objectId: f.id, x: X(5), y: Y(0) }).ok).toBe(false); // 본관 카운터 칸
   expect(apply(s, { type: 'move', objectId: f.id, x: 12, y: 3 }).ok).toBe(false); // 남의 땅
   expect(apply(s, { type: 'move', objectId: f.id, x: X(0), y: Y(0) }).ok).toBe(true); // 제자리(자기 발자국은 빈 것으로)
   expect(apply(s, { type: 'move', objectId: f.id, x: X(1), y: Y(1) }).ok).toBe(true);

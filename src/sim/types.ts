@@ -390,6 +390,7 @@ export interface RivalDef {
   line: string;                     // 순위표 한 줄
   category: TrendCategory;          // 이 카페가 미는 분류 — 유행이 겹치면 손님을 나눠 갖는다
   gift: string;                     // 인수하면 딸려 오는 시설 id
+  parcelId: string;                 // zero-base: 이 카페가 서 있는 미소유 필지 — 그 땅을 사면 옆 마을로 옮겨 간다(순위표엔 남는다)
   base: RivalAxes;                  // 1년 3월 점수
   growth: RivalAxes;                // 달마다 오르는 폭
 }
@@ -594,7 +595,12 @@ export type GoalCondition =
   | { type: 'legendStaff'; n: number }            // 전설 칭호 직원 n명
   | { type: 'routesOpen'; n: number }             // 열린 유입 경로 n종 (정류장 제외)
   // ---- 카이로 방향: 돈이 아니라 배치 실력이 중반 해금을 연다 ----
-  | { type: 'fitGuests'; n: number }; // 손님이 자기 취향 자리에 앉은 누적 수 (stats.fitGuests)
+  | { type: 'fitGuests'; n: number }              // 손님이 자기 취향 자리에 앉은 누적 수 (stats.fitGuests)
+  // ---- zero-base: 실내·증축·자리 등급·동네 순위 — 「250명·700만원」 대신 지금 게임이 굴러가는 축으로 ----
+  | { type: 'indoorSeats'; n: number }            // 본관 안 좌석 정원 (rooms.ts indoorSeats)
+  | { type: 'mainLevel'; n: number }              // 카페 증축 단계 ≥ n
+  | { type: 'gradeSeats'; grade: 'A' | 'B' | 'C'; n: number } // 그 등급 이상 자리 n개 (seatGrade.ts)
+  | { type: 'rivalRank'; n: number };             // 동네 순위 n위 안 (마지막 발표 기준)
 /** 목표 뒤에 남는 기능 잠금 (ease): 팝업 스토어·카페 대결·필지 구매만. 홍보·연구·입지 보기·콤보 도감·명소 지도는 처음부터 열려 있다(튜토리얼이 순서를 안내). */
 export type FeatureId = 'parcel';
 export type GoalReward =
@@ -735,7 +741,7 @@ export interface PlacedObject {
   y: number;
   placedMonth: number; // 놓은 달(monthIndex). 농원 수확은 다음 달 1일부터
   rot?: number; // 0..3, 방향 있는 오브젝트만 (스프라이트 변형 _r{n})
-  build?: { doneDay: number; days: number }; // 건설 중 (doneDay = 완공 절대 일 인덱스). 없으면 완공
+  build?: { doneDay: number; days: number; upgrade?: boolean }; // 건설 중 (doneDay = 완공 절대 일 인덱스). 없으면 완공. upgrade: 트리 업그레이드 공사 — 명당 조각으로는 계속 센다
   level?: 1 | 2 | 3;   // 증축 Lv (없으면 1). 스펙 §3.2.2
   uses?: number;       // 누적 이용 횟수 (좌석 주문·시설 방문) — 증축 조건
   wearMonth?: number;  // 노후 기준 달(monthIndex): 완공·증축·수리 시점. 없으면 placedMonth

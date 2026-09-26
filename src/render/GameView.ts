@@ -1,6 +1,6 @@
 import { Application, Container, Sprite, Graphics, Texture, Text } from 'pixi.js';
 import type { GameState, PlacedObject, Guest, Staff, Season, RoleId, Pt, RouteId, FxEvent } from '../sim/index.ts';
-import { seasonOf, LOW_ENERGY, parcelPrice, canBuyParcel, parcelAt, footprint, roomAt, doorFrontOf, WALL_COLORS, dayIndex, menuOf, sizeOf, mainBuilding, MAIN_SIZE, LIGHT_RADIUS, gradeOf, objectAt, cellAt, contestBadge, seatGrade, GRADE_COLOR, mainLevel, mainSize } from '../sim/index.ts';
+import { seasonOf, LOW_ENERGY, parcelPrice, canBuyParcel, parcelAt, footprint, roomAt, doorFrontOf, WALL_COLORS, dayIndex, menuOf, sizeOf, mainBuilding, MAIN_SIZE, LIGHT_RADIUS, gradeOf, objectAt, cellAt, contestBadge, seatGrade, GRADE_COLOR, mainLevel, mainSize, rivalOnParcel, rivalsState } from '../sim/index.ts';
 import type { Parcel } from '../sim/index.ts';
 import { objectDef } from '../data/index.ts';
 import { isoTerrainTexture, isoObjectTexture, glowTexture, label, clearTextureCache, loadLabelFont } from './textures';
@@ -117,7 +117,7 @@ const LOCKED_ALPHA = 0.45;
 const GRADE_WALL_TINT = [0xffffff, 0xe6e0d4, 0xfff4dc, 0xfff8c8, 0xffe0e8, 0xe8d8ff];
 /** fun-rank: 본관 뒤 모서리(두 벽이 만나는 꼭대기) 높이 = 기단 10 + 벽 높이(sprites_iso_rooms.py warehouse/MAIN_WALL_H) */
 /** 본관 벽 높이(기단 10 + 벽) — 증축 Lv별 (sprites_iso_rooms.py MAIN_WALL_H {2: 28, 3: 34, 4: 40} + 기단 10) */
-const MAIN_WALL_TOPS: Record<number, number> = { 1: 38, 2: 44, 3: 50 };
+const MAIN_WALL_TOPS: Record<number, number> = { 1: 40, 2: 42, 3: 46, 4: 50, 5: 52 };
 const mainWallTop = (state: GameState) => MAIN_WALL_TOPS[mainLevel(state)] ?? 38;
 
 /** 상단 바(28px) + 목표 줄(24px) 아래에 맵 위 꼭짓점이 오도록 하는 기본 세로 오프셋 */
@@ -265,7 +265,7 @@ const CORNER_SAY_MS = 1800;
 
 /** 오브젝트 상태별 스프라이트 변형 이름. 본관은 증축 Lv(state.main.level)에 따라 lv2·lv3 (zero-base). */
 function objectVariant(o: Pick<PlacedObject, 'type'>, level = 1): string | undefined {
-  if (o.type === 'warehouse') return level >= 2 ? `lv${Math.min(3, level)}` : undefined;
+  if (o.type === 'warehouse') return level >= 2 ? `lv${Math.min(5, level)}` : undefined;
   if (o.type === 'gate') return '0'; // 2B에서 영업 토글 연동
   return undefined;
 }
@@ -1024,8 +1024,12 @@ export class GameView {
       alive.add(p.id);
       const sc = parcelScenery(p.id);
       // [코어만] 팻말은 「지금 살 수 있는 땅」에만 — 다섯 개가 한꺼번에 떠서 제 카페를 가렸다. 풍경 타일은 그대로 둔다.
+      // zero-base: 경쟁 카페가 서 있는 땅은 그 카페 이름·동네 순위를 팻말로 (미개봉 땅이 「누구 땅인지」 읽히게)
       const buyable = canBuyParcel(state, p.id).ok;
-      const [l1, l2] = buyable ? parcelSignLines(p.name, parcelPrice(state, p), sc?.feature ?? '') : ['', ''];
+      const rival = rivalOnParcel(state, p.id);
+      const rank = rival ? rivalsState(state).cafes[rival.id]?.rank ?? null : null;
+      const [l1, l2] = rival ? [`${rival.name}${rank ? ` · 동네 ${rank}위` : ''}`, buyable ? parcelSignLines(p.name, parcelPrice(state, p), sc?.feature ?? '')[1] : '']
+        : buyable ? parcelSignLines(p.name, parcelPrice(state, p), sc?.feature ?? '') : ['', ''];
       const zoomOut = true; // [코어만] 팻말은 늘 한 줄·작게 — 두 줄짜리가 제 카페 본관을 덮었다
       const text = `${l1}|${l2}|${zoomOut ? 'z' : ''}`; // 미소유 필지엔 시설을 못 놓으니 배치 서명은 키에 안 넣는다(매 프레임 재생성 방지)
       const cur = this.lockedNodes.get(p.id);
@@ -1170,11 +1174,16 @@ export class GameView {
     this.tiles.addChild(tiles);
     // 소품: 길·진입점·시작부터 놓인 시설과 겹치는 것은 뺀다. actors에 두어 손님·시설과 깊이 정렬.
     const props: SceneryEntry['props'] = [];
-    for (const pr of sc?.props ?? []) {
+    // zero-base: 경쟁 카페 건물(별관 스프라이트 4×3)을 필지 가운데 위쪽에 — 그 칸과 겹치는 풍경 소품은 뺀다
+    const rival = rivalOnParcel(state, p.id);
+    const rivalProp: SceneryProp | null = rival ? { type: 'annex_cafe', x: Math.floor((p.w - 4) / 2), y: 2, w: 4, h: 3 } : null;
+    const taken = new Set<string>();
+    for (const pr of [...(rivalProp ? [rivalProp] : []), ...(sc?.props ?? [])]) {
       const w = pr.w ?? 1, h = pr.h ?? 1;
       const cells: { x: number; y: number }[] = [];
       for (let dy = 0; dy < h; dy++) for (let dx = 0; dx < w; dx++) cells.push({ x: p.x + pr.x + dx, y: p.y + pr.y + dy });
-      if (cells.some((c) => c.x >= p.x + p.w || c.y >= p.y + p.h || cellTerrain(state, c.x, c.y) !== 'soil' || objectAtCell(state, c.x, c.y) || isEntryCell(c.x, c.y))) continue;
+      if (cells.some((c) => c.x >= p.x + p.w || c.y >= p.y + p.h || cellTerrain(state, c.x, c.y) !== 'soil' || objectAtCell(state, c.x, c.y) || isEntryCell(c.x, c.y) || taken.has(`${c.x},${c.y}`))) continue;
+      for (const c of cells) taken.add(`${c.x},${c.y}`);
       const node = this.sceneryPropNode(pr, p.x + pr.x, p.y + pr.y, w, h);
       if (!node) continue;
       this.actors.addChild(node);

@@ -36,7 +36,9 @@ import { contestHistory, contestWins, contestBestRank } from './contest.ts'; // 
 import { checkTutorial, TUTORIAL_STEPS } from './tutorial.ts';
 import { hasLoan, loanRewardMult } from './failure.ts';
 import { levelOf } from './upgrade.ts';
-import { mainBuilding } from './rooms.ts';
+import { mainBuilding, indoorSeats, mainLevel } from './rooms.ts';
+import { seatGrade } from './seatGrade.ts';
+import { rivalsState } from './rival.ts';
 import { grantItem } from './items.ts';
 import { totalSpotVisitors } from './spots.ts';
 import { cleanStreakDays, cleanAvgDays, dirtyForDays, CLEAN_HISTORY_DAYS, CLEAN_LOW } from './cleanliness.ts';
@@ -210,7 +212,20 @@ export const conditionCheckers: CheckerMap = {
   routesOpen: (s, c) => n(ROUTE_IDS.filter((r) => r !== 'bus' && routeOpened(s, r)).length, c.n),
   // ---- 카이로 방향: 중반 해금을 돈이 아니라 **배치 실력**에 건다 — 손님이 자기 취향 자리에 앉은 누적 수 ----
   fitGuests: (s, c) => n(s.stats.fitGuests ?? 0, c.n),
+  // ---- zero-base: 실내·증축·자리 등급·동네 순위 ----
+  indoorSeats: (s, c) => n(indoorSeats(s), c.n),
+  mainLevel: (s, c) => n(mainLevel(s), c.n),
+  gradeSeats: (s, c) => n(gradeSeatCount(s, c.grade), c.n),
+  rivalRank: (s, c) => { const r = rivalsState(s).myRank; return r === null ? n(0, 1) : n(r <= c.n ? 1 : 0, 1); },
 };
+/** 그 등급 이상인 자리 수 (A ≥ … ≥ D) */
+function gradeSeatCount(state: GameState, grade: 'A' | 'B' | 'C'): number {
+  const order = ['D', 'C', 'B', 'A'];
+  const min = order.indexOf(grade);
+  let k = 0;
+  for (const o of Object.values(state.objects)) { if (o.build) continue; const g = seatGrade(state, o); if (g && order.indexOf(g.grade) >= min) k++; }
+  return k;
+}
 
 /** 목표용 시설 단계: 증축 Lv와 업그레이드 트리 단계(index+1) 중 큰 것 (fun: 트리 시설은 증축 대신 트리로 올린다) */
 function goalLevelOf(o: PlacedObject): number {
@@ -361,6 +376,10 @@ export function goalConditionText(c: GoalCondition): string {
     case 'legendStaff': return c.n === 1 ? '전설 직원 채용' : `전설 직원 ${c.n}명`;
     case 'routesOpen': return `손님 오는 길 ${c.n}종`;
     case 'fitGuests': return `손님 ${c.n}명을 취향 자리에`;
+    case 'indoorSeats': return `실내 자리 ${c.n}석`;
+    case 'mainLevel': return `카페 증축 Lv${c.n}`;
+    case 'gradeSeats': return `${c.grade} 등급 자리 ${c.n}개`;
+    case 'rivalRank': return c.n === 1 ? '동네 1위' : `동네 ${c.n}위 안`;
   }
 }
 

@@ -195,6 +195,10 @@ export function conditionText(c: LooseCondition): string {
     }
     case 'satisfied': return `만족한 손님 ${n()}명 만들기`;
     case 'parcels': return `필지 ${n()}개 사기`;
+    case 'indoorSeats': return `실내 자리 ${n()}석 만들기`;
+    case 'mainLevel': return `카페 Lv${n()}로 증축하기`;
+    case 'gradeSeats': return `${str(c, 'grade')} 등급 자리 ${n()}개 만들기`;
+    case 'rivalRank': return n() === 1 ? '동네 1위 하기' : `동네 ${n()}위 안에 들기`;
     case 'rank': return `랭크 ${n()}위 오르기`;
     case 'stars': case 'star': return `★${n()} 받기`;
     case 'regular': return `단골 ${n()}명 만들기`;

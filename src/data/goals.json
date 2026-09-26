@@ -37,10 +37,9 @@
   {
     "id": "g03",
     "title": "자리 4개 만들기",
-    "desc": "쉼 시설을 4개 놓아 손님 자리를 늘리자",
+    "desc": "안이든 밖이든 자리를 4개 놓자",
     "condition": {
-      "type": "facilities",
-      "category": "rest",
+      "type": "seats",
       "n": 4
     },
     "reward": [
@@ -66,11 +65,11 @@
   },
   {
     "id": "g05",
-    "title": "손님 20명 맞이",
-    "desc": "손님이 다녀간 수 20명",
+    "title": "실내 자리 4석 만들기",
+    "desc": "카페 안 빈 바닥에 테이블을 놓자 — 안 자리는 그늘이라 조용히 쉬려는 손님이 찾는다",
     "condition": {
-      "type": "guests",
-      "n": 20
+      "type": "indoorSeats",
+      "n": 4
     },
     "reward": [
       {
@@ -79,7 +78,7 @@
       }
     ],
     "speaker": "samchun",
-    "line": "녹차도 내놓아 보라. 삼춘들이 좋아해."
+    "line": "안에 앉을 자리가 생겼구나. 비 오는 날도 손님이 온다."
   },
   {
     "id": "g06",
@@ -135,11 +134,12 @@
   },
   {
     "id": "g09",
-    "title": "손님 50명 맞이",
-    "desc": "손님이 다녀간 수 50명",
+    "title": "C 등급 자리 3개 만들기",
+    "desc": "나무·돌담·명당 곁에 두면 자리 등급이 오른다 (짓기 모드에서 A~D가 보인다)",
     "condition": {
-      "type": "guests",
-      "n": 50
+      "type": "gradeSeats",
+      "grade": "C",
+      "n": 3
     },
     "reward": [
       {
@@ -148,7 +148,7 @@
       }
     ],
     "speaker": "halmang",
-    "line": "돌담 아래 평상이 열렸다. 삼춘들 사랑방이여."
+    "line": "자리마다 값이 다르다. 좋은 자리를 늘려라."
   },
   {
     "id": "g10",
@@ -169,11 +169,11 @@
   },
   {
     "id": "g11",
-    "title": "자금 700만 모으기",
-    "desc": "잔고를 700만 원까지 모으자",
+    "title": "손님 100명을 취향 자리에",
+    "desc": "손님이 자기 취향 자리(그늘·귤밭·문 앞·경치)에 앉은 수 — 문 열기 줄과 자리 카드에 보인다",
     "condition": {
-      "type": "money",
-      "n": 7000000
+      "type": "fitGuests",
+      "n": 100
     },
     "reward": [
       {
@@ -190,7 +190,7 @@
       }
     ],
     "speaker": "halmang",
-    "line": "돈이 모였구나. 옆 땅도 살 수 있게 됐다."
+    "line": "손님이 제자리를 찾아 앉는구나. 옆 땅도 살 수 있게 됐다."
   },
   {
     "id": "g12",
@@ -206,11 +206,11 @@
   },
   {
     "id": "g13",
-    "title": "이 동네에 이름나기",
-    "desc": "손님·시설·손님층을 늘려 알려진 정도 550",
+    "title": "첫 명당 만들기",
+    "desc": "명당 탭의 조각을 모으면 그 둘레 자리 값이 오른다",
     "condition": {
-      "type": "cafeRank",
-      "n": 6
+      "type": "corners",
+      "n": 1
     },
     "reward": [
       {
@@ -219,15 +219,15 @@
       }
     ],
     "speaker": "halmang",
-    "line": "이제 이 동네가 이름을 안다. 빈 땅에 유채를 심어 보라. 봄이면 온 밭이 노랗다."
+    "line": "명당이 생겼다. 그 둘레는 손님이 오래 앉는다."
   },
   {
     "id": "g14",
-    "title": "손님 100명 맞이",
-    "desc": "손님이 다녀간 수 100명",
+    "title": "카페 증축 Lv2",
+    "desc": "카페 카드의 「증축」 — 실내가 6×4로 넓어진다",
     "condition": {
-      "type": "guests",
-      "n": 100
+      "type": "mainLevel",
+      "n": 2
     },
     "reward": [
       {
@@ -240,7 +240,7 @@
       }
     ],
     "speaker": "hero",
-    "line": "100명! 화장실도 지어야겠어요."
+    "line": "카페가 커졌구나. 안에 자리를 더 놓아라."
   },
   {
     "id": "g15",
@@ -328,11 +328,12 @@
   },
   {
     "id": "g20",
-    "title": "손님 300명 맞이",
-    "desc": "손님이 다녀간 수 300명",
+    "title": "B 등급 자리 3개 만들기",
+    "desc": "명당·경치·거리 보너스를 겹치면 B가 된다",
     "condition": {
-      "type": "guests",
-      "n": 300
+      "type": "gradeSeats",
+      "grade": "B",
+      "n": 3
     },
     "reward": [
       {
@@ -345,11 +346,11 @@
   },
   {
     "id": "g21",
-    "title": "첫 명당 만들기",
-    "desc": "명당 1개 완성",
+    "title": "실내 자리 10석 만들기",
+    "desc": "넓어진 안을 자리로 채우자",
     "condition": {
-      "type": "corners",
-      "n": 1
+      "type": "indoorSeats",
+      "n": 10
     },
     "reward": [
       {
@@ -379,12 +380,11 @@
   },
   {
     "id": "g23",
-    "title": "전망 좋은 자리 6석",
-    "desc": "바다나 오름이 보이는 칸(전망 3 이상)에 자리를 6개 놓자",
+    "title": "손님 300명을 취향 자리에",
+    "desc": "이번 막의 손님을 제자리에 앉히면 빨리 찬다",
     "condition": {
-      "type": "siteSeats",
-      "view": 3,
-      "n": 6
+      "type": "fitGuests",
+      "n": 300
     },
     "reward": [
       {
@@ -414,12 +414,11 @@
   },
   {
     "id": "g25",
-    "title": "친절 카페 5위 안",
-    "desc": "친절 카페 가이드북 5위 안",
+    "title": "동네 3위 안에 들기",
+    "desc": "장부 › 평가의 동네 순위 — 매월 5일 발표",
     "condition": {
-      "type": "guidebookRank",
-      "bookId": "gb_kind_cafe",
-      "n": 5
+      "type": "rivalRank",
+      "n": 3
     },
     "reward": [
       {
@@ -432,7 +431,7 @@
       }
     ],
     "speaker": "halmang",
-    "line": "친절 카페 5위 안. 책에 이름이 실렸다."
+    "line": "이제 동네에서 알아준다."
   },
   {
     "id": "g26",
@@ -456,170 +455,12 @@
     "line": "한 달 내내 반짝반짝! 손님 눈이 제일 무섭다."
   },
   {
-    "id": "g61",
-    "title": "손님 7,000명 맞이",
-    "desc": "손님이 다녀간 수 7,000명",
-    "condition": {
-      "type": "guests",
-      "n": 7000
-    },
-    "reward": [
-      {
-        "type": "menuSlot",
-        "n": 1
-      },
-      {
-        "type": "unlockMenu",
-        "id": "hallabong_honey_tea"
-      }
-    ],
-    "speaker": "halmang",
-    "line": "칠천 명이나 왔구나."
-  },
-  {
-    "id": "g62",
-    "title": "단골 16명 만들기",
-    "desc": "단골로 등록된 손님 16명",
-    "condition": {
-      "type": "regulars",
-      "n": 16
-    },
-    "reward": [
-      {
-        "type": "unlockFacility",
-        "id": "window_seat"
-      }
-    ],
-    "speaker": "samchun",
-    "line": "단골들 앉을 창가가 필요해."
-  },
-  {
-    "id": "g63",
-    "title": "홍보 18번 하기",
-    "desc": "홍보를 18번 실행",
-    "condition": {
-      "type": "promotions",
-      "n": 18
-    },
-    "reward": [
-      {
-        "type": "unlockMenu",
-        "id": "cinnamon_latte"
-      },
-      {
-        "type": "unlockFacility",
-        "id": "fire_pit"
-      }
-    ],
-    "speaker": "samchun",
-    "line": "소문 났으니 저녁 손님도 받자."
-  },
-  {
-    "id": "g64",
-    "title": "손님 12,000명 맞이",
-    "desc": "손님이 다녀간 수 12,000명",
-    "condition": {
-      "type": "guests",
-      "n": 12000
-    },
-    "reward": [
-      {
-        "type": "staffCap",
-        "n": 1
-      },
-      {
-        "type": "jobTier",
-        "id": "site"
-      }
-    ],
-    "speaker": "halmang",
-    "line": "이젠 사람을 더 둬도 되겠다."
-  },
-  {
-    "id": "g67",
-    "title": "연구 8,000 모으기",
-    "desc": "연구 포인트 8,000",
-    "condition": {
-      "type": "research",
-      "n": 8000
-    },
-    "reward": [
-      {
-        "type": "unlockFacility",
-        "id": "hydrangea"
-      }
-    ],
-    "speaker": "halmang",
-    "line": "연구가 쌓였네. 수국도 심어 보라."
-  },
-  {
-    "id": "g65",
-    "title": "랭크 5 오르기",
-    "desc": "카페 랭크 5",
-    "condition": {
-      "type": "cafeRank",
-      "n": 5
-    },
-    "reward": [
-      {
-        "type": "unlockFacility",
-        "id": "palm"
-      }
-    ],
-    "speaker": "halmang",
-    "line": "마당에 야자수 하나 어떠니."
-  },
-  {
-    "id": "g68",
-    "title": "손님 15,000명 맞이",
-    "desc": "손님이 다녀간 수 15,000명",
-    "condition": {
-      "type": "guests",
-      "n": 15000
-    },
-    "reward": [
-      {
-        "type": "unlockFacility",
-        "id": "water_jar"
-      },
-      {
-        "type": "staffSlot",
-        "role": "barista",
-        "n": 1
-      }
-    ],
-    "speaker": "samchun",
-    "line": "물허벅 놓으면 삼춘들이 좋아해."
-  },
-  {
-    "id": "g66",
-    "title": "손님 18,000명 맞이",
-    "desc": "손님이 다녀간 수 18,000명",
-    "condition": {
-      "type": "guests",
-      "n": 18000
-    },
-    "reward": [
-      {
-        "type": "jobTier",
-        "id": "magazine"
-      },
-      {
-        "type": "staffSlot",
-        "role": "hall",
-        "n": 1
-      }
-    ],
-    "speaker": "samchun",
-    "line": "잡지에 사람 구한다고 내 보라."
-  },
-  {
     "id": "g27",
-    "title": "손님 150명을 취향 자리에",
-    "desc": "손님이 자기 취향 자리에 앉은 횟수 150번 (조용함은 그늘, 귤밭은 감귤나무 곁, 경치는 전망 자리)",
+    "title": "손님 600명을 취향 자리에",
+    "desc": "막을 넘길수록 새 손님이 온다",
     "condition": {
       "type": "fitGuests",
-      "n": 150
+      "n": 600
     },
     "reward": [
       {
@@ -654,11 +495,12 @@
   },
   {
     "id": "g29",
-    "title": "손님 500명 맞이",
-    "desc": "손님이 다녀간 수 500명",
+    "title": "A 등급 자리 만들기",
+    "desc": "명당 안 · 경치 좋은 · 거리 보너스까지 겹친 자리",
     "condition": {
-      "type": "guests",
-      "n": 500
+      "type": "gradeSeats",
+      "grade": "A",
+      "n": 1
     },
     "reward": [
       {
@@ -675,7 +517,7 @@
       }
     ],
     "speaker": "hero",
-    "line": "누적 500명이에요. 처음 정낭 앞에 서 있던 게 엊그제 같은데."
+    "line": "A 자리다. 저 자리는 값을 두 배 받는다."
   },
   {
     "id": "g30",
@@ -696,11 +538,11 @@
   },
   {
     "id": "g31",
-    "title": "손님 400명을 취향 자리에",
-    "desc": "손님이 자기 취향 자리에 앉은 횟수 400번 (조용함은 그늘, 귤밭은 감귤나무 곁, 경치는 전망 자리)",
+    "title": "손님 1,000명을 취향 자리에",
+    "desc": "",
     "condition": {
       "type": "fitGuests",
-      "n": 400
+      "n": 1000
     },
     "reward": [
       {
@@ -775,34 +617,12 @@
     "line": "별 2개. 하늘의 별을 따듯 어렵게 딴 거여."
   },
   {
-    "id": "g35",
-    "title": "손님 800명을 취향 자리에",
-    "desc": "손님이 자기 취향 자리에 앉은 횟수 800번 (조용함은 그늘, 귤밭은 감귤나무 곁, 경치는 전망 자리)",
-    "condition": {
-      "type": "fitGuests",
-      "n": 800
-    },
-    "reward": [
-      {
-        "type": "unlockFacility",
-        "id": "garden_lamp"
-      },
-      {
-        "type": "unlockFacility",
-        "id": "toenmaru"
-      }
-    ],
-    "speaker": "halmang",
-    "line": "백스무 번이여. 이 마당은 제자리가 있는 마당이여."
-  },
-  {
     "id": "g36",
-    "title": "바다 전망 자리 4석",
-    "desc": "전망 4 이상인 좋은 칸에 자리를 4개 놓자",
+    "title": "실내 자리 16석 만들기",
+    "desc": "",
     "condition": {
-      "type": "siteSeats",
-      "view": 4,
-      "n": 4
+      "type": "indoorSeats",
+      "n": 16
     },
     "reward": [
       {
@@ -815,12 +635,12 @@
   },
   {
     "id": "g37",
-    "title": "동네 맛집 지도 3위",
-    "desc": "동네 맛집 지도 가이드북 3위 안",
+    "title": "B 등급 자리 8개 만들기",
+    "desc": "",
     "condition": {
-      "type": "guidebookRank",
-      "bookId": "gb_local_map",
-      "n": 3
+      "type": "gradeSeats",
+      "grade": "B",
+      "n": 8
     },
     "reward": [
       {
@@ -841,8 +661,8 @@
   },
   {
     "id": "g38",
-    "title": "손님 1500명을 취향 자리에",
-    "desc": "손님이 자기 취향 자리에 앉은 횟수 1500번 (조용함은 그늘, 귤밭은 감귤나무 곁, 경치는 전망 자리)",
+    "title": "손님 1,500명을 취향 자리에",
+    "desc": "",
     "condition": {
       "type": "fitGuests",
       "n": 1500
@@ -875,8 +695,8 @@
   },
   {
     "id": "g40",
-    "title": "손님 2500명을 취향 자리에",
-    "desc": "손님이 자기 취향 자리에 앉은 횟수 2500번 (조용함은 그늘, 귤밭은 감귤나무 곁, 경치는 전망 자리)",
+    "title": "손님 2,500명을 취향 자리에",
+    "desc": "",
     "condition": {
       "type": "fitGuests",
       "n": 2500
@@ -892,11 +712,11 @@
   },
   {
     "id": "g41",
-    "title": "손님 4000명을 취향 자리에",
-    "desc": "손님이 자기 취향 자리에 앉은 횟수 4000번 (조용함은 그늘, 귤밭은 감귤나무 곁, 경치는 전망 자리)",
+    "title": "동네 1위 하기",
+    "desc": "순위표의 네 항목(인기·경관·서비스·매출)을 고루",
     "condition": {
-      "type": "fitGuests",
-      "n": 4000
+      "type": "rivalRank",
+      "n": 1
     },
     "reward": [
       {
@@ -909,7 +729,7 @@
       }
     ],
     "speaker": "samchun",
-    "line": "사백스무 번이여. 이 동네 자리는 다 우리 거여."
+    "line": "동네 1위다! 1위는 손님이 10% 더 온다."
   },
   {
     "id": "g42",
@@ -947,11 +767,12 @@
   },
   {
     "id": "g43",
-    "title": "손님 6000명을 취향 자리에",
-    "desc": "손님이 자기 취향 자리에 앉은 횟수 6000번 (조용함은 그늘, 귤밭은 감귤나무 곁, 경치는 전망 자리)",
+    "title": "A 등급 자리 4개 만들기",
+    "desc": "",
     "condition": {
-      "type": "fitGuests",
-      "n": 6000
+      "type": "gradeSeats",
+      "grade": "A",
+      "n": 4
     },
     "reward": [
       {
@@ -990,6 +811,27 @@
     ],
     "speaker": "samchun",
     "line": "벌써 3년째여. 처음 온 날이 어제 같은데."
+  },
+  {
+    "id": "g35",
+    "title": "카페 증축 Lv3",
+    "desc": "실내가 7×5로 — 문 앞이 한 칸 내려온다",
+    "condition": {
+      "type": "mainLevel",
+      "n": 3
+    },
+    "reward": [
+      {
+        "type": "unlockFacility",
+        "id": "garden_lamp"
+      },
+      {
+        "type": "unlockFacility",
+        "id": "toenmaru"
+      }
+    ],
+    "speaker": "halmang",
+    "line": "백스무 번이여. 이 마당은 제자리가 있는 마당이여."
   },
   {
     "id": "g45",
@@ -1098,12 +940,11 @@
   },
   {
     "id": "g49",
-    "title": "바다 전망 자리 8석",
-    "desc": "전망 4 이상인 자리를 8개까지 늘리자",
+    "title": "카페 증축 Lv4",
+    "desc": "실내 8×5",
     "condition": {
-      "type": "siteSeats",
-      "view": 4,
-      "n": 8
+      "type": "mainLevel",
+      "n": 4
     },
     "reward": [],
     "speaker": "hero",
@@ -1349,6 +1190,165 @@
     ],
     "speaker": "hero",
     "line": "★5 카페예요. 뿌듯해서 잠이 안 와요."
+  },
+  {
+    "id": "g61",
+    "title": "카페 증축 Lv5",
+    "desc": "제일 큰 카페 8×6 — 실내 40칸",
+    "condition": {
+      "type": "mainLevel",
+      "n": 5
+    },
+    "reward": [
+      {
+        "type": "menuSlot",
+        "n": 1
+      },
+      {
+        "type": "unlockMenu",
+        "id": "hallabong_honey_tea"
+      }
+    ],
+    "speaker": "halmang",
+    "line": "이보다 큰 카페는 없다."
+  },
+  {
+    "id": "g62",
+    "title": "단골 16명 만들기",
+    "desc": "단골로 등록된 손님 16명",
+    "condition": {
+      "type": "regulars",
+      "n": 16
+    },
+    "reward": [
+      {
+        "type": "unlockFacility",
+        "id": "window_seat"
+      }
+    ],
+    "speaker": "samchun",
+    "line": "단골들 앉을 창가가 필요해."
+  },
+  {
+    "id": "g63",
+    "title": "홍보 18번 하기",
+    "desc": "홍보를 18번 실행",
+    "condition": {
+      "type": "promotions",
+      "n": 18
+    },
+    "reward": [
+      {
+        "type": "unlockMenu",
+        "id": "cinnamon_latte"
+      },
+      {
+        "type": "unlockFacility",
+        "id": "fire_pit"
+      }
+    ],
+    "speaker": "samchun",
+    "line": "소문 났으니 저녁 손님도 받자."
+  },
+  {
+    "id": "g64",
+    "title": "실내 자리 24석 만들기",
+    "desc": "",
+    "condition": {
+      "type": "indoorSeats",
+      "n": 24
+    },
+    "reward": [
+      {
+        "type": "staffCap",
+        "n": 1
+      },
+      {
+        "type": "jobTier",
+        "id": "site"
+      }
+    ],
+    "speaker": "halmang",
+    "line": "이젠 사람을 더 둬도 되겠다."
+  },
+  {
+    "id": "g65",
+    "title": "랭크 5 오르기",
+    "desc": "카페 랭크 5",
+    "condition": {
+      "type": "cafeRank",
+      "n": 5
+    },
+    "reward": [
+      {
+        "type": "unlockFacility",
+        "id": "palm"
+      }
+    ],
+    "speaker": "halmang",
+    "line": "마당에 야자수 하나 어떠니."
+  },
+  {
+    "id": "g66",
+    "title": "손님 6,000명을 취향 자리에",
+    "desc": "",
+    "condition": {
+      "type": "fitGuests",
+      "n": 6000
+    },
+    "reward": [
+      {
+        "type": "jobTier",
+        "id": "magazine"
+      },
+      {
+        "type": "staffSlot",
+        "role": "hall",
+        "n": 1
+      }
+    ],
+    "speaker": "samchun",
+    "line": "잡지에 사람 구한다고 내 보라."
+  },
+  {
+    "id": "g67",
+    "title": "연구 8,000 모으기",
+    "desc": "연구 포인트 8,000",
+    "condition": {
+      "type": "research",
+      "n": 8000
+    },
+    "reward": [
+      {
+        "type": "unlockFacility",
+        "id": "hydrangea"
+      }
+    ],
+    "speaker": "halmang",
+    "line": "연구가 쌓였네. 수국도 심어 보라."
+  },
+  {
+    "id": "g68",
+    "title": "A 등급 자리 8개 만들기",
+    "desc": "",
+    "condition": {
+      "type": "gradeSeats",
+      "grade": "A",
+      "n": 8
+    },
+    "reward": [
+      {
+        "type": "unlockFacility",
+        "id": "water_jar"
+      },
+      {
+        "type": "staffSlot",
+        "role": "barista",
+        "n": 1
+      }
+    ],
+    "speaker": "samchun",
+    "line": "물허벅 놓으면 삼춘들이 좋아해."
   },
   {
     "id": "g60",

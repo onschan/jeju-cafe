@@ -17,6 +17,7 @@ import { card, brownBtn, brownBtnOff, dangerBtn, PALETTE } from './frame';
 import { wonText } from '../data/labels.ts';
 import { josa } from '../sim/josa.ts';
 import { scoreGrade } from '../sim/seatGrade.ts'; // 총점을 A~D 글자로 — 「우리 B · 옆집 A」
+import { rivalWhere } from '../sim/rival.ts'; // zero-base: 그 카페가 서 있는 땅
 
 const small = { fontSize: 13, color: PALETTE.inkSoft } as const;
 
@@ -32,7 +33,7 @@ function Arrow({ r }: { r: RivalRow }) {
   );
 }
 
-function BoardRow({ r, gapText }: { r: RivalRow; gapText: string }) {
+function BoardRow({ r, gapText, where }: { r: RivalRow; gapText: string; where: string }) {
   return (
     <div data-testid={r.me ? 'rival-row-me' : 'rival-row'} style={{
       display: 'grid', gridTemplateColumns: 'auto auto 1fr auto', gap: 6, alignItems: 'center',
@@ -46,6 +47,7 @@ function BoardRow({ r, gapText }: { r: RivalRow; gapText: string }) {
           {r.name}{r.me ? ' (우리)' : ''}{r.deal ? ' · 제휴' : ''}
         </span>
         {gapText && <span style={{ ...small, fontSize: 12 }}>{gapText}</span>}
+        {where && <span style={{ ...small, fontSize: 12 }} data-testid="rival-where">{where}</span>}
       </span>
       <b style={{ fontSize: 15, whiteSpace: 'nowrap' }} data-testid="rival-total"><span style={{ fontSize: 16, color: r.rank === 1 ? '#c9741a' : PALETTE.ink }}>{scoreGrade(r.total)}</span> {r.total}</b>
     </div>
@@ -142,7 +144,7 @@ export function RivalBoard() {
         {st.line && <div data-testid="rival-line" style={{ fontSize: 14, margin: '4px 0' }}>{st.line}</div>}
         <div style={{ marginTop: 4 }}>
           {rows.map((r) => (
-            <BoardRow key={r.id} r={r}
+            <BoardRow key={r.id} r={r} where={r.me ? '' : rivalWhere(s, r.id)}
               gapText={r.me ? (above ? `${above.name}와 ${gap}점 차` : '동네에서 제일 잘 나가요') : ''} />
           ))}
         </div>

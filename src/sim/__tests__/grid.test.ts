@@ -25,7 +25,7 @@ test('지형이 맞지 않으면 실패', () => {
 
 test('겹치거나 격자 밖이면 실패', () => {
   const s = bareState(1);
-  expect(canPlace(s, 'carrot_field', X(5), Y(1)).ok).toBe(false); // 본관 카운터 칸
+  expect(canPlace(s, 'carrot_field', X(5), Y(0)).ok).toBe(false); // 본관 카운터 칸
   expect(canPlace(s, 'carrot_field', X(5), Y(2)).ok).toBe(false); // 본관 빈 바닥엔 밭은 못 놓는다 (자리·장식만)
   expect(canPlace(s, 'carrot_field', X(11), Y(9)).ok).toBe(false); // 마을 길
   expect(canPlace(s, 'carrot_field', -1, 0).ok).toBe(false);
@@ -48,7 +48,7 @@ test('제거하면 칸이 비고 객체가 사라진다', () => {
 
 test('북서쪽 돌담이 방풍을 만든다', () => {
   const s = bareState(1);
-  // 본관(4..7, 1..3, wind 1)의 방풍 띠에 안 걸리는 (8,8)에서 검증한다.
+  // 본관(4..8, 0..3, wind 1)의 방풍 띠에 안 걸리는 (8,8)에서 검증한다.
   mustPlace(s, 'carrot_field', X(8), Y(8));
   expect(windShelter(s, X(8), Y(8))).toBe(0);
   expect(isSheltered(s, X(8), Y(8))).toBe(false);
@@ -87,13 +87,13 @@ test('방풍 띠 밖(|dx−dy|>1)은 세지 않고, 여러 칸 오브젝트는 �
   // (8,8) 기준 (7,5)는 dx=1,dy=3 → 띠 밖
   mustPlace(s, 'stonewall', X(7), Y(5));
   expect(windShelter(s, X(8), Y(8))).toBe(0);
-  // 본관 (4..7,1..3) wind 1: (8,5)의 띠에 (7,4)·(6,3)·(5,2)… 여러 칸이 들어가지만 한 번만 → 1
-  expect(windShelter(s, X(8), Y(5))).toBe(1);
+  // 본관 (4..8,0..3) wind 1: (9,5)의 띠에 (8,4)?·(7,3)·(6,2)… 여러 칸이 들어가지만 한 번만 → 1
+  expect(windShelter(s, X(9), Y(5))).toBe(1);
 });
 
 test('여러 칸 오브젝트를 없애면 모든 칸이 빈다', () => {
   const s = bareState(1);
   const wh = Object.values(s.objects).find((o) => o.type === 'warehouse')!;
   removeObject(s, wh.id);
-  for (let dy = 0; dy < 3; dy++) for (let dx = 0; dx < 4; dx++) { const c = cellAt(s, wh.x + dx, wh.y + dy); expect(c.objectId).toBeNull(); expect(c.roomId).toBeNull(); }
+  for (let dy = 0; dy < 4; dy++) for (let dx = 0; dx < 5; dx++) { const c = cellAt(s, wh.x + dx, wh.y + dy); expect(c.objectId).toBeNull(); expect(c.roomId).toBeNull(); }
 });

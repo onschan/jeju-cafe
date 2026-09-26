@@ -11,7 +11,7 @@ test('도로·올렛길·정류장·본관 빈 바닥은 걷기 가능, 흙·당
   expect(isWalkable(s, X(0), Y(9))).toBe(true);  // 정류장
   expect(isWalkable(s, X(4), Y(6))).toBe(true);  // 어귀 올렛길
   expect(isWalkable(s, X(5), Y(5))).toBe(false); // 흙
-  expect(isWalkable(s, X(5), Y(1))).toBe(false); // 본관 뒷벽 줄은 카운터·주방
+  expect(isWalkable(s, X(5), Y(0))).toBe(false); // 본관 뒷벽 줄은 카운터·주방
   expect(isWalkable(s, X(5), Y(2))).toBe(true);  // 본관 빈 바닥 (zero-base: 안에도 앉는다)
   placeObject(s, 'carrot_field', X(0), Y(0));
   expect(isWalkable(s, X(0), Y(0))).toBe(false); // 당근밭

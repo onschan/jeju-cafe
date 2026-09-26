@@ -58,13 +58,13 @@ test('placeLine: 확정 때만 돈이 나가고, 되돌리기 1회로 그 줄 �
   for (const p of [at(0, 0), at(0, 1), at(0, 2), at(1, 2), at(2, 2)]) expect(objectAt(s, p.x, p.y)).toBeNull();
   expect(s.money).toBe(money);
   // 같은 줄을 다시 놓되 가운데는 이미 있음 → 4칸만 새로, 되돌리면 새로 놓은 4칸만
-  apply(s, { type: 'place', objectType: 'stonewall', ...at(1, 0) });
+  apply(s, { type: 'place', objectType: 'stonewall', ...at(1, 5) }); // y=0 줄은 (4,0)부터 본관이라 y=5 줄로
   const m2 = s.money;
-  expect(apply(s, { type: 'placeLine', objectType: 'stonewall', from: at(0, 0), to: at(4, 0) }).ok).toBe(true);
+  expect(apply(s, { type: 'placeLine', objectType: 'stonewall', from: at(0, 5), to: at(4, 5) }).ok).toBe(true);
   expect(s.money).toBe(m2 - per * 4);
   expect(apply(s, { type: 'undoLast' }).ok).toBe(true);
-  expect(objectAt(s, X(1), Y(0))?.type).toBe('stonewall');
-  expect(objectAt(s, X(0), Y(0))).toBeNull();
+  expect(objectAt(s, X(1), Y(5))?.type).toBe('stonewall');
+  expect(objectAt(s, X(0), Y(5))).toBeNull();
   expect(s.money).toBe(m2);
 });
 

@@ -118,7 +118,7 @@ export function treeUpgrade(state: GameState, objId: string): PlacedObject {
   occupy(state, obj);
   state.money -= cost;
   const days = buildDaysOf(next.type);
-  if (days > 0) obj.build = { doneDay: dayIndex(state.clock) + days, days };
+  if (days > 0) obj.build = { doneDay: dayIndex(state.clock) + days, days, upgrade: true }; // upgrade: 공사 중에도 명당 조각으로 센다 (안 그러면 올리는 순간 명당이 며칠 깨진다)
   else delete obj.build;
   bumpLayoutRev(state);
   const to = objectDef(next.type).name;

@@ -195,8 +195,9 @@ def icon_sack() -> Canvas:
 
 
 # ---------------------------------------------------------------- 본관 증축 Lv2~4 (§8.1) · 2층 띠 · 별관 · 실내 가구 (y-indoor)
-MAIN_SIZES = {2: (4, 3), 3: (5, 3), 4: (6, 4)}
-MAIN_WALL_H = {2: 28, 3: 34, 4: 40}
+# zero-base: Lv1 5×4 → Lv5 8×6 (rooms.ts MAIN_SIZES와 같은 표)
+MAIN_SIZES = {1: (5, 4), 2: (6, 4), 3: (7, 5), 4: (8, 5), 5: (8, 6)}
+MAIN_WALL_H = {1: 30, 2: 32, 3: 36, 4: 40, 5: 42}
 FLOOR2_BAND_H = 22
 
 
@@ -462,7 +463,7 @@ def grade_sign(grade: int) -> Canvas:
 def sprites() -> dict[str, Canvas]:
     return {
         # zero-base(specs/2026-09-26-zero-base-start.md): 본관 Lv1은 4×3 진짜 카페(옛 hall2), Lv2 5×3, Lv3 6×4. 폐창고 그림(warehouse(1))·2층 띠는 안 쓴다.
-        'iso_obj_warehouse': main_hall(2), 'iso_obj_warehouse_lv2': main_hall(3), 'iso_obj_warehouse_lv3': main_hall(4),
+        'iso_obj_warehouse': main_hall(1), **{f'iso_obj_warehouse_lv{lv}': main_hall(lv) for lv in (2, 3, 4, 5)},
         **{f'iso_obj_warehouse_sign_g{g}': grade_sign(g) for g in range(1, 6)},  # fun-rank 등급 간판
         'iso_obj_kitchen_ext': kitchen_ext(), 'iso_obj_restroom': restroom(), 'iso_obj_storage': storage(),
         'iso_obj_annex_cafe': annex_cafe(), 'iso_obj_greenhouse_cafe': greenhouse_cafe(),
