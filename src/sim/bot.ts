@@ -186,6 +186,11 @@ export const BOT_CORNER_CELLS: { x: number; y: number }[] = [
 export const BOT_RECIPES = 5;
 /** 2년차부터 빈 직원 슬롯을 채운다 (돈 이만큼 넘을 때) — §4.6 직원 3 → 5 → 8 */
 export const BOT_HIRE_MIN_MONEY = 5_000_000;
+/** 4번째부터는 지난달 순이익이 그 사람 월급의 이 배수는 돼야 뽑는다 — 현금이 넉넉해도 겨울 문턱(10~11월)에 뽑으면
+ *  손님이 준 다섯 달 동안 월 −1~2백만이 나 잔고를 다 태운다 (막 보상이 현금을 얹자 시드 2·3·5가 그렇게 파산했다) */
+export const BOT_HIRE_NET_MULT = 2;
+/** 이 인원부터 위 문턱을 본다 (홀·바리스타·요리사 셋까지는 살림의 뼈대라 돈만 본다) */
+export const BOT_HIRE_NET_FROM = 3;
 export const BOT_HIRE_YEAR = 2;
 export const BOT_HIRE_ORDER: RoleId[] = ['clean', 'hall', 'barista', 'cook'];
 /** 한 달에 수리하는 낡은 시설 수 (트랙 A 노후·태풍 파손) */
@@ -260,8 +265,8 @@ function bestBy(cands: Candidate[], stat: StatKey): Candidate | undefined {
   return [...cands].sort((a, b) => b.stats[stat] - a.stats[stat])[0];
 }
 
-function hireBest(s: GameState, stat: StatKey, role: RoleId): boolean {
-  const c = bestBy(s.candidates, stat);
+function hireBest(s: GameState, stat: StatKey, role: RoleId, ok: (c: { salary: number }) => boolean = () => true): boolean {
+  const c = bestBy(s.candidates.filter(ok), stat);
   return !!c && apply(s, { type: 'hire', candidateId: c.id, role }).ok;
 }
 
@@ -271,13 +276,15 @@ function hasRole(s: GameState, role: RoleId): boolean {
 
 /** staff2: 자리가 늘어 지금 인원으로 못 따라가면(또는 이미 지저분하면) 청소 직원을 먼저 뽑는다. 자리가 남는 한 두 번째도 뽑는다. */
 export const BOT_CLEAN_MIN_MONEY = 2_000_000;
-function hireCleanerIfDirty(s: GameState): boolean {
+/** 청소는 필요할 때 뽑되, 4번째부터는 지난달 흑자가 월급 BOT_HIRE_NET_MULT배를 넘어야 (hireForFreeSlot과 같은 문턱) */
+function hireCleanerIfDirty(s: GameState, lastNet = Number.POSITIVE_INFINITY): boolean {
   if (!s.unlocked.roles.includes('clean')) return false;
   if (s.staff.length >= staffCapacity(s) || staffInRole(s, 'clean').length >= (s.slots.clean ?? 0)) return false;
   if (seatDirt(s) <= dailyCleanRecovery(s) && s.clean.value >= CLEAN_LOW) return false;
   if (s.money < BOT_CLEAN_MIN_MONEY) return false;
   if (s.candidates.length === 0 && !apply(s, { type: 'postJob', tier: 'flyer' }).ok) return false;
-  const c = bestBy(s.candidates.filter((x) => canHire(s, x.id, 'clean').ok), 'skill'); // 청소는 기술이 곧 회복량
+  const affordable = s.staff.length < BOT_HIRE_NET_FROM ? () => true : (x: { salary: number }) => lastNet >= x.salary * BOT_HIRE_NET_MULT;
+  const c = bestBy(s.candidates.filter((x) => canHire(s, x.id, 'clean').ok && affordable(x)), 'skill'); // 청소는 기술이 곧 회복량
   return !!c && apply(s, { type: 'hire', candidateId: c.id, role: 'clean' }).ok;
 }
 
@@ -331,13 +338,13 @@ function canSpend(s: GameState, cost: number): boolean {
 }
 
 /** 2년차부터: 빈 슬롯(홀 → 바리스타 → 요리사 → 운반 → 안내)이 있고 돈이 넉넉하면 전단 공고 → 핵심 스탯 최고를 채용 (한 달 한 명) */
-function hireForFreeSlot(s: GameState): void {
+function hireForFreeSlot(s: GameState, lastNet = Number.POSITIVE_INFINITY): void {
   const base = s.clock.year >= BOT_STAFF_LATE_YEAR ? BOT_STAFF_BASE_LATE : BOT_STAFF_BASE;
   if (s.clock.year < BOT_HIRE_YEAR || !canSpend(s, BOT_HIRE_MIN_MONEY) || s.staff.length >= base + BOT_STAFF_PER_YEAR * s.clock.year || s.staff.length >= staffCapacity(s)) return; // 정원(휴게실 +3)이 차면 공고를 내지 않는다
   for (const role of BOT_HIRE_ORDER) {
     if (!s.unlocked.roles.includes(role) || s.staff.filter((st) => st.role === role).length >= (s.slots[role] ?? 0)) continue;
     if (s.candidates.length === 0 && !postJobAny(s)) return;
-    const c = s.candidates.find((x) => canHire(s, x.id, role).ok);
+    const c = s.candidates.find((x) => canHire(s, x.id, role).ok && (s.staff.length < BOT_HIRE_NET_FROM || lastNet >= x.salary * BOT_HIRE_NET_MULT));
     if (c && apply(s, { type: 'hire', candidateId: c.id, role }).ok) return;
   }
 }
@@ -635,7 +642,8 @@ function placeForChapter(s: GameState): void {
   if (best) place(s, want.type, best.x, best.y);
 }
 
-export function monthlyPlan(s: GameState, monthsPlayed: number): void {
+/** lastNet: 지난달 순이익 (월말 카드). 모르면 Infinity — 채용을 막지 않는다. */
+export function monthlyPlan(s: GameState, monthsPlayed: number, lastNet = Number.POSITIVE_INFINITY): void {
   ensurePath(s);
   // 테이블은 한 달에 4개씩 늘린다 (사람처럼): 시작 3석 + 16
   let added = 0;
@@ -656,8 +664,8 @@ export function monthlyPlan(s: GameState, monthsPlayed: number): void {
   if (monthsPlayed === 0 && s.staff.length === 0) hireBest(s, 'smile', 'hall');
   if (monthsPlayed === 1 && !hasRole(s, 'barista') && apply(s, { type: 'postJob', tier: 'flyer' }).ok) hireBest(s, 'skill', 'barista');
   // 1년차 7월: 요리사까지 3명, 2년차부터 빈 슬롯을 채운다 (§4.6: 3년차 5명)
-  if (monthsPlayed >= BOT_COOK_MONTHS && !hasRole(s, 'cook') && s.staff.length < staffCapacity(s) && (s.slots.cook ?? 0) > 0 && s.money >= BOT_HIRE_MIN_MONEY && (s.candidates.length > 0 || apply(s, { type: 'postJob', tier: 'flyer' }).ok)) hireBest(s, 'skill', 'cook'); // staff2: 청소를 먼저 뽑아 3명이 돼도 요리사를 놓치지 않게 (요리사가 없으면 디저트·식사·시그니처가 통째로 막힌다)
-  else if (!hireCleanerIfDirty(s)) hireForFreeSlot(s); // staff2: 자리를 늘려 더러워지기 시작하면 청소부터 뽑는다
+  if (monthsPlayed >= BOT_COOK_MONTHS && !hasRole(s, 'cook') && s.staff.length < staffCapacity(s) && (s.slots.cook ?? 0) > 0 && s.money >= BOT_HIRE_MIN_MONEY && (s.candidates.length > 0 || apply(s, { type: 'postJob', tier: 'flyer' }).ok)) hireBest(s, 'skill', 'cook', (c) => s.staff.length < BOT_HIRE_NET_FROM || lastNet >= c.salary * BOT_HIRE_NET_MULT); // 4번째면 지난달 흑자도 본다 (겨울 문턱 채용 → 파산). staff2: 청소를 먼저 뽑아 3명이 돼도 요리사를 놓치지 않게 (요리사가 없으면 디저트·식사·시그니처가 통째로 막힌다)
+  else if (!hireCleanerIfDirty(s, lastNet)) hireForFreeSlot(s, lastNet); // staff2: 자리를 늘려 더러워지기 시작하면 청소부터 뽑는다
 
   // 홍보: 매달 전단 (돈 100만 넘고 기력 60 넘는 직원), 돈 400만 넘으면 SNS도 — 인기가 손님 수를 정하므로 (§4.2 #1) 꾸준히
   if (s.money > FLYER_MIN_MONEY) {
@@ -952,19 +960,19 @@ function acquireRivalIfCan(s: GameState): void {
 }
 
 /** 봇 진행 커서 (한 상태를 이어서 돌릴 때 — 세이브 왕복 테스트 등) */
-export interface BotCursor { lastMonth: number; monthsPlayed: number }
-export function newBotCursor(): BotCursor { return { lastMonth: 0, monthsPlayed: -1 }; }
+export interface BotCursor { lastMonth: number; monthsPlayed: number; lastNet: number /* 지난달 순이익 — 카드는 닫으면 사라지니 여기 들고 간다 */ }
+export function newBotCursor(): BotCursor { return { lastMonth: 0, monthsPlayed: -1, lastNet: Number.POSITIVE_INFINITY }; }
 
 /** 봇이 하루를 플레이한다 (월초 계획 → 아침 계획 → 하루 tick → 월말 카드 닫기). 순수·결정적. */
 export function botDay(s: GameState, cur: BotCursor, onCard?: (card: MonthCard) => void): void {
   if (s.clock.month !== cur.lastMonth) {
     cur.lastMonth = s.clock.month;
     cur.monthsPlayed++;
-    monthlyPlan(s, cur.monthsPlayed);
+    monthlyPlan(s, cur.monthsPlayed, cur.lastNet);
   }
   dailyPlan(s);
   tick(s, DAY_MS);
-  if (s.lastMonthCard) { onCard?.(s.lastMonthCard); apply(s, { type: 'dismissMonthCard' }); }
+  if (s.lastMonthCard) { cur.lastNet = s.lastMonthCard.net; onCard?.(s.lastMonthCard); apply(s, { type: 'dismissMonthCard' }); }
 }
 
 export function runBot(years: number, seed: number, policy: BotPolicy = 'heuristic', cfg: BotSolverConfig = {}): BotRow[] {
@@ -1013,7 +1021,7 @@ function* botDays(years: number, seed: number, policy: BotPolicy = 'heuristic', 
       if (s.clock.month !== cur.lastMonth) {
         cur.lastMonth = s.clock.month;
         cur.monthsPlayed++;
-        monthlyPlan(s, cur.monthsPlayed);
+        monthlyPlan(s, cur.monthsPlayed, cur.lastNet);
       }
       dailyPlan(s);
     }
@@ -1022,6 +1030,7 @@ function* botDays(years: number, seed: number, policy: BotPolicy = 'heuristic', 
     minMoney = Math.min(minMoney, s.money);
     const card = s.lastMonthCard;
     if (card) {
+      cur.lastNet = card.net;
       rows.push({
         year: card.year, month: card.month, money: s.money, minMoney, research: s.research, popularity: s.popularity,
         net: card.net, staff: s.staff.length, promos: s.activePromotions.length, guests: card.guests, customMenus: s.customMenus.length,

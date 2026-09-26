@@ -64,7 +64,7 @@ function onNewDay(state: GameState): void {
   // [코어만] dailyRisk(state); // stakes: 어제 안 고른 돌발 사고를 확정하고, 오늘이 예정일이면 새 사고
   nightlyRecovery(state);
   dailyWorkExp(state);
-  // [코어만] dailyTraining(state);
+  dailyTraining(state); // 연수 일수 차감·복귀 — 「코어만」 정리 때 꺼졌는데 train 액션은 살아 있어 보낸 직원이 영영 안 돌아왔다 (청소 직원이 가면 청결 0 → 손님 −40%)
   checkRoleUnlocks(state);
   expireRareCandidates(state); // staff-luck: 프로·전설 후보 3일 만료
   // [코어만] dailyBoard(state);
