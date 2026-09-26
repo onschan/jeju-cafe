@@ -1,5 +1,5 @@
 import { Assets, Texture, TextureStyle, type Spritesheet } from 'pixi.js';
-import { assetUrl } from '../ui/assetUrl';
+import { assetUrl } from '../play/assetUrl';
 
 let sheet: Spritesheet | null = null;
 const missing = new Set<string>();

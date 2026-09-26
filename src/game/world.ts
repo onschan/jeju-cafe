@@ -1,6 +1,7 @@
 /** 땅: 3×3 필지(12×10), 가운데가 내 땅. 남쪽 변이 마을 길, 정류장 하나. 칸엔 바닥(데크·타일·돌·올렛길)을 깐다. */
 import type { GameState, Cell, Parcel, Pt, Floor, ApplyResult } from './types.ts';
 import { facilityDef, isFloorDef } from './data.ts';
+import { josa } from './josa.ts';
 
 export const PARCEL_W = 12;
 export const PARCEL_H = 10;
@@ -104,7 +105,7 @@ export function canPlace(s: GameState, id: string, x: number, y: number): ApplyR
   if ((d.tab === 'seat' || d.tab === 'shop') && !ok(cells)) return { ok: false, reason: '손님이 걸어올 통로가 옆에 없어요' };
   for (const f of Object.values(s.facilities)) {
     const fd = facilityDef(f.type);
-    if ((fd.tab === 'seat' || fd.tab === 'shop') && !ok(footprint(f.x, f.y, fd.w, fd.h))) return { ok: false, reason: `${f.name ?? fd.name}으로 가는 통로가 막혀요` };
+    if ((fd.tab === 'seat' || fd.tab === 'shop') && !ok(footprint(f.x, f.y, fd.w, fd.h))) return { ok: false, reason: `${josa(f.name ?? fd.name, '으로/로')} 가는 통로가 막혀요` };
   }
   return { ok: true };
 }

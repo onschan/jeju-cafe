@@ -1,5 +1,6 @@
 import { Container, Sprite, Graphics } from 'pixi.js';
-import type { Face, RoleId, GuestTags, GuestWant } from '../sim/index.ts';
+/** 파츠 인덱스 얼굴 (새 코어 Guest.face·Staff.face와 같은 꼴) */
+export interface Face { hair: number; skin: number; top: number }
 import { tex, hasAssets, spriteName } from './assets';
 
 /** 파츠 캐릭터: 몸(피부) → 상의(tint) → 머리(tint) → 액세서리 순으로 쌓는다. tools/assets/sprites_chars.py의 compose_character와 같은 순서. */
@@ -43,65 +44,6 @@ export function partsOfFace(face: Face, accs: AccKind[] = []): CharacterParts {
 }
 
 /** 역할별 액세서리 */
-export const ROLE_ACC: Record<RoleId, AccKind> = {
-  hall: 'apron',
-  barista: 'cap',
-  cook: 'apron',
-  clean: 'strawhat',  // 청소: 밀짚모자 (마당도 같이 돌본다)
-};
-
-/** 유니폼 → 상의 색(TOP_RGB 인덱스)·액세서리. 하와이안 = 주황, 갈옷 = 노랑(갈색 근사), 해녀복 = 파랑 + 물안경(안경), 방언 티 = 흰색, 산타복 = 빨강 + 모자(캡). */
-export const UNIFORM_STYLE: Record<string, { top: number; acc?: AccKind }> = {
-  uf_hawaiian: { top: 7 },
-  uf_galot: { top: 3 },
-  uf_haenyeo: { top: 1, acc: 'glasses' },
-  uf_dialect_tee: { top: 5 },
-  uf_santa: { top: 4, acc: 'cap' },
-};
-
-/** 직원 파츠: 얼굴 + 역할 액세서리. 유니폼을 입었으면 상의 색(과 액세서리)을 유니폼으로. */
-export function staffParts(face: Face, role: RoleId | null, uniform: string | null = null): CharacterParts {
-  const style = uniform ? UNIFORM_STYLE[uniform] : undefined;
-  const accs: AccKind[] = [];
-  if (style?.acc) accs.push(style.acc);
-  if (role && !accs.includes(ROLE_ACC[role])) accs.push(ROLE_ACC[role]);
-  const parts = partsOfFace(face, accs);
-  if (style) parts.top = style.top;
-  return parts;
-}
-
-/** 손님 파츠: 얼굴(id 해시)에 태그로 머리 모양·액세서리를 얹는다. 여성 0~3, 남성 4~6, 시니어 남성은 대머리(7)도. 단체 → 배낭, 경치 → 카메라, 농사 → 밀짚모자, 편의 → 안경. */
-export function guestParts(face: Face, tags: GuestTags, wants: GuestWant[]): CharacterParts {
-  const base = partsOfFace(face);
-  const h = face.hair + face.top * 7;
-  const hairStyle = tags.gender === 'female' ? h % 4 : tags.gender === 'male' ? (tags.age === 'senior' ? 4 + (h % 4) : 4 + (h % 3)) : h % 7;
-  const accs: AccKind[] = [];
-  if (tags.group) accs.push('backpack');
-  else if (wants.includes('scenery')) accs.push('camera');
-  else if (wants.includes('farm')) accs.push('strawhat');
-  else if (wants.includes('convenience')) accs.push('glasses');
-  return { ...base, hairStyle, accs };
-}
-
-/** 이름 있는 손님(지역 손님 56) 파츠: face.seed로 정한 얼굴 + 고정 액세서리(시드로 결정, 없음도 있다). 돌하르방 마을은 액세서리 없이 회색 머리. */
-const NAMED_ACCS: (AccKind | null)[] = [null, 'glasses', 'cap', 'camera', 'strawhat', 'backpack', null];
-/** 특별 손님(빅 이벤트, face.seed 101~103)의 고정 생김새: 백중원=짧은 머리·모자, 이요리·이장순=단발·안경, 유아이=긴 머리.
- *  portrait는 손으로 그린 초상(sprites_portraits_named.py) 이름. */
-const SPECIAL_LOOKS: Record<number, Pick<CharacterParts, 'hairStyle' | 'hairColor' | 'accs' | 'portrait'>> = {
-  101: { hairStyle: 1, hairColor: 0, accs: ['cap'], portrait: 'baek' },
-  102: { hairStyle: 0, hairColor: 1, accs: ['glasses'], portrait: 'yori' },
-  103: { hairStyle: 6, hairColor: 0, accs: [], portrait: 'ai' },
-};
-
-export function namedGuestParts(face: Face, seed: number, regionId: string): CharacterParts {
-  const base = partsOfFace(face);
-  const special = SPECIAL_LOOKS[seed];
-  if (special) return { ...base, ...special };
-  if (regionId === 'dolhareubang') return { ...base, hairColor: 4, hairStyle: 4 + (seed % 4), accs: [] };
-  const acc = NAMED_ACCS[seed % NAMED_ACCS.length] ?? null;
-  return { ...base, hairStyle: seed % HAIR_STYLE_COUNT, accs: acc ? [acc] : [] };
-}
-
 const LAYER = { body: 'body', top: 'top', hair: 'hair' } as const;
 const ACC_LABEL = 'acc';
 
