@@ -801,7 +801,8 @@ export type FxEvent =
   | { kind: 'skill'; staffId: string; text: string; tick: number } // 러시: 직원 액티브 스킬 발동 — 머리 위에 재주 이름
   | { kind: 'applause'; tick: number } // fun-rank: 등급 승급 — 마당 손님 전원 박수(하트·반짝)
   | { kind: 'parcel'; id: string; tick: number } // fun-rank: 필지 구매 — 덮개 안개 걷힘 + 랜드마크 등장 반짝
-  | { kind: 'arrive'; route: RouteId; x: number; y: number; n: number; tick: number }; // fun P0: 경로 도착 — 렌터카가 서고 손님 n명이 내린다 (올레는 걸어옴), 작은 문구
+  | { kind: 'arrive'; route: RouteId; x: number; y: number; n: number; tick: number } // fun P0: 경로 도착 — 렌터카가 서고 손님 n명이 내린다 (올레는 걸어옴), 작은 문구
+  | { kind: 'up'; x: number; y: number; text: string; order: number; tick: number }; // 상성 UP (upfx.ts): 시설을 놓아 값이 오른 자리마다 `+8%` — order는 차례로 튀어오르는 박자
 
 // ---------- 상점·추첨·유니폼·가이드북 (2B-2 Task 6·7) ----------
 export interface MileageShopDef { id: string; name: string; price: number; description: string; itemId?: string; objectId?: string }

@@ -145,6 +145,8 @@ const SPOT_ALPHA = 0.22; // fun-start: 0.55는 너무 어두워 게임 요소를
 /** 스포트라이트 구멍 반경(체비쇼프): 타깃 칸 주변 이 반경 안은 아예 안 어둡고, 맨 바깥 고리는 반만 어둡다(부드러운 가장자리) */
 const SPOT_HOLE_RADIUS = 3;
 /** 숫자 팝업(+N): 700ms 동안 16px 떠오르며 사라진다 */
+/** 상성 UP이 차례로 튀어오르는 간격 */
+const UP_STAGGER_MS = 110;
 const POP_MS = 700;
 const POP_RISE_PX = 16;
 /** 동시에 떠 있는 숫자 팝업 상한 (결제 「+₩」 스로틀) */
@@ -1769,6 +1771,22 @@ export class GameView {
   }
 
   /** +N 숫자 팝업 (시설 인기 상승) */
+  /** 상성 UP (upfx.ts): 시설을 놓아 값이 오른 자리마다 `+8%`. order 차례로 UP_STAGGER_MS씩 늦게 튀어올라
+   *  「한 번 놓고 우르르 칭찬받는」 박자가 된다 (video-flow §1-2 2:00). */
+  spawnUp(cellX: number, cellY: number, text: string, order: number, now: number) {
+    const c = new Container();
+    const l = label(`${text} UP`, 11);
+    l.anchor.set(0.5, 1);
+    l.style.fill = 0xfff176;
+    const bg = new Graphics().roundRect(-l.width / 2 - 4, -l.height - 2, l.width + 8, l.height + 4, 4).fill({ color: 0xc62828, alpha: 0.85 });
+    c.addChild(bg, l);
+    const { sx, sy } = cellCenter(cellX, cellY);
+    c.position.set(sx, sy - 28);
+    c.zIndex = 1e6;
+    c.visible = false;
+    this.overlay.addChild(c);
+    this.pops.push({ node: c, born: now + order * UP_STAGGER_MS, y0: sy - 28 });
+  }
   private spawnPop(cellX: number, cellY: number, n: number, now: number) {
     const c = new Container();
     const l = label(`+${n}`, 11);
@@ -1886,6 +1904,7 @@ export class GameView {
       if (e.tick < since) continue;
       if (e.kind === 'harvest' || e.kind === 'complete') this.spawnSparkle(e.x, e.y, now);
       else if (e.kind === 'pop') this.spawnPop(e.x, e.y, e.n, now);
+      else if (e.kind === 'up') this.spawnUp(e.x, e.y, e.text, e.order, now); // 상성 UP: 차례로 튀어오른다
       else if (e.kind === 'photo') this.spawnSparkle(e.x, e.y, now);
       else if (e.kind === 'react') this.spawnReaction(e, now);
       else if (e.kind === 'corner' || e.kind === 'flash') this.spawnCornerFx(e, now);
@@ -2017,6 +2036,8 @@ export class GameView {
     if (this.pops.length) {
       this.pops = this.pops.filter((p) => {
         const k = (now - p.born) / POP_MS;
+        if (k < 0) { p.node.visible = false; return true; } // 상성 UP: 제 차례가 올 때까지 숨긴다
+        p.node.visible = true;
         if (k >= 1) { p.node.destroy({ children: true }); return false; }
         p.node.y = p.y0 - POP_RISE_PX * k;
         p.node.alpha = 1 - k * k;

@@ -9,7 +9,9 @@ import { RouteCard } from './RouteCard';
 import { TreeUpgradeRow } from './TreeUpgrade'; // fun: 같은 자리 업그레이드 트리
 import { treeOf } from '../sim/index.ts';
 import { cornerSeatLine, cornerAnchorLine, cornerBreakWarning } from '../sim/corners.ts';
-import { caringStaffOf, careStaff, careValueOf } from '../sim/staffPost.ts'; // staffpost: 이 자리를 돌보는 직원 // spot2: 명당 효과·경고를 카드에서 보이게
+import { caringStaffOf, careStaff, careValueOf } from '../sim/staffPost.ts'; // staffpost: 이 자리를 돌보는 직원
+import { seatFitsWant, WANT_LABEL as FIT_LABEL, type Want } from '../sim/wants.ts'; // 이 자리에 맞는 손님 (손님 카드의 WANT_LABEL과는 다른 표)
+import { salesToday } from '../sim/corners.ts'; // 오늘 이 자리가 번 돈 // spot2: 명당 효과·경고를 카드에서 보이게
 import { seatFeeQuote, FEE_MULT_CAP } from '../sim/fee.ts'; // spot2: 요금 내역 (기본 → 자리·명당·거리 → 실제로 받는 값)
 import { isCornerTarget } from '../sim/corners.ts';
 import { objectReachable, UNREACHABLE_TEXT } from '../sim/index.ts'; // ui3: 손님이 못 가는 시설
@@ -352,6 +354,7 @@ function ObjectCard({ s, id, a, onClose, guestId }: { s: GameState; id: string; 
         <Details id={`object:${o.type}`}>
           <div style={small}>입소문 <b style={{ color: PALETTE.ink }}>{st.popularity}</b> · 경관 <b style={{ color: PALETTE.ink }}>{st.scenery > 0 ? '+' : ''}{st.scenery}</b> · 요금 <b style={{ color: PALETTE.ink }}>{st.feePct}%</b>{st.upkeep > 0 && ` · 유지비 ${wonText(st.upkeep)}/달`}{(o.uses ?? 0) > 0 && ` · 이용 ${o.uses}회`}</div>
           <div style={small}>주변 시너지: {st.corner.pop > 0 || st.corner.feePct > 0 ? `명당 입소문 +${st.corner.pop} · 요금 +${st.corner.feePct}%` : '없음'}{st.sets.length > 0 && ` · 세트 ${st.sets.map((x) => x.name).join(', ')}`}</div>
+          {d.kind === 'seat' && <SeatSumLine s={s} o={o} />}{/* video-flow §2-1 D: 자리 하나의 손익 — 「맞는 손님 · 오늘 매출」 */}
           <SiteLine s={s} o={o} />
           {(() => { const nl = nightSeatLine(s, o); return nl ? <div style={{ ...small, ...(nl.bad ? { color: PALETTE.bad } : {}) }} data-testid="night-line">🌙 {nl.text}</div> : null; })()}
           <div style={{ ...small, whiteSpace: 'nowrap' }} data-testid="clean-bar">카페 청결 <Bar value={clean} max={100} width={80} /> {clean}{clean < CLEAN_LOW && <span style={{ color: PALETTE.bad }}> 지저분해요</span>}</div>
@@ -424,6 +427,18 @@ function CareLine({ s, o }: { s: GameState; o: PlacedObject }) {
   return who.length > 0
     ? <div style={{ ...small, color: PALETTE.ok }} data-testid="care-line">{who[0]!.name} 씨가 돌보는 자리 · 손님 만족 +{careValueOf(s, who[0]!)}</div>
     : <div style={small} data-testid="care-line">돌보는 직원이 없어요 — 직원 창에서 근무 자리를 이 곁으로</div>;
+}
+
+/** video-flow §2-1 D: 시설 하나의 손익 카드에 「합계」 줄 — 이 자리에 **누가 맞고**(취향), **오늘 얼마 벌었나**.
+ *  영상 15:00의 방 정보 카드가 「경치 18 · 합계 31 · 고령자에게 인기」로 끝나는 것을 우리 자리에 옮긴 것. */
+function SeatSumLine({ s, o }: { s: GameState; o: PlacedObject }) {
+  const fits = (Object.keys(FIT_LABEL) as Want[]).filter((w) => seatFitsWant(s, o, w)).map((w) => FIT_LABEL[w]);
+  const won = salesToday(s, o);
+  return (
+    <div style={small} data-testid="seat-sum">
+      맞는 손님 <b style={{ color: PALETTE.ink }}>{fits.length > 0 ? fits.join(' · ') : '아직 없음'}</b> · 오늘 매출 <b style={{ color: PALETTE.title }}>{wonText(won)}</b>
+    </div>
+  );
 }
 
 /** spot2: 명당이 이 시설에 무슨 일을 하는지 카드에서 보이게.

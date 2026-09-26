@@ -13,6 +13,7 @@ import { canSetPost, setPost, clearPost } from './staffPost.ts'; // staffpost �
 import { canTrain, train } from './training.ts';
 import { canPromote, promote, canSetTarget, setTarget } from './promotions.ts';
 import { discoverPlacement } from './compat.ts';
+import { snapshotSeatMults, pushUpFx } from './upfx.ts'; // 상성 UP: 놓아서 값이 오른 자리마다 +n%
 import { canUseItem, useItem, canGiveGift, giveGift, canCraftGift, craftGift } from './items.ts';
 import { evaluateUnlocks } from './segments.ts';
 import { canAcceptQuest, acceptQuest, canRespondEvent, respondEvent, afterInvest, checkQuests } from './board.ts';
@@ -91,10 +92,12 @@ function applyInner(state: GameState, a: Action): ApplyResult {
       if (!c.ok) return c;
       const b = canStartBuild(state, a.objectType);
       if (!b.ok) return b;
+      const before = snapshotSeatMults(state); // 상성 UP: 놓기 전 자리 값
       const obj = placeObject(state, a.objectType, a.x, a.y, ROTATABLE_TYPES.has(a.objectType) && a.rot !== undefined ? ((a.rot % 4) + 4) % 4 : undefined);
       startBuild(state, obj);
       state.money -= cost;
       rememberPlace(state, obj, cost);
+      pushUpFx(state, before); // 값이 오른 자리마다 +n% 가 한꺼번에 튀어오른다
       discoverPlacement(state);
       evaluateUnlocks(state); // count 해금 (감귤나무 3그루 → 까치)
       unlockRouteFacilities(state); // 주차장(쉼 시설 6개) 같은 경로 시설은 다음 날 아침이 아니라 바로 열린다
