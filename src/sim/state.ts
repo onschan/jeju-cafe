@@ -23,7 +23,7 @@ import { initContest } from './contest.ts'; // 대회
 import { initRivals } from './rival.ts'; // 동네 경쟁 카페 5곳
 
 export { PARCEL_W, PARCEL_H, START_ORIGIN, GRID_W, GRID_H, VILLAGE_ROAD_Y };
-export const SAVE_VERSION = 30; // 30: 카이로 방향(direction.md) — 러시 타임을 통째로 뺐다(state.rush·rushAuto·rushGrades 삭제). 손으로 하는 건 배치뿐이고 손님은 알아서 온다. 손님은 자기 취향 자리(wants.ts)를 골라 앉고, 막(chapter)은 「그 손님이 제자리에 앉은 수」로 넘어간다. 러시 등급 목표 7개는 「제자리 손님 n명」으로 바꿨다. 불러올 때 러시 필드를 지우고 막 진행도를 0부터 다시 센다. // 29: 29: 한 판 = 다섯 막(chapter) — 「이번엔 이 손님을 잡는다」가 판마다 하나씩 생긴다(state.chapter). 막을 넘으려면 한 판의 러시에서 그 막의 손님을 직접·제자리에 n명 앉히고 그 판에서 A 이상(5막은 S) — 자동 착석은 안 센다. 덤으로 러시 자리 판정에서 귤밭·먹거리·즐길거리를 「주변 인기」가 아니라 그 분류 시설이 곁에 있나로 갈랐다(막마다 배치 과제가 달라지게). state.chapter는 optional이라 v28 세이브는 backfill만으로 이어진다. // 28: 직원·명당 배치 개편(staffpost) — 창 안의 「담당 구역」 3택 드롭다운을 없애고, 직원을 마당의 칸에 직접 세운다(Staff.post). 근무 자리 반경 2 안의 좌석이 「돌보는 자리」가 되어 만족 +2~5, 아무도 안 돌보는 자리는 −1. 근무 자리가 완성 명당 안이면 돌봄 +1 — 명당을 만들고 거기에 직원을 세우는 것이 한 수가 된다. 러시 때도 돌봄 받는 자리에 앉히면 점수 가산. 불러올 때 옛 zone 값은 지운다. // 27: 야외 중심 개편 — 손님이 앉는 곳은 전부 마당. 본관 증축 Lv2~4·2층·별관·본관 이사·실내 좌석(실내 테이블·카운터석·카운터 확장)·「실내」 짓기 탭을 통째로 뺐다. 추위·비는 시설의 지붕(shelter 0~2) 속성으로만 막는다(겨울에 야외 좌석을 끄지 않는다). 창가석은 야외 「전망 데크석」으로 이사. 불러올 때 migrateOutdoor가 증축·2층 값을 환불하고 없어진 실내 시설을 치운다. // 26: 덜어내기(teardown §3) — 동네 대항전(battle)과 직원 액티브 스킬(activeSkills·activeSkillSlots·titleChanceBonus)을 통째로 뺐다. 불러올 때 그 네 필드를 지운다. 러시 타임·동네 경쟁 카페 월간 순위표·칭호는 그대로. // 25: 러시 타임 통합(rushall) — 주간 리듬이 코어가 된다. 매주 토요일 12시 60~90초 러시(state.rush: 문 앞 줄·인내·자리 배정·밀린 주문·점수·S~C 등급·rushGrades), 직원 액티브 스킬(activeSkills·activeSkillSlots, 러시 중에만 쓴다), 매월 마지막 토요일 동네 대항전(battle, 러시 점수가 곧 대항전 점수), 중반 해금 7개를 돈이 아니라 러시 등급에 건다. 인사·추천은 삭제(greetDay·greetCount·recommendCount는 불러올 때 지운다). 새 필드가 전부 optional이라 v24 세이브는 backfill만으로 이어진다. 24: 6트랙 통합(all) — 명당 조각을 「종류」로(업그레이드해도 안 깨진다)·요금 배수 일원화(fee.ts, 자리 매출 PlacedObject.sales)·곧 완성될 명당(cornerSoon)·5년차 엔딩과 HOUR_MS 1200·동네 경쟁 카페 5곳(rivals·monthCosts.deal)·「할 일」 창·2년차 목표 8개(unlocked.recruits·staffCapBonus·ticketHints)·5막 튜토리얼(tutorial.lastDay). 새 필드가 전부 optional이라 v23 세이브는 backfill만으로 이어진다. 23: 4트랙 통합(mix) — 추천 칸 검증(탭은 고스트만)·예약 작업(PlacedObject.pending, 손님이 앉아 있어도 이동·철거·증축을 눌러 둔다)·직종별 고유 역할(Staff.zone/night·dayOrders)·진단과 숏컷·손님이 못 가는 시설 표시. 새 필드가 전부 optional이라 v22 세이브는 backfill만으로 이어진다. 22: 대규모 패치 통합(big) — 프롤로그 11컷·「명당」 용어·「인기」 4갈래(매력도 인기/시설 입소문/손님층 인지도)·랭크 숫자 비노출·성장 체감(dayLog)·시작 자금 350만·월 임대료(monthCosts.rent)·월말 등급 도장·유행(trend)·돌발 사고(pendingRisk)·빅 이벤트 선택(pendingEventChoice)·대출 기한(loan.dueMonthIndex)·배치 추천·배치 점수·오늘 할 일 1줄·대회 9단계(contest·monthCosts.contest·트로피). v21 세이브는 전부 optional 필드라 backfill만으로 이어진다 (migrateTrim은 v20 전용). 21: 덜어내기(trim) — 콤보·명당·도전·라이벌·팝업 원정·지역 손님·투어·마을제·100주년 삭제, 입지 5요소 → 자리 점수, 명소 24 → 8(Lv3), 경로 5 → 3, 불만 9 → 4, 손님 목소리 피드(voices). v20 세이브는 migrateTrim이 환불·치환 + 알림 한 줄. 20: 재미 리셋 통합(fun) — 시작 3분 튜토리얼 7단계·손님 상호작용(regulars·requests)·명당(codex.corners)·등급(grade)·제주 배경 (optional 필드 + backfill, 19 세이브는 백업 후 새 게임). 19: z 통합 — 엔딩·마을·이월·튜토리얼 30단계 seen (마이그레이션 없음). 18: y 통합 — 되돌리기(undo)·개체 이름(name)·유입 경로(routes·손님 route/foreign)·본관(main·객체 w/h/mode/careDay) (마이그레이션 없음, 17 세이브는 백업 후 새 게임). 17: 컨텐츠 확장 통합 — 경제(삼춘 대출·세금·대기열·★ 유지 심사)·시설 44·증축·청결·명소 방문객·투어·선물·직원 8직종·입지·목표 108·도전·튜토리얼 (마이그레이션 없음). 15: v3 대격변. 14: 라이벌 카페
+export const SAVE_VERSION = 31; // 31: zero-base(specs/2026-09-26-zero-base-start.md) — 필지 12×10, 본관은 실내가 있는 4×3 카페(증축 Lv3까지, main.level), 정낭 없음. 맵 크기가 바뀌어 옛 세이브는 백업만 하고 새 게임. // 30: 카이로 방향(direction.md) — 러시 타임을 통째로 뺐다(state.rush·rushAuto·rushGrades 삭제). 손으로 하는 건 배치뿐이고 손님은 알아서 온다. 손님은 자기 취향 자리(wants.ts)를 골라 앉고, 막(chapter)은 「그 손님이 제자리에 앉은 수」로 넘어간다. 러시 등급 목표 7개는 「제자리 손님 n명」으로 바꿨다. 불러올 때 러시 필드를 지우고 막 진행도를 0부터 다시 센다. // 29: 29: 한 판 = 다섯 막(chapter) — 「이번엔 이 손님을 잡는다」가 판마다 하나씩 생긴다(state.chapter). 막을 넘으려면 한 판의 러시에서 그 막의 손님을 직접·제자리에 n명 앉히고 그 판에서 A 이상(5막은 S) — 자동 착석은 안 센다. 덤으로 러시 자리 판정에서 귤밭·먹거리·즐길거리를 「주변 인기」가 아니라 그 분류 시설이 곁에 있나로 갈랐다(막마다 배치 과제가 달라지게). state.chapter는 optional이라 v28 세이브는 backfill만으로 이어진다. // 28: 직원·명당 배치 개편(staffpost) — 창 안의 「담당 구역」 3택 드롭다운을 없애고, 직원을 마당의 칸에 직접 세운다(Staff.post). 근무 자리 반경 2 안의 좌석이 「돌보는 자리」가 되어 만족 +2~5, 아무도 안 돌보는 자리는 −1. 근무 자리가 완성 명당 안이면 돌봄 +1 — 명당을 만들고 거기에 직원을 세우는 것이 한 수가 된다. 러시 때도 돌봄 받는 자리에 앉히면 점수 가산. 불러올 때 옛 zone 값은 지운다. // 27: 야외 중심 개편 — 손님이 앉는 곳은 전부 마당. 본관 증축 Lv2~4·2층·별관·본관 이사·실내 좌석(실내 테이블·카운터석·카운터 확장)·「실내」 짓기 탭을 통째로 뺐다. 추위·비는 시설의 지붕(shelter 0~2) 속성으로만 막는다(겨울에 야외 좌석을 끄지 않는다). 창가석은 야외 「전망 데크석」으로 이사. 불러올 때 migrateOutdoor가 증축·2층 값을 환불하고 없어진 실내 시설을 치운다. // 26: 덜어내기(teardown §3) — 동네 대항전(battle)과 직원 액티브 스킬(activeSkills·activeSkillSlots·titleChanceBonus)을 통째로 뺐다. 불러올 때 그 네 필드를 지운다. 러시 타임·동네 경쟁 카페 월간 순위표·칭호는 그대로. // 25: 러시 타임 통합(rushall) — 주간 리듬이 코어가 된다. 매주 토요일 12시 60~90초 러시(state.rush: 문 앞 줄·인내·자리 배정·밀린 주문·점수·S~C 등급·rushGrades), 직원 액티브 스킬(activeSkills·activeSkillSlots, 러시 중에만 쓴다), 매월 마지막 토요일 동네 대항전(battle, 러시 점수가 곧 대항전 점수), 중반 해금 7개를 돈이 아니라 러시 등급에 건다. 인사·추천은 삭제(greetDay·greetCount·recommendCount는 불러올 때 지운다). 새 필드가 전부 optional이라 v24 세이브는 backfill만으로 이어진다. 24: 6트랙 통합(all) — 명당 조각을 「종류」로(업그레이드해도 안 깨진다)·요금 배수 일원화(fee.ts, 자리 매출 PlacedObject.sales)·곧 완성될 명당(cornerSoon)·5년차 엔딩과 HOUR_MS 1200·동네 경쟁 카페 5곳(rivals·monthCosts.deal)·「할 일」 창·2년차 목표 8개(unlocked.recruits·staffCapBonus·ticketHints)·5막 튜토리얼(tutorial.lastDay). 새 필드가 전부 optional이라 v23 세이브는 backfill만으로 이어진다. 23: 4트랙 통합(mix) — 추천 칸 검증(탭은 고스트만)·예약 작업(PlacedObject.pending, 손님이 앉아 있어도 이동·철거·증축을 눌러 둔다)·직종별 고유 역할(Staff.zone/night·dayOrders)·진단과 숏컷·손님이 못 가는 시설 표시. 새 필드가 전부 optional이라 v22 세이브는 backfill만으로 이어진다. 22: 대규모 패치 통합(big) — 프롤로그 11컷·「명당」 용어·「인기」 4갈래(매력도 인기/시설 입소문/손님층 인지도)·랭크 숫자 비노출·성장 체감(dayLog)·시작 자금 350만·월 임대료(monthCosts.rent)·월말 등급 도장·유행(trend)·돌발 사고(pendingRisk)·빅 이벤트 선택(pendingEventChoice)·대출 기한(loan.dueMonthIndex)·배치 추천·배치 점수·오늘 할 일 1줄·대회 9단계(contest·monthCosts.contest·트로피). v21 세이브는 전부 optional 필드라 backfill만으로 이어진다 (migrateTrim은 v20 전용). 21: 덜어내기(trim) — 콤보·명당·도전·라이벌·팝업 원정·지역 손님·투어·마을제·100주년 삭제, 입지 5요소 → 자리 점수, 명소 24 → 8(Lv3), 경로 5 → 3, 불만 9 → 4, 손님 목소리 피드(voices). v20 세이브는 migrateTrim이 환불·치환 + 알림 한 줄. 20: 재미 리셋 통합(fun) — 시작 3분 튜토리얼 7단계·손님 상호작용(regulars·requests)·명당(codex.corners)·등급(grade)·제주 배경 (optional 필드 + backfill, 19 세이브는 백업 후 새 게임). 19: z 통합 — 엔딩·마을·이월·튜토리얼 30단계 seen (마이그레이션 없음). 18: y 통합 — 되돌리기(undo)·개체 이름(name)·유입 경로(routes·손님 route/foreign)·본관(main·객체 w/h/mode/careDay) (마이그레이션 없음, 17 세이브는 백업 후 새 게임). 17: 컨텐츠 확장 통합 — 경제(삼춘 대출·세금·대기열·★ 유지 심사)·시설 44·증축·청결·명소 방문객·투어·선물·직원 8직종·입지·목표 108·도전·튜토리얼 (마이그레이션 없음). 15: v3 대격변. 14: 라이벌 카페
 /** 시작 자금 350만 (stakes: 500만 → 350만). 좌석·시설 값은 그대로 두고 월 고정비(임대료·급여)를 얹어
  *  1년차 내내 「이번 달에 뭘 살지」가 고민이 되게. 정착지원금은 삼춘 대출(failure.ts)로 바뀌었다 — 확장 스펙 §4.2 #8 */
 export const START_MONEY = 3_500_000;
@@ -45,25 +45,17 @@ export const START_CANDIDATES = 2;
 export const START_SPAWN_ACC = 0.6;
 /** 옛 감귤밭의 감귤나무 위치 (필지 상대) */
 const ORCHARD_TREES = [{ lx: 2, ly: 2 }, { lx: 6, ly: 2 }, { lx: 2, ly: 5 }, { lx: 6, ly: 5 }];
-/** 완성 시작 상태의 본관 자리 (필지 상대, 3×2): 문 = 정면 왼쪽 (3,2), 그 앞 (3,3)이 창고 앞 (layout.ts WAREHOUSE_FRONT) */
-export const START_MAIN = { lx: 3, ly: 1 } as const;
-/** 시작 필지 안 시작 시설 (필지 상대): 본관 문 앞(3,3)에서 정낭(4,6)까지 올렛길, 그 양옆에 테이블 2 + 파라솔 1 */
-export const START_PATH: { lx: number; ly: number }[] = [{ lx: 3, ly: 3 }, { lx: 4, ly: 3 }, { lx: 4, ly: 4 }, { lx: 4, ly: 5 }];
+/** 본관 자리 (필지 상대, Lv1 4×3): 발자국 (4..7, 1..3), 문 = 정면 왼쪽 (4,3), 그 앞 (4,4)이 문 앞 (layout.ts WAREHOUSE_FRONT).
+ *  zero-base(specs/2026-09-26-zero-base-start.md): 시작 배치는 본관·올렛길·정류장뿐이다. */
+export const START_MAIN = { lx: 4, ly: 1 } as const;
+/** 문 앞(4,4)에서 마을 길(4,9) 바로 위(4,8)까지 올렛길 */
+export const START_PATH: { lx: number; ly: number }[] = [4, 5, 6, 7, 8].map((ly) => ({ lx: 4, ly }));
+/** 'starter'(봇·테스트 완성 시작 상태)의 자리: 본관 안 테이블 2 + 마당 파라솔 1 */
 export const START_SEATS: { type: string; lx: number; ly: number }[] = [
-  { type: 'table_out', lx: 3, ly: 4 }, { type: 'table_out', lx: 5, ly: 4 }, { type: 'table_parasol', lx: 5, ly: 5 },
+  { type: 'table_out', lx: 5, ly: 2 }, { type: 'table_out', lx: 6, ly: 2 }, { type: 'table_parasol', lx: 5, ly: 6 }, // 파라솔은 올렛길(x=4) 옆
 ];
-/** [코어만] 시작 마당 소품 — 80칸짜리 맨 흙에 테이블 3개만 있으니 카페가 아니라 주차장으로 보였다.
- *  값은 안 받는다(처음부터 깔려 있는 것). 손님 동선(올렛길 4,3~4,5)은 비워 둔다. */
-export const START_DECOR: { type: string; lx: number; ly: number }[] = [
-  { type: 'signboard', lx: 2, ly: 3 },      // 문 옆 간판
-  { type: 'flower_bed', lx: 2, ly: 4 },     // 길 왼쪽 꽃밭
-  { type: 'flower_bed', lx: 6, ly: 5 },     // 파라솔 옆 꽃밭
-  { type: 'garden_lamp', lx: 6, ly: 3 },    // 마당 오른쪽 정원등
-  { type: 'table_out', lx: 3, ly: 5 },      // 네 번째 자리 — 마당이 차 보이게
-];
-
-/** 올렛길 마지막 칸 (4,6): 정낭이 없는 마당(fun-start 새 게임)에서 마을 길(4,7)까지 잇는다. 정낭이 그 칸에 있으면(starter) 정낭 칸이 걷기 칸이라 안 놓는다. */
-export const START_PATH_ROAD_LINK = { lx: 4, ly: 6 } as const;
+/** 시작 마당 소품 — zero-base: 없다. 마당은 플레이어가 채운다 (본관이 진짜 카페라 빈 마당이 주차장처럼 보이지 않는다). */
+export const START_DECOR: { type: string; lx: number; ly: number }[] = [];
 
 /** 필지 안 상대 좌표 (lx, ly)의 지형. */
 function terrainFor(p: Parcel, lx: number, ly: number): Terrain {
@@ -88,7 +80,7 @@ function makeCells(parcels: Parcel[]): Cell[] {
 function stamp(state: GameState, type: string, x: number, y: number): PlacedObject | null {
   const def = objectDef(type);
   for (let dy = 0; dy < def.h; dy++)
-    for (let dx = 0; dx < def.w; dx++) if (state.grid.cells[(y + dy) * state.grid.w + (x + dx)]!.objectId) return null;
+    for (let dx = 0; dx < def.w; dx++) { const c = state.grid.cells[(y + dy) * state.grid.w + (x + dx)]!; if (c.objectId && c.objectId !== c.roomId) return null; } // 본관 빈 바닥(objectId = roomId)엔 놓는다 (zero-base: 시작 테이블은 안에)
   const id = `o${state.nextId++}`;
   const obj: PlacedObject = { id, type, x, y, placedMonth: monthIndex(state.clock) };
   state.objects[id] = obj;
@@ -145,7 +137,7 @@ function stampMain(state: GameState): void {
 function stampMainAndPath(state: GameState): void {
   const { x: ox, y: oy } = START_ORIGIN;
   stampMain(state);
-  for (const c of [...START_PATH, START_PATH_ROAD_LINK]) stamp(state, 'path', ox + c.lx, oy + c.ly);
+  for (const c of START_PATH) stamp(state, 'path', ox + c.lx, oy + c.ly);
 }
 
 /** §7.2 건너뛰기: 맨땅에 기존 완성 시작 상태(본관·올렛길·테이블 2·파라솔·메뉴 3종)를 채운다. 이미 있는 칸은 건너뛴다. */
@@ -304,8 +296,7 @@ export function createInitialState(seed: number, playerId = 'local', createdAt =
   // 시작 필지(1번, 정중앙): 정류장은 필지 아래 변의 마을 길에 (첫날부터 손님이 온다)
   const { x: ox, y: oy } = START_ORIGIN;
   stamp(state, 'busstop', ox, oy + PARCEL_H - 1);
-  // 정낭은 새 게임('tutorial') 시작 맵에 없다 — 「담」 탭 장식으로만 (fun-start §2). starter·bare는 옛 모습 그대로(봇 진행이 안 바뀌게).
-  if (layout !== 'tutorial') stamp(state, 'gate', ox + 4, oy + PARCEL_H - 2); // 정낭 칸은 gate kind라 걷기 가능(path.ts)
+  // 정낭은 없다 (zero-base) — 어떤 시작 배치에도 안 깔고, 짓기 목록에서도 뺐다(BuildWindow HIDDEN_IDS).
   // §5 완성 시작 상태(본관 + 올렛길 + 테이블 2 + 파라솔 1 + 메뉴 3종)는 'starter'일 때만.
   // 'tutorial'은 본관 + 올렛길만 — 손님은 테이블·메뉴가 생기면 바로 온다(canOpen). 'bare'는 맨땅 — 본관은 placeMain으로 직접 짓는다.
   if (layout === 'starter') { fillStarterLayout(state); unlockTutorialFeatures(state); }

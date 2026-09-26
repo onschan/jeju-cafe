@@ -22,9 +22,9 @@ export const MIGRATE_FROM = 20;
 /** big·mix·all·rushall 통합에서 붙은 필드는 전부 optional이라 backfill만으로 v21 → … → v27이 된다.
  *  v25 → v26은 덜어내기라 backfill이 없어진 필드(battle·activeSkills·activeSkillSlots·titleChanceBonus)를 지운다.
  *  v26 → v27도 덜어내기 — 야외 중심 개편. migrateOutdoor가 증축 Lv·2층·별관·실내 좌석을 환불·치환한다. */
-export const BACKFILL_FROM = [20, 21, 22, 23, 24, 25, 26];
+export const BACKFILL_FROM: number[] = []; // 31: 맵 크기가 바뀌어(12×10) 옛 세이브는 못 잇는다
 /** 이어서 열 수 있는 가장 낮은 세이브 버전 (이보다 낮으면 백업 뒤 새 게임) */
-export const OLDEST_LOADABLE = Math.min(...BACKFILL_FROM);
+export const OLDEST_LOADABLE = SAVE_VERSION;
 
 export function serialize(state: GameState): string {
   return JSON.stringify(state);
@@ -33,6 +33,7 @@ export function serialize(state: GameState): string {
 export function deserialize(json: string): GameState {
   const obj = JSON.parse(json) as GameState;
   if (!obj || typeof obj !== 'object') throw new Error('save: not an object');
+  if (typeof obj.version !== 'number' || obj.version < OLDEST_LOADABLE) throw new Error(`save version mismatch: ${obj.version} (expected ${SAVE_VERSION})`); // zero-base: 맵이 바뀌어 옛 세이브는 백업만
   if (obj.version === MIGRATE_FROM) migrateTrim(obj);
   const outdoor = obj.version <= 26;
   if (BACKFILL_FROM.includes(obj.version)) obj.version = SAVE_VERSION; // backfill()이 새 필드를 채운다
@@ -162,6 +163,7 @@ function backfill(state: GameState): void {
   state.monthMenuSold ??= {};
   state.routes ??= initRoutes(); // 트랙 H 유입 경로 (routes 없는 옛 저장)
   state.main ??= initMain(); // y-indoor: 본관 증축·이동·분위기 (SAVE_VERSION 18)
+  state.main.level ??= 1; // zero-base: 증축 단계
   state.ending ??= initEnding(); // z-ending: 엔딩·빠른 모드 (v18 세이브엔 없다)
   state.carry ??= null; // z-ending: 이월 묶음
   state.codex.titles ??= []; // staff-luck: 만난 칭호 도감

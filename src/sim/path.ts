@@ -1,7 +1,7 @@
 import type { GameState, Pt, PlacedObject } from './types.ts';
 import { objectDef } from '../data/index.ts';
 import { layoutCached, layoutSig } from './layoutRev.ts';
-import { inBounds, cellAt, objectAt, doorFrontOf } from './grid.ts';
+import { inBounds, cellAt, objectAt, doorFrontOf, doorOf, isRoomFloor, roomAt } from './grid.ts';
 import { ENTRY_CELLS } from './layout.ts';
 import { HOUR_MS } from './clock.ts';
 
@@ -10,9 +10,21 @@ const WALKABLE_KINDS = new Set(['path', 'gate', 'busstop']);
 /** 길·정낭·정류장·도로만 걸을 수 있다. 건물 안(본관)은 주방·카운터라 손님이 들어가지 않는다. */
 export function isWalkable(state: GameState, x: number, y: number): boolean {
   if (!inBounds(state, x, y)) return false;
+  if (isRoomFloor(state, x, y)) return !roomAt(state, x, y)?.build; // zero-base: 가구 없는 본관 바닥은 걷는 칸 (공사 중이면 아니다)
   const obj = objectAt(state, x, y);
   if (obj) return WALKABLE_KINDS.has(objectDef(obj.type).kind);
   return cellAt(state, x, y).terrain === 'road';
+}
+
+/** 방 경계를 넘는 걸음은 방 쪽 칸이 문일 때만. 같은 방 안·둘 다 바깥이면 자유. */
+export function canStep(state: GameState, from: Pt, to: Pt): boolean {
+  const a = cellAt(state, from.x, from.y).roomId;
+  const b = cellAt(state, to.x, to.y).roomId;
+  if (a === b) return true;
+  const isDoor = (roomId: string, p: Pt) => { const d = doorOf(state.objects[roomId]!); return d.x === p.x && d.y === p.y; };
+  if (a !== null && !isDoor(a, from)) return false;
+  if (b !== null && !isDoor(b, to)) return false;
+  return true;
 }
 
 const BUS_CACHE = new WeakMap<GameState, { key: string; value: Pt }>();
@@ -28,7 +40,7 @@ const DIRS: Pt[] = [{ x: 1, y: 0 }, { x: -1, y: 0 }, { x: 0, y: 1 }, { x: 0, y: 
 
 export function walkableNeighborsOf(state: GameState, x: number, y: number): Pt[] {
   if (!inBounds(state, x, y)) return [];
-  return DIRS.map((d) => ({ x: x + d.x, y: y + d.y })).filter((p) => isWalkable(state, p.x, p.y));
+  return DIRS.map((d) => ({ x: x + d.x, y: y + d.y })).filter((p) => isWalkable(state, p.x, p.y) && canStep(state, { x, y }, p));
 }
 
 export const cellKey = (state: GameState, p: Pt) => p.y * state.grid.w + p.x;

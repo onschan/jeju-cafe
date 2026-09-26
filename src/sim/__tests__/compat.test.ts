@@ -1,4 +1,4 @@
-import { bareState } from './helpers.ts';
+import { bareState, clearStubPath } from './helpers.ts';
 import { X, Y } from './helpers.ts';
 import { placeObject, objectScenery, sceneryScore } from '../grid.ts';
 import { objectStats, popularityFor, setLevels, discoverPlacement, BASE_POPULARITY, POPULARITY_CAP } from '../compat.ts';
@@ -134,7 +134,7 @@ test('만족: 인기 보너스는 기본 10에서 3마다 경치 1점', () => {
 });
 
 test('유지비는 objectStats.upkeep을 쓴다 (economy.upkeepOf: 1.5% 데이터 → 2.5%/월)', () => {
-  const s = bareState(1);
+  const s = clearStubPath(bareState(1));
   placeObject(s, 'table_out', X(4), Y(5));
   const m0 = s.money;
   upkeep(s);

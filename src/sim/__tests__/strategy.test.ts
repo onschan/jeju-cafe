@@ -9,7 +9,7 @@ import { reachMap, busStopPos, walkableNeighborsOf, cellKey, isDoorReachable } f
 import { parkingSites } from '../entry.ts';
 import {
   bestMainCells, bestSeatCells, bestSeatCellsHeuristic, bestWallCell, bestCornerCells, cornerScoreIfPlaced, bestParkingCells, bestSpotToInvest,
-  nextMove, strategyVars, fillTemplate, wallSheltered, walkFromEntry, SEAT_SCORE_CELLS, TREE_TYPE,
+  nextMove, strategyVars, fillTemplate, wallSheltered, walkFromEntry, SEAT_SCORE_CELLS, TREE_TYPE, BUS_FRONT_KEEP_OUT,
 } from '../strategy.ts';
 import type { GameState, Pt } from '../types.ts';
 
@@ -25,8 +25,7 @@ function bareYardWithPath(seed = 1): GameState {
   const s = createInitialState(seed, 'local', 0, 'bare');
   expect(apply(s, { type: 'placeMain', ...recommendedMainCells(s)[0]! }).ok).toBe(true);
   const door = doorFrontOf(mainBuilding(s)!);
-  const gate = Object.values(s.objects).find((o) => o.type === 'gate')!; // 옛 맨땅엔 정낭이 마을 길 옆에 있다 — 문 앞에서 정낭까지 가로로
-  for (let x = Math.min(gate.x, door.x); x <= Math.max(gate.x, door.x); x++) apply(s, { type: 'place', objectType: 'path', x, y: door.y });
+  for (let y = door.y; y < VILLAGE_ROAD_Y; y++) apply(s, { type: 'place', objectType: 'path', x: door.x, y }); // 문 앞에서 마을 길까지 곧게 (정낭은 없다 — zero-base)
   expect(isDoorReachable(s, mainBuilding(s)!)).toBe(true);
   return s;
 }
@@ -55,7 +54,9 @@ describe('할망의 정석 (strategy.ts): 글로우 칸은 실제 수치로 고�
     expect(reachable(best)).toBe(true);
     const cost = (p: Pt) => walkFromEntry(s, reach, p.x, p.y) - seatScore(s, p.x, p.y) * SEAT_SCORE_CELLS;
     const top = cost(best);
-    for (const p of allEmptyOwned(s, 'table_out')) if (reachable(p)) expect(cost(p)).toBeGreaterThanOrEqual(top);
+    const bus = busStopPos(s);
+    const nearBus = (p: Pt) => Math.max(Math.abs(p.x - bus.x), Math.abs(p.y - bus.y)) <= BUS_FRONT_KEEP_OUT; // 정류장 곁은 후보에서 뺀다 (zero-base)
+    for (const p of allEmptyOwned(s, 'table_out')) if (reachable(p) && !nearBus(p)) expect(cost(p)).toBeGreaterThanOrEqual(top);
     // 좋은 순서다 (앞 칸이 뒤 칸보다 싸다)
     const three = bestSeatCells(s, 3);
     expect(cost(three[0]!)).toBeLessThanOrEqual(cost(three[2]!));

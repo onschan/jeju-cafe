@@ -2,7 +2,7 @@ import type { GameState, Guest, PlacedObject, Pt, MenuCategory, MenuStatKey, Rol
 import { canOpen } from './goals.ts';
 import { objectDef, guestTypeDef, guestTags, guestDialogue, canonicalGuestId, namedGuestDef, NAMED_TYPE, chainPosition } from '../data/index.ts';
 import { pickWeighted, nextRandom, randInt } from './rng.ts';
-import { sceneryScore, objectAt, sizeOf } from './grid.ts';
+import { sceneryScore, objectAt, sizeOf, roomAt } from './grid.ts';
 import { availableMenus, consumeIngredients, isMenuAvailable } from './menu.ts';
 import { busStopPos, findPath, walkableNeighborsOf, reachMap, pathFromReach, cellKey, moveAlong, walkSpeedMult, GUEST_SPEED_CELLS_PER_S } from './path.ts';
 import { roleEffect, skillTotal, pushNotice, staffInRole, addRoleExp, LOW_ENERGY, roleHeads, isNightShift, NIGHT_BONUS } from './staff.ts'; // staff2: 인원 환산·저녁 근무
@@ -136,7 +136,7 @@ export function seatSlotPos(seat: PlacedObject, slot: number, n = objectDef(seat
 export function freeSeats(state: GameState): PlacedObject[] {
   const taken = new Map<string, number>();
   for (const g of state.guests) if (g.seatId && g.phase !== 'leaving') taken.set(g.seatId, (taken.get(g.seatId) ?? 0) + 1);
-  const open = seatObjects(state).filter((o) => (taken.get(o.id) ?? 0) < seatsOf(state, o)); // 겨울·비에도 좌석을 걸러내지 않는다 — 지붕(shelter)이 만족으로만 갈린다 (site.ts)
+  const open = seatObjects(state).filter((o) => (taken.get(o.id) ?? 0) < seatsOf(state, o) && !roomAt(state, o.x, o.y)?.build); // 겨울·비에도 좌석을 걸러내지 않는다 (지붕 개념 없음). 공사 중인 본관 안 자리는 못 쓴다 (zero-base)
   const notReserved = open.filter((o) => !o.pending);
   return notReserved.length > 0 ? notReserved : open;
 }

@@ -1,6 +1,6 @@
 import { Application, Container, Sprite, Graphics, Texture, Text } from 'pixi.js';
 import type { GameState, PlacedObject, Guest, Staff, Season, RoleId, Pt, RouteId, FxEvent } from '../sim/index.ts';
-import { seasonOf, LOW_ENERGY, parcelPrice, canBuyParcel, parcelAt, footprint, roomAt, doorFrontOf, WALL_COLORS, dayIndex, menuOf, sizeOf, mainBuilding, MAIN_SIZE, LIGHT_RADIUS, gradeOf, objectAt, cellAt, contestBadge, seatGrade, GRADE_COLOR } from '../sim/index.ts';
+import { seasonOf, LOW_ENERGY, parcelPrice, canBuyParcel, parcelAt, footprint, roomAt, doorFrontOf, WALL_COLORS, dayIndex, menuOf, sizeOf, mainBuilding, MAIN_SIZE, LIGHT_RADIUS, gradeOf, objectAt, cellAt, contestBadge, seatGrade, GRADE_COLOR, mainLevel, mainSize } from '../sim/index.ts';
 import type { Parcel } from '../sim/index.ts';
 import { objectDef } from '../data/index.ts';
 import { isoTerrainTexture, isoObjectTexture, glowTexture, label, clearTextureCache, loadLabelFont } from './textures';
@@ -116,8 +116,9 @@ const LOCKED_ALPHA = 0.45;
 /** fun-rank: 등급별 본관 외벽 tint (플레이어가 외벽 색을 고르지 않았을 때(0) — 등급이 오르면 벽이 산뜻해진다: 회벽 → 크림 → 연노랑 → 연분홍 → 연보라) */
 const GRADE_WALL_TINT = [0xffffff, 0xe6e0d4, 0xfff4dc, 0xfff8c8, 0xffe0e8, 0xe8d8ff];
 /** fun-rank: 본관 뒤 모서리(두 벽이 만나는 꼭대기) 높이 = 기단 10 + 벽 높이(sprites_iso_rooms.py warehouse/MAIN_WALL_H) */
-/** 본관 벽 높이 (3×2 고정) */
-const MAIN_WALL_TOP = 36;
+/** 본관 벽 높이(기단 10 + 벽) — 증축 Lv별 (sprites_iso_rooms.py MAIN_WALL_H {2: 28, 3: 34, 4: 40} + 기단 10) */
+const MAIN_WALL_TOPS: Record<number, number> = { 1: 38, 2: 44, 3: 50 };
+const mainWallTop = (state: GameState) => MAIN_WALL_TOPS[mainLevel(state)] ?? 38;
 
 /** 상단 바(28px) + 목표 줄(24px) 아래에 맵 위 꼭짓점이 오도록 하는 기본 세로 오프셋 */
 const WORLD_OFFSET_Y = 76;
@@ -262,18 +263,18 @@ const FLASH_FRAME_MS = 90;
 const FLASH_FRAMES = 3;
 const CORNER_SAY_MS = 1800;
 
-/** 오브젝트 상태별 스프라이트 변형 이름. 본관은 3×2 고정이라 변형이 없다. */
-function objectVariant(o: Pick<PlacedObject, 'type'>): string | undefined {
-  if (o.type === 'warehouse') return undefined;
+/** 오브젝트 상태별 스프라이트 변형 이름. 본관은 증축 Lv(state.main.level)에 따라 lv2·lv3 (zero-base). */
+function objectVariant(o: Pick<PlacedObject, 'type'>, level = 1): string | undefined {
+  if (o.type === 'warehouse') return level >= 2 ? `lv${Math.min(3, level)}` : undefined;
   if (o.type === 'gate') return '0'; // 2B에서 영업 토글 연동
   return undefined;
 }
 
 /** 아이소 스프라이트(회전 _r{n} → 변형 → 기본) → 탑다운 스프라이트(변형 → 기본) 순으로 찾는다. 다 없으면 null. */
-function objectTex(o: Pick<PlacedObject, 'type' | 'rot'>): { texture: Texture; iso: boolean } | null {
+function objectTex(o: Pick<PlacedObject, 'type' | 'rot'>, level = 1): { texture: Texture; iso: boolean } | null {
   if (!hasAssets()) return null;
   const name = SPRITE_ALIAS[o.type] ?? o.type;
-  const variant = objectVariant(o);
+  const variant = objectVariant(o, level);
   const rotated = o.rot !== undefined ? peekTex(spriteName.isoObject(name, `r${o.rot}`)) : null;
   const iso = rotated ?? peekTex(spriteName.isoObject(name, variant)) ?? (variant ? peekTex(spriteName.isoObject(name)) : null);
   if (iso) return { texture: iso, iso: true };
@@ -1488,24 +1489,24 @@ export class GameView {
     entry.node.getChildByLabel('gradesign')?.destroy({ children: true });
     const signTex = peekTex(spriteName.isoObject('warehouse', `sign_g${grade}`));
     if (signTex) {
-      const { w, h } = MAIN_SIZE;
+      const { w, h } = mainSize(state);
       const gs = new Sprite(signTex);
       gs.label = 'gradesign';
       gs.anchor.set(0.5, 1);
       // 노드 원점 = 발자국 앞 꼭짓점. 뒤 꼭짓점은 x=(h−w)·32, y=−(w+h)·16, 그 위로 벽 높이(+2층 띠)만큼
-      gs.position.set((h - w) * (ISO_W / 2), -(w + h) * (ISO_H / 2) - MAIN_WALL_TOP + 2);
+      gs.position.set((h - w) * (ISO_W / 2), -(w + h) * (ISO_H / 2) - mainWallTop(state) + 2);
       entry.node.addChild(gs);
     }
     // 대회 입상 배지: 등급 간판 위 금별 리본 (contest.ts badge — 1위 6개월·입상 3개월, 지나면 사라진다)
     entry.node.getChildByLabel('contestbadge')?.destroy({ children: true });
     const badge = contestBadge(state);
     if (badge) {
-      const size = MAIN_SIZE;
+      const size = mainSize(state);
       const c = new Container();
       c.label = 'contestbadge';
       const l = label(`★ ${badge}`, 9);
       l.anchor.set(0.5, 1);
-      l.position.set(0, -(size.w + size.h) * (ISO_H / 2) - MAIN_WALL_TOP - 16);
+      l.position.set(0, -(size.w + size.h) * (ISO_H / 2) - mainWallTop(state) - 16);
       const bg = new Graphics().roundRect(l.x - l.width / 2 - 4, l.y - l.height - 1, l.width + 8, l.height + 2, 3).fill({ color: 0xd4a13c, alpha: 0.95 });
       c.addChild(bg, l);
       entry.node.addChild(c);
@@ -1610,10 +1611,10 @@ export class GameView {
       if (entry.sprite) {
         // 시트 모드: 변형(심음·어린 나무·증축)이 바뀔 때만 텍스처를 갱신. 수확은 자동이라 링 대신 반짝임(syncFx).
         const isCafe = o.type === 'warehouse';
-        const key = `${objectVariant(o) ?? ''}:${o.rot ?? ''}${isCafe ? `:${state.cosmetics?.wallColor ?? 0}:${state.cosmetics?.sign ?? ''}:g${gradeOf(state)}:${contestBadge(state) ?? ''}` : ''}`; // fun-rank: 등급이 바뀌면 간판·외벽 갱신 · 대회 배지가 붙거나 떨어지면 다시
+        const key = `${objectVariant(o, mainLevel(state)) ?? ''}:${o.rot ?? ''}${isCafe ? `:${state.cosmetics?.wallColor ?? 0}:${state.cosmetics?.sign ?? ''}:g${gradeOf(state)}:${contestBadge(state) ?? ''}` : ''}`; // fun-rank: 등급이 바뀌면 간판·외벽 갱신 · 대회 배지가 붙거나 떨어지면 다시
         if (this.badgeKeys.get(o.id) === key) continue;
         this.badgeKeys.set(o.id, key);
-        const t = objectTex(o);
+        const t = objectTex(o, mainLevel(state));
         if (t) entry.sprite.texture = t.texture;
         if (isCafe) this.decorateCafe(entry, state);
         continue;

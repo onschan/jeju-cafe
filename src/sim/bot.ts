@@ -15,10 +15,10 @@
 import type { GameState, MonthCard, PlacedObject, Pt } from './types.ts';
 import { createInitialState } from './state.ts';
 import { tick } from './tick.ts';
-import { apply } from './actions.ts';
+import { apply, PROTECTED_TYPES } from './actions.ts';
 import { DAY_MS } from './clock.ts';
 import { canPlace, objectAt, cellAt, footprint, doorFrontOf, blocksDoorFront, inBounds, sizeOf } from './grid.ts';
-import { START_ORIGIN } from './layout.ts';
+import { START_ORIGIN, ENTRY_CELLS, WAREHOUSE_FRONT, PARCEL_W, PARCEL_H } from './layout.ts';
 import { objectDef, hasObjectDef, SETS, questDef } from '../data/index.ts';
 import { DEVELOP_RESEARCH, menuOf } from './craft.ts';
 import { canDrawTicket, hasFreeDraw, canUseGuestItem, MID_MONTH_TICKET_DAY } from './shop.ts';
@@ -63,7 +63,7 @@ import { isWalkable } from './path.ts'; // botfix: 길이 붙을 수 있는 칸�
 import { isSeat } from './cafe.ts';
 import type { JobTier } from './types.ts';
 import { parkingSites, routePathCells, routeFacility, ENTRY_ROUTES, PARKING_EXPAND_FROM, PARKING_SLOTS } from './entry.ts'; // 트랙 H
-import { mainBuilding } from './rooms.ts';
+import { mainBuilding, nextMainLevel, expandCost, expandCells, canExpandMain } from './rooms.ts';
 import type { Candidate, RoleId, StatKey, QuestDef } from './types.ts';
 import { bestMoves, BOT_SOLVER_OPTIONS, type SolverOptions } from './solver.ts'; // solver 정책
 import { activeSteal, RIVAL_COUNTER_COST, endgameOpen, activeRivals, RIVAL_ACQUIRE_COST } from './rival.ts'; // rival2: 뺏기 이벤트 대응 · all: 5년차 인수
@@ -101,20 +101,19 @@ export interface BotRow {
 
 /** 시작 필지 상대 좌표 → 격자 좌표 */
 const at = (x: number, y: number) => ({ x: START_ORIGIN.x + x, y: START_ORIGIN.y + y });
-/** 가로 올렛길 y=4 양옆(y=3, y=5)에 테이블 (시작 필지 상대). 시작 테이블(3,4)(5,4)(5,5)은 이미 있다. */
-export const BOT_TABLES: { x: number; y: number }[] = [
-  ...[0, 1, 2, 5, 6, 7, 8, 9].map((x) => at(x, 3)),
-  at(5, 6), // (3,3)은 본관 문 앞 칸이라 못 놓는다 → 정낭 옆으로
-  ...[0, 1, 2, 3, 7, 8, 9].map((x) => at(x, 5)),
+/** zero-base: 테이블은 고정 칸이 아니라 그달의 후보 칸(bestSeatCellsHeuristic — 본관 빈 바닥이 먼저 잡힌다)에 놓는다. 시작 3석 + 이만큼까지. */
+export const BOT_TABLES_MAX = 19;
+/** 열린 시설을 놓는 칸 (시작 필지 12×10 상대: 마당 아래쪽 두 줄·맨 윗줄, 올렛길 열(x=4)과 본관(4..7,1..3)은 비운다) */
+export const BOT_DECO_CELLS: { x: number; y: number }[] = [
+  ...[6, 7, 8, 9, 10, 11, 0, 1, 2, 3].flatMap((x) => [at(x, 7), at(x, 8)]),
+  ...[0, 1, 2, 3, 8, 9, 10, 11].map((x) => at(x, 0)),
 ];
-/** 열린 시설을 놓는 칸 (시작 필지 아래쪽 줄) */
-export const BOT_DECO_CELLS: { x: number; y: number }[] = [at(6, 6), at(7, 6), at(8, 6), at(9, 6), at(0, 6), at(1, 6), at(2, 6), at(3, 6), at(1, 7), at(2, 7), at(3, 7), at(6, 7), at(7, 7), at(8, 7), at(9, 7), at(0, 0), at(1, 0), at(2, 0), at(6, 0), at(7, 0), at(8, 0), at(9, 0)];
 /** 시설 수 목표를 위해 놓는 시설 종류 (열린 것만, 이 순서로 하나씩) */
 /** 열린 순서대로(앞이 잠겨 있으면 멈춘다): 감귤나무 2(세트 「감성 카페」·콤보 「귤밭 뷰」「돌담 수확」) → 목표 보상 순 → 휴게실(★2) */
 export const BOT_DECO_TYPES = ['tangerine_tree', 'tangerine_tree', 'deco_planter', 'deco_wood_bench', 'terrace_seat', 'deco_flower_pots', 'bench_stonewall', 'canola', 'restroom', 'cleaning_room', 'cauldron_footbath', 'vending', 'toenmaru', 'pampas', 'omegi_stall', 'dolhareubang', 'carrot_field', 'tart_bakery', 'signboard', 'streetlight', 'cedar', 'basalt_rock', 'water_jar', 'hydrangea',
   // 랜드마크(★4 조건 2개): 부탁·명소 Lv4 보상으로 열리는 것부터 — 필지당 하나라 canPlace가 자리를 고른다
   'dolhareubang_pair', 'stone_guardians', 'millstone', 'hackberry', 'observatory', 'lighthouse'];
-export const BOT_WALLS: { x: number; y: number }[] = [at(5, 5), at(6, 5)];
+export const BOT_WALLS: { x: number; y: number }[] = [at(6, 5), at(7, 5)];
 export const FLYER_MIN_MONEY = 1_000_000;
 /** 돈이 이만큼 넘으면 SNS 홍보도 (연구 20) */
 export const SNS_MIN_MONEY = 4_000_000;
@@ -171,17 +170,17 @@ export const BOT_JOB_TIERS: JobTier[] = ['flyer', 'site', 'magazine', 'intern', 
 /** fun-rank: 명소 투자는 3년차부터 Lv4, 4년차부터 Lv5까지, 4년차부터 한 달 최대 3곳 (24곳 Lv5 = ₩8억이 5년차 자금 ≤2억의 주된 씀씀이) */
 export const BOT_SPOT_PER_MONTH_LATE = 3;
 export const BOT_SPOT_LV4_YEAR = 3;
-/** 산 필지의 확장 칸 (격자 절대 좌표): 3번 필지(위) 아래 두 줄, 4번 필지(왼쪽) 오른쪽 두 열. 안 산 필지는 canPlace가 거른다. */
+/** 산 필지의 확장 칸 (격자 절대 좌표, 필지 12×10): 3번 필지(위, x 12..23 y 0..9) 아래 두 줄, 4번 필지(왼쪽, x 0..11 y 10..19) 오른쪽 두 열. 안 산 필지는 canPlace가 거른다. */
 export const BOT_EXTRA_CELLS: { x: number; y: number }[] = [
-  ...[10, 11, 12, 13, 14, 15, 16, 17, 18, 19].flatMap((x) => [{ x, y: 6 }, { x, y: 7 }]),
-  ...[8, 9].flatMap((x) => [8, 9, 10, 11, 12, 13, 14, 15].map((y) => ({ x, y }))),
+  ...Array.from({ length: PARCEL_W }, (_, i) => START_ORIGIN.x + i).flatMap((x) => [{ x, y: START_ORIGIN.y - 2 }, { x, y: START_ORIGIN.y - 1 }]),
+  ...[START_ORIGIN.x - 2, START_ORIGIN.x - 1].flatMap((x) => Array.from({ length: PARCEL_H - 1 }, (_, i) => ({ x, y: START_ORIGIN.y + i }))),
 ];
-/** 명당 조각 자리(fun 통합): 위 칸들 + 산 필지(3번 위쪽 3줄·4번 왼쪽 열·8번 돌담 언덕·9번 옛 감귤밭 안쪽) — 경로 시설 자리(올레 표식 (3,11)·선착장 (14,0)·셔틀 (15,20))와 그 길 줄은 뺀다. 안 산 필지는 canPlace가 거른다. */
+/** 명당 조각 자리(fun 통합): 산 필지(3번 위쪽 3줄·4번 왼쪽 열·8번 돌담 언덕·9번 옛 감귤밭 안쪽) — 올레 표식 자리와 그 길 줄(x=3, y=olle+1)은 뺀다. 안 산 필지는 canPlace가 거른다. */
 export const BOT_CORNER_CELLS: { x: number; y: number }[] = [
-  ...[10, 11, 12, 13, 15, 16, 17, 18, 19].flatMap((x) => [2, 3, 4].map((y) => ({ x, y }))),
-  ...[1, 2, 4, 5, 6, 7].flatMap((x) => [9, 10, 13, 14].map((y) => ({ x, y }))),
-  ...[21, 22, 23, 24, 25, 26, 27, 28].flatMap((x) => [2, 3, 4, 5].map((y) => ({ x, y }))),
-  ...[1, 2, 3, 4, 5, 6, 7, 8].flatMap((x) => [17, 18, 19, 20].map((y) => ({ x, y }))),
+  ...Array.from({ length: PARCEL_W }, (_, i) => START_ORIGIN.x + i).filter((x) => x !== WAREHOUSE_FRONT.x).flatMap((x) => [2, 3, 4].map((y) => ({ x, y }))),
+  ...[1, 2, 4, 5, 6, 7].flatMap((x) => [START_ORIGIN.y + 1, START_ORIGIN.y + 2, START_ORIGIN.y + 5, START_ORIGIN.y + 6].map((y) => ({ x, y }))),
+  ...Array.from({ length: 8 }, (_, i) => 2 * PARCEL_W + 1 + i).flatMap((x) => [2, 3, 4, 5].map((y) => ({ x, y }))),
+  ...[1, 2, 3, 4, 5, 6, 7, 8].flatMap((x) => [1, 2, 3, 4].map((dy) => ({ x, y: 2 * PARCEL_H + dy }))),
 ];
 export const BOT_RECIPES = 5;
 /** 2년차부터 빈 직원 슬롯을 채운다 (돈 이만큼 넘을 때) — §4.6 직원 3 → 5 → 8 */
@@ -389,6 +388,17 @@ function repairWorn(s: GameState): void {
     if (apply(s, { type: 'repairObject', objectId: o.id }).ok) n++;
   }
 }
+/** zero-base: 카페 증축 — 2년차 Lv2(₩300만)·3년차 Lv3(₩800만), 비용 + 여유(BOT_UPGRADE_MIN_MONEY)가 있을 때. 늘어나는 칸의 자리·장식은 치운다(환불). */
+export const BOT_EXPAND_LEVEL_YEAR: Record<number, number> = { 2: 2, 3: 3 };
+function expandMainIfCan(s: GameState): void {
+  const next = nextMainLevel(s);
+  if (!next || s.clock.year < (BOT_EXPAND_LEVEL_YEAR[next] ?? Infinity) || !canSpend(s, expandCost(s) + BOT_UPGRADE_MIN_MONEY)) return;
+  for (const p of expandCells(s)) {
+    const o = objectAt(s, p.x, p.y);
+    if (o && objectDef(o.type).kind !== 'path' && !PROTECTED_TYPES.has(o.type)) apply(s, { type: 'remove', objectId: o.id });
+  }
+  if (canExpandMain(s).ok) apply(s, { type: 'expandMain' });
+}
 /** 랭크 3부터: 연수 중이 아닌 직원 하나를 서비스 연수에 보낸다 (한 달 한 명) */
 function trainOne(s: GameState): void {
   if (s.clock.year < BOT_HIRE_YEAR || s.stats.trainings >= BOT_TRAIN_MAX || !canSpend(s, BOT_TRAIN_MIN_MONEY)) return;
@@ -552,10 +562,10 @@ function buyParcelIfAny(s: GameState): void {
 }
 
 /** 트랙 H 유입 경로: 주차장(마을 길 옆 첫 자리) → 올레 표식·셔틀 정류장·선착장 + 진입점까지 올렛길 → 셔틀 계약 */
-export const BOT_ROUTE_SITES: Record<'olle', { x: number; y: number }> = { olle: { x: 3, y: 11 } };
-/** 경로 시설에서 시작 필지 올렛길(가로 y=12 · 세로 x=14)까지 잇는 칸. 크루즈는 parcel2·parcel4를 지나므로 그 필지를 산 뒤에 이어진다. */
+export const BOT_ROUTE_SITES: Record<'olle', { x: number; y: number }> = { olle: { x: 3, y: ENTRY_CELLS.olle.y } };
+/** 경로 시설에서 시작 필지 올렛길(문 앞 칸에서 내려오는 세로 줄)까지 잇는 칸: 표식 아래 줄을 동쪽으로 문 앞 칸 줄까지. */
 const BOT_ROUTE_LINKS: Record<'olle', { x: number; y: number }[]> = {
-  olle: [{ x: 3, y: 12 }, ...[4, 5, 6, 7, 8, 9].map((x) => ({ x, y: 12 }))],
+  olle: Array.from({ length: WAREHOUSE_FRONT.x - 3 }, (_, i) => ({ x: 3 + i, y: ENTRY_CELLS.olle.y + 1 })),
 };
 function laySteps(s: GameState, cells: { x: number; y: number }[]): void {
   for (const c of cells) {
@@ -647,7 +657,8 @@ export function monthlyPlan(s: GameState, monthsPlayed: number, lastNet = Number
   ensurePath(s);
   // 테이블은 한 달에 4개씩 늘린다 (사람처럼): 시작 3석 + 16
   let added = 0;
-  for (const p of [...BOT_TABLES].sort((a, b) => seatScore(s, b.x, b.y) - seatScore(s, a.x, a.y))) { if (added >= BOT_TABLES_PER_MONTH) break; if (!objectAt(s, p.x, p.y) && place(s, 'table_out', p.x, p.y)) added++; }
+  if (countType(s, 'table_out') < BOT_TABLES_MAX) for (const p of bestSeatCellsHeuristic(s, BOT_TABLES_PER_MONTH)) { if (added >= BOT_TABLES_PER_MONTH || countType(s, 'table_out') >= BOT_TABLES_MAX) break; if (place(s, 'table_out', p.x, p.y)) added++; }
+  expandMainIfCan(s); // zero-base: 2년차 Lv2 · 3년차 Lv3 — 실내가 넓어져 다음 달 테이블이 안으로 들어간다
   // 자리가 모자라 돌아간 손님이 많으면 산 필지에 테이블을 더 (평판 'no_seat' 불만 방지)
   if (s.clock.year >= BOT_EXTRA_TABLE_YEAR && (complaintCounts(s).find((c) => c.reason === 'no_seat')?.count ?? 0) >= BOT_EXTRA_TABLE_LEFT) {
     let extra = 0;

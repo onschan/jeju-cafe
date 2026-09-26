@@ -5,26 +5,27 @@ import { mainBuilding } from '../rooms.ts';
 import { ENTRY_CELLS } from '../layout.ts';
 import { isWalkable, findPath, walkableNeighborsOf, busStopPos, reachMap, pathFromReach, cellKey, isDoorReachable, entryPoints } from '../path.ts';
 
-test('도로·올렛길·정낭·정류장은 걷기 가능, 흙·당근밭·건물은 불가', () => {
+test('도로·올렛길·정류장·본관 빈 바닥은 걷기 가능, 흙·당근밭·카운터는 불가', () => {
   const s = bareState(1);
-  expect(isWalkable(s, X(5), Y(7))).toBe(true);  // 도로
-  expect(isWalkable(s, X(0), Y(7))).toBe(true);  // 정류장
-  expect(isWalkable(s, X(4), Y(6))).toBe(true);  // 정낭
+  expect(isWalkable(s, X(5), Y(9))).toBe(true);  // 도로
+  expect(isWalkable(s, X(0), Y(9))).toBe(true);  // 정류장
+  expect(isWalkable(s, X(4), Y(6))).toBe(true);  // 어귀 올렛길
   expect(isWalkable(s, X(5), Y(5))).toBe(false); // 흙
-  expect(isWalkable(s, X(3), Y(1))).toBe(false); // 본관 안은 주방·카운터라 손님이 안 들어간다
+  expect(isWalkable(s, X(5), Y(1))).toBe(false); // 본관 뒷벽 줄은 카운터·주방
+  expect(isWalkable(s, X(5), Y(2))).toBe(true);  // 본관 빈 바닥 (zero-base: 안에도 앉는다)
   placeObject(s, 'carrot_field', X(0), Y(0));
   expect(isWalkable(s, X(0), Y(0))).toBe(false); // 당근밭
   placeObject(s, 'path', X(5), Y(5));
   expect(isWalkable(s, X(5), Y(5))).toBe(true);
 });
 
-test('정류장 → 정낭 경로가 있다', () => {
+test('정류장 → 어귀 올렛길 경로가 있다', () => {
   const s = bareState(1);
   const p = findPath(s, busStopPos(s), { x: X(4), y: Y(6) });
   expect(p).not.toBeNull();
-  expect(p![0]).toEqual({ x: X(0), y: Y(7) });
+  expect(p![0]).toEqual({ x: X(0), y: Y(9) });
   expect(p![p!.length - 1]).toEqual({ x: X(4), y: Y(6) });
-  expect(p!.length).toBe(6); // 4칸 오른쪽 + 1칸 위 + 시작점
+  expect(p!.length).toBe(8); // 4칸 오른쪽 + 3칸 위 + 시작점
 });
 
 test('끊긴 곳으로는 경로가 없다', () => {
@@ -34,7 +35,7 @@ test('끊긴 곳으로는 경로가 없다', () => {
 
 test('좌석 옆 걷기 가능 칸', () => {
   const s = bareState(1);
-  const seat = placeObject(s, 'table_out', X(4), Y(5)); // 정낭(4,6) 바로 위
+  const seat = placeObject(s, 'table_out', X(4), Y(5)); // 어귀 올렛길(4,6) 바로 위
   expect(walkableNeighborsOf(s, seat.x, seat.y)).toEqual([{ x: X(4), y: Y(6) }]);
 });
 
@@ -42,13 +43,13 @@ test('reachMap은 거리와 경로를 한 번에 준다', () => {
   const s = bareState(1);
   placeObject(s, 'path', X(4), Y(5));
   const r = reachMap(s, busStopPos(s));
-  expect(r.dist.get(cellKey(s, { x: X(4), y: Y(6) }))).toBe(5);
-  expect(r.dist.get(cellKey(s, { x: X(4), y: Y(5) }))).toBe(6);
+  expect(r.dist.get(cellKey(s, { x: X(4), y: Y(6) }))).toBe(7);
+  expect(r.dist.get(cellKey(s, { x: X(4), y: Y(5) }))).toBe(8);
   expect(r.dist.has(cellKey(s, { x: X(8), y: Y(2) }))).toBe(false);
   const p = pathFromReach(s, r, { x: X(4), y: Y(5) })!;
-  expect(p[0]).toEqual({ x: X(0), y: Y(7) });
+  expect(p[0]).toEqual({ x: X(0), y: Y(9) });
   expect(p[p.length - 1]).toEqual({ x: X(4), y: Y(5) });
-  expect(p.length).toBe(7);
+  expect(p.length).toBe(9);
   expect(pathFromReach(s, r, { x: X(8), y: Y(2) })).toBeNull();
 });
 

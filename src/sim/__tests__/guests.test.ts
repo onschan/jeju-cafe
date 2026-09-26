@@ -13,7 +13,7 @@ import menusJson from '../../data/menus.json' with { type: 'json' };
 /** 메뉴 기본 값은 밸런스로 바뀐다 — 숫자를 박지 말고 데이터에서 읽는다 (spot2) */
 const menuPrice = (id: string): number => (menusJson as { id: string; price: number }[]).find((m) => m.id === id)!.price;
 
-/** 정낭(4,6) 바로 위 (4,5)에 테이블 → 정낭이 테이블의 걷기 이웃 */
+/** 어귀 올렛길(4,6) 바로 위 (4,5)에 테이블 → 올렛길이 테이블의 걷기 이웃 (정류장 (0,9) → 마을 길 → (4,8)·(4,7)·(4,6)) */
 function cafe() {
   const s = bareState(1);
   const seat = placeObject(s, 'table_out', X(4), Y(5));
@@ -48,8 +48,8 @@ test('걸어가서 앉고, 주문하고, 돈과 연구가 오른다', () => {
   spawnGuests(s, 1);
   const g = s.guests[0]!;
   const money0 = s.money;
-  // 경로 5칸, 속도 3칸/초 → 2초면 충분
-  updateGuests(s, (6 / GUEST_SPEED_CELLS_PER_S) * 1000);
+  // 경로 7칸(오른쪽 4 + 위 3), 속도 3칸/초 → 3초면 충분
+  updateGuests(s, (9 / GUEST_SPEED_CELLS_PER_S) * 1000);
   expect(g.phase).toBe('seated');
   expect(g.menuId).toBe('carrot_juice');
   expect(g.mood).toBeNull(); // 조리 중
@@ -135,11 +135,12 @@ test('happy이면 연구 진행 +1(5명마다 연구 1), 게이지가 타입 방
   expect(s.popularity).toBe(-2);
 });
 
-test('고정 스텝으로도 17스텝째에 정확히 자리에 도착한다', () => {
+test('고정 스텝으로도 24스텝째에 정확히 자리에 도착한다 (경로 7칸 ÷ 3칸/초 = 2.33초)', () => {
   const { s, seat } = cafe();
   spawnGuests(s, 1);
   const g = s.guests[0]!;
-  for (let i = 0; i < 16; i++) updateGuests(s, STEP_MS);
+  const steps = Math.ceil((7 / GUEST_SPEED_CELLS_PER_S) * 1000 / STEP_MS);
+  for (let i = 0; i < steps - 1; i++) updateGuests(s, STEP_MS);
   expect(g.phase).toBe('walking');
   updateGuests(s, STEP_MS);
   expect(g.phase).toBe('seated');
@@ -175,13 +176,12 @@ test('앉으면 좌석 칸 위(자리별 오프셋), 나갈 땐 다가갔던 옆
 test('관광객은 경치가 모자라면 meh, 돌담을 두면 happy', () => {
   const { s } = cafe();
   spawnGuests(s, 1);
-  s.guests[0]!.type = 'student'; // minScenery 2, 자리 (4,5) 경치 1(정낭)
-  delete s.guests[0]!.gates; // 정낭을 지나온 「제주 대문」 인상(+1, w-free)은 아래 별도 테스트 — 여기선 경치만 본다
+  s.guests[0]!.type = 'student'; // minScenery 2, 자리 (4,5) 경치 0 (정낭은 없다)
   updateGuests(s, 6000); updateGuests(s, PREP_MS);
   expect(s.guests[0]!.mood).toBe('meh');
   expect(s.guests[0]!.moodReason).toBe('scenery');
   const { s: s2 } = cafe();
-  placeObject(s2, 'stonewall', X(5), Y(4)); // scenery +1 → 2
+  placeObject(s2, 'stonewall', X(5), Y(4)); placeObject(s2, 'stonewall', X(5), Y(6)); // scenery +1 +1 → 2
   spawnGuests(s2, 1);
   s2.guests[0]!.type = 'student';
   delete s2.guests[0]!.gates;
@@ -189,29 +189,26 @@ test('관광객은 경치가 모자라면 meh, 돌담을 두면 happy', () => {
   expect(s2.guests[0]!.mood).toBe('happy');
 });
 
-test('정낭 효과(w-free): 자리로 오는 길에 정낭을 지나면 Guest.gates에 세고, 관광객(육지 손님)만 만족 +1/개(최대 2). 삼춘·단골★은 0. 정낭이 없으면 효과만 없고 손님은 온다', () => {
+test('정낭 효과: 자리로 오는 길에 정낭을 지나면 Guest.gates에 세고, 관광객(육지 손님)만 만족 +1/개(최대 2). 시작 마당엔 정낭이 없어 gates가 없다 (zero-base)', () => {
   const { s } = cafe();
   spawnGuests(s, 1);
   const g = s.guests[0]!;
-  expect(g.gates).toBe(1); // 정류장 → 마을 길 → 정낭(4,6) → (4,5) 테이블
-  g.type = 'student';
-  expect(gateSatisfaction(g)).toBe(1);
-  expect(gateSatisfaction({ ...g, type: 'local_auntie' })).toBe(0);
-  expect(gateSatisfaction({ ...g, namedId: 'x' })).toBe(0);
-  expect(gateSatisfaction({ ...g, gates: 5 })).toBe(GATE_SATISFACTION_MAX);
-  expect(gateSatisfaction({ ...g, gates: undefined })).toBe(0);
-  updateGuests(s, 6000); updateGuests(s, PREP_MS);
-  expect(g.mood).toBe('happy'); // 경치 1 + 정낭 1 ≥ minScenery 2
-  // 정낭을 없애고 그 자리에 올렛길 → 손님은 그대로 오고 gates 없음
+  expect(g.gates).toBeUndefined(); // 정류장 → 마을 길 → 올렛길 → (4,5) 테이블 — 정낭이 없다
+  expect(countGatesOn(s, g.path)).toBe(0);
+  const withGate = { ...g, type: 'student', gates: 1 };
+  expect(gateSatisfaction(withGate)).toBe(1);
+  expect(gateSatisfaction({ ...withGate, type: 'local_auntie' })).toBe(0);
+  expect(gateSatisfaction({ ...withGate, namedId: 'x' })).toBe(0);
+  expect(gateSatisfaction({ ...withGate, gates: 5 })).toBe(GATE_SATISFACTION_MAX);
+  expect(gateSatisfaction({ ...withGate, gates: undefined })).toBe(0);
+  // 어귀 올렛길 한 칸을 정낭으로 바꾸면 그 길을 지나는 손님이 센다
   const { s: s2 } = cafe();
-  const gate = Object.values(s2.objects).find((o) => o.type === 'gate')!;
-  expect(apply(s2, { type: 'remove', objectId: gate.id }).ok).toBe(true);
-  expect(objectAt(s2, gate.x, gate.y)).toBeNull();
-  s2.money = 1_000_000;
-  expect(apply(s2, { type: 'place', objectType: 'path', x: gate.x, y: gate.y }).ok).toBe(true);
+  const step = objectAt(s2, X(4), Y(7))!;
+  apply(s2, { type: 'remove', objectId: step.id });
+  placeObject(s2, 'gate', X(4), Y(7));
   expect(spawnGuests(s2, 1)).toBe(1);
-  expect(s2.guests[0]!.gates).toBeUndefined();
-  expect(countGatesOn(s2, s2.guests[0]!.path)).toBe(0);
+  expect(s2.guests[0]!.gates).toBe(1);
+  expect(countGatesOn(s2, s2.guests[0]!.path)).toBe(1);
 });
 
 test('대사: 30%쯤은 말풍선 텍스트, 손님층·기분·이유에 맞는 문장', () => {

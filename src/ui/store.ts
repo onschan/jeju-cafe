@@ -87,7 +87,7 @@ export function clearMessages(): void { messages = []; }
 
 /** 액션이 성공했을 때 내는 효과음 */
 const ACTION_SFX: Record<Action['type'], SfxName> = {
-  place: 'place', placeLine: 'place', autoConnectPath: 'place', autoLinkRoute: 'place', remove: 'remove', skipTutorialStep: 'tap',
+  place: 'place', placeLine: 'place', autoConnectPath: 'place', autoLinkRoute: 'place', expandMain: 'place', remove: 'remove', skipTutorialStep: 'tap',
   setSlot: 'tap', setSpeed: 'tap', dismissAlert: 'tap', dismissMonthCard: 'tap',
   resolveRisk: 'tap', resolveEventChoice: 'tap', // stakes: 돌발 사고·빅 이벤트 선택지
   postJob: 'tap', hire: 'tap', fire: 'tap', assign: 'tap', setStaffPost: 'place', clearStaffPost: 'tap', setStaffNight: 'tap', levelUp: 'tap', train: 'unlock', promote: 'tap', setTarget: 'tap',

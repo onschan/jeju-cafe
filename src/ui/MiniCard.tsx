@@ -18,7 +18,7 @@ import { isCornerTarget } from '../sim/corners.ts';
 import { objectReachable, UNREACHABLE_TEXT } from '../sim/index.ts'; // ui3: 손님이 못 가는 시설
 import { seatsNeeded, isSeat } from '../sim/index.ts'; // midgame: 「자리 4/6」 — 지금 손님에 필요한 자리
 import type { RouteId } from '../sim/index.ts';
-import { mainSummary, canAutoConnectPath, CUT_TEXT, DOOR_PATH_WARN, BGM_LABEL, LIGHT_LABEL } from '../sim/index.ts';
+import { mainSummary, canAutoConnectPath, CUT_TEXT, DOOR_PATH_WARN, BGM_LABEL, LIGHT_LABEL, MAIN_TYPE, MAIN_SIZES, MAIN_EXPAND_DAYS, canExpandMain, expandCost, nextMainLevel, mainLevel, indoorSeats, freeFloorCells } from '../sim/index.ts'; // zero-base: 카페 증축
 import { ButtonGroup } from './ButtonGroup';
 import { requestBuildTab } from './windows/BuildWindow';
 import { label as labelOf } from '../data/labels.ts';
@@ -366,6 +366,7 @@ function ObjectCard({ s, id, a, onClose, guestId }: { s: GameState; id: string; 
       <CareLine s={s} o={o} />{/* staffpost: 「삼춘이 돌보는 자리 · 만족 +3」 / 「돌보는 직원이 없어요」 */}
       <UnreachableRow s={s} o={o} a={a} />{/* ui3: 손님이 못 가는 시설이면 이유 한 줄 + 「길 잇기」 */}
       {treeOf(o.type) && <TreeUpgradeRow s={s} o={o} />}{/* fun: 「업그레이드 ▲」는 카드 맨 위(버튼 줄 위) — 아래에 두면 잘린다 */}
+      {o.type === MAIN_TYPE && <ExpandRow s={s} o={o} />}{/* zero-base: 실내 자리 수 + 「증축 Lv2 (₩300만)」 */}
       {!protectedType && breakWarn && <div style={{ ...small, marginTop: 4, color: PALETTE.bad, fontWeight: 700 }} data-testid="corner-break-warn">{breakWarn} · 업그레이드는 괜찮아요</div>}
       <Row>
         {upgradable && <button style={up.ok ? btnOn : btnOff} disabled={!up.ok} title={up.ok ? undefined : up.reason} onClick={doUpgrade} data-testid="upgrade-btn">증축 Lv{st.level + 1} ({wonText(upCost)})</button>}
@@ -432,6 +433,22 @@ function CareLine({ s, o }: { s: GameState; o: PlacedObject }) {
 
 /** video-flow §2-1 D: 시설 하나의 손익 카드에 「합계」 줄 — 이 자리에 **누가 맞고**(취향), **오늘 얼마 벌었나**.
  *  영상 15:00의 방 정보 카드가 「경치 18 · 합계 31 · 고령자에게 인기」로 끝나는 것을 우리 자리에 옮긴 것. */
+/** zero-base: 카페(본관) 카드 — 「실내 자리 4 · 빈 바닥 5칸」 + 증축 버튼. 증축하면 실내가 넓어진다 (4×3 → 5×3 → 6×4). */
+function ExpandRow({ s, o }: { s: GameState; o: PlacedObject }) {
+  const lv = mainLevel(s);
+  const next = nextMainLevel(s);
+  const c = canExpandMain(s);
+  const cost = expandCost(s);
+  const size = next ? MAIN_SIZES[next]! : null;
+  const go = () => Confirm(`카페를 Lv${next}(${size!.w}×${size!.h})로 증축할까요? ${wonText(cost)} · 공사 ${MAIN_EXPAND_DAYS}일(그동안 안엔 못 들어가요)`, () => { const r = dispatch({ type: 'expandMain' }); if (!r.ok) showMessage(r.reason ?? '지금은 못 해요'); }, { title: '증축' });
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }} data-testid="expand-row">
+      <span style={small}>실내 자리 <b style={{ color: PALETTE.ink }}>{indoorSeats(s)}</b> · 빈 바닥 <b style={{ color: PALETTE.ink }}>{freeFloorCells(s, o).length}</b>칸{lv >= 2 && <b style={{ color: PALETTE.title }}> · Lv{lv}</b>}</span>
+      {next && <button style={c.ok ? brownBtnOn : brownBtnOff} disabled={!c.ok} title={c.ok ? undefined : c.reason} onClick={go} data-testid="expand-main">증축 Lv{next} ({wonText(cost)})</button>}
+    </div>
+  );
+}
+
 function SeatSumLine({ s, o }: { s: GameState; o: PlacedObject }) {
   const fits = (Object.keys(FIT_LABEL) as Want[]).filter((w) => seatFitsWant(s, o, w)).map((w) => FIT_LABEL[w]);
   const won = salesToday(s, o);

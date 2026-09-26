@@ -1,14 +1,17 @@
 /**
  * 본관(카페 건물)과 마당 잇기.
- * - 본관(`warehouse`)은 **주방과 카운터만 있는 3×2 상자로 고정**이다. 증축·2층·별관·이사는 없앴다(야외 중심 개편) —
- *   손님이 앉는 곳은 전부 마당이고, 넓어지는 축은 필지 구매 하나뿐이다.
- * - 남긴 것: 문·문 앞 칸·올렛길 자동 잇기, 카페 분위기(BGM·조명), 체류 시간, 좌석 이용률.
- * - 추위·비는 「실내냐 야외냐」가 아니라 시설이 가진 지붕(`shelter`) 속성으로 막는다 — site.ts.
+ * zero-base(specs/2026-09-26-zero-base-start.md): 본관(`warehouse`)은 **지붕 없는 진짜 카페**다 — 타일 바닥·뒷벽 카운터·창.
+ * - 안에도 자리를 놓는다 (grid.ts indoorPlaceable·indoorRouteCheck). 실내는 바닥 재질일 뿐 규칙은 마당과 같다(fee.ts → 등급).
+ * - 증축 Lv1 4×3 → Lv2 5×3 → Lv3 6×4 (MAIN_SIZES). 5일 공사, 그동안 실내는 못 쓴다. 발자국은 오른쪽·아래로 커진다 —
+ *   새 문 앞을 막은 것은 치우고 올렛길을 자동으로 잇는다.
+ * - 2층·별관·본관 이사는 없다.
  * 결정적: rng·Date를 쓰지 않는다.
  */
 import type { GameState, PlacedObject, ApplyResult, MainState, Guest, Pt } from './types.ts';
 import { objectDef } from '../data/index.ts';
-import { cellAt, objectAt, doorFrontOf, footprint, canPlaceMain, canPlace, placeObject, removeObject, inBounds } from './grid.ts';
+import { cellAt, objectAt, doorOf, doorFrontOf, footprint, footprintOf, canPlaceMain, canPlace, placeObject, removeObject, inBounds, occupy, vacate, roomAt, isFixedCell, objectsInRoom } from './grid.ts';
+import { dayIndex } from './effects.ts';
+import { fmtNum } from './format.ts';
 import { isDoorReachable, isWalkable, reachMap, busStopPos, cellKey } from './path.ts';
 import { HOUR_MS } from './clock.ts';
 import { pushNotice } from './staff.ts';
@@ -22,8 +25,14 @@ import { parcelAt } from './parcels.ts';
 // ---------- 상수 ----------
 
 export const MAIN_TYPE = 'warehouse';
-/** 본관 발자국 — 3×2 고정 */
-export const MAIN_SIZE: { w: number; h: number } = { w: 3, h: 2 };
+export const MAIN_MAX_LEVEL = 3;
+/** 증축 단계별 발자국 (스프라이트 iso_obj_warehouse · _lv2 · _lv3) */
+export const MAIN_SIZES: Record<number, { w: number; h: number }> = { 1: { w: 4, h: 3 }, 2: { w: 5, h: 3 }, 3: { w: 6, h: 4 } };
+/** Lv1 발자국 — 새 본관을 지을 때·시작 배치 */
+export const MAIN_SIZE: { w: number; h: number } = MAIN_SIZES[1]!;
+/** 증축 비용 (다음 Lv 기준) · 공사 일수 */
+export const MAIN_EXPAND_COST: Record<number, number> = { 2: 3_000_000, 3: 8_000_000 };
+export const MAIN_EXPAND_DAYS = 5;
 /** 첫 본관은 무료·즉시 완공 (w-start 맨땅 튜토리얼 2단계) */
 export const MAIN_BUILD_COST = 0;
 /** 본관 추천 자리(tutorial.ts recommendedMainCells): 문 앞 칸이 정낭에서 체비쇼프 거리 ≤ 5 인 자리 중 바람 적은 순 상위 3 (튜토리얼 2단계 글로우) */
@@ -53,7 +62,7 @@ export const DOOR_PATH_WARN = '문 앞에 올렛길을 이어 주세요';
 export const CUT_TEXT = '길 끊김 ✕';
 
 export function initMain(): MainState {
-  return { bgm: null, lighting: 'warm', seatLog: [], usedSeatMs: 0, openMs: 0 };
+  return { level: 1, bgm: null, lighting: 'warm', seatLog: [], usedSeatMs: 0, openMs: 0 };
 }
 
 // ---------- 본관 찾기·크기 ----------
@@ -61,8 +70,113 @@ export function initMain(): MainState {
 export function mainBuilding(state: GameState): PlacedObject | null {
   return Object.values(state.objects).find((o) => o.type === MAIN_TYPE) ?? null;
 }
-export function mainSize(): { w: number; h: number } {
-  return MAIN_SIZE;
+export function mainLevel(state: GameState): number {
+  return state.main?.level ?? 1;
+}
+export function mainSize(state: GameState): { w: number; h: number } {
+  return MAIN_SIZES[mainLevel(state)] ?? MAIN_SIZE;
+}
+/** 본관 공사 중(증축)인가 — 그동안 실내 자리는 못 쓴다 */
+export function isMainClosed(state: GameState): boolean {
+  return !!mainBuilding(state)?.build;
+}
+
+// ---------- 실내 칸·좌석 (zero-base) ----------
+
+export function isIndoorCell(state: GameState, x: number, y: number): boolean {
+  return inBounds(state, x, y) && cellAt(state, x, y).roomId !== null;
+}
+export function isIndoorSeat(state: GameState, seat: PlacedObject): boolean {
+  return cellAt(state, seat.x, seat.y).roomId !== null;
+}
+/** 실내 좌석 정원 (공사 중인 방 제외) */
+export function indoorSeats(state: GameState): number {
+  return Object.values(state.objects).filter((o) => objectDef(o.type).kind === 'seat' && !o.build && isIndoorSeat(state, o) && !roomAt(state, o.x, o.y)?.build).reduce((n, o) => n + seatsOf(state, o), 0);
+}
+/** 가구를 놓을 수 있는 빈 바닥 칸 (문 칸·카운터 칸 제외) */
+export function freeFloorCells(state: GameState, room: PlacedObject): Pt[] {
+  const door = doorOf(room);
+  return footprintOf(room).filter((p) => { const c = cellAt(state, p.x, p.y); return c.objectId === room.id && !(p.x === door.x && p.y === door.y) && !isFixedCell(state, p.x, p.y); });
+}
+
+// ---------- 증축 ----------
+
+export function nextMainLevel(state: GameState): number | null {
+  const lv = mainLevel(state);
+  return lv >= MAIN_MAX_LEVEL ? null : lv + 1;
+}
+export function expandCost(state: GameState): number {
+  const next = nextMainLevel(state);
+  return next ? MAIN_EXPAND_COST[next] ?? 0 : 0;
+}
+/** 확장될 칸(현재 발자국 밖) 미리보기 */
+export function expandCells(state: GameState): Pt[] {
+  const m = mainBuilding(state);
+  const next = nextMainLevel(state);
+  if (!m || !next) return [];
+  const cur = new Set(footprintOf(m).map((p) => `${p.x},${p.y}`));
+  const size = MAIN_SIZES[next]!;
+  return footprint(MAIN_TYPE, m.x, m.y, size.w, size.h).filter((p) => !cur.has(`${p.x},${p.y}`));
+}
+export function canExpandMain(state: GameState): ApplyResult {
+  const m = mainBuilding(state);
+  if (!m) return { ok: false, reason: '본관이 없어요' };
+  const next = nextMainLevel(state);
+  if (!next) return { ok: false, reason: '이미 제일 큰 카페예요' };
+  if (m.build) return { ok: false, reason: '공사 중이에요' };
+  const cost = MAIN_EXPAND_COST[next]!;
+  if (state.money < cost) return { ok: false, reason: '돈이 모자라요' };
+  const size = MAIN_SIZES[next]!;
+  const c = canPlaceMain(state, m.x, m.y, size.w, size.h, m.id);
+  if (!c.ok) return c;
+  return { ok: true };
+}
+/** 검사 없이 증축을 시작한다 (MAIN_EXPAND_DAYS일 공사, 그동안 실내는 못 쓴다). 호출 전 canExpandMain. */
+export function expandMain(state: GameState): void {
+  const m = mainBuilding(state)!;
+  const next = nextMainLevel(state)!;
+  const size = MAIN_SIZES[next]!;
+  state.money -= MAIN_EXPAND_COST[next]!;
+  clearPaths(state, footprint(MAIN_TYPE, m.x, m.y, size.w, size.h), m.id);
+  // 발자국을 바로 넓힌다 (안의 가구는 그대로). 공사가 끝날 때까지 안엔 못 들어간다.
+  for (const g of state.guests) if (g.seatId && isIndoorSeat(state, state.objects[g.seatId] ?? { x: -1, y: -1 } as PlacedObject) && g.phase !== 'leaving') { g.seatId = null; g.phase = 'leaving'; g.path = []; } // 안에 앉은 손님은 돌려보낸다
+  vacate(state, m);
+  m.w = size.w; m.h = size.h;
+  occupy(state, m);
+  reoccupyFurniture(state, m);
+  state.main.level = next;
+  m.build = { doneDay: dayIndex(state.clock) + MAIN_EXPAND_DAYS, days: MAIN_EXPAND_DAYS };
+  clearDoorFront(state, m); // 커진 본관의 새 문 앞을 막은 시설은 치운다 (막히면 올렛길도 못 잇는다)
+  const warn = noticeAutoConnect(state, autoConnectDoor(state, m));
+  pushNotice(state, `카페 증축 Lv${next} 공사 시작 (${MAIN_EXPAND_DAYS}일·₩${fmtNum(MAIN_EXPAND_COST[next]!)})${warn}`);
+}
+/** 방을 다시 새긴 뒤 안의 가구 칸(objectId)을 되살린다 (occupy(room)가 바닥 전체를 방 id로 덮기 때문) */
+function reoccupyFurniture(state: GameState, room: PlacedObject): void {
+  for (const o of objectsInRoom(state, room.id)) for (const p of footprintOf(o)) cellAt(state, p.x, p.y).objectId = o.id;
+}
+/** 증축 직후: 새 문 앞 한 칸을 비운다. 치운 것의 이름 (없으면 null). */
+function clearDoorFront(state: GameState, room: PlacedObject): string | null {
+  const f = doorFrontOf(room);
+  if (!inBounds(state, f.x, f.y)) return null;
+  const o = objectAt(state, f.x, f.y);
+  if (!o || o.id === room.id) return null;
+  const def = objectDef(o.type);
+  if (def.kind === 'path' || DOOR_FRONT_KEEP.has(o.type)) return null;
+  for (const g of state.guests) if (g.seatId === o.id) { g.seatId = null; g.phase = 'leaving'; g.path = []; } // 치우는 자리에 매인 손님은 돌려보낸다
+  removeObject(state, o.id);
+  state.money += def.cost;
+  pushNotice(state, `문 앞에 있던 ${josa(o.name ?? def.name, '을/를')} 치우고 값을 돌려줬어요`);
+  return o.name ?? def.name;
+}
+/** 문 앞에서도 못 치우는 것 */
+const DOOR_FRONT_KEEP = new Set(['busstop', 'warehouse', 'spring']);
+/** 증축 직후: 자동 연결 결과를 알림 한 줄로 */
+function noticeAutoConnect(state: GameState, r: ReturnType<typeof autoConnectDoor>): string {
+  if (r.laid > 0) { pushNotice(state, `문 앞까지 올렛길 ${r.laid}칸을 자동으로 이었어요 (₩${fmtNum(r.cost)})`); return ''; }
+  if (r.need > 0) return ` — ${DOOR_PATH_WARN} (₩${fmtNum(r.need)} 필요)`;
+  if (r.blocked) return ` — 문 앞에 ${josa(r.blocked, '이/가')} 있어요. 치우면 올렛길을 이어요`;
+  if (r.route === null) return ` — ${DOOR_PATH_WARN}`;
+  return '';
 }
 /** 본관 문 앞 칸 (직원 대기·주방 거리 원점). 본관이 없으면 null. */
 export function mainDoorFront(state: GameState): Pt | null {

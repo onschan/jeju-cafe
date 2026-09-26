@@ -2,7 +2,7 @@ import type { GameState, Action, ApplyResult, PlacedObject } from './types.ts';
 import { bumpLayoutRev } from './layoutRev.ts';
 import { objectDef } from '../data/index.ts';
 import { canPlace, placeObject, removeObject, relocateObject } from './grid.ts';
-import { canBuildMain, placeMain, canAutoConnectPath, autoConnectPath, MAIN_TYPE } from './rooms.ts';
+import { canBuildMain, placeMain, canAutoConnectPath, autoConnectPath, canExpandMain, expandMain, MAIN_TYPE } from './rooms.ts';
 import { canBuyParcel, buyParcel } from './parcels.ts';
 import { canSetSlot, setSlot } from './menu.ts';
 import { checkFeature, checkGoals } from './goals.ts';
@@ -270,6 +270,13 @@ function applyInner(state: GameState, a: Action): ApplyResult {
       const name = WORK_NAME[obj.pending.kind];
       doNow(state, obj);
       return { ok: true, reason: name };
+    }
+    case 'expandMain': { // zero-base: 실내가 넓어진다
+      const c = canExpandMain(state);
+      if (!c.ok) return c;
+      expandMain(state);
+      discoverPlacement(state);
+      return { ok: true };
     }
     case 'buyParcel': {
       const c = canBuyParcel(state, a.id);

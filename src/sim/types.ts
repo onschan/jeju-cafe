@@ -1069,6 +1069,7 @@ export interface GameState {
 
 /** 본관 상태 (rooms.ts): 분위기·좌석 이용률. 본관은 3×2 고정 — 증축·2층·이사·별관은 없앴다(야외 중심 개편). */
 export interface MainState {
+  level: number;                             // 증축 단계 1~3 (rooms.ts MAIN_SIZES: 4×3 → 5×3 → 6×4). zero-base
   bgm: 'calm' | 'jazz' | 'folk' | null;      // BGM 버튼 그룹 (§4.3)
   lighting: 'warm' | 'bright';               // 저녁 조명
   seatLog: number[];                         // 최근 좌석 이용률 %(일별, 최대 7일) — "자리가 모자라요" (P1-7)
@@ -1096,6 +1097,7 @@ export type Action =
   | { type: 'cancelWork'; objectId: string }      // 예약 취소 (pending.ts)
   | { type: 'doWorkNow'; objectId: string }       // 「지금 바로」: 앉은 손님을 빈 자리로 옮기고(없으면 만족 −5로 퇴장) 예약을 실행한다
   | { type: 'buyParcel'; id: string }
+  | { type: 'expandMain' }                      // 본관 증축 (rooms.ts) — 실내가 넓어진다
   | { type: 'renameCafe'; name: string }
   | { type: 'expand'; id: string }
   | { type: 'placeMain'; x: number; y: number }    // 첫 본관 짓기 (w-start 맨땅 튜토리얼: 무료·즉시·1회, rooms.ts placeMain)

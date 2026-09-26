@@ -1,4 +1,4 @@
-import { bareState } from './helpers.ts';
+import { bareState, clearStubPath } from './helpers.ts';
 import { X, Y } from './helpers.ts';
 import { createInitialState } from '../state.ts';
 import { apply } from '../actions.ts';
@@ -196,6 +196,7 @@ test('달 말에 낸 공고도 다음 달 1일에 사라진다 (같은 달 안�
 
 test('월말 월급 차감, 못 주면 unpaidMonths, 2달이면 퇴사', () => {
   const { s, st } = hired();
+  clearStubPath(s); // 올렛길 유지비가 섞이지 않게
   const sal = st.salary;
   s.money = sal + 100 + rentOf(s); // stakes: 월급 말고 마을 관리비도 나간다
   s.loan.count = LOAN_MAX; // 잔고가 40만 아래로 떨어져도 삼춘 대출이 안 들어오게
@@ -450,13 +451,12 @@ test('기력: 하루 종일 일만 하면 거의 만땅 유지, 홍보까지 하
 
 test('직원 이동: 앵커 근처를 산책하고, 기력 0이면 창고 앞에 선다', () => {
   const s = bareState(1);
-  for (let y = 3; y <= 5; y++) placeObject(s, 'path', X(4), Y(y));
-  placeObject(s, 'path', X(3), Y(3)); // 창고 문 앞
+  for (let y = 4; y <= 5; y++) placeObject(s, 'path', X(4), Y(y)); // 문 앞 (4,4)에서 어귀 토막(4,6~8)까지
   placeObject(s, 'table_out', X(5), Y(5));
   const hall = staffWith({}, 'hall');
   const barista = staffWith({}, 'barista');
   s.staff.push(hall, barista);
-  expect(staffAnchor(s, barista)).toEqual({ x: X(3), y: Y(3) });
+  expect(staffAnchor(s, barista)).toEqual({ x: X(4), y: Y(4) }); // 본관 문 앞
   const a = staffAnchor(s, hall);
   expect(Math.abs(a.x - X(5)) + Math.abs(a.y - Y(5))).toBe(1);
   const visited = new Set<string>();
@@ -465,7 +465,7 @@ test('직원 이동: 앵커 근처를 산책하고, 기력 0이면 창고 앞에
   for (const st of s.staff) { expect(Number.isFinite(st.x)).toBe(true); expect(Math.abs(st.x - staffAnchor(s, st).x)).toBeLessThanOrEqual(2); }
   hall.energy = 0;
   for (let i = 0; i < 100; i++) moveStaff(s, 100);
-  expect([hall.x, hall.y]).toEqual([X(3), Y(3)]);
+  expect([hall.x, hall.y]).toEqual([X(4), Y(4)]);
   expect(hall.path.length).toBe(0);
 });
 

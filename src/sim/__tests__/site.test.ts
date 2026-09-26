@@ -20,7 +20,7 @@ const table = (s: GameState, x: number, y: number): PlacedObject => placeObject(
 test('두 값만 남는다: 바닷가는 전망, 나무 옆은 그늘, 본관 옆은 그늘', () => {
   const s = yard();
   const sea = siteOf(s, 12, 1);       // 북쪽 가장자리 2줄 방향 = 바다
-  const inner = siteOf(s, 14, 12);    // 문 앞 길 바로 옆
+  const inner = siteOf(s, 15, 14);    // 문 앞 길(16,14) 바로 옆
   expect(Object.keys(sea).sort()).toEqual(['shade', 'view']);
   for (const st of [sea, inner]) for (const k of ['view', 'shade'] as const) {
     expect(st[k]).toBeGreaterThanOrEqual(0);
@@ -28,9 +28,10 @@ test('두 값만 남는다: 바닷가는 전망, 나무 옆은 그늘, 본관 �
   }
   expect(sea.view).toBeGreaterThanOrEqual(3);
   expect(inner.view).toBe(0);
-  placeObject(s, 'tangerine_tree', 17, 13);
-  expect(siteOf(s, 18, 13).shade).toBe(1);
-  expect(siteOf(s, 14, 11).shade).toBeGreaterThanOrEqual(1); // 본관 바로 앞 칸 — 건물이 그늘을 준다
+  placeObject(s, 'tangerine_tree', 21, 16);
+  expect(siteOf(s, 22, 16).shade).toBe(1);
+  expect(siteOf(s, 15, 14).shade).toBeGreaterThanOrEqual(1); // 본관 바로 옆 칸 — 건물이 그늘을 준다
+  expect(siteOf(s, 17, 12).shade).toBe(SITE_MAX.shade); // 본관 안 빈 바닥은 늘 그늘 최대 (zero-base: 「조용함」 손님 자리)
 });
 
 test('전망: 경관치 3 이상 경관·랜드마크만 전망이고, 방(건물)이 사이를 막으면 −2', () => {
@@ -42,9 +43,10 @@ test('전망: 경관치 3 이상 경관·랜드마크만 전망이고, 방(건�
   expect(siteOf(s, 20, 8).view).toBe(4);
   // 바다 쪽에 본관(방) — 바다와 칸 사이에 건물이 있으면 가려진다
   const s2 = yard();
-  expect(siteOf(s2, 12, 2).view).toBe(3);
-  placeObject(s2, 'warehouse', 11, 0); // (11~13, 0~1)이 바다와 (12,2) 사이
-  expect(siteOf(s2, 12, 2).view).toBe(0);
+  const before = siteOf(s2, 12, 2).view;
+  expect(before).toBeGreaterThanOrEqual(2);
+  placeObject(s2, 'restroom', 12, 0); // 방(화장실)이 바다와 (12,2) 사이
+  expect(siteOf(s2, 12, 2).view).toBeLessThan(before);
 });
 
 test('자리 점수 0~10: 전망이 크게, 그늘이 조금. 바닷가 > 구석', () => {

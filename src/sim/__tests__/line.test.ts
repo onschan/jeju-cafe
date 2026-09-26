@@ -38,7 +38,7 @@ test('planLine: 이미 같은 종류가 있는 칸·시설 칸은 건너뛰고 �
   expect(out.blocked).toHaveLength(2);
   expect(out.reason).toBe('아직 내 땅이 아니에요');
   // 마을 길 칸은 못 놓는다
-  expect(planLine(s, 'path', at(0, 7), at(3, 7)).ok).toBe(false);
+  expect(planLine(s, 'path', at(0, 9), at(3, 9)).ok).toBe(false);
   s.money = per * 3;
   expect(planLine(s, 'path', at(0, 4), at(5, 4)).reason).toBe('돈이 모자라요');
 });

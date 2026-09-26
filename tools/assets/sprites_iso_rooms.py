@@ -461,8 +461,8 @@ def grade_sign(grade: int) -> Canvas:
 
 def sprites() -> dict[str, Canvas]:
     return {
-        'iso_obj_warehouse': warehouse(1), 'iso_obj_warehouse_lv2': main_hall(2), 'iso_obj_warehouse_lv3': main_hall(3), 'iso_obj_warehouse_lv4': main_hall(4),
-        'iso_obj_warehouse_floor2_lv3': floor2_band(3), 'iso_obj_warehouse_floor2_lv4': floor2_band(4),
+        # zero-base(specs/2026-09-26-zero-base-start.md): 본관 Lv1은 4×3 진짜 카페(옛 hall2), Lv2 5×3, Lv3 6×4. 폐창고 그림(warehouse(1))·2층 띠는 안 쓴다.
+        'iso_obj_warehouse': main_hall(2), 'iso_obj_warehouse_lv2': main_hall(3), 'iso_obj_warehouse_lv3': main_hall(4),
         **{f'iso_obj_warehouse_sign_g{g}': grade_sign(g) for g in range(1, 6)},  # fun-rank 등급 간판
         'iso_obj_kitchen_ext': kitchen_ext(), 'iso_obj_restroom': restroom(), 'iso_obj_storage': storage(),
         'iso_obj_annex_cafe': annex_cafe(), 'iso_obj_greenhouse_cafe': greenhouse_cafe(),

@@ -403,8 +403,8 @@ export function monthlyRoutes(state: GameState): void {
 
 /** 필지 → 경로: 서쪽 밭담 골짜기(parcel4) = 올레길 */
 export const PARCEL_ROUTE: Record<string, RouteId> = { parcel4: 'olle' };
-/** 자동으로 세우는 경로 시설 자리 (봇 BOT_ROUTE_SITES와 같은 칸): 올레 표식 (3,11) */
-export const ROUTE_AUTO_SITES: Record<'olle', Pt> = { olle: { x: 3, y: 11 } };
+/** 자동으로 세우는 경로 시설 자리 (봇 BOT_ROUTE_SITES와 같은 칸): 올레 표식 — 진입점(0, olle.y)에서 3칸 안 */
+export const ROUTE_AUTO_SITES: Record<'olle', Pt> = { olle: { x: 3, y: ENTRY_CELLS.olle.y } };
 /** 경로가 열릴 때 장면 창 한 줄 */
 export const ROUTE_OPEN_LINE: Record<'olle', string> = {
   olle: '이제 올레꾼이 서쪽에서 걸어온다',

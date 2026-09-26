@@ -8,9 +8,9 @@ import { ENTRY_ROUTES } from '../../sim/entry.ts';
 const ROADS = { villageRoadY: VILLAGE_ROAD_Y, olleY: ENTRY_ROUTES.olle.entry.y, shuttleX: -1 };
 
 describe('링 타일(맵 둘레 제주 풍경)', () => {
-  it('2×2 매크로 타일 280장 — 배경 스프라이트 예산 400 안', () => {
+  it('2×2 매크로 타일 328장 (36×30 격자) — 배경 스프라이트 예산 400 안', () => {
     const cells = ringCells(GRID_W, GRID_H);
-    expect(cells.length).toBe(280);
+    expect(cells.length).toBe(328);
     expect(cells.length).toBeLessThanOrEqual(400);
     // 맵 안은 없다, 모두 RING_STEP 배수, 깊이 순
     for (const c of cells) {

@@ -20,18 +20,18 @@ function own(s: GameState, ...nos: number[]) {
   for (const p of s.parcels) if (nos.includes(p.no)) p.owned = true;
 }
 
-test('필지 9장: 3열×3행 10×8, 1번(정중앙)만 소유, 가격은 ×10', () => {
+test('필지 9장: 3열×3행 12×10, 1번(정중앙)만 소유, 가격은 ×10', () => {
   const s = bareState(1);
   expect(s.parcels.map((p) => [p.no, p.x, p.y, p.owned])).toEqual([
-    [1, 10, 8, true], [2, 0, 0, false], [3, 10, 0, false], [4, 0, 8, false], [5, 20, 16, false], [6, 10, 16, false],
-    [7, 20, 8, false], [8, 20, 0, false], [9, 0, 16, false],
+    [1, 12, 10, true], [2, 0, 0, false], [3, 12, 0, false], [4, 0, 10, false], [5, 24, 20, false], [6, 12, 20, false],
+    [7, 24, 10, false], [8, 24, 0, false], [9, 0, 20, false],
   ]);
   expect(parcelById(s, 'parcel2')!.price).toBe(1_500_000);
   expect(parcelById(s, 'village_edge')!.price).toBe(800_000);
-  expect(parcelAt(s, 19, 15)!.no).toBe(1);
-  expect(parcelAt(s, 9, 15)!.no).toBe(4);
-  expect(parcelAt(s, 20, 8)!.no).toBe(7);
-  expect(parcelAt(s, 25, 20)!.no).toBe(5);
+  expect(parcelAt(s, 23, 19)!.no).toBe(1);
+  expect(parcelAt(s, 11, 19)!.no).toBe(4);
+  expect(parcelAt(s, 24, 10)!.no).toBe(7);
+  expect(parcelAt(s, 30, 25)!.no).toBe(5);
   expect(s.parcels.map((p) => p.bonus)).toEqual(['none', 'oreum', 'gotjawal', 'batdam', 'coast', 'spring', 'village', 'stonehill', 'orchard']);
   // 시작 필지의 4방향 이웃: 3(위)·4(왼쪽)·7(오른쪽)·6(아래). 대각선(2·8·9·5)은 붙은 게 아니다.
   const p1 = parcelById(s, 'parcel1')!;
@@ -57,8 +57,8 @@ test('필지별 지형·시작 오브젝트는 seed로 결정적이다', () => {
   // 오름(2번, 왼쪽 위) 옛 능선(y=2, x 2..7)도 흙
   for (let x = 2; x <= 7; x++) expect(cellAt(a, x, 2).terrain).toBe('soil');
   // 해안(5번, 오른쪽 아래)은 먼 변 두 줄이 도로, 마을 어귀(7번)는 오른쪽 변이 길
-  for (let x = 20; x < 30; x++) { expect(cellAt(a, x, 22).terrain).toBe('road'); expect(cellAt(a, x, 23).terrain).toBe('road'); }
-  for (let y = 8; y < 16; y++) expect(cellAt(a, 29, y).terrain).toBe('road');
+  for (let x = 24; x < 36; x++) { expect(cellAt(a, x, 28).terrain).toBe('road'); expect(cellAt(a, x, 29).terrain).toBe('road'); }
+  for (let y = 10; y < 19; y++) expect(cellAt(a, 35, y).terrain).toBe('road');
   // 지형은 seed와 무관 (필지 배치만으로 정해진다)
   expect(bareState(5).grid.cells).toEqual(a.grid.cells);
 });
@@ -72,10 +72,10 @@ test('소유하지 않은 필지엔 못 짓는다', () => {
   expect(canPlace(s, 'tangerine_tree', 12, 3).ok).toBe(true);
   // 경계에 걸치는 오브젝트는 두 필지 모두 소유해야 한다
   s.unlocked.objects.push('warehouse');
-  const bush = objectAt(s, 17, 5); // 문 앞 칸(17,5)의 곶자왈 덤불은 치우고 본다
+  const bush = objectAt(s, 20, 6); // 문 앞 칸(20,6)에 뭔가 있으면 치우고 본다
   if (bush) removeObject(s, bush.id);
-  expect(canPlace(s, 'warehouse', 17, 3).ok).toBe(true);
-  expect(canPlace(s, 'warehouse', 18, 3).ok).toBe(false); // (20,3)은 8번 필지
+  expect(canPlace(s, 'warehouse', 20, 3).ok).toBe(true);  // 4×3: (20..23, 3..5) 전부 3번 필지
+  expect(canPlace(s, 'warehouse', 21, 3).ok).toBe(false); // (24,3)은 8번 필지
 });
 
 test('buyParcel: 붙어 있어야 하고, 돈이 있어야 하고, 사면 소유·차감·알림', () => {
@@ -131,11 +131,11 @@ test('구역 보너스: 해안은 관광객 가중 ×1.3, 요금 ×1.1', () => {
   // 마을 어귀: 삼춘(시니어)만 ×1.2
   expect(typeWeight(s, 'local_auntie', 12, 'village')).toBeCloseTo(typeWeight(s, 'local_auntie', 12, 'none') * VILLAGE_SENIOR_MULT);
   expect(typeWeight(s, 'student', 12, 'village')).toBe(typeWeight(s, 'student', 12, 'none'));
-  // 해안(5번, 오른쪽 아래 (20,16)~)의 좌석: 해안 도로(y=22)에 붙은 (22,21)에 테이블
+  // 해안(5번, 오른쪽 아래 (24,20)~)의 좌석: 해안 도로(y=28)에 붙은 (26,27)에 테이블
   own(s, 5);
-  placeObject(s, 'table_out', 22, 21);
-  // 정류장 (10,15) → 마을 길 y=15 → (22,15) → 올렛길 (22,16..20) 세로로 잇는다
-  for (let y = 16; y <= 20; y++) placeObject(s, 'path', 22, y);
+  placeObject(s, 'table_out', 26, 27);
+  // 정류장 (12,19) → 마을 길 y=19 → (26,19) → 올렛길 (26,20..26) 세로로 잇는다
+  for (let y = 20; y <= 26; y++) placeObject(s, 'path', 26, y);
   setSlot(s, 0, 'carrot_juice');
   s.storage['carrot'] = 5;
   expect(spawnGuests(s, 1)).toBe(1);
@@ -150,8 +150,8 @@ test('구역 보너스: 오름은 경치 +2, 돌담 언덕 +1, 밭담 골짜기�
   own(s, 2, 4, 8);
   expect(sceneryScore(s, 5, 5)).toBe(OREUM_SCENERY);
   expect(sceneryScore(s, X(8), Y(4))).toBe(0);
-  expect(sceneryScore(s, 25, 7) - STONEHILL_SCENERY).toBeGreaterThanOrEqual(0); // 돌담 언덕(+1) + 근처 돌담 경치
-  const cell = { x: 5, y: 12 };
+  expect(sceneryScore(s, 29, 7) - STONEHILL_SCENERY).toBeGreaterThanOrEqual(0); // 돌담 언덕(+1) + 근처 돌담 경치
+  const cell = { x: 5, y: 14 }; // 밭담 골짜기(4번, y 10..19) 안, 돌담 두 줄(y 12·15) 사이
   if (objectAt(s, cell.x, cell.y)) throw new Error('테스트 칸이 비어 있어야 해요');
   const f = placeObject(s, 'carrot_field', cell.x, cell.y);
   expect(isSheltered(s, cell.x, cell.y)).toBe(true); // 밭담 골짜기의 기본 돌담이 북서쪽을 막아 준다
@@ -186,7 +186,7 @@ test('move: 돈은 그대로, 칸이 옮겨지고, 막힌 곳이면 실패', () 
   const f = objectAt(s, X(0), Y(0))!; // 9번 필지의 시작 감귤나무와 섞이지 않게 칸으로 찾는다
   const pm = f.placedMonth;
   const m0 = s.money;
-  expect(apply(s, { type: 'move', objectId: f.id, x: X(3), y: Y(1) }).ok).toBe(false); // 창고
+  expect(apply(s, { type: 'move', objectId: f.id, x: X(5), y: Y(1) }).ok).toBe(false); // 본관 카운터 칸
   expect(apply(s, { type: 'move', objectId: f.id, x: 12, y: 3 }).ok).toBe(false); // 남의 땅
   expect(apply(s, { type: 'move', objectId: f.id, x: X(0), y: Y(0) }).ok).toBe(true); // 제자리(자기 발자국은 빈 것으로)
   expect(apply(s, { type: 'move', objectId: f.id, x: X(1), y: Y(1) }).ok).toBe(true);
@@ -199,7 +199,7 @@ test('move: 돈은 그대로, 칸이 옮겨지고, 막힌 곳이면 실패', () 
 
 test('rotate·place rot: 정낭만 돌아가고 0..3으로 감긴다', () => {
   const s = bareState(1);
-  const gate = Object.values(s.objects).find((o) => o.type === 'gate')!;
+  const gate = placeObject(s, 'gate', X(8), Y(8)); // 정낭은 시작 마당에 없다 (zero-base) — 회전 규칙만 본다
   expect(apply(s, { type: 'rotate', objectId: gate.id, rot: 5 }).ok).toBe(true);
   expect(gate.rot).toBe(1);
   apply(s, { type: 'place', objectType: 'tangerine_tree', x: X(0), y: Y(0), rot: 2 });

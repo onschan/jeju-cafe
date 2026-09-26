@@ -88,6 +88,80 @@ export function roomWithDoorFrontAt(state: GameState, x: number, y: number, igno
   return null;
 }
 
+// ---------- 실내 (zero-base: 본관 안에도 자리를 놓는다) ----------
+
+/** 카운터+주방이 박힌 방: 뒷벽(y = room.y) 줄 중 문 기둥 열(x = room.x)을 뺀 칸이 고정 설비 — 배치 불가·걷기 불가.
+ *  스프라이트(sprites_iso_rooms.py)의 카운터도 같은 칸에 그린다. 증축으로 넓어져도 고정 칸은 오른쪽으로만 는다. */
+const FIXED_ROOM_IDS = new Set(['warehouse']);
+export function fixedCellsOf(room: Sized & Pick<PlacedObject, 'x' | 'y'>): Pt[] {
+  if (!FIXED_ROOM_IDS.has(room.type)) return [];
+  const { w } = sizeOf(room);
+  const out: Pt[] = [];
+  for (let dx = 1; dx < w; dx++) out.push({ x: room.x + dx, y: room.y });
+  return out;
+}
+export function isFixedCell(state: GameState, x: number, y: number): boolean {
+  if (!inBounds(state, x, y)) return false;
+  const id = cellAt(state, x, y).roomId;
+  if (!id) return false;
+  const room = state.objects[id];
+  return !!room && FIXED_ROOM_IDS.has(room.type) && y === room.y && x > room.x;
+}
+const DIRS4: Pt[] = [{ x: 1, y: 0 }, { x: -1, y: 0 }, { x: 0, y: 1 }, { x: 0, y: -1 }];
+function touchesFixed(state: GameState, p: Pt): boolean {
+  return DIRS4.some((d) => isFixedCell(state, p.x + d.x, p.y + d.y));
+}
+/** 가구가 없는 방 바닥 칸인가 (걸을 수 있다). 고정 설비 칸은 아니다. */
+export function isRoomFloor(state: GameState, x: number, y: number): boolean {
+  if (!inBounds(state, x, y)) return false;
+  const c = cellAt(state, x, y);
+  return c.roomId !== null && c.objectId === c.roomId && !isFixedCell(state, x, y);
+}
+/** 방 안에 놓인 것들 (방 자신 제외) */
+export function objectsInRoom(state: GameState, roomId: string): PlacedObject[] {
+  return Object.values(state.objects).filter((o) => o.id !== roomId && roomAt(state, o.x, o.y)?.id === roomId);
+}
+/** 안에 놓을 수 있는 것: 1×1 좌석·장식. 나무·담·길·시설·명소·건물은 밖에만. */
+export function indoorPlaceable(def: ObjectDef): boolean {
+  return !def.room && def.w === 1 && def.h === 1 && (def.kind === 'seat' || (def.kind === 'deco' && def.category !== 'farm')); // 밭은 밖에
+}
+/** 실내에 놓은 뒤에도 문 → 카운터 앞 통로와 모든 실내 좌석의 접근 칸이 남는지.
+ *  문 칸에서 빈 바닥(고정 설비·가구·새 발자국 제외)으로 BFS: 카운터 앞 칸에 닿아야 하고, 방 안 좌석마다 닿는 이웃 칸이 하나는 있어야 한다. */
+export function indoorRouteCheck(state: GameState, room: PlacedObject, newCells: Pt[], newIsSeat: boolean, ignoreId?: string): ApplyResult {
+  const { w, h } = sizeOf(room);
+  const blocked = new Set(newCells.map((p) => `${p.x},${p.y}`));
+  const free = (p: Pt) => {
+    if (p.x < room.x || p.y < room.y || p.x >= room.x + w || p.y >= room.y + h) return false;
+    if (blocked.has(`${p.x},${p.y}`) || isFixedCell(state, p.x, p.y)) return false;
+    const c = cellAt(state, p.x, p.y);
+    return c.objectId === room.id || c.objectId === ignoreId;
+  };
+  const door = doorOf(room);
+  if (!free(door)) return { ok: false, reason: '문 앞은 비워 둬요' };
+  const seen = new Set<string>([`${door.x},${door.y}`]);
+  const queue: Pt[] = [door];
+  let counter = false;
+  for (let i = 0; i < queue.length; i++) {
+    const p = queue[i]!;
+    if (touchesFixed(state, p)) counter = true;
+    for (const d of DIRS4) {
+      const n = { x: p.x + d.x, y: p.y + d.y };
+      const k = `${n.x},${n.y}`;
+      if (seen.has(k) || !free(n)) continue;
+      seen.add(k);
+      queue.push(n);
+    }
+  }
+  if (fixedCellsOf(room).length > 0 && !counter) return { ok: false, reason: '손님이 카운터까지 갈 길이 없어요' };
+  const reachable = (cells: Pt[]) => cells.some((p) => DIRS4.some((d) => seen.has(`${p.x + d.x},${p.y + d.y}`)));
+  if (newIsSeat && !reachable(newCells)) return { ok: false, reason: '손님이 자리까지 갈 길이 없어요' };
+  for (const o of objectsInRoom(state, room.id)) {
+    if (o.id === ignoreId || objectDef(o.type).kind !== 'seat') continue;
+    if (!reachable(footprintOf(o))) return { ok: false, reason: `${objectDef(o.type).name} 자리로 가는 길이 막혀요` };
+  }
+  return { ok: true };
+}
+
 /** 이 칸을 바닥으로 삼는 방 */
 export function roomAt(state: GameState, x: number, y: number): PlacedObject | null {
   if (!inBounds(state, x, y)) return null;
@@ -130,16 +204,36 @@ export function canPlace(state: GameState, type: string, x: number, y: number, i
   const size = moving && moving.type === type ? sizeOf(moving) : { w: def.w, h: def.h };
   if (type === 'warehouse') return canPlaceMain(state, x, y, size.w, size.h, ignoreId);
   const parcelIds = new Set<string>();
+  const roomIds = new Set<string>();
   for (const p of footprint(type, x, y, size.w, size.h)) {
     if (!inBounds(state, p.x, p.y)) return { ok: false, reason: '격자 밖이에요' };
     const parcel = parcelAt(state, p.x, p.y);
     if (!parcel?.owned) return { ok: false, reason: '아직 내 땅이 아니에요' };
     parcelIds.add(parcel.id);
     const cell = cellAt(state, p.x, p.y);
+    if (cell.roomId && !def.room) {
+      // 실내(zero-base): 빈 바닥 위에만, 1×1 좌석·장식만, 문 칸·카운터 칸은 비워 둔다
+      const room = state.objects[cell.roomId];
+      if (!room) return { ok: false, reason: '이미 뭔가 있어요' };
+      if (!indoorPlaceable(def)) return { ok: false, reason: '안에는 자리·장식만 놓아요' };
+      if (room.build) return { ok: false, reason: '공사 중이에요' };
+      if (cell.objectId !== cell.roomId && cell.objectId !== ignoreId) return { ok: false, reason: '이미 뭔가 있어요' };
+      if (isFixedCell(state, p.x, p.y)) return { ok: false, reason: '카운터·주방 자리예요' };
+      const door = doorOf(room);
+      if (door.x === p.x && door.y === p.y) return { ok: false, reason: '문 앞은 비워 둬요' };
+      roomIds.add(cell.roomId);
+      continue;
+    }
     if (cell.objectId && cell.objectId !== ignoreId) return { ok: false, reason: '이미 뭔가 있어요' };
     if (!def.terrain.includes(cell.terrain)) return { ok: false, reason: cell.terrain === 'road' ? '마을 길 위엔 못 놓아요' : '여기엔 못 놓아요' };
-    // 방의 문 앞 칸은 손님 출입구라 길·정낭만 놓는다
+    // 방의 문 앞 칸은 손님 출입구라 길·정류장만 놓는다
     if (blocksDoorFront(def) && roomWithDoorFrontAt(state, p.x, p.y, ignoreId)) return { ok: false, reason: '문 앞은 비워 둬요' };
+  }
+  if (roomIds.size > 0) {
+    // 문 → 카운터 통로와 좌석 접근 칸은 항상 남긴다
+    const room = state.objects[[...roomIds][0]!]!;
+    const rc = indoorRouteCheck(state, room, footprint(type, x, y, size.w, size.h), def.kind === 'seat', ignoreId);
+    if (!rc.ok) return rc;
   }
   if (def.room) {
     // 새 방의 문 앞 칸이 막혀 있으면(다른 오브젝트·격자 밖) 손님이 못 들어온다

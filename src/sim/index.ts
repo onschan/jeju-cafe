@@ -86,7 +86,7 @@ export { sizeOf, footprintOf, canPlaceMain } from './grid.ts';
 export {
   mainBuilding, mainSize, mainDoorFront, canBuildMain, MAIN_BUILD_COST, isRoomCut, cutRooms,
   seatsShort, seatUsePct, stayMs, browseChance, cafeMoodSpawnMult, mainSummary, initMain,
-  MAIN_TYPE, MAIN_SIZE, SEAT_FULL_PCT, SEAT_FULL_DAYS, SEAT_FULL_TEXT, DOOR_PATH_WARN, CUT_TEXT, BGM_LABEL, LIGHT_LABEL, STAY_PER_FACILITY_MS,
+  MAIN_TYPE, MAIN_SIZE, MAIN_SIZES, MAIN_MAX_LEVEL, MAIN_EXPAND_COST, MAIN_EXPAND_DAYS, mainLevel, isMainClosed, isIndoorCell, isIndoorSeat, indoorSeats, freeFloorCells, nextMainLevel, expandCost, expandCells, canExpandMain, SEAT_FULL_PCT, SEAT_FULL_DAYS, SEAT_FULL_TEXT, DOOR_PATH_WARN, CUT_TEXT, BGM_LABEL, LIGHT_LABEL, STAY_PER_FACILITY_MS,
   autoConnectRoute, canAutoConnectPath, type AutoRoute,
 } from './rooms.ts';
 // ---------- 밤 조명 ----------

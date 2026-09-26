@@ -24,7 +24,8 @@ import { seasonOf } from './clock.ts';
 import { canPlace, cellAt, objectAt, doorFrontOf, footprint } from './grid.ts';
 import { parcelAt } from './parcels.ts';
 import { reachMap, busStopPos, cellKey, walkableNeighborsOf, isDoorReachable } from './path.ts';
-import { mainBuilding, MAIN_TYPE, MAIN_SIZE, canBuildMain, MAIN_RECOMMEND_GATE_DIST } from './rooms.ts';
+import { mainBuilding, MAIN_TYPE, MAIN_SIZE, canBuildMain, MAIN_RECOMMEND_GATE_DIST, freeFloorCells } from './rooms.ts';
+import { START_ORIGIN } from './layout.ts';
 import { parkingSites, PARKING_EXPAND_FROM, ENTRY_ROUTES } from './entry.ts';
 import { spotUnlocked, nextSpotLevel, spotRequirements, tagPopularity } from './spots.ts';
 import { staffInRole } from './staff.ts';
@@ -50,6 +51,15 @@ function emptyOwnedSoil(s: GameState, x: number, y: number): boolean {
 function* ownedEmptyCells(s: GameState): Iterable<Pt> {
   for (let y = 0; y < s.grid.h; y++) for (let x = 0; x < s.grid.w; x++) if (emptyOwnedSoil(s, x, y)) yield { x, y };
 }
+/** 정류장에서 이 거리 안은 자리 후보에서 뺀다 — 「정류장 맨 앞」은 손님이 몰리는 길목이지 자리가 아니다 (zero-base) */
+export const BUS_FRONT_KEEP_OUT = 1;
+/** 자리 후보 칸: 빈 흙 + 본관 빈 바닥(안팎을 같은 눈금으로 견준다), 정류장 곁은 뺀다 */
+function* seatCandidateCells(s: GameState): Iterable<Pt> {
+  const bus = busStopPos(s);
+  for (const p of ownedEmptyCells(s)) if (cheb(p, bus) > BUS_FRONT_KEEP_OUT) yield p;
+  const m = mainBuilding(s);
+  if (m && !m.build) for (const p of freeFloorCells(s, m)) yield p;
+}
 function objectsOf(s: GameState, type: string): PlacedObject[] {
   return Object.values(s.objects).filter((o) => o.type === type);
 }
@@ -69,8 +79,7 @@ function unlocked(s: GameState, type: string): boolean {
 /** 본관 원점 추천(정낭/정류장과 문 앞 거리 최소 → 자리 점수 최고 → 위·왼쪽). 본관이 있으면 []. tutorial.recommendedMainCells가 이걸 쓴다. */
 export function bestMainCells(s: GameState, n = 3): Pt[] {
   if (mainBuilding(s)) return [];
-  const g0 = objectsOf(s, 'gate')[0];
-  const g = g0 ? { x: g0.x, y: g0.y } : busStopPos(s);
+  const g = busStopPos(s);
   const size = MAIN_SIZE;
   const out: { p: Pt; score: number; dist: number }[] = [];
   for (let y = 0; y < s.grid.h; y++) for (let x = 0; x < s.grid.w; x++) {
@@ -106,7 +115,7 @@ export function bestSeatCellsHeuristic(s: GameState, n = 3, type = SEAT_TYPE): P
   const reach = reachMap(s, busStopPos(s));
   const anchor = doorFront(s) ?? busStopPos(s);
   const scored: { p: Pt; cost: number; score: number; d: number }[] = [];
-  for (const p of ownedEmptyCells(s)) {
+  for (const p of seatCandidateCells(s)) {
     if (!canPlace(s, type, p.x, p.y).ok) continue;
     const walk = walkFromEntry(s, reach, p.x, p.y);
     if (!Number.isFinite(walk)) continue; // 손님이 걸어 닿지 않는 칸은 자리가 아니다
@@ -127,8 +136,8 @@ export function bestSeatCell(s: GameState): Pt | null {
   return bestSeatCells(s, 1)[0] ?? null;
 }
 
-/** 튜토리얼 첫 테이블 추천 칸 — 사용자가 직접 고른 자리. 못 놓는 자리면(막혔거나 이미 있으면) 계산 1위로 돌아간다. */
-export const TUTORIAL_SEAT_CELL: Pt = { x: 15, y: 11 };
+/** 튜토리얼 첫 테이블 추천 칸 — 본관 안 카운터 앞 (zero-base: 첫 자리는 실내). 못 놓는 자리면(막혔거나 이미 있으면) 계산 1위로 돌아간다. */
+export const TUTORIAL_SEAT_CELL: Pt = { x: START_ORIGIN.x + 5, y: START_ORIGIN.y + 2 };
 /** 1단계(첫 테이블)에서 실제로 빛낼 칸. 1단계를 끝낸 뒤에는 늘 계산 1위(bestSeatCell)다. */
 export function recommendedSeatCell(s: GameState): Pt | null {
   if (s.tutorial.step < 1 && canPlace(s, SEAT_TYPE, TUTORIAL_SEAT_CELL.x, TUTORIAL_SEAT_CELL.y).ok) return TUTORIAL_SEAT_CELL;

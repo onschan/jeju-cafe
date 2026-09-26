@@ -11,35 +11,16 @@ import { routeConnected } from '../entry.ts';
 import { objectDef } from '../../data/index.ts';
 import { START_MONEY } from '../state.ts';
 
-test('정낭(w-free): 보호 시설이 아니라 옮기고·없애고·더 놓을 수 있다 (길·담 탭 ₩5만, 시작부터 열림, 회전 유지). 없애도 손님 동선(마을 길 → 문 앞)은 길만 이으면 된다', () => {
+test('정낭은 없다 (zero-base): 시작 마당에 없고, 정의만 남아 옛 세이브 것이 선다. 정류장(마을 길) → 올렛길 → 테이블로 손님이 온다', () => {
   const s = bareState(1);
+  expect(Object.values(s.objects).some((o) => o.type === 'gate')).toBe(false);
   expect(PROTECTED_TYPES.has('gate')).toBe(false);
   expect(objectDef('gate').cost).toBe(50_000);
-  expect(s.unlocked.objects).toContain('gate');
-  const gate = Object.values(s.objects).find((o) => o.type === 'gate')!;
-  expect(canDisturb(s, gate).ok).toBe(true);
-  // 옮기기 (돈 그대로)
-  const money = s.money;
-  expect(apply(s, { type: 'move', objectId: gate.id, x: X(6), y: Y(6) }).ok).toBe(true);
-  expect(objectAt(s, X(6), Y(6))?.id).toBe(gate.id);
-  expect(s.money).toBe(money);
-  // 하나 더 (₩5만)
-  expect(apply(s, { type: 'place', objectType: 'gate', x: X(2), y: Y(5), rot: 1 }).ok).toBe(true);
-  expect(s.money).toBe(money - 50_000);
-  expect(objectAt(s, X(2), Y(5))!.rot).toBe(1);
-  expect(Object.values(s.objects).filter((o) => o.type === 'gate')).toHaveLength(2);
-  // 없애기 (환불 ₩5만)
-  expect(apply(s, { type: 'remove', objectId: gate.id }).ok).toBe(true);
-  expect(s.objects[gate.id]).toBeUndefined();
-  expect(s.money).toBe(money);
-  // 일괄 철거에도 걸린다
-  const g2 = objectAt(s, X(2), Y(5))!;
-  expect(apply(s, { type: 'demolishMany', objectIds: [g2.id] }).ok).toBe(true);
-  expect(Object.values(s.objects).some((o) => o.type === 'gate')).toBe(false);
   // 정낭 없이도 정류장(마을 길) → 올렛길 → 테이블로 손님이 온다
   s.money = 5_000_000;
-  for (const y of [6, 5]) expect(apply(s, { type: 'place', objectType: 'path', x: X(4), y: Y(y) }).ok).toBe(true);
-  apply(s, { type: 'place', objectType: 'table_out', x: X(4), y: Y(4) });
+  expect(apply(s, { type: 'place', objectType: 'path', x: X(4), y: Y(5) }).ok).toBe(true);
+  apply(s, { type: 'place', objectType: 'table_out', x: X(3), y: Y(5) });
+  expect(canDisturb(s, objectAt(s, X(3), Y(5))!).ok).toBe(true);
   expect(routeConnected(s, 'bus')).toBe(true);
   expect(spawnGuests(s, 1)).toBe(1);
   expect(s.guests[0]!.gates).toBeUndefined();
@@ -86,18 +67,18 @@ test('remove: 시작 오브젝트(정류장·창고)는 못 없앤다, 나머지
 test('remove: 손님이 지나갈 올렛길은 못 없앤다', () => {
   const s = bareState(1);
   apply(s, { type: 'place', objectType: 'path', x: X(4), y: Y(5) });
-  apply(s, { type: 'place', objectType: 'table_out', x: X(4), y: Y(4) });
+  apply(s, { type: 'place', objectType: 'table_out', x: X(3), y: Y(5) }); // (4,4)는 본관 문 앞이라 옆 칸에
   const path = Object.values(s.objects).find((o) => o.type === 'path')!;
   spawnGuests(s, 1);
   expect(s.guests[0]!.path.some((p) => p.x === X(4) && p.y === Y(5))).toBe(true);
   expect(apply(s, { type: 'remove', objectId: path.id }).ok).toBe(false);
 });
 
-test('remove: 손님이 서 있는 칸(정낭 옆 올렛길)은 앉아 있는 동안에도 못 없앤다', () => {
+test('remove: 손님이 서 있는 칸(자리 옆 올렛길)은 앉아 있는 동안에도 못 없앤다', () => {
   const s = bareState(1);
   apply(s, { type: 'place', objectType: 'path', x: X(4), y: Y(5) });
-  apply(s, { type: 'place', objectType: 'table_out', x: X(4), y: Y(4) });
-  const path = Object.values(s.objects).find((o) => o.type === 'path')!;
+  apply(s, { type: 'place', objectType: 'table_out', x: X(3), y: Y(5) });
+  const path = objectAt(s, X(4), Y(5))!; // 자리 옆 칸 (어귀 토막이 아니라)
   spawnGuests(s, 1);
   updateGuests(s, 10_000); // 앉음, 발밑은 (4,5)
   expect(s.guests[0]!.phase).toBe('seated');

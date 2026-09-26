@@ -1,4 +1,4 @@
-import { bareState } from './helpers.ts';
+import { bareState, clearStubPath } from './helpers.ts';
 import { X, Y } from './helpers.ts';
 import { apply } from '../actions.ts';
 import { isMenuAvailable, consumeIngredients, purchaseCost } from '../menu.ts';
@@ -83,7 +83,7 @@ test('농원 월 수확: 지난달에 놓은 감귤나무가 1일에 창고를 �
 });
 
 test('오브젝트 유지비가 이달 비용에서 빠진다', () => {
-  const s = bareState(1);
+  const s = clearStubPath(bareState(1));
   apply(s, { type: 'place', objectType: 'table_out', x: X(4), y: Y(5) }); // 데이터 upkeep 750 (1.5%) → 2.5%면 1,250
   const m0 = s.money;
   upkeep(s);

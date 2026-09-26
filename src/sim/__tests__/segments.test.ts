@@ -21,6 +21,7 @@ const menuPrice = (id: string): number => (menusJson as { id: string; price: num
 function cafe(seed = 1) {
   const s = bareState(seed);
   const seat = placeObject(s, 'table_out', X(4), Y(5));
+  placeObject(s, 'stonewall', X(5), Y(6)); // 경치 1 (옛 정낭 몫 — zero-base: 정낭 없음)
   setSlot(s, 0, 'carrot_juice');
   s.storage['carrot'] = 50;
   return { s, seat };

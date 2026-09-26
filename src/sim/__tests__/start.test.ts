@@ -12,7 +12,7 @@ import { START_MONEY } from '../state.ts';
 describe('v3 시작 상태 (§5)', () => {
   it('본관 + 테이블 2 + 파라솔 1 + 올렛길로 정류장에서 자리에 닿고, 메뉴 3종이 올라가 있고, 후보 2명이 기다린다', () => {
     const s = createInitialState(1);
-    expect(SAVE_VERSION).toBe(30); // 카이로 방향: 러시 삭제, 손님이 취향 자리를 고른다
+    expect(SAVE_VERSION).toBe(31); // zero-base: 필지 12×10, 실내가 있는 4×3 카페
     expect(s.money).toBe(START_MONEY); // stakes: 시작 자금 350만
     expect(hasReachableSeat(s)).toBe(true);
     const seats = Object.values(s.objects).filter((o) => objectDef(o.type).kind === 'seat');

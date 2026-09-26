@@ -7,7 +7,7 @@ export const at = (x: number, y: number) => ({ x: X(x), y: Y(y) });
 
 import type { GameState, FeatureId } from '../types.ts';
 import { createInitialState, START_PATH, START_SEATS, START_ORIGIN as SO, START_DECOR } from '../state.ts';
-import { removeObject, objectAt } from '../grid.ts';
+import { removeObject, objectAt, placeObject } from '../grid.ts';
 import { FEATURE_IDS } from '../goals.ts';
 
 /** 모든 기능 잠금(홍보·필지·바위·개발·팝업·대결)을 연다 — 기능 자체를 검증하는 테스트용 */
@@ -16,6 +16,10 @@ export function openAllFeatures(s: GameState): GameState {
   return s;
 }
 
+/** 마당 어귀 올렛길 토막 (필지 상대 (4,6)·(4,7)·(4,8) — 마을 길 (4,9)에 닿는다).
+ *  zero-base 전엔 정낭이 (4,6)에 있고 마을 길이 (4,7)이라 「정낭 옆 칸」이 곧 걸어 닿는 자리였다. 정낭을 없애고 필지를 12×10으로
+ *  키우면서 그 구실을 이 토막이 한다 — 시작 올렛길(문 앞 (4,4)~(4,8))은 걷어내되 어귀 세 칸은 남긴다. */
+export const BARE_STUB_PATH: { lx: number; ly: number }[] = [{ lx: 4, ly: 6 }, { lx: 4, ly: 7 }, { lx: 4, ly: 8 }];
 /** v3 시작 상태(테이블 2·파라솔·올렛길·메뉴 3종·후보 2명·기능 잠금)를 걷어낸 "빈 마당" 상태.
  *  시작 상태 자체를 검증하는 테스트가 아니면 이걸 쓴다 (기존 테스트가 빈 마당·빈 메뉴판을 가정한다). */
 export function bareState(seed = 1, playerId = 'local', createdAt = 0): GameState {
@@ -24,10 +28,17 @@ export function bareState(seed = 1, playerId = 'local', createdAt = 0): GameStat
     const o = objectAt(s, SO.x + c.lx, SO.y + c.ly);
     if (o) removeObject(s, o.id);
   }
+  for (const c of BARE_STUB_PATH) if (!objectAt(s, SO.x + c.lx, SO.y + c.ly)) placeObject(s, 'path', SO.x + c.lx, SO.y + c.ly);
   s.candidates = [];
   s.menuSlots = s.menuSlots.map(() => null);
   s.spawnAcc = 0;
   return openAllFeatures(s);
+}
+
+/** 어귀 올렛길 토막을 걷어낸다 — 유지비·오브젝트 수를 정확히 세는 테스트용 */
+export function clearStubPath(s: GameState): GameState {
+  for (const c of BARE_STUB_PATH) { const o = objectAt(s, SO.x + c.lx, SO.y + c.ly); if (o) removeObject(s, o.id); }
+  return s;
 }
 
 // ---------- staff-luck ----------

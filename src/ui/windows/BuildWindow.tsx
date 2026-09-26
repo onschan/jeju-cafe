@@ -52,7 +52,7 @@ export function recentBuildTypes(s: GameState, n = RECENT_N): string[] {
   return out;
 }
 /** 처음부터 맵에 있는 것·지형 — 짓기 목록에 안 나온다 (본관은 「건물」 탭에서 따로, 없을 때만) */
-const HIDDEN_IDS = new Set(['busstop', 'warehouse', 'spring',
+const HIDDEN_IDS = new Set(['busstop', 'warehouse', 'spring', 'gate', // gate: 정낭은 없앴다 (zero-base)
   // 카이로 방향 덜어내기: 지을 게 너무 많았다(25종). 비슷한 것·꺼진 시스템 것은 목록에서 뺀다 — 정의는 남겨 옛 세이브의 것은 그대로 선다
   'garden_lamp', 'signboard', 'railing', 'trophy', 'olle_sign', 'parking_big']);
 /** 「건물」 탭 안내 (w-start 맨땅 튜토리얼 2단계) */

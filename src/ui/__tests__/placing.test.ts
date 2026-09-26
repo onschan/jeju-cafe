@@ -11,7 +11,7 @@ test('rectCells: 어느 방향으로 끌어도 같은 칸 집합', () => {
   expect(rectCells({ x0: 1, y0: 1, x1: 1, y1: 1 })).toEqual([{ x: 1, y: 1 }]);
 });
 
-test('demolishTargets: 사각형 안 시설만, 정류장·본관·샘은 제외 (정낭은 w-free부터 철거 가능)', () => {
+test('demolishTargets: 사각형 안 시설만, 정류장·본관·샘은 제외', () => {
   const s = bareState(1);
   apply(s, { type: 'place', objectType: WALL, x: X(0), y: Y(0) });
   apply(s, { type: 'place', objectType: WALL, x: X(1), y: Y(0) });
@@ -26,7 +26,7 @@ test('demolishTargets: 사각형 안 시설만, 정류장·본관·샘은 제외
   expect(all).not.toContain(home.id);
   expect(all).toContain(objectAt(s, X(5), Y(5))!.id);
   expect(all.every((id) => !['busstop', 'warehouse', 'spring'].includes(s.objects[id]!.type))).toBe(true);
-  expect(all).toContain(Object.values(s.objects).find((o) => o.type === 'gate')!.id);
+  expect(all.some((id) => s.objects[id]!.type === 'path')).toBe(true); // 어귀 올렛길은 철거 대상 (정낭은 없다 — zero-base)
 });
 
 test('연속 배치: 놓은 뒤 옆 빈 칸으로 고스트가 옮겨지고, 돈이 모자라면 종료', () => {

@@ -174,10 +174,11 @@ export function siteOf(state: GameState, x: number, y: number): Site {
   const hit = c.sites.get(key);
   if (hit) return hit;
   const cell = cellAt(state, x, y);
-  const selfId = cell.objectId ?? undefined;
+  // 실내(zero-base): 제 방은 전망을 안 가린다(창 너머로 본다), 그늘은 늘 최대 — 「조용함」 손님이 찾는 자리
+  const selfId = cell.roomId ?? cell.objectId ?? undefined;
   const site: Site = {
     view: viewOf(state, x, y, selfId),
-    shade: shadeOf(state, x, y, selfId),
+    shade: cell.roomId ? SITE_MAX.shade : shadeOf(state, x, y, selfId),
   };
   deckAdjust(state, x, y, site);
   c.sites.set(key, site);

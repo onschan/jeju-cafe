@@ -116,8 +116,8 @@ describe('카이로 방향: 손님은 자기 취향 자리를 고른다', () => 
     const s = createInitialState(1, 'local', 0, 'open');
     s.menuSlots = ['americano', 'latte', 'tangerine_juice'];
     const main = Object.values(s.objects).find((o) => o.type === 'warehouse')!;
-    const near = placeObject(s, 'table_out', main.x, main.y + 3)!;        // 문 바로 앞 맨 테이블
-    const shade = placeObject(s, 'table_parasol', main.x + 3, main.y + 5)!; // 조금 먼 파라솔
+    const near = placeObject(s, 'table_out', main.x - 1, main.y + 4)!;       // 문 앞 길 바로 옆 맨 테이블
+    const shade = placeObject(s, 'table_parasol', main.x + 1, main.y + 6)!; // 조금 먼 파라솔 (올렛길 옆)
     for (let i = 0; i < 20; i++) spawnGuests(s, 1, 'village_head'); // 이장님 = rest(조용함)
     const seated = s.guests.map((g) => g.seatId);
     expect(seated[0]).toBe(shade.id); // 첫 손님은 가까운 맨 테이블이 아니라 그늘 자리로

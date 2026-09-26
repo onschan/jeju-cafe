@@ -35,9 +35,9 @@ describe('배치 추천 칸 (§3.2.1)', () => {
     expect(r.picks.length).toBeLessThanOrEqual(PICK_COUNT);
     // 자리는 solver 없이도 그 칸의 요금 배수가 바로 나온다 (시작 마당은 어디든 +0%다 — 그것도 보여 준다)
     expect(r.picks.every((p) => /^[A-D] \+\d+%$/.test(p.label ?? ''))).toBe(true);
-    // 1위 칸의 %가 꼴찌 칸보다 낮지 않다 (좋은 칸이 위로 온다)
+    // 순위는 「걷는 칸 − 자리 점수」라 %만으로 정해지지 않는다 (zero-base: 본관 안 그늘 자리는 +%가 붙고 마당 어귀는 0%지만 더 가깝다) — 라벨이 전부 숫자면 된다
     const pcts = r.picks.map((p) => Number(p.label!.replace(/[A-D +%]/g, '')));
-    expect(pcts[0]!).toBeGreaterThanOrEqual(pcts[pcts.length - 1]!);
+    expect(pcts.every((n) => Number.isFinite(n) && n >= 0)).toBe(true);
     expect(r.picks.map((p) => p.rank)).toEqual(r.picks.map((_, i) => i + 1));
   });
 
