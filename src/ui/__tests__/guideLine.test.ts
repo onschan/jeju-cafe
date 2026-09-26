@@ -73,3 +73,17 @@ describe('안내 한 줄', () => {
     expect(g.text).toBe('첫 손님 받기');
   });
 });
+
+describe('시간이 흘러야 되는 튜토리얼 단계', () => {
+  it('「첫 손님 받기」는 손님이 돈을 내면 액션 없이도 넘어간다', async () => {
+    const { tick } = await import('../../sim/tick.ts');
+    const { HOUR_MS } = await import('../../sim/clock.ts');
+    const s = openable(fresh());
+    s.tutorial.step = 2;
+    s.tutorial.seen.push('act:1', 'dlg:1', 'dlg:2', 'dlg:3');
+    let hours = 0;
+    while (hours < 120 && s.tutorial.step === 2) { tick(s, HOUR_MS); hours++; }
+    expect(Object.values(s.menuSold).reduce((a, b) => a + b, 0)).toBeGreaterThan(0); // 팔긴 팔았고
+    expect(s.tutorial.step).toBe(3); // 아무것도 안 눌러도 넘어갔다
+  });
+});

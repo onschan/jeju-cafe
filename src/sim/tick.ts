@@ -33,6 +33,7 @@ import { dailyIdleHint } from './hints.ts'; // game-feel: 3일 무행동이면 �
 import { closeDay } from './daylog.ts'; // 성장: 하루 요약 카드·30일 그래프
 import { runPending } from './pending.ts'; // seatfix: 자리가 빈 예약(이동·철거·증축)을 바로 실행
 import { checkChapter } from './chapter.ts'; // chapter: 한 판 = 다섯 막
+import { checkTutorial } from './tutorial.ts';
 
 /** 고정 스텝 (게임 ms) = 게임 시간 3분. pace: HOUR_MS에 묶어 둔다 — 시계를 빠르게 해도 한 시간에 도는 스텝 수(20)가 같아야
  *  조리 대기·체류·걸음이 같은 눈금으로 끊기고, 하루 매출과 난수 흐름이 그대로 유지된다. */
@@ -47,7 +48,8 @@ function onNewHour(state: GameState): void {
   // [코어만] hourlyRegulars(state); // 단골★·특별 손님이 일반 손님(대기열)보다 먼저 자리를 잡는다
   // [코어만] hourlyBigEvents(state);
   hourlySpawn(state);
-  // [코어만] checkGoals(state); // 목표 줄이 1/1로 하루 종일 멈춰 있지 않게 매시간 판정 (달성 즉시 보상·대화창)
+  // [코어만] checkGoals(state);
+  checkTutorial(state); // 튜토리얼은 액션 때만이 아니라 시간이 흘러도 판정한다 — 「첫 손님 받기」처럼 기다려야 되는 단계가 있다
 }
 
 /** 새 날 (6시의 시간 처리보다 먼저): 효과 만료 → 빅 이벤트 종료 → 팝업 정리·지역 회복 → 밤 회복 → 근무 경험치·연수 복귀·직종 해금 → 게시판(부탁 진행·제안) → 메뉴 개발 완료 → 건설 → 목표 판정 */
