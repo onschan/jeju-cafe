@@ -28,7 +28,7 @@ describe('프롤로그 컷신 데이터', () => {
     expect(at(6).caption).toContain('제주');                    // 6컷: 작년 제주 여행 (회상)
     expect(at(7).lines.join(' ')).toContain('주인');            // 7컷: 카페 주인이 되겠다는 결심
     expect(at(10).speaker).toBe('halmang');
-    expect(at(10).lines.join(' ')).toContain('창고');
+    expect(at(10).lines.join(' ')).toContain('귤밭'); // 카이로 방향: 무대는 폐창고가 아니라 제주 귤밭·경관이다
   });
 
   it('컷이 바뀐 직후엔 보이는 글자가 0 — 다음 자막이 완성된 채 한 프레임 번쩍이지 않는다', () => {

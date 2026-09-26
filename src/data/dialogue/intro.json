@@ -10,7 +10,7 @@
     { "id": 7, "caption": "결심한 밤", "speaker": "hero", "lines": ["다시 그 자리에 앉고 싶었다.", "이번엔 주인으로."] },
     { "id": 8, "caption": "사직서", "speaker": "hero", "lines": ["1년을 미뤘다.", "오늘은 냈다."] },
     { "id": 9, "caption": "제주행 비행기", "speaker": null, "lines": ["세상이 바뀌는 데", "한 시간이면 됐다."] },
-    { "id": 10, "caption": "제주, 폐창고 앞", "speaker": "halmang", "lines": ["우리 창고, 카페로 써 보라.", "돈은 벌면 갚으라."] },
+    { "id": 10, "caption": "제주, 할망네 귤밭 앞", "speaker": "halmang", "lines": ["우리 귤밭 한쪽, 카페로 써 보라.", "돈은 벌면 갚으라."] },
     { "id": 11, "caption": "개업 첫날", "speaker": "hero", "lines": ["간판을 달았다. 제주 카페.", "여기서 다시 시작이다."] }
   ]
 }
