@@ -1,6 +1,6 @@
 import { Application, Container, Sprite, Graphics, Texture, Text } from 'pixi.js';
 import type { GameState, PlacedObject, Guest, Staff, Season, RoleId, Pt, RouteId, FxEvent } from '../sim/index.ts';
-import { seasonOf, LOW_ENERGY, parcelPrice, canBuyParcel, parcelAt, footprint, roomAt, doorFrontOf, WALL_COLORS, dayIndex, menuOf, sizeOf, mainBuilding, MAIN_SIZE, LIGHT_RADIUS, gradeOf, objectAt, cellAt, contestBadge } from '../sim/index.ts';
+import { seasonOf, LOW_ENERGY, parcelPrice, canBuyParcel, parcelAt, footprint, roomAt, doorFrontOf, WALL_COLORS, dayIndex, menuOf, sizeOf, mainBuilding, MAIN_SIZE, LIGHT_RADIUS, gradeOf, objectAt, cellAt, contestBadge, seatGrade, GRADE_COLOR } from '../sim/index.ts';
 import type { Parcel } from '../sim/index.ts';
 import { objectDef } from '../data/index.ts';
 import { isoTerrainTexture, isoObjectTexture, glowTexture, label, clearTextureCache, loadLabelFont } from './textures';
@@ -1441,6 +1441,26 @@ export class GameView {
 
   /** 증축 Lv 배지 (트랙 A): Lv2·3이면 스프라이트 오른쪽 위에 작은 "Lv2" 라벨. Lv가 바뀔 때만 다시 그린다.
    *  ui3: 공사 중이거나 「맵 위 표시 최소화」면 안 붙인다 — 한 시설 위에는 표시 하나만. */
+  /** 자리 등급 배지 (A~D, seatGrade.ts). 짓기·이동 고스트가 떠 있는 동안만 — 마당을 다시 짤 때 「어느 자리가 D인가」가 한눈에 보여야 한다.
+   *  평소엔 숨긴다 (열일곱 자리마다 글자가 붙어 있으면 손님이 안 보인다). */
+  private syncGradeBadge(entry: ObjEntry, o: PlacedObject, state: GameState) {
+    const g = this.ghostSpec && !o.build && !this.mapMinimal ? seatGrade(state, o) : null;
+    const key = g ? g.grade : '';
+    const prev = entry.node.getChildByLabel('grade');
+    if ((prev?.label ?? '') === 'grade' && (prev as Container & { gradeKey?: string }).gradeKey === key) return;
+    prev?.destroy({ children: true });
+    if (!g) return;
+    const c = new Container() as Container & { gradeKey?: string };
+    c.label = 'grade';
+    c.gradeKey = key;
+    const l = label(g.grade, 11);
+    l.anchor.set(0.5, 0.5);
+    c.addChild(new Graphics().roundRect(-9, -9, 18, 18, 3).fill({ color: GRADE_COLOR[g.grade], alpha: 0.95 }).stroke({ color: 0xfff6e0, width: 1 }), l);
+    const h = entry.sprite?.height ?? 40;
+    c.position.set(-14, -h + 6);
+    entry.node.addChild(c);
+  }
+
   private syncLevelBadge(entry: ObjEntry, o: PlacedObject) {
     const lv = o.level ?? 1;
     const key = lv >= 2 && !o.build && !this.mapMinimal && !this.unreachIds.has(o.id) ? `lv${lv}` : '';
@@ -1576,6 +1596,7 @@ export class GameView {
       if (entry.glow) { entry.glow.alpha = glowAlpha; entry.glow.visible = glowAlpha > 0; }
       this.syncBuilding(entry, o, state);
       this.syncLevelBadge(entry, o);
+      this.syncGradeBadge(entry, o, state); // 자리 등급 A~D (고스트가 떠 있을 때만)
       // 자리·크기가 바뀌었으면(이동·본관 증축) 노드 위치·깊이 갱신
       const { w, h } = sizeOf(o);
       const posKey = `${o.x},${o.y}:${w}x${h}`;

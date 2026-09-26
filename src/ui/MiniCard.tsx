@@ -10,7 +10,8 @@ import { TreeUpgradeRow } from './TreeUpgrade'; // fun: 같은 자리 업그레�
 import { treeOf } from '../sim/index.ts';
 import { cornerSeatLine, cornerAnchorLine, cornerBreakWarning } from '../sim/corners.ts';
 import { caringStaffOf, careStaff, careValueOf } from '../sim/staffPost.ts'; // staffpost: 이 자리를 돌보는 직원
-import { seatFitsWant, WANT_LABEL as FIT_LABEL, type Want } from '../sim/wants.ts'; // 이 자리에 맞는 손님 (손님 카드의 WANT_LABEL과는 다른 표)
+import { seatFitsWant, WANT_LABEL as FIT_LABEL, type Want } from '../sim/wants.ts';
+import { seatGrade, pctToNextGrade } from '../sim/seatGrade.ts'; // 자리 등급 A~D // 이 자리에 맞는 손님 (손님 카드의 WANT_LABEL과는 다른 표)
 import { salesToday } from '../sim/corners.ts'; // 오늘 이 자리가 번 돈 // spot2: 명당 효과·경고를 카드에서 보이게
 import { seatFeeQuote, FEE_MULT_CAP } from '../sim/fee.ts'; // spot2: 요금 내역 (기본 → 자리·명당·거리 → 실제로 받는 값)
 import { isCornerTarget } from '../sim/corners.ts';
@@ -434,8 +435,11 @@ function CareLine({ s, o }: { s: GameState; o: PlacedObject }) {
 function SeatSumLine({ s, o }: { s: GameState; o: PlacedObject }) {
   const fits = (Object.keys(FIT_LABEL) as Want[]).filter((w) => seatFitsWant(s, o, w)).map((w) => FIT_LABEL[w]);
   const won = salesToday(s, o);
+  const g = seatGrade(s, o);
+  const next = g ? pctToNextGrade(g.pct) : null;
   return (
     <div style={small} data-testid="seat-sum">
+      {g && <>등급 <b style={{ color: PALETTE.title, fontSize: 14 }} data-testid="seat-grade">{g.grade}</b> ({g.pct >= 0 ? '+' : ''}{g.pct}%{next ? ` · ${next.next}까지 ${next.need}%p` : ''}) · </>}
       맞는 손님 <b style={{ color: PALETTE.ink }}>{fits.length > 0 ? fits.join(' · ') : '아직 없음'}</b> · 오늘 매출 <b style={{ color: PALETTE.title }}>{wonText(won)}</b>
     </div>
   );

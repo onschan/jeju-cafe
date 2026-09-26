@@ -16,6 +16,7 @@ import { Confirm } from './Popup';
 import { card, brownBtn, brownBtnOff, dangerBtn, PALETTE } from './frame';
 import { wonText } from '../data/labels.ts';
 import { josa } from '../sim/josa.ts';
+import { scoreGrade } from '../sim/seatGrade.ts'; // 총점을 A~D 글자로 — 「우리 B · 옆집 A」
 
 const small = { fontSize: 13, color: PALETTE.inkSoft } as const;
 
@@ -46,7 +47,7 @@ function BoardRow({ r, gapText }: { r: RivalRow; gapText: string }) {
         </span>
         {gapText && <span style={{ ...small, fontSize: 12 }}>{gapText}</span>}
       </span>
-      <b style={{ fontSize: 15, whiteSpace: 'nowrap' }}>{r.total}</b>
+      <b style={{ fontSize: 15, whiteSpace: 'nowrap' }} data-testid="rival-total"><span style={{ fontSize: 16, color: r.rank === 1 ? '#c9741a' : PALETTE.ink }}>{scoreGrade(r.total)}</span> {r.total}</b>
     </div>
   );
 }

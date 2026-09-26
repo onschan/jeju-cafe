@@ -23,7 +23,7 @@ describe('배치 추천 칸 (§3.2.1)', () => {
   it('요금 %는 자리에만 — 장식은 받을 값이 없다', () => {
     const s = starter();
     const cell = placementPicks(s, SEAT).picks[0]!;
-    expect(seatPctLabel(s, SEAT, cell.x, cell.y)).toMatch(/^\+\d+%$/);
+    expect(seatPctLabel(s, SEAT, cell.x, cell.y)).toMatch(/^[A-D] \+\d+%$/); // 등급 글자 + %
     expect(seatPctLabel(s, 'flower_bed', cell.x, cell.y)).toBeNull();
   });
 
@@ -34,9 +34,9 @@ describe('배치 추천 칸 (§3.2.1)', () => {
     expect(r.picks.length).toBeGreaterThan(0);
     expect(r.picks.length).toBeLessThanOrEqual(PICK_COUNT);
     // 자리는 solver 없이도 그 칸의 요금 배수가 바로 나온다 (시작 마당은 어디든 +0%다 — 그것도 보여 준다)
-    expect(r.picks.every((p) => /^\+\d+%$/.test(p.label ?? ''))).toBe(true);
+    expect(r.picks.every((p) => /^[A-D] \+\d+%$/.test(p.label ?? ''))).toBe(true);
     // 1위 칸의 %가 꼴찌 칸보다 낮지 않다 (좋은 칸이 위로 온다)
-    const pcts = r.picks.map((p) => Number(p.label!.replace(/[+%]/g, '')));
+    const pcts = r.picks.map((p) => Number(p.label!.replace(/[A-D +%]/g, '')));
     expect(pcts[0]!).toBeGreaterThanOrEqual(pcts[pcts.length - 1]!);
     expect(r.picks.map((p) => p.rank)).toEqual(r.picks.map((_, i) => i + 1));
   });

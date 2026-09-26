@@ -17,7 +17,7 @@ describe('상성 UP', () => {
     const ups = s.fx.filter((f) => f.kind === 'up');
     expect(ups.length).toBe(2);
     expect(ups.map((f) => f.kind === 'up' && `${f.x},${f.y}`).sort()).toEqual([`${a.x},${a.y}`, `${b.x},${b.y}`].sort());
-    expect(ups.every((f) => f.kind === 'up' && /^\+\d+%$/.test(f.text))).toBe(true);
+    expect(ups.every((f) => f.kind === 'up' && /^(\+\d+%|[A-D]→[A-D])$/.test(f.text))).toBe(true); // 등급이 오르면 「C→B」
     expect(ups.map((f) => f.kind === 'up' && f.order)).toEqual([0, 1]); // 차례로 튀어오른다
     void far;
   });

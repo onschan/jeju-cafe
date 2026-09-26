@@ -11,6 +11,7 @@ import type { GameState } from './types.ts';
 import { objectDef } from '../data/index.ts';
 import { seatFeeQuote } from './fee.ts';
 import { pushFx } from './fx.ts';
+import { gradeOfMult } from './seatGrade.ts';
 
 /** 놓기 전에 자리마다 요금 배수를 적어 둔다 */
 export function snapshotSeatMults(state: GameState): Map<string, number> {
@@ -21,7 +22,7 @@ export function snapshotSeatMults(state: GameState): Map<string, number> {
   }
   return out;
 }
-/** 놓은 뒤: 배수가 오른 자리마다 `+n%` 를 띄운다. 띄운 수를 돌려준다. */
+/** 놓은 뒤: 배수가 오른 자리마다 `+n%` 를 띄운다 — 등급이 올랐으면 `C→B` 가 더 크다. 띄운 수를 돌려준다. */
 export function pushUpFx(state: GameState, before: Map<string, number>): number {
   let n = 0;
   for (const o of Object.values(state.objects)) {
@@ -32,7 +33,8 @@ export function pushUpFx(state: GameState, before: Map<string, number>): number 
     try { now = seatFeeQuote(state, o).mult; } catch { continue; }
     const pct = Math.round((now - was) * 100);
     if (pct <= 0) continue;
-    pushFx(state, { kind: 'up', x: o.x, y: o.y, text: `+${pct}%`, order: n, tick: state.tick });
+    const [was_, now_] = [gradeOfMult(was), gradeOfMult(now)];
+    pushFx(state, { kind: 'up', x: o.x, y: o.y, text: was_ !== now_ ? `${was_}→${now_}` : `+${pct}%`, order: n, tick: state.tick });
     n++;
   }
   return n;

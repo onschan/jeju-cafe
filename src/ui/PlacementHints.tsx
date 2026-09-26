@@ -11,7 +11,7 @@
  * solver.ts·solverCache.ts는 읽기만 한다 — 여기서 조합만 한다.
  */
 import type { GameState, Pt, SolverMove } from '../sim/index.ts';
-import { feeQuoteIfPlaced } from '../sim/fee.ts';
+import { gradeIfPlaced } from '../sim/seatGrade.ts';
 import { cachedMoves, solverResult, canPlace, seatScore, isLineType, bestSeatCells, bestCornerCells, parcelAt, cellAt, PROTECTED_TYPES, seatStrengths, STRENGTH_LABEL, type SeatStrength } from '../sim/index.ts';
 import { objectDef } from '../data/index.ts';
 import { solverBusy } from './solverClient';
@@ -67,10 +67,9 @@ function heuristicCells(s: GameState, type: string, n: number): Pt[] {
  *  0%도 숨기지 않는다. 시작 마당은 전망도 그늘도 없어서 **어느 칸이든 +0%**인데(실측), 그걸 감추면
  *  근거 없는 금색 칸 셋만 남는다. 「지금은 어디든 같다 — 경관을 놓으면 달라진다」가 보여야 한다. */
 export function seatPctLabel(s: GameState, type: string, x: number, y: number): string | null {
-  if (objectDef(type).kind !== 'seat') return null;
-  const q = feeQuoteIfPlaced(s, type, x, y);
-  if (!q) return null;
-  return `+${Math.round((q.mult - 1) * 100)}%`;
+  const g = gradeIfPlaced(s, type, x, y);
+  if (!g) return null;
+  return `${g.grade} +${g.pct}%`; // 등급 글자가 앞 — 「B 자리가 된다」가 %보다 먼저 읽힌다
 }
 /** 칸 위 한 줄: 자리는 요금 %(늘 나온다), 그 밖은 solver가 낸 돈·평판 */
 function cellLabel(s: GameState, type: string, x: number, y: number, delta?: SolverMove['delta']): string | null {
