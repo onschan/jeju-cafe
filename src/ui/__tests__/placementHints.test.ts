@@ -7,7 +7,7 @@ import { solveSync } from '../../sim/solver.ts';
 import { setSolverResult, solverKey } from '../../sim/solverCache.ts';
 import { objectDef } from '../../data/index.ts';
 import type { GameState } from '../../sim/types.ts';
-import { placementPicks, pickAt, pickLabel, pickStrengths, wanLabel, moveGain, betterSpot, PICK_COUNT, BETTER_SPOT_MIN, REP_WORTH } from '../PlacementHints.tsx';
+import { placementPicks, seatPctLabel, pickAt, pickLabel, pickStrengths, wanLabel, moveGain, betterSpot, PICK_COUNT, BETTER_SPOT_MIN, REP_WORTH } from '../PlacementHints.tsx';
 import { layoutScore, seatPart, flowPart, cornerPart, roomPart, weakestPart, noteLayoutScore, resetLayoutSnapshot, PART_MAX, SCORE_MAX, LEFT_FULL } from '../layoutScore.ts';
 
 const SEAT = 'table_out';
@@ -20,13 +20,24 @@ function starter(seed = 1): GameState { return createInitialState(seed); }
 beforeEach(() => { setSolverResult(null); resetLayoutSnapshot(); });
 
 describe('배치 추천 칸 (§3.2.1)', () => {
-  it('캐시가 없으면 숫자 없는 회색 3칸 — 빈 화면을 남기지 않는다', () => {
+  it('요금 %는 자리에만 — 장식은 받을 값이 없다', () => {
+    const s = starter();
+    const cell = placementPicks(s, SEAT).picks[0]!;
+    expect(seatPctLabel(s, SEAT, cell.x, cell.y)).toMatch(/^\+\d+%$/);
+    expect(seatPctLabel(s, 'flower_bed', cell.x, cell.y)).toBeNull();
+  });
+
+  it('캐시가 없어도 자리는 요금 %를 띄운다 — 회색 칸 셋만 보여 주면 왜 거기가 나은지 알 수 없다', () => {
     const s = starter();
     const r = placementPicks(s, SEAT);
     expect(r.state).not.toBe('cache');
     expect(r.picks.length).toBeGreaterThan(0);
     expect(r.picks.length).toBeLessThanOrEqual(PICK_COUNT);
-    expect(r.picks.every((p) => p.label === null)).toBe(true);
+    // 자리는 solver 없이도 그 칸의 요금 배수가 바로 나온다 (시작 마당은 어디든 +0%다 — 그것도 보여 준다)
+    expect(r.picks.every((p) => /^\+\d+%$/.test(p.label ?? ''))).toBe(true);
+    // 1위 칸의 %가 꼴찌 칸보다 낮지 않다 (좋은 칸이 위로 온다)
+    const pcts = r.picks.map((p) => Number(p.label!.replace(/[+%]/g, '')));
+    expect(pcts[0]!).toBeGreaterThanOrEqual(pcts[pcts.length - 1]!);
     expect(r.picks.map((p) => p.rank)).toEqual(r.picks.map((_, i) => i + 1));
   });
 

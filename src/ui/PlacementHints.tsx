@@ -11,6 +11,7 @@
  * solver.ts·solverCache.ts는 읽기만 한다 — 여기서 조합만 한다.
  */
 import type { GameState, Pt, SolverMove } from '../sim/index.ts';
+import { feeQuoteIfPlaced } from '../sim/fee.ts';
 import { cachedMoves, solverResult, canPlace, seatScore, isLineType, bestSeatCells, bestCornerCells, parcelAt, cellAt, PROTECTED_TYPES, seatStrengths, STRENGTH_LABEL, type SeatStrength } from '../sim/index.ts';
 import { objectDef } from '../data/index.ts';
 import { solverBusy } from './solverClient';
@@ -58,7 +59,25 @@ function heuristicCells(s: GameState, type: string, n: number): Pt[] {
   return out.slice(0, n).map((o) => o.p);
 }
 
-/** 이 시설을 놓을 추천 칸 3개. 캐시가 맞으면 숫자까지, 아니면 회색 3칸(또는 워커 대기). */
+/** 자리를 이 칸에 놓으면 값을 몇 % 더 받나 (`+28%`). 자리가 아니면 null.
+ *
+ *  solver 캐시가 없으면 추천 칸이 **숫자 없는 회색 칸 셋**이라 「왜 여기가 낫다는 건지」가 안 보였다.
+ *  요금 배수는 그 칸의 성질이라 solver 없이도 바로 나온다 — 자리를 놓을 땐 늘 이 숫자를 띄운다.
+ *
+ *  0%도 숨기지 않는다. 시작 마당은 전망도 그늘도 없어서 **어느 칸이든 +0%**인데(실측), 그걸 감추면
+ *  근거 없는 금색 칸 셋만 남는다. 「지금은 어디든 같다 — 경관을 놓으면 달라진다」가 보여야 한다. */
+export function seatPctLabel(s: GameState, type: string, x: number, y: number): string | null {
+  if (objectDef(type).kind !== 'seat') return null;
+  const q = feeQuoteIfPlaced(s, type, x, y);
+  if (!q) return null;
+  return `+${Math.round((q.mult - 1) * 100)}%`;
+}
+/** 칸 위 한 줄: 자리는 요금 %(늘 나온다), 그 밖은 solver가 낸 돈·평판 */
+function cellLabel(s: GameState, type: string, x: number, y: number, delta?: SolverMove['delta']): string | null {
+  return seatPctLabel(s, type, x, y) ?? (delta ? pickLabel(delta) : null);
+}
+
+/** 이 시설을 놓을 추천 칸 3개. 자리는 늘 요금 %, 그 밖은 캐시가 맞으면 숫자까지. */
 export function placementPicks(s: GameState, type: string, n = PICK_COUNT): PlacePicks {
   const moves = cachedMoves(s, (m) => m.action.type === 'place' && m.action.objectType === type);
   const picks: PlacePick[] = [];
@@ -66,13 +85,13 @@ export function placementPicks(s: GameState, type: string, n = PICK_COUNT): Plac
     if (m.action.type !== 'place') continue;
     const { x, y } = m.action;
     if (!canPlace(s, type, x, y).ok) continue; // 캐시를 만든 뒤 그 칸이 막혔을 수 있다
-    picks.push({ x, y, rank: picks.length + 1, label: pickLabel(m.delta) });
+    picks.push({ x, y, rank: picks.length + 1, label: cellLabel(s, type, x, y, m.delta) });
     if (picks.length >= n) break;
   }
   if (picks.length > 0) return { picks, state: 'cache' };
   const busy = !solverResult(s) && solverBusy();
   const cells = heuristicCells(s, type, n).filter((p) => canPlace(s, type, p.x, p.y).ok);
-  return { picks: cells.map((p, i) => ({ x: p.x, y: p.y, rank: i + 1, label: null })), state: busy ? 'busy' : 'fallback' };
+  return { picks: cells.map((p, i) => ({ x: p.x, y: p.y, rank: i + 1, label: cellLabel(s, type, p.x, p.y) })), state: busy ? 'busy' : 'fallback' };
 }
 
 /** 추천 칸이면 그 칸 (아니면 null). 탭은 **고스트만 옮긴다** — 짓기는 ✓ 확정뿐이라 실수로 지어지는 길이 없다. */
