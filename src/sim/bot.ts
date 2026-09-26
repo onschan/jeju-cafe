@@ -47,6 +47,8 @@ import { signupOpen, contestState, contestStaff, contestMenus, contestOdds, canE
 import { staffCapacity, STAFF_ROOM_TYPE, staffInRole } from './staff.ts';
 import { seatDirt, dailyCleanRecovery, CLEAN_LOW } from './cleanliness.ts'; // staff2: 청소가 필요한지 본다
 import { seatsAroundCell, canSetPost, postOf } from './staffPost.ts'; // staffpost: 홀 직원을 자리가 많이 모인 칸에 세운다
+import { currentChapter, chapterBlocker } from './chapter.ts'; // chapter: 막이 막혀 있으면 그 까닭대로 짓는다
+import { siteOf } from './site.ts';
 import { cornersCoveringCell } from './corners.ts';
 import { ZONE_ROLE } from './staff.ts';
 import { canUpgrade, upgradeCost, isUpgradable } from './upgrade.ts';
@@ -609,6 +611,30 @@ function placeStaff(s: GameState): void {
   }
 }
 
+/** chapter: 이번 막의 손님을 앉힐 자리가 아예 없으면(chapterBlocker) 그 까닭대로 하나 짓는다 —
+ *  사람이 안내 줄을 읽고 하는 일을 봇도 한다. 없으면 막 사슬이 4막에서 영영 멈춰 밸런스 가드가 그 뒤를 못 본다. */
+function placeForChapter(s: GameState): void {
+  const ch = currentChapter(s);
+  if (!ch || !chapterBlocker(s)) return;
+  const seats = Object.values(s.objects).filter((o) => objectDef(o.type).kind === 'seat');
+  const near = (x: number, y: number) => seats.length === 0 ? 0 : -Math.min(...seats.map((o) => Math.max(Math.abs(o.x - x), Math.abs(o.y - y))));
+  const main = Object.values(s.objects).find((o) => o.type === 'warehouse');
+  const want: { type: string; score: (x: number, y: number) => number } | null =
+    ch.want === 'rest' ? { type: 'table_parasol', score: (x, y) => -siteOf(s, x, y).view }
+    : ch.want === 'farm' ? { type: 'tangerine_tree', score: near }
+    : ch.want === 'convenience' ? { type: 'table_out', score: (x, y) => main ? -(Math.abs(x - main.x) + Math.abs(y - main.y)) : 0 }
+    : ch.want === 'scenery' ? { type: 'cherry_tree', score: near }
+    : null;
+  if (!want || !canSpend(s, objectDef(want.type).cost)) return;
+  let best: { x: number; y: number; v: number } | null = null;
+  for (let y = 0; y < s.grid.h; y++) for (let x = 0; x < s.grid.w; x++) {
+    if (!parcelAt(s, x, y)?.owned || !canPlace(s, want.type, x, y).ok) continue;
+    const v = want.score(x, y);
+    if (!best || v > best.v) best = { x, y, v };
+  }
+  if (best) place(s, want.type, best.x, best.y);
+}
+
 export function monthlyPlan(s: GameState, monthsPlayed: number): void {
   ensurePath(s);
   // 테이블은 한 달에 4개씩 늘린다 (사람처럼): 시작 3석 + 16
@@ -622,6 +648,7 @@ export function monthlyPlan(s: GameState, monthsPlayed: number): void {
     for (const p of bestSeatCellsHeuristic(s, BOT_TABLES_PER_MONTH)) { if (extra >= BOT_TABLES_PER_MONTH || countType(s, 'table_out') >= BOT_OUTDOOR_MAX) break; if (place(s, 'table_out', p.x, p.y)) extra++; }
   }
   placeStaff(s); // staffpost: 자리를 늘렸으면 홀 직원이 서는 칸도 다시 고른다
+  placeForChapter(s); // chapter: 이번 막의 손님을 앉힐 자리가 없으면 하나 짓는다
   setMenuIfEmpty(s, 3, 'green_tea');
   pickDessert(s);
 

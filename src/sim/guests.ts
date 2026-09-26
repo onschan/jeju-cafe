@@ -8,7 +8,7 @@ import { busStopPos, findPath, walkableNeighborsOf, reachMap, pathFromReach, cel
 import { roleEffect, skillTotal, pushNotice, staffInRole, addRoleExp, LOW_ENERGY, roleHeads, isNightShift, NIGHT_BONUS } from './staff.ts'; // staff2: 인원 환산·저녁 근무
 import { careSatisfaction } from './staffPost.ts'; // staffpost: 직원이 서 있는 칸 반경 2 안의 자리는 돌봄을 받는다
 import { effectivePopularity, youtuberMultiplier, MAX_ACTIVE_PROMOTIONS } from './promotions.ts';
-import { START_HOUR, END_HOUR, HOUR_MS, seasonOf } from './clock.ts';
+import { isWeekend, START_HOUR, END_HOUR, HOUR_MS, seasonOf } from './clock.ts';
 import { parcelBonusAt, parcelSpawnMult, parcelFeeMult, parcelAt } from './parcels.ts';
 import { objectStats, popularityFor, guestPickMult, cornerSatisfaction, BASE_POPULARITY } from './compat.ts';
 import { cornerVisitTargets, cornerOfPiece, visitCorner, cornerDef, noteSales, CORNER_VISIT_WEIGHT } from './corners.ts';
@@ -46,7 +46,7 @@ import { streetFeeMult } from './tree.ts'; // fun: 같은 트리 3연속 「거�
 import { sceneryTouristMult, notePhoto } from './appeal.ts'; // fun: 경관 → 관광객, 사진 → 평판
 import { assignGuestName, regularsDue, dressAsRegular, regularTip, thankIfDone, maybeRequest, addRegularGauge, requestDef, GAUGE_HAPPY_VISIT } from './interact.ts'; // fun-guest (트랙 G): 이름·단골·요청·게이지
 import { seatFitsGuest } from './wants.ts'; // 카이로 방향: 손님은 자기 취향 자리를 골라 앉는다
-import { noteChapterSeat } from './chapter.ts'; // chapter: 제자리에 앉은 손님을 센다
+import { noteChapterSeat, chapterBoost } from './chapter.ts'; // chapter: 제자리에 앉은 손님을 센다 · 이번 막의 드문 손님이 더 온다
 
 export { moveAlong, GUEST_SPEED_CELLS_PER_S }; // 하위 호환 재수출 (본체는 path.ts)
 // pace: 체류·조리 시간은 게임 시간(시)으로 적는다 — HOUR_MS를 줄여 시계를 빠르게 해도 「몇 시간 앉아 있나」가 그대로라 하루 매출이 안 바뀐다.
@@ -235,9 +235,14 @@ export function uncappedDailyGuests(state: GameState, popBonus = 0): number {
 }
 
 /** 하루 손님 수 = min(좌석 × 6, 기반값 × 이벤트 전체 배수 × 빅 이벤트 배수 × 메뉴 품격(+%) × 계절 × 라이벌(−5%/곳) × 청결 × 평판(0.5 + 평판/100)), 2~300 */
+/** 주말(토·일) 손님 배수. 러시(토요일 점심 4배 몰아치기)를 걷어내며 주 리듬이 통째로 사라졌고, 러시가 토요일에
+ *  덤으로 넣던 손님(하루 몫을 넘긴 만큼은 환불이 안 됐다 — 주 +10%쯤)도 같이 사라져 가장 빠듯한 씨앗이 3년차에
+ *  파산했다. 미니게임 없이 같은 리듬을 돌려놓는다 — 카이로도 주말엔 사람이 더 온다. */
+export const WEEKEND_GUEST_MULT = 1.35;
 export function dailyGuestCount(state: GameState): number {
   const cap = totalSeats(state) * GUESTS_PER_SEAT;
-  return Math.max(MIN_DAILY_GUESTS, Math.min(cap, uncappedDailyGuests(state)));
+  const weekend = isWeekend(state.clock.day) ? WEEKEND_GUEST_MULT : 1;
+  return Math.max(MIN_DAILY_GUESTS, Math.min(cap, uncappedDailyGuests(state) * weekend));
 }
 
 // ---------- midgame: 「자리가 몇 개 필요한가」 ----------
@@ -361,7 +366,7 @@ export function spawnGuests(state: GameState, n: number, forceType?: string, ent
   const route: RouteId = entry?.route ?? 'bus';
   const start = entry?.pos ?? busStopPos(state);
   const reach = reachMap(state, start); // 걷기 지형은 스폰 중 안 바뀌므로 한 번만
-  const pickType = (bonus: ParcelBonus, force?: string) => force ? (force === NAMED_TYPE ? NAMED_TYPE : canonicalGuestId(force)) : pickWeighted(state, unlockedTypeIds(state), (id) => typeWeight(state, id, state.clock.hour, bonus) * (entry ? routeTagMult(route, id) : 1));
+  const pickType = (bonus: ParcelBonus, force?: string) => force ? (force === NAMED_TYPE ? NAMED_TYPE : canonicalGuestId(force)) : pickWeighted(state, unlockedTypeIds(state), (id) => typeWeight(state, id, state.clock.hour, bonus) * (entry ? routeTagMult(route, id) : 1) * chapterBoost(state, id)); // chapter: 이번 막의 드문 손님이 더 온다
   /** 빈 자리 중 가장 가까운 것. typeId를 주면 **그 손님에게 맞는 자리**(취향 — wants.ts)를 먼저 찾고, 없을 때만 아무 자리.
    *  카이로 방향: 손님은 자기 취향 자리를 골라 앉는다. 그래야 「조용한 자리를 만들었더니 조용함을 보는 손님이 거기 앉는다」가
    *  마당에서 눈에 보이고, 배치가 곧 전략이 된다. 예전엔 무조건 가까운 자리라 취향이 배치와 아무 상관이 없었다. */

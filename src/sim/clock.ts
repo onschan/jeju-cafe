@@ -1,6 +1,11 @@
 import type { Clock, GameState, Season } from './types.ts';
 
 export const DAYS_PER_MONTH = 30;
+/** 한 주 7일. 러시가 없어진 뒤에도 주 리듬은 남긴다 — 주말엔 손님이 더 온다 (guests.ts WEEKEND_GUEST_MULT). */
+export const WEEK_DAYS = 7;
+/** 그 달 며칠(1~30)이 주의 몇째 날인가 (0 = 월요일, 5·6 = 토·일) */
+export function weekdayOf(day: number): number { return (day - 1) % WEEK_DAYS; }
+export function isWeekend(day: number): boolean { return weekdayOf(day) >= 5; }
 export const START_HOUR = 6;
 export const END_HOUR = 24;
 /** 게임 시간 1시간이 흐르는 데 걸리는 시간(1배속 ms).

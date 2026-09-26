@@ -33,17 +33,20 @@ def warehouse(level: int = 1) -> IsoCanvas:
     wall_h = 26 if level < 3 else 44
     wall = PLASTER if level == 1 else CREAM
     if level == 1:
-        r = room(c, (0, 0, 3, 2), wall_h, wall, PALEWOOD, 'x', base_h=10, step=0.25)
+        # 카이로 방향(specs/2026-09-26-direction.md): 건물이 아니라 **지붕 없는 단면**이다. 영상의 방·탕·가게처럼
+        # 낮은 벽만 남기고 잘라 낸다 — 「실내」는 바닥 재질일 뿐, 손님이 앉는 곳은 전부 마당이다.
+        r = room(c, (0, 0, 3, 2), 7, wall, PALEWOOD, 'x', base_h=6, step=0.25)
+        r.on_right(sign_sprite(), 30, -4)
     else:
         tile_floor(c, (0, 0, 3, 2), 3, TILE_A, TILE_B, 0.25)
         r = room(c, (0, 0, 3, 2), wall_h, wall, PALEWOOD, 'x', base_h=10, step=0.25)
         tile_floor(c, (0.12, 0.12, 3, 2), 3, TILE_A, TILE_B, 0.25)
-    # 뒤-왼쪽 벽: 미닫이 문 + 창 / 뒤-오른쪽 벽: 창 2 + 간판
-    r.on_left(door_sprite(20, 21), 18, wall_h + 10 - 21)
-    r.on_left(window_sprite(12, 10), 44, 8)
-    r.on_right(window_sprite(12, 10), 10, 9)
-    r.on_right(window_sprite(12, 10), 76, 9)
-    r.on_right(sign_sprite() if level == 1 else big_sign(44), 30 if level == 1 else 24, 2)
+        # 뒤-왼쪽 벽: 미닫이 문 + 창 / 뒤-오른쪽 벽: 창 2 + 간판 (증축 그림은 옛것 — 지금은 안 쓴다)
+        r.on_left(door_sprite(20, 21), 18, wall_h + 10 - 21)
+        r.on_left(window_sprite(12, 10), 44, 8)
+        r.on_right(window_sprite(12, 10), 10, 9)
+        r.on_right(window_sprite(12, 10), 76, 9)
+        r.on_right(big_sign(44), 24, 2)
     if level >= 2:
         awning(c, (0.12, 0.85, 0.5, 1.55), r.top - 9, MINT, WHITE, 'y', 3)                   # 문 위 차양
     if level == 3:

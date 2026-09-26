@@ -2,7 +2,8 @@
 import { describe, it, expect } from 'vitest';
 import { bareState, X, Y } from './helpers.ts';
 import { placeObject } from '../grid.ts';
-import { CHAPTERS, CHAPTER_TICKETS, chapterProgress, currentChapter, chaptersCleared, allChaptersDone, noteChapterSeat, checkChapter, chapterLine, chapterBlocker } from '../chapter.ts';
+import { CHAPTERS, CHAPTER_TICKETS, chapterProgress, currentChapter, chaptersCleared, allChaptersDone, noteChapterSeat, checkChapter, chapterLine, chapterBlocker, chapterBoost, CHAPTER_BOOST_MAX } from '../chapter.ts';
+import { spawnGuests } from '../guests.ts';
 import { seatFitsWant, seatFitsGuest, FIT_RADIUS } from '../wants.ts';
 import { createInitialState } from '../state.ts';
 import { botDay, newBotCursor } from '../bot.ts';
@@ -97,5 +98,30 @@ describe('막 (chapter)', () => {
     expect(seatFitsWant(s, seat, 'farm')).toBe(false);
     placeObject(s, 'tangerine_tree', X(4) + FIT_RADIUS, Y(4));
     expect(seatFitsWant(s, seat, 'farm')).toBe(true);
+  });
+});
+
+describe('카이로 방향: 손님은 자기 취향 자리를 고른다', () => {
+  it('막 손님 가중치는 드문 손님만 끌어올린다 — 흔한 손님을 더 흔하게 만들면 러시가 가난해진다', () => {
+    const s = bareState(1);
+    unlockGuestType(s, 'local_uncle'); // 밭 삼춘 = farm (시작 해금은 rest 3종뿐이다)
+    expect(chapterBoost(s, 'village_head')).toBe(1);              // 1막(rest) 손님이지만 이미 절반이 넘는다 → 그대로
+    chapterProgress(s).idx = 1;                                    // 2막(farm)
+    expect(chapterBoost(s, 'local_uncle')).toBeGreaterThan(1);     // 드문 farm → 끌어올린다
+    expect(chapterBoost(s, 'local_uncle')).toBeLessThanOrEqual(CHAPTER_BOOST_MAX);
+    expect(chapterBoost(s, 'village_head')).toBe(1);               // 이번 막 손님이 아니면 그대로
+  });
+
+  it('취향 자리가 있으면 가까운 자리를 두고도 거기 앉는다', () => {
+    const s = createInitialState(1, 'local', 0, 'open');
+    s.menuSlots = ['americano', 'latte', 'tangerine_juice'];
+    const main = Object.values(s.objects).find((o) => o.type === 'warehouse')!;
+    const near = placeObject(s, 'table_out', main.x, main.y + 3)!;        // 문 바로 앞 맨 테이블
+    const shade = placeObject(s, 'table_parasol', main.x + 3, main.y + 5)!; // 조금 먼 파라솔
+    for (let i = 0; i < 20; i++) spawnGuests(s, 1, 'village_head'); // 이장님 = rest(조용함)
+    const seated = s.guests.map((g) => g.seatId);
+    expect(seated[0]).toBe(shade.id); // 첫 손님은 가까운 맨 테이블이 아니라 그늘 자리로
+    expect(seated.filter((id) => id === shade.id).length).toBeGreaterThan(0);
+    void near;
   });
 });

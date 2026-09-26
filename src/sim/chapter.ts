@@ -20,6 +20,7 @@
 import type { GameState } from './types.ts';
 import { objectDef } from '../data/index.ts';
 import { seatFitsWant, wantOf, WANT_LABEL, type Want } from './wants.ts';
+import { unlockedTypeIds } from './segments.ts';
 import { pushNotice } from './staff.ts';
 import { pushFx } from './fx.ts';
 import { addTickets } from './mileage.ts';
@@ -40,16 +41,16 @@ export interface ChapterDef {
 }
 
 export const CHAPTERS: ChapterDef[] = [
-  { id: 'ch_rest', name: '1막 · 조용히 쉬러 온 사람', want: 'rest', need: 30,
+  { id: 'ch_rest', name: '1막 · 조용히 쉬러 온 사람', want: 'rest', need: 250,
     todo: '그늘지고 조용한 자리를 만들어요 — 파라솔이나 나무 곁', done: '쉬러 온 사람들이 여기를 기억했어요' },
-  { id: 'ch_farm', name: '2막 · 귤밭을 보러 온 사람', want: 'farm', need: 40,
+  { id: 'ch_farm', name: '2막 · 귤밭을 보러 온 사람', want: 'farm', need: 450,
     todo: '감귤나무나 당근밭 곁에 자리를 놓아요', done: '귤밭 곁 자리가 소문났어요' },
-  { id: 'ch_convenience', name: '3막 · 차를 몰고 온 사람', want: 'convenience', need: 80,
+  { id: 'ch_convenience', name: '3막 · 차를 몰고 온 사람', want: 'convenience', need: 650,
     todo: '문에서 가까운 자리를 늘려요', done: '차를 세우고 바로 앉는 카페가 됐어요' },
-  { id: 'ch_scenery', name: '4막 · 바다를 보러 온 사람', want: 'scenery', need: 120,
+  { id: 'ch_scenery', name: '4막 · 바다를 보러 온 사람', want: 'scenery', need: 850,
     todo: '벚나무 같은 큰 경관을 자리 곁에 모아요 — 전망 2 이상', done: '전망 자리를 보러 사람들이 와요' },
   // 5막엔 잡을 손님층이 없다 — 온갖 손님이 각자 제자리에 앉아야 한다. 한 층에 맞춘 마당은 여기서 밑천이 드러난다.
-  { id: 'ch_regular', name: '5막 · 다시 찾아온 단골', want: null, need: 400,
+  { id: 'ch_regular', name: '5막 · 다시 찾아온 단골', want: null, need: 1500,
     todo: '이제 온갖 손님이 와요 — 그늘·귤밭·문 앞·전망을 고루 갖춰요', done: '이 카페는 이제 단골들의 자리예요' },
 ];
 
@@ -76,6 +77,22 @@ export function allChaptersDone(state: GameState): boolean {
 /** 이번 막에서 지금까지 제자리에 앉은 수 */
 export function chapterHits(state: GameState): number {
   return chapterProgress(state).hits ?? 0;
+}
+
+/** 이번 막의 손님을 더 오게 한다 — 다만 **드문 손님만**.
+ *  해금된 손님층은 고르지 않다(30종 중 rest 16 · farm 1). 그대로 두면 막 난이도를 플레이어가 아니라
+ *  손님 뽑기가 정한다(실측: 1막 2주, 2막 99주). 그렇다고 흔한 손님까지 올리면 지갑 얇은 동네 손님으로
+ *  도배된다. 「이번 막 손님이 CHAPTER_SHARE쯤 되게」만 끌어올리고, 이미 그만큼 흔하면 그대로 둔다. */
+export const CHAPTER_SHARE = 0.35;
+export const CHAPTER_BOOST_MAX = 6;
+export function chapterBoost(state: GameState, typeId: string): number {
+  const want = currentChapter(state)?.want ?? null;
+  if (want === null || wantOf(typeId) !== want) return 1;
+  const ids = unlockedTypeIds(state);
+  const n = ids.filter((id) => wantOf(id) === want).length;
+  if (n === 0 || ids.length === 0) return 1;
+  const share = n / ids.length;
+  return share >= CHAPTER_SHARE ? 1 : Math.min(CHAPTER_BOOST_MAX, CHAPTER_SHARE / share);
 }
 
 /** 손님이 자리에 앉는 순간 guests.ts가 부른다. 그 손님이 **자기 취향 자리**(fit)에 앉았고
