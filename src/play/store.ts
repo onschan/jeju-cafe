@@ -3,7 +3,10 @@ import { useSyncExternalStore } from 'react';
 import { newGame, apply, step, serialize, deserialize, STEP_MS, DAY_MS, type GameState, type Action, type ApplyResult } from '../game/index.ts';
 
 const KEY = 'jeju-cafe:v100:auto';
-let state: GameState = load() ?? newGame((Date.now() % 1_000_000) | 0);
+const loaded = load();
+/** 이어 할 세이브가 있었나 (타이틀 화면이 「이어하기」를 보여 줄지) */
+export const hadSave = loaded !== null;
+let state: GameState = loaded ?? newGame((Date.now() % 1_000_000) | 0);
 let rev = 0;
 const subs = new Set<() => void>();
 function emit(): void { rev++; for (const f of subs) f(); }
@@ -26,11 +29,15 @@ export function dispatch(a: Action): ApplyResult { const r = apply(state, a); dr
 export function restart(seed?: number): void { state = newGame(seed ?? ((Date.now() % 1_000_000) | 0)); save(); emit(); }
 
 let acc = 0; let last = 0; let lastDay = -1; let raf = 0;
+/** 타이틀·창이 떠 있는 동안 시계를 멈춘다 (속도 설정은 그대로) */
+let paused = false;
+export function setPaused(v: boolean) { paused = v; }
+
 export function startLoop(): () => void {
   last = performance.now();
   const frame = (now: number) => {
     const dt = Math.min(250, now - last); last = now;
-    acc += dt * state.clock.speed;
+    acc += dt * (paused ? 0 : state.clock.speed);
     let n = 0;
     while (acc >= STEP_MS && n < 40) { step(state, STEP_MS); acc -= STEP_MS; n++; }
     if (n > 0) { drainToasts(); emit(); const day = Math.floor((state.tick * STEP_MS) / DAY_MS); if (day !== lastDay) { lastDay = day; save(); } }

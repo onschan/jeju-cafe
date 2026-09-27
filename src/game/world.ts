@@ -38,6 +38,10 @@ export function makeCells(): Cell[] {
 export function inBounds(s: GameState, x: number, y: number): boolean { return x >= 0 && y >= 0 && x < s.grid.w && y < s.grid.h; }
 export function cellAt(s: GameState, x: number, y: number): Cell { return s.grid.cells[y * s.grid.w + x]!; }
 export function parcelAt(s: GameState, x: number, y: number): Parcel | null { return s.parcels.find((p) => x >= p.x && y >= p.y && x < p.x + p.w && y < p.y + p.h) ?? null; }
+/** 내 땅과 변이 붙은 필지인가 (모서리만 닿으면 안 된다) */
+export function parcelAdjacent(s: GameState, p: Parcel): boolean {
+  return s.parcels.some((q) => q.owned && ((Math.abs(q.x - p.x) === p.w && q.y === p.y) || (Math.abs(q.y - p.y) === p.h && q.x === p.x)));
+}
 export function owned(s: GameState, x: number, y: number): boolean { return !!parcelAt(s, x, y)?.owned; }
 export function facilityAt(s: GameState, x: number, y: number) { const id = inBounds(s, x, y) ? cellAt(s, x, y).objectId : null; return id ? s.facilities[id] ?? null : null; }
 export function footprint(x: number, y: number, w: number, h: number): Pt[] { const out: Pt[] = []; for (let dy = 0; dy < h; dy++) for (let dx = 0; dx < w; dx++) out.push({ x: x + dx, y: y + dy }); return out; }

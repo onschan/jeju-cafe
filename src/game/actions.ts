@@ -1,7 +1,7 @@
 import type { GameState, Action, ApplyResult } from './types.ts';
 import { facilityDef, isFloorDef } from './data.ts';
 import { placeAndBurst, removeFacility } from './facility.ts';
-import { canLayFloor, layFloor, clearFloor, lineCells, cellAt, inBounds } from './world.ts';
+import { canLayFloor, layFloor, clearFloor, lineCells, cellAt, inBounds, parcelAdjacent } from './world.ts';
 import { canUnlock, unlock } from './research.ts';
 import { canHire, hire } from './staff.ts';
 import { canInvest, invest } from './invest.ts';
@@ -59,13 +59,13 @@ function applyInner(s: GameState, a: Action): ApplyResult {
       const p = s.parcels.find((x) => x.id === a.id);
       if (!p) return { ok: false, reason: '없는 땅이에요' };
       if (p.owned) return { ok: false, reason: '이미 내 땅이에요' };
-      const adjacent = s.parcels.some((q) => q.owned && ((Math.abs(q.x - p.x) === p.w && q.y === p.y) || (Math.abs(q.y - p.y) === p.h && q.x === p.x)));
-      if (!adjacent) return { ok: false, reason: '내 땅과 붙어 있어야 해요' };
+      if (!parcelAdjacent(s, p)) return { ok: false, reason: '내 땅과 붙어 있어야 해요' };
       if (s.money < p.price) return { ok: false, reason: '돈이 모자라요' };
       s.money -= p.price; s.month.spent += p.price; p.owned = true;
       s.fx.push({ kind: 'notice', text: `${p.name}을 샀어요` });
       return { ok: true };
     }
     case 'setSpeed': s.clock.speed = a.speed; return { ok: true };
+    case 'setName': { const n = a.name.trim().slice(0, 12); if (!n) return { ok: false, reason: '이름을 적어요' }; s.cafeName = n; return { ok: true }; }
   }
 }

@@ -97,9 +97,9 @@ export class View {
       const c = cellAt(state, x, y);
       const own = state.parcels.some((p) => p.owned && x >= p.x && y >= p.y && x < p.x + p.w && y < p.y + p.h);
       const { sx, sy } = cellToScreen(x, y);
-      const name = c.terrain === 'road' ? spriteName.isoTile('road', season) : c.floor && c.floor !== 'path' ? `iso_tile_floor_${c.floor}` : own ? spriteName.isoTile('soil', season) : 'iso_tile_locked';
+      const name = c.terrain === 'road' ? spriteName.isoTile('road', season) : c.floor && c.floor !== 'path' ? `iso_tile_floor_${c.floor}` : spriteName.isoTile('soil', season);
       const t = hasAssets() ? peekTex(name) ?? peekTex(spriteName.isoTile('soil', season)) : null;
-      if (t) { const sp = new Sprite(t); sp.anchor.set(0.5, 0); sp.position.set(sx, sy); this.tiles.addChild(sp); }
+      if (t) { const sp = new Sprite(t); sp.anchor.set(0.5, 0); sp.position.set(sx, sy); if (!own && c.terrain !== 'road') sp.tint = 0x6f7a6a; this.tiles.addChild(sp); } // 미소유 땅은 어둡게 — 살 수 있는 땅이라는 게 보인다
       else g.poly([sx, sy, sx + ISO_W / 2, sy + ISO_H / 2, sx, sy + ISO_H, sx - ISO_W / 2, sy + ISO_H / 2]).fill({ color: c.terrain === 'road' ? 0x8a8a80 : c.floor ? 0xc9a36a : own ? 0x6aa84f : 0x3f5a3a });
       if (c.floor === 'path') { const pt = hasAssets() ? peekTex(spriteName.isoObject('path')) : null; if (pt) { const sp = new Sprite(pt); sp.anchor.set(0.5, 1); const a = footAnchor(x, y, 1, 1); sp.position.set(a.sx, a.sy); this.tiles.addChild(sp); } }
     }
@@ -111,6 +111,18 @@ export class View {
       b.poly([c0.sx, c0.sy, c1.sx, c1.sy, c2.sx, c2.sy, c3.sx, c3.sy]).stroke({ color: p.owned ? 0xfff2c0 : 0x000000, alpha: p.owned ? 0.5 : 0.25, width: 1 });
     }
     this.tiles.addChild(b);
+    // 미소유 필지 팻말: 이름 · 값 (탭하면 산다)
+    for (const p of state.parcels) {
+      if (p.owned) continue;
+      const cc = cellCenter(p.x + Math.floor(p.w / 2), p.y + Math.floor(p.h / 2));
+      const st = hasAssets() ? peekTex(spriteName.isoObject('signboard')) : null;
+      if (st) { const sp = new Sprite(st); sp.anchor.set(0.5, 1); sp.position.set(cc.sx, cc.sy + ISO_H / 2); this.tiles.addChild(sp); }
+      const l = label(`${p.name}  ₩${Math.round(p.price / 10_000)}만`, 11); l.anchor.set(0.5, 1);
+      const w = l.width + 10;
+      const bg = new Graphics().roundRect(-w / 2, -16, w, 16, 3).fill({ color: 0x3b2a1a, alpha: 0.9 });
+      const node = new Container(); node.addChild(bg, l); node.position.set(cc.sx, cc.sy - 40);
+      this.tiles.addChild(node);
+    }
     const c0 = cellToScreen(0, 0), c1 = cellToScreen(state.grid.w, 0), c2 = cellToScreen(state.grid.w, state.grid.h), c3 = cellToScreen(0, state.grid.h);
     this.bounds = { x: c3.sx - 80, y: c0.sy - 120, w: c1.sx - c3.sx + 160, h: c2.sy - c0.sy + 240 };
   }

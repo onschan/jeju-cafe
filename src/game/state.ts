@@ -13,7 +13,7 @@ export const START_MONEY = 3_000_000;
 /** 새 게임: 잔디 마당 + 정류장에서 마당 가운데까지 올렛길 + 데크 몇 칸 + 테이블 하나. 손님은 첫날부터 온다. */
 export function newGame(seed: number): GameState {
   const s: GameState = {
-    version: SAVE_VERSION, seed, rng: seed | 0, tick: 0,
+    version: SAVE_VERSION, cafeName: '우리 카페', seed, rng: seed | 0, tick: 0,
     clock: newClock(),
     money: START_MONEY, research: 0, fame: 0,
     grid: { w: 36, h: 30, cells: makeCells() },

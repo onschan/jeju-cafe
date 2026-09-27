@@ -59,6 +59,7 @@ export type Fx =
 
 export interface GameState {
   version: number;
+  cafeName: string;
   seed: number; rng: number; tick: number;
   clock: Clock;
   money: number; research: number; fame: number;
@@ -97,6 +98,7 @@ export type Action =
   | { type: 'fire'; staffId: string }
   | { type: 'invest'; id: string }
   | { type: 'buyParcel'; id: string }
-  | { type: 'setSpeed'; speed: 0 | 1 | 2 | 3 };
+  | { type: 'setSpeed'; speed: 0 | 1 | 2 | 3 }
+  | { type: 'setName'; name: string };
 
 export interface ApplyResult { ok: boolean; reason?: string }
