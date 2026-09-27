@@ -2,7 +2,7 @@ import type { GameState, Action, ApplyResult } from './types.ts';
 import { facilityDef, isFloorDef } from './data.ts';
 import { placeAndBurst, removeFacility } from './facility.ts';
 import { canLayFloor, layFloor, clearFloor, lineCells, cellAt, inBounds, parcelAdjacent } from './world.ts';
-import { canUnlock, unlock } from './research.ts';
+import { canUnlock, unlock, canLevelUp, levelUp } from './research.ts';
 import { canHire, hire } from './staff.ts';
 import { canInvest, invest } from './invest.ts';
 import { checkObjectives } from './objectives.ts';
@@ -44,6 +44,7 @@ function applyInner(s: GameState, a: Action): ApplyResult {
       return r;
     }
     case 'rename': { const f = s.facilities[a.facilityId]; if (!f) return { ok: false, reason: '없어진 시설이에요' }; f.name = a.name.slice(0, 12); return { ok: true }; }
+    case 'levelUp': { const c = canLevelUp(s, a.facilityId); if (!c.ok) return c; levelUp(s, a.facilityId); return { ok: true }; }
     case 'unlock': { const c = canUnlock(s, a.id); if (!c.ok) return c; unlock(s, a.id); return { ok: true }; }
     case 'setMenu': {
       if (!s.unlocked.menus.includes(a.menuId)) return { ok: false, reason: '아직 연구가 안 됐어요' };

@@ -91,6 +91,7 @@ export type Action =
   | { type: 'remove'; facilityId: string }
   | { type: 'removeFloor'; x: number; y: number }
   | { type: 'rename'; facilityId: string; name: string }
+  | { type: 'levelUp'; facilityId: string }   // 연구+돈으로 단계 올리기
   | { type: 'unlock'; id: string }           // 연구로 시설·메뉴·손님층 열기
   | { type: 'setMenu'; menuId: string; on: boolean }
   | { type: 'setTarget'; guestType: string | null }

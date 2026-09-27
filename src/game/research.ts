@@ -1,8 +1,10 @@
 /** 연구: 손님이 쓸 때마다 쌓인다. 시설·메뉴·손님층을 연구로 연다. 시설은 연구로 Lv도 올린다. */
 import type { GameState, ApplyResult } from './types.ts';
 import { FACILITIES, MENUS, GUEST_TYPES, facilityDef } from './data.ts';
-export const LEVEL_MAX = 3;
-export const LEVEL_COST = [0, 200, 450];
+export const LEVEL_MAX = 5;
+export const LEVEL_COST = [0, 200, 450, 900, 1_600];
+/** 단계 올리는 데 드는 돈 = 시설값 × 지금 단계 */
+export function levelMoney(s: GameState, fid: string): number { const f = s.facilities[fid]!; return facilityDef(f.type).cost * f.level; }
 export interface Unlockable { kind: 'facility' | 'menu' | 'guest'; id: string; name: string; cost: number; done: boolean }
 export function unlockables(s: GameState): Unlockable[] {
   return [
@@ -34,6 +36,13 @@ export function canLevelUp(s: GameState, fid: string): ApplyResult {
   if (f.level >= LEVEL_MAX) return { ok: false, reason: '최고 단계예요' };
   const cost = LEVEL_COST[f.level]!;
   if (s.research < cost) return { ok: false, reason: `연구 ${cost} 필요` };
+  if (s.money < levelMoney(s, fid)) return { ok: false, reason: `돈 ₩${levelMoney(s, fid).toLocaleString()} 필요` };
   return { ok: true };
 }
-export function levelUp(s: GameState, fid: string): void { const f = s.facilities[fid]!; s.research -= LEVEL_COST[f.level]!; f.level++; s.layoutRev++; }
+export function levelUp(s: GameState, fid: string): void {
+  const f = s.facilities[fid]!;
+  const m = levelMoney(s, fid);
+  s.research -= LEVEL_COST[f.level]!; s.money -= m; s.month.spent += m;
+  f.level++; s.layoutRev++;
+  s.fx.push({ kind: 'notice', text: `${f.name ?? facilityDef(f.type).name} Lv${f.level}!` });
+}

@@ -45,7 +45,9 @@ export function monthlyPlan(s: GameState): void {
   const floorCells = s.grid.cells.filter((c) => c.floor && c.floor !== 'path').length;
   if (usables(s).length * 3 >= floorCells) extendFloor(s);
   // 연구: 싼 것부터 하나
-  for (const u of unlockables(s)) if (!u.done && s.research >= u.cost) { apply(s, { type: 'unlock', id: u.id }); break; }
+  let opened = 0; for (const u of unlockables(s)) { if (opened >= 2) break; if (!u.done && s.research >= u.cost && apply(s, { type: 'unlock', id: u.id }).ok) opened++; }
+  // 단계: 연구가 남고 돈이 넉넉하면 낮은 단계부터 세 개까지
+  let lv = 0; for (const f of [...usables(s)].sort((a, b) => a.level - b.level)) { if (lv >= 3) break; if (s.money < RESERVE * 3) break; if (apply(s, { type: 'levelUp', facilityId: f.id }).ok) lv++; }
   // 자리 2, 가게 1, 환경 2
   const seats = FACILITIES.filter((d) => d.tab === 'seat' && s.unlocked.facilities.includes(d.id)).sort((a, b) => (b.pop ?? 0) - (a.pop ?? 0));
   const shops = FACILITIES.filter((d) => d.tab === 'shop' && s.unlocked.facilities.includes(d.id)).sort((a, b) => (b.pop ?? 0) - (a.pop ?? 0));

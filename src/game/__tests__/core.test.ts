@@ -160,7 +160,7 @@ describe('돈·연구·직원·투자·평가·목표', () => {
   });
   it('평가: 점수 = 명성 + 인기 합, 경쟁 카페 5곳과 순위, 상금', () => {
     const s = yard();
-    s.fame = 1000;
+    s.fame = 2500;
     const ev = evaluate(s);
     expect(ev.rank).toBe(1);
     expect(ev.rows.length).toBe(6);

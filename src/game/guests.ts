@@ -101,7 +101,7 @@ function finishUse(s: GameState, g: Guest): void {
     mood = score >= t.expect ? 'happy' : score >= t.expect - 6 ? 'meh' : 'angry';
     f.uses++; f.sales += money;
   }
-  const fame = mood === 'happy' ? 1 : mood === 'angry' ? -1 : 0;
+  const fame = mood === 'happy' ? (nextRandom(s) < 0.5 ? 1 : 0) : mood === 'angry' ? -1 : 0; // 기쁜 손님 둘에 하나꼴로 입소문
   s.money += money; s.month.income += money; s.stats.income += money;
   s.fame = Math.max(0, s.fame + fame);
   s.research += mood === 'happy' ? 2 : 1;

@@ -17,6 +17,9 @@ export interface ViewOptions { onTap: (x: number, y: number) => void; onDragCell
 const SYNERGY_STAGGER_MS = 110;
 const FLOAT_MS = 900;
 
+/** 밤에 빛을 내는 시설과 빛 반경(px) */
+const LIGHT_RADIUS: Record<string, number> = { garden_lamp: 56, streetlight: 84 };
+
 export class View {
   app = new Application();
   world = new Container();
@@ -24,6 +27,7 @@ export class View {
   actors = new Container();
   overlay = new Container();
   night = new Graphics();
+  glow = new Graphics(); // 밤 등불 빛 (night 위에 더하기 블렌드)
   private facilityNodes = new Map<string, { node: Container; type: string; key: string }>();
   private guestNodes = new Map<string, { node: CharacterNode; dir: Dir; frame: 0 | 1 | 2; walked: number }>();
   private tileKey = '';
@@ -41,8 +45,8 @@ export class View {
     parent.appendChild(this.app.canvas);
     this.actors.sortableChildren = true;
     this.overlay.sortableChildren = true;
-    this.night.eventMode = 'none';
-    this.world.addChild(this.tiles, this.actors, this.overlay, this.night);
+    this.night.eventMode = 'none'; this.glow.eventMode = 'none'; this.glow.blendMode = 'add';
+    this.world.addChild(this.tiles, this.actors, this.overlay, this.night, this.glow);
     this.app.stage.addChild(this.world);
     this.detach = attachCamera(this.app.stage, {
       world: this.world, canvas: this.app.canvas, ticker: this.app.ticker,
@@ -79,10 +83,18 @@ export class View {
     this.syncGuests(state, now);
     this.syncGhost(state, ghost);
     this.takeFx(state, now);
-    this.night.clear();
+    this.night.clear(); this.glow.clear();
     if (isNight(state.clock)) {
       const k = Math.min(1, (state.clock.hour - 19 + state.clock.ms / 1500) / 3);
       this.night.rect(-4000, -4000, 8000, 8000).fill({ color: 0x0a1030, alpha: 0.35 * k });
+      // 등불: 정원등·가로등 둘레가 따뜻하게 밝다 (살짝 숨쉬듯)
+      const pulse = 0.85 + 0.15 * Math.sin(now / 900);
+      for (const f of Object.values(state.facilities)) {
+        const r = LIGHT_RADIUS[f.type]; if (!r) continue;
+        const c = cellCenter(f.x, f.y);
+        this.glow.ellipse(c.sx, c.sy + ISO_H / 2, r, r * 0.5).fill({ color: 0xffb64a, alpha: 0.16 * k * pulse });
+        this.glow.ellipse(c.sx, c.sy + ISO_H / 2, r * 0.45, r * 0.22).fill({ color: 0xffd98a, alpha: 0.18 * k * pulse });
+      }
     }
   }
 
