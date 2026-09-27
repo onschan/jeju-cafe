@@ -10,7 +10,7 @@ export type Mood = 'happy' | 'meh' | 'angry';
 
 export interface FacilityDef {
   id: string; name: string; tab: Tab;
-  sub?: 'floor' | 'deco';     // floor: 바닥(칸에 깔림) · deco: 장식(어디든)
+  sub?: 'floor' | 'deco' | 'wall'; // floor: 바닥(칸에 깔림) · deco: 장식(어디든) · wall: 벽(잔디·바닥 어디든, 못 지나감, 둘러싸면 실내)
   floor?: Floor;              // sub=floor일 때 어떤 바닥인가
   w: number; h: number; cost: number; upkeep: number;
   pop?: number;               // 기본 인기 (자리·가게)

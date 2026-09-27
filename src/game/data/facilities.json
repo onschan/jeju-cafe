@@ -14,6 +14,8 @@
   {"id": "pond", "name": "연못", "tab": "env", "w": 2, "h": 2, "cost": 600000, "upkeep": 3000, "scenery": 12, "unlock": 1500, "tags": ["senior", "family"]},
   {"id": "dolhareubang", "name": "돌하르방", "tab": "env", "w": 1, "h": 1, "cost": 250000, "upkeep": 500, "scenery": 5, "unlock": 800, "tags": ["tourist", "family"]},
   {"id": "stonewall", "name": "돌담", "tab": "env", "w": 1, "h": 1, "cost": 20000, "upkeep": 100, "scenery": 1, "unlock": 0, "tags": ["senior"]},
+  {"id": "railing", "name": "나무 울타리", "tab": "env", "sub": "wall", "w": 1, "h": 1, "cost": 15000, "upkeep": 100, "scenery": 1, "unlock": 0, "tags": ["housewife"]},
+  {"id": "wall", "name": "돌벽", "tab": "env", "sub": "wall", "w": 1, "h": 1, "cost": 40000, "upkeep": 200, "scenery": 1, "unlock": 100, "tags": ["senior", "worker"]},
   {"id": "garden_lamp", "name": "정원등", "tab": "env", "sub": "deco", "w": 1, "h": 1, "cost": 60000, "upkeep": 800, "scenery": 1, "unlock": 100, "tags": ["couple", "worker"]},
   {"id": "streetlight", "name": "가로등", "tab": "env", "sub": "deco", "w": 1, "h": 1, "cost": 120000, "upkeep": 1200, "scenery": 2, "unlock": 500, "tags": ["couple", "worker"]},
   {"id": "deco_planter", "name": "큰 화분", "tab": "env", "sub": "deco", "w": 1, "h": 1, "cost": 30000, "upkeep": 200, "scenery": 2, "unlock": 0, "tags": ["housewife"]},

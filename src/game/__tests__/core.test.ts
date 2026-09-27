@@ -194,3 +194,32 @@ describe('봇 2년', () => {
     expect(a.reduce((n, r) => n + r.guests, 0)).toBeGreaterThan(500);
   }, 90_000);
 });
+
+describe('벽과 실내', () => {
+  it('벽은 잔디·바닥 어디든(올렛길 빼고) 놓이고 못 지나간다; 데크를 벽으로 둘러싸면 실내 — 겨울에 바깥 자리만 −6', () => {
+    const s = yard();
+    // 데크 (1..3, 5..6), 입구는 (3,6)→(4,6) 올렛길
+    apply(s, { type: 'placeLine', id: 'floor_wood', from: at(1, 5), to: at(3, 5) });
+    apply(s, { type: 'placeLine', id: 'floor_wood', from: at(1, 6), to: at(3, 6) });
+    expect(apply(s, { type: 'place', id: 'table_out', x: at(1, 6).x, y: at(1, 6).y }).ok).toBe(true);
+    const t = Object.values(s.facilities).find((f) => f.x === at(1, 6).x)!;
+    expect(sheetOf(s, t).indoor).toBe(false);
+    expect(canPlace(s, 'railing', at(4, 6).x, at(4, 6).y).reason).toBe('올렛길 위엔 못 놓아요');
+    // 둘레 잔디에 울타리: 윗줄 y=4 (x 0..3), 아랫줄 y=7 (x 0..3), 왼쪽 x=0 (y 5..6). (4,5)·(4,6)·(4,7)은 올렛길(문), (4,4)는 시작 데크의 통로라 못 막는다
+    expect(canPlace(s, 'railing', at(4, 4).x, at(4, 4).y).reason).toMatch(/통로가 막혀요/);
+    for (let lx = 0; lx <= 3; lx++) expect(apply(s, { type: 'place', id: 'railing', x: at(lx, 4).x, y: at(lx, 4).y }).ok).toBe(true);
+    for (let lx = 0; lx <= 3; lx++) expect(apply(s, { type: 'place', id: 'railing', x: at(lx, 7).x, y: at(lx, 7).y }).ok).toBe(true);
+    for (const ly of [5, 6]) expect(apply(s, { type: 'place', id: 'railing', x: at(0, ly).x, y: at(0, ly).y }).ok).toBe(true);
+    expect(sheetOf(s, t).indoor).toBe(true);
+    expect(walkable(s, at(1, 4).x, at(1, 4).y)).toBe(false);
+    // 겨울: 실내는 그대로, 바깥 자리는 −6
+    s.clock.month = 1;
+    expect(sheetOf(s, t).season).toBe(0);
+    apply(s, { type: 'placeLine', id: 'floor_wood', from: at(5, 6), to: at(6, 6) });
+    expect(apply(s, { type: 'place', id: 'table_out', x: at(6, 6).x, y: at(6, 6).y }).ok).toBe(true);
+    const out = Object.values(s.facilities).find((f) => f.x === at(6, 6).x)!;
+    expect(sheetOf(s, out)).toMatchObject({ indoor: false, season: -6 });
+    s.clock.month = 5;
+    expect(sheetOf(s, out).season).toBe(0);
+  });
+});

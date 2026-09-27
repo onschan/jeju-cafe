@@ -119,7 +119,8 @@ export class View {
     for (const [id, e] of this.facilityNodes) if (!state.facilities[id]) { e.node.destroy({ children: true }); this.facilityNodes.delete(id); }
     for (const f of Object.values(state.facilities)) {
       const d = facilityDef(f.type);
-      const key = `${f.x},${f.y}:${f.level}:${hasAssets() ? 1 : 0}`;
+      const sprite = wallSprite(state, f);
+      const key = `${f.x},${f.y}:${f.level}:${sprite}:${hasAssets() ? 1 : 0}`; // 벽은 이웃에 따라 sprite가 바뀌니 그것으로 갱신된다
       let e = this.facilityNodes.get(f.id);
       if (e && e.key === key) continue;
       e?.node.destroy({ children: true });
@@ -127,7 +128,7 @@ export class View {
       const a = footAnchor(f.x, f.y, d.w, d.h);
       node.position.set(a.sx, a.sy);
       node.zIndex = depth(f.x, f.y, d.w, d.h);
-      const t = hasAssets() ? peekTex(spriteName.isoObject(f.type)) : null;
+      const t = hasAssets() ? peekTex(spriteName.isoObject(sprite)) : null;
       if (t) { const sp = new Sprite(t); sp.anchor.set(0.5, 1); node.addChild(sp); }
       else { node.addChild(new Graphics().rect(-12, -28, 24, 28).fill(d.tab === 'env' ? 0x3d8b3d : d.tab === 'seat' ? 0xb8703a : 0xd8a03a)); }
       if (f.level >= 2) { const l = label(`Lv${f.level}`, 9); l.anchor.set(0.5, 0.5); const bg = new Graphics().roundRect(-14, -7, 28, 14, 3).fill({ color: 0xb8862a, alpha: 0.9 }); const c = new Container(); c.addChild(bg, l); c.position.set(14, -(t?.height ?? 30) + 6); node.addChild(c); }
@@ -183,7 +184,7 @@ export class View {
         const { sx, sy } = cellToScreen(ghost.x + dx, ghost.y + dy);
         g.poly([sx, sy, sx + ISO_W / 2, sy + ISO_H / 2, sx, sy + ISO_H, sx - ISO_W / 2, sy + ISO_H / 2]).fill({ color: ghost.ok ? 0x4fd16a : 0xd94b4b, alpha: 0.45 });
       }
-      const t = hasAssets() ? peekTex(spriteName.isoObject(ghost.id)) : null;
+      const t = hasAssets() ? peekTex(spriteName.isoObject(ghost.id === 'wall' ? 'wall_nw' : ghost.id)) : null;
       if (t) { const sp = new Sprite(t); sp.anchor.set(0.5, 1); const a = footAnchor(ghost.x, ghost.y, d.w, d.h); sp.position.set(a.sx, a.sy); sp.alpha = 0.7; sp.tint = ghost.ok ? 0xffffff : 0xff9090; c.addChild(sp); }
     }
     c.addChild(g);
@@ -226,6 +227,14 @@ export class View {
     this.overlay.addChild(node);
     this.floats.push({ node, born: now, y0: c.sy - 30 });
   }
+}
+/** 돌벽은 이웃 벽을 따라 방향을 고른다: x축(↘) 이웃이 있으면 wall_ne, 아니면 wall_nw */
+function wallSprite(state: GameState, f: Facility): string {
+  if (f.type !== 'wall') return f.type;
+  const isWall = (x: number, y: number) => { const id = x >= 0 && y >= 0 && x < state.grid.w && y < state.grid.h ? cellAt(state, x, y).objectId : null; return !!id && state.facilities[id]?.type === 'wall'; };
+  const along = isWall(f.x - 1, f.y) || isWall(f.x + 1, f.y);
+  const across = isWall(f.x, f.y - 1) || isWall(f.x, f.y + 1);
+  return along && !across ? 'wall_ne' : 'wall_nw';
 }
 /** 놓을 수 있나 (고스트 색) — 사림 규칙 그대로 */
 export function ghostOf(state: GameState, id: string, x: number, y: number, line?: { from: Pt; to: Pt }): Ghost {

@@ -1,7 +1,8 @@
 /** 시설: 손익계산서 (기본 인기 · 상성 보너스 · 경치 · 합계 / 요금 · 유지비 · 누구에게 인기) + 놓기·치우기 + 상성 UP 묶음 연출 */
 import type { GameState, Facility, Pt, ApplyResult } from './types.ts';
 import { facilityDef, isFloorDef, isUsable, SYNERGIES, FACILITIES } from './data.ts';
-import { canPlace, cellAt, footprint, footOf, inBounds, layFloor, DIRS } from './world.ts';
+import { canPlace, cellAt, footprint, footOf, inBounds, layFloor, DIRS, isEnclosed } from './world.ts';
+import { seasonOf } from './clock.ts';
 
 export const SCENERY_RADIUS = 2;
 export const SCENERY_CAP = 20;
@@ -9,9 +10,10 @@ export const SYNERGY_POP = 4;      // 상성 짝 하나 = 인기 +4
 export const SYNERGY_FEE = 200;    // 상성 짝 하나 = 요금 +200
 export const SYNERGY_CAP = 4;      // 짝은 시설당 4개까지
 export const LEVEL_POP = 3;        // 시설 Lv당 인기 +3 (연구로 올린다)
+export const WINTER_OUTDOOR = -6;  // 겨울(12~2월)엔 바깥 자리·가게 인기가 이만큼 깎인다 — 벽으로 둘러싸면(실내) 안 깎인다
 
 export interface Sheet {
-  base: number; bonus: number; scenery: number; total: number;
+  base: number; bonus: number; scenery: number; season: number; indoor: boolean; total: number;
   fee: number; upkeep: number; pairs: { with: string; name: string }[]; likedBy: string[];
 }
 function cheb(a: Pt[], b: Pt[]): number {
@@ -51,7 +53,8 @@ export function sceneryAt(s: GameState, f: Facility): number {
 const SHEETS = new WeakMap<GameState, { rev: number; map: Map<string, Sheet>; popSum: number | null }>();
 function cache(s: GameState) {
   let c = SHEETS.get(s);
-  if (!c || c.rev !== s.layoutRev) { c = { rev: s.layoutRev, map: new Map(), popSum: null }; SHEETS.set(s, c); }
+  const rev = s.layoutRev * 13 + s.clock.month; // 계절이 바뀌면 시트도 바뀐다
+  if (!c || c.rev !== rev) { c = { rev, map: new Map(), popSum: null }; SHEETS.set(s, c); }
   return c;
 }
 export function sheetOf(s: GameState, f: Facility): Sheet {
@@ -69,7 +72,9 @@ function computeSheet(s: GameState, f: Facility): Sheet {
   const base = (d.pop ?? 0) + (usable ? LEVEL_POP * (f.level - 1) : 0);
   const bonus = pairs.length * SYNERGY_POP;
   const scenery = usable ? sceneryAt(s, f) : 0;
-  return { base, bonus, scenery, total: base + bonus + scenery, fee: (d.fee ?? 0) + pairs.length * SYNERGY_FEE, upkeep: d.upkeep, pairs, likedBy: d.tags ?? [] };
+  const indoor = usable && isEnclosed(s, footOf(s, f.id));
+  const season = usable && !indoor && seasonOf(s.clock.month) === 'winter' ? WINTER_OUTDOOR : 0;
+  return { base, bonus, scenery, season, indoor, total: Math.max(0, base + bonus + scenery + season), fee: (d.fee ?? 0) + pairs.length * SYNERGY_FEE, upkeep: d.upkeep, pairs, likedBy: d.tags ?? [] };
 }
 /** 마당의 자리·가게 인기 합 — 하루 손님 수·평가 점수의 뿌리 */
 export function popularitySum(s: GameState): number {

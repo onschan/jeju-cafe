@@ -2,7 +2,9 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { View, ghostOf, type Ghost } from './View';
 import { useGame, useRev, dispatch, startLoop, getState, save, restart, toasts } from './store';
-import { C, panel, btn, btnOff, btnGold, small, won, wonShort } from './theme';
+import { C, panel, titleBar, tile, tileLocked, btn, btnOff, btnGold, small, won, wonShort } from './theme';
+import { useThumb } from './thumbs';
+import { assetUrl } from './assetUrl';
 import { FACILITIES, GUEST_TYPES, MENUS, INVESTS, facilityDef, isFloorDef, isUsable, sheetOf, usables, popularitySum, dailyGuests, unlockables, canUnlock, canLevelUp, levelUp, LEVEL_COST, currentObjective, OBJECTIVES, seasonOf, canHire, upkeepTotal, wagesTotal, myScore, rivalScore, RIVALS, lineCells, canLayFloor, type GameState, type Tab, type Facility, type Pt } from '../game/index.ts';
 
 type Win = 'build' | 'guests' | 'info' | 'system' | null;
@@ -63,9 +65,9 @@ export function App() {
       <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 30, background: C.paper, borderBottom: `3px solid ${C.wood}`, display: 'flex', alignItems: 'center', gap: 6, padding: '0 6px', fontSize: 12, color: C.ink, whiteSpace: 'nowrap' }}>
         <b>{s.clock.year}년 {s.clock.month}월 {String(s.clock.hour).padStart(2, '0')}시</b>
         <span style={{ flex: 1 }} />
-        <b style={{ color: s.money < 0 ? C.red : C.ink }}>{wonShort(s.money)}</b>
-        <span style={small}>명성 <b style={{ color: C.ink }}>{s.fame}</b></span>
-        <span style={small}>연구 <b style={{ color: C.ink }}>{s.research}</b></span>
+        <Ico name="money" /><b style={{ color: s.money < 0 ? C.red : C.ink }}>{wonShort(s.money)}</b>
+        <Ico name="star" /><b>{s.fame}</b>
+        <Ico name="research" /><b>{s.research}</b>
         {([0, 1, 3] as const).map((sp) => <button key={sp} onClick={() => dispatch({ type: 'setSpeed', speed: sp })} style={{ ...(s.clock.speed === sp ? btnGold : btnOff), padding: '2px 5px', fontSize: 11 }}>{sp === 0 ? '∥' : `${sp}×`}</button>)}
       </div>
       {/* 목표 한 줄 */}
@@ -103,7 +105,7 @@ function PlacingBar({ id, ghost, onDone }: { id: string; ghost: Ghost | null; on
   const n = ghost?.line ? lineCells(ghost.line.from, ghost.line.to).filter((p) => canLayFloor(getState(), d.floor!, p.x, p.y).ok).length : 1;
   return (
     <div style={{ position: 'absolute', top: 36, left: 8, right: 8, ...panel, padding: '6px 8px', fontSize: 13, display: 'flex', alignItems: 'center', gap: 8 }}>
-      <b>{d.name}</b>
+      <Sprite id={id} size={28} /><b>{d.name}</b>
       <span style={{ flex: 1 }}>{floor ? (ghost?.line ? `어디까지 까시겠습니까? · ${won(d.cost * n)}` : '어디서부터 까시겠습니까? (드래그)') : ghost && !ghost.ok ? <span style={{ color: C.red }}>{ghost.reason}</span> : `탭해서 놓기 · ${won(d.cost)}`}</span>
       <button style={btnOff} onClick={onDone}>끝</button>
     </div>
@@ -114,39 +116,50 @@ function Receipts({ s }: { s: GameState }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 1, padding: '3px 8px', minHeight: 18 }}>
       {rs.length === 0 && <span style={small}>손님이 오면 여기에 한 줄씩</span>}
-      {rs.map((r) => { const t = GUEST_TYPES.find((g) => g.id === r.type)!; return <div key={r.id} style={{ fontSize: 12, display: 'flex', gap: 8 }}><span>{r.mood === 'happy' ? '😊' : r.mood === 'angry' ? '😠' : '😐'}</span><b>{t.name}</b><span style={{ color: r.fame > 0 ? C.green : r.fame < 0 ? C.red : C.soft }}>명성 {r.fame > 0 ? '+' : ''}{r.fame}</span><span style={{ color: C.gold }}>소지금 +{won(r.money)}</span></div>; })}
+      {rs.map((r) => { const t = GUEST_TYPES.find((g) => g.id === r.type)!; return <div key={r.id} style={{ fontSize: 12, display: 'flex', gap: 8, alignItems: 'center' }}><Ico name={`mood_${r.mood}`} /><b>{t.name}</b><span style={{ color: r.fame > 0 ? C.green : r.fame < 0 ? C.red : C.soft }}>명성 {r.fame > 0 ? '+' : ''}{r.fame}</span><span style={{ color: C.gold }}>소지금 +{won(r.money)}</span></div>; })}
     </div>
   );
 }
 function Window({ title, onClose, children, tabs }: { title: string; onClose: () => void; children: React.ReactNode; tabs?: React.ReactNode }) {
   return (
     <div style={{ position: 'absolute', left: 6, right: 6, top: 36, bottom: 116, ...panel, display: 'flex', flexDirection: 'column', gap: 6, overflow: 'hidden' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}><b style={{ fontSize: 16, flex: 1 }}>{title}</b>{tabs}<button style={btnOff} onClick={onClose}>뒤로</button></div>
+      <div style={titleBar}><span style={{ flex: 1 }}>{title}</span>{tabs}<button style={{ ...btnOff, padding: '2px 8px' }} onClick={onClose}>뒤로</button></div>
       <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>{children}</div>
     </div>
   );
 }
-function Sprite({ id, size = 48 }: { id: string; size?: number }) {
-  // 시트에서 잘라 보여 주기엔 무거우니 아이콘 폴더의 png가 있으면 그것, 없으면 글자
-  return <div style={{ width: size, height: size, display: 'grid', placeItems: 'center', fontSize: 20 }}>{TAB_ICON[facilityDef(id).tab]}</div>;
+/** 시트에서 잘라 낸 시설 그림 */
+function Sprite({ id, size = 56 }: { id: string; size?: number }) {
+  const d = facilityDef(id);
+  const url = useThumb(d.sub === 'floor' ? (d.floor === 'path' ? 'iso_obj_path' : `iso_tile_floor_${d.floor}`) : id === 'wall' ? 'iso_obj_wall_nw' : `iso_obj_${id}`, size);
+  return url ? <img className="px" src={url} width={size} height={size} alt="" style={{ imageRendering: 'pixelated' }} /> : <div style={{ width: size, height: size }} />;
 }
-const TAB_ICON: Record<Tab, string> = { env: '🌳', seat: '🪑', shop: '🏪' };
+function Ico({ name, size = 14 }: { name: string; size?: number }) { return <img className="px" src={assetUrl(`assets/icons/icon_${name}.png`)} width={size} height={size} alt="" style={{ imageRendering: 'pixelated', verticalAlign: 'middle' }} />; }
+/** 카탈로그 = 3열 그림 격자 (영상 12:20). 잠긴 칸은 까맣게. 고른 것의 이름·값은 아래 한 줄. */
 function BuildWindow({ s, onPick, onClose }: { s: GameState; onPick: (id: string) => void; onClose: () => void }) {
   const [tab, setTab] = useState<Tab>('seat');
+  const [pick, setPick] = useState<string | null>(null);
   const items = FACILITIES.filter((d) => d.tab === tab);
+  const d = pick ? facilityDef(pick) : null;
+  const open = d ? s.unlocked.facilities.includes(d.id) : false;
   return (
-    <Window title="건축" onClose={onClose} tabs={(['env', 'seat', 'shop'] as Tab[]).map((t) => <button key={t} style={{ ...(tab === t ? btnGold : btnOff), padding: '4px 8px' }} onClick={() => setTab(t)}>{TAB_KO[t]}</button>)}>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
-        {items.map((d) => { const open = s.unlocked.facilities.includes(d.id); const can = open && s.money >= d.cost; return (
-          <button key={d.id} disabled={!open} onClick={() => can ? onPick(d.id) : undefined} style={{ ...panel, padding: 6, textAlign: 'left', background: open ? '#fff7e6' : '#3a3128', color: open ? C.ink : '#8a7a68', display: 'flex', gap: 6, alignItems: 'center', cursor: open ? 'pointer' : 'default', opacity: can || !open ? 1 : 0.6 }}>
-            <Sprite id={d.id} />
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 14 }}><b>{open ? d.name : '???'}</b> <span style={small}>{d.w}×{d.h}</span></div>
-              {open ? <div style={small}>{won(d.cost)} · 유지 {won(d.upkeep)}/월{d.pop !== undefined ? ` · 인기 ${d.pop}` : ''}{d.scenery ? ` · 경치 +${d.scenery}` : ''}{d.fee ? ` · 요금 ${won(d.fee)}` : ''}</div> : <div style={small}>연구 {d.unlock}로 열린다</div>}
-              {open && d.tags && <div style={small}>{d.tags.map((t) => GUEST_TYPES.find((g) => g.id === t)?.name).join('·')}에게 인기</div>}
-            </div>
-          </button>); })}
+    <Window title="건축" onClose={onClose} tabs={(['env', 'seat', 'shop'] as Tab[]).map((t) => <button key={t} style={{ ...(tab === t ? btnGold : btnOff), padding: '2px 8px', fontSize: 13 }} onClick={() => { setTab(t); setPick(null); }}>{TAB_KO[t]}</button>)}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 6 }}>
+        {items.map((it) => { const isOpen = s.unlocked.facilities.includes(it.id); const on = pick === it.id; return (
+          <div key={it.id} onClick={() => setPick(it.id)} style={{ ...(isOpen ? tile : tileLocked), outline: on ? `3px solid ${C.gold}` : 'none' }}>
+            {isOpen ? <Sprite id={it.id} /> : <div style={{ width: 56, height: 56, display: 'grid', placeItems: 'center' }}><Ico name="lock" size={20} /></div>}
+            <div style={{ fontSize: 12, textAlign: 'center', lineHeight: 1.1 }}>{isOpen ? it.name : '???'}</div>
+          </div>); })}
       </div>
+      {d && <div style={{ ...panel, marginTop: 8, padding: 6, display: 'flex', gap: 8, alignItems: 'center', position: 'sticky', bottom: 0 }}>
+        <Sprite id={d.id} size={48} />
+        <div style={{ flex: 1, minWidth: 0, fontSize: 13 }}>
+          <b>{open ? d.name : '???'}</b> <span style={small}>{d.w}×{d.h}</span>
+          <div style={small}>{open ? `${won(d.cost)} · 유지 ${won(d.upkeep)}/월${d.pop !== undefined ? ` · 인기 ${d.pop}` : ''}${d.scenery ? ` · 경치 +${d.scenery}` : ''}${d.fee ? ` · 요금 ${won(d.fee)}` : ''}${d.sub === 'wall' ? ' · 둘러싸면 실내' : ''}` : `연구 ${d.unlock}로 열린다 (정보 › 연구)`}</div>
+          {open && d.tags && <div style={small}>{d.tags.map((t) => GUEST_TYPES.find((g) => g.id === t)?.name).join('·')}에게 인기</div>}
+        </div>
+        {open && <button style={s.money >= d.cost ? btnGold : btnOff} onClick={() => { if (s.money >= d.cost) onPick(d.id); }}>{d.sub === 'floor' ? '깔기' : '놓기'}</button>}
+      </div>}
     </Window>
   );
 }
@@ -227,7 +240,7 @@ function FacilityCard({ s, f, onSelect, onClose }: { s: GameState; f: Facility; 
     <div style={{ position: 'absolute', left: 6, right: 6, bottom: 116, ...panel, fontSize: 13 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
         <button style={{ ...btnOff, padding: '2px 8px' }} onClick={() => go(-1)}>◀</button>
-        <b style={{ flex: 1, fontSize: 15 }}>{f.name ?? d.name}{f.level > 1 ? ` Lv${f.level}` : ''} <span style={small}>{i + 1}/{list.length}</span></b>
+        <Sprite id={f.type} size={32} /><b style={{ flex: 1, fontSize: 15 }}>{f.name ?? d.name}{f.level > 1 ? ` Lv${f.level}` : ''} <span style={small}>{i + 1}/{list.length}</span></b>
         <button style={{ ...btnOff, padding: '2px 8px' }} onClick={() => go(1)}>▶</button>
         <button style={btnOff} onClick={onClose}>닫기</button>
       </div>
@@ -238,6 +251,7 @@ function FacilityCard({ s, f, onSelect, onClose }: { s: GameState; f: Facility; 
           <tr><td>기본</td><td style={{ textAlign: 'right' }}>{sh.base}</td><td style={{ textAlign: 'right' }}>{won(d.fee ?? 0)}</td></tr>
           <tr><td>보너스 <span style={small}>{sh.pairs.map((p) => p.name).join('·') || '상성 없음'}</span></td><td style={{ textAlign: 'right' }}>{sh.bonus}</td><td style={{ textAlign: 'right' }}>{won(sh.fee - (d.fee ?? 0))}</td></tr>
           <tr><td>경치 <span style={small}>반경 2</span></td><td style={{ textAlign: 'right' }}>{sh.scenery}</td><td /></tr>
+          <tr><td>{sh.indoor ? '실내' : '바깥'} <span style={small}>{sh.indoor ? '벽으로 둘러싸임' : '겨울엔 −6'}</span></td><td style={{ textAlign: 'right' }}>{sh.season}</td><td /></tr>
           <tr style={{ fontWeight: 700, borderTop: `1px solid ${C.wood}` }}><td>합계</td><td style={{ textAlign: 'right' }}>{sh.total}</td><td style={{ textAlign: 'right' }}>{won(sh.fee)}</td></tr>
         </tbody></table>
       ) : <div style={{ marginTop: 4 }}>경치 <b>+{d.scenery ?? 0}</b> <span style={small}>반경 2 자리·가게의 인기를 올린다</span>{sh.pairs.length > 0 && <div style={small}>상성: {sh.pairs.map((p) => p.name).join('·')}</div>}</div>}

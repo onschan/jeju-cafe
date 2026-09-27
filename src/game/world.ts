@@ -83,7 +83,30 @@ export function lineCells(from: Pt, to: Pt): Pt[] {
   return out;
 }
 
-/** 시설을 놓을 수 있나: 환경은 잔디에만, 자리·가게는 바닥 위에만(전부), 장식은 어디든. 내 땅, 빈 칸. 자리·가게는 걷는 칸에 붙어 있어야 한다. */
+/** 실내인가: 시설의 바닥 칸에서 바닥(데크·타일·돌, 시설 없음)으로만 번져 나가 잔디·마을 길에 닿으면 바깥. 올렛길은 문(복도)이라 새지 않는다.
+ *  벽·시설이 막은 칸은 못 지난다. 데크를 벽으로 둘러싸면(올렛길이 드나드는 입구만 남기고) 실내가 된다 — 겨울에 바깥 자리는 인기가 깎인다. */
+export function isEnclosed(s: GameState, cells: Pt[]): boolean {
+  const key = (p: Pt) => p.y * s.grid.w + p.x;
+  const seen = new Set<number>(cells.map(key));
+  const q = [...cells];
+  for (let i = 0; i < q.length; i++) {
+    const p = q[i]!;
+    for (const v of DIRS) {
+      const n = { x: p.x + v.x, y: p.y + v.y };
+      if (!inBounds(s, n.x, n.y)) return false;
+      const c = cellAt(s, n.x, n.y);
+      if (c.objectId) continue;                    // 벽·시설이 막았다
+      if (c.terrain === 'road' || !c.floor) return false; // 잔디·길 = 바깥 공기
+      if (c.floor === 'path') continue;            // 올렛길은 문
+      const k = key(n);
+      if (seen.has(k)) continue;
+      seen.add(k); q.push(n);
+    }
+  }
+  return true;
+}
+
+/** 시설을 놓을 수 있나: 환경은 잔디에만, 자리·가게는 바닥 위에만(전부), 장식·벽은 어디든. 내 땅, 빈 칸. 자리·가게는 걷는 칸에 붙어 있어야 한다. */
 export function canPlace(s: GameState, id: string, x: number, y: number): ApplyResult {
   const d = facilityDef(id);
   if (isFloorDef(d)) return canLayFloor(s, d.floor!, x, y);
@@ -94,9 +117,9 @@ export function canPlace(s: GameState, id: string, x: number, y: number): ApplyR
     const c = cellAt(s, p.x, p.y);
     if (c.terrain === 'road') return { ok: false, reason: '마을 길엔 못 놓아요' };
     if (c.objectId) return { ok: false, reason: '이미 뭔가 있어요' };
-    if (d.tab === 'env' && d.sub !== 'deco' && c.floor) return { ok: false, reason: '나무·바위는 잔디에 심어요' };
+    if (d.tab === 'env' && !d.sub && c.floor) return { ok: false, reason: '나무·바위는 잔디에 심어요' };
     if ((d.tab === 'seat' || d.tab === 'shop') && !c.floor) return { ok: false, reason: '바닥을 먼저 깔아요' };
-    if (c.floor === 'path' && d.tab !== 'env') return { ok: false, reason: '올렛길 위엔 못 놓아요' };
+    if (c.floor === 'path' && (d.tab !== 'env' || d.sub === 'wall')) return { ok: false, reason: '올렛길 위엔 못 놓아요' };
   }
   // 통로 보존: 놓은 뒤에도 (새것 포함) 자리·가게마다 정류장에서 걸어 닿는 옆 칸이 남아야 한다 — 카이로의 「복도에 붙어야 한다」
   const blocked = new Set(cells.map((p) => p.y * s.grid.w + p.x));
