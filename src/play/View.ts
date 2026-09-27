@@ -88,7 +88,7 @@ export class View {
 
   private syncTiles(state: GameState): void {
     const season = seasonOf(state.clock.month);
-    const key = `${state.layoutRev}:${season}:${state.parcels.map((p) => (p.owned ? 1 : 0)).join('')}`;
+    const key = `${state.layoutRev}:${season}:${state.parcels.map((p) => (p.owned ? 1 : 0)).join('')}:${hasAssets() ? 1 : 0}`;
     if (key === this.tileKey) return;
     this.tileKey = key;
     this.tiles.removeChildren().forEach((c) => c.destroy({ children: true }));
@@ -119,7 +119,7 @@ export class View {
     for (const [id, e] of this.facilityNodes) if (!state.facilities[id]) { e.node.destroy({ children: true }); this.facilityNodes.delete(id); }
     for (const f of Object.values(state.facilities)) {
       const d = facilityDef(f.type);
-      const key = `${f.x},${f.y}:${f.level}`;
+      const key = `${f.x},${f.y}:${f.level}:${hasAssets() ? 1 : 0}`;
       let e = this.facilityNodes.get(f.id);
       if (e && e.key === key) continue;
       e?.node.destroy({ children: true });

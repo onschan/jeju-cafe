@@ -44,11 +44,11 @@ export function App() {
       dragCapture: (x, y) => { const id = placingRef.current; if (!id || !isFloorDef(facilityDef(id))) return false; lineFrom.current = { x, y }; setGhost(ghostOf(getState(), id, x, y, { from: { x, y }, to: { x, y } })); return true; },
       onDragCell: (x, y) => { const id = placingRef.current; const from = lineFrom.current; if (!id || !from) return; setGhost(ghostOf(getState(), id, x, y, { from, to: { x, y } })); },
       onDragEnd: () => { const id = placingRef.current; const from = lineFrom.current; const g = ghostRef.current; lineFrom.current = null; if (!id || !from || !g?.line) return; const r = dispatch({ type: 'placeLine', id, from: g.line.from, to: g.line.to }); if (!r.ok) flash(r.reason); setGhost(ghostOf(getState(), id, g.line.to.x, g.line.to.y)); },
-    }).then(() => { v.centerOn(getState()); setReady(true); stop = startLoop(); });
+    }).then(() => { v.centerOn(getState()); setReady(true); stop = startLoop(); raf = requestAnimationFrame(tick); }); // 시트가 다 실린 뒤에야 그린다 — 먼저 그리면 자리 표시 도형이 캐시에 남는다(폰에서 그렇게 보였다)
     (window as unknown as { __view: View; __game: unknown }).__view = v; // 디버그·자동 검증용 (봇·브라우저 스크립트)
     (window as unknown as { __game: unknown }).__game = { getState, dispatch };
     const tick = () => { v.sync(getState(), ghostRef.current, performance.now()); raf = requestAnimationFrame(tick); };
-    let raf = requestAnimationFrame(tick);
+    let raf = 0;
     return () => { cancelAnimationFrame(raf); stop(); v.destroy(); };
   }, []);
   function flash(text?: string) { if (!text) return; setToast(text); window.setTimeout(() => setToast((t) => (t === text ? null : t)), 1800); }
