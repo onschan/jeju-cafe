@@ -12,7 +12,7 @@ export function step(s: GameState, ms = STEP_MS): void {
   updateGuests(s, ms);
   const t = advance(s, ms);
   for (let i = 0; i < t.hours; i++) hourlySpawn(s);
-  if (t.days > 0) { s.todayGuests = 0; s.fame = Math.floor(s.fame * FAME_DECAY); checkObjectives(s); }
+  if (t.days > 0) { s.lastDay = { guests: s.todayGuests, income: s.todayIncome }; s.todayGuests = 0; s.todayIncome = 0; s.fame = Math.floor(s.fame * FAME_DECAY); checkObjectives(s); }
   if (t.months > 0) { monthEnd(s); refreshCandidates(s); if (s.clock.month === 1) evaluate(s); }
 }
 /** 총 ms만큼 고정 스텝으로 (헤드리스·테스트) */

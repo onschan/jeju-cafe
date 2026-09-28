@@ -5,9 +5,15 @@ import { useGame, useRev, dispatch, startLoop, getState, save, restart, toasts, 
 import { C, panel, titleBar, tile, tileLocked, btn, btnOff, btnGold, small, won, wonShort } from './theme';
 import { useThumb } from './thumbs';
 import { assetUrl } from './assetUrl';
-import { FACILITIES, GUEST_TYPES, MENUS, INVESTS, facilityDef, isFloorDef, isUsable, sheetOf, usables, popularitySum, dailyGuests, unlockables, canUnlock, canLevelUp, LEVEL_COST, levelMoney, currentObjective, OBJECTIVES, seasonOf, canHire, upkeepTotal, wagesTotal, myScore, rivalScore, RIVALS, lineCells, canLayFloor, parcelAt, cellAt, parcelAdjacent, type GameState, type Tab, type Facility, type Pt, type Parcel } from '../game/index.ts';
+import { DialogueHost } from './Dialogue';
+import { showDialogue, clearDialogues, useDialogue, SPEAKER } from './dialogueStore';
+import { RewardChest, MonthCard, DaySummary, MessageLine, Portrait, guestTypeFace, DAY_CARD_MS, MESSAGE_LINE_H } from './cards';
+import { FACILITIES, GUEST_TYPES, MENUS, INVESTS, facilityDef, isFloorDef, isUsable, sheetOf, usables, popularitySum, dailyGuests, unlockables, canUnlock, canLevelUp, LEVEL_COST, levelMoney, currentObjective, OBJECTIVES, seasonOf, canHire, upkeepTotal, wagesTotal, myScore, rivalScore, RIVALS, lineCells, canLayFloor, parcelAt, cellAt, parcelAdjacent, type GameState, type Tab, type Facility, type Pt, type Parcel, type Objective } from '../game/index.ts';
 
 type Win = 'build' | 'guests' | 'info' | 'system' | null;
+/** 하단 띠(영수증 2줄 + 요약 + 메뉴) 높이 */
+const BOTTOM_H = 118;
+const ABOVE_BOTTOM = BOTTOM_H + MESSAGE_LINE_H + 4;
 const SEASON_KO = { spring: '봄', summer: '여름', autumn: '가을', winter: '겨울' } as const;
 const TAB_KO: Record<Tab, string> = { env: '환경', seat: '시설', shop: '가게' };
 
@@ -24,7 +30,47 @@ export function App() {
   const [title, setTitle] = useState(true);
   const [buyAsk, setBuyAsk] = useState<Parcel | null>(null);
   const [floorSel, setFloorSel] = useState<Pt | null>(null);
-  useEffect(() => { setPaused(title); }, [title]);
+  const [chest, setChest] = useState<Objective | null>(null);
+  const [monthCard, setMonthCard] = useState(false);
+  const [daySum, setDaySum] = useState<{ today: { guests: number; income: number }; prev: { guests: number; income: number } | null } | null>(null);
+  const [moneyBump, setMoneyBump] = useState(false);
+  const dlg = useDialogue().req;
+  // 타이틀·대화·상자·결산이 떠 있는 동안 시계를 멈춘다
+  useEffect(() => { setPaused(title || !!dlg || !!chest || monthCard); }, [title, dlg, chest, monthCard]);
+  // 목표 달성 → 보물상자 → 삼춘 한마디 (이어하기 직후 옛 목표가 다시 튀지 않게 처음 개수는 「본 것」으로)
+  const seenObj = useRef(s.objectivesDone.length);
+  useEffect(() => {
+    if (s.objectivesDone.length <= seenObj.current) { seenObj.current = s.objectivesDone.length; return; }
+    const id = s.objectivesDone[s.objectivesDone.length - 1]!; seenObj.current = s.objectivesDone.length;
+    const o = OBJECTIVES.find((x) => x.id === id); if (o) setChest(o);
+  }, [s.objectivesDone.length]);
+  // 연말 랭킹 발표
+  const seenEval = useRef(s.evaluations.length);
+  useEffect(() => {
+    if (s.evaluations.length <= seenEval.current) { seenEval.current = s.evaluations.length; return; }
+    seenEval.current = s.evaluations.length;
+    const e = s.evaluations[s.evaluations.length - 1]!;
+    const top = e.rows.slice().sort((a, b) => b.score - a.score)[0]!;
+    showDialogue({ speaker: { name: SPEAKER.jangnim, portrait: 'jangnim', expr: e.rank <= 2 ? 'happy' : 'normal' }, lines: [`${e.year}년 제주 카페 랭킹 발표! ${s.cafeName}은 ${e.rank}위.`, e.prize ? `상금 ${wonShort(e.prize)}을 드립니다. 내년에도 기대하겠습니다.` : `1위는 ${top.name}(${top.score}점). 내년엔 더 올라와 보세요.`] });
+  }, [s.evaluations.length]);
+  // 월말 결산 카드
+  const seenMonth = useRef(s.lastMonth ? `${s.lastMonth.year}-${s.lastMonth.month}` : '');
+  useEffect(() => {
+    const k = s.lastMonth ? `${s.lastMonth.year}-${s.lastMonth.month}` : '';
+    if (k && k !== seenMonth.current) { seenMonth.current = k; if (!title) setMonthCard(true); }
+  }, [s.lastMonth]);
+  // 하루 요약 (3초)
+  const seenDay = useRef(s.lastDay);
+  useEffect(() => {
+    if (!s.lastDay || s.lastDay === seenDay.current) return;
+    const prev = seenDay.current; seenDay.current = s.lastDay;
+    if (title || s.lastDay.guests === 0) return;
+    setDaySum({ today: s.lastDay, prev });
+    const t = setTimeout(() => setDaySum(null), DAY_CARD_MS); return () => clearTimeout(t);
+  }, [s.lastDay]);
+  // 돈이 늘면 숫자가 살짝 튄다
+  const prevMoney = useRef(s.money);
+  useEffect(() => { const up = s.money > prevMoney.current; prevMoney.current = s.money; if (!up) return; setMoneyBump(true); const t = setTimeout(() => setMoneyBump(false), 160); return () => clearTimeout(t); }, [s.money]);
   const lineFrom = useRef<Pt | null>(null);
   const placingRef = useRef<string | null>(null); placingRef.current = placing;
   const ghostRef = useRef<Ghost | null>(null); ghostRef.current = ghost;
@@ -71,12 +117,12 @@ export function App() {
       <div ref={hostRef} style={{ position: 'absolute', inset: 0 }} />
       {/* 상단 바 */}
       <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 30, background: C.paper, borderBottom: `3px solid ${C.wood}`, display: 'flex', alignItems: 'center', gap: 6, padding: '0 6px', fontSize: 12, color: C.ink, whiteSpace: 'nowrap' }}>
-        <b>{s.clock.year}년 {s.clock.month}월 {String(s.clock.hour).padStart(2, '0')}시</b>
+        <Ico name={seasonOf(s.clock.month)} size={16} /><b>{s.clock.year}년 {s.clock.month}월 {s.clock.day}일 {String(s.clock.hour).padStart(2, '0')}시</b>
         <span style={{ flex: 1 }} />
-        <Ico name="money" /><b style={{ color: s.money < 0 ? C.red : C.ink }}>{wonShort(s.money)}</b>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, transition: 'transform .12s ease-out', transform: moneyBump ? 'scale(1.18)' : 'none' }}><Ico name="money" /><b style={{ color: s.money < 0 ? C.red : moneyBump ? C.gold : C.ink }}>{wonShort(s.money)}</b></span>
         <Ico name="star" /><b>{s.fame}</b>
         <Ico name="research" /><b>{s.research}</b>
-        {([0, 1, 3] as const).map((sp) => <button key={sp} onClick={() => dispatch({ type: 'setSpeed', speed: sp })} style={{ ...(s.clock.speed === sp ? btnGold : btnOff), padding: '2px 5px', fontSize: 11 }}>{sp === 0 ? '∥' : `${sp}×`}</button>)}
+        {([0, 1, 3] as const).map((sp) => <button key={sp} onClick={() => dispatch({ type: 'setSpeed', speed: sp })} style={{ ...(s.clock.speed === sp ? btnGold : btnOff), padding: '1px 3px', lineHeight: 0 }}><Ico name={sp === 0 ? 'speed_pause' : `speed_${sp}`} size={18} /></button>)}
       </div>
       {/* 내 마당으로 */}
       {ready && !win && <button style={{ ...btnOff, position: 'absolute', right: 8, top: 70, padding: '4px 8px', fontSize: 12 }} onClick={() => viewRef.current?.centerOn(getState())}><Ico name="home" /> 마당</button>}
@@ -84,11 +130,9 @@ export function App() {
       {obj && !placing && <div style={{ position: 'absolute', top: 36, left: 8, right: 8, ...panel, padding: '4px 8px', fontSize: 13, cursor: 'pointer' }} onClick={() => setWin('info')}><Ico name="flag" /> {obj.text} <span style={small}>· 상금 {wonShort(obj.reward)}</span></div>}
       {/* 배치 모드 띠 */}
       {placing && <PlacingBar id={placing} ghost={ghost} onDone={() => { setPlacing(null); setGhost(null); }} />}
-      {/* 알림 */}
-      {(toast || toasts.length > 0) && <div style={{ position: 'absolute', left: 8, right: 8, bottom: 150, display: 'flex', flexDirection: 'column', gap: 4, pointerEvents: 'none' }}>
-        {toasts.slice(-2).filter((t) => performance.now() - t.at < 5000).map((t) => <div key={t.id} style={{ ...panel, padding: '4px 8px', fontSize: 13, background: '#fff7e6' }}>{t.text}</div>)}
-        {toast && <div style={{ ...panel, padding: '4px 8px', fontSize: 13, borderColor: C.red }}>{toast}</div>}
-      </div>}
+      {/* 삼춘 메시지 줄 (알림·신발매·거절 이유) */}
+      {ready && <MessageLine bottom={BOTTOM_H} flash={toast} />}
+      {daySum && !win && !dlg && <DaySummary today={daySum.today} prev={daySum.prev} bottom={BOTTOM_H + MESSAGE_LINE_H + 8} />}
       {/* 하단: 영수증 띠 · 요약 띠 · 메뉴 */}
       <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, background: C.paper, borderTop: `3px solid ${C.wood}`, color: C.ink }}>
         <Receipts s={s} />
@@ -96,7 +140,7 @@ export function App() {
           <span>손님 <b style={{ color: C.ink }}>{s.guests.length}</b></span><span>오늘 <b style={{ color: C.ink }}>{s.todayGuests}</b>/{dailyGuests(s)}</span><span>자리·가게 <b style={{ color: C.ink }}>{usables(s).length}</b></span><span>인기 합 <b style={{ color: C.ink }}>{popularitySum(s)}</b></span><span>직원 <b style={{ color: C.ink }}>{s.staff.length}</b></span>
         </div>
         <div style={{ display: 'flex', gap: 6, padding: 6 }}>
-          {([['build', '건축'], ['guests', '손님층'], ['info', '정보'], ['system', '시스템']] as const).map(([k, name]) => <button key={k} style={{ ...(win === k ? btnGold : btn), flex: 1, padding: '10px 0', fontSize: 15, position: 'relative' }} onClick={() => { setWin(win === k ? null : k); setSelected(null); setFloorSel(null); }}>{name}{k === 'info' && canResearch && <span style={{ position: 'absolute', top: 4, right: 8, width: 10, height: 10, borderRadius: 5, background: C.red, border: '2px solid #fff8e8' }} />}</button>)}
+          {([['build', '건축', 'build'], ['guests', '손님층', 'guest'], ['info', '정보', 'report'], ['system', '시스템', 'settings']] as const).map(([k, name, ico]) => <button key={k} style={{ ...(win === k ? btnGold : btn), flex: 1, padding: '6px 0', fontSize: 14, position: 'relative', display: 'inline-flex', flexDirection: 'column', alignItems: 'center', gap: 2 }} onClick={() => { setWin(win === k ? null : k); setSelected(null); setFloorSel(null); }}><Ico name={ico} size={18} />{name}{k === 'info' && canResearch && <span style={{ position: 'absolute', top: 4, right: 8, width: 10, height: 10, borderRadius: 5, background: C.red, border: '2px solid #fff8e8' }} />}</button>)}
         </div>
       </div>
       {!ready && <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', color: '#fff' }}>불러오는 중…</div>}
@@ -107,7 +151,10 @@ export function App() {
       {sel && !placing && !win && <FacilityCard s={s} f={sel} onSelect={setSelected} onClose={() => setSelected(null)} onMore={(id) => { setSelected(null); setPlacing(id); }} />}
       {!sel && floorSel && !placing && !win && <FloorCard s={s} p={floorSel} onClose={() => setFloorSel(null)} onMore={(id) => { setFloorSel(null); setPlacing(id); }} />}
       {buyAsk && <Ask text={`${buyAsk.name}을 ${won(buyAsk.price)}에 살까요?`} sub={!parcelAdjacent(s, buyAsk) ? '내 땅과 붙어 있어야 살 수 있어요' : s.money < buyAsk.price ? `돈이 모자라요 (지금 ${wonShort(s.money)})` : `사면 ${wonShort(s.money - buyAsk.price)} 남아요`} yesOff={!parcelAdjacent(s, buyAsk) || s.money < buyAsk.price} onYes={() => { const r = dispatch({ type: 'buyParcel', id: buyAsk.id }); if (!r.ok) flash(r.reason); setBuyAsk(null); }} onNo={() => setBuyAsk(null)} />}
-      {title && ready && <Title onStart={() => setTitle(false)} />}
+      <DialogueHost />
+      {chest && <RewardChest objective={chest} onClose={() => { const o = chest; setChest(null); const next = currentObjective(getState()); showDialogue({ speaker: { name: SPEAKER.samchun, portrait: 'samchun', expr: 'happy' }, lines: [`${o.text} — 해냈네! 상금 ${wonShort(o.reward)}은 통장에 넣어 뒀어.`, next ? `다음은 「${next.text}」. 상금은 ${wonShort(next.reward)}.` : '목표는 다 이뤘어. 이제 마음껏 키워 봐.'] }); }} />}
+      {monthCard && s.lastMonth && <MonthCard s={s} onClose={() => setMonthCard(false)} />}
+      {title && ready && <Title onStart={(fresh) => { setTitle(false); clearDialogues(); if (fresh) intro(getState().cafeName); else showDialogue({ speaker: { name: SPEAKER.samchun, portrait: 'samchun' }, lines: [`어서 와. ${getState().cafeName}, 오늘도 잘 부탁해.`] }); }} />}
     </div>
   );
 }
@@ -139,7 +186,12 @@ function Ask({ text, sub, yesOff, onYes, onNo }: { text: string; sub?: string; y
   );
 }
 /** 타이틀: 이어하기 / 새 게임(카페 이름) — 탭 두 번이면 게임 */
-function Title({ onStart }: { onStart: () => void }) {
+/** 새 게임 첫 대사: 할망이 마당을 맡긴다 */
+function intro(name: string) {
+  showDialogue({ speaker: { name: SPEAKER.halmang, portrait: 'halmang' }, lines: ['이 마당, 이제 네가 맡아라. 바닷바람 좋고 손님도 곧 올 거다.', '바닥을 깔고 그 위에 자리를 놓아. 나무·꽃을 옆에 두면 경치가 올라간다.'] });
+  showDialogue({ speaker: { name: SPEAKER.samchun, portrait: 'samchun', expr: 'happy' }, lines: [`${name}라… 이름 좋네. 나는 옆집 삼춘이야.`, '손님이 나갈 때마다 아래 줄에 영수증이 찍혀. 첫 목표는 자리 3개 놓기!'] });
+}
+function Title({ onStart }: { onStart: (fresh: boolean) => void }) {
   const [naming, setNaming] = useState(false);
   const [name, setName] = useState('우리 카페');
   return (
@@ -148,12 +200,12 @@ function Title({ onStart }: { onStart: () => void }) {
         <div style={{ fontSize: 30, fontWeight: 700, textShadow: '2px 2px 0 #4a2f16' }}>제주 카페 이야기</div>
         <div style={small}>바닥을 깔고, 자리를 놓고, 손님을 맞는다</div>
         {!naming ? <>
-          {hadSave && <button style={{ ...btnGold, fontSize: 16 }} onClick={onStart}>이어하기</button>}
+          {hadSave && <button style={{ ...btnGold, fontSize: 16 }} onClick={() => onStart(false)}>이어하기</button>}
           <button style={{ ...btn, fontSize: 16 }} onClick={() => setNaming(true)}>새 게임</button>
         </> : <>
           <div style={{ fontSize: 13 }}>카페 이름</div>
           <input autoFocus value={name} maxLength={12} onChange={(e) => setName(e.target.value)} style={{ fontFamily: 'inherit', fontSize: 16, padding: 6, textAlign: 'center' }} />
-          <div style={{ display: 'flex', gap: 6 }}><button style={{ ...btnOff, flex: 1 }} onClick={() => setNaming(false)}>뒤로</button><button style={{ ...btnGold, flex: 1 }} onClick={() => { restart(); dispatch({ type: 'setName', name }); onStart(); }}>결정</button></div>
+          <div style={{ display: 'flex', gap: 6 }}><button style={{ ...btnOff, flex: 1 }} onClick={() => setNaming(false)}>뒤로</button><button style={{ ...btnGold, flex: 1 }} onClick={() => { restart(); dispatch({ type: 'setName', name }); onStart(true); }}>결정</button></div>
         </>}
       </div>
     </div>
@@ -165,7 +217,7 @@ function FloorCard({ s, p, onClose, onMore }: { s: GameState; p: Pt; onClose: ()
   const id = c.floor === 'path' ? 'path' : `floor_${c.floor}`;
   const d = facilityDef(id);
   return (
-    <div style={{ position: 'absolute', left: 6, right: 6, bottom: 116, ...panel, fontSize: 13, display: 'flex', alignItems: 'center', gap: 8 }}>
+    <div style={{ position: 'absolute', left: 6, right: 6, bottom: ABOVE_BOTTOM, ...panel, fontSize: 13, display: 'flex', alignItems: 'center', gap: 8 }}>
       <Sprite id={id} size={36} /><b style={{ flex: 1 }}>{d.name}</b>
       <button style={btn} onClick={() => onMore(id)}>더 깔기</button>
       <button style={{ ...btnOff, background: C.red, color: '#fff' }} onClick={() => { const r = dispatch({ type: 'removeFloor', x: p.x, y: p.y }); if (!r.ok) alert(r.reason); else onClose(); }}>걷어내기</button>
@@ -184,7 +236,7 @@ function Receipts({ s }: { s: GameState }) {
 }
 function Window({ title, onClose, children, tabs }: { title: string; onClose: () => void; children: React.ReactNode; tabs?: React.ReactNode }) {
   return (
-    <div style={{ position: 'absolute', left: 6, right: 6, top: 36, bottom: 116, ...panel, display: 'flex', flexDirection: 'column', gap: 6, overflow: 'hidden' }}>
+    <div style={{ position: 'absolute', left: 6, right: 6, top: 36, bottom: ABOVE_BOTTOM, ...panel, display: 'flex', flexDirection: 'column', gap: 6, overflow: 'hidden' }}>
       <div style={titleBar}><span style={{ flex: 1 }}>{title}</span>{tabs}<button style={{ ...btnOff, padding: '2px 8px' }} onClick={onClose}>뒤로</button></div>
       <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>{children}</div>
     </div>
@@ -231,6 +283,7 @@ function GuestsWindow({ s, onClose }: { s: GameState; onClose: () => void }) {
       <div style={{ ...small, marginBottom: 6 }}>타깃을 고르면 그 손님층이 두 배로 온다. 손님층마다 지갑과 눈높이가 다르다.</div>
       {GUEST_TYPES.map((g) => { const open = s.unlocked.guests.includes(g.id); const liked = FACILITIES.filter((d) => d.tags?.includes(g.id) && s.unlocked.facilities.includes(d.id)).map((d) => d.name).slice(0, 4).join('·'); return (
         <div key={g.id} style={{ ...panel, padding: 6, marginBottom: 6, background: s.target === g.id ? '#fff0c0' : '#fff7e6', display: 'flex', alignItems: 'center', gap: 8, opacity: open ? 1 : 0.5 }}>
+          <Portrait {...guestTypeFace(g.id)} size={44} />
           <div style={{ flex: 1 }}><b>{g.name}</b> <span style={small}>지갑 {won(g.wallet)} · 눈높이 {g.expect}</span><div style={small}>{open ? (liked ? `좋아함: ${liked}` : '좋아하는 시설이 아직 없다') : `연구 ${g.unlock}로 온다`}</div></div>
           {open && <button style={s.target === g.id ? btnGold : btn} onClick={() => dispatch({ type: 'setTarget', guestType: s.target === g.id ? null : g.id })}>{s.target === g.id ? '타깃' : '타깃으로'}</button>}
         </div>); })}
@@ -259,9 +312,9 @@ function InfoWindow({ s, onClose }: { s: GameState; onClose: () => void }) {
       </div>}
       {tab === 'staff' && <div style={{ display: 'grid', gap: 4 }}>
         <div style={small}>서비스 합이 손님 회전과 만족을 올린다. 월급은 월말에.</div>
-        {s.staff.map((st) => <div key={st.id} style={{ ...panel, padding: 6, background: '#fff7e6', display: 'flex', gap: 6, alignItems: 'center' }}><span style={{ flex: 1 }}><b>{st.name}</b> <span style={small}>서비스 {'★'.repeat(st.service)} · 월급 {won(st.wage)}</span></span><button style={btnOff} onClick={() => dispatch({ type: 'fire', staffId: st.id })}>내보내기</button></div>)}
+        {s.staff.map((st) => <div key={st.id} style={{ ...panel, padding: 6, background: '#fff7e6', display: 'flex', gap: 6, alignItems: 'center' }}><Portrait face={st.face} accs={['apron']} size={40} /><span style={{ flex: 1 }}><b>{st.name}</b> <span style={small}>서비스 {'★'.repeat(st.service)} · 월급 {won(st.wage)}</span></span><button style={btnOff} onClick={() => dispatch({ type: 'fire', staffId: st.id })}>내보내기</button></div>)}
         <div style={{ ...small, marginTop: 6 }}>이달 후보</div>
-        {s.candidates.map((c) => <div key={c.id} style={{ ...panel, padding: 6, background: '#fff7e6', display: 'flex', gap: 6, alignItems: 'center' }}><span style={{ flex: 1 }}><b>{c.name}</b> <span style={small}>서비스 {'★'.repeat(c.service)} · 월급 {won(c.wage)}</span></span><button style={canHire(s, c.id).ok ? btn : btnOff} onClick={() => { const r = dispatch({ type: 'hire', candidateId: c.id }); if (!r.ok) alert(r.reason); }}>채용</button></div>)}
+        {s.candidates.map((c) => <div key={c.id} style={{ ...panel, padding: 6, background: '#fff7e6', display: 'flex', gap: 6, alignItems: 'center' }}><Portrait face={c.face} size={40} /><span style={{ flex: 1 }}><b>{c.name}</b> <span style={small}>서비스 {'★'.repeat(c.service)} · 월급 {won(c.wage)}</span></span><button style={canHire(s, c.id).ok ? btn : btnOff} onClick={() => { const r = dispatch({ type: 'hire', candidateId: c.id }); if (!r.ok) alert(r.reason); }}>채용</button></div>)}
       </div>}
       {tab === 'invest' && <div style={{ display: 'grid', gap: 4 }}>
         <div style={small}>내 땅 밖(동네)에 돈을 쓴다. 각 한 번. {s.invested.length}개 완료</div>
@@ -301,7 +354,7 @@ function FacilityCard({ s, f, onSelect, onClose, onMore }: { s: GameState; f: Fa
   const lv = canLevelUp(s, f.id);
   const [renaming, setRenaming] = useState(false);
   return (
-    <div style={{ position: 'absolute', left: 6, right: 6, bottom: 116, ...panel, fontSize: 13 }}>
+    <div style={{ position: 'absolute', left: 6, right: 6, bottom: ABOVE_BOTTOM, ...panel, fontSize: 13 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
         <button style={{ ...btnOff, padding: '2px 8px' }} onClick={() => go(-1)}>◀</button>
         <Sprite id={f.type} size={32} /><b style={{ flex: 1, fontSize: 15 }}>{f.name ?? d.name}{f.level > 1 ? ` Lv${f.level}` : ''} <span style={small}>{i + 1}/{list.length}</span></b>

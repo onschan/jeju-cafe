@@ -4,12 +4,16 @@
  */
 import { Application, Container, Graphics, Sprite, Text } from 'pixi.js';
 import type { GameState, Facility, Guest, Fx, Pt } from '../game/index.ts';
-import { facilityDef, isFloorDef, canPlace, canLayFloor, lineCells, seasonOf, isNight, cellAt, HOME } from '../game/index.ts';
+import { facilityDef, isFloorDef, canPlace, canLayFloor, lineCells, seasonOf, isNight, cellAt, HOME, ROAD_Y, BUS_STOP } from '../game/index.ts';
 import { loadAssets, tex, peekTex, hasAssets, spriteName } from '../render/assets';
 import { attachCamera } from '../render/camera';
 import { ISO_W, ISO_H, cellToScreen, cellCenter, footAnchor, depth, screenToCell } from '../render/iso';
 import { makeCharacterNode, updateCharacterNode, partsOfFace, CHAR_H, type CharacterNode, type Dir } from '../render/character';
 import { label, loadLabelFont } from '../render/textures';
+import { Background } from '../render/Background';
+import { makeSpeechBubble } from '../render/bubble';
+import { busPose } from '../render/scenery';
+import { parcelFill, parcelProps } from './parcelScenery';
 
 export interface Ghost { id: string; x: number; y: number; ok: boolean; reason?: string; line?: { from: Pt; to: Pt } }
 export interface ViewOptions { onTap: (x: number, y: number) => void; onDragCell?: (x: number, y: number) => void; onDragEnd?: () => void; dragCapture?: (x: number, y: number) => boolean }
@@ -28,8 +32,10 @@ export class View {
   overlay = new Container();
   night = new Graphics();
   glow = new Graphics(); // 밤 등불 빛 (night 위에 더하기 블렌드)
+  bg = new Background(); // 맵 밖 제주 풍경 (하늘·바다·마을·감귤밭·렌터카)
+  private bus: Sprite | null = null;
   private facilityNodes = new Map<string, { node: Container; type: string; key: string }>();
-  private guestNodes = new Map<string, { node: CharacterNode; dir: Dir; frame: 0 | 1 | 2; walked: number }>();
+  private guestNodes = new Map<string, { node: CharacterNode; dir: Dir; frame: 0 | 1 | 2; walked: number; bubble: string }>();
   private tileKey = '';
   private ghost: Container | null = null;
   private ghostKey = '';
@@ -38,6 +44,7 @@ export class View {
   private detach: (() => void) | null = null;
   private fxSeen = 0;
   private bounds = { x: 0, y: 0, w: 0, h: 0 };
+  private busGridW = 0;
 
   async init(parent: HTMLElement, opts: ViewOptions): Promise<void> {
     await this.app.init({ resizeTo: parent, background: 0x1e1e1e, antialias: false, resolution: window.devicePixelRatio, autoDensity: true });
@@ -46,7 +53,7 @@ export class View {
     this.actors.sortableChildren = true;
     this.overlay.sortableChildren = true;
     this.night.eventMode = 'none'; this.glow.eventMode = 'none'; this.glow.blendMode = 'add';
-    this.world.addChild(this.tiles, this.actors, this.overlay, this.night, this.glow);
+    this.world.addChild(this.bg.node, this.tiles, this.actors, this.overlay, this.night, this.glow);
     this.app.stage.addChild(this.world);
     this.detach = attachCamera(this.app.stage, {
       world: this.world, canvas: this.app.canvas, ticker: this.app.ticker,
@@ -55,7 +62,7 @@ export class View {
       onTap: opts.onTap, dragCapture: opts.dragCapture, onDragCell: opts.onDragCell, onDragEnd: opts.onDragEnd,
       minScale: 0.5, maxScale: 2.5,
     });
-    this.app.ticker.add(() => this.tickFx(performance.now()));
+    this.app.ticker.add(() => { const now = performance.now(); this.tickFx(now); this.bg.tick(now); this.tickBus(now); });
   }
   destroy(): void { this.detach?.(); this.app.destroy(true, { children: true }); }
 
@@ -78,6 +85,8 @@ export class View {
   }
 
   sync(state: GameState, ghost: Ghost | null, now: number): void {
+    this.bg.sync(state.grid.w, state.grid.h, ROAD_Y, state.clock.hour + state.clock.ms / 1500);
+    this.busGridW = state.grid.w;
     this.syncTiles(state);
     this.syncFacilities(state);
     this.syncGuests(state, now);
@@ -107,11 +116,14 @@ export class View {
     const g = new Graphics();
     for (let y = 0; y < state.grid.h; y++) for (let x = 0; x < state.grid.w; x++) {
       const c = cellAt(state, x, y);
-      const own = state.parcels.some((p) => p.owned && x >= p.x && y >= p.y && x < p.x + p.w && y < p.y + p.h);
+      const parcel = state.parcels.find((p) => x >= p.x && y >= p.y && x < p.x + p.w && y < p.y + p.h) ?? null;
+      const own = !!parcel?.owned;
       const { sx, sy } = cellToScreen(x, y);
-      const name = c.terrain === 'road' ? spriteName.isoTile('road', season) : c.floor && c.floor !== 'path' ? `iso_tile_floor_${c.floor}` : spriteName.isoTile('soil', season);
+      // 미소유 땅은 그 땅의 풍경(유채밭·감귤밭·억새·돌밭)으로 — 사면 흙이 된다
+      const fill = !own && parcel ? parcelFill(parcel) : 'soil';
+      const name = c.terrain === 'road' ? spriteName.isoTile('road', season) : c.floor && c.floor !== 'path' ? `iso_tile_floor_${c.floor}` : fill !== 'soil' ? `iso_tile_field_${fill}` : spriteName.isoTile('soil', season);
       const t = hasAssets() ? peekTex(name) ?? peekTex(spriteName.isoTile('soil', season)) : null;
-      if (t) { const sp = new Sprite(t); sp.anchor.set(0.5, 0); sp.position.set(sx, sy); if (!own && c.terrain !== 'road') sp.tint = 0x6f7a6a; this.tiles.addChild(sp); } // 미소유 땅은 어둡게 — 살 수 있는 땅이라는 게 보인다
+      if (t) { const sp = new Sprite(t); sp.anchor.set(0.5, 0); sp.position.set(sx, sy); if (!own && c.terrain !== 'road') sp.tint = 0xd8d4c8; this.tiles.addChild(sp); }
       else g.poly([sx, sy, sx + ISO_W / 2, sy + ISO_H / 2, sx, sy + ISO_H, sx - ISO_W / 2, sy + ISO_H / 2]).fill({ color: c.terrain === 'road' ? 0x8a8a80 : c.floor ? 0xc9a36a : own ? 0x6aa84f : 0x3f5a3a });
       if (c.floor === 'path') { const pt = hasAssets() ? peekTex(spriteName.isoObject('path')) : null; if (pt) { const sp = new Sprite(pt); sp.anchor.set(0.5, 1); const a = footAnchor(x, y, 1, 1); sp.position.set(a.sx, a.sy); this.tiles.addChild(sp); } }
     }
@@ -123,6 +135,14 @@ export class View {
       b.poly([c0.sx, c0.sy, c1.sx, c1.sy, c2.sx, c2.sy, c3.sx, c3.sy]).stroke({ color: p.owned ? 0xfff2c0 : 0x000000, alpha: p.owned ? 0.5 : 0.25, width: 1 });
     }
     this.tiles.addChild(b);
+    // 미소유 필지 소품(나무·돌담·등대…) — 깊이 순으로 타일 위에
+    if (hasAssets()) for (const p of state.parcels) {
+      if (p.owned) continue;
+      for (const pr of parcelProps(p, (x, y) => cellAt(state, x, y).terrain === 'road')) {
+        const t = peekTex(spriteName.isoObject(pr.sprite)); if (!t) continue;
+        const sp = new Sprite(t); sp.anchor.set(0.5, 1); const a = footAnchor(pr.x, pr.y, 1, 1); sp.position.set(a.sx, a.sy); sp.tint = 0xe0dcd0; this.tiles.addChild(sp);
+      }
+    }
     // 미소유 필지 팻말: 이름 · 값 (탭하면 산다)
     for (const p of state.parcels) {
       if (p.owned) continue;
@@ -161,6 +181,20 @@ export class View {
     }
   }
 
+  /** 마을 버스: 서쪽 마을에서 들어와 정류장에 섰다가 동쪽으로 나간다 (링 길과 이어진다) */
+  private tickBus(now: number): void {
+    if (!this.busGridW || !hasAssets()) return;
+    const p = busPose(now, BUS_STOP.x, this.busGridW);
+    if (!this.bus) { const t = peekTex(spriteName.isoObject('bus', '0')); if (!t) return; this.bus = new Sprite(t); this.bus.anchor.set(0.5, 1); this.actors.addChild(this.bus); }
+    this.bus.visible = p.visible;
+    if (!p.visible) return;
+    const t = peekTex(spriteName.isoObject('bus', p.moving ? String(Math.floor(now / 160) % 2) : '0'));
+    if (t) this.bus.texture = t;
+    const a = footAnchor(p.x, ROAD_Y, 1, 1);
+    this.bus.position.set(a.sx, a.sy + (p.moving ? Math.round(Math.sin(now / 90)) : 0));
+    this.bus.zIndex = depth(p.x, ROAD_Y) + 0.3;
+  }
+
   private syncGuests(state: GameState, now: number): void {
     const alive = new Set(state.guests.map((g) => g.id));
     for (const [id, e] of this.guestNodes) if (!alive.has(id)) { e.node.destroy({ children: true }); this.guestNodes.delete(id); }
@@ -169,7 +203,7 @@ export class View {
       if (!e) {
         const node = makeCharacterNode(partsOfFace(g.face, g.type === 'tourist' ? ['camera'] : g.type === 'student' ? ['backpack'] : g.type === 'senior' ? ['strawhat'] : []), 'down', 1);
         this.actors.addChild(node);
-        e = { node, dir: 'down', frame: 1, walked: 0 };
+        e = { node, dir: 'down', frame: 1, walked: 0, bubble: '' };
         this.guestNodes.set(g.id, e);
       }
       const c = cellCenter(g.x, g.y);
@@ -180,8 +214,21 @@ export class View {
       const dir: Dir = !next ? 'down' : Math.abs(next.x - g.x) > Math.abs(next.y - g.y) ? (next.x > g.x ? 'right' : 'left') : next.y < g.y ? 'up' : 'down';
       const frame = (seated || !next) ? 1 : (Math.floor(now / 125) % 3) as 0 | 1 | 2;
       if (dir !== e.dir || frame !== e.frame) { updateCharacterNode(e.node, dir, frame); e.dir = dir; e.frame = frame; }
-      const moodNode = e.node.getChildByLabel('mood');
-      if (g.phase === 'out' && g.mood && !moodNode) { const l = label(g.mood === 'happy' ? '♥' : g.mood === 'angry' ? '✕' : '…', 12); l.label = 'mood'; l.anchor.set(0.5, 1); l.position.set(0, -CHAR_H - 2); l.style.fill = g.mood === 'happy' ? 0xff6a8a : g.mood === 'angry' ? 0xff4040 : 0xffffff; e.node.addChild(l); }
+      // 말풍선: 앉으면 뭘 하는지(커피·가게), 나갈 때 기분. 단계가 바뀌면 갈아 끼운다.
+      const want = g.phase === 'use' ? `use:${g.target ? facilityDef(state.facilities[g.target]?.type ?? 'table_out').tab : 'seat'}` : g.phase === 'out' && g.mood ? `mood:${g.mood}` : '';
+      if (want !== e.bubble) {
+        e.node.getChildByLabel('bubble')?.destroy({ children: true });
+        e.bubble = want;
+        if (want && hasAssets()) {
+          const icon = want.startsWith('use:') ? peekTex(want === 'use:shop' ? 'icon_shop' : 'icon_coffee') : peekTex(spriteName.bubble(g.mood ?? 'meh'));
+          if (icon) {
+            const b = want.startsWith('use:') ? makeSpeechBubble({ icon, iconSize: 14 }) : (() => { const sp = new Sprite(icon); sp.anchor.set(0.5, 1); return sp; })();
+            b.label = 'bubble'; b.position.set(0, -CHAR_H - 2); e.node.addChild(b);
+          }
+        }
+      }
+      const bb = e.node.getChildByLabel('bubble');
+      if (bb) bb.position.y = -CHAR_H - 2 + Math.round(Math.sin(now / 250 + g.x) * 1.5);
     }
   }
 

@@ -102,11 +102,11 @@ function finishUse(s: GameState, g: Guest): void {
     f.uses++; f.sales += money;
   }
   const fame = mood === 'happy' ? (nextRandom(s) < 0.5 ? 1 : 0) : mood === 'angry' ? -1 : 0; // 기쁜 손님 둘에 하나꼴로 입소문
-  s.money += money; s.month.income += money; s.stats.income += money;
+  s.money += money; s.month.income += money; s.stats.income += money; s.todayIncome += money;
   s.fame = Math.max(0, s.fame + fame);
   s.research += mood === 'happy' ? 2 : 1;
   s.stats.guests++; s.month.guests++; s.todayGuests++;
-  if (mood === 'happy') s.stats.happy++; else if (mood === 'angry') s.stats.angry++;
+  if (mood === 'happy') { s.stats.happy++; s.month.happy++; } else if (mood === 'angry') s.stats.angry++;
   g.mood = mood;
   s.receipts.push({ id: s.receiptSeq++, type: g.type, money, fame, mood, at: s.tick });
   if (s.receipts.length > 30) s.receipts.splice(0, s.receipts.length - 30);

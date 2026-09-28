@@ -16,8 +16,10 @@ export function monthEnd(s: GameState): void {
   const wages = wagesTotal(s);
   s.money -= upkeep + wages;
   s.month.spent += upkeep + wages;
-  s.lastMonth = { ...s.month };
-  s.month = { income: 0, spent: 0, guests: 0 };
+  // 달이 넘어간 직후라 clock은 이미 다음 달 — 지난달 이름은 하나 되돌린다
+  const pm = s.clock.month === 1 ? 12 : s.clock.month - 1, py = s.clock.month === 1 ? s.clock.year - 1 : s.clock.year;
+  s.lastMonth = { ...s.month, year: py, month: pm };
+  s.month = { income: 0, spent: 0, guests: 0, happy: 0, fame0: s.fame };
   if (s.money < LOAN_THRESHOLD && s.loan.count < LOAN_MAX && s.loan.lastYear !== s.clock.year) {
     s.loan.count++; s.loan.lastYear = s.clock.year; s.loan.balance += LOAN_AMOUNT; s.money += LOAN_AMOUNT;
     s.fx.push({ kind: 'notice', text: `삼춘이 ₩${(LOAN_AMOUNT / 10_000).toFixed(0)}만을 꿔 줬어요 (${s.loan.count}/${LOAN_MAX})` });

@@ -68,7 +68,8 @@ export interface GameState {
   facilities: Record<string, Facility>;
   layoutRev: number;          // 배치가 바뀔 때마다 +1 (시트 캐시 키)
   nextId: number;
-  guests: Guest[]; guestSeq: number; spawnAcc: number; todayGuests: number;
+  guests: Guest[]; guestSeq: number; spawnAcc: number; todayGuests: number; todayIncome: number;
+  lastDay: { guests: number; income: number } | null; // 어제 장사 (하루 요약 카드)
   staff: Staff[]; candidates: Candidate[]; candidatesMonth: number;
   unlocked: { facilities: string[]; menus: string[]; guests: string[] };
   menu: string[];             // 메뉴판에 올린 메뉴
@@ -79,8 +80,8 @@ export interface GameState {
   fx: Fx[];
   loan: Loan;
   evaluations: Evaluation[];
-  month: { income: number; spent: number; guests: number };
-  lastMonth: { income: number; spent: number; guests: number } | null;
+  month: { income: number; spent: number; guests: number; happy: number; fame0: number };
+  lastMonth: { income: number; spent: number; guests: number; happy: number; fame0: number; year: number; month: number } | null;
   stats: { guests: number; happy: number; angry: number; income: number; turnedAway: number };
   log: { tick: number; action: Action }[];
 }

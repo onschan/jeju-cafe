@@ -19,7 +19,7 @@ export function newGame(seed: number): GameState {
     grid: { w: 36, h: 30, cells: makeCells() },
     parcels: makeParcels(),
     facilities: {}, layoutRev: 0, nextId: 1,
-    guests: [], guestSeq: 0, spawnAcc: 0.5, todayGuests: 0,
+    guests: [], guestSeq: 0, spawnAcc: 0.5, todayGuests: 0, todayIncome: 0, lastDay: null,
     staff: [], candidates: [], candidatesMonth: -1,
     unlocked: { facilities: FACILITIES.filter((d) => d.unlock === 0).map((d) => d.id), menus: MENUS.filter((d) => d.unlock === 0).map((d) => d.id), guests: GUEST_TYPES.filter((d) => d.unlock === 0).map((d) => d.id) },
     menu: MENUS.filter((d) => d.unlock === 0).map((d) => d.id),
@@ -27,7 +27,7 @@ export function newGame(seed: number): GameState {
     receipts: [], receiptSeq: 0, fx: [],
     loan: { balance: 0, count: 0, lastYear: 0 },
     evaluations: [],
-    month: { income: 0, spent: 0, guests: 0 }, lastMonth: null,
+    month: { income: 0, spent: 0, guests: 0, happy: 0, fame0: 0 }, lastMonth: null,
     stats: { guests: 0, happy: 0, angry: 0, income: 0, turnedAway: 0 },
     log: [],
   };
