@@ -76,6 +76,7 @@ export interface GameState {
   target: string | null;      // 광고 타깃 손님층
   invested: string[];
   objectivesDone: string[];
+  hints: string[];            // 한 번 본 안내 대사 id (할망·삼춘 첫 5분 안내)
   receipts: Receipt[]; receiptSeq: number;
   fx: Fx[];
   loan: Loan;
@@ -101,6 +102,7 @@ export type Action =
   | { type: 'invest'; id: string }
   | { type: 'buyParcel'; id: string }
   | { type: 'setSpeed'; speed: 0 | 1 | 2 | 3 }
-  | { type: 'setName'; name: string };
+  | { type: 'setName'; name: string }
+  | { type: 'hint'; id: string };           // 안내 대사를 봤다
 
 export interface ApplyResult { ok: boolean; reason?: string }

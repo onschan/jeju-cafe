@@ -14,6 +14,7 @@ import { Background } from '../render/Background';
 import { makeSpeechBubble } from '../render/bubble';
 import { busPose } from '../render/scenery';
 import { parcelFill, parcelProps } from './parcelScenery';
+import { guestAccs } from './guestLook';
 
 export interface Ghost { id: string; x: number; y: number; ok: boolean; reason?: string; line?: { from: Pt; to: Pt } }
 export interface ViewOptions { onTap: (x: number, y: number) => void; onDragCell?: (x: number, y: number) => void; onDragEnd?: () => void; dragCapture?: (x: number, y: number) => boolean }
@@ -201,7 +202,7 @@ export class View {
     for (const g of state.guests) {
       let e = this.guestNodes.get(g.id);
       if (!e) {
-        const node = makeCharacterNode(partsOfFace(g.face, g.type === 'tourist' ? ['camera'] : g.type === 'student' ? ['backpack'] : g.type === 'senior' ? ['strawhat'] : []), 'down', 1);
+        const node = makeCharacterNode(partsOfFace(g.face, guestAccs(g.type)), 'down', 1);
         this.actors.addChild(node);
         e = { node, dir: 'down', frame: 1, walked: 0, bubble: '' };
         this.guestNodes.set(g.id, e);

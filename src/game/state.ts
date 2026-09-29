@@ -23,7 +23,7 @@ export function newGame(seed: number): GameState {
     staff: [], candidates: [], candidatesMonth: -1,
     unlocked: { facilities: FACILITIES.filter((d) => d.unlock === 0).map((d) => d.id), menus: MENUS.filter((d) => d.unlock === 0).map((d) => d.id), guests: GUEST_TYPES.filter((d) => d.unlock === 0).map((d) => d.id) },
     menu: MENUS.filter((d) => d.unlock === 0).map((d) => d.id),
-    target: null, invested: [], objectivesDone: [],
+    target: null, invested: [], objectivesDone: [], hints: [],
     receipts: [], receiptSeq: 0, fx: [],
     loan: { balance: 0, count: 0, lastYear: 0 },
     evaluations: [],

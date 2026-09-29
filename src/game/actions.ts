@@ -67,6 +67,7 @@ function applyInner(s: GameState, a: Action): ApplyResult {
       return { ok: true };
     }
     case 'setSpeed': s.clock.speed = a.speed; return { ok: true };
+    case 'hint': { if (!s.hints.includes(a.id)) s.hints.push(a.id); return { ok: true }; }
     case 'setName': { const n = a.name.trim().slice(0, 12); if (!n) return { ok: false, reason: '이름을 적어요' }; s.cafeName = n; return { ok: true }; }
   }
 }

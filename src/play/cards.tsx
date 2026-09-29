@@ -7,6 +7,7 @@ import { partsOfFace, type AccKind, type Face } from '../render/character';
 import { useThumb } from './thumbs';
 import { assetUrl } from './assetUrl';
 import { toasts } from './store';
+import { guestAccs } from './guestLook';
 import { C, panel, titleBar, btnGold, small, won, wonShort } from './theme';
 
 // ---------- 초상 ----------
@@ -25,7 +26,7 @@ export function Portrait({ face, accs = [], size = 48 }: { face: Face; accs?: Ac
 /** 손님층 대표 얼굴 (결정적) */
 export function guestTypeFace(typeId: string): { face: Face; accs: AccKind[] } {
   const i = Math.max(0, GUEST_TYPES.findIndex((g) => g.id === typeId));
-  const accs: AccKind[] = typeId === 'tourist' ? ['camera'] : typeId === 'student' ? ['backpack'] : typeId === 'senior' ? ['strawhat'] : typeId === 'worker' ? ['glasses'] : typeId === 'family' ? ['cap'] : [];
+  const accs: AccKind[] = guestAccs(typeId);
   return { face: { hair: (i * 3 + 1) % 8, skin: i % 3, top: (i * 5 + 2) % 8 }, accs };
 }
 

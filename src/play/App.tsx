@@ -8,7 +8,9 @@ import { assetUrl } from './assetUrl';
 import { DialogueHost } from './Dialogue';
 import { showDialogue, clearDialogues, useDialogue, SPEAKER } from './dialogueStore';
 import { RewardChest, MonthCard, DaySummary, MessageLine, Portrait, guestTypeFace, DAY_CARD_MS, MESSAGE_LINE_H } from './cards';
-import { FACILITIES, GUEST_TYPES, MENUS, INVESTS, facilityDef, isFloorDef, isUsable, sheetOf, usables, popularitySum, dailyGuests, unlockables, canUnlock, canLevelUp, LEVEL_COST, levelMoney, currentObjective, OBJECTIVES, seasonOf, canHire, upkeepTotal, wagesTotal, myScore, rivalScore, RIVALS, lineCells, canLayFloor, parcelAt, cellAt, parcelAdjacent, type GameState, type Tab, type Facility, type Pt, type Parcel, type Objective } from '../game/index.ts';
+import { nextHint } from './hints';
+import { guestAccs } from './guestLook';
+import { FACILITIES, GUEST_TYPES, MENUS, INVESTS, facilityDef, isFloorDef, isUsable, sheetOf, usables, popularitySum, dailyGuests, unlockables, canUnlock, canLevelUp, LEVEL_COST, levelMoney, currentObjective, OBJECTIVES, seasonOf, canHire, upkeepTotal, wagesTotal, myScore, rivalScore, RIVALS, lineCells, canLayFloor, parcelAt, cellAt, parcelAdjacent, type GameState, type Tab, type Facility, type Pt, type Parcel, type Objective, type Guest } from '../game/index.ts';
 
 type Win = 'build' | 'guests' | 'info' | 'system' | null;
 /** 하단 띠(영수증 2줄 + 요약 + 메뉴) 높이 */
@@ -34,6 +36,7 @@ export function App() {
   const [monthCard, setMonthCard] = useState(false);
   const [daySum, setDaySum] = useState<{ today: { guests: number; income: number }; prev: { guests: number; income: number } | null } | null>(null);
   const [moneyBump, setMoneyBump] = useState(false);
+  const [guestSel, setGuestSel] = useState<string | null>(null);
   const dlg = useDialogue().req;
   // 타이틀·대화·상자·결산이 떠 있는 동안 시계를 멈춘다
   useEffect(() => { setPaused(title || !!dlg || !!chest || monthCard); }, [title, dlg, chest, monthCard]);
@@ -42,8 +45,11 @@ export function App() {
   useEffect(() => {
     if (s.objectivesDone.length <= seenObj.current) { seenObj.current = s.objectivesDone.length; return; }
     const id = s.objectivesDone[s.objectivesDone.length - 1]!; seenObj.current = s.objectivesDone.length;
-    const o = OBJECTIVES.find((x) => x.id === id); if (o) setChest(o);
+    const o = OBJECTIVES.find((x) => x.id === id); if (o) pendingChest.current.push(o);
   }, [s.objectivesDone.length]);
+  // 상자는 대화가 안 떠 있을 때 하나씩 (대사 위에 겹치지 않게)
+  const pendingChest = useRef<Objective[]>([]);
+  useEffect(() => { if (dlg || chest || title) return; const o = pendingChest.current.shift(); if (o) setChest(o); }, [dlg, chest, title, s.objectivesDone.length]);
   // 연말 랭킹 발표
   const seenEval = useRef(s.evaluations.length);
   useEffect(() => {
@@ -68,6 +74,14 @@ export function App() {
     setDaySum({ today: s.lastDay, prev });
     const t = setTimeout(() => setDaySum(null), DAY_CARD_MS); return () => clearTimeout(t);
   }, [s.lastDay]);
+  // 첫 5분 안내: 상황이 처음 맞으면 한 번 (아무것도 안 떠 있을 때만)
+  const hintTick = Math.floor(s.tick / 10);
+  useEffect(() => {
+    if (title || dlg || chest || monthCard || win) return;
+    const h = nextHint(s); if (!h) return;
+    dispatch({ type: 'hint', id: h.id });
+    showDialogue({ speaker: { name: SPEAKER[h.speaker], portrait: h.speaker, expr: h.expr }, lines: h.lines });
+  }, [hintTick, title, !!dlg, !!chest, monthCard, win]);
   // 돈이 늘면 숫자가 살짝 튄다
   const prevMoney = useRef(s.money);
   useEffect(() => { const up = s.money > prevMoney.current; prevMoney.current = s.money; if (!up) return; setMoneyBump(true); const t = setTimeout(() => setMoneyBump(false), 160); return () => clearTimeout(t); }, [s.money]);
@@ -93,8 +107,10 @@ export function App() {
         const p = parcelAt(st, x, y);
         if (p && !p.owned) { setBuyAsk(p); setSelected(null); setFloorSel(null); return; } // 미소유 땅을 탭하면 산다
         const cell = st.grid.cells[y * st.grid.w + x];
+        const g = !cell?.objectId ? st.guests.find((q) => Math.round(q.x) === x && Math.round(q.y) === y) : null;
+        setGuestSel(g ? g.id : null);
         setSelected(cell?.objectId ?? null);
-        setFloorSel(cell && !cell.objectId && cell.floor ? { x, y } : null);
+        setFloorSel(cell && !cell.objectId && cell.floor && !g ? { x, y } : null); // 손님이 서 있으면 손님 팝업이 먼저
       },
       dragCapture: (x, y) => { const id = placingRef.current; if (!id || !isFloorDef(facilityDef(id))) return false; lineFrom.current = { x, y }; setGhost(ghostOf(getState(), id, x, y, { from: { x, y }, to: { x, y } })); return true; },
       onDragCell: (x, y) => { const id = placingRef.current; const from = lineFrom.current; if (!id || !from) return; setGhost(ghostOf(getState(), id, x, y, { from, to: { x, y } })); },
@@ -140,7 +156,7 @@ export function App() {
           <span>손님 <b style={{ color: C.ink }}>{s.guests.length}</b></span><span>오늘 <b style={{ color: C.ink }}>{s.todayGuests}</b>/{dailyGuests(s)}</span><span>자리·가게 <b style={{ color: C.ink }}>{usables(s).length}</b></span><span>인기 합 <b style={{ color: C.ink }}>{popularitySum(s)}</b></span><span>직원 <b style={{ color: C.ink }}>{s.staff.length}</b></span>
         </div>
         <div style={{ display: 'flex', gap: 6, padding: 6 }}>
-          {([['build', '건축', 'build'], ['guests', '손님층', 'guest'], ['info', '정보', 'report'], ['system', '시스템', 'settings']] as const).map(([k, name, ico]) => <button key={k} style={{ ...(win === k ? btnGold : btn), flex: 1, padding: '6px 0', fontSize: 14, position: 'relative', display: 'inline-flex', flexDirection: 'column', alignItems: 'center', gap: 2 }} onClick={() => { setWin(win === k ? null : k); setSelected(null); setFloorSel(null); }}><Ico name={ico} size={18} />{name}{k === 'info' && canResearch && <span style={{ position: 'absolute', top: 4, right: 8, width: 10, height: 10, borderRadius: 5, background: C.red, border: '2px solid #fff8e8' }} />}</button>)}
+          {([['build', '건축', 'build'], ['guests', '손님층', 'guest'], ['info', '정보', 'report'], ['system', '시스템', 'settings']] as const).map(([k, name, ico]) => <button key={k} style={{ ...(win === k ? btnGold : btn), flex: 1, padding: '6px 0', fontSize: 14, position: 'relative', display: 'inline-flex', flexDirection: 'column', alignItems: 'center', gap: 2 }} onClick={() => { setWin(win === k ? null : k); setSelected(null); setFloorSel(null); setGuestSel(null); }}><Ico name={ico} size={18} />{name}{k === 'info' && canResearch && <span style={{ position: 'absolute', top: 4, right: 8, width: 10, height: 10, borderRadius: 5, background: C.red, border: '2px solid #fff8e8' }} />}</button>)}
         </div>
       </div>
       {!ready && <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', color: '#fff' }}>불러오는 중…</div>}
@@ -148,8 +164,9 @@ export function App() {
       {win === 'guests' && <GuestsWindow s={s} onClose={() => setWin(null)} />}
       {win === 'info' && <InfoWindow s={s} onClose={() => setWin(null)} />}
       {win === 'system' && <SystemWindow onClose={() => setWin(null)} />}
-      {sel && !placing && !win && <FacilityCard s={s} f={sel} onSelect={setSelected} onClose={() => setSelected(null)} onMore={(id) => { setSelected(null); setPlacing(id); }} />}
-      {!sel && floorSel && !placing && !win && <FloorCard s={s} p={floorSel} onClose={() => setFloorSel(null)} onMore={(id) => { setFloorSel(null); setPlacing(id); }} />}
+      {sel && !placing && !win && !guestSel && <FacilityCard s={s} f={sel} onSelect={setSelected} onClose={() => setSelected(null)} onMore={(id) => { setSelected(null); setPlacing(id); }} onGuest={setGuestSel} />}
+      {guestSel && !placing && !win && (s.guests.find((g) => g.id === guestSel) ? <GuestPopup s={s} g={s.guests.find((g) => g.id === guestSel)!} onClose={() => setGuestSel(null)} /> : null)}
+      {!sel && !guestSel && floorSel && !placing && !win && <FloorCard s={s} p={floorSel} onClose={() => setFloorSel(null)} onMore={(id) => { setFloorSel(null); setPlacing(id); }} />}
       {buyAsk && <Ask text={`${buyAsk.name}을 ${won(buyAsk.price)}에 살까요?`} sub={!parcelAdjacent(s, buyAsk) ? '내 땅과 붙어 있어야 살 수 있어요' : s.money < buyAsk.price ? `돈이 모자라요 (지금 ${wonShort(s.money)})` : `사면 ${wonShort(s.money - buyAsk.price)} 남아요`} yesOff={!parcelAdjacent(s, buyAsk) || s.money < buyAsk.price} onYes={() => { const r = dispatch({ type: 'buyParcel', id: buyAsk.id }); if (!r.ok) flash(r.reason); setBuyAsk(null); }} onNo={() => setBuyAsk(null)} />}
       <DialogueHost />
       {chest && <RewardChest objective={chest} onClose={() => { const o = chest; setChest(null); const next = currentObjective(getState()); showDialogue({ speaker: { name: SPEAKER.samchun, portrait: 'samchun', expr: 'happy' }, lines: [`${o.text} — 해냈네! 상금 ${wonShort(o.reward)}은 통장에 넣어 뒀어.`, next ? `다음은 「${next.text}」. 상금은 ${wonShort(next.reward)}.` : '목표는 다 이뤘어. 이제 마음껏 키워 봐.'] }); }} />}
@@ -345,7 +362,27 @@ function SystemWindow({ onClose }: { onClose: () => void }) {
   );
 }
 /** 시설 카드 = 손익계산서 한 장 (영상 15:00) */
-function FacilityCard({ s, f, onSelect, onClose, onMore }: { s: GameState; f: Facility; onSelect: (id: string) => void; onClose: () => void; onMore: (id: string) => void }) {
+/** 손님 팝업: 누구인지·지갑·눈높이·지금 뭐 하는지 */
+function GuestPopup({ s, g, onClose }: { s: GameState; g: Guest; onClose: () => void }) {
+  const t = GUEST_TYPES.find((x) => x.id === g.type)!;
+  const tf = g.target ? s.facilities[g.target] ?? null : null;
+  const tname = tf ? (tf.name ?? facilityDef(tf.type).name) : null;
+  const doing = g.phase === 'in' ? (tname ? `${tname}(으)로 가는 중` : '들어오는 중') : g.phase === 'use' ? `${tname ?? '자리'} 이용 중 (${Math.ceil(g.timerMs / 1500 * 60)}분 남음)` : g.mood === 'happy' ? '만족하며 돌아가는 중' : g.mood === 'angry' ? '실망해서 돌아가는 중' : '그럭저럭 돌아가는 중';
+  const liked = FACILITIES.filter((d) => d.tags?.includes(g.type) && s.unlocked.facilities.includes(d.id)).map((d) => d.name).slice(0, 4).join('·');
+  return (
+    <div style={{ position: 'absolute', left: 6, right: 6, bottom: ABOVE_BOTTOM, ...panel, fontSize: 13, display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+      <Portrait face={g.face} accs={guestAccs(g.type)} size={64} />
+      <div style={{ flex: 1, minWidth: 0, display: 'grid', gap: 2 }}>
+        <div><b style={{ fontSize: 15 }}>{t.name}</b> {g.mood && <Ico name={`mood_${g.mood}`} />}</div>
+        <div style={small}>지갑 {won(t.wallet)} · 눈높이 {t.expect}{s.target === g.type ? ' · 타깃' : ''}</div>
+        <div>{doing}</div>
+        <div style={small}>{liked ? `좋아함: ${liked}` : '좋아하는 시설이 아직 없다'}</div>
+      </div>
+      <button style={btnOff} onClick={onClose}>닫기</button>
+    </div>
+  );
+}
+function FacilityCard({ s, f, onSelect, onClose, onMore, onGuest }: { s: GameState; f: Facility; onSelect: (id: string) => void; onClose: () => void; onMore: (id: string) => void; onGuest: (id: string) => void }) {
   const d = facilityDef(f.type);
   const sh = sheetOf(s, f);
   const list = Object.values(s.facilities);
@@ -373,6 +410,7 @@ function FacilityCard({ s, f, onSelect, onClose, onMore }: { s: GameState; f: Fa
         </tbody></table>
       ) : <div style={{ marginTop: 4 }}>경치 <b>+{d.scenery ?? 0}</b> <span style={small}>반경 2 자리·가게의 인기를 올린다</span>{sh.pairs.length > 0 && <div style={small}>상성: {sh.pairs.map((p) => p.name).join('·')}</div>}</div>}
       {sh.likedBy.length > 0 && <div style={small}>{sh.likedBy.map((t) => GUEST_TYPES.find((g) => g.id === t)?.name).join('·')}에게 인기</div>}
+      {(() => { const here = s.guests.filter((g) => g.target === f.id && g.phase === 'use'); return here.length > 0 && <div style={{ ...small, display: 'flex', gap: 4, alignItems: 'center', flexWrap: 'wrap' }}>지금 손님: {here.map((g) => <button key={g.id} style={{ ...btnOff, padding: '1px 6px', fontSize: 12 }} onClick={() => onGuest(g.id)}>{GUEST_TYPES.find((t) => t.id === g.type)?.name} 보기</button>)}</div>; })()}
       <div style={{ display: 'flex', gap: 6, marginTop: 6, flexWrap: 'wrap' }}>
         {isUsable(d) && <button style={lv.ok ? btn : btnOff} title={lv.reason} onClick={() => { const r = dispatch({ type: 'levelUp', facilityId: f.id }); if (!r.ok) alert(r.reason); }}>Lv업 <span style={{ fontSize: 11 }}>{LEVEL_COST[f.level] !== undefined ? `(연구 ${LEVEL_COST[f.level]} · ${wonShort(levelMoney(s, f.id))})` : '(최고)'}</span></button>}
         <button style={btn} onClick={() => onMore(f.type)}>같은 것 더</button>
