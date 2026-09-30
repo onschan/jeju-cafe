@@ -4,7 +4,7 @@
  */
 import { Application, Container, Graphics, Sprite, Text } from 'pixi.js';
 import type { GameState, Facility, Guest, Fx, Pt } from '../game/index.ts';
-import { facilityDef, isFloorDef, canPlace, canLayFloor, lineCells, seasonOf, isNight, cellAt, HOME, ROAD_Y, BUS_STOP } from '../game/index.ts';
+import { facilityDef, isFloorDef, canPlace, canLayFloor, lineCells, seasonOf, isNight, cellAt, walkable, HOME, ROAD_Y, BUS_STOP } from '../game/index.ts';
 import { loadAssets, tex, peekTex, hasAssets, spriteName } from '../render/assets';
 import { attachCamera } from '../render/camera';
 import { ISO_W, ISO_H, cellToScreen, cellCenter, footAnchor, depth, screenToCell } from '../render/iso';
@@ -37,6 +37,11 @@ export class View {
   private bus: Sprite | null = null;
   private facilityNodes = new Map<string, { node: Container; type: string; key: string }>();
   private guestNodes = new Map<string, { node: CharacterNode; dir: Dir; frame: 0 | 1 | 2; walked: number; bubble: string }>();
+  /** 직원: 마당 바닥 위를 서성인다 (그림 전용 — 사림에는 위치가 없다) */
+  private staffNodes = new Map<string, { node: CharacterNode; x: number; y: number; tx: number; ty: number; idleUntil: number; dir: Dir; shownDir: Dir; frame: 0 | 1 | 2 }>();
+  private floorCells: Pt[] = []; private floorRev = -1;
+  private firstSync = true;
+  private sparkles: { sp: Sprite; born: number }[] = [];
   private tileKey = '';
   private ghost: Container | null = null;
   private ghostKey = '';
@@ -63,7 +68,7 @@ export class View {
       onTap: opts.onTap, dragCapture: opts.dragCapture, onDragCell: opts.onDragCell, onDragEnd: opts.onDragEnd,
       minScale: 0.5, maxScale: 2.5,
     });
-    this.app.ticker.add(() => { const now = performance.now(); this.tickFx(now); this.bg.tick(now); this.tickBus(now); });
+    this.app.ticker.add(() => { const now = performance.now(); this.tickFx(now); this.bg.tick(now); this.tickBus(now); this.tickSparkles(now); });
   }
   destroy(): void { this.detach?.(); this.app.destroy(true, { children: true }); }
 
@@ -91,7 +96,9 @@ export class View {
     this.syncTiles(state);
     this.syncFacilities(state);
     this.syncGuests(state, now);
+    this.syncStaff(state, now);
     this.syncGhost(state, ghost);
+    this.firstSync = false;
     this.takeFx(state, now);
     this.night.clear(); this.glow.clear();
     if (isNight(state.clock)) {
@@ -178,9 +185,65 @@ export class View {
       else { node.addChild(new Graphics().rect(-12, -28, 24, 28).fill(d.tab === 'env' ? 0x3d8b3d : d.tab === 'seat' ? 0xb8703a : 0xd8a03a)); }
       if (f.level >= 2) { const l = label(`Lv${f.level}`, 9); l.anchor.set(0.5, 0.5); const bg = new Graphics().roundRect(-14, -7, 28, 14, 3).fill({ color: 0xb8862a, alpha: 0.9 }); const c = new Container(); c.addChild(bg, l); c.position.set(14, -(t?.height ?? 30) + 6); node.addChild(c); }
       this.actors.addChild(node);
+      const isNew = !e;
       this.facilityNodes.set(f.id, { node, type: f.type, key });
+      // 공사 반짝임: 새로 놓인 것에만 (불러올 때는 안 한다)
+      if (isNew && !this.firstSync && hasAssets()) { const st = peekTex('fx_sparkle_0'); if (st) { const sp = new Sprite(st); sp.anchor.set(0.5, 1); sp.position.set(a.sx, a.sy - (t?.height ?? 24) / 2); sp.zIndex = node.zIndex + 0.5; this.actors.addChild(sp); this.sparkles.push({ sp, born: performance.now() }); } }
     }
   }
+
+  private tickSparkles(now: number): void {
+    for (const q of this.sparkles) {
+      const k = (now - q.born) / 700;
+      if (k >= 1) { q.sp.destroy(); continue; }
+      const t = peekTex(`fx_sparkle_${Math.floor(k * 12) % 4}`); if (t) q.sp.texture = t;
+      q.sp.position.y -= 0.4; q.sp.alpha = k < 0.7 ? 1 : 1 - (k - 0.7) / 0.3;
+    }
+    this.sparkles = this.sparkles.filter((q) => !q.sp.destroyed);
+  }
+
+  /** 직원은 바닥 칸 사이를 천천히 오가며 서성인다. 목적지는 빈 바닥 칸 중 하나, 닿으면 1~3초 쉰다. */
+  private syncStaff(state: GameState, now: number): void {
+    if (this.floorRev !== state.layoutRev) {
+      this.floorRev = state.layoutRev; this.floorCells = [];
+      for (let y = 0; y < state.grid.h; y++) for (let x = 0; x < state.grid.w; x++) { const c = cellAt(state, x, y); if (c.floor && c.floor !== 'path' && !c.objectId) this.floorCells.push({ x, y }); }
+    }
+    const alive = new Set(state.staff.map((st) => st.id));
+    for (const [id, e] of this.staffNodes) if (!alive.has(id)) { e.node.destroy({ children: true }); this.staffNodes.delete(id); }
+    if (this.floorCells.length === 0) return;
+    const pickCell = () => this.floorCells[Math.floor(Math.random() * this.floorCells.length)]!;
+    const dt = Math.min(0.1, (now - this.staffLast) / 1000); this.staffLast = now;
+    for (const st of state.staff) {
+      let e = this.staffNodes.get(st.id);
+      if (!e) {
+        const c = pickCell();
+        const node = makeCharacterNode(partsOfFace(st.face, ['apron']), 'down', 1);
+        this.actors.addChild(node);
+        e = { node, x: c.x, y: c.y, tx: c.x, ty: c.y, idleUntil: now + 1000, dir: 'down', shownDir: 'down', frame: 1 };
+        this.staffNodes.set(st.id, e);
+      }
+      const dx = e.tx - e.x, dy = e.ty - e.y, dist = Math.hypot(dx, dy);
+      let moving = false;
+      if (dist > 0.02) {
+        const step = Math.min(dist, 1.6 * dt * (state.clock.speed || 0));
+        // 벽·시설을 뚫지 않게: 목적지까지 한 축씩(ㄱ자) 간다
+        if (Math.abs(dx) > 0.02) { e.x += Math.sign(dx) * Math.min(Math.abs(dx), step); e.dir = dx > 0 ? 'right' : 'left'; }
+        else { e.y += Math.sign(dy) * Math.min(Math.abs(dy), step); e.dir = dy > 0 ? 'down' : 'up'; }
+        moving = step > 0;
+      } else if (now > e.idleUntil) {
+        // 같은 줄이나 칸에서 가까운 빈 바닥으로 (걸어갈 수 있는 곳만)
+        const cand = this.floorCells.filter((c) => (c.x === Math.round(e!.x) || c.y === Math.round(e!.y)) && Math.abs(c.x - e!.x) + Math.abs(c.y - e!.y) <= 5 && walkable(state, c.x, c.y));
+        const c = cand.length ? cand[Math.floor(Math.random() * cand.length)]! : pickCell();
+        e.tx = c.x; e.ty = c.y; e.idleUntil = now + 1000 + Math.random() * 2500;
+      }
+      const cc = cellCenter(e.x, e.y);
+      e.node.position.set(cc.sx, cc.sy);
+      e.node.zIndex = depth(e.x, e.y) + 0.25;
+      const frame = moving ? (Math.floor(now / 140) % 3) as 0 | 1 | 2 : 1;
+      if (frame !== e.frame || e.dir !== e.shownDir) { updateCharacterNode(e.node, e.dir, frame); e.frame = frame; e.shownDir = e.dir; }
+    }
+  }
+  private staffLast = 0;
 
   /** 마을 버스: 서쪽 마을에서 들어와 정류장에 섰다가 동쪽으로 나간다 (링 길과 이어진다) */
   private tickBus(now: number): void {

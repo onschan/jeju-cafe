@@ -9,6 +9,8 @@ import { DialogueHost } from './Dialogue';
 import { showDialogue, clearDialogues, useDialogue, SPEAKER } from './dialogueStore';
 import { RewardChest, MonthCard, DaySummary, MessageLine, Portrait, guestTypeFace, DAY_CARD_MS, MESSAGE_LINE_H } from './cards';
 import { nextHint } from './hints';
+import { EndingScreen } from './Ending';
+import { unlockAudio, audioReady, sfx, bgm, setBgmLayer, isMuted, setMuted, getBgmVolume, getSfxVolume, setBgmVolume, setSfxVolume } from './audio';
 import { guestAccs } from './guestLook';
 import { FACILITIES, GUEST_TYPES, MENUS, INVESTS, facilityDef, isFloorDef, isUsable, sheetOf, usables, popularitySum, dailyGuests, unlockables, canUnlock, canLevelUp, LEVEL_COST, levelMoney, currentObjective, OBJECTIVES, seasonOf, canHire, upkeepTotal, wagesTotal, myScore, rivalScore, RIVALS, lineCells, canLayFloor, parcelAt, cellAt, parcelAdjacent, type GameState, type Tab, type Facility, type Pt, type Parcel, type Objective, type Guest } from '../game/index.ts';
 
@@ -36,10 +38,11 @@ export function App() {
   const [monthCard, setMonthCard] = useState(false);
   const [daySum, setDaySum] = useState<{ today: { guests: number; income: number }; prev: { guests: number; income: number } | null } | null>(null);
   const [moneyBump, setMoneyBump] = useState(false);
+  const [ending, setEnding] = useState(false);
   const [guestSel, setGuestSel] = useState<string | null>(null);
   const dlg = useDialogue().req;
   // 타이틀·대화·상자·결산이 떠 있는 동안 시계를 멈춘다
-  useEffect(() => { setPaused(title || !!dlg || !!chest || monthCard); }, [title, dlg, chest, monthCard]);
+  useEffect(() => { setPaused(title || !!dlg || !!chest || monthCard || ending); }, [title, dlg, chest, monthCard, ending]);
   // 목표 달성 → 보물상자 → 삼춘 한마디 (이어하기 직후 옛 목표가 다시 튀지 않게 처음 개수는 「본 것」으로)
   const seenObj = useRef(s.objectivesDone.length);
   useEffect(() => {
@@ -82,6 +85,19 @@ export function App() {
     dispatch({ type: 'hint', id: h.id });
     showDialogue({ speaker: { name: SPEAKER[h.speaker], portrait: h.speaker, expr: h.expr }, lines: h.lines });
   }, [hintTick, title, !!dlg, !!chest, monthCard, win]);
+  // 소리: 첫 터치에서 풀고, 타이틀/계절 BGM, 명성 300부터 타악
+  const season = seasonOf(s.clock.month);
+  useEffect(() => { if (!ready) return; const on = () => { unlockAudio(); void bgm(title ? 'title' : season); }; window.addEventListener('pointerdown', on, { passive: true }); return () => window.removeEventListener('pointerdown', on); }, [ready, title, season]);
+  useEffect(() => { if (audioReady()) void bgm(title ? 'title' : season); }, [title, season]);
+  useEffect(() => { setBgmLayer(s.fame >= 300); }, [s.fame >= 300]);
+  useEffect(() => { if (s.receiptSeq === 0) return; const r = s.receipts[s.receipts.length - 1]; if (!r) return; sfx('coin'); if (r.mood === 'happy') sfx('happy'); else if (r.mood === 'angry') sfx('meh'); }, [s.receiptSeq]);
+  useEffect(() => { if (chest) sfx('fanfare'); }, [chest]);
+  useEffect(() => { if (monthCard) sfx('month'); }, [monthCard]);
+  const unlockedCount = s.unlocked.facilities.length + s.unlocked.menus.length + s.unlocked.guests.length;
+  const seenUnlock = useRef(unlockedCount);
+  useEffect(() => { if (unlockedCount > seenUnlock.current) sfx('unlock'); seenUnlock.current = unlockedCount; }, [unlockedCount]);
+  // 3년 엔딩: 4년차 1월 1일에 한 번
+  useEffect(() => { if (!title && !dlg && !chest && !monthCard && s.clock.year >= 4 && !s.hints.includes('ending')) { dispatch({ type: 'hint', id: 'ending' }); setEnding(true); sfx('fanfare'); } }, [s.clock.year, title, !!dlg, !!chest, monthCard]);
   // 돈이 늘면 숫자가 살짝 튄다
   const prevMoney = useRef(s.money);
   useEffect(() => { const up = s.money > prevMoney.current; prevMoney.current = s.money; if (!up) return; setMoneyBump(true); const t = setTimeout(() => setMoneyBump(false), 160); return () => clearTimeout(t); }, [s.money]);
@@ -95,12 +111,13 @@ export function App() {
     v.init(hostRef.current!, {
       onTap: (x, y) => {
         const st = getState();
+        sfx('tap');
         const id = placingRef.current;
         if (id) {
           const d = facilityDef(id);
-          if (isFloorDef(d)) { const r = dispatch({ type: 'placeLine', id, from: { x, y }, to: { x, y } }); if (!r.ok) flash(r.reason); setGhost(ghostOf(st, id, x, y)); return; }
+          if (isFloorDef(d)) { const r = dispatch({ type: 'placeLine', id, from: { x, y }, to: { x, y } }); if (!r.ok) flash(r.reason); else sfx('plant'); setGhost(ghostOf(st, id, x, y)); return; }
           const g = ghostOf(st, id, x, y);
-          if (g.ok) { const r = dispatch({ type: 'place', id, x, y }); if (!r.ok) flash(r.reason); } // 안 되는 까닭은 배치 띠가 말한다
+          if (g.ok) { const r = dispatch({ type: 'place', id, x, y }); if (!r.ok) flash(r.reason); else sfx('place'); } // 안 되는 까닭은 배치 띠가 말한다
           setGhost(ghostOf(getState(), id, x, y));
           return;
         }
@@ -114,7 +131,7 @@ export function App() {
       },
       dragCapture: (x, y) => { const id = placingRef.current; if (!id || !isFloorDef(facilityDef(id))) return false; lineFrom.current = { x, y }; setGhost(ghostOf(getState(), id, x, y, { from: { x, y }, to: { x, y } })); return true; },
       onDragCell: (x, y) => { const id = placingRef.current; const from = lineFrom.current; if (!id || !from) return; setGhost(ghostOf(getState(), id, x, y, { from, to: { x, y } })); },
-      onDragEnd: () => { const id = placingRef.current; const from = lineFrom.current; const g = ghostRef.current; lineFrom.current = null; if (!id || !from || !g?.line) return; const r = dispatch({ type: 'placeLine', id, from: g.line.from, to: g.line.to }); if (!r.ok) flash(r.reason); setGhost(ghostOf(getState(), id, g.line.to.x, g.line.to.y)); },
+      onDragEnd: () => { const id = placingRef.current; const from = lineFrom.current; const g = ghostRef.current; lineFrom.current = null; if (!id || !from || !g?.line) return; const r = dispatch({ type: 'placeLine', id, from: g.line.from, to: g.line.to }); if (!r.ok) flash(r.reason); else sfx('plant'); setGhost(ghostOf(getState(), id, g.line.to.x, g.line.to.y)); },
     }).then(() => { v.centerOn(getState()); setReady(true); stop = startLoop(); raf = requestAnimationFrame(tick); }); // 시트가 다 실린 뒤에야 그린다 — 먼저 그리면 자리 표시 도형이 캐시에 남는다(폰에서 그렇게 보였다)
     (window as unknown as { __view: View; __game: unknown }).__view = v; // 디버그·자동 검증용 (봇·브라우저 스크립트)
     (window as unknown as { __game: unknown }).__game = { getState, dispatch };
@@ -122,7 +139,7 @@ export function App() {
     let raf = 0;
     return () => { cancelAnimationFrame(raf); stop(); v.destroy(); };
   }, []);
-  function flash(text?: string) { if (!text) return; setToast(text); window.setTimeout(() => setToast((t) => (t === text ? null : t)), 1800); }
+  function flash(text?: string) { if (!text) return; sfx('error'); setToast(text); window.setTimeout(() => setToast((t) => (t === text ? null : t)), 1800); }
 
   const obj = currentObjective(s);
   const canResearch = unlockables(s).some((u) => !u.done && s.research >= u.cost);
@@ -168,6 +185,7 @@ export function App() {
       {guestSel && !placing && !win && (s.guests.find((g) => g.id === guestSel) ? <GuestPopup s={s} g={s.guests.find((g) => g.id === guestSel)!} onClose={() => setGuestSel(null)} /> : null)}
       {!sel && !guestSel && floorSel && !placing && !win && <FloorCard s={s} p={floorSel} onClose={() => setFloorSel(null)} onMore={(id) => { setFloorSel(null); setPlacing(id); }} />}
       {buyAsk && <Ask text={`${buyAsk.name}을 ${won(buyAsk.price)}에 살까요?`} sub={!parcelAdjacent(s, buyAsk) ? '내 땅과 붙어 있어야 살 수 있어요' : s.money < buyAsk.price ? `돈이 모자라요 (지금 ${wonShort(s.money)})` : `사면 ${wonShort(s.money - buyAsk.price)} 남아요`} yesOff={!parcelAdjacent(s, buyAsk) || s.money < buyAsk.price} onYes={() => { const r = dispatch({ type: 'buyParcel', id: buyAsk.id }); if (!r.ok) flash(r.reason); setBuyAsk(null); }} onNo={() => setBuyAsk(null)} />}
+      {ending && <EndingScreen s={s} onContinue={() => setEnding(false)} onTitle={() => { setEnding(false); save(); setTitle(true); }} />}
       <DialogueHost />
       {chest && <RewardChest objective={chest} onClose={() => { const o = chest; setChest(null); const next = currentObjective(getState()); showDialogue({ speaker: { name: SPEAKER.samchun, portrait: 'samchun', expr: 'happy' }, lines: [`${o.text} — 해냈네! 상금 ${wonShort(o.reward)}은 통장에 넣어 뒀어.`, next ? `다음은 「${next.text}」. 상금은 ${wonShort(next.reward)}.` : '목표는 다 이뤘어. 이제 마음껏 키워 봐.'] }); }} />}
       {monthCard && s.lastMonth && <MonthCard s={s} onClose={() => setMonthCard(false)} />}
@@ -348,12 +366,24 @@ function InfoWindow({ s, onClose }: { s: GameState; onClose: () => void }) {
   );
 }
 function Row({ k, v }: { k: string; v: string }) { return <div style={{ display: 'flex', gap: 8 }}><span style={{ ...small, minWidth: 96 }}>{k}</span><span>{v}</span></div>; }
+function SoundRow() {
+  const [, bump] = useState(0);
+  const r = () => bump((n) => n + 1);
+  return (
+    <div style={{ ...panel, padding: 6, background: '#fff7e6', display: 'grid', gap: 4, fontSize: 13 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}><span style={{ flex: 1 }}>소리</span><button style={isMuted() ? btnOff : btnGold} onClick={() => { unlockAudio(); setMuted(!isMuted()); r(); }}>{isMuted() ? '꺼짐' : '켜짐'}</button></div>
+      <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}><span style={{ ...small, minWidth: 48 }}>음악</span><input type="range" min={0} max={100} value={getBgmVolume()} style={{ flex: 1 }} onChange={(e) => { setBgmVolume(Number(e.target.value)); r(); }} /><span style={small}>{getBgmVolume()}</span></label>
+      <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}><span style={{ ...small, minWidth: 48 }}>효과음</span><input type="range" min={0} max={100} value={getSfxVolume()} style={{ flex: 1 }} onChange={(e) => { setSfxVolume(Number(e.target.value)); r(); }} onPointerUp={() => sfx('coin')} /><span style={small}>{getSfxVolume()}</span></label>
+    </div>
+  );
+}
 function SystemWindow({ onClose }: { onClose: () => void }) {
   return (
     <Window title="시스템" onClose={onClose}>
       <div style={{ display: 'grid', gap: 6 }}>
         <div style={{ ...small }}>카페 이름</div>
         <input defaultValue={getState().cafeName} maxLength={12} style={{ fontFamily: 'inherit', fontSize: 15, padding: 6 }} onBlur={(e) => dispatch({ type: 'setName', name: e.target.value })} />
+        <SoundRow />
         <button style={btn} onClick={() => { save(); alert('저장했어요'); }}>저장</button>
         <button style={btnOff} onClick={() => { if (confirm('새로 시작할까요? 지금 게임은 사라져요.')) { restart(); onClose(); } }}>새 게임</button>
         <div style={small}>하루가 끝날 때마다 자동 저장. 적자는 빨간 숫자일 뿐 게임 오버는 없다 — 잔고가 −200만 아래면 삼춘이 300만을 꿔 준다(연 1회, 3번까지).</div>
