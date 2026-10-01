@@ -6,10 +6,34 @@ import { canUnlock, unlock, canLevelUp, levelUp } from './research.ts';
 import { canHire, hire, canRecruit, recruit } from './staff.ts';
 import { canInvest, invest } from './invest.ts';
 import { checkObjectives } from './objectives.ts';
+import { rooms, ROOM_KO } from './rooms.ts';
 
+/** 배치로 방이 달라졌나 — 별이 오른 방·새로 생긴 방을 맵 위에 띄운다 */
+const LAYOUT_ACTIONS = new Set(['place', 'placeLine', 'wallRect', 'wallEdges', 'removeWall', 'removeWalls', 'move', 'remove', 'clearFloor', 'levelUp']);
+function roomSnapshot(s: GameState): Map<string, { stars: number; kind: string }> {
+  const m = new Map<string, { stars: number; kind: string }>();
+  for (const r of rooms(s)) for (const c of r.cells) m.set(`${c.x},${c.y}`, { stars: r.stars, kind: r.kind });
+  return m;
+}
+function noteRoomChange(s: GameState, before: Map<string, { stars: number; kind: string }>): void {
+  let order = 0;
+  for (const r of rooms(s)) {
+    const mid = r.cells[Math.floor(r.cells.length / 2)]!;
+    const old = r.cells.map((c) => before.get(`${c.x},${c.y}`)).find(Boolean);
+    if (!old) { s.fx.push({ kind: 'roomup', x: mid.x, y: mid.y, text: `새 방 — ${ROOM_KO[r.kind]} ${'★'.repeat(r.stars)}`, order: order++ }); continue; }
+    if (old.kind !== r.kind) { s.fx.push({ kind: 'roomup', x: mid.x, y: mid.y, text: `${ROOM_KO[r.kind]}가 됐다 ${'★'.repeat(r.stars)}`, order: order++ }); continue; }
+    if (r.stars > old.stars) s.fx.push({ kind: 'roomup', x: mid.x, y: mid.y, text: `${ROOM_KO[r.kind]} ★${old.stars} → ★${r.stars}`, order: order++ });
+  }
+}
 export function apply(s: GameState, a: Action): ApplyResult {
+  const watch = LAYOUT_ACTIONS.has(a.type);
+  const before = watch ? roomSnapshot(s) : null;
   const r = applyInner(s, a);
-  if (r.ok) { if (a.type !== 'setSpeed') s.log.push({ tick: s.tick, action: a }); checkObjectives(s); }
+  if (r.ok) {
+    if (before) noteRoomChange(s, before);
+    if (a.type !== 'setSpeed') s.log.push({ tick: s.tick, action: a });
+    checkObjectives(s);
+  }
   return r;
 }
 function applyInner(s: GameState, a: Action): ApplyResult {

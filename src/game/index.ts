@@ -6,6 +6,7 @@ export * from './facility.ts';
 export * from './path.ts';
 export * from './guests.ts';
 export * from './staff.ts';
+export * from './rooms.ts';
 export * from './economy.ts';
 export * from './research.ts';
 export * from './invest.ts';

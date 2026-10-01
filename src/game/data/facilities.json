@@ -272,7 +272,8 @@
   "cost": 12000,
   "upkeep": 50,
   "unlock": 0,
-  "tags": []
+  "tags": [],
+  "yard": true
  },
  {
   "id": "wall_wood",
@@ -285,6 +286,18 @@
   "upkeep": 100,
   "unlock": 0,
   "tags": []
+ },
+ {
+  "id": "door_wood",
+  "name": "문",
+  "tab": "env",
+  "sub": "wall",
+  "w": 1,
+  "h": 1,
+  "cost": 30000,
+  "upkeep": 300,
+  "unlock": 0,
+  "yard": true
  },
  {
   "id": "wall_plaster",
@@ -320,7 +333,8 @@
   "cost": 40000,
   "upkeep": 80,
   "unlock": 100,
-  "tags": []
+  "tags": [],
+  "yard": true
  },
  {
   "id": "wall_brick",

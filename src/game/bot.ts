@@ -2,7 +2,7 @@
 import type { GameState, Pt } from './types.ts';
 import { apply } from './actions.ts';
 import { FACILITIES, facilityDef } from './data.ts';
-import { canPlace, cellAt, HOME, PARCEL_W, PARCEL_H, inBounds, owned } from './world.ts';
+import { canPlace, cellAt, HOME, PARCEL_W, PARCEL_H, inBounds, owned, isIndoorFloor, edgeOf, getWall, DIRS, type Side4 } from './world.ts';
 import { unlockables } from './research.ts';
 import { CHANNELS } from './staff.ts';
 import { INVESTS } from './data.ts';
@@ -41,10 +41,30 @@ function extendFloor(s: GameState): boolean {
   for (const [a, b] of tries) if (owned(s, a.x, a.y) && owned(s, b.x, b.y) && apply(s, { type: 'placeLine', id: 'floor_wood', from: a, to: b }).ok) return true;
   return false;
 }
+/** 바닥 덩어리 둘레를 벽으로 둘러 방을 만든다 — 방에 별이 붙어 인기·요금·제조가 오른다 */
+function wallUp(s: GameState): boolean {
+  if (s.money < 15_000_000) return false;         // 벽은 변마다 값이라 아주 넉넉할 때만
+  const cells: Pt[] = [];
+  for (const p of s.parcels) if (p.owned) for (let y = p.y; y < p.y + p.h; y++) for (let x = p.x; x < p.x + p.w; x++) { const c = cellAt(s, x, y); if (c.floor && c.floor !== 'path') cells.push({ x, y }); }
+  if (cells.length < 4) return false;
+  const kind = ['wall_wood', 'wall_plaster'].find((k) => s.unlocked.facilities.includes(k));   // 싼 것으로 두른다
+  if (!kind) return false;
+  // 바닥과 바깥이 맞닿는 변만 — 들쭉날쭉한 바닥도 딱 맞게 둘러진다 (올렛길 쪽은 canWall이 문으로 남긴다)
+  const edges: { x: number; y: number; side: 'n' | 'w' }[] = [];
+  const side4: Side4[] = ['e', 'w', 's', 'n'];
+  for (const p of cells) for (let k = 0; k < 4; k++) {
+    const v = DIRS[k]!, n = { x: p.x + v.x, y: p.y + v.y };
+    if (inBounds(s, n.x, n.y) && isIndoorFloor(cellAt(s, n.x, n.y).floor)) continue;
+    const e = edgeOf(p.x, p.y, side4[k]!);
+    if (!getWall(s, e)) edges.push(e);
+  }
+  return edges.length > 0 && apply(s, { type: 'wallEdges', id: kind, edges }).ok;
+}
 export function monthlyPlan(s: GameState): void {
   // 자리 수 = 바닥 칸의 1/3까지, 부족하면 바닥부터
   const floorCells = s.grid.cells.filter((c) => c.floor && c.floor !== 'path').length;
   if (usables(s).length * 3 >= floorCells) extendFloor(s);
+  wallUp(s);                     // 방 만들기
   // 연구: 싼 것부터 하나
   let opened = 0; for (const u of unlockables(s)) { if (opened >= 2) break; if (!u.done && s.research >= u.cost && apply(s, { type: 'unlock', id: u.id }).ok) opened++; }
   // 단계: 연구가 남고 돈이 넉넉하면 낮은 단계부터 세 개까지

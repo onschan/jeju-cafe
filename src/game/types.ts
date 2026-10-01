@@ -22,6 +22,7 @@ export interface FacilityDef {
   tags?: string[];            // 좋아하는 손님층 id
   indoor?: boolean;           // 벽으로 둘러싸인 실내 바닥에만 놓는다
   onGrass?: boolean;          // 바닥 없이 잔디 위에도 놓는다 (자판기처럼)
+  yard?: boolean;             // 벽: 마당(잔디·자갈)에도 친다 — 없으면 실내용 바닥 옆에만
   comfort?: number;           // 아늑함 (실내 반경 3 자리·가게가 받는다 — 실내판 경치)
   amenity?: 'counter' | 'restroom' | 'staff' | 'kitchen' | 'cleaning' | 'locker' | 'storage'; // 하나만 세는 편의 시설
 }
@@ -67,6 +68,7 @@ export interface Evaluation { year: number; rank: number; score: number; rows: {
 /** 연출 이벤트 (그림 쪽이 소비한다) */
 export type Fx =
   | { kind: 'synergy'; x: number; y: number; name: string; order: number }
+  | { kind: 'roomup'; x: number; y: number; text: string; order: number }
   | { kind: 'money'; x: number; y: number; won: number }
   | { kind: 'unlock'; text: string }
   | { kind: 'notice'; text: string };

@@ -5,6 +5,7 @@ import { facilityDef, menuDef, MENUS } from './data.ts';
 import { HOUR_MS } from './clock.ts';
 import { staffSkill } from './staff.ts';
 import { dishSlow, DISH_PER_MAKE } from './upkeep.ts';
+import { roomSpeed } from './rooms.ts';
 
 /** 한 잔·한 접시 기본 시간 */
 export const MAKE_MS: Record<OrderKind, number> = { drink: HOUR_MS * 1.0, food: HOUR_MS * 1.6 };
@@ -22,7 +23,7 @@ export const WAIT_BAD_MS = HOUR_MS * 4.5;
 export function speedUp(skill: number): number { return Math.min(0.6, skill * 0.05); }
 /** 한 잔 만드는 데 걸리는 시간 (지금 바리스타 기준) */
 export const STATION_LV = 0.08;    // 제조대 단계마다 이만큼 빨라진다
-export function makeMsOf(s: GameState, kind: OrderKind, level = 1): number { return MAKE_MS[kind] * (1 - speedUp(staffSkill(s, 'speed'))) * (1 - STATION_LV * (level - 1)); }
+export function makeMsOf(s: GameState, kind: OrderKind, level = 1, station?: string): number { return MAKE_MS[kind] * (1 - speedUp(staffSkill(s, 'speed'))) * (1 - STATION_LV * (level - 1)) * (1 - (station ? roomSpeed(s, station) : 0)); }
 /** 한 번 서빙에 걸리는 시간 (홀 직원이 없으면 셀프) */
 export function serveMsOf(s: GameState): number {
   const hall = staffSkill(s, 'service');
@@ -61,7 +62,7 @@ export function updateOrders(s: GameState, ms: number): void {
       const free = stationsOf(s, o.kind).find((f) => !busy.has(f.id));
       if (!free) continue;
       busy.add(free.id);
-      o.station = free.id; o.phase = 'make'; o.ms = makeMsOf(s, o.kind, free.level) * (1 + dishSlow(free)); o.total = o.ms;
+      o.station = free.id; o.phase = 'make'; o.ms = makeMsOf(s, o.kind, free.level, free.id) * (1 + dishSlow(free)); o.total = o.ms;
       free.uses++;
       continue;
     }

@@ -445,6 +445,20 @@ def room_wall(kind: str, axis: str) -> IsoCanvas:
             g = (0.3, 0, 0.7, t) if axis == 'ne' else (0, 0.3, t, 0.7)
             c.box(10, GLASS3, g, z0=9)
             c.box(1, wood, g, z0=19); c.box(1, wood, g, z0=8)
+    elif kind == 'door':
+        # 문: 나무 문틀 + 짙은 문짝 + 작은 창 + 손잡이. 직원·손님이 지나다닌다.
+        c.box(24, wood, rect)
+        leaf = (0.16, 0, 0.84, t) if axis == 'ne' else (0, 0.16, t, 0.84)
+        c.box(21, DARKWOOD, leaf, z0=1)
+        g = (0.3, 0, 0.7, t) if axis == 'ne' else (0, 0.3, t, 0.7)
+        c.box(6, GLASS3, g, z0=13)
+        if axis == 'ne':
+            sx, sy = c.spx(0.74, t, 9); c.rect(sx - 1, sy - 2, 2, 3, PAL['yellow'][2])
+        else:
+            sx, sy = c.spx(t, 0.74, 9); c.rect(sx - 1, sy - 2, 2, 3, PAL['yellow'][2])
+        c.pillar(0, 0, 2, 26, DARKWOOD)
+        if axis == 'ne': c.pillar(1, 0, 2, 26, DARKWOOD)
+        else: c.pillar(0, 1, 2, 26, DARKWOOD)
     else:  # stone
         c.box(14, basalt, rect)
         from sprites_iso_objects import stone_texture
@@ -458,7 +472,7 @@ def sprites() -> dict[str, Canvas]:
         # 트랙 E 제주 풍경 장식
         'iso_obj_bus_0': bus(0), 'iso_obj_bus_1': bus(1), 'iso_obj_car_y': car_y(), 'iso_obj_thatched': thatched(),
         'iso_obj_wall_ne': wall_segment('ne'), 'iso_obj_wall_nw': wall_segment('nw'),
-        **{f'iso_obj_w_{k}_{ax}': room_wall(k, ax) for k in ('fence', 'wood', 'plaster', 'window', 'stone', 'glass', 'brick') for ax in ('ne', 'nw')},
+        **{f'iso_obj_w_{k}_{ax}': room_wall(k, ax) for k in ('fence', 'wood', 'plaster', 'window', 'stone', 'glass', 'brick', 'door') for ax in ('ne', 'nw')},
         'iso_obj_basalt_rock': basalt_rock(), 'iso_obj_dolhareubang': dolhareubang(), 'iso_obj_pampas': pampas(),
         'iso_obj_canola': canola(), 'iso_obj_camellia': camellia(), 'iso_obj_hydrangea': hydrangea(),
         'iso_obj_pine': pine(), 'iso_obj_palm': palm(), 'iso_obj_stone_lantern': stone_lantern(),

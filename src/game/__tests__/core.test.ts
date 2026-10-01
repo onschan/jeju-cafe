@@ -1,6 +1,6 @@
 /** 새 코어 (specs/2026-09-27-rebuild-kairo-core.md) — 규칙 하나에 테스트 하나 */
 import { describe, it, expect } from 'vitest';
-import { newGame, apply, step, run, canPlace, cellAt, HOME, BUS_STOP, ROAD_Y, sheetOf, synergyPairs, popularitySum, dailyGuests, spawnOne, updateGuests, monthEnd, upkeepTotal, unlockables, evaluate, currentObjective, serialize, deserialize, DAY_MS, HOUR_MS, lineCells, walkable, wallBetween, effSkill, makeMsOf, serveMsOf, yardScenery, runBot, SYNERGY_POP, SCENERY_CAP } from '../index.ts';
+import { newGame, apply, step, run, canPlace, cellAt, HOME, BUS_STOP, ROAD_Y, sheetOf, synergyPairs, popularitySum, dailyGuests, spawnOne, updateGuests, monthEnd, upkeepTotal, unlockables, evaluate, currentObjective, serialize, deserialize, DAY_MS, HOUR_MS, lineCells, walkable, wallBetween, effSkill, makeMsOf, serveMsOf, yardScenery, runBot, SYNERGY_POP, SCENERY_CAP, rooms, roomOf } from '../index.ts';
 import type { GameState } from '../index.ts';
 
 const at = (lx: number, ly: number) => ({ x: HOME.x + lx, y: HOME.y + ly });
@@ -272,14 +272,72 @@ describe('실내 시설', () => {
     expect(apply(s, { type: 'wallRect', id: 'wall_wood', from: at(1, 4), to: at(3, 6) }).ok).toBe(true);
     expect(apply(s, { type: 'place', id: 'table_in', x: at(1, 6).x, y: at(1, 6).y }).ok).toBe(true);
     const t = Object.values(s.facilities).find((f) => f.type === 'table_in')!;
-    expect(sheetOf(s, t)).toMatchObject({ indoor: true, comfort: 0, fee: 600 });
+    expect(sheetOf(s, t)).toMatchObject({ indoor: true, comfort: 0 });
+    expect(sheetOf(s, t).fee).toBe(600 + roomOf(s, t.id)!.stars * 100);   // 홀 방의 별이 요금을 올린다
     for (const id of ['fireplace', 'counter']) if (!s.unlocked.facilities.includes(id)) expect(apply(s, { type: 'unlock', id }).ok).toBe(true);
     expect(apply(s, { type: 'place', id: 'fireplace', x: at(1, 5).x, y: at(1, 5).y }).ok).toBe(true); // 테이블 옆 칸
     expect(sheetOf(s, t).comfort).toBe(5);                  // 벽난로 아늑함 +5
     expect(sheetOf(s, t).pairs.map((p) => p.name)).toContain('난롯가'); // 상성
     expect(apply(s, { type: 'place', id: 'counter', x: at(2, 4).x, y: at(2, 4).y }).ok).toBe(true); // 2×2: (2..3, 4..5)
-    expect(sheetOf(s, t).fee).toBe(600 + 200 + 300);        // 상성 +200, 카운터 +300
+    expect(sheetOf(s, t).fee).toBe(600 + 200 + 300 + roomOf(s, t.id)!.stars * 100);   // 상성 +200, 카운터 +300, 홀 방 별
     expect(canPlace(s, 'fireplace', at(5, 3).x, at(5, 3).y).ok).toBe(false); // 바깥 잔디엔 안 된다
+  });
+});
+
+describe('방', () => {
+  it('벽은 실내 바닥 옆에만 · 둘러싸면 방이 되고 안에 든 것이 종류를 정한다 · 벽을 가르면 방이 둘로 나뉜다', () => {
+    const s = yard();
+    s.research = 10_000;
+    // 잔디 위엔 판벽을 못 세운다 (울타리는 된다)
+    expect(apply(s, { type: 'wallRect', id: 'wall_wood', from: at(0, 0), to: at(1, 1) }).ok).toBe(false);
+    expect(apply(s, { type: 'wallRect', id: 'railing', from: at(0, 0), to: at(1, 1) }).ok).toBe(true);
+    // 3×3 나무 바닥을 깔고 두르면 방 하나
+    for (let dy = 4; dy <= 6; dy++) apply(s, { type: 'placeLine', id: 'floor_wood', from: at(1, dy), to: at(3, dy) });
+    expect(rooms(s).length).toBe(0);
+    expect(apply(s, { type: 'wallRect', id: 'wall_wood', from: at(1, 4), to: at(3, 6) }).ok).toBe(true);
+    expect(rooms(s).length).toBe(1);
+    expect(rooms(s)[0]!.kind).toBe('empty');
+    expect(rooms(s)[0]!.size).toBe(9);
+    // 자리를 놓으면 홀
+    expect(apply(s, { type: 'place', id: 'table_in', x: at(1, 6).x, y: at(1, 6).y }).ok).toBe(true);
+    expect(rooms(s)[0]!.kind).toBe('hall');
+    const t0 = Object.values(s.facilities).find((f) => f.type === 'table_in')!;
+    expect(roomOf(s, t0.id)!.kind).toBe('hall');
+    expect(sheetOf(s, t0).room).toBe(roomOf(s, t0.id)!.stars * 2);
+    // 가운데를 벽으로 가르면 방이 둘
+    const cut = [0, 1, 2].map((i) => ({ x: at(1 + i, 5).x, y: at(1 + i, 5).y, side: 'n' as const }));
+    expect(apply(s, { type: 'wallEdges', id: 'wall_wood', edges: cut }).ok).toBe(true);
+    expect(rooms(s).length).toBe(2);
+    expect(rooms(s).map((r) => r.size).sort()).toEqual([3, 6]);
+  });
+  it('문은 방을 가르지만 지나다닐 수 있다 — 벽 자리에 문을 내면 반값을 돌려받는다', () => {
+    const s = yard();
+    s.research = 10_000;
+    for (let dy = 4; dy <= 5; dy++) apply(s, { type: 'placeLine', id: 'floor_wood', from: at(1, dy), to: at(3, dy) });
+    expect(apply(s, { type: 'wallRect', id: 'wall_wood', from: at(1, 4), to: at(3, 5) }).ok).toBe(true);
+    expect(rooms(s).length).toBe(1);
+    // 가운데를 벽으로 가르면 둘, 그 벽 하나를 문으로 바꿔도 둘 (문은 방을 가른다)
+    const cut = [0, 1, 2].map((i) => ({ x: at(1 + i, 5).x, y: at(1 + i, 5).y, side: 'n' as const }));
+    expect(apply(s, { type: 'wallEdges', id: 'wall_wood', edges: cut }).ok).toBe(true);
+    expect(rooms(s).length).toBe(2);
+    const m = s.money;
+    expect(apply(s, { type: 'wallEdges', id: 'door_wood', edges: [cut[1]!] }).ok).toBe(true);
+    expect(s.money - m).toBe(Math.round(25_000 / 2) - 30_000);      // 헐어 낸 판벽 반값 − 문값
+    expect(rooms(s).length).toBe(2);
+    // 문은 걸어 지나갈 수 있다
+    expect(wallBetween(s, { x: cut[1]!.x, y: cut[1]!.y - 1 }, { x: cut[1]!.x, y: cut[1]!.y })).toBeNull();
+  });
+  it('제조대만 든 방은 바 — 별만큼 제조가 빨라진다', () => {
+    const s = yard();
+    s.research = 10_000;
+    for (let dy = 4; dy <= 5; dy++) apply(s, { type: 'placeLine', id: 'floor_wood', from: at(1, dy), to: at(3, dy) });   // 올렛길에 닿게
+    expect(apply(s, { type: 'wallRect', id: 'wall_wood', from: at(1, 4), to: at(3, 5) }).ok).toBe(true);
+    expect(apply(s, { type: 'place', id: 'prep_bar', x: at(1, 4).x, y: at(1, 4).y }).ok).toBe(true);
+    const bar = Object.values(s.facilities).find((f) => f.type === 'prep_bar')!;
+    const r = roomOf(s, bar.id)!;
+    expect(r.kind).toBe('bar');
+    expect(r.stars).toBeGreaterThanOrEqual(1);
+    expect(makeMsOf(s, 'drink', 1, bar.id)).toBeCloseTo(makeMsOf(s, 'drink', 1) * (1 - r.stars * 0.05), 5);
   });
 });
 

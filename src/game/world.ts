@@ -50,8 +50,8 @@ export function footOf(s: GameState, id: string): Pt[] { const f = s.facilities[
 // ---------- 변 벽 (칸을 안 먹고 변에 선다) ----------
 export type WallSide = 'n' | 'w';
 export interface WallEdge { x: number; y: number; side: WallSide }
-/** 이웃한 두 칸 사이 변의 벽 종류 (없으면 null). a→b가 북이면 a.wn, 남이면 b.wn, 서면 a.ww, 동이면 b.ww. */
-export function wallBetween(s: GameState, a: Pt, b: Pt): string | null {
+/** 이웃한 두 칸 사이 변에 선 것 — 벽이든 문이든. a→b가 북이면 a.wn, 남이면 b.wn, 서면 a.ww, 동이면 b.ww. */
+export function edgeWall(s: GameState, a: Pt, b: Pt): string | null {
   if (!inBounds(s, a.x, a.y) || !inBounds(s, b.x, b.y)) return null;
   if (b.y === a.y - 1) return cellAt(s, a.x, a.y).wn ?? null;
   if (b.y === a.y + 1) return cellAt(s, b.x, b.y).wn ?? null;
@@ -59,6 +59,11 @@ export function wallBetween(s: GameState, a: Pt, b: Pt): string | null {
   if (b.x === a.x + 1) return cellAt(s, b.x, b.y).ww ?? null;
   return null;
 }
+/** 문: 벽처럼 방을 가르지만 지나다닐 수는 있다 */
+export const DOORS = new Set(['door_wood']);
+export function isDoor(kind: string | null | undefined): boolean { return !!kind && DOORS.has(kind); }
+/** 길을 막은 것 (문은 지나다닐 수 있어 막지 않는다) — 길찾기·손님·직원이 쓴다 */
+export function wallBetween(s: GameState, a: Pt, b: Pt): string | null { const k = edgeWall(s, a, b); return k && !isDoor(k) ? k : null; }
 /** 변 양쪽 칸 */
 export function edgeCells(e: WallEdge): [Pt, Pt] { return e.side === 'n' ? [{ x: e.x, y: e.y - 1 }, { x: e.x, y: e.y }] : [{ x: e.x - 1, y: e.y }, { x: e.x, y: e.y }]; }
 export function getWall(s: GameState, e: WallEdge): string | null { if (!inBounds(s, e.x, e.y)) return null; const c = cellAt(s, e.x, e.y); return (e.side === 'n' ? c.wn : c.ww) ?? null; }
@@ -89,6 +94,8 @@ export function wallEdges(s: GameState, kind: string, edges: WallEdge[]): ApplyR
     const r = canWall(s, kind, e);
     if (!r.ok) { fail = fail ?? r.reason; continue; }
     if (s.money < d.cost) { fail = '돈 부족'; break; }
+    const had = getWall(s, e);
+    if (had) s.money += Math.round(facilityDef(had).cost / 2);     // 헐어 낸 벽은 반값으로 돌려받는다
     s.money -= d.cost; s.month.spent += d.cost; setWall(s, e, kind); n++;
   }
   return n > 0 ? { ok: true } : { ok: false, reason: fail ?? '세울 변 없음' };
@@ -103,15 +110,18 @@ export function canWall(s: GameState, kind: string, e: WallEdge): ApplyResult {
   const ca = cellAt(s, a.x, a.y), cb = cellAt(s, b.x, b.y);
   if (ca.terrain === 'road' || cb.terrain === 'road') return { ok: false, reason: '마을 길 불가' };
   if (ca.floor === 'path' || cb.floor === 'path') return { ok: false, reason: '올렛길 쪽은 문' };
+  // 벽은 실내용 바닥(나무·원목·타일·현무암·벽돌) 옆에만 — 울타리·돌담만 마당에 친다
+  if (!facilityDef(kind).yard && !isIndoorFloor(ca.floor) && !isIndoorFloor(cb.floor)) return { ok: false, reason: '실내 바닥 옆에만' };
   if (ca.objectId && ca.objectId === cb.objectId) return { ok: false, reason: '시설 위 불가' };
-  if (getWall(s, e)) return { ok: false, reason: '이미 벽 있음' };
+  const had = getWall(s, e);
+  if (had && !(isDoor(kind) && !isDoor(had))) return { ok: false, reason: isDoor(had) ? '이미 문 있음' : '이미 벽 있음' };   // 벽 자리엔 문을 낼 수 있다
   // 통로 보존: 세운 뒤에도 자리·가게마다 정류장에서 걸어 닿는 옆 칸이 남아야 한다
   setWall(s, e, kind);
   const reach = reachExcluding(s, new Set());
   const ok = (foot: Pt[]) => foot.some((p) => DIRS.some((v) => reach.has((p.y + v.y) * s.grid.w + (p.x + v.x)) && !wallBetween(s, p, { x: p.x + v.x, y: p.y + v.y })));
   let fail: string | undefined;
-  for (const f of Object.values(s.facilities)) { const fd = facilityDef(f.type); if ((fd.tab === 'seat' || fd.tab === 'shop') && !ok(footprint(f.x, f.y, fd.w, fd.h))) { fail = `${josa(f.name ?? fd.name, '으로/로')} 가는 통로가 막혀요`; break; } }
-  setWall(s, e, null);
+  for (const f of Object.values(s.facilities)) { const fd = facilityDef(f.type); if (needsAisle(fd) && !ok(footprint(f.x, f.y, fd.w, fd.h))) { fail = `${josa(f.name ?? fd.name, '으로/로')} 가는 통로가 막혀요`; break; } }
+  setWall(s, e, had);                       // 재 보기만 한 것 — 원래대로
   return fail ? { ok: false, reason: fail } : { ok: true };
 }
 
@@ -123,6 +133,11 @@ export function walkable(s: GameState, x: number, y: number): boolean {
   return c.terrain === 'road' || c.floor !== null;
 }
 export const DIRS: Pt[] = [{ x: 1, y: 0 }, { x: -1, y: 0 }, { x: 0, y: 1 }, { x: 0, y: -1 }];
+/** 옆에 걷는 칸이 있어야 하는 것: 손님이 쓰는 자리·가게와 직원이 서야 하는 제조대 */
+function needsAisle(d: { tab: string; station?: string }): boolean { return d.tab === 'seat' || d.tab === 'shop' || !!d.station; }
+/** 벽을 세우고 방을 만들 수 있는 실내용 바닥 — 잔디밭·자갈 마당·올렛길은 마당용 */
+export const INDOOR_FLOORS: Floor[] = ['wood', 'deck', 'tile', 'stone', 'brick'];
+export function isIndoorFloor(f: Floor | null | undefined): boolean { return !!f && (INDOOR_FLOORS as string[]).includes(f); }
 
 /** 바닥을 깔 수 있나 (내 땅 잔디, 시설 없음) */
 export function canLayFloor(s: GameState, floor: Floor, x: number, y: number): ApplyResult {
@@ -165,7 +180,7 @@ export function isEnclosed(s: GameState, cells: Pt[]): boolean {
     const p = q[i]!;
     for (const v of DIRS) {
       const n = { x: p.x + v.x, y: p.y + v.y };
-      if (wallBetween(s, p, n)) continue;          // 변 벽이 막았다 — 새지 않는다
+      if (edgeWall(s, p, n)) continue;            // 벽·문이 막았다 — 새지 않는다
       if (!inBounds(s, n.x, n.y)) return false;
       const c = cellAt(s, n.x, n.y);
       if (c.objectId) continue;                    // 시설이 막았다
@@ -202,10 +217,10 @@ export function canPlace(s: GameState, id: string, x: number, y: number): ApplyR
   const blocked = new Set(cells.map((p) => p.y * s.grid.w + p.x));
   const reach = reachExcluding(s, blocked);
   const ok = (foot: Pt[]) => foot.some((p) => DIRS.some((v) => reach.has((p.y + v.y) * s.grid.w + (p.x + v.x)) && !wallBetween(s, p, { x: p.x + v.x, y: p.y + v.y })));
-  if ((d.tab === 'seat' || d.tab === 'shop') && !ok(cells)) return { ok: false, reason: '옆에 통로 없음' };
+  if (needsAisle(d) && !ok(cells)) return { ok: false, reason: '옆에 통로 없음' };
   for (const f of Object.values(s.facilities)) {
     const fd = facilityDef(f.type);
-    if ((fd.tab === 'seat' || fd.tab === 'shop') && !ok(footprint(f.x, f.y, fd.w, fd.h))) return { ok: false, reason: `${josa(f.name ?? fd.name, '으로/로')} 가는 통로가 막혀요` };
+    if (needsAisle(fd) && !ok(footprint(f.x, f.y, fd.w, fd.h))) return { ok: false, reason: `${josa(f.name ?? fd.name, '으로/로')} 가는 통로가 막혀요` };
   }
   return { ok: true };
 }

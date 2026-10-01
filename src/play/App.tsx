@@ -15,7 +15,7 @@ import { Title } from './Title';
 import { EndingScreen } from './Ending';
 import { unlockAudio, audioReady, sfx, bgm, setBgmLayer, isMuted, setMuted, getBgmVolume, getSfxVolume, setBgmVolume, setSfxVolume } from './audio';
 import { guestAccs } from './guestLook';
-import { FACILITIES, GUEST_TYPES, MENUS, INVESTS, facilityDef, isFloorDef, isUsable, sheetOf, usables, popularitySum, dailyGuests, unlockables, canUnlock, canLevelUp, LEVEL_COST, levelMoney, currentObjective, OBJECTIVES, seasonOf, canHire, upkeepTotal, wagesTotal, myScore, rivalScore, RIVALS, lineCells, canLayFloor, parcelAt, cellAt, parcelAdjacent, type GameState, type Tab, type Facility, type Pt, type Parcel, type Objective, type Guest, previewPlace, AMENITY_TEXT, AMENITY_GIST, cellEdges, getWall, edgeOf, nearestSide, type Side4, needsSummary, SKILLS, SKILL_KO, SKILL_DESC, DUTY_KO, gradeOf, effSkill, skillSum, staffSkill, CHANNELS, canRecruit, channelDef, STAFF_MAX, orderStats, makeMsOf, serveMsOf, stationsOf, orderOf, menuDef, synergyPartners, dirtyOf, dishesOf, dirtTotal, dishTotal, cleanMsOf, staffActOf, ACT_KO, yardScenery, YARD_PER_GUEST, HOUR_MS, type Grade, type Staff, type Skill } from '../game/index.ts';
+import { FACILITIES, GUEST_TYPES, MENUS, INVESTS, facilityDef, isFloorDef, isUsable, sheetOf, usables, popularitySum, dailyGuests, unlockables, canUnlock, canLevelUp, LEVEL_COST, levelMoney, currentObjective, OBJECTIVES, seasonOf, canHire, upkeepTotal, wagesTotal, myScore, rivalScore, RIVALS, lineCells, canLayFloor, parcelAt, cellAt, parcelAdjacent, type GameState, type Tab, type Facility, type Pt, type Parcel, type Objective, type Guest, previewPlace, AMENITY_TEXT, AMENITY_GIST, cellEdges, getWall, edgeOf, nearestSide, type Side4, needsSummary, SKILLS, SKILL_KO, SKILL_DESC, DUTY_KO, gradeOf, effSkill, skillSum, staffSkill, CHANNELS, canRecruit, channelDef, STAFF_MAX, orderStats, makeMsOf, serveMsOf, stationsOf, orderOf, menuDef, synergyPartners, dirtyOf, dishesOf, dirtTotal, dishTotal, cleanMsOf, staffActOf, ACT_KO, isDoor, rooms, ROOM_KO, ROOM_EFFECT, yardScenery, YARD_PER_GUEST, HOUR_MS, type Grade, type Staff, type Skill } from '../game/index.ts';
 
 type Win = 'build' | 'guests' | 'ops' | 'cafe' | 'system' | null;
 /** 하단 띠(영수증 2줄 + 요약 + 메뉴) 높이 */
@@ -112,6 +112,10 @@ export function App() {
   const unlockedCount = s.unlocked.facilities.length + s.unlocked.menus.length + s.unlocked.guests.length;
   const seenUnlock = useRef(unlockedCount);
   useEffect(() => { if (unlockedCount > seenUnlock.current) sfx('unlock'); seenUnlock.current = unlockedCount; }, [unlockedCount]);
+  // 방 별이 오르면 소리로도 — 배치가 좋아진 순간이 느껴지게
+  const starSum = rooms(s).reduce((n, r) => n + r.stars, 0);
+  const seenStars = useRef(starSum);
+  useEffect(() => { if (starSum > seenStars.current) sfx('unlock'); seenStars.current = starSum; }, [starSum]);
   // 3년 엔딩: 4년차 1월 1일에 한 번
   useEffect(() => { if (!title && !dlg && !chest && !monthCard && s.clock.year >= 4 && !s.hints.includes('ending')) { dispatch({ type: 'hint', id: 'ending' }); setEnding(true); sfx('fanfare'); } }, [s.clock.year, title, !!dlg, !!chest, monthCard]);
   // 따라 하기: 단계가 끝나면 상금과 한마디, 다음 단계로
@@ -285,14 +289,14 @@ function PlacingBar({ id, ghost, wallMode, wallSide, wallErase, onWallErase, onW
   const floor = isFloorDef(d);
   const n = ghost?.line ? lineCells(ghost.line.from, ghost.line.to).filter((p) => canLayFloor(getState(), d.floor!, p.x, p.y).ok).length : 1;
   const wall = d.sub === 'wall';
-  const pv = ghost && !floor ? previewPlace(getState(), id, ghost.x, ghost.y, wall ? ghost.line : undefined, ghost.edges) : null;
+  const pv = ghost ? previewPlace(getState(), id, ghost.x, ghost.y, floor || wall ? ghost.line : undefined, ghost.edges) : null;
   const count = floor ? n : pv?.cells ?? 1;
   const short = !!ghost && (floor ? n > 0 : ghost.ok) && getState().money < d.cost * count;
   const can = !!ghost && (floor ? n > 0 : ghost.ok) && !short;
   // 기대효과 한 줄 — 그 자리에 놓으면 어떻게 되나
   const effect = (() => {
     if (!ghost || !ghost.ok) return null;
-    if (floor) return `${n}칸`;
+    if (floor) return [`${n}칸`, pv?.roomNote].filter(Boolean).join('  ·  ');
     if (!pv) return null;
     const bits: string[] = [];
     if (pv.total !== undefined) {
@@ -304,6 +308,7 @@ function PlacingBar({ id, ghost, wallMode, wallSide, wallErase, onWallErase, onW
     if (d.scenery) bits.push(`마당 경치 +${pv.sceneryTouched} · 합 ${yardScenery(getState()) + pv.sceneryTouched}`);
     if (wall) bits.push(pv.indoorGain > 0 ? `실내 전환 ${pv.indoorGain}곳${pv.popDelta ? ` · 인기 ${pv.popDelta > 0 ? '+' : ''}${pv.popDelta}` : ''}` : `${pv.cells}변 · 아직 안 둘러싸임`);
     if (pv.pairs.length) bits.push(`상성 UP: ${pv.pairs.join('·')}`);
+    if (pv.roomNote) bits.push(pv.roomNote);
     if (pv.guestsDelta > 0) bits.push(`손님 +${pv.guestsDelta}/일`);
     return bits.join('  ·  ');
   })();
@@ -465,7 +470,7 @@ function BuildWindow({ s, onPick, onClose }: { s: GameState; onPick: (id: string
   const locked = mine.filter((d) => !s.unlocked.facilities.includes(d.id)).sort((a, b) => a.unlock - b.unlock);
   const d = pick ? facilityDef(pick) : null;
   const isOpen = d ? s.unlocked.facilities.includes(d.id) : false;
-  const gist = (x: Def) => x.sub === 'floor' ? '칸마다' : x.sub === 'wall' ? '변마다' : x.station ? `${x.station === 'food' ? '음식' : x.station === 'both' ? '음료·음식' : '음료'} 제조` : x.amenity ? (AMENITY_GIST[x.amenity] ?? '가게 전체') : x.comfort ? `아늑함 +${x.comfort}` : x.scenery ? `마당 경치 +${x.scenery}` : x.pop !== undefined ? `인기 ${x.pop}${x.capacity && x.capacity > 1 ? ` · ${x.capacity}인` : ''}` : '';
+  const gist = (x: Def) => x.sub === 'floor' ? '칸마다' : x.sub === 'wall' ? (isDoor(x.id) ? '변마다 · 지나다님' : '변마다') : x.station ? `${x.station === 'food' ? '음식' : x.station === 'both' ? '음료·음식' : '음료'} 제조` : x.amenity ? (AMENITY_GIST[x.amenity] ?? '가게 전체') : x.comfort ? `아늑함 +${x.comfort}` : x.scenery ? `마당 경치 +${x.scenery}` : x.pop !== undefined ? `인기 ${x.pop}${x.capacity && x.capacity > 1 ? ` · ${x.capacity}인` : ''}` : '';
   return (
     <Window title="건축" onClose={onClose} tabs={BUILD_TABS.map((t) => <button key={t.k} style={{ ...(tab === t.k ? btnGold : btnOff), padding: '3px 7px', fontSize: 13, display: 'inline-flex', alignItems: 'center', gap: 3 }} onClick={() => { setTab(t.k); setPick(null); setShowLocked(false); }}><Ico name={t.ico} size={13} />{t.name}</button>)}>
       {sections.map((sec) => {
@@ -503,7 +508,7 @@ function BuildWindow({ s, onPick, onClose }: { s: GameState; onPick: (id: string
           <b>{d.name}</b> <span style={small}>{d.w}×{d.h}{d.capacity ? ` · ${d.capacity}인` : ''}{d.indoor ? ' · 실내 전용' : ''}</span>
           <div style={small}>{isOpen ? `${won(d.cost)} · 유지 ${won(d.upkeep)}/월${d.pop !== undefined ? ` · 인기 ${d.pop}` : ''}${d.scenery ? ` · 마당 경치 +${d.scenery}` : ''}${d.comfort ? ` · 아늑함 +${d.comfort}` : ''}${d.fee ? ` · 요금 ${won(d.fee)}` : ''}` : `연구 ${d.unlock} · 지금 ${s.research}`}</div>
           {isOpen && d.amenity && <div style={{ ...small, color: C.green }}>{AMENITY_TEXT[d.amenity]}</div>}
-          {isOpen && d.sub === 'wall' && <div style={small}>변마다 · 둘러싸면 실내 +2</div>}
+          {isOpen && d.sub === 'wall' && <div style={small}>{isDoor(d.id) ? '방은 가르지만 지나다닐 수 있어요 · 벽 자리에 내면 반값 환불' : '변마다 · 둘러싸면 실내 +2'}</div>}
           {isOpen && d.indoor && d.sub !== 'wall' && <div style={small}>실내 전용</div>}
           {isOpen && d.onGrass && <div style={small}>잔디 OK</div>}
           {isOpen && d.tags && d.tags.length > 0 && <div style={small}>{d.tags.map((t) => GUEST_TYPES.find((g) => g.id === t)?.name).join('·')}에게 인기</div>}
@@ -536,7 +541,7 @@ function NeedsPanel({ s }: { s: GameState }) {
   const recent = s.receipts.slice(-30);
   const happy = recent.filter((r) => r.mood === 'happy').length;
   const rate = recent.length ? Math.round((happy / recent.length) * 100) : null;
-  const FIX: Record<string, string> = { dirty: '정리 담당 두기', no_station: '건축 › 실내 › 제조대', wait: '제조대·직원 늘리기', liked: '좋아하는 시설 놓기', scenery: '나무·꽃 더 심기', comfort: '실내 꾸밈 놓기', service: '운영 › 직원', restroom: '건축 › 실내 › 화장실', synergy: '어울리는 것끼리 옆에', level: '시설 Lv업', winter: '벽으로 둘러싸기' };
+  const FIX: Record<string, string> = { dirty: '정리 담당 두기', no_station: '건축 › 실내 › 제조대', wait: '제조대·직원 늘리기', liked: '좋아하는 시설 놓기', scenery: '나무·꽃 더 심기', comfort: '실내 꾸밈 놓기', service: '운영 › 직원', restroom: '건축 › 실내 › 화장실', synergy: '어울리는 것끼리 옆에', level: '시설 Lv업', winter: '벽으로 둘러싸기', room: '벽으로 둘러 홀 만들기' };
   return (
     <div style={{ ...panel, padding: 8, background: '#fff7e6' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}><Ico name="bulb" /><b>손님 니즈</b><span style={small}>최근 {recent.length}명 · 만족 {rate === null ? '—' : `${rate}%`}</span></div>
@@ -664,10 +669,40 @@ function OpsWindow({ s, onClose }: { s: GameState; onClose: () => void }) {
     </Window>
   );
 }
-/** 카페: 현황 · 목표 · 랭킹 */
+/** 방 탭: 벽으로 둘러싼 방마다 종류·별·점수 조각과 더 올릴 방법 */
+function RoomsTab({ s }: { s: GameState }) {
+  const rs = rooms(s);
+  const bits = (r: ReturnType<typeof rooms>[number]) => [
+    ['바닥', r.floor], ['벽', r.wall], ['아늑함', r.comfort / 2], ['알맞은 크기', r.fit], ['마감', r.tidy], ['섞임', r.off],
+  ].filter(([, v]) => (v as number) !== 0) as [string, number][];
+  return (
+    <div style={{ display: 'grid', gap: 6 }}>
+      <div style={{ ...panel, padding: 7, background: '#fff7e6', fontSize: 12, color: C.soft }}>
+        실내 바닥을 벽으로 둘러싸면 방이 돼요. 안에 둔 것이 방 종류를 정하고, 바닥·벽·꾸밈·크기가 <b style={{ color: C.ink }}>★</b>를 올려요.
+      </div>
+      {rs.length === 0 && <div style={{ ...small, color: C.red }}>아직 방이 없어요 — 실내 바닥을 깔고 둘레를 벽으로 두르세요</div>}
+      {rs.map((r) => (
+        <div key={r.id} style={{ ...panel, padding: 7, background: '#fff7e6', display: 'grid', gap: 4 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <b style={{ fontSize: 14 }}>{ROOM_KO[r.kind]}</b>
+            <span style={{ color: C.gold, fontSize: 14, letterSpacing: 1 }}>{'★'.repeat(r.stars)}<span style={{ color: '#d8c9a8' }}>{'★'.repeat(5 - r.stars)}</span></span>
+            <span style={{ flex: 1 }} />
+            <span style={small}>{r.size}칸 · 점수 {r.score}</span>
+          </div>
+          <div style={{ fontSize: 12, color: C.green }}>{ROOM_EFFECT[r.kind]}</div>
+          <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+            {bits(r).map(([k, v]) => <span key={k} style={{ fontSize: 11, padding: '1px 5px', borderRadius: 7, background: v > 0 ? '#efe6d2' : '#ffd8d0', border: '1px solid #d8c9a8' }}>{k} {v > 0 ? '+' : ''}{Math.round(v * 10) / 10}</span>)}
+          </div>
+          {r.tip && <div style={{ ...small, fontSize: 11 }}>↑ {r.tip}</div>}
+        </div>
+      ))}
+    </div>
+  );
+}
+/** 카페: 현황 · 방 · 목표 · 랭킹 */
 function CafeWindow({ s, onClose }: { s: GameState; onClose: () => void }) {
-  const [tab, setTab] = useState<'status' | 'goals' | 'rank'>('status');
-  const tabs = ([['status', '현황'], ['goals', '목표'], ['rank', '랭킹']] as const).map(([k, n]) => <button key={k} style={{ ...(tab === k ? btnGold : btnOff), padding: '4px 8px', fontSize: 12 }} onClick={() => setTab(k)}>{n}</button>);
+  const [tab, setTab] = useState<'status' | 'rooms' | 'goals' | 'rank'>('status');
+  const tabs = ([['status', '현황'], ['rooms', '방'], ['goals', '목표'], ['rank', '랭킹']] as const).map(([k, n]) => <button key={k} style={{ ...(tab === k ? btnGold : btnOff), padding: '4px 8px', fontSize: 12 }} onClick={() => setTab(k)}>{n}</button>);
   return (
     <Window title={s.cafeName} onClose={onClose} tabs={tabs}>
       {tab === 'status' && <div style={{ fontSize: 13, display: 'grid', gap: 4 }}>
@@ -680,6 +715,7 @@ function CafeWindow({ s, onClose }: { s: GameState; onClose: () => void }) {
         <Row k="주문" v={(() => { const o = orderStats(s); return `대기 ${o.wait} · 제조 ${o.make} · 서빙 ${o.serve}`; })()} />
         <Row k="제조·서빙 속도" v={`${(makeMsOf(s, 'drink') / HOUR_MS * 60).toFixed(0)}분/잔 · 서빙 ${(serveMsOf(s) / HOUR_MS * 60).toFixed(0)}분`} />
       </div>}
+      {tab === 'rooms' && <RoomsTab s={s} />}
       {tab === 'goals' && <div style={{ display: 'grid', gap: 3 }}>
         
         {OBJECTIVES.map((o) => <div key={o.id} style={{ fontSize: 13, color: s.objectivesDone.includes(o.id) ? C.soft : C.ink, fontWeight: currentObjective(s)?.id === o.id ? 700 : 400 }}>{s.objectivesDone.includes(o.id) ? '✓' : currentObjective(s)?.id === o.id ? '▶' : '·'} {o.text} <span style={small}>{wonShort(o.reward)}</span></div>)}

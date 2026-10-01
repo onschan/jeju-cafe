@@ -7,6 +7,7 @@ import { sheetOf, usables, approachCell, seatCapacity, popularitySum, amenities,
 import { busReach, pathTo, reachFrom } from './path.ts';
 import { BUS_STOP } from './world.ts';
 import { staffSkill, serverFor } from './staff.ts';
+import { bestStars } from './rooms.ts';
 import { order, orderOf, updateOrders, menuKind, pickMenu, stationsOf, canServeMenu, MADE_MONEY, MADE_SCORE, WAIT_OK_MS, WAIT_BAD_MS } from './orders.ts';
 
 export const BASE_DAILY_GUESTS = 3;
@@ -93,9 +94,9 @@ function cleanBonus(s: GameState): number { return Math.min(6, staffSkill(s, 'cl
 /** 매력 합 → 입소문 확률 가산 (0.5 → 최대 0.8) */
 function charmChance(s: GameState): number { return Math.min(0.8, 0.5 + staffSkill(s, 'charm') * 0.015); }
 /** 편의 시설이 손님 점수에 더하는 값: 화장실 +4, 청소 도구실 +2 */
-export function amenityScore(s: GameState): number { const a = amenities(s); return (a.has('restroom') ? 4 : 0) + (a.has('cleaning') ? 2 : 0); }
+export function amenityScore(s: GameState): number { const a = amenities(s); return (a.has('restroom') ? 4 : 0) + (a.has('cleaning') ? 2 : 0) + bestStars(s, 'restroom'); }
 /** 니즈 id → 글 */
-export const NEED_KO: Record<string, string> = { dirty: '자리가 지저분해요', no_station: '마실 걸 못 받았어요', wait: '너무 오래 기다렸어요', liked: '좋아하는 시설이 없어요', scenery: '마당이 휑해요', comfort: '아늑함이 아쉬워요', service: '직원이 모자라요', restroom: '화장실이 없어요', synergy: '상성 짝이 없어요', level: '자리 단계가 낮아요', winter: '바깥이 추워요' };
+export const NEED_KO: Record<string, string> = { dirty: '자리가 지저분해요', no_station: '마실 걸 못 받았어요', wait: '너무 오래 기다렸어요', liked: '좋아하는 시설이 없어요', scenery: '마당이 휑해요', comfort: '아늑함이 아쉬워요', service: '직원이 모자라요', restroom: '화장실이 없어요', synergy: '상성 짝이 없어요', level: '자리 단계가 낮아요', winter: '바깥이 추워요', room: '방 같지가 않아요' };
 /** 만족 못 한 까닭 하나: 그 손님층이 가장 아쉬워한 것 */
 function needOf(s: GameState, f: Facility, sh: ReturnType<typeof sheetOf>, type: string): string {
   const d = facilityDef(f.type);
@@ -105,6 +106,7 @@ function needOf(s: GameState, f: Facility, sh: ReturnType<typeof sheetOf>, type:
   if (!amenities(s).has('restroom') && s.stats.guests > 30) return 'restroom';
   if (s.staff.length === 0 && s.stats.guests > 10) return 'service';
   if (sh.dirty < 0) return 'dirty';
+  if (sh.room <= 0) return 'room';
   if (sh.indoor && sh.comfort < 6) return 'comfort';
   if (!sh.indoor && yardScenery(s) < 12) return 'scenery';
   if (sh.pairs.length === 0) return 'synergy';

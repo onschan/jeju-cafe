@@ -4,7 +4,7 @@
  */
 import { Application, Container, Graphics, Sprite, Text } from 'pixi.js';
 import type { GameState, Facility, Guest, Fx, Pt, Staff } from '../game/index.ts';
-import { facilityDef, isFloorDef, canPlace, canLayFloor, lineCells, seasonOf, isNight, cellAt, walkable, wallBetween, footprint, dirtyOf, dishesOf, staffActOf, HOME, ROAD_Y, BUS_STOP, rectEdges, canWall, edgeCells, type WallEdge } from '../game/index.ts';
+import { facilityDef, isFloorDef, canPlace, canLayFloor, lineCells, seasonOf, isNight, cellAt, walkable, wallBetween, footprint, dirtyOf, dishesOf, staffActOf, rooms, ROOM_KO, HOME, ROAD_Y, BUS_STOP, rectEdges, canWall, edgeCells, type WallEdge } from '../game/index.ts';
 import { loadAssets, tex, peekTex, hasAssets, spriteName } from '../render/assets';
 import { attachCamera } from '../render/camera';
 import { ISO_W, ISO_H, cellToScreen, cellCenter, footAnchor, depth, screenToCell } from '../render/iso';
@@ -16,6 +16,7 @@ import { busPose } from '../render/scenery';
 import { parcelFill, parcelProps } from './parcelScenery';
 const DIRS4: Pt[] = [{ x: 1, y: 0 }, { x: -1, y: 0 }, { x: 0, y: 1 }, { x: 0, y: -1 }];
 import { guestAccs } from './guestLook';
+import { staffLine, guestLine, LINE_MS } from './lines';
 
 export interface Ghost { id: string; x: number; y: number; ok: boolean; reason?: string; line?: { from: Pt; to: Pt }; edges?: WallEdge[] }
 export interface ViewOptions { onTap: (x: number, y: number, fx?: number, fy?: number) => void; onDragCell?: (x: number, y: number, fx?: number, fy?: number) => void; onDragEnd?: () => void; dragCapture?: (x: number, y: number, fx?: number, fy?: number) => boolean; onBusStop?: () => void }
@@ -24,7 +25,7 @@ const SYNERGY_STAGGER_MS = 110;
 const FLOAT_MS = 900;
 
 /** 벽 종류 id → 그림 이름 조각 (iso_obj_w_<kind>_<ne|nw>) */
-export const WALL_SPRITE: Record<string, string> = { railing: 'fence', wall_wood: 'wood', wall_plaster: 'plaster', wall_window: 'window', wall: 'stone', wall_brick: 'brick', wall_glass: 'glass' };
+export const WALL_SPRITE: Record<string, string> = { railing: 'fence', door_wood: 'door', wall_wood: 'wood', wall_plaster: 'plaster', wall_window: 'window', wall: 'stone', wall_brick: 'brick', wall_glass: 'glass' };
 /** 밤에 빛을 내는 시설과 빛 반경(px) */
 const LIGHT_RADIUS: Record<string, number> = { garden_lamp: 56, streetlight: 84 };
 /** 직원이 하는 일 → 머리 위 아이콘 */
@@ -43,11 +44,12 @@ export class View {
   private facilityNodes = new Map<string, { node: Container; type: string; key: string }>();
   private guestNodes = new Map<string, { node: CharacterNode; dir: Dir; frame: 0 | 1 | 2; walked: number; bubble: string }>();
   /** 직원: 마당 바닥 위를 서성인다 (그림 전용 — 사림에는 위치가 없다) */
-  private staffNodes = new Map<string, { node: CharacterNode; x: number; y: number; tx: number; ty: number; idleUntil: number; dir: Dir; shownDir: Dir; frame: 0 | 1 | 2; act: string }>();
+  private staffNodes = new Map<string, { node: CharacterNode; x: number; y: number; tx: number; ty: number; idleUntil: number; dir: Dir; shownDir: Dir; frame: 0 | 1 | 2; act: string; actAt?: number; actKey?: string }>();
   private floorCells: Pt[] = []; private floorRev = -1;
   private firstSync = true;
   private sparkles: { sp: Sprite; born: number }[] = [];
   private wallNodes: Sprite[] = []; private wallRev = -1;
+  private roomTags: Container[] = []; private roomRev = -1;
   private orderMarks = new Map<string, Container>();
   private markKind = new Map<string, string>();
   private bars = new Graphics();
@@ -109,6 +111,7 @@ export class View {
     this.syncTiles(state);
     this.syncFacilities(state);
     this.syncWalls(state);
+    this.syncRoomTags(state);
     this.syncOrders(state, now);
     this.syncGuests(state, now);
     this.syncStaff(state, now);
@@ -286,12 +289,17 @@ export class View {
       // 서빙 중이면 잔을 들고 간다
       const tray = state.orders.find((o) => o.phase === 'serve');
       this.badge(e.node, 'cup', tray?.kind === 'food' ? 'icon_cake' : 'icon_coffee', act === 'serve', 11, -Math.round(CHAR_H * 0.35) + (moving ? Math.round(Math.sin(now / 140) * 1.5) : 0));
-      if (act !== e.act) {
+      // 일이 바뀌는 순간엔 한마디를 같이, 잠시 뒤엔 아이콘만
+      if (act !== e.act) { e.actAt = now; e.act = act; }
+      const said = act !== '' && now - (e.actAt ?? 0) < LINE_MS;
+      const want = `${act}:${said ? 1 : 0}`;
+      if (want !== e.actKey) {
+        e.actKey = want;
         e.node.getChildByLabel('act')?.destroy({ children: true });
-        e.act = act;
         if (act && hasAssets()) {
           const icon = peekTex(ACT_ICON[act] ?? 'icon_hand');
-          if (icon) { const b = makeSpeechBubble({ icon, iconSize: 14 }); b.label = 'act'; b.position.set(12, -CHAR_H - 2); e.node.addChild(b); }
+          const text = said ? staffLine(act, !!st.burn, `${st.id}:${Math.floor(now / 9000)}`) ?? undefined : undefined;
+          if (icon || text) { const b = makeSpeechBubble({ icon, iconSize: 14, text }); b.label = 'act'; b.position.set(12, -CHAR_H - 2); e.node.addChild(b); }
         }
       }
       const ab = e.node.getChildByLabel('act');
@@ -415,6 +423,27 @@ export class View {
   }
   private lastPuff = new Map<string, number>();
 
+  /** 방 이름표: 벽으로 둘러싼 방 가운데에 종류와 별을 작게 */
+  private syncRoomTags(state: GameState): void {
+    if (this.roomRev === state.layoutRev) return;
+    this.roomRev = state.layoutRev;
+    for (const n of this.roomTags) n.destroy({ children: true });
+    this.roomTags = [];
+    for (const r of rooms(state)) {
+      const mx = r.cells.reduce((a, c) => a + c.x, 0) / r.cells.length;
+      const my = r.cells.reduce((a, c) => a + c.y, 0) / r.cells.length;
+      const cc = cellCenter(Math.round(mx), Math.round(my));
+      const l = label(`${ROOM_KO[r.kind]} ${'★'.repeat(r.stars)}`, 9); l.anchor.set(0.5, 1); l.style.fill = 0xfff2c0;
+      const w = l.width + 10;
+      const node = new Container();
+      node.addChild(new Graphics().roundRect(-w / 2, -13, w, 13, 3).fill({ color: 0x3b2a1a, alpha: 0.72 }), l);
+      node.position.set(cc.sx, cc.sy - 22);
+      node.zIndex = 5e5;
+      this.overlay.addChild(node);
+      this.roomTags.push(node);
+    }
+  }
+
   /** 변 벽: 칸의 북·서 변에 선 벽을 그린다. 방 앞쪽(안쪽이 벽 뒤에 있는) 벽은 반투명 — 카이로의 잘라 낸 앞벽처럼 안이 보이게. */
   private syncWalls(state: GameState): void {
     if (this.wallRev === state.layoutRev) return;
@@ -490,8 +519,9 @@ export class View {
         e.bubble = want;
         if (want && hasAssets()) {
           const icon = want === 'wait' ? peekTex('icon_clock') : want.startsWith('use:') ? peekTex(want === 'use:shop' ? 'icon_shop' : 'icon_coffee') : peekTex(spriteName.bubble(g.mood ?? 'meh'));
-          if (icon) {
-            const b = want === 'wait' || want.startsWith('use:') ? makeSpeechBubble({ icon, iconSize: 14 }) : (() => { const sp = new Sprite(icon); sp.anchor.set(0.5, 1); return sp; })();
+          const text = guestLine(want, `${g.id}:${g.type}`) ?? undefined;
+          if (icon || text) {
+            const b = makeSpeechBubble({ icon, iconSize: 14, text });
             b.label = 'bubble'; b.position.set(0, -CHAR_H - 2); e.node.addChild(b);
           }
         }
@@ -556,6 +586,7 @@ export class View {
     if (state.fx.length === 0) return;
     for (const fx of state.fx) {
       if (fx.kind === 'synergy') this.queued.push({ fx, at: now + fx.order * SYNERGY_STAGGER_MS });
+      else if (fx.kind === 'roomup') this.queued.push({ fx, at: now + fx.order * SYNERGY_STAGGER_MS });
       else if (fx.kind === 'money') this.queued.push({ fx, at: now });
     }
     this.fxSeen += state.fx.length;
@@ -565,6 +596,7 @@ export class View {
     for (const q of this.queued.filter((q) => q.at <= now)) {
       const fx = q.fx;
       if (fx.kind === 'synergy') this.float(fx.x, fx.y, `상성 UP  ${fx.name}`, 0xff4d5e, now);
+      else if (fx.kind === 'roomup') { this.float(fx.x, fx.y, fx.text, 0xffd166, now); const c = cellCenter(fx.x, fx.y); for (let i = 0; i < 5; i++) this.puff(c.sx + (i - 2) * 9, c.sy - 6 - i * 3, now + i, 0xffe28a, `room${fx.x},${fx.y},${i}`); }
       else if (fx.kind === 'money') this.float(fx.x, fx.y, `+₩${fx.won.toLocaleString('en-US')}`, 0xffd166, now);
     }
     this.queued = this.queued.filter((q) => q.at > now);
