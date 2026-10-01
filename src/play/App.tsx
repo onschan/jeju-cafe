@@ -80,11 +80,11 @@ export function App() {
   // 첫 5분 안내: 상황이 처음 맞으면 한 번 (아무것도 안 떠 있을 때만)
   const hintTick = Math.floor(s.tick / 10);
   useEffect(() => {
-    if (title || dlg || chest || monthCard || win) return;
+    if (title || dlg || chest || monthCard || win || placing) return; // 배치 중엔 끼어들지 않는다
     const h = nextHint(s); if (!h) return;
     dispatch({ type: 'hint', id: h.id });
     showDialogue({ speaker: { name: SPEAKER[h.speaker], portrait: h.speaker, expr: h.expr }, lines: h.lines });
-  }, [hintTick, title, !!dlg, !!chest, monthCard, win]);
+  }, [hintTick, title, !!dlg, !!chest, monthCard, win, placing]);
   // 소리: 첫 터치에서 풀고, 타이틀/계절 BGM, 명성 300부터 타악
   const season = seasonOf(s.clock.month);
   useEffect(() => { if (!ready) return; const on = () => { unlockAudio(); void bgm(title ? 'title' : season); }; window.addEventListener('pointerdown', on, { passive: true }); return () => window.removeEventListener('pointerdown', on); }, [ready, title, season]);
@@ -114,11 +114,9 @@ export function App() {
         sfx('tap');
         const id = placingRef.current;
         if (id) {
+          // 탭은 자리만 잡는다 — 놓는 건 띠의 「놓기/깔기」로 (탭마다 놓이면 실수가 잦다)
           const d = facilityDef(id);
-          if (isFloorDef(d)) { const r = dispatch({ type: 'placeLine', id, from: { x, y }, to: { x, y } }); if (!r.ok) flash(r.reason); else sfx('plant'); setGhost(ghostOf(st, id, x, y)); return; }
-          const g = ghostOf(st, id, x, y);
-          if (g.ok) { const r = dispatch({ type: 'place', id, x, y }); if (!r.ok) flash(r.reason); else sfx('place'); } // 안 되는 까닭은 배치 띠가 말한다
-          setGhost(ghostOf(getState(), id, x, y));
+          setGhost(isFloorDef(d) ? ghostOf(st, id, x, y, { from: { x, y }, to: { x, y } }) : ghostOf(st, id, x, y));
           return;
         }
         const p = parcelAt(st, x, y);
@@ -132,7 +130,7 @@ export function App() {
       dragCapture: (x, y) => { const id = placingRef.current; if (!id || !isFloorDef(facilityDef(id))) return false; lineFrom.current = { x, y }; setGhost(ghostOf(getState(), id, x, y, { from: { x, y }, to: { x, y } })); return true; },
       onDragCell: (x, y) => { const id = placingRef.current; const from = lineFrom.current; if (!id || !from) return; setGhost(ghostOf(getState(), id, x, y, { from, to: { x, y } })); },
       onBusStop: () => { if (!getState().clock.speed) return; sfx('bus'); },
-      onDragEnd: () => { const id = placingRef.current; const from = lineFrom.current; const g = ghostRef.current; lineFrom.current = null; if (!id || !from || !g?.line) return; const r = dispatch({ type: 'placeLine', id, from: g.line.from, to: g.line.to }); if (!r.ok) flash(r.reason); else sfx('plant'); setGhost(ghostOf(getState(), id, g.line.to.x, g.line.to.y)); },
+      onDragEnd: () => { lineFrom.current = null; }, // 드래그는 줄 미리보기까지만, 깔기는 띠에서
     }).then(() => { v.centerOn(getState()); setReady(true); stop = startLoop(); raf = requestAnimationFrame(tick); }); // 시트가 다 실린 뒤에야 그린다 — 먼저 그리면 자리 표시 도형이 캐시에 남는다(폰에서 그렇게 보였다)
     (window as unknown as { __view: View; __game: unknown }).__view = v; // 디버그·자동 검증용 (봇·브라우저 스크립트)
     (window as unknown as { __game: unknown }).__game = { getState, dispatch };
@@ -163,7 +161,13 @@ export function App() {
       {/* 목표 한 줄 */}
       {obj && !placing && <div style={{ position: 'absolute', top: 36, left: 8, right: 8, ...panel, padding: '4px 8px', fontSize: 13, cursor: 'pointer' }} onClick={() => setWin('info')}><Ico name="flag" /> {obj.text} <span style={small}>· 상금 {wonShort(obj.reward)}</span></div>}
       {/* 배치 모드 띠 */}
-      {placing && <PlacingBar id={placing} ghost={ghost} onDone={() => { setPlacing(null); setGhost(null); }} />}
+      {placing && <PlacingBar id={placing} ghost={ghost} onDone={() => { setPlacing(null); setGhost(null); }} onConfirm={() => {
+        const g = ghost; if (!g) return; const d = facilityDef(placing);
+        const r = isFloorDef(d) && g.line ? dispatch({ type: 'placeLine', id: placing, from: g.line.from, to: g.line.to }) : dispatch({ type: 'place', id: placing, x: g.x, y: g.y });
+        if (!r.ok) { flash(r.reason); return; }
+        sfx(isFloorDef(d) ? 'plant' : 'place');
+        setGhost(isFloorDef(d) ? ghostOf(getState(), placing, g.x, g.y, g.line) : ghostOf(getState(), placing, g.x, g.y)); // 같은 자리는 이제 막히니 빨갛게 — 다음 탭으로 옮긴다
+      }} />}
       {/* 삼춘 메시지 줄 (알림·신발매·거절 이유) */}
       {ready && <MessageLine bottom={BOTTOM_H} flash={toast} />}
       {daySum && !win && !dlg && <DaySummary today={daySum.today} prev={daySum.prev} bottom={BOTTOM_H + MESSAGE_LINE_H + 8} />}
@@ -195,15 +199,17 @@ export function App() {
   );
 }
 
-function PlacingBar({ id, ghost, onDone }: { id: string; ghost: Ghost | null; onDone: () => void }) {
+function PlacingBar({ id, ghost, onDone, onConfirm }: { id: string; ghost: Ghost | null; onDone: () => void; onConfirm: () => void }) {
   const d = facilityDef(id);
   const floor = isFloorDef(d);
   const n = ghost?.line ? lineCells(ghost.line.from, ghost.line.to).filter((p) => canLayFloor(getState(), d.floor!, p.x, p.y).ok).length : 1;
+  const can = !!ghost && (floor ? n > 0 : ghost.ok) && getState().money >= d.cost * (floor ? n : 1);
   return (
     <div style={{ position: 'absolute', top: 36, left: 8, right: 8, ...panel, padding: '6px 8px', fontSize: 13, display: 'flex', alignItems: 'center', gap: 8 }}>
       <Sprite id={id} size={28} /><b>{d.name}</b>
-      <span style={{ flex: 1 }}>{floor ? (ghost?.line ? `어디까지 까시겠습니까? · ${won(d.cost * n)}` : '어디서부터 까시겠습니까? (드래그)') : ghost && !ghost.ok ? <span style={{ color: C.red }}>{ghost.reason}</span> : `탭해서 놓기 · ${won(d.cost)}`}</span>
+      <span style={{ flex: 1, minWidth: 0 }}>{floor ? (ghost?.line ? `${n}칸 · ${won(d.cost * n)}` : '탭하거나 드래그해서 자리를 잡아요') : !ghost ? `탭해서 자리를 잡아요 · ${won(d.cost)}` : !ghost.ok ? <span style={{ color: C.red }}>{ghost.reason}</span> : won(d.cost)}</span>
       <span style={small}>{wonShort(getState().money)}</span>
+      <button style={can ? btnGold : btnOff} disabled={!can} onClick={onConfirm}>{floor ? '깔기' : '놓기'}</button>
       <button style={btnOff} onClick={onDone}>끝</button>
     </div>
   );
