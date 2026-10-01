@@ -4,7 +4,7 @@
  */
 import { Application, Container, Graphics, Sprite, Text } from 'pixi.js';
 import type { GameState, Facility, Guest, Fx, Pt } from '../game/index.ts';
-import { facilityDef, isFloorDef, canPlace, canLayFloor, lineCells, seasonOf, isNight, cellAt, walkable, HOME, ROAD_Y, BUS_STOP } from '../game/index.ts';
+import { facilityDef, isFloorDef, canPlace, canLayFloor, lineCells, seasonOf, isNight, cellAt, walkable, HOME, ROAD_Y, BUS_STOP, rectEdges, canWall, edgeCells, type WallEdge } from '../game/index.ts';
 import { loadAssets, tex, peekTex, hasAssets, spriteName } from '../render/assets';
 import { attachCamera } from '../render/camera';
 import { ISO_W, ISO_H, cellToScreen, cellCenter, footAnchor, depth, screenToCell } from '../render/iso';
@@ -22,6 +22,8 @@ export interface ViewOptions { onTap: (x: number, y: number) => void; onDragCell
 const SYNERGY_STAGGER_MS = 110;
 const FLOAT_MS = 900;
 
+/** 벽 종류 id → 그림 이름 조각 (iso_obj_w_<kind>_<ne|nw>) */
+export const WALL_SPRITE: Record<string, string> = { railing: 'fence', wall_wood: 'wood', wall_plaster: 'plaster', wall_window: 'window', wall: 'stone' };
 /** 밤에 빛을 내는 시설과 빛 반경(px) */
 const LIGHT_RADIUS: Record<string, number> = { garden_lamp: 56, streetlight: 84 };
 
@@ -42,6 +44,7 @@ export class View {
   private floorCells: Pt[] = []; private floorRev = -1;
   private firstSync = true;
   private sparkles: { sp: Sprite; born: number }[] = [];
+  private wallNodes: Sprite[] = []; private wallRev = -1;
   private tileKey = '';
   private ghost: Container | null = null;
   private ghostKey = '';
@@ -98,6 +101,7 @@ export class View {
     this.busGridW = state.grid.w;
     this.syncTiles(state);
     this.syncFacilities(state);
+    this.syncWalls(state);
     this.syncGuests(state, now);
     this.syncStaff(state, now);
     this.syncGhost(state, ghost);
@@ -174,7 +178,7 @@ export class View {
     for (const [id, e] of this.facilityNodes) if (!state.facilities[id]) { e.node.destroy({ children: true }); this.facilityNodes.delete(id); }
     for (const f of Object.values(state.facilities)) {
       const d = facilityDef(f.type);
-      const sprite = wallSprite(state, f);
+      const sprite = f.type;
       const key = `${f.x},${f.y}:${f.level}:${sprite}:${hasAssets() ? 1 : 0}`; // 벽은 이웃에 따라 sprite가 바뀌니 그것으로 갱신된다
       let e = this.facilityNodes.get(f.id);
       if (e && e.key === key) continue;
@@ -248,6 +252,30 @@ export class View {
   }
   private staffLast = 0;
 
+  /** 변 벽: 칸의 북·서 변에 선 벽을 그린다. 방 앞쪽(안쪽이 벽 뒤에 있는) 벽은 반투명 — 카이로의 잘라 낸 앞벽처럼 안이 보이게. */
+  private syncWalls(state: GameState): void {
+    if (this.wallRev === state.layoutRev) return;
+    this.wallRev = state.layoutRev;
+    for (const n of this.wallNodes) n.destroy();
+    this.wallNodes = [];
+    if (!hasAssets()) return;
+    for (let y = 0; y < state.grid.h; y++) for (let x = 0; x < state.grid.w; x++) {
+      const c = cellAt(state, x, y);
+      for (const side of ['n', 'w'] as const) {
+        const kind = side === 'n' ? c.wn : c.ww; if (!kind) continue;
+        const t = peekTex(`iso_obj_w_${WALL_SPRITE[kind] ?? 'wood'}_${side === 'n' ? 'ne' : 'nw'}`); if (!t) continue;
+        const sp = new Sprite(t); sp.anchor.set(0.5, 1);
+        const a = footAnchor(x, y, 1, 1); sp.position.set(a.sx, a.sy);
+        sp.zIndex = depth(x, y) - 0.5;
+        // 앞벽 판정: 벽 뒤(북/서) 칸이 바닥이고 벽 앞(이 칸)이 바닥이 아니면 방의 앞면이다
+        const back = side === 'n' ? { x, y: y - 1 } : { x: x - 1, y };
+        const backFloor = back.y >= 0 && back.x >= 0 && !!cellAt(state, back.x, back.y).floor;
+        if (backFloor && !c.floor) sp.alpha = 0.35;
+        this.actors.addChild(sp); this.wallNodes.push(sp);
+      }
+    }
+  }
+
   /** 마을 버스: 서쪽 마을에서 들어와 정류장에 섰다가 동쪽으로 나간다 (링 길과 이어진다) */
   private tickBus(now: number): void {
     if (!this.busGridW || !hasAssets()) return;
@@ -317,14 +345,21 @@ export class View {
     const c = new Container();
     c.zIndex = 1e6;
     const g = new Graphics();
-    if (d.sub === 'wall' && ghost.line) {
-      // 벽 줄: 칸마다 되는지 보고 벽 그림을 늘어놓는다
-      const wt = hasAssets() ? peekTex(spriteName.isoObject(Math.abs(ghost.line.to.x - ghost.line.from.x) >= Math.abs(ghost.line.to.y - ghost.line.from.y) ? 'wall_ne' : 'wall_nw')) : null;
-      for (const p of lineCells(ghost.line.from, ghost.line.to)) {
-        const ok = canPlace(state, ghost.id, p.x, p.y).ok;
-        const { sx, sy } = cellToScreen(p.x, p.y);
-        g.poly([sx, sy, sx + ISO_W / 2, sy + ISO_H / 2, sx, sy + ISO_H, sx - ISO_W / 2, sy + ISO_H / 2]).fill({ color: ok ? 0x4fd16a : 0xd94b4b, alpha: 0.45 });
-        if (wt && ok) { const sp = new Sprite(wt); sp.anchor.set(0.5, 1); const a = footAnchor(p.x, p.y, 1, 1); sp.position.set(a.sx, a.sy); sp.alpha = 0.7; c.addChild(sp); }
+    if (d.sub === 'wall') {
+      // 벽 네모: 둘레 변마다 되는지 보고 벽 그림을 반투명으로, 안쪽 칸은 살짝 칠한다
+      const from = ghost.line?.from ?? { x: ghost.x, y: ghost.y }, to = ghost.line?.to ?? { x: ghost.x, y: ghost.y };
+      const x0 = Math.min(from.x, to.x), x1 = Math.max(from.x, to.x), y0 = Math.min(from.y, to.y), y1 = Math.max(from.y, to.y);
+      for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) { const { sx, sy } = cellToScreen(x, y); g.poly([sx, sy, sx + ISO_W / 2, sy + ISO_H / 2, sx, sy + ISO_H, sx - ISO_W / 2, sy + ISO_H / 2]).fill({ color: 0xffe08a, alpha: 0.18 }); }
+      for (const e of rectEdges(from, to)) {
+        const ok = canWall(state, ghost.id, e).ok;
+        const [p0, p1] = edgeCells(e);
+        // 변을 선으로: 북 변은 칸 위 꼭짓점→오른쪽 꼭짓점, 서 변은 위 꼭짓점→왼쪽 꼭짓점
+        const top = cellToScreen(e.x, e.y);
+        const end = e.side === 'n' ? { sx: top.sx + ISO_W / 2, sy: top.sy + ISO_H / 2 } : { sx: top.sx - ISO_W / 2, sy: top.sy + ISO_H / 2 };
+        g.moveTo(top.sx, top.sy).lineTo(end.sx, end.sy).stroke({ color: ok ? 0x4fd16a : 0xd94b4b, width: 3, alpha: 0.9 });
+        void p0; void p1;
+        const wt = ok && hasAssets() ? peekTex(`iso_obj_w_${WALL_SPRITE[ghost.id] ?? 'wood'}_${e.side === 'n' ? 'ne' : 'nw'}`) : null;
+        if (wt) { const sp = new Sprite(wt); sp.anchor.set(0.5, 1); const a = footAnchor(e.x, e.y, 1, 1); sp.position.set(a.sx, a.sy); sp.alpha = 0.6; c.addChild(sp); }
       }
     } else if (isFloorDef(d)) {
       const cells = ghost.line ? lineCells(ghost.line.from, ghost.line.to) : [{ x: ghost.x, y: ghost.y }];
@@ -338,7 +373,7 @@ export class View {
         const { sx, sy } = cellToScreen(ghost.x + dx, ghost.y + dy);
         g.poly([sx, sy, sx + ISO_W / 2, sy + ISO_H / 2, sx, sy + ISO_H, sx - ISO_W / 2, sy + ISO_H / 2]).fill({ color: ghost.ok ? 0x4fd16a : 0xd94b4b, alpha: 0.45 });
       }
-      const t = hasAssets() ? peekTex(spriteName.isoObject(ghost.id === 'wall' ? 'wall_nw' : ghost.id)) : null;
+      const t = hasAssets() ? peekTex(spriteName.isoObject(ghost.id)) : null;
       if (t) { const sp = new Sprite(t); sp.anchor.set(0.5, 1); const a = footAnchor(ghost.x, ghost.y, d.w, d.h); sp.position.set(a.sx, a.sy); sp.alpha = 0.7; sp.tint = ghost.ok ? 0xffffff : 0xff9090; c.addChild(sp); }
     }
     c.addChild(g);
@@ -382,18 +417,10 @@ export class View {
     this.floats.push({ node, born: now, y0: c.sy - 30 });
   }
 }
-/** 돌벽은 이웃 벽을 따라 방향을 고른다: x축(↘) 이웃이 있으면 wall_ne, 아니면 wall_nw */
-function wallSprite(state: GameState, f: Facility): string {
-  if (f.type !== 'wall') return f.type;
-  const isWall = (x: number, y: number) => { const id = x >= 0 && y >= 0 && x < state.grid.w && y < state.grid.h ? cellAt(state, x, y).objectId : null; return !!id && state.facilities[id]?.type === 'wall'; };
-  const along = isWall(f.x - 1, f.y) || isWall(f.x + 1, f.y);
-  const across = isWall(f.x, f.y - 1) || isWall(f.x, f.y + 1);
-  return along && !across ? 'wall_ne' : 'wall_nw';
-}
 /** 놓을 수 있나 (고스트 색) — 사림 규칙 그대로 */
 export function ghostOf(state: GameState, id: string, x: number, y: number, line?: { from: Pt; to: Pt }): Ghost {
   const d = facilityDef(id);
-  if (d.sub === 'wall' && line) { const cells = lineCells(line.from, line.to); const oks = cells.map((p) => canPlace(state, id, p.x, p.y)); const ok = oks.some((r) => r.ok); return { id, x, y, ok, reason: ok ? undefined : oks[0]?.reason, line }; }
+  if (d.sub === 'wall') { const from = line?.from ?? { x, y }, to = line?.to ?? { x, y }; const oks = rectEdges(from, to).map((e) => canWall(state, id, e)); const ok = oks.some((r) => r.ok); return { id, x, y, ok, reason: ok ? undefined : oks[0]?.reason, line }; }
   const r = canPlace(state, id, x, y);
   return { id, x, y, ok: r.ok, reason: r.reason, line };
 }

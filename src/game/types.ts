@@ -26,7 +26,8 @@ export interface SynergyDef { id: string; name: string; a: string[]; b: string[]
 export interface InvestDef { id: string; name: string; cost: number; desc: string; fame?: number; guests?: number; scenery?: number; typeMult?: Record<string, number> }
 export interface RivalDef { id: string; name: string; base: number; growth: number }
 
-export interface Cell { terrain: Terrain; floor: Floor | null; objectId: string | null }
+/** wn/ww: 이 칸의 북(y−1 쪽)·서(x−1 쪽) 변에 선 벽의 종류 id. 남·동 변은 이웃 칸의 wn/ww로 적는다. 벽은 칸을 안 먹는다. */
+export interface Cell { terrain: Terrain; floor: Floor | null; objectId: string | null; wn?: string | null; ww?: string | null }
 export interface Parcel { id: string; name: string; x: number; y: number; w: number; h: number; owned: boolean; price: number }
 export interface Facility { id: string; type: string; x: number; y: number; name?: string; level: number; uses: number; sales: number }
 
@@ -90,6 +91,8 @@ export interface GameState {
 export type Action =
   | { type: 'place'; id: string; x: number; y: number }
   | { type: 'placeLine'; id: string; from: Pt; to: Pt }
+  | { type: 'wallRect'; id: string; from: Pt; to: Pt }   // 네모 둘레에 벽을 두른다 (올렛길 닿는 변은 문)
+  | { type: 'removeWalls'; x: number; y: number }       // 그 칸 둘레 벽 네 변을 걷는다
   | { type: 'remove'; facilityId: string }
   | { type: 'removeFloor'; x: number; y: number }
   | { type: 'rename'; facilityId: string; name: string }

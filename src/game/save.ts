@@ -8,6 +8,8 @@ export function deserialize(json: string): GameState {
   // 같은 버전 안에서 데이터에 추가된 「처음부터 열린」 것들을 채운다 (울타리처럼 뒤에 붙인 카탈로그)
   o.cafeName ??= '우리 카페';
   o.hints ??= [];
+  // 벽이 칸을 먹던 옛 방식 → 변 벽. 옛 벽 시설은 치우고 값을 돌려준다.
+  for (const f of Object.values(o.facilities)) { const d = FACILITIES.find((x) => x.id === f.type); if (d?.sub === 'wall') { delete o.facilities[f.id]; o.money += d.cost; for (const c of o.grid.cells) if (c.objectId === f.id) c.objectId = null; o.layoutRev++; } }
   o.todayIncome ??= 0; o.lastDay ??= null;
   o.month.happy ??= 0; o.month.fame0 ??= o.fame;
   if (o.lastMonth) { o.lastMonth.happy ??= 0; o.lastMonth.fame0 ??= o.fame; o.lastMonth.year ??= o.clock.year; o.lastMonth.month ??= Math.max(1, o.clock.month - 1); }

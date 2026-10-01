@@ -8,7 +8,7 @@ export const LOAN_MAX = 3;
 export function upkeepTotal(s: GameState): number {
   let n = 0;
   for (const f of Object.values(s.facilities)) n += facilityDef(f.type).upkeep;
-  for (const c of s.grid.cells) if (c.floor) n += c.floor === 'path' ? 100 : 200;
+  for (const c of s.grid.cells) { if (c.floor) n += c.floor === 'path' ? 100 : 200; if (c.wn) n += facilityDef(c.wn).upkeep; if (c.ww) n += facilityDef(c.ww).upkeep; }
   return n;
 }
 export function monthEnd(s: GameState): void {

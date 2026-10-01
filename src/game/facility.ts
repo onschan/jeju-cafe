@@ -1,7 +1,7 @@
 /** 시설: 손익계산서 (기본 인기 · 상성 보너스 · 경치 · 합계 / 요금 · 유지비 · 누구에게 인기) + 놓기·치우기 + 상성 UP 묶음 연출 */
 import type { GameState, Facility, Pt, ApplyResult } from './types.ts';
 import { facilityDef, isFloorDef, isUsable, SYNERGIES, FACILITIES } from './data.ts';
-import { canPlace, cellAt, footprint, footOf, inBounds, layFloor, DIRS, isEnclosed } from './world.ts';
+import { canPlace, cellAt, footprint, footOf, inBounds, layFloor, DIRS, isEnclosed, wallBetween } from './world.ts';
 import { seasonOf } from './clock.ts';
 
 export const SCENERY_RADIUS = 2;
@@ -10,6 +10,7 @@ export const SYNERGY_POP = 4;      // 상성 짝 하나 = 인기 +4
 export const SYNERGY_FEE = 200;    // 상성 짝 하나 = 요금 +200
 export const SYNERGY_CAP = 4;      // 짝은 시설당 4개까지
 export const LEVEL_POP = 3;        // 시설 Lv당 인기 +3 (연구로 올린다)
+export const INDOOR_BONUS = 2;
 export const WINTER_OUTDOOR = -6;  // 겨울(12~2월)엔 바깥 자리·가게 인기가 이만큼 깎인다 — 벽으로 둘러싸면(실내) 안 깎인다
 
 export interface Sheet {
@@ -73,7 +74,7 @@ function computeSheet(s: GameState, f: Facility): Sheet {
   const bonus = pairs.length * SYNERGY_POP;
   const scenery = usable ? sceneryAt(s, f) : 0;
   const indoor = usable && isEnclosed(s, footOf(s, f.id));
-  const season = usable && !indoor && seasonOf(s.clock.month) === 'winter' ? WINTER_OUTDOOR : 0;
+  const season = !usable ? 0 : indoor ? INDOOR_BONUS : seasonOf(s.clock.month) === 'winter' ? WINTER_OUTDOOR : 0; // 실내는 아늑해서 +2, 바깥은 겨울에 −6
   return { base, bonus, scenery, season, indoor, total: Math.max(0, base + bonus + scenery + season), fee: (d.fee ?? 0) + pairs.length * SYNERGY_FEE, upkeep: d.upkeep, pairs, likedBy: d.tags ?? [] };
 }
 /** 마당의 자리·가게 인기 합 — 하루 손님 수·평가 점수의 뿌리 */
@@ -130,7 +131,7 @@ export function placeAndBurst(s: GameState, id: string, x: number, y: number): A
 export function approachCell(s: GameState, f: Facility): Pt | null {
   for (const p of footOf(s, f.id)) for (const v of DIRS) {
     const q = { x: p.x + v.x, y: p.y + v.y };
-    if (inBounds(s, q.x, q.y) && !cellAt(s, q.x, q.y).objectId && (cellAt(s, q.x, q.y).floor !== null || cellAt(s, q.x, q.y).terrain === 'road')) return q;
+    if (inBounds(s, q.x, q.y) && !wallBetween(s, p, q) && !cellAt(s, q.x, q.y).objectId && (cellAt(s, q.x, q.y).floor !== null || cellAt(s, q.x, q.y).terrain === 'road')) return q;
   }
   return null;
 }

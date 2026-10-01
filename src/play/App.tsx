@@ -1,6 +1,6 @@
 /** 새 조작 (2단계). 창은 넷: 건축 · 손님층 · 정보 · 시스템. 그 밖엔 시설 카드(손익계산서)와 하단 띠(목표 한 줄 · 영수증 · 손님/자리/인기)뿐. */
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
-import { View, ghostOf, type Ghost } from './View';
+import { View, ghostOf, WALL_SPRITE, type Ghost } from './View';
 import { useGame, useRev, dispatch, startLoop, getState, save, restart, toasts, hadSave, setPaused } from './store';
 import { C, panel, titleBar, tile, tileLocked, btn, btnOff, btnGold, small, won, wonShort } from './theme';
 import { useThumb } from './thumbs';
@@ -12,7 +12,7 @@ import { nextHint } from './hints';
 import { EndingScreen } from './Ending';
 import { unlockAudio, audioReady, sfx, bgm, setBgmLayer, isMuted, setMuted, getBgmVolume, getSfxVolume, setBgmVolume, setSfxVolume } from './audio';
 import { guestAccs } from './guestLook';
-import { FACILITIES, GUEST_TYPES, MENUS, INVESTS, facilityDef, isFloorDef, isUsable, sheetOf, usables, popularitySum, dailyGuests, unlockables, canUnlock, canLevelUp, LEVEL_COST, levelMoney, currentObjective, OBJECTIVES, seasonOf, canHire, upkeepTotal, wagesTotal, myScore, rivalScore, RIVALS, lineCells, canLayFloor, parcelAt, cellAt, parcelAdjacent, type GameState, type Tab, type Facility, type Pt, type Parcel, type Objective, type Guest, previewPlace } from '../game/index.ts';
+import { FACILITIES, GUEST_TYPES, MENUS, INVESTS, facilityDef, isFloorDef, isUsable, sheetOf, usables, popularitySum, dailyGuests, unlockables, canUnlock, canLevelUp, LEVEL_COST, levelMoney, currentObjective, OBJECTIVES, seasonOf, canHire, upkeepTotal, wagesTotal, myScore, rivalScore, RIVALS, lineCells, canLayFloor, parcelAt, cellAt, parcelAdjacent, type GameState, type Tab, type Facility, type Pt, type Parcel, type Objective, type Guest, previewPlace, cellEdges, getWall } from '../game/index.ts';
 
 type Win = 'build' | 'guests' | 'info' | 'system' | null;
 /** 하단 띠(영수증 2줄 + 요약 + 메뉴) 높이 */
@@ -164,9 +164,9 @@ export function App() {
       {/* 배치 모드 띠 */}
       {placing && <PlacingBar id={placing} ghost={ghost} onDone={() => { setPlacing(null); setGhost(null); }} onConfirm={() => {
         const g = ghost; if (!g) return; const d = facilityDef(placing);
-        const r = isLine(placing) && g.line ? dispatch({ type: 'placeLine', id: placing, from: g.line.from, to: g.line.to }) : dispatch({ type: 'place', id: placing, x: g.x, y: g.y });
+        const r = d.sub === 'wall' ? dispatch({ type: 'wallRect', id: placing, from: g.line?.from ?? { x: g.x, y: g.y }, to: g.line?.to ?? { x: g.x, y: g.y } }) : isLine(placing) && g.line ? dispatch({ type: 'placeLine', id: placing, from: g.line.from, to: g.line.to }) : dispatch({ type: 'place', id: placing, x: g.x, y: g.y });
         if (!r.ok) { flash(r.reason); return; }
-        sfx(isFloorDef(d) ? 'plant' : 'place');
+        sfx(isFloorDef(d) || d.sub === 'wall' ? 'plant' : 'place');
         setGhost(isLine(placing) ? ghostOf(getState(), placing, g.x, g.y, g.line) : ghostOf(getState(), placing, g.x, g.y)); // 같은 자리는 이제 막히니 빨갛게 — 다음 탭으로 옮긴다
       }} />}
       {/* 삼춘 메시지 줄 (알림·신발매·거절 이유) */}
@@ -219,7 +219,7 @@ function PlacingBar({ id, ghost, onDone, onConfirm }: { id: string; ghost: Ghost
       bits.push(`인기 ${pv.total} (${parts.join(' ')})${pv.fee ? ` · 요금 ${won(pv.fee)}` : ''}${pv.indoor ? ' · 실내' : ''}`);
     }
     if (d.scenery) bits.push(pv.sceneryTouched > 0 ? `경치 +${d.scenery} → 자리·가게 ${pv.sceneryTouched}곳 인기 합 +${pv.popDelta}` : `경치 +${d.scenery} · 반경 2에 자리·가게가 없어요`);
-    if (wall) bits.push(pv.indoorGain > 0 ? `둘러싸여 실내가 되는 자리·가게 ${pv.indoorGain}곳 (겨울 −6 면함)` : `${pv.cells}칸 · 아직 둘러싸이진 않아요`);
+    if (wall) bits.push(pv.indoorGain > 0 ? `실내가 되는 자리·가게 ${pv.indoorGain}곳 (실내 +2 · 겨울 −6 면함)${pv.popDelta ? ` · 인기 합 ${pv.popDelta > 0 ? '+' : ''}${pv.popDelta}` : ''}` : `벽 ${pv.cells}변 · 아직 안 둘러싸여요 (올렛길 쪽은 문으로 비워요)`);
     if (pv.pairs.length) bits.push(`상성 UP: ${pv.pairs.join('·')}`);
     if (pv.guestsDelta > 0) bits.push(`하루 손님 +${pv.guestsDelta}`);
     return bits.join('  ·  ');
@@ -228,9 +228,9 @@ function PlacingBar({ id, ghost, onDone, onConfirm }: { id: string; ghost: Ghost
     <div style={{ position: 'absolute', top: 36, left: 8, right: 8, ...panel, padding: '6px 8px', fontSize: 13, display: 'grid', gap: 4 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
         <Sprite id={id} size={28} /><b>{d.name}</b>
-        <span style={{ flex: 1, minWidth: 0 }}>{floor || wall ? (ghost?.line ? `${count}칸 · ${won(d.cost * count)}` : '탭하거나 드래그해서 줄을 잡아요') : !ghost ? `탭해서 자리를 잡아요 · ${won(d.cost)}` : !ghost.ok ? <span style={{ color: C.red }}>{ghost.reason}</span> : won(d.cost)}</span>
+        <span style={{ flex: 1, minWidth: 0 }}>{floor || wall ? (ghost?.line ? `${count}${wall ? '변' : '칸'} · ${won(d.cost * count)}` : wall ? '바닥 위를 드래그해 네모를 잡아요' : '탭하거나 드래그해서 줄을 잡아요') : !ghost ? `탭해서 자리를 잡아요 · ${won(d.cost)}` : !ghost.ok ? <span style={{ color: C.red }}>{ghost.reason}</span> : won(d.cost)}</span>
         <span style={small}>{wonShort(getState().money)}</span>
-        <button style={can ? btnGold : btnOff} disabled={!can} onClick={onConfirm}>{floor ? '깔기' : wall ? '세우기' : '놓기'}</button>
+        <button style={can ? btnGold : btnOff} disabled={!can} onClick={onConfirm}>{floor ? '깔기' : wall ? '두르기' : '놓기'}</button>
         <button style={btnOff} onClick={onDone}>끝</button>
       </div>
       {effect && <div style={{ fontSize: 12, color: C.green, borderTop: '1px solid #d8c9a8', paddingTop: 4 }}>{effect}</div>}
@@ -285,6 +285,7 @@ function FloorCard({ s, p, onClose, onMore }: { s: GameState; p: Pt; onClose: ()
     <div style={{ position: 'absolute', left: 6, right: 6, bottom: ABOVE_BOTTOM, ...panel, fontSize: 13, display: 'flex', alignItems: 'center', gap: 8 }}>
       <Sprite id={id} size={36} /><b style={{ flex: 1 }}>{d.name}</b>
       <button style={btn} onClick={() => onMore(id)}>더 깔기</button>
+      {cellEdges(p.x, p.y).some((e) => getWall(s, e)) && <button style={btnOff} onClick={() => { const r = dispatch({ type: 'removeWalls', x: p.x, y: p.y }); if (!r.ok) alert(r.reason); else sfx('remove'); }}>벽 걷어내기 <span style={{ fontSize: 11 }}>(반값)</span></button>}
       <button style={{ ...btnOff, background: C.red, color: '#fff' }} onClick={() => { const r = dispatch({ type: 'removeFloor', x: p.x, y: p.y }); if (!r.ok) alert(r.reason); else onClose(); }}>걷어내기</button>
       <button style={btnOff} onClick={onClose}>닫기</button>
     </div>
@@ -310,7 +311,7 @@ function Window({ title, onClose, children, tabs }: { title: string; onClose: ()
 /** 시트에서 잘라 낸 시설 그림 */
 function Sprite({ id, size = 56 }: { id: string; size?: number }) {
   const d = facilityDef(id);
-  const url = useThumb(d.sub === 'floor' ? (d.floor === 'path' ? 'iso_obj_path' : `iso_tile_floor_${d.floor}`) : id === 'wall' ? 'iso_obj_wall_nw' : `iso_obj_${id}`, size);
+  const url = useThumb(d.sub === 'floor' ? (d.floor === 'path' ? 'iso_obj_path' : `iso_tile_floor_${d.floor}`) : d.sub === 'wall' ? `iso_obj_w_${WALL_SPRITE[id] ?? 'wood'}_ne` : `iso_obj_${id}`, size);
   return url ? <img className="px" src={url} width={size} height={size} alt="" style={{ imageRendering: 'pixelated' }} /> : <div style={{ width: size, height: size }} />;
 }
 function Ico({ name, size = 14 }: { name: string; size?: number }) { return <img className="px" src={assetUrl(`assets/icons/icon_${name}.png`)} width={size} height={size} alt="" style={{ imageRendering: 'pixelated', verticalAlign: 'middle' }} />; }
@@ -334,10 +335,10 @@ function BuildWindow({ s, onPick, onClose }: { s: GameState; onPick: (id: string
         <Sprite id={d.id} size={48} />
         <div style={{ flex: 1, minWidth: 0, fontSize: 13 }}>
           <b>{open ? d.name : '???'}</b> <span style={small}>{d.w}×{d.h}</span>
-          <div style={small}>{open ? `${won(d.cost)} · 유지 ${won(d.upkeep)}/월${d.pop !== undefined ? ` · 인기 ${d.pop}` : ''}${d.scenery ? ` · 경치 +${d.scenery}` : ''}${d.fee ? ` · 요금 ${won(d.fee)}` : ''}${d.sub === 'wall' ? ' · 드래그로 한 줄 · 둘러싸면 실내(겨울 −6 면함)' : ''}` : `연구 ${d.unlock}로 열린다 (정보 › 연구)`}</div>
+          <div style={small}>{open ? `${won(d.cost)} · 유지 ${won(d.upkeep)}/월${d.pop !== undefined ? ` · 인기 ${d.pop}` : ''}${d.scenery ? ` · 경치 +${d.scenery}` : ''}${d.fee ? ` · 요금 ${won(d.fee)}` : ''}${d.sub === 'wall' ? ' (변마다) · 바닥 위를 드래그해 네모 둘레에 · 둘러싸면 실내 +2, 겨울 −6 면함' : ''}` : `연구 ${d.unlock}로 열린다 (정보 › 연구)`}</div>
           {open && d.tags && <div style={small}>{d.tags.map((t) => GUEST_TYPES.find((g) => g.id === t)?.name).join('·')}에게 인기</div>}
         </div>
-        {open && <button style={s.money >= d.cost ? btnGold : btnOff} onClick={() => { if (s.money >= d.cost) onPick(d.id); }}>{d.sub === 'floor' ? '깔기' : d.sub === 'wall' ? '세우기' : '놓기'}</button>}
+        {open && <button style={s.money >= d.cost ? btnGold : btnOff} onClick={() => { if (s.money >= d.cost) onPick(d.id); }}>{d.sub === 'floor' ? '깔기' : d.sub === 'wall' ? '두르기' : '놓기'}</button>}
       </div>}
     </Window>
   );

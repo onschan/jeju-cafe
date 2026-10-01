@@ -1,6 +1,6 @@
 /** 새 코어 (specs/2026-09-27-rebuild-kairo-core.md) — 규칙 하나에 테스트 하나 */
 import { describe, it, expect } from 'vitest';
-import { newGame, apply, step, run, canPlace, cellAt, HOME, BUS_STOP, ROAD_Y, sheetOf, synergyPairs, popularitySum, dailyGuests, spawnOne, updateGuests, monthEnd, upkeepTotal, unlockables, evaluate, currentObjective, serialize, deserialize, DAY_MS, HOUR_MS, lineCells, walkable, runBot, SYNERGY_POP, SCENERY_CAP } from '../index.ts';
+import { newGame, apply, step, run, canPlace, cellAt, HOME, BUS_STOP, ROAD_Y, sheetOf, synergyPairs, popularitySum, dailyGuests, spawnOne, updateGuests, monthEnd, upkeepTotal, unlockables, evaluate, currentObjective, serialize, deserialize, DAY_MS, HOUR_MS, lineCells, walkable, wallBetween, runBot, SYNERGY_POP, SCENERY_CAP } from '../index.ts';
 import type { GameState } from '../index.ts';
 
 const at = (lx: number, ly: number) => ({ x: HOME.x + lx, y: HOME.y + ly });
@@ -196,7 +196,7 @@ describe('봇 2년', () => {
 });
 
 describe('벽과 실내', () => {
-  it('벽은 잔디·바닥 어디든(올렛길 빼고) 놓이고 못 지나간다; 데크를 벽으로 둘러싸면 실내 — 겨울에 바깥 자리만 −6', () => {
+  it('벽은 바닥 변에 선다(칸을 안 먹음); 네모를 두르면 올렛길 쪽은 문으로 남고 실내 +2 — 겨울에 바깥 자리만 −6', () => {
     const s = yard();
     // 데크 (1..3, 5..6), 입구는 (3,6)→(4,6) 올렛길
     apply(s, { type: 'placeLine', id: 'floor_wood', from: at(1, 5), to: at(3, 5) });
@@ -204,22 +204,33 @@ describe('벽과 실내', () => {
     expect(apply(s, { type: 'place', id: 'table_out', x: at(1, 6).x, y: at(1, 6).y }).ok).toBe(true);
     const t = Object.values(s.facilities).find((f) => f.x === at(1, 6).x)!;
     expect(sheetOf(s, t).indoor).toBe(false);
-    expect(canPlace(s, 'railing', at(4, 6).x, at(4, 6).y).reason).toBe('올렛길 위엔 못 놓아요');
-    // 둘레 잔디에 울타리: 윗줄 y=4 (x 0..3), 아랫줄 y=7 (x 0..3), 왼쪽 x=0 (y 5..6). (4,5)·(4,6)·(4,7)은 올렛길(문), (4,4)는 시작 데크의 통로라 못 막는다
-    expect(canPlace(s, 'railing', at(4, 4).x, at(4, 4).y).reason).toMatch(/통로가 막혀요/);
-    for (let lx = 0; lx <= 3; lx++) expect(apply(s, { type: 'place', id: 'railing', x: at(lx, 4).x, y: at(lx, 4).y }).ok).toBe(true);
-    for (let lx = 0; lx <= 3; lx++) expect(apply(s, { type: 'place', id: 'railing', x: at(lx, 7).x, y: at(lx, 7).y }).ok).toBe(true);
-    for (const ly of [5, 6]) expect(apply(s, { type: 'place', id: 'railing', x: at(0, ly).x, y: at(0, ly).y }).ok).toBe(true);
+    expect(canPlace(s, 'railing', at(2, 5).x, at(2, 5).y).ok).toBe(false); // 벽은 시설처럼 못 놓는다
+    const money = s.money;
+    // 데크 네모 둘레에 나무 판벽: 변 10개 중 동쪽 두 변은 올렛길(4,5)·(4,6)에 닿아 문이라 비워진다 → 8변
+    expect(apply(s, { type: 'wallRect', id: 'wall_wood', from: at(1, 5), to: at(3, 6) }).ok).toBe(true);
+    expect(money - s.money).toBe(8 * 25_000);
+    expect(wallBetween(s, at(3, 6), at(4, 6))).toBeNull();           // 문
+    expect(wallBetween(s, at(1, 5), at(1, 4))).toBe('wall_wood');    // 북 변
+    expect(walkable(s, at(1, 4).x, at(1, 4).y)).toBe(false);        // 잔디는 원래 못 걷는다
     expect(sheetOf(s, t).indoor).toBe(true);
-    expect(walkable(s, at(1, 4).x, at(1, 4).y)).toBe(false);
-    // 겨울: 실내는 그대로, 바깥 자리는 −6
+    expect(sheetOf(s, t).season).toBe(2);                            // 실내 +2
+    // 같은 자리에 또 두르면 「이미 벽」이라 실패
+    expect(apply(s, { type: 'wallRect', id: 'wall_wood', from: at(1, 5), to: at(3, 6) }).ok).toBe(false);
+    // 손님은 벽을 못 건넌다: 정류장에서 데크로는 문으로만
+    expect(apply(s, { type: 'place', id: 'table_out', x: at(2, 5).x, y: at(2, 5).y }).ok).toBe(true);
+    // 겨울: 실내는 +2 그대로, 바깥 자리는 −6
     s.clock.month = 1;
-    expect(sheetOf(s, t).season).toBe(0);
+    expect(sheetOf(s, t).season).toBe(2);
     apply(s, { type: 'placeLine', id: 'floor_wood', from: at(5, 6), to: at(6, 6) });
     expect(apply(s, { type: 'place', id: 'table_out', x: at(6, 6).x, y: at(6, 6).y }).ok).toBe(true);
     const out = Object.values(s.facilities).find((f) => f.x === at(6, 6).x)!;
     expect(sheetOf(s, out)).toMatchObject({ indoor: false, season: -6 });
     s.clock.month = 5;
     expect(sheetOf(s, out).season).toBe(0);
+    // 걷어내기: 한 칸 둘레의 벽을 반값에
+    const m2 = s.money;
+    expect(apply(s, { type: 'removeWalls', x: at(1, 5).x, y: at(1, 5).y }).ok).toBe(true); // 북·서 변 2개
+    expect(s.money - m2).toBe(2 * 12_500);
+    expect(sheetOf(s, t).indoor).toBe(false);
   });
 });

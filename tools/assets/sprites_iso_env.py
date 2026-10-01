@@ -402,11 +402,47 @@ def wall_segment(axis: str) -> IsoCanvas:
     return c
 
 
+def room_wall(kind: str, axis: str) -> IsoCanvas:
+    """데크 변에 세우는 방 벽 한 칸 (칸을 안 먹고 변 위에 선다). 'ne'는 셀의 y=0 변(화면 우상), 'nw'는 x=0 변(화면 좌상).
+    fence 낮은 나무 울타리 · wood 나무 판벽 · plaster 흰 회벽 · window 창 있는 회벽 · stone 돌담."""
+    from px import PAL
+    from iso_parts import fence as fence_fn, WOOD as WOOD3, DARKWOOD
+    from sprites_iso_objects import PLASTER
+    wood = PAL['wood']; basalt = PAL['basalt']
+    t = 0.18
+    c = cv(30)
+    rect = (0, 0, 1, t) if axis == 'ne' else (0, 0, t, 1)
+    if kind == 'fence':
+        pts = [(0.04, t / 2), (0.5, t / 2), (0.96, t / 2)] if axis == 'ne' else [(t / 2, 0.04), (t / 2, 0.5), (t / 2, 0.96)]
+        fence_fn(c, pts, h=11, pal=WOOD3, rails=(4, 9), post_w=2)
+    elif kind == 'wood':
+        c.box(24, wood, rect)
+        # 판자 줄: 보이는 면에 가로선
+        for z in (6, 12, 18):
+            if axis == 'ne': c.line((0, t, z), (1, t, z), wood[0])
+            else: c.line((t, 0, z), (t, 1, z), wood[0])
+        c.pillar(0, 0, 2, 26, DARKWOOD); c.pillar(1, 0, 2, 26, DARKWOOD) if axis == 'ne' else c.pillar(0, 1, 2, 26, DARKWOOD)
+    elif kind in ('plaster', 'window'):
+        c.box(24, PLASTER, rect)
+        c.box(3, basalt, rect)  # 굽도리 돌
+        if kind == 'window':
+            g = (0.3, 0, 0.7, t) if axis == 'ne' else (0, 0.3, t, 0.7)
+            c.box(10, GLASS3, g, z0=9)
+            c.box(1, wood, g, z0=19); c.box(1, wood, g, z0=8)
+    else:  # stone
+        c.box(14, basalt, rect)
+        from sprites_iso_objects import stone_texture
+        stone_texture(c, {basalt[0], basalt[1], basalt[2]}, 2.6, 1.8, 6, 4)
+    c.outline()
+    return c
+
+
 def sprites() -> dict[str, Canvas]:
     return {
         # 트랙 E 제주 풍경 장식
         'iso_obj_bus_0': bus(0), 'iso_obj_bus_1': bus(1), 'iso_obj_car_y': car_y(), 'iso_obj_thatched': thatched(),
         'iso_obj_wall_ne': wall_segment('ne'), 'iso_obj_wall_nw': wall_segment('nw'),
+        **{f'iso_obj_w_{k}_{ax}': room_wall(k, ax) for k in ('fence', 'wood', 'plaster', 'window', 'stone') for ax in ('ne', 'nw')},
         'iso_obj_basalt_rock': basalt_rock(), 'iso_obj_dolhareubang': dolhareubang(), 'iso_obj_pampas': pampas(),
         'iso_obj_canola': canola(), 'iso_obj_camellia': camellia(), 'iso_obj_hydrangea': hydrangea(),
         'iso_obj_pine': pine(), 'iso_obj_palm': palm(), 'iso_obj_stone_lantern': stone_lantern(),

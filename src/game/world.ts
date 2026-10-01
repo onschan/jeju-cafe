@@ -47,6 +47,65 @@ export function facilityAt(s: GameState, x: number, y: number) { const id = inBo
 export function footprint(x: number, y: number, w: number, h: number): Pt[] { const out: Pt[] = []; for (let dy = 0; dy < h; dy++) for (let dx = 0; dx < w; dx++) out.push({ x: x + dx, y: y + dy }); return out; }
 export function footOf(s: GameState, id: string): Pt[] { const f = s.facilities[id]!; const d = facilityDef(f.type); return footprint(f.x, f.y, d.w, d.h); }
 
+// ---------- 변 벽 (칸을 안 먹고 변에 선다) ----------
+export type WallSide = 'n' | 'w';
+export interface WallEdge { x: number; y: number; side: WallSide }
+/** 이웃한 두 칸 사이 변의 벽 종류 (없으면 null). a→b가 북이면 a.wn, 남이면 b.wn, 서면 a.ww, 동이면 b.ww. */
+export function wallBetween(s: GameState, a: Pt, b: Pt): string | null {
+  if (!inBounds(s, a.x, a.y) || !inBounds(s, b.x, b.y)) return null;
+  if (b.y === a.y - 1) return cellAt(s, a.x, a.y).wn ?? null;
+  if (b.y === a.y + 1) return cellAt(s, b.x, b.y).wn ?? null;
+  if (b.x === a.x - 1) return cellAt(s, a.x, a.y).ww ?? null;
+  if (b.x === a.x + 1) return cellAt(s, b.x, b.y).ww ?? null;
+  return null;
+}
+/** 변 양쪽 칸 */
+export function edgeCells(e: WallEdge): [Pt, Pt] { return e.side === 'n' ? [{ x: e.x, y: e.y - 1 }, { x: e.x, y: e.y }] : [{ x: e.x - 1, y: e.y }, { x: e.x, y: e.y }]; }
+export function getWall(s: GameState, e: WallEdge): string | null { if (!inBounds(s, e.x, e.y)) return null; const c = cellAt(s, e.x, e.y); return (e.side === 'n' ? c.wn : c.ww) ?? null; }
+export function setWall(s: GameState, e: WallEdge, kind: string | null): void { const c = cellAt(s, e.x, e.y); if (e.side === 'n') c.wn = kind; else c.ww = kind; s.layoutRev++; }
+/** 네모(from~to) 둘레의 변들 */
+export function rectEdges(from: Pt, to: Pt): WallEdge[] {
+  const x0 = Math.min(from.x, to.x), x1 = Math.max(from.x, to.x), y0 = Math.min(from.y, to.y), y1 = Math.max(from.y, to.y);
+  const out: WallEdge[] = [];
+  for (let x = x0; x <= x1; x++) { out.push({ x, y: y0, side: 'n' }); out.push({ x, y: y1 + 1, side: 'n' }); }
+  for (let y = y0; y <= y1; y++) { out.push({ x: x0, y, side: 'w' }); out.push({ x: x1 + 1, y, side: 'w' }); }
+  return out;
+}
+/** 네모 둘레에 벽을 두른다: 되는 변만, 변마다 값. 하나도 못 세우면 실패. */
+export function wallRect(s: GameState, kind: string, from: Pt, to: Pt): ApplyResult {
+  const d = facilityDef(kind);
+  if (d.sub !== 'wall') return { ok: false, reason: '벽이 아니에요' };
+  let n = 0; let fail: string | undefined;
+  for (const e of rectEdges(from, to)) {
+    const r = canWall(s, kind, e);
+    if (!r.ok) { fail = fail ?? r.reason; continue; }
+    if (s.money < d.cost) { fail = '돈이 모자라요'; break; }
+    s.money -= d.cost; s.month.spent += d.cost; setWall(s, e, kind); n++;
+  }
+  return n > 0 ? { ok: true } : { ok: false, reason: fail ?? '세울 변이 없어요' };
+}
+/** 칸 둘레 네 변 */
+export function cellEdges(x: number, y: number): WallEdge[] { return [{ x, y, side: 'n' }, { x, y, side: 'w' }, { x, y: y + 1, side: 'n' }, { x: x + 1, y, side: 'w' }]; }
+/** 변에 벽을 세울 수 있나: 양쪽 다 내 땅·길 아님, 올렛길에 닿으면 문이라 안 됨, 한 시설이 걸쳐 있으면 안 됨, 이미 벽이면 안 됨, 통로 보존. */
+export function canWall(s: GameState, kind: string, e: WallEdge): ApplyResult {
+  const [a, b] = edgeCells(e);
+  if (!inBounds(s, a.x, a.y) || !inBounds(s, b.x, b.y)) return { ok: false, reason: '격자 밖이에요' };
+  if (!owned(s, a.x, a.y) || !owned(s, b.x, b.y)) return { ok: false, reason: '아직 내 땅이 아니에요' };
+  const ca = cellAt(s, a.x, a.y), cb = cellAt(s, b.x, b.y);
+  if (ca.terrain === 'road' || cb.terrain === 'road') return { ok: false, reason: '마을 길엔 못 세워요' };
+  if (ca.floor === 'path' || cb.floor === 'path') return { ok: false, reason: '올렛길 쪽은 문으로 비워요' };
+  if (ca.objectId && ca.objectId === cb.objectId) return { ok: false, reason: '시설을 가로질러선 못 세워요' };
+  if (getWall(s, e)) return { ok: false, reason: '이미 벽이 있어요' };
+  // 통로 보존: 세운 뒤에도 자리·가게마다 정류장에서 걸어 닿는 옆 칸이 남아야 한다
+  setWall(s, e, kind);
+  const reach = reachExcluding(s, new Set());
+  const ok = (foot: Pt[]) => foot.some((p) => DIRS.some((v) => reach.has((p.y + v.y) * s.grid.w + (p.x + v.x)) && !wallBetween(s, p, { x: p.x + v.x, y: p.y + v.y })));
+  let fail: string | undefined;
+  for (const f of Object.values(s.facilities)) { const fd = facilityDef(f.type); if ((fd.tab === 'seat' || fd.tab === 'shop') && !ok(footprint(f.x, f.y, fd.w, fd.h))) { fail = `${josa(f.name ?? fd.name, '으로/로')} 가는 통로가 막혀요`; break; } }
+  setWall(s, e, null);
+  return fail ? { ok: false, reason: fail } : { ok: true };
+}
+
 /** 걷는 칸: 길·바닥·올렛길 중 시설이 안 앉은 칸 */
 export function walkable(s: GameState, x: number, y: number): boolean {
   if (!inBounds(s, x, y)) return false;
@@ -97,9 +156,10 @@ export function isEnclosed(s: GameState, cells: Pt[]): boolean {
     const p = q[i]!;
     for (const v of DIRS) {
       const n = { x: p.x + v.x, y: p.y + v.y };
+      if (wallBetween(s, p, n)) continue;          // 변 벽이 막았다 — 새지 않는다
       if (!inBounds(s, n.x, n.y)) return false;
       const c = cellAt(s, n.x, n.y);
-      if (c.objectId) continue;                    // 벽·시설이 막았다
+      if (c.objectId) continue;                    // 시설이 막았다
       if (c.terrain === 'road' || !c.floor) return false; // 잔디·길 = 바깥 공기
       if (c.floor === 'path') continue;            // 올렛길은 문
       const k = key(n);
@@ -114,7 +174,9 @@ export function isEnclosed(s: GameState, cells: Pt[]): boolean {
 export function canPlace(s: GameState, id: string, x: number, y: number): ApplyResult {
   const d = facilityDef(id);
   if (isFloorDef(d)) return canLayFloor(s, d.floor!, x, y);
+  if (d.sub === 'wall') return { ok: false, reason: '벽은 바닥 위를 드래그해 둘러요' };
   const cells = footprint(x, y, d.w, d.h);
+  for (const p of cells) for (const q of cells) if (Math.abs(p.x - q.x) + Math.abs(p.y - q.y) === 1 && wallBetween(s, p, q)) return { ok: false, reason: '벽에 걸쳐요' };
   for (const p of cells) {
     if (!inBounds(s, p.x, p.y)) return { ok: false, reason: '격자 밖이에요' };
     if (!owned(s, p.x, p.y)) return { ok: false, reason: '아직 내 땅이 아니에요' };
@@ -123,12 +185,12 @@ export function canPlace(s: GameState, id: string, x: number, y: number): ApplyR
     if (c.objectId) return { ok: false, reason: '이미 뭔가 있어요' };
     if (d.tab === 'env' && !d.sub && c.floor) return { ok: false, reason: '나무·바위는 잔디에 심어요' };
     if ((d.tab === 'seat' || d.tab === 'shop') && !c.floor) return { ok: false, reason: '바닥을 먼저 깔아요' };
-    if (c.floor === 'path' && (d.tab !== 'env' || d.sub === 'wall')) return { ok: false, reason: '올렛길 위엔 못 놓아요' };
+    if (c.floor === 'path' && d.tab !== 'env') return { ok: false, reason: '올렛길 위엔 못 놓아요' };
   }
   // 통로 보존: 놓은 뒤에도 (새것 포함) 자리·가게마다 정류장에서 걸어 닿는 옆 칸이 남아야 한다 — 카이로의 「복도에 붙어야 한다」
   const blocked = new Set(cells.map((p) => p.y * s.grid.w + p.x));
   const reach = reachExcluding(s, blocked);
-  const ok = (foot: Pt[]) => foot.some((p) => DIRS.some((v) => reach.has((p.y + v.y) * s.grid.w + (p.x + v.x))));
+  const ok = (foot: Pt[]) => foot.some((p) => DIRS.some((v) => reach.has((p.y + v.y) * s.grid.w + (p.x + v.x)) && !wallBetween(s, p, { x: p.x + v.x, y: p.y + v.y })));
   if ((d.tab === 'seat' || d.tab === 'shop') && !ok(cells)) return { ok: false, reason: '손님이 걸어올 통로가 옆에 없어요' };
   for (const f of Object.values(s.facilities)) {
     const fd = facilityDef(f.type);
@@ -145,7 +207,7 @@ export function reachExcluding(s: GameState, blocked: Set<number>): Set<number> 
     const p = q[i]!;
     for (const v of DIRS) {
       const n = { x: p.x + v.x, y: p.y + v.y }; const k = key(n.x, n.y);
-      if (seen.has(k) || blocked.has(k) || !walkable(s, n.x, n.y)) continue;
+      if (seen.has(k) || blocked.has(k) || !walkable(s, n.x, n.y) || wallBetween(s, p, n)) continue;
       seen.add(k); q.push(n);
     }
   }

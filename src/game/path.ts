@@ -1,5 +1,5 @@
 import type { GameState, Pt } from './types.ts';
-import { walkable, DIRS, BUS_STOP } from './world.ts';
+import { walkable, DIRS, BUS_STOP, wallBetween } from './world.ts';
 /** 정류장에서 걷는 칸 전부까지의 거리·이전 칸 (BFS). 배치가 바뀔 때마다 새로 센다 — 맵이 1,080칸이라 싸다. */
 export function reachFrom(s: GameState, from: Pt): { dist: Map<number, number>; prev: Map<number, number> } {
   const key = (p: Pt) => p.y * s.grid.w + p.x;
@@ -9,7 +9,7 @@ export function reachFrom(s: GameState, from: Pt): { dist: Map<number, number>; 
     const p = q[i]!; const d = dist.get(key(p))!;
     for (const v of DIRS) {
       const n = { x: p.x + v.x, y: p.y + v.y };
-      if (!walkable(s, n.x, n.y) || dist.has(key(n))) continue;
+      if (!walkable(s, n.x, n.y) || dist.has(key(n)) || wallBetween(s, p, n)) continue;
       dist.set(key(n), d + 1); prev.set(key(n), key(p)); q.push(n);
     }
   }
