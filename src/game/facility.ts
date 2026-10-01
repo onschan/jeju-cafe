@@ -43,6 +43,15 @@ export function synergyPairs(s: GameState, f: Facility): { with: string; name: s
   }
   return out;
 }
+/** 이 시설과 어울리는 짝: 상성표에서 반대쪽 목록 (카탈로그 안내용) */
+export function synergyPartners(id: string): { name: string; with: string[] }[] {
+  const out: { name: string; with: string[] }[] = [];
+  for (const sy of SYNERGIES) {
+    if (sy.a.includes(id)) out.push({ name: sy.name, with: sy.b });
+    else if (sy.b.includes(id)) out.push({ name: sy.name, with: sy.a });
+  }
+  return out;
+}
 /** 마당 경치 합: 심어 둔 나무·꽃·바위·장식 전부 (자리별로 따지지 않는다 — 꾸미는 건 꾸미는 것). 손님이 더 오는 데만 쓰인다. */
 export function yardScenery(s: GameState): number {
   let n = 0;
@@ -124,6 +133,22 @@ export function placeFacility(s: GameState, id: string, x: number, y: number): F
   for (const p of footprint(x, y, d.w, d.h)) cellAt(s, p.x, p.y).objectId = f.id;
   s.layoutRev++;
   return f;
+}
+/** 시설을 옮긴다: 원래 자리를 비우고 새 자리에 놓아 본다. 안 되면 되돌린다. */
+export function moveFacility(s: GameState, fid: string, x: number, y: number): ApplyResult {
+  const f = s.facilities[fid];
+  if (!f) return { ok: false, reason: '없는 시설' };
+  if (s.guests.some((g) => g.target === fid && g.phase !== 'out')) return { ok: false, reason: '사용 중' };
+  const ox = f.x, oy = f.y;
+  if (ox === x && oy === y) return { ok: true };
+  const d = facilityDef(f.type);
+  for (const p of footprint(ox, oy, d.w, d.h)) cellAt(s, p.x, p.y).objectId = null;
+  const c = canPlace(s, f.type, x, y);
+  if (!c.ok) { for (const p of footprint(ox, oy, d.w, d.h)) cellAt(s, p.x, p.y).objectId = fid; return c; }
+  f.x = x; f.y = y;
+  for (const p of footprint(x, y, d.w, d.h)) cellAt(s, p.x, p.y).objectId = fid;
+  s.layoutRev++;
+  return { ok: true };
 }
 export function removeFacility(s: GameState, fid: string): ApplyResult {
   const f = s.facilities[fid];

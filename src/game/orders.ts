@@ -28,6 +28,8 @@ export function serveMsOf(s: GameState): number {
   return SERVE_MS * (1 - speedUp(hall)) * (s.staff.some((st) => st.duty === 'service') ? 1 : SELF_SERVE_MULT);
 }
 export function menuKind(id: string): OrderKind { return menuDef(id).kind ?? 'drink'; }
+/** 메뉴를 내줄 수 있나 — 제조대가 하나라도 있어야 한다 */
+export function canServeMenu(s: GameState): boolean { return stationsOf(s, 'drink').length > 0 || stationsOf(s, 'food').length > 0; }
 /** 그 갈래를 만들 수 있는 제조대들 */
 export function stationsOf(s: GameState, kind: OrderKind) {
   return Object.values(s.facilities).filter((f) => { const st = facilityDef(f.type).station; return st === kind || st === 'both'; });

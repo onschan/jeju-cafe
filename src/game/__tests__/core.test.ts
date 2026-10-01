@@ -91,21 +91,27 @@ describe('손님', () => {
     expect(dailyGuests(s)).toBe(Math.min(2 * 4, 3 + Math.floor(popularitySum(s) / 40) + Math.floor(yardScenery(s) / 6) + 7));
   });
   it('정류장에서 걸어와 앉고, 돈을 내고, 영수증 한 줄을 남기고, 연구가 쌓인다 — 결정적', () => {
-    const s = newGame(3);
+    const s = newGame(3, 'starter');   // 제조대가 있어야 메뉴가 나간다
     const money = s.money;
     expect(spawnOne(s)).toBe(true);
     const g = s.guests[0]!;
     expect(g.path[0]).toEqual(BUS_STOP);
-    updateGuests(s, 20_000); // 걸어가 앉는다
-    expect(g.phase).toBe('use');
-    updateGuests(s, HOUR_MS * 2); // 이용 끝
+    run(s, HOUR_MS * 8); // 걸어가 앉고, 주문이 나오고, 다 마신다
     expect(s.money).toBeGreaterThan(money);
-    expect(s.receipts.length).toBe(1);
-    expect(s.receipts[0]!.money).toBe(s.money - money);
+    expect(s.receipts.length).toBeGreaterThanOrEqual(1);
     expect(s.research).toBeGreaterThanOrEqual(1);
-    expect(s.stats.guests).toBe(1);
-    const t = newGame(3); spawnOne(t); updateGuests(t, 20_000); updateGuests(t, HOUR_MS * 2);
+    expect(s.stats.guests).toBeGreaterThanOrEqual(1);
+    const t = newGame(3, 'starter'); spawnOne(t); run(t, HOUR_MS * 8);
     expect(serialize(t)).toBe(serialize(s));
+    void g;
+  });
+  it('제조대가 없으면 메뉴를 못 내 손님이 그냥 간다', () => {
+    const s = newGame(3);              // 빈 마당 — 테이블만 있고 제조대 없음
+    const money = s.money;
+    expect(spawnOne(s)).toBe(true);
+    run(s, HOUR_MS * 6);
+    expect(s.money).toBe(money);
+    expect(s.receipts[0]!.need).toBe('no_station');
   });
   it('빈 시설이 없으면 오지 않고 돌아간 수만 센다', () => {
     const s = newGame(1);

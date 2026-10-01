@@ -7,7 +7,7 @@ import { sheetOf, usables, approachCell, seatCapacity, popularitySum, amenities,
 import { busReach, pathTo, reachFrom } from './path.ts';
 import { BUS_STOP } from './world.ts';
 import { staffSkill, serverFor } from './staff.ts';
-import { order, orderOf, updateOrders, menuKind, pickMenu, stationsOf, MADE_MONEY, MADE_SCORE, WAIT_OK_MS, WAIT_BAD_MS } from './orders.ts';
+import { order, orderOf, updateOrders, menuKind, pickMenu, stationsOf, canServeMenu, MADE_MONEY, MADE_SCORE, WAIT_OK_MS, WAIT_BAD_MS } from './orders.ts';
 
 export const BASE_DAILY_GUESTS = 3;
 export const POP_PER_GUEST = 40;
@@ -95,7 +95,7 @@ function charmChance(s: GameState): number { return Math.min(0.8, 0.5 + staffSki
 /** 편의 시설이 손님 점수에 더하는 값: 화장실 +4, 청소 도구실 +2 */
 export function amenityScore(s: GameState): number { const a = amenities(s); return (a.has('restroom') ? 4 : 0) + (a.has('cleaning') ? 2 : 0); }
 /** 니즈 id → 글 */
-export const NEED_KO: Record<string, string> = { wait: '너무 오래 기다렸어요', liked: '좋아하는 시설이 없어요', scenery: '마당이 휑해요', comfort: '아늑함이 아쉬워요', service: '직원이 모자라요', restroom: '화장실이 없어요', synergy: '상성 짝이 없어요', level: '자리 단계가 낮아요', winter: '바깥이 추워요' };
+export const NEED_KO: Record<string, string> = { no_station: '마실 걸 못 받았어요', wait: '너무 오래 기다렸어요', liked: '좋아하는 시설이 없어요', scenery: '마당이 휑해요', comfort: '아늑함이 아쉬워요', service: '직원이 모자라요', restroom: '화장실이 없어요', synergy: '상성 짝이 없어요', level: '자리 단계가 낮아요', winter: '바깥이 추워요' };
 /** 만족 못 한 까닭 하나: 그 손님층이 가장 아쉬워한 것 */
 function needOf(s: GameState, f: Facility, sh: ReturnType<typeof sheetOf>, type: string): string {
   const d = facilityDef(f.type);
@@ -123,18 +123,20 @@ function finishUse(s: GameState, g: Guest): void {
   if (f) {
     const d = facilityDef(f.type);
     const sh = sheetOf(s, f);
-    let made = 0;
+    let made = 0; let noMenu = false;
     if (d.tab === 'seat') {
-      const pick = pickMenu(s, t.wallet, t.menu);
-      money = (pick ? menuDef(pick).price : 0) + sh.fee;
+      const pick = canServeMenu(s) ? pickMenu(s, t.wallet, t.menu) : null;
+      // 제조대가 없으면 메뉴를 못 낸다 — 자리값만 받고 손님은 아쉬워한다
+      noMenu = !canServeMenu(s);
+      money = noMenu ? 0 : (pick ? menuDef(pick).price : 0) + sh.fee;
       if (pick && stationsOf(s, menuKind(pick)).length > 0) { money = Math.round(money * MADE_MONEY); made = MADE_SCORE; } // 제조대에서 정성껏
       if (amenities(s).has('kitchen')) money = Math.round(money * 1.15); // 주방: 자리 결제 +15%
     } else money = Math.min(t.wallet, sh.fee);
     const wait = g.waitMs ?? 0;
     const waitPenalty = wait > WAIT_BAD_MS ? -10 : wait > WAIT_OK_MS ? -5 : 0;
-    const score = sh.total + serviceBonus(s) / 3 + cleanBonus(s) + amenityScore(s) + made + waitPenalty;
+    const score = sh.total + serviceBonus(s) / 3 + cleanBonus(s) + amenityScore(s) + made + waitPenalty - (noMenu ? 8 : 0);
     mood = score >= t.expect ? 'happy' : score >= t.expect - 6 ? 'meh' : 'angry';
-    if (mood !== 'happy') need = waitPenalty < 0 ? 'wait' : needOf(s, f, sh, t.id);
+    if (mood !== 'happy') need = noMenu ? 'no_station' : waitPenalty < 0 ? 'wait' : needOf(s, f, sh, t.id);
     f.uses++; f.sales += money;
   }
   const fame = mood === 'happy' ? (nextRandom(s) < charmChance(s) ? 1 : 0) : mood === 'angry' ? -1 : 0; // 기쁜 손님 둘에 하나꼴로 입소문 (매력 있는 직원이면 더)

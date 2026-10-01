@@ -15,7 +15,7 @@ import { Title } from './Title';
 import { EndingScreen } from './Ending';
 import { unlockAudio, audioReady, sfx, bgm, setBgmLayer, isMuted, setMuted, getBgmVolume, getSfxVolume, setBgmVolume, setSfxVolume } from './audio';
 import { guestAccs } from './guestLook';
-import { FACILITIES, GUEST_TYPES, MENUS, INVESTS, facilityDef, isFloorDef, isUsable, sheetOf, usables, popularitySum, dailyGuests, unlockables, canUnlock, canLevelUp, LEVEL_COST, levelMoney, currentObjective, OBJECTIVES, seasonOf, canHire, upkeepTotal, wagesTotal, myScore, rivalScore, RIVALS, lineCells, canLayFloor, parcelAt, cellAt, parcelAdjacent, type GameState, type Tab, type Facility, type Pt, type Parcel, type Objective, type Guest, previewPlace, AMENITY_TEXT, cellEdges, getWall, edgeOf, nearestSide, type Side4, needsSummary, SKILLS, SKILL_KO, SKILL_DESC, DUTY_KO, gradeOf, effSkill, skillSum, staffSkill, CHANNELS, canRecruit, channelDef, STAFF_MAX, orderStats, makeMsOf, serveMsOf, stationsOf, orderOf, menuDef, yardScenery, YARD_PER_GUEST, HOUR_MS, type Grade, type Staff, type Skill } from '../game/index.ts';
+import { FACILITIES, GUEST_TYPES, MENUS, INVESTS, facilityDef, isFloorDef, isUsable, sheetOf, usables, popularitySum, dailyGuests, unlockables, canUnlock, canLevelUp, LEVEL_COST, levelMoney, currentObjective, OBJECTIVES, seasonOf, canHire, upkeepTotal, wagesTotal, myScore, rivalScore, RIVALS, lineCells, canLayFloor, parcelAt, cellAt, parcelAdjacent, type GameState, type Tab, type Facility, type Pt, type Parcel, type Objective, type Guest, previewPlace, AMENITY_TEXT, cellEdges, getWall, edgeOf, nearestSide, type Side4, needsSummary, SKILLS, SKILL_KO, SKILL_DESC, DUTY_KO, gradeOf, effSkill, skillSum, staffSkill, CHANNELS, canRecruit, channelDef, STAFF_MAX, orderStats, makeMsOf, serveMsOf, stationsOf, orderOf, menuDef, synergyPartners, yardScenery, YARD_PER_GUEST, HOUR_MS, type Grade, type Staff, type Skill } from '../game/index.ts';
 
 type Win = 'build' | 'guests' | 'ops' | 'cafe' | 'system' | null;
 /** 하단 띠(영수증 2줄 + 요약 + 메뉴) 높이 */
@@ -40,6 +40,8 @@ export function App() {
   const [intro, setIntro] = useState<null | { replay: boolean; then: () => void }>(null);
   const [buyAsk, setBuyAsk] = useState<Parcel | null>(null);
   const [floorSel, setFloorSel] = useState<Pt | null>(null);
+  const [moving, setMoving] = useState<string | null>(null);
+  const movingRef = useRef<string | null>(null); movingRef.current = moving;
   const [chest, setChest] = useState<Objective | null>(null);
   const [monthCard, setMonthCard] = useState(false);
   const [daySum, setDaySum] = useState<{ today: { guests: number; income: number }; prev: { guests: number; income: number } | null } | null>(null);
@@ -136,6 +138,13 @@ export function App() {
       onTap: (x, y, fx = 0.5, fy = 0.5) => {
         const st = getState();
         sfx('tap');
+        const mv = movingRef.current;
+        if (mv) {
+          const r = dispatch({ type: 'move', facilityId: mv, x, y });
+          if (!r.ok) { viewRef.current?.say(x, y, r.reason ?? ''); sfx('error'); }
+          else { sfx('place'); setMoving(null); setSelected(mv); }
+          return;
+        }
         const id = placingRef.current;
         if (id) {
           // 탭은 자리만 잡는다 — 놓는 건 띠의 「놓기/깔기」로 (탭마다 놓이면 실수가 잦다)
@@ -213,6 +222,11 @@ export function App() {
         <div style={{ display: 'flex', gap: 6, alignItems: 'baseline' }}><b style={{ color: C.wood }}>{tut.i + 1}/{TUTORIAL.length}</b><b style={{ flex: 1 }}>{tut.step.text}</b><span style={small}>{wonShort(tut.step.reward)}</span></div>
         <div style={{ ...small, fontSize: 11 }}>{tut.step.how}</div>
       </div> : obj && !placing && <div style={{ position: 'absolute', top: 36, left: 8, right: 8, ...panel, padding: '4px 8px', fontSize: 13, cursor: 'pointer' }} onClick={() => setWin('cafe')}><Ico name="flag" /> {obj.text} <span style={small}>· 상금 {wonShort(obj.reward)}</span></div>}
+      {moving && <div style={{ position: 'absolute', top: 36, left: 8, right: 8, ...panel, padding: '6px 8px', fontSize: 13, display: 'flex', alignItems: 'center', gap: 8, background: '#fff0c0' }}>
+        <Sprite id={getState().facilities[moving]?.type ?? 'table_out'} size={28} />
+        <b style={{ flex: 1 }}>옮길 자리를 탭</b>
+        <button style={btnOff} onClick={() => setMoving(null)}>취소</button>
+      </div>}
       {/* 배치 모드 띠 */}
       {placing && <PlacingBar id={placing} ghost={ghost} wallMode={wallMode} wallSide={wallSide} wallErase={wallErase} onWallErase={(v) => { setWallErase(v); setGhost(null); }} onWallMode={(m) => { setWallMode(m); setGhost(null); }} onWallSide={(sd) => { setWallSide(sd); setGhost((g) => g && g.edges ? ghostOf(getState(), g.id, g.x, g.y, g.line, (g.line ? lineCells(g.line.from, g.line.to) : [{ x: g.x, y: g.y }]).map((c) => edgeOf(c.x, c.y, sd === 'auto' ? 'n' : sd))) : g); }} onDone={() => { setPlacing(null); setGhost(null); }} onConfirm={() => {
         const g = ghost; if (!g) return; const d = facilityDef(placing);
@@ -242,7 +256,7 @@ export function App() {
       {win === 'ops' && <OpsWindow s={s} onClose={() => setWin(null)} />}
       {win === 'cafe' && <CafeWindow s={s} onClose={() => setWin(null)} />}
       {win === 'system' && <SystemWindow onClose={() => setWin(null)} />}
-      {sel && !placing && !win && !guestSel && <FacilityCard s={s} f={sel} onSelect={setSelected} onClose={() => setSelected(null)} onMore={(id) => { setSelected(null); setPlacing(id); }} onGuest={setGuestSel} />}
+      {sel && !placing && !win && !guestSel && <FacilityCard s={s} f={sel} onSelect={setSelected} onClose={() => setSelected(null)} onMore={(id) => { setSelected(null); setPlacing(id); }} onGuest={setGuestSel} onMove={(id) => { setSelected(null); setMoving(id); }} />}
       {guestSel && !placing && !win && (s.guests.find((g) => g.id === guestSel) ? <GuestPopup s={s} g={s.guests.find((g) => g.id === guestSel)!} onClose={() => setGuestSel(null)} /> : null)}
       {!sel && !guestSel && floorSel && !placing && !win && <FloorCard s={s} p={floorSel} onClose={() => setFloorSel(null)} onMore={(id) => { setFloorSel(null); setPlacing(id); }} />}
       {buyAsk && <Ask text={`${buyAsk.name}을 ${won(buyAsk.price)}에 살까요?`} sub={!parcelAdjacent(s, buyAsk) ? '내 땅과 붙어 있어야 살 수 있어요' : s.money < buyAsk.price ? `돈 부족 (지금 ${wonShort(s.money)})` : `사면 ${wonShort(s.money - buyAsk.price)} 남아요`} yesOff={!parcelAdjacent(s, buyAsk) || s.money < buyAsk.price} onYes={() => { const r = dispatch({ type: 'buyParcel', id: buyAsk.id }); if (!r.ok) flash(r.reason); setBuyAsk(null); }} onNo={() => setBuyAsk(null)} />}
@@ -471,6 +485,7 @@ function BuildWindow({ s, onPick, onClose }: { s: GameState; onPick: (id: string
           {isOpen && d.indoor && d.sub !== 'wall' && <div style={small}>실내 전용</div>}
           {isOpen && d.onGrass && <div style={small}>잔디 OK</div>}
           {isOpen && d.tags && d.tags.length > 0 && <div style={small}>{d.tags.map((t) => GUEST_TYPES.find((g) => g.id === t)?.name).join('·')}에게 인기</div>}
+          {isOpen && (() => { const ps = synergyPartners(d.id); return ps.length > 0 && <div style={{ ...small, color: C.green }}>어울림: {ps.map((p) => `${p.name}(${p.with.map((w) => facilityDef(w).name).join('·')})`).join(' · ')}</div>; })()}
         </div>
         {isOpen && <button style={s.money >= d.cost ? btnGold : btnOff} onClick={() => { if (s.money >= d.cost) onPick(d.id); }}>{d.sub === 'floor' ? '깔기' : d.sub === 'wall' ? '두르기' : '놓기'}</button>}
       </div>}
@@ -722,7 +737,7 @@ function GuestPopup({ s, g, onClose }: { s: GameState; g: Guest; onClose: () => 
     </div>
   );
 }
-function FacilityCard({ s, f, onSelect, onClose, onMore, onGuest }: { s: GameState; f: Facility; onSelect: (id: string) => void; onClose: () => void; onMore: (id: string) => void; onGuest: (id: string) => void }) {
+function FacilityCard({ s, f, onSelect, onClose, onMore, onGuest, onMove }: { s: GameState; f: Facility; onSelect: (id: string) => void; onClose: () => void; onMore: (id: string) => void; onGuest: (id: string) => void; onMove: (id: string) => void }) {
   const d = facilityDef(f.type);
   const sh = sheetOf(s, f);
   const list = Object.values(s.facilities);
@@ -753,6 +768,7 @@ function FacilityCard({ s, f, onSelect, onClose, onMore, onGuest }: { s: GameSta
       {(() => { const here = s.guests.filter((g) => g.target === f.id && g.phase === 'use'); return here.length > 0 && <div style={{ ...small, display: 'flex', gap: 4, alignItems: 'center', flexWrap: 'wrap' }}>지금 손님: {here.map((g) => <button key={g.id} style={{ ...btnOff, padding: '1px 6px', fontSize: 12 }} onClick={() => onGuest(g.id)}>{GUEST_TYPES.find((t) => t.id === g.type)?.name} 보기</button>)}</div>; })()}
       <div style={{ display: 'flex', gap: 6, marginTop: 6, flexWrap: 'wrap' }}>
         {(isUsable(d) || d.station) && <button style={lv.ok ? btn : btnOff} title={lv.reason} onClick={() => { const r = dispatch({ type: 'levelUp', facilityId: f.id }); if (!r.ok) alert(r.reason); }}>Lv업 <span style={{ fontSize: 11 }}>{LEVEL_COST[f.level] !== undefined ? `(연구 ${LEVEL_COST[f.level]} · ${wonShort(levelMoney(s, f.id))})` : '(최고)'}</span></button>}
+        <button style={btn} onClick={() => onMove(f.id)}>옮기기</button>
         <button style={btn} onClick={() => onMore(f.type)}>같은 것 더</button>
         {(isUsable(d) || d.station) && (() => { const same = Object.values(s.facilities).filter((x) => x.type === f.type && canLevelUp(s, x.id).ok); return same.length >= 2 && <button style={btn} onClick={() => { let n = 0; for (const x of same) if (dispatch({ type: 'levelUp', facilityId: x.id }).ok) n++; if (n) sfx('unlock'); }}>{d.name} 전부 Lv업 <span style={{ fontSize: 11 }}>({same.length}개 · {wonShort(same.reduce((a, x) => a + levelMoney(s, x.id), 0))})</span></button>; })()}
         <button style={btnOff} onClick={() => setRenaming(true)}>이름</button>

@@ -27,6 +27,8 @@ const FLOAT_MS = 900;
 export const WALL_SPRITE: Record<string, string> = { railing: 'fence', wall_wood: 'wood', wall_plaster: 'plaster', wall_window: 'window', wall: 'stone', wall_brick: 'brick', wall_glass: 'glass' };
 /** 밤에 빛을 내는 시설과 빛 반경(px) */
 const LIGHT_RADIUS: Record<string, number> = { garden_lamp: 56, streetlight: 84 };
+/** 직원이 하는 일 → 머리 위 아이콘 */
+const ACT_ICON: Record<string, string> = { make: 'icon_coffee', serve: 'icon_meal', clean: 'icon_harvest', promo: 'icon_promo' };
 
 export class View {
   app = new Application();
@@ -41,7 +43,7 @@ export class View {
   private facilityNodes = new Map<string, { node: Container; type: string; key: string }>();
   private guestNodes = new Map<string, { node: CharacterNode; dir: Dir; frame: 0 | 1 | 2; walked: number; bubble: string }>();
   /** 직원: 마당 바닥 위를 서성인다 (그림 전용 — 사림에는 위치가 없다) */
-  private staffNodes = new Map<string, { node: CharacterNode; x: number; y: number; tx: number; ty: number; idleUntil: number; dir: Dir; shownDir: Dir; frame: 0 | 1 | 2 }>();
+  private staffNodes = new Map<string, { node: CharacterNode; x: number; y: number; tx: number; ty: number; idleUntil: number; dir: Dir; shownDir: Dir; frame: 0 | 1 | 2; act: string }>();
   private floorCells: Pt[] = []; private floorRev = -1;
   private firstSync = true;
   private sparkles: { sp: Sprite; born: number }[] = [];
@@ -231,7 +233,14 @@ export class View {
         const c = pickCell();
         const node = makeCharacterNode(partsOfFace(st.face, ['apron']), 'down', 1);
         this.actors.addChild(node);
-        e = { node, x: c.x, y: c.y, tx: c.x, ty: c.y, idleUntil: now + 1000, dir: 'down', shownDir: 'down', frame: 1 };
+        // 직원은 이름표를 달아 손님과 구분한다
+        const tag = new Container();
+        const l = label(st.name, 9); l.anchor.set(0.5, 1); l.style.fill = 0xfff8e8;
+        const w = l.width + 8;
+        tag.addChild(new Graphics().roundRect(-w / 2, -12, w, 12, 3).fill({ color: 0x6b4423, alpha: 0.92 }).stroke({ color: 0x3b1f0e, width: 1 }), l);
+        tag.label = 'tag'; tag.position.set(0, -CHAR_H - 14);
+        node.addChild(tag);
+        e = { node, x: c.x, y: c.y, tx: c.x, ty: c.y, idleUntil: now + 1000, dir: 'down', shownDir: 'down', frame: 1, act: '' };
         this.staffNodes.set(st.id, e);
       }
       const cx0 = Math.round(e.x), cy0 = Math.round(e.y);
@@ -259,9 +268,30 @@ export class View {
       e.node.zIndex = depth(e.x, e.y) + 0.25;
       const frame = moving ? (Math.floor(now / 140) % 3) as 0 | 1 | 2 : 1;
       if (frame !== e.frame || e.dir !== e.shownDir) { updateCharacterNode(e.node, e.dir, frame); e.frame = frame; e.shownDir = e.dir; }
+      // 지금 무슨 일을 하는지 말풍선으로 (제조·서빙·청소·홍보)
+      const act = this.staffAct(state, st);
+      if (act !== e.act) {
+        e.node.getChildByLabel('act')?.destroy({ children: true });
+        e.act = act;
+        if (act && hasAssets()) {
+          const icon = peekTex(ACT_ICON[act] ?? 'icon_hand');
+          if (icon) { const b = makeSpeechBubble({ icon, iconSize: 14 }); b.label = 'act'; b.position.set(12, -CHAR_H - 2); e.node.addChild(b); }
+        }
+      }
+      const ab = e.node.getChildByLabel('act');
+      if (ab) ab.position.y = -CHAR_H - 2 + Math.round(Math.sin(now / 260 + i) * 1.5);
     }
   }
   private staffLast = 0;
+
+  /** 그 직원이 지금 하는 일 */
+  private staffAct(state: GameState, st: { id: string; duty: string }): string {
+    if (st.duty === 'speed') return state.orders.some((o) => o.phase === 'make') ? 'make' : '';
+    if (st.duty === 'service') return state.orders.some((o) => o.phase === 'serve') ? 'serve' : '';
+    if (st.duty === 'clean') return 'clean';
+    if (st.duty === 'charm') return 'promo';
+    void st.id; return '';
+  }
 
   /** 담당 자리: 접객은 자리 옆, 바는 카운터·주방 옆, 정리는 마당 아무 데나, 홍보는 올렛길 입구 */
   private dutyCell(state: GameState, st: { duty: string }, i: number): Pt | null {

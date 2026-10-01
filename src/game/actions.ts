@@ -1,6 +1,6 @@
 import type { GameState, Action, ApplyResult } from './types.ts';
 import { facilityDef, isFloorDef } from './data.ts';
-import { placeAndBurst, removeFacility } from './facility.ts';
+import { placeAndBurst, removeFacility, moveFacility } from './facility.ts';
 import { canLayFloor, layFloor, clearFloor, lineCells, cellAt, inBounds, parcelAdjacent, cellEdges, getWall, setWall, wallRect, wallEdges } from './world.ts';
 import { canUnlock, unlock, canLevelUp, levelUp } from './research.ts';
 import { canHire, hire, canRecruit, recruit } from './staff.ts';
@@ -44,6 +44,7 @@ function applyInner(s: GameState, a: Action): ApplyResult {
       for (const e of cellEdges(a.x, a.y)) { const k = getWall(s, e); if (!k) continue; setWall(s, e, null); s.money += Math.round(facilityDef(k).cost / 2); n++; }
       return n > 0 ? { ok: true } : { ok: false, reason: '걷을 벽 없음' };
     }
+    case 'move': return moveFacility(s, a.facilityId, a.x, a.y);
     case 'remove': {
       const f = s.facilities[a.facilityId];
       if (!f) return { ok: false, reason: '없는 시설' };

@@ -112,6 +112,7 @@ export type Action =
   | { type: 'removeWalls'; x: number; y: number }       // 그 칸 둘레 벽 네 변을 걷는다
   | { type: 'removeWall'; x: number; y: number; side: 'n' | 'w' } // 변 하나만 걷는다
   | { type: 'remove'; facilityId: string }
+  | { type: 'move'; facilityId: string; x: number; y: number }   // 시설을 다른 칸으로
   | { type: 'removeFloor'; x: number; y: number }
   | { type: 'rename'; facilityId: string; name: string }
   | { type: 'levelUp'; facilityId: string }   // 연구+돈으로 단계 올리기
