@@ -15,7 +15,7 @@ import { Title } from './Title';
 import { EndingScreen } from './Ending';
 import { unlockAudio, audioReady, sfx, bgm, setBgmLayer, isMuted, setMuted, getBgmVolume, getSfxVolume, setBgmVolume, setSfxVolume } from './audio';
 import { guestAccs } from './guestLook';
-import { FACILITIES, GUEST_TYPES, MENUS, INVESTS, facilityDef, isFloorDef, isUsable, sheetOf, usables, popularitySum, dailyGuests, unlockables, canUnlock, canLevelUp, LEVEL_COST, levelMoney, currentObjective, OBJECTIVES, seasonOf, canHire, upkeepTotal, wagesTotal, myScore, rivalScore, RIVALS, lineCells, canLayFloor, parcelAt, cellAt, parcelAdjacent, type GameState, type Tab, type Facility, type Pt, type Parcel, type Objective, type Guest, previewPlace, AMENITY_TEXT, cellEdges, getWall, edgeOf, nearestSide, type Side4, needsSummary, SKILLS, SKILL_KO, SKILL_DESC, DUTY_KO, gradeOf, effSkill, skillSum, staffSkill, CHANNELS, canRecruit, channelDef, STAFF_MAX, type Grade, type Staff, type Skill } from '../game/index.ts';
+import { FACILITIES, GUEST_TYPES, MENUS, INVESTS, facilityDef, isFloorDef, isUsable, sheetOf, usables, popularitySum, dailyGuests, unlockables, canUnlock, canLevelUp, LEVEL_COST, levelMoney, currentObjective, OBJECTIVES, seasonOf, canHire, upkeepTotal, wagesTotal, myScore, rivalScore, RIVALS, lineCells, canLayFloor, parcelAt, cellAt, parcelAdjacent, type GameState, type Tab, type Facility, type Pt, type Parcel, type Objective, type Guest, previewPlace, AMENITY_TEXT, cellEdges, getWall, edgeOf, nearestSide, type Side4, needsSummary, SKILLS, SKILL_KO, SKILL_DESC, DUTY_KO, gradeOf, effSkill, skillSum, staffSkill, CHANNELS, canRecruit, channelDef, STAFF_MAX, orderStats, makeMsOf, serveMsOf, stationsOf, HOUR_MS, type Grade, type Staff, type Skill } from '../game/index.ts';
 
 type Win = 'build' | 'guests' | 'ops' | 'cafe' | 'system' | null;
 /** 하단 띠(영수증 2줄 + 요약 + 메뉴) 높이 */
@@ -494,9 +494,10 @@ function Skills({ st, duty }: { st: Pick<Staff, 'service' | 'speed' | 'clean' | 
 }
 /** 팀 효율: 담당별 합과 그 효과 — 「누가 뭘 맡아 얼마를 내고 있나」 */
 function TeamPanel({ s }: { s: GameState }) {
+  const min = (ms: number) => `${(ms / HOUR_MS * 60).toFixed(0)}분`;
   const rows: { k: Skill; v: number; eff: string }[] = [
-    { k: 'service', v: staffSkill(s, 'service'), eff: `손님 만족 +${(Math.min(30, staffSkill(s, 'service') * 1.2) / 3).toFixed(1)}` },
-    { k: 'speed', v: staffSkill(s, 'speed'), eff: `자리 회전 ${Math.round(Math.min(40, staffSkill(s, 'speed') * 1.5))}% 빨라짐` },
+    { k: 'service', v: staffSkill(s, 'service'), eff: `서빙 ${min(serveMsOf(s))} · 만족 +${(Math.min(30, staffSkill(s, 'service') * 1.2) / 3).toFixed(1)}` },
+    { k: 'speed', v: staffSkill(s, 'speed'), eff: `제조 ${min(makeMsOf(s, 'drink'))}/잔` },
     { k: 'clean', v: staffSkill(s, 'clean'), eff: `깔끔 점수 +${Math.min(6, staffSkill(s, 'clean') * 0.3).toFixed(1)}` },
     { k: 'charm', v: staffSkill(s, 'charm'), eff: `입소문 ${Math.round(Math.min(0.8, 0.5 + staffSkill(s, 'charm') * 0.015) * 100)}%` },
   ];
@@ -504,6 +505,7 @@ function TeamPanel({ s }: { s: GameState }) {
   return (
     <div style={{ ...panel, padding: 8, background: '#fff7e6', display: 'grid', gap: 3 }}>
       <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}><Ico name="staff" /><b>우리 팀</b><span style={small}>담당한 능력만 제값, 나머지는 1/4</span></div>
+      {(() => { const o = orderStats(s); const st = stationsOf(s, 'drink').length + stationsOf(s, 'food').length; return <div style={{ ...small, fontSize: 12, borderBottom: '1px solid #d8c9a8', paddingBottom: 3, marginBottom: 2 }}>{st === 0 ? <span style={{ color: C.red }}>제조대가 없어요 — 손님이 셀프로 가져가요 (건축 › 실내 › 제조대)</span> : <>제조대 {st}대 · 주문 대기 <b style={{ color: C.ink }}>{o.wait}</b> · 만드는 중 <b style={{ color: C.ink }}>{o.make}</b> · 서빙 중 <b style={{ color: C.ink }}>{o.serve}</b></>}</div>; })()}
       {rows.map((r) => <div key={r.k} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12 }}>
         <span style={{ minWidth: 44, color: C.soft }}>{SKILL_KO[r.k]}</span>
         <span style={{ flex: 1, height: 8, background: '#e6d9bd', border: `1px solid ${C.wood}`, borderRadius: 2, overflow: 'hidden' }}><span style={{ display: 'block', width: `${(r.v / max) * 100}%`, height: '100%', background: C.wood }} /></span>
@@ -609,7 +611,9 @@ function CafeWindow({ s, onClose }: { s: GameState; onClose: () => void }) {
         <Row k="지난달" v={s.lastMonth ? `수입 ${won(s.lastMonth.income)} · 지출 ${won(s.lastMonth.spent)} · 손님 ${s.lastMonth.guests}` : '—'} />
         <Row k="이달 유지비 예정" v={`${won(upkeepTotal(s))} + 월급 ${won(wagesTotal(s))}`} />
         <Row k="누적 손님" v={`${s.stats.guests} (만족 ${s.stats.happy} · 돌아감 ${s.stats.turnedAway})`} />
-        <Row k="직원" v={s.staff.length ? s.staff.map((st) => st.name).join('·') : '없음'} />
+        <Row k="직원" v={s.staff.length ? s.staff.map((st) => `${st.name}(${DUTY_KO[st.duty]})`).join(' · ') : '없음'} />
+        <Row k="주문" v={(() => { const o = orderStats(s); return `대기 ${o.wait} · 제조 ${o.make} · 서빙 ${o.serve}`; })()} />
+        <Row k="제조·서빙 속도" v={`${(makeMsOf(s, 'drink') / HOUR_MS * 60).toFixed(0)}분/잔 · 서빙 ${(serveMsOf(s) / HOUR_MS * 60).toFixed(0)}분`} />
       </div>}
       {tab === 'goals' && <div style={{ display: 'grid', gap: 3 }}>
         <div style={small}>이루면 상금. 순서대로 하나씩.</div>

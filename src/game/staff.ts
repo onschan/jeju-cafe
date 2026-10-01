@@ -8,8 +8,8 @@ export const SKILLS = ['service', 'speed', 'clean', 'charm'] as const;
 export type Skill = (typeof SKILLS)[number];
 export const SKILL_KO: Record<Skill, string> = { service: '접객', speed: '손놀림', clean: '정리', charm: '매력' };
 /** 담당 이름 (그 능력을 맡는 자리) */
-export const DUTY_KO: Record<Skill, string> = { service: '홀 접객', speed: '바(제조)', clean: '정리·청소', charm: '홍보·간판' };
-export const SKILL_DESC: Record<Skill, string> = { service: '손님 만족', speed: '자리 회전', clean: '깔끔 점수', charm: '입소문(명성)' };
+export const DUTY_KO: Record<Skill, string> = { service: '홀 서빙', speed: '바리스타', clean: '정리·청소', charm: '홍보·간판' };
+export const SKILL_DESC: Record<Skill, string> = { service: '서빙 속도·손님 만족', speed: '제조 속도', clean: '깔끔 점수', charm: '입소문(명성)' };
 export type Grade = 'S' | 'A' | 'B' | 'C' | 'D' | 'E';
 export function gradeOf(v: number): Grade { return v >= 10 ? 'S' : v >= 8 ? 'A' : v >= 6 ? 'B' : v >= 4 ? 'C' : v >= 2 ? 'D' : 'E'; }
 /** 담당이면 그대로, 아니면 1/4 */

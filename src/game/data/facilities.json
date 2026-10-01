@@ -703,6 +703,23 @@
   "tags": [
    "worker",
    "couple"
+  ],
+  "station": "drink"
+ },
+ {
+  "id": "prep_bar",
+  "name": "제조대",
+  "tab": "env",
+  "sub": "deco",
+  "w": 1,
+  "h": 1,
+  "cost": 160000,
+  "upkeep": 1200,
+  "unlock": 0,
+  "station": "both",
+  "comfort": 1,
+  "tags": [
+   "worker"
   ]
  },
  {
@@ -720,7 +737,8 @@
   "amenity": "counter",
   "tags": [
    "worker"
-  ]
+  ],
+  "station": "drink"
  },
  {
   "id": "restroom",
@@ -767,7 +785,8 @@
   "amenity": "kitchen",
   "tags": [
    "housewife"
-  ]
+  ],
+  "station": "food"
  },
  {
   "id": "cleaning_room",
@@ -880,7 +899,8 @@
   "indoor": true,
   "tags": [
    "worker"
-  ]
+  ],
+  "station": "drink"
  },
  {
   "id": "boardgame_room",
@@ -1032,7 +1052,8 @@
   "comfort": 3,
   "tags": [
    "worker"
-  ]
+  ],
+  "station": "drink"
  },
  {
   "id": "fireplace",

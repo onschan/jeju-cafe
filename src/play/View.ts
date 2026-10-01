@@ -46,6 +46,7 @@ export class View {
   private firstSync = true;
   private sparkles: { sp: Sprite; born: number }[] = [];
   private wallNodes: Sprite[] = []; private wallRev = -1;
+  private orderMarks = new Map<string, Container>();
   private tileKey = '';
   private ghost: Container | null = null;
   private ghostKey = '';
@@ -103,6 +104,7 @@ export class View {
     this.syncTiles(state);
     this.syncFacilities(state);
     this.syncWalls(state);
+    this.syncOrders(state, now);
     this.syncGuests(state, now);
     this.syncStaff(state, now);
     this.syncGhost(state, ghost);
@@ -275,12 +277,20 @@ export class View {
     };
     const all = Object.values(state.facilities);
     if (st.duty === 'service') {
+      // 서빙 중인 주문이 있으면 그 손님 자리로
+      const serving = state.orders.filter((o) => o.phase === 'serve');
+      if (serving.length > 0) {
+        const o = serving[i % serving.length]!;
+        const g = state.guests.find((q) => q.id === o.guest);
+        const f = g?.target ? state.facilities[g.target] : null;
+        if (f) { const q = near(f); if (q) return q; }
+      }
       const seats = all.filter((f) => facilityDef(f.type).tab === 'seat');
       for (let k = 0; k < seats.length; k++) { const q = near(seats[(i + k) % seats.length]!); if (q) return q; }
       return null;
     }
     if (st.duty === 'speed') {
-      const bars = all.filter((f) => { const d = facilityDef(f.type); return d.amenity === 'counter' || d.amenity === 'kitchen' || d.tab === 'shop'; });
+      const bars = all.filter((f) => { const d = facilityDef(f.type); return !!d.station || d.amenity === 'counter' || d.amenity === 'kitchen' || d.tab === 'shop'; });
       for (let k = 0; k < bars.length; k++) { const q = near(bars[(i + k) % bars.length]!); if (q) return q; }
       return null;
     }
@@ -292,6 +302,27 @@ export class View {
       return best;
     }
     return null; // 정리: 마당을 돌아다닌다
+  }
+
+  /** 제조 중인 제조대 위에 컵 말풍선 — 지금 무엇이 만들어지는지 보이게 */
+  private syncOrders(state: GameState, now: number): void {
+    const making = new Map<string, string>();
+    for (const o of state.orders) if (o.phase === 'make' && o.station) making.set(o.station, o.kind);
+    for (const [id, node] of this.orderMarks) if (!making.has(id)) { node.destroy({ children: true }); this.orderMarks.delete(id); }
+    if (!hasAssets()) return;
+    for (const [id, kind] of making) {
+      const f = state.facilities[id]; if (!f) continue;
+      let node = this.orderMarks.get(id);
+      if (!node) {
+        const icon = peekTex(kind === 'food' ? 'icon_cake' : 'icon_coffee'); if (!icon) continue;
+        node = makeSpeechBubble({ icon, iconSize: 14 });
+        this.actors.addChild(node); this.orderMarks.set(id, node);
+      }
+      const d = facilityDef(f.type);
+      const a = footAnchor(f.x, f.y, d.w, d.h);
+      node.position.set(a.sx, a.sy - 26 + Math.round(Math.sin(now / 220) * 2));
+      node.zIndex = depth(f.x, f.y, d.w, d.h) + 0.6;
+    }
   }
 
   /** 변 벽: 칸의 북·서 변에 선 벽을 그린다. 방 앞쪽(안쪽이 벽 뒤에 있는) 벽은 반투명 — 카이로의 잘라 낸 앞벽처럼 안이 보이게. */
@@ -363,14 +394,14 @@ export class View {
       const frame = (seated || !next) ? 1 : (Math.floor(now / 125) % 3) as 0 | 1 | 2;
       if (dir !== e.dir || frame !== e.frame) { updateCharacterNode(e.node, dir, frame); e.dir = dir; e.frame = frame; }
       // 말풍선: 앉으면 뭘 하는지(커피·가게), 나갈 때 기분. 단계가 바뀌면 갈아 끼운다.
-      const want = g.phase === 'use' ? `use:${g.target ? facilityDef(state.facilities[g.target]?.type ?? 'table_out').tab : 'seat'}` : g.phase === 'out' && g.mood ? `mood:${g.mood}` : '';
+      const want = g.phase === 'use' ? (g.served === false ? 'wait' : `use:${g.target ? facilityDef(state.facilities[g.target]?.type ?? 'table_out').tab : 'seat'}`) : g.phase === 'out' && g.mood ? `mood:${g.mood}` : '';
       if (want !== e.bubble) {
         e.node.getChildByLabel('bubble')?.destroy({ children: true });
         e.bubble = want;
         if (want && hasAssets()) {
-          const icon = want.startsWith('use:') ? peekTex(want === 'use:shop' ? 'icon_shop' : 'icon_coffee') : peekTex(spriteName.bubble(g.mood ?? 'meh'));
+          const icon = want === 'wait' ? peekTex('icon_clock') : want.startsWith('use:') ? peekTex(want === 'use:shop' ? 'icon_shop' : 'icon_coffee') : peekTex(spriteName.bubble(g.mood ?? 'meh'));
           if (icon) {
-            const b = want.startsWith('use:') ? makeSpeechBubble({ icon, iconSize: 14 }) : (() => { const sp = new Sprite(icon); sp.anchor.set(0.5, 1); return sp; })();
+            const b = want === 'wait' || want.startsWith('use:') ? makeSpeechBubble({ icon, iconSize: 14 }) : (() => { const sp = new Sprite(icon); sp.anchor.set(0.5, 1); return sp; })();
             b.label = 'bubble'; b.position.set(0, -CHAR_H - 2); e.node.addChild(b);
           }
         }

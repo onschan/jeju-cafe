@@ -10,6 +10,8 @@ export function deserialize(json: string): GameState {
   o.hints ??= [];
   o.hiring ??= null;
   o.tutorial ??= -1;
+  o.orders ??= []; o.orderSeq ??= 0;
+  for (const g of o.guests) { g.served ??= true; g.waitMs ??= 0; }
   // 옛 세이브: 능력 하나(서비스 1~5) → 능력 4가지 + 담당 + 실적
   for (const st of [...o.staff, ...o.candidates]) {
     const v = st as unknown as { service: number; speed?: number; clean?: number; charm?: number; duty?: string; served?: number; happy?: number; month?: { served: number; happy: number }; until?: number; from?: string };

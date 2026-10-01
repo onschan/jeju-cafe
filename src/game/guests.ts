@@ -7,6 +7,7 @@ import { sheetOf, usables, approachCell, seatCapacity, popularitySum, amenities 
 import { busReach, pathTo, reachFrom } from './path.ts';
 import { BUS_STOP } from './world.ts';
 import { staffSkill, serverFor } from './staff.ts';
+import { order, orderOf, updateOrders, menuKind, pickMenu, stationsOf, MADE_MONEY, MADE_SCORE, WAIT_OK_MS, WAIT_BAD_MS } from './orders.ts';
 
 export const BASE_DAILY_GUESTS = 3;
 export const POP_PER_GUEST = 40;
@@ -94,7 +95,7 @@ function charmChance(s: GameState): number { return Math.min(0.8, 0.5 + staffSki
 /** 편의 시설이 손님 점수에 더하는 값: 화장실 +4, 청소 도구실 +2 */
 export function amenityScore(s: GameState): number { const a = amenities(s); return (a.has('restroom') ? 4 : 0) + (a.has('cleaning') ? 2 : 0); }
 /** 니즈 id → 글 */
-export const NEED_KO: Record<string, string> = { liked: '좋아하는 시설이 없어요', scenery: '경치가 아쉬워요', comfort: '아늑함이 아쉬워요', service: '직원이 모자라요', restroom: '화장실이 없어요', synergy: '상성 짝이 없어요', level: '자리 단계가 낮아요', winter: '바깥이 추워요' };
+export const NEED_KO: Record<string, string> = { wait: '너무 오래 기다렸어요', liked: '좋아하는 시설이 없어요', scenery: '경치가 아쉬워요', comfort: '아늑함이 아쉬워요', service: '직원이 모자라요', restroom: '화장실이 없어요', synergy: '상성 짝이 없어요', level: '자리 단계가 낮아요', winter: '바깥이 추워요' };
 /** 만족 못 한 까닭 하나: 그 손님층이 가장 아쉬워한 것 */
 function needOf(s: GameState, f: Facility, sh: ReturnType<typeof sheetOf>, type: string): string {
   const d = facilityDef(f.type);
@@ -122,16 +123,18 @@ function finishUse(s: GameState, g: Guest): void {
   if (f) {
     const d = facilityDef(f.type);
     const sh = sheetOf(s, f);
+    let made = 0;
     if (d.tab === 'seat') {
-      const offered = s.menu.filter((m) => t.menu.includes(m) && menuDef(m).price <= t.wallet);
-      const any = s.menu.filter((m) => menuDef(m).price <= t.wallet);
-      const pick = offered[0] ?? any[0] ?? null;
+      const pick = pickMenu(s, t.wallet, t.menu);
       money = (pick ? menuDef(pick).price : 0) + sh.fee;
+      if (pick && stationsOf(s, menuKind(pick)).length > 0) { money = Math.round(money * MADE_MONEY); made = MADE_SCORE; } // 제조대에서 정성껏
       if (amenities(s).has('kitchen')) money = Math.round(money * 1.15); // 주방: 자리 결제 +15%
     } else money = Math.min(t.wallet, sh.fee);
-    const score = sh.total + serviceBonus(s) / 3 + cleanBonus(s) + amenityScore(s);
+    const wait = g.waitMs ?? 0;
+    const waitPenalty = wait > WAIT_BAD_MS ? -10 : wait > WAIT_OK_MS ? -5 : 0;
+    const score = sh.total + serviceBonus(s) / 3 + cleanBonus(s) + amenityScore(s) + made + waitPenalty;
     mood = score >= t.expect ? 'happy' : score >= t.expect - 6 ? 'meh' : 'angry';
-    if (mood !== 'happy') need = needOf(s, f, sh, t.id);
+    if (mood !== 'happy') need = waitPenalty < 0 ? 'wait' : needOf(s, f, sh, t.id);
     f.uses++; f.sales += money;
   }
   const fame = mood === 'happy' ? (nextRandom(s) < charmChance(s) ? 1 : 0) : mood === 'angry' ? -1 : 0; // 기쁜 손님 둘에 하나꼴로 입소문 (매력 있는 직원이면 더)
@@ -161,6 +164,7 @@ function reroute(s: GameState, g: Guest): void {
   g.path = pathBack(s, g);
 }
 export function updateGuests(s: GameState, ms: number): void {
+  updateOrders(s, ms);
   for (const g of s.guests) {
     if (g.phase !== 'use') reroute(s, g);
     if (g.phase === 'in') {
@@ -169,9 +173,21 @@ export function updateGuests(s: GameState, ms: number): void {
         if (!f) { g.phase = 'out'; g.path = pathBack(s, g); continue; }
         g.phase = 'use';
         const d = facilityDef(f.type);
-        g.timerMs = (d.tab === 'seat' ? SEAT_USE_MS : SHOP_USE_MS) * (1 - speedBonus(s) / 100);
+        g.waitMs = 0;
+        if (d.tab === 'seat') {
+          // 자리에 앉으면 주문부터 — 제조대가 있으면 만들어서 가져다 준다, 없으면 셀프
+          const t = guestTypeDef(g.type);
+          g.served = !order(s, g, t.wallet, t.menu);
+          g.timerMs = g.served ? SEAT_USE_MS : 0;
+        } else { g.served = true; g.timerMs = SHOP_USE_MS; }
       }
     } else if (g.phase === 'use') {
+      if (!g.served) {
+        // 주문을 기다리는 중 — 서빙이 끝나야 마시기 시작한다
+        g.waitMs = (g.waitMs ?? 0) + ms;
+        if (!orderOf(s, g.id)) { g.served = true; g.timerMs = SEAT_USE_MS; }
+        continue;
+      }
       g.timerMs -= ms;
       if (g.timerMs <= 0) { finishUse(s, g); g.phase = 'out'; g.path = pathBack(s, g); g.rev = s.layoutRev; }
     } else if (moveAlong(g, ms)) g.target = '__gone';

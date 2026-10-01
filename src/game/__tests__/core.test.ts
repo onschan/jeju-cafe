@@ -1,6 +1,6 @@
 /** 새 코어 (specs/2026-09-27-rebuild-kairo-core.md) — 규칙 하나에 테스트 하나 */
 import { describe, it, expect } from 'vitest';
-import { newGame, apply, step, run, canPlace, cellAt, HOME, BUS_STOP, ROAD_Y, sheetOf, synergyPairs, popularitySum, dailyGuests, spawnOne, updateGuests, monthEnd, upkeepTotal, unlockables, evaluate, currentObjective, serialize, deserialize, DAY_MS, HOUR_MS, lineCells, walkable, wallBetween, effSkill, runBot, SYNERGY_POP, SCENERY_CAP } from '../index.ts';
+import { newGame, apply, step, run, canPlace, cellAt, HOME, BUS_STOP, ROAD_Y, sheetOf, synergyPairs, popularitySum, dailyGuests, spawnOne, updateGuests, monthEnd, upkeepTotal, unlockables, evaluate, currentObjective, serialize, deserialize, DAY_MS, HOUR_MS, lineCells, walkable, wallBetween, effSkill, makeMsOf, serveMsOf, runBot, SYNERGY_POP, SCENERY_CAP } from '../index.ts';
 import type { GameState } from '../index.ts';
 
 const at = (lx: number, ly: number) => ({ x: HOME.x + lx, y: HOME.y + ly });
@@ -289,5 +289,36 @@ describe('벽은 못 넘는다', () => {
     // 끝까지 걸어가 앉는다
     run(s, HOUR_MS * 3);
     expect(['use', 'out'].includes(g.phase) || !s.guests.includes(g)).toBe(true);
+  });
+});
+
+describe('주문 → 제조 → 서빙', () => {
+  it('제조대가 있으면 주문이 걸리고 만들어 서빙된다. 바리스타·홀 등급이 빠를수록 짧다', () => {
+    const s = yard();
+    apply(s, { type: 'placeLine', id: 'floor_wood', from: at(1, 5), to: at(3, 5) });
+    apply(s, { type: 'placeLine', id: 'floor_wood', from: at(1, 6), to: at(3, 6) });
+    expect(apply(s, { type: 'place', id: 'table_out', x: at(1, 5).x, y: at(1, 5).y }).ok).toBe(true);
+    // 제조대 없이: 셀프 — 주문이 안 생긴다
+    expect(spawnOne(s)).toBe(true);
+    run(s, HOUR_MS * 2);
+    expect(s.orders.length).toBe(0);
+    // 제조대를 놓으면 주문이 생긴다
+    expect(apply(s, { type: 'place', id: 'prep_bar', x: at(3, 6).x, y: at(3, 6).y }).ok).toBe(true);
+    const slow = makeMsOf(s, 'drink');
+    s.guests.length = 0;
+    expect(spawnOne(s)).toBe(true);
+    run(s, HOUR_MS * 3);
+    const g = s.guests[0]!;
+    expect(['use', 'out'].includes(g.phase)).toBe(true);
+    expect(s.orders.length + (g.served ? 1 : 0)).toBeGreaterThan(0);  // 주문 중이거나 이미 받았거나
+    // 바리스타(손놀림)가 좋으면 제조가 빨라진다
+    s.staff.push({ id: 's1', name: '테스터', service: 1, speed: 10, clean: 1, charm: 1, wage: 0, duty: 'speed', served: 0, happy: 0, month: { served: 0, happy: 0 }, face: { hair: 0, skin: 0, top: 0 } });
+    expect(makeMsOf(s, 'drink')).toBeLessThan(slow);
+    const noHall = serveMsOf(s);
+    s.staff.push({ id: 's2', name: '홀', service: 10, speed: 1, clean: 1, charm: 1, wage: 0, duty: 'service', served: 0, happy: 0, month: { served: 0, happy: 0 }, face: { hair: 0, skin: 0, top: 0 } });
+    expect(serveMsOf(s)).toBeLessThan(noHall);                        // 홀 직원이 오면 서빙이 빨라진다
+    // 끝까지 돌면 손님이 결제하고 나간다
+    run(s, HOUR_MS * 6);
+    expect(s.stats.guests).toBeGreaterThan(0);
   });
 });

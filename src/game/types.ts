@@ -14,6 +14,7 @@ export interface FacilityDef {
   floor?: Floor;              // sub=floor일 때 어떤 바닥인가
   w: number; h: number; cost: number; upkeep: number;
   pop?: number;               // 기본 인기 (자리·가게)
+  station?: OrderKind | 'both'; // 제조대: 이 갈래의 메뉴를 만든다
   fee?: number;               // 기본 요금 (자리: 메뉴 값에 더함 · 가게: 이용료)
   scenery?: number;           // 경치 (환경·장식 — 반경 2 자리·가게가 받는다)
   capacity?: number;          // 동시 이용 인원
@@ -24,7 +25,10 @@ export interface FacilityDef {
   amenity?: 'counter' | 'restroom' | 'staff' | 'kitchen' | 'cleaning' | 'locker' | 'storage'; // 하나만 세는 편의 시설
 }
 export interface GuestTypeDef { id: string; name: string; wallet: number; expect: number; weight: number; unlock: number; menu: string[] }
-export interface MenuDef { id: string; name: string; price: number; unlock: number }
+export type OrderKind = 'drink' | 'food';
+export interface MenuDef { id: string; name: string; price: number; unlock: number; kind?: OrderKind }
+/** 주문 한 건: 기다림 → 제조 → 서빙 */
+export interface Order { id: number; guest: string; menu: string; kind: OrderKind; phase: 'wait' | 'make' | 'serve' | 'done'; ms: number; waited: number; station?: string }
 export interface SynergyDef { id: string; name: string; a: string[]; b: string[] }
 export interface InvestDef { id: string; name: string; cost: number; desc: string; fame?: number; guests?: number; scenery?: number; typeMult?: Record<string, number> }
 export interface RivalDef { id: string; name: string; base: number; growth: number }
@@ -45,6 +49,8 @@ export interface Guest {
   mood: Mood | null;
   face: { hair: number; skin: number; top: number };
   rev?: number;               // 길을 찾았을 때의 layoutRev — 바뀌면 다시 찾는다
+  served?: boolean;           // 주문을 받았나 (제조·서빙이 끝났나)
+  waitMs?: number;            // 주문을 기다린 시간
 }
 /** 직원 능력 4가지 (1~10): 접객 service · 손놀림 speed · 정리 clean · 매력 charm. 등급 S~E로 보여 준다. */
 export interface Staff { id: string; name: string; service: number; speed: number; clean: number; charm: number; wage: number; duty: 'service' | 'speed' | 'clean' | 'charm'; served: number; happy: number; month: { served: number; happy: number }; face: { hair: number; skin: number; top: number } }
@@ -76,6 +82,7 @@ export interface GameState {
   layoutRev: number;          // 배치가 바뀔 때마다 +1 (시트 캐시 키)
   nextId: number;
   guests: Guest[]; guestSeq: number; spawnAcc: number; todayGuests: number; todayIncome: number;
+  orders: Order[]; orderSeq: number;
   lastDay: { guests: number; income: number } | null; // 어제 장사 (하루 요약 카드)
   staff: Staff[]; candidates: Candidate[]; candidatesMonth: number;
   hiring: { channel: string; daysLeft: number } | null;   // 진행 중인 채용 공고

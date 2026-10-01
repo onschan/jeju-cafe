@@ -19,7 +19,7 @@ export function newGame(seed: number, preset: Preset = 'blank'): GameState {
     grid: { w: 36, h: 30, cells: makeCells() },
     parcels: makeParcels(),
     facilities: {}, layoutRev: 0, nextId: 1,
-    guests: [], guestSeq: 0, spawnAcc: 0.5, todayGuests: 0, todayIncome: 0, lastDay: null,
+    guests: [], guestSeq: 0, spawnAcc: 0.5, todayGuests: 0, todayIncome: 0, lastDay: null, orders: [], orderSeq: 0,
     staff: [], candidates: [], candidatesMonth: -1, hiring: null,
     unlocked: { facilities: FACILITIES.filter((d) => d.unlock === 0).map((d) => d.id), menus: MENUS.filter((d) => d.unlock === 0).map((d) => d.id), guests: GUEST_TYPES.filter((d) => d.unlock === 0).map((d) => d.id) },
     menu: MENUS.filter((d) => d.unlock === 0).map((d) => d.id),

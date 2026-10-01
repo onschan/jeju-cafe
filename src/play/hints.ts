@@ -7,6 +7,7 @@ export interface Hint { id: string; when: (s: GameState) => boolean; speaker: Po
 export const HINTS: Hint[] = [
   { id: 'first_guest', when: (s) => s.stats.guests >= 1, speaker: 'samchun', expr: 'happy', lines: ['첫 손님이 다녀갔어! 아래 줄에 영수증이 찍혔지.', '손님이 만족하면 명성이 오르고, 명성이 오르면 손님이 더 온다.'] },
   { id: 'first_synergy', when: (s) => Object.values(s.facilities).some((f) => synergyPairs(s, f).length > 0), speaker: 'halmang', lines: ['「상성 UP」 봤나? 어울리는 것끼리 옆에 두면 인기 +4, 요금 +200이다.', '시설을 탭하면 카드에 어떤 짝인지 적혀 있어.'] },
+  { id: 'station', when: (s) => s.stats.guests >= 6 && !Object.values(s.facilities).some((f) => facilityDef(f.type).station), speaker: 'samchun', lines: ['손님이 셀프로 가져가고 있어. 건축 › 실내 › 제조대를 놓아 봐.', '제조대가 있으면 바리스타가 만들어 주고 값도 더 받아. 홀 직원이 자리로 가져다 주면 더 빨라.'] },
   { id: 'research_ready', when: (s) => unlockables(s).some((u) => !u.done && s.research >= u.cost), speaker: 'samchun', lines: ['연구가 모였네. 운영 › 연구에서 새 시설이나 메뉴를 열 수 있어.', '운영 단추에 빨간 점이 뜨면 할 게 있다는 뜻이야.'] },
   { id: 'money_low', when: (s) => s.money < 500_000, speaker: 'samchun', expr: 'surprised', lines: ['돈이 바닥이야! 유지비와 월급은 월말에 한꺼번에 나가.', '잔고가 −200만 아래로 떨어지면 내가 300만은 꿔 줄게. 1년에 한 번뿐이다.'] },
   { id: 'land_ready', when: (s) => s.objectivesDone.length >= 4 && s.parcels.some((p) => !p.owned && parcelAdjacent(s, p) && s.money >= p.price), speaker: 'halmang', lines: ['옆 땅을 살 만큼 모였구나. 팻말을 탭하면 살 수 있다.', '땅이 넓어지면 바닥을 더 깔고 자리를 더 놓을 수 있지.'] },
