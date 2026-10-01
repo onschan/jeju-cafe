@@ -1,9 +1,10 @@
 /** 평가: 매년 12월 말 「제주 카페 랭킹」 — 점수 = 명성 + 시설 인기 합. 경쟁 카페는 해마다 자란다. */
 import type { GameState, Evaluation } from './types.ts';
 import { RIVALS } from './data.ts';
-import { popularitySum } from './facility.ts';
+import { popularitySum, yardScenery } from './facility.ts';
 export const PRIZES = [3_000_000, 1_500_000, 800_000, 0, 0, 0];
-export function myScore(s: GameState): number { return s.fame + popularitySum(s); }
+/** 평가 점수 = 명성 + 시설 인기 합 + 마당 경치 (꾸민 것도 쳐 준다) */
+export function myScore(s: GameState): number { return s.fame + popularitySum(s) + yardScenery(s); }
 export function rivalScore(id: string, year: number): number { const r = RIVALS.find((x) => x.id === id)!; return r.base + r.growth * (year - 1); }
 export function evaluate(s: GameState): Evaluation {
   const rows = [{ id: 'me', name: s.cafeName, score: myScore(s), me: true }, ...RIVALS.map((r) => ({ id: r.id, name: r.name, score: rivalScore(r.id, s.clock.year), me: false }))];

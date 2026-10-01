@@ -15,7 +15,7 @@ import { Title } from './Title';
 import { EndingScreen } from './Ending';
 import { unlockAudio, audioReady, sfx, bgm, setBgmLayer, isMuted, setMuted, getBgmVolume, getSfxVolume, setBgmVolume, setSfxVolume } from './audio';
 import { guestAccs } from './guestLook';
-import { FACILITIES, GUEST_TYPES, MENUS, INVESTS, facilityDef, isFloorDef, isUsable, sheetOf, usables, popularitySum, dailyGuests, unlockables, canUnlock, canLevelUp, LEVEL_COST, levelMoney, currentObjective, OBJECTIVES, seasonOf, canHire, upkeepTotal, wagesTotal, myScore, rivalScore, RIVALS, lineCells, canLayFloor, parcelAt, cellAt, parcelAdjacent, type GameState, type Tab, type Facility, type Pt, type Parcel, type Objective, type Guest, previewPlace, AMENITY_TEXT, cellEdges, getWall, edgeOf, nearestSide, type Side4, needsSummary, SKILLS, SKILL_KO, SKILL_DESC, DUTY_KO, gradeOf, effSkill, skillSum, staffSkill, CHANNELS, canRecruit, channelDef, STAFF_MAX, orderStats, makeMsOf, serveMsOf, stationsOf, HOUR_MS, type Grade, type Staff, type Skill } from '../game/index.ts';
+import { FACILITIES, GUEST_TYPES, MENUS, INVESTS, facilityDef, isFloorDef, isUsable, sheetOf, usables, popularitySum, dailyGuests, unlockables, canUnlock, canLevelUp, LEVEL_COST, levelMoney, currentObjective, OBJECTIVES, seasonOf, canHire, upkeepTotal, wagesTotal, myScore, rivalScore, RIVALS, lineCells, canLayFloor, parcelAt, cellAt, parcelAdjacent, type GameState, type Tab, type Facility, type Pt, type Parcel, type Objective, type Guest, previewPlace, AMENITY_TEXT, cellEdges, getWall, edgeOf, nearestSide, type Side4, needsSummary, SKILLS, SKILL_KO, SKILL_DESC, DUTY_KO, gradeOf, effSkill, skillSum, staffSkill, CHANNELS, canRecruit, channelDef, STAFF_MAX, orderStats, makeMsOf, serveMsOf, stationsOf, yardScenery, YARD_PER_GUEST, HOUR_MS, type Grade, type Staff, type Skill } from '../game/index.ts';
 
 type Win = 'build' | 'guests' | 'ops' | 'cafe' | 'system' | null;
 /** 하단 띠(영수증 2줄 + 요약 + 메뉴) 높이 */
@@ -273,7 +273,7 @@ function PlacingBar({ id, ghost, wallMode, wallSide, onWallMode, onWallSide, onD
     }
     if (d.comfort) bits.push(pv.comfortTouched > 0 ? `아늑함 +${d.comfort} → 자리·가게 ${pv.comfortTouched}곳 인기 합 +${pv.popDelta}` : `아늑함 +${d.comfort} · 반경 3에 실내 자리·가게가 없어요`);
     if (pv.amenity) bits.push(pv.amenity);
-    if (d.scenery) bits.push(pv.sceneryTouched > 0 ? `경치 +${d.scenery} → 자리·가게 ${pv.sceneryTouched}곳 인기 합 +${pv.popDelta}` : `경치 +${d.scenery} · 반경 2에 자리·가게가 없어요`);
+    if (d.scenery) bits.push(`마당 경치 +${pv.sceneryTouched} (합 ${yardScenery(getState()) + pv.sceneryTouched})${pv.guestsDelta > 0 ? '' : ` · ${YARD_PER_GUEST}마다 하루 손님 +1`}`);
     if (wall) bits.push(pv.indoorGain > 0 ? `실내가 되는 자리·가게 ${pv.indoorGain}곳 (실내 +2 · 겨울 −6 면함)${pv.popDelta ? ` · 인기 합 ${pv.popDelta > 0 ? '+' : ''}${pv.popDelta}` : ''}` : `벽 ${pv.cells}변 · 아직 안 둘러싸여요 (올렛길 쪽은 문으로 비워요)`);
     if (pv.pairs.length) bits.push(`상성 UP: ${pv.pairs.join('·')}`);
     if (pv.guestsDelta > 0) bits.push(`하루 손님 +${pv.guestsDelta}`);
@@ -409,7 +409,7 @@ function BuildWindow({ s, onPick, onClose }: { s: GameState; onPick: (id: string
   const locked = mine.filter((d) => !s.unlocked.facilities.includes(d.id)).sort((a, b) => a.unlock - b.unlock);
   const d = pick ? facilityDef(pick) : null;
   const isOpen = d ? s.unlocked.facilities.includes(d.id) : false;
-  const gist = (x: Def) => x.sub === 'floor' ? '칸마다' : x.sub === 'wall' ? '변마다' : x.amenity ? '가게 전체' : x.comfort ? `아늑함 +${x.comfort}` : x.scenery ? `경치 +${x.scenery}` : x.pop !== undefined ? `인기 ${x.pop}${x.capacity && x.capacity > 1 ? ` · ${x.capacity}인` : ''}` : '';
+  const gist = (x: Def) => x.sub === 'floor' ? '칸마다' : x.sub === 'wall' ? '변마다' : x.amenity ? '가게 전체' : x.comfort ? `아늑함 +${x.comfort}` : x.scenery ? `마당 경치 +${x.scenery}` : x.pop !== undefined ? `인기 ${x.pop}${x.capacity && x.capacity > 1 ? ` · ${x.capacity}인` : ''}` : '';
   return (
     <Window title="건축" onClose={onClose} tabs={BUILD_TABS.map((t) => <button key={t.k} style={{ ...(tab === t.k ? btnGold : btnOff), padding: '3px 7px', fontSize: 13, display: 'inline-flex', alignItems: 'center', gap: 3 }} onClick={() => { setTab(t.k); setPick(null); setShowLocked(false); }}><Ico name={t.ico} size={13} />{t.name}</button>)}>
       {sections.map((sec) => {
@@ -445,7 +445,7 @@ function BuildWindow({ s, onPick, onClose }: { s: GameState; onPick: (id: string
         <Sprite id={d.id} size={44} />
         <div style={{ flex: 1, minWidth: 0, fontSize: 13 }}>
           <b>{d.name}</b> <span style={small}>{d.w}×{d.h}{d.capacity ? ` · ${d.capacity}인` : ''}{d.indoor ? ' · 실내 전용' : ''}</span>
-          <div style={small}>{isOpen ? `${won(d.cost)} · 유지 ${won(d.upkeep)}/월${d.pop !== undefined ? ` · 인기 ${d.pop}` : ''}${d.scenery ? ` · 경치 +${d.scenery}` : ''}${d.comfort ? ` · 아늑함 +${d.comfort}` : ''}${d.fee ? ` · 요금 ${won(d.fee)}` : ''}` : `연구 ${d.unlock} 필요 — 지금 ${s.research} (운영 › 연구에서 연다)`}</div>
+          <div style={small}>{isOpen ? `${won(d.cost)} · 유지 ${won(d.upkeep)}/월${d.pop !== undefined ? ` · 인기 ${d.pop}` : ''}${d.scenery ? ` · 마당 경치 +${d.scenery}` : ''}${d.comfort ? ` · 아늑함 +${d.comfort}` : ''}${d.fee ? ` · 요금 ${won(d.fee)}` : ''}` : `연구 ${d.unlock} 필요 — 지금 ${s.research} (운영 › 연구에서 연다)`}</div>
           {isOpen && d.amenity && <div style={{ ...small, color: C.green }}>{AMENITY_TEXT[d.amenity]}</div>}
           {isOpen && d.sub === 'wall' && <div style={small}>칸의 변을 탭하거나 네모를 둘러서 · 둘러싸면 실내 +2</div>}
           {isOpen && d.indoor && d.sub !== 'wall' && <div style={small}>벽으로 둘러싸인 실내 바닥에만</div>}
@@ -478,7 +478,7 @@ function NeedsPanel({ s }: { s: GameState }) {
   const recent = s.receipts.slice(-30);
   const happy = recent.filter((r) => r.mood === 'happy').length;
   const rate = recent.length ? Math.round((happy / recent.length) * 100) : null;
-  const FIX: Record<string, string> = { liked: '손님층이 좋아하는 시설을 놓아요 (아래 「좋아함」)', scenery: '나무·꽃·바위를 자리 옆에', comfort: '실내에 벽난로·책장·그림을', service: '운영 › 직원에서 채용', restroom: '건축 › 실내 › 화장실', synergy: '어울리는 것끼리 옆에 (상성 UP)', level: '시설 카드에서 Lv업', winter: '벽으로 둘러싸 실내로' };
+  const FIX: Record<string, string> = { liked: '손님층이 좋아하는 시설을 놓아요 (아래 「좋아함」)', scenery: '마당에 나무·꽃을 더 심어요 (어디든)', comfort: '실내에 벽난로·책장·그림을', service: '운영 › 직원에서 채용', restroom: '건축 › 실내 › 화장실', synergy: '어울리는 것끼리 옆에 (상성 UP)', level: '시설 카드에서 Lv업', winter: '벽으로 둘러싸 실내로' };
   return (
     <div style={{ ...panel, padding: 8, background: '#fff7e6' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}><Ico name="bulb" /><b>손님 니즈</b><span style={small}>최근 {recent.length}명 · 만족 {rate === null ? '—' : `${rate}%`}</span></div>
@@ -607,7 +607,7 @@ function CafeWindow({ s, onClose }: { s: GameState; onClose: () => void }) {
     <Window title={s.cafeName} onClose={onClose} tabs={tabs}>
       {tab === 'status' && <div style={{ fontSize: 13, display: 'grid', gap: 4 }}>
         <Row k="자금" v={won(s.money)} /><Row k="명성" v={String(s.fame)} /><Row k="연구" v={String(s.research)} />
-        <Row k="시설 인기 합" v={String(popularitySum(s))} /><Row k="하루 손님" v={String(dailyGuests(s))} />
+        <Row k="시설 인기 합" v={String(popularitySum(s))} /><Row k="마당 경치" v={`${yardScenery(s)} (하루 손님 +${Math.floor(yardScenery(s) / YARD_PER_GUEST)})`} /><Row k="하루 손님" v={String(dailyGuests(s))} />
         <Row k="지난달" v={s.lastMonth ? `수입 ${won(s.lastMonth.income)} · 지출 ${won(s.lastMonth.spent)} · 손님 ${s.lastMonth.guests}` : '—'} />
         <Row k="이달 유지비 예정" v={`${won(upkeepTotal(s))} + 월급 ${won(wagesTotal(s))}`} />
         <Row k="누적 손님" v={`${s.stats.guests} (만족 ${s.stats.happy} · 돌아감 ${s.stats.turnedAway})`} />
@@ -620,7 +620,7 @@ function CafeWindow({ s, onClose }: { s: GameState; onClose: () => void }) {
         {OBJECTIVES.map((o) => <div key={o.id} style={{ fontSize: 13, color: s.objectivesDone.includes(o.id) ? C.soft : C.ink, fontWeight: currentObjective(s)?.id === o.id ? 700 : 400 }}>{s.objectivesDone.includes(o.id) ? '✓' : currentObjective(s)?.id === o.id ? '▶' : '·'} {o.text} <span style={small}>{wonShort(o.reward)}</span></div>)}
       </div>}
       {tab === 'rank' && <div style={{ display: 'grid', gap: 4, fontSize: 13 }}>
-        <div style={small}>매년 12월 말 발표. 점수 = 명성 + 시설 인기 합. 지금 점수 <b style={{ color: C.ink }}>{myScore(s)}</b></div>
+        <div style={small}>매년 12월 말 발표. 점수 = 명성 + 시설 인기 합 + 마당 경치. 지금 점수 <b style={{ color: C.ink }}>{myScore(s)}</b></div>
         {[{ id: 'me', name: s.cafeName, score: myScore(s) }, ...RIVALS.map((r) => ({ id: r.id, name: r.name, score: rivalScore(r.id, s.clock.year) }))].sort((a, b) => b.score - a.score).map((r, i) => <div key={r.id} style={{ display: 'flex', gap: 8, fontWeight: r.id === 'me' ? 700 : 400 }}><span>{i + 1}위</span><span style={{ flex: 1 }}>{r.name}</span><span>{r.score}</span></div>)}
         {s.evaluations.slice(-3).reverse().map((e) => <div key={e.year} style={small}>{e.year}년 {e.rank}위 · {won(e.prize)}</div>)}
         <RankChart s={s} />
@@ -719,12 +719,11 @@ function FacilityCard({ s, f, onSelect, onClose, onMore, onGuest }: { s: GameSta
           <tr style={small}><td /><td style={{ textAlign: 'right' }}>인기</td><td style={{ textAlign: 'right' }}>요금</td></tr>
           <tr><td>기본</td><td style={{ textAlign: 'right' }}>{sh.base}</td><td style={{ textAlign: 'right' }}>{won(d.fee ?? 0)}</td></tr>
           <tr><td>보너스 <span style={small}>{sh.pairs.map((p) => p.name).join('·') || '상성 없음'}</span></td><td style={{ textAlign: 'right' }}>{sh.bonus}</td><td style={{ textAlign: 'right' }}>{won(sh.fee - (d.fee ?? 0))}</td></tr>
-          <tr><td>경치 <span style={small}>반경 2</span></td><td style={{ textAlign: 'right' }}>{sh.scenery}</td><td /></tr>
           {sh.indoor && <tr><td>아늑함 <span style={small}>실내 반경 3</span></td><td style={{ textAlign: 'right' }}>{sh.comfort}</td><td /></tr>}
           <tr><td>{sh.indoor ? '실내' : '바깥'} <span style={small}>{sh.indoor ? '벽으로 둘러싸임' : '겨울엔 −6'}</span></td><td style={{ textAlign: 'right' }}>{sh.season}</td><td /></tr>
           <tr style={{ fontWeight: 700, borderTop: `1px solid ${C.wood}` }}><td>합계</td><td style={{ textAlign: 'right' }}>{sh.total}</td><td style={{ textAlign: 'right' }}>{won(sh.fee)}</td></tr>
         </tbody></table>
-      ) : <div style={{ marginTop: 4 }}>{d.comfort ? <>아늑함 <b>+{d.comfort}</b> <span style={small}>실내 반경 3 자리·가게의 인기를 올린다</span></> : d.amenity ? <>{AMENITY_TEXT[d.amenity]} <span style={small}>(같은 종류는 하나만 셈)</span></> : <>경치 <b>+{d.scenery ?? 0}</b> <span style={small}>반경 2 자리·가게의 인기를 올린다</span></>}{sh.pairs.length > 0 && <div style={small}>상성: {sh.pairs.map((p) => p.name).join('·')}</div>}</div>}
+      ) : <div style={{ marginTop: 4 }}>{d.comfort ? <>아늑함 <b>+{d.comfort}</b> <span style={small}>실내 반경 3 자리·가게의 인기를 올린다</span></> : d.amenity ? <>{AMENITY_TEXT[d.amenity]} <span style={small}>(같은 종류는 하나만 셈)</span></> : <>마당 경치 <b>+{d.scenery ?? 0}</b> <span style={small}>어디에 두든 괜찮아요 — 마당 경치 {YARD_PER_GUEST}마다 하루 손님 +1</span></>}{sh.pairs.length > 0 && <div style={small}>상성: {sh.pairs.map((p) => p.name).join('·')}</div>}</div>}
       {sh.likedBy.length > 0 && <div style={small}>{sh.likedBy.map((t) => GUEST_TYPES.find((g) => g.id === t)?.name).join('·')}에게 인기</div>}
       {(() => { const here = s.guests.filter((g) => g.target === f.id && g.phase === 'use'); return here.length > 0 && <div style={{ ...small, display: 'flex', gap: 4, alignItems: 'center', flexWrap: 'wrap' }}>지금 손님: {here.map((g) => <button key={g.id} style={{ ...btnOff, padding: '1px 6px', fontSize: 12 }} onClick={() => onGuest(g.id)}>{GUEST_TYPES.find((t) => t.id === g.type)?.name} 보기</button>)}</div>; })()}
       <div style={{ display: 'flex', gap: 6, marginTop: 6, flexWrap: 'wrap' }}>

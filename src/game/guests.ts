@@ -3,7 +3,7 @@ import type { GameState, Guest, Facility, Mood, Pt } from './types.ts';
 import { GUEST_TYPES, guestTypeDef, facilityDef, menuDef, INVESTS } from './data.ts';
 import { nextRandom, pickWeighted, randInt } from './rng.ts';
 import { HOUR_MS } from './clock.ts';
-import { sheetOf, usables, approachCell, seatCapacity, popularitySum, amenities } from './facility.ts';
+import { sheetOf, usables, approachCell, seatCapacity, popularitySum, amenities, yardScenery, YARD_PER_GUEST } from './facility.ts';
 import { busReach, pathTo, reachFrom } from './path.ts';
 import { BUS_STOP } from './world.ts';
 import { staffSkill, serverFor } from './staff.ts';
@@ -25,7 +25,7 @@ export function fameOf(s: GameState): number { return s.fame; }
 export function dailyGuests(s: GameState): number {
   const cap = seatCapacity(s) * GUESTS_PER_SEAT;
   const invest = INVESTS.filter((i) => s.invested.includes(i.id)).reduce((n, i) => n + (i.guests ?? 0), 0);
-  const n = BASE_DAILY_GUESTS + Math.floor(popularitySum(s) / POP_PER_GUEST) + Math.floor(Math.sqrt(Math.max(0, s.fame)) * 0.7) + invest;
+  const n = BASE_DAILY_GUESTS + Math.floor(popularitySum(s) / POP_PER_GUEST) + Math.floor(Math.sqrt(Math.max(0, s.fame)) * 0.7) + Math.floor(yardScenery(s) / YARD_PER_GUEST) + invest;
   return Math.max(0, Math.min(cap, n));
 }
 export function typeWeight(s: GameState, typeId: string): number {
@@ -95,7 +95,7 @@ function charmChance(s: GameState): number { return Math.min(0.8, 0.5 + staffSki
 /** 편의 시설이 손님 점수에 더하는 값: 화장실 +4, 청소 도구실 +2 */
 export function amenityScore(s: GameState): number { const a = amenities(s); return (a.has('restroom') ? 4 : 0) + (a.has('cleaning') ? 2 : 0); }
 /** 니즈 id → 글 */
-export const NEED_KO: Record<string, string> = { wait: '너무 오래 기다렸어요', liked: '좋아하는 시설이 없어요', scenery: '경치가 아쉬워요', comfort: '아늑함이 아쉬워요', service: '직원이 모자라요', restroom: '화장실이 없어요', synergy: '상성 짝이 없어요', level: '자리 단계가 낮아요', winter: '바깥이 추워요' };
+export const NEED_KO: Record<string, string> = { wait: '너무 오래 기다렸어요', liked: '좋아하는 시설이 없어요', scenery: '마당이 휑해요', comfort: '아늑함이 아쉬워요', service: '직원이 모자라요', restroom: '화장실이 없어요', synergy: '상성 짝이 없어요', level: '자리 단계가 낮아요', winter: '바깥이 추워요' };
 /** 만족 못 한 까닭 하나: 그 손님층이 가장 아쉬워한 것 */
 function needOf(s: GameState, f: Facility, sh: ReturnType<typeof sheetOf>, type: string): string {
   const d = facilityDef(f.type);
@@ -105,7 +105,7 @@ function needOf(s: GameState, f: Facility, sh: ReturnType<typeof sheetOf>, type:
   if (!amenities(s).has('restroom') && s.stats.guests > 30) return 'restroom';
   if (s.staff.length === 0 && s.stats.guests > 10) return 'service';
   if (sh.indoor && sh.comfort < 6) return 'comfort';
-  if (!sh.indoor && sh.scenery < 6) return 'scenery';
+  if (!sh.indoor && yardScenery(s) < 12) return 'scenery';
   if (sh.pairs.length === 0) return 'synergy';
   return 'level';
 }

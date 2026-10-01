@@ -6,6 +6,8 @@ import { seasonOf } from './clock.ts';
 
 export const SCENERY_RADIUS = 2;
 export const SCENERY_CAP = 20;
+export const YARD_CAP = 60;        // 마당 경치 합 상한
+export const YARD_PER_GUEST = 6;   // 경치 이만큼마다 하루 손님 +1
 export const SYNERGY_POP = 4;      // 상성 짝 하나 = 인기 +4
 export const SYNERGY_FEE = 200;    // 상성 짝 하나 = 요금 +200
 export const SYNERGY_CAP = 4;      // 짝은 시설당 4개까지
@@ -41,7 +43,14 @@ export function synergyPairs(s: GameState, f: Facility): { with: string; name: s
   }
   return out;
 }
-/** 반경 안 환경·장식의 경치 합 (자리·가게만 받는다) */
+/** 마당 경치 합: 심어 둔 나무·꽃·바위·장식 전부 (자리별로 따지지 않는다 — 꾸미는 건 꾸미는 것). 손님이 더 오는 데만 쓰인다. */
+export function yardScenery(s: GameState): number {
+  let n = 0;
+  for (const f of Object.values(s.facilities)) n += facilityDef(f.type).scenery ?? 0;
+  n += s.invested.includes('flower_field') ? 4 : 0;
+  return Math.min(YARD_CAP, n);
+}
+/** (옛 계산) 반경 안 경치 합 — 지금은 자리에 안 붙인다 */
 export function sceneryAt(s: GameState, f: Facility): number {
   const foot = footOf(s, f.id);
   let n = 0;
@@ -89,7 +98,7 @@ function computeSheet(s: GameState, f: Facility): Sheet {
   const usable = isUsable(d);
   const base = (d.pop ?? 0) + (usable ? LEVEL_POP * (f.level - 1) : 0);
   const bonus = pairs.length * SYNERGY_POP;
-  const scenery = usable ? sceneryAt(s, f) : 0;
+  const scenery = 0; // 마당 경치는 자리에 안 붙는다 (가게 전체 손님 수로 간다)
   const indoor = usable && isEnclosed(s, footOf(s, f.id));
   const comfort = indoor ? comfortAt(s, f) : 0;
   const season = !usable ? 0 : indoor ? INDOOR_BONUS : seasonOf(s.clock.month) === 'winter' ? WINTER_OUTDOOR : 0; // 실내는 아늑해서 +2, 바깥은 겨울에 −6

@@ -1,6 +1,6 @@
 /** 새 코어 (specs/2026-09-27-rebuild-kairo-core.md) — 규칙 하나에 테스트 하나 */
 import { describe, it, expect } from 'vitest';
-import { newGame, apply, step, run, canPlace, cellAt, HOME, BUS_STOP, ROAD_Y, sheetOf, synergyPairs, popularitySum, dailyGuests, spawnOne, updateGuests, monthEnd, upkeepTotal, unlockables, evaluate, currentObjective, serialize, deserialize, DAY_MS, HOUR_MS, lineCells, walkable, wallBetween, effSkill, makeMsOf, serveMsOf, runBot, SYNERGY_POP, SCENERY_CAP } from '../index.ts';
+import { newGame, apply, step, run, canPlace, cellAt, HOME, BUS_STOP, ROAD_Y, sheetOf, synergyPairs, popularitySum, dailyGuests, spawnOne, updateGuests, monthEnd, upkeepTotal, unlockables, evaluate, currentObjective, serialize, deserialize, DAY_MS, HOUR_MS, lineCells, walkable, wallBetween, effSkill, makeMsOf, serveMsOf, yardScenery, runBot, SYNERGY_POP, SCENERY_CAP } from '../index.ts';
 import type { GameState } from '../index.ts';
 
 const at = (lx: number, ly: number) => ({ x: HOME.x + lx, y: HOME.y + ly });
@@ -47,20 +47,26 @@ describe('땅과 바닥', () => {
 });
 
 describe('시설 손익계산서', () => {
-  it('합계 = 기본 + 상성 보너스 + 경치(반경 2, 상한 20), 상성 짝은 요금도 올린다', () => {
+  it('합계 = 기본 + 상성 보너스 (마당 경치는 자리에 안 붙는다), 상성 짝은 요금도 올린다', () => {
     const s = yard();
     apply(s, { type: 'placeLine', id: 'floor_wood', from: at(0, 5), to: at(4, 5) });
     apply(s, { type: 'place', id: 'table_out', x: at(1, 5).x, y: at(1, 5).y });
     const t = Object.values(s.facilities).find((f) => f.x === at(1, 5).x)!;
     const a = sheetOf(s, t);
     expect(a).toMatchObject({ base: 10, bonus: 0, scenery: 0, total: 10, fee: 0 });
-    apply(s, { type: 'place', id: 'tangerine_tree', x: at(1, 4).x, y: at(1, 4).y }); // 잔디, 붙어 있음 → 「귤밭 자리」 + 경치 4
+    const yard0 = yardScenery(s);
+    const guests0 = dailyGuests(s);
+    apply(s, { type: 'place', id: 'tangerine_tree', x: at(1, 4).x, y: at(1, 4).y }); // 붙어 있으면 「귤밭 자리」 상성
     const b = sheetOf(s, t);
     expect(b.pairs.map((p) => p.name)).toEqual(['귤밭 자리']);
-    expect(b).toMatchObject({ base: 10, bonus: SYNERGY_POP, scenery: 4, total: 18, fee: 200 });
+    expect(b).toMatchObject({ base: 10, bonus: SYNERGY_POP, scenery: 0, total: 14, fee: 200 }); // 경치는 0
     expect(b.likedBy).toEqual(['student', 'worker']);
-    for (let i = 0; i < 8; i++) apply(s, { type: 'place', id: 'cedar', x: at(i, 7).x, y: at(i, 7).y });
-    expect(sheetOf(s, t).scenery).toBeLessThanOrEqual(SCENERY_CAP);
+    // 마당 경치는 자리와 떨어져 있어도 쌓이고, 쌓이면 손님이 더 온다
+    expect(yardScenery(s)).toBe(yard0 + 4);
+    for (let i = 0; i < 4; i++) expect(apply(s, { type: 'place', id: 'flower_bed', x: at(i, 1).x, y: at(i, 1).y }).ok).toBe(true);
+    expect(sheetOf(s, t).scenery).toBe(0);
+    expect(yardScenery(s)).toBeGreaterThan(yard0 + 4);
+    expect(dailyGuests(s)).toBeGreaterThan(guests0);
   });
   it('놓는 순간 새로 생긴 상성 짝마다 「상성 UP」이 순서대로 뜬다', () => {
     const s = yard();
@@ -80,9 +86,9 @@ describe('시설 손익계산서', () => {
 describe('손님', () => {
   it('하루 손님 수 = 3 + 인기 합/40 + 0.7√명성, 자리×4 상한', () => {
     const s = yard();
-    expect(dailyGuests(s)).toBe(3 + Math.floor(popularitySum(s) / 40));
+    expect(dailyGuests(s)).toBe(3 + Math.floor(popularitySum(s) / 40) + Math.floor(yardScenery(s) / 6));
     s.fame = 100;
-    expect(dailyGuests(s)).toBe(Math.min(2 * 4, 3 + Math.floor(popularitySum(s) / 40) + 7));
+    expect(dailyGuests(s)).toBe(Math.min(2 * 4, 3 + Math.floor(popularitySum(s) / 40) + Math.floor(yardScenery(s) / 6) + 7));
   });
   it('정류장에서 걸어와 앉고, 돈을 내고, 영수증 한 줄을 남기고, 연구가 쌓인다 — 결정적', () => {
     const s = newGame(3);

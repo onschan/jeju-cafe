@@ -2,7 +2,7 @@
 import type { GameState, Pt } from './types.ts';
 import { facilityDef, isFloorDef } from './data.ts';
 import { canPlace, lineCells, isEnclosed, footprint, rectEdges, canWall, setWall, type WallEdge } from './world.ts';
-import { placeFacility, sheetOf, popularitySum, usables } from './facility.ts';
+import { placeFacility, sheetOf, popularitySum, usables, yardScenery } from './facility.ts';
 import { dailyGuests } from './guests.ts';
 
 /** 편의 시설 효과 한 줄 */
@@ -45,7 +45,7 @@ export function previewPlace(s: GameState, id: string, x: number, y: number, lin
   const out: Preview = { cells: placed.length, cost: placed.length * d.cost, pairs, popDelta: popularitySum(c) - popBefore, sceneryTouched: 0, comfortTouched: 0, indoorGain: indoorCount(c) - indoorBefore, guestsDelta: dailyGuests(c) - guestsBefore, amenity: d.amenity ? AMENITY_TEXT[d.amenity] : undefined };
   const f = c.facilities[placed[0]!]!;
   if (d.tab === 'seat' || d.tab === 'shop') { const sh = sheetOf(c, f); Object.assign(out, { total: sh.total, base: sh.base, bonus: sh.bonus, scenery: sh.scenery, comfort: sh.comfort, season: sh.season, fee: sh.fee, indoor: sh.indoor }); }
-  else if (d.scenery) { for (const u of usables(s)) { const a = sheetOf(s, u).scenery, b = sheetOf(c, c.facilities[u.id]!).scenery; if (b > a) out.sceneryTouched++; } }
+  else if (d.scenery) out.sceneryTouched = yardScenery(c) - yardScenery(s);   // 마당 경치가 얼마나 늘었나
   if (d.comfort) { for (const u of usables(s)) { const a = sheetOf(s, u).comfort, b = sheetOf(c, c.facilities[u.id]!).comfort; if (b > a) out.comfortTouched++; } }
   return out;
 }
