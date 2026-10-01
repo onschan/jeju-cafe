@@ -99,7 +99,7 @@ export function cellEdges(x: number, y: number): WallEdge[] { return [{ x, y, si
 export function canWall(s: GameState, kind: string, e: WallEdge): ApplyResult {
   const [a, b] = edgeCells(e);
   if (!inBounds(s, a.x, a.y) || !inBounds(s, b.x, b.y)) return { ok: false, reason: '격자 밖이에요' };
-  if (!owned(s, a.x, a.y) || !owned(s, b.x, b.y)) return { ok: false, reason: '아직 내 땅이 아니에요' };
+  if (!owned(s, a.x, a.y) && !owned(s, b.x, b.y)) return { ok: false, reason: '아직 내 땅이 아니에요' }; // 내 땅 가장자리(한쪽만 내 땅)엔 세울 수 있다 — 울타리는 경계에 치는 것
   const ca = cellAt(s, a.x, a.y), cb = cellAt(s, b.x, b.y);
   if (ca.terrain === 'road' || cb.terrain === 'road') return { ok: false, reason: '마을 길엔 못 세워요' };
   if (ca.floor === 'path' || cb.floor === 'path') return { ok: false, reason: '올렛길 쪽은 문으로 비워요' };

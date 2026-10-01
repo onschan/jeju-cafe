@@ -123,12 +123,13 @@ export function App() {
         const id = placingRef.current;
         if (id) {
           // 탭은 자리만 잡는다 — 놓는 건 띠의 「놓기/깔기」로 (탭마다 놓이면 실수가 잦다)
+          let g: Ghost;
           if (facilityDef(id).sub === 'wall' && wallModeRef.current === 'edge') {
             const side = wallSideRef.current === 'auto' ? nearestSide(fx, fy) : wallSideRef.current;
-            setGhost(ghostOf(st, id, x, y, undefined, [edgeOf(x, y, side)]));
-            return;
-          }
-          setGhost(isLine(id) ? ghostOf(st, id, x, y, { from: { x, y }, to: { x, y } }) : ghostOf(st, id, x, y));
+            g = ghostOf(st, id, x, y, undefined, [edgeOf(x, y, side)]);
+          } else g = isLine(id) ? ghostOf(st, id, x, y, { from: { x, y }, to: { x, y } }) : ghostOf(st, id, x, y);
+          setGhost(g);
+          if (!g.ok && g.reason) { viewRef.current?.say(x, y, g.reason); sfx('error'); } // 안 되는 자리는 그 자리에 이유를
           return;
         }
         const p = parcelAt(st, x, y);
@@ -230,7 +231,8 @@ function PlacingBar({ id, ghost, wallMode, wallSide, onWallMode, onWallSide, onD
   const wall = d.sub === 'wall';
   const pv = ghost && !floor ? previewPlace(getState(), id, ghost.x, ghost.y, wall ? ghost.line : undefined, ghost.edges) : null;
   const count = floor ? n : pv?.cells ?? 1;
-  const can = !!ghost && (floor ? n > 0 : ghost.ok) && getState().money >= d.cost * count;
+  const short = !!ghost && (floor ? n > 0 : ghost.ok) && getState().money < d.cost * count;
+  const can = !!ghost && (floor ? n > 0 : ghost.ok) && !short;
   // 기대효과 한 줄 — 그 자리에 놓으면 어떻게 되나
   const effect = (() => {
     if (!ghost || !ghost.ok) return null;
@@ -254,7 +256,7 @@ function PlacingBar({ id, ghost, wallMode, wallSide, onWallMode, onWallSide, onD
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
         <Sprite id={id} size={28} /><b>{d.name}</b>
         <span style={{ flex: 1, minWidth: 0 }}>{floor || wall ? (ghost?.line || ghost?.edges ? `${count}${wall ? '변' : '칸'} · ${won(d.cost * count)}` : wall ? (wallMode === 'rect' ? '바닥 위를 드래그해 네모를 잡아요' : '칸의 변 가까이를 탭해요 · 드래그하면 줄로') : '탭하거나 드래그해서 줄을 잡아요') : !ghost ? `탭해서 자리를 잡아요 · ${won(d.cost)}` : !ghost.ok ? <span style={{ color: C.red }}>{ghost.reason}</span> : won(d.cost)}</span>
-        <span style={small}>{wonShort(getState().money)}</span>
+        <span style={{ ...small, color: short ? C.red : C.soft, fontWeight: short ? 700 : 400 }}>{short ? `${wonShort(d.cost * count - getState().money)} 모자라요` : wonShort(getState().money)}</span>
         <button style={can ? btnGold : btnOff} disabled={!can} onClick={onConfirm}>{floor ? '깔기' : wall ? (wallMode === 'edge' ? '세우기' : '두르기') : '놓기'}</button>
         <button style={btnOff} onClick={onDone}>끝</button>
       </div>

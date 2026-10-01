@@ -381,6 +381,9 @@ export class View {
     this.ghost = c;
   }
 
+  /** 그 칸 위에 짧은 글씨 (거절 이유 등) */
+  say(x: number, y: number, text: string, color = 0xc8402e): void { this.float(x, y, text, color, performance.now()); }
+
   /** 사림이 남긴 연출을 가져간다 — 상성 UP은 순서대로 110ms씩 늦게 */
   private takeFx(state: GameState, now: number): void {
     if (state.fx.length === 0) return;
