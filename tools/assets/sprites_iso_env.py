@@ -422,6 +422,22 @@ def room_wall(kind: str, axis: str) -> IsoCanvas:
             if axis == 'ne': c.line((0, t, z), (1, t, z), wood[0])
             else: c.line((t, 0, z), (t, 1, z), wood[0])
         c.pillar(0, 0, 2, 26, DARKWOOD); c.pillar(1, 0, 2, 26, DARKWOOD) if axis == 'ne' else c.pillar(0, 1, 2, 26, DARKWOOD)
+    elif kind == 'glass':
+        # 통유리벽: 나무 틀 + 큰 유리
+        c.box(3, wood, rect)
+        g = (0.06, 0, 0.94, t) if axis == 'ne' else (0, 0.06, t, 0.94)
+        c.box(20, GLASS3, g, z0=3)
+        c.box(2, wood, g, z0=22)
+        c.pillar(0, 0, 2, 25, DARKWOOD)
+        if axis == 'ne': c.pillar(1, 0, 2, 25, DARKWOOD)
+        else: c.pillar(0, 1, 2, 25, DARKWOOD)
+    elif kind == 'brick':
+        from px import hexc as _h
+        brick = (_h('6d3524'), _h('a4553a'), _h('c47a5a'))
+        c.box(24, brick, rect)
+        for z in (5, 11, 17, 22):
+            if axis == 'ne': c.line((0, t, z), (1, t, z), brick[0])
+            else: c.line((t, 0, z), (t, 1, z), brick[0])
     elif kind in ('plaster', 'window'):
         c.box(24, PLASTER, rect)
         c.box(3, basalt, rect)  # 굽도리 돌
@@ -442,7 +458,7 @@ def sprites() -> dict[str, Canvas]:
         # 트랙 E 제주 풍경 장식
         'iso_obj_bus_0': bus(0), 'iso_obj_bus_1': bus(1), 'iso_obj_car_y': car_y(), 'iso_obj_thatched': thatched(),
         'iso_obj_wall_ne': wall_segment('ne'), 'iso_obj_wall_nw': wall_segment('nw'),
-        **{f'iso_obj_w_{k}_{ax}': room_wall(k, ax) for k in ('fence', 'wood', 'plaster', 'window', 'stone') for ax in ('ne', 'nw')},
+        **{f'iso_obj_w_{k}_{ax}': room_wall(k, ax) for k in ('fence', 'wood', 'plaster', 'window', 'stone', 'glass', 'brick') for ax in ('ne', 'nw')},
         'iso_obj_basalt_rock': basalt_rock(), 'iso_obj_dolhareubang': dolhareubang(), 'iso_obj_pampas': pampas(),
         'iso_obj_canola': canola(), 'iso_obj_camellia': camellia(), 'iso_obj_hydrangea': hydrangea(),
         'iso_obj_pine': pine(), 'iso_obj_palm': palm(), 'iso_obj_stone_lantern': stone_lantern(),

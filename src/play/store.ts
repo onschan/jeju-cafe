@@ -26,7 +26,7 @@ function drainToasts(): void {
   while (toasts.length > 4) toasts.shift();
 }
 export function dispatch(a: Action): ApplyResult { const r = apply(state, a); drainToasts(); if (r.ok) emit(); return r; }
-export function restart(seed?: number): void { state = newGame(seed ?? ((Date.now() % 1_000_000) | 0)); save(); emit(); }
+export function restart(seed?: number, preset?: 'blank' | 'starter' | 'tutorial'): void { state = newGame(seed ?? ((Date.now() % 1_000_000) | 0), preset); save(); emit(); }
 
 let acc = 0; let last = 0; let lastDay = -1; let raf = 0;
 /** 타이틀·창이 떠 있는 동안 시계를 멈춘다 (속도 설정은 그대로) */

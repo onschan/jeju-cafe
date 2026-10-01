@@ -3,7 +3,7 @@
  * 결정적: state.rng 하나로 난수를 뽑고, Date·Math.random은 쓰지 않는다.
  */
 export type Tab = 'env' | 'seat' | 'shop';
-export type Floor = 'wood' | 'tile' | 'stone' | 'path';
+export type Floor = 'wood' | 'deck' | 'tile' | 'stone' | 'brick' | 'path';
 export type Terrain = 'grass' | 'road';
 export type Season = 'spring' | 'summer' | 'autumn' | 'winter';
 export type Mood = 'happy' | 'meh' | 'angry';
@@ -84,7 +84,8 @@ export interface GameState {
   target: string | null;      // 광고 타깃 손님층
   invested: string[];
   objectivesDone: string[];
-  hints: string[];            // 한 번 본 안내 대사 id (할망·삼춘 첫 5분 안내)
+  hints: string[];            // 한 번 본 안내 대사 id
+  tutorial: number;           // 따라 하기 단계 (−1 = 안 함·다 끝냄) (할망·삼춘 첫 5분 안내)
   receipts: Receipt[]; receiptSeq: number;
   fx: Fx[];
   loan: Loan;
@@ -116,6 +117,7 @@ export type Action =
   | { type: 'buyParcel'; id: string }
   | { type: 'setSpeed'; speed: 0 | 1 | 2 | 3 }
   | { type: 'setName'; name: string }
-  | { type: 'hint'; id: string };           // 안내 대사를 봤다
+  | { type: 'hint'; id: string }
+  | { type: 'tutorialStep'; reward: number }; // 따라 하기 한 단계 완료           // 안내 대사를 봤다
 
 export interface ApplyResult { ok: boolean; reason?: string }

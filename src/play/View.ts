@@ -4,7 +4,7 @@
  */
 import { Application, Container, Graphics, Sprite, Text } from 'pixi.js';
 import type { GameState, Facility, Guest, Fx, Pt } from '../game/index.ts';
-import { facilityDef, isFloorDef, canPlace, canLayFloor, lineCells, seasonOf, isNight, cellAt, walkable, wallBetween, HOME, ROAD_Y, BUS_STOP, rectEdges, canWall, edgeCells, type WallEdge } from '../game/index.ts';
+import { facilityDef, isFloorDef, canPlace, canLayFloor, lineCells, seasonOf, isNight, cellAt, walkable, wallBetween, footprint, HOME, ROAD_Y, BUS_STOP, rectEdges, canWall, edgeCells, type WallEdge } from '../game/index.ts';
 import { loadAssets, tex, peekTex, hasAssets, spriteName } from '../render/assets';
 import { attachCamera } from '../render/camera';
 import { ISO_W, ISO_H, cellToScreen, cellCenter, footAnchor, depth, screenToCell } from '../render/iso';
@@ -14,6 +14,7 @@ import { Background } from '../render/Background';
 import { makeSpeechBubble } from '../render/bubble';
 import { busPose } from '../render/scenery';
 import { parcelFill, parcelProps } from './parcelScenery';
+const DIRS4: Pt[] = [{ x: 1, y: 0 }, { x: -1, y: 0 }, { x: 0, y: 1 }, { x: 0, y: -1 }];
 import { guestAccs } from './guestLook';
 
 export interface Ghost { id: string; x: number; y: number; ok: boolean; reason?: string; line?: { from: Pt; to: Pt }; edges?: WallEdge[] }
@@ -23,7 +24,7 @@ const SYNERGY_STAGGER_MS = 110;
 const FLOAT_MS = 900;
 
 /** 벽 종류 id → 그림 이름 조각 (iso_obj_w_<kind>_<ne|nw>) */
-export const WALL_SPRITE: Record<string, string> = { railing: 'fence', wall_wood: 'wood', wall_plaster: 'plaster', wall_window: 'window', wall: 'stone' };
+export const WALL_SPRITE: Record<string, string> = { railing: 'fence', wall_wood: 'wood', wall_plaster: 'plaster', wall_window: 'window', wall: 'stone', wall_brick: 'brick', wall_glass: 'glass' };
 /** 밤에 빛을 내는 시설과 빛 반경(px) */
 const LIGHT_RADIUS: Record<string, number> = { garden_lamp: 56, streetlight: 84 };
 
@@ -220,7 +221,9 @@ export class View {
     if (this.floorCells.length === 0) return;
     const pickCell = () => this.floorCells[Math.floor(Math.random() * this.floorCells.length)]!;
     const dt = Math.min(0.1, (now - this.staffLast) / 1000); this.staffLast = now;
+    let i = -1;
     for (const st of state.staff) {
+      i++;
       let e = this.staffNodes.get(st.id);
       if (!e) {
         const c = pickCell();
@@ -229,6 +232,7 @@ export class View {
         e = { node, x: c.x, y: c.y, tx: c.x, ty: c.y, idleUntil: now + 1000, dir: 'down', shownDir: 'down', frame: 1 };
         this.staffNodes.set(st.id, e);
       }
+      const cx0 = Math.round(e.x), cy0 = Math.round(e.y);
       const dx = e.tx - e.x, dy = e.ty - e.y, dist = Math.hypot(dx, dy);
       let moving = false;
       if (dist > 0.02) {
@@ -238,6 +242,8 @@ export class View {
         else { e.y += Math.sign(dy) * Math.min(Math.abs(dy), step); e.dir = dy > 0 ? 'down' : 'up'; }
         moving = step > 0;
       } else if (now > e.idleUntil) {
+        const post = this.dutyCell(state, st, i);
+        if (post && (post.x !== cx0 || post.y !== cy0)) { e.tx = post.x; e.ty = post.y; e.idleUntil = now + 2500 + Math.random() * 2500; continue; }
         // 같은 줄이나 칸에서 가까운 빈 바닥으로 (걸어갈 수 있는 곳만)
         const cx = Math.round(e.x), cy = Math.round(e.y);
         // 같은 줄의 빈 바닥 중 사이에 벽·시설이 없는 곳만 (벽을 뚫고 가지 않게)
@@ -254,6 +260,39 @@ export class View {
     }
   }
   private staffLast = 0;
+
+  /** 담당 자리: 접객은 자리 옆, 바는 카운터·주방 옆, 정리는 마당 아무 데나, 홍보는 올렛길 입구 */
+  private dutyCell(state: GameState, st: { duty: string }, i: number): Pt | null {
+    const near = (f: Facility): Pt | null => {
+      const d = facilityDef(f.type);
+      for (const p of footprint(f.x, f.y, d.w, d.h)) for (const v of DIRS4) {
+        const q = { x: p.x + v.x, y: p.y + v.y };
+        if (q.x < 0 || q.y < 0 || q.x >= state.grid.w || q.y >= state.grid.h) continue;
+        const c = cellAt(state, q.x, q.y);
+        if (!c.objectId && c.floor && c.floor !== 'path' && !wallBetween(state, p, q)) return q;
+      }
+      return null;
+    };
+    const all = Object.values(state.facilities);
+    if (st.duty === 'service') {
+      const seats = all.filter((f) => facilityDef(f.type).tab === 'seat');
+      for (let k = 0; k < seats.length; k++) { const q = near(seats[(i + k) % seats.length]!); if (q) return q; }
+      return null;
+    }
+    if (st.duty === 'speed') {
+      const bars = all.filter((f) => { const d = facilityDef(f.type); return d.amenity === 'counter' || d.amenity === 'kitchen' || d.tab === 'shop'; });
+      for (let k = 0; k < bars.length; k++) { const q = near(bars[(i + k) % bars.length]!); if (q) return q; }
+      return null;
+    }
+    if (st.duty === 'charm') {
+      // 올렛길 입구(길에 가장 가까운 올렛길 칸) 옆 바닥
+      let best: Pt | null = null;
+      for (let y = 0; y < state.grid.h; y++) for (let x = 0; x < state.grid.w; x++) if (cellAt(state, x, y).floor === 'path' && (!best || y > best.y)) best = { x, y };
+      if (best) for (const v of DIRS4) { const q = { x: best.x + v.x, y: best.y + v.y }; if (q.x >= 0 && q.y >= 0 && q.x < state.grid.w && q.y < state.grid.h) { const c = cellAt(state, q.x, q.y); if (!c.objectId && c.floor && c.floor !== 'path') return q; } }
+      return best;
+    }
+    return null; // 정리: 마당을 돌아다닌다
+  }
 
   /** 변 벽: 칸의 북·서 변에 선 벽을 그린다. 방 앞쪽(안쪽이 벽 뒤에 있는) 벽은 반투명 — 카이로의 잘라 낸 앞벽처럼 안이 보이게. */
   private syncWalls(state: GameState): void {
@@ -315,9 +354,10 @@ export class View {
       const seated = g.phase === 'use';
       // 앉은 손님은 자리(시설) 위에 그린다 — 옆 칸에 서 있지 않게
       const tf = seated && g.target ? state.facilities[g.target] : null;
-      const pos = tf ? (() => { const d = facilityDef(tf.type); const cc = cellCenter(tf.x + (d.w - 1) / 2, tf.y + (d.h - 1) / 2); return { sx: cc.sx, sy: cc.sy - 10 }; })() : c;
+      // 자리 앞쪽 모서리에 앉힌다 — 가운데에 두면 테이블 위로 올라탄 것처럼 보인다
+      const pos = tf ? (() => { const d = facilityDef(tf.type); const cc = cellCenter(tf.x + (d.w - 1) / 2, tf.y + (d.h - 1) / 2); return { sx: cc.sx - 10, sy: cc.sy + 8 }; })() : c;
       e.node.position.set(pos.sx, pos.sy);
-      e.node.zIndex = tf ? depth(tf.x, tf.y, facilityDef(tf.type).w, facilityDef(tf.type).h) + 0.4 : depth(g.x, g.y) + 0.2;
+      e.node.zIndex = tf ? depth(tf.x, tf.y, facilityDef(tf.type).w, facilityDef(tf.type).h) + 0.45 : depth(g.x, g.y) + 0.2;
       const next = g.path[0];
       const dir: Dir = !next ? 'down' : Math.abs(next.x - g.x) > Math.abs(next.y - g.y) ? (next.x > g.x ? 'right' : 'left') : next.y < g.y ? 'up' : 'down';
       const frame = (seated || !next) ? 1 : (Math.floor(now / 125) % 3) as 0 | 1 | 2;

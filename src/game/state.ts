@@ -1,6 +1,6 @@
 import type { GameState } from './types.ts';
 import { newClock } from './clock.ts';
-import { makeCells, makeParcels, HOME, BUS_STOP } from './world.ts';
+import { makeCells, makeParcels, HOME, BUS_STOP, wallRect } from './world.ts';
 import { FACILITIES, MENUS, GUEST_TYPES } from './data.ts';
 import { noteStartUnlocked } from './objectives.ts';
 import { layFloor } from './world.ts';
@@ -10,7 +10,8 @@ export const SAVE_VERSION = 100; // 새 코어 (specs/2026-09-27-rebuild-kairo-c
 export const START_MONEY = 3_000_000;
 
 /** 새 게임: 잔디 마당 + 정류장에서 마당 가운데까지 올렛길 + 데크 몇 칸 + 테이블 하나. 손님은 첫날부터 온다. */
-export function newGame(seed: number): GameState {
+export type Preset = 'blank' | 'starter' | 'tutorial';
+export function newGame(seed: number, preset: Preset = 'blank'): GameState {
   const s: GameState = {
     version: SAVE_VERSION, cafeName: '우리 카페', seed, rng: seed | 0, tick: 0,
     clock: newClock(),
@@ -22,7 +23,7 @@ export function newGame(seed: number): GameState {
     staff: [], candidates: [], candidatesMonth: -1, hiring: null,
     unlocked: { facilities: FACILITIES.filter((d) => d.unlock === 0).map((d) => d.id), menus: MENUS.filter((d) => d.unlock === 0).map((d) => d.id), guests: GUEST_TYPES.filter((d) => d.unlock === 0).map((d) => d.id) },
     menu: MENUS.filter((d) => d.unlock === 0).map((d) => d.id),
-    target: null, invested: [], objectivesDone: [], hints: [],
+    target: null, invested: [], objectivesDone: [], hints: [], tutorial: preset === 'tutorial' ? 0 : -1,
     receipts: [], receiptSeq: 0, fx: [],
     loan: { balance: 0, count: 0, lastYear: 0 },
     evaluations: [],
@@ -35,6 +36,16 @@ export function newGame(seed: number): GameState {
   for (let y = BUS_STOP.y - 1; y >= HOME.y + 5; y--) layFloor(s, 'path', cx, y);
   for (let dy = 0; dy < 2; dy++) for (let dx = 0; dx < 3; dx++) layFloor(s, 'wood', cx + dx, HOME.y + 3 + dy);
   placeFacility(s, 'table_out', cx + 1, HOME.y + 3);
+  if (preset === 'starter') {
+    // 기초 세팅: 장사가 바로 되는 한 벌 — 데크 5×3, 자리 셋, 나무·꽃
+    for (let dy = 0; dy < 3; dy++) for (let dx = 0; dx < 5; dx++) layFloor(s, 'wood', cx + dx - 1, HOME.y + 3 + dy);
+    placeFacility(s, 'table_out', cx - 1, HOME.y + 3);
+    placeFacility(s, 'table_out', cx + 3, HOME.y + 4);
+    placeFacility(s, 'tangerine_tree', cx + 5, HOME.y + 3);
+    placeFacility(s, 'flower_bed', cx - 2, HOME.y + 4);
+    // 벽도 한 벌: 데크 둘레를 나무 판벽으로 (올렛길 쪽은 문으로 비워진다)
+    wallRect(s, 'wall_wood', { x: cx - 1, y: HOME.y + 3 }, { x: cx + 3, y: HOME.y + 5 });
+  }
   noteStartUnlocked(s);
   return s;
 }

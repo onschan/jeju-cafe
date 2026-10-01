@@ -9,6 +9,8 @@ import { DialogueHost } from './Dialogue';
 import { showDialogue, clearDialogues, useDialogue, SPEAKER } from './dialogueStore';
 import { RewardChest, MonthCard, DaySummary, MessageLine, Portrait, guestTypeFace, DAY_CARD_MS, MESSAGE_LINE_H } from './cards';
 import { nextHint } from './hints';
+import { tutorialStep, TUTORIAL } from './tutorial';
+import { IntroScreen, hasSeenIntro, introImageUrl } from './Intro';
 import { EndingScreen } from './Ending';
 import { unlockAudio, audioReady, sfx, bgm, setBgmLayer, isMuted, setMuted, getBgmVolume, getSfxVolume, setBgmVolume, setSfxVolume } from './audio';
 import { guestAccs } from './guestLook';
@@ -34,6 +36,7 @@ export function App() {
   const [selected, setSelected] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [title, setTitle] = useState(true);
+  const [intro, setIntro] = useState<null | { replay: boolean; then: () => void }>(null);
   const [buyAsk, setBuyAsk] = useState<Parcel | null>(null);
   const [floorSel, setFloorSel] = useState<Pt | null>(null);
   const [chest, setChest] = useState<Objective | null>(null);
@@ -50,7 +53,7 @@ export function App() {
   const dragSide = useRef<Side4>('n');
   const dlg = useDialogue().req;
   // 타이틀·대화·상자·결산이 떠 있는 동안 시계를 멈춘다
-  useEffect(() => { setPaused(title || !!dlg || !!chest || monthCard || ending); }, [title, dlg, chest, monthCard, ending]);
+  useEffect(() => { setPaused(title || !!intro || !!dlg || !!chest || monthCard || ending); }, [title, intro, dlg, chest, monthCard, ending]);
   // 목표 달성 → 보물상자 → 삼춘 한마디 (이어하기 직후 옛 목표가 다시 튀지 않게 처음 개수는 「본 것」으로)
   const seenObj = useRef(s.objectivesDone.length);
   useEffect(() => {
@@ -106,6 +109,16 @@ export function App() {
   useEffect(() => { if (unlockedCount > seenUnlock.current) sfx('unlock'); seenUnlock.current = unlockedCount; }, [unlockedCount]);
   // 3년 엔딩: 4년차 1월 1일에 한 번
   useEffect(() => { if (!title && !dlg && !chest && !monthCard && s.clock.year >= 4 && !s.hints.includes('ending')) { dispatch({ type: 'hint', id: 'ending' }); setEnding(true); sfx('fanfare'); } }, [s.clock.year, title, !!dlg, !!chest, monthCard]);
+  // 따라 하기: 단계가 끝나면 상금과 한마디, 다음 단계로
+  const tut = tutorialStep(s);
+  useEffect(() => {
+    if (!tut || title || dlg || chest || monthCard) return;
+    if (!tut.step.done(s)) return;
+    dispatch({ type: 'tutorialStep', reward: tut.step.reward });
+    sfx('fanfare');
+    const next = TUTORIAL[tut.i + 1];
+    showDialogue({ speaker: { name: SPEAKER[tut.step.say.who], portrait: tut.step.say.who, expr: 'happy' }, lines: [...tut.step.say.lines, next ? `다음은 「${next.text}」 — ${next.how}` : '따라 하기 끝! 목표는 카페 창에서 이어 봐.'] });
+  }, [hintTick, tut?.i, title, !!dlg, !!chest, monthCard]);
   // 돈이 늘면 숫자가 살짝 튄다
   const prevMoney = useRef(s.money);
   useEffect(() => { const up = s.money > prevMoney.current; prevMoney.current = s.money; if (!up) return; setMoneyBump(true); const t = setTimeout(() => setMoneyBump(false), 160); return () => clearTimeout(t); }, [s.money]);
@@ -183,7 +196,10 @@ export function App() {
         <span style={{ display: 'inline-flex', gap: 2, marginLeft: 2 }}>{([0, 1, 3] as const).map((sp) => <button key={sp} onClick={() => dispatch({ type: 'setSpeed', speed: sp })} style={{ ...(s.clock.speed === sp ? btnGold : btnOff), padding: 1, width: 22, height: 20, lineHeight: 0, display: 'grid', placeItems: 'center' }}><Ico name={sp === 0 ? 'speed_pause' : `speed_${sp}`} size={14} /></button>)}</span>
       </div>
       {/* 목표 한 줄 */}
-      {obj && !placing && <div style={{ position: 'absolute', top: 36, left: 8, right: 8, ...panel, padding: '4px 8px', fontSize: 13, cursor: 'pointer' }} onClick={() => setWin('cafe')}><Ico name="flag" /> {obj.text} <span style={small}>· 상금 {wonShort(obj.reward)}</span></div>}
+      {tut && !placing ? <div style={{ position: 'absolute', top: 36, left: 8, right: 8, ...panel, padding: '4px 8px', fontSize: 13, background: '#fff0c0' }}>
+        <div style={{ display: 'flex', gap: 6, alignItems: 'baseline' }}><b style={{ color: C.wood }}>{tut.i + 1}/{TUTORIAL.length}</b><b style={{ flex: 1 }}>{tut.step.text}</b><span style={small}>{wonShort(tut.step.reward)}</span></div>
+        <div style={{ ...small, fontSize: 11 }}>{tut.step.how}</div>
+      </div> : obj && !placing && <div style={{ position: 'absolute', top: 36, left: 8, right: 8, ...panel, padding: '4px 8px', fontSize: 13, cursor: 'pointer' }} onClick={() => setWin('cafe')}><Ico name="flag" /> {obj.text} <span style={small}>· 상금 {wonShort(obj.reward)}</span></div>}
       {/* 배치 모드 띠 */}
       {placing && <PlacingBar id={placing} ghost={ghost} wallMode={wallMode} wallSide={wallSide} onWallMode={(m) => { setWallMode(m); setGhost(null); }} onWallSide={(sd) => { setWallSide(sd); setGhost((g) => g && g.edges ? ghostOf(getState(), g.id, g.x, g.y, g.line, (g.line ? lineCells(g.line.from, g.line.to) : [{ x: g.x, y: g.y }]).map((c) => edgeOf(c.x, c.y, sd === 'auto' ? 'n' : sd))) : g); }} onDone={() => { setPlacing(null); setGhost(null); }} onConfirm={() => {
         const g = ghost; if (!g) return; const d = facilityDef(placing);
@@ -221,7 +237,14 @@ export function App() {
       <DialogueHost />
       {chest && <RewardChest objective={chest} onClose={() => { const o = chest; setChest(null); const next = currentObjective(getState()); showDialogue({ speaker: { name: SPEAKER.samchun, portrait: 'samchun', expr: 'happy' }, lines: [`${o.text} — 해냈네! 상금 ${wonShort(o.reward)}은 통장에 넣어 뒀어.`, next ? `다음은 「${next.text}」. 상금은 ${wonShort(next.reward)}.` : '목표는 다 이뤘어. 이제 마음껏 키워 봐.'] }); }} />}
       {monthCard && s.lastMonth && <MonthCard s={s} onClose={() => setMonthCard(false)} />}
-      {title && ready && <Title onStart={(fresh) => { setTitle(false); clearDialogues(); if (fresh) intro(getState().cafeName); else showDialogue({ speaker: { name: SPEAKER.samchun, portrait: 'samchun' }, lines: [`어서 와. ${getState().cafeName}, 오늘도 잘 부탁해.`] }); }} />}
+      {title && ready && !intro && <Title
+        onReplayIntro={() => setIntro({ replay: true, then: () => setIntro(null) })}
+        onStart={(fresh) => {
+          const go = () => { setTitle(false); clearDialogues(); if (fresh) introLines(getState().cafeName); else showDialogue({ speaker: { name: SPEAKER.samchun, portrait: 'samchun' }, lines: [`어서 와. ${getState().cafeName}, 오늘도 잘 부탁해.`] }); };
+          if (fresh && !hasSeenIntro()) setIntro({ replay: false, then: () => { setIntro(null); go(); } });
+          else go();
+        }} />}
+      {intro && <IntroScreen replay={intro.replay} onDone={intro.then} />}
     </div>
     </div>
   );
@@ -297,25 +320,31 @@ function Ask({ text, sub, yesOff, onYes, onNo }: { text: string; sub?: string; y
 }
 /** 타이틀: 이어하기 / 새 게임(카페 이름) — 탭 두 번이면 게임 */
 /** 새 게임 첫 대사: 할망이 마당을 맡긴다 */
-function intro(name: string) {
+function introLines(name: string) {
   showDialogue({ speaker: { name: SPEAKER.halmang, portrait: 'halmang' }, lines: ['이 마당, 이제 네가 맡아라. 바닷바람 좋고 손님도 곧 올 거다.', '바닥을 깔고 그 위에 자리를 놓아. 나무·꽃을 옆에 두면 경치가 올라간다.'] });
   showDialogue({ speaker: { name: SPEAKER.samchun, portrait: 'samchun', expr: 'happy' }, lines: [`${name}라… 이름 좋네. 나는 옆집 삼춘이야.`, '손님이 나갈 때마다 아래 줄에 영수증이 찍혀. 첫 목표는 자리 3개 놓기!'] });
 }
-function Title({ onStart }: { onStart: (fresh: boolean) => void }) {
+function Title({ onStart, onReplayIntro }: { onStart: (fresh: boolean) => void; onReplayIntro: () => void }) {
   const [naming, setNaming] = useState(false);
   const [name, setName] = useState('우리 카페');
   return (
-    <div style={{ position: 'absolute', inset: 0, background: 'rgba(20,14,8,0.78)', display: 'grid', placeItems: 'center', color: '#fff8e8' }}>
-      <div style={{ textAlign: 'center', display: 'grid', gap: 10, width: 260 }}>
-        <div style={{ fontSize: 30, fontWeight: 700, textShadow: '2px 2px 0 #4a2f16' }}>제주 카페 이야기</div>
-        <div style={small}>바닥을 깔고, 자리를 놓고, 손님을 맞는다</div>
+    <div style={{ position: 'absolute', inset: 0, background: '#15110c', display: 'grid', placeItems: 'center', color: '#fff8e8', overflow: 'hidden' }}>
+      <img className="px" src={introImageUrl(10, true)} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', imageRendering: 'pixelated', opacity: 0.55 }} />
+      <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, rgba(10,8,5,0.35) 0%, rgba(10,8,5,0.8) 60%)' }} />
+      <div style={{ position: 'relative', textAlign: 'center', display: 'grid', gap: 10, width: 260 }}>
+        <div style={{ fontSize: 30, fontWeight: 700, textShadow: '2px 2px 0 #4a2f16, 0 0 12px #00000080' }}>제주 카페 이야기</div>
+        <div style={{ ...small, color: '#e0d2b4' }}>바닥을 깔고, 자리를 놓고, 손님을 맞는다</div>
         {!naming ? <>
           {hadSave && <button style={{ ...btnGold, fontSize: 16 }} onClick={() => onStart(false)}>이어하기</button>}
           <button style={{ ...btn, fontSize: 16 }} onClick={() => setNaming(true)}>새 게임</button>
+          <button style={{ ...btnOff, fontSize: 13 }} onClick={onReplayIntro}>프롤로그 다시 보기</button>
         </> : <>
           <div style={{ fontSize: 13 }}>카페 이름</div>
           <input autoFocus value={name} maxLength={12} onChange={(e) => setName(e.target.value)} style={{ fontFamily: 'inherit', fontSize: 16, padding: 6, textAlign: 'center' }} />
-          <div style={{ display: 'flex', gap: 6 }}><button style={{ ...btnOff, flex: 1 }} onClick={() => setNaming(false)}>뒤로</button><button style={{ ...btnGold, flex: 1 }} onClick={() => { restart(); dispatch({ type: 'setName', name }); onStart(true); }}>결정</button></div>
+          <div style={{ ...small, marginTop: 2 }}>어떻게 시작할까요?</div>
+          <button style={{ ...btnGold, fontSize: 15 }} onClick={() => { restart(undefined, 'tutorial'); dispatch({ type: 'setName', name }); onStart(true); }}>차근차근 (따라 하기)<div style={{ ...small, color: C.ink, fontSize: 11 }}>빈 마당에서 7단계로 배우며</div></button>
+          <button style={{ ...btn, fontSize: 15 }} onClick={() => { restart(undefined, 'starter'); dispatch({ type: 'setName', name }); onStart(true); }}>기본 세팅으로 바로<div style={{ ...small, color: '#fff8e8', fontSize: 11 }}>데크·자리 3개·나무·꽃이 놓인 채로</div></button>
+          <button style={btnOff} onClick={() => setNaming(false)}>뒤로</button>
         </>}
       </div>
     </div>
@@ -366,31 +395,44 @@ function Sprite({ id, size = 56 }: { id: string; size?: number }) {
   return url ? <img className="px" src={url} width={size} height={size} alt="" style={{ imageRendering: 'pixelated' }} /> : <div style={{ width: size, height: size }} />;
 }
 function Ico({ name, size = 14 }: { name: string; size?: number }) { return <img className="px" src={assetUrl(`assets/icons/icon_${name}.png`)} width={size} height={size} alt="" style={{ imageRendering: 'pixelated', verticalAlign: 'middle' }} />; }
-/** 카탈로그 = 3열 그림 격자 (영상 12:20). 잠긴 칸은 까맣게. 고른 것의 이름·값은 아래 한 줄. */
+/** 카탈로그: 2열 카드 — 그림·이름·값·핵심 수치가 한눈에. 잠긴 것도 이름과 필요한 연구를 보여 준다(뭘 노릴지 알게). */
 function BuildWindow({ s, onPick, onClose }: { s: GameState; onPick: (id: string) => void; onClose: () => void }) {
   const [tab, setTab] = useState<Tab | 'ground' | 'indoor'>('seat');
   const [pick, setPick] = useState<string | null>(null);
-  const items = FACILITIES.filter((d) => tab === 'ground' ? d.sub === 'floor' || d.sub === 'wall' : tab === 'indoor' ? !!d.indoor : d.tab === tab && d.sub !== 'floor' && d.sub !== 'wall' && !d.indoor);
+  const all = FACILITIES.filter((d) => tab === 'ground' ? d.sub === 'floor' || d.sub === 'wall' : tab === 'indoor' ? !!d.indoor : d.tab === tab && d.sub !== 'floor' && d.sub !== 'wall' && !d.indoor);
+  const open = all.filter((d) => s.unlocked.facilities.includes(d.id));
+  const locked = all.filter((d) => !s.unlocked.facilities.includes(d.id)).sort((a, b) => a.unlock - b.unlock);
   const d = pick ? facilityDef(pick) : null;
-  const open = d ? s.unlocked.facilities.includes(d.id) : false;
+  const isOpen = d ? s.unlocked.facilities.includes(d.id) : false;
+  /** 카드 한 장에 띄울 핵심 수치 */
+  const gist = (x: typeof FACILITIES[number]) => x.sub === 'floor' ? '칸마다' : x.sub === 'wall' ? '변마다' : x.amenity ? '편의' : x.comfort ? `아늑함 +${x.comfort}` : x.scenery ? `경치 +${x.scenery}` : x.pop !== undefined ? `인기 ${x.pop}` : '';
+  const Card = ({ x, lock }: { x: typeof FACILITIES[number]; lock: boolean }) => (
+    <div onClick={() => setPick(x.id)} style={{ ...tile, flexDirection: 'row', alignItems: 'center', gap: 6, padding: 5, textAlign: 'left', background: lock ? '#efe6d2' : '#fff8e8', outline: pick === x.id ? `3px solid ${C.gold}` : 'none', opacity: lock ? 0.75 : 1 }}>
+      <span style={{ position: 'relative', flex: 'none', filter: lock ? 'grayscale(1)' : 'none' }}><Sprite id={x.id} size={40} />{lock && <span style={{ position: 'absolute', right: -2, bottom: -2 }}><Ico name="lock" size={12} /></span>}</span>
+      <span style={{ flex: 1, minWidth: 0, lineHeight: 1.25 }}>
+        <b style={{ fontSize: 13, display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{x.name}</b>
+        <span style={{ ...small, fontSize: 11, display: 'block' }}>{lock ? `연구 ${x.unlock}` : wonShort(x.cost)}{gist(x) ? ` · ${gist(x)}` : ''}</span>
+      </span>
+    </div>
+  );
   return (
     <Window title="건축" onClose={onClose} tabs={(['ground', 'env', 'seat', 'shop', 'indoor'] as (Tab | 'ground' | 'indoor')[]).map((t) => <button key={t} style={{ ...(tab === t ? btnGold : btnOff), padding: '2px 5px', fontSize: 12 }} onClick={() => { setTab(t); setPick(null); }}>{t === 'ground' ? '바닥·벽' : t === 'indoor' ? '실내' : TAB_KO[t]}</button>)}>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 6 }}>
-        {items.map((it) => { const isOpen = s.unlocked.facilities.includes(it.id); const on = pick === it.id; return (
-          <div key={it.id} onClick={() => setPick(it.id)} style={{ ...(isOpen ? tile : tileLocked), outline: on ? `3px solid ${C.gold}` : 'none' }}>
-            {isOpen ? <Sprite id={it.id} /> : <div style={{ width: 56, height: 56, display: 'grid', placeItems: 'center' }}><Ico name="lock" size={20} /></div>}
-            <div style={{ fontSize: 12, textAlign: 'center', lineHeight: 1.1 }}>{isOpen ? it.name : '???'}</div>
-          </div>); })}
-      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 5 }}>{open.map((x) => <Card key={x.id} x={x} lock={false} />)}</div>
+      {locked.length > 0 && <>
+        <div style={{ ...small, margin: '8px 0 4px', display: 'flex', alignItems: 'center', gap: 4 }}><Ico name="lock" size={12} /> 연구로 열리는 것 <span style={{ color: C.ink }}>({locked.length})</span> · 지금 연구 {s.research}</div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 5 }}>{locked.map((x) => <Card key={x.id} x={x} lock />)}</div>
+      </>}
       {d && <div style={{ ...panel, marginTop: 8, padding: 6, display: 'flex', gap: 8, alignItems: 'center', position: 'sticky', bottom: 0 }}>
-        <Sprite id={d.id} size={48} />
+        <Sprite id={d.id} size={44} />
         <div style={{ flex: 1, minWidth: 0, fontSize: 13 }}>
-          <b>{open ? d.name : '???'}</b> <span style={small}>{d.w}×{d.h}</span>
-          <div style={small}>{open ? `${won(d.cost)} · 유지 ${won(d.upkeep)}/월${d.pop !== undefined ? ` · 인기 ${d.pop}` : ''}${d.scenery ? ` · 경치 +${d.scenery}` : ''}${d.fee ? ` · 요금 ${won(d.fee)}` : ''}${d.sub === 'wall' ? ' (변마다) · 칸의 변을 탭하거나 네모를 둘러서 · 둘러싸면 실내 +2, 겨울 −6 면함' : ''}${d.comfort ? ` · 아늑함 +${d.comfort}` : ''}${d.amenity ? ` · ${AMENITY_TEXT[d.amenity]}` : ''}${d.indoor ? ' · 실내 전용' : ''}` : `연구 ${d.unlock}로 열린다 (운영 › 연구)`}</div>
-          {open && tab === 'indoor' && <div style={small}>벽으로 둘러싸인 바닥 위에만 놓입니다. 아늑함은 실내 반경 3 자리·가게의 인기를 올려요.</div>}
-          {open && d.tags && <div style={small}>{d.tags.map((t) => GUEST_TYPES.find((g) => g.id === t)?.name).join('·')}에게 인기</div>}
+          <b>{d.name}</b> <span style={small}>{d.w}×{d.h}{d.capacity ? ` · ${d.capacity}인` : ''}</span>
+          <div style={small}>{isOpen ? `${won(d.cost)} · 유지 ${won(d.upkeep)}/월${d.pop !== undefined ? ` · 인기 ${d.pop}` : ''}${d.scenery ? ` · 경치 +${d.scenery}` : ''}${d.comfort ? ` · 아늑함 +${d.comfort}` : ''}${d.fee ? ` · 요금 ${won(d.fee)}` : ''}` : `연구 ${d.unlock} 필요 (운영 › 연구에서 연다)`}</div>
+          {isOpen && d.amenity && <div style={{ ...small, color: C.green }}>{AMENITY_TEXT[d.amenity]}</div>}
+          {isOpen && d.sub === 'wall' && <div style={small}>칸의 변을 탭하거나 네모를 둘러서 · 둘러싸면 실내 +2</div>}
+          {isOpen && d.indoor && d.sub !== 'wall' && <div style={small}>벽으로 둘러싸인 실내 바닥에만</div>}
+          {isOpen && d.tags && d.tags.length > 0 && <div style={small}>{d.tags.map((t) => GUEST_TYPES.find((g) => g.id === t)?.name).join('·')}에게 인기</div>}
         </div>
-        {open && <button style={s.money >= d.cost ? btnGold : btnOff} onClick={() => { if (s.money >= d.cost) onPick(d.id); }}>{d.sub === 'floor' ? '깔기' : d.sub === 'wall' ? '두르기' : '놓기'}</button>}
+        {isOpen && <button style={s.money >= d.cost ? btnGold : btnOff} onClick={() => { if (s.money >= d.cost) onPick(d.id); }}>{d.sub === 'floor' ? '깔기' : d.sub === 'wall' ? '두르기' : '놓기'}</button>}
       </div>}
     </Window>
   );

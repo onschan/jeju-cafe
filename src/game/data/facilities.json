@@ -24,6 +24,19 @@
   "unlock": 0
  },
  {
+  "id": "floor_deck",
+  "name": "짙은 원목 데크",
+  "tab": "env",
+  "sub": "floor",
+  "floor": "deck",
+  "w": 1,
+  "h": 1,
+  "cost": 32000,
+  "upkeep": 220,
+  "unlock": 40,
+  "tags": []
+ },
+ {
   "id": "floor_tile",
   "name": "타일 바닥",
   "tab": "env",
@@ -46,6 +59,19 @@
   "cost": 40000,
   "upkeep": 300,
   "unlock": 750
+ },
+ {
+  "id": "floor_brick",
+  "name": "벽돌 바닥",
+  "tab": "env",
+  "sub": "floor",
+  "floor": "brick",
+  "w": 1,
+  "h": 1,
+  "cost": 38000,
+  "upkeep": 240,
+  "unlock": 120,
+  "tags": []
  },
  {
   "id": "tangerine_tree",
@@ -268,6 +294,30 @@
   "cost": 40000,
   "upkeep": 80,
   "unlock": 100,
+  "tags": []
+ },
+ {
+  "id": "wall_brick",
+  "name": "벽돌벽",
+  "tab": "env",
+  "sub": "wall",
+  "w": 1,
+  "h": 1,
+  "cost": 45000,
+  "upkeep": 130,
+  "unlock": 180,
+  "tags": []
+ },
+ {
+  "id": "wall_glass",
+  "name": "통유리벽",
+  "tab": "env",
+  "sub": "wall",
+  "w": 1,
+  "h": 1,
+  "cost": 90000,
+  "upkeep": 200,
+  "unlock": 320,
   "tags": []
  },
  {

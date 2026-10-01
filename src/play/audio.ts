@@ -2,7 +2,7 @@
 import { assetUrl } from './assetUrl';
 
 export type SfxName = 'tap' | 'place' | 'remove' | 'plant' | 'coin' | 'happy' | 'meh' | 'unlock' | 'month' | 'fanfare' | 'error' | 'bus';
-export type BgmName = 'spring' | 'summer' | 'autumn' | 'winter' | 'title';
+export type BgmName = 'spring' | 'summer' | 'autumn' | 'winter' | 'title' | 'intro' | 'intro_warm';
 const SFX: SfxName[] = ['tap', 'place', 'remove', 'plant', 'coin', 'happy', 'meh', 'unlock', 'month', 'fanfare', 'error', 'bus'];
 const MUTE_KEY = 'jeju-cafe:muted', BGM_VOL_KEY = 'jeju-cafe:bgmVol', SFX_VOL_KEY = 'jeju-cafe:sfxVol';
 const MASTER_GAIN = 0.6, LOWPASS_HZ = 3000, LAYER_FADE_S = 1.5;
@@ -50,7 +50,7 @@ export function sfx(name: SfxName): void {
 }
 export async function bgm(name: BgmName): Promise<void> {
   if (!ctx || !bgmGain || current?.name === name) return;
-  const hasLayer = name !== 'title';
+  const hasLayer = name === 'spring' || name === 'summer' || name === 'autumn' || name === 'winter';
   const [buf, layerBuf] = await Promise.all([load(assetUrl(`assets/bgm/${name}.m4a`)), hasLayer ? load(assetUrl(`assets/bgm/${name}_perc.m4a`)) : Promise.resolve(null)]);
   if (!buf || !ctx || current?.name === name) return;
   const gain = ctx.createGain(); gain.gain.value = 0; gain.connect(bgmGain);
