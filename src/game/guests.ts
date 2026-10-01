@@ -6,6 +6,7 @@ import { HOUR_MS } from './clock.ts';
 import { sheetOf, usables, approachCell, seatCapacity, popularitySum, amenities } from './facility.ts';
 import { busReach, pathTo, reachFrom } from './path.ts';
 import { BUS_STOP } from './world.ts';
+import { staffSkill } from './staff.ts';
 
 export const BASE_DAILY_GUESTS = 3;
 export const POP_PER_GUEST = 40;
@@ -82,14 +83,42 @@ function moveAlong(g: Guest, ms: number): boolean {
   }
   return g.path.length === 0;
 }
-function serviceBonus(s: GameState): number { const plus = amenities(s).has('staff') ? 1 : 0; return Math.min(30, s.staff.reduce((n, st) => n + st.service + plus, 0) * 2); } // 휴게실이 있으면 직원마다 서비스 +1
+/** 접객 합 → 만족 점수 (휴게실이 있으면 직원마다 +1). 상한 30 */
+function serviceBonus(s: GameState): number { const plus = amenities(s).has('staff') ? 1 : 0; return Math.min(30, s.staff.reduce((n, st) => n + st.service + plus, 0) * 1.2); }
+/** 손놀림 합 → 이용 시간 단축 (%) 상한 40 */
+function speedBonus(s: GameState): number { return Math.min(40, staffSkill(s, 'speed') * 1.5); }
+/** 정리 합 → 깔끔 점수 상한 6 */
+function cleanBonus(s: GameState): number { return Math.min(6, staffSkill(s, 'clean') * 0.3); }
+/** 매력 합 → 입소문 확률 가산 (0.5 → 최대 0.8) */
+function charmChance(s: GameState): number { return Math.min(0.8, 0.5 + staffSkill(s, 'charm') * 0.015); }
 /** 편의 시설이 손님 점수에 더하는 값: 화장실 +4, 청소 도구실 +2 */
 export function amenityScore(s: GameState): number { const a = amenities(s); return (a.has('restroom') ? 4 : 0) + (a.has('cleaning') ? 2 : 0); }
+/** 니즈 id → 글 */
+export const NEED_KO: Record<string, string> = { liked: '좋아하는 시설이 없어요', scenery: '경치가 아쉬워요', comfort: '아늑함이 아쉬워요', service: '직원이 모자라요', restroom: '화장실이 없어요', synergy: '상성 짝이 없어요', level: '자리 단계가 낮아요', winter: '바깥이 추워요' };
+/** 만족 못 한 까닭 하나: 그 손님층이 가장 아쉬워한 것 */
+function needOf(s: GameState, f: Facility, sh: ReturnType<typeof sheetOf>, type: string): string {
+  const d = facilityDef(f.type);
+  const likes = !!d.tags?.includes(type);
+  if (!likes && !usables(s).some((o) => facilityDef(o.type).tags?.includes(type))) return 'liked';
+  if (sh.season < 0) return 'winter';
+  if (!amenities(s).has('restroom') && s.stats.guests > 30) return 'restroom';
+  if (s.staff.length === 0 && s.stats.guests > 10) return 'service';
+  if (sh.indoor && sh.comfort < 6) return 'comfort';
+  if (!sh.indoor && sh.scenery < 6) return 'scenery';
+  if (sh.pairs.length === 0) return 'synergy';
+  return 'level';
+}
+/** 최근 영수증에서 니즈를 센다 (많은 순) */
+export function needsSummary(s: GameState): { need: string; text: string; n: number }[] {
+  const c = new Map<string, number>();
+  for (const r of s.receipts) if (r.need) c.set(r.need, (c.get(r.need) ?? 0) + 1);
+  return [...c].map(([need, n]) => ({ need, text: NEED_KO[need] ?? need, n })).sort((a, b) => b.n - a.n);
+}
 /** 이용을 마친다: 돈 · 명성 · 연구 · 영수증 */
 function finishUse(s: GameState, g: Guest): void {
   const f = g.target ? s.facilities[g.target] : null;
   const t = guestTypeDef(g.type);
-  let money = 0; let mood: Mood = 'meh';
+  let money = 0; let mood: Mood = 'meh'; let need: string | undefined;
   if (f) {
     const d = facilityDef(f.type);
     const sh = sheetOf(s, f);
@@ -100,18 +129,19 @@ function finishUse(s: GameState, g: Guest): void {
       money = (pick ? menuDef(pick).price : 0) + sh.fee;
       if (amenities(s).has('kitchen')) money = Math.round(money * 1.15); // 주방: 자리 결제 +15%
     } else money = Math.min(t.wallet, sh.fee);
-    const score = sh.total + serviceBonus(s) / 3 + amenityScore(s);
+    const score = sh.total + serviceBonus(s) / 3 + cleanBonus(s) + amenityScore(s);
     mood = score >= t.expect ? 'happy' : score >= t.expect - 6 ? 'meh' : 'angry';
+    if (mood !== 'happy') need = needOf(s, f, sh, t.id);
     f.uses++; f.sales += money;
   }
-  const fame = mood === 'happy' ? (nextRandom(s) < 0.5 ? 1 : 0) : mood === 'angry' ? -1 : 0; // 기쁜 손님 둘에 하나꼴로 입소문
+  const fame = mood === 'happy' ? (nextRandom(s) < charmChance(s) ? 1 : 0) : mood === 'angry' ? -1 : 0; // 기쁜 손님 둘에 하나꼴로 입소문 (매력 있는 직원이면 더)
   s.money += money; s.month.income += money; s.stats.income += money; s.todayIncome += money;
   s.fame = Math.max(0, s.fame + fame);
   s.research += mood === 'happy' ? 2 : 1;
   s.stats.guests++; s.month.guests++; s.todayGuests++;
   if (mood === 'happy') { s.stats.happy++; s.month.happy++; } else if (mood === 'angry') s.stats.angry++;
   g.mood = mood;
-  s.receipts.push({ id: s.receiptSeq++, type: g.type, money, fame, mood, at: s.tick });
+  s.receipts.push({ id: s.receiptSeq++, type: g.type, money, fame, mood, at: s.tick, need });
   if (s.receipts.length > 30) s.receipts.splice(0, s.receipts.length - 30);
   if (money > 0 && f) s.fx.push({ kind: 'money', x: f.x, y: f.y, won: money });
 }
@@ -136,7 +166,7 @@ export function updateGuests(s: GameState, ms: number): void {
         if (!f) { g.phase = 'out'; g.path = pathBack(s, g); continue; }
         g.phase = 'use';
         const d = facilityDef(f.type);
-        g.timerMs = (d.tab === 'seat' ? SEAT_USE_MS : SHOP_USE_MS) * (1 - serviceBonus(s) / 100);
+        g.timerMs = (d.tab === 'seat' ? SEAT_USE_MS : SHOP_USE_MS) * (1 - speedBonus(s) / 100);
       }
     } else if (g.phase === 'use') {
       g.timerMs -= ms;

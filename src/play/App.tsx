@@ -12,9 +12,9 @@ import { nextHint } from './hints';
 import { EndingScreen } from './Ending';
 import { unlockAudio, audioReady, sfx, bgm, setBgmLayer, isMuted, setMuted, getBgmVolume, getSfxVolume, setBgmVolume, setSfxVolume } from './audio';
 import { guestAccs } from './guestLook';
-import { FACILITIES, GUEST_TYPES, MENUS, INVESTS, facilityDef, isFloorDef, isUsable, sheetOf, usables, popularitySum, dailyGuests, unlockables, canUnlock, canLevelUp, LEVEL_COST, levelMoney, currentObjective, OBJECTIVES, seasonOf, canHire, upkeepTotal, wagesTotal, myScore, rivalScore, RIVALS, lineCells, canLayFloor, parcelAt, cellAt, parcelAdjacent, type GameState, type Tab, type Facility, type Pt, type Parcel, type Objective, type Guest, previewPlace, AMENITY_TEXT, cellEdges, getWall, edgeOf, nearestSide, type Side4 } from '../game/index.ts';
+import { FACILITIES, GUEST_TYPES, MENUS, INVESTS, facilityDef, isFloorDef, isUsable, sheetOf, usables, popularitySum, dailyGuests, unlockables, canUnlock, canLevelUp, LEVEL_COST, levelMoney, currentObjective, OBJECTIVES, seasonOf, canHire, upkeepTotal, wagesTotal, myScore, rivalScore, RIVALS, lineCells, canLayFloor, parcelAt, cellAt, parcelAdjacent, type GameState, type Tab, type Facility, type Pt, type Parcel, type Objective, type Guest, previewPlace, AMENITY_TEXT, cellEdges, getWall, edgeOf, nearestSide, type Side4, needsSummary, SKILLS, SKILL_KO, SKILL_DESC, gradeOf, type Grade, type Staff } from '../game/index.ts';
 
-type Win = 'build' | 'guests' | 'info' | 'system' | null;
+type Win = 'build' | 'guests' | 'ops' | 'cafe' | 'system' | null;
 /** 하단 띠(영수증 2줄 + 요약 + 메뉴) 높이 */
 const BOTTOM_H = 22 + 24 + 58 + 3;
 const ABOVE_BOTTOM = BOTTOM_H + MESSAGE_LINE_H + 4;
@@ -164,6 +164,7 @@ export function App() {
 
   const obj = currentObjective(s);
   const canResearch = unlockables(s).some((u) => !u.done && s.research >= u.cost);
+  const opsBadge = canResearch || (s.staff.length === 0 && s.candidates.some((c) => canHire(s, c.id).ok) && usables(s).length >= 3);
   const sel = selected ? s.facilities[selected] ?? null : null;
   const fontStyle: CSSProperties = { fontFamily: 'Galmuri11, system-ui, sans-serif' };
   return (
@@ -178,10 +179,11 @@ export function App() {
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 2, transition: 'transform .12s ease-out', transform: moneyBump ? 'scale(1.15)' : 'none' }}><Ico name="money" size={12} /><b style={{ color: s.money < 0 ? C.red : moneyBump ? C.gold : C.ink }}>{wonShort(s.money)}</b></span>
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 2 }}><Ico name="star" size={12} /><b>{s.fame}</b></span>
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 2 }}><Ico name="research" size={12} /><b>{s.research}</b></span>
+        <button onClick={() => { setWin(win === 'system' ? null : 'system'); setSelected(null); }} style={{ ...(win === 'system' ? btnGold : btnOff), padding: 1, width: 22, height: 20, lineHeight: 0, display: 'grid', placeItems: 'center' }} title="시스템"><Ico name="settings" size={14} /></button>
         <span style={{ display: 'inline-flex', gap: 2, marginLeft: 2 }}>{([0, 1, 3] as const).map((sp) => <button key={sp} onClick={() => dispatch({ type: 'setSpeed', speed: sp })} style={{ ...(s.clock.speed === sp ? btnGold : btnOff), padding: 1, width: 22, height: 20, lineHeight: 0, display: 'grid', placeItems: 'center' }}><Ico name={sp === 0 ? 'speed_pause' : `speed_${sp}`} size={14} /></button>)}</span>
       </div>
       {/* 목표 한 줄 */}
-      {obj && !placing && <div style={{ position: 'absolute', top: 36, left: 8, right: 8, ...panel, padding: '4px 8px', fontSize: 13, cursor: 'pointer' }} onClick={() => setWin('info')}><Ico name="flag" /> {obj.text} <span style={small}>· 상금 {wonShort(obj.reward)}</span></div>}
+      {obj && !placing && <div style={{ position: 'absolute', top: 36, left: 8, right: 8, ...panel, padding: '4px 8px', fontSize: 13, cursor: 'pointer' }} onClick={() => setWin('cafe')}><Ico name="flag" /> {obj.text} <span style={small}>· 상금 {wonShort(obj.reward)}</span></div>}
       {/* 배치 모드 띠 */}
       {placing && <PlacingBar id={placing} ghost={ghost} wallMode={wallMode} wallSide={wallSide} onWallMode={(m) => { setWallMode(m); setGhost(null); }} onWallSide={(sd) => { setWallSide(sd); setGhost((g) => g && g.edges ? ghostOf(getState(), g.id, g.x, g.y, g.line, (g.line ? lineCells(g.line.from, g.line.to) : [{ x: g.x, y: g.y }]).map((c) => edgeOf(c.x, c.y, sd === 'auto' ? 'n' : sd))) : g); }} onDone={() => { setPlacing(null); setGhost(null); }} onConfirm={() => {
         const g = ghost; if (!g) return; const d = facilityDef(placing);
@@ -202,13 +204,14 @@ export function App() {
           {ready && <button style={{ ...btnOff, padding: '1px 6px', fontSize: 11, lineHeight: '16px' }} onClick={() => viewRef.current?.centerOn(getState())}><Ico name="home" size={11} /> 마당</button>}
         </div>
         <div style={{ display: 'flex', gap: 5, padding: 5 }}>
-          {([['build', '건축', 'build'], ['guests', '손님층', 'guest'], ['info', '정보', 'report'], ['system', '시스템', 'settings']] as const).map(([k, name, ico]) => <button key={k} style={{ ...(win === k ? btnGold : btn), flex: 1, padding: '6px 0', fontSize: 14, position: 'relative', display: 'inline-flex', flexDirection: 'column', alignItems: 'center', gap: 2 }} onClick={() => { setWin(win === k ? null : k); setSelected(null); setFloorSel(null); setGuestSel(null); }}><Ico name={ico} size={18} />{name}{k === 'info' && canResearch && <span style={{ position: 'absolute', top: 4, right: 8, width: 10, height: 10, borderRadius: 5, background: C.red, border: '2px solid #fff8e8' }} />}</button>)}
+          {([['build', '건축', 'build'], ['guests', '손님', 'guest'], ['ops', '운영', 'hire'], ['cafe', '카페', 'home_cafe']] as const).map(([k, name, ico]) => <button key={k} style={{ ...(win === k ? btnGold : btn), flex: 1, padding: '6px 0', fontSize: 14, position: 'relative', display: 'inline-flex', flexDirection: 'column', alignItems: 'center', gap: 2 }} onClick={() => { setWin(win === k ? null : k); setSelected(null); setFloorSel(null); setGuestSel(null); }}><Ico name={ico} size={18} />{name}{k === 'ops' && opsBadge && <span style={{ position: 'absolute', top: 4, right: 8, width: 10, height: 10, borderRadius: 5, background: C.red, border: '2px solid #fff8e8' }} />}</button>)}
         </div>
       </div>
       {!ready && <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', color: '#fff' }}>불러오는 중…</div>}
       {win === 'build' && <BuildWindow s={s} onPick={(id) => { setPlacing(id); setWin(null); setGhost(null); }} onClose={() => setWin(null)} />}
       {win === 'guests' && <GuestsWindow s={s} onClose={() => setWin(null)} />}
-      {win === 'info' && <InfoWindow s={s} onClose={() => setWin(null)} />}
+      {win === 'ops' && <OpsWindow s={s} onClose={() => setWin(null)} />}
+      {win === 'cafe' && <CafeWindow s={s} onClose={() => setWin(null)} />}
       {win === 'system' && <SystemWindow onClose={() => setWin(null)} />}
       {sel && !placing && !win && !guestSel && <FacilityCard s={s} f={sel} onSelect={setSelected} onClose={() => setSelected(null)} onMore={(id) => { setSelected(null); setPlacing(id); }} onGuest={setGuestSel} />}
       {guestSel && !placing && !win && (s.guests.find((g) => g.id === guestSel) ? <GuestPopup s={s} g={s.guests.find((g) => g.id === guestSel)!} onClose={() => setGuestSel(null)} /> : null)}
@@ -383,7 +386,7 @@ function BuildWindow({ s, onPick, onClose }: { s: GameState; onPick: (id: string
         <Sprite id={d.id} size={48} />
         <div style={{ flex: 1, minWidth: 0, fontSize: 13 }}>
           <b>{open ? d.name : '???'}</b> <span style={small}>{d.w}×{d.h}</span>
-          <div style={small}>{open ? `${won(d.cost)} · 유지 ${won(d.upkeep)}/월${d.pop !== undefined ? ` · 인기 ${d.pop}` : ''}${d.scenery ? ` · 경치 +${d.scenery}` : ''}${d.fee ? ` · 요금 ${won(d.fee)}` : ''}${d.sub === 'wall' ? ' (변마다) · 칸의 변을 탭하거나 네모를 둘러서 · 둘러싸면 실내 +2, 겨울 −6 면함' : ''}${d.comfort ? ` · 아늑함 +${d.comfort}` : ''}${d.amenity ? ` · ${AMENITY_TEXT[d.amenity]}` : ''}${d.indoor ? ' · 실내 전용' : ''}` : `연구 ${d.unlock}로 열린다 (정보 › 연구)`}</div>
+          <div style={small}>{open ? `${won(d.cost)} · 유지 ${won(d.upkeep)}/월${d.pop !== undefined ? ` · 인기 ${d.pop}` : ''}${d.scenery ? ` · 경치 +${d.scenery}` : ''}${d.fee ? ` · 요금 ${won(d.fee)}` : ''}${d.sub === 'wall' ? ' (변마다) · 칸의 변을 탭하거나 네모를 둘러서 · 둘러싸면 실내 +2, 겨울 −6 면함' : ''}${d.comfort ? ` · 아늑함 +${d.comfort}` : ''}${d.amenity ? ` · ${AMENITY_TEXT[d.amenity]}` : ''}${d.indoor ? ' · 실내 전용' : ''}` : `연구 ${d.unlock}로 열린다 (운영 › 연구)`}</div>
           {open && tab === 'indoor' && <div style={small}>벽으로 둘러싸인 바닥 위에만 놓입니다. 아늑함은 실내 반경 3 자리·가게의 인기를 올려요.</div>}
           {open && d.tags && <div style={small}>{d.tags.map((t) => GUEST_TYPES.find((g) => g.id === t)?.name).join('·')}에게 인기</div>}
         </div>
@@ -394,8 +397,9 @@ function BuildWindow({ s, onPick, onClose }: { s: GameState; onPick: (id: string
 }
 function GuestsWindow({ s, onClose }: { s: GameState; onClose: () => void }) {
   return (
-    <Window title="손님층" onClose={onClose}>
-      <div style={{ ...small, marginBottom: 6 }}>타깃을 고르면 그 손님층이 두 배로 온다. 손님층마다 지갑과 눈높이가 다르다.</div>
+    <Window title="손님" onClose={onClose}>
+      <NeedsPanel s={s} />
+      <div style={{ ...small, margin: '8px 0 6px' }}>손님층 — 타깃을 고르면 그 손님층이 두 배로 온다. 손님층마다 지갑과 눈높이가 다르다.</div>
       {GUEST_TYPES.map((g) => { const open = s.unlocked.guests.includes(g.id); const liked = FACILITIES.filter((d) => d.tags?.includes(g.id) && s.unlocked.facilities.includes(d.id)).map((d) => d.name).slice(0, 4).join('·'); return (
         <div key={g.id} style={{ ...panel, padding: 6, marginBottom: 6, background: s.target === g.id ? '#fff0c0' : '#fff7e6', display: 'flex', alignItems: 'center', gap: 8, opacity: open ? 1 : 0.5 }}>
           <Portrait {...guestTypeFace(g.id)} size={44} />
@@ -407,39 +411,73 @@ function GuestsWindow({ s, onClose }: { s: GameState; onClose: () => void }) {
     </Window>
   );
 }
-function InfoWindow({ s, onClose }: { s: GameState; onClose: () => void }) {
-  const [tab, setTab] = useState<'cafe' | 'research' | 'staff' | 'invest' | 'rank'>('cafe');
-  const tabs = ([['cafe', '카페'], ['research', '연구'], ['staff', '직원'], ['invest', '투자'], ['rank', '랭킹']] as const).map(([k, n]) => <button key={k} style={{ ...(tab === k ? btnGold : btnOff), padding: '4px 6px', fontSize: 12 }} onClick={() => setTab(k)}>{n}</button>);
+/** 손님 니즈: 최근 영수증에서 「만족 못 한 까닭」을 모아 많은 순으로. 지금 손님의 만족률과 함께. */
+function NeedsPanel({ s }: { s: GameState }) {
+  const needs = needsSummary(s);
+  const recent = s.receipts.slice(-30);
+  const happy = recent.filter((r) => r.mood === 'happy').length;
+  const rate = recent.length ? Math.round((happy / recent.length) * 100) : null;
+  const FIX: Record<string, string> = { liked: '손님층이 좋아하는 시설을 놓아요 (아래 「좋아함」)', scenery: '나무·꽃·바위를 자리 옆에', comfort: '실내에 벽난로·책장·그림을', service: '운영 › 직원에서 채용', restroom: '건축 › 실내 › 화장실', synergy: '어울리는 것끼리 옆에 (상성 UP)', level: '시설 카드에서 Lv업', winter: '벽으로 둘러싸 실내로' };
   return (
-    <Window title="정보" onClose={onClose} tabs={tabs}>
-      {tab === 'cafe' && <div style={{ fontSize: 13, display: 'grid', gap: 4 }}>
+    <div style={{ ...panel, padding: 8, background: '#fff7e6' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}><Ico name="bulb" /><b>손님 니즈</b><span style={small}>최근 {recent.length}명 · 만족 {rate === null ? '—' : `${rate}%`}</span></div>
+      {needs.length === 0 ? <div style={small}>{recent.length ? '요즘 손님은 다 만족하고 가요.' : '손님이 다녀가면 여기에 쌓여요.'}</div> :
+        needs.slice(0, 4).map((n) => <div key={n.need} style={{ fontSize: 13, display: 'flex', gap: 6, alignItems: 'baseline' }}><span style={{ ...small, minWidth: 28 }}>{n.n}명</span><b style={{ color: C.red }}>{n.text}</b><span style={small}>→ {FIX[n.need]}</span></div>)}
+    </div>
+  );
+}
+const GRADE_COLOR: Record<Grade, string> = { S: '#c8402e', A: '#d4a13c', B: '#3f8f3a', C: '#3a6fb0', D: '#7a6650', E: '#9a8f80' };
+/** 능력 4칸: 접객 A · 손놀림 B … 글자 등급으로 */
+function Skills({ st }: { st: Pick<Staff, 'service' | 'speed' | 'clean' | 'charm'> }) {
+  return <span style={{ display: 'inline-flex', gap: 6 }}>{SKILLS.map((k) => { const g = gradeOf(st[k]); return <span key={k} title={`${SKILL_KO[k]} ${st[k]} — ${SKILL_DESC[k]}`} style={{ fontSize: 12, color: C.soft }}>{SKILL_KO[k]} <b style={{ color: GRADE_COLOR[g], fontSize: 14 }}>{g}</b></span>; })}</span>;
+}
+/** 운영: 연구 · 직원 · 투자 · 땅 */
+function OpsWindow({ s, onClose }: { s: GameState; onClose: () => void }) {
+  const [tab, setTab] = useState<'research' | 'staff' | 'invest'>(s.staff.length === 0 && s.candidates.some((c) => canHire(s, c.id).ok) && usables(s).length >= 3 ? 'staff' : 'research');
+  const tabs = ([['research', '연구'], ['staff', '직원'], ['invest', '투자·땅']] as const).map(([k, n]) => <button key={k} style={{ ...(tab === k ? btnGold : btnOff), padding: '4px 8px', fontSize: 12 }} onClick={() => setTab(k)}>{n}</button>);
+  return (
+    <Window title="운영" onClose={onClose} tabs={tabs}>
+      {tab === 'research' && <div style={{ display: 'grid', gap: 4 }}>
+        <div style={small}>손님이 쓸 때마다 연구가 쌓인다 (만족하면 2). 연구 <b style={{ color: C.ink }}>{s.research}</b></div>
+        {unlockables(s).map((u) => <div key={u.id} style={{ ...panel, padding: 6, background: u.done ? '#efe6d2' : '#fff7e6', display: 'flex', alignItems: 'center', gap: 6 }}><span style={{ flex: 1, fontSize: 13 }}>{u.kind === 'facility' ? '시설' : u.kind === 'menu' ? '메뉴' : '손님층'} · <b>{u.name}</b></span><span style={small}>{u.cost}</span>{!u.done && <button style={canUnlock(s, u.id).ok ? btn : btnOff} onClick={() => { const r = dispatch({ type: 'unlock', id: u.id }); if (!r.ok) alert(r.reason); }}>열기</button>}{u.done && <span style={small}>열림</span>}</div>)}
+      </div>}
+      {tab === 'staff' && <div style={{ display: 'grid', gap: 4 }}>
+        <div style={small}>능력 4가지: 접객(손님 만족) · 손놀림(자리 회전) · 정리(깔끔 점수) · 매력(입소문). 등급 S~E. 월급은 월말에. {s.staff.length}/6명</div>
+        {s.staff.length === 0 && <div style={{ ...small, color: C.red }}>직원이 없어요 — 아래 후보에서 뽑아요.</div>}
+        {s.staff.map((st) => <div key={st.id} style={{ ...panel, padding: 6, background: '#fff7e6', display: 'flex', gap: 8, alignItems: 'center' }}><Portrait face={st.face} accs={['apron']} size={44} /><span style={{ flex: 1, minWidth: 0 }}><b>{st.name}</b> <span style={small}>월급 {won(st.wage)}</span><div><Skills st={st} /></div></span><button style={btnOff} onClick={() => { if (confirm(`${st.name}을 내보낼까요?`)) dispatch({ type: 'fire', staffId: st.id }); }}>내보내기</button></div>)}
+        <div style={{ ...small, marginTop: 6 }}>이달 후보 (매달 새로 온다 · 명성이 오르면 더 좋은 사람이)</div>
+        {s.candidates.map((c) => <div key={c.id} style={{ ...panel, padding: 6, background: '#fff7e6', display: 'flex', gap: 8, alignItems: 'center' }}><Portrait face={c.face} size={44} /><span style={{ flex: 1, minWidth: 0 }}><b>{c.name}</b> <span style={small}>월급 {won(c.wage)}</span><div><Skills st={c} /></div></span><button style={canHire(s, c.id).ok ? btnGold : btnOff} onClick={() => { const r = dispatch({ type: 'hire', candidateId: c.id }); if (!r.ok) alert(r.reason); else sfx('fanfare'); }}>채용</button></div>)}
+      </div>}
+      {tab === 'invest' && <div style={{ display: 'grid', gap: 4 }}>
+        <div style={small}>내 땅 밖(동네)에 돈을 쓴다. 각 한 번. {s.invested.length}개 완료</div>
+        {INVESTS.map((i) => <div key={i.id} style={{ ...panel, padding: 6, background: s.invested.includes(i.id) ? '#efe6d2' : '#fff7e6', display: 'flex', gap: 6, alignItems: 'center' }}><span style={{ flex: 1 }}><b>{i.name}</b>{!s.invested.includes(i.id) && <span style={{ ...small, color: C.red }}> NEW</span>}<div style={small}>{i.desc} · {won(i.cost)}</div></span>{!s.invested.includes(i.id) && <button style={s.money >= i.cost ? btn : btnOff} onClick={() => { const r = dispatch({ type: 'invest', id: i.id }); if (!r.ok) alert(r.reason); }}>시행</button>}</div>)}
+        <div style={{ ...small, marginTop: 6 }}>땅 (내 땅과 붙은 것만 · 맵의 팻말을 탭해도 된다)</div>
+        {s.parcels.filter((p) => !p.owned).map((p) => <div key={p.id} style={{ ...panel, padding: 6, background: '#fff7e6', display: 'flex', gap: 6, alignItems: 'center' }}><span style={{ flex: 1 }}><b>{p.name}</b> <span style={small}>{won(p.price)}</span></span><button style={btn} onClick={() => { const r = dispatch({ type: 'buyParcel', id: p.id }); if (!r.ok) alert(r.reason); }}>사기</button></div>)}
+      </div>}
+    </Window>
+  );
+}
+/** 카페: 현황 · 목표 · 랭킹 */
+function CafeWindow({ s, onClose }: { s: GameState; onClose: () => void }) {
+  const [tab, setTab] = useState<'status' | 'goals' | 'rank'>('status');
+  const tabs = ([['status', '현황'], ['goals', '목표'], ['rank', '랭킹']] as const).map(([k, n]) => <button key={k} style={{ ...(tab === k ? btnGold : btnOff), padding: '4px 8px', fontSize: 12 }} onClick={() => setTab(k)}>{n}</button>);
+  return (
+    <Window title={s.cafeName} onClose={onClose} tabs={tabs}>
+      {tab === 'status' && <div style={{ fontSize: 13, display: 'grid', gap: 4 }}>
         <Row k="자금" v={won(s.money)} /><Row k="명성" v={String(s.fame)} /><Row k="연구" v={String(s.research)} />
         <Row k="시설 인기 합" v={String(popularitySum(s))} /><Row k="하루 손님" v={String(dailyGuests(s))} />
         <Row k="지난달" v={s.lastMonth ? `수입 ${won(s.lastMonth.income)} · 지출 ${won(s.lastMonth.spent)} · 손님 ${s.lastMonth.guests}` : '—'} />
         <Row k="이달 유지비 예정" v={`${won(upkeepTotal(s))} + 월급 ${won(wagesTotal(s))}`} />
         <Row k="누적 손님" v={`${s.stats.guests} (만족 ${s.stats.happy} · 돌아감 ${s.stats.turnedAway})`} />
-        <div style={{ ...small, marginTop: 6 }}>목표</div>
-        {OBJECTIVES.map((o) => <div key={o.id} style={{ fontSize: 13, color: s.objectivesDone.includes(o.id) ? C.soft : C.ink }}>{s.objectivesDone.includes(o.id) ? '✓' : currentObjective(s)?.id === o.id ? '▶' : '·'} {o.text}</div>)}
+        <Row k="직원" v={s.staff.length ? s.staff.map((st) => st.name).join('·') : '없음'} />
       </div>}
-      {tab === 'research' && <div style={{ display: 'grid', gap: 4 }}>
-        <div style={small}>손님이 쓸 때마다 연구가 쌓인다 (만족하면 2). 연구 {s.research}</div>
-        {unlockables(s).map((u) => <div key={u.id} style={{ ...panel, padding: 6, background: u.done ? '#efe6d2' : '#fff7e6', display: 'flex', alignItems: 'center', gap: 6 }}><span style={{ flex: 1, fontSize: 13 }}>{u.kind === 'facility' ? '시설' : u.kind === 'menu' ? '메뉴' : '손님층'} · <b>{u.name}</b></span><span style={small}>{u.cost}</span>{!u.done && <button style={canUnlock(s, u.id).ok ? btn : btnOff} onClick={() => { const r = dispatch({ type: 'unlock', id: u.id }); if (!r.ok) alert(r.reason); }}>열기</button>}{u.done && <span style={small}>열림</span>}</div>)}
-      </div>}
-      {tab === 'staff' && <div style={{ display: 'grid', gap: 4 }}>
-        <div style={small}>서비스 합이 손님 회전과 만족을 올린다. 월급은 월말에.</div>
-        {s.staff.map((st) => <div key={st.id} style={{ ...panel, padding: 6, background: '#fff7e6', display: 'flex', gap: 6, alignItems: 'center' }}><Portrait face={st.face} accs={['apron']} size={40} /><span style={{ flex: 1 }}><b>{st.name}</b> <span style={small}>서비스 {'★'.repeat(st.service)} · 월급 {won(st.wage)}</span></span><button style={btnOff} onClick={() => dispatch({ type: 'fire', staffId: st.id })}>내보내기</button></div>)}
-        <div style={{ ...small, marginTop: 6 }}>이달 후보</div>
-        {s.candidates.map((c) => <div key={c.id} style={{ ...panel, padding: 6, background: '#fff7e6', display: 'flex', gap: 6, alignItems: 'center' }}><Portrait face={c.face} size={40} /><span style={{ flex: 1 }}><b>{c.name}</b> <span style={small}>서비스 {'★'.repeat(c.service)} · 월급 {won(c.wage)}</span></span><button style={canHire(s, c.id).ok ? btn : btnOff} onClick={() => { const r = dispatch({ type: 'hire', candidateId: c.id }); if (!r.ok) alert(r.reason); }}>채용</button></div>)}
-      </div>}
-      {tab === 'invest' && <div style={{ display: 'grid', gap: 4 }}>
-        <div style={small}>내 땅 밖(동네)에 돈을 쓴다. 각 한 번. {s.invested.length}개 완료</div>
-        {INVESTS.map((i) => <div key={i.id} style={{ ...panel, padding: 6, background: s.invested.includes(i.id) ? '#efe6d2' : '#fff7e6', display: 'flex', gap: 6, alignItems: 'center' }}><span style={{ flex: 1 }}><b>{i.name}</b>{!s.invested.includes(i.id) && <span style={{ ...small, color: C.red }}> NEW</span>}<div style={small}>{i.desc} · {won(i.cost)}</div></span>{!s.invested.includes(i.id) && <button style={s.money >= i.cost ? btn : btnOff} onClick={() => { const r = dispatch({ type: 'invest', id: i.id }); if (!r.ok) alert(r.reason); }}>시행</button>}</div>)}
-        <div style={{ ...small, marginTop: 6 }}>땅 (내 땅과 붙은 것만)</div>
-        {s.parcels.filter((p) => !p.owned).map((p) => <div key={p.id} style={{ ...panel, padding: 6, background: '#fff7e6', display: 'flex', gap: 6, alignItems: 'center' }}><span style={{ flex: 1 }}><b>{p.name}</b> <span style={small}>{won(p.price)}</span></span><button style={btn} onClick={() => { const r = dispatch({ type: 'buyParcel', id: p.id }); if (!r.ok) alert(r.reason); }}>사기</button></div>)}
+      {tab === 'goals' && <div style={{ display: 'grid', gap: 3 }}>
+        <div style={small}>이루면 상금. 순서대로 하나씩.</div>
+        {OBJECTIVES.map((o) => <div key={o.id} style={{ fontSize: 13, color: s.objectivesDone.includes(o.id) ? C.soft : C.ink, fontWeight: currentObjective(s)?.id === o.id ? 700 : 400 }}>{s.objectivesDone.includes(o.id) ? '✓' : currentObjective(s)?.id === o.id ? '▶' : '·'} {o.text} <span style={small}>{wonShort(o.reward)}</span></div>)}
       </div>}
       {tab === 'rank' && <div style={{ display: 'grid', gap: 4, fontSize: 13 }}>
         <div style={small}>매년 12월 말 발표. 점수 = 명성 + 시설 인기 합. 지금 점수 <b style={{ color: C.ink }}>{myScore(s)}</b></div>
-        {[{ id: 'me', name: '우리 카페', score: myScore(s) }, ...RIVALS.map((r) => ({ id: r.id, name: r.name, score: rivalScore(r.id, s.clock.year) }))].sort((a, b) => b.score - a.score).map((r, i) => <div key={r.id} style={{ display: 'flex', gap: 8, fontWeight: r.id === 'me' ? 700 : 400 }}><span>{i + 1}위</span><span style={{ flex: 1 }}>{r.name}</span><span>{r.score}</span></div>)}
+        {[{ id: 'me', name: s.cafeName, score: myScore(s) }, ...RIVALS.map((r) => ({ id: r.id, name: r.name, score: rivalScore(r.id, s.clock.year) }))].sort((a, b) => b.score - a.score).map((r, i) => <div key={r.id} style={{ display: 'flex', gap: 8, fontWeight: r.id === 'me' ? 700 : 400 }}><span>{i + 1}위</span><span style={{ flex: 1 }}>{r.name}</span><span>{r.score}</span></div>)}
         {s.evaluations.slice(-3).reverse().map((e) => <div key={e.year} style={small}>{e.year}년 {e.rank}위 · {won(e.prize)}</div>)}
         <RankChart s={s} />
       </div>}

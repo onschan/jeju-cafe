@@ -313,8 +313,11 @@ export class View {
       }
       const c = cellCenter(g.x, g.y);
       const seated = g.phase === 'use';
-      e.node.position.set(c.sx, c.sy + (seated ? -6 : 0));
-      e.node.zIndex = depth(g.x, g.y) + (seated ? 0.4 : 0.2);
+      // 앉은 손님은 자리(시설) 위에 그린다 — 옆 칸에 서 있지 않게
+      const tf = seated && g.target ? state.facilities[g.target] : null;
+      const pos = tf ? (() => { const d = facilityDef(tf.type); const cc = cellCenter(tf.x + (d.w - 1) / 2, tf.y + (d.h - 1) / 2); return { sx: cc.sx, sy: cc.sy - 10 }; })() : c;
+      e.node.position.set(pos.sx, pos.sy);
+      e.node.zIndex = tf ? depth(tf.x, tf.y, facilityDef(tf.type).w, facilityDef(tf.type).h) + 0.4 : depth(g.x, g.y) + 0.2;
       const next = g.path[0];
       const dir: Dir = !next ? 'down' : Math.abs(next.x - g.x) > Math.abs(next.y - g.y) ? (next.x > g.x ? 'right' : 'left') : next.y < g.y ? 'up' : 'down';
       const frame = (seated || !next) ? 1 : (Math.floor(now / 125) % 3) as 0 | 1 | 2;

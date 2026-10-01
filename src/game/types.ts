@@ -46,10 +46,12 @@ export interface Guest {
   face: { hair: number; skin: number; top: number };
   rev?: number;               // 길을 찾았을 때의 layoutRev — 바뀌면 다시 찾는다
 }
-export interface Staff { id: string; name: string; service: number; wage: number; face: { hair: number; skin: number; top: number } }
+/** 직원 능력 4가지 (1~10): 접객 service · 손놀림 speed · 정리 clean · 매력 charm. 등급 S~E로 보여 준다. */
+export interface Staff { id: string; name: string; service: number; speed: number; clean: number; charm: number; wage: number; face: { hair: number; skin: number; top: number } }
 export interface Candidate extends Staff { until: number /* 이 monthIndex까지 남는다 */ }
 
-export interface Receipt { id: number; type: string; money: number; fame: number; mood: Mood; at: number }
+/** need: 만족 못 했을 때 가장 아쉬웠던 것 (니즈 창이 모은다) */
+export interface Receipt { id: number; type: string; money: number; fame: number; mood: Mood; at: number; need?: string }
 export interface Clock { year: number; month: number; day: number; hour: number; ms: number; speed: 0 | 1 | 2 | 3 }
 
 export interface Loan { balance: number; count: number; lastYear: number }
