@@ -4,6 +4,7 @@ import { apply } from './actions.ts';
 import { FACILITIES, facilityDef } from './data.ts';
 import { canPlace, cellAt, HOME, PARCEL_W, PARCEL_H, inBounds, owned } from './world.ts';
 import { unlockables } from './research.ts';
+import { CHANNELS } from './staff.ts';
 import { INVESTS } from './data.ts';
 import { step } from './tick.ts';
 import { DAY_MS } from './clock.ts';
@@ -56,7 +57,13 @@ export function monthlyPlan(s: GameState): void {
   if (usables(s).filter((f) => facilityDef(f.type).tab === 'shop').length < Math.floor(usables(s).length / 4) + 1) for (const d of shops) if (tryPlace(s, d.id)) break;
   n = 0; for (const d of envs) { if (n >= 2) break; if (tryPlace(s, d.id)) n++; }
   // 직원: 자리 4개마다 1명
-  if (s.staff.length < Math.min(6, Math.floor(usables(s).length / 4)) && s.candidates[0] && s.money > s.candidates[0].wage * 3 + RESERVE) apply(s, { type: 'hire', candidateId: [...s.candidates].sort((a, b) => b.service - a.service)[0]!.id });
+  const want = Math.min(6, Math.floor(usables(s).length / 4));
+  if (s.staff.length < want) {
+    // 후보가 있으면 능력 합이 가장 높은 사람을, 없으면 형편에 맞는 채용 루트로 공고
+    const best = [...s.candidates].sort((x, y) => (y.service + y.speed + y.clean + y.charm) - (x.service + x.speed + x.clean + x.charm))[0];
+    if (best && s.money > best.wage * 3 + RESERVE) apply(s, { type: 'hire', candidateId: best.id });
+    else if (!s.hiring && s.candidates.length === 0) for (const ch of [...CHANNELS].reverse()) if (s.money > ch.cost + RESERVE * 3 && apply(s, { type: 'recruit', channel: ch.id }).ok) break;
+  }
   // 광고 타깃: 지갑 큰 열린 손님층
   const best = [...s.unlocked.guests].sort((a, b) => b.localeCompare(a))[0] ?? null; void best;
   // 땅: 여유가 크면 하나 (마당이 꽉 찼을 때)

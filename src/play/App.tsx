@@ -12,7 +12,7 @@ import { nextHint } from './hints';
 import { EndingScreen } from './Ending';
 import { unlockAudio, audioReady, sfx, bgm, setBgmLayer, isMuted, setMuted, getBgmVolume, getSfxVolume, setBgmVolume, setSfxVolume } from './audio';
 import { guestAccs } from './guestLook';
-import { FACILITIES, GUEST_TYPES, MENUS, INVESTS, facilityDef, isFloorDef, isUsable, sheetOf, usables, popularitySum, dailyGuests, unlockables, canUnlock, canLevelUp, LEVEL_COST, levelMoney, currentObjective, OBJECTIVES, seasonOf, canHire, upkeepTotal, wagesTotal, myScore, rivalScore, RIVALS, lineCells, canLayFloor, parcelAt, cellAt, parcelAdjacent, type GameState, type Tab, type Facility, type Pt, type Parcel, type Objective, type Guest, previewPlace, AMENITY_TEXT, cellEdges, getWall, edgeOf, nearestSide, type Side4, needsSummary, SKILLS, SKILL_KO, SKILL_DESC, gradeOf, type Grade, type Staff } from '../game/index.ts';
+import { FACILITIES, GUEST_TYPES, MENUS, INVESTS, facilityDef, isFloorDef, isUsable, sheetOf, usables, popularitySum, dailyGuests, unlockables, canUnlock, canLevelUp, LEVEL_COST, levelMoney, currentObjective, OBJECTIVES, seasonOf, canHire, upkeepTotal, wagesTotal, myScore, rivalScore, RIVALS, lineCells, canLayFloor, parcelAt, cellAt, parcelAdjacent, type GameState, type Tab, type Facility, type Pt, type Parcel, type Objective, type Guest, previewPlace, AMENITY_TEXT, cellEdges, getWall, edgeOf, nearestSide, type Side4, needsSummary, SKILLS, SKILL_KO, SKILL_DESC, DUTY_KO, gradeOf, effSkill, skillSum, staffSkill, CHANNELS, canRecruit, channelDef, STAFF_MAX, type Grade, type Staff, type Skill } from '../game/index.ts';
 
 type Win = 'build' | 'guests' | 'ops' | 'cafe' | 'system' | null;
 /** 하단 띠(영수증 2줄 + 요약 + 메뉴) 높이 */
@@ -164,7 +164,7 @@ export function App() {
 
   const obj = currentObjective(s);
   const canResearch = unlockables(s).some((u) => !u.done && s.research >= u.cost);
-  const opsBadge = canResearch || (s.staff.length === 0 && s.candidates.some((c) => canHire(s, c.id).ok) && usables(s).length >= 3);
+  const opsBadge = canResearch || s.candidates.length > 0 || (s.staff.length === 0 && usables(s).length >= 3);
   const sel = selected ? s.facilities[selected] ?? null : null;
   const fontStyle: CSSProperties = { fontFamily: 'Galmuri11, system-ui, sans-serif' };
   return (
@@ -428,12 +428,97 @@ function NeedsPanel({ s }: { s: GameState }) {
 }
 const GRADE_COLOR: Record<Grade, string> = { S: '#c8402e', A: '#d4a13c', B: '#3f8f3a', C: '#3a6fb0', D: '#7a6650', E: '#9a8f80' };
 /** 능력 4칸: 접객 A · 손놀림 B … 글자 등급으로 */
-function Skills({ st }: { st: Pick<Staff, 'service' | 'speed' | 'clean' | 'charm'> }) {
-  return <span style={{ display: 'inline-flex', gap: 6 }}>{SKILLS.map((k) => { const g = gradeOf(st[k]); return <span key={k} title={`${SKILL_KO[k]} ${st[k]} — ${SKILL_DESC[k]}`} style={{ fontSize: 12, color: C.soft }}>{SKILL_KO[k]} <b style={{ color: GRADE_COLOR[g], fontSize: 14 }}>{g}</b></span>; })}</span>;
+function Skills({ st, duty }: { st: Pick<Staff, 'service' | 'speed' | 'clean' | 'charm'>; duty?: Skill }) {
+  return <span style={{ display: 'inline-flex', gap: 6, flexWrap: 'wrap' }}>{SKILLS.map((k) => { const g = gradeOf(st[k]); const on = duty === k; return <span key={k} title={`${SKILL_KO[k]} ${st[k]} — ${SKILL_DESC[k]}`} style={{ fontSize: 12, color: on ? C.ink : C.soft, background: on ? '#ffe9a8' : 'transparent', borderRadius: 3, padding: on ? '0 3px' : 0 }}>{SKILL_KO[k]} <b style={{ color: GRADE_COLOR[g], fontSize: 14 }}>{g}</b></span>; })}</span>;
+}
+/** 팀 효율: 담당별 합과 그 효과 — 「누가 뭘 맡아 얼마를 내고 있나」 */
+function TeamPanel({ s }: { s: GameState }) {
+  const rows: { k: Skill; v: number; eff: string }[] = [
+    { k: 'service', v: staffSkill(s, 'service'), eff: `손님 만족 +${(Math.min(30, staffSkill(s, 'service') * 1.2) / 3).toFixed(1)}` },
+    { k: 'speed', v: staffSkill(s, 'speed'), eff: `자리 회전 ${Math.round(Math.min(40, staffSkill(s, 'speed') * 1.5))}% 빨라짐` },
+    { k: 'clean', v: staffSkill(s, 'clean'), eff: `깔끔 점수 +${Math.min(6, staffSkill(s, 'clean') * 0.3).toFixed(1)}` },
+    { k: 'charm', v: staffSkill(s, 'charm'), eff: `입소문 ${Math.round(Math.min(0.8, 0.5 + staffSkill(s, 'charm') * 0.015) * 100)}%` },
+  ];
+  const max = Math.max(1, ...rows.map((r) => r.v));
+  return (
+    <div style={{ ...panel, padding: 8, background: '#fff7e6', display: 'grid', gap: 3 }}>
+      <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}><Ico name="staff" /><b>우리 팀</b><span style={small}>담당한 능력만 제값, 나머지는 1/4</span></div>
+      {rows.map((r) => <div key={r.k} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12 }}>
+        <span style={{ minWidth: 44, color: C.soft }}>{SKILL_KO[r.k]}</span>
+        <span style={{ flex: 1, height: 8, background: '#e6d9bd', border: `1px solid ${C.wood}`, borderRadius: 2, overflow: 'hidden' }}><span style={{ display: 'block', width: `${(r.v / max) * 100}%`, height: '100%', background: C.wood }} /></span>
+        <b style={{ minWidth: 26, textAlign: 'right' }}>{r.v.toFixed(1)}</b><span style={{ ...small, minWidth: 128 }}>{r.eff}</span>
+      </div>)}
+    </div>
+  );
+}
+/** 직원 탭: 채용 루트 → 후보 → 우리 직원(담당·실적) */
+function StaffTab({ s }: { s: GameState }) {
+  const [open, setOpen] = useState(s.staff.length === 0);
+  return (
+    <div style={{ display: 'grid', gap: 6 }}>
+      <TeamPanel s={s} />
+      {/* 채용 */}
+      {s.hiring ? (() => { const ch = channelDef(s.hiring!.channel); return (
+        <div style={{ ...panel, padding: 8, background: '#fff0c0', display: 'flex', alignItems: 'center', gap: 8 }}>
+          <Ico name="mail" size={18} /><span style={{ flex: 1 }}><b>{ch.name}</b> 진행 중<div style={small}>{s.hiring!.daysLeft}일 뒤 후보 {ch.n}명이 와요</div></span>
+          <span style={{ fontSize: 22, fontWeight: 700, color: C.wood }}>{s.hiring!.daysLeft}일</span>
+        </div>); })() : (
+        <div style={{ ...panel, padding: 8, background: '#fff7e6', display: 'grid', gap: 4 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Ico name="hire" /><b style={{ flex: 1 }}>사람 구하기</b><button style={btnOff} onClick={() => setOpen((v) => !v)}>{open ? '접기' : '펼치기'}</button></div>
+          {open && CHANNELS.map((ch) => { const r = canRecruit(s, ch.id); const locked = !!ch.needFame && s.fame < ch.needFame; return (
+            <div key={ch.id} style={{ ...panel, padding: 6, background: locked ? '#efe6d2' : '#fffdf6', display: 'flex', gap: 8, alignItems: 'center', opacity: locked ? 0.6 : 1 }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <b>{ch.name}</b> <span style={small}>{won(ch.cost)} · {ch.days}일 · 후보 {ch.n}명</span>
+                <div style={small}>{ch.desc}</div>
+                <div style={{ fontSize: 12 }}><span style={{ color: C.soft }}>기대 </span><b style={{ color: GRADE_COLOR[gradeOf(ch.hi)] }}>{gradeOf(ch.lo)}~{gradeOf(ch.hi)}</b>
+                  <span style={{ color: C.soft }}> · S급 {ch.sChance > 0 ? `${(ch.sChance * 100).toFixed(1)}%` : '없음'}</span>
+                  {ch.fame ? <span style={{ color: C.green }}> · 명성 +{ch.fame}</span> : null}
+                  {locked && <span style={{ color: C.red }}> · 명성 {ch.needFame} 필요</span>}
+                </div>
+              </div>
+              <button style={r.ok ? btnGold : btnOff} onClick={() => { const q = dispatch({ type: 'recruit', channel: ch.id }); if (!q.ok) alert(q.reason); else sfx('unlock'); }}>공고</button>
+            </div>); })}
+        </div>)}
+      {/* 후보 */}
+      {s.candidates.length > 0 && <div style={{ display: 'grid', gap: 4 }}>
+        <div style={small}>후보 {s.candidates.length}명 — {channelDef(s.candidates[0]!.from).name}으로 왔어요. 뽑지 않으면 {s.candidates[0]!.until}일 뒤 돌아가요.</div>
+        {s.candidates.map((c) => { const bs = SKILLS.reduce((a, k) => (c[k] > c[a] ? k : a), 'service' as Skill); return (
+          <div key={c.id} style={{ ...panel, padding: 6, background: '#fff7e6', display: 'flex', gap: 8, alignItems: 'center' }}>
+            <Portrait face={c.face} size={44} />
+            <span style={{ flex: 1, minWidth: 0 }}><b>{c.name}</b> <span style={small}>월급 {won(c.wage)}</span>
+              <div><Skills st={c} /></div>
+              <div style={small}>{DUTY_KO[bs]} 자리에 어울려요 (합 {skillSum(c)})</div>
+            </span>
+            <button style={canHire(s, c.id).ok ? btnGold : btnOff} onClick={() => { const r = dispatch({ type: 'hire', candidateId: c.id }); if (!r.ok) alert(r.reason); else sfx('fanfare'); }}>채용</button>
+          </div>); })}
+      </div>}
+      {/* 우리 직원 */}
+      <div style={small}>우리 직원 {s.staff.length}/{STAFF_MAX} — 담당을 바꿔 잘하는 자리에 앉혀요</div>
+      {s.staff.length === 0 && <div style={{ ...small, color: C.red }}>아직 직원이 없어요. 위에서 공고를 내 보세요.</div>}
+      {s.staff.map((st) => { const rate = st.month.served ? Math.round((st.month.happy / st.month.served) * 100) : null; const fit = st.duty === SKILLS.reduce((a, k) => (st[k] > st[a] ? k : a), 'service' as Skill); return (
+        <div key={st.id} style={{ ...panel, padding: 6, background: '#fff7e6', display: 'grid', gap: 4 }}>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <Portrait face={st.face} accs={['apron']} size={44} />
+            <span style={{ flex: 1, minWidth: 0 }}><b>{st.name}</b> <span style={small}>월급 {won(st.wage)}</span><div><Skills st={st} duty={st.duty} /></div></span>
+            <button style={btnOff} onClick={() => { if (confirm(`${st.name}을 내보낼까요?`)) dispatch({ type: 'fire', staffId: st.id }); }}>내보내기</button>
+          </div>
+          <div style={{ display: 'flex', gap: 3, flexWrap: 'wrap', alignItems: 'center' }}>
+            <span style={{ ...small, minWidth: 34 }}>담당</span>
+            {SKILLS.map((k) => <button key={k} style={{ ...(st.duty === k ? btnGold : btnOff), padding: '2px 6px', fontSize: 12 }} onClick={() => dispatch({ type: 'setDuty', staffId: st.id, duty: k })}>{DUTY_KO[k]} <b>{gradeOf(st[k])}</b></button>)}
+          </div>
+          <div style={{ fontSize: 12, color: C.soft, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <span>이달 {st.duty === 'service' ? `${st.month.served}명 응대${rate === null ? '' : ` · 만족 ${rate}%`}` : `${DUTY_KO[st.duty]} 담당`}</span>
+            <span>누적 {st.served}명</span>
+            <span style={{ color: fit ? C.green : C.red }}>{fit ? '잘 맞는 자리' : '다른 자리가 더 나아요'}</span>
+            <span>기여 {effSkill(st, st.duty).toFixed(0)} / 능력합 {skillSum(st)}</span>
+          </div>
+        </div>); })}
+    </div>
+  );
 }
 /** 운영: 연구 · 직원 · 투자 · 땅 */
 function OpsWindow({ s, onClose }: { s: GameState; onClose: () => void }) {
-  const [tab, setTab] = useState<'research' | 'staff' | 'invest'>(s.staff.length === 0 && s.candidates.some((c) => canHire(s, c.id).ok) && usables(s).length >= 3 ? 'staff' : 'research');
+  const [tab, setTab] = useState<'research' | 'staff' | 'invest'>(s.candidates.length > 0 || (s.staff.length === 0 && usables(s).length >= 3) ? 'staff' : 'research');
   const tabs = ([['research', '연구'], ['staff', '직원'], ['invest', '투자·땅']] as const).map(([k, n]) => <button key={k} style={{ ...(tab === k ? btnGold : btnOff), padding: '4px 8px', fontSize: 12 }} onClick={() => setTab(k)}>{n}</button>);
   return (
     <Window title="운영" onClose={onClose} tabs={tabs}>
@@ -441,13 +526,7 @@ function OpsWindow({ s, onClose }: { s: GameState; onClose: () => void }) {
         <div style={small}>손님이 쓸 때마다 연구가 쌓인다 (만족하면 2). 연구 <b style={{ color: C.ink }}>{s.research}</b></div>
         {unlockables(s).map((u) => <div key={u.id} style={{ ...panel, padding: 6, background: u.done ? '#efe6d2' : '#fff7e6', display: 'flex', alignItems: 'center', gap: 6 }}><span style={{ flex: 1, fontSize: 13 }}>{u.kind === 'facility' ? '시설' : u.kind === 'menu' ? '메뉴' : '손님층'} · <b>{u.name}</b></span><span style={small}>{u.cost}</span>{!u.done && <button style={canUnlock(s, u.id).ok ? btn : btnOff} onClick={() => { const r = dispatch({ type: 'unlock', id: u.id }); if (!r.ok) alert(r.reason); }}>열기</button>}{u.done && <span style={small}>열림</span>}</div>)}
       </div>}
-      {tab === 'staff' && <div style={{ display: 'grid', gap: 4 }}>
-        <div style={small}>능력 4가지: 접객(손님 만족) · 손놀림(자리 회전) · 정리(깔끔 점수) · 매력(입소문). 등급 S~E. 월급은 월말에. {s.staff.length}/6명</div>
-        {s.staff.length === 0 && <div style={{ ...small, color: C.red }}>직원이 없어요 — 아래 후보에서 뽑아요.</div>}
-        {s.staff.map((st) => <div key={st.id} style={{ ...panel, padding: 6, background: '#fff7e6', display: 'flex', gap: 8, alignItems: 'center' }}><Portrait face={st.face} accs={['apron']} size={44} /><span style={{ flex: 1, minWidth: 0 }}><b>{st.name}</b> <span style={small}>월급 {won(st.wage)}</span><div><Skills st={st} /></div></span><button style={btnOff} onClick={() => { if (confirm(`${st.name}을 내보낼까요?`)) dispatch({ type: 'fire', staffId: st.id }); }}>내보내기</button></div>)}
-        <div style={{ ...small, marginTop: 6 }}>이달 후보 (매달 새로 온다 · 명성이 오르면 더 좋은 사람이)</div>
-        {s.candidates.map((c) => <div key={c.id} style={{ ...panel, padding: 6, background: '#fff7e6', display: 'flex', gap: 8, alignItems: 'center' }}><Portrait face={c.face} size={44} /><span style={{ flex: 1, minWidth: 0 }}><b>{c.name}</b> <span style={small}>월급 {won(c.wage)}</span><div><Skills st={c} /></div></span><button style={canHire(s, c.id).ok ? btnGold : btnOff} onClick={() => { const r = dispatch({ type: 'hire', candidateId: c.id }); if (!r.ok) alert(r.reason); else sfx('fanfare'); }}>채용</button></div>)}
-      </div>}
+      {tab === 'staff' && <StaffTab s={s} />}
       {tab === 'invest' && <div style={{ display: 'grid', gap: 4 }}>
         <div style={small}>내 땅 밖(동네)에 돈을 쓴다. 각 한 번. {s.invested.length}개 완료</div>
         {INVESTS.map((i) => <div key={i.id} style={{ ...panel, padding: 6, background: s.invested.includes(i.id) ? '#efe6d2' : '#fff7e6', display: 'flex', gap: 6, alignItems: 'center' }}><span style={{ flex: 1 }}><b>{i.name}</b>{!s.invested.includes(i.id) && <span style={{ ...small, color: C.red }}> NEW</span>}<div style={small}>{i.desc} · {won(i.cost)}</div></span>{!s.invested.includes(i.id) && <button style={s.money >= i.cost ? btn : btnOff} onClick={() => { const r = dispatch({ type: 'invest', id: i.id }); if (!r.ok) alert(r.reason); }}>시행</button>}</div>)}

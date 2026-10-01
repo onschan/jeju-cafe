@@ -3,7 +3,6 @@ import { newClock } from './clock.ts';
 import { makeCells, makeParcels, HOME, BUS_STOP } from './world.ts';
 import { FACILITIES, MENUS, GUEST_TYPES } from './data.ts';
 import { noteStartUnlocked } from './objectives.ts';
-import { refreshCandidates } from './staff.ts';
 import { layFloor } from './world.ts';
 import { placeFacility } from './facility.ts';
 
@@ -20,7 +19,7 @@ export function newGame(seed: number): GameState {
     parcels: makeParcels(),
     facilities: {}, layoutRev: 0, nextId: 1,
     guests: [], guestSeq: 0, spawnAcc: 0.5, todayGuests: 0, todayIncome: 0, lastDay: null,
-    staff: [], candidates: [], candidatesMonth: -1,
+    staff: [], candidates: [], candidatesMonth: -1, hiring: null,
     unlocked: { facilities: FACILITIES.filter((d) => d.unlock === 0).map((d) => d.id), menus: MENUS.filter((d) => d.unlock === 0).map((d) => d.id), guests: GUEST_TYPES.filter((d) => d.unlock === 0).map((d) => d.id) },
     menu: MENUS.filter((d) => d.unlock === 0).map((d) => d.id),
     target: null, invested: [], objectivesDone: [], hints: [],
@@ -37,6 +36,5 @@ export function newGame(seed: number): GameState {
   for (let dy = 0; dy < 2; dy++) for (let dx = 0; dx < 3; dx++) layFloor(s, 'wood', cx + dx, HOME.y + 3 + dy);
   placeFacility(s, 'table_out', cx + 1, HOME.y + 3);
   noteStartUnlocked(s);
-  refreshCandidates(s);
   return s;
 }

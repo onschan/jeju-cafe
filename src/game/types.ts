@@ -47,8 +47,8 @@ export interface Guest {
   rev?: number;               // 길을 찾았을 때의 layoutRev — 바뀌면 다시 찾는다
 }
 /** 직원 능력 4가지 (1~10): 접객 service · 손놀림 speed · 정리 clean · 매력 charm. 등급 S~E로 보여 준다. */
-export interface Staff { id: string; name: string; service: number; speed: number; clean: number; charm: number; wage: number; face: { hair: number; skin: number; top: number } }
-export interface Candidate extends Staff { until: number /* 이 monthIndex까지 남는다 */ }
+export interface Staff { id: string; name: string; service: number; speed: number; clean: number; charm: number; wage: number; duty: 'service' | 'speed' | 'clean' | 'charm'; served: number; happy: number; month: { served: number; happy: number }; face: { hair: number; skin: number; top: number } }
+export interface Candidate extends Staff { until: number /* 며칠 뒤 돌아간다 */; from: string /* 어느 채용 루트로 왔나 */ }
 
 /** need: 만족 못 했을 때 가장 아쉬웠던 것 (니즈 창이 모은다) */
 export interface Receipt { id: number; type: string; money: number; fame: number; mood: Mood; at: number; need?: string }
@@ -78,6 +78,7 @@ export interface GameState {
   guests: Guest[]; guestSeq: number; spawnAcc: number; todayGuests: number; todayIncome: number;
   lastDay: { guests: number; income: number } | null; // 어제 장사 (하루 요약 카드)
   staff: Staff[]; candidates: Candidate[]; candidatesMonth: number;
+  hiring: { channel: string; daysLeft: number } | null;   // 진행 중인 채용 공고
   unlocked: { facilities: string[]; menus: string[]; guests: string[] };
   menu: string[];             // 메뉴판에 올린 메뉴
   target: string | null;      // 광고 타깃 손님층
@@ -107,6 +108,8 @@ export type Action =
   | { type: 'unlock'; id: string }           // 연구로 시설·메뉴·손님층 열기
   | { type: 'setMenu'; menuId: string; on: boolean }
   | { type: 'setTarget'; guestType: string | null }
+  | { type: 'recruit'; channel: string }     // 채용 루트로 공고를 낸다
+  | { type: 'setDuty'; staffId: string; duty: 'service' | 'speed' | 'clean' | 'charm' }
   | { type: 'hire'; candidateId: string }
   | { type: 'fire'; staffId: string }
   | { type: 'invest'; id: string }

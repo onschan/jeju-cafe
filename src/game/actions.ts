@@ -3,7 +3,7 @@ import { facilityDef, isFloorDef } from './data.ts';
 import { placeAndBurst, removeFacility } from './facility.ts';
 import { canLayFloor, layFloor, clearFloor, lineCells, cellAt, inBounds, parcelAdjacent, cellEdges, getWall, setWall, wallRect, wallEdges } from './world.ts';
 import { canUnlock, unlock, canLevelUp, levelUp } from './research.ts';
-import { canHire, hire } from './staff.ts';
+import { canHire, hire, canRecruit, recruit } from './staff.ts';
 import { canInvest, invest } from './invest.ts';
 import { checkObjectives } from './objectives.ts';
 
@@ -60,6 +60,8 @@ function applyInner(s: GameState, a: Action): ApplyResult {
       return { ok: true };
     }
     case 'setTarget': { if (a.guestType && !s.unlocked.guests.includes(a.guestType)) return { ok: false, reason: '아직 안 오는 손님층이에요' }; s.target = a.guestType; return { ok: true }; }
+    case 'recruit': { const c = canRecruit(s, a.channel); if (!c.ok) return c; recruit(s, a.channel); return { ok: true }; }
+    case 'setDuty': { const st = s.staff.find((x) => x.id === a.staffId); if (!st) return { ok: false, reason: '없는 직원이에요' }; st.duty = a.duty; return { ok: true }; }
     case 'hire': { const c = canHire(s, a.candidateId); if (!c.ok) return c; hire(s, a.candidateId); return { ok: true }; }
     case 'fire': { if (!s.staff.some((x) => x.id === a.staffId)) return { ok: false, reason: '없는 직원이에요' }; s.staff = s.staff.filter((x) => x.id !== a.staffId); return { ok: true }; }
     case 'invest': { const c = canInvest(s, a.id); if (!c.ok) return c; invest(s, a.id); return { ok: true }; }

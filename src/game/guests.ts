@@ -6,7 +6,7 @@ import { HOUR_MS } from './clock.ts';
 import { sheetOf, usables, approachCell, seatCapacity, popularitySum, amenities } from './facility.ts';
 import { busReach, pathTo, reachFrom } from './path.ts';
 import { BUS_STOP } from './world.ts';
-import { staffSkill } from './staff.ts';
+import { staffSkill, serverFor } from './staff.ts';
 
 export const BASE_DAILY_GUESTS = 3;
 export const POP_PER_GUEST = 40;
@@ -84,7 +84,7 @@ function moveAlong(g: Guest, ms: number): boolean {
   return g.path.length === 0;
 }
 /** 접객 합 → 만족 점수 (휴게실이 있으면 직원마다 +1). 상한 30 */
-function serviceBonus(s: GameState): number { const plus = amenities(s).has('staff') ? 1 : 0; return Math.min(30, s.staff.reduce((n, st) => n + st.service + plus, 0) * 1.2); }
+function serviceBonus(s: GameState): number { const plus = amenities(s).has('staff') ? s.staff.length : 0; return Math.min(30, (staffSkill(s, 'service') + plus) * 1.2); }
 /** 손놀림 합 → 이용 시간 단축 (%) 상한 40 */
 function speedBonus(s: GameState): number { return Math.min(40, staffSkill(s, 'speed') * 1.5); }
 /** 정리 합 → 깔끔 점수 상한 6 */
@@ -140,6 +140,9 @@ function finishUse(s: GameState, g: Guest): void {
   s.research += mood === 'happy' ? 2 : 1;
   s.stats.guests++; s.month.guests++; s.todayGuests++;
   if (mood === 'happy') { s.stats.happy++; s.month.happy++; } else if (mood === 'angry') s.stats.angry++;
+  // 이 손님을 맡은 홀 직원의 실적
+  const sv = serverFor(s);
+  if (sv) { sv.served++; sv.month.served++; if (mood === 'happy') { sv.happy++; sv.month.happy++; } }
   g.mood = mood;
   s.receipts.push({ id: s.receiptSeq++, type: g.type, money, fame, mood, at: s.tick, need });
   if (s.receipts.length > 30) s.receipts.splice(0, s.receipts.length - 30);

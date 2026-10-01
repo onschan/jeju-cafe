@@ -1,6 +1,6 @@
 /** 새 코어 (specs/2026-09-27-rebuild-kairo-core.md) — 규칙 하나에 테스트 하나 */
 import { describe, it, expect } from 'vitest';
-import { newGame, apply, step, run, canPlace, cellAt, HOME, BUS_STOP, ROAD_Y, sheetOf, synergyPairs, popularitySum, dailyGuests, spawnOne, updateGuests, monthEnd, upkeepTotal, unlockables, evaluate, currentObjective, serialize, deserialize, DAY_MS, HOUR_MS, lineCells, walkable, wallBetween, runBot, SYNERGY_POP, SCENERY_CAP } from '../index.ts';
+import { newGame, apply, step, run, canPlace, cellAt, HOME, BUS_STOP, ROAD_Y, sheetOf, synergyPairs, popularitySum, dailyGuests, spawnOne, updateGuests, monthEnd, upkeepTotal, unlockables, evaluate, currentObjective, serialize, deserialize, DAY_MS, HOUR_MS, lineCells, walkable, wallBetween, effSkill, runBot, SYNERGY_POP, SCENERY_CAP } from '../index.ts';
 import type { GameState } from '../index.ts';
 
 const at = (lx: number, ly: number) => ({ x: HOME.x + lx, y: HOME.y + ly });
@@ -139,15 +139,29 @@ describe('돈·연구·직원·투자·평가·목표', () => {
     expect(apply(s, { type: 'unlock', id: first.id }).reason).toBe('이미 열렸어요');
     expect(s.fx.some((f) => f.kind === 'unlock')).toBe(true);
   });
-  it('직원: 후보 3명, 뽑으면 월급이 월말에 나간다', () => {
+  it('채용: 공고를 내면 며칠 뒤 후보가 오고, 뽑으면 월급이 월말에 나간다. 담당이 맞아야 제값', () => {
     const s = yard();
+    expect(s.candidates.length).toBe(0);
+    expect(apply(s, { type: 'recruit', channel: 'headhunter' }).reason).toBe('명성 200부터 쓸 수 있어요');
+    const money = s.money;
+    expect(apply(s, { type: 'recruit', channel: 'flyer' }).ok).toBe(true);
+    expect(money - s.money).toBe(150_000);
+    expect(apply(s, { type: 'recruit', channel: 'flyer' }).reason).toBe('이미 채용 중이에요');
+    run(s, DAY_MS * 2);
+    expect(s.candidates.length).toBe(0);       // 아직 오는 중 (3일)
+    run(s, DAY_MS);
     expect(s.candidates.length).toBe(3);
+    for (const c of s.candidates) expect(Math.max(c.service, c.speed, c.clean, c.charm)).toBeLessThanOrEqual(7); // 전단지는 B급까지
     const c = s.candidates[0]!;
     expect(apply(s, { type: 'hire', candidateId: c.id }).ok).toBe(true);
-    expect(s.staff.length).toBe(1);
-    const money = s.money;
+    const st = s.staff[0]!;
+    expect(st.duty).toBe((['service', 'speed', 'clean', 'charm'] as const).reduce((a, k) => (st[k] > st[a] ? k : a), 'service')); // 가장 잘하는 자리로
+    expect(effSkill(st, st.duty)).toBe(st[st.duty]);
+    apply(s, { type: 'setDuty', staffId: st.id, duty: st.duty === 'clean' ? 'charm' : 'clean' });
+    expect(effSkill(st, st.duty === 'clean' ? 'charm' : 'clean')).toBeLessThan(st[st.duty === 'clean' ? 'charm' : 'clean']);
+    const m2 = s.money;
     monthEnd(s);
-    expect(money - s.money).toBe(upkeepTotal(s) + c.wage);
+    expect(m2 - s.money).toBe(upkeepTotal(s) + c.wage);
   });
   it('투자는 1회, 명성이 오른다; 땅은 붙은 것만 산다', () => {
     const s = yard();
