@@ -12,8 +12,20 @@ export const DUTY_KO: Record<Skill, string> = { service: '홀 서빙', speed: '�
 export const SKILL_DESC: Record<Skill, string> = { service: '서빙 속도·손님 만족', speed: '제조 속도', clean: '깔끔 점수', charm: '입소문(명성)' };
 export type Grade = 'S' | 'A' | 'B' | 'C' | 'D' | 'E';
 export function gradeOf(v: number): Grade { return v >= 10 ? 'S' : v >= 8 ? 'A' : v >= 6 ? 'B' : v >= 4 ? 'C' : v >= 2 ? 'D' : 'E'; }
-/** 담당이면 그대로, 아니면 1/4 */
-export function effSkill(st: Staff, k: Skill): number { return st.duty === k ? st[k] : st[k] * 0.25; }
+export const BURN_MULT = 2;              // 버닝타임엔 두 배로 일한다
+export const BURN_MS = 1500 * 1.5;       // 1.5시간
+export const BURN_CHANCE = 0.05;         // 매시간 기본 확률 (능력 합이 높을수록 더)
+/** 담당이면 그대로, 아니면 1/4. 버닝타임이면 두 배. */
+export function effSkill(st: Staff, k: Skill): number { return (st.duty === k ? st[k] : st[k] * 0.25) * (st.burn ? BURN_MULT : 1); }
+/** 매시간: 가끔 열이 올라 한동안 빨라진다 */
+export function rollBurn(s: GameState, rand: (s: GameState) => number): void {
+  for (const st of s.staff) {
+    if (st.burn) continue;
+    if (rand(s) < BURN_CHANCE + skillSum(st) / 400) { st.burn = BURN_MS; s.fx.push({ kind: 'notice', text: `${st.name} 버닝타임! 한동안 두 배로 일해요` }); }
+  }
+}
+/** 매 스텝: 버닝타임을 깎는다 */
+export function tickStaff(s: GameState, ms: number): void { for (const st of s.staff) if (st.burn) st.burn = Math.max(0, st.burn - ms); }
 export function skillSum(st: Pick<Staff, Skill>): number { return st.service + st.speed + st.clean + st.charm; }
 /** 월급 = 기본 25만 + 능력 합 × 4만 (S급은 비싸다) */
 export function wageOf(st: Pick<Staff, Skill>): number { return 250_000 + skillSum(st) * 40_000; }

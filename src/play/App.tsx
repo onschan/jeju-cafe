@@ -15,7 +15,7 @@ import { Title } from './Title';
 import { EndingScreen } from './Ending';
 import { unlockAudio, audioReady, sfx, bgm, setBgmLayer, isMuted, setMuted, getBgmVolume, getSfxVolume, setBgmVolume, setSfxVolume } from './audio';
 import { guestAccs } from './guestLook';
-import { FACILITIES, GUEST_TYPES, MENUS, INVESTS, facilityDef, isFloorDef, isUsable, sheetOf, usables, popularitySum, dailyGuests, unlockables, canUnlock, canLevelUp, LEVEL_COST, levelMoney, currentObjective, OBJECTIVES, seasonOf, canHire, upkeepTotal, wagesTotal, myScore, rivalScore, RIVALS, lineCells, canLayFloor, parcelAt, cellAt, parcelAdjacent, type GameState, type Tab, type Facility, type Pt, type Parcel, type Objective, type Guest, previewPlace, AMENITY_TEXT, cellEdges, getWall, edgeOf, nearestSide, type Side4, needsSummary, SKILLS, SKILL_KO, SKILL_DESC, DUTY_KO, gradeOf, effSkill, skillSum, staffSkill, CHANNELS, canRecruit, channelDef, STAFF_MAX, orderStats, makeMsOf, serveMsOf, stationsOf, orderOf, menuDef, synergyPartners, yardScenery, YARD_PER_GUEST, HOUR_MS, type Grade, type Staff, type Skill } from '../game/index.ts';
+import { FACILITIES, GUEST_TYPES, MENUS, INVESTS, facilityDef, isFloorDef, isUsable, sheetOf, usables, popularitySum, dailyGuests, unlockables, canUnlock, canLevelUp, LEVEL_COST, levelMoney, currentObjective, OBJECTIVES, seasonOf, canHire, upkeepTotal, wagesTotal, myScore, rivalScore, RIVALS, lineCells, canLayFloor, parcelAt, cellAt, parcelAdjacent, type GameState, type Tab, type Facility, type Pt, type Parcel, type Objective, type Guest, previewPlace, AMENITY_TEXT, cellEdges, getWall, edgeOf, nearestSide, type Side4, needsSummary, SKILLS, SKILL_KO, SKILL_DESC, DUTY_KO, gradeOf, effSkill, skillSum, staffSkill, CHANNELS, canRecruit, channelDef, STAFF_MAX, orderStats, makeMsOf, serveMsOf, stationsOf, orderOf, menuDef, synergyPartners, dirtyOf, dishesOf, dirtTotal, dishTotal, cleanMsOf, yardScenery, YARD_PER_GUEST, HOUR_MS, type Grade, type Staff, type Skill } from '../game/index.ts';
 
 type Win = 'build' | 'guests' | 'ops' | 'cafe' | 'system' | null;
 /** 하단 띠(영수증 2줄 + 요약 + 메뉴) 높이 */
@@ -514,7 +514,7 @@ function NeedsPanel({ s }: { s: GameState }) {
   const recent = s.receipts.slice(-30);
   const happy = recent.filter((r) => r.mood === 'happy').length;
   const rate = recent.length ? Math.round((happy / recent.length) * 100) : null;
-  const FIX: Record<string, string> = { wait: '제조대·직원 늘리기', liked: '좋아하는 시설 놓기', scenery: '나무·꽃 더 심기', comfort: '실내 꾸밈 놓기', service: '운영 › 직원', restroom: '건축 › 실내 › 화장실', synergy: '어울리는 것끼리 옆에', level: '시설 Lv업', winter: '벽으로 둘러싸기' };
+  const FIX: Record<string, string> = { dirty: '정리 담당 두기', no_station: '건축 › 실내 › 제조대', wait: '제조대·직원 늘리기', liked: '좋아하는 시설 놓기', scenery: '나무·꽃 더 심기', comfort: '실내 꾸밈 놓기', service: '운영 › 직원', restroom: '건축 › 실내 › 화장실', synergy: '어울리는 것끼리 옆에', level: '시설 Lv업', winter: '벽으로 둘러싸기' };
   return (
     <div style={{ ...panel, padding: 8, background: '#fff7e6' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}><Ico name="bulb" /><b>손님 니즈</b><span style={small}>최근 {recent.length}명 · 만족 {rate === null ? '—' : `${rate}%`}</span></div>
@@ -534,14 +534,14 @@ function TeamPanel({ s }: { s: GameState }) {
   const rows: { k: Skill; v: number; eff: string }[] = [
     { k: 'service', v: staffSkill(s, 'service'), eff: `서빙 ${min(serveMsOf(s))} · 만족 +${(Math.min(30, staffSkill(s, 'service') * 1.2) / 3).toFixed(1)}` },
     { k: 'speed', v: staffSkill(s, 'speed'), eff: `제조 ${min(makeMsOf(s, 'drink'))}/잔` },
-    { k: 'clean', v: staffSkill(s, 'clean'), eff: `깔끔 점수 +${Math.min(6, staffSkill(s, 'clean') * 0.3).toFixed(1)}` },
-    { k: 'charm', v: staffSkill(s, 'charm'), eff: `입소문 ${Math.round(Math.min(0.8, 0.5 + staffSkill(s, 'charm') * 0.015) * 100)}%` },
+    { k: 'clean', v: staffSkill(s, 'clean'), eff: s.staff.some((st) => st.duty === 'clean') ? `치우기 ${min(cleanMsOf(s.staff.find((st) => st.duty === 'clean')!))}/번` : '치우는 사람 없음' },
+    { k: 'charm', v: staffSkill(s, 'charm'), eff: `손님 +${Math.floor(staffSkill(s, 'charm') / 3)}/일 · 입소문 ${Math.round(Math.min(0.8, 0.5 + staffSkill(s, 'charm') * 0.015) * 100)}%` },
   ];
   const max = Math.max(1, ...rows.map((r) => r.v));
   return (
     <div style={{ ...panel, padding: 8, background: '#fff7e6', display: 'grid', gap: 3 }}>
       <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}><Ico name="staff" /><b>우리 팀</b><span style={small}>담당만 제값 · 나머지 1/4</span></div>
-      {(() => { const o = orderStats(s); const st = stationsOf(s, 'drink').length + stationsOf(s, 'food').length; return <div style={{ ...small, fontSize: 12, borderBottom: '1px solid #d8c9a8', paddingBottom: 3, marginBottom: 2 }}>{st === 0 ? <span style={{ color: C.red }}>제조대 없음 · 셀프</span> : <>제조대 {st}대 · 주문 대기 <b style={{ color: C.ink }}>{o.wait}</b> · 만드는 중 <b style={{ color: C.ink }}>{o.make}</b> · 서빙 중 <b style={{ color: C.ink }}>{o.serve}</b></>}</div>; })()}
+      {(() => { const o = orderStats(s); const st = stationsOf(s, 'drink').length + stationsOf(s, 'food').length; return <div style={{ ...small, fontSize: 12, borderBottom: '1px solid #d8c9a8', paddingBottom: 3, marginBottom: 2 }}>{st === 0 ? <span style={{ color: C.red }}>제조대 없음 · 셀프</span> : <>제조대 {st}대 · 대기 <b style={{ color: C.ink }}>{o.wait}</b> · 제조 <b style={{ color: C.ink }}>{o.make}</b> · 서빙 <b style={{ color: C.ink }}>{o.serve}</b></>}{(dirtTotal(s) > 0 || dishTotal(s) > 0) && <span style={{ color: C.red }}> · 더러움 {Math.round(dirtTotal(s))} · 설거지 {dishTotal(s)}</span>}</div>; })()}
       {rows.map((r) => <div key={r.k} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12 }}>
         <span style={{ minWidth: 44, color: C.soft }}>{SKILL_KO[r.k]}</span>
         <span style={{ flex: 1, height: 8, background: '#e6d9bd', border: `1px solid ${C.wood}`, borderRadius: 2, overflow: 'hidden' }}><span style={{ display: 'block', width: `${(r.v / max) * 100}%`, height: '100%', background: C.wood }} /></span>
@@ -598,7 +598,7 @@ function StaffTab({ s }: { s: GameState }) {
         <div key={st.id} style={{ ...panel, padding: 6, background: '#fff7e6', display: 'grid', gap: 4 }}>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
             <Portrait face={st.face} accs={['apron']} size={44} />
-            <span style={{ flex: 1, minWidth: 0 }}><b>{st.name}</b> <span style={small}>월급 {won(st.wage)}</span><div><Skills st={st} duty={st.duty} /></div></span>
+            <span style={{ flex: 1, minWidth: 0 }}><b>{st.name}</b> {st.burn ? <span style={{ color: C.red, fontSize: 12 }}>🔥버닝</span> : null} <span style={small}>월급 {won(st.wage)}</span><div><Skills st={st} duty={st.duty} /></div></span>
             <button style={btnOff} onClick={() => { if (confirm(`${st.name}을 내보낼까요?`)) dispatch({ type: 'fire', staffId: st.id }); }}>내보내기</button>
           </div>
           <div style={{ display: 'flex', gap: 3, flexWrap: 'wrap', alignItems: 'center' }}>
@@ -760,10 +760,11 @@ function FacilityCard({ s, f, onSelect, onClose, onMore, onGuest, onMove }: { s:
           <tr><td>기본</td><td style={{ textAlign: 'right' }}>{sh.base}</td><td style={{ textAlign: 'right' }}>{won(d.fee ?? 0)}</td></tr>
           <tr><td>보너스 <span style={small}>{sh.pairs.map((p) => p.name).join('·') || '상성 없음'}</span></td><td style={{ textAlign: 'right' }}>{sh.bonus}</td><td style={{ textAlign: 'right' }}>{won(sh.fee - (d.fee ?? 0))}</td></tr>
           {sh.indoor && <tr><td>아늑함 <span style={small}>실내 반경 3</span></td><td style={{ textAlign: 'right' }}>{sh.comfort}</td><td /></tr>}
+          {sh.dirty < 0 && <tr><td style={{ color: C.red }}>더러움 <span style={small}>치우면 돌아와요</span></td><td style={{ textAlign: 'right', color: C.red }}>{sh.dirty}</td><td /></tr>}
           <tr><td>{sh.indoor ? '실내' : '바깥'} <span style={small}>{sh.indoor ? '벽으로 둘러싸임' : '겨울엔 −6'}</span></td><td style={{ textAlign: 'right' }}>{sh.season}</td><td /></tr>
           <tr style={{ fontWeight: 700, borderTop: `1px solid ${C.wood}` }}><td>합계</td><td style={{ textAlign: 'right' }}>{sh.total}</td><td style={{ textAlign: 'right' }}>{won(sh.fee)}</td></tr>
         </tbody></table>
-      ) : d.station ? <div style={{ marginTop: 4 }}>제조 <b>{(makeMsOf(s, d.station === 'food' ? 'food' : 'drink', f.level) / HOUR_MS * 60).toFixed(0)}분</b> <span style={small}>{d.station === 'both' ? '음료·음식' : d.station === 'food' ? '음식' : '음료'} · Lv마다 8% 빨라짐</span>{(() => { const o = s.orders.find((q) => q.station === f.id && q.phase === 'make'); return o ? <div style={{ ...small, color: C.green }}>지금 {menuDef(o.menu).name}</div> : null; })()}{sh.pairs.length > 0 && <div style={small}>상성: {sh.pairs.map((p) => p.name).join('·')}</div>}</div> : <div style={{ marginTop: 4 }}>{d.comfort ? <>아늑함 <b>+{d.comfort}</b> <span style={small}>실내 반경 3</span></> : d.amenity ? <>{AMENITY_TEXT[d.amenity]} <span style={small}>한 대만</span></> : <>마당 경치 <b>+{d.scenery ?? 0}</b> <span style={small}>합 {YARD_PER_GUEST}당 손님 +1</span></>}{sh.pairs.length > 0 && <div style={small}>상성: {sh.pairs.map((p) => p.name).join('·')}</div>}</div>}
+      ) : d.station ? <div style={{ marginTop: 4 }}>제조 <b>{(makeMsOf(s, d.station === 'food' ? 'food' : 'drink', f.level) / HOUR_MS * 60).toFixed(0)}분</b> <span style={small}>{d.station === 'both' ? '음료·음식' : d.station === 'food' ? '음식' : '음료'} · Lv마다 8% 빨라짐</span>{dishesOf(f) > 0 && <div style={{ ...small, color: C.red }}>설거지 {dishesOf(f)} · 제조 {Math.round(Math.min(0.4, dishesOf(f) * 0.04) * 100)}% 느림</div>}{(() => { const o = s.orders.find((q) => q.station === f.id && q.phase === 'make'); return o ? <div style={{ ...small, color: C.green }}>지금 {menuDef(o.menu).name}</div> : null; })()}{sh.pairs.length > 0 && <div style={small}>상성: {sh.pairs.map((p) => p.name).join('·')}</div>}</div> : <div style={{ marginTop: 4 }}>{d.comfort ? <>아늑함 <b>+{d.comfort}</b> <span style={small}>실내 반경 3</span></> : d.amenity ? <>{AMENITY_TEXT[d.amenity]} <span style={small}>한 대만</span></> : <>마당 경치 <b>+{d.scenery ?? 0}</b> <span style={small}>합 {YARD_PER_GUEST}당 손님 +1</span></>}{sh.pairs.length > 0 && <div style={small}>상성: {sh.pairs.map((p) => p.name).join('·')}</div>}</div>}
       {sh.likedBy.length > 0 && <div style={small}>{sh.likedBy.map((t) => GUEST_TYPES.find((g) => g.id === t)?.name).join('·')}에게 인기</div>}
       {(() => { const here = s.guests.filter((g) => g.target === f.id && g.phase === 'use'); return here.length > 0 && <div style={{ ...small, display: 'flex', gap: 4, alignItems: 'center', flexWrap: 'wrap' }}>지금 손님: {here.map((g) => <button key={g.id} style={{ ...btnOff, padding: '1px 6px', fontSize: 12 }} onClick={() => onGuest(g.id)}>{GUEST_TYPES.find((t) => t.id === g.type)?.name} 보기</button>)}</div>; })()}
       <div style={{ display: 'flex', gap: 6, marginTop: 6, flexWrap: 'wrap' }}>

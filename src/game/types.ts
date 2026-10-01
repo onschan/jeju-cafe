@@ -37,7 +37,7 @@ export interface RivalDef { id: string; name: string; base: number; growth: numb
 /** wn/ww: 이 칸의 북(y−1 쪽)·서(x−1 쪽) 변에 선 벽의 종류 id. 남·동 변은 이웃 칸의 wn/ww로 적는다. 벽은 칸을 안 먹는다. */
 export interface Cell { terrain: Terrain; floor: Floor | null; objectId: string | null; wn?: string | null; ww?: string | null }
 export interface Parcel { id: string; name: string; x: number; y: number; w: number; h: number; owned: boolean; price: number }
-export interface Facility { id: string; type: string; x: number; y: number; name?: string; level: number; uses: number; sales: number }
+export interface Facility { id: string; type: string; x: number; y: number; name?: string; level: number; uses: number; sales: number; dirty?: number; dishes?: number }
 
 export interface Pt { x: number; y: number }
 export type GuestPhase = 'in' | 'use' | 'out';
@@ -54,7 +54,7 @@ export interface Guest {
   waitMs?: number;            // 주문을 기다린 시간
 }
 /** 직원 능력 4가지 (1~10): 접객 service · 손놀림 speed · 정리 clean · 매력 charm. 등급 S~E로 보여 준다. */
-export interface Staff { id: string; name: string; service: number; speed: number; clean: number; charm: number; wage: number; duty: 'service' | 'speed' | 'clean' | 'charm'; served: number; happy: number; month: { served: number; happy: number }; face: { hair: number; skin: number; top: number } }
+export interface Staff { id: string; name: string; service: number; speed: number; clean: number; charm: number; wage: number; duty: 'service' | 'speed' | 'clean' | 'charm'; served: number; happy: number; month: { served: number; happy: number }; burn?: number /* 버닝타임 남은 ms */; workMs?: number /* 지금 하는 일 진행 */; workAt?: string /* 치우는 중인 시설 */; face: { hair: number; skin: number; top: number } }
 export interface Candidate extends Staff { until: number /* 며칠 뒤 돌아간다 */; from: string /* 어느 채용 루트로 왔나 */ }
 
 /** need: 만족 못 했을 때 가장 아쉬웠던 것 (니즈 창이 모은다) */

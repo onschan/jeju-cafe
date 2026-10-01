@@ -3,6 +3,7 @@ import type { GameState, Facility, Pt, ApplyResult } from './types.ts';
 import { facilityDef, isFloorDef, isUsable, SYNERGIES, FACILITIES } from './data.ts';
 import { canPlace, cellAt, footprint, footOf, inBounds, layFloor, DIRS, isEnclosed, wallBetween } from './world.ts';
 import { seasonOf } from './clock.ts';
+import { dirtyPenalty } from './upkeep.ts';
 
 export const SCENERY_RADIUS = 2;
 export const SCENERY_CAP = 20;
@@ -19,7 +20,7 @@ export const COUNTER_FEE = 300;   // 카운터가 있으면 자리 요금 +300
 export const WINTER_OUTDOOR = -6;  // 겨울(12~2월)엔 바깥 자리·가게 인기가 이만큼 깎인다 — 벽으로 둘러싸면(실내) 안 깎인다
 
 export interface Sheet {
-  base: number; bonus: number; scenery: number; comfort: number; season: number; indoor: boolean; total: number;
+  base: number; bonus: number; scenery: number; comfort: number; season: number; dirty: number; indoor: boolean; total: number;
   fee: number; upkeep: number; pairs: { with: string; name: string }[]; likedBy: string[];
 }
 function cheb(a: Pt[], b: Pt[]): number {
@@ -112,7 +113,8 @@ function computeSheet(s: GameState, f: Facility): Sheet {
   const comfort = indoor ? comfortAt(s, f) : 0;
   const season = !usable ? 0 : indoor ? INDOOR_BONUS : seasonOf(s.clock.month) === 'winter' ? WINTER_OUTDOOR : 0; // 실내는 아늑해서 +2, 바깥은 겨울에 −6
   const counter = d.tab === 'seat' && amenities(s).has('counter') ? COUNTER_FEE : 0;
-  return { base, bonus, scenery, comfort, season, indoor, total: Math.max(0, base + bonus + scenery + comfort + season), fee: (d.fee ?? 0) + pairs.length * SYNERGY_FEE + counter, upkeep: d.upkeep, pairs, likedBy: d.tags ?? [] };
+  const dirty = usable ? -dirtyPenalty(f) : 0;
+  return { base, bonus, scenery, comfort, season, dirty, indoor, total: Math.max(0, base + bonus + scenery + comfort + season + dirty), fee: (d.fee ?? 0) + pairs.length * SYNERGY_FEE + counter, upkeep: d.upkeep, pairs, likedBy: d.tags ?? [] };
 }
 /** 마당의 자리·가게 인기 합 — 하루 손님 수·평가 점수의 뿌리 */
 export function popularitySum(s: GameState): number {
@@ -128,7 +130,7 @@ export function seatCapacity(s: GameState): number { return usables(s).reduce((n
 
 export function placeFacility(s: GameState, id: string, x: number, y: number): Facility {
   const d = facilityDef(id);
-  const f: Facility = { id: `f${s.nextId++}`, type: id, x, y, level: 1, uses: 0, sales: 0 };
+  const f: Facility = { id: `f${s.nextId++}`, type: id, x, y, level: 1, uses: 0, sales: 0, dirty: 0, dishes: 0 };
   s.facilities[f.id] = f;
   for (const p of footprint(x, y, d.w, d.h)) cellAt(s, p.x, p.y).objectId = f.id;
   s.layoutRev++;

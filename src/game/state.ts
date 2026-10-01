@@ -3,6 +3,7 @@ import { newClock } from './clock.ts';
 import { makeCells, makeParcels, HOME, BUS_STOP, wallRect, canPlace } from './world.ts';
 import { FACILITIES, MENUS, GUEST_TYPES } from './data.ts';
 import { noteStartUnlocked } from './objectives.ts';
+import { wageOf } from './staff.ts';
 import { layFloor } from './world.ts';
 import { placeFacility } from './facility.ts';
 
@@ -47,6 +48,9 @@ export function newGame(seed: number, preset: Preset = 'blank'): GameState {
     put('counter', cx + 3, y0 + 2);     // 2×2
     put('prep_bar', cx - 1, y0 + 2);
     put('tangerine_tree', cx + 6, y0 + 1); put('flower_bed', cx - 3, y0 + 2);
+    // 바리스타 한 명은 이미 와 있다 — 바로 돌아가는 카페
+    const v = { service: 3, speed: 6, clean: 3, charm: 2 };
+    s.staff.push({ id: `s${s.nextId++}`, name: '고은별', ...v, wage: wageOf(v), duty: 'speed', served: 0, happy: 0, month: { served: 0, happy: 0 }, face: { hair: 2, skin: 0, top: 3 } });
   }
   noteStartUnlocked(s);
   return s;

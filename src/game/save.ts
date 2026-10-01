@@ -11,6 +11,7 @@ export function deserialize(json: string): GameState {
   o.hiring ??= null;
   o.tutorial ??= -1;
   o.orders ??= []; o.orderSeq ??= 0;
+  for (const f of Object.values(o.facilities)) { f.dirty ??= 0; f.dishes ??= 0; }
   for (const g of o.guests) { g.served ??= true; g.waitMs ??= 0; }
   // 옛 세이브: 능력 하나(서비스 1~5) → 능력 4가지 + 담당 + 실적
   for (const st of [...o.staff, ...o.candidates]) {

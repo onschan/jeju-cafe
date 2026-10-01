@@ -4,6 +4,7 @@ import type { GameState, Guest, Order, OrderKind } from './types.ts';
 import { facilityDef, menuDef, MENUS } from './data.ts';
 import { HOUR_MS } from './clock.ts';
 import { staffSkill } from './staff.ts';
+import { dishSlow, DISH_PER_MAKE } from './upkeep.ts';
 
 /** 한 잔·한 접시 기본 시간 */
 export const MAKE_MS: Record<OrderKind, number> = { drink: HOUR_MS * 0.5, food: HOUR_MS * 0.9 };
@@ -60,13 +61,13 @@ export function updateOrders(s: GameState, ms: number): void {
       const free = stationsOf(s, o.kind).find((f) => !busy.has(f.id));
       if (!free) continue;
       busy.add(free.id);
-      o.station = free.id; o.phase = 'make'; o.ms = makeMsOf(s, o.kind, free.level);
+      o.station = free.id; o.phase = 'make'; o.ms = makeMsOf(s, o.kind, free.level) * (1 + dishSlow(free));
       free.uses++;
       continue;
     }
     o.ms -= ms;
     if (o.ms > 0) continue;
-    if (o.phase === 'make') { o.phase = 'serve'; o.ms = serveMsOf(s); continue; }
+    if (o.phase === 'make') { const st = o.station ? s.facilities[o.station] : null; if (st) st.dishes = Math.min(12, (st.dishes ?? 0) + DISH_PER_MAKE); o.phase = 'serve'; o.ms = serveMsOf(s); continue; }
     if (o.phase === 'serve') o.phase = 'done';
   }
   // 손님이 사라졌으면 주문도 지운다

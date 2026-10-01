@@ -60,6 +60,13 @@ export function monthlyPlan(s: GameState): void {
   if (usables(s).filter((f) => facilityDef(f.type).tab === 'shop').length < Math.floor(usables(s).length / 4) + 1) for (const d of shops) if (tryPlace(s, d.id)) break;
   n = 0; for (const d of envs) { if (n >= 2) break; if (tryPlace(s, d.id)) n++; }
   // 직원: 자리 4개마다 1명
+  // 담당 나누기: 바리스타 → 홀 → 정리 → 홍보 순으로 한 명씩은 채운다
+  const need: ('speed' | 'service' | 'clean' | 'charm')[] = ['speed', 'service', 'clean', 'charm'];
+  for (const k of need) {
+    if (s.staff.some((st) => st.duty === k)) continue;
+    const pick = [...s.staff].sort((a, b) => b[k] - a[k]).find((st) => need.filter((n) => n !== k).every((n) => s.staff.filter((o) => o.duty === n).length > 1 || st.duty !== n));
+    if (pick) apply(s, { type: 'setDuty', staffId: pick.id, duty: k });
+  }
   const want = Math.min(6, Math.floor(usables(s).length / 4));
   if (s.staff.length < want) {
     // 후보가 있으면 능력 합이 가장 높은 사람을, 없으면 형편에 맞는 채용 루트로 공고

@@ -4,7 +4,7 @@
  */
 import { Application, Container, Graphics, Sprite, Text } from 'pixi.js';
 import type { GameState, Facility, Guest, Fx, Pt } from '../game/index.ts';
-import { facilityDef, isFloorDef, canPlace, canLayFloor, lineCells, seasonOf, isNight, cellAt, walkable, wallBetween, footprint, HOME, ROAD_Y, BUS_STOP, rectEdges, canWall, edgeCells, type WallEdge } from '../game/index.ts';
+import { facilityDef, isFloorDef, canPlace, canLayFloor, lineCells, seasonOf, isNight, cellAt, walkable, wallBetween, footprint, dirtyOf, dishesOf, HOME, ROAD_Y, BUS_STOP, rectEdges, canWall, edgeCells, type WallEdge } from '../game/index.ts';
 import { loadAssets, tex, peekTex, hasAssets, spriteName } from '../render/assets';
 import { attachCamera } from '../render/camera';
 import { ISO_W, ISO_H, cellToScreen, cellCenter, footAnchor, depth, screenToCell } from '../render/iso';
@@ -28,7 +28,7 @@ export const WALL_SPRITE: Record<string, string> = { railing: 'fence', wall_wood
 /** 밤에 빛을 내는 시설과 빛 반경(px) */
 const LIGHT_RADIUS: Record<string, number> = { garden_lamp: 56, streetlight: 84 };
 /** 직원이 하는 일 → 머리 위 아이콘 */
-const ACT_ICON: Record<string, string> = { make: 'icon_coffee', serve: 'icon_meal', clean: 'icon_harvest', promo: 'icon_promo' };
+const ACT_ICON: Record<string, string> = { make: 'icon_coffee', serve: 'icon_meal', clean: 'icon_harvest', promo: 'icon_promo', burn: 'icon_fire' };
 
 export class View {
   app = new Application();
@@ -49,6 +49,7 @@ export class View {
   private sparkles: { sp: Sprite; born: number }[] = [];
   private wallNodes: Sprite[] = []; private wallRev = -1;
   private orderMarks = new Map<string, Container>();
+  private markKind = new Map<string, string>();
   private tileKey = '';
   private ghost: Container | null = null;
   private ghostKey = '';
@@ -269,6 +270,8 @@ export class View {
       const frame = moving ? (Math.floor(now / 140) % 3) as 0 | 1 | 2 : 1;
       if (frame !== e.frame || e.dir !== e.shownDir) { updateCharacterNode(e.node, e.dir, frame); e.frame = frame; e.shownDir = e.dir; }
       // 지금 무슨 일을 하는지 말풍선으로 (제조·서빙·청소·홍보)
+      const tagBg = e.node.getChildByLabel('tag')?.children[0] as Graphics | undefined;
+      if (tagBg) tagBg.tint = st.burn ? 0xff8a4a : 0xffffff;
       const act = this.staffAct(state, st);
       if (act !== e.act) {
         e.node.getChildByLabel('act')?.destroy({ children: true });
@@ -285,10 +288,11 @@ export class View {
   private staffLast = 0;
 
   /** 그 직원이 지금 하는 일 */
-  private staffAct(state: GameState, st: { id: string; duty: string }): string {
+  private staffAct(state: GameState, st: { id: string; duty: string; burn?: number; workAt?: string }): string {
+    if (st.burn) return 'burn';
     if (st.duty === 'speed') return state.orders.some((o) => o.phase === 'make') ? 'make' : '';
     if (st.duty === 'service') return state.orders.some((o) => o.phase === 'serve') ? 'serve' : '';
-    if (st.duty === 'clean') return 'clean';
+    if (st.duty === 'clean') return st.workAt ? 'clean' : '';
     if (st.duty === 'charm') return 'promo';
     void st.id; return '';
   }
@@ -324,6 +328,12 @@ export class View {
       for (let k = 0; k < bars.length; k++) { const q = near(bars[(i + k) % bars.length]!); if (q) return q; }
       return null;
     }
+    if (st.duty === 'clean') {
+      const t = (st as { workAt?: string }).workAt;
+      const f = t ? state.facilities[t] : null;
+      if (f) { const q = near(f); if (q) return q; }
+      return null;
+    }
     if (st.duty === 'charm') {
       // 올렛길 입구(길에 가장 가까운 올렛길 칸) 옆 바닥
       let best: Pt | null = null;
@@ -338,15 +348,21 @@ export class View {
   private syncOrders(state: GameState, now: number): void {
     const making = new Map<string, string>();
     for (const o of state.orders) if (o.phase === 'make' && o.station) making.set(o.station, o.kind);
-    for (const [id, node] of this.orderMarks) if (!making.has(id)) { node.destroy({ children: true }); this.orderMarks.delete(id); }
+    // 더럽거나 설거지가 쌓이면 그 위에 표시 (제조 중이 아니면)
+    for (const f of Object.values(state.facilities)) {
+      if (making.has(f.id)) continue;
+      if (dishesOf(f) >= 3) making.set(f.id, 'dish');
+      else if (dirtyOf(f) >= 2) making.set(f.id, 'dirt');
+    }
+    for (const [id, node] of this.orderMarks) if (!making.has(id) || this.markKind.get(id) !== making.get(id)) { node.destroy({ children: true }); this.orderMarks.delete(id); this.markKind.delete(id); }
     if (!hasAssets()) return;
     for (const [id, kind] of making) {
       const f = state.facilities[id]; if (!f) continue;
       let node = this.orderMarks.get(id);
       if (!node) {
-        const icon = peekTex(kind === 'food' ? 'icon_cake' : 'icon_coffee'); if (!icon) continue;
+        const icon = peekTex(kind === 'dish' ? 'icon_harvest' : kind === 'dirt' ? 'icon_warn' : kind === 'food' ? 'icon_cake' : 'icon_coffee'); if (!icon) continue;
         node = makeSpeechBubble({ icon, iconSize: 14 });
-        this.actors.addChild(node); this.orderMarks.set(id, node);
+        this.actors.addChild(node); this.orderMarks.set(id, node); this.markKind.set(id, kind);
       }
       const d = facilityDef(f.type);
       const a = footAnchor(f.x, f.y, d.w, d.h);
