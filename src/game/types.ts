@@ -19,6 +19,9 @@ export interface FacilityDef {
   capacity?: number;          // 동시 이용 인원
   unlock: number;             // 여는 데 드는 연구 (0 = 처음부터)
   tags?: string[];            // 좋아하는 손님층 id
+  indoor?: boolean;           // 벽으로 둘러싸인 실내 바닥에만 놓는다
+  comfort?: number;           // 아늑함 (실내 반경 3 자리·가게가 받는다 — 실내판 경치)
+  amenity?: 'counter' | 'restroom' | 'staff' | 'kitchen' | 'cleaning' | 'locker' | 'storage'; // 하나만 세는 편의 시설
 }
 export interface GuestTypeDef { id: string; name: string; wallet: number; expect: number; weight: number; unlock: number; menu: string[] }
 export interface MenuDef { id: string; name: string; price: number; unlock: number }

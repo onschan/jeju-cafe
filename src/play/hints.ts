@@ -11,6 +11,7 @@ export const HINTS: Hint[] = [
   { id: 'money_low', when: (s) => s.money < 500_000, speaker: 'samchun', expr: 'surprised', lines: ['돈이 바닥이야! 유지비와 월급은 월말에 한꺼번에 나가.', '잔고가 −200만 아래로 떨어지면 내가 300만은 꿔 줄게. 1년에 한 번뿐이다.'] },
   { id: 'land_ready', when: (s) => s.objectivesDone.length >= 4 && s.parcels.some((p) => !p.owned && parcelAdjacent(s, p) && s.money >= p.price), speaker: 'halmang', lines: ['옆 땅을 살 만큼 모였구나. 팻말을 탭하면 살 수 있다.', '땅이 넓어지면 바닥을 더 깔고 자리를 더 놓을 수 있지.'] },
   { id: 'candidate', when: (s) => usables(s).length >= 4 && s.staff.length === 0, speaker: 'samchun', lines: ['자리가 늘었으니 직원을 하나 뽑아. 정보 › 직원에서 이달 후보를 볼 수 있어.', '서비스가 좋으면 손님이 빨리 돌고 더 만족해.'] },
+  { id: 'indoor_first', when: (s) => usables(s).some((f) => { const d = facilityDef(f.type); return isEnclosed(s, footprint(f.x, f.y, d.w, d.h)); }) && !Object.values(s.facilities).some((f) => facilityDef(f.type).indoor), speaker: 'samchun', expr: 'happy', lines: ['방이 생겼네! 건축 › 실내에 카운터·화장실·벽난로·책장 같은 게 있어.', '실내 꾸밈은 「아늑함」으로 자리 인기를 올리고, 카운터·화장실은 가게 전체에 효과가 있어.'] },
   { id: 'winter', when: (s) => s.clock.month === 12 && usables(s).some((f) => { const d = facilityDef(f.type); return !isEnclosed(s, footprint(f.x, f.y, d.w, d.h)); }), speaker: 'halmang', expr: 'surprised', lines: ['겨울이다. 바깥 자리는 추워서 인기가 6이나 떨어져.', '울타리나 돌벽으로 둘러싸면 실내가 된다. 문은 올렛길로 내면 돼.'] },
   { id: 'first_rank', when: (s) => s.evaluations.length >= 1 && s.evaluations[0]!.rank > 1, speaker: 'samchun', lines: ['랭킹 점수는 명성 + 시설 인기 합이야. 경쟁 카페는 해마다 커진다.', '자리를 늘리고 단계를 올리면 인기 합이, 손님이 만족하면 명성이 올라.'] },
 ];

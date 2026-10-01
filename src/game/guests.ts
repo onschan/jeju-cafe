@@ -3,7 +3,7 @@ import type { GameState, Guest, Facility, Mood, Pt } from './types.ts';
 import { GUEST_TYPES, guestTypeDef, facilityDef, menuDef, INVESTS } from './data.ts';
 import { nextRandom, pickWeighted, randInt } from './rng.ts';
 import { HOUR_MS } from './clock.ts';
-import { sheetOf, usables, approachCell, seatCapacity, popularitySum } from './facility.ts';
+import { sheetOf, usables, approachCell, seatCapacity, popularitySum, amenities } from './facility.ts';
 import { busReach, pathTo } from './path.ts';
 import { BUS_STOP } from './world.ts';
 
@@ -82,7 +82,9 @@ function moveAlong(g: Guest, ms: number): boolean {
   }
   return g.path.length === 0;
 }
-function serviceBonus(s: GameState): number { return Math.min(30, s.staff.reduce((n, st) => n + st.service, 0) * 2); }
+function serviceBonus(s: GameState): number { const plus = amenities(s).has('staff') ? 1 : 0; return Math.min(30, s.staff.reduce((n, st) => n + st.service + plus, 0) * 2); } // 휴게실이 있으면 직원마다 서비스 +1
+/** 편의 시설이 손님 점수에 더하는 값: 화장실 +4, 청소 도구실 +2 */
+export function amenityScore(s: GameState): number { const a = amenities(s); return (a.has('restroom') ? 4 : 0) + (a.has('cleaning') ? 2 : 0); }
 /** 이용을 마친다: 돈 · 명성 · 연구 · 영수증 */
 function finishUse(s: GameState, g: Guest): void {
   const f = g.target ? s.facilities[g.target] : null;
@@ -96,8 +98,9 @@ function finishUse(s: GameState, g: Guest): void {
       const any = s.menu.filter((m) => menuDef(m).price <= t.wallet);
       const pick = offered[0] ?? any[0] ?? null;
       money = (pick ? menuDef(pick).price : 0) + sh.fee;
+      if (amenities(s).has('kitchen')) money = Math.round(money * 1.15); // 주방: 자리 결제 +15%
     } else money = Math.min(t.wallet, sh.fee);
-    const score = sh.total + serviceBonus(s) / 3;
+    const score = sh.total + serviceBonus(s) / 3 + amenityScore(s);
     mood = score >= t.expect ? 'happy' : score >= t.expect - 6 ? 'meh' : 'angry';
     f.uses++; f.sales += money;
   }

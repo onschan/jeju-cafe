@@ -49,9 +49,9 @@ export function monthlyPlan(s: GameState): void {
   // 단계: 연구가 남고 돈이 넉넉하면 낮은 단계부터 세 개까지
   let lv = 0; for (const f of [...usables(s)].sort((a, b) => a.level - b.level)) { if (lv >= 3) break; if (s.money < RESERVE * 3) break; if (apply(s, { type: 'levelUp', facilityId: f.id }).ok) lv++; }
   // 자리 2, 가게 1, 환경 2
-  const seats = FACILITIES.filter((d) => d.tab === 'seat' && s.unlocked.facilities.includes(d.id)).sort((a, b) => (b.pop ?? 0) - (a.pop ?? 0));
-  const shops = FACILITIES.filter((d) => d.tab === 'shop' && s.unlocked.facilities.includes(d.id)).sort((a, b) => (b.pop ?? 0) - (a.pop ?? 0));
-  const envs = FACILITIES.filter((d) => d.tab === 'env' && d.sub !== 'floor' && d.sub !== 'wall' && s.unlocked.facilities.includes(d.id)).sort((a, b) => (b.scenery ?? 0) - (a.scenery ?? 0));
+  const seats = FACILITIES.filter((d) => d.tab === 'seat' && !d.indoor && s.unlocked.facilities.includes(d.id)).sort((a, b) => (b.pop ?? 0) - (a.pop ?? 0));
+  const shops = FACILITIES.filter((d) => d.tab === 'shop' && !d.indoor && s.unlocked.facilities.includes(d.id)).sort((a, b) => (b.pop ?? 0) - (a.pop ?? 0));
+  const envs = FACILITIES.filter((d) => d.tab === 'env' && d.sub !== 'floor' && d.sub !== 'wall' && !d.indoor && s.unlocked.facilities.includes(d.id)).sort((a, b) => (b.scenery ?? 0) - (a.scenery ?? 0));
   let n = 0; for (const d of seats) { if (n >= 2) break; if (tryPlace(s, d.id)) n++; }
   if (usables(s).filter((f) => facilityDef(f.type).tab === 'shop').length < Math.floor(usables(s).length / 4) + 1) for (const d of shops) if (tryPlace(s, d.id)) break;
   n = 0; for (const d of envs) { if (n >= 2) break; if (tryPlace(s, d.id)) n++; }

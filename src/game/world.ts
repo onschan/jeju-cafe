@@ -196,6 +196,7 @@ export function canPlace(s: GameState, id: string, x: number, y: number): ApplyR
     if ((d.tab === 'seat' || d.tab === 'shop') && !c.floor) return { ok: false, reason: '바닥을 먼저 깔아요' };
     if (c.floor === 'path' && d.tab !== 'env') return { ok: false, reason: '올렛길 위엔 못 놓아요' };
   }
+  if (d.indoor && (!cells.every((p) => cellAt(s, p.x, p.y).floor && cellAt(s, p.x, p.y).floor !== 'path') || !isEnclosed(s, cells))) return { ok: false, reason: '벽으로 둘러싸인 실내 바닥에만 놓아요' };
   // 통로 보존: 놓은 뒤에도 (새것 포함) 자리·가게마다 정류장에서 걸어 닿는 옆 칸이 남아야 한다 — 카이로의 「복도에 붙어야 한다」
   const blocked = new Set(cells.map((p) => p.y * s.grid.w + p.x));
   const reach = reachExcluding(s, blocked);

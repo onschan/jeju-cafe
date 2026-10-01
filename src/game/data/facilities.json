@@ -654,5 +654,486 @@
    "worker",
    "couple"
   ]
+ },
+ {
+  "id": "counter",
+  "name": "카운터",
+  "tab": "env",
+  "sub": "deco",
+  "w": 2,
+  "h": 2,
+  "cost": 180000,
+  "upkeep": 2000,
+  "unlock": 0,
+  "indoor": true,
+  "comfort": 2,
+  "amenity": "counter",
+  "tags": [
+   "worker"
+  ]
+ },
+ {
+  "id": "restroom",
+  "name": "화장실",
+  "tab": "env",
+  "sub": "deco",
+  "w": 1,
+  "h": 1,
+  "cost": 220000,
+  "upkeep": 3000,
+  "unlock": 80,
+  "indoor": true,
+  "amenity": "restroom",
+  "tags": [
+   "family",
+   "tourist"
+  ]
+ },
+ {
+  "id": "staff_room",
+  "name": "직원 휴게실",
+  "tab": "env",
+  "sub": "deco",
+  "w": 2,
+  "h": 2,
+  "cost": 300000,
+  "upkeep": 2500,
+  "unlock": 250,
+  "indoor": true,
+  "amenity": "staff",
+  "tags": []
+ },
+ {
+  "id": "kitchen_ext",
+  "name": "주방",
+  "tab": "env",
+  "sub": "deco",
+  "w": 2,
+  "h": 2,
+  "cost": 350000,
+  "upkeep": 4000,
+  "unlock": 300,
+  "indoor": true,
+  "amenity": "kitchen",
+  "tags": [
+   "housewife"
+  ]
+ },
+ {
+  "id": "cleaning_room",
+  "name": "청소 도구실",
+  "tab": "env",
+  "sub": "deco",
+  "w": 1,
+  "h": 1,
+  "cost": 120000,
+  "upkeep": 800,
+  "unlock": 150,
+  "indoor": true,
+  "amenity": "cleaning",
+  "tags": []
+ },
+ {
+  "id": "locker",
+  "name": "사물함",
+  "tab": "env",
+  "sub": "deco",
+  "w": 1,
+  "h": 1,
+  "cost": 90000,
+  "upkeep": 500,
+  "unlock": 200,
+  "indoor": true,
+  "amenity": "locker",
+  "tags": []
+ },
+ {
+  "id": "storage",
+  "name": "창고",
+  "tab": "env",
+  "sub": "deco",
+  "w": 2,
+  "h": 2,
+  "cost": 160000,
+  "upkeep": 1000,
+  "unlock": 180,
+  "indoor": true,
+  "amenity": "storage",
+  "tags": []
+ },
+ {
+  "id": "table_in",
+  "name": "실내 테이블",
+  "tab": "seat",
+  "w": 1,
+  "h": 1,
+  "cost": 70000,
+  "upkeep": 900,
+  "pop": 12,
+  "fee": 600,
+  "capacity": 1,
+  "unlock": 0,
+  "indoor": true,
+  "tags": [
+   "worker",
+   "housewife"
+  ]
+ },
+ {
+  "id": "window_seat",
+  "name": "창가석",
+  "tab": "seat",
+  "w": 1,
+  "h": 1,
+  "cost": 140000,
+  "upkeep": 1200,
+  "pop": 15,
+  "fee": 900,
+  "capacity": 1,
+  "unlock": 220,
+  "indoor": true,
+  "tags": [
+   "student",
+   "couple"
+  ]
+ },
+ {
+  "id": "lounge",
+  "name": "라운지",
+  "tab": "seat",
+  "w": 2,
+  "h": 2,
+  "cost": 520000,
+  "upkeep": 4500,
+  "pop": 24,
+  "fee": 1800,
+  "capacity": 3,
+  "unlock": 600,
+  "indoor": true,
+  "tags": [
+   "couple",
+   "tourist"
+  ]
+ },
+ {
+  "id": "roaster",
+  "name": "로스터",
+  "tab": "shop",
+  "w": 1,
+  "h": 1,
+  "cost": 320000,
+  "upkeep": 3000,
+  "pop": 12,
+  "fee": 5500,
+  "capacity": 1,
+  "unlock": 450,
+  "indoor": true,
+  "tags": [
+   "worker"
+  ]
+ },
+ {
+  "id": "boardgame_room",
+  "name": "보드게임 방",
+  "tab": "shop",
+  "w": 1,
+  "h": 1,
+  "cost": 280000,
+  "upkeep": 2600,
+  "pop": 13,
+  "fee": 5000,
+  "capacity": 2,
+  "unlock": 380,
+  "indoor": true,
+  "tags": [
+   "student",
+   "family"
+  ]
+ },
+ {
+  "id": "massage_chair",
+  "name": "안마의자",
+  "tab": "shop",
+  "w": 1,
+  "h": 1,
+  "cost": 300000,
+  "upkeep": 2800,
+  "pop": 11,
+  "fee": 6000,
+  "capacity": 1,
+  "unlock": 550,
+  "indoor": true,
+  "tags": [
+   "senior",
+   "worker"
+  ]
+ },
+ {
+  "id": "kids_corner",
+  "name": "키즈 코너",
+  "tab": "shop",
+  "w": 2,
+  "h": 2,
+  "cost": 340000,
+  "upkeep": 3200,
+  "pop": 15,
+  "fee": 4000,
+  "capacity": 3,
+  "unlock": 420,
+  "indoor": true,
+  "tags": [
+   "family"
+  ]
+ },
+ {
+  "id": "home_theater",
+  "name": "홈시어터",
+  "tab": "shop",
+  "w": 1,
+  "h": 1,
+  "cost": 480000,
+  "upkeep": 4200,
+  "pop": 16,
+  "fee": 7000,
+  "capacity": 2,
+  "unlock": 700,
+  "indoor": true,
+  "tags": [
+   "couple",
+   "student"
+  ]
+ },
+ {
+  "id": "menu_board",
+  "name": "메뉴판",
+  "tab": "env",
+  "sub": "deco",
+  "w": 1,
+  "h": 1,
+  "cost": 40000,
+  "upkeep": 300,
+  "unlock": 60,
+  "indoor": true,
+  "comfort": 2,
+  "tags": [
+   "tourist"
+  ]
+ },
+ {
+  "id": "deco_chalkboard",
+  "name": "칠판",
+  "tab": "env",
+  "sub": "deco",
+  "w": 1,
+  "h": 1,
+  "cost": 35000,
+  "upkeep": 200,
+  "unlock": 60,
+  "indoor": true,
+  "comfort": 2,
+  "tags": [
+   "student"
+  ]
+ },
+ {
+  "id": "deco_bookshelf_small",
+  "name": "작은 책장",
+  "tab": "env",
+  "sub": "deco",
+  "w": 1,
+  "h": 1,
+  "cost": 60000,
+  "upkeep": 400,
+  "unlock": 90,
+  "indoor": true,
+  "comfort": 3,
+  "tags": [
+   "student"
+  ]
+ },
+ {
+  "id": "bookshelf",
+  "name": "큰 책장",
+  "tab": "env",
+  "sub": "deco",
+  "w": 2,
+  "h": 2,
+  "cost": 150000,
+  "upkeep": 900,
+  "unlock": 120,
+  "indoor": true,
+  "comfort": 5,
+  "tags": [
+   "student",
+   "worker"
+  ]
+ },
+ {
+  "id": "deco_coffee_machine",
+  "name": "커피 머신",
+  "tab": "env",
+  "sub": "deco",
+  "w": 1,
+  "h": 1,
+  "cost": 120000,
+  "upkeep": 1500,
+  "unlock": 120,
+  "indoor": true,
+  "comfort": 3,
+  "tags": [
+   "worker"
+  ]
+ },
+ {
+  "id": "fireplace",
+  "name": "벽난로",
+  "tab": "env",
+  "sub": "deco",
+  "w": 1,
+  "h": 1,
+  "cost": 200000,
+  "upkeep": 1800,
+  "unlock": 200,
+  "indoor": true,
+  "comfort": 5,
+  "tags": [
+   "couple",
+   "senior"
+  ]
+ },
+ {
+  "id": "deco_cake_case",
+  "name": "케이크 진열장",
+  "tab": "env",
+  "sub": "deco",
+  "w": 1,
+  "h": 1,
+  "cost": 160000,
+  "upkeep": 1600,
+  "unlock": 260,
+  "indoor": true,
+  "comfort": 4,
+  "tags": [
+   "housewife",
+   "couple"
+  ]
+ },
+ {
+  "id": "deco_lp_shelf",
+  "name": "LP 선반",
+  "tab": "env",
+  "sub": "deco",
+  "w": 1,
+  "h": 1,
+  "cost": 140000,
+  "upkeep": 900,
+  "unlock": 320,
+  "indoor": true,
+  "comfort": 4,
+  "tags": [
+   "worker",
+   "couple"
+  ]
+ },
+ {
+  "id": "aquarium",
+  "name": "수족관",
+  "tab": "env",
+  "sub": "deco",
+  "w": 1,
+  "h": 1,
+  "cost": 260000,
+  "upkeep": 2200,
+  "unlock": 400,
+  "indoor": true,
+  "comfort": 6,
+  "tags": [
+   "family",
+   "student"
+  ]
+ },
+ {
+  "id": "piano",
+  "name": "피아노",
+  "tab": "env",
+  "sub": "deco",
+  "w": 2,
+  "h": 2,
+  "cost": 420000,
+  "upkeep": 2000,
+  "unlock": 500,
+  "indoor": true,
+  "comfort": 7,
+  "tags": [
+   "couple",
+   "senior"
+  ]
+ },
+ {
+  "id": "deco_cat",
+  "name": "고양이 방석",
+  "tab": "env",
+  "sub": "deco",
+  "w": 1,
+  "h": 1,
+  "cost": 50000,
+  "upkeep": 600,
+  "unlock": 240,
+  "indoor": true,
+  "comfort": 4,
+  "tags": [
+   "student",
+   "couple"
+  ]
+ },
+ {
+  "id": "gallery",
+  "name": "작은 갤러리",
+  "tab": "env",
+  "sub": "deco",
+  "w": 2,
+  "h": 2,
+  "cost": 380000,
+  "upkeep": 2400,
+  "unlock": 650,
+  "indoor": true,
+  "comfort": 8,
+  "tags": [
+   "tourist",
+   "couple"
+  ]
+ },
+ {
+  "id": "wifi_zone",
+  "name": "와이파이 존",
+  "tab": "env",
+  "sub": "deco",
+  "w": 2,
+  "h": 2,
+  "cost": 110000,
+  "upkeep": 1200,
+  "unlock": 100,
+  "indoor": true,
+  "comfort": 3,
+  "tags": [
+   "student",
+   "worker"
+  ]
+ },
+ {
+  "id": "deco_string_lights",
+  "name": "실내 전구줄",
+  "tab": "env",
+  "sub": "deco",
+  "w": 2,
+  "h": 2,
+  "cost": 90000,
+  "upkeep": 700,
+  "unlock": 140,
+  "indoor": true,
+  "comfort": 3,
+  "tags": [
+   "couple"
+  ]
  }
 ]

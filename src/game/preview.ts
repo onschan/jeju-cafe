@@ -5,13 +5,17 @@ import { canPlace, lineCells, isEnclosed, footprint, rectEdges, canWall, setWall
 import { placeFacility, sheetOf, popularitySum, usables } from './facility.ts';
 import { dailyGuests } from './guests.ts';
 
+/** 편의 시설 효과 한 줄 */
+export const AMENITY_TEXT: Record<string, string> = { counter: '모든 자리 요금 +₩300', restroom: '모든 손님 점수 +4 (만족 쉬움)', staff: '직원마다 서비스 +1', kitchen: '자리 결제 +15%', cleaning: '모든 손님 점수 +2', locker: '월급 −10%', storage: '유지비 −10%' };
 export interface Preview {
   cells: number;                 // 놓이는 칸(줄이면 여러 개)
   cost: number;
-  total?: number; base?: number; bonus?: number; scenery?: number; season?: number; fee?: number; indoor?: boolean; // 자리·가게 자신의 손익
+  total?: number; base?: number; bonus?: number; scenery?: number; comfort?: number; season?: number; fee?: number; indoor?: boolean; // 자리·가게 자신의 손익
   pairs: string[];               // 새로 생기는 상성 짝 이름 (내 것 + 이웃 것)
   popDelta: number;              // 시설 인기 합 변화
   sceneryTouched: number;        // 경치가 오르는 자리·가게 수 (환경)
+  comfortTouched: number;        // 아늑함이 오르는 자리·가게 수 (실내 꾸밈)
+  amenity?: string;              // 편의 시설이면 그 효과 설명
   indoorGain: number;            // 새로 실내가 되는 자리·가게 수 (벽)
   guestsDelta: number;           // 하루 손님 변화
 }
@@ -28,7 +32,7 @@ export function previewPlace(s: GameState, id: string, x: number, y: number, lin
     let n = 0;
     for (const e of edges ?? rectEdges(line?.from ?? { x, y }, line?.to ?? { x, y })) if (canWall(c, id, e).ok) { setWall(c, e, id); n++; }
     if (n === 0) return null;
-    return { cells: n, cost: n * d.cost, pairs: [], popDelta: popularitySum(c) - popBefore, sceneryTouched: 0, indoorGain: indoorCount(c) - indoorBefore, guestsDelta: dailyGuests(c) - dailyGuests(s) };
+    return { cells: n, cost: n * d.cost, pairs: [], popDelta: popularitySum(c) - popBefore, sceneryTouched: 0, comfortTouched: 0, indoorGain: indoorCount(c) - indoorBefore, guestsDelta: dailyGuests(c) - dailyGuests(s) };
   }
   const cells = line ? lineCells(line.from, line.to) : [{ x, y }];
   const pairsBefore = pairKey(c), popBefore = popularitySum(c), indoorBefore = indoorCount(c), guestsBefore = dailyGuests(c);
@@ -38,9 +42,10 @@ export function previewPlace(s: GameState, id: string, x: number, y: number, lin
   const pairs: string[] = [];
   const after = pairKey(c);
   for (const k of after) if (!pairsBefore.has(k)) { const [fid, withId] = k.split(':'); const f = c.facilities[fid!]!; const p = sheetOf(c, f).pairs.find((q) => q.with === withId); if (p && !pairs.includes(p.name)) pairs.push(p.name); }
-  const out: Preview = { cells: placed.length, cost: placed.length * d.cost, pairs, popDelta: popularitySum(c) - popBefore, sceneryTouched: 0, indoorGain: indoorCount(c) - indoorBefore, guestsDelta: dailyGuests(c) - guestsBefore };
+  const out: Preview = { cells: placed.length, cost: placed.length * d.cost, pairs, popDelta: popularitySum(c) - popBefore, sceneryTouched: 0, comfortTouched: 0, indoorGain: indoorCount(c) - indoorBefore, guestsDelta: dailyGuests(c) - guestsBefore, amenity: d.amenity ? AMENITY_TEXT[d.amenity] : undefined };
   const f = c.facilities[placed[0]!]!;
-  if (d.tab === 'seat' || d.tab === 'shop') { const sh = sheetOf(c, f); Object.assign(out, { total: sh.total, base: sh.base, bonus: sh.bonus, scenery: sh.scenery, season: sh.season, fee: sh.fee, indoor: sh.indoor }); }
+  if (d.tab === 'seat' || d.tab === 'shop') { const sh = sheetOf(c, f); Object.assign(out, { total: sh.total, base: sh.base, bonus: sh.bonus, scenery: sh.scenery, comfort: sh.comfort, season: sh.season, fee: sh.fee, indoor: sh.indoor }); }
   else if (d.scenery) { for (const u of usables(s)) { const a = sheetOf(s, u).scenery, b = sheetOf(c, c.facilities[u.id]!).scenery; if (b > a) out.sceneryTouched++; } }
+  if (d.comfort) { for (const u of usables(s)) { const a = sheetOf(s, u).comfort, b = sheetOf(c, c.facilities[u.id]!).comfort; if (b > a) out.comfortTouched++; } }
   return out;
 }

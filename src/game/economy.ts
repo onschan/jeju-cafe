@@ -2,6 +2,7 @@
 import type { GameState } from './types.ts';
 import { facilityDef } from './data.ts';
 import { wagesTotal } from './staff.ts';
+import { amenities } from './facility.ts';
 export const LOAN_THRESHOLD = -2_000_000;
 export const LOAN_AMOUNT = 3_000_000;
 export const LOAN_MAX = 3;
@@ -12,8 +13,9 @@ export function upkeepTotal(s: GameState): number {
   return n;
 }
 export function monthEnd(s: GameState): void {
-  const upkeep = upkeepTotal(s);
-  const wages = wagesTotal(s);
+  const a = amenities(s);
+  const upkeep = Math.round(upkeepTotal(s) * (a.has('storage') ? 0.9 : 1));  // 창고: 유지비 −10%
+  const wages = Math.round(wagesTotal(s) * (a.has('locker') ? 0.9 : 1));     // 사물함: 월급 −10%
   s.money -= upkeep + wages;
   s.month.spent += upkeep + wages;
   // 달이 넘어간 직후라 clock은 이미 다음 달 — 지난달 이름은 하나 되돌린다

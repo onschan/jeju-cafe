@@ -234,3 +234,25 @@ describe('벽과 실내', () => {
     expect(sheetOf(s, t).indoor).toBe(false);
   });
 });
+
+describe('실내 시설', () => {
+  it('실내 전용은 둘러싸인 바닥에만; 아늑함은 실내 자리 인기, 카운터는 자리 요금 +300, 화장실은 손님 점수', () => {
+    const s = yard();
+    s.research = 10_000;
+    apply(s, { type: 'placeLine', id: 'floor_wood', from: at(1, 4), to: at(3, 4) });
+    apply(s, { type: 'placeLine', id: 'floor_wood', from: at(1, 5), to: at(3, 5) });
+    apply(s, { type: 'placeLine', id: 'floor_wood', from: at(1, 6), to: at(3, 6) });
+    expect(canPlace(s, 'table_in', at(1, 6).x, at(1, 6).y).reason).toBe('벽으로 둘러싸인 실내 바닥에만 놓아요');
+    expect(apply(s, { type: 'wallRect', id: 'wall_wood', from: at(1, 4), to: at(3, 6) }).ok).toBe(true);
+    expect(apply(s, { type: 'place', id: 'table_in', x: at(1, 6).x, y: at(1, 6).y }).ok).toBe(true);
+    const t = Object.values(s.facilities).find((f) => f.type === 'table_in')!;
+    expect(sheetOf(s, t)).toMatchObject({ indoor: true, comfort: 0, fee: 600 });
+    for (const id of ['fireplace', 'counter']) if (!s.unlocked.facilities.includes(id)) expect(apply(s, { type: 'unlock', id }).ok).toBe(true);
+    expect(apply(s, { type: 'place', id: 'fireplace', x: at(1, 5).x, y: at(1, 5).y }).ok).toBe(true); // 테이블 옆 칸
+    expect(sheetOf(s, t).comfort).toBe(5);                  // 벽난로 아늑함 +5
+    expect(sheetOf(s, t).pairs.map((p) => p.name)).toContain('난롯가'); // 상성
+    expect(apply(s, { type: 'place', id: 'counter', x: at(2, 4).x, y: at(2, 4).y }).ok).toBe(true); // 2×2: (2..3, 4..5)
+    expect(sheetOf(s, t).fee).toBe(600 + 200 + 300);        // 상성 +200, 카운터 +300
+    expect(canPlace(s, 'fireplace', at(5, 3).x, at(5, 3).y).ok).toBe(false); // 바깥 잔디엔 안 된다
+  });
+});
