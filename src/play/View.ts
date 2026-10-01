@@ -17,7 +17,7 @@ import { parcelFill, parcelProps } from './parcelScenery';
 import { guestAccs } from './guestLook';
 
 export interface Ghost { id: string; x: number; y: number; ok: boolean; reason?: string; line?: { from: Pt; to: Pt } }
-export interface ViewOptions { onTap: (x: number, y: number) => void; onDragCell?: (x: number, y: number) => void; onDragEnd?: () => void; dragCapture?: (x: number, y: number) => boolean }
+export interface ViewOptions { onTap: (x: number, y: number) => void; onDragCell?: (x: number, y: number) => void; onDragEnd?: () => void; dragCapture?: (x: number, y: number) => boolean; onBusStop?: () => void }
 
 const SYNERGY_STAGGER_MS = 110;
 const FLOAT_MS = 900;
@@ -51,6 +51,8 @@ export class View {
   private fxSeen = 0;
   private bounds = { x: 0, y: 0, w: 0, h: 0 };
   private busGridW = 0;
+  private busWasMoving = false;
+  private onBusStop: (() => void) | null = null;
 
   async init(parent: HTMLElement, opts: ViewOptions): Promise<void> {
     await this.app.init({ resizeTo: parent, background: 0x1e1e1e, antialias: false, resolution: window.devicePixelRatio, autoDensity: true });
@@ -68,6 +70,7 @@ export class View {
       onTap: opts.onTap, dragCapture: opts.dragCapture, onDragCell: opts.onDragCell, onDragEnd: opts.onDragEnd,
       minScale: 0.5, maxScale: 2.5,
     });
+    this.onBusStop = opts.onBusStop ?? null;
     this.app.ticker.add(() => { const now = performance.now(); this.tickFx(now); this.bg.tick(now); this.tickBus(now); this.tickSparkles(now); });
   }
   destroy(): void { this.detach?.(); this.app.destroy(true, { children: true }); }
@@ -251,6 +254,13 @@ export class View {
     const p = busPose(now, BUS_STOP.x, this.busGridW);
     if (!this.bus) { const t = peekTex(spriteName.isoObject('bus', '0')); if (!t) return; this.bus = new Sprite(t); this.bus.anchor.set(0.5, 1); this.actors.addChild(this.bus); }
     this.bus.visible = p.visible;
+    // 정류장에 막 섰다: 소리 + 문 앞 반짝임 (손님이 내리는 느낌)
+    if (this.busWasMoving && !p.moving && p.visible) {
+      this.onBusStop?.();
+      const st = peekTex('fx_sparkle_0');
+      if (st) { const a0 = footAnchor(BUS_STOP.x, ROAD_Y - 1, 1, 1); const sp = new Sprite(st); sp.anchor.set(0.5, 1); sp.position.set(a0.sx, a0.sy - 8); sp.zIndex = depth(BUS_STOP.x, ROAD_Y - 1) + 0.6; this.actors.addChild(sp); this.sparkles.push({ sp, born: now }); }
+    }
+    this.busWasMoving = p.moving && p.visible;
     if (!p.visible) return;
     const t = peekTex(spriteName.isoObject('bus', p.moving ? String(Math.floor(now / 160) % 2) : '0'));
     if (t) this.bus.texture = t;

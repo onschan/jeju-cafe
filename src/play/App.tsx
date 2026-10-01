@@ -131,6 +131,7 @@ export function App() {
       },
       dragCapture: (x, y) => { const id = placingRef.current; if (!id || !isFloorDef(facilityDef(id))) return false; lineFrom.current = { x, y }; setGhost(ghostOf(getState(), id, x, y, { from: { x, y }, to: { x, y } })); return true; },
       onDragCell: (x, y) => { const id = placingRef.current; const from = lineFrom.current; if (!id || !from) return; setGhost(ghostOf(getState(), id, x, y, { from, to: { x, y } })); },
+      onBusStop: () => { if (!getState().clock.speed) return; sfx('bus'); },
       onDragEnd: () => { const id = placingRef.current; const from = lineFrom.current; const g = ghostRef.current; lineFrom.current = null; if (!id || !from || !g?.line) return; const r = dispatch({ type: 'placeLine', id, from: g.line.from, to: g.line.to }); if (!r.ok) flash(r.reason); else sfx('plant'); setGhost(ghostOf(getState(), id, g.line.to.x, g.line.to.y)); },
     }).then(() => { v.centerOn(getState()); setReady(true); stop = startLoop(); raf = requestAnimationFrame(tick); }); // 시트가 다 실린 뒤에야 그린다 — 먼저 그리면 자리 표시 도형이 캐시에 남는다(폰에서 그렇게 보였다)
     (window as unknown as { __view: View; __game: unknown }).__view = v; // 디버그·자동 검증용 (봇·브라우저 스크립트)
@@ -361,8 +362,31 @@ function InfoWindow({ s, onClose }: { s: GameState; onClose: () => void }) {
         <div style={small}>매년 12월 말 발표. 점수 = 명성 + 시설 인기 합. 지금 점수 <b style={{ color: C.ink }}>{myScore(s)}</b></div>
         {[{ id: 'me', name: '우리 카페', score: myScore(s) }, ...RIVALS.map((r) => ({ id: r.id, name: r.name, score: rivalScore(r.id, s.clock.year) }))].sort((a, b) => b.score - a.score).map((r, i) => <div key={r.id} style={{ display: 'flex', gap: 8, fontWeight: r.id === 'me' ? 700 : 400 }}><span>{i + 1}위</span><span style={{ flex: 1 }}>{r.name}</span><span>{r.score}</span></div>)}
         {s.evaluations.slice(-3).reverse().map((e) => <div key={e.year} style={small}>{e.year}년 {e.rank}위 · {won(e.prize)}</div>)}
+        <RankChart s={s} />
       </div>}
     </Window>
+  );
+}
+/** 경쟁 카페별 연도 점수 선 그래프 + 내 점수(평가 기록 · 지금). 5년치. */
+function RankChart({ s }: { s: GameState }) {
+  const YEARS = 5, W = 300, H = 120, PL = 34, PB = 16;
+  const colors = ['#c8402e', '#d4a13c', '#3a6fb0', '#3f8f3a', '#8b5a2b'];
+  const mine = [...s.evaluations.map((e) => ({ y: e.year, v: e.score })), { y: s.clock.year, v: myScore(s) }];
+  const max = Math.max(100, ...RIVALS.map((r) => rivalScore(r.id, YEARS)), ...mine.map((m) => m.v)) * 1.05;
+  const X = (y: number) => PL + ((y - 1) / (YEARS - 1)) * (W - PL - 6);
+  const Y = (v: number) => H - PB - (v / max) * (H - PB - 6);
+  return (
+    <div style={{ ...panel, padding: 6, background: '#fff7e6', marginTop: 4 }}>
+      <div style={small}>해마다 점수 — 굵은 선이 우리 카페</div>
+      <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height: 'auto', display: 'block' }}>
+        {[0, 0.5, 1].map((k) => <g key={k}><line x1={PL} x2={W - 6} y1={Y(max * k)} y2={Y(max * k)} stroke="#d8c9a8" strokeWidth={1} /><text x={PL - 4} y={Y(max * k) + 4} fontSize={9} textAnchor="end" fill="#7a6650">{Math.round(max * k)}</text></g>)}
+        {Array.from({ length: YEARS }, (_, i) => <text key={i} x={X(i + 1)} y={H - 4} fontSize={9} textAnchor="middle" fill="#7a6650">{i + 1}년</text>)}
+        {RIVALS.map((r, i) => <polyline key={r.id} fill="none" stroke={colors[i]} strokeWidth={1.5} strokeDasharray="3 2" points={Array.from({ length: YEARS }, (_, k) => `${X(k + 1)},${Y(rivalScore(r.id, k + 1))}`).join(' ')} />)}
+        <polyline fill="none" stroke="#2b2118" strokeWidth={3} points={mine.map((m) => `${X(Math.min(YEARS, m.y))},${Y(m.v)}`).join(' ')} />
+        {mine.map((m, i) => <circle key={i} cx={X(Math.min(YEARS, m.y))} cy={Y(m.v)} r={3} fill="#d4a13c" stroke="#2b2118" />)}
+      </svg>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '2px 8px', fontSize: 11 }}>{RIVALS.map((r, i) => <span key={r.id} style={{ color: colors[i] }}>— {r.name}</span>)}</div>
+    </div>
   );
 }
 function Row({ k, v }: { k: string; v: string }) { return <div style={{ display: 'flex', gap: 8 }}><span style={{ ...small, minWidth: 96 }}>{k}</span><span>{v}</span></div>; }
@@ -444,6 +468,7 @@ function FacilityCard({ s, f, onSelect, onClose, onMore, onGuest }: { s: GameSta
       <div style={{ display: 'flex', gap: 6, marginTop: 6, flexWrap: 'wrap' }}>
         {isUsable(d) && <button style={lv.ok ? btn : btnOff} title={lv.reason} onClick={() => { const r = dispatch({ type: 'levelUp', facilityId: f.id }); if (!r.ok) alert(r.reason); }}>Lv업 <span style={{ fontSize: 11 }}>{LEVEL_COST[f.level] !== undefined ? `(연구 ${LEVEL_COST[f.level]} · ${wonShort(levelMoney(s, f.id))})` : '(최고)'}</span></button>}
         <button style={btn} onClick={() => onMore(f.type)}>같은 것 더</button>
+        {isUsable(d) && (() => { const same = Object.values(s.facilities).filter((x) => x.type === f.type && canLevelUp(s, x.id).ok); return same.length >= 2 && <button style={btn} onClick={() => { let n = 0; for (const x of same) if (dispatch({ type: 'levelUp', facilityId: x.id }).ok) n++; if (n) sfx('unlock'); }}>{d.name} 전부 Lv업 <span style={{ fontSize: 11 }}>({same.length}개 · {wonShort(same.reduce((a, x) => a + levelMoney(s, x.id), 0))})</span></button>; })()}
         <button style={btnOff} onClick={() => setRenaming(true)}>이름</button>
         <button style={{ ...btnOff, background: C.red, color: '#fff' }} onClick={() => { const r = dispatch({ type: 'remove', facilityId: f.id }); if (!r.ok) alert(r.reason); else onClose(); }}>치우기 <span style={{ fontSize: 11 }}>(반값 환불)</span></button>
       </div>
