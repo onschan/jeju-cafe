@@ -43,3 +43,28 @@ export function useThumb(sprite: string, size = 56): string | null {
   useEffect(() => { if (frames) return; const w = () => bump((n) => n + 1); waiters.add(w); void ensure(); return () => { waiters.delete(w); }; }, []);
   return thumbUrl(sprite, size);
 }
+
+// ---------- 캔버스에 시트 프레임 직접 그리기 (타이틀 데모 풍경) ----------
+export interface SheetFrames { frames: Record<string, Frame>; img: HTMLImageElement }
+/** 시트가 준비되면 돌려준다 */
+export async function loadSheet(): Promise<SheetFrames | null> {
+  await ensure();
+  return frames && img ? { frames, img } : null;
+}
+/** 프레임 한 장을 캔버스에 (anchor 0~1, tint는 곱셈) */
+export function drawFrame(ctx: CanvasRenderingContext2D, sheet: SheetFrames, name: string, x: number, y: number, opts: { anchorX?: number; anchorY?: number; tint?: number } = {}): void {
+  const f = sheet.frames[name]?.frame;
+  if (!f) return;
+  const dx = Math.round(x - f.w * (opts.anchorX ?? 0));
+  const dy = Math.round(y - f.h * (opts.anchorY ?? 0));
+  if (opts.tint === undefined) { ctx.drawImage(sheet.img, f.x, f.y, f.w, f.h, dx, dy, f.w, f.h); return; }
+  const off = document.createElement('canvas'); off.width = f.w; off.height = f.h;
+  const oc = off.getContext('2d')!; oc.imageSmoothingEnabled = false;
+  oc.drawImage(sheet.img, f.x, f.y, f.w, f.h, 0, 0, f.w, f.h);
+  oc.globalCompositeOperation = 'multiply';
+  oc.fillStyle = `#${opts.tint.toString(16).padStart(6, '0')}`;
+  oc.fillRect(0, 0, f.w, f.h);
+  oc.globalCompositeOperation = 'destination-in';
+  oc.drawImage(sheet.img, f.x, f.y, f.w, f.h, 0, 0, f.w, f.h);
+  ctx.drawImage(off, dx, dy);
+}

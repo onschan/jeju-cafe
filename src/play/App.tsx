@@ -10,7 +10,8 @@ import { showDialogue, clearDialogues, useDialogue, SPEAKER } from './dialogueSt
 import { RewardChest, MonthCard, DaySummary, MessageLine, Portrait, guestTypeFace, DAY_CARD_MS, MESSAGE_LINE_H } from './cards';
 import { nextHint } from './hints';
 import { tutorialStep, TUTORIAL } from './tutorial';
-import { IntroScreen, hasSeenIntro, introImageUrl } from './Intro';
+import { IntroScreen, hasSeenIntro } from './Intro';
+import { Title } from './Title';
 import { EndingScreen } from './Ending';
 import { unlockAudio, audioReady, sfx, bgm, setBgmLayer, isMuted, setMuted, getBgmVolume, getSfxVolume, setBgmVolume, setSfxVolume } from './audio';
 import { guestAccs } from './guestLook';
@@ -239,10 +240,11 @@ export function App() {
       {monthCard && s.lastMonth && <MonthCard s={s} onClose={() => setMonthCard(false)} />}
       {title && ready && !intro && <Title
         onReplayIntro={() => setIntro({ replay: true, then: () => setIntro(null) })}
-        onStart={(fresh) => {
-          const go = () => { setTitle(false); clearDialogues(); if (fresh) introLines(getState().cafeName); else showDialogue({ speaker: { name: SPEAKER.samchun, portrait: 'samchun' }, lines: [`어서 와. ${getState().cafeName}, 오늘도 잘 부탁해.`] }); };
-          if (fresh && !hasSeenIntro()) setIntro({ replay: false, then: () => { setIntro(null); go(); } });
-          else go();
+        onStart={(fresh) => { setTitle(false); clearDialogues(); if (!fresh) showDialogue({ speaker: { name: SPEAKER.samchun, portrait: 'samchun' }, lines: [`어서 와. ${getState().cafeName}, 오늘도 잘 부탁해.`] }); }}
+        onNew={(name, preset) => {
+          restart(undefined, preset); dispatch({ type: 'setName', name });
+          const go = () => { setTitle(false); clearDialogues(); introLines(getState().cafeName); };
+          if (!hasSeenIntro()) setIntro({ replay: false, then: () => { setIntro(null); go(); } }); else go();
         }} />}
       {intro && <IntroScreen replay={intro.replay} onDone={intro.then} />}
     </div>
@@ -318,37 +320,10 @@ function Ask({ text, sub, yesOff, onYes, onNo }: { text: string; sub?: string; y
     </div>
   );
 }
-/** 타이틀: 이어하기 / 새 게임(카페 이름) — 탭 두 번이면 게임 */
 /** 새 게임 첫 대사: 할망이 마당을 맡긴다 */
 function introLines(name: string) {
   showDialogue({ speaker: { name: SPEAKER.halmang, portrait: 'halmang' }, lines: ['이 마당, 이제 네가 맡아라. 바닷바람 좋고 손님도 곧 올 거다.', '바닥을 깔고 그 위에 자리를 놓아. 나무·꽃을 옆에 두면 경치가 올라간다.'] });
   showDialogue({ speaker: { name: SPEAKER.samchun, portrait: 'samchun', expr: 'happy' }, lines: [`${name}라… 이름 좋네. 나는 옆집 삼춘이야.`, '손님이 나갈 때마다 아래 줄에 영수증이 찍혀. 첫 목표는 자리 3개 놓기!'] });
-}
-function Title({ onStart, onReplayIntro }: { onStart: (fresh: boolean) => void; onReplayIntro: () => void }) {
-  const [naming, setNaming] = useState(false);
-  const [name, setName] = useState('우리 카페');
-  return (
-    <div style={{ position: 'absolute', inset: 0, background: '#15110c', display: 'grid', placeItems: 'center', color: '#fff8e8', overflow: 'hidden' }}>
-      <img className="px" src={introImageUrl(10, true)} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', imageRendering: 'pixelated', opacity: 0.55 }} />
-      <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, rgba(10,8,5,0.35) 0%, rgba(10,8,5,0.8) 60%)' }} />
-      <div style={{ position: 'relative', textAlign: 'center', display: 'grid', gap: 10, width: 260 }}>
-        <div style={{ fontSize: 30, fontWeight: 700, textShadow: '2px 2px 0 #4a2f16, 0 0 12px #00000080' }}>제주 카페 이야기</div>
-        <div style={{ ...small, color: '#e0d2b4' }}>바닥을 깔고, 자리를 놓고, 손님을 맞는다</div>
-        {!naming ? <>
-          {hadSave && <button style={{ ...btnGold, fontSize: 16 }} onClick={() => onStart(false)}>이어하기</button>}
-          <button style={{ ...btn, fontSize: 16 }} onClick={() => setNaming(true)}>새 게임</button>
-          <button style={{ ...btnOff, fontSize: 13 }} onClick={onReplayIntro}>프롤로그 다시 보기</button>
-        </> : <>
-          <div style={{ fontSize: 13 }}>카페 이름</div>
-          <input autoFocus value={name} maxLength={12} onChange={(e) => setName(e.target.value)} style={{ fontFamily: 'inherit', fontSize: 16, padding: 6, textAlign: 'center' }} />
-          <div style={{ ...small, marginTop: 2 }}>어떻게 시작할까요?</div>
-          <button style={{ ...btnGold, fontSize: 15 }} onClick={() => { restart(undefined, 'tutorial'); dispatch({ type: 'setName', name }); onStart(true); }}>차근차근 (따라 하기)<div style={{ ...small, color: C.ink, fontSize: 11 }}>빈 마당에서 7단계로 배우며</div></button>
-          <button style={{ ...btn, fontSize: 15 }} onClick={() => { restart(undefined, 'starter'); dispatch({ type: 'setName', name }); onStart(true); }}>기본 세팅으로 바로<div style={{ ...small, color: '#fff8e8', fontSize: 11 }}>데크·자리 3개·나무·꽃이 놓인 채로</div></button>
-          <button style={btnOff} onClick={() => setNaming(false)}>뒤로</button>
-        </>}
-      </div>
-    </div>
-  );
 }
 /** 바닥 칸 카드: 걷어내기 · 같은 바닥 더 깔기 */
 function FloorCard({ s, p, onClose, onMore }: { s: GameState; p: Pt; onClose: () => void; onMore: (id: string) => void }) {
