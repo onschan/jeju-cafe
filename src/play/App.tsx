@@ -12,7 +12,7 @@ import { nextHint } from './hints';
 import { EndingScreen } from './Ending';
 import { unlockAudio, audioReady, sfx, bgm, setBgmLayer, isMuted, setMuted, getBgmVolume, getSfxVolume, setBgmVolume, setSfxVolume } from './audio';
 import { guestAccs } from './guestLook';
-import { FACILITIES, GUEST_TYPES, MENUS, INVESTS, facilityDef, isFloorDef, isUsable, sheetOf, usables, popularitySum, dailyGuests, unlockables, canUnlock, canLevelUp, LEVEL_COST, levelMoney, currentObjective, OBJECTIVES, seasonOf, canHire, upkeepTotal, wagesTotal, myScore, rivalScore, RIVALS, lineCells, canLayFloor, parcelAt, cellAt, parcelAdjacent, type GameState, type Tab, type Facility, type Pt, type Parcel, type Objective, type Guest, previewPlace, cellEdges, getWall } from '../game/index.ts';
+import { FACILITIES, GUEST_TYPES, MENUS, INVESTS, facilityDef, isFloorDef, isUsable, sheetOf, usables, popularitySum, dailyGuests, unlockables, canUnlock, canLevelUp, LEVEL_COST, levelMoney, currentObjective, OBJECTIVES, seasonOf, canHire, upkeepTotal, wagesTotal, myScore, rivalScore, RIVALS, lineCells, canLayFloor, parcelAt, cellAt, parcelAdjacent, type GameState, type Tab, type Facility, type Pt, type Parcel, type Objective, type Guest, previewPlace, cellEdges, getWall, edgeOf, nearestSide, type Side4 } from '../game/index.ts';
 
 type Win = 'build' | 'guests' | 'info' | 'system' | null;
 /** 하단 띠(영수증 2줄 + 요약 + 메뉴) 높이 */
@@ -42,6 +42,12 @@ export function App() {
   const [moneyBump, setMoneyBump] = useState(false);
   const [ending, setEnding] = useState(false);
   const [guestSel, setGuestSel] = useState<string | null>(null);
+  /** 벽 세우기 방식: 네모 둘레 / 한 변씩(방향: 자동=탭한 지점에 가까운 변) */
+  const [wallMode, setWallMode] = useState<'rect' | 'edge'>('edge');
+  const [wallSide, setWallSide] = useState<'auto' | Side4>('auto');
+  const wallModeRef = useRef(wallMode); wallModeRef.current = wallMode;
+  const wallSideRef = useRef(wallSide); wallSideRef.current = wallSide;
+  const dragSide = useRef<Side4>('n');
   const dlg = useDialogue().req;
   // 타이틀·대화·상자·결산이 떠 있는 동안 시계를 멈춘다
   useEffect(() => { setPaused(title || !!dlg || !!chest || monthCard || ending); }, [title, dlg, chest, monthCard, ending]);
@@ -111,12 +117,17 @@ export function App() {
     const v = new View(); viewRef.current = v;
     let stop = () => {};
     v.init(hostRef.current!, {
-      onTap: (x, y) => {
+      onTap: (x, y, fx = 0.5, fy = 0.5) => {
         const st = getState();
         sfx('tap');
         const id = placingRef.current;
         if (id) {
           // 탭은 자리만 잡는다 — 놓는 건 띠의 「놓기/깔기」로 (탭마다 놓이면 실수가 잦다)
+          if (facilityDef(id).sub === 'wall' && wallModeRef.current === 'edge') {
+            const side = wallSideRef.current === 'auto' ? nearestSide(fx, fy) : wallSideRef.current;
+            setGhost(ghostOf(st, id, x, y, undefined, [edgeOf(x, y, side)]));
+            return;
+          }
           setGhost(isLine(id) ? ghostOf(st, id, x, y, { from: { x, y }, to: { x, y } }) : ghostOf(st, id, x, y));
           return;
         }
@@ -128,8 +139,17 @@ export function App() {
         setSelected(cell?.objectId ?? null);
         setFloorSel(cell && !cell.objectId && cell.floor && !g ? { x, y } : null); // 손님이 서 있으면 손님 팝업이 먼저
       },
-      dragCapture: (x, y) => { const id = placingRef.current; if (!id || !isLine(id)) return false; lineFrom.current = { x, y }; setGhost(ghostOf(getState(), id, x, y, { from: { x, y }, to: { x, y } })); return true; },
-      onDragCell: (x, y) => { const id = placingRef.current; const from = lineFrom.current; if (!id || !from) return; setGhost(ghostOf(getState(), id, x, y, { from, to: { x, y } })); },
+      dragCapture: (x, y, fx = 0.5, fy = 0.5) => {
+        const id = placingRef.current; if (!id || !isLine(id)) return false;
+        lineFrom.current = { x, y };
+        if (facilityDef(id).sub === 'wall' && wallModeRef.current === 'edge') { dragSide.current = wallSideRef.current === 'auto' ? nearestSide(fx, fy) : wallSideRef.current; setGhost(ghostOf(getState(), id, x, y, undefined, [edgeOf(x, y, dragSide.current)])); return true; }
+        setGhost(ghostOf(getState(), id, x, y, { from: { x, y }, to: { x, y } })); return true;
+      },
+      onDragCell: (x, y) => {
+        const id = placingRef.current; const from = lineFrom.current; if (!id || !from) return;
+        if (facilityDef(id).sub === 'wall' && wallModeRef.current === 'edge') { setGhost(ghostOf(getState(), id, x, y, { from, to: { x, y } }, lineCells(from, { x, y }).map((c) => edgeOf(c.x, c.y, dragSide.current)))); return; } // 드래그한 칸마다 같은 방향 변에
+        setGhost(ghostOf(getState(), id, x, y, { from, to: { x, y } }));
+      },
       onBusStop: () => { if (!getState().clock.speed) return; sfx('bus'); },
       onDragEnd: () => { lineFrom.current = null; }, // 드래그는 줄 미리보기까지만, 깔기는 띠에서
     }).then(() => { v.centerOn(getState()); setReady(true); stop = startLoop(); raf = requestAnimationFrame(tick); }); // 시트가 다 실린 뒤에야 그린다 — 먼저 그리면 자리 표시 도형이 캐시에 남는다(폰에서 그렇게 보였다)
@@ -162,12 +182,12 @@ export function App() {
       {/* 목표 한 줄 */}
       {obj && !placing && <div style={{ position: 'absolute', top: 36, left: 8, right: 8, ...panel, padding: '4px 8px', fontSize: 13, cursor: 'pointer' }} onClick={() => setWin('info')}><Ico name="flag" /> {obj.text} <span style={small}>· 상금 {wonShort(obj.reward)}</span></div>}
       {/* 배치 모드 띠 */}
-      {placing && <PlacingBar id={placing} ghost={ghost} onDone={() => { setPlacing(null); setGhost(null); }} onConfirm={() => {
+      {placing && <PlacingBar id={placing} ghost={ghost} wallMode={wallMode} wallSide={wallSide} onWallMode={(m) => { setWallMode(m); setGhost(null); }} onWallSide={(sd) => { setWallSide(sd); setGhost((g) => g && g.edges ? ghostOf(getState(), g.id, g.x, g.y, g.line, (g.line ? lineCells(g.line.from, g.line.to) : [{ x: g.x, y: g.y }]).map((c) => edgeOf(c.x, c.y, sd === 'auto' ? 'n' : sd))) : g); }} onDone={() => { setPlacing(null); setGhost(null); }} onConfirm={() => {
         const g = ghost; if (!g) return; const d = facilityDef(placing);
-        const r = d.sub === 'wall' ? dispatch({ type: 'wallRect', id: placing, from: g.line?.from ?? { x: g.x, y: g.y }, to: g.line?.to ?? { x: g.x, y: g.y } }) : isLine(placing) && g.line ? dispatch({ type: 'placeLine', id: placing, from: g.line.from, to: g.line.to }) : dispatch({ type: 'place', id: placing, x: g.x, y: g.y });
+        const r = d.sub === 'wall' && g.edges ? dispatch({ type: 'wallEdges', id: placing, edges: g.edges }) : d.sub === 'wall' ? dispatch({ type: 'wallRect', id: placing, from: g.line?.from ?? { x: g.x, y: g.y }, to: g.line?.to ?? { x: g.x, y: g.y } }) : isLine(placing) && g.line ? dispatch({ type: 'placeLine', id: placing, from: g.line.from, to: g.line.to }) : dispatch({ type: 'place', id: placing, x: g.x, y: g.y });
         if (!r.ok) { flash(r.reason); return; }
         sfx(isFloorDef(d) || d.sub === 'wall' ? 'plant' : 'place');
-        setGhost(isLine(placing) ? ghostOf(getState(), placing, g.x, g.y, g.line) : ghostOf(getState(), placing, g.x, g.y)); // 같은 자리는 이제 막히니 빨갛게 — 다음 탭으로 옮긴다
+        setGhost(g.edges ? ghostOf(getState(), placing, g.x, g.y, g.line, g.edges) : isLine(placing) ? ghostOf(getState(), placing, g.x, g.y, g.line) : ghostOf(getState(), placing, g.x, g.y)); // 같은 자리는 이제 막히니 빨갛게 — 다음 탭으로 옮긴다
       }} />}
       {/* 삼춘 메시지 줄 (알림·신발매·거절 이유) */}
       {ready && <MessageLine bottom={BOTTOM_H} flash={toast} />}
@@ -203,12 +223,12 @@ export function App() {
   );
 }
 
-function PlacingBar({ id, ghost, onDone, onConfirm }: { id: string; ghost: Ghost | null; onDone: () => void; onConfirm: () => void }) {
+function PlacingBar({ id, ghost, wallMode, wallSide, onWallMode, onWallSide, onDone, onConfirm }: { id: string; ghost: Ghost | null; wallMode: 'rect' | 'edge'; wallSide: 'auto' | Side4; onWallMode: (m: 'rect' | 'edge') => void; onWallSide: (s: 'auto' | Side4) => void; onDone: () => void; onConfirm: () => void }) {
   const d = facilityDef(id);
   const floor = isFloorDef(d);
   const n = ghost?.line ? lineCells(ghost.line.from, ghost.line.to).filter((p) => canLayFloor(getState(), d.floor!, p.x, p.y).ok).length : 1;
   const wall = d.sub === 'wall';
-  const pv = ghost && !floor ? previewPlace(getState(), id, ghost.x, ghost.y, wall ? ghost.line : undefined) : null;
+  const pv = ghost && !floor ? previewPlace(getState(), id, ghost.x, ghost.y, wall ? ghost.line : undefined, ghost.edges) : null;
   const count = floor ? n : pv?.cells ?? 1;
   const can = !!ghost && (floor ? n > 0 : ghost.ok) && getState().money >= d.cost * count;
   // 기대효과 한 줄 — 그 자리에 놓으면 어떻게 되나
@@ -231,16 +251,31 @@ function PlacingBar({ id, ghost, onDone, onConfirm }: { id: string; ghost: Ghost
     <div style={{ position: 'absolute', top: 36, left: 8, right: 8, ...panel, padding: '6px 8px', fontSize: 13, display: 'grid', gap: 4 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
         <Sprite id={id} size={28} /><b>{d.name}</b>
-        <span style={{ flex: 1, minWidth: 0 }}>{floor || wall ? (ghost?.line ? `${count}${wall ? '변' : '칸'} · ${won(d.cost * count)}` : wall ? '바닥 위를 드래그해 네모를 잡아요' : '탭하거나 드래그해서 줄을 잡아요') : !ghost ? `탭해서 자리를 잡아요 · ${won(d.cost)}` : !ghost.ok ? <span style={{ color: C.red }}>{ghost.reason}</span> : won(d.cost)}</span>
+        <span style={{ flex: 1, minWidth: 0 }}>{floor || wall ? (ghost?.line || ghost?.edges ? `${count}${wall ? '변' : '칸'} · ${won(d.cost * count)}` : wall ? (wallMode === 'rect' ? '바닥 위를 드래그해 네모를 잡아요' : '칸의 변 가까이를 탭해요 · 드래그하면 줄로') : '탭하거나 드래그해서 줄을 잡아요') : !ghost ? `탭해서 자리를 잡아요 · ${won(d.cost)}` : !ghost.ok ? <span style={{ color: C.red }}>{ghost.reason}</span> : won(d.cost)}</span>
         <span style={small}>{wonShort(getState().money)}</span>
-        <button style={can ? btnGold : btnOff} disabled={!can} onClick={onConfirm}>{floor ? '깔기' : wall ? '두르기' : '놓기'}</button>
+        <button style={can ? btnGold : btnOff} disabled={!can} onClick={onConfirm}>{floor ? '깔기' : wall ? (wallMode === 'edge' ? '세우기' : '두르기') : '놓기'}</button>
         <button style={btnOff} onClick={onDone}>끝</button>
       </div>
+      {wall && <div style={{ display: 'flex', alignItems: 'center', gap: 4, borderTop: '1px solid #d8c9a8', paddingTop: 4, flexWrap: 'wrap' }}>
+        <button style={{ ...(wallMode === 'edge' ? btnGold : btnOff), padding: '2px 8px', fontSize: 12 }} onClick={() => onWallMode('edge')}>한 변씩</button>
+        <button style={{ ...(wallMode === 'rect' ? btnGold : btnOff), padding: '2px 8px', fontSize: 12 }} onClick={() => onWallMode('rect')}>네모 두르기</button>
+        {wallMode === 'edge' && <>
+          <span style={{ ...small, marginLeft: 4 }}>방향</span>
+          {(['auto', 'n', 'e', 's', 'w'] as const).map((sd) => <button key={sd} title={SIDE_KO[sd]} style={{ ...(wallSide === sd ? btnGold : btnOff), padding: '2px 5px', fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 3 }} onClick={() => onWallSide(sd)}>{sd !== 'auto' && <SideIcon side={sd} />}{SIDE_KO[sd]}</button>)}
+        </>}
+      </div>}
       {effect && <div style={{ fontSize: 12, color: C.green, borderTop: '1px solid #d8c9a8', paddingTop: 4 }}>{effect}</div>}
     </div>
   );
 }
 
+const SIDE_KO: Record<'auto' | Side4, string> = { auto: '자동', n: '뒤쪽', e: '오른쪽', s: '앞쪽', w: '왼쪽' };
+/** 칸 다이아몬드에서 그 변만 굵게: n=우상, e=우하, s=좌하, w=좌상 */
+function SideIcon({ side }: { side: Side4 }) {
+  const T = [11, 1], R = [21, 6], B = [11, 11], L = [1, 6];
+  const seg = side === 'n' ? [T, R] : side === 'e' ? [R, B] : side === 's' ? [B, L] : [L, T];
+  return <svg width={22} height={12} viewBox="0 0 22 12" style={{ display: 'block' }}><polygon points="11,1 21,6 11,11 1,6" fill="none" stroke="#9a8468" strokeWidth={1} /><line x1={seg[0]![0]} y1={seg[0]![1]} x2={seg[1]![0]} y2={seg[1]![1]} stroke="#2b2118" strokeWidth={3} strokeLinecap="round" /></svg>;
+}
 /** 예/아니오 한 장 */
 function Ask({ text, sub, yesOff, onYes, onNo }: { text: string; sub?: string; yesOff?: boolean; onYes: () => void; onNo: () => void }) {
   return (
@@ -344,7 +379,7 @@ function BuildWindow({ s, onPick, onClose }: { s: GameState; onPick: (id: string
         <Sprite id={d.id} size={48} />
         <div style={{ flex: 1, minWidth: 0, fontSize: 13 }}>
           <b>{open ? d.name : '???'}</b> <span style={small}>{d.w}×{d.h}</span>
-          <div style={small}>{open ? `${won(d.cost)} · 유지 ${won(d.upkeep)}/월${d.pop !== undefined ? ` · 인기 ${d.pop}` : ''}${d.scenery ? ` · 경치 +${d.scenery}` : ''}${d.fee ? ` · 요금 ${won(d.fee)}` : ''}${d.sub === 'wall' ? ' (변마다) · 바닥 위를 드래그해 네모 둘레에 · 둘러싸면 실내 +2, 겨울 −6 면함' : ''}` : `연구 ${d.unlock}로 열린다 (정보 › 연구)`}</div>
+          <div style={small}>{open ? `${won(d.cost)} · 유지 ${won(d.upkeep)}/월${d.pop !== undefined ? ` · 인기 ${d.pop}` : ''}${d.scenery ? ` · 경치 +${d.scenery}` : ''}${d.fee ? ` · 요금 ${won(d.fee)}` : ''}${d.sub === 'wall' ? ' (변마다) · 칸의 변을 탭하거나 네모를 둘러서 · 둘러싸면 실내 +2, 겨울 −6 면함' : ''}` : `연구 ${d.unlock}로 열린다 (정보 › 연구)`}</div>
           {open && d.tags && <div style={small}>{d.tags.map((t) => GUEST_TYPES.find((g) => g.id === t)?.name).join('·')}에게 인기</div>}
         </div>
         {open && <button style={s.money >= d.cost ? btnGold : btnOff} onClick={() => { if (s.money >= d.cost) onPick(d.id); }}>{d.sub === 'floor' ? '깔기' : d.sub === 'wall' ? '두르기' : '놓기'}</button>}

@@ -1,7 +1,7 @@
 /** 놓기 전에 기대효과: 상태를 복제해 실제로 놓아 보고 전후를 비교한다 (고스트가 움직일 때마다 한 번). */
 import type { GameState, Pt } from './types.ts';
 import { facilityDef, isFloorDef } from './data.ts';
-import { canPlace, lineCells, isEnclosed, footprint, rectEdges, canWall, setWall } from './world.ts';
+import { canPlace, lineCells, isEnclosed, footprint, rectEdges, canWall, setWall, type WallEdge } from './world.ts';
 import { placeFacility, sheetOf, popularitySum, usables } from './facility.ts';
 import { dailyGuests } from './guests.ts';
 
@@ -18,7 +18,7 @@ export interface Preview {
 function indoorCount(s: GameState): number { return usables(s).filter((f) => { const d = facilityDef(f.type); return isEnclosed(s, footprint(f.x, f.y, d.w, d.h)); }).length; }
 function pairKey(s: GameState): Set<string> { const out = new Set<string>(); for (const f of usables(s)) for (const p of sheetOf(s, f).pairs) out.add(`${f.id}:${p.with}`); return out; }
 
-export function previewPlace(s: GameState, id: string, x: number, y: number, line?: { from: Pt; to: Pt }): Preview | null {
+export function previewPlace(s: GameState, id: string, x: number, y: number, line?: { from: Pt; to: Pt }, edges?: WallEdge[]): Preview | null {
   const d = facilityDef(id);
   if (isFloorDef(d)) return null; // 바닥은 칸 수·값만 (띠가 따로 보여 준다)
   const c = structuredClone(s) as GameState;
@@ -26,7 +26,7 @@ export function previewPlace(s: GameState, id: string, x: number, y: number, lin
     // 벽 네모: 되는 변만 세워 보고 실내가 되는 자리·가게를 센다
     const indoorBefore = indoorCount(c), popBefore = popularitySum(c);
     let n = 0;
-    for (const e of rectEdges(line?.from ?? { x, y }, line?.to ?? { x, y })) if (canWall(c, id, e).ok) { setWall(c, e, id); n++; }
+    for (const e of edges ?? rectEdges(line?.from ?? { x, y }, line?.to ?? { x, y })) if (canWall(c, id, e).ok) { setWall(c, e, id); n++; }
     if (n === 0) return null;
     return { cells: n, cost: n * d.cost, pairs: [], popDelta: popularitySum(c) - popBefore, sceneryTouched: 0, indoorGain: indoorCount(c) - indoorBefore, guestsDelta: dailyGuests(c) - dailyGuests(s) };
   }

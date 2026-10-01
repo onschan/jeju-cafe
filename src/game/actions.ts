@@ -1,7 +1,7 @@
 import type { GameState, Action, ApplyResult } from './types.ts';
 import { facilityDef, isFloorDef } from './data.ts';
 import { placeAndBurst, removeFacility } from './facility.ts';
-import { canLayFloor, layFloor, clearFloor, lineCells, cellAt, inBounds, parcelAdjacent, cellEdges, getWall, setWall, wallRect } from './world.ts';
+import { canLayFloor, layFloor, clearFloor, lineCells, cellAt, inBounds, parcelAdjacent, cellEdges, getWall, setWall, wallRect, wallEdges } from './world.ts';
 import { canUnlock, unlock, canLevelUp, levelUp } from './research.ts';
 import { canHire, hire } from './staff.ts';
 import { canInvest, invest } from './invest.ts';
@@ -30,6 +30,7 @@ function applyInner(s: GameState, a: Action): ApplyResult {
       return { ok: true };
     }
     case 'wallRect': return wallRect(s, a.id, a.from, a.to);
+    case 'wallEdges': return wallEdges(s, a.id, a.edges);
     case 'removeWalls': {
       let n = 0;
       for (const e of cellEdges(a.x, a.y)) { const k = getWall(s, e); if (!k) continue; setWall(s, e, null); s.money += Math.round(facilityDef(k).cost / 2); n++; }

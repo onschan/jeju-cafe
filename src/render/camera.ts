@@ -1,5 +1,5 @@
 import { Container, FederatedPointerEvent, Ticker } from 'pixi.js';
-import { screenToCell } from './iso';
+import { screenToCell, cellToCont } from './iso';
 
 export interface CameraBounds { x: number; y: number; w: number; h: number }
 
@@ -13,11 +13,11 @@ export interface CameraOptions {
   viewport: () => { width: number; height: number };
   /** 월드 좌표 경계(맵 바운딩 박스). null이면 경계 없음. */
   bounds: () => CameraBounds | null;
-  onTap: (cellX: number, cellY: number) => void;
+  onTap: (cellX: number, cellY: number, fx?: number, fy?: number) => void;
   /** 손가락을 댄 칸에서 드래그를 카메라 대신 가져갈지 (고스트 옮기기·길 칠하기). true면 이 드래그는 화면을 안 움직인다. */
-  dragCapture?: (cellX: number, cellY: number) => boolean;
+  dragCapture?: (cellX: number, cellY: number, fx?: number, fy?: number) => boolean;
   /** 가져간 드래그가 새 칸에 들어갈 때마다 (누른 칸 포함) */
-  onDragCell?: (cellX: number, cellY: number) => void;
+  onDragCell?: (cellX: number, cellY: number, fx?: number, fy?: number) => void;
   /** 가져간 드래그가 끝날 때 */
   onDragEnd?: () => void;
   /** 손가락을 움직이지 않고 400ms 누르고 있으면 (보기 모드에서 오브젝트 들어 올리기). true를 돌려주면 그 뒤 드래그를 가져간다. */
@@ -66,6 +66,8 @@ export function attachCamera(stage: Container, opts: CameraOptions): () => void 
   /** 카메라 대신 앱이 가져간 드래그: 마지막으로 알린 칸 */
   let captured: { x: number; y: number } | null = null;
   const cellOf = (gx: number, gy: number) => screenToCell((gx - world.x) / world.scale.x, (gy - world.y) / world.scale.y);
+  /** 칸 안 위치 (0~1): 변 고르기용 */
+  const fracOf = (gx: number, gy: number) => cellToCont((gx - world.x) / world.scale.x, (gy - world.y) / world.scale.y);
   let pinchDist = 0;
   /** 최근 포인터 이동 샘플(속도 추정) */
   let samples: { t: number; x: number; y: number }[] = [];
@@ -120,9 +122,10 @@ export function attachCamera(stage: Container, opts: CameraOptions): () => void 
       const c = cellOf(e.globalX, e.globalY);
       firedFast = false; // 앞 누름의 떼기를 놓쳤어도 이번 누름은 살아 있다 (안 지우면 다음 탭 하나가 통째로 씹힌다)
       if (fastTap?.()) { firedFast = true; onTap(c.x, c.y); return; } // 누르는 즉시 — 떼기를 기다리지 않는다
-      if (dragCapture?.(c.x, c.y)) {
+      const fr = fracOf(e.globalX, e.globalY);
+      if (dragCapture?.(c.x, c.y, fr.fx, fr.fy)) {
         captured = c;
-        onDragCell?.(c.x, c.y);
+        onDragCell?.(c.x, c.y, fr.fx, fr.fy);
       } else if (onLongPress) {
         clearPress();
         pressTimer = window.setTimeout(() => {
@@ -147,7 +150,7 @@ export function attachCamera(stage: Container, opts: CameraOptions): () => void 
     pointers.set(e.pointerId, { x: e.globalX, y: e.globalY, t: performance.now() });
     if (pointers.size === 1 && captured) {
       const c = cellOf(e.globalX, e.globalY);
-      if (c.x !== captured.x || c.y !== captured.y) { captured = c; onDragCell?.(c.x, c.y); }
+      if (c.x !== captured.x || c.y !== captured.y) { captured = c; const fr = fracOf(e.globalX, e.globalY); onDragCell?.(c.x, c.y, fr.fx, fr.fy); }
       moved = true;
     } else if (pointers.size === 1 && dragStart) {
       const dx = e.globalX - dragStart.x;
@@ -184,11 +187,11 @@ export function attachCamera(stage: Container, opts: CameraOptions): () => void 
       } else if (!moved && dragStart) {
         const lx = (e.globalX - world.x) / world.scale.x;
         const ly = (e.globalY - world.y) / world.scale.y;
-        const c = screenToCell(lx, ly);
+        const c = screenToCell(lx, ly); const fr = cellToCont(lx, ly);
         const now = performance.now();
         const twice = !!lastTap && lastTap.x === c.x && lastTap.y === c.y && now - lastTap.t < DOUBLE_TAP_MS;
         lastTap = twice ? null : { x: c.x, y: c.y, t: now }; // 세 번째 탭이 또 더블이 되지 않게
-        if (!(twice && onDoubleTap?.(c.x, c.y))) onTap(c.x, c.y);
+        if (!(twice && onDoubleTap?.(c.x, c.y))) onTap(c.x, c.y, fr.fx, fr.fy);
       } else if (moved && samples.length >= 2) {
         // 마지막 이동 창의 평균 속도(px/ms) → px/프레임(60fps 기준)
         const first = samples[0]!;

@@ -16,8 +16,8 @@ import { busPose } from '../render/scenery';
 import { parcelFill, parcelProps } from './parcelScenery';
 import { guestAccs } from './guestLook';
 
-export interface Ghost { id: string; x: number; y: number; ok: boolean; reason?: string; line?: { from: Pt; to: Pt } }
-export interface ViewOptions { onTap: (x: number, y: number) => void; onDragCell?: (x: number, y: number) => void; onDragEnd?: () => void; dragCapture?: (x: number, y: number) => boolean; onBusStop?: () => void }
+export interface Ghost { id: string; x: number; y: number; ok: boolean; reason?: string; line?: { from: Pt; to: Pt }; edges?: WallEdge[] }
+export interface ViewOptions { onTap: (x: number, y: number, fx?: number, fy?: number) => void; onDragCell?: (x: number, y: number, fx?: number, fy?: number) => void; onDragEnd?: () => void; dragCapture?: (x: number, y: number, fx?: number, fy?: number) => boolean; onBusStop?: () => void }
 
 const SYNERGY_STAGGER_MS = 110;
 const FLOAT_MS = 900;
@@ -335,7 +335,7 @@ export class View {
   }
 
   private syncGhost(state: GameState, ghost: Ghost | null): void {
-    const key = ghost ? `${ghost.id}:${ghost.x},${ghost.y}:${ghost.ok}:${ghost.line ? `${ghost.line.from.x},${ghost.line.from.y}-${ghost.line.to.x},${ghost.line.to.y}` : ''}:${state.layoutRev}` : '';
+    const key = ghost ? `${ghost.id}:${ghost.x},${ghost.y}:${ghost.ok}:${ghost.line ? `${ghost.line.from.x},${ghost.line.from.y}-${ghost.line.to.x},${ghost.line.to.y}` : ''}:${ghost.edges ? ghost.edges.map((e) => `${e.x},${e.y}${e.side}`).join('|') : ''}:${state.layoutRev}` : '';
     if (key === this.ghostKey) return;
     this.ghostKey = key;
     this.ghost?.destroy({ children: true });
@@ -349,8 +349,8 @@ export class View {
       // 벽 네모: 둘레 변마다 되는지 보고 벽 그림을 반투명으로, 안쪽 칸은 살짝 칠한다
       const from = ghost.line?.from ?? { x: ghost.x, y: ghost.y }, to = ghost.line?.to ?? { x: ghost.x, y: ghost.y };
       const x0 = Math.min(from.x, to.x), x1 = Math.max(from.x, to.x), y0 = Math.min(from.y, to.y), y1 = Math.max(from.y, to.y);
-      for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) { const { sx, sy } = cellToScreen(x, y); g.poly([sx, sy, sx + ISO_W / 2, sy + ISO_H / 2, sx, sy + ISO_H, sx - ISO_W / 2, sy + ISO_H / 2]).fill({ color: 0xffe08a, alpha: 0.18 }); }
-      for (const e of rectEdges(from, to)) {
+      if (!ghost.edges) for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) { const { sx, sy } = cellToScreen(x, y); g.poly([sx, sy, sx + ISO_W / 2, sy + ISO_H / 2, sx, sy + ISO_H, sx - ISO_W / 2, sy + ISO_H / 2]).fill({ color: 0xffe08a, alpha: 0.18 }); }
+      for (const e of ghost.edges ?? rectEdges(from, to)) {
         const ok = canWall(state, ghost.id, e).ok;
         const [p0, p1] = edgeCells(e);
         // 변을 선으로: 북 변은 칸 위 꼭짓점→오른쪽 꼭짓점, 서 변은 위 꼭짓점→왼쪽 꼭짓점
@@ -418,9 +418,9 @@ export class View {
   }
 }
 /** 놓을 수 있나 (고스트 색) — 사림 규칙 그대로 */
-export function ghostOf(state: GameState, id: string, x: number, y: number, line?: { from: Pt; to: Pt }): Ghost {
+export function ghostOf(state: GameState, id: string, x: number, y: number, line?: { from: Pt; to: Pt }, edges?: WallEdge[]): Ghost {
   const d = facilityDef(id);
-  if (d.sub === 'wall') { const from = line?.from ?? { x, y }, to = line?.to ?? { x, y }; const oks = rectEdges(from, to).map((e) => canWall(state, id, e)); const ok = oks.some((r) => r.ok); return { id, x, y, ok, reason: ok ? undefined : oks[0]?.reason, line }; }
+  if (d.sub === 'wall') { const from = line?.from ?? { x, y }, to = line?.to ?? { x, y }; const oks = (edges ?? rectEdges(from, to)).map((e) => canWall(state, id, e)); const ok = oks.some((r) => r.ok); return { id, x, y, ok, reason: ok ? undefined : oks[0]?.reason, line, edges }; }
   const r = canPlace(state, id, x, y);
   return { id, x, y, ok: r.ok, reason: r.reason, line };
 }

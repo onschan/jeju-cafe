@@ -72,11 +72,20 @@ export function rectEdges(from: Pt, to: Pt): WallEdge[] {
   return out;
 }
 /** 네모 둘레에 벽을 두른다: 되는 변만, 변마다 값. 하나도 못 세우면 실패. */
-export function wallRect(s: GameState, kind: string, from: Pt, to: Pt): ApplyResult {
+export function wallRect(s: GameState, kind: string, from: Pt, to: Pt): ApplyResult { return wallEdges(s, kind, rectEdges(from, to)); }
+export type Side4 = 'n' | 'e' | 's' | 'w';
+/** 칸의 네 방향 변 → 저장 변(북·서만 쓴다: 남은 아래 칸의 북, 동은 오른쪽 칸의 서) */
+export function edgeOf(x: number, y: number, side: Side4): WallEdge { return side === 'n' ? { x, y, side: 'n' } : side === 'w' ? { x, y, side: 'w' } : side === 's' ? { x, y: y + 1, side: 'n' } : { x: x + 1, y, side: 'w' }; }
+/** 칸 안 위치에서 가장 가까운 변 */
+export function nearestSide(fx: number, fy: number): Side4 { const d: [number, Side4][] = [[fy, 'n'], [fx, 'w'], [1 - fy, 's'], [1 - fx, 'e']]; d.sort((a, b) => a[0] - b[0]); return d[0]![1]; }
+/** 변 목록에 벽을 세운다: 되는 변만, 변마다 값. 하나도 못 세우면 실패. */
+export function wallEdges(s: GameState, kind: string, edges: WallEdge[]): ApplyResult {
   const d = facilityDef(kind);
   if (d.sub !== 'wall') return { ok: false, reason: '벽이 아니에요' };
   let n = 0; let fail: string | undefined;
-  for (const e of rectEdges(from, to)) {
+  const seen = new Set<string>();
+  for (const e of edges) {
+    const k = `${e.x},${e.y},${e.side}`; if (seen.has(k)) continue; seen.add(k);
     const r = canWall(s, kind, e);
     if (!r.ok) { fail = fail ?? r.reason; continue; }
     if (s.money < d.cost) { fail = '돈이 모자라요'; break; }

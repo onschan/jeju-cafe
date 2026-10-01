@@ -92,6 +92,7 @@ export type Action =
   | { type: 'place'; id: string; x: number; y: number }
   | { type: 'placeLine'; id: string; from: Pt; to: Pt }
   | { type: 'wallRect'; id: string; from: Pt; to: Pt }   // 네모 둘레에 벽을 두른다 (올렛길 닿는 변은 문)
+  | { type: 'wallEdges'; id: string; edges: { x: number; y: number; side: 'n' | 'w' }[] } // 고른 변들에 벽
   | { type: 'removeWalls'; x: number; y: number }       // 그 칸 둘레 벽 네 변을 걷는다
   | { type: 'remove'; facilityId: string }
   | { type: 'removeFloor'; x: number; y: number }

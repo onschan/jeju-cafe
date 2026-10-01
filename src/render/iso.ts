@@ -26,6 +26,11 @@ export function screenToCell(sx: number, sy: number): { x: number; y: number } {
   return { x: Math.floor(cx), y: Math.floor(cy) };
 }
 
+/** 화면 좌표 → 칸 안 위치 (0~1). 변 고르기: fy 작으면 북(우상), fx 작으면 서(좌상), 1−fy 작으면 남(좌하), 1−fx 작으면 동(우하). */
+export function cellToCont(sx: number, sy: number): { fx: number; fy: number } {
+  const cx = sx / ISO_W + sy / ISO_H, cy = sy / ISO_H - sx / ISO_W;
+  return { fx: cx - Math.floor(cx), fy: cy - Math.floor(cy) };
+}
 /** 정렬용 깊이. w×h 오브젝트는 가장 앞 셀(x+w−1, y+h−1) 기준. 손님은 x + y + 0.5를 쓴다. */
 export function depth(x: number, y: number, w = 1, h = 1): number {
   return (x + w - 1) + (y + h - 1);
