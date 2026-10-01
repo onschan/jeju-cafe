@@ -475,6 +475,30 @@ def counter_bar() -> IsoCanvas:
     return c
 
 
+def prep_bar() -> IsoCanvas:
+    """제조대 (1×1): 메뉴가 여기서 나온다 — 나무 바 위에 에스프레소 머신·그라인더·잔."""
+    c = cv(34, shadow=0.5)
+    c.box(14, DARKWOOD, (0.04, 0.04, 0.96, 0.96))
+    face = Canvas(26, 10)
+    for x in range(0, 26, 4):
+        face.vline(x, 0, 9, DARKWOOD[0])
+    paste_face(c, 'left', face, 2, 3)
+    c.box(3, (WOOD[0], hexc('d9a05e'), hexc('f0c080')), (-0.02, -0.02, 1.02, 1.02), z0=14)
+    # 에스프레소 머신 + 추출구
+    c.box(10, STEEL, (0.12, 0.1, 0.58, 0.5), z0=17)
+    f = Canvas(8, 6)
+    f.rect(0, 0, 8, 6, STEEL[0]); f.rect(1, 1, 2, 2, RED[1]); f.rect(4, 1, 3, 2, BLACK[0]); f.rect(2, 4, 4, 1, STEEL[2])
+    paste_face(c, 'left', f, 1, 2)
+    sx, sy = c.spx(0.35, 0.3, 27)
+    c.rect(sx - 3, sy - 2, 7, 2, STEEL[2]); c.hline(sx - 3, sx + 3, sy - 2, WHITE[2])
+    # 그라인더
+    c.pillar(0.84, 0.2, 3, 9, BLACK, z0=17); c.disc(0.84, 0.2, 0.07, 3, STEEL, z0=26)
+    # 잔
+    cup(c, 0.74, 0.66, 17); cup(c, 0.46, 0.82, 17, RED[1])
+    c.outline()
+    return c
+
+
 def menu_board() -> IsoCanvas:
     c = cv(36, shadow=0.36)
     c.pillar(0.3, 0.3, 2, 30, WOOD); c.pillar(0.7, 0.3, 2, 30, WOOD)
@@ -527,7 +551,7 @@ def sprites() -> dict[str, Canvas]:
     s['iso_tile_floor_wood'] = floor_wood(); s['iso_tile_floor_tile'] = floor_tile(); s['iso_tile_floor_stone'] = floor_stone()
     s['iso_tile_floor_deck'] = floor_deck(); s['iso_tile_floor_brick'] = floor_brick()
     s['iso_tile_floor_lawn'] = floor_lawn(); s['iso_tile_floor_gravel'] = floor_gravel()
-    s['iso_obj_counter_bar'] = counter_bar(); s['iso_obj_menu_board'] = menu_board()
+    s['iso_obj_counter_bar'] = counter_bar(); s['iso_obj_menu_board'] = menu_board(); s['iso_obj_prep_bar'] = prep_bar()
     s['iso_obj_trophy'] = trophy()   # 대회 상패 (contest.ts)
     s['fx_corner_sign'] = corner_sign()   # fun-corner: 코너 이름표 팻말 (글자는 렌더 라벨)
     for i in range(3):

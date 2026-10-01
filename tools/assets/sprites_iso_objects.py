@@ -108,23 +108,13 @@ def stone_rows(c: IsoCanvas, keys: set[Color], rows: list[tuple[int, list[tuple[
 
 # ================================================================ 좌석
 def table_out() -> IsoCanvas:
-    c = cv(50, shadow=0.42)
+    """테이블 (1×1): 파라솔 없는 맨 원탁 — 파라솔은 「파라솔 테이블」이 따로 있다."""
+    c = cv(24, shadow=0.42)
     chair(c, 0.3, 0.72, 'left'); chair(c, 0.72, 0.3, 'right')
     c.pillar(0.5, 0.5, 2, 12, BASALT)
-    c.disc(0.5, 0.5, 0.26, 3, WOOD, z0=12)
-    cup(c, 0.42, 0.42, 15); cup(c, 0.6, 0.58, 15, RED[1])
-    # 파라솔: 기둥 + 빨강/흰 줄무늬 캐노피
-    c.pillar(0.5, 0.5, 2, 24, BASALT, z0=15)
-    sx, sy = c.spx(0.5, 0.5, 39)
-    for y in range(sy - 8, sy + 1):
-        for x in range(sx - 22, sx + 22):
-            if ((x - sx + 0.5) / 22) ** 2 + ((y - sy) / 8.5) ** 2 <= 1:
-                stripe = ((x - sx + 30) // 6) % 2 == 0
-                tones = RED if stripe else WHITE
-                shade = 2 if (y <= sy - 6 or x <= sx - 12) and y < sy - 1 else 0 if y >= sy - 1 else 1
-                c.put(x, y, tones[shade])
-    c.hline(sx - 21, sx + 20, sy, BASALT[0])
-    c.rect(sx - 1, sy - 11, 2, 3, BASALT[0]); c.put(sx - 1, sy - 11, BASALT[2])
+    c.disc(0.5, 0.5, 0.3, 3, WOOD, z0=12)
+    c.disc(0.5, 0.5, 0.24, 1, (WOOD[1], hexc('e8b878'), hexc('f6d3a0')), z0=15)
+    cup(c, 0.42, 0.42, 16); cup(c, 0.6, 0.58, 16, RED[1])
     c.outline()
     return c
 

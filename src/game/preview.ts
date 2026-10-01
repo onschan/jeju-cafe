@@ -7,6 +7,8 @@ import { dailyGuests } from './guests.ts';
 
 /** 편의 시설 효과 한 줄 */
 export const AMENITY_TEXT: Record<string, string> = { counter: '모든 자리 요금 +₩300', restroom: '모든 손님 점수 +4 (만족 쉬움)', staff: '직원마다 서비스 +1', kitchen: '자리 결제 +15%', cleaning: '모든 손님 점수 +2', locker: '월급 −10%', storage: '유지비 −10%' };
+/** 카탈로그 한 줄용 짧은 말 */
+export const AMENITY_GIST: Record<string, string> = { counter: '주문·계산 · 요금 +₩300', restroom: '점수 +4', staff: '서비스 +1', kitchen: '결제 +15%', cleaning: '점수 +2', locker: '월급 −10%', storage: '유지비 −10%' };
 export interface Preview {
   cells: number;                 // 놓이는 칸(줄이면 여러 개)
   cost: number;

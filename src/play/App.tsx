@@ -15,7 +15,7 @@ import { Title } from './Title';
 import { EndingScreen } from './Ending';
 import { unlockAudio, audioReady, sfx, bgm, setBgmLayer, isMuted, setMuted, getBgmVolume, getSfxVolume, setBgmVolume, setSfxVolume } from './audio';
 import { guestAccs } from './guestLook';
-import { FACILITIES, GUEST_TYPES, MENUS, INVESTS, facilityDef, isFloorDef, isUsable, sheetOf, usables, popularitySum, dailyGuests, unlockables, canUnlock, canLevelUp, LEVEL_COST, levelMoney, currentObjective, OBJECTIVES, seasonOf, canHire, upkeepTotal, wagesTotal, myScore, rivalScore, RIVALS, lineCells, canLayFloor, parcelAt, cellAt, parcelAdjacent, type GameState, type Tab, type Facility, type Pt, type Parcel, type Objective, type Guest, previewPlace, AMENITY_TEXT, cellEdges, getWall, edgeOf, nearestSide, type Side4, needsSummary, SKILLS, SKILL_KO, SKILL_DESC, DUTY_KO, gradeOf, effSkill, skillSum, staffSkill, CHANNELS, canRecruit, channelDef, STAFF_MAX, orderStats, makeMsOf, serveMsOf, stationsOf, orderOf, menuDef, synergyPartners, dirtyOf, dishesOf, dirtTotal, dishTotal, cleanMsOf, staffActOf, ACT_KO, yardScenery, YARD_PER_GUEST, HOUR_MS, type Grade, type Staff, type Skill } from '../game/index.ts';
+import { FACILITIES, GUEST_TYPES, MENUS, INVESTS, facilityDef, isFloorDef, isUsable, sheetOf, usables, popularitySum, dailyGuests, unlockables, canUnlock, canLevelUp, LEVEL_COST, levelMoney, currentObjective, OBJECTIVES, seasonOf, canHire, upkeepTotal, wagesTotal, myScore, rivalScore, RIVALS, lineCells, canLayFloor, parcelAt, cellAt, parcelAdjacent, type GameState, type Tab, type Facility, type Pt, type Parcel, type Objective, type Guest, previewPlace, AMENITY_TEXT, AMENITY_GIST, cellEdges, getWall, edgeOf, nearestSide, type Side4, needsSummary, SKILLS, SKILL_KO, SKILL_DESC, DUTY_KO, gradeOf, effSkill, skillSum, staffSkill, CHANNELS, canRecruit, channelDef, STAFF_MAX, orderStats, makeMsOf, serveMsOf, stationsOf, orderOf, menuDef, synergyPartners, dirtyOf, dishesOf, dirtTotal, dishTotal, cleanMsOf, staffActOf, ACT_KO, yardScenery, YARD_PER_GUEST, HOUR_MS, type Grade, type Staff, type Skill } from '../game/index.ts';
 
 type Win = 'build' | 'guests' | 'ops' | 'cafe' | 'system' | null;
 /** 하단 띠(영수증 2줄 + 요약 + 메뉴) 높이 */
@@ -420,7 +420,8 @@ function Receipts({ s }: { s: GameState }) {
 function Window({ title, onClose, children, tabs }: { title: string; onClose: () => void; children: React.ReactNode; tabs?: React.ReactNode }) {
   return (
     <div style={{ position: 'absolute', left: 6, right: 6, top: 36, bottom: ABOVE_BOTTOM, ...panel, display: 'flex', flexDirection: 'column', gap: 6, overflow: 'hidden' }}>
-      <div style={titleBar}><span style={{ flex: 1 }}>{title}</span>{tabs}<button style={{ ...btnOff, padding: '2px 8px' }} onClick={onClose}>뒤로</button></div>
+      <div style={titleBar}><span style={{ flex: 1, whiteSpace: 'nowrap' }}>{title}</span><button style={{ ...btnOff, padding: '2px 8px' }} onClick={onClose}>뒤로</button></div>
+      {tabs && <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>{tabs}</div>}
       <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>{children}</div>
     </div>
   );
@@ -442,15 +443,16 @@ type Def = (typeof FACILITIES)[number];
 /** 탭마다 구역 — 바닥·벽은 방을 만드는 것이라 실내에 둔다 */
 function buildSections(tab: BuildTab): { title: string; pick: (d: Def) => boolean }[] {
   if (tab === 'indoor') return [
+    { title: '만드는 곳 · 메뉴가 여기서 나온다', pick: (d) => !!d.station && d.tab === 'env' },
     { title: '바닥', pick: (d) => d.sub === 'floor' },
     { title: '벽', pick: (d) => d.sub === 'wall' },
     { title: '자리 · 가게', pick: (d) => !!d.indoor && (d.tab === 'seat' || d.tab === 'shop') },
-    { title: '편의', pick: (d) => !!d.indoor && !!d.amenity },
-    { title: '꾸밈 · 아늑함', pick: (d) => !!d.indoor && !!d.comfort && !d.amenity },
+    { title: '편의', pick: (d) => !!d.indoor && !!d.amenity && !d.station },
+    { title: '꾸밈 · 아늑함', pick: (d) => !!d.indoor && !!d.comfort && !d.amenity && !d.station },
   ];
   if (tab === 'env') return [
     { title: '나무 · 꽃 · 바위', pick: (d) => d.tab === 'env' && !d.sub && !d.indoor },
-    { title: '마당 장식', pick: (d) => d.tab === 'env' && d.sub === 'deco' && !d.indoor },
+    { title: '마당 장식', pick: (d) => d.tab === 'env' && d.sub === 'deco' && !d.indoor && !d.station },
   ];
   return [{ title: tab === 'seat' ? '바깥 자리' : '바깥 가게', pick: (d) => d.tab === tab && !d.indoor }];
 }
@@ -463,7 +465,7 @@ function BuildWindow({ s, onPick, onClose }: { s: GameState; onPick: (id: string
   const locked = mine.filter((d) => !s.unlocked.facilities.includes(d.id)).sort((a, b) => a.unlock - b.unlock);
   const d = pick ? facilityDef(pick) : null;
   const isOpen = d ? s.unlocked.facilities.includes(d.id) : false;
-  const gist = (x: Def) => x.sub === 'floor' ? '칸마다' : x.sub === 'wall' ? '변마다' : x.amenity ? '가게 전체' : x.comfort ? `아늑함 +${x.comfort}` : x.scenery ? `마당 경치 +${x.scenery}` : x.pop !== undefined ? `인기 ${x.pop}${x.capacity && x.capacity > 1 ? ` · ${x.capacity}인` : ''}` : '';
+  const gist = (x: Def) => x.sub === 'floor' ? '칸마다' : x.sub === 'wall' ? '변마다' : x.station ? `${x.station === 'food' ? '음식' : x.station === 'both' ? '음료·음식' : '음료'} 제조` : x.amenity ? (AMENITY_GIST[x.amenity] ?? '가게 전체') : x.comfort ? `아늑함 +${x.comfort}` : x.scenery ? `마당 경치 +${x.scenery}` : x.pop !== undefined ? `인기 ${x.pop}${x.capacity && x.capacity > 1 ? ` · ${x.capacity}인` : ''}` : '';
   return (
     <Window title="건축" onClose={onClose} tabs={BUILD_TABS.map((t) => <button key={t.k} style={{ ...(tab === t.k ? btnGold : btnOff), padding: '3px 7px', fontSize: 13, display: 'inline-flex', alignItems: 'center', gap: 3 }} onClick={() => { setTab(t.k); setPick(null); setShowLocked(false); }}><Ico name={t.ico} size={13} />{t.name}</button>)}>
       {sections.map((sec) => {
