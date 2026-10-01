@@ -7,16 +7,16 @@ import { staffSkill } from './staff.ts';
 import { dishSlow, DISH_PER_MAKE } from './upkeep.ts';
 
 /** 한 잔·한 접시 기본 시간 */
-export const MAKE_MS: Record<OrderKind, number> = { drink: HOUR_MS * 0.5, food: HOUR_MS * 0.9 };
-export const SERVE_MS = HOUR_MS * 0.35;
+export const MAKE_MS: Record<OrderKind, number> = { drink: HOUR_MS * 1.0, food: HOUR_MS * 1.6 };
+export const SERVE_MS = HOUR_MS * 0.5;
 /** 셀프(홀 직원 없음)면 가지러 가는 데 더 걸린다 */
 export const SELF_SERVE_MULT = 1.8;
 /** 제조대에서 만든 것: 값 +15%, 만족 +2 */
 export const MADE_MONEY = 1.15;
 export const MADE_SCORE = 2;
 /** 기다림: 이만큼 넘으면 만족이 깎인다 */
-export const WAIT_OK_MS = HOUR_MS * 1.2;
-export const WAIT_BAD_MS = HOUR_MS * 2;
+export const WAIT_OK_MS = HOUR_MS * 2.5;
+export const WAIT_BAD_MS = HOUR_MS * 4.5;
 
 /** 능력 합 → 시간 단축 비율 (0~0.6) */
 export function speedUp(skill: number): number { return Math.min(0.6, skill * 0.05); }
@@ -47,7 +47,7 @@ export function order(s: GameState, g: Guest, wallet: number, likes: string[]): 
   if (!menu) return null;
   const kind = menuKind(menu);
   if (stationsOf(s, kind).length === 0) return null;         // 제조대가 없으면 셀프
-  const o: Order = { id: s.orderSeq++, guest: g.id, menu, kind, phase: 'wait', ms: 0, waited: 0 };
+  const o: Order = { id: s.orderSeq++, guest: g.id, menu, kind, phase: 'wait', ms: 0, total: 0, waited: 0 };
   s.orders.push(o);
   return o;
 }
@@ -61,13 +61,13 @@ export function updateOrders(s: GameState, ms: number): void {
       const free = stationsOf(s, o.kind).find((f) => !busy.has(f.id));
       if (!free) continue;
       busy.add(free.id);
-      o.station = free.id; o.phase = 'make'; o.ms = makeMsOf(s, o.kind, free.level) * (1 + dishSlow(free));
+      o.station = free.id; o.phase = 'make'; o.ms = makeMsOf(s, o.kind, free.level) * (1 + dishSlow(free)); o.total = o.ms;
       free.uses++;
       continue;
     }
     o.ms -= ms;
     if (o.ms > 0) continue;
-    if (o.phase === 'make') { const st = o.station ? s.facilities[o.station] : null; if (st) st.dishes = Math.min(12, (st.dishes ?? 0) + DISH_PER_MAKE); o.phase = 'serve'; o.ms = serveMsOf(s); continue; }
+    if (o.phase === 'make') { const st = o.station ? s.facilities[o.station] : null; if (st) st.dishes = Math.min(12, (st.dishes ?? 0) + DISH_PER_MAKE); o.phase = 'serve'; o.ms = serveMsOf(s); o.total = o.ms; continue; }
     if (o.phase === 'serve') o.phase = 'done';
   }
   // 손님이 사라졌으면 주문도 지운다

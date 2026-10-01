@@ -3,8 +3,8 @@
  * 그리는 것: 바닥·잔디·길 타일(계절), 미소유 땅 덮개, 시설, 손님, 「상성 UP」·돈 연출, 배치 고스트, 바닥 줄 미리보기, 밤.
  */
 import { Application, Container, Graphics, Sprite, Text } from 'pixi.js';
-import type { GameState, Facility, Guest, Fx, Pt } from '../game/index.ts';
-import { facilityDef, isFloorDef, canPlace, canLayFloor, lineCells, seasonOf, isNight, cellAt, walkable, wallBetween, footprint, dirtyOf, dishesOf, HOME, ROAD_Y, BUS_STOP, rectEdges, canWall, edgeCells, type WallEdge } from '../game/index.ts';
+import type { GameState, Facility, Guest, Fx, Pt, Staff } from '../game/index.ts';
+import { facilityDef, isFloorDef, canPlace, canLayFloor, lineCells, seasonOf, isNight, cellAt, walkable, wallBetween, footprint, dirtyOf, dishesOf, staffActOf, HOME, ROAD_Y, BUS_STOP, rectEdges, canWall, edgeCells, type WallEdge } from '../game/index.ts';
 import { loadAssets, tex, peekTex, hasAssets, spriteName } from '../render/assets';
 import { attachCamera } from '../render/camera';
 import { ISO_W, ISO_H, cellToScreen, cellCenter, footAnchor, depth, screenToCell } from '../render/iso';
@@ -50,6 +50,7 @@ export class View {
   private wallNodes: Sprite[] = []; private wallRev = -1;
   private orderMarks = new Map<string, Container>();
   private markKind = new Map<string, string>();
+  private bars = new Graphics();
   private tileKey = '';
   private ghost: Container | null = null;
   private ghostKey = '';
@@ -69,7 +70,8 @@ export class View {
     this.actors.sortableChildren = true;
     this.overlay.sortableChildren = true;
     this.night.eventMode = 'none'; this.glow.eventMode = 'none'; this.glow.blendMode = 'add';
-    this.world.addChild(this.bg.node, this.tiles, this.actors, this.overlay, this.night, this.glow);
+    this.bars.eventMode = 'none';
+    this.world.addChild(this.bg.node, this.tiles, this.actors, this.bars, this.overlay, this.night, this.glow);
     this.app.stage.addChild(this.world);
     this.detach = attachCamera(this.app.stage, {
       world: this.world, canvas: this.app.canvas, ticker: this.app.ticker,
@@ -255,24 +257,35 @@ export class View {
         moving = step > 0;
       } else if (now > e.idleUntil) {
         const post = this.dutyCell(state, st, i);
-        if (post && (post.x !== cx0 || post.y !== cy0)) { e.tx = post.x; e.ty = post.y; e.idleUntil = now + 2500 + Math.random() * 2500; continue; }
-        // 같은 줄이나 칸에서 가까운 빈 바닥으로 (걸어갈 수 있는 곳만)
-        const cx = Math.round(e.x), cy = Math.round(e.y);
-        // 같은 줄의 빈 바닥 중 사이에 벽·시설이 없는 곳만 (벽을 뚫고 가지 않게)
-        const clear = (c: Pt) => { const dx = Math.sign(c.x - cx), dy = Math.sign(c.y - cy); let p = { x: cx, y: cy }; while (p.x !== c.x || p.y !== c.y) { const n = { x: p.x + dx, y: p.y + dy }; if (!walkable(state, n.x, n.y) || wallBetween(state, p, n)) return false; p = n; } return true; };
-        const cand = this.floorCells.filter((c) => (c.x === cx || c.y === cy) && Math.abs(c.x - cx) + Math.abs(c.y - cy) <= 5 && (c.x !== cx || c.y !== cy) && clear(c));
-        const c = cand.length ? cand[Math.floor(Math.random() * cand.length)]! : { x: cx, y: cy };
-        e.tx = c.x; e.ty = c.y; e.idleUntil = now + 1000 + Math.random() * 2500;
+        // 담당 자리가 있으면 그 자리를 지킨다 — 할 일 없이 돌아다니지 않게
+        if (post) { if (post.x !== cx0 || post.y !== cy0) { e.tx = post.x; e.ty = post.y; } e.idleUntil = now + 500; }
+        else {
+          // 담당 자리가 없을 때만, 같은 줄이나 칸에서 가까운 빈 바닥으로 (벽을 뚫고 가지 않게)
+          const cx = Math.round(e.x), cy = Math.round(e.y);
+          const clear = (c: Pt) => { const dx = Math.sign(c.x - cx), dy = Math.sign(c.y - cy); let p = { x: cx, y: cy }; while (p.x !== c.x || p.y !== c.y) { const n = { x: p.x + dx, y: p.y + dy }; if (!walkable(state, n.x, n.y) || wallBetween(state, p, n)) return false; p = n; } return true; };
+          const cand = this.floorCells.filter((c) => (c.x === cx || c.y === cy) && Math.abs(c.x - cx) + Math.abs(c.y - cy) <= 5 && (c.x !== cx || c.y !== cy) && clear(c));
+          const c = cand.length ? cand[Math.floor(Math.random() * cand.length)]! : { x: cx, y: cy };
+          e.tx = c.x; e.ty = c.y; e.idleUntil = now + 1000 + Math.random() * 2500;
+        }
       }
+      const act = this.staffAct(state, st);
+      // 일하는 모션: 제조·서빙은 위아래로 까딱, 청소는 좌우로 쓱쓱 (걷는 중엔 걷기 그대로)
+      const working = !moving && (act === 'make' || act === 'clean' || act === 'serve');
+      const bobY = working && act !== 'clean' ? Math.round(Math.sin(now / 130) * 2) : 0;
+      const swayX = working && act === 'clean' ? Math.round(Math.sin(now / 110) * 3) : 0;
       const cc = cellCenter(e.x, e.y);
-      e.node.position.set(cc.sx, cc.sy);
+      e.node.position.set(cc.sx + swayX, cc.sy + bobY);
       e.node.zIndex = depth(e.x, e.y) + 0.25;
+      if (working && act === 'clean' && hasAssets()) this.puff(cc.sx + swayX + 6, cc.sy - 2, now, 0xd8cfbb, st.id);
       const frame = moving ? (Math.floor(now / 140) % 3) as 0 | 1 | 2 : 1;
       if (frame !== e.frame || e.dir !== e.shownDir) { updateCharacterNode(e.node, e.dir, frame); e.frame = frame; e.shownDir = e.dir; }
-      // 지금 무슨 일을 하는지 말풍선으로 (제조·서빙·청소·홍보)
       const tagBg = e.node.getChildByLabel('tag')?.children[0] as Graphics | undefined;
       if (tagBg) tagBg.tint = st.burn ? 0xff8a4a : 0xffffff;
-      const act = this.staffAct(state, st);
+      // 버닝타임: 머리 위에 불꽃 하나 (하는 일 말풍선은 그대로 둔다)
+      this.badge(e.node, 'fire', 'icon_fire', !!st.burn, 0, -CHAR_H - 27 + Math.round(Math.sin(now / 150) * 2));
+      // 서빙 중이면 잔을 들고 간다
+      const tray = state.orders.find((o) => o.phase === 'serve');
+      this.badge(e.node, 'cup', tray?.kind === 'food' ? 'icon_cake' : 'icon_coffee', act === 'serve', 11, -Math.round(CHAR_H * 0.35) + (moving ? Math.round(Math.sin(now / 140) * 1.5) : 0));
       if (act !== e.act) {
         e.node.getChildByLabel('act')?.destroy({ children: true });
         e.act = act;
@@ -287,14 +300,22 @@ export class View {
   }
   private staffLast = 0;
 
-  /** 그 직원이 지금 하는 일 */
-  private staffAct(state: GameState, st: { id: string; duty: string; burn?: number; workAt?: string }): string {
-    if (st.burn) return 'burn';
-    if (st.duty === 'speed') return state.orders.some((o) => o.phase === 'make') ? 'make' : '';
-    if (st.duty === 'service') return state.orders.some((o) => o.phase === 'serve') ? 'serve' : '';
-    if (st.duty === 'clean') return st.workAt ? 'clean' : '';
-    if (st.duty === 'charm') return 'promo';
-    void st.id; return '';
+  /** 그 직원이 지금 하는 일 (직원 창의 상태 칩과 같은 값) */
+  private staffAct(state: GameState, st: Staff): string {
+    const a = staffActOf(state, st);
+    return a === 'idle' ? '' : a;
+  }
+  /** 캐릭터에 작은 표식 하나 붙였다 뗐다 (불꽃·든 잔) */
+  private badge(node: Container, key: string, sprite: string, on: boolean, x: number, y: number): void {
+    let sp = node.getChildByLabel(key) as Sprite | null;
+    if (!on) { sp?.destroy(); return; }
+    if (!sp) {
+      if (!hasAssets()) return;
+      const tex = peekTex(sprite); if (!tex) return;
+      sp = new Sprite(tex); sp.label = key; sp.anchor.set(0.5, 1); sp.setSize(13, 13);
+      node.addChild(sp);
+    }
+    sp.position.set(x, y);
   }
 
   /** 담당 자리: 접객은 자리 옆, 바는 카운터·주방 옆, 정리는 마당 아무 데나, 홍보는 올렛길 입구 */
@@ -369,7 +390,30 @@ export class View {
       node.position.set(a.sx, a.sy - 26 + Math.round(Math.sin(now / 220) * 2));
       node.zIndex = depth(f.x, f.y, d.w, d.h) + 0.6;
     }
+    // 제조 진행 바 + 모락모락 김
+    this.bars.clear();
+    for (const o of state.orders) {
+      if (o.phase !== 'make' || !o.station) continue;
+      const f = state.facilities[o.station]; if (!f) continue;
+      const d = facilityDef(f.type);
+      const a = footAnchor(f.x, f.y, d.w, d.h);
+      const k = Math.max(0, Math.min(1, 1 - o.ms / Math.max(1, o.total)));
+      const w = 26, x = a.sx - w / 2, y = a.sy - 42;
+      this.bars.rect(x - 1, y - 1, w + 2, 6).fill({ color: 0x3b1f0e, alpha: 0.85 });
+      this.bars.rect(x, y, w * k, 4).fill({ color: 0xffc34a });
+      this.puff(a.sx + 6, a.sy - 30, now, 0xffffff, f.id);
+    }
   }
+  /** 모락모락 — 김(제조)·먼지(청소) 한 점. 내는 쪽마다 따로 쉬었다 낸다. */
+  private puff(sx: number, sy: number, now: number, tint = 0xffffff, key = 'x'): void {
+    if (now - (this.lastPuff.get(key) ?? -1e9) < 300 || !hasAssets()) return;
+    this.lastPuff.set(key, now);
+    const t = peekTex('fx_sparkle_0'); if (!t) return;
+    const sp = new Sprite(t); sp.anchor.set(0.5, 1); sp.position.set(sx, sy); sp.alpha = 0.85; sp.tint = tint; sp.zIndex = 1e6;
+    this.actors.addChild(sp);
+    this.sparkles.push({ sp, born: now });
+  }
+  private lastPuff = new Map<string, number>();
 
   /** 변 벽: 칸의 북·서 변에 선 벽을 그린다. 방 앞쪽(안쪽이 벽 뒤에 있는) 벽은 반투명 — 카이로의 잘라 낸 앞벽처럼 안이 보이게. */
   private syncWalls(state: GameState): void {

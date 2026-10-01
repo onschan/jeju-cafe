@@ -15,7 +15,7 @@ import { Title } from './Title';
 import { EndingScreen } from './Ending';
 import { unlockAudio, audioReady, sfx, bgm, setBgmLayer, isMuted, setMuted, getBgmVolume, getSfxVolume, setBgmVolume, setSfxVolume } from './audio';
 import { guestAccs } from './guestLook';
-import { FACILITIES, GUEST_TYPES, MENUS, INVESTS, facilityDef, isFloorDef, isUsable, sheetOf, usables, popularitySum, dailyGuests, unlockables, canUnlock, canLevelUp, LEVEL_COST, levelMoney, currentObjective, OBJECTIVES, seasonOf, canHire, upkeepTotal, wagesTotal, myScore, rivalScore, RIVALS, lineCells, canLayFloor, parcelAt, cellAt, parcelAdjacent, type GameState, type Tab, type Facility, type Pt, type Parcel, type Objective, type Guest, previewPlace, AMENITY_TEXT, cellEdges, getWall, edgeOf, nearestSide, type Side4, needsSummary, SKILLS, SKILL_KO, SKILL_DESC, DUTY_KO, gradeOf, effSkill, skillSum, staffSkill, CHANNELS, canRecruit, channelDef, STAFF_MAX, orderStats, makeMsOf, serveMsOf, stationsOf, orderOf, menuDef, synergyPartners, dirtyOf, dishesOf, dirtTotal, dishTotal, cleanMsOf, yardScenery, YARD_PER_GUEST, HOUR_MS, type Grade, type Staff, type Skill } from '../game/index.ts';
+import { FACILITIES, GUEST_TYPES, MENUS, INVESTS, facilityDef, isFloorDef, isUsable, sheetOf, usables, popularitySum, dailyGuests, unlockables, canUnlock, canLevelUp, LEVEL_COST, levelMoney, currentObjective, OBJECTIVES, seasonOf, canHire, upkeepTotal, wagesTotal, myScore, rivalScore, RIVALS, lineCells, canLayFloor, parcelAt, cellAt, parcelAdjacent, type GameState, type Tab, type Facility, type Pt, type Parcel, type Objective, type Guest, previewPlace, AMENITY_TEXT, cellEdges, getWall, edgeOf, nearestSide, type Side4, needsSummary, SKILLS, SKILL_KO, SKILL_DESC, DUTY_KO, gradeOf, effSkill, skillSum, staffSkill, CHANNELS, canRecruit, channelDef, STAFF_MAX, orderStats, makeMsOf, serveMsOf, stationsOf, orderOf, menuDef, synergyPartners, dirtyOf, dishesOf, dirtTotal, dishTotal, cleanMsOf, staffActOf, ACT_KO, yardScenery, YARD_PER_GUEST, HOUR_MS, type Grade, type Staff, type Skill } from '../game/index.ts';
 
 type Win = 'build' | 'guests' | 'ops' | 'cafe' | 'system' | null;
 /** 하단 띠(영수증 2줄 + 요약 + 메뉴) 높이 */
@@ -217,6 +217,8 @@ export function App() {
         <button onClick={() => { setWin(win === 'system' ? null : 'system'); setSelected(null); }} style={{ ...(win === 'system' ? btnGold : btnOff), padding: 1, width: 22, height: 20, lineHeight: 0, display: 'grid', placeItems: 'center' }} title="시스템"><Ico name="settings" size={14} /></button>
         <span style={{ display: 'inline-flex', gap: 2, marginLeft: 2 }}>{([0, 1, 3] as const).map((sp) => <button key={sp} onClick={() => dispatch({ type: 'setSpeed', speed: sp })} style={{ ...(s.clock.speed === sp ? btnGold : btnOff), padding: 1, width: 22, height: 20, lineHeight: 0, display: 'grid', placeItems: 'center' }}><Ico name={sp === 0 ? 'speed_pause' : `speed_${sp}`} size={14} /></button>)}</span>
       </div>
+      {/* 지금 돌아가는 일 — 탭하면 운영 창 */}
+      {ready && !win && !placing && !moving && <LiveStrip s={s} onOpen={() => setWin('ops')} />}
       {/* 목표 한 줄 */}
       {tut && !placing ? <div style={{ position: 'absolute', top: 36, left: 8, right: 8, ...panel, padding: '4px 8px', fontSize: 13, background: '#fff0c0' }}>
         <div style={{ display: 'flex', gap: 6, alignItems: 'baseline' }}><b style={{ color: C.wood }}>{tut.i + 1}/{TUTORIAL.length}</b><b style={{ flex: 1 }}>{tut.step.text}</b><span style={small}>{wonShort(tut.step.reward)}</span></div>
@@ -334,6 +336,24 @@ function SideIcon({ side }: { side: Side4 }) {
   const T = [11, 1], R = [21, 6], B = [11, 11], L = [1, 6];
   const seg = side === 'n' ? [T, R] : side === 'e' ? [R, B] : side === 's' ? [B, L] : [L, T];
   return <svg width={22} height={12} viewBox="0 0 22 12" style={{ display: 'block' }}><polygon points="11,1 21,6 11,11 1,6" fill="none" stroke="#9a8468" strokeWidth={1} /><line x1={seg[0]![0]} y1={seg[0]![1]} x2={seg[1]![0]} y2={seg[1]![1]} stroke="#2b2118" strokeWidth={3} strokeLinecap="round" /></svg>;
+}
+/** 맵 위 「지금」 띠: 주문·제조·서빙·치울 곳·버닝을 한 줄로 */
+function LiveStrip({ s, onOpen }: { s: GameState; onOpen: () => void }) {
+  const o = orderStats(s);
+  const dirt = Math.round(dirtTotal(s)) + dishTotal(s);
+  const burning = s.staff.filter((st) => st.burn);
+  const items: { ico: string; n: number; color?: string }[] = [
+    { ico: 'clock', n: o.wait }, { ico: 'coffee', n: o.make }, { ico: 'meal', n: o.serve },
+    { ico: 'harvest', n: dirt, color: dirt > 6 ? C.red : undefined },
+  ];
+  const on = items.filter((x) => x.n > 0);
+  if (on.length === 0 && burning.length === 0) return null;
+  return (
+    <button onClick={onOpen} style={{ position: 'absolute', top: 72, left: 8, ...panel, padding: '3px 7px', fontSize: 12, display: 'flex', alignItems: 'center', gap: 7, cursor: 'pointer' }}>
+      {on.map((x) => <span key={x.ico} style={{ display: 'inline-flex', alignItems: 'center', gap: 2, color: x.color ?? C.ink }}><Ico name={x.ico} size={12} /><b>{x.n}</b></span>)}
+      {burning.map((st) => <span key={st.id} style={{ color: C.red, fontWeight: 700 }}>🔥{st.name}</span>)}
+    </button>
+  );
 }
 /** 예/아니오 한 장 */
 function Ask({ text, sub, yesOff, onYes, onNo }: { text: string; sub?: string; yesOff?: boolean; onYes: () => void; onNo: () => void }) {
@@ -550,6 +570,13 @@ function TeamPanel({ s }: { s: GameState }) {
     </div>
   );
 }
+/** 지금 하는 일 칩 — 맵의 말풍선과 같은 값 */
+const ACT_ICO: Record<string, string> = { make: 'coffee', serve: 'meal', clean: 'harvest', promo: 'promo', idle: 'clock' };
+function ActChip({ s, st }: { s: GameState; st: Staff }) {
+  const a = staffActOf(s, st);
+  const on = a !== 'idle';
+  return <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 11, padding: '1px 5px', borderRadius: 8, background: on ? '#fff0c0' : '#efe6d2', color: on ? C.ink : C.soft, border: `1px solid ${on ? C.wood : '#d8c9a8'}` }}><Ico name={ACT_ICO[a]!} size={10} />{ACT_KO[a]}</span>;
+}
 /** 직원 탭: 채용 루트 → 후보 → 우리 직원(담당·실적) */
 function StaffTab({ s }: { s: GameState }) {
   const [open, setOpen] = useState(s.staff.length === 0);
@@ -598,7 +625,7 @@ function StaffTab({ s }: { s: GameState }) {
         <div key={st.id} style={{ ...panel, padding: 6, background: '#fff7e6', display: 'grid', gap: 4 }}>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
             <Portrait face={st.face} accs={['apron']} size={44} />
-            <span style={{ flex: 1, minWidth: 0 }}><b>{st.name}</b> {st.burn ? <span style={{ color: C.red, fontSize: 12 }}>🔥버닝</span> : null} <span style={small}>월급 {won(st.wage)}</span><div><Skills st={st} duty={st.duty} /></div></span>
+            <span style={{ flex: 1, minWidth: 0 }}><b>{st.name}</b> <ActChip s={s} st={st} /> {st.burn ? <span style={{ color: C.red, fontSize: 12, whiteSpace: 'nowrap' }}>🔥버닝</span> : null} <span style={{ ...small, whiteSpace: 'nowrap' }}>월급 {won(st.wage)}</span><div><Skills st={st} duty={st.duty} /></div></span>
             <button style={btnOff} onClick={() => { if (confirm(`${st.name}을 내보낼까요?`)) dispatch({ type: 'fire', staffId: st.id }); }}>내보내기</button>
           </div>
           <div style={{ display: 'flex', gap: 3, flexWrap: 'wrap', alignItems: 'center' }}>

@@ -29,7 +29,7 @@ export interface GuestTypeDef { id: string; name: string; wallet: number; expect
 export type OrderKind = 'drink' | 'food';
 export interface MenuDef { id: string; name: string; price: number; unlock: number; kind?: OrderKind }
 /** 주문 한 건: 기다림 → 제조 → 서빙 */
-export interface Order { id: number; guest: string; menu: string; kind: OrderKind; phase: 'wait' | 'make' | 'serve' | 'done'; ms: number; waited: number; station?: string }
+export interface Order { id: number; guest: string; menu: string; kind: OrderKind; phase: 'wait' | 'make' | 'serve' | 'done'; ms: number; total: number; waited: number; station?: string }
 export interface SynergyDef { id: string; name: string; a: string[]; b: string[] }
 export interface InvestDef { id: string; name: string; cost: number; desc: string; fame?: number; guests?: number; scenery?: number; typeMult?: Record<string, number> }
 export interface RivalDef { id: string; name: string; base: number; growth: number }

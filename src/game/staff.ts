@@ -9,6 +9,15 @@ export type Skill = (typeof SKILLS)[number];
 export const SKILL_KO: Record<Skill, string> = { service: '접객', speed: '손놀림', clean: '정리', charm: '매력' };
 /** 담당 이름 (그 능력을 맡는 자리) */
 export const DUTY_KO: Record<Skill, string> = { service: '홀 서빙', speed: '바리스타', clean: '정리·청소', charm: '홍보·간판' };
+/** 지금 하는 일 — 맵의 동작·말풍선과 직원 창의 상태 칩이 같은 값을 쓴다 */
+export type StaffAct = 'make' | 'serve' | 'clean' | 'promo' | 'idle';
+export const ACT_KO: Record<StaffAct, string> = { make: '제조 중', serve: '서빙 중', clean: '치우는 중', promo: '홍보 중', idle: '대기' };
+export function staffActOf(s: GameState, st: Pick<Staff, 'duty' | 'workAt'>): StaffAct {
+  if (st.duty === 'speed') return s.orders.some((o) => o.phase === 'make') ? 'make' : 'idle';
+  if (st.duty === 'service') return s.orders.some((o) => o.phase === 'serve') ? 'serve' : 'idle';
+  if (st.duty === 'clean') return st.workAt ? 'clean' : 'idle';
+  return 'promo';
+}
 export const SKILL_DESC: Record<Skill, string> = { service: '서빙 속도·손님 만족', speed: '제조 속도', clean: '깔끔 점수', charm: '입소문(명성)' };
 export type Grade = 'S' | 'A' | 'B' | 'C' | 'D' | 'E';
 export function gradeOf(v: number): Grade { return v >= 10 ? 'S' : v >= 8 ? 'A' : v >= 6 ? 'B' : v >= 4 ? 'C' : v >= 2 ? 'D' : 'E'; }
