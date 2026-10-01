@@ -4,7 +4,7 @@ import { GUEST_TYPES, guestTypeDef, facilityDef, menuDef, INVESTS } from './data
 import { nextRandom, pickWeighted, randInt } from './rng.ts';
 import { HOUR_MS } from './clock.ts';
 import { sheetOf, usables, approachCell, seatCapacity, popularitySum, amenities } from './facility.ts';
-import { busReach, pathTo } from './path.ts';
+import { busReach, pathTo, reachFrom } from './path.ts';
 import { BUS_STOP } from './world.ts';
 
 export const BASE_DAILY_GUESTS = 3;
@@ -65,7 +65,7 @@ export function spawnOne(s: GameState): boolean {
   const path = pathTo(s, reach, pick.ap!)!;
   const g: Guest = {
     id: `g${s.guestSeq++}`, type: type.id, phase: 'in', x: BUS_STOP.x, y: BUS_STOP.y, path,
-    target: pick.f.id, approach: pick.ap, timerMs: 0, mood: null,
+    target: pick.f.id, approach: pick.ap, timerMs: 0, mood: null, rev: s.layoutRev,
     face: { hair: randInt(s, 0, 7), skin: randInt(s, 0, 2), top: randInt(s, 0, 7) },
   };
   s.guests.push(g);
@@ -115,8 +115,21 @@ function finishUse(s: GameState, g: Guest): void {
   if (s.receipts.length > 30) s.receipts.splice(0, s.receipts.length - 30);
   if (money > 0 && f) s.fx.push({ kind: 'money', x: f.x, y: f.y, won: money });
 }
+/** 배치가 바뀐 뒤 걷는 손님의 길을 다시 찾는다: 들어가는 길이 끊겼으면 돌아간다 */
+function reroute(s: GameState, g: Guest): void {
+  if (g.rev === s.layoutRev) return;
+  g.rev = s.layoutRev;
+  const from = { x: Math.round(g.x), y: Math.round(g.y) };
+  if (g.phase === 'in' && g.approach) {
+    const p = pathTo(s, reachFrom(s, from), g.approach);
+    if (p) { g.path = p.slice(1); return; }
+    g.phase = 'out'; g.mood = null;
+  }
+  g.path = pathBack(s, g);
+}
 export function updateGuests(s: GameState, ms: number): void {
   for (const g of s.guests) {
+    if (g.phase !== 'use') reroute(s, g);
     if (g.phase === 'in') {
       if (moveAlong(g, ms)) {
         const f = g.target ? s.facilities[g.target] : null;
@@ -127,7 +140,7 @@ export function updateGuests(s: GameState, ms: number): void {
       }
     } else if (g.phase === 'use') {
       g.timerMs -= ms;
-      if (g.timerMs <= 0) { finishUse(s, g); g.phase = 'out'; g.path = pathBack(s, g); }
+      if (g.timerMs <= 0) { finishUse(s, g); g.phase = 'out'; g.path = pathBack(s, g); g.rev = s.layoutRev; }
     } else if (moveAlong(g, ms)) g.target = '__gone';
   }
   s.guests = s.guests.filter((g) => g.target !== '__gone');

@@ -4,7 +4,7 @@
  */
 import { Application, Container, Graphics, Sprite, Text } from 'pixi.js';
 import type { GameState, Facility, Guest, Fx, Pt } from '../game/index.ts';
-import { facilityDef, isFloorDef, canPlace, canLayFloor, lineCells, seasonOf, isNight, cellAt, walkable, HOME, ROAD_Y, BUS_STOP, rectEdges, canWall, edgeCells, type WallEdge } from '../game/index.ts';
+import { facilityDef, isFloorDef, canPlace, canLayFloor, lineCells, seasonOf, isNight, cellAt, walkable, wallBetween, HOME, ROAD_Y, BUS_STOP, rectEdges, canWall, edgeCells, type WallEdge } from '../game/index.ts';
 import { loadAssets, tex, peekTex, hasAssets, spriteName } from '../render/assets';
 import { attachCamera } from '../render/camera';
 import { ISO_W, ISO_H, cellToScreen, cellCenter, footAnchor, depth, screenToCell } from '../render/iso';
@@ -239,8 +239,11 @@ export class View {
         moving = step > 0;
       } else if (now > e.idleUntil) {
         // 같은 줄이나 칸에서 가까운 빈 바닥으로 (걸어갈 수 있는 곳만)
-        const cand = this.floorCells.filter((c) => (c.x === Math.round(e!.x) || c.y === Math.round(e!.y)) && Math.abs(c.x - e!.x) + Math.abs(c.y - e!.y) <= 5 && walkable(state, c.x, c.y));
-        const c = cand.length ? cand[Math.floor(Math.random() * cand.length)]! : pickCell();
+        const cx = Math.round(e.x), cy = Math.round(e.y);
+        // 같은 줄의 빈 바닥 중 사이에 벽·시설이 없는 곳만 (벽을 뚫고 가지 않게)
+        const clear = (c: Pt) => { const dx = Math.sign(c.x - cx), dy = Math.sign(c.y - cy); let p = { x: cx, y: cy }; while (p.x !== c.x || p.y !== c.y) { const n = { x: p.x + dx, y: p.y + dy }; if (!walkable(state, n.x, n.y) || wallBetween(state, p, n)) return false; p = n; } return true; };
+        const cand = this.floorCells.filter((c) => (c.x === cx || c.y === cy) && Math.abs(c.x - cx) + Math.abs(c.y - cy) <= 5 && (c.x !== cx || c.y !== cy) && clear(c));
+        const c = cand.length ? cand[Math.floor(Math.random() * cand.length)]! : { x: cx, y: cy };
         e.tx = c.x; e.ty = c.y; e.idleUntil = now + 1000 + Math.random() * 2500;
       }
       const cc = cellCenter(e.x, e.y);

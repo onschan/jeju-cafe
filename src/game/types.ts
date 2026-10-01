@@ -44,6 +44,7 @@ export interface Guest {
   timerMs: number;            // 이용 남은 시간
   mood: Mood | null;
   face: { hair: number; skin: number; top: number };
+  rev?: number;               // 길을 찾았을 때의 layoutRev — 바뀌면 다시 찾는다
 }
 export interface Staff { id: string; name: string; service: number; wage: number; face: { hair: number; skin: number; top: number } }
 export interface Candidate extends Staff { until: number /* 이 monthIndex까지 남는다 */ }

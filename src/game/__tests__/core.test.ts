@@ -256,3 +256,24 @@ describe('실내 시설', () => {
     expect(canPlace(s, 'fireplace', at(5, 3).x, at(5, 3).y).ok).toBe(false); // 바깥 잔디엔 안 된다
   });
 });
+
+describe('벽은 못 넘는다', () => {
+  it('손님 길은 벽 변을 한 번도 건너지 않고, 벽이 생기면 걷던 손님도 길을 다시 찾는다', () => {
+    const s = yard();
+    apply(s, { type: 'placeLine', id: 'floor_wood', from: at(1, 5), to: at(3, 5) });
+    apply(s, { type: 'placeLine', id: 'floor_wood', from: at(1, 6), to: at(3, 6) });
+    expect(apply(s, { type: 'place', id: 'table_out', x: at(1, 5).x, y: at(1, 5).y }).ok).toBe(true);
+    expect(spawnOne(s)).toBe(true);
+    const g = s.guests[0]!;
+    // 걷는 도중에 둘러싼다 (문은 올렛길 쪽)
+    run(s, 400);
+    expect(apply(s, { type: 'wallRect', id: 'wall_wood', from: at(1, 5), to: at(3, 6) }).ok).toBe(true);
+    run(s, 100);
+    const noCross = (path: { x: number; y: number }[], from: { x: number; y: number }) => { let p = from; for (const q of path) { if (Math.abs(q.x - p.x) + Math.abs(q.y - p.y) === 1) expect(wallBetween(s, p, q)).toBeNull(); p = q; } };
+    noCross(g.path, { x: Math.round(g.x), y: Math.round(g.y) });
+    expect(g.rev).toBe(s.layoutRev);
+    // 끝까지 걸어가 앉는다
+    run(s, HOUR_MS * 3);
+    expect(['use', 'out'].includes(g.phase) || !s.guests.includes(g)).toBe(true);
+  });
+});
