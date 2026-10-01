@@ -330,13 +330,21 @@ function FloorCard({ s, p, onClose, onMore }: { s: GameState; p: Pt; onClose: ()
   const c = cellAt(s, p.x, p.y);
   const id = c.floor === 'path' ? 'path' : `floor_${c.floor}`;
   const d = facilityDef(id);
+  const walls = FACILITIES.filter((x) => x.sub === 'wall' && s.unlocked.facilities.includes(x.id));
+  const hasWall = cellEdges(p.x, p.y).some((e) => getWall(s, e));
   return (
-    <div style={{ position: 'absolute', left: 6, right: 6, bottom: ABOVE_BOTTOM, ...panel, fontSize: 13, display: 'flex', alignItems: 'center', gap: 8 }}>
-      <Sprite id={id} size={36} /><b style={{ flex: 1 }}>{d.name}</b>
-      <button style={btn} onClick={() => onMore(id)}>더 깔기</button>
-      {cellEdges(p.x, p.y).some((e) => getWall(s, e)) && <button style={btnOff} onClick={() => { const r = dispatch({ type: 'removeWalls', x: p.x, y: p.y }); if (!r.ok) alert(r.reason); else sfx('remove'); }}>벽 걷어내기 <span style={{ fontSize: 11 }}>(반값)</span></button>}
-      <button style={{ ...btnOff, background: C.red, color: '#fff' }} onClick={() => { const r = dispatch({ type: 'removeFloor', x: p.x, y: p.y }); if (!r.ok) alert(r.reason); else onClose(); }}>걷어내기</button>
-      <button style={btnOff} onClick={onClose}>닫기</button>
+    <div style={{ position: 'absolute', left: 6, right: 6, bottom: ABOVE_BOTTOM, ...panel, fontSize: 13, display: 'grid', gap: 5 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <Sprite id={id} size={36} /><b style={{ flex: 1 }}>{d.name}</b>
+        <button style={btn} onClick={() => onMore(id)}>더 깔기</button>
+        <button style={{ ...btnOff, background: C.red, color: '#fff' }} onClick={() => { const r = dispatch({ type: 'removeFloor', x: p.x, y: p.y }); if (!r.ok) alert(r.reason); else onClose(); }}>걷어내기</button>
+        <button style={btnOff} onClick={onClose}>닫기</button>
+      </div>
+      {c.floor !== 'path' && <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap', borderTop: '1px solid #d8c9a8', paddingTop: 5 }}>
+        <span style={{ ...small, minWidth: 40 }}>벽 세우기</span>
+        {walls.map((w) => <button key={w.id} style={{ ...btnOff, padding: '2px 7px', fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 4 }} onClick={() => onMore(w.id)}><Sprite id={w.id} size={18} />{w.name}</button>)}
+        {hasWall && <button style={{ ...btnOff, padding: '2px 7px', fontSize: 12, marginLeft: 'auto' }} onClick={() => { const r = dispatch({ type: 'removeWalls', x: p.x, y: p.y }); if (!r.ok) alert(r.reason); else sfx('remove'); }}>이 칸 벽 걷기 <span style={{ fontSize: 11 }}>(반값)</span></button>}
+      </div>}
     </div>
   );
 }
@@ -370,38 +378,74 @@ function Sprite({ id, size = 56 }: { id: string; size?: number }) {
   return url ? <img className="px" src={url} width={size} height={size} alt="" style={{ imageRendering: 'pixelated' }} /> : <div style={{ width: size, height: size }} />;
 }
 function Ico({ name, size = 14 }: { name: string; size?: number }) { return <img className="px" src={assetUrl(`assets/icons/icon_${name}.png`)} width={size} height={size} alt="" style={{ imageRendering: 'pixelated', verticalAlign: 'middle' }} />; }
-/** 카탈로그: 2열 카드 — 그림·이름·값·핵심 수치가 한눈에. 잠긴 것도 이름과 필요한 연구를 보여 준다(뭘 노릴지 알게). */
+/** 건축 카탈로그: 탭 넷(실내·마당·자리·가게)에 구역을 나눈다. 열린 것만 카드로, 잠긴 것은 아래 칩으로 접어 둔다. */
+type BuildTab = 'indoor' | 'env' | 'seat' | 'shop';
+const BUILD_TABS: { k: BuildTab; name: string; ico: string }[] = [
+  { k: 'indoor', name: '실내', ico: 'home_cafe' }, { k: 'env', name: '마당', ico: 'tree' },
+  { k: 'seat', name: '자리', ico: 'chair' }, { k: 'shop', name: '가게', ico: 'shop' },
+];
+type Def = (typeof FACILITIES)[number];
+/** 탭마다 구역 — 바닥·벽은 방을 만드는 것이라 실내에 둔다 */
+function buildSections(tab: BuildTab): { title: string; pick: (d: Def) => boolean }[] {
+  if (tab === 'indoor') return [
+    { title: '바닥', pick: (d) => d.sub === 'floor' },
+    { title: '벽 · 울타리', pick: (d) => d.sub === 'wall' },
+    { title: '실내 자리 · 가게', pick: (d) => !!d.indoor && (d.tab === 'seat' || d.tab === 'shop') },
+    { title: '카운터 · 화장실 같은 편의', pick: (d) => !!d.indoor && !!d.amenity },
+    { title: '실내 꾸밈 (아늑함)', pick: (d) => !!d.indoor && !!d.comfort && !d.amenity },
+  ];
+  if (tab === 'env') return [
+    { title: '나무 · 꽃 · 바위 (경치)', pick: (d) => d.tab === 'env' && !d.sub && !d.indoor },
+    { title: '마당 장식', pick: (d) => d.tab === 'env' && d.sub === 'deco' && !d.indoor },
+  ];
+  return [{ title: tab === 'seat' ? '바깥 자리' : '바깥 가게', pick: (d) => d.tab === tab && !d.indoor }];
+}
 function BuildWindow({ s, onPick, onClose }: { s: GameState; onPick: (id: string) => void; onClose: () => void }) {
-  const [tab, setTab] = useState<Tab | 'ground' | 'indoor'>('seat');
+  const [tab, setTab] = useState<BuildTab>('seat');
   const [pick, setPick] = useState<string | null>(null);
-  const all = FACILITIES.filter((d) => tab === 'ground' ? d.sub === 'floor' || d.sub === 'wall' : tab === 'indoor' ? !!d.indoor : d.tab === tab && d.sub !== 'floor' && d.sub !== 'wall' && !d.indoor);
-  const open = all.filter((d) => s.unlocked.facilities.includes(d.id));
-  const locked = all.filter((d) => !s.unlocked.facilities.includes(d.id)).sort((a, b) => a.unlock - b.unlock);
+  const [showLocked, setShowLocked] = useState(false);
+  const sections = buildSections(tab);
+  const mine = FACILITIES.filter((d) => sections.some((x) => x.pick(d)));
+  const locked = mine.filter((d) => !s.unlocked.facilities.includes(d.id)).sort((a, b) => a.unlock - b.unlock);
   const d = pick ? facilityDef(pick) : null;
   const isOpen = d ? s.unlocked.facilities.includes(d.id) : false;
-  /** 카드 한 장에 띄울 핵심 수치 */
-  const gist = (x: typeof FACILITIES[number]) => x.sub === 'floor' ? '칸마다' : x.sub === 'wall' ? '변마다' : x.amenity ? '편의' : x.comfort ? `아늑함 +${x.comfort}` : x.scenery ? `경치 +${x.scenery}` : x.pop !== undefined ? `인기 ${x.pop}` : '';
-  const Card = ({ x, lock }: { x: typeof FACILITIES[number]; lock: boolean }) => (
-    <div onClick={() => setPick(x.id)} style={{ ...tile, flexDirection: 'row', alignItems: 'center', gap: 6, padding: 5, textAlign: 'left', background: lock ? '#efe6d2' : '#fff8e8', outline: pick === x.id ? `3px solid ${C.gold}` : 'none', opacity: lock ? 0.75 : 1 }}>
-      <span style={{ position: 'relative', flex: 'none', filter: lock ? 'grayscale(1)' : 'none' }}><Sprite id={x.id} size={40} />{lock && <span style={{ position: 'absolute', right: -2, bottom: -2 }}><Ico name="lock" size={12} /></span>}</span>
-      <span style={{ flex: 1, minWidth: 0, lineHeight: 1.25 }}>
-        <b style={{ fontSize: 13, display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{x.name}</b>
-        <span style={{ ...small, fontSize: 11, display: 'block' }}>{lock ? `연구 ${x.unlock}` : wonShort(x.cost)}{gist(x) ? ` · ${gist(x)}` : ''}</span>
-      </span>
-    </div>
-  );
+  const gist = (x: Def) => x.sub === 'floor' ? '칸마다' : x.sub === 'wall' ? '변마다' : x.amenity ? '가게 전체' : x.comfort ? `아늑함 +${x.comfort}` : x.scenery ? `경치 +${x.scenery}` : x.pop !== undefined ? `인기 ${x.pop}${x.capacity && x.capacity > 1 ? ` · ${x.capacity}인` : ''}` : '';
   return (
-    <Window title="건축" onClose={onClose} tabs={(['ground', 'env', 'seat', 'shop', 'indoor'] as (Tab | 'ground' | 'indoor')[]).map((t) => <button key={t} style={{ ...(tab === t ? btnGold : btnOff), padding: '2px 5px', fontSize: 12 }} onClick={() => { setTab(t); setPick(null); }}>{t === 'ground' ? '바닥·벽' : t === 'indoor' ? '실내' : TAB_KO[t]}</button>)}>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 5 }}>{open.map((x) => <Card key={x.id} x={x} lock={false} />)}</div>
-      {locked.length > 0 && <>
-        <div style={{ ...small, margin: '8px 0 4px', display: 'flex', alignItems: 'center', gap: 4 }}><Ico name="lock" size={12} /> 연구로 열리는 것 <span style={{ color: C.ink }}>({locked.length})</span> · 지금 연구 {s.research}</div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 5 }}>{locked.map((x) => <Card key={x.id} x={x} lock />)}</div>
-      </>}
+    <Window title="건축" onClose={onClose} tabs={BUILD_TABS.map((t) => <button key={t.k} style={{ ...(tab === t.k ? btnGold : btnOff), padding: '3px 7px', fontSize: 13, display: 'inline-flex', alignItems: 'center', gap: 3 }} onClick={() => { setTab(t.k); setPick(null); setShowLocked(false); }}><Ico name={t.ico} size={13} />{t.name}</button>)}>
+      {sections.map((sec) => {
+        const items = mine.filter((x) => sec.pick(x) && s.unlocked.facilities.includes(x.id));
+        if (items.length === 0) return null;
+        return (
+          <div key={sec.title} style={{ marginBottom: 8 }}>
+            <div style={{ ...small, margin: '0 0 4px', borderBottom: `1px solid #d8c9a8`, paddingBottom: 2 }}>{sec.title}</div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 5 }}>
+              {items.map((x) => (
+                <div key={x.id} onClick={() => setPick(x.id)} style={{ ...tile, flexDirection: 'row', alignItems: 'center', gap: 7, padding: 5, textAlign: 'left', background: pick === x.id ? '#fff0c0' : '#fff8e8', outline: pick === x.id ? `3px solid ${C.gold}` : 'none' }}>
+                  <Sprite id={x.id} size={44} />
+                  <span style={{ flex: 1, minWidth: 0, lineHeight: 1.3 }}>
+                    <b style={{ fontSize: 13, display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{x.name}</b>
+                    <span style={{ fontSize: 12, color: C.wood, display: 'block' }}>{wonShort(x.cost)}</span>
+                    {gist(x) && <span style={{ ...small, fontSize: 11, display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{gist(x)}</span>}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })}
+      {locked.length > 0 && <div style={{ marginTop: 2 }}>
+        <button style={{ ...btnOff, width: '100%', fontSize: 12, padding: '4px 8px', textAlign: 'left' }} onClick={() => setShowLocked((v) => !v)}>
+          <Ico name="lock" size={12} /> 연구로 열리는 것 {locked.length}개 · 지금 연구 {s.research} {showLocked ? '▲' : '▼'}
+        </button>
+        {showLocked && <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 5 }}>
+          {locked.map((x) => <button key={x.id} onClick={() => setPick(x.id)} style={{ ...(pick === x.id ? btnGold : btnOff), padding: '3px 7px', fontSize: 12, opacity: s.research >= x.unlock ? 1 : 0.7 }}>{x.name} <b style={{ color: s.research >= x.unlock ? C.green : C.red }}>{x.unlock}</b></button>)}
+        </div>}
+      </div>}
       {d && <div style={{ ...panel, marginTop: 8, padding: 6, display: 'flex', gap: 8, alignItems: 'center', position: 'sticky', bottom: 0 }}>
         <Sprite id={d.id} size={44} />
         <div style={{ flex: 1, minWidth: 0, fontSize: 13 }}>
-          <b>{d.name}</b> <span style={small}>{d.w}×{d.h}{d.capacity ? ` · ${d.capacity}인` : ''}</span>
-          <div style={small}>{isOpen ? `${won(d.cost)} · 유지 ${won(d.upkeep)}/월${d.pop !== undefined ? ` · 인기 ${d.pop}` : ''}${d.scenery ? ` · 경치 +${d.scenery}` : ''}${d.comfort ? ` · 아늑함 +${d.comfort}` : ''}${d.fee ? ` · 요금 ${won(d.fee)}` : ''}` : `연구 ${d.unlock} 필요 (운영 › 연구에서 연다)`}</div>
+          <b>{d.name}</b> <span style={small}>{d.w}×{d.h}{d.capacity ? ` · ${d.capacity}인` : ''}{d.indoor ? ' · 실내 전용' : ''}</span>
+          <div style={small}>{isOpen ? `${won(d.cost)} · 유지 ${won(d.upkeep)}/월${d.pop !== undefined ? ` · 인기 ${d.pop}` : ''}${d.scenery ? ` · 경치 +${d.scenery}` : ''}${d.comfort ? ` · 아늑함 +${d.comfort}` : ''}${d.fee ? ` · 요금 ${won(d.fee)}` : ''}` : `연구 ${d.unlock} 필요 — 지금 ${s.research} (운영 › 연구에서 연다)`}</div>
           {isOpen && d.amenity && <div style={{ ...small, color: C.green }}>{AMENITY_TEXT[d.amenity]}</div>}
           {isOpen && d.sub === 'wall' && <div style={small}>칸의 변을 탭하거나 네모를 둘러서 · 둘러싸면 실내 +2</div>}
           {isOpen && d.indoor && d.sub !== 'wall' && <div style={small}>벽으로 둘러싸인 실내 바닥에만</div>}
