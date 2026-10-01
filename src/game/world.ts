@@ -194,7 +194,7 @@ export function canPlace(s: GameState, id: string, x: number, y: number): ApplyR
     if (c.objectId) return { ok: false, reason: '이미 뭔가 있어요' };
     if (d.tab === 'env' && !d.sub && c.floor) return { ok: false, reason: '나무·바위는 잔디에 심어요' };
     if (d.station && !c.floor) return { ok: false, reason: '제조대는 바닥 위에 놓아요' };
-    if ((d.tab === 'seat' || d.tab === 'shop') && !c.floor) return { ok: false, reason: '바닥을 먼저 깔아요' };
+    if ((d.tab === 'seat' || d.tab === 'shop') && !c.floor && !d.onGrass) return { ok: false, reason: '바닥을 먼저 깔아요' };
     if (c.floor === 'path' && d.tab !== 'env') return { ok: false, reason: '올렛길 위엔 못 놓아요' };
   }
   if (d.indoor && (!cells.every((p) => cellAt(s, p.x, p.y).floor && cellAt(s, p.x, p.y).floor !== 'path') || !isEnclosed(s, cells))) return { ok: false, reason: '벽으로 둘러싸인 실내 바닥에만 놓아요' };

@@ -12,6 +12,32 @@
   "unlock": 0
  },
  {
+  "id": "floor_lawn",
+  "name": "잔디밭",
+  "tab": "env",
+  "sub": "floor",
+  "floor": "lawn",
+  "w": 1,
+  "h": 1,
+  "cost": 9000,
+  "upkeep": 120,
+  "unlock": 0,
+  "tags": []
+ },
+ {
+  "id": "floor_gravel",
+  "name": "자갈 마당",
+  "tab": "env",
+  "sub": "floor",
+  "floor": "gravel",
+  "w": 1,
+  "h": 1,
+  "cost": 14000,
+  "upkeep": 140,
+  "unlock": 20,
+  "tags": []
+ },
+ {
   "id": "floor_wood",
   "name": "나무 데크",
   "tab": "env",
@@ -584,7 +610,8 @@
   "tags": [
    "student",
    "worker"
-  ]
+  ],
+  "onGrass": true
  },
  {
   "id": "omegi_stall",

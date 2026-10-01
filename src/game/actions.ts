@@ -31,6 +31,14 @@ function applyInner(s: GameState, a: Action): ApplyResult {
     }
     case 'wallRect': return wallRect(s, a.id, a.from, a.to);
     case 'wallEdges': return wallEdges(s, a.id, a.edges);
+    case 'removeWall': {
+      const e = { x: a.x, y: a.y, side: a.side } as const;
+      const k = getWall(s, e);
+      if (!k) return { ok: false, reason: '그 변엔 벽이 없어요' };
+      setWall(s, e, null);
+      s.money += Math.round(facilityDef(k).cost / 2);
+      return { ok: true };
+    }
     case 'removeWalls': {
       let n = 0;
       for (const e of cellEdges(a.x, a.y)) { const k = getWall(s, e); if (!k) continue; setWall(s, e, null); s.money += Math.round(facilityDef(k).cost / 2); n++; }

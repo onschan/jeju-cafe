@@ -49,6 +49,8 @@ export function App() {
   /** 벽 세우기 방식: 네모 둘레 / 한 변씩(방향: 자동=탭한 지점에 가까운 변) */
   const [wallMode, setWallMode] = useState<'rect' | 'edge'>('edge');
   const [wallSide, setWallSide] = useState<'auto' | Side4>('auto');
+  const [wallErase, setWallErase] = useState(false);
+  const wallEraseRef = useRef(wallErase); wallEraseRef.current = wallErase;
   const wallModeRef = useRef(wallMode); wallModeRef.current = wallMode;
   const wallSideRef = useRef(wallSide); wallSideRef.current = wallSide;
   const dragSide = useRef<Side4>('n');
@@ -137,6 +139,15 @@ export function App() {
         const id = placingRef.current;
         if (id) {
           // 탭은 자리만 잡는다 — 놓는 건 띠의 「놓기/깔기」로 (탭마다 놓이면 실수가 잦다)
+          if (facilityDef(id).sub === 'wall' && wallEraseRef.current) {
+            // 지우개: 탭한 지점에 가까운 변의 벽을 걷는다 (없으면 그 칸 둘레에서 찾는다)
+            const side = wallSideRef.current === 'auto' ? nearestSide(fx, fy) : wallSideRef.current;
+            const first = [edgeOf(x, y, side), ...cellEdges(x, y)].find((e) => getWall(st, e));
+            const r = first ? dispatch({ type: 'removeWall', x: first.x, y: first.y, side: first.side }) : { ok: false, reason: '그 칸엔 벽이 없어요' };
+            if (!r.ok) { viewRef.current?.say(x, y, r.reason ?? ''); sfx('error'); } else sfx('remove');
+            setGhost(null);
+            return;
+          }
           let g: Ghost;
           if (facilityDef(id).sub === 'wall' && wallModeRef.current === 'edge') {
             const side = wallSideRef.current === 'auto' ? nearestSide(fx, fy) : wallSideRef.current;
@@ -152,10 +163,11 @@ export function App() {
         const g = !cell?.objectId ? st.guests.find((q) => Math.round(q.x) === x && Math.round(q.y) === y) : null;
         setGuestSel(g ? g.id : null);
         setSelected(cell?.objectId ?? null);
-        setFloorSel(cell && !cell.objectId && cell.floor && !g ? { x, y } : null); // 손님이 서 있으면 손님 팝업이 먼저
+        setFloorSel(cell && !cell.objectId && !g && (cell.floor || cellEdges(x, y).some((e) => getWall(st, e))) ? { x, y } : null); // 바닥이거나 벽이 있는 칸 (손님이 서 있으면 손님 팝업이 먼저)
       },
       dragCapture: (x, y, fx = 0.5, fy = 0.5) => {
         const id = placingRef.current; if (!id || !isLine(id)) return false;
+        if (facilityDef(id).sub === 'wall' && wallEraseRef.current) return false;
         lineFrom.current = { x, y };
         if (facilityDef(id).sub === 'wall' && wallModeRef.current === 'edge') { dragSide.current = wallSideRef.current === 'auto' ? nearestSide(fx, fy) : wallSideRef.current; setGhost(ghostOf(getState(), id, x, y, undefined, [edgeOf(x, y, dragSide.current)])); return true; }
         setGhost(ghostOf(getState(), id, x, y, { from: { x, y }, to: { x, y } })); return true;
@@ -202,7 +214,7 @@ export function App() {
         <div style={{ ...small, fontSize: 11 }}>{tut.step.how}</div>
       </div> : obj && !placing && <div style={{ position: 'absolute', top: 36, left: 8, right: 8, ...panel, padding: '4px 8px', fontSize: 13, cursor: 'pointer' }} onClick={() => setWin('cafe')}><Ico name="flag" /> {obj.text} <span style={small}>· 상금 {wonShort(obj.reward)}</span></div>}
       {/* 배치 모드 띠 */}
-      {placing && <PlacingBar id={placing} ghost={ghost} wallMode={wallMode} wallSide={wallSide} onWallMode={(m) => { setWallMode(m); setGhost(null); }} onWallSide={(sd) => { setWallSide(sd); setGhost((g) => g && g.edges ? ghostOf(getState(), g.id, g.x, g.y, g.line, (g.line ? lineCells(g.line.from, g.line.to) : [{ x: g.x, y: g.y }]).map((c) => edgeOf(c.x, c.y, sd === 'auto' ? 'n' : sd))) : g); }} onDone={() => { setPlacing(null); setGhost(null); }} onConfirm={() => {
+      {placing && <PlacingBar id={placing} ghost={ghost} wallMode={wallMode} wallSide={wallSide} wallErase={wallErase} onWallErase={(v) => { setWallErase(v); setGhost(null); }} onWallMode={(m) => { setWallMode(m); setGhost(null); }} onWallSide={(sd) => { setWallSide(sd); setGhost((g) => g && g.edges ? ghostOf(getState(), g.id, g.x, g.y, g.line, (g.line ? lineCells(g.line.from, g.line.to) : [{ x: g.x, y: g.y }]).map((c) => edgeOf(c.x, c.y, sd === 'auto' ? 'n' : sd))) : g); }} onDone={() => { setPlacing(null); setGhost(null); }} onConfirm={() => {
         const g = ghost; if (!g) return; const d = facilityDef(placing);
         const r = d.sub === 'wall' && g.edges ? dispatch({ type: 'wallEdges', id: placing, edges: g.edges }) : d.sub === 'wall' ? dispatch({ type: 'wallRect', id: placing, from: g.line?.from ?? { x: g.x, y: g.y }, to: g.line?.to ?? { x: g.x, y: g.y } }) : isLine(placing) && g.line ? dispatch({ type: 'placeLine', id: placing, from: g.line.from, to: g.line.to }) : dispatch({ type: 'place', id: placing, x: g.x, y: g.y });
         if (!r.ok) { flash(r.reason); return; }
@@ -252,7 +264,7 @@ export function App() {
   );
 }
 
-function PlacingBar({ id, ghost, wallMode, wallSide, onWallMode, onWallSide, onDone, onConfirm }: { id: string; ghost: Ghost | null; wallMode: 'rect' | 'edge'; wallSide: 'auto' | Side4; onWallMode: (m: 'rect' | 'edge') => void; onWallSide: (s: 'auto' | Side4) => void; onDone: () => void; onConfirm: () => void }) {
+function PlacingBar({ id, ghost, wallMode, wallSide, wallErase, onWallErase, onWallMode, onWallSide, onDone, onConfirm }: { id: string; ghost: Ghost | null; wallMode: 'rect' | 'edge'; wallSide: 'auto' | Side4; wallErase: boolean; onWallErase: (v: boolean) => void; onWallMode: (m: 'rect' | 'edge') => void; onWallSide: (s: 'auto' | Side4) => void; onDone: () => void; onConfirm: () => void }) {
   const d = facilityDef(id);
   const floor = isFloorDef(d);
   const n = ghost?.line ? lineCells(ghost.line.from, ghost.line.to).filter((p) => canLayFloor(getState(), d.floor!, p.x, p.y).ok).length : 1;
@@ -283,15 +295,16 @@ function PlacingBar({ id, ghost, wallMode, wallSide, onWallMode, onWallSide, onD
     <div style={{ position: 'absolute', top: 36, left: 8, right: 8, ...panel, padding: '6px 8px', fontSize: 13, display: 'grid', gap: 4 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
         <Sprite id={id} size={28} /><b>{d.name}</b>
-        <span style={{ flex: 1, minWidth: 0 }}>{floor || wall ? (ghost?.line || ghost?.edges ? `${count}${wall ? '변' : '칸'} · ${won(d.cost * count)}` : wall ? (wallMode === 'rect' ? '바닥 위를 드래그해 네모를 잡아요' : '칸의 변 가까이를 탭해요 · 드래그하면 줄로') : '탭하거나 드래그해서 줄을 잡아요') : !ghost ? `탭해서 자리를 잡아요 · ${won(d.cost)}` : !ghost.ok ? <span style={{ color: C.red }}>{ghost.reason}</span> : won(d.cost)}</span>
+        <span style={{ flex: 1, minWidth: 0 }}>{wall && wallErase ? <span style={{ color: C.red }}>지울 벽 가까이를 탭해요 (반값 돌려받아요)</span> : floor || wall ? (ghost?.line || ghost?.edges ? `${count}${wall ? '변' : '칸'} · ${won(d.cost * count)}` : wall ? (wallMode === 'rect' ? '바닥 위를 드래그해 네모를 잡아요' : '칸의 변 가까이를 탭해요 · 드래그하면 줄로') : '탭하거나 드래그해서 줄을 잡아요') : !ghost ? `탭해서 자리를 잡아요 · ${won(d.cost)}` : !ghost.ok ? <span style={{ color: C.red }}>{ghost.reason}</span> : won(d.cost)}</span>
         <span style={{ ...small, color: short ? C.red : C.soft, fontWeight: short ? 700 : 400 }}>{short ? `${wonShort(d.cost * count - getState().money)} 모자라요` : wonShort(getState().money)}</span>
-        <button style={can ? btnGold : btnOff} disabled={!can} onClick={onConfirm}>{floor ? '깔기' : wall ? (wallMode === 'edge' ? '세우기' : '두르기') : '놓기'}</button>
+        {!(wall && wallErase) && <button style={can ? btnGold : btnOff} disabled={!can} onClick={onConfirm}>{floor ? '깔기' : wall ? (wallMode === 'edge' ? '세우기' : '두르기') : '놓기'}</button>}
         <button style={btnOff} onClick={onDone}>끝</button>
       </div>
       {wall && <div style={{ display: 'flex', alignItems: 'center', gap: 4, borderTop: '1px solid #d8c9a8', paddingTop: 4, flexWrap: 'wrap' }}>
-        <button style={{ ...(wallMode === 'edge' ? btnGold : btnOff), padding: '2px 8px', fontSize: 12 }} onClick={() => onWallMode('edge')}>한 변씩</button>
-        <button style={{ ...(wallMode === 'rect' ? btnGold : btnOff), padding: '2px 8px', fontSize: 12 }} onClick={() => onWallMode('rect')}>네모 두르기</button>
-        {wallMode === 'edge' && <>
+        <button style={{ ...(!wallErase && wallMode === 'edge' ? btnGold : btnOff), padding: '2px 8px', fontSize: 12 }} onClick={() => { onWallErase(false); onWallMode('edge'); }}>한 변씩</button>
+        <button style={{ ...(!wallErase && wallMode === 'rect' ? btnGold : btnOff), padding: '2px 8px', fontSize: 12 }} onClick={() => { onWallErase(false); onWallMode('rect'); }}>네모 두르기</button>
+        <button style={{ ...(wallErase ? { ...btnGold, background: C.red, color: '#fff' } : btnOff), padding: '2px 8px', fontSize: 12 }} onClick={() => onWallErase(!wallErase)}>지우기</button>
+        {!wallErase && wallMode === 'edge' && <>
           <span style={{ ...small, marginLeft: 4 }}>방향</span>
           {(['auto', 'n', 'e', 's', 'w'] as const).map((sd) => <button key={sd} title={SIDE_KO[sd]} style={{ ...(wallSide === sd ? btnGold : btnOff), padding: '2px 5px', fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 3 }} onClick={() => onWallSide(sd)}>{sd !== 'auto' && <SideIcon side={sd} />}{SIDE_KO[sd]}</button>)}
         </>}
@@ -328,22 +341,29 @@ function introLines(name: string) {
 /** 바닥 칸 카드: 걷어내기 · 같은 바닥 더 깔기 */
 function FloorCard({ s, p, onClose, onMore }: { s: GameState; p: Pt; onClose: () => void; onMore: (id: string) => void }) {
   const c = cellAt(s, p.x, p.y);
-  const id = c.floor === 'path' ? 'path' : `floor_${c.floor}`;
-  const d = facilityDef(id);
+  const id = c.floor ? (c.floor === 'path' ? 'path' : `floor_${c.floor}`) : null;
+  const d = id ? facilityDef(id) : null;
   const walls = FACILITIES.filter((x) => x.sub === 'wall' && s.unlocked.facilities.includes(x.id));
-  const hasWall = cellEdges(p.x, p.y).some((e) => getWall(s, e));
+  const here = cellEdges(p.x, p.y).map((e) => ({ e, kind: getWall(s, e) })).filter((x) => x.kind);
+  const SIDE: Record<string, string> = { n: '뒤', w: '왼', s: '앞', e: '오른' };
+  const sideOf = (e: { x: number; y: number; side: 'n' | 'w' }) => e.side === 'n' ? (e.y === p.y ? 'n' : 's') : (e.x === p.x ? 'w' : 'e');
   return (
     <div style={{ position: 'absolute', left: 6, right: 6, bottom: ABOVE_BOTTOM, ...panel, fontSize: 13, display: 'grid', gap: 5 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <Sprite id={id} size={36} /><b style={{ flex: 1 }}>{d.name}</b>
-        <button style={btn} onClick={() => onMore(id)}>더 깔기</button>
-        <button style={{ ...btnOff, background: C.red, color: '#fff' }} onClick={() => { const r = dispatch({ type: 'removeFloor', x: p.x, y: p.y }); if (!r.ok) alert(r.reason); else onClose(); }}>걷어내기</button>
+        {d && id ? <><Sprite id={id} size={36} /><b style={{ flex: 1 }}>{d.name}</b>
+          <button style={btn} onClick={() => onMore(id)}>더 깔기</button>
+          <button style={{ ...btnOff, background: C.red, color: '#fff' }} onClick={() => { const r = dispatch({ type: 'removeFloor', x: p.x, y: p.y }); if (!r.ok) alert(r.reason); else onClose(); }}>걷어내기</button></>
+          : <b style={{ flex: 1 }}>잔디 <span style={small}>벽이 서 있어요</span></b>}
         <button style={btnOff} onClick={onClose}>닫기</button>
       </div>
-      {c.floor !== 'path' && <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap', borderTop: '1px solid #d8c9a8', paddingTop: 5 }}>
+      {here.length > 0 && <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap', borderTop: '1px solid #d8c9a8', paddingTop: 5 }}>
+        <span style={{ ...small, minWidth: 40 }}>벽 걷기</span>
+        {here.map(({ e, kind }) => <button key={`${e.x},${e.y},${e.side}`} style={{ ...btnOff, padding: '2px 7px', fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 4 }} onClick={() => { const r = dispatch({ type: 'removeWall', x: e.x, y: e.y, side: e.side }); if (!r.ok) alert(r.reason); else { sfx('remove'); if (here.length === 1 && !c.floor) onClose(); } }}><Sprite id={kind!} size={16} />{SIDE[sideOf(e)]}쪽 <span style={{ fontSize: 11, color: C.wood }}>+{wonShort(Math.round(facilityDef(kind!).cost / 2))}</span></button>)}
+        {here.length > 1 && <button style={{ ...btnOff, padding: '2px 7px', fontSize: 12, marginLeft: 'auto' }} onClick={() => { const r = dispatch({ type: 'removeWalls', x: p.x, y: p.y }); if (!r.ok) alert(r.reason); else { sfx('remove'); if (!c.floor) onClose(); } }}>전부 ({here.length})</button>}
+      </div>}
+      {c.floor && c.floor !== 'path' && <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap', borderTop: '1px solid #d8c9a8', paddingTop: 5 }}>
         <span style={{ ...small, minWidth: 40 }}>벽 세우기</span>
         {walls.map((w) => <button key={w.id} style={{ ...btnOff, padding: '2px 7px', fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 4 }} onClick={() => onMore(w.id)}><Sprite id={w.id} size={18} />{w.name}</button>)}
-        {hasWall && <button style={{ ...btnOff, padding: '2px 7px', fontSize: 12, marginLeft: 'auto' }} onClick={() => { const r = dispatch({ type: 'removeWalls', x: p.x, y: p.y }); if (!r.ok) alert(r.reason); else sfx('remove'); }}>이 칸 벽 걷기 <span style={{ fontSize: 11 }}>(반값)</span></button>}
       </div>}
     </div>
   );
@@ -449,6 +469,7 @@ function BuildWindow({ s, onPick, onClose }: { s: GameState; onPick: (id: string
           {isOpen && d.amenity && <div style={{ ...small, color: C.green }}>{AMENITY_TEXT[d.amenity]}</div>}
           {isOpen && d.sub === 'wall' && <div style={small}>칸의 변을 탭하거나 네모를 둘러서 · 둘러싸면 실내 +2</div>}
           {isOpen && d.indoor && d.sub !== 'wall' && <div style={small}>벽으로 둘러싸인 실내 바닥에만</div>}
+          {isOpen && d.onGrass && <div style={small}>잔디 위에도 놓을 수 있어요</div>}
           {isOpen && d.tags && d.tags.length > 0 && <div style={small}>{d.tags.map((t) => GUEST_TYPES.find((g) => g.id === t)?.name).join('·')}에게 인기</div>}
         </div>
         {isOpen && <button style={s.money >= d.cost ? btnGold : btnOff} onClick={() => { if (s.money >= d.cost) onPick(d.id); }}>{d.sub === 'floor' ? '깔기' : d.sub === 'wall' ? '두르기' : '놓기'}</button>}

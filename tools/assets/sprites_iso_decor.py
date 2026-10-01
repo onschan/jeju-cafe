@@ -366,6 +366,32 @@ def floor_wood() -> Canvas:
     return c
 
 
+def floor_lawn() -> Canvas:
+    """잔디 바닥: 짧게 깎은 잔디, 풀잎 몇 가닥."""
+    dk, md, lt = hexc('3f7a30'), hexc('5aa63f'), hexc('7cc456')
+    c = iso_tile(md, dk)
+    tmp = Canvas(64, 32)
+    for x, y in ((0.2, 0.3), (0.55, 0.15), (0.8, 0.45), (0.35, 0.6), (0.65, 0.8), (0.15, 0.85)):
+        m = diamond_mask((x - 0.05, y - 0.02, x + 0.05, y + 0.02), 32, 0); fill_mask(tmp, m, lt)
+    for x, y in ((0.4, 0.25), (0.75, 0.6), (0.25, 0.75)):
+        m = diamond_mask((x - 0.03, y - 0.03, x + 0.03, y + 0.03), 32, 0); fill_mask(tmp, m, dk)
+    clip(c, tmp)
+    return c
+
+
+def floor_gravel() -> Canvas:
+    """자갈 바닥: 자잘한 돌이 깔린 마당."""
+    base, a2, b2 = hexc('b7ab95'), hexc('8e8372'), hexc('d8cfbb')
+    c = iso_tile(base, hexc('6f6658'))
+    tmp = Canvas(64, 32)
+    pts = ((0.18, 0.22), (0.46, 0.14), (0.74, 0.28), (0.3, 0.46), (0.62, 0.52), (0.86, 0.66), (0.22, 0.72), (0.5, 0.8), (0.72, 0.9), (0.38, 0.92))
+    for i, (x, y) in enumerate(pts):
+        m = diamond_mask((x - 0.045, y - 0.035, x + 0.045, y + 0.035), 32, 0)
+        fill_mask(tmp, m, a2 if i % 2 else b2)
+    clip(c, tmp)
+    return c
+
+
 def floor_deck() -> Canvas:
     """짙은 원목 데크: 결이 굵고 어두운 바닥."""
     dk, md, lt = hexc('3f2a14'), hexc('6b4522'), hexc('8d6134')
@@ -500,6 +526,7 @@ def sprites() -> dict[str, Canvas]:
     s: dict[str, Canvas] = {f'iso_obj_{k}': fn() for k, fn in fns.items()}
     s['iso_tile_floor_wood'] = floor_wood(); s['iso_tile_floor_tile'] = floor_tile(); s['iso_tile_floor_stone'] = floor_stone()
     s['iso_tile_floor_deck'] = floor_deck(); s['iso_tile_floor_brick'] = floor_brick()
+    s['iso_tile_floor_lawn'] = floor_lawn(); s['iso_tile_floor_gravel'] = floor_gravel()
     s['iso_obj_counter_bar'] = counter_bar(); s['iso_obj_menu_board'] = menu_board()
     s['iso_obj_trophy'] = trophy()   # 대회 상패 (contest.ts)
     s['fx_corner_sign'] = corner_sign()   # fun-corner: 코너 이름표 팻말 (글자는 렌더 라벨)

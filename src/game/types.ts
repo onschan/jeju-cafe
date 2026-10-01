@@ -3,7 +3,7 @@
  * 결정적: state.rng 하나로 난수를 뽑고, Date·Math.random은 쓰지 않는다.
  */
 export type Tab = 'env' | 'seat' | 'shop';
-export type Floor = 'wood' | 'deck' | 'tile' | 'stone' | 'brick' | 'path';
+export type Floor = 'wood' | 'deck' | 'tile' | 'stone' | 'brick' | 'lawn' | 'gravel' | 'path';
 export type Terrain = 'grass' | 'road';
 export type Season = 'spring' | 'summer' | 'autumn' | 'winter';
 export type Mood = 'happy' | 'meh' | 'angry';
@@ -21,6 +21,7 @@ export interface FacilityDef {
   unlock: number;             // 여는 데 드는 연구 (0 = 처음부터)
   tags?: string[];            // 좋아하는 손님층 id
   indoor?: boolean;           // 벽으로 둘러싸인 실내 바닥에만 놓는다
+  onGrass?: boolean;          // 바닥 없이 잔디 위에도 놓는다 (자판기처럼)
   comfort?: number;           // 아늑함 (실내 반경 3 자리·가게가 받는다 — 실내판 경치)
   amenity?: 'counter' | 'restroom' | 'staff' | 'kitchen' | 'cleaning' | 'locker' | 'storage'; // 하나만 세는 편의 시설
 }
@@ -109,6 +110,7 @@ export type Action =
   | { type: 'wallRect'; id: string; from: Pt; to: Pt }   // 네모 둘레에 벽을 두른다 (올렛길 닿는 변은 문)
   | { type: 'wallEdges'; id: string; edges: { x: number; y: number; side: 'n' | 'w' }[] } // 고른 변들에 벽
   | { type: 'removeWalls'; x: number; y: number }       // 그 칸 둘레 벽 네 변을 걷는다
+  | { type: 'removeWall'; x: number; y: number; side: 'n' | 'w' } // 변 하나만 걷는다
   | { type: 'remove'; facilityId: string }
   | { type: 'removeFloor'; x: number; y: number }
   | { type: 'rename'; facilityId: string; name: string }
