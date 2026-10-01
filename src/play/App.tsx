@@ -16,7 +16,7 @@ import { FACILITIES, GUEST_TYPES, MENUS, INVESTS, facilityDef, isFloorDef, isUsa
 
 type Win = 'build' | 'guests' | 'info' | 'system' | null;
 /** 하단 띠(영수증 2줄 + 요약 + 메뉴) 높이 */
-const BOTTOM_H = 118;
+const BOTTOM_H = 22 + 24 + 58 + 3;
 const ABOVE_BOTTOM = BOTTOM_H + MESSAGE_LINE_H + 4;
 const SEASON_KO = { spring: '봄', summer: '여름', autumn: '가을', winter: '겨울' } as const;
 const TAB_KO: Record<Tab, string> = { env: '환경', seat: '시설', shop: '가게' };
@@ -146,19 +146,19 @@ export function App() {
   const sel = selected ? s.facilities[selected] ?? null : null;
   const fontStyle: CSSProperties = { fontFamily: 'Galmuri11, system-ui, sans-serif' };
   return (
-    <div style={{ position: 'fixed', inset: 0, background: C.dark, ...fontStyle, userSelect: 'none' }}>
+    <div style={{ position: 'fixed', inset: 0, background: '#15110c', display: 'flex', justifyContent: 'center', ...fontStyle, userSelect: 'none' }}>
+    {/* 폰 한 판 폭으로 가운데 고정 — 넓은 화면에서 창이 끝까지 늘어나지 않게 */}
+    <div style={{ position: 'relative', width: 'min(100vw, 520px)', height: '100%', background: C.dark, overflow: 'hidden', boxShadow: '0 0 0 2px #4a2f16' }}>
       <div ref={hostRef} style={{ position: 'absolute', inset: 0 }} />
       {/* 상단 바 */}
-      <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 30, background: C.paper, borderBottom: `3px solid ${C.wood}`, display: 'flex', alignItems: 'center', gap: 6, padding: '0 6px', fontSize: 12, color: C.ink, whiteSpace: 'nowrap' }}>
-        <Ico name={seasonOf(s.clock.month)} size={16} /><b>{s.clock.year}년 {s.clock.month}월 {s.clock.day}일 {String(s.clock.hour).padStart(2, '0')}시</b>
+      <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 30, background: C.paper, borderBottom: `3px solid ${C.wood}`, display: 'flex', alignItems: 'center', gap: 5, padding: '0 5px', fontSize: 12, color: C.ink, whiteSpace: 'nowrap', overflow: 'hidden', boxSizing: 'border-box' }}>
+        <Ico name={seasonOf(s.clock.month)} size={14} /><b>{s.clock.year}년 {s.clock.month}월 {s.clock.day}일</b><span style={{ ...small, fontSize: 11 }}>{String(s.clock.hour).padStart(2, '0')}시</span>
         <span style={{ flex: 1 }} />
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, transition: 'transform .12s ease-out', transform: moneyBump ? 'scale(1.18)' : 'none' }}><Ico name="money" /><b style={{ color: s.money < 0 ? C.red : moneyBump ? C.gold : C.ink }}>{wonShort(s.money)}</b></span>
-        <Ico name="star" /><b>{s.fame}</b>
-        <Ico name="research" /><b>{s.research}</b>
-        {([0, 1, 3] as const).map((sp) => <button key={sp} onClick={() => dispatch({ type: 'setSpeed', speed: sp })} style={{ ...(s.clock.speed === sp ? btnGold : btnOff), padding: '1px 3px', lineHeight: 0 }}><Ico name={sp === 0 ? 'speed_pause' : `speed_${sp}`} size={18} /></button>)}
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 2, transition: 'transform .12s ease-out', transform: moneyBump ? 'scale(1.15)' : 'none' }}><Ico name="money" size={12} /><b style={{ color: s.money < 0 ? C.red : moneyBump ? C.gold : C.ink }}>{wonShort(s.money)}</b></span>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 2 }}><Ico name="star" size={12} /><b>{s.fame}</b></span>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 2 }}><Ico name="research" size={12} /><b>{s.research}</b></span>
+        <span style={{ display: 'inline-flex', gap: 2, marginLeft: 2 }}>{([0, 1, 3] as const).map((sp) => <button key={sp} onClick={() => dispatch({ type: 'setSpeed', speed: sp })} style={{ ...(s.clock.speed === sp ? btnGold : btnOff), padding: 1, width: 22, height: 20, lineHeight: 0, display: 'grid', placeItems: 'center' }}><Ico name={sp === 0 ? 'speed_pause' : `speed_${sp}`} size={14} /></button>)}</span>
       </div>
-      {/* 내 마당으로 */}
-      {ready && !win && <button style={{ ...btnOff, position: 'absolute', right: 8, top: 70, padding: '4px 8px', fontSize: 12 }} onClick={() => viewRef.current?.centerOn(getState())}><Ico name="home" /> 마당</button>}
       {/* 목표 한 줄 */}
       {obj && !placing && <div style={{ position: 'absolute', top: 36, left: 8, right: 8, ...panel, padding: '4px 8px', fontSize: 13, cursor: 'pointer' }} onClick={() => setWin('info')}><Ico name="flag" /> {obj.text} <span style={small}>· 상금 {wonShort(obj.reward)}</span></div>}
       {/* 배치 모드 띠 */}
@@ -175,10 +175,12 @@ export function App() {
       {/* 하단: 영수증 띠 · 요약 띠 · 메뉴 */}
       <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, background: C.paper, borderTop: `3px solid ${C.wood}`, color: C.ink }}>
         <Receipts s={s} />
-        <div style={{ display: 'flex', gap: 10, padding: '2px 8px', fontSize: 12, color: C.soft, borderTop: `1px solid #d8c9a8` }}>
-          <span>손님 <b style={{ color: C.ink }}>{s.guests.length}</b></span><span>오늘 <b style={{ color: C.ink }}>{s.todayGuests}</b>/{dailyGuests(s)}</span><span>자리·가게 <b style={{ color: C.ink }}>{usables(s).length}</b></span><span>인기 합 <b style={{ color: C.ink }}>{popularitySum(s)}</b></span><span>직원 <b style={{ color: C.ink }}>{s.staff.length}</b></span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '0 6px 0 8px', height: 24, fontSize: 12, color: C.soft, borderTop: `1px solid #d8c9a8`, whiteSpace: 'nowrap', overflow: 'hidden' }}>
+          <span>손님 <b style={{ color: C.ink }}>{s.guests.length}</b></span><span>오늘 <b style={{ color: C.ink }}>{s.todayGuests}</b>/{dailyGuests(s)}</span><span>자리 <b style={{ color: C.ink }}>{usables(s).length}</b></span><span>인기 <b style={{ color: C.ink }}>{popularitySum(s)}</b></span><span>직원 <b style={{ color: C.ink }}>{s.staff.length}</b></span>
+          <span style={{ flex: 1 }} />
+          {ready && <button style={{ ...btnOff, padding: '1px 6px', fontSize: 11, lineHeight: '16px' }} onClick={() => viewRef.current?.centerOn(getState())}><Ico name="home" size={11} /> 마당</button>}
         </div>
-        <div style={{ display: 'flex', gap: 6, padding: 6 }}>
+        <div style={{ display: 'flex', gap: 5, padding: 5 }}>
           {([['build', '건축', 'build'], ['guests', '손님층', 'guest'], ['info', '정보', 'report'], ['system', '시스템', 'settings']] as const).map(([k, name, ico]) => <button key={k} style={{ ...(win === k ? btnGold : btn), flex: 1, padding: '6px 0', fontSize: 14, position: 'relative', display: 'inline-flex', flexDirection: 'column', alignItems: 'center', gap: 2 }} onClick={() => { setWin(win === k ? null : k); setSelected(null); setFloorSel(null); setGuestSel(null); }}><Ico name={ico} size={18} />{name}{k === 'info' && canResearch && <span style={{ position: 'absolute', top: 4, right: 8, width: 10, height: 10, borderRadius: 5, background: C.red, border: '2px solid #fff8e8' }} />}</button>)}
         </div>
       </div>
@@ -196,6 +198,7 @@ export function App() {
       {chest && <RewardChest objective={chest} onClose={() => { const o = chest; setChest(null); const next = currentObjective(getState()); showDialogue({ speaker: { name: SPEAKER.samchun, portrait: 'samchun', expr: 'happy' }, lines: [`${o.text} — 해냈네! 상금 ${wonShort(o.reward)}은 통장에 넣어 뒀어.`, next ? `다음은 「${next.text}」. 상금은 ${wonShort(next.reward)}.` : '목표는 다 이뤘어. 이제 마음껏 키워 봐.'] }); }} />}
       {monthCard && s.lastMonth && <MonthCard s={s} onClose={() => setMonthCard(false)} />}
       {title && ready && <Title onStart={(fresh) => { setTitle(false); clearDialogues(); if (fresh) intro(getState().cafeName); else showDialogue({ speaker: { name: SPEAKER.samchun, portrait: 'samchun' }, lines: [`어서 와. ${getState().cafeName}, 오늘도 잘 부탁해.`] }); }} />}
+    </div>
     </div>
   );
 }
@@ -291,12 +294,18 @@ function FloorCard({ s, p, onClose, onMore }: { s: GameState; p: Pt; onClose: ()
     </div>
   );
 }
+/** 영수증 한 줄: 마지막 손님 (영상의 하단 띠) */
 function Receipts({ s }: { s: GameState }) {
-  const rs = s.receipts.slice(-2).reverse();
+  const r = s.receipts[s.receipts.length - 1];
+  const t = r ? GUEST_TYPES.find((g) => g.id === r.type) : null;
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 1, padding: '3px 8px', minHeight: 18 }}>
-      {rs.length === 0 && <span style={small}>손님이 오면 여기에 한 줄씩</span>}
-      {rs.map((r) => { const t = GUEST_TYPES.find((g) => g.id === r.type)!; return <div key={r.id} style={{ fontSize: 12, display: 'flex', gap: 8, alignItems: 'center' }}><Ico name={`mood_${r.mood}`} /><b>{t.name}</b><span style={{ color: r.fame > 0 ? C.green : r.fame < 0 ? C.red : C.soft }}>명성 {r.fame > 0 ? '+' : ''}{r.fame}</span><span style={{ color: C.gold }}>소지금 +{won(r.money)}</span></div>; })}
+    <div style={{ display: 'flex', gap: 8, alignItems: 'center', padding: '0 8px', height: 22, fontSize: 12, whiteSpace: 'nowrap', overflow: 'hidden' }}>
+      {!r || !t ? <span style={small}>손님이 다녀가면 여기에 영수증이 찍혀요</span> : <>
+        <Ico name={`mood_${r.mood}`} /><b>{t.name}</b>
+        <span style={{ color: C.wood }}>+{won(r.money)}</span>
+        <span style={{ color: r.fame > 0 ? C.green : r.fame < 0 ? C.red : C.soft }}>명성 {r.fame > 0 ? '+' : ''}{r.fame}</span>
+        <span style={{ ...small, marginLeft: 'auto' }}>오늘 {s.todayGuests}명 · {wonShort(s.todayIncome)}</span>
+      </>}
     </div>
   );
 }
