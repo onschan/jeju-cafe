@@ -54,10 +54,10 @@ function makeCandidate(s: GameState, ch: ChannelDef, i: number): Candidate {
 }
 export function canRecruit(s: GameState, id: string): ApplyResult {
   const ch = CHANNELS.find((x) => x.id === id);
-  if (!ch) return { ok: false, reason: '없는 채용 루트예요' };
-  if (s.hiring) return { ok: false, reason: '이미 채용 중이에요' };
+  if (!ch) return { ok: false, reason: '없는 루트' };
+  if (s.hiring) return { ok: false, reason: '채용 진행 중' };
   if (ch.needFame && s.fame < ch.needFame) return { ok: false, reason: `명성 ${ch.needFame}부터 쓸 수 있어요` };
-  if (s.money < ch.cost) return { ok: false, reason: '돈이 모자라요' };
+  if (s.money < ch.cost) return { ok: false, reason: '돈 부족' };
   return { ok: true };
 }
 export function recruit(s: GameState, id: string): void {
@@ -84,9 +84,9 @@ export function tickHiring(s: GameState): void {
 }
 export function canHire(s: GameState, cid: string): ApplyResult {
   const c = s.candidates.find((x) => x.id === cid);
-  if (!c) return { ok: false, reason: '없는 후보예요' };
+  if (!c) return { ok: false, reason: '없는 후보' };
   if (s.staff.length >= STAFF_MAX) return { ok: false, reason: `직원은 ${STAFF_MAX}명까지예요` };
-  if (s.money < c.wage) return { ok: false, reason: '첫 달 월급이 없어요' };
+  if (s.money < c.wage) return { ok: false, reason: '첫 달 월급 부족' };
   return { ok: true };
 }
 export function hire(s: GameState, cid: string): void {

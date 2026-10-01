@@ -4,8 +4,8 @@ import { INVESTS } from './data.ts';
 export function canInvest(s: GameState, id: string): ApplyResult {
   const d = INVESTS.find((i) => i.id === id);
   if (!d) return { ok: false, reason: '없는 투자예요' };
-  if (s.invested.includes(id)) return { ok: false, reason: '이미 했어요' };
-  if (s.money < d.cost) return { ok: false, reason: '돈이 모자라요' };
+  if (s.invested.includes(id)) return { ok: false, reason: '이미 함' };
+  if (s.money < d.cost) return { ok: false, reason: '돈 부족' };
   return { ok: true };
 }
 export function invest(s: GameState, id: string): void {

@@ -29,12 +29,12 @@ describe('땅과 바닥', () => {
   });
   it('자리·가게는 바닥 위에, 나무·바위는 잔디에, 장식은 어디든. 자리는 걷는 칸에 붙어야 한다', () => {
     const s = yard();
-    expect(canPlace(s, 'table_out', at(0, 0).x, at(0, 0).y).reason).toBe('바닥을 먼저 깔아요');
+    expect(canPlace(s, 'table_out', at(0, 0).x, at(0, 0).y).reason).toBe('바닥 먼저');
     expect(canPlace(s, 'tangerine_tree', at(0, 0).x, at(0, 0).y).ok).toBe(true);
     // 데크 두 줄 (0..3, 5..6) — (4,5)·(4,6)은 시작 올렛길이라 정류장과 이어진다
     apply(s, { type: 'placeLine', id: 'floor_wood', from: at(0, 5), to: at(3, 5) });
     apply(s, { type: 'placeLine', id: 'floor_wood', from: at(0, 6), to: at(3, 6) });
-    expect(canPlace(s, 'tangerine_tree', at(0, 6).x, at(0, 6).y).reason).toBe('나무·바위는 잔디에 심어요');
+    expect(canPlace(s, 'tangerine_tree', at(0, 6).x, at(0, 6).y).reason).toBe('잔디에만');
     expect(canPlace(s, 'deco_planter', at(0, 6).x, at(0, 6).y).ok).toBe(true);
     // 아랫줄을 테이블로 채워도 윗줄이 통로라 괜찮다
     for (const lx of [0, 1, 2, 3]) expect(apply(s, { type: 'place', id: 'table_out', x: at(lx, 6).x, y: at(lx, 6).y }).ok).toBe(true);
@@ -42,7 +42,7 @@ describe('땅과 바닥', () => {
     expect(canPlace(s, 'table_out', at(3, 5).x, at(3, 5).y).reason).toMatch(/통로가 막혀요/);
     expect(canPlace(s, 'deco_planter', at(3, 5).x, at(3, 5).y).reason).toMatch(/통로가 막혀요/);
     expect(canPlace(s, 'table_out', at(2, 5).x, at(2, 5).y).reason).toMatch(/통로가 막혀요/); // (0,5)·(1,5)가 끊긴다
-    expect(canPlace(s, 'table_out', at(0, 0).x, at(0, 0).y).reason).toBe('바닥을 먼저 깔아요');
+    expect(canPlace(s, 'table_out', at(0, 0).x, at(0, 0).y).reason).toBe('바닥 먼저');
   });
 });
 
@@ -142,7 +142,7 @@ describe('돈·연구·직원·투자·평가·목표', () => {
     s.research = first.cost;
     expect(apply(s, { type: 'unlock', id: first.id }).ok).toBe(true);
     expect(s.research).toBe(0);
-    expect(apply(s, { type: 'unlock', id: first.id }).reason).toBe('이미 열렸어요');
+    expect(apply(s, { type: 'unlock', id: first.id }).reason).toBe('이미 열림');
     expect(s.fx.some((f) => f.kind === 'unlock')).toBe(true);
   });
   it('채용: 공고를 내면 며칠 뒤 후보가 오고, 뽑으면 월급이 월말에 나간다. 담당이 맞아야 제값', () => {
@@ -152,7 +152,7 @@ describe('돈·연구·직원·투자·평가·목표', () => {
     const money = s.money;
     expect(apply(s, { type: 'recruit', channel: 'flyer' }).ok).toBe(true);
     expect(money - s.money).toBe(150_000);
-    expect(apply(s, { type: 'recruit', channel: 'flyer' }).reason).toBe('이미 채용 중이에요');
+    expect(apply(s, { type: 'recruit', channel: 'flyer' }).reason).toBe('채용 진행 중');
     run(s, DAY_MS * 2);
     expect(s.candidates.length).toBe(0);       // 아직 오는 중 (3일)
     run(s, DAY_MS);
@@ -173,8 +173,8 @@ describe('돈·연구·직원·투자·평가·목표', () => {
     const s = yard();
     expect(apply(s, { type: 'invest', id: 'ad_campaign' }).ok).toBe(true);
     expect(s.fame).toBe(30);
-    expect(apply(s, { type: 'invest', id: 'ad_campaign' }).reason).toBe('이미 했어요');
-    expect(apply(s, { type: 'buyParcel', id: 'nw' }).reason).toBe('내 땅과 붙어 있어야 해요');
+    expect(apply(s, { type: 'invest', id: 'ad_campaign' }).reason).toBe('이미 함');
+    expect(apply(s, { type: 'buyParcel', id: 'nw' }).reason).toBe('붙은 땅만');
     expect(apply(s, { type: 'buyParcel', id: 'north' }).ok).toBe(true);
     expect(apply(s, { type: 'buyParcel', id: 'nw' }).ok).toBe(true);
   });
@@ -262,7 +262,7 @@ describe('실내 시설', () => {
     apply(s, { type: 'placeLine', id: 'floor_wood', from: at(1, 4), to: at(3, 4) });
     apply(s, { type: 'placeLine', id: 'floor_wood', from: at(1, 5), to: at(3, 5) });
     apply(s, { type: 'placeLine', id: 'floor_wood', from: at(1, 6), to: at(3, 6) });
-    expect(canPlace(s, 'table_in', at(1, 6).x, at(1, 6).y).reason).toBe('벽으로 둘러싸인 실내 바닥에만 놓아요');
+    expect(canPlace(s, 'table_in', at(1, 6).x, at(1, 6).y).reason).toBe('실내 전용');
     expect(apply(s, { type: 'wallRect', id: 'wall_wood', from: at(1, 4), to: at(3, 6) }).ok).toBe(true);
     expect(apply(s, { type: 'place', id: 'table_in', x: at(1, 6).x, y: at(1, 6).y }).ok).toBe(true);
     const t = Object.values(s.facilities).find((f) => f.type === 'table_in')!;

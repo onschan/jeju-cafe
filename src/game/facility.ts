@@ -127,8 +127,8 @@ export function placeFacility(s: GameState, id: string, x: number, y: number): F
 }
 export function removeFacility(s: GameState, fid: string): ApplyResult {
   const f = s.facilities[fid];
-  if (!f) return { ok: false, reason: '없어진 시설이에요' };
-  if (s.guests.some((g) => g.target === fid && g.phase !== 'out')) return { ok: false, reason: '손님이 쓰고 있어요' };
+  if (!f) return { ok: false, reason: '없는 시설' };
+  if (s.guests.some((g) => g.target === fid && g.phase !== 'out')) return { ok: false, reason: '사용 중' };
   for (const p of footOf(s, fid)) cellAt(s, p.x, p.y).objectId = null;
   delete s.facilities[fid];
   s.layoutRev++;
@@ -139,7 +139,7 @@ export function placeAndBurst(s: GameState, id: string, x: number, y: number): A
   const c = canPlace(s, id, x, y);
   if (!c.ok) return c;
   const d = facilityDef(id);
-  if (s.money < d.cost) return { ok: false, reason: '돈이 모자라요' };
+  if (s.money < d.cost) return { ok: false, reason: '돈 부족' };
   s.money -= d.cost;
   s.month.spent += d.cost;
   if (isFloorDef(d)) { layFloor(s, d.floor!, x, y); return { ok: true }; }

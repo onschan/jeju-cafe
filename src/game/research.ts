@@ -15,8 +15,8 @@ export function unlockables(s: GameState): Unlockable[] {
 }
 export function canUnlock(s: GameState, id: string): ApplyResult {
   const u = unlockables(s).find((x) => x.id === id);
-  if (!u) return { ok: false, reason: '연구할 게 아니에요' };
-  if (u.done) return { ok: false, reason: '이미 열렸어요' };
+  if (!u) return { ok: false, reason: '연구 대상 아님' };
+  if (u.done) return { ok: false, reason: '이미 열림' };
   if (s.research < u.cost) return { ok: false, reason: `연구 ${u.cost} 필요` };
   return { ok: true };
 }
@@ -30,10 +30,10 @@ export function unlock(s: GameState, id: string): void {
 }
 export function canLevelUp(s: GameState, fid: string): ApplyResult {
   const f = s.facilities[fid];
-  if (!f) return { ok: false, reason: '없어진 시설이에요' };
+  if (!f) return { ok: false, reason: '없는 시설' };
   const d = facilityDef(f.type);
-  if (d.tab === 'env') return { ok: false, reason: '환경은 단계가 없어요' };
-  if (f.level >= LEVEL_MAX) return { ok: false, reason: '최고 단계예요' };
+  if (d.tab === 'env') return { ok: false, reason: '단계 없음' };
+  if (f.level >= LEVEL_MAX) return { ok: false, reason: '최고 단계' };
   const cost = LEVEL_COST[f.level]!;
   if (s.research < cost) return { ok: false, reason: `연구 ${cost} 필요` };
   if (s.money < levelMoney(s, fid)) return { ok: false, reason: `돈 ₩${levelMoney(s, fid).toLocaleString()} 필요` };
