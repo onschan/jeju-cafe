@@ -317,7 +317,16 @@ export class View {
     const c = new Container();
     c.zIndex = 1e6;
     const g = new Graphics();
-    if (isFloorDef(d)) {
+    if (d.sub === 'wall' && ghost.line) {
+      // 벽 줄: 칸마다 되는지 보고 벽 그림을 늘어놓는다
+      const wt = hasAssets() ? peekTex(spriteName.isoObject(Math.abs(ghost.line.to.x - ghost.line.from.x) >= Math.abs(ghost.line.to.y - ghost.line.from.y) ? 'wall_ne' : 'wall_nw')) : null;
+      for (const p of lineCells(ghost.line.from, ghost.line.to)) {
+        const ok = canPlace(state, ghost.id, p.x, p.y).ok;
+        const { sx, sy } = cellToScreen(p.x, p.y);
+        g.poly([sx, sy, sx + ISO_W / 2, sy + ISO_H / 2, sx, sy + ISO_H, sx - ISO_W / 2, sy + ISO_H / 2]).fill({ color: ok ? 0x4fd16a : 0xd94b4b, alpha: 0.45 });
+        if (wt && ok) { const sp = new Sprite(wt); sp.anchor.set(0.5, 1); const a = footAnchor(p.x, p.y, 1, 1); sp.position.set(a.sx, a.sy); sp.alpha = 0.7; c.addChild(sp); }
+      }
+    } else if (isFloorDef(d)) {
       const cells = ghost.line ? lineCells(ghost.line.from, ghost.line.to) : [{ x: ghost.x, y: ghost.y }];
       for (const p of cells) {
         const ok = canLayFloor(state, d.floor!, p.x, p.y).ok;
@@ -383,6 +392,8 @@ function wallSprite(state: GameState, f: Facility): string {
 }
 /** 놓을 수 있나 (고스트 색) — 사림 규칙 그대로 */
 export function ghostOf(state: GameState, id: string, x: number, y: number, line?: { from: Pt; to: Pt }): Ghost {
+  const d = facilityDef(id);
+  if (d.sub === 'wall' && line) { const cells = lineCells(line.from, line.to); const oks = cells.map((p) => canPlace(state, id, p.x, p.y)); const ok = oks.some((r) => r.ok); return { id, x, y, ok, reason: ok ? undefined : oks[0]?.reason, line }; }
   const r = canPlace(state, id, x, y);
   return { id, x, y, ok: r.ok, reason: r.reason, line };
 }

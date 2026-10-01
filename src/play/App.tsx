@@ -12,7 +12,7 @@ import { nextHint } from './hints';
 import { EndingScreen } from './Ending';
 import { unlockAudio, audioReady, sfx, bgm, setBgmLayer, isMuted, setMuted, getBgmVolume, getSfxVolume, setBgmVolume, setSfxVolume } from './audio';
 import { guestAccs } from './guestLook';
-import { FACILITIES, GUEST_TYPES, MENUS, INVESTS, facilityDef, isFloorDef, isUsable, sheetOf, usables, popularitySum, dailyGuests, unlockables, canUnlock, canLevelUp, LEVEL_COST, levelMoney, currentObjective, OBJECTIVES, seasonOf, canHire, upkeepTotal, wagesTotal, myScore, rivalScore, RIVALS, lineCells, canLayFloor, parcelAt, cellAt, parcelAdjacent, type GameState, type Tab, type Facility, type Pt, type Parcel, type Objective, type Guest } from '../game/index.ts';
+import { FACILITIES, GUEST_TYPES, MENUS, INVESTS, facilityDef, isFloorDef, isUsable, sheetOf, usables, popularitySum, dailyGuests, unlockables, canUnlock, canLevelUp, LEVEL_COST, levelMoney, currentObjective, OBJECTIVES, seasonOf, canHire, upkeepTotal, wagesTotal, myScore, rivalScore, RIVALS, lineCells, canLayFloor, parcelAt, cellAt, parcelAdjacent, type GameState, type Tab, type Facility, type Pt, type Parcel, type Objective, type Guest, previewPlace } from '../game/index.ts';
 
 type Win = 'build' | 'guests' | 'info' | 'system' | null;
 /** 하단 띠(영수증 2줄 + 요약 + 메뉴) 높이 */
@@ -20,6 +20,8 @@ const BOTTOM_H = 118;
 const ABOVE_BOTTOM = BOTTOM_H + MESSAGE_LINE_H + 4;
 const SEASON_KO = { spring: '봄', summer: '여름', autumn: '가을', winter: '겨울' } as const;
 const TAB_KO: Record<Tab, string> = { env: '환경', seat: '시설', shop: '가게' };
+/** 줄로 놓는 것: 바닥·벽 (탭·드래그로 줄을 잡는다) */
+const isLine = (id: string) => { const d = facilityDef(id); return isFloorDef(d) || d.sub === 'wall'; };
 
 export function App() {
   const s = useGame(); useRev();
@@ -115,8 +117,7 @@ export function App() {
         const id = placingRef.current;
         if (id) {
           // 탭은 자리만 잡는다 — 놓는 건 띠의 「놓기/깔기」로 (탭마다 놓이면 실수가 잦다)
-          const d = facilityDef(id);
-          setGhost(isFloorDef(d) ? ghostOf(st, id, x, y, { from: { x, y }, to: { x, y } }) : ghostOf(st, id, x, y));
+          setGhost(isLine(id) ? ghostOf(st, id, x, y, { from: { x, y }, to: { x, y } }) : ghostOf(st, id, x, y));
           return;
         }
         const p = parcelAt(st, x, y);
@@ -127,7 +128,7 @@ export function App() {
         setSelected(cell?.objectId ?? null);
         setFloorSel(cell && !cell.objectId && cell.floor && !g ? { x, y } : null); // 손님이 서 있으면 손님 팝업이 먼저
       },
-      dragCapture: (x, y) => { const id = placingRef.current; if (!id || !isFloorDef(facilityDef(id))) return false; lineFrom.current = { x, y }; setGhost(ghostOf(getState(), id, x, y, { from: { x, y }, to: { x, y } })); return true; },
+      dragCapture: (x, y) => { const id = placingRef.current; if (!id || !isLine(id)) return false; lineFrom.current = { x, y }; setGhost(ghostOf(getState(), id, x, y, { from: { x, y }, to: { x, y } })); return true; },
       onDragCell: (x, y) => { const id = placingRef.current; const from = lineFrom.current; if (!id || !from) return; setGhost(ghostOf(getState(), id, x, y, { from, to: { x, y } })); },
       onBusStop: () => { if (!getState().clock.speed) return; sfx('bus'); },
       onDragEnd: () => { lineFrom.current = null; }, // 드래그는 줄 미리보기까지만, 깔기는 띠에서
@@ -163,10 +164,10 @@ export function App() {
       {/* 배치 모드 띠 */}
       {placing && <PlacingBar id={placing} ghost={ghost} onDone={() => { setPlacing(null); setGhost(null); }} onConfirm={() => {
         const g = ghost; if (!g) return; const d = facilityDef(placing);
-        const r = isFloorDef(d) && g.line ? dispatch({ type: 'placeLine', id: placing, from: g.line.from, to: g.line.to }) : dispatch({ type: 'place', id: placing, x: g.x, y: g.y });
+        const r = isLine(placing) && g.line ? dispatch({ type: 'placeLine', id: placing, from: g.line.from, to: g.line.to }) : dispatch({ type: 'place', id: placing, x: g.x, y: g.y });
         if (!r.ok) { flash(r.reason); return; }
         sfx(isFloorDef(d) ? 'plant' : 'place');
-        setGhost(isFloorDef(d) ? ghostOf(getState(), placing, g.x, g.y, g.line) : ghostOf(getState(), placing, g.x, g.y)); // 같은 자리는 이제 막히니 빨갛게 — 다음 탭으로 옮긴다
+        setGhost(isLine(placing) ? ghostOf(getState(), placing, g.x, g.y, g.line) : ghostOf(getState(), placing, g.x, g.y)); // 같은 자리는 이제 막히니 빨갛게 — 다음 탭으로 옮긴다
       }} />}
       {/* 삼춘 메시지 줄 (알림·신발매·거절 이유) */}
       {ready && <MessageLine bottom={BOTTOM_H} flash={toast} />}
@@ -203,14 +204,36 @@ function PlacingBar({ id, ghost, onDone, onConfirm }: { id: string; ghost: Ghost
   const d = facilityDef(id);
   const floor = isFloorDef(d);
   const n = ghost?.line ? lineCells(ghost.line.from, ghost.line.to).filter((p) => canLayFloor(getState(), d.floor!, p.x, p.y).ok).length : 1;
-  const can = !!ghost && (floor ? n > 0 : ghost.ok) && getState().money >= d.cost * (floor ? n : 1);
+  const wall = d.sub === 'wall';
+  const pv = ghost && !floor ? previewPlace(getState(), id, ghost.x, ghost.y, wall ? ghost.line : undefined) : null;
+  const count = floor ? n : pv?.cells ?? 1;
+  const can = !!ghost && (floor ? n > 0 : ghost.ok) && getState().money >= d.cost * count;
+  // 기대효과 한 줄 — 그 자리에 놓으면 어떻게 되나
+  const effect = (() => {
+    if (!ghost || !ghost.ok) return null;
+    if (floor) return `${n}칸 · 그 위에 자리·가게를 놓을 수 있어요`;
+    if (!pv) return null;
+    const bits: string[] = [];
+    if (pv.total !== undefined) {
+      const parts = [`기본 ${pv.base}`]; if (pv.bonus) parts.push(`상성 +${pv.bonus}`); if (pv.scenery) parts.push(`경치 +${pv.scenery}`); if (pv.season) parts.push(`겨울 ${pv.season}`);
+      bits.push(`인기 ${pv.total} (${parts.join(' ')})${pv.fee ? ` · 요금 ${won(pv.fee)}` : ''}${pv.indoor ? ' · 실내' : ''}`);
+    }
+    if (d.scenery) bits.push(pv.sceneryTouched > 0 ? `경치 +${d.scenery} → 자리·가게 ${pv.sceneryTouched}곳 인기 합 +${pv.popDelta}` : `경치 +${d.scenery} · 반경 2에 자리·가게가 없어요`);
+    if (wall) bits.push(pv.indoorGain > 0 ? `둘러싸여 실내가 되는 자리·가게 ${pv.indoorGain}곳 (겨울 −6 면함)` : `${pv.cells}칸 · 아직 둘러싸이진 않아요`);
+    if (pv.pairs.length) bits.push(`상성 UP: ${pv.pairs.join('·')}`);
+    if (pv.guestsDelta > 0) bits.push(`하루 손님 +${pv.guestsDelta}`);
+    return bits.join('  ·  ');
+  })();
   return (
-    <div style={{ position: 'absolute', top: 36, left: 8, right: 8, ...panel, padding: '6px 8px', fontSize: 13, display: 'flex', alignItems: 'center', gap: 8 }}>
-      <Sprite id={id} size={28} /><b>{d.name}</b>
-      <span style={{ flex: 1, minWidth: 0 }}>{floor ? (ghost?.line ? `${n}칸 · ${won(d.cost * n)}` : '탭하거나 드래그해서 자리를 잡아요') : !ghost ? `탭해서 자리를 잡아요 · ${won(d.cost)}` : !ghost.ok ? <span style={{ color: C.red }}>{ghost.reason}</span> : won(d.cost)}</span>
-      <span style={small}>{wonShort(getState().money)}</span>
-      <button style={can ? btnGold : btnOff} disabled={!can} onClick={onConfirm}>{floor ? '깔기' : '놓기'}</button>
-      <button style={btnOff} onClick={onDone}>끝</button>
+    <div style={{ position: 'absolute', top: 36, left: 8, right: 8, ...panel, padding: '6px 8px', fontSize: 13, display: 'grid', gap: 4 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <Sprite id={id} size={28} /><b>{d.name}</b>
+        <span style={{ flex: 1, minWidth: 0 }}>{floor || wall ? (ghost?.line ? `${count}칸 · ${won(d.cost * count)}` : '탭하거나 드래그해서 줄을 잡아요') : !ghost ? `탭해서 자리를 잡아요 · ${won(d.cost)}` : !ghost.ok ? <span style={{ color: C.red }}>{ghost.reason}</span> : won(d.cost)}</span>
+        <span style={small}>{wonShort(getState().money)}</span>
+        <button style={can ? btnGold : btnOff} disabled={!can} onClick={onConfirm}>{floor ? '깔기' : wall ? '세우기' : '놓기'}</button>
+        <button style={btnOff} onClick={onDone}>끝</button>
+      </div>
+      {effect && <div style={{ fontSize: 12, color: C.green, borderTop: '1px solid #d8c9a8', paddingTop: 4 }}>{effect}</div>}
     </div>
   );
 }
@@ -293,13 +316,13 @@ function Sprite({ id, size = 56 }: { id: string; size?: number }) {
 function Ico({ name, size = 14 }: { name: string; size?: number }) { return <img className="px" src={assetUrl(`assets/icons/icon_${name}.png`)} width={size} height={size} alt="" style={{ imageRendering: 'pixelated', verticalAlign: 'middle' }} />; }
 /** 카탈로그 = 3열 그림 격자 (영상 12:20). 잠긴 칸은 까맣게. 고른 것의 이름·값은 아래 한 줄. */
 function BuildWindow({ s, onPick, onClose }: { s: GameState; onPick: (id: string) => void; onClose: () => void }) {
-  const [tab, setTab] = useState<Tab>('seat');
+  const [tab, setTab] = useState<Tab | 'ground'>('seat');
   const [pick, setPick] = useState<string | null>(null);
-  const items = FACILITIES.filter((d) => d.tab === tab);
+  const items = FACILITIES.filter((d) => tab === 'ground' ? d.sub === 'floor' || d.sub === 'wall' : d.tab === tab && d.sub !== 'floor' && d.sub !== 'wall');
   const d = pick ? facilityDef(pick) : null;
   const open = d ? s.unlocked.facilities.includes(d.id) : false;
   return (
-    <Window title="건축" onClose={onClose} tabs={(['env', 'seat', 'shop'] as Tab[]).map((t) => <button key={t} style={{ ...(tab === t ? btnGold : btnOff), padding: '2px 8px', fontSize: 13 }} onClick={() => { setTab(t); setPick(null); }}>{TAB_KO[t]}</button>)}>
+    <Window title="건축" onClose={onClose} tabs={(['ground', 'env', 'seat', 'shop'] as (Tab | 'ground')[]).map((t) => <button key={t} style={{ ...(tab === t ? btnGold : btnOff), padding: '2px 6px', fontSize: 13 }} onClick={() => { setTab(t); setPick(null); }}>{t === 'ground' ? '바닥·벽' : TAB_KO[t]}</button>)}>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 6 }}>
         {items.map((it) => { const isOpen = s.unlocked.facilities.includes(it.id); const on = pick === it.id; return (
           <div key={it.id} onClick={() => setPick(it.id)} style={{ ...(isOpen ? tile : tileLocked), outline: on ? `3px solid ${C.gold}` : 'none' }}>
@@ -311,10 +334,10 @@ function BuildWindow({ s, onPick, onClose }: { s: GameState; onPick: (id: string
         <Sprite id={d.id} size={48} />
         <div style={{ flex: 1, minWidth: 0, fontSize: 13 }}>
           <b>{open ? d.name : '???'}</b> <span style={small}>{d.w}×{d.h}</span>
-          <div style={small}>{open ? `${won(d.cost)} · 유지 ${won(d.upkeep)}/월${d.pop !== undefined ? ` · 인기 ${d.pop}` : ''}${d.scenery ? ` · 경치 +${d.scenery}` : ''}${d.fee ? ` · 요금 ${won(d.fee)}` : ''}${d.sub === 'wall' ? ' · 둘러싸면 실내' : ''}` : `연구 ${d.unlock}로 열린다 (정보 › 연구)`}</div>
+          <div style={small}>{open ? `${won(d.cost)} · 유지 ${won(d.upkeep)}/월${d.pop !== undefined ? ` · 인기 ${d.pop}` : ''}${d.scenery ? ` · 경치 +${d.scenery}` : ''}${d.fee ? ` · 요금 ${won(d.fee)}` : ''}${d.sub === 'wall' ? ' · 드래그로 한 줄 · 둘러싸면 실내(겨울 −6 면함)' : ''}` : `연구 ${d.unlock}로 열린다 (정보 › 연구)`}</div>
           {open && d.tags && <div style={small}>{d.tags.map((t) => GUEST_TYPES.find((g) => g.id === t)?.name).join('·')}에게 인기</div>}
         </div>
-        {open && <button style={s.money >= d.cost ? btnGold : btnOff} onClick={() => { if (s.money >= d.cost) onPick(d.id); }}>{d.sub === 'floor' ? '깔기' : '놓기'}</button>}
+        {open && <button style={s.money >= d.cost ? btnGold : btnOff} onClick={() => { if (s.money >= d.cost) onPick(d.id); }}>{d.sub === 'floor' ? '깔기' : d.sub === 'wall' ? '세우기' : '놓기'}</button>}
       </div>}
     </Window>
   );

@@ -20,6 +20,11 @@ function applyInner(s: GameState, a: Action): ApplyResult {
     }
     case 'placeLine': {
       const d = facilityDef(a.id);
+      if (d.sub === 'wall') { // 벽·울타리는 줄로 세운다: 되는 칸만, 칸마다 값
+        let n = 0; let fail: string | undefined;
+        for (const p of lineCells(a.from, a.to)) { const r = placeAndBurst(s, a.id, p.x, p.y); if (r.ok) n++; else fail = r.reason; }
+        return n > 0 ? { ok: true } : { ok: false, reason: fail ?? '세울 칸이 없어요' };
+      }
       if (!isFloorDef(d)) return { ok: false, reason: '바닥만 줄로 깔아요' };
       const cells = lineCells(a.from, a.to).filter((p) => canLayFloor(s, d.floor!, p.x, p.y).ok);
       if (cells.length === 0) return { ok: false, reason: '깔 칸이 없어요' };
