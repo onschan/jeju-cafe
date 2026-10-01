@@ -32,7 +32,7 @@ export function canLevelUp(s: GameState, fid: string): ApplyResult {
   const f = s.facilities[fid];
   if (!f) return { ok: false, reason: '없는 시설' };
   const d = facilityDef(f.type);
-  if (d.tab === 'env') return { ok: false, reason: '단계 없음' };
+  if (d.tab === 'env' && !d.station) return { ok: false, reason: '단계 없음' };
   if (f.level >= LEVEL_MAX) return { ok: false, reason: '최고 단계' };
   const cost = LEVEL_COST[f.level]!;
   if (s.research < cost) return { ok: false, reason: `연구 ${cost} 필요` };

@@ -1,6 +1,6 @@
 import type { GameState } from './types.ts';
 import { newClock } from './clock.ts';
-import { makeCells, makeParcels, HOME, BUS_STOP, wallRect } from './world.ts';
+import { makeCells, makeParcels, HOME, BUS_STOP, wallRect, canPlace } from './world.ts';
 import { FACILITIES, MENUS, GUEST_TYPES } from './data.ts';
 import { noteStartUnlocked } from './objectives.ts';
 import { layFloor } from './world.ts';
@@ -37,14 +37,16 @@ export function newGame(seed: number, preset: Preset = 'blank'): GameState {
   for (let dy = 0; dy < 2; dy++) for (let dx = 0; dx < 3; dx++) layFloor(s, 'wood', cx + dx, HOME.y + 3 + dy);
   placeFacility(s, 'table_out', cx + 1, HOME.y + 3);
   if (preset === 'starter') {
-    // 기초 세팅: 장사가 바로 되는 한 벌 — 데크 5×3, 자리 셋, 나무·꽃
-    for (let dy = 0; dy < 3; dy++) for (let dx = 0; dx < 5; dx++) layFloor(s, 'wood', cx + dx - 1, HOME.y + 3 + dy);
-    placeFacility(s, 'table_out', cx - 1, HOME.y + 3);
-    placeFacility(s, 'table_out', cx + 3, HOME.y + 4);
-    placeFacility(s, 'tangerine_tree', cx + 5, HOME.y + 3);
-    placeFacility(s, 'flower_bed', cx - 2, HOME.y + 4);
-    // 벽도 한 벌: 데크 둘레를 나무 판벽으로 (올렛길 쪽은 문으로 비워진다)
-    wallRect(s, 'wall_wood', { x: cx - 1, y: HOME.y + 3 }, { x: cx + 3, y: HOME.y + 5 });
+    // 기초 세팅: 장사가 바로 되는 한 벌 — 데크 6×4를 벽으로 두르고 자리 셋 · 카운터 · 제조대 · 나무 · 꽃
+    const y0 = HOME.y + 2;
+    for (let dy = 0; dy < 4; dy++) for (let dx = -1; dx < 5; dx++) layFloor(s, 'wood', cx + dx, y0 + dy);
+    for (let y = BUS_STOP.y - 1; y >= y0 + 3; y--) layFloor(s, 'path', cx, y);   // 문이 되는 올렛길
+    wallRect(s, 'wall_wood', { x: cx - 1, y: y0 }, { x: cx + 4, y: y0 + 3 });
+    const put = (id: string, x: number, y: number) => { if (canPlace(s, id, x, y).ok) placeFacility(s, id, x, y); };
+    put('table_out', cx - 1, y0); put('table_out', cx + 1, y0); put('table_out', cx + 3, y0);
+    put('counter', cx + 3, y0 + 2);     // 2×2
+    put('prep_bar', cx - 1, y0 + 2);
+    put('tangerine_tree', cx + 6, y0 + 1); put('flower_bed', cx - 3, y0 + 2);
   }
   noteStartUnlocked(s);
   return s;
