@@ -65,7 +65,7 @@ function DemoBackdrop() {
   const ref = useRef<HTMLCanvasElement>(null);
   useEffect(() => {
     let sheet: SheetFrames | null = null; let dead = false;
-    const draw = () => { const c = ref.current; if (!c) return; const p = c.parentElement!; c.width = Math.ceil(p.clientWidth / 2); c.height = Math.ceil(p.clientHeight / 2); drawDemo(c, sheet); };
+    const draw = () => { const c = ref.current; if (!c) return; const p = c.parentElement!; const k = p.clientWidth < 520 ? 1 : 2; c.width = Math.ceil(p.clientWidth / k); c.height = Math.ceil(p.clientHeight / k); drawDemo(c, sheet); };
     draw();
     void loadSheet().then((s) => { if (dead) return; sheet = s; draw(); });
     window.addEventListener('resize', draw);
@@ -88,6 +88,15 @@ const bigBtn: React.CSSProperties = { ...btn, width: '100%', minHeight: 46, font
 
 /** 첫 화면. onStart(fresh): 이어하기(false) · 새 게임(true) */
 export function Title({ onStart, onReplayIntro, onNew }: { onStart: (fresh: boolean) => void; onReplayIntro: () => void; onNew: (name: string, preset: 'tutorial' | 'starter') => void }) {
+  // 폰에서 키보드가 올라오면 보이는 높이가 줄어든다 — 그 높이에 맞춰야 단추가 안 가린다
+  const [vh, setVh] = useState<number | null>(null);
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const fit = () => setVh(vv.height);
+    fit(); vv.addEventListener('resize', fit); vv.addEventListener('scroll', fit);
+    return () => { vv.removeEventListener('resize', fit); vv.removeEventListener('scroll', fit); };
+  }, []);
   const [naming, setNaming] = useState(false);
   const [name, setName] = useState('우리 카페');
   const [settings, setSettings] = useState(false);
@@ -96,12 +105,12 @@ export function Title({ onStart, onReplayIntro, onNew }: { onStart: (fresh: bool
     <div onPointerDownCapture={() => unlockAudio()} style={{ position: 'absolute', inset: 0, zIndex: 50, overflow: 'hidden', background: '#15110c' }}>
       <DemoBackdrop />
       <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, rgba(10,8,5,0.12) 0%, rgba(10,8,5,0.55) 65%)' }} />
-      <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'space-between', padding: 'calc(34px + env(safe-area-inset-top)) 22px calc(22px + env(safe-area-inset-bottom))' }}>
-        <div style={sign}>
+      <div style={{ position: 'absolute', left: 0, right: 0, top: 0, height: vh ?? '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: 'calc(24px + env(safe-area-inset-top)) 22px calc(16px + env(safe-area-inset-bottom))', overflowY: 'auto' }}>
+        <div style={{ ...sign, flex: 'none' }}>
           <div style={logo}>제주 카페<br />이야기</div>
           <div style={{ textAlign: 'center', fontSize: 12, color: '#fff5dc', marginTop: 6, textShadow: `1px 1px 0 ${WOOD}` }}>귀농 카페 경영 시뮬레이션</div>
         </div>
-        <div style={{ ...panel, width: '100%', maxWidth: 300, display: 'grid', gap: 6, padding: 10 }}>
+        <div style={{ ...panel, width: '100%', maxWidth: 300, display: 'grid', gap: 6, padding: 10, flex: 'none' }}>
           {!naming ? <>
             {hadSave && <button style={{ ...bigBtn, ...btnGold }} onClick={() => { sfx('tap'); onStart(false); }}>이어하기</button>}
             <button style={bigBtn} onClick={() => { sfx('tap'); setNaming(true); }}>새 게임</button>
@@ -109,10 +118,10 @@ export function Title({ onStart, onReplayIntro, onNew }: { onStart: (fresh: bool
             <div style={{ ...small, textAlign: 'center' }}>바닥을 깔고, 자리를 놓고, 손님을 맞는다</div>
           </> : <>
             <div style={{ fontSize: 13 }}>카페 이름</div>
-            <input autoFocus value={name} maxLength={12} onChange={(e) => setName(e.target.value)} style={{ fontFamily: 'inherit', fontSize: 16, padding: 6, textAlign: 'center' }} />
+            <input autoFocus value={name} maxLength={12} onChange={(e) => setName(e.target.value)} onFocus={(e) => setTimeout(() => e.target.closest('div')?.scrollIntoView({ block: 'center', behavior: 'smooth' }), 250)} style={{ fontFamily: 'inherit', fontSize: 16, padding: 6, textAlign: 'center' }} />
             <div style={{ ...small, marginTop: 2 }}>어떻게 시작할까요?</div>
             <button style={{ ...bigBtn, ...btnGold }} onClick={() => onNew(name, 'tutorial')}>차근차근 (따라 하기)<div style={{ ...small, color: C.ink, fontSize: 11 }}>빈 마당에서 7단계로 배우며</div></button>
-            <button style={bigBtn} onClick={() => onNew(name, 'starter')}>기본 세팅으로 바로<div style={{ ...small, color: '#fff8e8', fontSize: 11 }}>데크·자리 3개·벽·나무가 놓인 채로</div></button>
+            <button style={bigBtn} onClick={() => onNew(name, 'starter')}>기본 세팅으로 바로<div style={{ ...small, color: '#fff8e8', fontSize: 11 }}>벽·자리·카운터·제조대까지 차려진 채로</div></button>
             <button style={{ ...btnOff, minHeight: 36 }} onClick={() => setNaming(false)}>뒤로</button>
           </>}
         </div>
