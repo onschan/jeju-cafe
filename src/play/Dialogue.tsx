@@ -44,12 +44,13 @@ function DialogueBox({ req, page }: { req: DialogueReq; page: number }) {
             <TypedLines lines={pageLines(req, page)} done={typed} onDone={() => setTyped(true)} />
           </div>
         </div>
+        {/* 선택지는 한 줄에 하나씩 꽉 차게 — 손가락으로 고르기 쉽게 */}
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6, flexWrap: 'wrap' }}>
           {!typed || !last
-            ? <button style={btn} onClick={tap}>{typed ? '다음 ▶' : '▶'}</button>
+            ? <button style={{ ...btn, minWidth: 96, minHeight: 40 }} onClick={tap}>{typed ? '다음 ▶' : '▶'}</button>
             : choices
-              ? choices.map((c) => <button key={c.label} style={btnGold} onClick={() => closeDialogue(c)}>{c.label}</button>)
-              : <button style={btnGold} onClick={() => closeDialogue()}>알겠다</button>}
+              ? <div style={{ display: 'grid', gap: 6, width: '100%' }}>{choices.map((c) => <button key={c.label} style={{ ...btnGold, minHeight: 42, fontSize: 14, textAlign: 'left', padding: '0 12px' }} onClick={() => closeDialogue(c)}>{c.label}</button>)}</div>
+              : <button style={{ ...btnGold, minWidth: 96, minHeight: 40 }} onClick={() => closeDialogue()}>알겠다</button>}
         </div>
       </div>
     </div>

@@ -90,7 +90,7 @@ function delta(cur: number, prev: number | null, money = false): string {
   return `${d > 0 ? '▲' : '▼'}${money ? wonShort(Math.abs(d)).replace('₩', '') : Math.abs(d)}`;
 }
 /** 하루가 끝나면(24시) 3초 동안 「오늘 장사」 한 장 — 손님·매출, 어제 대비 */
-export function DaySummary({ today, prev, bottom }: { today: { guests: number; income: number }; prev: { guests: number; income: number } | null; bottom: number }) {
+export function DaySummary({ today, prev, bottom }: { today: { guests: number; income: number }; prev: { guests: number; income: number } | null; bottom: number | string }) {
   const rows = [
     { label: '손님', value: `${today.guests}명`, d: delta(today.guests, prev?.guests ?? null), up: !prev || today.guests >= prev.guests },
     { label: '매출', value: wonShort(today.income), d: delta(today.income, prev?.income ?? null, true), up: !prev || today.income >= prev.income },
@@ -106,7 +106,7 @@ export function DaySummary({ today, prev, bottom }: { today: { guests: number; i
 // ---------- 삼춘 메시지 줄 ----------
 export const MESSAGE_LINE_H = 24;
 /** 하단 바 바로 위 한 줄: 삼춘 초상 + 마지막 알림. 3초 뒤 회색으로. 탭하면 최근 것들이 펼쳐진다. */
-export function MessageLine({ bottom, flash }: { bottom: number; flash: string | null }) {
+export function MessageLine({ bottom, flash }: { bottom: number | string; flash: string | null }) {
   const [open, setOpen] = useState(false);
   const [, tick] = useState(0);
   useEffect(() => { const t = setInterval(() => tick((n) => n + 1), 1000); return () => clearInterval(t); }, []);

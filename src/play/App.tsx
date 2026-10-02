@@ -8,6 +8,7 @@ import { assetUrl } from './assetUrl';
 import { DialogueHost } from './Dialogue';
 import { showDialogue, clearDialogues, useDialogue, SPEAKER } from './dialogueStore';
 import { RewardChest, MonthCard, DaySummary, MessageLine, Portrait, guestTypeFace, DAY_CARD_MS, MESSAGE_LINE_H } from './cards';
+import { useMetrics, cssVars } from './layout';
 import { nextHint } from './hints';
 import { tutorialStep, TUTORIAL } from './tutorial';
 import { IntroScreen, hasSeenIntro } from './Intro';
@@ -19,8 +20,9 @@ import { FACILITIES, GUEST_TYPES, MENUS, INVESTS, facilityDef, isFloorDef, isUsa
 
 type Win = 'build' | 'guests' | 'ops' | 'cafe' | 'system' | null;
 /** 하단 띠(영수증 2줄 + 요약 + 메뉴) 높이 */
-const BOTTOM_H = 22 + 24 + 58 + 3;
-const ABOVE_BOTTOM = BOTTOM_H + MESSAGE_LINE_H + 4;
+/** 아래 띠·창 자리는 기기 치수에 따라 바뀐다 — 루트의 CSS 변수로 내려 준다 (layout.ts) */
+const ABOVE_BOTTOM = 'var(--above)';
+const TOP_SLOT = 'var(--top)';
 const SEASON_KO = { spring: '봄', summer: '여름', autumn: '가을', winter: '겨울' } as const;
 const TAB_KO: Record<Tab, string> = { env: '환경', seat: '시설', shop: '가게' };
 /** 줄로 놓는 것: 바닥·벽 (탭·드래그로 줄을 잡는다) */
@@ -231,34 +233,44 @@ export function App() {
   }, []);
   function flash(text?: string) { if (!text) return; sfx('error'); setToast(text); window.setTimeout(() => setToast((t) => (t === text ? null : t)), 1800); }
 
+  const m = useMetrics();
   const obj = currentObjective(s);
   const canResearch = unlockables(s).some((u) => !u.done && s.research >= u.cost);
   const opsBadge = canResearch || s.candidates.length > 0 || (s.staff.length === 0 && usables(s).length >= 3);
   const sel = selected ? s.facilities[selected] ?? null : null;
   const fontStyle: CSSProperties = { fontFamily: 'Galmuri11, system-ui, sans-serif' };
   return (
-    <div style={{ position: 'fixed', inset: 0, background: '#15110c', display: 'flex', justifyContent: 'center', ...fontStyle, userSelect: 'none' }}>
+    <div style={{ position: 'fixed', inset: 0, background: '#15110c', display: 'flex', justifyContent: 'center', ...fontStyle, userSelect: 'none', ...cssVars(m) } as CSSProperties}>
     {/* 폰 한 판 폭으로 가운데 고정 — 넓은 화면에서 창이 끝까지 늘어나지 않게 */}
     <div style={{ position: 'relative', width: 'min(100vw, 520px)', height: '100%', background: C.dark, overflow: 'hidden', boxShadow: '0 0 0 2px #4a2f16' }}>
       <div ref={hostRef} style={{ position: 'absolute', inset: 0 }} />
       {/* 상단 바 */}
-      <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 30, background: C.paper, borderBottom: `3px solid ${C.wood}`, display: 'flex', alignItems: 'center', gap: 5, padding: '0 5px', fontSize: 12, color: C.ink, whiteSpace: 'nowrap', overflow: 'hidden', boxSizing: 'border-box' }}>
-        <Ico name={seasonOf(s.clock.month)} size={14} /><b>{s.clock.year}년 {s.clock.month}월 {s.clock.day}일</b><span style={{ ...small, fontSize: 11 }}>{String(s.clock.hour).padStart(2, '0')}시</span>
-        <span style={{ flex: 1 }} />
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 2, transition: 'transform .12s ease-out', transform: moneyBump ? 'scale(1.15)' : 'none' }}><Ico name="money" size={12} /><b style={{ color: s.money < 0 ? C.red : moneyBump ? C.gold : C.ink }}>{wonShort(s.money)}</b></span>
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 2 }}><Ico name="star" size={12} /><b>{s.fame}</b></span>
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 2 }}><Ico name="research" size={12} /><b>{s.research}</b></span>
-        <button onClick={() => { setWin(win === 'system' ? null : 'system'); setSelected(null); }} style={{ ...(win === 'system' ? btnGold : btnOff), padding: 1, width: 22, height: 20, lineHeight: 0, display: 'grid', placeItems: 'center' }} title="시스템"><Ico name="settings" size={14} /></button>
-        <span style={{ display: 'inline-flex', gap: 2, marginLeft: 2 }}>{([0, 1, 3] as const).map((sp) => <button key={sp} onClick={() => dispatch({ type: 'setSpeed', speed: sp })} style={{ ...(s.clock.speed === sp ? btnGold : btnOff), padding: 1, width: 22, height: 20, lineHeight: 0, display: 'grid', placeItems: 'center' }}><Ico name={sp === 0 ? 'speed_pause' : `speed_${sp}`} size={14} /></button>)}</span>
+      <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 'var(--topbar)', paddingTop: 'var(--safe-t)', background: C.paper, borderBottom: `3px solid ${C.wood}`, display: 'flex', alignItems: 'center', gap: m.compact ? 3 : 5, padding: `var(--safe-t) ${m.compact ? 3 : 5}px 0`, fontSize: m.compact ? 11 : 12, color: C.ink, whiteSpace: 'nowrap', overflow: 'hidden', boxSizing: 'border-box' }}>
+        {/* 날짜·시각 — 자리가 모자라면 이쪽이 먼저 줄어든다 */}
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, minWidth: 0, overflow: 'hidden' }}>
+          <Ico name={seasonOf(s.clock.month)} size={14} />
+          <b style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.compact ? `${s.clock.month}/${s.clock.day}` : `${s.clock.year}년 ${s.clock.month}월 ${s.clock.day}일`}</b>
+          <span style={{ ...small, fontSize: 11 }}>{String(s.clock.hour).padStart(2, '0')}시</span>
+        </span>
+        <span style={{ flex: 1, minWidth: 2 }} />
+        {/* 자금·명성·연구 — 좁은 폰에선 연구를 접는다 */}
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 2, transition: 'transform .12s ease-out', transform: moneyBump ? 'scale(1.15)' : 'none', flexShrink: 0 }}><Ico name="money" size={12} /><b style={{ color: s.money < 0 ? C.red : moneyBump ? C.gold : C.ink }}>{wonShort(s.money)}</b></span>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 2, flexShrink: 0 }}><Ico name="star" size={12} /><b>{s.fame}</b></span>
+        {!m.compact && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 2, flexShrink: 0 }}><Ico name="research" size={12} /><b>{s.research}</b></span>}
+        {/* 시스템 · 속도 — 한 벌로 붙여 누르기 쉽게 */}
+        <button onClick={() => { setWin(win === 'system' ? null : 'system'); setSelected(null); }} style={{ ...(win === 'system' ? btnGold : btnOff), padding: 0, width: 26, height: 24, lineHeight: 0, display: 'grid', placeItems: 'center', flexShrink: 0 }} title="시스템"><Ico name="settings" size={14} /></button>
+        <span style={{ display: 'inline-flex', flexShrink: 0, border: `2px solid #4a2f16`, borderRadius: 5, overflow: 'hidden' }}>
+          {([0, 1, 3] as const).map((sp) => <button key={sp} onClick={() => dispatch({ type: 'setSpeed', speed: sp })} title={sp === 0 ? '멈춤' : `${sp}배속`} style={{ ...(s.clock.speed === sp ? btnGold : btnOff), border: 0, borderRadius: 0, padding: 0, width: 26, height: 24, lineHeight: 0, display: 'grid', placeItems: 'center', boxShadow: 'none' }}><Ico name={sp === 0 ? 'speed_pause' : `speed_${sp}`} size={14} /></button>)}
+        </span>
       </div>
       {/* 지금 돌아가는 일 — 탭하면 운영 창 */}
       {ready && !win && !placing && !moving && <LiveStrip s={s} onOpen={() => setWin('ops')} />}
       {/* 목표 한 줄 */}
-      {tut && !placing ? <div style={{ position: 'absolute', top: 36, left: 8, right: 8, ...panel, padding: '4px 8px', fontSize: 13, background: '#fff0c0' }}>
+      {tut && !placing ? <div style={{ position: 'absolute', top: TOP_SLOT, left: 8, right: 8, ...panel, padding: '4px 8px', fontSize: 13, background: '#fff0c0' }}>
         <div style={{ display: 'flex', gap: 6, alignItems: 'baseline' }}><b style={{ color: C.wood }}>{tut.i + 1}/{TUTORIAL.length}</b><b style={{ flex: 1 }}>{tut.step.text}</b><span style={small}>{wonShort(tut.step.reward)}</span></div>
         <div style={{ ...small, fontSize: 11 }}>{tut.step.how}</div>
-      </div> : obj && !placing && <div style={{ position: 'absolute', top: 36, left: 8, right: 8, ...panel, padding: '4px 8px', fontSize: 13, cursor: 'pointer' }} onClick={() => setWin('cafe')}><Ico name="flag" /> {obj.text} <span style={small}>· 상금 {wonShort(obj.reward)}</span></div>}
-      {moving && <div style={{ position: 'absolute', top: 36, left: 8, right: 8, ...panel, padding: '6px 8px', fontSize: 13, display: 'flex', alignItems: 'center', gap: 8, background: '#fff0c0' }}>
+      </div> : obj && !placing && <div style={{ position: 'absolute', top: TOP_SLOT, left: 8, right: 8, ...panel, padding: '4px 8px', fontSize: 13, cursor: 'pointer' }} onClick={() => setWin('cafe')}><Ico name="flag" /> {obj.text} <span style={small}>· 상금 {wonShort(obj.reward)}</span></div>}
+      {moving && <div style={{ position: 'absolute', top: TOP_SLOT, left: 8, right: 8, ...panel, padding: '6px 8px', fontSize: 13, display: 'flex', alignItems: 'center', gap: 8, background: '#fff0c0' }}>
         <Sprite id={getState().facilities[moving]?.type ?? 'table_out'} size={28} />
         <b style={{ flex: 1 }}>옮길 자리를 탭</b>
         <button style={btnOff} onClick={() => setMoving(null)}>취소</button>
@@ -272,18 +284,28 @@ export function App() {
         setGhost(g.edges ? ghostOf(getState(), placing, g.x, g.y, g.line, g.edges) : isLine(placing) ? ghostOf(getState(), placing, g.x, g.y, g.line) : ghostOf(getState(), placing, g.x, g.y)); // 같은 자리는 이제 막히니 빨갛게 — 다음 탭으로 옮긴다
       }} />}
       {/* 삼춘 메시지 줄 (알림·신발매·거절 이유) */}
-      {ready && <MessageLine bottom={BOTTOM_H} flash={toast} />}
-      {daySum && !win && !dlg && <DaySummary today={daySum.today} prev={daySum.prev} bottom={BOTTOM_H + MESSAGE_LINE_H + 8} />}
+      {ready && <MessageLine bottom={'var(--bottom)'} flash={toast} />}
+      {daySum && !win && !dlg && <DaySummary today={daySum.today} prev={daySum.prev} bottom={`calc(var(--bottom) + ${MESSAGE_LINE_H + 8}px)`} />}
       {/* 하단: 영수증 띠 · 요약 띠 · 메뉴 */}
-      <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, background: C.paper, borderTop: `3px solid ${C.wood}`, color: C.ink }}>
-        <Receipts s={s} />
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '0 6px 0 8px', height: 24, fontSize: 12, color: C.soft, borderTop: `1px solid #d8c9a8`, whiteSpace: 'nowrap', overflow: 'hidden' }}>
+      <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, paddingBottom: 'var(--safe-b)', background: C.paper, borderTop: `3px solid ${C.wood}`, color: C.ink }}>
+        {!m.short && <Receipts s={s} />}
+        {!m.short && <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '0 6px 0 8px', height: m.statsH, fontSize: 12, color: C.soft, borderTop: `1px solid #d8c9a8`, whiteSpace: 'nowrap', overflow: 'hidden' }}>
           <span>손님 <b style={{ color: C.ink }}>{s.guests.length}</b></span><span>오늘 <b style={{ color: C.ink }}>{s.todayGuests}</b>/{dailyGuests(s)}</span><span>자리 <b style={{ color: C.ink }}>{usables(s).length}</b></span><span>인기 <b style={{ color: C.ink }}>{popularitySum(s)}</b></span><span>직원 <b style={{ color: C.ink }}>{s.staff.length}</b></span>
           <span style={{ flex: 1 }} />
-          {ready && <button style={{ ...btnOff, padding: '1px 6px', fontSize: 11, lineHeight: '16px' }} onClick={() => viewRef.current?.centerOn(getState())}><Ico name="home" size={11} /> 마당</button>}
-        </div>
-        <div style={{ display: 'flex', gap: 5, padding: 5 }}>
-          {([['build', '건축', 'build'], ['guests', '손님', 'guest'], ['ops', '운영', 'hire'], ['cafe', '카페', 'home_cafe']] as const).map(([k, name, ico]) => <button key={k} style={{ ...(win === k ? btnGold : btn), flex: 1, padding: '6px 0', fontSize: 14, position: 'relative', display: 'inline-flex', flexDirection: 'column', alignItems: 'center', gap: 2 }} onClick={() => { setWin(win === k ? null : k); setSelected(null); setFloorSel(null); setGuestSel(null); }}><Ico name={ico} size={18} />{name}{k === 'ops' && opsBadge && <span style={{ position: 'absolute', top: 4, right: 8, width: 10, height: 10, borderRadius: 5, background: C.red, border: '2px solid #fff8e8' }} />}</button>)}
+          {ready && <button style={{ ...btnOff, padding: '0 8px', fontSize: 11, height: 20, lineHeight: '16px' }} onClick={() => viewRef.current?.centerOn(getState())}><Ico name="home" size={11} /> 마당</button>}
+        </div>}
+        <div className="navbar" style={{ display: 'flex', gap: 5, padding: 5 }}>
+          {([['build', '건축', 'build'], ['guests', '손님', 'guest'], ['ops', '운영', 'hire'], ['cafe', '카페', 'home_cafe']] as const).map(([k, name, ico]) => {
+            const on = win === k;
+            return (
+              <button key={k} aria-pressed={on} style={{ ...(on ? btnGold : btn), height: m.navH - 10, padding: 0, fontSize: m.compact ? 13 : 14, position: 'relative', display: 'inline-flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 1, overflow: 'hidden' }} onClick={() => { setWin(on ? null : k); setSelected(null); setFloorSel(null); setGuestSel(null); }}>
+                <Ico name={ico} size={m.short ? 16 : 18} />
+                <span style={{ lineHeight: 1 }}>{name}</span>
+                {on && <span style={{ position: 'absolute', left: 6, right: 6, bottom: 0, height: 3, background: C.wood, borderRadius: 2 }} />}
+                {k === 'ops' && opsBadge && <span style={{ position: 'absolute', top: 4, right: 8, width: 10, height: 10, borderRadius: 5, background: C.red, border: '2px solid #fff8e8' }} />}
+              </button>
+            );
+          })}
         </div>
       </div>
       {!ready && <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', color: '#fff' }}>불러오는 중…</div>}
@@ -343,7 +365,7 @@ function PlacingBar({ id, ghost, wallMode, wallSide, wallErase, onWallErase, onW
     return bits.join('  ·  ');
   })();
   return (
-    <div style={{ position: 'absolute', top: 36, left: 8, right: 8, ...panel, padding: '6px 8px', fontSize: 13, display: 'grid', gap: 4 }}>
+    <div style={{ position: 'absolute', top: TOP_SLOT, left: 8, right: 8, ...panel, padding: '6px 8px', fontSize: 13, display: 'grid', gap: 4 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
         <Sprite id={id} size={28} /><b>{d.name}</b>
         <span style={{ flex: 1, minWidth: 0 }}>{wall && wallErase ? <span style={{ color: C.red }}>지울 벽을 탭 · 반값</span> : floor || wall ? (ghost?.line || ghost?.edges ? `${count}${wall ? '변' : '칸'} · ${won(d.cost * count)}` : wall ? (wallMode === 'rect' ? '드래그 · 네모' : '탭 · 드래그') : '탭 · 드래그') : !ghost ? won(d.cost) : !ghost.ok ? <span style={{ color: C.red }}>{ghost.reason}</span> : won(d.cost)}</span>
@@ -352,12 +374,12 @@ function PlacingBar({ id, ghost, wallMode, wallSide, wallErase, onWallErase, onW
         <button style={btnOff} onClick={onDone}>끝</button>
       </div>
       {wall && <div style={{ display: 'flex', alignItems: 'center', gap: 4, borderTop: '1px solid #d8c9a8', paddingTop: 4, flexWrap: 'wrap' }}>
-        <button style={{ ...(!wallErase && wallMode === 'edge' ? btnGold : btnOff), padding: '2px 8px', fontSize: 12 }} onClick={() => { onWallErase(false); onWallMode('edge'); }}>한 변씩</button>
-        <button style={{ ...(!wallErase && wallMode === 'rect' ? btnGold : btnOff), padding: '2px 8px', fontSize: 12 }} onClick={() => { onWallErase(false); onWallMode('rect'); }}>네모 두르기</button>
-        <button style={{ ...(wallErase ? { ...btnGold, background: C.red, color: '#fff' } : btnOff), padding: '2px 8px', fontSize: 12 }} onClick={() => onWallErase(!wallErase)}>지우기</button>
+        <button style={{ ...(!wallErase && wallMode === 'edge' ? btnGold : btnOff), padding: '0 10px', minHeight: 32, fontSize: 12 }} onClick={() => { onWallErase(false); onWallMode('edge'); }}>한 변씩</button>
+        <button style={{ ...(!wallErase && wallMode === 'rect' ? btnGold : btnOff), padding: '0 10px', minHeight: 32, fontSize: 12 }} onClick={() => { onWallErase(false); onWallMode('rect'); }}>네모 두르기</button>
+        <button style={{ ...(wallErase ? { ...btnGold, background: C.red, color: '#fff' } : btnOff), padding: '0 10px', minHeight: 32, fontSize: 12 }} onClick={() => onWallErase(!wallErase)}>지우기</button>
         {!wallErase && wallMode === 'edge' && <>
           <span style={{ ...small, marginLeft: 4 }}>방향</span>
-          {(['auto', 'n', 'e', 's', 'w'] as const).map((sd) => <button key={sd} title={SIDE_KO[sd]} style={{ ...(wallSide === sd ? btnGold : btnOff), padding: '2px 5px', fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 3 }} onClick={() => onWallSide(sd)}>{sd !== 'auto' && <SideIcon side={sd} />}{SIDE_KO[sd]}</button>)}
+          {(['auto', 'n', 'e', 's', 'w'] as const).map((sd) => <button key={sd} title={SIDE_KO[sd]} style={{ ...(wallSide === sd ? btnGold : btnOff), padding: '0 7px', minHeight: 32, fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 3 }} onClick={() => onWallSide(sd)}>{sd !== 'auto' && <SideIcon side={sd} />}{SIDE_KO[sd]}</button>)}
         </>}
       </div>}
       {effect && <div style={{ fontSize: 12, color: C.green, borderTop: '1px solid #d8c9a8', paddingTop: 4 }}>{effect}</div>}
@@ -384,7 +406,7 @@ function LiveStrip({ s, onOpen }: { s: GameState; onOpen: () => void }) {
   const on = items.filter((x) => x.n > 0);
   if (on.length === 0 && burning.length === 0) return null;
   return (
-    <button onClick={onOpen} style={{ position: 'absolute', top: 72, left: 8, ...panel, padding: '3px 7px', fontSize: 12, display: 'flex', alignItems: 'center', gap: 7, cursor: 'pointer' }}>
+    <button onClick={onOpen} style={{ position: 'absolute', top: 'calc(var(--top) + 32px)', left: 8, ...panel, padding: '3px 7px', fontSize: 12, display: 'flex', alignItems: 'center', gap: 7, cursor: 'pointer' }}>
       {on.map((x) => <span key={x.ico} style={{ display: 'inline-flex', alignItems: 'center', gap: 2, color: x.color ?? C.ink }}><Ico name={x.ico} size={12} /><b>{x.n}</b></span>)}
       {burning.map((st) => <span key={st.id} style={{ color: C.red, fontWeight: 700 }}>🔥{st.name}</span>)}
     </button>
@@ -397,7 +419,7 @@ function Ask({ text, sub, yesOff, onYes, onNo }: { text: string; sub?: string; y
       <div style={{ ...panel, width: 280 }} onClick={(e) => e.stopPropagation()}>
         <div style={{ fontSize: 14, marginBottom: 4 }}>{text}</div>
         {sub && <div style={{ ...small, marginBottom: 8 }}>{sub}</div>}
-        <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}><button style={btnOff} onClick={onNo}>아니요</button><button style={yesOff ? btnOff : btnGold} disabled={yesOff} onClick={onYes}>네</button></div>
+        <div style={{ display: 'flex', gap: 6 }}><button style={{ ...btnOff, flex: 1, minHeight: 42 }} onClick={onNo}>아니요</button><button style={{ ...(yesOff ? btnOff : btnGold), flex: 1, minHeight: 42 }} disabled={yesOff} onClick={onYes}>네</button></div>
       </div>
     </div>
   );
@@ -427,12 +449,12 @@ function FloorCard({ s, p, onClose, onMore }: { s: GameState; p: Pt; onClose: ()
       </div>
       {here.length > 0 && <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap', borderTop: '1px solid #d8c9a8', paddingTop: 5 }}>
         <span style={{ ...small, minWidth: 40 }}>걷기</span>
-        {here.map(({ e, kind }) => <button key={`${e.x},${e.y},${e.side}`} style={{ ...btnOff, padding: '2px 7px', fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 4 }} onClick={() => { const r = dispatch({ type: 'removeWall', x: e.x, y: e.y, side: e.side }); if (!r.ok) alert(r.reason); else { sfx('remove'); if (here.length === 1 && !c.floor) onClose(); } }}><Sprite id={kind!} size={16} />{SIDE[sideOf(e)]}쪽 <span style={{ fontSize: 11, color: C.wood }}>+{wonShort(Math.round(facilityDef(kind!).cost / 2))}</span></button>)}
-        {here.length > 1 && <button style={{ ...btnOff, padding: '2px 7px', fontSize: 12, marginLeft: 'auto' }} onClick={() => { const r = dispatch({ type: 'removeWalls', x: p.x, y: p.y }); if (!r.ok) alert(r.reason); else { sfx('remove'); if (!c.floor) onClose(); } }}>전부 ({here.length})</button>}
+        {here.map(({ e, kind }) => <button key={`${e.x},${e.y},${e.side}`} style={{ ...btnOff, padding: '0 9px', minHeight: 32, fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 4 }} onClick={() => { const r = dispatch({ type: 'removeWall', x: e.x, y: e.y, side: e.side }); if (!r.ok) alert(r.reason); else { sfx('remove'); if (here.length === 1 && !c.floor) onClose(); } }}><Sprite id={kind!} size={16} />{SIDE[sideOf(e)]}쪽 <span style={{ fontSize: 11, color: C.wood }}>+{wonShort(Math.round(facilityDef(kind!).cost / 2))}</span></button>)}
+        {here.length > 1 && <button style={{ ...btnOff, padding: '0 9px', minHeight: 32, fontSize: 12, marginLeft: 'auto' }} onClick={() => { const r = dispatch({ type: 'removeWalls', x: p.x, y: p.y }); if (!r.ok) alert(r.reason); else { sfx('remove'); if (!c.floor) onClose(); } }}>전부 ({here.length})</button>}
       </div>}
       {c.floor && c.floor !== 'path' && <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap', borderTop: '1px solid #d8c9a8', paddingTop: 5 }}>
         <span style={{ ...small, minWidth: 40 }}>벽</span>
-        {walls.map((w) => <button key={w.id} style={{ ...btnOff, padding: '2px 7px', fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 4 }} onClick={() => onMore(w.id)}><Sprite id={w.id} size={18} />{w.name}</button>)}
+        {walls.map((w) => <button key={w.id} style={{ ...btnOff, padding: '0 9px', minHeight: 32, fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 4 }} onClick={() => onMore(w.id)}><Sprite id={w.id} size={18} />{w.name}</button>)}
       </div>}
     </div>
   );
@@ -454,10 +476,10 @@ function Receipts({ s }: { s: GameState }) {
 }
 function Window({ title, onClose, children, tabs }: { title: string; onClose: () => void; children: React.ReactNode; tabs?: React.ReactNode }) {
   return (
-    <div style={{ position: 'absolute', left: 6, right: 6, top: 36, bottom: ABOVE_BOTTOM, ...panel, display: 'flex', flexDirection: 'column', gap: 6, overflow: 'hidden' }}>
-      <div style={titleBar}><span style={{ flex: 1, whiteSpace: 'nowrap' }}>{title}</span><button style={{ ...btnOff, padding: '2px 8px' }} onClick={onClose}>뒤로</button></div>
-      {tabs && <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>{tabs}</div>}
-      <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>{children}</div>
+    <div style={{ position: 'absolute', left: 6, right: 6, top: TOP_SLOT, bottom: ABOVE_BOTTOM, ...panel, display: 'flex', flexDirection: 'column', gap: 6, overflow: 'hidden' }}>
+      <div style={titleBar}><span style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{title}</span><button style={{ ...btnOff, padding: '0 12px', height: 30, fontSize: 13 }} onClick={onClose}>뒤로</button></div>
+      {tabs && <div className="segbar">{tabs}</div>}
+      <div style={{ flex: 1, overflowY: 'auto', minHeight: 0, WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain' }}>{children}</div>
     </div>
   );
 }
@@ -505,7 +527,7 @@ function BuildWindow({ s, onPick, onClose }: { s: GameState; onPick: (id: string
   const open = (x: Def) => s.unlocked.facilities.includes(x.id);
   const gist = (x: Def) => x.sub === 'floor' ? '칸마다' : x.sub === 'wall' ? (isDoor(x.id) ? '변마다 · 지나다님' : '변마다') : x.station ? `${x.station === 'food' ? '음식' : x.station === 'both' ? '음료·음식' : '음료'} 제조` : x.amenity ? (AMENITY_GIST[x.amenity] ?? '가게 전체') : x.comfort ? `아늑함 +${x.comfort}` : x.scenery ? `마당 경치 +${x.scenery}` : x.pop !== undefined ? `인기 ${x.pop}${x.capacity && x.capacity > 1 ? ` · ${x.capacity}인` : ''}` : '';
   return (
-    <Window title="건축" onClose={onClose} tabs={BUILD_TABS.map((t) => <button key={t.k} style={{ ...(tab === t.k ? btnGold : btnOff), padding: '3px 7px', fontSize: 13, display: 'inline-flex', alignItems: 'center', gap: 3 }} onClick={() => { setTab(t.k); setPick(null); }}><Ico name={t.ico} size={13} />{t.name}</button>)}>
+    <Window title="건축" onClose={onClose} tabs={BUILD_TABS.map((t) => <button key={t.k} style={{ ...(tab === t.k ? btnGold : btnOff), padding: '0 4px', fontSize: 13, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 3 }} onClick={() => { setTab(t.k); setPick(null); }}><Ico name={t.ico} size={13} />{t.name}</button>)}>
       {sections.map((sec) => {
         const items = mine.filter((x) => sec.pick(x)).sort((a, b) => (open(a) === open(b) ? a.unlock - b.unlock : open(a) ? -1 : 1));
         if (items.length === 0) return null;
@@ -672,7 +694,7 @@ function StaffTab({ s }: { s: GameState }) {
           </div>
           <div style={{ display: 'flex', gap: 3, flexWrap: 'wrap', alignItems: 'center' }}>
             <span style={{ ...small, minWidth: 34 }}>담당</span>
-            {SKILLS.map((k) => <button key={k} style={{ ...(st.duty === k ? btnGold : btnOff), padding: '2px 6px', fontSize: 12 }} onClick={() => dispatch({ type: 'setDuty', staffId: st.id, duty: k })}>{DUTY_KO[k]} <b>{gradeOf(st[k])}</b></button>)}
+            {SKILLS.map((k) => <button key={k} style={{ ...(st.duty === k ? btnGold : btnOff), padding: '4px 7px', fontSize: 12, minHeight: 30 }} onClick={() => dispatch({ type: 'setDuty', staffId: st.id, duty: k })}>{DUTY_KO[k]} <b>{gradeOf(st[k])}</b></button>)}
           </div>
           <div style={{ fontSize: 12, color: C.soft, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             <span>이달 {st.duty === 'service' ? `${st.month.served}명${rate === null ? '' : ` · 만족 ${rate}%`}` : DUTY_KO[st.duty]}</span>
@@ -687,7 +709,7 @@ function StaffTab({ s }: { s: GameState }) {
 /** 운영: 연구 · 직원 · 투자 · 땅 */
 function OpsWindow({ s, onClose }: { s: GameState; onClose: () => void }) {
   const [tab, setTab] = useState<'research' | 'staff' | 'invest'>(s.candidates.length > 0 || (s.staff.length === 0 && usables(s).length >= 3) ? 'staff' : 'research');
-  const tabs = ([['research', '연구'], ['staff', '직원'], ['invest', '투자·땅']] as const).map(([k, n]) => <button key={k} style={{ ...(tab === k ? btnGold : btnOff), padding: '4px 8px', fontSize: 12 }} onClick={() => setTab(k)}>{n}</button>);
+  const tabs = ([['research', '연구'], ['staff', '직원'], ['invest', '투자·땅']] as const).map(([k, n]) => <button key={k} style={{ ...(tab === k ? btnGold : btnOff), padding: '0 6px', fontSize: 13 }} onClick={() => setTab(k)}>{n}</button>);
   return (
     <Window title="운영" onClose={onClose} tabs={tabs}>
       {tab === 'research' && <div style={{ display: 'grid', gap: 4 }}>
@@ -737,7 +759,7 @@ function RoomsTab({ s }: { s: GameState }) {
 /** 카페: 현황 · 방 · 목표 · 랭킹 */
 function CafeWindow({ s, onClose }: { s: GameState; onClose: () => void }) {
   const [tab, setTab] = useState<'status' | 'rooms' | 'goals' | 'rank'>('status');
-  const tabs = ([['status', '현황'], ['rooms', '방'], ['goals', '목표'], ['rank', '랭킹']] as const).map(([k, n]) => <button key={k} style={{ ...(tab === k ? btnGold : btnOff), padding: '4px 8px', fontSize: 12 }} onClick={() => setTab(k)}>{n}</button>);
+  const tabs = ([['status', '현황'], ['rooms', '방'], ['goals', '목표'], ['rank', '랭킹']] as const).map(([k, n]) => <button key={k} style={{ ...(tab === k ? btnGold : btnOff), padding: '0 6px', fontSize: 13 }} onClick={() => setTab(k)}>{n}</button>);
   return (
     <Window title={s.cafeName} onClose={onClose} tabs={tabs}>
       {tab === 'status' && <div style={{ fontSize: 13, display: 'grid', gap: 4 }}>
@@ -848,9 +870,9 @@ function FacilityCard({ s, f, onSelect, onClose, onMore, onGuest, onMove }: { s:
   return (
     <div style={{ position: 'absolute', left: 6, right: 6, bottom: ABOVE_BOTTOM, ...panel, fontSize: 13 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-        <button style={{ ...btnOff, padding: '2px 8px' }} onClick={() => go(-1)}>◀</button>
+        <button style={{ ...btnOff, padding: '0 12px', minHeight: 32 }} onClick={() => go(-1)}>◀</button>
         <Sprite id={f.type} size={32} /><b style={{ flex: 1, fontSize: 15 }}>{f.name ?? d.name}{f.level > 1 ? ` Lv${f.level}` : ''} <span style={small}>{i + 1}/{list.length}</span></b>
-        <button style={{ ...btnOff, padding: '2px 8px' }} onClick={() => go(1)}>▶</button>
+        <button style={{ ...btnOff, padding: '0 12px', minHeight: 32 }} onClick={() => go(1)}>▶</button>
         <button style={btnOff} onClick={onClose}>닫기</button>
       </div>
       <div style={small}>유지/월 {won(sh.upkeep)}{isUsable(d) ? ` · 이용 ${f.uses}회 · 매출 ${won(f.sales)}` : d.station ? ` · 만든 잔 ${f.uses}` : ''}</div>
