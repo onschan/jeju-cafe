@@ -105,7 +105,8 @@ export function Title({ onStart, onReplayIntro, onNew }: { onStart: (fresh: bool
     <div onPointerDownCapture={() => unlockAudio()} style={{ position: 'absolute', inset: 0, zIndex: 50, overflow: 'hidden', background: '#15110c' }}>
       <DemoBackdrop />
       <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, rgba(10,8,5,0.12) 0%, rgba(10,8,5,0.55) 65%)' }} />
-      <div style={{ position: 'absolute', left: 0, right: 0, top: 0, height: vh ?? '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: 'calc(24px + env(safe-area-inset-top)) 22px calc(16px + env(safe-area-inset-bottom))', overflowY: 'auto' }}>
+      {/* box-sizing이 없으면 height + padding이 더해져 화면 밖으로 밀린다 — 아랫단추가 잘리던 원인 */}
+      <div style={{ position: 'absolute', left: 0, right: 0, top: 0, height: vh ?? '100%', boxSizing: 'border-box', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: 'calc(16px + env(safe-area-inset-top)) 22px calc(14px + env(safe-area-inset-bottom))', overflowY: 'auto' }}>
         <div style={{ ...sign, flex: 'none' }}>
           <div style={logo}>제주 카페<br />이야기</div>
           <div style={{ textAlign: 'center', fontSize: 12, color: '#fff5dc', marginTop: 6, textShadow: `1px 1px 0 ${WOOD}` }}>귀농 카페 경영 시뮬레이션</div>

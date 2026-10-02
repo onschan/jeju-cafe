@@ -7,7 +7,8 @@
     <style>
       @font-face { font-family: 'Galmuri11'; src: url('./fonts/Galmuri11.woff2') format('woff2'); font-weight: 400; font-display: swap; }
       @font-face { font-family: 'Galmuri11'; src: url('./fonts/Galmuri11-Bold.woff2') format('woff2'); font-weight: 700; font-display: swap; }
-      html, body, #root { margin: 0; height: 100%; height: 100dvh; overflow: hidden; overscroll-behavior: none; background: #1e1e1e; font-family: 'Galmuri11', system-ui, sans-serif; }
+      /* 높이는 JS가 visualViewport로 직접 준다 — iOS 사파리 주소창 아래로 아랫줄이 숨는 걸 막는다 */
+      html, body, #root { margin: 0; height: 100%; overflow: hidden; overscroll-behavior: none; background: #1e1e1e; font-family: 'Galmuri11', system-ui, sans-serif; }
       /* 탭 지연(300ms)·더블탭 확대를 끈다 — 단추를 누른 만큼 바로 먹히게 */
       button { touch-action: manipulation; }
       /* 창 탭 줄: 칸을 고르게 나눠 가지는 한 벌 단추 (좁은 폰에서 글자가 세로로 쪼개지지 않게) */

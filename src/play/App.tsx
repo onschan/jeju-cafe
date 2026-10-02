@@ -234,15 +234,18 @@ export function App() {
   function flash(text?: string) { if (!text) return; sfx('error'); setToast(text); window.setTimeout(() => setToast((t) => (t === text ? null : t)), 1800); }
 
   const m = useMetrics();
+  // 회전·주소창 접힘으로 보이는 크기가 바뀌면 캔버스도 같이 맞춘다
+  useEffect(() => { viewRef.current?.resize(); }, [m.w, m.h]);
   const obj = currentObjective(s);
   const canResearch = unlockables(s).some((u) => !u.done && s.research >= u.cost);
   const opsBadge = canResearch || s.candidates.length > 0 || (s.staff.length === 0 && usables(s).length >= 3);
   const sel = selected ? s.facilities[selected] ?? null : null;
   const fontStyle: CSSProperties = { fontFamily: 'Galmuri11, system-ui, sans-serif' };
   return (
-    <div style={{ position: 'fixed', inset: 0, background: '#15110c', display: 'flex', justifyContent: 'center', ...fontStyle, userSelect: 'none', ...cssVars(m) } as CSSProperties}>
+    // 높이는 visualViewport가 알려 준 「지금 보이는 높이」 — 아이폰 사파리 주소창 아래로 아랫줄이 숨지 않게
+    <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: m.h, background: '#15110c', display: 'flex', justifyContent: 'center', ...fontStyle, userSelect: 'none', ...cssVars(m) } as CSSProperties}>
     {/* 폰 한 판 폭으로 가운데 고정 — 넓은 화면에서 창이 끝까지 늘어나지 않게 */}
-    <div style={{ position: 'relative', width: 'min(100vw, 520px)', height: '100%', background: C.dark, overflow: 'hidden', boxShadow: '0 0 0 2px #4a2f16' }}>
+    <div style={{ position: 'relative', width: Math.min(m.w, 520), height: '100%', background: C.dark, overflow: 'hidden', boxShadow: '0 0 0 2px #4a2f16' }}>
       <div ref={hostRef} style={{ position: 'absolute', inset: 0 }} />
       {/* 상단 바 */}
       <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 'var(--topbar)', paddingTop: 'var(--safe-t)', background: C.paper, borderBottom: `3px solid ${C.wood}`, display: 'flex', alignItems: 'center', gap: m.compact ? 3 : 5, padding: `var(--safe-t) ${m.compact ? 3 : 5}px 0`, fontSize: m.compact ? 11 : 12, color: C.ink, whiteSpace: 'nowrap', overflow: 'hidden', boxSizing: 'border-box' }}>
@@ -288,8 +291,8 @@ export function App() {
       {daySum && !win && !dlg && <DaySummary today={daySum.today} prev={daySum.prev} bottom={`calc(var(--bottom) + ${MESSAGE_LINE_H + 8}px)`} />}
       {/* 하단: 영수증 띠 · 요약 띠 · 메뉴 */}
       <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, paddingBottom: 'var(--safe-b)', background: C.paper, borderTop: `3px solid ${C.wood}`, color: C.ink }}>
-        {!m.short && <Receipts s={s} />}
-        {!m.short && <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '0 6px 0 8px', height: m.statsH, fontSize: 12, color: C.soft, borderTop: `1px solid #d8c9a8`, whiteSpace: 'nowrap', overflow: 'hidden' }}>
+        {m.receiptH > 0 && <Receipts s={s} h={m.receiptH} />}
+        {m.statsH > 0 && <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '0 6px 0 8px', height: m.statsH, fontSize: 12, color: C.soft, borderTop: `1px solid #d8c9a8`, whiteSpace: 'nowrap', overflow: 'hidden' }}>
           <span>손님 <b style={{ color: C.ink }}>{s.guests.length}</b></span><span>오늘 <b style={{ color: C.ink }}>{s.todayGuests}</b>/{dailyGuests(s)}</span><span>자리 <b style={{ color: C.ink }}>{usables(s).length}</b></span><span>인기 <b style={{ color: C.ink }}>{popularitySum(s)}</b></span><span>직원 <b style={{ color: C.ink }}>{s.staff.length}</b></span>
           <span style={{ flex: 1 }} />
           {ready && <button style={{ ...btnOff, padding: '0 8px', fontSize: 11, height: 20, lineHeight: '16px' }} onClick={() => viewRef.current?.centerOn(getState())}><Ico name="home" size={11} /> 마당</button>}
@@ -460,11 +463,11 @@ function FloorCard({ s, p, onClose, onMore }: { s: GameState; p: Pt; onClose: ()
   );
 }
 /** 영수증 한 줄: 마지막 손님 (영상의 하단 띠) */
-function Receipts({ s }: { s: GameState }) {
+function Receipts({ s, h = 22 }: { s: GameState; h?: number }) {
   const r = s.receipts[s.receipts.length - 1];
   const t = r ? GUEST_TYPES.find((g) => g.id === r.type) : null;
   return (
-    <div style={{ display: 'flex', gap: 8, alignItems: 'center', padding: '0 8px', height: 22, fontSize: 12, whiteSpace: 'nowrap', overflow: 'hidden' }}>
+    <div style={{ display: 'flex', gap: 8, alignItems: 'center', padding: '0 8px', height: h, fontSize: 12, whiteSpace: 'nowrap', overflow: 'hidden' }}>
       {!r || !t ? <span style={small}>영수증</span> : <>
         <Ico name={`mood_${r.mood}`} /><b>{t.name}</b>
         <span style={{ color: C.wood }}>+{won(r.money)}</span>

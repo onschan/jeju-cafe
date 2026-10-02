@@ -5,7 +5,8 @@ import { useEffect, useState } from 'react';
 export interface Metrics {
   w: number; h: number;
   compact: boolean;      // 좁은 폰 (아이폰 SE·미니)
-  short: boolean;        // 낮은 화면 (가로 보기·작은 폰)
+  short: boolean;        // 낮은 화면 — 아래 띠를 얇게
+  tiny: boolean;         // 가로 보기 — 영수증·요약 띠를 접는다
   topH: number;          // 상단 바 높이 (안전영역 제외)
   navH: number;          // 하단 메뉴 단추 높이
   statsH: number;        // 요약 띠 높이 (낮은 화면에선 0)
@@ -14,13 +15,14 @@ export interface Metrics {
 }
 export function metricsOf(w: number, h: number): Metrics {
   const compact = w <= 360;
-  const short = h <= 680;
+  const short = h <= 700;      // 작은 폰 — 아래 띠를 얇게 (감추진 않는다)
+  const tiny = h <= 450;       // 가로 보기 — 그때만 영수증·요약을 접는다
   return {
-    w, h, compact, short,
+    w, h, compact, short, tiny,
     topH: compact ? 28 : 30,
-    navH: short ? 46 : 54,
-    statsH: short ? 0 : 24,
-    receiptH: short ? 0 : 22,
+    navH: tiny ? 44 : short ? 48 : 54,
+    statsH: tiny ? 0 : short ? 20 : 24,
+    receiptH: tiny ? 0 : short ? 20 : 22,
     font: compact ? 12 : 13,
   };
 }
@@ -42,7 +44,7 @@ export function useMetrics(): Metrics {
     const vv = typeof window !== 'undefined' ? window.visualViewport : null;
     const w = Math.round(vv?.width ?? window.innerWidth);
     const h = Math.round(vv?.height ?? window.innerHeight);
-    return metricsOf(Math.min(w, 520), h);
+    return metricsOf(w, h);
   };
   const [m, setM] = useState<Metrics>(read);
   useEffect(() => {

@@ -578,6 +578,15 @@ export class View {
     this.ghost = c;
   }
 
+  /** 화면 크기가 바뀌면(회전·주소창 접힘) 캔버스를 다시 맞춘다 — 안 하면 지도가 잘린다.
+   *  init 전에는 renderer가 없다 — 그때 부르면 터지니 조용히 넘긴다. */
+  resize(): void {
+    if (!this.app?.renderer) return;                 // init 전·destroy 뒤엔 renderer가 없다 (app.canvas도 그때 터진다)
+    const el = this.app.canvas?.parentElement as HTMLElement | null | undefined;
+    if (!el || !el.clientWidth || !el.clientHeight) return;
+    this.app.renderer.resize(el.clientWidth, el.clientHeight);
+  }
+
   /** 그 칸 위에 짧은 글씨 (거절 이유 등) */
   say(x: number, y: number, text: string, color = 0xc8402e): void { this.float(x, y, text, color, performance.now()); }
 
