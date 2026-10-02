@@ -138,6 +138,19 @@ export function placeFacility(s: GameState, id: string, x: number, y: number): F
   s.layoutRev++;
   return f;
 }
+/** 옮길 수 있나 — 원래 자리를 잠깐 비우고 재 본다 (고스트가 쓴다) */
+export function canMove(s: GameState, fid: string, x: number, y: number): ApplyResult {
+  const f = s.facilities[fid];
+  if (!f) return { ok: false, reason: '없는 시설' };
+  if (s.guests.some((g) => g.target === fid && g.phase !== 'out')) return { ok: false, reason: '사용 중' };
+  if (f.x === x && f.y === y) return { ok: true };
+  const d = facilityDef(f.type);
+  const foot = footprint(f.x, f.y, d.w, d.h);
+  for (const p of foot) cellAt(s, p.x, p.y).objectId = null;
+  const c = canPlace(s, f.type, x, y);
+  for (const p of foot) cellAt(s, p.x, p.y).objectId = fid;
+  return c;
+}
 /** 시설을 옮긴다: 원래 자리를 비우고 새 자리에 놓아 본다. 안 되면 되돌린다. */
 export function moveFacility(s: GameState, fid: string, x: number, y: number): ApplyResult {
   const f = s.facilities[fid];

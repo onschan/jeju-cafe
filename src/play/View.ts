@@ -19,7 +19,7 @@ import { guestAccs } from './guestLook';
 import { staffLine, guestLine, LINE_MS } from './lines';
 
 export interface Ghost { id: string; x: number; y: number; ok: boolean; reason?: string; line?: { from: Pt; to: Pt }; edges?: WallEdge[] }
-export interface ViewOptions { onTap: (x: number, y: number, fx?: number, fy?: number) => void; onDragCell?: (x: number, y: number, fx?: number, fy?: number) => void; onDragEnd?: () => void; dragCapture?: (x: number, y: number, fx?: number, fy?: number) => boolean; onBusStop?: () => void }
+export interface ViewOptions { onTap: (x: number, y: number, fx?: number, fy?: number) => void; onDragCell?: (x: number, y: number, fx?: number, fy?: number) => void; onDragEnd?: () => void; dragCapture?: (x: number, y: number, fx?: number, fy?: number) => boolean; onLongPress?: (x: number, y: number) => boolean; onBusStop?: () => void }
 
 const SYNERGY_STAGGER_MS = 110;
 const FLOAT_MS = 900;
@@ -79,7 +79,7 @@ export class View {
       world: this.world, canvas: this.app.canvas, ticker: this.app.ticker,
       viewport: () => ({ width: this.app.screen.width, height: this.app.screen.height }),
       bounds: () => this.bounds,
-      onTap: opts.onTap, dragCapture: opts.dragCapture, onDragCell: opts.onDragCell, onDragEnd: opts.onDragEnd,
+      onTap: opts.onTap, dragCapture: opts.dragCapture, onDragCell: opts.onDragCell, onDragEnd: opts.onDragEnd, onLongPress: opts.onLongPress,
       minScale: 0.5, maxScale: 2.5,
     });
     this.onBusStop = opts.onBusStop ?? null;

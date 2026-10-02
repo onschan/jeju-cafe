@@ -139,14 +139,15 @@ function needsAisle(d: { tab: string; station?: string }): boolean { return d.ta
 export const INDOOR_FLOORS: Floor[] = ['wood', 'deck', 'tile', 'stone', 'brick'];
 export function isIndoorFloor(f: Floor | null | undefined): boolean { return !!f && (INDOOR_FLOORS as string[]).includes(f); }
 
-/** 바닥을 깔 수 있나 (내 땅 잔디, 시설 없음) */
+/** 바닥을 깔 수 있나. 마당 바닥(잔디밭·자갈)은 나무·장식 밑에도 깐다 — 실내 바닥은 시설을 먼저 치워야 한다. */
 export function canLayFloor(s: GameState, floor: Floor, x: number, y: number): ApplyResult {
   if (!inBounds(s, x, y)) return { ok: false, reason: '맵 밖' };
   if (!owned(s, x, y)) return { ok: false, reason: '내 땅 아님' };
   const c = cellAt(s, x, y);
   if (c.terrain === 'road') return { ok: false, reason: '마을 길엔 못 깔아요' };
-  if (c.objectId) return { ok: false, reason: '시설 있음' };
+  if (c.objectId && isIndoorFloor(floor)) return { ok: false, reason: '시설 있음' };
   if (c.floor === floor) return { ok: false, reason: '이미 깔림' };
+  if (c.objectId && isIndoorFloor(c.floor)) return { ok: false, reason: '시설 있음' };   // 실내 바닥을 마당 바닥으로 갈아엎진 못한다
   return { ok: true };
 }
 export function layFloor(s: GameState, floor: Floor, x: number, y: number): void { cellAt(s, x, y).floor = floor; s.layoutRev++; }
@@ -207,7 +208,7 @@ export function canPlace(s: GameState, id: string, x: number, y: number): ApplyR
     const c = cellAt(s, p.x, p.y);
     if (c.terrain === 'road') return { ok: false, reason: '마을 길 불가' };
     if (c.objectId) return { ok: false, reason: '이미 있음' };
-    if (d.tab === 'env' && !d.sub && c.floor) return { ok: false, reason: '잔디에만' };
+    if (d.tab === 'env' && !d.sub && (isIndoorFloor(c.floor) || c.floor === 'path')) return { ok: false, reason: '마당에만' };   // 나무·꽃·바위는 잔디·마당 바닥 위
     if (d.station && !c.floor) return { ok: false, reason: '바닥 위에만' };
     if ((d.tab === 'seat' || d.tab === 'shop') && !c.floor && !d.onGrass) return { ok: false, reason: '바닥 먼저' };
     if (c.floor === 'path' && d.tab !== 'env') return { ok: false, reason: '올렛길 위 불가' };

@@ -34,7 +34,7 @@ describe('땅과 바닥', () => {
     // 데크 두 줄 (0..3, 5..6) — (4,5)·(4,6)은 시작 올렛길이라 정류장과 이어진다
     apply(s, { type: 'placeLine', id: 'floor_wood', from: at(0, 5), to: at(3, 5) });
     apply(s, { type: 'placeLine', id: 'floor_wood', from: at(0, 6), to: at(3, 6) });
-    expect(canPlace(s, 'tangerine_tree', at(0, 6).x, at(0, 6).y).reason).toBe('잔디에만');
+    expect(canPlace(s, 'tangerine_tree', at(0, 6).x, at(0, 6).y).reason).toBe('마당에만');
     expect(canPlace(s, 'deco_planter', at(0, 6).x, at(0, 6).y).ok).toBe(true);
     // 아랫줄을 테이블로 채워도 윗줄이 통로라 괜찮다
     for (const lx of [0, 1, 2, 3]) expect(apply(s, { type: 'place', id: 'table_out', x: at(lx, 6).x, y: at(lx, 6).y }).ok).toBe(true);

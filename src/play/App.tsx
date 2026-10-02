@@ -15,7 +15,7 @@ import { Title } from './Title';
 import { EndingScreen } from './Ending';
 import { unlockAudio, audioReady, sfx, bgm, setBgmLayer, isMuted, setMuted, getBgmVolume, getSfxVolume, setBgmVolume, setSfxVolume } from './audio';
 import { guestAccs } from './guestLook';
-import { FACILITIES, GUEST_TYPES, MENUS, INVESTS, facilityDef, isFloorDef, isUsable, sheetOf, usables, popularitySum, dailyGuests, unlockables, canUnlock, canLevelUp, LEVEL_COST, levelMoney, currentObjective, OBJECTIVES, seasonOf, canHire, upkeepTotal, wagesTotal, myScore, rivalScore, RIVALS, lineCells, canLayFloor, parcelAt, cellAt, parcelAdjacent, type GameState, type Tab, type Facility, type Pt, type Parcel, type Objective, type Guest, previewPlace, AMENITY_TEXT, AMENITY_GIST, cellEdges, getWall, edgeOf, nearestSide, type Side4, needsSummary, SKILLS, SKILL_KO, SKILL_DESC, DUTY_KO, gradeOf, effSkill, skillSum, staffSkill, CHANNELS, canRecruit, channelDef, STAFF_MAX, orderStats, makeMsOf, serveMsOf, stationsOf, orderOf, menuDef, synergyPartners, dirtyOf, dishesOf, dirtTotal, dishTotal, cleanMsOf, staffActOf, ACT_KO, isDoor, rooms, ROOM_KO, ROOM_EFFECT, yardScenery, YARD_PER_GUEST, HOUR_MS, type Grade, type Staff, type Skill } from '../game/index.ts';
+import { FACILITIES, GUEST_TYPES, MENUS, INVESTS, facilityDef, isFloorDef, isUsable, sheetOf, usables, popularitySum, dailyGuests, unlockables, canUnlock, canLevelUp, LEVEL_COST, levelMoney, currentObjective, OBJECTIVES, seasonOf, canHire, upkeepTotal, wagesTotal, myScore, rivalScore, RIVALS, lineCells, canLayFloor, parcelAt, cellAt, parcelAdjacent, type GameState, type Tab, type Facility, type Pt, type Parcel, type Objective, type Guest, previewPlace, canMove, AMENITY_TEXT, AMENITY_GIST, cellEdges, getWall, edgeOf, nearestSide, type Side4, needsSummary, SKILLS, SKILL_KO, SKILL_DESC, DUTY_KO, gradeOf, effSkill, skillSum, staffSkill, CHANNELS, canRecruit, channelDef, STAFF_MAX, orderStats, makeMsOf, serveMsOf, stationsOf, orderOf, menuDef, synergyPartners, dirtyOf, dishesOf, dirtTotal, dishTotal, cleanMsOf, staffActOf, ACT_KO, isDoor, INDOOR_FLOORS, rooms, ROOM_KO, ROOM_EFFECT, yardScenery, YARD_PER_GUEST, HOUR_MS, type Grade, type Staff, type Skill } from '../game/index.ts';
 
 type Win = 'build' | 'guests' | 'ops' | 'cafe' | 'system' | null;
 /** 하단 띠(영수증 2줄 + 요약 + 메뉴) 높이 */
@@ -132,6 +132,7 @@ export function App() {
   const prevMoney = useRef(s.money);
   useEffect(() => { const up = s.money > prevMoney.current; prevMoney.current = s.money; if (!up) return; setMoneyBump(true); const t = setTimeout(() => setMoneyBump(false), 160); return () => clearTimeout(t); }, [s.money]);
   const lineFrom = useRef<Pt | null>(null);
+  const dragMove = useRef<{ fid: string; x: number; y: number } | null>(null);
   const placingRef = useRef<string | null>(null); placingRef.current = placing;
   const ghostRef = useRef<Ghost | null>(null); ghostRef.current = ghost;
 
@@ -186,12 +187,41 @@ export function App() {
         setGhost(ghostOf(getState(), id, x, y, { from: { x, y }, to: { x, y } })); return true;
       },
       onDragCell: (x, y) => {
+        const dm = dragMove.current;
+        if (dm) {
+          dm.x = x; dm.y = y;
+          const st = getState();
+          const r = canMove(st, dm.fid, x, y);
+          setGhost({ id: st.facilities[dm.fid]!.type, x, y, ok: r.ok, reason: r.reason });
+          return;
+        }
         const id = placingRef.current; const from = lineFrom.current; if (!id || !from) return;
         if (facilityDef(id).sub === 'wall' && wallModeRef.current === 'edge') { setGhost(ghostOf(getState(), id, x, y, { from, to: { x, y } }, lineCells(from, { x, y }).map((c) => edgeOf(c.x, c.y, dragSide.current)))); return; } // 드래그한 칸마다 같은 방향 변에
         setGhost(ghostOf(getState(), id, x, y, { from, to: { x, y } }));
       },
       onBusStop: () => { if (!getState().clock.speed) return; sfx('bus'); },
-      onDragEnd: () => { lineFrom.current = null; }, // 드래그는 줄 미리보기까지만, 깔기는 띠에서
+      // 꾹 누르면 그 자리 기물을 들어 올린다 — 그대로 끌어다 놓으면 옮겨진다
+      onLongPress: (x, y) => {
+        if (placingRef.current || movingRef.current) return false;
+        const st = getState();
+        const fid = st.grid.cells[y * st.grid.w + x]?.objectId;
+        if (!fid) return false;
+        sfx('tap');
+        setSelected(null); setFloorSel(null); setGuestSel(null);
+        setMoving(fid); dragMove.current = { fid, x, y };
+        setGhost({ id: st.facilities[fid]!.type, x, y, ok: true });
+        return true;
+      },
+      onDragEnd: () => {
+        lineFrom.current = null;
+        const dm = dragMove.current;
+        if (dm) {
+          dragMove.current = null;
+          const r = dispatch({ type: 'move', facilityId: dm.fid, x: dm.x, y: dm.y });
+          if (!r.ok) { viewRef.current?.say(dm.x, dm.y, r.reason ?? ''); sfx('error'); } else sfx('place');
+          setMoving(null); setGhost(null); setSelected(r.ok ? dm.fid : null);
+        }
+      }, // 드래그는 줄 미리보기까지만, 깔기는 띠에서
     }).then(() => { v.centerOn(getState()); setReady(true); stop = startLoop(); raf = requestAnimationFrame(tick); }); // 시트가 다 실린 뒤에야 그린다 — 먼저 그리면 자리 표시 도형이 캐시에 남는다(폰에서 그렇게 보였다)
     (window as unknown as { __view: View; __game: unknown }).__view = v; // 디버그·자동 검증용 (봇·브라우저 스크립트)
     (window as unknown as { __game: unknown }).__game = { getState, dispatch };
@@ -438,7 +468,7 @@ function Sprite({ id, size = 56 }: { id: string; size?: number }) {
   return url ? <img className="px" src={url} width={size} height={size} alt="" style={{ imageRendering: 'pixelated' }} /> : <div style={{ width: size, height: size }} />;
 }
 function Ico({ name, size = 14 }: { name: string; size?: number }) { return <img className="px" src={assetUrl(`assets/icons/icon_${name}.png`)} width={size} height={size} alt="" style={{ imageRendering: 'pixelated', verticalAlign: 'middle' }} />; }
-/** 건축 카탈로그: 탭 넷(실내·마당·자리·가게)에 구역을 나눈다. 열린 것만 카드로, 잠긴 것은 아래 칩으로 접어 둔다. */
+/** 건축 카탈로그: 탭 넷(실내·마당·자리·가게)에 구역을 나눈다. 잠긴 것도 어둡게 같이 보여 준다 — 뭐가 더 있는지 보이게. */
 type BuildTab = 'indoor' | 'env' | 'seat' | 'shop';
 const BUILD_TABS: { k: BuildTab; name: string; ico: string }[] = [
   { k: 'indoor', name: '실내', ico: 'home_cafe' }, { k: 'env', name: '마당', ico: 'tree' },
@@ -446,62 +476,66 @@ const BUILD_TABS: { k: BuildTab; name: string; ico: string }[] = [
 ];
 type Def = (typeof FACILITIES)[number];
 /** 탭마다 구역 — 바닥·벽은 방을 만드는 것이라 실내에 둔다 */
-function buildSections(tab: BuildTab): { title: string; pick: (d: Def) => boolean }[] {
+const isIndoorFloorDef = (d: Def) => d.sub === 'floor' && (INDOOR_FLOORS as string[]).includes(d.floor ?? '');
+function buildSections(tab: BuildTab): { title: string; note?: string; pick: (d: Def) => boolean }[] {
   if (tab === 'indoor') return [
-    { title: '만드는 곳 · 메뉴가 여기서 나온다', pick: (d) => !!d.station && d.tab === 'env' },
-    { title: '바닥', pick: (d) => d.sub === 'floor' },
-    { title: '벽', pick: (d) => d.sub === 'wall' },
-    { title: '자리 · 가게', pick: (d) => !!d.indoor && (d.tab === 'seat' || d.tab === 'shop') },
+    { title: '만드는 곳', note: '메뉴가 여기서 나온다', pick: (d) => !!d.station && d.tab === 'env' },
+    { title: '실내 바닥', note: '이 위에만 벽을 세운다', pick: isIndoorFloorDef },
+    { title: '벽 · 문', note: '둘러싸면 방이 된다', pick: (d) => d.sub === 'wall' },
+    { title: '자리', pick: (d) => !!d.indoor && (d.tab === 'seat' || d.tab === 'shop') },
     { title: '편의', pick: (d) => !!d.indoor && !!d.amenity && !d.station },
     { title: '꾸밈 · 아늑함', pick: (d) => !!d.indoor && !!d.comfort && !d.amenity && !d.station },
   ];
   if (tab === 'env') return [
+    { title: '마당 바닥', note: '나무·장식 밑에도 깔린다', pick: (d) => d.sub === 'floor' && !isIndoorFloorDef(d) },
     { title: '나무 · 꽃 · 바위', pick: (d) => d.tab === 'env' && !d.sub && !d.indoor },
     { title: '마당 장식', pick: (d) => d.tab === 'env' && d.sub === 'deco' && !d.indoor && !d.station },
   ];
   return [{ title: tab === 'seat' ? '바깥 자리' : '바깥 가게', pick: (d) => d.tab === tab && !d.indoor }];
 }
 function BuildWindow({ s, onPick, onClose }: { s: GameState; onPick: (id: string) => void; onClose: () => void }) {
+  const [why, setWhy] = useState<string | null>(null);
+  const flashUnlock = (r?: string) => { setWhy(r ?? null); window.setTimeout(() => setWhy(null), 1600); };
   const [tab, setTab] = useState<BuildTab>('seat');
   const [pick, setPick] = useState<string | null>(null);
-  const [showLocked, setShowLocked] = useState(false);
   const sections = buildSections(tab);
   const mine = FACILITIES.filter((d) => sections.some((x) => x.pick(d)));
-  const locked = mine.filter((d) => !s.unlocked.facilities.includes(d.id)).sort((a, b) => a.unlock - b.unlock);
   const d = pick ? facilityDef(pick) : null;
   const isOpen = d ? s.unlocked.facilities.includes(d.id) : false;
+  const open = (x: Def) => s.unlocked.facilities.includes(x.id);
   const gist = (x: Def) => x.sub === 'floor' ? '칸마다' : x.sub === 'wall' ? (isDoor(x.id) ? '변마다 · 지나다님' : '변마다') : x.station ? `${x.station === 'food' ? '음식' : x.station === 'both' ? '음료·음식' : '음료'} 제조` : x.amenity ? (AMENITY_GIST[x.amenity] ?? '가게 전체') : x.comfort ? `아늑함 +${x.comfort}` : x.scenery ? `마당 경치 +${x.scenery}` : x.pop !== undefined ? `인기 ${x.pop}${x.capacity && x.capacity > 1 ? ` · ${x.capacity}인` : ''}` : '';
   return (
-    <Window title="건축" onClose={onClose} tabs={BUILD_TABS.map((t) => <button key={t.k} style={{ ...(tab === t.k ? btnGold : btnOff), padding: '3px 7px', fontSize: 13, display: 'inline-flex', alignItems: 'center', gap: 3 }} onClick={() => { setTab(t.k); setPick(null); setShowLocked(false); }}><Ico name={t.ico} size={13} />{t.name}</button>)}>
+    <Window title="건축" onClose={onClose} tabs={BUILD_TABS.map((t) => <button key={t.k} style={{ ...(tab === t.k ? btnGold : btnOff), padding: '3px 7px', fontSize: 13, display: 'inline-flex', alignItems: 'center', gap: 3 }} onClick={() => { setTab(t.k); setPick(null); }}><Ico name={t.ico} size={13} />{t.name}</button>)}>
       {sections.map((sec) => {
-        const items = mine.filter((x) => sec.pick(x) && s.unlocked.facilities.includes(x.id));
+        const items = mine.filter((x) => sec.pick(x)).sort((a, b) => (open(a) === open(b) ? a.unlock - b.unlock : open(a) ? -1 : 1));
         if (items.length === 0) return null;
+        const n = items.filter(open).length;
         return (
           <div key={sec.title} style={{ marginBottom: 8 }}>
-            <div style={{ ...small, margin: '0 0 4px', borderBottom: `1px solid #d8c9a8`, paddingBottom: 2 }}>{sec.title}</div>
+            <div style={{ ...small, margin: '0 0 4px', borderBottom: `1px solid #d8c9a8`, paddingBottom: 2, display: 'flex', alignItems: 'baseline', gap: 5 }}>
+              <b style={{ color: C.ink, fontSize: 12 }}>{sec.title}</b>
+              {sec.note && <span style={{ fontSize: 11 }}>{sec.note}</span>}
+              <span style={{ flex: 1 }} />
+              <span style={{ fontSize: 11 }}>{n}/{items.length}</span>
+            </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 5 }}>
-              {items.map((x) => (
-                <div key={x.id} onClick={() => setPick(x.id)} style={{ ...tile, flexDirection: 'row', alignItems: 'center', gap: 7, padding: 5, textAlign: 'left', background: pick === x.id ? '#fff0c0' : '#fff8e8', outline: pick === x.id ? `3px solid ${C.gold}` : 'none' }}>
-                  <Sprite id={x.id} size={44} />
+              {items.map((x) => { const o = open(x), near = s.research >= x.unlock; return (
+                <div key={x.id} onClick={() => setPick(x.id)} style={{ ...tile, flexDirection: 'row', alignItems: 'center', gap: 7, padding: 5, textAlign: 'left', background: pick === x.id ? '#fff0c0' : o ? '#fff8e8' : '#cdc3ad', color: o ? C.ink : '#6a6050', outline: pick === x.id ? `3px solid ${C.gold}` : 'none', position: 'relative' }}>
+                  <span style={{ filter: o ? 'none' : 'grayscale(1) brightness(0.72)', display: 'flex' }}><Sprite id={x.id} size={44} /></span>
                   <span style={{ flex: 1, minWidth: 0, lineHeight: 1.3 }}>
                     <b style={{ fontSize: 13, display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{x.name}</b>
-                    <span style={{ fontSize: 12, color: C.wood, display: 'block' }}>{wonShort(x.cost)}</span>
-                    {gist(x) && <span style={{ ...small, fontSize: 11, display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{gist(x)}</span>}
+                    {o
+                      ? <span style={{ fontSize: 12, color: C.wood, display: 'block' }}>{wonShort(x.cost)}</span>
+                      : <span style={{ fontSize: 12, display: 'block', color: near ? C.green : '#8a5b4a' }}><Ico name="lock" size={10} /> 연구 {x.unlock}</span>}
+                    {gist(x) && <span style={{ ...small, fontSize: 11, display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: o ? C.soft : '#7d7465' }}>{gist(x)}</span>}
                   </span>
                 </div>
-              ))}
+              ); })}
             </div>
           </div>
         );
       })}
-      {locked.length > 0 && <div style={{ marginTop: 2 }}>
-        <button style={{ ...btnOff, width: '100%', fontSize: 12, padding: '4px 8px', textAlign: 'left' }} onClick={() => setShowLocked((v) => !v)}>
-          <Ico name="lock" size={12} /> 잠김 {locked.length} · 연구 {s.research} {showLocked ? '▲' : '▼'}
-        </button>
-        {showLocked && <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 5 }}>
-          {locked.map((x) => <button key={x.id} onClick={() => setPick(x.id)} style={{ ...(pick === x.id ? btnGold : btnOff), padding: '3px 7px', fontSize: 12, opacity: s.research >= x.unlock ? 1 : 0.7 }}>{x.name} <b style={{ color: s.research >= x.unlock ? C.green : C.red }}>{x.unlock}</b></button>)}
-        </div>}
-      </div>}
+      {why && <div style={{ ...small, color: C.red, textAlign: 'center' }}>{why}</div>}
       {d && <div style={{ ...panel, marginTop: 8, padding: 6, display: 'flex', gap: 8, alignItems: 'center', position: 'sticky', bottom: 0 }}>
         <Sprite id={d.id} size={44} />
         <div style={{ flex: 1, minWidth: 0, fontSize: 13 }}>
@@ -515,6 +549,7 @@ function BuildWindow({ s, onPick, onClose }: { s: GameState; onPick: (id: string
           {isOpen && (() => { const ps = synergyPartners(d.id); return ps.length > 0 && <div style={{ ...small, color: C.green }}>어울림: {ps.map((p) => `${p.name}(${p.with.map((w) => facilityDef(w).name).join('·')})`).join(' · ')}</div>; })()}
         </div>
         {isOpen && <button style={s.money >= d.cost ? btnGold : btnOff} onClick={() => { if (s.money >= d.cost) onPick(d.id); }}>{d.sub === 'floor' ? '깔기' : d.sub === 'wall' ? '두르기' : '놓기'}</button>}
+        {!isOpen && <button style={canUnlock(s, d.id).ok ? btnGold : btnOff} onClick={() => { const r = dispatch({ type: 'unlock', id: d.id }); if (!r.ok) flashUnlock(r.reason); else sfx('unlock'); }}>열기</button>}
       </div>}
     </Window>
   );
